@@ -30,8 +30,7 @@ impl ImportServiceHandle {
         Ok(())
     }
 
-    /// Subscribe to scan events, filtered from the unified event channel.
-    /// Returns an mpsc receiver that yields only ScanEvent variants.
+    /// Subscribe to the unified event channel, filtered to only `ScanEvent`s.
     pub fn subscribe_folder_scan_events(&self) -> mpsc::UnboundedReceiver<ScanEvent> {
         let mut rx = self.event_tx.subscribe();
         let (tx, out_rx) = mpsc::unbounded_channel();

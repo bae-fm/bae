@@ -1,12 +1,10 @@
 //! The typed error the import pipeline threads through every fallible step.
 //!
-//! Every function under `import/` returns `Result<_, ImportError>` (or one of
-//! the narrower typed errors that `#[from]`-convert into it). Wire-level source
-//! errors (`MusicBrainzError`, `DiscogsError`) are preserved structurally rather
-//! than flattened to a string, so a consumer that needs to know a MusicBrainz
-//! timeout from a malformed-payload failure can read it from the chain. The
-//! terminal consumer, `do_import`, is the only place that turns this back into a
-//! string, for the user-facing `ImportProgress::Failed { error }` event.
+//! Wire-level source errors (`MusicBrainzError`, `DiscogsError`) are kept
+//! structurally rather than flattened to a string, so a consumer that needs to
+//! tell a MusicBrainz timeout from a malformed payload can read it off the
+//! chain. `do_import`, the terminal consumer, is the only place that turns this
+//! back into a string, for the user-facing `ImportProgress::Failed { error }`.
 
 use crate::import::MetadataSource;
 
@@ -37,12 +35,12 @@ pub enum ImportError {
     #[error("Discogs API key not configured")]
     DiscogsNotConfigured,
 
-    /// The source responded, but its payload can't be mapped to a release
-    /// (no artist credits, missing release_group, multi-side track with no
-    /// side letter, medium with no tracks, no track title, ...).
+    /// The source responded, but its payload can't be mapped to a release (no
+    /// artist credits, missing release_group, multi-side track with no side
+    /// letter, medium with no tracks, no track title, ...).
     ///
-    /// The field is `metadata_source`, not `source`: thiserror reserves a
-    /// field literally named `source` for the error-chain source, which a
+    /// The field is `metadata_source`, not `source`: thiserror reserves a field
+    /// literally named `source` for the error-chain source, which a
     /// `MetadataSource` (not an `Error`) can't be.
     #[error("{} release data cannot be mapped: {detail}", metadata_source.as_str())]
     SourceData {
@@ -72,8 +70,7 @@ pub enum ImportError {
     DecodeVerification { broken: Vec<String> },
 
     /// Per-pressing duplicate rejection: an Exact identity already in the
-    /// library. The Display text is a user-facing surface the UI renders and a
-    /// test asserts on, so it names the album verbatim.
+    /// library. The Display text is user-facing — the UI renders it verbatim.
     #[error("This release is already in your library as \"{album_title}\"")]
     AlreadyInLibrary { album_title: String },
 
@@ -112,10 +109,9 @@ mod tests {
     use super::*;
     use crate::musicbrainz::MusicBrainzError;
 
-    /// Wire-level source errors reach a consumer structurally, not flattened to
-    /// a string. A MusicBrainz timeout that a producer raises with `?` arrives
-    /// at the terminal consumer as a matchable `MusicBrainz(Timeout)` — a retry
-    /// policy can read the retryability straight off the variant.
+    /// A MusicBrainz timeout raised with `?` arrives at the terminal consumer as
+    /// a matchable `MusicBrainz(Timeout)`, so a retry policy can read the
+    /// retryability straight off the variant.
     #[test]
     fn musicbrainz_error_is_preserved_unflattened() {
         let err: ImportError = MusicBrainzError::Timeout.into();

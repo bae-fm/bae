@@ -1,22 +1,14 @@
-//! Pure formatters: `fn data → String` with no state, no I/O, no context.
-//!
-//! Examples: `compute_track_position(format, side, …) → TrackPosition`,
-//! `track_position_text(position) → "A1"`.
-//!
-//! Zero dependencies on the database, the filesystem, or any struct
-//! definition outside this file. Tests are `#[cfg(test)]` at the bottom.
-//!
-//! Called by `LibraryManager` when resolving raw `Db*` aggregates into
-//! display-ready types in `crate::album_detail`. Also called by any other
-//! module that needs the same deterministic formatting (e.g.
-//! `import/search.rs`).
+//! Pure formatters over `crate::album_detail`'s position types: no state, no
+//! I/O, no database. `compute_track_position` picks a track's position case from
+//! the release format; `track_position_text` renders it ("A1"); the rest
+//! classify the format and group tracks by side.
 
 /// Convert a 1-indexed side number to a letter (1=A, 2=B, ..., 26=Z).
 pub fn side_letter(side: i32) -> String {
     ((b'A' + (side - 1) as u8) as char).to_string()
 }
 
-/// Determine the format kind from the release format string.
+/// A physical release format whose tracks are laid out on sides, not discs.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PhysicalSideMedium {
     Vinyl,
@@ -51,10 +43,9 @@ pub fn is_digital_format(format: Option<&str>) -> bool {
     matches!(detect_format(format), FormatKind::Digital)
 }
 
-/// Compute the structured [`crate::album_detail::TrackPosition`] for a track given the release
-/// format and side count. Picks the case (sided physical / multi-disc digital /
-/// flat) and fills its domain fields; core renders the per-track position text
-/// from this and the UI resolves only the header word. `side` is 1-indexed.
+/// The structured [`crate::album_detail::TrackPosition`] for a track: picks the
+/// case (sided physical / multi-disc digital / flat) from the release format and
+/// fills its domain fields. `side` is 1-indexed.
 pub fn compute_track_position(
     format: Option<&str>,
     side: i32,

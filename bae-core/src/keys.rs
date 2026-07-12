@@ -1,28 +1,19 @@
 //! Re-export of coven's store key material plus bae's domain credentials.
 //!
-//! The key/keyring primitives live in coven now; this re-exports them so bae's
-//! `crate::keys::…` call sites resolve unchanged. coven splits its keyring into
-//! two scopes: `DeviceKeys` is the device-global Ed25519 signing identity
-//! (stateless, no store_id), and `StoreKeys` carries a store's encryption key,
-//! cloud credentials, and OAuth tokens under store-scoped accounts. coven is
-//! domain-agnostic and reads secrets only from the keyring, so bae's Discogs API
-//! key is layered back onto `StoreKeys` as another store-scoped keyring
-//! credential via an extension trait, using coven's `keyring_service` /
-//! `store_id` to scope a `keyring_core` entry it reads and writes directly
-//! (coven's own keyring API is typed to its own slots). MCP's local bearer
-//! token uses the same account
-//! scheme. In dev mode bae's `BAE_DISCOGS_API_KEY` env value is bridged into
-//! this account by `config::seed_dev_keyring`, the same way coven's own
-//! encryption-key / credentials env vars are.
+//! coven owns the key/keyring primitives and splits its keyring into two scopes:
+//! `DeviceKeys`, the device-global Ed25519 signing identity (no store_id), and
+//! `StoreKeys`, a store's encryption key, cloud credentials, and OAuth tokens
+//! under store-scoped accounts. coven is domain-agnostic and reads secrets only
+//! from the keyring, so bae's Discogs API key and MCP bearer token are layered
+//! back onto `StoreKeys` by the extension trait below, under the same
+//! `base:store_id` account scheme. In dev mode `config::seed_dev_keyring` bridges
+//! `BAE_DISCOGS_API_KEY` into that account, as it does coven's own env vars.
 use tracing::{info, warn};
 
 pub use coven::{CloudHomeCredentials, DeviceKeys, KeyError, StoreKeys};
-// `keyring_service` names the keyring service the bae-domain credentials below
-// (Discogs key, MCP token, encryption-key forget) live under; used only here, so
-// it stays a private import rather than re-exported `bae_core::keys` surface.
-// coven's own keyring read/write is a closed typed-slot API (`KeyringSlot`) that
-// can't name bae's accounts, so bae reads and writes its accounts through
-// `keyring_core` directly against that same service name.
+// coven's keyring read/write is a closed typed-slot API that can't name bae's
+// accounts, so bae goes through `keyring_core` directly — against coven's service
+// name, so both live in one keyring service.
 use coven::keyring_service;
 
 /// A namespaced keyring account, matching coven's own `base:store_id` scheme.
@@ -87,21 +78,20 @@ fn read_keyring_credential(ks: &StoreKeys, account_base: &str) -> Result<Option<
 /// and the local MCP bearer token. Bring this trait into scope to call these on
 /// a `StoreKeys`.
 ///
-/// Read getters return `Result<Option<T>, KeyError>` for the same reason as
-/// coven's own getters: `Ok(None)` is "not configured," `Err` is a real
-/// failure (keyring backend error, malformed stored bytes) — silently
-/// collapsing those to `None` hides corrupt local state.
+/// The getters return `Result<Option<T>, KeyError>` for the same reason coven's
+/// do: `Ok(None)` is "not configured", `Err` is a real failure (keyring backend
+/// error, malformed stored bytes) — collapsing those to `None` would hide corrupt
+/// local state.
 pub trait BaeStoreKeysExt {
     fn get_discogs_key(&self) -> Result<Option<String>, KeyError>;
     fn set_discogs_key(&self, value: &str) -> Result<(), KeyError>;
     fn delete_discogs_key(&self) -> Result<(), KeyError>;
     fn get_mcp_token(&self) -> Result<Option<String>, KeyError>;
     fn set_mcp_token(&self, value: &str) -> Result<(), KeyError>;
-    /// Remove the active library's encryption key from the keyring. The
-    /// running sync_manager still holds the key in memory, so this
-    /// session keeps working — the lock only takes effect on next
-    /// launch (which routes through UnlockView). Silently succeeds if
-    /// the entry is already gone.
+    /// Remove this library's encryption key from the keyring. The running sync
+    /// manager still holds it in memory, so the session keeps working — the lock
+    /// takes effect on the next launch, which lands on the unlock screen.
+    /// Succeeds if the entry is already gone.
     fn forget_encryption_key(&self) -> Result<(), KeyError>;
 }
 

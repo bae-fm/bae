@@ -37,8 +37,6 @@ use crate::db::{
 
 /// The four-digit year at the head of a metadata date string (`"1998"`,
 /// `"1998-05-01"`), or `None` when the value is absent or has no leading year.
-/// The single date→year parser shared by the source mappers and the search
-/// detail builder.
 pub(crate) fn parse_year(date: Option<&str>) -> Option<i32> {
     date?.split('-').next()?.parse().ok()
 }
@@ -51,11 +49,9 @@ pub struct ParsedWorkGraph {
     pub track_works: Vec<DbTrackWork>,
 }
 
-/// Result of parsing a release (MusicBrainz or Discogs) into the
-/// in-memory shape that flows into commit. Carries the per-source
-/// identity rows alongside the DB-shape album/release/tracks; commit
-/// turns identity into `release_identities` rows and the rest into
-/// `albums` / `releases` / `tracks` writes.
+/// A parsed release (MusicBrainz, Discogs, or file tags) in the shape that
+/// flows into commit: commit turns `identities` into `release_identities` rows
+/// and the rest into `albums` / `releases` / `tracks` writes.
 #[derive(Debug, Clone)]
 pub struct ParsedAlbum {
     pub album: DbAlbum,

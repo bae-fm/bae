@@ -1,18 +1,12 @@
-//! # Import flow
+//! MusicBrainz release → `ParsedAlbum` mapping, plus the cross-link the response
+//! carries. Identity rows are emitted onto `ParsedAlbum::identities`; the actual
+//! `release_identities` writes happen at commit.
 //!
-//! Identity rows land in `release_identities` per source, written at
-//! commit. The mapper here is concerned with the per-source response →
-//! `DbAlbum` / `DbRelease` mapping plus surfacing any cross-link the
-//! response carries (MB url-rels → Discogs); the actual
-//! `release_identities` writes happen in the commit path.
-//!
-//! MB → Discogs cross-link: MB releases carry url-rels that routinely
-//! include Discogs release URLs. Parse them out here so the commit path
-//! can write both an MB and a Discogs identity row from a single MB
-//! import. The reverse (Discogs → MB) is less reliable — Discogs API
-//! doesn't expose MBIDs as a standard field. Discogs imports typically
-//! produce only a Discogs identity row at first; the reverse cross-link
-//! is resolved via MB's URL endpoint.
+//! MB → Discogs cross-link: MB releases carry url-rels that routinely include a
+//! Discogs release URL. Parsing it out here lets a single MB import emit both an
+//! MB and a Discogs identity row. The reverse (Discogs → MB) is less reliable —
+//! the Discogs API exposes no MBID field — so it is resolved through MB's URL
+//! endpoint instead.
 
 use super::assemble::{
     assemble_parsed_album, AlbumArtistScope, ArtistRef, PartDirection, ReleaseIr, TrackEvent,
@@ -62,8 +56,8 @@ fn mb_relation_is_composer(relation: &MbRelation) -> bool {
 }
 
 /// An [`ArtistRef`] for a MusicBrainz artist: `name` is the resolved credit
-/// name; sort name and MB id come from the artist payload; MB artists carry no
-/// Discogs id here (release-level cross-ref enrichment is handled inline).
+/// name; sort name and MB id come from the artist payload. No Discogs id — the
+/// release-level cross-ref stamps that inline, on the release credits only.
 fn mb_artist_ref(name: String, artist: &MbArtistRef) -> ArtistRef {
     ArtistRef {
         name,
@@ -149,13 +143,13 @@ fn mb_work_ref(work: &MbWork, converted: &mut HashSet<String>) -> WorkGraphRef {
 }
 
 /// Fetch a MusicBrainz release. Pure MB: no Discogs client, no cross-ref.
-/// Returns the parsed response, the Discogs release URL from MB's url-rels
-/// (if any), for cross-referencing later, and the raw JSON pairs (release +
+/// Returns the parsed response, the Discogs release URL from MB's url-rels (if
+/// any) for cross-referencing later, and the raw JSON pairs (release +
 /// release-group) for archival in `release_metadata`.
 ///
-/// Cross-referencing into Discogs is a separate step — see
-/// `crate::discogs::client::enrich_with_discogs_xref`. The split keeps
-/// prefetch's API discogs-free; only commit composes both.
+/// Cross-referencing into Discogs is a separate step —
+/// `crate::discogs::client::fetch_discogs_xref`. The split keeps prefetch's API
+/// Discogs-free; only commit composes both.
 pub async fn fetch_mb_response(
     release_id: &str,
 ) -> Result<(MbReleaseResponse, Option<String>, Vec<(String, String)>), ImportError> {
@@ -269,9 +263,10 @@ pub(crate) fn medium_sides(
 
 /// Map a typed MusicBrainz release response into database models (pure, no I/O).
 ///
-/// `discogs_release`: optional Discogs data resolved from MB url-rels (path 2).
-/// When present, the Discogs columns on both `DbAlbum` (master) and `DbRelease`
-/// (release) are populated alongside the MB columns.
+/// `discogs_release` is the Discogs release MB's url-rels cross-linked to, when
+/// one resolved. It contributes a second `ReleaseIdentity` row (when the Discogs
+/// release names a master) and stamps `discogs_artist_id` onto every release
+/// artist whose name matches a Discogs artist, case-insensitively.
 pub fn map_mb_response_to_db(
     response: &MbReleaseResponse,
     master_year: Option<u32>,
@@ -279,9 +274,6 @@ pub fn map_mb_response_to_db(
     clock: &dyn Clock,
     ids: &dyn IdProvider,
 ) -> Result<ParsedAlbum, ImportError> {
-    // Release-level artist credits → `ArtistRef`s, keeping the credit-name
-    // preference and the Discogs cross-ref `discogs_artist_id` name-match
-    // enrichment.
     let mut release_refs: Vec<ArtistRef> = Vec::new();
     for credit in &response.artist_credit {
         if let Some(artist_obj) = &credit.artist {
@@ -326,13 +318,10 @@ pub fn map_mb_response_to_db(
         });
     }
 
-    // Identity rows. Always one for MB (every MB release belongs to a
-    // release group; absence is a structural bug in the response, not a
-    // runtime case). When MB url-rels resolved a Discogs release,
-    // contribute a second row so future Discogs imports of the same
-    // master attach to this album. Both are Exact: the user committed
-    // against the MB pressing, and the cross-link names a specific
-    // Discogs pressing.
+    // Always one MB identity row — every MB release belongs to a release group,
+    // so absence is a broken response, not a runtime case. A Discogs release
+    // resolved from url-rels contributes a second row, so future Discogs imports
+    // of the same master attach to this album. Both are Exact.
     let mb_release_group =
         response
             .release_group
@@ -394,9 +383,7 @@ pub fn map_mb_response_to_db(
         barcode: response.barcode.clone(),
     };
 
-    // Each medium contributes 1 or 2 sides; `side_base` advances so side values
-    // never repeat across media, and every track's number is its position within
-    // its final side value, assigned by the assembler's single per-side pass.
+    // `side_base` advances per medium so side values never repeat across media.
     let mut tracks: Vec<TrackIr> = Vec::new();
     let mut side_base = 0i32;
     // Release-scoped: each work's relations are converted (and its skip lines
@@ -427,10 +414,9 @@ pub fn map_mb_response_to_db(
 
             for (credit_pos, credit) in track.artist_credit.iter().enumerate() {
                 if let Some(artist_obj) = &credit.artist {
-                    // A track credit with no resolvable name (empty credit and no
-                    // artist payload name) is malformed sub-data; skip it and keep
-                    // the track, mirroring how the composer relations handle an
-                    // unresolvable artist rather than aborting the whole import.
+                    // A credit with no resolvable name (empty credit, no artist
+                    // payload name) is malformed sub-data: skip it and keep the
+                    // track rather than abort the whole import.
                     let Some(name) = mb_artist_name(artist_obj, Some(credit.name.as_str())) else {
                         warn!(
                             musicbrainz_artist_id = ?artist_obj.id,

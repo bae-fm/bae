@@ -3,9 +3,9 @@ use std::sync::{Mutex, OnceLock};
 
 use lru::LruCache;
 
-/// Capacity for each request-kind cache. Sized for a typical session
-/// (a few imports, each touching 1-3 releases). Eviction costs one
-/// network round-trip: the same behavior as a cold start.
+/// Capacity for each request-kind cache. Sized for a session of a few imports,
+/// each touching 1-3 releases. Eviction costs one network round-trip — the same
+/// as a cold start.
 const SESSION_CACHE_CAPACITY: usize = 25;
 
 pub struct SessionCache<V> {

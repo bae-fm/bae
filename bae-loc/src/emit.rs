@@ -508,8 +508,8 @@ translations = { pl = "{count, plural, one {# usunięcie oczekuje} few {# usuni�
         assert!(json.contains("%lld usunięcia oczekują"), "{json}");
         assert!(json.contains("%lld usunięć oczekuje"), "{json}");
 
-        // Android: the Spanish file carries the translation verbatim; an
-        // target locale untranslated for this message keeps the English source.
+        // Android: the Spanish file carries the translation verbatim; a target
+        // locale untranslated for this message keeps the English source.
         let files = android_resource_files(&c, "en");
         let es = files
             .iter()

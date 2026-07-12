@@ -1,14 +1,12 @@
 //! EBU R128 loudness + true-peak measurement at import.
 //!
-//! Each track's PCM is measured once, producing two intrinsic facts: integrated
-//! loudness (LUFS) and true peak (a linear ratio, 1.0 = 0 dBTP). Those raw
-//! measurements are stored per track and combined per album; the playback gain
-//! is derived from them against a constant target at play time, never stored.
-//!
-//! `ebur128::EbuR128::true_peak` already returns a linear ratio, so it is stored
-//! verbatim — no dBTP→linear conversion. The per-track meters are kept so the
-//! album loudness can be combined across them
-//! (`EbuR128::loudness_global_multiple` is order-independent).
+//! Each track's PCM is measured once, yielding two intrinsic facts: integrated
+//! loudness (LUFS) and true peak (a linear ratio, 1.0 = 0 dBTP —
+//! `EbuR128::true_peak` already returns it linear, so it is stored verbatim).
+//! Those measurements are stored per track and combined per album; the playback
+//! gain is derived from them against a constant target at play time, never
+//! stored. The per-track meters are kept because the album loudness is combined
+//! across them (`EbuR128::loudness_global_multiple`, order-independent).
 
 use ebur128::{EbuR128, Mode};
 use tracing::warn;
@@ -28,11 +26,10 @@ pub struct TrackLoudness {
 }
 
 /// A streaming EBU R128 meter: feed a track's PCM in any number of chunks, then
-/// `finish` to read its loudness + true peak. `ebur128` carries its loudness and
-/// true-peak filter state across `add_frames` calls, so chunked feeding measures
-/// exactly the same value as one call — the import streams each decode chunk
-/// straight in (filling a determinate bar continuously through the decode)
-/// instead of buffering the whole track's PCM first.
+/// `finish` to read its loudness + true peak. `ebur128` carries its filter state
+/// across `add_frames` calls, so chunked feeding measures exactly the same value
+/// as one call — which is what lets the import stream each decode chunk straight
+/// in instead of buffering the whole track's PCM first.
 pub struct LoudnessMeter {
     meter: EbuR128,
     channels: u32,
@@ -81,8 +78,7 @@ impl LoudnessMeter {
     }
 }
 
-/// The track's true peak: the max linear true-peak across its channels. The
-/// crate already returns a linear ratio (1.0 = 0 dBTP), so it is stored as-is.
+/// The track's true peak: the max across its channels.
 fn max_true_peak(meter: &EbuR128, channels: u32) -> Result<f64, String> {
     let mut peak = 0.0f64;
     for ch in 0..channels {
@@ -144,10 +140,8 @@ mod tests {
     }
 
     /// One-shot measurement over [`LoudnessMeter`]: feed all samples in a single
-    /// chunk and finish. Returns the measurement alongside the meter (the album
-    /// combine reuses it). Production streams chunks through `LoudnessMeter`
-    /// directly; this is the test convenience the chunked-vs-one-shot test
-    /// compares against.
+    /// chunk and finish. Production streams chunks in instead; this is what the
+    /// chunked-vs-one-shot test compares against.
     fn measure_track(
         samples: &[i32],
         channels: u32,
@@ -177,9 +171,8 @@ mod tests {
 
     #[test]
     fn chunked_measurement_equals_one_shot() {
-        // Feeding the meter in pieces must measure byte-identically to one shot —
-        // `ebur128` carries its filter state across `add_frames`. This is the
-        // guarantee the import relies on to stream each decode chunk straight in.
+        // The guarantee the streaming import rests on: feeding the meter in pieces
+        // measures identically to one shot.
         let sr = 48_000;
         let pcm = sine(0.4, 1_000.0, sr, 5.0);
 

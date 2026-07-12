@@ -90,8 +90,8 @@ fn run() -> Result<(), String> {
     }
 }
 
-/// Wrap a single emitted file as the one-element set the caller iterates. Apple
-/// and Windows pack every locale into one file; Android emits a per-locale set.
+/// Wrap Apple's one multi-locale file as the one-element set the caller
+/// iterates. The other targets already fan out to a file per locale.
 fn single_file(path: impl Into<PathBuf>, contents: String) -> Vec<(PathBuf, String)> {
     vec![(path.into(), contents)]
 }
@@ -100,8 +100,7 @@ fn emit_target(args: &Args, catalog: &Catalog) -> Result<(), String> {
     let target = args.target.as_deref().ok_or("emit needs --target")?;
     let out_dir = args.out_dir.as_ref().ok_or("emit needs --out-dir")?;
 
-    // Apple packs every locale into one xcstrings; Android and Windows each
-    // emit a per-locale resource set (a directory per shipping locale).
+    // Android and Windows emit a directory per shipping locale.
     let files: Vec<(PathBuf, String)> = match target {
         "apple" => single_file(
             "Core.xcstrings",

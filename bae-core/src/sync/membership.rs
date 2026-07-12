@@ -1,7 +1,7 @@
-//! The membership / join / restore DTOs and re-exports bae's sync surface uses.
+//! The membership / join / restore types bae's sync surface uses.
 //!
-//! The sync manager itself is coven's private implementation. bae drives it
-//! through `CovenHandle` and keeps only the membership types needed by the UI.
+//! The sync manager itself is coven's; bae drives it through `CovenHandle` and
+//! keeps only what the membership, join, and invite screens render.
 
 pub use coven::{MemberInfo, MemberRole};
 
@@ -38,8 +38,9 @@ pub struct Membership {
 }
 
 impl Membership {
-    /// Enrich coven's raw member list into bae's membership view, computing
-    /// `self_is_owner` once and each member's fingerprint and `can_remove`.
+    /// Build bae's membership view from coven's raw member list, resolving
+    /// `self_is_owner` once and every member's fingerprint and `can_remove` from
+    /// it.
     pub fn from_members(members: Vec<MemberInfo>) -> Self {
         let self_is_owner = members
             .iter()

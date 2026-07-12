@@ -126,10 +126,6 @@ impl SyncController {
         self.upload_sessions.clone()
     }
 
-    // =========================================================================
-    // Connection state
-    // =========================================================================
-
     /// Pause or resume the cloud-upload pipeline. Paused means new enqueues
     /// still land in the outbox but the sync cycle won't drain them; in-flight
     /// uploads finish (coven's `drain_uploads` checks the flag between
@@ -151,10 +147,6 @@ impl SyncController {
     pub(crate) fn is_sync_paused(&self) -> bool {
         self.sync_paused.load(std::sync::atomic::Ordering::SeqCst)
     }
-
-    // =========================================================================
-    // Outbox snapshot
-    // =========================================================================
 
     /// Build the current outbox snapshot and emit it as `OutboxChanged`. Called
     /// at every outbox mutation, once per sync cycle, and on each upload
@@ -187,10 +179,6 @@ impl SyncController {
         )
         .await
     }
-
-    // =========================================================================
-    // Membership
-    // =========================================================================
 
     /// The library's membership: its devices (with this device flagged, each
     /// member's fingerprint, and whether it can be removed) and whether the
@@ -254,24 +242,19 @@ impl SyncController {
         Ok(())
     }
 
-    // =========================================================================
-    // Provider configuration / connection lifecycle
-    // =========================================================================
-
-    /// Probe, persist, and connect an S3 cloud home. The resolver-side re-emit of
-    /// every album (storage actions gained) is the manager's job after this
-    /// returns.
+    /// Probe, persist, and connect an S3 cloud home. The manager re-emits every
+    /// album afterward — they have gained their storage actions.
     pub(crate) async fn save_s3_config(&self, data: S3ConfigData) -> Result<(), LibraryError> {
         use crate::keys::CloudHomeCredentials;
         use coven::CloudHome;
         use coven::S3CloudHome;
 
         // Probe the bucket with the proposed credentials *before* persisting
-        // anything. A typo or a missing bucket would otherwise leave the UI
-        // showing "Connected" and the user discovering broken sync only via
-        // the reconnect banner after the first failed cycle. The probe's typed
-        // outcome — bad credentials/bucket vs unreachable endpoint — reaches the
-        // UI as distinct error classes.
+        // anything: a typo or a missing bucket would otherwise leave the UI showing
+        // "Connected", with the user learning sync is broken only from the reconnect
+        // banner after the first failed cycle. The probe's typed outcome — bad
+        // credentials/bucket vs unreachable endpoint — reaches the UI as distinct
+        // error classes.
         let probe_home = S3CloudHome::new(
             data.bucket.clone(),
             data.region.clone(),
@@ -314,10 +297,10 @@ impl SyncController {
     ) -> Result<(), LibraryError> {
         use coven::{sign_in_dropbox, sign_in_google_drive, sign_in_onedrive};
 
-        // Hold the sender alive across the await so cancel.wait_for inside
-        // oauth::authorize never fires (this fn doesn't surface a cancel
-        // signal). When this future is dropped, oauth::authorize's own
-        // AbortOnDrop guard tears the listener task down.
+        // Hold the sender alive across the await so the cancel wait inside
+        // `oauth::authorize` never fires — this fn surfaces no cancel signal. If this
+        // future is dropped, `oauth::authorize`'s own AbortOnDrop guard tears the
+        // listener task down.
         let (_cancel_tx, cancel_rx) = tokio::sync::watch::channel(false);
 
         let library_name = self.config_handle.config().store_name.clone();
@@ -449,9 +432,9 @@ impl SyncController {
         Ok(())
     }
 
-    /// Ensure a SyncManager exists (creating encryption key if needed) and start sync.
+    /// Ensure a sync manager exists — minting the encryption key if the home needs
+    /// one — and start the sync loop.
     async fn ensure_sync_manager_and_start(&self) -> Result<(), LibraryError> {
-        // If we already have a sync manager, just (re)start its loop.
         if self.handle.is_connected() {
             self.handle.start_sync().await?;
             return Ok(());
@@ -472,12 +455,12 @@ impl SyncController {
             (None, None)
         };
 
-        // Connect the provider: build the cloud home, start the loop, and install
-        // the manager. A cloud-home build or loop-start failure returns `Err` with
-        // nothing installed, so it surfaces here rather than leaving a dead manager
-        // — and the encryption-key fingerprint below is reached only on success, so
-        // a failed setup stays a clean retry (no fingerprint telling the next
-        // launch's unlock flow "encryption is set up" while sync is still broken).
+        // Connect the provider: build the cloud home, start the loop, install the
+        // manager. A build or loop-start failure returns `Err` with nothing
+        // installed, rather than leaving a dead manager behind — and the fingerprint
+        // below is only reached on success, so a failed setup stays a clean retry,
+        // with no fingerprint telling the next launch's unlock flow "encryption is
+        // set up" while sync is broken.
         let provider = self.config_handle.config().cloud_home.provider.clone();
         match provider {
             Some(CloudProvider::CloudKit) => {
@@ -493,10 +476,10 @@ impl SyncController {
             }
         }
 
-        // Sync started. For an opaque home, persist the encryption-key hint flag so
-        // the next launch's unlock flow knows this library has encryption set up. A
-        // browsable home records nothing — it has no key, so `encryption_key_stored`
-        // stays false and the next launch builds it keyless.
+        // An opaque home persists the encryption-key fingerprint, so the next
+        // launch's unlock flow knows this library has encryption set up. A browsable
+        // home records nothing — it has no key, so `encryption_key_stored` stays
+        // false and the next launch builds it keyless.
         if let Some(fingerprint) = fingerprint {
             if let Err(e) = self
                 .config_handle

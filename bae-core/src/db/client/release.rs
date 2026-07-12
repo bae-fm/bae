@@ -1,7 +1,6 @@
 use super::*;
 
 impl Database {
-    /// Insert a new release.
     pub async fn insert_release(&self, release: &DbRelease) -> Result<(), DbError> {
         let release = release.clone();
         self.call_sql(move |sql| {
@@ -36,8 +35,9 @@ impl Database {
         .await
     }
 
-    /// Insert album, release, and tracks in a single transaction
-    /// Note: Artists and artist relationships should be inserted separately before calling this
+    /// Insert album, release, tracks, track-artist links, and cached source
+    /// metadata in one transaction. The `artists` rows and the album's
+    /// `album_artists` links must already exist — insert them first.
     pub async fn insert_album_with_release_and_tracks(
         &self,
         album: &DbAlbum,
@@ -107,19 +107,14 @@ impl Database {
         Ok(())
     }
 
-    /// Write a user-supplied metadata edit (from the EditMetadataSheet) in a
-    /// single transaction:
+    /// Write a user's metadata edit (from the EditMetadataSheet) in one
+    /// transaction: album fields, release pressing fields, and the track rows named
+    /// by `track_updates` (existing track ID → edited row), plus a full replace of
+    /// the `album_artists` and `track_artists` links.
     ///
-    /// - Updates album-level fields, release pressing fields, and track
-    ///   metadata.
-    /// - Replaces `album_artists` and `track_artists` rows for the affected
-    ///   album/tracks.
-    /// - Does NOT touch `release_metadata` rows — the cached source payload is
-    ///   independent of a user edit.
-    /// - Does NOT touch `release_identities`, `metadata_source`, or
-    ///   `metadata_source_release_id` — identity is orthogonal to metadata.
-    ///
-    /// `track_updates` maps existing track IDs to their edited rows.
+    /// Deliberately untouched: `release_metadata` (the cached source payload is
+    /// independent of a user edit) and `release_identities` / `metadata_source` /
+    /// `metadata_source_release_id` (identity is orthogonal to metadata).
     #[allow(clippy::too_many_arguments)]
     pub async fn update_release_metadata_user_edit(
         &self,
@@ -160,8 +155,8 @@ impl Database {
             // One HLC stamp for every synced row this edit touches.
             let reg = sql.stamp();
 
-            // 1. Insert new artist rows and fill empty source-ID fields on
-            //    existing artists before the album/track links point at them.
+            // Insert new artist rows and fill empty source-ID fields on existing
+            // artists before the album/track links below point at them.
             for artist in &artists {
                 insert_artist_row(tx, artist, &reg)?;
             }
@@ -176,7 +171,6 @@ impl Database {
                 )?;
             }
 
-            // 2. Update album.
             tx.execute(
                 r#"UPDATE albums SET title = ?, artist_id = ?, year = ?, is_compilation = ?,
                     _updated_at = ? WHERE id = ?"#,
@@ -190,7 +184,6 @@ impl Database {
                 ],
             )?;
 
-            // 3. Update release pressing fields.
             tx.execute(
                 r#"UPDATE releases SET year = ?, format = ?, label = ?, catalog_number = ?,
                     country = ?, barcode = ?, _updated_at = ? WHERE id = ?"#,
@@ -206,7 +199,6 @@ impl Database {
                 ],
             )?;
 
-            // 4. Update tracks by existing ID.
             for (existing_id, new_track) in &track_updates {
                 tx.execute(
                     r#"UPDATE tracks SET title = ?, side = ?, track_number = ?,
@@ -221,10 +213,8 @@ impl Database {
                 )?;
             }
 
-            // 5. Replace album_artists.
             replace_album_artists(tx, &album_id, &album_artists, &reg, &now)?;
 
-            // 6. Replace track_artists for the affected tracks.
             let track_ids: Vec<&str> = track_updates.iter().map(|(id, _)| id.as_str()).collect();
             replace_track_artists(tx, &track_ids, &track_artists, &reg, &now)?;
 
@@ -276,10 +266,10 @@ impl Database {
         .await
     }
 
-    /// The storage summary for a single release, or `None` if it doesn't exist.
-    /// Same shape as one row of `get_release_storage_summaries`; the download
-    /// queue uses it at enqueue time to read a release's title / file count /
-    /// total size for its Downloads-pane row.
+    /// The storage summary for one release, or `None` if it doesn't exist — one row
+    /// of `get_release_storage_summaries`. The download queue reads a release's
+    /// title / file count / total size from it at enqueue time, for the
+    /// Downloads-pane row.
     pub async fn find_release_storage_summary(
         &self,
         release_id: &str,
@@ -294,12 +284,12 @@ impl Database {
         .await
     }
 
-    /// A representative file id for every remote release — one per release, or
-    /// `None` for a remote release that has no files. The disconnect flow asks
-    /// coven's cache whether each is pinned (kept offline) to count how many
-    /// releases become unreachable when the cloud provider is removed; an unpinned
-    /// remote release is reachable only through the cloud. Pin/unpin act on all a
-    /// release's blobs together, so one file represents the release.
+    /// A representative file id for every remote release — one per release, `None`
+    /// for a remote release with no files. Pin/unpin act on all a release's blobs
+    /// together, so one file stands for the release. The disconnect flow asks
+    /// coven's cache whether each is pinned, to count the releases that become
+    /// unreachable when the cloud provider is removed: an unpinned remote release
+    /// is reachable only through the cloud.
     pub async fn get_remote_release_file_ids(&self) -> Result<Vec<Option<String>>, DbError> {
         self.read(move |conn| {
             let mut stmt = conn.prepare(
@@ -313,9 +303,8 @@ impl Database {
         .await
     }
 
-    /// Count storage rows matching `filter`. Mirrors the filter logic of
-    /// `get_storage_page` so `total_count` matches the filtered page's
-    /// universe.
+    /// Count storage rows matching `filter`, using the same filter logic as
+    /// `get_storage_page` so `total_count` describes the same set the page pages.
     pub async fn get_storage_count(&self, filter: StorageFilter) -> Result<u64, DbError> {
         let where_clause = storage_filter_where(filter);
         let query = format!("SELECT COUNT(*) FROM releases r {where_clause}");
@@ -329,11 +318,10 @@ impl Database {
     }
 
     /// Sum of `total_size` over every storage row matching `filter` — the
-    /// figure the storage-manager footer shows as "Total:", independent of
-    /// how many pages of the filtered list have loaded. Mirrors the filter
-    /// logic of `get_storage_page`/`get_storage_count`. A release with no
-    /// files contributes nothing via the inner join, matching a page row's
-    /// own `COALESCE(SUM(...), 0)` for `total_size`.
+    /// storage-manager footer's "Total:", independent of how many pages have
+    /// loaded. Same filter logic as `get_storage_page` / `get_storage_count`. A
+    /// release with no files contributes nothing through the inner join, matching a
+    /// page row's own `COALESCE(SUM(...), 0)`.
     pub async fn get_storage_total_size(&self, filter: StorageFilter) -> Result<u64, DbError> {
         let where_clause = storage_filter_where(filter);
         let query = format!(
@@ -405,8 +393,8 @@ impl Database {
         .await
     }
 
-    /// Follow DbTrack.release_id -> DbRelease.
-    /// FK navigation — row must exist. See method conventions above.
+    /// Follow `DbTrack.release_id` → `DbRelease`. FK navigation — the row must
+    /// exist. See the method conventions above.
     pub async fn get_release_for_track(&self, track: &DbTrack) -> Result<DbRelease, DbError> {
         let release_id = track.release_id.clone();
         self.read(move |conn| {
@@ -420,8 +408,8 @@ impl Database {
         .await
     }
 
-    /// Get the raw release-detail aggregate for a single release.
-    /// `LibraryManager` resolves this into `ReleaseDetail`.
+    /// The raw release-detail aggregate for a single release. `LibraryManager`
+    /// resolves it into `ReleaseDetail`.
     pub async fn find_release_detail(
         &self,
         release_id: &str,
@@ -436,9 +424,9 @@ impl Database {
         .await
     }
 
-    /// Get the raw release-detail aggregate, the release's album artists, and
-    /// the release's 0-based position among sibling releases from one database
-    /// call. `LibraryManager` resolves this into `ReleaseDetail`.
+    /// The raw release-detail aggregate, the release's album artists, and its
+    /// 0-based position among its album's releases — all from one database call.
+    /// `LibraryManager` resolves this into `ReleaseDetail`.
     pub async fn find_release_detail_context(
         &self,
         release_id: &str,
@@ -462,13 +450,12 @@ impl Database {
         .await
     }
 
-    /// Get all releases for an album
+    /// Ordered by `created_at`.
     pub async fn get_releases_for_album(&self, album_id: &str) -> Result<Vec<DbRelease>, DbError> {
         let album_id = album_id.to_string();
         self.read(move |conn| get_releases_for_album_on(conn, &album_id))
             .await
     }
-    /// Insert a new file record
     pub async fn insert_file(&self, file: &DbFile) -> Result<(), DbError> {
         let file = file.clone();
         self.call_sql(move |sql| {
@@ -478,7 +465,6 @@ impl Database {
         .await
     }
 
-    /// Get files for a release
     pub async fn get_files_for_release(&self, release_id: &str) -> Result<Vec<DbFile>, DbError> {
         let release_id = release_id.to_string();
         self.read(move |conn| get_files_for_release_on(conn, &release_id))
@@ -499,12 +485,12 @@ impl Database {
         .await
     }
 
-    /// All data needed to atomically finalize an import in a single transaction.
-    /// Nothing is in the DB yet except the import record.
+    /// Finalize an import in one transaction. Nothing of it is in the DB yet except
+    /// the import record — every row below lands together or not at all.
     #[allow(clippy::too_many_arguments)]
     pub async fn finalize_import_atomic(
         &self,
-        // Album (None = existing album, already in DB)
+        // `None` when the album is an existing one, already in the DB.
         album: Option<&DbAlbum>,
         release: &DbRelease,
         tracks_to_files: &[crate::import::TrackFile],
@@ -530,12 +516,12 @@ impl Database {
         identities: &[crate::import::ReleaseIdentity],
         // The in-place folder this import's files live in on this device. Every
         // import lands LOCAL, so each file is registered as a coven user-provided
-        // external ref under this folder; a later make-Remote uploads from them
-        // and drops the refs.
+        // external ref under this folder; a later make-Remote uploads from them and
+        // drops the refs.
         local_path: &str,
-        // The cloud home's storage mode, deciding the blob layout: `Opaque` keys
-        // each blob by the hashed id, `Browsable` lays it out at a readable
-        // `cloud_path` computed inside this transaction (ready when the gate flips).
+        // The cloud home's storage mode, which decides the blob layout: `Opaque`
+        // keys each blob by its hashed id, `Browsable` lays it out at a readable
+        // `cloud_path` computed inside this transaction, ready when the gate flips.
         storage: crate::config::HomeStorage,
         replacement_deletes: &[ImportReplacementDelete],
     ) -> Result<Vec<ImportReplacementOutcome>, DbError> {
@@ -604,9 +590,8 @@ impl Database {
                 },
                 move |sql| {
                     let tx = sql.tx();
-                    // Every synced row this transaction inserts shares one HLC
-                    // stamp for `_updated_at`; wall-clock `now` stays
-                    // for `created_at`.
+                    // Every synced row this transaction inserts shares one HLC stamp
+                    // for `_updated_at`; wall-clock `now` stays for `created_at`.
                     let reg = sql.stamp();
 
                     for replacement in &replacement_deletes {
@@ -636,9 +621,9 @@ impl Database {
                             });
                     }
 
-                    // 1. Insert new artist rows and fill empty source-ID fields
-                    //    on existing artists. Album/release/track links below
-                    //    reference the resolved ids.
+                    // Insert new artist rows and fill empty source-ID fields on
+                    // existing artists: the album/release/track links below refer
+                    // to the resolved ids.
                     for artist in &artists {
                         insert_artist_row(tx, artist, &reg)?;
                     }
@@ -653,28 +638,24 @@ impl Database {
                         )?;
                     }
 
-                    // 2. Insert album (if new)
                     if let Some(album) = &album {
                         insert_album_row(tx, album, &reg)?;
 
-                        // Album artists (only for new albums)
                         for aa in &album_artists {
                             insert_album_artist_row(tx, aa, &reg)?;
                         }
                     }
 
-                    // 3. Insert release
                     insert_release_row(tx, &release, &reg)?;
 
-                    // 3b. Insert per-source identity rows. Empty for Unknown
-                    //     imports. `release_identities` is uniquely keyed on
-                    //     `(release_id, source)`, so a release never carries two
-                    //     rows for the same source.
+                    // Per-source identity rows, empty for an Unknown import.
+                    // `release_identities` is uniquely keyed on `(release_id,
+                    // source)`, so a release never carries two rows for one source.
                     for identity in &identities {
                         insert_release_identity_row(tx, &release.id, identity, &reg, &now)?;
                     }
 
-                    // 4. Insert globally identified works before their links.
+                    // Works are globally identified; they go in before their links.
                     for work in &works {
                         insert_work_row(tx, work, &reg)?;
                     }
@@ -691,14 +672,13 @@ impl Database {
                         insert_release_artist_role_row(tx, role, &reg)?;
                     }
 
-                    // 5. Insert tracks. DbTracks live inside `tracks_to_files`;
-                    //    their `duration_ms` was populated by the mapper from
-                    //    the CUE sheet or a standalone-file probe.
+                    // The tracks came out of `tracks_to_files`; their `duration_ms`
+                    // was set by the mapper, from the CUE sheet or a standalone-file
+                    // probe.
                     for track in &tracks {
                         insert_track_row(tx, track, &reg)?;
                     }
 
-                    // 6. Insert track artists and work/role links.
                     for ta in &track_artists {
                         insert_track_artist_row(tx, ta, &reg)?;
                     }
@@ -711,22 +691,19 @@ impl Database {
                         insert_track_artist_role_row(tx, role, &reg)?;
                     }
 
-                    // 7. Insert release metadata.
                     for meta in &metadata {
                         insert_release_metadata_row(tx, meta)?;
                     }
 
-                    // 8. Insert files, and register each as a coven
-                    //    user-provided external ref (the user's own file in
-                    //    place). Every import lands Local — the files ARE the
-                    //    user's files at `local_path`, tracked in coven's
-                    //    `local_blob_refs` so the locality-aware read serves
-                    //    them and a later make-Remote uploads from them and
-                    //    drops the refs. On a browsable home the readable
-                    //    cloud_path is computed now (the album/release rows
-                    //    exist in this tx), so it is ready when the gate flips;
-                    //    an opaque home leaves it NULL (coven hashes the id).
-                    //    A populated key on a Local row is harmless.
+                    // Each file is also registered as a coven user-provided external
+                    // ref. Every import lands Local — the files ARE the user's own
+                    // files at `local_path`, tracked in `local_blob_refs` so coven's
+                    // locality-aware read serves them, and a later make-Remote uploads
+                    // from them and drops the refs. On a browsable home the readable
+                    // cloud_path is computed here (the album/release rows exist in
+                    // this tx) so it is ready when the gate flips; an opaque home
+                    // leaves it NULL and coven hashes the id. A populated key on a
+                    // Local row is harmless.
                     for file in &files {
                         let cloud_path = if storage.is_browsable() {
                             Some(resolve_audio_cloud_path(
@@ -752,7 +729,6 @@ impl Database {
                         )?;
                     }
 
-                    // 9. Insert audio formats and their ordered file windows.
                     for af in &audio_formats {
                         insert_audio_format_row(tx, af, &reg)?;
                     }
@@ -760,13 +736,12 @@ impl Database {
                         insert_audio_segment_row(tx, segment, &reg)?;
                     }
 
-                    // 10. Write the cover row and its host-provided blob in one
-                    //    coven write. On a browsable home its readable cloud_path
-                    //    (`{album}/{release}/cover.{ext}`) is computed now,
-                    //    ready when the gate flips; an opaque home leaves it
-                    //    NULL (hashed). The cover rides the release's gate, so a
-                    //    Local release's cover stays private until it is made
-                    //    Remote.
+                    // The cover row; its blob went into the same coven write above.
+                    // On a browsable home the readable cloud_path
+                    // (`{album}/{release}/cover.{ext}`) is computed here, ready when
+                    // the gate flips; an opaque home leaves it NULL (hashed). The
+                    // cover rides the release's gate, so a Local release's cover
+                    // stays private until the release is made Remote.
                     if let Some((image, _)) = &library_image {
                         let cloud_path = if storage.is_browsable() {
                             Some(resolve_cover_cloud_path(tx, &image.id, &image.content_type)?)
@@ -776,8 +751,7 @@ impl Database {
                         upsert_library_image_row_with_cloud_path(tx, image, cloud_path, &reg)?;
                     }
 
-                    // 11. Write prepared artist image rows. Their blobs were
-                    //     added to the same coven batch above.
+                    // Artist image rows; their blobs went into the same batch above.
                     for (image, _) in &artist_images {
                         let cloud_path = artist_image_cloud_path_for_storage(
                             storage,
@@ -787,7 +761,6 @@ impl Database {
                         upsert_library_image_row_with_cloud_path(tx, image, cloud_path, &reg)?;
                     }
 
-                    // 12. Set album primary_release_id
                     if let Some((album_id, release_id)) = &primary_release_id {
                         tx.execute(
                             "UPDATE albums SET primary_release_id = ?, _updated_at = ? WHERE id = ?",
@@ -795,7 +768,6 @@ impl Database {
                         )?;
                     }
 
-                    // 13. Link import to release and mark complete
                     tx.execute(
                         "UPDATE imports SET release_id = ?, status = ?, updated_at = ? WHERE id = ?",
                         params![release.id, import_status, now_ts, import_id,],
@@ -812,27 +784,27 @@ impl Database {
             .expect("replacement outcomes mutex not poisoned"))
     }
 
-    /// Delete a release row, apply its cleanup plan, and remove the album when
-    /// this was its last release. Deliberately does NOT sweep now-orphaned
-    /// artists, works, work_parts, or artist-image blobs — retention is a
-    /// sync-safety invariant.
+    /// Delete a release row, apply its cleanup plan, and remove the album when this
+    /// was its last release. Deliberately does NOT sweep now-orphaned artists,
+    /// works, work_parts, or artist-image blobs — retaining them is a sync-safety
+    /// invariant.
     ///
-    /// This delete may target a remote (sync-visible) release, and artist/work
-    /// rows are shared across devices (import find-or-create reuses them by
-    /// Discogs/MusicBrainz id or name). Deleting a locally-orphaned artist or
-    /// work row here would emit the row DELETE to peers (coven propagates a
-    /// delete whose kept children die in the same changeset), and a peer that
-    /// concurrently imported a release referencing the same row either
-    /// cascade-loses those link rows (the link tables are ON DELETE CASCADE) or
-    /// hits a foreign-key violation (`albums.artist_id` has no delete action)
-    /// that rolls back the whole incoming changeset and holds that device's
-    /// pull cursor forever. The deleting device wedges the same way in reverse
-    /// when the peer's link-row INSERTs referencing the deleted row arrive.
-    /// Orphaned rows are inert instead: unreachable from the UI (artists and
-    /// works surface only through albums, tracks, and work links) and cut from
-    /// outgoing changesets and bootstrap snapshots by coven's descendant gate,
-    /// so they never reach new devices and are re-referenced in place if a
-    /// later import matches the same artist or work.
+    /// This delete may target a remote (sync-visible) release, and artist/work rows
+    /// are shared across devices (import find-or-create reuses them by
+    /// Discogs/MusicBrainz id or name). Deleting a locally-orphaned artist or work
+    /// row here would emit that DELETE to peers, and a peer that concurrently
+    /// imported a release referencing the same row either cascade-loses its link
+    /// rows (the link tables are ON DELETE CASCADE) or hits a foreign-key violation
+    /// (`albums.artist_id` has no delete action) that rolls back the whole incoming
+    /// changeset and holds that device's pull cursor forever. The deleting device
+    /// wedges the same way in reverse when the peer's link-row INSERTs referencing
+    /// the deleted row arrive.
+    ///
+    /// Orphaned rows are inert instead: unreachable from the UI (artists and works
+    /// surface only through albums, tracks, and work links), and cut from outgoing
+    /// changesets and bootstrap snapshots by coven's descendant gate, so they never
+    /// reach new devices and are re-referenced in place if a later import matches
+    /// the same artist or work.
     pub async fn delete_release_with_cleanup(
         &self,
         release_id: &str,
@@ -859,18 +831,21 @@ impl Database {
         .await
     }
 
-    /// Mark an import failed and remove the release it finalized in the same DB
-    /// operation. Used when remote import upload setup fails after finalize: the
+    /// Mark an import failed and remove the release it finalized, in one DB
+    /// operation. Used when remote-import upload setup fails after finalize: the
     /// release was never announced to the library, and its audio files are the
     /// user's in-place source files, so this clears coven's external refs without
-    /// queuing file deletion. This is also why this path may sweep the orphaned
-    /// artists/works it finds (below) while `delete_release_with_cleanup` must
-    /// not: the rolled-back release was never remote, so the swept rows had no
-    /// kept descendants and coven's outbound gate cuts their DELETEs from the
-    /// changeset — the sweep never leaves this device.
-    /// Returns the cover and artist-image blobs this rollback orphaned, so the
-    /// caller can evict them from coven's on-device store (the transaction
-    /// drops the rows but cannot reach the blob store).
+    /// queuing any file deletion.
+    ///
+    /// That is also why this path MAY sweep the orphaned artists/works it finds
+    /// (below) where `delete_release_with_cleanup` must not: the rolled-back release
+    /// was never remote, so the swept rows had no kept descendants and coven's
+    /// outbound gate cuts their DELETEs from the changeset — the sweep never leaves
+    /// this device.
+    ///
+    /// Returns the cover and artist-image blobs this rollback orphaned; the
+    /// transaction drops their rows but cannot reach coven's on-device blob store,
+    /// so the caller evicts them.
     pub async fn fail_import_and_delete_release(
         &self,
         import_id: &str,
@@ -1074,13 +1049,11 @@ impl Database {
         .await
     }
 
-    /// Cached `release_metadata` rows for a release, keyed by `source`.
-    ///
-    /// Each row's `source` discriminates between the editorial source
-    /// payload (`'musicbrainz'` / `'discogs'`) and supporting payloads
-    /// captured at import (`'discogs_master'`, `'musicbrainz_release_group'`).
-    /// `reset_metadata_to_source` reads these to replay the seeding
-    /// projection without re-fetching from the network.
+    /// Cached `release_metadata` rows for a release, keyed by `source` — which
+    /// tells the editorial payload (`'musicbrainz'` / `'discogs'`) apart from the
+    /// supporting ones captured at import (`'discogs_master'`,
+    /// `'musicbrainz_release_group'`). `reset_metadata_to_source` replays the
+    /// seeding projection from these instead of re-fetching from the network.
     pub async fn get_release_metadata_by_source(
         &self,
         release_id: &str,
@@ -1136,8 +1109,7 @@ impl Database {
     }
 
     /// Test-only: register each of a release's files as a coven user-provided
-    /// external ref under `folder` (the in-place files of a Local release), the
-    /// new-model equivalent of the removed `release_local_source` upsert. Call
+    /// external ref under `folder` — the in-place files of a Local release. Call
     /// after the file rows are inserted.
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn register_release_external_refs_for_test(
@@ -1159,7 +1131,6 @@ impl Database {
         Ok(())
     }
 
-    /// Count pending upload outbox entries for files belonging to a release.
     pub async fn count_pending_uploads_for_release(
         &self,
         release_id: &str,
@@ -1178,7 +1149,6 @@ impl Database {
         .await
     }
 
-    /// Check if any upload outbox entries remain for files belonging to a release.
     pub async fn has_pending_uploads_for_release(&self, release_id: &str) -> Result<bool, DbError> {
         let release_id = release_id.to_string();
         self.read(move |conn| {
@@ -1217,7 +1187,6 @@ impl Database {
         .await
     }
 
-    /// Insert a new import operation record
     pub async fn insert_import(&self, import: &DbImport) -> Result<(), DbError> {
         let import = import.clone();
         self.call(move |conn| {
@@ -1259,7 +1228,7 @@ impl Database {
         })
         .await
     }
-    /// Get all active (non-complete, non-failed) imports
+    /// Every import still in the Importing state.
     pub async fn get_active_imports(&self) -> Result<Vec<DbImport>, DbError> {
         self.read(move |conn| {
             let mut stmt = conn.prepare(
@@ -1271,7 +1240,6 @@ impl Database {
         })
         .await
     }
-    /// Update import status
     pub async fn update_import_status(
         &self,
         id: &str,
@@ -1310,7 +1278,7 @@ impl Database {
         })
         .await
     }
-    /// Update import with error message and set status to Failed
+    /// Record the error and set status to Failed.
     pub async fn update_import_error(&self, id: &str, error: &str) -> Result<(), DbError> {
         let (id, error) = (id.to_string(), error.to_string());
         let now = self.inner.clock.now().timestamp();
@@ -1324,8 +1292,8 @@ impl Database {
         })
         .await
     }
-    /// Delete an import record from the database.
-    /// Used by UI to dismiss stuck imports so they don't reappear after restart.
+    /// The UI dismisses a stuck import with this, so it doesn't reappear after a
+    /// restart.
     pub async fn delete_import(&self, id: &str) -> Result<(), DbError> {
         let id = id.to_string();
         self.call(move |conn| {
@@ -1336,8 +1304,8 @@ impl Database {
         .await
     }
 
-    /// Whether a release's source folder name was already imported.
-    /// Used for duplicate detection when scanning folders.
+    /// Whether some release was imported from a folder of this name — the weaker
+    /// duplicate check a folder scan does before it has a content hash.
     pub async fn is_source_folder_name_imported(&self, name: &str) -> Result<bool, DbError> {
         let name = name.to_string();
         self.read(move |conn| {

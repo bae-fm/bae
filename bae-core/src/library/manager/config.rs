@@ -7,7 +7,6 @@
 use super::*;
 
 impl LibraryManager {
-    /// Get a snapshot of the current config.
     pub fn get_config(&self) -> crate::config::Config {
         self.config_handle.config().clone()
     }
@@ -18,7 +17,6 @@ impl LibraryManager {
         self.config_handle.subscribe()
     }
 
-    /// Set whether playback pauses between vinyl/cassette sides.
     pub fn set_pause_between_sides(&self, enabled: bool) -> Result<(), crate::config::ConfigError> {
         self.config_handle
             .update(|c| c.pause_between_sides = enabled)
@@ -29,7 +27,6 @@ impl LibraryManager {
         self.config_handle.config().export_location.clone()
     }
 
-    /// Set where release exports write. Persisted in the config file.
     pub fn set_export_location(
         &self,
         location: crate::config::ExportLocation,
@@ -42,7 +39,6 @@ impl LibraryManager {
         self.config_handle.config().export_filename_template.clone()
     }
 
-    /// Set the single-track export filename template. Persisted in the config file.
     pub fn set_export_filename_template(
         &self,
         template: String,
@@ -51,12 +47,10 @@ impl LibraryManager {
             .update(|c| c.export_filename_template = template)
     }
 
-    /// Configured export presets for track and release export.
     pub fn export_presets(&self) -> Vec<crate::config::ExportPreset> {
         self.config_handle.config().export_presets.clone()
     }
 
-    /// Replace the configured export presets. Persisted in the config file.
     pub fn set_export_presets(
         &self,
         presets: Vec<crate::config::ExportPreset>,
@@ -157,10 +151,6 @@ impl LibraryManager {
         self.config_handle.update(|c| c.mcp = config)
     }
 
-    // =========================================================================
-    // Discogs token management
-    // =========================================================================
-
     pub fn has_discogs_token(&self) -> bool {
         self.config_handle.has_discogs_key()
     }
@@ -176,10 +166,6 @@ impl LibraryManager {
     pub fn delete_discogs_key(&self) -> Result<(), LibraryError> {
         Ok(self.key_service.delete_discogs_key()?)
     }
-
-    // =========================================================================
-    // MCP token management
-    // =========================================================================
 
     pub fn get_mcp_token(&self) -> Result<Option<String>, LibraryError> {
         Ok(self.key_service.get_mcp_token()?)
@@ -200,10 +186,9 @@ impl LibraryManager {
         Ok(self.key_service.set_mcp_token(&token)?)
     }
 
-    /// Record a stored key with its validation state — the single write for the
-    /// save path. `Some(validation)` is both the stored-key hint and the state,
-    /// so one `update` keeps them consistent and fires one watch-channel
-    /// notification.
+    /// Record a stored key with its validation state. `Some(validation)` is both
+    /// the "a key exists" hint and the state, so one `update` keeps the two
+    /// consistent and fires a single watch-channel notification.
     pub fn set_discogs_key_stored(
         &self,
         validation: crate::config::DiscogsValidation,
@@ -233,11 +218,9 @@ impl LibraryManager {
         self.config_handle.config().discogs
     }
 
-    /// An observer that folds a Discogs call's outcome into the stored key's
-    /// validation, so every call site updates the stored validation state
-    /// without recording the outcome itself. A 401 marks it `Rejected`; a
-    /// success while it was `Unvalidated` confirms it `Valid`; any other outcome
-    /// leaves it untouched.
+    /// Folds a Discogs call's outcome into the stored key's validation, so no call
+    /// site has to record it. A 401 marks the key `Rejected`; a success while it was
+    /// `Unvalidated` confirms it `Valid`; anything else leaves it alone.
     pub(crate) fn discogs_validation_observer(
         &self,
     ) -> crate::discogs::client::DiscogsValidationObserver {
@@ -265,10 +248,10 @@ impl LibraryManager {
         })
     }
 
-    /// A client for the stored key, unless that key is `Rejected`. A `Valid` or
-    /// `Unvalidated` key is served (the latter used optimistically); a
-    /// `Rejected` key is withheld so search call sites skip Discogs entirely.
-    /// The client reports each call's outcome back into the validation state.
+    /// A client for the stored key, unless that key is `Rejected` — withholding it
+    /// is what makes search call sites skip Discogs entirely. An `Unvalidated` key is
+    /// served optimistically. The client reports each call's outcome back into the
+    /// validation state.
     pub fn discogs_client(&self) -> Result<Option<crate::discogs::DiscogsClient>, LibraryError> {
         if self.discogs_validation() == Some(crate::config::DiscogsValidation::Rejected) {
             return Ok(None);

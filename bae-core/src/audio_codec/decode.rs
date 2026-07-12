@@ -1,7 +1,7 @@
-//! Decoding any audio format to PCM: the in-memory `decode_audio` path
-//! (returns or streams interleaved i32 samples) and the `SparseBuffer`-backed
-//! `decode_audio_streaming` loop (pushes f32 samples to a `TrackSink`), plus
-//! the per-thread FFmpeg fatal-error counter that tracks decode failures.
+//! Decoding any audio format to PCM: the in-memory `decode_audio` path (returns
+//! or streams interleaved i32 samples) and the sparse-buffer-backed
+//! `decode_audio_streaming` loop (pushes f32 samples to a `TrackSink`), plus the
+//! per-thread FFmpeg fatal-error counter that tracks decode failures.
 
 use super::avio::{
     avio_read_callback, avio_seek_callback, close_input_and_free_custom_avio,
@@ -19,7 +19,7 @@ use tracing::{debug, info, warn};
 
 const CHANNEL_COUNT_ERROR: &str = "channel count must be greater than zero";
 
-// Thread-local FFmpeg error counter for per-decode error tracking
+// One decode runs on one thread, so a thread-local counts its FFmpeg errors.
 thread_local! {
     // clippy::missing_const_for_thread_local fires spuriously on the Android target
     // even though `= const { ... }` is already the const form; suppress the false positive.
@@ -27,12 +27,10 @@ thread_local! {
     static FFMPEG_DECODE_ERRORS: Cell<u32> = const { Cell::new(0) };
 }
 
-/// Reset the thread-local FFmpeg error counter
 fn reset_ffmpeg_errors() {
     FFMPEG_DECODE_ERRORS.with(|c| c.set(0));
 }
 
-/// Get current FFmpeg error count for this thread
 fn get_ffmpeg_errors() -> u32 {
     FFMPEG_DECODE_ERRORS.with(|c| c.get())
 }
@@ -354,21 +352,20 @@ type FfmpegVaList = ffmpeg_sys_next::__BindgenOpaqueArray<u64, 4>;
 )))]
 type FfmpegVaList = *mut std::ffi::c_char;
 
-/// Custom FFmpeg log callback that counts fatal errors per-thread.
+/// Counts FFmpeg's fatal errors on the decoding thread.
 unsafe extern "C" fn ffmpeg_log_callback(
     _avcl: *mut c_void,
     level: c_int,
     _fmt: *const std::ffi::c_char,
     _vl: FfmpegVaList,
 ) {
-    // Only count AV_LOG_FATAL (8) and AV_LOG_PANIC (0).
-    // AV_LOG_ERROR (16) includes recoverable sync errors during seeking.
+    // AV_LOG_FATAL (8) and AV_LOG_PANIC (0) only. AV_LOG_ERROR (16) includes
+    // recoverable sync errors during seeking, which aren't decode failures.
     if level <= 8 {
         FFMPEG_DECODE_ERRORS.with(|c| c.set(c.get() + 1));
     }
 }
 
-/// Install our custom FFmpeg log callback
 fn install_ffmpeg_log_callback() {
     use std::sync::Once;
     static INIT: Once = Once::new();
@@ -377,10 +374,8 @@ fn install_ffmpeg_log_callback() {
     });
 }
 
-/// Decode any audio format to PCM samples.
-///
-/// If start_ms/end_ms are provided, only that time range is decoded.
-/// Returns interleaved i32 samples.
+/// Decode any audio format to interleaved i32 PCM. `start_sample`/`end_sample`
+/// trim the output to that sample range; `None`/`None` decodes the whole stream.
 pub fn decode_audio(
     data: &[u8],
     start_sample: Option<u64>,
@@ -428,11 +423,10 @@ pub fn decode_audio_to_sink(
     end_sample: Option<u64>,
     sink: &mut dyn DecodedSink,
 ) -> Result<(), String> {
-    // Safety: FFmpeg operations are contained within this function
+    // SAFETY: every FFmpeg pointer the decode allocates lives and dies inside it.
     unsafe { decode_audio_avio(data, start_sample, end_sample, sink) }
 }
 
-/// Internal AVIO-based decode implementation
 unsafe fn decode_audio_avio(
     data: &[u8],
     start_sample: Option<u64>,
@@ -441,29 +435,26 @@ unsafe fn decode_audio_avio(
 ) -> Result<(), String> {
     use ffmpeg_sys_next::*;
 
-    // Count fatal FFmpeg errors for this decode, so the sink can flag a track
-    // whose audio bytes fail to decode (import decode-verify rides this pass).
-    // The counter is reset after `find_stream_info` below, not here: probing an
+    // Count this decode's fatal FFmpeg errors, so the sink can flag a track whose
+    // audio bytes fail to decode (import's decode-verify rides this pass). The
+    // counter is reset after `find_stream_info` below, not here: probing an
     // attached-picture stream (an embedded cover) emits its own fatal-level logs
-    // that say nothing about the audio, so only errors from the audio decode loop
-    // should count.
+    // that say nothing about the audio.
     install_ffmpeg_log_callback();
 
-    // Create our context for callbacks
     let mut avio_ctx = Box::new(AvioContext {
         data: data.as_ptr(),
         size: data.len(),
         pos: 0,
     });
 
-    // Allocate AVIO buffer (FFmpeg will manage this)
+    // FFmpeg takes ownership of this buffer.
     let avio_buffer_size = AVIO_BUFFER_SIZE;
     let avio_buffer = av_malloc(avio_buffer_size) as *mut u8;
     if avio_buffer.is_null() {
         return Err("Failed to allocate AVIO buffer".to_string());
     }
 
-    // Create custom AVIO context
     let avio = avio_alloc_context(
         avio_buffer,
         avio_buffer_size as c_int,
@@ -493,8 +484,8 @@ unsafe fn decode_audio_avio(
         };
     }
 
-    // Only count fatal errors from the audio decode below -- probing an embedded
-    // cover during `find_stream_info` above may have logged its own.
+    // Count only the audio decode's errors: probing an embedded cover during
+    // `find_stream_info` above may have logged its own.
     reset_ffmpeg_errors();
 
     let (audio, codec_ctx) = match open_probed_audio_codec(fmt_ctx) {
@@ -556,12 +547,10 @@ unsafe fn decode_audio_avio(
 
     let time_base = (*audio.stream).time_base;
 
-    // Seek to start position if specified (using stream time_base for exact positioning)
     if let Some(sample_pos) = start_sample {
         seek_to_sample_or_warn(fmt_ctx, audio.stream_index, sample_pos);
     }
 
-    // Allocate frame and packet
     let mut frame = av_frame_alloc();
     let mut packet = av_packet_alloc();
     if frame.is_null() || packet.is_null() {
@@ -587,7 +576,7 @@ unsafe fn decode_audio_avio(
     };
     let mut tracked_sample_pos: i64 = -1;
 
-    // Read and decode packets, trimming by sample position
+    // Decode packets, trimming each frame to the [start_sample, end_sample) window.
     let mut reached_end = false;
     while av_read_frame(resources.fmt_ctx, resources.packet) >= 0 {
         if (*resources.packet).stream_index != audio.stream_index {
@@ -649,7 +638,7 @@ unsafe fn decode_audio_avio(
         }
     }
 
-    // Flush decoder — only if we haven't reached end
+    // Flushing after the window's end would emit samples past it.
     if !reached_end {
         let ret = avcodec_send_packet(resources.codec_ctx, ptr::null());
         if ret < 0 {
@@ -665,7 +654,7 @@ unsafe fn decode_audio_avio(
     drop(resources);
     drop(avio_ctx);
 
-    // Report the fatal-error count so a verifying sink can flag a broken decode.
+    // A verifying sink flags a broken decode off this count.
     sink.set_decode_error_count(get_ffmpeg_errors());
 
     Ok(())
@@ -886,18 +875,17 @@ unsafe fn decode_packed_s64_packets_to_sink(
 // AVIO-based Streaming Decode
 // =============================================================================
 
-/// Decode audio from a SparseBuffer using FFmpeg's AVIO.
+/// Decode from a `SparseStreamingBuffer` through FFmpeg's AVIO, pushing f32
+/// samples to a `TrackSink`. FFmpeg finds the frame boundaries itself; the buffer
+/// just serves the bytes it asks for, blocking until they land.
 ///
-/// FFmpeg handles all frame boundary detection internally.
-/// Seektable is NOT needed - just feed bytes, get samples.
-/// Decode audio from a SparseBuffer, pushing f32 samples to a TrackSink.
-///
-/// The buffer holds the whole backing file. `seek_to_sample` jumps FFmpeg to the
-/// track's start; `start_at_sample` trims the lead-in FFmpeg outputs before the
-/// exact start (a frame may begin before it); `stop_at_sample` stops output at
-/// the track's end. `end_byte` is the track's end byte offset -- the read-ahead
+/// The buffer holds the whole backing file. `seek_to_byte` jumps FFmpeg straight
+/// to a known frame offset (FLAC), or `seek_to_sample` seeks by sample through the
+/// demuxer's index (APE); `start_at_sample` trims the lead-in FFmpeg emits before
+/// the exact start (a frame may begin before it); `stop_at_sample` ends output at
+/// the track's end. `end_byte` is the track's end byte offset — the read-ahead
 /// ceiling handed to the reader so the fill buffers the rest of this track;
-/// `None` keeps the whole file (per-track / last track).
+/// `None` keeps the whole file (a per-track file, or an album's last track).
 pub fn decode_audio_streaming(
     buffer: SharedSparseBuffer,
     sink: &mut TrackSink,
@@ -925,7 +913,6 @@ pub fn decode_audio_streaming(
     }
 }
 
-/// Internal AVIO-based streaming decode
 unsafe fn decode_audio_streaming_impl(
     buffer: SharedSparseBuffer,
     sink: &mut TrackSink,
@@ -938,14 +925,14 @@ unsafe fn decode_audio_streaming_impl(
 ) -> Result<(), StreamingDecodeError> {
     use ffmpeg_sys_next::*;
 
-    // Wall-clock origin for the first-sample latency log below: spans the probe
+    // Wall-clock origin for the first-sample latency log below: it spans the probe
     // (open_input + find_stream_info), the seek, and the decode up to the first
     // audio sample -- the whole "how long before playback starts" window.
     let decode_start = Instant::now();
 
-    // Create streaming AVIO context. The reader's read-ahead ceiling is set
-    // after the seek below, once it sits at the track's start -- so the fill
-    // buffers the rest of the current track, not from byte 0 during probe.
+    // The reader's read-ahead ceiling is set after the seek below, once it sits at
+    // the track's start -- so the fill buffers the rest of the current track rather
+    // than reading ahead from byte 0 during the probe.
     let reader = buffer.new_reader_with_cancel(cancel_token.clone());
     let cancel_status = cancel_token.clone();
     let avio_ctx = Box::new(StreamingAvioContext {
@@ -955,7 +942,7 @@ unsafe fn decode_audio_streaming_impl(
     });
     let avio_ctx_ptr = Box::into_raw(avio_ctx);
 
-    // Allocate AVIO buffer
+    // FFmpeg takes ownership of this buffer.
     let avio_buffer_size = AVIO_BUFFER_SIZE;
     let avio_buffer = av_malloc(avio_buffer_size) as *mut u8;
     if avio_buffer.is_null() {
@@ -965,7 +952,6 @@ unsafe fn decode_audio_streaming_impl(
         ));
     }
 
-    // Create custom AVIO context with seek support
     let avio = avio_alloc_context(
         avio_buffer,
         avio_buffer_size as c_int,
@@ -983,7 +969,7 @@ unsafe fn decode_audio_streaming_impl(
         ));
     }
 
-    // Mark stream as seekable so avformat_seek_file works
+    // Without this, `avformat_seek_file` refuses to seek the stream at all.
     (*avio).seekable = AVIO_SEEKABLE_NORMAL as c_int;
 
     let mut fmt_ctx = allocate_input_format_context(avio, |fmt_ctx| {
@@ -1049,7 +1035,8 @@ unsafe fn decode_audio_streaming_impl(
 
     debug!("Streaming AVIO decoder: {}Hz, {}ch", sample_rate, channels);
 
-    // Set up SwrContext to convert any input format to packed f32
+    // Converts whatever the codec produces to packed f32, which is what the ring
+    // and the audio callback speak.
     let in_ch_layout = (*audio.codecpar).ch_layout;
     let mut swr_ctx = allocate_swr_context(
         &in_ch_layout,
@@ -1064,20 +1051,20 @@ unsafe fn decode_audio_streaming_impl(
         StreamingDecodeError::decode(e)
     })?;
 
-    // Seek to the target sample if requested. A seektable-bearing FLAC (and APE,
-    // MP4) seeks in one jump now that AVFMT_FLAG_FAST_SEEK is set. A FLAC with no
-    // seektable can't: over a streaming buffer the binary-search fallback would
-    // have to read the file's end before it's fetched, so the seek fails. Decoding
-    // from the start (then trimming to the target) is the only way to play such a
-    // file -- correct here, but wasteful over a cloud home, which is why every
-    // CUE/FLAC should carry a seektable (issue #226). Keep the bail-out logged.
-    //
     // A by-byte seek (AVSEEK_FLAG_BYTE) jumps straight to a known frame offset --
     // no seektable consulted, no binary search reading the file's end -- and the
-    // landed frame's sample is read from its header, so the `start_at_sample`
-    // trim below still reaches the exact sample. Used for FLAC, where the frame
-    // byte is recorded at import; APE has no per-frame byte positions, so it
+    // landed frame's sample comes from its own header, so the `start_at_sample`
+    // trim below still reaches the exact sample. Used for FLAC, whose frame byte
+    // is recorded at import; APE has no per-frame byte positions, so it
     // sample-seeks via its mandatory index instead.
+    //
+    // A sample seek costs one jump for a seektable-bearing FLAC (and for APE/MP4)
+    // now that AVFMT_FLAG_FAST_SEEK is set. A FLAC with no seektable can't seek at
+    // all here: the binary-search fallback would have to read the file's end before
+    // it is fetched. Decoding from the start and trimming to the target is then the
+    // only way to play it -- correct, but wasteful over a cloud home, which is why
+    // every CUE/FLAC should carry a seektable (issue #226). Keep the bail-out
+    // logged.
     if let Some(byte_pos) = seek_to_byte {
         let ret = av_seek_frame(
             fmt_ctx,
@@ -1114,10 +1101,10 @@ unsafe fn decode_audio_streaming_impl(
         }
     }
 
-    // The reader now sits at the track's start (after the seek above). Set its
-    // read-ahead ceiling -- the track's end byte, or the whole file when the
-    // track runs to EOF (a per-track file or an album's last track) -- so the
-    // fill buffers the rest of this track ahead of the playhead.
+    // The reader now sits at the track's start. Set its read-ahead ceiling -- the
+    // track's end byte, or the whole file when the track runs to EOF (a per-track
+    // file, or an album's last track) -- so the fill buffers the rest of this track
+    // ahead of the playhead.
     let ceiling = match end_byte {
         Some(end) => end,
         None => buffer.get_total_size(),
@@ -1128,7 +1115,6 @@ unsafe fn decode_audio_streaming_impl(
         .unwrap()
         .set_readahead_ceiling(ceiling);
 
-    // Allocate frame and packet
     let mut frame = av_frame_alloc();
     let mut packet = av_packet_alloc();
     if frame.is_null() || packet.is_null() {
@@ -1163,9 +1149,7 @@ unsafe fn decode_audio_streaming_impl(
     let mut tracked_sample_pos: i64 = -1;
     let mut first_sample_logged = false;
 
-    // Read and decode packets
     while av_read_frame(resources.core().fmt_ctx, resources.core().packet) >= 0 {
-        // Check for cancellation
         if sink.is_cancelled() || reached_stop {
             av_packet_unref(resources.core().packet);
             break;
@@ -1248,7 +1232,7 @@ unsafe fn decode_audio_streaming_impl(
         }
     }
 
-    // Flush decoder — only if we haven't reached stop_at
+    // Flushing after `stop_at_sample` would emit samples past the track's end.
     if !reached_stop {
         let ret = avcodec_send_packet(resources.core().codec_ctx, ptr::null());
         if ret < 0 {
@@ -1279,7 +1263,6 @@ unsafe fn decode_audio_streaming_impl(
 
     drop(resources);
 
-    // Record fatal error count (AV_LOG_FATAL and worse)
     let error_count = get_ffmpeg_errors();
     if error_count > 0 {
         warn!(
@@ -1301,8 +1284,8 @@ unsafe fn decode_audio_streaming_impl(
     Ok(())
 }
 
-/// Push samples to sink in chunks, checking for cancellation between chunks.
-/// Returns `false` when the sink is cancelled, signaling the decode loop to exit.
+/// Push to the sink in chunks, re-checking cancellation between them so a stop
+/// doesn't wait out a whole frame. `false` means cancelled: the decode loop exits.
 fn push_samples_to_sink(sink: &mut TrackSink, samples: &[f32]) -> bool {
     const CHUNK_SIZE: usize = 8192;
     for chunk in samples.chunks(CHUNK_SIZE) {

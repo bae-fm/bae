@@ -181,18 +181,17 @@ fn apply_delete_cleanup_on(
     Ok(())
 }
 
-/// After `removed_release_id` has left `album_id` inside the current
-/// transaction (its row deleted, or its `album_id` repointed): delete the
-/// album when it has no releases left, otherwise clear a
-/// `primary_release_id` that pointed at the removed release.
-/// `primary_release_id` is the user's cover-release choice; when the chosen
-/// release leaves, the choice is gone (NULL) and read paths fall back to the
-/// album's first release. Does not touch `imports` — delete flows clear
-/// `imports.release_id` before the release row goes, and a moved release
-/// keeps its import row.
-/// Precondition: the release row must already be gone from / repointed away
-/// from `album_id` when this runs — it counts what remains.
-/// Returns true when the album row was deleted.
+/// After `removed_release_id` has left `album_id` inside the current transaction:
+/// delete the album when no releases remain, otherwise NULL a
+/// `primary_release_id` that pointed at the removed release (the user's
+/// cover-release choice is gone with it, and read paths fall back to the album's
+/// first release). Does not touch `imports` — delete flows clear
+/// `imports.release_id` before the release row goes, and a moved release keeps
+/// its import row.
+///
+/// Precondition: the release row must already be deleted or repointed away from
+/// `album_id`, since this counts what remains. Returns true if the album was
+/// deleted.
 fn cleanup_album_after_release_removal_on(
     conn: &Connection,
     album_id: &str,
@@ -259,12 +258,11 @@ fn composer_summary_query(filter: Option<&str>, tail: Option<&str>) -> String {
     query
 }
 
-/// The artist-browser summary query: every artist with at least one album
-/// link, with its distinct album count. Membership is album-artist links
-/// only — the primary `albums.artist_id` FK unioned with `album_artists`
-/// junction rows; track-level credits (`track_artists`) don't confer
-/// membership. No Various Artists special case: it is a real `artists` row
-/// that compilation albums point at, and it lists like any other artist.
+/// The artist-browser summary query: every artist with at least one album link,
+/// plus its distinct album count. Membership comes from album-artist links only —
+/// the primary `albums.artist_id` FK unioned with `album_artists` rows;
+/// track-level credits (`track_artists`) don't confer it. Various Artists gets no
+/// special case: it is a real `artists` row and lists like any other artist.
 fn artist_summary_query(filter: Option<&str>, tail: Option<&str>) -> String {
     let mut query = String::from(
         "SELECT ar.id AS artist_id,
@@ -495,12 +493,10 @@ fn row_to_release_summary(row: &Row<'_>) -> coven::rusqlite::Result<DbReleaseSum
     })
 }
 
-/// Build an ORDER BY clause from composer-page sort criteria. Every criterion
-/// is joined into one clause, then `composer.name ASC, composer.id ASC` is
-/// appended unconditionally — pagination needs a total order and
-/// `composer.name` is not unique, so this tie-breaks a multi-criterion sort
-/// and is the whole ORDER BY when `sort` is empty (mirrors `build_order_by`'s
-/// `a.id` album tie-break).
+/// ORDER BY for composer-page sorts. `composer.name ASC, composer.id ASC` is
+/// always appended — pagination needs a total order and `composer.name` is not
+/// unique — and is the whole clause when `sort` is empty. Mirrors
+/// `build_order_by`'s `a.id` album tie-break.
 fn composer_order_by(sort: &[ComposerSortCriterion]) -> String {
     if sort.is_empty() {
         return "composer.name ASC, composer.id ASC".to_string();
@@ -524,10 +520,8 @@ fn composer_order_by(sort: &[ComposerSortCriterion]) -> String {
     format!("{clause}, composer.name ASC, composer.id ASC")
 }
 
-/// Build an ORDER BY clause from artist-page sort criteria. Same shape as
-/// `composer_order_by`: every criterion joins into one clause, then
-/// `ar.name ASC, ar.id ASC` is appended unconditionally as the pagination
-/// tie-break (and the whole ORDER BY when `sort` is empty).
+/// ORDER BY for artist-page sorts. Same shape as `composer_order_by`, with
+/// `ar.name ASC, ar.id ASC` as the always-appended pagination tie-break.
 fn artist_order_by(sort: &[ArtistSortCriterion]) -> String {
     if sort.is_empty() {
         return "ar.name ASC, ar.id ASC".to_string();
@@ -609,17 +603,13 @@ fn row_to_library_image(
     })
 }
 
-/// Build an ORDER BY clause from sort criteria.
 /// Returns `(order_by_clause, needs_artist_join)`.
 fn build_order_by(sort: &[AlbumSortCriterion], default: &str) -> (String, bool) {
-    // Every clause ends with `a.id` — a total-order tiebreaker over the album
-    // primary key. Without it, rows sharing a sort value (same title, same
-    // year, same created_at from a bulk import) order arbitrarily, and the
-    // ambiguity is worse than cosmetic: `get_album_page` (LIMIT/OFFSET) and
-    // `get_album_index` (a ROW_NUMBER window) are different query shapes, so
-    // SQLite could tie-break them differently and a reveal would scroll to the
-    // wrong album. The id tiebreaker makes both deterministic and mutually
-    // consistent.
+    // Every clause ends with `a.id`, a total order over the album PK. Without it
+    // rows sharing a sort value order arbitrarily — and `get_album_page`
+    // (LIMIT/OFFSET) and `get_album_index` (a ROW_NUMBER window) are different
+    // query shapes, so SQLite could tie-break them differently and a reveal would
+    // scroll to the wrong album.
     if sort.is_empty() {
         return (format!("{default}, a.id"), false);
     }
@@ -660,17 +650,15 @@ fn build_order_by(sort: &[AlbumSortCriterion], default: &str) -> (String, bool) 
     (format!("{clause}, a.id"), needs_artist_join)
 }
 
-/// Build an ORDER BY clause for `get_storage_page`. Returns
-/// `(order_by_clause, needs_artist_join)` — the artist join is needed
-/// only when sorting by artist-derived columns.
+/// ORDER BY for `get_storage_page`. Returns `(order_by_clause,
+/// needs_artist_join)` — the artist join is needed only for artist-derived sorts.
 fn storage_order_by(sort: &StorageSortCriterion) -> (String, bool) {
     let dir = match sort.direction {
         SortDirection::Ascending => "ASC",
         SortDirection::Descending => "DESC",
     };
-    // Every ORDER BY ends with `r.created_at, r.id` — the id tiebreaker
-    // keeps pagination deterministic when two releases share a timestamp
-    // (bulk imports, test fixtures, same-millisecond inserts).
+    // Every clause ends with `r.created_at, r.id`; the id keeps pagination
+    // deterministic when two releases share a timestamp (bulk imports, tests).
     match sort.field {
         StorageSortField::AlbumTitle => (
             format!("a.title COLLATE NOCASE {dir}, r.created_at, r.id"),
@@ -779,8 +767,7 @@ fn album_summary_artist_join(needs_artist_join: bool) -> &'static str {
     }
 }
 
-/// Parse a single album summary row. Shared between page queries and
-/// per-album lookups (e.g. `find_album_summary`).
+/// Parse one album summary row (page queries and per-album lookups alike).
 /// Requires a `release_ids_json` column on the row.
 fn parse_album_summary_row(row: &Row) -> Result<DbAlbumSummary, DbError> {
     let release_ids_json: String = row.get("release_ids_json")?;
@@ -814,15 +801,12 @@ pub struct ExternalBlob {
     pub size: u64,
 }
 
-/// Database client over coven's owned connection.
+/// Database client over coven's owned connection. Writes to synced tables are
+/// captured by coven's attached session for changeset sync.
 ///
-/// All reads and writes run through [`CovenHandle::sql`]. Writes to synced
-/// tables are captured by coven's attached session for changeset sync; reads
-/// share the same serialized connection.
-///
-/// coven also owns connection pragmas such as `foreign_keys` and `journal_mode`.
-/// bae never opens a production SQLite connection or sets a production
-/// connection pragma; it inherits those guarantees from the coven handle.
+/// coven also owns connection pragmas such as `foreign_keys` and `journal_mode`:
+/// bae never opens a production SQLite connection or sets a production connection
+/// pragma, it inherits those guarantees from the coven handle.
 #[derive(Clone)]
 pub struct Database {
     inner: Arc<DatabaseInner>,
@@ -834,37 +818,30 @@ impl std::fmt::Debug for Database {
     }
 }
 
-/// Outcome of `set_identity_atomic`. Tells the caller which event to
-/// emit for the source album: `AlbumRemoved` when `source_album_deleted`
-/// is true, `AlbumUpdated` otherwise (when the release moved but other
-/// releases stayed). Same-album updates leave the field meaningless and
-/// the caller should skip the source-album event.
+/// Outcome of `set_identity_atomic`: which event the caller emits for the source
+/// album — `AlbumRemoved` when `source_album_deleted`, `AlbumUpdated` when the
+/// release moved but other releases stayed. On a same-album update the field is
+/// meaningless and the caller should emit no source-album event.
 #[derive(Debug, Clone, Copy)]
 pub struct SetIdentityOutcome {
     pub source_album_deleted: bool,
 }
 
 impl Database {
-    // ── Database Method Conventions ───────────────────────────────────────
+    // ── Database method conventions ───────────────────────────────────────
     //
-    // Lookup methods follow two patterns. Using the wrong one is a bug.
-    // The deciding question: **where did the ID come from?**
+    // Lookup methods come in two shapes, picked by where the ID came from. Using
+    // the wrong one is a bug.
     //
-    // 1. `find_*` — The ID came from the caller (a UI event, an API
-    //    parameter, a user-provided string). The row may not exist — the
-    //    user could be looking at something that was since deleted.
-    //    Returns `Result<Option<T>>`.
+    // 1. `find_*` — the ID came from the caller (a UI event, an API parameter, a
+    //    user-provided string). The row may not exist; the user could be looking
+    //    at something since deleted. Returns `Result<Option<T>>`.
     //
-    // 2. `get_*_for_*` — You're following a foreign key from a record you
-    //    already have from the DB. The row MUST exist — if it doesn't,
-    //    our data integrity is broken. Returns `Result<T>` (NOT Option).
-    //    Takes the parent record as its argument, not a raw ID string,
-    //    so you can't accidentally call it with a caller-provided ID.
-    //    A missing row surfaces as `QueryReturnedNoRows`.
-    //
-    // When adding a new method:
-    // - ID from a function parameter, URL, UI event → find_*
-    // - ID from a field on a DB record you already hold → get_*_for_*
+    // 2. `get_*_for_*` — you're following a foreign key off a record you already
+    //    read from the DB. The row MUST exist; if it doesn't, our data integrity
+    //    is broken. Returns `Result<T>`, NOT Option, and takes the parent record
+    //    rather than a raw ID string so it can't be called with a caller-provided
+    //    ID. A missing row surfaces as `QueryReturnedNoRows`.
 
     /// The one coven handle backing bae's SQL, blob, and sync operations.
     pub fn handle(&self) -> &CovenHandle {
@@ -880,17 +857,17 @@ impl Database {
 
     // ── The three SQL entry points ────────────────────────────────────────
     //
-    // `read`     — pure reads. Runs on coven's read-only companion connection:
-    //              no changeset journal, concurrent with the writer instead of
-    //              queued behind it. The closure cannot write (the connection is
-    //              SQLITE_OPEN_READONLY, so SQLite refuses DML).
+    // `read`     — pure reads, on coven's read-only companion connection: no
+    //              changeset journal, concurrent with the writer rather than
+    //              queued behind it. The closure cannot write — the connection is
+    //              SQLITE_OPEN_READONLY, so SQLite refuses DML.
     // `call`     — writes that do not stamp `_updated_at` (INSERT/DELETE, or an
-    //              UPDATE that sets the register clock itself). Runs on the
-    //              writer connection with a changeset session attached.
+    //              UPDATE that sets the register clock itself), on the writer
+    //              connection with a changeset session attached.
     // `call_sql` — writes that stamp `_updated_at` from coven's SQL context.
     //
     // Read-your-writes holds: every `call`/`call_sql` write commits before its
-    // future resolves, and the WAL reader sees the last committed state, so a
+    // future resolves and the WAL reader sees the last committed state, so a
     // `read` after an awaited write is correct. A closure that reads and then
     // conditionally writes is a write — it belongs on `call`, not `read`.
 
@@ -1140,9 +1117,9 @@ fn get_files_for_release_on(conn: &Connection, release_id: &str) -> Result<Vec<D
         .map_err(DbError::from)
 }
 
-/// Get every audio-format row for a release, joined through its tracks.
-/// One row per track; a single-file CUE rip yields many rows sharing one
-/// `file_id`. The resolver groups them by `file_id` to describe each audio
+/// Every audio-format row for a release, joined through its tracks — one row per
+/// track. A single-file CUE rip yields many rows whose segments all point at the
+/// same file; the resolver groups them by that file id to describe each audio
 /// file's format.
 fn get_audio_formats_for_release_on(
     conn: &Connection,
@@ -1213,11 +1190,9 @@ fn get_release_identities_on(
     Ok(identities)
 }
 
-// ─── Row-map helpers (free functions; take `&Row`) ──────────────────────────
-
 /// Build a column-conversion error for a named column whose stored text the
-/// mapper could not turn into its typed value. A corrupt column then surfaces
-/// like any other bad read instead of panicking or silently mis-defaulting.
+/// mapper could not turn into its typed value, so a corrupt column surfaces like
+/// any other bad read instead of panicking or silently mis-defaulting.
 fn column_conversion_error(row: &Row, column: &str, message: String) -> coven::rusqlite::Error {
     // The column was just read, so its index resolves; if it somehow doesn't,
     // that lookup error is itself a faithful failure to return.
@@ -1340,7 +1315,6 @@ fn row_to_artist(row: &Row) -> coven::rusqlite::Result<DbArtist> {
     })
 }
 
-/// Parse a DbAlbum from a SQL row.
 fn row_to_album(row: &Row) -> coven::rusqlite::Result<DbAlbum> {
     Ok(DbAlbum {
         id: row.get("id")?,
@@ -1434,7 +1408,6 @@ fn row_to_import(row: &Row) -> coven::rusqlite::Result<DbImport> {
     })
 }
 
-/// Map one row of the release-storage-summary query to a `DbReleaseStorageSummary`.
 fn row_to_release_storage_summary(row: &Row) -> coven::rusqlite::Result<DbReleaseStorageSummary> {
     Ok(DbReleaseStorageSummary {
         release_id: row.get("release_id")?,
@@ -1450,8 +1423,9 @@ fn row_to_release_storage_summary(row: &Row) -> coven::rusqlite::Result<DbReleas
     })
 }
 
-// ─── Synced-row INSERT helpers (run inside `db.call`, against `&Connection`
-// or a `&Transaction`, both of which deref to `&Connection`). ───────────────
+// ─── Synced-row INSERT helpers. Run inside `call_sql` — they take its
+// `_updated_at` stamp — against a `&Connection` or a `&Transaction`, both of
+// which deref to `&Connection`. ─────────────────────────────────────────────
 
 fn insert_artist_row(conn: &Connection, artist: &DbArtist, reg: &str) -> Result<(), DbError> {
     conn.execute(
@@ -1949,9 +1923,9 @@ fn release_path_context(
 }
 
 /// Build a release-scoped browsable key: look up the release's `(album_id,
-/// source_folder)` context once, then let `make_key` shape it into the final
-/// path. Shared by the audio and cover resolvers; the artist-image resolver keys
-/// off the artist id alone and stands apart.
+/// source_folder)` context once, then let `make_key` shape the final path. Shared
+/// by the audio and cover resolvers; the artist-image resolver stands apart, keyed
+/// off the artist id alone.
 fn resolve_release_path(
     conn: &Connection,
     release_id: &str,
@@ -1982,9 +1956,9 @@ fn resolve_audio_cloud_path(
 }
 
 /// The `cloud_path` for a cover image on a browsable home:
-/// `{album_id}/{release_id}/cover.{ext}` (relative to the `images` namespace
-/// coven prepends). The cover's id is its release id. Covers are bae's own art,
-/// not part of the imported folder, so they carry no `{source_folder}` level.
+/// `{album_id}/{release_id}/cover.{ext}` (relative to the `covers` namespace coven
+/// prepends). The cover's id is its release id. Covers are bae's own art, not part
+/// of the imported folder, so they carry no `{source_folder}` level.
 fn resolve_cover_cloud_path(
     conn: &Connection,
     release_id: &str,
@@ -1996,8 +1970,8 @@ fn resolve_cover_cloud_path(
 }
 
 /// The `cloud_path` for an artist image on a browsable home:
-/// `{artist_id}/artist.{ext}` (relative to the `images` namespace). Keyed by the
-/// artist id alone, so it needs no DB lookup.
+/// `{artist_id}/artist.{ext}` (relative to the `artist_images` namespace). Keyed
+/// by the artist id alone, so it needs no DB lookup.
 fn resolve_artist_cloud_path(artist_id: &str, content_type: &ContentType) -> String {
     crate::storage::readable_path::artist_cloud_path(artist_id, content_type)
 }
@@ -2033,9 +2007,8 @@ fn insert_release_identity_row(
     .map_err(DbError::from)
 }
 
-/// Replace every `album_artists` row for `album_id` with `artists` (delete
-/// then insert). Factored out of `update_release_metadata_user_edit` so the
-/// `album_artists` schema is written in one place.
+/// Replace every `album_artists` row for `album_id` with `artists` (delete then
+/// insert), so the `album_artists` schema is written in one place.
 fn replace_album_artists(
     conn: &Connection,
     album_id: &str,
@@ -2096,12 +2069,12 @@ struct TrackQueueMeta {
     cover_image_id: Option<String>,
 }
 
-/// Join per-track metadata onto each queue entry, preserving order and
-/// duplicates. The same track id appears once in `meta_by_track` but resolves
-/// once per entry — so the metadata lookup is `get`, not `remove` (which would
-/// consume the row on first hit and silently drop later occurrences). Keying
-/// display rows on each entry's per-instance id (rather than a position) is what
-/// lets the UI target duplicate tracks independently.
+/// Join per-track metadata onto each queue entry, preserving order and duplicates.
+/// A track id appears once in `meta_by_track` but resolves once per entry, so the
+/// lookup is `get`, not `remove` — `remove` would consume the row on first hit and
+/// silently drop later occurrences. Display rows are keyed on each entry's
+/// per-instance id, not a position, which is what lets the UI target duplicate
+/// tracks independently.
 fn resolve_queue_entries(
     meta_by_track: &std::collections::HashMap<String, TrackQueueMeta>,
     entries: &[QueueEntry],
@@ -2110,10 +2083,9 @@ fn resolve_queue_entries(
         .iter()
         .filter_map(|entry| {
             let Some(meta) = meta_by_track.get(&entry.track_id) else {
-                // A queue entry whose track has no metadata means the queue
-                // references a track no longer in the library — an inconsistency
-                // (library deletion clears the track from the queue), not a
-                // normal skip. Drop it from the projection but surface it.
+                // No metadata means the queue references a track no longer in the
+                // library — an inconsistency, since library deletion clears the
+                // track from the queue. Drop it, but surface it.
                 tracing::warn!(
                     "queue entry {} references track {} with no metadata; dropping from the queue projection",
                     entry.id.0,

@@ -5,15 +5,14 @@
 use super::*;
 
 impl LibraryManager {
-    /// The on-disk path of a release file that lives at the user's own path — a
-    /// coven **user-provided Local** blob's external ref. `Ok(Some(path))` only
-    /// for a Local release file coven holds an external ref for (the user's file
-    /// in place); `Ok(None)` for a Remote file (its bytes are in coven's cache,
-    /// keyed by id, with no stable bae path) or an unknown file. DB errors
-    /// propagate so callers distinguish "no in-place file" from "library broken".
+    /// The on-disk path of a release file that sits at the user's own path — the
+    /// external ref of a coven **user-provided Local** blob. `Ok(None)` for a Remote
+    /// file (its bytes are in coven's cache, keyed by id, with no stable bae path)
+    /// or an unknown one; DB errors propagate, so a caller can tell "no in-place
+    /// file" from "library broken".
     ///
-    /// Used where a caller needs the actual user file (the DiscID re-read of the
-    /// rip's artifacts), not coven's locality-aware byte read.
+    /// For the callers that need the user's actual file — the DiscID re-read of the
+    /// rip's artifacts — rather than coven's locality-aware byte read.
     pub async fn file_local_path(&self, file_id: &str) -> Result<Option<PathBuf>, LibraryError> {
         Ok(self
             .database
@@ -21,10 +20,6 @@ impl LibraryManager {
             .await?
             .map(|ext| ext.path))
     }
-
-    // =========================================================================
-    // Encryption
-    // =========================================================================
 
     pub fn has_encryption(&self) -> bool {
         self.sync.has_encryption()
@@ -36,10 +31,9 @@ impl LibraryManager {
 }
 
 impl LibraryManager {
-    /// Count outbox upload entries still pending for a release's files. Zero
-    /// means every cloud copy is confirmed durable. Test-only observability
-    /// over the outbox — production paths gate on the boolean
-    /// `has_pending_uploads_for_release` (see `cancel_release_transition`).
+    /// Test-only observability: how many upload entries a release's files still have
+    /// queued (zero means every cloud copy is confirmed durable). Production paths
+    /// gate on the boolean `has_pending_uploads_for_release` instead.
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn count_pending_uploads_for_release(
         &self,
@@ -130,9 +124,8 @@ impl LibraryManager {
             .map_err(|error| error.to_string())
     }
 
-    /// One page of the Storage Manager list. Rows are returned pre-sorted
-    /// and pre-filtered; `total_count` in the returned `StoragePage`
-    /// reflects the filtered subset (not the full library).
+    /// One page of the Storage Manager list, pre-sorted and pre-filtered.
+    /// `total_count` counts the filtered subset, not the whole library.
     pub async fn get_storage_page(
         &self,
         sort: &StorageSort,
@@ -187,8 +180,7 @@ impl LibraryManager {
     }
 
     /// Sum of `total_size` over every storage row matching `filter` — the
-    /// storage-manager footer's "Total:" figure, independent of how many
-    /// pages of the filtered list are loaded.
+    /// storage-manager footer's "Total:", independent of how many pages are loaded.
     pub async fn get_storage_total_size(&self, filter: StorageFilter) -> Result<u64, LibraryError> {
         let db_filter = to_db_storage_filter(filter);
         Ok(self.database.get_storage_total_size(db_filter).await?)

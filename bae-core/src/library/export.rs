@@ -7,21 +7,19 @@ use std::sync::Arc;
 use tracing::{debug, info, warn};
 
 /// Render a single-track export's suggested filename stem (no extension) from a
-/// template and the track's tag data. Supported tokens:
-/// `{title} {artist} {album} {year} {track_number} {disc_number} {track_total}`.
-/// Unknown `{...}` sequences are left literal. Absent values (e.g. no year)
-/// substitute empty. The result is sanitized (path separators and characters
-/// illegal on macOS/Windows → '-'), whitespace-collapsed, and trimmed of
-/// leading/trailing spaces and dashes. If it renders empty, fall back to the
-/// sanitized title, else "track".
+/// template and the track's tag data. The tokens are
+/// `{title} {artist} {album} {year} {track_number} {disc_number} {track_total}`;
+/// an unknown `{...}` stays literal, and an absent value (no year, say)
+/// substitutes empty. The result goes through `sanitize_filename_stem`; if that
+/// leaves it empty, fall back to the sanitized title, then to "track".
 pub fn render_export_filename(
     template: &str,
     resolved: &crate::library::manager::ResolvedExportTags,
 ) -> String {
     let tags = &resolved.tags;
-    // Absent optional values (year, disc, track number) render as an empty token
-    // — a legitimate domain state for a filename template, not an error; the
-    // sanitize step below collapses any separator gap they leave.
+    // An absent year / disc / track number renders empty. That is a legitimate
+    // state for a filename template, not an error, and the sanitize step below
+    // closes whatever separator gap it leaves.
     let substitute = |token: &str| -> Option<String> {
         Some(match token {
             "title" => tags.title.clone(),
@@ -40,9 +38,9 @@ pub fn render_export_filename(
         })
     };
 
-    // Single left-to-right scan: substituted values are appended to `rendered`
-    // and never re-scanned, so a tag value that itself contains `{title}` is
-    // emitted literally rather than substituted again.
+    // One left-to-right scan: a substituted value is appended to `rendered` and
+    // never re-scanned, so a tag value that itself contains `{title}` is emitted
+    // literally rather than substituted a second time.
     let mut rendered = String::new();
     let mut chars = template.chars().peekable();
     while let Some(ch) = chars.next() {
@@ -79,9 +77,9 @@ pub fn render_export_filename(
     if !stem.is_empty() {
         return stem;
     }
-    // The template rendered to nothing usable (e.g. every referenced value was
-    // empty). Log the skip rather than silently produce a name, then fall back
-    // to the track title, and finally a fixed stem.
+    // The template rendered nothing usable (every value it referenced was empty).
+    // Log rather than silently invent a name, then fall back to the track title,
+    // and finally to a fixed stem.
     let title_stem = sanitize_filename_stem(&tags.title);
     if !title_stem.is_empty() {
         debug!(
@@ -97,11 +95,11 @@ pub fn render_export_filename(
     "track".to_string()
 }
 
-/// Sanitize a rendered filename stem: replace the macOS+Windows-illegal
-/// characters and control characters with '-', collapse whitespace runs to one
-/// space, trim leading/trailing spaces and dashes, then strip a leading '.' so
-/// the file isn't hidden. Replacing the separators is also what makes a `../`
-/// escape impossible.
+/// Sanitize a rendered filename stem: control characters and the ones illegal on
+/// macOS/Windows become '-', whitespace runs collapse to one space, leading and
+/// trailing spaces and dashes are trimmed, and a leading '.' is stripped so the
+/// file isn't hidden. Replacing the separators is also what makes a `../` escape
+/// impossible.
 pub(crate) fn sanitize_filename_stem(input: &str) -> String {
     let replaced: String = input
         .chars()
@@ -120,7 +118,6 @@ pub(crate) fn sanitize_filename_stem(input: &str) -> String {
         .to_string()
 }
 
-/// Export service for exporting individual tracks.
 pub struct ExportService;
 
 struct CancelOnDrop(Arc<AtomicBool>);
@@ -737,10 +734,8 @@ fn write_tags(
     Ok(())
 }
 
-/// Decode a track's source audio (already read into the plan) to PCM.
-///
-/// Used by export to decode entire tracks into memory for re-encoding. Every
-/// track decodes its whole backing file and trims to its sample window.
+/// Decode the track's source audio (already read into the plan) to PCM, for
+/// re-encoding. Decodes each whole backing file, then trims to the sample window.
 async fn load_track_audio(plan: &mut ExportTrackPlan) -> Result<Arc<DecodedPcm>, PlaybackError> {
     let track_id = plan.audio_meta.track.id.clone();
 

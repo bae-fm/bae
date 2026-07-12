@@ -13,28 +13,24 @@ use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU64, Ordering};
 use std::sync::{Arc, OnceLock};
 use tokio::sync::oneshot;
 
-/// Default ring buffer duration in milliseconds.
-/// Buffer holds this much audio regardless of sample rate.
+/// How much audio the ring holds, whatever the sample rate.
 const DEFAULT_BUFFER_MS: u32 = 100;
 
-/// Shared state between sink and source
+/// Shared state between sink and stream.
 pub struct StreamingState {
-    /// Audio sample rate
     sample_rate: u32,
-    /// Number of channels
     channels: u32,
-    /// Current playback position in samples (per channel)
+    /// Playback position in frames (samples per channel).
     position_samples: AtomicU64,
-    /// Whether the producer has finished (EOF reached)
+    /// The producer reached EOF.
     finished: AtomicBool,
-    /// Whether playback was cancelled
     cancelled: AtomicBool,
-    /// Count of FFmpeg decode errors (frames that failed to decode)
+    /// FFmpeg frames that failed to decode.
     decode_error_count: AtomicU32,
-    /// Total samples decoded (for verifying decode actually produced audio)
+    /// Samples pushed into the ring so far — proof the decode produced audio.
     samples_decoded: AtomicU64,
-    /// Decoder thread handle for parking/unparking.
-    /// Set by the decoder thread on first push, read by audio callback to unpark.
+    /// Set by the decoder thread on its first push; the audio callback reads it
+    /// to unpark a decoder parked on a full ring.
     decoder_thread: OnceLock<std::thread::Thread>,
 }
 
@@ -90,34 +86,28 @@ impl StreamingState {
         self.samples_decoded.load(Ordering::Relaxed)
     }
 
-    /// Count `n` more interleaved samples as pushed into the ring — the total
-    /// pushed so far, live as the decoder produces them (not a value set once
-    /// at decode-complete), so a `Starved` event fired mid-decode carries a
-    /// truthful count.
+    /// Count `n` more interleaved samples as pushed. Live as the decoder
+    /// produces them, not set once at decode-complete, so a `Starved` event
+    /// fired mid-decode carries a truthful count.
     fn add_samples_decoded(&self, n: u64) {
         self.samples_decoded.fetch_add(n, Ordering::Relaxed);
     }
 }
 
-/// Producer side of the streaming audio pipeline.
-///
-/// Receives decoded f32 samples and pushes them to the ring buffer.
+/// Producer side: the decoder pushes decoded f32 samples into the ring.
 pub struct TrackSink {
     producer: Producer<f32>,
     state: Arc<StreamingState>,
-    /// One-shot sender to notify when buffer is ready for playback (50% full)
+    /// Fires once the ring is 50% full (or the producer finishes).
     ready_tx: Option<oneshot::Sender<()>>,
-    /// Buffer capacity (needed to calculate 50% threshold)
+    /// Ring capacity, for the 50% ready threshold.
     capacity: usize,
-    /// Samples pushed so far (to know when we hit threshold)
     samples_pushed: usize,
 }
 
 impl TrackSink {
-    /// Push samples to the ring buffer.
-    ///
-    /// Returns the number of samples actually pushed. If the buffer is full,
-    /// this will push as many as possible and return early.
+    /// Push what fits and return how many samples landed; a full ring pushes
+    /// fewer than `samples.len()`.
     #[cfg(test)]
     pub fn push_samples(&mut self, samples: &[f32]) -> usize {
         if self.state.is_cancelled() {
@@ -135,13 +125,10 @@ impl TrackSink {
         pushed
     }
 
-    /// Push samples, blocking until all are pushed or cancelled.
-    ///
-    /// Uses bulk writes (memcpy) into the ring buffer instead of per-sample pushes.
-    /// When the buffer is full, parks the thread until the audio callback drains
-    /// some samples and unparks us. Zero wakeups when paused.
-    ///
-    /// Signals readiness (via oneshot) when buffer reaches 50% capacity.
+    /// Push every sample, blocking until they all land or the stream is
+    /// cancelled. Writes in bulk (memcpy) rather than per-sample. On a full ring
+    /// it parks until the audio callback drains and unparks it, so a paused
+    /// player wakes it zero times. Signals ready at 50% capacity.
     pub fn push_samples_blocking(&mut self, samples: &[f32]) -> usize {
         let _ = self.state.decoder_thread.set(std::thread::current());
 
@@ -155,9 +142,9 @@ impl TrackSink {
             let (pushed, _) = self.producer.push_partial_slice(remaining);
             let n = pushed.len();
             if n == 0 {
-                // Buffer completely full — park until audio callback drains.
-                // Timeout as safety net for null audio devices (CI) where
-                // the callback may not fire reliably.
+                // Full ring: park until the audio callback drains. The timeout is
+                // the safety net for null audio devices (CI), whose callback may
+                // never fire to unpark us.
                 std::thread::park_timeout(std::time::Duration::from_millis(100));
                 continue;
             }
@@ -166,7 +153,6 @@ impl TrackSink {
             self.samples_pushed += n;
             self.state.add_samples_decoded(n as u64);
 
-            // Signal ready when buffer is 50% full
             if self.ready_tx.is_some() && self.samples_pushed >= self.capacity / 2 {
                 if let Some(tx) = self.ready_tx.take() {
                     let _ = tx.send(());
@@ -203,41 +189,35 @@ impl TrackSink {
         frames_pushed
     }
 
-    /// Signal that all samples have been pushed (EOF).
-    /// Also signals ready if we haven't already (for short files).
+    /// EOF: every sample has been pushed. Also signals ready if it hasn't fired —
+    /// a track shorter than half the ring never reaches the 50% threshold.
     pub fn mark_finished(&mut self) {
-        // Signal ready if we haven't already (file might be shorter than 50% buffer)
         if let Some(tx) = self.ready_tx.take() {
             let _ = tx.send(());
         }
         self.state.finished.store(true, Ordering::Release);
     }
 
-    /// Set the decode error count (called at end of decode with FFmpeg error count)
+    /// Record the decode's FFmpeg error count, once the decode ends.
     pub fn set_decode_error_count(&self, count: u32) {
         self.state.set_decode_error_count(count);
     }
 
-    /// Check if cancelled.
     pub fn is_cancelled(&self) -> bool {
         self.state.is_cancelled()
     }
 }
 
-/// Consumer side of the streaming audio pipeline.
-///
-/// Pulls f32 samples from the ring buffer to feed to cpal.
+/// Consumer side: the audio callback pulls f32 samples out of the ring.
 pub struct TrackStream {
     consumer: Consumer<f32>,
     state: Arc<StreamingState>,
 }
 
 impl TrackStream {
-    /// Pull samples from the ring buffer into the output slice.
-    ///
-    /// Uses bulk reads (memcpy) from the ring buffer instead of per-sample pops.
-    /// Returns the number of samples actually pulled. If the buffer is empty,
-    /// returns 0 immediately (non-blocking).
+    /// Pull into `output` and return how many samples landed. Reads in bulk
+    /// (memcpy) rather than per-sample, and returns 0 immediately on an empty
+    /// ring — never blocks, because this runs on the audio callback.
     pub fn pull_samples(&mut self, output: &mut [f32]) -> usize {
         let (popped, _) = self.consumer.pop_partial_slice(output);
         let pulled = popped.len();
@@ -252,45 +232,41 @@ impl TrackStream {
                 .fetch_add(frames, Ordering::Relaxed);
         }
 
-        // Wake decoder thread so it can refill
+        // Space freed: wake the decoder so it refills.
         self.state.unpark_decoder();
 
         pulled
     }
 
-    /// Check if the producer has finished and buffer is empty.
+    /// The producer finished AND the ring is drained — nothing left to play.
     pub fn is_finished(&self) -> bool {
         self.state.is_finished() && self.consumer.is_empty()
     }
 
-    /// Check if the producer signaled finished (may still have buffered data).
+    /// The producer finished, though the ring may still hold samples.
     pub fn producer_finished(&self) -> bool {
         self.state.is_finished()
     }
 
-    /// Cancel playback.
+    /// Stop the decoder: set the flag and unpark it if it's parked on a full ring.
     pub fn cancel(&self) {
         self.state.cancelled.store(true, Ordering::Release);
         self.state.unpark_decoder();
     }
 
-    /// Check if cancelled.
     #[cfg(test)]
     pub fn is_cancelled(&self) -> bool {
         self.state.is_cancelled()
     }
 
-    /// Get the count of FFmpeg decode errors that occurred
     pub fn decode_error_count(&self) -> u32 {
         self.state.decode_error_count()
     }
 
-    /// Get the total samples decoded
     pub fn samples_decoded(&self) -> u64 {
         self.state.samples_decoded()
     }
 
-    /// Get current playback position as Duration.
     pub fn position(&self) -> std::time::Duration {
         let samples = self.state.position_samples();
         let sample_rate = self.state.sample_rate() as u64;
@@ -300,36 +276,30 @@ impl TrackStream {
         std::time::Duration::from_secs_f64(samples as f64 / sample_rate as f64)
     }
 
-    /// Get sample rate.
     pub fn sample_rate(&self) -> u32 {
         self.state.sample_rate()
     }
 
-    /// Get number of channels.
     pub fn channels(&self) -> u32 {
         self.state.channels()
     }
 }
 
-/// Receiver for buffer readiness notification.
-/// Resolves when buffer is 50% full or producer finishes (whichever comes first).
+/// Resolves when the ring is 50% full or the producer finishes, whichever comes
+/// first.
 pub type ReadyReceiver = oneshot::Receiver<()>;
 
-/// Create a streaming source/sink pair with capacity based on sample rate.
-/// Buffer holds DEFAULT_BUFFER_MS milliseconds of audio regardless of sample rate.
-/// Returns a ready receiver that resolves when buffer is 50% full.
+/// A sink/stream pair whose ring holds `DEFAULT_BUFFER_MS` of audio at this
+/// sample rate.
 pub fn create_track_stream_pair(
     sample_rate: u32,
     channels: u32,
 ) -> (TrackSink, TrackStream, ReadyReceiver) {
-    // Calculate capacity for DEFAULT_BUFFER_MS milliseconds of audio
     let capacity_samples =
         (sample_rate as usize * channels as usize * DEFAULT_BUFFER_MS as usize) / 1000;
     create_track_stream_pair_with_capacity(sample_rate, channels, capacity_samples)
 }
 
-/// Create a streaming source/sink pair with specified capacity.
-/// Returns a ready receiver that resolves when buffer is 50% full.
 pub fn create_track_stream_pair_with_capacity(
     sample_rate: u32,
     channels: u32,
@@ -388,18 +358,17 @@ mod tests {
         let (mut sink, mut source, _ready) =
             create_track_stream_pair_with_capacity(44100, 2, 10000);
 
-        // Push 1000 stereo samples (500 frames)
+        // 1000 stereo samples = 500 frames.
         let samples: Vec<f32> = (0..1000).map(|i| i as f32 * 0.001).collect();
         sink.push_samples(&samples);
 
-        // Pull them
         let mut output = vec![0.0; 1000];
         source.pull_samples(&mut output);
 
-        // Position should be 500 samples (frames)
+        // Position counts frames, not samples.
         assert_eq!(source.state.position_samples(), 500);
 
-        // Duration = 500 / 44100 ≈ 11.3ms
+        // 500 / 44100 ≈ 11.3ms
         let pos = source.position();
         assert!(pos.as_millis() >= 11 && pos.as_millis() <= 12);
     }
@@ -421,11 +390,10 @@ mod tests {
     fn test_buffer_full() {
         let (mut sink, _source, _ready) = create_track_stream_pair_with_capacity(44100, 2, 10);
 
-        // Try to push more than capacity
+        // Pushing past capacity pushes only what fits.
         let samples = vec![0.5; 20];
         let pushed = sink.push_samples(&samples);
 
-        // Should only push up to capacity
         assert!(pushed <= 10);
     }
 
@@ -446,14 +414,12 @@ mod tests {
 
         let (mut sink, _source, ready_rx) = create_track_stream_pair_with_capacity(44100, 2, 100);
 
-        // Spawn thread to push samples
         thread::spawn(move || {
-            // Push samples up to 50% threshold
+            // Exactly the 50% threshold.
             let samples: Vec<f32> = (0..50).map(|i| i as f32 * 0.01).collect();
             sink.push_samples_blocking(&samples);
         });
 
-        // Should receive ready signal within reasonable time
         let result = tokio::time::timeout(Duration::from_millis(100), ready_rx).await;
         assert!(result.is_ok(), "Ready signal should fire at 50%");
         assert!(result.unwrap().is_ok(), "Oneshot should succeed");
@@ -464,17 +430,16 @@ mod tests {
         use std::thread;
         use std::time::Duration;
 
-        // Create buffer with capacity 1000 (50% = 500)
+        // Capacity 1000, so the 50% threshold is 500.
         let (mut sink, _source, ready_rx) = create_track_stream_pair_with_capacity(44100, 2, 1000);
 
         thread::spawn(move || {
-            // Push only 100 samples (< 50%), then finish
+            // 100 samples never reaches the threshold; mark_finished fires ready.
             let samples: Vec<f32> = (0..100).map(|i| i as f32 * 0.001).collect();
             sink.push_samples_blocking(&samples);
             sink.mark_finished();
         });
 
-        // Should still receive ready signal (because mark_finished sends it)
         let result = tokio::time::timeout(Duration::from_millis(100), ready_rx).await;
         assert!(result.is_ok(), "Ready signal should fire on finish");
         assert!(result.unwrap().is_ok(), "Oneshot should succeed");

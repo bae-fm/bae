@@ -3,9 +3,8 @@
 use super::*;
 
 impl LibraryManager {
-    /// Get ordered track IDs for a release. Use this when the caller only
-    /// needs IDs (queue building, repeat-album rebuild) — avoids pulling
-    /// full `DbTrack` rows.
+    /// Ordered track IDs for a release, without pulling full `DbTrack` rows. For
+    /// callers that only need IDs (queue building, repeat-album rebuild).
     pub async fn get_track_ids(&self, release_id: &str) -> Result<Vec<String>, LibraryError> {
         Ok(self.database.get_track_ids_for_release(release_id).await?)
     }
@@ -17,10 +16,9 @@ impl LibraryManager {
         Ok(self.database.get_all_track_ids().await?)
     }
 
-    /// Return the play context for a track: its release id, the release's full
-    /// track order, and the track's index within it. Used by the playback
-    /// service to build the queue around a freshly selected track without
-    /// chaining library calls.
+    /// A track's play context: its release id, that release's full track order, and
+    /// the track's index within it. The playback service builds the queue around a
+    /// freshly selected track from this, without chaining library calls.
     pub async fn get_play_context(&self, track_id: &str) -> Result<PlayContext, LibraryError> {
         let track = self
             .database
@@ -45,9 +43,8 @@ impl LibraryManager {
         })
     }
 
-    /// Return the subset of `ids` that still exist in the tracks table.
-    /// Used by playback restore to validate a persisted queue in a single
-    /// query instead of one round-trip per track.
+    /// The subset of `ids` that still exist in the tracks table. Playback restore
+    /// validates a persisted queue with this in one query, not one per track.
     pub async fn filter_existing_track_ids(
         &self,
         ids: &[String],
@@ -55,10 +52,10 @@ impl LibraryManager {
         Ok(self.database.filter_existing_track_ids(ids).await?)
     }
 
-    /// Resolve a list of IDs (which may be album IDs or track IDs) into track IDs.
-    /// Album IDs are expanded to the track IDs of the album's primary release —
-    /// the user's chosen release when set, otherwise the earliest-imported one
-    /// (the fallback `primary_release_id` already encodes).
+    /// Resolve a mix of album and track IDs into track IDs. An album expands to the
+    /// tracks of its primary release — the user's chosen release when set, otherwise
+    /// the earliest-imported one, which is the fallback `primary_release_id` already
+    /// encodes.
     pub async fn resolve_to_track_ids(&self, ids: &[String]) -> Result<Vec<String>, LibraryError> {
         let mut track_ids = Vec::new();
         for id in ids {
@@ -86,14 +83,12 @@ impl LibraryManager {
         Ok(self.database.get_queue_items(entries).await?)
     }
 
-    /// Resolve the manual lane in full plus only the first
-    /// `QUEUE_UPCOMING_WINDOW` entries of the context's upcoming tail — the
-    /// tail is library-scaled (a `Library` source's tail is every remaining
-    /// library track), so only the window is ever resolved here; the rest
-    /// pages in on demand via `AppServices::get_queue_upcoming_page`. Slicing
-    /// before resolving (rather than resolving the whole tail and slicing
-    /// after) is the point: it's what keeps this bounded regardless of
-    /// library size.
+    /// Resolve the manual lane in full, plus only the first `QUEUE_UPCOMING_WINDOW`
+    /// entries of the context's upcoming tail; the rest pages in on demand through
+    /// `AppServices::get_queue_upcoming_page`. That tail is library-scaled — a
+    /// `Library` source's tail is every remaining track — so the slice happens
+    /// *before* the resolve, not after. That is what keeps this bounded regardless
+    /// of library size.
     pub async fn resolve_queue_projection(
         &self,
         projection: crate::playback::PlaybackQueueProjection,
@@ -140,17 +135,14 @@ impl LibraryManager {
         })
     }
 
-    /// Get a specific file by ID
-    ///
-    /// Used during streaming to retrieve the file record after looking up
-    /// the track→file relationship via db_track_position.
+    /// The file record for a blob id — streaming looks the id up on the track's
+    /// audio segments, then fetches the row here.
     pub async fn get_file_by_id(&self, file_id: &str) -> Result<Option<DbFile>, LibraryError> {
         Ok(self.database.find_file_by_id(file_id).await?)
     }
 
-    /// Get audio format for a track. Only a test helper — production reads
-    /// audio format as part of the resolved track-audio / playback-info
-    /// aggregates below, never standalone.
+    /// Test-only. Production reads audio format as part of the resolved track-audio
+    /// / playback-info aggregates below, never standalone.
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn get_audio_format_by_track_id(
         &self,
@@ -172,9 +164,8 @@ impl LibraryManager {
         Ok(ResolvedTrackAudio::from_meta(&meta))
     }
 
-    /// Resolve display metadata (artist names, album, cover) for a track at
-    /// playback-preparation time. Done here so `PlaybackService` never sees
-    /// `DbTrack`.
+    /// A track's display metadata (artist names, album, cover) at playback-prep
+    /// time. Resolved here so `PlaybackService` never sees a `DbTrack`.
     pub async fn get_playback_track_info(
         &self,
         track_id: &str,
@@ -188,9 +179,9 @@ impl LibraryManager {
         playback_info_from_track_release(&self.database, &track, &release).await
     }
 
-    /// Resolve both the audio aggregate and the display metadata for a track in
-    /// a single pass — avoids the `resolve_track_audio` + `get_playback_track_info`
-    /// double-fetch of `DbTrack`/`DbRelease` at playback prep time.
+    /// Both the audio aggregate and the display metadata in one pass, sparing
+    /// playback prep the `DbTrack`/`DbRelease` double-fetch that calling
+    /// `resolve_track_audio` and `get_playback_track_info` separately would cost.
     pub(crate) async fn resolve_track_audio_and_info(
         &self,
         track_id: &str,
@@ -203,9 +194,8 @@ impl LibraryManager {
     }
 }
 
-/// Build `PlaybackTrackInfo` given a track + release that have already been
-/// loaded. Queries the album title + artists but reuses the track/release
-/// passed in.
+/// `PlaybackTrackInfo` from an already-loaded track and release: queries only the
+/// album title and artists, reusing what it is passed.
 pub(crate) async fn playback_info_from_track_release(
     database: &Database,
     track: &DbTrack,

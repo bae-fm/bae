@@ -1,25 +1,18 @@
 //! bae's sync boundary around coven.
 //!
 //! coven owns the sync engine, cloud homes, keys, storage, and the DB
-//! connection. This module keeps bae's side of that boundary: coven's
-//! join/restore entry points re-exported at `crate::sync`, the upload observer
-//! that turns coven blob transitions into UI events, the membership DTOs used by
-//! platform join/invite screens, the synced-table declarations, and bae's blob
-//! namespaces plus cache budgets.
+//! connection. bae's side of that boundary lives here: coven's join/restore entry
+//! points re-exported at `crate::sync`, the upload observer that turns coven blob
+//! transitions into UI events, the membership types the join/invite screens use,
+//! the synced-table declarations, and bae's blob namespaces plus cache budgets.
 
-// The sync substrate lives in coven; these resolve `crate::sync::<item>`
-// unchanged. `CloudCipher` is what a test hands to `connect_sync_with_test_home`;
-// blob-key derivation is coven's, reached through `CovenHandle::blob_cloud_key`.
 pub use coven::{
     decode_restore_code_info, join_from_invite_code, restore_from_cloud, restore_from_code,
     CloudCipher, RestoreSource,
 };
 
-// bae's blob-transition observer: UI bookkeeping for coven's upload drain and
-// make-Remote / make-Local completions (coven owns the lifecycle itself).
 pub mod upload_observer;
 
-// bae's membership DTOs and join-request helpers for the UI.
 pub mod membership;
 
 use coven::{BlobDecl, SyncedTable};
@@ -46,61 +39,57 @@ pub const COVERS_NAMESPACE: &str = "covers";
 /// Cloud namespace for the bae-produced artist image blob (1:1 with an artist).
 pub const ARTIST_IMAGES_NAMESPACE: &str = "artist_images";
 
-/// This device's cache-size budget (bytes) for Remote `release_files` blobs —
-/// the bulk of the cache, since audio dominates. Each namespace evicts against
-/// its own budget, so audio pressure never wipes the cover cache.
+/// This device's cache budget (bytes) for Remote `release_files` blobs — the bulk
+/// of the cache, since audio dominates. Each namespace evicts against its own
+/// budget, so audio pressure never wipes the cover cache.
 pub const RELEASE_FILES_CACHE_BUDGET: u64 = 20 * 1024 * 1024 * 1024; // 20 GiB
-/// A small reserved cache budget for Remote `covers` blobs (grid art), evicted
-/// independently of audio. A `CacheEager` cover evicted under pressure shows a
-/// placeholder and re-fetches on the next pull — covers are not pinned.
+/// The reserved cache budget for Remote `covers` blobs (grid art). A `CacheEager`
+/// cover evicted under pressure shows a placeholder and re-fetches on the next
+/// pull — covers are not pinned.
 pub const COVERS_CACHE_BUDGET: u64 = 512 * 1024 * 1024; // 512 MiB
-/// A small reserved cache budget for Remote `artist_images` blobs.
+/// The reserved cache budget for Remote `artist_images` blobs.
 pub const ARTIST_IMAGES_CACHE_BUDGET: u64 = 256 * 1024 * 1024; // 256 MiB
 
 /// The tables coven captures into changesets for incremental sync.
 ///
-/// coven's SQLite session only attaches tables it's been told about; everything
-/// else is invisible to changeset capture, and a row in an unregistered table
-/// never propagates. coven applies changesets keyed on the column-0 PRIMARY KEY,
-/// and resolves conflicts last-writer-wins on `_updated_at`. So a table may sync
-/// only if it has BOTH:
-///   - an `id TEXT PRIMARY KEY` at column 0 (the apply key), and
-///   - an `_updated_at TEXT NOT NULL` column (the LWW clock).
-///
-/// The set below satisfies both (verified against
-/// `bae-core/migrations/001_initial.sql`).
+/// coven only attaches tables it is told about — a row in an unregistered table
+/// never propagates — applies changesets keyed on the column-0 PRIMARY KEY, and
+/// resolves conflicts last-writer-wins on `_updated_at`. So a table syncs only
+/// if it has both an `id TEXT PRIMARY KEY` at column 0 and an
+/// `_updated_at TEXT NOT NULL`. Every table below has both (the tests here check
+/// that against `bae-core/migrations/001_initial.sql`).
 ///
 /// ## The `releases.remote` gate
 ///
-/// `releases` is a *gated root*: a row syncs only when its `remote` column is
-/// true, and the gate flows down the declared foreign keys to the release
-/// subtree, so its descendants sync iff their root release is remote. The
-/// inheriting children — `tracks`, `track_artists` (2-hop, via `tracks`),
-/// `release_files`, `release_identities`, `audio_formats`, and the `covers`
-/// asset — are declared plain (or, for the cover, an `.asset()`); they pick up
-/// the gate automatically from coven's FK walk, not from a per-table flag.
-/// Flipping `remote` true re-emits the whole now-visible subtree to peers as
-/// full inserts.
+/// `releases` is the only *gated root*: a row syncs only when its `remote` column
+/// is true, and the gate flows down the declared foreign keys, so a descendant
+/// syncs iff its root release is remote. The children — `tracks`, `track_artists`
+/// (2-hop, via `tracks`), `release_files`, `release_identities`, `audio_formats`,
+/// `audio_format_segments`, and the `covers` asset — are declared plain (or, for
+/// the cover, an `.asset()`) and pick the gate up from coven's FK walk, not from
+/// a per-table flag. Flipping `remote` true re-emits the whole now-visible
+/// subtree to peers as full inserts.
 ///
-/// `albums` and `artists` are FK-ancestors of `releases`, declared
+/// `albums`, `artists`, and `works` are FK-ancestors of `releases`, declared
 /// `gated_by_descendants()`: an album syncs only while it has a surviving
 /// (remote) release, and an artist syncs only while a surviving album,
 /// `album_artists`, or `track_artists` row references it. coven infers those
-/// keep-children from the foreign-key graph, so a receiver never materializes an
-/// album with zero remote releases and there is no read-side filter to hide
-/// one. `album_artists` is a plain join table that rides along.
+/// keep-children from the FK graph, so a receiver never materializes an album
+/// with zero remote releases and there is no read-side filter to hide one.
+/// `album_artists`, `work_artists`, `work_parts`, `track_works`, and the
+/// `*_artist_roles` tables are plain join tables that ride along.
 ///
 /// `release_files` carries the user's own imported-file blobs; `covers` and
 /// `artist_images` carry bae-produced image blobs and are `.asset()`s of their
 /// FK subject (a release / an artist), so they ride the subject's gate but never
 /// keep it alive. coven owns the whole blob lifecycle off these declarations
 /// (upload/download, the make-Remote/make-Local transitions, the locality-aware
-/// read), so bae does not hand-maintain a blob source.
+/// read), so bae hand-maintains no blob source.
 ///
-/// Deliberately excluded:
-///   - local-only tables (`release_metadata`, `imports`) — no `_updated_at`.
-///     coven's own bookkeeping tables (`sync_state`,
-///     `sync_cursors`, `cloud_outbox`) live outside bae's migration entirely.
+/// Excluded: the device-local tables (`release_metadata`, `imports`,
+/// `playback_state`) have no `_updated_at`, and coven's own bookkeeping tables
+/// (`sync_state`, `sync_cursors`, `cloud_outbox`) live outside bae's migration
+/// entirely.
 ///
 /// Passed to [`coven::Coven::builder`], which attaches the capture session to
 /// exactly these tables when the library is opened.
@@ -170,9 +159,9 @@ mod tests {
 
     use super::synced_tables;
 
-    /// `(table_name, column_body)` for every `CREATE TABLE` in the migrations,
-    /// with the body delimited by depth-matched parens (so nested `CHECK (...)`
-    /// constraints don't truncate it).
+    /// `(table_name, column_body)` for every `CREATE TABLE` in the migrations. The
+    /// body is delimited by depth-matched parens, so a nested `CHECK (...)` doesn't
+    /// truncate it.
     fn migration_tables() -> Vec<(String, String)> {
         let dir = concat!(env!("CARGO_MANIFEST_DIR"), "/migrations");
         let mut paths: Vec<_> = std::fs::read_dir(dir)
@@ -187,8 +176,8 @@ mod tests {
             .collect::<Vec<_>>()
             .join("\n");
 
-        // The migration is idempotent — every table is `CREATE TABLE IF NOT
-        // EXISTS` so coven can re-run it over a snapshot-bootstrapped DB.
+        // Every table is `CREATE TABLE IF NOT EXISTS` — the migration is
+        // idempotent so coven can re-run it over a snapshot-bootstrapped DB.
         let marker = "CREATE TABLE IF NOT EXISTS ";
         let mut out = Vec::new();
         let mut cursor = 0;
@@ -235,11 +224,11 @@ mod tests {
         first.starts_with("id ") && first.contains("primary key")
     }
 
-    /// The synced set must be exactly the tables carrying an `_updated_at` LWW
-    /// clock — no more, no fewer. A device-local table (e.g. `release_local_copy`)
-    /// that grew an `_updated_at` would start leaking per-device state across
-    /// devices; a new synced table left off the registration would silently
-    /// never propagate. Either drift breaks this test.
+    /// The synced set must be exactly the tables carrying an `_updated_at` clock —
+    /// no more, no fewer. A device-local table (`playback_state`) that grew an
+    /// `_updated_at` would start leaking per-device state across devices; a new
+    /// synced table left off the registration would silently never propagate.
+    /// Either drift breaks this test.
     #[test]
     fn synced_tables_equal_the_lww_clock_set() {
         let tables = migration_tables();
@@ -273,12 +262,10 @@ mod tests {
         }
     }
 
-    /// `releases` is the only gated root, gated by `remote`. The release subtree
-    /// (`tracks`, `track_artists`, `release_files`, `release_identities`,
-    /// `audio_formats`, `audio_format_segments`) inherits the gate via coven's
-    /// FK walk and so is declared plain; a gate accidentally attached to one of those — or to a
-    /// gated-by-descendants ancestor like `albums` — would diverge from the
-    /// schema's FK shape and is what this test catches.
+    /// `releases` is the only gated root, gated by `remote`; its subtree inherits
+    /// the gate via coven's FK walk and is declared plain. A gate accidentally
+    /// attached to a subtree table — or to a gated-by-descendants ancestor like
+    /// `albums` — would diverge from the schema's FK shape, which this catches.
     #[test]
     fn releases_is_the_only_gated_root() {
         for table in synced_tables() {
@@ -292,11 +279,10 @@ mod tests {
         }
     }
 
-    /// `albums`, `artists`, and `works` are FK-ancestors of the gated `releases`
-    /// root, declared `gated_by_descendants()` so a row drops out of sync once its
-    /// gated subtree empties (coven infers the keep-children from the FK graph).
-    /// Any other table carrying this marker — or one of these losing it — would
-    /// diverge from the schema's FK shape, which is what this test catches.
+    /// `albums`, `artists`, and `works` are the FK-ancestors of the gated
+    /// `releases` root, declared `gated_by_descendants()` so a row drops out of
+    /// sync once its gated subtree empties. Any other table carrying the marker —
+    /// or one of these losing it — would diverge from the schema's FK shape.
     #[test]
     fn albums_artists_and_works_are_the_gated_by_descendants_ancestors() {
         let tables = synced_tables();
@@ -308,11 +294,8 @@ mod tests {
         assert_eq!(ancestors, BTreeSet::from(["albums", "artists", "works"]));
     }
 
-    /// `release_files` carries the user's own blobs; `covers` and `artist_images`
-    /// carry bae-produced image blobs and are assets (ride their FK subject's
-    /// gate, never grant keep). A blob declaration or asset flag silently dropped
-    /// here would break the whole coven-owned blob lifecycle, which is what this
-    /// test catches.
+    /// A blob declaration or asset flag silently dropped from one of these tables
+    /// would break the whole coven-owned blob lifecycle.
     #[test]
     fn blob_bearing_tables_carry_their_declarations() {
         let tables = synced_tables();

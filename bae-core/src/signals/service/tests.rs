@@ -9,9 +9,8 @@ use std::sync::Mutex as StdMutex;
 use std::time::Duration;
 use tempfile::TempDir;
 
-/// Test analyzer: returns canned text lines keyed by filename (not full
-/// path, to stay portable across temp-dir paths). Optionally delays
-/// each call so cancellation can be exercised.
+/// Returns canned text lines keyed by filename rather than full path, so a temp-dir
+/// path can't break it. The optional delay is what lets a test cancel mid-OCR.
 struct StubAnalyzer {
     responses: StdMutex<HashMap<String, Vec<String>>>,
     delay: Option<Duration>,
@@ -40,8 +39,7 @@ impl StubAnalyzer {
         self
     }
 
-    /// Number of `analyze` calls so far — lets a test assert a cancelled OCR
-    /// pass stopped before analyzing every image.
+    /// Lets a test assert a cancelled OCR pass stopped before every image.
     fn calls(&self) -> usize {
         self.calls.load(std::sync::atomic::Ordering::SeqCst)
     }
@@ -80,8 +78,7 @@ impl ArtworkAnalyzer for PanicAnalyzer {
     }
 }
 
-/// Drain events until we've seen the target count, or timeout. Filters
-/// to `SignalsUpdated` only, returning each snapshot's `Signals`.
+/// Drain `SignalsUpdated` events until `expected` of them arrive, or time out.
 async fn collect_signals(
     rx: &mut broadcast::Receiver<ImportEvent>,
     expected: usize,
@@ -99,10 +96,9 @@ async fn collect_signals(
     out
 }
 
-/// Build a throwaway `LibraryManager` over a temp dir. The folder/CD
-/// extraction paths exercised here don't read from the library, but
-/// `ExtractionService::start` requires one. The returned `TempDir`
-/// must outlive the manager.
+/// A throwaway `LibraryManager` over a temp dir. The folder extraction path these
+/// tests drive never reads from the library, but `ExtractionService::start` requires
+/// one anyway. The returned `TempDir` must outlive it.
 async fn make_library_manager() -> (crate::library::LibraryManager, TempDir) {
     let tmp = TempDir::new().unwrap();
     let clock: coven::ClockRef = Arc::new(coven::SystemClock);
@@ -135,9 +131,9 @@ async fn make_library_manager() -> (crate::library::LibraryManager, TempDir) {
     (manager, tmp)
 }
 
-/// Start a service and keep the library's temp dir alive for the test.
-/// Returns the bus sender too, so a test can inject import events (e.g. a
-/// `CandidateRemoved`) the service listens for.
+/// Start a service, keeping the library's temp dir alive. The bus sender comes back
+/// too, so a test can inject an event the service listens for, like
+/// `CandidateRemoved`.
 async fn make_service() -> (
     ExtractionServiceHandle,
     broadcast::Sender<ImportEvent>,
@@ -154,10 +150,9 @@ async fn make_service() -> (
     (handle, tx, rx, lib_tmp)
 }
 
-/// Minimal MP3 bytes — ID3v2 header. Enough for `is_valid_audio` to
-/// accept the file during folder categorization.
+/// Just an ID3v2 header — enough for `is_valid_audio` to accept the file during
+/// folder categorization.
 fn minimal_mp3() -> Vec<u8> {
-    // "ID3" magic + 7 bytes of padding is enough for the validator.
     let mut v = Vec::with_capacity(32);
     v.extend_from_slice(b"ID3");
     v.resize(32, 0);
@@ -172,15 +167,13 @@ fn fixture_flac() -> Vec<u8> {
     .expect("read FLAC fixture")
 }
 
-/// Minimal JPEG bytes — 0xFFD8FF magic + a byte. Enough for
-/// `is_valid_image` to accept it.
+/// Just the JPEG magic — enough for `is_valid_image` to accept it.
 fn minimal_jpeg() -> Vec<u8> {
     vec![0xFF, 0xD8, 0xFF, 0xE0, 0x00]
 }
 
-/// Build a release folder with one MP3 (to satisfy the audio gate),
-/// plus any images and documents the caller passes in. Returns the
-/// folder path under the temp dir.
+/// A release folder holding one MP3 (which satisfies the audio gate) plus whatever
+/// images and documents the caller passes.
 fn build_release(
     tmp: &TempDir,
     folder_name: &str,
@@ -229,9 +222,8 @@ async fn emits_fast_pass_then_ocr_then_settled() {
     let signals = collect_signals(&mut rx, 4).await;
     assert_eq!(signals.len(), 4);
 
-    // Fast pass: folder-bracket `XX34b` lands in catalogs; path
-    // components (score 3, above cutoff) land in free_text. Text is
-    // still `Scanning` while artwork OCR is pending.
+    // The folder bracket `XX34b` lands in catalogs and the path components (score 3,
+    // above the cutoff) in free_text, while the text signal is still `Scanning`.
     assert!(
         matches!(signals[0].text, TextSignal::Scanning { .. }),
         "fast-pass text should be Scanning, got {:?}",
@@ -256,23 +248,19 @@ async fn emits_fast_pass_then_ocr_then_settled() {
         signals[0].text.free_text(),
     );
 
-    // Artwork is processed in sorted order: Back.jpg, then Cover.jpg.
-    // After Back.jpg: pool still dominated by path components; the
-    // folder-bracket catalog is still present.
+    // Artwork is OCR'd in sorted order — Back.jpg, then Cover.jpg.
     assert!(signals[1]
         .text
         .catalogs()
         .iter()
         .any(|c| c.value == "XX34b"));
 
-    // After Cover.jpg: WPCR-80001 joins catalogs.
     assert!(signals[2]
         .text
         .catalogs()
         .iter()
         .any(|c| c.value == "WPCR-80001"));
 
-    // Final snapshot is settled with both catalogs.
     assert!(
         matches!(signals[3].text, TextSignal::Settled { .. }),
         "final text should be Settled, got {:?}",
@@ -308,12 +296,11 @@ async fn no_artwork_still_emits_fast_pass_and_settled() {
     assert!(matches!(signals[0].text, TextSignal::Scanning { .. }));
     assert!(matches!(signals[1].text, TextSignal::Settled { .. }));
 
-    // With no artwork there's no barcode source — the signal is `Absent`
-    // throughout, never `Scanning`.
+    // No artwork means no barcode source, so the signal is `Absent` throughout and
+    // never passes through `Scanning`.
     assert!(matches!(signals[0].barcode, BarcodeSignal::Absent));
     assert!(matches!(signals[1].barcode, BarcodeSignal::Absent));
 
-    // Fast pass contains at least the folder-name path component.
     assert!(signals[0]
         .text
         .free_text()
@@ -323,9 +310,8 @@ async fn no_artwork_still_emits_fast_pass_and_settled() {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn missing_folder_settles_gracefully() {
-    // Service handles nonexistent folders — the scanner errors but the
-    // service falls back to folder-name signals only. Here there's no
-    // folder name to extract, so we still settle cleanly.
+    // The scanner errors on a nonexistent folder and the service falls back to
+    // folder-name signals — of which there are none here. It must still settle.
     let analyzer: Arc<dyn ArtworkAnalyzer> = Arc::new(StubAnalyzer::new());
     let (handle, _tx, mut rx, _lib_tmp) = make_service().await;
     handle.register_analyzer(analyzer);
@@ -346,10 +332,9 @@ async fn missing_folder_settles_gracefully() {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn emit_signals_warns_when_broadcast_has_no_subscribers() {
-    // Build the inner directly so there is genuinely no receiver: a started
-    // service always holds one (its own candidate-removal listener), so the
-    // no-subscriber state only exists before/after any listener — the app's
-    // shutdown case this warn guards.
+    // Build the inner directly, because a *started* service always holds a receiver
+    // (its own candidate-removal listener). The no-subscriber state this warn guards
+    // therefore only exists at app shutdown.
     let (tx, rx) = broadcast::channel(64);
     drop(rx);
     let (library_manager, _lib_tmp) = make_library_manager().await;
@@ -435,7 +420,6 @@ async fn cue_fields_land_in_fast_pass() {
     let folder = tmp.path().join("Some Folder");
     fs::create_dir_all(&folder).unwrap();
     fs::write(folder.join("audio.flac"), fixture_flac()).unwrap();
-    // CUE file with album-level + track-level values.
     let cue = r#"PERFORMER "Artist Alpha"
 TITLE "Album Title A"
 FILE "audio.flac" WAVE
@@ -471,8 +455,8 @@ FILE "audio.flac" WAVE
 
 #[tokio::test(flavor = "multi_thread")]
 async fn cue_catalog_becomes_barcode() {
-    // A CUE with a `CATALOG` field. The disc's UPC/EAN surfaces as a
-    // barcode code, not as a catalog-number string.
+    // A CUE `CATALOG` is the disc's UPC/EAN, so it must surface as a barcode, not as
+    // a catalog-number string.
     let tmp = TempDir::new().unwrap();
     let folder = tmp.path().join("Some Folder");
     fs::create_dir_all(&folder).unwrap();
@@ -508,11 +492,9 @@ FILE \"audio.flac\" WAVE\n  \
 
 #[test]
 fn non_utf8_cue_is_decoded_not_dropped() {
-    // A Windows-1252 CUE: a curly apostrophe (byte 0x92) inside a track
-    // title. The folder scanner parses CUEs through `text_encoding` (BOM /
-    // UTF-8 / chardetng), so the non-UTF-8 byte is decoded rather than
-    // dropping the whole sheet, and the names are harvested from the parsed
-    // result.
+    // A Windows-1252 CUE, with a curly apostrophe (byte 0x92) inside a track title.
+    // The scanner parses CUEs through `text_encoding`, so that byte is decoded rather
+    // than the whole sheet being dropped.
     let tmp = TempDir::new().unwrap();
     let folder = tmp.path().join("Some Folder");
     fs::create_dir_all(&folder).unwrap();
@@ -546,11 +528,9 @@ fn non_utf8_cue_is_decoded_not_dropped() {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn text_files_feed_free_text() {
-    // Text-file content alone is score 1 per line, which won't clear
-    // the primary cutoff when path components are present at score 3.
-    // To verify the text-file content is flowing into the pipeline at
-    // all, arrange for the text-file content to match a path component
-    // — they'll cluster together and pick up the combined score.
+    // A text-file line scores 1, which can't clear the cutoff alongside path
+    // components at 3. So make the text-file line match a path component: they cluster
+    // together, and the combined score proves the text file reached the pipeline.
     let tmp = TempDir::new().unwrap();
     let folder = build_release(
         &tmp,
@@ -568,11 +548,8 @@ async fn text_files_feed_free_text() {
 
     handle.start("cand-1".to_string(), ExtractionSource::Folder(folder));
 
-    // Fast pass + final settled.
+    // Fast pass + final settled. The cluster scores PathComponent(3) + TextFile(1).
     let signals = collect_signals(&mut rx, 2).await;
-    // The path component `Artist Alpha - Album Title B` clusters with
-    // the identical line from info.txt. Cluster score: PathComponent(3)
-    // + TextFile(1) = 4 → well above cutoff.
     let final_free_text = signals[signals.len() - 1].text.free_text();
     assert!(
         final_free_text
@@ -584,10 +561,8 @@ async fn text_files_feed_free_text() {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn cancelled_ocr_run_does_not_settle() {
-    // A cancelled OCR run stops emitting and tears down — it never
-    // reaches its final `Settled` snapshot. With three delayed images
-    // and a cancel mid-OCR, the run must not produce a `TextSignal::
-    // Settled` for the cancelled key.
+    // A cancelled run tears down without reaching its final `Settled` snapshot: three
+    // delayed images, cancelled mid-OCR, must emit no `Settled` for that key.
     let tmp = TempDir::new().unwrap();
     let folder = build_release(&tmp, "Some Folder", &["p1.jpg", "p2.jpg", "p3.jpg"], &[]);
 
@@ -606,8 +581,6 @@ async fn cancelled_ocr_run_does_not_settle() {
     tokio::time::sleep(Duration::from_millis(50)).await;
     handle.cancel("cand-1");
 
-    // Drain for a short window after the cancel. The cancelled run does
-    // not complete, so no `Settled` snapshot for this key ever arrives.
     loop {
         match tokio::time::timeout(Duration::from_millis(500), rx.recv()).await {
             Ok(Ok(ImportEvent::SignalsUpdated { signals, .. })) => {
@@ -625,9 +598,9 @@ async fn cancelled_ocr_run_does_not_settle() {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn candidate_removed_event_cancels_in_flight_extraction() {
-    // Three images, 200ms of OCR each; a CandidateRemoved for the key lands
-    // during the first image. The service's bus listener cancels the run, so
-    // it never settles and the OCR pass stops before analyzing every image.
+    // Three images at 200ms of OCR each, with a `CandidateRemoved` landing during the
+    // first. The service's bus listener cancels the run, so it never settles and stops
+    // short of analyzing every image.
     let tmp = TempDir::new().unwrap();
     let folder = build_release(&tmp, "Some Folder", &["p1.jpg", "p2.jpg", "p3.jpg"], &[]);
     let analyzer = Arc::new(
@@ -647,7 +620,6 @@ async fn candidate_removed_event_cancels_in_flight_extraction() {
     }))
     .unwrap();
 
-    // Drain until quiet: the cancelled run never reaches its Settled snapshot.
     loop {
         match tokio::time::timeout(Duration::from_millis(500), rx.recv()).await {
             Ok(Ok(ImportEvent::SignalsUpdated { signals, .. })) => {
@@ -661,16 +633,15 @@ async fn candidate_removed_event_cancels_in_flight_extraction() {
             _ => break,
         }
     }
-    // The token check between images stops the pass before all images run.
+    // The token is checked between images, so the pass stops before the third.
     assert!(analyzer.calls() < 3, "cancel must stop the OCR pass early");
 }
 
 #[tokio::test(flavor = "multi_thread")]
 async fn restart_for_same_key_cancels_prior_then_starts_fresh() {
-    // Two `start` calls for the same key: the first is cancelled by the
-    // second's insert. Cancelled runs don't settle; the completed run
-    // does. We assert the last run reaches a `Settled` snapshot and the
-    // generation-guarded teardown neither deadlocks nor panics.
+    // The second `start` for a key cancels the first. Only a completed run settles, so
+    // seeing a `Settled` snapshot proves the surviving run finished — and that the
+    // generation-guarded teardown neither deadlocked nor panicked.
     let tmp = TempDir::new().unwrap();
     let folder = build_release(&tmp, "Some Folder", &["p1.jpg"], &[]);
 
@@ -688,7 +659,6 @@ async fn restart_for_same_key_cancels_prior_then_starts_fresh() {
     );
     handle.start("cand-1".to_string(), ExtractionSource::Folder(folder));
 
-    // Drain the event window; at least one completed run must settle.
     let mut saw_settled = false;
     loop {
         match tokio::time::timeout(Duration::from_millis(500), rx.recv()).await {
@@ -708,18 +678,14 @@ async fn restart_for_same_key_cancels_prior_then_starts_fresh() {
     );
 }
 
-/// The race we're guarding against: three consecutive `start` calls for
-/// the same key. Without per-task generations, the first task's
-/// cancellation-teardown could fire *after* the second `start` inserts
-/// its token and remove it, leaving the third `start` with nothing to
-/// cancel.
+/// Three consecutive `start`s for one key. Without per-task generations, the first
+/// task's teardown could fire *after* the second `start` inserted its token and
+/// remove it, leaving the third `start` nothing to cancel.
 ///
-/// To provoke the race we hold OCR long enough that the first task is
-/// still alive when we issue the third `start`. Cancelled runs don't
-/// emit a final snapshot, so we can't count them directly; instead we
-/// assert the completed run settles and the `(generation, token)`
-/// teardown guard neither deadlocks nor panics under the concurrent
-/// start/cancel/teardown interleaving.
+/// OCR is held long enough that the first task is still alive at the third `start`. A
+/// cancelled run emits no final snapshot, so they can't be counted directly; instead
+/// the completed run must settle, and the `(generation, token)` guard must neither
+/// deadlock nor panic under the interleaving.
 #[tokio::test(flavor = "multi_thread")]
 async fn three_starts_cancel_each_predecessor() {
     let tmp = TempDir::new().unwrap();
@@ -745,8 +711,6 @@ async fn three_starts_cancel_each_predecessor() {
     tokio::time::sleep(Duration::from_millis(40)).await;
     handle.start("cand-1".to_string(), ExtractionSource::Folder(folder));
 
-    // Drain until the channel goes quiet. A completed run produces a
-    // `Settled` snapshot; cancelled runs tear down silently.
     let mut saw_settled = false;
     loop {
         match tokio::time::timeout(Duration::from_millis(500), rx.recv()).await {

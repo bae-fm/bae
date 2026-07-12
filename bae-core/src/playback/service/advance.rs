@@ -14,14 +14,12 @@ impl PlaybackService {
             .map(|s| ids.contains(s))
             .unwrap_or(false);
 
-        // Purge deleted tracks from the queue first
         self.playback_queue.remove_by_ids(&ids);
 
         if current_deleted {
-            // Stop current playback (tears down streams, decoder, next track state)
             self.stop().await;
 
-            // Advance to next track if queue has one, otherwise stay stopped
+            // Play on from what's left of the queue, or stay stopped.
             if let Some(next_id) = self.playback_queue.advance_to_front() {
                 self.play_track(
                     &next_id,
@@ -32,7 +30,7 @@ impl PlaybackService {
                 .await;
             }
         } else {
-            // Current track is fine, but check preloaded next track
+            // The current track survives, but the preload may have been deleted.
             if let Some(preloaded) = &self.preloaded_next {
                 if ids.contains(preloaded.track_id()) {
                     self.clear_next_track_state();
@@ -49,12 +47,11 @@ impl PlaybackService {
         }
     }
 
-    /// Preload the next track for gapless playback.
-    /// This eagerly starts the decoder so samples are ready when we switch tracks.
+    /// Preload the next track for gapless playback: start its decoder now, so its
+    /// samples are already buffered when the current track ends.
     pub(super) async fn preload_next_track(&mut self, track_id: &str) {
         self.clear_next_track_state();
 
-        // Prepare track: fetch metadata, create buffer, start reading
         let prepared = prepare_track_for_playback(
             &self.library_manager,
             track_id,
@@ -72,15 +69,15 @@ impl PlaybackService {
             }
         };
 
-        // Preload params (natural transition: no pregap skip): seek to the
-        // track's first sample, trim there, stop at its end.
+        // A preload is a natural transition, so no pregap is skipped: decode from
+        // the track's first sample to its end.
         let decode = prepared.decode_params(0, true);
 
-        // A preload has no stream — it is not a pipeline yet. `spawn_decoder` mints
-        // the decoder's cancel token; it is carried in `PreloadedNext` so promotion
-        // hands it to the pipeline that adopts this decoder. Preview-style LogOnly:
-        // a preload decode failure is logged, never surfaced as a PlaybackError (the
-        // promotion path re-decodes through play_track if the preload is unusable).
+        // A preload has no stream yet. `spawn_decoder` mints the decoder's cancel
+        // token, carried in `PreloadedNext` so promotion hands it to whatever
+        // adopts this decoder. LogOnly: a preload decode failure is logged, never
+        // surfaced as a PlaybackError — the promotion path re-decodes through
+        // play_track if the preload turns out unusable.
         let DecoderStart {
             track_stream,
             handle: decoder_handle,
@@ -95,12 +92,11 @@ impl PlaybackService {
             DecodeFailureReport::LogOnly,
         );
 
-        // Store preloaded state. If the next track shares the live stream's
-        // format, stage it into the PlaybackSource so the audio callback can
-        // cross the boundary without rebuilding the stream (true gapless).
-        // Otherwise hold it for the rebuild path (format change, no live
-        // stream yet, or repeat-track mode where the current track replays
-        // instead) which the completion → AutoAdvance flow handles.
+        // Same format as the live stream: stage it into the `PlaybackSource` so
+        // the audio callback crosses the boundary in place (true gapless).
+        // Otherwise hold it for the rebuild path — a format change, no live stream
+        // yet, repeat-track (the current track replays instead), or a side pause —
+        // which the completion → AutoAdvance flow handles.
         let stage_source: Option<Arc<Mutex<source::PlaybackSource>>> = match &self.slot {
             PlaybackSlot::Active(cur)
                 if cur.prepared.sample_rate == prepared.sample_rate
@@ -228,20 +224,17 @@ impl PlaybackService {
             && self.playback_queue.repeat_mode() != RepeatMode::Track
     }
 
-    /// Re-run the staging decision for the currently preloaded next track,
-    /// after `pause_between_sides` turns on mid-track. `preload_next_track`
-    /// reads the config once, at preload time — flipping it on afterwards
-    /// changes nothing for a track already staged into the gapless chain, so
-    /// the callback would still cross that boundary without a pause. If the
-    /// preload is `Staged` and the (now-updated) config says to hold it,
-    /// discard the staged preload and re-preload the same track: re-running
-    /// `preload_next_track`'s decision holds it this time. A `Held` preload
-    /// needs nothing — `side_pause_for_queue_front` already re-reads the
-    /// config at drain time. No active track or no preloaded next: nothing to
-    /// do. If the boundary was already crossed by the time this command
-    /// reaches the service's loop, the current track IS the next side, so the
-    /// re-evaluation below finds no pause due and does nothing — the toggle
-    /// simply came too late for that boundary.
+    /// Re-run the staging decision for the preloaded next track after
+    /// `pause_between_sides` turns on mid-track. `preload_next_track` reads the
+    /// config once, at preload time, so a track already staged into the gapless
+    /// chain would otherwise keep crossing its boundary without a pause. If the
+    /// preload is `Staged` and the updated config says to hold it, discard it and
+    /// re-preload the same track — `preload_next_track` holds it this time. A
+    /// `Held` preload needs nothing (`side_pause_for_queue_front` re-reads the
+    /// config at drain time), and neither does no active track / no preload. If
+    /// the boundary was already crossed by the time this reaches the command loop,
+    /// the current track IS the next side, so no pause is due and this does
+    /// nothing — the toggle simply came too late for that boundary.
     pub(super) async fn reevaluate_side_pause_staging(&mut self) {
         let Some(preloaded) = &self.preloaded_next else {
             return;
@@ -268,7 +261,7 @@ impl PlaybackService {
     }
 
     pub(super) fn pause_for_side_end(&mut self, decision: SidePauseDecision) {
-        // The current track drained (phase Completed); fold the side-pause into
+        // The current track drained (phase Completed): fold the side-pause into
         // the phase, carrying the track it resumes into.
         if let PlaybackSlot::Active(cur) = &mut self.slot {
             cur.phase = TrackPhase::Paused(PausePhase::SideEnded(decision));
@@ -346,8 +339,8 @@ impl PlaybackService {
         }
     }
 
-    /// If a track is preloaded but no longer matches the queue front, discard it and
-    /// preload the new front instead.  Called after queue mutations that insert at position 0.
+    /// If the preloaded track is no longer the queue front (a mutation inserted
+    /// ahead of it), discard it and preload the new front.
     pub(super) async fn refresh_preload_for_queue_front(&mut self) {
         let preloaded_id = match self.next_track_id() {
             Some(id) => id.to_string(),
@@ -408,18 +401,17 @@ impl PlaybackService {
         }
     }
 
-    /// Promote track bookkeeping after the audio callback crossed a gapless
-    /// track boundary. The `PlaybackSource` has already advanced to the staged
-    /// next track within the same stream; here we report the finishing track's
-    /// decode stats, update service state to match, and preload the following
-    /// track. No stream rebuild, no UI gap.
+    /// Promote the track bookkeeping after the audio callback crossed a gapless
+    /// boundary. The `PlaybackSource` already advanced to the staged next track
+    /// within the same stream; this reports the finishing track's decode stats,
+    /// updates service state to match, and preloads the following track. No stream
+    /// rebuild, no UI gap.
     ///
-    /// Pure in the `TrackCrossing` payload: both track ids and the finishing
+    /// Reads only the `TrackCrossing` payload — both track ids and the finishing
     /// stats come from the event, not from a shared cell.
     pub(super) async fn handle_track_crossed(&mut self, crossing: TrackCrossing) {
-        // Report the finishing track's decode stats here: a gaplessly-advanced
-        // track never reaches the completion path, so this is the per-track
-        // completion log + stats for every track except the album's last.
+        // A gaplessly-advanced track never reaches the completion path, so this is
+        // the completion log + stats for every track except an album's last.
         info!(
             "Track completed (gapless): {} ({} decode errors, {} samples)",
             crossing.finished_fmt.track_id, crossing.decode_error_count, crossing.samples_decoded
@@ -453,9 +445,9 @@ impl PlaybackService {
         info!("Gapless boundary: now playing {}", track_id);
         self.telemetry_track_started(&track_id, TrackTransition::Gapless);
 
-        // The `PlaybackSource` already advanced within the same stream; swap the
-        // finishing track's prepared + decoder for the incoming one in place. The
-        // phase stays Playing — a crossing only fires while samples are pulling.
+        // Swap the finishing track's prepared + decoder for the incoming one in
+        // place. The phase stays Playing — a crossing only fires while samples are
+        // pulling.
         let Some(cur) = (match &mut self.slot {
             PlaybackSlot::Active(cur) => Some(cur),
             _ => None,
@@ -471,40 +463,37 @@ impl PlaybackService {
         cur.prepared
             .release_buffers(&next_prepared.file_ids(), &mut self.shared_file_buffers);
         cur.prepared = next_prepared;
-        // The source already crossed in place (`pull_samples`); swap the current
-        // track's decoder to the crossed-into one. The finishing track's decoder
-        // already exited (the crossing fired), so dropping its handle detaches
+        // Swap in the crossed-into decoder. The finishing track's already exited
+        // (that is what fired the crossing), so dropping its handle detaches
         // nothing live.
         cur.decoder = TrackDecoder {
             handle: decoder_handle,
             cancel_token,
         };
 
-        // The crossed-into track is now playing: hand its reader fetch priority
-        // over the track preloaded below.
+        // The crossed-into track is playing: hand its reader fetch priority over
+        // the track preloaded below.
         self.mark_current_foreground();
 
-        // Advance the queue position to the now-playing track.
         self.advance_to_preloaded();
 
-        // Natural transition starts at position 0 (pregap included).
+        // A natural transition starts at position 0 (pregap included).
         *self.current_position_shared.lock().unwrap() = Some(std::time::Duration::ZERO);
 
-        // Tell the UI which track is now playing (StateChanged covers the transition).
         self.sync_audio_state();
         self.emit_state();
 
         self.preload_queue_front().await;
 
-        // The gapless boundary advanced the current track without play_track.
+        // This boundary advanced the current track without play_track.
         self.persist_playback_state().await;
     }
 
-    /// Advance the queue's current pointer past the finished track to the front
+    /// Advance the queue's current pointer past the finished track to the front,
     /// and emit the queue update. Used by `Next`, `AutoAdvance` (preloaded path),
-    /// and the gapless boundary handler. The front is the track being played: the preload
-    /// refreshes whenever the queue mutates, so the advanced front and the track
-    /// these callers go on to play are the same one.
+    /// and the gapless boundary handler. The front IS the track being played: the
+    /// preload refreshes whenever the queue mutates, so the front we advance to
+    /// and the track these callers go on to play are the same one.
     pub(super) fn advance_to_preloaded(&mut self) {
         if self.playback_queue.advance_to_front().is_none() {
             warn!("advance_to_preloaded: queue had no front to advance to");
@@ -512,10 +501,10 @@ impl PlaybackService {
         self.emit_queue_update();
     }
 
-    /// Play the preloaded next track: advance the queue to it, then start its
-    /// buffered stream if ready, or a fresh play of it otherwise. `natural`
-    /// (pregap included) and `preserve_paused` pass through to the player. Shared
-    /// by `Next` and `AutoAdvance`, which differ only in those two booleans.
+    /// Advance the queue to the preloaded next track, then start its buffered
+    /// stream if it's ready, or play it fresh otherwise. `natural` (pregap
+    /// included) and `target` pass through to the player. Shared by `Next` and
+    /// `AutoAdvance`, which differ only in those two.
     pub(super) async fn advance_and_play_preloaded(
         &mut self,
         preloaded_track_id: &str,
@@ -537,9 +526,9 @@ impl PlaybackService {
             self.advance_to_preloaded();
             self.play_preloaded_track(natural, target, transition).await;
         } else {
-            // Preload started but the streaming source isn't ready yet.
-            // play_track discards the half-ready preload itself and keeps its
-            // file buffers — it is about to play the same track.
+            // A preload started but has no stream yet. `play_track` discards the
+            // half-ready preload itself and keeps its file buffers — it is about
+            // to play the same track.
             self.advance_to_preloaded();
             self.play_track(
                 preloaded_track_id,
@@ -551,11 +540,13 @@ impl PlaybackService {
         }
     }
 
-    /// Play a preloaded track by swapping next state to current and starting the audio stream.
-    /// Play a preloaded track. The decoder is already running from preload_next_track.
-    /// Play the preloaded next track.
-    /// - `is_natural_transition`: if true, plays from INDEX 00 (pregap included)
-    /// - `preserve_paused`: if true, inherits current paused state; if false, always starts playing
+    /// Play the preloaded next track, whose decoder is already running from
+    /// `preload_next_track`: attach its stream to the persistent output, tear the
+    /// outgoing track down, and install it as current.
+    /// - `is_natural_transition`: play from INDEX 00 (pregap included) rather
+    ///   than skipping the pregap.
+    /// - `target`: where it lands once audio is ready (Playing, or Paused with a
+    ///   reason). Computed absolutely by the caller.
     pub(super) async fn play_preloaded_track(
         &mut self,
         is_natural_transition: bool,
@@ -579,14 +570,11 @@ impl PlaybackService {
         let pregap_ms = next_prepared.total_pregap_ms();
         let track_id = next_prepared.track_info.track_id.clone();
 
-        // If we need to skip pregap (direct selection), the preloaded state won't work
-        // because it was set up for auto-advance (starting at byte 0).
-        // Fall back to play_track which handles pregap at decoder start.
+        // The preload decoded from the track's first sample (pregap included), so
+        // a direct selection that skips the pregap can't use it: discard its
+        // decoder and re-decode through play_track, which seeks past the pregap.
         if !is_natural_transition && pregap_ms.is_some_and(|p| p > 0) {
             info!("Pregap skip needed for preloaded track - falling back to play_track");
-            // This preload was staged for a natural start (byte 0); a pregap-skip
-            // direct selection can't use it, so discard its decoder and re-decode
-            // through play_track.
             let detached = detach_preloaded_source(self.current_source(), preloaded_source);
             discard_preloaded_decoder(&next_prepared, detached, &cancel_token);
             self.play_track(
@@ -607,14 +595,12 @@ impl PlaybackService {
             self.telemetry_track_started(&track_id, transition);
         }
 
-        // Recover the preloaded next track stream (staged in the gapless chain or
-        // held for the rebuild path) BEFORE attaching it — in the staged case the
-        // incoming stream lives inside the current source until this take_next
-        // pulls it out.
+        // Recover the incoming stream BEFORE attaching it: in the staged case it
+        // lives inside the current source until this `take_next` pulls it out.
         let track_stream = detach_preloaded_source(self.current_source(), preloaded_source)
             .expect("Preloaded track has no streaming source");
 
-        // Natural transition: start at position 0 (INDEX 00, pregap plays).
+        // The preload always decoded from INDEX 00, so this stream starts at 0.
         let fmt = next_prepared.track_fmt(std::time::Duration::ZERO);
         let sample_rate = next_prepared.sample_rate;
         let channels = next_prepared.channels;
@@ -645,15 +631,14 @@ impl PlaybackService {
             return;
         }
 
-        // The incoming source is now live; tear down the OUTGOING track's decoder
-        // and release its buffers now that the incoming track's files are known —
-        // files it shares stay cached and alive. The incoming decoder's token is
-        // its own (`cancel_token`), untouched by the outgoing teardown.
+        // The incoming source is live; tear the OUTGOING decoder down and release
+        // its buffers now that the incoming track's files are known — files they
+        // share stay cached and alive. The incoming decoder's own token
+        // (`cancel_token`) is untouched by that teardown.
         if let Some(outgoing) = self.teardown_current_track() {
             outgoing.release_buffers(&next_prepared.file_ids(), &mut self.shared_file_buffers);
         }
 
-        // The gapless natural transition begins at position 0.
         *self.current_position_shared.lock().unwrap() = Some(std::time::Duration::ZERO);
 
         self.install_active_track(
@@ -668,8 +653,7 @@ impl PlaybackService {
 
         self.preload_queue_front().await;
 
-        // The preloaded advance doesn't go through play_track, so persist the
-        // now-playing track here.
+        // This advance bypasses play_track, so persist the now-playing track here.
         self.persist_playback_state().await;
     }
 }

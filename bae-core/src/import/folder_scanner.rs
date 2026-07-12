@@ -1,11 +1,9 @@
 //! Recursive folder scanner with leaf detection for imports.
 //!
-//! Supports three folder structures:
-//! 1. Single release (flat) - audio files in root, optional artwork subfolders
-//! 2. Single release (multi-disc) - disc subfolders with audio, optional artwork
-//! 3. Collections - recursive tree where leaves are single releases
-//!
-//! The detection logic runs over a `FileTree` built once from the filesystem.
+//! Handles three folder structures: a flat single release (audio in the root),
+//! a multi-disc single release (disc subfolders with audio), and a collection (a
+//! tree whose leaves are single releases). Detection runs over a `FileTree`
+//! built once from the filesystem.
 use super::file_validation;
 use crate::cue_flac::parse_cue_sheet;
 use crate::util::content_type_hint::ContentTypeHint;
@@ -135,17 +133,17 @@ pub struct CategorizedFiles {
 }
 
 impl CategorizedFiles {
-    /// Stable content fingerprint of this release's file structure: a SHA-256
-    /// over every audio, artwork, and document file's relative path + size,
-    /// sorted so the digest is independent of discovery order. Relative (not
-    /// absolute) paths make it location-independent — the same rip under any
-    /// parent folder hashes identically. Drives "already imported?" detection
-    /// and selects the overwrite target on re-import.
+    /// Stable content fingerprint of this release's file structure: a SHA-256 over
+    /// every audio, artwork, and document file's relative path + size, sorted so
+    /// the digest is independent of discovery order. Relative (not absolute)
+    /// paths make it location-independent — the same rip hashes identically under
+    /// any parent folder. Drives "already imported?" detection and selects the
+    /// overwrite target on re-import.
     ///
-    /// Paired CUE files live on `audio` (not `documents`); unpaired CUE files
-    /// are in `documents`. Together with `artwork` that's every on-disk file,
-    /// each counted once. `unpaired_cue_sheets` is parsed-signal data, not a
-    /// file — its CUE is already covered as a document, so it's excluded.
+    /// Paired CUE files live on `audio`, unpaired ones in `documents`; together
+    /// with `artwork` that's every on-disk file, each counted once.
+    /// `unpaired_cue_sheets` is parsed-signal data, not a file — its CUE is
+    /// already covered as a document — so it's excluded.
     pub fn content_hash(&self) -> String {
         let mut entries: Vec<(&str, u64)> = Vec::new();
         match &self.audio {
@@ -179,10 +177,6 @@ impl CategorizedFiles {
     }
 }
 
-/// A leaf folder that looks like a release (it has audio) but failed
-/// validation: corrupt or zero-byte audio, a corrupt image, or a CUE that
-/// references missing audio. Carries no files or identify state — it can't be
-/// imported — only enough to surface it under the Skipped tab with its reason.
 /// Why a candidate folder failed validation. The `Display` text is the terse
 /// internal form (used by the import-commit error channel); the UI localizes the
 /// typed variant for the Skipped tab.
@@ -204,6 +198,9 @@ pub enum InvalidReason {
     NoValidAudio,
 }
 
+/// A leaf folder that looks like a release (it has audio) but failed validation.
+/// It can't be imported, so it carries no files and no identify state — only
+/// enough to surface it under the Skipped tab with its reason.
 #[derive(Debug, Clone)]
 pub struct InvalidCandidate {
     /// Root path of the folder that failed validation.
@@ -472,15 +469,14 @@ enum CueCodecLabel {
     Unprobeable,
 }
 
-/// Codec identity for a CUE-paired audio file, used to build the `CUE+<codec>`
-/// format label. The label comes from FFmpeg's probed codec identity, never
-/// from the extension, because containers such as MP4, Ogg, WAV, and AIFF do
-/// not prove the codec by filename.
+/// Codec identity for a CUE-paired audio file, for the `CUE+<codec>` format
+/// label. The label comes from FFmpeg's probe, never from the extension, because
+/// containers such as MP4, Ogg, WAV, and AIFF don't prove the codec by filename.
 ///
-/// `Err` is reserved for a path that isn't UTF-8 (which FFmpeg can't open at
-/// all). A readable file whose codec bae can't play (`Ok(Unsupported)`) or that
-/// FFmpeg can't probe (`Ok(Unprobeable)`) is not an error — each surfaces its
-/// folder as an invalid candidate without aborting the whole watched-root walk.
+/// `Err` is reserved for a non-UTF-8 path (which FFmpeg can't open at all). A
+/// readable file whose codec bae can't play (`Ok(Unsupported)`) or that FFmpeg
+/// can't probe (`Ok(Unprobeable)`) is not an error — each surfaces its folder as
+/// an invalid candidate without aborting the whole watched-root walk.
 fn cue_pair_codec_label(path: &Path) -> Result<CueCodecLabel, FolderScanError> {
     let path_str = path.to_str().ok_or_else(|| {
         FolderScanError::Other(format!("CUE audio path is not UTF-8: {}", path.display()))
@@ -541,22 +537,22 @@ fn is_partial_marker_file(path: &Path) -> bool {
 
 // ── Tree-based detection heuristics (no I/O) ───────────────────────────────
 
-/// Check if a directory contains audio files directly (by extension).
+/// Whether `dir` holds audio files directly, by extension.
 ///
-/// This is used for tree-structure detection (leaf vs collection), not for
-/// validation. Even a directory with only corrupt FLAC files should be detected
-/// as a candidate (though corrupt files are silently skipped during categorization).
-/// Only skips 0-byte files since those are empty placeholders.
+/// This drives tree-structure detection (leaf vs collection), not validation: a
+/// directory of corrupt FLACs must still be detected as a candidate, so that
+/// categorization can surface it as an *invalid* candidate with its reason
+/// rather than have the folder vanish. Only 0-byte files are skipped — those are
+/// empty placeholders, not audio.
 fn tree_has_audio_files(tree: &FileTree, dir: &Path) -> bool {
     tree.files_in_dir(dir)
         .any(|f| is_audio_file(&f.path) && f.size > 0)
 }
 
-/// True when any immediate subdirectory of `dir` contains audio somewhere
-/// in its subtree. The check must recurse — shallow matches only catch
-/// releases whose audio sits directly one level below `dir`, so any
-/// collection that wraps releases under artist/label/discography dirs
-/// would look audio-less to a caller asking "is this a container?".
+/// True when any immediate subdirectory of `dir` contains audio anywhere in its
+/// subtree. The recursion matters: a shallow check would miss any collection
+/// that wraps its releases under artist/label/discography dirs, making it look
+/// audio-less to a caller asking "is this a container?".
 fn tree_has_subdirs_with_audio(tree: &FileTree, dir: &Path) -> bool {
     tree.immediate_subdirs(dir).iter().any(|subdir| {
         tree.all_files_under(subdir)
@@ -571,23 +567,19 @@ fn tree_has_nested_audio_dirs(tree: &FileTree, dir: &Path) -> bool {
         .any(|subdir| tree_has_subdirs_with_audio(tree, subdir))
 }
 
-/// True when `dir` or any of its descendants contain a partial-download
-/// marker. Applied when a directory has been identified as a candidate
-/// (leaf) so we refuse to emit an in-progress release whose markers live
-/// one or more levels down (e.g. `Album/Disc 2/01.flac.part` under a
-/// multi-disc leaf).
+/// True when `dir` or any descendant holds a partial-download marker. Checked
+/// once a directory is identified as a leaf, so an in-progress release whose
+/// markers live levels down (`Album/Disc 2/01.flac.part`) is still refused.
 fn tree_has_partial_markers_deep(tree: &FileTree, dir: &Path) -> bool {
     tree.all_files_under(dir)
         .any(|f| is_partial_marker_file(&f.path))
 }
 
-/// True when every audio-bearing immediate subdirectory of `dir` has a name
-/// matching a common disc-indicator pattern (`Disc N`, `CD N`, `Disk N`,
-/// `Side A/B`, `Part N`). Applied to ALL audio-bearing subdirs, not a
-/// majority — one "Disc 1" sibling next to "Bonus Tracks" does not qualify.
-///
-/// This discriminates true multi-disc releases from artist/discography/reissue
-/// folders that merely happen to have ≥2 audio-bearing children.
+/// True when EVERY audio-bearing immediate subdirectory of `dir` has a
+/// disc-indicator name (`Disc N`, `CD N`, `Disk N`, `Side A/B`, `Part N`) — not
+/// a majority, so one "Disc 1" next to a "Bonus Tracks" does not qualify. This
+/// is what separates a true multi-disc release from an artist/discography/reissue
+/// folder that merely has ≥2 audio-bearing children.
 fn looks_like_multi_disc_siblings(tree: &FileTree, dir: &Path) -> bool {
     let audio_subdirs: Vec<_> = tree
         .immediate_subdirs(dir)
@@ -669,15 +661,12 @@ fn is_disc_indicator_name(name: &str) -> bool {
     false
 }
 
-/// Determine if a directory is a candidate (a release or group of releases).
-///
-/// Prefers "zoomed out": stops at the shallowest directory that groups audio.
-/// A directory is a candidate if:
-/// - Has audio files directly in it, OR
-/// - Is a multi-disc release: audio-bearing subdirs all match a disc-indicator
-///   pattern (`Disc N`, `CD N`, `Side A`, etc.). Artist / discography / reissue
-///   folders with ≥2 audio-bearing children do NOT qualify — their children
-///   are independent candidates, not parts of one release.
+/// Whether `dir` is a candidate — one release. Prefers "zoomed out", stopping at
+/// the shallowest directory that groups audio. A directory qualifies if it holds
+/// audio files directly, or if it's a multi-disc release (every audio-bearing
+/// subdir has a disc-indicator name). An artist / discography / reissue folder
+/// with ≥2 audio-bearing children does NOT qualify — its children are
+/// independent candidates, not parts of one release.
 fn tree_is_leaf_directory(tree: &FileTree, dir: &Path) -> bool {
     let has_direct_audio = tree_has_audio_files(tree, dir);
     let has_subdirs_with_audio = tree_has_subdirs_with_audio(tree, dir);
@@ -742,12 +731,10 @@ fn cue_parent_dir(cue_path: &Path) -> Result<&Path, FolderScanError> {
         .ok_or_else(|| FolderScanError::Other(format!("CUE file has no parent: {:?}", cue_path)))
 }
 
-/// Categorize files from a FileTree for a given release root.
-///
-/// `fs_root` is the folder being imported: file validation reads actual bytes
-/// from disk.
-/// Returns `Invalid(reason)` when the folder has audio but fails validation, so
-/// the caller can surface why it can't be imported.
+/// Categorize a release root's files from a `FileTree`. `fs_root` is the folder
+/// being imported — validation reads its actual bytes from disk. Returns
+/// `Invalid(reason)` when the folder has audio but fails validation, so the
+/// caller can surface why it can't be imported.
 fn categorize_files_from_tree(
     tree: &FileTree,
     release_root: &Path,
@@ -775,10 +762,10 @@ fn categorize_files_from_tree(
         let absolute_path = fs_root.join(&entry.path);
 
         if is_audio_file(&entry.path) {
-            // Ok(false) is corruption (skip the candidate); Err is a genuine
-            // I/O fault (file vanished, permissions, flaky network mount) —
-            // surface it rather than mis-label a system error as corruption
-            // and silently drop the whole release.
+            // Ok(false) is corruption (the candidate becomes Invalid); Err is a
+            // genuine I/O fault (file vanished, permissions, flaky network
+            // mount) — surface it rather than mis-label a system error as
+            // corruption and silently drop the whole release.
             let valid = file_validation::is_valid_audio(&absolute_path).map_err(|e| {
                 FolderScanError::Other(format!(
                     "Failed to validate audio file {absolute_path:?}: {e}"
@@ -803,8 +790,7 @@ fn categorize_files_from_tree(
                 entry.size,
             ));
         } else if is_image_file(&entry.path) {
-            // As with audio: Ok(false) is corruption (skip), Err is a real
-            // I/O fault that must surface rather than drop the release.
+            // As with audio: Ok(false) is corruption, Err is a real I/O fault.
             let valid = file_validation::is_valid_image(&absolute_path).map_err(|e| {
                 FolderScanError::Other(format!(
                     "Failed to validate image file {absolute_path:?}: {e}"
@@ -1046,10 +1032,9 @@ where
     F: FnMut(RawScanItem),
 {
     if tree_is_leaf_directory(tree, dir) {
-        // Release-level marker check: a leaf is a release, and markers
-        // anywhere under a release mean the release itself is incomplete.
-        // Do not emit and do not recurse — any disc-level child would
-        // inherit the same problem.
+        // A leaf is a release, so markers anywhere under it mean the release
+        // itself is incomplete. Don't emit and don't recurse — any disc-level
+        // child would inherit the same problem.
         if tree_has_partial_markers_deep(tree, dir) {
             info!(
                 "Skipping leaf {:?}: partial-download markers present under it",
@@ -1083,11 +1068,9 @@ where
                 });
             }
             CategorizeOutcome::Invalid(reason) => {
-                // Structurally this looked like a leaf (a release), but
-                // categorization failed: zero-byte audio, corrupt file, CUE
-                // references a missing file, etc. Surface it with its reason so
-                // the user sees why the folder didn't import. Symmetric with
-                // the partial-markers-deep check above (which truly suppresses).
+                // It looked like a release but failed validation. Surface it with
+                // its reason so the user sees why the folder didn't import —
+                // unlike the partial-markers check above, which truly suppresses.
                 info!("Invalid leaf {:?}: {reason}", dir);
                 on_item(RawScanItem::Invalid {
                     path: candidate_path,
@@ -1148,11 +1131,9 @@ where
     })
 }
 
-/// Collect all files from a release directory and categorize them.
-///
-/// This collects files recursively within a single release, preserving relative paths,
-/// and categorizes them into audio (CUE/FLAC pairs or track files), artwork, and documents.
-/// Unrecognized file types are ignored.
+/// Walk one release directory recursively and categorize its files, preserving
+/// relative paths, into audio (CUE/FLAC pairs or track files), artwork, and
+/// documents. Unrecognized file types are ignored.
 pub fn collect_release_candidate_files(
     release_root: &Path,
 ) -> Result<CategorizedFiles, crate::import::ImportError> {

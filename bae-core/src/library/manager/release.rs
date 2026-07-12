@@ -18,7 +18,6 @@ impl LibraryManager {
         Ok(self.database.is_content_hash_imported(hash).await?)
     }
 
-    /// Get tracks for a specific release
     pub async fn get_tracks_for_release(
         &self,
         release_id: &str,
@@ -26,26 +25,22 @@ impl LibraryManager {
         Ok(self.database.get_tracks_for_release(release_id).await?)
     }
 
-    /// Find an existing album the new import should attach to.
+    /// The existing album a new import should attach to, from a two-pass identity
+    /// dedup against `release_identities`:
     ///
-    /// Two-pass identity dedup against `release_identities`:
+    /// 1. **Per-pressing rejection.** A release in the library carrying an identity
+    ///    row that matches one of the new release's `(source, source_release_id)`
+    ///    pairs (Exact identities only; Approximate skips this) means this is a
+    ///    duplicate import. Surface that album's title so the user sees what they
+    ///    already have.
+    /// 2. **Cross-source merge.** A release carrying an identity row matching one of
+    ///    the new release's `(source, source_group_id)` pairs gives up its
+    ///    `album_id`, so the new release attaches to the same album. Identities pair
+    ///    across sources, so an MB-rooted import that carried a cross-link Discogs
+    ///    row is reachable from a later Discogs-rooted import of the same master.
     ///
-    /// 1. **Per-pressing rejection.** If any release already in the library
-    ///    carries an identity row matching one of the new release's
-    ///    `(source, source_release_id)` pairs (Exact identities only —
-    ///    Approximate skips this), that's a duplicate import. Surface the
-    ///    existing album's title so the user sees what they already have.
-    ///
-    /// 2. **Cross-source merge.** If any release in the library carries an
-    ///    identity row matching one of the new release's
-    ///    `(source, source_group_id)` pairs, return that release's
-    ///    `album_id` so the new release attaches to the same album.
-    ///    Identities can pair across sources — an MB-rooted import that
-    ///    carried a cross-link Discogs row will be reachable from a later
-    ///    Discogs-rooted import of the same master.
-    ///
-    /// Empty `identities` (Unknown) skips both lookups — Unknown imports
-    /// always get a fresh album.
+    /// Empty `identities` (Unknown) skips both lookups — an Unknown import always
+    /// gets a fresh album.
     pub async fn find_existing_album_for_import(
         &self,
         identities: &[crate::import::ReleaseIdentity],
@@ -63,8 +58,8 @@ impl LibraryManager {
             return Ok(None);
         }
 
-        // 1. Per-pressing rejection: any Exact identity matching a row
-        //    already in `release_identities`.
+        // Per-pressing rejection: an Exact identity matching a `release_identities`
+        // row already in the library.
         if let Some(existing) = self
             .database
             .find_album_by_identity_release_excluding(identities, excluded_release_ids)
@@ -76,8 +71,7 @@ impl LibraryManager {
             });
         }
 
-        // 2. Cross-source merge: any group identity matching a row already
-        //    in `release_identities`.
+        // Cross-source merge: a group identity matching a row already there.
         let album_id = self
             .database
             .find_album_by_identity_group_excluding(identities, excluded_release_ids)
@@ -88,26 +82,21 @@ impl LibraryManager {
     }
 
     /// Re-run the seeding projection from `metadata_source` /
-    /// `metadata_source_release_id`, returning the projected
-    /// `ReleaseUserEdit`. Read-only: no DB writes happen here. The caller
-    /// (the editor) populates its form with the returned values; the
-    /// user then re-edits or saves via `apply_release_metadata_user_edit`.
+    /// `metadata_source_release_id` and return the projected `ReleaseUserEdit`.
+    /// Read-only — the editor populates its form from the result, and the user
+    /// re-edits or saves through `apply_release_metadata_user_edit`.
     ///
-    /// Source dispatch:
+    /// - `MusicBrainz` / `Discogs` — re-project the cached `release_metadata` rows
+    ///   under the same rules import uses. Exact vs Approximate comes from the
+    ///   matching `release_identities` row's `source_release_id`: present = Exact
+    ///   (full pressing data), NULL = Approximate (album-group fields only, pressing
+    ///   fields cleared).
+    /// - `FileTags` — re-read the embedded tags from the release's local audio
+    ///   files. Errors if they aren't reachable on disk (cloud-only, no local copy).
     ///
-    /// - `MusicBrainz` / `Discogs` — pull cached `release_metadata` rows
-    ///   for the release and re-project per the same rules import uses.
-    ///   The Exact-vs-Approximate decision comes from the matching
-    ///   `release_identities` row's `source_release_id`: present = Exact
-    ///   (full pressing data), NULL = Approximate (album-group fields
-    ///   only; pressing fields cleared).
-    /// - `FileTags` — re-read embedded tags from the release's local
-    ///   audio files via `map_file_tags_to_db`. Errors out if the files
-    ///   aren't reachable on disk (cloud-only without a local copy).
-    ///
-    /// Identity rows and the `metadata_source` columns are not touched —
-    /// reset replays from the existing pointer rather than changing it.
-    /// Identity changes go through `set_identity`.
+    /// Identity rows and the `metadata_source` columns are untouched: reset replays
+    /// from the existing pointer rather than changing it. Identity changes go
+    /// through `set_identity`.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub async fn reset_metadata_to_source(
         &self,
@@ -175,10 +164,9 @@ impl LibraryManager {
                 }
             };
 
-        // Approximate clearing. The matching identity row drives the
-        // Exact-vs-Approximate decision per source. file_tags has no
-        // identity row to inspect — its pressing fields come straight
-        // from the tags and stay as projected.
+        // The matching identity row decides Exact vs Approximate, per source.
+        // file_tags has no identity row to inspect — its pressing fields come
+        // straight from the tags and stay as projected.
         let approximate = match release.metadata_source {
             ReleaseMetadataSource::MusicBrainz => identities
                 .iter()
@@ -197,37 +185,28 @@ impl LibraryManager {
         Ok(user_edit)
     }
 
-    /// Re-identify commit. Translates the user's `IdentityChoice` from
-    /// the re-identify result list into a fully cross-linked identity vec
-    /// plus metadata pointer, then calls `set_identity`. Mirrors the
-    /// import commit pipeline so a re-identified release lands with the
-    /// same identity-row shape an initial import would produce.
+    /// Re-identify commit: translate the user's `IdentityChoice` into a fully
+    /// cross-linked identity vec plus metadata pointer, then `set_identity`. Mirrors
+    /// the import commit pipeline, so a re-identified release lands with the same
+    /// identity-row shape an initial import would produce.
     ///
-    /// - **Exact / Approximate** — fetches the picked release through
-    ///   `prepare_release` (which composes MB↔Discogs cross-linking via
-    ///   `commit_mb_release` / `commit_discogs_release`) and projects the
-    ///   mapper's identity vec via `apply_identity_choice`. The
-    ///   `metadata_pointer` points at the picked release. The fetched
-    ///   `metadata_pairs` flow into `set_identity` so the cached source
-    ///   payload aligns with the new pointer — reset-to-source can
-    ///   replay the seed without divergence. Track count is checked
-    ///   against the release's existing track row count; a mismatch
-    ///   errors before the identity write so a 12-track release can't
-    ///   replace a 10-track rip.
+    /// - **Exact / Approximate** — fetch the picked release through
+    ///   `prepare_release` (which composes the MB↔Discogs cross-linking) and project
+    ///   the mapper's identity vec through `apply_identity_choice`. The fetched
+    ///   `metadata_pairs` flow into `set_identity` so the cached source payload lines
+    ///   up with the new pointer and reset-to-source can replay the seed without
+    ///   divergence. The picked release's track count is checked against the existing
+    ///   track rows, and a mismatch errors before the identity write — a 12-track
+    ///   release can't replace a 10-track rip. Album/release/track row data is not
+    ///   touched: the identity pointer flips, the rows stay as the user last had them.
     /// - **Unknown** — empty identities, `metadata_source = file_tags`,
-    ///   `metadata_source_release_id = NULL`, no cached payload. Always
-    ///   lands the release on a fresh album. The old source's
-    ///   album/release/track rows are then reseeded from the local file
-    ///   tags in the same call — projecting through the now-`FileTags`
-    ///   pointer via [`Self::reset_metadata_to_source`] and writing the
-    ///   result with [`Self::apply_release_metadata_user_edit`] — so the
-    ///   release stops displaying the prior source's metadata. A
-    ///   tag-sparse rip reseeds to blank-but-editable title/artist rather
-    ///   than erroring.
-    ///
-    /// For **Exact / Approximate** the album/release/track row data is not
-    /// touched: the identity pointer flips, but the existing rows stay as
-    /// the user last had them.
+    ///   `metadata_source_release_id = NULL`, no cached payload; the release always
+    ///   lands on a fresh album. The old source's album/release/track rows would
+    ///   still show its metadata, so the same call reseeds them from the local file
+    ///   tags, projecting through the now-`FileTags` pointer with
+    ///   [`Self::reset_metadata_to_source`] and writing the result with
+    ///   [`Self::apply_release_metadata_user_edit`]. A tag-sparse rip reseeds to a
+    ///   blank-but-editable title/artist rather than erroring.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub async fn re_identify_release(
         &self,
@@ -240,12 +219,11 @@ impl LibraryManager {
             IdentityChoice::Exact { release_ref } | IdentityChoice::Approximate { release_ref } => {
                 let prepared = crate::import::service::prepare_release(self, release_ref).await?;
 
-                // Source pressing track count must match the local
-                // release's row count. The folder-import path enforces
-                // the same invariant via prefetch's `track_count_mismatch`
-                // flag (which disables the commit button); re-identify
-                // bypasses prefetch — the user picks a row directly —
-                // so the check belongs here at commit time.
+                // The source pressing's track count must match the local release's
+                // row count. Folder import enforces the same invariant through
+                // prefetch's `track_count_mismatch` flag, which disables its commit
+                // button; re-identify has no prefetch (the user picks a row
+                // directly), so the check belongs here at commit time.
                 let existing_track_count = self
                     .database
                     .get_tracks_for_release(release_id)
@@ -280,13 +258,11 @@ impl LibraryManager {
         )
         .await?;
 
-        // Unknown flips the pointer to FileTags but leaves the old
-        // source's rows in place — they would still display the prior
-        // (e.g. MusicBrainz) metadata. Reseed atomically here: project
-        // through the now-FileTags pointer and write the result. A
-        // tag-sparse rip projects to a blank-but-editable title/artist,
-        // which `apply_release_metadata_user_edit` accepts (it rejects
-        // only a zero-length artist list, not a blank-named artist).
+        // Unknown flips the pointer to FileTags but leaves the old source's rows
+        // in place, still showing the prior metadata. Reseed them here by projecting
+        // through the now-FileTags pointer. A tag-sparse rip projects to a
+        // blank-but-editable title/artist, which `apply_release_metadata_user_edit`
+        // accepts — it rejects only a zero-length artist list, not a blank name.
         if matches!(identity_choice, IdentityChoice::Unknown) {
             let edit = self.reset_metadata_to_source(release_id).await?;
             self.apply_release_metadata_user_edit(release_id, &edit)
@@ -296,9 +272,8 @@ impl LibraryManager {
         Ok(())
     }
 
-    /// Insert album, release, and tracks into database in a transaction.
-    /// Production imports go through `finalize_import_atomic`; this is only
-    /// a test helper for seeding a full album/release/tracks in one call.
+    /// Test-only: seed a full album/release/tracks in one call. Production imports
+    /// go through `finalize_import_atomic`.
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn insert_album_with_release_and_tracks(
         &self,
@@ -314,8 +289,7 @@ impl LibraryManager {
         Ok(())
     }
 
-    /// Insert a release and tracks into an existing album. Only a test
-    /// helper for seeding a second release onto an already-inserted album.
+    /// Test-only: seed a second release onto an already-inserted album.
     #[cfg(test)]
     pub async fn insert_release_with_tracks(
         &self,
@@ -594,9 +568,9 @@ impl LibraryManager {
         Ok(())
     }
 
-    /// The storage summary for a single release, or `None` if it doesn't exist.
-    /// The download queue reads this at enqueue time for the release's title /
-    /// file count / total size and to skip an already-pinned release.
+    /// The storage summary for one release, or `None` if it doesn't exist. The
+    /// download queue reads it at enqueue time for the title / file count / total
+    /// size, and to skip an already-pinned release.
     pub async fn find_release_storage_summary(
         &self,
         release_id: &str,
@@ -617,11 +591,10 @@ impl LibraryManager {
         )))
     }
 
-    /// Resolved release detail for the album-detail view. Composes a
-    /// `ReleaseSummary` with tracks/files/gallery loaded by SQL joins,
-    /// then derives the release's position in its album so
-    /// `display_name` can be computed without the caller supplying an
-    /// index. Returns `Ok(None)` when the release doesn't exist.
+    /// Resolved release detail for the album-detail view: a `ReleaseSummary` plus
+    /// the tracks/files/gallery its SQL joins load, and the release's position
+    /// within its album, so `display_name` needs no index from the caller. `None`
+    /// when the release doesn't exist.
     pub async fn find_release_detail(
         &self,
         release_id: &str,
@@ -652,7 +625,6 @@ impl LibraryManager {
         )))
     }
 
-    /// Get all releases for a specific album
     pub async fn get_releases_for_album(
         &self,
         album_id: &str,
@@ -667,11 +639,9 @@ impl LibraryManager {
         Ok(self.database.check_releases_in_library(checks).await?)
     }
 
-    /// Get all files for a specific release
-    ///
-    /// Files belong to releases (not albums or tracks). This includes both:
-    /// - Audio files (linked to tracks via db_track_position)
-    /// - Metadata files (cover art, CUE sheets, etc.)
+    /// Every file of a release — audio files, and the metadata files (cover art,
+    /// CUE sheets) that no track owns. Files belong to releases, not to albums or
+    /// tracks; a track reaches its audio file through its `audio_segments`.
     pub async fn get_files_for_release(
         &self,
         release_id: &str,
@@ -679,7 +649,6 @@ impl LibraryManager {
         Ok(self.database.get_files_for_release(release_id).await?)
     }
 
-    /// Get album ID for a release
     pub async fn get_album_id_for_release(&self, release_id: &str) -> Result<String, LibraryError> {
         let album_id = self
             .database
@@ -689,7 +658,7 @@ impl LibraryManager {
         Ok(album_id)
     }
 
-    /// Set an album's cover release (which release provides the cover art)
+    /// Set which of an album's releases provides its cover art.
     pub async fn set_album_primary_release(
         &self,
         album_id: &str,
@@ -704,10 +673,9 @@ impl LibraryManager {
         Ok(())
     }
 
-    /// Delete a release and its associated data. The database rows are removed
-    /// in one cleanup-aware transaction; if this was the last release for the
-    /// album, the album is removed too. coven evicts the blobs named by the
-    /// delete plan after the transaction commits.
+    /// Delete a release and its data. The rows go in one cleanup-aware transaction,
+    /// taking the album with them if this was its last release; coven evicts the
+    /// blobs named by the delete plan once that transaction commits.
     pub async fn delete_release(&self, release_id: &str) -> Result<(), LibraryError> {
         let release = self
             .database
@@ -718,7 +686,8 @@ impl LibraryManager {
             })?;
         let album_id = release.album_id.clone();
 
-        // Collect track IDs before deletion for playback cleanup
+        // Read the track ids before the delete cascades them away — playback needs
+        // them to clear the queue.
         let track_ids: Vec<String> = self
             .get_tracks_for_release(release_id)
             .await?
@@ -749,11 +718,10 @@ impl LibraryManager {
         Ok(())
     }
 
-    /// Remove any releases whose stored content hash equals `hash`, via
-    /// [`delete_release`](Self::delete_release) per match. Re-imports do not use
-    /// this destructive helper; they prepare replacement plans and commit the
-    /// prior-release delete inside the finalize transaction. Only a test
-    /// helper for triggering that removal directly.
+    /// Test-only: remove every release whose stored content hash equals `hash`, one
+    /// [`delete_release`](Self::delete_release) per match. A re-import does NOT use
+    /// this destructive path — it prepares replacement plans and commits the
+    /// prior-release delete inside the finalize transaction.
     #[cfg(test)]
     pub async fn delete_releases_with_content_hash(&self, hash: &str) -> Result<(), LibraryError> {
         for release_id in self.database.release_ids_for_content_hash(hash).await? {
@@ -797,11 +765,10 @@ impl LibraryManager {
     }
 }
 
-/// Project cached MusicBrainz `release_metadata` rows back into a
-/// `ParsedAlbum`. Replays what `commit_mb_release` did at import,
-/// minus the network calls — uses whatever the importer archived in
-/// `release_metadata` (the MB release JSON, optional cross-linked
-/// Discogs release JSON).
+/// Project cached MusicBrainz `release_metadata` rows back into a `ParsedAlbum`:
+/// what `commit_mb_release` did at import, minus the network calls, from whatever
+/// the importer archived (the MB release JSON, plus a cross-linked Discogs release
+/// JSON if there is one).
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 async fn project_musicbrainz_from_cache(
     database: &Database,
@@ -852,9 +819,9 @@ async fn project_musicbrainz_from_cache(
     .map_err(LibraryError::from)
 }
 
-/// Project cached Discogs `release_metadata` rows back into a
-/// `ParsedAlbum`. Replays the import-time projection from the archived
-/// raw JSON (Discogs release + optional master + optional MB cross-ref).
+/// Project cached Discogs `release_metadata` rows back into a `ParsedAlbum`: the
+/// import-time projection replayed from the archived raw JSON (the Discogs release,
+/// plus its master and an MB cross-ref if archived).
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 async fn project_discogs_from_cache(
     database: &Database,
@@ -910,10 +877,9 @@ async fn project_discogs_from_cache(
     .map_err(LibraryError::from)
 }
 
-/// Project the embedded tags of a release's local audio files into a
-/// `ParsedAlbum`. Mirrors the Unknown import path's call to
-/// `map_file_tags_to_db`. Errors out if any audio file is unreachable on
-/// disk (cloud-only release without a local copy).
+/// Project the embedded tags of a release's local audio files into a `ParsedAlbum`,
+/// as the Unknown import path does. Errors if any audio file is unreachable on disk
+/// (a cloud-only release with no local copy).
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 async fn project_file_tags(
     database: &Database,
@@ -981,14 +947,12 @@ pub(crate) async fn cover_ref_for(
         }))
 }
 
-/// Free-function variant of `LibraryManager::find_release_detail`.
-///
-/// Used by the manager and by the upload observer (which holds the same
-/// `Database` and a `CovenHandle` so it can emit `ReleaseUpdated` events for a
-/// release whose `local_path` just got cleared at the end of an upload run,
-/// without owning a manager). The pin-state is answered through `handle`, the
-/// same door the manager uses. `has_cloud_home` is supplied by the caller; the
-/// observer fires inside a running sync cycle so it can pass `true`.
+/// Free-function variant of `LibraryManager::find_release_detail`, so the upload
+/// observer — which holds a `Database` and a `CovenHandle` but no manager — can
+/// emit `ReleaseUpdated` when coven completes a transition. Pin state is answered
+/// through `handle`, the same door the manager uses. The caller supplies
+/// `has_cloud_home`; the observer fires inside a running sync cycle, so it passes
+/// `true`.
 pub(crate) async fn find_release_detail_with(
     database: &Database,
     handle: &CovenHandle,

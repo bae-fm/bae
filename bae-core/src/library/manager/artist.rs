@@ -10,13 +10,11 @@ pub(crate) struct ResolvedImportArtists {
 }
 
 impl LibraryManager {
-    /// Insert an artist
     pub async fn insert_artist(&self, artist: &DbArtist) -> Result<(), LibraryError> {
         self.database.insert_artist(artist).await?;
         Ok(())
     }
 
-    /// Get artists for an album
     pub async fn get_artists_for_album(
         &self,
         album_id: &str,
@@ -24,7 +22,6 @@ impl LibraryManager {
         Ok(self.database.get_artists_for_album(album_id).await?)
     }
 
-    /// Get artists for a track
     pub async fn get_artists_for_track(
         &self,
         track_id: &str,
@@ -32,7 +29,6 @@ impl LibraryManager {
         Ok(self.database.get_artists_for_track(track_id).await?)
     }
 
-    /// Get artist by ID
     pub async fn get_artist_by_id(
         &self,
         artist_id: &str,
@@ -90,16 +86,14 @@ impl LibraryManager {
         }))
     }
 
-    /// Resolve each parsed artist to an existing DB row or a row to insert at
-    /// finalize.
+    /// Resolve each parsed artist to an existing DB row, or to a row for finalize to
+    /// insert. `ids` comes back in input order, so a caller can zip it with `artists`
+    /// to map parsed IDs to DB IDs.
     ///
-    /// Returns the DB artist ID for each input in the same order, so callers can
-    /// zip with `artists` to build a parsed-ID -> DB-ID map.
-    ///
-    /// Lookup chain: Various Artists alias (cross-source), `discogs_artist_id`,
-    /// `musicbrainz_artist_id`, name (case-insensitive) with source-ID
-    /// conflict check, then deferred insert. On a match, any new source IDs are
-    /// carried as a deferred COALESCE update.
+    /// Lookup chain: the cross-source Various Artists alias, `discogs_artist_id`,
+    /// `musicbrainz_artist_id`, then a case-insensitive name match guarded by a
+    /// source-ID conflict check; failing all of those, a deferred insert. A match
+    /// carries any new source IDs out as a deferred COALESCE update.
     pub(crate) async fn resolve_artists_for_import(
         &self,
         artists: &[DbArtist],
@@ -129,8 +123,8 @@ impl LibraryManager {
         })
     }
 
-    /// Resolve each parsed artist to an existing DB row or insert it
-    /// immediately. Used by metadata edits, whose DB write path updates an
+    /// Resolve each parsed artist to an existing DB row, inserting immediately when
+    /// there is none. For metadata edits, whose write path updates an
     /// already-finalized release.
     pub async fn find_or_create_artists(
         &self,
@@ -157,8 +151,8 @@ impl LibraryManager {
         &self,
         artist: &DbArtist,
     ) -> Result<Option<DbArtist>, LibraryError> {
-        // Various Artists: match any known VA ID across sources so that
-        // Discogs "Various" merges with MusicBrainz "Various Artists".
+        // Match any known Various Artists ID across sources, so Discogs "Various"
+        // merges with MusicBrainz "Various Artists".
         if artist.is_various_artists() {
             let va = &crate::db::VARIOUS_ARTISTS;
             if let Some(existing) = self.database.get_artist_by_discogs_id(va.discogs).await? {

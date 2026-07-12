@@ -9,11 +9,10 @@ pub enum CueFlacError {
     CueParsing(String),
 }
 
-/// Represents a single track in a CUE sheet.
+/// One `INDEX` point of a track, positioned in CUE frames (1/75th of a second).
 ///
-/// All positions are stored in CUE frames (1/75th of a second).
-/// Convert to samples with `cue_frames * sample_rate / 75` (exact for all standard rates).
-/// Convert to ms with `cue_frames * 1000 / 75` (lossy, for UI display only).
+/// Convert to samples with `frames * sample_rate / 75` — exact at every standard
+/// rate. Convert to ms with `frames * 1000 / 75`, which is lossy: UI display only.
 #[derive(Debug, Clone)]
 pub struct CueIndex {
     pub number: u32,
@@ -70,7 +69,8 @@ impl CueTrack {
         self.indexes.iter().find(|index| index.number == number)
     }
 
-    /// Where audio bytes begin (CUE frames): INDEX 00 if pregap exists, else INDEX 01
+    /// Where audio bytes begin, in CUE frames: INDEX 00 when the pregap is real
+    /// audio, else INDEX 01.
     pub fn audio_start_cue_frames(&self) -> u64 {
         match &self.pregap {
             CuePregap::Audio(index) => index.frames,
@@ -95,23 +95,21 @@ impl CueTrack {
         }
     }
 
-    /// Where audio bytes begin, as sample position
-    /// INDEX 01 position in milliseconds (lossy, for UI display only)
+    /// INDEX 01 position in ms. Lossy — UI display only, as with the three below.
     pub fn start_time_ms(&self) -> u64 {
         self.start_cue_frames * 1000 / 75
     }
 
-    /// Where audio bytes begin in ms (lossy, for UI display only)
+    /// Where the track's audio bytes begin, in ms — the pregap when there is one.
     pub fn audio_start_ms(&self) -> u64 {
         self.audio_start_cue_frames() * 1000 / 75
     }
 
-    /// End time in ms (lossy, for UI display only)
     pub fn end_time_ms(&self) -> Option<u64> {
         self.end_cue_frames.map(|f| f * 1000 / 75)
     }
 
-    /// Duration from INDEX 01 to end in ms (for UI display, excludes pregap)
+    /// INDEX 01 to end, in ms — excludes the pregap.
     pub fn track_duration_ms(&self) -> Option<u64> {
         self.end_cue_frames
             .map(|end| (end * 1000 / 75).saturating_sub(self.start_time_ms()))
@@ -130,7 +128,6 @@ impl CueTrack {
     }
 }
 
-/// Represents a parsed CUE sheet
 #[derive(Debug, Clone)]
 pub struct CueSheet {
     pub title: Option<String>,
@@ -247,7 +244,6 @@ impl PendingCueTrack {
         })
     }
 }
-/// Parse a CUE sheet file
 pub fn parse_cue_sheet(cue_path: &Path) -> Result<CueSheet, CueFlacError> {
     use tracing::{debug, error};
     debug!("Attempting to parse CUE sheet: {:?}", cue_path);
@@ -268,22 +264,20 @@ pub fn parse_cue_sheet(cue_path: &Path) -> Result<CueSheet, CueFlacError> {
 }
 /// Parse CUE sheet content.
 ///
-/// The top-level header (TITLE, PERFORMER, CATALOG, REM, and the initial
-/// FILE) is accepted in any order with any subset present — the scanner
-/// and importer only need track counts, offsets, and file references, so
-/// requiring a specific header shape would reject real CUE files
-/// unnecessarily. After the header, a sequence of `AUDIO` TRACK entries
-/// follows; the currently-scoped FILE applies to every TRACK that
-/// follows until the next FILE. A FILE may appear *inside* a track body,
-/// not only between tracks (per-track rips put each track's INDEX 00
-/// pregap at the tail of the previous file and INDEX 01 start at the
-/// head of the next — the FILE directive sits between the two INDEX
-/// lines). A track's `file_reference` is whichever FILE was current at
-/// the moment its INDEX 01 was parsed — the file we'd actually play.
-/// `single_file()` discriminates single-FILE (the EAC concatenated-audio
-/// shape) from multi-FILE (one FILE per TRACK, common in lossy-format
-/// rips). Malformed entries — TRACK before any FILE, or a TRACK body
-/// that lacks INDEX 01 — are a parse error.
+/// The header (TITLE, PERFORMER, CATALOG, REM, the initial FILE) is accepted in
+/// any order with any subset present: downstream only needs track counts,
+/// offsets, and file references, so demanding a fixed header shape would reject
+/// real CUE files for nothing.
+///
+/// After the header come the TRACK entries. The FILE in scope applies to every
+/// TRACK until the next FILE, and a FILE may appear *inside* a track body, not
+/// only between tracks — a per-track rip puts a track's INDEX 00 pregap at the
+/// tail of the previous file and its INDEX 01 at the head of the next, so the
+/// FILE directive lands between the two INDEX lines. A track's `file_reference`
+/// is therefore whichever FILE was current when its INDEX 01 was parsed: the file
+/// we would actually play.
+///
+/// A TRACK before any FILE, or a TRACK body without INDEX 01, is a parse error.
 fn parse_cue_content(input: &str) -> Result<CueSheet, CueFlacError> {
     let mut title: Option<String> = None;
     let mut performer: Option<String> = None;
@@ -341,9 +335,9 @@ fn parse_cue_content(input: &str) -> Result<CueSheet, CueFlacError> {
         ));
     }
 
-    // Some rippers write bogus INDEX 00 values that are before the
-    // previous track's INDEX 01. Remove them so every downstream boundary
-    // reader sees the same corrected shape.
+    // Some rippers write a bogus INDEX 00 that sits before the previous track's
+    // INDEX 01. Drop those here, so every downstream boundary reader sees one
+    // already-corrected shape.
     for i in 1..tracks.len() {
         let bogus = match &tracks[i].pregap {
             CuePregap::Audio(index) => index.frames <= tracks[i - 1].start_cue_frames,
@@ -493,8 +487,8 @@ fn parse_u32_token(line: &str, token: Option<&str>) -> Result<u32, CueFlacError>
         .map_err(|_| CueFlacError::CueParsing(format!("invalid number in line: {line:?}")))
 }
 
-/// Spec-known commands valid inside a TRACK body that we don't store.
-/// Recognized so they don't trigger the unknown-line warning.
+/// Spec commands valid inside a TRACK body that we don't store — listed so they
+/// don't trip the unknown-line warning.
 fn track_keyword_is_known_skipped(keyword: &str) -> bool {
     const TRACK_BODY_SKIPPED: &[&str] = &[
         "FLAGS",
@@ -514,9 +508,8 @@ fn track_keyword_is_known_skipped(keyword: &str) -> bool {
     ];
     TRACK_BODY_SKIPPED.contains(&keyword)
 }
-/// Spec-known global-section commands we don't store. CD-Text keywords
-/// can also appear at the global level; CDTEXTFILE references an
-/// external binary CD-Text file.
+/// The same, for the header. CD-Text keywords may appear at the global level too,
+/// and CDTEXTFILE points at an external binary CD-Text file.
 fn header_keyword_is_known_skipped(keyword: &str) -> bool {
     const HEADER_SKIPPED: &[&str] = &[
         "CDTEXTFILE",
@@ -571,9 +564,8 @@ fn parse_file_name_value(line: &str, rest: &str) -> Result<String, CueFlacError>
     Ok(name.to_string())
 }
 
-/// Parse time in MM:SS:FF format and return total CUE frames (1/75th
-/// second). The frames field parses leading ASCII digits and ignores any
-/// trailer.
+/// MM:SS:FF to total CUE frames (1/75th second). The frames field takes its
+/// leading ASCII digits and ignores any trailer.
 fn parse_time(input: &str) -> Result<u64, CueFlacError> {
     let mut parts = input.splitn(3, ':');
     let minutes = parse_u64_time_field(input, parts.next())?;

@@ -8,12 +8,11 @@ fn parse_oauth_tokens(json: &str) -> Result<coven::OAuthTokens, BridgeError> {
         .map_err(|e| BridgeError::config(format!("Invalid OAuth token JSON: {e}")))
 }
 
-/// The cloud providers this build supports, in display order: the credential /
-/// native providers (S3, then CloudKit) ahead of the OAuth providers, matching
-/// the order the picker used before it became data-driven. S3 is always
-/// available; CloudKit and the OAuth providers appear only when their features
-/// are compiled in. The UI renders its provider picker from this list instead of
-/// hardcoding one, so a baeium (S3-only) build offers only S3.
+/// The cloud providers this build supports, in picker display order: the
+/// credential / native providers (S3, then CloudKit) ahead of the OAuth ones. S3
+/// is always available; the rest appear only when their features are compiled in,
+/// so a baeium (S3-only) build offers only S3. The UI renders its provider picker
+/// from this list rather than hardcoding one.
 #[uniffi::export]
 pub fn available_cloud_providers() -> Vec<BridgeCloudProvider> {
     vec![
@@ -29,10 +28,9 @@ pub fn available_cloud_providers() -> Vec<BridgeCloudProvider> {
     ]
 }
 
-/// Build a BridgeLibrary from its raw parts. The two call sites that wrap
-/// this — `BridgeLibrary::from_core` for a freshly-opened Config,
-/// `BridgeLibrary::from_core_info` for a discovery-scan entry — just differ in
-/// where the fields come from.
+/// Build a BridgeLibrary from its raw parts. Its two wrappers —
+/// `BridgeLibrary::from_core` (a freshly-opened Config) and `from_core_info` (a
+/// discovery-scan entry) — differ only in where the fields come from.
 fn local_library(
     id: String,
     name: String,
@@ -131,9 +129,9 @@ async fn restore_from_code_config(
     }
 }
 
-/// Holds a handle to the in-progress OAuth runtime plus a cancellation flag.
-/// `oauth_cancel()` sends a signal via the oneshot, which the authorize flow
-/// selects on alongside the callback wait.
+/// The cancel sender for the one in-flight OAuth flow. `oauth_cancel` flips it;
+/// the matching receiver rides into `coven::authorize_provider`, which watches it
+/// alongside the callback wait and tears the listener down.
 #[cfg(feature = "oauth-providers")]
 static OAUTH_CANCEL_TX: Mutex<Option<tokio::sync::watch::Sender<bool>>> = Mutex::new(None);
 /// A pending host-driven OAuth exchange, keyed by request id between
@@ -169,12 +167,12 @@ fn lock_bridge_mutex<T>(mutex: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
 }
 
 /// Point bae's data directory at `path/.bae` by exporting `path` as `$HOME`,
-/// which is what `dirs::home_dir()` (and thus `bae_dir()` / library discovery /
-/// restore / `init_app`) resolves against. Mobile app processes don't get a
-/// `$HOME`, so the native app MUST call this once at startup — before
-/// `init_keyring`, `discover_libraries`, restore, or `init_app` — passing its
-/// private files directory (e.g. Android `Context.filesDir`). Without it those
-/// calls fail with "could not determine home directory".
+/// which `dirs::home_dir()` — and so `bae_dir()`, library discovery, restore, and
+/// `init_app` — resolves against. Mobile app processes get no `$HOME`, so the
+/// native app MUST call this once at startup, before `init_keyring`,
+/// `discover_libraries`, restore, or `init_app`, passing its private files
+/// directory (e.g. Android `Context.filesDir`). Without it those calls fail with
+/// "could not determine home directory".
 #[cfg(any(target_os = "ios", target_os = "android"))]
 #[uniffi::export]
 pub fn set_data_dir(path: String) {
@@ -183,14 +181,13 @@ pub fn set_data_dir(path: String) {
     std::env::set_var("HOME", path);
 }
 
-/// Point the TLS stack at the OS's certificate-authority store via `SSL_CERT_DIR`
-/// (a colon-separated list of directories, honored by `rustls-native-certs`,
-/// which both the S3 client and reqwest use). Android exposes its trusted roots
-/// as PEM files under these directories but not on the POSIX paths the cert
-/// loader probes by default, so native-root loading otherwise finds nothing and
-/// every TLS handshake fails. Pointing at the OS store keeps certificate trust —
-/// including additions and distrusts — owned and updated by the platform, not
-/// the app. The Android caller passes its system cert directories.
+/// Point the TLS stack at the OS certificate-authority store via `SSL_CERT_DIR`
+/// (colon-separated directories, honored by `rustls-native-certs`, which both the
+/// S3 client and reqwest use). Android keeps its trusted roots as PEM files under
+/// these directories rather than the POSIX paths the cert loader probes by
+/// default, so without this native-root loading finds nothing and every TLS
+/// handshake fails. The Android caller passes its system cert directories; trust
+/// — additions and distrusts alike — stays owned by the platform, not the app.
 #[cfg(target_os = "android")]
 #[uniffi::export]
 pub fn set_ca_cert_dir(dirs: String) {
@@ -198,13 +195,8 @@ pub fn set_ca_cert_dir(dirs: String) {
 }
 
 /// Initialize the platform keyring. Call once at app startup, before any bridge
-/// function that touches the keyring (e.g. `unlockLibrary`, `initApp`).
-/// Safe to call multiple times — re-initializing the keyring just replaces the
-/// store.
-///
-/// coven's synced-table set is no longer registered here: the host hands it to
-/// `Coven::builder(...).synced_tables(...)` at the point the library is opened,
-/// so there is no separate process-global registration step.
+/// function that touches the keyring (e.g. `unlockLibrary`, `initApp`). Safe to
+/// call again — it just replaces the store.
 #[uniffi::export]
 pub fn init_keyring() {
     bae_core::config::init_keyring();
@@ -236,18 +228,18 @@ pub fn create_library(name: Option<String>) -> Result<BridgeLibrary, BridgeError
     BridgeLibrary::from_core(&config)
 }
 
-/// Run the future built by `make_fut` on a worker of a shared onboarding
-/// runtime, blocking the calling thread until it completes.
+/// Run the future built by `make_fut` on a worker of a shared onboarding runtime,
+/// blocking the calling thread until it completes.
 ///
-/// The onboarding exports (restore, OAuth) run before any `AppHandle` (and its
-/// tokio runtime) exists, so they share this process-wide runtime instead. Its
-/// workers have 16 MB stacks (like `init`'s) — deep enough for coven's pull
-/// descents. `spawn` moves that work onto a worker; the foreign caller only
-/// `block_on`s the shallow `JoinHandle`, so nothing deep is ever polled on its
-/// ~0.5 MB stack. (The AWS-SDK S3 endpoint descent runs on coven's own
-/// big-stack S3 runtime regardless of who awaits it.)
+/// The onboarding exports (restore, OAuth) run before any `AppHandle` — and its
+/// tokio runtime — exists, so they share this process-wide one. Its workers have
+/// 16 MB stacks (like `init`'s), deep enough for coven's pull descents; `spawn`
+/// moves the work onto a worker, so the foreign caller only `block_on`s the
+/// shallow `JoinHandle` and nothing deep is ever polled on its ~0.5 MB stack.
+/// (The AWS-SDK S3 endpoint descent runs on coven's own big-stack S3 runtime
+/// regardless of who awaits it.)
 ///
-/// This requires the futures to be `Send` + `'static`. They are: coven's pull
+/// That requires the futures to be `Send` + `'static`. They are: coven's pull
 /// path carries the database handle as a `Send`-able `SendDbPtr`, so no
 /// non-`Send` `*mut sqlite3` is held across the download await.
 fn on_worker<T, Fut>(make_fut: impl FnOnce() -> Fut) -> Result<T, BridgeError>
@@ -285,10 +277,6 @@ pub fn restore_from_cloud(
     let library_name = library_name.unwrap_or_else(bae_core::library_name::generate_library_name);
 
     on_worker(move || async move {
-        // `RestoreSource` is now `{ join_info, oauth_tokens, cloudkit_ops }`: the
-        // provider identity is a `CloudHomeJoinInfo`, and the OAuth/CloudKit
-        // extras a restore code can't carry ride alongside. Build the join info
-        // per provider and attach the matching extra.
         let core_source = match source {
             BridgeRestoreSource::S3 {
                 bucket,
@@ -298,8 +286,7 @@ pub fn restore_from_cloud(
                 secret_key,
             } => RestoreSource {
                 // `BridgeRestoreSource::S3` carries no key_prefix, so restore over
-                // S3 reads from the bucket root — the behavior bae had before the
-                // field flowed through coven's join info.
+                // S3 reads from the bucket root.
                 join_info: CloudHomeJoinInfo::S3 {
                     bucket,
                     region,
@@ -671,7 +658,6 @@ impl JoinFromCodeOperation {
     }
 }
 
-/// Create a new cancel channel, store the sender, return the receiver.
 #[cfg(feature = "oauth-providers")]
 pub(crate) fn new_oauth_cancel() -> tokio::sync::watch::Receiver<bool> {
     let (tx, rx) = tokio::sync::watch::channel(false);
@@ -686,7 +672,6 @@ pub(crate) fn new_oauth_cancel() -> tokio::sync::watch::Receiver<bool> {
 #[cfg(feature = "oauth-providers")]
 #[uniffi::export]
 pub fn oauth_authorize(provider: BridgeCloudProvider) -> Result<String, BridgeError> {
-    // Cancel any lingering previous flow
     oauth_cancel();
 
     let cancel = new_oauth_cancel();
@@ -702,7 +687,6 @@ pub fn oauth_authorize(provider: BridgeCloudProvider) -> Result<String, BridgeEr
             .map_err(|e| BridgeError::internal(format!("Failed to serialize tokens: {e}")))
     });
 
-    // Clean up
     *lock_bridge_mutex(&OAUTH_CANCEL_TX) = None;
 
     result

@@ -111,18 +111,16 @@ impl PlaybackService {
         // only on seek).
         *self.current_position_shared.lock().unwrap() = Some(position_offset);
 
-        // Hold the phase in Loading until audio is actually flowing. The in-core
-        // decoder signals `ready` when the ring buffer fills to the play threshold
-        // (or hits EOF for a short track); a watcher task turns that into a
-        // `TrackReady` command so the command loop stays responsive to Stop/Pause
-        // during a slow cloud load. Awaiting inline would wedge the loop.
+        // The decoder signals `ready` once its ring fills to the play threshold (or
+        // hits EOF on a short track). A watcher task turns that into a `TrackReady`
+        // command, keeping the command loop responsive to Stop/Pause during a slow
+        // cloud load — awaiting it inline would wedge the loop.
         let command_tx = self.command_tx.clone();
         tokio::spawn(async move {
             // Err means the decoder dropped its sink before signalling ready (it
             // died or was cancelled). The decode-failure path drives playback to
-            // Stopped, and a cancelled load's generation no longer matches so
-            // TrackReady would be ignored anyway — the error path owns recovery,
-            // so just record the dropped watcher.
+            // Stopped, and a cancelled load's generation no longer matches, so a
+            // TrackReady would be ignored anyway — just record the dropped watcher.
             match ready.await {
                 Ok(()) => dispatch_command(
                     &command_tx,
@@ -143,8 +141,10 @@ impl PlaybackService {
         })
     }
 
-    /// Play a track.
-    /// - `start`: selects direct starts, natural transitions, or a restored raw position
+    /// Play `track_id` from scratch: tear down whatever was playing, resolve and
+    /// prepare it, spawn its decoder, and install it as current.
+    /// - `start`: a direct start (pregap skipped), a natural transition (pregap
+    ///   played), or a restored raw position.
     /// - `target`: where the load lands once audio is ready (Playing, or Paused
     ///   with a reason). Computed absolutely by the caller.
     /// - `transition`: how this start came about, for the `TrackStarted` event.
@@ -169,12 +169,11 @@ impl PlaybackService {
             self.telemetry_track_started(track_id, transition);
         }
 
-        // Tear down the outgoing track and preload up front so a manual switch
-        // silences the old audio immediately and stops the old decoders. Their
-        // file buffers stay cached and live until the incoming track is
-        // prepared — only then is it known which files it shares (a CUE album's
-        // tracks all play from one file, whose buffer and fill task must
-        // survive the switch).
+        // Tear the outgoing track and preload down first, so a manual switch
+        // silences the old audio at once and stops the old decoders. Their file
+        // buffers stay cached and live until the incoming track is prepared — only
+        // then is it known which files it shares (a CUE album's tracks all play
+        // from one file, whose buffer and fill task must survive the switch).
         let outgoing = self.teardown_current_track();
         let outgoing_preload = self.take_preloaded_prepared();
 
@@ -186,7 +185,6 @@ impl PlaybackService {
         self.sync_audio_state();
         self.emit_state();
 
-        // Prepare track: fetch metadata, create buffer, start reading
         let prepared = prepare_track_for_playback(
             &self.library_manager,
             track_id,
@@ -213,9 +211,8 @@ impl PlaybackService {
             }
         };
 
-        // The incoming track's files are known now: release the outgoing
-        // current and preload buffers, keeping any file the new track also
-        // plays.
+        // The incoming track's files are known now: release the outgoing current
+        // and preload buffers, keeping any file the new track also plays.
         let retained_file_ids = prepared.file_ids();
         for old in [outgoing, outgoing_preload].into_iter().flatten() {
             old.release_buffers(&retained_file_ids, &mut self.shared_file_buffers);
@@ -262,11 +259,11 @@ impl PlaybackService {
             }
         };
 
-        // Assemble the current track. The phase stays Loading (with this load's
-        // generation and target) until the ready-watcher's TrackReady resolves it
-        // — no StateChanged is emitted here; the second Loading above is the last
-        // emission until audio flows. `install_active_track` projects the target
-        // onto the atomic so the callback outputs samples/silence as intended.
+        // The phase stays Loading (with this load's generation and target) until
+        // the ready-watcher's TrackReady resolves it, so no StateChanged is
+        // emitted here — the second Loading above is the last emission until audio
+        // flows. `install_active_track` projects the target onto the atomic so the
+        // callback outputs samples or silence as intended.
         self.install_active_track(
             prepared,
             decoder,
@@ -282,17 +279,15 @@ impl PlaybackService {
     }
 
     pub(super) async fn stop(&mut self) {
-        // Stop any active preview first (without resuming main, since we're stopping)
+        // Nothing to resume into, so drop the preview's pause marker with it.
         self.stop_preview_for_main_playback();
 
-        // Tear down the current track (cancel its decoder) — the half `stop()`
-        // shares with a manual track switch. The returned prepared track's buffers
-        // are covered by the cache-wide cancel below.
+        // The half `stop()` shares with a manual track switch: cancel the current
+        // decoder. Its buffers are covered by the cache-wide cancel below.
         self.teardown_current_track();
 
-        // Stop-specific teardown beyond the current track. Clear the preload while
-        // `self.output` is still present so a staged next source can be recovered
-        // and its sink cancelled, then drop the persistent output stream.
+        // Clear the preload while `self.output` is still present, so a staged next
+        // source can be recovered from it and its sink cancelled.
         self.clear_next_track_state();
         // Cancel the output's source before dropping it, then drop the persistent
         // output. Cancelling unparks the outgoing decoder even when it's blocked
@@ -303,21 +298,19 @@ impl PlaybackService {
         if let Some(out) = self.output.take() {
             out.source.lock().unwrap().cancel();
         }
-        // Stop means we're done with this album: cancel every cached file
-        // buffer (stopping its fill task and unblocking its readers) and drop
-        // the cache.
+        // Stop means done with this album: cancel every cached file buffer
+        // (stopping its fill task and unblocking its readers) and drop the cache.
         for buffer in self.shared_file_buffers.values() {
             buffer.cancel();
         }
         self.shared_file_buffers.clear();
         *self.current_position_shared.lock().unwrap() = None;
         self.reset_starvation_episode();
-        // The slot is Stopped; project that onto the atomic and emit Stopped.
         self.sync_audio_state();
         self.emit_state();
-        // Audio is now Stopped, so this clears the durable row — covering every
-        // stop path (natural end, halt-on-error, the current track removed),
-        // not just the explicit Stop command.
+        // With the slot Stopped this clears the durable row — on every stop path
+        // (natural end, halt-on-error, the current track removed), not just the
+        // explicit Stop command.
         self.persist_playback_state().await;
     }
 }

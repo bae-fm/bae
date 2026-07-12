@@ -44,8 +44,8 @@ fn update(state: IdentifyState, signals: Signals) -> (IdentifyState, Vec<Effect>
     step(state, IdentifyEvent::SignalsUpdated { signals })
 }
 
-/// Build barcode code payloads with an arbitrary `Artwork` origin — the
-/// state machine only reads `.value`, so the origin is immaterial here.
+/// Barcode codes with an arbitrary `Artwork` origin — the state machine reads only
+/// `.value` from them, so the origin doesn't matter here.
 fn artwork_codes(values: &[&str]) -> Vec<SourcedValue> {
     values
         .iter()
@@ -632,14 +632,11 @@ fn toggle_excludes_discid_then_re_includes() {
     );
 }
 
-/// Toggling a signal *during* triangulation records the exclusion without
-/// collapsing the in-flight lookups: the state stays `Triangulating`, the
-/// badge reads excluded, and the exclusion is honored once the lookups
-/// settle (disc excluded → barcode-only Found).
+/// Toggling mid-triangulation records the exclusion without collapsing the
+/// in-flight lookups: the state stays `Triangulating`, the badge reads excluded,
+/// and the exclusion is honored once the lookups settle.
 #[test]
 fn toggle_during_triangulation_keeps_looking_up() {
-    // Disc-ID computed + one barcode → both lookups dispatched, still
-    // Triangulating.
     let (state, effects) = update(
         started(),
         signals(
@@ -658,8 +655,7 @@ fn toggle_during_triangulation_keeps_looking_up() {
         .iter()
         .any(|e| matches!(e, Effect::LookupDiscid { .. })));
 
-    // Toggle the disc signal off mid-lookup: must NOT collapse to a
-    // terminal state, and must dispatch nothing.
+    // Toggling mid-lookup must not collapse to a terminal state or dispatch.
     let (state, effects) = step(
         state,
         IdentifyEvent::SignalToggled {
@@ -678,7 +674,7 @@ fn toggle_during_triangulation_keeps_looking_up() {
         .expect("disc badge");
     assert!(disc.excluded, "disc badge reads excluded after toggle");
 
-    // Both lookups settle; the exclusion is honored → barcode-only Found.
+    // Both settle; the exclusion holds, so the disc results don't count.
     let (state, _) = step(
         state,
         IdentifyEvent::DiscidLookupCompleted {
@@ -705,11 +701,10 @@ fn toggle_during_triangulation_keeps_looking_up() {
     }
 }
 
-/// `ReRun` from a settled state resets to `Triangulating` and re-dispatches
-/// both lookups from the retained signals.
+/// `ReRun` from a settled state resets to `Triangulating` and re-dispatches both
+/// lookups from the retained signals.
 #[test]
 fn rerun_re_dispatches_lookups() {
-    // A plain disc-only Found, then re-run.
     let (state, _) = update(
         started(),
         signals(
@@ -758,9 +753,9 @@ fn rerun_re_dispatches_lookups() {
     );
 }
 
-/// `ReRun` from a skip-only candidate (disc Absent, no barcodes) dispatches
-/// no lookups, so rerun must settle immediately via settle_if_ready rather
-/// than park in `Triangulating` waiting for results that never arrive.
+/// A skip-only candidate (disc `Absent`, no barcodes) dispatches no lookups, so a
+/// re-run has to settle immediately rather than park in `Triangulating` waiting for
+/// results that will never arrive.
 #[test]
 fn rerun_with_nothing_to_look_up_settles() {
     let (settled, effects) = update(
@@ -794,11 +789,9 @@ fn rerun_with_nothing_to_look_up_settles() {
     );
 }
 
-/// `ReRun` preserves the user's exclusions: a re-run after excluding the
-/// disc still does not re-include it (no disc lookup dispatched once the
-/// re-derive masks it). Here we exclude the barcode, re-run, and confirm
-/// the barcode lookup is still dispatched (re-run replays the lookups
-/// regardless) but the settled re-derive masks the excluded side.
+/// A re-run replays both lookups regardless of exclusions, but the re-derive that
+/// follows still masks the excluded side: exclude the disc, re-run, and the state
+/// settles back to barcode-only `Found` rather than to the original conflict.
 #[test]
 fn rerun_preserves_exclusions() {
     let conflict = driven_conflict();
@@ -972,9 +965,8 @@ fn toolbar_artwork_catalog_does_not_confirm() {
 
 #[test]
 fn toolbar_shows_failed_disc_id_lookup() {
-    // The disc-id lookup fails while the barcode is still in flight, so the
-    // pipeline stays in Triangulating and the disc badge reports the
-    // failure rather than a spinner or a count.
+    // The disc-ID lookup fails while the barcode is still in flight, so the badge
+    // must read Failed rather than keep spinning.
     let (state, _) = update(
         started(),
         signals(
@@ -1096,8 +1088,8 @@ fn idle_has_empty_toolbar() {
     assert!(IdentifyState::Idle.toolbar().is_empty());
 }
 
-/// A pair whose `LibraryStatus` reports the release (and its album) already in
-/// the library — the in-library flags every current fixture leaves false.
+/// A pair whose `LibraryStatus` reports the release and its album already in the
+/// library — the flags every other fixture here leaves false.
 fn pair_in_library(release_id: &str, group_id: Option<&str>) -> (MetadataResult, LibraryStatus) {
     (
         mk_result(release_id, group_id),
@@ -1111,9 +1103,8 @@ fn pair_in_library(release_id: &str, group_id: Option<&str>) -> (MetadataResult,
     )
 }
 
-/// A match that's already in the library carries its `release_in_library` /
-/// `album_in_library` flags through combine into the terminal `Found` state,
-/// index-aligned with `matches`.
+/// An in-library match keeps its flags through combine into `Found`, index-aligned
+/// with `matches`.
 #[test]
 fn found_carries_in_library_status_through() {
     let (state, _) = update(

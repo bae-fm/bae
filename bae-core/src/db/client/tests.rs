@@ -110,9 +110,8 @@ mod in_clause_chunking_tests {
     }
 
     /// `cover_versions` takes a whole page's release ids, which is unbounded, so it
-    /// chunks like its siblings. Past SQLite's variable limit an unchunked `IN` does
-    /// not return fewer rows — it fails the query — and the limit is high enough
-    /// (32k) that only chunking keeps the input size from mattering at all.
+    /// chunks like its siblings. Past SQLite's variable limit an unchunked `IN`
+    /// doesn't return fewer rows — it fails the query outright.
     #[tokio::test]
     async fn cover_versions_merges_chunks() {
         let tmp = tempfile::TempDir::new().unwrap();
@@ -588,9 +587,9 @@ mod readable_cloud_path_tests {
 
     #[test]
     fn audio_key_omits_source_folder_when_release_has_none() {
-        // The seeded release has no source_folder_name (a non-folder import).
-        // The stored key is namespace-relative; coven prepends the `storage/`
-        // audio namespace when it reads/writes the blob.
+        // The seeded release has no source_folder_name (a non-folder import). The
+        // stored key is namespace-relative; coven prepends the `release_files`
+        // namespace when it reads/writes the blob.
         let conn = seeded_conn();
         let key = resolve_audio_cloud_path(&conn, "rel-1", "01 Track Title.flac").unwrap();
         assert_eq!(key, "album-1/rel-1/01 Track Title.flac");
@@ -851,12 +850,11 @@ mod composer_mode_tests {
         }
     }
 
-    /// Shared arrange for the two reimport-replacement tests. Seeds `album-old`
-    /// with `existing_release_ids` (its `primary_release_id` set to
-    /// `replaced_release_id`), then finalizes a reimport whose new release
-    /// `rel-new` lands in the fresh `album-new`, carrying an
-    /// `ImportReplacementDelete` for `replaced_release_id`. Returns the
-    /// finalize outcomes so each test asserts the album fate on its own.
+    /// Shared arrange for the two reimport-replacement tests. Seeds `album-old` with
+    /// `existing_release_ids` and its `primary_release_id` at `replaced_release_id`,
+    /// then finalizes a reimport whose new release `rel-new` lands in the fresh
+    /// `album-new`, carrying an `ImportReplacementDelete` for `replaced_release_id`.
+    /// Returns the finalize outcomes, so each test asserts the album's fate itself.
     async fn finalize_reimport_replacing_release(
         db: &Database,
         tmp: &tempfile::TempDir,
@@ -1344,10 +1342,9 @@ mod composer_mode_tests {
         );
     }
 
-    /// Reimport replacing one of several releases in an album: the prior
-    /// release leaves but the album survives, so a `primary_release_id`
-    /// pointing at the departed release is cleared to NULL (read paths fall
-    /// back to the first remaining release).
+    /// Reimport replacing one of several releases in an album: the prior release
+    /// leaves, the album survives, and a `primary_release_id` pointing at the
+    /// departed release goes NULL — read paths fall back to the first release left.
     #[tokio::test]
     async fn finalize_replacement_in_surviving_album_clears_dangling_primary() {
         let tmp = tempfile::TempDir::new().unwrap();
@@ -1380,8 +1377,8 @@ mod composer_mode_tests {
         assert!(db.find_release_by_id("rel-two").await.unwrap().is_some());
     }
 
-    /// Reimport replacing the sole release of an album, landing in a new
-    /// album: the prior album empties and is deleted; the outcome reports it.
+    /// Reimport replacing an album's sole release, landing in a new album: the prior
+    /// album empties and is deleted, and the outcome reports that.
     #[tokio::test]
     async fn finalize_replacement_of_last_release_deletes_prior_album() {
         let tmp = tempfile::TempDir::new().unwrap();
@@ -1407,9 +1404,9 @@ mod composer_mode_tests {
         assert!(db.find_release_by_id("rel-new").await.unwrap().is_some());
     }
 
-    /// Failed-import rollback of one of several releases in an album: the
-    /// album survives, so a `primary_release_id` pointing at the failed
-    /// release is cleared to NULL and the sibling release is untouched.
+    /// Failed-import rollback of one of several releases in an album: the album
+    /// survives, a `primary_release_id` pointing at the failed release goes NULL,
+    /// and the sibling release is untouched.
     #[tokio::test]
     async fn fail_import_and_delete_release_in_surviving_album_clears_dangling_primary() {
         let tmp = tempfile::TempDir::new().unwrap();
@@ -1533,12 +1530,12 @@ mod composer_mode_tests {
         assert!(import.release_id.is_none());
     }
 
-    /// A failed remote import's cover and artist-image blobs live only in
-    /// coven's on-device store (the release never went remote). The DB
-    /// transaction drops their rows but cannot reach the blob store, so
-    /// `fail_import_and_delete_release` returns the blobs it orphaned for the
-    /// caller to evict — the cover and each deleted artist's image, but not the
-    /// image of an artist a surviving release still references.
+    /// A failed remote import's cover and artist-image blobs live only in coven's
+    /// on-device store, since the release never went remote. The DB transaction drops
+    /// their rows but can't reach the blob store, so `fail_import_and_delete_release`
+    /// returns the blobs it orphaned for the caller to evict: the cover and each
+    /// deleted artist's image, but not the image of an artist a surviving release
+    /// still references.
     #[tokio::test]
     async fn fail_import_and_delete_release_returns_orphaned_image_blobs_to_evict() {
         let tmp = tempfile::TempDir::new().unwrap();
@@ -2059,11 +2056,10 @@ mod composer_mode_tests {
         assert_eq!(page_ids, vec!["composer-a", "composer-b", "composer-c"]);
     }
 
-    /// A secondary criterion must apply before the name-ASC tail: two
-    /// composers tie on `WorkCount` but differ in name, so `[WorkCount DESC,
-    /// Name DESC]` must order the tied pair by name descending — a
-    /// single-criterion implementation would fall straight to the tail's
-    /// `composer.name ASC` and order them the other way.
+    /// A secondary criterion applies before the name-ASC tail. Two composers tie on
+    /// `WorkCount` but differ in name, so `[WorkCount DESC, Name DESC]` must order
+    /// the tied pair by name descending — a single-criterion implementation would
+    /// fall through to the tail's `composer.name ASC` and order them the other way.
     #[tokio::test]
     async fn composer_page_applies_secondary_criterion() {
         let tmp = tempfile::TempDir::new().unwrap();
@@ -2270,11 +2266,10 @@ mod artist_mode_tests {
         assert_eq!(page_ids, vec!["artist-a", "artist-b", "artist-c"]);
     }
 
-    /// A secondary criterion must apply before the name-ASC tail: two artists
-    /// tie on `AlbumCount` but differ in name, so `[AlbumCount DESC, Name
-    /// DESC]` must order the tied pair by name descending — a
-    /// single-criterion implementation would fall straight to the tail's
-    /// `ar.name ASC` and order them the other way.
+    /// A secondary criterion applies before the name-ASC tail. Two artists tie on
+    /// `AlbumCount` but differ in name, so `[AlbumCount DESC, Name DESC]` must order
+    /// the tied pair by name descending — a single-criterion implementation would
+    /// fall through to the tail's `ar.name ASC` and order them the other way.
     #[tokio::test]
     async fn artist_page_applies_secondary_criterion() {
         let tmp = tempfile::TempDir::new().unwrap();

@@ -7,10 +7,8 @@ pub use models::*;
 use std::fmt::Display;
 use tracing::debug;
 
-/// Split a Discogs "Artist - Album" title into trimmed `(artist, album)`
-/// parts. Discogs packs both into one title field separated by " - ". Returns
-/// `None` when there's no separator; an empty artist half is represented as
-/// `None`.
+/// Discogs packs the artist and album into one title field, separated by " - ".
+/// `None` when there's no separator; an empty artist half also comes back `None`.
 pub(crate) fn split_title(title: &str) -> Option<(Option<&str>, &str)> {
     title
         .split_once(" - ")

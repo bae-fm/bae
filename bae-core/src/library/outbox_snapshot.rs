@@ -1,23 +1,21 @@
-//! The cloud-outbox processing snapshot. Single source of truth for the
-//! Storage Manager's queue panel, per-release upload badges, and the master
-//! progress bar.
+//! The cloud-outbox processing snapshot: the one source of truth for the Storage
+//! Manager's queue panel, the per-release upload badges, and the master progress
+//! bar. Re-emitted on every queue mutation (enqueue, upload start, progress tick,
+//! success, failure, cancel, retry), so no consumer keeps cached counts of its own.
 //!
-//! Derived from three inputs: the `cloud_outbox` rows (what remains), the
-//! in-memory map of uploads in flight right now (an upload is "active" only
-//! between coven's `on_blob_upload_started` and its terminal callback — never
-//! persisted, since nothing is in flight after a restart), and the
-//! [`UploadSessions`] tally of files that already completed during this queue
-//! burst. The in-flight map's value is the live `bytes_done` for that file,
-//! advanced by coven's mid-upload progress callback so the per-file and
-//! aggregate bars move within a single large file. The completed tally keeps
-//! finished files in every fraction's numerator *and* denominator, so
-//! per-release and whole-queue progress climb monotonically instead of
-//! resetting as completed rows drain out of the table.
+//! Three inputs derive it:
 //!
-//! Re-emitted on every queue mutation: enqueue, upload start, progress tick,
-//! success, failure, cancel, retry. Consumers (release-row badges, queue
-//! panel, aggregate progress) all read from this one snapshot rather than
-//! holding their own cached counts.
+//! - The `cloud_outbox` rows: what remains.
+//! - An in-memory map of the uploads in flight right now — an upload is "active"
+//!   only between coven's `on_blob_upload_started` and its terminal callback, and
+//!   the map is never persisted, since nothing is in flight after a restart. Its
+//!   value is that file's live `bytes_done`, advanced by coven's mid-upload
+//!   progress callback, so the per-file and aggregate bars move within one large
+//!   file.
+//! - The [`UploadSessions`] tally of files already completed in this burst. It
+//!   keeps finished files in every fraction's numerator *and* denominator, so
+//!   progress climbs monotonically instead of resetting as completed rows drain
+//!   out of the table.
 
 use std::collections::{HashMap, HashSet};
 
@@ -29,13 +27,10 @@ use crate::library::upload_throughput::UploadThroughput;
 
 use crate::db::DbOutboxOperation;
 
-/// What an upload is doing right now. Derived from the row, the in-flight
-/// map, and the completed tally; never stored.
-///
-/// `bytes_done` on `Active` is the live count of encrypted bytes that have
-/// reached the cloud for this file so far, fed by coven's mid-upload progress
-/// callback. It's 0 the instant an upload starts and climbs to `bytes_total`
-/// as the file transfers.
+/// What an upload is doing right now — derived from the row, the in-flight map,
+/// and the completed tally; never stored. `Active`'s `bytes_done` is the live count
+/// of encrypted bytes that have reached the cloud for this file, 0 the instant the
+/// upload starts and climbing to `bytes_total` as it transfers.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum UploadState {
     /// Queued, no failure recorded, not in flight, not yet uploaded.
@@ -59,13 +54,12 @@ pub struct DeleteOp {
     pub created_at: i64,
 }
 
-/// The dominant activity of a slice of the upload queue (a release's uploads,
-/// or the whole queue), for the storage-row badge. A slice with any file
-/// uploading reads as `Uploading`; with none uploading but some failed and
-/// awaiting retry, `Retrying`; otherwise `Queued`. There is no terminal
-/// variant: a release with nothing left to ship stops being rendered at all
-/// (its group leaves the snapshot and its storage row falls back to the
-/// resting state).
+/// The dominant activity of a slice of the upload queue (one release's uploads, or
+/// the whole queue), for the storage-row badge. Any file uploading reads as
+/// `Uploading`; none uploading but some failed and awaiting retry, `Retrying`;
+/// otherwise `Queued`. There is no terminal variant — a release with nothing left
+/// to ship stops being rendered at all: its group leaves the snapshot and its
+/// storage row falls back to the resting state.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum UploadActivity {
     Uploading,
@@ -74,11 +68,10 @@ pub enum UploadActivity {
 }
 
 /// Upload progress as the UI cares about it: per-state counts plus
-/// bytes-done/bytes-total. Used both per-release (for storage-row badges and
-/// the release's bar) and as the overall total (for queue counts, ETA, the
-/// master bar, and the summary band). Completed files count in `done`,
-/// `bytes_done`, and `bytes_total`, so fractions are cumulative over the
-/// whole burst.
+/// bytes-done/bytes-total. Serves both a single release (its badge and bar) and the
+/// overall total (queue counts, ETA, master bar, summary band). Completed files
+/// count in `done`, `bytes_done`, and `bytes_total`, so fractions are cumulative
+/// over the whole burst.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct UploadProgress {
     pub queued: u32,
@@ -151,13 +144,12 @@ pub struct UploadFileOp {
     pub state: UploadState,
 }
 
-/// A release's uploads, grouped for the queue pane so it renders one
-/// expandable row per release (matching the storage table) with the files
-/// inside. `release_id` is `None` for the orphaned-files bucket (files whose
-/// backing release is gone). `display_title` is what the row labels itself
-/// with — the album title, or the first file's own name for an orphan —
-/// resolved here so the UI renders it directly. `files` runs completed files
-/// first (in completion order), then the remaining rows in queue order.
+/// A release's uploads, grouped so the queue pane renders one expandable row per
+/// release (matching the storage table) with the files inside. `release_id` is
+/// `None` for the orphaned-files bucket, whose backing release is gone.
+/// `display_title` is resolved here, so the UI renders it directly: the album
+/// title, or an orphan's first file name. `files` runs completed files first, in
+/// completion order, then the rest in queue order.
 #[derive(Debug, Clone)]
 pub struct UploadReleaseGroup {
     pub release_id: Option<String>,
@@ -288,19 +280,18 @@ pub(crate) async fn build_outbox_snapshot(
                 let file_id = row
                     .file_id
                     .expect("an upload outbox row always carries a file_id");
-                // Already tallied as done: the row lingers only until coven's
-                // post-upload commit removes it, and the tally entry above
-                // already represents the file. Deriving the row too would
-                // double-count it — and deriving it as queued would announce
-                // a completed upload as fresh work.
+                // Already tallied as done — the row just lingers until coven's
+                // post-upload commit removes it. Deriving it too would double-count
+                // the file, and deriving it as queued would announce a completed
+                // upload as fresh work.
                 if done_ids.contains(&file_id) {
                     continue;
                 }
                 let bytes_total = row.file_size.unwrap_or(0) as u64;
                 let state = if let Some(&live) = in_flight.get(&file_id) {
-                    // The reported count is of the encrypted payload, which can
-                    // edge just past the stored plaintext size; clamp so the
-                    // bar never exceeds 100% or skews the ETA math.
+                    // The reported count is of the encrypted payload, which can edge
+                    // just past the stored plaintext size; clamp it so the bar never
+                    // exceeds 100% or skews the ETA math.
                     UploadState::Active {
                         bytes_done: live.min(bytes_total),
                     }
@@ -350,17 +341,16 @@ pub(crate) async fn build_outbox_snapshot(
 
     let upload_groups: Vec<UploadReleaseGroup> = groups
         .into_iter()
-        // A release with nothing left to ship stops being rendered: its group
-        // leaves the snapshot, its storage row falls back to the resting
-        // state, and the pane hides once no group (or delete) remains. The
-        // tally that fed its done files is dropped by the observer when the
-        // root completes; the idle clear above is the backstop.
+        // A release with nothing left to ship stops being rendered: its group leaves
+        // the snapshot, its storage row falls back to the resting state, and the
+        // pane hides once no group or delete remains. The observer drops the tally
+        // that fed its done files when the root completes; the idle clear above is
+        // the backstop.
         .filter(|group| group.progress.has_pending())
         .map(|group| {
-            // Every rendered group has at least one pending row, so the album
-            // title normally arrives via the row join; the fallback labels the
-            // orphaned bucket (no backing release) by its first file, matching
-            // the per-file orphan labelling above.
+            // Every rendered group has a pending row, so the album title normally
+            // arrives on the row join. The fallback labels the orphaned bucket (no
+            // backing release) by its first file, as the per-file case above does.
             let display_title = group.display_title.unwrap_or_else(|| {
                 debug!(
                     release_id = ?group.release_id,
@@ -388,9 +378,8 @@ pub(crate) async fn build_outbox_snapshot(
             total
         });
 
-    // When paused, hide throughput/ETA — uploads aren't flowing so the rolling
-    // window decays toward zero anyway, and rendering "2.3 MB/s" beside a
-    // paused indicator would be confusing.
+    // Hide throughput/ETA while paused: the rolling window decays toward zero
+    // anyway, and "2.3 MB/s" beside a paused indicator would just confuse.
     let throughput_bps = if paused {
         0
     } else {

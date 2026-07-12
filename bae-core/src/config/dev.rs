@@ -1,10 +1,8 @@
 use tracing::{info, warn};
 
-/// Read a dev-mode `BAE_*` env var, distinguishing the three outcomes that
-/// matter: absent (skip silently — the common case for an unset secret), present
-/// but non-UTF-8 (a misconfigured `.env`, warned and skipped so it isn't
-/// silently treated as absent), and present with a non-empty value (returned for
-/// seeding). An empty value is treated as absent.
+/// Read a dev-mode `BAE_*` env var. Absent or empty is `None` (the common case
+/// for an unset secret); a present but non-UTF-8 value is a misconfigured `.env`,
+/// warned about rather than silently treated as absent.
 fn dev_env_secret(var: &str) -> Option<String> {
     match std::env::var(var) {
         Ok(value) if !value.is_empty() => Some(value),
@@ -32,15 +30,12 @@ pub(super) fn dev_mode_enabled() -> bool {
 
 /// Bridge bae's dev-mode `BAE_*` env vars into coven's keyring for one library.
 ///
-/// coven's `StoreKeys` reads secrets from the keyring. In dev mode bae's secrets
-/// live in env vars (`.env` / `BAE_ENCRYPTION_KEY` / `BAE_CLOUD_HOME_CREDENTIALS`
-/// / `BAE_DISCOGS_API_KEY`), so before coven reads them bae seeds each present
-/// env value into the keyring account coven reads from — through coven's own
-/// `StoreKeys` setters, not a hand-rolled keyring entry. Production is a no-op:
-/// `is_dev_mode()` is false, so coven reads the OS keyring directly.
+/// coven reads secrets only from the keyring, but in dev mode bae's live in env
+/// vars (`.env`), so each present value is written into the account coven reads
+/// from — through coven's own `StoreKeys` setters, not a hand-rolled entry.
+/// A no-op in production, where coven reads the OS keyring directly.
 ///
-/// Call once after the keyring store is installed (`init_keyring`) and the
-/// `library_id` is known, before constructing coven's `StoreKeys`.
+/// Call once after `init_keyring` and before constructing coven's `StoreKeys`.
 pub fn seed_dev_keyring(library_id: &str) {
     if !dev_mode_enabled() {
         return;
@@ -65,8 +60,8 @@ pub fn seed_dev_keyring(library_id: &str) {
         }
     }
 
-    // bae's own Discogs API key — a bae-domain credential with no coven setter,
-    // written through bae's own keyring path (`BaeStoreKeysExt::set_discogs_key`).
+    // A bae-domain credential: no coven setter, so it goes through bae's own
+    // keyring extension trait.
     if let Some(discogs) = dev_env_secret("BAE_DISCOGS_API_KEY") {
         use crate::keys::BaeStoreKeysExt;
         match keys.set_discogs_key(&discogs) {

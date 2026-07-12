@@ -381,23 +381,20 @@ fn decode_audio_decodes_audio_format_fixtures() {
 fn test_decode_encode_roundtrip() {
     init();
 
-    // Create test samples (1 second of silence at 44100Hz stereo)
+    // 1 second of silence at 44100Hz stereo.
     let original_samples: Vec<i32> = vec![0i32; 44100 * 2];
 
-    // Encode to FLAC
     let cancel = std::sync::atomic::AtomicBool::new(false);
     let flac_data = encode_to_flac(&original_samples, 44100, 2, 16, &cancel).unwrap();
 
-    // Verify FLAC signature
     assert!(flac_data.len() > 42);
     assert_eq!(&flac_data[0..4], b"fLaC");
 
-    // Decode back
     let decoded = decode_audio(&flac_data, None, None).unwrap();
 
     assert_eq!(decoded.sample_rate, 44100);
     assert_eq!(decoded.channels, 2);
-    // Sample counts should be approximately equal (may differ slightly due to padding)
+    // The encoder pads the last frame, so the counts differ slightly.
     assert!(
         (decoded.samples.len() as i64 - original_samples.len() as i64).abs() < 1000,
         "Sample count mismatch: {} vs {}",
@@ -423,7 +420,7 @@ fn decode_audio_rejects_truncated_flac_packet_stream() {
 fn test_encode_mp3() {
     init();
 
-    // Create a 440Hz sine wave - 1 second stereo
+    // A 440Hz sine wave, 1 second, stereo.
     let sample_rate = 44100u32;
     let duration_samples = sample_rate as usize;
     let amplitude = 0.9 * i32::MAX as f64;
@@ -438,7 +435,7 @@ fn test_encode_mp3() {
     let cancel = std::sync::atomic::AtomicBool::new(false);
     let mp3_data = encode_to_mp3_with_bitrate(&samples, sample_rate, 2, 320, &cancel).unwrap();
 
-    // MP3 files start with either ID3 tag (0x49 0x44 0x33) or sync word (0xFF 0xFB)
+    // An MP3 opens with either an ID3 tag or a frame sync word.
     assert!(
         mp3_data.len() > 100,
         "MP3 data too small: {}",
@@ -452,7 +449,6 @@ fn test_encode_mp3() {
         mp3_data[2],
     );
 
-    // Decode it back and verify we get audio
     let decoded = decode_audio(&mp3_data, None, None).unwrap();
     assert_eq!(decoded.sample_rate, 44100);
     assert_eq!(decoded.channels, 2);
@@ -489,15 +485,14 @@ fn test_encode_opus_ogg() {
     assert!(!decoded.samples.is_empty());
 }
 
-/// Test that FLAC encode/decode is lossless - samples should match exactly.
-///
-/// This catches any sample conversion bugs: wrong byte order, wrong scaling,
-/// wrong format detection, etc. If anything is wrong, values won't match.
+/// A FLAC round-trip is lossless: every sample matches exactly. Any sample-
+/// conversion bug — wrong byte order, wrong scaling, wrong format detection —
+/// shows up here as a mismatch.
 #[test]
 fn test_flac_roundtrip_is_lossless() {
     init();
 
-    // Create a 440Hz sine wave aligned to 16-bit steps across the full i32 range.
+    // A 440Hz sine wave aligned to 16-bit steps across the full i32 range.
     let sample_rate = 44100u32;
     let duration_samples = sample_rate as usize; // 1 second
 
@@ -509,12 +504,10 @@ fn test_flac_roundtrip_is_lossless() {
         })
         .collect();
 
-    // Encode to FLAC and decode back
     let cancel = std::sync::atomic::AtomicBool::new(false);
     let flac_data = encode_to_flac(&original, sample_rate, 1, 16, &cancel).unwrap();
     let decoded = decode_audio(&flac_data, None, None).unwrap();
 
-    // FLAC is lossless - samples should match exactly
     let compare_len = original.len().min(decoded.samples.len());
     assert!(compare_len > 0, "No samples to compare");
 
@@ -533,7 +526,7 @@ fn test_flac_roundtrip_is_lossless() {
     }
 
     assert!(
-        max_diff < 2, // Allow tiny rounding errors
+        max_diff < 2, // A tiny rounding error is tolerated.
         "FLAC roundtrip should be lossless. {} samples differ, max diff: {}. \
          This indicates a bug in sample conversion (wrong byte order, scaling, or format).",
         mismatches,
@@ -549,18 +542,15 @@ fn test_streaming_decode() {
 
     init();
 
-    // Create test FLAC data
     let samples: Vec<i32> = (0..44100)
         .map(|i| ((i as f64 * 0.01).sin() * 0.5 * i32::MAX as f64) as i32)
         .collect();
     let cancel = std::sync::atomic::AtomicBool::new(false);
     let flac_data = encode_to_flac(&samples, 44100, 1, 16, &cancel).unwrap();
 
-    // Create streaming infrastructure with sparse buffer
     let buffer = create_sparse_buffer(flac_data.len() as u64);
     let (mut sink, mut source, _ready) = create_track_stream_pair_with_capacity(44100, 1, 100000);
 
-    // Spawn decoder thread using new AVIO-based streaming decode
     let decoder_buffer = buffer.clone();
     let decoder_handle = thread::spawn(move || {
         let token = Arc::new(std::sync::atomic::AtomicBool::new(false));
@@ -576,14 +566,12 @@ fn test_streaming_decode() {
         )
     });
 
-    // Feed data to buffer (simulating download)
+    // The decoder is already blocked reading; this is the download landing.
     buffer.append_at(0, &flac_data);
 
-    // Wait for decoder
     let result = decoder_handle.join().unwrap();
     assert!(result.is_ok(), "Decode failed: {:?}", result.err());
 
-    // Pull samples from source
     let mut decoded_samples = Vec::new();
     let mut buf = [0.0f32; 1024];
     loop {
@@ -594,7 +582,7 @@ fn test_streaming_decode() {
         decoded_samples.extend_from_slice(&buf[..n]);
     }
 
-    // Should have approximately the same number of samples
+    // The encoder pads the last frame, so the counts differ slightly.
     assert!(
         (decoded_samples.len() as i64 - samples.len() as i64).abs() < 1000,
         "Sample count mismatch: {} vs {}",
@@ -652,15 +640,13 @@ fn streaming_decode_rejects_truncated_flac_packet_stream() {
     assert!(!source.producer_finished());
 }
 
-/// Helper: test that seek_to via avformat_seek_file produces correct samples.
+/// A `seek_to_sample` streaming decode (FFmpeg's `avformat_seek_file`, over a
+/// fully-buffered sparse buffer) yields the same samples as decoding the whole
+/// file and slicing at the seek point.
 ///
-/// Same ground truth as check_seek_produces_correct_samples, but uses the
-/// seek_to parameter (ffmpeg-level seek within a full SparseBuffer) instead
-/// of the seektable-based restart approach.
-///
-/// avformat_seek_file lands on the nearest keyframe AT or BEFORE the target,
-/// so decoded output may start slightly before the requested position.
-/// We find the actual alignment by correlating against ground truth.
+/// `avformat_seek_file` lands on the nearest keyframe AT or BEFORE the target, so
+/// the decoded output may start slightly before the requested position — the
+/// actual alignment is recovered by correlating against the ground truth.
 fn check_seek_to_produces_correct_samples(sample_rate: u32, channels: u32, bits_per_sample: u32) {
     use crate::playback::create_track_stream_pair_with_capacity;
     use crate::playback::sparse_buffer::create_sparse_buffer;
@@ -686,7 +672,7 @@ fn check_seek_to_produces_correct_samples(sample_rate: u32, channels: u32, bits_
 
     let seek_sample = sample_rate as u64; // 1 second
 
-    // Fill a SparseBuffer with the complete file, then seek via seek_to
+    // The whole file is buffered, so the decoder's seek never waits on a fill.
     let buffer = create_sparse_buffer(flac_data.len() as u64);
     buffer.append_at(0, &flac_data);
 

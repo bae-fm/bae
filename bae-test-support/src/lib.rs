@@ -251,7 +251,6 @@ pub async fn read_cover_image_blob(
     .unwrap()
 }
 
-/// Initialize tracing for tests with proper test output handling
 pub fn tracing_init() {
     let _ = tracing_subscriber::fmt()
         .with_test_writer()
@@ -377,7 +376,7 @@ impl MockCloudHome {
             .store(true, std::sync::atomic::Ordering::SeqCst);
     }
 
-    /// Make the next `n` `read_range` calls fail before any serve real bytes.
+    /// Make the next `n` `read_range` calls fail before any serves real bytes.
     pub fn fail_next_range_reads(&self, n: usize) {
         self.fail_next_range_reads
             .store(n, std::sync::atomic::Ordering::SeqCst);

@@ -21,16 +21,14 @@ const STARVATION_LOG_AFTER: Duration = Duration::from_millis(250);
 const STARVATION_LOG_EVERY: Duration = Duration::from_secs(1);
 
 /// Per-track context the service needs to label its playback events
-/// (`PositionUpdate`, `TrackCompleted`, `DecodeStats`). Carried with every
-/// tick and completion so event handling is a pure function of its input:
-/// across a track boundary the audio callback emits the new track's fmt with
-/// the new track's first tick, without the service having to consult any
+/// (`PositionUpdate`, `TrackCompleted`, `DecodeStats`). Carried with every tick
+/// and completion, so across a track boundary the audio callback emits the new
+/// track's fmt with the new track's first tick and the service consults no
 /// shared cell.
 ///
 /// `track_id`/`duration_ms`/`pregap_ms` are intrinsic to the track;
-/// `position_offset` is the in-track time at which this stream began
-/// (non-zero only after a seek — the next track in a chain always starts at
-/// zero).
+/// `position_offset` is the in-track time this stream began at (non-zero only
+/// after a seek — the next track in a chain always starts at zero).
 #[derive(Debug, Clone)]
 pub struct TrackFmt {
     pub track_id: String,
@@ -103,15 +101,14 @@ impl PlaybackSource {
     }
 
     /// Replace the current track in place — the command-side sibling of the
-    /// gapless crossing (`pull_samples`' in-callback swap). Cancel the outgoing
-    /// track and any staged next, install `next` as the new current, and reset
-    /// the per-track bookkeeping (starvation episode and completion reporting)
-    /// so the new track starts clean. The caller only replaces a
-    /// format-compatible track — the output stream is built for one sample rate
-    /// and channel count, and this swaps what its callback reads without
-    /// rebuilding it. Cancelling the outgoing track here is only its sink side
-    /// (unpark + cancel flag); the caller cancels the outgoing decoder's token
-    /// and wakes its byte buffers, exactly as a stream teardown would.
+    /// gapless crossing (`pull_samples`' in-callback swap). Cancels the outgoing
+    /// track and any staged next, installs `next` as current, and resets the
+    /// per-track bookkeeping (starvation span, completion reporting). The caller
+    /// only replaces a format-compatible track: the output stream is built for
+    /// one sample rate and channel count, and this swaps what its callback reads
+    /// without rebuilding it. The cancel here is only the outgoing track's sink
+    /// side (unpark + cancel flag); the caller cancels that decoder's token and
+    /// wakes its byte buffers, exactly as a stream teardown would.
     pub fn replace(&mut self, next: TrackStream, next_fmt: TrackFmt) {
         self.current.cancel();
         if let Some((staged, _)) = self.next.take() {
@@ -155,9 +152,9 @@ impl PlaybackSource {
     /// If the current track has drained (finished with nothing staged after it)
     /// and its completion hasn't been reported yet, mark it reported and return
     /// the completion event; `None` otherwise. The audio callback calls this
-    /// once the ring runs dry so the service's auto-advance fires exactly once
-    /// per drained track — the persistent-stream-safe form of the old
-    /// drain-side `completion_sent` latch, since `replace`/crossing reset it.
+    /// once the ring runs dry, so the service's auto-advance fires exactly once
+    /// per drained track — including on a persistent stream playing many tracks,
+    /// since `replace`/crossing reset the latch.
     pub fn take_completion_event(&mut self) -> Option<(Arc<TrackFmt>, u32, u64)> {
         if self.is_finished() && !self.completion_reported {
             self.completion_reported = true;
@@ -325,8 +322,7 @@ mod tests {
         let (mut sink1, src1, _r1) = create_track_stream_pair(44100, 1);
         let (mut sink2, src2, _r2) = create_track_stream_pair(44100, 1);
 
-        // Track 1: three samples + decode stats, then EOF. `samples_decoded`
-        // is live off the push itself now, not hand-set.
+        // Track 1: three samples + decode stats, then EOF.
         assert_eq!(sink1.push_samples(&[1.0, 2.0, 3.0]), 3);
         sink1.set_decode_error_count(7);
         sink1.mark_finished();

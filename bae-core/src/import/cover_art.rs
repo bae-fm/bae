@@ -31,12 +31,11 @@ const CAA_MAX_CONCURRENT_LOOKUPS: usize = 4;
 /// a miss costs one HTTP fetch.
 const COVER_CACHE_CAPACITY: usize = 25;
 
-/// In-memory cache for downloaded cover bytes. Keyed by URL — covers
-/// are direct HTTP fetches against arbitrary URLs (CAA, Discogs CDN,
-/// etc.), not part of either metadata API client. The UI calls
-/// `download_cover_art_bytes` once when the user picks a cover; the
-/// commit worker calls it again at import time. Both go through this
-/// cache, so the bytes hit the wire at most once per URL per session.
+/// In-memory cache for downloaded cover bytes, keyed by URL — covers are direct
+/// HTTP fetches against arbitrary hosts (CAA, Discogs CDN), not part of either
+/// metadata API client. Both callers of `download_cover_art_bytes` — the UI at
+/// cover-pick time and the commit worker at import time — read through it, so a
+/// URL hits the wire at most once per session.
 type CoverCacheValue = (Vec<u8>, ContentType);
 /// Outer `None` means the lookup failed and must not be cached; inner `None`
 /// means CAA returned a cacheable no-cover result.
@@ -53,9 +52,9 @@ fn cover_bytes_cache() -> &'static Mutex<LruCache<String, CoverCacheValue>> {
 }
 
 fn image_download_client() -> Result<reqwest::Client, ImportError> {
-    // The build error is cached as a String because `reqwest::Client`'s builder
-    // error is not `Clone` and the cell is cloned on every read; the typed
-    // `CoverArt` wrapper is applied at each call.
+    // The build error is stored as a String because `reqwest::Client`'s builder
+    // error is not `Clone` and the cell is cloned on every read; each call
+    // re-wraps it in the typed `CoverArt` error.
     static CLIENT: OnceLock<Result<reqwest::Client, String>> = OnceLock::new();
     CLIENT
         .get_or_init(|| {
@@ -145,10 +144,9 @@ impl CoverArtArchiveClient {
         covers
     }
 
-    /// Fetch cover art from Cover Art Archive for a MusicBrainz release.
-    ///
-    /// Retries up to 3 times on transient failures (network errors, 5xx).
-    /// Does not retry on 404 (no cover art exists) or other client errors.
+    /// Cover art from the Cover Art Archive for a MusicBrainz release. Retries
+    /// transient failures (network errors, 5xx), but never a 404 (no cover art
+    /// exists) or another client error.
     pub async fn fetch_release(&self, release_id: &str) -> Option<RemoteCover> {
         self.fetch_entity(
             "release",
@@ -159,10 +157,9 @@ impl CoverArtArchiveClient {
         .await
     }
 
-    /// Fetch cover art from Cover Art Archive for a MusicBrainz release group.
-    ///
-    /// The release-group endpoint returns the community-selected best cover for the
-    /// album concept, which may differ from any specific release's cover.
+    /// Cover art from the Cover Art Archive for a MusicBrainz release group. This
+    /// endpoint returns the community-selected cover for the album as a concept,
+    /// which may differ from any specific release's cover.
     pub async fn fetch_release_group(&self, release_group_id: &str) -> Option<RemoteCover> {
         self.fetch_entity(
             "release-group",
@@ -365,7 +362,7 @@ async fn fetch_cover_art_from_url(
                 } else if is_transient_status(response.status()) {
                     ClassifiedAttempt::Retry(format!("status {}", response.status()))
                 } else {
-                    // Non-transient client error (400, 403, etc.) — don't retry
+                    // A non-transient client error (400, 403, ...) — don't retry.
                     debug!(
                         "Cover Art Archive returned status {} for {} {}",
                         response.status(),
@@ -419,13 +416,12 @@ async fn parse_cover_art_response(
     }
 }
 
-/// Pick the best image URL from a Cover Art Archive JSON body: prefer the
-/// front cover, else the first image. Pure (no I/O) so the selection rules are
-/// testable without a live response.
+/// Pick the best image URL from a Cover Art Archive JSON body: the front cover,
+/// else the first image. Pure (no I/O), so the selection rules are testable
+/// without a live response.
 fn select_cover_candidate(json: &serde_json::Value, label: &str) -> Option<RemoteCover> {
     let images = json.get("images").and_then(|i| i.as_array())?;
 
-    // Prefer the front cover
     for image in images {
         if image.get("front").and_then(|f| f.as_bool()) == Some(true) {
             if let Some(cover) = extract_cover_candidate(image, label) {
@@ -482,13 +478,9 @@ fn find_url_in<'a>(value: &serde_json::Value, keys: &'a [&'a str]) -> Option<(&'
     None
 }
 
-/// Download cover art from a URL and return the raw bytes and content type.
-///
-/// Retries up to 3 times on transient failures (network errors, 5xx).
-/// Hits a session-wide LRU cache keyed by URL — the UI fetches once at
-/// cover-select time and the commit worker re-reads through the same
-/// cache at import time, so each URL is downloaded at most once per
-/// session.
+/// Download cover art from a URL, returning the raw bytes and content type.
+/// Retries transient failures (network errors, 5xx) up to `MAX_RETRIES` times.
+/// Reads through the session-wide LRU cache, so a URL downloads at most once.
 pub async fn download_cover_art_bytes(
     cover_art_url: &str,
 ) -> Result<(Vec<u8>, ContentType), ImportError> {
@@ -538,10 +530,6 @@ async fn download_image_bytes_with_backoff(
         let response = match client.get(image_url).send().await {
             Ok(r) => r,
             Err(e) if is_permanent_request_error(&e) => {
-                // URL parse / RequestBuilder construction failure or
-                // redirect-loop bottoming out — same failure every
-                // attempt. Don't burn 1+2+4s of backoff on a
-                // deterministic error.
                 return ClassifiedAttempt::Permanent(ImportError::CoverArt {
                     detail: format!("Failed to fetch image: {}", e),
                 });
@@ -563,7 +551,6 @@ async fn download_image_bytes_with_backoff(
                 detail: format!("Image download failed with status {}", response.status()),
             })
         } else {
-            // Non-transient error — don't retry
             ClassifiedAttempt::Permanent(ImportError::CoverArt {
                 detail: format!("Image download failed with status {}", response.status()),
             })
@@ -572,9 +559,9 @@ async fn download_image_bytes_with_backoff(
     .await
 }
 
-/// Errors that fail the same way every attempt — retrying just burns
-/// the backoff budget. Network/timeout/connection-class errors are
-/// transient and continue to retry.
+/// Errors that fail the same way every attempt — a URL-parse / request-builder
+/// failure, or a redirect loop bottoming out. Retrying only burns the backoff
+/// budget. Network/timeout/connection errors are transient and do keep retrying.
 fn is_permanent_request_error(e: &reqwest::Error) -> bool {
     e.is_builder() || e.is_redirect()
 }

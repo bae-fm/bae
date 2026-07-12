@@ -1099,11 +1099,8 @@ fn test_collect_release_candidate_files_cue_ape_track_count() {
 
 // ── Folder-scanner shape fixture ────────────────────────────────────────
 //
-// A declarative taxonomy of folder shapes the scanner must handle, used to
-// pin the human-intent contract (see `plans/folder-scanner-test.md`).
-// Several assertions are expected to fail today — that is the point.
-// Do NOT adjust the scanner to make them pass; instead, this test
-// defines what "correct" means so the follow-up fix can land cleanly.
+// A declarative taxonomy of the folder shapes the scanner must handle, pinning
+// which of them a human would call a release.
 
 // --- Byte stubs ---
 
@@ -1616,13 +1613,11 @@ fn assert_fixture_invariants(root: &Path, spec: &[FixtureEntry]) {
 
 // --- Integration smoke test ---
 //
-// Builds the full reference tree from `notes/folder-scanner-cases.md` and
-// asserts what `scan_for_candidates_with_callback` produces against the
-// 13-candidate human-intent set. The fixture exercises every case in the
-// doc (release shapes, container shapes, completeness/mismatch signals).
-// Any regression — bogus parents, sibling taint, partial-marker leaks,
-// CUE-mismatch surfacing — produces a set-diff failure with the exact
-// offending paths.
+// Builds the full reference tree and asserts what
+// `scan_for_candidates_with_callback` produces against the 13-candidate set a
+// human would name. Any regression — bogus parents, sibling taint,
+// partial-marker leaks, CUE-mismatch surfacing — fails as a set-diff naming the
+// exact offending paths.
 
 /// The full reference fixture spec, in minimal vocabulary. Each release
 /// is a sequence of `File` entries plus one `Expect`. Navigation folders

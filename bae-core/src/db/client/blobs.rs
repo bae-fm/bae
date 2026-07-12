@@ -1,7 +1,6 @@
 use super::*;
 
 impl Database {
-    /// Upsert a library image record
     pub async fn upsert_library_image(&self, image: &DbLibraryImage) -> Result<(), DbError> {
         let image = image.clone();
         self.call_sql(move |sql| {
@@ -60,11 +59,11 @@ impl Database {
         .await
     }
 
-    /// The `_updated_at` version of each given release's `covers` row, for the ids
-    /// that have one. The version a cover [`ImageRef`](crate::album_detail::ImageRef)
-    /// carries: it moves when the cover bytes change (the upsert bumps it), so the
-    /// UI's `(id, version)` cache key and the `AlbumUpdated` re-render fire. Ids
-    /// with no cover row are absent from the map.
+    /// The `_updated_at` version of each given release's `covers` row; ids with no
+    /// cover row are absent from the map. This is the version a cover
+    /// [`ImageRef`](crate::album_detail::ImageRef) carries — it moves whenever the
+    /// cover bytes change, which is what invalidates the UI's `(id, version)` cache
+    /// key and makes the `AlbumUpdated` re-render show the new art.
     pub async fn cover_versions(
         &self,
         release_ids: &[String],
@@ -104,14 +103,10 @@ impl Database {
         Ok(self.cover_versions(&ids).await?.remove(release_id))
     }
 
-    // ---- Readable cloud paths (browsable homes) ----
-
-    /// Run a cloud-key resolver, but only on a browsable home: an opaque home
-    /// keys blobs by hashed id and has no stored `cloud_path`, so it
-    /// short-circuits to `Ok(None)`. The resolver runs on the owned coven
-    /// connection (where it reads the release's album id). The two
-    /// release-scoped `*_cloud_path_for_storage` accessors differ only in which
-    /// resolver they pass.
+    /// Run a cloud-key resolver, but only on a browsable home: an opaque home keys
+    /// blobs by hashed id and stores no `cloud_path`, so it returns `Ok(None)`
+    /// without running the resolver. The resolver runs on coven's connection —
+    /// that is where it reads the release's album id.
     async fn cloud_path_if_browsable<F>(
         &self,
         storage: crate::config::HomeStorage,
@@ -154,10 +149,8 @@ impl Database {
         artist_image_cloud_path_for_storage(storage, artist_id, content_type)
     }
 
-    // ---- Local blob refs ----
-
-    /// Test-only: register a coven user-provided external ref directly.
-    /// Production registers refs inside the atomic import transaction
+    /// Test-only: register a coven user-provided external ref directly. Production
+    /// registers refs inside the atomic import transaction
     /// (`register_external_blob_on`).
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn register_external_blob(
@@ -193,11 +186,9 @@ impl Database {
         .await
     }
 
-    // ---- Cloud outbox ----
-
     /// Seed an upload entry in coven's cloud outbox. Production never enqueues
-    /// uploads this way — coven's `make_remote` owns that — so this exists only
-    /// to exercise the outbox-snapshot / drain machinery in tests.
+    /// uploads this way — coven's `make_remote` owns that — so this exists only to
+    /// exercise the outbox-snapshot / drain machinery in tests.
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn add_cloud_outbox_upload(
         &self,
@@ -257,7 +248,6 @@ impl Database {
         .await
     }
 
-    /// Add a delete entry to the cloud outbox.
     pub async fn add_cloud_outbox_delete(&self, cloud_key: &str) -> Result<(), DbError> {
         let cloud_key = cloud_key.to_string();
         self.call_sql(move |sql| {
@@ -267,7 +257,6 @@ impl Database {
         .await
     }
 
-    /// Remove a cloud outbox entry by id.
     pub async fn remove_cloud_outbox_entry(&self, id: i64) -> Result<(), DbError> {
         self.call(move |conn| {
             conn.execute("DELETE FROM cloud_outbox WHERE id = ?1", [id])
@@ -361,10 +350,10 @@ impl Database {
     }
 
     /// The user-facing outbox entries (uploads and deletes), oldest first, each
-    /// paired with the album title of the release its `file_id` belongs to
-    /// (uploads only — `None` for deletes or an orphaned file). Backs the
-    /// processing snapshot. coven's internal `cancel` rows (tombstone removals
-    /// it retries after an upload) are excluded — they render nothing.
+    /// paired with the album title of the release its `file_id` belongs to —
+    /// uploads only, `None` for a delete or an orphaned file. Backs the processing
+    /// snapshot. coven's internal `cancel` rows (tombstone removals it retries
+    /// after an upload) are excluded: they render nothing.
     pub async fn outbox_items(&self) -> Result<Vec<DbOutboxRow>, DbError> {
         self.read(move |conn| {
             let mut stmt = conn.prepare(
@@ -389,10 +378,9 @@ impl Database {
 }
 
 fn row_to_db_outbox_row(row: &Row<'_>) -> coven::rusqlite::Result<DbOutboxRow> {
-    // coven writes `created_at` as its HLC stamp (`millis-counter-device`, the
-    // same format `make_remote` enqueues and `SqlContext::stamp` mints); the
-    // UI needs an instant for the "queued N ago" label, so take the stamp's
-    // physical millis. A value that isn't a coven stamp is corrupt.
+    // coven writes `created_at` as its HLC stamp (`millis-counter-device`); the UI
+    // needs an instant for the "queued N ago" label, so take the stamp's physical
+    // millis. A value that isn't a coven stamp is corrupt.
     let created_at_raw = row.get::<_, String>("created_at")?;
     let created_at = coven::Timestamp::parse(&created_at_raw)
         .map(|t| t.millis as i64)

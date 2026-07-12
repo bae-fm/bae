@@ -1,24 +1,20 @@
 //! Playback error types
 use thiserror::Error;
-/// Errors that can occur during audio playback operations
 #[derive(Error, Debug)]
 pub enum PlaybackError {
-    /// Database query failed
     #[error("Database error: {0}")]
     Database(String),
-    /// Requested resource not found (track, file, etc.)
+    /// A track, file, or other resource the caller named doesn't exist.
     #[error("{0} not found: {1}")]
     NotFound(&'static str, String),
-    /// Invalid or corrupt FLAC data
     #[error("Invalid FLAC: {0}")]
     InvalidFlac(String),
-    /// File system IO error
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),
-    /// Async task panicked or was cancelled
+    /// An async task panicked or was cancelled.
     #[error("Task failed: {0}")]
     TaskFailed(String),
-    /// Internal playback invariant failed
+    /// A playback invariant failed.
     #[error("Internal playback error: {0}")]
     Internal(String),
     /// A remote track has no local copy and sync is disconnected, so the

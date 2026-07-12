@@ -1,7 +1,6 @@
-//! The signal-extraction service: one pass over a candidate's files producing
-//! a streamed [`Signals`] snapshot (disc ID, barcodes, classified text). Both
-//! the identify pipeline (which looks the signals up and narrows matches) and
-//! the search UI (which surfaces them) consume what this service emits.
+//! The signal-extraction service: one pass over a candidate's files producing a
+//! streamed [`Signals`] snapshot (disc ID, barcodes, classified text), consumed
+//! by the identify pipeline and the search UI.
 //!
 //! Emission is streamed so slow OCR doesn't gate the fast signals:
 //!
@@ -9,9 +8,8 @@
 //!    (LOG/CUE), CUE `CATALOG` barcodes, and the non-OCR text sources
 //!    (folder-name brackets, path components, filenames, CUE, text files) — is
 //!    gathered up front and emitted as the first `Signals`, so the disc-ID
-//!    lookup and the autocomplete populate before the first image OCR
-//!    completes.
-//! 2. **OCR stream.** Artwork images are analyzed sequentially (one Vision
+//!    lookup and the autocomplete populate before the first image OCR finishes.
+//! 2. **OCR stream.** Artwork images are analyzed one at a time (a single
 //!    `analyze` pass per image yields both barcodes and text). Each image that
 //!    adds a barcode or text line re-emits the cumulative `Signals`; the
 //!    barcode and text signals settle at the end.
@@ -58,12 +56,11 @@ struct ExtractionServiceInner {
     analyzer: Mutex<Arc<dyn ArtworkAnalyzer>>,
     /// Resolves a release's library files for the `Release` re-identify path.
     library_manager: LibraryManager,
-    /// Per-candidate cancellation registry. `start` registers a new entry
-    /// (cancelling any prior one for the key); tasks release their own entry
-    /// on the way out only when its generation still matches. `start` also
-    /// spawns a listener on `event_tx` that cancels a key's entry when a
-    /// `ScanEvent::CandidateRemoved` for it appears on the import bus, so a
-    /// removed candidate's in-flight OCR stops instead of running to completion.
+    /// Per-candidate cancellation. `start` registers a new entry (cancelling any
+    /// prior one for the key); a task releases its own entry on the way out only
+    /// when the generation still matches. `ExtractionService::start` also spawns
+    /// a bus listener that cancels a key on `ScanEvent::CandidateRemoved`, so a
+    /// removed candidate's in-flight OCR stops rather than running to completion.
     cancellation: CancellationRegistry,
 }
 
@@ -98,10 +95,9 @@ impl ExtractionService {
             cancellation: CancellationRegistry::default(),
         });
 
-        // Subscribe before returning the handle: no extraction can start
-        // before this listener is receiving, so a removal that refers to an
-        // in-flight run is never missed. Cancel the key's registry entry when
-        // its candidate is removed from the import bus.
+        // Subscribe before returning the handle: no extraction can start before
+        // this listener is receiving, so a removal naming an in-flight run is
+        // never missed.
         let mut removal_rx = inner.event_tx.subscribe();
         let removal_inner = inner.clone();
         inner.runtime_handle.spawn(async move {
@@ -130,10 +126,8 @@ impl ExtractionServiceHandle {
         *self.inner.analyzer.lock().unwrap() = analyzer;
     }
 
-    /// Kick off extraction for candidate `key` from `source`. A folder is
-    /// scanned for its own sources (artwork, path components, filenames,
-    /// CUE, text files); a release re-identify resolves its files from the
-    /// library. Cancels any prior in-flight extraction for the same key.
+    /// Kick off extraction for candidate `key` from `source`. Cancels any prior
+    /// in-flight extraction for the same key.
     pub fn start(&self, key: String, source: ExtractionSource) {
         let (token, generation) = self.inner.cancellation.register(key.clone());
 
@@ -143,10 +137,9 @@ impl ExtractionServiceHandle {
         });
     }
 
-    /// Cancel a candidate's in-flight extraction. Called by the bridge's
-    /// candidate teardown (the re-identify dismissal). Core-side candidate
-    /// removal cancels through the internal `CandidateRemoved` bus listener,
-    /// which uses the registry directly.
+    /// Cancel a candidate's in-flight extraction. For the bridge's candidate
+    /// teardown (the re-identify dismissal); core-side removal cancels through
+    /// the `CandidateRemoved` bus listener instead.
     pub fn cancel(&self, key: &str) {
         self.inner.cancellation.cancel(key);
     }
@@ -172,9 +165,8 @@ async fn run_extraction(
     }
 
     match source {
-        // Folder: scan once, derive every non-OCR signal in one blocking hop
-        // (disc ID, CUE-CATALOG barcodes, text sources), then stream the
-        // artwork OCR.
+        // One scan derives every non-OCR signal in a single blocking hop, then
+        // the artwork OCR streams.
         ExtractionSource::Folder(folder) => {
             let fast_folder = folder.clone();
             let Some(fast) = run_fast_pass_blocking(&inner.runtime_handle, move || {
@@ -223,13 +215,11 @@ async fn run_extraction(
             if token.is_cancelled() {
                 return;
             }
-            // `_cover_staging` holds the temp dir the cover blob was staged into;
-            // it must outlive the OCR pass below, so keep it bound until after
-            // `stream_extraction` returns. An error here is fatal — the release's
-            // files can't be read at all (an optional missing cover is already
-            // handled inside as a skip), so the artwork can't be resolved. Fail
-            // loud and abort this run rather than masking it as "no artwork" and
-            // emitting a misleading settled-with-no-signals result.
+            // `_cover_staging` holds the temp dir the cover blob was staged into
+            // and must stay bound until `stream_extraction` returns. An error here
+            // means the release's files can't be read at all (a missing cover is
+            // already a skip inside), so abort rather than emit a misleading
+            // settled-with-no-signals result.
             let (artwork_paths, _cover_staging) = match resolve_release_artwork_paths(
                 &inner.library_manager,
                 &release_id,
@@ -293,10 +283,9 @@ where
     }
 }
 
-/// Everything a candidate's source yields for the streaming pass to consume: the
-/// settled disc ID, the CUE barcodes, the text pool, and the artwork images to
-/// OCR. A folder scan and a release re-identify each build one of these,
-/// differing only in which fields are populated.
+/// What the streaming pass consumes: the settled disc ID, the CUE barcodes, the
+/// text pool, and the artwork images to OCR. A folder scan and a release
+/// re-identify each build one, differing only in which fields are populated.
 struct ExtractionInputs {
     disc_id: DiscIdSignal,
     barcodes: Vec<SourcedValue>,
@@ -325,9 +314,8 @@ async fn stream_extraction(
         return;
     }
 
-    // First snapshot: disc ID and CUE barcodes are already settled and the
-    // autocomplete pool is populated. Barcode/text stay `Scanning` while
-    // artwork OCR is pending.
+    // First snapshot: disc ID and CUE barcodes are settled and the autocomplete
+    // pool is populated; barcode/text stay `Scanning` while OCR is pending.
     let classification = pool.classify();
     emit_signals(
         &inner,
@@ -360,9 +348,8 @@ async fn stream_extraction(
             return;
         }
 
-        // Accumulate barcodes (deduped by value) and text lines; skip the
-        // emit when this image added nothing new. OCR'd codes come from the
-        // artwork.
+        // Accumulate barcodes (deduped by value) and text lines; skip the emit
+        // when this image added nothing new.
         let mut changed = false;
         for value in analysis.barcodes {
             if !barcodes.iter().any(|b| b.value == value) {
@@ -408,7 +395,6 @@ async fn stream_extraction(
         return;
     }
 
-    // Final settled snapshot.
     let classification = pool.classify();
     let barcode = if has_artwork || !barcodes.is_empty() {
         BarcodeSignal::Settled { codes: barcodes }

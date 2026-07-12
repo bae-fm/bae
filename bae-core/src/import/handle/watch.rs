@@ -25,15 +25,14 @@ impl ImportServiceHandle {
 
     /// Add a folder to watch for imports, atomically with installing its OS
     /// watch: persist it, install the watch, and only on success broadcast the
-    /// new list and trigger the initial scan so its releases appear as
-    /// candidates and later on-disk changes propagate. A folder already
-    /// watched is left as-is.
+    /// new list and trigger the initial scan. An already-watched folder is left
+    /// as-is.
     ///
-    /// If the watch can't be installed (missing path, permissions), the
-    /// persisted add is rolled back and the failure returns to the caller —
-    /// the UI must not believe a folder is watched when it isn't, and a
-    /// registry entry for an unwatchable folder would silently no-op every
-    /// later install attempt (`FolderWatcher::install` is keyed on success).
+    /// If the watch can't be installed (missing path, permissions), the persisted
+    /// add is rolled back and the failure returns to the caller. The UI must not
+    /// believe a folder is watched when it isn't, and a registry entry for an
+    /// unwatchable folder would silently no-op every later install attempt, since
+    /// `FolderWatcher::install` is keyed on success.
     pub fn add_watched_folder(&self, path: String) -> Result<(), crate::import::ImportError> {
         let library_dir = self.library_manager.library_dir();
         let mut registry = self.folder_registry.lock().unwrap();
@@ -68,16 +67,15 @@ impl ImportServiceHandle {
     }
 
     /// Stop watching `path`: persist the removal, broadcast the new list, and
-    /// uninstall its OS watch. A `CandidateRemoved` is emitted for each of the
-    /// folder's candidates so the extraction service cancels their in-flight
-    /// work and bus consumers drop the keys; the reducer's folder-list
-    /// reconciliation still removes the rows either way.
+    /// uninstall its OS watch. Each of the folder's candidates gets a
+    /// `CandidateRemoved` so the extraction service cancels their in-flight work
+    /// and bus consumers drop the keys.
     ///
-    /// The registry removal is never rolled back on an uninstall failure — the
-    /// user asked for the folder to stop being watched, and the registry
-    /// (the durable authority) ending correct matters more than a leaked OS
-    /// watch, whose events the reconciliation task ignores once the folder is
-    /// gone from the registry.
+    /// Unlike `add_watched_folder`, an uninstall failure never rolls the registry
+    /// removal back: the user asked for the folder to stop being watched, and the
+    /// registry (the durable authority) ending up correct matters more than a
+    /// leaked OS watch, whose events the reconciliation task ignores once the
+    /// folder is gone from the registry.
     pub fn remove_watched_folder(&self, path: String) -> Result<(), crate::import::ImportError> {
         let library_dir = self.library_manager.library_dir();
         let mut registry = self.folder_registry.lock().unwrap();
@@ -111,19 +109,18 @@ impl ImportServiceHandle {
         Ok(())
     }
 
-    /// Install the OS watch (if not already installed) for every watched
-    /// folder and trigger a re-scan for each, emitting one `FolderCandidate`
-    /// per release found and `CandidateRemoved` for any that have since
-    /// vanished. The UI calls this when the import view appears, and app
-    /// start calls it once at launch.
+    /// Install the OS watch (if not already installed) for every watched folder
+    /// and re-scan each, emitting one `FolderCandidate` per release found and a
+    /// `CandidateRemoved` for any that has since vanished. Called when the import
+    /// view appears, and once at app launch.
     ///
     /// Unlike `add_watched_folder`, a folder whose watch fails to install here
-    /// still gets its re-scan (the missing-root semantics in
-    /// `rescan_and_reconcile` reconcile it to no candidates, e.g. an unplugged
-    /// drive) — the folder is durable user intent, not a fresh request to
-    /// refuse. Every install failure is collected and reported in one `Err`
-    /// naming the failed folders; the rest still proceed. Retrying later is
-    /// safe: `FolderWatcher::install` is idempotent.
+    /// still gets its re-scan — the folder is durable user intent, not a fresh
+    /// request to refuse, and `rescan_and_reconcile`'s missing-root handling
+    /// reconciles an unreachable one (an unplugged drive) to no candidates. Every
+    /// install failure is collected into one `Err` naming the failed folders,
+    /// while the rest proceed; retrying later is safe, since
+    /// `FolderWatcher::install` is idempotent.
     pub fn scan_watched_folders(&self) -> Result<(), crate::import::ImportError> {
         let folders = self.folder_registry.lock().unwrap().watched_folders();
         let mut failed = Vec::new();

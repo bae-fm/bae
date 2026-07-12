@@ -15,9 +15,9 @@ pub mod import;
 pub mod keys;
 pub mod library;
 pub mod library_name;
-// Loudness measurement uses `ebur128`, a desktop-only dependency (import decodes
-// audio only on these targets; playback derives the gain from the stored
-// measurements with plain arithmetic and needs no ebur128).
+// Measurement needs `ebur128`, a desktop-only dependency, and only import
+// measures. Playback derives its gain from the stored measurements with plain
+// arithmetic, so mobile needs no ebur128.
 #[cfg(any(target_os = "macos", target_os = "linux", target_os = "windows"))]
 pub mod loudness;
 pub mod migrations;
@@ -27,10 +27,10 @@ pub mod playback;
 pub mod queue;
 pub mod retry;
 mod serde_helpers;
-// The signal-extraction machinery (OCR, disc-ID compute) is desktop-only and
-// gated submodule-by-submodule inside `signals`. The module itself stays
-// available on every target for the pure `LookupFailure` type, which the shared
-// metadata-search path (`import::search`) maps provider errors into.
+// The extraction machinery (OCR, disc-ID compute) is desktop-only and gated
+// submodule-by-submodule inside `signals`. The module itself stays on every
+// target for the pure `LookupFailure` type, which the shared metadata-search path
+// (`import::search`) maps provider errors into.
 pub mod signals;
 pub mod storage;
 pub mod sync;

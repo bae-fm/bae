@@ -48,12 +48,10 @@ impl LibraryManager {
         self.sync.is_sync_paused()
     }
 
-    // Sync provider configuration
-
-    /// Whether the background sync loop is running and draining uploads. The
-    /// manage gate requires this: managing has no inline remote flip — the
-    /// release only becomes remote once the upload observer (which fires from
-    /// inside the running loop) confirms the last upload landed.
+    /// Whether the background sync loop is running and draining uploads. The manage
+    /// gate requires it: managing has no inline remote flip — a release becomes
+    /// remote only once the upload observer, which fires from inside the running
+    /// loop, confirms the last upload landed.
     pub fn is_sync_ready(&self) -> bool {
         self.handle.is_syncing()
     }

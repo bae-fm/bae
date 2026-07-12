@@ -6,13 +6,11 @@ use tracing::{debug, warn};
 use super::*;
 use crate::db::{DbArtist, DbReleaseDetail, DbReleaseSummary};
 
-/// The per-release inputs the `LibraryManager` reads from the DB / coven cache
-/// and threads into the release projections: whether a cloud home exists at all
-/// (gates `storage_actions`), whether coven keeps this release's blobs pinned on
-/// this device (the orthogonal coven-cache property), and this release's own
-/// cover reference (image id + version from the `covers` row). Bundled so
-/// `ReleaseSummary` / `ReleaseDetail` construction takes one context instead of
-/// a parameter pile.
+/// The per-release inputs `LibraryManager` reads from the DB and coven's cache and
+/// threads into the release projections: whether a cloud home exists at all (which
+/// gates `storage_actions`), whether this release's blobs are pinned on this device,
+/// and its own cover reference. Bundled so the constructors take one context rather
+/// than a pile of parameters.
 #[derive(Debug, Clone)]
 pub(crate) struct ReleaseResolveCtx {
     pub(crate) has_cloud_home: bool,
@@ -21,56 +19,44 @@ pub(crate) struct ReleaseResolveCtx {
     pub(crate) transfer_action: Option<ReleaseStorageAction>,
 }
 
-/// Resolved release summary: the slim projection that list views (storage
-/// manager, release pickers, etc.) render one row per entity. Every field
-/// is pre-computed; no downstream consumer needs to derive anything.
+/// The slim projection a list view (Storage Manager, release pickers) renders one
+/// row from. Every field is pre-computed; nothing downstream derives anything.
+/// Composed into [`ReleaseDetail`] for detail views.
 ///
-/// Composed into [`ReleaseDetail`] for detail views. Interned into the
-/// UI-side "releases" slice — see notes on summary/detail composition at
-/// the top of this file.
-///
-/// Invariant: `album_id` refers to an album that exists. Every release
-/// belongs to an album (enforced by the `releases.album_id` FK and by
-/// `delete_release`, which removes the album when its last release goes).
+/// Invariant: `album_id` names an album that exists — enforced by the
+/// `releases.album_id` FK and by `delete_release`, which removes the album when its
+/// last release goes.
 #[derive(Debug, Clone)]
 pub struct ReleaseSummary {
     pub id: String,
     pub album_id: String,
-    /// Audio format (e.g. "FLAC", "MP3"). `None` if unknown.
+    /// "FLAC", "MP3", … `None` if unknown.
     pub format: Option<String>,
-    /// The release's storage state — Local (local) or Remote (cloud) —
-    /// derived from the shared `releases.remote` fact. Orthogonal to `pinned`.
+    /// Local or Remote, from the shared `releases.remote` fact. Orthogonal to
+    /// `pinned`.
     pub storage_state: ReleaseStorageState,
-    /// Whether coven keeps this release's blobs pinned (kept offline) on this
-    /// device — the orthogonal coven-cache property, asked of coven's cache.
-    /// Meaningful only when `storage_state` is `Remote` (always `false` for an
-    /// Local release, which is already a local file). Kept SEPARATE from
-    /// `storage_state` so the two concepts are never confused.
+    /// Whether coven keeps this release's blobs offline on this device. Meaningful
+    /// only when `storage_state` is `Remote` — always `false` for a Local release,
+    /// which is already a local file. Kept SEPARATE from `storage_state` so the two
+    /// are never confused.
     pub pinned: bool,
-    /// Storage transitions available for this release right now, computed by
-    /// the core from `storage_state`, `pinned`, and whether a cloud home exists.
-    /// The UI renders these (the album-detail "Storage…" sheet and the Storage
-    /// Manager row context menu); it never re-derives availability. Empty with
-    /// no cloud home. The in-flight-uploads gate lives in the UI: it consults
-    /// the outbox snapshot's release groups before showing these actions.
+    /// The transitions available right now, derived by the core from
+    /// `storage_state`, `pinned`, and whether a cloud home exists; empty without
+    /// one. The UI renders these and never re-derives availability, but does apply
+    /// the in-flight-uploads gate from its outbox snapshot.
     pub storage_actions: Vec<ReleaseStorageAction>,
     pub transfer_action: Option<ReleaseStorageAction>,
     pub file_count: i64,
     pub total_size: i64,
-    /// Reference to this release's own cover (image id + version), or `None` when
-    /// the release has no cover row. Keyed on the release id — covers are stored
-    /// per release — so two releases of one album resolve to their own art rather
-    /// than the album's primary cover.
+    /// This release's *own* cover, or `None` when it has no cover row. Keyed on the
+    /// release id, so two releases of one album each resolve to their own art rather
+    /// than to the album's primary cover.
     pub cover: Option<ImageRef>,
 }
 
 impl ReleaseSummary {
-    /// Project a slim `DbReleaseSummary` row. `storage_state` derives from the
-    /// shared `remote` gate; `pinned`, `has_cloud_home`, and the release's own
-    /// `cover` come from `ctx` (the manager reads them from coven's cache, the
-    /// configured home, and the `covers` row). Single source of truth for the
-    /// `storage_actions` derivation: [`ReleaseDetail::from_raw`] projects its fat
-    /// aggregate down to the slim row and routes through here too.
+    /// The one place `storage_actions` is derived: [`ReleaseDetail::from_raw`]
+    /// projects its fat aggregate down to a slim row and routes through here too.
     pub(crate) fn from_raw(raw: DbReleaseSummary, ctx: &ReleaseResolveCtx) -> ReleaseSummary {
         let storage_state = storage_state(raw.remote);
         ReleaseSummary {
@@ -92,50 +78,39 @@ impl ReleaseSummary {
     }
 }
 
-/// Resolved release detail: the fat projection for the album detail view.
-/// Composes a [`ReleaseSummary`] (slim fields) with the per-release data
-/// that only the detail view needs (tracks, files, gallery). Split this
-/// way so a list consumer can display a row without loading tracks.
-///
-/// `display_name` is pre-computed: the release's own `release_name`, or a
-/// "`year format`" derivation, or "Release $N" using the release's
-/// position within its album. The resolver picks the position; consumers
-/// never need the index.
-///
+/// The fat projection for the album detail view: a [`ReleaseSummary`] plus what only
+/// a detail view needs (tracks, files, gallery). Split this way so a list consumer
+/// can render a row without loading tracks.
 #[derive(Debug, Clone)]
 pub struct ReleaseDetail {
     pub summary: ReleaseSummary,
-    /// Human-readable name for picker UI: the stored `release_name`, or
-    /// "$year $format", or "Release $N" fallback.
+    /// The stored `release_name`, else "$year $format", else "Release $N" from the
+    /// release's position within its album. The resolver picks that position, so no
+    /// consumer needs the index.
     pub display_name: String,
     pub year: Option<i32>,
     pub label: Option<String>,
     pub catalog_number: Option<String>,
     pub country: Option<String>,
-    /// Total duration across all tracks, in milliseconds. The UI formats it.
+    /// Summed across all tracks, in milliseconds. The UI formats it.
     pub total_duration_ms: i64,
     pub tracks: Vec<TrackDetail>,
     pub track_groups: Vec<TrackGroup>,
     pub files: Vec<FileDetail>,
     pub image_files: Vec<FileDetail>,
-    /// Cover (if on disk) followed by every image file the release has —
-    /// including cloud-only ones not yet downloaded (those carry no local path;
-    /// the lightbox fetches them on demand).
+    /// The cover, then every image file the release has — including cloud-only ones,
+    /// which the lightbox fetches on demand.
     pub gallery_items: Vec<GalleryItem>,
 }
 
 impl ReleaseDetail {
-    /// Project a fat `DbReleaseDetail` into the display-ready detail. Joins
-    /// per-track artist names (falling back to album artists), formats audio
-    /// labels, groups tracks by side, builds the gallery, derives the picker
-    /// `display_name` from the release's `release_index` within its album, and
-    /// composes the slim [`ReleaseSummary`]. `ctx` carries the coven-read inputs
-    /// (pin state, cloud-home presence, this release's own cover).
+    /// Joins per-track artist names (falling back to the album's), describes each
+    /// file's audio format, groups tracks by side, builds the gallery, derives
+    /// `display_name`, and composes the slim [`ReleaseSummary`].
     ///
-    /// Both the manager and the upload observer route through here (the observer
-    /// holds the same `Database` and a `CovenHandle`, so it can emit
-    /// `ReleaseUpdated` events without owning a manager) so the resolve logic
-    /// stays in one place.
+    /// Both the manager and the upload observer route through here, so the resolve
+    /// logic stays in one place. (The observer holds the same `Database` and a
+    /// `CovenHandle`, so it can emit `ReleaseUpdated` without owning a manager.)
     pub(crate) fn from_raw(
         raw: DbReleaseDetail,
         album_artists: &[DbArtist],
@@ -183,14 +158,15 @@ impl ReleaseDetail {
 
         let track_groups: Vec<TrackGroup> = crate::util::format::group_tracks_by_side(&tracks);
 
-        // Describe each audio file's format. Audio segments carry the owning file
-        // id; a single-file CUE rip has many track formats sharing one file through
-        // their segments. Group by file id (first row wins — every row for one
-        // file shares the file-level codec/rate/depth/channels). A file's audio
-        // duration (for deriving a lossy file's average bitrate) is the sum of its
-        // tracks' durations, kept as `Some(sum)` only while every contributing track
-        // has a known duration; one unknown duration makes the file's total unknown
-        // so no bitrate is derived from a partial sum.
+        // Each audio segment names its owning file, and a single-file CUE rip has
+        // many track formats sharing one file through their segments. So group by
+        // file id, first row winning — every row for a file agrees on the
+        // file-level codec/rate/depth/channels.
+        //
+        // A file's audio duration (which a lossy file's average bitrate is derived
+        // from) is the sum of its tracks' durations, and stays `Some` only while
+        // every contributing track has a known duration: one unknown collapses the
+        // total to unknown, so no bitrate is ever derived from a partial sum.
         let audio_formats = raw.audio_formats;
         let audio_segments = raw.audio_segments;
         let audio_format_by_id: std::collections::HashMap<&str, &crate::db::DbAudioFormat> =
@@ -218,11 +194,9 @@ impl ReleaseDetail {
             };
             let file_id = segment.file_id.as_str();
             file_format.entry(file_id).or_insert(af);
-            // `af` is joined from this release's tracks, so the lookup should be
-            // present; its value is the track's own (optional) duration. A missing
-            // entry means that join invariant broke — log it rather than silently
-            // folding it in as unknown. Fold into the file total: any unknown
-            // duration collapses the file's total to unknown.
+            // `af` is joined from this release's own tracks, so its track must be in
+            // `track_durations`. A miss means that join invariant broke — log it
+            // rather than quietly fold it in as unknown.
             let track_dur = segment
                 .end_sample
                 .map(|end| {
@@ -252,11 +226,9 @@ impl ReleaseDetail {
             .map(|f| {
                 let audio_format = match file_format.get(f.id.as_str()) {
                     Some(af) => {
-                        // Lossy codecs store no bit depth; show the average bitrate
-                        // (file bytes over the file's audio duration) when the full
-                        // duration is known. When it isn't, the label drops the
-                        // bitrate part — log that legitimate skip rather than hiding
-                        // the missing duration.
+                        // A lossy codec stores no bit depth, so the label shows an
+                        // average bitrate instead — file bytes over the file's audio
+                        // duration, and only when that duration is fully known.
                         let bitrate_kbps = if af.bits_per_sample.is_none() {
                             match file_audio_duration_ms.get(f.id.as_str()).copied().flatten() {
                                 Some(dur) if dur > 0 => Some(f.file_size * 8 / dur),
@@ -281,8 +253,8 @@ impl ReleaseDetail {
                         })
                     }
                     None => {
-                        // A non-audio file (image, cue) legitimately has no format
-                        // row; an audio file without one is a data gap worth noting.
+                        // An image or cue legitimately has no format row; an *audio*
+                        // file without one is a data gap worth saying so about.
                         if f.content_type.is_audio() {
                             warn!(
                                 "release file {} ({}) is audio but has no audio_format row",
@@ -309,11 +281,9 @@ impl ReleaseDetail {
         let total_duration_ms: i64 = tracks.iter().filter_map(|t| t.duration_ms).sum();
 
         let mut gallery = Vec::new();
-        // The release's own cover, resolved once from the `covers` row: the gallery's
-        // "Cover" slot and the summary's `cover` field both read it. The lightbox
-        // fetches its bytes by image id (`read_image_blob`) and caches them under
-        // `(id, version)`. coven owns the bytes' on-disk location (its local store
-        // while Local, its cache while Remote).
+        // One resolve of the `covers` row feeds both the gallery's "Cover" slot and
+        // the summary's `cover`. The lightbox fetches the bytes by image id and
+        // caches them under `(id, version)`; coven owns where they sit on disk.
         if let Some(cover_ref) = &ctx.cover {
             gallery.push(GalleryItem {
                 id: "cover".to_string(),
@@ -321,10 +291,9 @@ impl ReleaseDetail {
                 source: GallerySource::Cover(cover_ref.clone()),
             });
         }
-        // Every image file the release has. coven owns the locality-aware read, so the
-        // lightbox fetches an image file's bytes on demand by file id through
-        // `read_gallery_bytes` (the user's own file when Local, the cache/cloud when
-        // Remote) — there is no stable bae path for it.
+        // An image file likewise has no stable bae path: the lightbox fetches its
+        // bytes by file id through `read_gallery_bytes`, and coven reads them from
+        // wherever they are — the user's own file when Local, the cache when Remote.
         for f in &image_files {
             gallery.push(GalleryItem {
                 id: f.id.clone(),
@@ -342,10 +311,8 @@ impl ReleaseDetail {
             (release_index + 1) as i64,
         );
 
-        // The summary is the slim projection of this same release: build that row
-        // (with the file totals computed above) and route it through the shared
-        // `ReleaseSummary::from_raw` so `storage_actions` derivation stays in one
-        // place.
+        // Route the slim row through `ReleaseSummary::from_raw` rather than build it
+        // here, so the `storage_actions` derivation stays in one place.
         let summary = ReleaseSummary::from_raw(
             DbReleaseSummary {
                 id: release.id.clone(),

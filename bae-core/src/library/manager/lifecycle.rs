@@ -8,11 +8,9 @@
 use super::*;
 
 impl LibraryManager {
-    /// Rename a library by id. If the id matches the active library, the
-    /// rename goes through the reactive `ConfigState` so all current
-    /// subscribers see it. Otherwise the library's `config.yaml` on disk
-    /// is edited in place — the inactive library isn't loaded into
-    /// memory.
+    /// Rename a library by id. The active library renames through the reactive
+    /// `ConfigState`, so current subscribers see it; any other library isn't loaded
+    /// in memory, so its `config.yaml` is edited on disk instead.
     pub fn rename_library(&self, library_id: &str, name: &str) -> Result<(), LibraryError> {
         if name.trim().is_empty() {
             return Err(LibraryError::Validation(
@@ -28,24 +26,22 @@ impl LibraryManager {
         Ok(())
     }
 
-    /// Forget the active library's encryption key. The running
-    /// `sync_manager` still holds the key in memory so this session
-    /// keeps working; the next launch lands on `UnlockView` because
-    /// the keyring is empty. Used by the sidebar's "Lock Library" action.
+    /// Forget the active library's encryption key — the sidebar's "Lock Library".
+    /// The running sync manager still holds the key in memory, so this session keeps
+    /// working; the next launch lands on `UnlockView` because the keyring is empty.
     pub fn forget_encryption_key(&self) -> Result<(), LibraryError> {
         self.key_service.forget_encryption_key()?;
         Ok(())
     }
 
-    /// Forget this (local) library on this device: remove its data directory,
-    /// clear the active-library pointer, and delete its master encryption key. The
-    /// owner's cloud copy (if any) is untouched — this only drops the device's
-    /// local presence.
+    /// Forget this library on this device: remove its data directory, clear the
+    /// active-library pointer, and delete its master encryption key. The cloud copy,
+    /// if any, is untouched — this drops only the device's local presence.
     ///
-    /// The caller must drop this handle immediately afterward: the database
-    /// lives in the directory being removed, so this must be the handle's last
-    /// operation. The next launch re-discovers and opens another library (or
-    /// onboards) since the active pointer is gone.
+    /// The caller must drop this handle immediately afterward: the database lives in
+    /// the directory being removed, so this has to be the handle's last operation.
+    /// With the active pointer gone, the next launch re-discovers and opens another
+    /// library, or onboards.
     pub fn forget_library(&self) -> Result<(), LibraryError> {
         let config = self.config_handle.config();
         let library_id = config.store_id.clone();

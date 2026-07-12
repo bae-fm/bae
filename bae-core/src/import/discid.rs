@@ -19,12 +19,13 @@ fn invalid_discid_data(message: impl Into<String>) -> MetadataDetectionError {
     ))
 }
 
-/// Find a matching audio file for a CUE file (for CUE-pair DiscID calculation).
-/// Accepts any extension `ContentTypeHint::is_audio()` recognises so the
-/// downstream dispatcher can route by container, not by hardcoded list.
-/// Only returns a match for single-file CUE sheets (one FILE directive scoping
-/// every TRACK). Multi-FILE sheets are one-file-per-track releases the disc-ID
-/// path can't compute — the sectors come from one concatenated container.
+/// The audio file a CUE pairs with, for the CUE-pair DiscID calculation. Accepts
+/// any extension `ContentTypeHint::is_audio()` recognises, so the downstream
+/// dispatcher routes by container rather than a hardcoded list.
+///
+/// Matches only single-file CUE sheets (one FILE directive scoping every TRACK).
+/// A multi-FILE sheet is a one-file-per-track release, which has no disc ID to
+/// compute — the sectors would have to come from one concatenated container.
 pub(crate) fn find_matching_audio_for_cue<'a>(
     cue_path: &Path,
     sheet: &CueSheet,
@@ -216,8 +217,8 @@ fn discid_from_raw_offsets(
     Ok(mb_discid_str.to_string())
 }
 
-/// Calculate MusicBrainz DiscID from LOG file alone
-/// This is the most efficient method as it doesn't require CUE or audio files
+/// MusicBrainz DiscID from a LOG file alone — the most direct method, since the
+/// sector offsets are in the log and neither the CUE nor the audio is needed.
 pub fn calculate_mb_discid_from_log(log_path: &Path) -> Result<String, MetadataDetectionError> {
     debug!("Calculating MusicBrainz DiscID from LOG: {:?}", log_path);
     trace!("Reading LOG file: {:?}", log_path);
@@ -265,11 +266,9 @@ fn calculate_mb_discid_from_cue_audio(
     calculate_mb_discid_from_cue_duration(sheet, duration_seconds, method_label)
 }
 
-/// Calculate MusicBrainz DiscID from a parsed CUE sheet and any audio file
-/// FFmpeg can probe for duration. Container-agnostic: works for ALAC/AAC
-/// `.m4a`, APE, MP3, WAV, OGG, and anything else FFmpeg recognises. Track
-/// offsets come from the CUE; the lead-out is derived from probe duration.
-///
+/// MusicBrainz DiscID from a parsed CUE sheet and any audio file FFmpeg can
+/// probe for duration — ALAC/AAC `.m4a`, APE, MP3, WAV, OGG, whatever it
+/// recognises. Track offsets come from the CUE, the lead-out from the duration.
 pub fn calculate_mb_discid_from_cue_probe(
     sheet: &CueSheet,
     audio_path: &Path,
@@ -277,11 +276,10 @@ pub fn calculate_mb_discid_from_cue_probe(
     calculate_mb_discid_from_cue_audio(sheet, audio_path, "CUE/probe", "Audio")
 }
 
-/// Shared MusicBrainz DiscID calculation: given a parsed CUE sheet and the
-/// container's total duration in seconds, build the offsets array (lead-out
-/// first, then track starts, all offsets include the 150-sector pregap) and
-/// hand it to the `discid` crate. Used by both `_from_cue_flac` and
-/// `_from_cue_probe`.
+/// The shared DiscID calculation behind `_from_cue_flac` and `_from_cue_probe`:
+/// from a parsed CUE sheet and the container's total duration, build the offsets
+/// array (lead-out first, then track starts, every offset including the
+/// 150-sector pregap) and hand it to the `discid` crate.
 fn calculate_mb_discid_from_cue_duration(
     sheet: &CueSheet,
     duration_seconds: f64,
@@ -307,11 +305,10 @@ fn calculate_mb_discid_from_cue_duration(
     )
 }
 
-/// Compute a MusicBrainz DiscID from pre-resolved LOG/CUE/audio paths.
-/// Tries LOG files first (most accurate — sector offsets come from the EAC
-/// or XLD log directly), then CUE+audio pairs as fallback. Returns `None`
-/// when no strategy produces a DiscID; failures along the way are logged at
-/// `debug!` so the chain is visible in traces.
+/// A MusicBrainz DiscID from pre-resolved LOG/CUE/audio paths. LOG files come
+/// first — most accurate, since the EAC or XLD log carries the sector offsets
+/// directly — then CUE+audio pairs. `None` when nothing produces a DiscID;
+/// failures along the way log at `debug!` so the chain shows up in traces.
 pub fn compute_discid_from_paths(
     log_paths: &[PathBuf],
     cue_paths: &[PathBuf],
@@ -344,11 +341,10 @@ pub fn compute_discid_from_paths(
     None
 }
 
-/// Compute a MusicBrainz DiscID from an already-parsed CUE sheet and its audio
-/// file, dispatched by audio codec. Returns `None` (logging at `debug`) when
-/// the extension isn't supported audio or the computation fails — the caller
-/// advances to the next candidate. Shared by the path-based and
-/// `CategorizedFiles`-based computers so the codec dispatch lives in one place.
+/// A MusicBrainz DiscID from an already-parsed CUE sheet and its audio file,
+/// dispatched by codec. `None` (logged at `debug`) when the extension isn't
+/// supported audio or the computation fails, so the caller moves to the next
+/// candidate. Shared by both computers, so the codec dispatch lives in one place.
 fn discid_from_cue_audio(sheet: &CueSheet, audio_path: &Path) -> Option<String> {
     let Some(ext) = audio_path.extension().and_then(|e| e.to_str()) else {
         debug!(
@@ -393,9 +389,9 @@ fn discid_from_cue_audio(sheet: &CueSheet, audio_path: &Path) -> Option<String> 
     }
 }
 
-/// Compute a MusicBrainz DiscID from already-categorized files, using the CUE
-/// sheets the folder scan already parsed — no re-read, no re-parse. LOG first
-/// (most accurate), then CUE+audio pairs.
+/// A MusicBrainz DiscID from already-categorized files, reusing the CUE sheets
+/// the folder scan parsed — no re-read, no re-parse. LOG first (most accurate),
+/// then CUE+audio pairs.
 pub fn compute_discid_from_categorized(
     categorized: &crate::import::folder_scanner::CategorizedFiles,
 ) -> Option<String> {
@@ -704,13 +700,12 @@ mod tests {
         assert_eq!(disc_id.len(), 28, "MusicBrainz disc IDs are 28 chars");
     }
 
-    /// A single-FILE rip with `.cue` + `.mp3` produces a disc ID — the
-    /// dispatcher routes MP3 through the FFmpeg-probe path.
+    /// A single-FILE rip with `.cue` + `.mp3` produces a disc ID — the dispatcher
+    /// routes MP3 through the FFmpeg-probe path.
     ///
-    /// Drives `compute_discid_from_paths` directly with constructed paths
-    /// rather than the outer `compute_discid` (which goes through
-    /// `folder_scanner`'s CUE+audio pair detection — MP3 pair detection in
-    /// the folder scanner is a separate concern).
+    /// Drives `compute_discid_from_paths` with constructed paths rather than
+    /// `compute_discid_from_categorized`, which would go through the folder
+    /// scanner's CUE+audio pair detection — a separate concern for MP3.
     #[test]
     fn test_compute_discid_routes_cue_mp3() {
         use tempfile::TempDir;

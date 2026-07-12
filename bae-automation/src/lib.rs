@@ -929,9 +929,8 @@ impl From<LibraryError> for AutomationError {
 }
 
 impl From<ImportError> for AutomationError {
-    /// The automation surface reports import failures as an opaque `import`
-    /// error with the typed error's Display as the message — the same
-    /// stringification every import call site used before, now in one place.
+    /// Import failures cross as an opaque `import` error carrying the typed
+    /// error's Display as the message.
     fn from(value: ImportError) -> Self {
         Self::Import(value.to_string())
     }

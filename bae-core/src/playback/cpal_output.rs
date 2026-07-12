@@ -79,18 +79,11 @@ impl AudioOutput for CpalAudioOutput {
         audio_events: AudioEventSender,
         position_update_interval_ms: u32,
     ) -> Result<Box<dyn AudioStream>, AudioError> {
-        // Resolve the current default output device at build time. The device is
-        // deliberately not cached at construction: caching pins to whatever was
-        // default at startup, and on macOS cpal sets the audio unit's
-        // `CurrentDevice` to that cached id on each build, so a rebuild would bind
-        // the stale device instead of the current default.
-        //
-        // With the persistent output stream this build runs only on stop, a format
-        // change, and a default-device change — not per track — so switching the
-        // system output takes effect via the macOS default-device listener, which
-        // dispatches `OutputDeviceChanged` and rebuilds this stream onto the new
-        // default. On other platforms a switch takes effect at the next rebuild
-        // (stop / format change).
+        // Resolve the current default output device at build time. Caching it at
+        // construction would pin to whatever was default at startup, and on macOS
+        // cpal sets the audio unit's `CurrentDevice` to that cached id on each
+        // build — so a rebuild would bind the stale device, not the current
+        // default.
         let host = cpal::default_host();
         let device = host
             .default_output_device()
@@ -167,21 +160,19 @@ mod device_listener {
 
     type Callback = Box<dyn Fn() + Send + Sync>;
 
-    /// A registered CoreAudio property listener. Owns the boxed callback (kept
-    /// alive for as long as the listener is registered) and removes the listener
-    /// and frees the callback on drop.
+    /// A registered CoreAudio property listener. Removes the listener on drop but
+    /// deliberately leaks the boxed callback — see `Drop` for why.
     pub(super) struct DefaultDeviceListener {
         /// Raw pointer to the boxed callback handed to CoreAudio as client data.
-        /// Freed in `Drop` once the listener is removed and no CoreAudio thread
-        /// can reach it.
+        /// Never freed: an in-flight `listener_proc` on a CoreAudio thread could
+        /// still be reading it (see `Drop`).
         callback: *mut Callback,
         address: AudioObjectPropertyAddress,
     }
 
     // The raw callback pointer is only dereferenced by CoreAudio's listener thread
-    // (via `listener_proc`) and freed on drop after the listener is removed; the
-    // boxed `Fn` is `Send + Sync`, so the handle is safe to move to the service
-    // thread that owns the output.
+    // (via `listener_proc`) and is never freed; the boxed `Fn` is `Send + Sync`, so
+    // the handle is safe to move to the service thread that owns the output.
     unsafe impl Send for DefaultDeviceListener {}
 
     /// CoreAudio invokes this on its own thread when the default output device
@@ -193,8 +184,8 @@ mod device_listener {
         _addresses: *const AudioObjectPropertyAddress,
         client_data: *mut c_void,
     ) -> OSStatus {
-        // SAFETY: `client_data` is the `*mut Callback` we registered; it outlives
-        // the listener (freed only in `Drop`, after the listener is removed).
+        // SAFETY: `client_data` is the `*mut Callback` we registered, and it is
+        // never freed while the process lives.
         let callback = unsafe { &*(client_data as *const Callback) };
         callback();
         0
@@ -210,7 +201,7 @@ mod device_listener {
             };
             // SAFETY: `kAudioObjectSystemObject` is always a valid object;
             // `listener_proc` is a valid `extern "C"` listener; the callback
-            // pointer outlives the registration (freed in `Drop`).
+            // pointer outlives the registration (it is never freed).
             let status = unsafe {
                 AudioObjectAddPropertyListener(
                     kAudioObjectSystemObject,

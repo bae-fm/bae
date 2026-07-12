@@ -178,10 +178,9 @@ fn test_deserialize_mb_release_response_minimal() {
 
 // ── fetch_mb_xref ────────────────────────────────────────────────
 //
-// Drives the cross-reference path through cache seeding so the
-// tests don't hit the network. Each test uses a unique Discogs
-// release ID so other tests' cache seeds don't bleed in (the
-// caches are process-global LRUs).
+// Seeded through the caches so no test hits the network. The caches are
+// process-global LRUs, so each test uses a unique Discogs release ID to keep
+// another test's seed from bleeding in.
 
 fn make_mb_response(id: &str, release_group_id: Option<&str>) -> MbReleaseResponse {
     MbReleaseResponse {
@@ -264,11 +263,9 @@ async fn test_fetch_mb_xref_no_backlink_returns_none() {
 
 #[tokio::test]
 async fn test_fetch_mb_xref_release_without_group_still_returns_response() {
-    // The mapper's identity-emission gate is checked at the mapper
-    // layer (it only emits an MB identity row when `release_group`
-    // is present). `fetch_mb_xref` itself returns whatever the MB
-    // API gave us — the absence of a release group is not a
-    // fetch-time failure.
+    // A missing release group is not a fetch-time failure: `fetch_mb_xref`
+    // returns whatever MB gave it. The mapper is what gates on `release_group`,
+    // and only emits an MB identity row when one is present.
     let discogs_id = "fetch-mb-xref-no-rg";
     let mb_release_id = "mb-release-no-rg";
 
@@ -292,10 +289,10 @@ async fn test_fetch_mb_xref_release_without_group_still_returns_response() {
     assert_eq!(pairs[0].0, "musicbrainz");
 }
 
-/// The retry policy exists because the old one retried everything. A NotFound is
-/// the ordinary answer for a disc MusicBrainz doesn't have, and each extra
-/// attempt pays another rate-limit wait (1s) plus a round trip; "at least one
-/// search field" is raised before any request is even built.
+/// Only a failure a retry could fix is retried. A `NotFound` is the ordinary
+/// answer for a disc MusicBrainz doesn't have, and each extra attempt costs
+/// another round trip plus a 1s rate-limit wait; the "at least one search field"
+/// error is raised before a request is even built.
 #[test]
 fn only_transient_musicbrainz_failures_are_retried() {
     assert!(should_retry_mb(&MusicBrainzError::Timeout));

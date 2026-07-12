@@ -194,8 +194,8 @@ impl BridgeExportPreset {
             pregap_placement,
             applies_to_track,
             applies_to_release,
-            // Derived from `codec` on `from_core`; the core preset recomputes it
-            // via `codec.extension()`, so the bridge-carried value is dropped.
+            // The core preset re-derives this from `codec`; the carried value is
+            // dropped.
             extension: _,
         } = self;
         bae_core::config::ExportPreset {
@@ -211,16 +211,14 @@ impl BridgeExportPreset {
 }
 
 impl BridgeConfig {
-    /// Convert a core `Config` to `BridgeConfig` for the UI. Pure translation —
-    /// `cloud_account_display` is a core method; this just reads it. `sync` is
-    /// `Some` whenever a provider is set in YAML. Sync-loop running status is
-    /// runtime state, not config — it lives in the sync-status snapshot, not on
-    /// `BridgeConfig`.
+    /// `sync` is `Some` whenever a provider is set in YAML — it does not mean the
+    /// sync loop is running. That is runtime state, and lives in the sync-status
+    /// snapshot, not on `BridgeConfig`.
     ///
     /// bae-core's own `Config` fields are exhaustively destructured so a new one
-    /// fails the build here. The coven `inner` sub-config it embeds is an
-    /// external crate's type — exempt from the destructure — so its fields
-    /// (`library_id`, `cloud_home`, …) stay dotted reads through `inner`.
+    /// fails the build here. The coven `inner` sub-config it embeds is an external
+    /// crate's type — exempt from the destructure — so its fields (`store_id`,
+    /// `cloud_home`, …) stay dotted reads through `inner`.
     pub(crate) fn from_core(config: &bae_core::config::Config) -> Self {
         let discogs_status = config.discogs_token_status();
         let cloud_account_display = config.cloud_account_display();
@@ -244,8 +242,6 @@ impl BridgeConfig {
         let bae_core::config::McpConfig { enabled, port } = mcp;
 
         BridgeConfig {
-            // `inner` is coven's config (external crate) — exempt from the
-            // exhaustive destructure; these stay dotted reads.
             library_id: inner.store_id.clone(),
             library_name: inner.store_name.clone(),
             library_path: inner.store_dir.to_string_lossy().to_string(),
@@ -294,9 +290,8 @@ impl BridgeConfig {
 }
 
 impl BridgeSyncProvider {
-    /// Map a connected provider + its cloud-home settings to the bridge enum,
-    /// carrying only the fields that provider uses. `CloudHomeConfig` is coven's
-    /// (external crate) type, so its fields stay dotted reads.
+    /// Carries only the fields the given provider uses. `CloudHomeConfig` is
+    /// coven's (external crate) type, so its fields stay dotted reads.
     fn from_core(
         provider: &bae_core::config::CloudProvider,
         cloud_home: &bae_core::config::CloudHomeConfig,

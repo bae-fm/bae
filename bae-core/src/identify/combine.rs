@@ -1,30 +1,22 @@
 //! Combine logic for the triangulation pipeline.
 //!
-//! After both disc-ID and barcode signals settle, the reducer hands their
-//! per-signal result vecs and the candidate's sourced catalog candidates to
-//! `combine_results`. This module produces the final outcome:
+//! Once both signals settle, the reducer hands their results and the candidate's
+//! catalog candidates to `combine_results`, which intersects them (or falls through
+//! to whichever signal had results), narrows by catalog match, and branches on
+//! cardinality and group agreement. Pure: no I/O, no state.
 //!
-//! * intersect or fall-through to whichever signal had results,
-//! * narrow by sourced catalog match against MB / Discogs canonical catnos,
-//! * branch on cardinality and per-group agreement.
-//!
-//! Pure functions: no I/O, no state. The caller (reducer) maps the
-//! `CombineOutcome` to a terminal `IdentifyState`.
-//!
-//! Group identity: a result's group is `(source, source_group_id)` —
-//! cross-source releases naturally land in distinct groups, so a triangulation
-//! that spans MB-X and Discogs-Y is a multi-group result and signals a
-//! genuine disagreement between the two signal pipes.
+//! A result's group is `(source, source_group_id)`, so releases from different
+//! sources always land in different groups — a set spanning MB-X and Discogs-Y is
+//! multi-group, which is a genuine disagreement between the two signals.
 
 use crate::db::LibraryStatus;
 use crate::import::search::MetadataResult;
 use crate::import::MetadataSource;
 use crate::signals::SourcedValue;
 
-/// Which signals produced or confirmed one result, for the per-row badges in
-/// the UI. `by_disc_id` / `by_barcode`: the result came back from that signal's
-/// lookup. `matches_catalog`: the result's catalog number matches a catalog
-/// candidate harvested from the candidate's text.
+/// Which signals produced or confirmed one result, for the UI's per-row badges.
+/// `by_disc_id` / `by_barcode`: the result came back from that signal's lookup.
+/// `matches_catalog`: its catalog number matches one harvested from the candidate.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ResultProvenance {
     pub by_disc_id: bool,
@@ -32,59 +24,50 @@ pub struct ResultProvenance {
     pub matches_catalog: bool,
 }
 
-/// Final outcome of the combine step. The reducer converts this into a
-/// terminal `IdentifyState`.
+/// What combine decided; the reducer lifts it into a terminal `IdentifyState`.
 #[derive(Debug, Clone)]
 pub enum CombineOutcome {
-    /// Combined set has 1+ results that all share a single group. The UI
-    /// shows them with per-row buttons; `group` lets it render
-    /// "N pressings of one release group" copy when appropriate.
-    /// `provenance` is index-aligned with `matches`.
+    /// One or more results, all in one group. `group` lets the UI say "N pressings
+    /// of one release group"; `provenance` is index-aligned with `matches`.
     Found {
         matches: Vec<MetadataResult>,
         library_statuses: Vec<LibraryStatus>,
         group: GroupKey,
         provenance: Vec<ResultProvenance>,
     },
-    /// Combined set spans multiple groups, OR intersection was empty when
-    /// both signals had results. UI presents the per-signal sections so the
-    /// user can pick one or ignore a signal.
+    /// The set spans several groups, or both signals had results and didn't
+    /// intersect. Carries each signal's own results so the UI can show both
+    /// sections and let the user pick.
     Conflict {
         discid_results: Vec<(MetadataResult, LibraryStatus)>,
         barcode_results: Vec<(MetadataResult, LibraryStatus)>,
     },
-    /// Both signals settled with zero results. Truly nothing to show.
+    /// Both signals settled with zero results.
     NotFoundAnywhere,
 }
 
-/// A group key. Two results "agree" iff they share `(source, source_group_id)`.
-/// Results without a `source_group_id` aren't groupable — they can't co-occupy
-/// a group with anyone else, so a set containing one always ends up in
-/// `Conflict` once it has any other result.
+/// Two results agree exactly when they share `(source, source_group_id)`. A result
+/// with no `source_group_id` can't share a group with anyone, so any set holding
+/// one plus anything else is a `Conflict`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GroupKey {
     pub source: MetadataSource,
     pub source_group_id: String,
 }
 
-/// Settle both signals' results into a `CombineOutcome`.
+/// Settle both signals' results into a `CombineOutcome`, in four steps:
 ///
-/// Steps, in order:
-///
-/// 1. **Combine** — if both vecs are non-empty, intersect them by
-///    `(source, release_id)`; preserve disc-id ordering. If only one vec
-///    is non-empty, that vec becomes the combined set. If both are empty,
-///    return `NotFoundAnywhere` immediately.
-/// 2. **Catalog filter** — when `catalog_candidates` is non-empty AND the
-///    filter retains at least one result, narrow the set. Otherwise leave
-///    the combined set untouched (a filter that empties the set isn't
-///    useful — it'd lose real signal).
-/// 3. **Cardinality / grouping** — group results by
-///    `(source, source_group_id)`. Single-group → `Found`. Multi-group or
-///    a result with `None` group_id → `Conflict`.
-/// 4. **Empty-intersection conflict** — when step 1's combine path was
-///    intersection AND the result is empty, return `Conflict` carrying the
-///    original per-signal vecs so the UI can render both sections.
+/// 1. **Combine.** Both non-empty: intersect by `(source, release_id)`, keeping
+///    disc-ID order. One non-empty: that one is the set. Both empty:
+///    `NotFoundAnywhere`.
+/// 2. **Empty intersection.** Only an intersection can empty the set, so an empty
+///    set here means both signals had results and disagreed — a `Conflict`, and it
+///    carries their original results so the UI can show both.
+/// 3. **Catalog filter.** Narrow to the results a catalog candidate confirms, but
+///    only if that leaves at least one — a filter that empties the set would lose
+///    real signal.
+/// 4. **Grouping.** One group → `Found`. Several groups, or any result with no
+///    group id → `Conflict`.
 pub fn combine_results(
     discid_results: Vec<(MetadataResult, LibraryStatus)>,
     barcode_results: Vec<(MetadataResult, LibraryStatus)>,
@@ -99,8 +82,8 @@ pub fn combine_results(
         return CombineOutcome::NotFoundAnywhere;
     }
 
-    // Per-result provenance is computed against which signal's set a release
-    // came from, so capture membership before the working set is chosen.
+    // Provenance says which signal's set a release came from, so capture membership
+    // before the working set narrows it away.
     let discid_keys: HashSet<(MetadataSource, String)> = discid_results
         .iter()
         .map(|(r, _)| (r.source, r.release_id.clone()))
@@ -110,9 +93,8 @@ pub fn combine_results(
         .map(|(r, _)| (r.source, r.release_id.clone()))
         .collect();
 
-    // Choose the working set: intersection when both are non-empty;
-    // otherwise the non-empty side. Preserves disc-id ordering when an
-    // intersection is taken (disc-id is the more authoritative signal).
+    // Intersect when both signals have results, else take the non-empty side. Order
+    // follows disc-ID, the more authoritative signal.
     let combined: Vec<(MetadataResult, LibraryStatus)> = if !discid_empty && !barcode_empty {
         intersect_by_release(&discid_results, &barcode_results)
     } else if !discid_empty {
@@ -121,8 +103,8 @@ pub fn combine_results(
         barcode_results.clone()
     };
 
-    // Empty intersection while both signals had results → Conflict, not
-    // NotFoundAnywhere. The UI needs to show what each signal saw.
+    // Both signals found something but nothing in common: a disagreement, not an
+    // absence. The UI has to show what each one saw.
     if combined.is_empty() {
         return CombineOutcome::Conflict {
             discid_results,
@@ -177,8 +159,8 @@ fn intersect_by_release(
         .collect()
 }
 
-/// Apply the catalog filter. Returns the narrowed set if at least one result
-/// matches a confirming candidate; otherwise returns the input unchanged.
+/// The narrowed set when at least one result matches a confirming candidate, else
+/// the input unchanged.
 fn apply_catalog_filter(
     combined: Vec<(MetadataResult, LibraryStatus)>,
     candidates: &[SourcedValue],
@@ -195,9 +177,9 @@ fn apply_catalog_filter(
     }
 }
 
-/// Whether a result's catalog number matches any catalog candidate (after
-/// `normalize_catalog`). Used for the per-result "catalog confirmed" badge —
-/// independent of whether the filter narrowed the set.
+/// Whether a result's catalog number matches any candidate. Also drives the
+/// per-result "catalog confirmed" badge, whether or not the filter narrowed
+/// anything.
 fn catalog_matches(catalog_number: Option<&str>, candidates: &[SourcedValue]) -> bool {
     candidates
         .iter()
@@ -213,9 +195,8 @@ pub(crate) fn normalize_catalog(s: &str) -> String {
         .collect()
 }
 
-/// Whether a release's catalog number matches one catalog candidate: the
-/// candidate's origin can confirm a catalog and the two values are equal
-/// after `normalize_catalog`.
+/// A match needs both: the candidate's origin is one that may confirm a catalog,
+/// and the two values are equal once normalized.
 pub(crate) fn catalog_matches_candidate(
     catalog_number: Option<&str>,
     candidate: &SourcedValue,
@@ -225,9 +206,8 @@ pub(crate) fn catalog_matches_candidate(
             .is_some_and(|c| normalize_catalog(c) == normalize_catalog(&candidate.value))
 }
 
-/// Returns `Some(group)` if every result shares the same
-/// `(source, source_group_id)`. Returns `None` if any result has
-/// `source_group_id == None` or if results span multiple groups.
+/// `Some(group)` when every result shares one `(source, source_group_id)`; `None`
+/// when they span several, or when any of them has no group id at all.
 fn single_group(results: &[(MetadataResult, LibraryStatus)]) -> Option<GroupKey> {
     let mut iter = results.iter();
     let (first, _) = iter.next()?;
@@ -317,8 +297,7 @@ mod tests {
         assert!(matches!(outcome, CombineOutcome::NotFoundAnywhere));
     }
 
-    /// A single-group set from one signal (or both, when they don't intersect)
-    /// passes straight through to `Found` with every result and that group.
+    /// A single-group set passes straight through to `Found`, with every result.
     #[test]
     fn single_group_sets_pass_through_to_found() {
         // (name, discid, barcode, expected match count)
@@ -361,10 +340,9 @@ mod tests {
         }
     }
 
-    /// The headline cross-source invariant: two results carrying the *same*
-    /// `source_group_id` string but different sources (MB vs Discogs) are two
-    /// distinct groups — the group key is `(source, source_group_id)` — so the
-    /// set is a Conflict, not a single Found group.
+    /// The group key is `(source, source_group_id)`, so two results carrying the
+    /// *same* group-id string from different sources are still two groups — a
+    /// Conflict, never one Found group.
     #[test]
     fn same_group_id_string_across_sources_stays_two_groups() {
         let results = vec![
@@ -405,7 +383,6 @@ mod tests {
                 discid_results,
                 barcode_results,
             } => {
-                // Both signals found one release each; they didn't intersect.
                 assert_eq!(discid_results.len(), 1);
                 assert_eq!(barcode_results.len(), 1);
             }
@@ -415,8 +392,8 @@ mod tests {
 
     #[test]
     fn multi_group_in_intersection_is_conflict() {
-        // Both signals share two releases, in two groups — the user can't
-        // commit a single identity from this set.
+        // Both signals agree on two releases, but in two groups — no single
+        // identity to commit.
         let discid = vec![
             pair("rel-1", Some("group-1"), None),
             pair("rel-2", Some("group-2"), None),
@@ -441,9 +418,8 @@ mod tests {
 
     #[test]
     fn single_result_with_missing_group_is_conflict() {
-        // Group-membership is the disambiguator. A single groupless result
-        // can't be presented as "1 pressing of group X" — route it to
-        // Conflict so the user picks intentionally.
+        // A groupless result can't be shown as "1 pressing of group X", so it goes
+        // to Conflict and the user picks it deliberately.
         let results = vec![pair("rel-a", None, None)];
         let outcome = combine_results(results, vec![], &[]);
         assert!(matches!(outcome, CombineOutcome::Conflict { .. }));
@@ -451,7 +427,7 @@ mod tests {
 
     #[test]
     fn catalog_filter_narrows_intersection() {
-        // Two pressings share group; only one matches the catalog.
+        // Two pressings in one group; only one carries the catalog.
         let discid = vec![
             pair("rel-a", Some("group-x"), Some("WPCR-80001")),
             pair("rel-b", Some("group-x"), Some("WPCR-80002")),
@@ -491,8 +467,7 @@ mod tests {
 
     #[test]
     fn catalog_filter_with_no_matches_keeps_combined_set() {
-        // Candidate doesn't match any result's catnos — fall back to
-        // unfiltered set rather than collapse to empty.
+        // No result carries this catno, so the set stays whole rather than empty.
         let results = vec![
             pair("rel-a", Some("group-x"), Some("LBL-001")),
             pair("rel-b", Some("group-x"), Some("LBL-002")),
@@ -538,9 +513,8 @@ mod tests {
 
     #[test]
     fn normalize_catalog_strips_non_ascii_alphanumerics() {
-        // Only ASCII letters/digits survive: registered-trademark marks,
-        // non-breaking spaces, and accented characters are dropped so that
-        // cosmetically-decorated catalog numbers still compare equal.
+        // Only ASCII letters and digits survive, so a cosmetically decorated
+        // catalog number still compares equal to the plain one.
         assert_eq!(normalize_catalog("LBL\u{00ae}-001"), "lbl001"); // ® dropped
         assert_eq!(normalize_catalog("LBL\u{00a0}001"), "lbl001"); // non-breaking space
         assert_eq!(normalize_catalog("café-12"), "caf12"); // é dropped

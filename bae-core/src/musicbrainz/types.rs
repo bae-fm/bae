@@ -35,7 +35,6 @@ pub struct MbUrlResource {
     pub resource: Option<String>,
 }
 
-/// Artist credit entry
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct MbArtistCredit {
     pub name: String,
@@ -51,7 +50,6 @@ pub struct MbArtistRef {
     pub sort_name: Option<String>,
 }
 
-/// Label info entry
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct MbLabelInfo {
     pub label: Option<MbLabel>,

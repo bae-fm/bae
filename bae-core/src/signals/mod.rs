@@ -18,11 +18,10 @@
 //! barcodes, narrowing by catalog number); the search UI surfaces the found
 //! signals. Both read the same value.
 
-// `failure` is a pure typed enum with no platform dependencies — it stays
-// available everywhere so the shared metadata-search path can map provider
-// errors into it. The rest is the desktop-only extraction machinery (artwork
-// OCR, disc-ID compute), gated off mobile alongside the import pipeline that
-// drives it.
+// `failure` has no platform dependencies, so it stays available everywhere for
+// the shared metadata-search path to map provider errors into. The rest is the
+// desktop-only extraction machinery (artwork OCR, disc-ID compute), gated off
+// mobile alongside the import pipeline that drives it.
 pub mod failure;
 pub use failure::LookupFailure;
 

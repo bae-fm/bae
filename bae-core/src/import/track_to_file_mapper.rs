@@ -9,17 +9,14 @@ use crate::import::ImportError;
 use std::sync::Arc;
 use tracing::{debug, info, warn};
 
-/// Map tracks to their source audio files using the scan's categorised output.
+/// Map tracks to their source audio files from the scan's categorized output.
+/// The scan already detected CUE/FLAC pairs, parsed their sheets, and classified
+/// the files, so nothing here re-parses or re-detects.
 ///
-/// Runs BEFORE database insertion. The scan has already detected CUE/FLAC
-/// pairs, parsed their CUE sheets, and classified files — this function
-/// never re-parses or re-detects.
-///
-/// For CUE-backed imports the caller's `Vec<DbTrack>` is consumed in order
-/// and sliced per pair by the pair's parsed CUE track count. For per-track
-/// imports each track maps 1:1 to an audio file. In both cases each DbTrack
-/// is moved into a TrackFile variant and its `duration_ms` is populated
-/// from the CUE sheet or a standalone-file probe.
+/// A CUE-backed import consumes `tracks` in order, slicing per pair by that
+/// pair's parsed CUE track count; a per-track import maps each track 1:1 to a
+/// file. Either way, each DbTrack moves into a TrackFile variant with its
+/// `duration_ms` populated from the CUE sheet or a standalone-file probe.
 pub(crate) fn map_tracks_to_files(
     tracks: Vec<DbTrack>,
     files: &CategorizedFiles,
@@ -43,9 +40,8 @@ fn map_tracks_to_cue_flacs(
         });
     }
 
-    // Natural-sort pairs by relative path: CD1, CD2, ... CD10, and Side A,
-    // Side B, ... read in the order they ship on disk. Same convention the
-    // scan records and the UI displays.
+    // Natural-sort by relative path, so CD1, CD2, ... CD10 (and Side A, Side B)
+    // read in the order they ship on disk, not lexicographically.
     let mut sorted: Vec<&ScannedCueFlacPair> = pairs.iter().collect();
     sorted.sort_by(|a, b| natord::compare(&a.cue_file.relative_path, &b.cue_file.relative_path));
 
@@ -76,11 +72,10 @@ fn map_tracks_to_cue_flacs(
     Ok(track_files)
 }
 
-/// Process a single CUE/FLAC pair: use the scan's already-parsed CUE sheet,
-/// probe the audio container, and emit one `TrackFile::CueBacked` per track
-/// — all sharing the same `Arc<CueFlacAnalysis>`. Each DbTrack is moved in;
-/// its `duration_ms` is populated from the CUE sheet before the DbTrack
-/// moves into the variant.
+/// Process one CUE/FLAC pair: take the scan's already-parsed CUE sheet, probe the
+/// audio container, and emit one `TrackFile::CueBacked` per track, all sharing a
+/// single `Arc<CueFlacAnalysis>`. Each DbTrack gets its `duration_ms` before it
+/// moves into its variant.
 fn map_tracks_to_cue_flac(
     pair: &ScannedCueFlacPair,
     tracks: Vec<DbTrack>,
@@ -100,8 +95,8 @@ fn map_tracks_to_cue_flac(
             ),
         });
     }
-    // Caller pre-sliced `tracks` to match the CUE's track count, so the
-    // zip-by-index below is always exact.
+    // The caller pre-sliced `tracks` to the CUE's track count, so the index-zip
+    // below is exact.
     assert_eq!(
         cue_sheet.playable_track_count(),
         tracks.len(),
@@ -135,9 +130,9 @@ fn map_tracks_to_cue_flac(
     let playable_tracks: Vec<_> = pair_analysis.cue_sheet.playable_tracks().collect();
     for (index, mut db_track) in tracks.into_iter().enumerate() {
         let cue_track = playable_tracks[index];
-        // CUE sheets give us exact per-track timing. The final track has no
-        // next-track boundary in the sheet, so its duration is derived from
-        // the container's total duration minus its INDEX 01 start.
+        // The sheet gives exact per-track timing, but the final track has no
+        // next-track boundary in it, so its duration comes from the container's
+        // total duration minus its INDEX 01 start.
         db_track.duration_ms = cue_track.track_duration_ms().map(|d| d as i64).or_else(|| {
             main_file_probe(&pair_analysis, cue_track.file_reference.as_str())
                 .and_then(container_duration_ms)
@@ -201,8 +196,8 @@ fn extract_duration_from_file(file_path: &std::path::Path) -> Option<i64> {
         );
         return None;
     };
-    // probe_audio_from_path logs its own failure reason; None here means it
-    // couldn't be probed, so the track lands with no duration.
+    // `probe_audio_from_path` logs its own failure reason; a `None` here just
+    // means the track lands with no duration.
     let probe = crate::audio_codec::probe_audio_from_path(path_str)?;
     Some(probe.duration.as_millis() as i64)
 }
@@ -254,9 +249,7 @@ fn map_tracks_to_individual_files(
             ),
         });
     }
-    // Audio order within a release is already the scan's natural sort
-    // (relative_path). The mapper preserves that order when zipping to
-    // DbTracks.
+    // The scan already sorted the audio by relative_path; zipping preserves it.
     let mut mappings = Vec::with_capacity(tracks.len());
     for (mut db_track, audio_file) in tracks.into_iter().zip(audio_files.iter()) {
         db_track.duration_ms = extract_duration_from_file(&audio_file.path);

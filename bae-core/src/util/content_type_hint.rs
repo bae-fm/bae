@@ -1,10 +1,9 @@
 //! Extension-derived classification used before a file is probed.
 //!
-//! A filename extension suggests what a file is but does not prove it. This
-//! type captures that honestly: the audio variants name *containers and
-//! likely codecs* (`.flac`, `.mp3`, `.ape`) or *containers whose codec is
-//! unknown until probed* (`.m4a` → `Mp4Container`). The real codec-confirmed
-//! type is `ContentType`, produced only by probing bytes.
+//! An extension suggests what a file is but doesn't prove it, so the audio
+//! variants here name containers and likely codecs (`.flac`, `.mp3`) or a
+//! container whose codec is unknown until probed (`.m4a` → `Mp4Container`). The
+//! codec-confirmed type is `ContentType`, produced only by probing bytes.
 //!
 //! Use this for scan-time filtering (is this worth probing?). Never store it.
 
@@ -15,7 +14,7 @@ use std::path::Path;
 /// codec confirmation requires a probe.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ContentTypeHint {
-    // Audio — what the extension suggests; codec confirmation requires a probe
+    // Audio
     Flac,
     Mp3,
     Ape,
@@ -120,13 +119,10 @@ impl ContentTypeHint {
             .is_some_and(|e| Self::from_extension(e).is_raster_image())
     }
 
-    /// Convert image hints to the equivalent probe-verified `ContentType`.
-    ///
-    /// Image extensions predict codecs reliably (a `.png` file's bytes are
-    /// PNG), so promoting an image hint to `ContentType` without probing is
-    /// honest. Returns `None` for audio (which needs probing) and for non-
-    /// image classifications (text, PDF, Unknown) — callers decide how to
-    /// handle those, usually by falling back to `ContentType::OctetStream`.
+    /// The `ContentType` an image hint promotes to without a probe — image
+    /// extensions predict their format reliably (a `.png` file's bytes are PNG).
+    /// `None` for audio (which needs the probe) and for text/PDF/unknown, which
+    /// the caller resolves itself.
     pub fn image_content_type(&self) -> Option<ContentType> {
         match self {
             Self::Jpeg => Some(ContentType::Jpeg),

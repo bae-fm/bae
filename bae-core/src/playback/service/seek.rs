@@ -7,11 +7,11 @@ impl PlaybackService {
         // track the callback already advanced into, not the finishing one.
         self.drain_current_audio_events().await;
 
-        // Seek only operates on an active track. Take it out to tear down its
-        // decoder and rebuild; a Stopped or still-resolving (Loading) slot has no
-        // stream to rebuild and is put back untouched. While the slot is Stopped
-        // here nothing observes it: no emission, and the serial loop can't
-        // interleave a command until seek returns.
+        // Seek only operates on an active track: take it out to tear its decoder
+        // down and rebuild. A Stopped or still-resolving (Loading) slot has no
+        // stream to rebuild and goes back untouched. Nothing observes the Stopped
+        // slot in between — no emission, and the serial command loop can't
+        // interleave anything until seek returns.
         let cur = match std::mem::replace(&mut self.slot, PlaybackSlot::Stopped) {
             PlaybackSlot::Active(cur) => cur,
             other => {
@@ -72,12 +72,11 @@ impl PlaybackService {
             .and_then(|o| o.source.lock().unwrap().take_next())
             .map(|(s, fmt)| (s, (*fmt).clone()));
 
-        // Show buffering at the target immediately (the same Loading→ready arc the
-        // play path uses): the bar jumps to the seek position via Seeked below,
-        // Loading covers the wait for the demanded window, and the ready-watcher
-        // confirms the target once audio flows. Projecting Stopped onto the atomic
-        // silences the callback while the seek's new decoder fills, so nothing
-        // audible leaks from the old ring in the window before the swap.
+        // The same Loading→ready arc the play path uses: the bar jumps to the seek
+        // position via the `Seeked` below, Loading covers the wait for the demanded
+        // window, and the ready-watcher confirms the target once audio flows.
+        // Projecting Stopped onto the atomic silences the callback while the new
+        // decoder fills, so nothing leaks from the old ring before the swap.
         self.slot = PlaybackSlot::Loading {
             track_id: track_id.clone(),
             resolved: Some(LoadingTrack::from_prepared(&prepared)),
@@ -101,11 +100,10 @@ impl PlaybackService {
         {
             Ok(decoder) => decoder,
             Err(_) => {
-                // The rebuild failed (only reachable on a format-change build,
-                // which a same-track seek never hits, but handle it uniformly).
-                // The preserved next track is out of the source, so stop()'s
-                // teardown can't reach it — cancel it here. Cancel the old decoder
-                // too, then resolve to Stopped via stop().
+                // Only reachable on a format-change build, which a same-track seek
+                // never hits — but handle it anyway. The preserved next track is
+                // out of the source, so `stop()`'s teardown can't reach it: cancel
+                // it, and the old decoder, here.
                 if let Some((next_source, _next_fmt)) = staged_next {
                     next_source.cancel();
                 }
@@ -128,9 +126,9 @@ impl PlaybackService {
             }
         };
 
-        // Re-stage the preserved gapless next track into the persistent source
-        // (the same one, replaced in place above) so post-seek auto-advance stays
-        // gapless without re-decoding.
+        // Re-stage the preserved next track into the persistent source (the same
+        // one, replaced in place above), so post-seek auto-advance stays gapless
+        // without re-decoding it.
         if let Some((next_source, next_fmt)) = staged_next {
             if let Some(out) = &self.output {
                 out.source.lock().unwrap().stage_next(next_source, next_fmt);

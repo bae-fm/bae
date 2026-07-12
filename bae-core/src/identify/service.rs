@@ -17,20 +17,18 @@ use tokio::sync::mpsc;
 use tokio_util::sync::CancellationToken;
 use tracing::{debug, warn};
 
-/// Forward an event back to the driver loop. Logs at warn-level if the loop
-/// has already exited (receiver dropped) — an effect raced past the
-/// terminal-state check or the driver was cancelled before this task finished,
-/// so the event is discarded. Otherwise fire-and-forget; the driver owns the
-/// only receiver and processes events serially.
+/// Forward an event back to the driver loop. Fire-and-forget: the driver owns the
+/// only receiver and handles events serially. A closed channel means the driver
+/// already exited (cancelled, or an effect raced past it), so the event is
+/// dropped — warned, because it means a result went nowhere.
 fn emit_step(tx: &mpsc::UnboundedSender<IdentifyEvent>, event: IdentifyEvent) {
     if let Err(err) = tx.send(event) {
         warn!("identify step channel closed; dropped {:?}", err.0);
     }
 }
 
-/// Broadcast an identify state change on the import event bus. Logs at
-/// warn-level if no subscribers remain — the bus is alive for the lifetime of
-/// the app, so empty subscribers is unusual and worth a trace.
+/// Broadcast an identify state change on the import bus. The bus lives as long as
+/// the app, so having no subscribers is odd enough to warn about.
 fn broadcast_state_change(tx: &broadcast::Sender<ImportEvent>, event: ImportEvent) {
     if let Err(err) = tx.send(event) {
         warn!("identify state-change broadcast had no subscribers: {err}");
@@ -61,15 +59,12 @@ struct IdentifyServiceInner {
 
 struct CandidateDriver {
     token: CancellationToken,
-    /// Sender into the running driver's internal event channel. External
-    /// callers (the bridge) push events here via methods like `toggle_signal`
-    /// and `rerun`.
+    /// Into the running driver's event channel — where `toggle_signal` and
+    /// `rerun` push the bridge's events.
     inbox: mpsc::UnboundedSender<IdentifyEvent>,
 }
 
 impl IdentifyServiceHandle {
-    /// Construct the app's identify service. One per app; each candidate runs
-    /// in its own spawned driver task.
     pub fn new(
         library_manager: LibraryManager,
         runtime_handle: tokio::runtime::Handle,
@@ -87,21 +82,20 @@ impl IdentifyServiceHandle {
         }
     }
 
-    /// Start identifying `key`. Fire-and-forget — events emit through the
-    /// import event channel as `ImportEvent::IdentifyStateChanged`. Identify
-    /// consumes the `Signals` the extraction service streams, so the caller
-    /// must start identify *before* extraction for `key` — the bus
-    /// subscription is taken synchronously here so no early snapshot is missed.
+    /// Start identifying `key`. Fire-and-forget; states come back as
+    /// `ImportEvent::IdentifyStateChanged`.
+    ///
+    /// Identify consumes the `Signals` extraction streams, so the caller must
+    /// start identify *before* extraction for `key`: the bus subscription is
+    /// taken synchronously here, so no early snapshot can be missed.
     pub fn start(&self, key: String) {
-        // Cancel any in-flight identify for this key. Candidates are identified
-        // at most once at a time; restarting (e.g. user re-selects after a scan
-        // refresh) supersedes the prior run.
+        // A restart (the user re-selects after a scan refresh) supersedes the
+        // prior run — a candidate is identified once at a time.
         self.cancel(&key);
 
         let token = CancellationToken::new();
-        // Pre-create the driver's inbox so external pokes (`toggle_signal` /
-        // `rerun`) race-free find it even before the driver task lands the
-        // receiver.
+        // Create the inbox up front so a `toggle_signal` / `rerun` arriving
+        // before the driver task lands still finds somewhere to go.
         let (event_tx, event_rx) = mpsc::unbounded_channel::<IdentifyEvent>();
         self.inner.drivers.lock().unwrap().insert(
             key.clone(),
@@ -111,9 +105,8 @@ impl IdentifyServiceHandle {
             },
         );
 
-        // Subscribe to the import bus synchronously, before this returns, so
-        // the extraction service (started right after) can't emit its first
-        // `SignalsUpdated` before the driver is listening.
+        // Subscribe before returning, so the extraction service (started right
+        // after) can't emit its first `SignalsUpdated` into a void.
         let bus_rx = self.inner.event_tx.subscribe();
 
         let inner = self.inner.clone();
@@ -131,11 +124,9 @@ impl IdentifyServiceHandle {
         }
     }
 
-    /// Toggle a signal in a candidate's toolbar — include or exclude it from
-    /// triangulation. The driver flips the signal and re-combines over the
-    /// surviving signals, emitting the resulting state. No-op when the
-    /// candidate isn't running (the reducer drops unknown (state, event)
-    /// pairs).
+    /// Include or exclude one of a candidate's signals from triangulation. The
+    /// driver re-combines over the surviving signals and emits the result. A no-op
+    /// when the candidate isn't running.
     pub fn toggle_signal(&self, key: &str, signal: ExcludedSignal) {
         self.push_event(
             key,
@@ -144,17 +135,15 @@ impl IdentifyServiceHandle {
         );
     }
 
-    /// Re-run a candidate's lookups. The driver resets to `Triangulating` and
-    /// re-dispatches the disc-ID / barcode lookups from the retained signals,
-    /// preserving the user's exclusions. No-op when the candidate isn't
-    /// running.
+    /// Re-run a candidate's lookups: the driver resets to `Triangulating` and
+    /// re-dispatches from the retained signals, keeping the user's exclusions. A
+    /// no-op when the candidate isn't running.
     pub fn rerun(&self, key: &str) {
         self.push_event(key, IdentifyEvent::ReRun, "rerun");
     }
 
-    /// Push an event into a running driver's inbox. Logs (debug) when the
-    /// candidate has no live driver — the event is dropped, which is the
-    /// correct no-op for a stale UI action.
+    /// Push an event into a running driver's inbox. With no live driver the event
+    /// is dropped, which is the right no-op for a stale UI action.
     fn push_event(&self, key: &str, event: IdentifyEvent, op: &str) {
         let inbox = self
             .inner
@@ -185,15 +174,9 @@ fn remove_driver_if_current(
     }
 }
 
-/// Main driver loop for a single candidate.
-///
-/// Each iteration:
-///   1. Pop an event from the internal channel (or a forwarded
-///      catalog-candidates update from the import bus).
-///   2. Feed it to the pure reducer, get (new state, effects).
-///   3. Emit the state change over the import event channel.
-///   4. Dispatch effects to spawned tasks; their results feed back as events.
-///   5. Terminate on terminal states or cancellation.
+/// The driver loop for one candidate. Each iteration pops an event, feeds it to
+/// the pure reducer, broadcasts the new state, and spawns the effects the reducer
+/// asked for — whose results come back as further events. Ends on cancellation.
 async fn run_driver(
     inner: Arc<IdentifyServiceInner>,
     key: String,
@@ -202,12 +185,10 @@ async fn run_driver(
     mut event_rx: mpsc::UnboundedReceiver<IdentifyEvent>,
     mut bus_rx: broadcast::Receiver<ImportEvent>,
 ) {
-    // Identify no longer scans or OCRs anything: the extraction service
-    // produces the candidate's `Signals` (disc ID, barcodes, classified text)
-    // and streams them on the import bus. The driver relays each snapshot in
-    // as `SignalsUpdated`; the reducer turns the disc ID and barcodes into
-    // network lookups and narrows by catalog candidates. Fire-and-forget: a
-    // missed snapshot only delays a signal, never breaks the pipeline.
+    // Relay this candidate's `Signals` snapshots off the import bus into the
+    // reducer, which turns the disc ID and barcodes into lookups and narrows by
+    // catalog. Fire-and-forget: a missed snapshot delays a signal, never breaks
+    // the pipeline.
     let relay_token = token.clone();
     let relay_event_tx = event_tx.clone();
     let relay_key = key.clone();
@@ -229,9 +210,8 @@ async fn run_driver(
                         }
                     }
                     Ok(_) => continue,
-                    // Lagged: skip and keep listening — old catalog snapshots
-                    // are useless anyway. Closed: the bus is gone, no more
-                    // updates coming.
+                    // Lagged: keep listening. A snapshot we fell behind on is
+                    // superseded by the next one anyway.
                     Err(broadcast::error::RecvError::Lagged(_)) => continue,
                     Err(broadcast::error::RecvError::Closed) => return,
                 },
@@ -256,11 +236,10 @@ async fn run_driver(
         let (next_state, effects) = step(state.clone(), event);
         state = next_state;
 
-        // Every state after `step` is broadcast; duplicate-identical states
-        // can occur for stale responses (gated out by the reducer's
-        // for_barcode guard) and are a small cost of the reducer-plus-effect
-        // model. The toolbar projection rides on the same event so the UI
-        // updates its badge row from the same transition.
+        // Every state `step` returns is broadcast, including one identical to the
+        // last (a stale response the reducer's `for_barcode` guard dropped). The
+        // toolbar projection rides the same event, so the UI's badge row updates
+        // from the same transition.
         broadcast_state_change(
             &inner.event_tx,
             ImportEvent::IdentifyStateChanged {
@@ -270,17 +249,15 @@ async fn run_driver(
             },
         );
 
-        // The driver ends only on `Idle` (reached via `Cancelled`).
-        // `Found` / `Conflict` / `NotFoundAnywhere` / `ManualOnly` are *not*
-        // terminal: the user can toggle a signal or re-run from the toolbar,
-        // which re-derives the state. The driver stays alive to receive those.
+        // The driver ends only on `Idle`, which is reached only via `Cancelled`.
+        // `Found` / `Conflict` / `NotFoundAnywhere` / `ManualOnly` do NOT end it:
+        // the user can still toggle a signal or re-run from the toolbar, and the
+        // driver has to be alive to receive that.
         if matches!(state, IdentifyState::Idle) {
-            // Idle only happens via Cancelled; Cancelled is terminal too.
             remove_driver_if_current(&inner, &key, &event_tx);
             return;
         }
 
-        // Dispatch effects.
         for effect in effects {
             dispatch_effect(inner.clone(), effect, event_tx.clone(), token.clone());
         }
@@ -417,9 +394,9 @@ mod tests {
         (inner, temp_dir)
     }
 
-    /// Signals with neither a disc-ID artifact nor a barcode source: the
-    /// reducer settles on `ManualOnly` and dispatches no network effect, so the
-    /// driver loop runs end-to-end without touching MB/Discogs.
+    /// Neither a disc-ID artifact nor a barcode source, so the reducer settles on
+    /// `ManualOnly` with no network effect — the driver loop runs end to end
+    /// without touching MB or Discogs.
     fn absent_signals() -> Signals {
         Signals {
             disc_id: DiscIdSignal::Absent { track_count: 7 },
@@ -469,8 +446,7 @@ mod tests {
 
         handle.start("k".to_string());
 
-        // Feed the candidate's signals over the import bus, as the extraction
-        // service would.
+        // Feed the signals over the bus, as the extraction service would.
         inner
             .event_tx
             .send(ImportEvent::SignalsUpdated {
@@ -479,8 +455,6 @@ mod tests {
             })
             .unwrap();
 
-        // The driver broadcasts each state transition; wait for the terminal
-        // ManualOnly for our key.
         let mut saw_manual_only = false;
         for _ in 0..50 {
             match tokio::time::timeout(Duration::from_secs(2), bus_rx.recv()).await {
@@ -505,11 +479,9 @@ mod tests {
             "driver should broadcast a terminal ManualOnly state"
         );
 
-        // ManualOnly is non-terminal for the driver — it stays alive so the
-        // user can still toggle a signal or re-run.
+        // ManualOnly doesn't end the driver: it stays alive for a toggle or re-run.
         assert!(inner.drivers.lock().unwrap().contains_key("k"));
 
-        // Cancel deregisters the driver.
         handle.cancel("k");
         assert!(!inner.drivers.lock().unwrap().contains_key("k"));
     }

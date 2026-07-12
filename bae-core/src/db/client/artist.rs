@@ -1,7 +1,6 @@
 use super::*;
 
 impl Database {
-    /// Insert a new artist
     pub async fn insert_artist(&self, artist: &DbArtist) -> Result<(), DbError> {
         let artist = artist.clone();
         self.call_sql(move |sql| {
@@ -10,9 +9,9 @@ impl Database {
         })
         .await
     }
-    /// Look up a single artist by a one-parameter equality query. The four
-    /// `get_artist_by_*` / `find_artist_by_id` lookups differ only in which
-    /// column they match on, so they share this body.
+    /// Look up a single artist by a one-parameter equality query. The
+    /// `get_artist_by_*` / `find_artist_by_id` lookups differ only in the column
+    /// they match on, so they share this body.
     async fn get_artist_by_sql(
         &self,
         sql: &'static str,
@@ -26,7 +25,6 @@ impl Database {
         .await
     }
 
-    /// Get artist by Discogs artist ID (for deduplication)
     pub async fn get_artist_by_discogs_id(
         &self,
         discogs_artist_id: &str,
@@ -38,7 +36,6 @@ impl Database {
         .await
     }
 
-    /// Get artist by MusicBrainz artist ID (for deduplication)
     pub async fn get_artist_by_mb_id(&self, mb_id: &str) -> Result<Option<DbArtist>, DbError> {
         self.get_artist_by_sql(
             "SELECT * FROM artists WHERE musicbrainz_artist_id = ?",
@@ -47,7 +44,7 @@ impl Database {
         .await
     }
 
-    /// Get artist by name (case-insensitive, first match)
+    /// Case-insensitive; first match wins.
     pub async fn get_artist_by_name(&self, name: &str) -> Result<Option<DbArtist>, DbError> {
         self.get_artist_by_sql(
             "SELECT * FROM artists WHERE name = ? COLLATE NOCASE LIMIT 1",
@@ -56,8 +53,8 @@ impl Database {
         .await
     }
 
-    /// Fill in NULL external IDs on an existing artist via COALESCE (never overwrites).
-    /// Also updates sort_name if currently NULL.
+    /// Fill in an existing artist's NULL external IDs and sort_name via COALESCE.
+    /// Never overwrites a value that is already set.
     pub async fn update_artist_external_ids(
         &self,
         id: &str,
@@ -85,7 +82,6 @@ impl Database {
         .await
     }
 
-    /// Insert album-artist relationship
     pub async fn insert_album_artist(&self, album_artist: &DbAlbumArtist) -> Result<(), DbError> {
         let album_artist = album_artist.clone();
         self.call_sql(move |sql| {
@@ -94,7 +90,6 @@ impl Database {
         })
         .await
     }
-    /// Insert track-artist relationship
     pub async fn insert_track_artist(&self, track_artist: &DbTrackArtist) -> Result<(), DbError> {
         let track_artist = track_artist.clone();
         self.call_sql(move |sql| {
@@ -103,13 +98,13 @@ impl Database {
         })
         .await
     }
-    /// Get artists for an album (ordered by position)
+    /// Ordered by position, primary artist first.
     pub async fn get_artists_for_album(&self, album_id: &str) -> Result<Vec<DbArtist>, DbError> {
         let album_id = album_id.to_string();
         self.read(move |conn| get_artists_for_album_on(conn, &album_id))
             .await
     }
-    /// Get artists for a track (ordered by position)
+    /// Ordered by position.
     pub async fn get_artists_for_track(&self, track_id: &str) -> Result<Vec<DbArtist>, DbError> {
         let track_id = track_id.to_string();
         self.read(move |conn| {

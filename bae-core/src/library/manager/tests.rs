@@ -1017,12 +1017,11 @@ async fn release_removed_carries_post_removal_parent_album() {
 
 #[tokio::test]
 async fn release_removed_carries_none_when_album_no_longer_exists() {
-    // The album-cascade case: the sync path (emit_sync_entity_changes) calls
-    // emit_release_removed for a release whose album was already removed when
-    // its last release went. delete_release's local path takes the
-    // album-removed branch instead, so exercise emit_release_removed directly
-    // against a missing album — the same call the sync path makes — and
-    // assert it ships album: None rather than panicking in resolve.
+    // The album-cascade case: the sync path calls `emit_release_removed` for a
+    // release whose album was already removed with its last release, while
+    // `delete_release` takes the album-removed branch instead. So drive
+    // `emit_release_removed` against a missing album directly — the same call the
+    // sync path makes — and assert it ships `album: None` instead of panicking.
     let (manager, _temp_dir) = setup_test_manager().await;
 
     let mut rx = manager.subscribe_events();
@@ -1099,13 +1098,11 @@ async fn release_detail_has_no_cover_without_a_cover_row() {
     assert!(detail.summary.cover.is_none());
 }
 
-/// A peer can ship `releases`/`release_files` rows with any `id` — bae's
-/// apply path mints no id and validates none. A path-traversal id
-/// (`../../etc/x`) is not a valid storage path token, so the display
-/// resolver that fires on every sync cycle must treat it as a missing asset,
-/// never panic. Before the fix, `find_release_detail` panics inside
-/// `image_path`/`storage_path` on the bad id, which a synced row makes
-/// durable — crash-looping every device each cycle (a denial of service).
+/// A peer can ship `releases`/`release_files` rows with any `id` — bae's apply path
+/// mints none and validates none. A path-traversal id (`../../etc/x`) is not a valid
+/// storage path token, so the display resolver that fires on every sync cycle must
+/// treat it as a missing asset rather than panic: a synced row makes such an id
+/// durable, so a panic here crash-loops every device, every cycle.
 #[tokio::test]
 async fn find_release_detail_does_not_panic_on_traversal_ids_from_a_peer() {
     let (manager, _temp_dir) = setup_test_manager().await;
@@ -1119,10 +1116,9 @@ async fn find_release_detail_does_not_panic_on_traversal_ids_from_a_peer() {
     manager.database.insert_album(&album).await.unwrap();
     manager.database.insert_release(&release).await.unwrap();
 
-    // An image file whose id is also a traversal token — it drives the
-    // gallery's `image_path(&file.id)` resolution, and (as the release's
-    // representative blob) the remote release's `is_pinned` pinned-cache
-    // check; both must reject the bad id rather than panic.
+    // An image file whose id is also a traversal token. It drives the gallery's
+    // blob resolution and, as the release's representative blob, the remote
+    // release's pinned-cache check; both must reject the bad id, not panic.
     let file = DbFile::new(
         &release.id,
         "cover.jpg",
@@ -2294,9 +2290,9 @@ async fn insert_local_release_with_files(
     release
 }
 
-/// Insert a local release whose `local_path` points at a
-/// nonexistent directory, so no local copy resolves on this device. Seeds
-/// a `DbFile` row so the release is otherwise complete.
+/// Insert a local release rooted at a nonexistent directory, so no local copy
+/// resolves on this device. Seeds a `DbFile` row so the release is otherwise
+/// complete.
 async fn insert_local_release_without_local_files(
     manager: &LibraryManager,
     album_id: &str,
@@ -3720,9 +3716,7 @@ async fn storage_page_id_tiebreaker_stable_across_pages() {
     assert_eq!(second_page.rows[0].release.id, "bbbb");
 }
 
-// =========================================================================
-// set_identity
-// =========================================================================
+// ── set_identity ───────────────────────────────────────────────────
 
 fn mb_identity(group: &str, release: Option<&str>) -> crate::import::ReleaseIdentity {
     crate::import::ReleaseIdentity {
@@ -4403,13 +4397,11 @@ async fn set_identity_clears_primary_when_it_pointed_at_moved_release() {
 
 #[tokio::test]
 async fn set_identity_atomic_rechecks_source_count_inside_transaction() {
-    // Models the TOCTOU window: a separate writer lands a release
-    // into the source album between `set_identity`'s pre-flight
-    // read and its atomic call. We invoke the atomic API directly
-    // with `current_album_id` set to the source album, after seeding
-    // an extra release into that album. The atomic call must NOT
-    // delete the source — its in-transaction recheck sees the
-    // surviving release.
+    // The TOCTOU window: a separate writer lands a release into the source album
+    // between `set_identity`'s pre-flight read and its atomic call. Drive the atomic
+    // API directly with `current_album_id` at the source album, after seeding an
+    // extra release into it. The atomic call must NOT delete the source — its
+    // in-transaction recheck sees the surviving release.
     let (manager, _temp_dir) = setup_test_manager().await;
 
     let album_a = create_test_album();
@@ -4491,10 +4483,9 @@ async fn set_identity_atomic_rechecks_source_count_inside_transaction() {
 
 // ── re_identify_release ────────────────────────────────────────────
 //
-// Exact / Approximate fetch through MB / Discogs; the tests seed the
-// release cache first so `prepare_release` reads locally instead of
-// hitting the network. The Unknown path needs no seeding — it makes
-// no source claim.
+// Exact / Approximate fetch through MB / Discogs, so these tests seed the release
+// cache first and `prepare_release` reads locally instead of hitting the network.
+// The Unknown path makes no source claim, so it needs no seeding.
 
 #[tokio::test]
 async fn re_identify_to_unknown_clears_identities_and_moves_album() {
@@ -4627,10 +4618,9 @@ async fn re_identify_to_unknown_clears_identities_and_moves_album() {
 // ── re_identify_release Exact / Approximate (MB cache-seeded) ────
 //
 // Drive the network-side `prepare_release` through the MB LRU cache
-// (`seed_release_cache` + `seed_release_group_json_cache`) so the
-// tests don't hit the network. Each test uses a unique MB release
-// ID so other tests' cache seeds don't bleed in (the caches are
-// process-global LRUs).
+// (`seed_release_cache` + `seed_release_group_json_cache`) so these tests don't hit
+// the network. The caches are process-global LRUs, so each test uses a unique MB
+// release ID and no other test's seed bleeds in.
 
 /// Build a synthetic MB release response with `n` track rows on a
 /// single CD medium, plus a release group reference. Suitable for
@@ -4889,11 +4879,10 @@ async fn re_identify_release_approximate_writes_cache() {
 
 #[tokio::test]
 async fn re_identify_release_rejects_track_count_mismatch() {
-    // The folder-import path enforces this through prefetch's
-    // `track_count_mismatch` flag (which disables the commit
-    // button). Re-identify bypasses prefetch — the user picks a
-    // row directly — so the check belongs in the bae-core commit.
-    // A 12-track release can't replace a 10-track rip.
+    // Folder import enforces this through prefetch's `track_count_mismatch` flag,
+    // which disables its commit button. Re-identify has no prefetch (the user picks
+    // a row directly), so the check belongs in the bae-core commit: a 12-track
+    // release can't replace a 10-track rip.
     use crate::import::{IdentityChoice, MetadataRef, MetadataSource};
     use crate::musicbrainz::{seed_release_cache, seed_release_group_json_cache};
 
@@ -4955,11 +4944,10 @@ async fn re_identify_release_rejects_track_count_mismatch() {
 
 #[tokio::test]
 async fn re_identify_release_followed_by_reset_succeeds() {
-    // End-to-end check of the cache-alignment invariant: after a re-identify
-    // commit, `reset_metadata_to_source` projects through the new
-    // pointer + new cached payload without hitting the cache-
-    // divergence guard. A regression here means re-identify left
-    // the cache stale relative to `metadata_source_release_id`.
+    // The cache-alignment invariant end to end: after a re-identify commit,
+    // `reset_metadata_to_source` projects through the new pointer and new cached
+    // payload without tripping the cache-divergence guard. A regression here means
+    // re-identify left the cache stale against `metadata_source_release_id`.
     use crate::import::{IdentityChoice, MetadataRef, MetadataSource};
     use crate::musicbrainz::{seed_release_cache, seed_release_group_json_cache};
 

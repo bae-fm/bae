@@ -1,22 +1,20 @@
 //! Orchestrator layer: the one place where raw DB aggregates meet util
 //! formatters and filesystem paths to produce resolved types.
 //!
-//! `LibraryManager` owns the database handle. Desktop import-folder appdata
-//! reads the directory from the live config handle. Its surface is split into
+//! `LibraryManager` owns the database handle. Its surface is split into
 //! per-entity modules — `release`, `album`, `track`, `artist`, `identity`,
 //! `image`, `import`, `export`, `storage` — each holding that entity's I/O
-//! operations (reads `&Database` / `&CovenHandle` to gather the covers, pin
-//! state, and joins a resolved shape needs). The pure projection from a `Db*`
-//! aggregate to its resolved counterpart lives on the produced type as a
-//! `from_raw` constructor in `crate::album_detail`. Public methods return the
-//! resolved shapes — `AlbumSummary`, `ReleaseStorageSummary`, `SearchResults`,
+//! operations, reading `&Database` / `&CovenHandle` for the covers, pin state,
+//! and joins a resolved shape needs. The pure projection from a `Db*` aggregate
+//! to its resolved counterpart lives on the produced type, as a `from_raw`
+//! constructor in `crate::album_detail`. Public methods return the resolved
+//! shapes — `AlbumSummary`, `ReleaseStorageSummary`, `SearchResults`,
 //! `AlbumDetail`, `ReleaseDetail` — never the raw `Db*` aggregates.
 //!
-//! Rule for additions: new DB-backed data flows through this layer. If you
-//! need a new resolved shape, add the raw type to `crate::db::models`, the
-//! resolved type to `crate::album_detail` (or a sibling like `crate::queue`)
-//! with its `from_raw` constructor, and the I/O method to the matching entity
-//! module here.
+//! Rule for additions: all DB-backed data flows through this layer. A new
+//! resolved shape means a raw type in `crate::db::models`, a resolved type in
+//! `crate::album_detail` (or a sibling like `crate::queue`) with its `from_raw`
+//! constructor, and the I/O method in the matching entity module here.
 
 use std::collections::HashMap;
 use std::future::Future;
@@ -250,13 +248,12 @@ pub(crate) struct ImportReplacementPlan {
     pub(crate) track_ids: Vec<String>,
 }
 
-/// All DB data needed to play or serve a track.
-///
-/// Internal aggregate used by `resolve_track_audio` and carried inside
-/// `ExportTrackPlan` for the export decoder. Callers that only need resolved
-/// playback data should use `ResolvedTrackAudio` instead — the export path
-/// still needs raw audio-format fields (byte ranges, seektable, CUE sample
-/// bounds) for whole-file decode, so the raw shape stays here as `pub(crate)`.
+/// All DB data needed to play or serve a track: the internal aggregate behind
+/// `resolve_track_audio`, also carried inside `ExportTrackPlan` for the export
+/// decoder. Callers that only need resolved playback data use
+/// `ResolvedTrackAudio`; the export path still needs the raw rows (a segment's
+/// byte range, its CUE sample bounds) for whole-file decode, so this raw shape
+/// stays `pub(crate)`.
 pub(crate) struct TrackAudioMeta {
     pub track: DbTrack,
     pub release: DbRelease,
@@ -266,7 +263,6 @@ pub(crate) struct TrackAudioMeta {
 }
 
 impl TrackAudioMeta {
-    /// Resolve track metadata from the Database.
     pub(crate) async fn resolve(database: &Database, track_id: &str) -> Result<Self, LibraryError> {
         let track = database
             .find_track_by_id(track_id)
@@ -442,17 +438,13 @@ impl ResolvedTrackAudio {
 }
 
 /// Target playback loudness the replay gain aims each track/album at, in LUFS.
-/// A constant in this change; becomes a user setting alongside the picker.
 /// -18 LUFS is a common reference for quiet-listening normalization.
 const REPLAY_GAIN_TARGET_LUFS: f64 = -18.0;
 
-/// Resolved context for starting playback of a track: everything the
-/// playback service needs to set up the queue without chasing back into
-/// the library for neighbouring track IDs.
-///
-/// The release a directly-selected track plays from: the full track order (by
-/// `side, track_number, id`) and the selected track's index into it. The
-/// playback service seeds a context from this.
+/// The release a directly-selected track plays from: its full track order (by
+/// `side, track_number, id`) and the selected track's index into it. Everything
+/// the playback service needs to seed a context, so it never chases back into the
+/// library for neighbouring track IDs.
 pub struct PlayContext {
     pub release_id: String,
     pub track_ids: Vec<String>,
@@ -609,15 +601,15 @@ impl Drop for TransferCancelGuard {
     }
 }
 
-/// Events emitted by LibraryManager when data changes.
+/// Emitted by `LibraryManager` when data changes.
 ///
-/// Album-level and release-level events are mutually exclusive for the same
-/// album in the same mutation: each mutation site emits exactly one event per
-/// affected album. `AlbumAdded` includes the first release in its payload;
-/// `ReleaseAdded` only fires when the album already exists.
+/// Album-level and release-level events are mutually exclusive for the same album
+/// in the same mutation: each mutation site emits exactly one event per affected
+/// album. `AlbumAdded` carries the first release in its payload, so `ReleaseAdded`
+/// only fires when the album already exists.
 #[derive(Clone, Debug)]
 pub enum LibraryEvent {
-    // ── Album-level (fat: carry the full album payload) ───────────
+    // ── Album-level: carry the full album payload ─────────────────
     AlbumAdded {
         album: AlbumDetail,
     },
@@ -705,13 +697,8 @@ pub enum LibraryEvent {
         snapshot: crate::library::ExportSnapshot,
     },
 }
-/// The main library manager for database operations and entity persistence
-///
-/// Handles:
-/// - Album/track/file persistence
-/// - State transitions (importing -> complete/failed)
-/// - Query methods for library browsing
-/// - Deletion with cloud storage cleanup
+/// Persistence and queries for albums, tracks, and files: import state
+/// transitions, library browsing, and deletion with cloud-storage cleanup.
 #[derive(Clone)]
 pub struct LibraryManager {
     database: Database,
@@ -975,10 +962,9 @@ impl LibraryManager {
     }
 
     /// The cloud object key the read path resolves for a remote file: the row's
-    /// stored `cloud_path` (readable on a browsable home) or the hashed
-    /// `storage_path(id)` default. Mirrors what `ResolvedTrackAudio` threads into
-    /// the cloud reader, exposed so a test can assert the read key matches the
-    /// stored upload key without setting up full playback.
+    /// stored `cloud_path` on a browsable home, the hashed-by-id key on an opaque
+    /// one. Exposed so a test can assert the read key matches the stored upload key
+    /// without setting up full playback.
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn resolve_track_cloud_key_for_test(&self, file_id: &str) -> String {
         let file = self
@@ -990,9 +976,9 @@ impl LibraryManager {
         self.release_file_cloud_key(&file).expect("cloud key")
     }
 
-    /// The readable cover `cloud_path` the current home would store for a
-    /// release: `Some({artist}/{album}/cover.{ext})` on a browsable home, `None`
-    /// on an opaque one. Exposes the same computation `change_cover` performs.
+    /// The readable cover `cloud_path` the current home would store for a release:
+    /// `Some({album_id}/{release_id}/cover.{ext})` on a browsable home, `None` on
+    /// an opaque one. The same computation `change_cover` performs.
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn cover_cloud_path_for_test(
         &self,
@@ -1005,10 +991,6 @@ impl LibraryManager {
             .await
             .expect("compute cover cloud path")
     }
-
-    // =========================================================================
-    // Internal accessors (pub(crate))
-    // =========================================================================
 
     /// The injected wall clock. The import layer and the mappers read "now"
     /// through this so the whole import shares one clock under test.
@@ -1040,11 +1022,9 @@ impl LibraryManager {
         self.config_handle.config().store_dir.clone()
     }
 
-    /// Start background listeners (sync status → library events).
-    ///
-    /// Call once after construction when a tokio runtime is available.
-    /// Subscribes to sync loop status and emits granular library events
-    /// for any entity changes from applied changesets.
+    /// Subscribe to the sync loop's status and turn it into library events: the
+    /// banner state, and granular entity events for the rows an applied changeset
+    /// touched. Call once after construction, with a tokio runtime available.
     pub fn start(&self) {
         let mut rx = self.handle.subscribe_sync_status();
         let lm = self.clone();
@@ -1060,12 +1040,11 @@ impl LibraryManager {
                         lm.emit_sync_entity_changes(changes).await;
                     }
                 }
-                // Fold coven's sync-loop status enum onto bae's flat banner
-                // state: `Started` marks a cycle in progress; a terminal
-                // status ends it, clearing the error banner and recording
-                // the sync time on success, or setting the banner on
-                // failure. `error_update` is `None` when the status carries
-                // no verdict on the banner (a plain `Started`).
+                // Fold coven's sync-loop status onto bae's flat banner state:
+                // `Started` marks a cycle in progress; a terminal status ends it,
+                // clearing the banner and recording the sync time on success, or
+                // setting the banner on failure. `error_update` is `None` when the
+                // status has no verdict on the banner (a plain `Started`).
                 let syncing = matches!(status, SyncLoopStatus::Started);
                 let (error_update, last_sync_update): (Option<Option<String>>, Option<String>) =
                     match &status {
@@ -1123,9 +1102,9 @@ impl LibraryManager {
                             });
                         }
                     }
-                    // Coven hands back an opaque error string (connectivity,
-                    // auth, storage); the UI shows a generic line plus this
-                    // as copyable, log-only detail. `None` clears the banner.
+                    // coven's error string is opaque (connectivity, auth, storage);
+                    // the UI shows a generic line plus this as copyable, log-only
+                    // detail. `None` clears the banner.
                     lm.emit(LibraryEvent::SyncError { error });
                 }
                 if let Some(syncing) = emit_syncing {
@@ -1134,15 +1113,13 @@ impl LibraryManager {
                 if let Some(time) = emit_time {
                     lm.emit(LibraryEvent::SyncTimeChanged { time });
                 }
-                // coven gives no per-item drain signal in the status,
-                // so re-derive the outbox snapshot each cycle to catch
-                // entries it uploaded or failed.
+                // coven gives no per-item drain signal in the status, so re-derive
+                // the outbox snapshot each cycle to catch what it uploaded or failed.
                 lm.emit_outbox_changed().await;
             }
         });
     }
 
-    /// Subscribe to library events (albums changed, etc.)
     pub fn subscribe_events(&self) -> broadcast::Receiver<LibraryEvent> {
         self.event_tx.subscribe()
     }
@@ -1241,16 +1218,12 @@ impl LibraryManager {
         }
     }
 
-    /// Re-emit `AlbumUpdated` for every album. Each release's available storage
-    /// actions are computed at resolve time from whether a cloud home exists
-    /// (`available_storage_actions`), then baked into the cached `ReleaseDetail`.
-    /// Connecting or disconnecting a cloud home flips that, but the already-
-    /// resolved releases keep their stale actions — so a UI that cached them
-    /// (e.g. an open release's storage panel) shows the wrong actions until a
-    /// restart. Re-resolving every album reads `has_cloud_home()` fresh, so the
-    /// actions recompute and consumers update live. Called on each cloud-home
-    /// transition; a no-op-feeling burst that's fine because connect/disconnect
-    /// is rare.
+    /// Re-emit `AlbumUpdated` for every album, on each cloud-home transition. A
+    /// release's available storage actions are computed at resolve time from
+    /// whether a cloud home exists and then baked into the cached `ReleaseDetail`,
+    /// so connecting or disconnecting one leaves every already-resolved release
+    /// holding stale actions until a restart. Re-resolving reads `has_cloud_home()`
+    /// fresh. A burst, but connect/disconnect is rare.
     pub async fn emit_all_albums_updated(&self) {
         let albums = match self.get_albums(&[]).await {
             Ok(albums) => albums,
@@ -1359,7 +1332,8 @@ impl LibraryManager {
         });
     }
 
-    /// Emit granular library events for entity changes collected from sync changesets.
+    /// Emit granular library events for the entity changes an applied changeset
+    /// produced.
     pub async fn emit_sync_entity_changes(
         &self,
         mut changes: crate::library::sync_events::ChangesetEntityChanges,
@@ -1417,7 +1391,6 @@ impl LibraryManager {
         }
     }
 
-    /// Emit a general error to the UI through the event bus.
     pub fn emit_error(&self, error: crate::ui::UiError) {
         self.emit(LibraryEvent::Error { error });
     }

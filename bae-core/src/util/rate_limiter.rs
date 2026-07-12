@@ -33,9 +33,9 @@ impl RateLimiter {
         *last_call = Some(Instant::now());
     }
 
-    /// Forget the previous call so the next `wait` returns immediately.
-    /// Tests that share a static limiter reset it so one test's requests
-    /// don't delay the next test's.
+    /// Forget the previous call so the next `wait` returns immediately. Tests
+    /// sharing a static limiter reset it so one test's requests don't delay the
+    /// next's.
     #[cfg(test)]
     pub async fn reset(&self) {
         *self.last_call.lock().await = None;

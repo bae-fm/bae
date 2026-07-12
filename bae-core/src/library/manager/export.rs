@@ -770,20 +770,17 @@ fn unique_export_path(
     }
 }
 
-/// Reject a stored path fragment (`source_folder_name`, `original_filename`)
-/// that would escape the staging directory when joined onto it. bae owns this
-/// guard on its own export paths — coven's equivalent cloud-key validator is no
-/// longer part of its public API, and a local-filesystem-join guard is bae's
-/// concern, not coven's.
+/// Reject a stored path fragment (`source_folder_name`, `original_filename`) that
+/// would escape the staging directory when joined onto it. A local-filesystem-join
+/// guard is bae's concern, not coven's.
 ///
-/// The structural rule is closed: every [`Component`] must be
-/// [`Component::Normal`]. That one condition subsumes an absolute path
-/// (`RootDir`), a Windows drive/UNC prefix (`Prefix`, e.g. `C:/evil` — this
-/// code is compiled for the Windows desktop, where `Path::join` onto a
-/// drive-absolute path *replaces* the base entirely), a `..` (`ParentDir`), and
-/// a `.` (`CurDir`). Empty, NUL, and backslash are rejected up front (a
-/// backslash is a separator on Windows and a literal character elsewhere, so
-/// it never belongs in one of these fragments).
+/// The rule is closed: every [`Component`] must be [`Component::Normal`]. That one
+/// condition subsumes an absolute path (`RootDir`), a Windows drive/UNC prefix
+/// (`Prefix` — this compiles for the Windows desktop, where `Path::join` onto a
+/// drive-absolute path like `C:/evil` *replaces* the base entirely), a `..`
+/// (`ParentDir`), and a `.` (`CurDir`). Empty, NUL, and backslash are rejected up
+/// front: a backslash is a separator on Windows and a literal character elsewhere,
+/// so it never belongs in one of these fragments.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 fn validate_export_path(release_id: &str, label: &str, value: &str) -> Result<(), LibraryError> {
     use std::path::Component;

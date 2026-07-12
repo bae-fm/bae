@@ -13,36 +13,29 @@ use tracing::{debug, warn};
 const DISCOGS_REQUEST_INTERVAL: Duration = Duration::from_secs(1);
 const DISCOGS_RETRY_ATTEMPTS: u32 = 3;
 
-/// In-memory cache for `releases/{id}` lookups. Cache key is the
-/// release ID; value is the parsed release plus the raw JSON for
-/// archival. Module-level static so the cache survives across
-/// `DiscogsClient::new` calls — release content doesn't change with
-/// the API token.
 type ReleaseCacheValue = (DiscogsRelease, String);
 type MasterCacheValue = (Option<u32>, String);
 
+/// In-memory cache for `releases/{id}` lookups: the parsed release plus its raw JSON
+/// for archival, keyed by release ID. A module-level static, so it survives across
+/// `DiscogsClient::new` calls — release content doesn't vary with the API token.
 static RELEASE_CACHE: SessionCache<ReleaseCacheValue> = SessionCache::new("Discogs release cache");
 
-/// In-memory cache for `masters/{id}` lookups. Same structure as the
-/// release cache, keyed by master ID.
+/// The same, for `masters/{id}`.
 static MASTER_CACHE: SessionCache<MasterCacheValue> = SessionCache::new("Discogs master cache");
 
-/// Rate limiter ensuring at least `DISCOGS_REQUEST_INTERVAL` between
-/// Discogs API requests.
 static RATE_LIMITER: RateLimiter = RateLimiter::new(DISCOGS_REQUEST_INTERVAL);
 
-/// Pre-populate the release cache. Tests use this to drive
-/// `prepare_release` without making an HTTP call. The raw JSON is
-/// stored in `release_metadata` for archival; tests can pass an empty
-/// string when the archival content isn't being asserted on.
+/// Pre-populate the release cache, so a test can drive `prepare_release` without an
+/// HTTP call. The raw JSON is what gets archived in `release_metadata`; pass an empty
+/// string when the test doesn't assert on it.
 #[cfg(any(test, feature = "test-utils"))]
 pub fn seed_release_cache(id: &str, value: (DiscogsRelease, String)) {
     RELEASE_CACHE.put(id, value);
 }
 
-/// Pre-populate the master cache. Tests use this when a synthetic
-/// `DiscogsRelease` carries a `master_id`; the worker's cross-reference
-/// fetch then resolves through the cache.
+/// Pre-populate the master cache, for a synthetic `DiscogsRelease` that carries a
+/// `master_id` — the worker's cross-reference fetch then resolves through it.
 #[cfg(any(test, feature = "test-utils"))]
 pub fn seed_master_cache(master_id: &str, year: Option<u32>, raw_json: String) {
     MASTER_CACHE.put(master_id, (year, raw_json));
@@ -62,9 +55,8 @@ pub enum DiscogsError {
 }
 
 impl DiscogsError {
-    /// Whether this error indicates the configured Discogs token is invalid
-    /// (HTTP 401). Callers use this to mark the stored key `Rejected` so the UI
-    /// can prompt the user to re-enter it.
+    /// An HTTP 401 — the configured token is bad. Callers mark the stored key
+    /// `Rejected` on this, so the UI can prompt for a new one.
     pub fn is_invalid_api_key(&self) -> bool {
         matches!(self, DiscogsError::InvalidApiKey)
     }
@@ -90,12 +82,10 @@ fn should_retry_discogs(error: &DiscogsError) -> bool {
     matches!(error, DiscogsError::RateLimit | DiscogsError::Request(_))
 }
 
-/// Discogs search response wrapper
 #[derive(Debug, Deserialize)]
 struct SearchResponse {
     results: Vec<DiscogsSearchResult>,
 }
-/// Search parameters for flexible Discogs queries
 #[derive(Debug, Clone, Default)]
 pub struct DiscogsSearchParams {
     pub artist: Option<String>,
@@ -105,7 +95,6 @@ pub struct DiscogsSearchParams {
     pub catno: Option<String>,
     pub barcode: Option<String>,
 }
-/// Individual search result
 #[derive(Debug, Clone, Deserialize, PartialEq)]
 pub struct DiscogsSearchResult {
     pub id: u64,
@@ -131,7 +120,7 @@ pub struct DiscogsSearchResult {
 }
 
 impl DiscogsSearchResult {
-    /// Best available cover image from Discogs search result fields.
+    /// The best cover image the search result offers.
     pub fn remote_cover(&self) -> Option<RemoteCover> {
         remote_cover_from_urls(
             self.cover_image.as_deref(),
@@ -142,7 +131,6 @@ impl DiscogsSearchResult {
     }
 }
 
-/// Artist credit in Discogs API responses
 #[derive(Debug, Deserialize, Clone)]
 struct ArtistCredit {
     id: u64,
@@ -164,7 +152,6 @@ struct ExtraArtistCredit {
     )]
     anv: Option<String>,
 }
-/// Detailed release response from Discogs
 #[derive(Debug, Deserialize)]
 struct ReleaseResponse {
     id: u64,
@@ -224,11 +211,9 @@ fn extra_artist_to_model(a: ExtraArtistCredit) -> Option<DiscogsRoleArtist> {
     })
 }
 
-/// Convert raw Discogs release JSON into the public `DiscogsRelease` shape.
-///
-/// Same projection `get_release` applies to fresh API responses — exposed as
-/// a free function so cached `release_metadata.json` rows can be replayed
-/// without re-fetching.
+/// Raw Discogs release JSON to the public `DiscogsRelease`. The same projection
+/// `get_release` applies to a fresh response, exposed as a free function so an
+/// archived `release_metadata` row can be replayed without re-fetching.
 pub fn parse_discogs_release_json(raw_json: &str) -> Result<DiscogsRelease, DiscogsError> {
     let release: ReleaseResponse = serde_json::from_str(raw_json)?;
     let tracklist = release
@@ -306,10 +291,9 @@ pub fn parse_discogs_release_json(raw_json: &str) -> Result<DiscogsRelease, Disc
     })
 }
 
-/// Extract the original release year from a cached Discogs master JSON
-/// payload. The master endpoint stores `{"year": ...}` at the top level;
-/// callers archive the raw JSON in `release_metadata` (source =
-/// `'discogs_master'`) and call this to replay the year on reset.
+/// The original release year out of an archived Discogs master payload, which
+/// carries `{"year": …}` at the top level. Callers archive that JSON in
+/// `release_metadata` and call this to replay the year on reset.
 pub fn parse_discogs_master_year(raw_json: &str) -> Result<Option<u32>, DiscogsError> {
     let parsed: serde_json::Value = serde_json::from_str(raw_json)?;
     Ok(parsed
@@ -319,17 +303,16 @@ pub fn parse_discogs_master_year(raw_json: &str) -> Result<Option<u32>, DiscogsE
 }
 
 #[derive(Clone)]
-/// What a Discogs API call revealed about the stored key, for the validation
-/// observer. Only a 401 (rejected) or a success carries a signal — network and
-/// rate-limit errors say nothing about the key itself.
+/// What a Discogs call revealed about the stored key. Only a 401 or a success says
+/// anything — a network or rate-limit error tells us nothing about the key itself.
 pub enum DiscogsKeySignal {
     Rejected,
     Accepted,
 }
 
-/// Invoked after every Discogs API call a [`DiscogsClient`] makes, so the stored
-/// key's persisted validation state tracks reality without each call site having
-/// to record it. Injected by `LibraryManager::discogs_client`.
+/// Invoked after every call a [`DiscogsClient`] makes, so the stored key's persisted
+/// validation state tracks reality without each call site recording it. Injected by
+/// `LibraryManager::discogs_client`.
 pub type DiscogsValidationObserver = std::sync::Arc<dyn Fn(DiscogsKeySignal) + Send + Sync>;
 
 pub struct DiscogsClient {
@@ -345,9 +328,8 @@ impl DiscogsClient {
         Self::build(api_key, None)
     }
 
-    /// A client that reports each call's outcome to `observer`, so a stored
-    /// key re-validates at use time: a 401 marks it rejected, a success confirms
-    /// a previously-unvalidated key.
+    /// A client that reports each call's outcome to `observer`, so a stored key
+    /// re-validates as it's used.
     pub fn with_observer(api_key: String, observer: DiscogsValidationObserver) -> Self {
         Self::build(api_key, Some(observer))
     }
@@ -363,9 +345,9 @@ impl DiscogsClient {
         }
     }
 
-    /// A client whose requests target `base_url` instead of the live API — used
-    /// by tests to point at a local mock or a refused port. Public API is
-    /// unchanged; production always goes through `new` / `with_observer`.
+    /// Requests target `base_url` instead of the live API, so a test can point at a
+    /// local mock or a refused port. Production always goes through `new` /
+    /// `with_observer`.
     #[cfg(test)]
     pub(crate) fn with_base_url(api_key: String, base_url: String) -> Self {
         Self {
@@ -374,9 +356,8 @@ impl DiscogsClient {
         }
     }
 
-    /// Report a call's outcome to the observer (if any). A 401 is the only error
-    /// that reveals the key is bad; a success confirms it; network/rate-limit
-    /// errors carry no signal.
+    /// A 401 is the only error that proves the key is bad, and a success confirms it.
+    /// A network or rate-limit error must NOT reject a good key.
     fn observe<T>(&self, result: &Result<T, DiscogsError>) {
         let Some(observer) = &self.observer else {
             return;
@@ -388,10 +369,8 @@ impl DiscogsClient {
         }
     }
 
-    /// Drive a request future to completion and report its outcome to the
-    /// observer before handing the result back. Every public request method
-    /// routes through here so the outcome is folded into the key's validation in
-    /// exactly one place.
+    /// Every public request method routes through here, so an outcome folds into the
+    /// key's validation state in exactly one place.
     async fn observed<T>(
         &self,
         fut: impl std::future::Future<Output = Result<T, DiscogsError>>,
@@ -414,7 +393,7 @@ impl DiscogsClient {
         classify_discogs_response(response)
     }
 
-    /// Validate the API token by making a lightweight request.
+    /// Check the API token with a request cheap enough to throw away.
     pub async fn validate_token(&self) -> Result<(), DiscogsError> {
         let url = format!("{}/database/search", self.base_url);
         let query_params = [("per_page", "1")];
@@ -433,7 +412,7 @@ impl DiscogsClient {
         .await
     }
 
-    /// Flexible search using any combination of supported parameters
+    /// Search on any combination of the supported parameters.
     pub async fn search_with_params(
         &self,
         params: &DiscogsSearchParams,
@@ -509,10 +488,7 @@ impl DiscogsClient {
         info!("  → {} release(s) after filtering", releases.len());
         Ok(releases)
     }
-    /// Get detailed information about a specific release.
-    ///
-    /// Returns the parsed release and the raw JSON text from the API.
-    /// Hits a session-wide LRU cache (size 25) keyed by release ID.
+    /// A release, parsed, plus the raw JSON the API returned.
     pub async fn get_release(&self, id: &str) -> Result<(DiscogsRelease, String), DiscogsError> {
         self.observed(self.get_release_inner(id)).await
     }
@@ -541,10 +517,8 @@ impl DiscogsClient {
         Ok(value)
     }
 
-    /// Fetch a Discogs master release to get the original release year.
-    ///
-    /// Returns (year, raw_json). The year is the original release year
-    /// (e.g., 1967 for a 1985 reissue). Hits a session-wide LRU cache.
+    /// The master's year — the *original* release year, so 1967 for a 1985 reissue —
+    /// plus the raw JSON.
     pub async fn get_master(&self, master_id: &str) -> Result<(Option<u32>, String), DiscogsError> {
         self.observed(self.get_master_inner(master_id)).await
     }
@@ -576,7 +550,6 @@ impl DiscogsClient {
         Ok(value)
     }
 
-    /// Get the primary image URL for a Discogs artist
     pub async fn get_artist_image(&self, artist_id: &str) -> Result<Option<String>, DiscogsError> {
         self.observed(self.get_artist_image_inner(artist_id)).await
     }
@@ -633,20 +606,15 @@ impl DiscogsClient {
     }
 }
 
-/// Fetch the Discogs cross-reference for an MB release. Given the Discogs
-/// release URL parsed from MB's url-rels, fetches the linked Discogs release
-/// and (if it has a master) the master too. Returns the `DiscogsRelease` plus
-/// the raw JSON pairs to append to the caller's `release_metadata`
-/// collection.
+/// The Discogs cross-reference for an MB release: given the Discogs URL from MB's
+/// url-rels, fetch the linked release and, if it has one, its master. Returns the
+/// `DiscogsRelease` plus the raw JSON pairs for the caller's `release_metadata`.
 ///
-/// A fetch that fails with `InvalidApiKey` marks the stored key `Rejected` via
-/// the client's validation observer; the cross-ref doesn't abort the import on
-/// auth failure — it returns `None` and the UI surfaces the bad-key state.
-///
-/// Returns `None` if the URL doesn't parse to a numeric release ID, or the
-/// Discogs release fetch fails. A successful release fetch with a failing
-/// master fetch returns `Some` with just the release pair — the master is
-/// best-effort.
+/// `None` when the URL holds no numeric release ID, or the release fetch fails — an
+/// auth failure included, which marks the stored key `Rejected` through the client's
+/// observer and surfaces in the UI rather than aborting the import. A successful
+/// release fetch with a failing master fetch still returns `Some` with just the
+/// release pair; the master is best-effort.
 pub async fn fetch_discogs_xref(
     client: &DiscogsClient,
     discogs_url: &str,
@@ -821,8 +789,8 @@ mod tests {
 
         client.observe::<()>(&Ok(()));
         client.observe::<()>(&Err(DiscogsError::InvalidApiKey));
-        // A rate-limit (like a network error) reveals nothing about the key, so
-        // it must NOT signal — a transient blip can't reject a good key.
+        // A rate limit says nothing about the key, so it must not signal — a
+        // transient blip cannot be allowed to reject a good key.
         client.observe::<()>(&Err(DiscogsError::RateLimit));
 
         assert_eq!(*signals.lock().unwrap(), vec!["accepted", "rejected"]);

@@ -64,10 +64,7 @@ impl From<LibraryCodeOperationError> for RestoreFromCodeError {
     }
 }
 
-/// Create a new library with an optional name, and set it as active.
-///
-/// Generates a UUID, optional random name, creates the directory, and
-/// writes the active-library marker.
+/// Create a library under a generated name and make it active.
 pub fn create_library_default(ids: &dyn coven::IdProvider) -> Result<Config, ConfigError> {
     create_library(crate::library_name::generate_library_name(), ids)
 }
@@ -113,12 +110,11 @@ fn library_layout(bae_dir: impl Into<std::path::PathBuf>) -> coven::StoreLayout 
     coven::StoreLayout::new(bae_dir).stores_dirname("libraries")
 }
 
-/// Bridge bae's `CancellationToken` onto the `watch::Receiver<bool>` coven's
-/// cancellable operations (join/restore, make-Local) poll at phase
-/// boundaries. The channel is seeded with the token's current state, so a
-/// token cancelled before the bridge task runs is observed immediately. The
-/// returned handle is aborted once the operation finishes so the bridge task
-/// doesn't linger.
+/// Bridge bae's `CancellationToken` onto the `watch::Receiver<bool>` that coven's
+/// cancellable operations (join/restore, make-Local) poll at phase boundaries. The
+/// channel is seeded with the token's current state, so a token cancelled before
+/// the bridge task runs is seen immediately. Abort the returned handle once the
+/// operation finishes, so the bridge task doesn't linger.
 pub(crate) fn cancel_token_to_watch(
     handle: &tokio::runtime::Handle,
     token: CancellationToken,
@@ -133,11 +129,11 @@ pub(crate) fn cancel_token_to_watch(
     (rx, join)
 }
 
-/// `None` yields a receiver whose sender is dropped, so it reads `false`
-/// forever (never cancels) and spawns no bridge task. Coven checks the
-/// receiver at phase boundaries and, on cancel, removes the partial store
-/// directory it created — the same cleanup a failure gets — so bae neither
-/// races the operation nor cleans up residue itself.
+/// `None` yields a receiver whose sender is dropped, so it reads `false` forever
+/// (never cancels) and spawns no bridge task. coven checks the receiver at phase
+/// boundaries and, on cancel, removes the partial store directory it created — the
+/// same cleanup a failure gets — so bae neither races the operation nor clears up
+/// after it.
 fn cancel_receiver(
     cancel: Option<CancellationToken>,
 ) -> (watch::Receiver<bool>, Option<tokio::task::JoinHandle<()>>) {
@@ -180,16 +176,15 @@ pub async fn restore_from_cloud(
     on_status: impl Fn(&str),
 ) -> Result<Config, String> {
     let app_dir = crate::config::bae_dir().map_err(|e| e.to_string())?;
-    // The restoring device signs its control objects during restore with the
-    // device-global signing identity; get-or-create it so a fresh device has one.
-    // (The restore-code path imports the code's key instead; this is the
-    // caller-supplies-the-encryption-key path.)
+    // The restoring device signs its control objects with the device-global signing
+    // identity, so get-or-create it: a fresh device has none. (The restore-code path
+    // imports the code's key instead; this is the caller-supplies-the-key path.)
     let keypair = DeviceKeys::get_or_create_user_keypair().map_err(|e| e.to_string())?;
-    // This restore-with-a-key path is for an opaque home: the caller supplies the
-    // library key, so coven rebuilds the encrypted, obfuscated home from its
-    // presence (`Some`). A browsable home has no key and restores through the
-    // restore-code path instead, where the absent `ek` selects it. This path is
-    // not cancellable, so it passes a never-firing cancel receiver.
+    // Restore-with-a-key is the opaque-home path: the caller supplies the library
+    // key, and its presence (`Some`) is what tells coven to rebuild the encrypted,
+    // obfuscated home. A browsable home has no key and restores through the
+    // restore-code path, where the absent key selects it. Not cancellable, so this
+    // passes a never-firing cancel receiver.
     let (cancel, _bridge) = cancel_receiver(None);
     let coven_config = crate::sync::restore_from_cloud(
         library_id,
@@ -357,10 +352,9 @@ fn unlock_library_in_dir(
     key_hex: &str,
     ids: &dyn coven::IdProvider,
 ) -> Result<(), UnlockError> {
-    // `EncryptionService::new` performs the hex+length validation and returns
-    // `EncryptionError::KeyManagement` with the specific cause, so a malformed
-    // key surfaces as `UnlockError::Encryption` rather than collapsing into
-    // "no fingerprint computed".
+    // `EncryptionService::new` does the hex+length validation and names the cause in
+    // `EncryptionError::KeyManagement`, so a malformed key surfaces as
+    // `UnlockError::Encryption` rather than collapsing into "no fingerprint".
     let fingerprint = EncryptionService::new(key_hex)?.fingerprint();
 
     let config =
@@ -380,7 +374,6 @@ fn unlock_library_in_dir(
         }
     }
 
-    // Save key to keyring
     let key_service = StoreKeys::new(library_id.to_string());
     key_service.set_encryption_key(key_hex)?;
 

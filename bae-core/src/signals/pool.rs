@@ -1,7 +1,6 @@
-//! The accumulating text pool fed to the classifier pipeline: it gathers
-//! per-source-tagged lines and folder-bracket catalogs, dedups them, and
-//! classifies the contents incrementally as the extraction pass adds more
-//! lines.
+//! The accumulating text pool behind the classifier: it gathers source-tagged
+//! lines and folder-bracket catalogs, dedups them, and re-classifies
+//! incrementally as the extraction pass adds more lines.
 
 use super::candidate_text::{
     self, apply_free_text_cutoff, catalog_numbers_sourced, cluster_lines_incremental,
@@ -10,18 +9,14 @@ use super::candidate_text::{
 use crate::signals::{SignalOrigin, SourcedValue};
 use std::collections::HashSet;
 
-/// Accumulating pool fed to the classifier pipeline. `lines` carries per-
-/// source-tagged text for filter / cluster / rank. `bracket_catalogs` holds
-/// folder-bracket extractions routed straight to the catalog pool (they
-/// bypass the free-text catalog regex, which is too strict for real-world
-/// formats like `Z1 12345`).
+/// `lines` is the source-tagged text that gets filtered / clustered / ranked.
+/// `bracket_catalogs` are folder-bracket extractions routed straight to the
+/// catalog output, bypassing the free-text catalog regex (too strict for
+/// real-world formats like `Z1 12345`).
 ///
-/// The pool keeps two caches alongside the lines:
-///
-/// * `seen` — dedup set for `push`, so inserts stay O(1) as the pool grows.
-/// * `clusters` + `clustered_through` — persistent cluster state so
-///   `classify` can do incremental work on newly-added lines instead of
-///   re-clustering the entire pool each emission.
+/// Two caches ride alongside: `seen` keeps `push` dedup O(1) as the pool grows,
+/// and `clusters` + `clustered_through` let `classify` cluster only the lines
+/// added since the last call rather than the whole pool each emission.
 #[derive(Default)]
 pub(super) struct Pool {
     pub(super) lines: Vec<SourcedLine>,
@@ -41,8 +36,8 @@ impl Pool {
         if line.text.is_empty() {
             return;
         }
-        // Dedupe by (source, text) via the HashSet. Keeps the Vec ordered
-        // by insertion so clustering walks in insertion order.
+        // Dedupe on (source, text); `lines` stays in insertion order, which is
+        // the order clustering walks.
         let key = (line.source.clone(), line.text.clone());
         if !self.seen.insert(key) {
             return;
@@ -56,13 +51,10 @@ impl Pool {
         }
     }
 
-    /// Classify the pool's current contents.
-    /// Catalog extraction is a whole-pool regex pass (cheap). Free-text
-    /// clustering is incremental: only lines added since the last call are
-    /// classified against the existing clusters.
+    /// Classify the pool's current contents. Catalog extraction re-runs the regex
+    /// over the whole pool (cheap); free-text clustering is incremental — only
+    /// lines added since the last call are matched against the existing clusters.
     pub(super) fn classify(&mut self) -> Classification {
-        // Catalogs: regex over the sourced line text (each survivor keeps its
-        // line's origin), plus the bracket-routed extras from folder names.
         let mut catalogs = catalog_numbers_sourced(&self.lines);
         let mut seen_catalog: HashSet<String> = catalogs.iter().map(|c| c.value.clone()).collect();
         for extra in &self.bracket_catalogs {
@@ -71,9 +63,7 @@ impl Pool {
             }
         }
 
-        // Free text: classify only the newly-added lines against existing
-        // clusters. Lines rejected by `should_reject_line` don't count as
-        // "classified" at all — they never feed a cluster.
+        // A line `should_reject_line` drops never feeds a cluster at all.
         let new_slice = &self.lines[self.clustered_through..];
         let filtered: Vec<SourcedLine> = new_slice
             .iter()
@@ -83,8 +73,8 @@ impl Pool {
         cluster_lines_incremental(&mut self.clusters, &filtered);
         self.clustered_through = self.lines.len();
 
-        // Rank + cutoff operate on a local copy so the pool's insertion-
-        // order clusters aren't mutated for display.
+        // Rank on a copy: the pool's own clusters must stay in insertion order,
+        // which is what makes the next `classify` incremental.
         let mut ranked = self.clusters.clone();
         rank_clusters_in_place(&mut ranked);
         let free_text = apply_free_text_cutoff(&ranked);
@@ -124,8 +114,8 @@ mod tests {
         }
     }
 
-    /// Push lines + brackets into a fresh pool and classify once, projecting
-    /// the catalog `SourcedValue`s back to their bare strings for assertions.
+    /// Push lines + brackets into a fresh pool and classify once, catalogs
+    /// projected back to bare strings.
     fn classify_pool(lines: Vec<SourcedLine>, brackets: &[&str]) -> (Vec<String>, Vec<String>) {
         let mut pool = Pool::default();
         for line in lines {
@@ -147,8 +137,8 @@ mod tests {
 
     #[test]
     fn classify_promotes_high_score_clusters() {
-        // Three sources agree on "Artist Alpha" — the cluster outscores a
-        // one-off OCR credit line, which the reject rules drop.
+        // Three sources agree on "Artist Alpha"; the reject rules drop the
+        // one-off OCR credit line entirely.
         let lines = vec![
             cue_line("Artist Alpha"),
             path_line("Artist Alpha"),
@@ -174,8 +164,8 @@ mod tests {
 
     #[test]
     fn classify_falls_back_when_no_cluster_clears_threshold() {
-        // Single artwork image, all-singleton clusters. Should NOT return
-        // empty — fall back to the top N by score.
+        // One artwork image, so every cluster is a score-1 singleton. The pool
+        // must fall back to the top N rather than come back empty.
         let lines = vec![
             artwork_line("/a.jpg", "Artist Alpha"),
             artwork_line("/a.jpg", "Album Title B"),

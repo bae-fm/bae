@@ -3,22 +3,21 @@
 use super::*;
 
 impl LibraryManager {
-    /// Add a file to the library. Production inserts files only as part of
-    /// an import or edit transaction; this single-row insert is only a test
-    /// helper for seeding a file directly.
+    /// Test-only: seed a single file row. Production inserts files only as part of
+    /// an import or edit transaction.
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn add_file(&self, file: &DbFile) -> Result<(), LibraryError> {
         self.database.insert_file(file).await?;
         Ok(())
     }
 
-    /// Atomically insert all import data in a single transaction.
-    /// Nothing is in the DB yet except the import record.
-    /// The release either exists complete or doesn't exist at all.
+    /// Insert all of an import's data in one transaction, so the release either
+    /// exists complete or does not exist at all. Nothing of it is in the DB yet
+    /// except the import record.
     ///
-    /// Track rows are read straight off `tracks_to_files` — each `TrackFile`
-    /// owns the `DbTrack` (with its populated `duration_ms`) that gets
-    /// inserted. There is no parallel list of tracks or durations.
+    /// Track rows come straight off `tracks_to_files` — each `TrackFile` owns the
+    /// `DbTrack` (with its populated `duration_ms`) that gets inserted. There is no
+    /// parallel list of tracks or durations.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     #[allow(clippy::too_many_arguments)]
     pub(crate) async fn finalize_import_atomic(
@@ -118,12 +117,10 @@ impl LibraryManager {
         Ok(self.database.is_source_folder_name_imported(name).await?)
     }
 
-    /// Insert a new import operation record
     pub async fn insert_import(&self, import: &DbImport) -> Result<(), LibraryError> {
         Ok(self.database.insert_import(import).await?)
     }
 
-    /// Update the status of an import operation
     pub async fn update_import_status(
         &self,
         id: &str,
@@ -132,7 +129,6 @@ impl LibraryManager {
         Ok(self.database.update_import_status(id, status).await?)
     }
 
-    /// Record an error for an import operation
     pub async fn update_import_error(&self, id: &str, error: &str) -> Result<(), LibraryError> {
         Ok(self.database.update_import_error(id, error).await?)
     }
@@ -159,7 +155,7 @@ impl LibraryManager {
         Ok(())
     }
 
-    /// Delete an import record (used by UI to dismiss stuck imports)
+    /// The UI dismisses a stuck import with this.
     pub async fn delete_import(&self, id: &str) -> Result<(), LibraryError> {
         Ok(self.database.delete_import(id).await?)
     }

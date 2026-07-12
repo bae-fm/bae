@@ -15,18 +15,17 @@ use std::sync::Mutex;
 
 const AUDIO_EVENT_CAPACITY: usize = 2048;
 
-/// Audio output state - directly controls what the audio callback does.
-///
-/// This is a shared atomic that both the service and audio callback access.
-/// No command channel needed - just set the state directly.
+/// What the audio callback does each buffer. Held as a shared atomic the service
+/// writes and the callback reads, so play/pause needs no command channel — and
+/// nothing on the callback path blocks.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
 pub enum AudioState {
-    /// Output silence, stream inactive
+    /// Silence; the stream is inactive.
     Stopped = 0,
-    /// Output samples from buffer
+    /// Pull samples from the source.
     Playing = 1,
-    /// Output silence, but stream remains ready
+    /// Silence, but the stream stays ready.
     Paused = 2,
 }
 
@@ -209,10 +208,9 @@ impl AudioDrain {
         let read = source_guard.pull_samples(buf, &mut self.audio_events);
 
         if read == 0 {
-            // Report the current track's completion exactly once (the source's
-            // latch resets on a crossing or a `replace`, so a persistent stream
-            // that plays many tracks still fires one Completion per drained
-            // track).
+            // One Completion per drained track: the source's latch resets on a
+            // crossing or a `replace`, so a persistent stream playing many tracks
+            // still reports each one exactly once.
             if let Some(event) = source_guard.take_completion_event() {
                 self.controls.set_state(AudioState::Stopped);
                 self.audio_events
@@ -370,8 +368,8 @@ pub(crate) fn duration_millis(duration: std::time::Duration) -> u64 {
     duration.as_millis().min(u64::MAX as u128) as u64
 }
 
-/// Audio output abstraction. Implementations pull samples from a PlaybackSource
-/// and send them somewhere (real device, capture buffer, etc).
+/// A sink that pulls samples from a `PlaybackSource` and sends them somewhere: a
+/// real device, a capture buffer, a discard-and-pace probe.
 pub trait AudioOutput: Send + 'static {
     fn create_stream(
         &mut self,
@@ -397,25 +395,19 @@ pub trait AudioOutput: Send + 'static {
 
 // -- Capture audio output for tests --
 
-/// Audio output that captures raw f32 samples for ground truth comparison in tests.
+/// Captures raw f32 samples for ground-truth comparison in tests.
 ///
-/// Each non-gapless transition mints a fresh capture buffer — a `create_stream`
-/// (a rebuild) or an `on_source_replaced` (a same-format swap) — and the receiver
-/// returned from `new()` yields one `Arc<Mutex<Vec<f32>>>` per transition in
-/// order. Volume is NOT applied — samples are captured exactly as the decoder
-/// produced them.
+/// Each non-gapless transition — a `create_stream` (rebuild) or an
+/// `on_source_replaced` (same-format swap) — mints a fresh capture buffer, and
+/// the receiver from `new()` yields one `Arc<Mutex<Vec<f32>>>` per transition in
+/// order. Volume is NOT applied: samples land exactly as the decoder produced
+/// them.
 #[cfg(feature = "test-utils")]
 pub struct CaptureAudioOutput {
     core: CaptureOutputCore,
 }
 
-/// Audio output that captures raw f32 samples and paces pulls to real time.
-///
-/// Each non-gapless transition mints a fresh capture buffer — a `create_stream`
-/// (a rebuild) or an `on_source_replaced` (a same-format swap) — and the receiver
-/// returned from `new()` yields one `Arc<Mutex<Vec<f32>>>` per transition in
-/// order. Volume is NOT applied — samples are captured exactly as the decoder
-/// produced them.
+/// `CaptureAudioOutput`, but paces its pulls to real time.
 #[cfg(feature = "test-utils")]
 pub struct RealtimeCaptureAudioOutput {
     core: CaptureOutputCore,
@@ -425,11 +417,10 @@ pub struct RealtimeCaptureAudioOutput {
 struct CaptureOutputCore {
     controls: AudioOutputControls,
     notify_tx: tokio::sync::mpsc::UnboundedSender<Arc<Mutex<Vec<f32>>>>,
-    /// The capture buffer the running capture thread currently extends. A fresh
-    /// `create_stream` (a rebuild) or an `on_source_replaced` (a same-format swap)
-    /// mints a new inner buffer and publishes it here so each non-gapless
-    /// transition captures into its own buffer — the "one buffer per transition"
-    /// contract the fixtures await via `next_capture_stream`.
+    /// The buffer the capture thread currently extends. A `create_stream` or an
+    /// `on_source_replaced` mints a new inner buffer and publishes it here, so
+    /// each non-gapless transition captures into its own — the one-buffer-per-
+    /// transition contract the fixtures await via `next_capture_stream`.
     active: Arc<Mutex<Arc<Mutex<Vec<f32>>>>>,
 }
 
@@ -496,17 +487,17 @@ where
             }
 
             match drain.drain_iteration(&mut buf, false, false, None) {
-                // Idle covers a drained track too: the output stream is persistent,
-                // so the thread keeps running until the source is replaced with the
-                // next track or the stream is dropped (the stop flag).
+                // Idle covers a drained track too: the output stream is
+                // persistent, so this thread keeps running until the source is
+                // replaced with the next track or the stream is dropped.
                 DrainStatus::Idle => {
                     std::thread::sleep(std::time::Duration::from_millis(1));
                     continue;
                 }
                 DrainStatus::Samples { read } => {
-                    // Read the current capture buffer each iteration: a same-format
-                    // source replace rotates it under us, so post-swap samples land
-                    // in the new track's buffer.
+                    // Re-read the active buffer each iteration: a same-format
+                    // source replace rotates it under us, so post-swap samples
+                    // land in the new track's buffer.
                     let captured = active.lock().unwrap().clone();
                     if let Ok(mut guard) = captured.lock() {
                         guard.extend_from_slice(&buf[..read]);
@@ -545,9 +536,9 @@ macro_rules! impl_capture_output_constructor {
 macro_rules! capture_output_control_methods {
     () => {
         fn on_source_replaced(&mut self) {
-            // A same-format source swap keeps the one capture thread running;
+            // The one capture thread keeps running across a same-format swap;
             // rotate to a fresh buffer so this transition's samples are captured
-            // separately, matching the fixtures' one-buffer-per-transition await.
+            // separately, as the fixtures' one-buffer-per-transition await expects.
             if let Err(e) = self.core.rotate_capture_buffer() {
                 tracing::warn!("capture buffer rotation failed on source replace: {e}");
             }
@@ -562,11 +553,11 @@ macro_rules! capture_output_control_methods {
         }
 
         fn set_volume(&self, _volume: f32) {
-            // Capture output ignores volume — raw samples
+            // Captured samples are raw, so volume is ignored.
         }
 
         fn get_volume(&self) -> f32 {
-            1.0 // Capture output has no volume control
+            1.0
         }
     };
 }
@@ -702,7 +693,7 @@ struct CaptureStream {
 #[cfg(feature = "test-utils")]
 impl AudioStream for CaptureStream {
     fn play(&self) -> Result<(), AudioError> {
-        Ok(()) // Already running from create_stream
+        Ok(()) // The capture thread is already running from create_stream.
     }
 }
 
@@ -720,16 +711,16 @@ impl Drop for CaptureStream {
 
 // -- Real-time CPU probe output for tests --
 
-/// Audio output that drives playback at real time and discards the samples, for
-/// measuring steady-state playback CPU. It runs the same per-buffer work the
-/// cpal sink does — `pull_samples`, the replay-gain/volume multiply, position
-/// ticks, completion — but paces itself by sleeping one buffer's wall-clock
-/// duration after each pull instead of being clocked by an audio device.
+/// Drives playback at real time and discards the samples, for measuring
+/// steady-state playback CPU. Runs the same per-buffer work the cpal sink does —
+/// `pull_samples`, the replay-gain/volume multiply, position ticks, completion —
+/// but paces itself by sleeping one buffer's wall-clock duration after each pull
+/// instead of being clocked by an audio device.
 ///
-/// That real-time pacing is the point: it makes the decoder fill-then-park as it
-/// does in production, so the measured CPU reflects real playback (per-buffer
-/// drain, gain, ~20 Hz tick fan-out, decoder wakeups) rather than a full-speed
-/// decode, which is an order of magnitude cheaper. Needs no audio device, so the
+/// That pacing is the point: it makes the decoder fill-then-park as it does in
+/// production, so the measured CPU reflects real playback (per-buffer drain,
+/// gain, ~20 Hz tick fan-out, decoder wakeups) rather than a full-speed decode,
+/// which is an order of magnitude cheaper. Needs no audio device, so the
 /// measurement runs headless on any platform.
 #[cfg(feature = "test-utils")]
 pub struct RealtimeProbeOutput {
@@ -780,8 +771,7 @@ impl AudioOutput for RealtimeProbeOutput {
 
                 match drain.drain_iteration(&mut buf, true, false, None) {
                     // Persistent output: a drained track idles rather than ending
-                    // the probe thread, which exits only when the stream is dropped
-                    // (the stop flag).
+                    // the probe thread, which exits only on the stop flag.
                     DrainStatus::Idle => {
                         std::thread::sleep(std::time::Duration::from_millis(1));
                         continue;

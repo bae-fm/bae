@@ -24,8 +24,8 @@ pub(crate) const MAX_REDIRECTS: usize = 10;
 pub(crate) const MAX_IMAGE_BYTES: usize = 32 * 1024 * 1024;
 
 /// A `reqwest` client builder pre-set with bae's outbound HTTP policy. Callers
-/// add any further settings for their endpoint and call `.build()` themselves
-/// so they keep their own error handling.
+/// add their endpoint's settings and call `.build()` themselves, so each keeps
+/// its own error handling.
 pub(crate) fn client_builder() -> reqwest::ClientBuilder {
     reqwest::Client::builder()
         .user_agent(USER_AGENT)

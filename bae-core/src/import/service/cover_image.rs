@@ -1,7 +1,6 @@
-//! Pick and read the cover image for an import from the folder's files.
-//!
-//! Builds the `DbLibraryImage` record (and its bytes) for a local cover,
-//! ranking folder images so `cover`/`front` wins when the user made no pick.
+//! Pick and read an import's cover image from the folder's own files, building
+//! the `DbLibraryImage` record and its bytes. Folder images are ranked so that
+//! `cover`/`front` wins when the user made no explicit pick.
 
 use crate::import::folder_scanner::ScannedFile;
 use crate::util::content_type_hint::ContentTypeHint;
@@ -10,11 +9,9 @@ use super::format_prep::resolve_file_content_type;
 use super::ImportService;
 
 impl ImportService {
-    /// Build a cover image record from local files without writing to DB.
-    /// Read the chosen cover file's bytes and build its `DbLibraryImage` record,
-    /// returning `(record, bytes)`. The caller hands the bytes to coven's local
-    /// store (the cover's home as a host-provided Local blob) and the record to
-    /// finalize; nothing is written to a bae path here.
+    /// Read the chosen cover file's bytes and build its `DbLibraryImage` record.
+    /// Nothing is written here: the caller hands the bytes to coven's local store
+    /// and the record to finalize.
     #[allow(clippy::type_complexity)]
     pub(super) fn build_cover_image_record(
         &self,
@@ -57,8 +54,6 @@ impl ImportService {
         let content_type = resolve_file_content_type(&cover_file.path)?;
         let source_url = format!("release://{}", relative_path);
 
-        // Read the cover bytes from the user's folder; the caller stores them in
-        // coven's local store and writes the row.
         let bytes = std::fs::read(&cover_file.path).map_err(|e| ImportError::CoverArt {
             detail: format!(
                 "Failed to read cover art {}: {e}",

@@ -1,27 +1,20 @@
-//! Import type definitions
+//! Import type definitions.
 //!
-//! # Import Architecture
+//! Every import follows the same flow, whether the tracks are individual files
+//! or one container plus a CUE sheet, and whether the metadata came from
+//! MusicBrainz, Discogs, or the files' own tags:
 //!
-//! All imports follow the same data flow, regardless of whether tracks are stored as
-//! individual files (one-file-per-track) or as a single file with a CUE sheet (one-file-per-album):
+//! 1. **Preparation** ([`PrepareStep`]) — resolve the release's metadata, walk
+//!    the folder, and map each logical track onto the audio file holding its
+//!    samples. A one-file-per-track release emits one `TrackFile::Standalone`
+//!    per track; a CUE-backed release emits a `TrackFile::CueBacked` per track,
+//!    all sharing the container's parsed CUE sheet and probe.
+//! 2. **Running** ([`ImportPhase`]) — reference each file where it already sits
+//!    (no bytes move, no transcode), measure per-track loudness by decoding, and
+//!    write every row in one transaction.
 //!
-//! ## Phase 1: Track-to-File Mapping (Validation)
-//! - Map logical tracks (from Discogs metadata) to physical audio files (from user's folder)
-//! - Validates that the user's files match the expected album structure
-//! - For one-file-per-track: each logical track maps to its own file (01.flac, 02.flac, etc.)
-//!   and emits `TrackFile::Standalone`
-//! - For CUE/FLAC: the mapper parses the CUE sheet, probes the audio container, and emits
-//!   `TrackFile::CueBacked` carrying the shared analysis
-//! - Output: `Vec<TrackFile>`
-//!
-//! ## Phase 2: File Storage
-//! - Store files to local disk or cloud storage
-//! - Optionally encrypt files before storage
-//! - Track progress by bytes written
-//!
-//! ## Phase 3: Metadata Persistence
-//! - Store file records with storage paths
-//! - Store track audio format records
+//! An import always lands as a local, playable release. A [`StorageMode::Remote`]
+//! import then uploads to the cloud in the background.
 use crate::audio_codec::ProbeResult;
 use crate::cue_flac::CueSheet;
 use crate::db::DbTrack;
@@ -122,15 +115,14 @@ pub struct ReleaseIdentity {
     pub source_release_id: Option<String>,
 }
 
-/// Where a release's metadata was seeded from. Pairs the source enum
-/// with its release_id so the invariant "release_id is None iff source
-/// is FileTags" is structural rather than a runtime check.
+/// Where a release's metadata was seeded from, for the `releases` columns
+/// `metadata_source` / `metadata_source_release_id`. Pairing the source with
+/// its release_id makes "release_id is None iff source is FileTags" structural
+/// rather than a runtime check.
 ///
-/// Maps to the two `releases` columns `metadata_source` /
-/// `metadata_source_release_id`. Used as input to `set_identity` —
-/// `IdentityChoice` plays the same role at import time, but it also
-/// discriminates between Exact / Approximate (which `set_identity`
-/// does not need: identity rows are passed in directly).
+/// Input to `set_identity`. `IdentityChoice` plays the same role at import
+/// time, but also discriminates Exact from Approximate — which `set_identity`
+/// doesn't need, since it takes identity rows directly.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum MetadataPointer {
     External {
@@ -140,29 +132,23 @@ pub enum MetadataPointer {
     FileTags,
 }
 
-/// User's identity claim from the import flow. The variant carries
-/// the release reference for the identified branches (Exact /
-/// Approximate); Unknown carries none — the import seeds from
-/// embedded file tags rather than a source release.
+/// The user's identity claim from the import flow.
 ///
-/// - **Exact** — "this IS my pressing." Identity row carries
-///   `source_release_id = Some(release_ref.id)`. Pressing-level
-///   metadata (year, format, label, catalog number, country) seeds
-///   from the picked release.
-/// - **Approximate** — "this is my album, but I don't claim a
-///   specific pressing." Identity row carries
-///   `source_release_id = None`. Pressing-level metadata stays NULL —
-///   the user explicitly didn't claim a specific pressing.
-///   Album-group-stable fields (title, artist, track listing) still
-///   seed from `release_ref`.
-/// - **Unknown** — no identity claim. Zero `release_identities` rows
-///   are written. `metadata_source` is `'file_tags'`,
-///   `metadata_source_release_id` is `NULL`, and the release always
-///   gets a fresh album.
+/// - **Exact** — "this IS my pressing." The identity row carries
+///   `source_release_id = Some(release_ref.id)`, and pressing-level metadata
+///   (year, format, label, catalog number, country) seeds from the picked
+///   release.
+/// - **Approximate** — "this is my album, but I don't claim a specific
+///   pressing." The identity row carries `source_release_id = None` and
+///   pressing-level metadata stays NULL. Album-group-stable fields (title,
+///   artist, track listing) still seed from `release_ref`.
+/// - **Unknown** — no claim. Zero `release_identities` rows, `metadata_source`
+///   is `'file_tags'`, `metadata_source_release_id` is NULL, and the release
+///   always gets a fresh album. Metadata seeds from embedded file tags.
 ///
-/// For Exact and Approximate, `metadata_source_release_id` on the
-/// release row carries `release_ref.id` — the release records which
-/// source release seeded it regardless of identity claim.
+/// For Exact and Approximate, `metadata_source_release_id` on the release row
+/// carries `release_ref.id` either way — the release records which source
+/// release seeded it regardless of the claim.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum IdentityChoice {
     Exact { release_ref: MetadataRef },
@@ -170,24 +156,20 @@ pub enum IdentityChoice {
     Unknown,
 }
 
-/// User-supplied metadata edits for a release. Carries every field the
-/// edit-metadata sheet is allowed to change. Plain values, not
-/// row IDs — the apply layer resolves artist names against the artist
-/// table and zips track edits to existing track IDs in order.
+/// Every field the edit-metadata sheet may change. Plain values, not row IDs —
+/// the apply layer resolves artist names against the artist table and zips
+/// track edits to existing track IDs in order.
 ///
-/// Identity rows on `release_identities`, `metadata_source`, and
-/// `metadata_source_release_id` are out of scope: edits are orthogonal
-/// to identity. The apply layer also leaves `release_metadata` rows
-/// untouched, so a later re-projection can still re-seed from the
-/// original source payload.
+/// Identity is out of scope: `release_identities`, `metadata_source`, and
+/// `metadata_source_release_id` are untouched. So are `release_metadata` rows,
+/// so a later re-projection can still re-seed from the original source payload.
 ///
-/// `tracks` MUST have the same length as the release's existing tracks;
-/// edits cannot add or remove tracks (that's a re-import, not an edit).
+/// `tracks` MUST have the same length as the release's existing tracks; edits
+/// cannot add or remove tracks (that's a re-import, not an edit).
 ///
-/// `album_artist_names` is a positional list — element 0 is the primary
-/// album artist, subsequent elements get progressively higher
-/// `album_artists.position`. Empty is a validation error: every album
-/// has at least one artist.
+/// `album_artist_names` is positional — element 0 is the primary album artist,
+/// later elements get progressively higher `album_artists.position`. Empty is a
+/// validation error: every album has at least one artist.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ReleaseUserEdit {
     pub album_title: String,
@@ -196,14 +178,12 @@ pub struct ReleaseUserEdit {
     pub tracks: Vec<TrackUserEdit>,
 }
 
-/// Per-pressing fields a release carries. Grouped because they share an
-/// identity-claim semantic — either all six come from a specific picked
-/// release (Exact) or the user starts with all six blank and fills in
-/// what they know (Approximate / Unknown). Per-field `Option` inside
-/// means "this individual field isn't known yet" within whichever case
-/// the editor is in; the whole-block "no pressing claim" lives at the
-/// `PressingEdit::blank()` level instead of duplicating None per field
-/// at every caller.
+/// Per-pressing fields a release carries. Grouped because they share one
+/// identity-claim rule: either all six come from a picked release (Exact), or
+/// the user starts with all six blank and fills in what they know (Approximate
+/// / Unknown). A per-field `None` means "not known yet" within whichever case
+/// the editor is in; the whole-block "no pressing claim" is
+/// [`PressingEdit::blank()`], so no caller has to spell out six `None`s.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PressingEdit {
     pub year: Option<i32>,
@@ -244,18 +224,16 @@ pub struct TrackUserEdit {
     pub artist_names: Vec<String>,
 }
 
-/// Raw edit-metadata form values, exactly as the editor holds them — text
-/// the user typed, not yet normalized. Artist fields are the
-/// comma-separated text the user sees; pressing fields are raw strings
-/// (empty means "not set"); `year` is text (parsed at shape time).
-/// [`shape`](RawReleaseEdit::shape) trims, splits, parses, and validates
-/// this into a wire [`ReleaseUserEdit`].
+/// Edit-metadata form values exactly as the editor holds them — text the user
+/// typed, not yet normalized. Artist fields are the comma-separated text the
+/// user sees; pressing fields are raw strings (empty means "not set"); `year`
+/// is text.
 ///
-/// The editor binds directly to this shape: it collects raw text and asks
-/// bae-core for (a) whether the form is savable and (b) the commit
-/// payload, both via `shape`. The reverse projection
-/// [`from_user_edit`](RawReleaseEdit::from_user_edit) seeds this form from
-/// a wire edit.
+/// The editor binds directly to this shape and calls
+/// [`shape`](RawReleaseEdit::shape) both to gate its Save button and to build
+/// the commit payload: it trims, splits, parses, and validates into a wire
+/// [`ReleaseUserEdit`]. [`from_user_edit`](RawReleaseEdit::from_user_edit) is
+/// the reverse, seeding this form from a wire edit.
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct RawReleaseEdit {
     pub album_title: String,
@@ -340,16 +318,14 @@ fn option_to_raw(value: &Option<String>) -> String {
 }
 
 impl RawReleaseEdit {
-    /// Normalize and validate this raw form into a wire
-    /// [`ReleaseUserEdit`]: trim the album title, comma-split artist
-    /// fields (dropping empties), parse the year, and map empty pressing
-    /// fields to `None`. `Ok` means the form is savable; the editor uses
-    /// the same call to gate its Save button and to build the commit
-    /// payload.
+    /// Normalize and validate this raw form into a wire [`ReleaseUserEdit`]:
+    /// trim the album title, comma-split artist fields (dropping empties),
+    /// parse the year, and map empty pressing fields to `None`. `Ok` means the
+    /// form is savable.
     ///
-    /// Validation: album title must be non-empty after trimming, the album
-    /// must resolve to at least one artist, and a non-empty year must
-    /// parse as an integer (empty year is allowed — it's "not set").
+    /// Validation: the album title must be non-empty after trimming, the album
+    /// must resolve to at least one artist, and a non-empty year must parse as
+    /// an integer (an empty year is allowed — it's "not set").
     pub fn shape(&self) -> Result<ReleaseUserEdit, EditValidationError> {
         let album_title = self.album_title.trim().to_string();
         if album_title.is_empty() {
@@ -446,12 +422,12 @@ impl RawPressingEdit {
 
 /// The storage state the user picks for an import. Every import FIRST lands
 /// `Local` (files in place, playable immediately); a `Remote` import then
-/// transitions to the cloud in the background (the same path `do_make_remote` runs).
+/// transitions to the cloud in the background.
 ///
-/// Pin-vs-cloud-only is NOT part of this state: pinned-ness is coven cache state,
-/// never a bae property. The user's pin choice rides the remote transition as a
-/// transient argument (`pin` on the import command), threaded into the upload so
-/// coven knows whether to populate `storage/pinned/`; it is never persisted here.
+/// Pinned-ness is NOT part of this state — it's coven cache state, never a bae
+/// property. The user's pin choice rides the remote transition as a transient
+/// argument (`pin` on the import command) telling coven whether to populate
+/// `storage/pinned/`; it is never persisted.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StorageMode {
     /// Files stay in place on this device; never uploaded.
@@ -473,7 +449,7 @@ pub enum CoverSelection {
 /// Progress updates during import
 #[derive(Debug, Clone)]
 pub enum ImportProgress {
-    /// Phase 0: Preparation steps (emitted from ImportHandle before pipeline starts)
+    /// A preparation step, before the running phases begin.
     Preparing {
         import_id: String,
         step: PrepareStep,
@@ -526,7 +502,8 @@ pub enum ImportPhase {
     Finalizing,
 }
 
-/// Steps during phase 0 preparation (in ImportHandle, before pipeline starts)
+/// Preparation steps, emitted by the import worker before the running phases
+/// ([`ImportPhase`]) begin.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PrepareStep {
     ParsingMetadata,
@@ -546,14 +523,13 @@ pub enum ImportStep {
 
 /// Maps a logical track to the audio file that contains its samples.
 ///
-/// Each variant owns its `DbTrack` by value — the TrackFile IS the track's
-/// representation during import. There is no parallel `Vec<DbTrack>` alongside
-/// `Vec<TrackFile>`; the DB record (title, side, duration, etc.) lives here.
+/// Each variant owns its `DbTrack` by value — a `TrackFile` IS the track's
+/// representation during import, so there is no parallel `Vec<DbTrack>`.
 ///
-/// Standalone tracks own their file outright (e.g., "01.flac", "02.flac").
-/// CUE-backed tracks share a single container file (FLAC or APE) and identify
-/// themselves by their position inside the CUE sheet. Every CUE-backed track
-/// from one container references the same `CueFlacAnalysis`.
+/// Standalone tracks own their file outright ("01.flac", "02.flac"). CUE-backed
+/// tracks share one container file and identify themselves by their position
+/// inside the CUE sheet; every CUE-backed track from one container references
+/// the same `CueFlacAnalysis`.
 #[derive(Debug, Clone)]
 pub enum TrackFile {
     Standalone {
@@ -599,22 +575,17 @@ pub struct CueAnalyzedAudioFile {
 
 /// Import command sent to the service worker.
 ///
-/// Carries only identifiers, not payloads. For `IdentityChoice::Exact`
-/// and `Approximate`, the worker calls `prepare_release` itself at
-/// commit time, which transparently hits the session-wide MB/Discogs
-/// LRU caches. Cache hit is the normal case (the UI's prefetch warmed
-/// it); a miss costs one network round-trip but does not break
-/// correctness. Cover bytes flow through the same cache pattern via
-/// `download_cover_art_bytes`.
-///
-/// `identity_choice` carries both the user's claim shape and the
-/// release reference (when applicable). For Unknown, the worker
-/// sources the release shape from the scanned candidate: CUE sheets for
+/// Carries only identifiers, never payloads. For `IdentityChoice::Exact` and
+/// `Approximate`, the worker calls `prepare_release` at commit time, reading
+/// through the session-wide MB/Discogs LRU caches — normally a hit, since the
+/// UI's prefetch warmed them; a miss costs one round-trip. Cover bytes come
+/// through the same caching in `download_cover_art_bytes`. For Unknown, the
+/// worker sources the release shape from the scanned candidate: CUE sheets for
 /// CUE-backed candidates, embedded tags for per-track-file candidates.
 ///
-/// `user_edit` is an optional overlay from the confirmation-page
-/// editor. When present, fields override the seeded metadata after the
-/// choice transformation.
+/// `user_edit` is an optional overlay from the confirmation-page editor; when
+/// present its fields override the seeded metadata after the choice
+/// transformation.
 #[derive(Debug)]
 pub struct ImportCommand {
     pub import_id: String,

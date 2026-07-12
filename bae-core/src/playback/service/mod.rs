@@ -1,34 +1,35 @@
 //! # Playback Service
 //!
-//! The playback service manages audio playback through a command-based architecture.
-//! It runs in its own thread and processes commands from a channel.
+//! Runs on its own thread and drives playback from a command channel.
 //!
-//! ## Audio State
+//! ## Audio state
 //!
-//! Audio state is a shared atomic (`AudioState` enum: `Stopped`, `Playing`, `Paused`).
-//! The audio callback reads it on every iteration and outputs samples if `Playing`,
-//! silence otherwise. Infrastructure (streams, buffers, decoders) is set up
-//! separately via `init_streaming()`.
+//! What the audio callback does each buffer is a shared atomic (`AudioState`:
+//! `Stopped`, `Playing`, `Paused`), written as a projection of the `PlaybackSlot`
+//! (`slot.rs`), which is the truth. The callback reads the atomic lock-free and
+//! outputs samples when `Playing`, silence otherwise.
 //!
-//! ## Seek Flow
+//! ## Seek flow (`seek.rs`)
 //!
-//! 1. Cancel old streaming source (makes callback output silence), then set the
-//!    old decoder's token, wake the byte buffers' readers so a read-blocked
-//!    decoder observes the token, and join the decoder (`cancel_and_join_decoder`)
-//! 2. The byte buffers stay alive and cached — the rebuilt decoder reuses them
-//! 3. Spawn new decoder on the same buffers with `seek_to` (FFmpeg-level seek)
-//! 4. Build a fresh stream over it; the phase stays Loading until the
-//!    ready-watcher's `TrackReady` resolves it to the preserved Playing/Paused
-//! 5. Send `Seeked` progress event
+//! 1. The phase goes Loading and the atomic Stopped, so the callback goes silent
+//!    while the new decoder fills — no audio leaks from the old ring.
+//! 2. A fresh decoder is spawned over the SAME byte buffers (they stay cached)
+//!    and swapped into the persistent source (`PlaybackSource::replace`). It is
+//!    spawned before the old one is joined, to keep the silent window short; two
+//!    readers on one sparse buffer is supported.
+//! 3. Only then is the old decoder cancelled and joined
+//!    (`cancel_and_join_decoder`), so the reused buffers are free of it.
+//! 4. `Seeked` is emitted; the phase stays Loading until the ready-watcher's
+//!    `TrackReady` resolves it to the preserved Playing/Paused.
 //!
 //! ## File-buffer ownership
 //!
 //! `shared_file_buffers` (one sparse byte buffer per release file, shared by
-//! every track that plays from that file) is the buffers' single owner. A
-//! buffer is cancelled — stopping its on-demand fill task for good — exactly
-//! when it leaves the cache: `release_buffers` evicts the files a departing
-//! track no longer shares with the retained one, and `stop` cancels the whole
-//! cache. A cached buffer is therefore always live; prepare reuses it as-is.
+//! every track that plays from that file) is the buffers' single owner. A buffer
+//! is cancelled — stopping its on-demand fill task for good — exactly when it
+//! leaves the cache: `release_buffers` evicts the files a departing track no
+//! longer shares with the retained one, and `stop` cancels the whole cache. So a
+//! cached buffer is always live, and prepare reuses it as-is.
 
 use super::RepeatMode;
 use super::{
@@ -104,8 +105,9 @@ pub(crate) fn log_streaming_decode_failure(
     }
 }
 
-/// Track metadata resolved once at prepare time, cached for the duration of playback.
-/// Used to populate PlaybackState emissions so the bridge doesn't need DB access.
+/// Track metadata resolved once at prepare time and held for the track's
+/// playback, so `PlaybackState` emissions carry it and the bridge needs no DB
+/// access.
 #[derive(Debug, Clone)]
 pub struct PlaybackTrackInfo {
     pub track_id: String,
@@ -138,8 +140,6 @@ pub struct LoadingTrack {
 }
 
 impl LoadingTrack {
-    /// The metadata a `Loading` state carries for a resolved track: its info plus
-    /// the pregap-adjusted duration `Playing`/`Paused` also report.
     fn from_prepared(prepared: &PlaybackPreparedTrack) -> Self {
         Self {
             track_info: prepared.track_info.clone(),
@@ -173,7 +173,6 @@ pub(super) struct SidePauseDecision {
     prompt: PlaybackSidePausePrompt,
 }
 
-/// Playback commands sent to the service
 #[derive(Debug)]
 pub(crate) enum PlaybackCommand {
     Play(String),
@@ -193,40 +192,37 @@ pub(crate) enum PlaybackCommand {
     Pause,
     Resume,
     Stop,
-    /// Manual next track (skip pregap)
+    /// Manual next track (pregap skipped).
     Next,
-    /// Auto-advance from the natural completion of `track_id` (play pregap). The
-    /// id is validated when handled: a user Next/Seek that reached the command
+    /// Auto-advance from the natural completion of `track_id` (pregap played).
+    /// The id is validated when handled: a user Next/Seek that reached the command
     /// loop first already moved on, so a stale advance for a no-longer-current or
     /// no-longer-Completed track is dropped rather than double-advancing.
     AutoAdvance {
         track_id: String,
     },
-    /// Internal: the in-core decoder for a load filled its ring buffer to the
-    /// play threshold (or reached EOF). Sent from a watcher task awaiting the
-    /// decoder's ready signal; the handler resolves the current track's phase to
-    /// its target (Playing/Paused) only if this is still the live load. Identity
-    /// is the load `generation`, not the track id: RepeatCurrent / RestartCurrent
-    /// / re-Play replay the SAME id through a fresh load, so an id match would
-    /// accept a ready signal from the abandoned load. A new load mints a new
-    /// generation, so a stale signal no longer matches. The id is carried only to
-    /// name the dropped track in the debug log.
+    /// A load's decoder filled its ring to the play threshold (or hit EOF). Sent
+    /// by a watcher task awaiting the decoder's ready signal; the handler resolves
+    /// the current track's phase to its target (Playing/Paused) only if this is
+    /// still the live load. Identity is the load `generation`, not the track id:
+    /// RepeatCurrent / RestartCurrent / re-Play replay the SAME id through a fresh
+    /// load, so an id match would accept a ready signal from an abandoned one. The
+    /// id is carried only to name the dropped track in the debug log.
     TrackReady {
         track_id: String,
         generation: LoadGeneration,
     },
-    /// Internal: a mid-flight read failure (cloud or local) emitted a
-    /// `PlaybackProgress::PlaybackError`. Sent from the progress self-subscription
-    /// so the command loop tears playback down to Stopped rather than leaving a
-    /// frozen Playing state with a stalled position bar.
+    /// A mid-flight read failure (cloud or local) emitted a
+    /// `PlaybackProgress::PlaybackError`. Sent from the progress
+    /// self-subscription so the command loop tears playback down to Stopped
+    /// rather than leaving a frozen Playing state with a stalled position bar.
     HaltOnError,
-    /// Internal: the system default output device changed (macOS CoreAudio
-    /// listener). Rebuilds the persistent output stream over the same source so
-    /// playback follows the new default; a no-op when nothing is playing. The
-    /// persistent stream is only rebuilt on stop / format change / device change,
-    /// so without this a running stream would stay pinned to the old device.
-    /// macOS-only: other platforms have no default-device listener and keep
-    /// rebuild-on-stop/format-change semantics.
+    /// The system default output device changed. Rebuilds the persistent output
+    /// stream over the same source so playback follows the new default (a no-op
+    /// when nothing is playing) — the stream is otherwise rebuilt only on stop or
+    /// a format change, so without this it would stay pinned to the old device.
+    /// macOS-only: only CoreAudio gives us a default-device listener; elsewhere a
+    /// switch takes effect at the next rebuild.
     #[cfg(target_os = "macos")]
     OutputDeviceChanged,
     Previous,
@@ -256,13 +252,12 @@ pub(crate) enum PlaybackCommand {
     SetShuffle(bool),
     /// Re-run the side-pause staging decision for the currently preloaded next
     /// track. Sent after `pause_between_sides` is turned on: staging is decided
-    /// once, at preload time, so without this the boundary already staged into
-    /// the gapless chain would keep crossing gaplessly until the track after
-    /// it. A no-op when there's no active track, no preloaded next, or the
-    /// preload is already held (the drain-time gate already re-reads the
-    /// config in that case).
+    /// once, at preload time, so without this a boundary already staged into the
+    /// gapless chain would keep crossing gaplessly. A no-op when there's no active
+    /// track, no preloaded next, or the preload is already held (the drain-time
+    /// gate re-reads the config in that case).
     ReevaluateSidePauseStaging,
-    /// Skip to the queue entry with this per-instance id (manual action, skip pregap)
+    /// Skip to the queue entry with this per-instance id (manual, pregap skipped).
     SkipTo(QueueEntryId),
     /// Preview a local audio file (toggle: same path stops, different path switches).
     PreviewPlay(String),
@@ -272,7 +267,7 @@ pub(crate) enum PlaybackCommand {
     PreviewTogglePause,
     /// Seek by slider ratio (0.0–1.0) within the active preview.
     PreviewSeekByRatio(f64),
-    /// Internal: preview file finished playing naturally.
+    /// The preview file finished playing naturally.
     PreviewCompleted,
     /// Set mute to an absolute state. Muting saves the pre-mute volume and
     /// drives output to 0; unmuting restores it. Setting the current state
@@ -289,13 +284,11 @@ pub(crate) enum PlaybackCommand {
     /// background audio), so this snapshots state for a later cold launch.
     SaveState(oneshot::Sender<()>),
 }
-/// Current playback state — carries track metadata + total duration only.
-///
-/// Position data (progress, elapsed, remaining) flows through
-/// `PlaybackProgress::PositionUpdate` (ticks) and `PlaybackProgress::Seeked`
-/// (seeks, restore, pause/resume display refresh). Keeping position out of the
-/// state event avoids the "dual-sink" problem where one event drives both
-/// the SwiftUI store (slow) and NSView (fast).
+/// Current playback state: track metadata and total duration only. Position
+/// (progress, elapsed, remaining) flows through `PlaybackProgress::PositionUpdate`
+/// (ticks) and `PlaybackProgress::Seeked` (seeks, restore, pause/resume refresh)
+/// instead — keeping it out of the state event means one event never has to drive
+/// both the SwiftUI store (slow) and the NSView (fast).
 #[derive(Debug, Clone)]
 pub enum PlaybackState {
     Stopped,
@@ -337,7 +330,7 @@ async fn await_shutdown_ack(rx: oneshot::Receiver<()>) {
     }
 }
 
-/// Handle to the playback service for sending commands
+/// Handle for sending commands to the playback service.
 #[derive(Clone)]
 pub struct PlaybackHandle {
     command_tx: tokio_mpsc::UnboundedSender<PlaybackCommand>,
@@ -697,16 +690,15 @@ struct PreparedAudioSegment {
 struct PlaybackPreparedTrack {
     track_info: PlaybackTrackInfo,
     segments: Vec<PreparedAudioSegment>,
-    /// Sample rate in Hz for time-to-sample conversion
+    /// Hz — also the time-to-sample conversion factor.
     sample_rate: u32,
     channels: u32,
-    /// Pre-gap duration in ms (for CUE/FLAC tracks)
+    /// Pregap the source audio already contains (a CUE/FLAC track).
     pregap_ms: Option<i64>,
-    /// Generated silent pregap duration in ms from a CUE `PREGAP` directive.
+    /// Silent pregap to generate, from a CUE `PREGAP` directive.
     generated_pregap_ms: Option<i64>,
-    /// Generated silent pregap duration in exact samples.
+    /// The same generated pregap in exact samples.
     generated_pregap_samples: Option<i64>,
-    /// Track duration from metadata
     duration: std::time::Duration,
     /// This track's audio codec. Selects the track-start seek: FLAC/lossless
     /// byte-seek to `start_byte`; APE sample-seeks its index.
@@ -828,7 +820,8 @@ fn detach_preloaded_source(
     }
 }
 
-/// Finalize a PlaybackPreparedTrack from resolved audio, display info, and buffer.
+/// Assemble a `PlaybackPreparedTrack` from the resolved audio, its display info,
+/// and its segments' buffers.
 fn finalize_playback_track(
     resolved: ResolvedTrackAudio,
     track_info: PlaybackTrackInfo,
@@ -923,8 +916,8 @@ async fn prepare_track_for_playback(
         });
     }
 
-    // Read the replay-gain mode once here and pass it down (DI: one read at the
-    // top, not a static lookup buried in `finalize_playback_track`).
+    // Read the replay-gain mode once, here, and pass it down — rather than a
+    // config lookup buried inside `finalize_playback_track`.
     let replay_gain_mode = library_manager.get_config().replay_gain_mode;
 
     Ok(finalize_playback_track(
@@ -960,14 +953,15 @@ pub struct PlaybackService {
     /// Preloaded next track state, either staged into the current gapless source
     /// or held for a stream rebuild.
     preloaded_next: Option<PreloadedNext>,
-    /// Mute state — core tracks this so UI doesn't need to.
+    /// Mute is core state, so no UI has to keep its own.
     is_muted: bool,
     pre_mute_volume: f32,
     /// The preview player — a self-contained second player for auditioning a
     /// local file. The service only coordinates pause/resume of the main player
     /// around it; the preview's own state lives entirely in `PreviewPlayer`.
     preview: PreviewPlayer,
-    /// Whether the main player was playing before preview started (to resume on stop)
+    /// The main player was playing when the preview started, so it resumes when
+    /// the preview stops.
     main_was_playing_before_preview: bool,
     /// How often (ms) the audio callback sends position updates to the UI.
     position_update_interval_ms: u32,
@@ -982,12 +976,11 @@ pub struct PlaybackService {
     /// mid-starvation with no decode progress yet observed. `None` whenever
     /// the track is flowing normally — see `reset_starvation_episode`.
     starvation_episode: Option<StarvationEpisode>,
-    /// When `persist_playback_state` last ran, real time. Throttles the
-    /// periodic per-tick persist (`handle_position_event`) to at most once a
-    /// second; every call to `persist_playback_state` — including the ones a
-    /// track change already triggers (play, gapless advance) — refreshes it,
-    /// so the periodic writer naturally waits a full second from whichever
-    /// discrete event last wrote the row.
+    /// When `persist_playback_state` last ran. Throttles the per-tick persist in
+    /// `handle_position_event` to at most once a second. Every call refreshes it
+    /// — including the ones a track change triggers (play, gapless advance) — so
+    /// the periodic writer waits a full second from whichever discrete event last
+    /// wrote the row.
     last_position_persist: Option<std::time::Instant>,
 }
 
@@ -1105,12 +1098,11 @@ impl PlaybackService {
             self.current_play_target()
         };
         info!("Next command received");
-        // If we have a preloaded track, use it directly.
         if let Some(preloaded_track_id) = self.next_track_id().map(|s| s.to_string()) {
             self.advance_and_play_preloaded(&preloaded_track_id, false, target)
                 .await;
         } else {
-            // No preloaded track, use PlaybackQueue decision logic.
+            // Nothing preloaded: let the queue decide what plays next.
             match self.playback_queue.next_entry() {
                 NextEntry::Play(next_track) => {
                     info!("No preloaded track, playing from queue: {}", next_track);
@@ -1216,17 +1208,16 @@ impl PlaybackService {
             }
         }
 
-        // If we have a preloaded track (and not in repeat-track mode), use it.
+        // Repeat-track replays the current track, so its preload (the queue's
+        // next) is not what plays.
         if self.playback_queue.repeat_mode() != RepeatMode::Track {
             if let Some(preloaded_track_id) = self.next_track_id().map(|s| s.to_string()) {
-                // Natural transition, start playing.
                 self.advance_and_play_preloaded(&preloaded_track_id, true, PlayTarget::Playing)
                     .await;
                 return;
             }
         }
 
-        // No preloaded track (or repeat-track mode), use PlaybackQueue decision logic.
         match self.playback_queue.next_entry() {
             NextEntry::RepeatCurrent(next_track) => {
                 info!("Repeat mode: track, replaying {}", next_track);
@@ -1258,8 +1249,7 @@ impl PlaybackService {
     }
 
     async fn handle_position_event(&mut self, fmt: Arc<TrackFmt>, pos: std::time::Duration) {
-        // Samples are flowing normally: whatever starvation episode was in
-        // progress is over.
+        // Samples are flowing, so any starvation episode is over.
         self.reset_starvation_episode();
         let actual_pos = fmt.position_offset + pos;
         *self.current_position_shared.lock().unwrap() = Some(actual_pos);
@@ -1279,11 +1269,10 @@ impl PlaybackService {
         );
 
         // Persist the resume point at most once a second while the track is
-        // actually advancing (Playing) — this is what makes `playback_state`
-        // the crash-safe resume point in between the discrete events
-        // (load/pause/seek/stop) that already persist. A Loading or Paused
-        // tick skips this: position isn't moving, and pause/seek already
-        // wrote the row when they happened.
+        // actually advancing (Playing) — that is what keeps `playback_state`
+        // crash-safe between the discrete events (load/pause/seek/stop) that
+        // persist on their own. A Loading or Paused tick skips it: position isn't
+        // moving, and pause/seek already wrote the row.
         let playing = matches!(
             &self.slot,
             PlaybackSlot::Active(cur) if matches!(cur.phase, TrackPhase::Playing)
@@ -1323,12 +1312,11 @@ impl PlaybackService {
                 samples_decoded,
             },
         );
-        // The track drained: mark the phase Completed. The persistent output
-        // stays live because AutoAdvance and the side-pause decision still read
-        // the source; the callback (atomic already Stopped) produces no further
-        // events until the source is replaced, so the drain tick keeps ticking
-        // but pops nothing. The audio callback already flipped the atomic to
-        // Stopped, which `sync_audio_state` confirms.
+        // The track drained: mark the phase Completed. The persistent output stays
+        // live because AutoAdvance and the side-pause decision still read the
+        // source; the audio callback already flipped the atomic to Stopped (which
+        // `sync_audio_state` below confirms), so it emits nothing further until
+        // the source is replaced.
         if let PlaybackSlot::Active(cur) = &mut self.slot {
             cur.phase = TrackPhase::Completed;
         }
@@ -1337,8 +1325,7 @@ impl PlaybackService {
 
     async fn handle_audio_event(&mut self, event: AudioEvent) {
         // Position/Completion/TrackCrossing carry their own logging (or none);
-        // every other event kind gets the shared diagnostic log both players
-        // share.
+        // every other kind goes to the diagnostic log both players share.
         if !matches!(
             event,
             AudioEvent::Position(_) | AudioEvent::Completion(_) | AudioEvent::TrackCrossing(_)
@@ -1358,9 +1345,8 @@ impl PlaybackService {
                 samples_decoded,
                 ..
             } => {
-                // `producer_finished` is the completion path (a drained track
-                // awaiting AutoAdvance) — never the stall this watchdog
-                // targets.
+                // `producer_finished` means a drained track awaiting AutoAdvance,
+                // not the stall this watchdog targets.
                 if !producer_finished {
                     self.handle_starvation(&fmt.track_id, samples_decoded, starved_ms)
                         .await;
@@ -1424,12 +1410,11 @@ fn side_pause_prompt_between(
     })
 }
 
-/// Construct the platform's concrete audio output with no default-device change
-/// listener. Called on the service's dedicated thread so the sink owns any
-/// thread-bound device handle it opens there (cpal builds lazily per stream;
-/// AAudio binds its writer thread). This is the preview player's output, and the
-/// main player's output on every platform except macOS (which uses
-/// `default_audio_output_with_device_listener` instead).
+/// The platform's audio output, with no default-device change listener. Called on
+/// the service's dedicated thread so the sink owns any thread-bound device handle
+/// it opens there (cpal builds lazily per stream; AAudio binds its writer thread).
+/// This is the preview player's output, and the main player's on every platform
+/// but macOS, which uses `default_audio_output_with_device_listener`.
 #[cfg(not(target_os = "android"))]
 pub(crate) fn default_audio_output(
 ) -> Result<Box<dyn AudioOutput>, crate::playback::audio_output::AudioError> {
@@ -1486,7 +1471,7 @@ impl PlaybackService {
         )
     }
 
-    /// Start with a custom audio output (for tests that need to capture samples).
+    /// Start over a caller-supplied audio output, for tests that capture samples.
     pub fn start_with_output(
         library_manager: LibraryManager,
         runtime_handle: tokio::runtime::Handle,
@@ -1535,9 +1520,9 @@ impl PlaybackService {
                             PlaybackCommand::AutoAdvance { track_id },
                         );
                     }
-                    // A mid-flight read failure cancelled the buffer; the decoder
-                    // exits without TrackCompleted, so without this the UI would
-                    // sit in Playing forever. Drive playback down to Stopped.
+                    // A mid-flight read failure cancels the buffer and the decoder
+                    // exits without a TrackCompleted, so without this the UI would
+                    // sit in Playing forever.
                     PlaybackProgress::PlaybackError { .. } => {
                         dispatch_command(&command_tx_for_completion, PlaybackCommand::HaltOnError);
                     }
@@ -1597,10 +1582,9 @@ impl PlaybackService {
                     starvation_episode: None,
                     last_position_persist: None,
                 };
-                // "Restore on launch" off is a designed-for start-fresh launch:
-                // skip the restore but keep the row — it stays the crash-safe
-                // resume point, and flipping the preference on restores it at
-                // the next launch.
+                // "Restore on launch" off means start fresh, but keep the row: it
+                // stays the crash-safe resume point, so flipping the preference on
+                // restores it at the next launch.
                 if restore_playback {
                     match service.library_manager.load_playback_state().await {
                         Ok(Some(state)) => match PersistedPlayback::from_row(state) {
@@ -1675,15 +1659,15 @@ impl PlaybackService {
 
                     self.stop_preview_for_main_playback();
                     let start = if shuffle {
-                        // The shuffle seed is read once here, at the command
-                        // boundary, and carried into the context so the order is
-                        // reproducible and `Context` repeat can re-derive it.
+                        // The seed is minted once, here, and carried into the
+                        // context, so the order is reproducible and `Context`
+                        // repeat can re-derive it.
                         ContextStart::Shuffled {
                             seed: rand::random(),
                         }
                     } else {
-                        // None means "from the first track"; an out-of-range index
-                        // is a bad caller value, so clamp to the start and log it.
+                        // `None` means "from the first track"; an out-of-range
+                        // index is a bad caller value — clamp and log.
                         let index = match start_track_index {
                             Some(i) if i < track_ids.len() => i,
                             Some(i) => {
@@ -1714,11 +1698,8 @@ impl PlaybackService {
                     .await;
                 }
                 PlaybackCommand::PlayReleases(release_ids) => {
-                    // The context's source is exactly the releases that
-                    // contributed tracks, so a later shuffle/restore re-fetch stays
-                    // in lockstep. A single playable release collapses to a
-                    // `Release` context (`ContextSource::releases`), identical to
-                    // `PlayRelease`.
+                    // The source is exactly the releases that contributed tracks,
+                    // so a later shuffle/restore re-fetch stays in lockstep.
                     let (playable_ids, track_ids) =
                         self.load_release_set_tracks(release_ids).await;
                     if track_ids.is_empty() {
@@ -1756,8 +1737,8 @@ impl PlaybackService {
                         continue;
                     }
                     self.stop_preview_for_main_playback();
-                    // A fresh seed minted at the command boundary so the shuffled
-                    // order is reproducible and `Context` repeat can re-derive it.
+                    // A fresh seed, so the order is reproducible and `Context`
+                    // repeat can re-derive it.
                     let track_count = track_ids.len();
                     let first_track = self.playback_queue.play_release(
                         ContextSource::Library,
@@ -1798,12 +1779,6 @@ impl PlaybackService {
                     track_id,
                     generation,
                 } => {
-                    // Resolve the current track's phase to its target now that
-                    // audio is actually flowing. A signal from an abandoned load
-                    // (the user switched tracks, or replayed the same track via
-                    // RepeatCurrent / RestartCurrent / re-Play, or a pause/preview
-                    // collapsed the Loading phase) carries a generation that no
-                    // longer matches the current load; drop it.
                     self.resolve_track_ready(track_id, generation);
                 }
                 PlaybackCommand::HaltOnError => {
@@ -1853,8 +1828,7 @@ impl PlaybackService {
                 }
                 PlaybackCommand::SetMuted(muted) => {
                     if muted == self.is_muted {
-                        // Already in the requested state; nothing changes,
-                        // nothing emits.
+                        // Already there: nothing changes, nothing emits.
                     } else if muted {
                         self.pre_mute_volume = self.audio_output.get_volume();
                         self.is_muted = true;
@@ -1958,10 +1932,9 @@ impl PlaybackService {
                     match self.playback_queue.context_source().cloned() {
                         Some(source) => match self.fetch_source_tracks(&source).await {
                             Ok(source_tracks) => {
-                                // A fresh seed minted here at the command boundary so
-                                // a shuffled order is reproducible and `Context`
-                                // repeat can re-derive it. `set_shuffle` consumes the
-                                // seed only when turning shuffle on; off ignores it.
+                                // A fresh seed, so the order is reproducible and
+                                // `Context` repeat can re-derive it. `set_shuffle`
+                                // uses it only when turning shuffle on.
                                 let seed = rand::random();
                                 self.playback_queue.set_shuffle(on, source_tracks, seed);
                                 self.emit_queue_update();

@@ -1,13 +1,12 @@
 //! Sparse streaming buffer with range tracking.
 //!
-//! `SparseStreamingBuffer` stores audio bytes in potentially non-contiguous ranges,
-//! allowing seeks to reuse already-buffered data even when seeking past the current
-//! download position (which creates gaps that are filled later).
+//! `SparseStreamingBuffer` holds a file's bytes in possibly non-contiguous
+//! ranges, so a seek past the fill position reuses what is already buffered and
+//! the gap it opens is filled later.
 //!
-//! Data storage and read cursors are decoupled:
-//! - The buffer holds data and is shared (via Arc) across tracks from the same file.
-//! - Each decoder gets its own `BufferReader` with an independent read position.
-//! - Multiple readers can read from the same buffer concurrently without conflict.
+//! Storage and read cursors are separate: the buffer is shared (via `Arc`) across
+//! every track that plays from the same file, and each decoder gets its own
+//! `BufferReader` with an independent position. Readers never conflict.
 
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -25,19 +24,17 @@ const READ_WAIT_LOG_EVERY: Duration = Duration::from_secs(1);
 /// A contiguous range of buffered data.
 #[derive(Debug, Clone)]
 struct BufferedRange {
-    /// Starting byte offset in the file.
+    /// Byte offset in the file where `data` starts.
     start: u64,
-    /// The actual byte data.
     data: Vec<u8>,
 }
 
 impl BufferedRange {
-    /// End offset (exclusive).
+    /// Exclusive end offset.
     fn end(&self) -> u64 {
         self.start + self.data.len() as u64
     }
 
-    /// Check if this range contains the given position.
     fn contains(&self, pos: u64) -> bool {
         pos >= self.start && pos < self.end()
     }
@@ -72,8 +69,8 @@ fn publish_demand_pos(demands: &mut HashMap<u64, ReaderDemand>, id: u64, pos: u6
 struct SparseInner {
     /// Buffered ranges, sorted by start offset, non-overlapping.
     ranges: Vec<BufferedRange>,
-    /// Full cancel: stops both readers (data producers) and decoders (data consumers).
-    /// Checked by readers via `is_cancelled()` to know when to stop writing.
+    /// Full cancel: stops both the fill (the producer) and the decoders (the
+    /// consumers).
     cancelled: bool,
     /// Each live reader's current read position, keyed by reader id. The fill
     /// loop reads this to fetch the window each reader needs next (read-ahead)
@@ -87,11 +84,9 @@ struct SparseInner {
     demands: HashMap<u64, ReaderDemand>,
 }
 
-/// Thread-safe sparse streaming buffer (data storage only).
-///
-/// Supports non-contiguous byte ranges for efficient seeking:
-/// - `append_at()`: Add data at any offset, auto-merges adjacent ranges
-/// - `new_reader()`: Create an independent read cursor over the data
+/// Thread-safe sparse streaming buffer: data storage only, no fetching.
+/// `append_at` adds data at any offset (merging adjacent ranges); `new_reader`
+/// mints an independent read cursor over it.
 pub struct SparseStreamingBuffer {
     inner: Mutex<SparseInner>,
     /// Total file size, known up front from the source size. Reaching it
@@ -200,9 +195,7 @@ impl SparseStreamingBuffer {
         }
     }
 
-    /// Append data at a specific byte offset.
-    ///
-    /// Automatically merges with adjacent or overlapping ranges.
+    /// Store `bytes` at `offset`, merging with any adjacent or overlapping range.
     pub fn append_at(&self, offset: u64, bytes: &[u8]) {
         if bytes.is_empty() {
             return;
@@ -214,28 +207,27 @@ impl SparseStreamingBuffer {
         let mut inner = self.inner.lock().unwrap();
         let new_end = offset + bytes.len() as u64;
 
-        // Fast path: appending at the end of the last range (common case for sequential streaming)
+        // Fast path — sequential streaming lands here: extending the last range in
+        // place is O(bytes.len()), not O(buffer_size).
         if let Some(last) = inner.ranges.last_mut() {
             if offset == last.end() {
-                // Directly extend the last range - O(bytes.len()) not O(buffer_size)
                 last.data.extend_from_slice(bytes);
                 self.data_available.notify_all();
                 return;
             }
         }
 
-        // Slow path: need to find insertion point and possibly merge
+        // Slow path: find the insertion point, and the span of ranges this one
+        // overlaps or abuts (which merge into one).
         let mut insert_idx = inner.ranges.len();
         let mut merge_start_idx = None;
         let mut merge_end_idx = None;
 
         for (i, range) in inner.ranges.iter().enumerate() {
-            // Check if new range should come before this one
             if insert_idx == inner.ranges.len() && offset <= range.start {
                 insert_idx = i;
             }
 
-            // Check for overlap or adjacency (can merge)
             if new_end >= range.start && offset <= range.end() {
                 if merge_start_idx.is_none() {
                     merge_start_idx = Some(i);
@@ -246,25 +238,21 @@ impl SparseStreamingBuffer {
 
         match (merge_start_idx, merge_end_idx) {
             (Some(start), Some(end)) => {
-                // Merge with existing ranges
                 let merged_start = inner.ranges[start].start.min(offset);
                 let merged_end = inner.ranges[end].end().max(new_end);
 
-                // Create new merged data
                 let mut merged_data = vec![0u8; (merged_end - merged_start) as usize];
 
-                // Copy existing ranges into merged buffer
                 for range in &inner.ranges[start..=end] {
                     let dst_offset = (range.start - merged_start) as usize;
                     merged_data[dst_offset..dst_offset + range.data.len()]
                         .copy_from_slice(&range.data);
                 }
 
-                // Copy new data (overwrites any overlap)
+                // The new bytes go in last, overwriting any overlap.
                 let dst_offset = (offset - merged_start) as usize;
                 merged_data[dst_offset..dst_offset + bytes.len()].copy_from_slice(bytes);
 
-                // Replace merged ranges with single range
                 inner.ranges.drain(start..=end);
                 inner.ranges.insert(
                     start,
@@ -275,7 +263,6 @@ impl SparseStreamingBuffer {
                 );
             }
             _ => {
-                // No overlap, insert new range
                 inner.ranges.insert(
                     insert_idx,
                     BufferedRange {
@@ -356,16 +343,13 @@ impl SparseStreamingBuffer {
         Some((cursor, limit))
     }
 
-    /// Check if a position is within any buffered range.
     #[cfg(test)]
     pub fn is_buffered(&self, pos: u64) -> bool {
         let inner = self.inner.lock().unwrap();
         inner.ranges.iter().any(|r| r.contains(pos))
     }
 
-    /// Get contiguous bytes available from a position.
-    ///
-    /// Returns 0 if position is not buffered.
+    /// Contiguous bytes buffered from `pos`; 0 if `pos` itself isn't buffered.
     #[cfg(test)]
     pub fn contiguous_from(&self, pos: u64) -> u64 {
         let inner = self.inner.lock().unwrap();
@@ -400,45 +384,39 @@ impl SparseStreamingBuffer {
         self.fill_wake.clone()
     }
 
-    /// Full cancel: stops both readers (data producers) and decoders (data consumers).
-    ///
-    /// Used when stopping playback entirely. `read()` returns `None` and
-    /// `is_cancelled()` returns `true`; an active fill sees the flag at its next
-    /// loop top and exits (a parked fill exits when the buffer is dropped).
+    /// Full cancel, for stopping playback entirely: `read()` returns `None`,
+    /// `is_cancelled()` returns `true`, and an active fill sees the flag at its
+    /// next loop top and exits (a parked fill exits when the buffer is dropped).
     pub fn cancel(&self) {
         let mut inner = self.inner.lock().unwrap();
         inner.cancelled = true;
         self.data_available.notify_all();
     }
 
-    /// Wake up all readers blocked in `read()`.
-    /// Used when a per-decoder cancel token is set, to unblock readers
-    /// so they can check the token on their next loop iteration.
+    /// Wake every reader blocked in `read()`, so one whose per-decoder cancel
+    /// token was just set observes it on its next loop iteration.
     pub fn wake_readers(&self) {
         self.data_available.notify_all();
     }
 
-    /// Check if fully cancelled (used by data writers to know when to stop).
     pub fn is_cancelled(&self) -> bool {
         let inner = self.inner.lock().unwrap();
         inner.cancelled
     }
 
-    /// Number of separate ranges (for testing).
     #[cfg(test)]
     pub fn ranges_count(&self) -> usize {
         let inner = self.inner.lock().unwrap();
         inner.ranges.len()
     }
 
-    /// Get total bytes buffered across all ranges.
     #[cfg(test)]
     pub fn total_buffered(&self) -> u64 {
         let inner = self.inner.lock().unwrap();
         inner.ranges.iter().map(|r| r.data.len() as u64).sum()
     }
 
-    /// Get buffered byte ranges (for debugging/testing).
+    /// The buffered ranges as `(start, end)` pairs.
     #[cfg(test)]
     pub fn get_ranges(&self) -> Vec<(u64, u64)> {
         let inner = self.inner.lock().unwrap();
@@ -471,29 +449,24 @@ pub fn create_sparse_buffer(total_size: u64) -> SharedSparseBuffer {
     Arc::new(SparseStreamingBuffer::new(total_size))
 }
 
-/// Independent read cursor over a `SparseStreamingBuffer`.
-///
-/// Each decoder gets its own reader. Multiple readers can read from the same
-/// buffer concurrently — they share the data but have independent positions
-/// and optional decoder cancel tokens.
+/// Independent read cursor over a `SparseStreamingBuffer`. Each decoder gets its
+/// own; readers share the data but have their own positions and cancel tokens, so
+/// they read the same buffer concurrently without conflict.
 pub struct BufferReader {
     buffer: SharedSparseBuffer,
     /// This reader's slot in `SparseInner::demands`. Removed on drop.
     id: u64,
     read_pos: u64,
-    /// Optional external cancel token checked during read().
-    /// Allows the playback service to cancel a specific reader without
-    /// affecting other readers on the same buffer.
+    /// Checked during `read()`, so the playback service can cancel one decoder's
+    /// reader without touching the others on this buffer.
     cancel_token: Option<Arc<std::sync::atomic::AtomicBool>>,
     wait_started: Option<Instant>,
     last_wait_log: Option<Instant>,
 }
 
 impl BufferReader {
-    /// Seek to a position.
-    ///
-    /// Returns true if successful. Does not require position to be buffered
-    /// (read will block until data is available).
+    /// Move the cursor to `pos`, which need not be buffered — the next `read()`
+    /// blocks until the fill delivers it. `false` once the buffer is cancelled.
     pub fn seek(&mut self, pos: u64) -> bool {
         let mut inner = self.buffer.inner.lock().unwrap();
         if inner.cancelled {
@@ -513,10 +486,8 @@ impl BufferReader {
         true
     }
 
-    /// Blocking read from current position.
-    ///
-    /// Waits until data is available at current position, then reads.
-    /// Returns `None` if cancelled, `Some(0)` on EOF.
+    /// Read from the current position, blocking until bytes are there. `None` if
+    /// cancelled, `Some(0)` at EOF.
     pub fn read(&mut self, buf: &mut [u8]) -> Option<usize> {
         let mut inner = self.buffer.inner.lock().unwrap();
 
@@ -549,7 +520,6 @@ impl BufferReader {
             let read_pos = self.read_pos;
             publish_demand_pos(&mut inner.demands, self.id, read_pos);
 
-            // Check if current position is buffered
             for range in &inner.ranges {
                 if range.contains(read_pos) {
                     if let Some(started) = self.wait_started.take() {
@@ -624,12 +594,10 @@ impl BufferReader {
         }
     }
 
-    /// Get current read position.
     pub fn get_read_pos(&self) -> u64 {
         self.read_pos
     }
 
-    /// The file's total size in bytes (delegates to buffer).
     pub fn get_total_size(&self) -> u64 {
         self.buffer.get_total_size()
     }

@@ -627,10 +627,6 @@ impl AppHandle {
     // `feature = "desktop"` impl block); mobile reads status but never writes.
 
     // =========================================================================
-    // Events
-    // =========================================================================
-
-    // =========================================================================
     // Cover art
     // =========================================================================
 
@@ -1230,17 +1226,14 @@ impl AppHandle {
         self.services.identify().rerun(&candidate_key);
     }
 
-    /// Re-identify commit. Translates the user's `IdentityChoice` from the
-    /// re-identify result list into a fully cross-linked identity vec +
-    /// metadata pointer, then writes via `set_identity`. Mirrors what the
-    /// import commit does for a folder import — the outcome is
-    /// indistinguishable from re-importing the release with the same choice.
+    /// Re-identify commit. Translates the user's `IdentityChoice` into a fully
+    /// cross-linked identity vec + metadata pointer, then writes via
+    /// `set_identity` — the outcome is indistinguishable from re-importing the
+    /// release with the same choice.
     ///
-    /// Returns the album id the release lives on after the commit. May
-    /// have changed if the new identity vec didn't fit the source album
-    /// (`set_identity` move semantics).
-    ///
-    /// Caller decides whether to also reseed metadata via
+    /// Returns the album id the release lives on after the commit, which may have
+    /// changed if the new identity vec didn't fit the source album
+    /// (`set_identity` move semantics). Reseeding metadata is the caller's call:
     /// `reset_metadata_to_source` + `update_release_metadata_user_edit`.
     pub async fn re_identify_release(
         &self,
@@ -1602,16 +1595,15 @@ impl AppHandle {
 
 /// Forward bus events to the platform callback until the bus closes.
 ///
-/// Falling behind the bus (`Lagged`) drops the lagged events but must not kill
-/// the subscription — this loop is the UI's only event feed for the whole
-/// library session, and the callback is a synchronous FFI call, so a slow
-/// consumer during an event burst is exactly when lag happens. The dropped
-/// events can't be replayed, so the pump synthesizes every coarse invalidation
-/// instead: the UI re-reads each domain and lands on current state, rather
-/// than freezing on whatever the last delivered snapshot said. (Mirrors the
-/// core bus's own lag recovery in `UiEventBus::wire_library_events`.) Dropped
-/// playback pushes aren't recoverable by invalidation, but the next progress
-/// tick refreshes them within a second.
+/// Falling behind (`Lagged`) drops events but must not kill the subscription —
+/// this loop is the UI's only event feed for the whole library session, and the
+/// callback is a synchronous FFI call, so a slow consumer during a burst is
+/// exactly when lag happens. Dropped events can't be replayed, so the pump
+/// synthesizes every coarse invalidation instead and the UI re-reads each domain
+/// rather than freezing on the last delivered snapshot. (Mirrors the core bus's
+/// own lag recovery in `UiEventBus::wire_library_events`.) Dropped playback
+/// pushes aren't recoverable by invalidation, but the next progress tick
+/// refreshes them within a second.
 async fn pump_ui_events(
     mut rx: tokio::sync::broadcast::Receiver<bae_core::ui::UiBusEvent>,
     callback: Box<dyn crate::types::UiEventCallback>,
@@ -1722,11 +1714,6 @@ impl crate::types::BridgeDeleteOp {
     }
 }
 
-/// Translate bae-core's outbox snapshot to its bridge mirror.
-///
-/// Ungated (unlike `convert_ui_event`): `get_outbox_snapshot` lives in the
-/// ungated `AppHandle` impl block, so this helper must exist on every target it
-/// can be called from. It references only cross-platform types.
 impl crate::types::BridgeOutboxSnapshot {
     fn from_core(snapshot: bae_core::library::OutboxSnapshot) -> Self {
         // Derived aggregates borrow `&snapshot`; compute them before the move.
@@ -2265,8 +2252,7 @@ impl crate::types::BridgeLoadingTrackInfo {
     }
 }
 
-/// Convert a core UiBusEvent to a bridge BridgeUiEvent.
-/// Returns None for events we don't need to forward (or can't convert yet).
+/// Every `UiBusEvent` has a bridge mirror, so this always returns `Some`.
 fn convert_ui_event(event: bae_core::ui::UiBusEvent) -> Option<crate::types::BridgeUiEvent> {
     use crate::types::*;
     use bae_core::ui::UiBusEvent;

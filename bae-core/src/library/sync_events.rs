@@ -46,8 +46,8 @@ pub enum ReleaseChangeEvent {
 pub struct ChangesetEntityChanges {
     pub album_events: Vec<AlbumChangeEvent>,
     pub release_events: Vec<ReleaseChangeEvent>,
-    /// Track IDs whose release wasn't in the changeset — caller must resolve
-    /// these to album_ids via DB query and add album-level update events.
+    /// Track IDs whose release wasn't in the changeset. The caller resolves these to
+    /// album ids with a DB query and adds album-level update events for them.
     pub unresolved_track_ids: Vec<String>,
 }
 
@@ -110,41 +110,37 @@ fn collect_raw_changes(changes: &[RowChange]) -> RawChanges {
                 }
             }
             "album_artists" => {
-                // col 1 = album_id
                 if let Some(album_id) = change.col(1) {
                     raw.artist_junction_albums.insert(album_id.to_string());
                 }
             }
             "track_artists" => {
-                // col 1 = track_id
                 if let Some(track_id) = change.col(1) {
                     raw.track_artist_track_ids.insert(track_id.to_string());
                 }
             }
-            _ => {} // Ignore other tables (artists, covers, artist_images, etc.)
+            _ => {} // artists, covers, artist_images, … don't drive an event
         }
     }
 
     raw
 }
 
-/// Resolve raw per-table changes into deduplicated per-album events.
+/// Resolve raw per-table changes into deduplicated per-album events:
 ///
-/// Rules:
-/// - Album-level events trump release-level events for the same album_id.
-/// - A removed album carries the ids of its suppressed child releases, so the
-///   removal event is self-contained (no consumer re-derives the child set).
-/// - Track changes get collapsed into album-level events (the release payload
-///   carries its tracks).
-/// - Junction table changes (album_artists, track_artists) produce album-level
-///   update events (the album payload carries its artists).
+/// - An album-level event trumps any release-level event for the same album.
+/// - A removed album carries the ids of its suppressed child releases, so no
+///   consumer has to re-derive the child set.
+/// - A track change collapses into an album-level event, since the release payload
+///   carries its tracks.
+/// - An `album_artists` / `track_artists` change produces an album-level update,
+///   since the album payload carries its artists.
 fn resolve_changes(raw: RawChanges) -> ChangesetEntityChanges {
     let mut result = ChangesetEntityChanges::default();
 
-    // Collect album_ids that have album-level changes (these trump release-level)
+    // Album-level changes trump release-level ones for the same album.
     let mut album_level_ids: HashSet<String> = HashSet::new();
 
-    // 1. Album table changes → album-level events
     for (album_id, op) in &raw.albums {
         album_level_ids.insert(album_id.clone());
         match op {
@@ -155,10 +151,9 @@ fn resolve_changes(raw: RawChanges) -> ChangesetEntityChanges {
                 .album_events
                 .push(AlbumChangeEvent::Updated(album_id.clone())),
             ChangeOp::Delete => {
-                // A deleted album cascades to its releases; those release
-                // deletes are in `raw.releases` but get suppressed below
-                // (album-level trumps release-level). Carry their ids so the
-                // removal is self-contained.
+                // A deleted album cascades to its releases. Those release deletes
+                // are in `raw.releases` but get suppressed below, so carry their ids
+                // here to keep the removal event self-contained.
                 let release_ids = raw
                     .releases
                     .iter()
@@ -173,10 +168,8 @@ fn resolve_changes(raw: RawChanges) -> ChangesetEntityChanges {
         }
     }
 
-    // 2. Release table changes → release-level OR escalate to album-level
     for (release_id, (album_id, op)) in &raw.releases {
         if album_level_ids.contains(album_id) {
-            // Already covered by album-level event
             continue;
         }
         match op {
@@ -195,10 +188,9 @@ fn resolve_changes(raw: RawChanges) -> ChangesetEntityChanges {
         }
     }
 
-    // 3. Track table changes → escalate to album-level update
-    //    (tracks are nested in releases; track changes mean the release payload changed)
+    // A track change means its release's payload changed, so it escalates to an
+    // album-level update.
     for (track_id, (release_id, _op)) in &raw.tracks {
-        // Resolve release_id → album_id through the releases map
         if let Some((album_id, _)) = raw.releases.get(release_id) {
             if !album_level_ids.contains(album_id) {
                 album_level_ids.insert(album_id.clone());
@@ -207,12 +199,11 @@ fn resolve_changes(raw: RawChanges) -> ChangesetEntityChanges {
                     .push(AlbumChangeEvent::Updated(album_id.clone()));
             }
         } else {
-            // Release not in changeset — caller must resolve via DB query.
+            // The release isn't in the changeset; the caller resolves it from the DB.
             result.unresolved_track_ids.push(track_id.clone());
         }
     }
 
-    // 4. Junction table changes → album-level update events
     for album_id in &raw.artist_junction_albums {
         if !album_level_ids.contains(album_id) {
             album_level_ids.insert(album_id.clone());
@@ -222,8 +213,8 @@ fn resolve_changes(raw: RawChanges) -> ChangesetEntityChanges {
         }
     }
 
-    // 4b. track_artists junction → resolve track_id to album_id via tracks/releases
-    //     in the changeset, or mark as unresolved for DB query.
+    // Resolve each track_artists row's track to an album through the changeset's own
+    // tracks/releases, or leave it for the caller's DB lookup.
     for track_id in &raw.track_artist_track_ids {
         if let Some((release_id, _)) = raw.tracks.get(track_id) {
             if let Some((album_id, _)) = raw.releases.get(release_id) {
@@ -237,7 +228,6 @@ fn resolve_changes(raw: RawChanges) -> ChangesetEntityChanges {
                 result.unresolved_track_ids.push(track_id.clone());
             }
         } else {
-            // Track not in changeset at all — needs DB resolution.
             result.unresolved_track_ids.push(track_id.clone());
         }
     }
@@ -245,7 +235,7 @@ fn resolve_changes(raw: RawChanges) -> ChangesetEntityChanges {
     result
 }
 
-/// Resolve coven row changes into deduplicated entity changes to emit.
+/// Resolve coven row changes into the deduplicated entity changes to emit.
 pub fn changes_from_row_changes(changes: &[RowChange]) -> ChangesetEntityChanges {
     resolve_changes(collect_raw_changes(changes))
 }

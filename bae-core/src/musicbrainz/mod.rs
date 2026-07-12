@@ -1,10 +1,12 @@
 //! MusicBrainz API client.
 //!
-//! Builds and rate-limits the MusicBrainz web-service requests, caches
-//! their results for the session, and exposes the lookup/search entry
-//! points plus `MusicBrainzError`. The response shapes these requests
-//! deserialize into live in the `types` submodule, re-exported here so
-//! callers keep using `crate::musicbrainz::Mb…` paths.
+//! Builds, rate-limits, times out, and retries the MusicBrainz web-service
+//! requests, caches their results for the session, and exposes the lookup/search
+//! entry points plus `MusicBrainzError`. A caller just awaits a lookup; the retry
+//! policy is this module's, not theirs.
+//!
+//! The response shapes these requests deserialize into live in `types`,
+//! re-exported here so callers keep using `crate::musicbrainz::Mb…` paths.
 
 use std::sync::OnceLock;
 use std::time::Duration;
@@ -30,11 +32,11 @@ fn http_client() -> &'static reqwest::Client {
 /// Rate limiter ensuring at least 1 second between MusicBrainz API requests.
 static RATE_LIMITER: RateLimiter = RateLimiter::new(Duration::from_secs(1));
 
-/// Retry only what a retry can fix. A `NotFound` is MusicBrainz's answer, not a
-/// fault — and it is the ordinary answer for a disc MusicBrainz doesn't have, so
-/// retrying it buys three round trips and three rate-limit waits to re-learn it.
-/// `Other` is local (URL construction, JSON parse, a missing search field): no
-/// request was ever made, or the same bytes will parse the same way.
+/// Retry only what a retry can fix. `NotFound` is MusicBrainz's answer, not a
+/// fault — and it's the ordinary answer for a disc it doesn't have, so retrying
+/// buys three round trips and three rate-limit waits to learn it again. `Other`
+/// is local (URL construction, JSON parse, a missing search field): either no
+/// request was made, or the same bytes will parse the same way.
 fn should_retry_mb(error: &MusicBrainzError) -> bool {
     match error {
         MusicBrainzError::Network(_) | MusicBrainzError::Timeout => true,
@@ -45,9 +47,8 @@ fn should_retry_mb(error: &MusicBrainzError) -> bool {
     }
 }
 
-/// The MusicBrainz client owns its retry policy, as the Discogs one does — a
-/// caller should not have to know which of this client's failures are worth
-/// repeating.
+/// Wrap one request in the client's own retry policy — a caller shouldn't have to
+/// know which of these failures are worth repeating. (Discogs does the same.)
 async fn mb_retry<F, Fut, T>(label: &str, f: F) -> Result<T, MusicBrainzError>
 where
     F: Fn() -> Fut,
@@ -89,10 +90,9 @@ async fn mb_get(request: reqwest::RequestBuilder) -> Result<reqwest::Response, M
 
 type ReleaseCacheValue = (MbReleaseResponse, Option<String>, String);
 
-/// In-memory cache for `release/{id}` lookups. Stores the parsed response,
-/// the Discogs release URL from its url-rels (if any), and raw JSON so
-/// callers that need any of the three can hit warm cache. Mutex is
-/// `std::sync::Mutex` since the guard is dropped before any await.
+/// In-memory cache for `release/{id}` lookups. Holds the parsed response, the
+/// Discogs release URL from its url-rels (if any), and the raw JSON, so a caller
+/// needing any of the three hits a warm cache.
 static RELEASE_CACHE: SessionCache<ReleaseCacheValue> =
     SessionCache::new("MusicBrainz release cache");
 
@@ -102,48 +102,40 @@ static RELEASE_GROUP_JSON_CACHE: SessionCache<String> =
     SessionCache::new("MusicBrainz release-group JSON cache");
 
 /// In-memory cache for `url?resource=https://www.discogs.com/release/{id}`
-/// lookups. Key: Discogs release ID; value: linked MB release ID (or
-/// `None` if no link exists). This call is part of the cross-reference
-/// archival path; caching means a confirmed Discogs import warms the
-/// lookup for the worker's later commit-time call.
+/// lookups, keyed by Discogs release ID; the value is the linked MB release ID,
+/// or `None` when no link exists. Caching means a confirmed Discogs import warms
+/// the lookup for the worker's later commit-time call.
 static DISCOGS_URL_LOOKUP_CACHE: SessionCache<Option<String>> =
     SessionCache::new("Discogs URL lookup cache");
 
-/// Pre-populate the Discogs-URL → MB-release-ID lookup cache. Tests
-/// use this to short-circuit the cross-reference path without hitting
-/// the network. `None` means "no MB release linked", which is the
-/// natural result for synthetic test releases.
+/// Pre-populate the Discogs-URL → MB-release-ID lookup cache, so a test can drive
+/// the cross-reference path without the network. `None` means "no MB release
+/// linked" — the natural answer for a synthetic test release.
 #[cfg(any(test, feature = "test-utils"))]
 pub fn seed_discogs_url_lookup(discogs_release_id: &str, mb_release_id: Option<String>) {
     DISCOGS_URL_LOOKUP_CACHE.put(discogs_release_id, mb_release_id);
 }
 
-/// Pre-populate the MB release cache. Tests use this to drive the
-/// reverse cross-reference path (`fetch_mb_xref`) without making an
-/// HTTP call. The raw JSON ends up in `release_metadata` for archival;
-/// tests can pass an empty string when the archival content isn't
-/// being asserted on.
+/// Pre-populate the MB release cache, so a test can drive `fetch_mb_xref` without
+/// an HTTP call. The raw JSON is what gets archived in `release_metadata`; pass an
+/// empty string when the test doesn't assert on it.
 #[cfg(any(test, feature = "test-utils"))]
 pub fn seed_release_cache(release_id: &str, value: (MbReleaseResponse, Option<String>, String)) {
     RELEASE_CACHE.put(release_id, value);
 }
 
-/// Pre-populate the MB release-group JSON cache. Pairs with
-/// `seed_release_cache` for tests that exercise the cross-reference
-/// path without HTTP.
+/// Pre-populate the MB release-group JSON cache. Pairs with `seed_release_cache`.
 #[cfg(any(test, feature = "test-utils"))]
 pub fn seed_release_group_json_cache(release_group_id: &str, raw_json: String) {
     RELEASE_GROUP_JSON_CACHE.put(release_group_id, raw_json);
 }
 
-/// A MusicBrainz lookup failure, keeping the wire-level distinction the
-/// caller needs to localize: a transport failure that produced no HTTP
-/// response, a timeout, or an HTTP error *response* carrying a status. The
-/// status is preserved at the point of construction — flattening it into a
-/// formatted string here would destroy it for every consumer.
-///
-/// `Other` carries local/internal failures (URL construction, JSON parsing,
-/// reading the body) — diagnostic detail, never a provider verdict.
+/// A MusicBrainz lookup failure, keeping the wire-level distinction the caller
+/// needs in order to localize: a transport failure that produced no HTTP
+/// response, a timeout, or an HTTP error *response* carrying a status. The status
+/// is kept structured — flattening it into a formatted string here would destroy
+/// it for every consumer. `Other` is local/internal detail, never a provider
+/// verdict.
 #[derive(Debug, Error)]
 pub enum MusicBrainzError {
     /// No release matched the DiscID (404 or an empty result set).
@@ -167,10 +159,9 @@ pub enum MusicBrainzError {
 }
 
 impl MusicBrainzError {
-    /// Classify a `reqwest::Error` from a `.send()` / body read into the
-    /// wire-level failure it represents. A timeout is distinct; an error
-    /// carrying an HTTP status is a `Provider` response; everything else
-    /// (connection, DNS, dropped body) is a transport `Network` failure.
+    /// Classify a `reqwest::Error` from a send or body read. A timeout is its own
+    /// variant; an error carrying an HTTP status is a `Provider` response;
+    /// everything else (connection, DNS, dropped body) is transport `Network`.
     fn from_reqwest(e: reqwest::Error) -> Self {
         if e.is_timeout() {
             MusicBrainzError::Timeout
@@ -255,13 +246,12 @@ async fn fetch_release_group_with_relations(
         .map_err(|e| MusicBrainzError::Other(format!("Failed to parse JSON: {}", e)))
 }
 
-/// Lookup a specific release by MusicBrainz release ID.
+/// Look up a release by MusicBrainz release ID.
 ///
 /// Returns the parsed response, the Discogs release URL (if any), and the raw
-/// JSON text (for archival in release_metadata). Hits a session-wide LRU
-/// cache of size 25; cache miss does the network round-trip + a
-/// release-group fallback fetch when the release relations don't carry
-/// Discogs URLs.
+/// JSON (archived in `release_metadata`). On a cache miss this does the network
+/// round-trip, plus a release-group fetch when the release's own relations carry
+/// no Discogs URL.
 pub async fn lookup_release_by_id(
     release_id: &str,
 ) -> Result<(MbReleaseResponse, Option<String>, String), MusicBrainzError> {
@@ -315,7 +305,6 @@ async fn lookup_release_by_id_once(
         info!("Found Discogs release URL: {}", resource);
     }
 
-    // If release-group relations weren't included inline, fetch them separately
     if discogs_url.is_none() {
         let has_rg_relations = mb_response
             .release_group
@@ -362,10 +351,8 @@ fn release_group_discogs_url(
     }
 }
 
-/// Fetch a release-group by ID, returning the raw JSON for metadata storage.
-///
-/// Uses the same endpoint as `fetch_release_group_with_relations` but returns the
-/// raw JSON text instead of a parsed struct. Hits the session-wide LRU cache.
+/// A release-group's raw JSON, for archival. Same endpoint as
+/// `fetch_release_group_with_relations`, unparsed.
 pub async fn fetch_release_group_json(release_group_id: &str) -> Result<String, MusicBrainzError> {
     if let Some(hit) = RELEASE_GROUP_JSON_CACHE.get_cloned(release_group_id) {
         debug!(
@@ -393,11 +380,8 @@ pub async fn fetch_release_group_json(release_group_id: &str) -> Result<String, 
     Ok(raw_json)
 }
 
-/// Look up a MusicBrainz release linked to a Discogs release URL.
-///
-/// Uses the MB URL lookup endpoint to find releases linked to the given Discogs release.
-/// Returns the MB release ID if a linked release exists. Hits a session-wide
-/// LRU cache keyed by the Discogs release ID.
+/// The MB release ID linked to a Discogs release, via MB's URL lookup endpoint;
+/// `None` when no MB editor has linked one.
 pub async fn lookup_release_id_by_discogs_url(
     discogs_release_id: &str,
 ) -> Result<Option<String>, MusicBrainzError> {
@@ -430,7 +414,6 @@ pub async fn lookup_release_id_by_discogs_url(
         .await
         .map_err(|e| MusicBrainzError::Other(format!("Failed to parse JSON: {}", e)))?;
 
-    // Find the first relation that has a release with an ID
     let release_id = lookup
         .relations
         .iter()
@@ -442,24 +425,20 @@ pub async fn lookup_release_id_by_discogs_url(
     Ok(release_id)
 }
 
-/// Fetch the MB cross-reference for a Discogs release. Mirrors
-/// `crate::discogs::client::fetch_discogs_xref` (the forward direction
-/// for MB→Discogs).
+/// The MB cross-reference for a Discogs release — the reverse of
+/// `crate::discogs::client::fetch_discogs_xref`.
 ///
-/// Queries MB's URL endpoint for an MB release linking back to the
-/// given Discogs release. When found, fetches the full MB release and
-/// release-group JSON for archival. Returns the parsed
-/// `MbReleaseResponse` (so callers can pull the release ID and group
-/// ID for `release_identities`) plus the raw JSON pairs to append to
-/// the caller's `release_metadata` collection.
+/// Asks MB's URL endpoint for a release linking back to this Discogs release and,
+/// when there is one, fetches its release and release-group JSON. Returns the
+/// parsed `MbReleaseResponse` (the caller pulls the release and group IDs out for
+/// `release_identities`) plus the raw JSON pairs for its `release_metadata`.
 ///
-/// Returns `None` if MB has no linked release, the MB URL lookup
-/// fails, or the linked release fetch fails. A successful release
-/// fetch with a failing release-group fetch returns `Some` with just
+/// `None` when MB has no linked release, or either lookup fails. A successful
+/// release fetch with a failing release-group fetch still returns `Some` with just
 /// the release pair — the release-group is best-effort.
 ///
-/// Same editor dependence as the forward direction: only works when
-/// an MB editor has linked the Discogs URL on the MB release.
+/// Depends on an MB editor having linked the Discogs URL, as the forward
+/// direction does.
 pub async fn fetch_mb_xref(
     discogs_release_id: &str,
 ) -> Option<(MbReleaseResponse, Vec<(String, String)>)> {
@@ -517,7 +496,6 @@ pub async fn fetch_mb_xref(
 // Search
 // ============================================================================
 
-/// Parameters for searching MusicBrainz releases
 #[derive(Debug, Clone, Default)]
 pub struct ReleaseSearchParams {
     pub artist: Option<String>,
@@ -540,7 +518,6 @@ impl ReleaseSearchParams {
         ]
     }
 
-    /// Check if at least one field is filled
     pub fn has_any_field(&self) -> bool {
         self.query_fields().iter().any(|(value, _, _)| {
             value
@@ -549,7 +526,7 @@ impl ReleaseSearchParams {
         })
     }
 
-    /// Build Lucene query string from filled fields
+    /// The filled fields as a Lucene query.
     fn build_query(&self) -> String {
         self.query_fields()
             .into_iter()
@@ -580,11 +557,10 @@ impl QueryValueFormat {
     }
 }
 
-/// Search MusicBrainz for releases using structured parameters
 pub async fn search_releases_with_params(
     params: &ReleaseSearchParams,
 ) -> Result<Vec<SearchRelease>, MusicBrainzError> {
-    // Not inside the retry: no request is made, so repeating it cannot help.
+    // Outside the retry: no request is made, so repeating cannot help.
     if !params.has_any_field() {
         return Err(MusicBrainzError::Other(
             "At least one search field must be provided".to_string(),

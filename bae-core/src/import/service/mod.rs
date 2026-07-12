@@ -37,11 +37,8 @@ pub(crate) use folder_watcher::FolderWatcher;
 
 use format_prep::resolve_file_content_type;
 
-/// Metadata-prep output for a folder import.
-///
-/// Resolves a release against MB/Discogs, matches it to an existing album,
-/// records the DbImport row, and remaps parsed artist IDs to their actual
-/// DB IDs. The caller takes what it needs.
+/// What `reconcile_prepared_release` yields: the release's rows with parsed
+/// artist IDs already remapped to their real DB IDs, ready for the run pass.
 struct PreparedMetadata {
     db_album: DbAlbum,
     db_release: DbRelease,
@@ -73,7 +70,6 @@ fn storage_mode_label(mode: &StorageMode) -> &'static str {
     }
 }
 
-/// Send an import event on the broadcast bus, logging on send failure.
 use crate::import::handle::send_event;
 
 pub struct ImportService {
@@ -99,22 +95,20 @@ fn affected_roots(changed: &[&Path], roots: &[PathBuf]) -> Vec<PathBuf> {
 }
 
 impl ImportService {
-    /// The folder-watch reconciliation task. Per watched folder, tracks the
-    /// set of candidate keys it last emitted. A `Rescan` command re-scans a
-    /// folder (sent by the handle right after it installs the folder's OS
-    /// watch, and on every `scan_watched_folders` call); a debounced
-    /// filesystem change under a watched folder re-scans it too; `Forget`
-    /// drops the folder's last-emitted keys. Every re-scan reconciles against
-    /// the last known keys, emitting `FolderCandidate` for what's on disk and
-    /// `CandidateRemoved` for what's gone, so changes propagate beyond the
-    /// first scan.
+    /// The folder-watch reconciliation task, which tracks the candidate keys it
+    /// last emitted per watched folder. A `Rescan` command re-scans a folder (the
+    /// handle sends one right after installing the folder's OS watch, and on
+    /// every `scan_watched_folders` call), a debounced filesystem change under a
+    /// watched folder re-scans it too, and `Forget` drops a folder's last-emitted
+    /// keys. Every re-scan reconciles against those keys — `FolderCandidate` for
+    /// what's on disk, `CandidateRemoved` for what's gone — so changes propagate
+    /// beyond the first scan.
     ///
-    /// OS watch installation itself lives in `FolderWatcher`, owned by the
-    /// handle — this task only receives `fs_rx` batches from its callback.
-    /// The registry (not a task-local set) is the single authority on what's
-    /// watched: `affected_roots` resolves each filesystem-event batch against
-    /// it, so events from a watch left installed on a since-removed folder
-    /// match nothing and are ignored.
+    /// OS watch installation lives in `FolderWatcher`, owned by the handle; this
+    /// task only receives the `fs_rx` batches its callback forwards. The registry,
+    /// not a task-local set, is the single authority on what's watched:
+    /// `affected_roots` resolves each event batch against it, so events from a
+    /// watch left installed on a since-removed folder match nothing.
     fn start_watcher(
         runtime_handle: &tokio::runtime::Handle,
         mut cmd_rx: mpsc::UnboundedReceiver<WatcherCommand>,
@@ -188,10 +182,10 @@ impl ImportService {
 
     /// Re-scan `root` and reconcile against the candidate keys last emitted for
     /// it: emit every current candidate (the reducer keeps in-progress state for
-    /// ones it already holds) and `CandidateRemoved` for any that vanished. A
-    /// missing root reconciles to empty, removing all of the folder's candidates;
-    /// other scan errors keep the previous candidate set so a transient fault
-    /// does not report the folder as deleted.
+    /// the ones it already holds) plus a `CandidateRemoved` for any that vanished.
+    /// A missing root reconciles to empty, removing all the folder's candidates;
+    /// any other scan error keeps the previous set, so a transient fault never
+    /// reports the folder as deleted.
     async fn rescan_and_reconcile(
         root: &Path,
         last_keys: &mut HashMap<PathBuf, HashSet<String>>,
@@ -247,10 +241,10 @@ impl ImportService {
             }
         };
 
-        // The blocking walk left `skipped`/`is_added` at their defaults (it has
-        // neither the registry nor the DB). Stamp the real values now, before
+        // The blocking walk has neither the registry nor the DB, so it left
+        // `skipped`/`is_added` at their defaults. Stamp the real values before
         // reconciling, so every emitted candidate carries its tab state. Invalid
-        // candidates carry no files or tab state, so they need no stamping.
+        // candidates have no tab state, so they need no stamping.
         for candidate in &mut candidates {
             let path = candidate.path.to_string_lossy();
             candidate.skipped = folder_registry.lock().unwrap().is_skipped(&path);
@@ -324,11 +318,9 @@ impl ImportService {
         );
     }
 
-    /// Start the import service worker.
-    ///
-    /// Creates one worker task that imports validated albums sequentially from a queue.
-    /// Multiple imports will be queued and handled one at a time, not concurrently.
-    /// Returns a handle that can be cloned and used throughout the app to submit import requests.
+    /// Start the import service worker: one task that drains the import queue
+    /// sequentially, never concurrently. The returned handle is cloneable and
+    /// is how the rest of the app submits import requests.
     pub fn start(
         runtime_handle: tokio::runtime::Handle,
         library_manager: LibraryManager,
@@ -345,16 +337,14 @@ impl ImportService {
         // share one test-controllable delay.
         let cover_retry_base_delay = cover_art_archive.retry_base_delay();
 
-        // The watched-folder list is durable per-library appdata; `load` warns
-        // and starts empty if the file is corrupt, so app start never fails on it.
-        // The same `Arc` is shared by the watcher (which reads the skip set while
-        // stamping candidates) and the handle (which mutates it on add/remove/skip).
+        // One `Arc` shared by the watcher (which reads the skip set while stamping
+        // candidates) and the handle (which mutates it on add/remove/skip).
         let folder_registry = Arc::new(Mutex::new(ImportFolderRegistry::load(
             &library_manager_for_handle.library_dir(),
         )));
         let candidate_state = Arc::new(Mutex::new(ImportCandidateState::default()));
 
-        // Constructed before the watcher task spawns; it doesn't need the
+        // Constructed before the watcher task spawns; the task doesn't need the
         // debouncer, only the `fs_rx` end of its event channel.
         let folder_watcher = Arc::new(FolderWatcher::new(fs_tx));
 
@@ -435,8 +425,8 @@ impl ImportService {
             // `#[from]` source messages, so `to_string()` carries the chain.
             let error = e.to_string();
 
-            // No release to mark failed -- if import fails before the atomic
-            // finalize, there's no release in the DB. Update the import record.
+            // There's no release to mark failed: a failure before the atomic
+            // finalize left nothing in the DB. Only the import record exists.
             if let Err(db_err) = self
                 .library_manager
                 .update_import_error(&import_id, &error)
@@ -455,16 +445,11 @@ impl ImportService {
         }
     }
 
-    /// Prepare and run a folder import.
-    ///
-    /// For Exact / Approximate calls `prepare_release` to fetch and map
-    /// the release — this hits the network LRU caches that the UI's
-    /// prefetch warmed, so the normal case is a cache hit. For Unknown
-    /// reads the candidate's local evidence through
-    /// `map_unknown_candidate_to_db`. Either way: walks the folder to discover
-    /// files, then runs track mapping, storage, and the atomic DB transaction.
-    /// Remote cover bytes are pulled through `download_cover_art_bytes`, which
-    /// has its own LRU cache.
+    /// Prepare and run a folder import. Exact / Approximate source the release
+    /// through `prepare_release` (reading the network LRU caches the UI's
+    /// prefetch warmed, so normally a hit); Unknown reads the candidate's local
+    /// evidence through `map_unknown_candidate_to_db`. Either way, the folder is
+    /// walked for files, then track mapping and `run_import` follow.
     async fn prepare_and_run_folder_import(
         &self,
         import_id: String,
@@ -482,11 +467,9 @@ impl ImportService {
         let mut step_times: Vec<(&str, std::time::Duration)> = Vec::new();
         let mut last_step_start = import_start;
 
-        // Walk the folder to discover files. Scan and commit are two
-        // points in time separated by user interaction; reality can
-        // shift in that gap — the user can move, rename, or reorganize
-        // in the same window. The worker treats the disk at commit as
-        // the source of truth.
+        // Re-walk the folder. Scan and commit are separated by user interaction,
+        // and the user can move, rename, or reorganize in that window — so the
+        // worker treats the disk at commit time as the source of truth.
         let folder_buf = folder.clone();
         let categorized = tokio::task::spawn_blocking(move || {
             crate::import::folder_scanner::collect_release_candidate_files(&folder_buf)
@@ -496,8 +479,8 @@ impl ImportService {
             detail: format!("Folder scan task failed: {e}"),
         })??;
 
-        // Content fingerprint of the folder tree. Used below to overwrite a
-        // prior import of the same files, then stamped onto the new release row.
+        // Overwrites a prior import of the same files (below), then gets stamped
+        // onto the new release row.
         let content_hash = categorized.content_hash();
         let replacement_plans = library_manager
             .import_replacement_plans_for_content_hash(&content_hash)
@@ -507,7 +490,6 @@ impl ImportService {
             .map(|plan| plan.db_delete.release_id.clone())
             .collect();
 
-        // Phase 0a: Reconcile the prepared release with existing library state
         send_event(
             &self.event_tx,
             crate::import::handle::ImportEvent::ImportProgress {
@@ -521,10 +503,6 @@ impl ImportService {
             },
         );
 
-        // Source the parsed album. Exact / Approximate fetch from
-        // MB / Discogs; Unknown maps local evidence from the scan. The UI's
-        // prefetch warmed the network LRU cache for the source-release path, so
-        // that case is a cache-hit; cold cache costs one round-trip.
         let (parsed, metadata_pairs) = match &identity_choice {
             crate::import::IdentityChoice::Exact { release_ref }
             | crate::import::IdentityChoice::Approximate { release_ref } => {
@@ -602,11 +580,8 @@ impl ImportService {
             .map(|s| s.to_string());
         prepared.db_release.content_hash = Some(content_hash);
 
-        // Phase 0b: Remote cover art is downloaded through the
-        // session-wide LRU cache. The UI may have pre-fetched the URL
-        // at cover-select time; if so this is a cache hit. The download
-        // function returns the content type from the HTTP response,
-        // so no magic-byte sniffing is required here.
+        // The content type comes from the HTTP response, so no magic-byte
+        // sniffing is needed here.
         let remote_cover_data = if let Some(CoverSelection::Remote(ref url, source)) =
             selected_cover
         {
@@ -634,19 +609,15 @@ impl ImportService {
         step_times.push(("write_cover_art", last_step_start.elapsed()));
         last_step_start = std::time::Instant::now();
 
-        // Phase 0c: The folder walk that happened up front produced the
-        // `categorized` set. Flatten it into the discovered-files list
-        // the downstream pipeline consumes.
         emit_preparing(PrepareStep::DiscoveringFiles);
         let discovered_files = crate::import::handle::flatten_categorized_files(&categorized);
 
         step_times.push(("discover_files", last_step_start.elapsed()));
         last_step_start = std::time::Instant::now();
 
-        // Phase 0d: Map tracks to files. The mapper consumes the `db_tracks`
-        // Vec, moves each DbTrack into its TrackFile variant, and populates
-        // `duration_ms` from the CUE sheet or a standalone-file probe. After
-        // this point the DbTracks live inside `tracks_to_files`.
+        // The mapper consumes `db_tracks`, moving each DbTrack into its
+        // TrackFile variant and populating `duration_ms` from the CUE sheet or a
+        // standalone-file probe. Past here the DbTracks live in `tracks_to_files`.
         emit_preparing(PrepareStep::ValidatingTracks);
         let tracks_to_files =
             map_tracks_to_files(std::mem::take(&mut prepared.db_tracks), &categorized)?;
@@ -656,12 +627,10 @@ impl ImportService {
             _ => None,
         };
 
-        // Embedded cover art is the lowest-priority source: read it only
-        // when the user made no explicit selection. `run_import` writes it
-        // solely when no folder image is found either, so it never beats a
-        // Remote/Local pick or a folder image. The picture is only present
-        // on tagged rips, which is the Unknown path; Exact/Approximate
-        // imports skip the read.
+        // Embedded cover art is the lowest-priority source: `run_import` uses it
+        // only when neither an explicit pick nor a folder image supplies one.
+        // Only tagged rips carry a picture, which is the Unknown path, so
+        // Exact/Approximate imports skip the read entirely.
         let embedded_cover = if selected_cover.is_none()
             && matches!(identity_choice, crate::import::IdentityChoice::Unknown)
         {
@@ -696,9 +665,8 @@ impl ImportService {
             })
             .collect();
 
-        // Build the remote cover record + its bytes (no storage yet — the winning
-        // cover's bytes are handed to coven's local store below, and its row is
-        // written by finalize).
+        // No storage yet: the winning cover's bytes go to coven's local store below
+        // and its row is written by finalize.
         prepared.remote_cover_image =
             if let Some((bytes, content_type, url, source)) = remote_cover_data {
                 let now = library_manager.clock().now();
@@ -733,7 +701,6 @@ impl ImportService {
             tracks_to_files.len()
         );
 
-        // Phase 1+2: Storage (writes files to disk/cloud, builds DB records in memory)
         self.run_import(
             &storage_mode,
             pin,
@@ -771,7 +738,6 @@ impl ImportService {
             step_summary.join(", ")
         );
 
-        // Write trace to JSONL file when BAE_IMPORT_TRACE=1
         if std::env::var("BAE_IMPORT_TRACE").is_ok_and(|v| v == "1") {
             if let Some(home) = std::env::var_os("HOME") {
                 let trace_dir = PathBuf::from(home).join(".bae-traces");
@@ -806,17 +772,15 @@ impl ImportService {
         Ok(())
     }
 
-    /// Run an import. ONE path regardless of storage mode: read metadata, build
-    /// DbFile + audio-format records, reference the files in place, finalize
-    /// atomically as a LOCAL release (playable immediately), emit events.
-    /// No bytes move here. If `storage_mode` is `Remote`, the release then
-    /// transitions to the cloud via `coven_make_remote` (the same flow the
-    /// "Manage" action runs), carrying `pin` as the upload's retain-pinned intent;
-    /// coven flips `remote` true and deletes the in-place source once the last
-    /// upload lands. `pin` is ignored for an `Local` import.
+    /// Run an import. ONE path regardless of storage mode: build DbFile +
+    /// audio-format records, reference the files in place, measure loudness,
+    /// then finalize atomically as a LOCAL release (playable immediately) and
+    /// emit events. No bytes move here, and every DB write lands in the single
+    /// transaction at the end.
     ///
-    /// All DB writes happen in one atomic transaction at the end. DbTracks —
-    /// including their populated `duration_ms` — live inside `tracks_to_files`.
+    /// A `Remote` import then transitions to the cloud via `coven_make_remote`,
+    /// carrying `pin` as the upload's retain-pinned intent; coven flips `remote`
+    /// true once the last upload lands. `pin` is ignored for a `Local` import.
     #[allow(clippy::too_many_arguments)]
     async fn run_import(
         &self,
@@ -861,8 +825,8 @@ impl ImportService {
             total_files,
         );
 
-        // Build DbFile records. Keyed by absolute path (same key TrackFile uses)
-        // so disc-subfolder siblings with identical bare filenames stay distinct.
+        // Keyed by absolute path, the same key TrackFile uses, so disc-subfolder
+        // siblings with identical bare filenames stay distinct.
         let files_now = library_manager.clock().now();
         let mut db_files: Vec<DbFile> = Vec::with_capacity(total_files);
         let mut file_ids: HashMap<PathBuf, String> = HashMap::new();
@@ -879,12 +843,10 @@ impl ImportService {
             db_files.push(db_file);
         }
 
-        // Every import lands LOCAL: reference the files in place and record
-        // their common-ancestor folder as the release's local source. No bytes
-        // move here in any mode. A Remote import then transitions to the cloud
-        // (`coven_make_remote`, below); coven flips `remote` true once the upload
-        // lands; until then it is a valid, playable local release, so another
-        // device never sees a release before its audio is in the cloud.
+        // Every import lands LOCAL: reference the files in place and record their
+        // common-ancestor folder as the release's local source. Until a Remote
+        // import's upload lands it stays a valid, playable local release, so
+        // another device never sees a release before its audio is in the cloud.
         let local_root = {
             let mut ancestor: Option<&Path> = None;
             for file in discovered_files.iter() {
@@ -949,7 +911,6 @@ impl ImportService {
             );
         }
 
-        // Audio formats, cover image, and finalize are identical across strategies.
         let mut built_audio = Self::build_audio_formats(
             tracks_to_files,
             &file_ids,
@@ -957,12 +918,12 @@ impl ImportService {
             self.library_manager.ids().as_ref(),
         )?;
 
-        // Measure loudness from the source decode — bae stores originals verbatim
-        // (no transcode), so source samples == stored samples. The source files
-        // are present in place (every import references them and lands local);
-        // a remote import's uploads queue only after finalize. Per-track NULLs and
-        // an album NULL are legitimate "not measured" results, each logged at the
-        // skip point inside `measure_loudness`.
+        // Measured from the source decode: bae stores originals verbatim (no
+        // transcode), so source samples == stored samples. The sources are always
+        // present here — every import references them in place and lands local, and
+        // a remote import's uploads queue only after finalize. Per-track and album
+        // NULLs are legitimate "not measured" results, each logged at its skip
+        // point inside `measure_loudness`.
         #[cfg(any(target_os = "macos", target_os = "linux", target_os = "windows"))]
         {
             self.emit_phase_progress(
@@ -984,9 +945,9 @@ impl ImportService {
             db_release.album_loudness_lufs = loudness.album_loudness_lufs;
             db_release.album_peak_linear = loudness.album_peak_linear;
 
-            // A track that failed to decode fully (fatal errors / truncated body)
-            // would import fine but fail at play time. When verify is on, fail the
-            // import now instead — before finalize commits anything to the library.
+            // A track that didn't decode fully (fatal errors, a truncated body)
+            // would import fine and then fail at play time. With verify on, fail
+            // now — before finalize commits anything to the library.
             if self.library_manager.get_config().verify_decode_on_import
                 && !loudness.broken.is_empty()
             {
@@ -996,8 +957,8 @@ impl ImportService {
             }
         }
 
-        // The winning cover (Remote > Local folder image > embedded): finalize
-        // writes its bytes and row in one coven batch.
+        // Cover priority: Remote > local folder image > embedded. Finalize writes
+        // the winner's bytes and row in one coven batch.
         let cover_winner = match remote_cover_image.take() {
             Some(remote) => Some(remote),
             None => match self.build_cover_image_record(
@@ -1026,10 +987,10 @@ impl ImportService {
                 }),
             },
         };
-        // Resize the winning cover to a ≤600px JPEG thumbnail — one funnel for
-        // all three sources — and patch the record to describe the stored bytes:
-        // the resize always emits JPEG, so the row and the `cloud_path` extension
-        // `finalize_import_atomic` derives from it must say JPEG too.
+        // Resize the winner to a ≤600px thumbnail — one funnel for all three
+        // sources — and patch the record to describe the stored bytes. The resize
+        // always emits JPEG, so the row (and the `cloud_path` extension
+        // `finalize_import_atomic` derives from it) must say JPEG too.
         let cover_winner = match cover_winner {
             Some((mut image, bytes)) => {
                 let bytes = crate::util::cover::resize_cover(&bytes)
@@ -1097,11 +1058,10 @@ impl ImportService {
         // flow the "Make Remote" action runs: coven uploads each file from its
         // external (in-place) source, and on the last flips `remote` true, drops
         // the external refs, and re-emits the subtree (the cover rides along). The
-        // user's original files are referenced in place and left untouched — coven
-        // never deletes a user-provided source. This runs BEFORE the events below so
-        // the outbox already holds the upload by the time any consumer observes the
-        // release or `Complete`.
-        //
+        // user's original files stay where they are — coven never deletes a
+        // user-provided source. This runs BEFORE the events below so the outbox
+        // already holds the upload by the time any consumer observes the release
+        // or `Complete`.
         if remote_intent {
             if let Err(e) = library_manager.coven_make_remote(&db_release.id, pin).await {
                 let remote_error = format!(
@@ -1185,20 +1145,13 @@ fn import_trace_line(
 
 /// Project the user's identity choice onto the mapper's identity vec.
 ///
-/// The MB / Discogs mappers always emit Exact rows
-/// (`source_release_id = Some`); the file-tag mapper emits an empty
-/// vec, since Unknown imports make no identity claim.
+/// The MB / Discogs mappers always emit Exact rows (`source_release_id =
+/// Some`); the file-tag mapper emits an empty vec, since Unknown imports make no
+/// identity claim, so Unknown passes straight through.
 ///
-/// For Approximate, NULL out `source_release_id` on every row — the
-/// primary AND any cross-source row from MB↔Discogs url-rels mirror
-/// the user's choice. A cross-source row's `source_release_id` follows
-/// the same rule as the primary: present for Exact, NULL for
-/// Approximate. The claim is at the group level for every row.
-///
-/// For Unknown, the mapper output is empty; this function returns an
-/// empty vec straight through.
-///
-/// Lives at module level so the test below can exercise it directly.
+/// Approximate NULLs `source_release_id` on every row — the primary AND any
+/// cross-source row from MB↔Discogs url-rels. The claim is at the group level
+/// for all of them.
 pub(crate) fn apply_identity_choice(
     mapper_output: &[crate::import::ReleaseIdentity],
     choice: &crate::import::IdentityChoice,
@@ -1220,29 +1173,23 @@ pub(crate) fn apply_identity_choice(
 
 /// Apply the editor's overlay onto the seeded album/release/tracks.
 ///
-/// Overwrites: album title (`db_album.title`), pressing fields on the
-/// release (year/format/label/catalog_number/country/barcode), per-track
+/// Overwrites the album title, the release's pressing fields, and each track's
 /// title/side/track_number.
 ///
-/// Artist credits (`album_artists`, `track_artists`) are only rebuilt
-/// when the edit's name strings differ from the seed's. When the user
-/// hasn't touched the artist field, the original mapper-emitted rows
-/// stay intact — preserving the source-id linkage (e.g.
-/// `musicbrainz_artist_id`) that the mapper writes onto each `DbArtist`.
-/// Comparison uses the same form-shape the editor renders: an empty
-/// per-track list means "track shares the album artist," so a seeded
-/// track whose credits exactly match the album credits (positionally,
-/// case-insensitive) compares equal to an empty edit list.
+/// Artist credits (`album_artists`, `track_artists`) are rebuilt only when the
+/// edit's names differ from the seed's, so an untouched artist field keeps the
+/// mapper's rows and their source-id linkage (e.g. `musicbrainz_artist_id`).
+/// Comparison uses the editor's own form shape: an empty per-track list means
+/// "track shares the album artist", so a seeded track whose credits match the
+/// album's (positionally, case-insensitive) compares equal to an empty edit.
 ///
-/// Rebuilds resolve names against the existing `artists` vec, inserting
-/// fresh `DbArtist` rows for previously-unseen names; the import
-/// pipeline's import-artist resolver canonicalizes them at DB-write
-/// time. Inserted rows leave `musicbrainz_artist_id` /
-/// `discogs_artist_id` as `None` — the user-introduced name has no
-/// source binding to record.
+/// A rebuild resolves names against the existing `artists` vec, inserting fresh
+/// `DbArtist` rows for unseen names with both source ids `None` — a
+/// user-introduced name has no source binding to record. The import-artist
+/// resolver canonicalizes them at DB-write time.
 ///
-/// Length mismatch on `tracks` is a structural error — the editor binds
-/// to the seeded track list and never adds or removes rows.
+/// A `tracks` length mismatch is a structural error: the editor binds to the
+/// seeded track list and never adds or removes rows.
 fn apply_user_edit_to_seed(
     edit: &crate::import::ReleaseUserEdit,
     db_album: &mut crate::db::DbAlbum,
@@ -1271,10 +1218,8 @@ fn apply_user_edit_to_seed(
 
     let now = clock.now();
 
-    // Helper: resolve an artist name to an id, inserting a fresh
-    // (source-id-free) `DbArtist` row when the name doesn't match an
-    // existing one. Lookups are case-insensitive — the import-artist
-    // resolver matches the same way.
+    // Resolve a name to an artist id, inserting a fresh (source-id-free) row on
+    // a miss. Case-insensitive — the import-artist resolver matches the same way.
     let ensure_artist = |artists: &mut Vec<DbArtist>, name: &str| -> String {
         if let Some(existing) = artists.iter().find(|a| a.name.eq_ignore_ascii_case(name)) {
             return existing.id.clone();
@@ -1292,10 +1237,8 @@ fn apply_user_edit_to_seed(
         id
     };
 
-    // Build the seed's album-artist name list (primary at [0], junction
-    // rows by ascending position) so we can compare it to the edit's
-    // list. Names come from the `artists` vec via the artist_ids on
-    // `db_album.artist_id` / `album_artists`.
+    // The seed's album-artist names (primary at [0], junction rows by ascending
+    // position), to compare against the edit's list.
     let seeded_album_artist_names: Vec<String> = {
         let mut names = Vec::new();
         let primary = artists
@@ -1339,8 +1282,8 @@ fn apply_user_edit_to_seed(
         track.track_number = t_edit.track_number;
     }
 
-    // Album artists: only rebuild when the edit's names differ from the
-    // seeded ones. Equality keeps the mapper's source-id-aware rows.
+    // Rebuild only on a real change; equality keeps the mapper's
+    // source-id-bearing rows.
     if !names_equal(&seeded_album_artist_names, &edit.album_artist_names) {
         album_artists.clear();
         for (position, name) in edit.album_artist_names.iter().enumerate().skip(1) {
@@ -1355,11 +1298,9 @@ fn apply_user_edit_to_seed(
         }
     }
 
-    // Track artists: per-track, the editor's empty list means "share the
-    // album artist." A seeded credit list that matches the album's list
-    // round-trips through the editor as empty, so an empty edit
-    // compares equal to such a seed. Anything else (different names,
-    // different count) is a real change and rebuilds.
+    // An empty per-track edit list means "share the album artist", and a seeded
+    // credit list matching the album's round-trips through the editor as empty —
+    // so those compare equal. Anything else is a real change and rebuilds.
     for (track, t_edit) in db_tracks.iter().zip(edit.tracks.iter()) {
         let mut seeded: Vec<&DbTrackArtist> = track_artists
             .iter()
@@ -1381,8 +1322,6 @@ fn apply_user_edit_to_seed(
 
         let edit_names = &t_edit.artist_names;
         let unchanged = if edit_names.is_empty() {
-            // Editor's "no override" form maps to either a literally
-            // empty seed or a seed identical to the album's credits.
             seeded_names.is_empty() || names_equal(&seeded_names, &seeded_album_artist_names)
         } else {
             names_equal(&seeded_names, edit_names)
@@ -1429,12 +1368,11 @@ pub(crate) fn common_ancestor<'a>(a: &'a Path, b: &Path) -> &'a Path {
     }
 }
 
-/// Fetch + parse + detail-build a release. Mirrors the handle's
-/// Worker-side fetch + DB-shape mapping. Takes the bare `LibraryManager`
-/// since the worker doesn't hold an `ImportServiceHandle`. Reads through
-/// the session-wide MB/Discogs LRU caches; cache hit is the norm post-
-/// prefetch. Used by the import worker (folder/CD) and by re-identify
-/// to source the cross-linked identity vec for an existing release.
+/// Fetch a release and map it to DB shape, reading through the session-wide
+/// MB/Discogs LRU caches (normally a hit, post-prefetch). Takes the bare
+/// `LibraryManager` because the worker holds no `ImportServiceHandle`. Used by
+/// the import worker and by re-identify, to source the cross-linked identity vec
+/// for an existing release.
 pub(crate) async fn prepare_release(
     library_manager: &LibraryManager,
     release_ref: &MetadataRef,

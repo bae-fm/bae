@@ -11,9 +11,8 @@ impl LibraryManager {
         Ok(self.database.get_release_identities(release_id).await?)
     }
 
-    /// Insert identity rows for an existing release. Production writes
-    /// identities only through `finalize_import_atomic` or `set_identity`;
-    /// only a test helper for seeding rows directly.
+    /// Test-only: seed identity rows directly. Production writes them only through
+    /// `finalize_import_atomic` or `set_identity`.
     #[cfg(test)]
     pub async fn insert_release_identities(
         &self,
@@ -26,43 +25,34 @@ impl LibraryManager {
             .await?)
     }
 
-    /// Replace a release's identity rows, metadata-source pointer, and
-    /// cached source payload in one shot, moving the release between
-    /// albums when the new identity shape doesn't fit the current one.
+    /// Replace a release's identity rows, metadata-source pointer, and cached source
+    /// payload in one shot, moving the release between albums when the new identity
+    /// doesn't fit its current one.
     ///
-    /// `new_identities` may be empty (Unknown), or carry one or more
-    /// `(source, source_group_id, source_release_id)` rows that the
-    /// caller has already cross-linked. `metadata_pointer` updates the
-    /// `metadata_source` / `metadata_source_release_id` columns; a later
-    /// re-projection reads these to replay the seed.
+    /// `new_identities` is empty (Unknown), or carries the already-cross-linked
+    /// `(source, source_group_id, source_release_id)` rows. `metadata_pointer` sets
+    /// the `metadata_source` / `metadata_source_release_id` columns a later
+    /// re-projection reads to replay the seed, and `metadata_pairs` is the
+    /// freshly-fetched payload that pairs with it — empty for Unknown. The cache
+    /// replacement is atomic with the identity/pointer write, so a re-projection can
+    /// never see a stale payload pointing at the prior source.
     ///
-    /// `metadata_pairs` is the freshly-fetched cached payload that
-    /// pairs with `metadata_pointer`. Pass an empty slice for Unknown
-    /// (no source payload to cache); for Exact/Approximate pass the
-    /// `metadata_pairs` returned alongside the parsed release. The
-    /// cache replacement is atomic with the identity / pointer write —
-    /// there's no in-between state where a re-projection would observe a
-    /// stale payload pointing at the prior source.
+    /// **Album side effects.** Empty `new_identities` always moves the release to a
+    /// fresh album holding only it. Otherwise a cross-source merge wins: if any
+    /// *other* release in the library has an identity row matching one of
+    /// `new_identities` on `(source, source_group_id)`, that release's album is the
+    /// destination (per-source agreement makes the candidate unique). With no merge
+    /// candidate the release stays put if no sibling disagrees on a shared source,
+    /// and moves to a fresh album if one does. A vacated album with no releases left
+    /// is deleted.
     ///
-    /// **Album side effects.** Empty `new_identities` always moves the
-    /// release to a fresh album holding only it. Otherwise, target
-    /// resolution prefers a cross-source merge: if any *other* release
-    /// in the library has an identity row matching one of
-    /// `new_identities` on `(source, source_group_id)`, that release's
-    /// album is the destination (the per-source agreement invariant
-    /// makes the candidate unique). With no merge candidate the release
-    /// stays in its current album when no sibling disagrees on any
-    /// shared source, or moves to a fresh album when one does. Vacated
-    /// albums with no remaining releases are deleted.
+    /// **Album/release/track row data is not touched** — pressing fields, album
+    /// fields, and tracks stay as they are, and only `release_metadata` cache rows
+    /// are replaced. The caller decides whether to reseed the metadata.
     ///
-    /// **Album/release/track row data is not touched.** Pressing fields,
-    /// album fields, and tracks stay as-is. Only `release_metadata`
-    /// cache rows are replaced. Caller decides whether to also reseed
-    /// the metadata.
-    ///
-    /// Emits one of `AlbumAdded` / `AlbumUpdated` for the destination
-    /// album, plus `AlbumRemoved` or `AlbumUpdated` for the vacated
-    /// source album when the release actually moved.
+    /// Emits `AlbumAdded` or `AlbumUpdated` for the destination album, plus
+    /// `AlbumRemoved` or `AlbumUpdated` for the vacated source album if the release
+    /// actually moved.
     pub async fn set_identity(
         &self,
         release_id: &str,
@@ -93,11 +83,10 @@ impl LibraryManager {
             })
             .collect();
 
-        // The atomic call handles all source-album bookkeeping inside
-        // its transaction (empty-check, primary_release_id repair,
-        // album_artists copy) plus the `release_metadata` cache
-        // replacement. Empty/repair decisions live there to avoid
-        // TOCTOU between a separate read and the write.
+        // The atomic call does all source-album bookkeeping inside its transaction
+        // (empty-check, primary_release_id repair, album_artists copy) plus the
+        // `release_metadata` cache replacement — those decisions live there so a
+        // separate read and write can't race.
         let outcome = self
             .database
             .set_identity_atomic(
@@ -114,11 +103,10 @@ impl LibraryManager {
 
         let release_moved = target.album_id != current_album_id;
 
-        // Event emission. The destination album event is fat: AlbumAdded
-        // when we created it just now, AlbumUpdated otherwise (its
-        // release set changed). The source-album event covers the move
-        // itself: AlbumRemoved when the vacated album is now empty,
-        // AlbumUpdated when it still has releases.
+        // The destination event is AlbumAdded when we just created the album,
+        // AlbumUpdated otherwise (its release set changed). The source event covers
+        // the move: AlbumRemoved when the vacated album is now empty, AlbumUpdated
+        // when releases remain.
         if target.new_album.is_some() {
             self.emit_album_added(&target.album_id).await;
         } else {
@@ -126,9 +114,8 @@ impl LibraryManager {
         }
         if release_moved {
             if outcome.source_album_deleted {
-                // The release moved to the destination album; the destination
-                // event above already re-homed it. No child releases remain
-                // under the vacated source album.
+                // No child releases remain under the vacated album, and the
+                // destination event above already re-homed the moved one.
                 self.emit_album_removed(&current_album_id, Vec::new());
             } else {
                 self.emit_album_updated(&current_album_id).await;
@@ -138,20 +125,16 @@ impl LibraryManager {
         Ok(())
     }
 
-    /// Pick the album the release should land in after a `set_identity`.
-    /// See `set_identity` for the policy. Lookup order:
+    /// Pick the album a release lands in after a `set_identity` (policy in
+    /// `set_identity`). In order:
     ///
-    /// 1. **Cross-source merge first.** If any other release in the
-    ///    library carries an identity row matching one of `new_identities`
-    ///    on `(source, source_group_id)`, that release's album is the
-    ///    target — the per-source agreement invariant guarantees a
-    ///    cross-merging album is unique. Even if the current album
-    ///    would also fit, the merge candidate wins because two
-    ///    different albums cannot both legitimately claim the same
-    ///    group.
-    /// 2. **Stay in current** when no merge candidate exists and the
-    ///    current album's other releases don't disagree with
-    ///    `new_identities` on any shared source.
+    /// 1. **Cross-source merge.** If another release in the library carries an
+    ///    identity row matching one of `new_identities` on `(source,
+    ///    source_group_id)`, its album is the target — per-source agreement makes
+    ///    that album unique. It wins even when the current album would also fit,
+    ///    since two albums cannot both legitimately claim one group.
+    /// 2. **Stay put** when there is no merge candidate and the current album's
+    ///    other releases don't disagree with `new_identities` on a shared source.
     /// 3. **Fresh album** otherwise.
     async fn resolve_identity_target_album(
         &self,
@@ -168,11 +151,9 @@ impl LibraryManager {
             });
         }
 
-        // Cross-source merge: any album already holding a release that
-        // matches the new identity on at least one source.
-        // `find_album_by_identity_group_excluding` ignores rows belonging
-        // to `release_id` so the lookup never matches against the very
-        // identities we're about to overwrite.
+        // Any album already holding a release that matches the new identity on at
+        // least one source. The lookup excludes `release_id`'s own rows, so it never
+        // matches against the identities we are about to overwrite.
         if let Some(candidate_album_id) = self
             .database
             .find_album_by_identity_group_excluding(new_identities, &[release_id.to_string()])
@@ -184,10 +165,9 @@ impl LibraryManager {
             });
         }
 
-        // No merge candidate. Stay in the current album if its other
-        // releases don't disagree with the new identity on any shared
-        // source. An album whose only release is this one trivially
-        // agrees.
+        // No merge candidate: stay put if the album's other releases don't disagree
+        // on a shared source. An album whose only release is this one agrees
+        // trivially.
         let other_identities_in_current = self
             .other_release_identities_for_album(current_album_id, release_id)
             .await?;
@@ -206,8 +186,8 @@ impl LibraryManager {
         })
     }
 
-    /// Identity rows for every release in an album except `exclude_release_id`.
-    /// Each inner Vec is one release's identity rows.
+    /// The identity rows of every release in an album but `exclude_release_id`, one
+    /// inner Vec per release.
     async fn other_release_identities_for_album(
         &self,
         album_id: &str,
@@ -225,10 +205,10 @@ impl LibraryManager {
         Ok(all)
     }
 
-    /// Build a fresh album row that mirrors `seed_album_id`'s metadata.
-    /// Used when `set_identity` needs a brand-new album for the release —
-    /// metadata isn't touched by `set_identity`, so the new album reflects
-    /// what the release already had. Caller can reseed the metadata.
+    /// A fresh album row mirroring `seed_album_id`'s metadata, for when
+    /// `set_identity` needs a brand-new album. `set_identity` doesn't touch
+    /// metadata, so the new album reflects what the release already had; the caller
+    /// can reseed it.
     async fn fresh_album_for_release(&self, seed_album_id: &str) -> Result<DbAlbum, LibraryError> {
         let source = self
             .database
@@ -243,10 +223,9 @@ impl LibraryManager {
             title: source.title,
             artist_id: source.artist_id,
             year: source.year,
-            // The new album holds only this release; let the move pick
-            // up `primary_release_id` lazily via the existing fallback
-            // ("first release in the album") rather than hard-coding it
-            // here.
+            // The new album holds only this release, so leave `primary_release_id`
+            // to the "first release in the album" fallback rather than hard-coding
+            // it here.
             primary_release_id: None,
             is_compilation: source.is_compilation,
             created_at: now,
@@ -254,13 +233,10 @@ impl LibraryManager {
     }
 }
 
-/// Per-source agreement check: do `new_identities` fit alongside
-/// `other_release_identities` (the identity rows of every *other*
-/// release in the candidate album)?
-///
-/// Two releases can share an album as long as they don't disagree on
-/// any source they both claim. `new_id.source == other.source` requires
-/// matching `source_group_id`; differing sources are independent.
+/// Per-source agreement: do `new_identities` fit alongside the identity rows of
+/// every *other* release in the candidate album? Two releases can share an album as
+/// long as they don't disagree on a source they both claim — a shared source
+/// requires a matching `source_group_id`; different sources are independent.
 fn identities_fit_album(
     new_identities: &[crate::import::ReleaseIdentity],
     other_release_identities: &[Vec<crate::import::ReleaseIdentity>],
@@ -279,9 +255,9 @@ fn identities_fit_album(
     true
 }
 
-/// Project `MetadataPointer` to the two `releases` columns it sets:
-/// `metadata_source` (always present) and `metadata_source_release_id`
-/// (NULL when source is `file_tags`).
+/// Project a `MetadataPointer` onto the two `releases` columns it sets:
+/// `metadata_source`, always present, and `metadata_source_release_id`, NULL when
+/// the source is `file_tags`.
 fn metadata_pointer_to_columns(
     pointer: crate::import::MetadataPointer,
 ) -> (crate::db::ReleaseMetadataSource, Option<String>) {

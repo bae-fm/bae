@@ -1,29 +1,25 @@
 //! Classification of candidate text into per-field suggestion pools.
 //!
-//! Input is a set of text lines harvested from one candidate's surfaces —
-//! artwork OCR is the most noisy source but path components, folder-name
-//! brackets, filenames, CUE sheets, and `.txt` content all feed in.
-//! This module is intentionally pure: no Vision, no I/O, just string
+//! Input is text lines harvested from one candidate's surfaces — artwork OCR is
+//! the noisiest, but path components, folder-name brackets, filenames, CUE
+//! sheets, and `.txt` content all feed in. Pure: no OCR, no I/O, just string
 //! transforms.
 //!
 //! Two pools feed the import search UI:
 //!
-//! * catalog numbers — likely catalog numbers (regex-extracted substrings),
-//!   via `catalog_numbers_sourced`.
-//! * free text — lines suitable for Artist / Album autocomplete, with
-//!   whole-line barcodes and catalog numbers dropped by `should_reject_line`
-//!   before clustering.
+//! * catalog numbers — regex-extracted substrings, via `catalog_numbers_sourced`.
+//! * free text — Artist / Album autocomplete lines, with whole-line barcodes and
+//!   catalog numbers dropped by `should_reject_line` before clustering.
 //!
 //! Extractors for non-OCR sources:
 //!
-//! * `extract_folder_brackets` — bracketed substrings from folder names,
-//!   filtered to the shape of real catalog numbers. Routes directly to the
-//!   catalog pool (bypasses the free-text catalog regex, which is too strict
-//!   for real-world formats like `Z1 12345` or `XYZ CD6`).
-//! * `strip_path_component` — strips year prefixes, track-number prefixes,
-//!   and trailing bracketed tails from a path segment.
-//! * `parse_filename_stem` — file stem (no extension, no leading track
-//!   number), with audio filenames additionally split on ` - `.
+//! * `extract_folder_brackets` — bracketed substrings from folder names, kept
+//!   only when catalog-shaped. Routes straight to the catalog pool, bypassing the
+//!   free-text catalog regex, which is too strict for real-world formats like
+//!   `Z1 12345` or `XYZ CD6`.
+//! * `strip_path_component` — strips year prefixes, track-number prefixes, and
+//!   trailing bracketed tails from a path segment.
+//! * `parse_filename_stem` — file stem, minus extension and leading track number.
 
 use crate::signals::{SignalOrigin, SourcedValue};
 use regex::Regex;
@@ -33,23 +29,18 @@ use std::sync::OnceLock;
 use strsim::jaro_winkler;
 use unicode_normalization::UnicodeNormalization;
 
-/// Extract catalog-number-like substrings with provenance. Two regexes cover
-/// the majority of real-world formats:
+/// Extract catalog-number-like substrings, each tagged with its line's
+/// [`SignalOrigin`] (the Refine badges show where a candidate came from). Two
+/// regexes cover most real-world formats:
 ///
-/// * Letter-prefix catalogs (`\b[A-Z]{2,6}[- ]?\d{3,7}\b`): `WPCR-80001`,
-///   `COCQ 84487`, `TOCP12345`, `RR-500`.
-/// * Single-letter-digit prefix (`\b[A-Z]\d[- ]?\d{4,7}\b`): `Z1 12345`,
-///   `T5 67890`. Extra-constrained suffix length (≥4 digits) so we don't
-///   pick up short incidentals.
+/// * Letter prefix (`\b[A-Z]{2,6}[- ]?\d{3,7}\b`): `WPCR-80001`, `COCQ 84487`,
+///   `TOCP12345`, `RR-500`.
+/// * Single letter + digit (`\b[A-Z]\d[- ]?\d{4,7}\b`): `Z1 12345`, `T5 67890`.
+///   Its digit suffix must be ≥4 long so short incidentals don't match.
 ///
-/// Inner separators are preserved verbatim; MusicBrainz indexes `WPCR-80001`
-/// and `WPCR 80001` as distinct tokens, so we keep both forms when both
-/// appear. ZIP-code false positives (state abbrev + 5-digit code at a US
-/// mailing-address tail) are rejected. Dedupes by first-seen order.
-///
-/// Each survivor is attributed to its line's
-/// [`SignalOrigin::from_text_source`]. The catalog pool feeds the Refine
-/// badges, which need to show where each candidate came from.
+/// Inner separators are preserved verbatim: MusicBrainz indexes `WPCR-80001` and
+/// `WPCR 80001` as distinct tokens, so both forms survive when both appear. ZIP
+/// false positives are rejected. Dedupes by first-seen order.
 pub(crate) fn catalog_numbers_sourced(lines: &[SourcedLine]) -> Vec<SourcedValue> {
     let mut out: Vec<SourcedValue> = Vec::new();
     let mut seen: HashSet<String> = HashSet::new();
@@ -64,11 +55,8 @@ pub(crate) fn catalog_numbers_sourced(lines: &[SourcedLine]) -> Vec<SourcedValue
     out
 }
 
-/// Extract catalog-number-like substrings from a single line, applying the
-/// two catalog regexes and the ZIP false-positive rejection. Returns matches
-/// in left-to-right order with no cross-line dedup — the caller
-/// ([`catalog_numbers_sourced`]) owns dedup so it can pair survivors with
-/// whatever metadata each needs.
+/// Catalog-number-like substrings in one line, ZIP false positives rejected. No
+/// dedup — [`catalog_numbers_sourced`] owns that, across lines.
 fn find_catalogs_in_line(line: &str) -> Vec<String> {
     static MULTI_LETTER: OnceLock<Regex> = OnceLock::new();
     static SINGLE_LETTER_DIGIT: OnceLock<Regex> = OnceLock::new();
@@ -76,9 +64,9 @@ fn find_catalogs_in_line(line: &str) -> Vec<String> {
     let single =
         SINGLE_LETTER_DIGIT.get_or_init(|| Regex::new(r"\b[A-Z]\d[- ]?\d{4,7}\b").unwrap());
 
+    // Order is all multi-letter matches, then all single-letter-digit ones —
+    // the two regexes run independently, not interleaved by position.
     let mut out: Vec<String> = Vec::new();
-    // Each regex extracts independently; the line-local order follows the
-    // multi-letter regex first, then the single-letter-digit one.
     for m in multi.find_iter(line).chain(single.find_iter(line)) {
         let s = m.as_str().to_string();
         if is_zip_false_positive(&s, line) {
@@ -89,12 +77,10 @@ fn find_catalogs_in_line(line: &str) -> Vec<String> {
     out
 }
 
-/// Treat a candidate as a ZIP false positive only when it matches the tail
-/// state+ZIP capture (`\b<ST>\s\d{5}\b` at end of line) of a US mailing
-/// address. Anything that isn't at the trailing-address position — e.g. a
-/// `ZZ 12345` that happens to appear mid-line next to a `P.O. Box` — stays
-/// in, because mid-line catalog-shaped strings on mail-heavy lines are
-/// real catalogs often enough that we'd lose signal by dropping them.
+/// A candidate is a ZIP false positive only if it *is* the state+ZIP at the end
+/// of the line — the tail of a US mailing address. A catalog-shaped string
+/// mid-line, even next to a `P.O. Box`, stays: those are real catalogs often
+/// enough that dropping them would lose signal.
 fn is_zip_false_positive(candidate: &str, line: &str) -> bool {
     static STATE_ZIP_TAIL: OnceLock<Regex> = OnceLock::new();
     static STATE_ZIP_SHAPE: OnceLock<Regex> = OnceLock::new();
@@ -103,8 +89,6 @@ fn is_zip_false_positive(candidate: &str, line: &str) -> bool {
         .get_or_init(|| Regex::new(r"\b([A-Z]{2})\s+(\d{5})(?:-\d{4})?\s*\.?\s*$").unwrap());
     let shape = STATE_ZIP_SHAPE.get_or_init(|| Regex::new(r"^([A-Z]{2})[- ](\d{5})$").unwrap());
 
-    // Candidate must be state-abbrev + 5-digit shape; otherwise it can't be
-    // a ZIP false positive.
     let Some(caps) = shape.captures(candidate) else {
         return false;
     };
@@ -119,9 +103,8 @@ fn is_zip_false_positive(candidate: &str, line: &str) -> bool {
     tail_state == candidate_state && tail_zip == candidate_zip
 }
 
-/// Reject predicate applied uniformly to every line, regardless of source.
-/// Each sub-rule is conservative — we keep false positives in order not to
-/// lose real album titles.
+/// Free-text reject predicate, applied to every line whatever its source. Each
+/// sub-rule is conservative: keep false positives rather than lose real titles.
 pub(crate) fn should_reject_line(line: &str) -> bool {
     is_catalog_line(line)
         || is_out_of_length_band(line)
@@ -146,8 +129,7 @@ fn is_out_of_length_band(line: &str) -> bool {
     !(3..=50).contains(&len)
 }
 
-/// Track-listing pattern: leading track number followed by `.` or `)`.
-/// Matches `1. Title`, `02) Title`, ` 3.  Title With Leading Space`.
+/// Track listing: leading track number then `.` or `)` — `1. Title`, `02) Title`.
 fn is_track_listing(line: &str) -> bool {
     static RE: OnceLock<Regex> = OnceLock::new();
     let re = RE.get_or_init(|| Regex::new(r"^\s*\d{1,3}[.)]\s+").unwrap());
@@ -161,12 +143,8 @@ fn has_runtime_suffix(line: &str) -> bool {
     re.is_match(line)
 }
 
-/// Credit pattern: `Label:  Value` where the label is under 30 chars and
-/// the value contains a role word. Captures `Engineered by Name`,
-/// `Name One: bass`, `Produced by Name Two`. Two shapes:
-///
-/// * `<Role phrase> by <Name>` — `Produced by`, `Engineered by`, etc.
-/// * `<Name>: <Role>` — `Name One: bass`, `Name Two: drums`.
+/// A credit line, in either shape: `<Name>: <Role>` (`Name One: bass`, name under
+/// 30 chars) or `<Role> by <Name>` (`Produced by Name Two`).
 fn is_credit_pattern(line: &str) -> bool {
     static COLON_RE: OnceLock<Regex> = OnceLock::new();
     static BY_RE: OnceLock<Regex> = OnceLock::new();
@@ -204,9 +182,8 @@ fn is_all_digits(line: &str) -> bool {
     re.is_match(line)
 }
 
-/// Lines that are *exactly* a universal label — `side a`, `cd`, `disc 1`.
-/// `Side A feat. Guest Artist` is longer than the stop phrase and escapes
-/// this filter naturally.
+/// Lines that are *exactly* a universal label — `side a`, `cd`, `disc 1`. An
+/// exact match, so `Side A feat. Guest Artist` escapes the filter naturally.
 fn is_universal_stop_phrase(line: &str) -> bool {
     static STOP: OnceLock<HashSet<&'static str>> = OnceLock::new();
     let stop = STOP.get_or_init(|| {
@@ -236,15 +213,13 @@ fn is_universal_stop_phrase(line: &str) -> bool {
 
 // ── Non-OCR extractors ──────────────────────────────────────────────────────
 
-/// Extract `[…]` and `(…)` substrings from `folder_name` and keep only those
-/// shaped like a catalog number: length 3-20, at least one alphabetic letter,
-/// and at least two decimal digits. That filter lets real catalogs through
-/// (`XX34b`, `LABELA071`, `Z1 12345`, `XYZ CD6`) and rejects format tags
-/// (`Vinyl`, `Deluxe Edition`, `2 CD` — one digit), noise (`remaster`), and
-/// bare years (`1990` — no letters).
+/// `[…]` and `(…)` substrings of `folder_name` that are catalog-shaped: 3-20
+/// chars, ≥1 letter, ≥2 digits. That admits real catalogs (`XX34b`, `LABELA071`,
+/// `Z1 12345`, `XYZ CD6`) and rejects format tags (`Vinyl`, `2 CD`), noise
+/// (`remaster`), and bare years (`1990`).
 ///
-/// Survivors are routed to the catalog pool directly — they bypass the
-/// free-text catalog regex, which is too strict for many real-world formats.
+/// Survivors go straight to the catalog pool, bypassing the free-text catalog
+/// regex, which is too strict for many real-world formats.
 pub(crate) fn extract_folder_brackets(folder_name: &str) -> Vec<String> {
     static BRACKET_RE: OnceLock<Regex> = OnceLock::new();
     let re = BRACKET_RE.get_or_init(|| Regex::new(r"[\[\(]([^\]\)]+)[\]\)]").unwrap());
@@ -274,15 +249,11 @@ fn is_catalog_shaped_bracket(s: &str) -> bool {
     letters >= 1 && digits >= 2
 }
 
-/// Normalize a path component for the free-text pool. Strips:
+/// Normalize a path component for the free-text pool: strip a leading year
+/// (`1989 - `) or track number (`01. `), and trailing bracketed tails (which
+/// `extract_folder_brackets` already routed to the catalog pool).
 ///
-/// * leading year prefix (`1989 - `, `1989. `, `1989 `)
-/// * leading track-number prefix (`01. `, `1) `, `1 - `)
-/// * trailing bracketed / parenthesized tails (already routed via
-///   `extract_folder_brackets`)
-///
-/// Returns `None` if the stripped component degenerates to something too
-/// short to be useful (e.g. an empty string or a single character).
+/// `None` when what's left is too short (under 2 chars) or all digits.
 pub(crate) fn strip_path_component(raw: &str) -> Option<String> {
     static YEAR_PREFIX: OnceLock<Regex> = OnceLock::new();
     static TRACK_PREFIX: OnceLock<Regex> = OnceLock::new();
@@ -294,8 +265,7 @@ pub(crate) fn strip_path_component(raw: &str) -> Option<String> {
         TRAILING_BRACKET.get_or_init(|| Regex::new(r"\s*[\[\(][^\]\)]*[\]\)]\s*$").unwrap());
 
     let mut s = raw.trim().to_string();
-    // Strip trailing brackets repeatedly — a component may have multiple
-    // (`Album Title [Deluxe] (2020)`).
+    // Repeatedly — a component may carry several (`Album Title [Deluxe] (2020)`).
     loop {
         let stripped = bracket.replace(&s, "").into_owned();
         let stripped = stripped.trim_end().to_string();
@@ -304,15 +274,13 @@ pub(crate) fn strip_path_component(raw: &str) -> Option<String> {
         }
         s = stripped;
     }
-    // Year prefix (greedy — covers `1989 - Title` and `1989. Title` and
-    // `1989 Title`). Only apply if what remains is non-empty.
+    // Both prefixes only strip when something non-empty is left behind.
     if let Some(m) = year.find(&s) {
         let rest = &s[m.end()..];
         if !rest.trim().is_empty() {
             s = rest.trim_start().to_string();
         }
     }
-    // Track-number prefix.
     if let Some(m) = track.find(&s) {
         let rest = &s[m.end()..];
         if !rest.trim().is_empty() {
@@ -323,21 +291,19 @@ pub(crate) fn strip_path_component(raw: &str) -> Option<String> {
     if s.chars().count() < 2 {
         return None;
     }
-    // All-digit remainder is noise (bare years, track-listing fragments).
-    // Same rule the free-text filter applies.
+    // All-digit remainders are noise: bare years, track-listing fragments.
     if s.chars().all(|c| c.is_ascii_digit() || c.is_whitespace()) {
         return None;
     }
     Some(s)
 }
 
-/// Extract free-text suggestions from a filename. Takes the file stem (no
-/// extension), strips a leading track-number, and rejects a small set of
-/// generic names (`cover`, `front`, `back`, `booklet-01`, `disc 1`, etc.).
+/// The file stem, minus a leading track number, unless it's a generic name
+/// (`cover`, `booklet-01`, `disc 1`, …) — those carry no signal.
 ///
-/// Audio filenames are never routed here — their stems are overwhelmingly
-/// track titles, which are the wrong pool for Artist / Album autocomplete.
-/// See `enumerate_filename_inputs` in the service.
+/// Audio filenames never reach here: their stems are overwhelmingly track
+/// titles, the wrong pool for Artist / Album autocomplete. See
+/// `enumerate_filename_inputs` in `fast_pass`.
 pub(crate) fn parse_filename_stem(path: &Path) -> Vec<String> {
     static TRACK_NUM: OnceLock<Regex> = OnceLock::new();
     static GENERIC: OnceLock<Regex> = OnceLock::new();
@@ -367,13 +333,9 @@ pub(crate) fn parse_filename_stem(path: &Path) -> Vec<String> {
 
 // ── Sourced pipeline: filter → normalize → cluster → rank → cutoff ──────────
 
-/// Where a `SourcedLine` came from. Each variant carries the minimum
-/// context needed to display or re-read the original. Used by the
-/// clustering pipeline to score cluster members.
-///
-/// Folder-bracket extractions don't appear here — they bypass the sourced
-/// pipeline entirely and flow through `bracket_catalogs: Vec<String>` on
-/// the `Pool`, routed straight to the catalog output.
+/// Where a `SourcedLine` came from — the clustering pipeline scores members by
+/// this. Folder brackets have no variant: they bypass this pipeline entirely,
+/// riding `Pool::bracket_catalogs` straight to the catalog output.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Source {
     Artwork(PathBuf),
@@ -383,9 +345,8 @@ pub enum Source {
     TextFile(PathBuf),
 }
 
-/// A candidate line tagged with its provenance. The classifier preserves the
-/// original text verbatim for display; normalization is only used internally
-/// for clustering.
+/// A candidate line tagged with its provenance. `text` stays verbatim for
+/// display; normalization is internal to clustering.
 #[derive(Debug, Clone)]
 pub(crate) struct SourcedLine {
     pub source: Source,
@@ -399,16 +360,14 @@ const MIN_CLUSTER_LEN: usize = 4;
 /// Jaro-Winkler similarity floor for cluster membership.
 const JW_THRESHOLD: f64 = 0.85;
 
-/// Upper bound on the free-text pool size. Starting value — tune against the
-/// corpus.
+/// Upper bound on the free-text pool size.
 pub(crate) const FREE_TEXT_CAP: usize = 30;
 
 /// Baseline free-text cutoff: clusters with at least this score survive.
 pub(crate) const FREE_TEXT_MIN_SCORE: usize = 2;
 
-/// Fallback free-text cutoff: when no cluster clears the min-score gate
-/// (e.g. single-image candidate), take the top N by cluster size instead of
-/// returning an empty pool.
+/// Fallback free-text cutoff: when no cluster clears the min-score gate (e.g. a
+/// single-image candidate), take the top N by score rather than return nothing.
 pub(crate) const FREE_TEXT_FALLBACK_TOP: usize = 15;
 
 /// One cluster of sourced lines grouped by normalized-text similarity.
@@ -419,22 +378,20 @@ pub(crate) struct Cluster {
 }
 
 impl Cluster {
-    /// Cluster score: Σ (source_weight × members-of-that-source). The
-    /// weights are eyeballed starting values — tune against corpus.
+    /// Cluster score: the sum of its members' source weights.
     pub(crate) fn score(&self) -> usize {
         self.members.iter().map(|m| source_weight(&m.source)).sum()
     }
 
-    /// Pick a display form for the cluster. Preference order:
+    /// The cluster's display form. Preference order:
     ///
-    /// 1. Highest source weight (CUE > path > audio-split > generic / OCR).
+    /// 1. Highest source weight (CUE > path component > filename / OCR / txt).
     /// 2. Title-case over ALL-CAPS over all-lowercase.
-    /// 3. Longest text (OCR variants of the same name lose characters when
-    ///    garbled; real text tends to be longer than truncated renderings).
+    /// 3. Longest text — a garbled OCR variant loses characters, so the longer
+    ///    of two spellings of one name is usually the real one.
     ///
-    /// Members shorter than 4 chars are skipped — prevents truncated OCR
-    /// fragments from winning. If every member is below that floor (rare —
-    /// happens only for tiny candidate strings), take the first.
+    /// Members under 4 chars are skipped so truncated OCR fragments can't win.
+    /// If every member is below that floor, take the first.
     pub(crate) fn pick_representative(&self) -> String {
         self.members
             .iter()
@@ -459,9 +416,9 @@ impl Cluster {
     }
 }
 
-/// Source-weight starting values. CUE and path components are curated by
-/// rippers / users so they carry the strongest per-line signal; artwork OCR
-/// is lower weight per-line but earns score by repeating across images.
+/// CUE fields and path components are curated by rippers and users, so they
+/// carry the strongest per-line signal; artwork OCR is weak per line but earns
+/// score by repeating across images.
 pub(crate) fn source_weight(source: &Source) -> usize {
     match source {
         Source::CueField => 5,
@@ -472,8 +429,8 @@ pub(crate) fn source_weight(source: &Source) -> usize {
     }
 }
 
-/// Case-style rank for cluster-representative selection: titled / mixed
-/// wins over ALL-CAPS over all-lowercase. Tie-break only.
+/// Tie-break rank for `pick_representative`: mixed case beats ALL-CAPS beats
+/// all-lowercase.
 fn case_rank(s: &str) -> u8 {
     let has_upper = s.chars().any(|c| c.is_uppercase());
     let has_lower = s.chars().any(|c| c.is_lowercase());
@@ -485,20 +442,15 @@ fn case_rank(s: &str) -> u8 {
     }
 }
 
-/// Normalize text for similarity comparison. Preserves the original for
-/// display; this output is only used as the clustering key.
-///
-/// Pipeline: NFD decomposition → drop combining marks (strips diacritics)
-/// → lowercase → trim → collapse internal whitespace → strip leading /
-/// trailing non-alphanumerics.
+/// The clustering key for a line — never displayed. NFD decompose → drop
+/// combining marks (so diacritics go) → lowercase → collapse whitespace runs →
+/// strip leading/trailing non-alphanumerics.
 pub(crate) fn normalize(text: &str) -> String {
-    // NFD decompose, drop combining marks.
     let decomposed: String = text
         .nfd()
         .filter(|c| !unicode_normalization::char::is_combining_mark(*c))
         .collect();
     let s = decomposed.to_lowercase();
-    // Collapse any run of whitespace to a single space.
     let mut collapsed = String::with_capacity(s.len());
     let mut prev_space = false;
     for c in s.chars() {
@@ -517,10 +469,9 @@ pub(crate) fn normalize(text: &str) -> String {
         .to_string()
 }
 
-/// Classify `new_lines` against `clusters`, appending each line into the
-/// best-matching cluster or starting a new one. Mutates `clusters` in place
-/// so the caller can hold it across calls and avoid re-classifying old
-/// lines each emission.
+/// Append each of `new_lines` into its best-matching cluster, or start a new one.
+/// Mutates `clusters` in place so a caller can hold it across calls instead of
+/// re-clustering the whole pool on every emission.
 pub(crate) fn cluster_lines_incremental(clusters: &mut Vec<Cluster>, new_lines: &[SourcedLine]) {
     for line in new_lines {
         let norm = normalize(&line.text);
@@ -528,8 +479,8 @@ pub(crate) fn cluster_lines_incremental(clusters: &mut Vec<Cluster>, new_lines: 
             continue;
         }
         if norm.chars().count() < MIN_CLUSTER_LEN {
-            // Short lines still go into the output as singleton clusters —
-            // otherwise we'd lose real 2-3 char album titles.
+            // Too short to compare, but still emitted as a singleton — dropping
+            // it would lose real 2-3 char album titles.
             clusters.push(Cluster {
                 normalized_centroid: norm,
                 members: vec![line.clone()],
@@ -537,7 +488,6 @@ pub(crate) fn cluster_lines_incremental(clusters: &mut Vec<Cluster>, new_lines: 
             continue;
         }
 
-        // Find the most-similar existing cluster.
         let mut best_idx: Option<usize> = None;
         let mut best_sim: f64 = 0.0;
         for (i, c) in clusters.iter().enumerate() {
@@ -566,14 +516,10 @@ pub(crate) fn rank_clusters_in_place(clusters: &mut [Cluster]) {
     clusters.sort_by_key(|c| std::cmp::Reverse(c.score()));
 }
 
-/// Apply the free-text cutoff and turn the surviving clusters into display
-/// strings.
-///
-/// Primary rule: clusters with `score ≥ FREE_TEXT_MIN_SCORE` survive, capped
-/// at `FREE_TEXT_CAP`. When no cluster clears the min-score gate (common on
-/// single-image candidates where every cluster is score-1), fall back to
-/// the top `FREE_TEXT_FALLBACK_TOP` by score — the UI still gets a useful
-/// dropdown instead of an empty one.
+/// The surviving clusters as display strings: those scoring at least
+/// `FREE_TEXT_MIN_SCORE`, capped at `FREE_TEXT_CAP`. When none clears the gate
+/// (common on single-image candidates, where every cluster is score-1), fall back
+/// to the top `FREE_TEXT_FALLBACK_TOP` — a useful dropdown beats an empty one.
 pub(crate) fn apply_free_text_cutoff(ranked: &[Cluster]) -> Vec<String> {
     let above_threshold: Vec<&Cluster> = ranked
         .iter()
@@ -603,10 +549,9 @@ pub(crate) fn apply_free_text_cutoff(ranked: &[Cluster]) -> Vec<String> {
 mod tests {
     use super::*;
 
-    /// Run the live sourced catalog extractor over plain lines and project to
-    /// bare values. Production reaches `find_catalogs_in_line`, ZIP rejection,
-    /// and dedup through `catalog_numbers_sourced`; these assertions pin that
-    /// shared logic through the real entry point.
+    /// Run the real catalog extractor over plain lines, projected to bare values
+    /// — so these assertions exercise the regexes, ZIP rejection, and dedup
+    /// through the same entry point production uses.
     fn cats(lines: &[String]) -> Vec<String> {
         let sourced: Vec<SourcedLine> = lines
             .iter()
@@ -621,9 +566,8 @@ mod tests {
             .collect()
     }
 
-    /// Lines that survive `should_reject_line` — the free-text pool's reject
-    /// pass, exercised here line by line. Production applies the same predicate
-    /// before clustering.
+    /// Lines that survive `should_reject_line` — the same predicate production
+    /// applies before clustering.
     fn kept_lines(lines: &[String]) -> Vec<String> {
         lines
             .iter()
@@ -636,7 +580,6 @@ mod tests {
 
     #[test]
     fn catalogs_preserves_hyphen() {
-        // hyphen catalog is preserved verbatim
         assert_eq!(
             cats(&["WPCR-80001".to_string()]),
             vec!["WPCR-80001".to_string()],
@@ -645,7 +588,6 @@ mod tests {
 
     #[test]
     fn catalogs_preserves_inner_space() {
-        // inner space catalog is preserved verbatim
         assert_eq!(
             cats(&["COCQ 84487".to_string()]),
             vec!["COCQ 84487".to_string()],
@@ -654,7 +596,6 @@ mod tests {
 
     #[test]
     fn catalogs_substring_match() {
-        // catalog substring inside a larger line
         assert_eq!(
             cats(&["Part No. TOCP12345".to_string()]),
             vec!["TOCP12345".to_string()],
@@ -663,14 +604,13 @@ mod tests {
 
     #[test]
     fn catalogs_lowercase_rejected() {
-        // lowercase is rejected — catalogs require uppercase letters
+        // The regexes require uppercase letters.
         let empty: Vec<String> = Vec::new();
         assert_eq!(cats(&["lowercase-12345".to_string()]), empty);
     }
 
     #[test]
     fn catalogs_separator_variants_are_distinct() {
-        // hyphen and space variants of the same prefix are distinct tokens
         assert_eq!(
             cats(&["WPCR-80001".to_string(), "WPCR 80001".to_string()]),
             vec!["WPCR-80001".to_string(), "WPCR 80001".to_string()],
@@ -679,16 +619,14 @@ mod tests {
 
     // MARK: - catalog_numbers — multi-disc suffix behavior
     //
-    // These assertions pin current behavior of the catalog regex
-    // (`\b[A-Z]{2,6}[- ]?\d{3,7}\b`) against multi-disc catalog numbers. The
-    // `\b` word boundaries end the match at the first non-word character, so
-    // suffixes after `/` or `~` fall outside the match. Formats with two
-    // internal separators (e.g. `UDCD-1-702`) don't match at all — the regex
-    // permits only one separator between letters and digits.
+    // The regex's `\b` word boundaries end a match at the first non-word
+    // character, so a multi-disc suffix after `/` or `~` falls outside it and
+    // only the first disc's number comes back. A format with two internal
+    // separators (`UDCD-1-702`) doesn't match at all — the regex permits one
+    // separator between letters and digits.
 
     #[test]
     fn catalogs_multi_disc_slash_suffix() {
-        // multi-disc slash suffix — the first disc's catalog number is returned, suffix dropped
         assert_eq!(
             cats(&["BVCK-15024/5".to_string()]),
             vec!["BVCK-15024".to_string()],
@@ -697,7 +635,6 @@ mod tests {
 
     #[test]
     fn catalogs_multi_disc_tilde_suffix() {
-        // multi-disc tilde suffix — the first disc's catalog number is returned, suffix dropped
         assert_eq!(
             cats(&["BVCP 21011~2".to_string()]),
             vec!["BVCP 21011".to_string()],
@@ -706,7 +643,6 @@ mod tests {
 
     #[test]
     fn catalogs_two_internal_separators_rejected() {
-        // MFSL-style two-separator catalog is not matched
         let empty: Vec<String> = Vec::new();
         assert_eq!(cats(&["MFSL UDCD-1-702".to_string()]), empty);
     }
@@ -715,9 +651,8 @@ mod tests {
 
     #[test]
     fn sourced_catalogs_attribute_origin_per_line() {
-        // A folder-bracket-shaped catalog can't reach here (brackets bypass
-        // this path); use a path component and an artwork line. Each survivor
-        // carries the SignalOrigin its source projects to.
+        // Folder brackets bypass this path, so a path component and an artwork
+        // line stand in. Each survivor carries its source's `SignalOrigin`.
         let lines = vec![
             SourcedLine {
                 source: Source::PathComponent,
@@ -740,8 +675,6 @@ mod tests {
 
     #[test]
     fn sourced_catalogs_reject_zip_and_dedup() {
-        // The sourced extractor applies the catalog regexes, rejects the
-        // mailing-address ZIP tail, and dedupes by first-seen order.
         let raw = vec![
             "WPCR-80001".to_string(),
             "Some City, NY 10001".to_string(), // ZIP tail — rejected
@@ -758,7 +691,6 @@ mod tests {
 
     #[test]
     fn free_text_drops_catalog_lines() {
-        // whole-line catalog is filtered out of free text
         assert_eq!(
             kept_lines(&["Album Title".to_string(), "WPCR-80001".to_string()]),
             vec!["Album Title".to_string()],
@@ -767,7 +699,7 @@ mod tests {
 
     #[test]
     fn free_text_keeps_substring_catalog_lines() {
-        // substring catalog keeps the surrounding free-text line
+        // Only a *whole-line* catalog is rejected.
         assert_eq!(
             kept_lines(&["Label Records - WPCR-80001".to_string()]),
             vec!["Label Records - WPCR-80001".to_string()],
@@ -778,7 +710,6 @@ mod tests {
 
     #[test]
     fn catalogs_empty_input() {
-        // sanity: empty input yields empty output
         let empty: Vec<String> = Vec::new();
         assert_eq!(cats(&[]), empty);
     }
@@ -787,8 +718,6 @@ mod tests {
 
     #[test]
     fn brackets_accepts_catalog_shapes() {
-        // Mix of real-world catalog shapes — letter+digit combinations of
-        // varying lengths, with and without separators.
         let folder = "Album Title [XX34b] (LABELA071) [Z1 12345]";
         let out = extract_folder_brackets(folder);
         assert_eq!(
@@ -803,8 +732,7 @@ mod tests {
 
     #[test]
     fn brackets_rejects_format_tags() {
-        // Format tags (`Vinyl`, `Deluxe Edition`) have letters but no digits
-        // or only one digit; both fail the ≥2-digit filter.
+        // Fewer than 2 digits.
         let folder = "Album Title [Vinyl] (Deluxe Edition) [2 CD]";
         let out = extract_folder_brackets(folder);
         assert!(out.is_empty(), "expected empty, got {out:?}");
@@ -812,15 +740,14 @@ mod tests {
 
     #[test]
     fn brackets_rejects_bare_year() {
-        // `1990` has digits but no letters — fails the ≥1-letter filter.
+        // No letters.
         let folder = "Album Title (1990)";
         assert!(extract_folder_brackets(folder).is_empty());
     }
 
     #[test]
     fn brackets_rejects_over_length() {
-        // Anything longer than 20 chars bails out — keeps long quotations,
-        // liner-note fragments, etc. out of the catalog pool.
+        // The 20-char ceiling keeps quotations and liner-note fragments out.
         let folder = "Album [This is way too long to be a catalog]";
         assert!(extract_folder_brackets(folder).is_empty());
     }
@@ -863,7 +790,6 @@ mod tests {
 
     #[test]
     fn path_iteratively_strips_multiple_trailing_brackets() {
-        // Two trailing brackets come off in successive loop iterations.
         assert_eq!(
             strip_path_component("Album Title [Remaster] [Deluxe]"),
             Some("Album Title".to_string()),
@@ -872,16 +798,13 @@ mod tests {
 
     #[test]
     fn path_returns_none_when_empty() {
-        // All-bracket content degenerates to empty.
         assert_eq!(strip_path_component("[XX34b]"), None);
         assert_eq!(strip_path_component("1989"), None);
     }
 
     #[test]
     fn path_min_length_gate() {
-        // After stripping, a 1-char remainder is rejected as uninteresting.
         assert_eq!(strip_path_component("1989 - X"), None);
-        // 2 chars survives — edge case but harmless downstream.
         assert_eq!(strip_path_component("1989 - AB"), Some("AB".to_string()));
     }
 
@@ -897,7 +820,6 @@ mod tests {
 
     #[test]
     fn filename_strips_track_number() {
-        // Track-number prefix dropped; the rest kept as a single stem.
         assert_eq!(
             parse_filename_stem(Path::new("/m/01 - Back Cover.png")),
             vec!["Back Cover".to_string()],
@@ -906,7 +828,6 @@ mod tests {
 
     #[test]
     fn filename_rejects_generic_names() {
-        // `cover.jpg` — entirely generic.
         assert!(parse_filename_stem(Path::new("/m/cover.jpg")).is_empty());
         assert!(parse_filename_stem(Path::new("/m/Booklet-01.png")).is_empty());
         assert!(parse_filename_stem(Path::new("/m/disc 1.jpg")).is_empty());
@@ -920,7 +841,7 @@ mod tests {
         );
     }
 
-    // MARK: - catalog_numbers — single-letter-digit prefix (Phase 3)
+    // MARK: - catalog_numbers — single-letter-digit prefix
 
     #[test]
     fn catalogs_single_letter_digit_prefix() {
@@ -944,7 +865,7 @@ mod tests {
         );
     }
 
-    // MARK: - catalog_numbers — ZIP false positives (Phase 3)
+    // MARK: - catalog_numbers — ZIP false positives
 
     #[test]
     fn catalogs_zip_in_po_box_rejected() {
@@ -987,7 +908,7 @@ mod tests {
         );
     }
 
-    // MARK: - free_text — line-level filters (Phase 3)
+    // MARK: - free_text — line-level filters
 
     #[test]
     fn free_text_rejects_track_listing() {
@@ -1058,7 +979,7 @@ mod tests {
         );
     }
 
-    // MARK: - normalize (Phase 4)
+    // MARK: - normalize
 
     #[test]
     fn normalize_strips_diacritics() {
@@ -1109,7 +1030,7 @@ mod tests {
 
     #[test]
     fn cluster_groups_ocr_variants_together() {
-        // Three spellings of the same name — clean + two garbled.
+        // Three spellings of one name — clean plus two garbled.
         let lines = vec![
             artwork_line("/a.jpg", "Artist Alpha"),
             artwork_line("/b.jpg", "ARTST ALPA"), // char dropped
@@ -1117,8 +1038,6 @@ mod tests {
             artwork_line("/d.jpg", "Totally Different"),
         ];
         let clusters = cluster_lines(lines);
-        // At least the three "Artist Alpha" variants should cluster. We
-        // don't pin exact counts — just verify grouping behavior.
         let alpha_cluster = clusters
             .iter()
             .find(|c| c.members.len() >= 2)
@@ -1144,9 +1063,8 @@ mod tests {
         }
     }
 
-    /// Incremental clustering: two `cluster_lines_incremental` calls
-    /// produce the same cluster topology as a single all-at-once call.
-    /// This is what the service relies on for O(n) per-emission cost.
+    /// Two incremental calls produce the same clusters as one all-at-once call —
+    /// what lets the service re-classify only new lines per emission.
     #[test]
     fn cluster_incremental_matches_whole_pool() {
         let first = vec![
@@ -1216,7 +1134,6 @@ mod tests {
 
     #[test]
     fn pick_representative_enforces_min_length() {
-        // Very short OCR fragment should not win even if equal weight.
         let cluster = Cluster {
             normalized_centroid: "abc".to_string(),
             members: vec![
@@ -1229,8 +1146,8 @@ mod tests {
 
     #[test]
     fn pick_representative_falls_back_to_first_when_all_below_floor() {
-        // Every member is below the 4-char floor, so the ranking loop skips
-        // them all; the fallback must return the first member, not empty.
+        // Every member is under the 4-char floor, so the ranking loop skips them
+        // all; the fallback must return the first member, not an empty string.
         let cluster = Cluster {
             normalized_centroid: "ab".to_string(),
             members: vec![cue_line("ab"), cue_line("xy")],
@@ -1245,9 +1162,8 @@ mod tests {
             members: vec![member],
         };
 
-        // A CUE line scores 5 (>= FREE_TEXT_MIN_SCORE = 2); a lone artwork line
-        // scores 1 (below). When something clears the gate, only the gated
-        // survivors are returned — the weak cluster is dropped.
+        // A CUE line scores 5 (over FREE_TEXT_MIN_SCORE); a lone artwork line
+        // scores 1. Once anything clears the gate, the weak cluster is dropped.
         let gated = apply_free_text_cutoff(&[
             make("strong", cue_line("Strong Title")),
             make("weak", artwork_line("/a.jpg", "Weak Title")),
@@ -1261,12 +1177,10 @@ mod tests {
         assert_eq!(fallback, vec!["Weak Title".to_string()]);
     }
 
-    /// The plan's example `ARTIST NAME/ALBUM TITLE` vs `ALBUM TITLE` — the
-    /// earlier text argued we'd want "shortest wins" to drop the prefix.
-    /// In practice the two strings normalize to forms with Jaro-Winkler
-    /// similarity below the 0.85 clustering threshold, so they never end
-    /// up in the same cluster and the tie-break rule is moot. Pin that
-    /// assumption so we notice if thresholds or normalization change.
+    /// `ARTIST NAME/ALBUM TITLE` and `ALBUM TITLE` normalize to forms whose
+    /// Jaro-Winkler similarity is under the 0.85 threshold, so they never share a
+    /// cluster and `pick_representative`'s tie-break never has to choose between
+    /// them. Pinned so a change to the threshold or to `normalize` surfaces here.
     #[test]
     fn representative_prefix_and_title_land_in_different_clusters() {
         let prefix = normalize("ARTIST NAME/ALBUM TITLE");
@@ -1291,10 +1205,8 @@ mod tests {
         );
     }
 
-    /// Longest-wins is the intended tie-break: when the same name is
-    /// clustered together with an OCR-truncated variant, the clean full
-    /// form should win over the truncation. Both members share the same
-    /// source weight and case rank, so length is the deciding field.
+    /// Equal source weight and case rank, so length decides: the clean full form
+    /// beats the OCR-truncated variant of the same name.
     #[test]
     fn representative_longest_wins_on_ocr_truncation() {
         let cluster = Cluster {

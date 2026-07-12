@@ -34,9 +34,9 @@ type ProgressTx = mpsc::UnboundedSender<TransferProgress>;
 /// Read one release file's whole plaintext through coven's locality-aware read:
 /// the user's own file (a Local user-provided blob's external ref), coven's local
 /// store (a Local host-provided blob), or coven's cache/cloud for a Remote blob.
-/// Verifies `bytes.len() == file.file_size` so a short or zero read aborts the
-/// caller before it trusts the bytes (defense-in-depth — coven validates an
-/// external file's size and a torn cache file itself).
+/// Checks `bytes.len() == file.file_size` so a short or zero read aborts the
+/// caller before it trusts the bytes — a second check over coven's own, which
+/// validates an external file's size and a torn cache file.
 pub async fn read_release_file_bytes(
     file: &DbFile,
     mgr: &LibraryManager,
@@ -58,13 +58,9 @@ pub async fn read_release_file_bytes(
 /// operation.
 #[derive(Debug, Clone)]
 pub enum TransferProgress {
-    /// Operation started
     Started,
-    /// Operation reported determinate transfer progress.
     Progress { progress: DownloadTransferProgress },
-    /// Operation completed
     Complete { release_id: String },
-    /// Operation failed
     Failed { release_id: String, error: String },
 }
 

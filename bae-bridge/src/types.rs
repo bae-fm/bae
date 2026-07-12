@@ -18,9 +18,9 @@ pub enum BridgeDiscogsSaveOutcome {
     Rejected,
 }
 
-// Gated to `desktop` (not just non-mobile) because the sole caller,
-// `save_discogs_token`, is desktop-only; as an inherent fn (unlike the trait
-// impl it replaced) it would otherwise warn as dead code on non-desktop builds.
+// Gated to `desktop` (not just non-mobile): its sole caller,
+// `save_discogs_token`, is desktop-only, so an inherent fn would otherwise warn
+// as dead code elsewhere.
 #[cfg(feature = "desktop")]
 impl BridgeDiscogsSaveOutcome {
     pub(crate) fn from_core(outcome: bae_core::import::DiscogsSaveOutcome) -> Self {
@@ -233,11 +233,9 @@ pub fn bridge_transfer_action_key(action: BridgeReleaseStorageAction) -> String 
     action.transfer_loc_key().to_string()
 }
 
-/// Slim per-release summary: the projection list views render one row
-/// per release (storage manager, release pickers, etc.). The fat
-/// sibling is `BridgeRelease` — composition at the resolver layer in
-/// bae-core; the bridge mirrors each half as its own type so UI
-/// consumers can populate separate stores for summary vs. detail.
+/// Slim per-release row for list views (storage manager, release pickers). The
+/// fat sibling is `BridgeRelease`; the bridge mirrors each half as its own type
+/// so UI consumers can populate separate summary and detail stores.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeReleaseSummary {
     pub id: String,
@@ -949,11 +947,10 @@ pub fn bridge_import_phase_key(phase: BridgeImportPhase) -> String {
     phase.loc_key().to_string()
 }
 
-/// One pressing under a release-group card. The card carries the album's
-/// title, artist, and cover, so the pressing projection keeps only the
-/// pressing-distinguishing fields the row renders plus the id/source the
-/// import commit needs. Grouping happens in core, so the group id isn't
-/// surfaced here.
+/// One pressing under a release-group card. The card carries the album's title,
+/// artist, and cover, so this keeps only the pressing-distinguishing fields the
+/// row renders plus the id/source the import commit needs. Grouping happens in
+/// core, so the group id isn't surfaced.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeMetadataResult {
     pub source: BridgeMetadataSource,
@@ -1147,12 +1144,11 @@ impl BridgeLookupFailure {
 }
 
 /// Localization key for a lookup failure's user-facing line, or `None` for
-/// `Diagnostic` (which has no translated copy — the UI shows a generic line
-/// plus the opaque `detail`). `Provider` resolves to one of two keys: the
-/// status-bearing line when a code was observed, or a no-status fallback when
-/// not — so the UI never has to decide which message a missing status takes.
-/// One source of these keys for every platform; the UI resolves the key
-/// through its string catalog.
+/// `Diagnostic` (no translated copy — the UI shows a generic line plus the opaque
+/// `detail`). `Provider` resolves to the status-bearing line when a code was
+/// observed and a no-status fallback when not, so the UI never has to decide
+/// which message a missing status takes. One source of these keys for every
+/// platform.
 #[uniffi::export]
 pub fn bridge_lookup_failure_key(failure: BridgeLookupFailure) -> Option<String> {
     match failure {
@@ -1475,12 +1471,11 @@ pub struct BridgeArtworkAnalysis {
 /// both barcodes and text, so the signal-extraction pass decodes each image
 /// exactly once.
 ///
-/// Sync by design: `VNImageRequestHandler.perform` is synchronous, and the
-/// Rust side calls this from `tokio::task::spawn_blocking` so the async
-/// runtime isn't parked while Vision churns.
+/// Sync by design: `VNImageRequestHandler.perform` is synchronous, and the Rust
+/// side calls this from `tokio::task::spawn_blocking` so the async runtime isn't
+/// parked while Vision churns.
 ///
-/// First request/response callback in this bridge — the precedent for
-/// future ones. Contrast with `UiEventCallback`, which is fire-and-forget.
+/// Unlike `UiEventCallback` (fire-and-forget), this one returns a value.
 #[uniffi::export(callback_interface)]
 pub trait ArtworkAnalyzerCallback: Send + Sync {
     /// Detect barcodes and recognize text in one image decode. Empty
@@ -2867,15 +2862,20 @@ pub enum CloudKitError {
 // =========================================================================
 // Core <-> Bridge conversions
 //
-// Convention: every conversion is an associated function on the `Bridge*` type.
-// Core → bridge is `BridgeX::from_core(core_value) -> Self`; bridge → core is
-// `BridgeX::into_core(self) -> core::X`. Record converters exhaustively
-// destructure their core input(s) — no `..` in any struct or enum-variant
-// pattern — so a new bae-core field fails the build here instead of silently
-// never crossing the bridge. A field the bridge deliberately drops is named
+// Convention, crate-wide — conversions also sit above this banner, in
+// `handle.rs`, and in `bridge_utils.rs`: a conversion is an associated function
+// on the `Bridge*` type, `BridgeX::from_core(core) -> Self` and
+// `BridgeX::into_core(self) -> core::X`. Two exceptions: some `from_core`s take
+// extra bridge-only arguments (`BridgeReleaseDetail`,
+// `BridgeCandidateSearchResults`), and `LibraryError` crosses through a `From`
+// impl.
+//
+// Record converters exhaustively destructure their core input(s) — no `..` in
+// any struct or enum-variant pattern — so a new bae-core field fails the build
+// here instead of silently never crossing the bridge. A dropped field is named
 // explicitly (`field: _`), with a comment when the drop isn't obvious. Fields of
-// external-crate types (coven's `Config`/`CloudHomeConfig`, etc.) are exempt —
-// the bridge can't police a pinned crate's field list — and stay dotted reads.
+// external-crate types (coven's `Config`/`CloudHomeConfig`, …) are exempt — the
+// bridge can't police a pinned crate's field list — and stay dotted reads.
 // =========================================================================
 
 impl BridgeErrorCategory {
@@ -3036,8 +3036,8 @@ impl BridgeMembership {
     }
 }
 
-/// Only the OAuth sign-in and authorize flows still map a bare bridge provider
-/// back to core; gated so non-OAuth builds don't carry a dead mapping.
+/// Only the OAuth sign-in and authorize flows map a bare bridge provider back to
+/// core; gated so non-OAuth builds don't carry a dead mapping.
 #[cfg(feature = "oauth-providers")]
 impl BridgeCloudProvider {
     pub(crate) fn into_core(self) -> bae_core::config::CloudProvider {
@@ -3613,7 +3613,6 @@ impl BridgeResultProvenance {
     }
 }
 
-/// Convert a core identify state into its bridge mirror.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[cfg(feature = "desktop")]
 impl BridgeIdentifyState {
@@ -3756,10 +3755,8 @@ impl BridgeFileInfo {
 #[cfg(feature = "desktop")]
 impl BridgeArtworkFile {
     fn from_core(f: bae_core::import::folder_scanner::ScannedFile) -> Self {
-        // `file_id` is the scanned file's relative path and `path` its absolute
-        // path on disk; read them off the `BridgeFileInfo` (whose `name` /
-        // `local_path` carry exactly those) so the exhaustive destructure of
-        // `ScannedFile` lives solely in `BridgeFileInfo::from_core`.
+        // Read the file id (relative path) and disk path back off `BridgeFileInfo`
+        // so the exhaustive `ScannedFile` destructure lives only in its `from_core`.
         let file = BridgeFileInfo::from_core(f);
         let file_id = file.name.clone();
         let path = file.local_path.clone();
@@ -3787,11 +3784,9 @@ impl BridgeCueFlacPair {
             // referenced set drives export/import, not this preview row.
             audio_files: _,
         } = p;
-        // `cue_sheet.tracks.len()` is a derived count, not a carried field —
-        // `CueSheet` is a large parse product the bridge doesn't mirror.
+        // A derived count, not a carried field — `CueSheet` is a large parse
+        // product the bridge doesn't mirror.
         let track_count = cue_sheet.tracks.len() as u32;
-        // Compose BridgeFileInfo (which owns the ScannedFile destructure) for each
-        // side, then destructure the bridge value into this row's flat fields.
         let BridgeFileInfo {
             name: cue_name,
             size: cue_size,

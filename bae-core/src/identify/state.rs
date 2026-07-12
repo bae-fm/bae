@@ -1,14 +1,12 @@
 //! Pure state machine for the identify pipeline.
 //!
-//! Triangulation: disc-ID and barcode signals run in parallel. Per-signal
-//! progress is reported live so the UI can render both pipes side by side
-//! ("Computing disc-id ✓ · Looking up barcode 2 of 3..."). Once both
-//! signals settle, the reducer hands their results to `combine` and lands
-//! on a terminal state — `Found`, `Conflict`, or `NotFoundAnywhere`.
+//! Triangulation: the disc-ID and barcode signals run in parallel, each reporting
+//! progress live so the UI can render both side by side ("Computing disc-id ✓ ·
+//! Looking up barcode 2 of 3…"). Once both settle, the reducer hands their results
+//! to `combine` and lands on `Found`, `Conflict`, or `NotFoundAnywhere`.
 //!
-//! `step` takes the current state plus an event and returns the next state
-//! and a list of side effects for the service to perform. No I/O, no async,
-//! no references to the outside world.
+//! `step` takes a state and an event and returns the next state plus the side
+//! effects for the service to run. No I/O, no async, nothing outside itself.
 
 use super::combine::{
     catalog_matches_candidate, combine_results, CombineOutcome, GroupKey, ResultProvenance,
@@ -21,12 +19,8 @@ use crate::signals::{
 };
 use std::collections::HashSet;
 
-/// Per-signal progress for disc-ID. The UI reads this to render
-/// "Computing disc-id…", "Looking up disc-id…", or a final
-/// "Disc-id: N matches / no match / failed / skipped."
-///
-/// Settled variants (`Done`, `Skipped`, `Failed`) tell the reducer this
-/// signal pipe has finished — combine fires once both pipes are settled.
+/// The disc-ID signal's progress. `Done` / `Skipped` / `Failed` are the settled
+/// variants — combine fires once both signals are settled.
 #[derive(Clone, Debug)]
 pub enum DiscidProgress {
     Computing,
@@ -35,9 +29,8 @@ pub enum DiscidProgress {
         results: Vec<(MetadataResult, LibraryStatus)>,
         track_count: u32,
     },
-    /// No disc-ID artifacts (LOG/CUE) available. Carries the local track
-    /// count so barcode lookups can still report "N tracks here vs. M on
-    /// the matched release."
+    /// No LOG/CUE to derive a disc ID from. Still carries the local track count,
+    /// so a barcode match can report "N tracks here vs. M on the matched release."
     Skipped {
         track_count: u32,
     },
@@ -65,8 +58,8 @@ impl DiscidProgress {
     }
 }
 
-/// Per-signal progress for barcode lookup. `LookingUp` carries position +
-/// total so the UI can show "Looking up barcode 2 of 3."
+/// The barcode signal's progress. `LookingUp` carries position + total so the UI
+/// can show "Looking up barcode 2 of 3."
 #[derive(Clone, Debug)]
 pub enum BarcodeProgress {
     Scanning,
@@ -77,18 +70,16 @@ pub enum BarcodeProgress {
         remaining: Vec<String>,
     },
     Done {
-        /// Which barcode produced the results. `None` when the queue
-        /// drained without a match (or scanning yielded zero codes).
-        /// Carried so the conflict surface can identify the value to the
-        /// user — e.g., "Barcode 5051961234567 matched 1 release."
+        /// Which barcode produced the results; `None` when the queue drained
+        /// without a match, or held no codes at all. Carried so the UI can name
+        /// the value: "Barcode 5051961234567 matched 1 release."
         matched: Option<String>,
         results: Vec<(MetadataResult, LibraryStatus)>,
     },
     Failed {
         failure: LookupFailure,
     },
-    /// No artwork to scan. The signal pipe is "absent" rather than empty —
-    /// combine treats it the same as `Done { results: [] }`.
+    /// No barcode source at all. Combine treats it like `Done { results: [] }`.
     Skipped,
 }
 
@@ -109,8 +100,7 @@ impl BarcodeProgress {
         }
     }
 
-    /// Which barcode produced the matched results, if any. `None` for
-    /// other states or for `Done` queues that drained without a hit.
+    /// Which barcode produced the matched results, if any.
     pub fn matched_barcode(&self) -> Option<&str> {
         match self {
             BarcodeProgress::Done { matched, .. } => matched.as_deref(),
@@ -129,10 +119,8 @@ pub enum IdentifySource {
     Combined,
 }
 
-/// A signal the user has toggled off — excluded from triangulation. The disc
-/// ID and barcode are singletons; a catalog candidate is named by its value
-/// (there can be several). The reducer re-combines with the excluded signals
-/// masked.
+/// A signal the user has toggled off. The disc ID and barcode are singletons; a
+/// catalog candidate is named by its value, since there can be several.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum ExcludedSignal {
     Disc,
@@ -140,14 +128,13 @@ pub enum ExcludedSignal {
     Catalog(String),
 }
 
-/// Everything a post-settle state needs to re-derive its outcome when the user
-/// toggles a signal or re-runs the lookups — carried unchanged through every
-/// non-`Idle` state.
+/// Everything a settled state needs to re-derive its outcome when the user toggles
+/// a signal or re-runs — carried unchanged through every non-`Idle` state.
 ///
-/// The *inputs* (`disc_id`, `barcode_codes`, `catalogs`) drive the toolbar
-/// badge values and the `ReRun` re-dispatch. The settled per-signal *results*
-/// (`discid_results`, `barcode_results`, `matched_barcode`) let `SignalToggled`
-/// re-combine without re-fetching. `excluded` is preserved across snapshots.
+/// The inputs (`disc_id`, `barcode_codes`, `catalogs`) drive the toolbar badges and
+/// the `ReRun` re-dispatch; the settled results (`discid_results`,
+/// `barcode_results`, `matched_barcode`) let a toggle re-combine without
+/// re-fetching. `excluded` survives every new snapshot.
 #[derive(Clone, Debug)]
 pub struct SignalsContext {
     /// The disc-ID signal (value + its inherent `DiscToc` origin).
@@ -172,8 +159,8 @@ pub struct SignalsContext {
 }
 
 impl SignalsContext {
-    /// Seed an empty context — no signals known yet. Used on entry to
-    /// `Triangulating` before the first `SignalsUpdated`.
+    /// No signals known yet — the context on entry to `Triangulating`, before the
+    /// first `SignalsUpdated`.
     fn empty() -> Self {
         Self {
             disc_id: DiscIdSignal::Absent { track_count: 0 },
@@ -188,9 +175,8 @@ impl SignalsContext {
         }
     }
 
-    /// Refresh the signal *inputs* from a new `Signals` snapshot, preserving
-    /// the user's exclusions. Results are not touched here — they're recorded
-    /// as the lookups settle.
+    /// Take the inputs from a new snapshot, keeping the user's exclusions. Results
+    /// aren't touched — they're recorded as the lookups settle.
     fn refresh_inputs(&mut self, signals: &Signals) {
         self.disc_id = signals.disc_id.clone();
         self.barcode_codes = signals.barcode.codes().to_vec();
@@ -198,7 +184,6 @@ impl SignalsContext {
         self.track_count = signals.disc_id.track_count();
     }
 
-    /// Record the settled per-signal results, for re-combine on toggle.
     fn record_results(
         &mut self,
         discid_results: Vec<(MetadataResult, LibraryStatus)>,
@@ -212,8 +197,8 @@ impl SignalsContext {
         self.matched_barcode = matched_barcode;
     }
 
-    /// Catalog candidates minus the ones the user excluded — the filter
-    /// `combine_results` applies.
+    /// The catalog candidates the user hasn't excluded — what `combine_results`
+    /// filters by.
     fn active_catalogs(&self) -> Vec<SourcedValue> {
         self.catalogs
             .iter()
@@ -226,8 +211,7 @@ impl SignalsContext {
             .collect()
     }
 
-    /// The disc-ID results to feed combine — empty when the disc signal is
-    /// excluded.
+    /// The disc-ID results combine sees — empty when the signal is excluded.
     fn active_discid_results(&self) -> Vec<(MetadataResult, LibraryStatus)> {
         if self.excluded.contains(&ExcludedSignal::Disc) {
             Vec::new()
@@ -236,8 +220,7 @@ impl SignalsContext {
         }
     }
 
-    /// The barcode results to feed combine — empty when the barcode signal is
-    /// excluded.
+    /// The barcode results combine sees — empty when the signal is excluded.
     fn active_barcode_results(&self) -> Vec<(MetadataResult, LibraryStatus)> {
         if self.excluded.contains(&ExcludedSignal::Barcode) {
             Vec::new()
@@ -246,7 +229,6 @@ impl SignalsContext {
         }
     }
 
-    /// Flip a signal's exclusion: drop it if present, add it otherwise.
     fn toggle(&mut self, signal: ExcludedSignal) {
         if !self.excluded.remove(&signal) {
             self.excluded.insert(signal);
@@ -254,20 +236,17 @@ impl SignalsContext {
     }
 }
 
-/// The identify pipeline's current state for a single candidate.
+/// One candidate's identify state.
 ///
-/// Every state after `Idle` carries a [`SignalsContext`] — the inputs and
-/// settled results behind the toolbar — so the user can toggle a signal or
-/// re-run the lookups from any post-settle state, and the toolbar projection
-/// has the signal values it needs in every state.
+/// Every state but `Idle` carries a [`SignalsContext`], so the toolbar projection
+/// always has its signal values and the user can toggle or re-run from any settled
+/// state.
 #[derive(Clone, Debug)]
 pub enum IdentifyState {
     Idle,
 
-    /// Both signals running in parallel. Each progresses independently and
-    /// emits its own events; the reducer transitions to a terminal state
-    /// once both `discid` and `barcode` are settled (combine fires inside
-    /// `settle_if_ready`).
+    /// Both signals in flight. Each progresses independently; `settle_if_ready`
+    /// combines them into a terminal state once both are settled.
     Triangulating {
         discid: DiscidProgress,
         barcode: BarcodeProgress,
@@ -288,10 +267,9 @@ pub enum IdentifyState {
         context: SignalsContext,
     },
 
-    /// Signals disagree: empty intersection, or combined set spans multiple
-    /// groups. UI renders the per-signal sections (from `context`'s settled
-    /// results). The user can toggle a signal off — the reducer re-combines
-    /// over the surviving signals.
+    /// The signals disagree: an empty intersection, or a combined set spanning
+    /// several groups. The UI renders each signal's section from `context`'s
+    /// settled results; toggling one off re-combines over the rest.
     Conflict {
         context: SignalsContext,
     },
@@ -300,11 +278,9 @@ pub enum IdentifyState {
         context: SignalsContext,
     },
 
-    /// Nothing to look up: neither a disc-ID artifact (LOG/CUE) nor a barcode
-    /// source (artwork, CUE `CATALOG`) was present. Distinct from
-    /// `NotFoundAnywhere`, where signals ran and matched nothing — here there
-    /// was no signal to run, so the UI offers manual search. A folder with no
-    /// signals lands here.
+    /// Nothing to look up: no disc-ID artifact (LOG/CUE) and no barcode source
+    /// (artwork, CUE `CATALOG`). Distinct from `NotFoundAnywhere`, where signals
+    /// ran and matched nothing — here none ran, so the UI offers manual search.
     ManualOnly {
         track_count: u32,
         context: SignalsContext,
@@ -312,9 +288,8 @@ pub enum IdentifyState {
 }
 
 impl IdentifyState {
-    /// The carried `SignalsContext` for the states that own one.
-    /// `Idle` has no context. Lets `step`, toolbar projection, and signal
-    /// actions share one access path.
+    /// The carried context; `None` only for `Idle`. One access path shared by
+    /// `step`, the toolbar projection, and the signal actions.
     fn context(&self) -> Option<&SignalsContext> {
         match self {
             IdentifyState::Triangulating { context, .. }
@@ -326,10 +301,9 @@ impl IdentifyState {
         }
     }
 
-    /// Apply a signal toggle. During `Triangulating` the exclusion is only
-    /// recorded — the in-flight lookups keep running and the exclusion is
-    /// applied when they settle (via `active_*` in `re_derive`). From a settled
-    /// state, re-combine over the surviving signals in place.
+    /// Apply a signal toggle. Mid-`Triangulating` it is only recorded — the
+    /// in-flight lookups keep running, and `re_derive` applies the exclusion when
+    /// they settle. From a settled state, re-combine in place.
     fn with_toggled(self, signal: ExcludedSignal) -> IdentifyState {
         match self {
             IdentifyState::Triangulating {
@@ -355,10 +329,8 @@ impl IdentifyState {
         }
     }
 
-    /// Project the current state into the flat list of toolbar badges the UI
-    /// renders: the disc-ID badge, the barcode badge, then one badge per
-    /// catalog candidate. Each carries its value, origin, live state, and
-    /// whether the user has excluded it. `Idle` has no toolbar.
+    /// The flat badge list the UI renders: disc ID, barcode, then one per catalog
+    /// candidate. `Idle` has no toolbar.
     pub fn toolbar(&self) -> Vec<ToolbarSignal> {
         let Some(context) = self.context() else {
             return Vec::new();
@@ -372,9 +344,8 @@ impl IdentifyState {
         signals
     }
 
-    /// The disc-ID badge. Its value is the disc-ID hash; its state comes from
-    /// the live `DiscidProgress` while triangulating, else from the context's
-    /// settled disc-ID results.
+    /// State comes from the live `DiscidProgress` while triangulating, else from
+    /// the context's settled results.
     fn disc_badge(&self, context: &SignalsContext) -> ToolbarSignal {
         let state = match self {
             IdentifyState::Triangulating { discid, .. } => discid_progress_state(discid),
@@ -390,9 +361,8 @@ impl IdentifyState {
         }
     }
 
-    /// The barcode badge. Its value is the matched code (or the first code
-    /// when none matched yet); its origin comes from that code; its state
-    /// from the live `BarcodeProgress` while triangulating, else the context.
+    /// The badge shows the matched code, or the first one when nothing has matched
+    /// yet, and takes its origin from that code.
     fn barcode_badge(&self, context: &SignalsContext) -> ToolbarSignal {
         let code = context
             .matched_barcode
@@ -413,10 +383,8 @@ impl IdentifyState {
         }
     }
 
-    /// One catalog filter badge. Its state confirms how many of the currently
-    /// matched releases carry this catno (only `Found` has a settled matched
-    /// set; elsewhere the count is 0 — the candidate hasn't pinpointed
-    /// anything yet).
+    /// How many of the matched releases carry this catno. Only `Found` has a
+    /// settled match set, so every other state counts zero.
     fn catalog_badge(&self, catalog: &SourcedValue, context: &SignalsContext) -> ToolbarSignal {
         let count = match self {
             IdentifyState::Found { matches, .. } => matches
@@ -438,7 +406,6 @@ impl IdentifyState {
     }
 }
 
-/// Live disc-ID badge state from its in-flight progress.
 fn discid_progress_state(progress: &DiscidProgress) -> SignalState {
     match progress {
         DiscidProgress::Computing | DiscidProgress::LookingUp => SignalState::LookingUp,
@@ -450,7 +417,6 @@ fn discid_progress_state(progress: &DiscidProgress) -> SignalState {
     }
 }
 
-/// Live barcode badge state from its in-flight progress.
 fn barcode_progress_state(progress: &BarcodeProgress) -> SignalState {
     match progress {
         BarcodeProgress::Scanning | BarcodeProgress::LookingUp { .. } => SignalState::LookingUp,
@@ -462,8 +428,8 @@ fn barcode_progress_state(progress: &BarcodeProgress) -> SignalState {
     }
 }
 
-/// Settled disc-ID badge state from the disc-ID signal + its recorded results
-/// (used once the pipeline has left `Triangulating`).
+/// The disc-ID badge once the pipeline has left `Triangulating`: read off the
+/// signal itself plus its recorded results.
 fn settled_identity_state(
     disc_id: &DiscIdSignal,
     results: &[(MetadataResult, LibraryStatus)],
@@ -477,7 +443,6 @@ fn settled_identity_state(
     }
 }
 
-/// Settled barcode badge state from the context's recorded barcode results.
 fn barcode_settled_state(context: &SignalsContext) -> SignalState {
     if let Some(failure) = &context.barcode_failure {
         SignalState::Failed {
@@ -498,22 +463,20 @@ fn found_or_no_match(count: u32) -> SignalState {
     }
 }
 
-/// Events feeding the reducer. External triggers (`Started`, `Cancelled`,
-/// `SignalsUpdated`) plus completions of the lookup effects the service ran on
-/// the previous step.
+/// What feeds the reducer: the external triggers, plus the completions of the
+/// lookup effects the service ran on the previous step.
 #[derive(Debug, Clone)]
 pub enum IdentifyEvent {
-    /// Begin identifying. Enters `Triangulating` and waits for the first
-    /// `SignalsUpdated` — extraction owns scanning/OCR, not the reducer.
+    /// Begin. Enters `Triangulating` and waits for the first `SignalsUpdated` —
+    /// extraction owns scanning and OCR, not the reducer.
     Started,
     Cancelled,
 
-    /// Latest extracted signals for this candidate. The reducer dispatches the
-    /// disc-ID lookup (once the disc ID is `Computed`) and the barcode lookups
-    /// (once the barcode codes have `Settled`), and refreshes the catalog
-    /// filter from the text signal. Snapshots stream, so this is idempotent:
-    /// each signal drives its lookup exactly once (guarded by the pipe's
-    /// current progress).
+    /// The candidate's latest signals. The reducer dispatches the disc-ID lookup
+    /// once the disc ID is `Computed` and the barcode lookups once the codes have
+    /// `Settled`, and refreshes the catalog filter from every snapshot. Snapshots
+    /// stream, so this is idempotent: each signal's progress guards its own lookup
+    /// against being dispatched twice.
     SignalsUpdated {
         signals: Signals,
     },
@@ -541,46 +504,35 @@ pub enum IdentifyEvent {
         failure: LookupFailure,
     },
 
-    /// User toggled a signal in the toolbar — included or excluded it from
-    /// triangulation. The reducer flips the signal in `context.excluded` and
-    /// re-combines over the non-excluded signals, landing on whichever
-    /// terminal state results. Valid in every post-settle state and
-    /// `Conflict`.
+    /// The user included or excluded a signal. The reducer flips it in
+    /// `context.excluded` and re-combines over the rest.
     SignalToggled {
         signal: ExcludedSignal,
     },
 
-    /// User asked to replay the lookups. The reducer resets to `Triangulating`
-    /// and re-dispatches the disc-ID / barcode lookups from the retained
-    /// signals, preserving the user's exclusions. Valid in every post-settle
-    /// state and `Conflict`.
+    /// The user asked to replay the lookups. The reducer resets to `Triangulating`
+    /// and re-dispatches from the retained signals, keeping the exclusions.
     ReRun,
 }
 
-/// Side effects the service must perform — the two network lookups. Each
-/// finished effect feeds an `IdentifyEvent` back into `step`. Scanning, OCR,
-/// and disc-ID derivation belong to the extraction service, not here.
+/// The side effects the service performs — the two network lookups. Each one
+/// finishing feeds an `IdentifyEvent` back into `step`. Scanning, OCR, and
+/// disc-ID derivation belong to the extraction service, not here.
 #[derive(Debug, Clone)]
 pub enum Effect {
     LookupDiscid { disc_id: String, track_count: u32 },
     LookupBarcode { barcode: String },
 }
 
-/// Drive the state machine one step.
-///
-/// Terminal states ignore further events except `Cancelled`, which always
-/// resets to `Idle`.
+/// Drive the state machine one step. `Cancelled` always resets to `Idle`.
 pub fn step(state: IdentifyState, event: IdentifyEvent) -> (IdentifyState, Vec<Effect>) {
     if matches!(event, IdentifyEvent::Cancelled) {
         return (IdentifyState::Idle, vec![]);
     }
 
-    // ── Toggle a signal or re-run ──────────────────────────────────────
-    // Both act on the carried `SignalsContext`, uniformly across every state
-    // that owns one. A toggle during triangulation only records the exclusion
-    // (the lookups keep running; it's applied when they settle); from a settled
-    // state it re-combines in place. `ReRun` is ignored mid-triangulation — the
-    // lookups are already in flight.
+    // Toggle and re-run both act on the carried `SignalsContext`, so they're
+    // handled once here rather than per state. `ReRun` is ignored during
+    // triangulation — those lookups are already in flight.
     match &event {
         IdentifyEvent::SignalToggled { signal } if state.context().is_some() => {
             return (state.with_toggled(signal.clone()), vec![]);
@@ -594,8 +546,6 @@ pub fn step(state: IdentifyState, event: IdentifyEvent) -> (IdentifyState, Vec<E
     }
 
     match (state, event) {
-        // ── Started: enter triangulation and await the first signals ────
-        // Extraction owns scanning/OCR; the reducer reacts to `SignalsUpdated`.
         (IdentifyState::Idle, IdentifyEvent::Started) => (
             IdentifyState::Triangulating {
                 discid: DiscidProgress::Computing,
@@ -605,7 +555,6 @@ pub fn step(state: IdentifyState, event: IdentifyEvent) -> (IdentifyState, Vec<E
             vec![],
         ),
 
-        // ── Signals snapshot drives the lookups + catalog refinement ────
         (
             IdentifyState::Triangulating {
                 discid,
@@ -654,10 +603,9 @@ pub fn step(state: IdentifyState, event: IdentifyEvent) -> (IdentifyState, Vec<E
             context,
         }),
 
-        // ── Barcode lookup iteration (first match wins) ────────────────
-        // First match wins — the barcode signal is "Done with N results."
-        // Stale responses (for_barcode != current) are dropped via the
-        // guard.
+        // ── Barcode lookup iteration ───────────────────────────────────
+        // First match wins. The `for_barcode == current` guard on each arm drops
+        // a stale response from a code the queue has already moved past.
         (
             IdentifyState::Triangulating {
                 discid,
@@ -683,8 +631,8 @@ pub fn step(state: IdentifyState, event: IdentifyEvent) -> (IdentifyState, Vec<E
             context,
         }),
 
-        // A miss advances the queue. The barcode phase only settles empty
-        // once every candidate code has been tried.
+        // A miss advances the queue: the barcode signal settles empty only once
+        // every code has been tried.
         (
             IdentifyState::Triangulating {
                 discid,
@@ -748,24 +696,21 @@ pub fn step(state: IdentifyState, event: IdentifyEvent) -> (IdentifyState, Vec<E
             context,
         }),
 
-        // Unhandled event in Triangulating (stale barcode response, or an
-        // event this state doesn't act on) — keep state.
+        // An event Triangulating doesn't act on — a stale barcode response, say.
         (state @ IdentifyState::Triangulating { .. }, _) => (state, vec![]),
 
-        // Unknown (state, event) pair — state unchanged, no effects.
+        // Any other (state, event) pair leaves the state alone.
         (state, _) => (state, vec![]),
     }
 }
 
-/// Fold the latest `Signals` snapshot into the disc-ID and barcode pipes.
+/// Fold the latest snapshot into the two signals.
 ///
-/// Streaming-idempotent: each pipe acts on its signal exactly once, guarded by
-/// its current progress. The disc ID drives `LookupDiscid` only while the pipe
-/// is still `Computing`; the barcode queue is seeded only while still
-/// `Scanning` and only once the codes have `Settled` (so the first-match-wins
-/// iteration runs over a stable, complete queue, exactly as before). The
-/// catalog filter is refreshed from every snapshot. If a snapshot dispatches a
-/// lookup the pipeline can't settle yet; otherwise we check for settle.
+/// Idempotent under streaming, because each signal's own progress guards it: the
+/// disc ID dispatches `LookupDiscid` only while still `Computing`, and the barcode
+/// queue is seeded only while still `Scanning` *and* once the codes have `Settled`
+/// — so first-match-wins iterates over a complete, stable queue. The catalog filter
+/// refreshes from every snapshot.
 fn apply_signals(
     discid: DiscidProgress,
     barcode: BarcodeProgress,
@@ -777,7 +722,7 @@ fn apply_signals(
 
     let discid = match (discid, &signals.disc_id) {
         (DiscidProgress::Computing, signal) => start_discid_progress(signal, &mut effects),
-        // Already past Computing — the disc-ID lookup is in flight or settled.
+        // Past Computing: the lookup is in flight or settled.
         (discid, _) => discid,
     };
 
@@ -796,7 +741,7 @@ fn apply_signals(
                 failure: failure.clone(),
             }
         }
-        // Still scanning (codes not settled), or already iterating/settled.
+        // Codes not settled yet, or already iterating/settled.
         (barcode, _) => barcode,
     };
 
@@ -806,8 +751,7 @@ fn apply_signals(
         context,
     };
 
-    // A dispatched lookup means the pipeline can't have settled this step;
-    // otherwise both pipes may now be settled — check.
+    // A dispatched lookup means nothing can have settled this step.
     if effects.is_empty() {
         settle_if_ready(next)
     } else {
@@ -863,9 +807,8 @@ fn start_barcode_progress(
     }
 }
 
-/// Check whether both signals have settled. If so, record the per-signal
-/// results into the context and combine into a terminal state. Otherwise stay
-/// in `Triangulating`.
+/// Once both signals have settled, record their results into the context and
+/// combine into a terminal state. Until then, stay in `Triangulating`.
 fn settle_if_ready(state: IdentifyState) -> (IdentifyState, Vec<Effect>) {
     let IdentifyState::Triangulating {
         discid,
@@ -899,8 +842,8 @@ fn settle_if_ready(state: IdentifyState) -> (IdentifyState, Vec<Effect>) {
         barcode.matched_barcode().map(str::to_string),
     );
 
-    // No signal ran at all — no LOG/CUE for disc-ID, no artwork/CATALOG for
-    // barcode. Offer manual search rather than reporting "found nothing."
+    // Neither signal had anything to run. Offer manual search rather than claim
+    // we looked and found nothing.
     if matches!(discid, DiscidProgress::Skipped { .. })
         && matches!(barcode, BarcodeProgress::Skipped)
     {
@@ -916,13 +859,12 @@ fn settle_if_ready(state: IdentifyState) -> (IdentifyState, Vec<Effect>) {
     (re_derive(context), vec![])
 }
 
-/// Re-combine over the context's non-excluded signals and lift the outcome
-/// into the resulting state. The single combine path for triangulation
-/// settle, signal-toggle, and re-run-completion — they all hand off here once
-/// the per-signal results are recorded in the context.
+/// Re-combine over the non-excluded signals and lift the outcome into a state. The
+/// one combine path: triangulation settle, signal toggle, and re-run completion all
+/// arrive here once the results are in the context.
 ///
-/// Both-empty (whether the lookups found nothing, or the user excluded the
-/// signals that did) lands on `NotFoundAnywhere` via `combine_results`.
+/// Both sides empty — because the lookups found nothing, or because the user
+/// excluded the signals that did — lands on `NotFoundAnywhere`.
 fn re_derive(context: SignalsContext) -> IdentifyState {
     let discid_results = context.active_discid_results();
     let barcode_results = context.active_barcode_results();
@@ -952,10 +894,10 @@ fn re_derive(context: SignalsContext) -> IdentifyState {
     }
 }
 
-/// Reset to `Triangulating` and re-dispatch the lookups from the retained
-/// signals, preserving the user's exclusions.
+/// Reset to `Triangulating` and re-dispatch the lookups from the retained signals,
+/// keeping the user's exclusions.
 fn rerun(mut context: SignalsContext) -> (IdentifyState, Vec<Effect>) {
-    // A fresh run discards prior results; they're recomputed as lookups land.
+    // The prior results go; the new lookups replace them as they land.
     context.discid_results = Vec::new();
     context.barcode_results = Vec::new();
     context.barcode_failure = None;
@@ -982,9 +924,8 @@ fn rerun(mut context: SignalsContext) -> (IdentifyState, Vec<Effect>) {
     }
 }
 
-/// Track count is whichever the disc-ID phase reported. Disc-ID's resolution
-/// always carries the local count; barcode reports zero if disc-ID was
-/// `Skipped` without one, but in practice every entry path sets it.
+/// The track count is whatever the disc-ID signal reported — every one of its
+/// settled variants carries the local count, whether or not a disc ID was derived.
 fn settled_track_count(discid: &DiscidProgress) -> u32 {
     match discid {
         DiscidProgress::Done { track_count, .. } => *track_count,
@@ -999,8 +940,8 @@ fn source_for_found(discid_had_results: bool, barcode_had_results: bool) -> Iden
         (true, true) => IdentifySource::Combined,
         (true, false) => IdentifySource::Discid,
         (false, true) => IdentifySource::Barcode,
-        // Found requires at least one result by construction. The only way
-        // here is a logic bug upstream.
+        // `Found` carries at least one result by construction, so reaching this is
+        // a logic bug upstream.
         (false, false) => unreachable!("Found with no results from either signal"),
     }
 }

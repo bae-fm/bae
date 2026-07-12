@@ -24,20 +24,17 @@ use export::{default_export_filename_template, default_export_presets};
 
 pub const MCP_DEFAULT_PORT: u16 = 47777;
 
-/// Cloud home provider selection. bae uses coven's enum directly — same
-/// variants, same serialization, same `needs_oauth` — rather than maintaining a
-/// duplicate it would have to keep mapping back and forth.
+/// Cloud home provider selection.
 pub use coven::CloudProvider;
 
-/// Cloud home settings (provider + per-provider fields). bae uses coven's type
-/// directly — same fields, extracted from bae — instead of a parallel copy.
+/// Cloud home settings (provider + per-provider fields).
 pub use coven::CloudHomeConfig;
 
-/// How a cloud home stores its objects: opaque (encrypted, obfuscated blob
-/// paths) or browsable (stored in the clear at readable paths). The host picks
-/// this when creating a cloud home; it drives both encryption-at-rest and the
-/// blob-path scheme. Not access control — the provider's own credentials gate
-/// the bucket either way; this is only about whether what's stored is legible.
+/// How a cloud home stores its objects: opaque (encrypted, obfuscated blob paths)
+/// or browsable (in the clear, at readable paths). Chosen when the home is
+/// created; drives both encryption-at-rest and the blob-path scheme. Not access
+/// control — the provider's credentials gate the bucket either way; this only
+/// decides whether what's stored is legible.
 pub use coven::HomeStorage;
 
 /// The validation state of a stored Discogs API key. Only carried when a key
@@ -175,8 +172,6 @@ impl Config {
     }
 }
 
-/// Configuration errors. bae uses coven's enum directly — identical, and it was
-/// extracted from bae.
 pub use coven::ConfigError;
 
 /// bae's application directory (`~/.bae`). The base coven's restore/join build
@@ -187,11 +182,10 @@ pub fn bae_dir() -> Result<std::path::PathBuf, ConfigError> {
         .join(".bae"))
 }
 
-/// Deserialize an `Option<T>` field that must be present in the source, even
-/// when its value is `null`. Plain `Option<T>` fields deserialize a missing key
-/// as `None`; this requires the key to appear so a config file that omits it
-/// fails to load loudly rather than silently defaulting to `None`. An explicit
-/// `null` still deserializes to `None`.
+/// Deserialize an `Option<T>` whose key must be present, even when its value is
+/// `null`. A plain `Option<T>` reads a missing key as `None`; this fails the load
+/// instead, so a config file that omits the key is loud rather than silently
+/// defaulted. An explicit `null` still reads as `None`.
 fn deserialize_some<'de, T, D>(deserializer: D) -> Result<Option<T>, D::Error>
 where
     T: Deserialize<'de>,
@@ -247,8 +241,7 @@ pub struct ConfigYaml {
     /// Local automation server configuration.
     pub mcp: McpConfig,
     /// Cloud home provider + per-provider settings. Flattened so the on-disk
-    /// keys sit at the top level. bae uses coven's type — same fields, extracted
-    /// from bae — instead of a parallel copy it would map back and forth.
+    /// keys sit at the top level.
     #[serde(flatten)]
     pub cloud_home: CloudHomeConfig,
 }
@@ -316,10 +309,10 @@ pub struct LibraryInfo {
 
 /// Application configuration.
 ///
-/// Holds coven's sync/cloud config (`inner`) plus bae's own fields (Discogs).
-/// `Deref`/`DerefMut` expose the coven fields/methods directly, so
-/// `config.library_id`, `config.cloud_home.provider = …`,
-/// `config.sync_enabled(…)` all work unchanged.
+/// Holds coven's sync/cloud config (`inner`) plus bae's own fields.
+/// `Deref`/`DerefMut` expose coven's fields directly, so `config.store_id`,
+/// `config.device_id`, and `config.cloud_home.provider = …` read and write
+/// through to `inner`.
 #[derive(Clone, Debug)]
 pub struct Config {
     /// Sync/cloud config coven owns — embedded, not re-declared.
@@ -512,7 +505,6 @@ fn discover_libraries_from_bae_dir(
         })
         .collect();
 
-    // Sort: active first, then by name/id
     libraries.sort_by(|a, b| {
         b.is_active
             .cmp(&a.is_active)
@@ -605,11 +597,11 @@ impl ConfigHandle {
     }
 }
 
-/// Rename a library by id without loading it into memory: locate its
-/// directory, read its `config.yaml`, replace `library_name`, write
-/// back. Used by `LibraryManager::rename_library` for libraries that
-/// aren't the currently-active one (where the reactive `ConfigState`
-/// handles the rename through its normal save path).
+/// Rename a library by id without loading it into memory: locate its directory,
+/// read its `config.yaml`, replace `library_name`, write back. Used by
+/// `LibraryManager::rename_library` for libraries that aren't the active one —
+/// the active one renames through [`ConfigHandle::rename_library`], so its
+/// subscribers see the change.
 pub fn rename_inactive_library(
     bae_dir: &std::path::Path,
     library_id: &str,

@@ -1,11 +1,12 @@
 use super::*;
 
 impl PlaybackService {
-    /// Emit queue update to all subscribers
+    /// The common tail of every queue mutation: reconcile the side-pause and the
+    /// preload against the new queue, emit it, and persist.
     pub(super) async fn on_queue_mutated(&mut self) {
-        // A queue change can invalidate which track a side-pause resumes into, so
-        // forget the side-pause (demote to a plain manual pause) without emitting
-        // — the UI keeps showing the paused state it last saw.
+        // The mutation may have invalidated which track a side-pause resumes into,
+        // so forget the side-pause (demote to a plain manual pause) without
+        // emitting — the UI keeps showing the paused state it last saw.
         self.demote_side_pause_to_manual();
         self.refresh_preload_for_queue_front().await;
         self.emit_queue_update();

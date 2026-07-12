@@ -5,10 +5,8 @@
 use super::*;
 use crate::db::{DbReleaseStorageSummary, DbStorageRow};
 
-/// Resolved per-release storage summary for the Storage Manager view.
-/// Produced by `LibraryManager` from `DbReleaseStorageSummary`: derives
-/// `storage_state` from `releases.remote` and this device's
-/// `release_local_copy` row. The UI formats `total_size` for the locale.
+/// Resolved per-release storage summary for the Storage Manager view. The UI
+/// formats `total_size` for the locale.
 #[derive(Debug, Clone)]
 pub struct ReleaseStorageSummary {
     pub release_id: String,
@@ -36,12 +34,11 @@ pub struct ReleaseStorageSummary {
 }
 
 impl ReleaseStorageSummary {
-    /// Produces a resolved `ReleaseStorageSummary` from a raw
-    /// `DbReleaseStorageSummary`: derives `storage_state` from `remote` and `pinned`
-    /// (the caller asks coven's cache whether the release's blobs are pinned). The raw
-    /// `primary_release_id` comes from SQL's `COALESCE(a.primary_release_id,
-    /// <first release id>)` and is non-null by construction: every album has at
-    /// least one release (enforced by `delete_release`).
+    /// `storage_state` derives from `remote` alone; `pinned` is the orthogonal
+    /// coven-cache property the caller reads separately. The raw
+    /// `primary_release_id` comes from SQL's `COALESCE(a.primary_release_id, <first
+    /// release id>)`, non-null by construction: every album has at least one
+    /// release, enforced by `delete_release`.
     pub(crate) fn from_raw(
         raw: DbReleaseStorageSummary,
         has_cloud_home: bool,
@@ -67,10 +64,8 @@ impl ReleaseStorageSummary {
     }
 }
 
-/// One row on the Storage Manager view: a release paired with its parent
-/// album. The UI normalizes the shape into two slices (releases +
-/// summaries) at ingest — rendering joins from the release to the album
-/// at render time.
+/// One row on the Storage Manager view: a release with its parent album. The UI
+/// splits it into two slices at ingest and re-joins at render time.
 #[derive(Debug, Clone)]
 pub struct StorageRow {
     pub release: ReleaseSummary,
@@ -78,11 +73,9 @@ pub struct StorageRow {
 }
 
 impl StorageRow {
-    /// Resolve a raw storage-page row: releases and their parent albums
-    /// arrive pre-joined from SQL; each half maps to its summary projection.
-    /// `resolve_cover` maps an image id (the release's own id, and the album's
-    /// primary release id) to its cover reference; it serves both halves so the
-    /// release row carries its own art and the album carries the primary's.
+    /// The release and its album arrive pre-joined from SQL; each half maps to its
+    /// own summary projection. `resolve_cover` serves both, so the release row
+    /// carries its own art and the album carries its primary release's.
     pub(crate) fn from_raw(
         raw: DbStorageRow,
         has_cloud_home: bool,
@@ -103,17 +96,14 @@ impl StorageRow {
     }
 }
 
-/// One page of storage rows with the total count so paginated list
-/// machinery knows where the end is. `total_count` reflects the filtered
-/// subset, not the full library.
+/// One page of storage rows. `total_count` is of the *filtered* subset, not the
+/// whole library — it's what tells the paginated list where the end is.
 #[derive(Debug, Clone)]
 pub struct StoragePage {
     pub rows: Vec<StorageRow>,
     pub total_count: u64,
 }
 
-/// Field the Storage Manager can sort on. Mirrors the columns
-/// `StorageManagerView` renders today.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StorageSortField {
     AlbumTitle,
@@ -129,22 +119,20 @@ pub enum StorageSortDirection {
     Descending,
 }
 
-/// A single sort criterion for `get_storage_page`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct StorageSort {
     pub field: StorageSortField,
     pub direction: StorageSortDirection,
 }
 
-/// Filter applied to the Storage Manager list. Mirrors the four
-/// mutually-exclusive filter chips the UI shows today.
+/// The Storage Manager's filter chips, which are mutually exclusive.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StorageFilter {
     All,
-    /// Only local releases (files live outside the library directory).
+    /// Files live outside the library directory.
     Local,
-    /// Only remote releases (files stored by the library).
+    /// Files are stored by the library.
     Remote,
-    /// Only releases with at least one file pending cloud upload.
+    /// At least one file is pending cloud upload.
     Uploading,
 }

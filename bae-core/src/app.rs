@@ -1,9 +1,9 @@
 //! Composition root: builds and starts the whole application for a library and
-//! hands back a [`RunningApp`]. Shared by the Rust frontends that wrap it through
-//! the uniffi bridge (`bae-bridge`, via its `AppHandle`). Keeping the wiring here
-//! means there is one place that opens the DB, unlocks encryption, starts sync,
-//! playback, and (on desktop) the import/identify/extraction services, and wires
-//! the UI event bus — no per-frontend duplicate to drift.
+//! hands back a [`RunningApp`]. The frontends reach it through the uniffi bridge
+//! (`bae-bridge`, via its `AppHandle`). One place opens the DB, unlocks
+//! encryption, starts sync, playback, and (on desktop) the import/identify/
+//! extraction services, and wires the UI event bus — no per-frontend copy to
+//! drift.
 
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -95,13 +95,10 @@ fn bootstrap_on_thread(
     diagnostics: DiagnosticsConfig,
     cloudkit_ops: Option<crate::CloudKitOpsRef>,
 ) -> Result<RunningApp, BootstrapError> {
-    // Building the sync manager (loading keys, opening the synced DB) and
-    // `block_on`-ing the async setup uses a deep stack — especially in debug
-    // builds, where async state machines aren't collapsed. Callers may invoke us
-    // from small-stack threads (Swift cooperative Tasks, Android coroutine
-    // workers; ~0.5 MB), which overflow and crash ("Thread stack size
-    // exceeded"). Run the whole thing on a thread with a generous stack and hand
-    // the result back.
+    // Building the sync manager and `block_on`-ing the async setup uses a deep
+    // stack, especially in debug builds. Callers may invoke us from small-stack
+    // threads (Swift cooperative Tasks, Android coroutine workers; ~0.5 MB), which
+    // overflow there — so run the whole thing on a thread with a large stack.
     std::thread::Builder::new()
         .name("bae-bootstrap".to_string())
         .stack_size(32 * 1024 * 1024)
@@ -131,10 +128,8 @@ fn bootstrap_inner(
     diagnostics: DiagnosticsConfig,
     cloudkit_ops: Option<crate::CloudKitOpsRef>,
 ) -> Result<RunningApp, BootstrapError> {
-    // Composition root for the injected wall clock + id source. Production wires
-    // the real implementations; both are passed down to the data layer. Built
-    // before `load_bootstrap_config` so the device-id auto-gen reads from the
-    // injected source too.
+    // The injected wall clock + id source, built before `load_bootstrap_config` so
+    // the device-id auto-generation draws from the injected source too.
     let clock: ClockRef = Arc::new(SystemClock);
     let ids: IdRef = Arc::new(UuidProvider);
 
@@ -151,8 +146,7 @@ fn bootstrap_inner(
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .worker_threads(2)
         // The sync cycle (snapshot creation, changeset apply) runs on these
-        // workers and is deep in debug builds; the default 2 MB stack can
-        // overflow. Give them room.
+        // workers and overflows the default 2 MB stack in debug builds.
         .thread_stack_size(16 * 1024 * 1024)
         .enable_all()
         .build()
@@ -169,9 +163,7 @@ fn bootstrap_inner(
     // Resolve the encryption service only when this library already has a key on
     // this device — a returning user with a configured provider. A local-only
     // library has no key and needs none; encryption is created lazily, only when a
-    // provider is actually connected (`ensure_sync_manager_and_start`). The stamper
-    // above is already in place regardless, so local imports write synced rows
-    // without any key.
+    // provider is actually connected (`ensure_sync_manager_and_start`).
     //
     // The locked case: encryption was set up but the keyring lacks the key on this
     // device (OS keychain wiped, fresh install with config preserved). Minting a
@@ -232,11 +224,11 @@ fn bootstrap_inner(
         .block_on(library_manager.configure_cache_budgets())
         .map_err(|e| BootstrapError::Database(e.to_string()))?;
 
-    // Now that the manager owns the outbox in-flight set and event channel, build
-    // and start the sync manager (if unlocked) so the upload observer shares
-    // them. Must precede `library_manager.start()`, which subscribes to the sync
-    // loop. The database already holds the seeded `_updated_at` stamper from
-    // `open` above; building the manager here only wires the cloud loop.
+    // Build and start the sync manager (if unlocked) here: after the manager owns
+    // the outbox in-flight set and event channel, so the upload observer shares
+    // them, and before `library_manager.start()`, which subscribes to the sync
+    // loop. `open` above already made the DB write sync-shaped rows, so a
+    // key-less library still imports; this only wires the cloud loop.
     if let Some(enc) = pending_enc {
         // Opaque home, unlocked: build the sync manager with the library key.
         runtime
@@ -250,13 +242,12 @@ fn bootstrap_inner(
             .map_err(|e| BootstrapError::Database(e.to_string()))?;
     }
 
-    // Forward the sync loop's row changes + errors as library/UI events. This is
-    // the heart of "sync from cloud" on every platform: the synced DB drives the
-    // UI.
+    // Forward the sync loop's row changes + errors as library/UI events: the
+    // synced DB is what drives the UI on every platform.
     library_manager.start();
 
-    // The in-core cpal/ffmpeg audio engine. Runs on every platform: cpal drives
-    // the sink on desktop and iOS, AAudio on Android.
+    // The in-core cpal/ffmpeg audio engine. cpal drives the sink on desktop and
+    // iOS, AAudio on Android.
     let playback_handle = PlaybackService::start(
         library_manager.clone(),
         runtime.handle().clone(),
@@ -313,7 +304,7 @@ fn bootstrap_inner(
     // library that opens. It advances only over a fully-realized open: written
     // after every fallible step above has succeeded, and never for a locked
     // library — cancelling the unlock screen must leave the previously-active
-    // library in charge. A successful unlock re-runs bootstrap unlocked, which
+    // library in charge. A successful unlock re-runs bootstrap unlocked and
     // advances the pointer then.
     if advance_active_pointer {
         config_handle

@@ -1,17 +1,16 @@
 //! Shared release intermediate representation and the single assembler.
 //!
-//! All three import mappers (file tags, MusicBrainz, Discogs) parse their
-//! source into a [`ReleaseIr`] — an ordered, pre-id, pre-dedup description of
-//! what the source said — and hand it to [`assemble_parsed_album`], which owns
-//! artist-pool dedup, per-side numbering, junction-row emission, and DB-row
-//! construction. The IR draws the boundary between "what the source claims" and
-//! "which rows we mint": every [`ArtistRef`] is an unresolved reference, and the
-//! assembler resolves each one against a single artist pool.
+//! All three import mappers (file tags, MusicBrainz, Discogs) parse their source
+//! into a [`ReleaseIr`] — an ordered, pre-id, pre-dedup description of what the
+//! source said — and hand it to [`assemble_parsed_album`], which owns artist-pool
+//! dedup, per-side numbering, junction-row emission, and DB-row construction.
+//! The IR is the boundary between "what the source claims" and "which rows we
+//! mint": every [`ArtistRef`] is an unresolved reference the assembler resolves
+//! against one artist pool.
 //!
-//! Per-track events are ordered because that order is observable output:
-//! [`ParsedAlbum::artists`] insertion order, junction-row order, and id-mint
-//! order all follow the event stream. The mappers preserve each source's exact
-//! discovery order when they build the IR.
+//! Per-track event order is observable output — [`ParsedAlbum::artists`]
+//! insertion order, junction-row order, and id-mint order all follow it — so the
+//! mappers preserve each source's exact discovery order when building the IR.
 
 use crate::db::{
     DbAlbum, DbAlbumArtist, DbArtist, DbRelease, DbReleaseArtistRole, DbTrack, DbTrackArtist,
@@ -149,11 +148,11 @@ pub(crate) struct ReleaseIr {
     pub identities: Vec<ReleaseIdentity>,
 }
 
-/// 1-based position of each element within its side, counting every element in
-/// input order (sides may interleave; the counter is per distinct side value).
-/// The single per-side numbering implementation, shared by the assembler and
-/// `shape_user_edit_from_search_detail` so the commit plane and the editor-seed
-/// plane compute numbers with identical code over the same side sequences.
+/// 1-based position of each element within its side, counting in input order
+/// (sides may interleave; the counter is per distinct side value). The one
+/// per-side numbering implementation, shared by the assembler and
+/// `shape_user_edit_from_search_detail` so the commit and editor-seed paths can
+/// never disagree.
 pub(crate) fn per_side_positions<S: Copy + Eq + std::hash::Hash>(
     sides: impl IntoIterator<Item = S>,
 ) -> Vec<i32> {
@@ -399,8 +398,7 @@ pub(crate) fn assemble_parsed_album(
 ) -> ParsedAlbum {
     let now = clock.now();
 
-    // Release-level artists: primary then additional, minted in order, no
-    // dedup (matches every mapper's release-credit loop).
+    // Release-level artists: primary then additional, minted in order, no dedup.
     let mut artists: Vec<DbArtist> = Vec::new();
     push_artist(&mut artists, &ir.primary_artist, ids, now);
     for artist_ref in &ir.additional_artists {
@@ -431,8 +429,8 @@ pub(crate) fn assemble_parsed_album(
         remote: false,
         source_folder_name: None,
         content_hash: None,
-        // Album loudness is measured in `build_audio_formats` and written to the
-        // release row in the finalize transaction, not here.
+        // Album loudness is measured by `loudness::measure_loudness` and stamped
+        // onto the release row by `run_import`, not here.
         album_loudness_lufs: None,
         album_peak_linear: None,
         created_at: now,

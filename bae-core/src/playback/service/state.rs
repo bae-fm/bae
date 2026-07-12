@@ -262,7 +262,6 @@ impl PlaybackService {
             PlaybackProgress::RepeatModeChanged { mode: repeat },
         );
 
-        // Volume + mute.
         self.audio_output.set_volume(parsed.volume);
         emit_progress(
             &self.progress_tx,
@@ -302,17 +301,15 @@ impl PlaybackService {
             )
             .await;
 
-            // Emit the position we restored to as a `Seeked` so progress subscribers
-            // can position their display. `None` means none was captured — the
-            // track's start (0).
+            // Emit the restored position as a `Seeked` so subscribers position their
+            // display. No saved position means the track's start.
             let restored_pos = parsed.position_ms.unwrap_or(0);
             self.emit_position_display(restored_pos, track_id);
         }
 
-        // Write the reconciled state back: dropping a dead context or
-        // library-deleted tracks corrected the in-memory queue, so persist makes
-        // that correction durable now (or clears the row if nothing is playing)
-        // rather than leaving the saved row stale until the next change.
+        // Dropping a dead context or library-deleted tracks corrected the in-memory
+        // queue: make that correction durable now (or clear the row if nothing is
+        // playing) rather than leaving the saved row stale until the next change.
         self.persist_playback_state().await;
 
         info!("Playback state restored");
@@ -386,15 +383,13 @@ impl PlaybackService {
     /// The log is the never-mask escape hatch — a write failure is recorded, not
     /// conflated with "nothing was playing".
     pub(super) async fn persist_playback_state(&mut self) {
-        // Every call is a fresh write of the row (or its clearing), so it
-        // resets the periodic per-tick throttle in `handle_position_event` —
-        // including the persist a track change already does at play/gapless-
-        // advance time, which is exactly why a new track's first periodic
-        // write waits a full second rather than firing immediately.
+        // Every call writes (or clears) the row, so it resets the per-tick throttle
+        // in `handle_position_event` — including the persist a track change already
+        // does, which is why a new track's first periodic write waits a full second
+        // rather than firing at once.
         self.last_position_persist = Some(std::time::Instant::now());
-        // Clear the durable row when there is nothing to resume: the slot is
-        // Stopped, or the track drained naturally (Completed). A Loading or
-        // playing/paused Active track writes the row.
+        // Nothing to resume: the slot is Stopped, or the track drained naturally
+        // (Completed). A Loading or playing/paused Active track writes the row.
         let nothing_to_resume = matches!(&self.slot, PlaybackSlot::Stopped)
             || matches!(
                 &self.slot,
@@ -451,7 +446,7 @@ impl PlaybackService {
     }
 
     pub(super) async fn resume(&mut self) {
-        // Stop preview when user explicitly resumes main playback
+        // An explicit resume of the main player dismisses any preview.
         if self.preview.is_active() {
             self.stop_preview_for_main_playback();
         }

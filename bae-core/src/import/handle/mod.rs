@@ -333,12 +333,11 @@ pub enum ImportEvent {
         candidate_key: String,
         progress: ImportProgress,
     },
-    /// Per-track loudness measurement progress for an importing candidate. A
-    /// high-frequency tick (one per track as its decode+measure completes,
-    /// plus a 0/N start and an N/N final), routed to a native leaf view rather
-    /// than the candidate row's coarse step. Separate from `ImportProgress` so
-    /// it bypasses the release/import progress subscribers — it carries the
-    /// candidate key, not a release/import id.
+    /// Per-track loudness measurement progress for an importing candidate: a
+    /// high-frequency tick routed to a native leaf view rather than the candidate
+    /// row's coarse step. Separate from `ImportProgress` so it bypasses the
+    /// release/import progress subscribers — it carries the candidate key, not a
+    /// release or import id.
     ImportLoudnessProgress {
         candidate_key: String,
         tracks_done: u32,
@@ -357,9 +356,9 @@ pub enum ImportEvent {
         toolbar: Vec<crate::identify::ToolbarSignal>,
     },
     /// Full snapshot of a candidate's extracted signals (disc ID, barcodes,
-    /// classified text). Core emits this on every transition — extraction
-    /// start, each source/OCR completion, natural end, and cancellation. The
-    /// reducer writes it wholesale; no partial-update logic needed.
+    /// classified text), emitted on every transition — extraction start, each
+    /// source/OCR completion, natural end, and cancellation. The reducer writes
+    /// it wholesale, so it needs no partial-update logic.
     SignalsUpdated {
         candidate_key: String,
         signals: crate::signals::Signals,
@@ -413,12 +412,10 @@ pub enum DiscogsSaveOutcome {
 }
 
 /// Map a `DiscogsClient::validate_token` result to the validation state it
-/// implies. Shared by the save and revalidate paths so both fold the same
-/// outcomes the same way: success confirms the key, a 401 rejects it, and a
-/// network/rate-limit failure leaves it unvalidated to retry. `validate_token`
-/// only ever returns those variants; the remaining `DiscogsError`s (not
-/// reachable from a search request) also fold to `Unvalidated` — "couldn't
-/// confirm" — so this match stays total without a catch-all.
+/// implies: success confirms the key, a 401 rejects it, and anything else —
+/// network, rate-limit, or a `DiscogsError` a search request can't even reach —
+/// folds to `Unvalidated`, "couldn't confirm", so the match stays total without
+/// a catch-all. Shared by the save and revalidate paths so both fold alike.
 fn validation_from_validate_result(
     result: Result<(), crate::discogs::client::DiscogsError>,
 ) -> crate::config::DiscogsValidation {
@@ -441,12 +438,11 @@ fn validation_from_validate_result(
 
 /// Handle for sending import requests and subscribing to progress updates.
 ///
-/// Holds no caches; the network-layer caches in
-/// `crate::musicbrainz`, `crate::discogs::client`, and
-/// the Cover Art Archive client carry session hits transparently for every
-/// caller. The handle is a thin orchestration layer: it dispatches
-/// fire-and-forget prefetches, builds `ImportCommand`s carrying just
-/// `MetadataRef`s, and forwards them to the worker.
+/// A thin orchestration layer that dispatches prefetches, builds
+/// `ImportCommand`s carrying just `MetadataRef`s, and forwards them to the
+/// worker. It holds no caches of its own — the network-layer caches in
+/// `crate::musicbrainz`, `crate::discogs::client`, and the Cover Art Archive
+/// client serve every caller transparently.
 #[derive(Clone)]
 pub struct ImportServiceHandle {
     requests_tx: mpsc::UnboundedSender<ImportCommand>,
@@ -512,7 +508,6 @@ pub(crate) enum WatcherCommand {
 }
 
 impl ImportServiceHandle {
-    /// Create a new ImportHandle with the given dependencies
     pub(crate) fn new(
         requests_tx: mpsc::UnboundedSender<ImportCommand>,
         library_manager: LibraryManager,
@@ -598,13 +593,11 @@ pub(crate) async fn fetch_artist_images(
             None => continue,
         };
 
-        // Only fetch if the artist has a Discogs ID
         let discogs_artist_id = match &parsed_artist.discogs_artist_id {
             Some(id) => id.clone(),
             None => continue,
         };
 
-        // Check if artist already has an image in DB
         match library_manager
             .get_library_image(actual_id, &crate::db::LibraryImageType::Artist)
             .await
@@ -631,16 +624,16 @@ pub(crate) async fn fetch_artist_images(
     images
 }
 
-/// Project a parsed album (mapper output) into the editor's
-/// `ReleaseUserEdit` shape. Used by the Unknown preview path so the
-/// edit-metadata form can seed itself from the local-evidence projection
-/// without going through a wire-shape `ImportSearchReleaseDetail` that
-/// would require a synthetic release id. Also used by the reset-to-source
-/// path to project cached source data back into the editor.
+/// Project a parsed album (mapper output) into the editor's `ReleaseUserEdit`
+/// shape. The Unknown preview path uses it so the edit-metadata form can seed
+/// from the local-evidence projection without a wire-shape
+/// `ImportSearchReleaseDetail`, which would need a synthetic release id; the
+/// reset-to-source path uses it to project cached source data back into the
+/// editor.
 ///
-/// Track artist names are emitted positionally per existing
-/// `track_artists` rows; an empty per-track list rolls up to "share
-/// the album artist" in the editor's convention.
+/// Track artist names are emitted positionally per existing `track_artists` row;
+/// an empty per-track list means "share the album artist" in the editor's
+/// convention.
 pub fn parsed_album_to_user_edit(parsed: &super::ParsedAlbum) -> crate::import::ReleaseUserEdit {
     let primary_artist_name = parsed
         .artists
@@ -702,27 +695,22 @@ pub fn parsed_album_to_user_edit(parsed: &super::ParsedAlbum) -> crate::import::
     }
 }
 
-/// Project an `ImportSearchReleaseDetail` (the prefetch result for the
-/// import confirmation pane) into the editor's `ReleaseUserEdit` shape,
-/// honoring the user's identity choice:
+/// Project an `ImportSearchReleaseDetail` (the prefetch result for the import
+/// confirmation pane) into the editor's `ReleaseUserEdit` shape, honoring the
+/// user's identity choice:
 ///
 /// - **Exact**: `pressing` comes from the picked release.
-/// - **Approximate** / **Unknown**: `pressing` is `PressingEdit::blank()`.
-///   The user explicitly didn't claim a specific pressing, so showing
-///   them the source's pressing data would imply a claim they didn't
-///   make. They can fill in fields they know (e.g., "JP" in country)
-///   and the overlay carries those edits to commit.
+/// - **Approximate** / **Unknown**: `pressing` is `PressingEdit::blank()` — the
+///   user didn't claim a specific pressing, so showing them the source's
+///   pressing data would imply a claim they never made. They can still fill in
+///   fields they know, and the overlay carries those edits to commit.
 ///
-/// Per-track artist override: when a track's source artist matches the
-/// album-level artist or is missing, the per-track artist override is
-/// empty (the track rolls up to "share the album artist" in the
-/// editor's convention). When it differs, the override is the track's
-/// artist verbatim.
+/// A track whose source artist matches the album artist, or is missing, seeds an
+/// empty per-track override ("share the album artist"); one that differs seeds
+/// the track's artist verbatim.
 ///
-/// Used by the Exact / Approximate import path so Swift can construct
-/// the editor's seed values from a pre-shaped bridge payload — Swift
-/// must not branch on `IdentityChoice` itself per the bridge-thinness
-/// rule.
+/// Swift calls this to build the editor's seed values, rather than branching on
+/// `IdentityChoice` itself — the bridge stays thin.
 pub fn shape_user_edit_from_search_detail(
     detail: &super::search::ImportSearchReleaseDetail,
     choice: &super::IdentityChoice,
@@ -738,14 +726,13 @@ pub fn shape_user_edit_from_search_detail(
         }
     };
 
-    // Number tracks per side with the same function the commit-side assembler
-    // uses (`per_side_positions`). Both planes run identical code over side
-    // sequences produced by the same side-derivation (`medium_sides` for MB,
-    // `process_tracklist` for Discogs), so the editor seed and the committed
-    // rows can never disagree on numbering. A release-global `i + 1` index would
-    // diverge and, since `apply_user_edit_to_seed` writes `track_number`
-    // verbatim onto the seed, corrupt the per-side numbers of any multi-side
-    // vinyl/cassette/multi-disc release.
+    // Number tracks per side through `per_side_positions`, the same function the
+    // commit-side assembler uses, over side values from the same derivation
+    // (`medium_sides` for MB, `process_tracklist` for Discogs) — so the editor
+    // seed and the committed rows can never disagree. A release-global `i + 1`
+    // index would diverge, and since `apply_user_edit_to_seed` writes
+    // `track_number` verbatim onto the seed, it would corrupt the per-side numbers
+    // of every multi-side vinyl / cassette / multi-disc release.
     let numbers = crate::import::assemble::per_side_positions(detail.tracks.iter().map(|t| t.side));
     let tracks = detail
         .tracks
@@ -787,13 +774,11 @@ pub fn shape_user_edit_from_search_detail(
     }
 }
 
-/// Audio file paths from a `CategorizedFiles`, in the same order the
-/// flattened pipeline produces. CUE-backed releases yield only the
-/// audio files referenced by each pair (the CUE itself carries no embedded
-/// tags); per-track releases yield each track in scan order.
-///
-/// Used by the Unknown import path to read embedded cover art from the backing
-/// audio files.
+/// Audio file paths from a `CategorizedFiles`, in the order the flattened
+/// pipeline produces. A CUE-backed release yields only the audio files each pair
+/// references (the CUE itself carries no embedded tags); a per-track release
+/// yields each track in scan order. The Unknown import path reads embedded cover
+/// art from these.
 pub(crate) fn categorized_audio_paths(
     categorized: &crate::import::folder_scanner::CategorizedFiles,
 ) -> Vec<std::path::PathBuf> {

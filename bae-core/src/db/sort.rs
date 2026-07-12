@@ -1,32 +1,25 @@
 //! In-memory equivalent of the SQL ORDER BY built in [`super::client`].
 //!
-//! Live album lists go through the database, which applies its own
-//! comparator via the SQL `ORDER BY` clause that
-//! `client::build_order_by` produces. In-memory consumers — SwiftUI
-//! previews, tests that build album rows by hand, anything operating
-//! on a `Vec<AlbumSummary>` without a database — need the same
-//! ordering, otherwise preview/test output diverges from what the
-//! live grid shows.
-//!
-//! [`sort_albums`] is that in-memory comparator. The semantics here
-//! must stay aligned with `build_order_by` in `client.rs`; tests in
-//! this module assert the rules each side relies on.
+//! Live album lists are ordered by the database, through the `ORDER BY` that
+//! `client::build_order_by` produces. In-memory consumers — SwiftUI previews,
+//! tests that build album rows by hand, anything holding a `Vec<AlbumSummary>`
+//! with no database — need the same ordering, or preview/test output diverges from
+//! the live grid. [`sort_albums`] is that comparator; its semantics must stay
+//! aligned with `build_order_by`, and the tests below assert the rules each side
+//! relies on.
 //!
 //! ## Rules
 //!
-//! - `Title` / `Artist`: ASCII case-insensitive (mirrors SQLite
-//!   `COLLATE NOCASE`).
-//! - `Year`: known years compared numerically; unknown (`None`) years
-//!   sort *after* every known year on ascending and *before* every
-//!   known year on descending. The DB does this with
-//!   `CASE WHEN a.year IS NULL THEN 1 ELSE 0 END <dir>, a.year <dir>`.
-//! - `DateAdded`: the in-memory `AlbumSummary` does not carry
-//!   `created_at`, so this field leaves order untouched. Callers that
-//!   need date-added order go through the database.
-//! - Multiple criteria chain as primary/secondary: ties on the first
-//!   criterion break on the next, matching the comma-separated SQL
-//!   clause.
-//! - Empty criteria slice is a no-op — leaves input order intact.
+//! - `Title` / `Artist`: ASCII case-insensitive (mirrors SQLite `COLLATE NOCASE`).
+//! - `Year`: known years compare numerically; unknown (`None`) years sort *after*
+//!   every known year ascending and *before* every known year descending. The DB
+//!   does this with `CASE WHEN a.year IS NULL THEN 1 ELSE 0 END <dir>, a.year <dir>`.
+//! - `DateAdded`: the in-memory `AlbumSummary` carries no `created_at`, so this
+//!   field leaves order untouched. Callers needing date-added order go through the
+//!   database.
+//! - Multiple criteria chain primary/secondary: a tie on the first breaks on the
+//!   next, matching the comma-separated SQL clause.
+//! - An empty criteria slice is a no-op, leaving input order intact.
 
 use std::cmp::Ordering;
 

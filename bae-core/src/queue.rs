@@ -1,8 +1,6 @@
-//! Resolved type for the playback queue.
-//!
-//! `QueueItem` is the display-ready shape the bridge and UI event payloads
-//! carry: a queue entry's per-instance id plus the track's album/artist
-//! context. `db::get_queue_items` builds it directly from a SQL aggregate.
+//! Resolved types for the playback queue — the display-ready shapes the bridge
+//! and UI event payloads carry. `db::get_queue_items` builds a [`QueueItem`]
+//! directly from a SQL aggregate.
 
 /// How much of the context's not-yet-played tail `resolve_queue_projection`
 /// resolves eagerly. The tail is library-scaled (a `Library` source's tail is
@@ -11,9 +9,8 @@
 /// demand via `get_queue_upcoming_page`.
 pub const QUEUE_UPCOMING_WINDOW: usize = 100;
 
-/// Display-ready queue entry: a per-instance `entry_id` (so the UI keys each
-/// row on a stable unique identity even when the same track is queued twice)
-/// plus the track and the album/artist context the UI needs.
+/// Display-ready queue entry. `entry_id` is per-instance, so the UI keys each row
+/// on a stable identity even when the same track is queued twice.
 #[derive(Debug, Clone)]
 pub struct QueueItem {
     pub entry_id: String,
@@ -27,18 +24,16 @@ pub struct QueueItem {
 
 /// The context lane resolved for display: what it plays from (so the UI labels
 /// the section — a release vs the library), the first [`QUEUE_UPCOMING_WINDOW`]
-/// entries of the not-yet-played tail, the tail's full length, and whether it
-/// was ordered by shuffle (which the UI surfaces as an indicator). The
-/// display-ready counterpart of [`crate::playback::ContextProjection`], with each
-/// windowed entry resolved to a [`QueueItem`]. Carried separately from the manual
-/// lane so each UI renders the two as distinct sections.
+/// entries of the not-yet-played tail, the tail's full length, and whether it was
+/// ordered by shuffle. The display-ready counterpart of
+/// [`crate::playback::ContextProjection`], carried separately from the manual lane
+/// so each UI renders the two as distinct sections.
 #[derive(Debug, Clone)]
 pub struct ResolvedContext {
     pub source: crate::playback::ContextSource,
     pub shuffled: bool,
-    /// The first `QUEUE_UPCOMING_WINDOW` entries of the tail — not the whole
-    /// tail. Indices at or past `upcoming_total` are fetched on demand via
-    /// `get_queue_upcoming_page`.
+    /// The first [`QUEUE_UPCOMING_WINDOW`] entries of the tail — not the whole
+    /// tail. Later indices are fetched on demand via `get_queue_upcoming_page`.
     pub upcoming: Vec<QueueItem>,
     /// The full length of the not-yet-played tail, including entries beyond
     /// `upcoming`. The UI renders a placeholder for every index up to this and

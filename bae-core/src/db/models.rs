@@ -1,39 +1,24 @@
-//! Raw DB-shape types: table rows and the aggregates that SQL joins produce.
+//! Raw DB-shape types: `Db*` rows mirroring a table row, and
+//! `Db*Detail` / `Db*Summary` / `Db*SearchResult` aggregates whose shape is a
+//! join query's result — stitched together in SQL, not in Rust.
 //!
-//! Two flavors live here:
-//! - `Db*` row types mirror a table row (`DbAlbum`, `DbArtist`, `DbRelease`,
-//!   `DbTrack`, `DbFile`, etc.).
-//! - `Db*Detail` / `Db*Summary` / `Db*SearchResult` aggregates are the shape
-//!   of a join query's result: multiple rows stitched together in SQL, not
-//!   in Rust.
+//! **No formatting, no Rust-side derivation, no filesystem access.** Every
+//! `*_label`, sum-of-fields, group-by, path resolution, `has_X` flag, or
+//! `stored.or_else(first)` fallback belongs in the manager, not here.
 //!
-//! **No formatting, no Rust-side derivation, no filesystem access.** Raw
-//! rows and raw aggregates only. Every `*_label`, sum-of-fields, group-by,
-//! path resolution, `has_X` flag, or `stored.or_else(first)` fallback
-//! belongs in the manager, not here.
-//!
-//! `LibraryManager` in `crate::library::manager` is the resolver: it takes
-//! these raw types and produces the display-ready `AlbumDetail`,
-//! `ReleaseDetail`, `AlbumSummary`, `ReleaseStorageSummary`, and
-//! `SearchResults` that live in `crate::album_detail`. Those are what the
-//! bridge and event payloads carry. (The queue's `crate::queue::QueueItem` is
+//! `LibraryManager` in `crate::library::manager` is the resolver: it turns
+//! these into the display-ready `AlbumDetail`, `ReleaseDetail`, `AlbumSummary`,
+//! `ReleaseStorageSummary`, and `SearchResults` of `crate::album_detail`, which
+//! is what the bridge and event payloads carry. (`crate::queue::QueueItem` is
 //! built directly by `db::get_queue_items` — it has no raw counterpart here.)
 
 use crate::import::MetadataSource;
 use crate::util::content_type::ContentType;
 use chrono::{DateTime, Utc};
 
-/// Artist metadata
-///
-/// Represents an individual artist or band. Artists are linked to albums and tracks
-/// via junction tables (album_artists, track_artists) to support:
-/// - Multiple artists per album (collaborations)
-/// - Different artists per track (compilations, features)
-/// - Artist deduplication across imports
-///
-/// Supports multiple metadata sources:
-/// - Discogs: discogs_artist_id for deduplication
-/// - Other sources can be added as needed
+/// An individual artist or band. Linked to albums and tracks through the
+/// `album_artists` / `track_artists` junction tables, so an album or track can
+/// credit several artists (collaborations, features, compilations).
 #[derive(Debug, Clone, PartialEq)]
 pub struct DbArtist {
     pub id: String,
@@ -47,8 +32,6 @@ pub struct DbArtist {
     pub created_at: DateTime<Utc>,
 }
 /// Well-known "Various Artists" IDs per metadata source.
-/// Destructures all source ID fields so adding a new source without
-/// updating this function causes a compile error.
 pub struct VariousArtistsIds {
     pub discogs: &'static str,
     pub musicbrainz: &'static str,
@@ -60,16 +43,13 @@ pub const VARIOUS_ARTISTS: VariousArtistsIds = VariousArtistsIds {
 };
 
 impl DbArtist {
-    /// Returns true if this artist is the well-known "Various Artists" placeholder
-    /// from any metadata source. Exhaustive over all source ID fields — adding a
-    /// new `*_artist_id` field to DbArtist without updating this function will
-    /// cause a compile error.
+    /// True if this artist is the well-known "Various Artists" placeholder of any
+    /// metadata source. The destructure is deliberate: adding a `*_artist_id`
+    /// field to `DbArtist` without handling it here is a compile error.
     pub fn is_various_artists(&self) -> bool {
-        // Destructure to force a compile error when a new source ID field is added
         let DbArtist {
             discogs_artist_id,
             musicbrainz_artist_id,
-            // Non-source fields — ignored
             id: _,
             name: _,
             sort_name: _,
@@ -81,10 +61,7 @@ impl DbArtist {
     }
 }
 
-/// Links artists to albums (many-to-many)
-///
-/// Supports albums with multiple artists (e.g., collaborations).
-/// Position field maintains the order of artists for display.
+/// Links artists to albums (many-to-many).
 #[derive(Debug, Clone)]
 pub struct DbAlbumArtist {
     pub id: String,
@@ -94,9 +71,7 @@ pub struct DbAlbumArtist {
     pub position: i32,
     pub created_at: DateTime<Utc>,
 }
-/// Links artists to tracks (many-to-many)
-///
-/// Supports tracks with multiple artists (features, remixes, etc.).
+/// Links artists to tracks (many-to-many).
 #[derive(Debug, Clone)]
 pub struct DbTrackArtist {
     pub id: String,
@@ -167,19 +142,15 @@ pub struct DbTrackArtistRole {
     pub source_credit: Option<String>,
     pub created_at: DateTime<Utc>,
 }
-/// Album metadata - represents a logical album (the "master")
+/// A logical album (the "master"): the metadata common to every physical release
+/// of it ("1973 Original", "2016 Remaster", …). The releases themselves, and
+/// their import status, live in the `releases` table.
 ///
-/// A logical album can have multiple physical releases (e.g., "1973 Original", "2016 Remaster").
-/// This table stores the high-level album information that's common across all releases.
-/// Specific release details and import status are tracked in the `releases` table.
-///
-/// Artists are linked via the `album_artists` junction table to support multiple artists.
-///
-/// Albums carry no per-source identity of their own — identity lives on
-/// the `release_identities` side table per release. Cross-source equivalences
-/// surface implicitly when the album's releases hold rows in multiple sources.
-/// See `notes/17-release-identity.md` for the design rationale (in particular,
-/// the loose attach rule and why album-level identity columns don't fit it).
+/// Albums carry no per-source identity of their own — identity lives per release
+/// in the `release_identities` side table, and cross-source equivalences surface
+/// implicitly when an album's releases hold rows in several sources. See
+/// `notes/17-release-identity.md` for the loose attach rule and why album-level
+/// identity columns don't fit it.
 #[derive(Debug, Clone, PartialEq)]
 pub struct DbAlbum {
     pub id: String,
@@ -207,11 +178,10 @@ pub(crate) fn resolve_primary_release_id<'a>(
         .map(str::to_string)
 }
 
-/// Raw album-summary aggregate: artist names, release IDs, and album
-/// artist IDs joined in SQL (via `json_group_array`) to avoid N+1 lookups.
-/// The resolver in `LibraryManager` produces the display-ready
-/// `crate::album_detail::AlbumSummary` (applies the `primary_release_id`
-/// fallback).
+/// Raw album-summary aggregate: artist names and release IDs joined in SQL to
+/// avoid N+1 lookups. The resolver in `LibraryManager` produces the
+/// display-ready `crate::album_detail::AlbumSummary` (applying the
+/// `primary_release_id` fallback).
 #[derive(Debug, Clone)]
 pub struct DbAlbumSummary {
     pub id: String,
@@ -225,17 +195,15 @@ pub struct DbAlbumSummary {
     pub primary_release_id: Option<String>,
 }
 
-/// Probe whether the candidate at `release_id` (from a search result) is
-/// already represented in the library, either as the same pressing
-/// (source + source_release_id) or as the same album (any release with
-/// the same source + source_group_id). Result is correlated back to the
-/// candidate via `release_id`.
+/// Probe whether a search-result candidate is already in the library: as the
+/// same pressing (a `release_identities` row on this `source` whose
+/// `source_release_id` is `release_id`), or as the same album (any release with
+/// this `source` + `source_group_id`). Fields are the source's own IDs, not
+/// bae's; the `LibraryStatus` result is correlated back via `release_id`.
 ///
-/// `source` + `source_group_id` come from the search result; the
-/// candidate's group ID is what the picker shows. `Option<String>` on
-/// `source_group_id` covers candidates where the search result didn't
-/// surface a group (rare for MB, can happen for Discogs releases without
-/// a master) — those checks skip the album-level lookup.
+/// `source_group_id` is optional because a search result may not surface a group
+/// (rare for MusicBrainz, happens for Discogs releases with no master) — those
+/// candidates skip the album-level lookup.
 #[derive(Debug, Clone)]
 pub struct LibraryCheck {
     pub release_id: String,
@@ -252,24 +220,18 @@ pub struct LibraryStatus {
     pub album_id: Option<String>,
 }
 
-/// The pressing-level cluster of a release (the specific physical
-/// pressing's editorial metadata). Held as a substruct so "no pressing
-/// claim" is one assignment (`Pressing::blank()`) instead of nilling
-/// six fields in every caller — see `many-fields-none-together-means-
-/// a-missing-type`.
+/// A release's pressing-level editorial metadata. A substruct so "no pressing
+/// claim" is one `Pressing::blank()` rather than nilling six fields at every
+/// caller — see `many-fields-none-together-means-a-missing-type`.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Pressing {
     /// Release-specific year (may differ from album year)
     pub year: Option<i32>,
-    /// Format (e.g., "CD", "Vinyl", "Digital")
+    /// e.g. "CD", "Vinyl", "Digital"
     pub format: Option<String>,
-    /// Record label
     pub label: Option<String>,
-    /// Catalog number
     pub catalog_number: Option<String>,
-    /// Country of release
     pub country: Option<String>,
-    /// Barcode
     pub barcode: Option<String>,
 }
 
@@ -288,34 +250,24 @@ impl Pressing {
     }
 }
 
-/// Release metadata - represents a specific version/pressing of an album
-///
-/// A release is a physical or digital version of a logical album.
-/// Examples: "1973 Original Pressing", "2016 Remaster", "180g Vinyl", "Digital Release"
-///
-/// Files and tracks belong to releases (not albums), because:
-/// - Users import specific releases, not abstract albums
-/// - Each release has its own audio files and metadata
-/// - Multiple releases of the same album can coexist in the library
-///
-/// The release_name field distinguishes between versions (e.g., "2016 Remaster").
-/// If the user doesn't specify a release, we create one with release_name=None.
+/// A specific physical or digital version of a logical album ("1973 Original
+/// Pressing", "2016 Remaster", "180g Vinyl", …). Files and tracks hang off
+/// releases rather than albums: users import a specific release, each has its own
+/// audio and metadata, and several releases of one album coexist in the library.
 #[derive(Debug, Clone, PartialEq)]
 pub struct DbRelease {
     pub id: String,
-    /// Links to the logical album (DbAlbum)
     pub album_id: String,
-    /// Human-readable release name (e.g., "2016 Remaster", "180g Vinyl")
+    /// Human-readable release name (e.g., "2016 Remaster", "180g Vinyl"). `None`
+    /// when the user never named a version.
     pub release_name: Option<String>,
-    /// Pressing-level editorial metadata. `Pressing::blank()` means
-    /// "user claimed an album, not a specific pressing" (Approximate
-    /// imports). The DB columns stay flat (`year`, `format`, `label`,
-    /// …) — this grouping is Rust-side only.
+    /// Pressing-level editorial metadata. `Pressing::blank()` means "user claimed
+    /// an album, not a specific pressing" (Approximate imports). The DB columns
+    /// stay flat (`year`, `format`, `label`, …) — this grouping is Rust-side only.
     pub pressing: Pressing,
-    /// Disc ID computed from the rip's LOG/CUE artifacts. Independent of
-    /// the identified MB/Discogs row — this is what we observed, not what
-    /// editorial says. Used as a signal at re-identify time and rendered
-    /// in the compact line for confidence.
+    /// Disc ID computed from the rip's LOG/CUE artifacts — what we observed, not
+    /// what editorial says, so it stays independent of the identified MB/Discogs
+    /// row. A signal at re-identify time, and shown for confidence.
     pub disc_id: Option<String>,
     /// Where the metadata was seeded from. Distinct from identity:
     /// `metadata_source` answers "what should reset replay?", while
@@ -335,10 +287,9 @@ pub struct DbRelease {
     pub source_folder_name: Option<String>,
     /// SHA-256 over the imported folder's categorized file structure (sorted
     /// relative paths + sizes) — a location-independent content fingerprint.
-    /// `None` for releases not created by a folder import. The import worker
-    /// populates it just before insert; metadata edits / re-identify preserve
-    /// it (the files didn't change). Used to recognize an already-imported
-    /// folder and to pick the overwrite target on re-import.
+    /// `None` for releases not created by a folder import. Metadata edits and
+    /// re-identify preserve it (the files didn't change). Used to recognize an
+    /// already-imported folder and to pick the overwrite target on re-import.
     pub content_hash: Option<String>,
     /// Album-level integrated loudness (EBU R128) in LUFS, measured at import
     /// over all tracks combined. `None` = not measured. Playback derives a gain
@@ -351,13 +302,13 @@ pub struct DbRelease {
     pub created_at: DateTime<Utc>,
 }
 
-/// The playing context of a saved `playback_state` row: which release is being
-/// played, how its tracks are ordered, and where the cursor sits. Held as a
-/// substruct so "no context playing" (a single track, or nothing) is one
-/// `None` instead of three separately-nullable columns that are only ever
-/// present or absent together — see `many-fields-none-together-means-a-missing-
-/// type`. The SQLite columns stay flat (`source`, `shuffle_seed`, `cursor`);
-/// the DB client destructures this on save and reassembles it on load.
+/// The playing context of a saved `playback_state` row: what is being played, how
+/// its tracks are ordered, and where the cursor sits. A substruct so "no context
+/// playing" (a single track, or nothing) is one `None` instead of three columns
+/// that are only ever all-present or all-absent — see
+/// `many-fields-none-together-means-a-missing-type`. The SQLite columns stay flat
+/// (`source`, `shuffle_seed`, `cursor`); the DB client splits this apart on save
+/// and reassembles it on load.
 #[derive(Debug, Clone, PartialEq)]
 pub struct DbPlaybackContext {
     /// What the context plays from, encoded for the flat column: a release id, or
@@ -422,27 +373,17 @@ impl std::str::FromStr for ReleaseMetadataSource {
     }
 }
 
-/// Track metadata within a release
-///
-/// Represents a single track on a specific release. Tracks are linked to releases
-/// (not logical albums) because track listings can vary between releases.
-///
-/// Track artists are linked via the `track_artists` junction table to support:
-/// - Multiple artists per track (features, collaborations)
-/// - Different artists than the album artist (compilations)
-///
-/// The discogs_position field stores the track position from metadata
-/// (e.g., "A1", "1", "1-1" for vinyl sides).
-///
-/// `side` is the physical side (1-indexed). A CD = 1 side. Vinyl = 2 sides per disc.
-/// Cassette = 2 sides. Always set explicitly, never defaulted.
+/// A single track on a specific release, not on the logical album — track
+/// listings vary between releases. Track artists are linked through the
+/// `track_artists` junction table, so a track can credit features and artists
+/// other than the album's.
 #[derive(Debug, Clone, PartialEq)]
 pub struct DbTrack {
     pub id: String,
-    /// Links to the specific release (DbRelease), not the logical album
     pub release_id: String,
     pub title: String,
-    /// Physical side number (1-indexed). CD disc 1 = side 1. Vinyl A = side 1, B = side 2, etc.
+    /// Physical side, 1-indexed and always set explicitly, never defaulted: a CD
+    /// disc is side 1; vinyl A = 1, B = 2; a cassette has 2 sides.
     pub side: i32,
     pub track_number: Option<i32>,
     pub duration_ms: Option<i64>,
@@ -450,23 +391,20 @@ pub struct DbTrack {
     pub discogs_position: Option<String>,
     pub created_at: DateTime<Utc>,
 }
-/// Physical file belonging to a release
+/// A physical file belonging to a release — not to an album, and not to a track
+/// (some files are metadata like cover.jpg or .cue sheets that no track owns).
+/// Holds enough of the original file's information to reconstruct the folder
+/// structure on export.
 ///
-/// Stores original file information needed to reconstruct file structure for export.
-///
-/// Files are linked to releases (not logical albums or tracks), because:
-/// - Files are part of a specific release (e.g., "2016 Remaster" has different files than "1973 Original")
-/// - Some files are metadata (cover.jpg, .cue sheets) not associated with any track
-///
-/// File location follows the release's storage state, resolved by coven:
-/// - Local: the user's own file in place, a coven user-provided external ref
-///   (`local_blob_refs`), read straight from the user's path;
-/// - Remote: coven's blob cache (`storage/pinned/` or `storage/cache/`), read
-///   through coven's locality-aware read by the file's id — never a bae path.
+/// Where the bytes live follows the release's storage state, resolved by coven:
+/// a local release keeps the user's own file in place as a coven user-provided
+/// external ref (`local_blob_refs`), read straight from the user's path; a remote
+/// release's bytes sit in coven's blob cache (`storage/pinned/` or
+/// `storage/cache/`), read by file id through coven's locality-aware read — never
+/// a bae path.
 #[derive(Debug, Clone)]
 pub struct DbFile {
     pub id: String,
-    /// Release this file belongs to
     pub release_id: String,
     pub original_filename: String,
     pub file_size: i64,
@@ -480,11 +418,9 @@ pub struct DbFile {
     pub created_at: DateTime<Utc>,
 }
 
-/// Audio format metadata for a track. One record per track (1:1 with track).
-///
-/// The file windows that supply this track's samples live in
-/// `DbAudioSegment`. This row holds the track-level codec/display metadata,
-/// pregap durations, and measured loudness.
+/// Track-level audio format metadata, one row per track: codec/display metadata,
+/// pregap durations, and measured loudness. The file windows that supply the
+/// track's samples live in `DbAudioSegment`.
 #[derive(Debug, Clone)]
 pub struct DbAudioFormat {
     pub id: String,
@@ -732,7 +668,6 @@ impl DbAlbum {
     }
 }
 
-/// Check if an artist name indicates a "Various Artists" compilation
 pub(crate) fn is_various_artists(name: &str) -> bool {
     let lower = name.trim().to_lowercase();
     lower == "various" || lower == "various artists"
@@ -758,9 +693,9 @@ impl DbRelease {
             created_at: now,
         }
     }
-    /// Storage state — Local (local) or Remote (cloud) — from the shared
-    /// `remote` fact. Pinned-ness is the orthogonal coven-cache property the
-    /// caller carries separately; it is never part of this.
+    /// Storage state derived from the shared `remote` fact. Pinned-ness is an
+    /// orthogonal coven-cache property the caller carries separately; it is never
+    /// part of this.
     pub fn storage_state(&self) -> crate::album_detail::ReleaseStorageState {
         crate::album_detail::storage_state(self.remote)
     }
@@ -789,10 +724,6 @@ impl DbTrack {
     }
 }
 impl DbFile {
-    /// Create a file record
-    ///
-    /// Files are linked to releases. Used for reconstructing original file structure
-    /// during export.
     pub fn new(
         release_id: &str,
         original_filename: &str,
@@ -815,8 +746,6 @@ impl DbFile {
     }
 }
 impl DbAudioFormat {
-    /// Build track-level audio format metadata. File windows are represented by
-    /// `DbAudioSegment` rows keyed to this format id.
     pub fn new(
         track_id: &str,
         content_type: ContentType,
@@ -843,7 +772,6 @@ impl DbAudioFormat {
         }
     }
 
-    /// Set pregap duration (CUE tracks with INDEX 00).
     pub fn with_pregap(mut self, pregap_ms: Option<i64>) -> Self {
         self.pregap_ms = pregap_ms;
         self
@@ -865,10 +793,8 @@ impl DbAudioFormat {
     }
 }
 
-/// Raw API response JSON stored per source per release.
-///
-/// Used to archive the full API response so fields not currently mapped
-/// can be extracted later without re-fetching.
+/// The full raw API response JSON, archived per source per release, so fields we
+/// don't map today can be extracted later without re-fetching.
 #[derive(Debug, Clone)]
 pub struct DbReleaseMetadata {
     pub id: String,
@@ -899,10 +825,8 @@ impl DbReleaseMetadata {
 const IMPORT_OP_STATUS_IMPORTING: &str = "importing";
 const IMPORT_OP_STATUS_COMPLETE: &str = "complete";
 const IMPORT_OP_STATUS_FAILED: &str = "failed";
-/// Status of an import operation (tracked in the `imports` table).
-///
-/// All validation happens before the import record is created, so
-/// imports start at Importing (no Preparing state needed).
+/// Status of an `imports` row. All validation happens before the import record is
+/// created, so an import starts at Importing — there is no Preparing state.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ImportOperationStatus {
     Importing,
@@ -918,26 +842,22 @@ impl ImportOperationStatus {
         }
     }
 }
-/// Tracks an import operation from button click through completion
-///
-/// Created when user clicks Import, before any database records exist.
-/// Provides a stable ID for progress subscriptions during phase 0.
-/// Linked to release_id after phase 0 completes and release is created.
+/// An import operation, from button click through completion. Created before any
+/// other DB record exists, so progress subscriptions have a stable ID during
+/// phase 0; `album_title` / `artist_name` are carried here for display until the
+/// release they name exists.
 #[derive(Debug, Clone)]
 pub struct DbImport {
     pub id: String,
     pub status: ImportOperationStatus,
-    /// Linked after phase 0 when release is created
+    /// Linked once phase 0 creates the release.
     pub release_id: Option<String>,
-    /// Album title for display before release exists
     pub album_title: String,
-    /// Artist name for display
     pub artist_name: String,
-    /// Source folder path
     pub folder_path: String,
     pub created_at: i64,
     pub updated_at: i64,
-    /// Error message if status is Failed
+    /// Set only when status is Failed.
     pub error_message: Option<String>,
 }
 impl DbImport {
@@ -962,7 +882,6 @@ impl DbImport {
         }
     }
 }
-/// Type discriminator for library images
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum LibraryImageType {
     Cover,
@@ -996,10 +915,8 @@ impl std::str::FromStr for LibraryImageType {
     }
 }
 
-/// bae-remote metadata image (cover art, artist photo).
-/// File lives at a deterministic path derived from type + id:
-/// - Cover: covers/{id}
-/// - Artist: artists/{id}
+/// A cover or artist image. The bytes are a coven host-provided blob, in the
+/// `covers` or `artist_images` namespace (per `image_type`), addressed by `id`.
 #[derive(Debug, Clone)]
 pub struct DbLibraryImage {
     /// release_id for covers, artist_id for artist images
@@ -1013,24 +930,19 @@ pub struct DbLibraryImage {
     pub source: String,
     /// MB: CAA image ID, Discogs: URL, local: "release://{path}"
     pub source_url: Option<String>,
-    /// Cloud object key for this image's blob (relative to the `images`
-    /// namespace coven prepends), mirroring coven's `BlobRef.cloud_path`.
-    /// `None` = the hashed-by-id layout used by opaque homes; `Some` = the
-    /// explicit readable key set when the image entered a browsable home
-    /// (cover: `{artist}/{album}/cover.{ext}`, artist: `{artist}/artist.{ext}`).
-    /// The local on-disk image file stays at the hashed `image_path(id)`
-    /// regardless — only the cloud key becomes readable.
+    /// Cloud object key for this image's blob, relative to the namespace coven
+    /// prepends (`covers` / `artist_images`), mirroring coven's
+    /// `BlobRef.cloud_path`. `None` = the hashed-by-id layout used by opaque
+    /// homes; `Some` = the readable key set when the image entered a browsable
+    /// home (cover: `{album_id}/{release_id}/cover.{ext}`, artist:
+    /// `{artist_id}/artist.{ext}`). Only the cloud key becomes readable — coven's
+    /// local cache layout is unaffected.
     pub cloud_path: Option<String>,
     pub created_at: DateTime<Utc>,
 }
 
-// ============================================================================
-// Library Search Result Types
-// ============================================================================
-
-/// Raw combined search-result aggregate across albums and tracks.
-/// No formatting — the resolver in `LibraryManager` produces the
-/// display-ready `crate::album_detail::SearchResults`.
+/// Raw combined search-result aggregate. No formatting — the resolver in
+/// `LibraryManager` produces the display-ready `crate::album_detail::SearchResults`.
 #[derive(Debug, Clone)]
 pub struct DbLibrarySearchResults {
     pub albums: Vec<DbAlbumSearchResult>,
@@ -1150,13 +1062,11 @@ pub struct DbWorkTrackSummary {
     pub album: DbAlbum,
 }
 
-/// Raw per-release storage summary assembled via a single SQL query (no
-/// N+1). No formatting, no derivation — the resolver in `LibraryManager`
-/// produces the display-ready `crate::album_detail::ReleaseStorageSummary`
-/// (derives `storage_state` from the two columns and formats `total_size`).
-///
-/// Pending-upload counts are no longer carried here; the `OutboxSnapshot`
-/// is the single source of truth, reactive on every queue mutation.
+/// Raw per-release storage summary, assembled in one SQL query (no N+1). No
+/// formatting, no derivation — the resolver in `LibraryManager` produces the
+/// display-ready `crate::album_detail::ReleaseStorageSummary` (deriving
+/// `storage_state` from `remote` and formatting `total_size`). Pending-upload
+/// counts are not here; `OutboxSnapshot` is the only source for those.
 #[derive(Debug, Clone)]
 pub struct DbReleaseStorageSummary {
     pub release_id: String,
@@ -1165,19 +1075,18 @@ pub struct DbReleaseStorageSummary {
     pub artist_names: String,
     pub format: Option<String>,
     pub primary_release_id: Option<String>,
-    /// Shared `releases.remote` fact: remote (cloud) vs local (local). The
-    /// resolver derives `Local` directly from `!remote`; for a remote
-    /// release it asks coven's cache (via `any_file_id`) whether it is pinned.
+    /// The shared `releases.remote` fact: audio in the cloud vs local to a device.
+    /// The resolver reads `Local` straight off `!remote`; for a remote release it
+    /// asks coven's cache (via `any_file_id`) whether it is pinned.
     pub remote: bool,
-    /// The id of one of the release's files, or `None` when it has no files. Used
-    /// to ask coven's cache whether the release is pinned (pin/unpin act on all a
-    /// release's blobs together, so any one file represents the release).
+    /// The id of one of the release's files, or `None` when it has none. Used to
+    /// ask coven's cache whether the release is pinned — pin/unpin act on all a
+    /// release's blobs together, so any one file stands for the release.
     pub any_file_id: Option<String>,
     pub file_count: i64,
     pub total_size: i64,
 }
 
-/// Field to sort albums by
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AlbumSortField {
     Title,
@@ -1186,14 +1095,12 @@ pub enum AlbumSortField {
     DateAdded,
 }
 
-/// Sort direction
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SortDirection {
     Ascending,
     Descending,
 }
 
-/// A single sort criterion (field + direction)
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct AlbumSortCriterion {
     pub field: AlbumSortField,
@@ -1241,9 +1148,8 @@ pub struct DbReleaseDetail {
     pub release: DbRelease,
     pub tracks: Vec<DbTrackWithArtists>,
     pub files: Vec<DbFile>,
-    /// Audio-format rows for this release's tracks. Each carries the codec,
-    /// sample rate, bit depth, and channels. File-backed windows live in
-    /// `audio_segments`.
+    /// Audio-format rows for this release's tracks: codec, sample rate, bit
+    /// depth, channels. The file-backed windows live in `audio_segments`.
     pub audio_formats: Vec<DbAudioFormat>,
     pub audio_segments: Vec<DbAudioSegment>,
     /// All identity rows for this release. Empty for Unknown imports.
@@ -1257,42 +1163,38 @@ pub struct DbTrackWithArtists {
     pub artists: Vec<DbArtist>,
 }
 
-/// Raw per-release slim aggregate for summary views (storage rows,
-/// release pickers). Same core shape as `DbReleaseStorageSummary` minus
-/// the album-level joins. The resolver in `LibraryManager` produces the
-/// display-ready `crate::album_detail::ReleaseSummary`.
-///
-/// Pending-upload counts are no longer carried here; the `OutboxSnapshot`
-/// is the single source of truth, reactive on every queue mutation.
+/// Raw per-release slim aggregate for summary views (storage rows, release
+/// pickers): `DbReleaseStorageSummary` minus the album-level joins. The resolver
+/// in `LibraryManager` produces the display-ready
+/// `crate::album_detail::ReleaseSummary`. Pending-upload counts are not here;
+/// `OutboxSnapshot` is the only source for those.
 #[derive(Debug, Clone)]
 pub struct DbReleaseSummary {
     pub id: String,
     pub album_id: String,
     pub format: Option<String>,
-    /// Shared `releases.remote` fact: remote (cloud) vs local (local). The
-    /// resolver derives `Local` directly from `!remote`; for a remote
-    /// release it asks coven's cache (via `any_file_id`) whether it is pinned.
+    /// The shared `releases.remote` fact: audio in the cloud vs local to a device.
+    /// The resolver reads `Local` straight off `!remote`; for a remote release it
+    /// asks coven's cache (via `any_file_id`) whether it is pinned.
     pub remote: bool,
-    /// The id of one of the release's files, or `None` when it has no files. Used
-    /// to ask coven's cache whether the release is pinned (pin/unpin act on all a
-    /// release's blobs together, so any one file represents the release).
+    /// The id of one of the release's files, or `None` when it has none. Used to
+    /// ask coven's cache whether the release is pinned — pin/unpin act on all a
+    /// release's blobs together, so any one file stands for the release.
     pub any_file_id: Option<String>,
     pub file_count: i64,
     pub total_size: i64,
 }
 
-/// Raw storage-page row: release summary joined with its parent album
-/// summary. One SQL query emits both halves; the resolver in
-/// `LibraryManager` produces two pre-assembled `ReleaseSummary` /
-/// `AlbumSummary` aggregates the UI normalizes into its slices.
+/// Raw storage-page row: a release summary joined with its parent album summary,
+/// both halves from one SQL query. The resolver in `LibraryManager` turns them
+/// into `ReleaseSummary` / `AlbumSummary`, which the UI normalizes into slices.
 #[derive(Debug, Clone)]
 pub struct DbStorageRow {
     pub release: DbReleaseSummary,
     pub album: DbAlbumSummary,
 }
 
-/// Field to sort storage rows by. Mirrors the columns the Storage
-/// Manager view renders today.
+/// The columns the Storage Manager view renders, as sort keys.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StorageSortField {
     AlbumTitle,
@@ -1309,8 +1211,8 @@ pub struct StorageSortCriterion {
     pub direction: SortDirection,
 }
 
-/// Filter applied to a storage-page query. Mirrors the four
-/// mutually-exclusive chips the Storage Manager shows.
+/// Filter applied to a storage-page query — the four mutually-exclusive chips
+/// the Storage Manager shows.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StorageFilter {
     All,
@@ -1338,15 +1240,14 @@ impl DbOutboxOperation {
     }
 }
 
-/// One row from the `cloud_outbox` join: the queue entry's own columns plus
-/// the joined release id, album title, and file size. The snapshot builder
-/// uses these to construct grouped uploads and deletes.
+/// One row from the `cloud_outbox` join: the queue entry's own columns plus the
+/// joined release id, album title, and file size, from which the snapshot builder
+/// constructs grouped uploads and deletes.
 ///
-/// `file_id` is `None` for a delete (it carries no file id — the blob is named
-/// by `cloud_key`); only an upload has one. `release_id`, `title`, `file_name`,
-/// and `file_size` are `Option` because the `release_files` join finds nothing
-/// for a delete, or misses an orphaned `file_id` (the row's file was deleted
-/// before the outbox drained).
+/// Only an upload has a `file_id`; a delete names its blob by `cloud_key` alone.
+/// `release_id`, `title`, `file_name`, and `file_size` are `Option` because the
+/// `release_files` join finds nothing for a delete, or misses an orphaned
+/// `file_id` (the row's file was deleted before the outbox drained).
 #[derive(Debug, Clone)]
 pub struct DbOutboxRow {
     pub id: i64,

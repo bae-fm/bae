@@ -1,9 +1,9 @@
 use super::*;
 use tokio::sync::broadcast;
 
-/// Central event bus for UI events. Clone-cheap (Arc internally via broadcast).
-/// Subscribes to existing service channels and translates domain events into
-/// UiBusEvents. The bridge subscribes to receive events for the native reducer.
+/// Central event bus for UI events: subscribes to the service channels and
+/// translates their domain events into `UiBusEvent`s, which the bridge forwards
+/// to the native reducer. Clone-cheap.
 #[derive(Clone)]
 pub struct UiEventBus {
     tx: broadcast::Sender<UiBusEvent>,
@@ -47,8 +47,8 @@ impl UiEventBus {
         self.tx.subscribe()
     }
 
-    /// Wire the bus to all service channels. Spawns async tasks that
-    /// translate domain events into UiBusEvents. Call once at startup.
+    /// Wire the bus to every service channel, spawning one forwarding task per
+    /// channel. Call once at startup.
     pub fn wire(
         &self,
         app_services: &crate::library::AppServices,
@@ -65,9 +65,8 @@ impl UiEventBus {
         );
     }
 
-    /// Forward the reactive config-state stream to the bus as a scoped
-    /// invalidation. `ConfigHandle` publishes the whole latest `Config` on every
-    /// change; the UI reads the current value through the config query.
+    /// Forward config changes to the bus as a scoped invalidation — the UI reads
+    /// the new value back through the config query, not off the event.
     fn wire_config_changes(
         &self,
         mut config_rx: tokio::sync::watch::Receiver<crate::config::Config>,
@@ -240,8 +239,8 @@ impl UiEventBus {
         });
     }
 
-    /// Wire to the unified import event channel. Handles all ImportEvent variants:
-    /// scan events, import progress, identify, search, prefetch, and errors.
+    /// Wire to the import event channel: scan events, import and loudness
+    /// progress, identify-state changes, and extracted signals.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     fn wire_import(
         &self,

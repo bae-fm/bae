@@ -2,8 +2,8 @@ use std::fmt::Display;
 use std::time::Duration;
 use tracing::warn;
 
-/// Linear backoff: 500ms × attempt. What both API clients want; diagnostics
-/// wants a flat delay instead, which is why the delay stays a parameter.
+/// Linear backoff: 500ms × attempt. What the API clients want; diagnostics wants
+/// a flat delay instead, which is why the delay stays a parameter.
 pub fn linear_backoff(attempt: u32) -> Duration {
     Duration::from_millis(500 * u64::from(attempt))
 }
@@ -11,10 +11,9 @@ pub fn linear_backoff(attempt: u32) -> Duration {
 /// Retry `f` up to `max_attempts` times, waiting `retry_delay(attempt)` between
 /// tries, for as long as `should_retry` says the failure is worth repeating.
 ///
-/// The predicate is required, with no retry-everything convenience alongside it:
-/// most of what an API client returns is an answer, not a fault, and a retry
-/// that cannot tell the difference will cheerfully ask three times to be told
-/// "not found" three times.
+/// The predicate is required: most of what an API client returns is an answer,
+/// not a fault, and a retry that can't tell the difference asks three times to
+/// be told "not found" three times.
 pub async fn retry_with_backoff_if<F, Fut, T, E, ShouldRetry, Delay>(
     max_attempts: u32,
     label: &str,

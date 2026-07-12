@@ -3,13 +3,12 @@
 
 use super::candidate_text::Source;
 
-/// The surface a signal value was harvested from. A coarse, UI-facing
-/// projection of the internal text-classification `Source` (plus the
-/// inherent origins of the disc-ID and CUE-`CATALOG` signals), so a badge can
-/// explain where its value came from without leaking file paths.
+/// The surface a signal value was harvested from — a coarse, UI-facing projection of
+/// the internal `Source` (plus the inherent origins of the disc-ID and CUE-`CATALOG`
+/// signals), so a badge can say where its value came from without leaking file paths.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum SignalOrigin {
-    /// The disc's table of contents (LOG/CUE), or a CD / library disc ID.
+    /// The disc's table of contents (LOG/CUE).
     DiscToc,
     /// A CUE sheet field (`CATALOG`, `PERFORMER`/`TITLE`).
     CueSheet,
@@ -24,9 +23,8 @@ pub enum SignalOrigin {
 }
 
 impl SignalOrigin {
-    /// Project the internal text-classification `Source` onto the coarse
-    /// UI origin. The path payloads on `Artwork`/`FilenameGeneric`/`TextFile`
-    /// are dropped — the badge names the kind of surface, not the file.
+    /// The path payloads on `Artwork` / `FilenameGeneric` / `TextFile` are dropped
+    /// here: a badge names the kind of surface, not the file.
     pub fn from_text_source(source: &Source) -> Self {
         match source {
             Source::Artwork(_) => SignalOrigin::Artwork,
@@ -42,8 +40,7 @@ impl SignalOrigin {
     }
 }
 
-/// A signal value (a catalog number or a barcode) paired with where it was
-/// harvested from. The catalog and barcode pools carry these so each badge
+/// A catalog number or barcode paired with where it was harvested from, so a badge
 /// can show its `value` and explain its `origin`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SourcedValue {

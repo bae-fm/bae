@@ -1,7 +1,6 @@
 use super::*;
 
 impl Database {
-    /// Insert a new track
     pub async fn insert_track(&self, track: &DbTrack) -> Result<(), DbError> {
         let track = track.clone();
         self.call_sql(move |sql| {
@@ -25,8 +24,8 @@ impl Database {
         })
         .await
     }
-    /// Get ordered track IDs for a release. Cheaper than `get_tracks_for_release`
-    /// when callers only need IDs (queue building, play context).
+    /// Ordered track IDs for a release — cheaper than `get_tracks_for_release`
+    /// when the caller only needs IDs (queue building, play context).
     pub async fn get_track_ids_for_release(
         &self,
         release_id: &str,
@@ -58,9 +57,8 @@ impl Database {
         .await
     }
 
-    /// Return the subset of `track_ids` that exist in the tracks table.
-    /// Ordering of returned IDs is unspecified; callers that need a
-    /// specific order must re-derive it.
+    /// The subset of `track_ids` that exist in the tracks table. The returned
+    /// order is unspecified; a caller that needs one must re-derive it.
     pub async fn filter_existing_track_ids(
         &self,
         track_ids: &[String],
@@ -86,7 +84,7 @@ impl Database {
         .await
     }
 
-    /// Get tracks for a release
+    /// Ordered by side, track number, id.
     pub async fn get_tracks_for_release(&self, release_id: &str) -> Result<Vec<DbTrack>, DbError> {
         let release_id = release_id.to_string();
         self.read(move |conn| {

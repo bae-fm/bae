@@ -1,38 +1,31 @@
-//! Platform-provided artwork analyzer. A single `analyze` pass over one image
-//! yields both the barcode payloads and the recognized text lines, so the
-//! signal-extraction pass visits — and decodes — each image exactly once.
+//! Platform-provided artwork analyzer. One `analyze` pass over an image yields both
+//! the barcode payloads and the recognized text lines, so extraction visits — and
+//! decodes — each image exactly once.
 //!
-//! Core defines the trait; the bridge registers a concrete implementation at
-//! app boot. Analyzer calls are sync by design — Apple's Vision
-//! `VNImageRequestHandler.perform` is synchronous and the completion handlers
-//! fire before `perform` returns, so the honest signature is sync. The
-//! extraction service calls this from `tokio::task::spawn_blocking` to keep the
+//! Core defines the trait; the bridge registers an implementation at app boot. The
+//! call is sync because Apple's Vision `VNImageRequestHandler.perform` is: its
+//! completion handlers fire before `perform` returns, so a sync signature is the
+//! honest one. The extraction service calls it from `spawn_blocking` to keep the
 //! async runtime off the FFI thread.
 
 use std::path::Path;
 
-/// Everything one Vision pass over an image surfaces: barcode payloads and
-/// recognized text lines. Both come from a single image decode.
+/// What one pass over an image surfaces, from a single decode.
 #[derive(Debug, Clone)]
 pub struct ArtworkAnalysis {
-    /// Barcode payloads visible in the image. Empty when none are present.
     pub barcodes: Vec<String>,
-    /// Recognized text lines, one per visual line in whatever order the
-    /// recognizer emits. Empty when no text is present.
+    /// One per visual line, in whatever order the recognizer emits them.
     pub text_lines: Vec<String>,
 }
 
-/// Analyzes an artwork image in one pass. Implementations live in platform
-/// wrappers (macOS Vision, etc.).
 pub trait ArtworkAnalyzer: Send + Sync {
-    /// Detect barcodes and recognize text in the image at `path` in a single
-    /// decode. Returns empty payloads/lines on failure or when absent.
+    /// Detect barcodes and recognize text in one decode of the image at `path`.
+    /// Comes back empty on failure, as when there's nothing to find.
     fn analyze(&self, path: &Path) -> ArtworkAnalysis;
 }
 
-/// No-op fallback. Registered when no platform analyzer is available so the
-/// extraction service can return empty results without a null check
-/// everywhere.
+/// Registered when no platform analyzer is available, so the extraction service gets
+/// empty results instead of needing a null check at every call.
 pub(crate) struct NoopAnalyzer;
 
 impl ArtworkAnalyzer for NoopAnalyzer {

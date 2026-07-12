@@ -1,17 +1,15 @@
 use super::*;
 
 impl ImportServiceHandle {
-    /// Project an Unknown import candidate into a
-    /// `ReleaseUserEdit` shape so the edit-metadata form can seed itself
-    /// from what's on disk. CUE-backed candidates use the parsed CUE track
-    /// layout; per-track-file candidates use embedded tags. Used by the
-    /// "Add as Unknown" affordance: the user clicks the link, the UI calls this
-    /// to preview, then shows the editor for verification before commit.
+    /// Project an Unknown import candidate into a `ReleaseUserEdit` so the
+    /// edit-metadata form can seed itself from what's on disk: the parsed CUE
+    /// track layout for CUE-backed candidates, embedded tags for per-track-file
+    /// ones. This backs "Add as Unknown" — the UI previews, then shows the editor
+    /// for verification before commit.
     ///
-    /// The commit-side worker re-scans the same folder and runs the same
-    /// Unknown mapper at commit time, so the user's edits — applied via the
-    /// `user_edit` overlay on the import command — are the source of truth for
-    /// fields they touched. This preview is the seed only.
+    /// This is only the seed. The worker re-scans the folder and re-runs the same
+    /// Unknown mapper at commit time, so for any field the user touched, their
+    /// edits (carried by the command's `user_edit` overlay) are what wins.
     pub async fn preview_file_tags_for_folder(
         &self,
         folder: std::path::PathBuf,
@@ -48,22 +46,17 @@ impl ImportServiceHandle {
         })?
     }
 
-    /// Build an import command and enqueue it. For Exact / Approximate
-    /// the worker calls `prepare_release` itself to fetch and map the
-    /// release — reading from the same LRU caches the UI's prefetch
-    /// warmed up. For Unknown the worker reads the candidate's local evidence:
-    /// CUE sheets for CUE-backed candidates, embedded tags for per-track-file
-    /// candidates. Remote cover bytes are not threaded through the command;
+    /// Build an import command and enqueue it. The worker sources the release
+    /// itself: `prepare_release` for Exact / Approximate (reading the same LRU
+    /// caches the UI's prefetch warmed), the candidate's local evidence for
+    /// Unknown. Remote cover bytes don't ride the command either —
     /// `download_cover_art_bytes` consults the URL cache when the worker writes
     /// the cover.
     ///
-    /// `identity_choice` carries both the user's claim shape and the
-    /// release reference (when applicable): Exact preserves the
-    /// mapper's `source_release_id`, Approximate NULLs it, Unknown
-    /// writes zero `release_identities` rows.
-    ///
-    /// `user_edit` is an optional overlay from the confirmation page;
-    /// when present, fields override the seeded metadata.
+    /// `identity_choice` carries the user's claim: Exact preserves the mapper's
+    /// `source_release_id`, Approximate NULLs it, Unknown writes zero
+    /// `release_identities` rows. `user_edit` is the confirmation page's optional
+    /// overlay, whose fields override the seeded metadata.
     pub fn start_import(
         &self,
         candidate_key: &str,
@@ -180,10 +173,9 @@ impl ImportServiceHandle {
         Ok(())
     }
 
-    /// Queue an import command and return the import_id for progress tracking.
-    ///
-    /// All heavy work (metadata resolution, file discovery, track mapping,
-    /// DB insertion) happens in the service worker. This returns immediately.
+    /// Queue an import command and return its import_id for progress tracking.
+    /// Returns immediately — all the work (metadata resolution, file discovery,
+    /// track mapping, DB insertion) happens in the service worker.
     pub fn send_command(
         &self,
         command: ImportCommand,
@@ -197,11 +189,9 @@ impl ImportServiceHandle {
         Ok(import_id)
     }
 
-    /// Test helper: subscribe to import progress for a single import
-    /// operation, yielding every `ImportProgress` whose `import_id` matches.
-    /// Production consumers read the unified stream via `subscribe_events`; this
-    /// per-import filtered view exists only for tests that drive one import and
-    /// assert on its progress sequence.
+    /// Test helper: yield every `ImportProgress` whose `import_id` matches, for a
+    /// test that drives one import and asserts on its progress sequence.
+    /// Production consumers read the unified stream via `subscribe_events`.
     #[cfg(any(test, feature = "test-utils"))]
     pub fn subscribe_import(
         &self,

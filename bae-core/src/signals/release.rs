@@ -1,24 +1,20 @@
-//! Extraction inputs for the `Release` source (re-identify): resolve a
-//! library release's files into the disc ID + track count and the artwork
-//! paths for the OCR pass. The disc-ID calculation itself lives in
-//! `import::discid` and is reused unchanged.
+//! Extraction inputs for the `Release` source (re-identify): resolve a library
+//! release's files into a disc ID + track count and the artwork paths for the OCR
+//! pass. The disc-ID calculation itself lives in `import::discid`.
 
 use std::path::PathBuf;
 use tracing::{debug, warn};
 
-/// Compute disc ID and track count for a release already in the library.
-/// Used by the re-identify pipeline.
+/// Disc ID and track count for a release already in the library.
 ///
-/// Resolves the release's local files (local folder or pinned remote
-/// storage), filters LOG / CUE / audio files, and computes a disc ID in the
-/// same order folder imports use: LOG first (most accurate), then CUE+audio
-/// pairs as fallback. Track count is read from the DB — the release's track
-/// row count, which already reflects the user's truth.
+/// Resolves the release's local files, filters LOG / CUE / audio, and computes a
+/// disc ID in the order folder imports use: LOG first (most accurate), then
+/// CUE+audio pairs. The track count comes from the DB's track rows, not the
+/// files — those rows are the user's truth.
 ///
-/// Returns `(None, count)` when no LOG/CUE artifacts are available — for
-/// cloud-only releases without a local copy, or for releases with track
-/// files only and no rip metadata. Caller falls back to barcode OCR or
-/// gives up depending on `has_artwork`.
+/// `(None, count)` when no LOG/CUE artifact is available — a cloud-only release
+/// with no local copy, or one with track files but no rip metadata. The caller
+/// turns that into `DiscIdSignal::Absent`.
 pub(crate) async fn resolve_release_identity(
     library_manager: &crate::library::LibraryManager,
     release_id: &str,
@@ -37,10 +33,9 @@ pub(crate) async fn resolve_release_identity(
         .await
         .map_err(|e| format!("Failed to load tracks: {e}"))?
         .len() as u32;
-    // Resolve on-disk paths for every release file via coven's external refs
-    // (a Local release's files are the user's own files in place). Remote files
-    // have no external ref and are skipped — the disc-ID phase silently bails to
-    // `None` for those, which the service treats as `DiscidUnavailable`.
+    // On-disk paths come from coven's external refs (a Local release's files are
+    // the user's own, in place). A remote file has no external ref and is skipped,
+    // so a cloud-only release yields no paths and thus no disc ID.
     let mut local_paths: Vec<PathBuf> = Vec::new();
     for f in &files {
         if let Some(path) = library_manager
@@ -89,18 +84,14 @@ pub(crate) async fn resolve_release_identity(
     Ok((disc_id, track_count))
 }
 
-/// Local artwork paths for a release, for the re-identify pipeline's barcode OCR
-/// phase. Includes the release's cover (the bae-produced cover blob, staged to a
-/// real file the OCR reader can open) and every release-attached image file
-/// resolvable to the user's own path. Cloud-only image files without a local copy
-/// are skipped — barcode OCR can't run on them and the pipeline degrades to "no
-/// signals."
+/// The artwork the re-identify OCR pass reads: the release's cover, plus every
+/// release-attached image file that resolves to a path on this device. A
+/// cloud-only image has no local copy and is skipped — OCR can't run on it.
 ///
-/// The cover blob lives in coven's store (no path bae may compute), so its bytes
-/// come back through the cover's image ref and are written into a temp dir whose
-/// guard is returned alongside the paths: the caller holds it until the OCR pass
-/// finishes, then the staged file is cleaned up. `None` when the release has no
-/// cover.
+/// The cover's bytes live in coven's store, which exposes no path bae may
+/// compute, so they are read out and staged into a temp dir. That dir's guard
+/// comes back alongside the paths and must outlive the OCR pass; `None` when the
+/// release has no cover.
 pub(crate) async fn resolve_release_artwork_paths(
     library_manager: &crate::library::LibraryManager,
     release_id: &str,
@@ -111,10 +102,9 @@ pub(crate) async fn resolve_release_artwork_paths(
         .map_err(|e| format!("Failed to load release files: {e}"))?;
     let mut paths: Vec<PathBuf> = Vec::new();
 
-    // The release's cover, read through coven and staged to a real file the OCR
-    // reader opens. The cover is one of several OCR artwork inputs (the in-folder
-    // image files below are the others), so a read/staging failure logs and skips
-    // just the cover rather than failing the whole resolve.
+    // The cover is one of several OCR inputs (the image files below are the
+    // others), so a read/staging failure skips just the cover, logged, rather than
+    // failing the whole resolve.
     let cover_staging = match library_manager.cover_ref(release_id).await {
         Ok(Some(image)) => {
             match library_manager.read_image_blob(&image).await {
@@ -143,8 +133,8 @@ pub(crate) async fn resolve_release_artwork_paths(
         }
     };
 
-    // Release-attached image files (in-folder artwork like cover.jpg), resolved
-    // to the user's own file via coven's external ref (Local releases only).
+    // In-folder artwork (cover.jpg and the like), resolved to the user's own file
+    // through coven's external ref — Local releases only.
     for file in &files {
         if !file.content_type.is_image() {
             continue;
@@ -169,9 +159,9 @@ pub(crate) async fn resolve_release_artwork_paths(
     Ok((paths, cover_staging))
 }
 
-/// Stage cover bytes to a temp file the OCR reader can open, pushing its path
-/// onto `paths` and returning the temp-dir guard. A staging IO failure logs and
-/// skips the cover (an optional OCR input) rather than failing the whole resolve.
+/// Write cover bytes to a temp file the OCR reader can open, pushing its path
+/// onto `paths` and returning the temp-dir guard. An IO failure skips the cover,
+/// logged, rather than failing the whole resolve.
 fn stage_cover_for_ocr(
     release_id: &str,
     bytes: &[u8],
@@ -314,12 +304,9 @@ mod tests {
         );
     }
 
-    /// Re-identify sources LOG/CUE from the release's library files,
-    /// not from a folder walk. For a local release, those files live
-    /// at `local_path`; for a pinned release they live under remote
-    /// storage. This test covers the local path: LOG + FLAC fixtures
-    /// in a temp folder, release rows pointing at that folder, then
-    /// `resolve_release_identity` returns the same disc ID a folder import
+    /// Re-identify reads LOG/CUE from the release's library files, not from a
+    /// folder walk. Covers the local case: LOG + FLAC fixtures in a temp folder
+    /// with release rows pointing at it must yield the disc ID a folder import
     /// would have computed.
     #[tokio::test]
     async fn test_resolve_release_identity_local() {
@@ -339,7 +326,6 @@ mod tests {
         let local_dir = temp.path().join("rip");
         std::fs::create_dir_all(&local_dir).unwrap();
 
-        // Stage LOG + FLAC fixtures under the local folder.
         std::fs::copy(
             std::path::Path::new("tests/fixtures/test_album.log"),
             local_dir.join("test_album.log"),
@@ -424,7 +410,6 @@ mod tests {
         };
         database.insert_release(&release).await.unwrap();
 
-        // One DbFile per real file on disk under the local folder.
         for (filename, content_type) in [
             ("test_album.log", ContentType::PlainText),
             ("01 Test Track 1.flac", ContentType::Flac),
@@ -443,15 +428,15 @@ mod tests {
             };
             database.insert_file(&file).await.unwrap();
         }
-        // Register the files as coven external refs (a Local release's in-place
-        // files) AFTER inserting them, so the DiscID re-read resolves their paths.
+        // Register the external refs *after* inserting the files, so the disc-ID
+        // re-read can resolve their paths.
         database
             .register_release_external_refs_for_test(&release.id, &local_dir.to_string_lossy())
             .await
             .unwrap();
 
-        // Two tracks so the count comes from the DB, not from a folder
-        // walk that may find different audio counts.
+        // Two track rows, so the assertion below pins the count to the DB rather
+        // than to whatever a folder walk would have counted.
         for n in 1..=2 {
             let track = DbTrack {
                 id: Uuid::new_v4().to_string(),

@@ -1,11 +1,10 @@
 use super::*;
 
 impl Database {
-    /// Enrich a list of queue entries with album/artist metadata for display.
-    /// Returns one `QueueItem` per entry, in the same order, each carrying the
-    /// entry's per-instance id. The same track queued twice resolves twice (the
-    /// metadata is fetched once and joined onto every entry of that track).
-    /// Entries whose track is not found are skipped.
+    /// One `QueueItem` per entry, in order, each carrying the entry's per-instance
+    /// id and its track's album/artist display metadata. A track queued twice
+    /// resolves twice — the metadata is fetched once and joined onto every entry of
+    /// that track. Entries whose track is not found are skipped.
     pub async fn get_queue_items(&self, entries: &[QueueEntry]) -> Result<Vec<QueueItem>, DbError> {
         if entries.is_empty() {
             return Ok(Vec::new());
@@ -68,8 +67,8 @@ impl Database {
     pub async fn save_playback_state(&self, state: &DbPlaybackState) -> Result<(), DbError> {
         let state = state.clone();
         self.call(move |conn| {
-            // Flatten the context substruct back to the table's three
-            // nullable columns: all three NULL when no context is playing.
+            // Flatten the context substruct back to the table's three nullable
+            // columns: all three NULL when no context is playing.
             let (source, shuffle_seed, cursor) = match &state.context {
                 Some(ctx) => (Some(&ctx.source), ctx.shuffle_seed, Some(ctx.cursor)),
                 None => (None, None, None),
@@ -102,19 +101,17 @@ impl Database {
     /// boundary so no caller downstream sees a malformed context).
     pub async fn load_playback_state(&self) -> Result<Option<DbPlaybackState>, DbError> {
         self.read(move |conn| {
-            // The closure yields `Option<DbPlaybackState>`: `None` is a corrupt
-            // row that discards the whole cache, distinct from the outer `None`
-            // for no row at all. The outer `.optional()` then flattens both to
-            // a single "no resume state" answer.
+            // The closure's `None` is a corrupt row that discards the whole cache;
+            // the outer `.optional()`'s `None` is no row at all. The flatten below
+            // collapses both into one "no resume state" answer.
             conn.query_row(
                 "SELECT source, shuffle_seed, cursor, manual, repeat, \
                      current_track_id, position_ms, volume, is_muted \
                      FROM playback_state WHERE id = 'current'",
                 [],
                 |row| {
-                    // `source` and `cursor` are written together (with
-                    // `shuffle_seed`, NULL = sequential): both present is a
-                    // context, both absent is none, exactly one present is a
+                    // `source` and `cursor` are written together: both present is a
+                    // context, both absent is no context, exactly one present is a
                     // corrupt row.
                     let source: Option<String> = row.get("source")?;
                     let shuffle_seed: Option<i64> = row.get("shuffle_seed")?;

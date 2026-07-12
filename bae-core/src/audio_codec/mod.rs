@@ -62,7 +62,7 @@ impl fmt::Display for StreamingDecodeError {
 
 impl std::error::Error for StreamingDecodeError {}
 
-/// Decoded audio metadata and samples
+/// A whole decode: interleaved i32 samples plus the format they're in.
 #[derive(Debug, Clone)]
 pub struct DecodedAudio {
     pub samples: Vec<i32>,
@@ -89,12 +89,12 @@ pub trait DecodedSink {
     fn set_decode_error_count(&mut self, _count: u32) {}
 }
 
-/// Initialize FFmpeg (call once at startup)
+/// Call once at startup.
 pub fn init() {
     ffmpeg_next::init().expect("Failed to initialize FFmpeg");
 }
 
-/// Convert FFmpeg error code to string
+/// An FFmpeg error code as its message.
 pub(crate) fn av_err_str(errnum: i32) -> String {
     unsafe {
         let mut buf = [0 as std::ffi::c_char; 256];
@@ -105,15 +105,11 @@ pub(crate) fn av_err_str(errnum: i32) -> String {
     }
 }
 
-/// Encode PCM samples to FLAC format.
-///
-/// Takes full-range interleaved i32 samples and returns the encoded FLAC data as
-/// bytes. `bits_per_sample` is the target FLAC bit depth.
-/// Uses FFmpeg library with custom AVIO for in-memory encoding.
+/// Encode full-range interleaved i32 samples to FLAC bytes, in memory, at
+/// `bits_per_sample` depth.
 ///
 /// `cancel` is checked between frames. When set, the encoder returns
-/// `Err("encoding cancelled")` early — no partial output, the caller can
-/// abandon the result and (if needed) clean up.
+/// `Err("encoding cancelled")` early — there is no partial output to keep.
 pub fn encode_to_flac(
     samples: &[i32],
     sample_rate: u32,
@@ -660,10 +656,10 @@ unsafe fn encode_avio(
     let mut pts: i64 = 0;
 
     while sample_offset < samples.len() {
-        // Skip av_write_trailer on cancel: muxers seek-back-patch trailer
-        // data (FLAC STREAMINFO, MP3 Xing) from frame state populated only
-        // by completed frames, so invoking it on a partial stream is
-        // unsafe. The output is discarded anyway.
+        // Skip av_write_trailer on cancel: a muxer patches its trailer (FLAC
+        // STREAMINFO, MP3 Xing) from frame state only completed frames populate,
+        // so running it over a partial stream is unsafe. The output is discarded
+        // anyway.
         if cancel.load(std::sync::atomic::Ordering::Relaxed) {
             muxer.write_trailer_on_drop = false;
             return Err("encoding cancelled".to_string());

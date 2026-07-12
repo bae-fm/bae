@@ -1,11 +1,6 @@
-//! Metadata search and prefetch orchestration.
-//!
-//! These functions coordinate searching MusicBrainz and Discogs for release
-//! metadata, checking Cover Art Archive for thumbnails, and fetching full
-//! release details for the import confirmation step.
-//!
-//! Extracted from the bridge layer to keep all import-related business logic
-//! in bae-core.
+//! Metadata search and prefetch orchestration: searching MusicBrainz and
+//! Discogs for release metadata, checking Cover Art Archive for thumbnails, and
+//! fetching full release details for the import confirmation step.
 
 use crate::discogs::client::{DiscogsClient, DiscogsError, DiscogsSearchParams};
 use crate::import::cover_art::{CoverArtArchiveClient, RemoteCover};
@@ -15,14 +10,10 @@ use crate::import::ImportError;
 use crate::musicbrainz::{self, MbReleaseResponse, ReleaseSearchParams, SearchRelease};
 use crate::signals::LookupFailure;
 
-/// A unified metadata search result from either MusicBrainz or Discogs.
+/// A metadata search result from either MusicBrainz or Discogs.
 ///
-/// This is a core type that both the bridge and desktop layers can convert
-/// to their own display types.
-///
-/// `source_group_id` carries the per-source group: MB release-group ID for
-/// MusicBrainz results, Discogs master ID for Discogs results. `None` when
-/// the search result didn't surface a group.
+/// `source_group_id` carries the per-source group — MB release-group ID or
+/// Discogs master ID — and is `None` when the search result surfaced no group.
 #[derive(Debug, Clone)]
 pub struct MetadataResult {
     pub source: MetadataSource,
@@ -50,12 +41,10 @@ impl From<&MetadataResult> for crate::db::LibraryCheck {
 
 /// Full release details for the confirmation step.
 ///
-/// `country` and `barcode` are pressing-level fields surfaced for the
-/// edit-metadata form — the user can review or override them before
-/// commit. `source_group_id` carries the per-source group (MB
-/// release-group ID or Discogs master ID) so the UI can build a
-/// `ReleaseIdentity` row directly from the picked release without a
-/// second fetch.
+/// `country` and `barcode` are pressing-level fields the user can review or
+/// override in the edit-metadata form before commit. `source_group_id` carries
+/// the per-source group (MB release-group ID or Discogs master ID) so the UI can
+/// build a `ReleaseIdentity` row from the picked release without a second fetch.
 #[derive(Debug, Clone)]
 pub struct ImportSearchReleaseDetail {
     pub release_id: String,
@@ -309,10 +298,8 @@ pub fn parse_duration_to_ms(duration: &str) -> Option<u64> {
     }
 }
 
-/// Build the UI-shaped `ImportSearchReleaseDetail` from a parsed MB
-/// response. Called by `prepare_mb_release` after the MB fetch returns,
-/// so the `PreparedRelease` carries the UI detail and the commit-side
-/// parsed data in one pass.
+/// Build the UI-shaped `ImportSearchReleaseDetail` from a parsed MB response,
+/// for the picker and the confirmation pane.
 fn build_mb_detail(
     release_id: &str,
     mb_response: &crate::musicbrainz::MbReleaseResponse,
@@ -395,11 +382,10 @@ pub async fn prefetch_mb_release(
     build_mb_detail(release_id, &response, cover_art)
 }
 
-/// Commit-ready release data: the parsed DB-shape album/release/tracks plus
-/// the raw JSON pairs for archival. Produced by `commit_mb_release` /
-/// `commit_discogs_release` on the worker side. Prefetch returns
-/// `ImportSearchReleaseDetail` directly and never builds this struct — the
-/// picker doesn't need the DB shape.
+/// Commit-ready release data: the parsed DB-shape album/release/tracks plus the
+/// raw JSON pairs for archival. Built worker-side by `commit_mb_release` /
+/// `commit_discogs_release`. The prefetch path never builds one — the picker
+/// wants `ImportSearchReleaseDetail`, not the DB shape.
 #[derive(Debug, Clone)]
 pub struct PreparedRelease {
     pub parsed: crate::import::ParsedAlbum,
@@ -443,9 +429,8 @@ pub async fn commit_mb_release(
     })
 }
 
-/// Build the UI-shaped `ImportSearchReleaseDetail` from a parsed
-/// Discogs release. Shared between the prefetch shim and
-/// `prepare_discogs_release`.
+/// Build the UI-shaped `ImportSearchReleaseDetail` from a parsed Discogs
+/// release, for the picker and the confirmation pane.
 fn build_discogs_detail(release: &crate::discogs::DiscogsRelease) -> ImportSearchReleaseDetail {
     let processed = crate::import::discogs_mapper::process_tracklist(&release.tracklist);
 

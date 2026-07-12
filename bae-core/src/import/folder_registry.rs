@@ -1,10 +1,8 @@
-//! Persistent list of folders the user watches for imports.
-//!
-//! Stored as `import_folders.yaml` beside the library's `config.yaml` — appdata,
-//! not the database. It's local UI state about *where to look* for music, not
-//! synced library content, so it never enters the DB or the sync set. On launch
-//! the import service loads the registry and scans each folder; the folders
-//! survive restart.
+//! Persistent list of folders the user watches for imports, stored as
+//! `import_folders.yaml` beside the library's `config.yaml` — appdata, not the
+//! database. It's local state about *where to look* for music, not synced library
+//! content, so it never enters the DB or the sync set. The import service loads
+//! it and scans each folder at launch, so the folders survive restart.
 
 use coven::StoreDir;
 use serde::{Deserialize, Serialize};
@@ -59,11 +57,10 @@ impl ImportFolderRegistry {
     }
 
     /// Load the registry from disk, or an empty one when the file is absent,
-    /// unreadable, or malformed. A corrupt or unreadable file warns and starts
-    /// with an empty watch list rather than failing app start — the user re-adds
-    /// folders and the registry rewrites cleanly on the next change. Returning
-    /// the empty default here (with a log) keeps the policy in one place instead
-    /// of every caller deciding how to recover.
+    /// unreadable, or malformed — a corrupt file warns and starts with an empty
+    /// watch list rather than failing app start, and the user re-adds folders
+    /// from there. Recovering here, in one place, keeps every caller from
+    /// inventing its own policy.
     pub fn load(library_dir: &StoreDir) -> Self {
         let path = Self::file_path(library_dir);
         match std::fs::read_to_string(&path) {

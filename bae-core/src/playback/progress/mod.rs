@@ -5,11 +5,10 @@ pub use handle::PlaybackProgressHandle;
 use tokio::sync::mpsc as tokio_mpsc;
 use tracing::warn;
 
-/// State of preview (file audition) playback — display-ready.
-///
-/// Carries **identity** (path) and **metadata** (duration) only. Position
-/// data flows exclusively through `PlaybackProgress::PreviewPositionUpdate`
-/// events so there is one sink for position, not two.
+/// Display-ready state of preview (file audition) playback. Carries identity
+/// (path) and duration only — position flows exclusively through
+/// `PlaybackProgress::PreviewPositionUpdate`, so there is one sink for it, not
+/// two.
 #[derive(Debug, Clone)]
 pub enum PreviewState {
     Idle,
@@ -32,11 +31,10 @@ pub struct PlaybackQueueProjection {
     pub revision: u64,
 }
 
-/// Progress updates during playback.
-///
-/// Some variants are **internal** — consumed by PlaybackService itself
-/// (e.g. TrackCompleted drives auto-advance) and don't need external handling
-/// because the resulting state transitions produce StateChanged events.
+/// Progress updates during playback. The variants below the "Internal events"
+/// divider are consumed by `PlaybackService` itself (`TrackCompleted` drives
+/// auto-advance); external subscribers can ignore them, since the transitions
+/// they cause emit their own `StateChanged`.
 #[derive(Debug, Clone)]
 pub enum PlaybackProgress {
     StateChanged {
@@ -50,7 +48,7 @@ pub enum PlaybackProgress {
         track_id: String,
         progress: f64,
     },
-    /// Queue was updated — the two lanes kept separate: the manual lane ("Up
+    /// The queue changed. The two lanes stay separate: the manual lane ("Up
     /// Next") in order, and the context (the release being played from) as its
     /// not-yet-played tail plus its shuffled flag, or `None` when nothing plays
     /// from a release. Each entry is a per-instance id + track id; the event bus
@@ -78,16 +76,13 @@ pub enum PlaybackProgress {
     },
 
     // -- Internal events --
-    // Consumed by PlaybackService for control flow (auto-advance, etc.).
-    // External subscribers can ignore these; StateChanged covers the
-    // resulting UI-visible transitions.
-    /// Internal: track finished decoding. Triggers auto-advance.
+    /// The track drained. Drives auto-advance.
     TrackCompleted {
         track_id: String,
     },
-    /// Seek completed, position changed within the same track.
-    /// Also emitted by restore() and helper paths that need to refresh
-    /// position display without a full state change.
+    /// Position moved within the same track. Emitted by a seek, and by `restore`
+    /// and the pause/resume refresh, which need the display repositioned without
+    /// a state change.
     Seeked {
         position_ms: u64,
         /// User-facing track duration (pregap-adjusted), paired with
@@ -96,7 +91,7 @@ pub enum PlaybackProgress {
         track_id: String,
         progress: f64,
     },
-    /// Internal: decode stats emitted when a track finishes or is stopped.
+    /// Decode stats for a track that finished or was stopped.
     DecodeStats {
         track_id: String,
         error_count: u32,

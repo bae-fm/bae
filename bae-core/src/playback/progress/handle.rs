@@ -2,13 +2,14 @@ use super::PlaybackProgress;
 use std::sync::{Arc, Mutex};
 use tokio::sync::mpsc as tokio_mpsc;
 use tracing::info;
-/// Handle for subscribing to playback progress updates
+/// Fans one progress stream out to every subscriber.
 #[derive(Clone)]
 pub struct PlaybackProgressHandle {
     subscriptions: Arc<Mutex<Vec<tokio_mpsc::UnboundedSender<PlaybackProgress>>>>,
 }
 impl PlaybackProgressHandle {
-    /// Create a new progress handle and spawn background task to process progress updates
+    /// Spawn the fan-out task that forwards each event from `progress_rx` to
+    /// every live subscriber.
     pub fn new(
         mut progress_rx: tokio_mpsc::UnboundedReceiver<PlaybackProgress>,
         runtime_handle: tokio::runtime::Handle,
@@ -32,9 +33,8 @@ impl PlaybackProgressHandle {
         });
         Self { subscriptions }
     }
-    /// Subscribe to all playback progress updates
-    /// Returns a receiver that yields all progress updates
-    /// Subscription is automatically removed when receiver is dropped
+    /// A receiver yielding every progress update. Dropping it unsubscribes (the
+    /// fan-out prunes closed senders).
     pub fn subscribe_all(&self) -> tokio_mpsc::UnboundedReceiver<PlaybackProgress> {
         let (tx, rx) = tokio_mpsc::unbounded_channel();
         self.subscriptions.lock().unwrap().push(tx);

@@ -1,24 +1,19 @@
 //! File-tag metadata seeding for Unknown imports.
 //!
-//! Reads embedded ID3v1/ID3v2/Vorbis-comment/MP4-ilst tags from a rip's
-//! audio files and projects them into the same `ParsedAlbum` shape that
-//! `map_mb_response_to_db` and `map_discogs_to_db` produce. Used when no
-//! external identification is available — the user explicitly opts in
-//! via "Add as Unknown", and the editable confirmation page lets them
-//! correct anything tags got wrong.
+//! Reads embedded ID3v1/ID3v2/Vorbis-comment/MP4-ilst tags from a rip's audio
+//! files and projects them into the same `ParsedAlbum` shape that
+//! `map_mb_response_to_db` and `map_discogs_to_db` produce. Used when no external
+//! identification is available: the user opts in via "Add as Unknown", and the
+//! editable confirmation page lets them correct anything the tags got wrong.
 //!
-//! The returned `ParsedAlbum::identities` is always empty: an Unknown
-//! import makes no identity claim. `metadata_source` lands as
-//! `FileTags`; `metadata_source_release_id` stays NULL on the release
-//! row.
+//! `ParsedAlbum::identities` is always empty — an Unknown import makes no
+//! identity claim — so `metadata_source` lands as `FileTags` and
+//! `metadata_source_release_id` stays NULL on the release row. Signals
+//! (`disc_id`, `barcode`, `catalog_number`) are out of scope; they flow through
+//! the signal pipeline regardless of seed source.
 //!
-//! Signals (`disc_id`, `barcode`, `catalog_number`) are out of scope —
-//! they flow through the signal pipeline regardless of seed source per
-//! the parent doc's Signals policy.
-//!
-//! Format is derived from the codec (`FLAC`, `MP3`, `APE`, `M4A`); year
-//! from any tag carrying a date. Both stay `None` if not determinable
-//! rather than being defaulted.
+//! Format comes from the probed codec, year from any tag carrying a date. Both
+//! stay `None` when not determinable rather than being defaulted.
 
 use super::assemble::{
     assemble_parsed_album, AlbumArtistScope, ArtistRef, ReleaseIr, TrackEvent, TrackIr, TrackNumber,
@@ -52,24 +47,20 @@ struct FileTags {
 
 /// Map the embedded tags of a rip's audio files to a `ParsedAlbum`.
 ///
-/// `audio_files` is the ordered list of audio files in the rip. The
-/// order determines fallback track ordering when DISCNUMBER/TRACKNUMBER
-/// tags are absent or partial — a sane default for natural-sort folder
-/// scans. `folder_name` is the rip's containing folder, used as the
-/// album-title fallback when no file carries an ALBUM tag.
+/// `audio_files` is the rip's audio files in order; that order is the fallback
+/// track ordering when DISCNUMBER/TRACKNUMBER tags are absent or partial.
+/// `folder_name` is the rip's containing folder — the album-title fallback when
+/// no file carries an ALBUM tag.
 ///
-/// Seeds whatever the files carry and leaves the rest for the user. This
-/// is the Unknown path: the user explicitly opted in and gets an editable
-/// confirmation form, so missing album-level fields are seeded as
-/// editable blanks rather than errors — the album title falls back to
-/// `folder_name` (the folder is the album for a typical rip) and then to
-/// empty; the artist falls back to empty. The form's save-gate
-/// (`RawReleaseEdit::shape` → `EmptyAlbumTitle` / `NoAlbumArtist`) requires
-/// the user to fill any blank before committing, so we never write a
-/// fabricated default. Per-track TITLE absence falls back to the file stem.
+/// Seeds whatever the files carry and leaves the rest for the user. Missing
+/// album-level fields become editable blanks, never errors: the album title
+/// falls back to `folder_name` then to empty, the artist to empty, a missing
+/// track TITLE to the file stem. The form's save-gate (`RawReleaseEdit::shape` →
+/// `EmptyAlbumTitle` / `NoAlbumArtist`) makes the user fill any blank before
+/// committing, so no fabricated default is ever written.
 ///
-/// Errors only when `audio_files` is empty (an album has at least one
-/// track) or an individual file fails to open / has an unsupported codec.
+/// Errors only when `audio_files` is empty (an album has at least one track) or
+/// a file fails to open or have its tags read.
 pub fn map_file_tags_to_db(
     audio_files: &[PathBuf],
     folder_name: Option<&str>,
@@ -87,10 +78,8 @@ pub fn map_file_tags_to_db(
         .map(|p| read_tags(p))
         .collect::<Result<_, _>>()?;
 
-    // ── Album-level fields ─────────────────────────────────────────────
-    // Album title: an ALBUM tag if any file carries one, else the rip's
-    // folder name, else empty. The editable form gates save on a non-empty
-    // title, so a blank here is a prompt to the user, not a committed value.
+    // A blank title here is a prompt to the user, not a committed value — the
+    // editable form gates save on a non-empty one.
     let album_title = extracted
         .iter()
         .find_map(|t| t.album_title.as_ref())
@@ -98,11 +87,9 @@ pub fn map_file_tags_to_db(
         .or_else(|| folder_name.map(str::to_string))
         .unwrap_or_default();
 
-    // Album artist: prefer ALBUMARTIST when set; fall back to ARTIST
-    // (rippers commonly populate only ARTIST for single-artist albums, so
-    // accepting it here matches what those tools actually write); else
-    // empty. No folder-name fallback — the folder name is the album, not a
-    // reliable artist. The form's save-gate requires a non-empty artist.
+    // ALBUMARTIST, else ARTIST — rippers commonly populate only ARTIST for a
+    // single-artist album. No folder-name fallback: the folder name is the album,
+    // not a reliable artist.
     let album_artist_name = extracted
         .iter()
         .find_map(|t| t.album_artist.as_ref())
@@ -112,21 +99,19 @@ pub fn map_file_tags_to_db(
 
     let year = extracted.iter().find_map(|t| t.year).map(|y| y as i32);
 
-    // Format reflects the actual codec of the rip, not editorial pressing
-    // info. If probing fails, the editable field stays blank instead of using
-    // an extension or container label.
+    // The rip's actual codec, not editorial pressing info. A failed probe leaves
+    // the editable field blank rather than guessing from the extension.
     let format = extracted[0]
         .content_type
         .as_ref()
         .map(|content_type| content_type.display_name().to_string());
 
-    // ── Track seeds: assign side from DISCNUMBER, track_number from
-    // TRACKNUMBER. Positional fallback (index within side by file order) is
-    // used only on a side where NO file is tagged — backfilling a position
-    // onto an untagged file that shares a side with tagged files would collide
-    // with the real tag values (e.g. an untagged file getting position 1 next
-    // to a TRACKNUMBER=1 file). On a partially-tagged side the untagged files
-    // stay `None` for the user to assign in the editor.
+    // Side comes from DISCNUMBER, track_number from TRACKNUMBER. The positional
+    // fallback (index within side, by file order) applies only on a side where NO
+    // file is tagged: backfilling a position onto an untagged file that shares a
+    // side with tagged ones would collide with the real values (an untagged file
+    // landing on position 1 beside a TRACKNUMBER=1 file). On a partially-tagged
+    // side the untagged files stay `None` for the user to assign.
     let side_of = |t: &FileTags| match t.disc_number {
         Some(0) | None => 1,
         Some(d) if d > i32::MAX as u32 => i32::MAX,
@@ -142,12 +127,9 @@ pub fn map_file_tags_to_db(
     let tracks: Vec<TrackIr> = extracted
         .iter()
         .map(|t| {
-            // The folder scanner only admits files with a recognised audio
-            // extension, so every path here has both an extension and a stem.
-            // `file_stem` returning None would mean the scanner's invariant
-            // broke upstream — surface it rather than fabricate a "Track N"
-            // placeholder. The filename stem is the last-resort title when a
-            // file carries no TITLE tag.
+            // The scanner only admits files with a recognised audio extension, so
+            // every path here has a stem. A `None` would mean that invariant broke
+            // upstream — panic rather than fabricate a "Track N" placeholder.
             let title = t.title.clone().unwrap_or_else(|| {
                 t.path
                     .file_stem()
@@ -275,13 +257,13 @@ pub fn map_unknown_candidate_to_db(
 }
 
 /// Map a CUE-backed rip's parsed sheets to a [`ParsedAlbum`] for the Unknown
-/// path. Unlike [`map_file_tags_to_db`], which seeds one track per file, the
-/// track structure comes from playable CUE `TRACK` entries: title from each
-/// `TITLE`, per-track artist from each `PERFORMER`. Album-level fields come
-/// from the sheet header (`TITLE` / `PERFORMER` / `REM DATE`), the album title
-/// falling back to the folder name. `sheets` and `audio_files` are one-per-pair
-/// in disc order — the same order `track_to_file_mapper` slices pairs — so side
-/// is the 1-based disc index and track numbers run per sheet.
+/// path. Where [`map_file_tags_to_db`] seeds one track per file, here the track
+/// structure comes from the playable CUE `TRACK` entries: title from each
+/// `TITLE`, per-track artist from each `PERFORMER`. Album-level fields come from
+/// the sheet header (`TITLE` / `PERFORMER` / `REM DATE`), the title falling back
+/// to the folder name. `sheets` and `audio_files` are one-per-pair in disc order
+/// — the same order `track_to_file_mapper` slices pairs — so side is the 1-based
+/// disc index and track numbers run per sheet.
 pub fn map_cue_sheets_to_db(
     sheets: &[&CueSheet],
     audio_files: &[&Path],
@@ -295,15 +277,13 @@ pub fn map_cue_sheets_to_db(
         });
     }
 
-    // Album title: a sheet TITLE if any carries one, else the rip's folder
-    // name, else empty (the editable Unknown form gates save on it).
+    // Blank is allowed — the editable Unknown form gates save on a title.
     let album_title = sheets
         .iter()
         .find_map(|s| non_empty(s.title.clone()))
         .or_else(|| folder_name.map(str::to_string))
         .unwrap_or_default();
 
-    // Album artist: the sheet PERFORMER header, else empty.
     let album_artist_name = sheets
         .iter()
         .find_map(|s| non_empty(s.performer.clone()))
@@ -313,8 +293,7 @@ pub fn map_cue_sheets_to_db(
         .iter()
         .find_map(|s| year_from_cue_date(s.date.as_deref()));
 
-    // Format reflects the actual codec, from the first audio file. Absent if
-    // the container can't be probed; the user can correct it in the form.
+    // The actual codec of the first audio file; absent if it can't be probed.
     let format = audio_files
         .first()
         .and_then(|p| probe_content_type(p))
@@ -376,19 +355,15 @@ fn probe_content_type(path: &Path) -> Option<ContentType> {
     }
 }
 
-/// Read the embedded front-cover picture from the first audio file that
-/// carries one, mapped to the library's [`ContentType`].
+/// The embedded front-cover picture from the first audio file that carries one,
+/// mapped to the library's [`ContentType`]. Prefers a `PictureType::CoverFront`,
+/// falling back to the first embedded picture of any type.
 ///
-/// This is the lowest-priority cover source for an Unknown import: it
-/// only feeds the cover pipeline when neither an explicit selection nor a
-/// folder image provides one (the caller enforces that ordering). Prefers
-/// a `PictureType::CoverFront` picture; falls back to the first embedded
-/// picture of any type. Returns `Ok(None)` when no file carries a picture
-/// or the picture's MIME isn't a supported image type (e.g. lofty's
-/// `Tiff`, which the library doesn't store as a cover) — a missing or
-/// unsupported embedded picture simply means there's nothing to seed.
-/// Returns `Err` when an audio file can't be opened or its tags can't be
-/// read.
+/// The lowest-priority cover source for an Unknown import — the caller uses it
+/// only when neither an explicit selection nor a folder image supplies one.
+/// `Ok(None)` when no file carries a picture, or its MIME isn't an image type
+/// the library stores as a cover (lofty's `Tiff`, say): either way there's
+/// nothing to seed. `Err` when a file can't be opened or its tags can't be read.
 pub fn read_embedded_cover(
     audio_files: &[PathBuf],
 ) -> Result<Option<(Vec<u8>, ContentType)>, ImportError> {
@@ -472,10 +447,8 @@ fn read_tags(path: &Path) -> Result<FileTags, ImportError> {
 
     let content_type = probe_content_type(path);
 
-    // Prefer the file format's primary tag (e.g. ID3v2 on MP3, Vorbis on
-    // FLAC); fall back to whichever tag is present (e.g. ID3v1-only on
-    // an MP3 with no ID3v2). first_tag covers ID3v1 that some rippers
-    // still produce.
+    // The format's primary tag (ID3v2 on MP3, Vorbis on FLAC), else whichever tag
+    // is present — `first_tag` covers the ID3v1-only files some rippers produce.
     let tag = tagged.primary_tag().or_else(|| tagged.first_tag());
 
     let (title, track_artist, album_title, album_artist, track_number, disc_number, year) =
@@ -506,11 +479,10 @@ fn read_tags(path: &Path) -> Result<FileTags, ImportError> {
     })
 }
 
-/// Drop a tag string to `None` when it's empty or whitespace-only.
-/// Lofty returns `Some("")` for present-but-blank tags (e.g. an
-/// `ALBUM=` line in Vorbis comments); treating those as present
-/// would let blank album titles and artist names slip past the
-/// required-field validation downstream.
+/// Drop a tag string to `None` when it's empty or whitespace-only. Lofty returns
+/// `Some("")` for a present-but-blank tag (an `ALBUM=` line in Vorbis comments);
+/// treating that as present would let blank titles and artist names slip past
+/// the required-field validation downstream.
 fn non_empty(s: Option<String>) -> Option<String> {
     s.and_then(|v| {
         let trimmed = v.trim();
@@ -522,11 +494,9 @@ fn non_empty(s: Option<String>) -> Option<String> {
     })
 }
 
-/// Read a year from the tag. Lofty exposes `date()` as a structured
-/// `Timestamp` (the preferred ID3v2.4 / Vorbis "DATE" field); older
-/// or alternate fields land in ItemKey::Year, ItemKey::ReleaseDate
-/// (TDRL — release date), or ItemKey::OriginalReleaseDate. We accept
-/// any of them.
+/// Read a year from the tag, accepting any of the fields it might live in:
+/// lofty's structured `date()` (the preferred ID3v2.4 / Vorbis "DATE"), then
+/// `Year`, `ReleaseDate` (TDRL), and `OriginalReleaseDate`.
 fn year_from_tag(tag: &lofty::tag::Tag) -> Option<u16> {
     if let Some(ts) = tag.date() {
         return Some(ts.year);

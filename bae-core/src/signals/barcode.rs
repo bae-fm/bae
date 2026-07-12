@@ -3,17 +3,16 @@
 
 use super::{LookupFailure, SourcedValue};
 
-/// The barcode signal extracted from a candidate's files. Carries the code
-/// payloads (deduped, in discovery order) with their [`SignalOrigin`];
-/// identify looks each one up.
+/// The codes found in a candidate's files, deduped, in discovery order, each with
+/// its [`SignalOrigin`]. Identify looks every one of them up.
 ///
 /// [`SignalOrigin`]: super::SignalOrigin
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum BarcodeSignal {
     /// Artwork OCR in flight; `codes` accumulates as images are analyzed.
     Scanning { codes: Vec<SourcedValue> },
-    /// Scanning finished. An empty `codes` means artwork was scanned but no
-    /// codes were found — distinct from `Absent`.
+    /// Finished. Empty `codes` here means artwork *was* scanned and held none —
+    /// which is not the same as `Absent`.
     Settled { codes: Vec<SourcedValue> },
     /// Artwork OCR failed before barcode extraction finished.
     Failed {
@@ -25,8 +24,6 @@ pub enum BarcodeSignal {
 }
 
 impl BarcodeSignal {
-    /// The code payloads (with origin) found so far (`Scanning`) or finally
-    /// (`Settled`); empty for `Absent`.
     pub fn codes(&self) -> &[SourcedValue] {
         match self {
             BarcodeSignal::Scanning { codes }

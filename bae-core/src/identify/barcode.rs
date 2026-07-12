@@ -30,13 +30,10 @@ pub async fn lookup_barcode(
     Ok(merge_barcode_results(mb, discogs))
 }
 
-/// Look up a barcode against Discogs, tolerating a provider outage.
-///
-/// Returns `None` when there is no client or the search fails; `Some(results)`
-/// on success. A failure is logged and skipped rather than propagated: Discogs
-/// is the best-effort secondary source, so its outage must not fail the phase
-/// or drop the MB matches. The skip is logged at `warn` because silently
-/// dropping a whole source from a user-facing lookup is abnormal.
+/// `None` when there is no client, or the search failed. Discogs is the
+/// best-effort secondary source, so its outage must not fail the phase or drop the
+/// MB matches — but dropping a whole source from a user-facing lookup is abnormal
+/// enough to warn about.
 async fn discogs_barcode_lookup(
     discogs_client: Option<&DiscogsClient>,
     barcode: &str,
@@ -59,13 +56,9 @@ async fn discogs_barcode_lookup(
     }
 }
 
-/// Merge one barcode's MB and Discogs matches, MB first then Discogs.
-///
-/// MB results carry `source == MusicBrainz` and Discogs results
-/// `source == Discogs`, so the two sets are disjoint by construction — the
-/// merge is an ordered concatenation, nothing to deduplicate across them.
-/// `discogs` is `None` when the Discogs lookup was skipped (no client) or
-/// failed (logged by the caller); the union is then just the MB results.
+/// MB first, then Discogs. Each result carries its own `source`, so the two sets
+/// are disjoint by construction and the merge is a plain concatenation with nothing
+/// to deduplicate. `discogs` is `None` when its lookup was skipped or failed.
 fn merge_barcode_results(
     mut mb: Vec<MetadataResult>,
     discogs: Option<Vec<MetadataResult>>,
@@ -97,7 +90,6 @@ mod tests {
         }
     }
 
-    /// The union keeps MB results first, then appends Discogs.
     #[test]
     fn merge_puts_mb_before_discogs() {
         let mb = vec![
@@ -121,8 +113,7 @@ mod tests {
         );
     }
 
-    /// A skipped or failed Discogs lookup (`None`) yields the MB results alone —
-    /// the phase isn't broken by a Discogs outage.
+    /// A Discogs outage doesn't break the phase: the MB results still stand.
     #[test]
     fn merge_without_discogs_is_mb_only() {
         let mb = vec![result(MetadataSource::MusicBrainz, "mb-1")];
@@ -132,7 +123,6 @@ mod tests {
         assert_eq!(merged[0].release_id, "mb-1");
     }
 
-    /// An empty Discogs result set leaves the MB results unchanged.
     #[test]
     fn merge_with_empty_discogs_is_mb_only() {
         let mb = vec![result(MetadataSource::MusicBrainz, "mb-1")];
@@ -141,15 +131,10 @@ mod tests {
         assert_eq!(merged[0].release_id, "mb-1");
     }
 
-    /// A Discogs lookup that genuinely fails (client pointed at a refused port)
-    /// is skipped, not propagated: the helper returns `None` and logs a warning.
-    /// Combined with the merge tests above, this is the "Discogs failure logged
-    /// and skipped, MB results still stand" path. No MB network is touched — the
-    /// merge with `None` (MB-only) is covered separately.
+    /// A real Discogs failure is skipped, not propagated: `None` plus a warning.
     #[tokio::test]
     async fn discogs_lookup_failure_is_logged_and_skipped() {
-        // Port 1 refuses immediately, so the search returns a transport error
-        // without a live Discogs dependency.
+        // Port 1 refuses immediately, so the search fails without a live dependency.
         let client = DiscogsClient::with_base_url(
             "test-token".to_string(),
             "http://127.0.0.1:1".to_string(),

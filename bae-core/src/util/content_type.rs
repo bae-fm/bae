@@ -1,14 +1,13 @@
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
-/// Probe-verified content type for files stored in the library.
+/// Probe-verified content type for files stored in the library, stored as a MIME
+/// string in the database.
 ///
 /// Every audio variant names a codec we actually decode. Constructed only by
 /// [`crate::audio_codec::probe_audio_from_path`] (from `AVCodecID`) or by
-/// [`ContentType::from_mime`] (for database rehydration). Extension-based
-/// guesses go through [`crate::util::content_type_hint::ContentTypeHint`];
-/// they never produce a `ContentType`.
-///
-/// Stored as MIME type strings in the database.
+/// [`ContentType::from_mime`] (reading a stored MIME back). An extension-based
+/// guess goes through [`crate::util::content_type_hint::ContentTypeHint`] and
+/// never produces a `ContentType`.
 #[derive(Clone, Debug, PartialEq)]
 pub enum ContentType {
     // Audio
@@ -71,9 +70,9 @@ impl ContentType {
 
     /// Parse from a MIME type string (as stored in the database).
     ///
-    /// Every audio variant's [`Self::as_str`] return value has a matching
-    /// arm here — otherwise a stored value would rehydrate as `Other(...)`
-    /// and codec information would be lost.
+    /// Every audio variant's [`Self::as_str`] value has a matching arm here —
+    /// otherwise a stored value would read back as `Other(...)` and lose its
+    /// codec.
     pub fn from_mime(s: &str) -> Self {
         match s {
             "audio/flac" => Self::Flac,
@@ -199,7 +198,7 @@ mod tests {
     use super::*;
 
     /// Every audio variant's `as_str` MIME must round-trip through `from_mime`.
-    /// If this breaks, stored DB rows rehydrate as `Other(...)` and the codec is lost.
+    /// If this breaks, stored DB rows read back as `Other(...)` and lose the codec.
     #[test]
     fn audio_mime_round_trip() {
         for ct in [

@@ -44,9 +44,9 @@ struct MeterState {
     emit_every_frames: u64,
 }
 
-/// Streams one track's decode into a [`crate::loudness::LoudnessMeter`] and emits
-/// `ImportLoudnessProgress` as the scan advances, throttled to ~0.1s of audio per
-/// tick. A failed `add_chunk` is recorded and the meter dropped (later chunks are
+/// Streams one track's decode into a [`crate::loudness::LoudnessMeter`], emitting
+/// `ImportLoudnessProgress` as it advances, throttled to ~0.1s of audio per tick.
+/// A failed `add_chunk` is recorded and the meter dropped (later chunks are
 /// ignored); `into_result` surfaces the failure to the caller.
 struct LoudnessProgressSink {
     state: Option<MeterState>,
@@ -91,17 +91,16 @@ impl LoudnessProgressSink {
 
     /// Why this track's decode looks broken, if it does: a fatal FFmpeg error, or
     /// output frames far short of the expected window (a valid header over a
-    /// truncated body — the decode stops early). `None` = the decode produced the
-    /// full window cleanly. The caller asserts on this only when
-    /// `verify_decode_on_import` is on; otherwise it's advisory (logged).
+    /// truncated body — the decode stops early). `None` means the decode produced
+    /// the full window cleanly. Advisory unless `verify_decode_on_import` is on.
     fn broken_reason(&self) -> Option<String> {
         if self.decode_error_count > 0 {
             return Some(format!("{} fatal decode error(s)", self.decode_error_count));
         }
         // A duration-derived `total_frames` (a whole-file / last track with no
-        // end_sample) is approximate, so require a gross shortfall: a truncated
-        // body decodes a fraction of the window, far past this 5% slack, while
-        // boundary rounding on the expected count stays well under it.
+        // end_sample) is approximate, hence the 5% slack: a truncated body decodes
+        // a fraction of its window, far past that, while boundary rounding on the
+        // expected count stays well under it.
         if let Some(total) = self.total_frames {
             let complete_floor = total - total / 20;
             if total > 0 && self.done_frames < complete_floor {
@@ -170,27 +169,22 @@ impl crate::audio_codec::DecodedSink for LoudnessProgressSink {
     }
 }
 
-/// Measure each track's loudness + true peak and the album's combined
-/// loudness, attaching the per-track measurements to `audio_formats` and
-/// returning the album-level `(loudness_lufs, peak_linear)`.
+/// Measure each track's loudness + true peak and the album's combined loudness,
+/// attaching the per-track measurements to `audio_formats` and returning the
+/// album-level `(loudness_lufs, peak_linear)`.
 ///
 /// Each track's window is decoded and measured on a blocking thread (FFmpeg
-/// decode is blocking CPU work); the per-file source bytes are read once and
-/// shared across that file's tracks (the tracks of a CUE image). Decoding
-/// per track window — not the whole image at once — bounds transient PCM
-/// memory to one track at a time.
+/// decode is blocking CPU work). A file's source bytes are read once and shared
+/// across its tracks (the tracks of a CUE image), but decoding one track window
+/// at a time bounds transient PCM memory to a single track.
 ///
 /// A track whose decode/measure fails, or that is too quiet to have a usable
-/// loudness, keeps NULL loudness/peak and still imports; the skip is logged
-/// at `warn!`/`debug!` with the file path. A measurement failure never
-/// aborts the import.
+/// loudness, keeps NULL loudness/peak and still imports — the skip is logged with
+/// its file path, and a measurement failure never aborts the import.
 ///
-/// Per-track progress ticks (and the sub-track ticks from the sink) are
-/// published on `event_tx`, the import event channel the service owns.
-///
-/// The full decode also verifies each track: a fatal decode error or output
+/// The full decode doubles as verification: a fatal decode error, or output
 /// frames far short of the expected window (a truncated body under a valid
-/// header) marks the track broken. Broken tracks are always logged and returned;
+/// header), marks the track broken. Broken tracks are always logged and returned;
 /// the caller decides whether to fail the import (per `verify_decode_on_import`).
 pub(super) async fn measure_loudness(
     event_tx: &broadcast::Sender<crate::import::handle::ImportEvent>,
@@ -202,10 +196,9 @@ pub(super) async fn measure_loudness(
 ) -> LoudnessResult {
     use ebur128::EbuR128;
 
-    // Source bytes per file, read once and shared across that file's tracks
-    // (every CUE track of one image points at the same bytes). An unreadable
-    // file yields `None`, so its tracks are skipped (logged) rather than
-    // measured against missing bytes.
+    // Read once per file and share across its tracks (every CUE track of one
+    // image points at the same bytes). An unreadable file yields `None`, so its
+    // tracks are skipped rather than measured against missing bytes.
     let path_by_file_id: HashMap<String, PathBuf> = file_ids
         .iter()
         .map(|(path, id)| (id.clone(), path.clone()))
@@ -223,27 +216,21 @@ pub(super) async fn measure_loudness(
         });
     }
 
-    // Every track is one unit of progress. A track whose source file was
-    // unreadable gets no decode task, so count it as done up front — the bar
-    // still reaches N/N even when some tracks can't be measured.
+    // Every track is one unit of progress, counted done even when unmeasurable,
+    // so the bar still reaches N/N.
     let tracks_total = audio_formats.len() as u32;
     let mut tracks_done: u32 = 0;
 
-    // Start tick (already counting any unreadable-file skips), then a tick per
-    // ~0.1s of audio measured (from inside the blocking task) so the
-    // determinate bar creeps continuously through each track's scan.
     emit_loudness_progress(event_tx, candidate_key, tracks_done, tracks_total, 0.0);
 
-    // Decode + measure ONE track at a time: each decode runs on a blocking
-    // thread (off the async worker) but is awaited before the next starts, so
-    // the machine never runs N concurrent decodes — one core's worth of work,
-    // and the bar advances a track per completion instead of jumping at the
-    // end. `audio_formats` and `tracks_to_files` are index-aligned (the
-    // formats are built from the same tracks), so `idx` keys both.
+    // Decode + measure ONE track at a time: each decode runs on a blocking thread
+    // but is awaited before the next starts, so the machine never runs N
+    // concurrent decodes — one core's worth of work, and the bar advances per
+    // track instead of jumping at the end. `audio_formats` and `tracks_to_files`
+    // are index-aligned (the formats are built from the same tracks), so `idx`
+    // keys both.
     let mut meters: Vec<EbuR128> = Vec::new();
     let mut track_peaks: Vec<f64> = Vec::new();
-    // Tracks whose decode looked broken (fatal errors / truncated body). Always
-    // collected; the caller fails the import on these when verify is on.
     let mut broken_tracks: Vec<String> = Vec::new();
     for (idx, tf) in tracks_to_files.iter().enumerate() {
         let format_id = audio_formats[idx].id.clone();
@@ -262,10 +249,9 @@ pub(super) async fn measure_loudness(
             emit_loudness_progress(event_tx, candidate_key, tracks_done, tracks_total, fraction);
             continue;
         }
-        // Frames in this track's window, to fill its bar segment as the decode
-        // streams: the sample window when known, else the track duration ×
-        // sample rate. Absent both, the segment only steps at the post-track
-        // tick.
+        // Frames in this track's window, filling its bar segment as the decode
+        // streams: the sample window when known, else duration × sample rate.
+        // With neither, the segment only steps at the post-track tick.
         let sample_rate = audio_formats[idx].sample_rate as u64;
         let total_frames = segments
             .iter()
@@ -305,8 +291,7 @@ pub(super) async fn measure_loudness(
             continue;
         }
         // Cloned into the blocking task so the sink can emit progress on the
-        // import event channel directly from the worker thread.
-        // `idx`/`tracks_total` place this track's scan in the bar.
+        // import event channel straight from the worker thread.
         let task_event_tx = event_tx.clone();
         let key = candidate_key.to_string();
         let outcome = tokio::task::spawn_blocking(move || {
@@ -322,9 +307,9 @@ pub(super) async fn measure_loudness(
                 idx: idx as u32,
                 tracks_total,
             };
-            // A decode that fails outright is broken; one that returns Ok can still
-            // be broken (fatal errors / a truncated body) — `broken_reason` reads
-            // the error count and frame shortfall the sink captured.
+            // A decode that fails outright is broken, but so is one that returns
+            // Ok over fatal errors or a truncated body — `broken_reason` reads the
+            // error count and frame shortfall the sink captured.
             for (bytes, start_sample, end_sample) in decode_segments {
                 if let Err(e) = crate::audio_codec::decode_audio_to_sink(
                     &bytes,
@@ -400,10 +385,10 @@ pub(super) async fn measure_loudness(
     }
 }
 
-/// Emit a loudness-measurement tick for the candidate's confirm pane. Routed
-/// to a native leaf view (not the coarse candidate row), so the sub-track
-/// cadence never churns the row. `fraction` is overall scan progress (0..1)
-/// for the determinate bar; `tracks_done`/`tracks_total` label which track.
+/// Emit a loudness-measurement tick for the candidate's confirm pane. It routes
+/// to a native leaf view, not the coarse candidate row, so the sub-track cadence
+/// never churns the row. `fraction` is overall scan progress (0..1) for the
+/// determinate bar; `tracks_done`/`tracks_total` label which track.
 fn emit_loudness_progress(
     event_tx: &broadcast::Sender<crate::import::handle::ImportEvent>,
     candidate_key: &str,

@@ -7,9 +7,8 @@
 //! - the upload callbacks drive the `in_flight` map and the rolling-window
 //!   `throughput`, and re-emit the outbox snapshot as a `LibraryEvent`;
 //! - `on_root_made_remote` / `on_root_made_local` fire when coven completes a
-//!   transition (including one resumed after a restart), so bae's
-//!   `ReleaseUpdated` event survives a restart rather than being lost with an
-//!   in-memory flag.
+//!   transition, including one resumed after a restart — so the `ReleaseUpdated`
+//!   event survives a restart rather than dying with an in-memory flag.
 //!
 //! `should_skip_uploads` lets the host pause the upload pipeline without touching
 //! the queue.
@@ -27,19 +26,17 @@ use crate::library::LibraryEvent;
 /// a make-Remote uploads, and a `ReleaseUpdated` whenever coven completes a
 /// transition.
 ///
-/// `in_flight` maps each currently-uploading `file_id` to the live count of
-/// encrypted bytes that have reached the cloud for it, shared with the
-/// `LibraryManager` so its outbox snapshot reports the "uploading" state and
-/// drives the per-file bar. `sessions` tallies each completed upload under its
-/// release, so the snapshot keeps finished files in the cumulative progress and
-/// never re-derives a completed file as queued while coven's post-upload commit
-/// hasn't removed its row yet. `throughput` records the byte deltas as they
-/// transfer so the snapshot can surface a rolling-window rate. `handle` lets the
-/// observer rebuild `ReleaseDetail` payloads (via `find_release_detail_with`,
-/// whose pin-state query routes through it) so a completed transition emits a
-/// `ReleaseUpdated` event. It is filled by [`set_handle`](Self::set_handle) right
-/// after the handle is built — the handle owns this observer, so it can't be
-/// passed at construction.
+/// `in_flight` maps each uploading `file_id` to the encrypted bytes that have
+/// reached the cloud for it, shared with the `LibraryManager` so its outbox
+/// snapshot reports the "uploading" state and drives the per-file bar. `sessions`
+/// tallies each completed upload under its release, so the snapshot keeps finished
+/// files in the cumulative progress and never re-derives a completed file as
+/// queued while coven's post-upload commit hasn't removed its row yet.
+/// `throughput` records the byte deltas as they transfer, for a rolling-window
+/// rate. `handle` is what `find_release_detail_with` answers the pin-state query
+/// through when rebuilding a `ReleaseDetail` for a `ReleaseUpdated` event; it is
+/// filled by [`set_handle`](Self::set_handle) right after the handle is built,
+/// since the handle owns this observer and so can't be passed at construction.
 pub struct ReleaseUploadObserver {
     db: OnceLock<Arc<Database>>,
     handle: OnceLock<CovenHandle>,
@@ -124,8 +121,7 @@ impl ReleaseUploadObserver {
         .await
         {
             Ok(Some(release)) => {
-                // A `send` error here means no UI is currently subscribed to the
-                // broadcast channel — expected and harmless, so it is dropped.
+                // A `send` error means no UI is subscribed right now — harmless.
                 let _ = self
                     .events
                     .send(LibraryEvent::ReleaseUpdated { album_id, release });
@@ -135,8 +131,7 @@ impl ReleaseUploadObserver {
         }
     }
 
-    /// Rebuild the outbox snapshot and broadcast it. A send error just means no
-    /// UI is subscribed right now, which is fine.
+    /// Rebuild the outbox snapshot and broadcast it.
     async fn emit_outbox_changed(&self) {
         let in_flight = { self.in_flight.lock().unwrap().clone() };
         let paused = self.sync_paused.load(std::sync::atomic::Ordering::SeqCst);
@@ -171,12 +166,11 @@ impl coven::BlobTransitionObserver for ReleaseUploadObserver {
     }
 
     async fn on_blob_upload_progress(&self, file_id: &str, bytes_done: u64, _bytes_total: u64) {
-        // Advance the file's live byte count and feed only the new bytes since
-        // the last report to the rolling-window throughput tracker. coven
-        // coalesces these calls to a tick, so each is already throttled — emit
-        // the snapshot on every one to move the bar. The byte counts are
-        // cumulative and monotonic within one attempt, so the delta is
-        // non-negative; `saturating_sub` guards against a late/duplicate report.
+        // Feed the throughput tracker only the bytes new since the last report.
+        // coven coalesces these calls to a tick, so each is already throttled —
+        // emit the snapshot on every one to move the bar. The counts are
+        // cumulative and monotonic within an attempt; `saturating_sub` guards a
+        // late or duplicate report.
         let delta = {
             let mut map = self.in_flight.lock().unwrap();
             match map.get_mut(file_id) {
@@ -203,13 +197,12 @@ impl coven::BlobTransitionObserver for ReleaseUploadObserver {
     }
 
     async fn on_blob_uploaded(&self, file_id: &str) {
-        // Credit any bytes not yet counted by a progress report (e.g. a small
-        // file that uploaded between coalescing ticks, or the tail past the last
-        // report) so the rolling throughput tracker sees the whole file. The byte
-        // counts coven reports are of the encrypted payload, a few bytes larger
-        // than `file_size`; the rolling rate is approximate, so the small
-        // discrepancy is immaterial. coven, not bae, flips the gate — this is a
-        // notification only.
+        // Credit any bytes no progress report counted (a small file that uploaded
+        // between coalescing ticks, or the tail past the last report) so the
+        // throughput tracker sees the whole file. coven's counts are of the
+        // encrypted payload, a few bytes larger than `file_size`, but the rolling
+        // rate is approximate so the discrepancy doesn't matter. coven, not bae,
+        // flips the gate — this is a notification only.
         let already_counted = match self.in_flight.lock().unwrap().remove(file_id) {
             Some(counted) => counted,
             // The file completed without an in-flight entry (no `started`/progress
@@ -277,11 +270,11 @@ impl coven::BlobTransitionObserver for ReleaseUploadObserver {
 
     /// coven finished making a root Remote (every blob uploaded, gate flipped,
     /// source files dropped). For a release, emit `ReleaseUpdated` so the UI's
-    /// storage state flips and drop its completed-upload tally (its queue rows
-    /// are gone, so nothing renders for it anymore). For *every* root, refresh
-    /// the outbox snapshot: a covers / artist-images root often commits last in
-    /// a burst, and skipping its emission would leave the queue pane frozen on
-    /// the previous snapshot instead of clearing.
+    /// storage state flips, and drop its completed-upload tally — its queue rows
+    /// are gone, so nothing renders for it. For *every* root, refresh the outbox
+    /// snapshot: a covers / artist-images root often commits last in a burst, and
+    /// skipping its emission would leave the queue pane frozen on the previous
+    /// snapshot instead of clearing.
     async fn on_root_made_remote(&self, root_table: &str, root_id: &str) {
         if root_table == "releases" {
             if let Err(e) = self.db().complete_import_for_release(root_id).await {

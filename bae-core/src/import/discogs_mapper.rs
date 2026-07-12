@@ -60,19 +60,15 @@ fn discogs_track_artist_ref(credit: &DiscogsArtist) -> ArtistRef {
     discogs_artist_ref(credit.name.clone(), Some(credit.id.clone()))
 }
 
-/// Map Discogs release metadata into database models including artist information.
+/// Map a Discogs release into database models (pure, no I/O).
 ///
-/// Converts a DiscogsRelease (from the API) into DbAlbum, DbRelease, DbTrack, and artist records
-/// ready for database insertion. Extracts artist data from Discogs API response,
-/// generates IDs, and links all entities together.
+/// `master_year` is the original release year from the Discogs master; the album
+/// year falls back to the specific release's year when it's absent.
 ///
-/// `master_year` is the original release year from the Discogs master release.
-/// Falls back to the specific release year if unavailable.
-///
-/// `mb_xref`: optional MB release resolved via the URL endpoint
-/// (`crate::musicbrainz::fetch_mb_xref`). When present, contributes a
-/// second `release_identities` row so future MB-rooted imports of the
-/// same release group attach to this album.
+/// `mb_xref` is the MB release resolved through MB's URL endpoint
+/// (`crate::musicbrainz::fetch_mb_xref`), when one was. It contributes a second
+/// `ReleaseIdentity` row, so future MB-rooted imports of the same release group
+/// attach to this album.
 pub fn map_discogs_to_db(
     release: &DiscogsRelease,
     master_year: Option<u32>,
@@ -80,8 +76,8 @@ pub fn map_discogs_to_db(
     clock: &dyn Clock,
     ids: &dyn IdProvider,
 ) -> Result<ParsedAlbum, ImportError> {
-    // Release artists → the artist pool. With no artists list, fall back to
-    // the artist half of the "Artist - Album" title split.
+    // With no artists list, fall back to the artist half of the "Artist - Album"
+    // title split.
     let mut release_refs: Vec<ArtistRef> = if release.artists.is_empty() {
         let artist_name = crate::discogs::split_title(&release.title)
             .and_then(|(artist, _)| artist)
@@ -130,8 +126,8 @@ pub fn map_discogs_to_db(
         barcode: None,
     };
 
-    // Release-level composer role credits, positions from the source order
-    // (non-composer roles are skipped, so positions keep holes).
+    // Positions come from source order, and non-composer roles are skipped — so
+    // the positions keep holes.
     let mut release_roles: Vec<ReleaseRole> = Vec::new();
     if let Some(extraartists) = release.extraartists.as_ref() {
         for (position, credit) in extraartists.iter().enumerate() {
@@ -159,16 +155,11 @@ pub fn map_discogs_to_db(
         .map(|pt| discogs_track_ir(release, pt))
         .collect();
 
-    // Identity rows. Discogs's `master_id` is what we group on; absence
-    // means the release stands on its own (no group identity to speak
-    // of) and we emit no Discogs row — the import still commits, just
-    // without that source's identity.
-    //
-    // When `mb_xref` is present, MB has a back-link to this Discogs
-    // release. Contribute a second row so future MB-rooted imports of
-    // the same release group attach to this album. Both rows are
-    // Exact: the user committed against the Discogs pressing, and the
-    // cross-link names a specific MB release.
+    // Discogs's `master_id` is the group key, so a release without one stands on
+    // its own and gets no Discogs identity row — the import still commits, just
+    // without that source's identity. An `mb_xref` means MB back-links to this
+    // Discogs release, contributing a second row so future MB-rooted imports of
+    // the same release group attach to this album. Both rows are Exact.
     let mut identities: Vec<ReleaseIdentity> = release
         .master_id
         .as_ref()
@@ -256,8 +247,6 @@ fn discogs_track_ir(release: &DiscogsRelease, pt: &ProcessedTrack) -> TrackIr {
         }
 
         for discogs_artist in &discogs_track.artists {
-            // One display-credit row per distinct Discogs artist across the
-            // collapsed track; positions compact over the rows actually emitted.
             if seen_credit_ids.insert(discogs_artist.id.clone()) {
                 events.push(TrackEvent::Credit {
                     position: credit_position,
@@ -294,14 +283,12 @@ pub(crate) struct ProcessedTrack {
 pub(crate) fn process_tracklist(tracklist: &[crate::discogs::DiscogsTrack]) -> Vec<ProcessedTrack> {
     use crate::discogs::DiscogsTrack;
 
-    // Phase 1: Filter out "index" entries
     let filtered: Vec<(usize, &DiscogsTrack)> = tracklist
         .iter()
         .enumerate()
         .filter(|(_, track)| track.type_ != "index")
         .collect();
 
-    // Phase 2: Collapse headings with their sub-tracks
     struct CollapsedTrack {
         title: String,
         position: String,
@@ -348,7 +335,7 @@ pub(crate) fn process_tracklist(tracklist: &[crate::discogs::DiscogsTrack]) -> V
             );
 
             if entry.title == "-" {
-                // A heading with title "-" clears the current heading
+                // A heading titled "-" clears the current heading.
                 current_heading = None;
                 heading_position = None;
             } else {
@@ -358,9 +345,7 @@ pub(crate) fn process_tracklist(tracklist: &[crate::discogs::DiscogsTrack]) -> V
             continue;
         }
 
-        // It's a regular track
         if current_heading.is_some() && is_sub_track_position(&entry.position) {
-            // This is a sub-track under the current heading
             if heading_position.is_none() {
                 heading_position = Some(extract_base_position(&entry.position));
             }
@@ -393,7 +378,6 @@ pub(crate) fn process_tracklist(tracklist: &[crate::discogs::DiscogsTrack]) -> V
         &mut heading_position,
     );
 
-    // Phase 3: Assign sides from the position format.
     collapsed
         .into_iter()
         .map(|ct| {
@@ -408,8 +392,8 @@ pub(crate) fn process_tracklist(tracklist: &[crate::discogs::DiscogsTrack]) -> V
         .collect()
 }
 
-/// Check if a position string indicates a sub-track (e.g., "B1i", "B1ii", "B1iii").
-/// Sub-tracks have a letter prefix, a number, then lowercase roman numeral or letter suffixes.
+/// Whether a position names a sub-track ("B1i", "B1ii", "B1iii"): a letter
+/// prefix, then a number, then a roman-numeral or letter suffix.
 fn is_sub_track_position(position: &str) -> bool {
     let bytes = position.as_bytes();
     if bytes.len() < 3 {
@@ -418,12 +402,11 @@ fn is_sub_track_position(position: &str) -> bool {
     if !bytes[0].is_ascii_alphabetic() {
         return false;
     }
-    // Find where the digits end
     let mut digit_end = 1;
     while digit_end < bytes.len() && bytes[digit_end].is_ascii_digit() {
         digit_end += 1;
     }
-    // Must have at least one digit, and something after the digits
+    // At least one digit, and a suffix after it.
     digit_end > 1 && digit_end < bytes.len()
 }
 
@@ -437,27 +420,22 @@ fn extract_base_position(position: &str) -> String {
     position[..end].to_string()
 }
 
-/// Parse the side number from a Discogs position string.
-///
-/// - Vinyl (A1, B2, C1...): each letter = side. A=1, B=2, C=3, D=4
-/// - CD (1-1, 1-2, 2-1...): disc number = side
-/// - Plain (1, 2, 3): side 1
+/// The side a Discogs position string names: for vinyl (`A1`, `B2`, `C1`) the
+/// letter is the side (A=1, B=2, ...); for CD (`1-1`, `2-1`) the disc number is;
+/// a plain number (`1`, `2`) is side 1.
 pub fn parse_side_from_position(position: &str) -> i32 {
-    // CD format: "1-1", "2-3"
     if let Some(dash_idx) = position.find('-') {
         if let Ok(disc) = position[..dash_idx].parse::<i32>() {
             return disc;
         }
     }
 
-    // Vinyl format: letter prefix
     if let Some(first_char) = position.chars().next() {
         if first_char.is_ascii_alphabetic() {
             return (first_char.to_ascii_uppercase() as i32) - ('A' as i32) + 1;
         }
     }
 
-    // Plain numbers: side 1
     1
 }
 

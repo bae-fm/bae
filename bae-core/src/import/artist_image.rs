@@ -4,12 +4,13 @@ use crate::import::MetadataSource;
 use crate::library::LibraryManager;
 use tracing::{debug, info, warn};
 
-/// Fetch an artist image from Discogs.
+/// Download an artist's primary image from Discogs and build the row describing
+/// those bytes; finalize writes the row and the blob atomically with the release
+/// import. The caller (`fetch_artist_images`) already skips artists that have an
+/// image row, so this assumes none exists.
 ///
-/// Downloads the primary image and builds the row describing those bytes. The
-/// caller already skips artists that have an image row, so this assumes none
-/// exists. Finalize writes the row and blob atomically with the release import.
-/// Best-effort: logs warnings on failure, never fails the import.
+/// Best-effort: a failure logs a warning and returns `None`, never failing the
+/// import.
 pub async fn fetch_artist_image(
     artist_id: &str,
     discogs_artist_id: &str,

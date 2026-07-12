@@ -1,7 +1,7 @@
 //! Custom FFmpeg AVIO contexts and their callbacks.
 //!
-//! `AvioContext` reads from an in-memory byte slice, `StreamingAvioContext`
-//! reads from a `SparseBuffer` that blocks until bytes arrive, and
+//! `AvioContext` reads from an in-memory byte slice, `StreamingAvioContext` reads
+//! from a sparse buffer whose reads block until the bytes arrive, and
 //! `WriteAvioContext` accumulates encoded output. Each pairs with the
 //! `unsafe extern "C"` read/write/seek callbacks FFmpeg invokes directly.
 
@@ -36,14 +36,13 @@ pub(super) unsafe fn free_format_and_custom_avio(
     free_custom_avio_context(avio);
 }
 
-/// Context for AVIO callbacks - holds the buffer and read position
+/// The in-memory byte slice an `AvioContext` decode reads from, plus its cursor.
 pub(super) struct AvioContext {
     pub(super) data: *const u8,
     pub(super) size: usize,
     pub(super) pos: usize,
 }
 
-/// AVIO read callback - reads bytes from our memory buffer
 pub(super) unsafe extern "C" fn avio_read_callback(
     opaque: *mut c_void,
     buf: *mut u8,
@@ -62,7 +61,6 @@ pub(super) unsafe extern "C" fn avio_read_callback(
     to_read as c_int
 }
 
-/// AVIO seek callback - seeks within our memory buffer
 pub(super) unsafe extern "C" fn avio_seek_callback(
     opaque: *mut c_void,
     offset: i64,
@@ -70,7 +68,7 @@ pub(super) unsafe extern "C" fn avio_seek_callback(
 ) -> i64 {
     let ctx = &mut *(opaque as *mut AvioContext);
 
-    // AVSEEK_SIZE returns the buffer size
+    // AVSEEK_SIZE asks for the size rather than seeking.
     if whence == ffmpeg_sys_next::AVSEEK_SIZE as c_int {
         return ctx.size as i64;
     }
@@ -90,18 +88,18 @@ pub(super) unsafe extern "C" fn avio_seek_callback(
     new_pos as i64
 }
 
-// --- Streaming AVIO for SparseBuffer ---
+// --- Streaming AVIO over a sparse buffer ---
 
-/// Context for streaming AVIO - reads from a BufferReader which blocks waiting for data
+/// The sparse-buffer reader a streaming decode reads from. Its `read` blocks
+/// until the fill delivers the bytes.
 pub(crate) struct StreamingAvioContext {
     pub(super) reader: std::sync::Mutex<crate::playback::sparse_buffer::BufferReader>,
     pub(super) buffer: SharedSparseBuffer, // kept for total_size queries
-    /// Per-decoder cancellation token. Set by the playback service to stop this
-    /// specific decoder without affecting other decoders on the same buffer.
+    /// Set by the playback service to stop this decoder alone, leaving the others
+    /// on the same buffer running.
     pub(super) cancel_token: Arc<std::sync::atomic::AtomicBool>,
 }
 
-/// AVIO read callback for streaming - reads from SparseBuffer, blocking until data available
 pub(crate) unsafe extern "C" fn streaming_avio_read_callback(
     opaque: *mut c_void,
     buf: *mut u8,
@@ -118,7 +116,8 @@ pub(crate) unsafe extern "C" fn streaming_avio_read_callback(
         Some(0) => ffmpeg_sys_next::AVERROR_EOF,
         Some(n) => n as c_int,
         None => {
-            // Reader cancelled
+            // The buffer was cancelled under us: set our own token too, so the
+            // decode loop sees the cancellation rather than reading it as EOF.
             ctx.cancel_token
                 .store(true, std::sync::atomic::Ordering::Relaxed);
             ffmpeg_sys_next::AVERROR_EOF
@@ -126,7 +125,6 @@ pub(crate) unsafe extern "C" fn streaming_avio_read_callback(
     }
 }
 
-/// AVIO seek callback for streaming - seeks within SparseBuffer
 pub(crate) unsafe extern "C" fn streaming_avio_seek_callback(
     opaque: *mut c_void,
     offset: i64,
@@ -155,10 +153,9 @@ pub(crate) unsafe extern "C" fn streaming_avio_seek_callback(
 
 // --- AVIO write context for encoding to memory ---
 
-/// Context for AVIO write callbacks - accumulates encoded data
+/// Accumulates an encode's output bytes in memory.
 pub(super) type WriteAvioContext = Cursor<Vec<u8>>;
 
-/// AVIO write callback - writes bytes to our memory buffer
 pub(super) unsafe extern "C" fn avio_write_callback(
     opaque: *mut c_void,
     buf: *const u8,
@@ -177,7 +174,7 @@ pub(super) unsafe extern "C" fn avio_write_callback(
     }
 }
 
-/// AVIO seek callback for writing - allows encoder to seek back for headers
+/// Lets a muxer seek back to patch its header (FLAC STREAMINFO, MP3 Xing).
 pub(super) unsafe extern "C" fn avio_write_seek_callback(
     opaque: *mut c_void,
     offset: i64,
@@ -185,7 +182,7 @@ pub(super) unsafe extern "C" fn avio_write_seek_callback(
 ) -> i64 {
     let ctx = &mut *(opaque as *mut WriteAvioContext);
 
-    // AVSEEK_SIZE returns the buffer size
+    // AVSEEK_SIZE asks for the size rather than seeking.
     if whence == ffmpeg_sys_next::AVSEEK_SIZE as c_int {
         let Ok(len) = i64::try_from(ctx.get_ref().len()) else {
             warn!(

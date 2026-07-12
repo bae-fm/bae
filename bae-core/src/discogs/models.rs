@@ -1,7 +1,6 @@
 use crate::discogs::remote_cover_from_urls;
 use crate::import::cover_art::RemoteCover;
 
-/// Artist credit from Discogs
 #[derive(Debug, Clone, PartialEq)]
 pub struct DiscogsArtist {
     pub id: String,
@@ -15,7 +14,7 @@ pub struct DiscogsRoleArtist {
     pub role: String,
     pub credited_name: Option<String>,
 }
-/// A Discogs release: the release-endpoint response projected to the fields bae uses.
+/// The release-endpoint response, projected to the fields bae uses.
 #[derive(Debug, Clone, PartialEq)]
 pub struct DiscogsRelease {
     pub id: String,
@@ -44,7 +43,6 @@ impl DiscogsRelease {
     }
 }
 
-/// Represents a track from Discogs
 #[derive(Debug, Clone, PartialEq)]
 pub struct DiscogsTrack {
     pub position: String,

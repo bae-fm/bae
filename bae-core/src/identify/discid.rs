@@ -7,18 +7,15 @@ use crate::import::cover_art::CoverArtArchiveClient;
 use crate::import::search::{lookup_by_discid, DiscIdResult, MetadataResult};
 use crate::signals::LookupFailure;
 
-/// Look up a disc ID on MusicBrainz and annotate matches with library
-/// status. Returns the zipped `(result, status)` pairs — possibly empty when
-/// MB has no hits for this disc ID. The triangulation reducer treats empty
-/// results the same way as a barcode signal that produced no matches:
-/// settled with zero, ready for combine.
+/// Look up a disc ID on MusicBrainz and pair each match with its library status.
+/// Empty when MB has no hits — which the reducer treats as a settled signal with
+/// zero results, ready for combine, exactly like a barcode that matched nothing.
 pub async fn lookup_and_resolve(
     cover_art_archive: &CoverArtArchiveClient,
     disc_id: &str,
     library_manager: &crate::library::LibraryManager,
 ) -> Result<Vec<(MetadataResult, LibraryStatus)>, LookupFailure> {
-    // The MB lookup carries its own typed failure (Network / Provider /
-    // Timeout) — pass it through structured.
+    // The MB lookup's failure is already typed — pass it through structured.
     let result = lookup_by_discid(cover_art_archive, disc_id).await?;
 
     let matches: Vec<MetadataResult> = match result {
@@ -27,8 +24,8 @@ pub async fn lookup_and_resolve(
         DiscIdResult::MultipleMatches(matches) => matches,
     };
 
-    // The in-library check is a local DB read — its failure is opaque
-    // diagnostic detail, not a provider verdict.
+    // The in-library check is a local DB read, so its failure is diagnostic
+    // detail, never a provider verdict.
     super::annotate_with_library_status(matches, library_manager)
         .await
         .map_err(|detail| LookupFailure::Diagnostic { detail })

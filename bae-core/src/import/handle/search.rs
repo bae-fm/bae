@@ -70,11 +70,10 @@ fn discogs_general_params(
 }
 
 impl ImportServiceHandle {
-    /// Fetch raw cover-art bytes for `url`. The UI calls this when it
-    /// needs to render a remote cover — the bytes are not threaded
-    /// back through the import command, but a session-wide LRU cache
-    /// in `cover_art` keeps the URL's bytes warm so the commit
-    /// worker's later download is a cache hit, not a re-fetch.
+    /// Fetch raw cover-art bytes for `url`, for the UI to render a remote cover.
+    /// The bytes aren't threaded back through the import command, but the
+    /// session-wide LRU cache in `cover_art` keeps them warm, so the commit
+    /// worker's later download is a cache hit rather than a re-fetch.
     pub async fn fetch_cover_bytes(
         &self,
         url: String,
@@ -120,10 +119,9 @@ impl ImportServiceHandle {
             .map(|s| (s.release_id.clone(), s))
             .collect();
 
-        // `check_releases_in_library` returns exactly one status per input
-        // check, keyed by `release_id`, so a miss is a broken invariant —
-        // surface it rather than fabricating a "not in library" default that
-        // would silently misclassify a real failure.
+        // `check_releases_in_library` returns exactly one status per input check,
+        // keyed by `release_id`, so a miss is a broken invariant. Surface it: a
+        // fabricated "not in library" default would silently misclassify it.
         let mut statuses = Vec::with_capacity(results.len());
         for r in &results {
             let status = status_map.get(&r.release_id).cloned().ok_or_else(|| {
@@ -134,26 +132,22 @@ impl ImportServiceHandle {
             statuses.push(status);
         }
 
-        // Grouping is the UI's shape, so it happens here in core: the search
-        // surface renders one card per release group with the pressings beneath.
+        // Grouping is the UI's shape, so core computes it: the search surface
+        // renders one card per release group with its pressings beneath.
         let groups = crate::import::release_group::group_results(results);
 
         Ok(GroupedSearchResults { groups, statuses })
     }
 
-    /// Fetch available remote cover art options for a release.
-    /// Reads `release_identities` for the release and queries each
-    /// source's cover endpoint:
+    /// The remote cover art options for a release: read its
+    /// `release_identities` and query each source's cover endpoint. MusicBrainz
+    /// yields both the per-pressing CAA cover (from `source_release_id`) and the
+    /// album-level one (from `source_group_id`); Discogs yields only the
+    /// per-pressing cover.
     ///
-    /// - **MusicBrainz** — `(source, source_release_id)` pulls the
-    ///   per-pressing CAA cover; `(source, source_group_id)` pulls the
-    ///   release-group (album-level) CAA cover.
-    /// - **Discogs** — `(source, source_release_id)` pulls the per-pressing
-    ///   cover via the Discogs API.
-    ///
-    /// Returns covers in the order they were resolved; the picker uses
-    /// this list as-is. Unknown imports (no identity rows) return an
-    /// empty list — no source to query.
+    /// Covers come back in resolution order and the picker renders them as-is.
+    /// An Unknown import has no identity rows, so it returns an empty list —
+    /// there's no source to query.
     pub async fn fetch_remote_covers(
         &self,
         release_id: &str,
@@ -231,10 +225,10 @@ impl ImportServiceHandle {
         Ok(covers)
     }
 
-    /// Prefetch for the confirmation pane. Fetches the release and builds
-    /// the picker/confirm detail — no DB-shape mapping. The fetch goes
-    /// through the network LRU caches, so the worker's later commit-time
-    /// fetch hits cache for the same response.
+    /// Prefetch for the confirmation pane: fetch the release and build the
+    /// picker/confirm detail, with no DB-shape mapping. The fetch goes through
+    /// the network LRU caches, so the worker's later commit-time fetch of the
+    /// same response is a cache hit.
     pub async fn prefetch_release(
         &self,
         release_id: &str,

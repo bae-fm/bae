@@ -1,22 +1,18 @@
 //! Text encoding detection and decoding.
-//!
-//! Handles BOM detection (UTF-8, UTF-16 LE/BE), validates UTF-8,
-//! and falls back to chardetng for legacy encodings (Windows-1252, Shift-JIS, etc.).
 
 use std::path::Path;
 
-/// Result of decoding text with detected encoding info.
 pub struct DecodedText {
     pub text: String,
-    /// The encoding that was detected or used, e.g. "UTF-8", "Shift_JIS", "windows-1252".
+    /// The encoding detected or used, e.g. "UTF-8", "Shift_JIS", "windows-1252".
     pub encoding: String,
 }
 
-/// Decode raw bytes to a String, detecting encoding automatically.
+/// Decode raw bytes, detecting the encoding:
 ///
 /// 1. BOM: UTF-8 (EF BB BF), UTF-16 LE (FF FE), UTF-16 BE (FE FF)
 /// 2. No BOM: try UTF-8
-/// 3. Not valid UTF-8: chardetng detection, decode via encoding_rs
+/// 3. Not valid UTF-8: chardetng detection (Windows-1252, Shift-JIS, …)
 pub fn decode_text(bytes: &[u8]) -> DecodedText {
     if let Some((encoding, bom_len)) = encoding_rs::Encoding::for_bom(bytes) {
         let (decoded, _, _) = encoding.decode(&bytes[bom_len..]);
@@ -26,7 +22,6 @@ pub fn decode_text(bytes: &[u8]) -> DecodedText {
         };
     }
 
-    // Try UTF-8
     if let Ok(s) = std::str::from_utf8(bytes) {
         return DecodedText {
             text: s.to_owned(),
@@ -34,7 +29,6 @@ pub fn decode_text(bytes: &[u8]) -> DecodedText {
         };
     }
 
-    // Fallback: detect legacy encoding
     let mut detector = chardetng::EncodingDetector::new();
     detector.feed(bytes, true);
     let encoding = detector.guess(None, true);

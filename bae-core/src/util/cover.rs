@@ -10,7 +10,7 @@ const COVER_MAX_SIZE: u32 = 600;
 const MAX_DECODE_DIMENSION: u32 = 8_192;
 const MAX_DECODE_ALLOC_BYTES: u64 = 128 * 1024 * 1024;
 
-/// Resize cover art to fit within COVER_MAX_SIZE, encoded as JPEG.
+/// Resize cover art to fit within COVER_MAX_SIZE (downscale only), as JPEG.
 pub fn resize_cover(data: &[u8]) -> Result<Vec<u8>, String> {
     let mut reader = ImageReader::new(Cursor::new(data))
         .with_guessed_format()
@@ -52,8 +52,8 @@ pub fn resize_cover(data: &[u8]) -> Result<Vec<u8>, String> {
 mod tests {
     use super::*;
 
-    /// Encode a solid-color image of the given dimensions to PNG bytes, so the
-    /// resizer's input is a real decodable image of a non-JPEG format.
+    /// A solid-color PNG, so the resizer's input is a real decodable image in a
+    /// format other than its JPEG output.
     fn png_source(width: u32, height: u32) -> Vec<u8> {
         let img = image::RgbImage::from_pixel(width, height, image::Rgb([120, 40, 200]));
         let mut buf = std::io::Cursor::new(Vec::new());
@@ -85,8 +85,6 @@ mod tests {
 
     #[test]
     fn small_source_is_not_upscaled() {
-        // The load-bearing assertion: a sub-600 source keeps its dimensions —
-        // resize downscales only, it never enlarges.
         let out = resize_cover(&png_source(300, 300)).unwrap();
         assert_eq!(decoded_dims(&out), (300, 300));
     }

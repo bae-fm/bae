@@ -3,9 +3,7 @@
 use super::*;
 
 impl LibraryManager {
-    /// Get all albums in the library, sorted by the given criteria.
-    ///
-    /// Pass an empty slice for default sort (newest first).
+    /// Every album, sorted by `sort` — an empty slice means newest first.
     pub async fn get_albums(
         &self,
         sort: &[crate::db::AlbumSortCriterion],
@@ -13,7 +11,6 @@ impl LibraryManager {
         Ok(self.database.get_albums(sort).await?)
     }
 
-    /// Get a page of albums for lazy loading.
     pub async fn get_album_page(
         &self,
         sort: &[crate::db::AlbumSortCriterion],
@@ -42,13 +39,12 @@ impl LibraryManager {
         Ok(self.database.get_album_index(sort, album_id).await?)
     }
 
-    /// Count total albums.
     pub async fn get_album_count(&self) -> Result<u64, LibraryError> {
         Ok(self.database.get_album_count().await?)
     }
 
-    /// Get album by ID. Only a test helper — production reads albums through
-    /// `find_album_detail` / `get_album_page`, never a bare row.
+    /// Test-only. Production reads albums through `find_album_detail` /
+    /// `get_album_page`, never as a bare row.
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn get_album_by_id(&self, album_id: &str) -> Result<Option<DbAlbum>, LibraryError> {
         Ok(self.database.find_album_by_id(album_id).await?)
@@ -64,7 +60,6 @@ impl LibraryManager {
         Ok(Some(self.resolve_album_detail(raw).await?))
     }
 
-    /// Search across albums and tracks.
     pub async fn search_library(
         &self,
         query: &str,
@@ -93,13 +88,13 @@ impl LibraryManager {
         ))
     }
 
-    /// Delete an album and all its associated data. The database rows are
-    /// removed in one cleanup-aware transaction, then coven evicts the blobs
-    /// named by the delete plans.
+    /// Delete an album and its data: the rows go in one cleanup-aware transaction,
+    /// then coven evicts the blobs the delete plans name.
     pub async fn delete_album(&self, album_id: &str) -> Result<(), LibraryError> {
         let releases = self.get_releases_for_album(album_id).await?;
 
-        // Collect track IDs from all releases before deletion for playback cleanup
+        // Read every release's track ids before the delete cascades them away —
+        // playback needs them to clear the queue.
         let mut all_track_ids = Vec::new();
         let mut db_cleanups = Vec::new();
         let mut evict_blobs = Vec::new();
@@ -130,12 +125,11 @@ impl LibraryManager {
 }
 
 impl LibraryManager {
-    /// Resolve a raw `DbAlbumDetail` into the display-ready `AlbumDetail`.
-    /// Joins artist names, formats labels, groups tracks by side, builds
-    /// galleries, and applies the `primary_release_id` fallback. The
-    /// database lookup filters out empty-release aggregates, but callers with
-    /// an already-read raw detail can still see an album whose releases were
-    /// removed before resolution.
+    /// Resolve a raw `DbAlbumDetail` into the display-ready `AlbumDetail`: joins
+    /// artist names, formats labels, groups tracks by side, builds galleries, and
+    /// applies the `primary_release_id` fallback. Errors on an album with no
+    /// releases — the DB lookup filters those out, but a caller holding an
+    /// already-read raw detail can still reach one whose releases were removed since.
     pub(super) async fn resolve_album_detail(
         &self,
         raw: crate::db::DbAlbumDetail,

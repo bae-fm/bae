@@ -76,14 +76,14 @@ fn probe_and_validate_audio(path: &Path) -> Result<crate::audio_codec::ProbeResu
     Ok(probe)
 }
 
-/// Resolve the probe-verified `ContentType` for a discovered file.
+/// The probe-verified `ContentType` for a discovered file.
 ///
-/// Audio files are probed (only the decoder knows which codec the container
-/// holds — `.m4a` could be ALAC or AAC, and the extension alone can't tell).
-/// Non-audio files get their `ContentType` derived from the extension hint:
-/// that's an honest mapping for images (an extension on image bytes predicts
-/// the codec), text, and PDF. Anything the hint can't classify becomes
-/// `OctetStream`, which flows through the DB as-is.
+/// Audio files are probed: only the decoder knows which codec the container
+/// holds — a `.m4a` could be ALAC or AAC, and the extension can't say. Non-audio
+/// files take their `ContentType` from the extension hint, an honest mapping for
+/// images (an extension on image bytes does predict the codec), text, and PDF.
+/// Anything the hint can't classify becomes `OctetStream` and flows through the
+/// DB as-is.
 pub(super) fn resolve_file_content_type(path: &Path) -> Result<ContentType, ImportError> {
     let ext =
         path.extension()
@@ -225,19 +225,19 @@ fn standalone_probed_audio_format(
     ))
 }
 
-/// Byte each CUE track's audio *starts* on within the shared file: the byte the
-/// demuxer lands on when seeking to that track's `start_sample`, found via
-/// `seek_landing_bytes` (one open per file, no decode). `starts[i]` is track
-/// `i`'s start byte, index-aligned to the CUE tracks.
+/// The byte each CUE track's audio *starts* on within the shared file: where the
+/// demuxer lands when seeking to that track's `start_sample`, from
+/// `seek_landing_bytes` (one open per file, no decode).
 ///
 /// This one list gives both boundaries of every track, because a CUE track's
-/// byte range is `[start[i], start[i + 1])`: track `i` ends exactly where track
+/// byte range is `[start[i], start[i + 1])` — track `i` ends exactly where track
 /// `i + 1`'s audio begins, so its read-ahead ceiling is the next track's start
-/// byte. The last track has no next start and runs to EOF. The first track starts
-/// at byte 0 (nothing to prefetch), so the caller stores `None` for it. `None`
-/// here means the offsets couldn't be read (non-UTF-8 path or a failed seek),
-/// distinct from a real result; the caller then stores no start or end byte for
-/// that file's tracks and they keep the whole-file read-ahead span.
+/// byte. The last track has no next start and runs to EOF, and the first starts
+/// at byte 0 with nothing to prefetch, so the caller stores `None` for both.
+///
+/// A `None` return means the offsets couldn't be read at all (non-UTF-8 path, a
+/// failed seek); the caller then stores no byte window for that file's tracks and
+/// they keep the whole-file read-ahead span.
 fn cue_file_landing_bytes(
     file_path: &Path,
     cue_pair: &CueFlacAnalysis,

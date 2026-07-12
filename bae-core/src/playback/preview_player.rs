@@ -91,8 +91,8 @@ impl PreviewPlayer {
     /// Start a fresh preview of `path`. Switches off any currently-loaded
     /// preview first. Returns true if playback started.
     pub(crate) async fn play(&mut self, path: String) -> bool {
-        // A preview is still active: stop it first (without resuming main — the
-        // new preview keeps main paused).
+        // Stop the active preview without resuming main — the new preview keeps
+        // main paused.
         if self.active.is_some() {
             self.stop();
         }
@@ -105,12 +105,10 @@ impl PreviewPlayer {
             }
         };
 
-        // Probe duration and sample rate from file.
         let Some(probe) = probe_preview_audio(&path).await else {
             return false;
         };
 
-        // Create sparse buffer and start local file reader.
         let buffer = create_sparse_buffer(source_size);
         let reader: Box<dyn AudioDataReader> = Box::new(LocalReader::new(path.clone()));
         reader.start_reading(buffer.clone(), self.progress_tx.clone());
@@ -168,9 +166,8 @@ impl PreviewPlayer {
             .map(|o| o.get_state() == AudioState::Paused)
             .unwrap_or(false);
 
-        // Take the active preview out, abort its listener, and shut the pipeline
-        // down — cancelling the old decoder and joining it so the fresh decoder
-        // can reuse the retained buffer.
+        // Shut the old pipeline down — cancelling the decoder and joining it —
+        // so the fresh decoder can reuse the retained buffer.
         let active = self.active.take().unwrap();
         active.listener_handle.abort();
         active
@@ -190,10 +187,10 @@ impl PreviewPlayer {
             )
             .await;
 
-        // The rebuild failed: the old pipeline is already torn down and
-        // `start_streaming` cancelled the buffer, so the preview is simply gone
-        // (no zombie left behind). Surface Idle so the UI stops showing a preview
-        // that no longer exists, instead of freezing on the pre-seek state.
+        // The rebuild failed: the old pipeline is torn down and `start_streaming`
+        // cancelled the buffer, so the preview is gone (no zombie). Surface Idle
+        // so the UI stops showing a preview that no longer exists rather than
+        // freezing on the pre-seek state.
         if !started {
             if let Some(preview_output) = &self.audio_output {
                 preview_output.set_state(AudioState::Stopped);
@@ -264,9 +261,8 @@ impl PreviewPlayer {
         let was_previewing = self.active.is_some();
         if let Some(active) = self.active.take() {
             active.listener_handle.abort();
-            // Cancel the source + decoder token and drop the stream; then cancel
-            // the buffer so the local reader stops and any blocked decoder read
-            // exits.
+            // Cancelling the buffer after the pipeline stops the local reader and
+            // unblocks a decoder parked on a read.
             active.pipeline.cancel();
             active.buffer.cancel();
         }
@@ -324,9 +320,9 @@ impl PreviewPlayer {
             leading_silence_frames: 0,
         };
 
-        // Preview never chains and plays an unimported file (no stored loudness
-        // measurements) at unity gain; the listener reads position from the event
-        // stream's fmt.
+        // Preview never chains, and plays an unimported file (no stored loudness
+        // measurements) at unity gain. The listener reads position off this fmt,
+        // carried on the event stream.
         let fmt = TrackFmt {
             track_id: path.clone(),
             duration_ms: duration.as_millis() as u64,
@@ -412,9 +408,9 @@ impl PreviewPlayer {
                 let mut completed = false;
                 while let Some(event) = audio_events.pop() {
                     match event {
-                        // Preview is single-track; the audio callback tags every
-                        // tick with the same fmt built above. Read its fields
-                        // directly so the listener carries no parallel copies.
+                        // Preview is single-track: every tick carries the same fmt
+                        // built above, so read its fields rather than keeping a
+                        // parallel copy here.
                         AudioEvent::Position((fmt, pos)) => {
                             let actual_pos_ms = (fmt.position_offset + pos).as_millis() as u64;
                             emit_progress(
@@ -430,9 +426,9 @@ impl PreviewPlayer {
                             );
                         }
                         AudioEvent::Completion(_) => {
-                            // Preview doesn't track decode stats — it is not a
-                            // library track. The stats carried by the uniform
-                            // event are dropped here by design.
+                            // The event's decode stats are dropped: a preview is
+                            // not a library track, so there's nothing to record
+                            // them against.
                             dispatch_command(&command_tx, PlaybackCommand::PreviewCompleted);
                             completed = true;
                         }

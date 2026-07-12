@@ -4,11 +4,11 @@
 //! A `StreamPipeline` is the decoder thread + `PlaybackSource` + output
 //! `AudioStream` trio with one construction path and one teardown path. The
 //! preview player (`preview_player::ActivePreview`) runs exactly one of these at
-//! a time. The main player no longer builds a per-track stream — it keeps one
-//! persistent output stream and swaps what its callback reads (see
-//! `service::output`) — but it shares `spawn_decoder` (the decoder-thread half),
-//! `run_decoder`, and the diagnostic logging from here so the two players can't
-//! drift on the decode/seek mapping.
+//! a time. The main player builds no per-track stream — it keeps one persistent
+//! output stream and swaps what its callback reads (see `service::output`) — but
+//! it shares `spawn_decoder` (the decoder-thread half), `run_decoder`, and the
+//! diagnostic logging from here so the two players can't drift on the
+//! decode/seek mapping.
 
 use crate::audio_codec::StreamingDecodeError;
 use crate::playback::audio_output::{
@@ -56,31 +56,32 @@ pub(crate) struct StreamPipelineStart {
     pub(crate) audio_events: AudioEventReceiver,
 }
 
-/// The decoder window for one stream. `target_sample` is where FFmpeg trims
-/// lead-in (the track's start plus any pregap/seek offset). The seek to it is
-/// either a by-byte jump (`seek_to_byte`, a lossless track's natural start) or a
-/// sample seek (APE, or a mid-track seek); the `target_sample` trim makes the
-/// first output sample exact either way. `stop_at_sample` ends output at the
-/// track's end (`None` = to EOF).
+/// One track's decoder windows: its segments in play order, preceded by
+/// `leading_silence_frames` of generated silence (a CUE `PREGAP` directive).
 pub(crate) struct StreamDecodeParams {
     pub(crate) segments: Vec<SegmentDecodeParams>,
     pub(crate) leading_silence_frames: u64,
 }
 
+/// One decoder window. `target_sample` is where FFmpeg trims lead-in (the
+/// segment's start plus any seek offset). The seek to it is either a by-byte jump
+/// (`seek_to_byte`, a lossless track's natural start) or a sample seek (APE, or a
+/// mid-track seek); the `target_sample` trim makes the first output sample exact
+/// either way. `stop_at_sample` ends output at the segment's end (`None` = to EOF).
 pub(crate) struct SegmentDecodeParams {
     pub(crate) buffer: SharedSparseBuffer,
     pub(crate) seek_to_byte: Option<u64>,
     pub(crate) target_sample: u64,
     pub(crate) stop_at_sample: Option<u64>,
-    /// The track's end byte offset -- the read-ahead ceiling. `None` = whole file.
+    /// The segment's end byte offset -- the read-ahead ceiling. `None` = whole file.
     pub(crate) end_byte: Option<u64>,
 }
 
 impl StreamDecodeParams {
-    /// Run the streaming decoder for this window: FFmpeg seeks (by byte or by
-    /// sample), trims lead-in at `target_sample`, and stops at `stop_at_sample`.
-    /// Shared by the play/seek, preload, and preview paths so they can't drift on
-    /// the seek/trim mapping.
+    /// Run the streaming decoder for each segment in turn: FFmpeg seeks (by byte
+    /// or by sample), trims lead-in at `target_sample`, and stops at
+    /// `stop_at_sample`. Shared by the play/seek, preload, and preview paths so
+    /// they can't drift on the seek/trim mapping.
     pub(crate) fn run_decoder(
         &self,
         sink: &mut TrackSink,
@@ -241,9 +242,9 @@ pub(crate) async fn start_stream_pipeline(
 }
 
 /// Wrap `track_source` in a `PlaybackSource`, build the output stream over it,
-/// and start it. The single stream-construction path both `start_stream_pipeline`
-/// (fresh decoder) and `StreamPipeline::attach_preloaded` (already-running
-/// decoder) run through.
+/// and start it. The stream-construction path `start_stream_pipeline` runs
+/// through (the main player builds its persistent stream in `service::output`
+/// instead).
 async fn build_and_play_stream(
     audio_output: &mut dyn AudioOutput,
     track_source: TrackStream,
@@ -257,10 +258,7 @@ async fn build_and_play_stream(
     ),
     PlaybackError,
 > {
-    // Wrap the track source in a PlaybackSource so the audio callback can advance
-    // to a pre-staged next track without rebuilding the stream. The audio
-    // callback tags every position/completion emit with `fmt`; at a gapless
-    // boundary it swaps to the staged next track's fmt.
+    // The audio callback tags every position/completion emit with `fmt`.
     let source = Arc::new(Mutex::new(PlaybackSource::new(track_source, fmt)));
 
     let (source_sample_rate, source_channels) = {
@@ -307,9 +305,8 @@ impl StreamPipeline {
     pub(crate) fn cancel(self) {
         match self.source.lock() {
             Ok(guard) => guard.cancel(),
-            // A poisoned lock means the audio callback thread panicked while
-            // holding it. The source is being dropped here anyway, so the cancel
-            // it would have requested is moot — log and move on.
+            // A poisoned lock means the audio callback thread panicked holding
+            // it. The source is dropped here anyway, so its cancel is moot.
             Err(_) => warn!("playback source lock poisoned during teardown; skipping cancel"),
         }
         self.cancel_token.store(true, Ordering::Release);

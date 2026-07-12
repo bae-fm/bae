@@ -32,8 +32,8 @@ impl Database {
         self.get_track_ids_for_release(&release_id).await.map(Some)
     }
 
-    /// Resolve track IDs to their album IDs (track -> release -> album).
-    /// Returns a map from track_id to album_id for all tracks that were found.
+    /// Map each track id to its album id (track → release → album). Track ids that
+    /// aren't in the library are absent from the map.
     pub async fn get_album_ids_for_tracks(
         &self,
         track_ids: &[String],
@@ -67,7 +67,7 @@ impl Database {
         .await
     }
 
-    /// Search across albums and tracks by title
+    /// Search albums, tracks, composers, and works by title/name.
     pub async fn search_library(
         &self,
         query: &str,
@@ -78,8 +78,7 @@ impl Database {
 
         self
             .read(move |conn| {
-                // Search albums by title, with primary artist name.
-                // COALESCE the primary_release_id to the album's first release so
+                // COALESCE primary_release_id to the album's first release so
                 // callers always see a release id (every album has at least one).
                 let mut album_stmt = conn
                     .prepare(
@@ -109,7 +108,6 @@ impl Database {
                     })?
                     .collect::<coven::rusqlite::Result<Vec<_>>>()?;
 
-                // Search tracks by title, with album and artist info
                 let mut track_stmt = conn
                     .prepare(
                         r#"
@@ -167,7 +165,6 @@ impl Database {
             .await
     }
 
-    /// Insert a new album
     pub async fn insert_album(&self, album: &DbAlbum) -> Result<(), DbError> {
         let album = album.clone();
         self.call_sql(move |sql| {
@@ -177,9 +174,8 @@ impl Database {
         .await
     }
 
-    /// Get all albums, sorted by the given criteria.
-    ///
-    /// If `sort` is empty, defaults to `created_at DESC` (newest first).
+    /// Every album, sorted by `sort` — or `created_at DESC` (newest first) when
+    /// `sort` is empty.
     pub async fn get_albums(&self, sort: &[AlbumSortCriterion]) -> Result<Vec<DbAlbum>, DbError> {
         let (order_by, needs_artist_join) = build_order_by(sort, "a.created_at DESC");
         let artist_join = album_summary_artist_join(needs_artist_join);
@@ -234,15 +230,11 @@ impl Database {
         .await
     }
 
-    /// Resolve an album's 0-based position under a sort.
-    ///
-    /// Wraps the *identical* `build_order_by` + `album_summary_artist_join`
-    /// that `get_album_page` uses in a `ROW_NUMBER() OVER (ORDER BY …)`
-    /// window, then selects the row for `album_id`. Because the ORDER BY is
-    /// the same, the returned index is exactly the offset at which
-    /// `get_album_page` would return this album — the caller can load that
-    /// page and scroll to the row deterministically. `None` when the album
-    /// isn't in the library.
+    /// An album's 0-based position under a sort, or `None` when it isn't in the
+    /// library. Wraps the *identical* `build_order_by` + `album_summary_artist_join`
+    /// that `get_album_page` uses in a `ROW_NUMBER() OVER (ORDER BY …)` window, so
+    /// the index is exactly the offset at which `get_album_page` would return this
+    /// album — the caller can load that page and scroll to the row deterministically.
     pub async fn get_album_index(
         &self,
         sort: &[AlbumSortCriterion],
@@ -270,7 +262,6 @@ impl Database {
         .await
     }
 
-    /// Count total albums.
     pub async fn get_album_count(&self) -> Result<u64, DbError> {
         self.read(move |conn| {
             conn.query_row("SELECT COUNT(*) FROM albums", [], |row| {
@@ -282,8 +273,8 @@ impl Database {
         .await
     }
 
-    /// Raw album-summary lookup for a single album. Shares the JSON
-    /// aggregates with `get_album_page` so the resolver output matches.
+    /// Raw album-summary lookup for a single album. Shares the JSON aggregates with
+    /// `get_album_page` so the resolver output matches.
     pub async fn find_album_summary(
         &self,
         album_id: &str,
@@ -307,8 +298,8 @@ impl Database {
             .await
     }
 
-    /// Follow DbRelease.album_id -> DbAlbum.
-    /// FK navigation — row must exist. See method conventions above.
+    /// Follow `DbRelease.album_id` → `DbAlbum`. FK navigation — the row must
+    /// exist. See the method conventions above.
     pub async fn get_album_for_release(&self, release: &DbRelease) -> Result<DbAlbum, DbError> {
         let album_id = release.album_id.clone();
         self.read(move |conn| {
@@ -329,9 +320,10 @@ impl Database {
         .await
     }
 
-    /// Get the raw album-detail aggregate: album + artists + releases
-    /// (with per-release raw tracks, artists, and files). No formatting,
-    /// no derivation. `LibraryManager` resolves this into `AlbumDetail`.
+    /// The raw album-detail aggregate: the album, its artists, and its releases
+    /// with each one's tracks, files, audio rows, and identities. No formatting, no
+    /// derivation — `LibraryManager` resolves this into `AlbumDetail`. `None` for
+    /// an unknown album, or one with no releases.
     pub async fn find_album_detail(
         &self,
         album_id: &str,
@@ -401,7 +393,6 @@ impl Database {
         .await
     }
 
-    /// Update album's primary_release_id
     pub async fn set_album_primary_release(
         &self,
         album_id: &str,

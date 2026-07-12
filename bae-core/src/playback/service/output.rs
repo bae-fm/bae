@@ -16,9 +16,8 @@ use crate::playback::audio_output::{audio_event_channel, AudioStream};
 /// receiver the command loop drains. The `sample_rate`/`channels` are what the
 /// stream was built for; a track in a different format forces a rebuild.
 pub(super) struct OutputStream {
-    /// The device stream, held only for its `Drop` (dropping it releases the
-    /// device / stops the capture thread). Never read after construction — its
-    /// lifetime *is* its purpose — so it's underscore-named.
+    /// Held only for its `Drop`, which releases the device / stops the capture
+    /// thread. Never read after construction, hence the underscore.
     pub(super) _stream: Box<dyn AudioStream>,
     pub(super) source: Arc<Mutex<source::PlaybackSource>>,
     pub(super) audio_events: AudioEventReceiver,
@@ -43,12 +42,12 @@ impl PlaybackService {
     ) -> Result<(), PlaybackError> {
         if let Some(out) = &mut self.output {
             if out.sample_rate == sample_rate && out.channels == channels {
-                // Swap the source and flush the shared receiver under the same
-                // lock every audio-event push takes, so the swap and flush are
-                // atomic: everything queued at that instant was pushed for the
-                // outgoing track (stale — a stale `Completion` would otherwise
-                // stamp the incoming track `Completed` and mute it), and
-                // everything the callback pushes after belongs to the new track.
+                // Swap the source and flush the receiver under the same lock every
+                // audio-event push takes, so the two are atomic: everything queued
+                // at that instant belongs to the outgoing track and is dropped (a
+                // stale `Completion` would otherwise stamp the incoming track
+                // `Completed` and mute it), and everything pushed after belongs to
+                // the new one.
                 {
                     let mut source = out.source.lock().unwrap();
                     source.replace(track_stream, fmt);
@@ -87,14 +86,14 @@ impl PlaybackService {
         channels: u32,
         carry_events: Vec<AudioEvent>,
     ) -> Result<(), PlaybackError> {
-        // Drop the old stream first so the device is released / the old capture
-        // thread joins before the new one binds. Cancel its source before
-        // dropping it: a format-change rebuild discards the outgoing track's
-        // source, whose decoder `teardown_current_track` stopped only via its AVIO
-        // token — but a decoder parked writing a full ring only unparks on the
-        // sink's cancel flag, so without this it would spin forever. (The
-        // device-change handler took `self.output` out before calling here and
-        // passes that same source back in, so there's nothing to cancel then.)
+        // Drop the old stream first, so the device is released / the old capture
+        // thread joins before the new one binds. Cancel its source before dropping
+        // it: a format-change rebuild discards the outgoing track's source, whose
+        // decoder `teardown_current_track` stopped only via its AVIO token — and a
+        // decoder parked writing a full ring unparks only on the sink's cancel
+        // flag, so without this it would park forever. (The device-change handler
+        // took `self.output` out before calling here and passes that same source
+        // back in, so there is nothing to cancel then.)
         if let Some(old) = self.output.take() {
             old.source.lock().unwrap().cancel();
         }

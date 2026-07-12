@@ -13,11 +13,10 @@
 //! Crash reporting stays in the platform apps (native crash capture and symbol
 //! upload are platform-specific).
 //!
-//! The Datadog logs transport sends directly to the client intake endpoint used
-//! by Datadog's browser, iOS, and Android SDKs: `browser-intake-.../api/v2/logs`
-//! with a client token. Client tokens are public intake credentials for
-//! end-user apps; `DD_API_KEY` is never shipped in bae. baeium configures
-//! no-op crash reporting and no-op diagnostics.
+//! The transport posts to the client intake endpoint Datadog's browser, iOS, and
+//! Android SDKs use (`browser-intake-.../api/v2/logs`) with a client token —
+//! a public intake credential for end-user apps. `DD_API_KEY` is never shipped in
+//! bae. baeium configures no-op crash reporting and no-op diagnostics.
 
 mod telemetry;
 
@@ -277,12 +276,11 @@ impl DiagnosticsWorker {
     }
 
     async fn run(mut self) {
-        // `interval`'s first tick completes immediately; start the schedule one
-        // period out so the worker flushes *every* FLUSH_INTERVAL rather than
-        // also once at startup. The immediate tick could race an explicit
-        // flush(): landing between an enqueued event and the flush message, it
-        // consumed the transport response the flush was owed and swallowed the
-        // error the caller expected to see.
+        // `interval`'s first tick completes immediately; start one period out so
+        // the worker flushes only every FLUSH_INTERVAL. An immediate tick can land
+        // between an enqueued event and an explicit flush(), consuming the
+        // transport response that flush was owed and swallowing the error its
+        // caller expected to see.
         let mut flush_interval =
             tokio::time::interval_at(tokio::time::Instant::now() + FLUSH_INTERVAL, FLUSH_INTERVAL);
         loop {

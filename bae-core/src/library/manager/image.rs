@@ -46,18 +46,18 @@ impl LibraryManager {
             .map_err(|e| LibraryError::Import(e.to_string()))
     }
 
-    /// Upsert a library image record. Production writes cover/artist images
-    /// through `change_cover` / `store_library_image_blob`, which pair the row
-    /// with its blob; only a test helper for seeding a bare row.
+    /// Test-only: seed a bare image row. Production writes cover/artist images
+    /// through `change_cover` / `store_library_image_blob`, which pair the row with
+    /// its blob.
     #[cfg(test)]
     pub async fn upsert_library_image(&self, image: &DbLibraryImage) -> Result<(), LibraryError> {
         self.database.upsert_library_image(image).await?;
         Ok(())
     }
 
-    /// The readable `cloud_path` for an artist image under the current home:
-    /// `None` (hashed-by-id) on an opaque home, `Some({artist}/artist.{ext})`
-    /// on a browsable one. The manager owns config, so it reads the storage mode.
+    /// The readable `cloud_path` for an artist image under the current home: `None`
+    /// (hashed-by-id) on an opaque home, `Some({artist_id}/artist.{ext})` on a
+    /// browsable one. The manager owns config, so it reads the storage mode.
     pub fn artist_image_cloud_path(
         &self,
         artist_id: &str,
@@ -68,7 +68,6 @@ impl LibraryManager {
             .artist_image_cloud_path_for_storage(storage, artist_id, content_type)
     }
 
-    /// Get a library image by ID and type
     pub async fn get_library_image(
         &self,
         id: &str,
@@ -77,11 +76,10 @@ impl LibraryManager {
         Ok(self.database.find_library_image(id, image_type).await?)
     }
 
-    /// Change the cover art for an album's release.
-    ///
-    /// `ReleaseImage`: reads an image file already in the library (by file ID),
-    /// copies it to the images dir, and records it as the cover.
-    /// `RemoteCover`: downloads cover art from a URL, writes it, records it.
+    /// Change the cover art for an album's release. A `ReleaseImage` selection
+    /// reads an image file already in the library by file id; a `RemoteCover` one
+    /// downloads it from a URL. Either way the bytes are resized and stored as the
+    /// release's cover blob.
     pub async fn change_cover(
         &self,
         album_id: &str,
@@ -115,18 +113,17 @@ impl LibraryManager {
             }
         };
 
-        // Resize to a ≤600px JPEG thumbnail before deriving the storage key and
-        // record — the stored bytes, their format, and size all describe the
-        // thumbnail, not the source. The resize always emits JPEG.
+        // Resize to a ≤600px JPEG thumbnail before deriving the storage key and the
+        // record: the stored bytes, their format, and size describe the thumbnail,
+        // not the source. The resize always emits JPEG.
         let bytes = crate::util::cover::resize_cover(&bytes)
             .map_err(|e| LibraryError::Import(format!("Failed to resize cover: {e}")))?;
         let content_type = crate::util::content_type::ContentType::Jpeg;
 
-        // Record the cover blob and row in one coven write. The cover's `id` IS
-        // the release id. Under a
-        // browsable home the cover blob lands at a readable
-        // `{artist}/{album}/cover.{ext}` key, computed + stored here; an opaque
-        // home leaves `cloud_path` NULL (hashed-by-id).
+        // Record the cover blob and row in one coven write; the cover's `id` IS the
+        // release id. On a browsable home the blob lands at a readable
+        // `{album_id}/{release_id}/cover.{ext}` key, computed and stored here; an
+        // opaque home leaves `cloud_path` NULL (hashed-by-id).
         let now = self.clock.now();
         let storage = self.config_handle.config().cloud_home.storage;
         let cloud_path = self
@@ -148,9 +145,8 @@ impl LibraryManager {
         self.store_library_image_blob(&library_image, &bytes)
             .await?;
 
-        // Don't touch primary_release_id here — "change cover" updates
-        // the image on this release; "set primary release" is a separate
-        // user action. Let the event emit so UIs refresh.
+        // Don't touch primary_release_id: "change cover" sets the image on THIS
+        // release; "set primary release" is a separate user action.
         self.emit_album_updated(album_id).await;
 
         Ok(())
