@@ -274,7 +274,7 @@ extension AlbumGridView {
         else {
             selection.clear()
             withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) {
-                uiStore.selectAlbumFromGrid(
+                uiStore.selectAlbum(
                     uiStore.selectedAlbumId == albumId ? nil : albumId
                 )
             }

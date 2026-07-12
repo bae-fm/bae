@@ -214,11 +214,7 @@ class UiStore: @unchecked Sendable {
         }
     }
 
-    func selectAlbum(_ albumId: String) {
-        selectedAlbumId = albumId
-    }
-
-    func selectAlbumFromGrid(_ albumId: String?) {
+    func selectAlbum(_ albumId: String?) {
         selectedAlbumId = albumId
     }
 
