@@ -77,8 +77,8 @@ pub enum PlaybackErrorReason {
     /// A remote cloud-only track has no local copy and sync is disconnected —
     /// the user reconnects cloud sync to play it. Actionable, keyed.
     SyncDisconnected,
-    /// A remote track's cloud upload is still queued and its source file is
-    /// gone, so there's nothing to play yet — the user waits for the upload.
+    /// A track's cloud upload is still queued and its source file is gone, so
+    /// there's nothing to play yet — the user waits for the upload.
     /// Actionable, keyed.
     UploadPending,
     /// Any other failure (decode, audio output, IO, DB, missing file). Carries

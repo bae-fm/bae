@@ -2322,6 +2322,132 @@ async fn insert_local_release_without_local_files(
     release
 }
 
+/// Read one byte through the production audio reader and return the playback
+/// error reason its progress channel reports.
+async fn playback_error_reason_for_file(
+    manager: &LibraryManager,
+    file: &DbFile,
+) -> crate::ui::PlaybackErrorReason {
+    use crate::playback::data_source::{create_audio_reader, FetchArbiter};
+    use crate::playback::sparse_buffer::create_sparse_buffer;
+    use crate::playback::PlaybackProgress;
+
+    let buffer = create_sparse_buffer(file.file_size as u64);
+    let reader = create_audio_reader(
+        manager,
+        &file.id,
+        file.cloud_path.as_deref(),
+        file.file_size as u64,
+        FetchArbiter::new(),
+        None,
+        false,
+    );
+    let (progress_tx, mut progress_rx) = tokio::sync::mpsc::unbounded_channel();
+    reader.start_reading(buffer.clone(), progress_tx);
+    // Register demand so the fill fetches; the failed fetch cancels the
+    // buffer, which unblocks this read with `None`.
+    let demand = tokio::task::spawn_blocking(move || {
+        let mut r = buffer.new_reader();
+        let mut b = [0u8; 1];
+        r.read(&mut b)
+    });
+    let reason = tokio::time::timeout(std::time::Duration::from_secs(10), async {
+        loop {
+            match progress_rx.recv().await.expect("progress channel open") {
+                PlaybackProgress::PlaybackError { reason } => break reason,
+                _ => continue,
+            }
+        }
+    })
+    .await
+    .expect("a playback error must be reported");
+    demand.await.expect("demand read task");
+    reason
+}
+
+/// A Remote track whose bytes must come from the cloud, read with no provider
+/// connected, reports `SyncDisconnected` — the reconnect-sync state — not a
+/// generic diagnostic. coven raises `NoCloudHome` for the cloud miss; the
+/// classifier keys it.
+#[tokio::test]
+async fn remote_read_with_sync_disconnected_reports_sync_disconnected() {
+    use crate::ui::PlaybackErrorReason;
+    let (manager, dir) = setup_test_manager().await;
+    connect_test_cloud(&manager).await;
+    let release_id = make_remote_release_with_files(
+        &manager,
+        dir.path(),
+        "Album Title",
+        &[("track.flac", b"track-bytes")],
+        false,
+    )
+    .await;
+    manager.disconnect_cloud_provider().unwrap();
+
+    let files = manager
+        .database
+        .get_files_for_release(&release_id)
+        .await
+        .unwrap();
+    let file = files.first().expect("the release has a file");
+    let reason = playback_error_reason_for_file(&manager, file).await;
+    assert!(
+        matches!(reason, PlaybackErrorReason::SyncDisconnected),
+        "got {reason:?}"
+    );
+}
+
+/// A Local track whose source file was removed while its cloud upload is still
+/// queued reports `UploadPending` — wait for the upload — because a
+/// `cloud_outbox` upload row for the file explains the missing source. coven
+/// raises `ExternalMissing`; the outbox check keys it.
+#[tokio::test]
+async fn pending_upload_with_missing_source_reports_upload_pending() {
+    use crate::ui::PlaybackErrorReason;
+    let (manager, temp_dir) = setup_test_manager().await;
+    connect_test_cloud(&manager).await;
+    let release = insert_partially_uploaded_make_remote_release(&manager, temp_dir.path()).await;
+
+    let files = manager
+        .database
+        .get_files_for_release(&release.id)
+        .await
+        .unwrap();
+    let file = files
+        .iter()
+        .find(|f| f.original_filename == "b.flac")
+        .expect("the un-uploaded file whose source was removed");
+    let reason = playback_error_reason_for_file(&manager, file).await;
+    assert!(
+        matches!(reason, PlaybackErrorReason::UploadPending),
+        "got {reason:?}"
+    );
+}
+
+/// A Local track whose source file is gone with no queued upload stays a
+/// diagnostic — the "files missing / moved" state, not `UploadPending`. This
+/// pins the discriminator: `ExternalMissing` alone is not upload-pending.
+#[tokio::test]
+async fn missing_source_without_pending_upload_stays_diagnostic() {
+    use crate::ui::PlaybackErrorReason;
+    let (manager, _temp_dir) = setup_test_manager().await;
+    let album = create_test_album();
+    manager.database.insert_album(&album).await.unwrap();
+    let release = insert_local_release_without_local_files(&manager, &album.id).await;
+
+    let files = manager
+        .database
+        .get_files_for_release(&release.id)
+        .await
+        .unwrap();
+    let file = files.first().expect("the release has a file");
+    let reason = playback_error_reason_for_file(&manager, file).await;
+    assert!(
+        matches!(reason, PlaybackErrorReason::Diagnostic { .. }),
+        "got {reason:?}"
+    );
+}
+
 /// The read layer surfaces a local release even when no local copy
 /// resolves on this device — there is no availability filter to hide one.
 /// The substrate gate (coven's `gated_by_descendants`) prunes such a

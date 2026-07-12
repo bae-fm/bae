@@ -22,6 +22,12 @@ impl LibraryManager {
         &self.handle
     }
 
+    /// The store database. Playback reads coven's `cloud_outbox` through it to
+    /// classify a failed blob read (pending upload vs missing files).
+    pub(crate) fn database(&self) -> &Database {
+        &self.database
+    }
+
     #[cfg(any(test, feature = "test-utils"))]
     pub fn database_for_test(&self) -> Database {
         self.database.clone()

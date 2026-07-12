@@ -330,6 +330,25 @@ impl Database {
         .await
     }
 
+    /// Whether a queued cloud upload exists for `file_id` — an `upload` row in
+    /// coven's `cloud_outbox` (a failed attempt keeps its row for retry, so it
+    /// still counts). Playback's read-failure classification uses this to tell
+    /// "source file gone while its upload is queued" from "source file gone,
+    /// files moved or deleted".
+    pub async fn has_pending_cloud_upload(&self, file_id: &str) -> Result<bool, DbError> {
+        let file_id = file_id.to_string();
+        self.read(move |conn| {
+            conn.query_row(
+                "SELECT EXISTS(SELECT 1 FROM cloud_outbox \
+                 WHERE operation = 'upload' AND file_id = ?1)",
+                [&file_id],
+                |row| row.get::<_, bool>(0),
+            )
+            .map_err(DbError::from)
+        })
+        .await
+    }
+
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn record_cloud_upload_failure(
         &self,

@@ -234,6 +234,36 @@ impl AudioDataReader for LocalReader {
     }
 }
 
+/// Map a coven blob-read failure onto the playback error the UI can key on.
+/// `NoCloudHome` — a Remote blob needed the cloud and no provider is
+/// connected — is the "reconnect sync" state. `ExternalMissing` — the
+/// user-provided source file is gone — is "still uploading" when a queued
+/// upload for this file explains the missing source, and a plain diagnostic
+/// otherwise (the user moved or deleted their files). Everything else is
+/// un-enumerable for the UI and stays diagnostic with the coven error chain
+/// as the opaque detail.
+async fn playback_error_for_blob_read(
+    db: &crate::db::Database,
+    file_id: &str,
+    error: coven::BlobCacheError,
+) -> PlaybackError {
+    match &error {
+        coven::BlobCacheError::NoCloudHome => PlaybackError::SyncDisconnected,
+        coven::BlobCacheError::ExternalMissing { .. } => {
+            match db.has_pending_cloud_upload(file_id).await {
+                Ok(true) => PlaybackError::UploadPending,
+                Ok(false) => PlaybackError::internal(format!("Blob read failed: {error}")),
+                // The read already failed; a broken outbox check must not
+                // mask it (or be masked) — carry both.
+                Err(db_error) => PlaybackError::internal(format!(
+                    "Blob read failed: {error}; pending-upload check also failed: {db_error}"
+                )),
+            }
+        }
+        _ => PlaybackError::internal(format!("Blob read failed: {error}")),
+    }
+}
+
 /// Create the playback reader for a release file. coven owns locality: one reader
 /// streams every range through [`coven::CovenHandle::open_blob_stream`], which
 /// resolves *where the bytes are* per read — the user's own file (a Local
@@ -261,6 +291,7 @@ pub fn create_audio_reader(
     };
     Box::new(CovenBlobReader {
         handle: library_manager.handle().clone(),
+        db: library_manager.database().clone(),
         blob,
         source_size,
         arbiter,
@@ -275,6 +306,8 @@ pub fn create_audio_reader(
 /// never branches on locality.
 pub struct CovenBlobReader {
     handle: coven::CovenHandle,
+    /// For classifying a failed read — the pending-upload check.
+    db: crate::db::Database,
     blob: coven::BlobRef,
     source_size: u64,
     arbiter: Arc<FetchArbiter>,
@@ -299,6 +332,7 @@ impl AudioDataReader for CovenBlobReader {
     ) {
         let CovenBlobReader {
             handle,
+            db,
             blob,
             source_size,
             arbiter,
@@ -358,6 +392,8 @@ impl AudioDataReader for CovenBlobReader {
                 let fut = handle.open_blob_stream(&blob, source_size, src_off, len);
                 let arbiter = &arbiter;
                 let fetched = &fetched;
+                let db = &db;
+                let blob = &blob;
                 async move {
                     // The playing track fetches immediately; a preload waits
                     // while the playing track has a fetch in flight so it can't
@@ -377,7 +413,7 @@ impl AudioDataReader for CovenBlobReader {
                                 if foreground { "playing" } else { "preload" },
                                 fetch_started.elapsed().as_millis(),
                             );
-                            return Err(PlaybackError::internal(format!("Blob read failed: {e}")));
+                            return Err(playback_error_for_blob_read(db, &blob.id, e).await);
                         }
                     };
                     let total =

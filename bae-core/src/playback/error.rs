@@ -25,10 +25,11 @@ pub enum PlaybackError {
     /// audio can't be fetched. The user needs to reconnect cloud sync.
     #[error("Sync is disconnected — reconnect to play this release")]
     SyncDisconnected,
-    /// A remote track whose cloud upload is still queued has no readable
-    /// source left (the original file is gone), so the cloud object may not
-    /// exist yet. The user waits for the upload rather than getting a
-    /// not-found error for an internal storage key.
+    /// A track's cloud upload is still queued (its release is mid-move to the
+    /// cloud, so it is still gated Local) and its source file is no longer
+    /// readable — there are no bytes to play anywhere yet, and the cloud object
+    /// may not exist until the upload lands. Keyed so the user waits for the
+    /// upload instead of getting a missing-file diagnostic.
     #[error(
         "This release is still uploading to the cloud home — try again when the upload finishes"
     )]
