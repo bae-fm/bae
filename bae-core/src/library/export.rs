@@ -736,7 +736,7 @@ fn write_tags(
 
 /// Decode the track's source audio (already read into the plan) to PCM, for
 /// re-encoding. Decodes each whole backing file, then trims to the sample window.
-async fn load_track_audio(plan: &mut ExportTrackPlan) -> Result<Arc<DecodedPcm>, PlaybackError> {
+async fn load_track_audio(plan: &mut ExportTrackPlan) -> Result<DecodedPcm, PlaybackError> {
     let track_id = plan.audio_meta.track.id.clone();
 
     let audio_data_owned = std::mem::take(&mut plan.audio_bytes);
@@ -813,11 +813,7 @@ async fn load_track_audio(plan: &mut ExportTrackPlan) -> Result<Arc<DecodedPcm>,
         decoded = DecodedPcm::new(samples, decoded.sample_rate(), decoded.channels());
     }
 
-    Ok(Arc::new(DecodedPcm::new(
-        decoded.raw_samples().to_vec(),
-        decoded.sample_rate(),
-        decoded.channels(),
-    )))
+    Ok(decoded)
 }
 
 #[cfg(test)]
