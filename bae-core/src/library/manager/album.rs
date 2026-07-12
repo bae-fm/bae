@@ -47,7 +47,9 @@ impl LibraryManager {
         Ok(self.database.get_album_count().await?)
     }
 
-    /// Get album by ID
+    /// Get album by ID. Only a test helper — production reads albums through
+    /// `find_album_detail` / `get_album_page`, never a bare row.
+    #[cfg(any(test, feature = "test-utils"))]
     pub async fn get_album_by_id(&self, album_id: &str) -> Result<Option<DbAlbum>, LibraryError> {
         Ok(self.database.find_album_by_id(album_id).await?)
     }

@@ -295,7 +295,10 @@ impl LibraryManager {
         Ok(())
     }
 
-    /// Insert album, release, and tracks into database in a transaction
+    /// Insert album, release, and tracks into database in a transaction.
+    /// Production imports go through `finalize_import_atomic`; this is only
+    /// a test helper for seeding a full album/release/tracks in one call.
+    #[cfg(any(test, feature = "test-utils"))]
     pub async fn insert_album_with_release_and_tracks(
         &self,
         album: &DbAlbum,
@@ -310,6 +313,9 @@ impl LibraryManager {
         Ok(())
     }
 
+    /// Insert a release and tracks into an existing album. Only a test
+    /// helper for seeding a second release onto an already-inserted album.
+    #[cfg(test)]
     pub async fn insert_release_with_tracks(
         &self,
         release: &DbRelease,
@@ -745,7 +751,9 @@ impl LibraryManager {
     /// Remove any releases whose stored content hash equals `hash`, via
     /// [`delete_release`](Self::delete_release) per match. Re-imports do not use
     /// this destructive helper; they prepare replacement plans and commit the
-    /// prior-release delete inside the finalize transaction.
+    /// prior-release delete inside the finalize transaction. Only a test
+    /// helper for triggering that removal directly.
+    #[cfg(test)]
     pub async fn delete_releases_with_content_hash(&self, hash: &str) -> Result<(), LibraryError> {
         for release_id in self.database.release_ids_for_content_hash(hash).await? {
             self.delete_release(&release_id).await?;

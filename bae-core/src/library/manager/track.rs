@@ -153,7 +153,10 @@ impl LibraryManager {
         Ok(self.database.find_file_by_id(file_id).await?)
     }
 
-    /// Get audio format for a track
+    /// Get audio format for a track. Only a test helper — production reads
+    /// audio format as part of the resolved track-audio / playback-info
+    /// aggregates below, never standalone.
+    #[cfg(any(test, feature = "test-utils"))]
     pub async fn get_audio_format_by_track_id(
         &self,
         track_id: &str,

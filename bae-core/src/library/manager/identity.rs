@@ -11,7 +11,10 @@ impl LibraryManager {
         Ok(self.database.get_release_identities(release_id).await?)
     }
 
-    /// Insert identity rows for an existing release.
+    /// Insert identity rows for an existing release. Production writes
+    /// identities only through `finalize_import_atomic` or `set_identity`;
+    /// only a test helper for seeding rows directly.
+    #[cfg(test)]
     pub async fn insert_release_identities(
         &self,
         release_id: &str,

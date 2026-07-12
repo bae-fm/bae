@@ -46,7 +46,10 @@ impl LibraryManager {
             .map_err(|e| LibraryError::Import(e.to_string()))
     }
 
-    /// Upsert a library image record
+    /// Upsert a library image record. Production writes cover/artist images
+    /// through `change_cover` / `store_library_image_blob`, which pair the row
+    /// with its blob; only a test helper for seeding a bare row.
+    #[cfg(test)]
     pub async fn upsert_library_image(&self, image: &DbLibraryImage) -> Result<(), LibraryError> {
         self.database.upsert_library_image(image).await?;
         Ok(())

@@ -3,7 +3,10 @@
 use super::*;
 
 impl LibraryManager {
-    /// Add a file to the library
+    /// Add a file to the library. Production inserts files only as part of
+    /// an import or edit transaction; this single-row insert is only a test
+    /// helper for seeding a file directly.
+    #[cfg(any(test, feature = "test-utils"))]
     pub async fn add_file(&self, file: &DbFile) -> Result<(), LibraryError> {
         self.database.insert_file(file).await?;
         Ok(())

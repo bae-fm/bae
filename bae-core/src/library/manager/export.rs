@@ -275,7 +275,13 @@ impl LibraryManager {
         Ok(())
     }
 
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    /// Export a release verbatim to `target_dir`, bypassing the export
+    /// queue. Production always goes through `enqueue_export`; only a test
+    /// helper for exercising the copy directly.
+    #[cfg(all(
+        not(any(target_os = "ios", target_os = "android")),
+        any(test, feature = "test-utils")
+    ))]
     pub async fn export_release(
         &self,
         release_id: &str,

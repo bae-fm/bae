@@ -36,10 +36,11 @@ impl LibraryManager {
 }
 
 impl LibraryManager {
-    /// Count outbox upload entries still pending for a release's files.
-    /// Zero means the cloud copy is confirmed durable. Used by the unpin
-    /// guard in `make_release_local` to refuse a transition mid-upload — the
-    /// UI side of "no actions mid-upload" reads the outbox snapshot instead.
+    /// Count outbox upload entries still pending for a release's files. Zero
+    /// means every cloud copy is confirmed durable. Test-only observability
+    /// over the outbox — production paths gate on the boolean
+    /// `has_pending_uploads_for_release` (see `cancel_release_transition`).
+    #[cfg(any(test, feature = "test-utils"))]
     pub async fn count_pending_uploads_for_release(
         &self,
         release_id: &str,
