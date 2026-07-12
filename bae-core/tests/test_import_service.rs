@@ -2107,98 +2107,6 @@ async fn exact_import_writes_release_id_and_pressing_fields() {
     );
 }
 
-/// Approximate import: identity row's `source_release_id` is NULL; pressing
-/// fields stay NULL on the release row even though the source supplied them.
-/// Album-group-stable fields (title, tracks) still seed.
-#[tokio::test]
-#[serial]
-async fn approximate_import_nulls_release_id_and_clears_pressing() {
-    support::tracing_init();
-
-    let release = discogs_release_rich("Album Title", "master-approx", &["Track One"]);
-    let release_id_key = seed_discogs_test_release(release);
-    let f = ImportFixture::new().await;
-
-    let album_dir = f.temp_path().join("album");
-    fs::create_dir_all(&album_dir).unwrap();
-    generate_album_files(&album_dir, &["01 Track One.flac"]);
-
-    let import_id = uuid::Uuid::new_v4().to_string();
-    f.handle
-        .send_command(ImportCommand {
-            import_id: import_id.clone(),
-            candidate_key: "test".to_string(),
-            folder: album_dir,
-            selected_cover: None,
-            storage_mode: StorageMode::Local,
-            pin: false,
-            identity_choice: IdentityChoice::Approximate {
-                release_ref: MetadataRef::new(release_id_key.clone(), MetadataSource::Discogs),
-            },
-            user_edit: None,
-        })
-        .unwrap();
-
-    let mut progress_rx = f.handle.subscribe_import(import_id);
-    let (release_id, _album_id) = support::wait_for_import_complete(&mut progress_rx).await;
-
-    let release = f.db.find_release_by_id(&release_id).await.unwrap().unwrap();
-    // Pressing fields cleared by the Approximate seed.
-    assert!(
-        release.pressing.year.is_none(),
-        "year should be NULL, got {:?}",
-        release.pressing.year
-    );
-    assert!(
-        release.pressing.format.is_none(),
-        "format should be NULL, got {:?}",
-        release.pressing.format
-    );
-    assert!(
-        release.pressing.label.is_none(),
-        "label should be NULL, got {:?}",
-        release.pressing.label
-    );
-    assert!(
-        release.pressing.catalog_number.is_none(),
-        "catalog_number should be NULL, got {:?}",
-        release.pressing.catalog_number
-    );
-    assert!(
-        release.pressing.country.is_none(),
-        "country should be NULL, got {:?}",
-        release.pressing.country
-    );
-
-    // metadata_source columns still point at the picked release — a later
-    // re-projection needs them to replay the seed.
-    assert_eq!(
-        release.metadata_source_release_id.as_deref(),
-        Some(release_id_key.as_str())
-    );
-
-    // Identity row: group ID present, release ID NULL.
-    let identities = f.db.get_release_identities(&release.id).await.unwrap();
-    assert_eq!(identities.len(), 1);
-    assert_eq!(identities[0].source_group_id, "master-approx");
-    assert!(
-        identities[0].source_release_id.is_none(),
-        "Approximate must NULL source_release_id, got {:?}",
-        identities[0].source_release_id
-    );
-
-    // Album-group-stable fields still came from the source.
-    let album =
-        f.db.find_album_by_id(&release.album_id)
-            .await
-            .unwrap()
-            .unwrap();
-    assert_eq!(album.title, "Album Title");
-    let tracks = f.db.get_tracks_for_release(&release.id).await.unwrap();
-    assert_eq!(tracks.len(), 1);
-    assert_eq!(tracks[0].title, "Track One");
-}
-
 /// User-edit overlay applies on top of the Approximate seed: the user
 /// can fill country (cleared by Approximate) and the committed value
 /// reflects the edit.
@@ -2505,9 +2413,11 @@ async fn cross_source_approximate_nulls_both_release_ids() {
     );
 }
 
-/// Discogs-rooted Approximate import. MB has a back-link to this
-/// Discogs release; the Discogs mapper emits both rows. Approximate
-/// clears `source_release_id` on both.
+/// Discogs-rooted Approximate import. MB has a back-link to this Discogs
+/// release; the Discogs mapper emits both rows. Approximate clears
+/// `source_release_id` on both identity rows and clears the pressing fields the
+/// Discogs seed supplied on the release row, but keeps
+/// `metadata_source_release_id` so a later re-projection can replay the seed.
 #[tokio::test]
 #[serial]
 async fn cross_source_discogs_rooted_approximate_nulls_both_release_ids() {
@@ -2583,6 +2493,41 @@ async fn cross_source_discogs_rooted_approximate_nulls_both_release_ids() {
         .expect("MB identity row missing");
     assert_eq!(mb.source_group_id, mb_group_id);
     assert!(mb.source_release_id.is_none());
+
+    // The release row: Approximate clears the pressing fields the Discogs seed
+    // supplied, but keeps metadata_source_release_id so a later re-projection can
+    // replay the seed.
+    let release = f.db.find_release_by_id(&release_id).await.unwrap().unwrap();
+    assert!(
+        release.pressing.year.is_none(),
+        "year should be NULL, got {:?}",
+        release.pressing.year
+    );
+    assert!(
+        release.pressing.format.is_none(),
+        "format should be NULL, got {:?}",
+        release.pressing.format
+    );
+    assert!(
+        release.pressing.label.is_none(),
+        "label should be NULL, got {:?}",
+        release.pressing.label
+    );
+    assert!(
+        release.pressing.catalog_number.is_none(),
+        "catalog_number should be NULL, got {:?}",
+        release.pressing.catalog_number
+    );
+    assert!(
+        release.pressing.country.is_none(),
+        "country should be NULL, got {:?}",
+        release.pressing.country
+    );
+    assert_eq!(
+        release.metadata_source_release_id.as_deref(),
+        Some(discogs_id.as_str()),
+        "Approximate keeps metadata_source_release_id for re-projection"
+    );
 }
 
 // ── "Add as Unknown" ────────────────────────────────────────────────────────

@@ -70,170 +70,6 @@ async fn test_insert_and_get_import() {
     assert!(retrieved.error_message.is_none());
 }
 
-/// Test the complete import lifecycle: importing -> complete.
-/// This is the happy path when everything works.
-#[tokio::test]
-async fn test_import_lifecycle_success() {
-    tracing_init();
-    let (db, _temp) = create_test_db().await;
-
-    // Create import record (starts at Importing since all validation already passed)
-    let import = DbImport::new(
-        "lifecycle-import",
-        "Album Title",
-        "Artist Name",
-        "/music/library/album-title",
-        chrono::Utc::now(),
-    );
-    db.insert_import(&import).await.unwrap();
-
-    // Should appear in active imports
-    let active = db.get_active_imports().await.unwrap();
-    assert_eq!(active.len(), 1);
-    assert_eq!(active[0].status, ImportOperationStatus::Importing);
-
-    // Import completes successfully
-    db.update_import_status("lifecycle-import", ImportOperationStatus::Complete)
-        .await
-        .unwrap();
-
-    // Should no longer appear in active imports
-    let active = db.get_active_imports().await.unwrap();
-    assert!(active.is_empty());
-
-    // But can still be retrieved directly
-    let completed = db
-        .find_import_by_id("lifecycle-import")
-        .await
-        .unwrap()
-        .unwrap();
-    assert_eq!(completed.status, ImportOperationStatus::Complete);
-}
-
-/// Test that failed imports are removed from active imports.
-#[tokio::test]
-async fn test_import_lifecycle_failure() {
-    tracing_init();
-    let (db, _temp) = create_test_db().await;
-
-    let import = DbImport::new(
-        "failing-import",
-        "Test Album",
-        "Test Artist",
-        "/path/to/album",
-        chrono::Utc::now(),
-    );
-    db.insert_import(&import).await.unwrap();
-
-    // Simulate failure during import
-    db.update_import_error("failing-import", "Network connection lost")
-        .await
-        .unwrap();
-
-    // Should not appear in active imports
-    let active = db.get_active_imports().await.unwrap();
-    assert!(active.is_empty());
-
-    // Verify error was recorded
-    let failed = db
-        .find_import_by_id("failing-import")
-        .await
-        .unwrap()
-        .unwrap();
-    assert_eq!(failed.status, ImportOperationStatus::Failed);
-    assert_eq!(
-        failed.error_message,
-        Some("Network connection lost".to_string())
-    );
-}
-
-/// Test that get_active_imports excludes complete and failed imports.
-#[tokio::test]
-async fn test_get_active_imports_excludes_complete_and_failed() {
-    tracing_init();
-    let (db, _temp) = create_test_db().await;
-
-    let import1 = DbImport::new(
-        "import-active-1",
-        "Album 1",
-        "Artist 1",
-        "/path/1",
-        chrono::Utc::now(),
-    );
-    db.insert_import(&import1).await.unwrap();
-
-    let import2 = DbImport::new(
-        "import-active-2",
-        "Album 2",
-        "Artist 2",
-        "/path/2",
-        chrono::Utc::now(),
-    );
-    db.insert_import(&import2).await.unwrap();
-
-    // Create one complete (should NOT appear)
-    let import3 = DbImport::new(
-        "import-complete",
-        "Album 3",
-        "Artist 3",
-        "/path/3",
-        chrono::Utc::now(),
-    );
-    db.insert_import(&import3).await.unwrap();
-    db.update_import_status("import-complete", ImportOperationStatus::Complete)
-        .await
-        .unwrap();
-
-    // Create one failed (should NOT appear)
-    let import4 = DbImport::new(
-        "import-failed",
-        "Album 4",
-        "Artist 4",
-        "/path/4",
-        chrono::Utc::now(),
-    );
-    db.insert_import(&import4).await.unwrap();
-    db.update_import_error("import-failed", "Some error")
-        .await
-        .unwrap();
-
-    let active = db.get_active_imports().await.unwrap();
-    assert_eq!(active.len(), 2);
-
-    let ids: Vec<&str> = active.iter().map(|i| i.id.as_str()).collect();
-    assert!(ids.contains(&"import-active-1"));
-    assert!(ids.contains(&"import-active-2"));
-}
-
-/// Test that deleting an import removes it from the database.
-/// This is needed for the UI dismiss functionality to properly clean up
-/// stuck imports so they don't reappear after app restart.
-#[tokio::test]
-async fn test_delete_import_removes_from_database() {
-    tracing_init();
-    let (db, _temp) = create_test_db().await;
-
-    let import = DbImport::new(
-        "to-delete",
-        "Test Album",
-        "Test Artist",
-        "/path/to/album",
-        chrono::Utc::now(),
-    );
-    db.insert_import(&import).await.unwrap();
-
-    // Verify it exists
-    assert!(db.find_import_by_id("to-delete").await.unwrap().is_some());
-    assert_eq!(db.get_active_imports().await.unwrap().len(), 1);
-
-    // Delete it (this is what UI dismiss should do)
-    db.delete_import("to-delete").await.unwrap();
-
-    // Should be completely gone
-    assert!(db.find_import_by_id("to-delete").await.unwrap().is_none());
-    assert!(db.get_active_imports().await.unwrap().is_empty());
-}
-
 /// Test that deleting a non-existent import doesn't error.
 #[tokio::test]
 async fn test_delete_nonexistent_import_is_ok() {
@@ -245,16 +81,20 @@ async fn test_delete_nonexistent_import_is_ok() {
     assert!(result.is_ok());
 }
 
-/// Each import row is tracked independently through status changes: three
+/// Each import row is tracked independently through its status changes: three
 /// rows start active, then completing / failing / deleting one each drops it
-/// from `get_active_imports`. Exercises the DB row bookkeeping, not concurrency
-/// (the "imports" all run on one thread, in sequence).
+/// from `get_active_imports` — checked by id, not just count — and each
+/// transition's durable effect is verified directly: a completed row persists as
+/// Complete, a failed row persists as Failed carrying its recorded error message,
+/// a deleted row is gone from the table entirely (not merely filtered out of
+/// active). Exercises the DB row bookkeeping, not concurrency (the rows all run
+/// on one thread, in sequence).
 #[tokio::test]
 async fn active_imports_reflect_per_row_status_transitions() {
     tracing_init();
     let (db, _temp) = create_test_db().await;
 
-    // Start three imports
+    // Start three imports.
     for i in 1..=3 {
         let import = DbImport::new(
             &format!("concurrent-{}", i),
@@ -265,25 +105,56 @@ async fn active_imports_reflect_per_row_status_transitions() {
         );
         db.insert_import(&import).await.unwrap();
     }
-
-    // All three should be active
     assert_eq!(db.get_active_imports().await.unwrap().len(), 3);
 
-    // Complete one
+    // Complete one: it drops from active by id, and the row persists as Complete.
     db.update_import_status("concurrent-1", ImportOperationStatus::Complete)
         .await
         .unwrap();
-    assert_eq!(db.get_active_imports().await.unwrap().len(), 2);
+    let active = db.get_active_imports().await.unwrap();
+    let active_ids: Vec<&str> = active.iter().map(|i| i.id.as_str()).collect();
+    assert_eq!(active.len(), 2);
+    assert!(
+        active_ids.contains(&"concurrent-2") && active_ids.contains(&"concurrent-3"),
+        "the two still-importing rows stay active"
+    );
+    assert!(
+        !active_ids.contains(&"concurrent-1"),
+        "the completed row is excluded by id, not just by count"
+    );
+    assert_eq!(
+        db.find_import_by_id("concurrent-1")
+            .await
+            .unwrap()
+            .unwrap()
+            .status,
+        ImportOperationStatus::Complete,
+        "the completed row persists with Complete status"
+    );
 
-    // Fail one
-    db.update_import_error("concurrent-2", "Failed")
+    // Fail one: it drops from active, and the row persists as Failed with its
+    // recorded error message.
+    db.update_import_error("concurrent-2", "Network connection lost")
         .await
         .unwrap();
     assert_eq!(db.get_active_imports().await.unwrap().len(), 1);
+    let failed = db.find_import_by_id("concurrent-2").await.unwrap().unwrap();
+    assert_eq!(failed.status, ImportOperationStatus::Failed);
+    assert_eq!(
+        failed.error_message,
+        Some("Network connection lost".to_string())
+    );
 
-    // Delete one
+    // Delete one: gone from active AND removed from the table.
     db.delete_import("concurrent-3").await.unwrap();
     assert!(db.get_active_imports().await.unwrap().is_empty());
+    assert!(
+        db.find_import_by_id("concurrent-3")
+            .await
+            .unwrap()
+            .is_none(),
+        "a deleted row is removed from the table, not just excluded from active"
+    );
 }
 
 /// Test that active imports are ordered by created_at DESC (newest first).
