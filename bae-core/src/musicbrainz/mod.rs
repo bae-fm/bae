@@ -228,24 +228,6 @@ async fn lookup_by_discid_once(discid: &str) -> Result<Vec<MbReleaseResponse>, M
     Ok(releases)
 }
 
-/// Fetch a release-group with its URL relationships
-async fn fetch_release_group_with_relations(
-    release_group_id: &str,
-) -> Result<ReleaseGroupResponse, MusicBrainzError> {
-    let url = format!(
-        "https://musicbrainz.org/ws/2/release-group/{}?inc=url-rels",
-        release_group_id
-    );
-    debug!("Fetching release-group with relations: {}", url);
-
-    let response = mb_get(http_client().get(&url)).await?;
-
-    response
-        .json()
-        .await
-        .map_err(|e| MusicBrainzError::Other(format!("Failed to parse JSON: {}", e)))
-}
-
 /// Look up a release by MusicBrainz release ID.
 ///
 /// Returns the parsed response, the Discogs release URL (if any), and the raw
@@ -318,10 +300,7 @@ async fn lookup_release_by_id_once(
                     rg_id
                 );
 
-                discogs_url = release_group_discogs_url(
-                    rg_id,
-                    fetch_release_group_with_relations(rg_id).await,
-                );
+                discogs_url = release_group_discogs_url(rg_id, fetch_release_group(rg_id).await);
             }
         }
     }
@@ -351,8 +330,19 @@ fn release_group_discogs_url(
     }
 }
 
-/// A release-group's raw JSON, for archival. Same endpoint as
-/// `fetch_release_group_with_relations`, unparsed.
+/// The release-group, parsed. Shares `fetch_release_group_json`'s cache: a
+/// release whose own url-rels carry no Discogs link, and the later
+/// cross-reference archival of that same group, now cost one round trip between
+/// them rather than two.
+async fn fetch_release_group(
+    release_group_id: &str,
+) -> Result<ReleaseGroupResponse, MusicBrainzError> {
+    let json = fetch_release_group_json(release_group_id).await?;
+    serde_json::from_str(&json)
+        .map_err(|e| MusicBrainzError::Other(format!("Failed to parse JSON: {}", e)))
+}
+
+/// A release-group's raw JSON, for archival. Cached for the session.
 pub async fn fetch_release_group_json(release_group_id: &str) -> Result<String, MusicBrainzError> {
     if let Some(hit) = RELEASE_GROUP_JSON_CACHE.get_cloned(release_group_id) {
         debug!(
