@@ -11,8 +11,8 @@ use bae_core::import::release_group::ReleaseGroup;
 use bae_core::import::search::{ImportSearchReleaseDetail, MetadataResult, ReleaseTrack};
 use bae_core::import::{
     shape_user_edit_from_search_detail, CoverSelection, GroupedSearchResults, IdentityChoice,
-    ImportError, ImportEvent, ImportProgress, MetadataRef, MetadataSource, PressingEdit, ScanEvent,
-    SearchQuery, StorageMode, TrackUserEdit,
+    ImportError, ImportEvent, ImportPhase, ImportProgress, MetadataRef, MetadataSource,
+    PrepareStep, PressingEdit, ScanEvent, SearchQuery, StorageMode, TrackUserEdit,
 };
 use bae_core::library::{AppServices, LibraryError};
 use schemars::JsonSchema;
@@ -550,12 +550,32 @@ pub struct AutomationImportStarted {
     pub import_id: String,
 }
 
+/// Mirrors bae-core's `import::PrepareStep`.
+#[derive(Debug, Clone, Copy, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum AutomationPrepareStep {
+    ParsingMetadata,
+    WritingCoverArt,
+    DiscoveringFiles,
+    ValidatingTracks,
+    SavingToDatabase,
+}
+
+/// Mirrors bae-core's `import::ImportPhase`.
+#[derive(Debug, Clone, Copy, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum AutomationImportPhase {
+    ReferencingFiles,
+    MeasuringLoudness,
+    Finalizing,
+}
+
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "snake_case", tag = "kind")]
 pub enum AutomationImportProgress {
     Preparing {
         import_id: String,
-        step: String,
+        step: AutomationPrepareStep,
         album_title: String,
         artist_name: String,
     },
@@ -566,7 +586,7 @@ pub enum AutomationImportProgress {
     Progress {
         id: String,
         percent: u8,
-        phase: String,
+        phase: AutomationImportPhase,
         import_id: String,
     },
     Complete {
@@ -2453,6 +2473,24 @@ fn automation_identify_state(state: bae_core::identify::IdentifyState) -> Automa
     }
 }
 
+fn automation_prepare_step(step: PrepareStep) -> AutomationPrepareStep {
+    match step {
+        PrepareStep::ParsingMetadata => AutomationPrepareStep::ParsingMetadata,
+        PrepareStep::WritingCoverArt => AutomationPrepareStep::WritingCoverArt,
+        PrepareStep::DiscoveringFiles => AutomationPrepareStep::DiscoveringFiles,
+        PrepareStep::ValidatingTracks => AutomationPrepareStep::ValidatingTracks,
+        PrepareStep::SavingToDatabase => AutomationPrepareStep::SavingToDatabase,
+    }
+}
+
+fn automation_import_phase(phase: ImportPhase) -> AutomationImportPhase {
+    match phase {
+        ImportPhase::ReferencingFiles => AutomationImportPhase::ReferencingFiles,
+        ImportPhase::MeasuringLoudness => AutomationImportPhase::MeasuringLoudness,
+        ImportPhase::Finalizing => AutomationImportPhase::Finalizing,
+    }
+}
+
 fn automation_import_progress(progress: ImportProgress) -> AutomationImportProgress {
     match progress {
         ImportProgress::Preparing {
@@ -2462,7 +2500,7 @@ fn automation_import_progress(progress: ImportProgress) -> AutomationImportProgr
             artist_name,
         } => AutomationImportProgress::Preparing {
             import_id,
-            step: format!("{step:?}"),
+            step: automation_prepare_step(step),
             album_title,
             artist_name,
         },
@@ -2477,7 +2515,7 @@ fn automation_import_progress(progress: ImportProgress) -> AutomationImportProgr
         } => AutomationImportProgress::Progress {
             id,
             percent,
-            phase: format!("{phase:?}"),
+            phase: automation_import_phase(phase),
             import_id,
         },
         ImportProgress::Complete {
@@ -2712,6 +2750,29 @@ mod tests {
                 tool.name(),
             );
         }
+    }
+
+    #[test]
+    fn import_progress_step_and_phase_serialize_snake_case() {
+        let preparing = automation_import_progress(ImportProgress::Preparing {
+            import_id: "imp-1".to_string(),
+            step: PrepareStep::ParsingMetadata,
+            album_title: "Album Title".to_string(),
+            artist_name: "Artist Name".to_string(),
+        });
+        let json = serde_json::to_value(preparing).unwrap();
+        assert_eq!(json["kind"], "preparing");
+        assert_eq!(json["step"], "parsing_metadata");
+
+        let progress = automation_import_progress(ImportProgress::Progress {
+            id: "id-1".to_string(),
+            percent: 50,
+            phase: ImportPhase::ReferencingFiles,
+            import_id: "imp-1".to_string(),
+        });
+        let json = serde_json::to_value(progress).unwrap();
+        assert_eq!(json["kind"], "progress");
+        assert_eq!(json["phase"], "referencing_files");
     }
 
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
