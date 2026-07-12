@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// The file pane + right pane layout used when a candidate is selected.
-/// FolderImportTab uses this for its main content area.
+/// ImportView uses this for its main content area.
 struct ImportMainPane<RightPane: View>: View {
     let files: CandidateFiles
     let onOpenGallery: (Int) -> Void

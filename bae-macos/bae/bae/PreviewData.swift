@@ -798,7 +798,7 @@ enum PreviewData {
         syncReady: false
     )
 
-    /// Seeded ImportStore for the FolderImportTab whole-view preview — the
+    /// Seeded ImportStore for the ImportView whole-view preview — the
     /// watched folder plus every folder candidate. ImportStore is a non-Sendable
     /// `@Observable`, so it needs `@MainActor` isolation to hold as a static.
     @MainActor

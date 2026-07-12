@@ -35,6 +35,14 @@ enum SkippedRow: Identifiable {
     }
 }
 
+/// The candidate-list sort order, interpreted by `ordered(_:by:name:)` below.
+enum CandidateSortOrder: String, CaseIterable {
+    case nameAZ
+    case nameZA
+    case dateAddedNewest
+    case dateAddedOldest
+}
+
 /// Session state for the import flow. Mixed-writer: core drives event-driven
 /// fields — scan/identify state through the import-candidate projections,
 /// preview state through the shared event dispatcher — while views drive
