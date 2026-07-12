@@ -69,7 +69,7 @@ impl ExportFixture {
         let handle = bae_core::import::ImportService::start(
             tokio::runtime::Handle::current(),
             mgr.clone(),
-            bae_core::import::cover_art::CoverArtArchiveClient::new(),
+            bae_core::import::cover_art::CoverArtArchiveClient::hermetic(),
         );
 
         Self {

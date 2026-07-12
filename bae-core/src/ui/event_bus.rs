@@ -687,7 +687,7 @@ mod tests {
         let import = crate::import::ImportService::start(
             runtime.handle().clone(),
             library_manager,
-            crate::import::cover_art::CoverArtArchiveClient::new(),
+            crate::import::cover_art::CoverArtArchiveClient::hermetic(),
         );
         let (import_tx, import_rx) = broadcast::channel(1);
 

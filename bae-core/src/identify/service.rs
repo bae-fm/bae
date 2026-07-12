@@ -410,7 +410,7 @@ mod tests {
             library_manager: manager,
             runtime_handle: tokio::runtime::Handle::current(),
             event_tx,
-            cover_art_archive: CoverArtArchiveClient::new(),
+            cover_art_archive: CoverArtArchiveClient::hermetic(),
             drivers: Mutex::new(HashMap::new()),
         });
         (inner, temp_dir)

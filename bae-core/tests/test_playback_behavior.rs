@@ -327,7 +327,7 @@ fn start_test_import(
     bae_core::import::ImportService::start(
         runtime_handle.clone(),
         library_manager,
-        bae_core::import::cover_art::CoverArtArchiveClient::new(),
+        bae_core::import::cover_art::CoverArtArchiveClient::hermetic(),
     )
 }
 

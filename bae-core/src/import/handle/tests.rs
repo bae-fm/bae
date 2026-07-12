@@ -1278,7 +1278,7 @@ async fn removing_a_watched_folder_cancels_in_flight_extraction() {
     let import_handle = crate::import::ImportService::start(
         tokio::runtime::Handle::current(),
         manager.clone(),
-        crate::import::cover_art::CoverArtArchiveClient::new(),
+        crate::import::cover_art::CoverArtArchiveClient::hermetic(),
     );
     let extraction = ExtractionService::start(
         tokio::runtime::Handle::current(),

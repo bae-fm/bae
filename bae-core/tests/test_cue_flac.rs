@@ -34,7 +34,7 @@ fn start_test_import(
     ImportService::start(
         runtime_handle.clone(),
         library_manager,
-        bae_core::import::cover_art::CoverArtArchiveClient::new(),
+        bae_core::import::cover_art::CoverArtArchiveClient::hermetic(),
     )
 }
 /// CUE/FLAC imports record each track's sample window correctly.

@@ -236,7 +236,7 @@ mod tests {
 
         #[cfg(not(any(target_os = "ios", target_os = "android")))]
         let services = {
-            let cover_art = crate::import::cover_art::CoverArtArchiveClient::new();
+            let cover_art = crate::import::cover_art::CoverArtArchiveClient::hermetic();
             let import = crate::import::ImportService::start(
                 tokio::runtime::Handle::current(),
                 manager.clone(),

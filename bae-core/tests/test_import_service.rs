@@ -78,7 +78,7 @@ impl ImportFixture {
         let handle = ImportService::start(
             tokio::runtime::Handle::current(),
             library_manager.clone(),
-            bae_core::import::cover_art::CoverArtArchiveClient::new(),
+            bae_core::import::cover_art::CoverArtArchiveClient::hermetic(),
         );
 
         Self {
@@ -3077,7 +3077,7 @@ async fn import_truncated_album(verify: bool) -> Result<(String, String), String
     let handle = ImportService::start(
         tokio::runtime::Handle::current(),
         library_manager,
-        bae_core::import::cover_art::CoverArtArchiveClient::new(),
+        bae_core::import::cover_art::CoverArtArchiveClient::hermetic(),
     );
 
     let album_dir = temp.path().join("album");

@@ -75,6 +75,12 @@ pub struct CoverArtArchiveClient {
     in_flight: Arc<Mutex<HashMap<String, CaaLookupCell>>>,
     lookup_limiter: Arc<Semaphore>,
     retry_base_delay: Duration,
+    /// When set, any lookup that misses the cache panics instead of hitting the
+    /// network. Hermetic tests inject such a client (via [`hermetic`]) so an
+    /// unseeded cover-art lookup fails loud rather than silently reaching the
+    /// live Cover Art Archive and returning "no cover".
+    #[cfg(feature = "test-utils")]
+    forbid_network: bool,
 }
 
 impl CoverArtArchiveClient {
@@ -95,7 +101,19 @@ impl CoverArtArchiveClient {
             in_flight: Arc::new(Mutex::new(HashMap::new())),
             lookup_limiter: Arc::new(Semaphore::new(CAA_MAX_CONCURRENT_LOOKUPS)),
             retry_base_delay,
+            #[cfg(feature = "test-utils")]
+            forbid_network: false,
         }
+    }
+
+    /// A client for hermetic tests: any cover-art lookup that misses the cache
+    /// panics rather than reaching the live Cover Art Archive, so an accidental
+    /// unseeded fetch is a test failure instead of a silent network call.
+    #[cfg(feature = "test-utils")]
+    pub fn hermetic() -> Self {
+        let mut client = Self::with_retry_base_delay(Duration::from_millis(0));
+        client.forbid_network = true;
+        client
     }
 
     /// Fetch cover art candidates from Cover Art Archive for a MusicBrainz
@@ -258,6 +276,13 @@ impl CoverArtArchiveClient {
         {
             return cached;
         }
+
+        #[cfg(feature = "test-utils")]
+        assert!(
+            !self.forbid_network,
+            "hermetic test made a live Cover Art Archive request for {json_url} \
+             ({entity} {id}); seed the lookup cache instead of hitting the network"
+        );
 
         let cell = {
             let mut inflight = self
