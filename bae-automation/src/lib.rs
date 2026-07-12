@@ -1,3 +1,5 @@
+#![deny(unreachable_pub, dead_code)]
+
 use bae_core::album_detail::{
     AudioFormat, FileDetail, GalleryItem, GallerySource, ImageRef, ReleaseDetail,
     ReleaseStorageAction, ReleaseStorageState, SearchResults, TrackDetail, TrackPosition,
