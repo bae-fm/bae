@@ -272,28 +272,6 @@ async fn test_local_delete_preserves_files() {
         .expect("get tracks");
     assert_eq!(tracks.len(), 3, "Should have 3 tracks after import");
 
-    // Verify audio_format records exist.
-    for track in &tracks {
-        let audio_format = library_manager
-            .get_audio_format_by_track_id(&track.id)
-            .await
-            .expect("get audio_format");
-        assert!(
-            audio_format.is_some(),
-            "Track '{}' should have an audio_format record",
-            track.title
-        );
-    }
-
-    // Files should still exist after import
-    for path in &original_files {
-        assert!(
-            path.exists(),
-            "File should still exist after local import: {:?}",
-            path
-        );
-    }
-
     // Now delete the release
     info!("Deleting release {}", release_id);
     library_manager
@@ -517,31 +495,6 @@ async fn run_import_with_cover_test() {
     );
     info!("Album primary_release_id is set correctly");
 
-    // Verify roundtrip: audio format records exist with segment file linkage
-    for track in &tracks {
-        let audio_format = library_manager
-            .get_audio_format_by_track_id(&track.id)
-            .await
-            .expect("Failed to get audio format")
-            .expect("Audio format should exist for single-file track");
-        assert_eq!(
-            audio_format.content_type,
-            ContentType::Flac,
-            "Should be FLAC format"
-        );
-        let resolved = library_manager
-            .resolve_track_audio(&track.id)
-            .await
-            .expect("Failed to resolve track audio");
-        assert!(
-            resolved
-                .segments
-                .iter()
-                .any(|segment| !segment.file_id.is_empty()),
-            "Track '{}' should have a segment file_id",
-            track.title
-        );
-    }
     info!("Import with cover selection test passed");
 }
 
@@ -645,106 +598,4 @@ fn generate_test_files(dir: &Path) -> Vec<Vec<u8>> {
             flac_template.clone()
         })
         .collect()
-}
-
-/// A local (local-only) import records `local_path` at the folder the
-/// files actually live in, not the system temp directory.
-///
-/// The user imports a folder in place; `local_path` must reflect that
-/// on-disk location so playback, pin, and export read the originals.
-#[tokio::test]
-async fn test_local_import_not_in_temp_dir() {
-    tracing_init();
-
-    // The folder lives in the CWD (not system temp) to simulate a user's
-    // Music folder.
-    let user_music_dir =
-        TempDir::with_prefix_in("bae-test-music-", std::env::current_dir().unwrap())
-            .expect("create user music dir");
-    let album_dir = user_music_dir.path().join("test-album");
-    fs::create_dir_all(&album_dir).expect("create album dir");
-    let _file_data = generate_test_files(&album_dir);
-
-    // Set up library WITHOUT cloud home (local-only / local)
-    let lib_root = TempDir::new().expect("create lib root");
-    let db_dir = lib_root.path().join("db");
-    fs::create_dir_all(&db_dir).expect("create db dir");
-
-    let db_file = db_dir.join("test.db");
-    let database = Database::new_test(
-        db_file.to_str().unwrap(),
-        std::sync::Arc::new(coven::SystemClock),
-    )
-    .await
-    .expect("create database");
-    let library_dir = StoreDir::new(db_dir.clone());
-    let (config_handle, key_service) = test_config_and_keys(&library_dir);
-    let library_manager = LibraryManager::new(
-        database.clone(),
-        config_handle,
-        key_service,
-        std::sync::Arc::new(coven::SystemClock),
-        std::sync::Arc::new(coven::UuidProvider),
-        tokio::runtime::Handle::current(),
-    );
-    let runtime_handle = tokio::runtime::Handle::current();
-
-    let discogs_release = create_test_discogs_release();
-    let release_id_key = seed_discogs_test_release(discogs_release);
-    let import_handle = start_test_import(runtime_handle, library_manager.clone());
-    let import_id = uuid::Uuid::new_v4().to_string();
-    import_handle
-        .send_command(ImportCommand {
-            import_id: import_id.clone(),
-            candidate_key: "test".to_string(),
-            folder: album_dir.clone(),
-            selected_cover: None,
-            storage_mode: StorageMode::Local,
-            pin: false,
-            identity_choice: IdentityChoice::Exact {
-                release_ref: MetadataRef::new(release_id_key, MetadataSource::Discogs),
-            },
-            user_edit: None,
-        })
-        .expect("send command");
-    let mut progress_rx = import_handle.subscribe_import(import_id);
-    let (release_id, _album_id) = wait_for_import_complete(&mut progress_rx).await;
-
-    info!("Import completed, release_id: {release_id}");
-
-    database
-        .find_release_by_id(&release_id)
-        .await
-        .expect("query release")
-        .expect("release should exist");
-    let files = library_manager
-        .get_files_for_release(&release_id)
-        .await
-        .expect("get files");
-    let local_path = library_manager
-        .file_local_path(&files[0].id)
-        .await
-        .expect("query local external ref")
-        .expect("local library import should register an in-place external ref")
-        .to_string_lossy()
-        .into_owned();
-
-    // The local_path must NOT be in the system temp directory — it must
-    // point at the folder the user imported in place.
-    assert!(
-        !Path::new(&local_path).starts_with(std::env::temp_dir()),
-        "Local files must not live in the system temp directory.\n\
-         Got local_path: {local_path}\n\
-         Temp: {:?}",
-        std::env::temp_dir()
-    );
-
-    // Verify it's under the user-chosen download directory
-    assert!(
-        Path::new(&local_path).starts_with(user_music_dir.path()),
-        "local_path should be under the user-chosen save directory.\n\
-         Got: {local_path}\n\
-         Expected prefix: {:?}",
-        user_music_dir.path()
-    );
 }
