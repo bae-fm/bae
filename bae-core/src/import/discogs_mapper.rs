@@ -529,8 +529,6 @@ mod tests {
             id: "test-123".to_string(),
             title: "Album Title A".to_string(),
             year: Some(2024),
-            genre: vec![],
-            style: vec![],
             format: vec![],
             country: None,
             label: vec![],

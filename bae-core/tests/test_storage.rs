@@ -550,8 +550,6 @@ fn create_test_discogs_release() -> DiscogsRelease {
         id: "test-release-storage".to_string(),
         title: "Storage Test Album".to_string(),
         year: Some(2024),
-        genre: vec![],
-        style: vec![],
         format: vec![],
         country: Some("US".to_string()),
         label: vec!["Test Label".to_string()],

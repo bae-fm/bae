@@ -1,41 +1,30 @@
 use crate::discogs::remote_cover_from_urls;
 use crate::import::cover_art::RemoteCover;
-use serde::{Deserialize, Serialize};
 
 /// Artist credit from Discogs
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct DiscogsArtist {
     pub id: String,
     pub name: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct DiscogsRoleArtist {
     pub id: Option<String>,
     pub name: String,
     pub role: String,
     pub credited_name: Option<String>,
 }
-/// Represents a Discogs release search result
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+/// A Discogs release: the release-endpoint response projected to the fields bae uses.
+#[derive(Debug, Clone, PartialEq)]
 pub struct DiscogsRelease {
     pub id: String,
     pub title: String,
     pub year: Option<u32>,
-    pub genre: Vec<String>,
-    pub style: Vec<String>,
     pub format: Vec<String>,
     pub country: Option<String>,
     pub label: Vec<String>,
-    #[serde(
-        default,
-        deserialize_with = "crate::serde_helpers::empty_string_as_none"
-    )]
     pub cover_image: Option<String>,
-    #[serde(
-        default,
-        deserialize_with = "crate::serde_helpers::empty_string_as_none"
-    )]
     pub thumb: Option<String>,
     pub catno: Option<String>,
     pub artists: Vec<DiscogsArtist>,
@@ -56,16 +45,14 @@ impl DiscogsRelease {
 }
 
 /// Represents a track from Discogs
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct DiscogsTrack {
     pub position: String,
     pub title: String,
     pub duration: Option<String>,
-    #[serde(default)]
     pub artists: Vec<DiscogsArtist>,
     pub extraartists: Option<Vec<DiscogsRoleArtist>>,
     /// Track type: "track", "heading", or "index"
-    #[serde(default)]
     pub type_: String,
 }
 
@@ -79,8 +66,6 @@ mod tests {
             id: "discogs-release-1".to_string(),
             title: "Album Title".to_string(),
             year: None,
-            genre: vec![],
-            style: vec![],
             format: vec![],
             country: None,
             label: vec![],

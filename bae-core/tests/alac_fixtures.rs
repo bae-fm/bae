@@ -50,8 +50,6 @@ fn make_discogs_release(id: &str, title: &str, tracks: &[&str]) -> DiscogsReleas
         id: id.to_string(),
         title: title.to_string(),
         year: Some(2024),
-        genre: vec![],
-        style: vec![],
         format: vec![],
         country: None,
         label: vec![],
