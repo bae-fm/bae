@@ -21,8 +21,6 @@ mod handle;
 mod loudness;
 pub mod musicbrainz_mapper;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
-mod progress;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub mod release_group;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub mod search;
@@ -85,8 +83,6 @@ pub use handle::{
     GroupedSearchResults, ImportCandidateSnapshot, ImportCandidatesSnapshot, ImportEvent,
     ImportServiceHandle, ScanEvent, SearchQuery,
 };
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub use progress::ImportProgressHandle;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use service::ImportService;
 pub use types::{

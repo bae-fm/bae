@@ -2,7 +2,6 @@ use crate::discogs::DiscogsClient;
 use crate::import::cover_art::CoverArtArchiveClient;
 use crate::import::folder_registry::{ImportFolderRegistry, WatchedFolder};
 use crate::import::folder_scanner::{FolderCandidate, InvalidCandidate};
-use crate::import::progress::ImportProgressHandle;
 use crate::import::types::{
     DiscoveredFile, ImportCommand, ImportProgress, ImportStep, MetadataSource, StorageMode,
 };
@@ -459,7 +458,6 @@ fn validation_from_validate_result(
 #[derive(Clone)]
 pub struct ImportServiceHandle {
     requests_tx: mpsc::UnboundedSender<ImportCommand>,
-    progress_handle: ImportProgressHandle,
     library_manager: LibraryManager,
     /// Unified event channel — all import service events go here.
     /// `pub(crate)` because `app.rs` clones it to seed the identify and signals
@@ -532,10 +530,8 @@ impl ImportServiceHandle {
         folder_watcher: Arc<crate::import::service::FolderWatcher>,
         cover_art_archive: CoverArtArchiveClient,
     ) -> Self {
-        let progress_handle = ImportProgressHandle::new(event_tx.clone(), runtime_handle.clone());
         Self {
             requests_tx,
-            progress_handle,
             library_manager,
             event_tx,
             folder_registry,

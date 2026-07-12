@@ -197,28 +197,51 @@ impl ImportServiceHandle {
         Ok(import_id)
     }
 
-    /// Subscribe to progress updates for a specific release
-    /// Returns a filtered receiver that yields only updates for the specified release
-    pub fn subscribe_release(
-        &self,
-        release_id: String,
-    ) -> tokio::sync::mpsc::UnboundedReceiver<ImportProgress> {
-        self.progress_handle.subscribe_release(release_id)
-    }
-
-    /// Subscribe to progress updates for a specific import operation
-    /// Returns Preparing events and any event with matching import_id
+    /// Test helper: subscribe to import progress for a single import
+    /// operation, yielding every `ImportProgress` whose `import_id` matches.
+    /// Production consumers read the unified stream via `subscribe_events`; this
+    /// per-import filtered view exists only for tests that drive one import and
+    /// assert on its progress sequence.
+    #[cfg(any(test, feature = "test-utils"))]
     pub fn subscribe_import(
         &self,
         import_id: String,
     ) -> tokio::sync::mpsc::UnboundedReceiver<ImportProgress> {
-        self.progress_handle.subscribe_import(import_id)
-    }
-
-    /// Subscribe to progress updates for ALL import operations
-    /// Returns any event that has an import_id (for toolbar dropdown)
-    pub fn subscribe_all_imports(&self) -> tokio::sync::mpsc::UnboundedReceiver<ImportProgress> {
-        self.progress_handle.subscribe_all_imports()
+        let mut event_rx = self.event_tx.subscribe();
+        let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+        self.runtime_handle.spawn(async move {
+            loop {
+                match event_rx.recv().await {
+                    Ok(ImportEvent::ImportProgress { progress, .. }) => {
+                        if tx.is_closed() {
+                            break;
+                        }
+                        let matches = match &progress {
+                            ImportProgress::Preparing { import_id: iid, .. }
+                            | ImportProgress::Started { import_id: iid, .. }
+                            | ImportProgress::Progress { import_id: iid, .. }
+                            | ImportProgress::Complete { import_id: iid, .. }
+                            | ImportProgress::RemoteUploadQueued { import_id: iid, .. }
+                            | ImportProgress::Failed { import_id: iid, .. } => *iid == import_id,
+                        };
+                        if matches && tx.send(progress).is_err() {
+                            break;
+                        }
+                    }
+                    Ok(_) => {
+                        if tx.is_closed() {
+                            break;
+                        }
+                    }
+                    Err(tokio::sync::broadcast::error::RecvError::Lagged(n)) => {
+                        warn!("Import progress lagged by {n} events");
+                        continue;
+                    }
+                    Err(tokio::sync::broadcast::error::RecvError::Closed) => break,
+                }
+            }
+        });
+        rx
     }
 
     /// Subscribe to the unified event channel.
