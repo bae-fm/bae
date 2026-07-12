@@ -1,3 +1,5 @@
+#![deny(unreachable_pub, dead_code)]
+
 use bae_automation::{Automation, AutomationMetadataSource, AutomationTool};
 use bae_core::app::{bootstrap, bootstrap_library_path, BootstrapError, RunningApp};
 use bae_core::config::{init_keyring, Config};
