@@ -177,36 +177,15 @@ fn intersect_by_release(
         .collect()
 }
 
-/// Apply the catalog filter. Returns the narrowed set if at least one
-/// result matches a candidate; otherwise returns the input unchanged.
-///
-/// Match rule: a result matches when its `catalog_number` (after
-/// `normalize_catalog`) equals any candidate's normalized form. Bypass when
-/// `candidates` is empty or when no result has a `catalog_number`.
+/// Apply the catalog filter. Returns the narrowed set if at least one result
+/// matches a confirming candidate; otherwise returns the input unchanged.
 fn apply_catalog_filter(
     combined: Vec<(MetadataResult, LibraryStatus)>,
     candidates: &[SourcedValue],
 ) -> Vec<(MetadataResult, LibraryStatus)> {
-    if candidates.is_empty() {
-        return combined;
-    }
-    let normalized_candidates: Vec<String> = candidates
-        .iter()
-        .filter(|c| c.origin.can_confirm_catalog())
-        .map(|c| normalize_catalog(&c.value))
-        .collect();
-    if normalized_candidates.is_empty() {
-        return combined;
-    }
     let filtered: Vec<(MetadataResult, LibraryStatus)> = combined
         .iter()
-        .filter(|(r, _)| {
-            let Some(cat) = r.catalog_number.as_deref() else {
-                return false;
-            };
-            let normalized = normalize_catalog(cat);
-            normalized_candidates.iter().any(|c| c == &normalized)
-        })
+        .filter(|(r, _)| catalog_matches(r.catalog_number.as_deref(), candidates))
         .cloned()
         .collect();
     if filtered.is_empty() {
@@ -220,17 +199,9 @@ fn apply_catalog_filter(
 /// `normalize_catalog`). Used for the per-result "catalog confirmed" badge —
 /// independent of whether the filter narrowed the set.
 fn catalog_matches(catalog_number: Option<&str>, candidates: &[SourcedValue]) -> bool {
-    let Some(cat) = catalog_number else {
-        return false;
-    };
-    if candidates.is_empty() {
-        return false;
-    }
-    let normalized = normalize_catalog(cat);
     candidates
         .iter()
-        .filter(|c| c.origin.can_confirm_catalog())
-        .any(|c| normalize_catalog(&c.value) == normalized)
+        .any(|c| catalog_matches_candidate(catalog_number, c))
 }
 
 /// Lowercase, strip everything that isn't `[a-z0-9]`. Aligns OCR variants
@@ -240,6 +211,18 @@ pub(crate) fn normalize_catalog(s: &str) -> String {
         .filter(|c| c.is_ascii_alphanumeric())
         .map(|c| c.to_ascii_lowercase())
         .collect()
+}
+
+/// Whether a release's catalog number matches one catalog candidate: the
+/// candidate's origin can confirm a catalog and the two values are equal
+/// after `normalize_catalog`.
+pub(crate) fn catalog_matches_candidate(
+    catalog_number: Option<&str>,
+    candidate: &SourcedValue,
+) -> bool {
+    candidate.origin.can_confirm_catalog()
+        && catalog_number
+            .is_some_and(|c| normalize_catalog(c) == normalize_catalog(&candidate.value))
 }
 
 /// Returns `Some(group)` if every result shares the same

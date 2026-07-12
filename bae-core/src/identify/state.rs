@@ -11,7 +11,7 @@
 //! no references to the outside world.
 
 use super::combine::{
-    combine_results, normalize_catalog, CombineOutcome, GroupKey, ResultProvenance,
+    catalog_matches_candidate, combine_results, CombineOutcome, GroupKey, ResultProvenance,
 };
 use super::toolbar::{SignalKind, SignalRole, SignalState, ToolbarSignal};
 use crate::db::LibraryStatus;
@@ -421,7 +421,7 @@ impl IdentifyState {
         let count = match self {
             IdentifyState::Found { matches, .. } => matches
                 .iter()
-                .filter(|m| catalog_matches_value(m.catalog_number.as_deref(), catalog))
+                .filter(|m| catalog_matches_candidate(m.catalog_number.as_deref(), catalog))
                 .count() as u32,
             _ => 0,
         };
@@ -496,14 +496,6 @@ fn found_or_no_match(count: u32) -> SignalState {
     } else {
         SignalState::Found { count }
     }
-}
-
-/// Whether a release's catalog number matches a candidate's value, after
-/// `normalize_catalog`. The per-badge confirm test.
-fn catalog_matches_value(catalog_number: Option<&str>, candidate: &SourcedValue) -> bool {
-    candidate.origin.can_confirm_catalog()
-        && catalog_number
-            .is_some_and(|c| normalize_catalog(c) == normalize_catalog(&candidate.value))
 }
 
 /// Events feeding the reducer. External triggers (`Started`, `Cancelled`,
