@@ -1021,8 +1021,8 @@ fn record_event_overlays_import_progress_onto_folder_runtime() {
         },
     });
 
-    // The overlay lands on the candidate's embedded runtime (synced from the
-    // runtime map by record_event), so the snapshot reflects it.
+    // The snapshot joins the runtime map at read time, so it reflects the
+    // recorded progress.
     let running = state.snapshot(vec![watched("/watch/a")]).folder_candidates[0]
         .runtime
         .import_status
@@ -1154,4 +1154,51 @@ fn get_resolves_reidentify_runtime_and_scanned_candidates() {
         Some(ImportCandidateSnapshot::Folder { .. })
     ));
     assert!(state.get("/watch/a/missing").is_none());
+}
+
+#[test]
+fn runtime_recorded_before_scan_survives_replace_root() {
+    let mut state = ImportCandidateState::default();
+
+    // An event can arrive for a candidate key before the folder scan reports
+    // the candidate. The runtime entry sits in the runtime map with no scanned
+    // candidate yet.
+    state.record_event(&ImportEvent::ImportProgress {
+        candidate_key: "/watch/a/rel1".to_string(),
+        progress: ImportProgress::Progress {
+            id: "rel1".to_string(),
+            percent: 42,
+            phase: ImportPhase::MeasuringLoudness,
+            import_id: "imp-1".to_string(),
+        },
+    });
+
+    // The scan then reports the candidate. replace_root does not touch the
+    // pre-existing runtime entry (remove_root only clears runtime for keys that
+    // were already scanned candidates under the root).
+    state.replace_root(
+        Path::new("/watch/a"),
+        vec![folder_candidate("/watch/a/rel1", "/watch/a")],
+        Vec::new(),
+    );
+
+    // The read-time join surfaces the recorded runtime on the scanned candidate.
+    let status = state.snapshot(vec![watched("/watch/a")]).folder_candidates[0]
+        .runtime
+        .import_status
+        .clone()
+        .expect("recorded import status joined onto the candidate");
+    match status {
+        CandidateImportStatusSnapshot::Importing {
+            progress_percent,
+            step,
+        } => {
+            assert_eq!(progress_percent, 42);
+            assert_eq!(
+                step,
+                Some(ImportStep::Running(ImportPhase::MeasuringLoudness))
+            );
+        }
+        other => panic!("expected Importing, got {other:?}"),
+    }
 }

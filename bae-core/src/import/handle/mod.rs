@@ -57,11 +57,8 @@ pub enum ImportCandidateSnapshot {
 }
 
 #[derive(Debug, Clone)]
-enum ScannedImportCandidateSnapshot {
-    Folder {
-        candidate: FolderCandidate,
-        runtime: CandidateRuntimeSnapshot,
-    },
+enum ScannedCandidate {
+    Folder(FolderCandidate),
     Invalid(InvalidCandidate),
 }
 
@@ -101,19 +98,22 @@ pub enum CandidateImportStatusSnapshot {
 
 #[derive(Debug, Default)]
 pub(crate) struct ImportCandidateState {
-    candidates: HashMap<String, ScannedImportCandidateSnapshot>,
+    /// What the folder scanner last reported per candidate path.
+    candidates: HashMap<String, ScannedCandidate>,
+    /// Per-candidate-key runtime accumulated from recorded events (identify
+    /// state, signals, import progress). A key without an entry has had no
+    /// events; reads treat absence as the idle runtime. Also holds
+    /// `reidentify:`-prefixed keys, which have no scanned candidate.
     runtime: HashMap<String, CandidateRuntimeSnapshot>,
 }
 
 impl ImportCandidateState {
     const REIDENTIFY_PREFIX: &str = "reidentify:";
 
-    fn candidate_watched_folder_path(candidate: &ScannedImportCandidateSnapshot) -> &str {
+    fn candidate_watched_folder_path(candidate: &ScannedCandidate) -> &str {
         match candidate {
-            ScannedImportCandidateSnapshot::Folder { candidate, .. } => {
-                &candidate.watched_folder_path
-            }
-            ScannedImportCandidateSnapshot::Invalid(candidate) => &candidate.watched_folder_path,
+            ScannedCandidate::Folder(candidate) => &candidate.watched_folder_path,
+            ScannedCandidate::Invalid(candidate) => &candidate.watched_folder_path,
         }
     }
 
@@ -121,6 +121,16 @@ impl ImportCandidateState {
         self.runtime
             .entry(candidate_key.to_string())
             .or_insert_with(CandidateRuntimeSnapshot::idle)
+    }
+
+    /// Runtime for a candidate key at read time. Absence from the runtime map
+    /// means no identify/import events have been recorded for the key — the
+    /// designed initial state — so it reads as idle.
+    fn runtime_for(&self, key: &str) -> CandidateRuntimeSnapshot {
+        self.runtime
+            .get(key)
+            .cloned()
+            .unwrap_or_else(CandidateRuntimeSnapshot::idle)
     }
 
     pub(super) fn replace_root(
@@ -132,20 +142,13 @@ impl ImportCandidateState {
         self.remove_root(root);
         for candidate in folder_candidates {
             let key = candidate.path.to_string_lossy().into_owned();
-            let runtime = self
-                .runtime
-                .entry(key.clone())
-                .or_insert_with(CandidateRuntimeSnapshot::idle)
-                .clone();
-            self.candidates.insert(
-                key,
-                ScannedImportCandidateSnapshot::Folder { candidate, runtime },
-            );
+            self.candidates
+                .insert(key, ScannedCandidate::Folder(candidate));
         }
         for candidate in invalid_candidates {
             self.candidates.insert(
                 candidate.path.to_string_lossy().into_owned(),
-                ScannedImportCandidateSnapshot::Invalid(candidate),
+                ScannedCandidate::Invalid(candidate),
             );
         }
     }
@@ -169,9 +172,7 @@ impl ImportCandidateState {
     }
 
     pub(super) fn set_skipped(&mut self, key: &str, skipped: bool) {
-        if let Some(ScannedImportCandidateSnapshot::Folder { candidate, .. }) =
-            self.candidates.get_mut(key)
-        {
+        if let Some(ScannedCandidate::Folder(candidate)) = self.candidates.get_mut(key) {
             candidate.skipped = skipped;
         }
     }
@@ -234,15 +235,6 @@ impl ImportCandidateState {
             }
             ImportEvent::Scan(_) | ImportEvent::ImportLoudnessProgress { .. } => {}
         }
-        for (key, candidate) in &mut self.candidates {
-            if let ScannedImportCandidateSnapshot::Folder { runtime, .. } = candidate {
-                let current = self
-                    .runtime
-                    .get(key)
-                    .unwrap_or_else(|| panic!("folder candidate {key:?} is missing runtime state"));
-                *runtime = current.clone();
-            }
-        }
     }
 
     pub(super) fn snapshot(&self, watched_folders: Vec<WatchedFolder>) -> ImportCandidatesSnapshot {
@@ -259,15 +251,14 @@ impl ImportCandidateState {
         let mut invalid_candidates = Vec::new();
         for (key, candidate) in &self.candidates {
             match candidate {
-                ScannedImportCandidateSnapshot::Folder { candidate, runtime } => folder_candidates
-                    .push((
-                        key.as_str(),
-                        FolderImportCandidateSnapshot {
-                            candidate: candidate.clone(),
-                            runtime: runtime.clone(),
-                        },
-                    )),
-                ScannedImportCandidateSnapshot::Invalid(candidate) => {
+                ScannedCandidate::Folder(candidate) => folder_candidates.push((
+                    key.as_str(),
+                    FolderImportCandidateSnapshot {
+                        candidate: candidate.clone(),
+                        runtime: self.runtime_for(key),
+                    },
+                )),
+                ScannedCandidate::Invalid(candidate) => {
                     invalid_candidates.push((key.as_str(), candidate.clone()))
                 }
             }
@@ -319,17 +310,15 @@ impl ImportCandidateState {
                 }
             });
         }
-        self.candidates
-            .get(key)
-            .cloned()
-            .map(|candidate| match candidate {
-                ScannedImportCandidateSnapshot::Folder { candidate, runtime } => {
-                    ImportCandidateSnapshot::Folder { candidate, runtime }
-                }
-                ScannedImportCandidateSnapshot::Invalid(candidate) => {
-                    ImportCandidateSnapshot::Invalid(candidate)
-                }
-            })
+        self.candidates.get(key).map(|candidate| match candidate {
+            ScannedCandidate::Folder(candidate) => ImportCandidateSnapshot::Folder {
+                candidate: candidate.clone(),
+                runtime: self.runtime_for(key),
+            },
+            ScannedCandidate::Invalid(candidate) => {
+                ImportCandidateSnapshot::Invalid(candidate.clone())
+            }
+        })
     }
 }
 
