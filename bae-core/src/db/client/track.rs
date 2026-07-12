@@ -99,18 +99,6 @@ impl Database {
         })
         .await
     }
-    /// Get every audio-format row for a release, joined through its tracks.
-    /// One row per track; a single-file CUE rip yields many rows sharing one
-    /// `file_id`. The resolver groups them by `file_id` to describe each audio
-    /// file's format.
-    pub async fn get_audio_formats_for_release(
-        &self,
-        release_id: &str,
-    ) -> Result<Vec<DbAudioFormat>, DbError> {
-        let release_id = release_id.to_string();
-        self.read(move |conn| get_audio_formats_for_release_on(conn, &release_id))
-            .await
-    }
     /// Find audio format by track ID. Caller-provided ID — may not exist.
     pub async fn find_audio_format_by_track_id(
         &self,

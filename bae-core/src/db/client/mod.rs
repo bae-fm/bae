@@ -1140,6 +1140,10 @@ fn get_files_for_release_on(conn: &Connection, release_id: &str) -> Result<Vec<D
         .map_err(DbError::from)
 }
 
+/// Get every audio-format row for a release, joined through its tracks.
+/// One row per track; a single-file CUE rip yields many rows sharing one
+/// `file_id`. The resolver groups them by `file_id` to describe each audio
+/// file's format.
 fn get_audio_formats_for_release_on(
     conn: &Connection,
     release_id: &str,
