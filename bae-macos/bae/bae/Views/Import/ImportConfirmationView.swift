@@ -499,25 +499,21 @@ struct CoverPickerView: View {
 
                     // Thumbnail strip
                     if cursor.canCycle {
-                        ScrollViewReader { scrollProxy in
-                            ScrollView(.horizontal, showsIndicators: false) {
-                                HStack(spacing: 6) {
-                                    ForEach(cursor.items) { item in
-                                        pickerThumbnail(
-                                            for: item,
-                                            isActive: cursor.isCurrent(item)
-                                        )
-                                        .id(item.id)
-                                    }
-                                }
-                                .padding(.horizontal, 8)
+                        ThumbnailStrip(
+                            cursor: cursor,
+                            centered: false,
+                            onSelect: { self.cursor?.select(id: $0) },
+                            stroke: { item, isActive in
+                                item.id == selectedItemId
+                                    ? (Color.accentColor, 2)
+                                    : isActive
+                                        ? (Color.primary, 2) : (Color.clear, 0)
                             }
-                            .frame(height: 64)
-                            .onChange(of: cursor.current.id) { _, newId in
-                                withAnimation(.easeInOut(duration: 0.2)) {
-                                    scrollProxy.scrollTo(newId, anchor: .center)
-                                }
-                            }
+                        ) { item in
+                            ImageView(
+                                source: item.thumbnailSource,
+                                pointSize: 56
+                            )
                         }
                     }
 
@@ -567,33 +563,6 @@ struct CoverPickerView: View {
             .shadow(radius: 10)
     }
 
-    @ViewBuilder
-    private func pickerThumbnail(for item: CoverItem, isActive: Bool)
-        -> some View
-    {
-        let isSelected = item.id == selectedItemId
-
-        Button(action: { cursor?.select(id: item.id) }) {
-            Group {
-                ImageView(
-                    source: item.thumbnailSource,
-                    pointSize: 56
-                )
-            }
-            .frame(width: 56, height: 56)
-            .clipShape(RoundedRectangle(cornerRadius: 6))
-            .overlay(
-                RoundedRectangle(cornerRadius: 6)
-                    .stroke(
-                        isSelected
-                            ? Color.accentColor
-                            : (isActive ? Color.primary : Color.clear),
-                        lineWidth: isSelected || isActive ? 2 : 0,
-                    ),
-            )
-        }
-        .buttonStyle(.plain)
-    }
 }
 
 // MARK: - Previews

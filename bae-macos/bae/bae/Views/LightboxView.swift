@@ -96,7 +96,26 @@ struct LightboxView: View {
                 labelView
 
                 if cursor.canCycle {
-                    thumbnailStrip
+                    ThumbnailStrip(
+                        cursor: cursor,
+                        centered: true,
+                        onSelect: { id in
+                            var next = cursor
+                            next.select(id: id)
+                            onUpdate(next)
+                        },
+                        stroke: { _, isActive in
+                            (
+                                isActive
+                                    ? Color.white : Color.gray.opacity(0.4),
+                                isActive ? 2 : 1
+                            )
+                        }
+                    ) { item in
+                        ImageView(content: item.thumbnailContent, pointSize: 56)
+                    }
+                    .padding(.bottom, 12)
+                    .fadesWhenZoomed(at: magnification)
                 }
             }
             .allowsHitTesting(true)
@@ -299,37 +318,6 @@ struct LightboxView: View {
 // MARK: - Overlay chrome
 
 extension LightboxView {
-    fileprivate var thumbnailStrip: some View {
-        GeometryReader { geo in
-            ScrollViewReader { scrollProxy in
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 6) {
-                        ForEach(cursor.items) { thumbnailItem in
-                            thumbnailView(
-                                for: thumbnailItem,
-                                isActive: cursor.isCurrent(thumbnailItem)
-                            )
-                            .id(thumbnailItem.id)
-                        }
-                    }
-                    .padding(.horizontal, 8)
-                    .frame(minWidth: geo.size.width)
-                }
-                .onAppear {
-                    scrollProxy.scrollTo(cursor.current.id, anchor: .center)
-                }
-                .onChange(of: cursor.current.id) { _, newId in
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        scrollProxy.scrollTo(newId, anchor: .center)
-                    }
-                }
-            }
-        }
-        .frame(height: 64)
-        .padding(.bottom, 12)
-        .fadesWhenZoomed(at: magnification)
-    }
-
     fileprivate var labelView: some View {
         Text(cursor.current.label)
             .font(.callout)
@@ -408,28 +396,6 @@ extension LightboxView {
         .allowsHitTesting(false)
     }
 
-    @ViewBuilder
-    fileprivate func thumbnailView(for item: LightboxItem, isActive: Bool)
-        -> some View
-    {
-        ImageView(content: item.thumbnailContent, pointSize: 56)
-            .frame(width: 56, height: 56)
-            .clipped()
-            .clipShape(RoundedRectangle(cornerRadius: 6))
-            .overlay(
-                RoundedRectangle(cornerRadius: 6)
-                    .stroke(
-                        isActive ? .white : .gray.opacity(0.4),
-                        lineWidth: isActive ? 2 : 1,
-                    ),
-            )
-            .contentShape(Rectangle())
-            .onTapGesture {
-                var next = cursor
-                next.select(id: item.id)
-                onUpdate(next)
-            }
-    }
 }
 
 extension View {
