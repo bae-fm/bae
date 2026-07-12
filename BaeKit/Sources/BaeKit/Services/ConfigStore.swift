@@ -18,16 +18,6 @@ public class ConfigStore {
     /// tab surfaces this as a reconnect banner (generic line + copyable
     /// detail).
     public var syncError: DisplayError?
-    /// Wall-clock time of the most recent successful sync cycle, or nil before
-    /// the first cycle completes. The sync-status projection converts the
-    /// epoch-millisecond value from `getSyncStatus()` into a `Date` here, so
-    /// the sidebar reads a typed value and only has to format it relative to
-    /// now.
-    public var lastSyncTime: Date?
-    /// Whether the sync loop is currently mid-cycle. The sidebar reads this
-    /// to overlay a spinner on the active library row from "Sync Now"
-    /// through to the cycle finishing.
-    public var syncing: Bool = false
 
     #if os(iOS)
         /// Latest surfaced error from core's `error` event, or nil when
@@ -69,10 +59,6 @@ public class ConfigStore {
 
     public func applySyncStatusSnapshot(_ snapshot: BridgeSyncStatusSnapshot) {
         syncError = snapshot.error.map(DisplayError.init)
-        lastSyncTime = snapshot.lastSyncTime.map {
-            Date(timeIntervalSince1970: TimeInterval($0) / 1000)
-        }
-        syncing = snapshot.syncing
         syncReady = snapshot.syncReady
     }
 }
