@@ -2107,7 +2107,8 @@ pub enum BridgeMcpServerError {
 
 /// Cloud sync settings for a connected provider. `provider` carries the
 /// provider-specific fields; the rest are shared across providers. Whether
-/// sync is actually running is `BridgeConfig.sync_ready`, kept orthogonal.
+/// sync is actually running is `BridgeSyncStatusSnapshot.sync_ready`, kept
+/// orthogonal.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeSyncConfig {
     pub provider: BridgeSyncProvider,
