@@ -77,10 +77,7 @@ pub struct ParsedAlbum {
 pub use error::ImportError;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use folder_registry::{ImportFolderRegistry, WatchedFolder};
-pub use folder_scanner::{
-    scan_for_candidates_with_callback, CategorizedFiles, FileEntry, FolderCandidate,
-    InvalidCandidate, InvalidReason, ScanItem,
-};
+pub use folder_scanner::{FolderCandidate, InvalidCandidate, InvalidReason};
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use handle::{
     parsed_album_to_user_edit, shape_user_edit_from_search_detail, CandidateImportStatusSnapshot,
