@@ -1,8 +1,4 @@
 #![cfg(feature = "test-utils")]
-use crate::support::{
-    samples_as_f32, seed_discogs_test_release, test_config_and_keys, tracing_init,
-    try_wait_for_import_complete, wait_for_import_complete,
-};
 use bae_core::db::Database;
 use bae_core::discogs::models::{DiscogsArtist, DiscogsRelease, DiscogsTrack};
 use bae_core::import::{IdentityChoice, ImportCommand, MetadataRef, MetadataSource, StorageMode};
@@ -16,6 +12,10 @@ use coven::StoreDir;
 use coven::{IdProvider, SequentialIdProvider};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
+use support::{
+    samples_as_f32, seed_discogs_test_release, test_config_and_keys, tracing_init,
+    try_wait_for_import_complete, wait_for_import_complete,
+};
 use tempfile::TempDir;
 use tokio::time::timeout;
 use tracing::debug;

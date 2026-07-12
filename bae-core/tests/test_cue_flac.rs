@@ -8,10 +8,6 @@
 //!
 //! These tests use storageless imports for simplicity (the CUE/FLAC handling
 //! is independent of storage configuration).
-use crate::support::{
-    assert_captured_matches_reference, samples_as_f32, seed_discogs_test_release,
-    test_config_and_keys, tracing_init, wait_for_import_complete,
-};
 use bae_core::db::{Database, DbAudioSegmentRole};
 use bae_core::discogs::models::{DiscogsArtist, DiscogsRelease, DiscogsTrack};
 use bae_core::import::{
@@ -23,6 +19,10 @@ use bae_test_support as support;
 use coven::StoreDir;
 use std::path::Path;
 use std::time::Duration;
+use support::{
+    assert_captured_matches_reference, samples_as_f32, seed_discogs_test_release,
+    test_config_and_keys, tracing_init, wait_for_import_complete,
+};
 use tempfile::TempDir;
 use tokio::time::timeout;
 use tracing::info;

@@ -20,6 +20,7 @@
 use bae_core::import::ImportEvent;
 use bae_core::signals::service::{ExtractionService, ExtractionServiceHandle, ExtractionSource};
 use bae_core::signals::{ArtworkAnalysis, ArtworkAnalyzer, TextSignal};
+use bae_test_support as support;
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::fs;
@@ -246,18 +247,7 @@ async fn make_library_manager() -> (bae_core::library::LibraryManager, TempDir) 
     .await
     .unwrap();
     let library_dir = coven::StoreDir::new(tmp.path());
-    // Unique id per test so keyring entries don't collide in the shared
-    // process-global mock store (see `install_test_keyring`).
-    let library_id = format!("test-{}", uuid::Uuid::new_v4());
-    let config = bae_core::config::Config::with_defaults(
-        library_id.clone(),
-        "test-device".to_string(),
-        library_dir.clone(),
-        "Test Library".to_string(),
-    );
-    let config_handle = Arc::new(bae_core::config::ConfigHandle::new(config));
-    bae_core::config::install_test_keyring();
-    let key_service = bae_core::keys::StoreKeys::new(library_id);
+    let (config_handle, key_service) = support::test_config_and_keys(&library_dir);
     let manager = bae_core::library::LibraryManager::new(
         database,
         config_handle,

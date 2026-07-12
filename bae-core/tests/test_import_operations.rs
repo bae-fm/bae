@@ -18,16 +18,8 @@
 //! - App restart loading active imports from DB
 
 use bae_core::db::{Database, DbImport, ImportOperationStatus};
+use bae_test_support::tracing_init;
 use tempfile::TempDir;
-
-fn tracing_init() {
-    let _ = tracing_subscriber::fmt()
-        .with_test_writer()
-        .with_line_number(true)
-        .with_target(false)
-        .with_file(true)
-        .try_init();
-}
 
 async fn create_test_db() -> (Database, TempDir) {
     let temp_dir = TempDir::new().unwrap();

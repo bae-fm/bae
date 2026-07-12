@@ -7,9 +7,6 @@
 //! the same code paths production uses.
 use bae_test_support as support;
 
-use crate::support::{
-    seed_discogs_test_release, test_config_and_keys, tracing_init, wait_for_import_complete,
-};
 use bae_core::audio_codec::{decode_audio, probe_audio_from_path};
 use bae_core::cue_flac::parse_cue_sheet;
 use bae_core::db::Database;
@@ -25,6 +22,9 @@ use bae_core::library::LibraryManager;
 use bae_core::util::content_type::ContentType;
 use coven::StoreDir;
 use std::path::{Path, PathBuf};
+use support::{
+    seed_discogs_test_release, test_config_and_keys, tracing_init, wait_for_import_complete,
+};
 use tempfile::TempDir;
 use tracing::info;
 

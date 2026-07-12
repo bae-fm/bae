@@ -30,7 +30,7 @@ use chrono::Utc;
 use coven::EncryptionService;
 use coven::StoreDir;
 use std::sync::Arc;
-use support::MockCloudHome;
+use support::{collect_library_events, MockCloudHome};
 use tempfile::TempDir;
 use uuid::Uuid;
 
@@ -491,17 +491,6 @@ async fn make_local_missing_blob_fails_leaving_summary_remote_and_no_deletes() {
 // whether a cloud home exists. Adding one must re-emit every album so cached UI
 // details refresh without a restart.
 // ---------------------------------------------------------------------------
-
-async fn collect_library_events(
-    rx: &mut tokio::sync::broadcast::Receiver<bae_core::library::LibraryEvent>,
-    timeout: std::time::Duration,
-) -> Vec<bae_core::library::LibraryEvent> {
-    let mut events = Vec::new();
-    while let Ok(Ok(event)) = tokio::time::timeout(timeout, rx.recv()).await {
-        events.push(event);
-    }
-    events
-}
 
 #[tokio::test]
 async fn emit_all_albums_updated_flips_storage_actions_on_cloud_home_transition() {

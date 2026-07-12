@@ -5,7 +5,6 @@
 //! identity / metadata-source columns.
 use bae_test_support as support;
 
-use crate::support::{test_config_and_keys, tracing_init};
 use bae_core::db::{
     Database, DbAlbum, DbArtist, DbFile, DbRelease, DbReleaseMetadata, DbTrack, Pressing,
     ReleaseMetadataSource,
@@ -16,6 +15,7 @@ use bae_core::util::content_type::ContentType;
 use chrono::Utc;
 use coven::StoreDir;
 use std::path::PathBuf;
+use support::{test_config_and_keys, tracing_init};
 use tempfile::TempDir;
 use uuid::Uuid;
 
@@ -494,51 +494,6 @@ fn fixtures_dir() -> PathBuf {
         .join("fixtures")
 }
 
-/// Copy a FLAC fixture into `dest_dir/{name}` and stamp it with the
-/// given Vorbis tags. Mirrors the helper inside `file_tag_mapper`'s own
-/// tests; we duplicate it here because that helper isn't exported.
-fn copy_and_tag(
-    source: &std::path::Path,
-    dest_dir: &std::path::Path,
-    name: &str,
-    title: &str,
-    artist: &str,
-    album_title: &str,
-    album_artist: &str,
-    year: u16,
-    track: u32,
-) -> PathBuf {
-    use lofty::config::WriteOptions;
-    use lofty::file::{AudioFile, TaggedFileExt};
-    use lofty::tag::items::Timestamp;
-    use lofty::tag::ItemKey;
-    use lofty::tag::{Accessor, Tag, TagType};
-
-    let dest = dest_dir.join(name);
-    std::fs::copy(source, &dest).expect("copy fixture");
-
-    let mut tagged = lofty::read_from_path(&dest).expect("read for tagging");
-    let mut tag = Tag::new(TagType::VorbisComments);
-    tag.set_title(title.to_string());
-    tag.set_artist(artist.to_string());
-    tag.set_album(album_title.to_string());
-    tag.insert_text(ItemKey::AlbumArtist, album_artist.to_string());
-    tag.set_date(Timestamp {
-        year,
-        month: None,
-        day: None,
-        hour: None,
-        minute: None,
-        second: None,
-    });
-    tag.set_track(track);
-    tagged.insert_tag(tag);
-    tagged
-        .save_to_path(&dest, WriteOptions::default())
-        .expect("save tags");
-    dest
-}
-
 #[tokio::test]
 async fn reset_file_tags_unknown_returns_tags_from_disk() {
     let (lm, db, tmp) = setup().await;
@@ -549,7 +504,7 @@ async fn reset_file_tags_unknown_returns_tags_from_disk() {
     std::fs::create_dir_all(&audio_dir).unwrap();
     let src = fixtures_dir().join("flac").join("01 Test Track 1.flac");
     let src2 = fixtures_dir().join("flac").join("02 Test Track 2.flac");
-    let f1 = copy_and_tag(
+    let f1 = support::copy_and_tag(
         &src,
         &audio_dir,
         "01.flac",
@@ -560,7 +515,7 @@ async fn reset_file_tags_unknown_returns_tags_from_disk() {
         2010,
         1,
     );
-    let f2 = copy_and_tag(
+    let f2 = support::copy_and_tag(
         &src2,
         &audio_dir,
         "02.flac",

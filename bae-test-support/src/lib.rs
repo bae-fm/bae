@@ -114,6 +114,65 @@ pub fn write_tagged_flac(dir: &std::path::Path, filename: &str, title: &str) -> 
     std::fs::read(&dest).unwrap()
 }
 
+/// Copy `source` into `dest_dir/name`, stamp Vorbis-comment tags on it (title,
+/// artist, album, album artist, year, track), and return the destination path.
+/// For tests that need a tagged audio file derived from a specific fixture.
+pub fn copy_and_tag(
+    source: &std::path::Path,
+    dest_dir: &std::path::Path,
+    name: &str,
+    title: &str,
+    artist: &str,
+    album_title: &str,
+    album_artist: &str,
+    year: u16,
+    track: u32,
+) -> std::path::PathBuf {
+    use lofty::config::WriteOptions;
+    use lofty::prelude::*;
+    use lofty::tag::items::Timestamp;
+    use lofty::tag::{Tag, TagType};
+
+    let dest = dest_dir.join(name);
+    std::fs::copy(source, &dest).expect("copy fixture");
+
+    let mut tagged = lofty::read_from_path(&dest).expect("read for tagging");
+    let mut tag = Tag::new(TagType::VorbisComments);
+    tag.set_title(title.to_string());
+    tag.set_artist(artist.to_string());
+    tag.set_album(album_title.to_string());
+    tag.insert_text(ItemKey::AlbumArtist, album_artist.to_string());
+    tag.set_date(Timestamp {
+        year,
+        month: None,
+        day: None,
+        hour: None,
+        minute: None,
+        second: None,
+    });
+    tag.set_track(track);
+    tagged.insert_tag(tag);
+    tagged
+        .save_to_path(&dest, WriteOptions::default())
+        .expect("save tags");
+    dest
+}
+
+/// Drain library events from `rx`, returning them in arrival order once no new
+/// event arrives within `timeout` (the quiet-window settle). Positive
+/// assertions check the expected events are present; negative ones check the
+/// returned set is empty.
+pub async fn collect_library_events(
+    rx: &mut tokio::sync::broadcast::Receiver<bae_core::library::LibraryEvent>,
+    timeout: std::time::Duration,
+) -> Vec<bae_core::library::LibraryEvent> {
+    let mut events = Vec::new();
+    while let Ok(Ok(event)) = tokio::time::timeout(timeout, rx.recv()).await {
+        events.push(event);
+    }
+    events
+}
+
 /// Pre-populate the Discogs release cache, master cache (if the
 /// release carries a `master_id`), and the MB URL-lookup cache for a
 /// synthetic test release. The worker's `prepare_release` →

@@ -22,9 +22,6 @@
 //! it, so neither needs the `--test-threads=1` flag the suite once required.
 
 #![cfg(feature = "test-utils")]
-use crate::support::{
-    seed_discogs_test_release, test_config_and_keys, tracing_init, wait_for_import_complete,
-};
 use bae_core::db::Database;
 use bae_core::discogs::models::{DiscogsArtist, DiscogsRelease, DiscogsTrack};
 use bae_core::import::{IdentityChoice, ImportCommand, MetadataRef, MetadataSource, StorageMode};
@@ -35,6 +32,9 @@ use coven::StoreDir;
 use serial_test::serial;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
+use support::{
+    seed_discogs_test_release, test_config_and_keys, tracing_init, wait_for_import_complete,
+};
 use tempfile::TempDir;
 use tokio::time::timeout;
 

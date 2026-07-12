@@ -1,7 +1,6 @@
 #![cfg(feature = "test-utils")]
 use bae_test_support as support;
 
-use crate::support::{test_config_and_keys, tracing_init};
 use bae_core::db::{
     Database, DbAlbum, DbAlbumArtist, DbRelease, DbTrack, Pressing, ReleaseMetadataSource,
 };
@@ -9,6 +8,7 @@ use bae_core::library::{LibraryEvent, LibraryManager};
 use chrono::Utc;
 use coven::StoreDir;
 use std::time::Duration;
+use support::{collect_library_events, test_config_and_keys, tracing_init};
 use tempfile::TempDir;
 use uuid::Uuid;
 
@@ -96,18 +96,6 @@ fn make_track(release_id: &str, track_number: i32) -> DbTrack {
     }
 }
 
-/// Collect all events from a receiver with a timeout.
-async fn collect_events(
-    rx: &mut tokio::sync::broadcast::Receiver<LibraryEvent>,
-    timeout: Duration,
-) -> Vec<LibraryEvent> {
-    let mut events = Vec::new();
-    while let Ok(Ok(event)) = tokio::time::timeout(timeout, rx.recv()).await {
-        events.push(event);
-    }
-    events
-}
-
 /// Insert an album with release and tracks, then emit events.
 async fn insert_album_and_emit(
     lm: &LibraryManager,
@@ -148,7 +136,7 @@ async fn test_insert_album_emits_album_added() {
 
     insert_album_and_emit(&lm, &db, &artist, &album, &release, &[track]).await;
 
-    let events = collect_events(&mut rx, Duration::from_millis(100)).await;
+    let events = collect_library_events(&mut rx, Duration::from_millis(100)).await;
 
     let album_added_count = events
         .iter()
@@ -199,7 +187,7 @@ async fn test_insert_second_release_emits_release_added() {
 
     lm.emit_release_added(&album.id, &release2.id).await;
 
-    let events = collect_events(&mut rx, Duration::from_millis(100)).await;
+    let events = collect_library_events(&mut rx, Duration::from_millis(100)).await;
 
     let release_added = events
         .iter()
@@ -235,7 +223,7 @@ async fn test_delete_release_multi_release_emits_release_removed() {
     let mut rx = lm.subscribe_events();
     lm.delete_release(&release1.id).await.unwrap();
 
-    let events = collect_events(&mut rx, Duration::from_millis(100)).await;
+    let events = collect_library_events(&mut rx, Duration::from_millis(100)).await;
 
     let release_removed = events
         .iter()
@@ -271,7 +259,7 @@ async fn test_delete_primary_release_emits_album_updated_with_new_primary() {
     let mut rx = lm.subscribe_events();
     lm.delete_release(&release1.id).await.unwrap();
 
-    let events = collect_events(&mut rx, Duration::from_millis(100)).await;
+    let events = collect_library_events(&mut rx, Duration::from_millis(100)).await;
 
     let target_album_id = album.id.clone();
     let updated_primaries: Vec<String> = events
@@ -312,7 +300,7 @@ async fn test_delete_last_release_emits_album_removed() {
     let mut rx = lm.subscribe_events();
     lm.delete_release(&release.id).await.unwrap();
 
-    let events = collect_events(&mut rx, Duration::from_millis(100)).await;
+    let events = collect_library_events(&mut rx, Duration::from_millis(100)).await;
 
     let removed: Vec<&LibraryEvent> = events
         .iter()
@@ -352,7 +340,7 @@ async fn test_delete_album_emits_album_removed() {
     let mut rx = lm.subscribe_events();
     lm.delete_album(&album.id).await.unwrap();
 
-    let events = collect_events(&mut rx, Duration::from_millis(100)).await;
+    let events = collect_library_events(&mut rx, Duration::from_millis(100)).await;
 
     let removed: Vec<&LibraryEvent> = events
         .iter()
@@ -389,7 +377,7 @@ async fn test_set_cover_release_emits_album_updated() {
         .await
         .unwrap();
 
-    let events = collect_events(&mut rx, Duration::from_millis(100)).await;
+    let events = collect_library_events(&mut rx, Duration::from_millis(100)).await;
 
     let album_updated = events
         .iter()
@@ -449,7 +437,7 @@ async fn test_user_edit_overwrites_album_release_track_metadata() {
         .await
         .unwrap();
 
-    let events = collect_events(&mut rx, Duration::from_millis(100)).await;
+    let events = collect_library_events(&mut rx, Duration::from_millis(100)).await;
     let album_updated = events
         .iter()
         .filter(|e| matches!(e, LibraryEvent::AlbumUpdated { .. }))

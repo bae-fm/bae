@@ -6,10 +6,6 @@
 //! - Record per-track timing (track_start_ms / track_end_ms)
 //! - Store correct per-track durations (NOT the full file duration)
 //! - Enable playback of individual tracks via full-file decode with seek/stop
-use crate::support::{
-    assert_captured_matches_reference, samples_as_f32, seed_discogs_test_release,
-    test_config_and_keys, tracing_init, wait_for_import_complete,
-};
 use bae_core::db::Database;
 use bae_core::discogs::models::{DiscogsArtist, DiscogsRelease, DiscogsTrack};
 use bae_core::import::{
@@ -24,6 +20,10 @@ use coven::{EncryptionService, StoreDir};
 use std::path::Path;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
+use support::{
+    assert_captured_matches_reference, samples_as_f32, seed_discogs_test_release,
+    test_config_and_keys, tracing_init, wait_for_import_complete,
+};
 use tempfile::TempDir;
 use tokio::time::{sleep, timeout};
 use tracing::info;
