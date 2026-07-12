@@ -1,11 +1,11 @@
 //! Rolling-window throughput tracker for the cloud-upload pipeline. The
-//! `BlobUploadObserver` records bytes on every successful upload; the snapshot
-//! builder reads the rate at emit time. Samples age out of the window so an
-//! idle queue drops the displayed rate back to zero.
-//!
-//! Current granularity is one sample per file completion. Once coven gains a
-//! sub-file progress callback we'll record incremental byte deltas mid-upload,
-//! making the displayed rate smoother without changing the math.
+//! `ReleaseUploadObserver` feeds it from two callbacks: `on_blob_upload_progress`
+//! records the byte delta since the file's previous report, so the rate moves
+//! mid-upload, and `on_blob_uploaded` credits whatever the progress reports had
+//! not counted yet (the tail past the last report, or a whole file that finished
+//! between coalescing ticks). The snapshot builder reads the rate at emit time.
+//! Samples age out of the window so an idle queue drops the displayed rate back
+//! to zero.
 
 use std::collections::VecDeque;
 use std::sync::Mutex;
@@ -33,8 +33,10 @@ impl UploadThroughput {
         }
     }
 
-    /// Record a successful upload of `bytes` bytes. Called from the observer's
-    /// `on_blob_uploaded`.
+    /// Record `bytes` transferred. Fed from both of the observer's upload
+    /// callbacks: `on_blob_upload_progress` passes the delta since the file's
+    /// previous report; `on_blob_uploaded` passes the bytes no progress report
+    /// counted.
     pub fn record(&self, bytes: u64) {
         self.record_at(bytes, Instant::now());
     }
