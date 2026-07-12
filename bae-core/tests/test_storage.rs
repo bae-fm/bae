@@ -91,6 +91,7 @@ async fn test_local_import() {
         key_service,
         std::sync::Arc::new(coven::SystemClock),
         std::sync::Arc::new(coven::UuidProvider),
+        bae_core::diagnostics::Diagnostics::noop(),
         tokio::runtime::Handle::current(),
     );
     let runtime_handle = tokio::runtime::Handle::current();
@@ -237,6 +238,7 @@ async fn test_local_delete_preserves_files() {
         key_service,
         std::sync::Arc::new(coven::SystemClock),
         std::sync::Arc::new(coven::UuidProvider),
+        bae_core::diagnostics::Diagnostics::noop(),
         tokio::runtime::Handle::current(),
     );
     let runtime_handle = tokio::runtime::Handle::current();
@@ -333,6 +335,7 @@ async fn run_import_with_cover_test() {
         key_service,
         std::sync::Arc::new(coven::SystemClock),
         std::sync::Arc::new(coven::UuidProvider),
+        bae_core::diagnostics::Diagnostics::noop(),
         tokio::runtime::Handle::current(),
     );
     let runtime_handle = tokio::runtime::Handle::current();

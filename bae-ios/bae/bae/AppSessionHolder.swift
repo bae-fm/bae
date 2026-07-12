@@ -68,7 +68,10 @@ final class AppSessionHolder {
                 // off starts with nothing in playback; the core keeps the
                 // resume row current either way.
                 restorePlayback: UserDefaults.standard.object(forKey: "persistPlayback") == nil
-                    || UserDefaults.standard.bool(forKey: "persistPlayback")
+                    || UserDefaults.standard.bool(forKey: "persistPlayback"),
+                // Telemetry config crosses at init; the core builds the sink
+                // from it, so there is no separate configure step to run first.
+                diagnostics: BaeDiagnostics.bridgeConfig(source: "ios")
             )
         },
         makeService: { handle, config, initialOutbox in
@@ -158,6 +161,7 @@ final class AppSessionHolder {
             case .opened(let service):
                 self.appService = service
                 self.screen = .library(service)
+                service.reportScreen(.library)
             case .needsUnlock(let config):
                 self.screen = .unlock(
                     LockedLibrary(library: library, config: config)

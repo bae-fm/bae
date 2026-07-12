@@ -1,7 +1,17 @@
-//! Crash reporting stays in the platform apps because crash handlers, native
-//! crash capture, and symbol upload are platform-specific. Logs and telemetry
-//! live here so Rust and host-originated events share schema, redaction,
-//! batching, retry, and transport.
+//! Shipped telemetry is a closed, typed catalog — never free text.
+//!
+//! Everything that leaves the device is a [`TelemetryEvent`] (see
+//! [`telemetry`]): a declared name, level, and typed fields, serialized to a
+//! [`DiagnosticEvent`] and batched to Datadog by the worker here. Field values
+//! go through [`TelemetryValue`], which `String`/`&str` don't implement, so
+//! free text, names, paths, and externally-resolvable ids can't enter the
+//! payload by construction. There is no scrubbing pass and no allowlist because
+//! there is nothing untyped to scrub.
+//!
+//! Local `tracing` (console/oslog/logcat) and the host platform logs keep the
+//! full, unredacted detail for debugging; they are no longer forwarded here.
+//! Crash reporting stays in the platform apps (native crash capture and symbol
+//! upload are platform-specific).
 //!
 //! The Datadog logs transport sends directly to the client intake endpoint used
 //! by Datadog's browser, iOS, and Android SDKs: `browser-intake-.../api/v2/logs`
@@ -9,24 +19,20 @@
 //! end-user apps; `DD_API_KEY` is never shipped in bae. baeium configures
 //! no-op crash reporting and no-op diagnostics.
 
-use std::{
-    collections::{BTreeMap, VecDeque},
-    fmt,
-    sync::{Arc, OnceLock},
-    time::Duration,
-};
+mod telemetry;
+
+pub use telemetry::*;
+
+use std::{collections::VecDeque, fmt, sync::Arc, time::Duration};
 
 use chrono::{DateTime, Utc};
 use coven::{ClockRef, IdRef};
-use regex::Regex;
 use reqwest::{
     header::{HeaderMap, HeaderValue, CONTENT_TYPE},
     StatusCode, Url,
 };
 use serde::{Deserialize, Serialize};
 use tokio::sync::{mpsc, oneshot};
-use tracing::{field::Visit, Event, Subscriber};
-use tracing_subscriber::{layer::Context, Layer};
 
 use crate::retry::retry_with_backoff_if;
 
@@ -36,8 +42,6 @@ const FLUSH_INTERVAL: Duration = Duration::from_secs(2);
 const RETRY_ATTEMPTS: u32 = 3;
 const RETRY_DELAY: Duration = Duration::from_millis(250);
 const DATADOG_ORIGIN_VERSION: &str = env!("CARGO_PKG_VERSION");
-
-type DiagnosticFields = BTreeMap<String, String>;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum DiagnosticsConfig {
@@ -109,15 +113,18 @@ impl DatadogDiagnosticsConfig {
     }
 }
 
+/// The wire shape of one shipped event. `name` is the telemetry event's declared
+/// name; `fields` are its typed values recorded as JSON. `message` duplicates
+/// `name` as Datadog's display line, and `level` maps to Datadog's reserved
+/// `status` severity attribute. The app metadata is flattened in alongside.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DiagnosticEvent {
-    pub kind: DiagnosticKind,
     pub name: String,
+    #[serde(rename = "status")]
     pub level: DiagnosticLevel,
-    pub target: String,
     pub message: String,
     pub timestamp: DateTime<Utc>,
-    pub fields: DiagnosticFields,
+    pub fields: serde_json::Map<String, serde_json::Value>,
     #[serde(flatten)]
     pub app: AppDiagnosticMetadata,
 }
@@ -134,17 +141,8 @@ pub struct AppDiagnosticMetadata {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum DiagnosticKind {
-    Log,
-    Telemetry,
-}
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum DiagnosticLevel {
-    Trace,
-    Debug,
     Info,
     Warn,
     Error,
@@ -192,7 +190,7 @@ impl Diagnostics {
         Self::with_transport(config, clock, ids, Arc::new(DatadogTransport::new()))
     }
 
-    fn with_transport(
+    pub(crate) fn with_transport(
         config: DatadogDiagnosticsConfig,
         clock: ClockRef,
         ids: IdRef,
@@ -215,37 +213,25 @@ impl Diagnostics {
         })
     }
 
-    pub fn log(
-        &self,
-        level: DiagnosticLevel,
-        target: impl Into<String>,
-        message: impl Into<String>,
-        fields: impl IntoIterator<Item = (String, String)>,
-    ) -> Result<(), DiagnosticsError> {
-        self.emit_event(DiagnosticEventInput {
-            kind: DiagnosticKind::Log,
-            name: "log".to_string(),
-            level,
-            target: target.into(),
-            message: message.into(),
-            fields: fields.into_iter().collect(),
-        })
-    }
-
-    pub fn event(
-        &self,
-        name: impl Into<String>,
-        fields: impl IntoIterator<Item = (String, String)>,
-    ) -> Result<(), DiagnosticsError> {
-        let name = name.into();
-        self.emit_event(DiagnosticEventInput {
-            kind: DiagnosticKind::Telemetry,
-            name: name.clone(),
-            level: DiagnosticLevel::Info,
-            target: "telemetry".to_string(),
-            message: name,
-            fields: fields.into_iter().collect(),
-        })
+    /// Ship one telemetry event. Infallible from the caller's view — telemetry
+    /// must never break playback/import/sync. A send failure means the worker
+    /// stopped (normal at shutdown); that is logged at `debug` and the event is
+    /// dropped, the same logged bail-out the old tracing layer used.
+    pub fn event(&self, event: TelemetryEvent) {
+        let DiagnosticsInner::Worker { tx, app, clock } = self.inner.as_ref() else {
+            return;
+        };
+        let diagnostic = DiagnosticEvent {
+            name: event.name().to_string(),
+            level: event.level(),
+            message: event.name().to_string(),
+            timestamp: clock.now(),
+            fields: event.fields(),
+            app: app.clone(),
+        };
+        if tx.send(WorkerMessage::Event(diagnostic)).is_err() {
+            tracing::debug!("diagnostics event dropped: worker stopped");
+        }
     }
 
     pub async fn flush(&self) -> Result<(), DiagnosticsError> {
@@ -259,46 +245,6 @@ impl Diagnostics {
             .await
             .map_err(|_| DiagnosticsError::WorkerStopped)?
     }
-
-    fn emit_event(&self, input: DiagnosticEventInput) -> Result<(), DiagnosticsError> {
-        let Some((app, clock)) = self.app_context() else {
-            return Ok(());
-        };
-        self.emit(DiagnosticEvent {
-            kind: input.kind,
-            name: redact_text(&input.name),
-            level: input.level,
-            target: input.target,
-            message: redact_text(&input.message),
-            timestamp: clock.now(),
-            fields: sanitize_fields(input.fields),
-            app,
-        })
-    }
-
-    fn emit(&self, event: DiagnosticEvent) -> Result<(), DiagnosticsError> {
-        let DiagnosticsInner::Worker { tx, .. } = self.inner.as_ref() else {
-            return Ok(());
-        };
-        tx.send(WorkerMessage::Event(event))
-            .map_err(|_| DiagnosticsError::WorkerStopped)
-    }
-
-    fn app_context(&self) -> Option<(AppDiagnosticMetadata, ClockRef)> {
-        match self.inner.as_ref() {
-            DiagnosticsInner::Noop => None,
-            DiagnosticsInner::Worker { app, clock, .. } => Some((app.clone(), clock.clone())),
-        }
-    }
-}
-
-struct DiagnosticEventInput {
-    kind: DiagnosticKind,
-    name: String,
-    level: DiagnosticLevel,
-    target: String,
-    message: String,
-    fields: Vec<(String, String)>,
 }
 
 enum WorkerMessage {
@@ -548,168 +494,6 @@ pub fn should_retry(error: &DiagnosticsError) -> bool {
     }
 }
 
-pub fn tracing_layer(diagnostics: Diagnostics) -> DiagnosticsTracingLayer {
-    DiagnosticsTracingLayer { diagnostics }
-}
-
-#[derive(Clone, Debug)]
-pub struct DiagnosticsTracingLayer {
-    diagnostics: Diagnostics,
-}
-
-impl<S> Layer<S> for DiagnosticsTracingLayer
-where
-    S: Subscriber,
-{
-    fn on_event(&self, event: &Event<'_>, _ctx: Context<'_, S>) {
-        let metadata = event.metadata();
-        if metadata.target().starts_with("bae_core::diagnostics") {
-            return;
-        }
-        let mut visitor = EventVisitor::new();
-        event.record(&mut visitor);
-        let message = match visitor.message {
-            Some(message) => message,
-            None => metadata.name().to_string(),
-        };
-        match self.diagnostics.log(
-            DiagnosticLevel::from_tracing(metadata.level()),
-            metadata.target(),
-            message,
-            visitor.fields,
-        ) {
-            Ok(()) => {}
-            Err(DiagnosticsError::WorkerStopped) => {
-                tracing::debug!("diagnostics tracing layer dropped event: worker stopped");
-            }
-            Err(e) => tracing::debug!("diagnostics tracing layer dropped event: {e}"),
-        }
-    }
-}
-
-impl DiagnosticLevel {
-    fn from_tracing(level: &tracing::Level) -> Self {
-        match *level {
-            tracing::Level::TRACE => Self::Trace,
-            tracing::Level::DEBUG => Self::Debug,
-            tracing::Level::INFO => Self::Info,
-            tracing::Level::WARN => Self::Warn,
-            tracing::Level::ERROR => Self::Error,
-        }
-    }
-}
-
-struct EventVisitor {
-    message: Option<String>,
-    fields: Vec<(String, String)>,
-}
-
-impl EventVisitor {
-    fn new() -> Self {
-        Self {
-            message: None,
-            fields: Vec::new(),
-        }
-    }
-
-    fn push_field(&mut self, field: &tracing::field::Field, value: String) {
-        if field.name() == "message" {
-            self.message = Some(value);
-        } else {
-            self.fields.push((field.name().to_string(), value));
-        }
-    }
-
-    fn record_display(&mut self, field: &tracing::field::Field, value: impl fmt::Display) {
-        self.push_field(field, value.to_string());
-    }
-}
-
-impl Visit for EventVisitor {
-    fn record_debug(&mut self, field: &tracing::field::Field, value: &dyn fmt::Debug) {
-        self.push_field(field, format!("{value:?}"));
-    }
-
-    fn record_str(&mut self, field: &tracing::field::Field, value: &str) {
-        self.record_display(field, value);
-    }
-
-    fn record_i64(&mut self, field: &tracing::field::Field, value: i64) {
-        self.record_display(field, value);
-    }
-
-    fn record_u64(&mut self, field: &tracing::field::Field, value: u64) {
-        self.record_display(field, value);
-    }
-
-    fn record_bool(&mut self, field: &tracing::field::Field, value: bool) {
-        self.record_display(field, value);
-    }
-}
-
-fn sanitize_fields(fields: impl IntoIterator<Item = (String, String)>) -> DiagnosticFields {
-    fields
-        .into_iter()
-        .filter_map(|(key, value)| {
-            let key = key.trim();
-            if field_allowed(key) {
-                Some((key.to_string(), redact_text(&value)))
-            } else {
-                None
-            }
-        })
-        .collect()
-}
-
-fn field_allowed(key: &str) -> bool {
-    matches!(
-        key,
-        "action"
-            | "album_count"
-            | "cloud_provider"
-            | "count"
-            | "duration_ms"
-            | "error_code"
-            | "error_kind"
-            | "library_state"
-            | "operation"
-            | "position_ms"
-            | "provider"
-            | "release_id_kind"
-            | "screen"
-            | "source"
-            | "status"
-            | "track_count"
-    )
-}
-
-fn redact_text(value: &str) -> String {
-    let regexes = redaction_regexes();
-    let value = regexes.path.replace_all(value, "[redacted-path]");
-    let value = regexes.uuid.replace_all(&value, "[redacted-id]");
-    regexes
-        .secret
-        .replace_all(&value, "[redacted-secret]")
-        .into_owned()
-}
-
-struct RedactionRegexes {
-    path: Regex,
-    uuid: Regex,
-    secret: Regex,
-}
-
-fn redaction_regexes() -> &'static RedactionRegexes {
-    static REGEXES: OnceLock<RedactionRegexes> = OnceLock::new();
-    REGEXES.get_or_init(|| RedactionRegexes {
-        path: Regex::new(r"(?i)(/[A-Za-z0-9._ -]+(?:/[A-Za-z0-9._ -]+)+|[A-Za-z]:\\[^\s]+)")
-            .expect("path redaction regex compiles"),
-        uuid: Regex::new(r"(?i)\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b")
-            .expect("UUID redaction regex compiles"),
-        secret: Regex::new(r"\b[A-Za-z0-9_-]{32,}\b").expect("secret redaction regex compiles"),
-    })
-}
-
 fn validate_datadog_site(site: &str) -> Result<(), DiagnosticsError> {
     let valid = !site.is_empty()
         && site
@@ -723,12 +507,64 @@ fn validate_datadog_site(site: &str) -> Result<(), DiagnosticsError> {
     }
 }
 
+/// A transport that records the requests it's handed and replays a fixed queue
+/// of outcomes (defaulting to success once the queue drains). Shared by the
+/// diagnostics worker tests and the service-level emission tests, which assert
+/// the typed events reach the wire.
+#[cfg(any(test, feature = "test-utils"))]
+pub struct RecordingTransport {
+    requests: std::sync::Mutex<Vec<DatadogRequest>>,
+    outcomes: std::sync::Mutex<VecDeque<Result<(), DiagnosticsError>>>,
+}
+
+#[cfg(any(test, feature = "test-utils"))]
+impl RecordingTransport {
+    pub fn new(outcomes: Vec<Result<(), DiagnosticsError>>) -> Self {
+        Self {
+            requests: std::sync::Mutex::new(Vec::new()),
+            outcomes: std::sync::Mutex::new(outcomes.into()),
+        }
+    }
+
+    pub fn requests(&self) -> Vec<DatadogRequest> {
+        self.requests
+            .lock()
+            .expect("requests mutex is available")
+            .clone()
+    }
+
+    /// Every event name across every recorded request body, in send order.
+    pub fn event_names(&self) -> Vec<String> {
+        self.requests()
+            .iter()
+            .flat_map(|request| {
+                let body: Vec<DiagnosticEvent> = serde_json::from_slice(&request.body)
+                    .expect("recorded request body is a diagnostic-event array");
+                body.into_iter().map(|event| event.name)
+            })
+            .collect()
+    }
+}
+
+#[cfg(any(test, feature = "test-utils"))]
+#[async_trait::async_trait]
+impl DiagnosticsTransport for RecordingTransport {
+    async fn send(&self, request: DatadogRequest) -> Result<(), DiagnosticsError> {
+        self.requests
+            .lock()
+            .expect("requests mutex is available")
+            .push(request);
+        self.outcomes
+            .lock()
+            .expect("outcomes mutex is available")
+            .pop_front()
+            .unwrap_or(Ok(()))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use serial_test::serial;
-    use std::sync::{Mutex, MutexGuard};
-    use tracing_subscriber::prelude::*;
 
     fn config() -> DatadogDiagnosticsConfig {
         DatadogDiagnosticsConfig {
@@ -758,14 +594,16 @@ mod tests {
     }
 
     fn event() -> DiagnosticEvent {
+        let telemetry = TelemetryEvent::PlaybackStarted {
+            source: PlaybackStartSource::Release,
+            track_count: 4,
+        };
         DiagnosticEvent {
-            kind: DiagnosticKind::Log,
-            name: "log".to_string(),
-            level: DiagnosticLevel::Warn,
-            target: "target".to_string(),
-            message: "message".to_string(),
+            name: telemetry.name().to_string(),
+            level: telemetry.level(),
+            message: telemetry.name().to_string(),
             timestamp: clock().now(),
-            fields: BTreeMap::from([("operation".to_string(), "scan".to_string())]),
+            fields: telemetry.fields(),
             app: config().app,
         }
     }
@@ -816,66 +654,29 @@ mod tests {
     }
 
     #[test]
-    fn event_serialization_contains_schema_and_app_metadata() {
+    fn event_serialization_carries_typed_schema_and_app_metadata() {
         let json = serde_json::to_value(event()).expect("event serializes");
 
-        assert_eq!(json["kind"], "log");
-        assert_eq!(json["name"], "log");
-        assert_eq!(json["level"], "warn");
-        assert_eq!(json["target"], "target");
-        assert_eq!(json["message"], "message");
+        assert_eq!(json["name"], "playback_started");
+        // Datadog's reserved severity + display line.
+        assert_eq!(json["status"], "info");
+        assert_eq!(json["message"], "playback_started");
+        // Numbers ship as JSON numbers, enums as snake_case strings.
+        assert_eq!(json["fields"]["track_count"], 4);
+        assert!(json["fields"]["track_count"].is_number());
+        assert_eq!(json["fields"]["source"], "release");
+        // Flattened app metadata.
         assert_eq!(json["service"], "bae");
         assert_eq!(json["env"], "test");
         assert_eq!(json["version"], "1.2.3");
         assert_eq!(json["edition"], "bae");
         assert_eq!(json["git_commit"], "abc123");
-        assert_eq!(json["fields"]["operation"], "scan");
-    }
-
-    #[test]
-    fn redaction_drops_unapproved_fields_and_redacts_sensitive_values() {
-        let fields = sanitize_fields([
-            ("operation".to_string(), "scan".to_string()),
-            (
-                "path".to_string(),
-                "/tmp/import_source/file.flac".to_string(),
-            ),
-            (
-                "status".to_string(),
-                "stored at /tmp/import_source/file.flac".to_string(),
-            ),
-            (
-                "error_code".to_string(),
-                "abcd1234abcd1234abcd1234abcd1234".to_string(),
-            ),
-        ]);
-
-        assert_eq!(fields.get("operation").map(String::as_str), Some("scan"));
-        assert!(!fields.contains_key("path"));
-        assert_eq!(
-            fields.get("status").map(String::as_str),
-            Some("stored at [redacted-path]")
-        );
-        assert_eq!(
-            fields.get("error_code").map(String::as_str),
-            Some("[redacted-secret]")
-        );
     }
 
     #[test]
     fn no_op_diagnostics_drops_events() {
-        let diagnostics = Diagnostics::noop();
-        assert!(diagnostics
-            .log(
-                DiagnosticLevel::Info,
-                "target",
-                "message",
-                [("operation".to_string(), "scan".to_string())],
-            )
-            .is_ok());
-        assert!(diagnostics
-            .event("opened", [("screen".to_string(), "library".to_string())])
-            .is_ok());
+        // Infallible and silent — nothing to assert but that it doesn't panic.
+        Diagnostics::noop().event(TelemetryEvent::AppStarted {});
     }
 
     #[test]
@@ -921,14 +722,7 @@ mod tests {
         let transport = Arc::new(RecordingTransport::new(vec![Ok(())]));
         let diagnostics = Diagnostics::with_transport(config(), clock(), ids(), transport.clone())
             .expect("diagnostics starts");
-        diagnostics
-            .log(
-                DiagnosticLevel::Info,
-                "target",
-                "message",
-                [("operation".to_string(), "scan".to_string())],
-            )
-            .expect("event queues");
+        diagnostics.event(TelemetryEvent::AppStarted {});
 
         diagnostics.flush().await.expect("flush succeeds");
         let requests = transport.requests();
@@ -936,6 +730,7 @@ mod tests {
         let body: serde_json::Value =
             serde_json::from_slice(&requests[0].body).expect("request body is JSON");
         assert_eq!(body.as_array().map(Vec::len), Some(1));
+        assert_eq!(body[0]["name"], "app_started");
     }
 
     #[tokio::test]
@@ -946,9 +741,7 @@ mod tests {
         ]));
         let diagnostics = Diagnostics::with_transport(config(), clock(), ids(), transport.clone())
             .expect("diagnostics starts");
-        diagnostics
-            .event("opened", [("screen".to_string(), "library".to_string())])
-            .expect("event queues");
+        diagnostics.event(TelemetryEvent::AppStarted {});
 
         assert!(matches!(
             diagnostics.flush().await,
@@ -956,73 +749,5 @@ mod tests {
         ));
         diagnostics.flush().await.expect("second flush succeeds");
         assert_eq!(transport.requests().len(), 2);
-    }
-
-    #[tokio::test]
-    #[serial]
-    async fn tracing_layer_maps_events_to_diagnostics() {
-        let transport = Arc::new(RecordingTransport::new(vec![Ok(())]));
-        let diagnostics = Diagnostics::with_transport(config(), clock(), ids(), transport.clone())
-            .expect("diagnostics starts");
-
-        tracing::subscriber::with_default(
-            tracing_subscriber::registry().with(tracing_layer(diagnostics.clone())),
-            || {
-                tracing::warn!(
-                    target: "scan",
-                    operation = "import",
-                    path = "/tmp/import_source/file.flac",
-                    "release {} failed",
-                    "123e4567-e89b-12d3-a456-426614174000"
-                );
-            },
-        );
-
-        diagnostics.flush().await.expect("flush succeeds");
-        let requests = transport.requests();
-        let body: serde_json::Value =
-            serde_json::from_slice(&requests[0].body).expect("request body is JSON");
-        let event = &body[0];
-        assert_eq!(event["level"], "warn");
-        assert_eq!(event["target"], "scan");
-        assert_eq!(event["fields"]["operation"], "import");
-        assert!(event["fields"].get("path").is_none());
-        assert_eq!(event["message"], "release [redacted-id] failed");
-    }
-
-    struct RecordingTransport {
-        requests: Mutex<Vec<DatadogRequest>>,
-        outcomes: Mutex<VecDeque<Result<(), DiagnosticsError>>>,
-    }
-
-    impl RecordingTransport {
-        fn new(outcomes: Vec<Result<(), DiagnosticsError>>) -> Self {
-            Self {
-                requests: Mutex::new(Vec::new()),
-                outcomes: Mutex::new(outcomes.into()),
-            }
-        }
-
-        fn requests(&self) -> Vec<DatadogRequest> {
-            self.requests_guard().clone()
-        }
-
-        fn requests_guard(&self) -> MutexGuard<'_, Vec<DatadogRequest>> {
-            self.requests.lock().expect("requests mutex is available")
-        }
-
-        fn outcomes_guard(&self) -> MutexGuard<'_, VecDeque<Result<(), DiagnosticsError>>> {
-            self.outcomes.lock().expect("outcomes mutex is available")
-        }
-    }
-
-    #[async_trait::async_trait]
-    impl DiagnosticsTransport for RecordingTransport {
-        async fn send(&self, request: DatadogRequest) -> Result<(), DiagnosticsError> {
-            self.requests_guard().push(request);
-            self.outcomes_guard()
-                .pop_front()
-                .expect("test provides a transport outcome")
-        }
     }
 }

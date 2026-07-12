@@ -56,6 +56,7 @@ impl ExportFixture {
             key_service,
             Arc::new(coven::SystemClock),
             Arc::new(coven::UuidProvider),
+            bae_core::diagnostics::Diagnostics::noop(),
             tokio::runtime::Handle::current(),
         );
         let cloud = Arc::new(MockCloudHome::new());

@@ -28,6 +28,7 @@ async fn setup_import_service() -> (ImportService, TempDir) {
         StoreKeys::new(library_id),
         Arc::new(coven::SystemClock),
         Arc::new(coven::UuidProvider),
+        crate::diagnostics::Diagnostics::noop(),
         tokio::runtime::Handle::current(),
     );
     let (_commands_tx, commands_rx) = tokio::sync::mpsc::unbounded_channel();

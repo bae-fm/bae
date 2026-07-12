@@ -541,6 +541,7 @@ mod tests {
             crate::keys::StoreKeys::new(library_id),
             Arc::new(coven::SystemClock),
             Arc::new(coven::UuidProvider),
+            crate::diagnostics::Diagnostics::noop(),
             runtime.handle().clone(),
         );
         (manager, tmp)

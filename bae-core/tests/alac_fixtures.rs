@@ -105,6 +105,7 @@ async fn import_single_m4a_fixture(
         key_service,
         std::sync::Arc::new(coven::SystemClock),
         std::sync::Arc::new(coven::UuidProvider),
+        bae_core::diagnostics::Diagnostics::noop(),
         tokio::runtime::Handle::current(),
     );
 
@@ -339,6 +340,7 @@ async fn import_cue_alac_pair() {
         key_service,
         std::sync::Arc::new(coven::SystemClock),
         std::sync::Arc::new(coven::UuidProvider),
+        bae_core::diagnostics::Diagnostics::noop(),
         tokio::runtime::Handle::current(),
     );
 

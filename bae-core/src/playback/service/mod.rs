@@ -37,6 +37,9 @@ use super::{
 };
 use crate::audio_codec::StreamingDecodeError;
 use crate::db::{DbAudioSegmentRole, DbPlaybackContext, DbPlaybackState};
+use crate::diagnostics::{
+    LocalId, PlaybackOperation, PlaybackStartSource, TelemetryEvent, TrackTransition,
+};
 use crate::library::LibraryEvent;
 use crate::library::LibraryManager;
 use crate::library::ResolvedTrackAudio;
@@ -985,6 +988,34 @@ impl PlaybackService {
         }
     }
 
+    /// Telemetry sink, read off the library manager this service already holds.
+    fn telemetry(&self) -> &crate::diagnostics::Diagnostics {
+        self.library_manager.diagnostics()
+    }
+
+    /// A play command established a new playing context.
+    fn telemetry_playback_started(&self, source: PlaybackStartSource, track_count: usize) {
+        self.telemetry().event(TelemetryEvent::PlaybackStarted {
+            source,
+            track_count: track_count as u32,
+        });
+    }
+
+    /// A track actually began playing.
+    fn telemetry_track_started(&self, track_id: &str, transition: TrackTransition) {
+        self.telemetry().event(TelemetryEvent::TrackStarted {
+            track_id: LocalId(track_id.to_string()),
+            transition,
+        });
+    }
+
+    /// A playback operation failed. The free-text cause stays in the local
+    /// `error!` next to the call; only the coarse operation ships.
+    fn telemetry_playback_failed(&self, operation: PlaybackOperation) {
+        self.telemetry()
+            .event(TelemetryEvent::PlaybackFailed { operation });
+    }
+
     /// Direct selection of `track_id`: its release becomes the playing context,
     /// with the cursor at the chosen track. `get_play_context`'s `Err` covers
     /// only DB failures and data-inconsistency (`release_id` is a required
@@ -996,6 +1027,7 @@ impl PlaybackService {
             Ok(context) => context,
             Err(e) => {
                 error!("Failed to load play context for {track_id}: {e}");
+                self.telemetry_playback_failed(PlaybackOperation::LoadContext);
                 emit_progress(
                     &self.progress_tx,
                     PlaybackProgress::PlaybackError {
@@ -1005,14 +1037,17 @@ impl PlaybackService {
                 return;
             }
         };
+        let track_count = context.track_ids.len();
         self.playback_queue.play_release(
             ContextSource::Release(context.release_id),
             context.track_ids,
             ContextStart::Index(context.index),
         );
         self.emit_queue_update();
+        self.telemetry_playback_started(PlaybackStartSource::Release, track_count);
         self.play_track(&track_id, TrackStart::Direct, PlayTarget::Playing)
             .await;
+        self.telemetry_track_started(&track_id, TrackTransition::Manual);
     }
 
     /// Manual skip to the next track (skip pregap). A side-pause forces the next
@@ -1036,8 +1071,12 @@ impl PlaybackService {
                 NextEntry::Play(next_track) => {
                     info!("No preloaded track, playing from queue: {}", next_track);
                     self.emit_queue_update();
+                    let starts_playing = matches!(target, PlayTarget::Playing);
                     self.play_track(&next_track, TrackStart::Direct, target)
                         .await;
+                    if starts_playing {
+                        self.telemetry_track_started(&next_track, TrackTransition::Manual);
+                    }
                 }
                 _ => {
                     info!("No next track available, stopping");
@@ -1104,12 +1143,14 @@ impl PlaybackService {
                 info!("Repeat mode: track, replaying {}", next_track);
                 self.play_track(&next_track, TrackStart::Natural, PlayTarget::Playing)
                     .await;
+                self.telemetry_track_started(&next_track, TrackTransition::Repeat);
             }
             NextEntry::Play(next_track) => {
                 info!("Playing from queue: {}", next_track);
                 self.emit_queue_update();
                 self.play_track(&next_track, TrackStart::Natural, PlayTarget::Playing)
                     .await;
+                self.telemetry_track_started(&next_track, TrackTransition::AutoAdvance);
             }
             NextEntry::Stop => {
                 info!("No next track available, stopping");
@@ -1522,6 +1563,7 @@ impl PlaybackService {
                         Ok(ids) => ids,
                         Err(e) => {
                             error!("Failed to get tracks for release {release_id}: {e}");
+                            self.telemetry_playback_failed(PlaybackOperation::LoadContext);
                             continue;
                         }
                     };
@@ -1555,13 +1597,16 @@ impl PlaybackService {
                         };
                         ContextStart::Index(index)
                     };
+                    let track_count = track_ids.len();
                     let first_track = self.playback_queue.play_release(
                         ContextSource::Release(release_id),
                         track_ids,
                         start,
                     );
                     self.emit_queue_update();
+                    self.telemetry_playback_started(PlaybackStartSource::Release, track_count);
                     self.play_track(&first_track, TrackStart::Direct, PlayTarget::Playing).await;
+                    self.telemetry_track_started(&first_track, TrackTransition::Manual);
                 }
                 PlaybackCommand::PlayReleases(release_ids) => {
                     // The context's source is exactly the releases that
@@ -1576,19 +1621,23 @@ impl PlaybackService {
                         continue;
                     }
                     self.stop_preview_for_main_playback();
+                    let track_count = track_ids.len();
                     let first_track = self.playback_queue.play_release(
                         ContextSource::releases(playable_ids),
                         track_ids,
                         ContextStart::Index(0),
                     );
                     self.emit_queue_update();
+                    self.telemetry_playback_started(PlaybackStartSource::Releases, track_count);
                     self.play_track(&first_track, TrackStart::Direct, PlayTarget::Playing).await;
+                    self.telemetry_track_started(&first_track, TrackTransition::Manual);
                 }
                 PlaybackCommand::PlayLibraryShuffled => {
                     let track_ids = match self.fetch_source_tracks(&ContextSource::Library).await {
                         Ok(ids) => ids,
                         Err(e) => {
                             error!("PlayLibraryShuffled: couldn't load library tracks: {e}");
+                            self.telemetry_playback_failed(PlaybackOperation::LoadContext);
                             continue;
                         }
                     };
@@ -1599,6 +1648,7 @@ impl PlaybackService {
                     self.stop_preview_for_main_playback();
                     // A fresh seed minted at the command boundary so the shuffled
                     // order is reproducible and `Context` repeat can re-derive it.
+                    let track_count = track_ids.len();
                     let first_track = self.playback_queue.play_release(
                         ContextSource::Library,
                         track_ids,
@@ -1607,7 +1657,12 @@ impl PlaybackService {
                         },
                     );
                     self.emit_queue_update();
+                    self.telemetry_playback_started(
+                        PlaybackStartSource::LibraryShuffled,
+                        track_count,
+                    );
                     self.play_track(&first_track, TrackStart::Direct, PlayTarget::Playing).await;
+                    self.telemetry_track_started(&first_track, TrackTransition::Manual);
                 }
                 PlaybackCommand::Pause => {
                     self.pause();
@@ -1757,7 +1812,10 @@ impl PlaybackService {
                             self.on_queue_mutated().await;
                         }
                         Ok(_) => {}
-                        Err(e) => error!("Failed to add release {release_id} to queue: {e}"),
+                        Err(e) => {
+                            error!("Failed to add release {release_id} to queue: {e}");
+                            self.telemetry_playback_failed(PlaybackOperation::QueueAdd);
+                        }
                     }
                 }
                 PlaybackCommand::AddReleaseNext(release_id) => {
@@ -1769,7 +1827,10 @@ impl PlaybackService {
                             self.on_queue_mutated().await;
                         }
                         Ok(_) => {}
-                        Err(e) => error!("Failed to add release {release_id} next in queue: {e}"),
+                        Err(e) => {
+                            error!("Failed to add release {release_id} next in queue: {e}");
+                            self.telemetry_playback_failed(PlaybackOperation::QueueAdd);
+                        }
                     }
                 }
                 PlaybackCommand::InsertInQueue(track_ids, index) => {

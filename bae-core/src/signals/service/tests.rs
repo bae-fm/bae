@@ -129,6 +129,7 @@ async fn make_library_manager() -> (crate::library::LibraryManager, TempDir) {
         key_service,
         clock,
         Arc::new(coven::UuidProvider),
+        crate::diagnostics::Diagnostics::noop(),
         tokio::runtime::Handle::current(),
     );
     (manager, tmp)

@@ -247,6 +247,7 @@ impl PlaybackService {
 
         // -- Commit (infallible): everything below applies validated state. --
 
+        let restored_context_track_count = context_tracks.len();
         self.playback_queue.restore(
             QueueSnapshot {
                 context,
@@ -308,6 +309,10 @@ impl PlaybackService {
         self.persist_playback_state().await;
 
         info!("Playback state restored");
+        self.telemetry_playback_started(
+            PlaybackStartSource::Restored,
+            restored_context_track_count,
+        );
     }
 
     /// Fetch a context's tracks in source order for the source it plays from:

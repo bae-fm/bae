@@ -567,7 +567,13 @@ fn bootstrap_for_selector(selector: &LibrarySelector) -> Result<RunningApp, CliE
             let config = Config::load_from_library_path(path.clone(), &coven::UuidProvider)
                 .map_err(|e| CliError::Config(e.to_string()))?;
             require_unlocked_for_headless(&config)?;
-            bootstrap_library_path(path.clone(), 1000, false).map_err(bootstrap_error)
+            bootstrap_library_path(
+                path.clone(),
+                1000,
+                false,
+                bae_core::diagnostics::DiagnosticsConfig::Disabled,
+            )
+            .map_err(bootstrap_error)
         }
         LibrarySelector::Active => {
             let id = resolve_library_id(selector)?;
@@ -580,7 +586,14 @@ fn bootstrap_registered_library(id: String) -> Result<RunningApp, CliError> {
     let config = Config::load_registered_library(&id, &coven::UuidProvider)
         .map_err(|e| CliError::Config(e.to_string()))?;
     require_unlocked_for_headless(&config)?;
-    bootstrap(id, 1000, false, None).map_err(bootstrap_error)
+    bootstrap(
+        id,
+        1000,
+        false,
+        bae_core::diagnostics::DiagnosticsConfig::Disabled,
+        None,
+    )
+    .map_err(bootstrap_error)
 }
 
 fn require_unlocked_for_headless(config: &Config) -> Result<(), CliError> {

@@ -59,6 +59,7 @@ async fn setup(tmp: &TempDir) -> (Database, LibraryManager) {
         key_service,
         Arc::new(coven::SystemClock),
         Arc::new(coven::UuidProvider),
+        bae_core::diagnostics::Diagnostics::noop(),
         tokio::runtime::Handle::current(),
         None,
     )

@@ -1,52 +1,10 @@
-import OSLog
-
+/// Builds the Datadog telemetry config the app hands to `initApp`. Telemetry is
+/// constructed inside the Rust core from this config — there is no separate
+/// configure step to run first. Local logging stays in `BaeLogger` (OSLog);
+/// only this typed config, and the typed events the core emits, ever reach
+/// Datadog.
 public enum BaeDiagnostics {
-    private static let osLog = Logger(
-        subsystem: "fm.bae.desktop",
-        category: "Diagnostics"
-    )
-    @MainActor
-    private static var diagnostics: BridgeDiagnostics?
-
-    @MainActor
-    public static func configure(source: String) {
-        do {
-            diagnostics = try configureDiagnostics(
-                config: bridgeConfig(source: source)
-            )
-        }
-        catch {
-            osLog.error(
-                "Failed to configure diagnostics: \(error.localizedDescription)"
-            )
-        }
-    }
-
-    public static func log(
-        level: BridgeDiagnosticLevel,
-        target: String,
-        message: String
-    ) {
-        Task { @MainActor in
-            guard let diagnostics else { return }
-            do {
-                try diagnostics.log(
-                    level: level,
-                    target: target,
-                    message: message,
-                    fields: []
-                )
-            }
-            catch {
-                osLog.debug(
-                    "Failed to send host diagnostic: \(error.localizedDescription)"
-                )
-            }
-        }
-    }
-
-    @MainActor
-    private static func bridgeConfig(
+    public static func bridgeConfig(
         source: String
     ) -> BridgeDiagnosticsConfig {
         guard BuildInfo.edition == "bae",

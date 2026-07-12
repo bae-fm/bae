@@ -145,6 +145,7 @@ async fn test_cue_ape_records_correct_durations() {
         key_service,
         std::sync::Arc::new(coven::SystemClock),
         std::sync::Arc::new(coven::UuidProvider),
+        bae_core::diagnostics::Diagnostics::noop(),
         tokio::runtime::Handle::current(),
     );
 
@@ -330,6 +331,7 @@ async fn test_cue_ape_records_track_timing() {
         key_service,
         std::sync::Arc::new(coven::SystemClock),
         std::sync::Arc::new(coven::UuidProvider),
+        bae_core::diagnostics::Diagnostics::noop(),
         tokio::runtime::Handle::current(),
     );
 
@@ -458,6 +460,7 @@ impl CueApeTestFixture {
             key_service,
             std::sync::Arc::new(coven::SystemClock),
             std::sync::Arc::new(coven::UuidProvider),
+            bae_core::diagnostics::Diagnostics::noop(),
             tokio::runtime::Handle::current(),
         );
         let runtime_handle = tokio::runtime::Handle::current();
@@ -1055,6 +1058,7 @@ async fn assert_multi_disc_cue_ape_per_disc_mapping(storage_mode: StorageMode, p
         key_service,
         std::sync::Arc::new(coven::SystemClock),
         std::sync::Arc::new(coven::UuidProvider),
+        bae_core::diagnostics::Diagnostics::noop(),
         tokio::runtime::Handle::current(),
         None,
     )

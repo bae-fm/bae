@@ -46,6 +46,7 @@ use crate::db::{
     StorageFilter as DbStorageFilter, StorageSortCriterion as DbStorageSortCriterion,
     StorageSortField as DbStorageSortField,
 };
+use crate::diagnostics::{Diagnostics, SyncOperation, TelemetryEvent};
 use crate::keys::BaeStoreKeysExt;
 use crate::keys::StoreKeys;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
@@ -718,6 +719,10 @@ pub struct LibraryManager {
     key_service: StoreKeys,
     clock: ClockRef,
     ids: IdRef,
+    /// Typed telemetry sink, injected at bootstrap alongside the clock/id
+    /// sources. The sync-failure path emits through it; the playback and import
+    /// services read it back off this manager for their own events.
+    diagnostics: Diagnostics,
     runtime_handle: tokio::runtime::Handle,
     /// The one coven data handle: it owns the database connection, the library
     /// directory, the keys, the cloud storage, and — once a provider is connected
@@ -774,6 +779,7 @@ impl LibraryManager {
         key_service: StoreKeys,
         clock: ClockRef,
         ids: IdRef,
+        diagnostics: Diagnostics,
         runtime_handle: tokio::runtime::Handle,
         cloudkit_ops: Option<Arc<dyn coven::CloudKitOps>>,
     ) -> Result<Self, coven::DbError> {
@@ -828,6 +834,7 @@ impl LibraryManager {
             key_service,
             clock,
             ids,
+            diagnostics,
             runtime_handle,
             handle,
             event_tx,
@@ -853,6 +860,7 @@ impl LibraryManager {
         key_service: StoreKeys,
         clock: ClockRef,
         ids: IdRef,
+        diagnostics: Diagnostics,
         runtime_handle: tokio::runtime::Handle,
     ) -> Self {
         let (event_tx, _) = broadcast::channel(LIBRARY_EVENT_CHANNEL_CAPACITY);
@@ -878,6 +886,7 @@ impl LibraryManager {
             key_service,
             clock,
             ids,
+            diagnostics,
             runtime_handle,
             handle,
             event_tx,
@@ -988,6 +997,13 @@ impl LibraryManager {
         &self.clock
     }
 
+    /// The injected telemetry sink. The playback and import services read it
+    /// off the manager they already hold rather than each taking a separate
+    /// handle, so there is one source threaded from bootstrap.
+    pub(crate) fn diagnostics(&self) -> &Diagnostics {
+        &self.diagnostics
+    }
+
     /// The injected id source. The import layer and the mappers mint row ids
     /// through this so tests get a deterministic-but-unique sequence; the
     /// playback queue mints per-instance `QueueEntryId`s through it on every
@@ -1074,6 +1090,20 @@ impl LibraryManager {
                     }
                 }
                 if let Some(error) = emit_error {
+                    // A newly-set banner (inner `Some`) is a sync-cycle failure;
+                    // clearing it (inner `None`) is not. Ship the typed event
+                    // only for an actual failure, and only when a provider is
+                    // configured — a sync failure with no provider can't happen,
+                    // so its absence means don't fabricate one.
+                    if error.is_some() {
+                        let provider = lm.config_handle.config().cloud_home.provider.clone();
+                        if let Some(provider) = provider {
+                            lm.diagnostics.event(TelemetryEvent::SyncFailed {
+                                provider,
+                                operation: SyncOperation::Cycle,
+                            });
+                        }
+                    }
                     // Coven hands back an opaque error string (connectivity,
                     // auth, storage); the UI shows a generic line plus this
                     // as copyable, log-only detail. `None` clears the banner.

@@ -337,6 +337,7 @@ pub fn setup_fresh_library(
         key_service,
         std::sync::Arc::new(coven::SystemClock),
         std::sync::Arc::new(coven::UuidProvider),
+        bae_core::diagnostics::Diagnostics::noop(),
         runtime.handle().clone(),
     );
 

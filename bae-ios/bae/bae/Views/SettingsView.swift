@@ -180,6 +180,7 @@ struct SettingsView: View {
                     Text(error.line)
                 }
             }
+            .onAppear { appService.reportScreen(.settings) }
         }
     }
 }

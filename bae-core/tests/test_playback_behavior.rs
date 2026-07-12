@@ -406,6 +406,7 @@ where
         key_service,
         std::sync::Arc::new(coven::SystemClock),
         std::sync::Arc::new(coven::UuidProvider),
+        bae_core::diagnostics::Diagnostics::noop(),
         runtime_handle.clone(),
     );
     configure(&library_manager)?;
@@ -923,6 +924,7 @@ impl CueFlacTestFixture {
             key_service,
             std::sync::Arc::new(coven::SystemClock),
             std::sync::Arc::new(coven::UuidProvider),
+            bae_core::diagnostics::Diagnostics::noop(),
             tokio::runtime::Handle::current(),
         );
         let runtime_handle = tokio::runtime::Handle::current();
@@ -3224,6 +3226,7 @@ impl HighSampleRateTestFixture {
             key_service,
             std::sync::Arc::new(coven::SystemClock),
             std::sync::Arc::new(coven::UuidProvider),
+            bae_core::diagnostics::Diagnostics::noop(),
             tokio::runtime::Handle::current(),
         );
         let runtime_handle = tokio::runtime::Handle::current();
@@ -3672,6 +3675,7 @@ async fn test_restore_emits_seeked_at_saved_position() {
         key_service,
         std::sync::Arc::new(coven::SystemClock),
         std::sync::Arc::new(coven::UuidProvider),
+        bae_core::diagnostics::Diagnostics::noop(),
         tokio::runtime::Handle::current(),
     );
     let runtime_handle = tokio::runtime::Handle::current();
@@ -3767,6 +3771,7 @@ async fn test_restore_drops_context_when_cursor_past_shrunk_tracks() {
         key_service,
         std::sync::Arc::new(coven::SystemClock),
         std::sync::Arc::new(coven::UuidProvider),
+        bae_core::diagnostics::Diagnostics::noop(),
         tokio::runtime::Handle::current(),
     );
     let runtime_handle = tokio::runtime::Handle::current();
@@ -3889,6 +3894,7 @@ async fn test_play_persists_then_stop_clears_playback_state() {
         key_service,
         std::sync::Arc::new(coven::SystemClock),
         std::sync::Arc::new(coven::UuidProvider),
+        bae_core::diagnostics::Diagnostics::noop(),
         tokio::runtime::Handle::current(),
     );
     let runtime_handle = tokio::runtime::Handle::current();
@@ -4059,6 +4065,7 @@ async fn restore_test_library() -> RestoreTestLibrary {
         key_service,
         std::sync::Arc::new(coven::SystemClock),
         std::sync::Arc::new(coven::UuidProvider),
+        bae_core::diagnostics::Diagnostics::noop(),
         tokio::runtime::Handle::current(),
     );
     let runtime_handle = tokio::runtime::Handle::current();
@@ -4121,6 +4128,7 @@ async fn empty_test_library() -> (LibraryManager, tokio::runtime::Handle, TempDi
         key_service,
         std::sync::Arc::new(coven::SystemClock),
         std::sync::Arc::new(coven::UuidProvider),
+        bae_core::diagnostics::Diagnostics::noop(),
         tokio::runtime::Handle::current(),
     );
     (library_manager, tokio::runtime::Handle::current(), temp_dir)
@@ -4398,6 +4406,7 @@ impl CloudOnlyPlaybackFixture {
             key_service,
             std::sync::Arc::new(coven::SystemClock),
             std::sync::Arc::new(coven::UuidProvider),
+            bae_core::diagnostics::Diagnostics::noop(),
             tokio::runtime::Handle::current(),
         );
         let master_key = [11u8; 32];
@@ -4773,6 +4782,7 @@ impl MultiWindowPlayback {
             key_service,
             std::sync::Arc::new(coven::SystemClock),
             std::sync::Arc::new(coven::UuidProvider),
+            bae_core::diagnostics::Diagnostics::noop(),
             runtime_handle.clone(),
         );
 
@@ -5820,6 +5830,7 @@ impl RemoteMultiWindowPlayback {
             key_service,
             std::sync::Arc::new(coven::SystemClock),
             std::sync::Arc::new(coven::UuidProvider),
+            bae_core::diagnostics::Diagnostics::noop(),
             tokio::runtime::Handle::current(),
         );
         let master_key = [17u8; 32];

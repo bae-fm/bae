@@ -76,6 +76,9 @@ internal sealed class SettingsDialog
             return;
         }
 
+        // Host-originated telemetry: the settings screen opened. Infallible.
+        _session.WithCurrentHandle(handle => NativeBae.ReportScreen(handle, BridgeScreen.Settings));
+
         // Discogs key state machine. The token input is the only local draft state;
         // the configured/valid state comes from generated bridge settings, re-read on
         // a config invalidation. not_configured/rejected → editable input + Save; valid →
@@ -1423,14 +1426,14 @@ internal sealed class SettingsDialog
         if (restartUpdateRequested)
         {
             // ApplyUpdatesAndRestart exits the process, so this is a second
-            // app-exit path: gate the state-saving shutdown on the same
-            // restore-on-launch preference OnClosed does, then flush
-            // diagnostics unconditionally — the work OnClosed would otherwise do.
+            // app-exit path: flush telemetry through the live handle first, then
+            // gate the state-saving shutdown on the same restore-on-launch
+            // preference OnClosed does — the work OnClosed would otherwise do.
+            _session.WithCurrentHandle(BaeDiagnostics.Flush);
             if (PersistPlaybackStore.Load())
             {
                 await _session.ShutdownAndFreeCurrentHandle();
             }
-            BaeDiagnostics.Flush();
             _updateService.ApplyAndRestart();
             return;
         }

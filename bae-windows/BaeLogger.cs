@@ -1,5 +1,6 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
 using System.Reflection;
+using uniffi.bae_bridge;
 
 namespace Bae.Windows;
 
@@ -9,16 +10,21 @@ internal static class BaeDiagnostics
 
     internal static BaeLogger Logger { get; } = new("bae.windows");
 
-    internal static void Configure()
+    /// <summary>
+    /// Build the Datadog telemetry config handed to library open. Telemetry is
+    /// constructed inside the Rust core from it — there is no separate configure
+    /// step. Local logging stays in <see cref="BaeLogger"/> (Trace).
+    /// </summary>
+    internal static BridgeDiagnosticsConfig BridgeConfig()
     {
         var appVersion = AppAssembly.GetName().Version;
         if (appVersion is null)
         {
             Trace.TraceError("Assembly version is missing; diagnostics disabled");
-            return;
+            return new BridgeDiagnosticsConfig.Disabled();
         }
 
-        var error = NativeBae.ConfigureDiagnostics(
+        return NativeBae.DiagnosticsConfig(
             AppMetadata.ConfiguredString("BaeDatadogSite"),
             AppMetadata.ConfiguredString("BaeDatadogClientToken"),
             "windows",
@@ -27,15 +33,11 @@ internal static class BaeDiagnostics
             appVersion.ToString(),
             NativeBae.SupportsOAuthProviders() ? "bae" : "baeium",
             AppMetadata.ConfiguredString("BaeGitCommit"));
-        if (error is not null)
-        {
-            Trace.TraceError($"Failed to configure diagnostics: {error}");
-        }
     }
 
-    internal static void Flush()
+    internal static void Flush(AppHandle handle)
     {
-        var error = NativeBae.FlushDiagnostics();
+        var error = NativeBae.FlushDiagnostics(handle);
         if (error is not null)
         {
             Trace.TraceError($"Failed to flush diagnostics: {error}");
@@ -77,25 +79,7 @@ internal sealed class BaeLogger
         string message,
         Exception? exception)
     {
-        var formatted = Format(message, exception);
-        TraceMessage(level, formatted);
-        Log(level, formatted);
-    }
-
-    private void Log(
-        string level,
-        string message,
-        IEnumerable<KeyValuePair<string, string>>? fields = null)
-    {
-        var error = NativeBae.DiagnosticsLog(
-            level,
-            _target,
-            message,
-            fields);
-        if (error is not null)
-        {
-            Trace.TraceError($"Failed to send host diagnostic: {error}");
-        }
+        TraceMessage(level, $"[{_target}] {Format(message, exception)}");
     }
 
     private static string Format(string message, Exception? exception) =>

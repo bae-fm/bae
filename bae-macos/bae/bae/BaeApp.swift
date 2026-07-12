@@ -372,6 +372,7 @@ extension BaeApp {
                 .environment(\.previewProgressPublisher, previewPublisher)
                 .environment(appDelegate.uiStore)
                 .errorAlert(appDelegate.uiStore)
+                .onAppear { appService.reportScreen(.settings) }
             }
             else {
                 ContentUnavailableView(
@@ -474,7 +475,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 // in playback; the core keeps the resume row current either way.
                 restorePlayback: UserDefaults.standard.bool(
                     forKey: "persistPlayback"
-                )
+                ),
+                // Telemetry config crosses at init; the core builds the sink
+                // from it, so there is no separate configure step to run first.
+                diagnostics: BaeDiagnostics.bridgeConfig(source: "macos")
             )
         },
         makeService: { [weak self] handle, config, initialOutbox in
@@ -506,7 +510,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_: Notification) {
         if !skipsApplicationServices {
             BaeCrashReporting.configure()
-            BaeDiagnostics.configure(source: "macos")
             logger.info("application launched")
             initKeyring()
             // Hand Rust the CloudKit driver once. It can't build the driver
@@ -554,6 +557,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             case .opened(let service):
                 self.appService = service
                 self.screen = .library
+                service.reportScreen(.library)
                 self.reloadLibraries()
                 self.hasShell = true
                 self.showAddLibrarySheet = false

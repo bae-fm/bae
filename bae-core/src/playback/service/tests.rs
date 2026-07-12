@@ -105,6 +105,13 @@ async fn seed_test_releases(database: &crate::db::Database, releases: &[(&str, &
 }
 
 async fn seeded_library_manager(releases: &[(&str, &[&str])]) -> (TempDir, LibraryManager) {
+    seeded_library_manager_with_diagnostics(releases, crate::diagnostics::Diagnostics::noop()).await
+}
+
+async fn seeded_library_manager_with_diagnostics(
+    releases: &[(&str, &[&str])],
+    diagnostics: crate::diagnostics::Diagnostics,
+) -> (TempDir, LibraryManager) {
     let home = TempDir::new().unwrap();
     let db_path = home.path().join("playback-service-test.db");
     let database =
@@ -126,6 +133,7 @@ async fn seeded_library_manager(releases: &[(&str, &[&str])]) -> (TempDir, Libra
         crate::keys::StoreKeys::new(library_id),
         Arc::new(coven::SystemClock),
         Arc::new(coven::UuidProvider),
+        diagnostics,
         tokio::runtime::Handle::current(),
     );
     (home, manager)
@@ -147,6 +155,18 @@ async fn seeded_playback_service(
     tokio_mpsc::UnboundedReceiver<PlaybackProgress>,
 ) {
     let (home, library_manager) = seeded_library_manager(releases).await;
+    let (service, progress_rx) = playback_service_over(library_manager);
+    (home, service, progress_rx)
+}
+
+/// Assemble a directly-drivable `PlaybackService` over a given manager (with a
+/// stub audio output), for tests that call its handlers without the actor loop.
+fn playback_service_over(
+    library_manager: LibraryManager,
+) -> (
+    PlaybackService,
+    tokio_mpsc::UnboundedReceiver<PlaybackProgress>,
+) {
     let queue_ids = library_manager.ids().clone();
     let (command_tx, command_rx) = tokio_mpsc::unbounded_channel();
     let (progress_tx, progress_rx) = tokio_mpsc::unbounded_channel();
@@ -173,7 +193,7 @@ async fn seeded_playback_service(
         starvation_episode: None,
         last_position_persist: None,
     };
-    (home, service, progress_rx)
+    (service, progress_rx)
 }
 
 /// Build a `StreamPipeline` over a fresh source for the prepared track's fmt —
@@ -1569,5 +1589,60 @@ async fn auto_advance_ignores_a_matching_track_that_is_no_longer_completed() {
         service.slot.current_track_id(),
         Some("A"),
         "AutoAdvance must only fire while the completed track is still Completed"
+    );
+}
+
+/// A play command ships `playback_started` for the new context and
+/// `track_started` for the track it begins, through the real emission code and
+/// out to the (recording) Datadog transport. The seeded release has no backing
+/// audio, so preparing the track fails after both events are already emitted —
+/// exactly the point being asserted: the events fire at the command, not on a
+/// successful decode.
+#[tokio::test]
+async fn a_play_command_ships_playback_started_and_track_started() {
+    use crate::diagnostics::{
+        AppDiagnosticMetadata, DatadogDiagnosticsConfig, Diagnostics, RecordingTransport,
+    };
+
+    let transport = Arc::new(RecordingTransport::new(vec![Ok(())]));
+    let config = DatadogDiagnosticsConfig {
+        datadog_site: "datadoghq.com".to_string(),
+        client_token: "client-token".to_string(),
+        source: "test".to_string(),
+        app: AppDiagnosticMetadata {
+            service: "bae".to_string(),
+            environment: "test".to_string(),
+            app_version: "1.2.3".to_string(),
+            edition: "bae".to_string(),
+            git_commit: "abc123".to_string(),
+        },
+    };
+    let diagnostics = Diagnostics::with_transport(
+        config,
+        Arc::new(coven::SystemClock),
+        Arc::new(coven::SequentialIdProvider::new("request-id")),
+        transport.clone(),
+    )
+    .expect("diagnostics starts");
+
+    let (_home, manager) = seeded_library_manager_with_diagnostics(
+        &[("release-under-test", &["t0", "t1"])],
+        diagnostics.clone(),
+    )
+    .await;
+    let (mut service, _progress_rx) = playback_service_over(manager);
+
+    // `handle_play` establishes the release context and starts the track.
+    service.handle_play("t0".to_string()).await;
+
+    diagnostics.flush().await.expect("flush succeeds");
+    let names = transport.event_names();
+    assert!(
+        names.iter().any(|n| n == "playback_started"),
+        "a play command ships playback_started (got {names:?})"
+    );
+    assert!(
+        names.iter().any(|n| n == "track_started"),
+        "a play command ships track_started (got {names:?})"
     );
 }

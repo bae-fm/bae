@@ -86,6 +86,14 @@ open class AppService: @unchecked Sendable, Observable {
         downloads = Downloads(handle: appHandle)
     }
 
+    /// Report that a host UI screen was opened, as a typed telemetry event.
+    /// Infallible — telemetry must never affect navigation. This is the only
+    /// host-originated event; everything else the core emits itself. Local
+    /// logging is separate (`BaeLogger`) and stays on-device.
+    public nonisolated func reportScreen(_ screen: BridgeScreen) {
+        appHandle.telemetry(event: .screenOpened(screen: screen))
+    }
+
     /// Route a display error to the platform's error surface. iOS uses the
     /// shared `ConfigStore` banner; macOS overrides this to route through its
     /// global alert (`UiStore`).

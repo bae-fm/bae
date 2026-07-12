@@ -224,6 +224,7 @@ mod tests {
             key_service,
             Arc::new(coven::SystemClock),
             Arc::new(coven::UuidProvider),
+            crate::diagnostics::Diagnostics::noop(),
             tokio::runtime::Handle::current(),
         );
 

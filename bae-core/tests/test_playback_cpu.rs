@@ -317,6 +317,7 @@ impl PlaybackTestFixture {
             key_service,
             std::sync::Arc::new(coven::SystemClock),
             std::sync::Arc::new(coven::UuidProvider),
+            bae_core::diagnostics::Diagnostics::noop(),
             tokio::runtime::Handle::current(),
         );
         let runtime_handle = tokio::runtime::Handle::current();

@@ -67,6 +67,7 @@ async fn setup_test_manager_with_library_id(library_id: &str) -> (LibraryManager
         key_service,
         Arc::new(coven::SystemClock),
         Arc::new(coven::UuidProvider),
+        crate::diagnostics::Diagnostics::noop(),
         tokio::runtime::Handle::current(),
     );
     (manager, temp_dir)
@@ -161,6 +162,7 @@ async fn setup_forget_library_manager_at(
         key_service,
         Arc::new(coven::SystemClock),
         Arc::new(coven::UuidProvider),
+        crate::diagnostics::Diagnostics::noop(),
         tokio::runtime::Handle::current(),
     )
 }

@@ -3,41 +3,15 @@ package fm.bae.app
 import android.util.Log
 import uniffi.bae_bridge.BridgeAppDiagnosticMetadata
 import uniffi.bae_bridge.BridgeDatadogDiagnosticsConfig
-import uniffi.bae_bridge.BridgeDiagnosticField
-import uniffi.bae_bridge.BridgeDiagnosticLevel
-import uniffi.bae_bridge.BridgeDiagnostics
 import uniffi.bae_bridge.BridgeDiagnosticsConfig
-import uniffi.bae_bridge.configureDiagnostics
-
-private const val DIAGNOSTICS_TAG = "bae.Diagnostics"
 
 object BaeDiagnostics {
-    @Volatile
-    private var diagnostics: BridgeDiagnostics? = null
-
-    fun configure() {
-        try {
-            diagnostics = configureDiagnostics(bridgeConfig())
-        } catch (e: Exception) {
-            Log.e(DIAGNOSTICS_TAG, "Failed to configure diagnostics", e)
-        }
-    }
-
-    fun log(
-        level: BridgeDiagnosticLevel,
-        target: String,
-        message: String,
-        fields: List<BridgeDiagnosticField> = emptyList(),
-    ) {
-        val configured = diagnostics ?: return
-        try {
-            configured.log(level, target, message, fields)
-        } catch (e: Exception) {
-            Log.d(DIAGNOSTICS_TAG, "Failed to send host diagnostic", e)
-        }
-    }
-
-    private fun bridgeConfig(): BridgeDiagnosticsConfig {
+    /**
+     * Builds the Datadog telemetry config handed to `initApp`. Telemetry is
+     * constructed inside the Rust core from this config — there is no separate
+     * configure step. Local logging stays in [BaeLogger] (android.util.Log).
+     */
+    fun bridgeConfig(): BridgeDiagnosticsConfig {
         if (BuildConfig.BAE_EDITION == "bae") {
             val datadogSite = configuredBuildString(BuildConfig.BAE_DATADOG_SITE)
             val clientToken = configuredBuildString(BuildConfig.BAE_DATADOG_CLIENT_TOKEN)
@@ -70,6 +44,11 @@ internal fun configuredBuildString(value: String?): String? {
     return trimmed.takeIf { it.isNotEmpty() && !it.startsWith("\$(") }
 }
 
+/**
+ * Local, on-device logging. Writes to android.util.Log only — nothing here
+ * ships to Datadog. Shipped telemetry is the typed catalog the Rust core emits;
+ * host events go through `AppHandle.telemetry`.
+ */
 class BaeLogger(
     private val tag: String,
 ) {
@@ -77,43 +56,34 @@ class BaeLogger(
         message: String,
         throwable: Throwable? = null,
     ) {
-        log(BridgeDiagnosticLevel.DEBUG, message, throwable)
+        log(Log.DEBUG, message, throwable)
     }
 
     fun info(message: String) {
-        log(BridgeDiagnosticLevel.INFO, message, null)
+        log(Log.INFO, message, null)
     }
 
     fun warning(
         message: String,
         throwable: Throwable? = null,
     ) {
-        log(BridgeDiagnosticLevel.WARN, message, throwable)
+        log(Log.WARN, message, throwable)
     }
 
     fun error(
         message: String,
         throwable: Throwable? = null,
     ) {
-        log(BridgeDiagnosticLevel.ERROR, message, throwable)
+        log(Log.ERROR, message, throwable)
     }
 
     private fun log(
-        level: BridgeDiagnosticLevel,
+        priority: Int,
         message: String,
         throwable: Throwable?,
     ) {
-        Log.println(androidPriority(level), tag, androidMessage(message, throwable))
-        BaeDiagnostics.log(level, tag, diagnosticMessage(message, throwable))
+        Log.println(priority, tag, androidMessage(message, throwable))
     }
-
-    private fun androidPriority(level: BridgeDiagnosticLevel): Int =
-        when (level) {
-            BridgeDiagnosticLevel.TRACE, BridgeDiagnosticLevel.DEBUG -> Log.DEBUG
-            BridgeDiagnosticLevel.INFO -> Log.INFO
-            BridgeDiagnosticLevel.WARN -> Log.WARN
-            BridgeDiagnosticLevel.ERROR -> Log.ERROR
-        }
 
     private fun androidMessage(
         message: String,
@@ -123,16 +93,6 @@ class BaeLogger(
             message
         } else {
             "$message\n${Log.getStackTraceString(throwable)}"
-        }
-
-    private fun diagnosticMessage(
-        message: String,
-        throwable: Throwable?,
-    ): String =
-        if (throwable == null) {
-            message
-        } else {
-            "$message: ${throwable::class.java.simpleName}: ${throwable.message}"
         }
 }
 

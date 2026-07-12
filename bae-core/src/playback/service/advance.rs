@@ -62,6 +62,7 @@ impl PlaybackService {
             Ok(p) => p,
             Err(e) => {
                 error!("Failed to preload track {}: {}", track_id, e);
+                self.telemetry_playback_failed(crate::diagnostics::PlaybackOperation::Preload);
                 return;
             }
         };
@@ -286,11 +287,13 @@ impl PlaybackService {
 
         let Some(front) = self.playback_queue.front().map(str::to_string) else {
             error!("side-pause resume expected {pending_track_id}, but the queue is empty");
+            self.telemetry_playback_failed(crate::diagnostics::PlaybackOperation::Resume);
             self.demote_side_pause_to_manual();
             return;
         };
         if front != pending_track_id {
             error!("side-pause resume expected {pending_track_id}, but queue front is {front}");
+            self.telemetry_playback_failed(crate::diagnostics::PlaybackOperation::Resume);
             self.demote_side_pause_to_manual();
             return;
         }
@@ -299,9 +302,11 @@ impl PlaybackService {
                 self.emit_queue_update();
                 self.play_track(&track_id, TrackStart::Natural, PlayTarget::Playing)
                     .await;
+                self.telemetry_track_started(&track_id, TrackTransition::AutoAdvance);
             }
             other => {
                 error!("side-pause resume expected Play for {pending_track_id}, got {other:?}");
+                self.telemetry_playback_failed(crate::diagnostics::PlaybackOperation::Resume);
                 self.demote_side_pause_to_manual();
             }
         }
@@ -437,6 +442,7 @@ impl PlaybackService {
         } = preloaded;
         let track_id = crossing.incoming_fmt.track_id.clone();
         info!("Gapless boundary: now playing {}", track_id);
+        self.telemetry_track_started(&track_id, TrackTransition::Gapless);
 
         // The `PlaybackSource` already advanced within the same stream; swap the
         // finishing track's prepared + decoder for the incoming one in place. The
@@ -507,6 +513,18 @@ impl PlaybackService {
         natural: bool,
         target: PlayTarget,
     ) {
+        // Both branches below start `preloaded_track_id` playing; report it once
+        // here when it actually begins (a paused target loads without playing).
+        // The shared `natural` bool is exactly the manual-skip vs auto-advance
+        // distinction — the same one `Next`/`AutoAdvance` pass in.
+        if matches!(target, PlayTarget::Playing) {
+            let transition = if natural {
+                TrackTransition::AutoAdvance
+            } else {
+                TrackTransition::Manual
+            };
+            self.telemetry_track_started(preloaded_track_id, transition);
+        }
         if self.has_preloaded_next() {
             info!("Using preloaded track: {}", preloaded_track_id);
             self.advance_to_preloaded();

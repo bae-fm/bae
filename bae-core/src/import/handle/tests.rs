@@ -44,6 +44,7 @@ async fn setup_test_manager() -> (LibraryManager, TempDir) {
         key_service,
         std::sync::Arc::new(coven::SystemClock),
         std::sync::Arc::new(coven::UuidProvider),
+        crate::diagnostics::Diagnostics::noop(),
         tokio::runtime::Handle::current(),
     );
     (manager, temp_dir)

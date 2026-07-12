@@ -254,6 +254,7 @@ async fn make_library_manager() -> (bae_core::library::LibraryManager, TempDir) 
         key_service,
         clock,
         Arc::new(coven::UuidProvider),
+        bae_core::diagnostics::Diagnostics::noop(),
         tokio::runtime::Handle::current(),
     );
     (manager, tmp)

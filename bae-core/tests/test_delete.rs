@@ -26,6 +26,7 @@ async fn setup_test_environment() -> (LibraryManager, Database, TempDir) {
         key_service,
         std::sync::Arc::new(coven::SystemClock),
         std::sync::Arc::new(coven::UuidProvider),
+        bae_core::diagnostics::Diagnostics::noop(),
         tokio::runtime::Handle::current(),
     );
     (library_manager, database, temp_dir)

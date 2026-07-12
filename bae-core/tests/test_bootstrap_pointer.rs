@@ -115,7 +115,14 @@ fn bootstrap_of_locked_library_leaves_active_pointer() {
     let a_id = a.store_id.clone();
     let b_id = write_locked_library(home.path(), "Library B");
 
-    let app = bootstrap(b_id, 200, true, None).expect("a locked open completes with sync deferred");
+    let app = bootstrap(
+        b_id,
+        200,
+        true,
+        bae_core::diagnostics::DiagnosticsConfig::Disabled,
+        None,
+    )
+    .expect("a locked open completes with sync deferred");
 
     assert!(
         !app.services.library_manager().has_encryption(),
@@ -138,7 +145,14 @@ fn bootstrap_of_unlocked_library_advances_active_pointer() {
     create_library("Library A".into(), &UuidProvider).unwrap();
     let b_id = write_plain_library(home.path(), "Library B");
 
-    let app = bootstrap(b_id.clone(), 200, true, None).expect("a plain local open completes");
+    let app = bootstrap(
+        b_id.clone(),
+        200,
+        true,
+        bae_core::diagnostics::DiagnosticsConfig::Disabled,
+        None,
+    )
+    .expect("a plain local open completes");
 
     assert_eq!(
         active_pointer().as_deref(),
@@ -162,7 +176,13 @@ fn bootstrap_that_fails_leaves_active_pointer() {
     let db_path = registered_library_dir(home.path(), &b_id).db_path();
     std::fs::create_dir(&db_path).unwrap();
 
-    let result = bootstrap(b_id, 200, true, None);
+    let result = bootstrap(
+        b_id,
+        200,
+        true,
+        bae_core::diagnostics::DiagnosticsConfig::Disabled,
+        None,
+    );
     assert!(
         result.is_err(),
         "a directory at the db path must fail the open"
@@ -205,7 +225,14 @@ fn unlock_then_reopen_advances_active_pointer() {
     // the keyring), then open it: the key is now present, so the open fully
     // realizes — encryption resolves and the pointer advances from A to B.
     unlock_library(&b_id, KEY_HEX).expect("unlock B");
-    let unlocked = bootstrap(b_id.clone(), 200, true, None).expect("unlocked open of B succeeds");
+    let unlocked = bootstrap(
+        b_id.clone(),
+        200,
+        true,
+        bae_core::diagnostics::DiagnosticsConfig::Disabled,
+        None,
+    )
+    .expect("unlocked open of B succeeds");
     assert!(unlocked.services.library_manager().has_encryption());
     assert_eq!(
         active_pointer().as_deref(),

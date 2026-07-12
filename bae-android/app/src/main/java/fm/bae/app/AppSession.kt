@@ -36,6 +36,8 @@ import uniffi.bae_bridge.AppHandle
 import uniffi.bae_bridge.BridgeConfig
 import uniffi.bae_bridge.BridgeLibrary
 import uniffi.bae_bridge.BridgeOutboxSnapshot
+import uniffi.bae_bridge.BridgeScreen
+import uniffi.bae_bridge.BridgeTelemetryEvent
 import uniffi.bae_bridge.BridgeUiEvent
 import uniffi.bae_bridge.UiEventCallback
 import uniffi.bae_bridge.initApp
@@ -339,6 +341,9 @@ object AppSessionHolder {
                         libraryId,
                         POSITION_UPDATE_INTERVAL_MS,
                         RestorePlaybackPref.load(context),
+                        // Telemetry config crosses at init; the core builds the
+                        // sink from it, so there is no separate configure step.
+                        BaeDiagnostics.bridgeConfig(),
                     )
                 }
             val config: BridgeConfig = withContext(Dispatchers.IO) { handle.getConfig() }
@@ -366,6 +371,9 @@ object AppSessionHolder {
             current = session
             session.wireUp(appScope)
             onScreen(AppScreen.LibraryOpen(session))
+            // Host-originated telemetry: the library screen opened. Infallible;
+            // the core owns every other event.
+            handle.telemetry(BridgeTelemetryEvent.ScreenOpened(BridgeScreen.LIBRARY))
         } catch (e: CancellationException) {
             // A newer openLibrary (or leaving the screen) cancelled us; let it
             // propagate so cooperative cancellation works and we don't report a

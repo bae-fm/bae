@@ -19,7 +19,6 @@ class BaeApp : Application() {
     override fun onCreate() {
         super.onCreate()
         BaeCrashReporting.configure(this)
-        BaeDiagnostics.configure()
         logger.info("application launched")
         // Android app processes have no $HOME, which bae-core needs to locate
         // its data root (`~/.bae`). Point it at our private files dir before any

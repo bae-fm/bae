@@ -403,6 +403,7 @@ mod tests {
             StoreKeys::new(library_id),
             Arc::new(coven::SystemClock),
             Arc::new(coven::UuidProvider),
+            crate::diagnostics::Diagnostics::noop(),
             tokio::runtime::Handle::current(),
         );
         let (event_tx, _) = broadcast::channel(64);

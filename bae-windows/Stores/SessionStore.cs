@@ -48,7 +48,13 @@ internal sealed class SessionStore
     {
         // The restore-on-launch preference gates the startup restore in the core;
         // the resume row itself is written continuously either way.
-        var handle = NativeBae.Init(libraryId, PositionUpdateIntervalMs, PersistPlaybackStore.Load());
+        var handle = NativeBae.Init(
+            libraryId,
+            PositionUpdateIntervalMs,
+            PersistPlaybackStore.Load(),
+            // Telemetry config crosses at init; the core builds the sink from
+            // it, so there is no separate configure step to run first.
+            BaeDiagnostics.BridgeConfig());
         if (handle == null)
         {
             return OpenHandleResult.Failed;

@@ -4,8 +4,8 @@ use bae_core::app::BootstrapError;
 #[cfg(not(feature = "desktop"))]
 use bae_core::app::{bootstrap, RunningApp};
 use bae_core::diagnostics::{
-    AppDiagnosticMetadata, DatadogDiagnosticsConfig, DiagnosticLevel, Diagnostics,
-    DiagnosticsConfig, DiagnosticsError,
+    AppDiagnosticMetadata, DatadogDiagnosticsConfig, Diagnostics, DiagnosticsConfig,
+    DiagnosticsError, Screen, TelemetryEvent,
 };
 
 use crate::get_cloudkit_ops;
@@ -37,24 +37,19 @@ pub struct BridgeAppDiagnosticMetadata {
     pub git_commit: String,
 }
 
+/// The host-emittable subset of the telemetry catalog. Hosts can only report
+/// events they own (a screen open); core owns playback/import/sync, so a host
+/// can't fabricate those. Mirrors the core catalog across the FFI boundary, the
+/// same as every other `Bridge*` type.
+#[derive(Debug, Clone, uniffi::Enum)]
+pub enum BridgeTelemetryEvent {
+    ScreenOpened { screen: BridgeScreen },
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
-pub enum BridgeDiagnosticLevel {
-    Trace,
-    Debug,
-    Info,
-    Warn,
-    Error,
-}
-
-#[derive(Debug, Clone, uniffi::Record)]
-pub struct BridgeDiagnosticField {
-    pub key: String,
-    pub value: String,
-}
-
-#[derive(uniffi::Object)]
-pub struct BridgeDiagnostics {
-    diagnostics: Diagnostics,
+pub enum BridgeScreen {
+    Library,
+    Settings,
 }
 
 #[uniffi::export]
@@ -62,12 +57,19 @@ pub struct BridgeDiagnostics {
 /// restores the saved queue/current track/position at startup, `false` starts
 /// with nothing in playback. Platforms without the preference pass `true`
 /// (mobile always resumes where playback left off).
+///
+/// `diagnostics` carries the Datadog config the host built (or `Disabled`);
+/// telemetry is constructed inside bootstrap from it, so there is no separate
+/// entry point to call first.
 pub fn init_app(
     library_id: String,
     position_update_interval_ms: u32,
     restore_playback: bool,
+    diagnostics: BridgeDiagnosticsConfig,
 ) -> Result<Arc<AppHandle>, BridgeError> {
-    configure_logging(Diagnostics::noop())?;
+    configure_logging()?;
+
+    let diagnostics = diagnostics.into_core();
 
     #[cfg(feature = "desktop")]
     {
@@ -75,6 +77,7 @@ pub fn init_app(
             library_id,
             position_update_interval_ms,
             restore_playback,
+            diagnostics,
             get_cloudkit_ops(),
         )
         .map_err(bootstrap_error_to_bridge)?;
@@ -86,10 +89,12 @@ pub fn init_app(
         runtime,
         services,
         ui_event_bus,
+        diagnostics,
     } = bootstrap(
         library_id,
         position_update_interval_ms,
         restore_playback,
+        diagnostics,
         get_cloudkit_ops(),
     )
     .map_err(bootstrap_error_to_bridge)?;
@@ -99,50 +104,56 @@ pub fn init_app(
         runtime,
         services,
         ui_event_bus,
+        diagnostics,
     }))
 }
 
-#[uniffi::export]
-pub fn configure_diagnostics(
-    config: BridgeDiagnosticsConfig,
-) -> Result<Arc<BridgeDiagnostics>, BridgeError> {
-    let clock: coven::ClockRef = Arc::new(coven::SystemClock);
-    let ids: coven::IdRef = Arc::new(coven::UuidProvider);
-    let diagnostics = Diagnostics::configure(config.into_core(), clock, ids)
-        .map_err(diagnostics_error_to_bridge)?;
-    configure_logging(diagnostics.clone())?;
-    Ok(Arc::new(BridgeDiagnostics { diagnostics }))
+impl AppHandle {
+    #[cfg(feature = "desktop")]
+    fn diagnostics_ref(&self) -> &Diagnostics {
+        &self.app.diagnostics
+    }
+
+    #[cfg(not(feature = "desktop"))]
+    fn diagnostics_ref(&self) -> &Diagnostics {
+        &self.diagnostics
+    }
 }
 
-#[uniffi::export]
-impl BridgeDiagnostics {
-    pub fn log(
-        &self,
-        level: BridgeDiagnosticLevel,
-        target: String,
-        message: String,
-        fields: Vec<BridgeDiagnosticField>,
-    ) -> Result<(), BridgeError> {
-        self.diagnostics
-            .log(level.into_core(), target, message, bridge_fields(fields))
-            .map_err(diagnostics_error_to_bridge)
+#[uniffi::export(async_runtime = "tokio")]
+impl AppHandle {
+    /// Ship a host-originated telemetry event. Infallible — telemetry must
+    /// never break the host UI; a stopped worker drops the event.
+    pub fn telemetry(&self, event: BridgeTelemetryEvent) {
+        self.diagnostics_ref().event(event.into_core());
     }
 
-    pub fn event(
-        &self,
-        name: String,
-        fields: Vec<BridgeDiagnosticField>,
-    ) -> Result<(), BridgeError> {
-        self.diagnostics
-            .event(name, bridge_fields(fields))
-            .map_err(diagnostics_error_to_bridge)
-    }
-
-    pub async fn flush(&self) -> Result<(), BridgeError> {
-        self.diagnostics
+    /// Flush any buffered telemetry now. Hosts call this at exit so the last
+    /// events reach Datadog before the process ends.
+    pub async fn flush_diagnostics(&self) -> Result<(), BridgeError> {
+        self.diagnostics_ref()
             .flush()
             .await
             .map_err(diagnostics_error_to_bridge)
+    }
+}
+
+impl BridgeTelemetryEvent {
+    fn into_core(self) -> TelemetryEvent {
+        match self {
+            Self::ScreenOpened { screen } => TelemetryEvent::ScreenOpened {
+                screen: screen.into_core(),
+            },
+        }
+    }
+}
+
+impl BridgeScreen {
+    fn into_core(self) -> Screen {
+        match self {
+            Self::Library => Screen::Library,
+            Self::Settings => Screen::Settings,
+        }
     }
 }
 
@@ -187,26 +198,8 @@ impl BridgeDatadogDiagnosticsConfig {
     }
 }
 
-impl BridgeDiagnosticLevel {
-    fn into_core(self) -> DiagnosticLevel {
-        match self {
-            Self::Trace => DiagnosticLevel::Trace,
-            Self::Debug => DiagnosticLevel::Debug,
-            Self::Info => DiagnosticLevel::Info,
-            Self::Warn => DiagnosticLevel::Warn,
-            Self::Error => DiagnosticLevel::Error,
-        }
-    }
-}
-
-fn bridge_fields(fields: Vec<BridgeDiagnosticField>) -> impl Iterator<Item = (String, String)> {
-    fields
-        .into_iter()
-        .map(|BridgeDiagnosticField { key, value }| (key, value))
-}
-
 fn diagnostics_error_to_bridge(e: DiagnosticsError) -> BridgeError {
-    BridgeError::internal(format!("diagnostics setup failed: {e}"))
+    BridgeError::internal(format!("diagnostics failed: {e}"))
 }
 
 fn bootstrap_error_to_bridge(e: BootstrapError) -> BridgeError {
@@ -241,13 +234,12 @@ fn install_subscriber(subscriber: impl tracing_subscriber::util::SubscriberInitE
 }
 
 macro_rules! install_logging_subscriber {
-    ($diagnostics:expr $(, $layer:expr)+ $(,)?) => {{
+    ($($layer:expr),+ $(,)?) => {{
         use tracing_subscriber::prelude::*;
         let filter = env_filter()?;
         install_subscriber(
             tracing_subscriber::registry()
                 .with(filter)
-                .with(bae_core::diagnostics::tracing_layer($diagnostics))
                 $(.with($layer))+,
         );
         Ok(())
@@ -270,35 +262,31 @@ where
 }
 
 #[cfg(target_os = "macos")]
-fn configure_logging(diagnostics: Diagnostics) -> Result<(), BridgeError> {
+fn configure_logging() -> Result<(), BridgeError> {
     install_logging_subscriber!(
-        diagnostics,
         fmt_log_layer(),
         tracing_oslog::OsLogger::new("fm.bae.desktop", "default"),
     )
 }
 
 #[cfg(target_os = "android")]
-fn configure_logging(diagnostics: Diagnostics) -> Result<(), BridgeError> {
+fn configure_logging() -> Result<(), BridgeError> {
     let android_layer = tracing_android::layer("bae").map_err(|error| {
         BridgeError::internal(format!(
             "Android tracing layer initialization failed: {error}"
         ))
     })?;
-    install_logging_subscriber!(diagnostics, android_layer,)
+    install_logging_subscriber!(android_layer)
 }
 
 #[cfg(target_os = "ios")]
-fn configure_logging(diagnostics: Diagnostics) -> Result<(), BridgeError> {
-    install_logging_subscriber!(
-        diagnostics,
-        tracing_oslog::OsLogger::new("fm.bae.app", "default"),
-    )
+fn configure_logging() -> Result<(), BridgeError> {
+    install_logging_subscriber!(tracing_oslog::OsLogger::new("fm.bae.app", "default"))
 }
 
 #[cfg(not(any(target_os = "macos", target_os = "android", target_os = "ios")))]
-fn configure_logging(diagnostics: Diagnostics) -> Result<(), BridgeError> {
-    install_logging_subscriber!(diagnostics, fmt_log_layer())
+fn configure_logging() -> Result<(), BridgeError> {
+    install_logging_subscriber!(fmt_log_layer())
 }
 
 #[cfg(test)]
@@ -339,26 +327,16 @@ mod tests {
     }
 
     #[test]
-    fn bridge_diagnostic_level_maps_to_core() {
+    fn host_telemetry_event_maps_to_the_core_catalog() {
+        let core = BridgeTelemetryEvent::ScreenOpened {
+            screen: BridgeScreen::Settings,
+        }
+        .into_core();
+
+        assert_eq!(core.name(), "screen_opened");
         assert_eq!(
-            BridgeDiagnosticLevel::Trace.into_core(),
-            DiagnosticLevel::Trace
-        );
-        assert_eq!(
-            BridgeDiagnosticLevel::Debug.into_core(),
-            DiagnosticLevel::Debug
-        );
-        assert_eq!(
-            BridgeDiagnosticLevel::Info.into_core(),
-            DiagnosticLevel::Info
-        );
-        assert_eq!(
-            BridgeDiagnosticLevel::Warn.into_core(),
-            DiagnosticLevel::Warn
-        );
-        assert_eq!(
-            BridgeDiagnosticLevel::Error.into_core(),
-            DiagnosticLevel::Error
+            core.fields()["screen"],
+            serde_json::Value::String("settings".to_string())
         );
     }
 }

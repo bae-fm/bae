@@ -188,6 +188,7 @@ impl PlaybackService {
             Ok(p) => p,
             Err(e) => {
                 error!("Failed to prepare track {}: {}", track_id, e);
+                self.telemetry_playback_failed(crate::diagnostics::PlaybackOperation::LoadContext);
                 emit_progress(
                     &self.progress_tx,
                     PlaybackProgress::PlaybackError {
@@ -234,6 +235,9 @@ impl PlaybackService {
         {
             Ok(decoder) => decoder,
             Err(_) => {
+                self.telemetry_playback_failed(
+                    crate::diagnostics::PlaybackOperation::AudioOutputInit,
+                );
                 emit_progress(
                     &self.progress_tx,
                     PlaybackProgress::PlaybackError {

@@ -62,6 +62,8 @@ import kotlinx.coroutines.withContext
 import uniffi.bae_bridge.BridgeConfig
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeLibrary
+import uniffi.bae_bridge.BridgeScreen
+import uniffi.bae_bridge.BridgeTelemetryEvent
 
 /**
  * Per-device settings: the library's sync status, device management (the
@@ -85,6 +87,13 @@ fun SettingsScreen(
     val allLibraries by libraries.collectAsState()
     var confirmLeave by remember { mutableStateOf(false) }
     var showRecoveryCode by remember { mutableStateOf(false) }
+
+    // Host-originated telemetry: the settings screen opened. Infallible.
+    LaunchedEffect(Unit) {
+        session.appHandle.telemetry(
+            BridgeTelemetryEvent.ScreenOpened(BridgeScreen.SETTINGS),
+        )
+    }
 
     Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
         SettingsTopBar(onBack = onBack)

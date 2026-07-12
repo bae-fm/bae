@@ -82,6 +82,7 @@ async fn setup_manager(
         key_service,
         std::sync::Arc::new(coven::SystemClock),
         std::sync::Arc::new(coven::UuidProvider),
+        bae_core::diagnostics::Diagnostics::noop(),
         tokio::runtime::Handle::current(),
     );
     let cloud = Arc::new(MockCloudHome::new());

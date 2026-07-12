@@ -10,12 +10,15 @@ namespace Bae.Windows;
 /// </summary>
 internal static class NativeBae
 {
-    private static BridgeDiagnostics? Diagnostics;
-
     /// <summary>One-time startup: register the OS credential store.</summary>
     internal static void Startup() => BaeBridgeMethods.InitKeyring();
 
-    internal static string? ConfigureDiagnostics(
+    /// <summary>
+    /// Build the Datadog telemetry config handed to <see cref="Init"/>.
+    /// Telemetry is constructed inside the Rust core from it — there is no
+    /// separate configure step. Local logging stays in <see cref="BaeLogger"/>.
+    /// </summary>
+    internal static BridgeDiagnosticsConfig DiagnosticsConfig(
         string? datadogSite,
         string? clientToken,
         string source,
@@ -23,9 +26,8 @@ internal static class NativeBae
         string? environment,
         string appVersion,
         string edition,
-        string? gitCommit)
-    {
-        BridgeDiagnosticsConfig config = datadogSite is not null && clientToken is not null
+        string? gitCommit) =>
+        datadogSite is not null && clientToken is not null
             ? new BridgeDiagnosticsConfig.Enabled(new BridgeDatadogDiagnosticsConfig(
                 datadogSite,
                 clientToken,
@@ -38,23 +40,14 @@ internal static class NativeBae
                     gitCommit ?? string.Empty)))
             : new BridgeDiagnosticsConfig.Disabled();
 
-        return CaptureError(() => Diagnostics = BaeBridgeMethods.ConfigureDiagnostics(config));
-    }
+    /// <summary>Flush buffered telemetry through the handle's core sink.</summary>
+    internal static string? FlushDiagnostics(AppHandle handle) =>
+        CaptureError(() => Await(handle.FlushDiagnostics()));
 
-    internal static string? DiagnosticsLog(
-        string level,
-        string target,
-        string message,
-        IEnumerable<KeyValuePair<string, string>>? fields = null) =>
-        CaptureError(() => Diagnostics?.Log(DiagnosticLevel(level), target, message, DiagnosticFields(fields)));
-
-    internal static string? DiagnosticsEvent(
-        string name,
-        IEnumerable<KeyValuePair<string, string>>? fields = null) =>
-        CaptureError(() => Diagnostics?.Event(name, DiagnosticFields(fields)));
-
-    internal static string? FlushDiagnostics() =>
-        CaptureError(() => Diagnostics?.Flush().GetAwaiter().GetResult());
+    /// <summary>Report a host UI screen open as a typed telemetry event.
+    /// Infallible; the core owns every other event.</summary>
+    internal static void ReportScreen(AppHandle handle, BridgeScreen screen) =>
+        handle.Telemetry(new BridgeTelemetryEvent.ScreenOpened(screen));
 
 #if BAE_FULL_BRIDGE
     internal static string? SetOauthClientCreds(string credsJson) =>
@@ -79,20 +72,6 @@ internal static class NativeBae
     /// <summary>Whether this build's native library supports any OAuth cloud provider.</summary>
     internal static bool SupportsOAuthProviders() =>
         AvailableCloudProviders().Any(provider => provider is "google_drive" or "dropbox" or "onedrive");
-
-    private static BridgeDiagnosticField[] DiagnosticFields(IEnumerable<KeyValuePair<string, string>>? fields) =>
-        (fields ?? []).Select(field => new BridgeDiagnosticField(field.Key, field.Value)).ToArray();
-
-    private static BridgeDiagnosticLevel DiagnosticLevel(string level) =>
-        level switch
-        {
-            "trace" => BridgeDiagnosticLevel.Trace,
-            "debug" => BridgeDiagnosticLevel.Debug,
-            "info" => BridgeDiagnosticLevel.Info,
-            "warn" => BridgeDiagnosticLevel.Warn,
-            "error" => BridgeDiagnosticLevel.Error,
-            _ => throw new ArgumentOutOfRangeException(nameof(level), level, "Unknown diagnostics level"),
-        };
 
     private static string CloudProviderTag(BridgeCloudProvider provider) =>
         provider switch
@@ -302,11 +281,15 @@ internal static class NativeBae
         public void OnEvent(BridgeUiEvent @event) => onEvent(@event);
     }
 
-    internal static AppHandle? Init(string libraryId, uint positionUpdateIntervalMs, bool restorePlayback)
+    internal static AppHandle? Init(
+        string libraryId,
+        uint positionUpdateIntervalMs,
+        bool restorePlayback,
+        BridgeDiagnosticsConfig diagnostics)
     {
         try
         {
-            return BaeBridgeMethods.InitApp(libraryId, positionUpdateIntervalMs, restorePlayback);
+            return BaeBridgeMethods.InitApp(libraryId, positionUpdateIntervalMs, restorePlayback, diagnostics);
         }
         catch (BridgeException exception)
         {

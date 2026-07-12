@@ -1,3 +1,4 @@
+use crate::diagnostics::TelemetryEvent;
 use crate::import::handle::{ImportCandidateState, ImportServiceHandle};
 use crate::import::handle::{ScanEvent, WatcherCommand};
 use crate::import::types::{
@@ -415,6 +416,9 @@ impl ImportService {
 
         if let Err(e) = result {
             error!("Import failed: {}", e);
+            self.library_manager
+                .diagnostics()
+                .event(TelemetryEvent::ImportFailed {});
             // The typed error becomes a user-facing string only here, at the
             // pipeline's terminal consumer. The variant Displays embed their
             // `#[from]` source messages, so `to_string()` carries the chain.
@@ -733,6 +737,14 @@ impl ImportService {
         step_times.push(("storage", last_step_start.elapsed()));
 
         let total_duration = import_start.elapsed();
+        // The release is written (`run_import` succeeded via `?` above). Report
+        // the real track count and the monotonic elapsed — never a zero default.
+        self.library_manager
+            .diagnostics()
+            .event(TelemetryEvent::ImportCompleted {
+                track_count: tracks_to_files.len() as u32,
+                duration_ms: total_duration,
+            });
         let step_summary: Vec<String> = step_times
             .iter()
             .map(|(name, dur)| format!("{}={:.0?}", name, dur))

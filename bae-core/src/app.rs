@@ -11,6 +11,7 @@ use std::sync::Arc;
 use tracing::info;
 
 use crate::config::{Config, ConfigHandle};
+use crate::diagnostics::{Diagnostics, DiagnosticsConfig, TelemetryEvent};
 use crate::keys::StoreKeys;
 use crate::library::AppServices;
 use crate::playback::PlaybackService;
@@ -25,6 +26,10 @@ pub struct RunningApp {
     pub runtime: tokio::runtime::Runtime,
     pub services: AppServices,
     pub ui_event_bus: UiEventBus,
+    /// The telemetry sink, exposed so a frontend can emit host-originated
+    /// events (a screen open) and flush at exit. The services already hold
+    /// their own clone via the library manager.
+    pub diagnostics: Diagnostics,
 }
 
 /// Why [`bootstrap`] could not bring the application up. Frontends map these
@@ -56,12 +61,14 @@ pub fn bootstrap(
     library_id: String,
     position_update_interval_ms: u32,
     restore_playback: bool,
+    diagnostics: DiagnosticsConfig,
     cloudkit_ops: Option<crate::CloudKitOpsRef>,
 ) -> Result<RunningApp, BootstrapError> {
     bootstrap_on_thread(
         BootstrapTarget::RegisteredId(library_id),
         position_update_interval_ms,
         restore_playback,
+        diagnostics,
         cloudkit_ops,
     )
 }
@@ -70,11 +77,13 @@ pub fn bootstrap_library_path(
     library_path: PathBuf,
     position_update_interval_ms: u32,
     restore_playback: bool,
+    diagnostics: DiagnosticsConfig,
 ) -> Result<RunningApp, BootstrapError> {
     bootstrap_on_thread(
         BootstrapTarget::LibraryPath(library_path),
         position_update_interval_ms,
         restore_playback,
+        diagnostics,
         None,
     )
 }
@@ -83,6 +92,7 @@ fn bootstrap_on_thread(
     target: BootstrapTarget,
     position_update_interval_ms: u32,
     restore_playback: bool,
+    diagnostics: DiagnosticsConfig,
     cloudkit_ops: Option<crate::CloudKitOpsRef>,
 ) -> Result<RunningApp, BootstrapError> {
     // Building the sync manager (loading keys, opening the synced DB) and
@@ -100,6 +110,7 @@ fn bootstrap_on_thread(
                 target,
                 position_update_interval_ms,
                 restore_playback,
+                diagnostics,
                 cloudkit_ops,
             )
         })
@@ -117,6 +128,7 @@ fn bootstrap_inner(
     target: BootstrapTarget,
     position_update_interval_ms: u32,
     restore_playback: bool,
+    diagnostics: DiagnosticsConfig,
     cloudkit_ops: Option<crate::CloudKitOpsRef>,
 ) -> Result<RunningApp, BootstrapError> {
     // Composition root for the injected wall clock + id source. Production wires
@@ -125,6 +137,13 @@ fn bootstrap_inner(
     // injected source too.
     let clock: ClockRef = Arc::new(SystemClock);
     let ids: IdRef = Arc::new(UuidProvider);
+
+    // Telemetry is constructed here, from the config the frontend passed in, so
+    // there is no second entry point a caller must remember to invoke before
+    // this one. It reuses the same clock/id sources; a `Disabled` config yields
+    // the no-op sink.
+    let diagnostics = Diagnostics::configure(diagnostics, clock.clone(), ids.clone())
+        .map_err(|e| BootstrapError::Internal(format!("Failed to configure diagnostics: {e}")))?;
 
     let (config, save_active_library) = load_bootstrap_config(target, ids.as_ref())?;
     let library_id = config.store_id.clone();
@@ -201,6 +220,7 @@ fn bootstrap_inner(
         key_service.clone(),
         Arc::clone(&clock),
         ids,
+        diagnostics.clone(),
         runtime.handle().clone(),
         cloudkit_ops,
     )
@@ -283,6 +303,7 @@ fn bootstrap_inner(
     let app_services = AppServices::new(library_manager, playback_handle);
 
     info!("RunningApp initialized for library '{library_id}'");
+    diagnostics.event(TelemetryEvent::AppStarted {});
 
     let ui_event_bus = UiEventBus::new();
     ui_event_bus.wire(&app_services, runtime.handle());
@@ -306,6 +327,7 @@ fn bootstrap_inner(
         runtime,
         services: app_services,
         ui_event_bus,
+        diagnostics,
     })
 }
 

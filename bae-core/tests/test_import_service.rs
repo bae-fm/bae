@@ -70,6 +70,7 @@ impl ImportFixture {
             key_service,
             std::sync::Arc::new(coven::SystemClock),
             ids.clone(),
+            bae_core::diagnostics::Diagnostics::noop(),
             tokio::runtime::Handle::current(),
         );
 
@@ -3127,6 +3128,7 @@ async fn import_truncated_album(verify: bool) -> Result<(String, String), String
         key_service,
         std::sync::Arc::new(coven::SystemClock),
         std::sync::Arc::new(coven::UuidProvider),
+        bae_core::diagnostics::Diagnostics::noop(),
         tokio::runtime::Handle::current(),
     );
     let handle = ImportService::start(
