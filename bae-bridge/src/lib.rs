@@ -1,3 +1,5 @@
+#![deny(unreachable_pub, dead_code)]
+
 uniffi::setup_scaffolding!();
 
 mod bridge_utils;
@@ -11,8 +13,13 @@ mod signals;
 mod types;
 mod utils;
 
+#[cfg(feature = "cloudkit")]
+pub use cloudkit::*;
 pub use handle::*;
+pub use init::*;
+pub use setup::*;
 pub use types::*;
+pub use utils::*;
 
 #[cfg(feature = "cloudkit")]
 pub(crate) use cloudkit::get_cloudkit_ops;
