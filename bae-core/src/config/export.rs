@@ -16,13 +16,6 @@ pub enum ExportLocation {
     Fixed(PathBuf),
 }
 
-/// The serde default for `ConfigYaml.export_location`. Enums carry no
-/// `#[derive(Default)]` in this project, so the default is named explicitly:
-/// prompt for a destination each time until the user sets a fixed folder.
-pub(super) fn default_export_location() -> ExportLocation {
-    ExportLocation::AskEachTime
-}
-
 /// Template for the default filename a single-track export suggests. Tokens are
 /// substituted from the track's metadata; see `render_export_filename`. The
 /// extension is added by the exporter from the chosen format, not the template.
@@ -98,17 +91,12 @@ pub enum ExportSelection {
     Preset { preset_id: String },
 }
 
-pub(super) fn default_export_selection() -> ExportSelection {
-    ExportSelection::Original
-}
-
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ExportPreset {
     pub id: String,
     pub name: String,
     pub codec: ExportPresetCodec,
     pub filename_template: String,
-    #[serde(default = "default_export_pregap_placement")]
     pub pregap_placement: ExportPregapPlacement,
     pub applies_to_track: bool,
     pub applies_to_release: bool,

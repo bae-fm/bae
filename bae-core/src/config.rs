@@ -1,5 +1,5 @@
 use coven::StoreDir;
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 use std::path::PathBuf;
 use tokio::sync::watch;
 use tracing::{debug, info, warn};
@@ -20,10 +20,7 @@ pub use keyring::install_test_keyring;
 
 use atomic_write::{write_atomic, write_atomic_io};
 use dev::{dev_env_secret, dev_mode_enabled, overlay_cloud_home_s3_env};
-use export::{
-    default_export_filename_template, default_export_location, default_export_presets,
-    default_export_selection,
-};
+use export::{default_export_filename_template, default_export_presets};
 
 pub const MCP_DEFAULT_PORT: u16 = 47777;
 
@@ -76,20 +73,6 @@ pub enum ReplayGainMode {
     Off,
     Track,
     Album,
-}
-
-/// The serde default for `ConfigYaml.replay_gain_mode`. Enums carry no
-/// `#[derive(Default)]` in this project, so the default is named explicitly.
-fn default_replay_gain_mode() -> ReplayGainMode {
-    ReplayGainMode::Off
-}
-
-/// The serde default for `ConfigYaml.verify_decode_on_import`: on. Import fully
-/// decodes every track for loudness anyway, so the verify rides that pass for
-/// free; defaulting on means a truncated/corrupt track is caught at import
-/// instead of failing at play time.
-fn default_verify_decode_on_import() -> bool {
-    true
 }
 
 /// Whether a usable Discogs API key is configured. Folds the no-key case and
@@ -222,7 +205,25 @@ impl ConfigWriteError {
     }
 }
 
-/// YAML config file structure for non-secret settings (per-library)
+/// Deserialize an `Option<T>` field that must be present in the source, even
+/// when its value is `null`. Plain `Option<T>` fields deserialize a missing key
+/// as `None`; this requires the key to appear so a config file that omits it
+/// fails to load loudly rather than silently defaulting to `None`. An explicit
+/// `null` still deserializes to `None`.
+fn deserialize_some<'de, T, D>(deserializer: D) -> Result<Option<T>, D::Error>
+where
+    T: Deserialize<'de>,
+    D: Deserializer<'de>,
+{
+    Option::deserialize(deserializer)
+}
+
+/// YAML config file structure for non-secret settings (per-library).
+///
+/// Every field except `device_id` is required: serialization always emits
+/// every key, so a missing key means the file predates that field (or is
+/// otherwise foreign/corrupt) — it fails the load loudly rather than
+/// silently taking an implicit value.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ConfigYaml {
     pub library_id: String,
@@ -235,48 +236,38 @@ pub struct ConfigYaml {
     /// The stored Discogs key's validation state, or `None` when no key is
     /// configured. `Some(v)` doubles as the hint that a key is in the keyring,
     /// so the settings screen renders without a keyring read.
-    #[serde(default)]
+    #[serde(deserialize_with = "deserialize_some")]
     pub discogs: Option<DiscogsValidation>,
     /// Whether an encryption key is stored in the keyring (hint flag, avoids keyring read)
-    #[serde(default)]
     pub encryption_key_stored: bool,
     /// SHA-256 fingerprint of the encryption key (first 8 bytes, hex).
     /// Used to detect wrong key without attempting decryption.
-    #[serde(default)]
+    #[serde(deserialize_with = "deserialize_some")]
     pub encryption_key_fingerprint: Option<String>,
-    /// How loudness normalization is applied at playback. Defaults to `Off`.
-    #[serde(default = "default_replay_gain_mode")]
+    /// How loudness normalization is applied at playback.
     pub replay_gain_mode: ReplayGainMode,
-    /// Where release exports write. Defaults to prompting each time.
-    #[serde(default = "default_export_location")]
+    /// Where release exports write.
     pub export_location: ExportLocation,
     /// Template for the default filename a single-track export suggests.
-    #[serde(default = "default_export_filename_template")]
     pub export_filename_template: String,
     /// Configured export presets offered by release and track export.
-    #[serde(default = "default_export_presets")]
     pub export_presets: Vec<ExportPreset>,
     /// Default selected option in the track export picker.
-    #[serde(default = "default_export_selection")]
     pub default_track_export_selection: ExportSelection,
     /// Default selected option in the release export picker.
-    #[serde(default = "default_export_selection")]
     pub default_release_export_selection: ExportSelection,
     /// Whether playback pauses between vinyl/cassette sides.
-    #[serde(default)]
     pub pause_between_sides: bool,
     /// Whether import fully decodes each track to verify it (fatal-error / frame
     /// shortfall), failing the import for a broken track rather than importing it
     /// and failing at play time. Rides the loudness decode, so it adds no work.
-    #[serde(default = "default_verify_decode_on_import")]
     pub verify_decode_on_import: bool,
-    /// Local automation server configuration. Required so missing/stale config
-    /// files fail to load instead of silently taking an implicit value.
+    /// Local automation server configuration.
     pub mcp: McpConfig,
     /// Cloud home provider + per-provider settings. Flattened so the on-disk
     /// keys sit at the top level. bae uses coven's type — same fields, extracted
     /// from bae — instead of a parallel copy it would map back and forth.
-    #[serde(default, flatten)]
+    #[serde(flatten)]
     pub cloud_home: CloudHomeConfig,
 }
 
@@ -589,14 +580,14 @@ impl Config {
         Self {
             inner: coven::Config::with_defaults(library_id, device_id, library_dir, library_name),
             discogs: None,
-            replay_gain_mode: default_replay_gain_mode(),
-            export_location: default_export_location(),
+            replay_gain_mode: ReplayGainMode::Off,
+            export_location: ExportLocation::AskEachTime,
             export_filename_template: default_export_filename_template(),
             export_presets: default_export_presets(),
-            default_track_export_selection: default_export_selection(),
-            default_release_export_selection: default_export_selection(),
+            default_track_export_selection: ExportSelection::Original,
+            default_release_export_selection: ExportSelection::Original,
             pause_between_sides: false,
-            verify_decode_on_import: default_verify_decode_on_import(),
+            verify_decode_on_import: true,
             mcp: McpConfig::disabled_default(),
         }
     }
@@ -894,6 +885,22 @@ mod tests {
         )
     }
 
+    /// A full `ConfigYaml` serialized to a `serde_yaml::Value` mapping, for
+    /// tests that assert a single missing key fails the load.
+    fn full_config_yaml_value() -> serde_yaml::Value {
+        let config = make_test_config("abc-123", PathBuf::from("unused"));
+        serde_yaml::to_value(ConfigYaml::from(&config)).unwrap()
+    }
+
+    /// Parse a full config with one top-level key removed.
+    fn parse_yaml_without(key: &str) -> Result<ConfigYaml, serde_yaml::Error> {
+        let mut value = full_config_yaml_value();
+        let map = value.as_mapping_mut().unwrap();
+        map.remove(serde_yaml::Value::String(key.to_string()))
+            .unwrap_or_else(|| panic!("{key} not in serialized config"));
+        serde_yaml::from_value(value)
+    }
+
     #[test]
     fn export_location_defaults_to_ask_each_time() {
         let tmp = TempDir::new().unwrap();
@@ -943,38 +950,52 @@ mod tests {
     }
 
     #[test]
-    fn export_settings_default_when_absent_from_yaml() {
-        // A config.yaml with neither export field loads the named defaults
-        // rather than failing — the greenfield defaults ride serde.
-        let yaml = "library_id: abc-123\nlibrary_name: Test\nstorage: opaque\nmcp:\n  enabled: false\n  port: 47777\n";
-        let config: ConfigYaml = serde_yaml::from_str(yaml).unwrap();
-        assert_eq!(
-            config.export_filename_template,
-            default_export_filename_template()
-        );
-        assert_eq!(config.export_presets, default_export_presets());
-        assert_eq!(
-            config.default_track_export_selection,
-            default_export_selection()
-        );
-        assert_eq!(
-            config.default_release_export_selection,
-            default_export_selection()
-        );
-    }
-
-    #[test]
     fn config_yaml_requires_library_id() {
-        let yaml = "library_name: Test\nmcp:\n  enabled: false\n  port: 47777\n";
-        let result: Result<ConfigYaml, _> = serde_yaml::from_str(yaml);
-        assert!(result.is_err(), "ConfigYaml should fail without library_id");
+        assert!(
+            parse_yaml_without("library_id").is_err(),
+            "ConfigYaml should fail without library_id"
+        );
     }
 
     #[test]
     fn config_yaml_requires_mcp() {
-        let yaml = "library_id: abc-123\nlibrary_name: Test\n";
-        let result: Result<ConfigYaml, _> = serde_yaml::from_str(yaml);
-        assert!(result.is_err(), "ConfigYaml should fail without mcp");
+        assert!(
+            parse_yaml_without("mcp").is_err(),
+            "ConfigYaml should fail without mcp"
+        );
+    }
+
+    /// Every bae-local field except `device_id` is serialized unconditionally,
+    /// so a missing key can only mean a stale or foreign file — it fails the
+    /// load rather than silently taking a default.
+    #[test]
+    fn config_yaml_requires_every_bae_field() {
+        for key in [
+            "discogs",
+            "encryption_key_stored",
+            "encryption_key_fingerprint",
+            "replay_gain_mode",
+            "export_location",
+            "export_filename_template",
+            "export_presets",
+            "default_track_export_selection",
+            "default_release_export_selection",
+            "pause_between_sides",
+            "verify_decode_on_import",
+        ] {
+            assert!(
+                parse_yaml_without(key).is_err(),
+                "ConfigYaml should fail without {key}"
+            );
+        }
+    }
+
+    /// `device_id` is the one designed absence: missing on a fresh library, and
+    /// auto-generated (and written back) on first load rather than failing.
+    #[test]
+    fn config_yaml_allows_missing_device_id() {
+        let config = parse_yaml_without("device_id").unwrap();
+        assert_eq!(config.device_id, None);
     }
 
     /// `is_usable` is the single source of truth for whether Discogs can be a
@@ -1045,23 +1066,14 @@ mod tests {
     }
 
     #[test]
-    fn config_yaml_parses_with_library_id() {
-        let yaml = "library_id: abc-123\nlibrary_name: Test\nstorage: opaque\nmcp:\n  enabled: false\n  port: 47777\n";
-        let config: ConfigYaml = serde_yaml::from_str(yaml).unwrap();
-        assert_eq!(config.library_id, "abc-123");
-        assert_eq!(config.library_name, "Test");
-        assert_eq!(config.mcp, McpConfig::disabled_default());
-    }
-
-    #[test]
     fn config_yaml_requires_storage() {
         // `storage` rides the flattened coven CloudHomeConfig and carries no
         // serde default: a config file without it fails to load rather than
         // silently assuming a cipher/path scheme.
-        let yaml =
-            "library_id: abc-123\nlibrary_name: Test\nmcp:\n  enabled: false\n  port: 47777\n";
-        let result: Result<ConfigYaml, _> = serde_yaml::from_str(yaml);
-        assert!(result.is_err(), "ConfigYaml should fail without storage");
+        assert!(
+            parse_yaml_without("storage").is_err(),
+            "ConfigYaml should fail without storage"
+        );
     }
 
     #[test]
