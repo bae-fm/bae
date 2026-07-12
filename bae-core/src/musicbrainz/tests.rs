@@ -73,57 +73,6 @@ fn release_search_params_build_query_with_escaped_phrase() {
 }
 
 #[test]
-fn test_mb_release_response_track_count() {
-    let response = MbReleaseResponse {
-        id: "r1".to_string(),
-        title: "T".to_string(),
-        date: None,
-        country: None,
-        barcode: None,
-        artist_credit: vec![],
-        release_group: None,
-        label_info: vec![],
-        media: vec![
-            MbMedium {
-                format: None,
-                tracks: vec![
-                    MbTrack {
-                        position: Some(1),
-                        number: None,
-                        title: Some("Track 1".to_string()),
-                        length: None,
-                        recording: None,
-                        artist_credit: vec![],
-                    },
-                    MbTrack {
-                        position: Some(2),
-                        number: None,
-                        title: Some("Track 2".to_string()),
-                        length: None,
-                        recording: None,
-                        artist_credit: vec![],
-                    },
-                ],
-            },
-            MbMedium {
-                format: None,
-                tracks: vec![MbTrack {
-                    position: Some(1),
-                    number: None,
-                    title: Some("Track 1 Disc 2".to_string()),
-                    length: None,
-                    recording: None,
-                    artist_credit: vec![],
-                }],
-            },
-        ],
-        relations: vec![],
-    };
-
-    assert_eq!(response.track_count(), 3);
-}
-
-#[test]
 fn first_discogs_release_url_skips_master_urls_and_missing_urls() {
     let relations = vec![
         MbRelation {
@@ -202,7 +151,6 @@ fn test_deserialize_mb_release_response() {
         response.media[0].tracks[0].title.as_deref(),
         Some("Track One Title")
     );
-    assert_eq!(response.track_count(), 2);
     assert_eq!(response.label_info.len(), 1);
     assert_eq!(
         response.label_info[0].catalog_number.as_deref(),
@@ -226,7 +174,6 @@ fn test_deserialize_mb_release_response_minimal() {
     assert!(response.artist_credit.is_empty());
     assert!(response.media.is_empty());
     assert!(response.relations.is_empty());
-    assert_eq!(response.track_count(), 0);
 }
 
 // ── fetch_mb_xref ────────────────────────────────────────────────

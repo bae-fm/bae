@@ -148,11 +148,6 @@ impl MbReleaseResponse {
                 .and_then(first_discogs_release_url)
         })
     }
-
-    /// Count total tracks across all media
-    pub fn track_count(&self) -> usize {
-        self.media.iter().map(|m| m.tracks.len()).sum()
-    }
 }
 
 /// Response from the disc ID lookup endpoint
