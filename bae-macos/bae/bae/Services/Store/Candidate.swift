@@ -122,7 +122,7 @@ struct Candidate: Equatable, Identifiable {
     /// The interactive signals toolbar — the pre-shaped badge list core
     /// broadcasts alongside each identify-state transition. Empty until the
     /// first transition. The toolbar view iterates and renders it.
-    var signalsToolbar: SignalsToolbar = SignalsToolbar(signals: [])
+    var signalsToolbar: BridgeSignalsToolbar = BridgeSignalsToolbar(signals: [])
     /// User's identity claim picked at result-row time. Carried
     /// forward through the prefetch + confirmation flow into the import
     /// command so the commit pipeline can post-process the seeded

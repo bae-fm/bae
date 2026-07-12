@@ -458,7 +458,7 @@ extension ImportSearchFlow {
             ),
             onAddAsUnknown: onAddAsUnknown,
             onToggleSignal: { signal in
-                services.importer.toggleSignalForCandidate(key, signal.bridge)
+                services.importer.toggleSignalForCandidate(key, signal)
             },
             onRerun: { services.importer.rerunIdentifyForCandidate(key) },
             onSelect: resolvedOnSelect,

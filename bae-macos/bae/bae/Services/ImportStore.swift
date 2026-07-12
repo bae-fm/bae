@@ -219,9 +219,7 @@ class ImportStore {
         candidate.identifyState = IdentifyState(
             bridge: runtime.identifyState
         )
-        candidate.signalsToolbar = SignalsToolbar(
-            bridge: runtime.signalsToolbar
-        )
+        candidate.signalsToolbar = runtime.signalsToolbar
         candidate.signals = runtime.signals.map(Signals.init(bridge:))
         candidate.importStatus = runtime.importStatus
     }

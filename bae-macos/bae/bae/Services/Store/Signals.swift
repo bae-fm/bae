@@ -5,7 +5,7 @@ import Foundation
 /// `bae_core::signals::Signals` (via `BridgeSignals`). Carried per-candidate;
 /// `nil` until the first extraction snapshot arrives. The search form feeds
 /// these into the autocomplete fields. The disc-ID and barcode signals reach
-/// the UI through the interactive toolbar (`SignalsToolbar`), not here, so
+/// the UI through the interactive toolbar (`BridgeSignalsToolbar`), not here, so
 /// only the `text` pools are mirrored.
 
 /// The classified-text signal. Mirrors `bae_core::signals::TextSignal`. Only
@@ -14,7 +14,11 @@ import Foundation
 enum TextSignal: Equatable {
     case scanning(catalogs: [String], freeText: [String])
     case settled(catalogs: [String], freeText: [String])
-    case failed(failure: LookupFailure, catalogs: [String], freeText: [String])
+    case failed(
+        failure: BridgeLookupFailure,
+        catalogs: [String],
+        freeText: [String]
+    )
 
     init(bridge: BridgeTextSignal) {
         switch bridge {
@@ -27,7 +31,7 @@ enum TextSignal: Equatable {
             self = .settled(catalogs: catalogs.map(\.value), freeText: freeText)
         case .failed(let failure, let catalogs, let freeText):
             self = .failed(
-                failure: LookupFailure(bridge: failure),
+                failure: failure,
                 catalogs: catalogs.map(\.value),
                 freeText: freeText
             )
@@ -53,7 +57,7 @@ enum TextSignal: Equatable {
         }
     }
 
-    var failure: LookupFailure? {
+    var failure: BridgeLookupFailure? {
         if case .failed(let failure, _, _) = self {
             return failure
         }

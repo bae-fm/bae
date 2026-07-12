@@ -9,11 +9,11 @@ import SwiftUI
 /// carries the `Re-run` action (or an `Identifying…` spinner) and the
 /// `Search manually` / `Skip identifying` escapes.
 ///
-/// Core pre-shapes the whole badge list (`SignalsToolbar`); this view iterates
+/// Core pre-shapes the whole badge list (`BridgeSignalsToolbar`); this view iterates
 /// and renders — no domain logic here.
 struct SignalsToolbarView: View {
-    let toolbar: SignalsToolbar
-    let onToggle: (ExcludedSignal) -> Void
+    let toolbar: BridgeSignalsToolbar
+    let onToggle: (BridgeExcludedSignal) -> Void
     let onRerun: () -> Void
     let onSearchManually: () -> Void
     /// `nil` suppresses the "Skip identifying" pill — a CD carries no local
@@ -122,8 +122,8 @@ struct SignalsToolbarView: View {
         .padding(.horizontal, 3)
     }
 
-    private func toggle(_ signal: ToolbarSignal) {
-        guard let excluded = ExcludedSignal(signal: signal) else {
+    private func toggle(_ signal: BridgeToolbarSignal) {
+        guard let excluded = BridgeExcludedSignal(signal: signal) else {
             return
         }
         onToggle(excluded)
@@ -254,7 +254,7 @@ private struct GhostPill: View {
 /// explaining the signal's origin, role, full value, state, and the
 /// click-to-toggle hint.
 private struct SignalBadge: View {
-    let signal: ToolbarSignal
+    let signal: BridgeToolbarSignal
     let onToggle: () -> Void
 
     @State
@@ -413,7 +413,7 @@ private struct SignalBadge: View {
 /// The hover popover for a badge: where the signal came from, its role, the
 /// full untruncated value, its current state, and the click-to-toggle hint.
 private struct SignalBadgePopover: View {
-    let signal: ToolbarSignal
+    let signal: BridgeToolbarSignal
 
     var body: some View {
         VStack(alignment: .leading, spacing: 7) {
@@ -467,7 +467,7 @@ private struct SignalBadgePopover: View {
 /// pre-shaped fields. Kept as a caseless namespace so both the badge and its
 /// popover render identically.
 private enum SignalBadgeStyle {
-    static func icon(for kind: SignalKind) -> String {
+    static func icon(for kind: BridgeSignalKind) -> String {
         switch kind {
         case .discId: "opticaldiscdrive"
         case .barcode: "barcode"
@@ -475,7 +475,7 @@ private enum SignalBadgeStyle {
         }
     }
 
-    static func label(for kind: SignalKind) -> String {
+    static func label(for kind: BridgeSignalKind) -> String {
         switch kind {
         case .discId: String(localized: "Disc ID")
         case .barcode: String(localized: "Barcode")
@@ -483,7 +483,7 @@ private enum SignalBadgeStyle {
         }
     }
 
-    static func originLabel(for origin: SignalOrigin) -> String {
+    static func originLabel(for origin: BridgeSignalOrigin) -> String {
         switch origin {
         case .discToc: String(localized: "Disc TOC")
         case .cueSheet: String(localized: "CUE sheet")
@@ -494,14 +494,14 @@ private enum SignalBadgeStyle {
         }
     }
 
-    static func roleLabel(for role: SignalRole) -> String {
+    static func roleLabel(for role: BridgeSignalRole) -> String {
         switch role {
         case .identity: String(localized: "Identifies · finds releases")
         case .filter: String(localized: "Refines · narrows the match")
         }
     }
 
-    static func stateLabel(for signal: ToolbarSignal) -> String {
+    static func stateLabel(for signal: BridgeToolbarSignal) -> String {
         if signal.excluded {
             return String(localized: "Excluded from search")
         }
@@ -527,7 +527,7 @@ private enum SignalBadgeStyle {
         }
     }
 
-    static func stateDotColor(for signal: ToolbarSignal) -> Color {
+    static func stateDotColor(for signal: BridgeToolbarSignal) -> Color {
         if signal.excluded {
             return .secondary
         }
@@ -546,8 +546,8 @@ private enum SignalBadgeStyle {
 
 #Preview("Both running") {
     SignalsToolbarView(
-        toolbar: SignalsToolbar(signals: [
-            ToolbarSignal(
+        toolbar: BridgeSignalsToolbar(signals: [
+            BridgeToolbarSignal(
                 kind: .discId,
                 role: .identity,
                 value: "Xx0Yy1Zz2Aa3Bb4Cc5Dd6Ee7-",
@@ -555,7 +555,7 @@ private enum SignalBadgeStyle {
                 state: .lookingUp,
                 excluded: false
             ),
-            ToolbarSignal(
+            BridgeToolbarSignal(
                 kind: .barcode,
                 role: .identity,
                 value: "0123456789012",
@@ -563,7 +563,7 @@ private enum SignalBadgeStyle {
                 state: .lookingUp,
                 excluded: false
             ),
-            ToolbarSignal(
+            BridgeToolbarSignal(
                 kind: .catalog,
                 role: .filter,
                 value: "WPCR-80001",
@@ -583,8 +583,8 @@ private enum SignalBadgeStyle {
 
 #Preview("One settled, catalog confirms") {
     SignalsToolbarView(
-        toolbar: SignalsToolbar(signals: [
-            ToolbarSignal(
+        toolbar: BridgeSignalsToolbar(signals: [
+            BridgeToolbarSignal(
                 kind: .discId,
                 role: .identity,
                 value: "Xx0Yy1Zz2Aa3Bb4Cc5Dd6Ee7-",
@@ -592,7 +592,7 @@ private enum SignalBadgeStyle {
                 state: .found(count: 3),
                 excluded: false
             ),
-            ToolbarSignal(
+            BridgeToolbarSignal(
                 kind: .barcode,
                 role: .identity,
                 value: "0123456789012",
@@ -600,7 +600,7 @@ private enum SignalBadgeStyle {
                 state: .lookingUp,
                 excluded: false
             ),
-            ToolbarSignal(
+            BridgeToolbarSignal(
                 kind: .catalog,
                 role: .filter,
                 value: "WPCR-80001",
@@ -608,7 +608,7 @@ private enum SignalBadgeStyle {
                 state: .confirms(count: 1),
                 excluded: false
             ),
-            ToolbarSignal(
+            BridgeToolbarSignal(
                 kind: .catalog,
                 role: .filter,
                 value: "A2 16018",
@@ -628,8 +628,8 @@ private enum SignalBadgeStyle {
 
 #Preview("Barcode excluded") {
     SignalsToolbarView(
-        toolbar: SignalsToolbar(signals: [
-            ToolbarSignal(
+        toolbar: BridgeSignalsToolbar(signals: [
+            BridgeToolbarSignal(
                 kind: .discId,
                 role: .identity,
                 value: "Xx0Yy1Zz2Aa3Bb4Cc5Dd6Ee7-",
@@ -637,7 +637,7 @@ private enum SignalBadgeStyle {
                 state: .found(count: 2),
                 excluded: false
             ),
-            ToolbarSignal(
+            BridgeToolbarSignal(
                 kind: .barcode,
                 role: .identity,
                 value: "0123456789012",
@@ -645,7 +645,7 @@ private enum SignalBadgeStyle {
                 state: .found(count: 4),
                 excluded: true
             ),
-            ToolbarSignal(
+            BridgeToolbarSignal(
                 kind: .catalog,
                 role: .filter,
                 value: "WPCR-80001",
@@ -665,8 +665,8 @@ private enum SignalBadgeStyle {
 
 #Preview("Conflict — both matched") {
     SignalsToolbarView(
-        toolbar: SignalsToolbar(signals: [
-            ToolbarSignal(
+        toolbar: BridgeSignalsToolbar(signals: [
+            BridgeToolbarSignal(
                 kind: .discId,
                 role: .identity,
                 value: "Xx0Yy1Zz2Aa3Bb4Cc5Dd6Ee7-",
@@ -674,7 +674,7 @@ private enum SignalBadgeStyle {
                 state: .found(count: 2),
                 excluded: false
             ),
-            ToolbarSignal(
+            BridgeToolbarSignal(
                 kind: .barcode,
                 role: .identity,
                 value: "5051961234567",
@@ -694,8 +694,8 @@ private enum SignalBadgeStyle {
 
 #Preview("Skipped — no signals") {
     SignalsToolbarView(
-        toolbar: SignalsToolbar(signals: [
-            ToolbarSignal(
+        toolbar: BridgeSignalsToolbar(signals: [
+            BridgeToolbarSignal(
                 kind: .discId,
                 role: .identity,
                 value: nil,
@@ -703,7 +703,7 @@ private enum SignalBadgeStyle {
                 state: .skipped,
                 excluded: false
             ),
-            ToolbarSignal(
+            BridgeToolbarSignal(
                 kind: .barcode,
                 role: .identity,
                 value: nil,

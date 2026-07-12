@@ -1241,8 +1241,8 @@ enum PreviewData {
         libraryStatuses: [:],
         discogsEnabled: true,
         signals: settledSignals,
-        signalsToolbar: SignalsToolbar(signals: [
-            ToolbarSignal(
+        signalsToolbar: BridgeSignalsToolbar(signals: [
+            BridgeToolbarSignal(
                 kind: .discId,
                 role: .identity,
                 value: "disc-hash",
@@ -1250,7 +1250,7 @@ enum PreviewData {
                 state: .found(count: 3),
                 excluded: false
             ),
-            ToolbarSignal(
+            BridgeToolbarSignal(
                 kind: .catalog,
                 role: .filter,
                 value: "WPCR-80001",
@@ -1280,8 +1280,8 @@ enum PreviewData {
         libraryStatuses: [:],
         discogsEnabled: true,
         signals: settledSignals,
-        signalsToolbar: SignalsToolbar(signals: [
-            ToolbarSignal(
+        signalsToolbar: BridgeSignalsToolbar(signals: [
+            BridgeToolbarSignal(
                 kind: .discId,
                 role: .identity,
                 value: "disc-hash",
@@ -1289,7 +1289,7 @@ enum PreviewData {
                 state: .found(count: 2),
                 excluded: false
             ),
-            ToolbarSignal(
+            BridgeToolbarSignal(
                 kind: .catalog,
                 role: .filter,
                 value: "WPCR-80001",
@@ -1321,8 +1321,8 @@ enum PreviewData {
         libraryStatuses: [:],
         discogsEnabled: true,
         signals: nil,
-        signalsToolbar: SignalsToolbar(signals: [
-            ToolbarSignal(
+        signalsToolbar: BridgeSignalsToolbar(signals: [
+            BridgeToolbarSignal(
                 kind: .discId,
                 role: .identity,
                 value: "disc-hash",
@@ -1330,7 +1330,7 @@ enum PreviewData {
                 state: .found(count: 2),
                 excluded: false
             ),
-            ToolbarSignal(
+            BridgeToolbarSignal(
                 kind: .barcode,
                 role: .identity,
                 value: "5051961234567",
@@ -1357,8 +1357,8 @@ enum PreviewData {
         libraryStatuses: [:],
         discogsEnabled: false,
         signals: nil,
-        signalsToolbar: SignalsToolbar(signals: [
-            ToolbarSignal(
+        signalsToolbar: BridgeSignalsToolbar(signals: [
+            BridgeToolbarSignal(
                 kind: .discId,
                 role: .identity,
                 value: "disc-hash",
@@ -1366,7 +1366,7 @@ enum PreviewData {
                 state: .lookingUp,
                 excluded: false
             ),
-            ToolbarSignal(
+            BridgeToolbarSignal(
                 kind: .barcode,
                 role: .identity,
                 value: nil,
@@ -1390,8 +1390,8 @@ enum PreviewData {
         libraryStatuses: [:],
         discogsEnabled: true,
         signals: nil,
-        signalsToolbar: SignalsToolbar(signals: [
-            ToolbarSignal(
+        signalsToolbar: BridgeSignalsToolbar(signals: [
+            BridgeToolbarSignal(
                 kind: .discId,
                 role: .identity,
                 value: "disc-hash",
@@ -1399,7 +1399,7 @@ enum PreviewData {
                 state: .noMatch,
                 excluded: false
             ),
-            ToolbarSignal(
+            BridgeToolbarSignal(
                 kind: .barcode,
                 role: .identity,
                 value: "5051961234567",

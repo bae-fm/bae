@@ -56,7 +56,7 @@ struct ImportSearchFormView: View {
         signals?.text.isScanning ?? false
     }
 
-    private var signalFailure: LookupFailure? {
+    private var signalFailure: BridgeLookupFailure? {
         signals?.text.failure
     }
 
@@ -173,7 +173,7 @@ struct ImportSearchState {
     let signals: Signals?
     /// The interactive signals toolbar — the pre-shaped badge list. Empty until
     /// the first identify transition; the toolbar is hidden until then.
-    let signalsToolbar: SignalsToolbar
+    let signalsToolbar: BridgeSignalsToolbar
 }
 
 // MARK: - ImportSearchPane
@@ -205,7 +205,7 @@ struct ImportSearchPane: View {
     /// re-fetch) and re-derives the state; the resulting event flows back
     /// through the same channel. The conflict surface's per-signal "Ignore"
     /// links route through here too.
-    let onToggleSignal: (ExcludedSignal) -> Void
+    let onToggleSignal: (BridgeExcludedSignal) -> Void
     /// Re-run the lookups from the toolbar's `Re-run` action.
     let onRerun: () -> Void
     /// A pressing row was picked — the flow opens the docked confirm pane.
@@ -586,7 +586,7 @@ extension ImportSearchPane {
     /// right, and pressing-shaped rows below.
     @ViewBuilder
     private func conflictSection(
-        signal: ExcludedSignal,
+        signal: BridgeExcludedSignal,
         title: LocalizedStringKey,
         subtitle: AttributedString,
         results: [BridgeMetadataResult],
@@ -662,7 +662,7 @@ extension ImportSearchPane {
         return subtitle
     }
 
-    fileprivate func ignoreButtonLabel(signal: ExcludedSignal) -> String {
+    fileprivate func ignoreButtonLabel(signal: BridgeExcludedSignal) -> String {
         switch signal {
         case .disc: String(localized: "Ignore DiscID")
         case .barcode: String(localized: "Ignore Barcode")

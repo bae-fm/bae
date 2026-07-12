@@ -24,7 +24,7 @@ enum DiscidProgress: Equatable {
     case lookingUp
     case done(nResults: UInt32)
     case skipped
-    case failed(failure: LookupFailure)
+    case failed(failure: BridgeLookupFailure)
 
     init(bridge: BridgeDiscidProgress) {
         switch bridge {
@@ -33,7 +33,7 @@ enum DiscidProgress: Equatable {
         case .done(let n): self = .done(nResults: n)
         case .skipped: self = .skipped
         case .failed(let failure):
-            self = .failed(failure: LookupFailure(bridge: failure))
+            self = .failed(failure: failure)
         }
     }
 }
@@ -43,7 +43,7 @@ enum BarcodeProgress: Equatable {
     case scanning
     case lookingUp(current: String, position: UInt32, total: UInt32)
     case done(nResults: UInt32)
-    case failed(failure: LookupFailure)
+    case failed(failure: BridgeLookupFailure)
     case skipped
 
     init(bridge: BridgeBarcodeProgress) {
@@ -57,7 +57,7 @@ enum BarcodeProgress: Equatable {
             )
         case .done(let n): self = .done(nResults: n)
         case .failed(let failure):
-            self = .failed(failure: LookupFailure(bridge: failure))
+            self = .failed(failure: failure)
         case .skipped: self = .skipped
         }
     }
