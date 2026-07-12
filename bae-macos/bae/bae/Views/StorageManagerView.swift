@@ -221,6 +221,113 @@ private struct StorageFooter: View {
     }
 }
 
+// MARK: - Queue pane scaffolding
+
+/// Header band shared by the three queue panes: optional leading slot
+/// (the outbox pane's collapse chevron), icon, title, paused chip or
+/// summary, pause/resume, and retry.
+private struct QueueSectionHeader<Leading: View>: View {
+    let icon: String
+    let title: LocalizedStringKey
+    let paused: Bool
+    let summaryText: String
+    let retryDisabled: Bool
+    let onSetPaused: (Bool) -> Void
+    let onRetry: () -> Void
+    @ViewBuilder
+    let leading: () -> Leading
+
+    var body: some View {
+        HStack(spacing: 8) {
+            leading()
+            Image(systemName: icon)
+                .foregroundStyle(.secondary)
+            Text(title).font(.callout.weight(.medium))
+            if paused {
+                Label("Paused", systemImage: "pause.circle.fill")
+                    .font(.callout)
+                    .foregroundStyle(.orange)
+            }
+            else if !summaryText.isEmpty {
+                Text(summaryText)
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer()
+            Button(paused ? "Resume" : "Pause") { onSetPaused(!paused) }
+            Button("Retry now", action: onRetry)
+                .disabled(retryDisabled)
+        }
+        .padding(.horizontal)
+        .padding(.vertical, 8)
+    }
+}
+
+extension QueueSectionHeader where Leading == EmptyView {
+    init(
+        icon: String,
+        title: LocalizedStringKey,
+        paused: Bool,
+        summaryText: String,
+        retryDisabled: Bool,
+        onSetPaused: @escaping (Bool) -> Void,
+        onRetry: @escaping () -> Void
+    ) {
+        self.init(
+            icon: icon,
+            title: title,
+            paused: paused,
+            summaryText: summaryText,
+            retryDisabled: retryDisabled,
+            onSetPaused: onSetPaused,
+            onRetry: onRetry
+        ) { EmptyView() }
+    }
+}
+
+/// Row scaffolding shared by the download, export, and outbox-delete queue
+/// rows: leading icon, caller content, then the trailing state badge /
+/// queued-time / cancel cluster.
+private struct QueueRow<Content: View, Badge: View>: View {
+    let icon: String
+    let createdAt: Int64
+    let cancelHelp: LocalizedStringKey
+    let onCancel: () -> Void
+    @ViewBuilder
+    let content: () -> Content
+    @ViewBuilder
+    let badge: () -> Badge
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: icon)
+                .foregroundStyle(.secondary)
+                .frame(width: 16)
+
+            content()
+
+            Spacer()
+
+            badge()
+                .font(.caption)
+                .frame(width: 130, alignment: .leading)
+
+            Text(queuedRelativeLabel(createdAt))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .frame(width: 90, alignment: .trailing)
+
+            Button(action: onCancel) {
+                Image(systemName: "xmark.circle")
+            }
+            .buttonStyle(.plain)
+            .help(cancelHelp)
+        }
+        .padding(.horizontal)
+        .padding(.vertical, 6)
+    }
+}
+
 // MARK: - Download (pin) queue
 
 /// Bottom-pane section showing the in-memory download (pin) queue: a header
@@ -241,7 +348,15 @@ private struct DownloadsSection: View {
         if !snapshot.downloads.isEmpty {
             Divider()
             VStack(spacing: 0) {
-                header(snapshot)
+                QueueSectionHeader(
+                    icon: "arrow.down.circle",
+                    title: "Downloads",
+                    paused: snapshot.paused,
+                    summaryText: snapshot.summaryText,
+                    retryDisabled: snapshot.total.failed == 0,
+                    onSetPaused: { downloads.setDownloadsPaused($0) },
+                    onRetry: { downloads.retryDownloads() }
+                )
                 Divider()
                 ScrollView {
                     LazyVStack(spacing: 0) {
@@ -258,47 +373,21 @@ private struct DownloadsSection: View {
         }
     }
 
-    private func header(_ snapshot: BridgeDownloadSnapshot) -> some View {
-        HStack(spacing: 8) {
-            Image(systemName: "arrow.down.circle")
-                .foregroundStyle(.secondary)
-            Text("Downloads").font(.callout.weight(.medium))
-            if snapshot.paused {
-                Label("Paused", systemImage: "pause.circle.fill")
-                    .font(.callout)
-                    .foregroundStyle(.orange)
-            }
-            else if !snapshot.summaryText.isEmpty {
-                Text(snapshot.summaryText)
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-            }
-            Spacer()
-            Button(snapshot.paused ? "Resume" : "Pause") {
-                downloads.setDownloadsPaused(!snapshot.paused)
-            }
-            Button("Retry now") {
-                downloads.retryDownloads()
-            }
-            .disabled(snapshot.total.failed == 0)
-        }
-        .padding(.horizontal)
-        .padding(.vertical, 8)
-    }
 }
 
 /// One download-queue row: album title, file count, size, a state badge, and a
-/// cancel button. Mirrors `OutboxUploadRow`'s layout.
+/// cancel button.
 private struct DownloadRow: View {
     let op: BridgeDownloadOp
     let onCancel: () -> Void
 
     var body: some View {
-        HStack(spacing: 12) {
-            Image(systemName: "arrow.down.circle")
-                .foregroundStyle(.secondary)
-                .frame(width: 16)
-
+        QueueRow(
+            icon: "arrow.down.circle",
+            createdAt: op.createdAt,
+            cancelHelp: "Cancel this download",
+            onCancel: onCancel
+        ) {
             VStack(alignment: .leading, spacing: 3) {
                 HStack(spacing: 8) {
                     Text(op.title)
@@ -311,26 +400,9 @@ private struct DownloadRow: View {
                 }
                 progressView
             }
-
-            Spacer()
-
+        } badge: {
             stateBadge
-                .font(.caption)
-                .frame(width: 130, alignment: .leading)
-
-            Text(queuedRelativeLabel(op.createdAt))
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .frame(width: 90, alignment: .trailing)
-
-            Button(action: onCancel) {
-                Image(systemName: "xmark.circle")
-            }
-            .buttonStyle(.plain)
-            .help("Cancel this download")
         }
-        .padding(.horizontal)
-        .padding(.vertical, 6)
     }
 
     @ViewBuilder
@@ -379,7 +451,15 @@ private struct ExportingSection: View {
         if !snapshot.exports.isEmpty {
             Divider()
             VStack(spacing: 0) {
-                header(snapshot)
+                QueueSectionHeader(
+                    icon: "square.and.arrow.up",
+                    title: "Exporting",
+                    paused: snapshot.paused,
+                    summaryText: snapshot.summaryText,
+                    retryDisabled: snapshot.total.failed == 0,
+                    onSetPaused: { exports.setExportsPaused($0) },
+                    onRetry: { exports.retryExports() }
+                )
                 Divider()
                 ScrollView {
                     LazyVStack(spacing: 0) {
@@ -396,48 +476,22 @@ private struct ExportingSection: View {
         }
     }
 
-    private func header(_ snapshot: BridgeExportSnapshot) -> some View {
-        HStack(spacing: 8) {
-            Image(systemName: "square.and.arrow.up")
-                .foregroundStyle(.secondary)
-            Text("Exporting").font(.callout.weight(.medium))
-            if snapshot.paused {
-                Label("Paused", systemImage: "pause.circle.fill")
-                    .font(.callout)
-                    .foregroundStyle(.orange)
-            }
-            else if !snapshot.summaryText.isEmpty {
-                Text(snapshot.summaryText)
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-            }
-            Spacer()
-            Button(snapshot.paused ? "Resume" : "Pause") {
-                exports.setExportsPaused(!snapshot.paused)
-            }
-            Button("Retry now") {
-                exports.retryExports()
-            }
-            .disabled(snapshot.total.failed == 0)
-        }
-        .padding(.horizontal)
-        .padding(.vertical, 8)
-    }
 }
 
 /// One export-queue row: album title, file count, size, a state badge (Queued /
 /// Exporting at a percent / Failed with the reason in a tooltip), and a cancel
-/// button. Mirrors `DownloadRow`.
+/// button.
 private struct ExportRow: View {
     let op: BridgeExportOp
     let onCancel: () -> Void
 
     var body: some View {
-        HStack(spacing: 12) {
-            Image(systemName: "square.and.arrow.up")
-                .foregroundStyle(.secondary)
-                .frame(width: 16)
-
+        QueueRow(
+            icon: "square.and.arrow.up",
+            createdAt: op.createdAt,
+            cancelHelp: "Cancel this export",
+            onCancel: onCancel
+        ) {
             Text(op.title)
                 .lineLimit(1)
 
@@ -445,26 +499,9 @@ private struct ExportRow: View {
                 .font(.caption)
                 .monospacedDigit()
                 .foregroundStyle(.secondary)
-
-            Spacer()
-
+        } badge: {
             stateBadge
-                .font(.caption)
-                .frame(width: 130, alignment: .leading)
-
-            Text(queuedRelativeLabel(op.createdAt))
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .frame(width: 90, alignment: .trailing)
-
-            Button(action: onCancel) {
-                Image(systemName: "xmark.circle")
-            }
-            .buttonStyle(.plain)
-            .help("Cancel this export")
         }
-        .padding(.horizontal)
-        .padding(.vertical, 6)
     }
 
     @ViewBuilder
@@ -534,7 +571,30 @@ private struct OutboxSection: View {
                 if !collapsed {
                     resizeHandle
                 }
-                header(snapshot)
+                QueueSectionHeader(
+                    icon: "arrow.up.arrow.down.circle",
+                    title: "Sync queue",
+                    paused: snapshot.paused,
+                    summaryText: snapshot.summaryText,
+                    retryDisabled: snapshot.total.failed == 0,
+                    onSetPaused: { paused in
+                        Task { await sync.setSyncPaused(paused) }
+                    },
+                    onRetry: {
+                        Task {
+                            do { try await sync.retryOutbox() }
+                            catch {
+                                uiStore.showError(
+                                    String(
+                                        localized:
+                                            "Failed to retry uploads: \(error.localizedDescription)"
+                                    )
+                                )
+                            }
+                        }
+                    },
+                    leading: { collapseButton }
+                )
                 if !collapsed {
                     if snapshot.total.bytesTotal > 0 {
                         OutboxTotalProgress(snapshot: snapshot)
@@ -575,53 +635,19 @@ private struct OutboxSection: View {
             )
     }
 
-    private func header(_ snapshot: BridgeOutboxSnapshot) -> some View {
-        HStack(spacing: 8) {
-            Button {
-                collapsed.toggle()
-            } label: {
-                Image(systemName: collapsed ? "chevron.right" : "chevron.down")
-                    .foregroundStyle(.secondary)
-            }
-            .buttonStyle(.plain)
-            .help(
-                collapsed ? "Expand the sync queue" : "Collapse the sync queue"
-            )
-
-            Image(systemName: "arrow.up.arrow.down.circle")
+    /// The collapse/expand chevron shown in the sync-queue header's leading
+    /// slot; toggles the pane between its full body and just the header.
+    private var collapseButton: some View {
+        Button {
+            collapsed.toggle()
+        } label: {
+            Image(systemName: collapsed ? "chevron.right" : "chevron.down")
                 .foregroundStyle(.secondary)
-            Text("Sync queue").font(.callout.weight(.medium))
-            if snapshot.paused {
-                Label("Paused", systemImage: "pause.circle.fill")
-                    .font(.callout)
-                    .foregroundStyle(.orange)
-            }
-            else if !snapshot.summaryText.isEmpty {
-                Text(snapshot.summaryText)
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-            }
-            Spacer()
-            Button(snapshot.paused ? "Resume" : "Pause") {
-                Task { await sync.setSyncPaused(!snapshot.paused) }
-            }
-            Button("Retry now") {
-                Task {
-                    do { try await sync.retryOutbox() }
-                    catch {
-                        uiStore.showError(
-                            String(
-                                localized:
-                                    "Failed to retry uploads: \(error.localizedDescription)"
-                            )
-                        )
-                    }
-                }
-            }
-            .disabled(snapshot.total.failed == 0)
         }
-        .padding(.horizontal)
-        .padding(.vertical, 8)
+        .buttonStyle(.plain)
+        .help(
+            collapsed ? "Expand the sync queue" : "Collapse the sync queue"
+        )
     }
 
     private func itemList(_ snapshot: BridgeOutboxSnapshot) -> some View {
@@ -889,34 +915,18 @@ private struct OutboxDeleteRow: View {
     let onCancel: () -> Void
 
     var body: some View {
-        HStack(spacing: 12) {
-            Image(systemName: "trash")
-                .foregroundStyle(.secondary)
-                .frame(width: 16)
-
+        QueueRow(
+            icon: "trash",
+            createdAt: op.createdAt,
+            cancelHelp: "Remove from the sync queue",
+            onCancel: onCancel
+        ) {
             Text(op.cloudKey)
                 .lineLimit(1)
-
-            Spacer()
-
+        } badge: {
             Label("Pending delete", systemImage: "clock")
-                .font(.caption)
                 .foregroundStyle(.secondary)
-                .frame(width: 130, alignment: .leading)
-
-            Text(queuedRelativeLabel(op.createdAt))
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .frame(width: 90, alignment: .trailing)
-
-            Button(action: onCancel) {
-                Image(systemName: "xmark.circle")
-            }
-            .buttonStyle(.plain)
-            .help("Remove from the sync queue")
         }
-        .padding(.horizontal)
-        .padding(.vertical, 6)
     }
 }
 
