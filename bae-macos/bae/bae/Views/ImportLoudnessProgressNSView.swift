@@ -17,7 +17,7 @@ struct ImportLoudnessProgressEvent {
 /// AppKit view for the loudness-measurement bar shown during an import.
 ///
 /// Updated directly from `DesktopUiEvents`' Combine signal, bypassing SwiftUI
-/// observation entirely — same pattern as `PreviewProgressNSView`, so the
+/// observation entirely — same pattern as `SeekBarNSView`, so the
 /// high-frequency sub-track ticks never re-render the confirm pane tree. The
 /// label is the localized `ui.import.loudness_progress` line ("Measuring
 /// loudness — N/M"); the bar is the overall scan `fraction`.

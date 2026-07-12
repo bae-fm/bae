@@ -4,7 +4,7 @@ import SwiftUI
 
 /// Isolates observation so that only slow-changing properties (track info, volume, etc.)
 /// trigger SwiftUI re-evaluation. Position ticks bypass SwiftUI entirely via the AppKit
-/// PlaybackProgressNSView, which AppService updates directly.
+/// SeekBarNSView, which AppService updates directly.
 struct NowPlayingBarContainer: View {
     @Environment(Playback.self)
     var playback

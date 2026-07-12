@@ -2,7 +2,7 @@ import AppKit
 
 /// NSSlider subclass that reports drag start/end and jumps to the clicked
 /// position. `mouseDown` blocks until the user releases, so `isDragging` is
-/// accurate. Shared by the playback and preview progress NSViews.
+/// accurate. Used by `SeekBarNSView`.
 class SeekSlider: NSSlider {
     var onSeekComplete: ((Double) -> Void)?
     private(set) var isDragging = false
