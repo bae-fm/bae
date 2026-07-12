@@ -16,7 +16,6 @@
 //! `ImportEvent::IdentifyStateChanged`. Consumers see one event per state
 //! transition, carrying the full state payload.
 
-pub mod analyzer;
 pub mod barcode;
 pub mod combine;
 pub mod discid;
@@ -24,7 +23,6 @@ pub mod service;
 pub mod state;
 pub mod toolbar;
 
-pub use analyzer::{ArtworkAnalysis, ArtworkAnalyzer, NoopAnalyzer};
 pub use combine::{GroupKey, ResultProvenance};
 pub use service::IdentifyServiceHandle;
 pub use state::{

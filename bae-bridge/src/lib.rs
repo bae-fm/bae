@@ -4,10 +4,10 @@ mod bridge_utils;
 #[cfg(feature = "cloudkit")]
 mod cloudkit;
 mod handle;
-#[cfg(feature = "desktop")]
-mod identify;
 mod init;
 mod setup;
+#[cfg(feature = "desktop")]
+mod signals;
 mod types;
 mod utils;
 

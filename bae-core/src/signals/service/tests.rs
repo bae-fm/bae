@@ -1,6 +1,5 @@
 use super::*;
-use crate::identify::analyzer::ArtworkAnalyzer;
-use crate::identify::ArtworkAnalysis;
+use crate::signals::{ArtworkAnalysis, ArtworkAnalyzer};
 use crate::test_logs::capture_warn_logs;
 use std::collections::HashMap;
 use std::fs;

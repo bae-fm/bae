@@ -1,9 +1,9 @@
-//! Bridge glue for the core identify pipeline: `ArtworkAnalyzerAdapter`
+//! Bridge glue for the core signal-extraction pipeline: `ArtworkAnalyzerAdapter`
 //! implements the core `ArtworkAnalyzer` trait on top of an
 //! `ArtworkAnalyzerCallback` instance supplied by Swift (Vision-based). It
 //! lives in the bridge because the callback trait is a uniffi export.
 
-use bae_core::identify::{ArtworkAnalysis, ArtworkAnalyzer};
+use bae_core::signals::{ArtworkAnalysis, ArtworkAnalyzer};
 use std::path::Path;
 
 use crate::types::ArtworkAnalyzerCallback;

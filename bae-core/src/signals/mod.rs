@@ -27,6 +27,8 @@ pub mod failure;
 pub use failure::LookupFailure;
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
+mod analyzer;
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub mod barcode;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod cancellation;
@@ -47,6 +49,8 @@ pub mod service;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub mod text;
 
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+pub use analyzer::{ArtworkAnalysis, ArtworkAnalyzer};
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use barcode::BarcodeSignal;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]

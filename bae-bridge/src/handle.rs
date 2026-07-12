@@ -1177,7 +1177,7 @@ impl AppHandle {
         &self,
         analyzer: Box<dyn crate::types::ArtworkAnalyzerCallback>,
     ) {
-        let adapter = std::sync::Arc::new(crate::identify::ArtworkAnalyzerAdapter::new(analyzer));
+        let adapter = std::sync::Arc::new(crate::signals::ArtworkAnalyzerAdapter::new(analyzer));
         self.services.extraction().register_analyzer(adapter);
     }
 

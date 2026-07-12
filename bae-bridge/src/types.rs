@@ -1465,7 +1465,7 @@ pub trait UiEventCallback: Send + Sync {
 
 /// Everything one Vision pass over an image surfaces — barcode payloads and
 /// recognized text lines from a single image decode. Mirrors
-/// `bae_core::identify::ArtworkAnalysis`.
+/// `bae_core::signals::ArtworkAnalysis`.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeArtworkAnalysis {
     pub barcodes: Vec<String>,

@@ -20,12 +20,12 @@
 //! Every snapshot carries the whole `Signals`; the reducer and the UI overwrite
 //! wholesale.
 
+use super::analyzer::{ArtworkAnalysis, ArtworkAnalyzer, NoopAnalyzer};
 use super::cancellation::CancellationRegistry;
 use super::candidate_text::{Source, SourcedLine};
 use super::dump::dump_scan;
 use super::fast_pass::{gather_non_ocr_sources, FastPass};
 use super::pool::Pool;
-use crate::identify::analyzer::{ArtworkAnalysis, ArtworkAnalyzer, NoopAnalyzer};
 use crate::identify::discid::{resolve_release_artwork_paths, resolve_release_identity};
 use crate::import::ImportEvent;
 use crate::library::LibraryManager;

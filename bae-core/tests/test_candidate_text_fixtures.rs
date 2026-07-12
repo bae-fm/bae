@@ -17,10 +17,9 @@
 //! new fixture just requires dropping another file in that directory —
 //! the loop below picks them up automatically.
 
-use bae_core::identify::{ArtworkAnalysis, ArtworkAnalyzer};
 use bae_core::import::ImportEvent;
 use bae_core::signals::service::{ExtractionService, ExtractionServiceHandle, ExtractionSource};
-use bae_core::signals::TextSignal;
+use bae_core::signals::{ArtworkAnalysis, ArtworkAnalyzer, TextSignal};
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::fs;
