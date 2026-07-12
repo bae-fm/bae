@@ -87,10 +87,6 @@ struct NowPlayingBar: View {
 
     @State
     private var queueButtonDropTargeted = false
-    @State
-    private var queueAddDisplayedCount: Int?
-    @State
-    private var queueAddHideTask: Task<Void, Never>?
 
     var body: some View {
         HStack(spacing: 16) {
@@ -238,12 +234,22 @@ struct NowPlayingBar: View {
                 queueButtonDropTargeted = targeted
             }
             .overlay(alignment: .topTrailing) {
-                QueueAddBadge(displayedCount: $queueAddDisplayedCount)
-                    .offset(x: 6, y: -6)
-                    .allowsHitTesting(false)
-            }
-            .onReceive(queueAddPublisher) { count in
-                handleQueueItemsAdded(count: count)
+                QueueAddBadge(
+                    events: queueAddPublisher,
+                    scheduler: .main,
+                    style: QueueAddBadgeStyle(
+                        textFont: .system(size: 10, weight: .semibold),
+                        symbolFont: .system(size: 8.5, weight: .bold),
+                        padding: EdgeInsets(
+                            top: 1,
+                            leading: 5,
+                            bottom: 1,
+                            trailing: 5
+                        ),
+                        fill: .accentColor,
+                        offset: CGSize(width: 6, height: -6)
+                    )
+                )
             }
 
             Button(action: onToggleMute) {
@@ -303,22 +309,6 @@ struct NowPlayingBar: View {
             "Repeat: context"
         case .track:
             "Repeat: track"
-        }
-    }
-
-    private func handleQueueItemsAdded(count: Int) {
-        queueAddHideTask?.cancel()
-        withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
-            queueAddDisplayedCount = count
-        }
-        queueAddHideTask = Task { @MainActor in
-            try? await Task.sleep(for: .milliseconds(1400))
-            if Task.isCancelled {
-                return
-            }
-            withAnimation(.easeIn(duration: 0.2)) {
-                queueAddDisplayedCount = nil
-            }
         }
     }
 }

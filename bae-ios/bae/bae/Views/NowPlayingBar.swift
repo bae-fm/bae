@@ -117,6 +117,25 @@ struct NowPlayingBar: View {
             Image(systemName: "list.bullet")
         }
         .accessibilityLabel("Queue")
+        .overlay(alignment: .topTrailing) {
+            QueueAddBadge(
+                events: playbackStore.queueItemsAddedSubject
+                    .eraseToAnyPublisher(),
+                scheduler: .main,
+                style: QueueAddBadgeStyle(
+                    textFont: .system(size: 11, weight: .semibold),
+                    symbolFont: .system(size: 9, weight: .bold),
+                    padding: EdgeInsets(
+                        top: 3,
+                        leading: 7,
+                        bottom: 3,
+                        trailing: 7
+                    ),
+                    fill: Theme.accent,
+                    offset: CGSize(width: 10, height: -10)
+                )
+            )
+        }
         Button {
             playback.setRepeatMode(playbackStore.repeatMode.next)
         } label: {
