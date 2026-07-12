@@ -110,7 +110,7 @@ struct ExpandedNowPlayingView: View {
                 isLoading: playbackStore.nowPlaying.loadingTrackId != nil,
                 glyphFont: .largeTitle,
                 spinnerControlSize: .large,
-                onToggle: { playback.togglePlayPause() }
+                onToggle: { playback.playPause(for: playbackStore.nowPlaying) }
             )
             Button {
                 playback.nextTrack()

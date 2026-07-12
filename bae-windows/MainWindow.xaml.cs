@@ -905,7 +905,24 @@ public sealed partial class MainWindow : Window
     {
         if (CurrentHandleOrNull() != null)
         {
-            WithCurrentHandle(NativeBae.PlayPause);
+            DispatchPlayPause();
+        }
+    }
+
+    // A play/pause press names its target: pause what plays, resume what's
+    // paused, nothing when stopped (there is no track to act on).
+    private void DispatchPlayPause()
+    {
+        switch (_playback.PlayState)
+        {
+            case TransportPlayState.Playing:
+                WithCurrentHandle(NativeBae.Pause);
+                break;
+            case TransportPlayState.Paused:
+                WithCurrentHandle(NativeBae.Resume);
+                break;
+            case TransportPlayState.Stopped:
+                break;
         }
     }
 
@@ -1042,7 +1059,7 @@ public sealed partial class MainWindow : Window
 
         if (CurrentHandleOrNull() != null)
         {
-            WithCurrentHandle(NativeBae.PlayPause);
+            DispatchPlayPause();
             e.Handled = true;
         }
     }

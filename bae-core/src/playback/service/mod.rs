@@ -271,8 +271,6 @@ pub(crate) enum PlaybackCommand {
     PreviewSeekByRatio(f64),
     /// Internal: preview file finished playing naturally.
     PreviewCompleted,
-    /// Toggle between play and pause based on current audio state.
-    TogglePlayPause,
     /// Set mute to an absolute state. Muting saves the pre-mute volume and
     /// drives output to 0; unmuting restores it. Setting the current state
     /// changes nothing (a repeated dispatch lands in the same place).
@@ -439,10 +437,6 @@ impl PlaybackHandle {
 
     pub fn set_shuffle(&self, on: bool) {
         dispatch_command(&self.command_tx, PlaybackCommand::SetShuffle(on));
-    }
-
-    pub fn toggle_play_pause(&self) {
-        dispatch_command(&self.command_tx, PlaybackCommand::TogglePlayPause);
     }
 
     pub async fn get_volume(&self) -> f32 {
@@ -1858,20 +1852,6 @@ impl PlaybackService {
                 }
                 PlaybackCommand::PreviewCompleted => {
                     self.preview_completed();
-                }
-                PlaybackCommand::TogglePlayPause => {
-                    // Dispatch on the slot's play intent, not the atomic. A load
-                    // still filling counts as its target intent; Completed and a
-                    // stopped/loading slot are no-ops (there is nothing to toggle).
-                    let intent = match &self.slot {
-                        PlaybackSlot::Active(cur) => Some(cur.phase.intent()),
-                        _ => None,
-                    };
-                    match intent {
-                        Some(PlayIntent::Playing) => self.pause(),
-                        Some(PlayIntent::Paused) => self.resume().await,
-                        Some(PlayIntent::Stopped) | None => {}
-                    }
                 }
                 PlaybackCommand::GetVolume(reply) => {
                     let _ = reply.send(self.audio_output.get_volume());

@@ -418,10 +418,6 @@ impl AppHandle {
         self.services.playback().set_shuffle(on);
     }
 
-    pub fn toggle_play_pause(&self) {
-        self.services.playback().toggle_play_pause();
-    }
-
     /// Graceful shutdown: saves playback state to disk, then stops the playback service.
     pub async fn shutdown(&self) {
         #[cfg(feature = "desktop")]

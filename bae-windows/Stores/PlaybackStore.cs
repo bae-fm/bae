@@ -26,6 +26,12 @@ internal sealed record PlaybackPositionRender(
 // lanes. The reducer is the sole writer, driven by BridgeUiEvent deliveries; the
 // now-playing bar subscribes to the change events and renders. Views read the
 // snapshot properties and never write back.
+// What the transport currently is, for click handlers that must compute an
+// absolute command target. Playing covers loading — the bar shows the spinner
+// where the pause control goes, and a press should pause the incoming track,
+// matching the other platforms.
+internal enum TransportPlayState { Stopped, Playing, Paused }
+
 internal sealed class PlaybackStore
 {
     private NowPlayingState? _nowPlaying;
@@ -45,6 +51,10 @@ internal sealed class PlaybackStore
     // every QueueUpcomingPage fetch so a reply computed under a
     // since-superseded revision is dropped rather than merged.
     public ulong Revision { get; private set; }
+
+    // What the transport currently is, for the play/pause button that must
+    // compute an absolute command target. Written by the Apply* reducers.
+    public TransportPlayState PlayState { get; private set; } = TransportPlayState.Stopped;
 
     // The current mute state, for the mute button that must compute an absolute
     // command target. Written by ApplyMute from the MuteChanged payload.
@@ -72,18 +82,21 @@ internal sealed class PlaybackStore
     public void ApplyPlaying(string albumId, string trackId, string trackTitle, string artistNames, string? coverImageId)
     {
         _nowPlaying = new NowPlayingState(albumId, trackId, KeptPositionFor(trackId));
+        PlayState = TransportPlayState.Playing;
         NowPlayingChanged?.Invoke(new NowPlayingBarTrack(trackTitle, artistNames, coverImageId, true, null));
     }
 
     public void ApplyPaused(string albumId, string trackId, string trackTitle, string artistNames, string? coverImageId, BridgePlaybackPauseReason reason)
     {
         _nowPlaying = new NowPlayingState(albumId, trackId, KeptPositionFor(trackId));
+        PlayState = TransportPlayState.Paused;
         NowPlayingChanged?.Invoke(new NowPlayingBarTrack(trackTitle, artistNames, coverImageId, false, reason));
     }
 
     public void ApplyStopped()
     {
         _nowPlaying = null;
+        PlayState = TransportPlayState.Stopped;
         PlaybackStopped?.Invoke();
     }
 
@@ -120,6 +133,7 @@ internal sealed class PlaybackStore
     public void ApplyLoading(string trackId)
     {
         _nowPlaying = PlaybackPositionModel.BeginLoading(_nowPlaying, trackId);
+        PlayState = TransportPlayState.Playing;
         LoadingStarted?.Invoke();
     }
 
@@ -188,6 +202,7 @@ internal sealed class PlaybackStore
         Revision = 0;
         IsMuted = false;
         RepeatMode = BridgeRepeatMode.Off;
+        PlayState = TransportPlayState.Stopped;
     }
 
     // Carry the current position forward only when the incoming track is the one

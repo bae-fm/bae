@@ -2827,36 +2827,6 @@ async fn remove_currently_playing_entry_stops_playback() {
 }
 
 #[tokio::test]
-async fn toggle_play_pause_flips_between_playing_and_paused() {
-    let mut fixture = PlaybackTestFixture::new().await;
-    let first = fixture.track_ids[0].clone();
-    fixture.playback_handle.play(first.clone());
-    fixture
-        .wait_for_state(
-            |s| matches!(s, PlaybackState::Playing { .. }),
-            Duration::from_secs(5),
-        )
-        .await
-        .expect("the track starts playing");
-    fixture.playback_handle.toggle_play_pause();
-    fixture
-        .wait_for_state(
-            |s| matches!(s, PlaybackState::Paused { .. }),
-            Duration::from_secs(3),
-        )
-        .await
-        .expect("TogglePlayPause pauses a playing track");
-    fixture.playback_handle.toggle_play_pause();
-    fixture
-        .wait_for_state(
-            |s| matches!(s, PlaybackState::Playing { .. }),
-            Duration::from_secs(3),
-        )
-        .await
-        .expect("TogglePlayPause resumes a paused track");
-}
-
-#[tokio::test]
 async fn play_release_clamps_an_out_of_range_start_index() {
     let mut fixture = PlaybackTestFixture::new().await;
     let first = fixture.track_ids[0].clone();

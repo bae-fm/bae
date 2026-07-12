@@ -103,7 +103,7 @@ struct NowPlayingBar: View {
             isLoading: playbackStore.nowPlaying.loadingTrackId != nil,
             glyphFont: .title3,
             spinnerControlSize: .regular,
-            onToggle: { playback.togglePlayPause() }
+            onToggle: { playback.playPause(for: playbackStore.nowPlaying) }
         )
         Button {
             playback.nextTrack()

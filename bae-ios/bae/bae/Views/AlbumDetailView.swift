@@ -605,7 +605,7 @@ private struct TrackRow: View {
         // the release from there.
         Button {
             if isCurrent {
-                playback.togglePlayPause()
+                playback.playPause(for: playbackStore.nowPlaying)
             }
             else {
                 onPlay()

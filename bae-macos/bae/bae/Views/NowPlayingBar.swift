@@ -37,7 +37,7 @@ struct NowPlayingBarContainer: View {
             isMuted: playbackStore.isMuted,
             repeatMode: playbackStore.repeatMode,
             showQueue: $uiStore.showQueue,
-            onPlayPause: { playback.togglePlayPause() },
+            onPlayPause: { playback.playPause(for: playbackStore.nowPlaying) },
             onNext: { playback.nextTrack() },
             onPrevious: { playback.previousTrack() },
             onSeek: { ratio in

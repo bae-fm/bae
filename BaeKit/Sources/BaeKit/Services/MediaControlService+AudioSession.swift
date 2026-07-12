@@ -33,7 +33,9 @@
                 actions: TransportActions(
                     play: transport(playback.resume),
                     pause: transport(playback.pause),
-                    toggle: transport(playback.togglePlayPause),
+                    toggle: transport({
+                        playback.playPause(for: playbackStore.nowPlaying)
+                    }),
                     next: transport(playback.nextTrack),
                     previous: transport(playback.previousTrack),
                     seek: { [weak self] positionTime in

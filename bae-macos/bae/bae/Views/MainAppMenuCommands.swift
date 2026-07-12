@@ -297,7 +297,7 @@ struct MainAppMenuCommands: Commands {
 
         CommandMenu("Playback") {
             Button("Play / Pause") {
-                playback.togglePlayPause()
+                playback.playPause(for: playbackStore.nowPlaying)
             }
             .keyboardShortcut(.space, modifiers: [])
 

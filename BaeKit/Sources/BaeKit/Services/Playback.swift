@@ -6,7 +6,6 @@ import Foundation
 /// preference. Views that drive transport take this instead of the full
 /// `AppService`.
 public final class Playback: Sendable, Observable {
-    public let togglePlayPause: @Sendable () -> Void
     public let pause: @Sendable () -> Void
     public let resume: @Sendable () -> Void
     public let nextTrack: @Sendable () -> Void
@@ -31,7 +30,6 @@ public final class Playback: Sendable, Observable {
     public let setPauseBetweenSides: @Sendable (_ enabled: Bool) throws -> Void
 
     public init(
-        togglePlayPause: @escaping @Sendable () -> Void = {},
         pause: @escaping @Sendable () -> Void = {},
         resume: @escaping @Sendable () -> Void = {},
         nextTrack: @escaping @Sendable () -> Void = {},
@@ -53,7 +51,6 @@ public final class Playback: Sendable, Observable {
             _ in
         }
     ) {
-        self.togglePlayPause = togglePlayPause
         self.pause = pause
         self.resume = resume
         self.nextTrack = nextTrack
@@ -70,7 +67,6 @@ public final class Playback: Sendable, Observable {
 
     public convenience init(handle: any AppHandleProtocol) {
         self.init(
-            togglePlayPause: { handle.togglePlayPause() },
             pause: { handle.pause() },
             resume: { handle.resume() },
             nextTrack: { handle.nextTrack() },
@@ -98,4 +94,22 @@ public final class Playback: Sendable, Observable {
         // periphery:ignore
         public static let stub = Playback()
     #endif
+}
+
+extension Playback {
+    /// Send the absolute transport command for a play/pause press: pause
+    /// while playing or loading (the transport shows the pause glyph through
+    /// a load), resume while paused, nothing while stopped — there is no
+    /// track to act on, and `resume` would also tear down an active import
+    /// preview.
+    public func playPause(for nowPlaying: NowPlaying) {
+        switch nowPlaying {
+        case .playing, .loading:
+            pause()
+        case .paused:
+            resume()
+        case .stopped:
+            break
+        }
+    }
 }

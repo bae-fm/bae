@@ -114,7 +114,7 @@ struct AlbumDetailView: View {
                             )
                         },
                         onTogglePlayPause: {
-                            playback.togglePlayPause()
+                            playback.playPause(for: playbackStore.nowPlaying)
                         },
                         onAddNext: { trackId in
                             queue.addNext([trackId])

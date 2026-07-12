@@ -64,10 +64,10 @@
                         preview: { $0.previewTogglePause() },
                         library: { $0.pause() }
                     ),
-                    toggle: command(
-                        preview: { $0.previewTogglePause() },
-                        library: { $0.togglePlayPause() }
-                    ),
+                    toggle: { [weak self] in
+                        self?.handleToggleCommand()
+                            ?? .noActionableNowPlayingItem
+                    },
                     next: command(
                         preview: { $0.previewStop() },
                         library: { $0.nextTrack() }
@@ -118,6 +118,23 @@
             }
             else {
                 library(playback)
+            }
+            return .success
+        }
+
+        private func handleToggleCommand() -> MPRemoteCommandHandlerStatus {
+            guard let activeSession,
+                let playback = activeSession.playback,
+                let previewAudio = activeSession.previewAudio,
+                let playbackStore = activeSession.playbackStore
+            else {
+                return .noActionableNowPlayingItem
+            }
+            if isShowingPreview {
+                previewAudio.previewTogglePause()
+            }
+            else {
+                playback.playPause(for: playbackStore.nowPlaying)
             }
             return .success
         }

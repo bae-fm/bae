@@ -761,8 +761,6 @@ internal static class NativeBae
 
     internal static void PlayLibraryShuffled(AppHandle handle) => handle.PlayLibraryShuffled();
 
-    internal static void PlayPause(AppHandle handle) => handle.TogglePlayPause();
-
     internal static void Pause(AppHandle handle) => handle.Pause();
 
     internal static void Resume(AppHandle handle) => handle.Resume();
