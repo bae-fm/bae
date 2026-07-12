@@ -11,34 +11,10 @@ final class Discogs: Sendable, Observable {
     let removeDiscogsToken: @Sendable () throws -> Void
     let getDiscogsToken: @Sendable () throws -> String?
 
-    init(
-        saveDiscogsToken:
-            @escaping @Sendable (String) async throws ->
-            BridgeDiscogsSaveOutcome = {
-                _ in .valid
-            },
-        revalidateDiscogsToken: @escaping @Sendable () async throws -> Void = {
-        },
-        removeDiscogsToken: @escaping @Sendable () throws -> Void = {},
-        getDiscogsToken: @escaping @Sendable () throws -> String? = { nil }
-    ) {
-        self.saveDiscogsToken = saveDiscogsToken
-        self.revalidateDiscogsToken = revalidateDiscogsToken
-        self.removeDiscogsToken = removeDiscogsToken
-        self.getDiscogsToken = getDiscogsToken
+    init(handle: any AppHandleProtocol) {
+        saveDiscogsToken = { try await handle.saveDiscogsToken(token: $0) }
+        revalidateDiscogsToken = { try await handle.revalidateDiscogsToken() }
+        removeDiscogsToken = { try handle.removeDiscogsToken() }
+        getDiscogsToken = { try handle.getDiscogsToken() }
     }
-
-    convenience init(handle: any AppHandleProtocol) {
-        self.init(
-            saveDiscogsToken: { try await handle.saveDiscogsToken(token: $0) },
-            revalidateDiscogsToken: {
-                try await handle.revalidateDiscogsToken()
-            },
-            removeDiscogsToken: { try handle.removeDiscogsToken() },
-            getDiscogsToken: { try handle.getDiscogsToken() }
-        )
-    }
-
-    // periphery:ignore
-    static let stub = Discogs()
 }
