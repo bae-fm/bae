@@ -184,8 +184,10 @@ public final class Sync: Sendable, Observable {
         )
     }
 
-    // periphery:ignore
-    public static let stub = Sync()
+    #if DEBUG
+        // periphery:ignore
+        public static let stub = Sync()
+    #endif
 
     /// Generate a fresh restore code and persist it to iCloud Keychain
     /// against `libraryId`. Background-detached; errors surface through

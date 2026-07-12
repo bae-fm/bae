@@ -91,8 +91,10 @@ extension View {
     }
 }
 
-#Preview("Theme Test") {
-    Text("Hello")
-        .padding()
-        .background(Theme.background)
-}
+#if DEBUG
+    #Preview("Theme Test") {
+        Text("Hello")
+            .padding()
+            .background(Theme.background)
+    }
+#endif

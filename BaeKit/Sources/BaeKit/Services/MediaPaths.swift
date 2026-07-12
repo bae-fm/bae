@@ -138,10 +138,12 @@ public final class MediaPaths: Sendable, Observable {
         }
     #endif
 
-    // periphery:ignore
-    /// All-no-op instance for SwiftUI previews. Returns nil paths/bytes;
-    /// previews don't have a live library to read from.
-    public static let stub = MediaPaths()
+    #if DEBUG
+        // periphery:ignore
+        /// All-no-op instance for SwiftUI previews. Returns nil paths/bytes;
+        /// previews don't have a live library to read from.
+        public static let stub = MediaPaths()
+    #endif
 
     /// Decoded library image for `source` at `pointSize`, reading from the cache
     /// when present and otherwise fetching the bytes (an image ref or a gallery

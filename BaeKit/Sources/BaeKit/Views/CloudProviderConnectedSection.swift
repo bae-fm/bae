@@ -56,24 +56,26 @@ public struct CloudProviderConnectedSection: View {
     }
 }
 
-// MARK: - Previews
+#if DEBUG
+    // MARK: - Previews
 
-#Preview("Sync Connected - S3") {
-    Form {
-        Section("Sync") {
-            CloudProviderConnectedSection(
-                config: BridgeSyncConfig(
-                    provider: .s3(
-                        bucket: "my-bucket",
-                        region: "us-east-1",
-                        endpoint: "https://s3.example.com"
+    #Preview("Sync Connected - S3") {
+        Form {
+            Section("Sync") {
+                CloudProviderConnectedSection(
+                    config: BridgeSyncConfig(
+                        provider: .s3(
+                            bucket: "my-bucket",
+                            region: "us-east-1",
+                            endpoint: "https://s3.example.com"
+                        ),
+                        cloudAccountDisplay: "s3://my-bucket"
                     ),
-                    cloudAccountDisplay: "s3://my-bucket"
-                ),
-                onDisconnect: {},
-            )
+                    onDisconnect: {},
+                )
+            }
         }
+        .formStyle(.grouped)
+        .frame(width: 500, height: 300)
     }
-    .formStyle(.grouped)
-    .frame(width: 500, height: 300)
-}
+#endif

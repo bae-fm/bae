@@ -81,6 +81,8 @@ public final class Queue: Sendable, Observable {
         )
     }
 
-    // periphery:ignore
-    public static let stub = Queue()
+    #if DEBUG
+        // periphery:ignore
+        public static let stub = Queue()
+    #endif
 }

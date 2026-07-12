@@ -33,7 +33,9 @@ import Foundation
             )
         }
 
-        // periphery:ignore
-        public static let stub = PreviewAudio()
+        #if DEBUG
+            // periphery:ignore
+            public static let stub = PreviewAudio()
+        #endif
     }
 #endif

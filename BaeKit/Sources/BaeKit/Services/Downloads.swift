@@ -50,6 +50,8 @@ public final class Downloads: Sendable, Observable {
         )
     }
 
-    // periphery:ignore
-    public static let stub = Downloads()
+    #if DEBUG
+        // periphery:ignore
+        public static let stub = Downloads()
+    #endif
 }

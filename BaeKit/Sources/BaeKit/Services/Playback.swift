@@ -98,6 +98,8 @@ public final class Playback: Sendable, Observable {
         )
     }
 
-    // periphery:ignore
-    public static let stub = Playback()
+    #if DEBUG
+        // periphery:ignore
+        public static let stub = Playback()
+    #endif
 }
