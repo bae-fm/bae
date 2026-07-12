@@ -176,20 +176,6 @@ impl CategorizedFiles {
     }
 }
 
-/// Commit-ready release data: the parsed DB-shape album/release/tracks plus
-/// the raw JSON pairs for archival. Produced by `commit_mb_release` /
-/// `commit_discogs_release` on the worker side. Prefetch returns
-/// `ImportSearchReleaseDetail` directly and never builds this struct —
-/// the picker doesn't need the DB shape.
-#[derive(Debug, Clone)]
-pub struct PreparedRelease {
-    pub source: crate::import::types::MetadataSource,
-    pub release_id: String,
-    pub parsed: crate::import::ParsedAlbum,
-    /// `(source_name, raw_json)` pairs for the `release_metadata` table.
-    pub metadata_pairs: Vec<(String, String)>,
-}
-
 /// A leaf folder that looks like a release (it has audio) but failed
 /// validation: corrupt or zero-byte audio, a corrupt image, or a CUE that
 /// references missing audio. Carries no files or identify state — it can't be

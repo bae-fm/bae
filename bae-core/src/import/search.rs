@@ -402,6 +402,18 @@ pub async fn prefetch_mb_release(
     build_mb_detail(release_id, &response, cover_art)
 }
 
+/// Commit-ready release data: the parsed DB-shape album/release/tracks plus
+/// the raw JSON pairs for archival. Produced by `commit_mb_release` /
+/// `commit_discogs_release` on the worker side. Prefetch returns
+/// `ImportSearchReleaseDetail` directly and never builds this struct — the
+/// picker doesn't need the DB shape.
+#[derive(Debug, Clone)]
+pub struct PreparedRelease {
+    pub parsed: crate::import::ParsedAlbum,
+    /// `(source_name, raw_json)` pairs for the `release_metadata` table.
+    pub metadata_pairs: Vec<(String, String)>,
+}
+
 /// Commit path for MusicBrainz: fetch + Discogs cross-ref + map to DB shape.
 /// Cross-ref runs only here because pressing-level Discogs IDs are commit-only
 /// — the picker never reads them. The worker consumes `parsed` and
@@ -410,7 +422,7 @@ pub async fn commit_mb_release(
     library_manager: &crate::library::LibraryManager,
     release_id: &str,
     discogs_client: Option<&DiscogsClient>,
-) -> Result<crate::import::folder_scanner::PreparedRelease, ImportError> {
+) -> Result<PreparedRelease, ImportError> {
     let (response, discogs_url, mut metadata_pairs) =
         crate::import::musicbrainz_mapper::fetch_mb_response(release_id).await?;
     let discogs_release = match (discogs_client, discogs_url.as_deref()) {
@@ -432,9 +444,7 @@ pub async fn commit_mb_release(
         library_manager.clock().as_ref(),
         library_manager.ids().as_ref(),
     )?;
-    Ok(crate::import::folder_scanner::PreparedRelease {
-        source: MetadataSource::MusicBrainz,
-        release_id: release_id.to_string(),
+    Ok(PreparedRelease {
         parsed,
         metadata_pairs,
     })
@@ -534,12 +544,10 @@ pub async fn commit_discogs_release(
     release_id: &str,
     clock: &dyn coven::Clock,
     ids: &dyn coven::IdProvider,
-) -> Result<crate::import::folder_scanner::PreparedRelease, ImportError> {
+) -> Result<PreparedRelease, ImportError> {
     let (parsed, metadata_pairs) =
         crate::import::commit::fetch_and_map_discogs(client, release_id, clock, ids).await?;
-    Ok(crate::import::folder_scanner::PreparedRelease {
-        source: MetadataSource::Discogs,
-        release_id: release_id.to_string(),
+    Ok(PreparedRelease {
         parsed,
         metadata_pairs,
     })

@@ -1411,7 +1411,7 @@ pub(crate) fn common_ancestor<'a>(a: &'a Path, b: &Path) -> &'a Path {
 pub(crate) async fn prepare_release(
     library_manager: &LibraryManager,
     release_ref: &MetadataRef,
-) -> Result<crate::import::folder_scanner::PreparedRelease, crate::import::ImportError> {
+) -> Result<crate::import::search::PreparedRelease, crate::import::ImportError> {
     match release_ref.source {
         MetadataSource::MusicBrainz => {
             let discogs_client = library_manager.discogs_client()?;
