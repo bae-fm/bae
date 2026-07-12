@@ -256,17 +256,21 @@ async fn wait_for_mute(
 /// What a track boundary looked like on the wire. A *gapless* handoff crosses
 /// inside the running stream: `handle_track_crossed` reports the finishing
 /// track's `DecodeStats` but no `TrackCompleted` (that fires only when nothing
-/// is staged and the stream rebuilds). So `completed_for_finishing == false`
-/// with `decode_stats_for_finishing == true` is the gapless signature.
+/// is staged and the stream rebuilds), and the incoming track never surfaces a
+/// `Loading` state (the rebuild path's UI arc). So `completed_for_finishing ==
+/// false` with `decode_stats_for_finishing == true` and `loading_for_incoming ==
+/// false` is the gapless signature.
 struct BoundaryOutcome {
     decode_stats_for_finishing: bool,
     completed_for_finishing: bool,
+    loading_for_incoming: bool,
     reached_incoming: bool,
 }
 
 /// Drain progress until `incoming` reaches Playing (or timeout), recording
-/// whether `finishing`'s DecodeStats and/or TrackCompleted were seen along the
-/// way — i.e. whether the boundary was gapless or a rebuild.
+/// whether `finishing`'s DecodeStats and/or TrackCompleted, and any Loading
+/// state for `incoming`, were seen along the way — i.e. whether the boundary was
+/// gapless or a rebuild.
 async fn observe_boundary(
     progress_rx: &mut tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
     finishing: &str,
@@ -277,6 +281,7 @@ async fn observe_boundary(
     let mut outcome = BoundaryOutcome {
         decode_stats_for_finishing: false,
         completed_for_finishing: false,
+        loading_for_incoming: false,
         reached_incoming: false,
     };
     while Instant::now() < deadline {
@@ -286,6 +291,11 @@ async fn observe_boundary(
             }
             Ok(Some(PlaybackProgress::TrackCompleted { track_id })) if track_id == finishing => {
                 outcome.completed_for_finishing = true;
+            }
+            Ok(Some(PlaybackProgress::StateChanged {
+                state: PlaybackState::Loading { track_id, .. },
+            })) if track_id == incoming => {
+                outcome.loading_for_incoming = true;
             }
             Ok(Some(PlaybackProgress::StateChanged {
                 state: PlaybackState::Playing { track_info, .. },
@@ -1782,6 +1792,11 @@ async fn gapless_boundary_hands_off_without_rebuild() {
         !outcome.completed_for_finishing,
         "a gapless handoff must not emit TrackCompleted for the finishing track — \
          that event only fires on the stream-rebuild path"
+    );
+    assert!(
+        !outcome.loading_for_incoming,
+        "a gapless handoff must not emit a Loading state for the incoming track — \
+         the staged next plays straight through, only the stream-rebuild path shows Loading"
     );
 
     let position_ms =
@@ -5187,6 +5202,54 @@ async fn seek_immediately_after_playing_lands_and_plays_over_sparse_buffer() {
     assert!(
         p2 > p1,
         "audio plays after an immediate seek (got {p1}ms then {p2}ms)"
+    );
+}
+
+/// A seek into an unbuffered region surfaces a buffering state before it
+/// confirms: the seek target shows as `Loading { resolved: Some(..) }` (the
+/// metadata is already known — this is a seek, not a fresh play), and `Seeked`
+/// follows only once the demanded window lands and the ready-watcher fires. A
+/// fully-buffered file already has the window, so this arc only appears over a
+/// sparse buffer.
+#[tokio::test(flavor = "multi_thread")]
+async fn seek_into_an_unbuffered_region_emits_resolved_loading_before_seeked() {
+    let mut playback = MultiWindowPlayback::new("multi-window-seek-loading").await;
+    let last_track = playback.track_ids[2].clone();
+    playback.play_and_wait(&last_track).await;
+
+    // Seek forward into territory the demand-driven fill has not fetched yet.
+    playback.playback_handle.seek(Duration::from_secs(40));
+
+    let deadline = Instant::now() + Duration::from_secs(20);
+    let mut saw_loading = false;
+    let mut saw_seeked = false;
+    while Instant::now() < deadline && !saw_seeked {
+        match timeout(Duration::from_millis(200), playback.progress_rx.recv()).await {
+            Ok(Some(PlaybackProgress::StateChanged {
+                state:
+                    PlaybackState::Loading {
+                        track_id,
+                        resolved: Some(_),
+                    },
+            })) if track_id == last_track => {
+                saw_loading = true;
+            }
+            Ok(Some(PlaybackProgress::Seeked { track_id, .. })) if track_id == last_track => {
+                assert!(
+                    saw_loading,
+                    "a resolved Loading must arrive before Seeked on a seek into an unbuffered region"
+                );
+                saw_seeked = true;
+            }
+            Ok(Some(_)) => continue,
+            Ok(None) => break,
+            Err(_) => continue,
+        }
+    }
+    assert!(saw_loading, "the seek must emit a resolved Loading state");
+    assert!(
+        saw_seeked,
+        "the seek must emit Seeked once the window lands"
     );
 }
 

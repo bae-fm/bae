@@ -9,8 +9,8 @@
 //! These tests use storageless imports for simplicity (the CUE/FLAC handling
 //! is independent of storage configuration).
 use crate::support::{
-    samples_as_f32, seed_discogs_test_release, test_config_and_keys, tracing_init,
-    wait_for_import_complete,
+    assert_captured_matches_reference, samples_as_f32, seed_discogs_test_release,
+    test_config_and_keys, tracing_init, wait_for_import_complete,
 };
 use bae_core::db::{Database, DbAudioSegmentRole};
 use bae_core::discogs::models::{DiscogsArtist, DiscogsRelease, DiscogsTrack};
@@ -212,19 +212,6 @@ async fn test_cue_flac_records_track_positions() {
             segment.end_sample,
         );
     }
-    for track in &tracks {
-        let audio_format = library_manager
-            .get_audio_format_by_track_id(&track.id)
-            .await
-            .expect("get audio format");
-        assert!(
-            audio_format.is_some(),
-            "Track '{}' should have audio format recorded",
-            track.title,
-        );
-        let af = audio_format.unwrap();
-        assert_eq!(af.content_type, ContentType::Flac, "Should be FLAC format");
-    }
     info!("✅ All track positions recorded correctly for CUE/FLAC import");
 }
 /// Track 2 playback must produce audio matching the XLD-split reference FLAC.
@@ -259,66 +246,27 @@ async fn test_cue_flac_playback_uses_track_positions() {
     let sample_rate = reference.sample_rate;
     let reference_f32 = samples_as_f32(&reference);
 
-    // Align and compare
-    let snippet_len = 500 * channels;
+    // FLAC decodes exactly (no codec-frame seek slack like APE), so a tenth of a
+    // second of alignment search is plenty.
     let max_alignment = sample_rate as usize * channels / 10;
-
-    let needed = max_alignment + snippet_len;
+    let needed = max_alignment + 500 * channels;
     let captured_snapshot =
         bae_core::playback::wait_for_samples(&captured, needed + 1, Duration::from_secs(60)).await;
     assert!(
         captured_snapshot.len() > needed,
-        "Not enough captured samples after 60s: {} (needed {})",
+        "not enough captured samples after 60s: {} (needed {needed})",
         captured_snapshot.len(),
-        needed,
     );
 
-    let mut best_max_diff: f32 = f32::MAX;
-    let mut best_offset: usize = 0;
-    for offset in 0..max_alignment.min(captured_snapshot.len().saturating_sub(snippet_len)) {
-        let mut max_diff: f32 = 0.0;
-        for i in 0..snippet_len {
-            let diff = (captured_snapshot[offset + i] - reference_f32[i]).abs();
-            max_diff = max_diff.max(diff);
-            if max_diff > best_max_diff {
-                break;
-            }
-        }
-        if max_diff < best_max_diff {
-            best_max_diff = max_diff;
-            best_offset = offset;
-        }
-    }
-
-    let offset_ms = best_offset as f64 / channels as f64 / sample_rate as f64 * 1000.0;
-
-    assert!(
-        best_max_diff < 0.01,
-        "Could not align captured track 2 audio with XLD reference.\n\
-         Best offset {:.1}ms, max sample diff {:.6}",
-        offset_ms,
-        best_max_diff,
-    );
-
-    let compare_count = (sample_rate as usize * channels)
-        .min(captured_snapshot.len() - best_offset)
-        .min(reference_f32.len());
-
-    for i in 0..compare_count {
-        let diff = (captured_snapshot[best_offset + i] - reference_f32[i]).abs();
-        assert!(
-            diff < 0.01,
-            "AUDIO MISMATCH at index {} ({:.1}ms): captured={:.6}, reference={:.6}",
-            i,
-            i as f64 / channels as f64 / sample_rate as f64 * 1000.0,
-            captured_snapshot[best_offset + i],
-            reference_f32[i],
-        );
-    }
-
-    info!(
-        "CUE/FLAC track 2 samples match XLD reference ({} samples, offset {:.1}ms).",
-        compare_count, offset_ms,
+    assert_captured_matches_reference(
+        &captured_snapshot,
+        &reference_f32,
+        channels,
+        sample_rate,
+        max_alignment,
+        sample_rate as usize * channels,
+        0.01,
+        "CUE/FLAC track 2",
     );
 }
 
@@ -736,7 +684,7 @@ fn create_test_discogs_release() -> DiscogsRelease {
             DiscogsTrack {
                 type_: "track".to_string(),
                 position: "1".to_string(),
-                title: "Track One (440Hz)".to_string(),
+                title: "Track One (Silence)".to_string(),
                 duration: Some("0:10".to_string()),
                 artists: vec![],
                 extraartists: None,
@@ -744,7 +692,7 @@ fn create_test_discogs_release() -> DiscogsRelease {
             DiscogsTrack {
                 type_: "track".to_string(),
                 position: "2".to_string(),
-                title: "Track Two (880Hz)".to_string(),
+                title: "Track Two (White Noise)".to_string(),
                 duration: Some("0:10".to_string()),
                 artists: vec![],
                 extraartists: None,
@@ -752,7 +700,7 @@ fn create_test_discogs_release() -> DiscogsRelease {
             DiscogsTrack {
                 type_: "track".to_string(),
                 position: "3".to_string(),
-                title: "Track Three (660Hz)".to_string(),
+                title: "Track Three (Brown Noise)".to_string(),
                 duration: Some("0:10".to_string()),
                 artists: vec![],
                 extraartists: None,

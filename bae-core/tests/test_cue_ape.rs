@@ -7,8 +7,8 @@
 //! - Store correct per-track durations (NOT the full file duration)
 //! - Enable playback of individual tracks via full-file decode with seek/stop
 use crate::support::{
-    samples_as_f32, seed_discogs_test_release, test_config_and_keys, tracing_init,
-    wait_for_import_complete,
+    assert_captured_matches_reference, samples_as_f32, seed_discogs_test_release,
+    test_config_and_keys, tracing_init, wait_for_import_complete,
 };
 use bae_core::db::Database;
 use bae_core::discogs::models::{DiscogsArtist, DiscogsRelease, DiscogsTrack};
@@ -519,233 +519,80 @@ impl CueApeTestFixture {
 // Playback tests
 // ============================================================================
 
-/// Track 2 playback must produce audio matching the XLD-split reference FLAC.
-///
-/// Regression: without the duration fix, all tracks report the full file duration.
-/// This test goes further — it captures the actual audio samples and compares them
-/// against the ground truth reference.
+/// Direct playback of each CUE/APE track must produce audio matching its
+/// XLD-split reference FLAC: the track's sample window is decoded and trimmed to
+/// the right region, with no decode errors shifting the audio.
 #[tokio::test]
-async fn test_cue_ape_playback_uses_track_positions() {
+async fn test_cue_ape_track_playback_matches_reference() {
     use bae_core::audio_codec::decode_audio;
 
-    let mut fixture = CueApeTestFixture::with_capture()
-        .await
-        .unwrap_or_else(|e| panic!("failed to set up CUE/APE playback fixture: {e}"));
+    for (track_index, reference_file, label) in [
+        (0usize, "01 Test Artist - Track One.flac", "track 1"),
+        (1usize, "02 Test Artist - Track Two.flac", "track 2"),
+    ] {
+        let mut fixture = CueApeTestFixture::with_capture()
+            .await
+            .unwrap_or_else(|e| panic!("failed to set up CUE/APE playback fixture: {e}"));
 
-    let track_id = fixture.track_ids[1].clone();
+        let track_id = fixture.track_ids[track_index].clone();
+        fixture.playback_handle.play(track_id.clone());
+        let captured = fixture.next_capture_stream().await;
 
-    // Play track 2
-    fixture.playback_handle.play(track_id.clone());
-    let captured = fixture.next_capture_stream().await;
-
-    // Wait for playback to start
-    let deadline = Instant::now() + Duration::from_secs(5);
-    let mut started = false;
-    while Instant::now() < deadline && !started {
-        let remaining = deadline - Instant::now();
-        match timeout(remaining, fixture.progress_rx.recv()).await {
-            Ok(Some(PlaybackProgress::StateChanged { state })) => {
-                if let PlaybackState::Playing { track_info, .. } = &state {
-                    if track_info.track_id == track_id {
-                        started = true;
+        // Wait for playback to start.
+        let deadline = Instant::now() + Duration::from_secs(5);
+        let mut started = false;
+        while Instant::now() < deadline && !started {
+            let remaining = deadline - Instant::now();
+            match timeout(remaining, fixture.progress_rx.recv()).await {
+                Ok(Some(PlaybackProgress::StateChanged { state })) => {
+                    if let PlaybackState::Playing { track_info, .. } = &state {
+                        if track_info.track_id == track_id {
+                            started = true;
+                        }
                     }
                 }
-            }
-            Ok(Some(_)) => continue,
-            Ok(None) | Err(_) => break,
-        }
-    }
-    assert!(started, "Track 2 should start playing");
-
-    // Decode XLD reference
-    let fixture_dir = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("tests")
-        .join("fixtures")
-        .join("cue_ape");
-    let reference_data =
-        std::fs::read(fixture_dir.join("02 Test Artist - Track Two.flac")).expect("read reference");
-    let reference = decode_audio(&reference_data, None, None).expect("decode reference");
-    let channels = reference.channels as usize;
-    let sample_rate = reference.sample_rate;
-    let reference_f32 = samples_as_f32(&reference);
-
-    // Align and compare
-    let snippet_len = 500 * channels;
-    // APE frames are ~73728 samples (~1.7s). FFmpeg's seek lands at a frame
-    // boundary, so the captured audio may start up to one frame before the
-    // track's CUE start time. Search within 2s for alignment.
-    let max_alignment = sample_rate as usize * channels * 2;
-
-    let needed = max_alignment + snippet_len;
-    let captured_snapshot =
-        bae_core::playback::wait_for_samples(&captured, needed + 1, Duration::from_secs(60)).await;
-    assert!(
-        captured_snapshot.len() > needed,
-        "Not enough captured samples after 60s: {} (needed {})",
-        captured_snapshot.len(),
-        needed,
-    );
-
-    let mut best_max_diff: f32 = f32::MAX;
-    let mut best_offset: usize = 0;
-    for offset in 0..max_alignment.min(captured_snapshot.len().saturating_sub(snippet_len)) {
-        let mut max_diff: f32 = 0.0;
-        for i in 0..snippet_len {
-            let diff = (captured_snapshot[offset + i] - reference_f32[i]).abs();
-            max_diff = max_diff.max(diff);
-            if max_diff > best_max_diff {
-                break;
+                Ok(Some(_)) => continue,
+                Ok(None) | Err(_) => break,
             }
         }
-        if max_diff < best_max_diff {
-            best_max_diff = max_diff;
-            best_offset = offset;
-        }
-    }
+        assert!(started, "{label} should start playing");
 
-    let offset_ms = best_offset as f64 / channels as f64 / sample_rate as f64 * 1000.0;
+        let fixture_dir = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("tests")
+            .join("fixtures")
+            .join("cue_ape");
+        let reference_data =
+            std::fs::read(fixture_dir.join(reference_file)).expect("read reference");
+        let reference = decode_audio(&reference_data, None, None).expect("decode reference");
+        let channels = reference.channels as usize;
+        let sample_rate = reference.sample_rate;
+        let reference_f32 = samples_as_f32(&reference);
 
-    assert!(
-        best_max_diff < 0.01,
-        "Could not align captured track 2 audio with XLD reference within 100ms.\n\
-         Best offset {:.1}ms, max sample diff {:.6}",
-        offset_ms,
-        best_max_diff,
-    );
-
-    let compare_count = (sample_rate as usize * channels)
-        .min(captured_snapshot.len() - best_offset)
-        .min(reference_f32.len());
-
-    for i in 0..compare_count {
-        let diff = (captured_snapshot[best_offset + i] - reference_f32[i]).abs();
+        // APE frames are ~73728 samples (~1.7s). FFmpeg's seek lands at a frame
+        // boundary, so the captured audio may start up to one frame before the
+        // track's CUE start time. Search within 2s for alignment.
+        let max_alignment = sample_rate as usize * channels * 2;
+        let needed = max_alignment + 500 * channels;
+        let captured_snapshot =
+            bae_core::playback::wait_for_samples(&captured, needed + 1, Duration::from_secs(60))
+                .await;
         assert!(
-            diff < 0.01,
-            "AUDIO MISMATCH at index {} ({:.1}ms): captured={:.6}, reference={:.6}",
-            i,
-            i as f64 / channels as f64 / sample_rate as f64 * 1000.0,
-            captured_snapshot[best_offset + i],
-            reference_f32[i],
+            captured_snapshot.len() > needed,
+            "not enough captured samples after 60s for {label}: {} (needed {needed})",
+            captured_snapshot.len(),
+        );
+
+        assert_captured_matches_reference(
+            &captured_snapshot,
+            &reference_f32,
+            channels,
+            sample_rate,
+            max_alignment,
+            sample_rate as usize * channels,
+            0.01,
+            label,
         );
     }
-
-    info!(
-        "Track 2 samples match XLD reference ({} samples, offset {:.1}ms).",
-        compare_count, offset_ms,
-    );
-}
-
-/// Track 1 playback must produce audio matching the XLD-split reference FLAC.
-///
-/// If decode errors occur, the captured samples won't match the reference.
-#[tokio::test]
-async fn test_cue_ape_playback_no_decode_errors() {
-    use bae_core::audio_codec::decode_audio;
-
-    let mut fixture = CueApeTestFixture::with_capture()
-        .await
-        .unwrap_or_else(|e| panic!("failed to set up CUE/APE playback fixture: {e}"));
-
-    let track_id = fixture.track_ids[0].clone();
-
-    fixture.playback_handle.play(track_id.clone());
-    let captured = fixture.next_capture_stream().await;
-
-    // Wait for playback to start
-    let deadline = Instant::now() + Duration::from_secs(5);
-    let mut started = false;
-    while Instant::now() < deadline && !started {
-        let remaining = deadline - Instant::now();
-        match timeout(remaining, fixture.progress_rx.recv()).await {
-            Ok(Some(PlaybackProgress::StateChanged { state })) => {
-                if let PlaybackState::Playing { track_info, .. } = &state {
-                    if track_info.track_id == track_id {
-                        started = true;
-                    }
-                }
-            }
-            Ok(Some(_)) => continue,
-            Ok(None) | Err(_) => break,
-        }
-    }
-    assert!(started, "Track 1 should start playing");
-
-    // Decode XLD reference
-    let fixture_dir = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("tests")
-        .join("fixtures")
-        .join("cue_ape");
-    let reference_data =
-        std::fs::read(fixture_dir.join("01 Test Artist - Track One.flac")).expect("read reference");
-    let reference = decode_audio(&reference_data, None, None).expect("decode reference");
-    let channels = reference.channels as usize;
-    let sample_rate = reference.sample_rate;
-    let reference_f32 = samples_as_f32(&reference);
-
-    // Align and compare
-    let snippet_len = 500 * channels;
-    // APE frames are ~73728 samples (~1.7s). FFmpeg's seek lands at a frame
-    // boundary, so the captured audio may start up to one frame before the
-    // track's CUE start time. Search within 2s for alignment.
-    let max_alignment = sample_rate as usize * channels * 2;
-
-    let needed = max_alignment + snippet_len;
-    let captured_snapshot =
-        bae_core::playback::wait_for_samples(&captured, needed + 1, Duration::from_secs(60)).await;
-    assert!(
-        captured_snapshot.len() > needed,
-        "Not enough captured samples after 60s: {} (needed {})",
-        captured_snapshot.len(),
-        needed,
-    );
-
-    let mut best_max_diff: f32 = f32::MAX;
-    let mut best_offset: usize = 0;
-    for offset in 0..max_alignment.min(captured_snapshot.len().saturating_sub(snippet_len)) {
-        let mut max_diff: f32 = 0.0;
-        for i in 0..snippet_len {
-            let diff = (captured_snapshot[offset + i] - reference_f32[i]).abs();
-            max_diff = max_diff.max(diff);
-            if max_diff > best_max_diff {
-                break;
-            }
-        }
-        if max_diff < best_max_diff {
-            best_max_diff = max_diff;
-            best_offset = offset;
-        }
-    }
-
-    let offset_ms = best_offset as f64 / channels as f64 / sample_rate as f64 * 1000.0;
-
-    assert!(
-        best_max_diff < 0.01,
-        "Could not align captured track 1 audio with XLD reference.\n\
-         Best offset {:.1}ms, max sample diff {:.6}",
-        offset_ms,
-        best_max_diff,
-    );
-
-    let compare_count = (sample_rate as usize * channels)
-        .min(captured_snapshot.len() - best_offset)
-        .min(reference_f32.len());
-
-    for i in 0..compare_count {
-        let diff = (captured_snapshot[best_offset + i] - reference_f32[i]).abs();
-        assert!(
-            diff < 0.01,
-            "AUDIO MISMATCH at index {} ({:.1}ms): captured={:.6}, reference={:.6}",
-            i,
-            i as f64 / channels as f64 / sample_rate as f64 * 1000.0,
-            captured_snapshot[best_offset + i],
-            reference_f32[i],
-        );
-    }
-
-    info!(
-        "Track 1 samples match XLD reference ({} samples, offset {:.1}ms).",
-        compare_count, offset_ms,
-    );
 }
 
 /// Seeking to 27s in track 2 must produce audio matching the reference from that point.
@@ -903,145 +750,6 @@ async fn test_cue_ape_seek() {
     );
 }
 
-/// A seek must surface a buffering state, then confirm. The UI shows the seek
-/// target bar immediately as `Loading{resolved: Some(..)}`, and `Seeked` follows
-/// once the demanded window lands and the ready-watcher fires — the same
-/// Loading→Playing arc the play path uses. The old seek emitted no Loading and
-/// gated `Seeked` behind a fixed wait, so it never produced the Loading event.
-#[tokio::test]
-async fn test_cue_ape_seek_emits_loading_then_seeked() {
-    let mut fixture = CueApeTestFixture::with_capture()
-        .await
-        .unwrap_or_else(|e| panic!("failed to set up CUE/APE playback fixture: {e}"));
-
-    let track_id = fixture.track_ids[1].clone();
-    fixture.playback_handle.play(track_id.clone());
-    let _play_stream = fixture.next_capture_stream().await;
-
-    // Wait for playback to start.
-    let deadline = Instant::now() + Duration::from_secs(5);
-    let mut started = false;
-    while Instant::now() < deadline && !started {
-        let remaining = deadline - Instant::now();
-        match timeout(remaining, fixture.progress_rx.recv()).await {
-            Ok(Some(PlaybackProgress::StateChanged {
-                state: PlaybackState::Playing { .. },
-            })) => started = true,
-            Ok(Some(_)) => continue,
-            Ok(None) | Err(_) => break,
-        }
-    }
-    assert!(started, "Playback should start");
-
-    // Seek deep into the track.
-    fixture.playback_handle.seek(Duration::from_secs(27));
-    let _seek_stream = fixture.next_capture_stream().await;
-
-    // The seek must emit a resolved Loading for this track BEFORE Seeked.
-    let deadline = Instant::now() + Duration::from_secs(10);
-    let mut saw_loading = false;
-    let mut saw_seeked = false;
-    while Instant::now() < deadline && !saw_seeked {
-        let remaining = deadline - Instant::now();
-        match timeout(remaining, fixture.progress_rx.recv()).await {
-            Ok(Some(PlaybackProgress::StateChanged {
-                state:
-                    PlaybackState::Loading {
-                        track_id: ref lid,
-                        resolved: Some(_),
-                    },
-            })) if *lid == track_id => {
-                saw_loading = true;
-            }
-            Ok(Some(PlaybackProgress::Seeked {
-                track_id: ref sid, ..
-            })) if *sid == track_id => {
-                assert!(
-                    saw_loading,
-                    "Loading{{resolved}} must arrive before Seeked on a seek"
-                );
-                saw_seeked = true;
-            }
-            Ok(Some(_)) => continue,
-            Ok(None) | Err(_) => break,
-        }
-    }
-    assert!(saw_loading, "seek must emit a resolved Loading state");
-    assert!(saw_seeked, "seek must emit Seeked once the window lands");
-}
-
-/// Gapless survives a seek: after seeking near the end of track 1 (queued
-/// track 2), the auto-advance into track 2 must NOT emit a Loading — the staged
-/// next track is re-staged into the rebuilt stream, so the boundary advance
-/// plays through without a rebuild.
-#[tokio::test]
-async fn test_cue_ape_gapless_preserved_across_seek() {
-    let mut fixture = CueApeTestFixture::with_capture()
-        .await
-        .unwrap_or_else(|e| panic!("failed to set up CUE/APE playback fixture: {e}"));
-
-    let track1_id = fixture.track_ids[0].clone();
-    let track2_id = fixture.track_ids[1].clone();
-
-    fixture.playback_handle.play(track1_id.clone());
-    let _track1_play = fixture.next_capture_stream().await;
-    fixture
-        .playback_handle
-        .add_to_queue(vec![track2_id.clone()]);
-
-    // Wait for track 1 to start.
-    let deadline = Instant::now() + Duration::from_secs(5);
-    let mut started = false;
-    while Instant::now() < deadline && !started {
-        let remaining = deadline - Instant::now();
-        match timeout(remaining, fixture.progress_rx.recv()).await {
-            Ok(Some(PlaybackProgress::StateChanged { state })) => {
-                if let PlaybackState::Playing { track_info, .. } = &state {
-                    if track_info.track_id == track1_id {
-                        started = true;
-                    }
-                }
-            }
-            Ok(Some(_)) => continue,
-            Ok(None) | Err(_) => break,
-        }
-    }
-    assert!(started, "Track 1 should start playing");
-
-    // Seek near the end of track 1 so it completes quickly and auto-advances.
-    fixture.playback_handle.seek(Duration::from_secs(28));
-    let _seek_stream = fixture.next_capture_stream().await;
-
-    // Wait for track 2 via auto-advance; assert no Loading for track 2 appears
-    // (a gapless advance plays straight through without rebuilding the stream).
-    let deadline = Instant::now() + Duration::from_secs(15);
-    let mut track2_started = false;
-    while Instant::now() < deadline {
-        let remaining = deadline - Instant::now();
-        match timeout(remaining, fixture.progress_rx.recv()).await {
-            Ok(Some(PlaybackProgress::StateChanged { state })) => match state {
-                PlaybackState::Loading {
-                    track_id: ref lid,
-                    resolved: Some(_),
-                } if *lid == track2_id => {
-                    panic!("gapless advance into track 2 must not emit Loading");
-                }
-                PlaybackState::Playing { track_info, .. } if track_info.track_id == track2_id => {
-                    track2_started = true;
-                    break;
-                }
-                _ => continue,
-            },
-            Ok(Some(_)) => continue,
-            Ok(None) | Err(_) => break,
-        }
-    }
-    assert!(
-        track2_started,
-        "Track 2 should auto-advance gaplessly after the seek"
-    );
-}
-
 /// Auto-advance must not replay audio from before the track boundary.
 ///
 /// The preload path must trim the decoder to the track's start sample
@@ -1135,104 +843,36 @@ async fn test_cue_ape_auto_advance_no_replay() {
     // Convert reference i32 to f32
     let reference_f32 = samples_as_f32(&reference);
 
-    // === COMPARE ===
     // The capture is one gapless stream: track 1's 28s→30s tail, then track 2.
-    // Find where track 2 aligns with the reference, then verify per-sample match
-    // with f32 tolerance. If the start-sample trim is broken, track 2's audio
-    // would be shifted and the alignment max-diff would exceed tolerance.
-    let snippet_len = 500 * channels;
     // ~2s of track 1's tail precedes track 2, plus APE frame alignment (~1.7s
     // frames, FFmpeg seeks to a frame boundary). Search within 5s so the
-    // alignment locks onto track 2's start past track 1's tail.
+    // alignment locks onto track 2's start past track 1's tail. If the
+    // start-sample trim is broken, track 2's audio would be shifted and the
+    // alignment would exceed tolerance.
     let max_alignment = sample_rate as usize * channels * 5;
-
-    let needed = max_alignment + snippet_len;
+    let needed = max_alignment + 500 * channels;
     let captured_snapshot =
         bae_core::playback::wait_for_samples(&captured, needed + 1, Duration::from_secs(60)).await;
     assert!(
         captured_snapshot.len() > needed,
-        "Not enough captured samples after 60s: {} (needed {})",
+        "not enough captured samples after 60s: {} (needed {needed})",
         captured_snapshot.len(),
-        needed,
-    );
-
-    // Alignment search using per-sample max-diff instead of SAD.
-    // At the correct offset, every sample should be within f32 tolerance.
-    // At the wrong offset, samples will have large differences.
-    let mut best_max_diff: f32 = f32::MAX;
-    let mut best_offset: usize = 0;
-    for offset in 0..max_alignment.min(captured_snapshot.len().saturating_sub(snippet_len)) {
-        let mut max_diff: f32 = 0.0;
-        for i in 0..snippet_len {
-            let diff = (captured_snapshot[offset + i] - reference_f32[i]).abs();
-            max_diff = max_diff.max(diff);
-            if max_diff > best_max_diff {
-                break;
-            }
-        }
-        if max_diff < best_max_diff {
-            best_max_diff = max_diff;
-            best_offset = offset;
-        }
-    }
-
-    let offset_ms = best_offset as f64 / channels as f64 / sample_rate as f64 * 1000.0;
-    info!(
-        "Alignment: offset={} ({:.1}ms), max_diff={:.6}",
-        best_offset, offset_ms, best_max_diff
     );
 
     // The streaming AVIO decoder's SwrContext f32 output can differ slightly from
-    // decode_audio's i32→f32 path for the same audio data. This is an FFmpeg internal
-    // difference, not a bug. The decoder-level test (test_cue_ape_track2_samples_match_xld_reference)
-    // verifies exact sample correctness. Here we use a tolerance that catches the real
-    // bug (wrong track audio, diffs > 0.1) while allowing f32 conversion noise.
-    let tolerance = 0.01;
-
-    assert!(
-        best_max_diff < tolerance,
-        "BUG: Could not align captured audio with XLD reference within 100ms.\n\
-         Best offset {:.1}ms, max sample diff {:.6} (tolerance {:.6}).\n\
-         the start-sample trim is likely not being applied during preload.",
-        offset_ms,
-        best_max_diff,
-        tolerance,
-    );
-
-    // Compare 1 second at the aligned offset
-    let compare_count = (sample_rate as usize * channels)
-        .min(captured_snapshot.len() - best_offset)
-        .min(reference_f32.len());
-
-    let mut mismatches = 0;
-    let mut max_diff: f32 = 0.0;
-    let mut first_mismatch = None;
-    for i in 0..compare_count {
-        let actual = captured_snapshot[best_offset + i];
-        let truth = reference_f32[i];
-        let diff = (actual - truth).abs();
-        if diff > tolerance {
-            mismatches += 1;
-            max_diff = max_diff.max(diff);
-            if first_mismatch.is_none() {
-                first_mismatch = Some((i, actual, truth));
-            }
-        }
-    }
-
-    if mismatches > 0 {
-        let (idx, actual, truth) = first_mismatch.unwrap();
-        let mismatch_ms = idx as f64 / channels as f64 / sample_rate as f64 * 1000.0;
-        panic!(
-            "AUDIO MISMATCH: {} of {} samples differ vs XLD reference!\n\
-             First at index {} ({:.1}ms): actual={:.6}, reference={:.6}, max_diff={:.6}",
-            mismatches, compare_count, idx, mismatch_ms, actual, truth, max_diff
-        );
-    }
-
-    info!(
-        "All {} samples match XLD reference after auto-advance (offset {:.1}ms).",
-        compare_count, offset_ms,
+    // decode_audio's i32→f32 path for the same audio; the decoder-level test
+    // (test_cue_ape_track2_samples_match_xld_reference) verifies exact sample
+    // correctness. Here the 0.01 tolerance catches the real bug (wrong track
+    // audio, diffs > 0.1) while allowing that f32 conversion noise.
+    assert_captured_matches_reference(
+        &captured_snapshot,
+        &reference_f32,
+        channels,
+        sample_rate,
+        max_alignment,
+        sample_rate as usize * channels,
+        0.01,
+        "track 2 after auto-advance",
     );
 }
 
@@ -1358,51 +998,15 @@ async fn test_cue_ape_next_track() {
         track2_sample_count,
     );
 
-    let track2_end = track2_sample_count;
-    let alignment_limit = max_alignment.min(track2_end - snippet_len);
-
-    let mut best_max_diff: f32 = f32::MAX;
-    let mut best_offset: usize = 0;
-    for offset in 0..=alignment_limit {
-        let mut max_diff: f32 = 0.0;
-        for i in 0..snippet_len {
-            let diff = (captured_snapshot[offset + i] - reference_f32[i]).abs();
-            max_diff = max_diff.max(diff);
-            if max_diff > best_max_diff {
-                break;
-            }
-        }
-        if max_diff < best_max_diff {
-            best_max_diff = max_diff;
-            best_offset = offset;
-        }
-    }
-
-    let offset_ms = best_offset as f64 / channels as f64 / sample_rate as f64 * 1000.0;
-
-    assert!(
-        best_max_diff < 0.01,
-        "Could not align track 2 audio after Next with XLD reference.\n\
-         Best offset {:.1}ms, max sample diff {:.6}",
-        offset_ms,
-        best_max_diff,
-    );
-
-    let compare_count = track2_end - best_offset;
-
-    for i in 0..compare_count {
-        let diff = (captured_snapshot[best_offset + i] - reference_f32[i]).abs();
-        assert!(
-            diff < 0.01,
-            "AUDIO MISMATCH after Next at index {} ({:.1}ms)",
-            i,
-            i as f64 / channels as f64 / sample_rate as f64 * 1000.0,
-        );
-    }
-
-    info!(
-        "Track 2 after Next matches XLD reference ({} samples, offset {:.1}ms).",
-        compare_count, offset_ms,
+    assert_captured_matches_reference(
+        &captured_snapshot,
+        &reference_f32,
+        channels,
+        sample_rate,
+        max_alignment,
+        track2_sample_count,
+        0.01,
+        "track 2 after Next",
     );
 }
 
