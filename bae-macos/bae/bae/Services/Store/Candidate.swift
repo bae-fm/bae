@@ -87,7 +87,7 @@ struct Candidate: Equatable, Identifiable {
     /// Dynamic — mutated by the import-candidate projection or by views.
     var files: CandidateFiles
     var identifyState: IdentifyState = .idle
-    var importStatus: ImportStatus?
+    var importStatus: BridgeCandidateImportStatus?
     /// Whether the user manually skipped this candidate. Drives the import
     /// view's Skipped tab; flipped by the import-candidate projection once the
     /// skip toggle round-trips through core.

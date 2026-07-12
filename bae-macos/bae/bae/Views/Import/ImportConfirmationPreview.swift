@@ -14,7 +14,7 @@ enum ImportConfirmationPreview {
         trackCountMismatch: Bool = false,
         expectedTrackCount: UInt32 = 9,
         libraryStatus: LibraryStatus? = nil,
-        importStatus: ImportStatus? = nil,
+        importStatus: BridgeCandidateImportStatus? = nil,
         error: String? = nil,
         hasCoverOptions: Bool = false,
         importing: Bool = false,

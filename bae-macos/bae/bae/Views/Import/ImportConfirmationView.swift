@@ -51,7 +51,7 @@ struct ImportConfirmationView<CoverContent: View>: View {
     /// The candidate this pane confirms — routes the high-frequency loudness
     /// ticks to the leaf bar during the measuring-loudness phase.
     let candidateKey: String
-    let importStatus: ImportStatus?
+    let importStatus: BridgeCandidateImportStatus?
     /// Commit-time error written to the candidate (invalid edit shape, a
     /// failed `start_import` dispatch). Distinct from the
     /// `importStatus`-derived error, which the import pipeline emits once an
@@ -81,7 +81,7 @@ struct ImportConfirmationView<CoverContent: View>: View {
     }
 
     private var completedAlbumId: String? {
-        if case .complete(let albumId, _) = importStatus {
+        if case .complete(releaseId: _, albumId: let albumId) = importStatus {
             return albumId
         }
         return nil
@@ -92,7 +92,9 @@ struct ImportConfirmationView<CoverContent: View>: View {
     /// durably queued — this surfaces the remaining transfer instead of
     /// presenting a cloud-only import as fully landed.
     private var uploadProgress: BridgeUploadProgress? {
-        guard case .complete(_, let releaseId) = importStatus else {
+        guard
+            case .complete(releaseId: let releaseId, albumId: _) = importStatus
+        else {
             return nil
         }
         return outboxStore.progress(forRelease: releaseId)

@@ -862,15 +862,15 @@ enum PreviewData {
     ]
     .map(Candidate.init(bridge:))
 
-    static let importStatuses: [String: ImportStatus] = [
+    static let importStatuses: [String: BridgeCandidateImportStatus] = [
         "/Music/Downloads/Compilation Vol. 3": .importing(
             progressPercent: 45,
             step: .running(phase: .measuringLoudness)
         ),
         // A completed import — tabs under Added via its import status.
         "/Music/Downloads/EP Release": .complete(
-            albumId: "preview-album",
-            releaseId: "preview-release"
+            releaseId: "preview-release",
+            albumId: "preview-album"
         ),
     ]
 

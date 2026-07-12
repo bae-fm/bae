@@ -407,7 +407,7 @@ struct CandidateRow: View {
     /// Real filesystem path for Reveal in Finder. Always set for folder
     /// candidates.
     let revealPath: String?
-    let status: ImportStatus?
+    let status: BridgeCandidateImportStatus?
     /// The candidate was already imported from this folder (content-hash match),
     /// shown the same as an in-session completed import.
     let isAdded: Bool
@@ -462,7 +462,7 @@ struct CandidateRow: View {
             case .importing:
                 ProgressView()
                     .controlSize(.small)
-            case .complete(_, let releaseId):
+            case .complete(let releaseId, albumId: _):
                 // Imported, but the cloud upload may still be draining — show
                 // the transfer until the release's queue empties.
                 if outboxStore.progress(forRelease: releaseId) != nil {

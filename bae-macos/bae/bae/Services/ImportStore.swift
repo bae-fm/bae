@@ -223,14 +223,13 @@ class ImportStore {
             bridge: runtime.signalsToolbar
         )
         candidate.signals = runtime.signals.map(Signals.init(bridge:))
-        candidate.importStatus = runtime.importStatus.map(
-            ImportStatus.init(bridge:)
-        )
+        candidate.importStatus = runtime.importStatus
     }
 
     func removeLibraryStatus(releaseId: String) {
         sweepCandidates { candidate in
-            if case .complete(_, let completedRelease) = candidate.importStatus,
+            if case .complete(releaseId: let completedRelease, albumId: _) =
+                candidate.importStatus,
                 completedRelease == releaseId
             {
                 candidate.importStatus = nil

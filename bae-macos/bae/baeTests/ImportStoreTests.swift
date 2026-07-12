@@ -75,7 +75,7 @@ private func folderCandidate(
     name: String,
     skipped: Bool = false,
     isAdded: Bool = false,
-    importStatus: ImportStatus? = nil
+    importStatus: BridgeCandidateImportStatus? = nil
 ) -> Candidate {
     var candidate = Candidate(
         bridge: bridgeFolder(
@@ -110,7 +110,7 @@ struct ImportStoreRemovalTests {
     func releaseInvalidationClearsImportStatus() throws {
         let store = ImportStore()
         var candidate = makeCandidate("c1")
-        candidate.importStatus = .complete(albumId: "al-1", releaseId: "rel-1")
+        candidate.importStatus = .complete(releaseId: "rel-1", albumId: "al-1")
         store.folderCandidates["c1"] = candidate
 
         store.removeLibraryStatus(releaseId: "rel-1")
@@ -124,14 +124,14 @@ struct ImportStoreRemovalTests {
     func releaseInvalidationKeepsUnrelatedImportStatus() {
         let store = ImportStore()
         var candidate = makeCandidate("c1")
-        candidate.importStatus = .complete(albumId: "al-2", releaseId: "rel-2")
+        candidate.importStatus = .complete(releaseId: "rel-2", albumId: "al-2")
         store.folderCandidates["c1"] = candidate
 
         store.removeLibraryStatus(releaseId: "rel-1")
 
         #expect(
             store.folderCandidates["c1"]?.importStatus
-                == .complete(albumId: "al-2", releaseId: "rel-2")
+                == .complete(releaseId: "rel-2", albumId: "al-2")
         )
     }
 
@@ -140,10 +140,10 @@ struct ImportStoreRemovalTests {
     func releaseInvalidationClearsByReleaseId() throws {
         let store = ImportStore()
         var imported = makeCandidate("c1")
-        imported.importStatus = .complete(albumId: "al-1", releaseId: "rel-1")
+        imported.importStatus = .complete(releaseId: "rel-1", albumId: "al-1")
         store.folderCandidates["c1"] = imported
         var sibling = makeCandidate("c2")
-        sibling.importStatus = .complete(albumId: "al-1", releaseId: "rel-2")
+        sibling.importStatus = .complete(releaseId: "rel-2", albumId: "al-1")
         store.folderCandidates["c2"] = sibling
 
         store.removeLibraryStatus(releaseId: "rel-1")
@@ -153,7 +153,7 @@ struct ImportStoreRemovalTests {
         let unaffected = try #require(store.folderCandidates["c2"])
         #expect(
             unaffected.importStatus
-                == .complete(albumId: "al-1", releaseId: "rel-2")
+                == .complete(releaseId: "rel-2", albumId: "al-1")
         )
     }
 
@@ -291,7 +291,7 @@ struct ImportStoreBatchSnapshotTests {
         // A fresh candidate (no prior session state) takes its runtime from the
         // snapshot.
         #expect(
-            fresh.importStatus == .complete(albumId: "al-1", releaseId: "rel-1")
+            fresh.importStatus == .complete(releaseId: "rel-1", albumId: "al-1")
         )
         #expect(store.invalidCandidates["/w1/bad"] != nil)
     }
@@ -306,7 +306,7 @@ struct ImportStoreBatchSnapshotTests {
             name: "A"
         )
         existing.mode = .confirming
-        existing.importStatus = .complete(albumId: "al-1", releaseId: "rel-1")
+        existing.importStatus = .complete(releaseId: "rel-1", albumId: "al-1")
         existing.libraryStatuses = ["rel-1": makeStatus(albumId: "al-1")]
         store.folderCandidates["/w1/a"] = existing
 
@@ -335,7 +335,7 @@ struct ImportStoreBatchSnapshotTests {
         #expect(merged.mode == .confirming)
         #expect(
             merged.importStatus
-                == .complete(albumId: "al-1", releaseId: "rel-1")
+                == .complete(releaseId: "rel-1", albumId: "al-1")
         )
         #expect(merged.libraryStatuses["rel-1"] != nil)
         // Scan fields come from the incoming snapshot.
@@ -415,8 +415,8 @@ struct ImportStoreSingleSnapshotTests {
         )
         existing.mode = .confirming
         existing.importStatus = .complete(
-            albumId: "al-old",
-            releaseId: "rel-old"
+            releaseId: "rel-old",
+            albumId: "al-old"
         )
         store.folderCandidates["/w1/a"] = existing
         store.invalidCandidates["/w1/a"] = bridgeInvalid(
@@ -449,7 +449,7 @@ struct ImportStoreSingleSnapshotTests {
         // so the runtime's import status wins over the carried one.
         #expect(
             merged.importStatus
-                == .complete(albumId: "al-new", releaseId: "rel-new")
+                == .complete(releaseId: "rel-new", albumId: "al-new")
         )
         #expect(store.invalidCandidates["/w1/a"] == nil)
     }
@@ -512,7 +512,7 @@ struct ImportStoreSingleSnapshotTests {
         )
         #expect(
             candidate.importStatus
-                == .complete(albumId: "al-1", releaseId: "rel-1")
+                == .complete(releaseId: "rel-1", albumId: "al-1")
         )
     }
 
@@ -535,7 +535,7 @@ struct ImportStoreSingleSnapshotTests {
 
         #expect(
             store.reIdentifyCandidates["reidentify:r1"]?.importStatus
-                == .complete(albumId: "al-1", releaseId: "rel-1")
+                == .complete(releaseId: "rel-1", albumId: "al-1")
         )
         #expect(store.folderCandidates["reidentify:r1"] == nil)
     }
@@ -552,7 +552,7 @@ struct ImportStoreTabTests {
             watchedFolderPath: "/w",
             name: "A",
             skipped: true,
-            importStatus: .complete(albumId: "al", releaseId: "rel")
+            importStatus: .complete(releaseId: "rel", albumId: "al")
         )
         #expect(store.tab(for: candidate) == .skipped)
     }
@@ -565,7 +565,7 @@ struct ImportStoreTabTests {
             folderPath: "/w/a",
             watchedFolderPath: "/w",
             name: "A",
-            importStatus: .complete(albumId: "al", releaseId: "rel")
+            importStatus: .complete(releaseId: "rel", albumId: "al")
         )
         #expect(store.tab(for: candidate) == .added)
     }
@@ -622,7 +622,7 @@ struct ImportStoreGroupingTests {
             folderPath: "/w1/done",
             watchedFolderPath: "/w1",
             name: "Done",
-            importStatus: .complete(albumId: "al", releaseId: "rel")
+            importStatus: .complete(releaseId: "rel", albumId: "al")
         )
         store.folderCandidates["/w2/gamma"] = folderCandidate(
             folderPath: "/w2/gamma",
