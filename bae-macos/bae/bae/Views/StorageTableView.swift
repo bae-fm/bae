@@ -789,8 +789,7 @@ extension StorageTableView.Coordinator: NSMenuDelegate {
         title: String,
         action: Selector,
         symbol: String,
-        representedObject: Any,
-        isEnabled: Bool = true
+        representedObject: Any
     ) {
         let item = NSMenuItem(title: title, action: action, keyEquivalent: "")
         item.image = NSImage(
@@ -799,7 +798,6 @@ extension StorageTableView.Coordinator: NSMenuDelegate {
         )
         item.target = self
         item.representedObject = representedObject
-        item.isEnabled = isEnabled
         menu.addItem(item)
     }
 
