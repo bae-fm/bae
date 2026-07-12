@@ -134,10 +134,224 @@ pub struct AutomationCandidateCommon {
 
 #[derive(Debug, Clone, Default, Serialize)]
 pub struct AutomationCandidateRuntime {
-    pub identify_state: Option<String>,
-    pub toolbar: Option<Vec<String>>,
-    pub signals: Option<String>,
+    pub identify_state: Option<AutomationIdentifyState>,
+    pub toolbar: Option<Vec<AutomationToolbarSignal>>,
+    pub signals: Option<AutomationSignals>,
     pub progress: Option<AutomationImportProgress>,
+}
+
+/// Mirrors bae-core's `signals::LookupFailure`.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "snake_case", tag = "kind")]
+pub enum AutomationLookupFailure {
+    Network,
+    Provider { status: Option<u16> },
+    Timeout,
+    ArtworkAnalysis,
+    Diagnostic { detail: String },
+}
+
+/// Mirrors bae-core's `signals::SignalOrigin`.
+#[derive(Debug, Clone, Copy, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum AutomationSignalOrigin {
+    DiscToc,
+    CueSheet,
+    Artwork,
+    FolderName,
+    Filename,
+    TextFile,
+}
+
+/// Mirrors bae-core's `signals::SourcedValue`.
+#[derive(Debug, Clone, Serialize)]
+pub struct AutomationSourcedValue {
+    pub value: String,
+    pub origin: AutomationSignalOrigin,
+}
+
+/// Mirrors bae-core's `signals::DiscIdSignal`.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "snake_case", tag = "kind")]
+pub enum AutomationDiscIdSignal {
+    Computed {
+        disc_id: String,
+        track_count: u32,
+    },
+    Absent {
+        track_count: u32,
+    },
+    Failed {
+        failure: AutomationLookupFailure,
+        track_count: u32,
+    },
+}
+
+/// Mirrors bae-core's `signals::BarcodeSignal`.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "snake_case", tag = "kind")]
+pub enum AutomationBarcodeSignal {
+    Scanning {
+        codes: Vec<AutomationSourcedValue>,
+    },
+    Settled {
+        codes: Vec<AutomationSourcedValue>,
+    },
+    Failed {
+        failure: AutomationLookupFailure,
+        codes: Vec<AutomationSourcedValue>,
+    },
+    Absent,
+}
+
+/// Mirrors bae-core's `signals::TextSignal`.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "snake_case", tag = "kind")]
+pub enum AutomationTextSignal {
+    Scanning {
+        catalogs: Vec<AutomationSourcedValue>,
+        free_text: Vec<String>,
+    },
+    Settled {
+        catalogs: Vec<AutomationSourcedValue>,
+        free_text: Vec<String>,
+    },
+    Failed {
+        failure: AutomationLookupFailure,
+        catalogs: Vec<AutomationSourcedValue>,
+        free_text: Vec<String>,
+    },
+}
+
+/// Mirrors bae-core's `signals::Signals`.
+#[derive(Debug, Clone, Serialize)]
+pub struct AutomationSignals {
+    pub disc_id: AutomationDiscIdSignal,
+    pub barcode: AutomationBarcodeSignal,
+    pub text: AutomationTextSignal,
+}
+
+/// Mirrors bae-core's `identify::SignalKind`.
+#[derive(Debug, Clone, Copy, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum AutomationSignalKind {
+    DiscId,
+    Barcode,
+    Catalog,
+}
+
+/// Mirrors bae-core's `identify::SignalRole`.
+#[derive(Debug, Clone, Copy, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum AutomationSignalRole {
+    Identity,
+    Filter,
+}
+
+/// Mirrors bae-core's `identify::SignalState`.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "snake_case", tag = "kind")]
+pub enum AutomationSignalState {
+    LookingUp,
+    Found { count: u32 },
+    NoMatch,
+    Skipped,
+    Failed { failure: AutomationLookupFailure },
+    Confirms { count: u32 },
+}
+
+/// Mirrors bae-core's `identify::ToolbarSignal`.
+#[derive(Debug, Clone, Serialize)]
+pub struct AutomationToolbarSignal {
+    pub kind: AutomationSignalKind,
+    pub role: AutomationSignalRole,
+    pub value: Option<String>,
+    pub origin: AutomationSignalOrigin,
+    pub state: AutomationSignalState,
+    pub excluded: bool,
+}
+
+/// Projects bae-core's `identify::DiscidProgress` — mid-flight result payloads
+/// reduce to a count; the full match set surfaces only in a terminal state.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "snake_case", tag = "kind")]
+pub enum AutomationDiscidProgress {
+    Computing,
+    LookingUp,
+    Done { n_results: u32 },
+    Skipped,
+    Failed { failure: AutomationLookupFailure },
+}
+
+/// Projects bae-core's `identify::BarcodeProgress` — mid-flight result payloads
+/// reduce to a count; the full match set surfaces only in a terminal state.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "snake_case", tag = "kind")]
+pub enum AutomationBarcodeProgress {
+    Scanning,
+    LookingUp {
+        current: String,
+        position: u32,
+        total: u32,
+    },
+    Done {
+        n_results: u32,
+    },
+    Failed {
+        failure: AutomationLookupFailure,
+    },
+    Skipped,
+}
+
+/// Mirrors bae-core's `identify::IdentifySource`.
+#[derive(Debug, Clone, Copy, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum AutomationIdentifySource {
+    Discid,
+    Barcode,
+    Combined,
+}
+
+/// Mirrors bae-core's `identify::ResultProvenance`, paired with the release id
+/// it aligns to (the core type is index-aligned with the match list).
+#[derive(Debug, Clone, Serialize)]
+pub struct AutomationResultProvenance {
+    pub release_id: String,
+    pub by_disc_id: bool,
+    pub by_barcode: bool,
+    pub matches_catalog: bool,
+}
+
+/// Projects bae-core's `identify::IdentifyState`. The `SignalsContext`
+/// internals that drive core triangulation don't cross; terminal states carry
+/// the full match data an MCP client acts on.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "snake_case", tag = "kind")]
+pub enum AutomationIdentifyState {
+    Idle,
+    Triangulating {
+        discid: AutomationDiscidProgress,
+        barcode: AutomationBarcodeProgress,
+    },
+    Found {
+        group: AutomationReleaseGroup,
+        library_statuses: Vec<AutomationLibraryStatus>,
+        track_count: u32,
+        source: AutomationIdentifySource,
+        provenance: Vec<AutomationResultProvenance>,
+    },
+    Conflict {
+        discid_results: Vec<AutomationMetadataResult>,
+        discid_library_statuses: Vec<AutomationLibraryStatus>,
+        barcode_results: Vec<AutomationMetadataResult>,
+        barcode_library_statuses: Vec<AutomationLibraryStatus>,
+        matched_barcode: Option<String>,
+        track_count: u32,
+    },
+    NotFoundAnywhere,
+    ManualOnly {
+        track_count: u32,
+    },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
@@ -749,20 +963,16 @@ impl AutomationState {
             } => self.update_candidate(candidate_key, |candidate| {
                 let common = candidate.common_mut();
                 let runtime = common.runtime_mut();
-                runtime.identify_state = Some(format!("{state:?}"));
-                runtime.toolbar = Some(
-                    toolbar
-                        .iter()
-                        .map(|signal| format!("{signal:?}"))
-                        .collect::<Vec<_>>(),
-                );
+                runtime.identify_state = Some(automation_identify_state(state));
+                runtime.toolbar =
+                    Some(toolbar.into_iter().map(automation_toolbar_signal).collect());
             }),
             #[cfg(not(any(target_os = "ios", target_os = "android")))]
             ImportEvent::SignalsUpdated {
                 candidate_key,
                 signals,
             } => self.update_candidate(candidate_key, |candidate| {
-                candidate.common_mut().runtime_mut().signals = Some(format!("{signals:?}"));
+                candidate.common_mut().runtime_mut().signals = Some(automation_signals(signals));
             }),
         }
     }
@@ -1912,6 +2122,337 @@ fn storage_mode(mode: AutomationStorageMode) -> StorageMode {
     }
 }
 
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+fn automation_lookup_failure(failure: bae_core::signals::LookupFailure) -> AutomationLookupFailure {
+    use bae_core::signals::LookupFailure;
+    match failure {
+        LookupFailure::Network => AutomationLookupFailure::Network,
+        LookupFailure::Provider { status } => AutomationLookupFailure::Provider { status },
+        LookupFailure::Timeout => AutomationLookupFailure::Timeout,
+        LookupFailure::ArtworkAnalysis => AutomationLookupFailure::ArtworkAnalysis,
+        LookupFailure::Diagnostic { detail } => AutomationLookupFailure::Diagnostic { detail },
+    }
+}
+
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+fn automation_signal_origin(origin: bae_core::signals::SignalOrigin) -> AutomationSignalOrigin {
+    use bae_core::signals::SignalOrigin;
+    match origin {
+        SignalOrigin::DiscToc => AutomationSignalOrigin::DiscToc,
+        SignalOrigin::CueSheet => AutomationSignalOrigin::CueSheet,
+        SignalOrigin::Artwork => AutomationSignalOrigin::Artwork,
+        SignalOrigin::FolderName => AutomationSignalOrigin::FolderName,
+        SignalOrigin::Filename => AutomationSignalOrigin::Filename,
+        SignalOrigin::TextFile => AutomationSignalOrigin::TextFile,
+    }
+}
+
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+fn automation_sourced_value(value: bae_core::signals::SourcedValue) -> AutomationSourcedValue {
+    AutomationSourcedValue {
+        value: value.value,
+        origin: automation_signal_origin(value.origin),
+    }
+}
+
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+fn automation_sourced_values(
+    values: Vec<bae_core::signals::SourcedValue>,
+) -> Vec<AutomationSourcedValue> {
+    values.into_iter().map(automation_sourced_value).collect()
+}
+
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+fn automation_disc_id_signal(signal: bae_core::signals::DiscIdSignal) -> AutomationDiscIdSignal {
+    use bae_core::signals::DiscIdSignal;
+    match signal {
+        DiscIdSignal::Computed {
+            disc_id,
+            track_count,
+        } => AutomationDiscIdSignal::Computed {
+            disc_id,
+            track_count,
+        },
+        DiscIdSignal::Absent { track_count } => AutomationDiscIdSignal::Absent { track_count },
+        DiscIdSignal::Failed {
+            failure,
+            track_count,
+        } => AutomationDiscIdSignal::Failed {
+            failure: automation_lookup_failure(failure),
+            track_count,
+        },
+    }
+}
+
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+fn automation_barcode_signal(signal: bae_core::signals::BarcodeSignal) -> AutomationBarcodeSignal {
+    use bae_core::signals::BarcodeSignal;
+    match signal {
+        BarcodeSignal::Scanning { codes } => AutomationBarcodeSignal::Scanning {
+            codes: automation_sourced_values(codes),
+        },
+        BarcodeSignal::Settled { codes } => AutomationBarcodeSignal::Settled {
+            codes: automation_sourced_values(codes),
+        },
+        BarcodeSignal::Failed { failure, codes } => AutomationBarcodeSignal::Failed {
+            failure: automation_lookup_failure(failure),
+            codes: automation_sourced_values(codes),
+        },
+        BarcodeSignal::Absent => AutomationBarcodeSignal::Absent,
+    }
+}
+
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+fn automation_text_signal(signal: bae_core::signals::TextSignal) -> AutomationTextSignal {
+    use bae_core::signals::TextSignal;
+    match signal {
+        TextSignal::Scanning {
+            catalogs,
+            free_text,
+        } => AutomationTextSignal::Scanning {
+            catalogs: automation_sourced_values(catalogs),
+            free_text,
+        },
+        TextSignal::Settled {
+            catalogs,
+            free_text,
+        } => AutomationTextSignal::Settled {
+            catalogs: automation_sourced_values(catalogs),
+            free_text,
+        },
+        TextSignal::Failed {
+            failure,
+            catalogs,
+            free_text,
+        } => AutomationTextSignal::Failed {
+            failure: automation_lookup_failure(failure),
+            catalogs: automation_sourced_values(catalogs),
+            free_text,
+        },
+    }
+}
+
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+fn automation_signals(signals: bae_core::signals::Signals) -> AutomationSignals {
+    AutomationSignals {
+        disc_id: automation_disc_id_signal(signals.disc_id),
+        barcode: automation_barcode_signal(signals.barcode),
+        text: automation_text_signal(signals.text),
+    }
+}
+
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+fn automation_signal_kind(kind: bae_core::identify::SignalKind) -> AutomationSignalKind {
+    use bae_core::identify::SignalKind;
+    match kind {
+        SignalKind::DiscId => AutomationSignalKind::DiscId,
+        SignalKind::Barcode => AutomationSignalKind::Barcode,
+        SignalKind::Catalog => AutomationSignalKind::Catalog,
+    }
+}
+
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+fn automation_signal_role(role: bae_core::identify::SignalRole) -> AutomationSignalRole {
+    use bae_core::identify::SignalRole;
+    match role {
+        SignalRole::Identity => AutomationSignalRole::Identity,
+        SignalRole::Filter => AutomationSignalRole::Filter,
+    }
+}
+
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+fn automation_signal_state(state: bae_core::identify::SignalState) -> AutomationSignalState {
+    use bae_core::identify::SignalState;
+    match state {
+        SignalState::LookingUp => AutomationSignalState::LookingUp,
+        SignalState::Found { count } => AutomationSignalState::Found { count },
+        SignalState::NoMatch => AutomationSignalState::NoMatch,
+        SignalState::Skipped => AutomationSignalState::Skipped,
+        SignalState::Failed { failure } => AutomationSignalState::Failed {
+            failure: automation_lookup_failure(failure),
+        },
+        SignalState::Confirms { count } => AutomationSignalState::Confirms { count },
+    }
+}
+
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+fn automation_toolbar_signal(signal: bae_core::identify::ToolbarSignal) -> AutomationToolbarSignal {
+    AutomationToolbarSignal {
+        kind: automation_signal_kind(signal.kind),
+        role: automation_signal_role(signal.role),
+        value: signal.value,
+        origin: automation_signal_origin(signal.origin),
+        state: automation_signal_state(signal.state),
+        excluded: signal.excluded,
+    }
+}
+
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+fn automation_discid_progress(
+    progress: bae_core::identify::DiscidProgress,
+) -> AutomationDiscidProgress {
+    use bae_core::identify::DiscidProgress;
+    match progress {
+        DiscidProgress::Computing => AutomationDiscidProgress::Computing,
+        DiscidProgress::LookingUp => AutomationDiscidProgress::LookingUp,
+        DiscidProgress::Done {
+            results,
+            track_count: _,
+        } => AutomationDiscidProgress::Done {
+            n_results: results.len() as u32,
+        },
+        DiscidProgress::Skipped { track_count: _ } => AutomationDiscidProgress::Skipped,
+        DiscidProgress::Failed {
+            failure,
+            track_count: _,
+        } => AutomationDiscidProgress::Failed {
+            failure: automation_lookup_failure(failure),
+        },
+    }
+}
+
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+fn automation_barcode_progress(
+    progress: bae_core::identify::BarcodeProgress,
+) -> AutomationBarcodeProgress {
+    use bae_core::identify::BarcodeProgress;
+    match progress {
+        BarcodeProgress::Scanning => AutomationBarcodeProgress::Scanning,
+        BarcodeProgress::LookingUp {
+            current,
+            position,
+            total,
+            remaining: _,
+        } => AutomationBarcodeProgress::LookingUp {
+            current,
+            position,
+            total,
+        },
+        BarcodeProgress::Done {
+            matched: _,
+            results,
+        } => AutomationBarcodeProgress::Done {
+            n_results: results.len() as u32,
+        },
+        BarcodeProgress::Failed { failure } => AutomationBarcodeProgress::Failed {
+            failure: automation_lookup_failure(failure),
+        },
+        BarcodeProgress::Skipped => AutomationBarcodeProgress::Skipped,
+    }
+}
+
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+fn automation_identify_source(
+    source: bae_core::identify::IdentifySource,
+) -> AutomationIdentifySource {
+    use bae_core::identify::IdentifySource;
+    match source {
+        IdentifySource::Discid => AutomationIdentifySource::Discid,
+        IdentifySource::Barcode => AutomationIdentifySource::Barcode,
+        IdentifySource::Combined => AutomationIdentifySource::Combined,
+    }
+}
+
+/// Split per-signal `(result, status)` pairs into an ordered results list and a
+/// parallel statuses list, each record carrying its own `release_id`.
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+fn automation_results_and_statuses(
+    pairs: Vec<(MetadataResult, LibraryStatus)>,
+) -> (Vec<AutomationMetadataResult>, Vec<AutomationLibraryStatus>) {
+    let mut results = Vec::with_capacity(pairs.len());
+    let mut statuses = Vec::with_capacity(pairs.len());
+    for (result, status) in pairs {
+        results.push(automation_metadata_result(result));
+        statuses.push(automation_library_status(status));
+    }
+    (results, statuses)
+}
+
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+fn automation_identify_state(state: bae_core::identify::IdentifyState) -> AutomationIdentifyState {
+    use bae_core::identify::IdentifyState;
+    match state {
+        IdentifyState::Idle => AutomationIdentifyState::Idle,
+        IdentifyState::Triangulating {
+            discid,
+            barcode,
+            context: _,
+        } => AutomationIdentifyState::Triangulating {
+            discid: automation_discid_progress(discid),
+            barcode: automation_barcode_progress(barcode),
+        },
+        IdentifyState::Found {
+            matches,
+            library_statuses,
+            track_count,
+            group,
+            source,
+            provenance,
+            context: _,
+        } => {
+            // `matches` all share `group` and `provenance` is index-aligned with
+            // them; pair each provenance with its release id before folding the
+            // matches into the group card, so a client correlates a pressing's
+            // provenance by id.
+            let provenance = matches
+                .iter()
+                .map(|m| m.release_id.clone())
+                .zip(provenance)
+                .map(|(release_id, p)| AutomationResultProvenance {
+                    release_id,
+                    by_disc_id: p.by_disc_id,
+                    by_barcode: p.by_barcode,
+                    matches_catalog: p.matches_catalog,
+                })
+                .collect();
+            let group = bae_core::import::release_group::ReleaseGroup::from_group(group, matches);
+            AutomationIdentifyState::Found {
+                group: automation_release_group(group),
+                library_statuses: library_statuses
+                    .into_iter()
+                    .map(automation_library_status)
+                    .collect(),
+                track_count,
+                source: automation_identify_source(source),
+                provenance,
+            }
+        }
+        IdentifyState::Conflict { context } => {
+            let bae_core::identify::state::SignalsContext {
+                discid_results,
+                barcode_results,
+                matched_barcode,
+                track_count,
+                // The raw signal inputs, the user's exclusions, and the settled
+                // barcode failure drive triangulation in core, not this
+                // read-only surface, so they don't cross the automation wire.
+                disc_id: _,
+                barcode_codes: _,
+                catalogs: _,
+                excluded: _,
+                barcode_failure: _,
+            } = context;
+            let (discid_results, discid_library_statuses) =
+                automation_results_and_statuses(discid_results);
+            let (barcode_results, barcode_library_statuses) =
+                automation_results_and_statuses(barcode_results);
+            AutomationIdentifyState::Conflict {
+                discid_results,
+                discid_library_statuses,
+                barcode_results,
+                barcode_library_statuses,
+                matched_barcode,
+                track_count,
+            }
+        }
+        IdentifyState::NotFoundAnywhere { context: _ } => AutomationIdentifyState::NotFoundAnywhere,
+        IdentifyState::ManualOnly {
+            track_count,
+            context: _,
+        } => AutomationIdentifyState::ManualOnly { track_count },
+    }
+}
+
 fn automation_import_progress(progress: ImportProgress) -> AutomationImportProgress {
     match progress {
         ImportProgress::Preparing {
@@ -2170,6 +2711,215 @@ mod tests {
                 "tool {} inputSchema must have root type object",
                 tool.name(),
             );
+        }
+    }
+
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    mod identify_mirrors {
+        use super::*;
+        use bae_core::db::LibraryStatus;
+        use bae_core::identify::combine::{GroupKey, ResultProvenance};
+        use bae_core::identify::state::SignalsContext;
+        use bae_core::identify::{
+            BarcodeProgress, DiscidProgress, IdentifySource, IdentifyState, SignalKind, SignalRole,
+            SignalState, ToolbarSignal,
+        };
+        use bae_core::import::search::MetadataResult;
+        use bae_core::import::MetadataSource;
+        use bae_core::signals::{
+            BarcodeSignal, DiscIdSignal, LookupFailure, SignalOrigin, Signals, SourcedValue,
+            TextSignal,
+        };
+        use std::collections::HashSet;
+
+        fn metadata_result(release_id: &str, group_id: &str) -> MetadataResult {
+            MetadataResult {
+                source: MetadataSource::MusicBrainz,
+                release_id: release_id.to_string(),
+                title: "Album Title".to_string(),
+                artist: Some("Artist Name".to_string()),
+                year: Some(1999),
+                format: Some("CD".to_string()),
+                label: Some("Label Name".to_string()),
+                catalog_number: Some("CAT-1".to_string()),
+                country: Some("US".to_string()),
+                cover_art: None,
+                source_group_id: Some(group_id.to_string()),
+            }
+        }
+
+        fn library_status(release_id: &str) -> LibraryStatus {
+            LibraryStatus {
+                release_id: release_id.to_string(),
+                release_in_library: false,
+                album_in_library: false,
+                album_title: None,
+                album_id: None,
+            }
+        }
+
+        fn empty_context() -> SignalsContext {
+            SignalsContext {
+                disc_id: DiscIdSignal::Absent { track_count: 0 },
+                barcode_codes: Vec::new(),
+                catalogs: Vec::new(),
+                excluded: HashSet::new(),
+                discid_results: Vec::new(),
+                barcode_results: Vec::new(),
+                barcode_failure: None,
+                matched_barcode: None,
+                track_count: 0,
+            }
+        }
+
+        #[test]
+        fn found_state_aligns_provenance_and_pressings_by_release_id() {
+            let matches = vec![
+                metadata_result("rel-1", "group-1"),
+                metadata_result("rel-2", "group-1"),
+            ];
+            let state = IdentifyState::Found {
+                matches: matches.clone(),
+                library_statuses: vec![library_status("rel-1"), library_status("rel-2")],
+                track_count: 12,
+                group: GroupKey {
+                    source: MetadataSource::MusicBrainz,
+                    source_group_id: "group-1".to_string(),
+                },
+                source: IdentifySource::Combined,
+                provenance: vec![
+                    ResultProvenance {
+                        by_disc_id: true,
+                        by_barcode: false,
+                        matches_catalog: false,
+                    },
+                    ResultProvenance {
+                        by_disc_id: false,
+                        by_barcode: true,
+                        matches_catalog: true,
+                    },
+                ],
+                context: empty_context(),
+            };
+
+            let json = serde_json::to_value(automation_identify_state(state)).unwrap();
+            assert_eq!(json["kind"], "found");
+            assert_eq!(json["source"], "combined");
+            let pressings = json["group"]["pressings"].as_array().unwrap();
+            assert_eq!(pressings[0]["release_id"], "rel-1");
+            assert_eq!(pressings[1]["release_id"], "rel-2");
+            let provenance = json["provenance"].as_array().unwrap();
+            assert_eq!(provenance[0]["release_id"], "rel-1");
+            assert_eq!(provenance[0]["by_disc_id"], true);
+            assert_eq!(provenance[1]["release_id"], "rel-2");
+            assert_eq!(provenance[1]["by_barcode"], true);
+            assert_eq!(provenance[1]["matches_catalog"], true);
+            let statuses = json["library_statuses"].as_array().unwrap();
+            assert_eq!(statuses[0]["release_id"], "rel-1");
+            assert_eq!(statuses[1]["release_id"], "rel-2");
+        }
+
+        #[test]
+        fn conflict_state_splits_results_and_statuses_per_signal() {
+            let mut context = empty_context();
+            context.discid_results = vec![(
+                metadata_result("rel-disc", "g-d"),
+                library_status("rel-disc"),
+            )];
+            context.barcode_results =
+                vec![(metadata_result("rel-bar", "g-b"), library_status("rel-bar"))];
+            context.matched_barcode = Some("0123456789012".to_string());
+            context.track_count = 9;
+            let state = IdentifyState::Conflict { context };
+
+            let json = serde_json::to_value(automation_identify_state(state)).unwrap();
+            assert_eq!(json["kind"], "conflict");
+            assert_eq!(json["discid_results"][0]["release_id"], "rel-disc");
+            assert_eq!(json["discid_library_statuses"][0]["release_id"], "rel-disc");
+            assert_eq!(json["barcode_results"][0]["release_id"], "rel-bar");
+            assert_eq!(json["barcode_library_statuses"][0]["release_id"], "rel-bar");
+            assert_eq!(json["matched_barcode"], "0123456789012");
+            assert_eq!(json["track_count"], 9);
+        }
+
+        #[test]
+        fn triangulating_barcode_looking_up_drops_remaining() {
+            let state = IdentifyState::Triangulating {
+                discid: DiscidProgress::LookingUp,
+                barcode: BarcodeProgress::LookingUp {
+                    current: "0123456789012".to_string(),
+                    position: 2,
+                    total: 3,
+                    remaining: vec!["9999999999999".to_string()],
+                },
+                context: empty_context(),
+            };
+
+            let json = serde_json::to_value(automation_identify_state(state)).unwrap();
+            assert_eq!(json["kind"], "triangulating");
+            assert_eq!(json["discid"]["kind"], "looking_up");
+            assert_eq!(json["barcode"]["kind"], "looking_up");
+            assert_eq!(json["barcode"]["current"], "0123456789012");
+            assert_eq!(json["barcode"]["position"], 2);
+            assert_eq!(json["barcode"]["total"], 3);
+            assert!(json["barcode"].get("remaining").is_none());
+        }
+
+        #[test]
+        fn toolbar_signal_maps_snake_case_and_structured_failure() {
+            let signal = ToolbarSignal {
+                kind: SignalKind::DiscId,
+                role: SignalRole::Identity,
+                value: Some("disc-hash".to_string()),
+                origin: SignalOrigin::DiscToc,
+                state: SignalState::Failed {
+                    failure: LookupFailure::Provider { status: Some(503) },
+                },
+                excluded: false,
+            };
+
+            let json = serde_json::to_value(automation_toolbar_signal(signal)).unwrap();
+            assert_eq!(json["kind"], "disc_id");
+            assert_eq!(json["role"], "identity");
+            assert_eq!(json["origin"], "disc_toc");
+            assert_eq!(json["state"]["kind"], "failed");
+            assert_eq!(json["state"]["failure"]["kind"], "provider");
+            assert_eq!(json["state"]["failure"]["status"], 503);
+        }
+
+        #[test]
+        fn signals_map_all_three_subsignals() {
+            let signals = Signals {
+                disc_id: DiscIdSignal::Computed {
+                    disc_id: "disc-hash".to_string(),
+                    track_count: 10,
+                },
+                barcode: BarcodeSignal::Settled {
+                    codes: vec![SourcedValue::new(
+                        "0123456789012".to_string(),
+                        SignalOrigin::Artwork,
+                    )],
+                },
+                text: TextSignal::Settled {
+                    catalogs: vec![SourcedValue::new(
+                        "CAT-1".to_string(),
+                        SignalOrigin::CueSheet,
+                    )],
+                    free_text: vec!["Album Title".to_string()],
+                },
+            };
+
+            let json = serde_json::to_value(automation_signals(signals)).unwrap();
+            assert_eq!(json["disc_id"]["kind"], "computed");
+            assert_eq!(json["disc_id"]["disc_id"], "disc-hash");
+            assert_eq!(json["disc_id"]["track_count"], 10);
+            assert_eq!(json["barcode"]["kind"], "settled");
+            assert_eq!(json["barcode"]["codes"][0]["value"], "0123456789012");
+            assert_eq!(json["barcode"]["codes"][0]["origin"], "artwork");
+            assert_eq!(json["text"]["kind"], "settled");
+            assert_eq!(json["text"]["catalogs"][0]["value"], "CAT-1");
+            assert_eq!(json["text"]["catalogs"][0]["origin"], "cue_sheet");
+            assert_eq!(json["text"]["free_text"][0], "Album Title");
         }
     }
 }
