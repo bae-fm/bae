@@ -339,4 +339,40 @@ mod tests {
              and similar carry real signal; got {inputs:?}",
         );
     }
+
+    /// Regression: one categorize yields both the disc ID (from the LOG here)
+    /// and the real track count — the pair the service's folder identify reads.
+    #[test]
+    fn test_categorized_yields_discid_and_track_count() {
+        use tempfile::TempDir;
+
+        let tmp = TempDir::new().unwrap();
+        let dir = tmp.path();
+
+        let fixture_log = std::path::Path::new("tests/fixtures/test_album.log");
+        std::fs::copy(fixture_log, dir.join("test_album.log")).unwrap();
+
+        let fixture_dir = std::path::Path::new("tests/fixtures/flac");
+        std::fs::copy(
+            fixture_dir.join("01 Test Track 1.flac"),
+            dir.join("01 Test Track 1.flac"),
+        )
+        .unwrap();
+        std::fs::copy(
+            fixture_dir.join("02 Test Track 2.flac"),
+            dir.join("02 Test Track 2.flac"),
+        )
+        .unwrap();
+
+        let categorized =
+            crate::import::folder_scanner::collect_release_candidate_files(dir).unwrap();
+        let disc_id = crate::import::discid::compute_discid_from_categorized(&categorized);
+        let track_count = categorized.audio.track_count();
+
+        assert!(disc_id.is_some(), "LOG fixture should produce a disc ID");
+        assert_eq!(
+            track_count, 2,
+            "track_count must equal the number of audio files, not 0"
+        );
+    }
 }

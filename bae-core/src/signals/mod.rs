@@ -45,6 +45,8 @@ pub mod origin;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod pool;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
+mod release;
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub mod service;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub mod text;
