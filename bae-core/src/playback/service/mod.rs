@@ -53,7 +53,7 @@ use crate::playback::preview_player::PreviewPlayer;
 use crate::playback::source;
 use crate::playback::source::{TrackCrossing, TrackFmt};
 use crate::playback::sparse_buffer::{create_sparse_buffer, SharedSparseBuffer};
-use crate::playback::{create_track_stream_pair, TrackStream};
+use crate::playback::TrackStream;
 use crate::util::format::PhysicalSideMedium;
 use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, Mutex};

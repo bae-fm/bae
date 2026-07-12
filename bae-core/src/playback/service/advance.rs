@@ -66,26 +66,28 @@ impl PlaybackService {
             }
         };
 
-        // A preload has no stream — it is not a pipeline yet. Mint its decoder's
-        // cancel token here (where the decoder is spawned) and carry it in
-        // `PreloadedNext` so promotion hands it to the pipeline that adopts this
-        // decoder.
-        let cancel_token = Arc::new(std::sync::atomic::AtomicBool::new(false));
-
         // Preload params (natural transition: no pregap skip): seek to the
         // track's first sample, trim there, stop at its end.
         let decode = prepared.decode_params(0, true);
-        let (mut sink, source, _ready) =
-            create_track_stream_pair(prepared.sample_rate, prepared.channels);
 
-        let decoder_handle = {
-            let decoder_cancel = cancel_token.clone();
-            std::thread::spawn(move || {
-                if let Err(e) = decode.run_decoder(&mut sink, decoder_cancel) {
-                    let _ = log_streaming_decode_failure("Preload streaming decode", e);
-                }
-            })
-        };
+        // A preload has no stream — it is not a pipeline yet. `spawn_decoder` mints
+        // the decoder's cancel token; it is carried in `PreloadedNext` so promotion
+        // hands it to the pipeline that adopts this decoder. Preview-style LogOnly:
+        // a preload decode failure is logged, never surfaced as a PlaybackError (the
+        // promotion path re-decodes through play_track if the preload is unusable).
+        let DecoderStart {
+            track_stream,
+            handle: decoder_handle,
+            cancel_token,
+            // No Loading state observes a preload; the ready signal goes unused.
+            ready: _,
+        } = spawn_decoder(
+            decode,
+            prepared.sample_rate,
+            prepared.channels,
+            "Preload streaming decode",
+            DecodeFailureReport::LogOnly,
+        );
 
         // Store preloaded state. If the next track shares the live stream's
         // format, stage it into the PlaybackSource so the audio callback can
@@ -112,7 +114,7 @@ impl PlaybackService {
             gapless
                 .lock()
                 .unwrap()
-                .stage_next(source, prepared.track_fmt(std::time::Duration::ZERO));
+                .stage_next(track_stream, prepared.track_fmt(std::time::Duration::ZERO));
             self.preloaded_next = Some(PreloadedNext {
                 prepared,
                 decoder_handle,
@@ -128,7 +130,7 @@ impl PlaybackService {
                 prepared,
                 decoder_handle,
                 cancel_token,
-                source: PreloadedNextSource::Held(source),
+                source: PreloadedNextSource::Held(track_stream),
             });
         }
 
