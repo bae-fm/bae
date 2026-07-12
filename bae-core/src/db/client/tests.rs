@@ -704,7 +704,7 @@ mod row_mapper_error_tests {
 }
 
 #[cfg(test)]
-mod outbox_items_tests {
+mod cloud_outbox_tests {
     use super::super::*;
     use coven::SystemClock;
 
@@ -715,6 +715,22 @@ mod outbox_items_tests {
             .await
             .unwrap();
         (db, tmp)
+    }
+
+    /// `remove_cloud_outbox_entry` deletes the row by id — the seam
+    /// `cancel_outbox_item` uses to drop a queued upload the user cancelled.
+    #[tokio::test]
+    async fn remove_cloud_outbox_entry_deletes_by_id() {
+        let (db, _tmp) = empty_db().await;
+        db.add_cloud_outbox_upload("file-1", "upload-key", None, false)
+            .await
+            .unwrap();
+        let uploads = db.get_pending_cloud_uploads().await.unwrap();
+        assert_eq!(uploads.len(), 1);
+
+        db.remove_cloud_outbox_entry(uploads[0].id).await.unwrap();
+
+        assert!(db.get_pending_cloud_uploads().await.unwrap().is_empty());
     }
 
     #[tokio::test]

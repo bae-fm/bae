@@ -277,24 +277,6 @@ impl Database {
         .await
     }
 
-    /// Remove all pending upload entries for a given cloud key. Used when a file
-    /// is deleted before its upload completes.
-    pub async fn remove_cloud_outbox_uploads_for_key(
-        &self,
-        cloud_key: &str,
-    ) -> Result<(), DbError> {
-        let cloud_key = cloud_key.to_string();
-        self.call(move |conn| {
-            conn.execute(
-                "DELETE FROM cloud_outbox WHERE operation = 'upload' AND cloud_key = ?1",
-                [cloud_key],
-            )
-            .map(|_| ())
-            .map_err(DbError::from)
-        })
-        .await
-    }
-
     /// Clear the backoff timestamp on failed uploads so the next cycle retries.
     pub async fn reset_cloud_outbox_backoff(&self) -> Result<(), DbError> {
         self.call(move |conn| {
