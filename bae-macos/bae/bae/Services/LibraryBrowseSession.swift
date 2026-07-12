@@ -35,13 +35,13 @@ enum ComposerPaneSelection: Equatable {
 
 // MARK: - LibraryBrowseSession
 
-/// The library browser's session state: the album/composer/artist lists (and
-/// their live invalidation registrations), the current selections, and the
-/// sort criteria for each mode. Constructed once at the app root, alongside
-/// `UiStore` — so unmounting `LibraryView` on a tab switch loses none of it.
-/// The lists stay warm (no reload flash on remount) and the selections
-/// persist; `LibraryView` reads this session and calls its methods rather
-/// than owning the state itself.
+/// The library browser's session state: the album/composer/artist list slots,
+/// each holding its live `PaginatedList`, invalidation registration, and sort
+/// criteria (see `BrowseListSlot`), plus the current selections. Constructed
+/// once at the app root, alongside `UiStore` — so unmounting `LibraryView` on
+/// a tab switch loses none of it. The lists stay warm (no reload flash on
+/// remount) and the selections persist; `LibraryView` reads this session and
+/// calls its methods rather than owning the state itself.
 ///
 /// Detail payloads derived from the selections (`composerPaneDetail`,
 /// `artistDetail`) are deliberately NOT here — they stay `@State` on
@@ -50,22 +50,10 @@ enum ComposerPaneSelection: Equatable {
 @MainActor
 @Observable
 final class LibraryBrowseSession {
-    private let library: Library
-    private let projectionRegistry: ProjectionRegistry
-    private let libraryStore: LibraryStore
-    private let uiStore: UiStore
-
-    var albumList: AlbumList?
-    private var albumListRegistration: ProjectionRegistration?
-    private var albumReloadTask: Task<Void, Never>?
-
-    var composerList: ComposerList?
-    private var composerListRegistration: ProjectionRegistration?
-    private var composerReloadTask: Task<Void, Never>?
-
-    var artistList: ArtistList?
-    private var artistListRegistration: ProjectionRegistration?
-    private var artistReloadTask: Task<Void, Never>?
+    let albums: BrowseListSlot<BridgeAlbum, BridgeSortCriterion>
+    let composers:
+        BrowseListSlot<BridgeComposerSummary, BridgeComposerSortCriterion>
+    let artists: BrowseListSlot<BridgeArtistSummary, BridgeArtistSortCriterion>
 
     /// Album-grid multi-selection, a browsing-session concern owned here (the
     /// Storage Manager precedent) and passed down to the grid.
@@ -77,60 +65,67 @@ final class LibraryBrowseSession {
     /// selection. Views read it and call `selectArtist(_:)`.
     private(set) var selectedArtistId: String?
 
-    private(set) var sortCriteria: [BridgeSortCriterion]
-    private(set) var composerSortCriteria: [BridgeComposerSortCriterion]
-    private(set) var artistSortCriteria: [BridgeArtistSortCriterion]
-
     init(
         library: Library,
         projectionRegistry: ProjectionRegistry,
         libraryStore: LibraryStore,
         uiStore: UiStore
     ) {
-        self.library = library
-        self.projectionRegistry = projectionRegistry
-        self.libraryStore = libraryStore
-        self.uiStore = uiStore
-        sortCriteria = Self.loadSortCriteria()
-        composerSortCriteria = Self.loadComposerSortCriteria()
-        artistSortCriteria = Self.loadArtistSortCriteria()
-
-        albumReloadTask = Task { [weak self] in
-            guard let self else { return }
-            await reloadAlbumList(sort: sortCriteria)
-        }
-    }
-
-    // MARK: - Sort criteria
-
-    func setSortCriteria(_ criteria: [BridgeSortCriterion]) {
-        sortCriteria = criteria
-        Self.saveSortCriteria(criteria)
-        albumReloadTask?.cancel()
-        albumReloadTask = Task { [weak self] in
-            guard let self else { return }
-            await reloadAlbumList(sort: criteria)
-        }
-    }
-
-    func setComposerSortCriteria(_ criteria: [BridgeComposerSortCriterion]) {
-        composerSortCriteria = criteria
-        Self.saveComposerSortCriteria(criteria)
-        composerReloadTask?.cancel()
-        composerReloadTask = Task { [weak self] in
-            guard let self else { return }
-            await reloadComposerList(sort: criteria)
-        }
-    }
-
-    func setArtistSortCriteria(_ criteria: [BridgeArtistSortCriterion]) {
-        artistSortCriteria = criteria
-        Self.saveArtistSortCriteria(criteria)
-        artistReloadTask?.cancel()
-        artistReloadTask = Task { [weak self] in
-            guard let self else { return }
-            await reloadArtistList(sort: criteria)
-        }
+        albums = BrowseListSlot(
+            defaultsKey: "librarySortCriteria",
+            defaultCriteria: [
+                BridgeSortCriterion(field: .dateAdded, direction: .descending)
+            ],
+            domain: .albumList,
+            projectionRegistry: projectionRegistry,
+            makePageSource: {
+                LibraryAlbumPageSource(library: library, sort: $0)
+            },
+            ingest: { rows in
+                for row in rows {
+                    _ = libraryStore.internAlbumSummary(row)
+                }
+            },
+            onError: { uiStore.showError($0) }
+        )
+        composers = BrowseListSlot(
+            defaultsKey: "libraryComposerSortCriteria",
+            defaultCriteria: [
+                BridgeComposerSortCriterion(
+                    field: .name,
+                    direction: .ascending
+                )
+            ],
+            domain: .composerList,
+            projectionRegistry: projectionRegistry,
+            makePageSource: {
+                LibraryComposerPageSource(library: library, sort: $0)
+            },
+            ingest: { rows in
+                for row in rows {
+                    _ = libraryStore.internComposerSummary(row)
+                }
+            },
+            onError: { uiStore.showError($0) }
+        )
+        artists = BrowseListSlot(
+            defaultsKey: "libraryArtistSortCriteria",
+            defaultCriteria: [
+                BridgeArtistSortCriterion(field: .name, direction: .ascending)
+            ],
+            domain: .artistList,
+            projectionRegistry: projectionRegistry,
+            makePageSource: {
+                LibraryArtistPageSource(library: library, sort: $0)
+            },
+            ingest: { rows in
+                for row in rows {
+                    _ = libraryStore.internArtistSummary(row)
+                }
+            },
+            onError: { uiStore.showError($0) }
+        )
+        albums.startLoad()
     }
 
     // MARK: - Detail-pane selection
@@ -157,203 +152,5 @@ final class LibraryBrowseSession {
     /// Select an artist in the artists browser.
     func selectArtist(_ artistId: String) {
         selectedArtistId = artistId
-    }
-
-    // MARK: - Mode-switch loading
-
-    /// Load the composer list the first time the user switches into composers
-    /// mode; a no-op afterward, so a remount that re-fires this finds a warm
-    /// list and does nothing.
-    func ensureComposerListLoaded() async {
-        guard composerList == nil else {
-            return
-        }
-        await reloadComposerList(sort: composerSortCriteria)
-    }
-
-    /// Load the artist list the first time the user switches into artists
-    /// mode; a no-op afterward, so a remount that re-fires this finds a warm
-    /// list and does nothing.
-    func ensureArtistListLoaded() async {
-        guard artistList == nil else {
-            return
-        }
-        await reloadArtistList(sort: artistSortCriteria)
-    }
-
-    // MARK: - List construction
-
-    private func makeAlbumList(sort: [BridgeSortCriterion]) -> AlbumList {
-        AlbumList(
-            pageSource: LibraryAlbumPageSource(
-                library: library,
-                sort: sort
-            ),
-            ingest: { [libraryStore] rows in
-                for row in rows {
-                    _ = libraryStore.internAlbumSummary(row)
-                }
-            },
-            onError: { [uiStore] error in
-                uiStore.showError(error)
-            },
-        )
-    }
-
-    private func makeComposerList(
-        sort: [BridgeComposerSortCriterion]
-    ) -> ComposerList {
-        ComposerList(
-            pageSource: LibraryComposerPageSource(
-                library: library,
-                sort: sort
-            ),
-            ingest: { [libraryStore] rows in
-                for row in rows {
-                    _ = libraryStore.internComposerSummary(row)
-                }
-            },
-            onError: { [uiStore] error in
-                uiStore.showError(error)
-            },
-        )
-    }
-
-    private func makeArtistList(
-        sort: [BridgeArtistSortCriterion]
-    ) -> ArtistList {
-        ArtistList(
-            pageSource: LibraryArtistPageSource(
-                library: library,
-                sort: sort
-            ),
-            ingest: { [libraryStore] rows in
-                for row in rows {
-                    _ = libraryStore.internArtistSummary(row)
-                }
-            },
-            onError: { [uiStore] error in
-                uiStore.showError(error)
-            },
-        )
-    }
-
-    private func reloadComposerList(
-        sort: [BridgeComposerSortCriterion]
-    ) async {
-        let newList = makeComposerList(sort: sort)
-        await newList.loadInitial()
-        guard !Task.isCancelled else {
-            return
-        }
-        composerListRegistration = projectionRegistry.registerList(
-            newList,
-            domain: .composerList
-        )
-        composerList = newList
-    }
-
-    private func reloadArtistList(sort: [BridgeArtistSortCriterion]) async {
-        let newList = makeArtistList(sort: sort)
-        await newList.loadInitial()
-        guard !Task.isCancelled else {
-            return
-        }
-        artistListRegistration = projectionRegistry.registerList(
-            newList,
-            domain: .artistList
-        )
-        artistList = newList
-    }
-
-    private func reloadAlbumList(sort: [BridgeSortCriterion]) async {
-        let newList = makeAlbumList(sort: sort)
-        await newList.loadInitial()
-        guard !Task.isCancelled else {
-            return
-        }
-        albumListRegistration = projectionRegistry.registerList(
-            newList,
-            domain: .albumList
-        )
-        albumList = newList
-    }
-
-    // MARK: - Sort criteria persistence
-
-    private static let sortCriteriaKey = "librarySortCriteria"
-
-    private static func loadSortCriteria() -> [BridgeSortCriterion] {
-        guard let data = UserDefaults.standard.data(forKey: sortCriteriaKey),
-            let criteria = [BridgeSortCriterion].fromJSON(data),
-            !criteria.isEmpty
-        else {
-            return [
-                BridgeSortCriterion(field: .dateAdded, direction: .descending)
-            ]
-        }
-        return criteria
-    }
-
-    private static func saveSortCriteria(_ criteria: [BridgeSortCriterion]) {
-        if let data = criteria.toJSON() {
-            UserDefaults.standard.set(data, forKey: sortCriteriaKey)
-        }
-    }
-
-    private static let composerSortCriteriaKey = "libraryComposerSortCriteria"
-
-    private static func loadComposerSortCriteria()
-        -> [BridgeComposerSortCriterion]
-    {
-        guard
-            let data = UserDefaults.standard.data(
-                forKey: composerSortCriteriaKey
-            ),
-            let criteria = [BridgeComposerSortCriterion].fromJSON(data),
-            !criteria.isEmpty
-        else {
-            return [
-                BridgeComposerSortCriterion(
-                    field: .name,
-                    direction: .ascending
-                )
-            ]
-        }
-        return criteria
-    }
-
-    private static func saveComposerSortCriteria(
-        _ criteria: [BridgeComposerSortCriterion]
-    ) {
-        if let data = criteria.toJSON() {
-            UserDefaults.standard.set(data, forKey: composerSortCriteriaKey)
-        }
-    }
-
-    private static let artistSortCriteriaKey = "libraryArtistSortCriteria"
-
-    private static func loadArtistSortCriteria() -> [BridgeArtistSortCriterion]
-    {
-        guard
-            let data = UserDefaults.standard.data(
-                forKey: artistSortCriteriaKey
-            ),
-            let criteria = [BridgeArtistSortCriterion].fromJSON(data),
-            !criteria.isEmpty
-        else {
-            return [
-                BridgeArtistSortCriterion(field: .name, direction: .ascending)
-            ]
-        }
-        return criteria
-    }
-
-    private static func saveArtistSortCriteria(
-        _ criteria: [BridgeArtistSortCriterion]
-    ) {
-        if let data = criteria.toJSON() {
-            UserDefaults.standard.set(data, forKey: artistSortCriteriaKey)
-        }
     }
 }

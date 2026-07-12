@@ -55,9 +55,9 @@ struct LibraryView: View {
             case .albums:
                 break
             case .composers:
-                await session.ensureComposerListLoaded()
+                await session.composers.ensureLoaded()
             case .artists:
-                await session.ensureArtistListLoaded()
+                await session.artists.ensureLoaded()
             }
         }
         .task(id: session.detailSelection.composerId) {
@@ -87,14 +87,14 @@ struct LibraryView: View {
         // after a shape change prune any selected album that no longer resolves —
         // e.g. one deleted on another device. The selection is small; one
         // authoritative index lookup per id, cancellable between ids.
-        .task(id: session.albumList?.loadEpoch) {
+        .task(id: session.albums.list?.loadEpoch) {
             await pruneDeletedSelection()
         }
         // Mirror the library-wide album count into the store: the menu bar's
         // Shuffle Library item (MainAppMenuCommands) disables at zero, and the
         // menu has no album list of its own to ask. `initial: true` publishes
         // a count that was already loaded when this view (re)mounts.
-        .onChange(of: session.albumList?.totalCount, initial: true) {
+        .onChange(of: session.albums.list?.totalCount, initial: true) {
             _,
             count in
             if let count {
@@ -132,7 +132,10 @@ extension LibraryView {
                 return
             }
             do {
-                if try await library.getAlbumIndex(session.sortCriteria, id)
+                if try await library.getAlbumIndex(
+                    session.albums.sortCriteria,
+                    id
+                )
                     == nil
                 {
                     missing.append(id)
@@ -157,11 +160,11 @@ extension LibraryView {
             Spacer()
             switch uiStore.libraryBrowserMode {
             case .albums:
-                albumSortControls
+                sortControls(session.albums)
             case .composers:
-                composerSortControls
+                sortControls(session.composers)
             case .artists:
-                artistSortControls
+                sortControls(session.artists)
             }
         }
         .padding(.horizontal, 16)
@@ -169,18 +172,24 @@ extension LibraryView {
         .padding(.bottom, 20)
     }
 
-    private var albumSortControls: some View {
+    private func sortControls<
+        Row: Identifiable & Sendable,
+        Criterion: SortCriterionRepresentable
+    >(
+        _ slot: BrowseListSlot<Row, Criterion>
+    ) -> some View
+    where Row.ID: Sendable, Criterion.Field: SortCriterionFieldCodable {
         SortCriteriaRow(
             criteria: Binding(
-                get: { session.sortCriteria },
-                set: { session.setSortCriteria($0) }
+                get: { slot.sortCriteria },
+                set: { slot.setSortCriteria($0) }
             )
         )
     }
 
     private var albumContent: some View {
         Group {
-            if let albumList = session.albumList {
+            if let albumList = session.albums.list {
                 if let error = albumList.initialLoadError {
                     LoadFailureView(line: error.line) {
                         Task { await albumList.loadInitial() }
@@ -196,7 +205,7 @@ extension LibraryView {
                 else {
                     AlbumGridView(
                         list: albumList,
-                        sortCriteria: session.sortCriteria,
+                        sortCriteria: session.albums.sortCriteria,
                         selection: session.albumSelection,
                         onPlay: { albumIds in
                             playback.playReleases(
@@ -226,7 +235,7 @@ extension LibraryView {
 
     private var composerContent: some View {
         Group {
-            if let composerList = session.composerList {
+            if let composerList = session.composers.list {
                 if let error = composerList.initialLoadError {
                     LoadFailureView(line: error.line) {
                         Task { await composerList.loadInitial() }
@@ -258,7 +267,7 @@ extension LibraryView {
 
     private var artistContent: some View {
         Group {
-            if let artistList = session.artistList {
+            if let artistList = session.artists.list {
                 if let error = artistList.initialLoadError {
                     LoadFailureView(line: error.line) {
                         Task { await artistList.loadInitial() }
@@ -309,24 +318,6 @@ extension LibraryView {
                 session.selectArtist(id)
                 artistDetail = nil
             }
-        )
-    }
-
-    private var composerSortControls: some View {
-        SortCriteriaRow(
-            criteria: Binding(
-                get: { session.composerSortCriteria },
-                set: { session.setComposerSortCriteria($0) }
-            )
-        )
-    }
-
-    private var artistSortControls: some View {
-        SortCriteriaRow(
-            criteria: Binding(
-                get: { session.artistSortCriteria },
-                set: { session.setArtistSortCriteria($0) }
-            )
         )
     }
 
