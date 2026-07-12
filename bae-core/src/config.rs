@@ -18,7 +18,7 @@ pub use keyring::init_keyring;
 #[cfg(any(test, feature = "test-utils"))]
 pub use keyring::install_test_keyring;
 
-use atomic_write::{write_atomic, write_atomic_io};
+use atomic_write::{write_atomic, write_atomic_io, WriteError};
 use dev::dev_mode_enabled;
 use export::{default_export_filename_template, default_export_presets};
 
@@ -185,24 +185,6 @@ pub fn bae_dir() -> Result<std::path::PathBuf, ConfigError> {
     Ok(dirs::home_dir()
         .ok_or_else(|| ConfigError::Config("could not determine home directory".to_string()))?
         .join(".bae"))
-}
-
-#[derive(Debug)]
-enum ConfigWriteError {
-    BeforeCommit(ConfigError),
-    AfterCommit(ConfigError),
-}
-
-impl ConfigWriteError {
-    fn committed(&self) -> bool {
-        matches!(self, Self::AfterCommit(_))
-    }
-
-    fn into_config_error(self) -> ConfigError {
-        match self {
-            Self::BeforeCommit(e) | Self::AfterCommit(e) => e,
-        }
-    }
 }
 
 /// Deserialize an `Option<T>` field that must be present in the source, even
@@ -464,27 +446,17 @@ impl Config {
     }
 
     pub fn save_to_config_yaml(&self) -> Result<(), ConfigError> {
-        self.write_config_yaml()
-            .map_err(ConfigWriteError::into_config_error)
+        self.write_config_yaml().map_err(WriteError::into_inner)
     }
 
-    fn write_config_yaml(&self) -> Result<(), ConfigWriteError> {
+    fn write_config_yaml(&self) -> Result<(), WriteError<ConfigError>> {
         std::fs::create_dir_all(&*self.store_dir)
-            .map_err(ConfigError::from)
-            .map_err(ConfigWriteError::BeforeCommit)?;
+            .map_err(|e| WriteError::BeforeCommit(ConfigError::from(e)))?;
         let yaml: ConfigYaml = self.into();
         let serialized = serde_yaml::to_string(&yaml)
-            .map_err(|e| ConfigError::Serialization(e.to_string()))
-            .map_err(ConfigWriteError::BeforeCommit)?;
-        write_atomic(&self.store_dir.config_path(), serialized.as_bytes()).map_err(|e| {
-            let committed = e.committed();
-            let config_error = ConfigError::from(e.into_io());
-            if committed {
-                ConfigWriteError::AfterCommit(config_error)
-            } else {
-                ConfigWriteError::BeforeCommit(config_error)
-            }
-        })
+            .map_err(|e| WriteError::BeforeCommit(ConfigError::Serialization(e.to_string())))?;
+        write_atomic(&self.store_dir.config_path(), serialized.as_bytes())
+            .map_err(|e| e.map(ConfigError::from))
     }
 
     /// Construct a Config with defaults for a new library.
@@ -592,7 +564,7 @@ impl ConfigHandle {
                 }
                 Err(e) => {
                     let committed = e.committed();
-                    save_err = Some(e.into_config_error());
+                    save_err = Some(e.into_inner());
                     if committed {
                         *config = edited;
                     }

@@ -2,31 +2,42 @@ use std::ffi::OsString;
 use std::io::{Error, Write};
 use std::path::Path;
 
+/// A failed write, tagged with whether the write had already committed (the
+/// rename landed and readers see the new bytes; only post-commit durability
+/// work failed) or not (the target file is untouched).
 #[derive(Debug)]
-pub(super) enum AtomicWriteError {
-    BeforeCommit(std::io::Error),
-    AfterCommit(std::io::Error),
+pub(super) enum WriteError<E> {
+    BeforeCommit(E),
+    AfterCommit(E),
 }
 
-impl AtomicWriteError {
+impl<E> WriteError<E> {
     pub(super) fn committed(&self) -> bool {
         matches!(self, Self::AfterCommit(_))
     }
 
-    pub(super) fn into_io(self) -> std::io::Error {
+    pub(super) fn into_inner(self) -> E {
         match self {
             Self::BeforeCommit(e) | Self::AfterCommit(e) => e,
         }
     }
+
+    /// Convert the payload, preserving the commit phase.
+    pub(super) fn map<F>(self, f: impl FnOnce(E) -> F) -> WriteError<F> {
+        match self {
+            Self::BeforeCommit(e) => WriteError::BeforeCommit(f(e)),
+            Self::AfterCommit(e) => WriteError::AfterCommit(f(e)),
+        }
+    }
 }
 
-pub(super) fn write_atomic(path: &Path, bytes: &[u8]) -> Result<(), AtomicWriteError> {
+pub(super) fn write_atomic(path: &Path, bytes: &[u8]) -> Result<(), WriteError<std::io::Error>> {
     let parent = path
         .parent()
         .filter(|parent| !parent.as_os_str().is_empty())
         .unwrap_or_else(|| Path::new("."));
     let file_name = path.file_name().ok_or_else(|| {
-        AtomicWriteError::BeforeCommit(Error::new(
+        WriteError::BeforeCommit(Error::new(
             std::io::ErrorKind::InvalidInput,
             "atomic write target has no file name",
         ))
@@ -40,19 +51,18 @@ pub(super) fn write_atomic(path: &Path, bytes: &[u8]) -> Result<(), AtomicWriteE
         .prefix(&temp_prefix)
         .suffix(".tmp")
         .tempfile_in(parent)
-        .map_err(AtomicWriteError::BeforeCommit)?;
-    temp.write_all(bytes)
-        .map_err(AtomicWriteError::BeforeCommit)?;
+        .map_err(WriteError::BeforeCommit)?;
+    temp.write_all(bytes).map_err(WriteError::BeforeCommit)?;
     temp.as_file()
         .sync_all()
-        .map_err(AtomicWriteError::BeforeCommit)?;
+        .map_err(WriteError::BeforeCommit)?;
     temp.persist(path)
-        .map_err(|e| AtomicWriteError::BeforeCommit(e.error))?;
-    sync_parent_dir(parent).map_err(AtomicWriteError::AfterCommit)
+        .map_err(|e| WriteError::BeforeCommit(e.error))?;
+    sync_parent_dir(parent).map_err(WriteError::AfterCommit)
 }
 
 pub(super) fn write_atomic_io(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
-    write_atomic(path, bytes).map_err(AtomicWriteError::into_io)
+    write_atomic(path, bytes).map_err(WriteError::into_inner)
 }
 
 #[cfg(unix)]
@@ -99,7 +109,7 @@ mod tests {
         let tmp = TempDir::new().unwrap();
         let path = tmp.path().join("missing").join("config.yaml");
 
-        let err = write_atomic(&path, b"new config").unwrap_err().into_io();
+        let err = write_atomic(&path, b"new config").unwrap_err().into_inner();
 
         assert_eq!(err.kind(), std::io::ErrorKind::NotFound);
         assert!(!path.exists());
@@ -111,7 +121,7 @@ mod tests {
         let path = tmp.path().join("config.yaml");
         std::fs::create_dir(&path).unwrap();
 
-        let err = write_atomic(&path, b"new config").unwrap_err().into_io();
+        let err = write_atomic(&path, b"new config").unwrap_err().into_inner();
 
         assert!(matches!(
             err.kind(),
