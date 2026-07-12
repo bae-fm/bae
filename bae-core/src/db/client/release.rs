@@ -1159,23 +1159,6 @@ impl Database {
         Ok(())
     }
 
-    /// Get the release that owns a given file.
-    pub async fn find_release_for_file(&self, file_id: &str) -> Result<Option<DbRelease>, DbError> {
-        let file_id = file_id.to_string();
-        self.read(move |conn| {
-            conn.query_row(
-                "SELECT r.* FROM releases r \
-                     JOIN release_files rf ON rf.release_id = r.id \
-                     WHERE rf.id = ?",
-                params![file_id],
-                row_to_release,
-            )
-            .optional()
-            .map_err(DbError::from)
-        })
-        .await
-    }
-
     /// Count pending upload outbox entries for files belonging to a release.
     pub async fn count_pending_uploads_for_release(
         &self,
