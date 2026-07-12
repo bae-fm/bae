@@ -664,7 +664,6 @@ extension ImportSearchFlow {
         let hasCoverOptions: Bool
         let storageManaged: Binding<Bool>
         let storagePinned: Binding<Bool>
-        let importDisabled: Bool
         let localArtwork: [ArtworkFile]
     }
 
@@ -681,8 +680,7 @@ extension ImportSearchFlow {
     static func buildConfirmationView(
         inputs: ConfirmationInputs,
         callbacks: ConfirmationCallbacks,
-        @ViewBuilder coverContent: @escaping () -> some View,
-        @ViewBuilder actionExtra: @escaping () -> some View
+        @ViewBuilder coverContent: @escaping () -> some View
     ) -> some View {
         let importStore = inputs.importStore
         let key = inputs.key
@@ -700,7 +698,6 @@ extension ImportSearchFlow {
                 ),
                 storageManaged: inputs.storageManaged,
                 storagePinned: inputs.storagePinned,
-                importDisabled: inputs.importDisabled,
                 trackCountMismatch: inputs.trackCountMismatch,
                 expectedTrackCount: inputs.expectedTrackCount,
                 libraryStatus: inputs.libraryStatus,
@@ -734,7 +731,6 @@ extension ImportSearchFlow {
                     }
                 },
                 coverContent: coverContent,
-                actionExtra: actionExtra,
             )
         }
     }

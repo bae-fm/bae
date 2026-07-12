@@ -355,7 +355,6 @@ extension FolderImportTab {
                 hasCoverOptions: hasCoverOptions,
                 storageManaged: $storageManaged,
                 storagePinned: $storagePinned,
-                importDisabled: false,
                 localArtwork: candidate.files.artwork
             ),
             callbacks: ImportSearchFlow.ConfirmationCallbacks(
@@ -373,7 +372,6 @@ extension FolderImportTab {
                     },
                 )
             },
-            actionExtra: EmptyView.init,
         )
     }
 

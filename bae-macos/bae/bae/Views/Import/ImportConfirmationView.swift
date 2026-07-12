@@ -19,17 +19,13 @@ import SwiftUI
 /// imports — there's no source release to disagree with.
 /// `expectedTrackCount` is shown alongside that banner; passed
 /// regardless of the flag's value because the banner reads it.
-struct ImportConfirmationView<
-    CoverContent: View,
-    ActionExtra: View
->: View {
+struct ImportConfirmationView<CoverContent: View>: View {
     @Binding
     var values: BridgeRawReleaseEdit
     @Binding
     var storageManaged: Bool
     @Binding
     var storagePinned: Bool
-    var importDisabled: Bool
     let trackCountMismatch: Bool
     let expectedTrackCount: UInt32
     let libraryStatus: LibraryStatus?
@@ -52,8 +48,6 @@ struct ImportConfirmationView<
     let onEditCover: () -> Void
     @ViewBuilder
     let coverContent: () -> CoverContent
-    @ViewBuilder
-    let actionExtra: () -> ActionExtra
 
     @Environment(OutboxStore.self)
     private var outboxStore
@@ -92,7 +86,7 @@ struct ImportConfirmationView<
         if case .invalid = shapeReleaseEdit(raw: values) {
             return true
         }
-        return importDisabled
+        return false
     }
 
     var body: some View {
@@ -115,8 +109,6 @@ struct ImportConfirmationView<
                     form: $values,
                     pressingFieldsDisabled: exactness?.isMetadataOnly == true,
                 )
-
-                actionExtra()
             }
             .padding(20)
         }
@@ -610,7 +602,6 @@ struct CoverPickerView: View {
         values: $values,
         storageManaged: $storageManaged,
         storagePinned: $storagePinned,
-        importDisabled: false,
         trackCountMismatch: PreviewData.releaseDetail.trackCountMismatch,
         expectedTrackCount: PreviewData.releaseDetail.trackCount,
         libraryStatus: nil,
@@ -635,7 +626,6 @@ struct CoverPickerView: View {
             .frame(width: 80, height: 80)
             .clipShape(RoundedRectangle(cornerRadius: 6))
         },
-        actionExtra: EmptyView.init,
     )
     .frame(width: 1212, height: 982)
     .windowBackground()

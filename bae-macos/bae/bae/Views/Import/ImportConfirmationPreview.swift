@@ -1,10 +1,10 @@
 import BaeKit
 import SwiftUI
 
-/// Preview builder for ImportConfirmationView — fixes the cover placeholder,
-/// the EmptyView action extra, and the action callbacks, exposing only the
-/// display knobs a permutation varies. (ImportConfirmationView is generic
-/// over its cover/action content, so this returns `some View`.)
+/// Preview builder for ImportConfirmationView — fixes the cover placeholder
+/// and the action callbacks, exposing only the display knobs a permutation
+/// varies. (ImportConfirmationView is generic over its cover content, so
+/// this returns `some View`.)
 enum ImportConfirmationPreview {
     @MainActor
     static func make(
@@ -24,7 +24,6 @@ enum ImportConfirmationPreview {
             values: values,
             storageManaged: storageManaged,
             storagePinned: storagePinned,
-            importDisabled: false,
             trackCountMismatch: trackCountMismatch,
             expectedTrackCount: expectedTrackCount,
             libraryStatus: libraryStatus,
@@ -48,7 +47,6 @@ enum ImportConfirmationPreview {
                 .frame(width: 80, height: 80)
                 .clipShape(RoundedRectangle(cornerRadius: 6))
             },
-            actionExtra: EmptyView.init
         )
     }
 }
