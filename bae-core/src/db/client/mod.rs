@@ -2080,8 +2080,6 @@ fn replace_track_artists(
     Ok(())
 }
 
-/// Resolve queue track-ids to their display rows in position order, preserving
-/// duplicates. The same track may be queued more than once, so a repeated id
 /// Per-track display metadata: one row per distinct track in the queue, fetched
 /// once and joined onto every queue entry that plays that track. Carries no
 /// identity (no entry id, no track id) — `resolve_queue_entries` supplies those
