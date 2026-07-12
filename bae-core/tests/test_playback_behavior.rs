@@ -1,8 +1,8 @@
 #![cfg(feature = "test-utils")]
 mod support;
 use crate::support::{
-    seed_discogs_test_release, test_config_and_keys, tracing_init, try_wait_for_import_complete,
-    wait_for_import_complete,
+    samples_as_f32, seed_discogs_test_release, test_config_and_keys, tracing_init,
+    try_wait_for_import_complete, wait_for_import_complete,
 };
 use bae_core::db::Database;
 use bae_core::discogs::models::{DiscogsArtist, DiscogsRelease, DiscogsTrack};
@@ -3129,7 +3129,7 @@ async fn test_cue_flac_seek() {
     let reference = decode_audio(&reference_data, None, None).expect("decode reference");
     let channels = reference.channels as usize;
     let sample_rate = reference.sample_rate;
-    let reference_f32 = reference.samples_as_f32();
+    let reference_f32 = samples_as_f32(&reference);
 
     // Wait for enough captured samples (1 second)
     let target_samples = sample_rate as usize * channels;
@@ -3246,7 +3246,7 @@ async fn test_direct_play_skips_pregap_cue_flac() {
     let reference = decode_audio(&reference_data, None, None).expect("decode reference");
     let channels = reference.channels as usize;
     let sample_rate = reference.sample_rate;
-    let reference_f32 = reference.samples_as_f32();
+    let reference_f32 = samples_as_f32(&reference);
 
     // Wait for enough captured samples (2 seconds)
     let target_samples = sample_rate as usize * channels * 2;
@@ -3706,7 +3706,7 @@ async fn test_cue_flac_seek_respects_track_end_boundary() {
     let reference = decode_audio(&reference_data, None, None).expect("decode reference");
     let channels = reference.channels as usize;
     let sample_rate = reference.sample_rate;
-    let reference_f32 = reference.samples_as_f32();
+    let reference_f32 = samples_as_f32(&reference);
 
     // Track 2 is ~12s total (INDEX 00 at 8s to 20s in file). After seeking to 5s,
     // ~7s remain. The decoder must stop at track 2's end boundary (stop_at),

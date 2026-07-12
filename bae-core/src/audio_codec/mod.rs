@@ -70,17 +70,6 @@ pub struct DecodedAudio {
     pub channels: u32,
 }
 
-impl DecodedAudio {
-    /// Convert full-range i32 PCM samples to the f32 shape emitted by streaming playback.
-    pub fn samples_as_f32(&self) -> Vec<f32> {
-        let scale = i32::MAX as f32;
-        self.samples
-            .iter()
-            .map(|&sample| sample as f32 / scale)
-            .collect()
-    }
-}
-
 /// Receives a decode as it streams: the format once, then interleaved-i32 chunks.
 ///
 /// `decode_audio_to_sink` pushes each frame straight in instead of accumulating a

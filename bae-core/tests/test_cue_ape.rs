@@ -8,7 +8,8 @@
 //! - Enable playback of individual tracks via full-file decode with seek/stop
 mod support;
 use crate::support::{
-    seed_discogs_test_release, test_config_and_keys, tracing_init, wait_for_import_complete,
+    samples_as_f32, seed_discogs_test_release, test_config_and_keys, tracing_init,
+    wait_for_import_complete,
 };
 use bae_core::db::Database;
 use bae_core::discogs::models::{DiscogsArtist, DiscogsRelease, DiscogsTrack};
@@ -566,7 +567,7 @@ async fn test_cue_ape_playback_uses_track_positions() {
     let reference = decode_audio(&reference_data, None, None).expect("decode reference");
     let channels = reference.channels as usize;
     let sample_rate = reference.sample_rate;
-    let reference_f32 = reference.samples_as_f32();
+    let reference_f32 = samples_as_f32(&reference);
 
     // Align and compare
     let snippet_len = 500 * channels;
@@ -679,7 +680,7 @@ async fn test_cue_ape_playback_no_decode_errors() {
     let reference = decode_audio(&reference_data, None, None).expect("decode reference");
     let channels = reference.channels as usize;
     let sample_rate = reference.sample_rate;
-    let reference_f32 = reference.samples_as_f32();
+    let reference_f32 = samples_as_f32(&reference);
 
     // Align and compare
     let snippet_len = 500 * channels;
@@ -817,7 +818,7 @@ async fn test_cue_ape_seek() {
     let reference = decode_audio(&reference_data, None, None).expect("decode reference");
     let channels = reference.channels as usize;
     let sample_rate = reference.sample_rate;
-    let reference_f32 = reference.samples_as_f32();
+    let reference_f32 = samples_as_f32(&reference);
 
     let needed_for_seek = sample_rate as usize * channels;
     let captured_snapshot =
@@ -1132,7 +1133,7 @@ async fn test_cue_ape_auto_advance_no_replay() {
     let sample_rate = reference.sample_rate;
 
     // Convert reference i32 to f32
-    let reference_f32 = reference.samples_as_f32();
+    let reference_f32 = samples_as_f32(&reference);
 
     // === COMPARE ===
     // The capture is one gapless stream: track 1's 28s→30s tail, then track 2.
@@ -1307,7 +1308,7 @@ async fn test_cue_ape_next_track() {
     let reference = decode_audio(&reference_data, None, None).expect("decode reference");
     let channels = reference.channels as usize;
     let sample_rate = reference.sample_rate;
-    let reference_f32 = reference.samples_as_f32();
+    let reference_f32 = samples_as_f32(&reference);
 
     // Align and compare
     let snippet_len = 500 * channels;

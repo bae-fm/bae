@@ -1,3 +1,12 @@
+/// Convert a decode's full-range i32 PCM samples to the f32 shape emitted by
+/// streaming playback, for comparing a ground-truth decode against captured
+/// playback output.
+#[allow(dead_code)]
+pub fn samples_as_f32(decoded: &bae_core::audio_codec::DecodedAudio) -> Vec<f32> {
+    let scale = i32::MAX as f32;
+    decoded.samples.iter().map(|&s| s as f32 / scale).collect()
+}
+
 /// Write one tagged FLAC into `dir` (copied from the test fixture) with the
 /// given `title`, so an Unknown-identity import can map it from file tags.
 /// Returns the on-disk bytes after tagging.
