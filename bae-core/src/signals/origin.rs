@@ -1,10 +1,10 @@
 //! Where a signal value came from — the provenance a signal badge labels
 //! itself with ("from Cover OCR", "from the folder name", …).
 
-use crate::identify::candidate_text::Source;
+use super::candidate_text::Source;
 
 /// The surface a signal value was harvested from. A coarse, UI-facing
-/// projection of the internal text-classification [`Source`] (plus the
+/// projection of the internal text-classification `Source` (plus the
 /// inherent origins of the disc-ID and CUE-`CATALOG` signals), so a badge can
 /// explain where its value came from without leaking file paths.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -24,7 +24,7 @@ pub enum SignalOrigin {
 }
 
 impl SignalOrigin {
-    /// Project the internal text-classification [`Source`] onto the coarse
+    /// Project the internal text-classification `Source` onto the coarse
     /// UI origin. The path payloads on `Artwork`/`FilenameGeneric`/`TextFile`
     /// are dropped — the badge names the kind of surface, not the file.
     pub fn from_text_source(source: &Source) -> Self {

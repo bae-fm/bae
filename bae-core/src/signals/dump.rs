@@ -5,9 +5,9 @@
 //! and regression-corpus building. The extraction service spawns [`dump_scan`]
 //! after its final emit so a slow filesystem write never gates emission.
 
+use super::candidate_text::{should_reject_line, Cluster, Source, SourcedLine};
 use super::pool::Pool;
 use super::SourcedValue;
-use crate::identify::candidate_text::{should_reject_line, Cluster, Source, SourcedLine};
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use tracing::warn;

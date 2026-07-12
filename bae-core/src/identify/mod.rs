@@ -18,7 +18,6 @@
 
 pub mod analyzer;
 pub mod barcode;
-pub mod candidate_text;
 pub mod combine;
 pub mod discid;
 pub mod service;

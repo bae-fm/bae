@@ -1,6 +1,6 @@
 //! The text signal: catalog-number candidates and free-text lines harvested
 //! from a candidate's surfaces (artwork OCR, folder name, filenames, CUE,
-//! text files) and classified by [`crate::identify::candidate_text`].
+//! text files) and classified by the `candidate_text` module.
 
 use super::{LookupFailure, SourcedValue};
 

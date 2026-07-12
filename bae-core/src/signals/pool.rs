@@ -3,7 +3,7 @@
 //! classifies the contents incrementally as the extraction pass adds more
 //! lines.
 
-use crate::identify::candidate_text::{
+use super::candidate_text::{
     self, apply_free_text_cutoff, catalog_numbers_sourced, cluster_lines_incremental,
     rank_clusters_in_place, Cluster, Source, SourcedLine,
 };

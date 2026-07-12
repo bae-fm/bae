@@ -4,7 +4,7 @@
 //! plus the artwork paths handed to the later OCR phase. The result is the
 //! [`FastPass`] the service emits as its first `Signals` snapshot.
 
-use crate::identify::candidate_text::{
+use super::candidate_text::{
     extract_folder_brackets, parse_filename_stem, strip_path_component, Source, SourcedLine,
 };
 use crate::import::discid::compute_discid_from_categorized;
