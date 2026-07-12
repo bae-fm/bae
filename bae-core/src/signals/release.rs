@@ -19,7 +19,7 @@ use tracing::{debug, warn};
 /// cloud-only releases without a local copy, or for releases with track
 /// files only and no rip metadata. Caller falls back to barcode OCR or
 /// gives up depending on `has_artwork`.
-pub async fn resolve_release_identity(
+pub(crate) async fn resolve_release_identity(
     library_manager: &crate::library::LibraryManager,
     release_id: &str,
 ) -> Result<(Option<String>, u32), String> {
@@ -101,7 +101,7 @@ pub async fn resolve_release_identity(
 /// guard is returned alongside the paths: the caller holds it until the OCR pass
 /// finishes, then the staged file is cleaned up. `None` when the release has no
 /// cover.
-pub async fn resolve_release_artwork_paths(
+pub(crate) async fn resolve_release_artwork_paths(
     library_manager: &crate::library::LibraryManager,
     release_id: &str,
 ) -> Result<(Vec<PathBuf>, Option<tempfile::TempDir>), String> {

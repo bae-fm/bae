@@ -61,7 +61,7 @@ pub enum ContextStart {
 /// repeat loops the stored order without re-fetching it. The whole order is held
 /// expanded — a release is small, and the library materializes to cheap track-id
 /// strings.
-pub struct PlaybackContext {
+pub(crate) struct PlaybackContext {
     /// What this order came from (a release, or the whole library). Read by
     /// persistence and the shuffle/repeat re-derive to re-fetch the tracks and
     /// re-materialize the order.
@@ -78,14 +78,14 @@ impl PlaybackContext {
     /// The entry currently under the cursor. A present context is non-empty with
     /// a valid cursor (the queue only builds one from a non-empty release and
     /// keeps the cursor in range), so this is always a real entry.
-    pub fn current(&self) -> &QueueEntry {
+    pub(crate) fn current(&self) -> &QueueEntry {
         &self.entries[self.cursor]
     }
 
     /// The not-yet-played tail of the context: everything after the cursor. The
     /// cursor is `< entries.len()`, so `cursor + 1 <= entries.len()` is always a
     /// valid slice bound (empty when the cursor is on the last entry).
-    pub fn upcoming(&self) -> &[QueueEntry] {
+    pub(crate) fn upcoming(&self) -> &[QueueEntry] {
         &self.entries[self.cursor + 1..]
     }
 }

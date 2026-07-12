@@ -20,7 +20,7 @@ use tracing::{debug, info, warn};
 /// imports each track maps 1:1 to an audio file. In both cases each DbTrack
 /// is moved into a TrackFile variant and its `duration_ms` is populated
 /// from the CUE sheet or a standalone-file probe.
-pub fn map_tracks_to_files(
+pub(crate) fn map_tracks_to_files(
     tracks: Vec<DbTrack>,
     files: &CategorizedFiles,
 ) -> Result<Vec<TrackFile>, ImportError> {

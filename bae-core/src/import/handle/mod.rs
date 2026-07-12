@@ -506,7 +506,7 @@ pub enum ScanEvent {
 /// the registry mutation) before either of these is sent. `Rescan` re-scans a
 /// folder and reconciles its candidates; `Forget` drops the folder's
 /// last-emitted candidate keys.
-pub enum WatcherCommand {
+pub(crate) enum WatcherCommand {
     Rescan(std::path::PathBuf),
     Forget(std::path::PathBuf),
 }
@@ -560,7 +560,7 @@ impl ImportServiceHandle {
 /// A `ParsedAlbum`'s artist-link rows reference artist IDs generated during
 /// parsing; reconcile may have resolved those to existing DB artists.
 /// `label` names the link kind in the unmapped-ID error.
-pub fn remap_artist_links<T: Clone>(
+pub(crate) fn remap_artist_links<T: Clone>(
     links: &[T],
     artist_id_map: &HashMap<String, String>,
     label: &str,
@@ -794,7 +794,7 @@ pub fn shape_user_edit_from_search_detail(
 ///
 /// Used by the Unknown import path to read embedded cover art from the backing
 /// audio files.
-pub fn categorized_audio_paths(
+pub(crate) fn categorized_audio_paths(
     categorized: &crate::import::folder_scanner::CategorizedFiles,
 ) -> Vec<std::path::PathBuf> {
     use crate::import::folder_scanner::AudioContent;

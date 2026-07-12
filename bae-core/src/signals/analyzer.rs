@@ -33,7 +33,7 @@ pub trait ArtworkAnalyzer: Send + Sync {
 /// No-op fallback. Registered when no platform analyzer is available so the
 /// extraction service can return empty results without a null check
 /// everywhere.
-pub struct NoopAnalyzer;
+pub(crate) struct NoopAnalyzer;
 
 impl ArtworkAnalyzer for NoopAnalyzer {
     fn analyze(&self, _path: &Path) -> ArtworkAnalysis {

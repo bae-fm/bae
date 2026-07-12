@@ -50,7 +50,7 @@ use unicode_normalization::UnicodeNormalization;
 /// Each survivor is attributed to its line's
 /// [`SignalOrigin::from_text_source`]. The catalog pool feeds the Refine
 /// badges, which need to show where each candidate came from.
-pub fn catalog_numbers_sourced(lines: &[SourcedLine]) -> Vec<SourcedValue> {
+pub(crate) fn catalog_numbers_sourced(lines: &[SourcedLine]) -> Vec<SourcedValue> {
     let mut out: Vec<SourcedValue> = Vec::new();
     let mut seen: HashSet<String> = HashSet::new();
     for line in lines {
@@ -122,7 +122,7 @@ fn is_zip_false_positive(candidate: &str, line: &str) -> bool {
 /// Reject predicate applied uniformly to every line, regardless of source.
 /// Each sub-rule is conservative — we keep false positives in order not to
 /// lose real album titles.
-pub fn should_reject_line(line: &str) -> bool {
+pub(crate) fn should_reject_line(line: &str) -> bool {
     is_catalog_line(line)
         || is_out_of_length_band(line)
         || is_track_listing(line)
@@ -245,7 +245,7 @@ fn is_universal_stop_phrase(line: &str) -> bool {
 ///
 /// Survivors are routed to the catalog pool directly — they bypass the
 /// free-text catalog regex, which is too strict for many real-world formats.
-pub fn extract_folder_brackets(folder_name: &str) -> Vec<String> {
+pub(crate) fn extract_folder_brackets(folder_name: &str) -> Vec<String> {
     static BRACKET_RE: OnceLock<Regex> = OnceLock::new();
     let re = BRACKET_RE.get_or_init(|| Regex::new(r"[\[\(]([^\]\)]+)[\]\)]").unwrap());
 
@@ -283,7 +283,7 @@ fn is_catalog_shaped_bracket(s: &str) -> bool {
 ///
 /// Returns `None` if the stripped component degenerates to something too
 /// short to be useful (e.g. an empty string or a single character).
-pub fn strip_path_component(raw: &str) -> Option<String> {
+pub(crate) fn strip_path_component(raw: &str) -> Option<String> {
     static YEAR_PREFIX: OnceLock<Regex> = OnceLock::new();
     static TRACK_PREFIX: OnceLock<Regex> = OnceLock::new();
     static TRAILING_BRACKET: OnceLock<Regex> = OnceLock::new();
@@ -338,7 +338,7 @@ pub fn strip_path_component(raw: &str) -> Option<String> {
 /// Audio filenames are never routed here — their stems are overwhelmingly
 /// track titles, which are the wrong pool for Artist / Album autocomplete.
 /// See `enumerate_filename_inputs` in the service.
-pub fn parse_filename_stem(path: &Path) -> Vec<String> {
+pub(crate) fn parse_filename_stem(path: &Path) -> Vec<String> {
     static TRACK_NUM: OnceLock<Regex> = OnceLock::new();
     static GENERIC: OnceLock<Regex> = OnceLock::new();
     let track_num = TRACK_NUM.get_or_init(|| Regex::new(r"^\s*\d{1,3}\s*[.\-_ ]+").unwrap());
@@ -387,7 +387,7 @@ pub enum Source {
 /// original text verbatim for display; normalization is only used internally
 /// for clustering.
 #[derive(Debug, Clone)]
-pub struct SourcedLine {
+pub(crate) struct SourcedLine {
     pub source: Source,
     pub text: String,
 }
@@ -401,19 +401,19 @@ const JW_THRESHOLD: f64 = 0.85;
 
 /// Upper bound on the free-text pool size. Starting value — tune against the
 /// corpus.
-pub const FREE_TEXT_CAP: usize = 30;
+pub(crate) const FREE_TEXT_CAP: usize = 30;
 
 /// Baseline free-text cutoff: clusters with at least this score survive.
-pub const FREE_TEXT_MIN_SCORE: usize = 2;
+pub(crate) const FREE_TEXT_MIN_SCORE: usize = 2;
 
 /// Fallback free-text cutoff: when no cluster clears the min-score gate
 /// (e.g. single-image candidate), take the top N by cluster size instead of
 /// returning an empty pool.
-pub const FREE_TEXT_FALLBACK_TOP: usize = 15;
+pub(crate) const FREE_TEXT_FALLBACK_TOP: usize = 15;
 
 /// One cluster of sourced lines grouped by normalized-text similarity.
 #[derive(Debug, Clone)]
-pub struct Cluster {
+pub(crate) struct Cluster {
     pub normalized_centroid: String,
     pub members: Vec<SourcedLine>,
 }
@@ -421,7 +421,7 @@ pub struct Cluster {
 impl Cluster {
     /// Cluster score: Σ (source_weight × members-of-that-source). The
     /// weights are eyeballed starting values — tune against corpus.
-    pub fn score(&self) -> usize {
+    pub(crate) fn score(&self) -> usize {
         self.members.iter().map(|m| source_weight(&m.source)).sum()
     }
 
@@ -435,7 +435,7 @@ impl Cluster {
     /// Members shorter than 4 chars are skipped — prevents truncated OCR
     /// fragments from winning. If every member is below that floor (rare —
     /// happens only for tiny candidate strings), take the first.
-    pub fn pick_representative(&self) -> String {
+    pub(crate) fn pick_representative(&self) -> String {
         self.members
             .iter()
             .enumerate()
@@ -462,7 +462,7 @@ impl Cluster {
 /// Source-weight starting values. CUE and path components are curated by
 /// rippers / users so they carry the strongest per-line signal; artwork OCR
 /// is lower weight per-line but earns score by repeating across images.
-pub fn source_weight(source: &Source) -> usize {
+pub(crate) fn source_weight(source: &Source) -> usize {
     match source {
         Source::CueField => 5,
         Source::PathComponent => 3,
@@ -491,7 +491,7 @@ fn case_rank(s: &str) -> u8 {
 /// Pipeline: NFD decomposition → drop combining marks (strips diacritics)
 /// → lowercase → trim → collapse internal whitespace → strip leading /
 /// trailing non-alphanumerics.
-pub fn normalize(text: &str) -> String {
+pub(crate) fn normalize(text: &str) -> String {
     // NFD decompose, drop combining marks.
     let decomposed: String = text
         .nfd()
@@ -521,7 +521,7 @@ pub fn normalize(text: &str) -> String {
 /// best-matching cluster or starting a new one. Mutates `clusters` in place
 /// so the caller can hold it across calls and avoid re-classifying old
 /// lines each emission.
-pub fn cluster_lines_incremental(clusters: &mut Vec<Cluster>, new_lines: &[SourcedLine]) {
+pub(crate) fn cluster_lines_incremental(clusters: &mut Vec<Cluster>, new_lines: &[SourcedLine]) {
     for line in new_lines {
         let norm = normalize(&line.text);
         if norm.is_empty() {
@@ -562,7 +562,7 @@ pub fn cluster_lines_incremental(clusters: &mut Vec<Cluster>, new_lines: &[Sourc
 }
 
 /// Sort clusters by score descending.
-pub fn rank_clusters_in_place(clusters: &mut [Cluster]) {
+pub(crate) fn rank_clusters_in_place(clusters: &mut [Cluster]) {
     clusters.sort_by_key(|c| std::cmp::Reverse(c.score()));
 }
 
@@ -574,7 +574,7 @@ pub fn rank_clusters_in_place(clusters: &mut [Cluster]) {
 /// single-image candidates where every cluster is score-1), fall back to
 /// the top `FREE_TEXT_FALLBACK_TOP` by score — the UI still gets a useful
 /// dropdown instead of an empty one.
-pub fn apply_free_text_cutoff(ranked: &[Cluster]) -> Vec<String> {
+pub(crate) fn apply_free_text_cutoff(ranked: &[Cluster]) -> Vec<String> {
     let above_threshold: Vec<&Cluster> = ranked
         .iter()
         .filter(|c| c.score() >= FREE_TEXT_MIN_SCORE)

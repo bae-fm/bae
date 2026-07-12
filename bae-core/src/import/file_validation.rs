@@ -13,7 +13,7 @@ use std::path::Path;
 /// 2. STREAMINFO block header (block type 0, length 34)
 ///
 /// Returns `Ok(true)` if valid, `Ok(false)` if corrupt, `Err` on IO failure.
-pub fn is_valid_flac(path: &Path) -> io::Result<bool> {
+pub(crate) fn is_valid_flac(path: &Path) -> io::Result<bool> {
     let mut file = fs::File::open(path)?;
     let file_size = file.metadata()?.len();
 
@@ -55,7 +55,7 @@ pub fn is_valid_flac(path: &Path) -> io::Result<bool> {
 /// - `.mp3` → `is_valid_mp3()` (ID3v2 header or MPEG sync word)
 /// - `.ape` → `is_valid_ape()` ("MAC " magic)
 /// - Unknown → `Ok(true)` (don't block on unrecognized formats)
-pub fn is_valid_audio(path: &Path) -> io::Result<bool> {
+pub(crate) fn is_valid_audio(path: &Path) -> io::Result<bool> {
     let ext = path
         .extension()
         .and_then(|e| e.to_str())
@@ -118,7 +118,7 @@ fn is_valid_aiff(path: &Path) -> io::Result<bool> {
 /// - MPEG sync word (first byte 0xFF, second byte top 3 bits set)
 ///
 /// Returns `Ok(true)` if valid, `Ok(false)` if corrupt, `Err` on IO failure.
-pub fn is_valid_mp3(path: &Path) -> io::Result<bool> {
+pub(crate) fn is_valid_mp3(path: &Path) -> io::Result<bool> {
     let mut file = fs::File::open(path)?;
     let file_size = file.metadata()?.len();
 
@@ -150,7 +150,7 @@ pub fn is_valid_mp3(path: &Path) -> io::Result<bool> {
 /// Validates the "MAC " magic bytes (first 4 bytes).
 ///
 /// Returns `Ok(true)` if valid, `Ok(false)` if corrupt, `Err` on IO failure.
-pub fn is_valid_ape(path: &Path) -> io::Result<bool> {
+pub(crate) fn is_valid_ape(path: &Path) -> io::Result<bool> {
     let mut file = fs::File::open(path)?;
     let file_size = file.metadata()?.len();
 
@@ -171,7 +171,7 @@ pub fn is_valid_ape(path: &Path) -> io::Result<bool> {
 ///
 /// Unknown extensions are assumed valid (don't block on formats we don't recognize).
 /// Returns `Ok(true)` if valid, `Ok(false)` if corrupt, `Err` on IO failure.
-pub fn is_valid_image(path: &Path) -> io::Result<bool> {
+pub(crate) fn is_valid_image(path: &Path) -> io::Result<bool> {
     let file_size = fs::metadata(path)?.len();
     if file_size == 0 {
         return Ok(false);
