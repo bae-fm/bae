@@ -19,7 +19,6 @@ use rmcp::transport::streamable_http_server::{
     session::local::LocalSessionManager, StreamableHttpServerConfig, StreamableHttpService,
 };
 use rmcp::{ErrorData, ServerHandler, ServiceExt};
-use serde::Serialize;
 use serde_json::{Map, Value};
 use std::future::Future;
 use std::net::SocketAddr;
@@ -37,16 +36,14 @@ type RunningMcpClient =
     rmcp::service::RunningService<rmcp::RoleClient, rmcp::model::InitializeRequestParams>;
 type McpClientCall<'a, T> = Pin<Box<dyn Future<Output = Result<T, McpError>> + Send + 'a>>;
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
-#[serde(rename_all = "snake_case", tag = "status")]
+#[derive(Debug, Clone)]
 pub enum McpServerStatus {
     Disabled,
     Running { url: String },
     Error { error: McpServerError },
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
-#[serde(rename_all = "snake_case", tag = "kind")]
+#[derive(Debug, Clone)]
 pub enum McpServerError {
     InvalidConfig { detail: String },
     TokenUnavailable { detail: String },

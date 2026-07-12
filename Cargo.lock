@@ -896,7 +896,6 @@ dependencies = [
  "bae-automation",
  "bae-core",
  "rmcp",
- "serde",
  "serde_json",
  "thiserror 2.0.18",
  "tokio",
