@@ -175,7 +175,7 @@ impl LibraryManager {
         // identities we're about to overwrite.
         if let Some(candidate_album_id) = self
             .database
-            .find_album_by_identity_group_excluding(new_identities, release_id)
+            .find_album_by_identity_group_excluding(new_identities, &[release_id.to_string()])
             .await?
         {
             return Ok(IdentityTargetAlbum {

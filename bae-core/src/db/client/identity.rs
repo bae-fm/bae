@@ -37,21 +37,14 @@ impl Database {
 
     /// Look up an album by Exact `release_identities` rows. Returns the
     /// first album that has a release with an identity row matching any
-    /// of `identities` on `(source, source_release_id)`. Approximate
-    /// identities (`source_release_id = None`) are ignored — they're
-    /// group-only claims, not pressing-level claims.
+    /// of `identities` on `(source, source_release_id)`, ignoring rows
+    /// that belong to `exclude_release_ids`. Approximate identities
+    /// (`source_release_id = None`) are ignored — they're group-only
+    /// claims, not pressing-level claims.
     ///
     /// Used for the per-pressing rejection step of import dedup: a
     /// duplicate is a release whose identity points at a specific
     /// pressing already in the library.
-    pub async fn find_album_by_identity_release(
-        &self,
-        identities: &[crate::import::ReleaseIdentity],
-    ) -> Result<Option<DbAlbum>, DbError> {
-        self.find_album_by_identity_release_excluding(identities, &[])
-            .await
-    }
-
     pub async fn find_album_by_identity_release_excluding(
         &self,
         identities: &[crate::import::ReleaseIdentity],
@@ -123,39 +116,12 @@ impl Database {
 
     /// Look up an album by `release_identities` group rows. Returns the
     /// first album that has a release with an identity row matching any
-    /// of `identities` on `(source, source_group_id)`. Used for the
-    /// cross-source merge step of import dedup.
-    pub async fn find_album_by_identity_group(
-        &self,
-        identities: &[crate::import::ReleaseIdentity],
-    ) -> Result<Option<String>, DbError> {
-        self.find_album_by_identity_group_match(identities, &[])
-            .await
-    }
-
-    /// Same as `find_album_by_identity_group`, but ignores rows belonging to
-    /// `exclude_release_id`. Used by `set_identity` to look for an album
-    /// the release would fit into without matching against the release's
-    /// own existing (about-to-be-replaced) identity rows.
+    /// of `identities` on `(source, source_group_id)`, ignoring rows that
+    /// belong to `exclude_release_ids`. Used for the cross-source merge
+    /// step of import dedup (excluding the releases a re-import replaces)
+    /// and by `set_identity` (excluding the release whose about-to-be-
+    /// replaced identity rows must not match against themselves).
     pub async fn find_album_by_identity_group_excluding(
-        &self,
-        identities: &[crate::import::ReleaseIdentity],
-        exclude_release_id: &str,
-    ) -> Result<Option<String>, DbError> {
-        self.find_album_by_identity_group_match(identities, &[exclude_release_id.to_string()])
-            .await
-    }
-
-    pub async fn find_album_by_identity_group_excluding_many(
-        &self,
-        identities: &[crate::import::ReleaseIdentity],
-        exclude_release_ids: &[String],
-    ) -> Result<Option<String>, DbError> {
-        self.find_album_by_identity_group_match(identities, exclude_release_ids)
-            .await
-    }
-
-    async fn find_album_by_identity_group_match(
         &self,
         identities: &[crate::import::ReleaseIdentity],
         exclude_release_ids: &[String],

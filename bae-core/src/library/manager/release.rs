@@ -80,7 +80,7 @@ impl LibraryManager {
         //    in `release_identities`.
         let album_id = self
             .database
-            .find_album_by_identity_group_excluding_many(identities, excluded_release_ids)
+            .find_album_by_identity_group_excluding(identities, excluded_release_ids)
             .await
             .map_err(|e| crate::import::ImportError::Db(LibraryError::Database(e)))?;
 
