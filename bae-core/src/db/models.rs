@@ -22,7 +22,6 @@
 use crate::import::MetadataSource;
 use crate::util::content_type::ContentType;
 use chrono::{DateTime, Utc};
-use serde::{Deserialize, Serialize};
 
 /// Artist metadata
 ///
@@ -35,7 +34,7 @@ use serde::{Deserialize, Serialize};
 /// Supports multiple metadata sources:
 /// - Discogs: discogs_artist_id for deduplication
 /// - Other sources can be added as needed
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct DbArtist {
     pub id: String,
     pub name: String,
@@ -86,7 +85,7 @@ impl DbArtist {
 ///
 /// Supports albums with multiple artists (e.g., collaborations).
 /// Position field maintains the order of artists for display.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone)]
 pub struct DbAlbumArtist {
     pub id: String,
     pub album_id: String,
@@ -98,7 +97,7 @@ pub struct DbAlbumArtist {
 /// Links artists to tracks (many-to-many)
 ///
 /// Supports tracks with multiple artists (features, remixes, etc.).
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone)]
 pub struct DbTrackArtist {
     pub id: String,
     pub track_id: String,
@@ -108,7 +107,7 @@ pub struct DbTrackArtist {
     pub created_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct DbWork {
     pub id: String,
     pub title: String,
@@ -117,7 +116,7 @@ pub struct DbWork {
     pub created_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct DbWorkArtist {
     pub id: String,
     pub work_id: String,
@@ -127,7 +126,7 @@ pub struct DbWorkArtist {
     pub created_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct DbWorkPart {
     pub id: String,
     pub parent_work_id: String,
@@ -137,7 +136,7 @@ pub struct DbWorkPart {
     pub created_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct DbTrackWork {
     pub id: String,
     pub track_id: String,
@@ -147,7 +146,7 @@ pub struct DbTrackWork {
     pub created_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct DbReleaseArtistRole {
     pub id: String,
     pub release_id: String,
@@ -158,7 +157,7 @@ pub struct DbReleaseArtistRole {
     pub created_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct DbTrackArtistRole {
     pub id: String,
     pub track_id: String,
@@ -181,7 +180,7 @@ pub struct DbTrackArtistRole {
 /// surface implicitly when the album's releases hold rows in multiple sources.
 /// See `notes/17-release-identity.md` for the design rationale (in particular,
 /// the loose attach rule and why album-level identity columns don't fit it).
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct DbAlbum {
     pub id: String,
     pub title: String,
@@ -258,7 +257,7 @@ pub struct LibraryStatus {
 /// claim" is one assignment (`Pressing::blank()`) instead of nilling
 /// six fields in every caller — see `many-fields-none-together-means-
 /// a-missing-type`.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Pressing {
     /// Release-specific year (may differ from album year)
     pub year: Option<i32>,
@@ -301,7 +300,7 @@ impl Pressing {
 ///
 /// The release_name field distinguishes between versions (e.g., "2016 Remaster").
 /// If the user doesn't specify a release, we create one with release_name=None.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct DbRelease {
     pub id: String,
     /// Links to the logical album (DbAlbum)
@@ -393,7 +392,7 @@ pub struct DbPlaybackState {
 /// `crate::import::MetadataSource` because that one only spans the two
 /// editorial sources — this one also covers file-tags-only imports
 /// (Unknown identity).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ReleaseMetadataSource {
     MusicBrainz,
     Discogs,
@@ -437,7 +436,7 @@ impl std::str::FromStr for ReleaseMetadataSource {
 ///
 /// `side` is the physical side (1-indexed). A CD = 1 side. Vinyl = 2 sides per disc.
 /// Cassette = 2 sides. Always set explicitly, never defaulted.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct DbTrack {
     pub id: String,
     /// Links to the specific release (DbRelease), not the logical album
@@ -464,7 +463,7 @@ pub struct DbTrack {
 ///   (`local_blob_refs`), read straight from the user's path;
 /// - Remote: coven's blob cache (`storage/pinned/` or `storage/cache/`), read
 ///   through coven's locality-aware read by the file's id — never a bae path.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone)]
 pub struct DbFile {
     pub id: String,
     /// Release this file belongs to
@@ -486,7 +485,7 @@ pub struct DbFile {
 /// The file windows that supply this track's samples live in
 /// `DbAudioSegment`. This row holds the track-level codec/display metadata,
 /// pregap durations, and measured loudness.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone)]
 pub struct DbAudioFormat {
     pub id: String,
     pub track_id: String,
@@ -520,7 +519,7 @@ pub struct DbAudioFormat {
     pub created_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DbAudioSegmentRole {
     AudioPregap,
     Main,
@@ -544,7 +543,7 @@ impl DbAudioSegmentRole {
 }
 
 /// One ordered file-backed window that supplies samples for an audio format.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone)]
 pub struct DbAudioSegment {
     pub id: String,
     pub audio_format_id: String,
@@ -904,7 +903,7 @@ const IMPORT_OP_STATUS_FAILED: &str = "failed";
 ///
 /// All validation happens before the import record is created, so
 /// imports start at Importing (no Preparing state needed).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ImportOperationStatus {
     Importing,
     Complete,
@@ -924,7 +923,7 @@ impl ImportOperationStatus {
 /// Created when user clicks Import, before any database records exist.
 /// Provides a stable ID for progress subscriptions during phase 0.
 /// Linked to release_id after phase 0 completes and release is created.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone)]
 pub struct DbImport {
     pub id: String,
     pub status: ImportOperationStatus,
@@ -1201,7 +1200,7 @@ pub struct AlbumSortCriterion {
     pub direction: SortDirection,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ComposerSortField {
     Name,
     WorkCount,
