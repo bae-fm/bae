@@ -905,10 +905,6 @@ name = "bae-test-support"
 version = "0.0.0-dev"
 dependencies = [
  "async-trait",
- "aws-config",
- "aws-credential-types",
- "aws-sdk-s3",
- "aws-smithy-http-client",
  "bae-core",
  "coven",
  "coven-core",

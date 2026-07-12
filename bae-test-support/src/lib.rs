@@ -7,8 +7,6 @@
 //! crate's public API, so neither lint has to be silenced for the binaries that
 //! happen not to call a given one.
 
-use bae_core::sync::S3ConfigData;
-
 /// The FLAC fixture tree lives in bae-core, so it is reached relative to the
 /// workspace root — `CARGO_MANIFEST_DIR` here is this crate, not bae-core.
 fn bae_core_fixtures() -> std::path::PathBuf {
@@ -222,91 +220,6 @@ pub fn setup_fresh_library(
     );
 
     (lm, tmp)
-}
-
-/// Read a test env var with a default fallback. `NotPresent` silently uses
-/// the default (the intended path); `NotUnicode` panics so a misconfigured
-/// env var fails loudly instead of silently substituting bytes-as-default.
-pub fn test_env(name: &str, default: &str) -> String {
-    match std::env::var(name) {
-        Ok(s) => s,
-        Err(std::env::VarError::NotPresent) => default.to_string(),
-        Err(std::env::VarError::NotUnicode(raw)) => {
-            panic!("test env var {name} is non-utf8: {raw:?}");
-        }
-    }
-}
-
-/// Test S3 endpoint + credentials. Defaults target a local minio at
-/// `localhost:19000` with creds `baetest`/`baetestpass`.
-pub struct TestS3Endpoint {
-    pub url: String,
-    pub access_key: String,
-    pub secret_key: String,
-}
-
-impl TestS3Endpoint {
-    pub fn from_env() -> Self {
-        Self {
-            url: test_env("BAE_TEST_S3_URL", "http://localhost:19000"),
-            access_key: test_env("BAE_TEST_S3_KEY", "baetest"),
-            secret_key: test_env("BAE_TEST_S3_SECRET", "baetestpass"),
-        }
-    }
-
-    /// Build an `S3ConfigData` against this endpoint for the given bucket,
-    /// optionally overriding the secret key (for negative tests).
-    pub fn config(&self, bucket: &str, secret_override: Option<&str>) -> S3ConfigData {
-        S3ConfigData {
-            bucket: bucket.to_string(),
-            region: "us-east-1".to_string(),
-            endpoint: Some(self.url.clone()),
-            key_prefix: None,
-            access_key: self.access_key.clone(),
-            secret_key: secret_override
-                .map(str::to_string)
-                .unwrap_or_else(|| self.secret_key.clone()),
-            storage: bae_core::config::HomeStorage::Opaque,
-        }
-    }
-
-    /// Provision a uniquely-named bucket against this endpoint via a direct
-    /// AWS SDK call. `S3CloudHome` itself has no CreateBucket affordance — by
-    /// design, since production sync setup never creates buckets — so the
-    /// test harness goes through the raw SDK here.
-    pub async fn provision_bucket(&self, name: &str) {
-        use aws_config::{BehaviorVersion, Region};
-        use aws_credential_types::Credentials;
-        let credentials = Credentials::new(
-            self.access_key.clone(),
-            self.secret_key.clone(),
-            None,
-            None,
-            "bae-test",
-        );
-        let http_client = aws_smithy_http_client::Builder::new()
-            .tls_provider(aws_smithy_http_client::tls::Provider::Rustls(
-                aws_smithy_http_client::tls::rustls_provider::CryptoMode::Ring,
-            ))
-            .build_https();
-        let cfg = aws_config::defaults(BehaviorVersion::latest())
-            .region(Region::new("us-east-1"))
-            .credentials_provider(credentials)
-            .http_client(http_client)
-            .endpoint_url(&self.url)
-            .load()
-            .await;
-        let s3 = aws_sdk_s3::config::Builder::from(&cfg)
-            .force_path_style(true)
-            .build();
-        let client = aws_sdk_s3::Client::from_conf(s3);
-        client
-            .create_bucket()
-            .bucket(name)
-            .send()
-            .await
-            .expect("provision bucket");
-    }
 }
 
 // ---------------------------------------------------------------------------

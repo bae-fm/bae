@@ -9,13 +9,10 @@
 //! run in their own process and `#[serial]` to keep the env mutation from
 //! racing sibling tests in this binary.
 
-use bae_test_support as support;
-
 use std::path::Path;
 
 use bae_core::app::bootstrap;
 use bae_core::config::{CloudProvider, Config};
-use bae_core::keys::StoreKeys;
 use bae_core::library::{create_library, unlock_library};
 use coven::{EncryptionService, StoreDir, UuidProvider};
 use serial_test::serial;
@@ -67,19 +64,36 @@ fn write_library(home: &Path, name: &str, configure: impl FnOnce(&mut Config)) -
     id
 }
 
+/// Stamp the encryption fields that make a fixture present as locked on a device
+/// whose keyring lacks the key: the recorded key fingerprint plus the
+/// `encryption_key_stored` hint. This pair alone is what `bootstrap` reads to
+/// decide "locked" — the "keychain wiped, config preserved" shape a returning
+/// user hits.
+fn mark_encryption_locked(config: &mut Config) {
+    config.encryption_key_stored = true;
+    config.encryption_key_fingerprint =
+        Some(EncryptionService::new(KEY_HEX).unwrap().fingerprint());
+}
+
 /// A fixture library that presents as locked on this device: the config records
 /// an encryption key (fingerprint + `encryption_key_stored`) and an opaque S3
-/// home, but no key is placed in the keyring — the "keychain wiped, config
-/// preserved" shape a returning user hits.
+/// home, but no key is placed in the keyring.
 fn write_locked_library(home: &Path, name: &str) -> String {
     write_library(home, name, |config| {
-        config.encryption_key_stored = true;
-        config.encryption_key_fingerprint =
-            Some(EncryptionService::new(KEY_HEX).unwrap().fingerprint());
+        mark_encryption_locked(config);
         config.cloud_home.provider = Some(CloudProvider::S3);
         config.cloud_home.s3_bucket = Some("bae-locked-fixture".to_string());
         config.cloud_home.s3_region = Some("us-east-1".to_string());
     })
+}
+
+/// A locked fixture with no cloud home: encryption is configured but this
+/// device's keyring lacks the key. The active-pointer logic is independent of the
+/// provider, and leaving the home unset keeps a subsequent unlocked reopen
+/// hermetic — a provider-configured library would attach sync to a live cloud
+/// home on reopen, whereas a home-less store's `start_sync` is a no-op.
+fn write_locked_library_without_home(home: &Path, name: &str) -> String {
+    write_library(home, name, mark_encryption_locked)
 }
 
 /// A plain local fixture library: no encryption, no cloud home.
@@ -160,58 +174,43 @@ fn bootstrap_that_fails_leaves_active_pointer() {
     );
 }
 
-/// A successful unlock re-runs bootstrap unlocked, which advances the pointer.
-/// Needs a reachable cloud home to mint the key and attach sync, so it is minio-
-/// backed and `#[ignore]`d like the rest of the S3 suite.
+/// After a successful unlock, opening the previously-locked library advances the
+/// active pointer to it — the counterpart to
+/// `bootstrap_of_locked_library_leaves_active_pointer`: what a *locked* open
+/// withholds (that test: B stays at A), the unlock grants. `unlock_library`
+/// places the key this device's keyring lacked, so the subsequent open fully
+/// realizes — encryption resolves (`has_encryption` true) and the pointer
+/// advances. The fixture carries no cloud home, so that open installs an
+/// encryption-holding but home-less sync manager with no cloud round-trip.
+///
+/// A single open, not an in-process reopen of a still-live store: `RunningApp`
+/// drop does not synchronously release coven's exclusive store-open lock (a
+/// service thread outlives the drop holding a `LibraryManager` clone), so closing
+/// and reopening the same store within one process is unreliable. The locked-open
+/// half of the transition is the sibling test's subject; this one owns the
+/// unlocked half.
 #[test]
-#[ignore]
 #[serial]
 fn unlock_then_reopen_advances_active_pointer() {
-    use bae_core::keys::BaeStoreKeysExt;
-    use support::TestS3Endpoint;
+    let home = fake_home();
+    let a = create_library("Library A".into(), &UuidProvider).unwrap();
+    let a_id = a.store_id.clone();
+    let b_id = write_locked_library_without_home(home.path(), "Library B");
 
-    let _home = fake_home();
-    let s3 = TestS3Endpoint::from_env();
-    let bucket = format!("bae-unlock-reopen-{}", Uuid::new_v4());
+    // A is the library the user last actually landed in; B is registered but
+    // locked (its key absent from this device's keyring).
+    assert_eq!(active_pointer().as_deref(), Some(a_id.as_str()));
 
-    // Library B: create it, open it, and configure an opaque S3 home. save_s3_config
-    // mints the encryption key and records its fingerprint.
-    let b = create_library("Library B".into(), &UuidProvider).unwrap();
-    let b_id = b.store_id.clone();
-    let app = bootstrap(b_id.clone(), 200, true, None).expect("open the fresh library");
-    app.runtime.block_on(s3.provision_bucket(&bucket));
-    app.runtime
-        .block_on(
-            app.services
-                .library_manager()
-                .save_s3_config(s3.config(&bucket, None)),
-        )
-        .expect("configure the opaque S3 home");
-    let key_hex = StoreKeys::new(b_id.clone())
-        .get_encryption_key()
-        .unwrap()
-        .expect("save_s3_config minted an encryption key");
-    drop(app);
-
-    // Library A becomes the active library.
-    create_library("Library A".into(), &UuidProvider).unwrap();
-
-    // Lock B (the "Lock Library" core call removes the key from the keyring).
-    StoreKeys::new(b_id.clone())
-        .forget_encryption_key()
-        .expect("lock library B");
-
-    // Reopening B is now locked: it succeeds with sync deferred, pointer stays A.
-    let locked = bootstrap(b_id.clone(), 200, true, None).expect("locked open of B succeeds");
-    assert!(!locked.services.library_manager().has_encryption());
-    let a_after_lock = active_pointer();
-    drop(locked);
-    assert_ne!(a_after_lock.as_deref(), Some(b_id.as_str()));
-
-    // Unlock B, then reopen: sync attaches and the pointer advances to B.
-    unlock_library(&b_id, &key_hex).expect("unlock B");
+    // Unlock B (validates KEY_HEX against the stored fingerprint and saves it to
+    // the keyring), then open it: the key is now present, so the open fully
+    // realizes — encryption resolves and the pointer advances from A to B.
+    unlock_library(&b_id, KEY_HEX).expect("unlock B");
     let unlocked = bootstrap(b_id.clone(), 200, true, None).expect("unlocked open of B succeeds");
     assert!(unlocked.services.library_manager().has_encryption());
-    assert_eq!(active_pointer().as_deref(), Some(b_id.as_str()));
+    assert_eq!(
+        active_pointer().as_deref(),
+        Some(b_id.as_str()),
+        "a successful unlock advances the active pointer to the reopened library"
+    );
     drop(unlocked);
 }

@@ -146,8 +146,8 @@ path = "tests/test_album_sort.rs"
 required-features = ["test-utils"]
 
 [[test]]
-name = "test_s3_setup_validation"
-path = "tests/test_s3_setup_validation.rs"
+name = "test_save_s3_config"
+path = "tests/test_save_s3_config.rs"
 required-features = ["test-utils"]
 
 [[test]]
