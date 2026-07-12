@@ -1822,10 +1822,11 @@ impl PlaybackService {
                 PlaybackCommand::SeekByRatio(ratio) => {
                     let position_ms = if let PlaybackSlot::Active(cur) = &self.slot {
                         let prepared = &cur.prepared;
-                        let pregap_ms = prepared.pregap_ms.unwrap_or(0).max(0) as u64;
-                        let duration_ms = prepared.duration.as_millis() as u64;
-                        let track_duration = duration_ms.saturating_sub(pregap_ms);
-                        Some(pregap_ms + (ratio.clamp(0.0, 1.0) * track_duration as f64) as u64)
+                        Some(crate::playback::format::position_for_progress(
+                            ratio,
+                            prepared.duration.as_millis() as u64,
+                            prepared.total_pregap_ms(),
+                        ))
                     } else {
                         None
                     };

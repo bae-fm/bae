@@ -132,13 +132,17 @@ impl PreviewPlayer {
         started
     }
 
-    /// Seek by slider ratio (0.0–1.0) within the active preview.
+    /// Seek by slider ratio (0.0–1.0) within the active preview. A preview is a
+    /// whole file, so there is no pregap to offset past.
     pub(crate) async fn seek_by_ratio(&mut self, ratio: f64) {
         let Some(active) = self.active.as_ref() else {
             return;
         };
-        let duration_ms = active.duration.as_millis() as u64;
-        let position_ms = (ratio.clamp(0.0, 1.0) * duration_ms as f64) as u64;
+        let position_ms = crate::playback::format::position_for_progress(
+            ratio,
+            active.duration.as_millis() as u64,
+            None,
+        );
         self.seek(Duration::from_millis(position_ms)).await;
     }
 
