@@ -141,6 +141,12 @@ pub struct SignalsContext {
     pub disc_id: DiscIdSignal,
     /// The barcode code payloads with their origins.
     pub barcode_codes: Vec<SourcedValue>,
+    /// Whether there was a barcode source at all. Empty `barcode_codes` is
+    /// ambiguous on its own — artwork scanned that held no barcode, and nothing to
+    /// scan, both produce an empty vec but settle differently — so the distinction
+    /// `BarcodeSignal` draws between `Settled { codes: [] }` and `Absent` has to be
+    /// carried, not re-derived.
+    pub had_barcode_source: bool,
     /// The catalog-number candidates with their origins.
     pub catalogs: Vec<SourcedValue>,
     /// Signals the user has toggled off.
@@ -165,6 +171,7 @@ impl SignalsContext {
         Self {
             disc_id: DiscIdSignal::Absent { track_count: 0 },
             barcode_codes: Vec::new(),
+            had_barcode_source: false,
             catalogs: Vec::new(),
             excluded: HashSet::new(),
             discid_results: Vec::new(),
@@ -180,6 +187,7 @@ impl SignalsContext {
     fn refresh_inputs(&mut self, signals: &Signals) {
         self.disc_id = signals.disc_id.clone();
         self.barcode_codes = signals.barcode.codes().to_vec();
+        self.had_barcode_source = !matches!(signals.barcode, BarcodeSignal::Absent);
         self.catalogs = signals.text.catalogs().to_vec();
         self.track_count = signals.disc_id.track_count();
     }
@@ -449,7 +457,12 @@ fn barcode_settled_state(context: &SignalsContext) -> SignalState {
             failure: failure.clone(),
         }
     } else if context.barcode_codes.is_empty() {
-        SignalState::Skipped
+        // Scanned and found nothing is a no-match, not a skip.
+        if context.had_barcode_source {
+            SignalState::NoMatch
+        } else {
+            SignalState::Skipped
+        }
     } else {
         found_or_no_match(context.barcode_results.len() as u32)
     }
@@ -727,14 +740,9 @@ fn apply_signals(
     };
 
     let barcode = match (barcode, &signals.barcode) {
-        (BarcodeProgress::Scanning, BarcodeSignal::Settled { codes }) => start_barcode_progress(
-            codes,
-            BarcodeProgress::Done {
-                matched: None,
-                results: Vec::new(),
-            },
-            &mut effects,
-        ),
+        (BarcodeProgress::Scanning, BarcodeSignal::Settled { codes }) => {
+            start_barcode_progress(codes, true, &mut effects)
+        }
         (BarcodeProgress::Scanning, BarcodeSignal::Absent) => BarcodeProgress::Skipped,
         (BarcodeProgress::Scanning, BarcodeSignal::Failed { failure, .. }) => {
             BarcodeProgress::Failed {
@@ -786,11 +794,21 @@ fn start_discid_progress(signal: &DiscIdSignal, effects: &mut Vec<Effect>) -> Di
 
 fn start_barcode_progress(
     codes: &[SourcedValue],
-    empty_progress: BarcodeProgress,
+    had_source: bool,
     effects: &mut Vec<Effect>,
 ) -> BarcodeProgress {
     if codes.is_empty() {
-        return empty_progress;
+        // Nothing to look up. Whether that settles as "looked, found no match" or
+        // "never looked" turns on whether a barcode source existed — the empty vec
+        // alone cannot say.
+        return if had_source {
+            BarcodeProgress::Done {
+                matched: None,
+                results: Vec::new(),
+            }
+        } else {
+            BarcodeProgress::Skipped
+        };
     }
 
     let mut values: Vec<String> = codes.iter().map(|c| c.value.clone()).collect();
@@ -908,7 +926,7 @@ fn rerun(mut context: SignalsContext) -> (IdentifyState, Vec<Effect>) {
     let discid = start_discid_progress(&context.disc_id, &mut effects);
     let barcode = start_barcode_progress(
         &context.barcode_codes,
-        BarcodeProgress::Skipped,
+        context.had_barcode_source,
         &mut effects,
     );
 

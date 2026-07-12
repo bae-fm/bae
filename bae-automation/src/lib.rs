@@ -2448,6 +2448,7 @@ fn automation_identify_state(state: bae_core::identify::IdentifyState) -> Automa
                 // read-only surface, so they don't cross the automation wire.
                 disc_id: _,
                 barcode_codes: _,
+                had_barcode_source: _,
                 catalogs: _,
                 excluded: _,
                 barcode_failure: _,
@@ -2822,6 +2823,7 @@ mod tests {
             SignalsContext {
                 disc_id: DiscIdSignal::Absent { track_count: 0 },
                 barcode_codes: Vec::new(),
+                had_barcode_source: false,
                 catalogs: Vec::new(),
                 excluded: HashSet::new(),
                 discid_results: Vec::new(),

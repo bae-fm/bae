@@ -789,6 +789,34 @@ fn rerun_with_nothing_to_look_up_settles() {
     );
 }
 
+/// Artwork scanned that held no barcode is `Settled { codes: [] }`, which is a
+/// different thing from `Absent` (nothing to scan) — the signal type says so. Both
+/// carry an empty code vec, so a re-run that re-derives the barcode pipe from the
+/// codes alone cannot tell them apart, and used to settle the scanned-nothing case
+/// as `Skipped` on re-run where the first pass settled it as a no-match. Same
+/// inputs, different answer depending on whether the user pressed Re-run.
+#[test]
+fn rerun_of_scanned_but_empty_barcode_settles_the_same_as_the_first_pass() {
+    let (settled, effects) = update(
+        started(),
+        signals(
+            DiscIdSignal::Absent { track_count: 5 },
+            BarcodeSignal::Settled { codes: Vec::new() },
+            &[],
+        ),
+    );
+    assert!(effects.is_empty(), "no codes to look up");
+    let first_pass = std::mem::discriminant(&settled);
+
+    let (rerun_state, rerun_effects) = step(settled, IdentifyEvent::ReRun);
+    assert!(rerun_effects.is_empty(), "still nothing to look up");
+    assert_eq!(
+        std::mem::discriminant(&rerun_state),
+        first_pass,
+        "re-run must settle where the first pass did, got {rerun_state:?}",
+    );
+}
+
 /// A re-run replays both lookups regardless of exclusions, but the re-derive that
 /// follows still masks the excluded side: exclude the disc, re-run, and the state
 /// settles back to barcode-only `Found` rather than to the original conflict.

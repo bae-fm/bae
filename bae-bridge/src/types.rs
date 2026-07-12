@@ -3676,6 +3676,7 @@ impl BridgeIdentifyState {
                     // triangulation in core, not this UI state, so they don't cross.
                     disc_id: _,
                     barcode_codes: _,
+                    had_barcode_source: _,
                     catalogs: _,
                     excluded: _,
                     barcode_failure: _,
