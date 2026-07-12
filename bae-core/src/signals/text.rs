@@ -43,6 +43,7 @@ impl TextSignal {
     }
 
     /// Free-text (artist/album) candidates harvested so far / finally.
+    #[cfg(test)]
     pub fn free_text(&self) -> &[String] {
         match self {
             TextSignal::Scanning { free_text, .. }
