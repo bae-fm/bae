@@ -191,15 +191,17 @@ check "clippy (bae-bridge --features oauth-providers,cloudkit)" \
 check "dead_code (bae-core lib only)" \
   env RUSTFLAGS="-D warnings" cargo check -p bae-core
 
-# Ban new #[allow(dead_code)] outside the shared integration-test support
-# module (the one place the per-target dead-code false positive -- each of
-# bae-core's 8 `tests/test_*.rs` binaries is a separate crate that uses only
-# a subset of tests/support/mod.rs -- is unavoidable).
+# Ban new #[allow(dead_code)] everywhere, with no carve-out. The shared
+# integration-test helpers used to need one: as a `tests/support/mod.rs`
+# include they were recompiled into each of bae-core's test binaries, so
+# helpers a given binary didn't call read as dead. They are the
+# bae-test-support crate now -- compiled once, helpers are its public API --
+# so that false positive is gone rather than tolerated.
 check "no new #[allow(dead_code)]" bash -c '
   offenders=$(grep -rn --include="*.rs" "allow(dead_code)" \
     bae-core bae-bridge bae-cli bae-mcp bae-automation bae-desktop bae-loc \
-    third-party \
-    | grep -v "bae-core/tests/support/mod.rs" || true)
+    bae-test-support third-party \
+    || true)
   if [ -n "$offenders" ]; then
     echo "New #[allow(dead_code)] is banned (delete the code or #[cfg]-restrict it):"
     echo "$offenders"
