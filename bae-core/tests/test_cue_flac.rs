@@ -47,7 +47,7 @@ async fn test_cue_flac_records_track_positions() {
     let (library_manager, release_id) = import_cue_flac_fixture(temp_root.path()).await;
     info!("Import completed, release_id: {}", release_id);
     let tracks = library_manager
-        .get_tracks(&release_id)
+        .get_tracks_for_release(&release_id)
         .await
         .expect("get tracks");
     assert_eq!(tracks.len(), 3, "Should have 3 tracks");
@@ -331,7 +331,7 @@ async fn test_cue_flac_decoded_duration_matches_cue_timing() {
     let temp_root = TempDir::new().expect("temp root");
     let (library_manager, release_id) = import_cue_flac_fixture(temp_root.path()).await;
     let tracks = library_manager
-        .get_tracks(&release_id)
+        .get_tracks_for_release(&release_id)
         .await
         .expect("get tracks");
     assert_eq!(tracks.len(), 3, "Should have exactly 3 tracks");
@@ -542,7 +542,9 @@ impl CueFlacCaptureFixture {
             .get_releases_for_album(&albums[0].id)
             .await?;
         assert!(!releases.is_empty(), "Should have imported release");
-        let tracks = library_manager.get_tracks(&releases[0].id).await?;
+        let tracks = library_manager
+            .get_tracks_for_release(&releases[0].id)
+            .await?;
         let track_ids: Vec<String> = tracks.iter().map(|t| t.id.clone()).collect();
         assert_eq!(track_ids.len(), 3, "Should have 3 tracks from CUE/FLAC");
 
@@ -584,7 +586,7 @@ async fn test_cue_flac_export_single_track() {
     let (library_manager, release_id) = import_cue_flac_fixture(temp_root.path()).await;
 
     let tracks = library_manager
-        .get_tracks(&release_id)
+        .get_tracks_for_release(&release_id)
         .await
         .expect("get tracks");
     assert_eq!(tracks.len(), 3, "Should have 3 tracks");
@@ -653,7 +655,7 @@ async fn test_cue_flac_gapless_track_boundary() {
     let temp_root = TempDir::new().expect("temp root");
     let (library_manager, release_id) = import_cue_flac_fixture(temp_root.path()).await;
     let tracks = library_manager
-        .get_tracks(&release_id)
+        .get_tracks_for_release(&release_id)
         .await
         .expect("get tracks");
     assert_eq!(tracks.len(), 3, "Should have 3 tracks");

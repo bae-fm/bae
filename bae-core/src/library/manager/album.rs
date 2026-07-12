@@ -104,7 +104,7 @@ impl LibraryManager {
         let mut db_cleanups = Vec::new();
         let mut evict_blobs = Vec::new();
         for release in &releases {
-            let tracks = self.get_tracks(&release.id).await?;
+            let tracks = self.get_tracks_for_release(&release.id).await?;
             all_track_ids.extend(tracks.into_iter().map(|t| t.id));
             let delete_plan = self.release_delete_plan(release).await?;
             db_cleanups.push(delete_plan.db_cleanup);

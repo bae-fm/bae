@@ -148,7 +148,7 @@ async fn export_track_from_cloud_only_release() {
     let original_bytes = support::write_tagged_flac(&album_dir, "01.flac", "Track One");
     let (release_id, _) = import_then_strand_in_cloud(&f, &album_dir).await;
 
-    let tracks = f.mgr.get_tracks(&release_id).await.unwrap();
+    let tracks = f.mgr.get_tracks_for_release(&release_id).await.unwrap();
     assert_eq!(tracks.len(), 1);
 
     let out = f.temp_path().join("exported.flac");

@@ -173,7 +173,7 @@ async fn test_cue_ape_records_correct_durations() {
     info!("Import completed, release_id: {}", release_id);
 
     let tracks = library_manager
-        .get_tracks(&release_id)
+        .get_tracks_for_release(&release_id)
         .await
         .expect("get tracks");
     assert_eq!(tracks.len(), 3, "Should have 3 tracks");
@@ -356,7 +356,7 @@ async fn test_cue_ape_records_track_timing() {
     let mut progress_rx = import_handle.subscribe_import(import_id);
     let (release_id, _album_id) = wait_for_import_complete(&mut progress_rx).await;
     let tracks = library_manager
-        .get_tracks(&release_id)
+        .get_tracks_for_release(&release_id)
         .await
         .expect("get tracks");
     assert_eq!(tracks.len(), 3);
@@ -490,7 +490,9 @@ impl CueApeTestFixture {
             .get_releases_for_album(&albums[0].id)
             .await?;
         assert!(!releases.is_empty(), "Should have imported release");
-        let tracks = library_manager.get_tracks(&releases[0].id).await?;
+        let tracks = library_manager
+            .get_tracks_for_release(&releases[0].id)
+            .await?;
         let track_ids: Vec<String> = tracks.iter().map(|t| t.id.clone()).collect();
         assert_eq!(track_ids.len(), 3, "Should have 3 tracks from CUE/APE");
 
@@ -1527,7 +1529,7 @@ async fn assert_multi_disc_cue_ape_per_disc_mapping(storage_mode: StorageMode, p
             .await;
 
     let tracks = library_manager
-        .get_tracks(&release_id)
+        .get_tracks_for_release(&release_id)
         .await
         .expect("get tracks");
     assert_eq!(tracks.len(), 6, "should have 6 tracks (2 discs × 3 tracks)");

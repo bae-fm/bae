@@ -119,7 +119,10 @@ async fn test_delete_album_integration() {
         .unwrap();
     assert!(releases.is_empty());
 
-    let tracks = library_manager.get_tracks(&release.id).await.unwrap();
+    let tracks = library_manager
+        .get_tracks_for_release(&release.id)
+        .await
+        .unwrap();
     assert!(tracks.is_empty());
 }
 
@@ -152,10 +155,16 @@ async fn test_delete_release_integration() {
     assert_eq!(releases.len(), 1);
     assert_eq!(releases[0].id, release2.id);
 
-    let tracks1 = library_manager.get_tracks(&release1.id).await.unwrap();
+    let tracks1 = library_manager
+        .get_tracks_for_release(&release1.id)
+        .await
+        .unwrap();
     assert!(tracks1.is_empty());
 
-    let tracks2 = library_manager.get_tracks(&release2.id).await.unwrap();
+    let tracks2 = library_manager
+        .get_tracks_for_release(&release2.id)
+        .await
+        .unwrap();
     assert_eq!(tracks2.len(), 1);
 }
 

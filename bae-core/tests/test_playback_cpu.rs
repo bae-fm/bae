@@ -355,7 +355,9 @@ impl PlaybackTestFixture {
             .get_releases_for_album(&albums[0].id)
             .await?;
         assert!(!releases.is_empty(), "Should have imported release");
-        let tracks = library_manager.get_tracks(&releases[0].id).await?;
+        let tracks = library_manager
+            .get_tracks_for_release(&releases[0].id)
+            .await?;
         let track_ids: Vec<String> = tracks.iter().map(|t| t.id.clone()).collect();
         assert_eq!(
             track_ids.len(),

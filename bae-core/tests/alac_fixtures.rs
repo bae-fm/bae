@@ -189,7 +189,7 @@ async fn import_standalone_alac_m4a() {
         import_single_m4a_fixture("silence-alac.m4a", temp_root.path()).await;
 
     let tracks = library_manager
-        .get_tracks(&release_id)
+        .get_tracks_for_release(&release_id)
         .await
         .expect("get tracks");
     assert_eq!(tracks.len(), 1, "standalone .m4a produces one track");
@@ -233,7 +233,7 @@ async fn import_standalone_aac_m4a() {
         import_single_m4a_fixture("silence-aac.m4a", temp_root.path()).await;
 
     let tracks = library_manager
-        .get_tracks(&release_id)
+        .get_tracks_for_release(&release_id)
         .await
         .expect("get tracks");
     assert_eq!(tracks.len(), 1);
@@ -372,7 +372,7 @@ async fn import_cue_alac_pair() {
     let (release_id, _) = wait_for_import_complete(&mut progress_rx).await;
 
     let tracks = library_manager
-        .get_tracks(&release_id)
+        .get_tracks_for_release(&release_id)
         .await
         .expect("get tracks");
     assert_eq!(tracks.len(), 3);

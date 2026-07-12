@@ -18,6 +18,7 @@ impl LibraryManager {
         Ok(self.database.is_content_hash_imported(hash).await?)
     }
 
+    /// Get tracks for a specific release
     pub async fn get_tracks_for_release(
         &self,
         release_id: &str,
@@ -719,7 +720,7 @@ impl LibraryManager {
 
         // Collect track IDs before deletion for playback cleanup
         let track_ids: Vec<String> = self
-            .get_tracks(release_id)
+            .get_tracks_for_release(release_id)
             .await?
             .into_iter()
             .map(|t| t.id)
@@ -776,7 +777,7 @@ impl LibraryManager {
                     LibraryError::TrackMapping(format!("Release not found: {release_id}"))
                 })?;
             let track_ids: Vec<String> = self
-                .get_tracks(&release_id)
+                .get_tracks_for_release(&release_id)
                 .await?
                 .into_iter()
                 .map(|t| t.id)

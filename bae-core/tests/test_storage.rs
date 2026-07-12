@@ -121,7 +121,7 @@ async fn test_local_import() {
 
     // Verify tracks created
     let tracks = library_manager
-        .get_tracks(&release_id)
+        .get_tracks_for_release(&release_id)
         .await
         .expect("get tracks");
     assert_eq!(tracks.len(), file_data.len(), "Should have all tracks");
@@ -267,7 +267,7 @@ async fn test_local_delete_preserves_files() {
 
     // Verify import succeeded
     let tracks = library_manager
-        .get_tracks(&release_id)
+        .get_tracks_for_release(&release_id)
         .await
         .expect("get tracks");
     assert_eq!(tracks.len(), 3, "Should have 3 tracks after import");
@@ -303,7 +303,7 @@ async fn test_local_delete_preserves_files() {
 
     // Verify database records are gone
     let tracks_after = library_manager
-        .get_tracks(&release_id)
+        .get_tracks_for_release(&release_id)
         .await
         .expect("get tracks after delete");
     assert!(
@@ -424,7 +424,7 @@ async fn run_import_with_cover_test() {
         .await
         .expect("Failed to get releases");
     let tracks = library_manager
-        .get_tracks(&releases[0].id)
+        .get_tracks_for_release(&releases[0].id)
         .await
         .expect("Failed to get tracks");
     assert_eq!(tracks.len(), 3, "Expected 3 tracks");
@@ -737,7 +737,7 @@ async fn run_real_album_test(album_dir: PathBuf, discogs_release_id: String) {
     };
     info!("remote: {}, local_path: {:?}", release.remote, local_path);
     let tracks = library_manager
-        .get_tracks(&release_id)
+        .get_tracks_for_release(&release_id)
         .await
         .expect("Failed to get tracks");
     info!("\nTracks ({}):", tracks.len());

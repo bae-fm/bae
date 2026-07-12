@@ -411,7 +411,7 @@ where
         .map_err(|e| -> Box<dyn std::error::Error> { e.into() })?;
     let mut progress_rx = import_handle.subscribe_import(import_id);
     let (release_id, _album_id) = wait_for_import_complete(&mut progress_rx).await;
-    let tracks = library_manager.get_tracks(&release_id).await?;
+    let tracks = library_manager.get_tracks_for_release(&release_id).await?;
     let track_ids: Vec<String> = tracks.iter().map(|t| t.id.clone()).collect();
 
     Ok(ImportedReleaseSetup {
@@ -945,7 +945,9 @@ impl CueFlacTestFixture {
             .get_releases_for_album(&albums[0].id)
             .await?;
         assert!(!releases.is_empty(), "Should have imported release");
-        let tracks = library_manager.get_tracks(&releases[0].id).await?;
+        let tracks = library_manager
+            .get_tracks_for_release(&releases[0].id)
+            .await?;
         let track_ids: Vec<String> = tracks.iter().map(|t| t.id.clone()).collect();
         assert_eq!(track_ids.len(), 3, "Should have 3 tracks from CUE/FLAC");
 
@@ -3426,7 +3428,9 @@ impl HighSampleRateTestFixture {
         let releases = library_manager
             .get_releases_for_album(&albums[0].id)
             .await?;
-        let tracks = library_manager.get_tracks(&releases[0].id).await?;
+        let tracks = library_manager
+            .get_tracks_for_release(&releases[0].id)
+            .await?;
         let track_id = tracks[0].id.clone();
 
         // Verify the audio format was correctly detected as 96kHz
@@ -3829,7 +3833,7 @@ async fn test_real_library_cpu_usage() {
     eprintln!("Using album: {}", album.title);
 
     let tracks = library_manager
-        .get_tracks(&release.id)
+        .get_tracks_for_release(&release.id)
         .await
         .expect("get tracks");
 
@@ -4013,7 +4017,7 @@ async fn test_pause_seek_cue_flac() {
     }
 
     let tracks = library_manager
-        .get_tracks(&releases[0].id)
+        .get_tracks_for_release(&releases[0].id)
         .await
         .expect("get tracks");
 
@@ -4245,7 +4249,7 @@ async fn test_playing_seek_cue_flac() {
     }
 
     let tracks = library_manager
-        .get_tracks(&releases[0].id)
+        .get_tracks_for_release(&releases[0].id)
         .await
         .expect("get tracks");
 
@@ -4422,7 +4426,10 @@ async fn test_restore_emits_seeked_at_saved_position() {
         .get_releases_for_album(&library_manager.get_albums(&[]).await.unwrap()[0].id)
         .await
         .unwrap();
-    let tracks = library_manager.get_tracks(&releases[0].id).await.unwrap();
+    let tracks = library_manager
+        .get_tracks_for_release(&releases[0].id)
+        .await
+        .unwrap();
     let track_id = tracks[0].id.clone();
 
     // Write a snapshot before the service starts, so no one can consume it
@@ -4515,7 +4522,10 @@ async fn test_restore_drops_context_when_cursor_past_shrunk_tracks() {
         .await
         .unwrap()
         .remove(0);
-    let tracks = library_manager.get_tracks(&release.id).await.unwrap();
+    let tracks = library_manager
+        .get_tracks_for_release(&release.id)
+        .await
+        .unwrap();
     assert_eq!(tracks.len(), 3, "the fixture release has three tracks");
     // The manual entry is the last track; it must survive the restore. The
     // context source is the same release with a cursor past its three tracks.
@@ -4635,7 +4645,10 @@ async fn test_play_persists_then_stop_clears_playback_state() {
         .unwrap()[0]
         .id
         .clone();
-    let first_track = library_manager.get_tracks(&release_id).await.unwrap()[0]
+    let first_track = library_manager
+        .get_tracks_for_release(&release_id)
+        .await
+        .unwrap()[0]
         .id
         .clone();
 
@@ -4800,7 +4813,10 @@ async fn restore_test_library() -> RestoreTestLibrary {
         .get_releases_for_album(&library_manager.get_albums(&[]).await.unwrap()[0].id)
         .await
         .unwrap();
-    let tracks = library_manager.get_tracks(&releases[0].id).await.unwrap();
+    let tracks = library_manager
+        .get_tracks_for_release(&releases[0].id)
+        .await
+        .unwrap();
     let track_ids: Vec<String> = tracks.iter().map(|t| t.id.clone()).collect();
     assert!(!track_ids.is_empty(), "the test album imported some tracks");
     RestoreTestLibrary {
@@ -4865,7 +4881,7 @@ async fn import_second_release(lib: &RestoreTestLibrary) -> (String, Vec<String>
     let (release_id, _album_id) = wait_for_import_complete(&mut progress_rx).await;
     let tracks = lib
         .library_manager
-        .get_tracks(&release_id)
+        .get_tracks_for_release(&release_id)
         .await
         .unwrap()
         .iter()
@@ -5153,7 +5169,7 @@ impl CloudOnlyPlaybackFixture {
         // Delete the import originals so file resolution can't fall back to them.
         std::fs::remove_dir_all(&album_dir)?;
 
-        let tracks = library_manager.get_tracks(&release_id).await?;
+        let tracks = library_manager.get_tracks_for_release(&release_id).await?;
         let track_ids: Vec<String> = tracks.iter().map(|t| t.id.clone()).collect();
         assert!(!track_ids.is_empty(), "Should have imported tracks");
 
@@ -6529,7 +6545,7 @@ impl RemoteMultiWindowPlayback {
         // Delete the import original so file resolution can't fall back to it.
         std::fs::remove_dir_all(&album_dir)?;
 
-        let tracks = library_manager.get_tracks(&release_id).await?;
+        let tracks = library_manager.get_tracks_for_release(&release_id).await?;
         let track_ids: Vec<String> = tracks.iter().map(|t| t.id.clone()).collect();
         assert_eq!(track_ids.len(), 3, "the CUE album imports 3 tracks");
 

@@ -3,11 +3,6 @@
 use super::*;
 
 impl LibraryManager {
-    /// Get tracks for a specific release
-    pub async fn get_tracks(&self, release_id: &str) -> Result<Vec<DbTrack>, LibraryError> {
-        Ok(self.database.get_tracks_for_release(release_id).await?)
-    }
-
     /// Get ordered track IDs for a release. Use this when the caller only
     /// needs IDs (queue building, repeat-album rebuild) — avoids pulling
     /// full `DbTrack` rows.
