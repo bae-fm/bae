@@ -187,13 +187,7 @@ struct LibraryView: View {
                     .accessibilityLabel(Text("Shuffle Library"))
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    Text(
-                        configStore.syncReady
-                            ? String(localized: "synced")
-                            : String(localized: "syncing\u{2026}")
-                    )
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                    LibrarySyncToolbarStatus()
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
@@ -362,6 +356,31 @@ extension LibraryView {
         catch {
             searchError = error.localizedDescription
         }
+    }
+}
+
+private struct LibrarySyncToolbarStatus: View {
+    @Environment(ConfigStore.self)
+    private var configStore
+
+    var body: some View {
+        Group {
+            if configStore.syncing {
+                ProgressView()
+                    .controlSize(.small)
+                    .accessibilityLabel(Text("syncing\u{2026}"))
+            }
+            else {
+                Text(
+                    configStore.syncReady
+                        ? String(localized: "synced")
+                        : String(localized: "syncing\u{2026}")
+                )
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            }
+        }
+        .frame(width: 56, height: 20, alignment: .trailing)
     }
 }
 

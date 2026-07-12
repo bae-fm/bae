@@ -20,6 +20,12 @@ public class ConfigStore {
     public var syncError: DisplayError?
 
     #if os(iOS)
+        /// Whether a sync cycle is running right now. iOS surfaces this as an
+        /// indeterminate spinner in the library toolbar; macOS has no consumer.
+        public var syncing: Bool = false
+    #endif
+
+    #if os(iOS)
         /// Latest surfaced error from core's `error` event, or nil when
         /// cleared. iOS routes app errors here for the library banner; macOS
         /// surfaces them through its global alert (`UiStore`) instead. Typed:
@@ -60,5 +66,8 @@ public class ConfigStore {
     public func applySyncStatusSnapshot(_ snapshot: BridgeSyncStatusSnapshot) {
         syncError = snapshot.error.map(DisplayError.init)
         syncReady = snapshot.syncReady
+        #if os(iOS)
+            syncing = snapshot.syncing
+        #endif
     }
 }
