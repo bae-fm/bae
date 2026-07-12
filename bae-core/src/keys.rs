@@ -7,18 +7,23 @@
 //! cloud credentials, and OAuth tokens under store-scoped accounts. coven is
 //! domain-agnostic and reads secrets only from the keyring, so bae's Discogs API
 //! key is layered back onto `StoreKeys` as another store-scoped keyring
-//! credential via an extension trait, composing coven's `read_keyring` /
-//! `keyring_service` / `store_id`. MCP's local bearer token uses the same account
+//! credential via an extension trait, using coven's `keyring_service` /
+//! `store_id` to scope a `keyring_core` entry it reads and writes directly
+//! (coven's own keyring API is typed to its own slots). MCP's local bearer
+//! token uses the same account
 //! scheme. In dev mode bae's `BAE_DISCOGS_API_KEY` env value is bridged into
 //! this account by `config::seed_dev_keyring`, the same way coven's own
 //! encryption-key / credentials env vars are.
 use tracing::{info, warn};
 
 pub use coven::{CloudHomeCredentials, DeviceKeys, KeyError, StoreKeys};
-// `read_keyring` / `keyring_service` back the bae-domain keyring credentials
-// below (Discogs key, encryption-key forget); they're used only here, so they
-// stay a private import rather than re-exported `bae_core::keys` surface.
-use coven::{keyring_service, read_keyring};
+// `keyring_service` names the keyring service the bae-domain credentials below
+// (Discogs key, MCP token, encryption-key forget) live under; used only here, so
+// it stays a private import rather than re-exported `bae_core::keys` surface.
+// coven's own keyring read/write is a closed typed-slot API (`KeyringSlot`) that
+// can't name bae's accounts, so bae reads and writes its accounts through
+// `keyring_core` directly against that same service name.
+use coven::keyring_service;
 
 /// A namespaced keyring account, matching coven's own `base:store_id` scheme.
 fn account(ks: &StoreKeys, base: &str) -> String {
@@ -67,6 +72,17 @@ fn delete_keyring_credential(
     }
 }
 
+fn read_keyring_credential(ks: &StoreKeys, account_base: &str) -> Result<Option<String>, KeyError> {
+    match keyring_core::Entry::new(keyring_service()?, &account(ks, account_base))
+        .map_err(map_keyring_error)?
+        .get_password()
+    {
+        Ok(value) => Ok(Some(value)),
+        Err(keyring_core::Error::NoEntry) => Ok(None),
+        Err(e) => Err(map_keyring_error(e)),
+    }
+}
+
 /// bae-domain credentials layered on coven's `StoreKeys`: the Discogs API key
 /// and the local MCP bearer token. Bring this trait into scope to call these on
 /// a `StoreKeys`.
@@ -91,7 +107,7 @@ pub trait BaeStoreKeysExt {
 
 impl BaeStoreKeysExt for StoreKeys {
     fn get_discogs_key(&self) -> Result<Option<String>, KeyError> {
-        read_keyring(&account(self, "discogs_api_key"))
+        read_keyring_credential(self, "discogs_api_key")
     }
 
     fn set_discogs_key(&self, value: &str) -> Result<(), KeyError> {
@@ -113,7 +129,7 @@ impl BaeStoreKeysExt for StoreKeys {
     }
 
     fn get_mcp_token(&self) -> Result<Option<String>, KeyError> {
-        read_keyring(&account(self, "mcp_bearer_token"))
+        read_keyring_credential(self, "mcp_bearer_token")
     }
 
     fn set_mcp_token(&self, value: &str) -> Result<(), KeyError> {
