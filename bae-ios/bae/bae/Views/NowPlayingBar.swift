@@ -118,7 +118,7 @@ struct NowPlayingBar: View {
         }
         .accessibilityLabel("Queue")
         Button {
-            playback.cycleRepeatMode()
+            playback.setRepeatMode(playbackStore.repeatMode.next)
         } label: {
             // Dimmed when off; accented when on (repeat-one glyph for track).
             Image(

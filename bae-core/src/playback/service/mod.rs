@@ -247,7 +247,6 @@ pub(crate) enum PlaybackCommand {
     },
     ClearQueue,
     SetRepeatMode(RepeatMode),
-    CycleRepeatMode,
     /// Set the playing context to sequential or shuffled order. `true` mints a
     /// fresh seed and materializes a shuffled order; `false` restores source order.
     /// The current track keeps playing.
@@ -436,10 +435,6 @@ impl PlaybackHandle {
     }
     pub fn set_repeat_mode(&self, mode: RepeatMode) {
         dispatch_command(&self.command_tx, PlaybackCommand::SetRepeatMode(mode));
-    }
-
-    pub fn cycle_repeat_mode(&self) {
-        dispatch_command(&self.command_tx, PlaybackCommand::CycleRepeatMode);
     }
 
     pub fn set_shuffle(&self, on: bool) {
@@ -1813,10 +1808,6 @@ impl PlaybackService {
                 }
                 PlaybackCommand::SetRepeatMode(mode) => {
                     self.apply_repeat_mode(mode).await;
-                }
-                PlaybackCommand::CycleRepeatMode => {
-                    let next = self.playback_queue.repeat_mode().next();
-                    self.apply_repeat_mode(next).await;
                 }
                 PlaybackCommand::SetShuffle(on) => {
                     match self.playback_queue.context_source().cloned() {

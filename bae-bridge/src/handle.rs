@@ -414,10 +414,6 @@ impl AppHandle {
         self.services.playback().set_repeat_mode(core_mode);
     }
 
-    pub fn cycle_repeat_mode(&self) {
-        self.services.playback().cycle_repeat_mode();
-    }
-
     pub fn set_shuffle(&self, on: bool) {
         self.services.playback().set_shuffle(on);
     }

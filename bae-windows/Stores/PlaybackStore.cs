@@ -50,6 +50,11 @@ internal sealed class PlaybackStore
     // command target. Written by ApplyMute from the MuteChanged payload.
     public bool IsMuted { get; private set; }
 
+    // The current repeat mode, for the repeat button that must compute the next
+    // mode as an absolute command target. Written by ApplyRepeat from the
+    // RepeatModeChanged payload.
+    public BridgeRepeatMode RepeatMode { get; private set; } = BridgeRepeatMode.Off;
+
     public event Action<NowPlayingBarTrack>? NowPlayingChanged;
     public event Action? PlaybackStopped;
     public event Action? LoadingStarted;
@@ -126,7 +131,11 @@ internal sealed class PlaybackStore
         MuteChanged?.Invoke(isMuted);
     }
 
-    public void ApplyRepeat(BridgeRepeatMode mode) => RepeatChanged?.Invoke(mode);
+    public void ApplyRepeat(BridgeRepeatMode mode)
+    {
+        RepeatMode = mode;
+        RepeatChanged?.Invoke(mode);
+    }
 
     public void ApplyQueueUpdated(BridgeQueueSnapshot snapshot)
     {
@@ -178,6 +187,7 @@ internal sealed class PlaybackStore
         _queueContext = null;
         Revision = 0;
         IsMuted = false;
+        RepeatMode = BridgeRepeatMode.Off;
     }
 
     // Carry the current position forward only when the incoming track is the one

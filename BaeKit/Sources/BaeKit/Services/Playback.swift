@@ -14,9 +14,8 @@ public final class Playback: Sendable, Observable {
     public let seekByRatio: @Sendable (_ ratio: Double) -> Void
     public let setVolume: @Sendable (_ volume: Float) -> Void
     public let setMuted: @Sendable (_ muted: Bool) -> Void
-    public let cycleRepeatMode: @Sendable () -> Void
-    /// Set the repeat mode to an absolute value (the menu's Repeat picker). The
-    /// now-playing bar's single button cycles instead.
+    /// Set the repeat mode to an absolute value. Every caller sends the mode it
+    /// wants; a cycling button passes `mode.next` computed from what it renders.
     public let setRepeatMode: @Sendable (_ mode: BridgeRepeatMode) -> Void
     public let playRelease:
         @Sendable (
@@ -40,7 +39,6 @@ public final class Playback: Sendable, Observable {
         seekByRatio: @escaping @Sendable (Double) -> Void = { _ in },
         setVolume: @escaping @Sendable (Float) -> Void = { _ in },
         setMuted: @escaping @Sendable (Bool) -> Void = { _ in },
-        cycleRepeatMode: @escaping @Sendable () -> Void = {},
         setRepeatMode: @escaping @Sendable (BridgeRepeatMode) -> Void = {
             _ in
         },
@@ -63,7 +61,6 @@ public final class Playback: Sendable, Observable {
         self.seekByRatio = seekByRatio
         self.setVolume = setVolume
         self.setMuted = setMuted
-        self.cycleRepeatMode = cycleRepeatMode
         self.setRepeatMode = setRepeatMode
         self.playRelease = playRelease
         self.playReleases = playReleases
@@ -81,7 +78,6 @@ public final class Playback: Sendable, Observable {
             seekByRatio: { handle.seekByRatio(ratio: $0) },
             setVolume: { handle.setVolume(volume: $0) },
             setMuted: { handle.setMuted(muted: $0) },
-            cycleRepeatMode: { handle.cycleRepeatMode() },
             setRepeatMode: { handle.setRepeatMode(mode: $0) },
             playRelease: {
                 handle.playRelease(

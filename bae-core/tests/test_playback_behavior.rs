@@ -2621,16 +2621,12 @@ async fn play_library_shuffled_is_a_no_op_on_an_empty_library() {
 }
 
 #[tokio::test]
-async fn cycle_repeat_mode_walks_off_context_track_off() {
+async fn set_repeat_mode_applies_and_reports_each_mode() {
     let mut fixture = PlaybackTestFixture::new().await;
-    // Default is Off; each cycle advances Off → Context → Track → Off.
     for expected in [RepeatMode::Context, RepeatMode::Track, RepeatMode::Off] {
-        fixture.playback_handle.cycle_repeat_mode();
+        fixture.playback_handle.set_repeat_mode(expected);
         let mode = wait_for_repeat_mode(&mut fixture.progress_rx, Duration::from_secs(3)).await;
-        assert_eq!(
-            mode, expected,
-            "CycleRepeatMode order is Off → Context → Track → Off"
-        );
+        assert_eq!(mode, expected, "SetRepeatMode applies the requested mode");
     }
 }
 

@@ -777,7 +777,7 @@ internal static class NativeBae
 
     internal static float GetVolume(AppHandle handle) => Await(handle.GetVolume());
 
-    internal static void CycleRepeatMode(AppHandle handle) => handle.CycleRepeatMode();
+    internal static void SetRepeatMode(AppHandle handle, BridgeRepeatMode mode) => handle.SetRepeatMode(mode);
 
     internal static void SetShuffle(AppHandle handle, bool on) => handle.SetShuffle(on);
 
