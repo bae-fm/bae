@@ -143,18 +143,6 @@ internal static class NativeBae
     internal static string? CloudProviderLabelKey(BridgeCloudProvider provider) =>
         BaeBridgeMethods.BridgeCloudProviderLabelKey(provider);
 
-    /// <summary>
-    /// The joiner's account email for an OAuth provider, fetched from its
-    /// authenticated session. <paramref name="provider"/> is the wire tag
-    /// ("google_drive"/…).
-    /// </summary>
-#if BAE_FULL_BRIDGE
-    internal static string FetchAccountEmail(string provider, string oauthTokenJson) =>
-        BaeBridgeMethods.FetchAccountEmail(CloudProvider(provider), oauthTokenJson);
-#else
-    internal static string FetchAccountEmail(string provider, string oauthTokenJson) => throw new InvalidOperationException();
-#endif
-
     /// <summary>The catalog key for an import prepare-step wire tag, or null for
     /// an unknown tag.</summary>
     internal static string? PrepareStepKey(string step)
