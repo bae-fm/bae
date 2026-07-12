@@ -172,23 +172,23 @@ jobs:
         xcodebuild -project bae-macos/bae/bae.xcodeproj \
           -scheme bae \
           -configuration Release \
-          -derivedDataPath build \
+          -derivedDataPath bae-macos/bae/.build/derivedData \
           CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO \
           PRODUCT_BUNDLE_IDENTIFIER="$BUNDLE_ID" \
           PRODUCT_NAME="$PRODUCT_NAME" \
           DEBUG_INFORMATION_FORMAT=dwarf-with-dsym \
           LIBRARY_SEARCH_PATHS="${FFMPEG_DIR}/lib /opt/bae-ffmpeg/lib /opt/homebrew/lib" \
           build
-        echo "APP_PATH=build/Build/Products/Release/${PRODUCT_NAME}.app" >> "$GITHUB_ENV"
+        echo "APP_PATH=bae-macos/bae/.build/derivedData/Build/Products/Release/${PRODUCT_NAME}.app" >> "$GITHUB_ENV"
 
     - name: Package dSYM
       if: matrix.edition == 'full'
       run: |
         mkdir -p target
-        DSYM_PATH="build/Build/Products/Release/${PRODUCT_NAME}.app.dSYM"
+        DSYM_PATH="bae-macos/bae/.build/derivedData/Build/Products/Release/${PRODUCT_NAME}.app.dSYM"
         if [[ ! -d "$DSYM_PATH" ]]; then
           echo "dSYM bundle not found at $DSYM_PATH" >&2
-          find build/Build/Products/Release -maxdepth 1 -name "*.dSYM" -print || true
+          find bae-macos/bae/.build/derivedData/Build/Products/Release -maxdepth 1 -name "*.dSYM" -print || true
           exit 1
         fi
         ditto -c -k --sequesterRsrc --keepParent "$DSYM_PATH" target/bae.dSYM.zip

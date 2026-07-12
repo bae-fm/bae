@@ -87,14 +87,26 @@ else
 fi
 
 cd bae-macos/bae && xcodegen && cd ../..
+
+# Build into the same derived-data cache the pre-commit/post-checkout hooks
+# use (they run xcodebuild from bae-macos/bae with -derivedDataPath
+# .build/derivedData, overridable via BAE_MACOS_DERIVED_DATA_PATH; relative
+# overrides resolve against bae-macos/bae, matching the hooks). Caveat: the
+# hooks build with CODE_SIGNING_ALLOWED=NO while this script signs, so
+# alternating a hook build and a run.sh build invalidates some incremental
+# state — the module caches and SourcePackages checkouts, the bulk of the
+# cache, are still shared.
+DERIVED_DATA="${BAE_MACOS_DERIVED_DATA_PATH:-.build/derivedData}"
+DERIVED_DATA="$(cd bae-macos/bae && mkdir -p "$DERIVED_DATA" && cd "$DERIVED_DATA" && pwd)"
+
 xcodebuild -project bae-macos/bae/bae.xcodeproj \
     -scheme bae \
     -configuration "$CONFIG" \
-    -derivedDataPath build \
+    -derivedDataPath "$DERIVED_DATA" \
     PRODUCT_BUNDLE_IDENTIFIER="$BUNDLE_ID" \
     PRODUCT_NAME="$PRODUCT_NAME" \
     build
 
 if [[ "$OPEN" == true ]]; then
-    open "build/Build/Products/$CONFIG/$PRODUCT_NAME.app" --env BAE_IMPORT_TRACE=1
+    open "$DERIVED_DATA/Build/Products/$CONFIG/$PRODUCT_NAME.app" --env BAE_IMPORT_TRACE=1
 fi

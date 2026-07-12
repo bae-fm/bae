@@ -4,7 +4,7 @@ set -euo pipefail
 # Bundle Homebrew dylibs into macOS app and fix paths.
 # Run after: xcodebuild build
 
-APP_PATH="${1:-build/Build/Products/Release/bae.app}"
+APP_PATH="${1:-bae-macos/bae/.build/derivedData/Build/Products/Release/bae.app}"
 APP_NAME="$(basename "$APP_PATH" .app)"
 FRAMEWORKS_DIR="$APP_PATH/Contents/Frameworks"
 BINARY="$APP_PATH/Contents/MacOS/$APP_NAME"
