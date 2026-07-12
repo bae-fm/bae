@@ -61,14 +61,6 @@ impl MetadataSource {
         }
     }
 
-    /// External URL for a specific release on this source.
-    pub fn release_url(&self, release_id: &str) -> String {
-        match self {
-            Self::MusicBrainz => format!("https://musicbrainz.org/release/{release_id}"),
-            Self::Discogs => format!("https://www.discogs.com/release/{release_id}"),
-        }
-    }
-
     /// External URL for a release group on this source — a release-group on
     /// MusicBrainz, a master on Discogs.
     pub fn group_url(&self, group_id: &str) -> String {
@@ -858,18 +850,10 @@ mod metadata_source_tests {
     }
 
     #[test]
-    fn release_and_group_urls_are_source_specific() {
-        assert_eq!(
-            MetadataSource::MusicBrainz.release_url("rel-1"),
-            "https://musicbrainz.org/release/rel-1"
-        );
+    fn group_urls_are_source_specific() {
         assert_eq!(
             MetadataSource::MusicBrainz.group_url("rg-1"),
             "https://musicbrainz.org/release-group/rg-1"
-        );
-        assert_eq!(
-            MetadataSource::Discogs.release_url("42"),
-            "https://www.discogs.com/release/42"
         );
         assert_eq!(
             MetadataSource::Discogs.group_url("master-7"),
