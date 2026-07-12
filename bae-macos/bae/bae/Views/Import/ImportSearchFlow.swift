@@ -649,7 +649,7 @@ extension ImportSearchFlow {
     /// The candidate, services, and source-detail-derived display inputs a
     /// confirmation view renders. The detail fields (track-count mismatch,
     /// library status, remote cover art) are discrete rather than a whole
-    /// `ImportReleaseDetail`, so Unknown imports can supply their
+    /// `BridgeReleaseDetail`, so Unknown imports can supply their
     /// file-tag-derived equivalents (no source release id, no remote cover art,
     /// no track-count source to mismatch against).
     struct ConfirmationInputs {

@@ -99,17 +99,11 @@ struct Candidate: Equatable, Identifiable {
     /// already-imported folder surfaces as added even without a fresh import in
     /// the session.
     var isAdded: Bool = false
-    /// Full release detail fetched after the user picks a pressing. Stored as
-    /// the bridge type (not just the `ImportReleaseDetail` projection) so the
-    /// bottom pane can re-seed the editor when the user flips the Exact /
-    /// Metadata-only choice — re-shaping needs the source detail, not only the
-    /// cover/track-count projection below.
+    /// Full release detail fetched after the user picks a pressing. The confirm
+    /// pane reads its cover art and track counts directly, and re-seeds the
+    /// editor from it when the user flips the Exact / Metadata-only choice —
+    /// re-shaping needs the full source detail, not a projection.
     var releaseDetailBridge: BridgeReleaseDetail?
-    /// Cover-art / track-count projection of the picked release, derived from
-    /// `releaseDetailBridge` for the confirm pane.
-    var releaseDetail: ImportReleaseDetail? {
-        releaseDetailBridge.map(ImportReleaseDetail.init(bridge:))
-    }
     var libraryStatuses: [String: BridgeLibraryStatus] = [:]
     var mode: CandidateMode = .identifying
     var error: String?
@@ -130,7 +124,7 @@ struct Candidate: Equatable, Identifiable {
     /// it). `nil` while the user is still in the identify phase.
     var identityChoice: BridgeIdentityChoice?
     /// Raw editable metadata form shown on the confirmation page. Seeded
-    /// from `releaseDetail` after prefetch and the user's identity
+    /// from `releaseDetailBridge` after prefetch and the user's identity
     /// choice; bae-core shapes the raw form into the wire edit committed
     /// as the metadata overlay alongside the import command.
     var editValues: BridgeRawReleaseEdit?

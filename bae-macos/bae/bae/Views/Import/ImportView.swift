@@ -357,7 +357,7 @@ extension ImportView {
 
     fileprivate func confirmationView(for candidate: Candidate) -> some View {
         let key = candidate.key
-        let detail = candidate.releaseDetail
+        let detail = candidate.releaseDetailBridge
         // For Unknown imports there's no source release detail —
         // remote cover art and library status are absent, the track
         // count comes from the editor (one entry per audio file), and

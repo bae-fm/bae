@@ -978,10 +978,6 @@ enum PreviewData {
         )
     }()
 
-    static let releaseDetail: ImportReleaseDetail = ImportReleaseDetail(
-        bridge: releaseDetailBridge
-    )
-
     /// Editor seed for the confirming previews — the raw release edit produced
     /// from the exact-pressing choice over `releaseDetailBridge`.
     static let confirmEditValues: BridgeRawReleaseEdit =
