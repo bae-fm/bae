@@ -1,9 +1,7 @@
-//! Barcode lookup helpers — look up one barcode against MB + Discogs and
-//! annotate the results with library status. Barcode *detection* (artwork OCR
-//! and the CUE `CATALOG` field) lives in the signal-extraction service;
-//! identify only looks the codes up.
+//! Barcode lookup helpers — look up one barcode against MB + Discogs. Barcode
+//! *detection* (artwork OCR and the CUE `CATALOG` field) lives in the
+//! signal-extraction service; identify only looks the codes up.
 
-use crate::db::LibraryStatus;
 use crate::discogs::client::{DiscogsClient, DiscogsSearchParams};
 use crate::import::cover_art::CoverArtArchiveClient;
 use crate::import::search::{search_discogs, search_mb, MetadataResult};
@@ -76,24 +74,6 @@ fn merge_barcode_results(
         mb.append(&mut discogs);
     }
     mb
-}
-
-/// Annotate search results with library status. Returns `(matches, statuses)`
-/// with the ordering from `check_releases_in_library`.
-pub async fn annotate_with_library_status(
-    results: Vec<MetadataResult>,
-    library_manager: &crate::library::LibraryManager,
-) -> Result<(Vec<MetadataResult>, Vec<LibraryStatus>), String> {
-    use crate::db::LibraryCheck;
-
-    let checks: Vec<LibraryCheck> = results.iter().map(LibraryCheck::from).collect();
-
-    let statuses = library_manager
-        .check_releases_in_library(&checks)
-        .await
-        .map_err(|e| format!("Failed to check library status: {e}"))?;
-
-    Ok((results, statuses))
 }
 
 #[cfg(test)]

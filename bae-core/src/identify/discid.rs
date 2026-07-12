@@ -197,37 +197,30 @@ fn stage_cover_for_ocr(
 }
 
 /// Look up a disc ID on MusicBrainz and annotate matches with library
-/// status. Returns `(matches, statuses)` — possibly empty when MB has no
-/// hits for this disc ID. The triangulation reducer treats empty results
-/// the same way as a barcode signal that produced no matches: settled
-/// with zero, ready for combine.
+/// status. Returns the zipped `(result, status)` pairs — possibly empty when
+/// MB has no hits for this disc ID. The triangulation reducer treats empty
+/// results the same way as a barcode signal that produced no matches:
+/// settled with zero, ready for combine.
 pub async fn lookup_and_resolve(
     cover_art_archive: &CoverArtArchiveClient,
     disc_id: &str,
     library_manager: &crate::library::LibraryManager,
-) -> Result<(Vec<MetadataResult>, Vec<LibraryStatus>), LookupFailure> {
-    use crate::db::LibraryCheck;
-
+) -> Result<Vec<(MetadataResult, LibraryStatus)>, LookupFailure> {
     // The MB lookup carries its own typed failure (Network / Provider /
     // Timeout) — pass it through structured.
     let result = lookup_by_discid(cover_art_archive, disc_id).await?;
 
     let matches: Vec<MetadataResult> = match result {
-        DiscIdResult::NoMatches => return Ok((Vec::new(), Vec::new())),
+        DiscIdResult::NoMatches => return Ok(Vec::new()),
         DiscIdResult::SingleMatch(m) => vec![*m],
         DiscIdResult::MultipleMatches(matches) => matches,
     };
 
     // The in-library check is a local DB read — its failure is opaque
     // diagnostic detail, not a provider verdict.
-    let checks: Vec<LibraryCheck> = matches.iter().map(LibraryCheck::from).collect();
-    let library_statuses = library_manager
-        .check_releases_in_library(&checks)
+    super::annotate_with_library_status(matches, library_manager)
         .await
-        .map_err(|e| LookupFailure::Diagnostic {
-            detail: format!("Failed to check library status: {e}"),
-        })?;
-    Ok((matches, library_statuses))
+        .map_err(|detail| LookupFailure::Diagnostic { detail })
 }
 
 #[cfg(test)]

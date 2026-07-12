@@ -31,3 +31,22 @@ pub use state::{
     BarcodeProgress, DiscidProgress, ExcludedSignal, IdentifyEvent, IdentifySource, IdentifyState,
 };
 pub use toolbar::{SignalKind, SignalRole, SignalState, ToolbarSignal};
+
+use crate::db::{LibraryCheck, LibraryStatus};
+use crate::import::search::MetadataResult;
+use crate::library::LibraryManager;
+
+/// Check which of `results` are already in the library and pair each result
+/// with its status (index-aligned with `check_releases_in_library`'s output)
+/// — the payload the identify lookup-completion events carry.
+async fn annotate_with_library_status(
+    results: Vec<MetadataResult>,
+    library_manager: &LibraryManager,
+) -> Result<Vec<(MetadataResult, LibraryStatus)>, String> {
+    let checks: Vec<LibraryCheck> = results.iter().map(LibraryCheck::from).collect();
+    let statuses = library_manager
+        .check_releases_in_library(&checks)
+        .await
+        .map_err(|e| format!("Failed to check library status: {e}"))?;
+    Ok(results.into_iter().zip(statuses).collect())
+}

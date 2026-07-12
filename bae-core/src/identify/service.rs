@@ -2,7 +2,8 @@
 //! per-candidate cancellation. One `IdentifyService` per app; each candidate
 //! runs in its own spawned driver task.
 
-use super::barcode::{annotate_with_library_status, lookup_barcode};
+use super::annotate_with_library_status;
+use super::barcode::lookup_barcode;
 use super::discid::lookup_and_resolve;
 use super::state::{step, Effect, ExcludedSignal, IdentifyEvent, IdentifyState};
 use crate::import::cover_art::CoverArtArchiveClient;
@@ -310,8 +311,7 @@ fn dispatch_effect(
                     return;
                 }
                 match outcome {
-                    Ok((matches, library_statuses)) => {
-                        let results: Vec<_> = matches.into_iter().zip(library_statuses).collect();
+                    Ok(results) => {
                         emit_step(
                             &event_tx,
                             IdentifyEvent::DiscidLookupCompleted {
@@ -362,14 +362,10 @@ fn dispatch_effect(
                     Ok(results) => {
                         match annotate_with_library_status(results, &library_manager).await {
                             Err(message) => barcode_lookup_failed(barcode, message),
-                            Ok((matches, library_statuses)) => {
-                                let results: Vec<_> =
-                                    matches.into_iter().zip(library_statuses).collect();
-                                IdentifyEvent::BarcodeLookupMatched {
-                                    for_barcode: barcode,
-                                    results,
-                                }
-                            }
+                            Ok(results) => IdentifyEvent::BarcodeLookupMatched {
+                                for_barcode: barcode,
+                                results,
+                            },
                         }
                     }
                 };
