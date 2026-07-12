@@ -28,7 +28,7 @@ enum ImportSearchFlow {
         importStore: ImportStore,
         key: String,
         candidate: Candidate
-    ) -> Binding<MetadataSource> {
+    ) -> Binding<BridgeMetadataSource> {
         Binding(
             get: { candidate.search.activeSource },
             set: { newValue in
@@ -133,17 +133,17 @@ enum ImportSearchFlow {
             .general(
                 artist: search.searchArtist,
                 album: search.searchAlbum,
-                source: search.activeSource.bridge
+                source: search.activeSource
             )
         case .catalogNumber:
             .catalogNumber(
                 catalogNumber: search.searchCatalog,
-                source: search.activeSource.bridge
+                source: search.activeSource
             )
         case .barcode:
             .barcode(
                 barcode: search.searchBarcode,
-                source: search.activeSource.bridge
+                source: search.activeSource
             )
         }
     }
@@ -162,7 +162,7 @@ enum ImportSearchFlow {
             case .catalogNumber: .catalogNumber
             case .barcode: .barcode
             }
-        let resultSource = MetadataSource(bridge: response.source)
+        let resultSource = response.source
         importStore.mutateCandidate(forKey: key) { candidate in
             var tabResults = CandidateSearchState.TabResults()
             tabResults.groups = response.groups.map(ReleaseGroup.init(bridge:))
@@ -188,7 +188,7 @@ enum ImportSearchFlow {
         importStore: ImportStore,
         key: String,
         tab: SearchTab,
-        source: MetadataSource,
+        source: BridgeMetadataSource,
         error: String?
     ) {
         importStore.mutateCandidate(forKey: key) { candidate in
@@ -287,8 +287,8 @@ extension ImportSearchFlow {
     /// page so commit applies it), and the local track count to reconcile the
     /// fetched detail against.
     struct PrefetchSelection {
-        let result: MetadataResult
-        let identityChoice: IdentityChoice
+        let result: BridgeMetadataResult
+        let identityChoice: BridgeIdentityChoice
         let localTrackCount: UInt32?
     }
 
@@ -308,7 +308,7 @@ extension ImportSearchFlow {
         }
 
         let releaseId = selection.result.releaseId
-        let bridgeSource = selection.result.source.bridge
+        let bridgeSource = selection.result.source
         let task = Task { @MainActor in
             do {
                 let bridgeDetail = try await library.prefetchRelease(
@@ -318,7 +318,7 @@ extension ImportSearchFlow {
                 )
                 let preview = shapeUserEditFromReleaseDetail(
                     detail: bridgeDetail,
-                    choice: selection.identityChoice.bridge
+                    choice: selection.identityChoice
                 )
                 importStore.mutateCandidate(forKey: key) { candidate in
                     // Keep the full source detail: flipping the Exact /
@@ -416,7 +416,7 @@ extension ImportSearchFlow {
         input: SearchPaneInput,
         openSettings: @escaping () -> Void,
         onAddAsUnknown: (() -> Void)?,
-        onSelect: ((MetadataResult) -> Void)? = nil
+        onSelect: ((BridgeMetadataResult) -> Void)? = nil
     ) -> some View {
         let key = input.key
         let importStore = services.importStore
@@ -469,7 +469,7 @@ extension ImportSearchFlow {
     /// through `mutateCandidate` so edits land on the candidate in the store.
     struct SearchFieldBindings {
         let activeTab: Binding<SearchTab>
-        let activeSource: Binding<MetadataSource>
+        let activeSource: Binding<BridgeMetadataSource>
         let artist: Binding<String>
         let album: Binding<String>
         let catalog: Binding<String>
@@ -557,7 +557,7 @@ extension ImportSearchFlow {
     private static func defaultOnSelect(
         services: ImportServices,
         input: SearchPaneInput
-    ) -> (MetadataResult) -> Void {
+    ) -> (BridgeMetadataResult) -> Void {
         { result in
             prefetchAndConfirm(
                 library: services.library,
@@ -592,10 +592,10 @@ extension ImportSearchFlow {
         importStore: ImportStore,
         key: String,
         detail: BridgeReleaseDetail,
-        ref: (releaseId: String, source: MetadataSource),
+        ref: (releaseId: String, source: BridgeMetadataSource),
         wantExact: Bool
     ) {
-        let choice = IdentityChoice.make(
+        let choice = BridgeIdentityChoice.make(
             exact: wantExact,
             releaseId: ref.releaseId,
             source: ref.source
@@ -604,7 +604,7 @@ extension ImportSearchFlow {
             candidate.identityChoice = choice
             let preview = shapeUserEditFromReleaseDetail(
                 detail: detail,
-                choice: choice.bridge
+                choice: choice
             )
             candidate.editValues = rawReleaseEditFromUserEdit(
                 edit: preview,

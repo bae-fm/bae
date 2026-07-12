@@ -14,7 +14,7 @@ struct ReleaseGroupListView: View {
     var provenance: [String: ResultProvenance] = [:]
     /// Release id of the pressing whose confirm pane is open, if any.
     let selectedReleaseId: String?
-    let onSelect: (MetadataResult) -> Void
+    let onSelect: (BridgeMetadataResult) -> Void
 
     var body: some View {
         ScrollView {

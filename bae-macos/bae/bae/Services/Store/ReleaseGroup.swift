@@ -16,7 +16,7 @@ struct ReleaseGroup: Equatable, Identifiable {
     let groupUrl: URL?
     /// Pre-formatted year span + pressing count, e.g. "1992 – 2012 · 4 pressings".
     let metaLabel: String
-    let pressings: [MetadataResult]
+    let pressings: [BridgeMetadataResult]
 
     var coverImageSource: ImageLoader.Source? {
         coverArt.map {
@@ -32,6 +32,6 @@ struct ReleaseGroup: Equatable, Identifiable {
         sourceLabel = bridge.sourceLabel
         groupUrl = bridge.groupUrl.flatMap(URL.init(string:))
         metaLabel = bridge.metaLabel
-        pressings = bridge.pressings.map(MetadataResult.init(bridge:))
+        pressings = bridge.pressings
     }
 }

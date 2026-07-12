@@ -468,7 +468,7 @@ extension ImportView {
                 coverSelection,
                 storageMode,
                 storagePinned,
-                identityChoice.bridge,
+                identityChoice,
                 $0
             )
         }

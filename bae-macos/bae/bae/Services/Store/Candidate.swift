@@ -44,29 +44,31 @@ struct CandidateSearchState: Equatable {
 
     /// Results keyed by tab, then source. A missing key is a combination the
     /// user hasn't searched yet — identical to `TabResults()`'s initial state.
-    private var resultsByTabSource: [SearchTab: [MetadataSource: TabResults]] =
-        [:]
+    private var resultsByTabSource:
+        [SearchTab: [BridgeMetadataSource: TabResults]] = [:]
 
     var searchArtist: String = ""
     var searchAlbum: String = ""
     var searchCatalog: String = ""
     var searchBarcode: String = ""
     var activeTab: SearchTab = .general
-    var activeSource: MetadataSource = .musicBrainz
+    var activeSource: BridgeMetadataSource = .musicBrainz
     var showManualSearch: Bool = false
 
     func activeResults() -> TabResults {
         results(forTab: activeTab, source: activeSource)
     }
 
-    func results(forTab tab: SearchTab, source: MetadataSource) -> TabResults {
+    func results(forTab tab: SearchTab, source: BridgeMetadataSource)
+        -> TabResults
+    {
         resultsByTabSource[tab]?[source] ?? TabResults()
     }
 
     mutating func setResults(
         _ state: TabResults,
         forTab tab: SearchTab,
-        source: MetadataSource
+        source: BridgeMetadataSource
     ) {
         resultsByTabSource[tab, default: [:]][source] = state
     }
@@ -126,7 +128,7 @@ struct Candidate: Equatable, Identifiable {
     /// command so the commit pipeline can post-process the seeded
     /// identity (Exact preserves `source_release_id`, Approximate NULLs
     /// it). `nil` while the user is still in the identify phase.
-    var identityChoice: IdentityChoice?
+    var identityChoice: BridgeIdentityChoice?
     /// Raw editable metadata form shown on the confirmation page. Seeded
     /// from `releaseDetail` after prefetch and the user's identity
     /// choice; bae-core shapes the raw form into the wire edit committed

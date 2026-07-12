@@ -105,9 +105,9 @@ enum IdentifyState: Equatable {
     /// conflict surface presents the per-signal sections so the user can
     /// pick a section, exclude a signal, or fall back to manual search.
     case conflict(
-        discidResults: [MetadataResult],
+        discidResults: [BridgeMetadataResult],
         discidLibraryStatuses: [String: BridgeLibraryStatus],
-        barcodeResults: [MetadataResult],
+        barcodeResults: [BridgeMetadataResult],
         barcodeLibraryStatuses: [String: BridgeLibraryStatus],
         discidSourceLabel: String?,
         matchedBarcode: String?,
@@ -153,11 +153,9 @@ enum IdentifyState: Equatable {
             let trackCount
         ):
             self = .conflict(
-                discidResults: discidResults.map(MetadataResult.init(bridge:)),
+                discidResults: discidResults,
                 discidLibraryStatuses: discidLibraryStatuses,
-                barcodeResults: barcodeResults.map(
-                    MetadataResult.init(bridge:)
-                ),
+                barcodeResults: barcodeResults,
                 barcodeLibraryStatuses: barcodeLibraryStatuses,
                 discidSourceLabel: discidSourceLabel,
                 matchedBarcode: matchedBarcode,

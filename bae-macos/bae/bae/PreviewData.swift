@@ -1184,7 +1184,7 @@ enum PreviewData {
     ]
 
     /// disc-id vs barcode candidate lists — the conflict results state.
-    static let conflictDiscidResults: [MetadataResult] = [
+    static let conflictDiscidResults: [BridgeMetadataResult] = [
         BridgeMetadataResult(
             source: .musicBrainz,
             releaseId: "rel-disc-1",
@@ -1195,9 +1195,8 @@ enum PreviewData {
             country: "US",
         )
     ]
-    .map(MetadataResult.init(bridge:))
 
-    static let conflictBarcodeResults: [MetadataResult] = [
+    static let conflictBarcodeResults: [BridgeMetadataResult] = [
         BridgeMetadataResult(
             source: .musicBrainz,
             releaseId: "rel-bar-1",
@@ -1208,7 +1207,6 @@ enum PreviewData {
             country: "JP",
         )
     ]
-    .map(MetadataResult.init(bridge:))
 
     /// Settled OCR/text signals — catalogs plus cover free-text.
     static let settledSignals = Signals(

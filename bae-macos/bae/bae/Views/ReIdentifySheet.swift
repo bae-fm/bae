@@ -52,7 +52,7 @@ struct ReIdentifySheet: View {
     /// The pressing the user clicked, pending the Exact / Metadata-only choice
     /// in the footer. `nil` until a row is picked.
     @State
-    private var selectedResult: MetadataResult?
+    private var selectedResult: BridgeMetadataResult?
     /// Footer choice for the selected pressing: claim the album group only
     /// rather than the exact pressing.
     @State
@@ -177,7 +177,8 @@ struct ReIdentifySheet: View {
     /// Footer shown once a pressing is picked: the Exact / Metadata-only
     /// choice plus a Set-identity commit. Re-identify has no editable confirm
     /// page, so the choice lives here instead of on the rows.
-    private func selectionFooter(for result: MetadataResult) -> some View {
+    private func selectionFooter(for result: BridgeMetadataResult) -> some View
+    {
         HStack(spacing: 12) {
             Text("Set identity to this pressing")
                 .font(.callout)
@@ -301,7 +302,7 @@ extension ReIdentifySheet {
         importer.autoIdentifyRelease(key, releaseId)
     }
 
-    fileprivate func commit(_ choice: IdentityChoice) {
+    fileprivate func commit(_ choice: BridgeIdentityChoice) {
         commitTask?.cancel()
         phase = .committing
         let releaseEditor = releaseEditor
@@ -310,7 +311,7 @@ extension ReIdentifySheet {
             do {
                 let albumId = try await releaseEditor.reIdentifyRelease(
                     releaseId,
-                    choice.bridge
+                    choice
                 )
                 landingAlbumId = albumId
                 switch choice {

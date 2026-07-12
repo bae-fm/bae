@@ -12,7 +12,7 @@ import SwiftUI
 /// surfaces the "already imported" banner and leaves Import disabled there —
 /// so the row stays tappable; it only dims to signal the dupe.
 struct ImportSearchResultRow: View {
-    let result: MetadataResult
+    let result: BridgeMetadataResult
     let isImporting: Bool
     let libraryStatus: BridgeLibraryStatus?
     /// Which signals produced/confirmed this result, for the badge row. `nil`
@@ -204,16 +204,14 @@ struct ImportSearchResultRow: View {
 #Preview("Pressing Rows") {
     VStack(spacing: 2) {
         ImportSearchResultRow(
-            result: MetadataResult(
-                bridge: BridgeMetadataResult(
-                    source: .musicBrainz,
-                    releaseId: "p-1",
-                    year: 1992,
-                    format: "CD",
-                    label: "Label Name",
-                    catalogNumber: "CAT 3922 CD",
-                    country: "BE",
-                )
+            result: BridgeMetadataResult(
+                source: .musicBrainz,
+                releaseId: "p-1",
+                year: 1992,
+                format: "CD",
+                label: "Label Name",
+                catalogNumber: "CAT 3922 CD",
+                country: "BE",
             ),
             isImporting: false,
             libraryStatus: nil,
@@ -226,16 +224,14 @@ struct ImportSearchResultRow: View {
             onSelect: {},
         )
         ImportSearchResultRow(
-            result: MetadataResult(
-                bridge: BridgeMetadataResult(
-                    source: .musicBrainz,
-                    releaseId: "p-2",
-                    year: 2012,
-                    format: "2×Vinyl",
-                    label: "Label Name",
-                    catalogNumber: "CAT 92021 LP",
-                    country: "UK",
-                )
+            result: BridgeMetadataResult(
+                source: .musicBrainz,
+                releaseId: "p-2",
+                year: 2012,
+                format: "2×Vinyl",
+                label: "Label Name",
+                catalogNumber: "CAT 92021 LP",
+                country: "UK",
             ),
             isImporting: false,
             libraryStatus: BridgeLibraryStatus(

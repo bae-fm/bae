@@ -8,7 +8,7 @@ struct ImportSearchFormView: View {
     @Binding
     var activeTab: SearchTab
     @Binding
-    var activeSource: MetadataSource
+    var activeSource: BridgeMetadataSource
     @Binding
     var searchArtist: String
     @Binding
@@ -183,7 +183,7 @@ struct ImportSearchPane: View {
     @Binding
     var activeTab: SearchTab
     @Binding
-    var activeSource: MetadataSource
+    var activeSource: BridgeMetadataSource
     @Binding
     var searchArtist: String
     @Binding
@@ -209,7 +209,7 @@ struct ImportSearchPane: View {
     /// Re-run the lookups from the toolbar's `Re-run` action.
     let onRerun: () -> Void
     /// A pressing row was picked — the flow opens the docked confirm pane.
-    let onSelect: (MetadataResult) -> Void
+    let onSelect: (BridgeMetadataResult) -> Void
 
     private struct FoundResult {
         let group: ReleaseGroup
@@ -482,9 +482,9 @@ extension ImportSearchPane {
     /// statuses, the source the disc-id lookup consulted, and the matched
     /// barcode value (for the section subtitles).
     struct ConflictResults {
-        let discidResults: [MetadataResult]
+        let discidResults: [BridgeMetadataResult]
         let discidLibraryStatuses: [String: BridgeLibraryStatus]
-        let barcodeResults: [MetadataResult]
+        let barcodeResults: [BridgeMetadataResult]
         let barcodeLibraryStatuses: [String: BridgeLibraryStatus]
         let discidSourceLabel: String?
         let matchedBarcode: String?
@@ -589,7 +589,7 @@ extension ImportSearchPane {
         signal: ExcludedSignal,
         title: LocalizedStringKey,
         subtitle: AttributedString,
-        results: [MetadataResult],
+        results: [BridgeMetadataResult],
         libraryStatuses: [String: BridgeLibraryStatus],
     ) -> some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -678,7 +678,7 @@ extension ImportSearchPane {
 /// NSSegmentedControl wrapper that supports disabling individual segments.
 struct SourceSegmentedControl: NSViewRepresentable {
     @Binding
-    var selection: MetadataSource
+    var selection: BridgeMetadataSource
     let discogsEnabled: Bool
     @Binding
     var showDiscogsInfo: Bool
@@ -901,7 +901,7 @@ extension ImportSearchPane {
 private struct SourcePickerPreview: View {
     let hasKey: Bool
     @State
-    private var source: MetadataSource = .musicBrainz
+    private var source: BridgeMetadataSource = .musicBrainz
     @State
     private var showPopover = false
     @State
