@@ -426,22 +426,27 @@ fn row_to_db_outbox_row(row: &Row<'_>) -> coven::rusqlite::Result<DbOutboxRow> {
     })
 }
 
+/// `ids` is a whole page's worth of releases (or, for the storage page, each row's
+/// release plus its album's), so it is unbounded and must be chunked under
+/// SQLite's variable limit like every other batched `IN` query here.
 fn image_versions(
     conn: &Connection,
     image_type: LibraryImageType,
     ids: &[String],
 ) -> Result<HashMap<String, String>, DbError> {
     let table = image_table(&image_type);
-    let placeholders = (0..ids.len()).map(|_| "?").collect::<Vec<_>>().join(",");
-    let sql = format!("SELECT id, _updated_at FROM {table} WHERE id IN ({placeholders})");
-    let mut stmt = conn.prepare(&sql)?;
-    let rows = stmt.query_map(coven::rusqlite::params_from_iter(ids.iter()), |row| {
-        Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
-    })?;
     let mut map = HashMap::new();
-    for row in rows {
-        let (id, version) = row?;
-        map.insert(id, version);
+    for chunk in ids.chunks(SQL_MAX_IN_VARS) {
+        let placeholders = in_clause_placeholders(chunk.len());
+        let sql = format!("SELECT id, _updated_at FROM {table} WHERE id IN ({placeholders})");
+        let mut stmt = conn.prepare(&sql)?;
+        let rows = stmt.query_map(coven::rusqlite::params_from_iter(chunk.iter()), |row| {
+            Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+        })?;
+        for row in rows {
+            let (id, version) = row?;
+            map.insert(id, version);
+        }
     }
     Ok(map)
 }
