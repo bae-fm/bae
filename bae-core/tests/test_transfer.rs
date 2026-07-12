@@ -1,9 +1,11 @@
 #![cfg(feature = "test-utils")]
-//! Integration tests for the bae-side release storage transitions onto coven's
-//! owned-blob model: the pin/unpin guards and successes (through coven's cache),
-//! the read-bytes durability check, the make-Local rollback windows (cancel +
-//! dest failure), the Local↔Remote round-trip, the missing-external-source read
-//! error, and the `ReleaseUpdated` events coven's completions emit.
+//! Integration tests for the bae-layer behavior that rides coven's owned-blob
+//! transitions: the make-Remote outbox-snapshot visibility, the host-provided
+//! cover blob through coven's local store, the pin/unpin guards and successes
+//! (the `TransferProgress` events through coven's cache), the
+//! missing-external-source read error `read_release_file_bytes` surfaces, and the
+//! `ReleaseUpdated` events coven's completions emit. coven's own suite owns the
+//! transition semantics themselves.
 //!
 //! coven owns the transitions; tests drive them through the manager's coven
 //! seams (`coven_make_remote` + the upload drain via `drain_uploads_for_test`,
@@ -437,41 +439,8 @@ async fn test_unpin_remote_drops_from_pinned_cache() {
 }
 
 // ---------------------------------------------------------------------------
-// read_release_file_bytes durability + missing-external-source error
+// read_release_file_bytes surfaces coven's external-source read failure as an error
 // ---------------------------------------------------------------------------
-
-/// `read_release_file_bytes` aborts when the bytes on disk are shorter than the
-/// declared `file_size` (coven's external-ref validate-on-read catches the size
-/// mismatch; the read fails before any caller trusts the bytes).
-#[tokio::test]
-async fn test_read_release_file_bytes_rejects_short_read() {
-    tracing_init();
-    let tmp = TempDir::new().unwrap();
-    let (db, mgr) = setup(&tmp).await;
-    let source_dir = tmp.path().join("src");
-    let (_a, release_id, _f) = create_local_release(&db, &mgr, &source_dir, &[]).await;
-
-    // A file whose declared size exceeds the bytes actually on disk.
-    let actual = b"short";
-    tokio::fs::write(source_dir.join("track.flac"), actual)
-        .await
-        .unwrap();
-    let file = DbFile::new(
-        &release_id,
-        "track.flac",
-        (actual.len() + 100) as i64,
-        ContentType::Flac,
-        Uuid::new_v4().to_string(),
-        Utc::now(),
-    );
-    mgr.add_file(&file).await.unwrap();
-    db.register_release_external_refs_for_test(&release_id, &source_dir.to_string_lossy())
-        .await
-        .unwrap();
-
-    let result = read_release_file_bytes(&file, &mgr).await;
-    assert!(result.is_err(), "short read must fail the length check");
-}
 
 /// A Local release whose external source file has vanished maps to a read error
 /// (coven's `ExternalMissing`), not empty bytes or a crash — the "files missing"
@@ -505,84 +474,16 @@ async fn test_missing_external_source_maps_to_error() {
 }
 
 // ---------------------------------------------------------------------------
-// make-Local durability: cancel + abort roll back and queue no deletes
+// Transition completions emit ReleaseUpdated
 // ---------------------------------------------------------------------------
 
-/// A cancelled make-Local rolls back: nothing is written at the new path, no
-/// cloud delete is queued, and the release stays Remote.
+/// Each coven transition completion re-emits the release to bae's subscribers:
+/// a drained make-Remote (via coven's `on_root_made_remote` callback) and a
+/// make-Local both fire a `LibraryEvent::ReleaseUpdated`, so cached UI details
+/// refresh when a release's storage changes. The transitions themselves are
+/// coven's; this asserts only the bae-layer event that rides their completion.
 #[tokio::test]
-async fn test_make_local_cancelled_rolls_back_and_stays_remote() {
-    tracing_init();
-    let tmp = TempDir::new().unwrap();
-    let (db, mgr) = setup_with_cloud(&tmp).await;
-    let release_id = create_remote_release(
-        &db,
-        &mgr,
-        &tmp.path().join("src"),
-        &[("a.flac", b"aaaa"), ("b.flac", b"bbbb")],
-    )
-    .await;
-
-    let new_path = tmp.path().join("exported");
-    // Cancel before the transition runs: coven aborts at the first blob, rolls
-    // back any partial copy, and leaves the release Remote.
-    let token = CancellationToken::new();
-    token.cancel();
-    mgr.coven_make_local(&release_id, new_path.to_str().unwrap(), &token)
-        .await
-        .unwrap();
-
-    for name in ["a.flac", "b.flac"] {
-        assert!(!new_path.join(name).exists(), "{name} rolled back");
-    }
-    assert_eq!(
-        storage(&mgr, &release_id).await,
-        (ReleaseStorageState::Remote, false)
-    );
-    assert!(db.get_pending_cloud_deletes().await.unwrap().is_empty());
-}
-
-/// A make-Local whose destination can't be written (the path is a file) fails,
-/// queues no delete, and the release stays Remote.
-#[tokio::test]
-async fn test_make_local_abort_on_dest_failure_queues_no_deletes() {
-    tracing_init();
-    let tmp = TempDir::new().unwrap();
-    let (db, mgr) = setup_with_cloud(&tmp).await;
-    let release_id =
-        create_remote_release(&db, &mgr, &tmp.path().join("src"), &[("a.flac", b"aaaa")]).await;
-
-    // Destination is a FILE, so writing `dest/a.flac` under it fails.
-    let new_path = tmp.path().join("dest_is_a_file");
-    tokio::fs::write(&new_path, b"blocker").await.unwrap();
-
-    let result = mgr
-        .coven_make_local(
-            &release_id,
-            new_path.to_str().unwrap(),
-            &CancellationToken::new(),
-        )
-        .await;
-    assert!(
-        result.is_err(),
-        "make-Local must fail when dest can't be written"
-    );
-    assert_eq!(
-        storage(&mgr, &release_id).await,
-        (ReleaseStorageState::Remote, false)
-    );
-    assert!(db.get_pending_cloud_deletes().await.unwrap().is_empty());
-}
-
-// ---------------------------------------------------------------------------
-// Round-trip + completion events
-// ---------------------------------------------------------------------------
-
-/// A full round-trip: Local → Remote (drain flips the gate) → Local (materialize
-/// + retract, files back at the chosen folder) → Remote again. Each completion
-/// emits a `ReleaseUpdated`.
-#[tokio::test]
-async fn test_round_trip_make_remote_make_local_make_remote() {
+async fn transition_completions_emit_release_updated() {
     tracing_init();
     let tmp = TempDir::new().unwrap();
     let (db, mgr) = setup_with_cloud(&tmp).await;
@@ -591,18 +492,12 @@ async fn test_round_trip_make_remote_make_local_make_remote() {
         create_local_release(&db, &mgr, &source_dir, &[("a.flac", b"round-trip-bytes")]).await;
     let mut events = mgr.subscribe_events();
 
-    // Local → Remote: enqueue + drain. The drain flips the gate and fires
-    // on_root_made_remote → ReleaseUpdated.
+    // A drained make-Remote completion emits ReleaseUpdated.
     mgr.coven_make_remote(&release_id, false).await.unwrap();
     mgr.drain_uploads_for_test().await.unwrap();
-    assert_eq!(
-        storage(&mgr, &release_id).await,
-        (ReleaseStorageState::Remote, false),
-        "Remote after make_remote"
-    );
     expect_release_updated(&mut events, &release_id).await;
 
-    // Remote → Local: materialize back to a chosen folder.
+    // A make-Local completion emits ReleaseUpdated.
     let dest = tmp.path().join("brought-back");
     mgr.coven_make_local(
         &release_id,
@@ -611,26 +506,5 @@ async fn test_round_trip_make_remote_make_local_make_remote() {
     )
     .await
     .unwrap();
-    assert_eq!(
-        storage(&mgr, &release_id).await,
-        (ReleaseStorageState::Local, false),
-        "Local after make_local"
-    );
-    assert_eq!(
-        tokio::fs::read(dest.join("a.flac")).await.unwrap(),
-        b"round-trip-bytes",
-        "the file is materialized back at the chosen folder"
-    );
     expect_release_updated(&mut events, &release_id).await;
-
-    // Local → Remote again: the external refs registered by make_local let the
-    // re-upload read from the new folder.
-    mgr.coven_make_remote(&release_id, false).await.unwrap();
-    let count = mgr.drain_uploads_for_test().await.unwrap();
-    assert_eq!(count, 1, "the file re-uploads on the second make_remote");
-    assert_eq!(
-        storage(&mgr, &release_id).await,
-        (ReleaseStorageState::Remote, false),
-        "Remote again after the round-trip"
-    );
 }

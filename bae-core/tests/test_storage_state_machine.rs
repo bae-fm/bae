@@ -206,44 +206,6 @@ async fn create_remote_cloud_only_release(
 }
 
 // ---------------------------------------------------------------------------
-// make-Remote with pin: Local before the drain, Remote + pinned after.
-// ---------------------------------------------------------------------------
-
-#[tokio::test]
-async fn test_remote_import_becomes_pinned_after_upload() {
-    let tmp = TempDir::new().unwrap();
-    let (db, mgr, _cloud) = setup_with_cloud(&tmp).await;
-    let source_dir = tmp.path().join("originals");
-    let (release_id, _files) =
-        create_local_release(&db, &mgr, &source_dir, &[("track1.flac", b"track1-bytes")]).await;
-
-    // Enqueue a retain-pinned make-Remote. Before the drain the gate hasn't
-    // flipped and nothing is in the cache, so the release is Local + not pinned.
-    mgr.coven_make_remote(&release_id, true).await.unwrap();
-    assert!(
-        !remote_flag(&mgr, &release_id).await,
-        "make-Remote lands remote=false until its upload drains"
-    );
-    assert_eq!(
-        storage(&mgr, &release_id).await,
-        (ReleaseStorageState::Local, false),
-        "Local + not-pinned before the upload drains"
-    );
-
-    let count = mgr.drain_uploads_for_test().await.unwrap();
-    assert_eq!(count, 1);
-
-    // The drain flipped the gate AND the retain-pinned upload populated the pinned
-    // cache, so the release reads Remote + pinned.
-    assert!(remote_flag(&mgr, &release_id).await);
-    assert_eq!(
-        storage(&mgr, &release_id).await,
-        (ReleaseStorageState::Remote, true),
-        "a drained retain-pinned make-Remote lands Remote + pinned"
-    );
-}
-
-// ---------------------------------------------------------------------------
 // Multiple releases: completing one doesn't flip another.
 // ---------------------------------------------------------------------------
 
@@ -334,13 +296,12 @@ async fn test_manage_refused_when_sync_not_running() {
 }
 
 // ---------------------------------------------------------------------------
-// make-Remote (cloud-only): upload from the originals. coven preserves the
-// user-provided source files on disk; the release flips Remote (NOT pinned) and
-// drops its external reference, but the user's own files stay put.
+// make-Remote (cloud-only): bae's storage summary is Local while the uploads are
+// queued and Remote (NOT pinned) once the drain flips the gate.
 // ---------------------------------------------------------------------------
 
 #[tokio::test]
-async fn test_manage_cloud_only_uploads_from_source_then_completes() {
+async fn make_remote_summary_is_local_until_drain_then_remote_not_pinned() {
     let tmp = TempDir::new().unwrap();
     let (db, mgr, _cloud) = setup_with_cloud(&tmp).await;
     let source_dir = tmp.path().join("originals");
@@ -354,17 +315,6 @@ async fn test_manage_cloud_only_uploads_from_source_then_completes() {
 
     mgr.coven_make_remote(&release_id, false).await.unwrap();
 
-    // Outbox uploads read from the originals (source_path = Some).
-    let uploads = db.get_pending_cloud_uploads().await.unwrap();
-    assert_eq!(uploads.len(), files.len());
-    assert!(uploads.iter().all(|u| matches!(
-        &u.operation,
-        coven::OutboxOperation::Upload {
-            source_path: Some(_),
-            ..
-        }
-    )));
-
     // Still Local until the uploads finish.
     assert_eq!(
         storage(&mgr, &release_id).await,
@@ -374,28 +324,22 @@ async fn test_manage_cloud_only_uploads_from_source_then_completes() {
     let count = mgr.drain_uploads_for_test().await.unwrap();
     assert_eq!(count, files.len());
 
-    // coven flipped it Remote (cloud-only, NOT pinned) and dropped the external
-    // reference, but the user-provided source files remain on disk untouched.
+    // The drain flipped the gate: Remote, cloud-only (not pinned).
     assert_eq!(
         storage(&mgr, &release_id).await,
         (ReleaseStorageState::Remote, false)
     );
-    for (name, _) in &files {
-        assert!(
-            source_dir.join(name).exists(),
-            "user-provided source {name} must survive after the upload completes"
-        );
-    }
 }
 
-/// make-Remote whose upload FAILS: coven never flips, the originals survive, the
-/// release stays Local, and the upload is still pending.
+/// bae's storage summary reflects a FAILED make-Remote: coven never flips the
+/// gate, so the summary stays Local and the upload stays pending (retriable) in
+/// the count the UI reads. The upload-retry semantics are coven's.
 #[tokio::test]
-async fn test_manage_upload_failure_keeps_source() {
+async fn upload_failure_leaves_summary_local_and_upload_pending() {
     let tmp = TempDir::new().unwrap();
     let (db, mgr, cloud) = setup_with_cloud(&tmp).await;
     let source_dir = tmp.path().join("originals");
-    let (release_id, files) = create_local_release(
+    let (release_id, _files) = create_local_release(
         &db,
         &mgr,
         &source_dir,
@@ -411,9 +355,6 @@ async fn test_manage_upload_failure_keeps_source() {
     let count = mgr.drain_uploads_for_test().await.unwrap();
     assert_eq!(count, 0, "no upload should succeed");
 
-    for (name, _) in &files {
-        assert!(source_dir.join(name).exists(), "source {name} must survive");
-    }
     assert_eq!(
         storage(&mgr, &release_id).await,
         (ReleaseStorageState::Local, false)
@@ -464,12 +405,12 @@ async fn test_manage_truncated_source_aborts_before_enqueue() {
 }
 
 // ---------------------------------------------------------------------------
-// make-Local from Remote: materialize each file back through coven's cache,
-// register the external refs, then tombstone the cloud blobs.
+// make-Local from Remote: bae's summary reads Local, each file's external ref
+// resolves to the new path, and a cloud delete is queued per blob.
 // ---------------------------------------------------------------------------
 
 #[tokio::test]
-async fn test_unmanage_from_remote_reads_through_cache_then_queues_deletes() {
+async fn make_local_updates_summary_external_refs_and_queues_deletes() {
     let tmp = TempDir::new().unwrap();
     let (db, mgr, _cloud) = setup_with_cloud(&tmp).await;
     let source_dir = tmp.path().join("originals");
@@ -490,15 +431,8 @@ async fn test_unmanage_from_remote_reads_through_cache_then_queues_deletes() {
     .await
     .unwrap();
 
-    // Files read back through coven's cache (cloud on a miss) and written to the
-    // new path with the right bytes.
-    for (_file_id, name, plaintext) in &files {
-        let written = tokio::fs::read(new_path.join(name)).await.unwrap();
-        assert_eq!(&written, plaintext, "exported {name} matches");
-    }
-
-    // Release is Local; coven registered each file's external ref at the new path,
-    // and queued a cloud delete per blob after the durable write.
+    // Release is Local; each file's external ref resolves to the new path, and a
+    // cloud delete is queued per blob.
     assert_eq!(
         storage(&mgr, &release_id).await,
         (ReleaseStorageState::Local, false)
@@ -515,10 +449,12 @@ async fn test_unmanage_from_remote_reads_through_cache_then_queues_deletes() {
     assert_eq!(deletes.len(), files.len());
 }
 
-/// make-Local of a Remote release whose cloud blob is missing: a hard error (the
-/// cache-miss read 404s), nothing written, no delete queued, release stays Remote.
+/// A failed make-Local (a missing cloud blob 404s on the cache-miss read) leaves
+/// bae's state consistent: the manager surfaces the error, no cloud delete is
+/// queued, and the summary stays Remote. The read-404 and make-Local rollback are
+/// coven's; this asserts the bae seam + summary after the failure.
 #[tokio::test]
-async fn test_unmanage_from_remote_missing_blob_is_hard_error() {
+async fn make_local_missing_blob_fails_leaving_summary_remote_and_no_deletes() {
     let tmp = TempDir::new().unwrap();
     let (db, mgr, cloud) = setup_with_cloud(&tmp).await;
     let source_dir = tmp.path().join("originals");
@@ -548,7 +484,6 @@ async fn test_unmanage_from_remote_missing_blob_is_hard_error() {
         storage(&mgr, &release_id).await,
         (ReleaseStorageState::Remote, false)
     );
-    assert!(!new_path.join(&files[1].1).exists());
 }
 
 // ---------------------------------------------------------------------------
