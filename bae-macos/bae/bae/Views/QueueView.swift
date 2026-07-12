@@ -289,6 +289,10 @@ final class QueueDragCoordinator {
     /// stay put between the gesture ending and core's snapshot echoing the
     /// same order back (the revision bump clears it — visually a no-op).
     private var hold: [QueueLaneID: [Int]] = [:]
+    /// The manual lane's row count, mirrored here by `QueueView` so the context
+    /// section's gesture — which can't see the manual section's props — has it
+    /// for cross-lane gap math.
+    var manualGapCount = 0
 
     var isDragging: Bool { active != nil }
 
@@ -480,10 +484,6 @@ final class QueueDragCoordinator {
         hold[lane] = nil
     }
 
-    /// The manual lane's row count, captured for cross-lane gap math (the
-    /// context section's gesture can't see the manual section's props).
-    var manualGapCount = 0
-
     enum Outcome {
         case none
         case reorder(
@@ -513,7 +513,8 @@ private struct QueueRowLoadID: Hashable {
 /// move); an unloaded row is keyed by its display slot instead, since it has no
 /// content of its own to identify. `sourceIndex` is the absolute, canonical
 /// index `itemAt`/`loadRange` address — it equals `displaySlot` outside a live
-/// reorder, and diverges from it only while `QueueSection.liveOrder` is active.
+/// reorder, and diverges from it only while the coordinator's display order
+/// permutes the lane (`QueueDragCoordinator.displayOrder`).
 private struct QueueRowSlot: Identifiable {
     let id: String
     let displaySlot: Int
@@ -551,9 +552,9 @@ private struct QueueSection: View {
     let coordinator: QueueDragCoordinator
     /// The store's queue revision, independent of `loadEpoch` (which the manual
     /// lane fixes at 0). A change means core applied a mutation — including the
-    /// reorder this lane just committed — so `liveOrder` is dropped: the
-    /// canonical order the new snapshot carries already equals what was on
-    /// screen, so clearing it is visually a no-op, not a snap.
+    /// reorder this lane just committed — so the held post-commit order is
+    /// dropped: the canonical order the new snapshot carries already equals
+    /// what was on screen, so clearing it is visually a no-op, not a snap.
     let queueRevision: UInt64
     let onSkipTo: (String) -> Void
     let onRemove: (String) -> Void
@@ -576,7 +577,7 @@ private struct QueueSection: View {
     private var removingEntryIds: Set<String> = []
 
     /// Display slots 0..<count, each resolved to its source index (identity
-    /// under `liveOrder`, or permuted while a drag is live) and an identity —
+    /// in canonical order, or permuted while a drag is live) and an identity —
     /// the entry id when loaded, a slot sentinel when not. A `LazyMapCollection`
     /// rather than a materialized array: `itemAt` is only ever called for rows
     /// `ForEach`/`LazyVStack` actually need (visible rows plus a small buffer),
@@ -793,7 +794,13 @@ private struct QueueSection: View {
             }
         }
     }
+}
 
+/// `QueueSection`'s drop-resolution, header chrome, and per-row builders, split
+/// into an extension purely to keep the primary type body under the length
+/// limit — no behavior or state change; each method still runs on the section
+/// instance and reads its stored props and `@State` directly.
+extension QueueSection {
     /// Where the manual lane's insertion line sits: an external album-card
     /// drag's drop target, or a context-row drag hovering here (cross-lane
     /// enqueue). `nil` hides it.
