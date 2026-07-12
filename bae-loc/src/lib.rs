@@ -59,15 +59,6 @@ pub enum ArgType {
     Str,
 }
 
-/// A message id namespace. `core.*` is bridge-originated and completeness
-/// checked against the Rust message enums; `ui.*` is shared chrome opted in by
-/// the UI and is not checked (it has no Rust producer).
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Namespace {
-    Core,
-    Ui,
-}
-
 impl Catalog {
     /// Parse a catalog from TOML source. Fails with the underlying TOML error
     /// (surfaced, not masked) so a malformed catalog breaks the build loudly.
@@ -91,12 +82,14 @@ impl Catalog {
     }
 }
 
-/// Classify a dotted id by its first segment. Unknown prefixes are an error so
-/// a typo'd namespace can't silently skip the completeness check.
-pub fn namespace_of(id: &str) -> Result<Namespace, String> {
+/// Check a dotted id's first segment against the two allowed namespaces:
+/// `core.` (bridge-originated, completeness-checked against the Rust message
+/// enums) and `ui.` (shared chrome opted in by the UI, no Rust producer).
+/// Unknown prefixes are an error so a typo'd namespace can't silently skip
+/// the completeness check.
+pub fn validate_namespace(id: &str) -> Result<(), String> {
     match id.split('.').next() {
-        Some("core") => Ok(Namespace::Core),
-        Some("ui") => Ok(Namespace::Ui),
+        Some("core") | Some("ui") => Ok(()),
         _ => Err(format!(
             "message id {id:?} must start with `core.` or `ui.`"
         )),
@@ -139,10 +132,10 @@ value = "remove this library from this device"
     }
 
     #[test]
-    fn classifies_namespaces() {
-        assert_eq!(namespace_of("core.error.x").unwrap(), Namespace::Core);
-        assert_eq!(namespace_of("ui.button.ok").unwrap(), Namespace::Ui);
-        assert!(namespace_of("misc.oops").is_err());
+    fn validates_namespaces() {
+        assert!(validate_namespace("core.error.x").is_ok());
+        assert!(validate_namespace("ui.button.ok").is_ok());
+        assert!(validate_namespace("misc.oops").is_err());
     }
 
     #[test]

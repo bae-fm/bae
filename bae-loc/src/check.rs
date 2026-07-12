@@ -12,14 +12,14 @@
 //! the catalog-only half.
 
 use crate::mf1::{self, Node};
-use crate::{namespace_of, ArgType, Catalog};
+use crate::{validate_namespace, ArgType, Catalog};
 
 /// Validate every message. Returns all problems found (not just the first) so a
 /// catalog edit gets the full list in one pass.
 pub fn validate(cat: &Catalog) -> Result<(), Vec<String>> {
     let mut errs = Vec::new();
     for (id, msg) in &cat.messages {
-        if let Err(e) = namespace_of(id) {
+        if let Err(e) = validate_namespace(id) {
             errs.push(e);
         }
         let nodes = match mf1::parse(&msg.value) {
