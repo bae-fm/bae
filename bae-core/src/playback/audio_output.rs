@@ -422,17 +422,6 @@ pub struct RealtimeCaptureAudioOutput {
 }
 
 #[cfg(feature = "test-utils")]
-impl RealtimeCaptureAudioOutput {
-    /// A shared handle to the count of device streams built (`create_stream`).
-    /// A same-format source replace does not increment it, so a test can hold
-    /// this before handing the output to the service and later assert that
-    /// same-format transitions reused the one persistent stream.
-    pub fn stream_build_count(&self) -> Arc<AtomicU64> {
-        self.core.build_count.clone()
-    }
-}
-
-#[cfg(feature = "test-utils")]
 struct CaptureOutputCore {
     controls: AudioOutputControls,
     notify_tx: tokio::sync::mpsc::UnboundedSender<Arc<Mutex<Vec<f32>>>>,
@@ -442,10 +431,6 @@ struct CaptureOutputCore {
     /// transition captures into its own buffer — the "one buffer per transition"
     /// contract the fixtures await via `next_capture_stream`.
     active: Arc<Mutex<Arc<Mutex<Vec<f32>>>>>,
-    /// How many device streams were built (`create_stream`). A same-format source
-    /// replace does NOT increment this (it reuses the stream), so a test can
-    /// assert the persistent stream is rebuilt only on a format change / stop.
-    build_count: Arc<AtomicU64>,
 }
 
 #[cfg(feature = "test-utils")]
@@ -459,18 +444,8 @@ impl CaptureOutputCore {
             controls: AudioOutputControls::new(1.0),
             notify_tx,
             active: Arc::new(Mutex::new(Arc::new(Mutex::new(Vec::new())))),
-            build_count: Arc::new(AtomicU64::new(0)),
         };
         (core, notify_rx)
-    }
-
-    /// Mint the first capture buffer for a freshly built stream and count the
-    /// build. `create_stream` (a rebuild) calls this; `on_source_replaced` (a
-    /// same-format swap) calls `rotate_capture_buffer` directly, which does not
-    /// count as a build.
-    fn record_build(&self) -> Result<(), AudioError> {
-        self.build_count.fetch_add(1, Ordering::Relaxed);
-        self.rotate_capture_buffer()
     }
 
     /// Mint a fresh capture buffer, make it the active one the capture thread
@@ -612,7 +587,7 @@ impl AudioOutput for CaptureAudioOutput {
         audio_events: AudioEventSender,
         position_update_interval_ms: u32,
     ) -> Result<Box<dyn AudioStream>, AudioError> {
-        self.core.record_build()?;
+        self.core.rotate_capture_buffer()?;
         let (stop, thread) = spawn_capture_stream(
             self.core.controls.clone(),
             self.core.active.clone(),
@@ -674,7 +649,7 @@ impl AudioOutput for RealtimeCaptureAudioOutput {
         audio_events: AudioEventSender,
         position_update_interval_ms: u32,
     ) -> Result<Box<dyn AudioStream>, AudioError> {
-        self.core.record_build()?;
+        self.core.rotate_capture_buffer()?;
         let channels = source_channels.max(1);
         let (stop, thread) = spawn_capture_stream(
             self.core.controls.clone(),

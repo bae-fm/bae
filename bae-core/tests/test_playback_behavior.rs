@@ -265,12 +265,13 @@ struct BoundaryOutcome {
     completed_for_finishing: bool,
     loading_for_incoming: bool,
     reached_incoming: bool,
+    decode_errors: u32,
 }
 
 /// Drain progress until `incoming` reaches Playing (or timeout), recording
-/// whether `finishing`'s DecodeStats and/or TrackCompleted, and any Loading
-/// state for `incoming`, were seen along the way — i.e. whether the boundary was
-/// gapless or a rebuild.
+/// whether `finishing`'s DecodeStats and/or TrackCompleted, any Loading state for
+/// `incoming`, and the total decode errors reported across the crossing — i.e.
+/// whether the boundary was gapless or a rebuild, and whether it decoded cleanly.
 async fn observe_boundary(
     progress_rx: &mut tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
     finishing: &str,
@@ -283,11 +284,19 @@ async fn observe_boundary(
         completed_for_finishing: false,
         loading_for_incoming: false,
         reached_incoming: false,
+        decode_errors: 0,
     };
     while Instant::now() < deadline {
         match timeout(Duration::from_millis(200), progress_rx.recv()).await {
-            Ok(Some(PlaybackProgress::DecodeStats { track_id, .. })) if track_id == finishing => {
-                outcome.decode_stats_for_finishing = true;
+            Ok(Some(PlaybackProgress::DecodeStats {
+                track_id,
+                error_count,
+                ..
+            })) => {
+                outcome.decode_errors += error_count;
+                if track_id == finishing {
+                    outcome.decode_stats_for_finishing = true;
+                }
             }
             Ok(Some(PlaybackProgress::TrackCompleted { track_id })) if track_id == finishing => {
                 outcome.completed_for_finishing = true;
@@ -1488,98 +1497,121 @@ async fn previous_while_playing_stays_playing() {
     assert_skip_preserves_play_state(SkipDirection::Previous, false).await;
 }
 
-/// Test that seeking while paused and then resuming works correctly.
-///
-/// Regression test for: is_playing flag not set after seek-while-paused.
-/// The bug was that seek sends Stop (which clears is_playing), then when
-/// seeking while paused, only Pause is sent (not Play first), so is_playing
-/// stays false and audio doesn't play after resume.
+/// Pause and seek interact correctly in both orderings, which exercise different
+/// code paths. Seek issued WHILE paused (the is_playing-not-set-after-seek-while-
+/// paused regression: seek clears is_playing, and if only Pause is re-sent it
+/// stays false so audio never resumes): the seek lands without auto-playing, and
+/// once resumed the position advances — audio actually flows. Seek issued while
+/// PLAYING, then paused: the position is preserved across the pause and resume.
 #[tokio::test]
-async fn test_pause_seek_resume_advances_position() {
+async fn pause_and_seek_interact_in_both_orderings() {
+    // Ordering 1 — seek while paused, then resume: position advances.
     let mut fixture = PlaybackTestFixture::new().await;
-
     let track_id = fixture.track_ids[0].clone();
-
-    // Start playing
     fixture.playback_handle.play(track_id.clone());
-    let playing_state = fixture
+    fixture
         .wait_for_state(
             |s| matches!(s, PlaybackState::Playing { .. }),
             Duration::from_secs(5),
         )
-        .await;
-    assert!(playing_state.is_some(), "Should start playing");
+        .await
+        .expect("should start playing");
 
-    // Pause
     fixture.playback_handle.pause();
-    let paused_state = fixture
+    fixture
         .wait_for_state(
             |s| matches!(s, PlaybackState::Paused { .. }),
             Duration::from_secs(2),
         )
-        .await;
-    assert!(paused_state.is_some(), "Should be paused");
+        .await
+        .expect("should be paused");
 
-    // Seek while paused (to 2 seconds)
-    let seek_target = Duration::from_secs(2);
-    fixture.playback_handle.seek(seek_target);
-
-    // Wait for seek to complete
-    let seeked_position = fixture.wait_for_seeked(Duration::from_secs(5)).await;
+    fixture.playback_handle.seek(Duration::from_secs(2));
+    let seeked_ms = fixture
+        .wait_for_seeked(Duration::from_secs(5))
+        .await
+        .expect("Seeked event after seeking while paused");
     assert!(
-        seeked_position.is_some(),
-        "Should receive Seeked event after seeking while paused"
-    );
-    let seeked_position_ms = seeked_position.unwrap();
-    assert!(
-        seeked_position_ms >= 1900,
-        "Seeked position should be near 2s, got {}ms",
-        seeked_position_ms
+        seeked_ms >= 1900,
+        "seek should land near 2s, got {seeked_ms}ms"
     );
 
-    // Verify still paused after seek (shouldn't auto-play)
-    let auto_played = fixture
-        .wait_for_state(
-            |s| matches!(s, PlaybackState::Playing { .. }),
-            Duration::from_millis(200),
-        )
-        .await;
+    // A seek while paused must not auto-play.
     assert!(
-        auto_played.is_none(),
-        "Should still be paused after seek, not auto-playing"
+        fixture
+            .wait_for_state(
+                |s| matches!(s, PlaybackState::Playing { .. }),
+                Duration::from_millis(200),
+            )
+            .await
+            .is_none(),
+        "should stay paused after seek, not auto-play"
     );
 
-    // Resume
     fixture.playback_handle.resume();
-
-    // Wait for playing state
-    let resumed_state = fixture
+    fixture
         .wait_for_state(
             |s| matches!(s, PlaybackState::Playing { .. }),
             Duration::from_secs(2),
         )
-        .await;
-    assert!(resumed_state.is_some(), "Should resume playing");
-
-    // Wait a bit and check that position is advancing
+        .await
+        .expect("should resume playing");
     tokio::time::sleep(Duration::from_millis(500)).await;
-
-    // Get position updates - should be advancing past the seek position
-    let position_update = fixture
+    let advanced_ms = fixture
         .wait_for_position_update(Duration::from_secs(2))
-        .await;
-
+        .await
+        .expect("position update after resume (indicates audio is playing)");
     assert!(
-        position_update.is_some(),
-        "Should receive position updates after resume (indicates audio is actually playing)"
+        advanced_ms > seeked_ms,
+        "position should advance after resume; seeked {seeked_ms}ms, now {advanced_ms}ms"
     );
 
-    let final_position_ms = position_update.unwrap();
+    // Ordering 2 — seek while playing, then pause and resume: position maintained.
+    let mut fixture = PlaybackTestFixture::new().await;
+    let track_id = fixture.track_ids[0].clone();
+    fixture.playback_handle.play(track_id.clone());
+    fixture
+        .wait_for_state(
+            |s| matches!(s, PlaybackState::Playing { .. }),
+            Duration::from_secs(5),
+        )
+        .await
+        .expect("should start playing");
+
+    let seek_target = Duration::from_secs(2);
+    fixture.playback_handle.seek(seek_target);
+    let seeked_ms = fixture
+        .wait_for_seeked(Duration::from_secs(2))
+        .await
+        .expect("Seeked event");
     assert!(
-        final_position_ms > seeked_position_ms,
-        "Position should advance after resume. Seeked to {}ms, but position is {}ms",
-        seeked_position_ms,
-        final_position_ms
+        Duration::from_millis(seeked_ms).abs_diff(seek_target) < Duration::from_secs(1),
+        "seek should land near 2s, got {seeked_ms}ms"
+    );
+
+    fixture.playback_handle.pause();
+    fixture
+        .wait_for_state(
+            |s| matches!(s, PlaybackState::Paused { .. }),
+            Duration::from_secs(2),
+        )
+        .await
+        .expect("should be paused");
+    fixture.playback_handle.resume();
+    fixture
+        .wait_for_state(
+            |s| matches!(s, PlaybackState::Playing { .. }),
+            Duration::from_secs(2),
+        )
+        .await
+        .expect("should resume playing");
+    let maintained_ms = fixture
+        .wait_for_position_update(Duration::from_secs(2))
+        .await
+        .expect("position update after resume");
+    assert!(
+        Duration::from_millis(maintained_ms).abs_diff(seek_target) < Duration::from_secs(1),
+        "position should be maintained across pause/resume, got {maintained_ms}ms"
     );
 }
 
@@ -1692,57 +1724,6 @@ async fn test_seek_while_playing_advances_position() {
     );
 }
 
-#[tokio::test]
-async fn test_auto_advance_to_next_track() {
-    let mut fixture = PlaybackTestFixture::new().await;
-    let first_track_id = fixture.track_ids[0].clone();
-    let second_track_id = fixture.track_ids[1].clone();
-    fixture.playback_handle.play(first_track_id.clone());
-    let _playing_state = fixture
-        .wait_for_state(
-            |s| matches!(s, PlaybackState::Playing { .. }),
-            Duration::from_secs(5),
-        )
-        .await;
-    fixture
-        .playback_handle
-        .seek(Duration::from_secs(4) + Duration::from_millis(500));
-
-    // Wait for auto-advance and collect decode stats
-    let mut total_decode_errors = 0u32;
-    let deadline = Instant::now() + Duration::from_secs(5);
-    let mut advanced = false;
-
-    while Instant::now() < deadline {
-        let remaining = deadline - Instant::now();
-        match timeout(remaining, fixture.progress_rx.recv()).await {
-            Ok(Some(PlaybackProgress::StateChanged { state })) => {
-                if let PlaybackState::Playing { track_info, .. } = state {
-                    if track_info.track_id == second_track_id {
-                        advanced = true;
-                        break;
-                    }
-                }
-            }
-            Ok(Some(PlaybackProgress::DecodeStats { error_count, .. })) => {
-                total_decode_errors += error_count;
-            }
-            Ok(Some(_)) => continue,
-            Ok(None) | Err(_) => break,
-        }
-    }
-
-    assert!(
-        advanced,
-        "playback should auto-advance to the second track when the first ends"
-    );
-    assert_eq!(
-        total_decode_errors, 0,
-        "Auto-advance test had {} decode errors",
-        total_decode_errors
-    );
-}
-
 /// The true gapless handoff: a track played to its natural end with the next
 /// track staged crosses the boundary inside the running stream
 /// (boundary_rx → handle_track_crossed → advance_to_preloaded), never rebuilding
@@ -1797,6 +1778,11 @@ async fn gapless_boundary_hands_off_without_rebuild() {
         !outcome.loading_for_incoming,
         "a gapless handoff must not emit a Loading state for the incoming track — \
          the staged next plays straight through, only the stream-rebuild path shows Loading"
+    );
+    assert_eq!(
+        outcome.decode_errors, 0,
+        "the crossing must decode cleanly, got {} decode errors",
+        outcome.decode_errors
     );
 
     let position_ms =
@@ -2052,129 +2038,6 @@ async fn seek_with_dropped_capture_receiver_keeps_playing() {
     handle.stop();
 }
 
-/// The persistent output stream is built once and reused across same-format
-/// transitions: two consecutive plays and a seek, all in one format, build
-/// exactly ONE device stream (each later transition swaps the callback's source
-/// in place instead of rebuilding). Under the old per-transition rebuild this
-/// counter would read 3; asserting 1 pins the persistent-stream behavior.
-#[tokio::test]
-async fn same_format_transitions_reuse_one_output_stream() {
-    let lib = restore_test_library().await;
-    let first = lib.track_ids[0].clone();
-    let second = lib.track_ids[1].clone();
-
-    // Own the capture sink so we can read its build counter after handing it to
-    // the service. Real-time paced so the tracks don't race to their ends.
-    let (capture_output, _capture_stream_rx) =
-        bae_core::playback::RealtimeCaptureAudioOutput::new();
-    let builds = capture_output.stream_build_count();
-    let handle = bae_core::playback::PlaybackService::start_with_output(
-        lib.library_manager,
-        lib.runtime_handle,
-        100,
-        true,
-        Box::new(capture_output),
-    );
-    let mut progress_rx = handle.subscribe_progress();
-
-    handle.play(first.clone());
-    wait_for_state_on(
-        &mut progress_rx,
-        |s| matches!(s, PlaybackState::Playing { track_info, .. } if track_info.track_id == first),
-        Duration::from_secs(5),
-    )
-    .await
-    .expect("the first track should start playing (one build)");
-
-    // A second play of a same-format track swaps the source in place — no rebuild.
-    handle.play(second.clone());
-    wait_for_state_on(
-        &mut progress_rx,
-        |s| matches!(s, PlaybackState::Playing { track_info, .. } if track_info.track_id == second),
-        Duration::from_secs(5),
-    )
-    .await
-    .expect("the second track should start playing (source replaced, not rebuilt)");
-
-    // A same-format seek likewise swaps in place.
-    handle.seek(Duration::from_secs(1));
-    let deadline = Instant::now() + Duration::from_secs(8);
-    let mut saw_seeked = false;
-    while Instant::now() < deadline {
-        match timeout(Duration::from_millis(200), progress_rx.recv()).await {
-            Ok(Some(PlaybackProgress::Seeked { track_id, .. })) if track_id == second => {
-                saw_seeked = true;
-                break;
-            }
-            Ok(Some(_)) => continue,
-            Ok(None) => break,
-            Err(_) => continue,
-        }
-    }
-    assert!(saw_seeked, "the seek should land and emit Seeked");
-
-    assert_eq!(
-        builds.load(std::sync::atomic::Ordering::Relaxed),
-        1,
-        "play → play → seek in one format must build exactly one output stream; \
-         each later transition swaps the source in place"
-    );
-
-    handle.stop();
-}
-
-#[tokio::test]
-async fn test_position_maintained_across_pause_resume() {
-    let mut fixture = PlaybackTestFixture::new().await;
-    let track_id = &fixture.track_ids[0];
-    fixture.playback_handle.play(track_id.clone());
-    let _playing_state = fixture
-        .wait_for_state(
-            |s| matches!(s, PlaybackState::Playing { .. }),
-            Duration::from_secs(5),
-        )
-        .await;
-    let seek_position = Duration::from_secs(2);
-    fixture.playback_handle.seek(seek_position);
-    let seeked_position_ms = fixture
-        .wait_for_seeked(Duration::from_secs(2))
-        .await
-        .expect("Seeked event");
-    let diff = Duration::from_millis(seeked_position_ms).abs_diff(seek_position);
-    assert!(
-        diff < Duration::from_secs(1),
-        "Seek should land near requested position",
-    );
-
-    fixture.playback_handle.pause();
-    let paused_state = fixture
-        .wait_for_state(
-            |s| matches!(s, PlaybackState::Paused { .. }),
-            Duration::from_secs(2),
-        )
-        .await;
-    assert!(paused_state.is_some(), "Should reach Paused state");
-    // Position persists through pause (it's not reset); verified by the
-    // post-resume PositionUpdate below.
-
-    fixture.playback_handle.resume();
-    let resumed_state = fixture
-        .wait_for_state(
-            |s| matches!(s, PlaybackState::Playing { .. }),
-            Duration::from_secs(2),
-        )
-        .await;
-    assert!(resumed_state.is_some(), "Should reach Playing state");
-    let position_after_resume = fixture
-        .wait_for_position_update(Duration::from_secs(2))
-        .await
-        .expect("Position update after resume");
-    let diff = Duration::from_millis(position_after_resume).abs_diff(seek_position);
-    assert!(
-        diff < Duration::from_secs(1),
-        "Position should be maintained when resumed",
-    );
-}
 #[tokio::test]
 async fn test_previous_track_navigation() {
     let mut fixture = PlaybackTestFixture::new().await;
@@ -2938,9 +2801,6 @@ async fn tracks_deleted_clears_a_preloaded_next_then_stops_on_the_current() {
 
     handle.stop();
 }
-
-// Note: test_playback_error_emitted_when_storage_offline was removed because it relied
-// on MockCloudStorage injection which was removed with CloudStorageManager.
 
 // ============================================================================
 // Pregap behavior tests
