@@ -72,29 +72,6 @@ fn release_search_params_build_query_with_escaped_phrase() {
     );
 }
 
-#[tokio::test(start_paused = true)]
-async fn test_rate_limiter_enforces_spacing() {
-    // First call should return immediately
-    let start = Instant::now();
-    wait_for_rate_limit().await;
-    let first_elapsed = start.elapsed();
-    assert!(
-        first_elapsed < Duration::from_millis(100),
-        "First call should be near-instant, took {:?}",
-        first_elapsed
-    );
-
-    // Second call should wait ~1 second
-    let start = Instant::now();
-    wait_for_rate_limit().await;
-    let second_elapsed = start.elapsed();
-    assert!(
-        second_elapsed >= Duration::from_millis(900),
-        "Second call should wait ~1s, only waited {:?}",
-        second_elapsed
-    );
-}
-
 #[test]
 fn test_mb_release_response_track_count() {
     let response = MbReleaseResponse {

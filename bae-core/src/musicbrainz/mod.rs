@@ -9,10 +9,9 @@
 use std::sync::OnceLock;
 use std::time::Duration;
 
+use crate::util::rate_limiter::RateLimiter;
 use crate::util::session_cache::SessionCache;
 use thiserror::Error;
-use tokio::sync::Mutex;
-use tokio::time::Instant;
 use tracing::{debug, info, warn};
 
 mod types;
@@ -29,22 +28,10 @@ fn http_client() -> &'static reqwest::Client {
 }
 
 /// Rate limiter ensuring at least 1 second between MusicBrainz API requests.
-fn rate_limiter() -> &'static Mutex<Instant> {
-    static LIMITER: OnceLock<Mutex<Instant>> = OnceLock::new();
-    LIMITER.get_or_init(|| Mutex::new(Instant::now() - Duration::from_secs(1)))
-}
-
-async fn wait_for_rate_limit() {
-    let mut last_request = rate_limiter().lock().await;
-    let elapsed = last_request.elapsed();
-    if elapsed < Duration::from_secs(1) {
-        tokio::time::sleep(Duration::from_secs(1) - elapsed).await;
-    }
-    *last_request = Instant::now();
-}
+static RATE_LIMITER: RateLimiter = RateLimiter::new(Duration::from_secs(1));
 
 async fn mb_get(request: reqwest::RequestBuilder) -> Result<reqwest::Response, MusicBrainzError> {
-    wait_for_rate_limit().await;
+    RATE_LIMITER.wait().await;
     let response = request
         .header("Accept", "application/json")
         .send()

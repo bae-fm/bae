@@ -2,14 +2,12 @@ use crate::discogs::models::{DiscogsArtist, DiscogsRelease, DiscogsRoleArtist, D
 use crate::discogs::remote_cover_from_urls;
 use crate::import::cover_art::RemoteCover;
 use crate::retry::retry_with_backoff_if;
+use crate::util::rate_limiter::RateLimiter;
 use crate::util::session_cache::SessionCache;
 use reqwest::{Client, Error as ReqwestError, Response, StatusCode};
 use serde::Deserialize;
-use std::sync::OnceLock;
 use std::time::Duration;
 use thiserror::Error;
-use tokio::sync::Mutex;
-use tokio::time::Instant;
 use tracing::{debug, warn};
 
 const DISCOGS_REQUEST_INTERVAL: Duration = Duration::from_secs(1);
@@ -29,19 +27,9 @@ static RELEASE_CACHE: SessionCache<ReleaseCacheValue> = SessionCache::new("Disco
 /// release cache, keyed by master ID.
 static MASTER_CACHE: SessionCache<MasterCacheValue> = SessionCache::new("Discogs master cache");
 
-fn rate_limiter() -> &'static Mutex<Instant> {
-    static LIMITER: OnceLock<Mutex<Instant>> = OnceLock::new();
-    LIMITER.get_or_init(|| Mutex::new(Instant::now() - DISCOGS_REQUEST_INTERVAL))
-}
-
-async fn wait_for_rate_limit() {
-    let mut last_request = rate_limiter().lock().await;
-    let elapsed = last_request.elapsed();
-    if elapsed < DISCOGS_REQUEST_INTERVAL {
-        tokio::time::sleep(DISCOGS_REQUEST_INTERVAL - elapsed).await;
-    }
-    *last_request = Instant::now();
-}
+/// Rate limiter ensuring at least `DISCOGS_REQUEST_INTERVAL` between
+/// Discogs API requests.
+static RATE_LIMITER: RateLimiter = RateLimiter::new(DISCOGS_REQUEST_INTERVAL);
 
 /// Pre-populate the release cache. Tests use this to drive
 /// `prepare_release` without making an HTTP call. The raw JSON is
@@ -432,7 +420,7 @@ impl DiscogsClient {
     }
 
     async fn send(&self, request: reqwest::RequestBuilder) -> Result<Response, DiscogsError> {
-        wait_for_rate_limit().await;
+        RATE_LIMITER.wait().await;
         let response = request.send().await?;
         classify_discogs_response(response)
     }
@@ -726,7 +714,7 @@ mod tests {
     use std::io::{Read, Write};
     use std::net::TcpListener;
     use std::sync::atomic::{AtomicUsize, Ordering};
-    use std::sync::{Arc, Mutex};
+    use std::sync::{Arc, Mutex, OnceLock};
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
     const SEARCH_OK_EMPTY: &str = concat!(
@@ -743,11 +731,6 @@ mod tests {
     fn discogs_test_guard() -> &'static tokio::sync::Mutex<()> {
         static GUARD: OnceLock<tokio::sync::Mutex<()>> = OnceLock::new();
         GUARD.get_or_init(|| tokio::sync::Mutex::new(()))
-    }
-
-    async fn reset_rate_limiter_for_test() {
-        let mut last_request = rate_limiter().lock().await;
-        *last_request = Instant::now() - DISCOGS_REQUEST_INTERVAL;
     }
 
     async fn discogs_response_server(responses: Vec<&'static str>) -> (String, Arc<AtomicUsize>) {
@@ -781,20 +764,6 @@ mod tests {
             }
         });
         (url, request_count)
-    }
-
-    #[tokio::test(start_paused = true)]
-    async fn rate_limiter_enforces_discogs_spacing() {
-        let _guard = discogs_test_guard().lock().await;
-        reset_rate_limiter_for_test().await;
-
-        let start = Instant::now();
-        wait_for_rate_limit().await;
-        assert!(start.elapsed() < Duration::from_millis(100));
-
-        let start = Instant::now();
-        wait_for_rate_limit().await;
-        assert!(start.elapsed() >= Duration::from_millis(900));
     }
 
     fn search_result_with_cover_fields(
@@ -876,7 +845,7 @@ mod tests {
     #[tokio::test]
     async fn transport_error_display_does_not_include_discogs_token() {
         let _guard = discogs_test_guard().lock().await;
-        reset_rate_limiter_for_test().await;
+        RATE_LIMITER.reset().await;
         let token = "secret-discogs-token";
         let mut client = DiscogsClient::new(token.to_string());
         client.base_url = "http://127.0.0.1:1".to_string();
@@ -889,7 +858,7 @@ mod tests {
     #[tokio::test]
     async fn validate_token_sends_token_in_authorization_header() {
         let _guard = discogs_test_guard().lock().await;
-        reset_rate_limiter_for_test().await;
+        RATE_LIMITER.reset().await;
         let token = "secret-discogs-token";
         let listener = TcpListener::bind("127.0.0.1:0").expect("test listener should bind");
         let url = format!(
@@ -930,7 +899,7 @@ mod tests {
     #[tokio::test]
     async fn search_retries_rate_limit_then_returns_success() {
         let _guard = discogs_test_guard().lock().await;
-        reset_rate_limiter_for_test().await;
+        RATE_LIMITER.reset().await;
         let (url, request_count) =
             discogs_response_server(vec![RATE_LIMITED, SEARCH_OK_EMPTY]).await;
         let mut client = DiscogsClient::new("token".to_string());
@@ -948,7 +917,7 @@ mod tests {
     #[tokio::test]
     async fn search_returns_persistent_rate_limit_after_retry_attempts() {
         let _guard = discogs_test_guard().lock().await;
-        reset_rate_limiter_for_test().await;
+        RATE_LIMITER.reset().await;
         let (url, request_count) =
             discogs_response_server(vec![RATE_LIMITED, RATE_LIMITED, RATE_LIMITED]).await;
         let mut client = DiscogsClient::new("token".to_string());
@@ -966,7 +935,7 @@ mod tests {
     #[tokio::test]
     async fn search_does_not_retry_invalid_api_key() {
         let _guard = discogs_test_guard().lock().await;
-        reset_rate_limiter_for_test().await;
+        RATE_LIMITER.reset().await;
         let (url, request_count) = discogs_response_server(vec![UNAUTHORIZED]).await;
         let mut client = DiscogsClient::new("token".to_string());
         client.base_url = url;
@@ -983,7 +952,7 @@ mod tests {
     #[tokio::test]
     async fn search_does_not_retry_not_found() {
         let _guard = discogs_test_guard().lock().await;
-        reset_rate_limiter_for_test().await;
+        RATE_LIMITER.reset().await;
         let (url, request_count) = discogs_response_server(vec![NOT_FOUND]).await;
         let mut client = DiscogsClient::new("token".to_string());
         client.base_url = url;
@@ -1000,7 +969,7 @@ mod tests {
     #[tokio::test]
     async fn search_observer_records_one_signal_after_internal_retry() {
         let _guard = discogs_test_guard().lock().await;
-        reset_rate_limiter_for_test().await;
+        RATE_LIMITER.reset().await;
         let (url, request_count) =
             discogs_response_server(vec![RATE_LIMITED, SEARCH_OK_EMPTY]).await;
         let signals = Arc::new(Mutex::new(Vec::<&'static str>::new()));
