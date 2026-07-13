@@ -21,6 +21,12 @@ internal sealed class JoinLibraryDialog
     private readonly Action _dismissWelcome;
     private readonly Action<string> _openLibrary;
 
+    // The code this device's own join request minted, kept from the code-display
+    // step so the join can hand it back — coven promotes that pending identity
+    // into the store's custody with it. Null until GenerateJoinCode succeeds,
+    // which is also the gate on joining at all.
+    private string? _joinRequestCode;
+
     public JoinLibraryDialog(
         Func<XamlRoot?> xamlRoot,
         Func<IntPtr> windowHandle,
@@ -233,10 +239,19 @@ internal sealed class JoinLibraryDialog
             ShowStatus(Loc.Chrome("join.in_progress", "name", info.LibraryName));
             var code = inviteBox.Text?.Trim() ?? string.Empty;
             var token = oauthTokenJson;
+            var joinRequestCode = _joinRequestCode;
+            if (joinRequestCode is null)
+            {
+                // The code-display step failed, so this device has no pending
+                // identity for coven to promote. It already showed its own error.
+                joinButton.IsEnabled = true;
+                return;
+            }
             string libraryId;
             try
             {
-                libraryId = await System.Threading.Tasks.Task.Run(() => NativeBae.JoinFromCode(code, token));
+                libraryId = await System.Threading.Tasks.Task.Run(
+                    () => NativeBae.JoinFromCode(code, joinRequestCode, token));
             }
             catch (BridgeException exception)
             {
@@ -282,6 +297,8 @@ internal sealed class JoinLibraryDialog
             });
             return;
         }
+
+        _joinRequestCode = request.Code;
 
         host.Children.Clear();
 

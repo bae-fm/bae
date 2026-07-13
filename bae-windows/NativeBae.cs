@@ -243,13 +243,15 @@ internal static class NativeBae
         BaeBridgeMethods.DecodeInviteCode(code);
 
     /// <summary>
-    /// Join a shared library from an invite code and return its id. For OAuth
-    /// providers pass the token JSON from <see cref="OAuthAuthorize"/>; for
-    /// credential providers pass null. Blocks on a cloud pull — call off the UI
-    /// thread.
+    /// Join a shared library from an invite code and return its id.
+    /// <paramref name="joinRequestCode"/> is the code this device's own
+    /// <see cref="GenerateJoinRequest"/> minted — coven needs it back to promote
+    /// that pending identity into the store's custody. For OAuth providers pass
+    /// the token JSON from <see cref="OAuthAuthorize"/>; for credential providers
+    /// pass null. Blocks on a cloud pull — call off the UI thread.
     /// </summary>
-    internal static string JoinFromCode(string code, string? oauthTokenJson) =>
-        BaeBridgeMethods.JoinFromCode(code, oauthTokenJson).Id;
+    internal static string JoinFromCode(string code, string joinRequestCode, string? oauthTokenJson) =>
+        BaeBridgeMethods.JoinFromCode(code, joinRequestCode, oauthTokenJson).Id;
 
     /// <summary>
     /// Restore an S3-backed library by entering its cloud location and credentials
@@ -591,7 +593,8 @@ internal static class NativeBae
 
     internal static void TriggerSync(AppHandle handle) => handle.TriggerSync();
 
-    internal static string? GenerateRestoreCode(AppHandle handle) => CaptureValue(handle.GenerateRestoreCode);
+    internal static string? GenerateRestoreCode(AppHandle handle) =>
+        CaptureValue(() => Await(handle.GenerateRestoreCode()));
 
     internal static (BridgeMembership? Membership, string? Error) GetMembers(AppHandle handle) =>
         CaptureBridgeValue(() => Await(handle.GetMembers()));
