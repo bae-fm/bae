@@ -313,6 +313,7 @@ extension ImportView {
         importStore.mutateCandidate(forKey: candidate.key) { c in
             c.mode = .identifying
             c.releaseDetailBridge = nil
+            c.releaseSeed = nil
             c.identityChoice = nil
             c.editValues = nil
         }

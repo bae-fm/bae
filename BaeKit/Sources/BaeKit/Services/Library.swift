@@ -54,7 +54,7 @@ public final class Library: Sendable, Observable {
         @Sendable (
             _ releaseId: String, _ source: BridgeMetadataSource,
             _ localTrackCount: UInt32?
-        ) async throws -> BridgeReleaseDetail
+        ) async throws -> BridgeReleasePrefetch
     public let resolveToTrackIds:
         @Sendable (_ ids: [String]) async throws -> [String]
 
@@ -131,7 +131,7 @@ public final class Library: Sendable, Observable {
             },
         prefetchRelease:
             @escaping @Sendable (String, BridgeMetadataSource, UInt32?)
-            async throws -> BridgeReleaseDetail = { _, _, _ in
+            async throws -> BridgeReleasePrefetch = { _, _, _ in
                 throw StubError.notImplemented
             },
         resolveToTrackIds:

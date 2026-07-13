@@ -232,11 +232,12 @@ extension ImportSearchFlow {
             candidate.error = nil
             candidate.identityChoice = .unknown
             // Unknown imports never carry a source release — clear any
-            // prior detail so the confirmation page falls back to its
+            // prior detail and seed so the confirmation page falls back to its
             // detail-less rendering (no remote cover picker, no
             // library-status banner, no track-count mismatch, no
             // Exact/Metadata choice).
             candidate.releaseDetailBridge = nil
+            candidate.releaseSeed = nil
             // No source cover exists for Unknown; leave the local
             // artwork picker as the only cover affordance.
             candidate.selectedCover = nil
@@ -311,30 +312,32 @@ extension ImportSearchFlow {
         let bridgeSource = selection.result.source
         let task = Task { @MainActor in
             do {
-                let bridgeDetail = try await library.prefetchRelease(
+                let prefetch = try await library.prefetchRelease(
                     releaseId,
                     bridgeSource,
                     selection.localTrackCount
                 )
-                let preview = shapeUserEditFromReleaseDetail(
-                    detail: bridgeDetail,
+                let preview = shapeUserEditForChoice(
+                    seed: prefetch.seed,
                     choice: selection.identityChoice
                 )
                 importStore.mutateCandidate(forKey: key) { candidate in
-                    // Keep the full source detail: flipping the Exact /
-                    // Metadata-only choice in the pane re-shapes the editor
-                    // from it without a re-fetch.
-                    candidate.releaseDetailBridge = bridgeDetail
+                    // The display detail: cover options, track-count mismatch,
+                    // library status.
+                    candidate.releaseDetailBridge = prefetch.detail
+                    // The editor's seed. Kept so flipping the Exact /
+                    // Metadata-only choice in the pane re-shapes it without a
+                    // re-fetch.
+                    candidate.releaseSeed = prefetch.seed
                     // Manual prefetch: the user just picked a different
                     // release, so any prior pick was for a now-stale cover
                     // set — replace it with the new release's default.
-                    candidate.selectedCover = bridgeDetail.defaultCover
-                    // Editor seed comes pre-shaped from bae-core (the
-                    // Exact-vs-Approximate/Unknown pressing-field
-                    // masking and per-track artist-override logic live
-                    // there, not in Swift). `rawReleaseEditFromUserEdit`
-                    // projects that wire edit into the raw form the
-                    // editor binds.
+                    candidate.selectedCover = prefetch.detail.defaultCover
+                    // The seed arrives pre-shaped from bae-core, which projects
+                    // it from the release the way the commit worker maps it;
+                    // `shapeUserEditForChoice` masks the pressing fields per the
+                    // identity claim. `rawReleaseEditFromUserEdit` projects that
+                    // wire edit into the raw form the editor binds.
                     candidate.editValues = rawReleaseEditFromUserEdit(
                         edit: preview,
                         trackIdPrefix: "import-track"
@@ -578,20 +581,19 @@ extension ImportSearchFlow {
     // MARK: - Import-as choice (in the pane)
 
     /// Flip the open pane's Exact / Metadata-only choice and re-seed the
-    /// editor from the stored source detail. Exact seeds the pressing fields
-    /// from the picked release; Metadata-only blanks them. Re-shaping is
-    /// bae-core's job — `shape_user_edit_from_search_detail` masks the pressing
-    /// fields per the choice — so this re-runs it rather than mutating fields
-    /// in Swift.
+    /// editor from the stored seed. Exact keeps the picked release's pressing
+    /// fields; Metadata-only blanks them. Re-shaping is bae-core's job —
+    /// `shape_user_edit_for_choice` masks the pressing fields per the choice —
+    /// so this re-runs it rather than mutating fields in Swift.
     ///
-    /// `detail` and `ref` come from the call site (the toggle only renders for
+    /// `seed` and `ref` come from the call site (the toggle only renders for
     /// a source-backed pick, so both are in hand there) — no in-closure lookup
     /// or guard.
     @MainActor
     static func changeChoice(
         importStore: ImportStore,
         key: String,
-        detail: BridgeReleaseDetail,
+        seed: BridgeReleaseUserEdit,
         ref: (releaseId: String, source: BridgeMetadataSource),
         wantExact: Bool
     ) {
@@ -602,8 +604,8 @@ extension ImportSearchFlow {
         )
         importStore.mutateCandidate(forKey: key) { candidate in
             candidate.identityChoice = choice
-            let preview = shapeUserEditFromReleaseDetail(
-                detail: detail,
+            let preview = shapeUserEditForChoice(
+                seed: seed,
                 choice: choice
             )
             candidate.editValues = rawReleaseEditFromUserEdit(
@@ -735,9 +737,9 @@ extension ImportSearchFlow {
     }
 
     /// The Exact / Metadata-only toggle, or `nil` when it doesn't apply. The
-    /// toggle renders only for a source-backed pick (one with a stored detail and
+    /// toggle renders only for a source-backed pick (one with a stored seed and
     /// a release ref); Unknown imports have neither and get no toggle.
-    /// Unwrapping the detail/ref here means `changeChoice` needs no in-closure
+    /// Unwrapping the seed/ref here means `changeChoice` needs no in-closure
     /// guard.
     @MainActor
     private static func exactnessChoice(
@@ -745,7 +747,7 @@ extension ImportSearchFlow {
         importStore: ImportStore,
         key: String
     ) -> ImportExactnessChoice? {
-        guard let detail = candidate.releaseDetailBridge,
+        guard let seed = candidate.releaseSeed,
             let choice = candidate.identityChoice,
             let ref = choice.releaseRef
         else {
@@ -757,7 +759,7 @@ extension ImportSearchFlow {
                 changeChoice(
                     importStore: importStore,
                     key: key,
-                    detail: detail,
+                    seed: seed,
                     ref: ref,
                     wantExact: wantExact
                 )

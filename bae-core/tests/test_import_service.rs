@@ -35,6 +35,9 @@ struct ImportFixture {
     library_manager: LibraryManager,
     config_handle: Arc<bae_core::config::ConfigHandle>,
     ids: Arc<dyn coven::IdProvider>,
+    /// The service's cover-art client, kept so a test that drives the prefetch
+    /// path can seed its lookups (the hermetic client panics on a live request).
+    cover_art: bae_core::import::cover_art::CoverArtArchiveClient,
     _temp: TempDir,
 }
 
@@ -76,10 +79,11 @@ impl ImportFixture {
 
         seed(&library_dir);
 
+        let cover_art = bae_core::import::cover_art::CoverArtArchiveClient::hermetic();
         let handle = ImportService::start(
             tokio::runtime::Handle::current(),
             library_manager.clone(),
-            bae_core::import::cover_art::CoverArtArchiveClient::hermetic(),
+            cover_art.clone(),
         );
 
         Self {
@@ -88,6 +92,7 @@ impl ImportFixture {
             library_manager,
             config_handle,
             ids,
+            cover_art,
             _temp: temp,
         }
     }
@@ -3175,5 +3180,115 @@ async fn verify_decode_on_import_gates_a_broken_track() {
     assert!(
         err.contains("decode verification failed"),
         "the failure must come from decode-verify, got: {err}",
+    );
+}
+
+// ── album artists survive the confirmation editor ────────────────────────
+
+/// A MusicBrainz release credited to two artists, one CD track.
+fn seed_two_credit_mb_release(mb_release_id: &str, mb_group_id: &str) -> String {
+    let credit = |id: &str, name: &str| MbArtistCredit {
+        name: name.to_string(),
+        artist: Some(MbArtistRef {
+            id: Some(id.to_string()),
+            name: Some(name.to_string()),
+            sort_name: Some(name.to_string()),
+        }),
+    };
+    let response = MbReleaseResponse {
+        id: mb_release_id.to_string(),
+        title: "Split Album".to_string(),
+        date: Some("1999".to_string()),
+        country: Some("US".to_string()),
+        barcode: None,
+        artist_credit: vec![
+            credit("mb-artist-a", "Artist A"),
+            credit("mb-artist-b", "Artist B"),
+        ],
+        release_group: Some(MbReleaseGroupRef {
+            id: mb_group_id.to_string(),
+            first_release_date: None,
+            relations: None,
+        }),
+        label_info: vec![],
+        media: vec![MbMedium {
+            format: Some("CD".to_string()),
+            tracks: vec![MbTrack {
+                position: Some(1),
+                number: Some("1".to_string()),
+                title: None,
+                length: None,
+                recording: Some(MbRecording {
+                    id: None,
+                    title: Some("Track One".to_string()),
+                    artist_credit: vec![],
+                    relations: vec![],
+                }),
+                artist_credit: vec![],
+            }],
+        }],
+        relations: vec![],
+    };
+    bae_core::musicbrainz::seed_release_cache(mb_release_id, (response, None, "{}".to_string()));
+    bae_core::musicbrainz::seed_release_group_json_cache(mb_group_id, "{}".to_string());
+    mb_release_id.to_string()
+}
+
+/// A release credited to two artists keeps both through the confirmation editor:
+/// the primary on `albums.artist_id`, the second as an `album_artists` junction
+/// row still carrying its MusicBrainz id.
+///
+/// The editor seeds from the same projection the commit worker maps, so a user
+/// who changes nothing sends back the artist list the mapper produced, and the
+/// commit's artist comparison sees no edit. Seeding it from the picker's display
+/// shape — which collapses the credits to one name — read as "the user deleted
+/// artist B" and destroyed her junction row on every such import.
+#[tokio::test]
+async fn two_credit_mb_release_keeps_both_album_artists() {
+    support::tracing_init();
+    let f = ImportFixture::new().await;
+    let mb_id = seed_two_credit_mb_release("two-credit-mb-rel", "two-credit-mb-group");
+    f.cover_art
+        .seed_lookup(Some(&mb_id), Some("two-credit-mb-group"), None);
+
+    let album_dir = f.temp_path().join("two-credit");
+    fs::create_dir_all(&album_dir).unwrap();
+    generate_album_files(&album_dir, &["01 Track One.flac"]);
+
+    let choice = IdentityChoice::Exact {
+        release_ref: MetadataRef::new(mb_id.clone(), MetadataSource::MusicBrainz),
+    };
+
+    // The confirmation pane's seed, unedited: what the UI sends back as the
+    // command's overlay when the user touches nothing.
+    let prefetch = f
+        .handle
+        .prefetch_release(&mb_id, MetadataSource::MusicBrainz)
+        .await
+        .unwrap();
+    let user_edit = bae_core::import::shape_user_edit_for_choice(&prefetch.seed, &choice);
+
+    let import_id = f.ids.new_id();
+    f.handle
+        .send_command(ImportCommand {
+            import_id: import_id.clone(),
+            candidate_key: "test".to_string(),
+            folder: album_dir,
+            selected_cover: None,
+            storage_mode: StorageMode::Local,
+            pin: false,
+            identity_choice: choice,
+            user_edit: Some(user_edit),
+        })
+        .unwrap();
+    let mut rx = f.handle.subscribe_import(import_id);
+    let (_release_id, album_id) = support::wait_for_import_complete(&mut rx).await;
+
+    let artists = f.db.get_artists_for_album(&album_id).await.unwrap();
+    let names: Vec<&str> = artists.iter().map(|a| a.name.as_str()).collect();
+    assert_eq!(names, vec!["Artist A", "Artist B"]);
+    assert_eq!(
+        artists[1].musicbrainz_artist_id.as_deref(),
+        Some("mb-artist-b")
     );
 }

@@ -150,9 +150,8 @@ pub(crate) struct ReleaseIr {
 
 /// 1-based position of each element within its side, counting in input order
 /// (sides may interleave; the counter is per distinct side value). The one
-/// per-side numbering implementation, shared by the assembler and
-/// `shape_user_edit_from_search_detail` so the commit and editor-seed paths can
-/// never disagree.
+/// per-side numbering implementation: every source mapper numbers through it, so
+/// the numbers the editor is seeded with are the numbers the commit writes.
 pub(crate) fn per_side_positions<S: Copy + Eq + std::hash::Hash>(
     sides: impl IntoIterator<Item = S>,
 ) -> Vec<i32> {

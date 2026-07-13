@@ -127,6 +127,28 @@ impl CoverArtArchiveClient {
         client
     }
 
+    /// Pre-populate the lookup cache for a release and its release group, so a
+    /// hermetic test can drive the prefetch path without the network. `None` is
+    /// "no cover art" — the natural answer for a synthetic test release.
+    #[cfg(feature = "test-utils")]
+    pub fn seed_lookup(
+        &self,
+        release_id: Option<&str>,
+        release_group_id: Option<&str>,
+        cover: Option<RemoteCover>,
+    ) {
+        let mut cache = self
+            .lookup_cache
+            .lock()
+            .expect("Cover Art Archive lookup cache mutex poisoned");
+        if let Some(id) = release_id {
+            cache.put(lookup_cache_key("release", id), cover.clone());
+        }
+        if let Some(id) = release_group_id {
+            cache.put(lookup_cache_key("release-group", id), cover);
+        }
+    }
+
     /// Fetch cover art candidates from Cover Art Archive for a MusicBrainz
     /// release and release group.
     pub async fn fetch_candidates(
@@ -250,6 +272,12 @@ pub(crate) fn push_unique_cover(covers: &mut Vec<RemoteCover>, cover: RemoteCove
     }
 }
 
+/// Key one CAA entity's cover lookup. The seeding seam and the fetch path both
+/// go through it, so a seeded lookup is the one the fetch reads.
+fn lookup_cache_key(caa_entity: &str, id: &str) -> String {
+    format!("{caa_entity}:{id}")
+}
+
 impl CoverArtArchiveClient {
     async fn fetch_entity(
         &self,
@@ -259,7 +287,7 @@ impl CoverArtArchiveClient {
         label: String,
     ) -> Option<RemoteCover> {
         self.fetch_url(
-            format!("{caa_entity}:{id}"),
+            lookup_cache_key(caa_entity, id),
             format!("https://coverartarchive.org/{caa_entity}/{id}"),
             log_entity,
             id,

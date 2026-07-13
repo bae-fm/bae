@@ -574,8 +574,8 @@ struct CoverPickerView: View {
         @Previewable
         @State
         var values = rawReleaseEditFromUserEdit(
-            edit: shapeUserEditFromReleaseDetail(
-                detail: PreviewData.releaseDetailBridge,
+            edit: shapeUserEditForChoice(
+                seed: PreviewData.releaseSeedBridge,
                 choice: .exact(
                     releaseId: PreviewData.releaseDetailBridge.releaseId,
                     source: PreviewData.releaseDetailBridge.source,
