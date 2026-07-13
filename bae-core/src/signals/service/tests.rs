@@ -341,7 +341,7 @@ async fn emit_signals_warns_when_broadcast_has_no_subscribers() {
     let inner = ExtractionServiceInner {
         runtime_handle: tokio::runtime::Handle::current(),
         event_tx: tx,
-        analyzer: std::sync::Mutex::new(Arc::new(NoopAnalyzer) as Arc<dyn ArtworkAnalyzer>),
+        analyzer: std::sync::Mutex::new(None),
         library_manager,
         cancellation: CancellationRegistry::default(),
     };
@@ -727,5 +727,68 @@ async fn three_starts_cancel_each_predecessor() {
     assert!(
         saw_settled,
         "expected a Settled snapshot from the completed run",
+    );
+}
+
+/// A platform with no artwork analyzer has no barcode source in a candidate's
+/// artwork, however many images it holds — nothing decodes them. The barcode
+/// signal must say `Absent`, not `Settled { codes: [] }`: identify reads the
+/// difference as "never scanned" vs "scanned and found none", and the second is a
+/// claim about a decode that never happened.
+#[tokio::test(flavor = "multi_thread")]
+async fn no_analyzer_leaves_artwork_absent_rather_than_scanned() {
+    let tmp = TempDir::new().unwrap();
+    let folder = build_release(&tmp, "Album Title", &["Cover.jpg", "Back.jpg"], &[]);
+
+    // No `register_analyzer` — this is Windows and Linux today.
+    let (handle, _tx, mut rx, _lib_tmp) = make_service().await;
+
+    handle.start("cand-1".to_string(), ExtractionSource::Folder(folder));
+
+    // Fast pass + final settled. No OCR snapshots: there is nothing to decode with.
+    let signals = collect_signals(&mut rx, 2).await;
+    assert_eq!(
+        signals[0].barcode,
+        BarcodeSignal::Absent,
+        "artwork is not a barcode source without an analyzer",
+    );
+    assert_eq!(
+        signals[1].barcode,
+        BarcodeSignal::Absent,
+        "settling must not report a scan that never ran",
+    );
+}
+
+/// A CUE `CATALOG` barcode is a source in its own right — it needs no analyzer.
+/// It settles even on a platform that can't decode artwork.
+#[tokio::test(flavor = "multi_thread")]
+async fn no_analyzer_still_settles_cue_catalog_barcodes() {
+    let tmp = TempDir::new().unwrap();
+    let folder = tmp.path().join("Album Title");
+    fs::create_dir_all(&folder).unwrap();
+    fs::write(folder.join("audio.flac"), fixture_flac()).unwrap();
+    fs::write(folder.join("Cover.jpg"), minimal_jpeg()).unwrap();
+    let cue = "CATALOG 0075678164521\n\
+FILE \"audio.flac\" WAVE\n  \
+  TRACK 01 AUDIO\n    \
+    TITLE \"Track One\"\n    \
+    INDEX 01 00:00:00\n";
+    fs::write(folder.join("Album.cue"), cue).unwrap();
+
+    let (handle, _tx, mut rx, _lib_tmp) = make_service().await;
+    handle.start("cand-1".to_string(), ExtractionSource::Folder(folder));
+
+    let signals = collect_signals(&mut rx, 2).await;
+    let codes: Vec<&str> = signals[1]
+        .barcode
+        .codes()
+        .iter()
+        .map(|c| c.value.as_str())
+        .collect();
+    assert_eq!(codes, vec!["0075678164521"]);
+    assert!(
+        matches!(signals[1].barcode, BarcodeSignal::Settled { .. }),
+        "a CUE catalog barcode settles without an analyzer, got {:?}",
+        signals[1].barcode,
     );
 }
