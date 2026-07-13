@@ -20,7 +20,6 @@ use bae_core::musicbrainz::{
 use bae_core::sync::CloudCipher;
 use coven::EncryptionService;
 use coven::StoreDir;
-use serial_test::serial;
 use std::fs;
 use std::path::Path;
 use std::sync::Arc;
@@ -301,9 +300,22 @@ fn generate_album_with_oversized_cover(dir: &Path, filenames: &[&str]) -> String
     "scans/cover.png".to_string()
 }
 
+/// A unique id for a synthetic discogs release. The discogs release cache is
+/// process-global and keyed by id; deriving the id from the title alone made
+/// two tests that pick the same title collide on one cache entry, so a
+/// concurrent run served whichever seed landed last. Each built release is a
+/// distinct release and gets a distinct id.
+fn synthetic_release_id(title: &str) -> String {
+    format!(
+        "test-{}-{}",
+        title.to_lowercase().replace(' ', "-"),
+        uuid::Uuid::new_v4()
+    )
+}
+
 fn discogs_release(title: &str, tracks: &[&str]) -> DiscogsRelease {
     DiscogsRelease {
-        id: format!("test-{}", title.to_lowercase().replace(' ', "-")),
+        id: synthetic_release_id(title),
         title: title.to_string(),
         year: Some(2024),
         format: vec![],
@@ -337,7 +349,6 @@ fn discogs_release(title: &str, tracks: &[&str]) -> DiscogsRelease {
 
 /// 2. Folder scan produces correct candidates from a multi-album directory.
 #[tokio::test]
-#[serial]
 async fn folder_scan_produces_candidates() {
     support::tracing_init();
     let f = ImportFixture::new().await;
@@ -388,7 +399,6 @@ async fn folder_scan_produces_candidates() {
 /// filesystem-event timing — both paths reconcile to the same on-disk truth, so
 /// each step waits for its expected candidate event regardless of how many fire.
 #[tokio::test]
-#[serial]
 async fn watcher_reconciles_added_and_removed_candidates() {
     support::tracing_init();
     let f = ImportFixture::new().await;
@@ -538,7 +548,6 @@ async fn drain_scan_events(
 /// the watcher an `Unwatch`). Exercises the handle's remove path and
 /// `watched_folders` accessor.
 #[tokio::test]
-#[serial]
 async fn remove_watched_folder_drops_folder_and_candidates() {
     support::tracing_init();
     let f = ImportFixture::new().await;
@@ -623,7 +632,6 @@ async fn remove_watched_folder_drops_folder_and_candidates() {
 /// success would strand it: install attempts are keyed on success, so nothing
 /// ever retries, and filesystem changes under it never propagate.
 #[tokio::test]
-#[serial]
 async fn add_watched_folder_fails_loud_on_nonexistent_path() {
     support::tracing_init();
     let f = ImportFixture::new().await;
@@ -648,7 +656,6 @@ async fn add_watched_folder_fails_loud_on_nonexistent_path() {
 /// app start must fail loud instead of reporting success for a folder it
 /// couldn't actually watch.
 #[tokio::test]
-#[serial]
 async fn scan_watched_folders_fails_loud_on_missing_folder() {
     support::tracing_init();
     let f = ImportFixture::new_with_seed(|library_dir| {
@@ -672,7 +679,6 @@ async fn scan_watched_folders_fails_loud_on_missing_folder() {
 /// `CandidateSkipChanged`; a no-op request (already in the target state) changes
 /// nothing and emits nothing.
 #[tokio::test]
-#[serial]
 async fn set_candidate_skipped_flips_flag_and_is_idempotent() {
     support::tracing_init();
     let f = ImportFixture::new().await;
@@ -743,7 +749,6 @@ async fn set_candidate_skipped_flips_flag_and_is_idempotent() {
 
 /// 3. Local folder import: album, release, tracks all in DB, files stay in place.
 #[tokio::test]
-#[serial]
 async fn local_folder_import() {
     support::tracing_init();
 
@@ -830,7 +835,6 @@ async fn local_folder_import() {
 
 /// 4. Import produces correct audio format records.
 #[tokio::test]
-#[serial]
 async fn import_produces_audio_format_records() {
     support::tracing_init();
 
@@ -875,7 +879,6 @@ async fn import_produces_audio_format_records() {
 }
 
 #[tokio::test]
-#[serial]
 async fn exact_metadata_import_stores_dsd_audio_format() {
     support::tracing_init();
 
@@ -944,7 +947,6 @@ async fn exact_metadata_import_stores_dsd_audio_format() {
 /// ~0.1s of audio at a time rather than once per track, so the import UI bar
 /// advances during a track's measure span, not only at track boundaries.
 #[tokio::test]
-#[serial]
 async fn loudness_pass_emits_within_track_progress() {
     use bae_core::import::ImportEvent;
 
@@ -1092,7 +1094,6 @@ fn write_flac(path: &Path, samples: &[i32], sample_rate: u32) {
 /// measurement path (`ImportService` → `measure_loudness`) and the real playback
 /// derivation (`ResolvedTrackAudio::replay_gain_linear`), not reconstructions.
 #[tokio::test]
-#[serial]
 async fn loudness_measured_at_import_drives_playback_gain() {
     use bae_core::config::ReplayGainMode;
 
@@ -1249,7 +1250,6 @@ async fn loudness_measured_at_import_drives_playback_gain() {
 
 /// 5. Two sequential imports both succeed and produce separate albums.
 #[tokio::test]
-#[serial]
 async fn two_sequential_imports() {
     support::tracing_init();
 
@@ -1324,7 +1324,6 @@ async fn two_sequential_imports() {
 }
 
 #[tokio::test]
-#[serial]
 async fn reimport_cover_download_failure_preserves_prior_release() {
     support::tracing_init();
     let f = ImportFixture::new().await;
@@ -1371,7 +1370,6 @@ async fn reimport_cover_download_failure_preserves_prior_release() {
 }
 
 #[tokio::test]
-#[serial]
 async fn reimport_decode_verification_failure_preserves_prior_release() {
     support::tracing_init();
     let f = ImportFixture::new().await;
@@ -1422,7 +1420,6 @@ async fn reimport_decode_verification_failure_preserves_prior_release() {
 }
 
 #[tokio::test]
-#[serial]
 async fn successful_reimport_replaces_prior_release_once() {
     support::tracing_init();
     let f = ImportFixture::new().await;
@@ -1508,7 +1505,6 @@ async fn successful_reimport_replaces_prior_release_once() {
 /// just-finalized release and its album, mark the import Failed with its release
 /// link cleared, and leave a pre-existing release untouched.
 #[tokio::test]
-#[serial]
 async fn remote_transition_failure_rolls_back_finalized_release() {
     support::tracing_init();
     // No cloud/sync connected, so the make-Remote transition fails.
@@ -1715,7 +1711,6 @@ fn seed_mb_release_with_works(
 /// keep alive slip past the artist-rollback guard. A work still performed by a
 /// surviving release — and its composer — must be left alone.
 #[tokio::test]
-#[serial]
 async fn remote_transition_failure_rolls_back_finalized_works() {
     support::tracing_init();
     let f = ImportFixture::new().await;
@@ -1879,7 +1874,6 @@ async fn remote_transition_failure_rolls_back_finalized_works() {
 
 /// 6. Import with local cover art: covers row + the cover blob in coven's local store.
 #[tokio::test]
-#[serial]
 async fn import_with_cover_art() {
     support::tracing_init();
 
@@ -1930,7 +1924,6 @@ async fn import_with_cover_art() {
 /// stored blob decodes to 600×600 JPEG (from a 1000×1000 PNG source) and the
 /// `covers` row records JPEG, not the source PNG.
 #[tokio::test]
-#[serial]
 async fn import_resizes_oversized_cover_to_jpeg_thumbnail() {
     support::tracing_init();
 
@@ -1990,7 +1983,6 @@ async fn import_resizes_oversized_cover_to_jpeg_thumbnail() {
 /// readably when the gate flips. (An opaque home leaves them NULL; covered by the
 /// other imports, which assert nothing here.)
 #[tokio::test]
-#[serial]
 async fn import_on_browsable_home_writes_readable_cloud_paths_at_import() {
     support::tracing_init();
 
@@ -2075,7 +2067,7 @@ async fn import_on_browsable_home_writes_readable_cloud_paths_at_import() {
 /// preserves them and Approximate clears them.
 fn discogs_release_rich(title: &str, master_id: &str, tracks: &[&str]) -> DiscogsRelease {
     DiscogsRelease {
-        id: format!("test-{}", title.to_lowercase().replace(' ', "-")),
+        id: synthetic_release_id(title),
         title: title.to_string(),
         year: Some(1996),
         format: vec!["CD".to_string()],
@@ -2109,7 +2101,6 @@ fn discogs_release_rich(title: &str, master_id: &str, tracks: &[&str]) -> Discog
 /// (year, format, label, catalog number, country) seed from the picked
 /// release.
 #[tokio::test]
-#[serial]
 async fn exact_import_writes_release_id_and_pressing_fields() {
     support::tracing_init();
 
@@ -2167,7 +2158,6 @@ async fn exact_import_writes_release_id_and_pressing_fields() {
 /// can fill country (cleared by Approximate) and the committed value
 /// reflects the edit.
 #[tokio::test]
-#[serial]
 async fn approximate_import_with_user_edit_overlay() {
     support::tracing_init();
 
@@ -2339,7 +2329,6 @@ fn seed_mb_with_discogs_xref(
 /// MB-rooted Exact import with a Discogs cross-link writes two identity
 /// rows, both carrying their per-source `source_release_id`.
 #[tokio::test]
-#[serial]
 async fn cross_source_exact_writes_both_release_ids() {
     support::tracing_init();
 
@@ -2405,7 +2394,6 @@ async fn cross_source_exact_writes_both_release_ids() {
 /// two identity rows, but both have `source_release_id = NULL` — the
 /// user's "I don't claim a specific pressing" applies across sources.
 #[tokio::test]
-#[serial]
 async fn cross_source_approximate_nulls_both_release_ids() {
     support::tracing_init();
 
@@ -2475,7 +2463,6 @@ async fn cross_source_approximate_nulls_both_release_ids() {
 /// Discogs seed supplied on the release row, but keeps
 /// `metadata_source_release_id` so a later re-projection can replay the seed.
 #[tokio::test]
-#[serial]
 async fn cross_source_discogs_rooted_approximate_nulls_both_release_ids() {
     support::tracing_init();
 
@@ -2593,7 +2580,6 @@ async fn cross_source_discogs_rooted_approximate_nulls_both_release_ids() {
 /// `metadata_source_release_id = NULL`, and seeds the album / tracks
 /// from what's on disk. No external source consulted.
 #[tokio::test]
-#[serial]
 async fn unknown_import_seeds_from_file_tags_and_writes_no_identity() {
     support::tracing_init();
 
@@ -2665,7 +2651,6 @@ async fn unknown_import_seeds_from_file_tags_and_writes_no_identity() {
 }
 
 #[tokio::test]
-#[serial]
 async fn unknown_preview_for_cue_matches_unknown_commit_layout() {
     support::tracing_init();
 
@@ -2764,7 +2749,6 @@ async fn unknown_preview_for_cue_matches_unknown_commit_layout() {
 /// A tagged rip whose only artwork is embedded in the audio (no folder
 /// image, no remote selection) gets that embedded picture as its cover.
 #[tokio::test]
-#[serial]
 async fn unknown_import_seeds_embedded_cover_when_no_folder_image() {
     support::tracing_init();
 
@@ -2825,7 +2809,6 @@ async fn unknown_import_seeds_embedded_cover_when_no_folder_image() {
 /// A folder image outranks the embedded picture: when both exist, the
 /// folder artwork is the cover and the embedded picture is ignored.
 #[tokio::test]
-#[serial]
 async fn unknown_import_folder_image_wins_over_embedded_cover() {
     support::tracing_init();
 
@@ -2881,7 +2864,6 @@ async fn unknown_import_folder_image_wins_over_embedded_cover() {
 /// when an identified release with the same album title is already in
 /// the library, an Unknown import lands on a fresh album.
 #[tokio::test]
-#[serial]
 async fn unknown_import_always_creates_a_fresh_album() {
     support::tracing_init();
 
@@ -2955,7 +2937,6 @@ async fn unknown_import_always_creates_a_fresh_album() {
 /// titles via the editor before commit. Persisted metadata reflects
 /// the edits.
 #[tokio::test]
-#[serial]
 async fn unknown_import_with_user_edit_overlay() {
     support::tracing_init();
 
@@ -3043,7 +3024,6 @@ async fn unknown_import_with_user_edit_overlay() {
 /// ALBUM tag (the editable confirmation form gates a blank title before
 /// save). The artist falls back to empty for the user to fill.
 #[tokio::test]
-#[serial]
 async fn unknown_import_with_no_tags_seeds_title_from_folder_name() {
     support::tracing_init();
 
@@ -3177,7 +3157,6 @@ async fn import_truncated_album(verify: bool) -> Result<(String, String), String
 /// and fails at the decode-verify gate -- before finalize commits anything -- with
 /// the flag on. Proves the flag drives the outcome, not the fixture.
 #[tokio::test]
-#[serial]
 async fn verify_decode_on_import_gates_a_broken_track() {
     support::tracing_init();
 
