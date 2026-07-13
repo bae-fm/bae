@@ -53,6 +53,7 @@ async fn pure_reads_run_off_the_sync_journal() {
     let db = Database::new_test(
         tmp.path().join("tripwire.db").to_str().unwrap(),
         Arc::new(coven::SystemClock),
+        std::sync::Arc::new(coven::UuidProvider),
     )
     .await
     .unwrap();

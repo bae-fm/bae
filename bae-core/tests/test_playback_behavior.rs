@@ -437,6 +437,7 @@ where
     let database = Database::new_test(
         db_path.to_str().unwrap(),
         std::sync::Arc::new(coven::SystemClock),
+        std::sync::Arc::new(coven::UuidProvider),
     )
     .await?;
     let database_arc = Arc::new(database.clone());
@@ -589,6 +590,7 @@ impl PlaybackTestFixture {
         let database = Database::new_test(
             db_path.to_str().expect("db path is valid UTF-8"),
             std::sync::Arc::new(coven::SystemClock),
+            std::sync::Arc::new(coven::UuidProvider),
         )
         .await
         .expect("open the cloned playback database");
@@ -1070,6 +1072,7 @@ impl CueFlacTestFixture {
         let database = Database::new_test(
             db_path.to_str().unwrap(),
             std::sync::Arc::new(coven::SystemClock),
+            std::sync::Arc::new(coven::UuidProvider),
         )
         .await?;
         let database_arc = Arc::new(database.clone());
@@ -3361,6 +3364,7 @@ impl HighSampleRateTestFixture {
         let database = Database::new_test(
             db_path.to_str().unwrap(),
             std::sync::Arc::new(coven::SystemClock),
+            std::sync::Arc::new(coven::UuidProvider),
         )
         .await?;
         let database_arc = Arc::new(database.clone());
@@ -3809,6 +3813,7 @@ async fn test_restore_emits_seeked_at_saved_position() {
     let database = Database::new_test(
         db_path.to_str().unwrap(),
         std::sync::Arc::new(coven::SystemClock),
+        std::sync::Arc::new(coven::UuidProvider),
     )
     .await
     .unwrap();
@@ -3905,6 +3910,7 @@ async fn test_restore_drops_context_when_cursor_past_shrunk_tracks() {
     let database = Database::new_test(
         db_path.to_str().unwrap(),
         std::sync::Arc::new(coven::SystemClock),
+        std::sync::Arc::new(coven::UuidProvider),
     )
     .await
     .unwrap();
@@ -4028,6 +4034,7 @@ async fn test_play_persists_then_stop_clears_playback_state() {
     let database = Database::new_test(
         db_path.to_str().unwrap(),
         std::sync::Arc::new(coven::SystemClock),
+        std::sync::Arc::new(coven::UuidProvider),
     )
     .await
     .unwrap();
@@ -4203,6 +4210,7 @@ async fn restore_test_library() -> RestoreTestLibrary {
     let database = Database::new_test(
         db_path.to_str().unwrap(),
         std::sync::Arc::new(coven::SystemClock),
+        std::sync::Arc::new(coven::UuidProvider),
     )
     .await
     .unwrap();
@@ -4267,6 +4275,7 @@ async fn empty_test_library() -> (LibraryManager, tokio::runtime::Handle, TempDi
     let database = Database::new_test(
         db_path.to_str().unwrap(),
         std::sync::Arc::new(coven::SystemClock),
+        std::sync::Arc::new(coven::UuidProvider),
     )
     .await
     .unwrap();
@@ -4544,6 +4553,7 @@ impl CloudOnlyPlaybackFixture {
         let database = Database::new_test(
             db_path.to_str().unwrap(),
             std::sync::Arc::new(coven::SystemClock),
+            std::sync::Arc::new(coven::UuidProvider),
         )
         .await?;
         let library_dir = StoreDir::new(temp_dir.path().to_path_buf());
@@ -4925,6 +4935,7 @@ impl MultiWindowPlayback {
         let database = Database::new_test(
             db_path.to_str().expect("db path is valid UTF-8"),
             std::sync::Arc::new(coven::SystemClock),
+            std::sync::Arc::new(coven::UuidProvider),
         )
         .await
         .expect("open the cloned multi-window database");
@@ -5963,6 +5974,7 @@ impl RemoteMultiWindowPlayback {
         let database = Database::new_test(
             db_path.to_str().unwrap(),
             std::sync::Arc::new(coven::SystemClock),
+            std::sync::Arc::new(coven::UuidProvider),
         )
         .await?;
         let library_dir = StoreDir::new(temp_dir.path().to_path_buf());

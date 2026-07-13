@@ -336,10 +336,13 @@ mod tests {
     {
         let home = TempDir::new().unwrap();
         let db_path = home.path().join("transfer-test.db");
-        let database =
-            crate::db::Database::new_test(db_path.to_str().unwrap(), Arc::new(coven::SystemClock))
-                .await
-                .unwrap();
+        let database = crate::db::Database::new_test(
+            db_path.to_str().unwrap(),
+            Arc::new(coven::SystemClock),
+            std::sync::Arc::new(coven::UuidProvider),
+        )
+        .await
+        .unwrap();
 
         let transport = Arc::new(RecordingTransport::new(vec![]));
         let config = DatadogDiagnosticsConfig {

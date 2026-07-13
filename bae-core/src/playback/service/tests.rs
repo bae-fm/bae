@@ -114,10 +114,13 @@ async fn seeded_library_manager_with_diagnostics(
 ) -> (TempDir, LibraryManager) {
     let home = TempDir::new().unwrap();
     let db_path = home.path().join("playback-service-test.db");
-    let database =
-        crate::db::Database::new_test(db_path.to_str().unwrap(), Arc::new(coven::SystemClock))
-            .await
-            .unwrap();
+    let database = crate::db::Database::new_test(
+        db_path.to_str().unwrap(),
+        Arc::new(coven::SystemClock),
+        std::sync::Arc::new(coven::UuidProvider),
+    )
+    .await
+    .unwrap();
     seed_test_releases(&database, releases).await;
     let library_id = "playback-service-test".to_string();
     let config = crate::config::Config::with_defaults(

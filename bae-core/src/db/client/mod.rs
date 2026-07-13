@@ -5,7 +5,7 @@ use crate::queue::QueueItem;
 use crate::util::content_type::ContentType;
 use chrono::{DateTime, Utc};
 use coven::rusqlite::{params, Connection, OptionalExtension, Params, Row};
-use coven::{ClockRef, Coven, CovenError, CovenHandle, DbError, SqlContext};
+use coven::{ClockRef, Coven, CovenError, CovenHandle, DbError, IdRef, SqlContext};
 use std::collections::{BTreeSet, HashMap};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
@@ -793,6 +793,12 @@ struct DatabaseInner {
     /// Wall clock for `created_at` and status timestamps bound into write SQL.
     /// Synced-table `_updated_at` is stamped from coven's SQL context.
     clock: ClockRef,
+    /// The id source for the few rows this layer mints itself — the ones whose
+    /// count is only known inside the transaction that writes them (a release's
+    /// identity rows, an album's copied `album_artists`). Every other id is minted
+    /// by the caller from the same provider and passed in, so the DB holding one
+    /// keeps every id in the process coming from the one injected source.
+    ids: IdRef,
 }
 
 /// An external user-owned file a blob id resolves to.
@@ -916,9 +922,9 @@ impl Database {
             .map_err(Self::coven_error)
     }
 
-    pub fn from_handle(handle: CovenHandle, clock: ClockRef) -> Self {
+    pub fn from_handle(handle: CovenHandle, clock: ClockRef, ids: IdRef) -> Self {
         Database {
-            inner: Arc::new(DatabaseInner { handle, clock }),
+            inner: Arc::new(DatabaseInner { handle, clock, ids }),
         }
     }
 
@@ -927,6 +933,7 @@ impl Database {
     pub fn open(
         config: impl Into<coven::CovenConfig>,
         clock: ClockRef,
+        ids: IdRef,
         key_service: coven::StoreKeys,
         synced_tables: Vec<coven::SyncedTable>,
         observer: Option<Arc<dyn coven::BlobTransitionObserver>>,
@@ -942,13 +949,17 @@ impl Database {
             .migrations(crate::migrations::all())
             .open()
             .map_err(Self::coven_error)?;
-        Ok(Self::from_handle(handle, clock))
+        Ok(Self::from_handle(handle, clock, ids))
     }
 
     /// Test convenience: open over `path` with a fresh device id and bae's real
     /// synced-table set, so unit/integration tests don't repeat the wiring.
     #[cfg(any(test, feature = "test-utils"))]
-    pub async fn new_test(database_path: &str, clock: ClockRef) -> Result<Self, DbError> {
+    pub async fn new_test(
+        database_path: &str,
+        clock: ClockRef,
+        ids: IdRef,
+    ) -> Result<Self, DbError> {
         tracing::info!("Opening database at {}", database_path);
         let path = Path::new(database_path);
         let library_root = path
@@ -989,6 +1000,7 @@ impl Database {
         Self::open(
             config,
             clock,
+            ids,
             key_service,
             crate::sync::synced_tables(),
             None,
@@ -2033,6 +2045,7 @@ fn insert_release_identity_row(
     conn: &Connection,
     release_id: &str,
     identity: &crate::import::ReleaseIdentity,
+    id: String,
     reg: &str,
     now: &str,
 ) -> Result<(), DbError> {
@@ -2044,7 +2057,7 @@ fn insert_release_identity_row(
         ) VALUES (?, ?, ?, ?, ?, ?, ?)
         "#,
         params![
-            uuid::Uuid::new_v4().to_string(),
+            id,
             release_id,
             identity.source.as_str(),
             identity.source_group_id,

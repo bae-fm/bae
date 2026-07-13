@@ -31,9 +31,13 @@ async fn setup_test_manager() -> (LibraryManager, TempDir) {
 async fn setup_test_manager_with_library_id(library_id: &str) -> (LibraryManager, TempDir) {
     let temp_dir = TempDir::new().unwrap();
     let db_path = temp_dir.path().join("test.db");
-    let database = Database::new_test(db_path.to_str().unwrap(), Arc::new(coven::SystemClock))
-        .await
-        .unwrap();
+    let database = Database::new_test(
+        db_path.to_str().unwrap(),
+        Arc::new(coven::SystemClock),
+        std::sync::Arc::new(coven::UuidProvider),
+    )
+    .await
+    .unwrap();
 
     // Insert the test artist that create_test_album() references
     let artist = DbArtist {
@@ -143,9 +147,13 @@ async fn setup_forget_library_manager_at(
     home: &std::path::Path,
 ) -> LibraryManager {
     let db_path = home.join("manager.db");
-    let database = Database::new_test(db_path.to_str().unwrap(), Arc::new(coven::SystemClock))
-        .await
-        .unwrap();
+    let database = Database::new_test(
+        db_path.to_str().unwrap(),
+        Arc::new(coven::SystemClock),
+        std::sync::Arc::new(coven::UuidProvider),
+    )
+    .await
+    .unwrap();
     let config = Config::with_defaults(
         library_id.to_string(),
         "test-device".to_string(),

@@ -3214,9 +3214,14 @@ mod tests {
         key_service
             .set_discogs_key("test-discogs-token")
             .expect("seed test Discogs key");
+        // One id source for the whole test app: the database mints the ids it
+        // owns (identity rows, copied album artists) from the same provider the
+        // manager mints everything else from.
+        let ids: coven::IdRef = Arc::new(coven::SequentialIdProvider::new(test_name));
         let database = bae_core::db::Database::open(
             config.to_coven(),
             Arc::new(coven::SystemClock),
+            Arc::clone(&ids),
             coven::StoreKeys::new(library_id),
             bae_core::sync::synced_tables(),
             None,
@@ -3229,7 +3234,7 @@ mod tests {
             config_handle,
             key_service,
             Arc::new(coven::SystemClock),
-            Arc::new(coven::SequentialIdProvider::new(test_name)),
+            ids,
             bae_core::diagnostics::Diagnostics::noop(),
             runtime.handle().clone(),
         );

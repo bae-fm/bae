@@ -61,6 +61,7 @@ impl ImportFixture {
         let db = Database::new_test(
             db_dir.join("test.db").to_str().unwrap(),
             std::sync::Arc::new(coven::SystemClock),
+            std::sync::Arc::new(coven::UuidProvider),
         )
         .await
         .unwrap();
@@ -3130,6 +3131,7 @@ async fn import_truncated_album(verify: bool) -> Result<(String, String), String
     let db = Database::new_test(
         db_dir.join("test.db").to_str().unwrap(),
         std::sync::Arc::new(coven::SystemClock),
+        std::sync::Arc::new(coven::UuidProvider),
     )
     .await
     .unwrap();

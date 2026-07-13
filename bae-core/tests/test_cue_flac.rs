@@ -378,6 +378,7 @@ async fn import_cue_flac_fixture(temp_root: &Path) -> (LibraryManager, String) {
     let database = Database::new_test(
         db_dir.join("test.db").to_str().unwrap(),
         std::sync::Arc::new(coven::SystemClock),
+        std::sync::Arc::new(coven::UuidProvider),
     )
     .await
     .expect("database");
@@ -451,6 +452,7 @@ impl CueFlacCaptureFixture {
         let database = Database::new_test(
             db_path.to_str().unwrap(),
             std::sync::Arc::new(coven::SystemClock),
+            std::sync::Arc::new(coven::UuidProvider),
         )
         .await?;
         let library_dir = StoreDir::new(temp_dir.path().to_path_buf());

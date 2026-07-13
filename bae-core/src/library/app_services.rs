@@ -193,9 +193,13 @@ mod tests {
     async fn playing_app_services(track_count: usize) -> (AppServices, Vec<String>, TempDir) {
         let temp_dir = TempDir::new().unwrap();
         let db_path = temp_dir.path().join("test.db");
-        let database = Database::new_test(db_path.to_str().unwrap(), Arc::new(coven::SystemClock))
-            .await
-            .unwrap();
+        let database = Database::new_test(
+            db_path.to_str().unwrap(),
+            Arc::new(coven::SystemClock),
+            std::sync::Arc::new(coven::UuidProvider),
+        )
+        .await
+        .unwrap();
 
         let artist = DbArtist {
             id: "test-artist-id".to_string(),

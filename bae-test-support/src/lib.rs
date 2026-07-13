@@ -316,6 +316,7 @@ pub fn setup_fresh_library(
         .block_on(bae_core::db::Database::new_test(
             db_path.to_str().unwrap(),
             std::sync::Arc::new(coven::SystemClock),
+            std::sync::Arc::new(coven::UuidProvider),
         ))
         .expect("create database");
 

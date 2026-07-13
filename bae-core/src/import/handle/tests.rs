@@ -33,6 +33,7 @@ async fn setup_test_manager() -> (LibraryManager, TempDir) {
     let database = Database::new_test(
         db_path.to_str().unwrap(),
         std::sync::Arc::new(coven::SystemClock),
+        std::sync::Arc::new(coven::UuidProvider),
     )
     .await
     .unwrap();

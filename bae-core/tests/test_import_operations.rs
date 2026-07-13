@@ -27,6 +27,7 @@ async fn create_test_db() -> (Database, TempDir) {
     let database = Database::new_test(
         db_path.to_str().unwrap(),
         std::sync::Arc::new(coven::SystemClock),
+        std::sync::Arc::new(coven::UuidProvider),
     )
     .await
     .unwrap();

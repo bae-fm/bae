@@ -134,6 +134,7 @@ async fn test_cue_ape_records_correct_durations() {
     let database = Database::new_test(
         db_file.to_str().unwrap(),
         std::sync::Arc::new(coven::SystemClock),
+        std::sync::Arc::new(coven::UuidProvider),
     )
     .await
     .expect("database");
@@ -320,6 +321,7 @@ async fn test_cue_ape_records_track_timing() {
     let database = Database::new_test(
         db_file.to_str().unwrap(),
         std::sync::Arc::new(coven::SystemClock),
+        std::sync::Arc::new(coven::UuidProvider),
     )
     .await
     .expect("database");
@@ -450,6 +452,7 @@ impl CueApeTestFixture {
         let database = Database::new_test(
             db_path.to_str().unwrap(),
             std::sync::Arc::new(coven::SystemClock),
+            std::sync::Arc::new(coven::UuidProvider),
         )
         .await?;
         let library_dir = StoreDir::new(temp_dir.path().to_path_buf());

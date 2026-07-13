@@ -80,6 +80,7 @@ async fn test_local_import() {
     let database = Database::new_test(
         db_file.to_str().unwrap(),
         std::sync::Arc::new(coven::SystemClock),
+        std::sync::Arc::new(coven::UuidProvider),
     )
     .await
     .expect("database");
@@ -227,6 +228,7 @@ async fn test_local_delete_preserves_files() {
     let database = Database::new_test(
         db_file.to_str().unwrap(),
         std::sync::Arc::new(coven::SystemClock),
+        std::sync::Arc::new(coven::UuidProvider),
     )
     .await
     .expect("database");
@@ -324,6 +326,7 @@ async fn run_import_with_cover_test() {
     let database = Database::new_test(
         db_file.to_str().unwrap(),
         std::sync::Arc::new(coven::SystemClock),
+        std::sync::Arc::new(coven::UuidProvider),
     )
     .await
     .expect("Failed to create database");

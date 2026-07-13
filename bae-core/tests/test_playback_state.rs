@@ -10,6 +10,7 @@ async fn setup_db() -> (Database, TempDir) {
     let database = Database::new_test(
         db_path.to_str().unwrap(),
         std::sync::Arc::new(coven::SystemClock),
+        std::sync::Arc::new(coven::UuidProvider),
     )
     .await
     .expect("Failed to create database");
