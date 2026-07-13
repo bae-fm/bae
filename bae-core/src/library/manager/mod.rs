@@ -980,22 +980,6 @@ impl LibraryManager {
         self.release_file_cloud_key(&file).expect("cloud key")
     }
 
-    /// The readable cover `cloud_path` the current home would store for a release:
-    /// `Some({album_id}/{release_id}/cover.{ext})` on a browsable home, `None` on
-    /// an opaque one. The same computation `change_cover` performs.
-    #[cfg(any(test, feature = "test-utils"))]
-    pub async fn cover_cloud_path_for_test(
-        &self,
-        release_id: &str,
-        content_type: &crate::util::content_type::ContentType,
-    ) -> Option<String> {
-        let storage = self.config_handle.config().cloud_home.storage;
-        self.database
-            .cover_cloud_path_for_storage(storage, release_id, content_type)
-            .await
-            .expect("compute cover cloud path")
-    }
-
     /// The injected wall clock. The import layer and the mappers read "now"
     /// through this so the whole import shares one clock under test.
     pub(crate) fn clock(&self) -> &ClockRef {
