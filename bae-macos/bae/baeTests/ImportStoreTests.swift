@@ -228,7 +228,6 @@ struct ImportStoreRemovalTests {
             discidLibraryStatuses: ["rel-1": makeStatus(albumId: "al-1")],
             barcodeResults: [],
             barcodeLibraryStatuses: ["rel-1": makeStatus(albumId: "al-1")],
-            discidSourceLabel: nil,
             matchedBarcode: nil,
             trackCount: 10
         )
@@ -237,7 +236,7 @@ struct ImportStoreRemovalTests {
         store.removeLibraryStatus(releaseId: "rel-1")
 
         guard
-            case .conflict(_, let discid, _, let barcode, _, _, _) =
+            case .conflict(_, let discid, _, let barcode, _, _) =
                 store.reIdentifyCandidates["c1"]?.identifyState
         else {
             Issue.record("identify state should remain .conflict")

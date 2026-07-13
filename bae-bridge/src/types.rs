@@ -1430,10 +1430,6 @@ pub enum BridgeIdentifyState {
         barcode_results: Vec<BridgeMetadataResult>,
         /// Barcode library statuses keyed by release id (see `Found`).
         barcode_library_statuses: std::collections::HashMap<String, BridgeLibraryStatus>,
-        /// Human-readable source the disc-id results came from
-        /// ("MusicBrainz"). `None` when the disc-id side is empty. The
-        /// conflict surface names it in the disc-id section header.
-        discid_source_label: Option<String>,
         /// The barcode value that produced `barcode_results`. `None` when
         /// the barcode side is empty. The conflict surface uses this in
         /// the section header so the user can correlate against the
@@ -3623,7 +3619,6 @@ impl BridgeIdentifyState {
             IdentifyStateView::Conflict {
                 discid_results,
                 barcode_results,
-                discid_source_label,
                 matched_barcode,
                 track_count,
             } => {
@@ -3636,7 +3631,6 @@ impl BridgeIdentifyState {
                     discid_library_statuses,
                     barcode_results,
                     barcode_library_statuses,
-                    discid_source_label,
                     matched_barcode,
                     track_count,
                 }

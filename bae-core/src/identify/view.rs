@@ -101,10 +101,6 @@ pub enum IdentifyStateView {
     Conflict {
         discid_results: Vec<ResultRow>,
         barcode_results: Vec<ResultRow>,
-        /// Human-readable source of the disc-ID results ("MusicBrainz") for that
-        /// section's header — every disc-ID result comes from the one lookup, so
-        /// the first one names them all. `None` when that side is empty.
-        discid_source_label: Option<String>,
         /// The barcode value that produced `barcode_results`, for the barcode
         /// section's header. `None` when nothing matched.
         matched_barcode: Option<String>,
@@ -181,13 +177,9 @@ impl From<IdentifyState> for IdentifyStateView {
                     excluded: _,
                     barcode_failure: _,
                 } = context;
-                let discid_source_label = discid_results
-                    .first()
-                    .map(|(result, _)| result.source.display_name().to_string());
                 IdentifyStateView::Conflict {
                     discid_results: result_rows(discid_results),
                     barcode_results: result_rows(barcode_results),
-                    discid_source_label,
                     matched_barcode,
                     track_count,
                 }

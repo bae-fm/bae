@@ -1305,7 +1305,6 @@
                 discidLibraryStatuses: [:],
                 barcodeResults: conflictBarcodeResults,
                 barcodeLibraryStatuses: [:],
-                discidSourceLabel: "MusicBrainz",
                 matchedBarcode: "5051961234567",
                 trackCount: 11,
             ),

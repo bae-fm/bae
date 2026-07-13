@@ -30,7 +30,6 @@ enum IdentifyState: Equatable {
         discidLibraryStatuses: [String: BridgeLibraryStatus],
         barcodeResults: [BridgeMetadataResult],
         barcodeLibraryStatuses: [String: BridgeLibraryStatus],
-        discidSourceLabel: String?,
         matchedBarcode: String?,
         trackCount: UInt32,
     )
@@ -64,7 +63,6 @@ enum IdentifyState: Equatable {
             let discidLibraryStatuses,
             let barcodeResults,
             let barcodeLibraryStatuses,
-            let discidSourceLabel,
             let matchedBarcode,
             let trackCount
         ):
@@ -73,7 +71,6 @@ enum IdentifyState: Equatable {
                 discidLibraryStatuses: discidLibraryStatuses,
                 barcodeResults: barcodeResults,
                 barcodeLibraryStatuses: barcodeLibraryStatuses,
-                discidSourceLabel: discidSourceLabel,
                 matchedBarcode: matchedBarcode,
                 trackCount: trackCount,
             )
@@ -115,7 +112,6 @@ enum IdentifyState: Equatable {
             let discidLibraryStatuses,
             let barcodeResults,
             let barcodeLibraryStatuses,
-            let discidSourceLabel,
             let matchedBarcode,
             let trackCount
         ):
@@ -124,7 +120,6 @@ enum IdentifyState: Equatable {
                 discidLibraryStatuses: kept(discidLibraryStatuses),
                 barcodeResults: barcodeResults,
                 barcodeLibraryStatuses: kept(barcodeLibraryStatuses),
-                discidSourceLabel: discidSourceLabel,
                 matchedBarcode: matchedBarcode,
                 trackCount: trackCount,
             )

@@ -270,7 +270,6 @@ struct ImportSearchPane: View {
             let discidLibraryStatuses,
             let barcodeResults,
             let barcodeLibraryStatuses,
-            let discidSourceLabel,
             let matchedBarcode,
             _
         ) = state.identifyState, !state.showManualSearch {
@@ -280,7 +279,6 @@ struct ImportSearchPane: View {
                     discidLibraryStatuses: discidLibraryStatuses,
                     barcodeResults: barcodeResults,
                     barcodeLibraryStatuses: barcodeLibraryStatuses,
-                    discidSourceLabel: discidSourceLabel,
                     matchedBarcode: matchedBarcode
                 )
             )
@@ -486,7 +484,6 @@ extension ImportSearchPane {
         let discidLibraryStatuses: [String: BridgeLibraryStatus]
         let barcodeResults: [BridgeMetadataResult]
         let barcodeLibraryStatuses: [String: BridgeLibraryStatus]
-        let discidSourceLabel: String?
         let matchedBarcode: String?
     }
 
@@ -515,18 +512,12 @@ extension ImportSearchPane {
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 14) {
-                    // `discidSourceLabel` is non-nil exactly when the
-                    // disc-id side has results (core sets them together),
-                    // so the combined guard never hides a populated section.
-                    if !results.discidResults.isEmpty,
-                        let discidSourceLabel = results.discidSourceLabel
-                    {
+                    if !results.discidResults.isEmpty {
                         conflictSection(
                             signal: .disc,
                             title: "DiscID",
                             subtitle: discidSectionSubtitle(
-                                count: results.discidResults.count,
-                                sourceLabel: discidSourceLabel
+                                count: results.discidResults.count
                             ),
                             results: results.discidResults,
                             libraryStatuses: results.discidLibraryStatuses,
@@ -631,14 +622,13 @@ extension ImportSearchPane {
         }
     }
 
-    /// Disc-ID section subtitle. The source the disc-id lookup consulted
-    /// is supplied by core (`discidSourceLabel`) rather than hardcoded,
-    /// so the UI doesn't bake in which database disc-id uses.
-    private func discidSectionSubtitle(count: Int, sourceLabel: String)
-        -> AttributedString
-    {
+    /// Disc-ID section subtitle. Disc-ID lookup consults MusicBrainz and
+    /// nothing else (`bae_core::identify::discid`), so the database names
+    /// itself here. The format string keeps its placeholder — 31 translations
+    /// interpolate it, and a brand name is not translated anyway.
+    private func discidSectionSubtitle(count: Int) -> AttributedString {
         AttributedString(
-            String(localized: "matched \(count) releases on \(sourceLabel)")
+            String(localized: "matched \(count) releases on \("MusicBrainz")")
         )
     }
 

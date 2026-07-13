@@ -2434,7 +2434,6 @@ fn automation_identify_state(state: bae_core::identify::IdentifyState) -> Automa
             // The disc-id section header names its source on the desktop UI. The
             // JSON surface doesn't carry a header, and each result already states
             // its own `source`, so a client that wants the label reads it there.
-            discid_source_label: _,
             matched_barcode,
             track_count,
         } => {
