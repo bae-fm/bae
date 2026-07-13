@@ -12,6 +12,11 @@
 //!
 //! Every state transition goes out on the `ImportEvent` broadcast channel as one
 //! `ImportEvent::IdentifyStateChanged` carrying the full state.
+//!
+//! Surfaces don't read that state directly. [`view::IdentifyStateView`] shapes it
+//! for rendering — folding the matches into their group card, keying provenance by
+//! release id, dropping what must not cross — once, so every transport mirrors the
+//! same decisions instead of re-making them.
 
 pub mod barcode;
 pub mod combine;
@@ -19,6 +24,7 @@ pub mod discid;
 pub mod service;
 pub mod state;
 pub mod toolbar;
+pub mod view;
 
 pub use combine::{GroupKey, ResultProvenance};
 pub use service::IdentifyServiceHandle;
@@ -26,6 +32,7 @@ pub use state::{
     BarcodeProgress, DiscidProgress, ExcludedSignal, IdentifyEvent, IdentifySource, IdentifyState,
 };
 pub use toolbar::{SignalKind, SignalRole, SignalState, ToolbarSignal};
+pub use view::{BarcodeProgressView, DiscidProgressView, IdentifyStateView, ResultRow};
 
 use crate::db::{LibraryCheck, LibraryStatus};
 use crate::import::search::MetadataResult;

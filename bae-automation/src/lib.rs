@@ -2310,23 +2310,15 @@ fn automation_toolbar_signal(signal: bae_core::identify::ToolbarSignal) -> Autom
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 fn automation_discid_progress(
-    progress: bae_core::identify::DiscidProgress,
+    progress: bae_core::identify::DiscidProgressView,
 ) -> AutomationDiscidProgress {
-    use bae_core::identify::DiscidProgress;
+    use bae_core::identify::DiscidProgressView;
     match progress {
-        DiscidProgress::Computing => AutomationDiscidProgress::Computing,
-        DiscidProgress::LookingUp => AutomationDiscidProgress::LookingUp,
-        DiscidProgress::Done {
-            results,
-            track_count: _,
-        } => AutomationDiscidProgress::Done {
-            n_results: results.len() as u32,
-        },
-        DiscidProgress::Skipped { track_count: _ } => AutomationDiscidProgress::Skipped,
-        DiscidProgress::Failed {
-            failure,
-            track_count: _,
-        } => AutomationDiscidProgress::Failed {
+        DiscidProgressView::Computing => AutomationDiscidProgress::Computing,
+        DiscidProgressView::LookingUp => AutomationDiscidProgress::LookingUp,
+        DiscidProgressView::Done { n_results } => AutomationDiscidProgress::Done { n_results },
+        DiscidProgressView::Skipped => AutomationDiscidProgress::Skipped,
+        DiscidProgressView::Failed { failure } => AutomationDiscidProgress::Failed {
             failure: automation_lookup_failure(failure),
         },
     }
@@ -2334,31 +2326,25 @@ fn automation_discid_progress(
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 fn automation_barcode_progress(
-    progress: bae_core::identify::BarcodeProgress,
+    progress: bae_core::identify::BarcodeProgressView,
 ) -> AutomationBarcodeProgress {
-    use bae_core::identify::BarcodeProgress;
+    use bae_core::identify::BarcodeProgressView;
     match progress {
-        BarcodeProgress::Scanning => AutomationBarcodeProgress::Scanning,
-        BarcodeProgress::LookingUp {
+        BarcodeProgressView::Scanning => AutomationBarcodeProgress::Scanning,
+        BarcodeProgressView::LookingUp {
             current,
             position,
             total,
-            remaining: _,
         } => AutomationBarcodeProgress::LookingUp {
             current,
             position,
             total,
         },
-        BarcodeProgress::Done {
-            matched: _,
-            results,
-        } => AutomationBarcodeProgress::Done {
-            n_results: results.len() as u32,
-        },
-        BarcodeProgress::Failed { failure } => AutomationBarcodeProgress::Failed {
+        BarcodeProgressView::Done { n_results } => AutomationBarcodeProgress::Done { n_results },
+        BarcodeProgressView::Failed { failure } => AutomationBarcodeProgress::Failed {
             failure: automation_lookup_failure(failure),
         },
-        BarcodeProgress::Skipped => AutomationBarcodeProgress::Skipped,
+        BarcodeProgressView::Skipped => AutomationBarcodeProgress::Skipped,
     }
 }
 
@@ -2374,86 +2360,84 @@ fn automation_identify_source(
     }
 }
 
-/// Split per-signal `(result, status)` pairs into an ordered results list and a
-/// parallel statuses list, each record carrying its own `release_id`.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
-fn automation_results_and_statuses(
-    pairs: Vec<(MetadataResult, LibraryStatus)>,
-) -> (Vec<AutomationMetadataResult>, Vec<AutomationLibraryStatus>) {
-    let mut results = Vec::with_capacity(pairs.len());
-    let mut statuses = Vec::with_capacity(pairs.len());
-    for (result, status) in pairs {
-        results.push(automation_metadata_result(result));
-        statuses.push(automation_library_status(status));
+fn automation_result_provenance(
+    release_id: String,
+    provenance: bae_core::identify::ResultProvenance,
+) -> AutomationResultProvenance {
+    let bae_core::identify::ResultProvenance {
+        by_disc_id,
+        by_barcode,
+        matches_catalog,
+    } = provenance;
+    AutomationResultProvenance {
+        release_id,
+        by_disc_id,
+        by_barcode,
+        matches_catalog,
     }
-    (results, statuses)
 }
 
+/// Unzip core's paired rows into the two parallel lists the JSON surface carries,
+/// each record keeping its own `release_id`.
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+fn automation_results_and_statuses(
+    rows: Vec<bae_core::identify::ResultRow>,
+) -> (Vec<AutomationMetadataResult>, Vec<AutomationLibraryStatus>) {
+    rows.into_iter()
+        .map(|bae_core::identify::ResultRow { result, status }| {
+            (
+                automation_metadata_result(result),
+                automation_library_status(status),
+            )
+        })
+        .unzip()
+}
+
+/// Mirror [`bae_core::identify::IdentifyStateView`] into the JSON enum. Core has
+/// already folded the matches into their group, keyed the provenance, reduced the
+/// in-flight payloads to counts, and dropped what must not cross — this is a field
+/// copy per variant and nothing else.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 fn automation_identify_state(state: bae_core::identify::IdentifyState) -> AutomationIdentifyState {
-    use bae_core::identify::IdentifyState;
-    match state {
-        IdentifyState::Idle => AutomationIdentifyState::Idle,
-        IdentifyState::Triangulating {
-            discid,
-            barcode,
-            context: _,
-        } => AutomationIdentifyState::Triangulating {
-            discid: automation_discid_progress(discid),
-            barcode: automation_barcode_progress(barcode),
-        },
-        IdentifyState::Found {
-            matches,
-            library_statuses,
-            track_count,
-            group,
-            source,
-            provenance,
-            context: _,
-        } => {
-            // `matches` all share `group` and `provenance` is index-aligned with
-            // them; pair each provenance with its release id before folding the
-            // matches into the group card, so a client correlates a pressing's
-            // provenance by id.
-            let provenance = matches
-                .iter()
-                .map(|m| m.release_id.clone())
-                .zip(provenance)
-                .map(|(release_id, p)| AutomationResultProvenance {
-                    release_id,
-                    by_disc_id: p.by_disc_id,
-                    by_barcode: p.by_barcode,
-                    matches_catalog: p.matches_catalog,
-                })
-                .collect();
-            let group = bae_core::import::release_group::ReleaseGroup::from_group(group, matches);
-            AutomationIdentifyState::Found {
-                group: automation_release_group(group),
-                library_statuses: library_statuses
-                    .into_iter()
-                    .map(automation_library_status)
-                    .collect(),
-                track_count,
-                source: automation_identify_source(source),
-                provenance,
+    use bae_core::identify::IdentifyStateView;
+    match IdentifyStateView::from(state) {
+        IdentifyStateView::Idle => AutomationIdentifyState::Idle,
+        IdentifyStateView::Triangulating { discid, barcode } => {
+            AutomationIdentifyState::Triangulating {
+                discid: automation_discid_progress(discid),
+                barcode: automation_barcode_progress(barcode),
             }
         }
-        IdentifyState::Conflict { context } => {
-            let bae_core::identify::state::SignalsContext {
-                discid_results,
-                barcode_results,
-                matched_barcode,
-                track_count,
-                // The raw signal inputs, the user's exclusions, and the settled
-                // barcode failure drive triangulation in core, not this
-                // read-only surface, so they don't cross the automation wire.
-                disc_id: _,
-                barcode_codes: _,
-                had_barcode_source: _,
-                catalogs: _,
-                excluded: _,
-                barcode_failure: _,
-            } = context;
+        IdentifyStateView::Found {
+            group,
+            library_statuses,
+            track_count,
+            source,
+            provenance,
+        } => AutomationIdentifyState::Found {
+            group: automation_release_group(group),
+            library_statuses: library_statuses
+                .into_iter()
+                .map(automation_library_status)
+                .collect(),
+            track_count,
+            source: automation_identify_source(source),
+            provenance: provenance
+                .into_iter()
+                .map(|(release_id, p)| automation_result_provenance(release_id, p))
+                .collect(),
+        },
+        IdentifyStateView::Conflict {
+            discid_results,
+            barcode_results,
+            // The disc-id section header names its source on the desktop UI. The
+            // JSON surface doesn't carry a header, and each result already states
+            // its own `source`, so a client that wants the label reads it there.
+            discid_source_label: _,
+            matched_barcode,
+            track_count,
+        } => {
             let (discid_results, discid_library_statuses) =
                 automation_results_and_statuses(discid_results);
             let (barcode_results, barcode_library_statuses) =
@@ -2467,11 +2451,10 @@ fn automation_identify_state(state: bae_core::identify::IdentifyState) -> Automa
                 track_count,
             }
         }
-        IdentifyState::NotFoundAnywhere { context: _ } => AutomationIdentifyState::NotFoundAnywhere,
-        IdentifyState::ManualOnly {
-            track_count,
-            context: _,
-        } => AutomationIdentifyState::ManualOnly { track_count },
+        IdentifyStateView::NotFoundAnywhere => AutomationIdentifyState::NotFoundAnywhere,
+        IdentifyStateView::ManualOnly { track_count } => {
+            AutomationIdentifyState::ManualOnly { track_count }
+        }
     }
 }
 

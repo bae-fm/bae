@@ -3414,22 +3414,14 @@ impl BridgeIdentifySource {
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[cfg(feature = "desktop")]
 impl BridgeDiscidProgress {
-    fn from_core(p: bae_core::identify::DiscidProgress) -> Self {
-        use bae_core::identify::DiscidProgress;
+    fn from_view(p: bae_core::identify::DiscidProgressView) -> Self {
+        use bae_core::identify::DiscidProgressView;
         match p {
-            DiscidProgress::Computing => BridgeDiscidProgress::Computing,
-            DiscidProgress::LookingUp => BridgeDiscidProgress::LookingUp,
-            DiscidProgress::Done {
-                results,
-                track_count: _,
-            } => BridgeDiscidProgress::Done {
-                n_results: results.len() as u32,
-            },
-            DiscidProgress::Skipped { track_count: _ } => BridgeDiscidProgress::Skipped,
-            DiscidProgress::Failed {
-                failure,
-                track_count: _,
-            } => BridgeDiscidProgress::Failed {
+            DiscidProgressView::Computing => BridgeDiscidProgress::Computing,
+            DiscidProgressView::LookingUp => BridgeDiscidProgress::LookingUp,
+            DiscidProgressView::Done { n_results } => BridgeDiscidProgress::Done { n_results },
+            DiscidProgressView::Skipped => BridgeDiscidProgress::Skipped,
+            DiscidProgressView::Failed { failure } => BridgeDiscidProgress::Failed {
                 failure: BridgeLookupFailure::from_core(failure),
             },
         }
@@ -3439,30 +3431,24 @@ impl BridgeDiscidProgress {
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[cfg(feature = "desktop")]
 impl BridgeBarcodeProgress {
-    fn from_core(p: bae_core::identify::BarcodeProgress) -> Self {
-        use bae_core::identify::BarcodeProgress;
+    fn from_view(p: bae_core::identify::BarcodeProgressView) -> Self {
+        use bae_core::identify::BarcodeProgressView;
         match p {
-            BarcodeProgress::Scanning => BridgeBarcodeProgress::Scanning,
-            BarcodeProgress::LookingUp {
+            BarcodeProgressView::Scanning => BridgeBarcodeProgress::Scanning,
+            BarcodeProgressView::LookingUp {
                 current,
                 position,
                 total,
-                remaining: _,
             } => BridgeBarcodeProgress::LookingUp {
                 current,
                 position,
                 total,
             },
-            BarcodeProgress::Done {
-                matched: _,
-                results,
-            } => BridgeBarcodeProgress::Done {
-                n_results: results.len() as u32,
-            },
-            BarcodeProgress::Failed { failure } => BridgeBarcodeProgress::Failed {
+            BarcodeProgressView::Done { n_results } => BridgeBarcodeProgress::Done { n_results },
+            BarcodeProgressView::Failed { failure } => BridgeBarcodeProgress::Failed {
                 failure: BridgeLookupFailure::from_core(failure),
             },
-            BarcodeProgress::Skipped => BridgeBarcodeProgress::Skipped,
+            BarcodeProgressView::Skipped => BridgeBarcodeProgress::Skipped,
         }
     }
 }
@@ -3601,122 +3587,99 @@ impl BridgeResultProvenance {
     }
 }
 
+/// Mirror [`bae_core::identify::IdentifyStateView`] into the uniffi enum. Core has
+/// already folded the matches into their group, keyed the provenance, reduced the
+/// in-flight payloads to counts, and dropped what must not cross — this is a field
+/// copy per variant and nothing else.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[cfg(feature = "desktop")]
 impl BridgeIdentifyState {
     pub(crate) fn from_core(s: bae_core::identify::IdentifyState) -> Self {
-        use bae_core::identify::IdentifyState;
-        match s {
-            IdentifyState::Idle => BridgeIdentifyState::Idle,
-            IdentifyState::Triangulating {
-                discid,
-                barcode,
-                context: _,
-            } => BridgeIdentifyState::Triangulating {
-                discid: BridgeDiscidProgress::from_core(discid),
-                barcode: BridgeBarcodeProgress::from_core(barcode),
-            },
-            IdentifyState::Found {
-                matches,
-                library_statuses,
-                track_count,
-                group,
-                source,
-                provenance,
-                context: _,
-            } => {
-                // `matches` all share `group` (combine guarantees a single group)
-                // and `provenance` is index-aligned with them. Key the provenance
-                // by release id before folding the matches into the group card so
-                // the UI looks each pressing's badges up directly.
-                let provenance = matches
-                    .iter()
-                    .map(|m| m.release_id.clone())
-                    .zip(
-                        provenance
-                            .into_iter()
-                            .map(BridgeResultProvenance::from_core),
-                    )
-                    .collect();
-                let group =
-                    bae_core::import::release_group::ReleaseGroup::from_group(group, matches);
-                BridgeIdentifyState::Found {
-                    group: BridgeReleaseGroup::from_core(group),
-                    library_statuses: library_statuses
-                        .into_iter()
-                        .map(|s| (s.release_id.clone(), BridgeLibraryStatus::from_core(s)))
-                        .collect(),
-                    track_count,
-                    source: BridgeIdentifySource::from_core(source),
-                    provenance,
+        use bae_core::identify::IdentifyStateView;
+        match IdentifyStateView::from(s) {
+            IdentifyStateView::Idle => BridgeIdentifyState::Idle,
+            IdentifyStateView::Triangulating { discid, barcode } => {
+                BridgeIdentifyState::Triangulating {
+                    discid: BridgeDiscidProgress::from_view(discid),
+                    barcode: BridgeBarcodeProgress::from_view(barcode),
                 }
             }
-            IdentifyState::Conflict { context } => {
-                let bae_core::identify::state::SignalsContext {
-                    discid_results,
-                    barcode_results,
-                    matched_barcode,
-                    track_count,
-                    // The conflict surface renders only the two settled result
-                    // sets and the matched barcode. The raw signal inputs
-                    // (`disc_id`, `barcode_codes`, `catalogs`), the user's
-                    // `excluded` toggles, and the settled `barcode_failure` drive
-                    // triangulation in core, not this UI state, so they don't cross.
-                    disc_id: _,
-                    barcode_codes: _,
-                    had_barcode_source: _,
-                    catalogs: _,
-                    excluded: _,
-                    barcode_failure: _,
-                } = context;
-                // The per-signal sections come from the context's settled results.
-                // Disc-id results all share one source; name it for the section
-                // header. `None` when the disc-id side is empty (no section).
-                let discid_source_label = discid_results
-                    .first()
-                    .map(|(m, _)| m.source.display_name().to_string());
-                let (discid_matches, discid_statuses) = results_and_status_map(discid_results);
-                let (barcode_matches, barcode_statuses) = results_and_status_map(barcode_results);
+            IdentifyStateView::Found {
+                group,
+                library_statuses,
+                track_count,
+                source,
+                provenance,
+            } => BridgeIdentifyState::Found {
+                group: BridgeReleaseGroup::from_core(group),
+                library_statuses: status_map(library_statuses),
+                track_count,
+                source: BridgeIdentifySource::from_core(source),
+                provenance: provenance
+                    .into_iter()
+                    .map(|(release_id, p)| (release_id, BridgeResultProvenance::from_core(p)))
+                    .collect(),
+            },
+            IdentifyStateView::Conflict {
+                discid_results,
+                barcode_results,
+                discid_source_label,
+                matched_barcode,
+                track_count,
+            } => {
+                let (discid_results, discid_library_statuses) =
+                    results_and_status_map(discid_results);
+                let (barcode_results, barcode_library_statuses) =
+                    results_and_status_map(barcode_results);
                 BridgeIdentifyState::Conflict {
-                    discid_results: discid_matches,
-                    discid_library_statuses: discid_statuses,
-                    barcode_results: barcode_matches,
-                    barcode_library_statuses: barcode_statuses,
+                    discid_results,
+                    discid_library_statuses,
+                    barcode_results,
+                    barcode_library_statuses,
                     discid_source_label,
                     matched_barcode,
                     track_count,
                 }
             }
-            IdentifyState::NotFoundAnywhere { context: _ } => BridgeIdentifyState::NotFoundAnywhere,
-            IdentifyState::ManualOnly {
-                track_count,
-                context: _,
-            } => BridgeIdentifyState::ManualOnly { track_count },
+            IdentifyStateView::NotFoundAnywhere => BridgeIdentifyState::NotFoundAnywhere,
+            IdentifyStateView::ManualOnly { track_count } => {
+                BridgeIdentifyState::ManualOnly { track_count }
+            }
         }
     }
 }
 
-/// Split per-signal `(result, status)` pairs into an ordered results list
-/// (display order matters) plus a status map keyed by release id (the UI
-/// looks up each row's status by id).
+/// Key library statuses by release id — the UI looks a row's status up by id
+/// rather than re-indexing a flat list. Each status carries its own id, so this
+/// is a re-container, not a re-pairing.
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(feature = "desktop")]
+fn status_map(
+    statuses: Vec<bae_core::db::LibraryStatus>,
+) -> std::collections::HashMap<String, BridgeLibraryStatus> {
+    statuses
+        .into_iter()
+        .map(|s| (s.release_id.clone(), BridgeLibraryStatus::from_core(s)))
+        .collect()
+}
+
+/// Unzip core's paired rows into the two containers the UI reads: the ordered
+/// results list (display order matters) and their statuses keyed by release id.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[cfg(feature = "desktop")]
 fn results_and_status_map(
-    pairs: Vec<(
-        bae_core::import::search::MetadataResult,
-        bae_core::db::LibraryStatus,
-    )>,
+    rows: Vec<bae_core::identify::ResultRow>,
 ) -> (
     Vec<BridgeMetadataResult>,
     std::collections::HashMap<String, BridgeLibraryStatus>,
 ) {
-    let mut matches = Vec::with_capacity(pairs.len());
-    let mut statuses = std::collections::HashMap::with_capacity(pairs.len());
-    for (m, s) in pairs {
-        statuses.insert(s.release_id.clone(), BridgeLibraryStatus::from_core(s));
-        matches.push(BridgeMetadataResult::from_core(m));
-    }
-    (matches, statuses)
+    let (results, statuses): (Vec<_>, Vec<_>) = rows
+        .into_iter()
+        .map(|bae_core::identify::ResultRow { result, status }| {
+            (BridgeMetadataResult::from_core(result), status)
+        })
+        .unzip();
+    (results, status_map(statuses))
 }
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
@@ -4448,7 +4411,8 @@ mod identify_progress_tests {
             },
         };
 
-        match BridgeBarcodeProgress::from_core(progress) {
+        let view = bae_core::identify::BarcodeProgressView::from(progress);
+        match BridgeBarcodeProgress::from_view(view) {
             BridgeBarcodeProgress::Failed {
                 failure: BridgeLookupFailure::Diagnostic { detail },
             } => assert_eq!(detail, "provider lookup failed"),
