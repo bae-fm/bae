@@ -636,17 +636,22 @@ mod readable_cloud_path_tests {
     }
 
     #[test]
-    fn cover_key_is_album_release_cover() {
+    fn cover_key_is_album_release_and_blob_id() {
+        // The blob id rides in the key, so a replaced cover writes a new object
+        // rather than overwriting the one it replaces.
         let conn = seeded_conn();
-        let key = resolve_cover_cloud_path(&conn, "rel-1", &ContentType::Jpeg).unwrap();
-        assert_eq!(key, "album-1/rel-1/cover.jpg");
+        let key = resolve_cover_cloud_path(&conn, "rel-1", "blob-1", &ContentType::Jpeg).unwrap();
+        assert_eq!(key, "album-1/rel-1/cover-blob-1.jpg");
+        let replaced =
+            resolve_cover_cloud_path(&conn, "rel-1", "blob-2", &ContentType::Jpeg).unwrap();
+        assert_ne!(key, replaced);
     }
 
     #[test]
-    fn artist_key_is_artist_id() {
-        // Keyed by the artist id alone -- no DB lookup.
-        let key = resolve_artist_cloud_path("artist-1", &ContentType::Png);
-        assert_eq!(key, "artist-1/artist.png");
+    fn artist_key_is_artist_and_blob_id() {
+        // Keyed by the artist and its blob id alone -- no DB lookup.
+        let key = resolve_artist_cloud_path("artist-1", "blob-1", &ContentType::Png);
+        assert_eq!(key, "artist-1/artist-blob-1.png");
     }
 
     #[test]

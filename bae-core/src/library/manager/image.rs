@@ -56,16 +56,17 @@ impl LibraryManager {
     }
 
     /// The readable `cloud_path` for an artist image under the current home: `None`
-    /// (hashed-by-id) on an opaque home, `Some({artist_id}/artist.{ext})` on a
-    /// browsable one. The manager owns config, so it reads the storage mode.
+    /// (hashed-by-id) on an opaque home, `Some({artist_id}/artist-{blob_id}.{ext})`
+    /// on a browsable one. The manager owns config, so it reads the storage mode.
     pub fn artist_image_cloud_path(
         &self,
         artist_id: &str,
+        blob_id: &str,
         content_type: &crate::util::content_type::ContentType,
     ) -> Option<String> {
         let storage = self.config_handle.config().cloud_home.storage;
         self.database
-            .artist_image_cloud_path_for_storage(storage, artist_id, content_type)
+            .artist_image_cloud_path_for_storage(storage, artist_id, blob_id, content_type)
     }
 
     pub async fn get_library_image(
@@ -137,7 +138,12 @@ impl LibraryManager {
         let storage = self.config_handle.config().cloud_home.storage;
         library_image.cloud_path = self
             .database
-            .cover_cloud_path_for_storage(storage, release_id, &library_image.content_type)
+            .cover_cloud_path_for_storage(
+                storage,
+                release_id,
+                &library_image.blob_id,
+                &library_image.content_type,
+            )
             .await?;
         self.store_library_image_blob(&library_image, &bytes)
             .await?;

@@ -22,13 +22,13 @@ impl Database {
     /// closure runs, and the old one is referenced by none after it repoints the
     /// row.
     ///
-    /// The old blob's cloud object is tombstoned only when its cloud key differs
-    /// from the new blob's. On an opaque home the key is derived from the blob id,
-    /// so it moves and the old object must be reclaimed. On a browsable home the key
-    /// is the row's readable `cloud_path`, which does not move — the new bytes
-    /// target that same object, and deleting it would delete what was just written.
-    /// Whether the old blob ever reached the cloud needs no separate check:
-    /// tombstoning a key holding no object is a no-op the GC cleans up.
+    /// The replaced blob's cloud object is always tombstoned, because it is never the
+    /// object the new blob writes: an image's cloud key is a pure function of its
+    /// blob id under both home layouts — the hashed id on an opaque home, the
+    /// `cover-{blob_id}` / `artist-{blob_id}` readable path on a browsable one — and
+    /// a blob id is minted fresh per stored image. Whether the replaced blob ever
+    /// reached the cloud needs no separate check: tombstoning a key holding no
+    /// object is a no-op the GC cleans up.
     pub async fn write_library_image_blob(
         &self,
         image: &DbLibraryImage,
@@ -36,8 +36,6 @@ impl Database {
     ) -> Result<(), DbError> {
         let image = image.clone();
         let namespace = image.image_type.namespace();
-        let new_blob =
-            crate::sync::image_blob_ref(namespace, &image.blob_id, image.cloud_path.clone());
         let replaced = self
             .find_library_image(&image.id, &image.image_type)
             .await?
@@ -46,22 +44,20 @@ impl Database {
                 crate::sync::image_blob_ref(namespace, &existing.blob_id, existing.cloud_path)
             });
 
-        // The cloud object the replaced blob occupies, when it is not the one the
-        // new blob is about to write.
-        let stale_cloud_key = match replaced.as_ref() {
-            Some(old) => {
-                let cloud_key = |blob| {
-                    self.inner
-                        .handle
-                        .blob_cloud_key(blob)
-                        .map_err(|e| DbError(format!("cloud key for image blob: {e}")))
-                };
-                let old_key = cloud_key(old)?;
-                (old_key != cloud_key(&new_blob)?).then_some(old_key)
-            }
-            None => None,
-        };
+        // The object the replaced blob occupies. Distinct from the one the new blob
+        // is about to write, since the key carries the blob id.
+        let stale_cloud_key = replaced
+            .as_ref()
+            .map(|old| {
+                self.inner
+                    .handle
+                    .blob_cloud_key(old)
+                    .map_err(|e| DbError(format!("cloud key for image blob: {e}")))
+            })
+            .transpose()?;
 
+        let new_blob =
+            crate::sync::image_blob_ref(namespace, &image.blob_id, image.cloud_path.clone());
         let bytes = bytes.to_vec();
         self.inner
             .handle
@@ -172,31 +168,36 @@ impl Database {
     }
 
     /// The `cloud_path` for a cover image under `storage`: `None` for an opaque
-    /// home, or `{album_id}/{release_id}/cover.{ext}` for a browsable one.
+    /// home, or `{album_id}/{release_id}/cover-{blob_id}.{ext}` for a browsable one.
+    /// `blob_id` is the blob these bytes become, so a replaced cover keys to a new
+    /// object rather than overwriting the one it replaces.
     pub async fn cover_cloud_path_for_storage(
         &self,
         storage: crate::config::HomeStorage,
         release_id: &str,
+        blob_id: &str,
         content_type: &ContentType,
     ) -> Result<Option<String>, DbError> {
         let release_id = release_id.to_string();
+        let blob_id = blob_id.to_string();
         let content_type = content_type.clone();
         self.cloud_path_if_browsable(storage, move |conn| {
-            resolve_cover_cloud_path(conn, &release_id, &content_type)
+            resolve_cover_cloud_path(conn, &release_id, &blob_id, &content_type)
         })
         .await
     }
 
     /// The `cloud_path` for an artist image under `storage`: `None` for an
-    /// opaque home, or `{artist_id}/artist.{ext}` for a browsable one. Keyed by
-    /// the artist id alone, so it needs no DB lookup.
+    /// opaque home, or `{artist_id}/artist-{blob_id}.{ext}` for a browsable one.
+    /// Keyed by the artist and its blob id alone, so it needs no DB lookup.
     pub fn artist_image_cloud_path_for_storage(
         &self,
         storage: crate::config::HomeStorage,
         artist_id: &str,
+        blob_id: &str,
         content_type: &ContentType,
     ) -> Option<String> {
-        artist_image_cloud_path_for_storage(storage, artist_id, content_type)
+        artist_image_cloud_path_for_storage(storage, artist_id, blob_id, content_type)
     }
 
     /// Test-only: register a coven user-provided external ref directly. Production

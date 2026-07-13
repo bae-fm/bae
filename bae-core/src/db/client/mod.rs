@@ -42,11 +42,12 @@ fn image_table(image_type: &LibraryImageType) -> &'static str {
 fn artist_image_cloud_path_for_storage(
     storage: crate::config::HomeStorage,
     artist_id: &str,
+    blob_id: &str,
     content_type: &ContentType,
 ) -> Option<String> {
     storage
         .is_browsable()
-        .then(|| resolve_artist_cloud_path(artist_id, content_type))
+        .then(|| resolve_artist_cloud_path(artist_id, blob_id, content_type))
 }
 
 fn register_external_blob_on(
@@ -2023,24 +2024,26 @@ fn resolve_audio_cloud_path(
 }
 
 /// The `cloud_path` for a cover image on a browsable home:
-/// `{album_id}/{release_id}/cover.{ext}` (relative to the `covers` namespace coven
-/// prepends). The cover's id is its release id. Covers are bae's own art, not part
-/// of the imported folder, so they carry no `{source_folder}` level.
+/// `{album_id}/{release_id}/cover-{blob_id}.{ext}` (relative to the `covers`
+/// namespace coven prepends). The cover row's id is its release id; the key carries
+/// the row's blob id so a replaced cover writes a new object. Covers are bae's own
+/// art, not part of the imported folder, so they carry no `{source_folder}` level.
 fn resolve_cover_cloud_path(
     conn: &Connection,
     release_id: &str,
+    blob_id: &str,
     content_type: &ContentType,
 ) -> Result<String, DbError> {
     resolve_release_path(conn, release_id, |album_id, release_id, _source_folder| {
-        crate::storage::readable_path::cover_cloud_path(album_id, release_id, content_type)
+        crate::storage::readable_path::cover_cloud_path(album_id, release_id, blob_id, content_type)
     })
 }
 
 /// The `cloud_path` for an artist image on a browsable home:
 /// `{artist_id}/artist.{ext}` (relative to the `artist_images` namespace). Keyed
 /// by the artist id alone, so it needs no DB lookup.
-fn resolve_artist_cloud_path(artist_id: &str, content_type: &ContentType) -> String {
-    crate::storage::readable_path::artist_cloud_path(artist_id, content_type)
+fn resolve_artist_cloud_path(artist_id: &str, blob_id: &str, content_type: &ContentType) -> String {
+    crate::storage::readable_path::artist_cloud_path(artist_id, blob_id, content_type)
 }
 
 /// Insert one row into `release_identities`. Shared by the atomic import path

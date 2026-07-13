@@ -2083,7 +2083,9 @@ async fn import_on_browsable_home_writes_readable_cloud_paths_at_import() {
         );
     }
 
-    // The cover carries its readable cloud_path too.
+    // The cover carries its readable cloud_path too. It names the cover's blob, not
+    // just the release, so a later cover change writes a new object rather than
+    // overwriting this one.
     let cover =
         f.db.find_library_image(&release_id, &LibraryImageType::Cover)
             .await
@@ -2091,8 +2093,8 @@ async fn import_on_browsable_home_writes_readable_cloud_paths_at_import() {
             .expect("cover row present");
     assert_eq!(
         cover.cloud_path.as_deref(),
-        Some(format!("{prefix}cover.jpg").as_str()),
-        "the cover's readable cloud_path is computed at import",
+        Some(format!("{prefix}cover-{}.jpg", cover.blob_id).as_str()),
+        "the cover's readable cloud_path is computed at import and names its blob",
     );
 }
 

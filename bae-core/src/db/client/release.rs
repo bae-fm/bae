@@ -742,13 +742,18 @@ impl Database {
 
                     // The cover row; its blob went into the same coven write above.
                     // On a browsable home the readable cloud_path
-                    // (`{album}/{release}/cover.{ext}`) is computed here, ready when
-                    // the gate flips; an opaque home leaves it NULL (hashed). The
-                    // cover rides the release's gate, so a Local release's cover
-                    // stays private until the release is made Remote.
+                    // (`{album}/{release}/cover-{blob_id}.{ext}`) is computed here,
+                    // ready when the gate flips; an opaque home leaves it NULL
+                    // (hashed). The cover rides the release's gate, so a Local
+                    // release's cover stays private until the release is made Remote.
                     if let Some((image, _)) = &library_image {
                         let cloud_path = if storage.is_browsable() {
-                            Some(resolve_cover_cloud_path(tx, &image.id, &image.content_type)?)
+                            Some(resolve_cover_cloud_path(
+                                tx,
+                                &image.id,
+                                &image.blob_id,
+                                &image.content_type,
+                            )?)
                         } else {
                             None
                         };
@@ -760,6 +765,7 @@ impl Database {
                         let cloud_path = artist_image_cloud_path_for_storage(
                             storage,
                             &image.id,
+                            &image.blob_id,
                             &image.content_type,
                         );
                         upsert_library_image_row_with_cloud_path(tx, image, cloud_path, &reg)?;

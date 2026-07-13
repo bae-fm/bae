@@ -1637,6 +1637,110 @@ async fn change_cover_twice_replaces_the_cover_blob() {
     );
 }
 
+/// On a browsable home a cover's cloud key is the row's readable `cloud_path`, and
+/// that path carries the blob id — so replacing a cover writes a NEW object rather
+/// than overwriting the one it replaces. A reused key cannot be made to converge:
+/// two devices replacing the same cover would race for one object, and a device
+/// applying a changeset written before a replacement could never satisfy that
+/// changeset's content hash. Distinct keys leave the superseded object readable
+/// until its tombstone is collected.
+#[tokio::test]
+async fn change_cover_twice_on_a_browsable_home_writes_two_distinct_cloud_keys() {
+    let (manager, _temp_dir) = setup_test_manager().await;
+    manager.set_home_storage(crate::config::HomeStorage::Browsable);
+    let album = create_test_album();
+    let mut release = create_test_release(&album.id);
+    release.remote = false;
+    manager.database.insert_album(&album).await.unwrap();
+    manager.database.insert_release(&release).await.unwrap();
+
+    let source_dir = TempDir::new().unwrap();
+    let png = |rgb: [u8; 3]| {
+        let img = ::image::RgbImage::from_pixel(400, 400, ::image::Rgb(rgb));
+        let mut buf = std::io::Cursor::new(Vec::new());
+        ::image::DynamicImage::ImageRgb8(img)
+            .write_to(&mut buf, ::image::ImageFormat::Png)
+            .unwrap();
+        buf.into_inner()
+    };
+    let add_source = |name: &str, bytes: &[u8]| {
+        std::fs::write(source_dir.path().join(name), bytes).unwrap();
+        DbFile::new(
+            &release.id,
+            name,
+            bytes.len() as i64,
+            ContentType::Png,
+            Uuid::new_v4().to_string(),
+            Utc::now(),
+            Some(crate::util::fs::hash_bytes(bytes)),
+        )
+    };
+    let green = add_source("green.png", &png([20, 160, 90]));
+    let red = add_source("red.png", &png([200, 40, 40]));
+    manager.add_file(&green).await.unwrap();
+    manager.add_file(&red).await.unwrap();
+    manager
+        .database
+        .register_release_external_refs_for_test(&release.id, &source_dir.path().to_string_lossy())
+        .await
+        .unwrap();
+
+    let change_to = async |file: &DbFile| {
+        manager
+            .change_cover(
+                &album.id,
+                &release.id,
+                CoverSelection::ReleaseImage {
+                    file_id: file.id.clone(),
+                },
+            )
+            .await
+            .unwrap();
+        manager
+            .get_library_image(&release.id, &LibraryImageType::Cover)
+            .await
+            .unwrap()
+            .expect("cover row stored")
+    };
+
+    let first = change_to(&green).await;
+    let second = change_to(&red).await;
+
+    // Each row's readable path names its own blob, so the two never collide.
+    assert_eq!(
+        first.cloud_path.as_deref(),
+        Some(format!("{}/{}/cover-{}.jpg", album.id, release.id, first.blob_id).as_str())
+    );
+    assert_ne!(
+        first.cloud_path, second.cloud_path,
+        "a replaced cover must not reuse the object its predecessor occupies"
+    );
+
+    // The superseded object is the one tombstoned — not the one just written.
+    let old_blob = LibraryManager::image_blob_ref(
+        crate::sync::COVERS_NAMESPACE,
+        &first.blob_id,
+        first.cloud_path.clone(),
+    );
+    let new_blob = LibraryManager::image_blob_ref(
+        crate::sync::COVERS_NAMESPACE,
+        &second.blob_id,
+        second.cloud_path.clone(),
+    );
+    let old_key = manager.handle().blob_cloud_key(&old_blob).unwrap();
+    let new_key = manager.handle().blob_cloud_key(&new_blob).unwrap();
+    assert_ne!(old_key, new_key);
+    let deletes = manager.database.get_pending_cloud_deletes().await.unwrap();
+    assert!(
+        deletes.iter().any(|d| d.cloud_key == old_key),
+        "the replaced cover's cloud object must be queued for deletion: {deletes:?}"
+    );
+    assert!(
+        !deletes.iter().any(|d| d.cloud_key == new_key),
+        "the cover just written must NOT be queued for deletion: {deletes:?}"
+    );
+}
+
 /// Queueing an album expands to its PRIMARY release's tracks, not the
 /// earliest-imported one. When the user picks a non-default primary (e.g. a
 /// later remaster over the original vinyl rip), enqueueing the album must
