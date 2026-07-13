@@ -499,14 +499,34 @@ impl SyncController {
             None
         };
 
+        // Record the fingerprint here — the step that made it true — and not after
+        // the connect below. `initialize_master_key` has already put the key in the
+        // keyring, so a connect failure cannot un-establish it; withholding the
+        // fingerprint until the connect succeeds would only leave the config denying
+        // a key the keyring holds, and the launch gate
+        // (`config.encryption_key_stored && keyring-has-key`) would then never attach
+        // sync again on any later launch, while the provider stays configured.
+        //
+        // A browsable home records nothing — it has no key, so `encryption_key_stored`
+        // stays false and the next launch builds it keyless.
+        //
+        // Failing to record is fatal to setup, with nothing connected to roll back:
+        // the caller retries, and the retry is idempotent because
+        // `master_key_fingerprint` returns the key already established rather than
+        // minting a second one.
+        if let Some(fingerprint) = fingerprint {
+            self.config_handle
+                .record_encryption_key_fingerprint(fingerprint)?;
+        }
+
         // Connect the provider: build the cloud home, start the loop, and install
         // the manager. coven resolves the at-rest cipher from the master-key
         // custody just established above, so this passes no key material of its
-        // own. A cloud-home build or loop-start failure returns `Err` with
-        // nothing installed, so it surfaces here rather than leaving a dead manager
-        // — and the encryption-key fingerprint below is reached only on success, so
-        // a failed setup stays a clean retry (no fingerprint telling the next
-        // launch's unlock flow "encryption is set up" while sync is still broken).
+        // own. A cloud-home build or loop-start failure returns `Err` with nothing
+        // installed, so it surfaces here rather than leaving a dead manager — and
+        // the library is left exactly as a successful setup would leave it minus the
+        // running loop: key established, provider configured, sync attached on the
+        // next launch or retry.
         let provider = self.config_handle.config().cloud_home.provider.clone();
         match provider {
             Some(CloudProvider::CloudKit) => {
@@ -517,20 +537,6 @@ impl SyncController {
             }
             _ => {
                 self.handle.connect_sync().await?;
-            }
-        }
-
-        // An opaque home persists the encryption-key fingerprint, so the next
-        // launch's unlock flow knows this library has encryption set up. A browsable
-        // home records nothing — it has no key, so `encryption_key_stored` stays
-        // false and the next launch builds it keyless.
-        if let Some(fingerprint) = fingerprint {
-            if let Err(e) = self
-                .config_handle
-                .record_encryption_key_fingerprint(fingerprint)
-            {
-                self.handle.disconnect_sync();
-                return Err(e.into());
             }
         }
 

@@ -6017,3 +6017,42 @@ async fn a_peers_lone_cover_change_emits_an_album_update_carrying_the_new_cache_
         "carrying the old version would re-render the stale art"
     );
 }
+
+/// Setting up an opaque cloud home establishes the master key in the keyring, and
+/// only then connects the provider. If the connect fails, the key is still in the
+/// keyring — so the config has to say so. It used to record the fingerprint only
+/// after a successful connect, which left `encryption_key_stored` false over a
+/// keyring that held the key: the launch gate
+/// (`encryption_key_stored && keyring-has-key`) then never attached sync again,
+/// while the provider stayed configured and the UI reported it connected.
+///
+/// The test manager is built with no CloudKit driver, so the connect fails at the
+/// driver lookup — a failed connect with no network in it.
+#[cfg(feature = "test-utils")]
+#[tokio::test]
+async fn a_failed_connect_still_records_the_key_it_put_in_the_keyring() {
+    let (manager, _temp_dir) = setup_test_manager().await;
+
+    let error = manager
+        .use_cloudkit(crate::config::HomeStorage::Opaque)
+        .await
+        .expect_err("no CloudKit driver is installed, so the connect must fail");
+    assert!(
+        error.to_string().contains("CloudKit driver not provided"),
+        "the failure must be the connect, not the key step: {error}"
+    );
+
+    assert!(
+        manager.has_encryption(),
+        "the master key really is established in the keyring"
+    );
+    let config = manager.get_config();
+    assert!(
+        config.encryption_key_stored,
+        "the config must agree with the keyring, or the next launch never attaches sync"
+    );
+    assert!(
+        config.encryption_key_fingerprint.is_some(),
+        "the recorded key carries its fingerprint"
+    );
+}
