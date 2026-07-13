@@ -103,36 +103,3 @@ pub struct StoragePage {
     pub rows: Vec<StorageRow>,
     pub total_count: u64,
 }
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum StorageSortField {
-    AlbumTitle,
-    ArtistNames,
-    Format,
-    FileCount,
-    TotalSize,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum StorageSortDirection {
-    Ascending,
-    Descending,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct StorageSort {
-    pub field: StorageSortField,
-    pub direction: StorageSortDirection,
-}
-
-/// The Storage Manager's filter chips, which are mutually exclusive.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum StorageFilter {
-    All,
-    /// Files live outside the library directory.
-    Local,
-    /// Files are stored by the library.
-    Remote,
-    /// At least one file is pending cloud upload.
-    Uploading,
-}

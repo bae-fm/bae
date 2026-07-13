@@ -128,19 +128,16 @@ impl LibraryManager {
     /// `total_count` counts the filtered subset, not the whole library.
     pub async fn get_storage_page(
         &self,
-        sort: &StorageSort,
-        filter: StorageFilter,
+        sort: &crate::db::StorageSortCriterion,
+        filter: crate::db::StorageFilter,
         offset: u64,
         limit: u64,
     ) -> Result<StoragePage, LibraryError> {
-        let db_sort = to_db_storage_sort(sort);
-        let db_filter = to_db_storage_filter(filter);
-
         let raw_rows = self
             .database
-            .get_storage_page(&db_sort, db_filter, offset, limit)
+            .get_storage_page(sort, filter, offset, limit)
             .await?;
-        let total_count = self.database.get_storage_count(db_filter).await?;
+        let total_count = self.database.get_storage_count(filter).await?;
 
         let has_cloud_home = self.has_cloud_home();
         // The cover resolver serves both halves of each row — the release's own id
@@ -174,42 +171,19 @@ impl LibraryManager {
 
     /// Count storage rows matching `filter`. Matches `get_storage_page`'s
     /// `total_count` for the same filter.
-    pub async fn get_storage_count(&self, filter: StorageFilter) -> Result<u64, LibraryError> {
-        let db_filter = to_db_storage_filter(filter);
-        Ok(self.database.get_storage_count(db_filter).await?)
+    pub async fn get_storage_count(
+        &self,
+        filter: crate::db::StorageFilter,
+    ) -> Result<u64, LibraryError> {
+        Ok(self.database.get_storage_count(filter).await?)
     }
 
     /// Sum of `total_size` over every storage row matching `filter` — the
     /// storage-manager footer's "Total:", independent of how many pages are loaded.
-    pub async fn get_storage_total_size(&self, filter: StorageFilter) -> Result<u64, LibraryError> {
-        let db_filter = to_db_storage_filter(filter);
-        Ok(self.database.get_storage_total_size(db_filter).await?)
-    }
-}
-
-/// Translate a UI-facing `StorageSort` to the DB-layer sort criterion.
-fn to_db_storage_sort(sort: &StorageSort) -> DbStorageSortCriterion {
-    DbStorageSortCriterion {
-        field: match sort.field {
-            StorageSortField::AlbumTitle => DbStorageSortField::AlbumTitle,
-            StorageSortField::ArtistNames => DbStorageSortField::ArtistNames,
-            StorageSortField::Format => DbStorageSortField::Format,
-            StorageSortField::FileCount => DbStorageSortField::FileCount,
-            StorageSortField::TotalSize => DbStorageSortField::TotalSize,
-        },
-        direction: match sort.direction {
-            StorageSortDirection::Ascending => DbSortDirection::Ascending,
-            StorageSortDirection::Descending => DbSortDirection::Descending,
-        },
-    }
-}
-
-/// Translate a UI-facing `StorageFilter` to the DB-layer filter.
-fn to_db_storage_filter(filter: StorageFilter) -> DbStorageFilter {
-    match filter {
-        StorageFilter::All => DbStorageFilter::All,
-        StorageFilter::Remote => DbStorageFilter::Remote,
-        StorageFilter::Local => DbStorageFilter::Local,
-        StorageFilter::Uploading => DbStorageFilter::Uploading,
+    pub async fn get_storage_total_size(
+        &self,
+        filter: crate::db::StorageFilter,
+    ) -> Result<u64, LibraryError> {
+        Ok(self.database.get_storage_total_size(filter).await?)
     }
 }

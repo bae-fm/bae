@@ -3063,43 +3063,31 @@ impl BridgeHomeStorage {
 }
 
 impl BridgeStorageSort {
-    pub(crate) fn into_core(self) -> bae_core::album_detail::StorageSort {
+    pub(crate) fn into_core(self) -> bae_core::db::StorageSortCriterion {
         let BridgeStorageSort { field, direction } = self;
-        bae_core::album_detail::StorageSort {
+        bae_core::db::StorageSortCriterion {
             field: match field {
-                BridgeStorageSortField::AlbumTitle => {
-                    bae_core::album_detail::StorageSortField::AlbumTitle
-                }
-                BridgeStorageSortField::ArtistNames => {
-                    bae_core::album_detail::StorageSortField::ArtistNames
-                }
-                BridgeStorageSortField::Format => bae_core::album_detail::StorageSortField::Format,
-                BridgeStorageSortField::FileCount => {
-                    bae_core::album_detail::StorageSortField::FileCount
-                }
-                BridgeStorageSortField::TotalSize => {
-                    bae_core::album_detail::StorageSortField::TotalSize
-                }
+                BridgeStorageSortField::AlbumTitle => bae_core::db::StorageSortField::AlbumTitle,
+                BridgeStorageSortField::ArtistNames => bae_core::db::StorageSortField::ArtistNames,
+                BridgeStorageSortField::Format => bae_core::db::StorageSortField::Format,
+                BridgeStorageSortField::FileCount => bae_core::db::StorageSortField::FileCount,
+                BridgeStorageSortField::TotalSize => bae_core::db::StorageSortField::TotalSize,
             },
             direction: match direction {
-                BridgeStorageSortDirection::Ascending => {
-                    bae_core::album_detail::StorageSortDirection::Ascending
-                }
-                BridgeStorageSortDirection::Descending => {
-                    bae_core::album_detail::StorageSortDirection::Descending
-                }
+                BridgeStorageSortDirection::Ascending => bae_core::db::SortDirection::Ascending,
+                BridgeStorageSortDirection::Descending => bae_core::db::SortDirection::Descending,
             },
         }
     }
 }
 
 impl BridgeStorageFilter {
-    pub(crate) fn into_core(self) -> bae_core::album_detail::StorageFilter {
+    pub(crate) fn into_core(self) -> bae_core::db::StorageFilter {
         match self {
-            BridgeStorageFilter::All => bae_core::album_detail::StorageFilter::All,
-            BridgeStorageFilter::Remote => bae_core::album_detail::StorageFilter::Remote,
-            BridgeStorageFilter::Local => bae_core::album_detail::StorageFilter::Local,
-            BridgeStorageFilter::Uploading => bae_core::album_detail::StorageFilter::Uploading,
+            BridgeStorageFilter::All => bae_core::db::StorageFilter::All,
+            BridgeStorageFilter::Remote => bae_core::db::StorageFilter::Remote,
+            BridgeStorageFilter::Local => bae_core::db::StorageFilter::Local,
+            BridgeStorageFilter::Uploading => bae_core::db::StorageFilter::Uploading,
         }
     }
 }
