@@ -342,6 +342,13 @@ async fn await_shutdown_ack(rx: oneshot::Receiver<()>) {
 pub struct PlaybackHandle {
     command_tx: tokio_mpsc::UnboundedSender<PlaybackCommand>,
     progress_handle: PlaybackProgressHandle,
+    /// The service's dedicated OS thread. Taken and joined on the first
+    /// shutdown/stop so the `LibraryManager` clone it holds — and through the
+    /// shared coven handle, the store's exclusive open lock — is released before
+    /// teardown returns. The service loop holds its own `command_tx`, so it only
+    /// stops on an explicit `Shutdown`; nothing else would ever join this thread.
+    /// Shared across clones behind a take-once slot, so teardown is idempotent.
+    thread: Arc<Mutex<Option<std::thread::JoinHandle<()>>>>,
 }
 impl PlaybackHandle {
     pub fn play(&self, track_id: String) {
@@ -458,11 +465,44 @@ impl PlaybackHandle {
             .map_err(|e| format!("playback loop dropped the queue response channel: {e}"))
     }
 
-    /// Graceful shutdown: saves playback state to disk, then stops the service.
+    /// Graceful shutdown: persist playback state, stop the service loop, and join
+    /// its thread so the `LibraryManager` clone it holds — and coven's store lock —
+    /// is released before this returns. Awaits the state-save ack (the platform's
+    /// quit path relies on it being durable). Idempotent with [`stop_and_join`]:
+    /// they share the take-once join handle, so a later teardown is a no-op.
     pub async fn shutdown(&self) {
+        let Some(join_handle) = self.thread.lock().unwrap().take() else {
+            return;
+        };
         let (tx, rx) = oneshot::channel();
         dispatch_command(&self.command_tx, PlaybackCommand::Shutdown(tx));
         await_shutdown_ack(rx).await;
+        // The loop has broken; join so the thread fully exits and drops its
+        // LibraryManager clone. Off-worker via spawn_blocking so the blocking join
+        // doesn't stall a runtime thread.
+        match tokio::task::spawn_blocking(move || join_handle.join()).await {
+            Ok(Ok(())) => {}
+            Ok(Err(panic)) => warn!("playback service thread panicked before join: {panic:?}"),
+            Err(join_err) => warn!("joining the playback service thread failed: {join_err}"),
+        }
+    }
+
+    /// Synchronous teardown for `Drop`: stop the service loop and join its thread,
+    /// releasing the `LibraryManager` clone (and the store lock) before returning.
+    /// The join subsumes the state save (the `Shutdown` handler persists before it
+    /// breaks). No runtime needed — the loop runs on its own — so this is safe from
+    /// `Drop`. Idempotent with [`shutdown`] via the shared take-once join handle.
+    pub fn stop_and_join(&self) {
+        let Some(join_handle) = self.thread.lock().unwrap().take() else {
+            return;
+        };
+        let (tx, _rx) = oneshot::channel();
+        dispatch_command(&self.command_tx, PlaybackCommand::Shutdown(tx));
+        // A panicked service thread already reported itself; joining from Drop
+        // must not repropagate, but the panic shouldn't vanish either.
+        if let Err(panic) = join_handle.join() {
+            warn!("playback service thread panicked before join: {panic:?}");
+        }
     }
 
     /// Persist the current playback state without stopping playback. Mobile
@@ -1473,9 +1513,11 @@ impl PlaybackService {
         let (command_tx, command_rx) = tokio_mpsc::unbounded_channel();
         let (progress_tx, progress_rx) = tokio_mpsc::unbounded_channel();
         let progress_handle = PlaybackProgressHandle::new(progress_rx, runtime_handle.clone());
+        let thread_slot = Arc::new(Mutex::new(None));
         let handle = PlaybackHandle {
             command_tx: command_tx.clone(),
             progress_handle: progress_handle.clone(),
+            thread: thread_slot.clone(),
         };
         let command_tx_for_completion = command_tx.clone();
         let progress_handle_for_completion = progress_handle.clone();
@@ -1503,7 +1545,7 @@ impl PlaybackService {
                 }
             }
         });
-        std::thread::spawn(move || {
+        let join_handle = std::thread::spawn(move || {
             let rt = tokio::runtime::Builder::new_current_thread()
                 .enable_all()
                 .build()
@@ -1583,6 +1625,7 @@ impl PlaybackService {
                 service.run().await;
             });
         });
+        *thread_slot.lock().unwrap() = Some(join_handle);
         handle
     }
 

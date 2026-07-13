@@ -752,6 +752,16 @@ pub struct LibraryManager {
     /// manager clones; transient (empty after a restart). Export changes no
     /// release state — it only reads and writes to a user directory.
     export_queue: Arc<crate::library::ExportQueue>,
+    /// The upload observer coven reports blob transitions to. coven holds only a
+    /// `Weak` to it (through `WeakUploadObserver`), so this strong `Arc` is its
+    /// sole owner and its lifetime is the manager's: when the last manager clone
+    /// drops, the observer drops, releasing the `CovenHandle` it holds and coven's
+    /// store-open lock with it. Registering the observer strongly in coven would
+    /// instead close a cycle (observer → handle → coven → observer) that pins the
+    /// lock forever. `None` only for the database-only [`Self::new`] test
+    /// constructor, which installs no observer. Held for its lifetime, never read
+    /// (coven reaches it through the `Weak`), so it carries the leading underscore.
+    _upload_observer: Option<Arc<crate::sync::upload_observer::ReleaseUploadObserver>>,
 }
 
 pub fn generate_mcp_token() -> String {
@@ -796,6 +806,13 @@ impl LibraryManager {
             sync_paused.clone(),
             event_tx.clone(),
         ));
+        // coven holds only a `Weak` to the observer (via `WeakUploadObserver`);
+        // the `LibraryManager` below owns the strong `Arc`. Registering the
+        // observer strongly here would close a cycle through the `CovenHandle` it
+        // holds back, pinning coven's store-open lock past the manager's life.
+        let weak_observer = Arc::new(crate::sync::upload_observer::WeakUploadObserver::new(
+            Arc::downgrade(&observer),
+        ));
         let ch = Arc::clone(&config_handle);
         let config_provider = move || ch.config().to_coven();
         let handle = coven::Coven::builder(config_provider)
@@ -803,7 +820,7 @@ impl LibraryManager {
             .clock(clock.clone())
             .key_service(key_service.clone())
             .apply_cloudkit_ops(cloudkit_ops.clone())
-            .observer(observer.clone() as Arc<dyn coven::BlobTransitionObserver>)
+            .observer(weak_observer as Arc<dyn coven::BlobTransitionObserver>)
             .migrations(crate::migrations::all())
             .open()
             .map_err(|e| match e {
@@ -844,6 +861,7 @@ impl LibraryManager {
             transfer_actions: Arc::new(Mutex::new(HashMap::new())),
             download_queue: Arc::new(crate::library::DownloadQueue::new()),
             export_queue: Arc::new(crate::library::ExportQueue::new()),
+            _upload_observer: Some(observer),
         };
         manager.start_queue_workers();
         Ok(manager)
@@ -896,6 +914,7 @@ impl LibraryManager {
             transfer_actions: Arc::new(Mutex::new(HashMap::new())),
             download_queue: Arc::new(crate::library::DownloadQueue::new()),
             export_queue: Arc::new(crate::library::ExportQueue::new()),
+            _upload_observer: None,
         };
         manager.start_queue_workers();
         manager

@@ -194,21 +194,51 @@ fn bootstrap_that_fails_leaves_active_pointer() {
     );
 }
 
-/// After a successful unlock, opening the previously-locked library advances the
-/// active pointer to it — the counterpart to
-/// `bootstrap_of_locked_library_leaves_active_pointer`: what a *locked* open
-/// withholds (that test: B stays at A), the unlock grants. `unlock_library`
-/// places the key this device's keyring lacked, so the subsequent open fully
-/// realizes — encryption resolves (`has_encryption` true) and the pointer
+/// Dropping a `RunningApp` releases coven's exclusive store-open lock, so the same
+/// library can be reopened in-process — even when the caller never ran the
+/// graceful `shutdown`. The lock is held by every `LibraryManager` clone through
+/// the shared coven handle; the playback service runs on its own thread holding
+/// one such clone and only stops on an explicit command, so without a teardown on
+/// drop that thread — and the lock — outlives the `RunningApp`, and the reopen
+/// fails with "store is already open".
+#[test]
+#[serial]
+fn dropping_running_app_releases_the_store_lock_for_reopen() {
+    let _home = fake_home();
+    let lib = create_library("Library A".into(), &UuidProvider).unwrap();
+    let id = lib.store_id.clone();
+
+    let app = bootstrap(
+        id.clone(),
+        200,
+        true,
+        bae_core::diagnostics::DiagnosticsConfig::Disabled,
+        None,
+    )
+    .expect("first open succeeds");
+    drop(app);
+
+    // Reopen the same store immediately, with no intervening shutdown().
+    bootstrap(
+        id.clone(),
+        200,
+        true,
+        bae_core::diagnostics::DiagnosticsConfig::Disabled,
+        None,
+    )
+    .expect("reopening the store after dropping the RunningApp must succeed");
+}
+
+/// The full locked-then-unlocked transition in one process: opening B while it is
+/// locked leaves the pointer at A, and after `unlock_library` places the key,
+/// reopening the *same* store advances the pointer to B. This is the counterpart
+/// to `bootstrap_of_locked_library_leaves_active_pointer` — what a *locked* open
+/// withholds (B stays at A), the unlock grants — driven end to end: a locked
+/// open, a drop, then an unlocked reopen of the store the drop just released.
+/// `unlock_library` places the key this device's keyring lacked, so the reopen
+/// fully realizes — encryption resolves (`has_encryption` true) and the pointer
 /// advances. The fixture carries no cloud home, so that open installs an
 /// encryption-holding but home-less sync manager with no cloud round-trip.
-///
-/// A single open, not an in-process reopen of a still-live store: `RunningApp`
-/// drop does not synchronously release coven's exclusive store-open lock (a
-/// service thread outlives the drop holding a `LibraryManager` clone), so closing
-/// and reopening the same store within one process is unreliable. The locked-open
-/// half of the transition is the sibling test's subject; this one owns the
-/// unlocked half.
 #[test]
 #[serial]
 fn unlock_then_reopen_advances_active_pointer() {
@@ -221,9 +251,25 @@ fn unlock_then_reopen_advances_active_pointer() {
     // locked (its key absent from this device's keyring).
     assert_eq!(active_pointer().as_deref(), Some(a_id.as_str()));
 
-    // Unlock B (validates KEY_HEX against the stored fingerprint and saves it to
-    // the keyring), then open it: the key is now present, so the open fully
-    // realizes — encryption resolves and the pointer advances from A to B.
+    // Phase 1: open B while it is locked. The open completes with sync deferred
+    // but does not realize encryption, so the pointer stays at A. Dropping the app
+    // releases coven's store-open lock so B can be reopened below.
+    let locked = bootstrap(
+        b_id.clone(),
+        200,
+        true,
+        bae_core::diagnostics::DiagnosticsConfig::Disabled,
+        None,
+    )
+    .expect("locked open of B completes");
+    assert!(!locked.services.library_manager().has_encryption());
+    assert_eq!(active_pointer().as_deref(), Some(a_id.as_str()));
+    drop(locked);
+
+    // Phase 2: unlock B (validates KEY_HEX against the stored fingerprint and
+    // saves it to the keyring), then reopen the same store: the key is now
+    // present, so the open fully realizes — encryption resolves and the pointer
+    // advances from A to B.
     unlock_library(&b_id, KEY_HEX).expect("unlock B");
     let unlocked = bootstrap(
         b_id.clone(),
@@ -232,7 +278,7 @@ fn unlock_then_reopen_advances_active_pointer() {
         bae_core::diagnostics::DiagnosticsConfig::Disabled,
         None,
     )
-    .expect("unlocked open of B succeeds");
+    .expect("unlocked reopen of B succeeds");
     assert!(unlocked.services.library_manager().has_encryption());
     assert_eq!(
         active_pointer().as_deref(),

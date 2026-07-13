@@ -14,9 +14,9 @@
 //! `should_skip_uploads` lets the host pause the upload pipeline without touching
 //! the queue.
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex, OnceLock};
+use std::sync::{Arc, Mutex, OnceLock, Weak};
 
-use coven::CovenHandle;
+use coven::{BlobTransitionObserver, CovenHandle};
 use tokio::sync::broadcast;
 use tracing::{debug, warn};
 
@@ -306,5 +306,77 @@ impl coven::BlobTransitionObserver for ReleaseUploadObserver {
             debug!("on_root_made_local for non-release root {root_table:?}/{root_id}");
         }
         self.emit_outbox_changed().await;
+    }
+}
+
+/// The `BlobTransitionObserver` coven actually holds, keeping only a [`Weak`]
+/// reference to the real [`ReleaseUploadObserver`].
+///
+/// coven's builder takes the observer as a strong `Arc`, and the observer holds
+/// the `CovenHandle` back (to answer pin-state when rebuilding a `ReleaseDetail`).
+/// Registering the observer directly would close a strong cycle
+/// coven → observer → handle → coven that outlives every `LibraryManager`, so
+/// coven's exclusive store-open lock would never release and an in-process
+/// reopen of the same store fails with "store is already open". Registering this
+/// weak adapter instead leaves the observer owned solely by the `LibraryManager`
+/// (see `LibraryManager::open`): when the last manager clone drops, the observer
+/// drops, its handle clone drops, and the lock is released.
+///
+/// A callback that arrives after the observer is gone — teardown racing a late
+/// transition — upgrades to `None` and is a no-op: there is no UI left to notify.
+pub(crate) struct WeakUploadObserver {
+    inner: Weak<ReleaseUploadObserver>,
+}
+
+impl WeakUploadObserver {
+    pub(crate) fn new(inner: Weak<ReleaseUploadObserver>) -> Self {
+        Self { inner }
+    }
+}
+
+#[async_trait::async_trait]
+impl BlobTransitionObserver for WeakUploadObserver {
+    async fn on_blob_upload_started(&self, file_id: &str) {
+        if let Some(observer) = self.inner.upgrade() {
+            observer.on_blob_upload_started(file_id).await;
+        }
+    }
+
+    async fn on_blob_upload_progress(&self, file_id: &str, bytes_done: u64, bytes_total: u64) {
+        if let Some(observer) = self.inner.upgrade() {
+            observer
+                .on_blob_upload_progress(file_id, bytes_done, bytes_total)
+                .await;
+        }
+    }
+
+    async fn on_blob_uploaded(&self, file_id: &str) {
+        if let Some(observer) = self.inner.upgrade() {
+            observer.on_blob_uploaded(file_id).await;
+        }
+    }
+
+    async fn on_blob_upload_failed(&self, file_id: &str, error: &str) {
+        if let Some(observer) = self.inner.upgrade() {
+            observer.on_blob_upload_failed(file_id, error).await;
+        }
+    }
+
+    fn should_skip_uploads(&self) -> bool {
+        self.inner
+            .upgrade()
+            .is_some_and(|observer| observer.should_skip_uploads())
+    }
+
+    async fn on_root_made_remote(&self, root_table: &str, root_id: &str) {
+        if let Some(observer) = self.inner.upgrade() {
+            observer.on_root_made_remote(root_table, root_id).await;
+        }
+    }
+
+    async fn on_root_made_local(&self, root_table: &str, root_id: &str) {
+        if let Some(observer) = self.inner.upgrade() {
+            observer.on_root_made_local(root_table, root_id).await;
+        }
     }
 }
