@@ -29,12 +29,13 @@ impl SearchResults {
                 .albums
                 .into_iter()
                 .map(|raw| {
-                    // Non-null by construction: SQL takes `COALESCE(a.primary_release_id,
-                    // <first release id>)`, and every album has at least one release
+                    // Always resolves: every album has at least one release
                     // (enforced by `delete_release`).
-                    let primary_release_id = raw
-                        .primary_release_id
-                        .expect("album has at least one release");
+                    let primary_release_id = crate::db::resolve_primary_release_id(
+                        raw.primary_release_id.as_deref(),
+                        raw.release_ids.iter().map(String::as_str),
+                    )
+                    .expect("album has at least one release");
                     let cover = album_covers.get(&primary_release_id).cloned();
                     AlbumSearchResult {
                         id: raw.id,

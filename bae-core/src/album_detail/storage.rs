@@ -14,10 +14,6 @@ pub struct ReleaseStorageSummary {
     pub album_title: String,
     pub artist_names: String,
     pub format: Option<String>,
-    /// The album's primary release (for "am I the primary release"
-    /// comparisons and cover art lookup). Always set: every album has at
-    /// least one release.
-    pub primary_release_id: String,
     /// The release's storage state — Local (local) or Remote (cloud) —
     /// derived from the shared `releases.remote` fact. Orthogonal to `pinned`.
     pub storage_state: ReleaseStorageState,
@@ -35,10 +31,7 @@ pub struct ReleaseStorageSummary {
 
 impl ReleaseStorageSummary {
     /// `storage_state` derives from `remote` alone; `pinned` is the orthogonal
-    /// coven-cache property the caller reads separately. The raw
-    /// `primary_release_id` comes from SQL's `COALESCE(a.primary_release_id, <first
-    /// release id>)`, non-null by construction: every album has at least one
-    /// release, enforced by `delete_release`.
+    /// coven-cache property the caller reads separately.
     pub(crate) fn from_raw(
         raw: DbReleaseStorageSummary,
         has_cloud_home: bool,
@@ -55,9 +48,6 @@ impl ReleaseStorageSummary {
             album_title: raw.album_title,
             artist_names: raw.artist_names,
             format: raw.format,
-            primary_release_id: raw
-                .primary_release_id
-                .expect("album has at least one release"),
             file_count: raw.file_count,
             total_size: raw.total_size,
         }

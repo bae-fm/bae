@@ -2689,3 +2689,93 @@ mod injected_ids_tests {
         );
     }
 }
+
+/// A queue row's cover is the cover of the release the track is actually on —
+/// never the album's `primary_release_id`, which is nullable (a fresh album from
+/// `set_identity`, or an album whose chosen release was deleted) and which points
+/// at a *different* release than the queued track whenever the album has more than
+/// one.
+#[cfg(test)]
+mod queue_cover_tests {
+    use super::super::*;
+    use crate::playback::QueueEntryId;
+    use coven::SystemClock;
+    use std::sync::Arc;
+
+    /// `album-null` has no primary release at all; `album-set` has one, pointing at
+    /// a release that the queued track is NOT on.
+    async fn cover_db() -> (Database, tempfile::TempDir) {
+        let tmp = tempfile::TempDir::new().unwrap();
+        let path = tmp.path().join("test.db");
+        let db = Database::new_test(
+            path.to_str().unwrap(),
+            Arc::new(SystemClock),
+            Arc::new(coven::UuidProvider),
+        )
+        .await
+        .unwrap();
+        db.call(|conn| {
+            conn.execute_batch(
+                "
+                INSERT INTO artists (id, name, _updated_at, created_at)
+                VALUES ('artist-a', 'Artist Name', 'stamp', '2026-01-01T00:00:00Z');
+
+                INSERT INTO albums (id, title, artist_id, year, primary_release_id, is_compilation, _updated_at, created_at)
+                VALUES
+                    ('album-null', 'Album With No Primary', 'artist-a', 2026, NULL, 0, 'stamp', '2026-01-01T00:00:00Z'),
+                    ('album-set', 'Album With A Primary', 'artist-a', 2026, 'release-primary', 0, 'stamp', '2026-01-01T00:00:00Z');
+
+                INSERT INTO releases (id, album_id, metadata_source, remote, _updated_at, created_at)
+                VALUES
+                    ('release-lonely', 'album-null', 'file_tags', 1, 'stamp', '2026-01-01T00:00:00Z'),
+                    ('release-primary', 'album-set', 'file_tags', 1, 'stamp', '2026-01-01T00:00:00Z'),
+                    ('release-other', 'album-set', 'file_tags', 1, 'stamp', '2026-01-01T00:00:01Z');
+
+                INSERT INTO tracks (id, release_id, title, side, track_number, duration_ms, discogs_position, _updated_at, created_at)
+                VALUES
+                    ('track-lonely', 'release-lonely', 'Track On The Only Release', 1, 1, 1000, NULL, 'stamp', '2026-01-01T00:00:00Z'),
+                    ('track-other', 'release-other', 'Track On The Non-Primary Release', 1, 1, 1000, NULL, 'stamp', '2026-01-01T00:00:00Z');
+                ",
+            )
+            .map(|_| ())
+            .map_err(DbError::from)
+        })
+        .await
+        .unwrap();
+        (db, tmp)
+    }
+
+    async fn cover_of(db: &Database, track_id: &str) -> Option<String> {
+        let items = db
+            .get_queue_items(&[QueueEntry {
+                id: QueueEntryId(format!("entry-{track_id}")),
+                track_id: track_id.to_string(),
+            }])
+            .await
+            .unwrap();
+        assert_eq!(items.len(), 1);
+        items[0].cover_image_id.clone()
+    }
+
+    /// `albums.primary_release_id` is NULL, so reading it raw yields no cover at
+    /// all and the queue row renders art-less.
+    #[tokio::test]
+    async fn queue_row_covers_a_track_whose_album_has_no_primary_release() {
+        let (db, _tmp) = cover_db().await;
+        assert_eq!(
+            cover_of(&db, "track-lonely").await.as_deref(),
+            Some("release-lonely"),
+        );
+    }
+
+    /// The album's primary release is set, but the queued track is on a different
+    /// one — the row must show the art of the release being played.
+    #[tokio::test]
+    async fn queue_row_covers_the_track_s_own_release_not_the_album_s_primary() {
+        let (db, _tmp) = cover_db().await;
+        assert_eq!(
+            cover_of(&db, "track-other").await.as_deref(),
+            Some("release-other"),
+        );
+    }
+}

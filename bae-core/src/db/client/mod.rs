@@ -1456,7 +1456,6 @@ fn row_to_release_storage_summary(row: &Row) -> coven::rusqlite::Result<DbReleas
         album_title: row.get("album_title")?,
         artist_names: row.get("artist_names")?,
         format: row.get("format")?,
-        primary_release_id: row.get("primary_release_id")?,
         remote: row.get("remote")?,
         any_file_id: row.get("any_file_id")?,
         file_count: row.get("file_count")?,

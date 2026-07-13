@@ -66,10 +66,17 @@ impl LibraryManager {
         limit: usize,
     ) -> Result<SearchResults, LibraryError> {
         let raw = self.database.search_library(query, limit).await?;
+        // Prefetch the cover of each album's *resolved* primary release — the same
+        // id `SearchResults::from_raw` looks the cover up by.
         let primary_ids: Vec<String> = raw
             .albums
             .iter()
-            .filter_map(|a| a.primary_release_id.clone())
+            .filter_map(|a| {
+                crate::db::resolve_primary_release_id(
+                    a.primary_release_id.as_deref(),
+                    a.release_ids.iter().map(String::as_str),
+                )
+            })
             .collect();
         let artist_ids: Vec<String> = raw.composers.iter().map(|c| c.artist.id.clone()).collect();
         let work_release_ids: Vec<String> = raw

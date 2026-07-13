@@ -235,10 +235,6 @@ impl Database {
             r.format, \
             r.remote, \
             (SELECT rf.id FROM release_files rf WHERE rf.release_id = r.id LIMIT 1) AS any_file_id, \
-            COALESCE( \
-                a.primary_release_id, \
-                (SELECT r2.id FROM releases r2 WHERE r2.album_id = a.id ORDER BY r2.created_at LIMIT 1) \
-            ) AS primary_release_id, \
             {artist_names} AS artist_names, \
             COALESCE(( \
                 SELECT COUNT(*) FROM release_files rf WHERE rf.release_id = r.id \

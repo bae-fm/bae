@@ -5,6 +5,10 @@ impl Database {
     /// id and its track's album/artist display metadata. A track queued twice
     /// resolves twice — the metadata is fetched once and joined onto every entry of
     /// that track. Entries whose track is not found are skipped.
+    ///
+    /// The cover is the track's own release's, not the album's primary release's,
+    /// so a queued track from a non-primary release shows that release's art — the
+    /// same rule `playback_info_from_track_release` applies to the playing track.
     pub async fn get_queue_items(&self, entries: &[QueueEntry]) -> Result<Vec<QueueItem>, DbError> {
         if entries.is_empty() {
             return Ok(Vec::new());
@@ -24,7 +28,7 @@ impl Database {
                             t.title, \
                             t.duration_ms, \
                             a.title AS album_title, \
-                            a.primary_release_id, \
+                            r.id AS cover_image_id, \
                             COALESCE( \
                                 NULLIF(( \
                                     SELECT GROUP_CONCAT(art.name, ', ' ORDER BY ta.position) \
@@ -51,7 +55,7 @@ impl Database {
                                 artist_names: row.get("artist_names")?,
                                 duration_ms: row.get("duration_ms")?,
                                 album_title: row.get("album_title")?,
-                                cover_image_id: row.get("primary_release_id")?,
+                                cover_image_id: row.get("cover_image_id")?,
                             },
                         );
                     }

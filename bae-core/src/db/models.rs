@@ -1038,7 +1038,11 @@ pub struct DbAlbumSearchResult {
     pub id: String,
     pub title: String,
     pub year: Option<i32>,
+    /// User-chosen primary release. `None` if unset — the resolver applies
+    /// `resolve_primary_release_id` over `release_ids`.
     pub primary_release_id: Option<String>,
+    /// The album's releases in `created_at` order — what the fallback picks from.
+    pub release_ids: Vec<String>,
     pub artist_name: String,
 }
 
@@ -1155,7 +1159,6 @@ pub struct DbReleaseStorageSummary {
     pub album_title: String,
     pub artist_names: String,
     pub format: Option<String>,
-    pub primary_release_id: Option<String>,
     /// The shared `releases.remote` fact: audio in the cloud vs local to a device.
     /// The resolver reads `Local` straight off `!remote`; for a remote release it
     /// asks coven's cache (via `any_file_id`) whether it is pinned.

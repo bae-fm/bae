@@ -144,14 +144,17 @@ impl LibraryManager {
 
         let has_cloud_home = self.has_cloud_home();
         // The cover resolver serves both halves of each row — the release's own id
-        // and the album's primary release id — so gather both for the batch lookup.
+        // and the album's resolved primary release id — so gather both for the
+        // batch lookup.
         let cover_ids: Vec<String> = raw_rows
             .iter()
             .flat_map(|r| {
                 [r.release.id.clone()]
                     .into_iter()
-                    .chain(r.album.primary_release_id.clone())
-                    .chain(r.album.release_ids.iter().cloned())
+                    .chain(crate::db::resolve_primary_release_id(
+                        r.album.primary_release_id.as_deref(),
+                        r.album.release_ids.iter().map(String::as_str),
+                    ))
             })
             .collect();
         let covers = self.cover_refs(&cover_ids).await?;

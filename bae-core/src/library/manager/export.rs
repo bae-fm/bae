@@ -267,13 +267,13 @@ impl LibraryManager {
     /// track number, the release's track total, and whether the media is digital.
     /// Reads no audio and no cover, so both the filename-suggestion path (which
     /// must not download a whole file) and the full export plan share it.
-    /// Returns the tag data and, separately, the album's primary release id — the
-    /// release whose cover a track export embeds. That id is a cover-lookup key,
-    /// not tag data, so it rides beside the tags rather than inside them.
+    ///
+    /// No cover id rides along: the art a track export embeds is its own release's,
+    /// which the caller already holds.
     async fn resolve_export_tags(
         &self,
         meta: &TrackAudioMeta,
-    ) -> Result<(ResolvedExportTags, Option<String>), LibraryError> {
+    ) -> Result<ResolvedExportTags, LibraryError> {
         let album = self.database.get_album_for_release(&meta.release).await?;
 
         let album_artists = self.database.get_artists_for_album(&album.id).await?;
@@ -308,15 +308,12 @@ impl LibraryManager {
             disc,
         };
 
-        Ok((
-            ResolvedExportTags {
-                tags,
-                track_number: meta.track.track_number,
-                total_tracks,
-                is_digital,
-            },
-            album.primary_release_id,
-        ))
+        Ok(ResolvedExportTags {
+            tags,
+            track_number: meta.track.track_number,
+            total_tracks,
+            is_digital,
+        })
     }
 
     /// Assemble everything `ExportService::export_track` needs for a
@@ -329,7 +326,7 @@ impl LibraryManager {
         track_id: &str,
     ) -> Result<ExportTrackPlan, LibraryError> {
         let meta = TrackAudioMeta::resolve(&self.database, track_id).await?;
-        let (resolved, primary_release_id) = self.resolve_export_tags(&meta).await?;
+        let resolved = self.resolve_export_tags(&meta).await?;
 
         let mut audio_bytes = Vec::new();
         for audio_file in &meta.audio_files {
@@ -347,11 +344,10 @@ impl LibraryManager {
             });
         }
 
-        let cover_image_bytes = match primary_release_id.as_deref() {
-            Some(rid) => match self.cover_ref(rid).await? {
-                Some(image) => self.read_image_blob(&image).await?,
-                None => None,
-            },
+        // The exported file embeds the art of the release the track is actually on,
+        // not the album's primary release's — the same rule playback applies.
+        let cover_image_bytes = match self.cover_ref(&meta.release.id).await? {
+            Some(image) => self.read_image_blob(&image).await?,
             None => None,
         };
 
@@ -373,7 +369,7 @@ impl LibraryManager {
         track_id: &str,
     ) -> Result<String, LibraryError> {
         let meta = TrackAudioMeta::resolve(&self.database, track_id).await?;
-        let (resolved, _primary_release_id) = self.resolve_export_tags(&meta).await?;
+        let resolved = self.resolve_export_tags(&meta).await?;
         Ok(crate::library::export::render_export_filename(
             &self.export_filename_template(),
             &resolved,
@@ -676,6 +672,7 @@ fn non_negative_samples(samples: Option<i64>) -> u64 {
     })
 }
 
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 fn unique_export_path(
     dir: &std::path::Path,
     stem: &str,

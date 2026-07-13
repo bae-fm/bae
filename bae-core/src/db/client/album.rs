@@ -76,18 +76,13 @@ impl Database {
         let pattern = format!("%{}%", escape_like_pattern(query));
         let limit_i64 = limit as i64;
 
-        self
-            .read(move |conn| {
-                // COALESCE primary_release_id to the album's first release so
-                // callers always see a release id (every album has at least one).
-                let mut album_stmt = conn
-                    .prepare(
-                        r#"
-                        SELECT a.id, a.title, a.year,
-                               COALESCE(
-                                   a.primary_release_id,
-                                   (SELECT r.id FROM releases r WHERE r.album_id = a.id ORDER BY r.created_at LIMIT 1)
-                               ) AS primary_release_id,
+        self.read(move |conn| {
+            // The stored `primary_release_id` and the album's release ids come
+            // back raw; `resolve_primary_release_id` applies the fallback.
+            let album_query = format!(
+                r#"
+                        SELECT a.id, a.title, a.year, a.primary_release_id,
+                               {release_ids} AS release_ids_json,
                                art.name as artist_name
                         FROM albums a
                         JOIN artists art ON a.artist_id = art.id
@@ -95,22 +90,33 @@ impl Database {
                         ORDER BY a.title
                         LIMIT ?
                         "#,
-                    )?;
-                let albums = album_stmt
-                    .query_map(params![pattern, limit_i64], |row| {
-                        Ok(DbAlbumSearchResult {
-                            id: row.get("id")?,
-                            title: row.get("title")?,
-                            year: row.get("year")?,
-                            primary_release_id: row.get("primary_release_id")?,
-                            artist_name: row.get("artist_name")?,
-                        })
-                    })?
-                    .collect::<coven::rusqlite::Result<Vec<_>>>()?;
+                release_ids = album_release_ids_json_sql()
+            );
+            let mut album_stmt = conn.prepare(&album_query)?;
+            let albums = album_stmt
+                .query_map(params![pattern, limit_i64], |row| {
+                    let release_ids_json: String = row.get("release_ids_json")?;
+                    let release_ids: Vec<String> = serde_json::from_str(&release_ids_json)
+                        .map_err(|e| {
+                            coven::rusqlite::Error::FromSqlConversionFailure(
+                                0,
+                                coven::rusqlite::types::Type::Text,
+                                format!("malformed release_ids_json: {e}").into(),
+                            )
+                        })?;
+                    Ok(DbAlbumSearchResult {
+                        id: row.get("id")?,
+                        title: row.get("title")?,
+                        year: row.get("year")?,
+                        primary_release_id: row.get("primary_release_id")?,
+                        release_ids,
+                        artist_name: row.get("artist_name")?,
+                    })
+                })?
+                .collect::<coven::rusqlite::Result<Vec<_>>>()?;
 
-                let mut track_stmt = conn
-                    .prepare(
-                        r#"
+            let mut track_stmt = conn.prepare(
+                r#"
                         SELECT t.id, t.title, t.duration_ms, r.album_id,
                                a.title as album_title,
                                art.name as artist_name
@@ -122,47 +128,50 @@ impl Database {
                         ORDER BY t.title
                         LIMIT ?
                         "#,
-                    )?;
-                let tracks = track_stmt
-                    .query_map(params![pattern, limit_i64], |row| {
-                        Ok(DbTrackSearchResult {
-                            id: row.get("id")?,
-                            title: row.get("title")?,
-                            duration_ms: row.get("duration_ms")?,
-                            album_id: row.get("album_id")?,
-                            album_title: row.get("album_title")?,
-                            artist_name: row.get("artist_name")?,
-                        })
-                    })?
-                    .collect::<coven::rusqlite::Result<Vec<_>>>()?;
+            )?;
+            let tracks = track_stmt
+                .query_map(params![pattern, limit_i64], |row| {
+                    Ok(DbTrackSearchResult {
+                        id: row.get("id")?,
+                        title: row.get("title")?,
+                        duration_ms: row.get("duration_ms")?,
+                        album_id: row.get("album_id")?,
+                        album_title: row.get("album_title")?,
+                        artist_name: row.get("artist_name")?,
+                    })
+                })?
+                .collect::<coven::rusqlite::Result<Vec<_>>>()?;
 
-                let mut composer_stmt = conn.prepare(&composer_summary_query(
-                    Some(
-                        "WHERE composer.name LIKE ? ESCAPE '\\' \
+            let mut composer_stmt = conn.prepare(&composer_summary_query(
+                Some(
+                    "WHERE composer.name LIKE ? ESCAPE '\\' \
                          OR composer.sort_name LIKE ? ESCAPE '\\'",
-                    ),
-                    Some("ORDER BY composer.name LIMIT ?"),
-                ))?;
-                let composers = composer_stmt
-                    .query_map(params![pattern, pattern, limit_i64], row_to_composer_summary)?
-                    .collect::<coven::rusqlite::Result<Vec<_>>>()?;
+                ),
+                Some("ORDER BY composer.name LIMIT ?"),
+            ))?;
+            let composers = composer_stmt
+                .query_map(
+                    params![pattern, pattern, limit_i64],
+                    row_to_composer_summary,
+                )?
+                .collect::<coven::rusqlite::Result<Vec<_>>>()?;
 
-                let mut work_stmt = conn.prepare(&work_summary_query(
-                    Some("WHERE w.title LIKE ? ESCAPE '\\'"),
-                    Some("ORDER BY w.title LIMIT ?"),
-                ))?;
-                let works = work_stmt
-                    .query_map(params![pattern, limit_i64], row_to_work_summary)?
-                    .collect::<coven::rusqlite::Result<Vec<_>>>()?;
+            let mut work_stmt = conn.prepare(&work_summary_query(
+                Some("WHERE w.title LIKE ? ESCAPE '\\'"),
+                Some("ORDER BY w.title LIMIT ?"),
+            ))?;
+            let works = work_stmt
+                .query_map(params![pattern, limit_i64], row_to_work_summary)?
+                .collect::<coven::rusqlite::Result<Vec<_>>>()?;
 
-                Ok(DbLibrarySearchResults {
-                    albums,
-                    tracks,
-                    composers,
-                    works,
-                })
+            Ok(DbLibrarySearchResults {
+                albums,
+                tracks,
+                composers,
+                works,
             })
-            .await
+        })
+        .await
     }
 
     pub async fn insert_album(&self, album: &DbAlbum) -> Result<(), DbError> {

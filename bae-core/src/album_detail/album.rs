@@ -45,8 +45,9 @@ pub struct AlbumSummary {
 }
 
 impl AlbumSummary {
-    /// Applies the `primary_release_id` fallback — the stored value, else the first
-    /// release. It always succeeds: every album has at least one release.
+    /// Applies the `primary_release_id` fallback through
+    /// [`crate::db::resolve_primary_release_id`], the one definition of it. It
+    /// always succeeds: every album has at least one release.
     ///
     /// `resolve_cover` maps that primary release id to its cover reference. It is
     /// passed in rather than reached for through `&self`, so one resolver serves the
@@ -56,11 +57,11 @@ impl AlbumSummary {
         raw: DbAlbumSummary,
         resolve_cover: impl Fn(&str) -> Option<ImageRef>,
     ) -> AlbumSummary {
-        let primary_release_id = raw
-            .primary_release_id
-            .clone()
-            .or_else(|| raw.release_ids.first().cloned())
-            .expect("album has at least one release");
+        let primary_release_id = crate::db::resolve_primary_release_id(
+            raw.primary_release_id.as_deref(),
+            raw.release_ids.iter().map(String::as_str),
+        )
+        .expect("album has at least one release");
         let cover = resolve_cover(&primary_release_id);
         AlbumSummary {
             id: raw.id,
