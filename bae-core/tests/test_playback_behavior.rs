@@ -118,6 +118,53 @@ async fn position_after(
     latest.expect("anchored on a first position update above")
 }
 
+/// Wait until the playing position demonstrably advances: anchor on the first
+/// position update, then return the first later `position_ms` strictly greater
+/// than that anchor. Early-exit counterpart to `position_after` for the "audio
+/// is flowing" assertions — once the position has moved there is nothing more
+/// to learn by sampling a fixed window, so this returns the instant it sees the
+/// advance instead of burning the whole settle window. Panics if no first
+/// update ever arrives (a broken fixture); returns `None` if the position never
+/// advances within the deadline (the failure the caller asserts on).
+///
+/// Use `position_after` instead — not this — when the elapsed real time is
+/// itself the measurement (a seek-target value, a pregap that must stay pinned
+/// at 0 across its length, a periodic persist that must have time to fire).
+async fn wait_for_position_advance(
+    progress_rx: &mut tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
+) -> Option<u64> {
+    let first_deadline = Instant::now() + Duration::from_secs(30);
+    let mut anchor = None;
+    while anchor.is_none() {
+        if Instant::now() >= first_deadline {
+            panic!("no position update arrived within 30s of requesting one");
+        }
+        match timeout(Duration::from_millis(100), progress_rx.recv()).await {
+            Ok(Some(PlaybackProgress::PositionUpdate { position_ms, .. })) => {
+                anchor = Some(position_ms)
+            }
+            Ok(Some(_)) => continue,
+            Ok(None) => panic!("progress channel closed before a position update arrived"),
+            Err(_) => continue,
+        }
+    }
+    let anchor = anchor.expect("anchored on a first position update above");
+    let deadline = Instant::now() + Duration::from_secs(10);
+    while Instant::now() < deadline {
+        match timeout(Duration::from_millis(100), progress_rx.recv()).await {
+            Ok(Some(PlaybackProgress::PositionUpdate { position_ms, .. }))
+                if position_ms > anchor =>
+            {
+                return Some(position_ms);
+            }
+            Ok(Some(_)) => continue,
+            Ok(None) => panic!("progress channel closed while waiting for the position to advance"),
+            Err(_) => continue,
+        }
+    }
+    None
+}
+
 /// Wait for the next `Seeked` event and return its adjusted `position_ms`, or
 /// `None` on timeout. Shared by `PlaybackTestFixture::wait_for_seeked` and any
 /// fixture that only has a raw progress receiver (no wrapper method).
@@ -174,22 +221,18 @@ async fn wait_for_playing_capturing_queue_on(
     (false, entries)
 }
 
-/// Assert that audio keeps flowing: two `position_after` readings, `settle`
-/// apart, with the second strictly greater than the first. A regression that
-/// leaves the queue/context projection correct but silences the actual audio
-/// stream (an unrefreshed preload decoder, a promotion that never rebuilds
-/// the stream) would leave the position pinned rather than climbing, and
-/// this catches it where a projection-only assertion would not.
+/// Assert that audio keeps flowing: the playing position advances past its
+/// anchor (via `wait_for_position_advance`). A regression that leaves the
+/// queue/context projection correct but silences the actual audio stream (an
+/// unrefreshed preload decoder, a promotion that never rebuilds the stream)
+/// would leave the position pinned rather than climbing, and this catches it
+/// where a projection-only assertion would not.
 async fn assert_position_advances(
     progress_rx: &mut tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
-    settle: Duration,
 ) {
-    let first = position_after(progress_rx, settle).await;
-    let second = position_after(progress_rx, settle).await;
-    assert!(
-        second > first,
-        "position must keep advancing while playing: {first}ms then {second}ms"
-    );
+    wait_for_position_advance(progress_rx)
+        .await
+        .expect("position must keep advancing while playing (the audio stream stalled)");
 }
 
 /// Return the first `PositionUpdate` seen for `track_id` (its adjusted
@@ -2316,7 +2359,7 @@ async fn assert_preload_refreshed_after_queue_mutation<F>(
     // The queue/context projection landing on `expected` isn't proof audio is
     // actually flowing on it — assert the position keeps climbing too.
     if matches!(state, PlaybackState::Playing { .. }) {
-        assert_position_advances(&mut fixture.progress_rx, Duration::from_millis(300)).await;
+        assert_position_advances(&mut fixture.progress_rx).await;
     }
 }
 
@@ -2467,7 +2510,7 @@ async fn set_shuffle_materializes_then_re_derives_context_order() {
 
     // Re-deriving the context order projects correctly, but that alone
     // doesn't prove the currently-playing track's audio survived the churn.
-    assert_position_advances(&mut fixture.progress_rx, Duration::from_millis(300)).await;
+    assert_position_advances(&mut fixture.progress_rx).await;
 }
 
 #[tokio::test]
@@ -2582,7 +2625,7 @@ async fn skip_to_entry_jumps_to_that_queue_entry() {
         .expect("SkipTo jumps to the targeted entry");
 
     // Landing on the right track's state isn't proof its audio is flowing.
-    assert_position_advances(&mut fixture.progress_rx, Duration::from_millis(300)).await;
+    assert_position_advances(&mut fixture.progress_rx).await;
 }
 
 #[tokio::test]
@@ -4897,13 +4940,12 @@ async fn auto_advance_crosses_gaplessly_within_a_multi_window_file() {
     // The crossing events fire at the boundary whether or not audio flows, so
     // require the position to actually advance into track 2 before seeking --
     // a preload decoder starved at the pregap boundary pins it in place.
-    let p1 = position_after(&mut playback.progress_rx, Duration::from_millis(800)).await;
-    let p2 = position_after(&mut playback.progress_rx, Duration::from_millis(1600)).await;
-    assert!(
-        p2 > p1,
-        "track 2's position advances after the crossing (got {p1}ms then {p2}ms) -- \
-         its decoder must keep producing samples past the pregap boundary"
-    );
+    wait_for_position_advance(&mut playback.progress_rx)
+        .await
+        .expect(
+            "track 2's position must advance after the crossing -- its decoder must keep \
+             producing samples past the pregap boundary",
+        );
 
     // Track 2's raw timeline is 62 s (2 s pregap + 60 s).
     playback.playback_handle.seek(Duration::from_secs(58));
@@ -5030,12 +5072,9 @@ async fn seek_within_the_last_track_lands_and_keeps_streaming_over_sparse_buffer
         Duration::from_millis(landed).abs_diff(backward_target) < Duration::from_secs(2),
         "backward seek should land near {backward_target:?}, got {landed}ms"
     );
-    let p1 = position_after(&mut playback.progress_rx, Duration::from_millis(800)).await;
-    let p2 = position_after(&mut playback.progress_rx, Duration::from_millis(1600)).await;
-    assert!(
-        p2 > p1,
-        "audio keeps flowing after the backward seek (got {p1}ms then {p2}ms)"
-    );
+    wait_for_position_advance(&mut playback.progress_rx)
+        .await
+        .expect("audio must keep flowing after the backward seek");
 
     // Seek forward, well past the backward target and into territory the fill
     // has not fetched — the fill's demand-driven window fetch must catch up.
@@ -5048,12 +5087,9 @@ async fn seek_within_the_last_track_lands_and_keeps_streaming_over_sparse_buffer
         Duration::from_millis(landed).abs_diff(forward_target) < Duration::from_secs(2),
         "forward seek should land near {forward_target:?}, got {landed}ms"
     );
-    let p1 = position_after(&mut playback.progress_rx, Duration::from_millis(800)).await;
-    let p2 = position_after(&mut playback.progress_rx, Duration::from_millis(1600)).await;
-    assert!(
-        p2 > p1,
-        "audio keeps flowing after the forward seek (got {p1}ms then {p2}ms)"
-    );
+    wait_for_position_advance(&mut playback.progress_rx)
+        .await
+        .expect("audio must keep flowing after the forward seek");
 }
 
 /// A seek issued the instant Playing arrives — before the fill has had any
@@ -5084,12 +5120,9 @@ async fn seek_immediately_after_playing_lands_and_plays_over_sparse_buffer() {
         Duration::from_millis(landed).abs_diff(target) < Duration::from_secs(2),
         "should land near {target:?}, got {landed}ms"
     );
-    let p1 = position_after(&mut playback.progress_rx, Duration::from_millis(800)).await;
-    let p2 = position_after(&mut playback.progress_rx, Duration::from_millis(1600)).await;
-    assert!(
-        p2 > p1,
-        "audio plays after an immediate seek (got {p1}ms then {p2}ms)"
-    );
+    wait_for_position_advance(&mut playback.progress_rx)
+        .await
+        .expect("audio must play after an immediate seek");
 }
 
 /// A seek into an unbuffered region surfaces a buffering state before it
@@ -5263,12 +5296,9 @@ async fn pause_seek_resume_advances_position_over_sparse_buffer() {
     .await
     .expect("resume should start playing");
 
-    let p1 = position_after(&mut playback.progress_rx, Duration::from_millis(800)).await;
-    let p2 = position_after(&mut playback.progress_rx, Duration::from_millis(1600)).await;
-    assert!(
-        p2 > p1,
-        "audio advances after resuming a paused sparse-buffer seek (got {p1}ms then {p2}ms)"
-    );
+    wait_for_position_advance(&mut playback.progress_rx)
+        .await
+        .expect("audio must advance after resuming a paused sparse-buffer seek");
 }
 
 /// Multi-window port of `test_direct_play_skips_pregap`: a direct selection
@@ -5534,12 +5564,9 @@ async fn restore_at_position_over_sparse_buffer_resumes_and_advances() {
     .await
     .expect("resume after restore should start playing");
 
-    let p1 = position_after(&mut progress_rx, Duration::from_millis(800)).await;
-    let p2 = position_after(&mut progress_rx, Duration::from_millis(1600)).await;
-    assert!(
-        p2 > p1,
-        "resumed playback must keep advancing from the restored position, got {p1}ms then {p2}ms"
-    );
+    wait_for_position_advance(&mut progress_rx)
+        .await
+        .expect("resumed playback must keep advancing from the restored position");
 }
 
 /// With the "Restore on launch" preference off, a service that starts over a
@@ -5660,7 +5687,7 @@ async fn assert_preload_refreshed_over_sparse_buffer<F>(
     assert_eq!(playing_id, expected);
 
     if matches!(state, PlaybackState::Playing { .. }) {
-        assert_position_advances(&mut playback.progress_rx, Duration::from_millis(500)).await;
+        assert_position_advances(&mut playback.progress_rx).await;
     }
 }
 
@@ -5764,7 +5791,7 @@ async fn skip_to_entry_jumps_to_that_queue_entry_over_sparse_buffer() {
     .await
     .expect("SkipTo jumps to the targeted entry");
 
-    assert_position_advances(&mut playback.progress_rx, Duration::from_millis(500)).await;
+    assert_position_advances(&mut playback.progress_rx).await;
 }
 
 /// Multi-window port of `set_shuffle_materializes_then_re_derives_context_order`:
@@ -5801,7 +5828,7 @@ async fn set_shuffle_re_derives_context_order_over_sparse_buffer() {
         "SetShuffle(false) re-derives the sequential order"
     );
 
-    assert_position_advances(&mut playback.progress_rx, Duration::from_millis(500)).await;
+    assert_position_advances(&mut playback.progress_rx).await;
 }
 
 // ============================================================================
@@ -5981,12 +6008,9 @@ async fn auto_advance_crosses_gaplessly_over_remote_cloud() {
         "the boundary is gapless: decode stats without TrackCompleted"
     );
 
-    let p1 = position_after(&mut playback.progress_rx, Duration::from_secs(2)).await;
-    let p2 = position_after(&mut playback.progress_rx, Duration::from_secs(4)).await;
-    assert!(
-        p2 > p1,
-        "track 2's position advances after the crossing (got {p1}ms then {p2}ms)"
-    );
+    wait_for_position_advance(&mut playback.progress_rx)
+        .await
+        .expect("track 2's position must advance after the crossing over a real ranged cloud read");
 }
 
 /// Remote-cloud port of `manual_next_into_a_pregap_track_rebuilds_and_keeps_streaming`.
@@ -6059,10 +6083,7 @@ async fn seek_within_the_last_track_over_remote_cloud() {
         "should land near {target:?}, got {landed}ms"
     );
 
-    let p1 = position_after(&mut playback.progress_rx, Duration::from_secs(2)).await;
-    let p2 = position_after(&mut playback.progress_rx, Duration::from_secs(4)).await;
-    assert!(
-        p2 > p1,
-        "audio keeps flowing after the seek over a real ranged cloud read (got {p1}ms then {p2}ms)"
-    );
+    wait_for_position_advance(&mut playback.progress_rx)
+        .await
+        .expect("audio must keep flowing after the seek over a real ranged cloud read");
 }
