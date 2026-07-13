@@ -817,7 +817,15 @@ pub fn oauth_begin(
             .await
         })
     });
-    lock_bridge_mutex(&OAUTH_REQUESTS).insert(request_id.clone(), exchange);
+    // At most one host-driven exchange is ever pending: a fresh begin supersedes
+    // any earlier un-completed one, so a host that restarts the flow without an
+    // intervening cancel doesn't strand the prior entry. Hold the lock across the
+    // clear and insert so the two are atomic.
+    {
+        let mut requests = lock_bridge_mutex(&OAUTH_REQUESTS);
+        requests.clear();
+        requests.insert(request_id.clone(), exchange);
+    }
     Ok(BridgeOAuthRequest {
         auth_url,
         request_id,
@@ -859,6 +867,10 @@ pub fn oauth_cancel() {
     if let Some(tx) = lock_bridge_mutex(&OAUTH_CANCEL_TX).take() {
         let _ = tx.send(true);
     }
+    // Reclaim any pending host-driven exchange from an abandoned `oauth_begin`; a
+    // cancel ends every in-progress flow, and a fresh flow starts with a new
+    // `oauth_begin`.
+    lock_bridge_mutex(&OAUTH_REQUESTS).clear();
 }
 
 /// Unlock a library by providing the encryption key hex.
@@ -898,6 +910,63 @@ mod tests {
             BridgeError::Diagnostic { category, detail } => {
                 assert_eq!(category, BridgeErrorCategory::Config);
                 assert!(detail.contains("Library path is not UTF-8"));
+            }
+            other => panic!("expected config bridge error, got {other:?}"),
+        }
+    }
+
+    #[cfg(feature = "oauth-providers")]
+    #[test]
+    fn host_driven_oauth_flow_holds_at_most_one_pending_exchange() {
+        // Serialize against the process-global OAUTH_REQUESTS: this is the only
+        // test that touches it, and it drives every phase in order.
+        lock_bridge_mutex(&OAUTH_REQUESTS).clear();
+
+        let mut creds = std::collections::HashMap::new();
+        creds.insert(
+            "google_drive".to_string(),
+            coven::OAuthClientCreds {
+                client_id: "test-client-id".to_string(),
+                client_secret: None,
+            },
+        );
+        // `set_oauth_client_creds` is a process-global no-op when re-registering
+        // the same map, so repeated test runs in one process are fine.
+        let _ = coven::set_oauth_client_creds(creds);
+
+        let redirect_uri = "bae://oauth".to_string();
+
+        // A second begin supersedes the first: at most one pending exchange.
+        oauth_begin(BridgeCloudProvider::GoogleDrive, redirect_uri.clone())
+            .expect("first begin builds an authorize request");
+        let second = oauth_begin(BridgeCloudProvider::GoogleDrive, redirect_uri.clone())
+            .expect("second begin builds an authorize request");
+        assert_eq!(
+            lock_bridge_mutex(&OAUTH_REQUESTS).len(),
+            1,
+            "a fresh begin supersedes the prior un-completed one"
+        );
+
+        // Cancel reclaims the pending host-driven exchange.
+        oauth_cancel();
+        assert!(
+            lock_bridge_mutex(&OAUTH_REQUESTS).is_empty(),
+            "cancel clears the pending host-driven exchange"
+        );
+
+        // Completing the cancelled flow's request finds nothing to exchange.
+        let err = oauth_complete(
+            BridgeCloudProvider::GoogleDrive,
+            "auth-code".to_string(),
+            "callback-state".to_string(),
+            second.request_id,
+            redirect_uri,
+        )
+        .expect_err("a cancelled request has no pending exchange to complete");
+        match err {
+            BridgeError::Diagnostic { category, detail } => {
+                assert_eq!(category, BridgeErrorCategory::Config);
+                assert!(detail.contains("not found or already used"));
             }
             other => panic!("expected config bridge error, got {other:?}"),
         }
