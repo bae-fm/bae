@@ -380,6 +380,58 @@ pub struct BridgeTrack {
     pub position_text: String,
 }
 
+/// Mirror of bae-core's `DurationClock` — the fields a clock label shows, for
+/// every place a duration reads as "3:07" / "1:12:34" / "-0:42": a track's
+/// length, the elapsed position, the remaining countdown.
+///
+/// The UI renders these numbers and nothing else: `:` between the fields, every
+/// field after the first zero-padded to two digits, a leading `-` when
+/// `negative`. It never decides which fields to show — `hours` being `Some` is
+/// core's answer, as is `bridge_clock` returning `None` (nothing to label).
+/// Digits are the UI's because the locale never crosses the bridge.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeDurationClock {
+    pub negative: bool,
+    /// Set from one hour up, and only then.
+    pub hours: Option<u64>,
+    pub minutes: u32,
+    pub seconds: u32,
+}
+
+impl BridgeDurationClock {
+    fn from_core(clock: bae_core::util::duration::DurationClock) -> Self {
+        let bae_core::util::duration::DurationClock {
+            negative,
+            hours,
+            minutes,
+            seconds,
+        } = clock;
+        Self {
+            negative,
+            hours,
+            minutes,
+            seconds,
+        }
+    }
+}
+
+/// The clock for a duration, or `None` when there is nothing to label — an
+/// absent duration, or a negative one (a gap in the data, not a short track).
+#[uniffi::export]
+pub fn bridge_clock(ms: Option<i64>) -> Option<BridgeDurationClock> {
+    bae_core::util::duration::DurationClock::from_millis(ms).map(BridgeDurationClock::from_core)
+}
+
+/// The countdown from a position within a duration. Clamped at the end of the
+/// track, so a position past the reported duration reads "-0:00".
+#[uniffi::export]
+pub fn bridge_remaining_clock(position_ms: u64, duration_ms: u64) -> BridgeDurationClock {
+    BridgeDurationClock::from_core(bae_core::util::duration::DurationClock::remaining(
+        position_ms,
+        duration_ms,
+    ))
+}
+
 /// Localization key for a track group's header word, given its side, or `None`
 /// for `Flat` (single-disc digital has no header). The UI resolves the key and
 /// substitutes the side letter / disc number the side carries.

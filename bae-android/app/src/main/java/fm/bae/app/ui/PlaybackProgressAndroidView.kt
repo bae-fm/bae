@@ -9,22 +9,49 @@ import android.widget.LinearLayout
 import android.widget.SeekBar
 import android.widget.TextView
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.common.C
+import fm.bae.app.durationClockText
 import fm.bae.app.playback.BaeCorePlayer
 import fm.bae.app.playback.PlaybackPosition
+import fm.bae.app.remainingClockText
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
 private const val SEEK_BAR_MAX = 10_000
 private const val TIME_LABEL_TEXT_SIZE_SP = 11f
 private const val TIME_LABEL_WIDTH_DP = 48
+
+/** What the seek bar draws: the [0,1] slider fraction and the two clock labels
+ *  rendered from core's projection of the raw position. */
+internal data class SeekBarState(
+    val progress: Double,
+    val elapsed: String,
+    val remaining: String,
+)
+
+/** Render a raw playback position into the labels the bar draws. A track with no
+ *  known length has no countdown to show. */
+internal fun Context.seekBarState(position: PlaybackPosition): SeekBarState =
+    SeekBarState(
+        progress = position.progress,
+        elapsed = durationClockText(position.positionMs),
+        remaining =
+            if (position.positionMs != null && position.durationMs != null) {
+                remainingClockText(position.positionMs, position.durationMs)
+            } else {
+                ""
+            },
+    )
 
 @Composable
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
@@ -32,12 +59,16 @@ fun PlaybackProgressAndroidView(
     player: BaeCorePlayer,
     modifier: Modifier = Modifier,
 ) {
+    val context = LocalContext.current
+    // One flow instance per (player, context): the view rebinds only when the
+    // flow identity changes, so mapping inline would re-collect every recomposition.
+    val state = remember(player, context) { player.position.map(context::seekBarState) }
     AndroidView(
         modifier = modifier,
-        factory = { context -> PlaybackProgressView(context) },
+        factory = { viewContext -> PlaybackProgressView(viewContext) },
         update = { view ->
             view.bind(
-                position = player.position,
+                state = state,
                 onSeekRatio = { ratio ->
                     val duration = player.duration
                     if (duration != C.TIME_UNSET && duration > 0L) {
@@ -79,7 +110,7 @@ internal class PlaybackProgressView(
     var onSeekRatio: (Double) -> Unit = {}
 
     private var isDragging = false
-    private var position: Flow<PlaybackPosition>? = null
+    private var state: Flow<SeekBarState>? = null
     private var positionScope: CoroutineScope? = null
     private var positionJob: Job? = null
 
@@ -99,29 +130,29 @@ internal class PlaybackProgressView(
         addView(remainingTextView)
     }
 
-    fun setPosition(position: PlaybackPosition) {
-        elapsedTextView.text = position.elapsedLabel
-        remainingTextView.text = position.remainingLabel
+    fun setPosition(state: SeekBarState) {
+        elapsedTextView.text = state.elapsed
+        remainingTextView.text = state.remaining
         if (!isDragging) {
-            seekBar.progress = progressToSeekBar(position.progress)
+            seekBar.progress = progressToSeekBar(state.progress)
         }
     }
 
     fun bind(
-        position: Flow<PlaybackPosition>,
+        state: Flow<SeekBarState>,
         onSeekRatio: (Double) -> Unit,
     ) {
         this.onSeekRatio = onSeekRatio
-        if (this.position === position && positionJob?.isActive == true) {
+        if (this.state === state && positionJob?.isActive == true) {
             return
         }
-        this.position = position
+        this.state = state
         positionScope?.cancel()
         val scope = CoroutineScope(Dispatchers.Main.immediate + SupervisorJob())
         positionScope = scope
         positionJob =
             scope.launch {
-                position.collect { setPosition(it) }
+                state.collect { setPosition(it) }
             }
     }
 
@@ -129,7 +160,7 @@ internal class PlaybackProgressView(
         positionScope?.cancel()
         positionScope = null
         positionJob = null
-        position = null
+        state = null
         super.onDetachedFromWindow()
     }
 

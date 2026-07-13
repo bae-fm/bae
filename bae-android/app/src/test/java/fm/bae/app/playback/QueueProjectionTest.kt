@@ -1,7 +1,6 @@
 package fm.bae.app.playback
 
 import android.os.Looper
-import fm.bae.app.formatDurationMs
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -50,7 +49,7 @@ class QueueProjectionTest {
         title = "Title $id",
         artist = "Artist Name",
         albumTitle = "Album Title",
-        durationLabel = formatDurationMs(durationMs),
+        durationMs = durationMs,
         coverImageId = coverImageId,
     )
 
@@ -140,7 +139,7 @@ class QueueProjectionTest {
     }
 
     @Test
-    fun entryWithNoDurationProjectsEmptyDurationLabel() {
+    fun entryWithNoDurationProjectsNoDuration() {
         val player = player()
 
         player.onQueueUpdated(
@@ -153,7 +152,7 @@ class QueueProjectionTest {
 
         val manual = player.queue.value.manual
         val projected = manual.single()
-        assertEquals("", projected.durationLabel)
+        assertNull(projected.durationMs)
         assertNull(projected.coverImageId)
     }
 

@@ -7,10 +7,10 @@ namespace Bae.Windows.Tests;
 
 /// <summary>
 /// Locks the behavior of the locale-aware value formatters in <see cref="Loc"/>
-/// — the reimplementation of macOS's ByteCountFormatter (byte counts) and
-/// DateComponentsFormatter (durations), plus locale-grouped whole numbers.
-/// Every case pins an explicit culture so the assertions don't depend on the
-/// host's default locale.
+/// — the reimplementation of macOS's ByteCountFormatter (byte counts), the clock
+/// renderer over the fields core hands across the bridge, and locale-grouped
+/// whole numbers. Every case pins an explicit culture so the assertions don't
+/// depend on the host's default locale.
 /// </summary>
 public sealed class LocFormattersTests
 {
@@ -76,45 +76,45 @@ public sealed class LocFormattersTests
     public void Bytes_WholeBytesHaveNoDecimalRegardlessOfCulture() =>
         Assert.Equal("999 B", WithCulture("de-DE", () => Loc.Bytes(999)));
 
-    // ── Duration: minutes:seconds, rolling into hours; null → empty; negatives
-    //    clamped to zero. ──────────────────────────────────────────────────────
-
-    [Fact]
-    public void Duration_NullIsEmpty() =>
-        Assert.Equal(string.Empty, WithCulture("en-US", () => Loc.Duration(null)));
+    // ── Clock: the digits of the fields core hands over. Which fields exist —
+    //    whether there is an hours field, whether there is a clock at all — is
+    //    core's decision and is pinned by bae-core's `util::duration` tests; what
+    //    is pinned here is the rendering: separators, padding, sign, culture. ───
 
     [Theory]
-    [InlineData(0, "0:00")]
-    [InlineData(7_000, "0:07")] // seconds zero-padded to two digits
-    [InlineData(67_000, "1:07")]
-    [InlineData(187_000, "3:07")]
-    [InlineData(599_000, "9:59")]
-    [InlineData(3_599_000, "59:59")] // last second before an hour accrues
-    public void Duration_MinutesSeconds(long ms, string expected) =>
-        Assert.Equal(expected, WithCulture("en-US", () => Loc.Duration(ms)));
+    [InlineData(0u, 0u, "0:00")]
+    [InlineData(0u, 7u, "0:07")] // seconds zero-padded to two digits
+    [InlineData(3u, 7u, "3:07")] // the leading field is not padded
+    [InlineData(59u, 59u, "59:59")]
+    public void Clock_MinutesSeconds(uint minutes, uint seconds, string expected) =>
+        Assert.Equal(expected, WithCulture("en-US", () => Loc.Clock(false, null, minutes, seconds)));
 
     [Theory]
-    [InlineData(3_600_000, "1:00:00")] // exactly one hour switches to h:mm:ss
-    [InlineData(3_661_000, "1:01:01")]
-    [InlineData(3_723_000, "1:02:03")]
-    [InlineData(5_999_000, "1:39:59")]
-    [InlineData(36_000_000, "10:00:00")]
-    public void Duration_HoursMinutesSeconds(long ms, string expected) =>
-        Assert.Equal(expected, WithCulture("en-US", () => Loc.Duration(ms)));
+    [InlineData(1ul, 0u, 0u, "1:00:00")]
+    [InlineData(1ul, 2u, 3u, "1:02:03")] // minutes pad once they follow an hours field
+    [InlineData(10ul, 0u, 0u, "10:00:00")]
+    public void Clock_HoursMinutesSeconds(ulong hours, uint minutes, uint seconds, string expected) =>
+        Assert.Equal(expected, WithCulture("en-US", () => Loc.Clock(false, hours, minutes, seconds)));
 
     [Fact]
-    public void Duration_NegativeClampsToZero() =>
-        Assert.Equal("0:00", WithCulture("en-US", () => Loc.Duration(-5_000)));
+    public void Clock_NegativeCountsDownWithAMinusPrefix() =>
+        Assert.Equal("-2:30", WithCulture("en-US", () => Loc.Clock(true, null, 2, 30)));
 
     [Fact]
-    public void Duration_SubSecondFloorsToZeroSeconds() =>
-        Assert.Equal("0:00", WithCulture("en-US", () => Loc.Duration(400)));
+    public void Clock_NegativeZeroKeepsTheMinus() =>
+        Assert.Equal("-0:00", WithCulture("en-US", () => Loc.Clock(true, null, 0, 0)));
 
     [Fact]
-    public void Duration_FieldSeparatorsAreCultureStable() =>
+    public void Clock_FieldSeparatorsAreCultureStable() =>
         // No decimal/grouping is involved, so a comma-decimal culture renders
         // the same m:ss form.
-        Assert.Equal("3:07", WithCulture("de-DE", () => Loc.Duration(187_000)));
+        Assert.Equal("3:07", WithCulture("de-DE", () => Loc.Clock(false, null, 3, 7)));
+
+    [Fact]
+    public void Clock_LongHoursFieldIsNotGrouped() =>
+        // The leading field is a count of hours, not a quantity: "100:00:00",
+        // never "1,000:00:00" at four digits.
+        Assert.Equal("1000:00:00", WithCulture("en-US", () => Loc.Clock(false, 1000, 0, 0)));
 
     // ── Number: locale-grouped whole numbers (N0). ─────────────────────────────
 

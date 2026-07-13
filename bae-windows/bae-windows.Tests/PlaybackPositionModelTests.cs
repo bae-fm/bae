@@ -7,7 +7,10 @@ namespace Bae.Windows.Tests;
 /// <summary>
 /// Locks the pure position math behind the now-playing bar: seek projection
 /// (ratio clamping, target rounding, duration cap), the projection-wins rule,
-/// stale-track rejection, remaining time, and the now-playing state transitions.
+/// stale-track rejection, the time-label mode token, and the now-playing state
+/// transitions. The elapsed / remaining clock labels are not here: core decides
+/// their fields (bae-core's `util::duration`) and <see cref="Loc.Clock"/> renders
+/// them (LocFormattersTests).
 /// </summary>
 public sealed class PlaybackPositionModelTests
 {
@@ -101,38 +104,6 @@ public sealed class PlaybackPositionModelTests
     [Fact]
     public void Classify_RejectsStaleTrack() =>
         Assert.Equal(PlaybackPositionRejection.StaleTrack, PlaybackPositionModel.ClassifyPlaybackPosition("track-1", "track-2"));
-
-    // ── RemainingDurationMs ──
-
-    [Fact]
-    public void Remaining_Subtracts() =>
-        Assert.Equal(150_000UL, PlaybackPositionModel.RemainingDurationMs(50_000, 200_000));
-
-    [Fact]
-    public void Remaining_EqualIsZero() =>
-        Assert.Equal(0UL, PlaybackPositionModel.RemainingDurationMs(200_000, 200_000));
-
-    [Fact]
-    public void Remaining_PositionBeyondDurationThrows() =>
-        Assert.Throws<InvalidOperationException>(() => PlaybackPositionModel.RemainingDurationMs(200_001, 200_000));
-
-    // ── PositionLabel: elapsed, or a minus-prefixed remaining countdown ──
-
-    [Fact]
-    public void PositionLabel_ElapsedShowsPosition() =>
-        Assert.Equal(PlaybackPositionModel.DurationLabel(50_000), PlaybackPositionModel.PositionLabel(false, 50_000, 200_000));
-
-    [Fact]
-    public void PositionLabel_RemainingCountsDownWithMinusPrefix() =>
-        Assert.Equal("-2:30", PlaybackPositionModel.PositionLabel(true, 50_000, 200_000));
-
-    [Fact]
-    public void PositionLabel_RemainingAtTrackEndIsMinusZero() =>
-        Assert.Equal("-0:00", PlaybackPositionModel.PositionLabel(true, 200_000, 200_000));
-
-    [Fact]
-    public void PositionLabel_RemainingBeyondDurationThrows() =>
-        Assert.Throws<InvalidOperationException>(() => PlaybackPositionModel.PositionLabel(true, 200_001, 200_000));
 
     // ── TimeLabelToken / ShowRemainingFromToken: round-trip and fallback ──
 

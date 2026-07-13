@@ -1,8 +1,5 @@
 package fm.bae.app.playback
 
-import fm.bae.app.formatDurationMs
-import fm.bae.app.formatRemainingMs
-
 /**
  * Pure seek and position math for the now-playing bar and the Media3 playback
  * state. Owns the position anchor from core's progress events, the current
@@ -151,14 +148,14 @@ internal class PlaybackPositionModel {
     }
 
     /**
-     * The seek-bar projection: the [0,1] slider fraction plus core's pre-formatted
-     * elapsed/remaining labels. When a duration is known the fraction is derived
-     * from the position; otherwise core's raw progress is used. Empty when no
-     * track plays ([hasCurrentTrack] false).
+     * The seek-bar projection: the [0,1] slider fraction plus the raw position and
+     * duration the bar renders its clock labels from. When a duration is known the
+     * fraction is derived from the position; otherwise core's raw progress is used.
+     * Empty when no track plays ([hasCurrentTrack] false).
      */
     fun position(hasCurrentTrack: Boolean): PlaybackPosition {
         if (!hasCurrentTrack) {
-            return PlaybackPosition(0.0, "", "")
+            return PlaybackPosition(0.0, null, null)
         }
         val positionMs = effectivePositionMs
         val total = durationMs
@@ -170,8 +167,8 @@ internal class PlaybackPositionModel {
             }
         return PlaybackPosition(
             progress = progress,
-            elapsedLabel = formatDurationMs(positionMs),
-            remainingLabel = if (total != null) formatRemainingMs(positionMs, total) else "",
+            positionMs = positionMs,
+            durationMs = total,
         )
     }
 }

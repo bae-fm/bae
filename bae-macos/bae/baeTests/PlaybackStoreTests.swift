@@ -314,11 +314,14 @@ struct PlaybackStoreSeekProjectionTests {
         )
 
         #expect(accepted.positionMs == 25_100)
+        // 74.9s left floors to "-1:14": a clock shows the time that has actually
+        // elapsed or is actually left, never a rounded-up second that hasn't
+        // happened yet.
         expectPosition(
             store.playbackPositionSubject.value,
             progress: 0.251,
             elapsed: "0:25",
-            remaining: "-1:15"
+            remaining: "-1:14"
         )
     }
 

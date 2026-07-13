@@ -75,7 +75,7 @@ public sealed class Track
     public long? DurationMs => _track.DurationMs;
     public string Artist => _track.ArtistNames;
     public string PositionLabel => _track.PositionText;
-    public string DurationLabel => Loc.Duration(DurationMs);
+    public string DurationLabel => BridgeDisplay.Clock(DurationMs);
 
     /// <summary>The list row; used as the default item text.</summary>
     public override string ToString() => $"{PositionLabel}  {Title}  {DurationLabel}".Trim();

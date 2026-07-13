@@ -1,8 +1,6 @@
 package fm.bae.app.playback
 
 import android.os.Looper
-import fm.bae.app.formatDurationMs
-import fm.bae.app.formatRemainingMs
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -36,48 +34,48 @@ class PlaybackSeekProjectionTest {
         assertPosition(
             player.position.value,
             progress = 0.75,
-            elapsed = formatDurationMs(75_000),
-            remaining = formatRemainingMs(75_000, 100_000),
+            positionMs = 75_000,
+            durationMs = 100_000,
         )
 
         player.onProgress(positionMs = 20_000, durationMs = 100_000, progress = 0.20)
         assertPosition(
             player.position.value,
             progress = 0.75,
-            elapsed = formatDurationMs(75_000),
-            remaining = formatRemainingMs(75_000, 100_000),
+            positionMs = 75_000,
+            durationMs = 100_000,
         )
 
         player.onProgress(positionMs = 75_050, durationMs = 100_000, progress = 0.7505)
         assertPosition(
             player.position.value,
             progress = 0.75,
-            elapsed = formatDurationMs(75_000),
-            remaining = formatRemainingMs(75_000, 100_000),
+            positionMs = 75_000,
+            durationMs = 100_000,
         )
 
         player.onProgress(positionMs = 80_000, durationMs = 100_000, progress = 0.80)
         assertPosition(
             player.position.value,
             progress = 0.75,
-            elapsed = formatDurationMs(75_000),
-            remaining = formatRemainingMs(75_000, 100_000),
+            positionMs = 75_000,
+            durationMs = 100_000,
         )
 
         player.onSeeked(positionMs = 75_000, durationMs = 100_000, progress = 0.75)
         assertPosition(
             player.position.value,
             progress = 0.75,
-            elapsed = formatDurationMs(75_000),
-            remaining = formatRemainingMs(75_000, 100_000),
+            positionMs = 75_000,
+            durationMs = 100_000,
         )
 
         player.onProgress(positionMs = 80_000, durationMs = 100_000, progress = 0.80)
         assertPosition(
             player.position.value,
             progress = 0.80,
-            elapsed = formatDurationMs(80_000),
-            remaining = formatRemainingMs(80_000, 100_000),
+            positionMs = 80_000,
+            durationMs = 100_000,
         )
     }
 
@@ -95,16 +93,16 @@ class PlaybackSeekProjectionTest {
         assertPosition(
             player.position.value,
             progress = 0.75,
-            elapsed = formatDurationMs(75_000),
-            remaining = formatRemainingMs(75_000, 100_000),
+            positionMs = 75_000,
+            durationMs = 100_000,
         )
 
         player.onSeeked(positionMs = 75_000, durationMs = 100_000, progress = 0.75)
         assertPosition(
             player.position.value,
             progress = 0.75,
-            elapsed = formatDurationMs(75_000),
-            remaining = formatRemainingMs(75_000, 100_000),
+            positionMs = 75_000,
+            durationMs = 100_000,
         )
     }
 
@@ -135,8 +133,8 @@ class PlaybackSeekProjectionTest {
         assertPosition(
             player.position.value,
             progress = 0.75,
-            elapsed = formatDurationMs(75_000),
-            remaining = formatRemainingMs(75_000, 100_000),
+            positionMs = 75_000,
+            durationMs = 100_000,
         )
     }
 
@@ -156,8 +154,8 @@ class PlaybackSeekProjectionTest {
         assertPosition(
             player.position.value,
             progress = 0.75,
-            elapsed = formatDurationMs(75_000),
-            remaining = formatRemainingMs(75_000, 100_000),
+            positionMs = 75_000,
+            durationMs = 100_000,
         )
     }
 
@@ -175,24 +173,24 @@ class PlaybackSeekProjectionTest {
         assertPosition(
             player.position.value,
             progress = 0.25,
-            elapsed = formatDurationMs(25_000),
-            remaining = formatRemainingMs(25_000, 100_000),
+            positionMs = 25_000,
+            durationMs = 100_000,
         )
 
         player.onProgress(positionMs = 82_000, durationMs = 100_000, progress = 0.82)
         assertPosition(
             player.position.value,
             progress = 0.25,
-            elapsed = formatDurationMs(25_000),
-            remaining = formatRemainingMs(25_000, 100_000),
+            positionMs = 25_000,
+            durationMs = 100_000,
         )
 
         player.onProgress(positionMs = 25_000, durationMs = 100_000, progress = 0.25)
         assertPosition(
             player.position.value,
             progress = 0.25,
-            elapsed = formatDurationMs(25_000),
-            remaining = formatRemainingMs(25_000, 100_000),
+            positionMs = 25_000,
+            durationMs = 100_000,
         )
     }
 
@@ -212,7 +210,7 @@ class PlaybackSeekProjectionTest {
     }
 
     @Test
-    fun stoppedPlaybackResetsProjectedPositionLabels() {
+    fun stoppedPlaybackResetsProjectedPosition() {
         val (player, _) = player()
 
         player.startPlaying(durationMs = 100_000uL)
@@ -223,8 +221,8 @@ class PlaybackSeekProjectionTest {
         assertPosition(
             player.position.value,
             progress = 0.0,
-            elapsed = "",
-            remaining = "",
+            positionMs = null,
+            durationMs = null,
         )
     }
 
@@ -301,12 +299,12 @@ class PlaybackSeekProjectionTest {
     private fun assertPosition(
         position: PlaybackPosition,
         progress: Double,
-        elapsed: String,
-        remaining: String,
+        positionMs: Long?,
+        durationMs: Long?,
     ) {
         assertEquals(progress, position.progress, 0.0)
-        assertEquals(elapsed, position.elapsedLabel)
-        assertEquals(remaining, position.remainingLabel)
+        assertEquals(positionMs, position.positionMs)
+        assertEquals(durationMs, position.durationMs)
     }
 
     private class SeekRecordingHandle : AppHandle(NoHandle) {

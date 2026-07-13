@@ -86,34 +86,6 @@ public static class PlaybackPositionModel
         return PlaybackPositionRejection.Accepted;
     }
 
-    public static ulong RemainingDurationMs(ulong positionMs, ulong durationMs)
-    {
-        if (positionMs > durationMs)
-        {
-            throw new InvalidOperationException(
-                $"Playback position {positionMs} exceeds duration {durationMs}.");
-        }
-
-        return durationMs - positionMs;
-    }
-
-    public static string DurationLabel(ulong milliseconds)
-    {
-        if (milliseconds > long.MaxValue)
-        {
-            throw new InvalidOperationException($"Duration {milliseconds}ms exceeds supported label range.");
-        }
-
-        return Loc.Duration((long)milliseconds);
-    }
-
-    // The leading time label: elapsed, or a minus-prefixed remaining countdown
-    // when the user has toggled it (the trailing label is always the total).
-    public static string PositionLabel(bool showRemaining, ulong positionMs, ulong durationMs) =>
-        showRemaining
-            ? "-" + DurationLabel(RemainingDurationMs(positionMs, durationMs))
-            : DurationLabel(positionMs);
-
     // The persisted time-label mode, as the token the store writes to disk and
     // reads back. Unknown or missing tokens fall back to elapsed.
     public static string TimeLabelToken(bool showRemaining) =>

@@ -1,6 +1,5 @@
 package fm.bae.app.ui
 
-import fm.bae.app.playback.PlaybackPosition
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -22,10 +21,10 @@ class PlaybackProgressViewTest {
         val view = PlaybackProgressView(RuntimeEnvironment.getApplication())
 
         view.setPosition(
-            PlaybackPosition(
+            SeekBarState(
                 progress = 0.25,
-                elapsedLabel = "1:00",
-                remainingLabel = "-3:00",
+                elapsed = "1:00",
+                remaining = "-3:00",
             ),
         )
 
@@ -37,11 +36,11 @@ class PlaybackProgressViewTest {
     @Test
     fun setPositionDoesNotMoveThumbWhileDragging() {
         val view = PlaybackProgressView(RuntimeEnvironment.getApplication())
-        view.setPosition(PlaybackPosition(0.20, "0:20", "-1:40"))
+        view.setPosition(SeekBarState(0.20, "0:20", "-1:40"))
 
         view.beginTracking()
         view.seekBar.progress = 7_000
-        view.setPosition(PlaybackPosition(0.30, "0:30", "-1:30"))
+        view.setPosition(SeekBarState(0.30, "0:30", "-1:30"))
 
         assertEquals("0:30", view.elapsedTextView.text.toString())
         assertEquals("-1:30", view.remainingTextView.text.toString())
@@ -64,16 +63,16 @@ class PlaybackProgressViewTest {
     @Test
     fun bindCollectsPositionUpdates() {
         val view = PlaybackProgressView(RuntimeEnvironment.getApplication())
-        val position = MutableStateFlow(PlaybackPosition(0.10, "0:10", "-1:30"))
+        val state = MutableStateFlow(SeekBarState(0.10, "0:10", "-1:30"))
 
-        view.bind(position) {}
+        view.bind(state) {}
         ShadowLooper.idleMainLooper()
 
         assertEquals("0:10", view.elapsedTextView.text.toString())
         assertEquals("-1:30", view.remainingTextView.text.toString())
         assertEquals(1_000, view.seekBar.progress)
 
-        position.value = PlaybackPosition(0.40, "0:40", "-1:00")
+        state.value = SeekBarState(0.40, "0:40", "-1:00")
         ShadowLooper.idleMainLooper()
 
         assertEquals("0:40", view.elapsedTextView.text.toString())
@@ -84,13 +83,13 @@ class PlaybackProgressViewTest {
     @Test
     fun rebindCancelsPreviousPositionScope() {
         val view = PlaybackProgressView(RuntimeEnvironment.getApplication())
-        val firstPosition = MutableSharedFlow<PlaybackPosition>()
-        val secondPosition = MutableSharedFlow<PlaybackPosition>()
+        val firstState = MutableSharedFlow<SeekBarState>()
+        val secondState = MutableSharedFlow<SeekBarState>()
 
-        view.bind(firstPosition) {}
+        view.bind(firstState) {}
         val firstScopeJob = view.positionScopeJob()
 
-        view.bind(secondPosition) {}
+        view.bind(secondState) {}
         val secondScopeJob = view.positionScopeJob()
 
         assertEquals(false, firstScopeJob?.isActive)
@@ -101,9 +100,9 @@ class PlaybackProgressViewTest {
     @Test
     fun detachCancelsPositionScope() {
         val view = PlaybackProgressView(RuntimeEnvironment.getApplication())
-        val position = MutableSharedFlow<PlaybackPosition>()
+        val state = MutableSharedFlow<SeekBarState>()
 
-        view.bind(position) {}
+        view.bind(state) {}
         val scopeJob = view.positionScopeJob()
 
         view.detachFromWindow()

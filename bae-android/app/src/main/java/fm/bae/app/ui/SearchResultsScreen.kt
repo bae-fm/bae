@@ -30,7 +30,7 @@ import androidx.compose.ui.unit.dp
 import fm.bae.app.BaeLogger
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
-import fm.bae.app.formatDurationMs
+import fm.bae.app.durationClockText
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import uniffi.bae_bridge.BridgeAlbumSearchResult
@@ -264,7 +264,7 @@ private fun TrackResultRow(
                 maxLines = 1,
             )
         }
-        val durationLabel = formatDurationMs(track.durationMs)
+        val durationLabel = LocalContext.current.durationClockText(track.durationMs)
         if (durationLabel.isNotEmpty()) {
             Spacer(modifier = Modifier.width(12.dp))
             Text(

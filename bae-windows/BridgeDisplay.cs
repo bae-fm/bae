@@ -4,6 +4,30 @@ namespace Bae.Windows;
 
 internal static class BridgeDisplay
 {
+    /// <summary>
+    /// The clock label for a raw millisecond duration ("3:07", "1:12:34"), or an
+    /// empty string when there is nothing to label — no duration, or a negative
+    /// one. Core decides the label's fields; <see cref="Loc.Clock"/> renders them.
+    /// </summary>
+    internal static string Clock(long? milliseconds) =>
+        Render(BaeBridgeMethods.BridgeClock(milliseconds));
+
+    /// <summary>The clock label for an unsigned duration, as playback reports it.</summary>
+    internal static string Clock(ulong milliseconds) =>
+        Clock(checked((long)milliseconds));
+
+    /// <summary>
+    /// The remaining clock label from a position within a duration ("-1:23"). Core
+    /// clamps the countdown at the end of the track.
+    /// </summary>
+    internal static string RemainingClock(ulong positionMs, ulong durationMs) =>
+        Render(BaeBridgeMethods.BridgeRemainingClock(positionMs, durationMs));
+
+    private static string Render(BridgeDurationClock? clock) =>
+        clock is null
+            ? string.Empty
+            : Loc.Clock(clock.Negative, clock.Hours, clock.Minutes, clock.Seconds);
+
     internal static string LocalizedLine(BridgeException exception) =>
         exception switch
         {

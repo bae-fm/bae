@@ -2,11 +2,11 @@ package fm.bae.app
 
 import android.content.Context
 import android.icu.text.MessageFormat
-import android.text.format.DateUtils
 import android.text.format.Formatter
+import uniffi.bae_bridge.BridgeDurationClock
+import uniffi.bae_bridge.bridgeClock
+import uniffi.bae_bridge.bridgeRemainingClock
 import java.util.Locale
-
-private const val MS_PER_SECOND = 1000L
 
 // Renders bae's shared `core.*` catalog strings for the current locale.
 //
@@ -47,22 +47,47 @@ fun Context.coreString(
 fun Context.currentLocale(): Locale = resources.configuration.locales[0]
 
 /**
- * Format a millisecond duration as a locale-aware clock label (e.g. "3:07"),
- * or empty when absent or negative. Mirrors macOS's `DurationClock.text`.
- * [DateUtils.formatElapsedTime] renders "M:SS" / "H:MM:SS" using locale digits.
+ * The clock label for a duration in ms (e.g. "3:07"), or empty when there is
+ * nothing to label. Core decides the label's fields — whether it has an hours
+ * field, and whether it exists at all; this renders them for the locale.
  */
-fun formatDurationMs(ms: Long?): String {
-    val msVal = ms?.takeIf { it >= 0 } ?: return ""
-    return DateUtils.formatElapsedTime(msVal / MS_PER_SECOND)
-}
+fun Context.durationClockText(ms: Long?): String = clockText(bridgeClock(ms), currentLocale())
 
-/** Format the time remaining as "-M:SS", clamped at zero. */
-fun formatRemainingMs(
+/**
+ * The remaining clock label from a position within a duration (e.g. "-1:23").
+ * Core clamps the countdown at the end of the track.
+ */
+fun Context.remainingClockText(
     positionMs: Long,
     durationMs: Long,
+): String =
+    clockText(
+        bridgeRemainingClock(positionMs.toULong(), durationMs.toULong()),
+        currentLocale(),
+    )
+
+/**
+ * Render a clock's fields: `:` between them, every field after the first padded
+ * to two digits, a leading `-` for a countdown. [String.format] substitutes the
+ * locale's digits, so an Arabic-Indic locale reads "٣:٠٧" where "en" reads
+ * "3:07" — which is why this lives here and not in core.
+ */
+internal fun clockText(
+    clock: BridgeDurationClock?,
+    locale: Locale,
 ): String {
-    val remaining = (durationMs - positionMs).coerceAtLeast(0)
-    return "-" + formatDurationMs(remaining)
+    if (clock == null) {
+        return ""
+    }
+    val sign = if (clock.negative) "-" else ""
+    val minutes = clock.minutes.toLong()
+    val seconds = clock.seconds.toLong()
+    val hours = clock.hours
+    return if (hours == null) {
+        String.format(locale, "%s%d:%02d", sign, minutes, seconds)
+    } else {
+        String.format(locale, "%s%d:%02d:%02d", sign, hours.toLong(), minutes, seconds)
+    }
 }
 
 /** Format a byte count for the current locale (e.g. "35 MB" / "35 Mo"). */

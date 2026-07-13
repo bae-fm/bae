@@ -38,7 +38,7 @@ public sealed class TrackSearchResult
     public string AlbumId => _track.AlbumId;
     public string AlbumTitle => _track.AlbumTitle;
     public string ArtistName => _track.ArtistName;
-    public string DurationLabel => Loc.Duration(DurationMs);
+    public string DurationLabel => BridgeDisplay.Clock(DurationMs);
 }
 
 public sealed class ComposerSummary : INotifyPropertyChanged

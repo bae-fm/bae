@@ -1167,7 +1167,7 @@ internal sealed class StorageDialog
 
     private static string OutboxEtaLabel(BridgeOutboxSnapshot snapshot) =>
         snapshot.EtaSeconds is { } seconds
-            ? Loc.Core("core.outbox.eta", "duration", Loc.Duration(checked(checked((long)seconds) * 1000)))
+            ? Loc.Core("core.outbox.eta", "duration", BridgeDisplay.Clock(checked(checked((long)seconds) * 1000)))
             : string.Empty;
 
     private static string OutboxBytesLabel(BridgeOutboxSnapshot snapshot)

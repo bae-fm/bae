@@ -17,7 +17,6 @@ import androidx.media3.common.util.Util
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import fm.bae.app.BaeLogger
-import fm.bae.app.formatDurationMs
 import fm.bae.app.runLoggedBridgeCommand
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -52,19 +51,21 @@ data class NowPlaying(
 
 /**
  * Live playback position for the seek bar. [progress] is the bridge's [0,1]
- * fraction for the slider; the labels are pre-formatted by core (no client-side
- * time formatting).
+ * fraction for the slider; [positionMs] and [durationMs] are raw milliseconds,
+ * which the seek bar turns into clock labels through core's projection. Null
+ * means there is no label: nothing is playing, or the track's length is unknown.
  */
 data class PlaybackPosition(
     val progress: Double,
-    val elapsedLabel: String,
-    val remainingLabel: String,
+    val positionMs: Long?,
+    val durationMs: Long?,
 )
 
 /** One queue entry the [fm.bae.app.ui.QueueScreen] renders. The UI projection
- *  of the player's internal queue metadata: [durationLabel] is pre-formatted by
- *  core, [coverImageId] is the cover image id (a release id) the row fetches
- *  bytes for. [entryId] is the per-instance id the row keys on and that
+ *  of the player's internal queue metadata: [durationMs] is the track's raw
+ *  length (null when core reports none), which the row renders as a clock label;
+ *  [coverImageId] is the cover image id (a release id) the row fetches bytes
+ *  for. [entryId] is the per-instance id the row keys on and that
  *  remove/reorder/skip target — unique even when the same track is queued
  *  twice. */
 data class QueueItem(
@@ -73,7 +74,7 @@ data class QueueItem(
     val title: String,
     val artist: String,
     val albumTitle: String,
-    val durationLabel: String,
+    val durationMs: Long?,
     val coverImageId: String?,
 )
 
@@ -425,11 +426,11 @@ class BaeCorePlayer(
         val title: String,
         val artist: String,
         val albumTitle: String,
-        /** Pre-formatted by core (e.g. "3:07"); empty when no duration. Carried
-         *  by queue entries; the Playing/Paused payload has no label, so the
-         *  current-track override leaves it empty (the queue projection reads
-         *  the label off the queue entry, not this override). */
-        val durationLabel: String,
+        /** The track's raw length, or null when core reports none. Carried by
+         *  queue entries; the Playing/Paused payload has no duration, so the
+         *  current-track override leaves it null (the queue projection reads the
+         *  duration off the queue entry, not this override). */
+        val durationMs: Long?,
         /** The cover image id (a release id) whose bytes the now-playing artwork
          *  and the in-app rows fetch, or null when the track has no cover. */
         val coverImageId: String?,
@@ -631,7 +632,7 @@ class BaeCorePlayer(
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
-    private val _position = MutableStateFlow(PlaybackPosition(0.0, "", ""))
+    private val _position = MutableStateFlow(PlaybackPosition(0.0, null, null))
     val position: StateFlow<PlaybackPosition> = _position.asStateFlow()
 
     // The two-lane queue projection the in-app QueueScreen renders as distinct
@@ -836,7 +837,7 @@ class BaeCorePlayer(
             title = title,
             artist = artist,
             albumTitle = albumTitle,
-            durationLabel = "",
+            durationMs = null,
             coverImageId = coverImageId,
         )
 
@@ -1058,7 +1059,7 @@ class BaeCorePlayer(
             title = title,
             artist = artist,
             albumTitle = albumTitle,
-            durationLabel = durationLabel,
+            durationMs = durationMs,
             coverImageId = coverImageId,
         )
     }
@@ -1070,7 +1071,7 @@ class BaeCorePlayer(
             title = title,
             artist = artistNames,
             albumTitle = albumTitle,
-            durationLabel = formatDurationMs(durationMs),
+            durationMs = durationMs,
             coverImageId = coverImageId,
         )
 

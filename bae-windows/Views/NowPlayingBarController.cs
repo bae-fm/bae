@@ -232,8 +232,10 @@ internal sealed class NowPlayingBarController
     private void RenderTimeLabels(PlaybackPositionRender render)
     {
         _lastPosition = render;
-        _elapsed.Text = PlaybackPositionModel.PositionLabel(_showRemaining, render.PositionMs, render.DurationMs);
-        _duration.Text = PlaybackPositionModel.DurationLabel(render.DurationMs);
+        _elapsed.Text = _showRemaining
+            ? BridgeDisplay.RemainingClock(render.PositionMs, render.DurationMs)
+            : BridgeDisplay.Clock(render.PositionMs);
+        _duration.Text = BridgeDisplay.Clock(render.DurationMs);
     }
 
     // Flip the leading label between elapsed and remaining, persist the choice,

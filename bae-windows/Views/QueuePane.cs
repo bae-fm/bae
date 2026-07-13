@@ -73,7 +73,7 @@ internal sealed class QueuePane
     {
         internal string EntryId => Entry.EntryId;
         public override string ToString() =>
-            $"{Entry.Title} — {Entry.ArtistNames} · {Loc.Duration(Entry.DurationMs)}".Trim();
+            $"{Entry.Title} — {Entry.ArtistNames} · {BridgeDisplay.Clock(Entry.DurationMs)}".Trim();
     }
 
     // The empty manual-lane state: shown instead of any manual EntryRow when the

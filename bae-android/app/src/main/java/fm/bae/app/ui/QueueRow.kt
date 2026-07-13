@@ -24,10 +24,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import fm.bae.app.R
+import fm.bae.app.durationClockText
 import fm.bae.app.playback.NowPlaying
 import fm.bae.app.playback.QueueItem
 
@@ -100,16 +102,17 @@ internal fun QueueRow(
         )
         Spacer(modifier = Modifier.width(12.dp))
         QueueItemText(item, modifier = Modifier.weight(1f))
-        // durationLabel is pre-formatted (empty when core has no duration); keep
-        // the slot in the tree and toggle via alpha so rows align.
+        // The label is empty when core reports no duration; keep the slot in the
+        // tree and toggle via alpha so rows align.
+        val durationLabel = LocalContext.current.durationClockText(item.durationMs)
         Text(
-            text = item.durationLabel,
+            text = durationLabel,
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier =
                 Modifier
                     .padding(horizontal = 8.dp)
-                    .alpha(if (item.durationLabel.isEmpty()) 0f else 1f),
+                    .alpha(if (durationLabel.isEmpty()) 0f else 1f),
         )
         IconButton(onClick = onRemove) {
             Icon(

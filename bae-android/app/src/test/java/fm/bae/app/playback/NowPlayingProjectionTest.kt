@@ -30,7 +30,7 @@ class NowPlayingProjectionTest {
             title = "Title $id",
             artist = "Artist Name",
             albumTitle = "Album Title",
-            durationLabel = "",
+            durationMs = null,
             coverImageId = null,
         )
 

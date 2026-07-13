@@ -143,28 +143,20 @@ internal static class Loc
     }
 
     /// <summary>
-    /// A raw millisecond duration formatted as minutes:seconds for the current
-    /// locale (e.g. "3:07") — the analog of macOS's
-    /// <c>DateComponentsFormatter</c> in the now-playing / track-list context.
-    /// Hours roll into the leading field when present. Returns an empty string
-    /// for a null duration (unknown track length).
+    /// The digits of a clock label, from the fields core's <c>BridgeDurationClock</c>
+    /// carries: <c>:</c> between them, every field after the first padded to two
+    /// digits, a leading <c>-</c> for a countdown ("3:07", "1:12:34", "-0:42").
+    /// Which fields there are — whether an hours field appears at all — is core's
+    /// decision, not this method's. <see cref="BridgeDisplay"/> passes them in;
+    /// this stays over plain BCL types so it is testable off Windows.
     /// </summary>
-    internal static string Duration(long? milliseconds)
+    internal static string Clock(bool negative, ulong? hours, uint minutes, uint seconds)
     {
-        if (milliseconds is not { } ms)
-        {
-            return string.Empty;
-        }
-        var span = TimeSpan.FromMilliseconds(ms < 0 ? 0 : ms);
         var culture = CultureInfo.CurrentCulture;
-        // "m:ss", or "h:mm:ss" once an hour accrues — the conventional
-        // track/elapsed form. TimeSpan's own formatting can't drop the leading
-        // zero on minutes, so compose the fields explicitly.
-        return span.TotalHours >= 1
-            ? string.Format(
-                culture, "{0}:{1:00}:{2:00}",
-                (int)span.TotalHours, span.Minutes, span.Seconds)
-            : string.Format(culture, "{0}:{1:00}", span.Minutes, span.Seconds);
+        var sign = negative ? "-" : string.Empty;
+        return hours is { } h
+            ? string.Format(culture, "{0}{1}:{2:00}:{3:00}", sign, h, minutes, seconds)
+            : string.Format(culture, "{0}{1}:{2:00}", sign, minutes, seconds);
     }
 
     /// <summary>

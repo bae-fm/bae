@@ -1,19 +1,9 @@
 package fm.bae.app.playback
 
-import fm.bae.app.formatDurationMs
-import fm.bae.app.formatRemainingMs
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
-import org.junit.runner.RunWith
-import org.robolectric.RobolectricTestRunner
-import org.robolectric.annotation.Config
 
-// Robolectric is here only so the elapsed/remaining labels format through
-// android.text.format.DateUtils; the model itself holds no Android types and is
-// driven directly.
-@RunWith(RobolectricTestRunner::class)
-@Config(sdk = [35])
 class PlaybackPositionModelTest {
     @Test
     fun inTrackSeekProjectsDroppedPositionUntilSeekedCatchesUp() {
@@ -132,8 +122,8 @@ class PlaybackPositionModelTest {
 
         val position = model.position(hasCurrentTrack = true)
         assertEquals(0.33, position.progress, 0.0)
-        assertEquals(formatDurationMs(10_000), position.elapsedLabel)
-        assertEquals("", position.remainingLabel)
+        assertEquals(10_000L, position.positionMs)
+        assertNull(position.durationMs)
     }
 
     @Test
@@ -173,11 +163,8 @@ class PlaybackPositionModelTest {
     ) {
         val position = model.position(hasCurrentTrack)
         assertEquals(progress, position.progress, 0.0)
-        assertEquals(if (hasCurrentTrack) formatDurationMs(positionMs) else "", position.elapsedLabel)
-        assertEquals(
-            if (hasCurrentTrack && durationMs != null) formatRemainingMs(positionMs, durationMs) else "",
-            position.remainingLabel,
-        )
+        assertEquals(if (hasCurrentTrack) positionMs else null, position.positionMs)
+        assertEquals(if (hasCurrentTrack) durationMs else null, position.durationMs)
     }
 
     private companion object {

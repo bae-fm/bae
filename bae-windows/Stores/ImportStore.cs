@@ -253,7 +253,7 @@ internal sealed class ImportStore
         switch (evt)
         {
             case BridgeUiEvent.PreviewProgress previewProgress:
-                var elapsed = PlaybackPositionModel.DurationLabel(previewProgress.PositionMs);
+                var elapsed = BridgeDisplay.Clock(previewProgress.PositionMs);
                 PreviewElapsedText = _previewDurationLabel is null
                     ? elapsed
                     : $"{elapsed} / {_previewDurationLabel}";
@@ -263,11 +263,11 @@ internal sealed class ImportStore
             case BridgeUiEvent.PreviewPlaying preview:
                 // Total duration arrives once when preview starts; the next
                 // PreviewProgress tick renders it alongside the elapsed position.
-                _previewDurationLabel = PlaybackPositionModel.DurationLabel(preview.DurationMs);
+                _previewDurationLabel = BridgeDisplay.Clock(preview.DurationMs);
                 _mediaControls.UpdateNowPlayingForPreview(preview.Path, preview.DurationMs, isPlaying: true);
                 break;
             case BridgeUiEvent.PreviewPaused preview:
-                _previewDurationLabel = PlaybackPositionModel.DurationLabel(preview.DurationMs);
+                _previewDurationLabel = BridgeDisplay.Clock(preview.DurationMs);
                 _mediaControls.UpdateNowPlayingForPreview(preview.Path, preview.DurationMs, isPlaying: false);
                 break;
             case BridgeUiEvent.PreviewIdle:
