@@ -1,6 +1,8 @@
 //! Export domain operations for [`LibraryManager`].
 
 use super::*;
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+use tracing::info;
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 const EXPORT_MARKER_FILE: &str = ".bae-export";
