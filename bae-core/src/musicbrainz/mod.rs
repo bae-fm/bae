@@ -370,6 +370,42 @@ pub async fn fetch_release_group_json(release_group_id: &str) -> Result<String, 
     Ok(raw_json)
 }
 
+/// A release plus everything the import pipeline archives with it: the parsed
+/// response, the Discogs release URL from its url-rels (if any), and the raw JSON
+/// pairs for the `release_metadata` table — the release itself, and its
+/// release-group.
+///
+/// The release-group fetch is best-effort: a release that archives without its
+/// group is still a complete import, and failing the whole fetch over the group
+/// would turn a metadata nicety into an import failure. Both MB entry points (a
+/// direct import and a Discogs cross-reference) archive through here, so the rows
+/// they write cannot differ by which path ran.
+pub async fn fetch_release_with_metadata(
+    release_id: &str,
+) -> Result<(MbReleaseResponse, Option<String>, Vec<(String, String)>), MusicBrainzError> {
+    let (response, discogs_url, raw_json) = lookup_release_by_id(release_id).await?;
+
+    let mut pairs = vec![(
+        crate::import::MetadataSource::MusicBrainz
+            .as_str()
+            .to_string(),
+        raw_json,
+    )];
+
+    if let Some(rg_id) = response.release_group.as_ref().map(|rg| rg.id.as_str()) {
+        match fetch_release_group_json(rg_id).await {
+            Ok(rg_json) => pairs.push((RELEASE_GROUP_METADATA_SOURCE.to_string(), rg_json)),
+            Err(e) => warn!("Failed to fetch MB release-group: {e}"),
+        }
+    }
+
+    Ok((response, discogs_url, pairs))
+}
+
+/// The `release_metadata.source` value the release-group JSON is archived under.
+/// The release itself uses `MetadataSource::MusicBrainz`.
+const RELEASE_GROUP_METADATA_SOURCE: &str = "musicbrainz_release_group";
+
 /// The MB release ID linked to a Discogs release, via MB's URL lookup endpoint;
 /// `None` when no MB editor has linked one.
 pub async fn lookup_release_id_by_discogs_url(
@@ -453,33 +489,13 @@ pub async fn fetch_mb_xref(
         }
     };
 
-    let (response, _discogs_url, raw_json) = match lookup_release_by_id(&mb_release_id).await {
-        Ok(value) => value,
+    match fetch_release_with_metadata(&mb_release_id).await {
+        Ok((response, _discogs_url, pairs)) => Some((response, pairs)),
         Err(e) => {
             warn!("Failed to fetch linked MB release {}: {e}", mb_release_id);
-            return None;
-        }
-    };
-
-    let mut pairs = vec![(
-        crate::import::MetadataSource::MusicBrainz
-            .as_str()
-            .to_string(),
-        raw_json,
-    )];
-
-    if let Some(rg_id) = response.release_group.as_ref().map(|rg| rg.id.as_str()) {
-        match fetch_release_group_json(rg_id).await {
-            Ok(rg_json) => {
-                pairs.push(("musicbrainz_release_group".to_string(), rg_json));
-            }
-            Err(e) => {
-                warn!("Failed to fetch MB release-group: {e}");
-            }
+            None
         }
     }
-
-    Some((response, pairs))
 }
 
 // ============================================================================
