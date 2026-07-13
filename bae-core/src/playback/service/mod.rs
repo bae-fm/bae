@@ -461,7 +461,7 @@ impl PlaybackHandle {
     /// Graceful shutdown: persist playback state, stop the service loop, and join
     /// its thread so the `LibraryManager` clone it holds — and coven's store lock —
     /// is released before this returns. Awaits the state-save ack (the platform's
-    /// quit path relies on it being durable). Idempotent with [`stop_and_join`]:
+    /// quit path relies on it being durable). Idempotent with [`Self::stop_and_join`]:
     /// they share the take-once join handle, so a later teardown is a no-op.
     pub async fn shutdown(&self) {
         let Some(join_handle) = self.thread.lock().unwrap().take() else {
@@ -484,7 +484,7 @@ impl PlaybackHandle {
     /// releasing the `LibraryManager` clone (and the store lock) before returning.
     /// The join subsumes the state save (the `Shutdown` handler persists before it
     /// breaks). No runtime needed — the loop runs on its own — so this is safe from
-    /// `Drop`. Idempotent with [`shutdown`] via the shared take-once join handle.
+    /// `Drop`. Idempotent with [`Self::shutdown`] via the shared take-once join handle.
     pub fn stop_and_join(&self) {
         let Some(join_handle) = self.thread.lock().unwrap().take() else {
             return;
