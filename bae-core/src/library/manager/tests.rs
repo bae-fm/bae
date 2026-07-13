@@ -3247,8 +3247,9 @@ async fn download_queue_active_pin_reports_file_progress() {
 
     manager.enqueue_pins(vec![release_id.clone()]).await;
 
-    let mut saw_initial = false;
-    let mut saw_completed_progress = false;
+    // The release pins one blob at a time, so the pane sees the byte total climb:
+    // 0, then the first file's 3 bytes, then both files' 7.
+    let mut seen: Vec<u64> = Vec::new();
     for _ in 0..20 {
         let event = tokio::time::timeout(std::time::Duration::from_secs(2), events.recv())
             .await
@@ -3262,35 +3263,26 @@ async fn download_queue_active_pin_reports_file_progress() {
                 continue;
             }
             if let crate::library::DownloadState::Active { progress } = op.state {
-                if progress
-                    == (crate::library::DownloadTransferProgress {
-                        bytes_done: 0,
-                        bytes_total: 7,
-                        fraction: 0.0,
-                    })
-                {
-                    saw_initial = true;
-                }
-                if progress
-                    == (crate::library::DownloadTransferProgress {
-                        bytes_done: 7,
-                        bytes_total: 7,
-                        fraction: 1.0,
-                    })
-                {
-                    saw_completed_progress = true;
+                assert_eq!(progress.bytes_total, 7, "the release's known byte total");
+                assert_eq!(
+                    progress.fraction,
+                    progress.bytes_done as f64 / 7.0,
+                    "the fraction tracks the bytes"
+                );
+                if seen.last() != Some(&progress.bytes_done) {
+                    seen.push(progress.bytes_done);
                 }
             }
         }
-        if saw_initial && saw_completed_progress {
+        if seen.contains(&7) {
             break;
         }
     }
 
-    assert!(saw_initial, "active download starts with known totals");
-    assert!(
-        saw_completed_progress,
-        "active download reports completed file bytes before leaving the queue"
+    assert_eq!(
+        seen,
+        vec![0, 3, 7],
+        "an active download reports each file's bytes as it lands, not just 0 and done",
     );
 }
 
