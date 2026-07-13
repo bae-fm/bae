@@ -533,6 +533,32 @@ impl PlaybackTestFixture {
         }
         None
     }
+    /// Wait for the first position update whose `position_ms` is strictly past
+    /// `floor_ms`, or `None` on timeout. Blocks on the real "position has moved
+    /// beyond X" signal — the correct wait when a test resumes or seeks and then
+    /// asserts the position climbed past the seek target (the first raw update
+    /// can still report the seek anchor itself, so filtering on the floor is
+    /// what proves audio actually advanced).
+    async fn wait_for_position_past(
+        &mut self,
+        floor_ms: u64,
+        timeout_duration: Duration,
+    ) -> Option<u64> {
+        let deadline = Instant::now() + timeout_duration;
+        while Instant::now() < deadline {
+            match timeout(Duration::from_millis(100), self.progress_rx.recv()).await {
+                Ok(Some(PlaybackProgress::PositionUpdate { position_ms, .. }))
+                    if position_ms > floor_ms =>
+                {
+                    return Some(position_ms);
+                }
+                Ok(Some(_)) => continue,
+                Ok(None) => break,
+                Err(_) => continue,
+            }
+        }
+        None
+    }
     /// Wait for a Seeked event with timeout (returns position in ms)
     async fn wait_for_seeked(&mut self, timeout_duration: Duration) -> Option<u64> {
         wait_for_seeked_on(&mut self.progress_rx, timeout_duration).await
@@ -1558,15 +1584,15 @@ async fn pause_and_seek_interact_in_both_orderings() {
         )
         .await
         .expect("should resume playing");
-    tokio::time::sleep(Duration::from_millis(500)).await;
     let advanced_ms = fixture
-        .wait_for_position_update(Duration::from_secs(2))
+        .wait_for_position_past(seeked_ms, Duration::from_secs(5))
         .await
-        .expect("position update after resume (indicates audio is playing)");
-    assert!(
-        advanced_ms > seeked_ms,
-        "position should advance after resume; seeked {seeked_ms}ms, now {advanced_ms}ms"
-    );
+        .unwrap_or_else(|| {
+            panic!(
+                "position should advance past the seek target after resume; seeked {seeked_ms}ms"
+            )
+        });
+    assert!(advanced_ms > seeked_ms);
 
     // Ordering 2 — seek while playing, then pause and resume: position maintained.
     let mut fixture = PlaybackTestFixture::new().await;
@@ -1704,26 +1730,17 @@ async fn test_seek_while_playing_advances_position() {
         seeked_position_ms
     );
 
-    // Wait a bit and check that position is advancing
-    tokio::time::sleep(Duration::from_millis(500)).await;
-
-    // Get position updates - should be advancing past the seek position
-    let position_update = fixture
-        .wait_for_position_update(Duration::from_secs(2))
-        .await;
-
-    assert!(
-        position_update.is_some(),
-        "Should receive position updates after seek while playing (indicates audio is actually playing)"
-    );
-
-    let final_position_ms = position_update.unwrap();
-    assert!(
-        final_position_ms > seeked_position_ms,
-        "Position should advance after seek while playing. Seeked to {}ms, but position is {}ms",
-        seeked_position_ms,
-        final_position_ms
-    );
+    // Position must climb past the seek target — the signal that audio is
+    // actually playing, not just that the seek landed.
+    let final_position_ms = fixture
+        .wait_for_position_past(seeked_position_ms, Duration::from_secs(5))
+        .await
+        .unwrap_or_else(|| {
+            panic!(
+                "position should advance past the seek target while playing; seeked to {seeked_position_ms}ms"
+            )
+        });
+    assert!(final_position_ms > seeked_position_ms);
 }
 
 /// The true gapless handoff: a track played to its natural end with the next
@@ -2144,9 +2161,8 @@ async fn test_same_position_seek_keeps_position_updates_flowing() {
     let _position = fixture
         .wait_for_position_update(Duration::from_secs(2))
         .await;
-    tokio::time::sleep(Duration::from_millis(300)).await;
     let current_pos_ms = fixture
-        .wait_for_position_update(Duration::from_secs(1))
+        .wait_for_position_update(Duration::from_secs(2))
         .await
         .expect("a position update should arrive while playing");
     let same_position = Duration::from_millis(current_pos_ms + 50);
@@ -2164,7 +2180,6 @@ async fn test_same_position_seek_keeps_position_updates_flowing() {
             diff,
         );
     }
-    tokio::time::sleep(Duration::from_millis(500)).await;
     let position_update = fixture
         .wait_for_position_update(Duration::from_secs(2))
         .await;
@@ -4325,10 +4340,6 @@ async fn test_preview_seek_while_paused_emits_position_update() {
         }
     }
     assert!(saw_playing, "preview should reach Playing state");
-
-    // Give playback a moment so current position moves away from 0, making
-    // the seek a meaningful movement.
-    tokio::time::sleep(Duration::from_millis(200)).await;
 
     // Pause — wait for Paused state.
     fixture.playback_handle.preview_toggle_pause();
