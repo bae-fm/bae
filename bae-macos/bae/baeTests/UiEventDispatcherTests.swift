@@ -458,6 +458,7 @@ private func makeAppService(handle: FakeAppHandle = FakeAppHandle())
     bae.AppService(
         appHandle: handle,
         mediaControlService: MediaControlService(),
+        diagnostics: configureDiagnostics(config: .disabled),
         uiStore: UiStore(),
         config: BridgeConfig(
             libraryId: "lib-test",

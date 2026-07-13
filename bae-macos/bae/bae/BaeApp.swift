@@ -437,6 +437,15 @@ extension BaeApp {
 final class AppDelegate: NSObject, NSApplicationDelegate {
     var appService: AppService?
     private let mediaControlService = MediaControlService()
+    /// The process-lifetime telemetry sink, built at delegate construction —
+    /// before every other launch step (crash reporter, keyring, library open),
+    /// so it exists for any failure they report. Held for the whole app run;
+    /// every library open threads it into its `AppService`. The
+    /// skip-application-services path (previews/tests) gets the no-op sink.
+    private let diagnostics: BridgeDiagnostics =
+        AppRuntime.skipsApplicationServices(environment: appProcessEnvironment)
+        ? configureDiagnostics(config: .disabled)
+        : BaeDiagnostics.configure(source: "macos")
     var uiStore = UiStore()
     var screen: AppScreen = .loading
     var loadError: String?
@@ -467,18 +476,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// each open to an `Outcome` this delegate lands on `screen`/`appService`.
     @ObservationIgnored
     private lazy var opener = LibrarySessionOpener<AppHandle, AppService>(
-        makeHandle: {
+        // Capture the sink by value so the `@Sendable` makeHandle doesn't read
+        // the main-actor property from off the main actor.
+        makeHandle: { [diagnostics] libraryId in
             try initApp(
-                libraryId: $0,
+                libraryId: libraryId,
                 positionUpdateIntervalMs: 200,
                 // The "Restore on launch" preference: off starts with nothing
                 // in playback; the core keeps the resume row current either way.
                 restorePlayback: UserDefaults.standard.bool(
                     forKey: "persistPlayback"
                 ),
-                // Telemetry config crosses at init; the core builds the sink
-                // from it, so there is no separate configure step to run first.
-                diagnostics: BaeDiagnostics.bridgeConfig(source: "macos")
+                // The telemetry sink built at launch; `init_app` requires it, so
+                // telemetry is guaranteed up before the library opens.
+                diagnostics: diagnostics
             )
         },
         makeService: { [weak self] handle, config, initialOutbox in
@@ -509,9 +520,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_: Notification) {
         if !skipsApplicationServices {
+            // Telemetry is already up (built at delegate construction, from
+            // compiled-in values only), so every step from here on has a sink
+            // for any failure it reports.
             BaeCrashReporting.configure()
             logger.info("application launched")
-            initKeyring()
+            initKeyring(diagnostics: diagnostics)
             // Hand Rust the CloudKit driver once. It can't build the driver
             // itself (it needs the platform CloudKit APIs); installing it is
             // idempotent and harmless for libraries that sync elsewhere, so it
@@ -596,6 +610,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let service = AppService(
             appHandle: handle,
             mediaControlService: mediaControlService,
+            diagnostics: diagnostics,
             uiStore: uiStore,
             config: config,
             initialOutbox: initialOutbox

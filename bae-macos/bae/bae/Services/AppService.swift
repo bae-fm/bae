@@ -56,6 +56,7 @@ final class AppService: BaeKit.AppService {
     init(
         appHandle: AppHandle,
         mediaControlService: MediaControlService,
+        diagnostics: BridgeDiagnostics,
         uiStore: UiStore,
         config: BridgeConfig,
         initialOutbox: BridgeOutboxSnapshot
@@ -79,6 +80,7 @@ final class AppService: BaeKit.AppService {
             .init(
                 appHandle: appHandle,
                 mediaControlService: mediaControlService,
+                diagnostics: diagnostics,
                 config: config,
                 initialOutbox: initialOutbox
             )

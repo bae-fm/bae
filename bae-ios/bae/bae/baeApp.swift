@@ -12,12 +12,19 @@ struct BaeApp: App {
     private let oauthLinkingError: String?
     #endif
     private let startupError: String?
+    /// The process-lifetime telemetry sink, built first at launch and held for
+    /// the whole app run. `initKeyring` and every library open require it.
+    private let diagnostics: BridgeDiagnostics
 
     init() {
         #if BAE_OAUTH_PROVIDERS
         var loadedOAuthLinking: OAuthLinking?
         var oauthError: String?
         #endif
+        // Telemetry first, from compiled-in values only (no $HOME needed), so the
+        // sink exists for every later launch step and any failure it reports.
+        let diagnostics = BaeDiagnostics.configure(source: "ios")
+        self.diagnostics = diagnostics
         var launchError: String?
         do {
             BaeCrashReporting.configure()
@@ -29,7 +36,7 @@ struct BaeApp: App {
             // HOME, so it must run before `initKeyring`.
             setDataDir(path: try Self.dataDirectory())
             // No `setCaCertDir` on iOS — the TLS stack uses Apple's trust roots.
-            initKeyring()
+            initKeyring(diagnostics: diagnostics)
             // Hand Rust the CloudKit driver once. It can't build the driver itself
             // (it needs the platform CloudKit APIs); installing it is idempotent and
             // harmless for libraries that sync elsewhere, so it belongs here at the
@@ -67,11 +74,12 @@ struct BaeApp: App {
             ContentView(
                 oauthLinking: oauthLinking,
                 oauthLinkingError: oauthLinkingError,
-                startupError: startupError
+                startupError: startupError,
+                diagnostics: diagnostics
             )
             .tint(Theme.accent)
             #else
-            ContentView(startupError: startupError)
+            ContentView(startupError: startupError, diagnostics: diagnostics)
                 .tint(Theme.accent)
             #endif
         }

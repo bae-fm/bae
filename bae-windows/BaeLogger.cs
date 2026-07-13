@@ -11,9 +11,28 @@ internal static class BaeDiagnostics
     internal static BaeLogger Logger { get; } = new("bae.windows");
 
     /// <summary>
-    /// Build the Datadog telemetry config handed to library open. Telemetry is
-    /// constructed inside the Rust core from it — there is no separate configure
-    /// step. Local logging stays in <see cref="BaeLogger"/> (Trace).
+    /// The process-lifetime telemetry sink, built once at startup by
+    /// <see cref="Configure"/> and held for the whole app run. Keyring init and
+    /// every library open require it, and it outlives any one library so
+    /// exit-flush uses it directly.
+    /// </summary>
+    internal static BridgeDiagnostics Handle { get; private set; } = null!;
+
+    /// <summary>
+    /// Construct the telemetry sink and install the core's tracing subscriber.
+    /// Call once at startup, before keyring init and any library open. Never
+    /// throws: an enabled-config worker failure falls back to the disabled
+    /// (no-op) sink.
+    /// </summary>
+    internal static BridgeDiagnostics Configure()
+    {
+        Handle = NativeBae.ConfigureDiagnostics(BridgeConfig());
+        return Handle;
+    }
+
+    /// <summary>
+    /// Build the Datadog telemetry config the sink is constructed from. Local
+    /// logging stays in <see cref="BaeLogger"/> (Trace).
     /// </summary>
     internal static BridgeDiagnosticsConfig BridgeConfig()
     {
@@ -35,9 +54,9 @@ internal static class BaeDiagnostics
             AppMetadata.ConfiguredString("BaeGitCommit"));
     }
 
-    internal static void Flush(AppHandle handle)
+    internal static void Flush()
     {
-        var error = NativeBae.FlushDiagnostics(handle);
+        var error = NativeBae.FlushDiagnostics(Handle);
         if (error is not null)
         {
             Trace.TraceError($"Failed to flush diagnostics: {error}");

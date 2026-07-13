@@ -15,11 +15,32 @@ struct ContentView: View {
     let startupError: String?
 
     @State
-    private var holder = AppSessionHolder()
+    private var holder: AppSessionHolder
     @State
     private var started = false
     @Environment(\.scenePhase)
     private var scenePhase
+
+    #if BAE_OAUTH_PROVIDERS
+    @MainActor
+    init(
+        oauthLinking: OAuthLinking?,
+        oauthLinkingError: String?,
+        startupError: String?,
+        diagnostics: BridgeDiagnostics
+    ) {
+        self.oauthLinking = oauthLinking
+        self.oauthLinkingError = oauthLinkingError
+        self.startupError = startupError
+        _holder = State(initialValue: AppSessionHolder(diagnostics: diagnostics))
+    }
+    #else
+    @MainActor
+    init(startupError: String?, diagnostics: BridgeDiagnostics) {
+        self.startupError = startupError
+        _holder = State(initialValue: AppSessionHolder(diagnostics: diagnostics))
+    }
+    #endif
 
     var body: some View {
         Group {

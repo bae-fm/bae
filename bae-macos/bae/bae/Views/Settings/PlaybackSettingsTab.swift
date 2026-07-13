@@ -53,6 +53,7 @@ struct PlaybackSettingsTab: View {
             AppService(
                 appHandle: PlaybackSettingsPreviewAppHandle(),
                 mediaControlService: MediaControlService(),
+                diagnostics: configureDiagnostics(config: .disabled),
                 uiStore: UiStore(),
                 config: BridgeConfig(
                     libraryId: "lib-preview",

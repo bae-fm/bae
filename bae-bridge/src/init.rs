@@ -4,8 +4,8 @@ use bae_core::app::BootstrapError;
 #[cfg(not(feature = "desktop"))]
 use bae_core::app::{bootstrap, RunningApp};
 use bae_core::diagnostics::{
-    AppDiagnosticMetadata, DatadogDiagnosticsConfig, Diagnostics, DiagnosticsConfig,
-    DiagnosticsError, Screen, TelemetryEvent,
+    AppDiagnosticMetadata, AppStartFailureKind, DatadogDiagnosticsConfig, Diagnostics,
+    DiagnosticsConfig, DiagnosticsError, Screen, TelemetryEvent,
 };
 
 use crate::get_cloudkit_ops;
@@ -52,24 +52,89 @@ pub enum BridgeScreen {
     Settings,
 }
 
+/// The process-lifetime telemetry sink, built once at startup and held by the
+/// host for the whole app run. Wraps core's `Diagnostics`; it is the one
+/// host-facing telemetry object (host events, exit flush), and `init_app` /
+/// `init_keyring` require it as a parameter so telemetry is guaranteed set up
+/// before anything that could fail.
+#[derive(uniffi::Object)]
+pub struct BridgeDiagnostics {
+    inner: Diagnostics,
+}
+
+impl BridgeDiagnostics {
+    /// The wrapped core handle, cloned into bootstrap / keyring init.
+    pub(crate) fn core(&self) -> &Diagnostics {
+        &self.inner
+    }
+
+    fn emit_app_start_failed(&self, error: &BootstrapError) {
+        self.inner.event(TelemetryEvent::AppStartFailed {
+            kind: app_start_failure_kind(error),
+        });
+    }
+}
+
+#[uniffi::export(async_runtime = "tokio")]
+impl BridgeDiagnostics {
+    /// Ship a host-originated telemetry event. Infallible — telemetry must never
+    /// break the host UI; a stopped worker drops the event.
+    pub fn event(&self, event: BridgeTelemetryEvent) {
+        self.inner.event(event.into_core());
+    }
+
+    /// Flush any buffered telemetry now. Hosts call this at exit so the last
+    /// events reach Datadog before the process ends.
+    pub async fn flush(&self) -> Result<(), BridgeError> {
+        self.inner
+            .flush()
+            .await
+            .map_err(diagnostics_error_to_bridge)
+    }
+}
+
+/// Build the telemetry sink and install the tracing subscriber. Called once at
+/// process start, before `init_keyring` / `init_app` (both require the returned
+/// handle), so the sink exists for every launch step that could fail.
+///
+/// Infallible by contract: telemetry setup must never block a launch. Sink
+/// construction from an `Enabled` config can fail (incomplete config, worker
+/// spawn); that is logged at `error` and the app continues with the no-op sink
+/// — the one failure telemetry cannot report about itself, accepted. Handling
+/// it here keeps the bailout in one place instead of a catch-and-retry in every
+/// host language.
+#[uniffi::export]
+pub fn configure_diagnostics(config: BridgeDiagnosticsConfig) -> Arc<BridgeDiagnostics> {
+    configure_logging();
+    let clock = Arc::new(coven::SystemClock);
+    let ids = Arc::new(coven::UuidProvider);
+    let inner = match Diagnostics::configure(config.into_core(), clock, ids) {
+        Ok(diagnostics) => diagnostics,
+        Err(error) => {
+            tracing::error!("telemetry init failed: {error}; continuing without telemetry");
+            Diagnostics::noop()
+        }
+    };
+    Arc::new(BridgeDiagnostics { inner })
+}
+
 #[uniffi::export]
 /// `restore_playback` is the platform's "Restore on launch" preference: `true`
 /// restores the saved queue/current track/position at startup, `false` starts
 /// with nothing in playback. Platforms without the preference pass `true`
 /// (mobile always resumes where playback left off).
 ///
-/// `diagnostics` carries the Datadog config the host built (or `Disabled`);
-/// telemetry is constructed inside bootstrap from it, so there is no separate
-/// entry point to call first.
+/// `diagnostics` is the sink from `configure_diagnostics`, built at process
+/// start. Requiring it here makes "telemetry set up first" unrepresentable to
+/// skip. A bootstrap failure ships `app_start_failed` through it before the
+/// error returns.
 pub fn init_app(
     library_id: String,
     position_update_interval_ms: u32,
     restore_playback: bool,
-    diagnostics: BridgeDiagnosticsConfig,
+    diagnostics: Arc<BridgeDiagnostics>,
 ) -> Result<Arc<AppHandle>, BridgeError> {
-    configure_logging()?;
-
-    let diagnostics = diagnostics.into_core();
+    let core = diagnostics.core().clone();
 
     #[cfg(feature = "desktop")]
     {
@@ -77,64 +142,48 @@ pub fn init_app(
             library_id,
             position_update_interval_ms,
             restore_playback,
-            diagnostics,
+            core,
             get_cloudkit_ops(),
         )
-        .map_err(bootstrap_error_to_bridge)?;
+        .map_err(|e| {
+            diagnostics.emit_app_start_failed(&e);
+            bootstrap_error_to_bridge(e)
+        })?;
         Ok(Arc::new(AppHandle { app }))
     }
 
     #[cfg(not(feature = "desktop"))]
-    let RunningApp {
-        runtime,
-        services,
-        ui_event_bus,
-        diagnostics,
-    } = bootstrap(
-        library_id,
-        position_update_interval_ms,
-        restore_playback,
-        diagnostics,
-        get_cloudkit_ops(),
-    )
-    .map_err(bootstrap_error_to_bridge)?;
+    {
+        let RunningApp {
+            runtime,
+            services,
+            ui_event_bus,
+        } = bootstrap(
+            library_id,
+            position_update_interval_ms,
+            restore_playback,
+            core,
+            get_cloudkit_ops(),
+        )
+        .map_err(|e| {
+            diagnostics.emit_app_start_failed(&e);
+            bootstrap_error_to_bridge(e)
+        })?;
 
-    #[cfg(not(feature = "desktop"))]
-    Ok(Arc::new(AppHandle {
-        runtime,
-        services,
-        ui_event_bus,
-        diagnostics,
-    }))
-}
-
-impl AppHandle {
-    #[cfg(feature = "desktop")]
-    fn diagnostics_ref(&self) -> &Diagnostics {
-        &self.app.diagnostics
-    }
-
-    #[cfg(not(feature = "desktop"))]
-    fn diagnostics_ref(&self) -> &Diagnostics {
-        &self.diagnostics
+        Ok(Arc::new(AppHandle {
+            runtime,
+            services,
+            ui_event_bus,
+        }))
     }
 }
 
-#[uniffi::export(async_runtime = "tokio")]
-impl AppHandle {
-    /// Ship a host-originated telemetry event. Infallible — telemetry must
-    /// never break the host UI; a stopped worker drops the event.
-    pub fn telemetry(&self, event: BridgeTelemetryEvent) {
-        self.diagnostics_ref().event(event.into_core());
-    }
-
-    /// Flush any buffered telemetry now. Hosts call this at exit so the last
-    /// events reach Datadog before the process ends.
-    pub async fn flush_diagnostics(&self) -> Result<(), BridgeError> {
-        self.diagnostics_ref()
-            .flush()
-            .await
-            .map_err(diagnostics_error_to_bridge)
+fn app_start_failure_kind(error: &BootstrapError) -> AppStartFailureKind {
+    match error {
+        BootstrapError::LibraryNotFound(_) => AppStartFailureKind::LibraryNotFound,
+        BootstrapError::Config(_) => AppStartFailureKind::Config,
+        BootstrapError::Database(_) => AppStartFailureKind::Database,
+        BootstrapError::Internal(_) => AppStartFailureKind::Internal,
     }
 }
 
@@ -214,14 +263,30 @@ fn bootstrap_error_to_bridge(e: BootstrapError) -> BridgeError {
     }
 }
 
-fn env_filter() -> Result<tracing_subscriber::EnvFilter, BridgeError> {
+/// The log filter from `RUST_LOG`, plus a complaint to emit once the subscriber
+/// is installed. `RUST_LOG` is a local debugging knob; a bad value degrades to
+/// the default level instead of failing, because every host's telemetry
+/// fallback relies on subscriber installation never failing — a launch must
+/// never die over a malformed env var.
+fn env_filter() -> (tracing_subscriber::EnvFilter, Option<String>) {
+    let default = || tracing_subscriber::EnvFilter::new("info");
     match std::env::var("RUST_LOG") {
-        Err(std::env::VarError::NotPresent) => Ok(tracing_subscriber::EnvFilter::new("info")),
-        Err(std::env::VarError::NotUnicode(_)) => {
-            Err(BridgeError::config("RUST_LOG is not valid Unicode"))
-        }
-        Ok(value) => tracing_subscriber::EnvFilter::try_new(&value)
-            .map_err(|e| BridgeError::config(format!("RUST_LOG={value:?} is malformed: {e}"))),
+        Err(std::env::VarError::NotPresent) => (default(), None),
+        Err(std::env::VarError::NotUnicode(raw)) => (
+            default(),
+            Some(format!(
+                "RUST_LOG {raw:?} is not valid Unicode; logging at the default level"
+            )),
+        ),
+        Ok(value) => match tracing_subscriber::EnvFilter::try_new(&value) {
+            Ok(filter) => (filter, None),
+            Err(e) => (
+                default(),
+                Some(format!(
+                    "RUST_LOG={value:?} is malformed: {e}; logging at the default level"
+                )),
+            ),
+        },
     }
 }
 
@@ -236,13 +301,16 @@ fn install_subscriber(subscriber: impl tracing_subscriber::util::SubscriberInitE
 macro_rules! install_logging_subscriber {
     ($($layer:expr),+ $(,)?) => {{
         use tracing_subscriber::prelude::*;
-        let filter = env_filter()?;
+        let (filter, filter_complaint) = env_filter();
         install_subscriber(
             tracing_subscriber::registry()
                 .with(filter)
                 $(.with($layer))+,
         );
-        Ok(())
+        // Emitted after install so it lands in the just-installed sinks.
+        if let Some(complaint) = filter_complaint {
+            tracing::warn!("{complaint}");
+        }
     }};
 }
 
@@ -262,7 +330,7 @@ where
 }
 
 #[cfg(target_os = "macos")]
-fn configure_logging() -> Result<(), BridgeError> {
+fn configure_logging() {
     install_logging_subscriber!(
         fmt_log_layer(),
         tracing_oslog::OsLogger::new("fm.bae.desktop", "default"),
@@ -270,22 +338,28 @@ fn configure_logging() -> Result<(), BridgeError> {
 }
 
 #[cfg(target_os = "android")]
-fn configure_logging() -> Result<(), BridgeError> {
-    let android_layer = tracing_android::layer("bae").map_err(|error| {
-        BridgeError::internal(format!(
-            "Android tracing layer initialization failed: {error}"
-        ))
-    })?;
+fn configure_logging() {
+    let android_layer = match tracing_android::layer("bae") {
+        Ok(layer) => layer,
+        Err(error) => {
+            // Nowhere structured to report this: logcat is the local sink and
+            // building its layer is what failed. Local logs are lost; telemetry
+            // (constructed by this function's caller) is unaffected, and launch
+            // must not die over it.
+            eprintln!("Android tracing layer initialization failed: {error}");
+            return;
+        }
+    };
     install_logging_subscriber!(android_layer)
 }
 
 #[cfg(target_os = "ios")]
-fn configure_logging() -> Result<(), BridgeError> {
+fn configure_logging() {
     install_logging_subscriber!(tracing_oslog::OsLogger::new("fm.bae.app", "default"))
 }
 
 #[cfg(not(any(target_os = "macos", target_os = "android", target_os = "ios")))]
-fn configure_logging() -> Result<(), BridgeError> {
+fn configure_logging() {
     install_logging_subscriber!(fmt_log_layer())
 }
 
@@ -324,6 +398,28 @@ mod tests {
         };
         assert_eq!(config.source, "ios");
         assert_eq!(config.app.edition, "bae");
+    }
+
+    #[test]
+    fn bootstrap_error_maps_to_failure_kind() {
+        // Every BootstrapError variant maps to its app_start_failed kind; this is
+        // the seam init_app emits through before returning the bridge error.
+        assert_eq!(
+            app_start_failure_kind(&BootstrapError::LibraryNotFound("x".to_string())),
+            AppStartFailureKind::LibraryNotFound
+        );
+        assert_eq!(
+            app_start_failure_kind(&BootstrapError::Config("x".to_string())),
+            AppStartFailureKind::Config
+        );
+        assert_eq!(
+            app_start_failure_kind(&BootstrapError::Database("x".to_string())),
+            AppStartFailureKind::Database
+        );
+        assert_eq!(
+            app_start_failure_kind(&BootstrapError::Internal("x".to_string())),
+            AppStartFailureKind::Internal
+        );
     }
 
     #[test]

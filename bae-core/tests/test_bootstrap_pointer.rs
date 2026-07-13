@@ -119,7 +119,7 @@ fn bootstrap_of_locked_library_leaves_active_pointer() {
         b_id,
         200,
         true,
-        bae_core::diagnostics::DiagnosticsConfig::Disabled,
+        bae_core::diagnostics::Diagnostics::noop(),
         None,
     )
     .expect("a locked open completes with sync deferred");
@@ -149,7 +149,7 @@ fn bootstrap_of_unlocked_library_advances_active_pointer() {
         b_id.clone(),
         200,
         true,
-        bae_core::diagnostics::DiagnosticsConfig::Disabled,
+        bae_core::diagnostics::Diagnostics::noop(),
         None,
     )
     .expect("a plain local open completes");
@@ -180,7 +180,7 @@ fn bootstrap_that_fails_leaves_active_pointer() {
         b_id,
         200,
         true,
-        bae_core::diagnostics::DiagnosticsConfig::Disabled,
+        bae_core::diagnostics::Diagnostics::noop(),
         None,
     );
     assert!(
@@ -212,7 +212,7 @@ fn dropping_running_app_releases_the_store_lock_for_reopen() {
         id.clone(),
         200,
         true,
-        bae_core::diagnostics::DiagnosticsConfig::Disabled,
+        bae_core::diagnostics::Diagnostics::noop(),
         None,
     )
     .expect("first open succeeds");
@@ -223,7 +223,7 @@ fn dropping_running_app_releases_the_store_lock_for_reopen() {
         id.clone(),
         200,
         true,
-        bae_core::diagnostics::DiagnosticsConfig::Disabled,
+        bae_core::diagnostics::Diagnostics::noop(),
         None,
     )
     .expect("reopening the store after dropping the RunningApp must succeed");
@@ -258,7 +258,7 @@ fn unlock_then_reopen_advances_active_pointer() {
         b_id.clone(),
         200,
         true,
-        bae_core::diagnostics::DiagnosticsConfig::Disabled,
+        bae_core::diagnostics::Diagnostics::noop(),
         None,
     )
     .expect("locked open of B completes");
@@ -275,7 +275,7 @@ fn unlock_then_reopen_advances_active_pointer() {
         b_id.clone(),
         200,
         true,
-        bae_core::diagnostics::DiagnosticsConfig::Disabled,
+        bae_core::diagnostics::Diagnostics::noop(),
         None,
     )
     .expect("unlocked reopen of B succeeds");

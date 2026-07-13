@@ -14,12 +14,17 @@ public partial class App : Application
 
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
+        // Telemetry first, from compiled-in values only, so the sink exists for
+        // every later launch step (crash reporter, keyring, library open) and any
+        // failure it reports.
+        BaeDiagnostics.Configure();
         BaeCrashReporting.Configure();
         BaeDiagnostics.Logger.Info("application launched");
 
         // Register the OS credential store before any library key is read or
-        // written (discovery, creation, or open).
-        NativeBae.Startup();
+        // written (discovery, creation, or open), passing the sink so a
+        // store-creation failure ships keyring_init_failed.
+        NativeBae.Startup(BaeDiagnostics.Handle);
 
         // Register the bundled OAuth client credentials so coven can run the cloud
         // sign-in flows. Absent file: cloud sign-in stays unavailable.

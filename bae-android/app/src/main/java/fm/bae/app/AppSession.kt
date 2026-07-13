@@ -34,8 +34,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import uniffi.bae_bridge.AppHandle
 import uniffi.bae_bridge.BridgeConfig
+import uniffi.bae_bridge.BridgeDiagnostics
 import uniffi.bae_bridge.BridgeLibrary
-import uniffi.bae_bridge.BridgeOutboxSnapshot
 import uniffi.bae_bridge.BridgeScreen
 import uniffi.bae_bridge.BridgeTelemetryEvent
 import uniffi.bae_bridge.BridgeUiEvent
@@ -61,6 +61,7 @@ private const val POSITION_UPDATE_INTERVAL_MS = 200u
 class OpenLibrary(
     val libraryId: String,
     val appHandle: AppHandle,
+    val diagnostics: BridgeDiagnostics,
     private val stores: OpenLibraryStores,
     val playback: BaeCorePlayer,
     private val appContext: Context,
@@ -331,6 +332,9 @@ object AppSessionHolder {
             }
         }
         onScreen(AppScreen.Loading)
+        // The process-lifetime telemetry sink, built at app launch. `init_app`
+        // requires it, and the library-open event ships through it below.
+        val diagnostics = (context.applicationContext as BaeApp).diagnostics
         try {
             val handle =
                 withContext(Dispatchers.IO) {
@@ -341,9 +345,7 @@ object AppSessionHolder {
                         libraryId,
                         POSITION_UPDATE_INTERVAL_MS,
                         RestorePlaybackPref.load(context),
-                        // Telemetry config crosses at init; the core builds the
-                        // sink from it, so there is no separate configure step.
-                        BaeDiagnostics.bridgeConfig(),
+                        diagnostics,
                     )
                 }
             val config: BridgeConfig = withContext(Dispatchers.IO) { handle.getConfig() }
@@ -367,13 +369,25 @@ object AppSessionHolder {
             current = null
 
             val session =
-                buildSession(libraryId, handle, config, initialOutbox, context.applicationContext)
+                buildSession(
+                    libraryId,
+                    handle,
+                    diagnostics,
+                    OpenLibraryStores(
+                        library = LibraryStore(),
+                        config = ConfigStore(config, handle.isSyncReady()),
+                        downloads = DownloadStore(handle.getDownloadSnapshot()),
+                        outbox = OutboxStore(initialOutbox),
+                    ),
+                    context.applicationContext,
+                )
             current = session
             session.wireUp(appScope)
             onScreen(AppScreen.LibraryOpen(session))
-            // Host-originated telemetry: the library screen opened. Infallible;
-            // the core owns every other event.
-            handle.telemetry(BridgeTelemetryEvent.ScreenOpened(BridgeScreen.LIBRARY))
+            // Host-originated telemetry: the library screen opened, shipped
+            // through the standalone sink. Infallible; the core owns every other
+            // event.
+            diagnostics.event(BridgeTelemetryEvent.ScreenOpened(BridgeScreen.LIBRARY))
         } catch (e: CancellationException) {
             // A newer openLibrary (or leaving the screen) cancelled us; let it
             // propagate so cooperative cancellation works and we don't report a
@@ -388,20 +402,15 @@ object AppSessionHolder {
     private fun buildSession(
         libraryId: String,
         handle: AppHandle,
-        config: BridgeConfig,
-        initialOutbox: BridgeOutboxSnapshot,
+        diagnostics: BridgeDiagnostics,
+        stores: OpenLibraryStores,
         appContext: Context,
     ): OpenLibrary =
         OpenLibrary(
             libraryId = libraryId,
             appHandle = handle,
-            stores =
-                OpenLibraryStores(
-                    library = LibraryStore(),
-                    config = ConfigStore(config, handle.isSyncReady()),
-                    downloads = DownloadStore(handle.getDownloadSnapshot()),
-                    outbox = OutboxStore(initialOutbox),
-                ),
+            diagnostics = diagnostics,
+            stores = stores,
             playback =
                 BaeCorePlayer(
                     applicationLooper = Looper.getMainLooper(),

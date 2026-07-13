@@ -10,13 +10,23 @@ namespace Bae.Windows;
 /// </summary>
 internal static class NativeBae
 {
-    /// <summary>One-time startup: register the OS credential store.</summary>
-    internal static void Startup() => BaeBridgeMethods.InitKeyring();
+    /// <summary>One-time startup: register the OS credential store. Takes the
+    /// telemetry sink so a store-creation failure ships
+    /// <c>keyring_init_failed</c>.</summary>
+    internal static void Startup(BridgeDiagnostics diagnostics) =>
+        BaeBridgeMethods.InitKeyring(diagnostics);
 
     /// <summary>
-    /// Build the Datadog telemetry config handed to <see cref="Init"/>.
-    /// Telemetry is constructed inside the Rust core from it — there is no
-    /// separate configure step. Local logging stays in <see cref="BaeLogger"/>.
+    /// Construct the telemetry sink and install the core's tracing subscriber.
+    /// Infallible: the core falls back to the no-op sink (with a local error
+    /// log) rather than let telemetry setup block a launch.
+    /// </summary>
+    internal static BridgeDiagnostics ConfigureDiagnostics(BridgeDiagnosticsConfig config) =>
+        BaeBridgeMethods.ConfigureDiagnostics(config);
+
+    /// <summary>
+    /// Build the Datadog telemetry config the sink is constructed from. Local
+    /// logging stays in <see cref="BaeLogger"/>.
     /// </summary>
     internal static BridgeDiagnosticsConfig DiagnosticsConfig(
         string? datadogSite,
@@ -40,14 +50,14 @@ internal static class NativeBae
                     gitCommit ?? string.Empty)))
             : new BridgeDiagnosticsConfig.Disabled();
 
-    /// <summary>Flush buffered telemetry through the handle's core sink.</summary>
-    internal static string? FlushDiagnostics(AppHandle handle) =>
-        CaptureError(() => Await(handle.FlushDiagnostics()));
+    /// <summary>Flush buffered telemetry through the standalone sink.</summary>
+    internal static string? FlushDiagnostics(BridgeDiagnostics diagnostics) =>
+        CaptureError(() => Await(diagnostics.Flush()));
 
-    /// <summary>Report a host UI screen open as a typed telemetry event.
-    /// Infallible; the core owns every other event.</summary>
-    internal static void ReportScreen(AppHandle handle, BridgeScreen screen) =>
-        handle.Telemetry(new BridgeTelemetryEvent.ScreenOpened(screen));
+    /// <summary>Report a host UI screen open as a typed telemetry event through
+    /// the standalone sink. Infallible; the core owns every other event.</summary>
+    internal static void ReportScreen(BridgeDiagnostics diagnostics, BridgeScreen screen) =>
+        diagnostics.Event(new BridgeTelemetryEvent.ScreenOpened(screen));
 
 #if BAE_FULL_BRIDGE
     internal static string? SetOauthClientCreds(string credsJson) =>
@@ -287,7 +297,7 @@ internal static class NativeBae
         string libraryId,
         uint positionUpdateIntervalMs,
         bool restorePlayback,
-        BridgeDiagnosticsConfig diagnostics)
+        BridgeDiagnostics diagnostics)
     {
         try
         {

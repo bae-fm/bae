@@ -52,9 +52,9 @@ internal sealed class SessionStore
             libraryId,
             PositionUpdateIntervalMs,
             PersistPlaybackStore.Load(),
-            // Telemetry config crosses at init; the core builds the sink from
-            // it, so there is no separate configure step to run first.
-            BaeDiagnostics.BridgeConfig());
+            // The telemetry sink built at startup; init_app requires it, so
+            // telemetry is guaranteed up before the library opens.
+            BaeDiagnostics.Handle);
         if (handle == null)
         {
             return OpenHandleResult.Failed;

@@ -1,33 +1,21 @@
-use std::sync::OnceLock;
-
 use tracing::warn;
 
-/// Whether keyring-store installation failed, recorded by [`init_keyring`] at its
-/// terminal "no default store installed" error sites. The keyring installer runs
-/// before diagnostics exists (the host calls it pre-init), so the outcome is
-/// stashed in this ambient static — itself a global registration — and read back
-/// at bootstrap, which ships the `keyring_init_failed` event. Unset (the common
-/// case) reads as "did not fail".
-static KEYRING_INIT_FAILED: OnceLock<()> = OnceLock::new();
-
-/// Whether keyring-store installation failed. Read at bootstrap to ship the
-/// `keyring_init_failed` telemetry event once diagnostics exists.
-pub fn keyring_init_failed() -> bool {
-    KEYRING_INIT_FAILED.get().is_some()
-}
+use crate::diagnostics::{Diagnostics, TelemetryEvent};
 
 /// Initialize the keyring credential store.
 ///
 /// coven installs no store of its own — the host does, and must, before any
 /// keyring access. With no default store every credential read fails, so each
 /// supported platform needs a branch here, and a failure to install one is
-/// logged at `error` rather than passed over.
+/// logged at `error` and shipped as `keyring_init_failed` through `diagnostics`
+/// (constructed at process start, so it exists before this runs) rather than
+/// passed over.
 ///
 /// Apple platforms use the protected data store with iCloud cloud-sync on, so
 /// the encryption key rides iCloud Keychain when the user has it enabled.
 ///
 /// Must be called once at startup before any keyring operation.
-pub fn init_keyring() {
+pub fn init_keyring(diagnostics: &Diagnostics) {
     // A target with no branch below installs no store, and then every credential
     // read fails at runtime with nothing to point at. That is exactly how iOS
     // shipped — the Apple branch was gated on `macos` alone. A new target now
@@ -67,7 +55,7 @@ pub fn init_keyring() {
                             "Failed to create local protected keyring store: {e}. No default store \
                              is installed, so every credential read will fail."
                         );
-                        let _ = KEYRING_INIT_FAILED.set(());
+                        diagnostics.event(TelemetryEvent::KeyringInitFailed {});
                     }
                 }
             }
@@ -87,7 +75,7 @@ pub fn init_keyring() {
                     "Failed to create Android keyring store: {e}. No default store is installed, \
                      so every credential read will fail."
                 );
-                let _ = KEYRING_INIT_FAILED.set(());
+                diagnostics.event(TelemetryEvent::KeyringInitFailed {});
             }
         }
     }
@@ -105,7 +93,7 @@ pub fn init_keyring() {
                     "Failed to create Windows keyring store: {e}. No default store is installed, \
                      so every credential read will fail."
                 );
-                let _ = KEYRING_INIT_FAILED.set(());
+                diagnostics.event(TelemetryEvent::KeyringInitFailed {});
             }
         }
     }

@@ -22,6 +22,12 @@ open class AppService: @unchecked Sendable, Observable {
     /// sync requests go through this.
     public nonisolated let appHandle: AppHandle
 
+    /// The process-lifetime telemetry sink (built at launch, before this
+    /// library opened). Host-originated events route through it; unlike
+    /// `appHandle` it outlives any one library, so switching libraries keeps the
+    /// same sink.
+    public nonisolated let diagnostics: BridgeDiagnostics
+
     /// Drives the platform Now Playing surface and remote-control events, kept
     /// in sync with `playbackStore.nowPlaying`.
     public nonisolated let mediaControlService: MediaControlService
@@ -60,11 +66,13 @@ open class AppService: @unchecked Sendable, Observable {
     public init(
         appHandle: AppHandle,
         mediaControlService: MediaControlService,
+        diagnostics: BridgeDiagnostics,
         config: BridgeConfig,
         initialOutbox: BridgeOutboxSnapshot
     ) {
         self.appHandle = appHandle
         self.mediaControlService = mediaControlService
+        self.diagnostics = diagnostics
         playbackStore = PlaybackStore()
         configStore = ConfigStore(
             config: Config(bridge: config),
@@ -86,12 +94,13 @@ open class AppService: @unchecked Sendable, Observable {
         downloads = Downloads(handle: appHandle)
     }
 
-    /// Report that a host UI screen was opened, as a typed telemetry event.
-    /// Infallible — telemetry must never affect navigation. This is the only
-    /// host-originated event; everything else the core emits itself. Local
-    /// logging is separate (`BaeLogger`) and stays on-device.
+    /// Report that a host UI screen was opened, as a typed telemetry event,
+    /// through the process-lifetime telemetry sink. Infallible — telemetry must
+    /// never affect navigation. This is the only host-originated event;
+    /// everything else the core emits itself. Local logging is separate
+    /// (`BaeLogger`) and stays on-device.
     public nonisolated func reportScreen(_ screen: BridgeScreen) {
-        appHandle.telemetry(event: .screenOpened(screen: screen))
+        diagnostics.event(event: .screenOpened(screen: screen))
     }
 
     /// Route a display error to the platform's error surface. iOS uses the

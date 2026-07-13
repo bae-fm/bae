@@ -217,6 +217,17 @@ telemetry_value_enum! {
 }
 
 telemetry_value_enum! {
+    /// Which bootstrap step failed, mirroring `BootstrapError`'s variants. The
+    /// error's own message stays in local logs; only this closed kind ships.
+    pub enum AppStartFailureKind {
+        LibraryNotFound => "library_not_found",
+        Config => "config",
+        Database => "database",
+        Internal => "internal",
+    }
+}
+
+telemetry_value_enum! {
     impl CloudProvider {
         CloudProvider::S3 => "s3",
         CloudProvider::GoogleDrive => "google_drive",
@@ -288,6 +299,12 @@ macro_rules! telemetry_events {
 telemetry_events! {
     /// Once per successful bootstrap.
     AppStarted, "app_started", Info {},
+
+    /// Bootstrap failed to bring the app up (the library won't open). Emitted by
+    /// the bridge, which holds the telemetry sink before `init_app` runs.
+    AppStartFailed, "app_start_failed", Error {
+        kind: AppStartFailureKind,
+    },
 
     /// A play command established a new playing context.
     PlaybackStarted, "playback_started", Info {
@@ -393,8 +410,8 @@ telemetry_events! {
         decode_errors: u64,
     },
 
-    /// Keyring store initialization failed (runs before diagnostics exists; the
-    /// outcome is read back and shipped at bootstrap).
+    /// Keyring store initialization failed — no default store installed, so every
+    /// credential read fails. Emitted directly by `init_keyring`.
     KeyringInitFailed, "keyring_init_failed", Error {},
 
     /// An impossible-state site fired. `kind` names which one; the count per
@@ -532,6 +549,19 @@ mod tests {
         let fields = event.fields();
         assert_eq!(fields["wait"], serde_json::json!(850));
         assert!(fields["wait"].is_number());
+    }
+
+    #[test]
+    fn app_start_failed_is_error_with_snake_case_kind() {
+        let event = TelemetryEvent::AppStartFailed {
+            kind: AppStartFailureKind::LibraryNotFound,
+        };
+        assert_eq!(event.name(), "app_start_failed");
+        assert_eq!(event.level(), DiagnosticLevel::Error);
+        assert_eq!(
+            event.fields()["kind"],
+            serde_json::json!("library_not_found")
+        );
     }
 
     #[test]

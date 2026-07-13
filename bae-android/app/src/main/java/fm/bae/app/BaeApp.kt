@@ -2,6 +2,7 @@ package fm.bae.app
 
 import android.app.Application
 import io.crates.keyring.Keyring
+import uniffi.bae_bridge.BridgeDiagnostics
 import uniffi.bae_bridge.initKeyring
 import uniffi.bae_bridge.setCaCertDir
 import uniffi.bae_bridge.setDataDir
@@ -10,6 +11,14 @@ private const val TAG = "bae.BaeApp"
 private val logger = BaeLogger(TAG)
 
 class BaeApp : Application() {
+    /**
+     * The process-lifetime telemetry sink, built at startup and held for the
+     * whole app run. `initKeyring` and every library open require it; the open
+     * session reaches it via `applicationContext as BaeApp`.
+     */
+    lateinit var diagnostics: BridgeDiagnostics
+        private set
+
     var oauthLinking: OAuthLinker? = null
         private set
 
@@ -18,6 +27,10 @@ class BaeApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        // Telemetry first, from compiled-in values only, so the sink exists for
+        // every later launch step (crash reporter, keyring, library open) and
+        // any failure it reports.
+        diagnostics = BaeDiagnostics.configure()
         BaeCrashReporting.configure(this)
         logger.info("application launched")
         // Android app processes have no $HOME, which bae-core needs to locate
@@ -35,7 +48,7 @@ class BaeApp : Application() {
         // Must be called before initKeyring() so the Rust side has
         // access to the Android Context for SharedPreferences / KeyStore.
         Keyring.initializeNdkContext(this)
-        initKeyring()
+        initKeyring(diagnostics)
         // Register the host's OAuth client creds (if a creds file is bundled) so
         // coven can build authorization URLs and refresh provider tokens during
         // sync. Null in the baeium edition (no OAuth) or when no creds file is

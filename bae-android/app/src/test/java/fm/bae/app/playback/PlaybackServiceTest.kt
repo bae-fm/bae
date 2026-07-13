@@ -29,6 +29,7 @@ import uniffi.bae_bridge.BridgeAlbumDetail
 import uniffi.bae_bridge.BridgeComposerDetail
 import uniffi.bae_bridge.BridgeComposerSortCriterion
 import uniffi.bae_bridge.BridgeComposerSummary
+import uniffi.bae_bridge.BridgeDiagnostics
 import uniffi.bae_bridge.BridgeRelease
 import uniffi.bae_bridge.BridgeSearchResults
 import uniffi.bae_bridge.BridgeSortCriterion
@@ -111,6 +112,7 @@ class PlaybackServiceTest {
         return OpenLibrary(
             libraryId = "lib-1",
             appHandle = handle,
+            diagnostics = BridgeDiagnostics(NoHandle),
             stores =
                 OpenLibraryStores(
                     library = LibraryStore(),

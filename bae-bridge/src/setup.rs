@@ -194,12 +194,14 @@ pub fn set_ca_cert_dir(dirs: String) {
     std::env::set_var("SSL_CERT_DIR", dirs);
 }
 
-/// Initialize the platform keyring. Call once at app startup, before any bridge
-/// function that touches the keyring (e.g. `unlockLibrary`, `initApp`). Safe to
-/// call again — it just replaces the store.
+/// Initialize the platform keyring. Call once at app startup, after
+/// `configure_diagnostics` (whose handle it passes down so a store-creation
+/// failure ships `keyring_init_failed`) and before any bridge function that
+/// touches the keyring (e.g. `unlockLibrary`, `initApp`). Safe to call again —
+/// it just replaces the store.
 #[uniffi::export]
-pub fn init_keyring() {
-    bae_core::config::init_keyring();
+pub fn init_keyring(diagnostics: Arc<crate::init::BridgeDiagnostics>) {
+    bae_core::config::init_keyring(diagnostics.core());
 }
 
 /// Discover local libraries in ~/.bae/libraries/, returning each as a

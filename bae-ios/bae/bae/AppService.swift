@@ -12,6 +12,7 @@ import Foundation
 final class AppService: BaeKit.AppService {
     init(
         appHandle: AppHandle,
+        diagnostics: BridgeDiagnostics,
         config: BridgeConfig,
         initialOutbox: BridgeOutboxSnapshot
     ) {
@@ -19,6 +20,7 @@ final class AppService: BaeKit.AppService {
             .init(
                 appHandle: appHandle,
                 mediaControlService: MediaControlService(),
+                diagnostics: diagnostics,
                 config: config,
                 initialOutbox: initialOutbox
             )

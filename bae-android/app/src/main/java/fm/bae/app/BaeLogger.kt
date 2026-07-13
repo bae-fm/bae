@@ -3,13 +3,22 @@ package fm.bae.app
 import android.util.Log
 import uniffi.bae_bridge.BridgeAppDiagnosticMetadata
 import uniffi.bae_bridge.BridgeDatadogDiagnosticsConfig
+import uniffi.bae_bridge.BridgeDiagnostics
 import uniffi.bae_bridge.BridgeDiagnosticsConfig
+import uniffi.bae_bridge.configureDiagnostics
 
 object BaeDiagnostics {
     /**
-     * Builds the Datadog telemetry config handed to `initApp`. Telemetry is
-     * constructed inside the Rust core from this config — there is no separate
-     * configure step. Local logging stays in [BaeLogger] (android.util.Log).
+     * Construct the process-lifetime telemetry sink and install the core's
+     * tracing subscriber. Call once at startup, before `initKeyring` and
+     * `initApp`. Infallible: the core falls back to the no-op sink (with a
+     * local error log) rather than let telemetry setup block a launch.
+     */
+    fun configure(): BridgeDiagnostics = configureDiagnostics(bridgeConfig())
+
+    /**
+     * Builds the Datadog telemetry config the sink is constructed from. Local
+     * logging stays in [BaeLogger] (android.util.Log).
      */
     fun bridgeConfig(): BridgeDiagnosticsConfig {
         if (BuildConfig.BAE_EDITION == "bae") {

@@ -11,7 +11,7 @@ use std::sync::Arc;
 use tracing::info;
 
 use crate::config::{Config, ConfigHandle};
-use crate::diagnostics::{AnomalyKind, Diagnostics, DiagnosticsConfig, TelemetryEvent};
+use crate::diagnostics::{AnomalyKind, Diagnostics, TelemetryEvent};
 use crate::keys::StoreKeys;
 use crate::library::AppServices;
 use crate::playback::PlaybackService;
@@ -26,10 +26,6 @@ pub struct RunningApp {
     pub runtime: tokio::runtime::Runtime,
     pub services: AppServices,
     pub ui_event_bus: UiEventBus,
-    /// The telemetry sink, exposed so a frontend can emit host-originated
-    /// events (a screen open) and flush at exit. The services already hold
-    /// their own clone via the library manager.
-    pub diagnostics: Diagnostics,
 }
 
 /// Why [`bootstrap`] could not bring the application up. Frontends map these
@@ -61,7 +57,7 @@ pub fn bootstrap(
     library_id: String,
     position_update_interval_ms: u32,
     restore_playback: bool,
-    diagnostics: DiagnosticsConfig,
+    diagnostics: Diagnostics,
     cloudkit_ops: Option<crate::CloudKitOpsRef>,
 ) -> Result<RunningApp, BootstrapError> {
     bootstrap_on_thread(
@@ -77,7 +73,7 @@ pub fn bootstrap_library_path(
     library_path: PathBuf,
     position_update_interval_ms: u32,
     restore_playback: bool,
-    diagnostics: DiagnosticsConfig,
+    diagnostics: Diagnostics,
 ) -> Result<RunningApp, BootstrapError> {
     bootstrap_on_thread(
         BootstrapTarget::LibraryPath(library_path),
@@ -92,7 +88,7 @@ fn bootstrap_on_thread(
     target: BootstrapTarget,
     position_update_interval_ms: u32,
     restore_playback: bool,
-    diagnostics: DiagnosticsConfig,
+    diagnostics: Diagnostics,
     cloudkit_ops: Option<crate::CloudKitOpsRef>,
 ) -> Result<RunningApp, BootstrapError> {
     // Building the sync manager and `block_on`-ing the async setup uses a deep
@@ -125,7 +121,7 @@ fn bootstrap_inner(
     target: BootstrapTarget,
     position_update_interval_ms: u32,
     restore_playback: bool,
-    diagnostics: DiagnosticsConfig,
+    diagnostics: Diagnostics,
     cloudkit_ops: Option<crate::CloudKitOpsRef>,
 ) -> Result<RunningApp, BootstrapError> {
     // The injected wall clock + id source, built before `load_bootstrap_config` so
@@ -136,25 +132,12 @@ fn bootstrap_inner(
     let (config, save_active_library) = load_bootstrap_config(target, ids.as_ref())?;
     let library_id = config.store_id.clone();
 
-    // Telemetry is constructed here, from the config the frontend passed in, so
-    // there is no second entry point a caller must remember to invoke before
-    // this one. It reuses the same clock/id sources; a `Disabled` config yields
-    // the no-op sink. Built after the config loads so the stable per-device id
-    // (config mints it on first run) can stamp every event as one correlation key.
-    let diagnostics = Diagnostics::configure(
-        diagnostics,
-        clock.clone(),
-        ids.clone(),
-        config.device_id.clone(),
-    )
-    .map_err(|e| BootstrapError::Internal(format!("Failed to configure diagnostics: {e}")))?;
-
-    // The keyring installer runs before diagnostics existed (the host calls it
-    // pre-init), stashing any failure in an ambient static; ship it now that the
-    // sink is up. A missing default store means every credential read fails.
-    if crate::config::keyring_init_failed() {
-        diagnostics.event(TelemetryEvent::KeyringInitFailed {});
-    }
+    // Telemetry was built by the host at process start (from compiled-in values
+    // only) and handed in. Enrich it now with the stable per-device id the config
+    // mints on first run — a set-once post-construction step, the one place late
+    // mutability is accepted. Events before this point (host launch, keyring,
+    // config load) ship without the field rather than a placeholder.
+    diagnostics.set_device_id(config.device_id.clone());
 
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .worker_threads(2)
@@ -333,7 +316,6 @@ fn bootstrap_inner(
         runtime,
         services: app_services,
         ui_event_bus,
-        diagnostics,
     })
 }
 

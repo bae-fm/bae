@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use bae_core::app::{bootstrap as bootstrap_core, BootstrapError, RunningApp};
 use bae_core::config::{ConfigError, McpConfig};
-use bae_core::diagnostics::{Diagnostics, DiagnosticsConfig};
+use bae_core::diagnostics::Diagnostics;
 use bae_core::library::AppServices;
 use bae_core::ui::UiEventBus;
 use bae_mcp::{Automation, McpServerController};
@@ -15,7 +15,6 @@ pub struct DesktopApp {
     pub runtime: Runtime,
     pub services: AppServices,
     pub ui_event_bus: UiEventBus,
-    pub diagnostics: Diagnostics,
     mcp_controller: McpServerController,
 }
 
@@ -40,7 +39,7 @@ pub fn bootstrap(
     library_id: String,
     position_update_interval_ms: u32,
     restore_playback: bool,
-    diagnostics: DiagnosticsConfig,
+    diagnostics: Diagnostics,
     cloudkit_ops: Option<bae_core::CloudKitOpsRef>,
 ) -> Result<DesktopApp, BootstrapError> {
     bootstrap_core(
@@ -59,7 +58,6 @@ impl DesktopApp {
             runtime,
             services,
             ui_event_bus,
-            diagnostics,
         } = app;
 
         let automation = Automation::new(services.clone(), runtime.handle().clone());
@@ -93,7 +91,6 @@ impl DesktopApp {
             runtime,
             services,
             ui_event_bus,
-            diagnostics,
             mcp_controller: controller,
         }
     }

@@ -59,31 +59,38 @@ final class AppSessionHolder {
     /// constructs and wires the service; the opener owns the supersede-cancel
     /// slot and maps each open to an `Outcome` this holder lands on `screen`.
     @ObservationIgnored
-    private let opener = LibrarySessionOpener<AppHandle, AppService>(
-        makeHandle: {
-            try initApp(
-                libraryId: $0,
-                positionUpdateIntervalMs: positionUpdateIntervalMs,
-                // The "Restore on launch" preference (default on for mobile):
-                // off starts with nothing in playback; the core keeps the
-                // resume row current either way.
-                restorePlayback: UserDefaults.standard.object(forKey: "persistPlayback") == nil
-                    || UserDefaults.standard.bool(forKey: "persistPlayback"),
-                // Telemetry config crosses at init; the core builds the sink
-                // from it, so there is no separate configure step to run first.
-                diagnostics: BaeDiagnostics.bridgeConfig(source: "ios")
-            )
-        },
-        makeService: { handle, config, initialOutbox in
-            let service = AppService(
-                appHandle: handle,
-                config: config,
-                initialOutbox: initialOutbox
-            )
-            service.wireUp()
-            return service
-        }
-    )
+    private let opener: LibrarySessionOpener<AppHandle, AppService>
+
+    /// `diagnostics` is the process-lifetime telemetry sink, built at launch
+    /// and shared across library opens; the opener's closures capture it for
+    /// `init_app` and each `AppService`.
+    init(diagnostics: BridgeDiagnostics) {
+        opener = LibrarySessionOpener<AppHandle, AppService>(
+            makeHandle: { [diagnostics] libraryId in
+                try initApp(
+                    libraryId: libraryId,
+                    positionUpdateIntervalMs: positionUpdateIntervalMs,
+                    // The "Restore on launch" preference (default on for mobile):
+                    // off starts with nothing in playback; the core keeps the
+                    // resume row current either way.
+                    restorePlayback: UserDefaults.standard.object(forKey: "persistPlayback") == nil
+                        || UserDefaults.standard.bool(forKey: "persistPlayback"),
+                    // The telemetry sink built at launch; `init_app` requires it.
+                    diagnostics: diagnostics
+                )
+            },
+            makeService: { [diagnostics] handle, config, initialOutbox in
+                let service = AppService(
+                    appHandle: handle,
+                    diagnostics: diagnostics,
+                    config: config,
+                    initialOutbox: initialOutbox
+                )
+                service.wireUp()
+                return service
+            }
+        )
+    }
 
     /// On launch: open the first discovered library, or onboard if none exist.
     func start() {

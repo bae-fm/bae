@@ -552,8 +552,9 @@ public sealed partial class MainWindow : Window
         _nowPlayingBar.SeedVolume();
         _sync.Refresh();
         _session.Subscribe();
-        // Host-originated telemetry: the library screen opened. Infallible.
-        WithCurrentHandle(handle => NativeBae.ReportScreen(handle, BridgeScreen.Library));
+        // Host-originated telemetry: the library screen opened, through the
+        // standalone sink. Infallible.
+        NativeBae.ReportScreen(BaeDiagnostics.Handle, BridgeScreen.Library);
         SettleInitialLibraryOpen();
     }
 
@@ -1388,9 +1389,9 @@ public sealed partial class MainWindow : Window
             // during shutdown; OnClosed doesn't go through TearDownLibrary.
             // Idempotent.
             _mediaControls.Deactivate();
-            // Flush buffered telemetry through the live handle before it is
-            // freed by the shutdown below.
-            WithCurrentHandle(BaeDiagnostics.Flush);
+            // Flush buffered telemetry through the standalone sink before the
+            // library handle is freed by the shutdown below.
+            BaeDiagnostics.Flush();
             // Always shut down gracefully; the restore-on-launch preference
             // gates the restore at the next launch (passed to InitApp), not
             // this save — the core keeps the resume row current either way.

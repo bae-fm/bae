@@ -9,7 +9,8 @@
 //! rather than seeding it from `BAE_*` env vars.
 
 fn main() {
-    bae_core::config::init_keyring();
+    // This example ships no telemetry; a no-op sink satisfies init_keyring.
+    bae_core::config::init_keyring(&bae_core::diagnostics::Diagnostics::noop());
 
     let library_id = match bae_core::config::Config::active_library_id() {
         Ok(Some(id)) => id,

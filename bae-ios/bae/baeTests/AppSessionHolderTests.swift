@@ -12,6 +12,12 @@ import Testing
 @MainActor
 @Suite("AppSessionHolder")
 struct AppSessionHolderTests {
+    /// A holder wired to a no-op telemetry sink — these transitions never emit,
+    /// so the disabled sink (which cannot fail to construct) is enough.
+    private func makeHolder() -> AppSessionHolder {
+        AppSessionHolder(diagnostics: configureDiagnostics(config: .disabled))
+    }
+
     private func makeLibrary(id: String, isActive: Bool = false) -> BridgeLibrary {
         BridgeLibrary(
             id: id,
@@ -24,7 +30,7 @@ struct AppSessionHolderTests {
 
     @Test("a fresh holder starts on the loading screen with no open library")
     func freshHolderIsLoading() {
-        let holder = AppSessionHolder()
+        let holder = makeHolder()
 
         guard case .loading = holder.screen else {
             Issue.record("A fresh holder should start on .loading")
@@ -37,13 +43,13 @@ struct AppSessionHolderTests {
 
     @Test("no library is active before one is opened")
     func nothingActiveBeforeOpen() {
-        let holder = AppSessionHolder()
+        let holder = makeHolder()
         #expect(!holder.isActive(makeLibrary(id: "lib-1")))
     }
 
     @Test("cancelling the unlock gate with no open library falls to onboarding")
     func cancelUnlockWithoutServiceGoesToOnboarding() {
-        let holder = AppSessionHolder()
+        let holder = makeHolder()
 
         holder.cancelUnlock()
 

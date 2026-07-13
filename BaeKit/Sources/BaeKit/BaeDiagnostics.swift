@@ -1,10 +1,19 @@
-/// Builds the Datadog telemetry config the app hands to `initApp`. Telemetry is
-/// constructed inside the Rust core from this config — there is no separate
-/// configure step to run first. Local logging stays in `BaeLogger` (OSLog);
-/// only this typed config, and the typed events the core emits, ever reach
-/// Datadog.
+/// Builds the Datadog telemetry config and constructs the process-lifetime
+/// telemetry sink the app holds for its whole run. The sink is built once at
+/// startup (from compiled-in values only) and required by `initKeyring` /
+/// `initApp`, so telemetry exists before anything that could fail. Local logging
+/// stays in `BaeLogger` (OSLog); only the typed config here, and the typed
+/// events the core emits, ever reach Datadog.
 public enum BaeDiagnostics {
-    public static func bridgeConfig(
+    /// Construct the telemetry sink and install the core's tracing subscriber.
+    /// Call once at startup, before `initKeyring` and `initApp`. Infallible:
+    /// the core falls back to the no-op sink (with a local error log) rather
+    /// than let telemetry setup block a launch.
+    public static func configure(source: String) -> BridgeDiagnostics {
+        configureDiagnostics(config: bridgeConfig(source: source))
+    }
+
+    static func bridgeConfig(
         source: String
     ) -> BridgeDiagnosticsConfig {
         guard BuildInfo.edition == "bae",

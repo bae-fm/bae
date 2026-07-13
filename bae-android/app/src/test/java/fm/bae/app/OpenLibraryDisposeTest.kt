@@ -18,6 +18,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
 import uniffi.bae_bridge.AppHandle
+import uniffi.bae_bridge.BridgeDiagnostics
 import uniffi.bae_bridge.NoHandle
 import uniffi.bae_bridge.UiEventCallback
 
@@ -57,6 +58,7 @@ class OpenLibraryDisposeTest {
             OpenLibrary(
                 libraryId = "lib-1",
                 appHandle = handle,
+                diagnostics = BridgeDiagnostics(NoHandle),
                 stores =
                     OpenLibraryStores(
                         library = LibraryStore(),

@@ -236,7 +236,9 @@ enum McpTokenCommand {
 }
 
 fn run(cli: Cli) -> Result<CliOutput, CliError> {
-    init_keyring();
+    // The CLI ships no telemetry; a no-op sink satisfies the keyring/bootstrap
+    // signatures without opening a Datadog worker.
+    init_keyring(&bae_core::diagnostics::Diagnostics::noop());
     let selector = LibrarySelector::from_options(cli.library_id, cli.library_path)?;
 
     if let Command::Mcp {
@@ -571,7 +573,7 @@ fn bootstrap_for_selector(selector: &LibrarySelector) -> Result<RunningApp, CliE
                 path.clone(),
                 1000,
                 false,
-                bae_core::diagnostics::DiagnosticsConfig::Disabled,
+                bae_core::diagnostics::Diagnostics::noop(),
             )
             .map_err(bootstrap_error)
         }
@@ -590,7 +592,7 @@ fn bootstrap_registered_library(id: String) -> Result<RunningApp, CliError> {
         id,
         1000,
         false,
-        bae_core::diagnostics::DiagnosticsConfig::Disabled,
+        bae_core::diagnostics::Diagnostics::noop(),
         None,
     )
     .map_err(bootstrap_error)

@@ -125,10 +125,13 @@ impl DatadogDiagnosticsConfig {
 ///
 /// `device_id` and `session_id` are the correlation keys for reconstructing one
 /// user's event stream: `device_id` is stable across launches (config mints it
-/// on first run), `session_id` is fresh per `Diagnostics` construction (per
-/// launch). Both are locally-minted random ids that resolve to nothing outside
-/// this library — they identify a stream, not a real-world entity — so they live
-/// here on core's own event, never on the host-built `AppDiagnosticMetadata`.
+/// on first run) and arrives as a set-once enrichment shortly after startup, so
+/// events emitted before it lands omit the field (serialized away) rather than
+/// carry a placeholder. `session_id` is fresh per `Diagnostics` construction
+/// (per launch). Both are locally-minted random ids that resolve to nothing
+/// outside this library — they identify a stream, not a real-world entity — so
+/// they live here on core's own event, never on the host-built
+/// `AppDiagnosticMetadata`.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DiagnosticEvent {
     pub name: String,
@@ -136,7 +139,8 @@ pub struct DiagnosticEvent {
     pub level: DiagnosticLevel,
     pub message: String,
     pub timestamp: DateTime<Utc>,
-    pub device_id: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub device_id: Option<String>,
     pub session_id: String,
     pub fields: serde_json::Map<String, serde_json::Value>,
     #[serde(flatten)]
@@ -179,8 +183,6 @@ enum DiagnosticsInner {
         tx: mpsc::UnboundedSender<WorkerMessage>,
         app: AppDiagnosticMetadata,
         clock: ClockRef,
-        /// Stable across launches (config mints it on first run).
-        device_id: String,
         /// Minted once, here, per construction — one value for this launch.
         session_id: String,
     },
@@ -197,7 +199,6 @@ impl Diagnostics {
         config: DiagnosticsConfig,
         clock: ClockRef,
         ids: IdRef,
-        device_id: String,
     ) -> Result<Self, DiagnosticsError> {
         let DiagnosticsConfig::Enabled(config) = config else {
             return Ok(Self::noop());
@@ -206,20 +207,13 @@ impl Diagnostics {
             return Err(DiagnosticsError::IncompleteConfig);
         }
         let config = config.normalized();
-        Self::with_transport(
-            config,
-            clock,
-            ids,
-            device_id,
-            Arc::new(DatadogTransport::new()),
-        )
+        Self::with_transport(config, clock, ids, Arc::new(DatadogTransport::new()))
     }
 
     pub(crate) fn with_transport(
         config: DatadogDiagnosticsConfig,
         clock: ClockRef,
         ids: IdRef,
-        device_id: String,
         transport: Arc<dyn DiagnosticsTransport>,
     ) -> Result<Self, DiagnosticsError> {
         let (tx, rx) = mpsc::unbounded_channel();
@@ -242,10 +236,25 @@ impl Diagnostics {
                 tx,
                 app,
                 clock,
-                device_id,
                 session_id,
             }),
         })
+    }
+
+    /// Enrich every subsequent event with the stable per-device id, set once
+    /// shortly after startup (bootstrap loads the config that mints it). Delivered
+    /// as a worker message so the worker — the sole owner of the id — serializes
+    /// it with the event stream: events already enqueued keep the absent field,
+    /// events after it carry the id. A second call is ignored (a library switch
+    /// re-runs bootstrap with the same process-global id). The no-op sink drops
+    /// it silently.
+    pub fn set_device_id(&self, device_id: String) {
+        let DiagnosticsInner::Worker { tx, .. } = self.inner.as_ref() else {
+            return;
+        };
+        if tx.send(WorkerMessage::SetDeviceId(device_id)).is_err() {
+            tracing::debug!("diagnostics device id dropped: worker stopped");
+        }
     }
 
     /// Ship one telemetry event. Infallible from the caller's view — telemetry
@@ -257,7 +266,6 @@ impl Diagnostics {
             tx,
             app,
             clock,
-            device_id,
             session_id,
         } = self.inner.as_ref()
         else {
@@ -268,7 +276,9 @@ impl Diagnostics {
             level: event.level(),
             message: event.name().to_string(),
             timestamp: clock.now(),
-            device_id: device_id.clone(),
+            // The worker stamps the device id when it has one (set-once
+            // enrichment); an event enqueued before that ships without it.
+            device_id: None,
             session_id: session_id.clone(),
             fields: event.fields(),
             app: app.clone(),
@@ -293,6 +303,7 @@ impl Diagnostics {
 
 enum WorkerMessage {
     Event(DiagnosticEvent),
+    SetDeviceId(String),
     Flush(oneshot::Sender<Result<(), DiagnosticsError>>),
 }
 
@@ -302,6 +313,9 @@ struct DiagnosticsWorker {
     transport: Arc<dyn DiagnosticsTransport>,
     rx: mpsc::UnboundedReceiver<WorkerMessage>,
     buffered: VecDeque<DiagnosticEvent>,
+    /// The stable per-device id, absent until `set_device_id` enriches it. The
+    /// worker stamps it onto each event as the event arrives.
+    device_id: Option<String>,
 }
 
 impl DiagnosticsWorker {
@@ -317,6 +331,7 @@ impl DiagnosticsWorker {
             transport,
             rx,
             buffered: VecDeque::new(),
+            device_id: None,
         }
     }
 
@@ -332,10 +347,20 @@ impl DiagnosticsWorker {
             tokio::select! {
                 Some(message) = self.rx.recv() => {
                     match message {
-                        WorkerMessage::Event(event) => {
+                        WorkerMessage::Event(mut event) => {
+                            event.device_id = self.device_id.clone();
                             self.push(event);
                             if self.buffered.len() >= BATCH_SIZE {
                                 self.record_flush_result().await;
+                            }
+                        }
+                        WorkerMessage::SetDeviceId(device_id) => {
+                            if self.device_id.is_some() {
+                                tracing::debug!(
+                                    "diagnostics device id already set; ignoring repeat"
+                                );
+                            } else {
+                                self.device_id = Some(device_id);
                             }
                         }
                         WorkerMessage::Flush(reply) => {
@@ -646,7 +671,7 @@ mod tests {
             level: telemetry.level(),
             message: telemetry.name().to_string(),
             timestamp: clock().now(),
-            device_id: "device-abc".to_string(),
+            device_id: Some("device-abc".to_string()),
             session_id: "session-xyz".to_string(),
             fields: telemetry.fields(),
             app: config().app,
@@ -675,12 +700,7 @@ mod tests {
         incomplete.client_token = String::new();
         assert!(!DiagnosticsConfig::Enabled(incomplete.clone()).sends_events());
         assert!(matches!(
-            Diagnostics::configure(
-                DiagnosticsConfig::Enabled(incomplete),
-                clock(),
-                ids(),
-                "device-abc".to_string()
-            ),
+            Diagnostics::configure(DiagnosticsConfig::Enabled(incomplete), clock(), ids()),
             Err(DiagnosticsError::IncompleteConfig)
         ));
 
@@ -773,14 +793,8 @@ mod tests {
     #[tokio::test]
     async fn batching_flushes_events_through_transport() {
         let transport = Arc::new(RecordingTransport::new(vec![Ok(())]));
-        let diagnostics = Diagnostics::with_transport(
-            config(),
-            clock(),
-            ids(),
-            "device-abc".to_string(),
-            transport.clone(),
-        )
-        .expect("diagnostics starts");
+        let diagnostics = Diagnostics::with_transport(config(), clock(), ids(), transport.clone())
+            .expect("diagnostics starts");
         diagnostics.event(TelemetryEvent::AppStarted {});
 
         diagnostics.flush().await.expect("flush succeeds");
@@ -795,15 +809,11 @@ mod tests {
     #[tokio::test]
     async fn events_carry_device_and_session_ids() {
         let transport = Arc::new(RecordingTransport::new(vec![Ok(())]));
-        let diagnostics = Diagnostics::with_transport(
-            config(),
-            clock(),
-            ids(),
-            "device-abc".to_string(),
-            transport.clone(),
-        )
-        .expect("diagnostics starts");
-        // Two events from one instance share the session id and carry the device id.
+        let diagnostics = Diagnostics::with_transport(config(), clock(), ids(), transport.clone())
+            .expect("diagnostics starts");
+        // Once enriched, two events from one instance share the session id and
+        // carry the device id.
+        diagnostics.set_device_id("device-abc".to_string());
         diagnostics.event(TelemetryEvent::AppStarted {});
         diagnostics.event(TelemetryEvent::AppStarted {});
         diagnostics.flush().await.expect("flush succeeds");
@@ -811,9 +821,55 @@ mod tests {
         let body: Vec<DiagnosticEvent> = serde_json::from_slice(&transport.requests()[0].body)
             .expect("request body is a diagnostic-event array");
         assert_eq!(body.len(), 2);
-        assert_eq!(body[0].device_id, "device-abc");
-        assert_eq!(body[1].device_id, "device-abc");
+        assert_eq!(body[0].device_id.as_deref(), Some("device-abc"));
+        assert_eq!(body[1].device_id.as_deref(), Some("device-abc"));
         assert_eq!(body[0].session_id, body[1].session_id);
+    }
+
+    #[tokio::test]
+    async fn device_id_enrichment_is_absent_before_and_present_after() {
+        let transport = Arc::new(RecordingTransport::new(vec![Ok(()), Ok(())]));
+        let diagnostics = Diagnostics::with_transport(config(), clock(), ids(), transport.clone())
+            .expect("diagnostics starts");
+        // Before enrichment: the field is absent from the wire, not a placeholder.
+        diagnostics.event(TelemetryEvent::AppStarted {});
+        diagnostics.flush().await.expect("first flush succeeds");
+        diagnostics.set_device_id("device-abc".to_string());
+        // After enrichment: the field carries the id.
+        diagnostics.event(TelemetryEvent::AppStarted {});
+        diagnostics.flush().await.expect("second flush succeeds");
+
+        let requests = transport.requests();
+        let before: serde_json::Value =
+            serde_json::from_slice(&requests[0].body).expect("request body is JSON");
+        assert!(
+            before[0].get("device_id").is_none(),
+            "pre-enrichment event omits device_id entirely"
+        );
+        let after: serde_json::Value =
+            serde_json::from_slice(&requests[1].body).expect("request body is JSON");
+        assert_eq!(after[0]["device_id"], "device-abc");
+    }
+
+    #[tokio::test]
+    async fn second_device_id_set_is_ignored() {
+        let transport = Arc::new(RecordingTransport::new(vec![Ok(())]));
+        let diagnostics = Diagnostics::with_transport(config(), clock(), ids(), transport.clone())
+            .expect("diagnostics starts");
+        diagnostics.set_device_id("first".to_string());
+        diagnostics.set_device_id("second".to_string());
+        diagnostics.event(TelemetryEvent::AppStarted {});
+        diagnostics.flush().await.expect("flush succeeds");
+
+        let body: Vec<DiagnosticEvent> = serde_json::from_slice(&transport.requests()[0].body)
+            .expect("request body is a diagnostic-event array");
+        assert_eq!(body[0].device_id.as_deref(), Some("first"));
+    }
+
+    #[test]
+    fn no_op_diagnostics_accepts_set_device_id() {
+        // Infallible and silent — nothing to assert but that it doesn't panic.
+        Diagnostics::noop().set_device_id("device-abc".to_string());
     }
 
     #[tokio::test]
@@ -825,7 +881,6 @@ mod tests {
             config(),
             clock(),
             ids.clone(),
-            "device-abc".to_string(),
             Arc::new(RecordingTransport::new(vec![Ok(())])),
         )
         .expect("diagnostics starts");
@@ -833,7 +888,6 @@ mod tests {
             config(),
             clock(),
             ids,
-            "device-abc".to_string(),
             Arc::new(RecordingTransport::new(vec![Ok(())])),
         )
         .expect("diagnostics starts");
@@ -861,14 +915,8 @@ mod tests {
             Err(DiagnosticsError::Status(StatusCode::BAD_REQUEST)),
             Ok(()),
         ]));
-        let diagnostics = Diagnostics::with_transport(
-            config(),
-            clock(),
-            ids(),
-            "device-abc".to_string(),
-            transport.clone(),
-        )
-        .expect("diagnostics starts");
+        let diagnostics = Diagnostics::with_transport(config(), clock(), ids(), transport.clone())
+            .expect("diagnostics starts");
         diagnostics.event(TelemetryEvent::AppStarted {});
 
         assert!(matches!(

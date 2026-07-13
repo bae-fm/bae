@@ -174,7 +174,6 @@ fn recording_diagnostics() -> (
         config,
         Arc::new(coven::SystemClock),
         Arc::new(coven::SequentialIdProvider::new("request-id")),
-        "device-test".to_string(),
         transport.clone(),
     )
     .expect("diagnostics starts");

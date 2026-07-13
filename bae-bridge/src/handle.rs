@@ -46,7 +46,6 @@ pub struct AppHandle {
     pub(crate) runtime: tokio::runtime::Runtime,
     pub(crate) services: AppServices,
     pub(crate) ui_event_bus: bae_core::ui::UiEventBus,
-    pub(crate) diagnostics: bae_core::diagnostics::Diagnostics,
 }
 
 #[cfg(feature = "desktop")]
@@ -3258,7 +3257,6 @@ mod tests {
             runtime,
             services,
             ui_event_bus: bae_core::ui::UiEventBus::new(),
-            diagnostics: bae_core::diagnostics::Diagnostics::noop(),
         };
 
         (handle, root)

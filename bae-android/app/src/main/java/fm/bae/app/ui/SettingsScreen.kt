@@ -156,7 +156,7 @@ private fun ReportScreenOpened(
     screen: BridgeScreen,
 ) {
     LaunchedEffect(Unit) {
-        session.appHandle.telemetry(BridgeTelemetryEvent.ScreenOpened(screen))
+        session.diagnostics.event(BridgeTelemetryEvent.ScreenOpened(screen))
     }
 }
 
