@@ -428,6 +428,18 @@ impl SyncController {
     /// controller's outbox in-flight set and event channel with the sync loop's
     /// upload observer. Call before starting the sync-status listener.
     pub(crate) async fn attach_and_start_sync(&self) -> Result<(), LibraryError> {
+        self.connect_provider().await?;
+        Ok(())
+    }
+
+    /// Connect the configured provider: CloudKit needs its host-supplied driver
+    /// handed in, every other provider is built by coven from the config alone.
+    /// coven resolves the at-rest cipher from the master-key custody itself, so no
+    /// key material passes through here.
+    async fn connect_provider(&self) -> Result<(), LibraryError> {
+        // Read the provider out before the awaits below: `config()` hands back a read
+        // guard, and holding one across an await makes the future !Send — which the
+        // bridge's uniffi export requires.
         let provider = self.config_handle.config().cloud_home.provider.clone();
         match provider {
             Some(CloudProvider::CloudKit) => {
@@ -527,18 +539,7 @@ impl SyncController {
         // the library is left exactly as a successful setup would leave it minus the
         // running loop: key established, provider configured, sync attached on the
         // next launch or retry.
-        let provider = self.config_handle.config().cloud_home.provider.clone();
-        match provider {
-            Some(CloudProvider::CloudKit) => {
-                let ops = self.cloudkit_ops.clone().ok_or_else(|| {
-                    LibraryError::Internal("CloudKit driver not provided".to_string())
-                })?;
-                self.handle.connect_sync_with_cloudkit(ops).await?;
-            }
-            _ => {
-                self.handle.connect_sync().await?;
-            }
-        }
+        self.connect_provider().await?;
 
         self.handle.sync_now();
 
