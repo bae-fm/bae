@@ -1,188 +1,134 @@
 //! File header validation for detecting corrupt downloads.
 //!
-//! Simple magic-byte and minimum-size checks. No deep parsing, no heuristics.
+//! Magic-byte and minimum-size checks. No deep parsing, no heuristics.
 
 use std::fs;
 use std::io::{self, Read};
 use std::path::Path;
 
-/// Whether the file's header is a well-formed FLAC prefix: the `fLaC` magic
-/// followed by a STREAMINFO block header (block type 0, length 34). `Ok(false)`
-/// is corrupt, `Err` an I/O failure.
-pub(crate) fn is_valid_flac(path: &Path) -> io::Result<bool> {
-    let mut file = fs::File::open(path)?;
-    let file_size = file.metadata()?.len();
+/// One accepted header shape: every `(offset, magic)` in it must match.
+type Magic = &'static [(usize, &'static [u8])];
 
-    if file_size == 0 {
-        return Ok(false);
+const APE: Magic = &[(0, b"MAC ")];
+const WAV: Magic = &[(0, b"RIFF"), (8, b"WAVE")];
+const AIFF: Magic = &[(0, b"FORM"), (8, b"AIFF")];
+const AIFC: Magic = &[(0, b"FORM"), (8, b"AIFC")];
+const OGG: Magic = &[(0, b"OggS")];
+const WAVPACK: Magic = &[(0, b"wvpk")];
+const DSF: Magic = &[(0, b"DSD ")];
+const DFF: Magic = &[(0, b"FRM8")];
+
+const JPEG: Magic = &[(0, &[0xFF, 0xD8, 0xFF])];
+const PNG: Magic = &[(0, &[0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A])];
+const WEBP: Magic = &[(0, b"RIFF"), (8, b"WEBP")];
+const GIF: Magic = &[(0, b"GIF8")]; // GIF87a and GIF89a share the prefix.
+const BMP: Magic = &[(0, b"BM")];
+
+/// The file's first `len` bytes, or `None` if it is empty or shorter than `len`
+/// — either way it cannot be carrying the header in question.
+fn read_header(path: &Path, len: usize) -> io::Result<Option<Vec<u8>>> {
+    if fs::metadata(path)?.len() == 0 {
+        return Ok(None);
     }
-
-    // fLaC magic (4 bytes) + STREAMINFO block header (4) + STREAMINFO data (34).
-    let mut header = [0u8; 42];
-    let bytes_read = file.read(&mut header)?;
-    if bytes_read < 42 {
-        return Ok(false);
-    }
-
-    if &header[0..4] != b"fLaC" {
-        return Ok(false);
-    }
-
-    // Byte 4 is (last-block-flag << 7 | block_type).
-    let block_type = header[4] & 0x7F;
-    if block_type != 0 {
-        return Ok(false);
-    }
-
-    // Block length: 3 bytes, big-endian.
-    let block_length = ((header[5] as u32) << 16) | ((header[6] as u32) << 8) | (header[7] as u32);
-    if block_length != 34 {
-        return Ok(false);
-    }
-
-    Ok(true)
+    let mut buf = vec![0u8; len];
+    let read = fs::File::open(path)?.read(&mut buf)?;
+    Ok((read >= len).then_some(buf))
 }
 
-/// Whether an audio file's magic bytes match its extension. Dispatches on the
-/// extension to that format's check; an extension with no check (`.m4a`, say)
-/// yields `Ok(true)` — an unrecognized format is not evidence of corruption, so
-/// it must not block the import.
-pub(crate) fn is_valid_audio(path: &Path) -> io::Result<bool> {
-    let ext = path
-        .extension()
-        .and_then(|e| e.to_str())
-        .map(|e| e.to_lowercase())
-        .unwrap_or_default();
-
-    match ext.as_str() {
-        "flac" => is_valid_flac(path),
-        "mp3" => is_valid_mp3(path),
-        "ape" => is_valid_ape(path),
-        "wav" => has_magic_at(path, &[(0, b"RIFF"), (8, b"WAVE")]),
-        "aif" | "aiff" | "aifc" => is_valid_aiff(path),
-        "ogg" | "oga" | "opus" => has_magic_at(path, &[(0, b"OggS")]),
-        "wv" => has_magic_at(path, &[(0, b"wvpk")]),
-        "dsf" => has_magic_at(path, &[(0, b"DSD ")]),
-        "dff" => has_magic_at(path, &[(0, b"FRM8")]),
-        _ => Ok(true),
-    }
-}
-
-fn has_magic_at(path: &Path, checks: &[(usize, &[u8])]) -> io::Result<bool> {
-    let file_size = fs::metadata(path)?.len();
-    if file_size == 0 {
-        return Ok(false);
-    }
-    let read_len = checks
+/// Whether the file opens with any one of `alternatives` (AIFF *or* AIFC, say).
+fn matches_any(path: &Path, alternatives: &[Magic]) -> io::Result<bool> {
+    let len = alternatives
         .iter()
+        .flat_map(|checks| checks.iter())
         .map(|(offset, magic)| offset + magic.len())
         .max()
         .unwrap_or(0);
-    let mut buf = vec![0u8; read_len];
-    let mut file = fs::File::open(path)?;
-    let bytes_read = file.read(&mut buf)?;
-    if bytes_read < read_len {
+    let Some(header) = read_header(path, len)? else {
         return Ok(false);
-    }
-    Ok(checks
-        .iter()
-        .all(|(offset, magic)| &buf[*offset..*offset + magic.len()] == *magic))
+    };
+    Ok(alternatives.iter().any(|checks| {
+        checks
+            .iter()
+            .all(|(offset, magic)| &header[*offset..*offset + magic.len()] == *magic)
+    }))
 }
 
-fn is_valid_aiff(path: &Path) -> io::Result<bool> {
-    let file_size = fs::metadata(path)?.len();
-    if file_size == 0 {
+/// Whether the file's header is a well-formed FLAC prefix: the `fLaC` magic
+/// followed by a STREAMINFO block header (block type 0, length 34). More than a
+/// magic check, which is why it isn't a table entry.
+pub(crate) fn is_valid_flac(path: &Path) -> io::Result<bool> {
+    // fLaC magic (4) + STREAMINFO block header (4) + STREAMINFO data (34).
+    let Some(header) = read_header(path, 42)? else {
+        return Ok(false);
+    };
+    if &header[0..4] != b"fLaC" {
         return Ok(false);
     }
-    let mut buf = [0u8; 12];
-    let mut file = fs::File::open(path)?;
-    let bytes_read = file.read(&mut buf)?;
-    if bytes_read < buf.len() {
+    // Byte 4 is (last-block flag << 7 | block type). STREAMINFO must come first.
+    if header[4] & 0x7F != 0 {
         return Ok(false);
     }
-    Ok(&buf[0..4] == b"FORM" && (&buf[8..12] == b"AIFF" || &buf[8..12] == b"AIFC"))
+    // Block length: 3 bytes big-endian. STREAMINFO is fixed at 34.
+    let block_length = ((header[5] as u32) << 16) | ((header[6] as u32) << 8) | (header[7] as u32);
+    Ok(block_length == 34)
 }
 
-/// Whether the file opens with either an ID3v2 header (`ID3`) or an MPEG sync
-/// word (0xFF, then a byte with its top 3 bits set).
+/// Whether the file opens with an ID3v2 tag or an MPEG sync word. The sync word
+/// is a bit pattern rather than a fixed magic, so this isn't a table entry either.
 pub(crate) fn is_valid_mp3(path: &Path) -> io::Result<bool> {
-    let mut file = fs::File::open(path)?;
-    let file_size = file.metadata()?.len();
-
-    if file_size == 0 {
+    let Some(header) = read_header(path, 3)? else {
         return Ok(false);
-    }
-
-    let mut buf = [0u8; 3];
-    let bytes_read = file.read(&mut buf)?;
-    if bytes_read < 3 {
-        return Ok(false);
-    }
-
-    if &buf[0..3] == b"ID3" {
-        return Ok(true);
-    }
-
-    if buf[0] == 0xFF && (buf[1] & 0xE0) == 0xE0 {
-        return Ok(true);
-    }
-
-    Ok(false)
+    };
+    // Sync word: 0xFF, then a byte with its top three bits set.
+    Ok(&header[0..3] == b"ID3" || (header[0] == 0xFF && header[1] & 0xE0 == 0xE0))
 }
 
 /// Whether the file opens with APE (Monkey's Audio)'s `MAC ` magic.
 pub(crate) fn is_valid_ape(path: &Path) -> io::Result<bool> {
-    let mut file = fs::File::open(path)?;
-    let file_size = file.metadata()?.len();
+    matches_any(path, &[APE])
+}
 
-    if file_size == 0 {
-        return Ok(false);
+/// Whether an audio file's magic bytes match its extension. An extension with no
+/// known magic (`.m4a`, say) yields `Ok(true)` — an unrecognized format is not
+/// evidence of corruption, so it must not block the import.
+pub(crate) fn is_valid_audio(path: &Path) -> io::Result<bool> {
+    match extension(path).as_str() {
+        "flac" => is_valid_flac(path),
+        "mp3" => is_valid_mp3(path),
+        "ape" => is_valid_ape(path),
+        "wav" => matches_any(path, &[WAV]),
+        "aif" | "aiff" | "aifc" => matches_any(path, &[AIFF, AIFC]),
+        "ogg" | "oga" | "opus" => matches_any(path, &[OGG]),
+        "wv" => matches_any(path, &[WAVPACK]),
+        "dsf" => matches_any(path, &[DSF]),
+        "dff" => matches_any(path, &[DFF]),
+        _ => Ok(true),
     }
-
-    let mut buf = [0u8; 4];
-    let bytes_read = file.read(&mut buf)?;
-    if bytes_read < 4 {
-        return Ok(false);
-    }
-
-    Ok(&buf[0..4] == b"MAC ")
 }
 
 /// Whether an image file's magic bytes match its extension. As with
 /// [`is_valid_audio`], an unrecognized extension is assumed valid.
 pub(crate) fn is_valid_image(path: &Path) -> io::Result<bool> {
-    let file_size = fs::metadata(path)?.len();
-    if file_size == 0 {
+    // Ahead of the dispatch, unlike the audio side: an empty file is corrupt
+    // whatever its extension, so an unrecognized one must not pass it through.
+    if fs::metadata(path)?.len() == 0 {
         return Ok(false);
     }
-
-    let ext = path
-        .extension()
-        .and_then(|e| e.to_str())
-        .map(|e| e.to_lowercase())
-        .unwrap_or_default();
-
-    // Enough for the longest magic checked below (WEBP, 12 bytes).
-    let mut buf = [0u8; 12];
-    let mut file = fs::File::open(path)?;
-    let bytes_read = file.read(&mut buf)?;
-
-    match ext.as_str() {
-        "jpg" | "jpeg" => Ok(bytes_read >= 3 && buf[0] == 0xFF && buf[1] == 0xD8 && buf[2] == 0xFF),
-        "png" => {
-            Ok(bytes_read >= 8 && buf[..8] == [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A])
-        }
-        "webp" => {
-            // RIFF____WEBP: the form type sits at bytes 8..12.
-            Ok(bytes_read >= 12 && &buf[0..4] == b"RIFF" && &buf[8..12] == b"WEBP")
-        }
-        "gif" => {
-            // GIF87a and GIF89a share the `GIF8` prefix.
-            Ok(bytes_read >= 4 && &buf[0..4] == b"GIF8")
-        }
-        "bmp" => Ok(bytes_read >= 2 && &buf[0..2] == b"BM"),
+    match extension(path).as_str() {
+        "jpg" | "jpeg" => matches_any(path, &[JPEG]),
+        "png" => matches_any(path, &[PNG]),
+        "webp" => matches_any(path, &[WEBP]),
+        "gif" => matches_any(path, &[GIF]),
+        "bmp" => matches_any(path, &[BMP]),
         _ => Ok(true),
     }
+}
+
+fn extension(path: &Path) -> String {
+    path.extension()
+        .and_then(|e| e.to_str())
+        .map(|e| e.to_lowercase())
+        .unwrap_or_default()
 }
 
 #[cfg(test)]
