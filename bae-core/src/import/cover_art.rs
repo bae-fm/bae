@@ -106,6 +106,14 @@ impl CoverArtArchiveClient {
         }
     }
 
+    /// The base backoff this client retries transient failures with (doubling
+    /// each attempt). The import service reads it to give the cover-bytes
+    /// download the same retry cadence as this client's lookups, so a test that
+    /// injects a near-zero delay controls both paths through one seam.
+    pub(crate) fn retry_base_delay(&self) -> Duration {
+        self.retry_base_delay
+    }
+
     /// A client for hermetic tests: any cover-art lookup that misses the cache
     /// panics rather than reaching the live Cover Art Archive, so an accidental
     /// unseeded fetch is a test failure instead of a silent network call.
@@ -487,7 +495,7 @@ pub async fn download_cover_art_bytes(
     download_cover_art_bytes_with_backoff(cover_art_url, RETRY_BASE_DELAY).await
 }
 
-async fn download_cover_art_bytes_with_backoff(
+pub(crate) async fn download_cover_art_bytes_with_backoff(
     cover_art_url: &str,
     base_delay: Duration,
 ) -> Result<(Vec<u8>, ContentType), ImportError> {

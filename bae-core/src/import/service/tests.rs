@@ -38,6 +38,9 @@ async fn setup_import_service() -> (ImportService, TempDir) {
             commands_rx,
             event_tx,
             library_manager: manager,
+            // Near-zero so a test that drives an unreachable cover URL through the
+            // retry loop doesn't sleep the real 1s + 2s + 4s of backoff.
+            cover_retry_base_delay: std::time::Duration::from_millis(0),
         },
         temp_dir,
     )

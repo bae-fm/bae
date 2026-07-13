@@ -80,6 +80,12 @@ pub struct ImportService {
     commands_rx: mpsc::UnboundedReceiver<ImportCommand>,
     event_tx: broadcast::Sender<crate::import::handle::ImportEvent>,
     library_manager: LibraryManager,
+    /// The base backoff the commit worker's remote-cover download retries
+    /// transient failures with, taken from the injected `CoverArtArchiveClient`
+    /// so it shares the client's retry cadence (1s in production). A test that
+    /// injects a near-zero-delay client stops the download burning real seconds
+    /// of backoff when a cover URL is unreachable.
+    cover_retry_base_delay: std::time::Duration,
 }
 
 /// The watched roots that contain at least one of the `changed` paths, in
@@ -334,6 +340,10 @@ impl ImportService {
         let (event_tx, _) = broadcast::channel(1024);
         let event_tx_for_worker = event_tx.clone();
         let library_manager_for_handle = library_manager.clone();
+        // Take the retry cadence from the injected client before it moves into
+        // the handle, so the worker's cover download and the handle's lookups
+        // share one test-controllable delay.
+        let cover_retry_base_delay = cover_art_archive.retry_base_delay();
 
         // The watched-folder list is durable per-library appdata; `load` warns
         // and starts empty if the file is corrupt, so app start never fails on it.
@@ -368,6 +378,7 @@ impl ImportService {
                     commands_rx,
                     event_tx: event_tx_for_worker,
                     library_manager,
+                    cover_retry_base_delay,
                 };
 
                 info!("Worker started");
@@ -601,7 +612,11 @@ impl ImportService {
         {
             emit_preparing(PrepareStep::WritingCoverArt);
             let (bytes, content_type) =
-                crate::import::cover_art::download_cover_art_bytes(url).await?;
+                crate::import::cover_art::download_cover_art_bytes_with_backoff(
+                    url,
+                    self.cover_retry_base_delay,
+                )
+                .await?;
             if matches!(
                 content_type,
                 crate::util::content_type::ContentType::OctetStream
