@@ -317,3 +317,118 @@ fn only_transient_musicbrainz_failures_are_retried() {
         "At least one search field must be provided".into()
     )));
 }
+
+// ── fetch_release_with_metadata ─────────────────────────────────────────────
+
+fn mb_release(release_id: &str, release_group_id: Option<&str>) -> MbReleaseResponse {
+    MbReleaseResponse {
+        id: release_id.to_string(),
+        title: "Album Title".to_string(),
+        date: Some("1999".to_string()),
+        country: None,
+        barcode: None,
+        artist_credit: vec![],
+        release_group: release_group_id.map(|id| MbReleaseGroupRef {
+            id: id.to_string(),
+            first_release_date: None,
+            relations: None,
+        }),
+        label_info: vec![],
+        media: vec![],
+        relations: vec![],
+    }
+}
+
+/// The archival pairs every MB import path writes: the release under
+/// `musicbrainz`, its release-group under `musicbrainz_release_group`. Both the
+/// direct import and the Discogs cross-reference fetch through here, so a change
+/// to this shape reaches both.
+#[tokio::test]
+async fn fetch_release_with_metadata_archives_release_and_group() {
+    let release_id = "fetch-with-metadata-rel";
+    let group_id = "fetch-with-metadata-group";
+    seed_release_cache(
+        release_id,
+        (
+            mb_release(release_id, Some(group_id)),
+            Some("https://www.discogs.com/release/1".to_string()),
+            r#"{"id":"release"}"#.to_string(),
+        ),
+    );
+    seed_release_group_json_cache(group_id, r#"{"id":"group"}"#.to_string());
+
+    let (response, discogs_url, pairs) = fetch_release_with_metadata(release_id).await.unwrap();
+
+    assert_eq!(response.id, release_id);
+    assert_eq!(
+        discogs_url.as_deref(),
+        Some("https://www.discogs.com/release/1")
+    );
+    assert_eq!(
+        pairs,
+        vec![
+            ("musicbrainz".to_string(), r#"{"id":"release"}"#.to_string()),
+            (
+                "musicbrainz_release_group".to_string(),
+                r#"{"id":"group"}"#.to_string()
+            ),
+        ]
+    );
+}
+
+/// A release with no release group archives just its own JSON. The group is
+/// supplementary — its absence is not an import failure.
+#[tokio::test]
+async fn fetch_release_with_metadata_without_group_archives_only_the_release() {
+    let release_id = "fetch-with-metadata-no-group";
+    seed_release_cache(
+        release_id,
+        (
+            mb_release(release_id, None),
+            None,
+            r#"{"id":"release"}"#.to_string(),
+        ),
+    );
+
+    let (_, discogs_url, pairs) = fetch_release_with_metadata(release_id).await.unwrap();
+
+    assert_eq!(discogs_url, None);
+    assert_eq!(
+        pairs,
+        vec![("musicbrainz".to_string(), r#"{"id":"release"}"#.to_string())]
+    );
+}
+
+// ── label_and_catno ────────────────────────────────────────────────────────
+
+#[test]
+fn label_and_catno_reads_the_first_label_info() {
+    let label_info = vec![
+        MbLabelInfo {
+            label: Some(MbLabel {
+                name: Some("First Label".to_string()),
+            }),
+            catalog_number: Some("CAT-1".to_string()),
+        },
+        MbLabelInfo {
+            label: Some(MbLabel {
+                name: Some("Second Label".to_string()),
+            }),
+            catalog_number: Some("CAT-2".to_string()),
+        },
+    ];
+    assert_eq!(
+        label_and_catno(&label_info),
+        (Some("First Label".to_string()), Some("CAT-1".to_string()))
+    );
+
+    // No label info at all, and an entry with neither field, both read as unknown.
+    assert_eq!(label_and_catno(&[]), (None, None));
+    assert_eq!(
+        label_and_catno(&[MbLabelInfo {
+            label: None,
+            catalog_number: None,
+        }]),
+        (None, None)
+    );
+}

@@ -140,42 +140,24 @@ pub fn discogs_search_result_to_metadata(
 }
 
 fn mb_release_to_metadata(r: MbReleaseResponse, cover_art: Option<RemoteCover>) -> MetadataResult {
-    let (label, catalog_number) = r
-        .label_info
-        .first()
-        .map(|li| {
-            (
-                li.label.as_ref().and_then(|l| l.name.clone()),
-                li.catalog_number.clone(),
-            )
-        })
-        .unwrap_or((None, None));
+    let pressing = crate::import::musicbrainz_mapper::pressing(&r);
     MetadataResult {
         source: MetadataSource::MusicBrainz,
         release_id: r.id,
         title: r.title,
         artist: r.artist_credit.first().map(|ac| ac.name.clone()),
-        year: parse_year(r.date.as_deref()),
-        format: r.media.first().and_then(|m| m.format.clone()),
-        label,
-        catalog_number,
-        country: r.country,
+        year: pressing.year,
+        format: pressing.format,
+        label: pressing.label,
+        catalog_number: pressing.catalog_number,
+        country: pressing.country,
         cover_art,
         source_group_id: r.release_group.as_ref().map(|rg| rg.id.clone()),
     }
 }
 
 fn search_release_to_metadata(r: SearchRelease, cover_art: Option<RemoteCover>) -> MetadataResult {
-    let (label, catalog_number) = r
-        .label_info
-        .first()
-        .map(|li| {
-            (
-                li.label.as_ref().and_then(|l| l.name.clone()),
-                li.catalog_number.clone(),
-            )
-        })
-        .unwrap_or((None, None));
+    let (label, catalog_number) = musicbrainz::label_and_catno(&r.label_info);
     MetadataResult {
         source: MetadataSource::MusicBrainz,
         release_id: r.id,
@@ -305,8 +287,6 @@ fn build_mb_detail(
     mb_response: &crate::musicbrainz::MbReleaseResponse,
     cover_art: Vec<RemoteCover>,
 ) -> Result<ImportSearchReleaseDetail, ImportError> {
-    let year = parse_year(mb_response.date.as_deref());
-
     let mut side_base: u32 = 0;
     let mut tracks: Vec<ReleaseTrack> = Vec::new();
 
@@ -331,18 +311,10 @@ fn build_mb_detail(
         side_base += sides.side_span;
     }
 
-    let format = mb_response.media.first().and_then(|m| m.format.clone());
+    // The detail's pressing fields are the release's pressing, read through the
+    // same projection the commit maps — the picker shows what the import stores.
+    let pressing = crate::import::musicbrainz_mapper::pressing(mb_response);
     let artist = mb_response.artist_credit.first().map(|ac| ac.name.clone());
-    let (label, catalog_number) = mb_response
-        .label_info
-        .first()
-        .map(|li| {
-            (
-                li.label.as_ref().and_then(|l| l.name.clone()),
-                li.catalog_number.clone(),
-            )
-        })
-        .unwrap_or((None, None));
 
     Ok(ImportSearchReleaseDetail {
         release_id: mb_response.id.clone(),
@@ -350,12 +322,12 @@ fn build_mb_detail(
         source_group_id: mb_response.release_group.as_ref().map(|rg| rg.id.clone()),
         title: mb_response.title.clone(),
         artist,
-        year,
-        format,
-        label,
-        catalog_number,
-        country: mb_response.country.clone(),
-        barcode: mb_response.barcode.clone(),
+        year: pressing.year,
+        format: pressing.format,
+        label: pressing.label,
+        catalog_number: pressing.catalog_number,
+        country: pressing.country,
+        barcode: pressing.barcode,
         track_count: tracks.len() as u32,
         tracks,
         cover_art,
@@ -737,6 +709,43 @@ mod tests {
             "unexpected error: {}",
             err
         );
+    }
+
+    /// The picker's pressing fields are the pressing the commit stores: one
+    /// projection, read by both. They used to be re-derived side by side.
+    #[test]
+    fn mb_detail_pressing_matches_the_committed_pressing() {
+        let mut response = response_with_media(vec![MbMedium {
+            format: Some("CD".to_string()),
+            tracks: vec![make_mb_track("1", "Track Title")],
+        }]);
+        response.date = Some("1996-05-04".to_string());
+        response.country = Some("JP".to_string());
+        response.barcode = Some("4988006757486".to_string());
+        response.label_info = vec![crate::musicbrainz::MbLabelInfo {
+            label: Some(crate::musicbrainz::MbLabel {
+                name: Some("Toshiba EMI".to_string()),
+            }),
+            catalog_number: Some("TOCP-8556".to_string()),
+        }];
+
+        let detail = build_mb_detail("mb-release-1", &response, vec![]).unwrap();
+        let parsed = crate::import::musicbrainz_mapper::map_mb_response_to_db(
+            &response,
+            None,
+            None,
+            &test_clock(),
+            &SequentialIdProvider::new("mb"),
+        )
+        .unwrap();
+        let committed = parsed.release.pressing;
+
+        assert_eq!(detail.year, committed.year);
+        assert_eq!(detail.format, committed.format);
+        assert_eq!(detail.label, committed.label);
+        assert_eq!(detail.catalog_number, committed.catalog_number);
+        assert_eq!(detail.country, committed.country);
+        assert_eq!(detail.barcode, committed.barcode);
     }
 
     /// The picker's track titles resolve exactly as the commit mapper's do —

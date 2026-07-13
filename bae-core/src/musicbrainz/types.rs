@@ -62,6 +62,22 @@ pub struct MbLabel {
     pub name: Option<String>,
 }
 
+/// The label name and catalog number a release is pressed under: MusicBrainz
+/// lists one entry per label involved, and we take the first. Read by every
+/// projection of a release — the search result, the picker detail, and the
+/// committed pressing — so they cannot pick different labels.
+pub fn label_and_catno(label_info: &[MbLabelInfo]) -> (Option<String>, Option<String>) {
+    label_info
+        .first()
+        .map(|li| {
+            (
+                li.label.as_ref().and_then(|l| l.name.clone()),
+                li.catalog_number.clone(),
+            )
+        })
+        .unwrap_or((None, None))
+}
+
 /// Release group as embedded in a release response
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct MbReleaseGroupRef {

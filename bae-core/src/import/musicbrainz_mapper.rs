@@ -17,7 +17,7 @@ use crate::db::{is_various_artists, Pressing, ReleaseMetadataSource};
 use crate::import::types::ReleaseIdentity;
 use crate::import::{ImportError, MetadataSource};
 use crate::musicbrainz::{
-    fetch_release_group_json, MbArtistRef, MbMedium, MbRelation, MbReleaseResponse, MbTrack, MbWork,
+    label_and_catno, MbArtistRef, MbMedium, MbRelation, MbReleaseResponse, MbTrack, MbWork,
 };
 use coven::Clock;
 use coven::IdProvider;
@@ -142,10 +142,10 @@ fn mb_work_ref(work: &MbWork, converted: &mut HashSet<String>) -> WorkGraphRef {
     })
 }
 
-/// Fetch a MusicBrainz release. Pure MB: no Discogs client, no cross-ref.
-/// Returns the parsed response, the Discogs release URL from MB's url-rels (if
-/// any) for cross-referencing later, and the raw JSON pairs (release +
-/// release-group) for archival in `release_metadata`.
+/// Fetch a MusicBrainz release and the raw JSON the import archives with it.
+/// Pure MB: no Discogs client, no cross-ref. The fetch and the archival shape
+/// live in `crate::musicbrainz`, shared with the Discogs → MB cross-reference,
+/// so both entry points write the same `release_metadata` rows.
 ///
 /// Cross-referencing into Discogs is a separate step —
 /// `crate::discogs::client::fetch_discogs_xref`. The split keeps prefetch's API
@@ -153,25 +153,25 @@ fn mb_work_ref(work: &MbWork, converted: &mut HashSet<String>) -> WorkGraphRef {
 pub async fn fetch_mb_response(
     release_id: &str,
 ) -> Result<(MbReleaseResponse, Option<String>, Vec<(String, String)>), ImportError> {
-    let (response, discogs_url, raw_json) =
-        crate::musicbrainz::lookup_release_by_id(release_id).await?;
+    Ok(crate::musicbrainz::fetch_release_with_metadata(release_id).await?)
+}
 
-    let mut metadata_pairs = vec![(MetadataSource::MusicBrainz.as_str().to_string(), raw_json)];
-
-    let release_group_id = response.release_group.as_ref().map(|rg| rg.id.as_str());
-
-    if let Some(rg_id) = release_group_id {
-        match fetch_release_group_json(rg_id).await {
-            Ok(rg_json) => {
-                metadata_pairs.push(("musicbrainz_release_group".to_string(), rg_json));
-            }
-            Err(e) => {
-                warn!("Failed to fetch MB release-group: {}", e);
-            }
-        }
+/// The pressing a MusicBrainz release describes: its own release date's year, its
+/// first medium's format, its first label's name and catalog number, its country
+/// and barcode.
+///
+/// The one MB → pressing projection. The committed release, the picker's detail,
+/// and a search result all read it, so a pressing shown is the pressing stored.
+pub(crate) fn pressing(response: &MbReleaseResponse) -> Pressing {
+    let (label, catalog_number) = label_and_catno(&response.label_info);
+    Pressing {
+        year: super::parse_year(response.date.as_deref()),
+        format: response.media.first().and_then(|m| m.format.clone()),
+        label,
+        catalog_number,
+        country: response.country.clone(),
+        barcode: response.barcode.clone(),
     }
-
-    Ok((response, discogs_url, metadata_pairs))
 }
 
 /// A track's title: the recording's, else the track's own override. Shared by
@@ -384,27 +384,7 @@ pub fn map_mb_response_to_db(
         .map(|ac| is_various_artists(&ac.name))
         .unwrap_or(false);
 
-    // Pressing: this release's own date year, first medium format, first label.
-    let pressing_year = super::parse_year(response.date.as_deref());
-    let format = response.media.first().and_then(|m| m.format.clone());
-    let (label, catalog_number) = response
-        .label_info
-        .first()
-        .map(|li| {
-            (
-                li.label.as_ref().and_then(|l| l.name.clone()),
-                li.catalog_number.clone(),
-            )
-        })
-        .unwrap_or((None, None));
-    let pressing = Pressing {
-        year: pressing_year,
-        format,
-        label,
-        catalog_number,
-        country: response.country.clone(),
-        barcode: response.barcode.clone(),
-    };
+    let pressing = pressing(response);
 
     // `side_base` advances per medium so side values never repeat across media.
     let mut tracks: Vec<TrackIr> = Vec::new();
@@ -844,6 +824,57 @@ mod tests {
             matches!(&err, ImportError::SourceData { detail, .. } if detail.contains("has no track title")),
             "unexpected error message: {err}"
         );
+    }
+
+    /// The one MB → pressing projection: the release's own year (not the release
+    /// group's), the first medium's format, the first label's name and catalog
+    /// number, the country and the barcode. The mapper, the picker detail, and a
+    /// search result all read it.
+    #[test]
+    fn pressing_reads_year_format_first_label_country_and_barcode() {
+        let mut response = make_response(vec![MbMedium {
+            format: Some("12\" Vinyl".to_string()),
+            tracks: vec![make_mb_track("A1", "Track A1")],
+        }]);
+        response.date = Some("1971-03-01".to_string());
+        response.country = Some("GB".to_string());
+        response.barcode = Some("012345678905".to_string());
+        response.label_info = vec![
+            crate::musicbrainz::MbLabelInfo {
+                label: Some(crate::musicbrainz::MbLabel {
+                    name: Some("Island".to_string()),
+                }),
+                catalog_number: Some("ILPS 9145".to_string()),
+            },
+            crate::musicbrainz::MbLabelInfo {
+                label: Some(crate::musicbrainz::MbLabel {
+                    name: Some("Reissue Label".to_string()),
+                }),
+                catalog_number: Some("RE-2".to_string()),
+            },
+        ];
+        // The release group's first release predates this pressing; the pressing
+        // year is the release's own date, and only the album year follows the group.
+        response.release_group.as_mut().unwrap().first_release_date = Some("1969".to_string());
+
+        let pressing = pressing(&response);
+
+        assert_eq!(
+            pressing,
+            Pressing {
+                year: Some(1971),
+                format: Some("12\" Vinyl".to_string()),
+                label: Some("Island".to_string()),
+                catalog_number: Some("ILPS 9145".to_string()),
+                country: Some("GB".to_string()),
+                barcode: Some("012345678905".to_string()),
+            }
+        );
+
+        // What the mapper commits is what the projection says.
+        let parsed = map(&response, None, None).unwrap();
+        assert_eq!(parsed.release.pressing, pressing);
+        assert_eq!(parsed.album.year, Some(1969));
     }
 
     #[test]
