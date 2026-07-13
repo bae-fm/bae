@@ -90,6 +90,13 @@ pub struct BridgeLibrary {
     /// generic cases resolve a catalog key.
     pub cloud_provider: Option<BridgeCloudProvider>,
     pub is_active: bool,
+    /// Why this library cannot be opened, or `None` when it is fine.
+    ///
+    /// A library whose config.yaml will not parse is still listed — it used to
+    /// vanish from the picker instead, which lost it. The UI shows the row as
+    /// unavailable with this as the reason, and refuses to open it. Its `name` is
+    /// the directory id, because the name is exactly what could not be read.
+    pub error: Option<String>,
 }
 
 #[derive(Debug, Clone, uniffi::Enum)]

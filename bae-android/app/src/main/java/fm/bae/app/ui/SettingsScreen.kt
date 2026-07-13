@@ -219,14 +219,27 @@ private fun SettingsLibrarySection(
             // BridgeLibrary.isActive snapshot: that snapshot is taken at launch
             // discovery and goes stale after an in-app switch.
             val isActive = library.id == activeLibraryId
+            val error = library.error
             Row(
                 modifier =
                     Modifier
                         .fillMaxWidth()
-                        .clickable(enabled = !isActive) { onSwitchLibrary(library) },
+                        .clickable(enabled = !isActive && error == null) { onSwitchLibrary(library) },
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(text = library.name, modifier = Modifier.weight(1f))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(text = library.name)
+                    // A library whose config won't load stays listed — it must not
+                    // silently vanish, which is what it used to do.
+                    if (error != null) {
+                        Text(
+                            text = error,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error,
+                            maxLines = 2,
+                        )
+                    }
+                }
                 // Always present but alpha-toggled so switching the active row
                 // never re-measures the row heights.
                 Icon(

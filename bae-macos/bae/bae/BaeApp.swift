@@ -667,15 +667,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// Switch to the library `offset` positions from the active one in the
     /// discovered list, wrapping around the ends. No-op with one (or no)
     /// library or no active library.
+    /// Cycle to the next library. Broken ones are skipped: this opens without
+    /// asking, and a library whose config won't load cannot be opened.
     func switchLibrary(byOffset offset: Int) {
-        guard libraries.count > 1,
-            let activeIdx = libraries.firstIndex(where: \.isActive)
+        let openable = libraries.filter { $0.error == nil }
+        guard openable.count > 1,
+            let activeIdx = openable.firstIndex(where: \.isActive)
         else {
             return
         }
-        let count = libraries.count
+        let count = openable.count
         let next = ((activeIdx + offset) % count + count) % count
-        openLibrary(libraries[next])
+        openLibrary(openable[next])
     }
 
     /// Rename a library off the main actor, then refresh the list (and the

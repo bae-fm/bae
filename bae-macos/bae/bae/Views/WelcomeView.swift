@@ -259,14 +259,24 @@ extension WelcomeView {
                 Button {
                     onLibraryReady(library)
                 } label: {
-                    Text(library.name)
-                        .font(.body.bold())
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 10)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(library.name)
+                            .font(.body.bold())
+                        // A library whose config won't load is shown, not hidden:
+                        // losing it from the list is how it used to disappear.
+                        if let error = library.error {
+                            Text(error)
+                                .font(.caption)
+                                .foregroundStyle(.red)
+                                .lineLimit(2)
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
                 }
                 .buttonStyle(.bordered)
-                .disabled(isCreating || isRestoring)
+                .disabled(isCreating || isRestoring || library.error != nil)
             }
         }
         .frame(maxWidth: 320)

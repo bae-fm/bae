@@ -77,14 +77,19 @@ internal sealed class LibrariesDialog
             row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
             // Click the name to switch to that library; the active one can't switch
-            // to itself but can still be renamed.
+            // to itself but can still be renamed. A library whose config.yaml will
+            // not load is listed with the reason and cannot be switched to — it
+            // must be visible rather than silently absent from the list.
+            var broken = library.Error;
             var switchButton = new Button
             {
-                Content = isActive
-                    ? Loc.Chrome("libraries.active", "name", library.Name)
-                    : library.Name,
+                Content = broken is not null
+                    ? $"{library.Name} — {broken}"
+                    : isActive
+                        ? Loc.Chrome("libraries.active", "name", library.Name)
+                        : library.Name,
                 HorizontalAlignment = HorizontalAlignment.Stretch,
-                IsEnabled = !isActive,
+                IsEnabled = !isActive && broken is null,
             };
             switchButton.Click += async (_, _) =>
             {

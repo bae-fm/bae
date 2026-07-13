@@ -510,7 +510,9 @@ public sealed partial class MainWindow : Window
 
     private void LoadLibrary()
     {
-        var libraries = LoadLibraries();
+        // A library whose config.yaml will not load is listed (so the user can see
+        // it is there), but it cannot be opened — never auto-open into one.
+        var libraries = LoadLibraries().Where(candidate => candidate.Error is null).ToList();
         var library = libraries.FirstOrDefault(candidate => candidate.IsActive)
             ?? libraries.FirstOrDefault();
         if (library is null)
@@ -983,7 +985,9 @@ public sealed partial class MainWindow : Window
     {
         args.Handled = true;
         var digit = (int)sender.Key - (int)VirtualKey.Number0;
-        var libraries = LoadLibraries();
+        // Only openable libraries are switch targets: the shortcut opens without
+        // asking, and a broken library cannot be opened.
+        var libraries = LoadLibraries().Where(library => library.Error is null).ToList();
         var target = LibrarySwitchModel.TargetLibraryId(
             libraries.ConvertAll(library => (library.Id, library.IsActive)), digit);
         if (target is not null)

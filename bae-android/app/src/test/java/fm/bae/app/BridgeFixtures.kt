@@ -214,6 +214,7 @@ object BridgeFixtures {
             path = "/tmp/$id",
             cloudProvider = null,
             isActive = false,
+            error = null,
         )
 
     fun config(libraryId: String = "lib-1"): BridgeConfig =

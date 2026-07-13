@@ -71,13 +71,18 @@ struct OpenLibrarySubmenu: View {
                 let button = Button {
                     onOpen(lib)
                 } label: {
-                    if lib.isActive {
+                    if lib.error != nil {
+                        // Listed, so it isn't lost — but it cannot be opened.
+                        Label(lib.name, systemImage: "exclamationmark.triangle")
+                    }
+                    else if lib.isActive {
                         Label(lib.name, systemImage: "checkmark")
                     }
                     else {
                         Text(lib.name)
                     }
                 }
+                .disabled(lib.error != nil)
                 if idx < Self.shortcutKeys.count {
                     button.keyboardShortcut(
                         Self.shortcutKeys[idx],

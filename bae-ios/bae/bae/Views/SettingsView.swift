@@ -36,7 +36,17 @@ struct SettingsView: View {
                                 holder.openLibrary(library)
                             } label: {
                                 HStack {
-                                    Text(library.name)
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(library.name)
+                                        // A library whose config won't load stays
+                                        // listed — it must not silently vanish.
+                                        if let error = library.error {
+                                            Text(error)
+                                                .font(.caption)
+                                                .foregroundStyle(.red)
+                                                .lineLimit(2)
+                                        }
+                                    }
                                     Spacer()
                                     // Always in the tree; toggle visibility so an
                                     // active-state change doesn't re-measure rows.
@@ -48,7 +58,9 @@ struct SettingsView: View {
                                 .contentShape(Rectangle())
                             }
                             .foregroundStyle(.primary)
-                            .disabled(holder.isActive(library))
+                            .disabled(
+                                holder.isActive(library) || library.error != nil
+                            )
                         }
                     }
                 }

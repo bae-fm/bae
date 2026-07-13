@@ -37,6 +37,7 @@ fn local_library(
     path: std::path::PathBuf,
     cloud_provider: Option<&bae_core::config::CloudProvider>,
     is_active: bool,
+    error: Option<String>,
 ) -> Result<BridgeLibrary, BridgeError> {
     let path = path
         .to_str()
@@ -51,6 +52,7 @@ fn local_library(
         name,
         cloud_provider: cloud_provider.map(BridgeCloudProvider::from_core),
         is_active,
+        error,
     })
 }
 
@@ -66,6 +68,9 @@ impl BridgeLibrary {
             std::path::PathBuf::from(&*config.store_dir),
             config.cloud_home.provider.as_ref(),
             true,
+            // A Config in hand is a config that loaded. There is nothing broken
+            // about it, by construction.
+            None,
         )
     }
 
@@ -78,8 +83,9 @@ impl BridgeLibrary {
             path,
             is_active,
             cloud_provider,
+            error,
         } = info;
-        local_library(id, name, path, cloud_provider.as_ref(), is_active)
+        local_library(id, name, path, cloud_provider.as_ref(), is_active, error)
     }
 }
 
@@ -903,6 +909,7 @@ mod tests {
             path: std::path::PathBuf::from(OsString::from_vec(vec![0xff])),
             is_active: true,
             cloud_provider: None,
+            error: None,
         };
 
         let error = BridgeLibrary::from_core_info(info).expect_err("non-UTF-8 path should fail");

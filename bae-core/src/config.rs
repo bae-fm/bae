@@ -322,6 +322,7 @@ impl From<&Config> for ConfigYaml {
 }
 
 /// Metadata about a discovered library (for the library switcher UI)
+/// A library found under `~/.bae/libraries/`, whether or not it can be opened.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct LibraryInfo {
     pub id: String,
@@ -329,6 +330,13 @@ pub struct LibraryInfo {
     pub path: PathBuf,
     pub is_active: bool,
     pub cloud_provider: Option<CloudProvider>,
+    /// Why this library cannot be opened, or `None` when its config loaded.
+    ///
+    /// A library whose config.yaml will not parse is still listed — it must not
+    /// silently vanish from the picker, which is what used to happen the moment a
+    /// new required field was added. Its `id` and `name` fall back to the
+    /// directory name, because the name is exactly what could not be read.
+    pub error: Option<String>,
 }
 
 /// Application configuration.
@@ -529,21 +537,43 @@ fn discover_libraries_from_bae_dir(
 
     let mut libraries: Vec<LibraryInfo> = discover_all_library_paths(app_dir)
         .into_iter()
-        .map(|(path, yaml)| {
-            let is_active = active_id.as_deref() == Some(&yaml.library_id);
-            LibraryInfo {
+        .map(|(path, yaml)| match yaml {
+            Ok(yaml) => LibraryInfo {
+                is_active: active_id.as_deref() == Some(&yaml.library_id),
                 id: yaml.library_id,
                 name: yaml.library_name,
                 path,
-                is_active,
                 cloud_provider: yaml.cloud_home.provider.clone(),
+                error: None,
+            },
+            // The config is the only thing that knows the library's id and name, and
+            // it is what failed — so the directory name stands in for both. It is a
+            // UUID, which is what the id would have been anyway.
+            Err(e) => {
+                let dir_name = path
+                    .file_name()
+                    .and_then(|n| n.to_str())
+                    .unwrap_or_default()
+                    .to_string();
+                LibraryInfo {
+                    is_active: active_id.as_deref() == Some(dir_name.as_str()),
+                    id: dir_name.clone(),
+                    name: dir_name,
+                    path,
+                    cloud_provider: None,
+                    error: Some(e.to_string()),
+                }
             }
         })
         .collect();
 
+    // Broken libraries sort last: they are visible, but they are not what the user
+    // is looking for.
     libraries.sort_by(|a, b| {
-        b.is_active
-            .cmp(&a.is_active)
+        a.error
+            .is_some()
+            .cmp(&b.error.is_some())
+            .then_with(|| b.is_active.cmp(&a.is_active))
             .then_with(|| a.name.cmp(&b.name))
     });
 
@@ -698,15 +728,23 @@ fn read_active_library_id(bae_dir: &std::path::Path) -> Result<Option<String>, C
 /// Find a library's directory by its UUID, scanning `~/.bae/libraries/` subdirectories.
 fn find_library_by_id(bae_dir: &std::path::Path, uuid: &str) -> Option<StoreDir> {
     for (path, yaml) in discover_all_library_paths(bae_dir) {
-        if yaml.library_id == uuid {
+        // A library whose config will not parse cannot be addressed by id — its id
+        // is precisely what we could not read.
+        if yaml.is_ok_and(|yaml| yaml.library_id == uuid) {
             return Some(StoreDir::new(path));
         }
     }
     None
 }
 
-/// Collect all (path, ConfigYaml) pairs from ~/.bae/libraries/.
-fn discover_all_library_paths(bae_dir: &std::path::Path) -> Vec<(PathBuf, ConfigYaml)> {
+/// Collect every library directory under ~/.bae/libraries/ with the outcome of
+/// reading its config — `Err` for one that cannot be read even after migration.
+///
+/// The failure is CARRIED, not dropped. Swallowing it here is what made a library
+/// whose config predated a new field disappear from the picker entirely.
+fn discover_all_library_paths(
+    bae_dir: &std::path::Path,
+) -> Vec<(PathBuf, Result<ConfigYaml, ConfigError>)> {
     let mut results = Vec::new();
     let libraries_dir = bae_dir.join("libraries");
 
@@ -747,15 +785,19 @@ fn discover_all_library_paths(bae_dir: &std::path::Path) -> Vec<(PathBuf, Config
                 continue;
             }
             match read_config_yaml(&path) {
-                Ok(Some(yaml)) => results.push((path, yaml)),
+                Ok(Some(yaml)) => results.push((path, Ok(yaml))),
+                // Not a library at all — nothing to show, nothing to report.
                 Ok(None) => {
                     debug!(
                         "skipping library dir with no config.yaml: {}",
                         path.display()
                     );
                 }
+                // A library that exists but will not load. It stays in the list,
+                // marked broken, so the user sees it rather than losing it.
                 Err(e) => {
-                    warn!("skipping library at {}: {e}", path.display());
+                    warn!("library at {} cannot be read: {e}", path.display());
+                    results.push((path, Err(e)));
                 }
             }
         }
@@ -1185,6 +1227,10 @@ mod tests {
         assert_eq!(libraries.len(), 1, "the old library must still be listed");
         assert_eq!(libraries[0].id, "lib-old");
         assert_eq!(libraries[0].name, "Old Library");
+        assert_eq!(
+            libraries[0].error, None,
+            "an old config is not a broken one"
+        );
 
         // And it actually opens, keeping what the user had set and taking the
         // default for the field it never had.
@@ -1199,6 +1245,55 @@ mod tests {
         let (reparsed, migrated_again) = parse_config_yaml(&on_disk).unwrap();
         assert!(!migrated_again, "the upgrade should have been written back");
         assert_eq!(reparsed.version, CONFIG_VERSION);
+    }
+
+    /// A config that is genuinely unreadable is SHOWN as broken, not skipped. The
+    /// user must be able to see that the library is there and in trouble.
+    #[test]
+    #[serial]
+    fn a_broken_library_is_listed_as_broken() {
+        let tmp = TempDir::new().unwrap();
+        let bae_dir = tmp.path();
+        let library_dir = bae_dir.join("libraries").join("lib-broken");
+        std::fs::create_dir_all(&library_dir).unwrap();
+        std::fs::write(library_dir.join("config.yaml"), "{ this is not: [valid").unwrap();
+
+        let libraries = discover_libraries_from_bae_dir(bae_dir).unwrap();
+
+        assert_eq!(libraries.len(), 1, "a broken library must not disappear");
+        let broken = &libraries[0];
+        assert!(broken.error.is_some(), "it must be marked broken");
+        // Its name is unreadable — that is the failure — so the directory stands in.
+        assert_eq!(broken.id, "lib-broken");
+        assert_eq!(broken.name, "lib-broken");
+    }
+
+    /// A working library and a broken one coexist: the broken one sorts last but
+    /// is still there.
+    #[test]
+    #[serial]
+    fn a_broken_library_does_not_hide_a_working_one() {
+        let tmp = TempDir::new().unwrap();
+        let bae_dir = tmp.path();
+        let libraries_dir = bae_dir.join("libraries");
+
+        let good_dir = libraries_dir.join("lib-good");
+        std::fs::create_dir_all(&good_dir).unwrap();
+        let mut good = make_test_config("lib-good", good_dir.clone());
+        good.store_name = "Good".to_string();
+        good.save_to_config_yaml().unwrap();
+
+        let broken_dir = libraries_dir.join("lib-broken");
+        std::fs::create_dir_all(&broken_dir).unwrap();
+        std::fs::write(broken_dir.join("config.yaml"), "{ nope: [").unwrap();
+
+        let libraries = discover_libraries_from_bae_dir(bae_dir).unwrap();
+
+        assert_eq!(libraries.len(), 2);
+        assert_eq!(libraries[0].name, "Good");
+        assert!(libraries[0].error.is_none());
+        assert_eq!(libraries[1].id, "lib-broken");
+        assert!(libraries[1].error.is_some());
     }
 
     /// `device_id` is the one designed absence: missing on a fresh library, and
@@ -1399,7 +1494,7 @@ mod tests {
 
         let discovered = discover_all_library_paths(bae_dir);
         assert_eq!(discovered.len(), 1, "non-UTF-8 dir should be skipped");
-        assert_eq!(discovered[0].1.library_id, "valid-lib");
+        assert_eq!(discovered[0].1.as_ref().unwrap().library_id, "valid-lib");
     }
 
     #[test]
@@ -1443,18 +1538,19 @@ mod tests {
 
         let ids: Vec<&str> = discovered
             .iter()
-            .map(|(_, y)| y.library_id.as_str())
+            .map(|(_, y)| y.as_ref().unwrap().library_id.as_str())
             .collect();
         assert!(ids.contains(&"lib-1"));
         assert!(ids.contains(&"lib-2"));
 
         let lib2_entry = discovered
             .iter()
-            .find(|(_, y)| y.library_id == "lib-2")
+            .find(|(_, y)| y.as_ref().unwrap().library_id == "lib-2")
             .unwrap();
-        assert_eq!(lib2_entry.1.library_name, "Second Library");
+        let lib2_yaml = lib2_entry.1.as_ref().unwrap();
+        assert_eq!(lib2_yaml.library_name, "Second Library");
         assert_eq!(
-            lib2_entry.1.encryption_key_fingerprint.as_deref(),
+            lib2_yaml.encryption_key_fingerprint.as_deref(),
             Some("fingerprint-2")
         );
     }
