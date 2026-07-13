@@ -261,12 +261,12 @@ impl LibraryManager {
         // Unknown flips the pointer to FileTags but leaves the old source's rows
         // in place, still showing the prior metadata. Reseed them here by projecting
         // through the now-FileTags pointer. A tag-sparse rip projects to a
-        // blank-but-editable title/artist, which `apply_release_metadata_user_edit`
-        // accepts — it rejects only a zero-length artist list, not a blank name.
+        // blank-but-editable title/artist — the prompt the user answers in the
+        // editor — so this writes through the ungated path. The blank is not a user
+        // edit, and the user-edit gate would reject it.
         if matches!(identity_choice, IdentityChoice::Unknown) {
             let edit = self.reset_metadata_to_source(release_id).await?;
-            self.apply_release_metadata_user_edit(release_id, &edit)
-                .await?;
+            self.write_release_metadata(release_id, &edit).await?;
         }
 
         Ok(())
@@ -392,12 +392,33 @@ impl LibraryManager {
         ))
     }
 
-    /// Apply a user-supplied metadata edit to an existing release: album
-    /// title and artists, release pressing fields, and per-track titles,
-    /// sides, track numbers, and artists. Resolves artist names against the
-    /// library (creating rows for new names), writes the album/release/track
-    /// rows and replaces the `album_artists` / `track_artists` junctions, then
-    /// emits an `AlbumUpdated` event.
+    /// Apply a user-supplied metadata edit to an existing release.
+    ///
+    /// Every surface a user edits through reaches the write here — the desktop
+    /// editor, MCP's `release_metadata_update`, the CLI. The desktop shapes its
+    /// form first ([`crate::import::RawReleaseEdit::shape`]); the others hand over
+    /// a wire edit built field-for-field. So the edit is normalized and validated
+    /// here rather than at any one caller: a blank album title or an artist-less
+    /// album is rejected, and surrounding whitespace is trimmed, no matter which
+    /// surface it came from.
+    ///
+    /// Writes only what `write_release_metadata` writes; see it for the row-level
+    /// contract.
+    pub async fn apply_release_metadata_user_edit(
+        &self,
+        release_id: &str,
+        edit: &crate::import::ReleaseUserEdit,
+    ) -> Result<(), LibraryError> {
+        let edit = edit.clone().normalized();
+        edit.validate()?;
+        self.write_release_metadata(release_id, &edit).await
+    }
+
+    /// Write a release's metadata rows: album title and artists, release pressing
+    /// fields, and per-track titles, sides, track numbers, and artists. Resolves
+    /// artist names against the library (creating rows for new names), writes the
+    /// album/release/track rows and replaces the `album_artists` /
+    /// `track_artists` junctions, then emits an `AlbumUpdated` event.
     ///
     /// Track edits align positionally with the release's existing tracks (the
     /// edit can't add or remove tracks — `tracks.len()` must equal the
@@ -409,18 +430,17 @@ impl LibraryManager {
     /// `release_metadata` rows, `release_identities`, and the `metadata_source`
     /// columns are deliberately not touched. Identity is orthogonal to
     /// metadata; the cached source payload stays put.
-    pub async fn apply_release_metadata_user_edit(
+    ///
+    /// Ungated on purpose: a release reseeded from sparse file tags carries a
+    /// blank-but-editable title and artist, which the user fills in the editor.
+    /// A *user's* edit is held to [`crate::import::ReleaseUserEdit::validate`] —
+    /// it arrives through [`Self::apply_release_metadata_user_edit`].
+    async fn write_release_metadata(
         &self,
         release_id: &str,
         edit: &crate::import::ReleaseUserEdit,
     ) -> Result<(), LibraryError> {
         use crate::db::{DbAlbumArtist, DbArtist, DbTrackArtist};
-
-        if edit.album_artist_names.is_empty() {
-            return Err(LibraryError::Import(
-                "Album must have at least one artist".to_string(),
-            ));
-        }
 
         let (album_id, release, album, existing_tracks) =
             self.load_release_for_edit(release_id).await?;
@@ -487,7 +507,12 @@ impl LibraryManager {
         // (mirrors the convention in {discogs,musicbrainz}_mapper.rs).
         // `get_artists_for_album` UNIONs the FK row in at sort_key = -1, so
         // including the primary in the junction too would duplicate it.
-        let primary_album_artist_id = lookup_artist_id(&edit.album_artist_names[0])?;
+        let primary_album_artist_name = edit.album_artist_names.first().ok_or_else(|| {
+            LibraryError::Internal(format!(
+                "release {release_id} metadata carries no album artist"
+            ))
+        })?;
+        let primary_album_artist_id = lookup_artist_id(primary_album_artist_name)?;
 
         let updated_album = DbAlbum {
             title: edit.album_title.clone(),

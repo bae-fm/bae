@@ -914,6 +914,9 @@ impl From<LibraryError> for AutomationError {
             LibraryError::Database(e) => Self::Database(e.to_string()),
             LibraryError::Io(e) => Self::Unavailable(e.to_string()),
             LibraryError::Import(e) => Self::Import(e),
+            // A rejected metadata edit is the caller's bad input, not an import
+            // failure — MCP sees it as `validation`, the kind it can act on.
+            LibraryError::Edit(e) => Self::Validation(e.to_string()),
             LibraryError::TrackMapping(e) => Self::Import(e),
             LibraryError::Encryption(e) => Self::Unavailable(e.to_string()),
             LibraryError::Storage(e) => Self::Unavailable(e),
@@ -2684,6 +2687,68 @@ mod tests {
                 "tool {} inputSchema must have root type object",
                 tool.name(),
             );
+        }
+    }
+
+    /// The MCP tool hands its edit over field-for-field — no editor, no shaping.
+    /// The rule the desktop's Save button enforces has to reach this path too, so
+    /// `release_metadata_update` can't write what the editor would refuse.
+    mod release_metadata_update_input {
+        use super::*;
+
+        fn edit(album_title: &str, album_artist_names: &[&str]) -> AutomationReleaseUserEdit {
+            AutomationReleaseUserEdit {
+                album_title: album_title.to_string(),
+                album_artist_names: album_artist_names.iter().map(|s| s.to_string()).collect(),
+                pressing: AutomationPressingEdit {
+                    year: None,
+                    format: None,
+                    label: None,
+                    catalog_number: None,
+                    country: None,
+                    barcode: None,
+                },
+                tracks: Vec::new(),
+            }
+        }
+
+        #[test]
+        fn an_empty_album_title_fails_the_edit_rule() {
+            let wire = release_user_edit(edit("", &["The Beatles"]));
+            assert_eq!(
+                wire.validate(),
+                Err(bae_core::import::EditValidationError::EmptyAlbumTitle),
+            );
+        }
+
+        #[test]
+        fn an_artist_less_edit_fails_the_edit_rule() {
+            let wire = release_user_edit(edit("Abbey Road", &[]));
+            assert_eq!(
+                wire.validate(),
+                Err(bae_core::import::EditValidationError::NoAlbumArtist),
+            );
+        }
+
+        /// An untrimmed title is normalized, not refused — the desktop editor
+        /// trims the same input rather than erroring on it.
+        #[test]
+        fn an_untrimmed_album_title_normalizes() {
+            let wire = release_user_edit(edit("  Abbey Road  ", &["  The Beatles  "])).normalized();
+            assert_eq!(wire.validate(), Ok(()));
+            assert_eq!(wire.album_title, "Abbey Road");
+            assert_eq!(wire.album_artist_names, vec!["The Beatles".to_string()]);
+        }
+
+        /// A refused edit reaches the client as `validation` — input it can fix —
+        /// not as an opaque `import` failure.
+        #[test]
+        fn a_refused_edit_crosses_as_a_validation_error() {
+            let error = AutomationError::from(LibraryError::Edit(
+                bae_core::import::EditValidationError::EmptyAlbumTitle,
+            ));
+            assert_eq!(error.kind(), "validation");
+            assert_eq!(error.message(), "Album title is required");
         }
     }
 

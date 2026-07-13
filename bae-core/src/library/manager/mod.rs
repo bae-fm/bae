@@ -105,6 +105,11 @@ pub enum LibraryError {
     Io(#[from] std::io::Error),
     #[error("Import error: {0}")]
     Import(String),
+    /// A user-submitted release metadata edit failed its invariants (blank album
+    /// title, no album artist). The editor's typed error, so every surface reports
+    /// the same rule rather than its own hand-written sentence.
+    #[error(transparent)]
+    Edit(#[from] crate::import::EditValidationError),
     #[error("Track mapping error: {0}")]
     TrackMapping(String),
     #[error("Encryption error: {0}")]
@@ -169,7 +174,7 @@ impl LibraryError {
             LibraryError::CloudHome(e) => cloud_home_category(e),
             LibraryError::CloudSetup(_) => C::Credentials,
             LibraryError::Sync(e) => sync_category(e),
-            LibraryError::Import(_) => C::Import,
+            LibraryError::Import(_) | LibraryError::Edit(_) => C::Import,
             LibraryError::MasterKey(_) => C::Keyring,
             LibraryError::Io(_)
             | LibraryError::TrackMapping(_)

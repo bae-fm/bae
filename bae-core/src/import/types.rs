@@ -317,6 +317,52 @@ fn option_to_raw(value: &Option<String>) -> String {
     value.clone().unwrap_or_default()
 }
 
+impl ReleaseUserEdit {
+    /// Trim the album title and every track title, and drop blank artist names.
+    /// The normalization the editor's [`RawReleaseEdit::shape`] performs on typed
+    /// text, hoisted onto the wire type so a surface that builds one
+    /// field-for-field — MCP, the CLI — gets the same treatment instead of
+    /// writing whatever it was handed. Idempotent.
+    pub fn normalized(mut self) -> Self {
+        self.album_title = self.album_title.trim().to_string();
+        self.album_artist_names = normalized_names(self.album_artist_names);
+        for track in &mut self.tracks {
+            track.title = track.title.trim().to_string();
+            track.artist_names = normalized_names(std::mem::take(&mut track.artist_names));
+        }
+        self
+    }
+
+    /// The invariants a user-submitted edit holds: a non-blank album title, and
+    /// at least one album artist. The single definition of the rule — the editor
+    /// gates its Save button on it through [`RawReleaseEdit::shape`], and
+    /// `LibraryManager::apply_release_metadata_user_edit` enforces it on the write
+    /// itself, so a surface that never opens the editor cannot write past it.
+    ///
+    /// Only a *user edit* is held to this. A release reseeded from sparse file
+    /// tags carries deliberate blanks for the user to fill, and takes the write
+    /// path that doesn't gate.
+    pub fn validate(&self) -> Result<(), EditValidationError> {
+        if self.album_title.trim().is_empty() {
+            return Err(EditValidationError::EmptyAlbumTitle);
+        }
+        if self.album_artist_names.iter().all(|n| n.trim().is_empty()) {
+            return Err(EditValidationError::NoAlbumArtist);
+        }
+        Ok(())
+    }
+}
+
+/// Trim each name and drop the blanks — what `split_artists` does to comma text,
+/// for a list that arrived already split.
+fn normalized_names(names: Vec<String>) -> Vec<String> {
+    names
+        .into_iter()
+        .map(|name| name.trim().to_string())
+        .filter(|name| !name.is_empty())
+        .collect()
+}
+
 impl RawReleaseEdit {
     /// Normalize and validate this raw form into a wire [`ReleaseUserEdit`]:
     /// trim the album title, comma-split artist fields (dropping empties),
@@ -324,38 +370,28 @@ impl RawReleaseEdit {
     /// form is savable.
     ///
     /// Validation: the album title must be non-empty after trimming, the album
-    /// must resolve to at least one artist, and a non-empty year must parse as
-    /// an integer (an empty year is allowed — it's "not set").
+    /// must resolve to at least one artist (both via
+    /// [`ReleaseUserEdit::validate`]), and a non-empty year must parse as an
+    /// integer (an empty year is allowed — it's "not set").
     pub fn shape(&self) -> Result<ReleaseUserEdit, EditValidationError> {
-        let album_title = self.album_title.trim().to_string();
-        if album_title.is_empty() {
-            return Err(EditValidationError::EmptyAlbumTitle);
+        let edit = ReleaseUserEdit {
+            album_title: self.album_title.clone(),
+            album_artist_names: split_artists(&self.album_artist_text),
+            pressing: self.pressing.shape()?,
+            tracks: self
+                .tracks
+                .iter()
+                .map(|t| TrackUserEdit {
+                    title: t.title.clone(),
+                    side: t.side,
+                    track_number: t.track_number,
+                    artist_names: split_artists(&t.artist_text),
+                })
+                .collect(),
         }
-
-        let album_artist_names = split_artists(&self.album_artist_text);
-        if album_artist_names.is_empty() {
-            return Err(EditValidationError::NoAlbumArtist);
-        }
-
-        let pressing = self.pressing.shape()?;
-
-        let tracks = self
-            .tracks
-            .iter()
-            .map(|t| TrackUserEdit {
-                title: t.title.trim().to_string(),
-                side: t.side,
-                track_number: t.track_number,
-                artist_names: split_artists(&t.artist_text),
-            })
-            .collect();
-
-        Ok(ReleaseUserEdit {
-            album_title,
-            album_artist_names,
-            pressing,
-            tracks,
-        })
+        .normalized();
+        edit.validate()?;
+        Ok(edit)
     }
 
     /// Seed a raw editor form from a wire [`ReleaseUserEdit`]. Joins artist
