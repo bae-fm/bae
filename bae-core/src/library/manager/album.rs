@@ -165,7 +165,9 @@ impl LibraryManager {
                 cover: release_cover,
                 transfer_action: self.current_transfer_action(&r.release.id),
             };
-            releases.push(ReleaseDetail::from_raw(r, &raw.artists, i, &ctx));
+            let (detail, orphans) = ReleaseDetail::from_raw(r, &raw.artists, i, &ctx);
+            self.report_audio_format_orphans(orphans);
+            releases.push(detail);
         }
 
         Ok(AlbumDetail {

@@ -337,6 +337,17 @@ pub struct DbPlaybackState {
     pub is_muted: bool,
 }
 
+/// The outcome of reading the device-local `playback_state` resume cache. The
+/// row is bae's own write, so a structurally-impossible row (a `source` present
+/// without a `cursor`, or vice versa) is corruption — kept distinct from an
+/// absent row so the caller can count it and clear it rather than silently
+/// starting fresh over a masked failure.
+pub enum LoadedPlaybackState {
+    Absent,
+    Corrupt,
+    Present(DbPlaybackState),
+}
+
 /// Where `releases.metadata_source` came from.
 ///
 /// Mirrors the `metadata_source` text column. Distinct from

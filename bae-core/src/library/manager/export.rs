@@ -157,11 +157,17 @@ impl LibraryManager {
 
         match outcome {
             Ok(Ok(())) => {
+                self.diagnostics().event(TelemetryEvent::ExportCompleted {
+                    release_id: crate::diagnostics::LocalId(release_id.clone()),
+                });
                 self.export_queue.remove(&release_id);
                 self.emit_export_queue_changed();
             }
             Ok(Err(error)) => {
                 error!("Export failed for release {release_id}: {error}");
+                self.diagnostics().event(TelemetryEvent::ExportFailed {
+                    release_id: crate::diagnostics::LocalId(release_id.clone()),
+                });
                 self.export_queue
                     .mark_failed(&release_id, error.to_string());
                 self.emit_export_queue_changed();
@@ -172,6 +178,9 @@ impl LibraryManager {
             }
             Err(join_error) => {
                 error!("Export task for {release_id} panicked: {join_error}");
+                self.diagnostics().event(TelemetryEvent::ExportFailed {
+                    release_id: crate::diagnostics::LocalId(release_id.clone()),
+                });
                 self.export_queue
                     .mark_failed(&release_id, join_error.to_string());
                 self.emit_export_queue_changed();

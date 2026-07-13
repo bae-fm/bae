@@ -17,6 +17,7 @@ pub use export::{
 pub use keyring::init_keyring;
 #[cfg(any(test, feature = "test-utils"))]
 pub use keyring::install_test_keyring;
+pub use keyring::keyring_init_failed;
 
 use atomic_write::{write_atomic, write_atomic_io, WriteError};
 use dev::dev_mode_enabled;

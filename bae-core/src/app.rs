@@ -11,7 +11,7 @@ use std::sync::Arc;
 use tracing::info;
 
 use crate::config::{Config, ConfigHandle};
-use crate::diagnostics::{Diagnostics, DiagnosticsConfig, TelemetryEvent};
+use crate::diagnostics::{AnomalyKind, Diagnostics, DiagnosticsConfig, TelemetryEvent};
 use crate::keys::StoreKeys;
 use crate::library::AppServices;
 use crate::playback::PlaybackService;
@@ -133,15 +133,28 @@ fn bootstrap_inner(
     let clock: ClockRef = Arc::new(SystemClock);
     let ids: IdRef = Arc::new(UuidProvider);
 
+    let (config, save_active_library) = load_bootstrap_config(target, ids.as_ref())?;
+    let library_id = config.store_id.clone();
+
     // Telemetry is constructed here, from the config the frontend passed in, so
     // there is no second entry point a caller must remember to invoke before
     // this one. It reuses the same clock/id sources; a `Disabled` config yields
-    // the no-op sink.
-    let diagnostics = Diagnostics::configure(diagnostics, clock.clone(), ids.clone())
-        .map_err(|e| BootstrapError::Internal(format!("Failed to configure diagnostics: {e}")))?;
+    // the no-op sink. Built after the config loads so the stable per-device id
+    // (config mints it on first run) can stamp every event as one correlation key.
+    let diagnostics = Diagnostics::configure(
+        diagnostics,
+        clock.clone(),
+        ids.clone(),
+        config.device_id.clone(),
+    )
+    .map_err(|e| BootstrapError::Internal(format!("Failed to configure diagnostics: {e}")))?;
 
-    let (config, save_active_library) = load_bootstrap_config(target, ids.as_ref())?;
-    let library_id = config.store_id.clone();
+    // The keyring installer runs before diagnostics existed (the host calls it
+    // pre-init), stashing any failure in an ambient static; ship it now that the
+    // sink is up. A missing default store means every credential read fails.
+    if crate::config::keyring_init_failed() {
+        diagnostics.event(TelemetryEvent::KeyringInitFailed {});
+    }
 
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .worker_threads(2)
@@ -181,6 +194,9 @@ fn bootstrap_inner(
                 tracing::warn!(
                     "encryption key marked stored but not found in keyring; deferring sync until unlocked"
                 );
+                diagnostics.event(TelemetryEvent::Anomaly {
+                    kind: AnomalyKind::EncryptionKeyMissing,
+                });
                 false
             }
             Err(e) => {
@@ -188,6 +204,9 @@ fn bootstrap_inner(
                     error = %e,
                     "failed to read encryption key from keyring; deferring sync until unlocked"
                 );
+                diagnostics.event(TelemetryEvent::Anomaly {
+                    kind: AnomalyKind::EncryptionKeyMissing,
+                });
                 false
             }
         };

@@ -11,6 +11,7 @@
 
 use std::time::Duration;
 
+use crate::album_detail::ReleaseStorageAction;
 use crate::config::CloudProvider;
 use crate::diagnostics::DiagnosticLevel;
 
@@ -132,8 +133,12 @@ telemetry_value_enum! {
         LoadContext => "load_context",
         Preload => "preload",
         AudioOutputInit => "audio_output_init",
-        Resume => "resume",
         QueueAdd => "queue_add",
+        Starvation => "starvation",
+        DeviceRebuild => "device_rebuild",
+        StreamStart => "stream_start",
+        Read => "read",
+        Preview => "preview",
     }
 }
 
@@ -143,6 +148,63 @@ telemetry_value_enum! {
     /// listener, so `Cycle` is the only emitting site.
     pub enum SyncOperation {
         Cycle => "cycle",
+    }
+}
+
+telemetry_value_enum! {
+    /// A user-intent playback command, reported once when the command loop picks
+    /// it up. Only commands a person issues map to a variant; internal/system
+    /// commands (auto-advance, shutdown), pure queries (get volume/queue), and
+    /// continuous inputs (volume, position ticks) have none and ship nothing.
+    pub enum PlaybackCommandKind {
+        Play => "play",
+        PlayRelease => "play_release",
+        PlayReleases => "play_releases",
+        PlayLibraryShuffled => "play_library_shuffled",
+        Next => "next",
+        Previous => "previous",
+        Seek => "seek",
+        Pause => "pause",
+        Resume => "resume",
+        Stop => "stop",
+        SetShuffle => "set_shuffle",
+        SetRepeat => "set_repeat",
+        AddReleaseToQueue => "add_release_to_queue",
+        AddReleaseNext => "add_release_next",
+        RemoveFromQueue => "remove_from_queue",
+        ReorderQueue => "reorder_queue",
+        SkipTo => "skip_to",
+    }
+}
+
+telemetry_value_enum! {
+    /// One impossible-state site class. Each variant is a distinct kind of
+    /// "should never happen" the code detected; the local `warn!`/`error!` next
+    /// to the emission keeps the free-text detail, this counts the occurrence per
+    /// version so regressions surface in the wild.
+    pub enum AnomalyKind {
+        ResumeCacheCorrupt => "resume_cache_corrupt",
+        ResumePersistFailed => "resume_persist_failed",
+        GaplessBoundaryDesync => "gapless_boundary_desync",
+        SidePauseDesync => "side_pause_desync",
+        PreloadStateMissing => "preload_state_missing",
+        QueueEntryUnknown => "queue_entry_unknown",
+        QueueTrackNoMetadata => "queue_track_no_metadata",
+        ChangesetMissingFk => "changeset_missing_fk",
+        AudioFormatOrphaned => "audio_format_orphaned",
+        BlobIdInvalid => "blob_id_invalid",
+        EncryptionKeyMissing => "encryption_key_missing",
+        EventBusLagged => "event_bus_lagged",
+        ImportErrorWriteFailed => "import_error_write_failed",
+    }
+}
+
+telemetry_value_enum! {
+    impl ReleaseStorageAction {
+        ReleaseStorageAction::MakeRemote => "make_remote",
+        ReleaseStorageAction::Pin => "pin",
+        ReleaseStorageAction::Unpin => "unpin",
+        ReleaseStorageAction::MakeLocal => "make_local",
     }
 }
 
@@ -267,6 +329,79 @@ telemetry_events! {
     ScreenOpened, "screen_opened", Info {
         screen: Screen,
     },
+
+    /// A user-intent playback command reached the command loop.
+    PlaybackCommand, "playback_command", Info {
+        command: PlaybackCommandKind,
+    },
+
+    /// A release finished exporting its files to a user folder (desktop only).
+    ExportCompleted, "export_completed", Info {
+        release_id: LocalId,
+    },
+
+    /// A release export failed or its task panicked (desktop only).
+    ExportFailed, "export_failed", Error {
+        release_id: LocalId,
+    },
+
+    /// A cloud provider connection was configured and started.
+    CloudProviderConnected, "cloud_provider_connected", Info {
+        provider: CloudProvider,
+    },
+
+    /// A cloud provider was disconnected.
+    CloudProviderDisconnected, "cloud_provider_disconnected", Info {
+        provider: CloudProvider,
+    },
+
+    /// A release storage transition (pin/unpin/make-remote/make-local) completed.
+    StorageTransferCompleted, "storage_transfer_completed", Info {
+        action: ReleaseStorageAction,
+        release_id: LocalId,
+        file_count: u32,
+    },
+
+    /// A release storage transition failed.
+    StorageTransferFailed, "storage_transfer_failed", Error {
+        action: ReleaseStorageAction,
+        release_id: LocalId,
+    },
+
+    /// Time from a play command's initiation to the track reaching Playing.
+    FirstAudio, "first_audio", Info {
+        track_id: LocalId,
+        wait: Duration,
+    },
+
+    /// Time from a seek's initiation to the rebuilt stream being installed.
+    SeekCompleted, "seek_completed", Info {
+        track_id: LocalId,
+        wait: Duration,
+    },
+
+    /// Playback starvation onset: the decoder couldn't keep the ring fed.
+    PlaybackStarved, "playback_starved", Warn {
+        track_id: LocalId,
+        position_ms: u64,
+    },
+
+    /// A track drained to natural completion. `decode_errors` is the quality
+    /// signal — a clean track reports zero.
+    TrackCompleted, "track_completed", Info {
+        track_id: LocalId,
+        decode_errors: u64,
+    },
+
+    /// Keyring store initialization failed (runs before diagnostics exists; the
+    /// outcome is read back and shipped at bootstrap).
+    KeyringInitFailed, "keyring_init_failed", Error {},
+
+    /// An impossible-state site fired. `kind` names which one; the count per
+    /// version is the proactive-bug-detection signal.
+    Anomaly, "anomaly", Warn {
+        kind: AnomalyKind,
+    },
 }
 
 #[cfg(test)]
@@ -334,5 +469,76 @@ mod tests {
         let fields = event.fields();
         assert_eq!(fields["provider"], serde_json::json!("google_drive"));
         assert_eq!(fields["operation"], serde_json::json!("cycle"));
+    }
+
+    #[test]
+    fn playback_command_records_kind_as_snake_case() {
+        let event = TelemetryEvent::PlaybackCommand {
+            command: PlaybackCommandKind::PlayLibraryShuffled,
+        };
+        assert_eq!(event.name(), "playback_command");
+        assert_eq!(event.level(), DiagnosticLevel::Info);
+        assert_eq!(
+            event.fields()["command"],
+            serde_json::json!("play_library_shuffled")
+        );
+    }
+
+    #[test]
+    fn track_completed_carries_decode_error_count_as_number() {
+        let event = TelemetryEvent::TrackCompleted {
+            track_id: LocalId("track-9".to_string()),
+            decode_errors: 3,
+        };
+        let fields = event.fields();
+        assert_eq!(fields["track_id"], serde_json::json!("track-9"));
+        assert_eq!(fields["decode_errors"], serde_json::json!(3));
+        assert!(fields["decode_errors"].is_number());
+    }
+
+    #[test]
+    fn anomaly_is_warn_with_snake_case_kind() {
+        let event = TelemetryEvent::Anomaly {
+            kind: AnomalyKind::ResumeCacheCorrupt,
+        };
+        assert_eq!(event.name(), "anomaly");
+        assert_eq!(event.level(), DiagnosticLevel::Warn);
+        assert_eq!(
+            event.fields()["kind"],
+            serde_json::json!("resume_cache_corrupt")
+        );
+    }
+
+    #[test]
+    fn storage_transfer_records_action_via_foreign_impl() {
+        let event = TelemetryEvent::StorageTransferCompleted {
+            action: ReleaseStorageAction::MakeRemote,
+            release_id: LocalId("rel-1".to_string()),
+            file_count: 12,
+        };
+        let fields = event.fields();
+        assert_eq!(fields["action"], serde_json::json!("make_remote"));
+        assert_eq!(fields["release_id"], serde_json::json!("rel-1"));
+        assert_eq!(fields["file_count"], serde_json::json!(12));
+        assert!(fields["file_count"].is_number());
+    }
+
+    #[test]
+    fn first_audio_wait_records_whole_milliseconds() {
+        let event = TelemetryEvent::FirstAudio {
+            track_id: LocalId("track-1".to_string()),
+            wait: Duration::from_millis(850),
+        };
+        let fields = event.fields();
+        assert_eq!(fields["wait"], serde_json::json!(850));
+        assert!(fields["wait"].is_number());
+    }
+
+    #[test]
+    fn keyring_init_failed_is_field_less_error() {
+        let event = TelemetryEvent::KeyringInitFailed {};
+        assert_eq!(event.name(), "keyring_init_failed");
+        assert_eq!(event.level(), DiagnosticLevel::Error);
+        assert!(event.fields().is_empty());
     }
 }

@@ -617,12 +617,9 @@ impl LibraryManager {
             cover,
             transfer_action: self.current_transfer_action(release_id),
         };
-        Ok(Some(ReleaseDetail::from_raw(
-            raw,
-            &album_artists,
-            release_index,
-            &ctx,
-        )))
+        let (detail, orphans) = ReleaseDetail::from_raw(raw, &album_artists, release_index, &ctx);
+        self.report_audio_format_orphans(orphans);
+        Ok(Some(detail))
     }
 
     pub async fn get_releases_for_album(
@@ -964,8 +961,15 @@ pub(crate) async fn find_release_detail_with(
     else {
         return Ok(None);
     };
+    // The upload observer resolves detail off the diagnostics-less sync path, so
+    // a rejected bad blob id here reads as not pinned and stays text-only (logged
+    // in `release_file_pin_state`); the diagnostics-holding `release_pinned`
+    // caller is where a bad id ships the `blob_id_invalid` anomaly.
     let pinned = match raw.files.first() {
-        Some(file) => release_file_pinned(handle, &file.id).await?,
+        Some(file) => matches!(
+            release_file_pin_state(handle, &file.id).await?,
+            ReleasePinState::Pinned
+        ),
         None => false,
     };
     let cover = cover_ref_for(database, release_id).await?;
@@ -975,12 +979,12 @@ pub(crate) async fn find_release_detail_with(
         cover,
         transfer_action: None,
     };
-    Ok(Some(ReleaseDetail::from_raw(
-        raw,
-        &album_artists,
-        release_index,
-        &ctx,
-    )))
+    // The upload observer resolves detail off the diagnostics-less sync path, so
+    // an audio-format orphan here stays text-only (logged in `from_raw`); the
+    // diagnostics-holding manager callers ship the `audio_format_orphaned`
+    // anomaly.
+    let (detail, _orphans) = ReleaseDetail::from_raw(raw, &album_artists, release_index, &ctx);
+    Ok(Some(detail))
 }
 
 impl LibraryManager {

@@ -655,7 +655,7 @@ fn test_sync_changeset_walker_dedupes_per_album() {
     // An album plus its release and two tracks, inserted together. The album
     // event subsumes the release and track changes: one album event, no release
     // events.
-    let changes = changes_from_row_changes(&[
+    let (changes, _missing_fk) = changes_from_row_changes(&[
         insert("albums", &["alb-1"]),
         insert("releases", &["rel-1", "alb-1"]),
         insert("tracks", &["trk-1", "rel-1"]),
@@ -688,7 +688,7 @@ fn test_sync_changeset_album_delete_carries_child_release_ids() {
     // suppressed (album-level trumps release-level), but their ids must ride
     // along on the album removal so consumers can drop the children without
     // re-deriving the set from their own state.
-    let changes = changes_from_row_changes(&[
+    let (changes, _missing_fk) = changes_from_row_changes(&[
         delete("albums", &["alb-1"]),
         delete("releases", &["rel-1", "alb-1"]),
         delete("releases", &["rel-2", "alb-1"]),

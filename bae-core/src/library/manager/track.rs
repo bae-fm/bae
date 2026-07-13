@@ -80,7 +80,18 @@ impl LibraryManager {
         &self,
         entries: &[QueueEntry],
     ) -> Result<Vec<QueueItem>, LibraryError> {
-        Ok(self.database.get_queue_items(entries).await?)
+        let items = self.database.get_queue_items(entries).await?;
+        // Each entry resolves to at most one item; a shortfall is entries whose
+        // track has no metadata (deleted from the library but still queued — a
+        // deletion-consistency gap). The pure DB layer logs each; the manager,
+        // which holds the diagnostics sink, counts them.
+        let dropped = entries.len().saturating_sub(items.len());
+        for _ in 0..dropped {
+            self.diagnostics().event(TelemetryEvent::Anomaly {
+                kind: crate::diagnostics::AnomalyKind::QueueTrackNoMetadata,
+            });
+        }
+        Ok(items)
     }
 
     /// Resolve the manual lane in full, plus only the first `QUEUE_UPCOMING_WINDOW`

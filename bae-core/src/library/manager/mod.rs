@@ -832,6 +832,7 @@ impl LibraryManager {
             upload_throughput,
             sync_paused,
             cloudkit_ops,
+            diagnostics.clone(),
         );
 
         let manager = LibraryManager {
@@ -884,6 +885,7 @@ impl LibraryManager {
             Arc::new(crate::library::UploadThroughput::new()),
             Arc::new(std::sync::atomic::AtomicBool::new(false)),
             None,
+            diagnostics.clone(),
         );
         let sync_status = Arc::new(Mutex::new(SyncStatusState::initial(&handle)));
 
@@ -1007,6 +1009,17 @@ impl LibraryManager {
         &self.diagnostics
     }
 
+    /// Ship one `audio_format_orphaned` anomaly per orphan the release-detail
+    /// projection reported (a pure layer that can only detect and log them). A
+    /// zero count ships nothing.
+    fn report_audio_format_orphans(&self, count: u32) {
+        for _ in 0..count {
+            self.diagnostics.event(TelemetryEvent::Anomaly {
+                kind: crate::diagnostics::AnomalyKind::AudioFormatOrphaned,
+            });
+        }
+    }
+
     /// The injected id source. The import layer and the mappers mint row ids
     /// through this so tests get a deterministic-but-unique sequence; the
     /// playback queue mints per-instance `QueueEntryId`s through it on every
@@ -1037,8 +1050,13 @@ impl LibraryManager {
                 // drive are re-reads by primary key, not a trusted stream.
                 if let SyncLoopStatus::Succeeded(success) = &status {
                     if let Some(row_changes) = &success.row_changes {
-                        let changes =
+                        let (changes, missing_fk) =
                             crate::library::sync_events::changes_from_row_changes(row_changes);
+                        for _ in 0..missing_fk {
+                            lm.diagnostics().event(TelemetryEvent::Anomaly {
+                                kind: crate::diagnostics::AnomalyKind::ChangesetMissingFk,
+                            });
+                        }
                         lm.emit_sync_entity_changes(changes).await;
                     }
                 }
@@ -1196,7 +1214,6 @@ impl LibraryManager {
     pub async fn emit_album_added(&self, album_id: &str) {
         match self.find_album_detail(album_id).await {
             Ok(Some(album)) => {
-                info!("emit_album_added: emitting AlbumAdded for album {album_id}");
                 self.emit(LibraryEvent::AlbumAdded { album });
             }
             Ok(None) => {
@@ -1415,16 +1432,29 @@ fn release_files_pin_ref(file_id: &str) -> coven::BlobRef {
     }
 }
 
+/// The pin-state answer for a release file. A structurally invalid blob id (e.g.
+/// a path-traversal token forged by a peer) is `RejectedBadId` rather than
+/// silently folded into `NotPinned`, so the caller that holds the diagnostics
+/// sink can count it as an anomaly before treating it as not pinned.
+enum ReleasePinState {
+    Pinned,
+    NotPinned,
+    RejectedBadId,
+}
+
 /// Whether `file_id`'s release is pinned offline, answered through the handle's
-/// cache-state query. A structurally invalid blob id (e.g. a path-traversal
-/// token forged by a peer) can't name a real cached blob, so it reads as not
-/// pinned — the id is rejected, never trusted; a real I/O failure still surfaces.
-async fn release_file_pinned(handle: &CovenHandle, file_id: &str) -> Result<bool, LibraryError> {
+/// cache-state query. A structurally invalid blob id can't name a real cached
+/// blob, so it's rejected (never trusted); a real I/O failure still surfaces.
+async fn release_file_pin_state(
+    handle: &CovenHandle,
+    file_id: &str,
+) -> Result<ReleasePinState, LibraryError> {
     match handle.is_pinned(&[release_files_pin_ref(file_id)]).await {
-        Ok(pinned) => Ok(pinned),
+        Ok(true) => Ok(ReleasePinState::Pinned),
+        Ok(false) => Ok(ReleasePinState::NotPinned),
         Err(coven::BlobCacheError::Path(e)) => {
             warn!("pin-state check: rejecting bad blob id {file_id}: {e}");
-            Ok(false)
+            Ok(ReleasePinState::RejectedBadId)
         }
         Err(e) => Err(LibraryError::Storage(format!(
             "pin-state for {file_id}: {e}"

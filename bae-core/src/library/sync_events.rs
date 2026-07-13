@@ -78,8 +78,12 @@ struct RawChanges {
 /// - `tracks`: col 0 = id (PK), col 1 = release_id (FK)
 /// - `album_artists`: col 1 = album_id
 /// - `track_artists`: col 1 = track_id
-fn collect_raw_changes(changes: &[RowChange]) -> RawChanges {
+fn collect_raw_changes(changes: &[RowChange]) -> (RawChanges, u32) {
     let mut raw = RawChanges::default();
+    // A changeset row that's missing its FK is a malformed changeset — dropped
+    // here and counted so the caller (which holds the diagnostics sink) can ship
+    // the anomaly.
+    let mut missing_fk = 0u32;
 
     for change in changes {
         let op = change.op;
@@ -96,6 +100,7 @@ fn collect_raw_changes(changes: &[RowChange]) -> RawChanges {
                             .insert(id.to_string(), (album_id.to_string(), op));
                     } else {
                         tracing::warn!("Changeset release {id} missing album_id FK, skipping");
+                        missing_fk += 1;
                     }
                 }
             }
@@ -106,6 +111,7 @@ fn collect_raw_changes(changes: &[RowChange]) -> RawChanges {
                             .insert(id.to_string(), (release_id.to_string(), op));
                     } else {
                         tracing::warn!("Changeset track {id} missing release_id FK, skipping");
+                        missing_fk += 1;
                     }
                 }
             }
@@ -123,7 +129,7 @@ fn collect_raw_changes(changes: &[RowChange]) -> RawChanges {
         }
     }
 
-    raw
+    (raw, missing_fk)
 }
 
 /// Resolve raw per-table changes into deduplicated per-album events:
@@ -235,7 +241,10 @@ fn resolve_changes(raw: RawChanges) -> ChangesetEntityChanges {
     result
 }
 
-/// Resolve coven row changes into the deduplicated entity changes to emit.
-pub fn changes_from_row_changes(changes: &[RowChange]) -> ChangesetEntityChanges {
-    resolve_changes(collect_raw_changes(changes))
+/// Resolve coven row changes into the deduplicated entity changes to emit, plus
+/// the count of changeset rows dropped for a missing FK (a malformed changeset
+/// the caller ships as an anomaly).
+pub fn changes_from_row_changes(changes: &[RowChange]) -> (ChangesetEntityChanges, u32) {
+    let (raw, missing_fk) = collect_raw_changes(changes);
+    (resolve_changes(raw), missing_fk)
 }

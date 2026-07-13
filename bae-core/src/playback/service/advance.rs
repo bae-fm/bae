@@ -151,6 +151,7 @@ impl PlaybackService {
             _ => None,
         }) else {
             error!("side-pause decision requested without current track metadata");
+            self.telemetry_anomaly(AnomalyKind::SidePauseDesync);
             return Err(());
         };
 
@@ -274,6 +275,7 @@ impl PlaybackService {
     pub(super) async fn resume_from_side_pause(&mut self) {
         let Some(pending_track_id) = self.side_pause_resume_track_id() else {
             warn!("side-pause resume requested without pending side-pause state");
+            self.telemetry_anomaly(AnomalyKind::SidePauseDesync);
             return;
         };
 
@@ -285,13 +287,13 @@ impl PlaybackService {
 
         let Some(front) = self.playback_queue.front().map(str::to_string) else {
             error!("side-pause resume expected {pending_track_id}, but the queue is empty");
-            self.telemetry_playback_failed(crate::diagnostics::PlaybackOperation::Resume);
+            self.telemetry_anomaly(AnomalyKind::SidePauseDesync);
             self.demote_side_pause_to_manual();
             return;
         };
         if front != pending_track_id {
             error!("side-pause resume expected {pending_track_id}, but queue front is {front}");
-            self.telemetry_playback_failed(crate::diagnostics::PlaybackOperation::Resume);
+            self.telemetry_anomaly(AnomalyKind::SidePauseDesync);
             self.demote_side_pause_to_manual();
             return;
         }
@@ -308,7 +310,7 @@ impl PlaybackService {
             }
             other => {
                 error!("side-pause resume expected Play for {pending_track_id}, got {other:?}");
-                self.telemetry_playback_failed(crate::diagnostics::PlaybackOperation::Resume);
+                self.telemetry_anomaly(AnomalyKind::SidePauseDesync);
                 self.demote_side_pause_to_manual();
             }
         }
@@ -416,6 +418,10 @@ impl PlaybackService {
             "Track completed (gapless): {} ({} decode errors, {} samples)",
             crossing.finished_fmt.track_id, crossing.decode_error_count, crossing.samples_decoded
         );
+        self.telemetry().event(TelemetryEvent::TrackCompleted {
+            track_id: LocalId(crossing.finished_fmt.track_id.clone()),
+            decode_errors: crossing.decode_error_count as u64,
+        });
         emit_progress(
             &self.progress_tx,
             PlaybackProgress::DecodeStats {
@@ -432,6 +438,7 @@ impl PlaybackService {
                     track_id = %crossing.incoming_fmt.track_id,
                     "Gapless boundary fired with no preloaded track; ignoring"
                 );
+                self.telemetry_anomaly(AnomalyKind::GaplessBoundaryDesync);
                 return;
             }
         };
@@ -456,6 +463,7 @@ impl PlaybackService {
                 track_id = %crossing.incoming_fmt.track_id,
                 "Gapless boundary fired with no active track; ignoring"
             );
+            self.telemetry_anomaly(AnomalyKind::GaplessBoundaryDesync);
             return;
         };
         // Release the previous track's buffers (files shared with the new one
@@ -497,6 +505,7 @@ impl PlaybackService {
     pub(super) fn advance_to_preloaded(&mut self) {
         if self.playback_queue.advance_to_front().is_none() {
             warn!("advance_to_preloaded: queue had no front to advance to");
+            self.telemetry_anomaly(AnomalyKind::PreloadStateMissing);
         }
         self.emit_queue_update();
     }
@@ -557,6 +566,7 @@ impl PlaybackService {
             Some(preloaded) => preloaded,
             None => {
                 error!("play_preloaded_track called without preloaded state");
+                self.telemetry_anomaly(AnomalyKind::PreloadStateMissing);
                 return;
             }
         };

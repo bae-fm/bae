@@ -2427,8 +2427,8 @@ mod playback_state_load_tests {
     }
 
     /// `source` and `cursor` are written together, so a row carrying one without
-    /// the other is corrupt: `load_playback_state` discards the whole cache and
-    /// returns `None` rather than inventing a cursor.
+    /// the other is corrupt: `load_playback_state` reports `Corrupt` rather than
+    /// inventing a cursor or masking it as an absent cache.
     #[tokio::test]
     async fn mismatched_source_and_cursor_discards_the_cache() {
         let (db, _tmp) = empty_db().await;
@@ -2450,6 +2450,9 @@ mod playback_state_load_tests {
         .await
         .unwrap();
 
-        assert!(db.load_playback_state().await.unwrap().is_none());
+        assert!(matches!(
+            db.load_playback_state().await.unwrap(),
+            LoadedPlaybackState::Corrupt
+        ));
     }
 }

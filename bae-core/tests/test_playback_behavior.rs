@@ -3940,7 +3940,9 @@ async fn test_play_persists_then_stop_clears_playback_state() {
     let deadline = Instant::now() + Duration::from_secs(5);
     let mut persisted = None;
     while Instant::now() < deadline {
-        if let Some(row) = library_manager.load_playback_state().await.unwrap() {
+        if let bae_core::db::LoadedPlaybackState::Present(row) =
+            library_manager.load_playback_state().await.unwrap()
+        {
             persisted = Some(row);
             break;
         }
@@ -3956,12 +3958,10 @@ async fn test_play_persists_then_stop_clears_playback_state() {
     let deadline = Instant::now() + Duration::from_secs(5);
     let mut cleared = false;
     while Instant::now() < deadline {
-        if library_manager
-            .load_playback_state()
-            .await
-            .unwrap()
-            .is_none()
-        {
+        if matches!(
+            library_manager.load_playback_state().await.unwrap(),
+            bae_core::db::LoadedPlaybackState::Absent
+        ) {
             cleared = true;
             break;
         }
@@ -4000,15 +4000,17 @@ async fn test_position_persists_periodically_while_playing() {
         "sanity: playback should have advanced, got {live_position_ms}ms"
     );
 
-    let row = fixture
+    let bae_core::db::LoadedPlaybackState::Present(row) = fixture
         .library_manager
         .load_playback_state()
         .await
         .expect("load_playback_state should succeed")
-        .expect(
+    else {
+        panic!(
             "a playback_state row should be persisted while playing, \
-             with no Shutdown/SaveState sent",
+             with no Shutdown/SaveState sent"
         );
+    };
     let first_persisted_ms = row
         .position_ms
         .expect("position_ms must be recorded while playing");
@@ -4020,12 +4022,14 @@ async fn test_position_persists_periodically_while_playing() {
     // Advance further and confirm the stored position keeps climbing — proof
     // this is a periodic write, not a one-shot at track start.
     let _ = position_after(&mut fixture.progress_rx, Duration::from_millis(1500)).await;
-    let row = fixture
+    let bae_core::db::LoadedPlaybackState::Present(row) = fixture
         .library_manager
         .load_playback_state()
         .await
         .expect("load_playback_state should succeed")
-        .expect("the playback_state row should still be present");
+    else {
+        panic!("the playback_state row should still be present");
+    };
     let second_persisted_ms = row.position_ms.expect("position_ms must still be recorded");
     assert!(
         second_persisted_ms > first_persisted_ms,
@@ -4222,7 +4226,9 @@ async fn test_restore_drops_deleted_context_keeps_manual() {
     let deadline = Instant::now() + Duration::from_secs(5);
     let mut row = None;
     while Instant::now() < deadline {
-        if let Some(loaded) = lib.library_manager.load_playback_state().await.unwrap() {
+        if let bae_core::db::LoadedPlaybackState::Present(loaded) =
+            lib.library_manager.load_playback_state().await.unwrap()
+        {
             if loaded.repeat == "track" {
                 row = Some(loaded);
                 break;
@@ -5539,12 +5545,14 @@ async fn restore_off_starts_with_nothing_in_playback_and_keeps_the_row() {
     // Persist mid-track and tear the service down, like an app quit.
     playback.playback_handle.shutdown().await;
     assert!(
-        playback
-            .library_manager
-            .load_playback_state()
-            .await
-            .expect("read the resume row")
-            .is_some(),
+        matches!(
+            playback
+                .library_manager
+                .load_playback_state()
+                .await
+                .expect("read the resume row"),
+            bae_core::db::LoadedPlaybackState::Present(_)
+        ),
         "shutdown persists a resume row while a track is current"
     );
 
@@ -5583,12 +5591,14 @@ async fn restore_off_starts_with_nothing_in_playback_and_keeps_the_row() {
     // The row survives the skipped restore, so turning the preference on
     // restores this session at the next launch.
     assert!(
-        playback
-            .library_manager
-            .load_playback_state()
-            .await
-            .expect("re-read the resume row")
-            .is_some(),
+        matches!(
+            playback
+                .library_manager
+                .load_playback_state()
+                .await
+                .expect("re-read the resume row"),
+            bae_core::db::LoadedPlaybackState::Present(_)
+        ),
         "the resume row must survive a restore-off launch"
     );
 }

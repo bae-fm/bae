@@ -5423,11 +5423,11 @@ async fn test_playback_state_source_column_round_trips_both_kinds() {
             is_muted: false,
         };
         manager.save_playback_state(&row).await.unwrap();
-        let loaded = manager
-            .load_playback_state()
-            .await
-            .unwrap()
-            .expect("a saved row loads");
+        let crate::db::LoadedPlaybackState::Present(loaded) =
+            manager.load_playback_state().await.unwrap()
+        else {
+            panic!("a saved row loads");
+        };
         assert_eq!(
             loaded.context.unwrap().source,
             source_to_str(&source),

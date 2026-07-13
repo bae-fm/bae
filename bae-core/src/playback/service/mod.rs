@@ -39,7 +39,8 @@ use super::{
 use crate::audio_codec::StreamingDecodeError;
 use crate::db::{DbAudioSegmentRole, DbPlaybackContext, DbPlaybackState};
 use crate::diagnostics::{
-    LocalId, PlaybackOperation, PlaybackStartSource, TelemetryEvent, TrackTransition,
+    AnomalyKind, LocalId, PlaybackCommandKind, PlaybackOperation, PlaybackStartSource,
+    TelemetryEvent, TrackTransition,
 };
 use crate::library::LibraryEvent;
 use crate::library::LibraryManager;
@@ -982,6 +983,19 @@ pub struct PlaybackService {
     /// the periodic writer waits a full second from whichever discrete event last
     /// wrote the row.
     last_position_persist: Option<std::time::Instant>,
+    /// The in-flight first-audio measurement for the live play-to-Playing load,
+    /// if one is pending. Set when `play_track` begins a Playing-target load,
+    /// cleared/overwritten by the next load; resolved into a `first_audio` event
+    /// when that load reaches Playing. `None` once emitted or for paused loads.
+    first_audio_pending: Option<FirstAudioMeasurement>,
+}
+
+/// A pending first-audio timing: the load whose arrival at Playing it measures,
+/// the track it plays, and when the play began.
+struct FirstAudioMeasurement {
+    generation: LoadGeneration,
+    track_id: String,
+    started_at: std::time::Instant,
 }
 
 impl PlaybackService {
@@ -1017,6 +1031,10 @@ impl PlaybackService {
         if matches!(self.slot, PlaybackSlot::Stopped) {
             debug!("HaltOnError: playback already stopped, nothing to halt");
         } else {
+            // A slot still Active here is a genuine mid-flight read/decode failure
+            // (the inline failure paths stop() before their HaltOnError dequeues,
+            // leaving the slot Stopped). That is the read-failure operation.
+            self.telemetry_playback_failed(PlaybackOperation::Read);
             self.stop().await;
         }
     }
@@ -1024,6 +1042,45 @@ impl PlaybackService {
     /// Telemetry sink, read off the library manager this service already holds.
     fn telemetry(&self) -> &crate::diagnostics::Diagnostics {
         self.library_manager.diagnostics()
+    }
+
+    /// Restore playback from the device-local resume cache at startup, unless
+    /// "Restore on launch" is off (the row is kept either way — it stays the
+    /// crash-safe resume point). A present-and-valid row replays; a corrupt row
+    /// (DB-structural or a per-lane out-of-domain value) is counted and cleared;
+    /// an absent row or a read failure starts fresh.
+    pub(super) async fn restore_from_cache(&mut self, restore_playback: bool) {
+        if !restore_playback {
+            debug!("restore on launch is off; starting with nothing in playback");
+            return;
+        }
+        use crate::db::LoadedPlaybackState;
+        match self.library_manager.load_playback_state().await {
+            Ok(LoadedPlaybackState::Present(state)) => match PersistedPlayback::from_row(state) {
+                Some(parsed) => self.restore(parsed).await,
+                // The row parsed as corrupt (a per-lane out-of-domain value; logged
+                // in `from_row`). Count it and delete it so the bad row doesn't
+                // linger durably across restarts.
+                None => self.discard_corrupt_resume_cache().await,
+            },
+            // A structurally-impossible row (source XOR cursor); the DB client
+            // logged the specific mismatch.
+            Ok(LoadedPlaybackState::Corrupt) => self.discard_corrupt_resume_cache().await,
+            Ok(LoadedPlaybackState::Absent) => {}
+            Err(e) => warn!("couldn't load the saved playback state: {e}; starting fresh"),
+        }
+    }
+
+    /// The resume cache was corrupt (a DB-structural mismatch or a per-lane
+    /// out-of-domain value): count the anomaly and delete the row so the bad
+    /// state doesn't linger durably across restarts. The pure parse/DB layers
+    /// only detect and log it; the service, which owns the diagnostics sink,
+    /// emits and clears.
+    async fn discard_corrupt_resume_cache(&self) {
+        self.telemetry_anomaly(AnomalyKind::ResumeCacheCorrupt);
+        if let Err(e) = self.library_manager.clear_playback_state().await {
+            warn!("couldn't clear the corrupt playback resume cache: {e}");
+        }
     }
 
     /// A play command established a new playing context.
@@ -1047,6 +1104,12 @@ impl PlaybackService {
     fn telemetry_playback_failed(&self, operation: PlaybackOperation) {
         self.telemetry()
             .event(TelemetryEvent::PlaybackFailed { operation });
+    }
+
+    /// An impossible-state site fired. The free-text detail stays in the local
+    /// `warn!`/`error!` next to the call; only the kind (a count) ships.
+    fn telemetry_anomaly(&self, kind: AnomalyKind) {
+        self.telemetry().event(TelemetryEvent::Anomaly { kind });
     }
 
     /// Direct selection of `track_id`: its release becomes the playing context,
@@ -1097,7 +1160,6 @@ impl PlaybackService {
         } else {
             self.current_play_target()
         };
-        info!("Next command received");
         if let Some(preloaded_track_id) = self.next_track_id().map(|s| s.to_string()) {
             self.advance_and_play_preloaded(&preloaded_track_id, false, target)
                 .await;
@@ -1191,11 +1253,6 @@ impl PlaybackService {
             );
             return;
         }
-        info!(
-            track_id,
-            "AutoAdvance command received (natural transition)"
-        );
-
         match self.side_pause_for_queue_front().await {
             Ok(Some(decision)) => {
                 self.pause_for_side_end(decision);
@@ -1298,6 +1355,10 @@ impl PlaybackService {
             "Track completed: {} ({} decode errors, {} samples)",
             fmt.track_id, error_count, samples_decoded
         );
+        self.telemetry().event(TelemetryEvent::TrackCompleted {
+            track_id: LocalId(fmt.track_id.clone()),
+            decode_errors: error_count as u64,
+        });
         emit_progress(
             &self.progress_tx,
             PlaybackProgress::TrackCompleted {
@@ -1581,31 +1642,9 @@ impl PlaybackService {
                     fetch_arbiter: FetchArbiter::new(),
                     starvation_episode: None,
                     last_position_persist: None,
+                    first_audio_pending: None,
                 };
-                // "Restore on launch" off means start fresh, but keep the row: it
-                // stays the crash-safe resume point, so flipping the preference on
-                // restores it at the next launch.
-                if restore_playback {
-                    match service.library_manager.load_playback_state().await {
-                        Ok(Some(state)) => match PersistedPlayback::from_row(state) {
-                            Some(parsed) => service.restore(parsed).await,
-                            // The row was corrupt (logged in `from_row`). Delete it so
-                            // the bad row doesn't linger durably across restarts.
-                            None => {
-                                if let Err(e) = service.library_manager.clear_playback_state().await
-                                {
-                                    warn!("couldn't clear the corrupt playback resume cache: {e}");
-                                }
-                            }
-                        },
-                        Ok(None) => {}
-                        Err(e) => {
-                            warn!("couldn't load the saved playback state: {e}; starting fresh")
-                        }
-                    }
-                } else {
-                    debug!("restore on launch is off; starting with nothing in playback");
-                }
+                service.restore_from_cache(restore_playback).await;
                 service.run().await;
             });
         });
@@ -1638,6 +1677,12 @@ impl PlaybackService {
                     self.drain_current_audio_events().await;
                 }
                 Some(command) = self.command_rx.recv() => {
+            // One event per user-intent command, at the point the loop picks it
+            // up. Internal/system commands, queries, and continuous inputs map to
+            // `None` and ship nothing.
+            if let Some(kind) = playback_command_kind(&command) {
+                self.telemetry().event(TelemetryEvent::PlaybackCommand { command: kind });
+            }
             match command {
                 PlaybackCommand::Play(track_id) => {
                     self.handle_play(track_id).await;
@@ -1915,10 +1960,16 @@ impl PlaybackService {
                         } else {
                             self.on_queue_mutated().await;
                         }
+                    } else {
+                        // The id named no queued entry — a stale UI action against a
+                        // queue that already moved on.
+                        self.telemetry_anomaly(AnomalyKind::QueueEntryUnknown);
                     }
                 }
                 PlaybackCommand::ReorderQueue { entry_id, before } => {
-                    self.playback_queue.reorder(&entry_id, before.as_ref());
+                    if !self.playback_queue.reorder(&entry_id, before.as_ref()) {
+                        self.telemetry_anomaly(AnomalyKind::QueueEntryUnknown);
+                    }
                     self.on_queue_mutated().await;
                 }
                 PlaybackCommand::ClearQueue => {
@@ -1966,6 +2017,9 @@ impl PlaybackService {
                             TrackTransition::Manual,
                         )
                         .await;
+                    } else {
+                        // The id named no queued entry — a stale UI action.
+                        self.telemetry_anomaly(AnomalyKind::QueueEntryUnknown);
                     }
                 }
                 PlaybackCommand::PreviewPlay(path) => {
@@ -2011,6 +2065,56 @@ impl PlaybackService {
             }
         }
         info!("PlaybackService stopped");
+    }
+}
+
+/// Map a command to its telemetry kind, or `None` for commands that don't ship:
+/// internal/system (auto-advance, shutdown, track-ready), pure queries (get
+/// volume/queue), and continuous inputs (volume, position, mute). Track-level
+/// queue edits (add/insert/clear) are not user-intent milestones and ship
+/// nothing; only the release-level and transport commands do.
+fn playback_command_kind(command: &PlaybackCommand) -> Option<PlaybackCommandKind> {
+    match command {
+        PlaybackCommand::Play(_) => Some(PlaybackCommandKind::Play),
+        PlaybackCommand::PlayRelease { .. } => Some(PlaybackCommandKind::PlayRelease),
+        PlaybackCommand::PlayReleases(_) => Some(PlaybackCommandKind::PlayReleases),
+        PlaybackCommand::PlayLibraryShuffled => Some(PlaybackCommandKind::PlayLibraryShuffled),
+        PlaybackCommand::Next => Some(PlaybackCommandKind::Next),
+        PlaybackCommand::Previous => Some(PlaybackCommandKind::Previous),
+        PlaybackCommand::Seek(_) | PlaybackCommand::SeekByRatio(_) => {
+            Some(PlaybackCommandKind::Seek)
+        }
+        PlaybackCommand::Pause => Some(PlaybackCommandKind::Pause),
+        PlaybackCommand::Resume => Some(PlaybackCommandKind::Resume),
+        PlaybackCommand::Stop => Some(PlaybackCommandKind::Stop),
+        PlaybackCommand::SetShuffle(_) => Some(PlaybackCommandKind::SetShuffle),
+        PlaybackCommand::SetRepeatMode(_) => Some(PlaybackCommandKind::SetRepeat),
+        PlaybackCommand::AddReleaseToQueue(_) => Some(PlaybackCommandKind::AddReleaseToQueue),
+        PlaybackCommand::AddReleaseNext(_) => Some(PlaybackCommandKind::AddReleaseNext),
+        PlaybackCommand::RemoveFromQueue(_) => Some(PlaybackCommandKind::RemoveFromQueue),
+        PlaybackCommand::ReorderQueue { .. } => Some(PlaybackCommandKind::ReorderQueue),
+        PlaybackCommand::SkipTo(_) => Some(PlaybackCommandKind::SkipTo),
+        PlaybackCommand::AutoAdvance { .. }
+        | PlaybackCommand::TrackReady { .. }
+        | PlaybackCommand::HaltOnError
+        | PlaybackCommand::AddToQueue(_)
+        | PlaybackCommand::AddNext(_)
+        | PlaybackCommand::InsertInQueue(_, _)
+        | PlaybackCommand::ClearQueue
+        | PlaybackCommand::ReevaluateSidePauseStaging
+        | PlaybackCommand::SetVolume(_)
+        | PlaybackCommand::SetMuted(_)
+        | PlaybackCommand::PreviewPlay(_)
+        | PlaybackCommand::PreviewStop
+        | PlaybackCommand::PreviewTogglePause
+        | PlaybackCommand::PreviewSeekByRatio(_)
+        | PlaybackCommand::PreviewCompleted
+        | PlaybackCommand::GetVolume(_)
+        | PlaybackCommand::GetQueueProjection(_)
+        | PlaybackCommand::Shutdown(_)
+        | PlaybackCommand::SaveState(_) => None,
+        #[cfg(target_os = "macos")]
+        PlaybackCommand::OutputDeviceChanged => None,
     }
 }
 

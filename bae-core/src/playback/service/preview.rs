@@ -62,9 +62,18 @@ impl PlaybackService {
         }
 
         // Pause the main player only once the preview has actually started, so a
-        // failed preview start never leaves the main player paused.
-        if self.preview.play(path).await {
-            self.pause_main_for_preview();
+        // failed preview start never leaves the main player paused. A failure
+        // ships the matching operation: the file couldn't be prepared, or the
+        // audio stream couldn't be built.
+        use crate::playback::preview_player::PreviewPlayOutcome;
+        match self.preview.play(path).await {
+            PreviewPlayOutcome::Started => self.pause_main_for_preview(),
+            PreviewPlayOutcome::SetupFailed => {
+                self.telemetry_playback_failed(PlaybackOperation::Preview);
+            }
+            PreviewPlayOutcome::StreamStartFailed => {
+                self.telemetry_playback_failed(PlaybackOperation::StreamStart);
+            }
         }
     }
 

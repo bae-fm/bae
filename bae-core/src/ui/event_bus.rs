@@ -248,7 +248,13 @@ impl UiEventBus {
         runtime_handle: &tokio::runtime::Handle,
     ) {
         let rx = app_services.import().subscribe_events();
-        self.wire_import_events(rx, app_services.import().clone(), runtime_handle);
+        let diagnostics = app_services.library_manager().diagnostics().clone();
+        self.wire_import_events(
+            rx,
+            app_services.import().clone(),
+            diagnostics,
+            runtime_handle,
+        );
     }
 
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
@@ -256,6 +262,7 @@ impl UiEventBus {
         &self,
         mut rx: broadcast::Receiver<crate::import::ImportEvent>,
         import: crate::import::ImportServiceHandle,
+        diagnostics: crate::diagnostics::Diagnostics,
         runtime_handle: &tokio::runtime::Handle,
     ) {
         let bus = self.clone();
@@ -352,6 +359,9 @@ impl UiEventBus {
                     }
                     Err(tokio::sync::broadcast::error::RecvError::Lagged(n)) => {
                         tracing::warn!("Import event bus lagged by {n} events");
+                        diagnostics.event(crate::diagnostics::TelemetryEvent::Anomaly {
+                            kind: crate::diagnostics::AnomalyKind::EventBusLagged,
+                        });
                         bus.invalidate_import_lag();
                         continue;
                     }
@@ -367,12 +377,14 @@ impl UiEventBus {
         runtime_handle: &tokio::runtime::Handle,
     ) {
         let rx = app_services.library_manager().subscribe_events();
-        self.wire_library_events(rx, runtime_handle);
+        let diagnostics = app_services.library_manager().diagnostics().clone();
+        self.wire_library_events(rx, diagnostics, runtime_handle);
     }
 
     fn wire_library_events(
         &self,
         mut rx: broadcast::Receiver<crate::library::LibraryEvent>,
+        diagnostics: crate::diagnostics::Diagnostics,
         runtime_handle: &tokio::runtime::Handle,
     ) {
         let bus = self.clone();
@@ -387,7 +399,6 @@ impl UiEventBus {
                         bus.invalidate(Invalidation::ComposerList);
                         bus.invalidate(Invalidation::ArtistList);
                         bus.invalidate(Invalidation::Album { album_id });
-                        tracing::info!("wire_library: AlbumAdded for album {}", album.album.id);
                     }
                     Ok(LibraryEvent::AlbumUpdated { album }) => {
                         let album_id = album.album.id.clone();
@@ -483,6 +494,9 @@ impl UiEventBus {
                     }
                     Err(tokio::sync::broadcast::error::RecvError::Lagged(n)) => {
                         tracing::warn!("Library event bus lagged by {n} events");
+                        diagnostics.event(crate::diagnostics::TelemetryEvent::Anomaly {
+                            kind: crate::diagnostics::AnomalyKind::EventBusLagged,
+                        });
                         bus.invalidate_library_lag();
                     }
                     Err(tokio::sync::broadcast::error::RecvError::Closed) => break,
@@ -603,7 +617,11 @@ mod tests {
             .unwrap();
         drop(library_tx);
 
-        bus.wire_library_events(library_rx, runtime.handle());
+        bus.wire_library_events(
+            library_rx,
+            crate::diagnostics::Diagnostics::noop(),
+            runtime.handle(),
+        );
 
         let expected = [
             Invalidation::AlbumList,
@@ -629,7 +647,11 @@ mod tests {
         let bus = UiEventBus::new();
         let mut ui_rx = bus.subscribe();
         let (library_tx, library_rx) = broadcast::channel(16);
-        bus.wire_library_events(library_rx, runtime.handle());
+        bus.wire_library_events(
+            library_rx,
+            crate::diagnostics::Diagnostics::noop(),
+            runtime.handle(),
+        );
 
         library_tx
             .send(LibraryEvent::SyncingChanged { syncing: true })
@@ -647,7 +669,11 @@ mod tests {
         let bus = UiEventBus::new();
         let mut ui_rx = bus.subscribe();
         let (library_tx, library_rx) = broadcast::channel(16);
-        bus.wire_library_events(library_rx, runtime.handle());
+        bus.wire_library_events(
+            library_rx,
+            crate::diagnostics::Diagnostics::noop(),
+            runtime.handle(),
+        );
 
         library_tx
             .send(LibraryEvent::ReleaseRemoved {
@@ -702,7 +728,12 @@ mod tests {
             ))
             .unwrap();
         drop(import_tx);
-        bus.wire_import_events(import_rx, import, runtime.handle());
+        bus.wire_import_events(
+            import_rx,
+            import,
+            crate::diagnostics::Diagnostics::noop(),
+            runtime.handle(),
+        );
 
         match recv_ui_event(&runtime, &mut ui_rx) {
             UiBusEvent::Invalidated(Invalidation::WatchedFolders) => {}

@@ -39,6 +39,23 @@ impl PlaybackService {
         samples_decoded: u64,
         starved_ms: u64,
     ) {
+        // Onset: the first starvation observation for this track (no episode yet,
+        // or the prior one was for a different track). A re-baseline of the same
+        // track's ongoing stall is not a fresh onset and ships nothing.
+        let is_onset = !matches!(&self.starvation_episode, Some(e) if e.track_id == track_id);
+        if is_onset {
+            let position_ms = self
+                .current_position_shared
+                .lock()
+                .unwrap()
+                .map(|d| d.as_millis() as u64)
+                .unwrap_or(0);
+            self.telemetry().event(TelemetryEvent::PlaybackStarved {
+                track_id: LocalId(track_id.to_string()),
+                position_ms,
+            });
+        }
+
         let stalled = matches!(
             &self.starvation_episode,
             Some(episode)
@@ -61,6 +78,7 @@ impl PlaybackService {
                 track_id,
                 starved_ms, "starvation exceeded the fail threshold with no decode progress"
             );
+            self.telemetry_playback_failed(PlaybackOperation::Starvation);
             emit_progress(
                 &self.progress_tx,
                 PlaybackProgress::PlaybackError {

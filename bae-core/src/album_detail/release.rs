@@ -111,13 +111,20 @@ impl ReleaseDetail {
     /// Both the manager and the upload observer route through here, so the resolve
     /// logic stays in one place. (The observer holds the same `Database` and a
     /// `CovenHandle`, so it can emit `ReleaseUpdated` without owning a manager.)
+    /// Resolve a raw release-detail row into the projection, plus a count of
+    /// audio-format orphans found (a segment naming a missing format, a format
+    /// naming an absent track, an audio file with no format row). This pure layer
+    /// only detects and logs each; the count lets the diagnostics-holding manager
+    /// caller ship the `audio_format_orphaned` anomaly without this layer growing
+    /// a diagnostics handle.
     pub(crate) fn from_raw(
         raw: DbReleaseDetail,
         album_artists: &[DbArtist],
         release_index: usize,
         ctx: &ReleaseResolveCtx,
-    ) -> ReleaseDetail {
+    ) -> (ReleaseDetail, u32) {
         let release = raw.release;
+        let mut audio_format_orphans = 0u32;
 
         let has_multiple_sides = {
             let mut sides = std::collections::HashSet::new();
@@ -190,6 +197,7 @@ impl ReleaseDetail {
                     "audio segment {} references missing audio_format {}; skipping format attribution",
                     segment.id, segment.audio_format_id
                 );
+                audio_format_orphans += 1;
                 continue;
             };
             let file_id = segment.file_id.as_str();
@@ -210,6 +218,7 @@ impl ReleaseDetail {
                              treating its duration as unknown",
                             af.id, af.track_id
                         );
+                        audio_format_orphans += 1;
                         None
                     }
                 });
@@ -260,6 +269,7 @@ impl ReleaseDetail {
                                 "release file {} ({}) is audio but has no audio_format row",
                                 f.id, f.original_filename
                             );
+                            audio_format_orphans += 1;
                         }
                         None
                     }
@@ -326,7 +336,7 @@ impl ReleaseDetail {
             ctx,
         );
 
-        ReleaseDetail {
+        let detail = ReleaseDetail {
             summary,
             display_name,
             year: release.pressing.year,
@@ -339,6 +349,7 @@ impl ReleaseDetail {
             files,
             image_files,
             gallery_items: gallery,
-        }
+        };
+        (detail, audio_format_orphans)
     }
 }

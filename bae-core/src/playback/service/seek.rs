@@ -40,6 +40,8 @@ impl PlaybackService {
             return;
         }
 
+        // Time the rebuild: from here to the rebuilt stream being installed.
+        let seek_started_at = std::time::Instant::now();
         let generation = self.next_load_generation();
         let CurrentTrack {
             prepared,
@@ -152,6 +154,11 @@ impl PlaybackService {
             new_decoder,
             TrackPhase::Loading { generation, target },
         );
+
+        self.telemetry().event(TelemetryEvent::SeekCompleted {
+            track_id: LocalId(track_id.clone()),
+            wait: seek_started_at.elapsed(),
+        });
 
         let raw_pos_ms = position.as_millis() as u64;
         self.emit_position_display(raw_pos_ms, track_id);

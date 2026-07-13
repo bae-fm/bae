@@ -169,6 +169,7 @@ impl PlaybackService {
         info!("Default output device changed; rebuilding the output stream in place");
         if let Err(e) = self.build_output_over(source, sample_rate, channels, pending) {
             error!("Failed to rebuild output after a device change: {e}");
+            self.telemetry_playback_failed(PlaybackOperation::DeviceRebuild);
             emit_progress(
                 &self.progress_tx,
                 PlaybackProgress::PlaybackError {

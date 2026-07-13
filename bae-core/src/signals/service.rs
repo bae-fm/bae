@@ -109,6 +109,11 @@ impl ExtractionService {
                     Ok(_) => {}
                     Err(broadcast::error::RecvError::Lagged(n)) => {
                         warn!("signals: candidate-removal listener lagged by {n} import events; an extraction for a removed candidate may run to completion");
+                        removal_inner.library_manager.diagnostics().event(
+                            crate::diagnostics::TelemetryEvent::Anomaly {
+                                kind: crate::diagnostics::AnomalyKind::EventBusLagged,
+                            },
+                        );
                     }
                     Err(broadcast::error::RecvError::Closed) => break,
                 }

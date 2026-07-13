@@ -34,6 +34,7 @@ impl ImportServiceHandle {
     pub fn subscribe_folder_scan_events(&self) -> mpsc::UnboundedReceiver<ScanEvent> {
         let mut rx = self.event_tx.subscribe();
         let (tx, out_rx) = mpsc::unbounded_channel();
+        let diagnostics = self.library_manager.diagnostics().clone();
         self.runtime_handle.spawn(async move {
             loop {
                 match rx.recv().await {
@@ -49,6 +50,9 @@ impl ImportServiceHandle {
                     }
                     Err(broadcast::error::RecvError::Lagged(n)) => {
                         tracing::warn!("Scan event subscriber lagged by {n} events");
+                        diagnostics.event(crate::diagnostics::TelemetryEvent::Anomaly {
+                            kind: crate::diagnostics::AnomalyKind::EventBusLagged,
+                        });
                     }
                     Err(broadcast::error::RecvError::Closed) => break,
                 }

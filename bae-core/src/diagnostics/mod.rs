@@ -116,6 +116,13 @@ impl DatadogDiagnosticsConfig {
 /// name; `fields` are its typed values recorded as JSON. `message` duplicates
 /// `name` as Datadog's display line, and `level` maps to Datadog's reserved
 /// `status` severity attribute. The app metadata is flattened in alongside.
+///
+/// `device_id` and `session_id` are the correlation keys for reconstructing one
+/// user's event stream: `device_id` is stable across launches (config mints it
+/// on first run), `session_id` is fresh per `Diagnostics` construction (per
+/// launch). Both are locally-minted random ids that resolve to nothing outside
+/// this library — they identify a stream, not a real-world entity — so they live
+/// here on core's own event, never on the host-built `AppDiagnosticMetadata`.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DiagnosticEvent {
     pub name: String,
@@ -123,6 +130,8 @@ pub struct DiagnosticEvent {
     pub level: DiagnosticLevel,
     pub message: String,
     pub timestamp: DateTime<Utc>,
+    pub device_id: String,
+    pub session_id: String,
     pub fields: serde_json::Map<String, serde_json::Value>,
     #[serde(flatten)]
     pub app: AppDiagnosticMetadata,
@@ -164,6 +173,10 @@ enum DiagnosticsInner {
         tx: mpsc::UnboundedSender<WorkerMessage>,
         app: AppDiagnosticMetadata,
         clock: ClockRef,
+        /// Stable across launches (config mints it on first run).
+        device_id: String,
+        /// Minted once, here, per construction — one value for this launch.
+        session_id: String,
     },
 }
 
@@ -178,6 +191,7 @@ impl Diagnostics {
         config: DiagnosticsConfig,
         clock: ClockRef,
         ids: IdRef,
+        device_id: String,
     ) -> Result<Self, DiagnosticsError> {
         let DiagnosticsConfig::Enabled(config) = config else {
             return Ok(Self::noop());
@@ -186,17 +200,27 @@ impl Diagnostics {
             return Err(DiagnosticsError::IncompleteConfig);
         }
         let config = config.normalized();
-        Self::with_transport(config, clock, ids, Arc::new(DatadogTransport::new()))
+        Self::with_transport(
+            config,
+            clock,
+            ids,
+            device_id,
+            Arc::new(DatadogTransport::new()),
+        )
     }
 
     pub(crate) fn with_transport(
         config: DatadogDiagnosticsConfig,
         clock: ClockRef,
         ids: IdRef,
+        device_id: String,
         transport: Arc<dyn DiagnosticsTransport>,
     ) -> Result<Self, DiagnosticsError> {
         let (tx, rx) = mpsc::unbounded_channel();
         let app = config.app.clone();
+        // One session id per construction (per launch), minted from the same
+        // injected id source the worker uses for request ids.
+        let session_id = ids.new_id();
         let worker = DiagnosticsWorker::new(config, ids, transport, rx);
         let runtime = tokio::runtime::Builder::new_current_thread()
             .enable_all()
@@ -208,7 +232,13 @@ impl Diagnostics {
             .map_err(DiagnosticsError::SpawnWorker)?;
 
         Ok(Self {
-            inner: Arc::new(DiagnosticsInner::Worker { tx, app, clock }),
+            inner: Arc::new(DiagnosticsInner::Worker {
+                tx,
+                app,
+                clock,
+                device_id,
+                session_id,
+            }),
         })
     }
 
@@ -217,7 +247,14 @@ impl Diagnostics {
     /// stopped (normal at shutdown); that is logged at `debug` and the event is
     /// dropped, the same logged bail-out the old tracing layer used.
     pub fn event(&self, event: TelemetryEvent) {
-        let DiagnosticsInner::Worker { tx, app, clock } = self.inner.as_ref() else {
+        let DiagnosticsInner::Worker {
+            tx,
+            app,
+            clock,
+            device_id,
+            session_id,
+        } = self.inner.as_ref()
+        else {
             return;
         };
         let diagnostic = DiagnosticEvent {
@@ -225,6 +262,8 @@ impl Diagnostics {
             level: event.level(),
             message: event.name().to_string(),
             timestamp: clock.now(),
+            device_id: device_id.clone(),
+            session_id: session_id.clone(),
             fields: event.fields(),
             app: app.clone(),
         };
@@ -601,6 +640,8 @@ mod tests {
             level: telemetry.level(),
             message: telemetry.name().to_string(),
             timestamp: clock().now(),
+            device_id: "device-abc".to_string(),
+            session_id: "session-xyz".to_string(),
             fields: telemetry.fields(),
             app: config().app,
         }
@@ -628,7 +669,12 @@ mod tests {
         incomplete.client_token = String::new();
         assert!(!DiagnosticsConfig::Enabled(incomplete.clone()).sends_events());
         assert!(matches!(
-            Diagnostics::configure(DiagnosticsConfig::Enabled(incomplete), clock(), ids()),
+            Diagnostics::configure(
+                DiagnosticsConfig::Enabled(incomplete),
+                clock(),
+                ids(),
+                "device-abc".to_string()
+            ),
             Err(DiagnosticsError::IncompleteConfig)
         ));
 
@@ -659,6 +705,9 @@ mod tests {
         // Datadog's reserved severity + display line.
         assert_eq!(json["status"], "info");
         assert_eq!(json["message"], "playback_started");
+        // Correlation keys ship as plain top-level fields, not nested.
+        assert_eq!(json["device_id"], "device-abc");
+        assert_eq!(json["session_id"], "session-xyz");
         // Numbers ship as JSON numbers, enums as snake_case strings.
         assert_eq!(json["fields"]["track_count"], 4);
         assert!(json["fields"]["track_count"].is_number());
@@ -718,8 +767,14 @@ mod tests {
     #[tokio::test]
     async fn batching_flushes_events_through_transport() {
         let transport = Arc::new(RecordingTransport::new(vec![Ok(())]));
-        let diagnostics = Diagnostics::with_transport(config(), clock(), ids(), transport.clone())
-            .expect("diagnostics starts");
+        let diagnostics = Diagnostics::with_transport(
+            config(),
+            clock(),
+            ids(),
+            "device-abc".to_string(),
+            transport.clone(),
+        )
+        .expect("diagnostics starts");
         diagnostics.event(TelemetryEvent::AppStarted {});
 
         diagnostics.flush().await.expect("flush succeeds");
@@ -732,13 +787,82 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn events_carry_device_and_session_ids() {
+        let transport = Arc::new(RecordingTransport::new(vec![Ok(())]));
+        let diagnostics = Diagnostics::with_transport(
+            config(),
+            clock(),
+            ids(),
+            "device-abc".to_string(),
+            transport.clone(),
+        )
+        .expect("diagnostics starts");
+        // Two events from one instance share the session id and carry the device id.
+        diagnostics.event(TelemetryEvent::AppStarted {});
+        diagnostics.event(TelemetryEvent::AppStarted {});
+        diagnostics.flush().await.expect("flush succeeds");
+
+        let body: Vec<DiagnosticEvent> = serde_json::from_slice(&transport.requests()[0].body)
+            .expect("request body is a diagnostic-event array");
+        assert_eq!(body.len(), 2);
+        assert_eq!(body[0].device_id, "device-abc");
+        assert_eq!(body[1].device_id, "device-abc");
+        assert_eq!(body[0].session_id, body[1].session_id);
+    }
+
+    #[tokio::test]
+    async fn distinct_constructions_get_distinct_session_ids() {
+        // One shared id source across both constructions: the sequential fake
+        // hands each its own value, so the sessions are distinct.
+        let ids = ids();
+        let first = Diagnostics::with_transport(
+            config(),
+            clock(),
+            ids.clone(),
+            "device-abc".to_string(),
+            Arc::new(RecordingTransport::new(vec![Ok(())])),
+        )
+        .expect("diagnostics starts");
+        let second = Diagnostics::with_transport(
+            config(),
+            clock(),
+            ids,
+            "device-abc".to_string(),
+            Arc::new(RecordingTransport::new(vec![Ok(())])),
+        )
+        .expect("diagnostics starts");
+
+        let DiagnosticsInner::Worker {
+            session_id: first_session,
+            ..
+        } = first.inner.as_ref()
+        else {
+            panic!("configured diagnostics runs a worker");
+        };
+        let DiagnosticsInner::Worker {
+            session_id: second_session,
+            ..
+        } = second.inner.as_ref()
+        else {
+            panic!("configured diagnostics runs a worker");
+        };
+        assert_ne!(first_session, second_session);
+    }
+
+    #[tokio::test]
     async fn failed_flush_keeps_events_buffered_for_later_retry() {
         let transport = Arc::new(RecordingTransport::new(vec![
             Err(DiagnosticsError::Status(StatusCode::BAD_REQUEST)),
             Ok(()),
         ]));
-        let diagnostics = Diagnostics::with_transport(config(), clock(), ids(), transport.clone())
-            .expect("diagnostics starts");
+        let diagnostics = Diagnostics::with_transport(
+            config(),
+            clock(),
+            ids(),
+            "device-abc".to_string(),
+            transport.clone(),
+        )
+        .expect("diagnostics starts");
         diagnostics.event(TelemetryEvent::AppStarted {});
 
         assert!(matches!(

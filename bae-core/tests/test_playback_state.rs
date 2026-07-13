@@ -1,7 +1,7 @@
 #![cfg(feature = "test-utils")]
 //! The device-local `playback_state` table: save, load, replace, clear.
 
-use bae_core::db::{Database, DbPlaybackContext, DbPlaybackState};
+use bae_core::db::{Database, DbPlaybackContext, DbPlaybackState, LoadedPlaybackState};
 use tempfile::TempDir;
 
 async fn setup_db() -> (Database, TempDir) {
@@ -21,7 +21,10 @@ async fn playback_state_saves_loads_replaces_and_clears() {
     let (db, _tmp) = setup_db().await;
 
     // Nothing stored to start.
-    assert!(db.load_playback_state().await.unwrap().is_none());
+    assert!(matches!(
+        db.load_playback_state().await.unwrap(),
+        LoadedPlaybackState::Absent
+    ));
 
     // A shuffled context whose seed has the high bit set: it must survive the
     // SQLite i64 column round-trip.
@@ -41,7 +44,9 @@ async fn playback_state_saves_loads_replaces_and_clears() {
     };
     db.save_playback_state(&row).await.unwrap();
 
-    let loaded = db.load_playback_state().await.unwrap().expect("a row");
+    let LoadedPlaybackState::Present(loaded) = db.load_playback_state().await.unwrap() else {
+        panic!("a row");
+    };
     let context = loaded.context.expect("a context");
     assert_eq!(context.source, "rel-1");
     assert_eq!(context.shuffle_seed.map(|s| s as u64), Some(seed));
@@ -65,12 +70,17 @@ async fn playback_state_saves_loads_replaces_and_clears() {
         is_muted: true,
     };
     db.save_playback_state(&single).await.unwrap();
-    let loaded = db.load_playback_state().await.unwrap().expect("a row");
+    let LoadedPlaybackState::Present(loaded) = db.load_playback_state().await.unwrap() else {
+        panic!("a row");
+    };
     assert_eq!(loaded.context, None);
     assert_eq!(loaded.current_track_id.as_deref(), Some("solo"));
     assert!(loaded.is_muted);
 
     // Clear removes it.
     db.clear_playback_state().await.unwrap();
-    assert!(db.load_playback_state().await.unwrap().is_none());
+    assert!(matches!(
+        db.load_playback_state().await.unwrap(),
+        LoadedPlaybackState::Absent
+    ));
 }

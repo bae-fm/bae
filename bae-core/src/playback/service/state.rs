@@ -149,6 +149,19 @@ impl PlaybackService {
             _ => false,
         };
         if resolved {
+            // This load reached Playing: if it's the one we timed, ship the
+            // time-to-first-audio and clear the measurement.
+            if self
+                .first_audio_pending
+                .as_ref()
+                .is_some_and(|m| m.generation == generation)
+            {
+                let measurement = self.first_audio_pending.take().expect("just checked Some");
+                self.telemetry().event(TelemetryEvent::FirstAudio {
+                    track_id: LocalId(measurement.track_id),
+                    wait: measurement.started_at.elapsed(),
+                });
+            }
             self.sync_audio_state();
             self.emit_state();
         } else {
@@ -398,6 +411,7 @@ impl PlaybackService {
         if nothing_to_resume {
             if let Err(e) = self.library_manager.clear_playback_state().await {
                 warn!("couldn't clear playback state: {e}");
+                self.telemetry_anomaly(AnomalyKind::ResumePersistFailed);
             }
             return;
         }
@@ -431,6 +445,7 @@ impl PlaybackService {
                 "couldn't persist playback state (current track {:?}): {e}",
                 row.current_track_id
             );
+            self.telemetry_anomaly(AnomalyKind::ResumePersistFailed);
         }
     }
 

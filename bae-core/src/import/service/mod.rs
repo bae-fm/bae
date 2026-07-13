@@ -25,7 +25,7 @@ use {
 };
 
 use tokio::sync::{broadcast, mpsc};
-use tracing::{error, info, warn};
+use tracing::{debug, error, info, warn};
 
 mod cover_image;
 mod folder_watcher;
@@ -371,17 +371,8 @@ impl ImportService {
                     cover_retry_base_delay,
                 };
 
-                info!("Worker started");
-                loop {
-                    match service.commands_rx.recv().await {
-                        Some(command) => {
-                            service.do_import(command).await;
-                        }
-                        None => {
-                            info!("Worker receive channel closed");
-                            break;
-                        }
-                    }
+                while let Some(command) = service.commands_rx.recv().await {
+                    service.do_import(command).await;
                 }
             });
         });
@@ -433,6 +424,11 @@ impl ImportService {
                 .await
             {
                 error!("Failed to update import error: {}", db_err);
+                self.library_manager
+                    .diagnostics()
+                    .event(TelemetryEvent::Anomaly {
+                        kind: crate::diagnostics::AnomalyKind::ImportErrorWriteFailed,
+                    });
             }
 
             send_event(
@@ -695,7 +691,7 @@ impl ImportService {
         step_times.push(("save_to_database", last_step_start.elapsed()));
         last_step_start = std::time::Instant::now();
 
-        info!(
+        debug!(
             "Prepared album '{}' (release: {}) with {} tracks",
             prepared.db_album.title,
             prepared.db_release.id,
@@ -819,7 +815,7 @@ impl ImportService {
         let album_id = existing_album_id.as_deref().unwrap_or(&db_album.id);
 
         self.emit_started(candidate_key, &db_release.id, import_id);
-        info!(
+        debug!(
             "Starting {} import for release {} ({} files)",
             storage_mode_label(storage_mode),
             db_release.id,
@@ -914,7 +910,7 @@ impl ImportService {
                 ImportPhase::ReferencingFiles,
                 import_id,
             );
-            info!(
+            debug!(
                 "Recorded file {}/{}: {}",
                 idx + 1,
                 total_files,

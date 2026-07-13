@@ -158,6 +158,10 @@ impl PlaybackService {
         target: PlayTarget,
         transition: TrackTransition,
     ) {
+        // Stamp the first-audio clock at the very start of the load, before any
+        // teardown/prepare work, so the measured wait covers the whole path to
+        // Playing.
+        let play_started_at = std::time::Instant::now();
         info!(
             "Playing track: {} (start: {:?}, target: {:?})",
             track_id, start, target
@@ -236,6 +240,16 @@ impl PlaybackService {
         let decode = prepared.decode_params(start_sample_offset, include_pregap);
         let fmt = prepared.track_fmt(start_position);
         let generation = self.next_load_generation();
+
+        // Measure time-to-Playing only for a load that actually plays; a paused
+        // target loads without playing, and clears any prior pending measurement
+        // so a superseded one never resolves.
+        self.first_audio_pending =
+            matches!(target, PlayTarget::Playing).then(|| FirstAudioMeasurement {
+                generation,
+                track_id: track_id.to_string(),
+                started_at: play_started_at,
+            });
 
         let decoder = match self
             .start_decoder_and_watch(&prepared, decode, fmt, generation)

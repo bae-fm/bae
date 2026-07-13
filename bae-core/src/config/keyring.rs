@@ -1,4 +1,20 @@
+use std::sync::OnceLock;
+
 use tracing::warn;
+
+/// Whether keyring-store installation failed, recorded by [`init_keyring`] at its
+/// terminal "no default store installed" error sites. The keyring installer runs
+/// before diagnostics exists (the host calls it pre-init), so the outcome is
+/// stashed in this ambient static — itself a global registration — and read back
+/// at bootstrap, which ships the `keyring_init_failed` event. Unset (the common
+/// case) reads as "did not fail".
+static KEYRING_INIT_FAILED: OnceLock<()> = OnceLock::new();
+
+/// Whether keyring-store installation failed. Read at bootstrap to ship the
+/// `keyring_init_failed` telemetry event once diagnostics exists.
+pub fn keyring_init_failed() -> bool {
+    KEYRING_INIT_FAILED.get().is_some()
+}
 
 /// Initialize the keyring credential store.
 ///
@@ -46,10 +62,13 @@ pub fn init_keyring() {
                         keyring_core::set_default_store(store);
                         info!("Keyring initialized (protected store, local only)");
                     }
-                    Err(e) => error!(
-                        "Failed to create local protected keyring store: {e}. No default store \
-                         is installed, so every credential read will fail."
-                    ),
+                    Err(e) => {
+                        error!(
+                            "Failed to create local protected keyring store: {e}. No default store \
+                             is installed, so every credential read will fail."
+                        );
+                        let _ = KEYRING_INIT_FAILED.set(());
+                    }
                 }
             }
         }
@@ -63,10 +82,13 @@ pub fn init_keyring() {
                 keyring_core::set_default_store(store);
                 info!("Keyring initialized (Android keystore)");
             }
-            Err(e) => error!(
-                "Failed to create Android keyring store: {e}. No default store is installed, \
-                 so every credential read will fail."
-            ),
+            Err(e) => {
+                error!(
+                    "Failed to create Android keyring store: {e}. No default store is installed, \
+                     so every credential read will fail."
+                );
+                let _ = KEYRING_INIT_FAILED.set(());
+            }
         }
     }
 
@@ -78,10 +100,13 @@ pub fn init_keyring() {
                 keyring_core::set_default_store(store);
                 info!("Keyring initialized (Windows Credential Manager)");
             }
-            Err(e) => error!(
-                "Failed to create Windows keyring store: {e}. No default store is installed, \
-                 so every credential read will fail."
-            ),
+            Err(e) => {
+                error!(
+                    "Failed to create Windows keyring store: {e}. No default store is installed, \
+                     so every credential read will fail."
+                );
+                let _ = KEYRING_INIT_FAILED.set(());
+            }
         }
     }
 

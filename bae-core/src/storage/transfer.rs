@@ -24,6 +24,7 @@ use std::future::Future;
 
 use crate::album_detail::ReleaseStorageAction;
 use crate::db::DbFile;
+use crate::diagnostics::{LocalId, TelemetryEvent};
 use crate::library::{DownloadTransferProgress, LibraryManager};
 use tokio::sync::mpsc;
 use tracing::{debug, error, info};
@@ -196,10 +197,22 @@ impl TransferService {
 
         let task = tokio::spawn(async move {
             let label = transfer_label(action);
-            let result =
-                run_transfer(release_id.clone(), action, library_manager, tx.clone(), run).await;
+            let result = run_transfer(
+                release_id.clone(),
+                action,
+                library_manager.clone(),
+                tx.clone(),
+                run,
+            )
+            .await;
             if let Err(e) = result {
                 error!("{} failed for release {}: {}", label, release_id, e);
+                library_manager
+                    .diagnostics()
+                    .event(TelemetryEvent::StorageTransferFailed {
+                        action,
+                        release_id: LocalId(release_id.clone()),
+                    });
                 send_progress(
                     &tx,
                     TransferProgress::Failed {
@@ -224,23 +237,32 @@ async fn run_transfer<Fut>(
 where
     Fut: Future<Output = TransferResult> + Send,
 {
-    start_transfer(&release_id, action, &library_manager, &tx).await?;
-    run(release_id.clone(), library_manager, tx.clone()).await?;
+    let file_count = start_transfer(&release_id, action, &library_manager, &tx).await?;
+    run(release_id.clone(), library_manager.clone(), tx.clone()).await?;
     info!(
         action = ?action,
         release_id = %release_id,
         "release transfer complete"
     );
+    library_manager
+        .diagnostics()
+        .event(TelemetryEvent::StorageTransferCompleted {
+            action,
+            release_id: LocalId(release_id.clone()),
+            file_count,
+        });
     send_progress(&tx, TransferProgress::Complete { release_id });
     Ok(())
 }
 
+/// Guard the transfer's preconditions and announce its start; returns the
+/// release's file count so the completion event can report it.
 async fn start_transfer(
     release_id: &str,
     action: ReleaseStorageAction,
     library_manager: &LibraryManager,
     tx: &ProgressTx,
-) -> TransferResult {
+) -> Result<u32, Box<dyn std::error::Error + Send + Sync>> {
     let release = library_manager
         .get_release_by_id(release_id)
         .await?
@@ -264,7 +286,7 @@ async fn start_transfer(
         file_count = files.len(),
         "release transfer started"
     );
-    Ok(())
+    Ok(files.len() as u32)
 }
 
 fn action_expects_remote(action: ReleaseStorageAction) -> bool {

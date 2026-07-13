@@ -174,6 +174,7 @@ fn recording_diagnostics() -> (
         config,
         Arc::new(coven::SystemClock),
         Arc::new(coven::SequentialIdProvider::new("request-id")),
+        "device-test".to_string(),
         transport.clone(),
     )
     .expect("diagnostics starts");
@@ -225,6 +226,7 @@ fn playback_service_over(
         fetch_arbiter: FetchArbiter::new(),
         starvation_episode: None,
         last_position_persist: None,
+        first_audio_pending: None,
     };
     (service, progress_rx)
 }
@@ -1687,5 +1689,108 @@ async fn previous_ships_track_started() {
     assert!(
         names.iter().any(|n| n == "track_started"),
         "Previous ships track_started (got {names:?})"
+    );
+}
+
+/// A user-intent command maps to its telemetry kind; internal/system commands,
+/// queries, and continuous inputs map to `None` and ship nothing.
+#[test]
+fn playback_command_kind_maps_user_intent_only() {
+    use super::playback_command_kind;
+    assert!(matches!(
+        playback_command_kind(&PlaybackCommand::Play("t0".to_string())),
+        Some(PlaybackCommandKind::Play)
+    ));
+    assert!(matches!(
+        playback_command_kind(&PlaybackCommand::SetRepeatMode(RepeatMode::Off)),
+        Some(PlaybackCommandKind::SetRepeat)
+    ));
+    // A continuous input and an internal command ship nothing.
+    assert!(playback_command_kind(&PlaybackCommand::SetVolume(0.5)).is_none());
+    assert!(playback_command_kind(&PlaybackCommand::AutoAdvance {
+        track_id: "t0".to_string()
+    })
+    .is_none());
+}
+
+/// A track's natural completion ships `track_completed` carrying the decode-error
+/// count — the quality signal.
+#[tokio::test]
+async fn track_completion_ships_track_completed_with_decode_error_count() {
+    let (diagnostics, transport) = recording_diagnostics();
+    let (_home, manager) = seeded_library_manager_with_diagnostics(
+        &[("release-under-test", &["t0"])],
+        diagnostics.clone(),
+    )
+    .await;
+    let (mut service, _progress_rx) = playback_service_over(manager);
+
+    // A track must be active for the completion to mark its phase.
+    let buffer = create_sparse_buffer(1_024);
+    service.slot = active_slot(test_prepared_track("t0", buffer), TrackPhase::Playing);
+
+    service.handle_completion_event(Arc::new(test_track_fmt("t0")), 2, 44_100);
+
+    diagnostics.flush().await.expect("flush succeeds");
+    let bodies = transport.requests();
+    let events: Vec<crate::diagnostics::DiagnosticEvent> = bodies
+        .iter()
+        .flat_map(|r| {
+            serde_json::from_slice::<Vec<crate::diagnostics::DiagnosticEvent>>(&r.body).unwrap()
+        })
+        .collect();
+    let completed = events
+        .iter()
+        .find(|e| e.name == "track_completed")
+        .expect("track completion ships track_completed");
+    assert_eq!(completed.fields["decode_errors"], serde_json::json!(2));
+    assert_eq!(completed.fields["track_id"], serde_json::json!("t0"));
+}
+
+/// A corrupt resume row, driven through the real restore path, ships
+/// `anomaly{resume_cache_corrupt}` and clears the row. A negative `position_ms`
+/// is an out-of-domain value `from_row` rejects — the row is our own write, so
+/// out of range means a corrupted local cache.
+#[tokio::test]
+async fn corrupt_resume_row_ships_resume_cache_corrupt_anomaly() {
+    let (diagnostics, transport) = recording_diagnostics();
+    let (_home, manager) = seeded_library_manager_with_diagnostics(
+        &[("release-under-test", &["t0"])],
+        diagnostics.clone(),
+    )
+    .await;
+
+    // Persist a row whose position is out of domain; `from_row` discards it.
+    manager
+        .save_playback_state(&crate::db::DbPlaybackState {
+            context: None,
+            manual: "[]".to_string(),
+            repeat: "off".to_string(),
+            current_track_id: Some("t0".to_string()),
+            position_ms: Some(-1),
+            volume: 1.0,
+            is_muted: false,
+        })
+        .await
+        .expect("save the corrupt row");
+
+    let (mut service, _progress_rx) = playback_service_over(manager);
+    service.restore_from_cache(true).await;
+
+    diagnostics.flush().await.expect("flush succeeds");
+    let events: Vec<crate::diagnostics::DiagnosticEvent> = transport
+        .requests()
+        .iter()
+        .flat_map(|r| {
+            serde_json::from_slice::<Vec<crate::diagnostics::DiagnosticEvent>>(&r.body).unwrap()
+        })
+        .collect();
+    let anomaly = events
+        .iter()
+        .find(|e| e.name == "anomaly")
+        .expect("a corrupt resume row ships an anomaly");
+    assert_eq!(
+        anomaly.fields["kind"],
+        serde_json::json!("resume_cache_corrupt")
     );
 }

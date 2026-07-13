@@ -165,9 +165,18 @@ impl LibraryManager {
         &self,
         any_file_id: Option<&str>,
     ) -> Result<bool, LibraryError> {
-        match any_file_id {
-            Some(file_id) => release_file_pinned(&self.handle, file_id).await,
-            None => Ok(false),
+        let Some(file_id) = any_file_id else {
+            return Ok(false);
+        };
+        match release_file_pin_state(&self.handle, file_id).await? {
+            ReleasePinState::Pinned => Ok(true),
+            ReleasePinState::NotPinned => Ok(false),
+            ReleasePinState::RejectedBadId => {
+                self.diagnostics().event(TelemetryEvent::Anomaly {
+                    kind: crate::diagnostics::AnomalyKind::BlobIdInvalid,
+                });
+                Ok(false)
+            }
         }
     }
 

@@ -27,6 +27,23 @@ use tokio::sync::mpsc as tokio_mpsc;
 use tokio::task::JoinHandle;
 use tracing::{error, info, warn};
 
+/// The outcome of a preview [`PreviewPlayer::play`] attempt. `Started` is the
+/// success; the two failures name which stage failed so the service reports the
+/// right `playback_failed` operation — the file couldn't be prepared (stat/probe)
+/// vs. the audio output stream couldn't be built and started.
+pub(crate) enum PreviewPlayOutcome {
+    Started,
+    SetupFailed,
+    StreamStartFailed,
+}
+
+#[cfg(test)]
+impl PreviewPlayOutcome {
+    fn started(&self) -> bool {
+        matches!(self, Self::Started)
+    }
+}
+
 /// A second audio player dedicated to previewing a local file. Holds all preview
 /// state; the main player coordinates pause/resume around it but never reaches
 /// into these fields.
@@ -89,8 +106,10 @@ impl PreviewPlayer {
     }
 
     /// Start a fresh preview of `path`. Switches off any currently-loaded
-    /// preview first. Returns true if playback started.
-    pub(crate) async fn play(&mut self, path: String) -> bool {
+    /// preview first. The outcome distinguishes a clean start from a setup
+    /// failure (stat/probe) and a stream-start failure, so the service reports
+    /// the matching `playback_failed` operation.
+    pub(crate) async fn play(&mut self, path: String) -> PreviewPlayOutcome {
         // Stop the active preview without resuming main — the new preview keeps
         // main paused.
         if self.active.is_some() {
@@ -101,12 +120,12 @@ impl PreviewPlayer {
             Ok(metadata) => metadata.len(),
             Err(e) => {
                 error!("Failed to stat preview file {}: {}", path, e);
-                return false;
+                return PreviewPlayOutcome::SetupFailed;
             }
         };
 
         let Some(probe) = probe_preview_audio(&path).await else {
-            return false;
+            return PreviewPlayOutcome::SetupFailed;
         };
 
         let buffer = create_sparse_buffer(source_size);
@@ -126,8 +145,10 @@ impl PreviewPlayer {
             .await;
         if started {
             info!("Preview started: {}", path);
+            PreviewPlayOutcome::Started
+        } else {
+            PreviewPlayOutcome::StreamStartFailed
         }
-        started
     }
 
     /// Seek by slider ratio (0.0–1.0) within the active preview. A preview is a
@@ -534,7 +555,7 @@ mod tests {
         let (output, _capture_rx) = CaptureAudioOutput::new();
         player.audio_output = Some(Box::new(output));
 
-        let started = player.play(path.display().to_string()).await;
+        let started = player.play(path.display().to_string()).await.started();
         if started {
             player.stop();
         }

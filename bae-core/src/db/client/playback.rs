@@ -96,62 +96,68 @@ impl Database {
         .await
     }
 
-    /// Read the device-local `playback_state` row, or `None` if none is stored
-    /// (or if the row is corrupt — the resume cache is discarded at this
-    /// boundary so no caller downstream sees a malformed context).
-    pub async fn load_playback_state(&self) -> Result<Option<DbPlaybackState>, DbError> {
+    /// Read the device-local `playback_state` row: [`LoadedPlaybackState::Present`]
+    /// with the row, [`LoadedPlaybackState::Absent`] when none is stored, or
+    /// [`LoadedPlaybackState::Corrupt`] for a structurally-impossible row. The
+    /// three are distinct so the caller counts and clears a corrupt cache rather
+    /// than silently starting fresh over a masked failure.
+    pub async fn load_playback_state(&self) -> Result<LoadedPlaybackState, DbError> {
         self.read(move |conn| {
-            // The closure's `None` is a corrupt row that discards the whole cache;
-            // the outer `.optional()`'s `None` is no row at all. The flatten below
-            // collapses both into one "no resume state" answer.
-            conn.query_row(
-                "SELECT source, shuffle_seed, cursor, manual, repeat, \
+            // The closure's `None` is a corrupt row; the outer `.optional()`'s
+            // `None` is no row at all — the two stay distinct below.
+            let loaded = conn
+                .query_row(
+                    "SELECT source, shuffle_seed, cursor, manual, repeat, \
                      current_track_id, position_ms, volume, is_muted \
                      FROM playback_state WHERE id = 'current'",
-                [],
-                |row| {
-                    // `source` and `cursor` are written together: both present is a
-                    // context, both absent is no context, exactly one present is a
-                    // corrupt row.
-                    let source: Option<String> = row.get("source")?;
-                    let shuffle_seed: Option<i64> = row.get("shuffle_seed")?;
-                    let cursor: Option<i64> = row.get("cursor")?;
-                    let context = match (source, cursor) {
-                        (Some(source), Some(cursor)) => Some(DbPlaybackContext {
-                            source,
-                            shuffle_seed,
-                            cursor,
-                        }),
-                        (None, None) => None,
-                        (Some(source), None) => {
-                            warn!(
-                                "discarding the playback resume cache: source {source:?} \
+                    [],
+                    |row| {
+                        // `source` and `cursor` are written together: both present
+                        // is a context, both absent is no context, exactly one
+                        // present is a corrupt row.
+                        let source: Option<String> = row.get("source")?;
+                        let shuffle_seed: Option<i64> = row.get("shuffle_seed")?;
+                        let cursor: Option<i64> = row.get("cursor")?;
+                        let context = match (source, cursor) {
+                            (Some(source), Some(cursor)) => Some(DbPlaybackContext {
+                                source,
+                                shuffle_seed,
+                                cursor,
+                            }),
+                            (None, None) => None,
+                            (Some(source), None) => {
+                                warn!(
+                                    "discarding the playback resume cache: source {source:?} \
                                      present but cursor is NULL"
-                            );
-                            return Ok(None);
-                        }
-                        (None, Some(cursor)) => {
-                            warn!(
-                                "discarding the playback resume cache: cursor {cursor} \
+                                );
+                                return Ok(None);
+                            }
+                            (None, Some(cursor)) => {
+                                warn!(
+                                    "discarding the playback resume cache: cursor {cursor} \
                                      present but source is NULL"
-                            );
-                            return Ok(None);
-                        }
-                    };
-                    Ok(Some(DbPlaybackState {
-                        context,
-                        manual: row.get("manual")?,
-                        repeat: row.get("repeat")?,
-                        current_track_id: row.get("current_track_id")?,
-                        position_ms: row.get("position_ms")?,
-                        volume: row.get("volume")?,
-                        is_muted: row.get("is_muted")?,
-                    }))
-                },
-            )
-            .optional()
-            .map(Option::flatten)
-            .map_err(DbError::from)
+                                );
+                                return Ok(None);
+                            }
+                        };
+                        Ok(Some(DbPlaybackState {
+                            context,
+                            manual: row.get("manual")?,
+                            repeat: row.get("repeat")?,
+                            current_track_id: row.get("current_track_id")?,
+                            position_ms: row.get("position_ms")?,
+                            volume: row.get("volume")?,
+                            is_muted: row.get("is_muted")?,
+                        }))
+                    },
+                )
+                .optional()
+                .map_err(DbError::from)?;
+            Ok(match loaded {
+                None => LoadedPlaybackState::Absent,
+                Some(None) => LoadedPlaybackState::Corrupt,
+                Some(Some(row)) => LoadedPlaybackState::Present(row),
+            })
         })
         .await
     }

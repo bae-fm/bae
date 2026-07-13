@@ -15,12 +15,13 @@ impl LibraryManager {
     }
 
     /// Read the device-local playback-state row (kept, not deleted — it's
-    /// overwritten on the next playback change and cleared on stop). `Ok(None)`
-    /// means no row is stored; an `Err` is a read failure, kept distinct from
-    /// absence so the caller doesn't silently start fresh on a DB error.
+    /// overwritten on the next playback change and cleared on stop). The outcome
+    /// distinguishes present / absent / corrupt; an `Err` is a read failure, kept
+    /// distinct from all three so the caller doesn't silently start fresh on a DB
+    /// error.
     pub async fn load_playback_state(
         &self,
-    ) -> Result<Option<crate::db::DbPlaybackState>, LibraryError> {
+    ) -> Result<crate::db::LoadedPlaybackState, LibraryError> {
         Ok(self.database.load_playback_state().await?)
     }
 

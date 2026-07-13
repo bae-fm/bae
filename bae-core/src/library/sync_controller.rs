@@ -17,6 +17,7 @@ use tracing::{info, warn};
 
 use crate::config::{CloudProvider, ConfigHandle};
 use crate::db::Database;
+use crate::diagnostics::{Diagnostics, TelemetryEvent};
 use crate::keys::StoreKeys;
 use crate::library::{LibraryError, LibraryEvent, OutboxSnapshot, UploadThroughput};
 use crate::sync::S3ConfigData;
@@ -51,6 +52,9 @@ pub(crate) struct SyncController {
     /// User-driven pause flag for the cloud-upload pipeline.
     sync_paused: Arc<AtomicBool>,
     cloudkit_ops: Option<Arc<dyn coven::CloudKitOps>>,
+    /// Typed telemetry sink, shared with the owning manager. The
+    /// provider-connect/disconnect completions emit through it.
+    diagnostics: Diagnostics,
 }
 
 impl SyncController {
@@ -66,6 +70,7 @@ impl SyncController {
         upload_throughput: Arc<UploadThroughput>,
         sync_paused: Arc<AtomicBool>,
         cloudkit_ops: Option<Arc<dyn coven::CloudKitOps>>,
+        diagnostics: Diagnostics,
     ) -> Self {
         Self {
             handle,
@@ -78,6 +83,7 @@ impl SyncController {
             upload_throughput,
             sync_paused,
             cloudkit_ops,
+            diagnostics,
         }
     }
 
@@ -291,6 +297,10 @@ impl SyncController {
 
         self.ensure_sync_manager_and_start().await?;
         info!("Saved S3 sync configuration");
+        self.diagnostics
+            .event(TelemetryEvent::CloudProviderConnected {
+                provider: CloudProvider::S3,
+            });
         Ok(())
     }
 
@@ -356,6 +366,8 @@ impl SyncController {
             }
         }
         self.ensure_sync_manager_and_start().await?;
+        self.diagnostics
+            .event(TelemetryEvent::CloudProviderConnected { provider });
         Ok(())
     }
 
@@ -373,6 +385,10 @@ impl SyncController {
         })?;
         self.ensure_sync_manager_and_start().await?;
         info!("Configured CloudKit cloud provider");
+        self.diagnostics
+            .event(TelemetryEvent::CloudProviderConnected {
+                provider: CloudProvider::CloudKit,
+            });
         Ok(())
     }
 
@@ -380,6 +396,10 @@ impl SyncController {
     /// the encryption service. The manager re-emits every album (storage actions
     /// lost) after this returns.
     pub(crate) fn disconnect_cloud_provider(&self) -> Result<(), LibraryError> {
+        // Capture the provider before the config clear below drops it, so the
+        // telemetry names which provider was disconnected.
+        let provider = self.config_handle.config().cloud_home.provider.clone();
+
         // Stop the sync loop and drop the installed manager; the library becomes
         // home-less until the next connect.
         self.handle.disconnect_sync();
@@ -391,6 +411,10 @@ impl SyncController {
         // Clearing the cloud-home credentials from the keyring is coven's concern.
         if let Err(e) = self.key_service.delete_cloud_home_credentials() {
             tracing::warn!("Failed to delete cloud home credentials: {e}");
+        }
+        if let Some(provider) = provider {
+            self.diagnostics
+                .event(TelemetryEvent::CloudProviderDisconnected { provider });
         }
         Ok(())
     }

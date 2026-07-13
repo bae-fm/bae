@@ -412,7 +412,11 @@ impl PlaybackQueue {
     /// same lane; otherwise this logs and no-ops. (Reordering the context order
     /// mutates the order initially set by the release/shuffle; the cursor stays
     /// on the same playing track.)
-    pub fn reorder(&mut self, id: &QueueEntryId, before: Option<&QueueEntryId>) {
+    /// Returns whether the reorder happened: `false` when `id` or `before` names
+    /// no entry in the target lane, so the caller (which holds the diagnostics
+    /// sink) can count the unknown-entry anomaly. The specific mismatch is logged
+    /// here at the pure layer.
+    pub fn reorder(&mut self, id: &QueueEntryId, before: Option<&QueueEntryId>) -> bool {
         match self.locate(id) {
             Some(EntryLocation::Manual(from)) => {
                 let before_pos = match before {
@@ -420,7 +424,7 @@ impl PlaybackQueue {
                         Some(pos) => Some(pos),
                         None => {
                             warn!("reorder: before id not in the manual lane: {}", before_id.0);
-                            return;
+                            return false;
                         }
                     },
                     None => None,
@@ -434,6 +438,7 @@ impl PlaybackQueue {
                 let insert_at = before_insert_index(before_pos, from, self.manual.len());
                 self.manual.insert(insert_at, entry);
                 self.revision += 1;
+                true
             }
             Some(EntryLocation::Context(from)) => {
                 let ctx = self
@@ -445,7 +450,7 @@ impl PlaybackQueue {
                         Some(pos) => Some(pos),
                         None => {
                             warn!("reorder: before id not in the context: {}", before_id.0);
-                            return;
+                            return false;
                         }
                     },
                     None => None,
@@ -461,8 +466,12 @@ impl PlaybackQueue {
                     .position(|e| e.id == cursor_id)
                     .expect("reorder: the cursor entry is still present after reinsert");
                 self.revision += 1;
+                true
             }
-            None => warn!("reorder: queue entry id not found: {}", id.0),
+            None => {
+                warn!("reorder: queue entry id not found: {}", id.0);
+                false
+            }
         }
     }
 
