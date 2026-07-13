@@ -319,3 +319,97 @@ fn send_progress(tx: &ProgressTx, progress: TransferProgress) {
         debug!(?progress, "release transfer progress receiver dropped");
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::diagnostics::{
+        AppDiagnosticMetadata, DatadogDiagnosticsConfig, DiagnosticEvent, Diagnostics,
+        RecordingTransport,
+    };
+    use std::sync::Arc;
+    use tempfile::TempDir;
+
+    /// A `LibraryManager` (over an empty test DB) whose diagnostics ship to a
+    /// recording transport, so an emitted event can be read back off the wire.
+    async fn manager_with_recording_transport() -> (LibraryManager, Arc<RecordingTransport>, TempDir)
+    {
+        let home = TempDir::new().unwrap();
+        let db_path = home.path().join("transfer-test.db");
+        let database =
+            crate::db::Database::new_test(db_path.to_str().unwrap(), Arc::new(coven::SystemClock))
+                .await
+                .unwrap();
+
+        let transport = Arc::new(RecordingTransport::new(vec![]));
+        let config = DatadogDiagnosticsConfig {
+            datadog_site: "datadoghq.com".to_string(),
+            client_token: "client-token".to_string(),
+            source: "test".to_string(),
+            app: AppDiagnosticMetadata {
+                service: "bae".to_string(),
+                environment: "test".to_string(),
+                app_version: "1.2.3".to_string(),
+                edition: "bae".to_string(),
+                git_commit: "abc123".to_string(),
+            },
+        };
+        let diagnostics = Diagnostics::with_transport(
+            config,
+            Arc::new(coven::SystemClock),
+            Arc::new(coven::SequentialIdProvider::new("request-id")),
+            "device-test".to_string(),
+            transport.clone(),
+        )
+        .expect("diagnostics starts");
+
+        let library_id = "transfer-test".to_string();
+        let config = crate::config::Config::with_defaults(
+            library_id.clone(),
+            "test-device".to_string(),
+            coven::StoreDir::new(home.path().join("library")),
+            "Test Library".to_string(),
+        );
+        crate::config::install_test_keyring();
+        let manager = LibraryManager::new(
+            database,
+            Arc::new(crate::config::ConfigHandle::new(config)),
+            crate::keys::StoreKeys::new(library_id),
+            Arc::new(coven::SystemClock),
+            Arc::new(coven::UuidProvider),
+            diagnostics.clone(),
+            tokio::runtime::Handle::current(),
+        );
+        (manager, transport, home)
+    }
+
+    /// Pinning a release that isn't in the library fails the transfer's
+    /// precondition check, which ships `storage_transfer_failed` — an Error-level
+    /// event — through the real diagnostics pipeline to the wire.
+    #[tokio::test]
+    async fn a_failed_transfer_ships_storage_transfer_failed() {
+        let (manager, transport, _home) = manager_with_recording_transport().await;
+        let diagnostics = manager.diagnostics().clone();
+        let transfer = TransferService::new(manager);
+
+        // No such release, so `start_transfer` errors before any blob work.
+        let (_progress_rx, task) = transfer.pin_release_task("missing-release".to_string());
+        task.await.expect("transfer task completes");
+
+        diagnostics.flush().await.expect("flush succeeds");
+        let events: Vec<DiagnosticEvent> = transport
+            .requests()
+            .iter()
+            .flat_map(|r| serde_json::from_slice::<Vec<DiagnosticEvent>>(&r.body).unwrap())
+            .collect();
+        let failed = events
+            .iter()
+            .find(|e| e.name == "storage_transfer_failed")
+            .expect("a failed transfer ships storage_transfer_failed");
+        assert_eq!(failed.fields["action"], serde_json::json!("pin"));
+        assert_eq!(
+            failed.fields["release_id"],
+            serde_json::json!("missing-release")
+        );
+    }
+}

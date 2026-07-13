@@ -1627,14 +1627,16 @@ async fn auto_advance_ignores_a_matching_track_that_is_no_longer_completed() {
     );
 }
 
-/// A play command ships `playback_started` for the new context and
-/// `track_started` for the track it begins, through the real emission code and
-/// out to the (recording) Datadog transport. The seeded release has no backing
-/// audio, so preparing the track fails after both events are already emitted —
-/// exactly the point being asserted: the events fire at the command, not on a
+/// A play command ships `playback_command` (the user intent), `playback_started`
+/// (the new context), and `track_started` (the track it begins), driven through
+/// the real command loop out to the (recording) Datadog transport. Driving it as
+/// a queued command — not a direct `handle_play` — is what exercises the
+/// `playback_command` emission, which lives in the loop, not the handler. The
+/// seeded release has no backing audio, so preparing the track fails after all
+/// three events are already emitted — the events fire at the command, not on a
 /// successful decode.
 #[tokio::test]
-async fn a_play_command_ships_playback_started_and_track_started() {
+async fn a_play_command_ships_playback_command_started_and_track_started() {
     let (diagnostics, transport) = recording_diagnostics();
     let (_home, manager) = seeded_library_manager_with_diagnostics(
         &[("release-under-test", &["t0", "t1"])],
@@ -1643,11 +1645,20 @@ async fn a_play_command_ships_playback_started_and_track_started() {
     .await;
     let (mut service, _progress_rx) = playback_service_over(manager);
 
-    // `handle_play` establishes the release context and starts the track.
-    service.handle_play("t0".to_string()).await;
+    // Queue the play command and a shutdown, then let the real loop drain both:
+    // it emits the command telemetry, runs the play, then breaks on shutdown.
+    let commands = service.command_tx.clone();
+    dispatch_command(&commands, PlaybackCommand::Play("t0".to_string()));
+    let (shutdown_tx, _shutdown_rx) = tokio::sync::oneshot::channel::<()>();
+    dispatch_command(&commands, PlaybackCommand::Shutdown(shutdown_tx));
+    service.run().await;
 
     diagnostics.flush().await.expect("flush succeeds");
     let names = transport.event_names();
+    assert!(
+        names.iter().any(|n| n == "playback_command"),
+        "a play command ships playback_command (got {names:?})"
+    );
     assert!(
         names.iter().any(|n| n == "playback_started"),
         "a play command ships playback_started (got {names:?})"

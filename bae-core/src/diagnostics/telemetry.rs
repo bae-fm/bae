@@ -541,4 +541,82 @@ mod tests {
         assert_eq!(event.level(), DiagnosticLevel::Error);
         assert!(event.fields().is_empty());
     }
+
+    #[test]
+    fn export_completed_and_failed_carry_release_and_differ_by_level() {
+        let completed = TelemetryEvent::ExportCompleted {
+            release_id: LocalId("rel-7".to_string()),
+        };
+        assert_eq!(completed.name(), "export_completed");
+        assert_eq!(completed.level(), DiagnosticLevel::Info);
+        assert_eq!(completed.fields()["release_id"], serde_json::json!("rel-7"));
+
+        let failed = TelemetryEvent::ExportFailed {
+            release_id: LocalId("rel-7".to_string()),
+        };
+        assert_eq!(failed.name(), "export_failed");
+        assert_eq!(failed.level(), DiagnosticLevel::Error);
+        assert_eq!(failed.fields()["release_id"], serde_json::json!("rel-7"));
+    }
+
+    #[test]
+    fn cloud_provider_connected_and_disconnected_record_provider() {
+        let connected = TelemetryEvent::CloudProviderConnected {
+            provider: CloudProvider::Dropbox,
+        };
+        assert_eq!(connected.name(), "cloud_provider_connected");
+        assert_eq!(connected.level(), DiagnosticLevel::Info);
+        assert_eq!(connected.fields()["provider"], serde_json::json!("dropbox"));
+
+        let disconnected = TelemetryEvent::CloudProviderDisconnected {
+            provider: CloudProvider::OneDrive,
+        };
+        assert_eq!(disconnected.name(), "cloud_provider_disconnected");
+        assert_eq!(disconnected.level(), DiagnosticLevel::Info);
+        assert_eq!(
+            disconnected.fields()["provider"],
+            serde_json::json!("onedrive")
+        );
+    }
+
+    #[test]
+    fn storage_transfer_failed_is_error_with_action_and_release() {
+        let event = TelemetryEvent::StorageTransferFailed {
+            action: ReleaseStorageAction::Unpin,
+            release_id: LocalId("rel-3".to_string()),
+        };
+        assert_eq!(event.name(), "storage_transfer_failed");
+        assert_eq!(event.level(), DiagnosticLevel::Error);
+        let fields = event.fields();
+        assert_eq!(fields["action"], serde_json::json!("unpin"));
+        assert_eq!(fields["release_id"], serde_json::json!("rel-3"));
+    }
+
+    #[test]
+    fn seek_completed_wait_records_whole_milliseconds() {
+        let event = TelemetryEvent::SeekCompleted {
+            track_id: LocalId("track-4".to_string()),
+            wait: Duration::from_millis(320),
+        };
+        assert_eq!(event.name(), "seek_completed");
+        assert_eq!(event.level(), DiagnosticLevel::Info);
+        let fields = event.fields();
+        assert_eq!(fields["track_id"], serde_json::json!("track-4"));
+        assert_eq!(fields["wait"], serde_json::json!(320));
+        assert!(fields["wait"].is_number());
+    }
+
+    #[test]
+    fn playback_starved_is_warn_with_position_as_number() {
+        let event = TelemetryEvent::PlaybackStarved {
+            track_id: LocalId("track-5".to_string()),
+            position_ms: 12_000,
+        };
+        assert_eq!(event.name(), "playback_starved");
+        assert_eq!(event.level(), DiagnosticLevel::Warn);
+        let fields = event.fields();
+        assert_eq!(fields["track_id"], serde_json::json!("track-5"));
+        assert_eq!(fields["position_ms"], serde_json::json!(12_000));
+        assert!(fields["position_ms"].is_number());
+    }
 }
