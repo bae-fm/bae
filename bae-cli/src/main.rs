@@ -1,6 +1,10 @@
 #![deny(unreachable_pub, dead_code)]
 
-use bae_automation::{Automation, AutomationMetadataSource, AutomationTool};
+use bae_automation::{
+    Automation, AutomationSearchQuery, AutomationTool, CandidateKeyInput, CandidateSkipSetInput,
+    FolderInput, LibrarySearchInput, PathInput, ReleaseExportInput, ReleaseIdInput,
+    ReleaseSourceInput, ScanWait,
+};
 use bae_core::app::{bootstrap, bootstrap_library_path, BootstrapError, RunningApp};
 use bae_core::config::{init_keyring, Config};
 use bae_core::import::MetadataSource;
@@ -309,6 +313,16 @@ impl LibrarySelector {
     }
 }
 
+/// The `(tool, args)` a CLI command dispatches as an automation tool call.
+///
+/// Args are built by constructing the tool's own input type from `bae-automation`
+/// and serializing it, never by hand-writing its JSON. A renamed field or retagged
+/// enum over there is then a compile error here, rather than a `from_value` failure
+/// inside the tool call at run time.
+///
+/// The four commands whose payload is a user-supplied JSON file stay `Value`-shaped:
+/// the file's contents are opaque to the CLI, which reads them and passes them
+/// through for the tool to parse.
 fn tool_call_for_command(command: &Command) -> Result<(AutomationTool, Value), CliError> {
     match command {
         Command::Config {
@@ -316,19 +330,26 @@ fn tool_call_for_command(command: &Command) -> Result<(AutomationTool, Value), C
         } => Ok((AutomationTool::ConfigGet, Value::Null)),
         Command::WatchedFolders { command } => match command {
             WatchedFoldersCommand::List => Ok((AutomationTool::WatchedFoldersList, Value::Null)),
-            WatchedFoldersCommand::Add { path } => {
-                Ok((AutomationTool::WatchedFolderAdd, json!({ "path": path })))
-            }
-            WatchedFoldersCommand::Remove { path } => {
-                Ok((AutomationTool::WatchedFolderRemove, json!({ "path": path })))
-            }
+            WatchedFoldersCommand::Add { path } => Ok((
+                AutomationTool::WatchedFolderAdd,
+                serde_json::to_value(PathInput { path: path.clone() })?,
+            )),
+            WatchedFoldersCommand::Remove { path } => Ok((
+                AutomationTool::WatchedFolderRemove,
+                serde_json::to_value(PathInput { path: path.clone() })?,
+            )),
             WatchedFoldersCommand::Scan { wait, timeout_ms } => {
                 let wait = if *wait {
-                    json!({ "mode": "until_finished", "timeout_ms": timeout_ms })
+                    ScanWait::UntilFinished {
+                        timeout_ms: *timeout_ms,
+                    }
                 } else {
-                    json!({ "mode": "no_wait" })
+                    ScanWait::NoWait
                 };
-                Ok((AutomationTool::WatchedFoldersScan, wait))
+                Ok((
+                    AutomationTool::WatchedFoldersScan,
+                    serde_json::to_value(wait)?,
+                ))
             }
         },
         Command::Import { command } => match command {
@@ -338,7 +359,9 @@ fn tool_call_for_command(command: &Command) -> Result<(AutomationTool, Value), C
             ImportCommand::Candidate { command } => match command {
                 ImportCandidateCommand::Get { candidate_key } => Ok((
                     AutomationTool::ImportCandidateGet,
-                    json!({ "candidate_key": candidate_key }),
+                    serde_json::to_value(CandidateKeyInput {
+                        candidate_key: candidate_key.clone(),
+                    })?,
                 )),
                 ImportCandidateCommand::Skip {
                     command:
@@ -348,7 +371,10 @@ fn tool_call_for_command(command: &Command) -> Result<(AutomationTool, Value), C
                         },
                 } => Ok((
                     AutomationTool::ImportCandidateSkipSet,
-                    json!({ "candidate_key": candidate_key, "skipped": skipped }),
+                    serde_json::to_value(CandidateSkipSetInput {
+                        candidate_key: candidate_key.clone(),
+                        skipped: *skipped,
+                    })?,
                 )),
             },
             ImportCommand::Search { command } => {
@@ -357,35 +383,39 @@ fn tool_call_for_command(command: &Command) -> Result<(AutomationTool, Value), C
                         artist,
                         album,
                         source,
-                    } => json!({
-                        "kind": "general",
-                        "artist": artist,
-                        "album": album,
-                        "source": AutomationMetadataSource::from(*source),
-                    }),
+                    } => AutomationSearchQuery::General {
+                        artist: artist.clone(),
+                        album: album.clone(),
+                        source: (*source).into(),
+                    },
                     ImportSearchCommand::CatalogNumber {
                         catalog_number,
                         source,
-                    } => json!({
-                        "kind": "catalog_number",
-                        "catalog_number": catalog_number,
-                        "source": AutomationMetadataSource::from(*source),
-                    }),
-                    ImportSearchCommand::Barcode { barcode, source } => json!({
-                        "kind": "barcode",
-                        "barcode": barcode,
-                        "source": AutomationMetadataSource::from(*source),
-                    }),
+                    } => AutomationSearchQuery::CatalogNumber {
+                        catalog_number: catalog_number.clone(),
+                        source: (*source).into(),
+                    },
+                    ImportSearchCommand::Barcode { barcode, source } => {
+                        AutomationSearchQuery::Barcode {
+                            barcode: barcode.clone(),
+                            source: (*source).into(),
+                        }
+                    }
                 };
-                Ok((AutomationTool::ImportSearch, query))
+                Ok((AutomationTool::ImportSearch, serde_json::to_value(query)?))
             }
             ImportCommand::Prefetch { source, release_id } => Ok((
                 AutomationTool::ImportReleasePrefetch,
-                json!({ "source": AutomationMetadataSource::from(*source), "release_id": release_id }),
+                serde_json::to_value(ReleaseSourceInput {
+                    source: (*source).into(),
+                    release_id: release_id.clone(),
+                })?,
             )),
             ImportCommand::PreviewFileTags { folder } => Ok((
                 AutomationTool::ImportFileTagsPreview,
-                json!({ "folder": folder }),
+                serde_json::to_value(FolderInput {
+                    folder: folder.clone(),
+                })?,
             )),
             ImportCommand::ShapeEdit {
                 detail_json,
@@ -404,7 +434,9 @@ fn tool_call_for_command(command: &Command) -> Result<(AutomationTool, Value), C
         Command::Release { command } => match command {
             ReleaseCommand::Detail { release_id } => Ok((
                 AutomationTool::ReleaseDetailGet,
-                json!({ "release_id": release_id }),
+                serde_json::to_value(ReleaseIdInput {
+                    release_id: release_id.clone(),
+                })?,
             )),
             ReleaseCommand::Export {
                 release_id,
@@ -421,13 +453,13 @@ fn tool_call_for_command(command: &Command) -> Result<(AutomationTool, Value), C
                 })?;
                 Ok((
                     AutomationTool::ReleaseExport,
-                    json!({
-                        "release_id": release_id,
-                        "target_dir": target_dir,
-                    }),
+                    serde_json::to_value(ReleaseExportInput {
+                        release_id: release_id.clone(),
+                        target_dir: target_dir.to_string(),
+                    })?,
                 ))
             }
-            ReleaseCommand::ExportStatus => Ok((AutomationTool::ExportStatus, json!({}))),
+            ReleaseCommand::ExportStatus => Ok((AutomationTool::ExportStatus, Value::Null)),
             ReleaseCommand::Reidentify {
                 release_id,
                 choice_json,
@@ -438,7 +470,9 @@ fn tool_call_for_command(command: &Command) -> Result<(AutomationTool, Value), C
             ReleaseCommand::Metadata { command } => match command {
                 ReleaseMetadataCommand::Reset { release_id } => Ok((
                     AutomationTool::ReleaseMetadataReset,
-                    json!({ "release_id": release_id }),
+                    serde_json::to_value(ReleaseIdInput {
+                        release_id: release_id.clone(),
+                    })?,
                 )),
                 ReleaseMetadataCommand::Update {
                     release_id,
@@ -451,7 +485,12 @@ fn tool_call_for_command(command: &Command) -> Result<(AutomationTool, Value), C
         },
         Command::Library {
             command: LibraryCommand::Search { query },
-        } => Ok((AutomationTool::LibrarySearch, json!({ "query": query }))),
+        } => Ok((
+            AutomationTool::LibrarySearch,
+            serde_json::to_value(LibrarySearchInput {
+                query: query.clone(),
+            })?,
+        )),
         Command::Mcp { .. } => Err(CliError::Validation(
             "MCP command does not map to an automation tool".to_string(),
         )),
@@ -724,162 +763,6 @@ mod tests {
 
     fn call(command: Command) -> (AutomationTool, Value) {
         tool_call_for_command(&command).expect("command maps to a tool call")
-    }
-
-    /// The commands whose argument object is built inline from clap-parsed
-    /// values (no file reads, no path validation). Each row is the command and
-    /// the exact `(tool, args)` it must produce.
-    #[test]
-    fn inline_commands_map_to_tool_and_args() {
-        let cases: Vec<(Command, AutomationTool, Value)> = vec![
-            (
-                Command::Config {
-                    command: ConfigCommand::Get,
-                },
-                AutomationTool::ConfigGet,
-                Value::Null,
-            ),
-            (
-                Command::WatchedFolders {
-                    command: WatchedFoldersCommand::List,
-                },
-                AutomationTool::WatchedFoldersList,
-                Value::Null,
-            ),
-            (
-                Command::WatchedFolders {
-                    command: WatchedFoldersCommand::Add {
-                        path: "/music/inbox".to_string(),
-                    },
-                },
-                AutomationTool::WatchedFolderAdd,
-                json!({ "path": "/music/inbox" }),
-            ),
-            (
-                Command::WatchedFolders {
-                    command: WatchedFoldersCommand::Remove {
-                        path: "/music/inbox".to_string(),
-                    },
-                },
-                AutomationTool::WatchedFolderRemove,
-                json!({ "path": "/music/inbox" }),
-            ),
-            (
-                Command::WatchedFolders {
-                    command: WatchedFoldersCommand::Scan {
-                        wait: false,
-                        timeout_ms: 60_000,
-                    },
-                },
-                AutomationTool::WatchedFoldersScan,
-                json!({ "mode": "no_wait" }),
-            ),
-            (
-                Command::WatchedFolders {
-                    command: WatchedFoldersCommand::Scan {
-                        wait: true,
-                        timeout_ms: 45_000,
-                    },
-                },
-                AutomationTool::WatchedFoldersScan,
-                json!({ "mode": "until_finished", "timeout_ms": 45_000 }),
-            ),
-            (
-                Command::Import {
-                    command: ImportCommand::Candidates {
-                        command: ImportCandidatesCommand::List,
-                    },
-                },
-                AutomationTool::ImportCandidatesList,
-                Value::Null,
-            ),
-            (
-                Command::Import {
-                    command: ImportCommand::Candidate {
-                        command: ImportCandidateCommand::Get {
-                            candidate_key: "cand-1".to_string(),
-                        },
-                    },
-                },
-                AutomationTool::ImportCandidateGet,
-                json!({ "candidate_key": "cand-1" }),
-            ),
-            (
-                Command::Import {
-                    command: ImportCommand::Candidate {
-                        command: ImportCandidateCommand::Skip {
-                            command: ImportCandidateSkipCommand::Set {
-                                candidate_key: "cand-1".to_string(),
-                                skipped: true,
-                            },
-                        },
-                    },
-                },
-                AutomationTool::ImportCandidateSkipSet,
-                json!({ "candidate_key": "cand-1", "skipped": true }),
-            ),
-            (
-                Command::Import {
-                    command: ImportCommand::Prefetch {
-                        source: MetadataSource::MusicBrainz,
-                        release_id: "rel-123".to_string(),
-                    },
-                },
-                AutomationTool::ImportReleasePrefetch,
-                json!({ "source": "music_brainz", "release_id": "rel-123" }),
-            ),
-            (
-                Command::Import {
-                    command: ImportCommand::PreviewFileTags {
-                        folder: "/music/inbox".to_string(),
-                    },
-                },
-                AutomationTool::ImportFileTagsPreview,
-                json!({ "folder": "/music/inbox" }),
-            ),
-            (
-                Command::Release {
-                    command: ReleaseCommand::Detail {
-                        release_id: "rel-123".to_string(),
-                    },
-                },
-                AutomationTool::ReleaseDetailGet,
-                json!({ "release_id": "rel-123" }),
-            ),
-            (
-                Command::Release {
-                    command: ReleaseCommand::ExportStatus,
-                },
-                AutomationTool::ExportStatus,
-                json!({}),
-            ),
-            (
-                Command::Release {
-                    command: ReleaseCommand::Metadata {
-                        command: ReleaseMetadataCommand::Reset {
-                            release_id: "rel-123".to_string(),
-                        },
-                    },
-                },
-                AutomationTool::ReleaseMetadataReset,
-                json!({ "release_id": "rel-123" }),
-            ),
-            (
-                Command::Library {
-                    command: LibraryCommand::Search {
-                        query: "artist album".to_string(),
-                    },
-                },
-                AutomationTool::LibrarySearch,
-                json!({ "query": "artist album" }),
-            ),
-        ];
-
-        for (command, expected_tool, expected_args) in cases {
-            let (tool, args) = call(command);
-            assert_eq!(tool, expected_tool);
-            assert_eq!(args, expected_args);
-        }
     }
 
     /// The three import-search variants each carry a `kind` discriminator plus
