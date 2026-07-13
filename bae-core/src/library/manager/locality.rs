@@ -57,21 +57,30 @@ impl LibraryManager {
     /// The make-Local destination map: each release file's blob id → the user path
     /// (`new_path/original_filename`) its bytes go back to. Host-provided blobs (the
     /// cover) take no dest — coven restores them to its local store.
-    async fn make_local_dest(
+    ///
+    /// `original_filename` is a synced column another device wrote, and coven writes
+    /// wherever this map points, so each fragment is validated before it is joined
+    /// onto the user's folder: a release carrying one bad name copies out no files
+    /// at all, rather than one of them landing outside the folder the user chose.
+    pub(super) async fn make_local_dest(
         &self,
         release_id: &str,
         new_path: &str,
     ) -> Result<HashMap<String, PathBuf>, LibraryError> {
         let files = self.database.get_files_for_release(release_id).await?;
-        Ok(files
-            .iter()
-            .map(|f| {
-                (
-                    f.id.clone(),
-                    std::path::Path::new(new_path).join(&f.original_filename),
-                )
-            })
-            .collect())
+        let mut dest = HashMap::with_capacity(files.len());
+        for f in &files {
+            crate::storage::path_fragment::validate_path_fragment(
+                release_id,
+                &format!("original_filename for file {}", f.id),
+                &f.original_filename,
+            )?;
+            dest.insert(
+                f.id.clone(),
+                std::path::Path::new(new_path).join(&f.original_filename),
+            );
+        }
+        Ok(dest)
     }
 
     /// Map a coven `make_local` result to bae's: a cancel before the commit is a
