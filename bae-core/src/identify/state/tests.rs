@@ -232,12 +232,10 @@ fn disc_only_resolves_to_found_with_provenance() {
     match state {
         IdentifyState::Found {
             matches,
-            source,
             provenance,
             ..
         } => {
             assert_eq!(matches.len(), 1);
-            assert_eq!(source, IdentifySource::Discid);
             assert!(provenance[0].by_disc_id && !provenance[0].by_barcode);
         }
         other => panic!("expected Found, got {other:?}"),
@@ -276,13 +274,11 @@ fn both_signals_intersect_to_found_combined() {
     match state {
         IdentifyState::Found {
             matches,
-            source,
             provenance,
             ..
         } => {
             assert_eq!(matches.len(), 1);
             assert_eq!(matches[0].release_id, "rel-2");
-            assert_eq!(source, IdentifySource::Combined);
             assert!(provenance[0].by_disc_id && provenance[0].by_barcode);
         }
         other => panic!("expected Found, got {other:?}"),
@@ -360,7 +356,9 @@ fn barcode_iteration_first_match_wins() {
         },
     );
     match state {
-        IdentifyState::Found { source, .. } => assert_eq!(source, IdentifySource::Barcode),
+        IdentifyState::Found { provenance, .. } => {
+            assert!(provenance[0].by_barcode && !provenance[0].by_disc_id);
+        }
         other => panic!("expected Found, got {other:?}"),
     }
 }
@@ -640,10 +638,12 @@ fn toggle_excludes_discid_then_re_includes() {
     );
     match &state {
         IdentifyState::Found {
-            matches, source, ..
+            matches,
+            provenance,
+            ..
         } => {
             assert_eq!(matches.len(), 2);
-            assert_eq!(*source, IdentifySource::Barcode);
+            assert!(provenance.iter().all(|p| p.by_barcode && !p.by_disc_id));
         }
         other => panic!("expected Found, got {other:?}"),
     }
@@ -728,9 +728,11 @@ fn toggle_during_triangulation_keeps_looking_up() {
     );
     match state {
         IdentifyState::Found {
-            source, matches, ..
+            provenance,
+            matches,
+            ..
         } => {
-            assert_eq!(source, IdentifySource::Barcode);
+            assert!(provenance[0].by_barcode && !provenance[0].by_disc_id);
             assert_eq!(matches.len(), 1);
             assert_eq!(matches[0].release_id, "rel-2");
         }
@@ -887,7 +889,9 @@ fn rerun_preserves_exclusions() {
         },
     );
     match state {
-        IdentifyState::Found { source, .. } => assert_eq!(source, IdentifySource::Barcode),
+        IdentifyState::Found { provenance, .. } => {
+            assert!(provenance.iter().all(|p| p.by_barcode && !p.by_disc_id));
+        }
         other => panic!("expected barcode-only Found after re-run, got {other:?}"),
     }
 }

@@ -200,7 +200,6 @@ struct ImportStoreRemovalTests {
                 "rel-other": makeStatus(albumId: "al-other"),
             ],
             trackCount: 10,
-            source: .discid,
             provenance: [:]
         )
         store.reIdentifyCandidates["c1"] = candidate
@@ -208,7 +207,7 @@ struct ImportStoreRemovalTests {
         store.removeLibraryStatus(releaseId: "rel-1")
 
         guard
-            case .found(_, let statuses, _, _, _) =
+            case .found(_, let statuses, _, _) =
                 store.reIdentifyCandidates["c1"]?.identifyState
         else {
             Issue.record("identify state should remain .found")

@@ -18,8 +18,8 @@ enum IdentifyState: Equatable {
         group: ReleaseGroup,
         libraryStatuses: [String: BridgeLibraryStatus],
         trackCount: UInt32,
-        source: BridgeIdentifySource,
-        /// Per-pressing provenance keyed by release id — the per-row badges.
+        /// Per-pressing provenance keyed by release id — the per-row badges, and
+        /// which signal produced each match.
         provenance: [String: BridgeResultProvenance],
     )
     /// Signals disagreed: empty intersection or multi-group result. The
@@ -48,14 +48,12 @@ enum IdentifyState: Equatable {
             let group,
             let libraryStatuses,
             let trackCount,
-            let source,
             let provenance
         ):
             self = .found(
                 group: ReleaseGroup(bridge: group),
                 libraryStatuses: libraryStatuses,
                 trackCount: trackCount,
-                source: source,
                 provenance: provenance,
             )
         case .conflict(
@@ -97,14 +95,12 @@ enum IdentifyState: Equatable {
             let group,
             let libraryStatuses,
             let trackCount,
-            let source,
             let provenance
         ):
             self = .found(
                 group: group,
                 libraryStatuses: kept(libraryStatuses),
                 trackCount: trackCount,
-                source: source,
                 provenance: provenance,
             )
         case .conflict(

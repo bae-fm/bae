@@ -1010,15 +1010,6 @@ impl BridgeLibraryStatus {
     }
 }
 
-/// Which signal(s) backed a terminal identify match. `Combined` indicates
-/// both disc-ID and barcode contributed via intersection.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
-pub enum BridgeIdentifySource {
-    Discid,
-    Barcode,
-    Combined,
-}
-
 /// A signal the user has toggled off in the toolbar — excluded from
 /// triangulation. The disc ID and barcode are singletons; a catalog candidate
 /// is named by its value. Mirrors `bae_core::identify::ExcludedSignal`.
@@ -1415,9 +1406,8 @@ pub enum BridgeIdentifyState {
         /// list.
         library_statuses: std::collections::HashMap<String, BridgeLibraryStatus>,
         track_count: u32,
-        source: BridgeIdentifySource,
         /// Per-pressing provenance keyed by release id — the per-row signal
-        /// badges.
+        /// badges, and which signal produced each match.
         provenance: std::collections::HashMap<String, BridgeResultProvenance>,
     },
     /// Signals disagreed: empty intersection or multi-group result. The UI
@@ -3332,18 +3322,6 @@ impl BridgeReleasePrefetch {
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[cfg(feature = "desktop")]
-impl BridgeIdentifySource {
-    pub(crate) fn from_core(s: bae_core::identify::IdentifySource) -> Self {
-        match s {
-            bae_core::identify::IdentifySource::Discid => BridgeIdentifySource::Discid,
-            bae_core::identify::IdentifySource::Barcode => BridgeIdentifySource::Barcode,
-            bae_core::identify::IdentifySource::Combined => BridgeIdentifySource::Combined,
-        }
-    }
-}
-
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-#[cfg(feature = "desktop")]
 impl BridgeDiscidProgress {
     fn from_view(p: bae_core::identify::DiscidProgressView) -> Self {
         use bae_core::identify::DiscidProgressView;
@@ -3539,13 +3517,11 @@ impl BridgeIdentifyState {
                 group,
                 library_statuses,
                 track_count,
-                source,
                 provenance,
             } => BridgeIdentifyState::Found {
                 group: BridgeReleaseGroup::from_core(group),
                 library_statuses: status_map(library_statuses),
                 track_count,
-                source: BridgeIdentifySource::from_core(source),
                 provenance: provenance
                     .into_iter()
                     .map(|(release_id, p)| (release_id, BridgeResultProvenance::from_core(p)))
