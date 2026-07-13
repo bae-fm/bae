@@ -1,25 +1,34 @@
-//! Pick and read an import's cover image from the folder's own files, building
-//! the `DbLibraryImage` record and its bytes. Folder images are ranked so that
-//! `cover`/`front` wins when the user made no explicit pick.
+//! Pick an import's cover image from the folder's own files. Folder images are
+//! ranked so that `cover`/`front` wins when the user made no explicit pick.
 
 use crate::import::folder_scanner::ScannedFile;
 use crate::util::content_type_hint::ContentTypeHint;
 
-use super::format_prep::resolve_file_content_type;
 use super::ImportService;
 
+/// A candidate cover's bytes as they came from their source, with the provenance
+/// the `covers` row records. The bytes here are NOT the stored ones: the import
+/// funnel resizes the winning candidate and builds the row from that output, so
+/// nothing describing a candidate can be mistaken for a description of the blob.
+#[derive(Debug)]
+pub(super) struct CoverCandidate {
+    pub bytes: Vec<u8>,
+    /// `covers.source`: "local" for a folder image, "embedded" for a picture
+    /// pulled out of the audio, else the metadata source that supplied the URL.
+    pub source: String,
+    /// `covers.source_url`: "release://{path}" for a folder image, the download
+    /// URL for a remote one, `None` for an embedded picture.
+    pub source_url: Option<String>,
+}
+
 impl ImportService {
-    /// Read the chosen cover file's bytes and build its `DbLibraryImage` record.
-    /// Nothing is written here: the caller hands the bytes to coven's local store
-    /// and the record to finalize.
-    #[allow(clippy::type_complexity)]
-    pub(super) fn build_cover_image_record(
+    /// Read the chosen cover file's bytes. Nothing is written here, and no row is
+    /// built: the caller resizes the winning candidate and records the result.
+    pub(super) fn pick_folder_cover(
         &self,
-        release_id: &str,
         discovered_files: &[ScannedFile],
         selected_cover_path: Option<&str>,
-    ) -> Result<Option<(crate::db::DbLibraryImage, Vec<u8>)>, crate::import::ImportError> {
-        use crate::db::{DbLibraryImage, LibraryImageType};
+    ) -> Result<Option<CoverCandidate>, crate::import::ImportError> {
         use crate::import::ImportError;
 
         let mut image_files: Vec<(&ScannedFile, &str)> = Vec::new();
@@ -51,9 +60,6 @@ impl ImportService {
             return Ok(None);
         };
 
-        let content_type = resolve_file_content_type(&cover_file.path)?;
-        let source_url = format!("release://{}", relative_path);
-
         let bytes = std::fs::read(&cover_file.path).map_err(|e| ImportError::CoverArt {
             detail: format!(
                 "Failed to read cover art {}: {e}",
@@ -61,23 +67,11 @@ impl ImportService {
             ),
         })?;
 
-        let now = self.library_manager.clock().now();
-        let db_image = DbLibraryImage {
-            id: release_id.to_string(),
-            image_type: LibraryImageType::Cover,
-            content_type,
-            file_size: bytes.len() as i64,
-            width: None,
-            height: None,
+        Ok(Some(CoverCandidate {
+            bytes,
             source: "local".to_string(),
-            source_url: Some(source_url),
-            // Computed in the finalize transaction under a browsable home.
-            cloud_path: None,
-            content_hash: Some(crate::util::fs::hash_bytes(&bytes)),
-            created_at: now,
-        };
-
-        Ok(Some((db_image, bytes)))
+            source_url: Some(format!("release://{}", relative_path)),
+        }))
     }
 
     pub(super) fn image_cover_priority(filename: &str) -> u8 {

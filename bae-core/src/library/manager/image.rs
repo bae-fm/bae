@@ -113,36 +113,23 @@ impl LibraryManager {
             }
         };
 
-        // Resize to a ≤600px JPEG thumbnail before deriving the storage key and the
-        // record: the stored bytes, their format, and size describe the thumbnail,
-        // not the source. The resize always emits JPEG.
+        // Resize to a ≤600px JPEG thumbnail, then build the row from that output:
+        // the stored bytes, their format, size and hash all describe the thumbnail,
+        // not the source.
         let bytes = crate::util::cover::resize_cover(&bytes)
             .map_err(|e| LibraryError::Import(format!("Failed to resize cover: {e}")))?;
-        let content_type = crate::util::content_type::ContentType::Jpeg;
+        let mut library_image =
+            DbLibraryImage::cover(release_id, &source, source_url, &bytes, self.clock.now());
 
         // Record the cover blob and row in one coven write; the cover's `id` IS the
         // release id. On a browsable home the blob lands at a readable
         // `{album_id}/{release_id}/cover.{ext}` key, computed and stored here; an
         // opaque home leaves `cloud_path` NULL (hashed-by-id).
-        let now = self.clock.now();
         let storage = self.config_handle.config().cloud_home.storage;
-        let cloud_path = self
+        library_image.cloud_path = self
             .database
-            .cover_cloud_path_for_storage(storage, release_id, &content_type)
+            .cover_cloud_path_for_storage(storage, release_id, &library_image.content_type)
             .await?;
-        let library_image = DbLibraryImage {
-            id: release_id.to_string(),
-            image_type: LibraryImageType::Cover,
-            content_type,
-            file_size: bytes.len() as i64,
-            width: None,
-            height: None,
-            source,
-            source_url,
-            cloud_path,
-            content_hash: Some(crate::util::fs::hash_bytes(&bytes)),
-            created_at: now,
-        };
         self.store_library_image_blob(&library_image, &bytes)
             .await?;
 

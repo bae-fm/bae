@@ -134,17 +134,14 @@ async fn explicit_bmp_cover_is_selected() {
         ScannedFile::new(jpg, "front.jpg".to_string(), 9),
     ];
 
-    let (image, bytes) = service
-        .build_cover_image_record("release-1", &discovered, Some("cover.bmp"))
+    let candidate = service
+        .pick_folder_cover(&discovered, Some("cover.bmp"))
         .unwrap()
-        .expect("selected cover should build a record");
+        .expect("selected cover should be picked");
 
-    assert_eq!(
-        image.content_type,
-        crate::util::content_type::ContentType::Bmp
-    );
-    assert_eq!(image.source_url.as_deref(), Some("release://cover.bmp"));
-    assert_eq!(bytes, b"bmp bytes");
+    assert_eq!(candidate.source, "local");
+    assert_eq!(candidate.source_url.as_deref(), Some("release://cover.bmp"));
+    assert_eq!(candidate.bytes, b"bmp bytes");
 }
 
 #[tokio::test]
@@ -155,7 +152,7 @@ async fn explicit_local_cover_missing_from_discovered_images_is_an_error() {
     let discovered = vec![ScannedFile::new(fallback, "front.jpg".to_string(), 9)];
 
     let err = service
-        .build_cover_image_record("release-1", &discovered, Some("cover.bmp"))
+        .pick_folder_cover(&discovered, Some("cover.bmp"))
         .unwrap_err();
 
     assert!(
@@ -169,7 +166,7 @@ async fn explicit_local_cover_with_no_discovered_images_is_an_error() {
     let (service, _tmp) = setup_import_service().await;
 
     let err = service
-        .build_cover_image_record("release-1", &[], Some("cover.bmp"))
+        .pick_folder_cover(&[], Some("cover.bmp"))
         .unwrap_err();
 
     assert!(
@@ -282,7 +279,7 @@ async fn unreadable_selected_cover_is_an_error() {
     std::fs::set_permissions(&cover, std::fs::Permissions::from_mode(0o000)).unwrap();
     let discovered = vec![ScannedFile::new(cover.clone(), "cover.jpg".to_string(), 9)];
 
-    let result = service.build_cover_image_record("release-1", &discovered, Some("cover.jpg"));
+    let result = service.pick_folder_cover(&discovered, Some("cover.jpg"));
 
     std::fs::set_permissions(&cover, std::fs::Permissions::from_mode(0o600)).unwrap();
     let err = result.unwrap_err();

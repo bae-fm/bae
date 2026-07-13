@@ -972,6 +972,42 @@ pub struct DbLibraryImage {
     pub created_at: DateTime<Utc>,
 }
 
+impl DbLibraryImage {
+    /// A release's cover row, describing the bytes that will be stored as its
+    /// blob. `bytes` is [`crate::util::cover::resize_cover`]'s output — the
+    /// thumbnail itself, never the image it was made from — so `file_size`,
+    /// `content_hash` and `content_type` are all derived from it here and cannot
+    /// disagree with the blob. coven verifies the blob against `content_hash` on
+    /// every cloud fetch, so a hash of any other bytes makes the cover
+    /// unreadable on every other device.
+    ///
+    /// `content_type` is JPEG because the resize only ever emits JPEG.
+    /// `cloud_path` is left `None`: it depends on the home's storage mode, and is
+    /// set by whoever writes the row (the finalize transaction at import,
+    /// `change_cover` from the row's own content type).
+    pub fn cover(
+        release_id: &str,
+        source: &str,
+        source_url: Option<String>,
+        bytes: &[u8],
+        now: DateTime<Utc>,
+    ) -> Self {
+        DbLibraryImage {
+            id: release_id.to_string(),
+            image_type: LibraryImageType::Cover,
+            content_type: ContentType::Jpeg,
+            file_size: bytes.len() as i64,
+            width: None,
+            height: None,
+            source: source.to_string(),
+            source_url,
+            cloud_path: None,
+            content_hash: Some(crate::util::fs::hash_bytes(bytes)),
+            created_at: now,
+        }
+    }
+}
+
 /// Raw combined search-result aggregate. No formatting — the resolver in
 /// `LibraryManager` produces the display-ready `crate::album_detail::SearchResults`.
 #[derive(Debug, Clone)]

@@ -43,7 +43,7 @@ struct PreparedMetadata {
     db_album: DbAlbum,
     db_release: DbRelease,
     db_tracks: Vec<DbTrack>,
-    remote_cover_image: Option<(crate::db::DbLibraryImage, Vec<u8>)>,
+    remote_cover_image: Option<cover_image::CoverCandidate>,
     /// Raw (source, json) pairs from the metadata resolver, wrapped into
     /// DbReleaseMetadata at commit.
     resolved_metadata: Vec<(String, String)>,
@@ -577,7 +577,9 @@ impl ImportService {
         prepared.db_release.content_hash = Some(content_hash);
 
         // The content type comes from the HTTP response, so no magic-byte
-        // sniffing is needed here.
+        // sniffing is needed to reject a non-image download. It describes the
+        // download, not the stored blob — the resize below re-encodes those bytes
+        // — so it is checked and dropped, never recorded.
         let remote_cover_data = if let Some(CoverSelection::Remote(ref url, source)) =
             selected_cover
         {
@@ -597,7 +599,11 @@ impl ImportService {
                         .to_string(),
                 });
             }
-            Some((bytes, content_type, url.clone(), source))
+            Some(cover_image::CoverCandidate {
+                bytes,
+                source: source.as_str().to_string(),
+                source_url: Some(url.clone()),
+            })
         } else {
             None
         };
@@ -663,30 +669,7 @@ impl ImportService {
 
         // No storage yet: the winning cover's bytes go to coven's local store below
         // and its row is written by finalize.
-        prepared.remote_cover_image =
-            if let Some((bytes, content_type, url, source)) = remote_cover_data {
-                let now = library_manager.clock().now();
-                Some((
-                    crate::db::DbLibraryImage {
-                        id: prepared.db_release.id.clone(),
-                        image_type: crate::db::LibraryImageType::Cover,
-                        content_type,
-                        file_size: bytes.len() as i64,
-                        width: None,
-                        height: None,
-                        source: source.as_str().to_string(),
-                        source_url: Some(url),
-                        // finalize computes the readable cloud_path on a browsable
-                        // home; NULL (hashed) on an opaque one.
-                        cloud_path: None,
-                        content_hash: Some(crate::util::fs::hash_bytes(&bytes)),
-                        created_at: now,
-                    },
-                    bytes,
-                ))
-            } else {
-                None
-            };
+        prepared.remote_cover_image = remote_cover_data;
 
         step_times.push(("save_to_database", last_step_start.elapsed()));
         last_step_start = std::time::Instant::now();
@@ -966,45 +949,33 @@ impl ImportService {
 
         // Cover priority: Remote > local folder image > embedded. Finalize writes
         // the winner's bytes and row in one coven batch.
-        let cover_winner = match remote_cover_image.take() {
+        let cover_candidate = match remote_cover_image.take() {
             Some(remote) => Some(remote),
-            None => match self.build_cover_image_record(
-                &db_release.id,
-                discovered_files,
-                selected_cover_path,
-            )? {
+            None => match self.pick_folder_cover(discovered_files, selected_cover_path)? {
                 Some(local) => Some(local),
-                None => embedded_cover.map(|(bytes, content_type)| {
-                    let now = library_manager.clock().now();
-                    (
-                        crate::db::DbLibraryImage {
-                            id: db_release.id.clone(),
-                            image_type: crate::db::LibraryImageType::Cover,
-                            content_type,
-                            file_size: bytes.len() as i64,
-                            width: None,
-                            height: None,
-                            source: "embedded".to_string(),
-                            source_url: None,
-                            cloud_path: None,
-                            content_hash: Some(crate::util::fs::hash_bytes(&bytes)),
-                            created_at: now,
-                        },
-                        bytes,
-                    )
+                None => embedded_cover.map(|(bytes, _content_type)| cover_image::CoverCandidate {
+                    bytes,
+                    source: "embedded".to_string(),
+                    source_url: None,
                 }),
             },
         };
-        // Resize the winner to a ≤600px thumbnail — one funnel for all three
-        // sources — and patch the record to describe the stored bytes. The resize
-        // always emits JPEG, so the row (and the `cloud_path` extension
-        // `finalize_import_atomic` derives from it) must say JPEG too.
-        let cover_winner = match cover_winner {
-            Some((mut image, bytes)) => {
-                let bytes = crate::util::cover::resize_cover(&bytes)
+        // Resize the winner to a ≤600px JPEG thumbnail — one funnel for all three
+        // sources — and build the row from that output, so its hash, size and
+        // content type describe the blob that gets stored rather than the image it
+        // was made from. `finalize_import_atomic` derives the readable
+        // `cloud_path` extension from the same row.
+        let cover_winner = match cover_candidate {
+            Some(candidate) => {
+                let bytes = crate::util::cover::resize_cover(&candidate.bytes)
                     .map_err(|detail| crate::import::ImportError::CoverArt { detail })?;
-                image.content_type = crate::util::content_type::ContentType::Jpeg;
-                image.file_size = bytes.len() as i64;
+                let image = crate::db::DbLibraryImage::cover(
+                    &db_release.id,
+                    &candidate.source,
+                    candidate.source_url,
+                    &bytes,
+                    library_manager.clock().now(),
+                );
                 Some((image, bytes))
             }
             None => None,
