@@ -25,7 +25,7 @@ use std::sync::{Arc, Mutex};
 
 use thiserror::Error;
 use tokio::sync::broadcast;
-use tracing::{debug, error, warn};
+use tracing::{debug, warn};
 
 use crate::album_detail::{
     join_artist_names, AlbumDetail, AlbumSummary, ArtistDetail, ArtistSummary, ComposerDetail,

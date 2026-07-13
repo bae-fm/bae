@@ -99,92 +99,54 @@ impl LibraryManager {
         self.emit_export_queue_changed();
     }
 
-    /// The serial export worker loop. Parks on the queue's `Notify` whenever the
-    /// queue is paused or holds nothing queued; otherwise takes the next queued
-    /// release and copies it out. Processes strictly one release at a time.
-    pub(super) async fn run_export_worker(&self) {
-        loop {
-            let Some(op) = self.export_queue.next_queued() else {
-                self.export_queue.wait().await;
-                continue;
-            };
-            self.run_queued_export(op).await;
-        }
-    }
-
-    /// Run one queued release's export: spawn the copy task, flip the entry to
-    /// `Active` and register its abort handle atomically, then await the task. The
-    /// task updates the queue's per-release percent and re-emits the snapshot as
-    /// it copies each file. On success drop the entry; on failure mark it `Failed`
-    /// (it stays in the queue for retry).
+    /// The serial export worker: drains the export queue one release at a time
+    /// through [`run_serial_worker`], which owns the queue protocol (the
+    /// activate/cancel race, cancel-is-not-a-failure, remove vs mark-failed).
     ///
-    /// `cancel_export` aborts the in-flight task via the registered handle and
-    /// removes the queue entry; on its way out we check whether the entry is still
-    /// present before recording a failure — a cancelled export isn't a failure.
-    async fn run_queued_export(&self, op: crate::library::ExportOp) {
-        let release_id = op.release_id.clone();
-        let request = op.payload.clone();
+    /// All this supplies is how an export runs — spawn the copy task and yield its
+    /// outcome, mapping a panicked task to a failure that names the panic — and the
+    /// diagnostics event for the outcome. The copy itself updates the queue's
+    /// per-release percent and re-emits the snapshot as it writes each file.
+    pub(super) async fn run_export_worker(&self) {
+        use crate::library::release_queue::{run_serial_worker, RunningOp};
 
-        let worker = self.clone();
-        let task_release_id = release_id.clone();
-        let task = self.runtime_handle.spawn(async move {
-            worker
-                .export_release_to_dir(&task_release_id, request)
-                .await
-        });
-        let abort = task.abort_handle();
-
-        // Flip to Active and register the abort handle atomically. If a cancel
-        // removed the entry in the gap since we picked it, abort the task we just
-        // spawned and bail — nothing was written.
-        if !self.export_queue.activate(&release_id, abort.clone(), 0) {
-            abort.abort();
-            debug!("Export for {release_id} cancelled before it started; aborting");
-            return;
-        }
-        self.emit_export_queue_changed();
-
-        let outcome = task.await;
-        self.export_queue.clear_active_abort();
-
-        // A cancel removed the entry while the copy was in flight. This isn't a
-        // failure — don't re-add the entry or mark it Failed.
-        if !self.export_queue.contains(&release_id) {
-            debug!("Export for {release_id} ended after cancel; leaving queue as-is");
-            return;
-        }
-
-        match outcome {
-            Ok(Ok(())) => {
-                self.diagnostics().event(TelemetryEvent::ExportCompleted {
-                    release_id: crate::diagnostics::LocalId(release_id.clone()),
+        run_serial_worker(
+            &self.export_queue,
+            "Export",
+            |op| async move {
+                let release_id = op.release_id.clone();
+                let worker = self.clone();
+                let task = self.runtime_handle.spawn(async move {
+                    worker
+                        .export_release_to_dir(&op.release_id, op.payload)
+                        .await
                 });
-                self.export_queue.remove(&release_id);
-                self.emit_export_queue_changed();
-            }
-            Ok(Err(error)) => {
-                error!("Export failed for release {release_id}: {error}");
-                self.diagnostics().event(TelemetryEvent::ExportFailed {
-                    release_id: crate::diagnostics::LocalId(release_id.clone()),
+                let abort = task.abort_handle();
+                let outcome = async move {
+                    match task.await {
+                        Ok(result) => result,
+                        // Aborted by a cancel, which also removed the entry — the
+                        // driver's `contains` check is what reads that as a cancel.
+                        Err(join_error) if join_error.is_cancelled() => Err(LibraryError::Import(
+                            format!("export of {release_id} was cancelled"),
+                        )),
+                        Err(join_error) => Err(LibraryError::Import(format!(
+                            "export task for {release_id} panicked: {join_error}"
+                        ))),
+                    }
+                };
+                Ok((0, RunningOp { abort, outcome }))
+            },
+            || self.emit_export_queue_changed(),
+            |release_id, result| {
+                let release_id = crate::diagnostics::LocalId(release_id.to_string());
+                self.diagnostics().event(match result {
+                    Ok(()) => TelemetryEvent::ExportCompleted { release_id },
+                    Err(_) => TelemetryEvent::ExportFailed { release_id },
                 });
-                self.export_queue
-                    .mark_failed(&release_id, error.to_string());
-                self.emit_export_queue_changed();
-            }
-            Err(join_error) if join_error.is_cancelled() => {
-                // Aborted by a cancel that also removed the entry — handled above.
-                debug!("Export task for {release_id} aborted");
-            }
-            Err(join_error) => {
-                error!("Export task for {release_id} panicked: {join_error}");
-                self.diagnostics().event(TelemetryEvent::ExportFailed {
-                    release_id: crate::diagnostics::LocalId(release_id.clone()),
-                });
-                self.export_queue
-                    .mark_failed(&release_id, join_error.to_string());
-                self.emit_export_queue_changed();
-            }
-        }
+            },
+        )
+        .await
     }
 
     /// Copy a release's files verbatim to `<target_dir>/<source_folder_name>/`,
