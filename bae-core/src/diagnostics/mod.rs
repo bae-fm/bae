@@ -39,7 +39,13 @@ const BATCH_SIZE: usize = 50;
 const MAX_BUFFERED_EVENTS: usize = 1_000;
 const FLUSH_INTERVAL: Duration = Duration::from_secs(2);
 const RETRY_ATTEMPTS: u32 = 3;
+/// Flat delay between diagnostics-upload retries. 250ms in production; zero in
+/// any test build so a retry-path test spends no real time between attempts
+/// (same `test` / `test-utils` seam as `retry::LINEAR_BACKOFF_BASE`).
+#[cfg(not(any(test, feature = "test-utils")))]
 const RETRY_DELAY: Duration = Duration::from_millis(250);
+#[cfg(any(test, feature = "test-utils"))]
+const RETRY_DELAY: Duration = Duration::ZERO;
 const DATADOG_ORIGIN_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[derive(Clone, Debug, PartialEq, Eq)]

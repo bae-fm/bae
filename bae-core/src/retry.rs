@@ -2,10 +2,22 @@ use std::fmt::Display;
 use std::time::Duration;
 use tracing::warn;
 
-/// Linear backoff: 500ms × attempt. What the API clients want; diagnostics wants
-/// a flat delay instead, which is why the delay stays a parameter.
+/// Base for the API clients' linear backoff. 500ms in production; zero in any
+/// test build so a retry-path test spends no real time between attempts. Gated
+/// on `test` (crate unit tests) and `test-utils` (integration tests, which
+/// compile the crate as a normal dependency), the same seam
+/// `install_test_keyring` uses. `test-utils` is dev/test-only, so a production
+/// build always backs off for real.
+#[cfg(not(any(test, feature = "test-utils")))]
+const LINEAR_BACKOFF_BASE: Duration = Duration::from_millis(500);
+#[cfg(any(test, feature = "test-utils"))]
+const LINEAR_BACKOFF_BASE: Duration = Duration::ZERO;
+
+/// Linear backoff: `LINEAR_BACKOFF_BASE` × attempt. What the API clients want;
+/// diagnostics wants a flat delay instead, which is why the delay stays a
+/// parameter to `retry_with_backoff_if`.
 pub fn linear_backoff(attempt: u32) -> Duration {
-    Duration::from_millis(500 * u64::from(attempt))
+    LINEAR_BACKOFF_BASE * attempt
 }
 
 /// Retry `f` up to `max_attempts` times, waiting `retry_delay(attempt)` between
