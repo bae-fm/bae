@@ -102,10 +102,13 @@ async fn collect_signals(
 async fn make_library_manager() -> (crate::library::LibraryManager, TempDir) {
     let tmp = TempDir::new().unwrap();
     let clock: coven::ClockRef = Arc::new(coven::SystemClock);
-    let database =
-        crate::db::Database::new_test(tmp.path().join("test.db").to_str().unwrap(), clock.clone())
-            .await
-            .unwrap();
+    let database = crate::db::Database::new_test(
+        tmp.path().join("test.db").to_str().unwrap(),
+        clock.clone(),
+        std::sync::Arc::new(coven::UuidProvider),
+    )
+    .await
+    .unwrap();
     let library_dir = coven::StoreDir::new(tmp.path());
     // Unique id per test so keyring entries don't collide in the shared
     // process-global mock store (see `install_test_keyring`).

@@ -94,6 +94,7 @@ async fn import_single_m4a_fixture(
     let database = Database::new_test(
         db_file.to_str().unwrap(),
         std::sync::Arc::new(coven::SystemClock),
+        std::sync::Arc::new(coven::UuidProvider),
     )
     .await
     .expect("database");
@@ -329,6 +330,7 @@ async fn import_cue_alac_pair() {
     let database = Database::new_test(
         db_file.to_str().unwrap(),
         std::sync::Arc::new(coven::SystemClock),
+        std::sync::Arc::new(coven::UuidProvider),
     )
     .await
     .expect("database");

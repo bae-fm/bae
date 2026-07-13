@@ -10,9 +10,13 @@ use tempfile::TempDir;
 async fn setup_import_service() -> (ImportService, TempDir) {
     let temp_dir = TempDir::new().unwrap();
     let db_path = temp_dir.path().join("test.db");
-    let database = Database::new_test(db_path.to_str().unwrap(), Arc::new(coven::SystemClock))
-        .await
-        .unwrap();
+    let database = Database::new_test(
+        db_path.to_str().unwrap(),
+        Arc::new(coven::SystemClock),
+        std::sync::Arc::new(coven::UuidProvider),
+    )
+    .await
+    .unwrap();
     let library_dir = coven::StoreDir::new(temp_dir.path());
     let library_id = format!("test-{}", temp_dir.path().display());
     let config = Config::with_defaults(

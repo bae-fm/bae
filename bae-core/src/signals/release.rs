@@ -207,6 +207,7 @@ mod tests {
         let database = Database::new_test(
             library_root.join("test.db").to_str().unwrap(),
             Arc::new(coven::SystemClock),
+            std::sync::Arc::new(coven::UuidProvider),
         )
         .await
         .unwrap();
@@ -347,6 +348,7 @@ mod tests {
         let database = Database::new_test(
             library_root.join("test.db").to_str().unwrap(),
             Arc::new(coven::SystemClock),
+            std::sync::Arc::new(coven::UuidProvider),
         )
         .await
         .unwrap();

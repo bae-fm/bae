@@ -13,11 +13,12 @@ impl Database {
         let release_id = release_id.to_string();
         let identities = identities.to_vec();
         let now = self.inner.clock.now().to_rfc3339();
+        let ids = Arc::clone(&self.inner.ids);
         self.call_sql(move |sql| {
             let reg = sql.stamp();
             let conn = sql.tx();
             for identity in &identities {
-                insert_release_identity_row(conn, &release_id, identity, &reg, &now)?;
+                insert_release_identity_row(conn, &release_id, identity, ids.new_id(), &reg, &now)?;
             }
             Ok(())
         })
@@ -238,6 +239,7 @@ impl Database {
         let new_metadata = new_metadata.to_vec();
         let now_dt = self.inner.clock.now();
         let now = now_dt.to_rfc3339();
+        let ids = Arc::clone(&self.inner.ids);
 
         self.call_sql(move |sql| {
             let tx = sql.tx();
@@ -251,8 +253,8 @@ impl Database {
                 insert_album_row(tx, album, &reg)?;
 
                 // Copy album_artists from the source. Each row gets a fresh
-                // PK (generated in Rust to match the rest of the codebase)
-                // and is rebound to the new album. The UNIQUE(album_id,
+                // PK from the injected id provider, like every other id in the
+                // codebase, and is rebound to the new album. The UNIQUE(album_id,
                 // artist_id) constraint is satisfied because we're inserting
                 // into a different album. If the source is about to be
                 // deleted (sole release moved), the SELECT still sees the
@@ -272,13 +274,8 @@ impl Database {
                     rows.collect::<coven::rusqlite::Result<Vec<_>>>()?
                 };
                 for (artist_id, position) in source_artists {
-                    let album_artist = DbAlbumArtist::new(
-                        &album.id,
-                        &artist_id,
-                        position,
-                        uuid::Uuid::new_v4().to_string(),
-                        now_dt,
-                    );
+                    let album_artist =
+                        DbAlbumArtist::new(&album.id, &artist_id, position, ids.new_id(), now_dt);
                     insert_album_artist_row(tx, &album_artist, &reg)?;
                 }
             }
@@ -289,7 +286,7 @@ impl Database {
                 params![release_id],
             )?;
             for identity in &new_identities {
-                insert_release_identity_row(tx, &release_id, identity, &reg, &now)?;
+                insert_release_identity_row(tx, &release_id, identity, ids.new_id(), &reg, &now)?;
             }
 
             // 3. Update release: album, metadata source.

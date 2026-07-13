@@ -61,9 +61,13 @@ mod in_clause_chunking_tests {
     async fn chunked_track_db() -> (Database, tempfile::TempDir, Vec<String>) {
         let tmp = tempfile::TempDir::new().unwrap();
         let path = tmp.path().join("test.db");
-        let db = Database::new_test(path.to_str().unwrap(), Arc::new(SystemClock))
-            .await
-            .unwrap();
+        let db = Database::new_test(
+            path.to_str().unwrap(),
+            Arc::new(SystemClock),
+            std::sync::Arc::new(coven::UuidProvider),
+        )
+        .await
+        .unwrap();
         let track_count = SQL_MAX_IN_VARS * 45;
         let track_ids: Vec<String> = (0..track_count)
             .map(|index| format!("track-{index}"))
@@ -116,9 +120,13 @@ mod in_clause_chunking_tests {
     async fn cover_versions_merges_chunks() {
         let tmp = tempfile::TempDir::new().unwrap();
         let path = tmp.path().join("test.db");
-        let db = Database::new_test(path.to_str().unwrap(), Arc::new(SystemClock))
-            .await
-            .unwrap();
+        let db = Database::new_test(
+            path.to_str().unwrap(),
+            Arc::new(SystemClock),
+            std::sync::Arc::new(coven::UuidProvider),
+        )
+        .await
+        .unwrap();
 
         let cover_count = SQL_MAX_IN_VARS * 3;
         db.call(move |conn| {
@@ -217,9 +225,13 @@ mod aggregate_ordering_tests {
     async fn aggregate_db() -> (Database, tempfile::TempDir) {
         let tmp = tempfile::TempDir::new().unwrap();
         let path = tmp.path().join("test.db");
-        let db = Database::new_test(path.to_str().unwrap(), Arc::new(SystemClock))
-            .await
-            .unwrap();
+        let db = Database::new_test(
+            path.to_str().unwrap(),
+            Arc::new(SystemClock),
+            std::sync::Arc::new(coven::UuidProvider),
+        )
+        .await
+        .unwrap();
         db.call(|conn| {
             conn.execute_batch(
                 "
@@ -337,9 +349,13 @@ mod aggregate_ordering_tests {
     async fn album_and_storage_pages_allow_missing_primary_artist() {
         let tmp = tempfile::TempDir::new().unwrap();
         let path = tmp.path().join("test.db");
-        let db = Database::new_test(path.to_str().unwrap(), Arc::new(SystemClock))
-            .await
-            .unwrap();
+        let db = Database::new_test(
+            path.to_str().unwrap(),
+            Arc::new(SystemClock),
+            std::sync::Arc::new(coven::UuidProvider),
+        )
+        .await
+        .unwrap();
         db.call(|conn| {
             conn.execute_batch(
                 "
@@ -401,9 +417,13 @@ mod aggregate_ordering_tests {
     async fn queue_db() -> (Database, tempfile::TempDir) {
         let tmp = tempfile::TempDir::new().unwrap();
         let path = tmp.path().join("test.db");
-        let db = Database::new_test(path.to_str().unwrap(), Arc::new(SystemClock))
-            .await
-            .unwrap();
+        let db = Database::new_test(
+            path.to_str().unwrap(),
+            Arc::new(SystemClock),
+            std::sync::Arc::new(coven::UuidProvider),
+        )
+        .await
+        .unwrap();
         db.call(|conn| {
             conn.execute_batch(
                 "
@@ -459,9 +479,13 @@ mod aggregate_ordering_tests {
     async fn release_detail_db() -> (Database, tempfile::TempDir) {
         let tmp = tempfile::TempDir::new().unwrap();
         let path = tmp.path().join("test.db");
-        let db = Database::new_test(path.to_str().unwrap(), Arc::new(SystemClock))
-            .await
-            .unwrap();
+        let db = Database::new_test(
+            path.to_str().unwrap(),
+            Arc::new(SystemClock),
+            std::sync::Arc::new(coven::UuidProvider),
+        )
+        .await
+        .unwrap();
         db.call(|conn| {
             conn.execute_batch(
                 "
@@ -537,9 +561,13 @@ mod connection_boundary_tests {
     async fn coven_connection_enforces_foreign_keys_for_bae_schema() {
         let tmp = tempfile::TempDir::new().unwrap();
         let path = tmp.path().join("test.db");
-        let db = Database::new_test(path.to_str().unwrap(), Arc::new(SystemClock))
-            .await
-            .unwrap();
+        let db = Database::new_test(
+            path.to_str().unwrap(),
+            Arc::new(SystemClock),
+            std::sync::Arc::new(coven::UuidProvider),
+        )
+        .await
+        .unwrap();
 
         let track = DbTrack::new_test("missing-release", "track-a", "Track Title A", Some(1));
         let error = db
@@ -771,9 +799,13 @@ mod cloud_outbox_tests {
     async fn empty_db() -> (Database, tempfile::TempDir) {
         let tmp = tempfile::TempDir::new().unwrap();
         let path = tmp.path().join("test.db");
-        let db = Database::new_test(path.to_str().unwrap(), Arc::new(SystemClock))
-            .await
-            .unwrap();
+        let db = Database::new_test(
+            path.to_str().unwrap(),
+            Arc::new(SystemClock),
+            std::sync::Arc::new(coven::UuidProvider),
+        )
+        .await
+        .unwrap();
         (db, tmp)
     }
 
@@ -975,9 +1007,13 @@ mod composer_mode_tests {
     async fn seeded_db() -> (Database, tempfile::TempDir) {
         let tmp = tempfile::TempDir::new().unwrap();
         let path = tmp.path().join("test.db");
-        let db = Database::new_test(path.to_str().unwrap(), Arc::new(SystemClock))
-            .await
-            .unwrap();
+        let db = Database::new_test(
+            path.to_str().unwrap(),
+            Arc::new(SystemClock),
+            std::sync::Arc::new(coven::UuidProvider),
+        )
+        .await
+        .unwrap();
         db.call(|conn| {
             conn.execute_batch(
                 "
@@ -1022,9 +1058,13 @@ mod composer_mode_tests {
     async fn finalize_import_persists_composer_work_and_role_rows() {
         let tmp = tempfile::TempDir::new().unwrap();
         let path = tmp.path().join("test.db");
-        let db = Database::new_test(path.to_str().unwrap(), Arc::new(SystemClock))
-            .await
-            .unwrap();
+        let db = Database::new_test(
+            path.to_str().unwrap(),
+            Arc::new(SystemClock),
+            std::sync::Arc::new(coven::UuidProvider),
+        )
+        .await
+        .unwrap();
         let now = chrono::DateTime::parse_from_rfc3339("2026-01-01T00:00:00Z")
             .unwrap()
             .with_timezone(&chrono::Utc);
@@ -1210,9 +1250,13 @@ mod composer_mode_tests {
     async fn fail_import_and_delete_release_removes_finalized_import_state_atomically() {
         let tmp = tempfile::TempDir::new().unwrap();
         let path = tmp.path().join("test.db");
-        let db = Database::new_test(path.to_str().unwrap(), Arc::new(SystemClock))
-            .await
-            .unwrap();
+        let db = Database::new_test(
+            path.to_str().unwrap(),
+            Arc::new(SystemClock),
+            std::sync::Arc::new(coven::UuidProvider),
+        )
+        .await
+        .unwrap();
         let now = chrono::DateTime::parse_from_rfc3339("2026-01-01T00:00:00Z")
             .unwrap()
             .with_timezone(&chrono::Utc);
@@ -1351,9 +1395,13 @@ mod composer_mode_tests {
     async fn finalize_replacement_in_surviving_album_clears_dangling_primary() {
         let tmp = tempfile::TempDir::new().unwrap();
         let path = tmp.path().join("test.db");
-        let db = Database::new_test(path.to_str().unwrap(), Arc::new(SystemClock))
-            .await
-            .unwrap();
+        let db = Database::new_test(
+            path.to_str().unwrap(),
+            Arc::new(SystemClock),
+            std::sync::Arc::new(coven::UuidProvider),
+        )
+        .await
+        .unwrap();
         let now = chrono::DateTime::parse_from_rfc3339("2026-01-01T00:00:00Z")
             .unwrap()
             .with_timezone(&chrono::Utc);
@@ -1385,9 +1433,13 @@ mod composer_mode_tests {
     async fn finalize_replacement_of_last_release_deletes_prior_album() {
         let tmp = tempfile::TempDir::new().unwrap();
         let path = tmp.path().join("test.db");
-        let db = Database::new_test(path.to_str().unwrap(), Arc::new(SystemClock))
-            .await
-            .unwrap();
+        let db = Database::new_test(
+            path.to_str().unwrap(),
+            Arc::new(SystemClock),
+            std::sync::Arc::new(coven::UuidProvider),
+        )
+        .await
+        .unwrap();
         let now = chrono::DateTime::parse_from_rfc3339("2026-01-01T00:00:00Z")
             .unwrap()
             .with_timezone(&chrono::Utc);
@@ -1413,9 +1465,13 @@ mod composer_mode_tests {
     async fn fail_import_and_delete_release_in_surviving_album_clears_dangling_primary() {
         let tmp = tempfile::TempDir::new().unwrap();
         let path = tmp.path().join("test.db");
-        let db = Database::new_test(path.to_str().unwrap(), Arc::new(SystemClock))
-            .await
-            .unwrap();
+        let db = Database::new_test(
+            path.to_str().unwrap(),
+            Arc::new(SystemClock),
+            std::sync::Arc::new(coven::UuidProvider),
+        )
+        .await
+        .unwrap();
         let now = chrono::DateTime::parse_from_rfc3339("2026-01-01T00:00:00Z")
             .unwrap()
             .with_timezone(&chrono::Utc);
@@ -1543,9 +1599,13 @@ mod composer_mode_tests {
     async fn fail_import_and_delete_release_returns_orphaned_image_blobs_to_evict() {
         let tmp = tempfile::TempDir::new().unwrap();
         let path = tmp.path().join("test.db");
-        let db = Database::new_test(path.to_str().unwrap(), Arc::new(SystemClock))
-            .await
-            .unwrap();
+        let db = Database::new_test(
+            path.to_str().unwrap(),
+            Arc::new(SystemClock),
+            std::sync::Arc::new(coven::UuidProvider),
+        )
+        .await
+        .unwrap();
         let now = chrono::DateTime::parse_from_rfc3339("2026-01-01T00:00:00Z")
             .unwrap()
             .with_timezone(&chrono::Utc);
@@ -1747,9 +1807,13 @@ mod composer_mode_tests {
     async fn complete_import_for_release_marks_active_release_import_complete() {
         let tmp = tempfile::TempDir::new().unwrap();
         let path = tmp.path().join("test.db");
-        let db = Database::new_test(path.to_str().unwrap(), Arc::new(SystemClock))
-            .await
-            .unwrap();
+        let db = Database::new_test(
+            path.to_str().unwrap(),
+            Arc::new(SystemClock),
+            std::sync::Arc::new(coven::UuidProvider),
+        )
+        .await
+        .unwrap();
         let now = chrono::DateTime::parse_from_rfc3339("2026-01-01T00:00:00Z")
             .unwrap()
             .with_timezone(&chrono::Utc);
@@ -1896,9 +1960,13 @@ mod composer_mode_tests {
     async fn search_library_treats_like_metacharacters_as_literals() {
         let tmp = tempfile::TempDir::new().unwrap();
         let path = tmp.path().join("test.db");
-        let db = Database::new_test(path.to_str().unwrap(), Arc::new(SystemClock))
-            .await
-            .unwrap();
+        let db = Database::new_test(
+            path.to_str().unwrap(),
+            Arc::new(SystemClock),
+            std::sync::Arc::new(coven::UuidProvider),
+        )
+        .await
+        .unwrap();
         db.call(|conn| {
             conn.execute_batch(
                 "
@@ -2017,9 +2085,13 @@ mod composer_mode_tests {
     async fn composer_page_uses_id_tiebreaker() {
         let tmp = tempfile::TempDir::new().unwrap();
         let path = tmp.path().join("test.db");
-        let db = Database::new_test(path.to_str().unwrap(), Arc::new(SystemClock))
-            .await
-            .unwrap();
+        let db = Database::new_test(
+            path.to_str().unwrap(),
+            Arc::new(SystemClock),
+            std::sync::Arc::new(coven::UuidProvider),
+        )
+        .await
+        .unwrap();
         db.call(|conn| {
             conn.execute_batch(
                 "
@@ -2070,9 +2142,13 @@ mod composer_mode_tests {
     async fn composer_page_applies_secondary_criterion() {
         let tmp = tempfile::TempDir::new().unwrap();
         let path = tmp.path().join("test.db");
-        let db = Database::new_test(path.to_str().unwrap(), Arc::new(SystemClock))
-            .await
-            .unwrap();
+        let db = Database::new_test(
+            path.to_str().unwrap(),
+            Arc::new(SystemClock),
+            std::sync::Arc::new(coven::UuidProvider),
+        )
+        .await
+        .unwrap();
         db.call(|conn| {
             conn.execute_batch(
                 "
@@ -2136,9 +2212,13 @@ mod artist_mode_tests {
     async fn seeded_db() -> (Database, tempfile::TempDir) {
         let tmp = tempfile::TempDir::new().unwrap();
         let path = tmp.path().join("test.db");
-        let db = Database::new_test(path.to_str().unwrap(), Arc::new(SystemClock))
-            .await
-            .unwrap();
+        let db = Database::new_test(
+            path.to_str().unwrap(),
+            Arc::new(SystemClock),
+            std::sync::Arc::new(coven::UuidProvider),
+        )
+        .await
+        .unwrap();
         db.call(|conn| {
             conn.execute_batch(
                 "
@@ -2227,9 +2307,13 @@ mod artist_mode_tests {
     async fn artist_page_uses_id_tiebreaker() {
         let tmp = tempfile::TempDir::new().unwrap();
         let path = tmp.path().join("test.db");
-        let db = Database::new_test(path.to_str().unwrap(), Arc::new(SystemClock))
-            .await
-            .unwrap();
+        let db = Database::new_test(
+            path.to_str().unwrap(),
+            Arc::new(SystemClock),
+            std::sync::Arc::new(coven::UuidProvider),
+        )
+        .await
+        .unwrap();
         db.call(|conn| {
             conn.execute_batch(
                 "
@@ -2280,9 +2364,13 @@ mod artist_mode_tests {
     async fn artist_page_applies_secondary_criterion() {
         let tmp = tempfile::TempDir::new().unwrap();
         let path = tmp.path().join("test.db");
-        let db = Database::new_test(path.to_str().unwrap(), Arc::new(SystemClock))
-            .await
-            .unwrap();
+        let db = Database::new_test(
+            path.to_str().unwrap(),
+            Arc::new(SystemClock),
+            std::sync::Arc::new(coven::UuidProvider),
+        )
+        .await
+        .unwrap();
         db.call(|conn| {
             conn.execute_batch(
                 "
@@ -2337,9 +2425,13 @@ mod artist_mode_tests {
     async fn artist_detail_orders_albums_year_then_title_with_unknown_years_last() {
         let tmp = tempfile::TempDir::new().unwrap();
         let path = tmp.path().join("test.db");
-        let db = Database::new_test(path.to_str().unwrap(), Arc::new(SystemClock))
-            .await
-            .unwrap();
+        let db = Database::new_test(
+            path.to_str().unwrap(),
+            Arc::new(SystemClock),
+            std::sync::Arc::new(coven::UuidProvider),
+        )
+        .await
+        .unwrap();
         db.call(|conn| {
             conn.execute_batch(
                 "
@@ -2420,9 +2512,13 @@ mod playback_state_load_tests {
     async fn empty_db() -> (Database, tempfile::TempDir) {
         let tmp = tempfile::TempDir::new().unwrap();
         let path = tmp.path().join("test.db");
-        let db = Database::new_test(path.to_str().unwrap(), Arc::new(SystemClock))
-            .await
-            .unwrap();
+        let db = Database::new_test(
+            path.to_str().unwrap(),
+            Arc::new(SystemClock),
+            std::sync::Arc::new(coven::UuidProvider),
+        )
+        .await
+        .unwrap();
         (db, tmp)
     }
 
@@ -2454,5 +2550,136 @@ mod playback_state_load_tests {
             db.load_playback_state().await.unwrap(),
             LoadedPlaybackState::Corrupt
         ));
+    }
+}
+
+/// The ids this layer mints itself — a release's `release_identities` rows, and
+/// the `album_artists` rows copied when a `set_identity` moves a release to a new
+/// album — come from the injected [`coven::IdProvider`], like every other id in
+/// the process. Minting them with a raw `Uuid::new_v4()` would put an id source
+/// nobody injected inside the DB, and a test running a deterministic provider
+/// would still get random ones.
+#[cfg(test)]
+mod injected_ids_tests {
+    use super::super::*;
+    use crate::db::{DbAlbum, DbAlbumArtist, DbArtist, DbRelease, ReleaseMetadataSource};
+    use crate::import::{MetadataSource, ReleaseIdentity};
+    use chrono::Utc;
+    use coven::SystemClock;
+    use std::sync::Arc;
+
+    async fn db_with_sequential_ids() -> (Database, tempfile::TempDir) {
+        let tmp = tempfile::TempDir::new().unwrap();
+        let path = tmp.path().join("test.db");
+        let db = Database::new_test(
+            path.to_str().unwrap(),
+            Arc::new(SystemClock),
+            Arc::new(coven::SequentialIdProvider::new("db-ids")),
+        )
+        .await
+        .unwrap();
+        (db, tmp)
+    }
+
+    fn identity(source: MetadataSource, release_id: &str) -> ReleaseIdentity {
+        ReleaseIdentity {
+            source,
+            source_group_id: format!("group-{release_id}"),
+            source_release_id: Some(release_id.to_string()),
+        }
+    }
+
+    #[tokio::test]
+    async fn identity_rows_take_their_ids_from_the_injected_provider() {
+        let (db, _tmp) = db_with_sequential_ids().await;
+        let now = Utc::now();
+
+        let artist = DbArtist {
+            id: "artist-1".to_string(),
+            name: "Artist".to_string(),
+            sort_name: None,
+            discogs_artist_id: None,
+            musicbrainz_artist_id: None,
+            created_at: now,
+        };
+        db.insert_artist(&artist).await.unwrap();
+
+        let mut album = DbAlbum::new_test("Album", &artist.id);
+        album.id = "album-1".to_string();
+        db.insert_album(&album).await.unwrap();
+        db.insert_album_artist(&DbAlbumArtist::new(
+            &album.id,
+            &artist.id,
+            0,
+            "album-artist-1".to_string(),
+            now,
+        ))
+        .await
+        .unwrap();
+
+        let release = DbRelease::new_test(&album.id, "release-1");
+        db.insert_release(&release).await.unwrap();
+
+        db.insert_release_identities(
+            &release.id,
+            &[identity(MetadataSource::Discogs, "discogs-release-1")],
+        )
+        .await
+        .unwrap();
+
+        let ids: Vec<String> = db
+            .read(|conn| {
+                let mut stmt = conn.prepare("SELECT id FROM release_identities")?;
+                let rows = stmt.query_map([], |row| row.get::<_, String>(0))?;
+                rows.collect::<coven::rusqlite::Result<Vec<_>>>()
+                    .map_err(DbError::from)
+            })
+            .await
+            .unwrap();
+
+        assert_eq!(ids.len(), 1, "one identity row was written, got {ids:?}",);
+        assert!(
+            ids[0].starts_with("db-ids"),
+            "the identity row's id comes from the injected provider, got {:?}",
+            ids[0],
+        );
+
+        // Moving the release to a fresh album copies its album_artists rows; those
+        // PKs are minted here too.
+        let target = DbAlbum::new_test("Target Album", &artist.id);
+        db.set_identity_atomic(
+            &release.id,
+            &[identity(MetadataSource::MusicBrainz, "mb-release-1")],
+            ReleaseMetadataSource::MusicBrainz,
+            Some("mb-release-1"),
+            &album.id,
+            &target.id,
+            Some(&target),
+            &[],
+        )
+        .await
+        .unwrap();
+
+        let copied: Vec<String> = db
+            .read(move |conn| {
+                let mut stmt =
+                    conn.prepare("SELECT id FROM album_artists WHERE album_id != 'album-1'")?;
+                let rows = stmt.query_map([], |row| row.get::<_, String>(0))?;
+                rows.collect::<coven::rusqlite::Result<Vec<_>>>()
+                    .map_err(DbError::from)
+            })
+            .await
+            .unwrap();
+
+        assert_eq!(
+            copied.len(),
+            1,
+            "the album_artists row was copied, got {copied:?}"
+        );
+        assert!(
+            copied[0].starts_with("db-ids"),
+            "the copied album_artists row's id comes from the injected provider, got {:?}",
+            copied[0],
+        );
     }
 }

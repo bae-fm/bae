@@ -243,6 +243,7 @@ async fn make_library_manager() -> (bae_core::library::LibraryManager, TempDir) 
     let database = bae_core::db::Database::new_test(
         tmp.path().join("test.db").to_str().unwrap(),
         clock.clone(),
+        std::sync::Arc::new(coven::UuidProvider),
     )
     .await
     .unwrap();

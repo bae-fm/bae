@@ -45,6 +45,7 @@ impl ExportFixture {
         let db = Database::new_test(
             db_dir.join("test.db").to_str().unwrap(),
             Arc::new(coven::SystemClock),
+            std::sync::Arc::new(coven::UuidProvider),
         )
         .await
         .unwrap();

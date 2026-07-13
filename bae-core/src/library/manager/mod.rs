@@ -834,7 +834,7 @@ impl LibraryManager {
                 coven::CovenError::Database(error) => error,
                 other => coven::DbError(other.to_string()),
             })?;
-        let database = Database::from_handle(handle.clone(), clock.clone());
+        let database = Database::from_handle(handle.clone(), clock.clone(), ids.clone());
         observer.set_database(Arc::new(database.clone()));
         observer.set_handle(handle.clone());
         let sync_status = Arc::new(Mutex::new(SyncStatusState::initial(&handle)));

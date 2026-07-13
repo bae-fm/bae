@@ -538,6 +538,7 @@ mod tests {
             .block_on(Database::new_test(
                 tmp.path().join("test.db").to_str().unwrap(),
                 Arc::new(coven::SystemClock),
+                std::sync::Arc::new(coven::UuidProvider),
             ))
             .unwrap();
         let library_id = format!("test-{}", uuid::Uuid::new_v4());

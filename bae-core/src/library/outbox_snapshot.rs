@@ -502,6 +502,7 @@ mod tests {
         let db = Database::new_test(
             tmp.path().join("test.db").to_str().unwrap(),
             Arc::new(SystemClock),
+            std::sync::Arc::new(coven::UuidProvider),
         )
         .await
         .unwrap();
