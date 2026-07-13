@@ -21,7 +21,7 @@ mod image_response;
 // below (re-exported from `types`) compile on mobile.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod handle;
-#[cfg(any(target_os = "macos", target_os = "linux", target_os = "windows"))]
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod loudness;
 pub mod musicbrainz_mapper;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]

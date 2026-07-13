@@ -931,37 +931,37 @@ impl ImportService {
         // a remote import's uploads queue only after finalize. Per-track and album
         // NULLs are legitimate "not measured" results, each logged at its skip
         // point inside `measure_loudness`.
-        #[cfg(any(target_os = "macos", target_os = "linux", target_os = "windows"))]
-        {
-            self.emit_phase_progress(
-                candidate_key,
-                &db_release.id,
-                0,
-                ImportPhase::MeasuringLoudness,
-                import_id,
-            );
-            let loudness = crate::import::loudness::measure_loudness(
-                &self.event_tx,
-                &mut built_audio.audio_formats,
-                &built_audio.audio_segments,
-                &file_ids,
-                tracks_to_files,
-                candidate_key,
-            )
-            .await;
-            db_release.album_loudness_lufs = loudness.album_loudness_lufs;
-            db_release.album_peak_linear = loudness.album_peak_linear;
+        //
+        // Unconditional: `import::loudness` compiles under the same predicate this
+        // module does, so there is no configuration where the import runs and the
+        // measurement doesn't. A `cfg` here could say otherwise, and once did.
+        self.emit_phase_progress(
+            candidate_key,
+            &db_release.id,
+            0,
+            ImportPhase::MeasuringLoudness,
+            import_id,
+        );
+        let loudness = crate::import::loudness::measure_loudness(
+            &self.event_tx,
+            &mut built_audio.audio_formats,
+            &built_audio.audio_segments,
+            &file_ids,
+            tracks_to_files,
+            candidate_key,
+        )
+        .await;
+        db_release.album_loudness_lufs = loudness.album_loudness_lufs;
+        db_release.album_peak_linear = loudness.album_peak_linear;
 
-            // A track that didn't decode fully (fatal errors, a truncated body)
-            // would import fine and then fail at play time. With verify on, fail
-            // now — before finalize commits anything to the library.
-            if self.library_manager.get_config().verify_decode_on_import
-                && !loudness.broken.is_empty()
-            {
-                return Err(crate::import::ImportError::DecodeVerification {
-                    broken: loudness.broken,
-                });
-            }
+        // A track that didn't decode fully (fatal errors, a truncated body) would
+        // import fine and then fail at play time. With verify on, fail now —
+        // before finalize commits anything to the library.
+        if self.library_manager.get_config().verify_decode_on_import && !loudness.broken.is_empty()
+        {
+            return Err(crate::import::ImportError::DecodeVerification {
+                broken: loudness.broken,
+            });
         }
 
         // Cover priority: Remote > local folder image > embedded. Finalize writes
