@@ -241,91 +241,56 @@ impl LibraryManager {
         self.emit_download_queue_changed();
     }
 
-    /// The serial download worker loop. Parks on the queue's `Notify` whenever
-    /// the queue is paused or holds nothing queued; otherwise takes the next
-    /// queued release, runs its pin, and repeats. Process strictly one release
-    /// at a time.
-    pub(super) async fn run_download_worker(&self) {
-        loop {
-            let Some(op) = self.download_queue.next_queued() else {
-                self.download_queue.wait().await;
-                continue;
-            };
-            self.run_queued_pin(&op).await;
-        }
-    }
-
-    /// Run one queued release's pin: spawn `TransferService::pin_release_task`,
-    /// flip the entry to `Active` and register its abort handle atomically, then
-    /// drive its progress and re-emit the inline `ReleaseTransferProgress` the
-    /// storage row reads. On success drop the entry; on failure mark it `Failed`
-    /// (it stays in the queue for retry).
+    /// The serial download worker: drains the pin queue one release at a time
+    /// through [`run_serial_worker`], which owns the queue protocol (the
+    /// activate/cancel race, cancel-is-not-a-failure, remove vs mark-failed).
     ///
-    /// `cancel_download` aborts the in-flight task via the registered handle. A
-    /// cancel removes the queue entry; on its way out the drain sees the channel
-    /// close, and we check whether the entry is still present before recording a
-    /// failure — a cancelled download isn't a failure.
-    async fn run_queued_pin(&self, op: &crate::library::DownloadOp) {
+    /// All this supplies is how a pin runs: resolve the release's byte totals,
+    /// spawn `TransferService::pin_release_task`, and yield its outcome. The
+    /// outcome comes from draining the transfer's progress channel — that drain is
+    /// also what emits the inline `ReleaseTransferProgress` bar the storage row
+    /// reads — and then joining the pin task, so a panicked pin reports the panic
+    /// rather than "the channel closed".
+    ///
+    /// Success needs no follow-up here: `pin_release_blobs` already emitted
+    /// `ReleaseUpdated`, so the release's `pinned` flag flips reactively.
+    /// Completion and failure reach diagnostics from inside the transfer
+    /// (`StorageTransferCompleted` / `StorageTransferFailed`), so there is nothing
+    /// to report on the way out.
+    pub(super) async fn run_download_worker(&self) {
+        use crate::library::release_queue::{run_serial_worker, RunningOp};
         use crate::storage::transfer::TransferService;
 
-        let release_id = op.release_id.as_str();
-        let initial_progress = match self.initial_download_progress(release_id).await {
-            Ok(progress) => progress,
-            Err(error) => {
-                error!("Pin failed for release {release_id}: {error}");
-                self.download_queue
-                    .mark_failed(release_id, error.to_string());
-                self.emit_download_queue_changed();
-                return;
-            }
-        };
-        let transfer = TransferService::new(self.clone());
-        let (rx, pin_task) = transfer.pin_release_task(release_id.to_string());
-        let abort = pin_task.abort_handle();
-        // Flip to Active and register the abort handle atomically. If a cancel
-        // removed the entry in the gap since we picked it, abort the task we
-        // just spawned and bail — the release stays cloud-only.
-        if !self
-            .download_queue
-            .activate(release_id, abort.clone(), initial_progress)
-        {
-            abort.abort();
-            debug!("Pin for {release_id} cancelled before it started; aborting");
-            return;
-        }
-        self.emit_download_queue_changed();
-        // Drive the pin through the shared transfer driver; the inline
-        // `ReleaseTransferProgress` bar is emitted by `drive_transfer` itself.
-        let outcome = self
-            .drive_transfer(release_id, ReleaseStorageAction::Pin, rx)
-            .await;
-        self.download_queue.clear_active_abort();
-
-        // A cancel removed the entry while the pin was in flight. The drain
-        // ended with an Err (the aborted pin task closed its channel) and
-        // already emitted the terminal `ReleaseTransferEnded` that clears the
-        // inline bar; `cancel_download` emitted the fresh snapshot. This isn't
-        // a failure — don't re-add the entry or mark it Failed.
-        if !self.download_queue.contains(release_id) {
-            debug!("Pin for {release_id} ended after cancel; leaving queue as-is");
-            return;
-        }
-
-        match outcome {
-            Ok(()) => {
-                // The release is pinned. `pin_release_blobs` already emitted
-                // `ReleaseUpdated`, so its `pinned` flag flips true reactively —
-                // just drop the queue entry.
-                self.download_queue.remove(release_id);
-                self.emit_download_queue_changed();
-            }
-            Err(error) => {
-                error!("Pin failed for release {release_id}: {error}");
-                self.download_queue
-                    .mark_failed(release_id, error.to_string());
-                self.emit_download_queue_changed();
-            }
-        }
+        run_serial_worker(
+            &self.download_queue,
+            "Pin",
+            |op| async move {
+                let release_id = op.release_id;
+                let initial_progress = self.initial_download_progress(&release_id).await?;
+                let transfer = TransferService::new(self.clone());
+                let (rx, pin_task) = transfer.pin_release_task(release_id.clone());
+                let abort = pin_task.abort_handle();
+                let outcome = async move {
+                    let drained = self
+                        .drive_transfer(&release_id, ReleaseStorageAction::Pin, rx)
+                        .await;
+                    match pin_task.await {
+                        // The task's own failure already came through the channel.
+                        Ok(()) => drained,
+                        // Aborted by a cancel, which also removed the entry — the
+                        // driver's `contains` check is what reads that as a cancel.
+                        Err(join_error) if join_error.is_cancelled() => drained,
+                        Err(join_error) => Err(LibraryError::Storage(format!(
+                            "pin task for {release_id} panicked: {join_error}"
+                        ))),
+                    }
+                };
+                Ok((initial_progress, RunningOp { abort, outcome }))
+            },
+            || self.emit_download_queue_changed(),
+            |_release_id, _result| {},
+        )
+        .await
     }
 
     /// Unpin a release: coven moves its blobs out of `storage/pinned/` and into the

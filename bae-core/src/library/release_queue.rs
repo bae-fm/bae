@@ -1,15 +1,21 @@
-//! Shared in-memory serial queue for per-release background work.
+//! Shared in-memory serial queue for per-release background work, and the serial
+//! worker that drains one.
 //!
 //! Pinning and exporting both process one release at a time, keep transient
 //! in-memory rows for the queue pane, and support pause, cancel, and retry.
 //! `Extra` carries the operation-specific row payload: downloads use `()`,
 //! exports use their target directory. `Progress` carries the active-row
-//! progress shape.
+//! progress shape. [`run_serial_worker`] is the drain protocol both share — the
+//! activate/cancel race in particular is written once here rather than once per
+//! queue.
 
+use std::future::Future;
 use std::sync::Mutex;
 
 use tokio::sync::Notify;
-use tracing::warn;
+use tracing::{debug, error, warn};
+
+use super::LibraryError;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ReleaseQueueState<Progress> {
@@ -216,6 +222,96 @@ impl<Extra: Clone, Progress: Clone> Default for ReleaseQueue<Extra, Progress> {
     }
 }
 
+/// A queued operation that has been started: the handle a cancel aborts, and the
+/// future that yields the operation's outcome.
+pub struct RunningOp<Fut> {
+    pub abort: tokio::task::AbortHandle,
+    pub outcome: Fut,
+}
+
+/// Drain a queue serially, one release at a time, forever. The caller supplies
+/// only `start` — resolve the release's initial progress, spawn its work, and hand
+/// back the abort handle plus the future that yields its outcome — and the hooks to
+/// re-emit the queue snapshot (`on_changed`) and to report the outcome to
+/// diagnostics (`on_done`).
+///
+/// The protocol, which is why this is one function and not two:
+///
+/// - A cancel can land in the gap between picking a release and activating it, so
+///   [`ReleaseQueue::activate`] flips to `Active` and registers the abort handle
+///   under one lock: it fails exactly when the entry is already gone, and then the
+///   work we just started is aborted and dropped.
+/// - A cancel during the work removes the entry and aborts the task, so
+///   `contains` after the await is what tells a cancel from a failure. A cancelled
+///   release is neither re-added nor marked failed.
+/// - Success removes the entry; failure marks it `Failed` and leaves it for retry.
+///   A `start` that fails marks it failed the same way — nothing was spawned.
+///
+/// Every transition emits a fresh snapshot through `on_changed`.
+pub async fn run_serial_worker<Extra, Progress, Start, StartFut, Fut, Changed, Done>(
+    queue: &ReleaseQueue<Extra, Progress>,
+    label: &'static str,
+    mut start: Start,
+    mut on_changed: Changed,
+    mut on_done: Done,
+) where
+    Extra: Clone,
+    Progress: Clone,
+    Start: FnMut(ReleaseQueueOp<Extra, Progress>) -> StartFut,
+    StartFut: Future<Output = Result<(Progress, RunningOp<Fut>), LibraryError>>,
+    Fut: Future<Output = Result<(), LibraryError>>,
+    Changed: FnMut(),
+    Done: FnMut(&str, Result<(), &LibraryError>),
+{
+    loop {
+        let Some(op) = queue.next_queued() else {
+            queue.wait().await;
+            continue;
+        };
+        let release_id = op.release_id.clone();
+
+        let (progress, running) = match start(op).await {
+            Ok(started) => started,
+            Err(error) => {
+                error!("{label} failed for release {release_id}: {error}");
+                on_done(&release_id, Err(&error));
+                queue.mark_failed(&release_id, error.to_string());
+                on_changed();
+                continue;
+            }
+        };
+        let RunningOp { abort, outcome } = running;
+
+        if !queue.activate(&release_id, abort.clone(), progress) {
+            abort.abort();
+            debug!("{label} for {release_id} cancelled before it started; aborting");
+            continue;
+        }
+        on_changed();
+
+        let result = outcome.await;
+        queue.clear_active_abort();
+
+        if !queue.contains(&release_id) {
+            debug!("{label} for {release_id} ended after cancel; leaving queue as-is");
+            continue;
+        }
+
+        match result {
+            Ok(()) => {
+                on_done(&release_id, Ok(()));
+                queue.remove(&release_id);
+            }
+            Err(error) => {
+                error!("{label} failed for release {release_id}: {error}");
+                on_done(&release_id, Err(&error));
+                queue.mark_failed(&release_id, error.to_string());
+            }
+        }
+        on_changed();
+    }
+}
+
 impl<Extra: Clone> ReleaseQueue<Extra, u8> {
     pub fn set_active_percent(&self, release_id: &str, percent: u8) {
         if !self.set_active_progress(release_id, percent) {
@@ -230,6 +326,7 @@ impl<Extra: Clone> ReleaseQueue<Extra, u8> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::Arc;
 
     fn op(release_id: &str) -> ReleaseQueueOp<(), u8> {
         ReleaseQueueOp {
@@ -326,6 +423,55 @@ mod tests {
         assert!(q.is_paused());
         assert!(q.set_paused(false));
         assert!(!q.is_paused());
+    }
+
+    /// A queued operation whose task panics must leave the release `Failed` with
+    /// the panic in its message — a panicked task says so, rather than surfacing
+    /// as whatever its progress channel looked like on the way down.
+    #[tokio::test]
+    async fn a_panicking_operation_marks_the_release_failed_with_the_panic() {
+        let queue: Arc<ReleaseQueue<(), u8>> = Arc::new(ReleaseQueue::new());
+        queue.enqueue(op("rel-a"));
+
+        let worker_queue = Arc::clone(&queue);
+        let worker = tokio::spawn(async move {
+            run_serial_worker(
+                &worker_queue,
+                "Test",
+                |_op| async move {
+                    let task = tokio::spawn(async { panic!("boom") });
+                    let abort = task.abort_handle();
+                    let outcome = async move {
+                        match task.await {
+                            Ok(()) => Ok(()),
+                            Err(join_error) if join_error.is_cancelled() => Ok(()),
+                            Err(join_error) => Err(LibraryError::Storage(format!(
+                                "task panicked: {join_error}"
+                            ))),
+                        }
+                    };
+                    Ok((0, RunningOp { abort, outcome }))
+                },
+                || {},
+                |_, _| {},
+            )
+            .await;
+        });
+
+        let error = loop {
+            if let Some(ReleaseQueueState::Failed { error }) =
+                queue.ops().first().map(|o| o.state.clone())
+            {
+                break error;
+            }
+            tokio::task::yield_now().await;
+        };
+        worker.abort();
+
+        assert!(
+            error.contains("panicked"),
+            "the failure names the panic, got: {error}"
+        );
     }
 
     #[test]
