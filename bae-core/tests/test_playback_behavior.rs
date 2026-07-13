@@ -166,6 +166,40 @@ async fn wait_for_position_advance(
     None
 }
 
+/// How long a `play` may take to produce its first audio before the wait is
+/// treated as a hang.
+///
+/// A backstop, not a budget. Reaching `Playing` means the decoder filled its ring
+/// — over a sparse or cloud-backed file that involves real fetches, and how long
+/// they take is the machine's business, not the test's. Nothing here asserts that
+/// `Playing` arrives *quickly*, only that it arrives; a loaded machine is
+/// therefore slower and never redder. What the deadline catches is a decoder that
+/// will never produce audio (a fill task killed, a reader deadlocked on bytes
+/// that never come), and no length of wait rescues that.
+const PLAY_START_BACKSTOP: Duration = Duration::from_secs(30);
+
+/// Play `track_id` and wait for it to reach `Playing`. Shared by the fixtures
+/// that drive a track from a raw progress receiver.
+async fn play_and_wait_on(
+    handle: &bae_core::playback::PlaybackHandle,
+    progress_rx: &mut tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
+    track_id: &str,
+) {
+    handle.play(track_id.to_string());
+    let playing = wait_for_state_on(
+        progress_rx,
+        |s| matches!(s, PlaybackState::Playing { track_info, .. } if track_info.track_id == track_id),
+        PLAY_START_BACKSTOP,
+    )
+    .await;
+    assert!(
+        playing.is_some(),
+        "track {track_id} never reached Playing within {PLAY_START_BACKSTOP:?}: playback \
+         produced no audio at all. That is a stalled fill or a deadlocked decoder — not a \
+         slow machine, which would only have made this wait longer."
+    );
+}
+
 /// Wait for the next `Seeked` event and return its adjusted `position_ms`, or
 /// `None` on timeout. Shared by `PlaybackTestFixture::wait_for_seeked` and any
 /// fixture that only has a raw progress receiver (no wrapper method).
@@ -1174,7 +1208,15 @@ impl SidePauseTestFixture {
             "side-pause fixture imports 3 tracks"
         );
 
-        let (capture_output, capture_stream_rx) = bae_core::playback::CaptureAudioOutput::new();
+        // Real-time-paced capture, not full-speed: every test here plays a track
+        // and then issues commands (the side-pause toggle, the seek) that must
+        // land *before* the track's boundary is crossed. An unpaced drain empties
+        // the remaining audio in milliseconds, so those commands would be racing
+        // the decoder rather than arriving during playback. Pacing the sink to
+        // wall-clock bounds how fast the boundary can arrive, and a loaded machine
+        // can only slow that sink down, never speed it up.
+        let (capture_output, capture_stream_rx) =
+            bae_core::playback::RealtimeCaptureAudioOutput::new();
         let playback_handle = bae_core::playback::PlaybackService::start_with_output(
             setup.library_manager.clone(),
             setup.runtime_handle,
@@ -1229,6 +1271,12 @@ impl SidePauseTestFixture {
             .play_release(self.release_id.clone(), Some(start_track_index), false);
     }
 
+    /// Seek to 200 ms before the end of a 5 s fixture track, so the boundary
+    /// arrives after a short run of real-time audio rather than a whole track's
+    /// worth. Issued only after everything that must be in effect at the boundary
+    /// (the side-pause setting, the staging re-evaluation) has been dispatched:
+    /// those commands share the service's FIFO command channel with this seek, so
+    /// they are processed before it.
     fn seek_to_auto_advance(&self) {
         self.playback_handle
             .seek(Duration::from_secs(4) + Duration::from_millis(800));
@@ -4958,14 +5006,7 @@ impl MultiWindowPlayback {
 
     /// Play `track_id` and wait for its Playing state.
     async fn play_and_wait(&mut self, track_id: &str) {
-        self.playback_handle.play(track_id.to_string());
-        let playing = wait_for_state_on(
-            &mut self.progress_rx,
-            |s| matches!(s, PlaybackState::Playing { track_info, .. } if track_info.track_id == track_id),
-            Duration::from_secs(20),
-        )
-        .await;
-        assert!(playing.is_some(), "track {track_id} reaches Playing");
+        play_and_wait_on(&self.playback_handle, &mut self.progress_rx, track_id).await;
     }
 }
 
@@ -5930,18 +5971,144 @@ async fn set_shuffle_re_derives_context_order_over_sparse_buffer() {
 // ============================================================================
 // Remote (cloud-path) variant: local files make the fill near-instant, so the
 // tests above never exercise a real ranged read. This imports the same
-// multi-window CUE album as remote-unpinned against an InMemoryCloudHome (in-memory,
-// range-read counting) and deletes the local originals, so every byte the fill
-// touches comes from an actual ranged cloud read — the fetch arbiter and window
-// fetches over the real remote path, not just the local-disk fast path.
-//
-// Not template-cloned: the cloud upload + encryption setup doesn't fit the
-// directory-clone scheme the local fixture uses (the InMemoryCloudHome's blob
-// store isn't a plain directory to copy), so this is a fresh multi-window
-// import per test. It's used by only the five tests below, and each import is
-// the full multi-window import cost that the local `MultiWindowPlayback` fixture
-// avoids by cloning a shared imported template — not a regression, just not free.
+// multi-window CUE album as remote-unpinned against an InMemoryCloudHome and
+// deletes the local originals, so every byte the fill touches comes from an
+// actual ranged cloud read — the fetch arbiter and window fetches over the real
+// remote path, not just the local-disk fast path.
 // ============================================================================
+
+/// The at-rest key the remote fixture encrypts under. Fixed, so the cipher each
+/// cloned test rebuilds decrypts the blob the template uploaded once.
+const REMOTE_FIXTURE_MASTER_KEY: [u8; 32] = [17u8; 32];
+
+/// The multi-window CUE album imported remote-unpinned and uploaded once, for
+/// every remote test to clone — the import (decode-verify + loudness over a
+/// ~30 MiB FLAC) and the encrypt-and-upload of that blob are the expensive
+/// half of this fixture, and neither depends on which test runs next.
+///
+/// The template owns the `InMemoryCloudHome` holding the encrypted blob. Its
+/// clones share one backing store ("separate devices reading the same cloud
+/// bucket"), so handing each test a clone gives it the same bucket with no
+/// re-upload.
+///
+/// Nothing but the SQLite store is cloned, because nothing but the SQLite store
+/// exists: the import original is deleted after the upload and a remote-unpinned
+/// blob keeps no local copy, so the audio lives *only* in the cloud home. A
+/// cloned test therefore has nothing on disk to resolve against and every read it
+/// makes must go through a real ranged cloud fetch — the property these tests
+/// exist to exercise.
+struct RemoteMultiWindowTemplate {
+    dir: TempDir,
+    cloud: coven::InMemoryCloudHome,
+    track_ids: Vec<String>,
+}
+
+static REMOTE_MULTI_WINDOW_TEMPLATE: std::sync::LazyLock<RemoteMultiWindowTemplate> =
+    std::sync::LazyLock::new(|| {
+        // A dedicated runtime, not a calling test's: the import and upload must
+        // finish and every task/connection they spawned must be torn down
+        // (dropping the runtime blocks until they are) before the template
+        // directory is safe to copy — coven opens SQLite in WAL mode, so a copy
+        // taken while a connection is still live could catch an unmerged -wal file.
+        let rt = tokio::runtime::Runtime::new()
+            .expect("build the remote multi-window template import's runtime");
+        let template = rt.block_on(async {
+            build_remote_multi_window_template()
+                .await
+                .expect("import and upload the remote multi-window template release")
+        });
+        drop(rt);
+        template
+    });
+
+async fn build_remote_multi_window_template(
+) -> Result<RemoteMultiWindowTemplate, Box<dyn std::error::Error>> {
+    tracing_init();
+    let temp_dir = TempDir::new()?;
+    let db_path = temp_dir.path().join("test.db");
+    let album_dir = temp_dir.path().join("album");
+    std::fs::create_dir_all(&album_dir)?;
+    let database = Database::new_test(
+        db_path.to_str().unwrap(),
+        std::sync::Arc::new(coven::SystemClock),
+        std::sync::Arc::new(coven::UuidProvider),
+    )
+    .await?;
+    let library_dir = StoreDir::new(temp_dir.path().to_path_buf());
+    let (config_handle, key_service) = test_config_and_keys(&library_dir);
+    let library_manager = LibraryManager::new(
+        database,
+        config_handle,
+        key_service,
+        std::sync::Arc::new(coven::SystemClock),
+        std::sync::Arc::new(coven::UuidProvider),
+        bae_core::diagnostics::Diagnostics::noop(),
+        tokio::runtime::Handle::current(),
+    );
+    let cloud = coven::InMemoryCloudHome::new();
+    library_manager
+        .connect_test_cloud_home(Arc::new(cloud.clone()), remote_fixture_cipher())
+        .await?;
+
+    let runtime_handle = tokio::runtime::Handle::current();
+    let release_id_key = seed_discogs_test_release(create_multi_window_cue_album());
+    generate_multi_window_cue_flac_files(&album_dir);
+
+    let import_ids = SequentialIdProvider::new("multi-window-remote-template");
+    let import_handle = start_test_import(runtime_handle.clone(), library_manager.clone());
+    let import_id = import_ids.new_id();
+    import_handle
+        .send_command(ImportCommand {
+            import_id: import_id.clone(),
+            candidate_key: "multi-window-remote-template".to_string(),
+            folder: album_dir.clone(),
+            selected_cover: None,
+            storage_mode: StorageMode::Remote,
+            pin: false,
+            identity_choice: IdentityChoice::Exact {
+                release_ref: MetadataRef::new(release_id_key, MetadataSource::Discogs),
+            },
+            user_edit: None,
+        })
+        .map_err(|e| -> Box<dyn std::error::Error> { e.into() })?;
+    let mut import_rx = import_handle.subscribe_import(import_id);
+    let (release_id, _album_id) = wait_for_import_complete(&mut import_rx).await;
+
+    // Run the upload so the encrypted blob lands in the cloud and the outbox
+    // clears — after this the track resolves cloud-only.
+    while library_manager.drain_uploads_for_test().await? > 0 {}
+
+    // Delete the import original so file resolution can't fall back to it. With
+    // the blob unpinned there is now no copy of the audio anywhere but the cloud
+    // home, which is what forces every read through a ranged cloud fetch.
+    std::fs::remove_dir_all(&album_dir)?;
+
+    let tracks = library_manager.get_tracks_for_release(&release_id).await?;
+    let track_ids: Vec<String> = tracks.iter().map(|t| t.id.clone()).collect();
+    assert_eq!(track_ids.len(), 3, "the CUE album imports 3 tracks");
+
+    Ok(RemoteMultiWindowTemplate {
+        dir: temp_dir,
+        cloud,
+        track_ids,
+    })
+}
+
+fn remote_fixture_cipher() -> bae_core::sync::CloudCipher {
+    bae_core::sync::CloudCipher::Encrypted(coven::EncryptionService::from_key(
+        REMOTE_FIXTURE_MASTER_KEY,
+    ))
+}
+
+/// Clone the remote template into a fresh `TempDir`, returning it with a handle
+/// on the shared cloud bucket and the template's track ids. Blocking (file I/O,
+/// and dereferencing the template runs its one-time import on its own runtime),
+/// so callers run it on a blocking thread. Mirrors `clone_multi_window_library`.
+fn clone_remote_multi_window_library() -> (TempDir, coven::InMemoryCloudHome, Vec<String>) {
+    let template = &*REMOTE_MULTI_WINDOW_TEMPLATE;
+    let fresh = clone_template_library(template.dir.path());
+    (fresh, template.cloud.clone(), template.track_ids.clone())
+}
 
 /// The multi-window CUE album imported remote-unpinned against a
 /// `InMemoryCloudHome`, with the local originals deleted so every read resolves
@@ -5955,20 +6122,24 @@ struct RemoteMultiWindowPlayback {
 }
 
 impl RemoteMultiWindowPlayback {
+    /// Build against a fresh clone of the shared remote template. `name` only
+    /// labels the clone in test output — the import and upload run once per
+    /// process, in `REMOTE_MULTI_WINDOW_TEMPLATE`.
     async fn new(name: &str) -> Result<Self, Box<dyn std::error::Error>> {
-        tracing_init();
-        let temp_dir = TempDir::new()?;
+        let (temp_dir, cloud, track_ids) =
+            tokio::task::spawn_blocking(clone_remote_multi_window_library).await?;
+        tracing::debug!("remote multi-window clone ready for {name}");
+
         let db_path = temp_dir.path().join("test.db");
-        let album_dir = temp_dir.path().join("album");
-        std::fs::create_dir_all(&album_dir)?;
         let database = Database::new_test(
-            db_path.to_str().unwrap(),
+            db_path.to_str().expect("db path is valid UTF-8"),
             std::sync::Arc::new(coven::SystemClock),
             std::sync::Arc::new(coven::UuidProvider),
         )
         .await?;
         let library_dir = StoreDir::new(temp_dir.path().to_path_buf());
         let (config_handle, key_service) = test_config_and_keys(&library_dir);
+        let runtime_handle = tokio::runtime::Handle::current();
         let library_manager = LibraryManager::new(
             database,
             config_handle,
@@ -5976,54 +6147,14 @@ impl RemoteMultiWindowPlayback {
             std::sync::Arc::new(coven::SystemClock),
             std::sync::Arc::new(coven::UuidProvider),
             bae_core::diagnostics::Diagnostics::noop(),
-            tokio::runtime::Handle::current(),
+            runtime_handle.clone(),
         );
-        let master_key = [17u8; 32];
-        let cloud = Arc::new(coven::InMemoryCloudHome::new());
+
+        // Reconnect the template's bucket: the cloned rows name the blob, but the
+        // live cloud home is an in-process object no directory copy can carry.
         library_manager
-            .connect_test_cloud_home(
-                cloud,
-                bae_core::sync::CloudCipher::Encrypted(coven::EncryptionService::from_key(
-                    master_key,
-                )),
-            )
+            .connect_test_cloud_home(Arc::new(cloud), remote_fixture_cipher())
             .await?;
-
-        let runtime_handle = tokio::runtime::Handle::current();
-        let discogs_release = create_multi_window_cue_album();
-        let release_id_key = seed_discogs_test_release(discogs_release);
-        generate_multi_window_cue_flac_files(&album_dir);
-
-        let import_ids = SequentialIdProvider::new(name);
-        let import_handle = start_test_import(runtime_handle.clone(), library_manager.clone());
-        let import_id = import_ids.new_id();
-        import_handle
-            .send_command(ImportCommand {
-                import_id: import_id.clone(),
-                candidate_key: name.to_string(),
-                folder: album_dir.clone(),
-                selected_cover: None,
-                storage_mode: StorageMode::Remote,
-                pin: false,
-                identity_choice: IdentityChoice::Exact {
-                    release_ref: MetadataRef::new(release_id_key, MetadataSource::Discogs),
-                },
-                user_edit: None,
-            })
-            .map_err(|e| -> Box<dyn std::error::Error> { e.into() })?;
-        let mut import_rx = import_handle.subscribe_import(import_id);
-        let (release_id, _album_id) = wait_for_import_complete(&mut import_rx).await;
-
-        // Run the upload so the encrypted blob lands in the cloud and the
-        // outbox clears — after this the track resolves cloud-only.
-        while library_manager.drain_uploads_for_test().await? > 0 {}
-
-        // Delete the import original so file resolution can't fall back to it.
-        std::fs::remove_dir_all(&album_dir)?;
-
-        let tracks = library_manager.get_tracks_for_release(&release_id).await?;
-        let track_ids: Vec<String> = tracks.iter().map(|t| t.id.clone()).collect();
-        assert_eq!(track_ids.len(), 3, "the CUE album imports 3 tracks");
 
         let (playback_handle, capture_stream_rx) =
             start_capture_service(library_manager, runtime_handle);
@@ -6039,14 +6170,7 @@ impl RemoteMultiWindowPlayback {
 
     /// Play `track_id` and wait for its Playing state.
     async fn play_and_wait(&mut self, track_id: &str) {
-        self.playback_handle.play(track_id.to_string());
-        let playing = wait_for_state_on(
-            &mut self.progress_rx,
-            |s| matches!(s, PlaybackState::Playing { track_info, .. } if track_info.track_id == track_id),
-            Duration::from_secs(20),
-        )
-        .await;
-        assert!(playing.is_some(), "track {track_id} reaches Playing");
+        play_and_wait_on(&self.playback_handle, &mut self.progress_rx, track_id).await;
     }
 }
 
