@@ -19,8 +19,7 @@ pub fn init_keyring(diagnostics: &Diagnostics) {
     // A target with no branch below installs no store, and then every credential
     // read fails at runtime with nothing to point at. That is exactly how iOS
     // shipped — the Apple branch was gated on `macos` alone. A new target now
-    // breaks the build instead of the app. (Linux is dev/CI only and has no OS
-    // keyring; its tests install a mock store via `install_test_keyring`.)
+    // breaks the build instead of the app.
     #[cfg(not(any(
         target_os = "macos",
         target_os = "ios",
@@ -29,6 +28,20 @@ pub fn init_keyring(diagnostics: &Diagnostics) {
         target_os = "linux",
     )))]
     compile_error!("init_keyring has no keyring-store branch for this target");
+
+    // Linux has no OS keyring, so no store installs and every credential read
+    // fails — the same outcome as a failed store creation elsewhere, reported
+    // the same way rather than passed over in silence. Tests never reach this;
+    // they install a mock store via `install_test_keyring`.
+    #[cfg(target_os = "linux")]
+    {
+        use tracing::error;
+        error!(
+            "Linux has no OS keyring store. No default store is installed, so every credential \
+             read will fail."
+        );
+        diagnostics.event(TelemetryEvent::KeyringInitFailed {});
+    }
 
     // iOS as well as macOS: apple-native-keyring-store is a dependency on both
     // (see Cargo.toml), and an iOS build with no branch here installs no store
