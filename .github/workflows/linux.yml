@@ -114,5 +114,10 @@ jobs:
         # import integration suite's metadata caches) serialize themselves
         # with #[serial]. The CPU test's probe sink pulls and discards at
         # real time with no audio device, so it runs here too.
+        #
+        # --release, matching scripts/check.sh: the CPU test measures the cost of
+        # real playback, which is the optimized build. An unoptimized decode is a
+        # different workload, so measuring it here and the optimized one locally
+        # would mean the gate never guards the code that ships.
         cargo test -p bae-core --features bae-core/test-utils -- --skip test_playback_cpu
-        cargo test -p bae-core --features bae-core/test-utils --test test_playback_cpu
+        cargo test -p bae-core --release --features bae-core/test-utils --test test_playback_cpu

@@ -12,10 +12,13 @@
 //! device. Real-time pacing matters: a full-speed decode is an order of
 //! magnitude cheaper and misses where the cost actually is.
 //!
-//! The metric is the realtime factor — CPU-*seconds* spent per second of audio
-//! played, i.e. the fraction of one core. Measuring CPU-time (via getrusage),
-//! not CPU-percent over a wall-clock window, is what keeps it stable on shared
-//! CI runners: a noisy neighbour steals wall-clock but not the work done.
+//! The metric is CPU-*seconds* spent per second of audio played, expressed as a
+//! multiple of what a bare decode of the same file costs on the same machine, in
+//! the same build, moments earlier. Measuring CPU-time (via getrusage) rather
+//! than CPU-percent over a wall-clock window is what keeps it stable on a shared
+//! CI runner: a noisy neighbour steals wall-clock but not work done. Dividing by
+//! the machine's own decode cost is what makes one threshold mean the same thing
+//! on a fast dev machine and a slow runner — see `MAX_DECODE_MULTIPLE`.
 //!
 //! Its own test binary so the process-wide getrusage reading isn't polluted by
 //! other crates' tests; `#[serial]` keeps the two cases from overlapping within
@@ -43,24 +46,67 @@ use tokio::time::timeout;
 /// buffer in an initial burst, which isn't representative of steady playback.
 const WARMUP: Duration = Duration::from_secs(2);
 
-/// Length of the steady-state measurement window. Long enough to average out
-/// per-tick jitter; short enough to keep the test quick. Both tracks are 30s,
-/// comfortably longer than WARMUP + WINDOW, so playback never ends mid-measure.
-const WINDOW: Duration = Duration::from_secs(4);
+/// Length of the steady-state measurement window. Playback is cheap (a fraction
+/// of a percent of a core), so the CPU sample this yields is small in absolute
+/// terms and a short window measures mostly jitter. Long enough that the sample
+/// is dominated by real work; short enough to keep the test quick. Both tracks
+/// are 30s, comfortably longer than WARMUP + WINDOW, so playback never ends
+/// mid-measure.
+const WINDOW: Duration = Duration::from_secs(8);
 
-/// Ceiling on the realtime factor — CPU-seconds spent per second of audio
-/// played, i.e. the fraction of one core steady-state playback uses.
+/// How much CPU the decode baseline must accumulate before it is taken as
+/// settled. The baseline divides the playback figure, so noise in it lands
+/// straight in the result — and a single decode of a short file is a few tens of
+/// milliseconds of CPU, small enough that scheduler and timer granularity
+/// dominate it (measured: a single-pass baseline swung ~20% run to run, and the
+/// ratio built on it swung 60%).
 ///
-/// Healthy FLAC/MP3 playback is a few percent of a core. The regression this
-/// guards against is a multiple-x jump (a re-decode, a per-buffer allocation, a
-/// resampler or tick regression) into tens of percent. The ceiling sits well
-/// above healthy-plus-runner-noise and well below that regression band, so it
-/// never flakes and still catches the jump.
+/// Decoding is not real-time bound, so the baseline simply decodes the file again
+/// until it has this much CPU to divide by. That self-calibrates: a slow machine
+/// reaches the target in fewer passes, a fast one in more, and both end up with a
+/// sample large enough to be stable. One second of accumulated CPU brought the
+/// baseline's run-to-run spread down to ~1% (FLAC) / ~5% (MP3), which moves the
+/// remaining ratio noise entirely into the numerator (the fixed real-time
+/// window), where it belongs.
+const BASELINE_MIN_CPU: Duration = Duration::from_millis(1000);
+
+/// Ceiling on how much CPU steady-state playback may spend per second of audio,
+/// as a multiple of what it costs *this machine* to simply decode that same
+/// second of audio.
 ///
-/// The absolute factor is hardware-dependent (a slower runner spends more CPU
-/// per audio-second); the regression *ratio* is not. Calibrated for the runner
-/// this test lands on — recalibrate if that runner changes.
-const MAX_REALTIME_FACTOR: f64 = 0.20;
+/// An absolute CPU figure cannot be one constant across hosts: decoding a second
+/// of audio costs whatever the host costs, so healthy playback measures several
+/// times cheaper on a fast dev machine than on a shared CI runner, and any single
+/// number is either vacuous on the fast host or flaky on the slow one. Both the
+/// numerator (playback) and the denominator (a bare decode of the same file,
+/// in-process, same build, moments earlier) scale with the host, so their ratio
+/// does not — that is what lets one number mean the same thing in both places.
+///
+/// What it measures is the work playback does *on top of* the decode it cannot
+/// avoid: the drain, the gain, the position ticks, the ring-buffer fill. A bare
+/// decode is 1x by definition, and healthy playback sits several times above that
+/// — most of the ratio is that per-buffer overhead. The regressions this catches
+/// are the ones that inflate that dominant term: a spin, a per-buffer allocation,
+/// a resampler, a tick fan-out. A spin sends it to 20x+; a doubling of the
+/// overhead term roughly doubles the ratio.
+///
+/// It does *not* sensitively catch a re-decode. Playback already pays one decode,
+/// so decoding twice adds only one more decode's worth to a numerator that is
+/// already several decodes wide — the ratio moves by about 1, inside the noise.
+/// The old absolute ceiling could not catch that either; nothing measuring a
+/// fraction-of-a-percent-of-a-core cost over a short window can resolve a delta
+/// that small. This guards the multiple-x jump, not a few-percent drift.
+///
+/// Calibrated, not guessed. Measured on release: idle, CUE/FLAC 2.8–5.1x and MP3
+/// 5.1–6.8x. Under CPU contention the numerator's system-time share gets noisy
+/// and the readings drift up — the worst across dozens of bursty-load runs was
+/// MP3 at ~10.1x, FLAC ~7.6x. That ~2x peak-to-median spread is the real floor on
+/// what this can resolve, and it is why the ceiling is loose: 15.0 clears the
+/// worst observed reading by ~1.5x so it never flakes, while still tripping on the
+/// 3x-and-up explosion a spin or an egregious per-buffer regression produces. It
+/// is far from the old 0.20 constant's 14–36x of dead headroom, but it is not a
+/// fine instrument — the measurement's own noise forbids that.
+const MAX_DECODE_MULTIPLE: f64 = 15.0;
 
 /// Run the `ffmpeg` command-line tool to generate a fixture, failing loudly
 /// with an actionable message if it is missing.
@@ -278,6 +324,10 @@ struct PlaybackTestFixture {
     playback_handle: bae_core::playback::PlaybackHandle,
     progress_rx: tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
     track_ids: Vec<String>,
+    /// The album's source audio file, kept so the test can decode it directly and
+    /// establish this machine's cost per second of audio — the baseline the
+    /// playback measurement is expressed against.
+    source_file: std::path::PathBuf,
     _temp_dir: TempDir,
 }
 
@@ -286,6 +336,7 @@ impl PlaybackTestFixture {
         discogs_release: DiscogsRelease,
         generate_files: impl FnOnce(&std::path::Path),
         expected_tracks: usize,
+        source_file: &str,
     ) -> Result<Self, Box<dyn std::error::Error>> {
         tracing_init();
         let temp_dir = TempDir::new()?;
@@ -369,6 +420,7 @@ impl PlaybackTestFixture {
             playback_handle,
             progress_rx,
             track_ids,
+            source_file: album_dir.join(source_file),
             _temp_dir: temp_dir,
         })
     }
@@ -419,6 +471,55 @@ async fn await_playing(fixture: &mut PlaybackTestFixture, within: Duration, labe
     }
 }
 
+/// This machine's cost to decode one second of this album's audio: CPU-seconds
+/// spent per audio-second in a bare `decode_audio` of the source file, with no
+/// playback pipeline around it.
+///
+/// The baseline the playback measurement is divided by. It moves with everything
+/// that makes the absolute playback figure unstable across hosts — core speed,
+/// memory bandwidth, the codec's own cost, the build profile — and with nothing
+/// in the playback path, which is what leaves the ratio measuring only playback's
+/// own overhead.
+///
+/// The file is read into memory before the CPU clock starts, so the I/O to fetch
+/// it is not charged to the decode.
+fn measure_decode_baseline_factor(fixture: &PlaybackTestFixture, label: &str) -> f64 {
+    let bytes = std::fs::read(&fixture.source_file).unwrap_or_else(|e| {
+        panic!(
+            "{label}: read the source file to measure the decode baseline ({}): {e}",
+            fixture.source_file.display()
+        )
+    });
+
+    let cpu_before = get_process_cpu_time();
+    let mut audio_seconds = 0.0f64;
+    let mut passes = 0u32;
+    let cpu_time = loop {
+        let decoded = bae_core::audio_codec::decode_audio(&bytes, None, None)
+            .unwrap_or_else(|e| panic!("{label}: decode the source file for the baseline: {e}"));
+        let frames = decoded.samples.len() as f64 / decoded.channels as f64;
+        audio_seconds += frames / decoded.sample_rate as f64;
+        passes += 1;
+
+        let elapsed = get_process_cpu_time().saturating_sub(cpu_before);
+        if elapsed >= BASELINE_MIN_CPU {
+            break elapsed;
+        }
+    };
+
+    assert!(
+        audio_seconds > 1.0,
+        "{label}: the decode baseline needs a meaningful span of audio, got {audio_seconds:.3}s"
+    );
+
+    let factor = cpu_time.as_secs_f64() / audio_seconds;
+    eprintln!(
+        "{label}: decode baseline {factor:.5} CPU-s per audio-s \
+         (cpu {cpu_time:?} to decode {audio_seconds:.1}s of audio over {passes} pass(es))"
+    );
+    factor
+}
+
 /// Play track one and return the steady-state realtime factor: CPU-seconds
 /// spent per second of audio played. Plays in real time, so the wall-clock
 /// measurement window equals the audio played.
@@ -465,13 +566,27 @@ async fn measure_playback_realtime_factor(fixture: &mut PlaybackTestFixture, lab
     factor
 }
 
-fn assert_playback_efficient(factor: f64, label: &str) {
+/// Measure the decode baseline, then steady-state playback, and assert playback
+/// costs no more than `MAX_DECODE_MULTIPLE` times the decode it is built on.
+///
+/// The baseline is taken first and on the same thread, so it cannot be charged
+/// with any of the playback pipeline's CPU (playback has not started yet).
+async fn assert_playback_efficient(fixture: &mut PlaybackTestFixture, label: &str) {
+    let decode_factor = measure_decode_baseline_factor(fixture, label);
+    let playback_factor = measure_playback_realtime_factor(fixture, label).await;
+
+    let multiple = playback_factor / decode_factor;
+    eprintln!(
+        "{label}: playback costs {multiple:.2}x a bare decode of the same audio \
+         (max {MAX_DECODE_MULTIPLE:.1}x)"
+    );
     assert!(
-        factor < MAX_REALTIME_FACTOR,
-        "{label}: steady-state playback is too expensive: realtime factor {factor:.4} \
-         (max {MAX_REALTIME_FACTOR:.2}) — playback uses {:.0}% of one core. Look for a \
-         re-decode, per-buffer allocation, or resampler/tick regression in the playback path.",
-        factor * 100.0
+        multiple < MAX_DECODE_MULTIPLE,
+        "{label}: steady-state playback is too expensive: it spends {multiple:.2}x the CPU a \
+         bare decode of the same audio costs on this machine (max {MAX_DECODE_MULTIPLE:.1}x). \
+         Playback {playback_factor:.4} CPU-s per audio-s against a {decode_factor:.5} decode \
+         baseline. Look for a re-decode, per-buffer allocation, or resampler/tick regression \
+         in the playback path."
     );
 }
 
@@ -479,24 +594,30 @@ fn assert_playback_efficient(factor: f64, label: &str) {
 #[tokio::test]
 #[serial]
 async fn test_playback_cpu_cue_flac() {
-    let mut fixture =
-        PlaybackTestFixture::new(create_cue_flac_test_album(), generate_cue_flac_files, 3)
-            .await
-            .expect("set up CUE/FLAC playback fixture");
+    let mut fixture = PlaybackTestFixture::new(
+        create_cue_flac_test_album(),
+        generate_cue_flac_files,
+        3,
+        "Test Album.flac",
+    )
+    .await
+    .expect("set up CUE/FLAC playback fixture");
 
-    let factor = measure_playback_realtime_factor(&mut fixture, "CUE/FLAC").await;
-    assert_playback_efficient(factor, "CUE/FLAC");
+    assert_playback_efficient(&mut fixture, "CUE/FLAC").await;
 }
 
 /// MP3 per-track steady-state playback stays cheap.
 #[tokio::test]
 #[serial]
 async fn test_playback_cpu_mp3() {
-    let mut fixture =
-        PlaybackTestFixture::new(create_mp3_test_album(), generate_mp3_track_files, 3)
-            .await
-            .expect("set up MP3 playback fixture");
+    let mut fixture = PlaybackTestFixture::new(
+        create_mp3_test_album(),
+        generate_mp3_track_files,
+        3,
+        "01 Track 1.mp3",
+    )
+    .await
+    .expect("set up MP3 playback fixture");
 
-    let factor = measure_playback_realtime_factor(&mut fixture, "MP3").await;
-    assert_playback_efficient(factor, "MP3");
+    assert_playback_efficient(&mut fixture, "MP3").await;
 }
