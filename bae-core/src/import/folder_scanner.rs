@@ -1056,7 +1056,7 @@ where
                 .to_string()
         };
 
-        info!("Found candidate leaf: {:?}", dir);
+        debug!("Found candidate leaf: {:?}", dir);
 
         let candidate_path = fs_root.join(dir);
         match categorize_files_from_tree(tree, dir, fs_root)? {
@@ -1102,7 +1102,7 @@ pub fn scan_for_candidates_with_callback<F>(
 where
     F: FnMut(ScanItem),
 {
-    info!("Scanning for candidates in: {:?}", root);
+    debug!("Scanning for candidates in: {:?}", root);
     // Every item from this scan belongs to the same watched folder (the scan
     // root) — the group it renders under in the candidate list.
     let watched_folder_path = root.to_string_lossy().into_owned();

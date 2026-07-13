@@ -7,7 +7,7 @@ use crate::import::folder_scanner::{
 use crate::import::types::{CueAnalyzedAudioFile, CueFlacAnalysis, TrackFile};
 use crate::import::ImportError;
 use std::sync::Arc;
-use tracing::{debug, info, warn};
+use tracing::{debug, warn};
 
 /// Map tracks to their source audio files from the scan's categorized output.
 /// The scan already detected CUE/FLAC pairs, parsed their sheets, and classified
@@ -21,7 +21,7 @@ pub(crate) fn map_tracks_to_files(
     tracks: Vec<DbTrack>,
     files: &CategorizedFiles,
 ) -> Result<Vec<TrackFile>, ImportError> {
-    info!("Mapping {} tracks using scan output", tracks.len());
+    debug!("Mapping {} tracks using scan output", tracks.len());
     match &files.audio {
         AudioContent::CueFlacPairs { pairs, .. } => map_tracks_to_cue_flacs(tracks, pairs),
         AudioContent::TrackFiles { tracks: files, .. } => {
@@ -65,7 +65,7 @@ fn map_tracks_to_cue_flacs(
         let slice: Vec<DbTrack> = remaining.drain(..*count).collect();
         track_files.extend(map_tracks_to_cue_flac(pair, slice)?);
     }
-    info!(
+    debug!(
         "Created {} CUE/FLAC mappings with validated metadata",
         track_files.len()
     );
@@ -258,7 +258,7 @@ fn map_tracks_to_individual_files(
             file_path: audio_file.path.clone(),
         });
     }
-    info!("Mapped {} tracks to source files", mappings.len());
+    debug!("Mapped {} tracks to source files", mappings.len());
     Ok(mappings)
 }
 

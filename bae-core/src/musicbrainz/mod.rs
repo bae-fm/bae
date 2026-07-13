@@ -14,7 +14,7 @@ use std::time::Duration;
 use crate::util::rate_limiter::RateLimiter;
 use crate::util::session_cache::SessionCache;
 use thiserror::Error;
-use tracing::{debug, info, warn};
+use tracing::{debug, warn};
 
 mod types;
 pub use types::*;
@@ -188,7 +188,7 @@ pub async fn lookup_by_discid(discid: &str) -> Result<Vec<MbReleaseResponse>, Mu
 }
 
 async fn lookup_by_discid_once(discid: &str) -> Result<Vec<MbReleaseResponse>, MusicBrainzError> {
-    info!("MusicBrainz: Looking up DiscID '{}'", discid);
+    debug!("MusicBrainz: Looking up DiscID '{}'", discid);
     let base_url = reqwest::Url::parse("https://musicbrainz.org/ws/2/discid/")
         .map_err(|e| MusicBrainzError::Other(format!("Failed to parse base URL: {}", e)))?;
     let url = base_url
@@ -219,7 +219,7 @@ async fn lookup_by_discid_once(discid: &str) -> Result<Vec<MbReleaseResponse>, M
 
     let releases = disc_response.releases;
 
-    info!(
+    debug!(
         "MusicBrainz found {} release(s) for DiscID {}",
         releases.len(),
         discid
@@ -251,7 +251,7 @@ async fn lookup_release_by_id_once(
         return Ok(hit);
     }
 
-    info!("MusicBrainz: Looking up release ID '{}'", release_id);
+    debug!("MusicBrainz: Looking up release ID '{}'", release_id);
     let url = format!(
         "https://musicbrainz.org/ws/2/release/{}?inc=recordings+artist-credits+release-groups+release-group-rels+url-rels+labels+media+recording-level-rels+work-level-rels+work-rels+artist-rels",
         release_id,
@@ -284,7 +284,7 @@ async fn lookup_release_by_id_once(
     );
 
     if let Some(resource) = &discogs_url {
-        info!("Found Discogs release URL: {}", resource);
+        debug!("Found Discogs release URL: {}", resource);
     }
 
     if discogs_url.is_none() {
@@ -319,7 +319,7 @@ fn release_group_discogs_url(
         Ok(rg_response) => {
             let url = first_discogs_release_url(&rg_response.relations);
             if let Some(resource) = &url {
-                info!("Found Discogs release URL on release-group: {}", resource);
+                debug!("Found Discogs release URL on release-group: {}", resource);
             }
             url
         }
@@ -434,11 +434,11 @@ pub async fn fetch_mb_xref(
 ) -> Option<(MbReleaseResponse, Vec<(String, String)>)> {
     let mb_release_id = match lookup_release_id_by_discogs_url(discogs_release_id).await {
         Ok(Some(id)) => {
-            info!("Found linked MB release: {}", id);
+            debug!("Found linked MB release: {}", id);
             id
         }
         Ok(None) => {
-            info!(
+            debug!(
                 "No MB release linked to Discogs release {}",
                 discogs_release_id
             );
@@ -566,8 +566,8 @@ async fn search_releases_with_params_once(
     params: &ReleaseSearchParams,
 ) -> Result<Vec<SearchRelease>, MusicBrainzError> {
     let query = params.build_query();
-    info!("MusicBrainz: Searching with params: {:?}", params);
-    info!("   Query: {}", query);
+    debug!("MusicBrainz: Searching with params: {:?}", params);
+    debug!("   Query: {}", query);
     let url = "https://musicbrainz.org/ws/2/release";
     debug!("MusicBrainz API request: {}?query={}&limit=25", url, query);
 
@@ -595,7 +595,7 @@ async fn search_releases_with_params_once(
 
     let releases = search_response.releases;
 
-    info!("Found {} release(s)", releases.len());
+    debug!("Found {} release(s)", releases.len());
     Ok(releases)
 }
 

@@ -2,7 +2,7 @@ use crate::db::{DbLibraryImage, LibraryImageType};
 use crate::discogs::DiscogsClient;
 use crate::import::MetadataSource;
 use crate::library::LibraryManager;
-use tracing::{debug, info, warn};
+use tracing::{debug, warn};
 
 /// Download an artist's primary image from Discogs and build the row describing
 /// those bytes; finalize writes the row and the blob atomically with the release
@@ -61,7 +61,7 @@ pub async fn fetch_artist_image(
         created_at: now,
     };
 
-    info!(
+    debug!(
         "Fetched artist image ({} bytes) for artist {artist_id}",
         bytes.len()
     );

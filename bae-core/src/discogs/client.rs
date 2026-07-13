@@ -424,7 +424,7 @@ impl DiscogsClient {
         &self,
         params: &DiscogsSearchParams,
     ) -> Result<Vec<DiscogsSearchResult>, DiscogsError> {
-        use tracing::{debug, info, warn};
+        use tracing::{debug, warn};
         let url = format!("{}/database/search", self.base_url);
         let mut query_params: Vec<(&str, &str)> = vec![("type", "release")];
         if let Some(ref artist) = params.artist {
@@ -445,7 +445,7 @@ impl DiscogsClient {
         if let Some(ref barcode) = params.barcode {
             query_params.push(("barcode", barcode));
         }
-        info!("Discogs API: GET {} with params: {:?}", url, params);
+        debug!("Discogs API: GET {} with params: {:?}", url, params);
         let search_response: SearchResponse = retry_with_backoff_if(
             DISCOGS_RETRY_ATTEMPTS,
             "Discogs search",
@@ -467,7 +467,7 @@ impl DiscogsClient {
             },
         )
         .await?;
-        info!(
+        debug!(
             "Discogs search returned {} total result(s)",
             search_response.results.len()
         );
@@ -485,7 +485,7 @@ impl DiscogsClient {
             .into_iter()
             .filter(|r| r.result_type == "release")
             .collect();
-        info!("  → {} release(s) after filtering", releases.len());
+        debug!("  → {} release(s) after filtering", releases.len());
         Ok(releases)
     }
     /// A release, parsed, plus the raw JSON the API returned.
@@ -630,7 +630,7 @@ pub async fn fetch_discogs_xref(
         }
     };
 
-    tracing::info!(
+    tracing::debug!(
         "Found Discogs release URL: {}, fetching release {}",
         discogs_url,
         id

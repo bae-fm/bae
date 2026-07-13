@@ -7,7 +7,7 @@ use std::num::NonZeroUsize;
 use std::sync::{Arc, Mutex, OnceLock};
 use std::time::Duration;
 use tokio::sync::{OnceCell, Semaphore};
-use tracing::{debug, info, warn};
+use tracing::{debug, warn};
 
 /// A remote cover art option from an external source.
 #[derive(Debug, Clone, PartialEq)]
@@ -505,7 +505,7 @@ pub(crate) async fn download_cover_art_bytes_with_backoff(
         return Ok(hit);
     }
 
-    info!("Downloading cover art from {}", cover_art_url);
+    debug!("Downloading cover art from {}", cover_art_url);
 
     let value =
         download_image_bytes_with_backoff(cover_art_url, "Cover art download", base_delay).await?;
@@ -589,7 +589,7 @@ async fn read_image_response(
         });
     }
 
-    info!("Downloaded cover art ({} bytes)", bytes.len());
+    debug!("Downloaded cover art ({} bytes)", bytes.len());
     Ok((bytes, content_type))
 }
 

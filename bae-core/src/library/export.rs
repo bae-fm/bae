@@ -4,7 +4,7 @@ use crate::util::content_type::ContentType;
 use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
-use tracing::{debug, info, warn};
+use tracing::{debug, warn};
 
 /// Render a single-track export's suggested filename stem (no extension) from a
 /// template and the track's tag data. The tokens are
@@ -422,7 +422,7 @@ impl ExportService {
         codec: crate::config::ExportPresetCodec,
     ) -> Result<(), String> {
         let track_id = plan.audio_meta.track.id.clone();
-        info!("Exporting track {} to {}", track_id, output_path.display());
+        debug!("Exporting track {} to {}", track_id, output_path.display());
 
         let cancel = Arc::new(AtomicBool::new(false));
         let _cancel_guard = CancelOnDrop(Arc::clone(&cancel));
@@ -480,7 +480,7 @@ impl ExportService {
         .await
         .map_err(|e| format!("encode task join error: {e}"))??;
 
-        info!(
+        debug!(
             "Successfully exported track {} ({} bytes)",
             track_id, encoded_len
         );
@@ -788,7 +788,7 @@ async fn load_track_audio(plan: &mut ExportTrackPlan) -> Result<DecodedPcm, Play
     .map_err(PlaybackError::task)?
     .map_err(PlaybackError::flac)?;
 
-    info!(
+    debug!(
         "Successfully decoded track {}: {} samples, {}Hz, {} channels",
         track_id,
         decoded.raw_samples().len(),
