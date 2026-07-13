@@ -194,14 +194,35 @@ where
     Option::deserialize(deserializer)
 }
 
+/// The config schema this build writes. A file carrying an older version is
+/// upgraded on read by [`migrate_to_current`]; a file carrying a newer one is
+/// refused, because this build cannot know what its fields mean.
+///
+/// **Adding a field to `ConfigYaml`: add it to [`Config::with_defaults`] too, and
+/// bump this.** `with_defaults` is the single place a field's default is stated —
+/// the migration fills an older file's missing keys straight from it, so there is
+/// no second table to keep in step.
+pub const CONFIG_VERSION: u32 = 1;
+
+/// A file written before versioning existed. Such a file has no `version` key,
+/// and is missing every field added since it was written.
+const UNVERSIONED: u32 = 0;
+
 /// YAML config file structure for non-secret settings (per-library).
 ///
-/// Every field except `device_id` is required: serialization always emits
-/// every key, so a missing key means the file predates that field (or is
-/// otherwise foreign/corrupt) — it fails the load loudly rather than
-/// silently taking an implicit value.
+/// Every field except `device_id` is required, with no `serde` defaults:
+/// serialization always emits every key, so at the *current* [`CONFIG_VERSION`] a
+/// missing key means the file is corrupt or foreign, and it fails the load loudly
+/// rather than silently taking an implicit value.
+///
+/// An *older* file legitimately lacks the fields added after it was written. That
+/// is not corruption, and it is not this type's problem: [`parse_config_yaml`]
+/// upgrades the file before it ever reaches this struct. So the strictness here
+/// keeps its meaning — it now only fires on files that really are broken.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ConfigYaml {
+    /// The schema this file was written with. See [`CONFIG_VERSION`].
+    pub version: u32,
     pub library_id: String,
     /// Human-readable name for this library
     pub library_name: String,
@@ -250,6 +271,8 @@ impl ConfigYaml {
     /// Convert to a runtime Config. The caller resolves device_id (auto-generating
     /// if missing from YAML) and provides the library_dir.
     fn into_config(self, device_id: String, library_dir: StoreDir) -> Config {
+        // `version` describes the file, not the running config: it is re-stamped
+        // from CONFIG_VERSION on every write, so it does not ride on `Config`.
         Config {
             inner: coven::Config {
                 store_id: self.library_id,
@@ -277,6 +300,7 @@ impl ConfigYaml {
 impl From<&Config> for ConfigYaml {
     fn from(config: &Config) -> Self {
         Self {
+            version: CONFIG_VERSION,
             library_id: config.store_id.clone(),
             library_name: config.store_name.clone(),
             device_id: Some(config.device_id.clone()),
@@ -385,8 +409,8 @@ impl Config {
         ids: &dyn coven::IdProvider,
     ) -> Result<Self, ConfigError> {
         let config_path = library_dir.config_path();
-        let yaml_config = Self::load_config_yaml(&config_path)?;
-        Self::config_from_yaml(yaml_config, library_dir, &config_path, ids)
+        let (yaml_config, migrated) = Self::load_config_yaml(&config_path)?;
+        Self::config_from_yaml(yaml_config, migrated, library_dir, &config_path, ids)
     }
 
     fn load_from_registered_library_dir(
@@ -395,33 +419,45 @@ impl Config {
         ids: &dyn coven::IdProvider,
     ) -> Result<Self, ConfigError> {
         let config_path = library_dir.config_path();
-        let yaml_config = load_registered_config_yaml(&library_dir, expected_library_id)?;
-        Self::config_from_yaml(yaml_config, library_dir, &config_path, ids)
+        let (yaml_config, migrated) =
+            load_registered_config_yaml(&library_dir, expected_library_id)?;
+        Self::config_from_yaml(yaml_config, migrated, library_dir, &config_path, ids)
     }
 
-    fn load_config_yaml(config_path: &std::path::Path) -> Result<ConfigYaml, ConfigError> {
+    /// Read config.yaml, upgrading an older schema in the process. The `bool` is
+    /// whether it was migrated; the caller writes a migrated config back.
+    fn load_config_yaml(config_path: &std::path::Path) -> Result<(ConfigYaml, bool), ConfigError> {
         let content = std::fs::read_to_string(config_path)?;
-        serde_yaml::from_str(&content).map_err(|e| ConfigError::Serialization(e.to_string()))
+        parse_config_yaml(&content)
     }
 
+    /// `migrated` is whether the file was upgraded from an older schema on the way
+    /// in. Either that or a freshly generated `device_id` means what is on disk no
+    /// longer matches what we hold, so it is written back — once, here, rather
+    /// than on every read.
     fn config_from_yaml(
         mut yaml_config: ConfigYaml,
+        migrated: bool,
         library_dir: StoreDir,
         config_path: &std::path::Path,
         ids: &dyn coven::IdProvider,
     ) -> Result<Self, ConfigError> {
+        let mut dirty = migrated;
         let device_id = match yaml_config.device_id.clone() {
             Some(id) => id,
             None => {
                 let id = ids.new_id();
                 info!("No device_id in config.yaml, generated: {}", id);
                 yaml_config.device_id = Some(id.clone());
-                let serialized = serde_yaml::to_string(&yaml_config)
-                    .map_err(|e| ConfigError::Serialization(e.to_string()))?;
-                write_atomic_io(config_path, serialized.as_bytes())?;
+                dirty = true;
                 id
             }
         };
+        if dirty {
+            let serialized = serde_yaml::to_string(&yaml_config)
+                .map_err(|e| ConfigError::Serialization(e.to_string()))?;
+            write_atomic_io(config_path, serialized.as_bytes())?;
+        }
         Ok(yaml_config.into_config(device_id, library_dir))
     }
 
@@ -631,8 +667,8 @@ fn registered_library_dir(bae_dir: &std::path::Path, library_id: &str) -> StoreD
 fn load_registered_config_yaml(
     library_dir: &StoreDir,
     expected_library_id: &str,
-) -> Result<ConfigYaml, ConfigError> {
-    let yaml_config = Config::load_config_yaml(&library_dir.config_path())?;
+) -> Result<(ConfigYaml, bool), ConfigError> {
+    let (yaml_config, migrated) = Config::load_config_yaml(&library_dir.config_path())?;
     if yaml_config.library_id != expected_library_id {
         return Err(ConfigError::Config(format!(
             "registered library directory {} contains library_id {}",
@@ -640,7 +676,7 @@ fn load_registered_config_yaml(
             yaml_config.library_id
         )));
     }
-    Ok(yaml_config)
+    Ok((yaml_config, migrated))
 }
 
 /// Read the active library UUID from `~/.bae/active-library`, if it exists.
@@ -736,9 +772,121 @@ fn read_config_yaml(path: &std::path::Path) -> Result<Option<ConfigYaml>, Config
     let Some(content) = read_optional_file(&config_path)? else {
         return Ok(None);
     };
-    let yaml =
-        serde_yaml::from_str(&content).map_err(|e| ConfigError::Serialization(e.to_string()))?;
+    // Discovery migrates in memory only: listing libraries must not write to disk.
+    // The upgrade is persisted when the library is actually opened.
+    let (yaml, _migrated) = parse_config_yaml(&content)?;
     Ok(Some(yaml))
+}
+
+/// The on-disk defaults an older config's missing keys are filled from — a
+/// freshly-defaulted config, serialized.
+///
+/// This is why there is no per-field default table: [`Config::with_defaults`]
+/// already states every default, so the migration reads them from there and
+/// cannot fall out of step with it.
+///
+/// Identity is deliberately *not* defaultable: `library_id` and `library_name`
+/// are stripped, so a file missing them still fails as corrupt instead of being
+/// handed an invented identity. `device_id` is stripped too — it has its own
+/// generate-and-write-back path in [`Config::config_from_yaml`].
+fn config_yaml_defaults() -> serde_yaml::Mapping {
+    let template = Config::with_defaults(
+        String::new(),
+        String::new(),
+        StoreDir::new(PathBuf::new()),
+        String::new(),
+    );
+    let value = serde_yaml::to_value(ConfigYaml::from(&template))
+        .expect("a default ConfigYaml always serializes");
+    let mut map = match value {
+        serde_yaml::Value::Mapping(map) => map,
+        other => panic!("ConfigYaml serializes to a mapping, got {other:?}"),
+    };
+    for identity in ["library_id", "library_name", "device_id"] {
+        map.remove(serde_yaml::Value::String(identity.to_string()));
+    }
+    map
+}
+
+/// Fill every key `map` lacks from the defaults, and stamp it at the current
+/// version. Returns the keys that were added, for the log line.
+fn migrate_to_current(map: &mut serde_yaml::Mapping) -> Vec<String> {
+    let mut added = Vec::new();
+    for (key, default) in config_yaml_defaults() {
+        if !map.contains_key(&key) {
+            if let serde_yaml::Value::String(name) = &key {
+                added.push(name.clone());
+            }
+            map.insert(key, default);
+        }
+    }
+    map.insert(
+        serde_yaml::Value::String("version".to_string()),
+        serde_yaml::Value::Number(CONFIG_VERSION.into()),
+    );
+    added
+}
+
+/// Parse a config.yaml, upgrading it from an older schema if that is what it is.
+///
+/// Returns the config and whether it was migrated — the caller persists a
+/// migrated config, so the upgrade happens once rather than on every read.
+///
+/// The three cases are kept apart on purpose:
+/// - **older** (`version` below current, or absent entirely): the fields added
+///   since are filled from [`config_yaml_defaults`] and the file is re-stamped.
+/// - **current**: parsed strictly. A key missing *here* is corruption, not age,
+///   and still fails loudly.
+/// - **newer**: refused. This build cannot know what a future field means, and
+///   guessing would silently drop whatever the newer bae stored.
+fn parse_config_yaml(content: &str) -> Result<(ConfigYaml, bool), ConfigError> {
+    let value: serde_yaml::Value =
+        serde_yaml::from_str(content).map_err(|e| ConfigError::Serialization(e.to_string()))?;
+    let mut map = match value {
+        serde_yaml::Value::Mapping(map) => map,
+        _ => {
+            return Err(ConfigError::Serialization(
+                "config.yaml is not a mapping".to_string(),
+            ))
+        }
+    };
+
+    let file_version = match map.get(serde_yaml::Value::String("version".to_string())) {
+        Some(serde_yaml::Value::Number(n)) => n
+            .as_u64()
+            .and_then(|v| u32::try_from(v).ok())
+            .ok_or_else(|| {
+                ConfigError::Serialization(format!("config.yaml has a nonsensical version: {n}"))
+            })?,
+        Some(other) => {
+            return Err(ConfigError::Serialization(format!(
+                "config.yaml `version` must be a number, found {other:?}"
+            )))
+        }
+        None => UNVERSIONED,
+    };
+
+    if file_version > CONFIG_VERSION {
+        return Err(ConfigError::Config(format!(
+            "config.yaml was written by a newer version of bae (config schema v{file_version}; \
+             this build reads v{CONFIG_VERSION}). Upgrade bae to open this library."
+        )));
+    }
+
+    let migrated = file_version < CONFIG_VERSION;
+    if migrated {
+        let added = migrate_to_current(&mut map);
+        info!(
+            "upgrading config.yaml from schema v{file_version} to v{CONFIG_VERSION}: \
+             filled {} field(s) with defaults [{}]",
+            added.len(),
+            added.join(", "),
+        );
+    }
+
+    let yaml = serde_yaml::from_value(serde_yaml::Value::Mapping(map))
+        .map_err(|e| ConfigError::Serialization(e.to_string()))?;
+    Ok((yaml, migrated))
 }
 
 fn read_optional_file(path: &std::path::Path) -> Result<Option<String>, ConfigError> {
@@ -846,9 +994,11 @@ mod tests {
         );
     }
 
-    /// Every bae-local field except `device_id` is serialized unconditionally,
-    /// so a missing key can only mean a stale or foreign file — it fails the
-    /// load rather than silently taking a default.
+    /// Every bae-local field except `device_id` is serialized unconditionally, so
+    /// at the current `CONFIG_VERSION` a missing key means a corrupt or foreign
+    /// file — the struct still refuses it rather than taking an implicit default.
+    /// An *older* file is a different thing entirely and is upgraded before it
+    /// reaches here (see the migration tests below).
     #[test]
     fn config_yaml_requires_every_bae_field() {
         for key in [
@@ -869,6 +1019,186 @@ mod tests {
                 "ConfigYaml should fail without {key}"
             );
         }
+    }
+
+    // ── Config schema migration ──────────────────────────────────────────────
+    //
+    // The bug these pin: a config.yaml written before a field existed used to
+    // fail the load, and `discover_all_library_paths` then swallowed the error —
+    // so the library silently vanished from the picker.
+
+    /// A config.yaml as an older bae wrote it: no `version` key, and missing a
+    /// field a newer build requires. `set` overrides a value the user had chosen,
+    /// so we can prove the migration preserves it.
+    fn unversioned_yaml_without(missing: &str, set: &[(&str, serde_yaml::Value)]) -> String {
+        let mut value = full_config_yaml_value();
+        let map = value.as_mapping_mut().unwrap();
+        map.remove(serde_yaml::Value::String("version".to_string()));
+        map.remove(serde_yaml::Value::String(missing.to_string()))
+            .unwrap_or_else(|| panic!("{missing} not in serialized config"));
+        for (key, v) in set {
+            map.insert(serde_yaml::Value::String(key.to_string()), v.clone());
+        }
+        serde_yaml::to_string(&value).unwrap()
+    }
+
+    /// The regression: an old config loads instead of failing, gains the default
+    /// for the field it never had, and keeps every value the user actually set.
+    #[test]
+    fn an_older_config_migrates_instead_of_failing() {
+        let yaml = unversioned_yaml_without(
+            "verify_decode_on_import",
+            &[
+                ("pause_between_sides", serde_yaml::Value::Bool(true)),
+                (
+                    "library_name",
+                    serde_yaml::Value::String("My Music".to_string()),
+                ),
+            ],
+        );
+
+        let (config, migrated) = parse_config_yaml(&yaml).expect("an older config still loads");
+
+        assert!(migrated, "it should be reported as migrated");
+        assert_eq!(config.version, CONFIG_VERSION);
+        // The field the old file never had takes the documented default.
+        assert!(config.verify_decode_on_import);
+        // Everything the user had set survives.
+        assert!(config.pause_between_sides);
+        assert_eq!(config.library_name, "My Music");
+        assert_eq!(config.library_id, "abc-123");
+    }
+
+    /// `Config::with_defaults` is the single source of a field's default, so the
+    /// migration must cover *every* field from it — including the next one added.
+    #[test]
+    fn migration_fills_any_field_an_older_config_lacks() {
+        for key in [
+            "discogs",
+            "encryption_key_stored",
+            "encryption_key_fingerprint",
+            "replay_gain_mode",
+            "export_location",
+            "export_filename_template",
+            "export_presets",
+            "default_track_export_selection",
+            "default_release_export_selection",
+            "pause_between_sides",
+            "verify_decode_on_import",
+            "mcp",
+        ] {
+            let yaml = unversioned_yaml_without(key, &[]);
+            let (config, migrated) = parse_config_yaml(&yaml)
+                .unwrap_or_else(|e| panic!("an older config missing `{key}` should migrate: {e}"));
+            assert!(migrated, "missing `{key}` should migrate");
+            assert_eq!(config.version, CONFIG_VERSION);
+        }
+    }
+
+    /// Identity is never invented: a config with no `library_id` is corrupt, not
+    /// old, and must not be handed a default one.
+    #[test]
+    fn migration_never_defaults_the_library_identity() {
+        let yaml = unversioned_yaml_without("library_id", &[]);
+        assert!(
+            parse_config_yaml(&yaml).is_err(),
+            "a config without library_id must fail, not be given an invented one"
+        );
+    }
+
+    /// Strictness is retained where it means something: at the current version a
+    /// missing key is corruption, and is not quietly filled in.
+    #[test]
+    fn a_current_version_config_missing_a_field_still_fails() {
+        let mut value = full_config_yaml_value();
+        let map = value.as_mapping_mut().unwrap();
+        // Keep `version` — this file claims to be current.
+        map.remove(serde_yaml::Value::String(
+            "verify_decode_on_import".to_string(),
+        ))
+        .unwrap();
+        let yaml = serde_yaml::to_string(&value).unwrap();
+
+        assert!(
+            parse_config_yaml(&yaml).is_err(),
+            "a corrupt current-version config must still fail loudly"
+        );
+    }
+
+    /// A config from a future bae is refused rather than guessed at.
+    #[test]
+    fn a_newer_config_is_refused() {
+        let mut value = full_config_yaml_value();
+        value.as_mapping_mut().unwrap().insert(
+            serde_yaml::Value::String("version".to_string()),
+            serde_yaml::Value::Number((CONFIG_VERSION + 1).into()),
+        );
+        let yaml = serde_yaml::to_string(&value).unwrap();
+
+        let err = parse_config_yaml(&yaml).expect_err("a newer config must be refused");
+        assert!(
+            err.to_string().contains("newer version of bae"),
+            "the error should say why: {err}"
+        );
+    }
+
+    /// A config the current build already understands is left alone.
+    #[test]
+    fn a_current_config_is_not_migrated() {
+        let yaml = serde_yaml::to_string(&full_config_yaml_value()).unwrap();
+        let (_, migrated) = parse_config_yaml(&yaml).expect("a current config loads");
+        assert!(!migrated, "a current config needs no rewrite");
+    }
+
+    /// THE regression. A library whose config.yaml predates a required field used
+    /// to vanish from the picker: the load failed (correctly) and discovery then
+    /// swallowed the error and dropped the row. It must stay listed, and be
+    /// openable.
+    #[test]
+    #[serial]
+    fn an_older_library_stays_in_the_picker() {
+        let tmp = TempDir::new().unwrap();
+        let bae_dir = tmp.path();
+        let library_dir = bae_dir.join("libraries").join("lib-old");
+        std::fs::create_dir_all(&library_dir).unwrap();
+
+        // Write a config as an older bae would have: no `version`, and without a
+        // field this build requires. The user had set a name and a preference.
+        let yaml = unversioned_yaml_without(
+            "verify_decode_on_import",
+            &[
+                (
+                    "library_id",
+                    serde_yaml::Value::String("lib-old".to_string()),
+                ),
+                (
+                    "library_name",
+                    serde_yaml::Value::String("Old Library".to_string()),
+                ),
+                ("pause_between_sides", serde_yaml::Value::Bool(true)),
+            ],
+        );
+        std::fs::write(library_dir.join("config.yaml"), &yaml).unwrap();
+
+        let libraries = discover_libraries_from_bae_dir(bae_dir).unwrap();
+
+        assert_eq!(libraries.len(), 1, "the old library must still be listed");
+        assert_eq!(libraries[0].id, "lib-old");
+        assert_eq!(libraries[0].name, "Old Library");
+
+        // And it actually opens, keeping what the user had set and taking the
+        // default for the field it never had.
+        let config = Config::load_from_library_path(library_dir.clone(), &coven::UuidProvider)
+            .expect("the old library opens");
+        assert_eq!(config.store_name, "Old Library");
+        assert!(config.pause_between_sides);
+        assert!(config.verify_decode_on_import);
+
+        // The upgrade is persisted, so it happens once rather than on every read.
+        let on_disk = std::fs::read_to_string(library_dir.join("config.yaml")).unwrap();
+        let (reparsed, migrated_again) = parse_config_yaml(&on_disk).unwrap();
+        assert!(!migrated_again, "the upgrade should have been written back");
+        assert_eq!(reparsed.version, CONFIG_VERSION);
     }
 
     /// `device_id` is the one designed absence: missing on a fresh library, and
