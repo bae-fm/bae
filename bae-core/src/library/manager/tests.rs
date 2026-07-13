@@ -6057,3 +6057,45 @@ async fn a_failed_connect_still_records_the_key_it_put_in_the_keyring() {
         "the recorded key carries its fingerprint"
     );
 }
+
+/// Cancelling a release's upload has to leave the durable state telling the truth:
+/// the release is Local again, coven's make-Remote intent is gone, and its outbox
+/// carries no pending uploads. That outbox — not a status column — is what a restart
+/// reads to know an import is still uploading, and it is what the Processing pane
+/// renders. bae used to keep a second copy of that fact in an `imports.status`
+/// column that the cancel never touched (so it stayed `importing` forever) and that
+/// nothing ever read back; this pins the fact to the place that is actually correct.
+#[cfg(feature = "test-utils")]
+#[tokio::test]
+async fn cancelling_an_upload_leaves_no_in_flight_import_behind() {
+    let (manager, temp_dir) = setup_test_manager().await;
+    connect_test_cloud(&manager).await;
+    let release = insert_partially_uploaded_make_remote_release(&manager, temp_dir.path()).await;
+
+    manager.cancel_release_upload(&release.id).await.unwrap();
+
+    assert!(
+        !manager
+            .database
+            .has_make_remote_intent_for_release(&release.id)
+            .await
+            .unwrap(),
+        "the cancel clears coven's make-Remote intent"
+    );
+    assert!(
+        manager
+            .database
+            .get_pending_cloud_uploads()
+            .await
+            .unwrap()
+            .is_empty(),
+        "no upload is left queued, so nothing reads as still importing"
+    );
+    let after = manager
+        .database
+        .find_release_by_id(&release.id)
+        .await
+        .unwrap()
+        .expect("the release survives the cancel");
+    assert!(!after.remote, "the cancelled release stays Local");
+}

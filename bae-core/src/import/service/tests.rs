@@ -240,36 +240,24 @@ async fn failed_import_before_finalize_leaves_only_import_audit_row() {
         .await;
 
     let database = service.library_manager.database_for_test();
-    let (artist_count, artist_image_count, import_status) = database
+    let (artist_count, artist_image_count) = database
         .handle()
-        .sql({
-            let import_id = import_id.clone();
-            move |sql| {
-                let conn = sql.tx();
-                let artist_count = conn.query_row("SELECT COUNT(*) FROM artists", [], |row| {
+        .sql(move |sql| {
+            let conn = sql.tx();
+            let artist_count = conn.query_row("SELECT COUNT(*) FROM artists", [], |row| {
+                row.get::<_, i64>(0)
+            })?;
+            let artist_image_count =
+                conn.query_row("SELECT COUNT(*) FROM artist_images", [], |row| {
                     row.get::<_, i64>(0)
                 })?;
-                let artist_image_count =
-                    conn.query_row("SELECT COUNT(*) FROM artist_images", [], |row| {
-                        row.get::<_, i64>(0)
-                    })?;
-                let import_status: String = conn.query_row(
-                    "SELECT status FROM imports WHERE id = ?",
-                    [&import_id],
-                    |row| row.get(0),
-                )?;
-                Ok::<_, coven::CovenError>((artist_count, artist_image_count, import_status))
-            }
+            Ok::<_, coven::CovenError>((artist_count, artist_image_count))
         })
         .await
         .unwrap();
 
     assert_eq!(artist_count, 0);
     assert_eq!(artist_image_count, 0);
-    assert_eq!(
-        import_status,
-        crate::db::ImportOperationStatus::Failed.as_str()
-    );
 }
 
 #[cfg(unix)]

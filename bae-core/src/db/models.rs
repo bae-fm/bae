@@ -848,67 +848,6 @@ impl DbReleaseMetadata {
         }
     }
 }
-
-const IMPORT_OP_STATUS_IMPORTING: &str = "importing";
-const IMPORT_OP_STATUS_COMPLETE: &str = "complete";
-const IMPORT_OP_STATUS_FAILED: &str = "failed";
-/// Status of an `imports` row. All validation happens before the import record is
-/// created, so an import starts at Importing — there is no Preparing state.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ImportOperationStatus {
-    Importing,
-    Complete,
-    Failed,
-}
-impl ImportOperationStatus {
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            ImportOperationStatus::Importing => IMPORT_OP_STATUS_IMPORTING,
-            ImportOperationStatus::Complete => IMPORT_OP_STATUS_COMPLETE,
-            ImportOperationStatus::Failed => IMPORT_OP_STATUS_FAILED,
-        }
-    }
-}
-/// An import operation, from button click through completion. Created before any
-/// other DB record exists, so progress subscriptions have a stable ID during
-/// phase 0; `album_title` / `artist_name` are carried here for display until the
-/// release they name exists.
-#[derive(Debug, Clone)]
-pub struct DbImport {
-    pub id: String,
-    pub status: ImportOperationStatus,
-    /// Linked once phase 0 creates the release.
-    pub release_id: Option<String>,
-    pub album_title: String,
-    pub artist_name: String,
-    pub folder_path: String,
-    pub created_at: i64,
-    pub updated_at: i64,
-    /// Set only when status is Failed.
-    pub error_message: Option<String>,
-}
-impl DbImport {
-    pub fn new(
-        id: &str,
-        album_title: &str,
-        artist_name: &str,
-        folder_path: &str,
-        now: DateTime<Utc>,
-    ) -> Self {
-        let now = now.timestamp();
-        DbImport {
-            id: id.to_string(),
-            status: ImportOperationStatus::Importing,
-            release_id: None,
-            album_title: album_title.to_string(),
-            artist_name: artist_name.to_string(),
-            folder_path: folder_path.to_string(),
-            created_at: now,
-            updated_at: now,
-            error_message: None,
-        }
-    }
-}
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum LibraryImageType {
     Cover,

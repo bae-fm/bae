@@ -425,10 +425,6 @@ impl Database {
             for cleanup in &cleanups {
                 apply_delete_cleanup_on(conn, cleanup, &reg)?;
             }
-            conn.execute(
-                "UPDATE imports SET release_id = NULL WHERE release_id IN (SELECT id FROM releases WHERE album_id = ?)",
-                params![album_id],
-            )?;
             conn.execute("DELETE FROM albums WHERE id = ?", params![album_id])?;
             Ok(())
         })

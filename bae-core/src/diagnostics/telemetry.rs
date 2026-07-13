@@ -195,7 +195,6 @@ telemetry_value_enum! {
         BlobIdInvalid => "blob_id_invalid",
         EncryptionKeyMissing => "encryption_key_missing",
         EventBusLagged => "event_bus_lagged",
-        ImportErrorWriteFailed => "import_error_write_failed",
     }
 }
 

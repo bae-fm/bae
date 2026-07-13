@@ -729,26 +729,6 @@ mod row_mapper_error_tests {
         assert!(result.is_err());
     }
 
-    #[test]
-    fn row_to_import_rejects_unknown_status() {
-        // An unrecognized status must surface as an error rather than silently
-        // defaulting to `Importing`.
-        let conn = seeded_conn();
-        conn.execute(
-            "INSERT INTO imports \
-                 (id, status, album_title, artist_name, folder_path, created_at, updated_at) \
-             VALUES ('imp-1', 'bogus', 'Album', 'Artist', '/tmp/x', 0, 0)",
-            [],
-        )
-        .unwrap();
-        let result = conn.query_row(
-            "SELECT * FROM imports WHERE id = 'imp-1'",
-            [],
-            row_to_import,
-        );
-        assert!(result.is_err());
-    }
-
     /// A `cloud_outbox` shaped like the real `pending_outbox` SELECT, so the
     /// positional reads in `row_to_outbox_entry` line up.
     fn outbox_conn() -> Connection {
@@ -928,16 +908,6 @@ mod composer_mode_tests {
             .await
             .unwrap();
 
-        // The reimport lands its new release in a fresh album.
-        db.insert_import(&DbImport::new(
-            "import-new",
-            "Album Title New",
-            "Artist Name A",
-            tmp.path().to_str().unwrap(),
-            now,
-        ))
-        .await
-        .unwrap();
         let album_new = DbAlbum {
             id: "album-new".to_string(),
             title: "Album Title New".to_string(),
@@ -998,8 +968,6 @@ mod composer_mode_tests {
             None,
             &[],
             None,
-            "import-new",
-            ImportOperationStatus::Complete,
             &[],
             tmp.path().to_str().unwrap(),
             crate::config::HomeStorage::Opaque,
@@ -1201,8 +1169,6 @@ mod composer_mode_tests {
             None,
             &[],
             Some((&album.id, &release.id)),
-            "import-a",
-            ImportOperationStatus::Complete,
             &[],
             tmp.path().to_str().unwrap(),
             crate::config::HomeStorage::Opaque,
@@ -1265,16 +1231,6 @@ mod composer_mode_tests {
         let now = chrono::DateTime::parse_from_rfc3339("2026-01-01T00:00:00Z")
             .unwrap()
             .with_timezone(&chrono::Utc);
-
-        db.insert_import(&DbImport::new(
-            "import-a",
-            "Album Title A",
-            "Artist Name A",
-            tmp.path().to_str().unwrap(),
-            now,
-        ))
-        .await
-        .unwrap();
 
         let artist = DbArtist {
             id: "artist-a".to_string(),
@@ -1362,8 +1318,6 @@ mod composer_mode_tests {
             None,
             &[],
             Some((&album.id, &release.id)),
-            "import-a",
-            ImportOperationStatus::Complete,
             &[],
             tmp.path().to_str().unwrap(),
             crate::config::HomeStorage::Opaque,
@@ -1373,24 +1327,13 @@ mod composer_mode_tests {
         .unwrap();
         assert!(db.external_blob("file-a").await.unwrap().is_some());
 
-        db.fail_import_and_delete_release("import-a", "release-a", "remote upload failed")
+        db.fail_import_and_delete_release("release-a")
             .await
             .unwrap();
 
         assert!(db.find_release_by_id("release-a").await.unwrap().is_none());
         assert!(db.find_album_by_id("album-a").await.unwrap().is_none());
         assert!(db.external_blob("file-a").await.unwrap().is_none());
-        let import = db
-            .find_import_by_id("import-a")
-            .await
-            .unwrap()
-            .expect("import remains visible as failed");
-        assert_eq!(import.status, ImportOperationStatus::Failed);
-        assert!(import.release_id.is_none());
-        assert_eq!(
-            import.error_message.as_deref(),
-            Some("remote upload failed")
-        );
     }
 
     /// Reimport replacing one of several releases in an album: the prior release
@@ -1481,16 +1424,6 @@ mod composer_mode_tests {
             .unwrap()
             .with_timezone(&chrono::Utc);
 
-        db.insert_import(&DbImport::new(
-            "import-a",
-            "Album Title A",
-            "Artist Name A",
-            tmp.path().to_str().unwrap(),
-            now,
-        ))
-        .await
-        .unwrap();
-
         let artist = DbArtist {
             id: "artist-a".to_string(),
             name: "Artist Name A".to_string(),
@@ -1558,8 +1491,6 @@ mod composer_mode_tests {
             None,
             &[],
             Some((&album.id, &release.id)),
-            "import-a",
-            ImportOperationStatus::Complete,
             &[],
             tmp.path().to_str().unwrap(),
             crate::config::HomeStorage::Opaque,
@@ -1573,9 +1504,7 @@ mod composer_mode_tests {
         let sibling = DbRelease::new_test(&album.id, "rel-b");
         db.insert_release(&sibling).await.unwrap();
 
-        db.fail_import_and_delete_release("import-a", "rel-a", "remote upload failed")
-            .await
-            .unwrap();
+        db.fail_import_and_delete_release("rel-a").await.unwrap();
 
         let surviving = db
             .find_album_by_id("album-a")
@@ -1585,13 +1514,6 @@ mod composer_mode_tests {
         assert_eq!(surviving.primary_release_id, None);
         assert!(db.find_release_by_id("rel-a").await.unwrap().is_none());
         assert!(db.find_release_by_id("rel-b").await.unwrap().is_some());
-        let import = db
-            .find_import_by_id("import-a")
-            .await
-            .unwrap()
-            .expect("import remains visible as failed");
-        assert_eq!(import.status, ImportOperationStatus::Failed);
-        assert!(import.release_id.is_none());
     }
 
     /// A failed remote import's cover and artist-image blobs live only in coven's
@@ -1681,16 +1603,6 @@ mod composer_mode_tests {
         .await
         .unwrap();
 
-        db.insert_import(&DbImport::new(
-            "import-a",
-            "Album A",
-            "artist-exclusive",
-            tmp.path().to_str().unwrap(),
-            now,
-        ))
-        .await
-        .unwrap();
-
         let album_a = album("album-a", "artist-exclusive");
         let release_a = release("release-a", "album-a");
         let file_a = DbFile::new(
@@ -1755,8 +1667,6 @@ mod composer_mode_tests {
             Some((&cover, &bytes)),
             &[(&img_exclusive, &bytes), (&img_shared, &bytes)],
             Some((&album_a.id, &release_a.id)),
-            "import-a",
-            ImportOperationStatus::Complete,
             &[],
             tmp.path().to_str().unwrap(),
             crate::config::HomeStorage::Opaque,
@@ -1766,7 +1676,7 @@ mod composer_mode_tests {
         .unwrap();
 
         let orphaned = db
-            .fail_import_and_delete_release("import-a", "release-a", "remote upload failed")
+            .fail_import_and_delete_release("release-a")
             .await
             .unwrap();
 
@@ -1807,138 +1717,6 @@ mod composer_mode_tests {
             .await
             .unwrap()
             .is_none());
-    }
-
-    #[tokio::test]
-    async fn complete_import_for_release_marks_active_release_import_complete() {
-        let tmp = tempfile::TempDir::new().unwrap();
-        let path = tmp.path().join("test.db");
-        let db = Database::new_test(
-            path.to_str().unwrap(),
-            Arc::new(SystemClock),
-            std::sync::Arc::new(coven::UuidProvider),
-        )
-        .await
-        .unwrap();
-        let now = chrono::DateTime::parse_from_rfc3339("2026-01-01T00:00:00Z")
-            .unwrap()
-            .with_timezone(&chrono::Utc);
-
-        db.insert_import(&DbImport::new(
-            "import-a",
-            "Album Title A",
-            "Artist Name A",
-            tmp.path().to_str().unwrap(),
-            now,
-        ))
-        .await
-        .unwrap();
-
-        let artist = DbArtist {
-            id: "artist-a".to_string(),
-            name: "Artist Name A".to_string(),
-            sort_name: None,
-            discogs_artist_id: None,
-            musicbrainz_artist_id: None,
-            created_at: now,
-        };
-        db.insert_artist(&artist).await.unwrap();
-
-        let album = DbAlbum {
-            id: "album-a".to_string(),
-            title: "Album Title A".to_string(),
-            artist_id: artist.id.clone(),
-            year: Some(2026),
-            primary_release_id: None,
-            is_compilation: false,
-            created_at: now,
-        };
-        let release = DbRelease {
-            id: "release-a".to_string(),
-            album_id: album.id.clone(),
-            release_name: None,
-            pressing: Pressing {
-                year: Some(2026),
-                format: Some("FLAC".to_string()),
-                label: None,
-                catalog_number: None,
-                country: None,
-                barcode: None,
-            },
-            disc_id: None,
-            metadata_source: ReleaseMetadataSource::FileTags,
-            metadata_source_release_id: None,
-            remote: false,
-            source_folder_name: None,
-            content_hash: None,
-            album_loudness_lufs: None,
-            album_peak_linear: None,
-            created_at: now,
-        };
-        let track = DbTrack {
-            id: "track-a".to_string(),
-            release_id: release.id.clone(),
-            title: "Track Title A".to_string(),
-            side: 1,
-            track_number: Some(1),
-            duration_ms: Some(1000),
-            discogs_position: None,
-            created_at: now,
-        };
-        let file = DbFile::new(
-            &release.id,
-            "Track Title A.flac",
-            1024,
-            ContentType::Flac,
-            "file-a".to_string(),
-            now,
-            None,
-        );
-        let track_files = vec![crate::import::TrackFile::Standalone {
-            db_track: track,
-            file_path: tmp.path().join("Track Title A.flac"),
-        }];
-
-        db.finalize_import_atomic(
-            Some(&album),
-            &release,
-            &track_files,
-            &[],
-            &[],
-            &[],
-            &[],
-            &[],
-            &[],
-            &[],
-            &[],
-            &[],
-            &[],
-            &[],
-            &[file],
-            &[],
-            &[],
-            None,
-            &[],
-            Some((&album.id, &release.id)),
-            "import-a",
-            ImportOperationStatus::Importing,
-            &[],
-            tmp.path().to_str().unwrap(),
-            crate::config::HomeStorage::Opaque,
-            &[],
-        )
-        .await
-        .unwrap();
-
-        db.complete_import_for_release("release-a").await.unwrap();
-
-        let import = db
-            .find_import_by_id("import-a")
-            .await
-            .unwrap()
-            .expect("import remains linked to release");
-        assert_eq!(import.status, ImportOperationStatus::Complete);
-        assert_eq!(import.release_id.as_deref(), Some("release-a"));
     }
 
     #[tokio::test]

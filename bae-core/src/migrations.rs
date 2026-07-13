@@ -16,5 +16,10 @@ pub fn all() -> Vec<coven::Migration> {
             "image_blob_id",
             include_str!("../migrations/003_image_blob_id.sql"),
         ),
+        coven::Migration::sql(
+            4,
+            "drop_imports",
+            include_str!("../migrations/004_drop_imports.sql"),
+        ),
     ]
 }

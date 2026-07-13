@@ -491,8 +491,6 @@ impl Database {
         library_image: Option<(&DbLibraryImage, &[u8])>,
         artist_images: &[(&DbLibraryImage, &[u8])],
         primary_release_id: Option<(&str, &str)>, // (album_id, release_id)
-        import_id: &str,
-        import_status: ImportOperationStatus,
         identities: &[crate::import::ReleaseIdentity],
         // The in-place folder this import's files live in on this device. Every
         // import lands LOCAL, so each file is registered as a coven user-provided
@@ -544,15 +542,12 @@ impl Database {
             })
             .collect();
         let primary_release_id = primary_release_id.map(|(a, r)| (a.to_string(), r.to_string()));
-        let import_id = import_id.to_string();
-        let import_status = import_status.as_str().to_string();
         let identities = identities.to_vec();
         let local_path = local_path.to_string();
         let replacement_deletes = replacement_deletes.to_vec();
 
         let now_dt = self.inner.clock.now();
         let now = now_dt.to_rfc3339();
-        let now_ts = now_dt.timestamp();
         let ids = Arc::clone(&self.inner.ids);
         let replacement_outcomes = Arc::new(Mutex::new(Vec::new()));
         let replacement_outcomes_for_write = Arc::clone(&replacement_outcomes);
@@ -573,10 +568,6 @@ impl Database {
 
                     for replacement in &replacement_deletes {
                         apply_delete_cleanup_on(tx, &replacement.cleanup, &reg)?;
-                        tx.execute(
-                            "UPDATE imports SET release_id = NULL WHERE release_id = ?",
-                            params![replacement.release_id],
-                        )?;
                         tx.execute(
                             "DELETE FROM releases WHERE id = ?",
                             params![replacement.release_id],
@@ -758,10 +749,6 @@ impl Database {
                         )?;
                     }
 
-                    tx.execute(
-                        "UPDATE imports SET release_id = ?, status = ?, updated_at = ? WHERE id = ?",
-                        params![release.id, import_status, now_ts, import_id,],
-                    )?;
 
                     Ok(())
                 },
@@ -807,10 +794,6 @@ impl Database {
             let reg = sql.stamp();
             let conn = sql.tx();
             apply_delete_cleanup_on(conn, &cleanup, &reg)?;
-            conn.execute(
-                "UPDATE imports SET release_id = NULL WHERE release_id = ?",
-                params![release_id],
-            )?;
             conn.execute("DELETE FROM releases WHERE id = ?", params![release_id])?;
 
             let album_deleted =
@@ -838,14 +821,9 @@ impl Database {
     /// so the caller evicts them.
     pub async fn fail_import_and_delete_release(
         &self,
-        import_id: &str,
         release_id: &str,
-        error: &str,
     ) -> Result<Vec<OrphanedImageBlob>, DbError> {
-        let import_id = import_id.to_string();
         let release_id = release_id.to_string();
-        let error = error.to_string();
-        let now = self.inner.clock.now().timestamp();
         self.call_sql(move |sql| {
             let reg = sql.stamp();
             let conn = sql.tx();
@@ -934,12 +912,7 @@ impl Database {
                 .query_row(
                     "SELECT blob_id, cloud_path FROM covers WHERE id = ?",
                     params![release_id],
-                    |row| {
-                        Ok((
-                            row.get::<_, String>(0)?,
-                            row.get::<_, Option<String>>(1)?,
-                        ))
-                    },
+                    |row| Ok((row.get::<_, String>(0)?, row.get::<_, Option<String>>(1)?)),
                 )
                 .optional()?
             {
@@ -955,19 +928,6 @@ impl Database {
                  WHERE namespace = ?
                    AND blob_id IN (SELECT id FROM release_files WHERE release_id = ?)",
                 params![crate::sync::RELEASE_FILES_NAMESPACE, release_id],
-            )?;
-            conn.execute(
-                "UPDATE imports SET release_id = NULL WHERE release_id = ?",
-                params![release_id],
-            )?;
-            conn.execute(
-                "UPDATE imports SET status = ?, error_message = ?, updated_at = ?, release_id = NULL WHERE id = ?",
-                params![
-                    ImportOperationStatus::Failed.as_str(),
-                    error,
-                    now,
-                    import_id,
-                ],
             )?;
             conn.execute("DELETE FROM releases WHERE id = ?", params![release_id])?;
 
@@ -1015,12 +975,7 @@ impl Database {
                     .query_row(
                         "SELECT blob_id, cloud_path FROM artist_images WHERE id = ?",
                         params![artist_id],
-                        |row| {
-                            Ok((
-                                row.get::<_, String>(0)?,
-                                row.get::<_, Option<String>>(1)?,
-                            ))
-                        },
+                        |row| Ok((row.get::<_, String>(0)?, row.get::<_, Option<String>>(1)?)),
                     )
                     .optional()?;
                 let deleted = conn.execute(
@@ -1227,123 +1182,6 @@ impl Database {
             .optional()
             .map(|o| o.is_some())
             .map_err(DbError::from)
-        })
-        .await
-    }
-
-    pub async fn insert_import(&self, import: &DbImport) -> Result<(), DbError> {
-        let import = import.clone();
-        self.call(move |conn| {
-            conn.execute(
-                r#"
-                    INSERT INTO imports (
-                        id, status, release_id, album_title, artist_name,
-                        folder_path, created_at, updated_at, error_message
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    "#,
-                params![
-                    import.id,
-                    import.status.as_str(),
-                    import.release_id,
-                    import.album_title,
-                    import.artist_name,
-                    import.folder_path,
-                    import.created_at,
-                    import.updated_at,
-                    import.error_message,
-                ],
-            )
-            .map(|_| ())
-            .map_err(DbError::from)
-        })
-        .await
-    }
-    /// Find import by ID. Caller-provided ID — may not exist.
-    pub async fn find_import_by_id(&self, id: &str) -> Result<Option<DbImport>, DbError> {
-        let id = id.to_string();
-        self.read(move |conn| {
-            conn.query_row(
-                "SELECT * FROM imports WHERE id = ?",
-                params![id],
-                row_to_import,
-            )
-            .optional()
-            .map_err(DbError::from)
-        })
-        .await
-    }
-    /// Every import still in the Importing state.
-    pub async fn get_active_imports(&self) -> Result<Vec<DbImport>, DbError> {
-        self.read(move |conn| {
-            let mut stmt = conn.prepare(
-                "SELECT * FROM imports WHERE status = 'importing' ORDER BY created_at DESC",
-            )?;
-            let rows = stmt.query_map([], row_to_import)?;
-            rows.collect::<coven::rusqlite::Result<Vec<_>>>()
-                .map_err(DbError::from)
-        })
-        .await
-    }
-    pub async fn update_import_status(
-        &self,
-        id: &str,
-        status: ImportOperationStatus,
-    ) -> Result<(), DbError> {
-        let id = id.to_string();
-        let status = status.as_str().to_string();
-        let now = self.inner.clock.now().timestamp();
-        self.call(move |conn| {
-            conn.execute(
-                "UPDATE imports SET status = ?, updated_at = ? WHERE id = ?",
-                params![status, now, id],
-            )
-            .map(|_| ())
-            .map_err(DbError::from)
-        })
-        .await
-    }
-    /// Mark the active import linked to a release complete after its requested
-    /// remote transition has actually finished.
-    pub async fn complete_import_for_release(&self, release_id: &str) -> Result<(), DbError> {
-        let release_id = release_id.to_string();
-        let now = self.inner.clock.now().timestamp();
-        self.call(move |conn| {
-            conn.execute(
-                "UPDATE imports SET status = ?, updated_at = ? WHERE release_id = ? AND status = ?",
-                params![
-                    ImportOperationStatus::Complete.as_str(),
-                    now,
-                    release_id,
-                    ImportOperationStatus::Importing.as_str(),
-                ],
-            )
-            .map(|_| ())
-            .map_err(DbError::from)
-        })
-        .await
-    }
-    /// Record the error and set status to Failed.
-    pub async fn update_import_error(&self, id: &str, error: &str) -> Result<(), DbError> {
-        let (id, error) = (id.to_string(), error.to_string());
-        let now = self.inner.clock.now().timestamp();
-        self.call(move |conn| {
-            conn.execute(
-                "UPDATE imports SET status = ?, error_message = ?, updated_at = ? WHERE id = ?",
-                params![ImportOperationStatus::Failed.as_str(), error, now, id],
-            )
-            .map(|_| ())
-            .map_err(DbError::from)
-        })
-        .await
-    }
-    /// The UI dismisses a stuck import with this, so it doesn't reappear after a
-    /// restart.
-    pub async fn delete_import(&self, id: &str) -> Result<(), DbError> {
-        let id = id.to_string();
-        self.call(move |conn| {
-            conn.execute("DELETE FROM imports WHERE id = ?", params![id])
-                .map(|_| ())
-                .map_err(DbError::from)
         })
         .await
     }

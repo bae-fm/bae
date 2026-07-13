@@ -1577,15 +1577,6 @@ async fn remote_transition_failure_rolls_back_finalized_release() {
         .expect_err("remote transition without a sync provider fails");
     assert!(error.contains("cloud upload"), "unexpected error: {error}");
 
-    // The import record survives as a failed audit row, its release link cleared.
-    let import =
-        f.db.find_import_by_id(&import_id)
-            .await
-            .unwrap()
-            .expect("import record remains after rollback");
-    assert_eq!(import.status, bae_core::db::ImportOperationStatus::Failed);
-    assert!(import.release_id.is_none());
-
     // The rollback deleted the finalized remote release, its album, and the
     // artist row that finalize inserted for it; only the prior release, album,
     // and artist remain. The remote import's artist is referenced by nothing

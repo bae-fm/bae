@@ -9,7 +9,7 @@ use crate::library::LibraryManager;
 use {
     crate::db::{
         DbAlbum, DbAlbumArtist, DbFile, DbRelease, DbReleaseArtistRole, DbReleaseMetadata, DbTrack,
-        DbTrackArtist, DbTrackArtistRole, ImportOperationStatus,
+        DbTrackArtist, DbTrackArtistRole,
     },
     crate::import::folder_registry::ImportFolderRegistry,
     crate::import::folder_scanner::{
@@ -416,21 +416,6 @@ impl ImportService {
             // `#[from]` source messages, so `to_string()` carries the chain.
             let error = e.to_string();
 
-            // There's no release to mark failed: a failure before the atomic
-            // finalize left nothing in the DB. Only the import record exists.
-            if let Err(db_err) = self
-                .library_manager
-                .update_import_error(&import_id, &error)
-                .await
-            {
-                error!("Failed to update import error: {}", db_err);
-                self.library_manager
-                    .diagnostics()
-                    .event(TelemetryEvent::Anomaly {
-                        kind: crate::diagnostics::AnomalyKind::ImportErrorWriteFailed,
-                    });
-            }
-
             send_event(
                 &self.event_tx,
                 crate::import::handle::ImportEvent::ImportProgress {
@@ -533,12 +518,6 @@ impl ImportService {
             .reconcile_prepared_release(
                 parsed,
                 metadata_pairs,
-                &import_id,
-                folder
-                    .to_str()
-                    .ok_or_else(|| crate::import::ImportError::Internal {
-                        detail: format!("Non-UTF-8 folder path: {:?}", folder),
-                    })?,
                 &identity_choice,
                 user_edit,
                 &replacement_release_ids,
@@ -999,11 +978,6 @@ impl ImportService {
         );
 
         let remote_intent = matches!(storage_mode, StorageMode::Remote);
-        let finalized_import_status = if remote_intent {
-            ImportOperationStatus::Importing
-        } else {
-            ImportOperationStatus::Complete
-        };
         library_manager
             .finalize_import_atomic(
                 new_album,
@@ -1026,8 +1000,6 @@ impl ImportService {
                 library_image,
                 &artist_images,
                 cover_rel_id,
-                import_id,
-                finalized_import_status,
                 identities,
                 &local_path,
                 replacement_plans,
@@ -1048,13 +1020,13 @@ impl ImportService {
                     "Remote import of {} could not start its cloud upload: {e}",
                     db_release.id
                 );
-                if let Err(import_error) = library_manager
-                    .fail_import_and_delete_release(import_id, &db_release.id, &remote_error)
+                if let Err(delete_error) = library_manager
+                    .fail_import_and_delete_release(&db_release.id)
                     .await
                 {
                     return Err(crate::import::ImportError::Internal {
                         detail: format!(
-                            "{remote_error}; removing release and marking import failed failed: {import_error}"
+                            "{remote_error}; removing the release it had already finalized failed: {delete_error}"
                         ),
                     });
                 }

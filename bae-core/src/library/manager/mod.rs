@@ -38,8 +38,8 @@ use crate::config::CloudProvider;
 use crate::config::ConfigHandle;
 use crate::db::{
     Database, DbAlbum, DbArtist, DbAudioFormat, DbAudioSegment, DbAudioSegmentRole, DbFile,
-    DbImport, DbLibraryImage, DbRelease, DbTrack, DeleteCleanupPlan, ImportOperationStatus,
-    InFlightMakeRemoteBlobCleanup, LibraryImageType, Pressing,
+    DbLibraryImage, DbRelease, DbTrack, DeleteCleanupPlan, InFlightMakeRemoteBlobCleanup,
+    LibraryImageType, Pressing,
 };
 use crate::diagnostics::{Diagnostics, SyncOperation, TelemetryEvent};
 use crate::keys::BaeStoreKeysExt;

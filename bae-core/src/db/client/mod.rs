@@ -1422,33 +1422,6 @@ fn row_to_audio_segment(row: &Row) -> coven::rusqlite::Result<DbAudioSegment> {
     })
 }
 
-fn row_to_import(row: &Row) -> coven::rusqlite::Result<DbImport> {
-    let status_str: String = row.get("status")?;
-    let status = match status_str.as_str() {
-        "importing" => ImportOperationStatus::Importing,
-        "complete" => ImportOperationStatus::Complete,
-        "failed" => ImportOperationStatus::Failed,
-        other => {
-            return Err(column_conversion_error(
-                row,
-                "status",
-                format!("imports.status {other:?} is not a known import status"),
-            ));
-        }
-    };
-    Ok(DbImport {
-        id: row.get("id")?,
-        status,
-        release_id: row.get("release_id")?,
-        album_title: row.get("album_title")?,
-        artist_name: row.get("artist_name")?,
-        folder_path: row.get("folder_path")?,
-        created_at: row.get("created_at")?,
-        updated_at: row.get("updated_at")?,
-        error_message: row.get("error_message")?,
-    })
-}
-
 fn row_to_release_storage_summary(row: &Row) -> coven::rusqlite::Result<DbReleaseStorageSummary> {
     Ok(DbReleaseStorageSummary {
         release_id: row.get("release_id")?,

@@ -278,9 +278,6 @@ impl coven::BlobTransitionObserver for ReleaseUploadObserver {
     /// snapshot instead of clearing.
     async fn on_root_made_remote(&self, root_table: &str, root_id: &str) {
         if root_table == "releases" {
-            if let Err(e) = self.db().complete_import_for_release(root_id).await {
-                warn!("on_root_made_remote: marking import complete for {root_id}: {e}");
-            }
             self.emit_release_updated(root_id).await;
             self.sessions.clear_group(Some(root_id));
         } else {

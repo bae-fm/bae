@@ -6,7 +6,6 @@
 use std::collections::HashMap;
 
 use super::{apply_identity_choice, apply_user_edit_to_seed, ImportService, PreparedMetadata};
-use crate::db::DbImport;
 use crate::import::handle::{fetch_artist_images, remap_artist_links};
 use crate::import::ParsedWorkGraph;
 
@@ -41,8 +40,6 @@ impl ImportService {
         &self,
         parsed: crate::import::ParsedAlbum,
         resolved_metadata: Vec<(String, String)>,
-        import_id: &str,
-        source_path: &str,
         identity_choice: &crate::import::IdentityChoice,
         user_edit: Option<crate::import::ReleaseUserEdit>,
         replacement_release_ids: &[String],
@@ -105,15 +102,6 @@ impl ImportService {
         if let Some(album_id) = &existing_album_id {
             db_release.album_id = album_id.clone();
         }
-
-        let db_import = DbImport::new(
-            import_id,
-            &album_title,
-            &artist_name,
-            source_path,
-            library_manager.clock().now(),
-        );
-        library_manager.insert_import(&db_import).await?;
 
         let resolved = library_manager.resolve_artists_for_import(&artists).await?;
 

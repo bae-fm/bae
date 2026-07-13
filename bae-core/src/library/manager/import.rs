@@ -42,8 +42,6 @@ impl LibraryManager {
         library_image: Option<(&DbLibraryImage, &[u8])>,
         artist_images: &[(&DbLibraryImage, &[u8])],
         primary_release_id: Option<(&str, &str)>,
-        import_id: &str,
-        import_status: ImportOperationStatus,
         identities: &[crate::import::ReleaseIdentity],
         local_path: &str,
         replacement_plans: &[ImportReplacementPlan],
@@ -79,8 +77,6 @@ impl LibraryManager {
                 library_image,
                 artist_images,
                 primary_release_id,
-                import_id,
-                import_status,
                 identities,
                 local_path,
                 storage,
@@ -117,33 +113,15 @@ impl LibraryManager {
         Ok(self.database.is_source_folder_name_imported(name).await?)
     }
 
-    pub async fn insert_import(&self, import: &DbImport) -> Result<(), LibraryError> {
-        Ok(self.database.insert_import(import).await?)
-    }
-
-    pub async fn update_import_status(
-        &self,
-        id: &str,
-        status: ImportOperationStatus,
-    ) -> Result<(), LibraryError> {
-        Ok(self.database.update_import_status(id, status).await?)
-    }
-
-    pub async fn update_import_error(&self, id: &str, error: &str) -> Result<(), LibraryError> {
-        Ok(self.database.update_import_error(id, error).await?)
-    }
-
-    /// Mark an import failed and remove its finalized release in one DB
+    /// Remove the release a failed import had already finalized, in one DB
     /// operation.
     pub async fn fail_import_and_delete_release(
         &self,
-        import_id: &str,
         release_id: &str,
-        error: &str,
     ) -> Result<(), LibraryError> {
         let orphaned_images = self
             .database
-            .fail_import_and_delete_release(import_id, release_id, error)
+            .fail_import_and_delete_release(release_id)
             .await?;
         // The rollback dropped the cover/artist-image rows; evict their blobs
         // from coven's on-device store so the failed import leaves nothing.
@@ -153,10 +131,5 @@ impl LibraryManager {
             .collect();
         self.evict_delete_blobs(evict_blobs).await;
         Ok(())
-    }
-
-    /// The UI dismisses a stuck import with this.
-    pub async fn delete_import(&self, id: &str) -> Result<(), LibraryError> {
-        Ok(self.database.delete_import(id).await?)
     }
 }
