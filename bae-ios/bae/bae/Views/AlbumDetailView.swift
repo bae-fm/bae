@@ -392,8 +392,9 @@ private struct AlbumDetailHeader: View {
 }
 
 /// Offline control for the shown release: Download / progress + Cancel /
-/// Downloaded + Remove Download. State derives from `ReleaseDownloadStatus`;
-/// the queue snapshot and release invalidations keep it live.
+/// Downloaded + Remove Download. Core joins the pin state, the storage actions
+/// it offers, and the download queue into that state; the snapshot and the
+/// release invalidations keep it live.
 private struct ReleaseDownloadSection: View {
     let releaseId: String
     let detail: ReleaseDetail
@@ -409,10 +410,11 @@ private struct ReleaseDownloadSection: View {
     private var unpinError: String?
 
     var body: some View {
-        let status = ReleaseDownloadStatus(
+        let status = bridgeReleaseDownloadStatus(
             pinned: detail.summary.pinned,
             storageActions: detail.storageActions,
-            queueState: downloadStore.snapshot.state(forRelease: releaseId)
+            downloads: downloadStore.snapshot,
+            releaseId: releaseId
         )
         VStack(alignment: .leading, spacing: 6) {
             control(status)
@@ -426,7 +428,7 @@ private struct ReleaseDownloadSection: View {
     }
 
     @ViewBuilder
-    private func control(_ status: ReleaseDownloadStatus?) -> some View {
+    private func control(_ status: BridgeReleaseDownloadStatus?) -> some View {
         switch status {
         case nil:
             EmptyView()

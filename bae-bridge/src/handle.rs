@@ -1797,7 +1797,7 @@ impl crate::types::BridgeUploadActivity {
 }
 
 impl crate::types::BridgeDownloadTransferProgress {
-    fn from_core(p: bae_core::library::DownloadTransferProgress) -> Self {
+    pub(crate) fn from_core(p: bae_core::library::DownloadTransferProgress) -> Self {
         let bae_core::library::DownloadTransferProgress {
             bytes_done,
             bytes_total,

@@ -216,6 +216,16 @@ impl BridgeReleaseStorageAction {
         }
     }
 
+    fn into_core(self) -> bae_core::album_detail::ReleaseStorageAction {
+        use bae_core::album_detail::ReleaseStorageAction;
+        match self {
+            Self::MakeRemote => ReleaseStorageAction::MakeRemote,
+            Self::Pin => ReleaseStorageAction::Pin,
+            Self::Unpin => ReleaseStorageAction::Unpin,
+            Self::MakeLocal => ReleaseStorageAction::MakeLocal,
+        }
+    }
+
     fn transfer_loc_key(self) -> &'static str {
         match self {
             Self::Pin => "core.transfer.action.pin",
@@ -1820,6 +1830,114 @@ pub struct BridgeDownloadOp {
     /// Enqueue time as Unix epoch milliseconds, for the queued relative label.
     pub created_at: i64,
     pub state: BridgeDownloadState,
+}
+
+impl BridgeDownloadTransferProgress {
+    fn into_core(self) -> bae_core::library::DownloadTransferProgress {
+        let Self {
+            bytes_done,
+            bytes_total,
+            fraction,
+        } = self;
+        bae_core::library::DownloadTransferProgress {
+            bytes_done,
+            bytes_total,
+            fraction,
+        }
+    }
+}
+
+impl BridgeDownloadState {
+    fn into_core(self) -> bae_core::library::DownloadState {
+        use bae_core::library::DownloadState;
+        match self {
+            Self::Queued => DownloadState::Queued,
+            Self::Active { progress } => DownloadState::Active {
+                progress: progress.into_core(),
+            },
+            Self::Failed { error } => DownloadState::Failed { error },
+        }
+    }
+}
+
+impl BridgeDownloadOp {
+    fn into_core(self) -> bae_core::library::DownloadOp {
+        let Self {
+            release_id,
+            title,
+            file_count,
+            total_size,
+            created_at,
+            state,
+        } = self;
+        bae_core::library::release_queue::ReleaseQueueOp {
+            release_id,
+            title,
+            file_count,
+            total_size,
+            created_at,
+            // Downloads carry no operation-specific payload.
+            payload: (),
+            state: state.into_core(),
+        }
+    }
+}
+
+/// What the album-detail download control shows for one release. Mirror of
+/// bae-core's `ReleaseDownloadStatus`.
+#[derive(Debug, Clone, PartialEq, uniffi::Enum)]
+pub enum BridgeReleaseDownloadStatus {
+    Downloaded,
+    Queued,
+    Downloading {
+        progress: BridgeDownloadTransferProgress,
+    },
+    Failed {
+        error: String,
+    },
+    Available,
+}
+
+impl BridgeReleaseDownloadStatus {
+    fn from_core(status: bae_core::album_detail::ReleaseDownloadStatus) -> Self {
+        use bae_core::album_detail::ReleaseDownloadStatus;
+        match status {
+            ReleaseDownloadStatus::Downloaded => Self::Downloaded,
+            ReleaseDownloadStatus::Queued => Self::Queued,
+            ReleaseDownloadStatus::Downloading { progress } => Self::Downloading {
+                progress: BridgeDownloadTransferProgress::from_core(progress),
+            },
+            ReleaseDownloadStatus::Failed { error } => Self::Failed { error },
+            ReleaseDownloadStatus::Available => Self::Available,
+        }
+    }
+}
+
+/// The download control's state for one release, or `None` when there is no
+/// control to show (no cloud home, or a release whose audio is already local).
+///
+/// The whole join is core's — including finding this release's entry in the
+/// queue. A live entry outranks `pinned`, and `Available` means exactly "core
+/// offers Pin"; both are properties of core's own storage-action gate, so an app
+/// that re-derived either would drift from it.
+#[uniffi::export]
+pub fn bridge_release_download_status(
+    pinned: bool,
+    storage_actions: Vec<BridgeReleaseStorageAction>,
+    downloads: BridgeDownloadSnapshot,
+    release_id: String,
+) -> Option<BridgeReleaseDownloadStatus> {
+    let actions: Vec<_> = storage_actions
+        .into_iter()
+        .map(BridgeReleaseStorageAction::into_core)
+        .collect();
+    let ops: Vec<_> = downloads
+        .downloads
+        .into_iter()
+        .map(BridgeDownloadOp::into_core)
+        .collect();
+    bae_core::album_detail::release_download_status(pinned, &actions, &ops, &release_id)
+        .map(BridgeReleaseDownloadStatus::from_core)
 }
 
 /// Per-state counts for the download queue. Used per-release (the storage-row

@@ -144,6 +144,69 @@ pub fn available_storage_actions(
     }
 }
 
+/// What the album-detail download control shows for one release — the join of
+/// the release's pin state, the transitions core offers it, and its entry in the
+/// download queue.
+///
+/// Lives here, next to [`available_storage_actions`], because two of the rules it
+/// encodes are properties of *that* gate rather than of any one app's control:
+/// `Unpin` appears exactly when `pinned`, and `Pin` exactly when a remote release
+/// is unpinned and there is a cloud home to pin from.
+#[derive(Debug, Clone, PartialEq)]
+pub enum ReleaseDownloadStatus {
+    /// Kept offline, and no download in flight.
+    Downloaded,
+    Queued,
+    Downloading {
+        progress: crate::library::DownloadTransferProgress,
+    },
+    Failed {
+        error: String,
+    },
+    /// Not kept offline, but it could be.
+    Available,
+}
+
+/// The control's state for one release, or `None` when there is no control to
+/// show at all — no cloud home, or a release whose audio is already local.
+///
+/// **A live queue entry outranks `pinned`.** On pin success the release
+/// invalidation (which flips `pinned`) and the queue-drop snapshot arrive in
+/// either order, so honoring the queue entry keeps the control offering Cancel
+/// until the download has actually left the queue — instead of flickering to
+/// Downloaded and back.
+///
+/// **Available means exactly "core offers Pin".** Deriving it from `pinned` alone
+/// would re-answer a question [`available_storage_actions`] has already answered,
+/// and would disagree with it the moment its gate changes. `Unpin` is not
+/// consulted for the same reason in reverse: it appears exactly when `pinned`, so
+/// `pinned` already says it. `MakeLocal` / `MakeRemote` are desktop transitions
+/// this control has nothing to do with.
+pub fn release_download_status(
+    pinned: bool,
+    storage_actions: &[ReleaseStorageAction],
+    downloads: &[crate::library::DownloadOp],
+    release_id: &str,
+) -> Option<ReleaseDownloadStatus> {
+    use crate::library::DownloadState;
+
+    let queued = downloads.iter().find(|op| op.release_id == release_id);
+    match queued.map(|op| &op.state) {
+        Some(DownloadState::Queued) => Some(ReleaseDownloadStatus::Queued),
+        Some(DownloadState::Active { progress }) => Some(ReleaseDownloadStatus::Downloading {
+            progress: progress.clone(),
+        }),
+        Some(DownloadState::Failed { error }) => Some(ReleaseDownloadStatus::Failed {
+            error: error.clone(),
+        }),
+        None if pinned => Some(ReleaseDownloadStatus::Downloaded),
+        None if storage_actions.contains(&ReleaseStorageAction::Pin) => {
+            Some(ReleaseDownloadStatus::Available)
+        }
+        None => None,
+    }
+}
+
 /// Where a track sits in its release. The variant carries the domain decision —
 /// sided physical medium, multi-disc digital, or flat single-disc digital. Core
 /// renders `position_text` from this; the UI only resolves the header word.
@@ -313,6 +376,113 @@ mod tests {
         assert_eq!(
             available_storage_actions(Remote, false, true),
             vec![Pin, MakeLocal]
+        );
+    }
+
+    fn download(
+        release_id: &str,
+        state: crate::library::DownloadState,
+    ) -> crate::library::DownloadOp {
+        crate::library::DownloadOp {
+            release_id: release_id.to_string(),
+            title: "Album".to_string(),
+            file_count: 1,
+            total_size: 1,
+            created_at: 0,
+            payload: (),
+            state,
+        }
+    }
+
+    fn progress() -> crate::library::DownloadTransferProgress {
+        crate::library::DownloadTransferProgress {
+            bytes_done: 1,
+            bytes_total: 2,
+            fraction: 0.5,
+        }
+    }
+
+    /// The whole point of the join: on pin success the release invalidation and
+    /// the queue-drop snapshot arrive in either order, so while an entry is still
+    /// in the queue it decides the control — even once `pinned` has flipped.
+    #[test]
+    fn a_queue_entry_outranks_pinned() {
+        use crate::library::DownloadState;
+        let cases = [
+            (DownloadState::Queued, ReleaseDownloadStatus::Queued),
+            (
+                DownloadState::Active {
+                    progress: progress(),
+                },
+                ReleaseDownloadStatus::Downloading {
+                    progress: progress(),
+                },
+            ),
+            (
+                DownloadState::Failed {
+                    error: "read failed".to_string(),
+                },
+                ReleaseDownloadStatus::Failed {
+                    error: "read failed".to_string(),
+                },
+            ),
+        ];
+        for (state, expected) in cases {
+            for pinned in [false, true] {
+                assert_eq!(
+                    release_download_status(
+                        pinned,
+                        &[Unpin, MakeLocal],
+                        &[download("rel-1", state.clone())],
+                        "rel-1",
+                    ),
+                    Some(expected.clone()),
+                    "a {state:?} entry decides the control (pinned={pinned})"
+                );
+            }
+        }
+    }
+
+    /// Pinned with nothing in flight is the settled offline state.
+    #[test]
+    fn pinned_with_an_empty_queue_is_downloaded() {
+        assert_eq!(
+            release_download_status(true, &[Unpin, MakeLocal], &[], "rel-1"),
+            Some(ReleaseDownloadStatus::Downloaded),
+        );
+    }
+
+    /// Available is exactly "core offers Pin" — never re-derived from `pinned`.
+    #[test]
+    fn unpinned_with_pin_offered_is_available() {
+        assert_eq!(
+            release_download_status(false, &[Pin, MakeLocal], &[], "rel-1"),
+            Some(ReleaseDownloadStatus::Available),
+        );
+    }
+
+    /// No Pin on offer means there is nothing to show: no cloud home, or the
+    /// release's audio is already local.
+    #[test]
+    fn no_pin_on_offer_means_no_control() {
+        assert_eq!(release_download_status(false, &[], &[], "rel-1"), None);
+        assert_eq!(
+            release_download_status(false, &[MakeRemote], &[], "rel-1"),
+            None,
+        );
+    }
+
+    /// Another release's download says nothing about this one.
+    #[test]
+    fn a_queue_entry_for_another_release_does_not_leak() {
+        assert_eq!(
+            release_download_status(
+                false,
+                &[Pin, MakeLocal],
+                &[download("rel-2", crate::library::DownloadState::Queued)],
+                "rel-1",
+            ),
+            Some(ReleaseDownloadStatus::Available),
         );
     }
 }

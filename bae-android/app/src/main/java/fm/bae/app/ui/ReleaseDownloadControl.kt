@@ -39,13 +39,16 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeRelease
+import uniffi.bae_bridge.BridgeReleaseDownloadStatus
+import uniffi.bae_bridge.bridgeReleaseDownloadStatus
 
 private val logger = BaeLogger("bae.ReleaseDownloadControl")
 
 /**
  * Offline control for the shown release: Download / progress + Cancel /
- * Downloaded + Remove Download. State derives from [releaseDownloadStatus]; the
- * download snapshot and release invalidations keep it live. Actions never mutate
+ * Downloaded + Remove Download. Core joins the pin state, the storage actions it
+ * offers, and the download queue into that state; the snapshot and the release
+ * invalidations keep it live. Actions never mutate
  * optimistically — the next snapshot (or the release invalidation after a pin or
  * unpin) re-renders. Renders nothing when core offers no control for the release
  * (no cloud home, or a local release).
@@ -57,10 +60,11 @@ internal fun ReleaseDownloadControl(
 ) {
     val snapshot by session.downloadStore.snapshot.collectAsState()
     val status =
-        releaseDownloadStatus(
+        bridgeReleaseDownloadStatus(
             pinned = release.pinned,
             storageActions = release.storageActions,
-            queueState = snapshot.stateForRelease(release.id),
+            downloads = snapshot,
+            releaseId = release.id,
         ) ?: return
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -118,7 +122,7 @@ private suspend fun runUnpin(
 
 @Composable
 private fun DownloadControlBody(
-    status: ReleaseDownloadStatus,
+    status: BridgeReleaseDownloadStatus,
     unpinning: Boolean,
     onDownload: () -> Unit,
     onCancel: () -> Unit,
@@ -126,27 +130,27 @@ private fun DownloadControlBody(
     onRemove: () -> Unit,
 ) {
     when (status) {
-        ReleaseDownloadStatus.Available -> {
+        BridgeReleaseDownloadStatus.Available -> {
             DownloadActionButton(stringResource(R.string.download), Icons.Filled.Download, onDownload)
         }
 
-        ReleaseDownloadStatus.Queued -> {
+        BridgeReleaseDownloadStatus.Queued -> {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                 WaitingToDownloadText()
                 DownloadActionButton(stringResource(R.string.cancel), Icons.Filled.Close, onCancel)
             }
         }
 
-        is ReleaseDownloadStatus.Downloading -> {
+        is BridgeReleaseDownloadStatus.Downloading -> {
             DownloadProgressBytes(status.progress)
             DownloadActionButton(stringResource(R.string.cancel), Icons.Filled.Close, onCancel)
         }
 
-        is ReleaseDownloadStatus.Failed -> {
+        is BridgeReleaseDownloadStatus.Failed -> {
             DownloadFailedControl(status.error, onRetry, onCancel)
         }
 
-        ReleaseDownloadStatus.Downloaded -> {
+        BridgeReleaseDownloadStatus.Downloaded -> {
             DownloadedControl(unpinning, onRemove)
         }
     }
