@@ -66,6 +66,14 @@ mod artist;
 mod composer;
 mod config;
 mod coven_blobs;
+/// Desktop-only, under the same predicate as the rest of the export surface (the
+/// queue field below, and `library::export`). Exporting writes a directory tree
+/// next to the user's chosen folder — a hidden staging sibling, a marker file, a
+/// rename into place — which a sandboxed iOS/Android document URL does not offer,
+/// and the preset half of it needs the desktop-only `library::export` encoder.
+/// Compiling the producers out with the worker is what makes a mobile export call
+/// a compile error rather than a release that sits `Queued` with nothing to run it.
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod export;
 mod identity;
 mod image;
@@ -739,7 +747,9 @@ pub struct LibraryManager {
     /// In-memory queue for "Export…" (copy a release's files out to a folder). A
     /// single serial worker drains it one release at a time. Shared across
     /// manager clones; transient (empty after a restart). Export changes no
-    /// release state — it only reads and writes to a user directory.
+    /// release state — it only reads and writes to a user directory. Desktop-only:
+    /// see the `export` module above.
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     export_queue: Arc<crate::library::ExportQueue>,
     /// The upload observer coven reports blob transitions to. coven holds only a
     /// `Weak` to it (through `WeakUploadObserver`), so this strong `Arc` is its
@@ -850,6 +860,7 @@ impl LibraryManager {
             transfer_cancels: Arc::new(Mutex::new(HashMap::new())),
             transfer_actions: Arc::new(Mutex::new(HashMap::new())),
             download_queue: Arc::new(crate::library::DownloadQueue::new()),
+            #[cfg(not(any(target_os = "ios", target_os = "android")))]
             export_queue: Arc::new(crate::library::ExportQueue::new()),
             _upload_observer: Some(observer),
         };
@@ -904,6 +915,7 @@ impl LibraryManager {
             transfer_cancels: Arc::new(Mutex::new(HashMap::new())),
             transfer_actions: Arc::new(Mutex::new(HashMap::new())),
             download_queue: Arc::new(crate::library::DownloadQueue::new()),
+            #[cfg(not(any(target_os = "ios", target_os = "android")))]
             export_queue: Arc::new(crate::library::ExportQueue::new()),
             _upload_observer: None,
         };
@@ -1168,6 +1180,7 @@ impl LibraryManager {
     /// `ExportQueueChanged`. Called at every queue mutation (enqueue, worker
     /// pick-up, per-file progress, success, failure, cancel, retry,
     /// pause/resume) so the Storage Manager's Exporting pane stays current.
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub(crate) fn emit_export_queue_changed(&self) {
         self.emit(LibraryEvent::ExportQueueChanged {
             snapshot: self.export_snapshot(),
@@ -1177,6 +1190,7 @@ impl LibraryManager {
     /// The current export-queue snapshot — per-release state built from the
     /// in-memory queue. Seeds the Exporting pane before the first
     /// `ExportQueueChanged` event arrives.
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub fn export_snapshot(&self) -> crate::library::ExportSnapshot {
         crate::library::export_snapshot::build_export_snapshot(
             &self.export_queue.ops(),

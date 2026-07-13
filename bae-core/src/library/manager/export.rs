@@ -1,10 +1,8 @@
 //! Export domain operations for [`LibraryManager`].
 
 use super::*;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
 use tracing::info;
 
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
 const EXPORT_MARKER_FILE: &str = ".bae-export";
 
 impl LibraryManager {
@@ -103,7 +101,6 @@ impl LibraryManager {
     /// The serial export worker loop. Parks on the queue's `Notify` whenever the
     /// queue is paused or holds nothing queued; otherwise takes the next queued
     /// release and copies it out. Processes strictly one release at a time.
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub(super) async fn run_export_worker(&self) {
         loop {
             let Some(op) = self.export_queue.next_queued() else {
@@ -123,7 +120,6 @@ impl LibraryManager {
     /// `cancel_export` aborts the in-flight task via the registered handle and
     /// removes the queue entry; on its way out we check whether the entry is still
     /// present before recording a failure — a cancelled export isn't a failure.
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     async fn run_queued_export(&self, op: crate::library::ExportOp) {
         let release_id = op.release_id.clone();
         let request = op.payload.clone();
@@ -200,7 +196,6 @@ impl LibraryManager {
     /// partial output at the final path. Updates the queue's per-release percent (by
     /// file index) and re-emits the snapshot after each file. Fails loudly when the
     /// release has no source folder name.
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     async fn export_release_to_dir(
         &self,
         release_id: &str,
@@ -266,7 +261,6 @@ impl LibraryManager {
     /// parent is created first. No per-file temp is needed: the whole staging
     /// directory is the atomic unit, renamed into place only once every file is
     /// written.
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     async fn export_one_file(
         &self,
         file: &DbFile,
@@ -289,10 +283,7 @@ impl LibraryManager {
     /// Export a release verbatim to `target_dir`, bypassing the export
     /// queue. Production always goes through `enqueue_export`; only a test
     /// helper for exercising the copy directly.
-    #[cfg(all(
-        not(any(target_os = "ios", target_os = "android")),
-        any(test, feature = "test-utils")
-    ))]
+    #[cfg(any(test, feature = "test-utils"))]
     pub async fn export_release(
         &self,
         release_id: &str,
@@ -313,7 +304,6 @@ impl LibraryManager {
     /// track number, the release's track total, and whether the media is digital.
     /// Reads no audio and no cover, so both the filename-suggestion path (which
     /// must not download a whole file) and the full export plan share it.
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     async fn resolve_export_tags(
         &self,
         meta: &TrackAudioMeta,
@@ -366,7 +356,6 @@ impl LibraryManager {
     /// neighbour counts, and the raw audio-format aggregate for decoding.
     /// Cloud-only tracks download + decrypt here — export never requires a
     /// local copy.
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub async fn get_export_track_plan(
         &self,
         track_id: &str,
@@ -422,7 +411,6 @@ impl LibraryManager {
     /// suggests for `track_id`, rendered from the configured template and the
     /// track's tag data. Reads no audio and no cover — only the database — so
     /// seeding a save panel never touches a whole file or the cloud.
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub async fn export_track_suggested_name(
         &self,
         track_id: &str,
@@ -435,7 +423,6 @@ impl LibraryManager {
         ))
     }
 
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub async fn export_track_extension(
         &self,
         track_id: &str,
@@ -461,7 +448,6 @@ impl LibraryManager {
         }
     }
 
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub async fn export_track(
         &self,
         track_id: &str,
@@ -529,7 +515,6 @@ impl LibraryManager {
         }
     }
 
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     async fn export_release_tracks_to_dir(
         &self,
         release_id: &str,
@@ -589,7 +574,6 @@ impl LibraryManager {
         Ok(())
     }
 
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     fn set_export_progress(&self, release_id: &str, percent: u8) {
         if self.export_queue.contains(release_id) {
             self.export_queue.set_active_percent(release_id, percent);
@@ -597,7 +581,6 @@ impl LibraryManager {
         }
     }
 
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     async fn export_release_image_with_cue_to_dir(
         &self,
         release_id: &str,
@@ -644,7 +627,6 @@ impl LibraryManager {
     }
 }
 
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
 fn export_window_from_meta(meta: &TrackAudioMeta) -> super::ExportAudioWindow {
     super::ExportAudioWindow {
         segments: export_segment_windows(meta, true),
@@ -653,7 +635,6 @@ fn export_window_from_meta(meta: &TrackAudioMeta) -> super::ExportAudioWindow {
     }
 }
 
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
 fn export_window_for_track_file(
     meta: &TrackAudioMeta,
     next_meta: Option<&TrackAudioMeta>,
@@ -697,7 +678,6 @@ fn export_window_for_track_file(
     }
 }
 
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
 fn export_segment_windows(
     meta: &TrackAudioMeta,
     include_audio_pregap: bool,
@@ -711,7 +691,6 @@ fn export_segment_windows(
         .collect()
 }
 
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
 fn export_segment_windows_for_role(
     meta: &TrackAudioMeta,
     role: crate::db::DbAudioSegmentRole,
@@ -723,7 +702,6 @@ fn export_segment_windows_for_role(
         .collect()
 }
 
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
 fn export_segment_window(segment: &crate::db::DbAudioSegment) -> super::ExportAudioSegmentWindow {
     super::ExportAudioSegmentWindow {
         file_id: segment.file_id.clone(),
@@ -735,14 +713,12 @@ fn export_segment_window(segment: &crate::db::DbAudioSegment) -> super::ExportAu
     }
 }
 
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
 fn non_negative_samples(samples: Option<i64>) -> u64 {
     samples.map_or(0, |sample| {
         u64::try_from(sample).expect("audio_format pregap samples are non-negative")
     })
 }
 
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
 fn resolved_tags_from_plan(plan: &ExportTrackPlan) -> ResolvedExportTags {
     ResolvedExportTags {
         tags: ExportTags {
@@ -759,7 +735,6 @@ fn resolved_tags_from_plan(plan: &ExportTrackPlan) -> ResolvedExportTags {
     }
 }
 
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
 fn unique_export_path(
     dir: &std::path::Path,
     stem: &str,
@@ -792,7 +767,6 @@ fn unique_export_path(
 /// (`ParentDir`), and a `.` (`CurDir`). Empty, NUL, and backslash are rejected up
 /// front: a backslash is a separator on Windows and a literal character elsewhere,
 /// so it never belongs in one of these fragments.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
 fn validate_export_path(release_id: &str, label: &str, value: &str) -> Result<(), LibraryError> {
     use std::path::Component;
     let reject = |reason: &str| {
@@ -818,7 +792,6 @@ fn validate_export_path(release_id: &str, label: &str, value: &str) -> Result<()
     Ok(())
 }
 
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
 fn write_export_marker(
     staging_dir: &std::path::Path,
     release_id: &str,
@@ -827,7 +800,6 @@ fn write_export_marker(
     Ok(())
 }
 
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
 fn replace_export_dir(
     staging_dir: &std::path::Path,
     final_dir: &std::path::Path,
@@ -898,13 +870,11 @@ fn replace_export_dir(
 /// a read/write error (`?`), a panic, or the worker task being aborted on cancel
 /// (which drops this future) — drops the guard, which removes the directory. That
 /// is what keeps a failed or cancelled export from leaving partial output behind.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
 struct StagingDir {
     path: std::path::PathBuf,
     armed: bool,
 }
 
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
 impl StagingDir {
     /// Create the staging directory fresh. A leftover directory at this path (from
     /// a prior crash that skipped the drop cleanup) is removed first so the export
@@ -928,7 +898,6 @@ impl StagingDir {
     }
 }
 
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
 impl Drop for StagingDir {
     fn drop(&mut self) {
         if !self.armed {
