@@ -319,7 +319,9 @@ struct MainAppMenuCommands: Commands {
             Divider()
 
             Button("Cycle Repeat Mode") {
-                playback.setRepeatMode(playbackStore.repeatMode.next)
+                playback.setRepeatMode(
+                    bridgeNextRepeatMode(mode: playbackStore.repeatMode)
+                )
             }
             .keyboardShortcut("r", modifiers: .command)
 

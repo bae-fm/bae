@@ -949,7 +949,7 @@ public sealed partial class MainWindow : Window
     {
         if (CurrentHandleOrNull() != null)
         {
-            WithCurrentHandle(handle => NativeBae.SetRepeatMode(handle, _playback.RepeatMode.Next()));
+            WithCurrentHandle(handle => NativeBae.SetRepeatMode(handle, NativeBae.NextRepeatMode(_playback.RepeatMode)));
         }
     }
 

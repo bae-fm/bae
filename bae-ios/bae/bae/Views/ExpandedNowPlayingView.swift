@@ -126,7 +126,9 @@ struct ExpandedNowPlayingView: View {
     // no separate button to open it as a sheet.
     private var repeatControl: some View {
         Button {
-            playback.setRepeatMode(playbackStore.repeatMode.next)
+            playback.setRepeatMode(
+                bridgeNextRepeatMode(mode: playbackStore.repeatMode)
+            )
         } label: {
             // Dimmed when off; accented when on (repeat-one glyph for track).
             Image(

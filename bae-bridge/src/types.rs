@@ -616,6 +616,14 @@ impl BridgeRepeatMode {
     }
 }
 
+/// The mode a repeat button steps to next. Playback only accepts an absolute
+/// mode, so the button computes its target from the one it renders — but which
+/// mode follows which is core's answer, not each app's.
+#[uniffi::export]
+pub fn bridge_next_repeat_mode(mode: BridgeRepeatMode) -> BridgeRepeatMode {
+    BridgeRepeatMode::from_core(mode.into_core().next())
+}
+
 /// The target track's display metadata, carried by a loading state once core
 /// has resolved it. Mirror of `bae_core::playback::LoadingTrack` across the
 /// uniffi boundary.

@@ -48,6 +48,7 @@ import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeRepeatMode
+import uniffi.bae_bridge.bridgeNextRepeatMode
 
 /**
  * Full-screen now-playing player, presented as a [ModalBottomSheet] (swipe down
@@ -237,7 +238,7 @@ private fun ExpandedSecondaryControls(session: OpenLibrary) {
         // set_repeat_mode is non-throwing; core emits RepeatModeChanged which
         // updates the repeatMode flow. OFF is dimmed; CONTEXT and TRACK are accented
         // (TRACK uses the repeat-one glyph). Same logic as the compact bar.
-        IconButton(onClick = { session.appHandle.setRepeatMode(repeatMode.next()) }) {
+        IconButton(onClick = { session.appHandle.setRepeatMode(bridgeNextRepeatMode(repeatMode)) }) {
             Icon(
                 imageVector = if (repeatMode == BridgeRepeatMode.TRACK) Icons.Filled.RepeatOne else Icons.Filled.Repeat,
                 contentDescription = stringResource(R.string.repeat_mode),

@@ -137,7 +137,9 @@ struct NowPlayingBar: View {
             )
         }
         Button {
-            playback.setRepeatMode(playbackStore.repeatMode.next)
+            playback.setRepeatMode(
+                bridgeNextRepeatMode(mode: playbackStore.repeatMode)
+            )
         } label: {
             // Dimmed when off; accented when on (repeat-one glyph for track).
             Image(

@@ -776,6 +776,12 @@ internal static class NativeBae
 
     internal static void SetRepeatMode(AppHandle handle, BridgeRepeatMode mode) => handle.SetRepeatMode(mode);
 
+    /// <summary>The mode the repeat button steps to next. Playback only accepts an
+    /// absolute mode, so the button computes its target — but the cycle's order is
+    /// core's, not this app's.</summary>
+    internal static BridgeRepeatMode NextRepeatMode(BridgeRepeatMode mode) =>
+        BaeBridgeMethods.BridgeNextRepeatMode(mode);
+
     internal static void SetShuffle(AppHandle handle, bool on) => handle.SetShuffle(on);
 
     internal static void Next(AppHandle handle) => handle.NextTrack();

@@ -47,7 +47,9 @@ struct NowPlayingBarContainer: View {
             onVolumeChange: { playback.setVolume($0) },
             onToggleMute: { playback.setMuted(!playbackStore.isMuted) },
             onCycleRepeat: {
-                playback.setRepeatMode(playbackStore.repeatMode.next)
+                playback.setRepeatMode(
+                    bridgeNextRepeatMode(mode: playbackStore.repeatMode)
+                )
             },
             onDropToQueue: onDropToQueue,
             onNavigateToAlbum: {

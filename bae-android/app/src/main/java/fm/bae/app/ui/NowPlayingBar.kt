@@ -43,6 +43,7 @@ import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.coreString
 import uniffi.bae_bridge.BridgeRepeatMode
+import uniffi.bae_bridge.bridgeNextRepeatMode
 
 /**
  * Persistent now-playing bar. Reads transport state from the session's
@@ -202,7 +203,7 @@ private fun NowPlayingTransportButtons(
     // set_repeat_mode is non-throwing; core emits RepeatModeChanged which updates
     // the repeatMode flow. OFF is dimmed; CONTEXT and TRACK are accented (TRACK uses
     // the repeat-one glyph).
-    IconButton(onClick = { session.appHandle.setRepeatMode(repeatMode.next()) }) {
+    IconButton(onClick = { session.appHandle.setRepeatMode(bridgeNextRepeatMode(repeatMode)) }) {
         Icon(
             imageVector = if (repeatMode == BridgeRepeatMode.TRACK) Icons.Filled.RepeatOne else Icons.Filled.Repeat,
             contentDescription = stringResource(R.string.repeat_mode),
