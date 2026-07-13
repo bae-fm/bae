@@ -21,10 +21,10 @@ use bae_core::sync::CloudCipher;
 use bae_core::util::content_type::ContentType;
 use chrono::Utc;
 use coven::EncryptionService;
+use coven::InMemoryCloudHome;
 use coven::StoreDir;
 use std::path::Path;
 use std::sync::Arc;
-use support::MockCloudHome;
 use tempfile::TempDir;
 use uuid::Uuid;
 
@@ -67,13 +67,13 @@ async fn setup(tmp: &TempDir) -> (Database, LibraryManager) {
     (mgr.database_for_test(), mgr)
 }
 
-/// A manager with a `SyncManager` connected over an injected `MockCloudHome`,
+/// A manager with a `SyncManager` connected over an injected `InMemoryCloudHome`,
 /// sealing blobs under `enc`. After this, `get_cloud_home` is Some and
 /// `is_sync_ready` is true. Opaque home (the default at-rest mode), so blobs are
 /// keyed hashed and `release_files.cloud_path` stays NULL.
 async fn setup_with_cloud(tmp: &TempDir) -> (Database, LibraryManager) {
     let (db, mgr) = setup(tmp).await;
-    let cloud = Arc::new(MockCloudHome::new());
+    let cloud = Arc::new(InMemoryCloudHome::new());
     let enc = EncryptionService::from_key([9u8; 32]);
     mgr.connect_test_cloud_home(cloud, CloudCipher::Encrypted(enc))
         .await

@@ -28,9 +28,10 @@ use bae_core::sync::CloudCipher;
 use bae_core::util::content_type::ContentType;
 use chrono::Utc;
 use coven::EncryptionService;
+use coven::InMemoryCloudHome;
 use coven::StoreDir;
 use std::sync::Arc;
-use support::{collect_library_events, MockCloudHome};
+use support::collect_library_events;
 use tempfile::TempDir;
 use uuid::Uuid;
 
@@ -57,14 +58,14 @@ async fn remote_flag(mgr: &LibraryManager, release_id: &str) -> bool {
         .remote
 }
 
-/// Build a manager plus a `MockCloudHome`/encryption pair WITHOUT injecting them,
+/// Build a manager plus a `InMemoryCloudHome`/encryption pair WITHOUT injecting them,
 /// so a test can decide when the cloud home appears.
 async fn setup_manager(
     tmp: &TempDir,
 ) -> (
     Database,
     LibraryManager,
-    Arc<MockCloudHome>,
+    Arc<InMemoryCloudHome>,
     EncryptionService,
 ) {
     let library_dir = StoreDir::new(tmp.path());
@@ -85,16 +86,16 @@ async fn setup_manager(
         bae_core::diagnostics::Diagnostics::noop(),
         tokio::runtime::Handle::current(),
     );
-    let cloud = Arc::new(MockCloudHome::new());
+    let cloud = Arc::new(InMemoryCloudHome::new());
     let enc = EncryptionService::from_key([9u8; 32]);
     (db, mgr, cloud, enc)
 }
 
 /// Build a manager with a connected `SyncManager` over an injected
-/// `MockCloudHome`, sealing blobs under `enc`. After this, `has_cloud_home` is
+/// `InMemoryCloudHome`, sealing blobs under `enc`. After this, `has_cloud_home` is
 /// Some and `is_sync_ready` is true, so the manager's make-Remote gate is open
 /// and the upload drain routes through the connected home.
-async fn setup_with_cloud(tmp: &TempDir) -> (Database, LibraryManager, Arc<MockCloudHome>) {
+async fn setup_with_cloud(tmp: &TempDir) -> (Database, LibraryManager, Arc<InMemoryCloudHome>) {
     let (db, mgr, cloud, enc) = setup_manager(tmp).await;
     mgr.connect_test_cloud_home(cloud.clone(), CloudCipher::Encrypted(enc))
         .await

@@ -14,17 +14,17 @@ use bae_core::db::Database;
 use bae_core::import::{IdentityChoice, ImportCommand, StorageMode};
 use bae_core::library::LibraryManager;
 use coven::EncryptionService;
+use coven::InMemoryCloudHome;
 use coven::StoreDir;
 use std::fs;
 use std::path::Path;
 use std::sync::Arc;
-use support::MockCloudHome;
 use tempfile::TempDir;
 
 struct ExportFixture {
     mgr: LibraryManager,
     handle: bae_core::import::ImportServiceHandle,
-    cloud: Arc<MockCloudHome>,
+    cloud: Arc<InMemoryCloudHome>,
     _temp: TempDir,
 }
 
@@ -59,7 +59,7 @@ impl ExportFixture {
             bae_core::diagnostics::Diagnostics::noop(),
             tokio::runtime::Handle::current(),
         );
-        let cloud = Arc::new(MockCloudHome::new());
+        let cloud = Arc::new(InMemoryCloudHome::new());
         mgr.connect_test_cloud_home(
             cloud.clone(),
             bae_core::sync::CloudCipher::Encrypted(EncryptionService::from_key([7u8; 32])),

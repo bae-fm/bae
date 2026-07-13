@@ -835,7 +835,6 @@ dependencies = [
  "chrono",
  "coreaudio-sys",
  "coven",
- "coven-core",
  "cpal",
  "dirs",
  "discid",
@@ -916,10 +915,8 @@ dependencies = [
 name = "bae-test-support"
 version = "0.0.0-dev"
 dependencies = [
- "async-trait",
  "bae-core",
  "coven",
- "coven-core",
  "hex",
  "lofty",
  "tempfile",
@@ -1338,7 +1335,7 @@ dependencies = [
 [[package]]
 name = "coven"
 version = "1.0.0-rc.1"
-source = "git+https://github.com/bae-fm/coven?rev=bb0e3985cbf4d422c0978b41e21d40cc2af7e5c7#bb0e3985cbf4d422c0978b41e21d40cc2af7e5c7"
+source = "git+https://github.com/bae-fm/coven?rev=09f52f07e2ff3d106b5312407c01a8eeea352784#09f52f07e2ff3d106b5312407c01a8eeea352784"
 dependencies = [
  "android-native-keyring-store",
  "apple-native-keyring-store",
@@ -1381,7 +1378,7 @@ dependencies = [
 [[package]]
 name = "coven-core"
 version = "1.0.0-rc.1"
-source = "git+https://github.com/bae-fm/coven?rev=bb0e3985cbf4d422c0978b41e21d40cc2af7e5c7#bb0e3985cbf4d422c0978b41e21d40cc2af7e5c7"
+source = "git+https://github.com/bae-fm/coven?rev=09f52f07e2ff3d106b5312407c01a8eeea352784#09f52f07e2ff3d106b5312407c01a8eeea352784"
 dependencies = [
  "async-trait",
  "base64",

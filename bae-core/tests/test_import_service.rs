@@ -19,11 +19,12 @@ use bae_core::musicbrainz::{
 };
 use bae_core::sync::CloudCipher;
 use coven::EncryptionService;
+use coven::InMemoryCloudHome;
 use coven::StoreDir;
 use std::fs;
 use std::path::Path;
 use std::sync::Arc;
-use support::{seed_discogs_test_release, MockCloudHome};
+use support::seed_discogs_test_release;
 use tempfile::TempDir;
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
@@ -98,7 +99,7 @@ impl ImportFixture {
     async fn connect_cloud(&self) {
         self.library_manager
             .connect_test_cloud_home(
-                Arc::new(MockCloudHome::new()),
+                Arc::new(InMemoryCloudHome::new()),
                 CloudCipher::Encrypted(EncryptionService::from_key([7u8; 32])),
             )
             .await

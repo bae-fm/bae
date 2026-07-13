@@ -4524,7 +4524,7 @@ async fn test_preview_seek_while_paused_emits_position_update() {
 struct CloudOnlyPlaybackFixture {
     playback_handle: bae_core::playback::PlaybackHandle,
     progress_rx: tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
-    cloud: Arc<support::MockCloudHome>,
+    cloud: Arc<coven::InMemoryCloudHome>,
     track_ids: Vec<String>,
     _capture_stream_rx: CaptureStreamRx,
     _temp_dir: TempDir,
@@ -4558,7 +4558,7 @@ impl CloudOnlyPlaybackFixture {
             tokio::runtime::Handle::current(),
         );
         let master_key = [11u8; 32];
-        let cloud = Arc::new(support::MockCloudHome::new());
+        let cloud = Arc::new(coven::InMemoryCloudHome::new());
         library_manager
             .connect_test_cloud_home(
                 cloud.clone(),
@@ -5929,13 +5929,13 @@ async fn set_shuffle_re_derives_context_order_over_sparse_buffer() {
 // ============================================================================
 // Remote (cloud-path) variant: local files make the fill near-instant, so the
 // tests above never exercise a real ranged read. This imports the same
-// multi-window CUE album as remote-unpinned against a MockCloudHome (in-memory,
+// multi-window CUE album as remote-unpinned against an InMemoryCloudHome (in-memory,
 // range-read counting) and deletes the local originals, so every byte the fill
 // touches comes from an actual ranged cloud read — the fetch arbiter and window
 // fetches over the real remote path, not just the local-disk fast path.
 //
 // Not template-cloned: the cloud upload + encryption setup doesn't fit the
-// directory-clone scheme the local fixture uses (the MockCloudHome's blob
+// directory-clone scheme the local fixture uses (the InMemoryCloudHome's blob
 // store isn't a plain directory to copy), so this is a fresh multi-window
 // import per test. It's used by only the five tests below, and each import is
 // the full multi-window import cost that the local `MultiWindowPlayback` fixture
@@ -5943,7 +5943,7 @@ async fn set_shuffle_re_derives_context_order_over_sparse_buffer() {
 // ============================================================================
 
 /// The multi-window CUE album imported remote-unpinned against a
-/// `MockCloudHome`, with the local originals deleted so every read resolves
+/// `InMemoryCloudHome`, with the local originals deleted so every read resolves
 /// through an actual ranged cloud fetch.
 struct RemoteMultiWindowPlayback {
     playback_handle: bae_core::playback::PlaybackHandle,
@@ -5977,7 +5977,7 @@ impl RemoteMultiWindowPlayback {
             tokio::runtime::Handle::current(),
         );
         let master_key = [17u8; 32];
-        let cloud = Arc::new(support::MockCloudHome::new());
+        let cloud = Arc::new(coven::InMemoryCloudHome::new());
         library_manager
             .connect_test_cloud_home(
                 cloud,

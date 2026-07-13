@@ -1066,7 +1066,7 @@ async fn assert_multi_disc_cue_ape_per_disc_mapping(storage_mode: StorageMode, p
     if storage_mode == StorageMode::Remote {
         library_manager
             .connect_test_cloud_home(
-                Arc::new(support::MockCloudHome::new()),
+                Arc::new(coven::InMemoryCloudHome::new()),
                 CloudCipher::Encrypted(EncryptionService::from_key([7u8; 32])),
             )
             .await

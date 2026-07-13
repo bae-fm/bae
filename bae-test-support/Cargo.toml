@@ -22,10 +22,6 @@ path = "src/lib.rs"
 # cycle because it runs only through dev-dependencies.
 bae-core = { path = "../bae-core", features = ["test-utils"] }
 coven = { workspace = true, features = ["test-utils"] }
-# Only to name `RevokeOutcome` in MockCloudHome's `CloudHome` impl — the coven
-# facade does not re-export that trait return type.
-coven-core = { workspace = true }
-async-trait = "0.1"
 hex = "0.4"
 lofty = "0.24"
 tempfile = "3.8"
