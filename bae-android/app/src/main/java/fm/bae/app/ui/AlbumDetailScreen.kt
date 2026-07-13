@@ -48,6 +48,7 @@ import fm.bae.app.BaeLogger
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.durationClockText
+import fm.bae.app.durationUnitsText
 import fm.bae.app.runLoggedBridgeCommand
 import fm.bae.app.sideHeaderText
 import fm.bae.app.text
@@ -473,7 +474,7 @@ private fun androidx.compose.foundation.lazy.LazyListScope.albumTrackGroups(
         }
         runningIndex += group.tracks.size
     }
-    val totalDurationLabel = context.durationClockText(release.totalDurationMs)
+    val totalDurationLabel = context.durationUnitsText(release.totalDuration)
     if (totalDurationLabel.isNotEmpty()) {
         item {
             Text(

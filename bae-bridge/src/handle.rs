@@ -2514,7 +2514,8 @@ impl BridgeRelease {
             pinned,
             storage_actions,
             transfer_action,
-            total_duration_ms,
+            total_duration: bae_core::util::duration::DurationUnits::from_millis(total_duration_ms)
+                .map(crate::types::BridgeDurationUnits::from_core),
             tracks: tracks.into_iter().map(BridgeTrack::from_core).collect(),
             track_groups: track_groups
                 .into_iter()

@@ -358,6 +358,22 @@ internal sealed class AlbumDetailDialog
 
         RenderStorageBand();
 
+        // Total playing time, under the track list. Each pressing has its own
+        // length, so picking a different release re-renders it.
+        var totalDuration = new TextBlock
+        {
+            Opacity = 0.7,
+            Text = selectedRelease.TotalDurationLabel,
+        };
+        void RenderTotalDuration()
+        {
+            totalDuration.Text = selectedRelease.TotalDurationLabel;
+            totalDuration.Visibility = string.IsNullOrEmpty(totalDuration.Text)
+                ? Visibility.Collapsed
+                : Visibility.Visible;
+        }
+        RenderTotalDuration();
+
         var content = new StackPanel { Spacing = 8 };
         content.Children.Add(header);
         // Release picker, only when the album has more than one pressing. Choosing
@@ -378,12 +394,14 @@ internal sealed class AlbumDetailDialog
                     trackList.ItemsSource = selectedRelease.Tracks;
                     storageRelease = release;
                     RenderStorageBand();
+                    RenderTotalDuration();
                 }
             };
             content.Children.Add(releasePicker);
         }
         content.Children.Add(storageBand);
         content.Children.Add(trackList);
+        content.Children.Add(totalDuration);
         content.Children.Add(statusLine);
 
         var dialog = new ContentDialog

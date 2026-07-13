@@ -1,4 +1,5 @@
-﻿using uniffi.bae_bridge;
+﻿using System.Collections.Generic;
+using uniffi.bae_bridge;
 
 namespace Bae.Windows;
 
@@ -27,6 +28,38 @@ internal static class BridgeDisplay
         clock is null
             ? string.Empty
             : Loc.Clock(clock.Negative, clock.Hours, clock.Minutes, clock.Seconds);
+
+    /// <summary>
+    /// A total playing time in words — "39 min", "3 hr", "3 hr, 42 min" — or an
+    /// empty string when no track reports a length. Core decides which words the
+    /// label has (an hour of music is "1 hr", never "1 hr, 0 min"); the
+    /// <c>core.duration.*</c> catalog messages own the words and the pattern that
+    /// joins them. The hours word is a plural, so the two halves are resolved
+    /// separately and then joined.
+    /// </summary>
+    internal static string DurationUnits(BridgeDurationUnits? units) => units switch
+    {
+        null => string.Empty,
+        BridgeDurationUnits.HoursOnly hoursOnly => HoursText(hoursOnly.Hours),
+        BridgeDurationUnits.MinutesOnly minutesOnly => MinutesText(minutesOnly.Minutes),
+        BridgeDurationUnits.HoursAndMinutes both => Loc.Core(
+            "core.duration.hours_minutes",
+            new Dictionary<string, object?>
+            {
+                ["hours"] = HoursText(both.Hours),
+                ["minutes"] = MinutesText(both.Minutes),
+            }),
+        _ => string.Empty,
+    };
+
+    // The count crosses as a long: MessageFormat selects the plural category from
+    // a numeric argument, and the hours word inflects (Hebrew's dual drops the
+    // numeral entirely).
+    private static string HoursText(ulong hours) =>
+        Loc.Core("core.duration.hours", "hours", checked((long)hours));
+
+    private static string MinutesText(ulong minutes) =>
+        Loc.Core("core.duration.minutes", "minutes", checked((long)minutes));
 
     internal static string LocalizedLine(BridgeException exception) =>
         exception switch

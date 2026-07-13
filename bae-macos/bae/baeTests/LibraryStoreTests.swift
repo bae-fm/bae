@@ -35,7 +35,10 @@ private func makeBridgeRelease(
     storageState: BridgeReleaseStorageState = .remote,
     pinned: Bool = false,
     storageActions: [BridgeReleaseStorageAction] = [],
-    totalDurationMs: Int64 = 2_700_000,
+    totalDuration: BridgeDurationUnits? = .hoursAndMinutes(
+        hours: 1,
+        minutes: 45
+    ),
     fileCount: Int64 = 0,
     totalSize: Int64 = 0,
     cover: BridgeImageRef? = nil
@@ -58,7 +61,7 @@ private func makeBridgeRelease(
         files: [],
         imageFiles: [],
         galleryItems: [],
-        totalDurationMs: totalDurationMs,
+        totalDuration: totalDuration,
         fileCount: fileCount,
         totalSize: totalSize,
         cover: cover
@@ -506,7 +509,7 @@ struct InternReleaseDetailTests {
 
         let detail = store.releaseDetails["release-1"]!
         #expect(detail.displayName == "Deluxe Edition")
-        #expect(detail.totalDurationMs == 2_700_000)
+        #expect(detail.totalDuration == .hoursAndMinutes(hours: 1, minutes: 45))
         // Interning a detail also interns its wrapped summary; the slim fields
         // (here `format`) carry through from the same `BridgeRelease`.
         #expect(detail.summary.format == "FLAC")

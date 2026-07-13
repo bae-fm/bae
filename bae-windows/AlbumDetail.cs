@@ -37,6 +37,11 @@ public sealed class Release
     public string DisplayName => _release.DisplayName;
     public List<Track> Tracks { get; }
 
+    /// <summary>Total playing time across the release's tracks, in the words core
+    /// chose for it ("39 min", "3 hr, 42 min"); empty when no track reports a
+    /// length.</summary>
+    public string TotalDurationLabel => BridgeDisplay.DurationUnits(_release.TotalDuration);
+
     /// <summary>Whether this release lives in the cloud (Remote) rather than
     /// locally.</summary>
     public bool IsManaged => _release.StorageState == BridgeReleaseStorageState.Remote;

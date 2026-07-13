@@ -1,12 +1,17 @@
-//! The clock label's fields — the one place that decides how a millisecond
-//! duration reads as "3:07" / "1:12:34" / "-0:42".
+//! How a duration reads: the one place that decides it, for every surface.
 //!
-//! Core owns which fields a clock shows, what an absent or negative duration
-//! means, and how a remaining countdown behaves at the end of a track. The UI
-//! owns nothing but the digits: `:` between the fields, every field after the
-//! first zero-padded to two, a leading `-` when the clock is negative. Digits
-//! stay in the UI because the locale never crosses the bridge — an Arabic-Indic
-//! locale renders "٣:٠٧" from the same fields "en" renders "3:07" from.
+//! Two shapes, and they are not interchangeable. A [`DurationClock`] *counts*
+//! time — "3:07", "1:12:34", "-0:42" — and is what a track's length, the elapsed
+//! position, and the remaining countdown are. [`DurationUnits`] *names an
+//! amount* of it — "39 min", "3 hr, 42 min" — and is what a release's total
+//! playing time is.
+//!
+//! Core owns every decision either shape embodies: which fields appear, what an
+//! absent or negative duration means, whether seconds floor or minutes round,
+//! how a countdown behaves at the end of a track. The UI owns only the rendering
+//! — the digits of a clock, the catalog words of a units label — because the
+//! locale never crosses the bridge: an Arabic-Indic locale renders "٣:٠٧" from
+//! the same clock an "en" locale renders "3:07" from.
 
 /// A duration split into the fields a clock label shows.
 ///
@@ -52,6 +57,51 @@ impl DurationClock {
             minutes: ((seconds % 3600) / 60) as u32,
             seconds: (seconds % 60) as u32,
         }
+    }
+}
+
+/// A duration named in words — "39 min", "3 hr", "3 hr, 42 min" — the form an
+/// album's total playing time takes.
+///
+/// A [`DurationClock`] *counts* time; this *names an amount* of it. They are
+/// separate on purpose: a clock always has minutes and seconds, while a units
+/// label never shows a component that is zero — an hour of music reads "1 hr",
+/// not "1 hr, 0 min". The variants make the zero component unrepresentable
+/// rather than leaving each UI to filter one out.
+///
+/// The UI renders each variant through the `core.duration.*` catalog messages;
+/// the words and the join between them are the catalog's, not the UI's.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DurationUnits {
+    /// A whole number of hours: "3 hr", never "3 hr, 0 min".
+    HoursOnly { hours: u64 },
+    /// Under an hour: "39 min", never "0 hr, 39 min".
+    MinutesOnly { minutes: u64 },
+    /// Both, with `minutes` in `1..=59`.
+    HoursAndMinutes { hours: u64, minutes: u64 },
+}
+
+impl DurationUnits {
+    /// The units for a total duration, or `None` when there is nothing to name.
+    ///
+    /// The label has no seconds field, so it is an approximation by
+    /// construction and names the *nearest* minute. The whole total rounds
+    /// before it splits, so 3 h 59 m 45 s reads "4 hr" and can never produce the
+    /// "3 hr, 60 min" that rounding the minutes alone would.
+    pub fn from_millis(ms: i64) -> Option<Self> {
+        let ms = u64::try_from(ms).ok()?;
+        if ms == 0 {
+            return None;
+        }
+        // Round half up, in whole minutes.
+        let total_minutes = (ms + 30_000) / 60_000;
+        let hours = total_minutes / 60;
+        let minutes = total_minutes % 60;
+        Some(match (hours, minutes) {
+            (0, minutes) => Self::MinutesOnly { minutes },
+            (hours, 0) => Self::HoursOnly { hours },
+            (hours, minutes) => Self::HoursAndMinutes { hours, minutes },
+        })
     }
 }
 
@@ -158,5 +208,71 @@ mod tests {
         };
         assert_eq!(at_end, expected);
         assert_eq!(past_end, expected);
+    }
+
+    fn units(ms: i64) -> DurationUnits {
+        DurationUnits::from_millis(ms).expect("a positive duration has units")
+    }
+
+    /// Under an hour the label is minutes alone — never "0 hr, 39 min".
+    #[test]
+    fn under_an_hour_names_only_minutes() {
+        assert_eq!(units(2_340_000), DurationUnits::MinutesOnly { minutes: 39 });
+        assert_eq!(units(60_000), DurationUnits::MinutesOnly { minutes: 1 });
+    }
+
+    /// A whole number of hours names only hours — never "1 hr, 0 min".
+    #[test]
+    fn a_whole_hour_names_only_hours() {
+        assert_eq!(units(3_600_000), DurationUnits::HoursOnly { hours: 1 });
+        assert_eq!(units(10_800_000), DurationUnits::HoursOnly { hours: 3 });
+    }
+
+    #[test]
+    fn hours_and_minutes_name_both() {
+        assert_eq!(
+            units(13_320_000),
+            DurationUnits::HoursAndMinutes {
+                hours: 3,
+                minutes: 42,
+            },
+        );
+    }
+
+    /// The label has no seconds field, so it names the nearest minute: 29 s of a
+    /// minute round away, 30 s round up.
+    #[test]
+    fn minutes_round_to_nearest() {
+        assert_eq!(units(89_000), DurationUnits::MinutesOnly { minutes: 1 });
+        assert_eq!(units(90_000), DurationUnits::MinutesOnly { minutes: 2 });
+        assert_eq!(units(29_000), DurationUnits::MinutesOnly { minutes: 0 });
+        assert_eq!(units(30_000), DurationUnits::MinutesOnly { minutes: 1 });
+    }
+
+    /// Rounding the total, not the minutes field, is what keeps "3 hr, 60 min"
+    /// from ever existing: 3 h 59 m 45 s carries into the hour.
+    #[test]
+    fn rounding_carries_into_the_hours() {
+        assert_eq!(units(14_385_000), DurationUnits::HoursOnly { hours: 4 });
+        assert_eq!(
+            units(14_369_000),
+            DurationUnits::HoursAndMinutes {
+                hours: 3,
+                minutes: 59,
+            },
+        );
+    }
+
+    /// A release whose tracks report no length has no total to name. Under half
+    /// a minute of audio still does — "0 min" says it is shorter than the label
+    /// can express, which is true.
+    #[test]
+    fn nothing_to_name_has_no_units() {
+        assert_eq!(DurationUnits::from_millis(0), None);
+        assert_eq!(DurationUnits::from_millis(-1), None);
+        assert_eq!(
+            DurationUnits::from_millis(20_000),
+            Some(DurationUnits::MinutesOnly { minutes: 0 }),
+        );
     }
 }

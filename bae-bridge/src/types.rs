@@ -291,8 +291,11 @@ pub struct BridgeRelease {
     /// which takes the item's `source` and dispatches the read. Consumers render
     /// this as-is.
     pub gallery_items: Vec<BridgeGalleryItem>,
-    /// Total duration across all tracks, in milliseconds. The UI formats it.
-    pub total_duration_ms: i64,
+    /// Total playing time across all tracks, as the words it reads in, or `None`
+    /// when no track reports a length. The raw sum does not cross: with the
+    /// milliseconds in hand a UI could name the total its own way, which is how
+    /// the three platforms came to disagree about it.
+    pub total_duration: Option<BridgeDurationUnits>,
     pub file_count: i64,
     pub total_size: i64,
     /// Reference to this release's own cover (image id + version), or `None` when
@@ -411,6 +414,37 @@ impl BridgeDurationClock {
             hours,
             minutes,
             seconds,
+        }
+    }
+}
+
+/// Mirror of bae-core's `DurationUnits` — a duration named in words ("39 min",
+/// "3 hr", "3 hr, 42 min"), which is what a release's total playing time reads
+/// as. Distinct from [`BridgeDurationClock`], which counts time rather than
+/// naming an amount of it, and which always has minutes and seconds.
+///
+/// The variants are the label's shape: a component that would be zero does not
+/// exist, so no UI has to filter one out. Each maps to the `core.duration.*`
+/// catalog messages — the words and the join between them belong to the catalog.
+///
+/// No variant carries a field whose name is the variant's own: that generates a
+/// C# member named the same as its enclosing type, which does not compile.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeDurationUnits {
+    HoursOnly { hours: u64 },
+    MinutesOnly { minutes: u64 },
+    HoursAndMinutes { hours: u64, minutes: u64 },
+}
+
+impl BridgeDurationUnits {
+    pub(crate) fn from_core(units: bae_core::util::duration::DurationUnits) -> Self {
+        use bae_core::util::duration::DurationUnits;
+        match units {
+            DurationUnits::HoursOnly { hours } => Self::HoursOnly { hours },
+            DurationUnits::MinutesOnly { minutes } => Self::MinutesOnly { minutes },
+            DurationUnits::HoursAndMinutes { hours, minutes } => {
+                Self::HoursAndMinutes { hours, minutes }
+            }
         }
     }
 }
@@ -4035,6 +4069,11 @@ mod loc_key_coverage {
         "core.outbox.bytes_progress",
         "core.outbox.throughput",
         "core.outbox.eta",
+        // Album total playing time: the UI switches on `BridgeDurationUnits` and
+        // composes the hours and minutes words through the join pattern.
+        "core.duration.hours",
+        "core.duration.minutes",
+        "core.duration.hours_minutes",
         // Release-group card pressing count.
         "core.import.pressings",
         // Generic lookup-failure line for the keyless `Diagnostic` variant:

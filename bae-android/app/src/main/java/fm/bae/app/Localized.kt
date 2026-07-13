@@ -4,9 +4,13 @@ import android.content.Context
 import android.icu.text.MessageFormat
 import android.text.format.Formatter
 import uniffi.bae_bridge.BridgeDurationClock
+import uniffi.bae_bridge.BridgeDurationUnits
 import uniffi.bae_bridge.bridgeClock
 import uniffi.bae_bridge.bridgeRemainingClock
 import java.util.Locale
+
+private const val HOURS_KEY = "core.duration.hours"
+private const val MINUTES_KEY = "core.duration.minutes"
 
 // Renders bae's shared `core.*` catalog strings for the current locale.
 //
@@ -65,6 +69,46 @@ fun Context.remainingClockText(
         bridgeRemainingClock(positionMs.toULong(), durationMs.toULong()),
         currentLocale(),
     )
+
+/**
+ * A total playing time in words — "39 min", "3 hr", "3 hr, 42 min". Core decides
+ * which words the label has (an hour of music is "1 hr", never "1 hr, 0 min");
+ * the `core.duration.*` catalog messages own the words and the pattern that joins
+ * them, so every platform says the same thing. The hours word is a plural —
+ * Hebrew's dual "שעתיים" drops the numeral entirely — so the two halves are
+ * formatted separately and then joined.
+ */
+fun Context.durationUnitsText(units: BridgeDurationUnits?): String =
+    when (units) {
+        null -> {
+            ""
+        }
+
+        is BridgeDurationUnits.HoursOnly -> {
+            durationWord(HOURS_KEY, "hours", units.hours)
+        }
+
+        is BridgeDurationUnits.MinutesOnly -> {
+            durationWord(MINUTES_KEY, "minutes", units.minutes)
+        }
+
+        is BridgeDurationUnits.HoursAndMinutes -> {
+            coreString(
+                "core.duration.hours_minutes",
+                mapOf(
+                    "hours" to durationWord(HOURS_KEY, "hours", units.hours),
+                    "minutes" to durationWord(MINUTES_KEY, "minutes", units.minutes),
+                ),
+            )
+        }
+    }
+
+/** One `core.duration.*` unit word for a count — the count is the message's plural argument. */
+private fun Context.durationWord(
+    key: String,
+    arg: String,
+    count: ULong,
+): String = coreString(key, mapOf(arg to count.toLong()))
 
 /**
  * Render a clock's fields: `:` between them, every field after the first padded
