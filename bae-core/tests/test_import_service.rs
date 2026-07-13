@@ -1878,6 +1878,31 @@ async fn remote_transition_failure_rolls_back_finalized_works() {
     );
 }
 
+/// coven verifies a blob's plaintext against its row's content hash on every
+/// cloud fetch, so a `covers` row must describe the bytes actually stored — the
+/// resized thumbnail the import writes, never the image it was made from. A row
+/// hashing anything else makes the cover unreadable on every other device.
+async fn assert_cover_row_describes_stored_bytes(f: &ImportFixture, release_id: &str) {
+    let cover =
+        f.db.find_library_image(release_id, &LibraryImageType::Cover)
+            .await
+            .unwrap()
+            .expect("cover row");
+    let bytes = support::read_cover_image_blob(&f.db, &f.library_manager, release_id)
+        .await
+        .expect("cover blob readable");
+    assert_eq!(
+        cover.content_hash.as_deref(),
+        Some(bae_core::util::fs::hash_bytes(&bytes).as_str()),
+        "the covers row's hash must be the hash of the stored blob",
+    );
+    assert_eq!(
+        cover.file_size,
+        bytes.len() as i64,
+        "the covers row's file_size must be the size of the stored blob",
+    );
+}
+
 /// 6. Import with local cover art: covers row + the cover blob in coven's local store.
 #[tokio::test]
 async fn import_with_cover_art() {
@@ -1924,6 +1949,8 @@ async fn import_with_cover_art() {
         .await
         .expect("cover blob should be readable");
     assert!(!cover_bytes.is_empty(), "cover bytes should not be empty");
+
+    assert_cover_row_describes_stored_bytes(&f, &release_id).await;
 }
 
 /// An oversized folder cover is resized to a ≤600 JPEG thumbnail at import: the
@@ -1981,7 +2008,8 @@ async fn import_resizes_oversized_cover_to_jpeg_thumbnail() {
     );
     let decoded = image::load_from_memory(&cover_bytes).unwrap();
     assert_eq!((decoded.width(), decoded.height()), (600, 600));
-    assert_eq!(cover.file_size, cover_bytes.len() as i64);
+
+    assert_cover_row_describes_stored_bytes(&f, &release_id).await;
 }
 
 /// On a browsable home the readable cloud_path is computed AT IMPORT — for every
@@ -2810,6 +2838,8 @@ async fn unknown_import_seeds_embedded_cover_when_no_folder_image() {
     );
     let decoded = image::load_from_memory(&bytes).unwrap();
     assert_eq!((decoded.width(), decoded.height()), EMBEDDED_COVER_DIMS);
+
+    assert_cover_row_describes_stored_bytes(&f, &release_id).await;
 }
 
 /// A folder image outranks the embedded picture: when both exist, the
