@@ -463,9 +463,6 @@ impl UiEventBus {
                     Ok(LibraryEvent::TracksDeleted { .. }) => {
                         // Handled by playback service directly, not the UI bus
                     }
-                    Ok(LibraryEvent::Error { error }) => {
-                        bus.emit(UiBusEvent::Error { error });
-                    }
                     Ok(LibraryEvent::SyncError { .. })
                     | Ok(LibraryEvent::SyncTimeChanged { .. })
                     | Ok(LibraryEvent::SyncingChanged { .. }) => {

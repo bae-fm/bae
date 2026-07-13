@@ -702,20 +702,12 @@ impl AppHandle {
         Ok(())
     }
 
-    pub async fn delete_release(&self, release_id: String) {
-        let result = self
-            .services
+    pub async fn delete_release(&self, release_id: String) -> Result<(), BridgeError> {
+        self.services
             .library_manager()
             .delete_release(&release_id)
-            .await;
-
-        if let Err(e) = result {
-            self.services
-                .library_manager()
-                .emit_error(bae_core::ui::UiError::internal(format!(
-                    "Delete failed: {e}"
-                )));
-        }
+            .await?;
+        Ok(())
     }
 
     // =========================================================================

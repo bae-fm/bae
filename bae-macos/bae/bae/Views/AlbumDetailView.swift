@@ -65,6 +65,8 @@ struct AlbumDetailView: View {
     @State
     private var releaseIdPendingDelete: String?
     @State
+    private var deleteError: String?
+    @State
     private var exportError: String?
     @State
     private var exportTask: Task<Void, Never>?
@@ -195,16 +197,24 @@ struct AlbumDetailView: View {
         .errorAlert("Cover Change Failed", message: $coverChangeError)
         .errorAlert("Transfer Failed", message: $transferError)
         .errorAlert("Export Failed", message: $exportError)
+        .errorAlert("Delete Failed", message: $deleteError)
         .alert("Delete Release", isPresented: $showingDeleteConfirmation) {
             Button("Delete", role: .destructive) {
-                if let releaseId = releaseIdPendingDelete {
-                    let releaseEditor = releaseEditor
-                    Task.detached {
-                        await releaseEditor.deleteRelease(releaseId)
+                guard let releaseId = releaseIdPendingDelete else { return }
+                releaseIdPendingDelete = nil
+                let releaseEditor = releaseEditor
+                // Close the detail only once the delete succeeds: a failure keeps
+                // the release in view and surfaces the error, rather than closing
+                // over a release that is still there.
+                Task {
+                    do {
+                        try await releaseEditor.deleteRelease(releaseId)
+                        uiStore.closeAlbumDetail()
                     }
-                    releaseIdPendingDelete = nil
+                    catch {
+                        deleteError = error.localizedDescription
+                    }
                 }
-                uiStore.closeAlbumDetail()
             }
             Button("Cancel", role: .cancel) { releaseIdPendingDelete = nil }
         } message: {

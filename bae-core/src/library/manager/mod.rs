@@ -653,9 +653,6 @@ pub enum LibraryEvent {
     TracksDeleted {
         track_ids: Vec<String>,
     },
-    Error {
-        error: crate::ui::UiError,
-    },
     /// Sync loop's latest error state. `None` clears a prior failure (sync
     /// recovered). Emitted on transitions so the UI banner appears and
     /// disappears in step with sync health. When set, it's a
@@ -1405,10 +1402,6 @@ impl LibraryManager {
                 } => self.emit_release_removed(&album_id, &release_id).await,
             }
         }
-    }
-
-    pub fn emit_error(&self, error: crate::ui::UiError) {
-        self.emit(LibraryEvent::Error { error });
     }
 }
 
