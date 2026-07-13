@@ -249,10 +249,10 @@ impl ExportService {
         let mut sample_rate = None;
         let mut channels = None;
         let source_bits_per_sample = plans[0].audio_meta.audio_format.bits_per_sample;
-        let release_title = plans[0].tags.album.clone();
-        let release_performer = plans[0].tags.artist.clone();
+        let release_title = plans[0].resolved.tags.album.clone();
+        let release_performer = plans[0].resolved.tags.artist.clone();
         let cover_image_bytes = plans[0].cover_image_bytes.clone();
-        let is_digital = plans[0].is_digital;
+        let is_digital = plans[0].resolved.is_digital;
         let mut current_sample_frame = 0u64;
 
         for (index, plan) in plans.iter_mut().enumerate() {
@@ -306,8 +306,8 @@ impl ExportService {
             cue_tracks.push(CueTrack {
                 number: u8::try_from(index + 1)
                     .map_err(|_| "CUE track number exceeds 99".to_string())?,
-                title: plan.tags.title.clone(),
-                performer: plan.tags.artist.clone(),
+                title: plan.resolved.tags.title.clone(),
+                performer: plan.resolved.tags.artist.clone(),
                 index_00_sample_frame: (pregap_sample_frames > 0).then_some(current_sample_frame),
                 index_01_sample_frame: current_sample_frame
                     .checked_add(pregap_sample_frames)
@@ -342,7 +342,7 @@ impl ExportService {
                 .as_deref()
                 .map(str::trim)
                 .filter(|catalog| !catalog.is_empty()),
-            plans[0].tags.year,
+            plans[0].resolved.tags.year,
             &audio_filename,
             cue_file_type(&preset.codec)?,
             sample_rate,
@@ -358,7 +358,7 @@ impl ExportService {
             title: release_title.clone(),
             artist: release_performer,
             album: release_title,
-            year: plans[0].tags.year,
+            year: plans[0].resolved.tags.year,
             disc: None,
         };
         let total_tracks = plans.len() as u32;
@@ -463,10 +463,10 @@ impl ExportService {
             write_tags(
                 &output_path_owned,
                 tag_type,
-                &plan.tags,
-                plan.track_number.map(|n| n as u32),
-                plan.total_tracks as u32,
-                plan.is_digital,
+                &plan.resolved.tags,
+                plan.resolved.track_number.map(|n| n as u32),
+                plan.resolved.total_tracks as u32,
+                plan.resolved.is_digital,
                 cover_data,
             )?;
 
@@ -839,7 +839,6 @@ mod tests {
             track_number,
             total_tracks,
             is_digital: true,
-            primary_release_id: None,
         }
     }
 

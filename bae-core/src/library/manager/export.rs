@@ -267,10 +267,13 @@ impl LibraryManager {
     /// track number, the release's track total, and whether the media is digital.
     /// Reads no audio and no cover, so both the filename-suggestion path (which
     /// must not download a whole file) and the full export plan share it.
+    /// Returns the tag data and, separately, the album's primary release id — the
+    /// release whose cover a track export embeds. That id is a cover-lookup key,
+    /// not tag data, so it rides beside the tags rather than inside them.
     async fn resolve_export_tags(
         &self,
         meta: &TrackAudioMeta,
-    ) -> Result<ResolvedExportTags, LibraryError> {
+    ) -> Result<(ResolvedExportTags, Option<String>), LibraryError> {
         let album = self.database.get_album_for_release(&meta.release).await?;
 
         let album_artists = self.database.get_artists_for_album(&album.id).await?;
@@ -305,13 +308,15 @@ impl LibraryManager {
             disc,
         };
 
-        Ok(ResolvedExportTags {
-            tags,
-            track_number: meta.track.track_number,
-            total_tracks,
-            is_digital,
-            primary_release_id: album.primary_release_id,
-        })
+        Ok((
+            ResolvedExportTags {
+                tags,
+                track_number: meta.track.track_number,
+                total_tracks,
+                is_digital,
+            },
+            album.primary_release_id,
+        ))
     }
 
     /// Assemble everything `ExportService::export_track` needs for a
@@ -324,7 +329,7 @@ impl LibraryManager {
         track_id: &str,
     ) -> Result<ExportTrackPlan, LibraryError> {
         let meta = TrackAudioMeta::resolve(&self.database, track_id).await?;
-        let resolved = self.resolve_export_tags(&meta).await?;
+        let (resolved, primary_release_id) = self.resolve_export_tags(&meta).await?;
 
         let mut audio_bytes = Vec::new();
         for audio_file in &meta.audio_files {
@@ -342,7 +347,7 @@ impl LibraryManager {
             });
         }
 
-        let cover_image_bytes = match resolved.primary_release_id.as_deref() {
+        let cover_image_bytes = match primary_release_id.as_deref() {
             Some(rid) => match self.cover_ref(rid).await? {
                 Some(image) => self.read_image_blob(&image).await?,
                 None => None,
@@ -350,21 +355,10 @@ impl LibraryManager {
             None => None,
         };
 
-        let ResolvedExportTags {
-            tags,
-            track_number,
-            total_tracks,
-            is_digital,
-            primary_release_id: _,
-        } = resolved;
-
         Ok(ExportTrackPlan {
             audio_bytes,
-            tags,
+            resolved,
             cover_image_bytes,
-            track_number,
-            total_tracks,
-            is_digital,
             audio_window: export_window_from_meta(&meta),
             audio_meta: meta,
         })
@@ -379,7 +373,7 @@ impl LibraryManager {
         track_id: &str,
     ) -> Result<String, LibraryError> {
         let meta = TrackAudioMeta::resolve(&self.database, track_id).await?;
-        let resolved = self.resolve_export_tags(&meta).await?;
+        let (resolved, _primary_release_id) = self.resolve_export_tags(&meta).await?;
         Ok(crate::library::export::render_export_filename(
             &self.export_filename_template(),
             &resolved,
@@ -519,7 +513,7 @@ impl LibraryManager {
 
             let stem = crate::library::export::render_export_filename(
                 &preset.filename_template,
-                &resolved_tags_from_plan(&plan),
+                &plan.resolved,
             );
             let output_path = unique_export_path(
                 staging_dir,
@@ -680,22 +674,6 @@ fn non_negative_samples(samples: Option<i64>) -> u64 {
     samples.map_or(0, |sample| {
         u64::try_from(sample).expect("audio_format pregap samples are non-negative")
     })
-}
-
-fn resolved_tags_from_plan(plan: &ExportTrackPlan) -> ResolvedExportTags {
-    ResolvedExportTags {
-        tags: ExportTags {
-            title: plan.tags.title.clone(),
-            artist: plan.tags.artist.clone(),
-            album: plan.tags.album.clone(),
-            year: plan.tags.year,
-            disc: plan.tags.disc,
-        },
-        track_number: plan.track_number,
-        total_tracks: plan.total_tracks,
-        is_digital: plan.is_digital,
-        primary_release_id: None,
-    }
 }
 
 fn unique_export_path(

@@ -491,10 +491,6 @@ pub struct ResolvedExportTags {
     pub track_number: Option<i32>,
     pub total_tracks: usize,
     pub is_digital: bool,
-    /// The album's primary release id, if any — the release whose cover art a
-    /// track export embeds. Carried here so `get_export_track_plan` reaches the
-    /// cover without re-loading the album `resolve_export_tags` already read.
-    pub primary_release_id: Option<String>,
 }
 
 /// Pre-assembled data for exporting a single track. Everything
@@ -506,18 +502,13 @@ pub struct ResolvedExportTags {
 pub struct ExportTrackPlan {
     /// Source audio files read at plan time, keyed by release file id.
     pub(crate) audio_bytes: Vec<ExportAudioBytes>,
-    pub tags: ExportTags,
+    /// The track's tag data, exactly as the filename template and the tag writer
+    /// take it — embedded rather than copied field by field, so the plan and the
+    /// template always describe the same track.
+    pub resolved: ResolvedExportTags,
     /// The cover image bytes to embed, read through coven at plan time, or `None`
     /// when the album has no primary release with a cover.
     pub cover_image_bytes: Option<Vec<u8>>,
-    /// Track number within its side, straight from the DB.
-    pub track_number: Option<i32>,
-    /// Number of tracks in the release — used for the track-total tag.
-    pub total_tracks: usize,
-    /// `true` for CD / digital / unknown releases, `false` for side-based
-    /// media like vinyl or cassette. Gates writing an ID3 disc-number tag:
-    /// disc numbers don't map to vinyl / cassette sides.
-    pub is_digital: bool,
     /// The source/silence window to encode for this export. Playback uses the
     /// stored audio format directly; export can exclude or move CUE pregaps.
     pub(crate) audio_window: ExportAudioWindow,
