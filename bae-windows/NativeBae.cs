@@ -539,6 +539,12 @@ internal static class NativeBae
     internal static string? SetPauseBetweenSides(AppHandle handle, bool enabled) =>
         CaptureError(() => handle.SetPauseBetweenSides(enabled));
 
+    /// <summary>Whether the seek bar's leading label counts down the time remaining.
+    /// A synced preference: the write fires a config invalidation, which is what
+    /// re-renders the bar.</summary>
+    internal static string? SetShowRemainingTime(AppHandle handle, bool enabled) =>
+        CaptureError(() => handle.SetShowRemainingTime(enabled));
+
     internal static string? SetExportFilenameTemplate(AppHandle handle, string template) =>
         CaptureError(() => handle.SetExportFilenameTemplate(template));
 
@@ -950,6 +956,7 @@ internal static class NativeBae
             SyncAccount = config.Sync?.CloudAccountDisplay,
             SyncReady = syncStatus.SyncReady,
             PauseBetweenSides = config.PauseBetweenSides,
+            ShowRemainingTime = config.ShowRemainingTime,
             ExportLocation = config.ExportLocation,
             ExportFilenameTemplate = config.ExportFilenameTemplate,
             ExportPresets = config.ExportPresets.Select(ExportPreset).ToList(),

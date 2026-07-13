@@ -225,6 +225,7 @@ object BridgeFixtures {
             encryptionKeyStored = false,
             encryptionKeyFingerprint = null,
             pauseBetweenSides = false,
+            showRemainingTime = false,
             exportLocation = BridgeExportLocation.AskEachTime,
             exportFilenameTemplate = "{track_number} - {title}",
             exportPresets = emptyList(),

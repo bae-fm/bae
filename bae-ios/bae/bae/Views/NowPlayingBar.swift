@@ -11,6 +11,8 @@ struct NowPlayingBar: View {
     private var playbackStore
     @Environment(Playback.self)
     private var playback
+    @Environment(ConfigStore.self)
+    private var configStore
 
     @State
     private var showQueue = false
@@ -23,9 +25,17 @@ struct NowPlayingBar: View {
                 transport(track: track)
                 ProgressBar(
                     positionSubject: playbackStore.playbackPositionSubject,
+                    showRemainingTime: configStore.config.showRemainingTime,
                     onSeek: { ratio in
                         playbackStore.projectSeek(ratio: ratio)
                         playback.seekByRatio(ratio)
+                    },
+                    onToggleRemainingTime: {
+                        // Write-through: the config invalidation re-renders the
+                        // bar, so nothing is flipped locally.
+                        try? playback.setShowRemainingTime(
+                            !configStore.config.showRemainingTime
+                        )
                     }
                 )
             }

@@ -23,27 +23,27 @@ class PlaybackProgressViewTest {
         view.setPosition(
             SeekBarState(
                 progress = 0.25,
-                elapsed = "1:00",
-                remaining = "-3:00",
+                leading = "1:00",
+                trailing = "4:00",
             ),
         )
 
-        assertEquals("1:00", view.elapsedTextView.text.toString())
-        assertEquals("-3:00", view.remainingTextView.text.toString())
+        assertEquals("1:00", view.leadingTextView.text.toString())
+        assertEquals("4:00", view.trailingTextView.text.toString())
         assertEquals(2_500, view.seekBar.progress)
     }
 
     @Test
     fun setPositionDoesNotMoveThumbWhileDragging() {
         val view = PlaybackProgressView(RuntimeEnvironment.getApplication())
-        view.setPosition(SeekBarState(0.20, "0:20", "-1:40"))
+        view.setPosition(SeekBarState(0.20, "0:20", "4:00"))
 
         view.beginTracking()
         view.seekBar.progress = 7_000
-        view.setPosition(SeekBarState(0.30, "0:30", "-1:30"))
+        view.setPosition(SeekBarState(0.30, "0:30", "4:00"))
 
-        assertEquals("0:30", view.elapsedTextView.text.toString())
-        assertEquals("-1:30", view.remainingTextView.text.toString())
+        assertEquals("0:30", view.leadingTextView.text.toString())
+        assertEquals("4:00", view.trailingTextView.text.toString())
         assertEquals(7_000, view.seekBar.progress)
     }
 
@@ -63,20 +63,20 @@ class PlaybackProgressViewTest {
     @Test
     fun bindCollectsPositionUpdates() {
         val view = PlaybackProgressView(RuntimeEnvironment.getApplication())
-        val state = MutableStateFlow(SeekBarState(0.10, "0:10", "-1:30"))
+        val state = MutableStateFlow(SeekBarState(0.10, "0:10", "4:00"))
 
-        view.bind(state) {}
+        view.bind(state, onSeekRatio = {}, onToggleRemaining = {})
         ShadowLooper.idleMainLooper()
 
-        assertEquals("0:10", view.elapsedTextView.text.toString())
-        assertEquals("-1:30", view.remainingTextView.text.toString())
+        assertEquals("0:10", view.leadingTextView.text.toString())
+        assertEquals("4:00", view.trailingTextView.text.toString())
         assertEquals(1_000, view.seekBar.progress)
 
-        state.value = SeekBarState(0.40, "0:40", "-1:00")
+        state.value = SeekBarState(0.40, "0:40", "4:00")
         ShadowLooper.idleMainLooper()
 
-        assertEquals("0:40", view.elapsedTextView.text.toString())
-        assertEquals("-1:00", view.remainingTextView.text.toString())
+        assertEquals("0:40", view.leadingTextView.text.toString())
+        assertEquals("4:00", view.trailingTextView.text.toString())
         assertEquals(4_000, view.seekBar.progress)
     }
 
@@ -86,10 +86,10 @@ class PlaybackProgressViewTest {
         val firstState = MutableSharedFlow<SeekBarState>()
         val secondState = MutableSharedFlow<SeekBarState>()
 
-        view.bind(firstState) {}
+        view.bind(firstState, onSeekRatio = {}, onToggleRemaining = {})
         val firstScopeJob = view.positionScopeJob()
 
-        view.bind(secondState) {}
+        view.bind(secondState, onSeekRatio = {}, onToggleRemaining = {})
         val secondScopeJob = view.positionScopeJob()
 
         assertEquals(false, firstScopeJob?.isActive)
@@ -102,7 +102,7 @@ class PlaybackProgressViewTest {
         val view = PlaybackProgressView(RuntimeEnvironment.getApplication())
         val state = MutableSharedFlow<SeekBarState>()
 
-        view.bind(state) {}
+        view.bind(state, onSeekRatio = {}, onToggleRemaining = {})
         val scopeJob = view.positionScopeJob()
 
         view.detachFromWindow()

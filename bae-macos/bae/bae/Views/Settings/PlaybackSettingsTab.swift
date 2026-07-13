@@ -62,6 +62,7 @@ struct PlaybackSettingsTab: View {
                     encryptionKeyStored: false,
                     encryptionKeyFingerprint: nil,
                     pauseBetweenSides: false,
+                    showRemainingTime: false,
                     exportLocation: .askEachTime,
                     exportFilenameTemplate: PreviewData.exportFilenameTemplate,
                     exportPresets: PreviewData.exportPresets,

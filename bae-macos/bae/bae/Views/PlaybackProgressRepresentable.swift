@@ -17,8 +17,13 @@ extension EnvironmentValues {
 struct PlaybackProgressRepresentable: NSViewRepresentable {
     @Environment(\.playbackPositionPublisher)
     private var positionPublisher
+    /// The user's elapsed-vs-remaining choice, read off the config mirror. The
+    /// bar keeps no copy of it: clicking the label writes the config, and the
+    /// config invalidation lands the new value back here.
+    let showRemainingTime: Bool
     let durationMs: UInt64?
     let onSeek: (Double) -> Void
+    let onToggleRemainingTime: () -> Void
 
     func makeCoordinator() -> Coordinator {
         Coordinator()
@@ -29,18 +34,19 @@ struct PlaybackProgressRepresentable: NSViewRepresentable {
             showsRemainingTimeToggle: true,
             fixedSliderWidth: 300
         )
-        view.onSeek = onSeek
-        applyDuration(to: view)
+        apply(to: view)
         context.coordinator.subscribe(to: positionPublisher, view: view)
         return view
     }
 
     func updateNSView(_ view: SeekBarNSView, context _: Context) {
-        view.onSeek = onSeek
-        applyDuration(to: view)
+        apply(to: view)
     }
 
-    private func applyDuration(to view: SeekBarNSView) {
+    private func apply(to view: SeekBarNSView) {
+        view.onSeek = onSeek
+        view.onToggleRemainingTime = onToggleRemainingTime
+        view.showRemainingTime = showRemainingTime
         if let durationMs {
             view.setDuration(durationMs: durationMs)
         }
@@ -62,18 +68,13 @@ struct PlaybackProgressRepresentable: NSViewRepresentable {
                 .receive(on: DispatchQueue.main)
                 .sink { event in
                     switch event {
-                    case .position(let progress, let elapsed, let remaining):
+                    case .position(let progress, let positionMs, _):
                         view.setPosition(
                             progress: progress,
-                            elapsed: elapsed,
-                            remaining: remaining
+                            positionMs: positionMs
                         )
                     case .reset:
-                        view.setPosition(
-                            progress: 0,
-                            elapsed: "",
-                            remaining: ""
-                        )
+                        view.reset()
                     }
                 }
         }

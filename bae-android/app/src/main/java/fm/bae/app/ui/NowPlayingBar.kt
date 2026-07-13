@@ -97,6 +97,7 @@ fun NowPlayingBar(session: OpenLibrary) {
                 )
             }
             PlaybackProgressAndroidView(
+                session = session,
                 player = player,
                 modifier = Modifier.fillMaxWidth(),
             )

@@ -24,6 +24,11 @@ public sealed class Settings
     public bool SyncReady { get; set; }
     public bool PauseBetweenSides { get; set; }
 
+    /// <summary>Whether the seek bar's leading label counts down the time
+    /// remaining instead of showing the time elapsed. A synced preference, so it
+    /// follows the user to every device.</summary>
+    public bool ShowRemainingTime { get; set; }
+
     /// <summary>Where release exports write: a fixed folder, or prompt each time.</summary>
     internal BridgeExportLocation ExportLocation { get; set; } = new BridgeExportLocation.AskEachTime();
 

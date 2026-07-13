@@ -9,15 +9,20 @@ import android.widget.LinearLayout
 import android.widget.SeekBar
 import android.widget.TextView
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.common.C
-import fm.bae.app.durationClockText
+import fm.bae.app.BaeLogger
+import fm.bae.app.OpenLibrary
+import fm.bae.app.clockText
+import fm.bae.app.currentLocale
 import fm.bae.app.playback.BaeCorePlayer
 import fm.bae.app.playback.PlaybackPosition
-import fm.bae.app.remainingClockText
+import fm.bae.app.runLoggedBridgeCommand
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -26,43 +31,55 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import uniffi.bae_bridge.bridgeSeekBar
+
+private val logger = BaeLogger("bae.PlaybackProgressView")
 
 private const val SEEK_BAR_MAX = 10_000
 private const val TIME_LABEL_TEXT_SIZE_SP = 11f
 private const val TIME_LABEL_WIDTH_DP = 48
 
-/** What the seek bar draws: the [0,1] slider fraction and the two clock labels
- *  rendered from core's projection of the raw position. */
+/** What the seek bar draws: the [0,1] slider fraction, the leading label (elapsed
+ *  or the countdown, per the user's preference) and the trailing one (the track's
+ *  total length). Core decides which label is which. */
 internal data class SeekBarState(
     val progress: Double,
-    val elapsed: String,
-    val remaining: String,
+    val leading: String,
+    val trailing: String,
 )
 
-/** Render a raw playback position into the labels the bar draws. A track with no
- *  known length has no countdown to show. */
-internal fun Context.seekBarState(position: PlaybackPosition): SeekBarState =
-    SeekBarState(
+/** Render a raw playback position into the two labels the bar draws. Nothing
+ *  plays, nothing to show. */
+internal fun Context.seekBarState(
+    position: PlaybackPosition,
+    showRemaining: Boolean,
+): SeekBarState {
+    val positionMs = position.positionMs ?: return SeekBarState(position.progress, "", "")
+    val clocks = bridgeSeekBar(positionMs.toULong(), (position.durationMs ?: 0L).toULong(), showRemaining)
+    return SeekBarState(
         progress = position.progress,
-        elapsed = durationClockText(position.positionMs),
-        remaining =
-            if (position.positionMs != null && position.durationMs != null) {
-                remainingClockText(position.positionMs, position.durationMs)
-            } else {
-                ""
-            },
+        leading = clockText(clocks.leading, currentLocale()),
+        trailing = clockText(clocks.trailing, currentLocale()),
     )
+}
 
 @Composable
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 fun PlaybackProgressAndroidView(
+    session: OpenLibrary,
     player: BaeCorePlayer,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
-    // One flow instance per (player, context): the view rebinds only when the
-    // flow identity changes, so mapping inline would re-collect every recomposition.
-    val state = remember(player, context) { player.position.map(context::seekBarState) }
+    val config by session.configStore.config.collectAsState()
+    val showRemaining = config.showRemainingTime
+    // One flow instance per (player, context, preference): the view rebinds only
+    // when the flow identity changes, so mapping inline would re-collect on every
+    // recomposition.
+    val state =
+        remember(player, context, showRemaining) {
+            player.position.map { context.seekBarState(it, showRemaining) }
+        }
     AndroidView(
         modifier = modifier,
         factory = { viewContext -> PlaybackProgressView(viewContext) },
@@ -75,6 +92,13 @@ fun PlaybackProgressAndroidView(
                         player.seekTo((ratio * duration).toLong())
                     }
                 },
+                // Write-through: the config invalidation re-renders the bar, so
+                // nothing is flipped locally.
+                onToggleRemaining = {
+                    runLoggedBridgeCommand(logger, "setShowRemainingTime") {
+                        session.appHandle.setShowRemainingTime(!showRemaining)
+                    }
+                },
             )
         },
     )
@@ -83,7 +107,7 @@ fun PlaybackProgressAndroidView(
 internal class PlaybackProgressView(
     context: Context,
 ) : LinearLayout(context) {
-    internal val elapsedTextView: TextView = timeLabel()
+    internal val leadingTextView: TextView = timeLabel()
     internal val seekBar: SeekBar =
         SeekBar(context).apply {
             max = SEEK_BAR_MAX
@@ -105,9 +129,10 @@ internal class PlaybackProgressView(
                 },
             )
         }
-    internal val remainingTextView: TextView = timeLabel()
+    internal val trailingTextView: TextView = timeLabel()
 
     var onSeekRatio: (Double) -> Unit = {}
+    var onToggleRemaining: () -> Unit = {}
 
     private var isDragging = false
     private var state: Flow<SeekBarState>? = null
@@ -122,17 +147,19 @@ internal class PlaybackProgressView(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT,
             )
-        addView(elapsedTextView)
+        // Tapping the leading label switches it between elapsed and remaining.
+        leadingTextView.setOnClickListener { onToggleRemaining() }
+        addView(leadingTextView)
         addView(
             seekBar,
             LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f),
         )
-        addView(remainingTextView)
+        addView(trailingTextView)
     }
 
     fun setPosition(state: SeekBarState) {
-        elapsedTextView.text = state.elapsed
-        remainingTextView.text = state.remaining
+        leadingTextView.text = state.leading
+        trailingTextView.text = state.trailing
         if (!isDragging) {
             seekBar.progress = progressToSeekBar(state.progress)
         }
@@ -141,8 +168,10 @@ internal class PlaybackProgressView(
     fun bind(
         state: Flow<SeekBarState>,
         onSeekRatio: (Double) -> Unit,
+        onToggleRemaining: () -> Unit,
     ) {
         this.onSeekRatio = onSeekRatio
+        this.onToggleRemaining = onToggleRemaining
         if (this.state === state && positionJob?.isActive == true) {
             return
         }

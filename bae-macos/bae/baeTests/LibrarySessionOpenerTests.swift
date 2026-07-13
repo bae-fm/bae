@@ -139,6 +139,7 @@ struct LibrarySessionOpenerTests {
             encryptionKeyStored: encryptionKeyStored,
             encryptionKeyFingerprint: fingerprint,
             pauseBetweenSides: false,
+            showRemainingTime: false,
             exportLocation: .askEachTime,
             exportFilenameTemplate: "",
             exportPresets: [],

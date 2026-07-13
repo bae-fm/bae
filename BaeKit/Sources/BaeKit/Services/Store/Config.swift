@@ -19,6 +19,10 @@ public struct Config: Equatable {
     /// persisted-config mirror.
     public let sync: BridgeSyncConfig?
     public let pauseBetweenSides: Bool
+    /// Whether the seek bar's leading label counts down the time remaining
+    /// instead of showing the time elapsed. A synced preference, so the bar
+    /// reads it here rather than keeping its own copy per device.
+    public let showRemainingTime: Bool
     /// Where release exports write: prompt each time, or a fixed folder.
     public let exportLocation: BridgeExportLocation
     /// Template for the default filename a single-track export suggests. Core
@@ -42,6 +46,7 @@ public struct Config: Equatable {
         discogsUsable = bridge.discogsUsable
         sync = bridge.sync
         pauseBetweenSides = bridge.pauseBetweenSides
+        showRemainingTime = bridge.showRemainingTime
         exportLocation = bridge.exportLocation
         exportFilenameTemplate = bridge.exportFilenameTemplate
         exportPresets = bridge.exportPresets

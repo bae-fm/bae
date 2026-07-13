@@ -17,17 +17,25 @@ internal static class BridgeDisplay
     internal static string Clock(ulong milliseconds) =>
         Clock(checked((long)milliseconds));
 
-    /// <summary>
-    /// The remaining clock label from a position within a duration ("-1:23"). Core
-    /// clamps the countdown at the end of the track.
-    /// </summary>
-    internal static string RemainingClock(ulong positionMs, ulong durationMs) =>
-        Render(BaeBridgeMethods.BridgeRemainingClock(positionMs, durationMs));
-
     private static string Render(BridgeDurationClock? clock) =>
         clock is null
             ? string.Empty
             : Loc.Clock(clock.Negative, clock.Hours, clock.Minutes, clock.Seconds);
+
+    /// <summary>
+    /// The seek bar's two labels. The leading one is the elapsed position or the
+    /// countdown, per <paramref name="showRemaining"/> (the user's config); the
+    /// trailing one is the track's total length, empty when it is not known. Which
+    /// label is which is core's decision, not the bar's.
+    /// </summary>
+    internal static (string Leading, string Trailing) SeekBarClocks(
+        ulong positionMs,
+        ulong durationMs,
+        bool showRemaining)
+    {
+        var clocks = BaeBridgeMethods.BridgeSeekBar(positionMs, durationMs, showRemaining);
+        return (Render(clocks.Leading), Render(clocks.Trailing));
+    }
 
     /// <summary>
     /// A total playing time in words — "39 min", "3 hr", "3 hr, 42 min" — or an

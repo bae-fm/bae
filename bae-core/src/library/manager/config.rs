@@ -22,6 +22,15 @@ impl LibraryManager {
             .update(|c| c.pause_between_sides = enabled)
     }
 
+    /// Whether the seek bar's leading label counts down the time remaining
+    /// instead of showing the time elapsed. No playback side effect — unlike
+    /// `pause_between_sides`, nothing is staged on it — so the write is the whole
+    /// operation; the resulting config invalidation re-renders the bar.
+    pub fn set_show_remaining_time(&self, enabled: bool) -> Result<(), crate::config::ConfigError> {
+        self.config_handle
+            .update(|c| c.show_remaining_time = enabled)
+    }
+
     /// Where release exports write: prompt each time, or a fixed default folder.
     pub fn export_location(&self) -> crate::config::ExportLocation {
         self.config_handle.config().export_location.clone()

@@ -28,6 +28,10 @@ public final class Playback: Sendable, Observable {
     /// no-op (logged in core).
     public let playLibraryShuffled: @Sendable () -> Void
     public let setPauseBetweenSides: @Sendable (_ enabled: Bool) throws -> Void
+    /// Whether the seek bar's leading label counts down the time remaining.
+    /// A synced preference, so the bar writes it here rather than to a local
+    /// store, and reads it back off the config mirror.
+    public let setShowRemainingTime: @Sendable (_ enabled: Bool) throws -> Void
 
     public init(
         pause: @escaping @Sendable () -> Void = {},
@@ -49,6 +53,9 @@ public final class Playback: Sendable, Observable {
         playLibraryShuffled: @escaping @Sendable () -> Void = {},
         setPauseBetweenSides: @escaping @Sendable (Bool) throws -> Void = {
             _ in
+        },
+        setShowRemainingTime: @escaping @Sendable (Bool) throws -> Void = {
+            _ in
         }
     ) {
         self.pause = pause
@@ -63,6 +70,7 @@ public final class Playback: Sendable, Observable {
         self.playReleases = playReleases
         self.playLibraryShuffled = playLibraryShuffled
         self.setPauseBetweenSides = setPauseBetweenSides
+        self.setShowRemainingTime = setShowRemainingTime
     }
 
     public convenience init(handle: any AppHandleProtocol) {
@@ -86,6 +94,9 @@ public final class Playback: Sendable, Observable {
             playLibraryShuffled: { handle.playLibraryShuffled() },
             setPauseBetweenSides: {
                 try handle.setPauseBetweenSides(enabled: $0)
+            },
+            setShowRemainingTime: {
+                try handle.setShowRemainingTime(enabled: $0)
             }
         )
     }

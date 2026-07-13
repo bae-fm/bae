@@ -6,7 +6,6 @@ import android.text.format.Formatter
 import uniffi.bae_bridge.BridgeDurationClock
 import uniffi.bae_bridge.BridgeDurationUnits
 import uniffi.bae_bridge.bridgeClock
-import uniffi.bae_bridge.bridgeRemainingClock
 import java.util.Locale
 
 private const val HOURS_KEY = "core.duration.hours"
@@ -56,19 +55,6 @@ fun Context.currentLocale(): Locale = resources.configuration.locales[0]
  * field, and whether it exists at all; this renders them for the locale.
  */
 fun Context.durationClockText(ms: Long?): String = clockText(bridgeClock(ms), currentLocale())
-
-/**
- * The remaining clock label from a position within a duration (e.g. "-1:23").
- * Core clamps the countdown at the end of the track.
- */
-fun Context.remainingClockText(
-    positionMs: Long,
-    durationMs: Long,
-): String =
-    clockText(
-        bridgeRemainingClock(positionMs.toULong(), durationMs.toULong()),
-        currentLocale(),
-    )
 
 /**
  * A total playing time in words — "39 min", "3 hr", "3 hr, 42 min". Core decides

@@ -473,14 +473,35 @@ pub fn bridge_clock(ms: Option<i64>) -> Option<BridgeDurationClock> {
     bae_core::util::duration::DurationClock::from_millis(ms).map(BridgeDurationClock::from_core)
 }
 
-/// The countdown from a position within a duration. Clamped at the end of the
-/// track, so a position past the reported duration reads "-0:00".
+/// The two clocks a seek bar shows. Mirror of bae-core's `SeekBarClocks`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeSeekBarClocks {
+    /// Elapsed, or the countdown, per `show_remaining_time`.
+    pub leading: BridgeDurationClock,
+    /// The track's total length; `None` when it is not known.
+    pub trailing: Option<BridgeDurationClock>,
+}
+
+/// The seek bar's two labels, for a position within a track.
+///
+/// Named apart from the record it returns: uniffi-bindgen-cs would otherwise emit
+/// a C# method whose name is the type's, and Windows has no compiler here.
+///
+/// `show_remaining` is the user's `show_remaining_time` config, which the UI
+/// reads off the config mirror and never stores itself. A `duration_ms` of zero
+/// is playback reporting an unknown length: no total, and no countdown.
 #[uniffi::export]
-pub fn bridge_remaining_clock(position_ms: u64, duration_ms: u64) -> BridgeDurationClock {
-    BridgeDurationClock::from_core(bae_core::util::duration::DurationClock::remaining(
-        position_ms,
-        duration_ms,
-    ))
+pub fn bridge_seek_bar(
+    position_ms: u64,
+    duration_ms: u64,
+    show_remaining: bool,
+) -> BridgeSeekBarClocks {
+    let bae_core::util::duration::SeekBarClocks { leading, trailing } =
+        bae_core::util::duration::SeekBarClocks::new(position_ms, duration_ms, show_remaining);
+    BridgeSeekBarClocks {
+        leading: BridgeDurationClock::from_core(leading),
+        trailing: trailing.map(BridgeDurationClock::from_core),
+    }
 }
 
 /// Localization key for a track group's header word, given its side, or `None`
@@ -2277,6 +2298,10 @@ pub struct BridgeConfig {
     pub encryption_key_stored: bool,
     pub encryption_key_fingerprint: Option<String>,
     pub pause_between_sides: bool,
+    /// Whether the seek bar's leading label counts down the time remaining
+    /// instead of showing the time elapsed. A synced preference, not a
+    /// per-device one — the seek bar reads it and never stores a copy.
+    pub show_remaining_time: bool,
     /// Where release exports write: prompt each time, or a fixed folder.
     pub export_location: BridgeExportLocation,
     /// Template rendering a single-track export's suggested filename.

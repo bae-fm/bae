@@ -202,7 +202,7 @@ where
 /// bump this.** `with_defaults` is the single place a field's default is stated —
 /// the migration fills an older file's missing keys straight from it, so there is
 /// no second table to keep in step.
-pub const CONFIG_VERSION: u32 = 1;
+pub const CONFIG_VERSION: u32 = 2;
 
 /// A file written before versioning existed. Such a file has no `version` key,
 /// and is missing every field added since it was written.
@@ -255,6 +255,9 @@ pub struct ConfigYaml {
     pub default_release_export_selection: ExportSelection,
     /// Whether playback pauses between vinyl/cassette sides.
     pub pause_between_sides: bool,
+    /// Whether the seek bar's leading label counts down the time remaining
+    /// instead of showing the time elapsed.
+    pub show_remaining_time: bool,
     /// Whether import fully decodes each track to verify it (fatal-error / frame
     /// shortfall), failing the import for a broken track rather than importing it
     /// and failing at play time. Rides the loudness decode, so it adds no work.
@@ -291,6 +294,7 @@ impl ConfigYaml {
             default_track_export_selection: self.default_track_export_selection,
             default_release_export_selection: self.default_release_export_selection,
             pause_between_sides: self.pause_between_sides,
+            show_remaining_time: self.show_remaining_time,
             verify_decode_on_import: self.verify_decode_on_import,
             mcp: self.mcp,
         }
@@ -314,6 +318,7 @@ impl From<&Config> for ConfigYaml {
             default_track_export_selection: config.default_track_export_selection.clone(),
             default_release_export_selection: config.default_release_export_selection.clone(),
             pause_between_sides: config.pause_between_sides,
+            show_remaining_time: config.show_remaining_time,
             verify_decode_on_import: config.verify_decode_on_import,
             mcp: config.mcp,
             cloud_home: config.cloud_home.clone(),
@@ -367,6 +372,11 @@ pub struct Config {
     pub default_release_export_selection: ExportSelection,
     /// Whether playback pauses between vinyl/cassette sides.
     pub pause_between_sides: bool,
+    /// Whether the seek bar's leading label counts down the time remaining
+    /// instead of showing the time elapsed. Defaults to `false` (elapsed). A
+    /// preference like any other, so it follows the user to every device rather
+    /// than living in each platform's own store.
+    pub show_remaining_time: bool,
     /// Whether import verifies each track by fully decoding it, failing the import
     /// for a broken (truncated/corrupt) track. Defaults to `true`.
     pub verify_decode_on_import: bool,
@@ -513,6 +523,7 @@ impl Config {
             default_track_export_selection: ExportSelection::Original,
             default_release_export_selection: ExportSelection::Original,
             pause_between_sides: false,
+            show_remaining_time: false,
             verify_decode_on_import: true,
             mcp: McpConfig::disabled_default(),
         }
@@ -1054,6 +1065,7 @@ mod tests {
             "default_track_export_selection",
             "default_release_export_selection",
             "pause_between_sides",
+            "show_remaining_time",
             "verify_decode_on_import",
         ] {
             assert!(
@@ -1126,6 +1138,7 @@ mod tests {
             "default_track_export_selection",
             "default_release_export_selection",
             "pause_between_sides",
+            "show_remaining_time",
             "verify_decode_on_import",
             "mcp",
         ] {

@@ -50,9 +50,13 @@ internal sealed class NowPlayingBarController
     private DispatcherTimer? _queueBadgeTimer;
 
     // Whether the leading time label shows a remaining countdown instead of
-    // elapsed time. Seeded from the persisted choice; the user flips it by
-    // clicking the label, and the choice persists across launches.
-    private bool _showRemaining;
+    // elapsed time. Read from the config mirror, never stored here: it is a synced
+    // preference, so it follows the user to every device. Clicking the label writes
+    // the config; the config invalidation calls RefreshTimeLabelMode, which is what
+    // re-renders the bar.
+    private readonly Func<bool> _showRemainingTime;
+
+    private bool ShowRemaining => _showRemainingTime();
 
     // The last rendered position, so a label toggle re-renders immediately from
     // it instead of waiting for the next progress tick. Cleared when the bar
@@ -62,6 +66,7 @@ internal sealed class NowPlayingBarController
     public NowPlayingBarController(
         SessionStore session,
         PlaybackStore playback,
+        Func<bool> showRemainingTime,
         Func<XamlRoot?> xamlRoot,
         Border nowPlayingBar,
         Image cover,
@@ -83,6 +88,7 @@ internal sealed class NowPlayingBarController
     {
         _session = session;
         _playback = playback;
+        _showRemainingTime = showRemainingTime;
         _xamlRoot = xamlRoot;
         _nowPlayingBar = nowPlayingBar;
         _cover = cover;
@@ -128,9 +134,8 @@ internal sealed class NowPlayingBarController
         // The leading label click-toggles between elapsed and remaining. The
         // tooltip is the affordance that it's clickable, and it names the mode a
         // click switches to, so it tracks the current state.
-        _showRemaining = TimeLabelStore.Load();
         _elapsed.Tapped += (_, _) => ToggleTimeLabel();
-        ToolTipService.SetToolTip(_elapsed, Loc.Chrome(PlaybackPositionModel.TimeLabelTooltipKey(_showRemaining)));
+        ToolTipService.SetToolTip(_elapsed, Loc.Chrome(PlaybackPositionModel.TimeLabelTooltipKey(ShowRemaining)));
 
         _playback.NowPlayingChanged += OnNowPlayingChanged;
         _playback.PlaybackStopped += OnPlaybackStopped;
@@ -226,28 +231,31 @@ internal sealed class NowPlayingBarController
         RenderTimeLabels(new PlaybackPositionRender(progress, positionMs, durationMs));
     }
 
-    // Write both time labels: the leading label shows elapsed or a minus-prefixed
-    // remaining countdown per the current mode; the trailing label is always the
-    // track total. Remembers the position so a label toggle re-renders from it.
+    // Write both time labels. Core projects the pair from the position, the
+    // duration, and the preference — which label is which is its decision, not
+    // this bar's. Remembers the position so a preference change re-renders from it.
     private void RenderTimeLabels(PlaybackPositionRender render)
     {
         _lastPosition = render;
-        _elapsed.Text = _showRemaining
-            ? BridgeDisplay.RemainingClock(render.PositionMs, render.DurationMs)
-            : BridgeDisplay.Clock(render.PositionMs);
-        _duration.Text = BridgeDisplay.Clock(render.DurationMs);
+        var clocks = BridgeDisplay.SeekBarClocks(
+            render.PositionMs, render.DurationMs, ShowRemaining);
+        _elapsed.Text = clocks.Leading;
+        _duration.Text = clocks.Trailing;
     }
 
-    // Flip the leading label between elapsed and remaining, persist the choice,
-    // update the tooltip to name the new target mode, and re-render immediately
-    // from the last position so the label changes without waiting for the next
-    // progress tick. With no position yet there is nothing to re-render — the
-    // next tick picks the mode up.
-    private void ToggleTimeLabel()
+    // Ask core to flip the preference. Nothing is flipped locally: the write fires
+    // a config invalidation, which lands back in RefreshTimeLabelMode.
+    private void ToggleTimeLabel() =>
+        _session.WithCurrentHandle(
+            handle => NativeBae.SetShowRemainingTime(handle, !ShowRemaining));
+
+    // The preference changed (here, or on another device). Re-render the tooltip
+    // and the labels from the last position, so the bar changes without waiting
+    // for the next progress tick.
+    public void RefreshTimeLabelMode()
     {
-        _showRemaining = !_showRemaining;
-        TimeLabelStore.Save(_showRemaining);
-        ToolTipService.SetToolTip(_elapsed, Loc.Chrome(PlaybackPositionModel.TimeLabelTooltipKey(_showRemaining)));
+        ToolTipService.SetToolTip(
+            _elapsed, Loc.Chrome(PlaybackPositionModel.TimeLabelTooltipKey(ShowRemaining)));
         if (_lastPosition is { } position)
         {
             RenderTimeLabels(position);

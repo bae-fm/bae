@@ -632,6 +632,7 @@ struct CoverPickerView: View {
                         encryptionKeyStored: false,
                         encryptionKeyFingerprint: nil,
                         pauseBetweenSides: false,
+                        showRemainingTime: false,
                         exportLocation: .askEachTime,
                         exportFilenameTemplate: PreviewData
                             .exportFilenameTemplate,

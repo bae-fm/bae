@@ -467,6 +467,7 @@ private func makeAppService(handle: FakeAppHandle = FakeAppHandle())
             encryptionKeyStored: false,
             encryptionKeyFingerprint: nil,
             pauseBetweenSides: false,
+            showRemainingTime: false,
             exportLocation: .askEachTime,
             exportFilenameTemplate: "",
             exportPresets: [],

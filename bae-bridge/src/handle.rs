@@ -539,6 +539,16 @@ impl AppHandle {
             .map_err(BridgeError::config)
     }
 
+    /// Whether the seek bar's leading label counts down the time remaining
+    /// instead of showing the time elapsed. The write fires a config
+    /// invalidation, which is what re-renders the bar — no app keeps its own copy.
+    pub fn set_show_remaining_time(&self, enabled: bool) -> Result<(), BridgeError> {
+        self.services
+            .library_manager()
+            .set_show_remaining_time(enabled)
+            .map_err(BridgeError::config)
+    }
+
     /// Set where release exports write: prompt each time, or a fixed folder.
     pub fn set_export_location(
         &self,

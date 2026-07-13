@@ -166,6 +166,9 @@ public sealed partial class MainWindow : Window
         _nowPlayingBar = new NowPlayingBarController(
             _session,
             _playback,
+            // Read at call time: the settings mirror is built further down, and
+            // seeded from the handle once a library is open.
+            () => _settings.Current?.ShowRemainingTime ?? false,
             () => Content.XamlRoot,
             NowPlayingBar,
             NpCover,
@@ -335,9 +338,18 @@ public sealed partial class MainWindow : Window
         _projections.Register(typeof(BridgeInvalidation.ComposerList), ReloadBrowserFromInvalidation);
         _projections.Register(typeof(BridgeInvalidation.ArtistList), ReloadBrowserFromInvalidation);
         _projections.Register(typeof(BridgeInvalidation.SyncStatus), _sync.Refresh);
+        // Config changes reach the now-playing bar's time-label mode, which is a
+        // synced preference: flipping it on another device re-renders the bar here.
+        _projections.Register(typeof(BridgeInvalidation.Config), OnConfigInvalidated);
         _projections.Register(typeof(BridgeInvalidation.ImportCandidateList), _import.RefreshCandidates);
         _projections.Register(typeof(BridgeInvalidation.ImportCandidate), _import.RefreshCandidates);
         _projections.Register(typeof(BridgeInvalidation.WatchedFolders), _import.RefreshCandidates);
+    }
+
+    private void OnConfigInvalidated()
+    {
+        _settings.Reload();
+        _nowPlayingBar.RefreshTimeLabelMode();
     }
 
     private void ReloadBrowserFromInvalidation()
@@ -552,6 +564,10 @@ public sealed partial class MainWindow : Window
 
         LoadCurrentBrowserMode();
         _nowPlayingBar.SeedVolume();
+        // Seed the config mirror: the now-playing bar reads its time-label mode
+        // from it, so it must be populated before the first position tick.
+        _settings.Reload();
+        _nowPlayingBar.RefreshTimeLabelMode();
         _sync.Refresh();
         _session.Subscribe();
         // Host-originated telemetry: the library screen opened, through the

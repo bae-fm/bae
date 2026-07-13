@@ -5,11 +5,13 @@ import Foundation
 /// Position ticks arrive at display rate during playback — far too frequent
 /// for `@Observable` to drive without thrashing the view tree. The store
 /// publishes them as a Combine signal so only the progress bar reacts.
-/// `.position` carries the elapsed/remaining clock labels (formatted from raw
-/// ms as the event dispatcher drives a position update into `PlaybackStore`)
-/// and the `[0,1]` ratio; `.reset` clears the bar when playback stops.
+/// `.position` carries the raw milliseconds and the `[0,1]` ratio; the seek bar
+/// renders its two clocks from them through core's projection, which is also
+/// where the elapsed-vs-remaining choice is made — the store cannot make it,
+/// since the choice is a config the store does not read. `.reset` clears the bar
+/// when playback stops.
 public enum PlaybackPositionEvent {
-    case position(progress: Double, elapsed: String, remaining: String)
+    case position(progress: Double, positionMs: UInt64, durationMs: UInt64)
     case reset
 }
 
@@ -21,11 +23,8 @@ public struct PlaybackPositionSnapshot {
     public var event: PlaybackPositionEvent {
         .position(
             progress: progress,
-            elapsed: DurationClock.text(Int64(positionMs)),
-            remaining: DurationClock.remaining(
-                positionMs: positionMs,
-                durationMs: durationMs
-            )
+            positionMs: positionMs,
+            durationMs: durationMs
         )
     }
 }

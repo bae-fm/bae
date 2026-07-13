@@ -789,6 +789,7 @@
                     encryptionKeyStored: false,
                     encryptionKeyFingerprint: nil,
                     pauseBetweenSides: false,
+                    showRemainingTime: false,
                     exportLocation: .askEachTime,
                     exportFilenameTemplate: exportFilenameTemplate,
                     exportPresets: exportPresets,

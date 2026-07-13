@@ -86,14 +86,6 @@ public static class PlaybackPositionModel
         return PlaybackPositionRejection.Accepted;
     }
 
-    // The persisted time-label mode, as the token the store writes to disk and
-    // reads back. Unknown or missing tokens fall back to elapsed.
-    public static string TimeLabelToken(bool showRemaining) =>
-        showRemaining ? "remaining" : "elapsed";
-
-    public static bool ShowRemainingFromToken(string? token) =>
-        string.Equals(token?.Trim(), "remaining", StringComparison.Ordinal);
-
     // The leading label's tooltip names the action a click performs, so it follows
     // the current mode.
     public static string TimeLabelTooltipKey(bool showRemaining) =>

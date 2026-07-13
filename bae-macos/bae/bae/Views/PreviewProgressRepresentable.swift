@@ -6,7 +6,7 @@ import SwiftUI
 // MARK: - Event type
 
 enum PreviewProgressEvent {
-    case position(progress: Double, elapsed: String)
+    case position(progress: Double, positionMs: UInt64)
     case reset
 }
 
@@ -60,8 +60,11 @@ struct PreviewProgressRepresentable: NSViewRepresentable {
                 .receive(on: DispatchQueue.main)
                 .sink { event in
                     switch event {
-                    case .position(let progress, let elapsed):
-                        view.setPosition(progress: progress, elapsed: elapsed)
+                    case .position(let progress, let positionMs):
+                        view.setPosition(
+                            progress: progress,
+                            positionMs: positionMs
+                        )
                     case .reset:
                         view.reset()
                     }

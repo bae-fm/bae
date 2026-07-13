@@ -7,7 +7,7 @@ namespace Bae.Windows.Tests;
 /// <summary>
 /// Locks the pure position math behind the now-playing bar: seek projection
 /// (ratio clamping, target rounding, duration cap), the projection-wins rule,
-/// stale-track rejection, the time-label mode token, and the now-playing state
+/// stale-track rejection, the time-label tooltip, and the now-playing state
 /// transitions. The elapsed / remaining clock labels are not here: core decides
 /// their fields (bae-core's `util::duration`) and <see cref="Loc.Clock"/> renders
 /// them (LocFormattersTests).
@@ -104,40 +104,6 @@ public sealed class PlaybackPositionModelTests
     [Fact]
     public void Classify_RejectsStaleTrack() =>
         Assert.Equal(PlaybackPositionRejection.StaleTrack, PlaybackPositionModel.ClassifyPlaybackPosition("track-1", "track-2"));
-
-    // ── TimeLabelToken / ShowRemainingFromToken: round-trip and fallback ──
-
-    [Fact]
-    public void TimeLabelToken_RoundTripsRemaining() =>
-        Assert.True(PlaybackPositionModel.ShowRemainingFromToken(PlaybackPositionModel.TimeLabelToken(true)));
-
-    [Fact]
-    public void TimeLabelToken_RoundTripsElapsed() =>
-        Assert.False(PlaybackPositionModel.ShowRemainingFromToken(PlaybackPositionModel.TimeLabelToken(false)));
-
-    [Fact]
-    public void ShowRemainingFromToken_RemainingIsTrue() =>
-        Assert.True(PlaybackPositionModel.ShowRemainingFromToken("remaining"));
-
-    [Fact]
-    public void ShowRemainingFromToken_ElapsedIsFalse() =>
-        Assert.False(PlaybackPositionModel.ShowRemainingFromToken("elapsed"));
-
-    [Fact]
-    public void ShowRemainingFromToken_NullIsFalse() =>
-        Assert.False(PlaybackPositionModel.ShowRemainingFromToken(null));
-
-    [Fact]
-    public void ShowRemainingFromToken_EmptyIsFalse() =>
-        Assert.False(PlaybackPositionModel.ShowRemainingFromToken(""));
-
-    [Fact]
-    public void ShowRemainingFromToken_GarbageIsFalse() =>
-        Assert.False(PlaybackPositionModel.ShowRemainingFromToken("xyzzy"));
-
-    [Fact]
-    public void ShowRemainingFromToken_TrimsWhitespace() =>
-        Assert.True(PlaybackPositionModel.ShowRemainingFromToken(" remaining\n"));
 
     // ── TimeLabelTooltipKey: names the mode a click switches to ──
 

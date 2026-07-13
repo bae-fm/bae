@@ -35,10 +35,7 @@ enum DesktopUiEvents {
 
         case .previewProgress(let positionMs, let progress):
             appService.importStore.previewProgressSubject.send(
-                .position(
-                    progress: progress,
-                    elapsed: DurationClock.text(Int64(positionMs))
-                )
+                .position(progress: progress, positionMs: positionMs)
             )
             appService.mediaControlService.updatePreviewPosition(
                 positionMs: positionMs

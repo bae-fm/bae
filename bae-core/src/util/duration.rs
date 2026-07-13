@@ -60,6 +60,43 @@ impl DurationClock {
     }
 }
 
+/// The two clocks a seek bar shows.
+///
+/// One decision, not four: the leading label is the elapsed position or the
+/// countdown to the end, whichever the user asked for (`show_remaining_time` in
+/// the config), and the trailing label is always the track's total length. The
+/// UI renders the two and owns neither choice.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct SeekBarClocks {
+    pub leading: DurationClock,
+    /// `None` when the track's length is not known — there is no total to show.
+    pub trailing: Option<DurationClock>,
+}
+
+impl SeekBarClocks {
+    /// A `duration_ms` of zero is how playback reports "length unknown", not a
+    /// zero-length track: there is nothing to count down to and no total to
+    /// name, so the leading label shows the elapsed position whatever the
+    /// preference says.
+    pub fn new(position_ms: u64, duration_ms: u64, show_remaining: bool) -> Self {
+        if duration_ms == 0 {
+            return Self {
+                leading: DurationClock::from_seconds(position_ms / 1000, false),
+                trailing: None,
+            };
+        }
+        let leading = if show_remaining {
+            DurationClock::remaining(position_ms, duration_ms)
+        } else {
+            DurationClock::from_seconds(position_ms / 1000, false)
+        };
+        Self {
+            leading,
+            trailing: Some(DurationClock::from_seconds(duration_ms / 1000, false)),
+        }
+    }
+}
+
 /// A duration named in words — "39 min", "3 hr", "3 hr, 42 min" — the form an
 /// album's total playing time takes.
 ///
@@ -208,6 +245,32 @@ mod tests {
         };
         assert_eq!(at_end, expected);
         assert_eq!(past_end, expected);
+    }
+
+    /// The leading label follows the preference; the trailing one is always the
+    /// total, so a bar can never show the countdown on both sides.
+    #[test]
+    fn the_leading_clock_follows_the_preference() {
+        let elapsed = SeekBarClocks::new(25_000, 100_000, false);
+        assert_eq!(elapsed.leading, clock(25_000));
+        assert_eq!(elapsed.trailing, Some(clock(100_000)));
+
+        let remaining = SeekBarClocks::new(25_000, 100_000, true);
+        assert_eq!(remaining.leading, DurationClock::remaining(25_000, 100_000));
+        assert!(remaining.leading.negative);
+        assert_eq!(remaining.trailing, Some(clock(100_000)));
+    }
+
+    /// A zero duration is playback saying it does not know the length. There is
+    /// no total, and nothing to count down to — so the leading label shows the
+    /// position even when the user asked for remaining.
+    #[test]
+    fn an_unknown_duration_has_no_total_and_no_countdown() {
+        for show_remaining in [false, true] {
+            let bar = SeekBarClocks::new(25_000, 0, show_remaining);
+            assert_eq!(bar.leading, clock(25_000));
+            assert_eq!(bar.trailing, None);
+        }
     }
 
     fn units(ms: i64) -> DurationUnits {

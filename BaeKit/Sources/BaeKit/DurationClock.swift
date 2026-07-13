@@ -5,7 +5,7 @@ import Foundation
 ///
 /// Core decides the label's fields: whether it has an hours field, whether it
 /// exists at all, and how a countdown behaves at the end of a track
-/// (`bridgeClock` / `bridgeRemainingClock`). This renders those fields and
+/// (`bridgeClock` / `bridgeSeekBar`). This renders those fields and
 /// nothing else, so a given duration reads the same on every platform. The
 /// digits are the locale's — "٣:٠٧" where an "en" locale reads "3:07" — which is
 /// why the rendering is here and not in core.
@@ -16,14 +16,21 @@ public enum DurationClock {
         render(bridgeClock(ms: ms))
     }
 
-    /// The remaining clock label from a position within a duration (e.g.
-    /// "-1:23"). Both inputs are the pregap-adjusted track time core emits.
-    public static func remaining(positionMs: UInt64, durationMs: UInt64)
-        -> String
-    {
-        render(
-            bridgeRemainingClock(positionMs: positionMs, durationMs: durationMs)
+    /// The seek bar's two labels: the leading one shows the elapsed position or
+    /// the countdown, per `showRemaining` (the user's config), and the trailing
+    /// one is the track's total length — "" when its length is unknown. Which
+    /// label is which is core's decision, not the bar's.
+    public static func seekBar(
+        positionMs: UInt64,
+        durationMs: UInt64,
+        showRemaining: Bool
+    ) -> (leading: String, trailing: String) {
+        let clocks = bridgeSeekBar(
+            positionMs: positionMs,
+            durationMs: durationMs,
+            showRemaining: showRemaining
         )
+        return (render(clocks.leading), render(clocks.trailing))
     }
 
     /// `:` between the fields, every field after the first padded to two digits,

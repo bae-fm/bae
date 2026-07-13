@@ -14,6 +14,8 @@ struct NowPlayingBarContainer: View {
     var playbackStore
     @Environment(UiStore.self)
     var uiStore
+    @Environment(ConfigStore.self)
+    var configStore
     let onDropToQueue: ([String]) -> Void
 
     var body: some View {
@@ -33,6 +35,7 @@ struct NowPlayingBarContainer: View {
             isPlaying: np.isPlaying,
             isLoading: np.loadingTrackId != nil,
             durationMs: track?.durationMs,
+            showRemainingTime: configStore.config.showRemainingTime,
             volume: playbackStore.volume,
             isMuted: playbackStore.isMuted,
             repeatMode: playbackStore.repeatMode,
@@ -43,6 +46,13 @@ struct NowPlayingBarContainer: View {
             onSeek: { ratio in
                 playbackStore.projectSeek(ratio: ratio)
                 playback.seekByRatio(ratio)
+            },
+            onToggleRemainingTime: {
+                // Write-through: the config invalidation is what re-renders the
+                // bar, so there is nothing to flip locally.
+                try? playback.setShowRemainingTime(
+                    !configStore.config.showRemainingTime
+                )
             },
             onVolumeChange: { playback.setVolume($0) },
             onToggleMute: { playback.setMuted(!playbackStore.isMuted) },
@@ -71,6 +81,8 @@ struct NowPlayingBar: View {
     let isPlaying: Bool
     let isLoading: Bool
     let durationMs: UInt64?
+    /// The user's elapsed-vs-remaining choice, from the config.
+    let showRemainingTime: Bool
     let volume: Float
     let isMuted: Bool
     let repeatMode: BridgeRepeatMode
@@ -80,6 +92,7 @@ struct NowPlayingBar: View {
     let onNext: () -> Void
     let onPrevious: () -> Void
     let onSeek: (Double) -> Void
+    let onToggleRemainingTime: () -> Void
     let onVolumeChange: (Float) -> Void
     let onToggleMute: () -> Void
     let onCycleRepeat: () -> Void
@@ -189,8 +202,10 @@ struct NowPlayingBar: View {
 
     private var progressBar: some View {
         PlaybackProgressRepresentable(
+            showRemainingTime: showRemainingTime,
             durationMs: durationMs,
             onSeek: onSeek,
+            onToggleRemainingTime: onToggleRemainingTime,
         )
         .frame(width: 396, height: 20)
         .accessibilityLabel("Playback position")
@@ -343,6 +358,7 @@ struct NowPlayingBar: View {
                 isPlaying: isPlaying,
                 isLoading: isLoading,
                 durationMs: 222_000,
+                showRemainingTime: false,
                 volume: volume,
                 isMuted: isMuted,
                 repeatMode: repeatMode,
@@ -351,6 +367,7 @@ struct NowPlayingBar: View {
                 onNext: {},
                 onPrevious: {},
                 onSeek: { _ in },
+                onToggleRemainingTime: {},
                 onVolumeChange: { volume = $0 },
                 onToggleMute: { isMuted.toggle() },
                 onCycleRepeat: {},

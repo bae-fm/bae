@@ -145,7 +145,7 @@ private fun ExpandedPlayer(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        ExpandedSeekSection(player = session.playback)
+        ExpandedSeekSection(session = session, player = session.playback)
 
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -185,8 +185,12 @@ private fun ExpandedTrackInfo(
 
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 @Composable
-private fun ExpandedSeekSection(player: fm.bae.app.playback.BaeCorePlayer) {
+private fun ExpandedSeekSection(
+    session: OpenLibrary,
+    player: fm.bae.app.playback.BaeCorePlayer,
+) {
     PlaybackProgressAndroidView(
+        session = session,
         player = player,
         modifier = Modifier.fillMaxWidth(),
     )

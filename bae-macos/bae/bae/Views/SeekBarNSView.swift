@@ -13,22 +13,32 @@ class SeekBarNSView: NSView {
     private let elapsedField: NSTextField
     private let slider: SeekSlider
     private let durationField: NSTextField
-    /// Clicking the elapsed label toggles it between elapsed and remaining
-    /// time, persisted under the "showRemainingTime" UserDefaults key. Also
-    /// widens the elapsed label (48pt vs 40pt) to fit the minus-prefixed
-    /// remaining clock.
+    /// Whether clicking the leading label switches it between elapsed and
+    /// remaining time. Also widens that label (48pt vs 40pt) to fit the
+    /// minus-prefixed countdown. The preview player has no such choice.
     private let showsRemainingTimeToggle: Bool
 
     var onSeek: ((Double) -> Void)?
+    /// Called when the user clicks the leading label. The owner writes the new
+    /// value to the config; the resulting invalidation sets `showRemainingTime`
+    /// back on this view, which is what re-renders it.
+    var onToggleRemainingTime: (() -> Void)?
 
-    private var durationMs: UInt64?
-    private var currentElapsed = ""
-    private var currentRemaining = ""
-
-    private var showRemainingTime: Bool {
-        get { UserDefaults.standard.bool(forKey: "showRemainingTime") }
-        set { UserDefaults.standard.set(newValue, forKey: "showRemainingTime") }
+    /// The user's choice, from the config. The view never stores it — a copy
+    /// here is how it stopped following the user between devices.
+    var showRemainingTime = false {
+        didSet {
+            if showRemainingTime != oldValue {
+                updateLabels()
+            }
+        }
     }
+
+    private var positionMs: UInt64 = 0
+    private var durationMs: UInt64?
+    /// Set while the user drags the slider: the dropped position, shown until
+    /// the drag ends. Nil means the leading label follows playback.
+    private var draggingPositionMs: UInt64?
 
     /// `fixedSliderWidth` pins the slider's width (the now-playing bar's
     /// 300pt track); nil lets the stack size it.
@@ -105,60 +115,54 @@ class SeekBarNSView: NSView {
 
     // MARK: - Direct position updates (called from a Combine subscription)
 
-    func setPosition(progress: Double, elapsed: String, remaining: String) {
-        currentElapsed = elapsed
-        currentRemaining = remaining
+    func setPosition(progress: Double, positionMs: UInt64) {
+        self.positionMs = positionMs
 
         if !slider.isDragging {
             slider.doubleValue = progress
-            updateElapsedLabel(seekLabel: nil)
-        }
-    }
-
-    /// For callers whose position events carry no remaining clock (the
-    /// preview player). Only valid with the toggle disabled.
-    func setPosition(progress: Double, elapsed: String) {
-        assert(!showsRemainingTimeToggle)
-        currentElapsed = elapsed
-
-        if !slider.isDragging {
-            slider.doubleValue = progress
-            updateElapsedLabel(seekLabel: nil)
+            updateLabels()
         }
     }
 
     func setDuration(durationMs: UInt64) {
         self.durationMs = durationMs
-        durationField.stringValue = DurationClock.text(Int64(durationMs))
+        updateLabels()
     }
 
     func clearDuration() {
         durationMs = nil
-        durationField.stringValue = ""
+        updateLabels()
     }
 
     /// Clears everything: slider to 0, both labels empty, duration dropped.
     func reset() {
         slider.doubleValue = 0
+        positionMs = 0
+        durationMs = nil
+        draggingPositionMs = nil
         elapsedField.stringValue = ""
         durationField.stringValue = ""
-        durationMs = nil
-        currentElapsed = ""
-        currentRemaining = ""
     }
 
     // MARK: - Internal
 
-    private func updateElapsedLabel(seekLabel: String?) {
-        if let seekLabel {
-            elapsedField.stringValue = seekLabel
+    /// Both labels come from one core projection, so the leading one can never
+    /// disagree with the trailing one about which clock it is showing. While the
+    /// user drags, the leading label reads the dropped position instead of the
+    /// playing one.
+    private func updateLabels() {
+        guard let durationMs else {
+            elapsedField.stringValue = ""
+            durationField.stringValue = ""
+            return
         }
-        else if showsRemainingTimeToggle && showRemainingTime {
-            elapsedField.stringValue = currentRemaining
-        }
-        else {
-            elapsedField.stringValue = currentElapsed
-        }
+        let labels = DurationClock.seekBar(
+            positionMs: draggingPositionMs ?? positionMs,
+            durationMs: durationMs,
+            showRemaining: showsRemainingTimeToggle && showRemainingTime
+        )
+        elapsedField.stringValue = labels.leading
+        durationField.stringValue = labels.trailing
     }
 
     @objc
@@ -166,25 +170,18 @@ class SeekBarNSView: NSView {
         guard slider.isDragging, let durationMs, durationMs > 0 else {
             return
         }
-        let positionMs = slider.positionMs(forDuration: durationMs)
-        let label =
-            showsRemainingTimeToggle && showRemainingTime
-            ? DurationClock.remaining(
-                positionMs: positionMs,
-                durationMs: durationMs
-            )
-            : DurationClock.text(Int64(positionMs))
-        updateElapsedLabel(seekLabel: label)
+        draggingPositionMs = slider.positionMs(forDuration: durationMs)
+        updateLabels()
     }
 
     private func seekCompleted(_ value: Double) {
+        draggingPositionMs = nil
         onSeek?(value)
-        updateElapsedLabel(seekLabel: nil)
+        updateLabels()
     }
 
     @objc
     private func elapsedTapped() {
-        showRemainingTime.toggle()
-        updateElapsedLabel(seekLabel: nil)
+        onToggleRemainingTime?()
     }
 }

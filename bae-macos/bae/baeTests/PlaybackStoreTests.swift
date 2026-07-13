@@ -180,8 +180,8 @@ struct PlaybackStoreSeekProjectionTests {
         expectStorePosition(
             store,
             progress: 0.75,
-            elapsed: "1:15",
-            remaining: "-0:25"
+            positionMs: 75_000,
+            durationMs: 100_000
         )
         let stale = store.updatePlaybackPosition(
             positionMs: 20_000,
@@ -208,8 +208,8 @@ struct PlaybackStoreSeekProjectionTests {
         expectStorePosition(
             store,
             progress: 0.75,
-            elapsed: "1:15",
-            remaining: "-0:25"
+            positionMs: 75_000,
+            durationMs: 100_000
         )
 
         let accepted = store.updatePlaybackSeeked(
@@ -222,8 +222,8 @@ struct PlaybackStoreSeekProjectionTests {
         expectStorePosition(
             store,
             progress: 0.76,
-            elapsed: "1:16",
-            remaining: "-0:24"
+            positionMs: 76_000,
+            durationMs: 100_000
         )
     }
 
@@ -248,8 +248,8 @@ struct PlaybackStoreSeekProjectionTests {
         expectPosition(
             store.playbackPositionSubject.value,
             progress: 0.25,
-            elapsed: "0:25",
-            remaining: "-1:15"
+            positionMs: 25_000,
+            durationMs: 100_000
         )
 
         let accepted = store.updatePlaybackPosition(
@@ -277,8 +277,8 @@ struct PlaybackStoreSeekProjectionTests {
         expectPosition(
             store.playbackPositionSubject.value,
             progress: 0.25,
-            elapsed: "0:25",
-            remaining: "-1:15"
+            positionMs: 25_000,
+            durationMs: 100_000
         )
         let stale = store.updatePlaybackPosition(
             positionMs: 70_000,
@@ -289,8 +289,8 @@ struct PlaybackStoreSeekProjectionTests {
         expectPosition(
             store.playbackPositionSubject.value,
             progress: 0.25,
-            elapsed: "0:25",
-            remaining: "-1:15"
+            positionMs: 25_000,
+            durationMs: 100_000
         )
 
         let reachedTargetProgress = store.updatePlaybackPosition(
@@ -303,8 +303,8 @@ struct PlaybackStoreSeekProjectionTests {
         expectPosition(
             store.playbackPositionSubject.value,
             progress: 0.25,
-            elapsed: "0:25",
-            remaining: "-1:15"
+            positionMs: 25_000,
+            durationMs: 100_000
         )
 
         let accepted = store.updatePlaybackSeeked(
@@ -314,14 +314,11 @@ struct PlaybackStoreSeekProjectionTests {
         )
 
         #expect(accepted.positionMs == 25_100)
-        // 74.9s left floors to "-1:14": a clock shows the time that has actually
-        // elapsed or is actually left, never a rounded-up second that hasn't
-        // happened yet.
         expectPosition(
             store.playbackPositionSubject.value,
             progress: 0.251,
-            elapsed: "0:25",
-            remaining: "-1:14"
+            positionMs: 25_100,
+            durationMs: 100_000
         )
     }
 
@@ -346,8 +343,8 @@ struct PlaybackStoreSeekProjectionTests {
         expectPosition(
             store.playbackPositionSubject.value,
             progress: 0.25,
-            elapsed: "0:25",
-            remaining: "-1:15"
+            positionMs: 25_000,
+            durationMs: 100_000
         )
 
         let reachedTargetProgress = store.updatePlaybackPosition(
@@ -381,8 +378,8 @@ struct PlaybackStoreSeekProjectionTests {
         expectPosition(
             store.playbackPositionSubject.value,
             progress: 0.1,
-            elapsed: "0:10",
-            remaining: "-0:00"
+            positionMs: 10_000,
+            durationMs: 0
         )
     }
 
@@ -422,8 +419,8 @@ struct PlaybackStoreSeekProjectionTests {
         expectPosition(
             store.playbackPositionSubject.value,
             progress: 0.75,
-            elapsed: "1:15",
-            remaining: "-0:25"
+            positionMs: 75_000,
+            durationMs: 100_000
         )
     }
 }
@@ -431,36 +428,36 @@ struct PlaybackStoreSeekProjectionTests {
 private func expectPosition(
     _ event: PlaybackPositionEvent,
     progress: Double,
-    elapsed: String,
-    remaining: String
+    positionMs: UInt64,
+    durationMs: UInt64
 ) {
     guard
         case .position(
             let actualProgress,
-            let actualElapsed,
-            let actualRemaining
+            let actualPositionMs,
+            let actualDurationMs
         ) = event
     else {
         Issue.record("position event was reset")
         return
     }
     #expect(actualProgress == progress)
-    #expect(actualElapsed == elapsed)
-    #expect(actualRemaining == remaining)
+    #expect(actualPositionMs == positionMs)
+    #expect(actualDurationMs == durationMs)
 }
 
 @MainActor
 private func expectStorePosition(
     _ store: PlaybackStore,
     progress: Double,
-    elapsed: String,
-    remaining: String
+    positionMs: UInt64,
+    durationMs: UInt64
 ) {
     expectPosition(
         store.playbackPositionSubject.value,
         progress: progress,
-        elapsed: elapsed,
-        remaining: remaining
+        positionMs: positionMs,
+        durationMs: durationMs
     )
 }
 

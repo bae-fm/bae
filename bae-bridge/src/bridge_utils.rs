@@ -234,6 +234,7 @@ impl BridgeConfig {
             default_track_export_selection,
             default_release_export_selection,
             pause_between_sides,
+            show_remaining_time,
             // Import-time decode verification; not surfaced on the config screen.
             verify_decode_on_import: _,
             mcp,
@@ -248,6 +249,7 @@ impl BridgeConfig {
             encryption_key_stored: inner.encryption_key_stored,
             encryption_key_fingerprint: inner.encryption_key_fingerprint.clone(),
             pause_between_sides: *pause_between_sides,
+            show_remaining_time: *show_remaining_time,
             export_location: BridgeExportLocation::from_core(export_location),
             export_filename_template: export_filename_template.clone(),
             export_presets: export_presets
