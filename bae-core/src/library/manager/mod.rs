@@ -147,6 +147,14 @@ pub enum LibraryError {
     MasterKey(#[from] coven::MasterKeyError),
 }
 
+/// A stored fragment we refuse to join onto a local path surfaces as an import
+/// failure: the row it came from is unusable, and the copy it was for does not run.
+impl From<crate::storage::path_fragment::PathFragmentError> for LibraryError {
+    fn from(error: crate::storage::path_fragment::PathFragmentError) -> Self {
+        LibraryError::Import(error.to_string())
+    }
+}
+
 impl LibraryError {
     /// The user-facing diagnostic class the bridge renders. Membership/setup
     /// failures carry the distinctions the cloud-setup and sharing flows show as

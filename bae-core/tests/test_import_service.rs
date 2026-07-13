@@ -2061,10 +2061,10 @@ async fn import_on_browsable_home_writes_readable_cloud_paths_at_import() {
     let files = f.db.get_files_for_release(&release_id).await.unwrap();
     assert!(!files.is_empty(), "the import recorded release files");
     for file in &files {
-        // The readable key is `{album}/{release}/{source_folder}/{filename}` with
-        // path separators in the filename sanitized to `_` (so a `scans/back.jpg`
-        // image file keys as `.../scans_back.jpg`); assert the readable prefix +
-        // that the file's own name component is present, not the raw path.
+        // The readable key is `{album}/{release}/{source_folder}/{original_filename}`,
+        // and `original_filename` is the file's path within the release folder — so a
+        // `scans/back.jpg` image file keys under a `scans/` level, mirroring the
+        // folder the release was imported from.
         let cp = file.cloud_path.as_deref().unwrap_or_else(|| {
             panic!(
                 "file {} has no cloud_path on a browsable home",
@@ -2075,10 +2075,10 @@ async fn import_on_browsable_home_writes_readable_cloud_paths_at_import() {
             cp.starts_with(&prefix),
             "audio cloud_path {cp} is under the release prefix {prefix}",
         );
-        let leaf = file.original_filename.rsplit('/').next().unwrap();
         assert!(
-            cp.ends_with(leaf),
-            "audio cloud_path {cp} ends with the file's name {leaf}",
+            cp.ends_with(&file.original_filename),
+            "audio cloud_path {cp} ends with the file's stored path {}",
+            file.original_filename,
         );
     }
 

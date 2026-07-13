@@ -32,6 +32,11 @@ pub struct ScannedFile {
     /// as the HashMap key throughout the import pipeline and as
     /// `DbFile.original_filename`. Two files may share a bare filename; they
     /// never share a relative_path within one release.
+    ///
+    /// Always `/`-separated, on every platform: it is stored, synced, and joined
+    /// back onto a local directory by whichever device exports or unmanages the
+    /// release, so it cannot carry the writing platform's separator (see
+    /// [`crate::storage::path_fragment`], which refuses one that does).
     pub relative_path: String,
     /// File size in bytes
     pub size: u64,
@@ -756,7 +761,15 @@ fn categorize_files_from_tree(
                 .to_path_buf()
         };
 
-        let relative_path = relative_from_release.to_string_lossy().to_string();
+        // Joined from the path's components rather than displayed, so the result is
+        // `/`-separated on Windows too. A displayed `Path` uses the host's
+        // separator, and this string is stored on the row and joined back onto a
+        // directory by every other device in the library.
+        let relative_path = relative_from_release
+            .components()
+            .map(|component| component.as_os_str().to_string_lossy())
+            .collect::<Vec<_>>()
+            .join("/");
 
         // The absolute path is fs_root + entry.path.
         let absolute_path = fs_root.join(&entry.path);

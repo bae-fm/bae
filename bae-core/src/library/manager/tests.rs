@@ -3356,16 +3356,33 @@ async fn insert_export_release_rows(
     (release, inserted_files)
 }
 
+/// A Local release with one readable source file, whose stored path fragments are
+/// then overwritten with `poison` — the shape a row pulled from another device can
+/// have. bae's own row-write refuses these values, but coven applies a pulled
+/// changeset straight into SQLite, so the guard that matters is the one at the
+/// join: the export copy-out and make-Local both validate the fragment before they
+/// join it onto the user's folder.
 #[cfg(feature = "test-utils")]
-async fn insert_local_export_release_with_safe_source(
+async fn insert_local_export_release_with_poisoned_fragment(
     manager: &LibraryManager,
     source_dir: &std::path::Path,
-    folder_name: &str,
-    file_name: &str,
     bytes: &[u8],
+    poison: PoisonedFragment<'_>,
 ) -> String {
     let (release, db_files) =
-        insert_export_release_rows(manager, folder_name, &[(file_name, bytes)]).await;
+        insert_export_release_rows(manager, "Album Title", &[("track.flac", bytes)]).await;
+    match poison {
+        PoisonedFragment::OriginalFilename(value) => manager
+            .database
+            .set_original_filename_for_test(&db_files[0].id, value)
+            .await
+            .unwrap(),
+        PoisonedFragment::SourceFolderName(value) => manager
+            .database
+            .set_source_folder_name_for_test(&release.id, value)
+            .await
+            .unwrap(),
+    }
     std::fs::create_dir_all(source_dir).unwrap();
     let source_path = source_dir.join("source.flac");
     std::fs::write(&source_path, bytes).unwrap();
@@ -3380,6 +3397,12 @@ async fn insert_local_export_release_with_safe_source(
         .await
         .unwrap();
     release.id
+}
+
+#[cfg(feature = "test-utils")]
+enum PoisonedFragment<'a> {
+    OriginalFilename(&'a str),
+    SourceFolderName(&'a str),
 }
 
 /// Pausing before the first enqueue parks the worker, so the queue's in-memory
@@ -3510,12 +3533,11 @@ async fn export_writes_exact_bytes_in_source_folder_and_leaves_release_remote() 
 #[tokio::test]
 async fn export_rejects_parent_component_original_filename() {
     let (manager, temp_dir) = setup_test_manager().await;
-    let release_id = insert_local_export_release_with_safe_source(
+    let release_id = insert_local_export_release_with_poisoned_fragment(
         &manager,
         &temp_dir.path().join("source"),
-        "Album Title",
-        "../escape.flac",
         b"escape-bytes",
+        PoisonedFragment::OriginalFilename("../escape.flac"),
     )
     .await;
 
@@ -3534,12 +3556,11 @@ async fn export_rejects_parent_component_original_filename() {
 async fn export_rejects_absolute_original_filename() {
     let (manager, temp_dir) = setup_test_manager().await;
     let absolute_escape = temp_dir.path().join("absolute-escape.flac");
-    let release_id = insert_local_export_release_with_safe_source(
+    let release_id = insert_local_export_release_with_poisoned_fragment(
         &manager,
         &temp_dir.path().join("source"),
-        "Album Title",
-        absolute_escape.to_str().unwrap(),
         b"escape-bytes",
+        PoisonedFragment::OriginalFilename(absolute_escape.to_str().unwrap()),
     )
     .await;
 
@@ -3557,12 +3578,11 @@ async fn export_rejects_absolute_original_filename() {
 #[tokio::test]
 async fn export_rejects_parent_component_source_folder_name() {
     let (manager, temp_dir) = setup_test_manager().await;
-    let release_id = insert_local_export_release_with_safe_source(
+    let release_id = insert_local_export_release_with_poisoned_fragment(
         &manager,
         &temp_dir.path().join("source"),
-        "../escape-folder",
-        "track.flac",
         b"track-bytes",
+        PoisonedFragment::SourceFolderName("../escape-folder"),
     )
     .await;
 
@@ -3574,6 +3594,38 @@ async fn export_rejects_parent_component_source_folder_name() {
         &["escape-folder", "export-out"],
     )
     .await;
+}
+
+/// make-Local hands coven a map of blob id → local destination, built by joining
+/// each file's stored `original_filename` onto the folder the user picked. coven
+/// writes wherever that map points, so a `../` in a row another device wrote would
+/// materialize the release's bytes outside the chosen folder. The join refuses it,
+/// and refuses the whole release: no destination in the map may escape the target.
+#[cfg(feature = "test-utils")]
+#[tokio::test]
+async fn make_local_dest_rejects_a_traversing_original_filename() {
+    let (manager, temp_dir) = setup_test_manager().await;
+    let target = temp_dir.path().join("make-local-out");
+    let release_id = insert_local_export_release_with_poisoned_fragment(
+        &manager,
+        &temp_dir.path().join("source"),
+        b"escape-bytes",
+        PoisonedFragment::OriginalFilename("../escape.flac"),
+    )
+    .await;
+
+    let error = manager
+        .make_local_dest(&release_id, target.to_str().unwrap())
+        .await
+        .expect_err("a traversing original_filename must not produce a destination");
+    assert!(
+        error.to_string().contains("invalid path fragment"),
+        "unexpected error: {error}",
+    );
+    assert!(
+        !temp_dir.path().join("escape.flac").exists(),
+        "nothing is written outside the target folder",
+    );
 }
 
 #[cfg(feature = "test-utils")]
@@ -3595,7 +3647,7 @@ async fn assert_export_rejects_invalid_path(
         .expect_err(message);
 
     assert!(
-        error.to_string().contains("invalid export path"),
+        error.to_string().contains("invalid path fragment"),
         "unexpected error: {error}"
     );
     for path in absent_paths {

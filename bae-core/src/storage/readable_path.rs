@@ -49,15 +49,6 @@ pub fn image_extension(content_type: &ContentType) -> &'static str {
     }
 }
 
-/// Replace path separators in a single path component (a folder name or a
-/// filename) so it can't open an unintended sub-level. A real on-disk name has
-/// none (the filesystem forbids `/`), so this is purely defensive against an odd
-/// source; it does not otherwise alter the name, since the `{release_id}` level
-/// already makes every key unique.
-fn safe_component(component: &str) -> String {
-    component.replace(['/', '\\'], "_")
-}
-
 /// The cloud key for a release file on a browsable home, RELATIVE to the
 /// `release_files` namespace coven prepends:
 /// `{album_id}/{release_id}/{source_folder}/{filename}`, mirroring the folder the
@@ -65,18 +56,22 @@ fn safe_component(component: &str) -> String {
 /// that level is then omitted; the `{release_id}` level keeps the key unique
 /// either way. (`source_folder_name` comes from `Path::file_name`, which is `None`
 /// or a non-empty name, so `Some("")` never occurs and isn't guarded here.)
+///
+/// `filename` is `release_files.original_filename` — the file's path relative to
+/// the release folder, so a disc subfolder (`CD1/track.flac`) is part of it and
+/// nests in the key, exactly as it nests on disk when the release is exported or
+/// made local. Both fragments were validated as relative paths of ordinary
+/// components when their rows were written
+/// ([`crate::storage::path_fragment`]), so nothing here can escape the key's
+/// namespace or its release prefix.
 pub fn audio_key(
     album_id: &str,
     release_id: &str,
     source_folder: Option<&str>,
     filename: &str,
 ) -> String {
-    let filename = safe_component(filename);
     match source_folder {
-        Some(folder) => format!(
-            "{album_id}/{release_id}/{}/{filename}",
-            safe_component(folder)
-        ),
+        Some(folder) => format!("{album_id}/{release_id}/{folder}/{filename}"),
         None => format!("{album_id}/{release_id}/{filename}"),
     }
 }
@@ -125,12 +120,19 @@ mod tests {
     }
 
     #[test]
-    fn safe_component_strips_path_separators_only() {
-        // A stray separator in either the folder or the filename can't open a
-        // sub-level; everything else is verbatim.
+    fn audio_key_nests_a_subfoldered_filename() {
+        // `original_filename` carries the file's path within the release folder,
+        // so a disc subfolder nests in the key — the browsable bucket mirrors the
+        // folder the release was imported from, and matches what an export writes
+        // to disk.
         assert_eq!(
-            audio_key("album-1", "rel-1", Some("a/b"), "sub/dir\\track.flac"),
-            "album-1/rel-1/a_b/sub_dir_track.flac"
+            audio_key(
+                "album-1",
+                "rel-1",
+                Some("Album [FLAC]"),
+                "CD1/01 Track.flac"
+            ),
+            "album-1/rel-1/Album [FLAC]/CD1/01 Track.flac"
         );
         // Spaces, punctuation, unicode all pass through untouched — the
         // {release_id} level already guarantees uniqueness.

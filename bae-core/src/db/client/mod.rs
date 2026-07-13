@@ -1556,7 +1556,18 @@ fn insert_album_artist_row(
     .map_err(DbError::from)
 }
 
+/// `source_folder_name` is the folder an export reconstructs under the user's
+/// target directory, so it is held to the same fragment policy as a file's name
+/// (see [`insert_file_row`]).
 fn insert_release_row(conn: &Connection, release: &DbRelease, reg: &str) -> Result<(), DbError> {
+    if let Some(folder) = &release.source_folder_name {
+        crate::storage::path_fragment::validate_path_fragment(
+            &release.id,
+            "source_folder_name",
+            folder,
+        )
+        .map_err(|e| DbError(e.to_string()))?;
+    }
     conn.execute(
         r#"
         INSERT INTO releases (
@@ -1789,7 +1800,18 @@ fn insert_artist_role_row(
         .map_err(DbError::from)
 }
 
+/// The one row-write for `release_files`, so the one place `original_filename`
+/// enters durable state. Export and make-Local join that column onto a directory
+/// the user chose, and it syncs to every other device, so a name that can't be
+/// materialized there is refused here — inside the caller's transaction, which
+/// rolls back whole rather than committing a release nobody can copy out.
 fn insert_file_row(conn: &Connection, file: &DbFile, reg: &str) -> Result<(), DbError> {
+    crate::storage::path_fragment::validate_path_fragment(
+        &file.release_id,
+        &format!("original_filename for file {}", file.id),
+        &file.original_filename,
+    )
+    .map_err(|e| DbError(e.to_string()))?;
     conn.execute(
         r#"
         INSERT INTO release_files (
