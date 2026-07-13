@@ -184,13 +184,20 @@ impl LibraryManager {
     /// `storage/pinned/` (from the evictable cache if already there, else the
     /// cloud). Idempotent. Pinned-ness is coven cache state — there is no bae flag.
     /// The low-level cache op behind the "Pin" transition.
+    ///
+    /// Pinned one blob at a time so the Downloads pane advances as each file lands:
+    /// coven's `pin` is a per-blob loop with no cross-blob state, so a file at a
+    /// time is the same work in the same order as handing it the whole set — and it
+    /// is the only granularity coven reports at, since a single `pin` call over the
+    /// set returns nothing until every file is in.
     pub(crate) async fn pin_release_blobs_with_progress(
         &self,
         release_id: &str,
         mut on_progress: impl FnMut(crate::library::DownloadTransferProgress),
     ) -> Result<(), LibraryError> {
         let files = self.database.get_files_for_release(release_id).await?;
-        let bytes_total = download_total_bytes(release_id, &files)?;
+        let sizes = download_file_sizes(release_id, &files)?;
+        let bytes_total = total_bytes(release_id, &sizes)?;
         let mut emit_progress = |bytes_done| {
             on_progress(crate::library::DownloadTransferProgress::new(
                 release_id,
@@ -201,12 +208,17 @@ impl LibraryManager {
         };
         emit_progress(0)?;
 
-        let blobs: Vec<_> = files.iter().map(Self::release_file_blob_ref).collect();
-        self.handle
-            .pin(&blobs)
-            .await
-            .map_err(|e| LibraryError::Storage(format!("pin release {release_id}: {e}")))?;
-        emit_progress(bytes_total)?;
+        let mut bytes_done = 0u64;
+        for (file, size) in files.iter().zip(&sizes) {
+            let blob = Self::release_file_blob_ref(file);
+            self.handle
+                .pin(std::slice::from_ref(&blob))
+                .await
+                .map_err(|e| LibraryError::Storage(format!("pin release {release_id}: {e}")))?;
+            // Never exceeds `bytes_total`: it is the sum of these same sizes.
+            bytes_done += size;
+            emit_progress(bytes_done)?;
+        }
 
         Ok(())
     }
@@ -281,11 +293,13 @@ fn download_file_sizes(release_id: &str, files: &[DbFile]) -> Result<Vec<u64>, L
 }
 
 fn download_total_bytes(release_id: &str, files: &[DbFile]) -> Result<u64, LibraryError> {
-    download_file_sizes(release_id, files)?
-        .iter()
-        .try_fold(0u64, |total, file_size| {
-            total.checked_add(*file_size).ok_or_else(|| {
-                LibraryError::Storage(format!("pin release {release_id}: byte total overflow"))
-            })
+    total_bytes(release_id, &download_file_sizes(release_id, files)?)
+}
+
+fn total_bytes(release_id: &str, sizes: &[u64]) -> Result<u64, LibraryError> {
+    sizes.iter().try_fold(0u64, |total, file_size| {
+        total.checked_add(*file_size).ok_or_else(|| {
+            LibraryError::Storage(format!("pin release {release_id}: byte total overflow"))
         })
+    })
 }
