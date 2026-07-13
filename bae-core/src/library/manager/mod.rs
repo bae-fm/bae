@@ -1358,7 +1358,21 @@ impl LibraryManager {
     ) {
         use crate::library::sync_events::{AlbumChangeEvent, ReleaseChangeEvent};
 
-        // Resolve any unresolved track IDs to album IDs via DB.
+        // The changeset couldn't resolve these to albums itself: a track whose
+        // release it didn't carry, or a cover whose release it didn't carry (a peer's
+        // `change_cover` writes the `covers` row alone). Both become album updates —
+        // the album payload carries its releases' tracks and cover refs — deduped
+        // against the albums the changeset already produced an event for, so one
+        // changeset never updates an album twice.
+        let mut seen: std::collections::HashSet<String> = changes
+            .album_events
+            .iter()
+            .map(|event| match event {
+                AlbumChangeEvent::Added(id) | AlbumChangeEvent::Updated(id) => id.clone(),
+                AlbumChangeEvent::Removed { album_id, .. } => album_id.clone(),
+            })
+            .collect();
+
         if !changes.unresolved_track_ids.is_empty() {
             match self
                 .database
@@ -1366,7 +1380,6 @@ impl LibraryManager {
                 .await
             {
                 Ok(resolved) => {
-                    let mut seen = std::collections::HashSet::new();
                     for album_id in resolved.values() {
                         if seen.insert(album_id.clone()) {
                             changes
@@ -1377,6 +1390,27 @@ impl LibraryManager {
                 }
                 Err(e) => {
                     tracing::warn!("Failed to resolve track IDs to album IDs: {e}");
+                }
+            }
+        }
+
+        if !changes.unresolved_release_ids.is_empty() {
+            match self
+                .database
+                .get_album_ids_for_releases(&changes.unresolved_release_ids)
+                .await
+            {
+                Ok(resolved) => {
+                    for album_id in resolved.values() {
+                        if seen.insert(album_id.clone()) {
+                            changes
+                                .album_events
+                                .push(AlbumChangeEvent::Updated(album_id.clone()));
+                        }
+                    }
+                }
+                Err(e) => {
+                    tracing::warn!("Failed to resolve release IDs to album IDs: {e}");
                 }
             }
         }

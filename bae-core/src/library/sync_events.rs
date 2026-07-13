@@ -49,6 +49,10 @@ pub struct ChangesetEntityChanges {
     /// Track IDs whose release wasn't in the changeset. The caller resolves these to
     /// album ids with a DB query and adds album-level update events for them.
     pub unresolved_track_ids: Vec<String>,
+    /// Release IDs whose release row wasn't in the changeset — a cover changed on
+    /// its own. The caller resolves these to album ids with a DB query, the same way
+    /// as [`Self::unresolved_track_ids`].
+    pub unresolved_release_ids: Vec<String>,
 }
 
 /// Raw per-table change info collected from a changeset's row changes.
@@ -64,6 +68,9 @@ struct RawChanges {
     artist_junction_albums: HashSet<String>,
     /// track_id set from track_artists junction changes (need DB to resolve to album_id)
     track_artist_track_ids: HashSet<String>,
+    /// release_id set from `covers` changes — the cover's PK IS its release id
+    /// (may need the DB to resolve to album_id)
+    cover_release_ids: HashSet<String>,
 }
 
 /// Collect affected entity IDs per table from coven's row changes.
@@ -78,6 +85,7 @@ struct RawChanges {
 /// - `tracks`: col 0 = id (PK), col 1 = release_id (FK)
 /// - `album_artists`: col 1 = album_id
 /// - `track_artists`: col 1 = track_id
+/// - `covers`: col 0 = id (PK), which IS the release id
 fn collect_raw_changes(changes: &[RowChange]) -> (RawChanges, u32) {
     let mut raw = RawChanges::default();
     // A changeset row that's missing its FK is a malformed changeset — dropped
@@ -125,7 +133,22 @@ fn collect_raw_changes(changes: &[RowChange]) -> (RawChanges, u32) {
                     raw.track_artist_track_ids.insert(track_id.to_string());
                 }
             }
-            _ => {} // artists, covers, artist_images, … don't drive an event
+            // A cover is keyed by its release id. `change_cover` writes the `covers`
+            // row alone, so this is the one row a peer's changeset carries for it —
+            // and the album payload is what ships the release's cover ref (and its
+            // version, the UI's art cache key), so it escalates to an album update.
+            "covers" => {
+                if let Some(release_id) = change.pk() {
+                    raw.cover_release_ids.insert(release_id.to_string());
+                }
+            }
+            // `artists` and `artist_images` need no event of their own: neither is
+            // ever written on its own. An artist image is only ever inserted by an
+            // import, inside the same transaction as its artist's album and release,
+            // whose album event already refreshes every surface that reads an artist
+            // image ref (the artist and composer lists). A standalone
+            // change-artist-image action would have to appear here.
+            _ => {}
         }
     }
 
@@ -141,6 +164,9 @@ fn collect_raw_changes(changes: &[RowChange]) -> (RawChanges, u32) {
 ///   carries its tracks.
 /// - An `album_artists` / `track_artists` change produces an album-level update,
 ///   since the album payload carries its artists.
+/// - A `covers` change collapses into an album-level update, since the album payload
+///   carries each release's cover ref — including its version, which is the UI's art
+///   cache key.
 fn resolve_changes(raw: RawChanges) -> ChangesetEntityChanges {
     let mut result = ChangesetEntityChanges::default();
 
@@ -219,6 +245,22 @@ fn resolve_changes(raw: RawChanges) -> ChangesetEntityChanges {
         }
     }
 
+    // A cover change means its release's payload changed, so it escalates to an
+    // album-level update — the same event a local `change_cover` emits.
+    for release_id in &raw.cover_release_ids {
+        if let Some((album_id, _)) = raw.releases.get(release_id) {
+            if !album_level_ids.contains(album_id) {
+                album_level_ids.insert(album_id.clone());
+                result
+                    .album_events
+                    .push(AlbumChangeEvent::Updated(album_id.clone()));
+            }
+        } else {
+            // The release isn't in the changeset; the caller resolves it from the DB.
+            result.unresolved_release_ids.push(release_id.clone());
+        }
+    }
+
     // Resolve each track_artists row's track to an album through the changeset's own
     // tracks/releases, or leave it for the caller's DB lookup.
     for track_id in &raw.track_artist_track_ids {
@@ -282,6 +324,62 @@ mod tests {
             changes.album_events.len()
         );
         assert_eq!(changes.release_events.len(), 0);
+    }
+
+    /// `change_cover` writes the `covers` row alone, so that is the whole changeset a
+    /// peer sends. It must still reach the album — the album payload is what carries
+    /// the release's cover ref, and its version is the UI's art cache key.
+    #[test]
+    fn test_sync_changeset_lone_cover_change_resolves_through_the_db() {
+        fn update(table: &str, cols: &[&str]) -> RowChange {
+            RowChange {
+                table: table.to_string(),
+                op: ChangeOp::Update,
+                columns: cols.iter().map(|c| Some(c.to_string())).collect(),
+            }
+        }
+
+        // The cover's PK is its release id, and the release row isn't in the
+        // changeset — the caller resolves it to an album with a DB query.
+        let (changes, _missing_fk) = changes_from_row_changes(&[update("covers", &["rel-1"])]);
+        assert!(changes.album_events.is_empty());
+        assert!(changes.release_events.is_empty());
+        assert_eq!(changes.unresolved_release_ids, vec!["rel-1".to_string()]);
+    }
+
+    /// When the changeset carries the release too, the cover resolves to its album
+    /// from the changeset alone — no DB lookup — and escalates to exactly one album
+    /// update, however many covers it carries. (The release's own event still rides
+    /// along, the same way a track change escalates to the album while its release
+    /// keeps its event; consumers re-read by primary key either way.)
+    #[test]
+    fn test_sync_changeset_cover_with_its_release_resolves_without_the_db() {
+        fn update(table: &str, cols: &[&str]) -> RowChange {
+            RowChange {
+                table: table.to_string(),
+                op: ChangeOp::Update,
+                columns: cols.iter().map(|c| Some(c.to_string())).collect(),
+            }
+        }
+
+        let (changes, _missing_fk) = changes_from_row_changes(&[
+            update("releases", &["rel-1", "alb-1"]),
+            update("releases", &["rel-2", "alb-1"]),
+            update("covers", &["rel-1"]),
+            update("covers", &["rel-2"]),
+        ]);
+
+        assert!(changes.unresolved_release_ids.is_empty());
+        assert_eq!(
+            changes.album_events.len(),
+            1,
+            "both covers collapse into one update for their shared album, got {:?}",
+            changes.album_events
+        );
+        assert!(matches!(
+            &changes.album_events[0],
+            AlbumChangeEvent::Updated(album_id) if album_id == "alb-1"
+        ));
     }
 
     #[test]

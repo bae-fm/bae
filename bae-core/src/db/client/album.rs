@@ -67,6 +67,39 @@ impl Database {
         .await
     }
 
+    /// Map each release id to its album id. Release ids that aren't in the library
+    /// are absent from the map. The release sibling of
+    /// [`get_album_ids_for_tracks`](Self::get_album_ids_for_tracks) — a changeset
+    /// that carries a cover but not its release needs it to reach the album.
+    pub async fn get_album_ids_for_releases(
+        &self,
+        release_ids: &[String],
+    ) -> Result<HashMap<String, String>, DbError> {
+        if release_ids.is_empty() {
+            return Ok(HashMap::new());
+        }
+
+        let release_ids = release_ids.to_vec();
+        self.read(move |conn| {
+            let mut album_ids = HashMap::new();
+            for chunk in release_ids.chunks(SQL_MAX_IN_VARS) {
+                let placeholders = in_clause_placeholders(chunk.len());
+                let sql = format!("SELECT id, album_id FROM releases WHERE id IN ({placeholders})");
+                let mut stmt = conn.prepare(&sql)?;
+                let rows =
+                    stmt.query_map(coven::rusqlite::params_from_iter(chunk.iter()), |row| {
+                        Ok((
+                            row.get::<_, String>("id")?,
+                            row.get::<_, String>("album_id")?,
+                        ))
+                    })?;
+                album_ids.extend(rows.collect::<coven::rusqlite::Result<HashMap<_, _>>>()?);
+            }
+            Ok(album_ids)
+        })
+        .await
+    }
+
     /// Search albums, tracks, composers, and works by title/name.
     pub async fn search_library(
         &self,

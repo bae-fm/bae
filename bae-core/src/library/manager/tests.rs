@@ -114,11 +114,22 @@ async fn rename_table_for_test(manager: &LibraryManager, from: &str, to: &str) {
 }
 
 async fn store_test_cover_image(manager: &LibraryManager, release_id: &str) {
+    store_test_cover_image_with_blob(manager, release_id, "cover-blob").await;
+}
+
+/// Write a release's cover row and its blob. A coven blob id names one immutable
+/// byte-string, so replacing a cover means a NEW `blob_id` on the same row — pass a
+/// different `blob_suffix` to stand in for what `change_cover` does.
+async fn store_test_cover_image_with_blob(
+    manager: &LibraryManager,
+    release_id: &str,
+    blob_suffix: &str,
+) {
     manager
         .store_library_image_blob(
             &DbLibraryImage {
                 id: release_id.to_string(),
-                blob_id: format!("{release_id}-cover-blob"),
+                blob_id: format!("{release_id}-{blob_suffix}"),
                 image_type: LibraryImageType::Cover,
                 content_type: crate::util::content_type::ContentType::Jpeg,
                 file_size: 5,
@@ -5925,5 +5936,84 @@ async fn resolve_queue_projection_resolves_manual_lane_in_full_regardless_of_win
         snapshot.manual.len(),
         manual_count,
         "the manual lane is never windowed"
+    );
+}
+
+/// A peer's `change_cover` writes exactly one row — the `covers` row — so that is
+/// the whole changeset this device receives. The applied changeset has to reach the
+/// album, and what has to arrive is the UI's art cache key: the cover `ImageRef`'s
+/// version (`covers._updated_at`). Before this was handled the changeset was
+/// dropped, and the receiving device kept rendering the old art indefinitely.
+///
+/// The peer here *replaces* an existing cover — a fresh `blob_id` repointing the
+/// same row — which is exactly what `change_cover` does, so the version the event
+/// carries has to be the new one, not the one the device already had.
+#[cfg(feature = "test-utils")]
+#[tokio::test]
+async fn a_peers_lone_cover_change_emits_an_album_update_carrying_the_new_cache_key() {
+    let (manager, _temp_dir) = setup_test_manager().await;
+    let album = create_test_album();
+    let release = create_test_release(&album.id);
+    manager.database.insert_album(&album).await.unwrap();
+    manager.database.insert_release(&release).await.unwrap();
+
+    // The cover this device already has, and the cache key it renders it under.
+    store_test_cover_image(&manager, &release.id).await;
+    let stale_version = manager
+        .find_album_detail(&album.id)
+        .await
+        .unwrap()
+        .expect("album detail")
+        .cover
+        .expect("the release starts with a cover")
+        .version;
+
+    // The peer's `change_cover`, as it lands here: the same row repointed at a new
+    // blob, and its `_updated_at` moves.
+    store_test_cover_image_with_blob(&manager, &release.id, "replacement-blob").await;
+    let expected_version = manager
+        .database
+        .cover_version(&release.id)
+        .await
+        .unwrap()
+        .expect("the cover row has a version");
+    assert_ne!(
+        expected_version, stale_version,
+        "replacing the cover must move its version, or this test proves nothing"
+    );
+
+    // Feed the changeset the peer would have sent: the `covers` row, alone.
+    let mut rx = manager.subscribe_events();
+    let (changes, _missing_fk) =
+        crate::library::sync_events::changes_from_row_changes(&[coven::RowChange {
+            table: "covers".to_string(),
+            op: coven::ChangeOp::Update,
+            columns: vec![Some(release.id.clone())],
+        }]);
+    manager.emit_sync_entity_changes(changes).await;
+
+    let updated = tokio::time::timeout(std::time::Duration::from_secs(2), async {
+        loop {
+            match rx.recv().await {
+                Ok(LibraryEvent::AlbumUpdated { album }) => return album,
+                Ok(_) => continue,
+                Err(e) => panic!("library event channel closed before AlbumUpdated: {e}"),
+            }
+        }
+    })
+    .await
+    .expect("a lone cover change must emit an album update");
+
+    assert_eq!(updated.album.id, album.id);
+    let cover = updated
+        .cover
+        .expect("the album update carries its cover ref");
+    assert_eq!(
+        cover.version, expected_version,
+        "the album update must carry the NEW cover version — that ref is the art cache key"
+    );
+    assert_ne!(
+        cover.version, stale_version,
+        "carrying the old version would re-render the stale art"
     );
 }
