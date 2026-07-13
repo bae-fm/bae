@@ -295,6 +295,7 @@ async fn test_cover_blob_stored_via_local_files_is_readable() {
     mgr.store_library_image_blob(
         &bae_core::db::DbLibraryImage {
             id: release_id.clone(),
+            blob_id: format!("{release_id}-cover-blob"),
             image_type: bae_core::db::LibraryImageType::Cover,
             content_type: bae_core::util::content_type::ContentType::Jpeg,
             file_size: bytes.len() as i64,

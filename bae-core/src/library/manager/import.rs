@@ -149,7 +149,7 @@ impl LibraryManager {
         // from coven's on-device store so the failed import leaves nothing.
         let evict_blobs = orphaned_images
             .into_iter()
-            .map(|image| Self::image_blob_ref(image.namespace, &image.id, image.cloud_path))
+            .map(|image| Self::image_blob_ref(image.namespace, &image.blob_id, image.cloud_path))
             .collect();
         self.evict_delete_blobs(evict_blobs).await;
         Ok(())

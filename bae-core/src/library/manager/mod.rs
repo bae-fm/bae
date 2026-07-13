@@ -1461,20 +1461,21 @@ async fn release_file_pin_state(
 
 impl LibraryManager {
     /// The full cloud object key a cover blob lives at (namespace `covers`),
-    /// derived through coven for the configured home's scheme. Used by the
-    /// bae-side cover delete path.
+    /// derived through coven for the configured home's scheme. `blob_id` is the
+    /// `covers` row's `blob_id` — the blob holding the bytes. Used by the bae-side
+    /// cover delete path.
     fn cover_cloud_key(
         &self,
-        release_id: &str,
+        blob_id: &str,
         cloud_path: Option<&str>,
     ) -> Result<String, LibraryError> {
         self.handle
             .blob_cloud_key(&Self::image_blob_ref(
                 crate::sync::COVERS_NAMESPACE,
-                release_id,
+                blob_id,
                 cloud_path.map(str::to_string),
             ))
-            .map_err(|e| LibraryError::Storage(format!("cloud key for cover {release_id}: {e}")))
+            .map_err(|e| LibraryError::Storage(format!("cloud key for cover blob {blob_id}: {e}")))
     }
 
     /// Build the database cleanup writes and cache blob refs for a release delete
@@ -1534,13 +1535,14 @@ impl LibraryManager {
             .await?;
 
         if let Some(cover) = cover.as_ref().filter(|_| release.remote) {
-            cloud_delete_keys.push(self.cover_cloud_key(release_id, cover.cloud_path.as_deref())?);
+            cloud_delete_keys
+                .push(self.cover_cloud_key(&cover.blob_id, cover.cloud_path.as_deref())?);
         }
 
         if let Some(cover) = cover {
             evict_blobs.push(Self::image_blob_ref(
                 crate::sync::COVERS_NAMESPACE,
-                release_id,
+                &cover.blob_id,
                 cover.cloud_path.clone(),
             ));
         }

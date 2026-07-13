@@ -150,8 +150,8 @@ mod in_clause_chunking_tests {
             conn.execute(
                 "WITH RECURSIVE n(i) AS (SELECT 0 UNION ALL SELECT i + 1 FROM n WHERE i < ?1) \
                  INSERT INTO covers \
-                     (id, content_type, file_size, source, _updated_at, created_at) \
-                 SELECT 'release-' || i, 'image/jpeg', 1024, 'discogs', \
+                     (id, blob_id, content_type, file_size, source, _updated_at, created_at) \
+                 SELECT 'release-' || i, 'cover-blob-' || i, 'image/jpeg', 1024, 'discogs', \
                         'stamp-' || i, '2026-01-01T00:00:00Z' \
                  FROM n",
                 [cover_count as i64 - 1],
@@ -1712,6 +1712,7 @@ mod composer_mode_tests {
         }];
         let image = |id: &str, image_type: LibraryImageType| DbLibraryImage {
             id: id.to_string(),
+            blob_id: format!("{id}-blob"),
             image_type,
             content_type: ContentType::Jpeg,
             file_size: 3,
@@ -1767,7 +1768,7 @@ mod composer_mode_tests {
         assert!(
             orphaned.contains(&OrphanedImageBlob {
                 namespace: crate::sync::COVERS_NAMESPACE,
-                id: "release-a".to_string(),
+                blob_id: "release-a-blob".to_string(),
                 cloud_path: None,
             }),
             "the cover blob is returned for eviction: {orphaned:?}"
@@ -1775,13 +1776,13 @@ mod composer_mode_tests {
         assert!(
             orphaned.contains(&OrphanedImageBlob {
                 namespace: crate::sync::ARTIST_IMAGES_NAMESPACE,
-                id: "artist-exclusive".to_string(),
+                blob_id: "artist-exclusive-blob".to_string(),
                 cloud_path: None,
             }),
             "the deleted artist's image blob is returned for eviction: {orphaned:?}"
         );
         assert!(
-            !orphaned.iter().any(|b| b.id == "artist-shared"),
+            !orphaned.iter().any(|b| b.blob_id == "artist-shared-blob"),
             "the shared artist survives, so its image is not evicted: {orphaned:?}"
         );
         assert_eq!(

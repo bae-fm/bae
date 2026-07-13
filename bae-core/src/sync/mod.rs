@@ -137,6 +137,10 @@ pub fn synced_tables() -> Vec<SyncedTable> {
         // its local store while Local), CacheEager (pulled with the row when
         // Remote so the grid renders from local bytes). An asset — it rides its
         // release's gate (FK on `id`) but never keeps the release alive.
+        //
+        // The blob id comes from `blob_id`, not the PK: the PK is the release id
+        // and cannot move, while a coven blob id names one immutable byte-string.
+        // Changing the cover mints a new `blob_id` and deletes the old blob.
         SyncedTable::new("covers")
             .carries_blob(
                 BlobDecl::new(
@@ -144,6 +148,7 @@ pub fn synced_tables() -> Vec<SyncedTable> {
                     Provenance::HostProvided,
                     CacheFill::CacheEager,
                 )
+                .with_id_column("blob_id")
                 .with_size_column("file_size")
                 .with_cloud_path_column("cloud_path"),
             )
@@ -156,11 +161,35 @@ pub fn synced_tables() -> Vec<SyncedTable> {
                     Provenance::HostProvided,
                     CacheFill::CacheEager,
                 )
+                .with_id_column("blob_id")
                 .with_size_column("file_size")
                 .with_cloud_path_column("cloud_path"),
             )
             .asset(),
     ]
+}
+
+/// The coven [`BlobRef`](coven::BlobRef) for a host-provided library image (a cover
+/// or an artist image) — its identity in coven's local store while Local and its
+/// cache while Remote. `namespace` is [`COVERS_NAMESPACE`] or
+/// [`ARTIST_IMAGES_NAMESPACE`]; `blob_id` is the image row's `blob_id`, NOT the row
+/// id (the release/artist id). A host-provided `CacheEager` blob: the bytes are
+/// produced by bae and kept by coven, fetched into the cache on pull so a grid
+/// renders from local bytes. `cloud_path` is the row's readable path on a browsable
+/// home (`None` on an opaque one).
+pub(crate) fn image_blob_ref(
+    namespace: &str,
+    blob_id: &str,
+    cloud_path: Option<String>,
+) -> coven::BlobRef {
+    coven::BlobRef {
+        namespace: namespace.to_string(),
+        id: blob_id.to_string(),
+        scope: coven::BlobScope::Master,
+        cloud_path,
+        provenance: coven::Provenance::HostProvided,
+        fill: coven::CacheFill::CacheEager,
+    }
 }
 
 #[cfg(test)]

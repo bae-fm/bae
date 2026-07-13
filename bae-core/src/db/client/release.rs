@@ -550,22 +550,18 @@ impl Database {
             .iter()
             .map(|(image, bytes)| ((*image).clone(), (*bytes).to_vec()))
             .collect();
+        // Keyed by the image's `blob_id`, not its row id: a coven blob id names one
+        // immutable byte-string, and the row id (the release / artist) never moves.
         let image_blobs: Vec<(String, String, Vec<u8>)> = library_image
             .iter()
+            .chain(artist_images.iter())
             .map(|(image, bytes)| {
                 (
                     image.image_type.namespace().to_string(),
-                    image.id.clone(),
+                    image.blob_id.clone(),
                     bytes.clone(),
                 )
             })
-            .chain(artist_images.iter().map(|(image, bytes)| {
-                (
-                    image.image_type.namespace().to_string(),
-                    image.id.clone(),
-                    bytes.clone(),
-                )
-            }))
             .collect();
         let primary_release_id = primary_release_id.map(|(a, r)| (a.to_string(), r.to_string()));
         let import_id = import_id.to_string();
@@ -948,17 +944,22 @@ impl Database {
             // never went remote, so its blob lives only in coven's on-device
             // store — the caller evicts it.
             let mut orphaned_images: Vec<OrphanedImageBlob> = Vec::new();
-            if let Some(cloud_path) = conn
+            if let Some((blob_id, cloud_path)) = conn
                 .query_row(
-                    "SELECT cloud_path FROM covers WHERE id = ?",
+                    "SELECT blob_id, cloud_path FROM covers WHERE id = ?",
                     params![release_id],
-                    |row| row.get::<_, Option<String>>(0),
+                    |row| {
+                        Ok((
+                            row.get::<_, String>(0)?,
+                            row.get::<_, Option<String>>(1)?,
+                        ))
+                    },
                 )
                 .optional()?
             {
                 orphaned_images.push(OrphanedImageBlob {
                     namespace: crate::sync::COVERS_NAMESPACE,
-                    id: release_id.clone(),
+                    blob_id,
                     cloud_path,
                 });
             }
@@ -1024,11 +1025,16 @@ impl Database {
             for artist_id in &candidate_artist_ids {
                 // Read the artist's image row before the delete cascades it, so
                 // a deleted artist's orphaned image blob can be evicted.
-                let image_cloud_path: Option<Option<String>> = conn
+                let image_blob: Option<(String, Option<String>)> = conn
                     .query_row(
-                        "SELECT cloud_path FROM artist_images WHERE id = ?",
+                        "SELECT blob_id, cloud_path FROM artist_images WHERE id = ?",
                         params![artist_id],
-                        |row| row.get::<_, Option<String>>(0),
+                        |row| {
+                            Ok((
+                                row.get::<_, String>(0)?,
+                                row.get::<_, Option<String>>(1)?,
+                            ))
+                        },
                     )
                     .optional()?;
                 let deleted = conn.execute(
@@ -1042,10 +1048,10 @@ impl Database {
                     params![artist_id],
                 )?;
                 if deleted == 1 {
-                    if let Some(cloud_path) = image_cloud_path {
+                    if let Some((blob_id, cloud_path)) = image_blob {
                         orphaned_images.push(OrphanedImageBlob {
                             namespace: crate::sync::ARTIST_IMAGES_NAMESPACE,
-                            id: artist_id.clone(),
+                            blob_id,
                             cloud_path,
                         });
                     }

@@ -49,6 +49,7 @@ pub async fn fetch_artist_image(
     let now = library_manager.clock().now();
     let db_image = DbLibraryImage {
         id: artist_id.to_string(),
+        blob_id: library_manager.ids().new_id(),
         image_type: LibraryImageType::Artist,
         content_type,
         file_size: bytes.len() as i64,

@@ -67,26 +67,15 @@ impl LibraryManager {
             .map_err(|e| LibraryError::Storage(format!("read of {}: {e}", file.id)))
     }
 
-    /// The coven `BlobRef` for a host-provided library image (a cover or an artist
-    /// image) — its identity in coven's local store while Local and its cache while
-    /// Remote. `namespace` is `covers` or `artist_images`; `id` is the release id
-    /// (a cover) or artist id (an artist image). A host-provided `CacheEager` blob:
-    /// the bytes are produced by bae and kept by coven, fetched into the cache on
-    /// pull so a grid renders from local bytes. `cloud_path` is the row's readable
-    /// path on a browsable home (`None` on an opaque one).
+    /// The coven `BlobRef` for a host-provided library image, addressed by the
+    /// image row's `blob_id` (not its `id`, which names the release or artist). See
+    /// [`crate::sync::image_blob_ref`].
     pub(crate) fn image_blob_ref(
         namespace: &str,
-        id: &str,
+        blob_id: &str,
         cloud_path: Option<String>,
     ) -> coven::BlobRef {
-        coven::BlobRef {
-            namespace: namespace.to_string(),
-            id: id.to_string(),
-            scope: coven::BlobScope::Master,
-            cloud_path,
-            provenance: coven::Provenance::HostProvided,
-            fill: coven::CacheFill::CacheEager,
-        }
+        crate::sync::image_blob_ref(namespace, blob_id, cloud_path)
     }
 
     /// The cover [`ImageRef`] for one release — its image id paired with the
@@ -146,7 +135,7 @@ impl LibraryManager {
         let Some(row) = self.database.find_library_image(id, image_type).await? else {
             return Ok(None);
         };
-        let blob = Self::image_blob_ref(namespace, id, row.cloud_path.clone());
+        let blob = Self::image_blob_ref(namespace, &row.blob_id, row.cloud_path.clone());
         let bytes = self
             .handle
             .read_blob(&blob)

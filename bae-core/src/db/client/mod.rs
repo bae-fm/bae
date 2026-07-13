@@ -101,7 +101,9 @@ pub struct DeleteCleanupPlan {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct OrphanedImageBlob {
     pub namespace: &'static str,
-    pub id: String,
+    /// The coven blob id from the image row's `blob_id`, which addresses the bytes
+    /// — not the row id (the release / artist).
+    pub blob_id: String,
     pub cloud_path: Option<String>,
 }
 
@@ -591,6 +593,7 @@ fn row_to_library_image(
 ) -> coven::rusqlite::Result<DbLibraryImage> {
     Ok(DbLibraryImage {
         id: row.get("id")?,
+        blob_id: row.get("blob_id")?,
         image_type,
         content_type: ContentType::from_mime(&row.get::<_, String>("content_type")?),
         file_size: row.get("file_size")?,
@@ -1936,9 +1939,10 @@ fn upsert_library_image_row(
     let table = image_table(&image.image_type);
     conn.execute(
         &format!(
-            "INSERT INTO {table} (id, content_type, file_size, width, height, source, source_url, cloud_path, hash, _updated_at, created_at) \
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) \
+            "INSERT INTO {table} (id, blob_id, content_type, file_size, width, height, source, source_url, cloud_path, hash, _updated_at, created_at) \
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) \
              ON CONFLICT(id) DO UPDATE SET \
+                 blob_id = excluded.blob_id, \
                  content_type = excluded.content_type, \
                  file_size = excluded.file_size, \
                  width = excluded.width, \
@@ -1951,6 +1955,7 @@ fn upsert_library_image_row(
         ),
         params![
             image.id,
+            image.blob_id,
             image.content_type.as_str(),
             image.file_size,
             image.width,

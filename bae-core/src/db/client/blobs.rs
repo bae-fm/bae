@@ -10,27 +10,77 @@ impl Database {
         .await
     }
 
-    /// Write a host-provided image blob and its `covers`/`artist_images` row as
-    /// one coven batch.
+    /// Write a host-provided image blob and its `covers`/`artist_images` row as one
+    /// coven batch — storing an image for the first time, and replacing one that is
+    /// already there.
+    ///
+    /// A coven blob id names one immutable byte-string, so replacing an image's
+    /// bytes means a **new blob**, never new bytes under the live id (coven refuses
+    /// that outright). `image.blob_id` is the new blob; when the row already
+    /// references a different one, the old blob is deleted in the same batch. coven
+    /// admits both halves: the new blob id is referenced by no row before the
+    /// closure runs, and the old one is referenced by none after it repoints the
+    /// row.
+    ///
+    /// The old blob's cloud object is tombstoned only when its cloud key differs
+    /// from the new blob's. On an opaque home the key is derived from the blob id,
+    /// so it moves and the old object must be reclaimed. On a browsable home the key
+    /// is the row's readable `cloud_path`, which does not move — the new bytes
+    /// target that same object, and deleting it would delete what was just written.
+    /// Whether the old blob ever reached the cloud needs no separate check:
+    /// tombstoning a key holding no object is a no-op the GC cleans up.
     pub async fn write_library_image_blob(
         &self,
         image: &DbLibraryImage,
         bytes: &[u8],
     ) -> Result<(), DbError> {
         let image = image.clone();
-        let namespace = image.image_type.namespace().to_string();
-        let id = image.id.clone();
+        let namespace = image.image_type.namespace();
+        let new_blob =
+            crate::sync::image_blob_ref(namespace, &image.blob_id, image.cloud_path.clone());
+        let replaced = self
+            .find_library_image(&image.id, &image.image_type)
+            .await?
+            .filter(|existing| existing.blob_id != image.blob_id)
+            .map(|existing| {
+                crate::sync::image_blob_ref(namespace, &existing.blob_id, existing.cloud_path)
+            });
+
+        // The cloud object the replaced blob occupies, when it is not the one the
+        // new blob is about to write.
+        let stale_cloud_key = match replaced.as_ref() {
+            Some(old) => {
+                let cloud_key = |blob| {
+                    self.inner
+                        .handle
+                        .blob_cloud_key(blob)
+                        .map_err(|e| DbError(format!("cloud key for image blob: {e}")))
+                };
+                let old_key = cloud_key(old)?;
+                (old_key != cloud_key(&new_blob)?).then_some(old_key)
+            }
+            None => None,
+        };
+
         let bytes = bytes.to_vec();
         self.inner
             .handle
             .write(
                 move |w| {
-                    w.put_blob(namespace, id, bytes);
+                    w.put_blob(new_blob.namespace.clone(), new_blob.id.clone(), bytes);
+                    if let Some(old) = replaced {
+                        w.delete_blob(old);
+                    }
                     Ok(())
                 },
                 move |sql| {
                     let reg = sql.stamp();
-                    upsert_library_image_row(sql.tx(), &image, &reg).map_err(CovenError::from)
+                    upsert_library_image_row(sql.tx(), &image, &reg).map_err(CovenError::from)?;
+                    if let Some(cloud_key) = stale_cloud_key {
+                        add_cloud_outbox_delete_on(sql.tx(), &cloud_key, &reg)
+                            .map_err(CovenError::from)?;
+                    }
+                    Ok(())
                 },
             )
             .await

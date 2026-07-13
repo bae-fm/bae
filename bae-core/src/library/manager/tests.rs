@@ -118,6 +118,7 @@ async fn store_test_cover_image(manager: &LibraryManager, release_id: &str) {
         .store_library_image_blob(
             &DbLibraryImage {
                 id: release_id.to_string(),
+                blob_id: format!("{release_id}-cover-blob"),
                 image_type: LibraryImageType::Cover,
                 content_type: crate::util::content_type::ContentType::Jpeg,
                 file_size: 5,
@@ -420,6 +421,7 @@ async fn work_detail_release_rows_are_display_ready() {
     );
     let cover = DbLibraryImage {
         id: release.id.clone(),
+        blob_id: format!("{}-cover-blob", release.id),
         image_type: LibraryImageType::Cover,
         content_type: ContentType::Jpeg,
         file_size: 100,
@@ -893,6 +895,7 @@ async fn delete_release_removes_its_cover_image() {
         .store_library_image_blob(
             &crate::db::DbLibraryImage {
                 id: release1.id.clone(),
+                blob_id: format!("{}-cover-blob", release1.id),
                 image_type: LibraryImageType::Cover,
                 content_type: crate::util::content_type::ContentType::Jpeg,
                 file_size: 5,
@@ -924,7 +927,7 @@ async fn delete_release_removes_its_cover_image() {
         .handle()
         .blob_cloud_key(&LibraryManager::image_blob_ref(
             crate::sync::COVERS_NAMESPACE,
-            &release1.id,
+            &format!("{}-cover-blob", release1.id),
             None,
         ))
         .unwrap();
@@ -948,6 +951,7 @@ async fn delete_album_removes_release_covers() {
         .store_library_image_blob(
             &crate::db::DbLibraryImage {
                 id: release.id.clone(),
+                blob_id: format!("{}-cover-blob", release.id),
                 image_type: LibraryImageType::Cover,
                 content_type: crate::util::content_type::ContentType::Jpeg,
                 file_size: 5,
@@ -975,7 +979,7 @@ async fn delete_album_removes_release_covers() {
         .handle()
         .blob_cloud_key(&LibraryManager::image_blob_ref(
             crate::sync::COVERS_NAMESPACE,
-            &release.id,
+            &format!("{}-cover-blob", release.id),
             None,
         ))
         .unwrap();
@@ -1083,6 +1087,7 @@ async fn add_cover_row(manager: &LibraryManager, release_id: &str) {
     manager
         .upsert_library_image(&crate::db::DbLibraryImage {
             id: release_id.to_string(),
+            blob_id: format!("{release_id}-cover-blob"),
             image_type: LibraryImageType::Cover,
             content_type: crate::util::content_type::ContentType::Jpeg,
             file_size: 5,
@@ -1514,6 +1519,122 @@ async fn change_cover_stores_a_resized_jpeg_thumbnail() {
         .expect("cover row stored");
     assert_eq!(row.content_type, ContentType::Jpeg);
     assert_eq!(row.file_size, stored.len() as i64);
+}
+
+/// A cover can be changed again and again. coven's `(namespace, blob id)` names one
+/// immutable byte-string — a blob's bytes are never rewritten under a live id — so
+/// each change mints a NEW `blob_id`, repoints the `covers` row at it, and deletes
+/// the blob it replaced. The row's hash and size describe the newly stored bytes,
+/// and the old blob's cloud object is queued for deletion.
+#[tokio::test]
+async fn change_cover_twice_replaces_the_cover_blob() {
+    let (manager, _temp_dir) = setup_test_manager().await;
+    let album = create_test_album();
+    let mut release = create_test_release(&album.id);
+    release.remote = false;
+    manager.database.insert_album(&album).await.unwrap();
+    manager.database.insert_release(&release).await.unwrap();
+
+    // Two visibly different release images, so the two stored thumbnails differ.
+    let source_dir = TempDir::new().unwrap();
+    let png = |rgb: [u8; 3]| {
+        let img = ::image::RgbImage::from_pixel(400, 400, ::image::Rgb(rgb));
+        let mut buf = std::io::Cursor::new(Vec::new());
+        ::image::DynamicImage::ImageRgb8(img)
+            .write_to(&mut buf, ::image::ImageFormat::Png)
+            .unwrap();
+        buf.into_inner()
+    };
+    let add_source = |name: &str, bytes: &[u8]| {
+        std::fs::write(source_dir.path().join(name), bytes).unwrap();
+        DbFile::new(
+            &release.id,
+            name,
+            bytes.len() as i64,
+            ContentType::Png,
+            Uuid::new_v4().to_string(),
+            Utc::now(),
+            Some(crate::util::fs::hash_bytes(bytes)),
+        )
+    };
+    let green = add_source("green.png", &png([20, 160, 90]));
+    let red = add_source("red.png", &png([200, 40, 40]));
+    manager.add_file(&green).await.unwrap();
+    manager.add_file(&red).await.unwrap();
+    manager
+        .database
+        .register_release_external_refs_for_test(&release.id, &source_dir.path().to_string_lossy())
+        .await
+        .unwrap();
+
+    let change_to = async |file: &DbFile| {
+        manager
+            .change_cover(
+                &album.id,
+                &release.id,
+                CoverSelection::ReleaseImage {
+                    file_id: file.id.clone(),
+                },
+            )
+            .await
+    };
+    let cover_row = async || {
+        manager
+            .get_library_image(&release.id, &LibraryImageType::Cover)
+            .await
+            .unwrap()
+            .expect("cover row stored")
+    };
+
+    change_to(&green).await.unwrap();
+    let first = cover_row().await;
+
+    // The second change is the one that used to fail: it re-put a blob under an id
+    // the `covers` row already referenced.
+    change_to(&red).await.unwrap();
+    let second = cover_row().await;
+
+    // The row moved to a new blob, and describes the bytes that blob holds.
+    assert_ne!(
+        second.blob_id, first.blob_id,
+        "a replaced cover is a new blob, not new bytes under the old id"
+    );
+    let stored = manager
+        .read_cover_image_blob(&release.id)
+        .await
+        .unwrap()
+        .expect("cover blob stored");
+    assert_eq!(
+        second.content_hash.as_deref(),
+        Some(crate::util::fs::hash_bytes(&stored).as_str())
+    );
+    assert_eq!(second.file_size, stored.len() as i64);
+
+    // The bytes really are the second image's, not the first's.
+    let first_stored_len = first.file_size;
+    assert_ne!(
+        stored.len() as i64,
+        first_stored_len,
+        "the two source images must produce different thumbnails for this test to mean anything"
+    );
+
+    // The replaced blob is gone from this device, and its cloud object is queued
+    // for deletion (its key is not the one the new blob just wrote).
+    let old_blob = LibraryManager::image_blob_ref(
+        crate::sync::COVERS_NAMESPACE,
+        &first.blob_id,
+        first.cloud_path.clone(),
+    );
+    assert!(
+        manager.handle().read_blob(&old_blob).await.is_err(),
+        "the replaced cover blob must not still be readable"
+    );
+    let old_key = manager.handle().blob_cloud_key(&old_blob).unwrap();
+    let deletes = manager.database.get_pending_cloud_deletes().await.unwrap();
+    assert!(
+        deletes.iter().any(|d| d.cloud_key == old_key),
+        "the replaced cover's cloud object must be queued for deletion: {deletes:?}"
+    );
 }
 
 /// Queueing an album expands to its PRIMARY release's tracks, not the
