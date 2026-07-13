@@ -88,12 +88,7 @@ fun SettingsScreen(
     var confirmLeave by remember { mutableStateOf(false) }
     var showRecoveryCode by remember { mutableStateOf(false) }
 
-    // Host-originated telemetry: the settings screen opened. Infallible.
-    LaunchedEffect(Unit) {
-        session.appHandle.telemetry(
-            BridgeTelemetryEvent.ScreenOpened(BridgeScreen.SETTINGS),
-        )
-    }
+    ReportScreenOpened(session, BridgeScreen.SETTINGS)
 
     Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
         SettingsTopBar(onBack = onBack)
@@ -147,6 +142,21 @@ fun SettingsScreen(
 
     if (showRecoveryCode) {
         RecoveryCodeDialog(session = session, onDismiss = { showRecoveryCode = false })
+    }
+}
+
+/**
+ * Host-originated telemetry: report a screen open as a typed event when this
+ * composable enters the composition. Infallible — telemetry never affects
+ * navigation.
+ */
+@Composable
+private fun ReportScreenOpened(
+    session: OpenLibrary,
+    screen: BridgeScreen,
+) {
+    LaunchedEffect(Unit) {
+        session.appHandle.telemetry(BridgeTelemetryEvent.ScreenOpened(screen))
     }
 }
 

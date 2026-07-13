@@ -17,7 +17,7 @@ use crate::diagnostics::DiagnosticLevel;
 /// A value allowed to ship in a telemetry event. Deliberately NOT implemented
 /// for `String`/`&str`: free text, names, paths, and externally-resolvable ids
 /// (MusicBrainz, Discogs) must not enter the payload. Closed field-less enums
-/// implement it via [`telemetry_value_enum!`]; DB-generated random ids ship via
+/// implement it via `telemetry_value_enum!`; DB-generated random ids ship via
 /// [`LocalId`].
 pub trait TelemetryValue {
     fn record(&self) -> serde_json::Value;

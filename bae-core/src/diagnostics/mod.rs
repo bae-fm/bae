@@ -1,7 +1,7 @@
 //! Shipped telemetry is a closed, typed catalog — never free text.
 //!
 //! Everything that leaves the device is a [`TelemetryEvent`] (see
-//! [`telemetry`]): a declared name, level, and typed fields, serialized to a
+//! `telemetry.rs`): a declared name, level, and typed fields, serialized to a
 //! [`DiagnosticEvent`] and batched to Datadog by the worker here. Field values
 //! go through [`TelemetryValue`], which `String`/`&str` don't implement, so
 //! free text, names, paths, and externally-resolvable ids can't enter the
