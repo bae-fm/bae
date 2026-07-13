@@ -317,11 +317,7 @@ fn build_mb_detail(
             let side = side_base + side_offset + 1;
 
             tracks.push(ReleaseTrack {
-                title: t
-                    .title
-                    .clone()
-                    .or_else(|| t.recording.as_ref().and_then(|r| r.title.clone()))
-                    .unwrap_or_default(),
+                title: crate::import::musicbrainz_mapper::track_title(release_id, t)?,
                 artist: t.artist_credit.first().map(|ac| ac.name.clone()),
                 duration_ms: t.length,
                 position: t
@@ -364,6 +360,20 @@ fn build_mb_detail(
         tracks,
         cover_art,
     })
+}
+
+/// What the confirmation step gets from picking a release: the picker's display
+/// shape and the metadata editor's seed.
+///
+/// `seed` is projected from the very `ParsedAlbum` the commit worker builds — so
+/// the artists, titles and pressing the editor shows are the ones commit compares
+/// the returned overlay against. `detail` is display only: covers, the raw source
+/// position strings, the track count to reconcile against the folder. Nothing is
+/// seeded from it.
+#[derive(Debug, Clone)]
+pub struct ImportReleasePrefetch {
+    pub detail: ImportSearchReleaseDetail,
+    pub seed: crate::import::ReleaseUserEdit,
 }
 
 /// Prefetch path for MusicBrainz: pure MB fetch + picker/confirm detail. No
@@ -535,8 +545,6 @@ pub async fn commit_discogs_release(
 mod tests {
     use super::*;
     use crate::discogs::client::DiscogsSearchResult;
-    use crate::discogs::{DiscogsArtist, DiscogsRelease, DiscogsTrack};
-    use crate::import::{IdentityChoice, MetadataRef};
     use crate::musicbrainz::{
         MbArtistCredit, MbMedium, MbRecording, MbReleaseGroupRef, MbReleaseResponse, MbTrack,
     };
@@ -731,118 +739,76 @@ mod tests {
         );
     }
 
-    /// Assert the commit plane and the editor-seed plane assign identical
-    /// `(side, track_number)` to every track: the commit rows from
-    /// `map_*_to_db` and the editor seed from a detail →
-    /// `shape_user_edit_from_search_detail(Exact)` line up position for
-    /// position.
-    fn assert_planes_agree_on_numbering(
-        parsed: &crate::import::ParsedAlbum,
-        detail: &ImportSearchReleaseDetail,
-        release_ref: MetadataRef,
-    ) {
-        let user_edit = crate::import::shape_user_edit_from_search_detail(
-            detail,
-            &IdentityChoice::Exact { release_ref },
-        );
-        let commit: Vec<(i32, Option<i32>)> = parsed
-            .tracks
-            .iter()
-            .map(|t| (t.side, t.track_number))
-            .collect();
-        let seed: Vec<(i32, Option<i32>)> = user_edit
-            .tracks
-            .iter()
-            .map(|t| (t.side, t.track_number))
-            .collect();
-        assert_eq!(commit, seed);
-    }
-
-    /// The commit plane (`map_mb_response_to_db`) and the editor-seed plane
-    /// (`build_mb_detail` → `shape_user_edit_from_search_detail`) agree on
-    /// `(side, track_number)` for every track of a multi-side vinyl release:
-    /// both number through `per_side_positions` over side values from the same
-    /// `medium_sides` derivation.
+    /// The picker's track titles resolve exactly as the commit mapper's do —
+    /// recording title first, the track's own title only as the fallback. The two
+    /// used to read the pair in opposite orders, so a release whose track and
+    /// recording titles differ showed one title in the picker and committed the
+    /// other.
     #[test]
-    fn mb_commit_and_editor_seed_agree_on_side_and_number() {
-        let response = response_with_media(vec![
-            MbMedium {
-                format: Some("12\" Vinyl".to_string()),
-                tracks: vec![
-                    make_mb_track("A1", "Track A1"),
-                    make_mb_track("A2", "Track A2"),
-                    make_mb_track("B1", "Track B1"),
-                ],
-            },
-            MbMedium {
-                format: Some("12\" Vinyl".to_string()),
-                tracks: vec![
-                    make_mb_track("C1", "Track C1"),
-                    make_mb_track("D1", "Track D1"),
-                ],
-            },
-        ]);
-        let clock = test_clock();
-        let ids = SequentialIdProvider::new("mb");
+    fn mb_detail_track_title_prefers_the_recording_title() {
+        let mut track = make_mb_track("1", "Recording Title");
+        track.title = Some("Track Title".to_string());
+        let fallback = MbTrack {
+            position: None,
+            number: Some("2".to_string()),
+            title: Some("Only A Track Title".to_string()),
+            length: None,
+            recording: Some(MbRecording {
+                id: None,
+                title: None,
+                artist_credit: vec![],
+                relations: vec![],
+            }),
+            artist_credit: vec![],
+        };
+        let response = response_with_media(vec![MbMedium {
+            format: Some("CD".to_string()),
+            tracks: vec![track, fallback],
+        }]);
+
+        let detail = build_mb_detail("mb-release-1", &response, vec![]).unwrap();
+        let titles: Vec<&str> = detail.tracks.iter().map(|t| t.title.as_str()).collect();
+        assert_eq!(titles, vec!["Recording Title", "Only A Track Title"]);
+
         let parsed = crate::import::musicbrainz_mapper::map_mb_response_to_db(
-            &response, None, None, &clock, &ids,
+            &response,
+            None,
+            None,
+            &test_clock(),
+            &SequentialIdProvider::new("mb"),
         )
         .unwrap();
-        let detail = build_mb_detail("mb-release-1", &response, vec![]).unwrap();
-
-        assert_planes_agree_on_numbering(
-            &parsed,
-            &detail,
-            MetadataRef::new("mb-release-1", MetadataSource::MusicBrainz),
-        );
+        let committed: Vec<&str> = parsed.tracks.iter().map(|t| t.title.as_str()).collect();
+        assert_eq!(titles, committed);
     }
 
-    /// The same numbering agreement over a multi-disc Discogs release, whose
-    /// sides come from `process_tracklist`.
+    /// A track with no title anywhere fails the prefetch rather than rendering as
+    /// an empty row the user can't tell from a real one — the same error the
+    /// commit mapper raises.
     #[test]
-    fn discogs_commit_and_editor_seed_agree_on_side_and_number() {
-        let make_track = |position: &str, title: &str| DiscogsTrack {
-            position: position.to_string(),
-            title: title.to_string(),
-            duration: None,
-            artists: vec![],
-            type_: "track".to_string(),
-            extraartists: None,
-        };
-        let release = DiscogsRelease {
-            id: "discogs-release-1".to_string(),
-            title: "Album Title".to_string(),
-            year: Some(2024),
-            format: vec![],
-            country: None,
-            label: vec![],
-            cover_image: None,
-            thumb: None,
-            catno: None,
-            artists: vec![DiscogsArtist {
-                id: "artist-1".to_string(),
-                name: "Artist Name".to_string(),
+    fn mb_detail_errors_on_track_without_any_title() {
+        let response = response_with_media(vec![MbMedium {
+            format: Some("CD".to_string()),
+            tracks: vec![MbTrack {
+                position: None,
+                number: Some("1".to_string()),
+                title: None,
+                length: None,
+                recording: Some(MbRecording {
+                    id: None,
+                    title: None,
+                    artist_credit: vec![],
+                    relations: vec![],
+                }),
+                artist_credit: vec![],
             }],
-            extraartists: Some(vec![]),
-            tracklist: vec![
-                make_track("1-1", "Disc 1 Track 1"),
-                make_track("1-2", "Disc 1 Track 2"),
-                make_track("2-1", "Disc 2 Track 1"),
-                make_track("2-2", "Disc 2 Track 2"),
-            ],
-            master_id: None,
-        };
-        let clock = test_clock();
-        let ids = SequentialIdProvider::new("d");
-        let parsed =
-            crate::import::discogs_mapper::map_discogs_to_db(&release, None, None, &clock, &ids)
-                .unwrap();
-        let detail = build_discogs_detail(&release);
+        }]);
 
-        assert_planes_agree_on_numbering(
-            &parsed,
-            &detail,
-            MetadataRef::new("discogs-release-1", MetadataSource::Discogs),
+        let err = build_mb_detail("mb-release-1", &response, vec![])
+            .expect_err("expected error for a title-less track");
+        assert!(
+            matches!(&err, ImportError::SourceData { detail, .. } if detail.contains("has no track title")),
+            "unexpected error: {err}"
         );
     }
 }

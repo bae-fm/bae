@@ -10,11 +10,11 @@ use bae_core::db::LibraryStatus;
 use bae_core::import::cover_art::RemoteCover;
 use bae_core::import::folder_scanner::{FolderCandidate, InvalidCandidate};
 use bae_core::import::release_group::ReleaseGroup;
-use bae_core::import::search::{ImportSearchReleaseDetail, MetadataResult, ReleaseTrack};
+use bae_core::import::search::{ImportSearchReleaseDetail, MetadataResult};
 use bae_core::import::{
-    shape_user_edit_from_search_detail, CoverSelection, GroupedSearchResults, IdentityChoice,
-    ImportError, ImportEvent, ImportPhase, ImportProgress, MetadataRef, MetadataSource,
-    PrepareStep, PressingEdit, ScanEvent, SearchQuery, StorageMode, TrackUserEdit,
+    shape_user_edit_for_choice, CoverSelection, GroupedSearchResults, IdentityChoice, ImportError,
+    ImportEvent, ImportPhase, ImportProgress, MetadataRef, MetadataSource, PrepareStep,
+    PressingEdit, ScanEvent, SearchQuery, StorageMode, TrackUserEdit,
 };
 use bae_core::library::{AppServices, LibraryError};
 use schemars::JsonSchema;
@@ -464,6 +464,16 @@ pub struct AutomationRemoteCover {
     pub source: AutomationMetadataSource,
 }
 
+/// What picking a release gives the confirmation step: the display `detail` and
+/// the metadata editor's `seed`. The seed is projected from the release exactly
+/// as the commit worker maps it, so it — never the detail — is what an import's
+/// `user_edit` overlay is built from.
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct AutomationReleasePrefetch {
+    pub detail: AutomationReleaseDetail,
+    pub seed: AutomationReleaseUserEdit,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct AutomationReleaseDetail {
     pub release_id: String,
@@ -769,7 +779,8 @@ pub struct ReleaseSourceInput {
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct ShapeReleaseEditInput {
-    pub detail: AutomationReleaseDetail,
+    /// The editor seed from `import_release_prefetch`.
+    pub seed: AutomationReleaseUserEdit,
     pub choice: AutomationIdentityChoice,
 }
 
@@ -1287,13 +1298,16 @@ impl Automation {
         &self,
         source: AutomationMetadataSource,
         release_id: String,
-    ) -> Result<AutomationReleaseDetail, AutomationError> {
-        let detail = self
+    ) -> Result<AutomationReleasePrefetch, AutomationError> {
+        let prefetch = self
             .services
             .import()
             .prefetch_release(&release_id, source.into())
             .await?;
-        Ok(automation_release_detail(detail))
+        Ok(AutomationReleasePrefetch {
+            detail: automation_release_detail(prefetch.detail),
+            seed: automation_release_user_edit(prefetch.seed),
+        })
     }
 
     pub async fn preview_file_tags(
@@ -1310,14 +1324,14 @@ impl Automation {
 
     pub async fn shape_release_edit(
         &self,
-        detail: AutomationReleaseDetail,
+        seed: AutomationReleaseUserEdit,
         choice: AutomationIdentityChoice,
     ) -> Result<AutomationReleaseUserEdit, AutomationError> {
-        let detail = import_search_release_detail(detail);
+        let seed = release_user_edit(seed);
         let choice = identity_choice(choice);
-        Ok(automation_release_user_edit(
-            shape_user_edit_from_search_detail(&detail, &choice),
-        ))
+        Ok(automation_release_user_edit(shape_user_edit_for_choice(
+            &seed, &choice,
+        )))
     }
 
     pub fn start_import(
@@ -1475,7 +1489,7 @@ impl Automation {
             }
             AutomationTool::ImportReleaseEditShape => {
                 let input: ShapeReleaseEditInput = from_value(args)?;
-                to_value(self.shape_release_edit(input.detail, input.choice).await?)
+                to_value(self.shape_release_edit(input.seed, input.choice).await?)
             }
             AutomationTool::ImportStart => {
                 let input: AutomationStartImport = from_value(args)?;
@@ -1603,7 +1617,7 @@ impl AutomationTool {
         AutomationToolDescriptor {
             tool: AutomationTool::ImportReleasePrefetch,
             name: "import_release_prefetch",
-            description: "Prefetch metadata release detail",
+            description: "Prefetch a release: display detail plus the metadata editor's seed",
             input: AutomationToolInput::ReleaseSource,
         },
         AutomationToolDescriptor {
@@ -1615,7 +1629,7 @@ impl AutomationTool {
         AutomationToolDescriptor {
             tool: AutomationTool::ImportReleaseEditShape,
             name: "import_release_edit_shape",
-            description: "Shape release edit from metadata detail",
+            description: "Shape a prefetched editor seed for an identity choice",
             input: AutomationToolInput::ShapeReleaseEdit,
         },
         AutomationToolDescriptor {
@@ -2004,15 +2018,6 @@ fn automation_remote_cover(cover: RemoteCover) -> AutomationRemoteCover {
     }
 }
 
-fn remote_cover(cover: AutomationRemoteCover) -> RemoteCover {
-    RemoteCover {
-        url: cover.url,
-        thumbnail_url: cover.thumbnail_url,
-        label: cover.label,
-        source: cover.source.into(),
-    }
-}
-
 fn automation_release_detail(detail: ImportSearchReleaseDetail) -> AutomationReleaseDetail {
     AutomationReleaseDetail {
         release_id: detail.release_id,
@@ -2043,35 +2048,6 @@ fn automation_release_detail(detail: ImportSearchReleaseDetail) -> AutomationRel
             .into_iter()
             .map(automation_remote_cover)
             .collect(),
-    }
-}
-
-fn import_search_release_detail(detail: AutomationReleaseDetail) -> ImportSearchReleaseDetail {
-    ImportSearchReleaseDetail {
-        release_id: detail.release_id,
-        source: detail.source.into(),
-        source_group_id: detail.source_group_id,
-        title: detail.title,
-        artist: detail.artist,
-        year: detail.year,
-        format: detail.format,
-        label: detail.label,
-        catalog_number: detail.catalog_number,
-        country: detail.country,
-        barcode: detail.barcode,
-        track_count: detail.track_count,
-        tracks: detail
-            .tracks
-            .into_iter()
-            .map(|track| ReleaseTrack {
-                title: track.title,
-                artist: track.artist,
-                duration_ms: track.duration_ms,
-                position: track.position,
-                side: track.side,
-            })
-            .collect(),
-        cover_art: detail.cover_art.into_iter().map(remote_cover).collect(),
     }
 }
 

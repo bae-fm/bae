@@ -1931,6 +1931,24 @@ pub struct BridgeReleaseTrack {
     pub side: u32,
 }
 
+/// What picking a release in the import search gives the confirmation pane.
+///
+/// `detail` is display: covers, source positions, the track count to reconcile
+/// against the folder. `seed` is the metadata editor's starting value, projected
+/// from the release exactly as the commit worker maps it — so the UI must seed
+/// the editor from `seed`, never from `detail`, or an untouched artist list reads
+/// as an edit at commit and the release loses its secondary album artists.
+///
+/// Keep `seed` for the exactness toggle: `shape_user_edit_for_choice` re-shapes
+/// it for a changed identity claim without re-fetching. (Not linked: that export
+/// only exists under the `desktop` feature, and this record is documented
+/// without it.)
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeReleasePrefetch {
+    pub detail: BridgeReleaseDetail,
+    pub seed: BridgeReleaseUserEdit,
+}
+
 /// Mirror of `bae_core::import::ReleaseUserEdit` — a normalized, validated
 /// metadata edit ready to apply.
 ///
@@ -3296,101 +3314,18 @@ impl BridgeReleaseTrack {
             side,
         }
     }
-
-    pub(crate) fn into_core(self) -> bae_core::import::search::ReleaseTrack {
-        let BridgeReleaseTrack {
-            title,
-            artist,
-            duration_ms,
-            position,
-            side,
-        } = self;
-        bae_core::import::search::ReleaseTrack {
-            title,
-            artist,
-            duration_ms,
-            position,
-            side,
-        }
-    }
 }
 
 #[cfg(feature = "desktop")]
-impl BridgeRemoteCover {
-    pub(crate) fn into_core(self) -> bae_core::import::cover_art::RemoteCover {
-        let BridgeRemoteCover {
-            cover_choice,
-            label,
-        } = self;
-        let BridgeCoverChoice {
-            selection,
-            thumbnail_source,
-            // The preview and thumbnail sources are the same remote URL; the
-            // core cover carries only the one thumbnail URL, read below.
-            preview_source: _,
-        } = cover_choice;
-        let BridgeCoverSelection::RemoteCover { selection } = selection else {
-            unreachable!("BridgeRemoteCover must carry a remote cover selection");
-        };
-        let BridgeCoverImageSource::Remote { url: thumbnail_url } = thumbnail_source else {
-            unreachable!("BridgeRemoteCover must carry a remote cover thumbnail");
-        };
-        bae_core::import::cover_art::RemoteCover {
-            url: selection.url,
-            thumbnail_url,
-            label,
-            source: selection.source.into_core(),
-        }
-    }
-}
-
-/// Reverse of [`BridgeReleaseDetail::from_core`]. Used by the user-edit shaping
-/// path (the bridge has the detail in bridge shape from the prefetch, and
-/// the shaping function in bae-core takes the core type).
-#[cfg(feature = "desktop")]
-impl BridgeReleaseDetail {
-    pub(crate) fn into_core(self) -> bae_core::import::search::ImportSearchReleaseDetail {
-        let BridgeReleaseDetail {
-            release_id,
-            source,
-            source_group_id,
-            title,
-            artist,
-            year,
-            format,
-            label,
-            catalog_number,
-            country,
-            barcode,
-            track_count,
-            tracks,
-            cover_art,
-            // Both are bridge-computed for the UI; the core detail carries
-            // neither, and shaping doesn't read them.
-            track_count_mismatch: _,
-            default_cover: _,
-        } = self;
-        bae_core::import::search::ImportSearchReleaseDetail {
-            release_id,
-            source: source.into_core(),
-            source_group_id,
-            title,
-            artist,
-            year,
-            format,
-            label,
-            catalog_number,
-            country,
-            barcode,
-            track_count,
-            tracks: tracks
-                .into_iter()
-                .map(BridgeReleaseTrack::into_core)
-                .collect(),
-            cover_art: cover_art
-                .into_iter()
-                .map(BridgeRemoteCover::into_core)
-                .collect(),
+impl BridgeReleasePrefetch {
+    pub(crate) fn from_core(
+        p: bae_core::import::search::ImportReleasePrefetch,
+        local_track_count: Option<u32>,
+    ) -> Self {
+        let bae_core::import::search::ImportReleasePrefetch { detail, seed } = p;
+        BridgeReleasePrefetch {
+            detail: BridgeReleaseDetail::from_core(detail, local_track_count),
+            seed: BridgeReleaseUserEdit::from_core(seed),
         }
     }
 }
@@ -4508,9 +4443,12 @@ mod conversion_roundtrip {
         );
     }
 
+    /// The detail crosses the bridge outbound only — it is the picker's display
+    /// shape, never a seed — so this pins the derived fields and the carried ones,
+    /// not a round trip.
     #[cfg(feature = "desktop")]
     #[test]
-    fn release_detail_round_trips_and_derives_mismatch() {
+    fn release_detail_derives_mismatch_and_default_cover() {
         let core = bae_core::import::search::ImportSearchReleaseDetail {
             release_id: "rel-123".to_string(),
             source: bae_core::import::MetadataSource::MusicBrainz,
@@ -4539,11 +4477,19 @@ mod conversion_roundtrip {
             }],
         };
         // 11 local tracks vs 10 on the source is a mismatch; `default_cover` is
-        // derived from the first cover. Both are bridge-only and dropped on the
-        // way back, so the round-tripped core still equals the original.
+        // derived from the first cover.
         let bridge = BridgeReleaseDetail::from_core(core.clone(), Some(11));
         assert!(bridge.track_count_mismatch);
         assert!(bridge.default_cover.is_some());
-        assert_eq!(format!("{core:?}"), format!("{:?}", bridge.into_core()));
+        assert_eq!(bridge.release_id, core.release_id);
+        assert_eq!(bridge.track_count, core.track_count);
+        assert_eq!(bridge.tracks.len(), core.tracks.len());
+        assert_eq!(bridge.tracks[0].title, core.tracks[0].title);
+        assert_eq!(bridge.tracks[0].position, core.tracks[0].position);
+        assert_eq!(bridge.cover_art.len(), core.cover_art.len());
+        assert_eq!(bridge.barcode, core.barcode);
+
+        // The same local count as the source is no mismatch.
+        assert!(!BridgeReleaseDetail::from_core(core, Some(10)).track_count_mismatch);
     }
 }

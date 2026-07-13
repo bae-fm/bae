@@ -17,7 +17,7 @@ use crate::db::{is_various_artists, Pressing, ReleaseMetadataSource};
 use crate::import::types::ReleaseIdentity;
 use crate::import::{ImportError, MetadataSource};
 use crate::musicbrainz::{
-    fetch_release_group_json, MbArtistRef, MbMedium, MbRelation, MbReleaseResponse, MbWork,
+    fetch_release_group_json, MbArtistRef, MbMedium, MbRelation, MbReleaseResponse, MbTrack, MbWork,
 };
 use coven::Clock;
 use coven::IdProvider;
@@ -172,6 +172,29 @@ pub async fn fetch_mb_response(
     }
 
     Ok((response, discogs_url, metadata_pairs))
+}
+
+/// A track's title: the recording's, else the track's own override. Shared by
+/// the DB mapper and the UI-detail builder in `search.rs` so the picker and the
+/// committed rows can't show different titles.
+///
+/// Errors when neither carries a non-blank title: there is no title to show, and
+/// an empty string in its place is a lie the user can't see through.
+pub(crate) fn track_title(release_id: &str, track: &MbTrack) -> Result<String, ImportError> {
+    track
+        .recording
+        .as_ref()
+        .and_then(|r| r.title.as_deref())
+        .or(track.title.as_deref())
+        .filter(|title| !title.trim().is_empty())
+        .ok_or_else(|| ImportError::SourceData {
+            metadata_source: MetadataSource::MusicBrainz,
+            detail: format!(
+                "MusicBrainz release {} track {:?} has no track title",
+                release_id, track.number
+            ),
+        })
+        .map(str::to_string)
 }
 
 /// Vinyl/cassette side assignment for one medium, shared by the DB mapper and
@@ -393,20 +416,7 @@ pub fn map_mb_response_to_db(
         let sides = medium_sides(&response.id, medium)?;
 
         for (track, &side_offset) in medium.tracks.iter().zip(&sides.offsets) {
-            let title = track
-                .recording
-                .as_ref()
-                .and_then(|r| r.title.as_deref())
-                .or(track.title.as_deref())
-                .filter(|title| !title.trim().is_empty())
-                .ok_or_else(|| ImportError::SourceData {
-                    metadata_source: MetadataSource::MusicBrainz,
-                    detail: format!(
-                        "MusicBrainz release {} track {:?} has no track title",
-                        response.id, track.number
-                    ),
-                })?
-                .to_string();
+            let title = track_title(&response.id, track)?;
 
             let side = side_base + side_offset as i32 + 1;
 

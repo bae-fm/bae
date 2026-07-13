@@ -966,16 +966,16 @@ internal static class NativeBae
         string folderPath)
     {
         var localTrackCount = LocalTrackCount(handle.GetCandidate(folderPath));
-        var detail = Await(handle.PrefetchRelease(releaseId, source, localTrackCount));
+        var prefetch = Await(handle.PrefetchRelease(releaseId, source, localTrackCount));
         // A picked release claims the exact pressing by default; the confirm
         // dialog re-shapes this seed if the user switches to metadata only.
-        var edit = ShapeCandidateEdit(detail, new BridgeIdentityChoice.Exact(releaseId, source));
+        var edit = ShapeCandidateEdit(prefetch.Seed, new BridgeIdentityChoice.Exact(releaseId, source));
         return new PrefetchedEdit
         {
             Edit = edit,
-            RemoteCovers = detail.CoverArt.ToList(),
+            RemoteCovers = prefetch.Detail.CoverArt.ToList(),
             LocalArtwork = LocalArtwork(handle.GetCandidate(folderPath)),
-            Detail = detail,
+            Seed = prefetch.Seed,
         };
     }
 
@@ -1274,13 +1274,13 @@ internal static class NativeBae
             : new BridgeIdentityChoice.Approximate(releaseId, source);
 
     /// <summary>
-    /// Re-shape the confirm-form seed from a kept release detail under a new
+    /// Re-shape the confirm-form seed from the kept editor seed under a new
     /// identity claim — used when the user flips exact ↔ metadata only, with no
     /// re-fetch. Approximate nils the pressing fields; Exact keeps them.
     /// </summary>
-    internal static BridgeRawReleaseEdit ShapeCandidateEdit(BridgeReleaseDetail detail, BridgeIdentityChoice choice) =>
+    internal static BridgeRawReleaseEdit ShapeCandidateEdit(BridgeReleaseUserEdit seed, BridgeIdentityChoice choice) =>
         BaeBridgeMethods.RawReleaseEditFromUserEdit(
-            BaeBridgeMethods.ShapeUserEditFromReleaseDetail(detail, choice),
+            BaeBridgeMethods.ShapeUserEditForChoice(seed, choice),
             "prefetch-track");
 
     private static BridgeReleaseUserEdit ReleaseUserEdit(BridgeRawReleaseEdit edit) =>

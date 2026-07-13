@@ -225,24 +225,42 @@ impl ImportServiceHandle {
         Ok(covers)
     }
 
-    /// Prefetch for the confirmation pane: fetch the release and build the
-    /// picker/confirm detail, with no DB-shape mapping. The fetch goes through
-    /// the network LRU caches, so the worker's later commit-time fetch of the
-    /// same response is a cache hit.
+    /// Prefetch for the confirmation pane: the picker's display detail plus the
+    /// metadata editor's seed.
+    ///
+    /// The seed is the commit worker's own projection — `prepare_release`, the
+    /// function the worker calls, mapped into the editor's shape. So the editor
+    /// shows every album artist the release credits, and an untouched artist list
+    /// compares equal at commit instead of reading as a user edit that clears the
+    /// junction rows.
+    ///
+    /// Both fetches go through the network LRU caches, so the worker's later
+    /// commit-time fetch of the same release is a cache hit.
     pub async fn prefetch_release(
         &self,
         release_id: &str,
         source: MetadataSource,
-    ) -> Result<crate::import::search::ImportSearchReleaseDetail, crate::import::ImportError> {
-        match source {
+    ) -> Result<crate::import::search::ImportReleasePrefetch, crate::import::ImportError> {
+        let detail = match source {
             MetadataSource::MusicBrainz => {
                 crate::import::search::prefetch_mb_release(&self.cover_art_archive, release_id)
-                    .await
+                    .await?
             }
             MetadataSource::Discogs => {
                 let client = self.discogs_client()?;
-                crate::import::search::prefetch_discogs_release(&client, release_id).await
+                crate::import::search::prefetch_discogs_release(&client, release_id).await?
             }
-        }
+        };
+
+        let prepared = crate::import::service::prepare_release(
+            &self.library_manager,
+            &crate::import::MetadataRef::new(release_id, source),
+        )
+        .await?;
+
+        Ok(crate::import::search::ImportReleasePrefetch {
+            detail,
+            seed: crate::import::parsed_album_to_user_edit(&prepared.parsed),
+        })
     }
 }

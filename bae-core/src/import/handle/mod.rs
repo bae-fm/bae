@@ -625,11 +625,15 @@ pub(crate) async fn fetch_artist_images(
 }
 
 /// Project a parsed album (mapper output) into the editor's `ReleaseUserEdit`
-/// shape. The Unknown preview path uses it so the edit-metadata form can seed
-/// from the local-evidence projection without a wire-shape
-/// `ImportSearchReleaseDetail`, which would need a synthetic release id; the
-/// reset-to-source path uses it to project cached source data back into the
-/// editor.
+/// shape. The one way the edit-metadata form is seeded, from every path: a
+/// source-backed import (the prefetch's `seed`), an Unknown import's local
+/// evidence, and reset-to-source's cached source payload.
+///
+/// It projects the very `ParsedAlbum` the commit worker applies the editor's
+/// overlay onto, which is what lets `apply_user_edit_to_seed` tell an untouched
+/// field from an edited one. Seeding the editor from any other shape — the
+/// picker's release detail, say — makes an untouched artist list read as a
+/// deletion and drops the release's secondary album artists.
 ///
 /// Track artist names are emitted positionally per existing `track_artists` row;
 /// an empty per-track list means "share the album artist" in the editor's
@@ -679,83 +683,33 @@ pub fn parsed_album_to_user_edit(parsed: &super::ParsedAlbum) -> crate::import::
     }
 }
 
-/// Project an `ImportSearchReleaseDetail` (the prefetch result for the import
-/// confirmation pane) into the editor's `ReleaseUserEdit` shape, honoring the
-/// user's identity choice:
+/// Shape the prefetched editor seed for the user's identity claim:
 ///
-/// - **Exact**: `pressing` comes from the picked release.
+/// - **Exact**: `pressing` stays as the picked release has it.
 /// - **Approximate** / **Unknown**: `pressing` is `PressingEdit::blank()` — the
 ///   user didn't claim a specific pressing, so showing them the source's
 ///   pressing data would imply a claim they never made. They can still fill in
 ///   fields they know, and the overlay carries those edits to commit.
 ///
-/// A track whose source artist matches the album artist, or is missing, seeds an
-/// empty per-track override ("share the album artist"); one that differs seeds
-/// the track's artist verbatim.
+/// Everything else in the seed comes from the release itself (see
+/// [`crate::import::search::ImportReleasePrefetch`]) and is the same under every
+/// choice, so flipping the claim re-runs this over the kept seed instead of
+/// re-fetching.
 ///
-/// Swift calls this to build the editor's seed values, rather than branching on
-/// `IdentityChoice` itself — the bridge stays thin.
-pub fn shape_user_edit_from_search_detail(
-    detail: &super::search::ImportSearchReleaseDetail,
+/// The UI calls this rather than branching on `IdentityChoice` itself — the
+/// bridge stays thin.
+pub fn shape_user_edit_for_choice(
+    seed: &super::ReleaseUserEdit,
     choice: &super::IdentityChoice,
 ) -> super::ReleaseUserEdit {
-    let primary_album_artist = match &detail.artist {
-        Some(name) => name.clone(),
-        None => {
-            warn!(
-                "shape_user_edit_from_search_detail: detail.artist is None for release {}; defaulting to empty (editor save will be disabled until user fills it in)",
-                detail.release_id
-            );
-            String::new()
-        }
-    };
-
-    // Number tracks per side through `per_side_positions`, the same function the
-    // commit-side assembler uses, over side values from the same derivation
-    // (`medium_sides` for MB, `process_tracklist` for Discogs) — so the editor
-    // seed and the committed rows can never disagree. A release-global `i + 1`
-    // index would diverge, and since `apply_user_edit_to_seed` writes
-    // `track_number` verbatim onto the seed, it would corrupt the per-side numbers
-    // of every multi-side vinyl / cassette / multi-disc release.
-    let numbers = crate::import::assemble::per_side_positions(detail.tracks.iter().map(|t| t.side));
-    let tracks = detail
-        .tracks
-        .iter()
-        .zip(numbers)
-        .map(|(t, number)| {
-            let artist_names = match t.artist.as_deref() {
-                Some(a) if !a.is_empty() && a != primary_album_artist => vec![a.to_string()],
-                _ => Vec::new(),
-            };
-            super::TrackUserEdit {
-                title: t.title.clone(),
-                side: t.side as i32,
-                track_number: Some(number),
-                artist_names,
-            }
-        })
-        .collect();
-
-    let pressing = match choice {
-        super::IdentityChoice::Exact { .. } => super::PressingEdit {
-            year: detail.year,
-            format: detail.format.clone(),
-            label: detail.label.clone(),
-            catalog_number: detail.catalog_number.clone(),
-            country: detail.country.clone(),
-            barcode: detail.barcode.clone(),
-        },
+    let mut edit = seed.clone();
+    match choice {
+        super::IdentityChoice::Exact { .. } => {}
         super::IdentityChoice::Approximate { .. } | super::IdentityChoice::Unknown => {
-            super::PressingEdit::blank()
+            edit.pressing = super::PressingEdit::blank();
         }
-    };
-
-    super::ReleaseUserEdit {
-        album_title: detail.title.clone(),
-        album_artist_names: vec![primary_album_artist],
-        pressing,
-        tracks,
     }
+    edit
 }
 
 /// Audio file paths from a `CategorizedFiles`, in the order the flattened

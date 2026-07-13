@@ -78,7 +78,7 @@ pub use folder_registry::{ImportFolderRegistry, WatchedFolder};
 pub use folder_scanner::{FolderCandidate, InvalidCandidate, InvalidReason};
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use handle::{
-    parsed_album_to_user_edit, shape_user_edit_from_search_detail, CandidateImportStatusSnapshot,
+    parsed_album_to_user_edit, shape_user_edit_for_choice, CandidateImportStatusSnapshot,
     CandidateRuntimeSnapshot, DiscogsSaveOutcome, FolderImportCandidateSnapshot,
     GroupedSearchResults, ImportCandidateSnapshot, ImportCandidatesSnapshot, ImportEvent,
     ImportServiceHandle, ScanEvent, SearchQuery,

@@ -1483,15 +1483,15 @@ impl AppHandle {
         release_id: String,
         source: BridgeMetadataSource,
         local_track_count: Option<u32>,
-    ) -> Result<crate::types::BridgeReleaseDetail, BridgeError> {
-        let detail = self
+    ) -> Result<crate::types::BridgeReleasePrefetch, BridgeError> {
+        let prefetch = self
             .services
             .import()
             .prefetch_release(&release_id, source.into_core())
             .await
             .map_err(BridgeError::import)?;
-        Ok(crate::types::BridgeReleaseDetail::from_core(
-            detail,
+        Ok(crate::types::BridgeReleasePrefetch::from_core(
+            prefetch,
             local_track_count,
         ))
     }
@@ -3079,21 +3079,22 @@ pub fn sort_albums(
     summaries.into_iter().map(BridgeAlbum::from_core).collect()
 }
 
-/// Project a prefetched release detail into the editor's user-edit shape,
-/// honoring the user's identity choice. Exact keeps pressing fields;
-/// Approximate / Unknown nil them. Per-track artist overrides are emptied
-/// when they equal the album artist. Stateless type-translation wrapper
-/// around [`bae_core::import::shape_user_edit_from_search_detail`]: the
-/// caller (Swift) must not branch on `IdentityChoice` itself.
+/// Shape a prefetched editor seed ([`crate::types::BridgeReleasePrefetch::seed`])
+/// for the user's identity claim: Exact keeps the pressing fields, Approximate /
+/// Unknown nil them. Nothing else about the seed depends on the claim, so the
+/// exactness toggle re-shapes the kept seed instead of re-fetching. Stateless
+/// type-translation wrapper around
+/// [`bae_core::import::shape_user_edit_for_choice`]: the caller (Swift, C#) must
+/// not branch on `IdentityChoice` itself.
 #[cfg(feature = "desktop")]
 #[uniffi::export]
-pub fn shape_user_edit_from_release_detail(
-    detail: crate::types::BridgeReleaseDetail,
+pub fn shape_user_edit_for_choice(
+    seed: crate::types::BridgeReleaseUserEdit,
     choice: crate::types::BridgeIdentityChoice,
 ) -> crate::types::BridgeReleaseUserEdit {
-    let core_detail = detail.into_core();
+    let core_seed = seed.into_core();
     let core_choice = choice.into_core();
-    let edit = bae_core::import::shape_user_edit_from_search_detail(&core_detail, &core_choice);
+    let edit = bae_core::import::shape_user_edit_for_choice(&core_seed, &core_choice);
     crate::types::BridgeReleaseUserEdit::from_core(edit)
 }
 

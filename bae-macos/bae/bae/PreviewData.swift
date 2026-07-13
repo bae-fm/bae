@@ -983,12 +983,40 @@
             )
         }()
 
+        /// The picked release's editor seed, as `prefetchRelease` returns it:
+        /// projected from the release the way the commit worker maps it, so every
+        /// credited album artist is present.
+        static let releaseSeedBridge: BridgeReleaseUserEdit = {
+            let tracks: [BridgeTrackUserEdit] = (1...9)
+                .map { i in
+                    BridgeTrackUserEdit(
+                        title: "Track Title \(i)",
+                        side: 1,
+                        trackNumber: Int32(i),
+                        artistNames: i == 5 ? ["Featured Artist"] : [],
+                    )
+                }
+            return BridgeReleaseUserEdit(
+                albumTitle: "Album Title One",
+                albumArtistNames: ["Artist Name"],
+                pressing: BridgePressingEdit(
+                    year: 1996,
+                    format: "CD",
+                    label: "Label Name",
+                    catalogNumber: "6006-2",
+                    country: "US",
+                    barcode: nil,
+                ),
+                tracks: tracks,
+            )
+        }()
+
         /// Editor seed for the confirming previews — the raw release edit produced
-        /// from the exact-pressing choice over `releaseDetailBridge`.
+        /// from the exact-pressing choice over `releaseSeedBridge`.
         static let confirmEditValues: BridgeRawReleaseEdit =
             rawReleaseEditFromUserEdit(
-                edit: shapeUserEditFromReleaseDetail(
-                    detail: releaseDetailBridge,
+                edit: shapeUserEditForChoice(
+                    seed: releaseSeedBridge,
                     choice: .exact(
                         releaseId: releaseDetailBridge.releaseId,
                         source: releaseDetailBridge.source,

@@ -110,7 +110,7 @@ internal sealed class ImportConfirmDialog
 
         // A source-backed pick claims the exact pressing by default, or metadata
         // only (just the album group). Flipping re-shapes the form from the kept
-        // release detail with no re-fetch, overwriting in-progress edits, and
+        // editor seed with no re-fetch, overwriting in-progress edits, and
         // disables the pressing fields when metadata-only so the core-side blanking
         // is visible. A skip-identify import has no source release and no choice.
         var identity = new ImportIdentityModel(chosen is not null);
@@ -129,7 +129,7 @@ internal sealed class ImportConfirmDialog
                 identity.SetMetadataOnly(metadataOnly);
                 note.Visibility = identity.ShowsMetadataOnlyNote ? Visibility.Visible : Visibility.Collapsed;
                 form.Seed(NativeBae.ShapeCandidateEdit(
-                    prefetched.Detail!,
+                    prefetched.Seed!,
                     NativeBae.SourceIdentityChoice(!identity.MetadataOnly, chosen!.ReleaseId, chosen.Source)));
                 form.SetPressingFieldsEnabled(identity.PressingFieldsEnabled);
             }
