@@ -109,6 +109,10 @@ impl CoverArtArchiveClient {
     /// each attempt). The import service reads it to give the cover-bytes
     /// download the same retry cadence as this client's lookups, so a test that
     /// injects a near-zero delay controls both paths through one seam.
+    ///
+    /// Gated with `import::service`, its only caller: the import pipeline is
+    /// desktop-only, so on mobile this accessor is dead and `dead_code` denies it.
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub(crate) fn retry_base_delay(&self) -> Duration {
         self.retry_base_delay
     }
