@@ -2782,6 +2782,9 @@ impl BridgeError {
     pub(crate) fn import(detail: impl std::fmt::Display) -> Self {
         Self::diagnostic(BridgeErrorCategory::Import, detail)
     }
+    /// Desktop-only with the export surface it reports on: iOS/Android compile
+    /// out the export queue and the track exporter entirely.
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub(crate) fn export(detail: impl std::fmt::Display) -> Self {
         Self::diagnostic(BridgeErrorCategory::Export, detail)
     }

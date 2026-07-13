@@ -916,55 +916,6 @@ impl AppHandle {
     pub fn retry_downloads(&self) {
         self.services.library_manager().retry_downloads();
     }
-
-    // ── Export queue ─────────────────────────────────────────────────
-
-    /// The current export-queue snapshot. Export invalidations tell the
-    /// Exporting pane to read it again.
-    pub fn get_export_snapshot(&self) -> crate::types::BridgeExportSnapshot {
-        crate::types::BridgeExportSnapshot::from_core(
-            self.services.library_manager().export_snapshot(),
-        )
-    }
-
-    /// Enqueue a release export to `target_dir`. It joins
-    /// the in-memory serial export queue; the worker drains it one release at a
-    /// time. The storage-summary lookup (resolving the pane row's title/size)
-    /// happens here; the deep cloud read + copy runs on the queue worker.
-    pub async fn enqueue_export(
-        &self,
-        release_id: String,
-        target_dir: String,
-        selection: crate::types::BridgeExportSelection,
-    ) -> Result<(), BridgeError> {
-        self.services
-            .library_manager()
-            .enqueue_export(
-                &release_id,
-                std::path::PathBuf::from(target_dir),
-                crate::types::BridgeExportSelection::into_core(selection),
-            )
-            .await
-            .map_err(BridgeError::export)
-    }
-
-    /// Pause or resume the export queue. The in-flight export finishes; the queue
-    /// stops starting new ones until resumed.
-    pub fn set_exports_paused(&self, paused: bool) {
-        self.services.library_manager().set_exports_paused(paused);
-    }
-
-    /// Cancel a release's export — drops a queued/failed entry or aborts the
-    /// in-flight one (a partial copy never lands its destination file).
-    pub fn cancel_export(&self, release_id: String) {
-        self.services.library_manager().cancel_export(&release_id);
-    }
-
-    /// Retry every failed export now (flips them back to queued and wakes the
-    /// worker).
-    pub fn retry_exports(&self) {
-        self.services.library_manager().retry_exports();
-    }
 }
 
 #[cfg(feature = "desktop")]
@@ -1534,6 +1485,57 @@ impl AppHandle {
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[uniffi::export(async_runtime = "tokio")]
 impl AppHandle {
+    // ── Export queue ─────────────────────────────────────────────────
+
+    /// The current export-queue snapshot. Export invalidations tell the
+    /// Exporting pane to read it again.
+    pub fn get_export_snapshot(&self) -> crate::types::BridgeExportSnapshot {
+        crate::types::BridgeExportSnapshot::from_core(
+            self.services.library_manager().export_snapshot(),
+        )
+    }
+
+    /// Enqueue a release export to `target_dir`. It joins
+    /// the in-memory serial export queue; the worker drains it one release at a
+    /// time. The storage-summary lookup (resolving the pane row's title/size)
+    /// happens here; the deep cloud read + copy runs on the queue worker.
+    pub async fn enqueue_export(
+        &self,
+        release_id: String,
+        target_dir: String,
+        selection: crate::types::BridgeExportSelection,
+    ) -> Result<(), BridgeError> {
+        self.services
+            .library_manager()
+            .enqueue_export(
+                &release_id,
+                std::path::PathBuf::from(target_dir),
+                crate::types::BridgeExportSelection::into_core(selection),
+            )
+            .await
+            .map_err(BridgeError::export)
+    }
+
+    /// Pause or resume the export queue. The in-flight export finishes; the queue
+    /// stops starting new ones until resumed.
+    pub fn set_exports_paused(&self, paused: bool) {
+        self.services.library_manager().set_exports_paused(paused);
+    }
+
+    /// Cancel a release's export — drops a queued/failed entry or aborts the
+    /// in-flight one (a partial copy never lands its destination file).
+    pub fn cancel_export(&self, release_id: String) {
+        self.services.library_manager().cancel_export(&release_id);
+    }
+
+    /// Retry every failed export now (flips them back to queued and wakes the
+    /// worker).
+    pub fn retry_exports(&self) {
+        self.services.library_manager().retry_exports();
+    }
+
+    // ── Track export ─────────────────────────────────────────────────
+
     pub async fn export_track(
         &self,
         track_id: String,
@@ -1909,6 +1911,7 @@ impl crate::types::BridgeDownloadProgress {
     }
 }
 
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 impl crate::types::BridgeExportState {
     fn from_core(state: bae_core::library::ExportState) -> Self {
         use crate::types::BridgeExportState;
@@ -1921,6 +1924,7 @@ impl crate::types::BridgeExportState {
     }
 }
 
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 impl crate::types::BridgeExportOp {
     fn from_core(op: bae_core::library::ExportOp) -> Self {
         let bae_core::library::release_queue::ReleaseQueueOp {
@@ -1949,6 +1953,7 @@ impl crate::types::BridgeExportOp {
     }
 }
 
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 impl crate::types::BridgeExportSnapshot {
     fn from_core(snapshot: bae_core::library::ExportSnapshot) -> Self {
         let (exports, total, paused) = project_release_queue_snapshot(
@@ -1964,6 +1969,7 @@ impl crate::types::BridgeExportSnapshot {
     }
 }
 
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 impl crate::types::BridgeExportProgress {
     fn from_core(p: bae_core::library::ExportProgress) -> Self {
         let (queued, active, failed) = release_queue_progress_counts(p);
