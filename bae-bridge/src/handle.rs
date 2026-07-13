@@ -1162,9 +1162,11 @@ impl AppHandle {
     }
 
     /// Register the platform artwork analyzer. Called once at app boot
-    /// (e.g. from `BaeApp`'s startup path). Extraction owns artwork OCR and
-    /// streams its barcode/text signals to identify; without a registered
-    /// analyzer, extraction falls back to no-ops.
+    /// (e.g. from `BaeApp`'s startup path) by the platforms that have one.
+    /// Extraction owns artwork OCR and streams its barcode/text signals to
+    /// identify. A platform that never calls this has no artwork analyzer, and
+    /// extraction treats artwork as no signal source at all — the barcode signal
+    /// reports `Absent` (never read) rather than an empty scan.
     pub fn register_artwork_analyzer(
         &self,
         analyzer: Box<dyn crate::types::ArtworkAnalyzerCallback>,

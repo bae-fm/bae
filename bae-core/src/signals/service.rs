@@ -18,7 +18,7 @@
 //! Every snapshot carries the whole `Signals`; the reducer and the UI overwrite
 //! wholesale.
 
-use super::analyzer::{ArtworkAnalysis, ArtworkAnalyzer, NoopAnalyzer};
+use super::analyzer::{ArtworkAnalysis, ArtworkAnalyzer};
 use super::cancellation::CancellationRegistry;
 use super::candidate_text::{Source, SourcedLine};
 use super::fast_pass::{gather_non_ocr_sources, FastPass};
@@ -53,7 +53,11 @@ pub struct ExtractionServiceHandle {
 struct ExtractionServiceInner {
     runtime_handle: tokio::runtime::Handle,
     event_tx: broadcast::Sender<ImportEvent>,
-    analyzer: Mutex<Arc<dyn ArtworkAnalyzer>>,
+    /// The platform's artwork analyzer, registered at boot. `None` on a platform
+    /// that ships none: artwork is then not a barcode or text source, and
+    /// extraction says exactly that (`BarcodeSignal::Absent`) rather than
+    /// reporting a decode that never ran.
+    analyzer: Mutex<Option<Arc<dyn ArtworkAnalyzer>>>,
     /// Resolves a release's library files for the `Release` re-identify path.
     library_manager: LibraryManager,
     /// Per-candidate cancellation. `start` registers a new entry (cancelling any
@@ -90,7 +94,7 @@ impl ExtractionService {
         let inner = Arc::new(ExtractionServiceInner {
             runtime_handle,
             event_tx,
-            analyzer: Mutex::new(Arc::new(NoopAnalyzer) as Arc<dyn ArtworkAnalyzer>),
+            analyzer: Mutex::new(None),
             library_manager,
             cancellation: CancellationRegistry::default(),
         });
@@ -124,11 +128,17 @@ impl ExtractionService {
     }
 }
 
+impl ExtractionServiceInner {
+    fn analyzer(&self) -> Option<Arc<dyn ArtworkAnalyzer>> {
+        self.analyzer.lock().unwrap().clone()
+    }
+}
+
 impl ExtractionServiceHandle {
-    /// Share the analyzer with `IdentifyServiceHandle`. Called once at boot
-    /// from the bridge's `register_artwork_analyzer`.
+    /// Register the platform's artwork analyzer. Called once at boot from the
+    /// bridge's `register_artwork_analyzer`, on the platforms that have one.
     pub fn register_analyzer(&self, analyzer: Arc<dyn ArtworkAnalyzer>) {
-        *self.inner.analyzer.lock().unwrap() = analyzer;
+        *self.inner.analyzer.lock().unwrap() = Some(analyzer);
     }
 
     /// Kick off extraction for candidate `key` from `source`. Cancels any prior
@@ -188,6 +198,7 @@ async fn run_extraction(
             for catalog in fast.bracket_catalogs {
                 pool.push_bracket(catalog);
             }
+            let artwork = ArtworkPass::new(inner.analyzer(), fast.artwork_paths);
             stream_extraction(
                 inner,
                 key,
@@ -196,7 +207,7 @@ async fn run_extraction(
                     disc_id: fast.disc_id,
                     barcodes: fast.cue_barcodes,
                     pool,
-                    artwork_paths: fast.artwork_paths,
+                    artwork,
                 },
             )
             .await;
@@ -220,22 +231,25 @@ async fn run_extraction(
             if token.is_cancelled() {
                 return;
             }
-            // `_cover_staging` holds the temp dir the cover blob was staged into
-            // and must stay bound until `stream_extraction` returns. An error here
+            // The release's artwork is resolved only when there's an analyzer to
+            // decode it with — staging a cover blob nothing will read is pure cost.
+            //
+            // `_cover_staging` holds the temp dir the cover was staged into and
+            // must stay bound until `stream_extraction` returns. A resolve error
             // means the release's files can't be read at all (a missing cover is
             // already a skip inside), so abort rather than emit a misleading
             // settled-with-no-signals result.
-            let (artwork_paths, _cover_staging) = match resolve_release_artwork_paths(
-                &inner.library_manager,
-                &release_id,
-            )
-            .await
-            {
-                Ok(staged) => staged,
-                Err(e) => {
-                    error!("signals: cannot read release {release_id} for artwork: {e}; aborting extraction");
-                    return;
+            let (artwork, _cover_staging) = match inner.analyzer() {
+                Some(analyzer) => {
+                    match resolve_release_artwork_paths(&inner.library_manager, &release_id).await {
+                        Ok((paths, staging)) => (ArtworkPass::new(Some(analyzer), paths), staging),
+                        Err(e) => {
+                            error!("signals: cannot read release {release_id} for artwork: {e}; aborting extraction");
+                            return;
+                        }
+                    }
                 }
+                None => (None, None),
             };
             stream_extraction(
                 inner,
@@ -245,7 +259,7 @@ async fn run_extraction(
                     disc_id,
                     barcodes: Vec::new(),
                     pool: Pool::default(),
-                    artwork_paths,
+                    artwork,
                 },
             )
             .await;
@@ -289,13 +303,31 @@ where
 }
 
 /// What the streaming pass consumes: the settled disc ID, the CUE barcodes, the
-/// text pool, and the artwork images to OCR. A folder scan and a release
-/// re-identify each build one, differing only in which fields are populated.
+/// text pool, and the artwork pass. A folder scan and a release re-identify each
+/// build one, differing only in which fields are populated.
 struct ExtractionInputs {
     disc_id: DiscIdSignal,
     barcodes: Vec<SourcedValue>,
     pool: Pool,
-    artwork_paths: Vec<PathBuf>,
+    artwork: Option<ArtworkPass>,
+}
+
+/// The artwork OCR pass: the images to decode, and the analyzer that decodes
+/// them. `None` in `ExtractionInputs` means artwork is no signal source for this
+/// candidate — either it has no images, or the platform has no analyzer. The two
+/// are one fact to everything downstream, and pairing the paths with the analyzer
+/// makes "images to scan, but nothing to scan them with" unrepresentable.
+struct ArtworkPass {
+    analyzer: Arc<dyn ArtworkAnalyzer>,
+    /// Non-empty by construction.
+    paths: Vec<PathBuf>,
+}
+
+impl ArtworkPass {
+    fn new(analyzer: Option<Arc<dyn ArtworkAnalyzer>>, paths: Vec<PathBuf>) -> Option<Self> {
+        let analyzer = analyzer?;
+        (!paths.is_empty()).then_some(ArtworkPass { analyzer, paths })
+    }
 }
 
 /// Stream `Signals` over the artwork OCR pass: emit the fast-pass snapshot,
@@ -311,9 +343,9 @@ async fn stream_extraction(
         disc_id,
         mut barcodes,
         mut pool,
-        artwork_paths,
+        artwork,
     } = inputs;
-    let has_artwork = !artwork_paths.is_empty();
+    let has_artwork = artwork.is_some();
 
     if token.is_cancelled() {
         return;
@@ -335,65 +367,70 @@ async fn stream_extraction(
     );
 
     // One OCR request at a time (Vision on the ANE is effectively serial).
-    for path in artwork_paths {
-        if token.is_cancelled() {
-            return;
-        }
-
-        let analyzer = inner.analyzer.lock().unwrap().clone();
-        let analysis = match run_ocr_blocking(&inner.runtime_handle, analyzer, path.clone()).await {
-            Ok(analysis) => analysis,
-            Err(failure) => {
-                emit_failed_ocr_signals(&inner, &key, disc_id, &barcodes, &mut pool, failure);
+    if let Some(ArtworkPass { analyzer, paths }) = artwork {
+        for path in paths {
+            if token.is_cancelled() {
                 return;
             }
-        };
 
-        if token.is_cancelled() {
-            return;
-        }
+            let analysis =
+                match run_ocr_blocking(&inner.runtime_handle, analyzer.clone(), path.clone()).await
+                {
+                    Ok(analysis) => analysis,
+                    Err(failure) => {
+                        emit_failed_ocr_signals(
+                            &inner, &key, disc_id, &barcodes, &mut pool, failure,
+                        );
+                        return;
+                    }
+                };
 
-        // Accumulate barcodes (deduped by value) and text lines; skip the emit
-        // when this image added nothing new.
-        let mut changed = false;
-        for value in analysis.barcodes {
-            if !barcodes.iter().any(|b| b.value == value) {
-                barcodes.push(SourcedValue::new(value, SignalOrigin::Artwork));
+            if token.is_cancelled() {
+                return;
+            }
+
+            // Accumulate barcodes (deduped by value) and text lines; skip the emit
+            // when this image added nothing new.
+            let mut changed = false;
+            for value in analysis.barcodes {
+                if !barcodes.iter().any(|b| b.value == value) {
+                    barcodes.push(SourcedValue::new(value, SignalOrigin::Artwork));
+                    changed = true;
+                }
+            }
+            let pool_before = pool.lines.len();
+            for text in analysis.text_lines {
+                pool.push(SourcedLine {
+                    source: Source::Artwork(path.clone()),
+                    text,
+                });
+            }
+            if pool.lines.len() != pool_before {
                 changed = true;
             }
-        }
-        let pool_before = pool.lines.len();
-        for text in analysis.text_lines {
-            pool.push(SourcedLine {
-                source: Source::Artwork(path.clone()),
-                text,
-            });
-        }
-        if pool.lines.len() != pool_before {
-            changed = true;
-        }
-        if !changed {
-            continue;
-        }
+            if !changed {
+                continue;
+            }
 
-        // Re-check cancellation before emitting; a successor's `start()` can
-        // flip the token during the synchronous push/classify window.
-        if token.is_cancelled() {
-            return;
-        }
+            // Re-check cancellation before emitting; a successor's `start()` can
+            // flip the token during the synchronous push/classify window.
+            if token.is_cancelled() {
+                return;
+            }
 
-        let classification = pool.classify();
-        emit_signals(
-            &inner,
-            &key,
-            scanning_signals(
-                disc_id.clone(),
-                &barcodes,
-                has_artwork,
-                classification.catalogs,
-                classification.free_text,
-            ),
-        );
+            let classification = pool.classify();
+            emit_signals(
+                &inner,
+                &key,
+                scanning_signals(
+                    disc_id.clone(),
+                    &barcodes,
+                    has_artwork,
+                    classification.catalogs,
+                    classification.free_text,
+                ),
+            );
+        }
     }
 
     if token.is_cancelled() {

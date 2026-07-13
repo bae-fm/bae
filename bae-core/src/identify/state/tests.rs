@@ -137,6 +137,43 @@ fn no_disc_no_barcode_is_manual_only() {
     }
 }
 
+/// The two empty-code barcode signals mean opposite things and must settle
+/// differently. `Absent` (no barcode source at all — no CUE catalog, and no
+/// artwork *or* no analyzer to read it with) leaves the pipe `Skipped` and, with
+/// no disc ID either, offers manual search. `Settled { codes: [] }` means the
+/// artwork was decoded and held no barcode — a real no-match, which combines to
+/// `NotFoundAnywhere`.
+///
+/// A platform with no artwork analyzer has no barcode source, so it must produce
+/// the first, not the second: claiming "we read the cover and it holds no
+/// barcode" of a cover nothing decoded sends the user to a dead end instead of
+/// the search box.
+#[test]
+fn absent_barcode_offers_manual_search_where_scanned_and_empty_is_a_no_match() {
+    let settle = |barcode: BarcodeSignal| {
+        let (state, effects) = update(
+            started(),
+            signals(DiscIdSignal::Absent { track_count: 9 }, barcode, &[]),
+        );
+        assert!(effects.is_empty(), "no codes to look up either way");
+        state
+    };
+
+    let absent = settle(BarcodeSignal::Absent);
+    assert_eq!(absent.toolbar()[1].state, SignalState::Skipped);
+    match absent {
+        IdentifyState::ManualOnly { track_count, .. } => assert_eq!(track_count, 9),
+        other => panic!("expected ManualOnly for an absent barcode source, got {other:?}"),
+    }
+
+    let scanned = settle(BarcodeSignal::Settled { codes: Vec::new() });
+    assert_eq!(scanned.toolbar()[1].state, SignalState::NoMatch);
+    assert!(
+        matches!(scanned, IdentifyState::NotFoundAnywhere { .. }),
+        "scanned-and-empty is a no-match, not a skip",
+    );
+}
+
 /// The barcode queue is seeded only once the codes settle — never from a
 /// still-`Scanning` snapshot — so first-match-wins runs over a stable list.
 #[test]
