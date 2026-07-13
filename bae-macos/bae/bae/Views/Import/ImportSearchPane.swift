@@ -222,7 +222,7 @@ struct ImportSearchPane: View {
     /// carries exactly one group.
     private var foundResult: FoundResult? {
         guard
-            case .found(let group, let statuses, _, _, let provenance) =
+            case .found(let group, let statuses, _, let provenance) =
                 state.identifyState
         else {
             return nil

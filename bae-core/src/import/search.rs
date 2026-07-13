@@ -89,14 +89,6 @@ pub struct ReleaseTrack {
     pub side: u32,
 }
 
-/// Disc ID lookup result.
-#[derive(Debug)]
-pub enum DiscIdResult {
-    NoMatches,
-    SingleMatch(Box<MetadataResult>),
-    MultipleMatches(Vec<MetadataResult>),
-}
-
 async fn search_covers(
     cover_art_archive: &CoverArtArchiveClient,
     release_ids: &[String],
@@ -226,39 +218,27 @@ fn mb_error_to_lookup_failure(e: musicbrainz::MusicBrainzError) -> LookupFailure
     }
 }
 
-/// Lookup releases by MusicBrainz disc ID.
+/// The releases MusicBrainz has for a disc ID, each with its cover art. Empty
+/// when the disc is unknown to MB — a settled lookup with no matches, which is
+/// what `NotFound` means on this endpoint too.
 pub async fn lookup_by_discid(
     cover_art_archive: &CoverArtArchiveClient,
     discid: &str,
-) -> Result<DiscIdResult, LookupFailure> {
-    let result = musicbrainz::lookup_by_discid(discid).await;
+) -> Result<Vec<MetadataResult>, LookupFailure> {
+    let releases = match musicbrainz::lookup_by_discid(discid).await {
+        Ok(releases) => releases,
+        Err(musicbrainz::MusicBrainzError::NotFound(_)) => return Ok(Vec::new()),
+        Err(e) => return Err(mb_error_to_lookup_failure(e)),
+    };
 
-    match result {
-        Ok(releases) => {
-            if releases.is_empty() {
-                return Ok(DiscIdResult::NoMatches);
-            }
+    let release_ids: Vec<String> = releases.iter().map(|r| r.id.clone()).collect();
+    let covers = search_covers(cover_art_archive, &release_ids).await;
 
-            let release_ids: Vec<String> = releases.iter().map(|r| r.id.clone()).collect();
-            let covers = search_covers(cover_art_archive, &release_ids).await;
-
-            let results: Vec<MetadataResult> = releases
-                .into_iter()
-                .zip(covers)
-                .map(|(r, cover_art)| mb_release_to_metadata(r, cover_art))
-                .collect();
-
-            if results.len() == 1 {
-                Ok(DiscIdResult::SingleMatch(Box::new(
-                    results.into_iter().next().unwrap(),
-                )))
-            } else {
-                Ok(DiscIdResult::MultipleMatches(results))
-            }
-        }
-        Err(musicbrainz::MusicBrainzError::NotFound(_)) => Ok(DiscIdResult::NoMatches),
-        Err(e) => Err(mb_error_to_lookup_failure(e)),
-    }
+    Ok(releases
+        .into_iter()
+        .zip(covers)
+        .map(|(r, cover_art)| mb_release_to_metadata(r, cover_art))
+        .collect())
 }
 
 /// Parse a Discogs-style duration string ("3:45") to milliseconds.

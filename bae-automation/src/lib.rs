@@ -305,15 +305,6 @@ pub enum AutomationBarcodeProgress {
     Skipped,
 }
 
-/// Mirrors bae-core's `identify::IdentifySource`.
-#[derive(Debug, Clone, Copy, Serialize)]
-#[serde(rename_all = "snake_case")]
-pub enum AutomationIdentifySource {
-    Discid,
-    Barcode,
-    Combined,
-}
-
 /// Mirrors bae-core's `identify::ResultProvenance`, paired with the release id
 /// it aligns to (the core type is index-aligned with the match list).
 #[derive(Debug, Clone, Serialize)]
@@ -339,7 +330,6 @@ pub enum AutomationIdentifyState {
         group: AutomationReleaseGroup,
         library_statuses: Vec<AutomationLibraryStatus>,
         track_count: u32,
-        source: AutomationIdentifySource,
         provenance: Vec<AutomationResultProvenance>,
     },
     Conflict {
@@ -2325,18 +2315,6 @@ fn automation_barcode_progress(
 }
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
-fn automation_identify_source(
-    source: bae_core::identify::IdentifySource,
-) -> AutomationIdentifySource {
-    use bae_core::identify::IdentifySource;
-    match source {
-        IdentifySource::Discid => AutomationIdentifySource::Discid,
-        IdentifySource::Barcode => AutomationIdentifySource::Barcode,
-        IdentifySource::Combined => AutomationIdentifySource::Combined,
-    }
-}
-
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
 fn automation_result_provenance(
     release_id: String,
     provenance: bae_core::identify::ResultProvenance,
@@ -2389,7 +2367,6 @@ fn automation_identify_state(state: bae_core::identify::IdentifyState) -> Automa
             group,
             library_statuses,
             track_count,
-            source,
             provenance,
         } => AutomationIdentifyState::Found {
             group: automation_release_group(group),
@@ -2398,7 +2375,6 @@ fn automation_identify_state(state: bae_core::identify::IdentifyState) -> Automa
                 .map(automation_library_status)
                 .collect(),
             track_count,
-            source: automation_identify_source(source),
             provenance: provenance
                 .into_iter()
                 .map(|(release_id, p)| automation_result_provenance(release_id, p))
@@ -2741,8 +2717,8 @@ mod tests {
         use bae_core::identify::combine::{GroupKey, ResultProvenance};
         use bae_core::identify::state::SignalsContext;
         use bae_core::identify::{
-            BarcodeProgress, DiscidProgress, IdentifySource, IdentifyState, SignalKind, SignalRole,
-            SignalState, ToolbarSignal,
+            BarcodeProgress, DiscidProgress, IdentifyState, SignalKind, SignalRole, SignalState,
+            ToolbarSignal,
         };
         use bae_core::import::search::MetadataResult;
         use bae_core::import::MetadataSource;
@@ -2807,7 +2783,6 @@ mod tests {
                     source: MetadataSource::MusicBrainz,
                     source_group_id: "group-1".to_string(),
                 },
-                source: IdentifySource::Combined,
                 provenance: vec![
                     ResultProvenance {
                         by_disc_id: true,
@@ -2825,7 +2800,6 @@ mod tests {
 
             let json = serde_json::to_value(automation_identify_state(state)).unwrap();
             assert_eq!(json["kind"], "found");
-            assert_eq!(json["source"], "combined");
             let pressings = json["group"]["pressings"].as_array().unwrap();
             assert_eq!(pressings[0]["release_id"], "rel-1");
             assert_eq!(pressings[1]["release_id"], "rel-2");

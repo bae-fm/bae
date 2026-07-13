@@ -109,16 +109,6 @@ impl BarcodeProgress {
     }
 }
 
-/// Which signal(s) backed a terminal `Found` state. Drives source-specific
-/// banner copy in the UI.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum IdentifySource {
-    Discid,
-    Barcode,
-    /// Both signals contributed to the result via intersection.
-    Combined,
-}
-
 /// A signal the user has toggled off. The disc ID and barcode are singletons; a
 /// catalog candidate is named by its value, since there can be several.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -268,9 +258,9 @@ pub enum IdentifyState {
         /// All matches share this group — UI can render
         /// "N pressings of one release group" copy.
         group: GroupKey,
-        source: IdentifySource,
         /// Per-match provenance (which signals produced/confirmed each row),
-        /// index-aligned with `matches` — drives the per-row signal badges.
+        /// index-aligned with `matches` — drives the per-row signal badges, and
+        /// says which signal produced any given match.
         provenance: Vec<ResultProvenance>,
         context: SignalsContext,
     },
@@ -887,8 +877,6 @@ fn re_derive(context: SignalsContext) -> IdentifyState {
     let discid_results = context.active_discid_results();
     let barcode_results = context.active_barcode_results();
 
-    let discid_had_results = !discid_results.is_empty();
-    let barcode_had_results = !barcode_results.is_empty();
     let outcome = combine_results(discid_results, barcode_results, &context.active_catalogs());
     let track_count = context.track_count;
     match outcome {
@@ -903,7 +891,6 @@ fn re_derive(context: SignalsContext) -> IdentifyState {
             library_statuses,
             track_count,
             group,
-            source: source_for_found(discid_had_results, barcode_had_results),
             provenance,
             context,
         },
@@ -950,17 +937,6 @@ fn settled_track_count(discid: &DiscidProgress) -> u32 {
         DiscidProgress::Skipped { track_count } => *track_count,
         DiscidProgress::Failed { track_count, .. } => *track_count,
         DiscidProgress::Computing | DiscidProgress::LookingUp => 0,
-    }
-}
-
-fn source_for_found(discid_had_results: bool, barcode_had_results: bool) -> IdentifySource {
-    match (discid_had_results, barcode_had_results) {
-        (true, true) => IdentifySource::Combined,
-        (true, false) => IdentifySource::Discid,
-        (false, true) => IdentifySource::Barcode,
-        // `Found` carries at least one result by construction, so reaching this is
-        // a logic bug upstream.
-        (false, false) => unreachable!("Found with no results from either signal"),
     }
 }
 

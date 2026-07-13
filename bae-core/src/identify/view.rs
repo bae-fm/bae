@@ -18,9 +18,7 @@
 //! this view into their own wire types field by field and decide nothing.
 
 use super::combine::ResultProvenance;
-use super::state::{
-    BarcodeProgress, DiscidProgress, IdentifySource, IdentifyState, SignalsContext,
-};
+use super::state::{BarcodeProgress, DiscidProgress, IdentifyState, SignalsContext};
 use crate::db::LibraryStatus;
 use crate::import::release_group::ReleaseGroup;
 use crate::import::search::MetadataResult;
@@ -88,7 +86,6 @@ pub enum IdentifyStateView {
         /// One per pressing; each carries its own `release_id`.
         library_statuses: Vec<LibraryStatus>,
         track_count: u32,
-        source: IdentifySource,
         /// Per-pressing provenance, keyed by release id. `combine` produces it
         /// index-aligned with the matches, and the matches are now inside
         /// `group`, so the alignment is re-expressed as a key here rather than
@@ -137,7 +134,6 @@ impl From<IdentifyState> for IdentifyStateView {
                 library_statuses,
                 track_count,
                 group,
-                source,
                 provenance,
                 context: _,
             } => {
@@ -154,7 +150,6 @@ impl From<IdentifyState> for IdentifyStateView {
                     group: ReleaseGroup::from_group(group, matches),
                     library_statuses,
                     track_count,
-                    source,
                     provenance,
                 }
             }
