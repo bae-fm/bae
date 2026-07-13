@@ -43,6 +43,9 @@ image = { version = "0.25", default-features = false, features = ["jpeg", "png"]
 futures = "0.3.31"
 tokio-util = { version = "0.7", features = ["io", "rt"] }
 rand = "0.9"
+# Embedded-tag reads and writes: the Unknown-import file-tag projection and the
+# library exporter both run on every platform, so this is not a desktop dep.
+lofty = "0.24"
 lru = "0.17"
 tracing = { workspace = true }
 tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
@@ -77,22 +80,21 @@ ndk = { version = "0.9", features = ["audio"] }
 [target.'cfg(target_os = "windows")'.dependencies]
 windows-native-keyring-store = "0.5.1"
 
-# Pure-Rust audio tag reader, no native deps, so it builds for mobile too.
-# Used by the desktop import pipeline; available on mobile for the same reason
-# (no native toolchain required).
-[target.'cfg(any(target_os = "android", target_os = "ios"))'.dependencies]
-lofty = "0.24"
-
-[target.'cfg(any(target_os = "macos", target_os = "linux", target_os = "windows"))'.dependencies]
-rayon = "1.10"
+# The import pipeline's dependencies. The predicate is the pipeline's own — a
+# mobile build is a sync/playback client and compiles none of this — and it is
+# spelled here exactly as the code that uses these crates spells it
+# (`cfg(not(any(target_os = "ios", target_os = "android")))`). Naming the desktop
+# targets positively instead would let a new non-mobile target compile the
+# pipeline while its dependencies stayed behind.
+[target.'cfg(not(any(target_os = "ios", target_os = "android")))'.dependencies]
+# Dev-mode `.env` loading (src/config/dev.rs).
 dotenvy = "0.15"
+# Disc-ID computation from a candidate's LOG/CUE (src/signals/disc_id.rs).
 discid = "0.5"
-lofty = "0.24"
 # Loudness + true-peak measurement at import (src/loudness.rs). Pure Rust, no
-# system libs. Desktop-only: import decodes audio only on these targets, and the
-# playback gain is derived from the stored measurements with plain arithmetic
-# (no ebur128 at playback). true_peak returns a linear ratio (1.0 = 0 dBTP),
-# which is stored verbatim as `*_peak_linear`.
+# system libs. Import-only: playback derives its gain from the stored
+# measurements with plain arithmetic (no ebur128 at playback). true_peak returns
+# a linear ratio (1.0 = 0 dBTP), stored verbatim as `*_peak_linear`.
 ebur128 = "0.1.10"
 
 # cpal drives the audio sink on desktop and iOS (its CoreAudio/AudioUnit backend

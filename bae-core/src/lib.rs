@@ -15,10 +15,11 @@ pub mod import;
 pub mod keys;
 pub mod library;
 pub mod library_name;
-// Measurement needs `ebur128`, a desktop-only dependency, and only import
-// measures. Playback derives its gain from the stored measurements with plain
-// arithmetic, so mobile needs no ebur128.
-#[cfg(any(target_os = "macos", target_os = "linux", target_os = "windows"))]
+// Only import measures loudness, and the import pipeline is desktop-only —
+// the same predicate that gates `import`'s pipeline modules and `ebur128`
+// itself. Playback derives its gain from the stored measurements with plain
+// arithmetic, so mobile needs neither.
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub mod loudness;
 pub mod migrations;
 pub mod musicbrainz;
