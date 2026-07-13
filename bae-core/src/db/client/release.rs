@@ -223,10 +223,8 @@ impl Database {
         .await
     }
 
-    /// The SELECT for a release's storage summary (`DbReleaseStorageSummary`).
-    /// `tail` is the trailing clause that differs per caller: an `ORDER BY` for
-    /// the all-releases list, a `WHERE r.id = ?1` for a single-release lookup.
-    fn release_storage_summary_query(tail: &str) -> String {
+    /// The SELECT for one release's storage summary (`DbReleaseStorageSummary`).
+    fn release_storage_summary_query() -> String {
         format!(
             "SELECT \
             r.id AS release_id, \
@@ -244,34 +242,20 @@ impl Database {
             ), 0) AS total_size \
         FROM releases r \
         JOIN albums a ON a.id = r.album_id \
-        {tail}",
+        WHERE r.id = ?1",
             artist_names = album_artist_names_sql()
         )
     }
 
-    pub async fn get_release_storage_summaries(
-        &self,
-    ) -> Result<Vec<DbReleaseStorageSummary>, DbError> {
-        let query = Self::release_storage_summary_query("ORDER BY a.title, r.created_at");
-        self.read(move |conn| {
-            let mut stmt = conn.prepare(&query)?;
-            let rows = stmt.query_map([], row_to_release_storage_summary)?;
-            rows.collect::<coven::rusqlite::Result<Vec<_>>>()
-                .map_err(DbError::from)
-        })
-        .await
-    }
-
-    /// The storage summary for one release, or `None` if it doesn't exist — one row
-    /// of `get_release_storage_summaries`. The download queue reads a release's
-    /// title / file count / total size from it at enqueue time, for the
-    /// Downloads-pane row.
+    /// The storage summary for one release, or `None` if it doesn't exist. The
+    /// download queue reads a release's title / file count / total size from it at
+    /// enqueue time, for the Downloads-pane row.
     pub async fn find_release_storage_summary(
         &self,
         release_id: &str,
     ) -> Result<Option<DbReleaseStorageSummary>, DbError> {
         let release_id = release_id.to_string();
-        let query = Self::release_storage_summary_query("WHERE r.id = ?1");
+        let query = Self::release_storage_summary_query();
         self.read(move |conn| {
             conn.query_row(&query, [release_id], row_to_release_storage_summary)
                 .optional()

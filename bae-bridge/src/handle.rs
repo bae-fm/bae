@@ -2728,29 +2728,6 @@ impl BridgeAlbum {
             cover: cover.map(crate::types::BridgeImageRef::from_core),
         }
     }
-
-    fn into_core(self) -> bae_core::album_detail::AlbumSummary {
-        let BridgeAlbum {
-            id,
-            title,
-            year,
-            is_compilation,
-            artist_names,
-            release_ids,
-            primary_release_id,
-            cover,
-        } = self;
-        bae_core::album_detail::AlbumSummary {
-            id,
-            title,
-            year,
-            is_compilation,
-            artist_names,
-            release_ids,
-            primary_release_id,
-            cover: cover.map(crate::types::BridgeImageRef::into_core),
-        }
-    }
 }
 
 impl BridgeComposerSummary {
@@ -3070,25 +3047,6 @@ impl BridgeWorkDetail {
                 .collect(),
         }
     }
-}
-
-/// Order an in-memory album list using the same comparator the live SQL
-/// query applies. The live grid sorts via the database; previews and
-/// tests build rows by hand and call this so their ordering matches
-/// what users see. See [`bae_core::db::sort_albums`] for the rule set.
-#[uniffi::export]
-pub fn sort_albums(
-    albums: Vec<BridgeAlbum>,
-    criteria: Vec<BridgeSortCriterion>,
-) -> Vec<BridgeAlbum> {
-    let mut summaries: Vec<bae_core::album_detail::AlbumSummary> =
-        albums.into_iter().map(BridgeAlbum::into_core).collect();
-    let core_criteria: Vec<bae_core::db::AlbumSortCriterion> = criteria
-        .into_iter()
-        .map(BridgeSortCriterion::into_core)
-        .collect();
-    bae_core::db::sort_albums(&mut summaries, &core_criteria);
-    summaries.into_iter().map(BridgeAlbum::from_core).collect()
 }
 
 /// Shape a prefetched editor seed ([`crate::types::BridgeReleasePrefetch::seed`])
@@ -3573,29 +3531,5 @@ mod tests {
         assert_eq!(release.album_title, "Album Title A");
         assert_eq!(release.display_name, "2026 CD");
         assert_eq!(release.format.as_deref(), Some("CD"));
-    }
-
-    /// Round-trips a fully-populated album summary through `from_core` then
-    /// `into_core`, guarding the `BridgeAlbum` ↔ `AlbumSummary` pair against a
-    /// transposed same-typed field (`AlbumSummary` has no `PartialEq`, so the
-    /// `Debug` forms are compared). Placeholder names only.
-    #[test]
-    fn album_summary_round_trips() {
-        let core = bae_core::album_detail::AlbumSummary {
-            id: "album-a".to_string(),
-            title: "Album Title A".to_string(),
-            year: Some(1990),
-            is_compilation: false,
-            artist_names: "Artist Name A".to_string(),
-            release_ids: vec!["rel-1".to_string(), "rel-2".to_string()],
-            primary_release_id: "rel-1".to_string(),
-            cover: Some(bae_core::album_detail::ImageRef {
-                id: "rel-1".to_string(),
-                version: "v1".to_string(),
-                image_type: bae_core::db::LibraryImageType::Cover,
-            }),
-        };
-        let back = super::BridgeAlbum::from_core(core.clone()).into_core();
-        assert_eq!(format!("{core:?}"), format!("{back:?}"));
     }
 }

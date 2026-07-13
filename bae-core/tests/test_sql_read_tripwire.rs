@@ -105,7 +105,6 @@ async fn pure_reads_run_off_the_sync_journal() {
     db.find_track_by_id("missing").await.unwrap(); // track.rs
     db.get_all_track_ids().await.unwrap();
     db.find_release_by_id("missing").await.unwrap(); // release.rs
-    db.get_release_storage_summaries().await.unwrap();
     db.get_release_identities("missing").await.unwrap(); // identity.rs
     db.load_playback_state().await.unwrap(); // playback.rs
     db.external_blob("missing").await.unwrap(); // blobs.rs

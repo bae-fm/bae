@@ -161,22 +161,23 @@ public typealias StorageList = PaginatedList<BridgeStorageRow>
 
 extension AlbumList {
     /// Construct a pre-populated list for SwiftUI previews and tests.
-    /// Sorts albums up front, interns each into `store`, then seeds
-    /// `ids` / `totalCount` so the preview renders without waiting
-    /// for an async round-trip.
+    /// Interns each album into `store`, then seeds `ids` / `totalCount` so the
+    /// preview renders without waiting for an async round-trip.
+    ///
+    /// Rows render in the order given. The live grid is ordered by the database,
+    /// through the `ORDER BY` its page query builds; a preview holds a hand-written
+    /// list with no database, so it presents the order its author wrote.
     public static func preview(
         albums: [BridgeAlbum],
-        sort: [BridgeSortCriterion],
         store: LibraryStore
     )
         -> AlbumList
     {
-        let sorted = sortAlbums(albums: albums, criteria: sort)
-        for bridge in sorted {
+        for bridge in albums {
             _ = store.internAlbumSummary(bridge)
         }
         let list = AlbumList(
-            pageSource: AlbumPreviewPageSource(albums: sorted),
+            pageSource: AlbumPreviewPageSource(albums: albums),
             ingest: { rows in
                 for row in rows {
                     _ = store.internAlbumSummary(row)
@@ -184,7 +185,7 @@ extension AlbumList {
             },
             onError: { _ in },
         )
-        list.preloadForPreview(ids: sorted.map(\.id))
+        list.preloadForPreview(ids: albums.map(\.id))
         return list
     }
 }
