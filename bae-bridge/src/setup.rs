@@ -244,20 +244,34 @@ pub fn create_library(name: Option<String>) -> Result<BridgeLibrary, BridgeError
 /// That requires the futures to be `Send` + `'static`. They are: coven's pull
 /// path carries the database handle as a `Send`-able `SendDbPtr`, so no
 /// non-`Send` `*mut sqlite3` is held across the download await.
+/// The shared onboarding runtime, built once on first use. `Runtime::build` is
+/// fallible — the OS can refuse to spawn the worker threads under thread, file-
+/// descriptor, or memory exhaustion — so a build failure crosses the boundary as
+/// a `BridgeError` like every other fallible onboarding step, rather than
+/// panicking on the foreign caller's thread.
+fn onboarding_runtime() -> Result<&'static tokio::runtime::Runtime, BridgeError> {
+    static RT: std::sync::OnceLock<tokio::runtime::Runtime> = std::sync::OnceLock::new();
+    if let Some(rt) = RT.get() {
+        return Ok(rt);
+    }
+    let rt = tokio::runtime::Builder::new_multi_thread()
+        .worker_threads(2)
+        .thread_stack_size(16 * 1024 * 1024)
+        .enable_all()
+        .build()
+        .map_err(|e| BridgeError::internal(format!("build onboarding runtime: {e}")))?;
+    // A concurrent caller may have won the init race; `get_or_init` keeps the
+    // stored runtime and drops ours. Harmless — the loser's runtime was never
+    // entered.
+    Ok(RT.get_or_init(|| rt))
+}
+
 fn on_worker<T, Fut>(make_fut: impl FnOnce() -> Fut) -> Result<T, BridgeError>
 where
     Fut: std::future::Future<Output = Result<T, BridgeError>> + Send + 'static,
     T: Send + 'static,
 {
-    static RT: std::sync::OnceLock<tokio::runtime::Runtime> = std::sync::OnceLock::new();
-    let rt = RT.get_or_init(|| {
-        tokio::runtime::Builder::new_multi_thread()
-            .worker_threads(2)
-            .thread_stack_size(16 * 1024 * 1024)
-            .enable_all()
-            .build()
-            .expect("build onboarding runtime")
-    });
+    let rt = onboarding_runtime()?;
     match rt.block_on(rt.spawn(make_fut())) {
         Ok(result) => result,
         Err(join_err) => Err(BridgeError::internal(format!(
@@ -887,6 +901,16 @@ mod tests {
             }
             other => panic!("expected config bridge error, got {other:?}"),
         }
+    }
+
+    #[test]
+    fn onboarding_runtime_is_ok_and_idempotent() {
+        let first = onboarding_runtime().expect("onboarding runtime builds on the normal path");
+        let second = onboarding_runtime().expect("onboarding runtime is reused");
+        assert!(
+            std::ptr::eq(first, second),
+            "repeated calls return the same runtime"
+        );
     }
 
     #[test]
