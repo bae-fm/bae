@@ -217,10 +217,11 @@ async fn test_delete_primary_release_clears_album_primary_pointer() {
         .await
         .unwrap()
         .expect("album survives deletion of one of two releases");
-    assert_ne!(
-        album_after.primary_release_id.as_deref(),
-        Some(release1.id.as_str()),
-        "primary_release_id must not dangle to the deleted release",
+    assert_eq!(
+        album_after.primary_release_id, None,
+        "deleting the primary must clear the stored pointer to NULL, not leave it \
+         dangling at the deleted release (the effective primary is derived at read \
+         time by COALESCE to the surviving release)",
     );
 }
 
