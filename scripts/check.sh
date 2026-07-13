@@ -181,6 +181,11 @@ check "clippy (bae-core --features oauth-providers)" \
   cargo clippy -p bae-core --features oauth-providers -- -D warnings
 check "clippy (bae-bridge --features oauth-providers,cloudkit)" \
   cargo clippy -p bae-bridge --features oauth-providers,cloudkit -- -D warnings
+# The feature set build-macos.sh ships. Everything behind `desktop` — the import,
+# identify, export, and watched-folder surfaces — is compiled out of every other
+# clippy run above, so without this the desktop half of the bridge is unlinted.
+check "clippy (bae-bridge --features oauth-providers,cloudkit,desktop)" \
+  cargo clippy -p bae-bridge --features oauth-providers,cloudkit,desktop -- -D warnings
 
 # Default features, no --tests, no --all-targets, no test-utils: the one
 # config that compiles bae-core's production code without also compiling the

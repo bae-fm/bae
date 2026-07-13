@@ -10,7 +10,7 @@ pub enum BridgeDiscogsTokenStatus {
 /// failure mode as a typed value, not a formatted string, so it can decide
 /// whether to keep the draft (`Rejected`) or clear it. Desktop-only: the import
 /// service that writes the key doesn't run on mobile.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(feature = "desktop")]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeDiscogsSaveOutcome {
     Valid,
@@ -18,9 +18,6 @@ pub enum BridgeDiscogsSaveOutcome {
     Rejected,
 }
 
-// Gated to `desktop` (not just non-mobile): its sole caller,
-// `save_discogs_token`, is desktop-only, so an inherent fn would otherwise warn
-// as dead code elsewhere.
 #[cfg(feature = "desktop")]
 impl BridgeDiscogsSaveOutcome {
     pub(crate) fn from_core(outcome: bae_core::import::DiscogsSaveOutcome) -> Self {
@@ -839,7 +836,6 @@ impl BridgeInvalidReason {
     }
 }
 
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[cfg(feature = "desktop")]
 impl BridgeInvalidReason {
     pub(crate) fn from_core(r: bae_core::import::InvalidReason) -> Self {
@@ -939,7 +935,7 @@ pub struct BridgeWatchedFolder {
     pub name: String,
 }
 
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(feature = "desktop")]
 impl BridgeWatchedFolder {
     pub fn from_core(folder: bae_core::import::WatchedFolder) -> Self {
         let bae_core::import::WatchedFolder { path, name } = folder;
@@ -1121,7 +1117,6 @@ pub enum BridgeSearchQuery {
     },
 }
 
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[cfg(feature = "desktop")]
 impl BridgeLibraryStatus {
     pub(crate) fn from_core(s: bae_core::db::LibraryStatus) -> Self {
@@ -1153,7 +1148,7 @@ pub enum BridgeExcludedSignal {
 }
 
 impl BridgeExcludedSignal {
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(feature = "desktop")]
     pub fn into_core(self) -> bae_core::identify::ExcludedSignal {
         use bae_core::identify::ExcludedSignal;
         match self {
@@ -1177,7 +1172,6 @@ pub enum BridgeSignalOrigin {
     TextFile,
 }
 
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[cfg(feature = "desktop")]
 impl BridgeSignalOrigin {
     fn from_core(o: bae_core::signals::SignalOrigin) -> Self {
@@ -1201,7 +1195,6 @@ pub struct BridgeSourcedValue {
     pub origin: BridgeSignalOrigin,
 }
 
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[cfg(feature = "desktop")]
 impl BridgeSourcedValue {
     fn from_core(s: bae_core::signals::SourcedValue) -> Self {
@@ -1251,7 +1244,6 @@ pub enum BridgeLookupFailure {
     Diagnostic { detail: String },
 }
 
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[cfg(feature = "desktop")]
 impl BridgeLookupFailure {
     fn from_core(f: bae_core::signals::LookupFailure) -> Self {
@@ -1321,7 +1313,6 @@ pub struct BridgeSignalsToolbar {
     pub signals: Vec<BridgeToolbarSignal>,
 }
 
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[cfg(feature = "desktop")]
 impl BridgeSignalState {
     fn from_core(s: bae_core::identify::SignalState) -> Self {
@@ -1339,7 +1330,6 @@ impl BridgeSignalState {
     }
 }
 
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[cfg(feature = "desktop")]
 impl BridgeToolbarSignal {
     fn from_core(s: bae_core::identify::ToolbarSignal) -> Self {
@@ -1370,7 +1360,6 @@ impl BridgeToolbarSignal {
     }
 }
 
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[cfg(feature = "desktop")]
 impl BridgeSignalsToolbar {
     pub(crate) fn from_core(toolbar: Vec<bae_core::identify::ToolbarSignal>) -> Self {
@@ -3396,7 +3385,6 @@ impl BridgeSortCriterion {
     }
 }
 
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[cfg(feature = "desktop")]
 impl BridgeMetadataResult {
     pub(crate) fn from_core(r: bae_core::import::search::MetadataResult) -> Self {
@@ -3427,7 +3415,6 @@ impl BridgeMetadataResult {
     }
 }
 
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[cfg(feature = "desktop")]
 impl BridgeRemoteCover {
     pub(crate) fn from_core(c: bae_core::import::cover_art::RemoteCover) -> Self {
@@ -3446,7 +3433,6 @@ impl BridgeRemoteCover {
     }
 }
 
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[cfg(feature = "desktop")]
 fn bridge_remote_cover_selection(
     url: String,
@@ -3458,7 +3444,6 @@ fn bridge_remote_cover_selection(
     }
 }
 
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[cfg(feature = "desktop")]
 fn remote_cover_choice_to_bridge(
     selection: &BridgeRemoteCoverSelection,
@@ -3567,7 +3552,6 @@ impl BridgeReleasePrefetch {
     }
 }
 
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[cfg(feature = "desktop")]
 impl BridgeDiscidProgress {
     fn from_view(p: bae_core::identify::DiscidProgressView) -> Self {
@@ -3584,7 +3568,6 @@ impl BridgeDiscidProgress {
     }
 }
 
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[cfg(feature = "desktop")]
 impl BridgeBarcodeProgress {
     fn from_view(p: bae_core::identify::BarcodeProgressView) -> Self {
@@ -3609,7 +3592,6 @@ impl BridgeBarcodeProgress {
     }
 }
 
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[cfg(feature = "desktop")]
 impl BridgeReleaseGroup {
     pub(crate) fn from_core(g: bae_core::import::release_group::ReleaseGroup) -> Self {
@@ -3641,7 +3623,6 @@ impl BridgeReleaseGroup {
     }
 }
 
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[cfg(feature = "desktop")]
 impl BridgeSignals {
     pub(crate) fn from_core(s: bae_core::signals::Signals) -> Self {
@@ -3726,7 +3707,6 @@ impl BridgeSignals {
     }
 }
 
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[cfg(feature = "desktop")]
 impl BridgeResultProvenance {
     fn from_core(p: bae_core::identify::ResultProvenance) -> Self {
@@ -3747,7 +3727,6 @@ impl BridgeResultProvenance {
 /// already folded the matches into their group, keyed the provenance, reduced the
 /// in-flight payloads to counts, and dropped what must not cross — this is a field
 /// copy per variant and nothing else.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[cfg(feature = "desktop")]
 impl BridgeIdentifyState {
     pub(crate) fn from_core(s: bae_core::identify::IdentifyState) -> Self {
@@ -3804,7 +3783,6 @@ impl BridgeIdentifyState {
 /// Key library statuses by release id — the UI looks a row's status up by id
 /// rather than re-indexing a flat list. Each status carries its own id, so this
 /// is a re-container, not a re-pairing.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[cfg(feature = "desktop")]
 fn status_map(
     statuses: Vec<bae_core::db::LibraryStatus>,
@@ -3817,7 +3795,6 @@ fn status_map(
 
 /// Unzip core's paired rows into the two containers the UI reads: the ordered
 /// results list (display order matters) and their statuses keyed by release id.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[cfg(feature = "desktop")]
 fn results_and_status_map(
     rows: Vec<bae_core::identify::ResultRow>,
@@ -3834,7 +3811,6 @@ fn results_and_status_map(
     (results, status_map(statuses))
 }
 
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[cfg(feature = "desktop")]
 impl BridgeFileInfo {
     fn from_core(f: bae_core::import::folder_scanner::ScannedFile) -> Self {
@@ -3855,7 +3831,6 @@ impl BridgeFileInfo {
     }
 }
 
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[cfg(feature = "desktop")]
 impl BridgeArtworkFile {
     fn from_core(f: bae_core::import::folder_scanner::ScannedFile) -> Self {
@@ -3875,7 +3850,6 @@ impl BridgeArtworkFile {
     }
 }
 
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[cfg(feature = "desktop")]
 impl BridgeCueFlacPair {
     fn from_core(p: bae_core::import::folder_scanner::ScannedCueFlacPair) -> Self {
@@ -3917,7 +3891,6 @@ impl BridgeCueFlacPair {
     }
 }
 
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[cfg(feature = "desktop")]
 impl BridgeCandidateFiles {
     pub(crate) fn from_core(files: bae_core::import::folder_scanner::CategorizedFiles) -> Self {
@@ -4552,11 +4525,7 @@ mod loc_key_coverage {
     }
 }
 
-#[cfg(all(
-    test,
-    feature = "desktop",
-    not(any(target_os = "ios", target_os = "android"))
-))]
+#[cfg(all(test, feature = "desktop"))]
 mod identify_progress_tests {
     use super::*;
 

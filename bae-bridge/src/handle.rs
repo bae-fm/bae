@@ -1484,6 +1484,9 @@ impl AppHandle {
 // Export (desktop-only)
 // =========================================================================
 
+// Gated on the target, not on `desktop`: bae-core gates `mod export` itself on the
+// target, so the export queue and the track exporter exist on every non-mobile
+// build whether or not this crate's `desktop` feature is on.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[uniffi::export(async_runtime = "tokio")]
 impl AppHandle {
@@ -2078,7 +2081,6 @@ impl crate::types::BridgeSyncStatusSnapshot {
     }
 }
 
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[cfg(feature = "desktop")]
 impl crate::types::BridgeFolderCandidate {
     fn from_core(candidate: bae_core::import::FolderCandidate) -> Self {
@@ -2104,7 +2106,6 @@ impl crate::types::BridgeFolderCandidate {
     }
 }
 
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[cfg(feature = "desktop")]
 impl crate::types::BridgeInvalidCandidate {
     fn from_core(candidate: bae_core::import::InvalidCandidate) -> Self {
@@ -3247,6 +3248,9 @@ mod tests {
             50,
             true,
         );
+        // Gated on the target, not on `desktop`: `AppServices::new`'s arity is
+        // itself target-gated in bae-core, so a non-mobile build takes the
+        // five-argument form whether or not this crate's `desktop` feature is on.
         #[cfg(not(any(target_os = "ios", target_os = "android")))]
         let services = {
             let cover_art = bae_core::import::cover_art::CoverArtArchiveClient::new();
