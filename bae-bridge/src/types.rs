@@ -2701,8 +2701,23 @@ pub enum BridgeStorageMode {
     Remote,
 }
 
+/// A manual restore configuration. Mirrors `bae_core::sync::RestoreConfig` — the
+/// one value that both gates the restore form (`validate_restore_config`) and
+/// performs the restore (`restore_from_cloud`), so the two cannot disagree about
+/// what a provider requires.
+#[derive(Debug, uniffi::Record)]
+pub struct BridgeRestoreConfig {
+    pub library_id: String,
+    pub encryption_key: String,
+    pub home: BridgeRestoreHome,
+}
+
+/// Where a restored library's cloud home lives. Mirrors
+/// `bae_core::sync::RestoreHome`. An OAuth provider's `oauth_token_json` is `None`
+/// until the user authorizes — the form reads that as "not ready yet" rather than
+/// carrying a separate flag.
 #[derive(Debug, uniffi::Enum)]
-pub enum BridgeRestoreSource {
+pub enum BridgeRestoreHome {
     S3 {
         bucket: String,
         region: String,
@@ -2713,17 +2728,72 @@ pub enum BridgeRestoreSource {
     CloudKit,
     GoogleDrive {
         folder_id: String,
-        oauth_token_json: String,
+        oauth_token_json: Option<String>,
     },
     Dropbox {
         folder_path: String,
-        oauth_token_json: String,
+        oauth_token_json: Option<String>,
     },
     OneDrive {
         drive_id: String,
         folder_id: String,
-        oauth_token_json: String,
+        oauth_token_json: Option<String>,
     },
+}
+
+impl BridgeRestoreConfig {
+    pub(crate) fn into_core(self) -> bae_core::sync::RestoreConfig {
+        bae_core::sync::RestoreConfig {
+            library_id: self.library_id,
+            encryption_key: self.encryption_key,
+            home: self.home.into_core(),
+        }
+    }
+}
+
+impl BridgeRestoreHome {
+    fn into_core(self) -> bae_core::sync::RestoreHome {
+        use bae_core::sync::RestoreHome;
+        match self {
+            Self::S3 {
+                bucket,
+                region,
+                endpoint,
+                access_key,
+                secret_key,
+            } => RestoreHome::S3 {
+                bucket,
+                region,
+                endpoint,
+                access_key,
+                secret_key,
+            },
+            Self::CloudKit => RestoreHome::CloudKit,
+            Self::GoogleDrive {
+                folder_id,
+                oauth_token_json,
+            } => RestoreHome::GoogleDrive {
+                folder_id,
+                oauth_token_json,
+            },
+            Self::Dropbox {
+                folder_path,
+                oauth_token_json,
+            } => RestoreHome::Dropbox {
+                folder_path,
+                oauth_token_json,
+            },
+            Self::OneDrive {
+                drive_id,
+                folder_id,
+                oauth_token_json,
+            } => RestoreHome::OneDrive {
+                drive_id,
+                folder_id,
+                oauth_token_json,
+            },
+        }
+    }
 }
 
 /// Decoded restore code info for UI preview (before the actual restore).
@@ -2797,103 +2867,6 @@ pub struct BridgeInviteCodeInfo {
     pub owner_fingerprint: String,
     pub cloud_provider: BridgeCloudProvider,
     pub needs_oauth: bool,
-}
-
-/// Per-provider form fields for validating a manual restore configuration.
-#[derive(Debug, uniffi::Enum)]
-pub enum BridgeRestoreFormFields {
-    S3 {
-        library_id: String,
-        encryption_key: String,
-        bucket: String,
-        region: String,
-        access_key: String,
-        secret_key: String,
-    },
-    GoogleDrive {
-        library_id: String,
-        encryption_key: String,
-        folder_id: String,
-        has_oauth_token: bool,
-    },
-    Dropbox {
-        library_id: String,
-        encryption_key: String,
-        folder_path: String,
-        has_oauth_token: bool,
-    },
-    OneDrive {
-        library_id: String,
-        encryption_key: String,
-        drive_id: String,
-        folder_id: String,
-        has_oauth_token: bool,
-    },
-    CloudKit {
-        library_id: String,
-        encryption_key: String,
-    },
-}
-
-impl BridgeRestoreFormFields {
-    pub(crate) fn is_valid(&self) -> bool {
-        match self {
-            Self::S3 {
-                library_id,
-                encryption_key,
-                bucket,
-                region,
-                access_key,
-                secret_key,
-            } => {
-                !library_id.is_empty()
-                    && !encryption_key.is_empty()
-                    && !bucket.is_empty()
-                    && !region.is_empty()
-                    && !access_key.is_empty()
-                    && !secret_key.is_empty()
-            }
-            Self::GoogleDrive {
-                library_id,
-                encryption_key,
-                folder_id,
-                has_oauth_token,
-            } => {
-                !library_id.is_empty()
-                    && !encryption_key.is_empty()
-                    && !folder_id.is_empty()
-                    && *has_oauth_token
-            }
-            Self::Dropbox {
-                library_id,
-                encryption_key,
-                folder_path,
-                has_oauth_token,
-            } => {
-                !library_id.is_empty()
-                    && !encryption_key.is_empty()
-                    && !folder_path.is_empty()
-                    && *has_oauth_token
-            }
-            Self::OneDrive {
-                library_id,
-                encryption_key,
-                drive_id,
-                folder_id,
-                has_oauth_token,
-            } => {
-                !library_id.is_empty()
-                    && !encryption_key.is_empty()
-                    && !drive_id.is_empty()
-                    && !folder_id.is_empty()
-                    && *has_oauth_token
-            }
-            Self::CloudKit {
-                library_id,
-                encryption_key,
-            } => !library_id.is_empty() && !encryption_key.is_empty(),
-        }
-    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]

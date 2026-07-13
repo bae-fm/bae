@@ -728,44 +728,50 @@ extension WelcomeView {
     }
 
     private var manualFormValid: Bool {
-        validateRestoreConfig(fields: buildRestoreFormFields())
+        validateRestoreConfig(config: buildRestoreConfig())
     }
 
-    private func buildRestoreFormFields() -> BridgeRestoreFormFields {
+    /// The restore configuration the form currently describes. One value answers
+    /// both questions the form asks — whether Restore may be pressed, and what to
+    /// restore — so the two cannot disagree about what a provider needs. An OAuth
+    /// provider carries a `nil` token until the user authorizes; the core rule
+    /// reads that as "not ready yet".
+    private func buildRestoreConfig() -> BridgeRestoreConfig {
+        BridgeRestoreConfig(
+            libraryId: libraryId,
+            encryptionKey: encryptionKey,
+            home: buildRestoreHome(),
+        )
+    }
+
+    private func buildRestoreHome() -> BridgeRestoreHome {
         switch restoreProvider {
         case .s3:
             .s3(
-                libraryId: libraryId,
-                encryptionKey: encryptionKey,
                 bucket: bucket,
                 region: region,
+                endpoint: endpoint.isEmpty ? nil : endpoint,
                 accessKey: accessKey,
                 secretKey: secretKey,
             )
+        case .cloudKit:
+            .cloudKit
         case .googleDrive:
             .googleDrive(
-                libraryId: libraryId,
-                encryptionKey: encryptionKey,
                 folderId: googleDriveFolderId,
-                hasOauthToken: oauthTokenJson != nil,
+                oauthTokenJson: oauthTokenJson,
             )
         case .dropbox:
             .dropbox(
-                libraryId: libraryId,
-                encryptionKey: encryptionKey,
                 folderPath: dropboxFolderPath,
-                hasOauthToken: oauthTokenJson != nil,
+                oauthTokenJson: oauthTokenJson,
             )
         case .oneDrive:
             .oneDrive(
-                libraryId: libraryId,
-                encryptionKey: encryptionKey,
                 driveId: oneDriveDriveId,
                 folderId: oneDriveFolderId,
-                hasOauthToken: oauthTokenJson != nil,
+                oauthTokenJson: oauthTokenJson,
             )
-        case .cloudKit:
-            .cloudKit(libraryId: libraryId, encryptionKey: encryptionKey)
         }
     }
 
@@ -803,19 +809,10 @@ extension WelcomeView {
     }
 
     private func doRestoreManual() {
-        guard let source = buildRestoreSource() else {
-            return
-        }
-        let lid = libraryId
-        let ek = encryptionKey
+        let config = buildRestoreConfig()
         let name: String? = libraryName.isEmpty ? nil : libraryName
         runRestore {
-            try restoreFromCloud(
-                libraryId: lid,
-                encryptionKeyHex: ek,
-                libraryName: name,
-                source: source,
-            )
+            try restoreFromCloud(libraryName: name, config: config)
         }
     }
 
@@ -847,51 +844,6 @@ extension WelcomeView {
                 isRestoring = false
                 self.error = error.localizedDescription
             }
-        }
-    }
-
-    private func buildRestoreSource() -> BridgeRestoreSource? {
-        switch restoreProvider {
-        case .s3:
-            return .s3(
-                bucket: bucket,
-                region: region,
-                endpoint: endpoint.isEmpty ? nil : endpoint,
-                accessKey: accessKey,
-                secretKey: secretKey,
-            )
-        case .cloudKit:
-            return .cloudKit
-        case .googleDrive:
-            guard let token = oauthTokenJson else {
-                error = String(
-                    localized: "OAuth token required for Google Drive"
-                )
-                return nil
-            }
-            return .googleDrive(
-                folderId: googleDriveFolderId,
-                oauthTokenJson: token
-            )
-        case .dropbox:
-            guard let token = oauthTokenJson else {
-                error = String(localized: "OAuth token required for Dropbox")
-                return nil
-            }
-            return .dropbox(
-                folderPath: dropboxFolderPath,
-                oauthTokenJson: token
-            )
-        case .oneDrive:
-            guard let token = oauthTokenJson else {
-                error = String(localized: "OAuth token required for OneDrive")
-                return nil
-            }
-            return .oneDrive(
-                driveId: oneDriveDriveId,
-                folderId: oneDriveFolderId,
-                oauthTokenJson: token,
-            )
         }
     }
 

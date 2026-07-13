@@ -99,7 +99,7 @@ use bae_core::library::{CancellationToken, JoinFromCodeError, RestoreFromCodeErr
 use crate::get_cloudkit_ops;
 use crate::types::{
     BridgeCloudProvider, BridgeError, BridgeInviteCodeInfo, BridgeJoinRequest,
-    BridgeJoinRequestInfo, BridgeLibrary, BridgeRestoreCodeInfo, BridgeRestoreSource,
+    BridgeJoinRequestInfo, BridgeLibrary, BridgeRestoreCodeInfo,
 };
 
 fn restore_error_to_bridge(error: RestoreFromCodeError) -> BridgeError {
@@ -286,86 +286,40 @@ where
     }
 }
 
-/// Restore a library from cloud storage using the provided encryption key.
+/// Restore a library from cloud storage.
+///
+/// `config` carries the library id, its encryption key, and the cloud home to read
+/// from. It is checked against `RestoreConfig::validate` — the same rule
+/// `validate_restore_config` gates the form with — so a surface that never showed
+/// the form cannot restore from an incomplete configuration.
 #[uniffi::export]
 pub fn restore_from_cloud(
-    library_id: String,
-    encryption_key_hex: String,
     library_name: Option<String>,
-    source: BridgeRestoreSource,
+    config: crate::types::BridgeRestoreConfig,
 ) -> Result<BridgeLibrary, BridgeError> {
     use bae_core::sync::RestoreSource;
     use coven::CloudHomeJoinInfo;
     let library_name = library_name.unwrap_or_else(bae_core::library_name::generate_library_name);
+    let config = config.into_core();
+    let library_id = config.library_id.clone();
+    let encryption_key_hex = config.encryption_key.clone();
 
     on_worker(move || async move {
-        let core_source = match source {
-            BridgeRestoreSource::S3 {
-                bucket,
-                region,
-                endpoint,
-                access_key,
-                secret_key,
-            } => RestoreSource {
-                // `BridgeRestoreSource::S3` carries no key_prefix, so restore over
-                // S3 reads from the bucket root.
-                join_info: CloudHomeJoinInfo::S3 {
-                    bucket,
-                    region,
-                    endpoint,
-                    access_key,
-                    secret_key,
-                    key_prefix: None,
-                },
-                oauth_tokens: None,
-                cloudkit_ops: None,
-            },
-            BridgeRestoreSource::CloudKit => {
-                let ops = get_cloudkit_ops()
-                    .ok_or_else(|| BridgeError::internal("CloudKit driver not set".to_string()))?;
-                RestoreSource {
-                    join_info: CloudHomeJoinInfo::CloudKit,
-                    oauth_tokens: None,
-                    cloudkit_ops: Some(ops),
-                }
-            }
-            BridgeRestoreSource::GoogleDrive {
-                folder_id,
-                oauth_token_json,
-            } => {
-                let tokens = parse_oauth_tokens(&oauth_token_json)?;
-                RestoreSource {
-                    join_info: CloudHomeJoinInfo::GoogleDrive { folder_id },
-                    oauth_tokens: Some(tokens),
-                    cloudkit_ops: None,
-                }
-            }
-            BridgeRestoreSource::Dropbox {
-                folder_path,
-                oauth_token_json,
-            } => {
-                let tokens = parse_oauth_tokens(&oauth_token_json)?;
-                RestoreSource {
-                    join_info: CloudHomeJoinInfo::Dropbox { folder_path },
-                    oauth_tokens: Some(tokens),
-                    cloudkit_ops: None,
-                }
-            }
-            BridgeRestoreSource::OneDrive {
-                drive_id,
-                folder_id,
-                oauth_token_json,
-            } => {
-                let tokens = parse_oauth_tokens(&oauth_token_json)?;
-                RestoreSource {
-                    join_info: CloudHomeJoinInfo::OneDrive {
-                        drive_id,
-                        folder_id,
-                    },
-                    oauth_tokens: Some(tokens),
-                    cloudkit_ops: None,
-                }
-            }
+        let (join_info, oauth_tokens) = config.into_home().map_err(BridgeError::config)?;
+
+        // CloudKit reaches its container through the platform driver this crate
+        // holds; every other home is fully described by its join info.
+        let cloudkit_ops = match &join_info {
+            CloudHomeJoinInfo::CloudKit => Some(
+                get_cloudkit_ops()
+                    .ok_or_else(|| BridgeError::internal("CloudKit driver not set".to_string()))?,
+            ),
+            _ => None,
+        };
+        let core_source = RestoreSource {
+            join_info,
+            oauth_tokens,
+            cloudkit_ops,
         };
 
         let config = bae_core::library::restore_from_cloud(
@@ -886,10 +840,13 @@ pub fn unlock_library(library_id: String, key_hex: String) -> Result<(), BridgeE
     bae_core::library::unlock_library(&library_id, &key_hex).map_err(BridgeError::config)
 }
 
-/// Validate restore form fields for a given cloud provider.
+/// Whether a manual restore configuration is complete — every field the chosen
+/// provider needs is filled in, and an OAuth provider has been authorized. The
+/// restore form gates its button on this; `restore_from_cloud` enforces the same
+/// rule on the restore itself. Both resolve to `RestoreConfig::validate`.
 #[uniffi::export]
-pub fn validate_restore_config(fields: crate::types::BridgeRestoreFormFields) -> bool {
-    fields.is_valid()
+pub fn validate_restore_config(config: crate::types::BridgeRestoreConfig) -> bool {
+    config.into_core().validate().is_ok()
 }
 
 #[cfg(test)]

@@ -279,13 +279,14 @@ internal static class NativeBae
         string accessKey,
         string secretKey)
     {
-        var source = new BridgeRestoreSource.S3(
+        var home = new BridgeRestoreHome.S3(
             bucket,
             region,
             string.IsNullOrWhiteSpace(endpoint) ? null : endpoint.Trim(),
             accessKey,
             secretKey);
-        return BaeBridgeMethods.RestoreFromCloud(libraryId, encryptionKeyHex, libraryName, source).Id;
+        var config = new BridgeRestoreConfig(libraryId, encryptionKeyHex, home);
+        return BaeBridgeMethods.RestoreFromCloud(libraryName, config).Id;
     }
 
     internal sealed class UiEventSink(Action<BridgeUiEvent> onEvent) : UiEventCallback
