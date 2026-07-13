@@ -116,6 +116,7 @@ impl ReleaseUploadObserver {
             self.db(),
             self.handle(),
             true,
+            true,
             release_id,
         )
         .await

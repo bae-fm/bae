@@ -1888,6 +1888,7 @@ async fn find_release_detail_with_returns_none_for_deleted_release() {
         &manager.database,
         &manager.handle,
         true,
+        true,
         &release.id,
     )
     .await

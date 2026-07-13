@@ -123,6 +123,19 @@ pub enum ReleaseStorageAction {
 
 /// Remote requires a cloud home, so without one there are no transitions at all.
 ///
+/// `MakeRemote` additionally requires the sync loop to be *running*, not merely a
+/// connected home: a release becomes Remote only when the upload observer — which
+/// fires from inside a running cycle — sees the last upload land, so with the loop
+/// stopped the uploads would sit forever and the release would stay Local. A
+/// connected home whose loop isn't running is reachable (coven installs a
+/// loop-less manager when the config carries no provider), so this is the one place
+/// that rule is stated; `TransferService::make_release_remote` re-checks it as the
+/// guard against the loop stopping after this list was computed, and against
+/// callers that never read the list at all.
+///
+/// Pin / Unpin / MakeLocal move bytes through the connected manager's storage and
+/// need no drain loop, so they gate on the cloud home alone.
+///
 /// The in-flight-uploads gate — acting mid-upload would race the observer that
 /// completes the remote transition — lives in the UI instead, which suppresses
 /// these actions when the outbox snapshot has work for the release. That stays
@@ -132,13 +145,15 @@ pub fn available_storage_actions(
     state: ReleaseStorageState,
     pinned: bool,
     has_cloud_home: bool,
+    sync_ready: bool,
 ) -> Vec<ReleaseStorageAction> {
     use ReleaseStorageAction::*;
     if !has_cloud_home {
         return Vec::new();
     }
     match state {
-        ReleaseStorageState::Local => vec![MakeRemote],
+        ReleaseStorageState::Local if sync_ready => vec![MakeRemote],
+        ReleaseStorageState::Local => Vec::new(),
         ReleaseStorageState::Remote if pinned => vec![Unpin, MakeLocal],
         ReleaseStorageState::Remote => vec![Pin, MakeLocal],
     }
@@ -342,7 +357,7 @@ mod tests {
         for state in [Local, Remote] {
             for pinned in [false, true] {
                 assert_eq!(
-                    available_storage_actions(state, pinned, false),
+                    available_storage_actions(state, pinned, false, true),
                     Vec::<ReleaseStorageAction>::new(),
                     "no cloud home blocks all actions for {state:?} (pinned={pinned})"
                 );
@@ -351,22 +366,51 @@ mod tests {
     }
 
     #[test]
-    fn local_with_cloud_offers_manage() {
+    fn local_with_cloud_and_a_running_loop_offers_manage() {
         // `pinned` is irrelevant for a local release.
         assert_eq!(
-            available_storage_actions(Local, false, true),
+            available_storage_actions(Local, false, true, true),
             vec![MakeRemote]
         );
         assert_eq!(
-            available_storage_actions(Local, true, true),
+            available_storage_actions(Local, true, true, true),
             vec![MakeRemote]
+        );
+    }
+
+    /// A connected home whose sync loop isn't running cannot finish a make-Remote:
+    /// the release goes Remote only when the upload observer sees the last upload
+    /// land, and that observer fires from inside a running cycle. So the action is
+    /// not offered — `TransferService::make_release_remote` would refuse it.
+    #[test]
+    fn local_without_a_running_loop_offers_nothing() {
+        for pinned in [false, true] {
+            assert_eq!(
+                available_storage_actions(Local, pinned, true, false),
+                Vec::<ReleaseStorageAction>::new(),
+                "MakeRemote must not be offered with the sync loop stopped (pinned={pinned})"
+            );
+        }
+    }
+
+    /// The loop is only a MakeRemote condition: a Remote release's actions move
+    /// bytes through the connected manager's storage and need no drain loop.
+    #[test]
+    fn remote_actions_do_not_need_a_running_loop() {
+        assert_eq!(
+            available_storage_actions(Remote, true, true, false),
+            vec![Unpin, MakeLocal]
+        );
+        assert_eq!(
+            available_storage_actions(Remote, false, true, false),
+            vec![Pin, MakeLocal]
         );
     }
 
     #[test]
     fn remote_pinned_offers_unpin_and_unmanage() {
         assert_eq!(
-            available_storage_actions(Remote, true, true),
+            available_storage_actions(Remote, true, true, true),
             vec![Unpin, MakeLocal]
         );
     }
@@ -374,7 +418,7 @@ mod tests {
     #[test]
     fn remote_unpinned_offers_pin_and_unmanage() {
         assert_eq!(
-            available_storage_actions(Remote, false, true),
+            available_storage_actions(Remote, false, true, true),
             vec![Pin, MakeLocal]
         );
     }

@@ -143,6 +143,7 @@ impl LibraryManager {
         let total_count = self.database.get_storage_count(filter).await?;
 
         let has_cloud_home = self.has_cloud_home();
+        let sync_ready = self.is_sync_ready();
         // The cover resolver serves both halves of each row — the release's own id
         // and the album's resolved primary release id — so gather both for the
         // batch lookup.
@@ -167,6 +168,7 @@ impl LibraryManager {
             rows.push(StorageRow::from_raw(
                 raw,
                 has_cloud_home,
+                sync_ready,
                 pinned,
                 transfer_action,
                 |rid| covers.get(rid).cloned(),

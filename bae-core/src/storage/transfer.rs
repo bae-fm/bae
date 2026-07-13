@@ -130,8 +130,13 @@ impl TransferService {
                 // The release reaches `remote = true` only when coven's upload drain
                 // flips it after the last upload lands. That drain runs from the sync
                 // loop, so the loop must be running — otherwise the uploads sit forever
-                // and the release stays Local with no error. A configured cloud home
-                // isn't enough; the loop must be draining.
+                // and the release stays Local with no error.
+                //
+                // `available_storage_actions` states this rule as the availability
+                // policy, so a UI that reads it never offers the action here. This is
+                // the guard for what that list cannot cover: the loop stopping between
+                // the list being computed and the action being taken, and callers (the
+                // bridge, MCP) that never read a list at all.
                 if !library_manager.is_sync_ready() {
                     return Err(
                         "Cannot make a release remote while sync isn't running — it would never finish \

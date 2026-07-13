@@ -153,6 +153,7 @@ impl LibraryManager {
         })?;
 
         let has_cloud_home = self.has_cloud_home();
+        let sync_ready = self.is_sync_ready();
         // One cover lookup for the whole album: the album's cover is the primary
         // release's, and each release carries its own.
         let release_ids: Vec<String> = raw.releases.iter().map(|r| r.release.id.clone()).collect();
@@ -168,6 +169,7 @@ impl LibraryManager {
             let release_cover = covers.get(&r.release.id).cloned();
             let ctx = ReleaseResolveCtx {
                 has_cloud_home,
+                sync_ready,
                 pinned,
                 cover: release_cover,
                 transfer_action: self.current_transfer_action(&r.release.id),

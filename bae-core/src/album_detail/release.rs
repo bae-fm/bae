@@ -14,6 +14,9 @@ use crate::db::{DbArtist, DbReleaseDetail, DbReleaseSummary};
 #[derive(Debug, Clone)]
 pub(crate) struct ReleaseResolveCtx {
     pub(crate) has_cloud_home: bool,
+    /// Whether the sync loop is running — not just whether a home is connected.
+    /// `MakeRemote` needs it; see [`crate::album_detail::available_storage_actions`].
+    pub(crate) sync_ready: bool,
     pub(crate) pinned: bool,
     pub(crate) cover: Option<ImageRef>,
     pub(crate) transfer_action: Option<ReleaseStorageAction>,
@@ -69,6 +72,7 @@ impl ReleaseSummary {
                 storage_state,
                 ctx.pinned,
                 ctx.has_cloud_home,
+                ctx.sync_ready,
             ),
             transfer_action: ctx.transfer_action,
             file_count: raw.file_count,

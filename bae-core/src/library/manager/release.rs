@@ -608,10 +608,12 @@ impl LibraryManager {
             return Ok(None);
         };
         let has_cloud_home = self.has_cloud_home();
+        let sync_ready = self.is_sync_ready();
         let pinned = self.release_pinned(raw.any_file_id.as_deref()).await?;
         Ok(Some(ReleaseStorageSummary::from_raw(
             raw,
             has_cloud_home,
+            sync_ready,
             pinned,
         )))
     }
@@ -632,12 +634,14 @@ impl LibraryManager {
             return Ok(None);
         };
         let has_cloud_home = self.has_cloud_home();
+        let sync_ready = self.is_sync_ready();
         let pinned = self
             .release_pinned(raw.files.first().map(|f| f.id.as_str()))
             .await?;
         let cover = self.cover_ref(release_id).await?;
         let ctx = ReleaseResolveCtx {
             has_cloud_home,
+            sync_ready,
             pinned,
             cover,
             transfer_action: self.current_transfer_action(release_id),
@@ -973,12 +977,13 @@ pub(crate) async fn cover_ref_for(
 /// observer — which holds a `Database` and a `CovenHandle` but no manager — can
 /// emit `ReleaseUpdated` when coven completes a transition. Pin state is answered
 /// through `handle`, the same door the manager uses. The caller supplies
-/// `has_cloud_home`; the observer fires inside a running sync cycle, so it passes
-/// `true`.
+/// `has_cloud_home` and `sync_ready`; the observer fires inside a running sync
+/// cycle, so it passes `true` for both.
 pub(crate) async fn find_release_detail_with(
     database: &Database,
     handle: &CovenHandle,
     has_cloud_home: bool,
+    sync_ready: bool,
     release_id: &str,
 ) -> Result<Option<ReleaseDetail>, LibraryError> {
     let Some((raw, album_artists, release_index)) =
@@ -1000,6 +1005,7 @@ pub(crate) async fn find_release_detail_with(
     let cover = cover_ref_for(database, release_id).await?;
     let ctx = ReleaseResolveCtx {
         has_cloud_home,
+        sync_ready,
         pinned,
         cover,
         transfer_action: None,
