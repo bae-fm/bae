@@ -487,6 +487,75 @@ where
     })
 }
 
+/// The three-track local FLAC album every `PlaybackTestFixture` plays,
+/// imported once (decode-verify + DB writes) into a template library directory
+/// that outlives every test. Each `PlaybackTestFixture::new` clones the
+/// template's small DB/library files into its own `TempDir` rather than
+/// re-importing, so the import cost is paid once per process instead of once
+/// per test.
+///
+/// The FLAC files themselves are never cloned: `local_blob_refs` stores an
+/// absolute path, so a clone's DB rows — and `album_dir`, which one preview
+/// test reads a real file path from — resolve straight back to the template's
+/// stable `album/` directory, held alive for the process's lifetime.
+struct PlaybackFixtureTemplate {
+    dir: TempDir,
+    album_dir: std::path::PathBuf,
+    track_ids: Vec<String>,
+}
+
+static PLAYBACK_FIXTURE_TEMPLATE: std::sync::LazyLock<PlaybackFixtureTemplate> =
+    std::sync::LazyLock::new(|| {
+        // A dedicated runtime, not a calling test's: the import must finish and
+        // every task/connection it spawned must be torn down (dropping the
+        // runtime blocks until they are) before the template directory is safe
+        // to copy — coven opens SQLite in WAL mode, so a copy taken while a
+        // connection is still live could catch an unmerged -wal file.
+        let rt =
+            tokio::runtime::Runtime::new().expect("build the playback template import's runtime");
+        let template = rt.block_on(async {
+            let import_ids = SequentialIdProvider::new("playback-fixture-template");
+            let setup = imported_release_setup(
+                create_test_album(),
+                "test",
+                import_ids.new_id(),
+                |album_dir| {
+                    let _track_data = generate_test_flac_files(album_dir);
+                },
+                |_| Ok(()),
+            )
+            .await
+            .expect("import the playback fixture template release");
+            assert!(
+                !setup.track_ids.is_empty(),
+                "the playback fixture template should import tracks"
+            );
+            PlaybackFixtureTemplate {
+                album_dir: setup.album_dir.clone(),
+                dir: setup.temp_dir,
+                track_ids: setup.track_ids,
+            }
+        });
+        drop(rt);
+        template
+    });
+
+/// Clone the playback fixture template into a fresh `TempDir`, returning it
+/// with the template's stable `album/` path and track ids. Dereferences the
+/// template (running its one-time import on init) so callers invoke this on a
+/// blocking thread — the template's initializer builds and blocks on its own
+/// runtime, which a test's async thread can't. Mirrors
+/// `clone_multi_window_library`.
+fn clone_playback_fixture_library() -> (TempDir, std::path::PathBuf, Vec<String>) {
+    let template = &*PLAYBACK_FIXTURE_TEMPLATE;
+    let fresh = clone_template_library(template.dir.path());
+    (
+        fresh,
+        template.album_dir.clone(),
+        template.track_ids.clone(),
+    )
+}
+
 /// Test helper to set up playback service with imported test tracks
 struct PlaybackTestFixture {
     playback_handle: bae_core::playback::PlaybackHandle,
@@ -504,27 +573,46 @@ struct PlaybackTestFixture {
 }
 impl PlaybackTestFixture {
     async fn new() -> Self {
-        let import_ids = SequentialIdProvider::new("playback-fixture-import");
-        let setup = imported_release_setup(
-            create_test_album(),
-            "test",
-            import_ids.new_id(),
-            |album_dir| {
-                let _track_data = generate_test_flac_files(album_dir);
-            },
-            |_| Ok(()),
+        // Clone the shared template's DB/library into this test's own TempDir
+        // rather than re-importing — the import runs once per process in
+        // PLAYBACK_FIXTURE_TEMPLATE. The cloned DB and album_dir both resolve to
+        // the template's stable album/ directory (absolute local_blob_refs).
+        // The template is dereferenced inside spawn_blocking: its lazy
+        // initializer builds and blocks on its own runtime, which a test's
+        // async thread can't do (no runtime-within-a-runtime).
+        let (temp_dir, album_dir, track_ids) =
+            tokio::task::spawn_blocking(clone_playback_fixture_library)
+                .await
+                .expect("clone the playback fixture template library");
+
+        let db_path = temp_dir.path().join("test.db");
+        let database = Database::new_test(
+            db_path.to_str().expect("db path is valid UTF-8"),
+            std::sync::Arc::new(coven::SystemClock),
         )
         .await
-        .expect("import the playback test release");
-        assert!(!setup.track_ids.is_empty(), "Should have imported tracks");
+        .expect("open the cloned playback database");
+        let library_dir = StoreDir::new(temp_dir.path().to_path_buf());
+        let (config_handle, key_service) = test_config_and_keys(&library_dir);
+        let runtime_handle = tokio::runtime::Handle::current();
+        let library_manager = LibraryManager::new(
+            database,
+            config_handle,
+            key_service,
+            std::sync::Arc::new(coven::SystemClock),
+            std::sync::Arc::new(coven::UuidProvider),
+            bae_core::diagnostics::Diagnostics::noop(),
+            runtime_handle.clone(),
+        );
+
         // A real-time capture sink stands in for the audio device: no hardware
         // required, and it paces the decoder to wall-clock like a real device so
         // position/seek/auto-advance timing matches production.
         let (capture_output, capture_stream_rx) =
             bae_core::playback::RealtimeCaptureAudioOutput::new();
         let playback_handle = bae_core::playback::PlaybackService::start_with_output(
-            setup.library_manager.clone(),
-            setup.runtime_handle,
+            library_manager.clone(),
+            runtime_handle,
             100,
             true,
             Box::new(capture_output),
@@ -533,11 +621,11 @@ impl PlaybackTestFixture {
         Self {
             playback_handle,
             progress_rx,
-            track_ids: setup.track_ids,
-            album_dir: setup.album_dir,
-            library_manager: setup.library_manager,
+            track_ids,
+            album_dir,
+            library_manager,
             _capture_stream_rx: capture_stream_rx,
-            _temp_dir: setup.temp_dir,
+            _temp_dir: temp_dir,
         }
     }
     /// Wait for a specific state change with timeout
@@ -4771,14 +4859,16 @@ fn is_sqlite_wal_sidecar(name: &std::ffi::OsStr) -> bool {
     name.ends_with("-wal") || name.ends_with("-shm") || name.ends_with("-journal")
 }
 
-/// Clone the template's DB/library files into a fresh `TempDir`, skipping the
-/// `album/` directory — the multi-window FLAC stays at the template's own
-/// path, which the cloned DB's `local_blob_refs` rows already point at.
-/// Blocking (file I/O only); callers run it on a blocking thread.
-fn clone_multi_window_library() -> (TempDir, Vec<String>) {
-    let template = &*MULTI_WINDOW_TEMPLATE;
-    let fresh = TempDir::new().expect("fresh multi-window library dir");
-    for entry in std::fs::read_dir(template.dir.path()).expect("read template dir") {
+/// Clone a template library's DB/library files into a fresh `TempDir`, skipping
+/// the `album/` directory — the imported audio stays at the template's own
+/// stable path, which the cloned DB's `local_blob_refs` rows (absolute paths)
+/// already point at — and skipping SQLite's WAL sidecars, reclaimed around a
+/// connection's close. Blocking (file I/O only); callers run it on a blocking
+/// thread. Shared by every import-once template fixture so the WAL-race
+/// handling lives in one place.
+fn clone_template_library(template_dir: &std::path::Path) -> TempDir {
+    let fresh = TempDir::new().expect("fresh cloned library dir");
+    for entry in std::fs::read_dir(template_dir).expect("read template dir") {
         let entry = entry.expect("template dir entry");
         if entry.file_name() == "album" {
             continue;
@@ -4791,8 +4881,7 @@ fn clone_multi_window_library() -> (TempDir, Vec<String>) {
             if e.kind() == std::io::ErrorKind::NotFound && is_sqlite_wal_sidecar(&entry.file_name())
             {
                 debug!(
-                    "multi-window template clone: {:?} was reclaimed before copy (fully \
-                     checkpointed); skipping",
+                    "template clone: {:?} was reclaimed before copy (fully checkpointed); skipping",
                     entry.file_name()
                 );
             } else {
@@ -4800,6 +4889,12 @@ fn clone_multi_window_library() -> (TempDir, Vec<String>) {
             }
         }
     }
+    fresh
+}
+
+fn clone_multi_window_library() -> (TempDir, Vec<String>) {
+    let template = &*MULTI_WINDOW_TEMPLATE;
+    let fresh = clone_template_library(template.dir.path());
     (fresh, template.track_ids.clone())
 }
 
