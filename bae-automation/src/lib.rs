@@ -628,12 +628,58 @@ pub struct AutomationReleaseSummary {
     pub id: String,
     pub album_id: String,
     pub format: Option<String>,
-    pub storage_state: String,
+    /// Where the audio lives. Orthogonal to `pinned`.
+    pub storage_state: AutomationReleaseStorageState,
+    /// Whether a Remote release is kept offline on this device — the orthogonal
+    /// cache property, never folded into `storage_state`.
     pub pinned: bool,
-    pub storage_actions: Vec<String>,
+    /// The transitions available right now, derived by the core.
+    pub storage_actions: Vec<AutomationReleaseStorageAction>,
+    /// The transition currently in flight, if any — so a client can tell a release
+    /// is mid-transfer rather than reading `storage_actions` and guessing.
+    pub transfer_action: Option<AutomationReleaseStorageAction>,
     pub file_count: i64,
     pub total_size: i64,
     pub cover: Option<AutomationImageRef>,
+}
+
+/// A release's storage state. Mirrors `bae_core::album_detail::ReleaseStorageState`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum AutomationReleaseStorageState {
+    Local,
+    Remote,
+}
+
+impl From<ReleaseStorageState> for AutomationReleaseStorageState {
+    fn from(state: ReleaseStorageState) -> Self {
+        match state {
+            ReleaseStorageState::Local => Self::Local,
+            ReleaseStorageState::Remote => Self::Remote,
+        }
+    }
+}
+
+/// A storage transition a release allows. Mirrors
+/// `bae_core::album_detail::ReleaseStorageAction`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum AutomationReleaseStorageAction {
+    MakeRemote,
+    Pin,
+    Unpin,
+    MakeLocal,
+}
+
+impl From<ReleaseStorageAction> for AutomationReleaseStorageAction {
+    fn from(action: ReleaseStorageAction) -> Self {
+        match action {
+            ReleaseStorageAction::MakeRemote => Self::MakeRemote,
+            ReleaseStorageAction::Pin => Self::Pin,
+            ReleaseStorageAction::Unpin => Self::Unpin,
+            ReleaseStorageAction::MakeLocal => Self::MakeLocal,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -2532,33 +2578,17 @@ fn automation_release_summary(
         id: summary.id,
         album_id: summary.album_id,
         format: summary.format,
-        storage_state: release_storage_state(summary.storage_state).to_string(),
+        storage_state: summary.storage_state.into(),
         pinned: summary.pinned,
         storage_actions: summary
             .storage_actions
             .into_iter()
-            .map(release_storage_action)
-            .map(str::to_string)
+            .map(Into::into)
             .collect(),
+        transfer_action: summary.transfer_action.map(Into::into),
         file_count: summary.file_count,
         total_size: summary.total_size,
         cover: summary.cover.map(automation_image_ref),
-    }
-}
-
-fn release_storage_state(state: ReleaseStorageState) -> &'static str {
-    match state {
-        ReleaseStorageState::Local => "local",
-        ReleaseStorageState::Remote => "remote",
-    }
-}
-
-fn release_storage_action(action: ReleaseStorageAction) -> &'static str {
-    match action {
-        ReleaseStorageAction::MakeRemote => "make_remote",
-        ReleaseStorageAction::Pin => "pin",
-        ReleaseStorageAction::Unpin => "unpin",
-        ReleaseStorageAction::MakeLocal => "make_local",
     }
 }
 
@@ -2750,6 +2780,58 @@ mod tests {
             assert_eq!(error.kind(), "validation");
             assert_eq!(error.message(), "Album title is required");
         }
+    }
+
+    /// The storage fields were open-world strings; they are now closed enums. The
+    /// JSON a client reads must not have moved.
+    #[test]
+    fn release_storage_state_and_actions_serialize_snake_case() {
+        let summary = automation_release_summary(bae_core::album_detail::ReleaseSummary {
+            id: "rel-1".to_string(),
+            album_id: "alb-1".to_string(),
+            format: Some("FLAC".to_string()),
+            storage_state: ReleaseStorageState::Remote,
+            pinned: true,
+            storage_actions: vec![
+                ReleaseStorageAction::Unpin,
+                ReleaseStorageAction::MakeLocal,
+                ReleaseStorageAction::MakeRemote,
+                ReleaseStorageAction::Pin,
+            ],
+            transfer_action: Some(ReleaseStorageAction::MakeLocal),
+            file_count: 2,
+            total_size: 100,
+            cover: None,
+        });
+        let json = serde_json::to_value(summary).unwrap();
+
+        assert_eq!(json["storage_state"], "remote");
+        assert_eq!(
+            json["storage_actions"],
+            serde_json::json!(["unpin", "make_local", "make_remote", "pin"]),
+        );
+        // The in-flight transition the desktop shows and MCP used to lose.
+        assert_eq!(json["transfer_action"], "make_local");
+    }
+
+    #[test]
+    fn a_local_release_serializes_its_state_and_absent_transfer() {
+        let summary = automation_release_summary(bae_core::album_detail::ReleaseSummary {
+            id: "rel-2".to_string(),
+            album_id: "alb-1".to_string(),
+            format: None,
+            storage_state: ReleaseStorageState::Local,
+            pinned: false,
+            storage_actions: Vec::new(),
+            transfer_action: None,
+            file_count: 0,
+            total_size: 0,
+            cover: None,
+        });
+        let json = serde_json::to_value(summary).unwrap();
+
+        assert_eq!(json["storage_state"], "local");
+        assert_eq!(json["transfer_action"], serde_json::Value::Null);
     }
 
     #[test]
