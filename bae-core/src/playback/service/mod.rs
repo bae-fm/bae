@@ -1001,7 +1001,7 @@ impl PlaybackService {
         });
     }
 
-    /// A track actually began playing.
+    /// A track start was initiated (context established, playback requested).
     fn telemetry_track_started(&self, track_id: &str, transition: TrackTransition) {
         self.telemetry().event(TelemetryEvent::TrackStarted {
             track_id: LocalId(track_id.to_string()),
@@ -1045,9 +1045,13 @@ impl PlaybackService {
         );
         self.emit_queue_update();
         self.telemetry_playback_started(PlaybackStartSource::Release, track_count);
-        self.play_track(&track_id, TrackStart::Direct, PlayTarget::Playing)
-            .await;
-        self.telemetry_track_started(&track_id, TrackTransition::Manual);
+        self.play_track(
+            &track_id,
+            TrackStart::Direct,
+            PlayTarget::Playing,
+            TrackTransition::Manual,
+        )
+        .await;
     }
 
     /// Manual skip to the next track (skip pregap). A side-pause forces the next
@@ -1071,18 +1075,63 @@ impl PlaybackService {
                 NextEntry::Play(next_track) => {
                     info!("No preloaded track, playing from queue: {}", next_track);
                     self.emit_queue_update();
-                    let starts_playing = matches!(target, PlayTarget::Playing);
-                    self.play_track(&next_track, TrackStart::Direct, target)
-                        .await;
-                    if starts_playing {
-                        self.telemetry_track_started(&next_track, TrackTransition::Manual);
-                    }
+                    self.play_track(
+                        &next_track,
+                        TrackStart::Direct,
+                        target,
+                        TrackTransition::Manual,
+                    )
+                    .await;
                 }
                 _ => {
                     info!("No next track available, stopping");
                     self.emit_queue_update();
                     self.stop().await;
                 }
+            }
+        }
+    }
+
+    /// Manual step to the previous track, or restart the current one when it's
+    /// played past the restart threshold. Carries the outgoing track's play/pause
+    /// intent to the track we land on (a side-pause collapses to a plain manual
+    /// pause across the track change).
+    async fn handle_previous(&mut self) {
+        let Some(current_track_id) = self.current_track_id().map(|s| s.to_string()) else {
+            debug!("Previous command received with no current track; ignoring");
+            return;
+        };
+        let target = self.current_play_target();
+        let current_position = self
+            .current_position_shared
+            .lock()
+            .unwrap()
+            .unwrap_or(std::time::Duration::ZERO);
+        let position_ms = current_position.as_millis() as u64;
+
+        match self.playback_queue.previous_action(position_ms) {
+            PreviousAction::PlayPrevious(previous_track_id) => {
+                info!("Going to previous track: {}", previous_track_id);
+                // previous_action already stepped the context cursor back and made
+                // this track current; just play it.
+                self.emit_queue_update();
+                self.play_track(
+                    &previous_track_id,
+                    TrackStart::Direct,
+                    target,
+                    TrackTransition::Manual,
+                )
+                .await;
+            }
+            PreviousAction::RestartCurrent => {
+                info!("Restarting current track from beginning");
+                self.play_track(
+                    &current_track_id,
+                    TrackStart::Direct,
+                    target,
+                    TrackTransition::Manual,
+                )
+                .await;
             }
         }
     }
@@ -1141,16 +1190,24 @@ impl PlaybackService {
         match self.playback_queue.next_entry() {
             NextEntry::RepeatCurrent(next_track) => {
                 info!("Repeat mode: track, replaying {}", next_track);
-                self.play_track(&next_track, TrackStart::Natural, PlayTarget::Playing)
-                    .await;
-                self.telemetry_track_started(&next_track, TrackTransition::Repeat);
+                self.play_track(
+                    &next_track,
+                    TrackStart::Natural,
+                    PlayTarget::Playing,
+                    TrackTransition::Repeat,
+                )
+                .await;
             }
             NextEntry::Play(next_track) => {
                 info!("Playing from queue: {}", next_track);
                 self.emit_queue_update();
-                self.play_track(&next_track, TrackStart::Natural, PlayTarget::Playing)
-                    .await;
-                self.telemetry_track_started(&next_track, TrackTransition::AutoAdvance);
+                self.play_track(
+                    &next_track,
+                    TrackStart::Natural,
+                    PlayTarget::Playing,
+                    TrackTransition::AutoAdvance,
+                )
+                .await;
             }
             NextEntry::Stop => {
                 info!("No next track available, stopping");
@@ -1605,8 +1662,13 @@ impl PlaybackService {
                     );
                     self.emit_queue_update();
                     self.telemetry_playback_started(PlaybackStartSource::Release, track_count);
-                    self.play_track(&first_track, TrackStart::Direct, PlayTarget::Playing).await;
-                    self.telemetry_track_started(&first_track, TrackTransition::Manual);
+                    self.play_track(
+                        &first_track,
+                        TrackStart::Direct,
+                        PlayTarget::Playing,
+                        TrackTransition::Manual,
+                    )
+                    .await;
                 }
                 PlaybackCommand::PlayReleases(release_ids) => {
                     // The context's source is exactly the releases that
@@ -1629,8 +1691,13 @@ impl PlaybackService {
                     );
                     self.emit_queue_update();
                     self.telemetry_playback_started(PlaybackStartSource::Releases, track_count);
-                    self.play_track(&first_track, TrackStart::Direct, PlayTarget::Playing).await;
-                    self.telemetry_track_started(&first_track, TrackTransition::Manual);
+                    self.play_track(
+                        &first_track,
+                        TrackStart::Direct,
+                        PlayTarget::Playing,
+                        TrackTransition::Manual,
+                    )
+                    .await;
                 }
                 PlaybackCommand::PlayLibraryShuffled => {
                     let track_ids = match self.fetch_source_tracks(&ContextSource::Library).await {
@@ -1661,8 +1728,13 @@ impl PlaybackService {
                         PlaybackStartSource::LibraryShuffled,
                         track_count,
                     );
-                    self.play_track(&first_track, TrackStart::Direct, PlayTarget::Playing).await;
-                    self.telemetry_track_started(&first_track, TrackTransition::Manual);
+                    self.play_track(
+                        &first_track,
+                        TrackStart::Direct,
+                        PlayTarget::Playing,
+                        TrackTransition::Manual,
+                    )
+                    .await;
                 }
                 PlaybackCommand::Pause => {
                     self.pause();
@@ -1699,33 +1771,7 @@ impl PlaybackService {
                     self.handle_output_device_changed().await;
                 }
                 PlaybackCommand::Previous => {
-                    if let Some(current_track_id) = self.current_track_id().map(|s| s.to_string()) {
-                        // Carry the outgoing track's play/pause intent to the
-                        // track we land on (a side-pause collapses to a plain
-                        // manual pause across the track change).
-                        let target = self.current_play_target();
-                        let current_position = self
-                            .current_position_shared
-                            .lock()
-                            .unwrap()
-                            .unwrap_or(std::time::Duration::ZERO);
-                        let position_ms = current_position.as_millis() as u64;
-
-                        match self.playback_queue.previous_action(position_ms) {
-                            PreviousAction::PlayPrevious(previous_track_id) => {
-                                info!("Going to previous track: {}", previous_track_id);
-                                // previous_action already stepped the context cursor
-                                // back and made this track current; just play it.
-                                self.emit_queue_update();
-                                self.play_track(&previous_track_id, TrackStart::Direct, target)
-                                    .await;
-                            }
-                            PreviousAction::RestartCurrent => {
-                                info!("Restarting current track from beginning");
-                                self.play_track(&current_track_id, TrackStart::Direct, target).await;
-                            }
-                        }
-                    }
+                    self.handle_previous().await;
                 }
                 PlaybackCommand::Seek(position) => {
                     self.seek(position).await;
@@ -1896,7 +1942,13 @@ impl PlaybackService {
                         );
 
                         self.emit_queue_update();
-                        self.play_track(&entry.track_id, TrackStart::Direct, PlayTarget::Playing).await;
+                        self.play_track(
+                            &entry.track_id,
+                            TrackStart::Direct,
+                            PlayTarget::Playing,
+                            TrackTransition::Manual,
+                        )
+                        .await;
                     }
                 }
                 PlaybackCommand::PreviewPlay(path) => {

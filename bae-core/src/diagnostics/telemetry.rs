@@ -233,7 +233,11 @@ telemetry_events! {
         track_count: u32,
     },
 
-    /// A track actually began playing.
+    /// A track start was initiated: the playing context is established and
+    /// playback was requested. Emitted at that point, not when audio is
+    /// confirmed flowing — a start whose track then fails to prepare or open
+    /// its output still ships this, and that failure ships separately as
+    /// `playback_failed`.
     TrackStarted, "track_started", Info {
         track_id: LocalId,
         transition: TrackTransition,

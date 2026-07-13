@@ -147,16 +147,27 @@ impl PlaybackService {
     /// - `start`: selects direct starts, natural transitions, or a restored raw position
     /// - `target`: where the load lands once audio is ready (Playing, or Paused
     ///   with a reason). Computed absolutely by the caller.
+    /// - `transition`: how this start came about, for the `TrackStarted` event.
+    ///   Reported here at initiation for every caller that reaches `play_track`
+    ///   with a `Playing` target; a `Paused` target loads without playing and
+    ///   ships nothing.
     pub(super) async fn play_track(
         &mut self,
         track_id: &str,
         start: TrackStart,
         target: PlayTarget,
+        transition: TrackTransition,
     ) {
         info!(
             "Playing track: {} (start: {:?}, target: {:?})",
             track_id, start, target
         );
+
+        // Report the start now — before prepare/decoder, which may fail and ship
+        // their own `playback_failed`. A paused-target load isn't a start.
+        if matches!(target, PlayTarget::Playing) {
+            self.telemetry_track_started(track_id, transition);
+        }
 
         // Tear down the outgoing track and preload up front so a manual switch
         // silences the old audio immediately and stops the old decoders. Their

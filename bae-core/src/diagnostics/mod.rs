@@ -511,13 +511,13 @@ fn validate_datadog_site(site: &str) -> Result<(), DiagnosticsError> {
 /// of outcomes (defaulting to success once the queue drains). Shared by the
 /// diagnostics worker tests and the service-level emission tests, which assert
 /// the typed events reach the wire.
-#[cfg(any(test, feature = "test-utils"))]
+#[cfg(test)]
 pub struct RecordingTransport {
     requests: std::sync::Mutex<Vec<DatadogRequest>>,
     outcomes: std::sync::Mutex<VecDeque<Result<(), DiagnosticsError>>>,
 }
 
-#[cfg(any(test, feature = "test-utils"))]
+#[cfg(test)]
 impl RecordingTransport {
     pub fn new(outcomes: Vec<Result<(), DiagnosticsError>>) -> Self {
         Self {
@@ -546,7 +546,7 @@ impl RecordingTransport {
     }
 }
 
-#[cfg(any(test, feature = "test-utils"))]
+#[cfg(test)]
 #[async_trait::async_trait]
 impl DiagnosticsTransport for RecordingTransport {
     async fn send(&self, request: DatadogRequest) -> Result<(), DiagnosticsError> {

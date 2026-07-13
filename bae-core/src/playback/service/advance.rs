@@ -23,8 +23,13 @@ impl PlaybackService {
 
             // Advance to next track if queue has one, otherwise stay stopped
             if let Some(next_id) = self.playback_queue.advance_to_front() {
-                self.play_track(&next_id, TrackStart::Direct, PlayTarget::Playing)
-                    .await;
+                self.play_track(
+                    &next_id,
+                    TrackStart::Direct,
+                    PlayTarget::Playing,
+                    TrackTransition::AutoAdvance,
+                )
+                .await;
             }
         } else {
             // Current track is fine, but check preloaded next track
@@ -300,9 +305,13 @@ impl PlaybackService {
         match self.playback_queue.next_entry() {
             NextEntry::Play(track_id) => {
                 self.emit_queue_update();
-                self.play_track(&track_id, TrackStart::Natural, PlayTarget::Playing)
-                    .await;
-                self.telemetry_track_started(&track_id, TrackTransition::AutoAdvance);
+                self.play_track(
+                    &track_id,
+                    TrackStart::Natural,
+                    PlayTarget::Playing,
+                    TrackTransition::AutoAdvance,
+                )
+                .await;
             }
             other => {
                 error!("side-pause resume expected Play for {pending_track_id}, got {other:?}");
@@ -513,22 +522,20 @@ impl PlaybackService {
         natural: bool,
         target: PlayTarget,
     ) {
-        // Both branches below start `preloaded_track_id` playing; report it once
-        // here when it actually begins (a paused target loads without playing).
         // The shared `natural` bool is exactly the manual-skip vs auto-advance
-        // distinction — the same one `Next`/`AutoAdvance` pass in.
-        if matches!(target, PlayTarget::Playing) {
-            let transition = if natural {
-                TrackTransition::AutoAdvance
-            } else {
-                TrackTransition::Manual
-            };
-            self.telemetry_track_started(preloaded_track_id, transition);
-        }
+        // distinction — the same one `Next`/`AutoAdvance` pass in. Each branch's
+        // sink reports the start itself (gated on a Playing target): the
+        // streaming path inside `play_preloaded_track`, the rebuild path inside
+        // `play_track`.
+        let transition = if natural {
+            TrackTransition::AutoAdvance
+        } else {
+            TrackTransition::Manual
+        };
         if self.has_preloaded_next() {
             info!("Using preloaded track: {}", preloaded_track_id);
             self.advance_to_preloaded();
-            self.play_preloaded_track(natural, target).await;
+            self.play_preloaded_track(natural, target, transition).await;
         } else {
             // Preload started but the streaming source isn't ready yet.
             // play_track discards the half-ready preload itself and keeps its
@@ -538,6 +545,7 @@ impl PlaybackService {
                 preloaded_track_id,
                 TrackStart::from_natural_transition(natural),
                 target,
+                transition,
             )
             .await;
         }
@@ -552,6 +560,7 @@ impl PlaybackService {
         &mut self,
         is_natural_transition: bool,
         target: PlayTarget,
+        transition: TrackTransition,
     ) {
         let preloaded = match self.preloaded_next.take() {
             Some(preloaded) => preloaded,
@@ -584,9 +593,18 @@ impl PlaybackService {
                 &track_id,
                 TrackStart::from_natural_transition(is_natural_transition),
                 target,
+                transition,
             )
             .await;
             return;
+        }
+
+        // The streaming path below swaps the buffered decoder in place without
+        // reaching `play_track`, so report the start here (gated on a Playing
+        // target — a paused load isn't a start). The pregap-skip fallback above
+        // is covered by `play_track`.
+        if matches!(target, PlayTarget::Playing) {
+            self.telemetry_track_started(&track_id, transition);
         }
 
         // Recover the preloaded next track stream (staged in the gapless chain or

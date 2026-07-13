@@ -147,6 +147,39 @@ async fn test_playback_service() -> (
     seeded_playback_service(&[]).await
 }
 
+/// A `Diagnostics` wired to a `RecordingTransport`, for emission tests that
+/// assert typed events reach the wire. The transport replays success (the
+/// drained outcome queue defaults to `Ok`).
+fn recording_diagnostics() -> (
+    crate::diagnostics::Diagnostics,
+    Arc<crate::diagnostics::RecordingTransport>,
+) {
+    use crate::diagnostics::{
+        AppDiagnosticMetadata, DatadogDiagnosticsConfig, Diagnostics, RecordingTransport,
+    };
+    let transport = Arc::new(RecordingTransport::new(vec![]));
+    let config = DatadogDiagnosticsConfig {
+        datadog_site: "datadoghq.com".to_string(),
+        client_token: "client-token".to_string(),
+        source: "test".to_string(),
+        app: AppDiagnosticMetadata {
+            service: "bae".to_string(),
+            environment: "test".to_string(),
+            app_version: "1.2.3".to_string(),
+            edition: "bae".to_string(),
+            git_commit: "abc123".to_string(),
+        },
+    };
+    let diagnostics = Diagnostics::with_transport(
+        config,
+        Arc::new(coven::SystemClock),
+        Arc::new(coven::SequentialIdProvider::new("request-id")),
+        transport.clone(),
+    )
+    .expect("diagnostics starts");
+    (diagnostics, transport)
+}
+
 async fn seeded_playback_service(
     releases: &[(&str, &[&str])],
 ) -> (
@@ -1600,31 +1633,7 @@ async fn auto_advance_ignores_a_matching_track_that_is_no_longer_completed() {
 /// successful decode.
 #[tokio::test]
 async fn a_play_command_ships_playback_started_and_track_started() {
-    use crate::diagnostics::{
-        AppDiagnosticMetadata, DatadogDiagnosticsConfig, Diagnostics, RecordingTransport,
-    };
-
-    let transport = Arc::new(RecordingTransport::new(vec![Ok(())]));
-    let config = DatadogDiagnosticsConfig {
-        datadog_site: "datadoghq.com".to_string(),
-        client_token: "client-token".to_string(),
-        source: "test".to_string(),
-        app: AppDiagnosticMetadata {
-            service: "bae".to_string(),
-            environment: "test".to_string(),
-            app_version: "1.2.3".to_string(),
-            edition: "bae".to_string(),
-            git_commit: "abc123".to_string(),
-        },
-    };
-    let diagnostics = Diagnostics::with_transport(
-        config,
-        Arc::new(coven::SystemClock),
-        Arc::new(coven::SequentialIdProvider::new("request-id")),
-        transport.clone(),
-    )
-    .expect("diagnostics starts");
-
+    let (diagnostics, transport) = recording_diagnostics();
     let (_home, manager) = seeded_library_manager_with_diagnostics(
         &[("release-under-test", &["t0", "t1"])],
         diagnostics.clone(),
@@ -1644,5 +1653,39 @@ async fn a_play_command_ships_playback_started_and_track_started() {
     assert!(
         names.iter().any(|n| n == "track_started"),
         "a play command ships track_started (got {names:?})"
+    );
+}
+
+/// `Previous` ships `track_started` for the track it lands on — a path that
+/// carried no emission until the event moved into `play_track`. The seeded
+/// release has no backing audio, so preparing the previous track fails after
+/// the event is already emitted: the event fires at the command, not on a
+/// successful decode.
+#[tokio::test]
+async fn previous_ships_track_started() {
+    let (diagnostics, transport) = recording_diagnostics();
+    let (_home, manager) = seeded_library_manager_with_diagnostics(
+        &[("release-under-test", &["t0", "t1"])],
+        diagnostics.clone(),
+    )
+    .await;
+    let (mut service, _progress_rx) = playback_service_over(manager);
+
+    // A two-track context playing from t1, so Previous steps back to t0.
+    service.playback_queue.play_release(
+        ContextSource::Release("release-under-test".to_string()),
+        vec!["t0".to_string(), "t1".to_string()],
+        ContextStart::Index(1),
+    );
+    let buffer = create_sparse_buffer(1_024);
+    service.slot = active_slot(test_prepared_track("t1", buffer), TrackPhase::Playing);
+
+    service.handle_previous().await;
+
+    diagnostics.flush().await.expect("flush succeeds");
+    let names = transport.event_names();
+    assert!(
+        names.iter().any(|n| n == "track_started"),
+        "Previous ships track_started (got {names:?})"
     );
 }

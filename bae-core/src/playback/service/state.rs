@@ -292,8 +292,15 @@ impl PlaybackService {
                 .position_ms
                 .map(|pos| TrackStart::Position(std::time::Duration::from_millis(pos)))
                 .unwrap_or(TrackStart::Direct);
-            self.play_track(&track_id, start, PlayTarget::Paused(PausePhase::Manual))
-                .await;
+            // Paused target: `play_track` ships no `TrackStarted`, so the
+            // transition here is unused — a manual restore into pause.
+            self.play_track(
+                &track_id,
+                start,
+                PlayTarget::Paused(PausePhase::Manual),
+                TrackTransition::Manual,
+            )
+            .await;
 
             // Emit the position we restored to as a `Seeked` so progress subscribers
             // can position their display. `None` means none was captured — the
