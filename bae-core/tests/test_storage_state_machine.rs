@@ -164,6 +164,7 @@ async fn create_local_release(
             ContentType::Flac,
             uuid::Uuid::new_v4().to_string(),
             now,
+            Some(bae_core::util::fs::hash_bytes(data)),
         );
         mgr.add_file(&db_file).await.unwrap();
         result.push((name.to_string(), data.to_vec()));

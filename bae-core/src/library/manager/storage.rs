@@ -1,6 +1,6 @@
-//! Storage operations for [`LibraryManager`]: file-path helpers,
-//! encryption-service access, the storage-page DB queries, and the cloud
-//! outbox / delete plumbing.
+//! Storage operations for [`LibraryManager`]: file-path helpers, the
+//! is-unlocked signal, the storage-page DB queries, and the cloud outbox /
+//! delete plumbing.
 
 use super::*;
 
@@ -21,12 +21,15 @@ impl LibraryManager {
             .map(|ext| ext.path))
     }
 
+    // =========================================================================
+    // Encryption
+    // =========================================================================
+
+    /// Whether this store's master key is established in this device's
+    /// keyring — "unlocked". `bootstrap` treats the opposite of this as
+    /// "locked" and defers attaching sync until an explicit unlock.
     pub fn has_encryption(&self) -> bool {
         self.sync.has_encryption()
-    }
-
-    pub fn get_encryption_service(&self) -> Option<EncryptionService> {
-        self.sync.get_encryption_service()
     }
 }
 

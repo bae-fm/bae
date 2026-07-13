@@ -6,11 +6,21 @@
 //! transitions into UI events, the membership types the join/invite screens use,
 //! the synced-table declarations, and bae's blob namespaces plus cache budgets.
 
+// The sync substrate lives in coven; these resolve `crate::sync::<item>`
+// unchanged. Blob-key derivation is coven's, reached through
+// `CovenHandle::blob_cloud_key`.
 pub use coven::{
     decode_restore_code_info, join_from_invite_code, restore_from_cloud, restore_from_code,
-    CloudCipher, RestoreSource,
+    RestoreSource,
 };
 
+// `CloudCipher` is what a test hands to `connect_sync_with_test_home`; coven
+// only compiles it under `test`/`test-utils`, so bae's re-export follows.
+#[cfg(any(test, feature = "test-utils"))]
+pub use coven::CloudCipher;
+
+// bae's blob-transition observer: UI bookkeeping for coven's upload drain and
+// make-Remote / make-Local completions (coven owns the lifecycle itself).
 pub mod upload_observer;
 
 pub mod membership;

@@ -928,6 +928,7 @@ mod composer_mode_tests {
             ContentType::Flac,
             "file-new".to_string(),
             now,
+            None,
         );
         let track_files = vec![crate::import::TrackFile::Standalone {
             db_track: track,
@@ -1284,6 +1285,7 @@ mod composer_mode_tests {
             ContentType::Flac,
             "file-a".to_string(),
             now,
+            None,
         );
         let track_files = vec![crate::import::TrackFile::Standalone {
             db_track: track,
@@ -1465,6 +1467,7 @@ mod composer_mode_tests {
             ContentType::Flac,
             "file-a".to_string(),
             now,
+            None,
         );
         let track_files = vec![crate::import::TrackFile::Standalone {
             db_track: track,
@@ -1632,6 +1635,7 @@ mod composer_mode_tests {
             ContentType::Flac,
             "file-a".to_string(),
             now,
+            None,
         );
         let track_files = vec![crate::import::TrackFile::Standalone {
             db_track: track("track-a", "release-a"),
@@ -1656,6 +1660,7 @@ mod composer_mode_tests {
             source: "local".to_string(),
             source_url: None,
             cloud_path: None,
+            content_hash: Some(crate::util::fs::hash_bytes(&[1u8, 2, 3])),
             created_at: now,
         };
         let cover = image("release-a", LibraryImageType::Cover);
@@ -1817,6 +1822,7 @@ mod composer_mode_tests {
             ContentType::Flac,
             "file-a".to_string(),
             now,
+            None,
         );
         let track_files = vec![crate::import::TrackFile::Standalone {
             db_track: track,

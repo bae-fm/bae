@@ -140,6 +140,7 @@ impl LibraryManager {
             source,
             source_url,
             cloud_path,
+            content_hash: Some(crate::util::fs::hash_bytes(&bytes)),
             created_at: now,
         };
         self.store_library_image_blob(&library_image, &bytes)

@@ -245,10 +245,11 @@ private struct ConnectedProviderControls: View {
 /// so it's kept behind a button and labelled as sensitive, used only to restore
 /// on a new device when no existing device is available to approve a join. The
 /// sheet's `.task` owns the generation lifecycle: it fires on appear and is
-/// cancelled automatically when the sheet dismisses (which propagates through
-/// `withTaskCancellationHandler` to the off-main worker).
+/// cancelled automatically when the sheet dismisses, which propagates through
+/// to the underlying Rust future since `generate` is a genuine uniffi async
+/// call.
 private struct RecoveryCodeSection: View {
-    let generate: @Sendable () throws -> String
+    let generate: @Sendable () async throws -> String
 
     @State
     private var show = false
@@ -277,9 +278,11 @@ private struct RecoveryCodeSection: View {
     }
 
     private func runGenerate() async {
-        let generate = generate
         do {
-            let code = try await DetachedWork.run { try generate() }
+            // generateRestoreCode is a genuine uniffi async call: it suspends
+            // without blocking a thread, and cancelling this task propagates
+            // through to the underlying Rust future.
+            let code = try await generate()
             result = .success(code)
         }
         catch is CancellationError {

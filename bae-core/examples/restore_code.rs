@@ -41,12 +41,34 @@ fn main() {
     // In dev mode bae's secrets are in `BAE_*` env vars; bridge them into the
     // keyring coven's StoreKeys reads. No-op in production.
     bae_core::config::seed_dev_keyring(&config.store_id);
-    let key_service = coven::StoreKeys::new(config.store_id.clone());
 
-    match coven::generate_restore_code(&config.to_coven(), &key_service) {
+    // Minting a restore code needs a connected sync manager: coven seeds it
+    // from the store's CURRENT membership-head floor, read live from the
+    // cloud (not a pure function of local config and keyring state anymore),
+    // so this opens the real store and connects its configured provider the
+    // same way the running app does at startup, rather than calling a
+    // storage-free generator directly.
+    let runtime = tokio::runtime::Runtime::new().expect("build tokio runtime");
+    let result: Result<String, String> = runtime.block_on(async {
+        let handle = coven::Coven::builder(config.to_coven())
+            .synced_tables(bae_core::sync::synced_tables())
+            .migrations(bae_core::migrations::all())
+            .open()
+            .map_err(|e| format!("open store failed: {e}"))?;
+        handle
+            .connect_sync()
+            .await
+            .map_err(|e| format!("connect_sync failed: {e}"))?;
+        handle
+            .generate_restore_code()
+            .await
+            .map_err(|e| format!("generate_restore_code failed: {e}"))
+    });
+
+    match result {
         Ok(code) => println!("{code}"),
         Err(e) => {
-            eprintln!("generate_restore_code failed: {e}");
+            eprintln!("{e}");
             std::process::exit(1);
         }
     }

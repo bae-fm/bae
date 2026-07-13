@@ -683,6 +683,7 @@ impl ImportService {
                         // finalize computes the readable cloud_path on a browsable
                         // home; NULL (hashed) on an opaque one.
                         cloud_path: None,
+                        content_hash: Some(crate::util::fs::hash_bytes(&bytes)),
                         created_at: now,
                     },
                     bytes,
@@ -831,6 +832,15 @@ impl ImportService {
         let mut db_files: Vec<DbFile> = Vec::with_capacity(total_files);
         let mut file_ids: HashMap<PathBuf, String> = HashMap::new();
         for file in discovered_files.iter() {
+            // coven verifies this blob's bytes against this hash on every
+            // cloud fetch — required so a later make-Remote + pin round trip
+            // (or another device's download) can ever read it back. See
+            // `crate::util::fs::hash_file`.
+            let content_hash = crate::util::fs::hash_file(&file.path).map_err(|e| {
+                crate::import::ImportError::TrackMapping {
+                    detail: format!("failed to hash {}: {e}", file.path.display()),
+                }
+            })?;
             let db_file = DbFile::new(
                 &db_release.id,
                 &file.relative_path,
@@ -838,6 +848,7 @@ impl ImportService {
                 resolve_file_content_type(&file.path)?,
                 library_manager.ids().new_id(),
                 files_now,
+                Some(content_hash),
             );
             file_ids.insert(file.path.clone(), db_file.id.clone());
             db_files.push(db_file);
@@ -980,6 +991,7 @@ impl ImportService {
                             source: "embedded".to_string(),
                             source_url: None,
                             cloud_path: None,
+                            content_hash: Some(crate::util::fs::hash_bytes(&bytes)),
                             created_at: now,
                         },
                         bytes,

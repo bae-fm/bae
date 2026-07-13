@@ -160,48 +160,48 @@ fn bootstrap_inner(
     crate::config::seed_dev_keyring(&config.store_id);
     let key_service = StoreKeys::new(config.store_id.clone());
 
-    // Resolve the encryption service only when this library already has a key on
-    // this device — a returning user with a configured provider. A local-only
-    // library has no key and needs none; encryption is created lazily, only when a
-    // provider is actually connected (`ensure_sync_manager_and_start`).
+    // Whether this library already has its key on this device — a returning
+    // user with a configured opaque provider. A local-only library has no key
+    // and needs none; the master key is established lazily, only when a
+    // provider is actually connected (`ensure_sync_manager_and_start`). coven
+    // resolves the actual cipher from the master-key custody itself once sync
+    // connects (below), so this is only the presence check that decides
+    // whether to attempt that connect at all. The stamper above is already in
+    // place regardless, so local imports write synced rows without any key.
     //
-    // The locked case: encryption was set up but the keyring lacks the key on this
-    // device (OS keychain wiped, fresh install with config preserved). Minting a
-    // new key would orphan the cloud data, so we leave sync unbuilt and let the
-    // caller prompt the user to unlock.
-    let pending_enc = if config.encryption_key_stored {
-        match key_service.get_encryption_key() {
-            Ok(Some(key_hex)) => Some(coven::EncryptionService::new(&key_hex).map_err(|e| {
-                BootstrapError::Config(format!("Failed to initialize encryption: {e}"))
-            })?),
+    // The locked case: encryption was set up but the keyring lacks the key on
+    // this device (OS keychain wiped, fresh install with config preserved).
+    // Attempting to connect would mint a new key over cloud data that key
+    // never sealed, so we leave sync unbuilt and let the caller prompt the
+    // user to unlock.
+    let key_established = config.encryption_key_stored
+        && match key_service.get_encryption_key() {
+            Ok(Some(_)) => true,
             Ok(None) => {
                 tracing::warn!(
                     "encryption key marked stored but not found in keyring; deferring sync until unlocked"
                 );
-                None
+                false
             }
             Err(e) => {
                 tracing::warn!(
                     error = %e,
                     "failed to read encryption key from keyring; deferring sync until unlocked"
                 );
-                None
+                false
             }
-        }
-    } else {
-        None
-    };
+        };
 
     // Locked: encryption was set up but this device's keyring lacks the key.
     // Bootstrap still completes (sync deferred); the caller diverts to an unlock
     // screen the user may cancel without ever entering this library.
-    let locked = config.encryption_key_stored && pending_enc.is_none();
+    let locked = config.encryption_key_stored && !key_established;
     let advance_active_pointer = save_active_library && !locked;
 
     // A browsable home (a provider is configured but the home is stored in the
     // clear) has no key, so the opaque/locked resolution above leaves
-    // `pending_enc` None. It still needs a keyless sync manager built at startup
-    // so a returning user resumes syncing.
+    // `key_established` false. It still needs a keyless sync manager built at
+    // startup so a returning user resumes syncing.
     let cloud_home_is_browsable =
         config.cloud_home.provider.is_some() && config.cloud_home.storage.is_browsable();
 
@@ -224,21 +224,18 @@ fn bootstrap_inner(
         .block_on(library_manager.configure_cache_budgets())
         .map_err(|e| BootstrapError::Database(e.to_string()))?;
 
-    // Build and start the sync manager (if unlocked) here: after the manager owns
-    // the outbox in-flight set and event channel, so the upload observer shares
-    // them, and before `library_manager.start()`, which subscribes to the sync
-    // loop. `open` above already made the DB write sync-shaped rows, so a
-    // key-less library still imports; this only wires the cloud loop.
-    if let Some(enc) = pending_enc {
-        // Opaque home, unlocked: build the sync manager with the library key.
+    // Now that the manager owns the outbox in-flight set and event channel, build
+    // and start the sync manager (if unlocked, or keyless) so the upload observer
+    // shares them. Must precede `library_manager.start()`, which subscribes to the
+    // sync loop. The database already holds the seeded `_updated_at` stamper from
+    // `open` above; building the manager here only wires the cloud loop. coven
+    // resolves the at-rest cipher itself from the master-key custody (an
+    // opaque-but-locked home stays unbuilt above, awaiting unlock), so there is no
+    // key material left to thread through here — an established opaque key and a
+    // keyless browsable home now take the identical call.
+    if key_established || cloud_home_is_browsable {
         runtime
-            .block_on(library_manager.attach_and_start_sync(Some(enc)))
-            .map_err(|e| BootstrapError::Database(e.to_string()))?;
-    } else if cloud_home_is_browsable {
-        // Browsable home: no key, build a keyless sync manager (an opaque-but-
-        // locked home stays unbuilt above, awaiting unlock).
-        runtime
-            .block_on(library_manager.attach_and_start_sync(None))
+            .block_on(library_manager.attach_and_start_sync())
             .map_err(|e| BootstrapError::Database(e.to_string()))?;
     }
 

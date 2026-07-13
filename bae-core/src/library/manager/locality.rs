@@ -96,8 +96,11 @@ impl LibraryManager {
         }
     }
 
-    pub fn generate_restore_code(&self) -> Result<String, LibraryError> {
-        Ok(self.handle.generate_restore_code()?)
+    /// Mint a restore code, seeded with the store's current membership-head
+    /// floor read from the cloud — a network round trip, hence async (coven's
+    /// own `CovenHandle::generate_restore_code` is the same way).
+    pub async fn generate_restore_code(&self) -> Result<String, LibraryError> {
+        Ok(self.handle.generate_restore_code().await?)
     }
 
     /// The library's membership: its devices (with this device flagged, each

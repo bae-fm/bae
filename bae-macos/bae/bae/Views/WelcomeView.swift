@@ -1264,7 +1264,12 @@ extension WelcomeView {
     /// superseded join neither opens its stale library nor clears `isJoining`
     /// out from under the join that replaced it.
     private func doJoin() {
+        // The code minted by this device's own generateJoinRequest — coven
+        // needs it back to promote that pending identity into this store's
+        // custody.
+        guard case .success(let request) = joinRequest else { return }
         let code = inviteCodeInput
+        let joinRequestCode = request.code
         let token = oauthTokenJson
         joinTask?.cancel()
         isJoining = true
@@ -1274,6 +1279,7 @@ extension WelcomeView {
             do {
                 operation = try joinFromCodeOperation(
                     code: code,
+                    joinRequestCode: joinRequestCode,
                     oauthTokenJson: token
                 )
             }

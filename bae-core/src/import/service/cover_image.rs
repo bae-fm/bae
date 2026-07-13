@@ -73,6 +73,7 @@ impl ImportService {
             source_url: Some(source_url),
             // Computed in the finalize transaction under a browsable home.
             cloud_path: None,
+            content_hash: Some(crate::util::fs::hash_bytes(&bytes)),
             created_at: now,
         };
 

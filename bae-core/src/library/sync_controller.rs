@@ -25,7 +25,6 @@ use coven::ClockRef;
 #[cfg(any(test, feature = "test-utils"))]
 use coven::CloudHome;
 use coven::CovenHandle;
-use coven::EncryptionService;
 
 /// Owns the sync/upload state and the cloud-connection lifecycle. Holds clones of
 /// the handles the sync paths need (coven handle, config, keys, clock, event bus,
@@ -90,12 +89,21 @@ impl SyncController {
         }
     }
 
+    /// Whether this store's master key is established in the keyring on this
+    /// device — the "unlocked" signal, independent of whether a cloud provider
+    /// is even configured (a home-less store still resolves this once the key
+    /// is established). A read failure (the keyring backend itself is broken)
+    /// is logged and treated as not-yet-unlocked rather than propagated: every
+    /// caller of this predicate is a plain boolean UI/test signal with no
+    /// error channel of its own.
     pub(crate) fn has_encryption(&self) -> bool {
-        self.handle.encryption_service().is_some()
-    }
-
-    pub(crate) fn get_encryption_service(&self) -> Option<EncryptionService> {
-        self.handle.encryption_service()
+        match self.handle.master_key_fingerprint() {
+            Ok(fingerprint) => fingerprint.is_some(),
+            Err(error) => {
+                warn!("failed to read master-key fingerprint: {error}");
+                false
+            }
+        }
     }
 
     /// The shared upload-in-flight map, for tests that drive the outbox snapshot
@@ -388,26 +396,24 @@ impl SyncController {
     }
 
     /// Build, start, and attach a sync manager. Used once at startup for a
-    /// returning user with a configured cloud home: an unlocked key for an opaque
-    /// home (`Some`), or no key for a browsable home (`None`). Shares this
+    /// returning user with a configured cloud home: coven resolves the at-rest
+    /// cipher from the master-key custody itself (an opaque home fails
+    /// `SyncError::MasterKeyNotEstablished` if this device's keyring lacks the
+    /// key — the caller only reaches this once it knows the key is
+    /// established, or the home is keyless/browsable). Shares this
     /// controller's outbox in-flight set and event channel with the sync loop's
     /// upload observer. Call before starting the sync-status listener.
-    pub(crate) async fn attach_and_start_sync(
-        &self,
-        encryption_service: Option<EncryptionService>,
-    ) -> Result<(), LibraryError> {
+    pub(crate) async fn attach_and_start_sync(&self) -> Result<(), LibraryError> {
         let provider = self.config_handle.config().cloud_home.provider.clone();
         match provider {
             Some(CloudProvider::CloudKit) => {
                 let ops = self.cloudkit_ops.clone().ok_or_else(|| {
                     LibraryError::Internal("CloudKit driver not provided".to_string())
                 })?;
-                self.handle
-                    .connect_sync_with_cloudkit(encryption_service, ops)
-                    .await?;
+                self.handle.connect_sync_with_cloudkit(ops).await?;
             }
             _ => {
-                self.handle.connect_sync(encryption_service).await?;
+                self.handle.connect_sync().await?;
             }
         }
         Ok(())
@@ -418,14 +424,27 @@ impl SyncController {
     /// against a mock cloud with no live provider — the test counterpart of
     /// `attach_and_start_sync`. `cipher` is the home's at-rest protection:
     /// `Plaintext` for a browsable mock, `Encrypted(service)` for an opaque one.
-    /// After this, `has_cloud_home`, `get_encryption_service`, and `is_sync_ready`
-    /// all resolve off the connected manager, no override needed.
+    /// After this, `has_cloud_home` and `is_sync_ready` resolve off the
+    /// connected manager, no override needed.
     #[cfg(any(test, feature = "test-utils"))]
     pub(crate) async fn connect_test_cloud_home(
         &self,
         cloud_home: Arc<dyn CloudHome>,
         cipher: crate::sync::CloudCipher,
     ) -> Result<(), LibraryError> {
+        // An opaque home's blob keyspace shards by the uploading device's
+        // public key, so establish this store's identity up front if a test
+        // building its handle straight off this config (rather than through
+        // `Database::new_test`, which already does this under its own fixed
+        // store id) hasn't already. Get-or-create: never mint over one
+        // already established.
+        let config = self.config_handle.config();
+        let identity_custody =
+            coven::IdentityCustody::Keyring.resolve(&config.store_id, &config.store_dir);
+        if identity_custody.unlock()?.is_none() {
+            identity_custody.persist(&coven::UserKeypair::generate())?;
+        }
+
         self.handle
             .connect_sync_with_test_home(cloud_home, cipher)
             .await?;
@@ -442,37 +461,38 @@ impl SyncController {
 
         // An opaque home mints (or reuses) the library key and seals every object
         // under it; a browsable home stores in the clear and has no key at all.
-        // Build the encryption service only for an opaque home, so a browsable
-        // home never mints a key it would never use. `get_or_create_encryption_key`
-        // is idempotent, so a retry after a failed sync init reuses the key.
+        // Establish the master key via custody only for an opaque home, so a
+        // browsable home never mints a key it would never use. Reusing an
+        // already-established fingerprint rather than unconditionally minting
+        // makes this idempotent across a retry after a failed sync init.
         let storage = self.config_handle.config().cloud_home.storage;
-        let (enc_service, fingerprint) = if storage.is_opaque() {
-            let enc_key_hex = self.key_service.get_or_create_encryption_key()?;
-            let enc = EncryptionService::new(&enc_key_hex)?;
-            let fingerprint = enc.fingerprint();
-            (Some(enc), Some(fingerprint))
+        let fingerprint = if storage.is_opaque() {
+            Some(match self.handle.master_key_fingerprint()? {
+                Some(fingerprint) => fingerprint,
+                None => self.handle.initialize_master_key()?,
+            })
         } else {
-            (None, None)
+            None
         };
 
-        // Connect the provider: build the cloud home, start the loop, install the
-        // manager. A build or loop-start failure returns `Err` with nothing
-        // installed, rather than leaving a dead manager behind — and the fingerprint
-        // below is only reached on success, so a failed setup stays a clean retry,
-        // with no fingerprint telling the next launch's unlock flow "encryption is
-        // set up" while sync is broken.
+        // Connect the provider: build the cloud home, start the loop, and install
+        // the manager. coven resolves the at-rest cipher from the master-key
+        // custody just established above, so this passes no key material of its
+        // own. A cloud-home build or loop-start failure returns `Err` with
+        // nothing installed, so it surfaces here rather than leaving a dead manager
+        // — and the encryption-key fingerprint below is reached only on success, so
+        // a failed setup stays a clean retry (no fingerprint telling the next
+        // launch's unlock flow "encryption is set up" while sync is still broken).
         let provider = self.config_handle.config().cloud_home.provider.clone();
         match provider {
             Some(CloudProvider::CloudKit) => {
                 let ops = self.cloudkit_ops.clone().ok_or_else(|| {
                     LibraryError::Internal("CloudKit driver not provided".to_string())
                 })?;
-                self.handle
-                    .connect_sync_with_cloudkit(enc_service, ops)
-                    .await?;
+                self.handle.connect_sync_with_cloudkit(ops).await?;
             }
             _ => {
-                self.handle.connect_sync(enc_service).await?;
+                self.handle.connect_sync().await?;
             }
         }
 

@@ -18,7 +18,7 @@ public final class Sync: Sendable, Observable {
         @Sendable (_ storage: BridgeHomeStorage) async throws -> Void
     public let saveSyncConfig:
         @Sendable (_ configData: BridgeSaveSyncConfig) async throws -> Void
-    public let generateRestoreCode: @Sendable () throws -> String
+    public let generateRestoreCode: @Sendable () async throws -> String
     /// The library's membership: its devices (with this device flagged) and
     /// whether the running device is an owner. Reads the membership chain from
     /// cloud storage, so it runs off the main thread.
@@ -78,7 +78,9 @@ public final class Sync: Sendable, Observable {
             @escaping @Sendable (BridgeSaveSyncConfig) async throws -> Void = {
                 _ in
             },
-        generateRestoreCode: @escaping @Sendable () throws -> String = { "" },
+        generateRestoreCode: @escaping @Sendable () async throws -> String = {
+            ""
+        },
         getMembers: @escaping @Sendable () async throws -> BridgeMembership = {
             throw StubError.notImplemented
         },
@@ -158,7 +160,7 @@ public final class Sync: Sendable, Observable {
                 #endif
             },
             saveSyncConfig: { try await handle.saveSyncConfig(configData: $0) },
-            generateRestoreCode: { try handle.generateRestoreCode() },
+            generateRestoreCode: { try await handle.generateRestoreCode() },
             getMembers: { try await handle.getMembers() },
             inviteMember: {
                 try await handle.inviteMember(
@@ -200,7 +202,7 @@ public final class Sync: Sendable, Observable {
     ) {
         Task.detached { [generateRestoreCode] in
             do {
-                let code = try generateRestoreCode()
+                let code = try await generateRestoreCode()
                 KeychainService.saveRestoreCode(
                     libraryId: libraryId,
                     code: code

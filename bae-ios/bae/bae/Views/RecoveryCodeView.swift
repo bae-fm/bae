@@ -9,11 +9,11 @@ private let logger = Logger.bae("RecoveryCode")
 /// presented sheet and labelled as sensitive, used only to restore on a new
 /// device when no existing device is available to approve a join. The `.task`
 /// owns the generation lifecycle: it fires on appear and is cancelled
-/// automatically when the sheet dismisses (which propagates through
-/// `withTaskCancellationHandler` to the off-main worker). Presented as a sheet
-/// from `SettingsView`.
+/// automatically when the sheet dismisses, which propagates through to the
+/// underlying Rust future since `generate` is a genuine uniffi async call.
+/// Presented as a sheet from `SettingsView`.
 struct RecoveryCodeView: View {
-    let generate: @Sendable () throws -> String
+    let generate: @Sendable () async throws -> String
     let onDismiss: () -> Void
 
     /// `nil` is loading, `.success(code)` shows the code, `.failure(err)` shows
@@ -78,16 +78,11 @@ struct RecoveryCodeView: View {
     }
 
     private func runGenerate() async {
-        let generate = generate
         do {
-            let code = try await withTaskCancellationHandler {
-                let detached = Task.detached { try generate() }
-                return try await detached.value
-            } onCancel: {
-                // generateRestoreCode is a synchronous bridge call with no
-                // cancellation token; the detached worker just runs to
-                // completion and its result is dropped.
-            }
+            // generateRestoreCode is a genuine uniffi async call: it suspends
+            // without blocking a thread, and cancelling this task propagates
+            // through to the underlying Rust future.
+            let code = try await generate()
             try Task.checkCancellation()
             result = .success(code)
         }

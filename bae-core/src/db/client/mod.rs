@@ -599,6 +599,7 @@ fn row_to_library_image(
         source: row.get("source")?,
         source_url: row.get("source_url")?,
         cloud_path: row.get("cloud_path")?,
+        content_hash: row.get("hash")?,
         created_at: rfc3339_column(row, "created_at")?,
     })
 }
@@ -962,6 +963,29 @@ impl Database {
             "Test Library".to_string(),
         );
         let key_service = coven::StoreKeys::new(config.store_id.clone());
+
+        // Opaque-home blob-key derivation shards by the uploading device's
+        // public key, so establish this fixed test store's identity up front
+        // — get-or-create (never mint over one already established), so the
+        // many parallel tests sharing this hardcoded store id under the
+        // process-global mock keyring converge on one identity rather than
+        // each minting and overwriting the last one's. Installs the mock
+        // keyring defensively (idempotent) rather than requiring every caller
+        // to have already called `install_test_keyring` — the many callers of
+        // this test helper that never touch identity never called it before.
+        crate::config::install_test_keyring();
+        let identity_custody =
+            coven::IdentityCustody::Keyring.resolve(&config.store_id, &config.store_dir);
+        if identity_custody
+            .unlock()
+            .map_err(|e| DbError(e.to_string()))?
+            .is_none()
+        {
+            identity_custody
+                .persist(&coven::UserKeypair::generate())
+                .map_err(|e| DbError(e.to_string()))?;
+        }
+
         Self::open(
             config,
             clock,
@@ -1300,6 +1324,7 @@ fn row_to_file(row: &Row) -> coven::rusqlite::Result<DbFile> {
         file_size: row.get("file_size")?,
         content_type: ContentType::from_mime(&row.get::<_, String>("content_type")?),
         cloud_path: row.get("cloud_path")?,
+        content_hash: row.get("hash")?,
         created_at: rfc3339_column(row, "created_at")?,
     })
 }
@@ -1768,8 +1793,8 @@ fn insert_file_row(conn: &Connection, file: &DbFile, reg: &str) -> Result<(), Db
     conn.execute(
         r#"
         INSERT INTO release_files (
-            id, release_id, original_filename, file_size, content_type, cloud_path, _updated_at, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            id, release_id, original_filename, file_size, content_type, cloud_path, hash, _updated_at, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         "#,
         params![
             file.id,
@@ -1778,6 +1803,7 @@ fn insert_file_row(conn: &Connection, file: &DbFile, reg: &str) -> Result<(), Db
             file.file_size,
             file.content_type.as_str(),
             file.cloud_path,
+            file.content_hash,
             reg,
             file.created_at.to_rfc3339(),
         ],
@@ -1876,8 +1902,8 @@ fn upsert_library_image_row(
     let table = image_table(&image.image_type);
     conn.execute(
         &format!(
-            "INSERT INTO {table} (id, content_type, file_size, width, height, source, source_url, cloud_path, _updated_at, created_at) \
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) \
+            "INSERT INTO {table} (id, content_type, file_size, width, height, source, source_url, cloud_path, hash, _updated_at, created_at) \
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) \
              ON CONFLICT(id) DO UPDATE SET \
                  content_type = excluded.content_type, \
                  file_size = excluded.file_size, \
@@ -1886,6 +1912,7 @@ fn upsert_library_image_row(
                  source = excluded.source, \
                  source_url = excluded.source_url, \
                  cloud_path = excluded.cloud_path, \
+                 hash = excluded.hash, \
                  _updated_at = excluded._updated_at"
         ),
         params![
@@ -1897,6 +1924,7 @@ fn upsert_library_image_row(
             image.source,
             image.source_url,
             image.cloud_path,
+            image.content_hash,
             reg,
             image.created_at.to_rfc3339(),
         ],

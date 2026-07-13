@@ -276,6 +276,7 @@ mod tests {
             file_size: 5,
             content_type: ContentType::Jpeg,
             cloud_path: None,
+            content_hash: None,
             created_at: Utc::now(),
         };
         database.insert_file(&file).await.unwrap();
@@ -424,6 +425,7 @@ mod tests {
                 file_size: size,
                 content_type,
                 cloud_path: None,
+                content_hash: None,
                 created_at: Utc::now(),
             };
             database.insert_file(&file).await.unwrap();

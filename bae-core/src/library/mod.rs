@@ -27,9 +27,10 @@ pub use upload_sessions::UploadSessions;
 pub use upload_throughput::UploadThroughput;
 
 use crate::config::{Config, ConfigError};
-use crate::keys::{DeviceKeys, StoreKeys};
+use crate::keys::StoreKeys;
 use coven::StoreDir;
-use coven::{EncryptionError, EncryptionService};
+use coven::{EncryptionError, MasterKeyring};
+use coven::{IdentityCustody, KeyCustody, UserKeypair};
 use std::path::Path;
 use std::sync::Arc;
 use tokio::sync::watch;
@@ -176,15 +177,38 @@ pub async fn restore_from_cloud(
     on_status: impl Fn(&str),
 ) -> Result<Config, String> {
     let app_dir = crate::config::bae_dir().map_err(|e| e.to_string())?;
-    // The restoring device signs its control objects with the device-global signing
-    // identity, so get-or-create it: a fresh device has none. (The restore-code path
-    // imports the code's key instead; this is the caller-supplies-the-key path.)
-    let keypair = DeviceKeys::get_or_create_user_keypair().map_err(|e| e.to_string())?;
-    // Restore-with-a-key is the opaque-home path: the caller supplies the library
-    // key, and its presence (`Some`) is what tells coven to rebuild the encrypted,
-    // obfuscated home. A browsable home has no key and restores through the
-    // restore-code path, where the absent key selects it. Not cancellable, so this
-    // passes a never-firing cancel receiver.
+    let layout = library_layout(app_dir);
+    let store_dir = layout.store_dir(library_id);
+
+    // The restoring device signs its control objects during restore with THIS
+    // store's signing identity (per (store, device), not device-global). Reuse
+    // it if already established for this library id (a retried restore after an
+    // earlier attempt failed past coven's own already-exists guard would find
+    // one; a fresh library id never does) — else mint one now, before the
+    // network call, so a bootstrap failure's own cleanup (which owns this
+    // `identity_custody`) forgets it too, leaving nothing for bae to roll back
+    // itself. (The restore-code path instead imports the code's own key, since
+    // it recovers a device that already held one; this is the
+    // caller-supplies-the-encryption-key path, which has no such key to
+    // recover.)
+    let identity_custody = IdentityCustody::Keyring.resolve(library_id, &store_dir);
+    let keypair = match identity_custody.unlock().map_err(|e| e.to_string())? {
+        Some(existing) => existing,
+        None => {
+            let fresh = UserKeypair::generate();
+            identity_custody
+                .persist(&fresh)
+                .map_err(|e| e.to_string())?;
+            fresh
+        }
+    };
+    let key_custody = KeyCustody::Keyring.resolve(library_id, &store_dir);
+
+    // This restore-with-a-key path is for an opaque home: the caller supplies the
+    // library key, so coven rebuilds the encrypted, obfuscated home from its
+    // presence (`Some`). A browsable home has no key and restores through the
+    // restore-code path instead, where the absent `ek` selects it. This path is
+    // not cancellable, so it passes a never-firing cancel receiver.
     let (cancel, _bridge) = cancel_receiver(None);
     let coven_config = crate::sync::restore_from_cloud(
         library_id,
@@ -192,9 +216,17 @@ pub async fn restore_from_cloud(
         library_name,
         &crate::sync::synced_tables(),
         &crate::migrations::all(),
+        key_custody,
+        identity_custody,
         source,
+        // No restore code here (the caller supplies the encryption key
+        // directly), so there is no membership floor minted at code-generation
+        // time to seed from — this recovery path accepts whatever membership
+        // head the storage serves, the same trust-on-first-use restore already
+        // applies when adopting the store owner from the chain founder.
+        &[],
         &keypair,
-        &library_layout(app_dir),
+        &layout,
         std::sync::Arc::new(coven::SystemClock),
         std::sync::Arc::new(coven::UuidProvider),
         on_status,
@@ -250,27 +282,49 @@ impl From<LibraryCodeOperationError> for JoinFromCodeError {
 /// `join_from_invite_code`, supplying bae's app dir, clock, id source, and blob
 /// plan. For an OAuth provider the caller fetches `oauth_tokens` first (the
 /// joining device authorizes its own cloud account), exactly as restore does.
+///
+/// `join_request_code` is the code this device's own
+/// [`crate::sync::membership::generate_join_request`] produced when it asked to
+/// join — coven minted a pending identity for it at that point, and a
+/// completed join promotes that same identity into this store's own identity
+/// custody, so the caller must keep and pass back the exact code it generated.
 pub async fn join_from_code(
-    code: &str,
+    invite_code: &str,
+    join_request_code: &str,
     oauth_tokens: Option<coven::OAuthTokens>,
     cloudkit_ops: Option<Arc<dyn coven::CloudKitOps>>,
     on_status: impl Fn(&str),
 ) -> Result<Config, String> {
-    join_from_code_inner(code, oauth_tokens, cloudkit_ops, None, on_status)
-        .await
-        .map_err(|e| e.to_string())
+    join_from_code_inner(
+        invite_code,
+        join_request_code,
+        oauth_tokens,
+        cloudkit_ops,
+        None,
+        on_status,
+    )
+    .await
+    .map_err(|e| e.to_string())
 }
 
 pub async fn join_from_code_cancellable(
-    code: &str,
+    invite_code: &str,
+    join_request_code: &str,
     oauth_tokens: Option<coven::OAuthTokens>,
     cloudkit_ops: Option<Arc<dyn coven::CloudKitOps>>,
     cancel: CancellationToken,
     on_status: impl Fn(&str),
 ) -> Result<Config, JoinFromCodeError> {
-    join_from_code_inner(code, oauth_tokens, cloudkit_ops, Some(cancel), on_status)
-        .await
-        .map_err(JoinFromCodeError::from)
+    join_from_code_inner(
+        invite_code,
+        join_request_code,
+        oauth_tokens,
+        cloudkit_ops,
+        Some(cancel),
+        on_status,
+    )
+    .await
+    .map_err(JoinFromCodeError::from)
 }
 
 async fn restore_from_code_inner(
@@ -283,10 +337,15 @@ async fn restore_from_code_inner(
     let app_dir =
         crate::config::bae_dir().map_err(|e| LibraryCodeOperationError::Failed(e.to_string()))?;
     let (rx, bridge) = cancel_receiver(cancel);
+    // The default custody for both the master key and this device's identity —
+    // the OS keyring, mirroring what `Coven::builder` itself defaults to for a
+    // library opened the ordinary way (bae never overrides either).
     let result = crate::sync::restore_from_code(
         code,
         &crate::sync::synced_tables(),
         &crate::migrations::all(),
+        coven::KeyCustody::Keyring,
+        coven::IdentityCustody::Keyring,
         oauth_tokens,
         cloudkit_ops,
         &library_layout(app_dir),
@@ -300,7 +359,8 @@ async fn restore_from_code_inner(
 }
 
 async fn join_from_code_inner(
-    code: &str,
+    invite_code: &str,
+    join_request_code: &str,
     oauth_tokens: Option<coven::OAuthTokens>,
     cloudkit_ops: Option<Arc<dyn coven::CloudKitOps>>,
     cancel: Option<CancellationToken>,
@@ -309,11 +369,15 @@ async fn join_from_code_inner(
     let app_dir =
         crate::config::bae_dir().map_err(|e| LibraryCodeOperationError::Failed(e.to_string()))?;
     let (rx, bridge) = cancel_receiver(cancel);
+    // Same default custody choice as `restore_from_code_inner` above.
     let result = crate::sync::join_from_invite_code(
-        code,
+        invite_code,
+        join_request_code,
         &library_layout(app_dir),
         &crate::sync::synced_tables(),
         &crate::migrations::all(),
+        coven::KeyCustody::Keyring,
+        coven::IdentityCustody::Keyring,
         oauth_tokens,
         cloudkit_ops,
         std::sync::Arc::new(coven::SystemClock),
@@ -352,10 +416,14 @@ fn unlock_library_in_dir(
     key_hex: &str,
     ids: &dyn coven::IdProvider,
 ) -> Result<(), UnlockError> {
-    // `EncryptionService::new` does the hex+length validation and names the cause in
-    // `EncryptionError::KeyManagement`, so a malformed key surfaces as
-    // `UnlockError::Encryption` rather than collapsing into "no fingerprint".
-    let fingerprint = EncryptionService::new(key_hex)?.fingerprint();
+    // `MasterKeyring::from_serialized` performs the hex+length validation and
+    // returns `EncryptionError::KeyManagement` with the specific cause, so a
+    // malformed key surfaces as `UnlockError::Encryption` rather than
+    // collapsing into "no fingerprint computed". `MasterKeyring` (not
+    // `EncryptionService`, which is test-only reachable from production code)
+    // is coven's production-facing master-key value type — the same one
+    // `CovenHandle::import_master_key` computes its own fingerprint from.
+    let fingerprint = MasterKeyring::from_serialized(key_hex)?.fingerprint();
 
     let config =
         Config::load_registered_library_from_bae_dir(bae_dir, library_id, ids).map_err(|e| {
@@ -401,8 +469,11 @@ mod tests {
             StoreDir::new(library_path),
             "Library Name".to_string(),
         );
-        config.encryption_key_fingerprint =
-            Some(EncryptionService::new(key_hex).unwrap().fingerprint());
+        config.encryption_key_fingerprint = Some(
+            MasterKeyring::from_serialized(key_hex)
+                .unwrap()
+                .fingerprint(),
+        );
         config.save_to_config_yaml().unwrap();
         std::fs::create_dir(bae_dir.join("active-library")).unwrap();
 

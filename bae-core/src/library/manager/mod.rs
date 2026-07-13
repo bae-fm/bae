@@ -54,7 +54,6 @@ use coven::ClockRef;
 #[cfg(any(test, feature = "test-utils"))]
 use coven::CloudHome;
 use coven::CovenHandle;
-use coven::EncryptionService;
 use coven::IdRef;
 use coven::SyncLoopStatus;
 
@@ -134,6 +133,10 @@ pub enum LibraryError {
     /// generic settings line.
     #[error("{0}")]
     Validation(String),
+    /// Establishing this store's master key (or finding one already
+    /// established when none was expected) failed.
+    #[error("Master key error: {0}")]
+    MasterKey(#[from] coven::MasterKeyError),
 }
 
 impl LibraryError {
@@ -151,6 +154,7 @@ impl LibraryError {
             LibraryError::CloudSetup(_) => C::Credentials,
             LibraryError::Sync(e) => sync_category(e),
             LibraryError::Import(_) => C::Import,
+            LibraryError::MasterKey(_) => C::Keyring,
             LibraryError::Io(_)
             | LibraryError::TrackMapping(_)
             | LibraryError::Encryption(_)
@@ -186,8 +190,9 @@ fn sync_category(error: &coven::SyncError) -> crate::ui::UiErrorCategory {
         SyncError::NotConfigured
         | SyncError::LoopNotRunning
         | SyncError::NotEncryptedHome
-        | SyncError::OpaqueHomeWithoutEncryption
+        | SyncError::MasterKeyNotEstablished
         | SyncError::Init(_)
+        | SyncError::Database(_)
         | SyncError::BlobUpload(_)
         | SyncError::Loop(_) => C::Internal,
     }
@@ -936,8 +941,8 @@ impl LibraryManager {
     /// against a mock cloud with no live provider — the test counterpart of
     /// `attach_and_start_sync`. `cipher` is the home's at-rest protection:
     /// `Plaintext` for a browsable mock, `Encrypted(service)` for an opaque one.
-    /// After this, `has_cloud_home`, `get_encryption_service`, and `is_sync_ready`
-    /// all resolve off the connected manager, no override needed.
+    /// After this, `has_cloud_home` and `is_sync_ready` resolve off the
+    /// connected manager, no override needed.
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn connect_test_cloud_home(
         &self,

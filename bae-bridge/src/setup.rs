@@ -559,14 +559,16 @@ fn join_error_to_bridge(error: JoinFromCodeError) -> BridgeError {
 }
 
 async fn join_from_code_config(
-    code: String,
+    invite_code: String,
+    join_request_code: String,
     oauth_tokens: Option<coven::OAuthTokens>,
     cloudkit_ops: Option<Arc<dyn coven::CloudKitOps>>,
     cancel: Option<CancellationToken>,
 ) -> Result<Config, BridgeError> {
     match cancel {
         Some(cancel) => bae_core::library::join_from_code_cancellable(
-            &code,
+            &invite_code,
+            &join_request_code,
             oauth_tokens,
             cloudkit_ops,
             cancel,
@@ -574,9 +576,13 @@ async fn join_from_code_config(
         )
         .await
         .map_err(join_error_to_bridge),
-        None => bae_core::library::join_from_code(&code, oauth_tokens, cloudkit_ops, |status| {
-            info!("{}", status)
-        })
+        None => bae_core::library::join_from_code(
+            &invite_code,
+            &join_request_code,
+            oauth_tokens,
+            cloudkit_ops,
+            |status| info!("{}", status),
+        )
         .await
         .map_err(|e| join_error_to_bridge(JoinFromCodeError::Join(e))),
     }
@@ -584,12 +590,19 @@ async fn join_from_code_config(
 
 /// Join a shared library from an invite code string.
 ///
+/// `join_request_code` is the code this device's own `generate_join_request`
+/// produced (`BridgeJoinRequest.code`) — coven minted a pending identity for
+/// it at that point, and a completed join promotes that same identity into
+/// this store's own identity custody, so the caller must keep and pass back
+/// the exact code it generated.
+///
 /// For OAuth providers, the caller must first run the OAuth flow (`oauth_authorize`
 /// on desktop, or `oauth_begin`/`oauth_complete` on mobile) and pass the token
 /// JSON as `oauth_token_json`.
 #[uniffi::export]
 pub fn join_from_code(
     code: String,
+    join_request_code: String,
     oauth_token_json: Option<String>,
 ) -> Result<BridgeLibrary, BridgeError> {
     on_worker(move || async move {
@@ -597,7 +610,14 @@ pub fn join_from_code(
             .map(|json| parse_oauth_tokens(&json))
             .transpose()?;
 
-        let config = join_from_code_config(code, oauth_tokens, get_cloudkit_ops(), None).await?;
+        let config = join_from_code_config(
+            code,
+            join_request_code,
+            oauth_tokens,
+            get_cloudkit_ops(),
+            None,
+        )
+        .await?;
 
         BridgeLibrary::from_core(&config)
     })
@@ -606,6 +626,7 @@ pub fn join_from_code(
 #[derive(uniffi::Object)]
 pub struct JoinFromCodeOperation {
     code: String,
+    join_request_code: String,
     oauth_tokens: Option<coven::OAuthTokens>,
     cloudkit_ops: Option<Arc<dyn coven::CloudKitOps>>,
     cancel: CancellationToken,
@@ -615,6 +636,7 @@ pub struct JoinFromCodeOperation {
 #[uniffi::export]
 pub fn join_from_code_operation(
     code: String,
+    join_request_code: String,
     oauth_token_json: Option<String>,
 ) -> Result<Arc<JoinFromCodeOperation>, BridgeError> {
     let oauth_tokens = oauth_token_json
@@ -622,6 +644,7 @@ pub fn join_from_code_operation(
         .transpose()?;
     Ok(Arc::new(JoinFromCodeOperation {
         code,
+        join_request_code,
         oauth_tokens,
         cloudkit_ops: get_cloudkit_ops(),
         cancel: CancellationToken::new(),
@@ -642,12 +665,19 @@ impl JoinFromCodeOperation {
             *started = true;
         }
         let code = self.code.clone();
+        let join_request_code = self.join_request_code.clone();
         let oauth_tokens = self.oauth_tokens.clone();
         let cloudkit_ops = self.cloudkit_ops.clone();
         let cancel = self.cancel.clone();
         on_worker(move || async move {
-            let config =
-                join_from_code_config(code, oauth_tokens, cloudkit_ops, Some(cancel)).await?;
+            let config = join_from_code_config(
+                code,
+                join_request_code,
+                oauth_tokens,
+                cloudkit_ops,
+                Some(cancel),
+            )
+            .await?;
 
             BridgeLibrary::from_core(&config)
         })

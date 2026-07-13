@@ -489,6 +489,7 @@ mod tests {
             file_size: size,
             content_type: ContentType::Flac,
             cloud_path: None,
+            content_hash: None,
             created_at: Utc::now(),
         }
     }

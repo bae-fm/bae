@@ -662,9 +662,17 @@ extension OnboardingView {
             logger.warning("join tapped without a decoded invite code")
             return
         }
+        // The code minted by this device's own generateJoinRequest — coven
+        // needs it back to promote that pending identity into this store's
+        // custody.
+        guard case .success(let request) = joinRequest else {
+            logger.warning("join tapped before the join-request code was ready")
+            return
+        }
         let code = inviteCodeInput.trimmingCharacters(
             in: .whitespacesAndNewlines
         )
+        let joinRequestCode = request.code
         // Reuse the token captured when the provider was picked — no second
         // OAuth at join time.
         let tokenJson = joinTokenJson
@@ -677,7 +685,12 @@ extension OnboardingView {
                         linkFlow = nil
                     }
                 }
-                await performJoin(code: code, tokenJson: tokenJson, flow: flow)
+                await performJoin(
+                    code: code,
+                    joinRequestCode: joinRequestCode,
+                    tokenJson: tokenJson,
+                    flow: flow
+                )
             }
         }
         linkFlow = flow
@@ -686,11 +699,17 @@ extension OnboardingView {
 
     private func performJoin(
         code: String,
+        joinRequestCode: String,
         tokenJson: String?,
         flow: LinkFlow
     ) async {
         do {
-            try await runJoin(code: code, tokenJson: tokenJson, flow: flow)
+            try await runJoin(
+                code: code,
+                joinRequestCode: joinRequestCode,
+                tokenJson: tokenJson,
+                flow: flow
+            )
         }
         catch {
             if isLinkCancellation(error) {
@@ -704,11 +723,13 @@ extension OnboardingView {
 
     private func runJoin(
         code: String,
+        joinRequestCode: String,
         tokenJson: String?,
         flow: LinkFlow
     ) async throws {
         let operation = try joinFromCodeOperation(
             code: code,
+            joinRequestCode: joinRequestCode,
             oauthTokenJson: tokenJson
         )
         flow.bridgeCancel = { operation.cancel() }

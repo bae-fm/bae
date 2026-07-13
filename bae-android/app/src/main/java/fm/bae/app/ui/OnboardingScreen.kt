@@ -116,12 +116,14 @@ private class JoinFlow(
 
     suspend fun execute(
         code: String,
+        joinRequestCode: String,
         oauthTokenJson: String?,
         onJoined: (BridgeLibrary) -> Unit,
     ) {
         // OAuth (and the account-email fetch) already ran when the provider was
         // picked; the token captured then is reused here — no second sign-in.
-        val operation = joinFromCodeOperation(code = code, oauthTokenJson = oauthTokenJson)
+        val operation =
+            joinFromCodeOperation(code = code, joinRequestCode = joinRequestCode, oauthTokenJson = oauthTokenJson)
         joinOperation = operation
         val libraryInfo = withContext(Dispatchers.IO) { operation.join() }
         onJoined(libraryInfo)
@@ -330,6 +332,10 @@ class JoinLauncher(
 
     fun join() {
         val code = inviteInput.trim()
+        // The code generated for this device's own join-request, minted back
+        // when generateJoinRequest ran in selectProvider — coven needs it back
+        // to promote that pending identity into this store's custody.
+        val joinRequestCode = requestCode ?: return
         // Reuse the token captured at provider selection — no second OAuth.
         val oauthTokenJson = this.oauthTokenJson
         error = null
@@ -338,7 +344,7 @@ class JoinLauncher(
         val launched =
             scope.launch(start = CoroutineStart.LAZY) {
                 try {
-                    started.execute(code, oauthTokenJson, onJoined)
+                    started.execute(code, joinRequestCode, oauthTokenJson, onJoined)
                 } catch (e: BridgeException.Cancelled) {
                     logger.debug("join flow cancelled by bridge", e)
                 } catch (e: CancellationException) {

@@ -1,19 +1,25 @@
 //! Re-export of coven's store key material plus bae's domain credentials.
 //!
-//! coven owns the key/keyring primitives and splits its keyring into two scopes:
-//! `DeviceKeys`, the device-global Ed25519 signing identity (no store_id), and
-//! `StoreKeys`, a store's encryption key, cloud credentials, and OAuth tokens
-//! under store-scoped accounts. coven is domain-agnostic and reads secrets only
-//! from the keyring, so bae's Discogs API key and MCP bearer token are layered
-//! back onto `StoreKeys` by the extension trait below, under the same
+//! The key/keyring primitives live in coven now; this re-exports them so bae's
+//! `crate::keys::…` call sites resolve unchanged. coven's signing identity is
+//! scoped per (store, device) — established via `IdentityCustody` as part of
+//! creating/joining/restoring a store, the identity sibling of `KeyCustody`
+//! for the master key — and `StoreKeys` carries a store's encryption key,
+//! cloud credentials, and OAuth tokens under store-scoped accounts. coven is
+//! domain-agnostic and reads secrets only from the keyring, so bae's Discogs API
+//! key and MCP bearer token are layered back onto `StoreKeys` as another
+//! store-scoped keyring credential via the extension trait below, under the same
 //! `base:store_id` account scheme. In dev mode `config::seed_dev_keyring` bridges
 //! `BAE_DISCOGS_API_KEY` into that account, as it does coven's own env vars.
 use tracing::{info, warn};
 
-pub use coven::{CloudHomeCredentials, DeviceKeys, KeyError, StoreKeys};
-// coven's keyring read/write is a closed typed-slot API that can't name bae's
-// accounts, so bae goes through `keyring_core` directly — against coven's service
-// name, so both live in one keyring service.
+pub use coven::{CloudHomeCredentials, KeyError, StoreKeys};
+// `keyring_service` names the keyring service the bae-domain credentials below
+// (Discogs key, MCP token, encryption-key forget) live under; used only here, so
+// it stays a private import rather than re-exported `bae_core::keys` surface.
+// coven's own keyring read/write is a closed typed-slot API (`KeyringSlot`) that
+// can't name bae's accounts, so bae reads and writes its accounts through
+// `keyring_core` directly against that same service name.
 use coven::keyring_service;
 
 /// A namespaced keyring account, matching coven's own `base:store_id` scheme.

@@ -142,6 +142,7 @@ async fn create_local_release(
             ContentType::Flac,
             Uuid::new_v4().to_string(),
             now,
+            Some(bae_core::util::fs::hash_bytes(data)),
         );
         mgr.add_file(&file).await.unwrap();
         result.push((name.to_string(), data.to_vec()));
@@ -302,6 +303,7 @@ async fn test_cover_blob_stored_via_local_files_is_readable() {
             source: "local".to_string(),
             source_url: None,
             cloud_path: None,
+            content_hash: Some(bae_core::util::fs::hash_bytes(bytes)),
             created_at: chrono::Utc::now(),
         },
         bytes,

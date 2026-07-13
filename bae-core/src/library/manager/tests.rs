@@ -11,6 +11,8 @@ use crate::sync::CloudCipher;
 use crate::util::content_type::ContentType;
 use chrono::Utc;
 #[cfg(feature = "test-utils")]
+use coven::EncryptionService;
+#[cfg(feature = "test-utils")]
 use coven::InMemoryCloudHome;
 use coven::StoreDir;
 use tempfile::TempDir;
@@ -54,13 +56,9 @@ async fn setup_test_manager_with_library_id(library_id: &str) -> (LibraryManager
     let config_handle = Arc::new(ConfigHandle::new(config));
     crate::config::install_test_keyring();
     let key_service = StoreKeys::new(library_id.to_string());
-    // The default test home is opaque, whose blob keyspace shards under the
-    // uploading device's public key (`{namespace}/{uploader}/…`). Give the
-    // device its signing keypair up front — an opaque home always has one in
-    // production — so opaque-home cloud-key derivation resolves the uploader.
-    // The signing identity is device-global, so it comes from `DeviceKeys`, not
-    // the store-scoped `key_service`.
-    crate::keys::DeviceKeys::get_or_create_user_keypair().unwrap();
+    // `database`'s coven handle (opened via `Database::new_test` above)
+    // establishes its own per-store identity under the fixed test store id
+    // `new_test` always opens — see the note there.
     let manager = LibraryManager::new(
         database,
         config_handle,
@@ -124,6 +122,7 @@ async fn store_test_cover_image(manager: &LibraryManager, release_id: &str) {
                 source: "local".to_string(),
                 source_url: None,
                 cloud_path: None,
+                content_hash: None,
                 created_at: manager.clock.now(),
             },
             b"image",
@@ -421,6 +420,7 @@ async fn work_detail_release_rows_are_display_ready() {
         source: "local".to_string(),
         source_url: None,
         cloud_path: None,
+        content_hash: None,
         created_at: now,
     };
 
@@ -555,6 +555,7 @@ async fn delete_release_tombstones_remote_cloud_blobs() {
         crate::util::content_type::ContentType::Flac,
         Uuid::new_v4().to_string(),
         Utc::now(),
+        None,
     );
     manager.add_file(&file).await.unwrap();
 
@@ -659,6 +660,7 @@ async fn delete_release_fails_before_rows_are_deleted_when_file_cleanup_lookup_f
         crate::util::content_type::ContentType::Flac,
         Uuid::new_v4().to_string(),
         Utc::now(),
+        None,
     );
     manager.add_file(&file).await.unwrap();
 
@@ -689,6 +691,7 @@ async fn delete_release_fails_before_rows_are_deleted_when_file_tombstone_enqueu
         crate::util::content_type::ContentType::Flac,
         Uuid::new_v4().to_string(),
         Utc::now(),
+        None,
     );
     manager.add_file(&file).await.unwrap();
 
@@ -724,6 +727,7 @@ async fn delete_release_fails_before_rows_are_deleted_when_local_external_ref_cl
         crate::util::content_type::ContentType::Flac,
         Uuid::new_v4().to_string(),
         Utc::now(),
+        None,
     );
     manager.add_file(&file).await.unwrap();
     manager
@@ -889,6 +893,7 @@ async fn delete_release_removes_its_cover_image() {
                 source: "local".to_string(),
                 source_url: None,
                 cloud_path: None,
+                content_hash: None,
                 created_at: manager.clock.now(),
             },
             b"image",
@@ -943,6 +948,7 @@ async fn delete_album_removes_release_covers() {
                 source: "local".to_string(),
                 source_url: None,
                 cloud_path: None,
+                content_hash: None,
                 created_at: manager.clock.now(),
             },
             b"image",
@@ -1077,6 +1083,7 @@ async fn add_cover_row(manager: &LibraryManager, release_id: &str) {
             source: "local".to_string(),
             source_url: None,
             cloud_path: None,
+            content_hash: None,
             created_at: manager.clock.now(),
         })
         .await
@@ -1126,6 +1133,7 @@ async fn find_release_detail_does_not_panic_on_traversal_ids_from_a_peer() {
         crate::util::content_type::ContentType::Jpeg,
         "../../etc/y".to_string(),
         Utc::now(),
+        None,
     );
     manager.add_file(&file).await.unwrap();
 
@@ -1398,6 +1406,7 @@ async fn gallery_includes_cloud_only_image_files_with_no_local_path() {
         crate::util::content_type::ContentType::Jpeg,
         Uuid::new_v4().to_string(),
         Utc::now(),
+        None,
     );
     manager.add_file(&image).await.unwrap();
 
@@ -1456,6 +1465,7 @@ async fn change_cover_stores_a_resized_jpeg_thumbnail() {
         ContentType::Png,
         Uuid::new_v4().to_string(),
         Utc::now(),
+        Some(crate::util::fs::hash_bytes(&cover_bytes)),
     );
     manager.add_file(&file).await.unwrap();
     manager
@@ -2141,6 +2151,7 @@ async fn storage_total_size_matches_page_total_size_sum() {
             file_size,
             content_type: crate::util::content_type::ContentType::Flac,
             cloud_path: None,
+            content_hash: None,
             created_at: Utc::now(),
         };
         manager.database.insert_file(&file).await.unwrap();
@@ -2337,6 +2348,7 @@ async fn insert_local_release_with_files(
             crate::util::content_type::ContentType::Flac,
             format!("{}-test-file-{index}", release.id),
             created_at,
+            Some(crate::util::fs::hash_bytes(bytes)),
         );
         manager.add_file(&file).await.unwrap();
     }
@@ -2374,6 +2386,9 @@ async fn insert_local_release_without_local_files(
         crate::util::content_type::ContentType::Flac,
         Uuid::new_v4().to_string(),
         Utc::now(),
+        // No real file backs this fixture (the whole point is "no local copy
+        // resolves"), so there is no plaintext to hash.
+        None,
     );
     manager.add_file(&file).await.unwrap();
     release
@@ -2643,6 +2658,7 @@ async fn storage_page_sort_by_file_count() {
                 file_size: 1000,
                 content_type: crate::util::content_type::ContentType::Flac,
                 cloud_path: None,
+                content_hash: None,
                 created_at: Utc::now(),
             };
             manager.database.insert_file(&file).await.unwrap();
@@ -2678,6 +2694,7 @@ async fn storage_page_sort_by_total_size() {
             file_size: *file_size,
             content_type: crate::util::content_type::ContentType::Flac,
             cloud_path: None,
+            content_hash: None,
             created_at: Utc::now(),
         };
         manager.database.insert_file(&file).await.unwrap();
@@ -2729,6 +2746,7 @@ async fn storage_page_uploading_filter_matches_cloud_outbox() {
         file_size: 1000,
         content_type: crate::util::content_type::ContentType::Flac,
         cloud_path: None,
+        content_hash: None,
         created_at: Utc::now(),
     };
     manager.database.insert_file(&uploading_file).await.unwrap();
@@ -2797,6 +2815,7 @@ async fn unmanage_cancelled_before_copy_leaves_release_remote() {
             file_size: 10,
             content_type: crate::util::content_type::ContentType::Flac,
             cloud_path: None,
+            content_hash: None,
             created_at: Utc::now(),
         })
         .await
@@ -2838,6 +2857,7 @@ async fn outbox_snapshot_tracks_queued_active_failed_and_cancel() {
         file_size: 1000,
         content_type: crate::util::content_type::ContentType::Flac,
         cloud_path: None,
+        content_hash: None,
         created_at: Utc::now(),
     };
     manager.database.insert_file(&file).await.unwrap();
@@ -2945,6 +2965,7 @@ async fn observer_progress_advances_snapshot_bytes_done() {
         file_size: 1000,
         content_type: crate::util::content_type::ContentType::Flac,
         cloud_path: None,
+        content_hash: None,
         created_at: Utc::now(),
     };
     manager.database.insert_file(&file).await.unwrap();
@@ -3013,6 +3034,7 @@ async fn completed_upload_with_lingering_row_is_not_queued() {
         file_size: 1000,
         content_type: crate::util::content_type::ContentType::Flac,
         cloud_path: None,
+        content_hash: None,
         created_at: Utc::now(),
     };
     manager.database.insert_file(&file).await.unwrap();
@@ -3061,6 +3083,7 @@ async fn insert_pinnable_release(manager: &LibraryManager) -> String {
         file_size: 1000,
         content_type: crate::util::content_type::ContentType::Flac,
         cloud_path: None,
+        content_hash: None,
         created_at: Utc::now(),
     };
     manager.database.insert_file(&file).await.unwrap();
@@ -3325,6 +3348,7 @@ async fn insert_export_release_rows(
             crate::util::content_type::ContentType::Flac,
             format!("{}-export-file-{index}", release.id),
             created_at,
+            Some(crate::util::fs::hash_bytes(bytes)),
         );
         manager.add_file(&file).await.unwrap();
         inserted_files.push(file);
@@ -3674,6 +3698,7 @@ async fn export_mid_failure_leaves_no_partial_output_at_final_path() {
             crate::util::content_type::ContentType::Flac,
             Uuid::new_v4().to_string(),
             Utc::now(),
+            Some(crate::util::fs::hash_bytes(bytes)),
         );
         manager.add_file(&file).await.unwrap();
     }
@@ -4593,6 +4618,7 @@ async fn re_identify_to_unknown_clears_identities_and_moves_album() {
             crate::util::content_type::ContentType::Flac,
             Uuid::new_v4().to_string(),
             now,
+            None,
         );
         manager.database.insert_file(&file).await.unwrap();
     }
@@ -5140,6 +5166,7 @@ async fn re_identify_to_unknown_reseeds_rows_from_file_tags() {
             crate::util::content_type::ContentType::Flac,
             Uuid::new_v4().to_string(),
             now,
+            None,
         );
         manager.database.insert_file(&file).await.unwrap();
     }

@@ -762,8 +762,12 @@ impl AppHandle {
             .await?)
     }
 
-    pub fn generate_restore_code(&self) -> Result<String, BridgeError> {
-        Ok(self.services.library_manager().generate_restore_code()?)
+    pub async fn generate_restore_code(&self) -> Result<String, BridgeError> {
+        Ok(self
+            .services
+            .library_manager()
+            .generate_restore_code()
+            .await?)
     }
 
     /// The library's membership (devices, with this device flagged, and whether

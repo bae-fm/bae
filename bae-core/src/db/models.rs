@@ -415,6 +415,13 @@ pub struct DbFile {
     /// key computed at import for a browsable home. coven derives every
     /// upload/read/delete key from this column via the table's `BlobDecl`.
     pub cloud_path: Option<String>,
+    /// SHA-256 (lowercase hex) of this file's plaintext bytes — coven's
+    /// author-signed content hash, verified against the decrypted bytes on
+    /// every cloud fetch (see [`crate::util::fs::hash_file`]). `None` only for
+    /// a row that predates the column (coven refuses to verify — and so
+    /// refuses to fetch — an unhashed blob); every row this app writes now
+    /// carries one.
+    pub content_hash: Option<String>,
     pub created_at: DateTime<Utc>,
 }
 
@@ -724,6 +731,13 @@ impl DbTrack {
     }
 }
 impl DbFile {
+    /// Create a file record
+    ///
+    /// Files are linked to releases. Used for reconstructing original file structure
+    /// during export. `content_hash` is coven's required blob content hash
+    /// (see [`crate::util::fs::hash_file`]) — `None` only when the caller has
+    /// no real plaintext to hash against (a metadata-only test fixture that
+    /// never exercises a real cloud fetch of this file's blob).
     pub fn new(
         release_id: &str,
         original_filename: &str,
@@ -731,6 +745,7 @@ impl DbFile {
         content_type: ContentType,
         id: String,
         now: DateTime<Utc>,
+        content_hash: Option<String>,
     ) -> Self {
         DbFile {
             id,
@@ -741,6 +756,7 @@ impl DbFile {
             // Files start opaque-keyed (hashed by id). A browsable remote
             // import / manage sets the readable key explicitly before insert.
             cloud_path: None,
+            content_hash,
             created_at: now,
         }
     }
@@ -938,6 +954,10 @@ pub struct DbLibraryImage {
     /// `{artist_id}/artist.{ext}`). Only the cloud key becomes readable — coven's
     /// local cache layout is unaffected.
     pub cloud_path: Option<String>,
+    /// SHA-256 (lowercase hex) of this image's plaintext bytes — coven's
+    /// author-signed content hash (see [`crate::util::fs::hash_bytes`]).
+    /// `None` only for a row that predates the column.
+    pub content_hash: Option<String>,
     pub created_at: DateTime<Utc>,
 }
 

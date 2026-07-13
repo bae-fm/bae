@@ -57,6 +57,7 @@ pub async fn fetch_artist_image(
         source: MetadataSource::Discogs.as_str().to_string(),
         source_url: Some(image_url),
         cloud_path: None,
+        content_hash: Some(crate::util::fs::hash_bytes(&bytes)),
         created_at: now,
     };
 
