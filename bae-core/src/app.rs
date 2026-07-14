@@ -235,10 +235,12 @@ fn bootstrap_inner(
     // opaque-but-locked home stays unbuilt above, awaiting unlock), so there is no
     // key material left to thread through here — an established opaque key and a
     // keyless browsable home now take the identical call.
+    // A connect failure here (the network is down, the provider is unreachable) must
+    // not abort the launch: the library opens, and sync reports itself not connected
+    // so the UI shows its reconnect banner. Local browse and pinned playback need no
+    // network, and the next launch retries the connect.
     if key_established || cloud_home_is_browsable {
-        runtime
-            .block_on(library_manager.attach_and_start_sync())
-            .map_err(|e| BootstrapError::Database(e.to_string()))?;
+        runtime.block_on(library_manager.attach_and_start_sync_at_startup());
     }
 
     // Forward the sync loop's row changes + errors as library/UI events: the

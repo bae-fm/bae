@@ -287,3 +287,45 @@ fn unlock_then_reopen_advances_active_pointer() {
     );
     drop(unlocked);
 }
+
+/// A returning user who launches offline must still open their library — bootstrap
+/// used to `?` the launch-time `attach_and_start_sync` into `BootstrapError`, so a
+/// correctly-set-up library that merely couldn't reach its provider failed to open
+/// at all, even though local browse and pinned playback need no network.
+///
+/// A browsable home takes the attach path without any encryption to seed, and
+/// bootstrapping with `cloudkit_ops: None` makes the connect fail immediately and
+/// hermetically at the CloudKit-driver lookup — the deterministic stand-in for a
+/// connect that can't complete offline. The library must open, and sync must report
+/// itself not connected (no cloud home installed) yet still configured, which is the
+/// state that drives the reconnect banner.
+#[test]
+#[serial]
+fn bootstrapping_offline_opens_the_library_and_reports_not_connected() {
+    let home = fake_home();
+    let id = write_library(home.path(), "Offline Library", |config| {
+        config.cloud_home.provider = Some(CloudProvider::CloudKit);
+        config.cloud_home.storage = coven::HomeStorage::Browsable;
+    });
+
+    let app = bootstrap(
+        id,
+        200,
+        true,
+        bae_core::diagnostics::Diagnostics::noop(),
+        None,
+    )
+    .expect("launching offline must open the library, not abort bootstrap");
+
+    let manager = app.services.library_manager();
+    assert!(
+        !manager.has_cloud_home(),
+        "the failed connect installs no cloud home — sync reports not connected"
+    );
+    assert!(
+        manager.is_sync_configured(),
+        "the provider is still configured, so the state reads as connect-pending, \
+         not as an un-configured local library"
+    );
+    drop(app);
+}

@@ -145,4 +145,33 @@ impl LibraryManager {
     pub async fn attach_and_start_sync(&self) -> Result<(), LibraryError> {
         self.sync.attach_and_start_sync().await
     }
+
+    /// Attach the sync manager at startup, tolerating a connect failure.
+    ///
+    /// A returning user who launches offline must still open their library — local
+    /// browse and pinned playback need no network, and the connect can be retried on
+    /// the next launch (idempotently). coven's connect leaves the handle home-less on
+    /// failure, so nothing is half-attached: the failure is recorded as the
+    /// sync-status error (identical to a later cycle failing) so the UI shows its
+    /// reconnect banner, and `has_cloud_home` / `is_sync_ready` report not connected.
+    pub async fn attach_and_start_sync_at_startup(&self) {
+        if let Err(error) = self.attach_and_start_sync().await {
+            warn!("startup sync connect failed; opening library not connected: {error}");
+            self.record_startup_sync_error(&error);
+        }
+    }
+
+    /// Write a startup connect failure into the sync-status state and emit
+    /// `SyncError`, mirroring the sync loop's own failure path so the launch-time
+    /// failure and a later cycle failure surface identically.
+    fn record_startup_sync_error(&self, error: &LibraryError) {
+        let ui_error = crate::ui::UiError::internal(error.to_string());
+        {
+            let mut state = self.sync_status.lock().unwrap();
+            state.error = Some(error.to_string());
+        }
+        self.emit(LibraryEvent::SyncError {
+            error: Some(ui_error),
+        });
+    }
 }
