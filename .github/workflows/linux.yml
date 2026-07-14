@@ -96,6 +96,11 @@ jobs:
         # chrome-string orphan gate (core.* keys are covered by the bae-bridge
         # loc_key_coverage test above); fails on unreferenced, un-allowlisted keys.
         python3 scripts/loc-chrome-orphans.py
+        # English-skeleton gate: an it/tr/vi/nl value still carrying the English
+        # sentence, glued morphology ("Sincronizzazioneing"), or a placeholder
+        # multiset that doesn't match its source. Covers all four catalogs
+        # (macOS/iOS xcstrings, Android strings.xml, Windows resw).
+        python3 scripts/loc-english-skeleton.py
 
     - name: Check Rust documentation
       # Broken intra-doc links and invalid rustdoc syntax fail the build.
