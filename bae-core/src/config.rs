@@ -195,7 +195,7 @@ where
 }
 
 /// The config schema this build writes. A file carrying an older version is
-/// upgraded on read by [`migrate_to_current`]; a file carrying a newer one is
+/// upgraded on read by `migrate_to_current`; a file carrying a newer one is
 /// refused, because this build cannot know what its fields mean.
 ///
 /// **Adding a field to `ConfigYaml`: add it to [`Config::with_defaults`] too, and
@@ -216,7 +216,7 @@ const UNVERSIONED: u32 = 0;
 /// rather than silently taking an implicit value.
 ///
 /// An *older* file legitimately lacks the fields added after it was written. That
-/// is not corruption, and it is not this type's problem: [`parse_config_yaml`]
+/// is not corruption, and it is not this type's problem: `parse_config_yaml`
 /// upgrades the file before it ever reaches this struct. So the strictness here
 /// keeps its meaning — it now only fires on files that really are broken.
 #[derive(Debug, Clone, Serialize, Deserialize)]
