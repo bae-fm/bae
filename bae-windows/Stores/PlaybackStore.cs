@@ -130,9 +130,24 @@ internal sealed class PlaybackStore
         ApplyPositionSnapshot(trackId, durationMs, positionMs, progress);
     }
 
-    public void ApplyLoading(string trackId)
+    // A loading transition. Once core has resolved the target (`track` is set),
+    // switch the bar to it — so the in-app bar matches the taskbar and the other
+    // platforms while audio still downloads. The first, bare loading event
+    // (`track` null, e.g. a seek re-entering loading) keeps the current track on
+    // screen behind the spinner. The None-then-Some sequencing is core's; this
+    // renders it.
+    public void ApplyLoading(string trackId, BridgeLoadingTrackInfo? track)
     {
-        _nowPlaying = PlaybackPositionModel.BeginLoading(_nowPlaying, trackId);
+        if (track is { } target)
+        {
+            _nowPlaying = new NowPlayingState(target.AlbumId, trackId, KeptPositionFor(trackId));
+            NowPlayingChanged?.Invoke(
+                new NowPlayingBarTrack(target.TrackTitle, target.ArtistNames, target.CoverImageId, true, null));
+        }
+        else
+        {
+            _nowPlaying = PlaybackPositionModel.BeginLoading(_nowPlaying, trackId);
+        }
         PlayState = TransportPlayState.Playing;
         LoadingStarted?.Invoke();
     }

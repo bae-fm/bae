@@ -62,9 +62,10 @@ internal sealed class UiEventRouter
                 _mediaControls.UpdatePosition(seeked.PositionMs, seeked.DurationMs);
                 break;
             case BridgeUiEvent.PlaybackLoading loading:
-                _playback.ApplyLoading(loading.TrackId);
-                // A bare loading event carries no metadata; leave the transport
-                // controls showing the prior track until the target resolves.
+                // Both the in-app bar and the transport controls take the target
+                // once core resolves it; before that (a bare loading event) both
+                // keep showing the prior track.
+                _playback.ApplyLoading(loading.TrackId, loading.Track);
                 if (loading.Track is { } loadingTrack)
                 {
                     _mediaControls.UpdateNowPlayingLoading(
