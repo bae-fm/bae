@@ -145,6 +145,18 @@ _swift_format_lint() {
     | xargs -0 xcrun swift-format lint -s
 }
 
+# The baeium (S3-only) bridge must export none of the feature-gated functions.
+# `availableCloudProviders` is always compiled in and stays; these must not appear.
+# Run against the bindings the baeium bridge build just wrote.
+_baeium_macos_export_guard() {
+  local gated='oauthAuthorize|oauthBegin|oauthCancel|oauthComplete|setOauthClientCreds|signInCloudProvider|useCloudkit'
+  if grep -nE "func ($gated)" bae-bridge/swift-bindings-macos/bae_bridge.swift; then
+    echo "baeium bridge exported a feature-gated symbol (above): the gate leaked into the S3-only build." >&2
+    return 1
+  fi
+  echo "baeium bridge is clean: no OAuth/CloudKit bindings exported."
+}
+
 _ios_clippy() {
   local ffmpeg_prefix="$ROOT/bae-ffmpeg/ios/aarch64-apple-ios"
   local device_sdk
@@ -242,6 +254,25 @@ check "loc english skeleton"           python3 scripts/loc-english-skeleton.py
 # ── macOS ──────────────────────────────────────────────────────────────────────
 section "macOS"
 
+# The baeium (S3-only) edition, mirroring ci.yml's feature-parity job. The Swift
+# `#if` surface has two cells and the full build below exercises only one; the
+# export guard is what proves a feature gate didn't leak into the S3-only bridge.
+# It runs first so the section ends with the bindings, BaeKit/Features.json, and
+# the Swift conditions back in the full/default state a dev's next build expects.
+check "bridge build (macOS baeium)" \
+  env BAE_BRIDGE_FEATURES=desktop ./bae-bridge/build-macos.sh
+check "install macOS bridge binding (baeium)" \
+  ./bae-bridge/install-swift-bindings.sh macos
+check "guard: baeium bridge exports no OAuth/CloudKit binding" \
+  _baeium_macos_export_guard
+check "xcodegen (macOS baeium)" bash -c 'cd bae-macos/bae && xcodegen'
+check "xcodebuild (macOS baeium)" \
+  xcodebuild -project bae-macos/bae/bae.xcodeproj -scheme bae -configuration Debug \
+    CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO \
+    -derivedDataPath bae-macos/bae/.build/derivedData \
+    -scmProvider system -disablePackageRepositoryCache -skipPackageUpdates \
+    -disableAutomaticPackageResolution build
+
 check "bridge build" ./bae-bridge/build-macos.sh
 check "install macOS bridge binding" \
   ./bae-bridge/install-swift-bindings.sh macos
@@ -280,6 +311,20 @@ section "iOS"
 rustup target add aarch64-apple-ios 2>/dev/null || true
 
 check "clippy (iOS aarch64)"  _ios_clippy
+
+# The baeium (S3-only) edition. The iOS app carries its own OAuth/CloudKit `#if`
+# surface, distinct from macOS's, so it has to build on its own — build.yml runs a
+# [full, baeium] matrix for exactly this. An explicitly-empty BAE_BRIDGE_FEATURES
+# is baeium here: iOS has no `desktop` feature to anchor a non-empty value.
+# First, so the section ends with the tree back on the full edition.
+check "bridge build (iOS baeium)" \
+  env BAE_BRIDGE_FEATURES= ./bae-bridge/build-ios.sh
+check "xcodegen (iOS baeium)" bash -c 'cd bae-ios/bae && xcodegen'
+check "xcodebuild (iOS baeium, iphonesimulator)" \
+  xcodebuild -project bae-ios/bae/bae.xcodeproj -scheme bae -configuration Debug \
+    CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO \
+    -sdk iphonesimulator -arch arm64 \
+    -derivedDataPath bae-ios/bae/.build/derivedData build
 
 check "bridge build" ./bae-bridge/build-ios.sh
 check "xcodegen" bash -c 'cd bae-ios/bae && xcodegen'
