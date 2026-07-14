@@ -90,7 +90,7 @@ fn classify_discogs_response(response: Response) -> Result<Response, DiscogsErro
 fn should_retry_discogs(error: &DiscogsError) -> bool {
     match error {
         DiscogsError::Transport(_) | DiscogsError::RateLimit => true,
-        DiscogsError::Provider(status) => status.is_server_error(),
+        DiscogsError::Provider(status) => crate::retry::is_transient_status(*status),
         DiscogsError::InvalidApiKey | DiscogsError::NotFound | DiscogsError::Serialization(_) => {
             false
         }

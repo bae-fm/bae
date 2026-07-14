@@ -1,5 +1,6 @@
 use crate::import::{ImportError, MetadataSource};
 use crate::network::upgrade_to_https;
+use crate::retry::{exponential_backoff, is_transient_status, retry_classified, ClassifiedAttempt};
 use crate::util::content_type::ContentType;
 use lru::LruCache;
 use std::collections::HashMap;
@@ -206,66 +207,6 @@ impl Default for CoverArtArchiveClient {
     }
 }
 
-/// Whether an HTTP error is transient and worth retrying.
-fn is_transient_status(status: reqwest::StatusCode) -> bool {
-    status.is_server_error() || status == reqwest::StatusCode::TOO_MANY_REQUESTS
-}
-
-enum ClassifiedAttempt<T, E> {
-    Done(T),
-    Retry(E),
-    Permanent(E),
-}
-
-async fn retry_classified<T, E, F, Fut>(
-    operation: &str,
-    base_delay: Duration,
-    mut attempt: F,
-) -> Result<T, E>
-where
-    E: std::fmt::Display,
-    F: FnMut() -> Fut,
-    Fut: std::future::Future<Output = ClassifiedAttempt<T, E>>,
-{
-    let mut last_error: Option<E> = None;
-    for attempt_index in 0..=MAX_RETRIES {
-        if attempt_index > 0 {
-            let delay = base_delay * 2u32.pow(attempt_index - 1);
-
-            warn!(
-                "{} failed (attempt {}/{}): {} — retrying in {:?}",
-                operation,
-                attempt_index,
-                MAX_RETRIES + 1,
-                last_error
-                    .as_ref()
-                    .expect("a retry set last_error before this attempt"),
-                delay
-            );
-
-            tokio::time::sleep(delay).await;
-        }
-
-        match attempt().await {
-            ClassifiedAttempt::Done(value) => return Ok(value),
-            ClassifiedAttempt::Permanent(error) => return Err(error),
-            ClassifiedAttempt::Retry(error) => {
-                last_error = Some(error);
-            }
-        }
-    }
-
-    let last_error = last_error.expect("the retry loop ran at least once and never succeeded");
-    warn!(
-        "{} failed after {} attempts: {}",
-        operation,
-        MAX_RETRIES + 1,
-        last_error
-    );
-
-    Err(last_error)
-}
-
 pub(crate) fn push_unique_cover(covers: &mut Vec<RemoteCover>, cover: RemoteCover) {
     if !covers.iter().any(|existing| existing.url == cover.url) {
         covers.push(cover);
@@ -378,38 +319,43 @@ async fn fetch_cover_art_from_url(
 ) -> CaaLookup {
     debug!("Fetching cover art from Cover Art Archive: {}", json_url);
 
-    match retry_classified("Cover Art Archive fetch", base_delay, || async {
-        match client.get(&json_url).send().await {
-            Ok(response) => {
-                if response.status().is_success() {
-                    ClassifiedAttempt::Done(
-                        parse_cover_art_response(response, &json_url, &label).await,
-                    )
-                } else if response.status() == reqwest::StatusCode::NOT_FOUND {
-                    debug!(
-                        "No cover art found in Cover Art Archive for {} {}",
-                        entity, id
-                    );
-                    ClassifiedAttempt::Done(Some(None))
-                } else if is_transient_status(response.status()) {
-                    ClassifiedAttempt::Retry(format!("status {}", response.status()))
-                } else {
-                    // A non-transient client error (400, 403, ...) — don't retry.
-                    debug!(
-                        "Cover Art Archive returned status {} for {} {}",
-                        response.status(),
-                        entity,
-                        id
-                    );
-                    ClassifiedAttempt::Done(None)
+    match retry_classified(
+        MAX_RETRIES + 1,
+        "Cover Art Archive fetch",
+        |attempt| exponential_backoff(base_delay, attempt),
+        || async {
+            match client.get(&json_url).send().await {
+                Ok(response) => {
+                    if response.status().is_success() {
+                        ClassifiedAttempt::Done(
+                            parse_cover_art_response(response, &json_url, &label).await,
+                        )
+                    } else if response.status() == reqwest::StatusCode::NOT_FOUND {
+                        debug!(
+                            "No cover art found in Cover Art Archive for {} {}",
+                            entity, id
+                        );
+                        ClassifiedAttempt::Done(Some(None))
+                    } else if is_transient_status(response.status()) {
+                        ClassifiedAttempt::Retry(format!("status {}", response.status()))
+                    } else {
+                        // A non-transient client error (400, 403, ...) — don't retry.
+                        debug!(
+                            "Cover Art Archive returned status {} for {} {}",
+                            response.status(),
+                            entity,
+                            id
+                        );
+                        ClassifiedAttempt::Done(None)
+                    }
                 }
+                Err(e) if is_permanent_request_error(&e) => {
+                    ClassifiedAttempt::Permanent(format!("Cover Art Archive fetch failed: {}", e))
+                }
+                Err(e) => ClassifiedAttempt::Retry(e.to_string()),
             }
-            Err(e) if is_permanent_request_error(&e) => {
-                ClassifiedAttempt::Permanent(format!("Cover Art Archive fetch failed: {}", e))
-            }
-            Err(e) => ClassifiedAttempt::Retry(e.to_string()),
-        }
-    })
+        },
+    )
     .await
     {
         Ok(lookup) => lookup,
@@ -558,36 +504,41 @@ async fn download_image_bytes_with_backoff(
     base_delay: Duration,
 ) -> Result<(Vec<u8>, ContentType), ImportError> {
     let client = image_download_client()?;
-    retry_classified(operation, base_delay, || async {
-        let response = match client.get(image_url).send().await {
-            Ok(r) => r,
-            Err(e) if is_permanent_request_error(&e) => {
-                return ClassifiedAttempt::Permanent(ImportError::CoverArt {
-                    detail: format!("Failed to fetch image: {}", e),
-                });
-            }
-            Err(e) => {
-                return ClassifiedAttempt::Retry(ImportError::CoverArt {
-                    detail: format!("Failed to fetch image: {}", e),
-                });
-            }
-        };
+    retry_classified(
+        MAX_RETRIES + 1,
+        operation,
+        |attempt| exponential_backoff(base_delay, attempt),
+        || async {
+            let response = match client.get(image_url).send().await {
+                Ok(r) => r,
+                Err(e) if is_permanent_request_error(&e) => {
+                    return ClassifiedAttempt::Permanent(ImportError::CoverArt {
+                        detail: format!("Failed to fetch image: {}", e),
+                    });
+                }
+                Err(e) => {
+                    return ClassifiedAttempt::Retry(ImportError::CoverArt {
+                        detail: format!("Failed to fetch image: {}", e),
+                    });
+                }
+            };
 
-        if response.status().is_success() {
-            match read_image_response(response, image_url).await {
-                Ok(value) => ClassifiedAttempt::Done(value),
-                Err(e) => ClassifiedAttempt::Permanent(e),
+            if response.status().is_success() {
+                match read_image_response(response, image_url).await {
+                    Ok(value) => ClassifiedAttempt::Done(value),
+                    Err(e) => ClassifiedAttempt::Permanent(e),
+                }
+            } else if is_transient_status(response.status()) {
+                ClassifiedAttempt::Retry(ImportError::CoverArt {
+                    detail: format!("Image download failed with status {}", response.status()),
+                })
+            } else {
+                ClassifiedAttempt::Permanent(ImportError::CoverArt {
+                    detail: format!("Image download failed with status {}", response.status()),
+                })
             }
-        } else if is_transient_status(response.status()) {
-            ClassifiedAttempt::Retry(ImportError::CoverArt {
-                detail: format!("Image download failed with status {}", response.status()),
-            })
-        } else {
-            ClassifiedAttempt::Permanent(ImportError::CoverArt {
-                detail: format!("Image download failed with status {}", response.status()),
-            })
-        }
-    })
+        },
+    )
     .await
 }
 
