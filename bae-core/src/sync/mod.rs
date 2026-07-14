@@ -126,7 +126,11 @@ pub fn synced_tables() -> Vec<SyncedTable> {
         // The user's own imported files: user-provided (Local = the file at the
         // user's path, an external ref coven holds), CacheLazy (fetched on first
         // read when Remote). coven reads the blob id off the PK and the readable
-        // cloud key off `cloud_path`.
+        // cloud key off `cloud_path`. write_once: the row is never repointed — a
+        // re-import mints a new release id, hence a new blob and path, so an
+        // audio object at a key never changes content. That is what lets the
+        // cloud key stay a readable name with no blob id in it; coven refuses a
+        // repoint rather than silently rewriting an object a peer already holds.
         SyncedTable::new("release_files").carries_blob(
             BlobDecl::new(
                 RELEASE_FILES_NAMESPACE,
@@ -134,7 +138,8 @@ pub fn synced_tables() -> Vec<SyncedTable> {
                 CacheFill::CacheLazy,
             )
             .with_size_column("file_size")
-            .with_cloud_path_column("cloud_path"),
+            .with_cloud_path_column("cloud_path")
+            .write_once(),
         ),
         SyncedTable::new("audio_formats"),
         SyncedTable::new("audio_format_segments"),
