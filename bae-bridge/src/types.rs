@@ -3047,6 +3047,24 @@ pub fn bridge_entity_not_found_key(entity: BridgeEntityKind) -> String {
     .to_string()
 }
 
+/// The catalog key for an error's user-facing line, or `None` when the error has
+/// no line to show.
+///
+/// A cancellation is the user's own doing and says nothing back to them, so it
+/// has no line — and `None` is how that is said. Left to each app, "no line"
+/// became `""` on Swift and Kotlin (which then opened a blank error alert,
+/// because nothing filters an empty string) and "an internal error occurred" on
+/// Windows, which is neither internal nor an error. Whether an error is worth
+/// showing is a decision about the error, so it is made once, here.
+#[uniffi::export]
+pub fn bridge_error_line_key(error: &BridgeError) -> Option<String> {
+    match error {
+        BridgeError::Cancelled => None,
+        BridgeError::NotFound { entity, .. } => Some(bridge_entity_not_found_key(*entity)),
+        BridgeError::Diagnostic { category, .. } => Some(bridge_error_category_key(*category)),
+    }
+}
+
 /// Localization key for the actionable `BridgePlaybackErrorReason` variants, or
 /// `None` for `Diagnostic` (which the UI renders through the `BridgeError`
 /// category path instead). One source of these keys for every platform.
@@ -4420,6 +4438,28 @@ mod loc_key_coverage {
             };
             assert_eq!(bridge_entity_not_found_key(e), expected);
             keys.push(expected.to_string());
+        }
+
+        // bridge_error_line_key — Cancelled carries no line (None); the other two
+        // agree with the per-part key fns above, so an error has exactly one line
+        // and it is not re-derived anywhere. The keys themselves are already
+        // pushed by those loops, so nothing is added here.
+        for e in [
+            BridgeError::Cancelled,
+            BridgeError::NotFound {
+                entity: BridgeEntityKind::Album,
+                id: "a".to_string(),
+            },
+            BridgeError::internal(""),
+        ] {
+            let expected: Option<String> = match &e {
+                BridgeError::Cancelled => None,
+                BridgeError::NotFound { entity, .. } => Some(bridge_entity_not_found_key(*entity)),
+                BridgeError::Diagnostic { category, .. } => {
+                    Some(bridge_error_category_key(*category))
+                }
+            };
+            assert_eq!(bridge_error_line_key(&e), expected);
         }
 
         // bridge_playback_error_reason_key — Diagnostic carries no key (None).

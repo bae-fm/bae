@@ -3,8 +3,7 @@ package fm.bae.app
 import android.content.Context
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgePlaybackErrorReason
-import uniffi.bae_bridge.bridgeEntityNotFoundKey
-import uniffi.bae_bridge.bridgeErrorCategoryKey
+import uniffi.bae_bridge.bridgeErrorLineKey
 import uniffi.bae_bridge.bridgePlaybackErrorReasonKey
 
 // Renders bae's typed error events for the current locale. The locale never
@@ -16,16 +15,15 @@ import uniffi.bae_bridge.bridgePlaybackErrorReasonKey
 // `BridgeException` is uniffi's Kotlin name for the bridge `BridgeError`.
 
 /**
- * The localized, user-facing line for a typed [BridgeException]. `Cancelled`
- * shows nothing (the user dismissed it); `NotFound` and `Diagnostic` render the
- * generic line core owns the key for.
+ * The localized, user-facing line for a typed [BridgeException], or null when it
+ * has none to show — core's answer, not this app's. A cancellation is the user's
+ * own doing and says nothing back to them.
+ *
+ * Null, never "": an empty string is not "nothing", it is a blank line, and it
+ * only stayed invisible here because [fm.bae.app.data.UiEventAdapter] happened to
+ * catch Cancelled separately before ever asking.
  */
-fun Context.localizedLine(error: BridgeException): String =
-    when (error) {
-        is BridgeException.Cancelled -> ""
-        is BridgeException.NotFound -> coreString(bridgeEntityNotFoundKey(error.entity))
-        is BridgeException.Diagnostic -> coreString(bridgeErrorCategoryKey(error.category))
-    }
+fun Context.localizedLine(error: BridgeException): String? = bridgeErrorLineKey(error)?.let { coreString(it) }
 
 /**
  * The localized, user-facing line for a [BridgePlaybackErrorReason]. The two
@@ -33,7 +31,7 @@ fun Context.localizedLine(error: BridgeException): String =
  * exactly those); everything else renders through the shared [BridgeException]
  * path.
  */
-fun Context.localizedLine(reason: BridgePlaybackErrorReason): String =
+fun Context.localizedLine(reason: BridgePlaybackErrorReason): String? =
     when (reason) {
         is BridgePlaybackErrorReason.SyncDisconnected,
         is BridgePlaybackErrorReason.UploadPending,
@@ -54,9 +52,11 @@ fun Context.localizedLine(reason: BridgePlaybackErrorReason): String =
  * [fm.bae.app.playback.PlaybackEventSink] rather than a live player.
  */
 interface ErrorLines {
-    fun line(reason: BridgePlaybackErrorReason): String
+    /** Null when core says the failure has no line to show. */
+    fun line(reason: BridgePlaybackErrorReason): String?
 
-    fun line(error: BridgeException): String
+    /** Null when core says the failure has no line to show. */
+    fun line(error: BridgeException): String?
 }
 
 /** The production resolver: renders for the device locale via the Core catalog. */

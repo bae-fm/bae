@@ -69,7 +69,7 @@ final class StorageActionRunner {
                     )
                 }
                 catch {
-                    uiStore.showError(DisplayError(error))
+                    uiStore.showError(error)
                     return
                 }
             }

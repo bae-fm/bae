@@ -112,7 +112,8 @@ private suspend fun runUnpin(
         throw e
     } catch (e: BridgeException) {
         logger.error("unpinRelease failed for $releaseId", e)
-        context.localizedLine(e).ifEmpty { null }
+        // Null already means "nothing to show" — no ifEmpty workaround needed.
+        context.localizedLine(e)
     } catch (e: Exception) {
         logger.error("unpinRelease failed for $releaseId", e)
         e.message ?: e::class.java.simpleName

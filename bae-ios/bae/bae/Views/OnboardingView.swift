@@ -463,7 +463,7 @@ extension OnboardingView {
             .padding(.vertical, 4)
         case .failure(let genError):
             VStack(spacing: 8) {
-                Text(genError.displayLine)
+                Text(genError.displayLine ?? "")
                     .foregroundStyle(.red)
                     .font(.callout)
                 Button("Try again") {
@@ -536,7 +536,7 @@ extension OnboardingView {
             #endif
         }
         else if case .failure(let decodeError) = decodedInvite {
-            Text(decodeError.displayLine)
+            Text(decodeError.displayLine ?? "")
                 .foregroundStyle(.red)
                 .font(.callout)
         }

@@ -69,15 +69,17 @@ internal static class BridgeDisplay
     private static string MinutesText(ulong minutes) =>
         Loc.Core("core.duration.minutes", "minutes", checked((long)minutes));
 
-    internal static string LocalizedLine(BridgeException exception) =>
-        exception switch
-        {
-            BridgeException.NotFound notFound => Loc.Core(
-                BaeBridgeMethods.BridgeEntityNotFoundKey(notFound.entity)),
-            BridgeException.Diagnostic diagnostic => Loc.Core(
-                BaeBridgeMethods.BridgeErrorCategoryKey(diagnostic.category)),
-            _ => Loc.Core("core.error.category.internal"),
-        };
+    /// <summary>
+    /// The localized user-facing line for a bridge error, or null when core says
+    /// it has none to show — a cancellation. Null, never a fallback: mapping a
+    /// cancellation to "core.error.category.internal" read as "an internal error
+    /// occurred", which it was not, and callers must drop it rather than show it.
+    /// </summary>
+    internal static string? LocalizedLine(BridgeException exception)
+    {
+        var key = BaeBridgeMethods.BridgeErrorLineKey(exception);
+        return key is null ? null : Loc.Core(key);
+    }
 
     internal static string LocalizedLine(BridgeLookupFailure failure)
     {
@@ -92,7 +94,13 @@ internal static class BridgeDisplay
             : Loc.Core(key);
     }
 
-    internal static string LocalizedLine(BridgePlaybackErrorReason reason)
+    /// <summary>
+    /// The localized user-facing line for a playback failure, or null when there
+    /// is none. The actionable cloud-only cases resolve their own keyed line;
+    /// everything else defers to the shared bridge-error path, which is also where
+    /// "no line at all" comes from.
+    /// </summary>
+    internal static string? LocalizedLine(BridgePlaybackErrorReason reason)
     {
         var key = BaeBridgeMethods.BridgePlaybackErrorReasonKey(reason);
         if (key is not null)
@@ -102,7 +110,7 @@ internal static class BridgeDisplay
 
         return reason is BridgePlaybackErrorReason.Diagnostic diagnostic
             ? LocalizedLine(diagnostic.Error)
-            : Loc.Core("core.error.category.internal");
+            : null;
     }
 
     internal static string LocalizedLine(BridgeInvalidReason reason)

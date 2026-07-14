@@ -48,6 +48,13 @@ public class ConfigStore {
             lastError = error
         }
 
+        /// Surface a caught error. An error core says has no line — a
+        /// cancellation — is dropped rather than shown as an empty banner.
+        public func showError(_ error: any Error) {
+            guard let displayed = DisplayError(error) else { return }
+            lastError = displayed
+        }
+
         public func clearError() {
             lastError = nil
         }
@@ -64,7 +71,9 @@ public class ConfigStore {
     }
 
     public func applySyncStatusSnapshot(_ snapshot: BridgeSyncStatusSnapshot) {
-        syncError = snapshot.error.map(DisplayError.init)
+        // `flatMap`, not `map`: an error core says has no line leaves the sync
+        // banner clear rather than showing an empty one.
+        syncError = snapshot.error.flatMap { DisplayError($0) }
         syncReady = snapshot.syncReady
         #if os(iOS)
             syncing = snapshot.syncing

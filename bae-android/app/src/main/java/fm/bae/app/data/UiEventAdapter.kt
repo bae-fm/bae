@@ -31,9 +31,9 @@ object UiEventAdapter {
             route(event, appHandle, stores, player, errors)
         } catch (e: CancellationException) {
             throw e
-        } catch (e: BridgeException.Cancelled) {
-            logger.debug("event handling cancelled", e)
         } catch (e: BridgeException) {
+            // No special case for Cancelled: core says whether an error has a line,
+            // and showError drops the ones that do not.
             logger.error("event handling failed", e)
             stores.config.showError(errors.line(e))
         } catch (e: Exception) {

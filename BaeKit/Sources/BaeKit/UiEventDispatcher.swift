@@ -45,7 +45,7 @@ public enum UiEventDispatcher {
             appService.applyQueueSnapshot(snapshot)
 
         case .error(let error):
-            appService.showError(DisplayError(error))
+            appService.showError(error)
 
         case .releaseTransferProgress, .releaseTransferEnded:
             // Neither Apple app renders a per-transfer indicator today; consume
@@ -131,7 +131,7 @@ public enum UiEventDispatcher {
             // failure); core has already fallen back to stopped. Surface why —
             // the actionable cloud cases get their keyed line, everything else
             // the generic category line plus copyable detail.
-            appService.showError(DisplayError(reason))
+            appService.showError(reason)
 
         case .playbackProgress(
             let trackId,

@@ -274,6 +274,13 @@ class UiStore: @unchecked Sendable {
         lastError = error
     }
 
+    /// Surface a caught error. An error core says has no line — a cancellation —
+    /// is dropped rather than raised as an alert with nothing in it.
+    func showError(_ error: any Error) {
+        guard let displayed = DisplayError(error) else { return }
+        lastError = displayed
+    }
+
     func clearError() {
         lastError = nil
     }

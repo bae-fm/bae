@@ -336,7 +336,11 @@ extension ReIdentifySheet {
                 logger.error(
                     "Re-identify commit failed: \(error.localizedDescription)"
                 )
-                phase = .error(error.displayLine)
+                // A failure with no line to show — a cancellation — is not an
+                // error phase; there would be nothing in it.
+                if let line = error.displayLine {
+                    phase = .error(line)
+                }
             }
         }
     }
@@ -366,7 +370,11 @@ extension ReIdentifySheet {
                 logger.error(
                     "Refresh failed: \(error.localizedDescription)"
                 )
-                phase = .error(error.displayLine)
+                // A failure with no line to show — a cancellation — is not an
+                // error phase; there would be nothing in it.
+                if let line = error.displayLine {
+                    phase = .error(line)
+                }
             }
         }
     }

@@ -90,11 +90,19 @@ internal sealed class UiEventRouter
                 break;
             case BridgeUiEvent.PlaybackError playbackError:
                 // The structured reason resolves its own localized line (the
-                // actionable cloud-only cases, or a diagnostic's generic line).
-                _shell.ShowBanner(InfoBarSeverity.Error, Loc.Chrome("error.playback_title"), BridgeDisplay.LocalizedLine(playbackError.Reason));
+                // actionable cloud-only cases, or a diagnostic's generic line), or
+                // null when core says there is nothing to show.
+                if (BridgeDisplay.LocalizedLine(playbackError.Reason) is { } playbackLine)
+                {
+                    _shell.ShowBanner(InfoBarSeverity.Error, Loc.Chrome("error.playback_title"), playbackLine);
+                }
                 break;
             case BridgeUiEvent.Error error:
-                _shell.ShowBanner(InfoBarSeverity.Error, Loc.Chrome("error.title"), BridgeDisplay.LocalizedLine(error.ErrorValue));
+                // Null means a cancellation — the user's own doing — so no banner.
+                if (BridgeDisplay.LocalizedLine(error.ErrorValue) is { } errorLine)
+                {
+                    _shell.ShowBanner(InfoBarSeverity.Error, Loc.Chrome("error.title"), errorLine);
+                }
                 break;
             case BridgeUiEvent.Invalidated invalidated:
                 _projections.Invalidate(invalidated.Invalidation);

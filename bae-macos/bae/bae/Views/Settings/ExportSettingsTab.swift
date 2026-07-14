@@ -163,10 +163,10 @@ struct ExportSettingsTab: View {
             try apply()
         }
         catch let error as BridgeError {
-            uiStore.showError(DisplayError(error))
+            uiStore.showError(error)
         }
         catch {
-            uiStore.showError(DisplayError(error))
+            uiStore.showError(error)
         }
     }
 }

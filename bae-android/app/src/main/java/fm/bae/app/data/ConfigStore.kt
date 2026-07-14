@@ -59,7 +59,14 @@ class ConfigStore(
         _syncError.value = status.error?.let { errors.line(it) }
     }
 
-    fun showError(message: String) {
+    /**
+     * Surface an error. A null line means core says there is nothing to show — a
+     * cancellation — so the banner is left alone rather than raised empty.
+     */
+    fun showError(message: String?) {
+        if (message == null) {
+            return
+        }
         _error.value = message
     }
 }

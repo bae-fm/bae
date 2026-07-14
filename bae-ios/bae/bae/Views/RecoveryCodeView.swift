@@ -68,7 +68,7 @@ struct RecoveryCodeView: View {
         case .failure(let error):
             VStack {
                 Spacer()
-                Text(error.displayLine)
+                Text(error.displayLine ?? "")
                     .foregroundStyle(.red)
                     .font(.callout)
                     .multilineTextAlignment(.center)

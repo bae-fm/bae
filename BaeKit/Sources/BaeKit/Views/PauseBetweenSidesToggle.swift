@@ -4,12 +4,14 @@ import SwiftUI
 public struct PauseBetweenSidesToggle: View {
     public let configStore: ConfigStore
     public let setEnabled: @Sendable (Bool) throws -> Void
-    public let showError: @MainActor (DisplayError) -> Void
+    /// Takes the error, not a rendered line: whether a failure is worth showing
+    /// at all is core's answer, and the sink is the one place that drops it.
+    public let showError: @MainActor (any Error) -> Void
 
     public init(
         configStore: ConfigStore,
         setEnabled: @escaping @Sendable (Bool) throws -> Void,
-        showError: @escaping @MainActor (DisplayError) -> Void
+        showError: @escaping @MainActor (any Error) -> Void
     ) {
         self.configStore = configStore
         self.setEnabled = setEnabled
@@ -27,11 +29,8 @@ public struct PauseBetweenSidesToggle: View {
                 do {
                     try setEnabled(enabled)
                 }
-                catch let error as BridgeError {
-                    showError(DisplayError(error))
-                }
                 catch {
-                    showError(DisplayError(error))
+                    showError(error)
                 }
             }
         )

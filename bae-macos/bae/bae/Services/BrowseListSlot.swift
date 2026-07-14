@@ -26,7 +26,9 @@ final class BrowseListSlot<
     private let projectionRegistry: ProjectionRegistry
     private let makePageSource: ([Criterion]) -> any PageSource<Row>
     private let ingest: ([Row]) -> Void
-    private let onError: (DisplayError) -> Void
+    /// Takes the error, not a rendered line: whether a failure is worth showing
+    /// is core's answer, and the sink is the one place that drops it.
+    private let onError: (any Error) -> Void
 
     init(
         defaultsKey: String,
@@ -35,7 +37,7 @@ final class BrowseListSlot<
         projectionRegistry: ProjectionRegistry,
         makePageSource: @escaping ([Criterion]) -> any PageSource<Row>,
         ingest: @escaping ([Row]) -> Void,
-        onError: @escaping (DisplayError) -> Void
+        onError: @escaping (any Error) -> Void
     ) {
         self.defaultsKey = defaultsKey
         self.domain = domain

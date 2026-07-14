@@ -760,7 +760,7 @@ struct PaginatedListTests {
         let list = AlbumList(
             pageSource: source,
             ingest: { _ in },
-            onError: { errors.append($0) },
+            onError: { error in DisplayError(error).map { errors.append($0) } },
         )
 
         await list.loadInitial()
@@ -803,7 +803,7 @@ struct PaginatedListTests {
         let list = AlbumList(
             pageSource: source,
             ingest: { _ in },
-            onError: { errors.append($0) },
+            onError: { error in DisplayError(error).map { errors.append($0) } },
         )
 
         await list.loadInitial()
@@ -822,7 +822,7 @@ struct PaginatedListTests {
         let list = AlbumList(
             pageSource: source,
             ingest: { _ in },
-            onError: { errors.append($0) },
+            onError: { error in DisplayError(error).map { errors.append($0) } },
         )
         await list.loadInitial()
         source.countError = PaginatedListTestError(message: "reload failed")

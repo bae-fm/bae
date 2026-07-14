@@ -103,7 +103,10 @@ final class AppSessionHolder {
             openLibrary(first)
         }
         catch {
-            screen = .failed(message: error.displayLine)
+            // No line means a cancellation — a superseding open owns the screen,
+            // so don't paint a blank failure over it.
+            guard let message = error.displayLine else { return }
+            screen = .failed(message: message)
         }
     }
 
@@ -147,7 +150,9 @@ final class AppSessionHolder {
             try service.appHandle.forgetLibrary()
         }
         catch {
-            screen = .failed(message: error.displayLine)
+            // No line means a cancellation; leave the screen for the retry.
+            guard let message = error.displayLine else { return }
+            screen = .failed(message: message)
             return
         }
         // Drop the handle so ARC runs the Rust destructor and closes the DB
@@ -177,7 +182,8 @@ final class AppSessionHolder {
                 // A newer open owns `screen`; leave it alone.
                 break
             case .failed(let error):
-                self.screen = .failed(message: error.displayLine)
+                guard let message = error.displayLine else { break }
+                self.screen = .failed(message: message)
             }
         }
     }

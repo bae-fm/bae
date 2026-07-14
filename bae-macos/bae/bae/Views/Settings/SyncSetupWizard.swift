@@ -430,7 +430,9 @@ extension SyncSetupWizard {
     /// enum, so unwrap the case instead. Everything else — a rejected credential,
     /// an unreachable backend, a keyring failure, a config-write failure — reads
     /// as its own line through the shared path.
-    fileprivate func connectErrorMessage(_ error: Error) -> String {
+    /// `nil` when the failure has no line to show — a cancellation — so the
+    /// wizard clears its error rather than showing an empty one.
+    fileprivate func connectErrorMessage(_ error: Error) -> String? {
         #if BAE_CLOUDKIT
             if case CloudKitError.Storage(let msg) = error {
                 return msg

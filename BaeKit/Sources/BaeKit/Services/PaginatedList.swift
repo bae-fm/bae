@@ -112,7 +112,10 @@ where Row.ID: Sendable {
     @ObservationIgnored
     private let ingest: ([Row]) -> Void
     @ObservationIgnored
-    private let onError: (DisplayError) -> Void
+    /// The failure sink. It takes the error, not a rendered `DisplayError`:
+    /// whether a failure is worth showing at all is core's answer (a cancellation
+    /// is not), and `showError` is the one place that drops it.
+    private let onError: (any Error) -> Void
     @ObservationIgnored
     private var reloadTask: Task<Void, Never>?
     // In-flight `loadRange` fetches, keyed "offset:end:generation", so concurrent
@@ -124,7 +127,7 @@ where Row.ID: Sendable {
     public init(
         pageSource: any PageSource<Row>,
         ingest: @escaping ([Row]) -> Void,
-        onError: @escaping (DisplayError) -> Void
+        onError: @escaping (any Error) -> Void
     ) {
         self.pageSource = pageSource
         self.ingest = ingest
@@ -254,7 +257,7 @@ where Row.ID: Sendable {
             logger.error(
                 "Failed to load range [\(offset) ..< \(end)]: \(error.localizedDescription)"
             )
-            onError(DisplayError(error))
+            onError(error)
         }
     }
 
@@ -288,7 +291,7 @@ where Row.ID: Sendable {
                 logger.error(
                     "invalidate() failed: \(error.localizedDescription)"
                 )
-                onError(DisplayError(error))
+                onError(error)
             }
         }
     }

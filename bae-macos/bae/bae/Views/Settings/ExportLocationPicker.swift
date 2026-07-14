@@ -17,7 +17,9 @@ import SwiftUI
 struct ExportLocationPicker: View {
     let configStore: ConfigStore
     let setLocation: @Sendable (BridgeExportLocation) throws -> Void
-    let showError: @MainActor (DisplayError) -> Void
+    /// Takes the error, not a rendered line: the sink decides whether there is
+    /// anything to show (a cancellation is not).
+    let showError: @MainActor (any Error) -> Void
 
     @AppStorage("lastExportFolder")
     private var lastExportFolder = ""
@@ -132,11 +134,8 @@ struct ExportLocationPicker: View {
                 lastExportFolder = dir
             }
         }
-        catch let error as BridgeError {
-            showError(DisplayError(error))
-        }
         catch {
-            showError(DisplayError(error))
+            showError(error)
         }
     }
 }

@@ -103,6 +103,20 @@ open class AppService: @unchecked Sendable, Observable {
         diagnostics.event(event: .screenOpened(screen: screen))
     }
 
+    /// Route a caught error to the platform's error surface. An error core says
+    /// has no line — a cancellation — is dropped rather than surfaced empty.
+    public func showError(_ error: any Error) {
+        guard let displayed = DisplayError(error) else { return }
+        showError(displayed)
+    }
+
+    /// Route a playback failure. It is not a Swift `Error`, so it needs its own
+    /// door; it drops on a nil line for the same reason.
+    public func showError(_ reason: BridgePlaybackErrorReason) {
+        guard let displayed = DisplayError(reason) else { return }
+        showError(displayed)
+    }
+
     /// Route a display error to the platform's error surface. iOS uses the
     /// shared `ConfigStore` banner; macOS overrides this to route through its
     /// global alert (`UiStore`).

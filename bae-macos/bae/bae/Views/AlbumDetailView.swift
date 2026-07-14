@@ -398,7 +398,7 @@ extension AlbumDetailView {
                 }
             }
             catch {
-                uiStore.showError(DisplayError(error))
+                uiStore.showError(error)
             }
         }
     }

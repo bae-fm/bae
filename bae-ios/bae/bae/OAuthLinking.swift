@@ -101,7 +101,7 @@ struct OAuthLinking {
             decoded = try JSONSerialization.jsonObject(with: data)
         }
         catch {
-            throw OAuthLinkingError.malformedConfig(error.displayLine)
+            throw OAuthLinkingError.malformedConfig(error.localizedDescription)
         }
         guard let raw = decoded as? [String: [String: String]] else {
             throw OAuthLinkingError.malformedConfig(

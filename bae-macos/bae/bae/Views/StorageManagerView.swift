@@ -187,9 +187,7 @@ struct StorageManagerView: View {
             }
             catch {
                 totalSize = nil
-                uiStore.showError(
-                    DisplayError(error)
-                )
+                uiStore.showError(error)
             }
         }
     }

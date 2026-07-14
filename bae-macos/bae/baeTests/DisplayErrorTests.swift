@@ -5,17 +5,18 @@ import Testing
 /// uniffi gives `BridgeError` an `errorDescription` of `String(reflecting: self)`,
 /// so `localizedDescription` on anything the bridge threw is a raw Rust enum
 /// dump. These pin that a failure on its way to a human goes through core's keyed
-/// line instead, and that the opaque detail survives for the copy button.
+/// line instead, that the opaque detail survives for the copy button, and that an
+/// error core says has no line produces nothing at all rather than a blank one.
 @Suite("DisplayError from any Error")
 struct DisplayErrorTests {
     @Test("a bridge diagnostic renders its category's line, not the enum dump")
-    func diagnosticRendersCategoryLine() {
+    func diagnosticRendersCategoryLine() throws {
         let error = BridgeError.Diagnostic(
             category: .database,
             detail: "no such table: albums"
         )
 
-        let displayed = DisplayError(error as any Error)
+        let displayed = try #require(DisplayError(error as any Error))
 
         #expect(displayed.line == BridgeErrorCategory.database.localizedLine)
         // The whole point: the raw dump never reaches the user.
@@ -26,39 +27,49 @@ struct DisplayErrorTests {
     }
 
     @Test("a not-found renders its entity's line and has no detail to disclose")
-    func notFoundRendersEntityLine() {
+    func notFoundRendersEntityLine() throws {
         let error = BridgeError.NotFound(entity: .album, id: "album-1")
 
-        let displayed = DisplayError(error as any Error)
+        let displayed = try #require(DisplayError(error as any Error))
 
         #expect(displayed.line == BridgeEntityKind.album.notFoundLine)
         #expect(!displayed.line.contains("BridgeError"))
         #expect(displayed.detail == nil)
     }
 
+    /// The user cancelled. That says nothing back to them, so there is nothing to
+    /// display — not an empty line, which is what used to open a blank alert.
+    @Test("a cancellation produces no error to display")
+    func cancelledProducesNothing() {
+        #expect(DisplayError(BridgeError.Cancelled as any Error) == nil)
+        #expect((BridgeError.Cancelled as any Error).displayLine == nil)
+        #expect(BridgeError.Cancelled.localizedLine == nil)
+    }
+
     /// The fallback is what lets a `catch` be routed without first proving what it
     /// can throw: a Swift-origin error keeps its own prose.
     @Test("a Swift-origin error passes through unchanged")
-    func swiftErrorPassesThrough() {
+    func swiftErrorPassesThrough() throws {
         struct Failure: LocalizedError {
             var errorDescription: String? { "Couldn't read the file" }
         }
-        let error = Failure()
 
-        let displayed = DisplayError(error as any Error)
+        let displayed = try #require(DisplayError(Failure() as any Error))
 
         #expect(displayed.line == "Couldn't read the file")
         #expect(displayed.detail == nil)
     }
 
     @Test("displayLine agrees with DisplayError for the same error")
-    func displayLineAgrees() {
+    func displayLineAgrees() throws {
         let error: any Error = BridgeError.Diagnostic(
             category: .network,
             detail: "connection reset"
         )
 
-        #expect(error.displayLine == DisplayError(error).line)
-        #expect(!error.displayLine.contains("BridgeError"))
+        let line = try #require(error.displayLine)
+
+        #expect(line == DisplayError(error)?.line)
+        #expect(!line.contains("BridgeError"))
     }
 }

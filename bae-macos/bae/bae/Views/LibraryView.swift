@@ -504,7 +504,7 @@ extension LibraryView {
             }
         }
         catch {
-            uiStore.showError(DisplayError(error))
+            uiStore.showError(error)
         }
     }
 
@@ -532,7 +532,7 @@ extension LibraryView {
             artistDetail = detail
         }
         catch {
-            uiStore.showError(DisplayError(error))
+            uiStore.showError(error)
         }
     }
 
@@ -579,7 +579,7 @@ extension LibraryView {
             }
         }
         catch {
-            uiStore.showError(DisplayError(error))
+            uiStore.showError(error)
         }
     }
 }

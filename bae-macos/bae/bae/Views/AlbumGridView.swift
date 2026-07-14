@@ -238,7 +238,7 @@ extension AlbumGridView {
             }
         }
         catch {
-            uiStore.showError(DisplayError(error))
+            uiStore.showError(error)
         }
     }
 

@@ -50,7 +50,7 @@ final class QueueActions {
                 apply(trackIds)
             }
             catch {
-                uiStore.showError(DisplayError(error))
+                uiStore.showError(error)
             }
         }
     }

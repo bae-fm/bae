@@ -96,12 +96,11 @@ struct TitleBar: View {
                 )
             }
             catch {
-                guard !Task.isCancelled else { return }
+                guard !Task.isCancelled, let line = error.displayLine else {
+                    return
+                }
                 uiStore.showError(
-                    String(
-                        localized:
-                            "Search failed: \(error.displayLine)"
-                    )
+                    String(localized: "Search failed: \(line)")
                 )
             }
         }

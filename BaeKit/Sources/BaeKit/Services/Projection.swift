@@ -120,7 +120,10 @@ public final class Projection<Value: Sendable> {
     public let domains: Set<BridgeInvalidationDomain>
     private let query: @Sendable (BridgeInvalidation) async throws -> Value
     private let apply: @MainActor (Value) -> Void
-    private let onError: @MainActor (DisplayError) -> Void
+    /// The failure sink. It takes the error, not a rendered `DisplayError`:
+    /// whether a failure is worth showing at all is core's answer (a cancellation
+    /// is not), and `showError` is the one place that drops it.
+    private let onError: @MainActor (any Error) -> Void
 
     public private(set) var generation = 0
     private var requestedGeneration = 0
@@ -130,7 +133,7 @@ public final class Projection<Value: Sendable> {
         domain: BridgeInvalidationDomain,
         query: @escaping @Sendable (BridgeInvalidation) async throws -> Value,
         apply: @escaping @MainActor (Value) -> Void,
-        onError: @escaping @MainActor (DisplayError) -> Void
+        onError: @escaping @MainActor (any Error) -> Void
     ) {
         self.init(
             domains: [domain],
@@ -144,7 +147,7 @@ public final class Projection<Value: Sendable> {
         domains: Set<BridgeInvalidationDomain>,
         query: @escaping @Sendable (BridgeInvalidation) async throws -> Value,
         apply: @escaping @MainActor (Value) -> Void,
-        onError: @escaping @MainActor (DisplayError) -> Void
+        onError: @escaping @MainActor (any Error) -> Void
     ) {
         precondition(!domains.isEmpty)
         self.domains = domains
@@ -182,7 +185,7 @@ public final class Projection<Value: Sendable> {
                 logger.error(
                     "Projection refresh failed: \(error.localizedDescription)"
                 )
-                onError(DisplayError(error))
+                onError(error)
             }
         }
     }

@@ -112,7 +112,7 @@ enum ImportSearchFlow {
                     key: key,
                     tab: capturedTab,
                     source: capturedSource,
-                    error: "Search failed: \(error.displayLine)"
+                    error: error.displayLine.map { "Search failed: \($0)" }
                 )
             }
         }

@@ -51,8 +51,10 @@ internal fun disconnectConfirmMessage(
  */
 internal data class DisconnectStrings(
     val atRiskLine: (ULong) -> String,
-    val warningFailedLine: (Throwable) -> String,
-    val disconnectFailedLine: (Throwable) -> String,
+    /** Null when core says the failure has no line to show — a cancellation. */
+    val warningFailedLine: (Throwable) -> String?,
+    /** Null when core says the failure has no line to show — a cancellation. */
+    val disconnectFailedLine: (Throwable) -> String?,
 )
 
 /**

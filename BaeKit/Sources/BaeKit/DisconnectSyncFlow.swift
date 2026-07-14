@@ -99,9 +99,8 @@ public final class DisconnectSyncFlow {
                 logger.error(
                     "Failed to compute disconnect warning: \(error.localizedDescription)"
                 )
-                self.error = warningCheckFailedMessage(
-                    error.displayLine
-                )
+                // No line means nothing to say — a cancellation. Don't invent one.
+                self.error = error.displayLine.map(warningCheckFailedMessage)
                 extraWarning = nil
             }
             showConfirm = true
@@ -125,7 +124,7 @@ public final class DisconnectSyncFlow {
         }
         catch {
             logger.error("Failed to disconnect: \(error.localizedDescription)")
-            self.error = disconnectFailedMessage(error.localizedDescription)
+            self.error = error.displayLine.map(disconnectFailedMessage)
         }
     }
 }

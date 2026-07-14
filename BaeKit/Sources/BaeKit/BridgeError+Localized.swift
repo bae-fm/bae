@@ -25,17 +25,15 @@ extension BridgeEntityKind {
 }
 
 extension BridgeError {
-    /// The localized, user-facing line for this error. `Cancelled` shows
-    /// nothing (the user dismissed it themselves).
-    public var localizedLine: String {
-        switch self {
-        case .Cancelled:
-            return ""
-        case .NotFound(let entity, _):
-            return entity.notFoundLine
-        case .Diagnostic(let category, _):
-            return category.localizedLine
-        }
+    /// The localized, user-facing line for this error, or `nil` when it has none
+    /// to show — core's answer, not this app's. A cancellation is the user's own
+    /// doing and says nothing back to them.
+    ///
+    /// `nil`, never `""`: an empty string is not "nothing", it is a line that
+    /// happens to be blank, and it used to open the error alert with an empty
+    /// message.
+    public var localizedLine: String? {
+        bridgeErrorLineKey(error: self).map(localizedCoreString)
     }
 
     /// The opaque Rust error chain, for logs and a copyable disclosure. Present
@@ -52,18 +50,15 @@ extension BridgeError {
 }
 
 extension BridgePlaybackErrorReason {
-    /// The localized, user-facing line for this playback failure. The two
-    /// actionable cloud-only cases resolve their own keyed line; everything
-    /// else renders through the shared `BridgeError` path.
-    public var localizedLine: String {
+    /// The localized, user-facing line for this playback failure, or `nil` when
+    /// there is none. The two actionable cloud-only cases resolve their own keyed
+    /// line; everything else renders through the shared `BridgeError` path, which
+    /// is also where "no line at all" comes from.
+    public var localizedLine: String? {
         switch self {
         case .syncDisconnected, .uploadPending:
-            // bridgePlaybackErrorReasonKey returns nil only for Diagnostic,
-            // excluded above; the guard is belt-and-suspenders.
-            guard let key = bridgePlaybackErrorReasonKey(reason: self) else {
-                return ""
-            }
-            return localizedCoreString(key)
+            return bridgePlaybackErrorReasonKey(reason: self)
+                .map(localizedCoreString)
         case .diagnostic(let error):
             return error.localizedLine
         }

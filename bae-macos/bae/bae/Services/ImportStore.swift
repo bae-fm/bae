@@ -133,7 +133,8 @@ class ImportStore {
                 logger.warning(
                     "Failed to check if folder is imported: \(error)"
                 )
-                onError(error.displayLine)
+                // Nothing to say — a cancellation — means no banner.
+                error.displayLine.map(onError)
                 return
             }
         }

@@ -4,8 +4,11 @@ import Foundation
 /// detail. Both `BridgeError` and `BridgePlaybackErrorReason` satisfy it (they
 /// expose `localizedLine`/`detail` in `BridgeError+Localized`), so a
 /// `DisplayError` builds from either uniformly.
+///
+/// `localizedLine` is optional because core decides whether a failure has a line
+/// at all: a cancellation has none. `nil` means show nothing.
 public protocol LocalizedFailure {
-    var localizedLine: String { get }
+    var localizedLine: String? { get }
     var detail: String? { get }
 }
 
@@ -34,8 +37,11 @@ public struct DisplayError: Equatable {
     ///
     /// Concrete rather than `LocalizedFailure`: an existential parameter would tie
     /// with `any Error` for a `BridgeError`, which is both.
-    public init(_ failure: BridgePlaybackErrorReason) {
-        self.line = failure.localizedLine
+    ///
+    /// Fails when core says the failure has no line to show.
+    public init?(_ failure: BridgePlaybackErrorReason) {
+        guard let line = failure.localizedLine else { return nil }
+        self.line = line
         self.detail = failure.detail
     }
 
@@ -50,28 +56,32 @@ public struct DisplayError: Equatable {
     /// `BridgeError` a `String(reflecting:)` description, so it renders as a raw
     /// Rust enum dump — untranslated, with the opaque detail welded into the line
     /// instead of offered to the copy button.
-    public init(_ error: any Error) {
-        if let failure = error as? LocalizedFailure {
-            self.line = failure.localizedLine
-            self.detail = failure.detail
-        }
-        else {
+    ///
+    /// Fails when core says the failure has no line to show — a cancellation. A
+    /// Swift-origin error always has one: it is prose the UI wrote.
+    public init?(_ error: any Error) {
+        guard let failure = error as? LocalizedFailure else {
             self.line = error.localizedDescription
             self.detail = nil
+            return
         }
+        guard let line = failure.localizedLine else { return nil }
+        self.line = line
+        self.detail = failure.detail
     }
 }
 
 extension Error {
-    /// The line to show a human, for the places that hold a plain `String` rather
-    /// than a `DisplayError`. Prefer `DisplayError(error)` where the type allows
-    /// it — that one keeps the opaque detail for the "Copy Details" button.
+    /// The line to show a human, for the places that hold a plain `String?` rather
+    /// than a `DisplayError`. `nil` means there is nothing to show. Prefer
+    /// `DisplayError(error)` where the type allows it — that one keeps the opaque
+    /// detail for the "Copy Details" button.
     ///
     /// This is `localizedDescription`'s job, and `localizedDescription` cannot do
     /// it: uniffi declares `errorDescription` on `BridgeError` itself as
     /// `String(reflecting: self)`, an extension cannot override it, and in a
     /// `catch` the static type is `any Error`, so the debug dump always wins.
-    public var displayLine: String {
-        DisplayError(self).line
+    public var displayLine: String? {
+        DisplayError(self)?.line
     }
 }

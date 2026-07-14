@@ -253,14 +253,17 @@ private fun rememberDisconnectSyncFlow(
                             mapOf("count" to count.toLong()),
                         )
                     },
+                    // No detail means core says there is nothing to show — a
+                    // cancellation — so leave the inline error clear.
                     warningFailedLine = { e ->
-                        context.getString(
-                            R.string.settings_disconnect_warning_check_failed,
-                            disconnectErrorDetail(context, e),
-                        )
+                        disconnectErrorDetail(context, e)?.let {
+                            context.getString(R.string.settings_disconnect_warning_check_failed, it)
+                        }
                     },
                     disconnectFailedLine = { e ->
-                        context.getString(R.string.settings_disconnect_failed, disconnectErrorDetail(context, e))
+                        disconnectErrorDetail(context, e)?.let {
+                            context.getString(R.string.settings_disconnect_failed, it)
+                        }
                     },
                 ),
             ioDispatcher = ioDispatcher,
@@ -281,7 +284,7 @@ private fun syncProviderLabel(provider: BridgeSyncProvider): String =
 private fun disconnectErrorDetail(
     context: Context,
     error: Throwable,
-): String =
+): String? =
     when (error) {
         is BridgeException -> context.localizedLine(error)
         else -> error.message ?: error::class.java.simpleName
