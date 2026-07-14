@@ -927,6 +927,13 @@ impl LibraryManager {
         let weak_observer = Arc::new(crate::sync::upload_observer::WeakUploadObserver::new(
             Arc::downgrade(&observer),
         ));
+        let (max_uploads, max_downloads) = {
+            let config = config_handle.config();
+            (
+                crate::config::usize_bound(config.max_concurrent_uploads),
+                crate::config::usize_bound(config.max_concurrent_downloads),
+            )
+        };
         let ch = Arc::clone(&config_handle);
         let config_provider = move || ch.config().to_coven();
         let handle = coven::Coven::builder(config_provider)
@@ -936,6 +943,8 @@ impl LibraryManager {
             .apply_cloudkit_ops(cloudkit_ops.clone())
             .observer(weak_observer as Arc<dyn coven::BlobTransitionObserver>)
             .migrations(crate::migrations::all())
+            .max_concurrent_uploads(max_uploads)
+            .max_concurrent_downloads(max_downloads)
             .open()
             .map_err(|e| match e {
                 coven::CovenError::Database(error) => error,

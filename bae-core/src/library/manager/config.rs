@@ -22,6 +22,23 @@ impl LibraryManager {
             .update(|c| c.pause_between_sides = enabled)
     }
 
+    /// How many blob uploads coven's upload drain runs at once. Rejected outside
+    /// 1..=[`MAX_CONCURRENT_TRANSFERS`](crate::config::MAX_CONCURRENT_TRANSFERS):
+    /// zero would leave the drain admitting nothing. Takes effect the next time
+    /// the coven handle opens (the builder reads it at open).
+    pub fn set_max_concurrent_uploads(&self, n: u32) -> Result<(), crate::config::ConfigError> {
+        let n = crate::config::validate_concurrency(n)?;
+        self.config_handle.update(|c| c.max_concurrent_uploads = n)
+    }
+
+    /// How many blob downloads a pin fetches at once. Same bounds and open-time
+    /// application as [`Self::set_max_concurrent_uploads`].
+    pub fn set_max_concurrent_downloads(&self, n: u32) -> Result<(), crate::config::ConfigError> {
+        let n = crate::config::validate_concurrency(n)?;
+        self.config_handle
+            .update(|c| c.max_concurrent_downloads = n)
+    }
+
     /// Whether the seek bar's leading label counts down the time remaining
     /// instead of showing the time elapsed. No playback side effect — unlike
     /// `pause_between_sides`, nothing is staged on it — so the write is the whole

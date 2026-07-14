@@ -1,5 +1,6 @@
 use coven::StoreDir;
 use serde::{Deserialize, Deserializer, Serialize};
+use std::num::{NonZeroU32, NonZeroUsize};
 use std::path::PathBuf;
 use tokio::sync::watch;
 use tracing::{debug, info, warn};
@@ -22,6 +23,34 @@ use dev::dev_mode_enabled;
 use export::{default_export_filename_template, default_export_presets};
 
 pub const MCP_DEFAULT_PORT: u16 = 47777;
+
+/// Blob transfers bae runs at once, per direction, on a fresh library. Serial
+/// (1) is safe but slow; a small burst keeps a single stalled transfer from
+/// holding up the rest.
+pub const DEFAULT_CONCURRENT_TRANSFERS: u32 = 3;
+
+/// The largest transfer concurrency the UI offers and the setters accept.
+pub const MAX_CONCURRENT_TRANSFERS: u32 = 8;
+
+/// A blob-transfer concurrency setting must be at least 1 — coven's drain admits
+/// nothing at 0 and never completes — and at most [`MAX_CONCURRENT_TRANSFERS`],
+/// the ceiling the UI offers. Returns the validated value for storage.
+pub(crate) fn validate_concurrency(n: u32) -> Result<NonZeroU32, ConfigError> {
+    NonZeroU32::new(n)
+        .filter(|n| n.get() <= MAX_CONCURRENT_TRANSFERS)
+        .ok_or_else(|| {
+            ConfigError::Config(format!(
+                "transfer concurrency must be between 1 and {MAX_CONCURRENT_TRANSFERS}"
+            ))
+        })
+}
+
+/// Widen a stored concurrency setting to the [`NonZeroUsize`] coven's builder
+/// takes. Non-zero is preserved: `usize` is at least 32 bits on every platform
+/// bae targets, so a `NonZeroU32` never widens to zero.
+pub(crate) fn usize_bound(n: NonZeroU32) -> NonZeroUsize {
+    NonZeroUsize::new(n.get() as usize).expect("a NonZeroU32 widened to usize stays non-zero")
+}
 
 /// Cloud home provider selection.
 pub use coven::CloudProvider;
@@ -201,7 +230,7 @@ where
 /// bump this.** `with_defaults` is the single place a field's default is stated —
 /// the migration fills an older file's missing keys straight from it, so there is
 /// no second table to keep in step.
-pub const CONFIG_VERSION: u32 = 2;
+pub const CONFIG_VERSION: u32 = 3;
 
 /// A file written before versioning existed. Such a file has no `version` key,
 /// and is missing every field added since it was written.
@@ -254,6 +283,11 @@ pub struct ConfigYaml {
     pub default_release_export_selection: ExportSelection,
     /// Whether playback pauses between vinyl/cassette sides.
     pub pause_between_sides: bool,
+    /// How many blob uploads coven's upload drain runs at once. Device-local (a
+    /// concurrency limit is a per-machine choice, not a synced preference).
+    pub max_concurrent_uploads: NonZeroU32,
+    /// How many blob downloads a pin fetches at once. Device-local, like uploads.
+    pub max_concurrent_downloads: NonZeroU32,
     /// Whether the seek bar's leading label counts down the time remaining
     /// instead of showing the time elapsed.
     pub show_remaining_time: bool,
@@ -293,6 +327,8 @@ impl ConfigYaml {
             default_track_export_selection: self.default_track_export_selection,
             default_release_export_selection: self.default_release_export_selection,
             pause_between_sides: self.pause_between_sides,
+            max_concurrent_uploads: self.max_concurrent_uploads,
+            max_concurrent_downloads: self.max_concurrent_downloads,
             show_remaining_time: self.show_remaining_time,
             verify_decode_on_import: self.verify_decode_on_import,
             mcp: self.mcp,
@@ -317,6 +353,8 @@ impl From<&Config> for ConfigYaml {
             default_track_export_selection: config.default_track_export_selection.clone(),
             default_release_export_selection: config.default_release_export_selection.clone(),
             pause_between_sides: config.pause_between_sides,
+            max_concurrent_uploads: config.max_concurrent_uploads,
+            max_concurrent_downloads: config.max_concurrent_downloads,
             show_remaining_time: config.show_remaining_time,
             verify_decode_on_import: config.verify_decode_on_import,
             mcp: config.mcp,
@@ -371,6 +409,12 @@ pub struct Config {
     pub default_release_export_selection: ExportSelection,
     /// Whether playback pauses between vinyl/cassette sides.
     pub pause_between_sides: bool,
+    /// How many blob uploads coven's upload drain runs at once. Device-local: a
+    /// concurrency limit reflects one machine's link and CPU, so unlike most
+    /// preferences it does not follow the user across devices.
+    pub max_concurrent_uploads: NonZeroU32,
+    /// How many blob downloads a pin fetches at once. Device-local, like uploads.
+    pub max_concurrent_downloads: NonZeroU32,
     /// Whether the seek bar's leading label counts down the time remaining
     /// instead of showing the time elapsed. Defaults to `false` (elapsed). A
     /// preference like any other, so it follows the user to every device rather
@@ -522,6 +566,10 @@ impl Config {
             default_track_export_selection: ExportSelection::Original,
             default_release_export_selection: ExportSelection::Original,
             pause_between_sides: false,
+            max_concurrent_uploads: NonZeroU32::new(DEFAULT_CONCURRENT_TRANSFERS)
+                .expect("DEFAULT_CONCURRENT_TRANSFERS is non-zero"),
+            max_concurrent_downloads: NonZeroU32::new(DEFAULT_CONCURRENT_TRANSFERS)
+                .expect("DEFAULT_CONCURRENT_TRANSFERS is non-zero"),
             show_remaining_time: false,
             verify_decode_on_import: true,
             mcp: McpConfig::disabled_default(),
@@ -1029,6 +1077,78 @@ mod tests {
     }
 
     #[test]
+    fn transfer_concurrency_defaults_to_three() {
+        let tmp = TempDir::new().unwrap();
+        let config = make_test_config("lib", tmp.path().to_path_buf());
+        assert_eq!(config.max_concurrent_uploads.get(), 3);
+        assert_eq!(config.max_concurrent_downloads.get(), 3);
+    }
+
+    #[test]
+    fn validate_concurrency_bounds() {
+        assert!(
+            validate_concurrency(0).is_err(),
+            "0 deadlocks coven's drain"
+        );
+        assert_eq!(validate_concurrency(1).unwrap().get(), 1);
+        assert_eq!(
+            validate_concurrency(MAX_CONCURRENT_TRANSFERS)
+                .unwrap()
+                .get(),
+            MAX_CONCURRENT_TRANSFERS
+        );
+        assert!(
+            validate_concurrency(MAX_CONCURRENT_TRANSFERS + 1).is_err(),
+            "above the range is refused"
+        );
+    }
+
+    /// The wire this feature exists for: the value stored in `Config` is what the
+    /// coven builder is handed. `usize_bound` is the exact conversion the
+    /// `Coven::builder` chain applies to each field at open; if it dropped or
+    /// clamped the value, the knob would move nothing.
+    #[test]
+    fn stored_concurrency_widens_to_the_builder_bound() {
+        let tmp = TempDir::new().unwrap();
+        let mut config = make_test_config("lib", tmp.path().to_path_buf());
+        config.max_concurrent_uploads = NonZeroU32::new(5).unwrap();
+        config.max_concurrent_downloads = NonZeroU32::new(2).unwrap();
+        assert_eq!(usize_bound(config.max_concurrent_uploads).get(), 5);
+        assert_eq!(usize_bound(config.max_concurrent_downloads).get(), 2);
+    }
+
+    #[test]
+    fn transfer_concurrency_survives_yaml_roundtrip() {
+        let tmp = TempDir::new().unwrap();
+        let mut config = make_test_config("lib", tmp.path().to_path_buf());
+        config.max_concurrent_uploads = NonZeroU32::new(7).unwrap();
+        config.max_concurrent_downloads = NonZeroU32::new(4).unwrap();
+        config.save_to_config_yaml().unwrap();
+
+        let yaml: ConfigYaml =
+            serde_yaml::from_str(&std::fs::read_to_string(tmp.path().join("config.yaml")).unwrap())
+                .unwrap();
+        assert_eq!(yaml.max_concurrent_uploads.get(), 7);
+        assert_eq!(yaml.max_concurrent_downloads.get(), 4);
+    }
+
+    /// A hand-edited `0` is refused at load rather than reaching coven — the
+    /// `NonZeroU32` field makes the deadlocking value unrepresentable.
+    #[test]
+    fn a_zero_concurrency_fails_to_load() {
+        let mut value = full_config_yaml_value();
+        value.as_mapping_mut().unwrap().insert(
+            serde_yaml::Value::String("max_concurrent_uploads".to_string()),
+            serde_yaml::Value::Number(0.into()),
+        );
+        let yaml = serde_yaml::to_string(&value).unwrap();
+        assert!(
+            parse_config_yaml(&yaml).is_err(),
+            "a zero concurrency must not load"
+        );
+    }
+
+    #[test]
     fn config_yaml_requires_library_id() {
         assert!(
             parse_yaml_without("library_id").is_err(),
@@ -1062,6 +1182,8 @@ mod tests {
             "default_track_export_selection",
             "default_release_export_selection",
             "pause_between_sides",
+            "max_concurrent_uploads",
+            "max_concurrent_downloads",
             "show_remaining_time",
             "verify_decode_on_import",
         ] {
@@ -1135,6 +1257,8 @@ mod tests {
             "default_track_export_selection",
             "default_release_export_selection",
             "pause_between_sides",
+            "max_concurrent_uploads",
+            "max_concurrent_downloads",
             "show_remaining_time",
             "verify_decode_on_import",
             "mcp",
