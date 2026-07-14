@@ -595,8 +595,25 @@ internal static class NativeBae
             secretKey,
             HomeStorage(storage)))));
 
-    internal static string? DisconnectWarning(AppHandle handle) =>
-        CaptureValue(() => Await(handle.DisconnectWarningMessage()));
+    /// <summary>How many releases live only in the cloud and would become
+    /// unplayable if this device disconnected; 0 means nothing is at risk. The
+    /// caller renders the warning sentence from the count with its own locale's
+    /// plural rules. A null count with a message means the check itself failed.</summary>
+    internal static (long? Count, string? Error) CloudOnlyReleaseCount(AppHandle handle)
+    {
+        try
+        {
+            return (checked((long)Await(handle.CloudOnlyReleaseCount())), null);
+        }
+        catch (BridgeException.Cancelled)
+        {
+            return (null, null);
+        }
+        catch (BridgeException exception)
+        {
+            return (null, exception.Message);
+        }
+    }
 
 #if BAE_FULL_BRIDGE
     internal static string? SignInCloud(AppHandle handle, string provider, string storage) =>

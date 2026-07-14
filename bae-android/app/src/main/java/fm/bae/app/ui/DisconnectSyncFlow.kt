@@ -44,6 +44,18 @@ internal fun disconnectConfirmMessage(
 ): String = if (extraWarning.isNullOrEmpty()) base else "$base $extraWarning"
 
 /**
+ * The localized lines the disconnect flow shows: the at-risk warning for a
+ * cloud-only release count, and the failure lines for a warning check or a
+ * disconnect that errored. The screen supplies live resource-backed formatters;
+ * tests supply stubs.
+ */
+internal data class DisconnectStrings(
+    val atRiskLine: (ULong) -> String,
+    val warningFailedLine: (Throwable) -> String,
+    val disconnectFailedLine: (Throwable) -> String,
+)
+
+/**
  * Drives the disconnect confirmation and execution with injected bridge calls so
  * the screen supplies the live handle and tests supply stubs.
  *
@@ -56,10 +68,8 @@ internal fun disconnectConfirmMessage(
 internal class DisconnectSyncFlow(
     private val scope: CoroutineScope,
     private val cloudOnlyReleaseCount: suspend () -> ULong,
-    private val atRiskLine: (ULong) -> String,
     private val disconnect: () -> Unit,
-    private val warningFailedLine: (Throwable) -> String,
-    private val disconnectFailedLine: (Throwable) -> String,
+    private val strings: DisconnectStrings,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) {
     private val _state = MutableStateFlow(DisconnectSyncState())
@@ -82,13 +92,13 @@ internal class DisconnectSyncFlow(
                         val count = cloudOnlyReleaseCount()
                         DisconnectSyncState(
                             confirming = true,
-                            extraWarning = if (count > 0uL) atRiskLine(count) else null,
+                            extraWarning = if (count > 0uL) strings.atRiskLine(count) else null,
                         )
                     } catch (e: CancellationException) {
                         throw e
                     } catch (e: Throwable) {
                         logger.error("Failed to compute disconnect warning", e)
-                        DisconnectSyncState(confirming = true, error = warningFailedLine(e))
+                        DisconnectSyncState(confirming = true, error = strings.warningFailedLine(e))
                     }
             }
     }
@@ -111,7 +121,7 @@ internal class DisconnectSyncFlow(
                 throw e
             } catch (e: Throwable) {
                 logger.error("Failed to disconnect cloud provider", e)
-                DisconnectSyncState(error = disconnectFailedLine(e))
+                DisconnectSyncState(error = strings.disconnectFailedLine(e))
             }
     }
 }

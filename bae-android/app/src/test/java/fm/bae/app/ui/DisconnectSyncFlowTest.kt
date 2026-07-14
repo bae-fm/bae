@@ -31,10 +31,13 @@ class DisconnectSyncFlowTest {
         DisconnectSyncFlow(
             scope = CoroutineScope(Dispatchers.Unconfined),
             cloudOnlyReleaseCount = cloudOnlyReleaseCount,
-            atRiskLine = atRiskLine,
             disconnect = disconnect,
-            warningFailedLine = warningFailedLine,
-            disconnectFailedLine = disconnectFailedLine,
+            strings =
+                DisconnectStrings(
+                    atRiskLine = atRiskLine,
+                    warningFailedLine = warningFailedLine,
+                    disconnectFailedLine = disconnectFailedLine,
+                ),
             ioDispatcher = Dispatchers.Unconfined,
         )
 

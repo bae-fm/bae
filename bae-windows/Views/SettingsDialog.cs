@@ -231,10 +231,16 @@ internal sealed class SettingsDialog
         {
             if (!disconnectArmed)
             {
-                var (warningCurrent, warning) = await _session.RunForCurrentHandle(NativeBae.DisconnectWarning);
+                var (warningCurrent, countResult) = await _session.RunForCurrentHandle(NativeBae.CloudOnlyReleaseCount);
                 if (!warningCurrent)
                 {
                     return;
+                }
+                var (count, countError) = countResult;
+                string? warning = countError;
+                if (warning is null && count > 0)
+                {
+                    warning = Loc.Core("core.sync.cloud_only_releases", "count", count.Value);
                 }
                 if (warning is not null)
                 {

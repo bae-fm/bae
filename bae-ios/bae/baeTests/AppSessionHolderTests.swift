@@ -24,7 +24,8 @@ struct AppSessionHolderTests {
             name: "Library \(id)",
             path: "/tmp/\(id)",
             cloudProvider: nil,
-            isActive: isActive
+            isActive: isActive,
+            error: nil
         )
     }
 
