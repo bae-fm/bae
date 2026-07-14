@@ -42,8 +42,15 @@ pub fn seed_master_cache(master_id: &str, year: Option<u32>, raw_json: String) {
 }
 #[derive(Error, Debug)]
 pub enum DiscogsError {
-    #[error("HTTP request failed: {0}")]
-    Request(#[from] ReqwestError),
+    /// The request never reached a usable response — connection, DNS, timeout, a
+    /// dropped or unreadable body. Transport-level and worth retrying.
+    #[error("Discogs transport error: {0}")]
+    Transport(#[from] ReqwestError),
+    /// Discogs returned an HTTP error status not otherwise carved out below (not
+    /// 404 / 401 / 429). Distinct from `Transport` so the retry policy can repeat a
+    /// 5xx but not a 4xx, which is the server's permanent answer to this request.
+    #[error("Discogs returned an error response (status {0})")]
+    Provider(StatusCode),
     #[error("API rate limit exceeded")]
     RateLimit,
     #[error("Invalid API key")]
@@ -72,14 +79,22 @@ fn classify_discogs_response(response: Response) -> Result<Response, DiscogsErro
         StatusCode::NOT_FOUND => Err(DiscogsError::NotFound),
         StatusCode::TOO_MANY_REQUESTS => Err(DiscogsError::RateLimit),
         StatusCode::UNAUTHORIZED => Err(DiscogsError::InvalidApiKey),
-        _ => Err(DiscogsError::Request(
-            response.error_for_status().unwrap_err(),
-        )),
+        other => Err(DiscogsError::Provider(other)),
     }
 }
 
+/// Retry only what a retry can fix: transport failures, an explicit rate-limit,
+/// and Discogs server errors. A 4xx `Provider` status is the server's permanent
+/// answer to this exact request — retrying it burns three round trips and three
+/// rate-limit waits to hear the same 4xx again.
 fn should_retry_discogs(error: &DiscogsError) -> bool {
-    matches!(error, DiscogsError::RateLimit | DiscogsError::Request(_))
+    match error {
+        DiscogsError::Transport(_) | DiscogsError::RateLimit => true,
+        DiscogsError::Provider(status) => status.is_server_error(),
+        DiscogsError::InvalidApiKey | DiscogsError::NotFound | DiscogsError::Serialization(_) => {
+            false
+        }
+    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -459,11 +474,14 @@ impl DiscogsClient {
                         DiscogsError::RateLimit => warn!("Discogs rate limit exceeded"),
                         DiscogsError::InvalidApiKey => warn!("Discogs invalid API key"),
                         DiscogsError::NotFound => warn!("Discogs API returned not found"),
-                        DiscogsError::Request(_) => warn!("Discogs API request failed"),
+                        DiscogsError::Transport(_) => warn!("Discogs API request failed"),
+                        DiscogsError::Provider(status) => {
+                            warn!("Discogs API error response (status {status})")
+                        }
                         DiscogsError::Serialization(_) => {}
                     })?;
                 debug!("Response status: {}", response.status());
-                response.json().await.map_err(DiscogsError::Request)
+                response.json().await.map_err(DiscogsError::Transport)
             },
         )
         .await?;
@@ -507,7 +525,7 @@ impl DiscogsClient {
             crate::retry::linear_backoff,
             || async {
                 let response = self.send(self.get(&url)).await?;
-                let raw_json = response.text().await.map_err(DiscogsError::Request)?;
+                let raw_json = response.text().await.map_err(DiscogsError::Transport)?;
                 let release = parse_discogs_release_json(&raw_json)?;
                 Ok((release, raw_json))
             },
@@ -540,7 +558,7 @@ impl DiscogsClient {
             crate::retry::linear_backoff,
             || async {
                 let response = self.send(self.get(&url)).await?;
-                let raw_json = response.text().await.map_err(DiscogsError::Request)?;
+                let raw_json = response.text().await.map_err(DiscogsError::Transport)?;
                 let year = parse_discogs_master_year(&raw_json)?;
                 Ok((year, raw_json))
             },
@@ -577,7 +595,7 @@ impl DiscogsClient {
                     Err(error) => return Err(error),
                 };
                 let json: serde_json::Value =
-                    response.json().await.map_err(DiscogsError::Request)?;
+                    response.json().await.map_err(DiscogsError::Transport)?;
                 Ok(Some(json))
             },
         )
@@ -684,6 +702,7 @@ mod tests {
     const RATE_LIMITED: &str = "HTTP/1.1 429 Too Many Requests\r\nContent-Length: 0\r\n\r\n";
     const UNAUTHORIZED: &str = "HTTP/1.1 401 Unauthorized\r\nContent-Length: 0\r\n\r\n";
     const NOT_FOUND: &str = "HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\n\r\n";
+    const BAD_REQUEST: &str = "HTTP/1.1 400 Bad Request\r\nContent-Length: 0\r\n\r\n";
 
     fn discogs_test_guard() -> &'static tokio::sync::Mutex<()> {
         static GUARD: OnceLock<tokio::sync::Mutex<()>> = OnceLock::new();
@@ -901,6 +920,51 @@ mod tests {
 
         assert!(matches!(error, DiscogsError::InvalidApiKey));
         assert_eq!(request_count.load(Ordering::SeqCst), 1);
+    }
+
+    /// A 4xx that isn't one of the carved-out statuses is the server's permanent
+    /// answer to this request — it must be tried once, not retried. Before the
+    /// error split it landed in `Request` and was retried like a transport failure.
+    #[tokio::test]
+    async fn search_does_not_retry_client_error() {
+        let _guard = discogs_test_guard().lock().await;
+        RATE_LIMITER.reset().await;
+        let (url, request_count) = discogs_response_server(vec![BAD_REQUEST]).await;
+        let mut client = DiscogsClient::new("token".to_string());
+        client.base_url = url;
+
+        let error = client
+            .search_with_params(&DiscogsSearchParams::default())
+            .await
+            .expect_err("a 400 should fail without retry");
+
+        assert!(
+            matches!(error, DiscogsError::Provider(StatusCode::BAD_REQUEST)),
+            "expected Provider(400), got {error:?}",
+        );
+        assert_eq!(request_count.load(Ordering::SeqCst), 1);
+    }
+
+    #[test]
+    fn retry_policy_repeats_only_transient_failures() {
+        assert!(should_retry_discogs(&DiscogsError::RateLimit));
+        assert!(should_retry_discogs(&DiscogsError::Provider(
+            StatusCode::INTERNAL_SERVER_ERROR
+        )));
+        assert!(should_retry_discogs(&DiscogsError::Provider(
+            StatusCode::SERVICE_UNAVAILABLE
+        )));
+        assert!(!should_retry_discogs(&DiscogsError::Provider(
+            StatusCode::BAD_REQUEST
+        )));
+        assert!(!should_retry_discogs(&DiscogsError::Provider(
+            StatusCode::FORBIDDEN
+        )));
+        assert!(!should_retry_discogs(&DiscogsError::Provider(
+            StatusCode::UNPROCESSABLE_ENTITY
+        )));
+        assert!(!should_retry_discogs(&DiscogsError::InvalidApiKey));
+        assert!(!should_retry_discogs(&DiscogsError::NotFound));
     }
 
     #[tokio::test]

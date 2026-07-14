@@ -426,7 +426,8 @@ fn validation_from_validate_result(
         Err(DiscogsError::InvalidApiKey) => DiscogsValidation::Rejected,
         Err(
             e @ (DiscogsError::RateLimit
-            | DiscogsError::Request(_)
+            | DiscogsError::Transport(_)
+            | DiscogsError::Provider(_)
             | DiscogsError::NotFound
             | DiscogsError::Serialization(_)),
         ) => {
