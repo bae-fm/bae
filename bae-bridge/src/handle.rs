@@ -622,6 +622,9 @@ impl AppHandle {
     }
 
     pub fn rename_library(&self, library_id: String, name: String) -> Result<(), BridgeError> {
+        // Trim + non-blank is core policy, applied here rather than in each app.
+        let name = bae_core::library_name::LibraryName::parse(&name)
+            .map_err(|e| BridgeError::config(e.to_string()))?;
         self.services
             .library_manager()
             .rename_library(&library_id, &name)?;

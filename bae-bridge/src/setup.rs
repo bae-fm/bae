@@ -228,7 +228,13 @@ pub fn discover_libraries() -> Result<Vec<BridgeLibrary>, BridgeError> {
 pub fn create_library(name: Option<String>) -> Result<BridgeLibrary, BridgeError> {
     let ids = std::sync::Arc::new(coven::UuidProvider);
     let config = match name {
-        Some(n) => bae_core::library::create_library(n, ids.as_ref()),
+        Some(n) => {
+            // Trim + non-blank is core policy: parse before creating, so a blank
+            // name is rejected the same way a rename's is.
+            let name = bae_core::library_name::LibraryName::parse(&n)
+                .map_err(|e| BridgeError::config(e.to_string()))?;
+            bae_core::library::create_library(name, ids.as_ref())
+        }
         None => bae_core::library::create_library_default(ids.as_ref()),
     }
     .map_err(|e| BridgeError::config(format!("{e}")))?;
@@ -299,7 +305,8 @@ pub fn restore_from_cloud(
 ) -> Result<BridgeLibrary, BridgeError> {
     use bae_core::sync::RestoreSource;
     use coven::CloudHomeJoinInfo;
-    let library_name = library_name.unwrap_or_else(bae_core::library_name::generate_library_name);
+    let library_name = library_name
+        .unwrap_or_else(|| bae_core::library_name::generate_library_name().into_string());
     let config = config.into_core();
     let library_id = config.library_id.clone();
     let encryption_key_hex = config.encryption_key.clone();

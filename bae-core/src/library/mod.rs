@@ -72,7 +72,10 @@ pub fn create_library_default(ids: &dyn coven::IdProvider) -> Result<Config, Con
     create_library(crate::library_name::generate_library_name(), ids)
 }
 
-pub fn create_library(name: String, ids: &dyn coven::IdProvider) -> Result<Config, ConfigError> {
+pub fn create_library(
+    name: crate::library_name::LibraryName,
+    ids: &dyn coven::IdProvider,
+) -> Result<Config, ConfigError> {
     let home_dir = dirs::home_dir().ok_or_else(|| {
         ConfigError::Io(std::io::Error::new(
             std::io::ErrorKind::NotFound,
@@ -90,7 +93,7 @@ pub fn create_library(name: String, ids: &dyn coven::IdProvider) -> Result<Confi
     ));
     std::fs::create_dir_all(&*library_dir)?;
     let device_id = ids.new_id();
-    let config = Config::with_defaults(library_id, device_id, library_dir, name);
+    let config = Config::with_defaults(library_id, device_id, library_dir, name.into_string());
     config.save_to_config_yaml()?;
     config.save_active_library()?;
     Ok(config)

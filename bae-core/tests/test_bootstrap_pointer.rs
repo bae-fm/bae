@@ -111,7 +111,11 @@ fn active_pointer() -> Option<String> {
 #[serial]
 fn bootstrap_of_locked_library_leaves_active_pointer() {
     let home = fake_home();
-    let a = create_library("Library A".into(), &UuidProvider).unwrap();
+    let a = create_library(
+        bae_core::library_name::LibraryName::parse("Library A").unwrap(),
+        &UuidProvider,
+    )
+    .unwrap();
     let a_id = a.store_id.clone();
     let b_id = write_locked_library(home.path(), "Library B");
 
@@ -142,7 +146,11 @@ fn bootstrap_of_locked_library_leaves_active_pointer() {
 #[serial]
 fn bootstrap_of_unlocked_library_advances_active_pointer() {
     let home = fake_home();
-    create_library("Library A".into(), &UuidProvider).unwrap();
+    create_library(
+        bae_core::library_name::LibraryName::parse("Library A").unwrap(),
+        &UuidProvider,
+    )
+    .unwrap();
     let b_id = write_plain_library(home.path(), "Library B");
 
     let app = bootstrap(
@@ -168,7 +176,11 @@ fn bootstrap_of_unlocked_library_advances_active_pointer() {
 #[serial]
 fn bootstrap_that_fails_leaves_active_pointer() {
     let home = fake_home();
-    let a = create_library("Library A".into(), &UuidProvider).unwrap();
+    let a = create_library(
+        bae_core::library_name::LibraryName::parse("Library A").unwrap(),
+        &UuidProvider,
+    )
+    .unwrap();
     let a_id = a.store_id.clone();
     let b_id = write_plain_library(home.path(), "Library B");
 
@@ -205,7 +217,11 @@ fn bootstrap_that_fails_leaves_active_pointer() {
 #[serial]
 fn dropping_running_app_releases_the_store_lock_for_reopen() {
     let _home = fake_home();
-    let lib = create_library("Library A".into(), &UuidProvider).unwrap();
+    let lib = create_library(
+        bae_core::library_name::LibraryName::parse("Library A").unwrap(),
+        &UuidProvider,
+    )
+    .unwrap();
     let id = lib.store_id.clone();
 
     let app = bootstrap(
@@ -243,7 +259,11 @@ fn dropping_running_app_releases_the_store_lock_for_reopen() {
 #[serial]
 fn unlock_then_reopen_advances_active_pointer() {
     let home = fake_home();
-    let a = create_library("Library A".into(), &UuidProvider).unwrap();
+    let a = create_library(
+        bae_core::library_name::LibraryName::parse("Library A").unwrap(),
+        &UuidProvider,
+    )
+    .unwrap();
     let a_id = a.store_id.clone();
     let b_id = write_locked_library_without_home(home.path(), "Library B");
 

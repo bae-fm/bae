@@ -662,14 +662,12 @@ impl ConfigHandle {
         })
     }
 
-    /// Rename the library.
-    pub fn rename_library(&self, name: &str) -> Result<(), ConfigError> {
-        if name.is_empty() {
-            return Err(ConfigError::Config(
-                "Library name cannot be empty".to_string(),
-            ));
-        }
-        self.update(|c| c.store_name = name.to_string())
+    /// Rename the library. The name is already validated non-blank by its type.
+    pub fn rename_library(
+        &self,
+        name: &crate::library_name::LibraryName,
+    ) -> Result<(), ConfigError> {
+        self.update(|c| c.store_name = name.as_str().to_string())
     }
 }
 
@@ -681,7 +679,7 @@ impl ConfigHandle {
 pub fn rename_inactive_library(
     bae_dir: &std::path::Path,
     library_id: &str,
-    new_name: &str,
+    new_name: &crate::library_name::LibraryName,
 ) -> Result<(), ConfigError> {
     let library_dir = find_library_by_id(bae_dir, library_id)
         .ok_or_else(|| ConfigError::Config(format!("library not found: {library_id}")))?;
@@ -689,7 +687,7 @@ pub fn rename_inactive_library(
     let content = std::fs::read_to_string(&config_path)?;
     let mut yaml: ConfigYaml =
         serde_yaml::from_str(&content).map_err(|e| ConfigError::Serialization(e.to_string()))?;
-    yaml.library_name = new_name.to_string();
+    yaml.library_name = new_name.as_str().to_string();
     let serialized =
         serde_yaml::to_string(&yaml).map_err(|e| ConfigError::Serialization(e.to_string()))?;
     write_atomic_io(&config_path, serialized.as_bytes())?;
@@ -1602,9 +1600,10 @@ mod tests {
         config.save_to_config_yaml().unwrap();
         let handle = ConfigHandle::new(config);
 
-        handle.rename_library("New Name").unwrap();
+        handle
+            .rename_library(&crate::library_name::LibraryName::parse("New Name").unwrap())
+            .unwrap();
         assert_eq!(handle.config().store_name, "New Name");
-        assert!(handle.rename_library("").is_err());
 
         let yaml: ConfigYaml = serde_yaml::from_str(
             &std::fs::read_to_string(library_path.join("config.yaml")).unwrap(),

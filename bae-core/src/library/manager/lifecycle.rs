@@ -10,13 +10,13 @@ use super::*;
 impl LibraryManager {
     /// Rename a library by id. The active library renames through the reactive
     /// `ConfigState`, so current subscribers see it; any other library isn't loaded
-    /// in memory, so its `config.yaml` is edited on disk instead.
-    pub fn rename_library(&self, library_id: &str, name: &str) -> Result<(), LibraryError> {
-        if name.trim().is_empty() {
-            return Err(LibraryError::Validation(
-                "Library name cannot be empty".to_string(),
-            ));
-        }
+    /// in memory, so its `config.yaml` is edited on disk instead. The name is
+    /// already validated non-blank by its type.
+    pub fn rename_library(
+        &self,
+        library_id: &str,
+        name: &crate::library_name::LibraryName,
+    ) -> Result<(), LibraryError> {
         if library_id == self.config_handle.config().store_id {
             self.config_handle.rename_library(name)?;
             return Ok(());
