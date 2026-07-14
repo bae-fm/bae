@@ -97,8 +97,14 @@ impl ImportFolderRegistry {
             serde_yaml::to_string(self).map_err(|e| crate::import::ImportError::Registry {
                 detail: e.to_string(),
             })?;
-        std::fs::write(&path, yaml).map_err(|e| crate::import::ImportError::Registry {
-            detail: format!("writing {}: {e}", path.display()),
+        // Atomic write: this file is durable user intent (watched roots + skip
+        // marks). A torn in-place write would truncate it, and `load` recovers a
+        // truncated file by starting empty — silently losing the list. temp +
+        // rename means a crash leaves the whole old file, never a partial one.
+        crate::util::atomic_write::write_atomic_io(&path, yaml.as_bytes()).map_err(|e| {
+            crate::import::ImportError::Registry {
+                detail: format!("writing {}: {e}", path.display()),
+            }
         })
     }
 
@@ -184,6 +190,50 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let library_dir = StoreDir::new(dir.path().to_path_buf());
         (dir, library_dir)
+    }
+
+    /// A save that cannot complete must leave the previously-persisted file
+    /// intact, never a truncated one — the whole point of the atomic write. With
+    /// the parent dir read-only, an in-place `std::fs::write` would still modify
+    /// the existing file (writing an existing file needs write on the file, not
+    /// the dir) and destroy it; the atomic temp-then-rename cannot create its temp
+    /// there, so it fails and the old file survives.
+    #[cfg(unix)]
+    #[test]
+    fn save_failure_preserves_the_existing_registry() {
+        use std::os::unix::fs::PermissionsExt;
+
+        let (tmp, library_dir) = temp_library_dir();
+        let mut registry = ImportFolderRegistry::load(&library_dir);
+        registry
+            .add(&library_dir, "/music/keep".to_string())
+            .unwrap();
+
+        // Make the parent unwritable, so the next save's temp file cannot be
+        // created there.
+        let read_only = std::fs::Permissions::from_mode(0o555);
+        std::fs::set_permissions(tmp.path(), read_only).unwrap();
+
+        let mut doomed = ImportFolderRegistry::default();
+        doomed.folders.push("/music/replacement".to_string());
+        let result = doomed.save(&library_dir);
+
+        // Restore write access so TempDir cleanup and the reload below succeed.
+        std::fs::set_permissions(tmp.path(), std::fs::Permissions::from_mode(0o755)).unwrap();
+
+        assert!(
+            result.is_err(),
+            "a save that cannot write atomically must fail, not silently modify in place",
+        );
+        let reloaded = ImportFolderRegistry::load(&library_dir);
+        assert_eq!(
+            reloaded.watched_folders(),
+            vec![WatchedFolder {
+                path: "/music/keep".to_string(),
+                name: "keep".to_string(),
+            }],
+            "the existing registry must survive a failed save",
+        );
     }
 
     #[test]

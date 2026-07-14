@@ -4,7 +4,6 @@ use std::path::PathBuf;
 use tokio::sync::watch;
 use tracing::{debug, info, warn};
 
-mod atomic_write;
 mod dev;
 mod export;
 mod keyring;
@@ -18,7 +17,7 @@ pub use keyring::init_keyring;
 #[cfg(any(test, feature = "test-utils"))]
 pub use keyring::install_test_keyring;
 
-use atomic_write::{write_atomic, write_atomic_io, WriteError};
+use crate::util::atomic_write::{write_atomic, write_atomic_io, WriteError};
 use dev::dev_mode_enabled;
 use export::{default_export_filename_template, default_export_presets};
 

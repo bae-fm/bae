@@ -6,24 +6,24 @@ use std::path::Path;
 /// rename landed and readers see the new bytes; only post-commit durability
 /// work failed) or not (the target file is untouched).
 #[derive(Debug)]
-pub(super) enum WriteError<E> {
+pub(crate) enum WriteError<E> {
     BeforeCommit(E),
     AfterCommit(E),
 }
 
 impl<E> WriteError<E> {
-    pub(super) fn committed(&self) -> bool {
+    pub(crate) fn committed(&self) -> bool {
         matches!(self, Self::AfterCommit(_))
     }
 
-    pub(super) fn into_inner(self) -> E {
+    pub(crate) fn into_inner(self) -> E {
         match self {
             Self::BeforeCommit(e) | Self::AfterCommit(e) => e,
         }
     }
 
     /// Convert the payload, preserving the commit phase.
-    pub(super) fn map<F>(self, f: impl FnOnce(E) -> F) -> WriteError<F> {
+    pub(crate) fn map<F>(self, f: impl FnOnce(E) -> F) -> WriteError<F> {
         match self {
             Self::BeforeCommit(e) => WriteError::BeforeCommit(f(e)),
             Self::AfterCommit(e) => WriteError::AfterCommit(f(e)),
@@ -31,7 +31,7 @@ impl<E> WriteError<E> {
     }
 }
 
-pub(super) fn write_atomic(path: &Path, bytes: &[u8]) -> Result<(), WriteError<std::io::Error>> {
+pub(crate) fn write_atomic(path: &Path, bytes: &[u8]) -> Result<(), WriteError<std::io::Error>> {
     let parent = path
         .parent()
         .filter(|parent| !parent.as_os_str().is_empty())
@@ -61,7 +61,7 @@ pub(super) fn write_atomic(path: &Path, bytes: &[u8]) -> Result<(), WriteError<s
     sync_parent_dir(parent).map_err(WriteError::AfterCommit)
 }
 
-pub(super) fn write_atomic_io(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
+pub(crate) fn write_atomic_io(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
     write_atomic(path, bytes).map_err(WriteError::into_inner)
 }
 
