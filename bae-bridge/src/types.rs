@@ -4180,6 +4180,9 @@ mod loc_key_coverage {
         "core.duration.hours_minutes",
         // Release-group card pressing count.
         "core.import.pressings",
+        // Disconnect-sync confirmation: releases that live only in the cloud (the
+        // UI composes the count into its own base sentence).
+        "core.sync.cloud_only_releases",
         // Generic lookup-failure line for the keyless `Diagnostic` variant:
         // `bridge_lookup_failure_key` returns `None`, the UI shows this line.
         "core.lookup.failure.diagnostic",

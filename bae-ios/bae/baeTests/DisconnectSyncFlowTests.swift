@@ -35,9 +35,10 @@ struct DisconnectSyncFlowTests {
     }
 
     private func makeFlow(
-        warningMessage: @escaping @Sendable () async throws -> String? = {
-            nil
+        cloudOnlyReleaseCount: @escaping @Sendable () async throws -> UInt64 = {
+            0
         },
+        atRiskMessage: @escaping (UInt64) -> String = { "\($0) at risk." },
         disconnect: @escaping @Sendable () throws -> Void = {},
         deleteRestoreCode: @escaping () -> Void = {},
         baseMessage: @escaping () -> String = { "Disconnect." },
@@ -49,7 +50,8 @@ struct DisconnectSyncFlowTests {
         }
     ) -> DisconnectSyncFlow {
         DisconnectSyncFlow(
-            warningMessage: warningMessage,
+            cloudOnlyReleaseCount: cloudOnlyReleaseCount,
+            atRiskMessage: atRiskMessage,
             disconnect: disconnect,
             deleteRestoreCode: deleteRestoreCode,
             baseMessage: baseMessage,
@@ -68,8 +70,8 @@ struct DisconnectSyncFlowTests {
 
     @Test("prompt appends the at-risk warning after a single space")
     func promptAppendsWarning() async {
-        let warning = "2 releases are only in the cloud."
-        let flow = makeFlow(warningMessage: { warning })
+        let warning = "2 at risk."
+        let flow = makeFlow(cloudOnlyReleaseCount: { 2 })
         let base = flow.message
 
         flow.promptDisconnect()
@@ -81,7 +83,7 @@ struct DisconnectSyncFlowTests {
 
     @Test("prompt with no at-risk releases shows the base copy only")
     func promptWithoutWarning() async {
-        let flow = makeFlow(warningMessage: { nil })
+        let flow = makeFlow(cloudOnlyReleaseCount: { 0 })
         let base = flow.message
 
         flow.promptDisconnect()
@@ -93,7 +95,9 @@ struct DisconnectSyncFlowTests {
 
     @Test("a failed at-risk check still opens the confirmation, with an error")
     func promptWarningFailureStillOpens() async {
-        let flow = makeFlow(warningMessage: { throw StubError.notImplemented })
+        let flow = makeFlow(cloudOnlyReleaseCount: {
+            throw StubError.notImplemented
+        })
 
         flow.promptDisconnect()
         await waitUntil { flow.showConfirm }
@@ -138,20 +142,20 @@ struct DisconnectSyncFlowTests {
     @Test("a superseding prompt cancels the prior warning query")
     func supersedingPromptCancelsPrior() async {
         let recorder = Recorder()
-        let flow = makeFlow(warningMessage: {
+        let flow = makeFlow(cloudOnlyReleaseCount: {
             if recorder.recordWarning() == 0 {
                 // First call: block until cancelled by the second prompt.
                 try await Task.sleep(for: .seconds(30))
-                return "stale first result"
+                return 99
             }
-            return "second result"
+            return 2
         })
 
         flow.promptDisconnect()
         flow.promptDisconnect()
         await waitUntil { flow.showConfirm }
 
-        #expect(flow.extraWarning == "second result")
-        #expect(flow.message.hasSuffix("second result"))
+        #expect(flow.extraWarning == "2 at risk.")
+        #expect(flow.message.hasSuffix("2 at risk."))
     }
 }

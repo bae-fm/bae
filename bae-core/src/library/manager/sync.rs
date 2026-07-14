@@ -114,13 +114,18 @@ impl LibraryManager {
         Ok(())
     }
 
-    /// Warning text to append to the disconnect-sync confirmation when the
-    /// library has releases reachable only through cloud sync — remote and not
-    /// pinned in coven's cache. Returns `None` when no releases are at risk, so the
-    /// dialog just shows its base message. Asks coven's cache per remote release
-    /// (a representative blob in `storage/pinned/`); pinned-ness is coven cache
-    /// state, never a bae column.
-    pub async fn disconnect_warning_message(&self) -> Result<Option<String>, LibraryError> {
+    /// How many releases are reachable only through cloud sync — remote and not
+    /// pinned in coven's cache — and would become unplayable if this device
+    /// disconnected. `0` means nothing is at risk.
+    ///
+    /// The count is the domain fact; the sentence is not. Each surface renders it
+    /// with its own locale's plural rules from the `core.sync.cloud_only_releases`
+    /// catalog key, the same way the release-group card renders
+    /// `core.import.pressings`.
+    ///
+    /// Asks coven's cache per remote release (a representative blob in
+    /// `storage/pinned/`); pinned-ness is coven cache state, never a bae column.
+    pub async fn cloud_only_release_count(&self) -> Result<u64, LibraryError> {
         let remote_file_ids = self.database.get_remote_release_file_ids().await?;
         let mut count: u64 = 0;
         for any_file_id in &remote_file_ids {
@@ -128,18 +133,7 @@ impl LibraryManager {
                 count += 1;
             }
         }
-        Ok(match count {
-            0 => None,
-            1 => Some(
-                "1 release is only stored in the cloud — it will become unplayable \
-                 until you reconnect."
-                    .to_string(),
-            ),
-            n => Some(format!(
-                "{n} releases are only stored in the cloud — they will become \
-                 unplayable until you reconnect."
-            )),
-        })
+        Ok(count)
     }
 
     /// Build, start, and attach a sync manager. Used once at startup for a

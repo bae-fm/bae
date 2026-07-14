@@ -31,10 +31,10 @@ public final class Sync: Sendable, Observable {
     /// Remove a device from the library and rotate the library key.
     public let removeMember:
         @Sendable (_ publicKeyHex: String) async throws -> Void
-    /// Warning text for the disconnect-sync confirmation: `nil` when no
-    /// releases will become unplayable, otherwise a pre-formatted sentence
-    /// the UI appends to the base "this will stop syncing" message.
-    public let disconnectWarningMessage: @Sendable () async throws -> String?
+    /// How many releases live only in the cloud and would become unplayable if
+    /// this device disconnected. `0` means nothing is at risk; the UI renders the
+    /// sentence itself, with its own locale's plural rules.
+    public let cloudOnlyReleaseCount: @Sendable () async throws -> UInt64
     /// Retry failed cloud-outbox uploads now (clears their backoff and kicks
     /// the sync loop).
     public let retryOutbox: @Sendable () async throws -> Void
@@ -94,9 +94,9 @@ public final class Sync: Sendable, Observable {
             _ in
             throw StubError.notImplemented
         },
-        disconnectWarningMessage:
+        cloudOnlyReleaseCount:
             @escaping @Sendable () async throws
-            -> String? = { throw StubError.notImplemented },
+            -> UInt64 = { throw StubError.notImplemented },
         retryOutbox: @escaping @Sendable () async throws -> Void = {},
         renameLibrary: @escaping @Sendable (String, String) throws -> Void = {
             _,
@@ -122,7 +122,7 @@ public final class Sync: Sendable, Observable {
         self.getMembers = getMembers
         self.inviteMember = inviteMember
         self.removeMember = removeMember
-        self.disconnectWarningMessage = disconnectWarningMessage
+        self.cloudOnlyReleaseCount = cloudOnlyReleaseCount
         self.retryOutbox = retryOutbox
         self.triggerSync = triggerSync
         self.renameLibrary = renameLibrary
@@ -169,8 +169,8 @@ public final class Sync: Sendable, Observable {
                 )
             },
             removeMember: { try await handle.removeMember(publicKeyHex: $0) },
-            disconnectWarningMessage: {
-                try await handle.disconnectWarningMessage()
+            cloudOnlyReleaseCount: {
+                try await handle.cloudOnlyReleaseCount()
             },
             retryOutbox: { try await handle.retryOutbox() },
             renameLibrary: {

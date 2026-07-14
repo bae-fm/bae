@@ -11,7 +11,8 @@ private let logger = Logger.bae("DisconnectSyncFlow")
 /// reconnecting needs another device because it has no provider-setup flow,
 /// macOS omits that because it does), and its error-string templates (tests and
 /// the shared package can't resolve an app catalog's localized strings, so the
-/// app resolving them owns them).
+/// app resolving them owns them). The at-risk sentence is owned the same way:
+/// bae-core supplies the count, the app pluralizes it for its locale.
 ///
 /// Two ordering invariants the flow enforces:
 /// - the disconnect runs off the main actor, because bae-core joins the
@@ -22,9 +23,12 @@ private let logger = Logger.bae("DisconnectSyncFlow")
 @MainActor
 @Observable
 public final class DisconnectSyncFlow {
-    /// bae-core's pre-formatted at-risk sentence when releases live only in the
-    /// cloud, or `nil` when nothing is at risk.
-    private let warningMessage: @Sendable () async throws -> String?
+    /// How many releases live only in the cloud, from bae-core. `0` means nothing
+    /// is at risk.
+    private let cloudOnlyReleaseCount: @Sendable () async throws -> UInt64
+    /// Renders that count as the localized at-risk sentence, with the app's own
+    /// plural rules (`core.sync.cloud_only_releases`). Only called for counts > 0.
+    private let atRiskMessage: (UInt64) -> String
     /// Disconnects the provider. Synchronous and join-blocking, so callers run
     /// it off the main actor.
     private let disconnect: @Sendable () throws -> Void
@@ -42,8 +46,8 @@ public final class DisconnectSyncFlow {
 
     /// Whether the confirmation dialog is shown.
     public var showConfirm = false
-    /// bae-core's pre-formatted at-risk sentence to append to the confirmation
-    /// body, or `nil` when nothing is at risk (or the check failed).
+    /// The at-risk sentence to append to the confirmation body, or `nil` when
+    /// nothing is at risk (or the check failed).
     public var extraWarning: String?
     /// Inline error line for the Sync section, or `nil`.
     public var error: String?
@@ -52,14 +56,16 @@ public final class DisconnectSyncFlow {
     private var warningTask: Task<Void, Never>?
 
     public init(
-        warningMessage: @escaping @Sendable () async throws -> String?,
+        cloudOnlyReleaseCount: @escaping @Sendable () async throws -> UInt64,
+        atRiskMessage: @escaping (UInt64) -> String,
         disconnect: @escaping @Sendable () throws -> Void,
         deleteRestoreCode: @escaping () -> Void,
         baseMessage: @escaping () -> String,
         warningCheckFailedMessage: @escaping (String) -> String,
         disconnectFailedMessage: @escaping (String) -> String
     ) {
-        self.warningMessage = warningMessage
+        self.cloudOnlyReleaseCount = cloudOnlyReleaseCount
+        self.atRiskMessage = atRiskMessage
         self.disconnect = disconnect
         self.deleteRestoreCode = deleteRestoreCode
         self.baseMessage = baseMessage
@@ -68,8 +74,7 @@ public final class DisconnectSyncFlow {
     }
 
     /// Confirmation body: the platform's base sentence and — when releases live
-    /// only in the cloud — bae-core's pre-formatted at-risk sentence appended
-    /// verbatim.
+    /// only in the cloud — the localized at-risk sentence appended to it.
     public var message: String {
         guard let extraWarning else { return baseMessage() }
         return "\(baseMessage()) \(extraWarning)"
@@ -84,7 +89,8 @@ public final class DisconnectSyncFlow {
         warningTask?.cancel()
         warningTask = Task {
             do {
-                extraWarning = try await warningMessage()
+                let count = try await cloudOnlyReleaseCount()
+                extraWarning = count > 0 ? atRiskMessage(count) : nil
             }
             catch is CancellationError {
                 return

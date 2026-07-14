@@ -24,8 +24,8 @@ internal data class DisconnectSyncState(
     /** Whether the confirmation dialog is shown. */
     val confirming: Boolean = false,
     /**
-     * bae-core's pre-formatted at-risk sentence to append to the confirmation
-     * body, or null when nothing is at risk (or the check itself failed).
+     * The localized at-risk sentence to append to the confirmation body, or null
+     * when nothing is at risk (or the check itself failed).
      */
     val extraWarning: String? = null,
     /** Inline error line in the Sync section, or null. */
@@ -33,11 +33,10 @@ internal data class DisconnectSyncState(
 )
 
 /**
- * The confirmation body: a localized [base] sentence with bae-core's
- * pre-formatted at-risk sentence appended verbatim after a single space when
- * present. The at-risk sentence is the one string bae-core hands over already
- * rendered (a deliberate exception to keeping locale out of the bridge), so it
- * is not re-localized here.
+ * The confirmation body: a localized [base] sentence with the at-risk sentence
+ * appended after a single space when present. bae-core supplies the count; the
+ * sentence itself is resolved here from `core.sync.cloud_only_releases`, with
+ * this locale's plural rules.
  */
 internal fun disconnectConfirmMessage(
     base: String,
@@ -56,7 +55,8 @@ internal fun disconnectConfirmMessage(
  */
 internal class DisconnectSyncFlow(
     private val scope: CoroutineScope,
-    private val warningMessage: suspend () -> String?,
+    private val cloudOnlyReleaseCount: suspend () -> ULong,
+    private val atRiskLine: (ULong) -> String,
     private val disconnect: () -> Unit,
     private val warningFailedLine: (Throwable) -> String,
     private val disconnectFailedLine: (Throwable) -> String,
@@ -79,7 +79,11 @@ internal class DisconnectSyncFlow(
             scope.launch {
                 _state.value =
                     try {
-                        DisconnectSyncState(confirming = true, extraWarning = warningMessage())
+                        val count = cloudOnlyReleaseCount()
+                        DisconnectSyncState(
+                            confirming = true,
+                            extraWarning = if (count > 0uL) atRiskLine(count) else null,
+                        )
                     } catch (e: CancellationException) {
                         throw e
                     } catch (e: Throwable) {

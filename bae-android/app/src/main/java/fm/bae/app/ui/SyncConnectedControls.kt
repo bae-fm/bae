@@ -22,6 +22,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
+import fm.bae.app.coreString
 import fm.bae.app.localizedLine
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.launch
@@ -242,7 +243,13 @@ private fun rememberDisconnectSyncFlow(
     return remember(session) {
         DisconnectSyncFlow(
             scope = scope,
-            warningMessage = { session.appHandle.disconnectWarningMessage() },
+            cloudOnlyReleaseCount = { session.appHandle.cloudOnlyReleaseCount() },
+            atRiskLine = { count ->
+                context.coreString(
+                    "core.sync.cloud_only_releases",
+                    mapOf("count" to count.toLong()),
+                )
+            },
             disconnect = { session.appHandle.disconnectCloudProvider() },
             warningFailedLine = { e ->
                 context.getString(

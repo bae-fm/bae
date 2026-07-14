@@ -220,7 +220,18 @@ private struct SyncConnectedControls: View {
         self.sync = sync
         _flow = State(
             initialValue: DisconnectSyncFlow(
-                warningMessage: sync.disconnectWarningMessage,
+                cloudOnlyReleaseCount: sync.cloudOnlyReleaseCount,
+                atRiskMessage: { count in
+                    String.localizedStringWithFormat(
+                        NSLocalizedString(
+                            "core.sync.cloud_only_releases",
+                            tableName: "Core",
+                            bundle: .main,
+                            comment: ""
+                        ),
+                        count
+                    )
+                },
                 disconnect: sync.disconnectCloudProvider,
                 deleteRestoreCode: {
                     KeychainService.deleteRestoreCode(libraryId: libraryId)

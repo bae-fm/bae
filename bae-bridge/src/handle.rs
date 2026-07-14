@@ -751,15 +751,15 @@ impl AppHandle {
         Ok(())
     }
 
-    /// Warning text for the disconnect-sync confirmation when releases live
-    /// only in the cloud. `None` means no releases are at risk; `Some(msg)`
-    /// is a pre-formatted (singular/plural, full sentence) warning the UI
-    /// appends to its base "this will stop syncing" message.
-    pub async fn disconnect_warning_message(&self) -> Result<Option<String>, BridgeError> {
+    /// How many releases live only in the cloud and would become unplayable if
+    /// this device disconnected. `0` means nothing is at risk. The UI renders the
+    /// warning sentence itself, from `core.sync.cloud_only_releases` and its own
+    /// locale's plural rules.
+    pub async fn cloud_only_release_count(&self) -> Result<u64, BridgeError> {
         Ok(self
             .services
             .library_manager()
-            .disconnect_warning_message()
+            .cloud_only_release_count()
             .await?)
     }
 

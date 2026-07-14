@@ -22,14 +22,16 @@ import org.junit.Test
  */
 class DisconnectSyncFlowTest {
     private fun makeFlow(
-        warningMessage: suspend () -> String? = { null },
+        cloudOnlyReleaseCount: suspend () -> ULong = { 0uL },
+        atRiskLine: (ULong) -> String = { "$it at risk." },
         disconnect: () -> Unit = {},
         warningFailedLine: (Throwable) -> String = { "warning check failed" },
         disconnectFailedLine: (Throwable) -> String = { "disconnect failed" },
     ): DisconnectSyncFlow =
         DisconnectSyncFlow(
             scope = CoroutineScope(Dispatchers.Unconfined),
-            warningMessage = warningMessage,
+            cloudOnlyReleaseCount = cloudOnlyReleaseCount,
+            atRiskLine = atRiskLine,
             disconnect = disconnect,
             warningFailedLine = warningFailedLine,
             disconnectFailedLine = disconnectFailedLine,
@@ -52,19 +54,19 @@ class DisconnectSyncFlowTest {
 
     @Test
     fun promptCarriesTheAtRiskWarningIntoTheConfirmation() {
-        val flow = makeFlow(warningMessage = { "3 releases are only in the cloud." })
+        val flow = makeFlow(cloudOnlyReleaseCount = { 3uL })
 
         flow.promptDisconnect()
 
         val state = flow.state.value
         assertTrue(state.confirming)
-        assertEquals("3 releases are only in the cloud.", state.extraWarning)
+        assertEquals("3 at risk.", state.extraWarning)
         assertNull(state.error)
     }
 
     @Test
     fun promptWithNoAtRiskReleasesOpensWithoutAWarning() {
-        val flow = makeFlow(warningMessage = { null })
+        val flow = makeFlow(cloudOnlyReleaseCount = { 0uL })
 
         flow.promptDisconnect()
 
@@ -78,7 +80,7 @@ class DisconnectSyncFlowTest {
     fun aFailedAtRiskCheckStillOpensTheConfirmationWithAnError() {
         val flow =
             makeFlow(
-                warningMessage = { throw IllegalStateException("offline") },
+                cloudOnlyReleaseCount = { throw IllegalStateException("offline") },
                 warningFailedLine = { "couldn't check: ${it.message}" },
             )
 
