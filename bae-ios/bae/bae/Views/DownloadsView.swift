@@ -10,8 +10,6 @@ struct DownloadsView: View {
     private var downloadStore
     @Environment(Downloads.self)
     private var downloads
-    @Environment(ConfigStore.self)
-    private var configStore
     @Environment(\.dismiss)
     private var dismiss
 

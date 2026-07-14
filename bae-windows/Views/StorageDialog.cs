@@ -598,7 +598,7 @@ internal sealed class StorageDialog
                 Text = Loc.Chrome(ExportQueueModel.BandTitleKey(paused)),
                 VerticalAlignment = VerticalAlignment.Center,
             });
-            if (!paused && snapshot.SummaryParts.Count > 0)
+            if (!paused && snapshot.SummaryParts.Length > 0)
             {
                 band.Children.Add(new TextBlock
                 {
