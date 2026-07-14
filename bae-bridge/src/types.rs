@@ -2319,6 +2319,11 @@ pub struct BridgeConfig {
     pub encryption_key_stored: bool,
     pub encryption_key_fingerprint: Option<String>,
     pub pause_between_sides: bool,
+    /// How many blob uploads run at once. Device-local; range 1..=8. Desktop
+    /// exposes a control for it, mobile does not (mobile makes no uploads).
+    pub max_concurrent_uploads: u32,
+    /// How many blob downloads a pin fetches at once. Device-local; range 1..=8.
+    pub max_concurrent_downloads: u32,
     /// Whether the seek bar's leading label counts down the time remaining
     /// instead of showing the time elapsed. A synced preference, not a
     /// per-device one — the seek bar reads it and never stores a copy.

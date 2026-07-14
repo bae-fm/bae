@@ -544,6 +544,24 @@ impl AppHandle {
             .map_err(BridgeError::config)
     }
 
+    /// How many blob uploads run at once. Rejected outside 1..=8. Takes effect the
+    /// next time the library's coven handle opens.
+    pub fn set_max_concurrent_uploads(&self, n: u32) -> Result<(), BridgeError> {
+        self.services
+            .library_manager()
+            .set_max_concurrent_uploads(n)
+            .map_err(BridgeError::config)
+    }
+
+    /// How many blob downloads a pin fetches at once. Rejected outside 1..=8.
+    /// Takes effect the next time the library's coven handle opens.
+    pub fn set_max_concurrent_downloads(&self, n: u32) -> Result<(), BridgeError> {
+        self.services
+            .library_manager()
+            .set_max_concurrent_downloads(n)
+            .map_err(BridgeError::config)
+    }
+
     /// Whether the seek bar's leading label counts down the time remaining
     /// instead of showing the time elapsed. The write fires a config
     /// invalidation, which is what re-renders the bar — no app keeps its own copy.

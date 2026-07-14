@@ -634,6 +634,8 @@ struct CoverPickerView: View {
                         encryptionKeyStored: false,
                         encryptionKeyFingerprint: nil,
                         pauseBetweenSides: false,
+                        maxConcurrentUploads: 3,
+                        maxConcurrentDownloads: 3,
                         showRemainingTime: false,
                         exportLocation: .askEachTime,
                         exportFilenameTemplate: PreviewData
