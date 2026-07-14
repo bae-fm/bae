@@ -291,12 +291,16 @@ pub fn test_config_and_keys(
     // Unique id per test so keyring entries don't collide in the shared
     // process-global mock store (see `install_test_keyring`).
     let library_id = format!("test-{}", uuid::Uuid::new_v4());
-    let config = bae_core::config::Config::with_defaults(
+    let mut config = bae_core::config::Config::with_defaults(
         library_id.clone(),
         "test-device".to_string(),
         library_dir.clone(),
         "Test Library".to_string(),
     );
+    // Seed both stores the way production's `set_discogs_key` does: the keyring
+    // holds the token and the config records the validation. `discogs_client`
+    // gates on both, so seeding only the keyring leaves it unusable.
+    config.discogs = Some(bae_core::config::DiscogsValidation::Valid);
     let key_service = bae_core::keys::StoreKeys::new(library_id);
     key_service
         .set_discogs_key("test-discogs-token")
