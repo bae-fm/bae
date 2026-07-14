@@ -60,12 +60,16 @@ impl LibraryManager {
         Ok(Some(self.resolve_album_detail(raw).await?))
     }
 
+    /// Search the library for a parsed, non-blank query. The result count is the
+    /// core-owned [`crate::library::SEARCH_RESULT_LIMIT`]; no caller passes one.
     pub async fn search_library(
         &self,
-        query: &str,
-        limit: usize,
+        query: &crate::library::LibrarySearchQuery,
     ) -> Result<SearchResults, LibraryError> {
-        let raw = self.database.search_library(query, limit).await?;
+        let raw = self
+            .database
+            .search_library(query.as_str(), crate::library::SEARCH_RESULT_LIMIT)
+            .await?;
         // Prefetch the cover of each album's *resolved* primary release — the same
         // id `SearchResults::from_raw` looks the cover up by.
         let primary_ids: Vec<String> = raw

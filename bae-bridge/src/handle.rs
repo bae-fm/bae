@@ -307,12 +307,17 @@ impl AppHandle {
     }
 
     pub async fn search_library(&self, query: String) -> Result<BridgeSearchResults, BridgeError> {
-        let results = self
-            .services
-            .library_manager()
-            .search_library(&query, 50)
-            .await
-            .map_err(|e| BridgeError::database(format!("{e}")))?;
+        // Trim and blank-check are core policy, not the surface's: a blank query is
+        // not a search and yields empty results, never a `LIKE '%%'` match-all.
+        let results = match bae_core::library::LibrarySearchQuery::parse(&query) {
+            Some(query) => self
+                .services
+                .library_manager()
+                .search_library(&query)
+                .await
+                .map_err(|e| BridgeError::database(format!("{e}")))?,
+            None => bae_core::album_detail::SearchResults::default(),
+        };
         Ok(BridgeSearchResults {
             albums: results
                 .albums

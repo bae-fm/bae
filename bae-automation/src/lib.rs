@@ -1464,12 +1464,18 @@ impl Automation {
         &self,
         query: String,
     ) -> Result<AutomationLibrarySearchResults, AutomationError> {
-        self.services
-            .library_manager()
-            .search_library(&query, 50)
-            .await
-            .map(automation_library_search_results)
-            .map_err(AutomationError::from)
+        // Trimming and the blank check are core policy: a blank query is not a
+        // search and returns nothing, rather than matching every row.
+        let results = match bae_core::library::LibrarySearchQuery::parse(&query) {
+            Some(query) => {
+                self.services
+                    .library_manager()
+                    .search_library(&query)
+                    .await?
+            }
+            None => SearchResults::default(),
+        };
+        Ok(automation_library_search_results(results))
     }
 
     pub async fn call_tool(

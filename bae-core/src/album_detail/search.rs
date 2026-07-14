@@ -7,7 +7,7 @@ use std::collections::HashMap;
 use super::*;
 use crate::db::{DbLibrarySearchResults, DbTrackSearchResult};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct SearchResults {
     pub albums: Vec<AlbumSearchResult>,
     pub tracks: Vec<TrackSearchResult>,

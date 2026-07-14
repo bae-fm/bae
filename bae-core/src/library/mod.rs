@@ -6,6 +6,7 @@ pub mod export_snapshot;
 pub mod manager;
 pub mod outbox_snapshot;
 pub mod release_queue;
+pub mod search;
 pub(crate) mod sync_controller;
 pub mod sync_events;
 pub mod upload_sessions;
@@ -23,6 +24,7 @@ pub use outbox_snapshot::{
     UploadState,
 };
 pub use release_queue::ReleaseQueue;
+pub use search::{LibrarySearchQuery, SEARCH_RESULT_LIMIT};
 pub use upload_sessions::UploadSessions;
 pub use upload_throughput::UploadThroughput;
 
