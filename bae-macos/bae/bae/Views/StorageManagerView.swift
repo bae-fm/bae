@@ -188,7 +188,7 @@ struct StorageManagerView: View {
             catch {
                 totalSize = nil
                 uiStore.showError(
-                    DisplayError(line: error.localizedDescription)
+                    DisplayError(error)
                 )
             }
         }
@@ -587,7 +587,7 @@ private struct OutboxSection: View {
                                 uiStore.showError(
                                     String(
                                         localized:
-                                            "Failed to retry uploads: \(error.localizedDescription)"
+                                            "Failed to retry uploads: \(error.displayLine)"
                                     )
                                 )
                             }
@@ -680,7 +680,7 @@ private struct OutboxSection: View {
                 uiStore.showError(
                     String(
                         localized:
-                            "Failed to cancel: \(error.localizedDescription)"
+                            "Failed to cancel: \(error.displayLine)"
                     )
                 )
             }
@@ -695,7 +695,7 @@ private struct OutboxSection: View {
                 uiStore.showError(
                     String(
                         localized:
-                            "Failed to cancel: \(error.localizedDescription)"
+                            "Failed to cancel: \(error.displayLine)"
                     )
                 )
             }

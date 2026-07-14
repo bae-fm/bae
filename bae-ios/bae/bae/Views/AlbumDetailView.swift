@@ -526,7 +526,7 @@ private struct ReleaseDownloadSection: View {
                 // terminal ReleaseTransferEnded, which refreshes the release.
             }
             catch {
-                unpinError = error.localizedDescription
+                unpinError = error.displayLine
             }
         }
     }

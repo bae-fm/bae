@@ -103,7 +103,7 @@ final class AppSessionHolder {
             openLibrary(first)
         }
         catch {
-            screen = .failed(message: error.localizedDescription)
+            screen = .failed(message: error.displayLine)
         }
     }
 
@@ -147,7 +147,7 @@ final class AppSessionHolder {
             try service.appHandle.forgetLibrary()
         }
         catch {
-            screen = .failed(message: error.localizedDescription)
+            screen = .failed(message: error.displayLine)
             return
         }
         // Drop the handle so ARC runs the Rust destructor and closes the DB
@@ -177,7 +177,7 @@ final class AppSessionHolder {
                 // A newer open owns `screen`; leave it alone.
                 break
             case .failed(let error):
-                self.screen = .failed(message: error.localizedDescription)
+                self.screen = .failed(message: error.displayLine)
             }
         }
     }

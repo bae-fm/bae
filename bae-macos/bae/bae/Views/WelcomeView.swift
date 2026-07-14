@@ -522,7 +522,7 @@ extension WelcomeView {
                         #endif
                     }
                     else if case .failure(let decodeError) = decodedRestore {
-                        Text(decodeError.localizedDescription)
+                        Text(decodeError.displayLine)
                             .foregroundStyle(.red)
                             .font(.callout)
                     }
@@ -791,7 +791,7 @@ extension WelcomeView {
             catch {
                 await MainActor.run {
                     isCreating = false
-                    self.error = error.localizedDescription
+                    self.error = error.displayLine
                 }
             }
         }
@@ -842,7 +842,7 @@ extension WelcomeView {
             }
             catch {
                 isRestoring = false
-                self.error = error.localizedDescription
+                self.error = error.displayLine
             }
         }
     }
@@ -865,7 +865,7 @@ extension WelcomeView {
                 catch {
                     await MainActor.run {
                         isAuthorizing = false
-                        self.error = error.localizedDescription
+                        self.error = error.displayLine
                     }
                 }
             }
@@ -1067,7 +1067,7 @@ extension WelcomeView {
             .padding(.vertical, 4)
         case .failure(let genError):
             VStack(spacing: 8) {
-                Text(genError.localizedDescription)
+                Text(genError.displayLine)
                     .foregroundStyle(.red)
                     .font(.callout)
                 Button("Try again") {
@@ -1132,7 +1132,7 @@ extension WelcomeView {
             #endif
         }
         else if case .failure(let decodeError) = decodedInvite {
-            Text(decodeError.localizedDescription)
+            Text(decodeError.displayLine)
                 .foregroundStyle(.red)
                 .font(.callout)
         }
@@ -1187,7 +1187,7 @@ extension WelcomeView {
                 }
                 catch {
                     isAuthorizing = false
-                    self.error = error.localizedDescription
+                    self.error = error.displayLine
                     return
                 }
             default:
@@ -1247,7 +1247,7 @@ extension WelcomeView {
             }
             catch {
                 isJoining = false
-                self.error = error.localizedDescription
+                self.error = error.displayLine
                 return
             }
             do {
@@ -1267,7 +1267,7 @@ extension WelcomeView {
             }
             catch {
                 isJoining = false
-                self.error = error.localizedDescription
+                self.error = error.displayLine
             }
         }
     }

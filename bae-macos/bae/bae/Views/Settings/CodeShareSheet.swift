@@ -51,7 +51,7 @@ struct CodeShareSheet: View {
             case .failure(let error):
                 VStack {
                     Spacer()
-                    Text(error.localizedDescription)
+                    Text(error.displayLine)
                         .foregroundStyle(.red)
                         .font(.callout)
                     Spacer()

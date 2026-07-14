@@ -69,7 +69,7 @@ final class StorageActionRunner {
                     )
                 }
                 catch {
-                    uiStore.showError(error.localizedDescription)
+                    uiStore.showError(DisplayError(error))
                     return
                 }
             }
@@ -127,7 +127,7 @@ final class StorageActionRunner {
                     uiStore.showError(
                         String(
                             localized:
-                                "Failed to cancel: \(error.localizedDescription)"
+                                "Failed to cancel: \(error.displayLine)"
                         )
                     )
                     return
@@ -180,7 +180,7 @@ final class StorageActionRunner {
                 uiStore.showError(
                     String(
                         localized:
-                            "Failed to \(verb): \(error.localizedDescription)"
+                            "Failed to \(verb): \(error.displayLine)"
                     )
                 )
             }

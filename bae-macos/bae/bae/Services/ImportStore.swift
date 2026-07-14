@@ -133,7 +133,7 @@ class ImportStore {
                 logger.warning(
                     "Failed to check if folder is imported: \(error)"
                 )
-                onError(error.localizedDescription)
+                onError(error.displayLine)
                 return
             }
         }

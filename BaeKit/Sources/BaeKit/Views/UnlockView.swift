@@ -107,7 +107,7 @@ public struct UnlockView: View {
             catch {
                 await MainActor.run {
                     isUnlocking = false
-                    self.error = error.localizedDescription
+                    self.error = error.displayLine
                 }
             }
         }

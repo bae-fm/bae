@@ -183,7 +183,7 @@ where Row.ID: Sendable {
             // failed state so the grid shows an error + Retry instead of the
             // empty-library placeholder. `onError` (the banner) is reserved for
             // page/invalidate failures, which leave existing rows visible.
-            initialLoadError = DisplayError(line: error.localizedDescription)
+            initialLoadError = DisplayError(error)
         }
     }
 
@@ -254,7 +254,7 @@ where Row.ID: Sendable {
             logger.error(
                 "Failed to load range [\(offset) ..< \(end)]: \(error.localizedDescription)"
             )
-            onError(DisplayError(line: error.localizedDescription))
+            onError(DisplayError(error))
         }
     }
 
@@ -288,7 +288,7 @@ where Row.ID: Sendable {
                 logger.error(
                     "invalidate() failed: \(error.localizedDescription)"
                 )
-                onError(DisplayError(line: error.localizedDescription))
+                onError(DisplayError(error))
             }
         }
     }

@@ -228,7 +228,7 @@ struct MainAppView: View {
                     uiStore.showError(
                         String(
                             localized:
-                                "Couldn't add folder: \(error.localizedDescription)"
+                                "Couldn't add folder: \(error.displayLine)"
                         )
                     )
                 }

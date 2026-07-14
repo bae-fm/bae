@@ -195,7 +195,7 @@ struct ApproveDeviceSheet: View {
             logger.error(
                 "Failed to decode join request: \(error.localizedDescription)"
             )
-            self.error = error.localizedDescription
+            self.error = error.displayLine
         }
     }
 
@@ -220,7 +220,7 @@ struct ApproveDeviceSheet: View {
                 logger.error(
                     "Failed to approve device: \(error.localizedDescription)"
                 )
-                self.error = error.localizedDescription
+                self.error = error.displayLine
                 step = .confirm(info)
             }
         }

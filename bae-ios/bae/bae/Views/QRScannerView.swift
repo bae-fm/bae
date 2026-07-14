@@ -42,7 +42,7 @@ class QRScannerViewController: UIViewController, AVCaptureMetadataOutputObjectsD
             onError?(
                 String(
                     localized:
-                        "Could not create camera input: \(error.localizedDescription)"
+                        "Could not create camera input: \(error.displayLine)"
                 )
             )
             return

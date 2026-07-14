@@ -336,7 +336,7 @@ extension ReIdentifySheet {
                 logger.error(
                     "Re-identify commit failed: \(error.localizedDescription)"
                 )
-                phase = .error(error.localizedDescription)
+                phase = .error(error.displayLine)
             }
         }
     }
@@ -366,7 +366,7 @@ extension ReIdentifySheet {
                 logger.error(
                     "Refresh failed: \(error.localizedDescription)"
                 )
-                phase = .error(error.localizedDescription)
+                phase = .error(error.displayLine)
             }
         }
     }

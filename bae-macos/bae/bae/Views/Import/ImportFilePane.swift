@@ -236,7 +236,7 @@ extension ImportFilePane {
                     onError(
                         String(
                             localized:
-                                "Could not read \(pair.cueName): \(error.localizedDescription)"
+                                "Could not read \(pair.cueName): \(error.displayLine)"
                         )
                     )
                 }
@@ -319,7 +319,7 @@ extension ImportFilePane {
                 onError(
                     String(
                         localized:
-                            "Could not read \(file.name): \(error.localizedDescription)"
+                            "Could not read \(file.name): \(error.displayLine)"
                     )
                 )
             }

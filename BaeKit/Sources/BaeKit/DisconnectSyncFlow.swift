@@ -100,7 +100,7 @@ public final class DisconnectSyncFlow {
                     "Failed to compute disconnect warning: \(error.localizedDescription)"
                 )
                 self.error = warningCheckFailedMessage(
-                    error.localizedDescription
+                    error.displayLine
                 )
                 extraWarning = nil
             }

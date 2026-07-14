@@ -119,10 +119,10 @@ struct MembersSection: View {
                 // Keep a previously loaded list visible if there is one; only
                 // fall back to the inline error when there's nothing to show.
                 if membership == nil {
-                    loadError = error.localizedDescription
+                    loadError = error.displayLine
                 }
                 else {
-                    actionError = error.localizedDescription
+                    actionError = error.displayLine
                 }
             }
         }
@@ -143,7 +143,7 @@ struct MembersSection: View {
                 logger.error(
                     "Failed to remove member: \(error.localizedDescription)"
                 )
-                actionError = error.localizedDescription
+                actionError = error.displayLine
             }
         }
     }

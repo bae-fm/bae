@@ -142,7 +142,7 @@ struct CoverSheetView: View {
         catch {
             errorMessage = String(
                 localized:
-                    "Failed to load covers: \(error.localizedDescription)"
+                    "Failed to load covers: \(error.displayLine)"
             )
             loading = false
         }

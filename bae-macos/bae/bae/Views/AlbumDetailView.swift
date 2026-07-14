@@ -212,7 +212,7 @@ struct AlbumDetailView: View {
                         uiStore.closeAlbumDetail()
                     }
                     catch {
-                        deleteError = error.localizedDescription
+                        deleteError = error.displayLine
                     }
                 }
             }
@@ -358,7 +358,7 @@ extension AlbumDetailView {
             }
             catch is CancellationError {}
             catch {
-                coverChangeError = error.localizedDescription
+                coverChangeError = error.displayLine
             }
         }
     }
@@ -398,7 +398,7 @@ extension AlbumDetailView {
                 }
             }
             catch {
-                uiStore.showError(error.localizedDescription)
+                uiStore.showError(DisplayError(error))
             }
         }
     }
@@ -468,7 +468,7 @@ extension AlbumDetailView {
                 )
             }
             catch {
-                exportError = error.localizedDescription
+                exportError = error.displayLine
             }
         }
     }
@@ -513,7 +513,7 @@ extension AlbumDetailView {
                 // view dismissed mid-cover-change
             }
             catch {
-                coverChangeError = error.localizedDescription
+                coverChangeError = error.displayLine
             }
         }
     }
@@ -547,7 +547,7 @@ extension AlbumDetailView {
                 // the cancellation so it doesn't surface as a transfer error.
             }
             catch {
-                transferError = error.localizedDescription
+                transferError = error.displayLine
             }
         }
     }
@@ -600,7 +600,7 @@ extension AlbumDetailView {
                     uiStore.showError(
                         String(
                             localized:
-                                "Failed to set primary release: \(error.localizedDescription)"
+                                "Failed to set primary release: \(error.displayLine)"
                         )
                     )
                 }
@@ -622,7 +622,7 @@ extension AlbumDetailView {
                 return
             }
             catch {
-                exportError = error.localizedDescription
+                exportError = error.displayLine
                 return
             }
 
@@ -637,7 +637,7 @@ extension AlbumDetailView {
                 return
             }
             catch {
-                exportError = error.localizedDescription
+                exportError = error.displayLine
                 return
             }
             let choices = exportChoices(originalExtension: originalExtension)
@@ -669,7 +669,7 @@ extension AlbumDetailView {
                 // view dismissed mid-export; OutputFileGuard cleaned up
             }
             catch {
-                exportError = error.localizedDescription
+                exportError = error.displayLine
             }
         }
     }

@@ -100,7 +100,7 @@ struct TitleBar: View {
                 uiStore.showError(
                     String(
                         localized:
-                            "Search failed: \(error.localizedDescription)"
+                            "Search failed: \(error.displayLine)"
                     )
                 )
             }

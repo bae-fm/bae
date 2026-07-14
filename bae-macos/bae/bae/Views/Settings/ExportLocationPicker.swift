@@ -136,7 +136,7 @@ struct ExportLocationPicker: View {
             showError(DisplayError(error))
         }
         catch {
-            showError(DisplayError(line: error.localizedDescription))
+            showError(DisplayError(error))
         }
     }
 }

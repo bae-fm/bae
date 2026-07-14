@@ -46,7 +46,7 @@ struct BaeApp: App {
             #endif
         }
         catch {
-            launchError = error.localizedDescription
+            launchError = error.displayLine
         }
 
         #if BAE_OAUTH_PROVIDERS
@@ -59,7 +59,7 @@ struct BaeApp: App {
                 try loadedOAuthLinking?.register()
             }
             catch {
-                oauthError = error.localizedDescription
+                oauthError = error.displayLine
             }
         }
         oauthLinking = loadedOAuthLinking

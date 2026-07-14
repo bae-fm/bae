@@ -354,7 +354,7 @@ extension LibraryView {
             // Superseded by a newer query (or cleared); leave prior results.
         }
         catch {
-            searchError = error.localizedDescription
+            searchError = error.displayLine
         }
     }
 }
@@ -1088,7 +1088,7 @@ private struct ComposerDetailScreen: View {
         }
         catch is CancellationError {}
         catch {
-            self.error = error.localizedDescription
+            self.error = error.displayLine
         }
     }
 }
@@ -1207,7 +1207,7 @@ private struct ArtistDetailScreen: View {
         }
         catch is CancellationError {}
         catch {
-            self.error = error.localizedDescription
+            self.error = error.displayLine
         }
     }
 }
@@ -1312,7 +1312,7 @@ private struct WorkDetailScreen: View {
         }
         catch is CancellationError {}
         catch {
-            self.error = error.localizedDescription
+            self.error = error.displayLine
         }
     }
 }

@@ -166,7 +166,7 @@ struct ExportSettingsTab: View {
             uiStore.showError(DisplayError(error))
         }
         catch {
-            uiStore.showError(DisplayError(line: error.localizedDescription))
+            uiStore.showError(DisplayError(error))
         }
     }
 }

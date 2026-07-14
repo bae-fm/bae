@@ -425,22 +425,18 @@ extension SyncSetupWizard {
         }
     }
 
-    /// Map a connect error to user-facing text. A typed `BridgeError` renders
-    /// its generic per-category line through the shared catalog path, so a
-    /// rejected credential, an unreachable backend, a keyring failure, and a
-    /// config-write failure each read as their own line. `CloudKitError`
-    /// already carries a ready sentence in `msg`, but its `localizedDescription`
-    /// is the reflected enum, so unwrap the case instead.
+    /// Map a connect error to user-facing text. `CloudKitError` already carries a
+    /// ready sentence in `msg`, but its `localizedDescription` is the reflected
+    /// enum, so unwrap the case instead. Everything else — a rejected credential,
+    /// an unreachable backend, a keyring failure, a config-write failure — reads
+    /// as its own line through the shared path.
     fileprivate func connectErrorMessage(_ error: Error) -> String {
-        if let bridgeError = error as? BridgeError {
-            return bridgeError.localizedLine
-        }
         #if BAE_CLOUDKIT
             if case CloudKitError.Storage(let msg) = error {
                 return msg
             }
         #endif
-        return error.localizedDescription
+        return error.displayLine
     }
 }
 

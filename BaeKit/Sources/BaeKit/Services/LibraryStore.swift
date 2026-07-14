@@ -425,9 +425,7 @@ public final class LibraryStore {
             if Task.isCancelled {
                 return
             }
-            releaseDetailErrors[releaseId] = DisplayError(
-                line: error.localizedDescription
-            )
+            releaseDetailErrors[releaseId] = DisplayError(error)
         }
     }
 

@@ -176,7 +176,7 @@ struct AutomationSettingsContent: View {
                 message = .error(
                     String(
                         localized:
-                            "Couldn't update MCP settings: \(error.localizedDescription)"
+                            "Couldn't update MCP settings: \(error.displayLine)"
                     )
                 )
             }
@@ -246,14 +246,14 @@ struct AutomationSettingsContent: View {
                     message = .error(
                         String(
                             localized:
-                                "Couldn't copy MCP token: \(error.localizedDescription)"
+                                "Couldn't copy MCP token: \(error.displayLine)"
                         )
                     )
                 case .rotate:
                     message = .error(
                         String(
                             localized:
-                                "Couldn't rotate MCP token: \(error.localizedDescription)"
+                                "Couldn't rotate MCP token: \(error.displayLine)"
                         )
                     )
                 }

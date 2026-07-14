@@ -132,7 +132,7 @@ final class AppService: BaeKit.AppService {
         catch {
             uiStore.showError(
                 String(
-                    localized: "Scan failed: \(error.localizedDescription)"
+                    localized: "Scan failed: \(error.displayLine)"
                 )
             )
         }

@@ -28,10 +28,50 @@ public struct DisplayError: Equatable {
         self.detail = nil
     }
 
-    /// A typed core failure crossing the bridge — renders its generic
-    /// per-category line, with the opaque Rust detail offered separately.
-    public init(_ failure: LocalizedFailure) {
+    /// A playback failure — the one typed core failure that is not a Swift
+    /// `Error`, so it cannot reach `init(_ error:)`. Everything else that crosses
+    /// the bridge is an `Error` and goes through there, finding this same mapping.
+    ///
+    /// Concrete rather than `LocalizedFailure`: an existential parameter would tie
+    /// with `any Error` for a `BridgeError`, which is both.
+    public init(_ failure: BridgePlaybackErrorReason) {
         self.line = failure.localizedLine
         self.detail = failure.detail
+    }
+
+    /// Any error on its way to a human.
+    ///
+    /// A failure that crossed the bridge renders core's keyed line and keeps its
+    /// opaque detail for the copy button. Anything else is Swift-origin prose and
+    /// passes through unchanged — which is why a `catch` can be routed here
+    /// without first proving what it can throw.
+    ///
+    /// Never reach for `localizedDescription` on the way to a human: uniffi gives
+    /// `BridgeError` a `String(reflecting:)` description, so it renders as a raw
+    /// Rust enum dump — untranslated, with the opaque detail welded into the line
+    /// instead of offered to the copy button.
+    public init(_ error: any Error) {
+        if let failure = error as? LocalizedFailure {
+            self.line = failure.localizedLine
+            self.detail = failure.detail
+        }
+        else {
+            self.line = error.localizedDescription
+            self.detail = nil
+        }
+    }
+}
+
+extension Error {
+    /// The line to show a human, for the places that hold a plain `String` rather
+    /// than a `DisplayError`. Prefer `DisplayError(error)` where the type allows
+    /// it — that one keeps the opaque detail for the "Copy Details" button.
+    ///
+    /// This is `localizedDescription`'s job, and `localizedDescription` cannot do
+    /// it: uniffi declares `errorDescription` on `BridgeError` itself as
+    /// `String(reflecting: self)`, an extension cannot override it, and in a
+    /// `catch` the static type is `any Error`, so the debug dump always wins.
+    public var displayLine: String {
+        DisplayError(self).line
     }
 }

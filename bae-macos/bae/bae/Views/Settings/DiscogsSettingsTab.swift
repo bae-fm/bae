@@ -68,7 +68,7 @@ struct DiscogsSettingsTab: View {
         catch {
             readError = String(
                 localized:
-                    "Couldn't read the stored Discogs key: \(error.localizedDescription)"
+                    "Couldn't read the stored Discogs key: \(error.displayLine)"
             )
         }
     }
@@ -98,7 +98,7 @@ struct DiscogsSettingsTab: View {
             catch {
                 saveError = String(
                     localized:
-                        "Couldn't save the Discogs key: \(error.localizedDescription)"
+                        "Couldn't save the Discogs key: \(error.displayLine)"
                 )
             }
         }
@@ -118,7 +118,7 @@ struct DiscogsSettingsTab: View {
             catch {
                 saveError = String(
                     localized:
-                        "Couldn't re-check the Discogs key: \(error.localizedDescription)"
+                        "Couldn't re-check the Discogs key: \(error.displayLine)"
                 )
             }
         }
@@ -134,7 +134,7 @@ struct DiscogsSettingsTab: View {
         catch {
             saveError = String(
                 localized:
-                    "Couldn't remove the Discogs key: \(error.localizedDescription)"
+                    "Couldn't remove the Discogs key: \(error.displayLine)"
             )
         }
     }

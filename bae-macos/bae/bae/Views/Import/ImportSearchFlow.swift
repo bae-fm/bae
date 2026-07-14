@@ -112,7 +112,7 @@ enum ImportSearchFlow {
                     key: key,
                     tab: capturedTab,
                     source: capturedSource,
-                    error: "Search failed: \(error.localizedDescription)"
+                    error: "Search failed: \(error.displayLine)"
                 )
             }
         }
@@ -270,7 +270,7 @@ extension ImportSearchFlow {
                     candidate.mode = .identifying
                     candidate.identityChoice = nil
                     candidate.error =
-                        "Couldn't read file tags: \(error.localizedDescription)"
+                        "Couldn't read file tags: \(error.displayLine)"
                     candidate.prefetchTask = nil
                 }
             }
@@ -358,7 +358,7 @@ extension ImportSearchFlow {
                 importStore.mutateCandidate(forKey: key) { candidate in
                     candidate.mode = .identifying
                     candidate.error =
-                        "Failed to load release details: \(error.localizedDescription)"
+                        "Failed to load release details: \(error.displayLine)"
                     candidate.prefetchTask = nil
                 }
             }

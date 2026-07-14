@@ -50,7 +50,7 @@
             catch {
                 throw CloudKitError.Storage(
                     msg:
-                        "Couldn't check iCloud account status: \(error.localizedDescription)"
+                        "Couldn't check iCloud account status: \(error.displayLine)"
                 )
             }
             let unavailableReason: String
@@ -163,7 +163,7 @@
         private func cloudKitErrorMessage(_ error: Error, op: String) -> String
         {
             guard let ckError = error as? CKError else {
-                return "\(op) failed: \(error.localizedDescription)"
+                return "\(op) failed: \(error.displayLine)"
             }
             switch ckError.code {
             case .notAuthenticated:
@@ -179,7 +179,7 @@
                 return
                     "The iCloud sync zone is gone. Reconnect in sync settings to recreate it."
             default:
-                return "\(op) failed: \(ckError.localizedDescription)"
+                return "\(op) failed: \(ckError.displayLine)"
             }
         }
 

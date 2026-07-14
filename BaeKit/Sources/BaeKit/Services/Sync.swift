@@ -211,7 +211,7 @@ public final class Sync: Sendable, Observable {
             catch {
                 await MainActor.run {
                     onError(
-                        "Failed to generate restore code: \(error.localizedDescription)"
+                        "Failed to generate restore code: \(error.displayLine)"
                     )
                 }
             }

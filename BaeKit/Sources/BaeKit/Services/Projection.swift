@@ -182,7 +182,7 @@ public final class Projection<Value: Sendable> {
                 logger.error(
                     "Projection refresh failed: \(error.localizedDescription)"
                 )
-                onError(DisplayError(line: error.localizedDescription))
+                onError(DisplayError(error))
             }
         }
     }

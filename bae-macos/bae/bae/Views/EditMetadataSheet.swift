@@ -162,7 +162,7 @@ struct EditMetadataSheet: View {
             catch {
                 saving = false
                 errorMessage = String(
-                    localized: "Save failed: \(error.localizedDescription)"
+                    localized: "Save failed: \(error.displayLine)"
                 )
             }
         }
@@ -187,7 +187,7 @@ struct EditMetadataSheet: View {
             catch {
                 resetting = false
                 errorMessage = String(
-                    localized: "Reset failed: \(error.localizedDescription)"
+                    localized: "Reset failed: \(error.displayLine)"
                 )
             }
         }

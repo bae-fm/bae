@@ -554,7 +554,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             openLibrary(libraries[0])
         }
         catch {
-            loadError = error.localizedDescription
+            loadError = error.displayLine
         }
     }
 
@@ -588,7 +588,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     "Library open superseded before it could land; skipping"
                 )
             case .failed(let error):
-                self.loadError = error.localizedDescription
+                self.loadError = error.displayLine
                 // A bootstrap open (first launch, or reopening from the welcome
                 // chooser after a close) that fails must return to the welcome
                 // so the user can retry or pick another, rather than strand on
@@ -757,7 +757,7 @@ extension AppDelegate {
                 self.uiStore.showError(
                     String(
                         localized:
-                            "Couldn't remove library: \($0.localizedDescription)"
+                            "Couldn't remove library: \($0.displayLine)"
                     )
                 )
             }
@@ -869,7 +869,7 @@ extension AppDelegate {
             uiStore.showError(
                 String(
                     localized:
-                        "Couldn't add folder: \(error.localizedDescription)"
+                        "Couldn't add folder: \(error.displayLine)"
                 )
             )
         }

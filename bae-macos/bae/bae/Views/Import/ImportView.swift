@@ -29,7 +29,7 @@ private func commitImport(
     }
     catch {
         store.mutateCandidate(forKey: key) {
-            $0.error = error.localizedDescription
+            $0.error = error.displayLine
         }
     }
 }
@@ -133,7 +133,7 @@ struct ImportView: View {
             uiStore.showError(
                 String(
                     localized:
-                        "Couldn't add folder: \(error.localizedDescription)"
+                        "Couldn't add folder: \(error.displayLine)"
                 )
             )
         }
@@ -189,7 +189,7 @@ struct ImportView: View {
             uiStore.showError(
                 String(
                     localized:
-                        "Couldn't update skip state: \(error.localizedDescription)"
+                        "Couldn't update skip state: \(error.displayLine)"
                 )
             )
         }
@@ -211,7 +211,7 @@ struct ImportView: View {
             uiStore.showError(
                 String(
                     localized:
-                        "Couldn't remove folder: \(error.localizedDescription)"
+                        "Couldn't remove folder: \(error.displayLine)"
                 )
             )
         }
