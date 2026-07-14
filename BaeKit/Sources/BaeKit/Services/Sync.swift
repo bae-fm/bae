@@ -62,6 +62,11 @@ public final class Sync: Sendable, Observable {
     /// The current session keeps working (the key stays in memory);
     /// the next launch lands on the unlock screen.
     public let lockActiveLibrary: @Sendable () throws -> Void
+    /// How many blob uploads the sync drain runs at once (1...8). A persisted
+    /// device-local config write, unlike the runtime pause control: it throws on
+    /// an out-of-range value or a failed write, so the picker can snap back.
+    /// Takes effect the next time the library's coven handle opens.
+    public let setMaxConcurrentUploads: @Sendable (_ n: UInt32) throws -> Void
 
     public init(
         signInCloudProvider:
@@ -112,6 +117,9 @@ public final class Sync: Sendable, Observable {
         triggerSync: @escaping @Sendable () -> Void = {},
         lockActiveLibrary: @escaping @Sendable () throws -> Void = {
             throw StubError.notImplemented
+        },
+        setMaxConcurrentUploads: @escaping @Sendable (UInt32) throws -> Void = {
+            _ in
         }
     ) {
         self.signInCloudProvider = signInCloudProvider
@@ -130,6 +138,7 @@ public final class Sync: Sendable, Observable {
         self.cancelReleaseTransition = cancelReleaseTransition
         self.setSyncPaused = setSyncPaused
         self.lockActiveLibrary = lockActiveLibrary
+        self.setMaxConcurrentUploads = setMaxConcurrentUploads
     }
 
     public convenience init(handle: any AppHandleProtocol) {
@@ -182,7 +191,10 @@ public final class Sync: Sendable, Observable {
             },
             setSyncPaused: { await handle.setSyncPaused(paused: $0) },
             triggerSync: { handle.triggerSync() },
-            lockActiveLibrary: { try handle.lockActiveLibrary() }
+            lockActiveLibrary: { try handle.lockActiveLibrary() },
+            setMaxConcurrentUploads: {
+                try handle.setMaxConcurrentUploads(n: $0)
+            }
         )
     }
 

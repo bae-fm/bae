@@ -19,6 +19,11 @@ public struct Config: Equatable {
     /// persisted-config mirror.
     public let sync: BridgeSyncConfig?
     public let pauseBetweenSides: Bool
+    /// How many blob uploads run at once, and how many downloads a pin fetches at
+    /// once. Device-local (a per-machine choice), range 1...8. The storage manager
+    /// reads them here and writes through the bridge setters.
+    public let maxConcurrentUploads: UInt32
+    public let maxConcurrentDownloads: UInt32
     /// Whether the seek bar's leading label counts down the time remaining
     /// instead of showing the time elapsed. A synced preference, so the bar
     /// reads it here rather than keeping its own copy per device.
@@ -46,6 +51,8 @@ public struct Config: Equatable {
         discogsUsable = bridge.discogsUsable
         sync = bridge.sync
         pauseBetweenSides = bridge.pauseBetweenSides
+        maxConcurrentUploads = bridge.maxConcurrentUploads
+        maxConcurrentDownloads = bridge.maxConcurrentDownloads
         showRemainingTime = bridge.showRemainingTime
         exportLocation = bridge.exportLocation
         exportFilenameTemplate = bridge.exportFilenameTemplate

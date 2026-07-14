@@ -10,6 +10,8 @@ struct DownloadsView: View {
     private var downloadStore
     @Environment(Downloads.self)
     private var downloads
+    @Environment(ConfigStore.self)
+    private var configStore
     @Environment(\.dismiss)
     private var dismiss
 
@@ -70,12 +72,44 @@ struct DownloadsView: View {
                     Button("Done") { dismiss() }
                 }
             }
+            .safeAreaInset(edge: .bottom) {
+                DownloadConcurrencyControl()
+            }
         }
     }
 
     @ViewBuilder
     private func header(_ snapshot: BridgeDownloadSnapshot) -> some View {
         DownloadQueueSummaryLine(snapshot: snapshot, compact: false)
+    }
+}
+
+/// Always-visible bottom control for the device-local download-concurrency
+/// setting: how many downloads a pin fetches at once. Sits in a `safeAreaInset`
+/// so it stays reachable whether the queue has entries or shows the empty
+/// state. Mobile has no upload control — the app makes no uploads.
+private struct DownloadConcurrencyControl: View {
+    @Environment(ConfigStore.self)
+    private var configStore
+    @Environment(Downloads.self)
+    private var downloads
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Simultaneous downloads")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+            TransferConcurrencyPicker(
+                title: "Simultaneous downloads",
+                value: configStore.config.maxConcurrentDownloads,
+                setValue: downloads.setMaxConcurrentDownloads,
+                showError: { configStore.showError($0) }
+            )
+            .labelsHidden()
+        }
+        .padding(.horizontal)
+        .padding(.vertical, 10)
+        .background(.bar)
     }
 }
 

@@ -23,6 +23,11 @@ public final class Downloads: Sendable, Observable {
     public let cancelDownload: @Sendable (_ releaseId: String) -> Void
     /// Retry every failed download now (flips them back to queued).
     public let retryDownloads: @Sendable () -> Void
+    /// How many downloads a pin fetches at once (1...8). A persisted device-local
+    /// config write, unlike the runtime pause/cancel controls: it throws on an
+    /// out-of-range value or a failed write, so the picker can snap back. Takes
+    /// effect the next time the library's coven handle opens.
+    public let setMaxConcurrentDownloads: @Sendable (_ n: UInt32) throws -> Void
 
     public init(
         queuePins: @escaping @Sendable ([String]) async -> Void = { _ in },
@@ -31,13 +36,18 @@ public final class Downloads: Sendable, Observable {
         },
         setDownloadsPaused: @escaping @Sendable (Bool) -> Void = { _ in },
         cancelDownload: @escaping @Sendable (String) -> Void = { _ in },
-        retryDownloads: @escaping @Sendable () -> Void = {}
+        retryDownloads: @escaping @Sendable () -> Void = {},
+        setMaxConcurrentDownloads: @escaping @Sendable (UInt32) throws -> Void =
+            {
+                _ in
+            }
     ) {
         self.queuePins = queuePins
         self.unpinRelease = unpinRelease
         self.setDownloadsPaused = setDownloadsPaused
         self.cancelDownload = cancelDownload
         self.retryDownloads = retryDownloads
+        self.setMaxConcurrentDownloads = setMaxConcurrentDownloads
     }
 
     public convenience init(handle: any AppHandleProtocol) {
@@ -46,7 +56,10 @@ public final class Downloads: Sendable, Observable {
             unpinRelease: { try await handle.unpinRelease(releaseId: $0) },
             setDownloadsPaused: { handle.setDownloadsPaused(paused: $0) },
             cancelDownload: { handle.cancelDownload(releaseId: $0) },
-            retryDownloads: { handle.retryDownloads() }
+            retryDownloads: { handle.retryDownloads() },
+            setMaxConcurrentDownloads: {
+                try handle.setMaxConcurrentDownloads(n: $0)
+            }
         )
     }
 
