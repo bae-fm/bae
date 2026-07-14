@@ -229,6 +229,7 @@
                         trackNumber: Int32(index + 1),
                         durationMs: durationMs,
                         artistNames: artist,
+                        displayArtist: nil,
                         positionText: positionText(index),
                     )
                 }

@@ -1039,7 +1039,10 @@ struct AlbumTrackListView: View {
                 track in
                 TrackRowView(
                     track: track,
-                    showArtist: isCompilation,
+                    // Core's decision (set only for a compilation); the row does
+                    // not re-derive it. `isCompilation` above is kept only for the
+                    // album-level row-height heuristic.
+                    artist: track.displayArtist,
                     isCurrent: currentTrackId == track.id,
                     isLoading: loadingTrackId == track.id,
                     isPlaying: isPlaying,
@@ -1060,7 +1063,8 @@ private struct TrackRowView: View {
     @Environment(UiStore.self)
     private var uiStore
     let track: Track
-    let showArtist: Bool
+    /// The artist to show, or `nil` for none — core's decision.
+    let artist: String?
     let isCurrent: Bool
     let isLoading: Bool
     let isPlaying: Bool
@@ -1116,8 +1120,8 @@ private struct TrackRowView: View {
                     .font(.body)
                     .foregroundStyle(isCurrent ? Color.accentColor : .primary)
                     .lineLimit(1)
-                if showArtist {
-                    Text(track.artistNames)
+                if let artist {
+                    Text(artist)
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .lineLimit(1)

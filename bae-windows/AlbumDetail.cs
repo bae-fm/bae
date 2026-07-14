@@ -79,9 +79,21 @@ public sealed class Track
     public string Title => _track.Title;
     public long? DurationMs => _track.DurationMs;
     public string Artist => _track.ArtistNames;
+
+    /// <summary>The artist to show on the row, or null for none — core's decision
+    /// (set only for a compilation, where the album header names no single one).
+    /// Windows dropped this entirely before; the row now shows what the other
+    /// platforms show.</summary>
+    public string? DisplayArtist => _track.DisplayArtist;
+
     public string PositionLabel => _track.PositionText;
     public string DurationLabel => BridgeDisplay.Clock(DurationMs);
 
-    /// <summary>The list row; used as the default item text.</summary>
-    public override string ToString() => $"{PositionLabel}  {Title}  {DurationLabel}".Trim();
+    /// <summary>The list row; used as the default item text. The display artist
+    /// sits between the title and the duration when core provides one.</summary>
+    public override string ToString()
+    {
+        var artist = string.IsNullOrEmpty(DisplayArtist) ? string.Empty : $"  {DisplayArtist}";
+        return $"{PositionLabel}  {Title}{artist}  {DurationLabel}".Trim();
+    }
 }

@@ -1413,6 +1413,63 @@ async fn find_release_detail_surfaces_seeded_tracks() {
     );
 }
 
+/// A compilation's rows each carry their own artist (the header names none); a
+/// single-artist album's rows carry no display artist (they would only repeat
+/// the header). Core decides this, so the four front-ends stop rendering it four
+/// ways.
+#[tokio::test]
+async fn display_artist_is_set_only_for_a_compilation() {
+    async fn resolve_display_artist(is_compilation: bool) -> Option<String> {
+        let (manager, _temp_dir) = setup_test_manager().await;
+        let mut album = create_test_album();
+        album.is_compilation = is_compilation;
+        let release = create_test_release(&album.id);
+        let track = crate::db::DbTrack::new_test(&release.id, "track-a", "Track Title", Some(1));
+        let guest = DbArtist {
+            id: "guest-artist-id".to_string(),
+            name: "Guest Performer".to_string(),
+            sort_name: None,
+            discogs_artist_id: None,
+            musicbrainz_artist_id: None,
+            created_at: Utc::now(),
+        };
+        let track_artist = crate::db::DbTrackArtist::new(
+            &track.id,
+            &guest.id,
+            0,
+            Uuid::new_v4().to_string(),
+            Utc::now(),
+        );
+        manager.database.insert_album(&album).await.unwrap();
+        manager.database.insert_release(&release).await.unwrap();
+        manager.database.insert_artist(&guest).await.unwrap();
+        manager.database.insert_track(&track).await.unwrap();
+        manager
+            .database
+            .insert_track_artist(&track_artist)
+            .await
+            .unwrap();
+
+        let detail = manager
+            .find_release_detail(&release.id)
+            .await
+            .unwrap()
+            .expect("detail present");
+        detail.tracks[0].display_artist.clone()
+    }
+
+    assert_eq!(
+        resolve_display_artist(true).await.as_deref(),
+        Some("Guest Performer"),
+        "a compilation row shows its own artist"
+    );
+    assert_eq!(
+        resolve_display_artist(false).await,
+        None,
+        "a single-artist album row shows no artist"
+    );
+}
+
 #[tokio::test]
 async fn gallery_includes_cloud_only_image_files_with_no_local_path() {
     let (manager, _temp_dir) = setup_test_manager().await;

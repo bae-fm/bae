@@ -1164,6 +1164,17 @@ pub struct DbAlbumDetail {
     pub releases: Vec<DbReleaseDetail>,
 }
 
+/// A release detail plus the album context needed to project it: the album's
+/// artists (the per-track artist fallback), this release's index among the
+/// album's releases, and whether the album is a compilation (which decides each
+/// track's display artist). Returned by `find_release_detail_context`.
+pub struct ReleaseDetailContext {
+    pub detail: DbReleaseDetail,
+    pub album_artists: Vec<DbArtist>,
+    pub release_index: usize,
+    pub is_compilation: bool,
+}
+
 /// Raw release-detail aggregate. The resolver in `LibraryManager` produces
 /// the display-ready `crate::album_detail::ReleaseDetail`.
 #[derive(Debug, Clone)]

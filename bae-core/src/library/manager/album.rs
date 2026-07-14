@@ -177,6 +177,7 @@ impl LibraryManager {
                 pinned,
                 cover: release_cover,
                 transfer_action: self.current_transfer_action(&r.release.id),
+                is_compilation: raw.album.is_compilation,
             };
             let (detail, orphans) = ReleaseDetail::from_raw(r, &raw.artists, i, &ctx);
             self.report_audio_format_orphans(orphans);

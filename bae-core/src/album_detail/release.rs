@@ -20,6 +20,9 @@ pub(crate) struct ReleaseResolveCtx {
     pub(crate) pinned: bool,
     pub(crate) cover: Option<ImageRef>,
     pub(crate) transfer_action: Option<ReleaseStorageAction>,
+    /// Whether the owning album is a compilation. Decides `TrackDetail::display_artist`
+    /// — the one album-level fact the per-track artist decision needs.
+    pub(crate) is_compilation: bool,
 }
 
 /// The slim projection a list view (Storage Manager, release pickers) renders one
@@ -154,6 +157,10 @@ impl ReleaseDetail {
                     has_multiple_sides,
                 );
                 let position_text = crate::util::format::track_position_text(&position);
+                // On a compilation each row carries its own artist, because the
+                // album header names no single one; on a single-artist album the
+                // row would only repeat the header, so it shows nothing.
+                let display_artist = ctx.is_compilation.then(|| artist_names.clone());
                 TrackDetail {
                     id: entry.track.id,
                     title: entry.track.title,
@@ -161,6 +168,7 @@ impl ReleaseDetail {
                     track_number: entry.track.track_number,
                     duration_ms: entry.track.duration_ms,
                     artist_names,
+                    display_artist,
                     position_text,
                     position,
                 }

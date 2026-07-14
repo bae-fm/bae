@@ -2462,6 +2462,7 @@ impl BridgeTrack {
             track_number,
             duration_ms,
             artist_names,
+            display_artist,
             position_text,
             // Structured position drives core-side grouping (`track_groups`); the
             // UI renders `position_text` and the group headers, not this.
@@ -2474,6 +2475,7 @@ impl BridgeTrack {
             track_number,
             duration_ms,
             artist_names,
+            display_artist,
             position_text,
         }
     }

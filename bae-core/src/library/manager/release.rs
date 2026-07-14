@@ -626,7 +626,12 @@ impl LibraryManager {
         &self,
         release_id: &str,
     ) -> Result<Option<ReleaseDetail>, LibraryError> {
-        let Some((raw, album_artists, release_index)) = self
+        let Some(crate::db::ReleaseDetailContext {
+            detail: raw,
+            album_artists,
+            release_index,
+            is_compilation,
+        }) = self
             .database
             .find_release_detail_context(release_id)
             .await?
@@ -645,6 +650,7 @@ impl LibraryManager {
             pinned,
             cover,
             transfer_action: self.current_transfer_action(release_id),
+            is_compilation,
         };
         let (detail, orphans) = ReleaseDetail::from_raw(raw, &album_artists, release_index, &ctx);
         self.report_audio_format_orphans(orphans);
@@ -986,8 +992,12 @@ pub(crate) async fn find_release_detail_with(
     sync_ready: bool,
     release_id: &str,
 ) -> Result<Option<ReleaseDetail>, LibraryError> {
-    let Some((raw, album_artists, release_index)) =
-        database.find_release_detail_context(release_id).await?
+    let Some(crate::db::ReleaseDetailContext {
+        detail: raw,
+        album_artists,
+        release_index,
+        is_compilation,
+    }) = database.find_release_detail_context(release_id).await?
     else {
         return Ok(None);
     };
@@ -1009,6 +1019,7 @@ pub(crate) async fn find_release_detail_with(
         pinned,
         cover,
         transfer_action: None,
+        is_compilation,
     };
     // The upload observer resolves detail off the diagnostics-less sync path, so
     // an audio-format orphan here stays text-only (logged in `from_raw`); the

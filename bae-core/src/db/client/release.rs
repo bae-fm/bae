@@ -410,7 +410,7 @@ impl Database {
     pub async fn find_release_detail_context(
         &self,
         release_id: &str,
-    ) -> Result<Option<(DbReleaseDetail, Vec<DbArtist>, usize)>, DbError> {
+    ) -> Result<Option<ReleaseDetailContext>, DbError> {
         let release_id = release_id.to_string();
         self.read(move |conn| {
             let Some(release) = find_release_by_id_on(conn, &release_id)? else {
@@ -421,11 +421,15 @@ impl Database {
             let Some(release_index) = releases.iter().position(|r| r.id == release_id) else {
                 return Ok(None);
             };
-            Ok(Some((
-                build_release_detail_on(conn, release)?,
+            // The album's compilation flag decides each track's display artist.
+            let is_compilation = find_album_by_id_on(conn, &release.album_id)?
+                .is_some_and(|album| album.is_compilation);
+            Ok(Some(ReleaseDetailContext {
+                detail: build_release_detail_on(conn, release)?,
                 album_artists,
                 release_index,
-            )))
+                is_compilation,
+            }))
         })
         .await
     }

@@ -268,8 +268,8 @@ private enum AlbumDetailDisplay {
 
     var trackArtistDisplay: TrackArtistDisplay {
         switch self {
-        case .album(let summary):
-            .album(isCompilation: summary.isCompilation)
+        case .album:
+            .album
         case .workRelease:
             .workRelease
         }
@@ -290,15 +290,20 @@ private struct AlbumDetailAlbumMetadata {
 }
 
 private enum TrackArtistDisplay {
-    case album(isCompilation: Bool)
+    case album
     case workRelease
 
-    var showsArtist: Bool {
+    /// The artist to show on `track`'s row, or `nil` for none. On the album
+    /// screen this is core's decision (`displayArtist`, set only for a
+    /// compilation); a work-release view shows the performer regardless, because
+    /// its header is the work/composer — navigation context, decided here, not by
+    /// core, since the same track also serves the album screen.
+    func artist(for track: Track) -> String? {
         switch self {
-        case .album(let isCompilation):
-            isCompilation
+        case .album:
+            track.displayArtist
         case .workRelease:
-            true
+            track.artistNames
         }
     }
 }
@@ -567,7 +572,7 @@ private struct TrackList: View {
                     track in
                     TrackRow(
                         track: track,
-                        showArtist: artistDisplay.showsArtist,
+                        artist: artistDisplay.artist(for: track),
                         onPlay: { onPlayTrackAt(groupOffset + localIndex) },
                         onPlayNext: { onPlayNext(track.id) },
                         onAddToQueue: { onAddToQueue(track.id) }
@@ -586,7 +591,9 @@ private struct TrackList: View {
 
 private struct TrackRow: View {
     let track: Track
-    let showArtist: Bool
+    /// The artist to show, or `nil` for none. Resolved by the album/work-release
+    /// display; the row does not decide.
+    let artist: String?
     let onPlay: () -> Void
     let onPlayNext: () -> Void
     let onAddToQueue: () -> Void
@@ -635,8 +642,8 @@ private struct TrackRow: View {
                         .font(.body)
                         .foregroundStyle(isCurrent ? Theme.accent : .primary)
                         .lineLimit(1)
-                    if showArtist {
-                        Text(track.artistNames)
+                    if let artist {
+                        Text(artist)
                             .font(.caption)
                             .foregroundStyle(.secondary)
                             .lineLimit(1)

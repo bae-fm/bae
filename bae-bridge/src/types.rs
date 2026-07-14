@@ -392,6 +392,11 @@ pub struct BridgeTrack {
     /// artists when it has per-track artist rows, otherwise the album
     /// artists). Always populated.
     pub artist_names: String,
+    /// The artist to show on the track row, or `None` for none. Core sets it
+    /// only for a compilation, where the album header names no single artist;
+    /// on a single-artist album the row would only repeat the header. The UI
+    /// renders it when present rather than deciding for itself.
+    pub display_artist: Option<String>,
     /// Core-rendered position string: "A1"/"2-3"/"5", or the stable prefix
     /// when the source has no track number.
     pub position_text: String,

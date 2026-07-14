@@ -267,6 +267,11 @@ pub struct TrackDetail {
     /// populated so UI consumers can render a row label without joining
     /// artist data themselves.
     pub artist_names: String,
+    /// The artist to show on the track row, or `None` when the row should show
+    /// none. Set only for a compilation, whose header names no single artist so
+    /// each row needs its own; on a single-artist album the row would only repeat
+    /// the header. Whether a row shows an artist is a domain decision, made here.
+    pub display_artist: Option<String>,
     /// Core-rendered position string: "A1"/"2-3"/"5", or the stable prefix
     /// when the source has no track number.
     pub position_text: String,

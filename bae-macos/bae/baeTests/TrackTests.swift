@@ -14,6 +14,7 @@ struct TrackTests {
                 trackNumber: nil,
                 durationMs: nil,
                 artistNames: "Artist Name",
+                displayArtist: nil,
                 positionText: "A"
             )
         )

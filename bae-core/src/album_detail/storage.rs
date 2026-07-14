@@ -82,6 +82,9 @@ impl StorageRow {
             pinned,
             cover: resolve_cover(&raw.release.id),
             transfer_action,
+            // A storage row projects a `ReleaseSummary`, which has no tracks, so
+            // the per-track compilation flag is never read on this path.
+            is_compilation: false,
         };
         StorageRow {
             release: ReleaseSummary::from_raw(raw.release, &ctx),

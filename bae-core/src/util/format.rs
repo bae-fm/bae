@@ -259,6 +259,7 @@ mod tests {
             track_number: None,
             duration_ms: None,
             artist_names: String::new(),
+            display_artist: None,
             position_text: track_position_text(&position),
             position,
         }

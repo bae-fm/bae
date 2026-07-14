@@ -276,7 +276,6 @@ private fun AlbumDetailContent(
     callbacks: AlbumDetailCallbacks,
 ) {
     val album = detail.album
-    val isCompilation = album.isCompilation
     val context = LocalContext.current
 
     var showGallery by remember { mutableStateOf(false) }
@@ -323,7 +322,7 @@ private fun AlbumDetailContent(
         if (selectedRelease != null) {
             item { ReleaseDownloadControl(session = session, release = selectedRelease) }
             item { AlbumActionButtons(callbacks) }
-            albumTrackGroups(selectedRelease, isCompilation, playback, callbacks, context)
+            albumTrackGroups(selectedRelease, playback, callbacks, context)
         }
     }
 }
@@ -425,7 +424,6 @@ private fun AlbumActionButtons(callbacks: AlbumDetailCallbacks) {
 
 private fun androidx.compose.foundation.lazy.LazyListScope.albumTrackGroups(
     release: BridgeRelease,
-    isCompilation: Boolean,
     playback: AlbumPlaybackState,
     callbacks: AlbumDetailCallbacks,
     context: android.content.Context,
@@ -453,7 +451,7 @@ private fun androidx.compose.foundation.lazy.LazyListScope.albumTrackGroups(
                     TrackRowData(
                         positionLabel = track.positionText,
                         title = track.title,
-                        artistNames = if (isCompilation) track.artistNames else null,
+                        artistNames = track.displayArtist,
                         durationLabel = context.durationClockText(track.durationMs),
                         isCurrent = isCurrent,
                         isPlaying = playback.isPlaying,

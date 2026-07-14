@@ -53,6 +53,7 @@ class LibraryBrowseTreeTest {
             trackNumber = null,
             durationMs = 180_000L,
             artistNames = "Artist Name",
+            displayArtist = null,
             positionText = "1",
         )
 
