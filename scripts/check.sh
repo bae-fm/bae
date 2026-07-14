@@ -223,7 +223,12 @@ check "cargo doc" env RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps
 section "Rust tests"
 
 check "cargo test (bae-loc)"           cargo test -p bae-loc
+# Both editions' surfaces. Default features are what the baeium build compiles;
+# `desktop` is what the full build compiles, and the conversions behind it (the
+# metadata-edit round trips, the identify-progress mirror) have no other test run.
 check "cargo test (bae-bridge --lib)"  cargo test -p bae-bridge --lib
+check "cargo test (bae-bridge --lib, desktop)" \
+  cargo test -p bae-bridge --lib --features desktop
 check "cargo test (bae-automation)"    cargo test -p bae-automation
 check "cargo test (bae-mcp)"           cargo test -p bae-mcp
 check "cargo test (bae-cli)"           cargo test -p bae-cli

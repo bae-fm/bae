@@ -84,7 +84,12 @@ jobs:
     - name: Run localization + bridge tests
       run: |
         cargo test -p bae-loc
+        # Both editions' surfaces. Default features are what the baeium build
+        # compiles; `desktop` is what the full build compiles, and the conversions
+        # behind it (the metadata-edit round trips, the identify-progress mirror)
+        # have no other test run.
         cargo test -p bae-bridge --lib
+        cargo test -p bae-bridge --lib --features desktop
         cargo test -p bae-automation
         cargo test -p bae-mcp
         cargo test -p bae-cli
