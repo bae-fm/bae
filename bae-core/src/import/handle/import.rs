@@ -107,24 +107,19 @@ impl ImportServiceHandle {
         }
     }
 
-    /// Write the key to the keyring and record its validation in config. The
-    /// shared persist path for the two outcomes that keep the key.
+    /// Write the key to the keyring and record its validation in config, as one
+    /// atomic operation. The shared persist path for the two outcomes that keep
+    /// the key.
     fn persist_discogs_key(
         &self,
         token: &str,
         validation: crate::config::DiscogsValidation,
     ) -> Result<(), crate::import::ImportError> {
-        self.library_manager.save_discogs_key(token).map_err(|e| {
-            crate::import::ImportError::Config {
-                detail: e.to_string(),
-            }
-        })?;
         self.library_manager
-            .set_discogs_key_stored(validation)
+            .set_discogs_key(token, validation)
             .map_err(|e| crate::import::ImportError::Config {
                 detail: e.to_string(),
-            })?;
-        Ok(())
+            })
     }
 
     /// Re-check a stored `Unvalidated` key when possible (app launch,
@@ -138,13 +133,15 @@ impl ImportServiceHandle {
             return Ok(());
         }
         let Some(client) = self.library_manager.discogs_client()? else {
-            // A stored `Unvalidated` key (the guard above) with no client means
-            // the keyring entry and the config disagree — surface it rather than
-            // silently leaving the key stuck unvalidated.
-            warn!(
-                "revalidate skipped: config says a Discogs key is stored but the keyring has none"
-            );
-            return Ok(());
+            // The guard above established config says a key is stored and
+            // Unvalidated, so no client here means the keyring has no matching
+            // bytes — the two durable stores disagree. Our own writes cannot
+            // produce this (see `set_discogs_key`/`clear_discogs_key`), so it is
+            // external tampering or a torn write from before those existed. Fail
+            // loudly rather than leave the key stuck Unvalidated behind a log line.
+            return Err(crate::import::ImportError::Config {
+                detail: "config says a Discogs key is stored but the keyring has none".to_string(),
+            });
         };
         match validation_from_validate_result(client.validate_token().await) {
             settled @ (DiscogsValidation::Valid | DiscogsValidation::Rejected) => self
@@ -160,17 +157,11 @@ impl ImportServiceHandle {
     /// Remove the Discogs API token from the OS keyring and clear the
     /// stored-key hint.
     pub fn remove_discogs_token(&self) -> Result<(), crate::import::ImportError> {
-        self.library_manager.delete_discogs_key().map_err(|e| {
-            crate::import::ImportError::Config {
-                detail: e.to_string(),
-            }
-        })?;
         self.library_manager
-            .clear_discogs_key_stored()
+            .clear_discogs_key()
             .map_err(|e| crate::import::ImportError::Config {
                 detail: e.to_string(),
-            })?;
-        Ok(())
+            })
     }
 
     /// Queue an import command and return its import_id for progress tracking.

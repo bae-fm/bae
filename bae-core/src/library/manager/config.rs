@@ -168,12 +168,39 @@ impl LibraryManager {
         Ok(self.key_service.get_discogs_key()?)
     }
 
-    pub fn save_discogs_key(&self, token: &str) -> Result<(), LibraryError> {
-        Ok(self.key_service.set_discogs_key(token)?)
+    /// Store the Discogs key across both durable stores — keyring bytes, then
+    /// config hint — as one operation. Keyring first is deliberate: a failure or
+    /// crash after the keyring write but before the config write leaves the bytes
+    /// present with no config hint, which [`Self::discogs_client`] reads as "not
+    /// configured", so Discogs stays fully off until a retry completes both. The
+    /// reverse order could leave config claiming a usable key the keyring lacks —
+    /// the one torn state that offers Discogs in the UI while search drops it.
+    ///
+    /// On config-write failure the keyring bytes are left in place (not rolled
+    /// back): both stores then show a key exists, the client re-validates it on
+    /// use, and the returned error tells the caller to retry. Deleting the bytes
+    /// instead would manufacture the dangerous config-present/keyring-empty state.
+    pub fn set_discogs_key(
+        &self,
+        token: &str,
+        validation: crate::config::DiscogsValidation,
+    ) -> Result<(), LibraryError> {
+        self.key_service.set_discogs_key(token)?;
+        self.config_handle
+            .update(|c| c.discogs = Some(validation))?;
+        Ok(())
     }
 
-    pub fn delete_discogs_key(&self) -> Result<(), LibraryError> {
-        Ok(self.key_service.delete_discogs_key()?)
+    /// Remove the Discogs key from both durable stores — config hint, then
+    /// keyring bytes — as one operation. Config first is deliberate: a crash
+    /// between leaves no config hint with orphaned keyring bytes, read as "not
+    /// configured" and cleaned up by an idempotent retry. Deleting the keyring
+    /// first would leave config claiming a key the keyring no longer has — the
+    /// dangerous torn-remove state.
+    pub fn clear_discogs_key(&self) -> Result<(), LibraryError> {
+        self.config_handle.update(|c| c.discogs = None)?;
+        self.key_service.delete_discogs_key()?;
+        Ok(())
     }
 
     pub fn get_mcp_token(&self) -> Result<Option<String>, LibraryError> {
@@ -193,21 +220,6 @@ impl LibraryManager {
 
     pub fn set_mcp_token(&self, token: String) -> Result<(), LibraryError> {
         Ok(self.key_service.set_mcp_token(&token)?)
-    }
-
-    /// Record a stored key with its validation state. `Some(validation)` is both
-    /// the "a key exists" hint and the state, so one `update` keeps the two
-    /// consistent and fires a single watch-channel notification.
-    pub fn set_discogs_key_stored(
-        &self,
-        validation: crate::config::DiscogsValidation,
-    ) -> Result<(), crate::config::ConfigError> {
-        self.config_handle.update(|c| c.discogs = Some(validation))
-    }
-
-    /// Clear the stored-key state — no key, so no validation.
-    pub fn clear_discogs_key_stored(&self) -> Result<(), crate::config::ConfigError> {
-        self.config_handle.update(|c| c.discogs = None)
     }
 
     /// Update the stored key's validation state. No-op when no key is stored —
@@ -257,13 +269,20 @@ impl LibraryManager {
         })
     }
 
-    /// A client for the stored key, unless that key is `Rejected` — withholding it
-    /// is what makes search call sites skip Discogs entirely. An `Unvalidated` key is
-    /// served optimistically. The client reports each call's outcome back into the
-    /// validation state.
+    /// A client for the stored key, or `None` when Discogs can't be used — which
+    /// withholds it from every search call site. `None` when no key is configured,
+    /// or the key is `Rejected`; an `Unvalidated` key is served optimistically. The
+    /// client reports each call's outcome back into the validation state.
+    ///
+    /// A usable key requires *both* stores to agree it exists: the config hint here
+    /// and the keyring bytes below. A torn write (or external keyring tampering)
+    /// that leaves one without the other reads as "not configured" rather than
+    /// serving — or claiming to serve — a half-present key.
     pub fn discogs_client(&self) -> Result<Option<crate::discogs::DiscogsClient>, LibraryError> {
-        if self.discogs_validation() == Some(crate::config::DiscogsValidation::Rejected) {
-            return Ok(None);
+        use crate::config::DiscogsValidation;
+        match self.discogs_validation() {
+            None | Some(DiscogsValidation::Rejected) => return Ok(None),
+            Some(DiscogsValidation::Valid | DiscogsValidation::Unvalidated) => {}
         }
         let observer = self.discogs_validation_observer();
         Ok(self

@@ -5518,11 +5518,10 @@ async fn re_identify_to_unknown_reseeds_rows_from_file_tags() {
 async fn discogs_client_withheld_when_rejected() {
     use crate::config::DiscogsValidation;
     let (manager, _temp_dir) = setup_test_manager_with_library_id("discogs-withheld-test").await;
-    manager.save_discogs_key("a-key").unwrap();
-
     manager
-        .set_discogs_key_stored(DiscogsValidation::Valid)
+        .set_discogs_key("a-key", DiscogsValidation::Valid)
         .unwrap();
+
     assert!(
         manager.discogs_client().unwrap().is_some(),
         "a Valid key is served"
@@ -5545,6 +5544,73 @@ async fn discogs_client_withheld_when_rejected() {
     );
 }
 
+/// A key present in the keyring but absent from config (the residue a torn write
+/// or external keyring tampering can leave) is not served: a usable key requires
+/// both stores to agree it exists.
+#[tokio::test]
+async fn discogs_client_withheld_when_config_has_no_key() {
+    use crate::keys::BaeStoreKeysExt;
+    let (manager, _temp_dir) = setup_test_manager_with_library_id("discogs-orphan-key").await;
+
+    // Keyring bytes present, config untouched (still `None`).
+    manager.key_service.set_discogs_key("orphan-key").unwrap();
+
+    assert_eq!(manager.discogs_validation(), None);
+    assert!(
+        manager.discogs_client().unwrap().is_none(),
+        "a keyring key with no config hint is not served",
+    );
+}
+
+/// `set_discogs_key` and `clear_discogs_key` move both durable stores together.
+#[tokio::test]
+async fn set_and_clear_discogs_key_move_both_stores() {
+    use crate::config::DiscogsValidation;
+    use crate::keys::BaeStoreKeysExt;
+    let (manager, _temp_dir) = setup_test_manager_with_library_id("discogs-atomic").await;
+
+    manager
+        .set_discogs_key("the-key", DiscogsValidation::Valid)
+        .unwrap();
+    assert_eq!(manager.discogs_validation(), Some(DiscogsValidation::Valid));
+    assert_eq!(
+        manager.key_service.get_discogs_key().unwrap().as_deref(),
+        Some("the-key"),
+    );
+    assert!(manager.discogs_client().unwrap().is_some());
+
+    manager.clear_discogs_key().unwrap();
+    assert_eq!(manager.discogs_validation(), None);
+    assert_eq!(manager.key_service.get_discogs_key().unwrap(), None);
+    assert!(manager.discogs_client().unwrap().is_none());
+}
+
+/// Revalidation surfaces the config-says-stored/keyring-empty mismatch as an
+/// error, not a swallowed warning — the one torn state our writes can't produce
+/// but external tampering can.
+#[tokio::test]
+async fn revalidate_errors_when_config_claims_a_key_the_keyring_lacks() {
+    use crate::config::DiscogsValidation;
+
+    let (manager, _temp_dir) = setup_test_manager_with_library_id("discogs-revalidate-torn").await;
+    // Config claims an Unvalidated key; the keyring has none — the torn state.
+    manager
+        .config_handle
+        .update(|c| c.discogs = Some(DiscogsValidation::Unvalidated))
+        .unwrap();
+
+    let handle = crate::import::ImportService::start(
+        tokio::runtime::Handle::current(),
+        manager.clone(),
+        crate::import::cover_art::CoverArtArchiveClient::hermetic(),
+    );
+
+    assert!(
+        handle.revalidate_discogs_token().await.is_err(),
+        "a stored-but-keyless config must fail revalidation, not warn and continue",
+    );
+}
+
 #[tokio::test]
 async fn discogs_validation_observer_confirms_and_rejects() {
     use crate::config::DiscogsValidation;
@@ -5554,7 +5620,8 @@ async fn discogs_validation_observer_confirms_and_rejects() {
 
     // A success confirms a stored Unvalidated key.
     manager
-        .set_discogs_key_stored(DiscogsValidation::Unvalidated)
+        .config_handle
+        .update(|c| c.discogs = Some(DiscogsValidation::Unvalidated))
         .unwrap();
     observe(DiscogsKeySignal::Accepted);
     assert_eq!(manager.discogs_validation(), Some(DiscogsValidation::Valid));
