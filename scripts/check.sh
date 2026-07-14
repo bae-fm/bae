@@ -6,8 +6,10 @@
 # Runs the same non-Windows gates as CI. Missing platform toolchains or lint
 # tools are failures.
 #
-# Only Windows is excluded: bae-windows requires the Windows toolchain and can
-# only be validated in CI.
+# Only the Windows app and bridge are excluded: the WinUI app and the C# uniffi
+# bindings need the Windows toolchain and are validated in CI. bae-windows' pure
+# C# model tests (net8.0, no WinUI, no bindings) DO run here — the same suite CI's
+# windows.yml notes "also run on the macOS dev host".
 
 set -uo pipefail
 
@@ -250,6 +252,16 @@ check "cargo test (bae-cli)"           cargo test -p bae-cli
 # locally, not only in CI.
 check "loc chrome orphans"             python3 scripts/loc-chrome-orphans.py
 check "loc english skeleton"           python3 scripts/loc-english-skeleton.py
+
+# ── Windows (host-runnable) ────────────────────────────────────────────────────
+section "Windows (host-runnable)"
+
+# bae-windows' pure C# model tests: locale formatters, album-grid selection,
+# activation-intent grammar, export-queue gating, the update flow. net8.0, no
+# WinUI, no uniffi bindings, so they run on this host — windows.yml notes they
+# "also run on the macOS dev host". The WinUI app and the C# bindings stay CI-only.
+check "dotnet test (bae-windows models)" \
+  dotnet test bae-windows/bae-windows.Tests/bae-windows.Tests.csproj -c Debug
 
 # ── macOS ──────────────────────────────────────────────────────────────────────
 section "macOS"
