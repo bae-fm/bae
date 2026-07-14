@@ -87,17 +87,12 @@ internal fun DownloadsSummaryStrip(
 internal fun downloadQueueSummaryText(
     context: Context,
     snapshot: BridgeDownloadSnapshot,
-): String {
-    val total = snapshot.total
-    return listOf(
-        "core.queue.downloading" to total.active,
-        "core.queue.failed" to total.failed,
-        "core.queue.queued" to total.queued,
-    ).filter { (_, count) -> count > 0u }
-        .joinToString(" · ") { (key, count) ->
-            context.coreString(key, mapOf("count" to count.toInt()))
-        }
-}
+): String =
+    // Core decides which parts appear, their order, and the drop-if-zero rule;
+    // this localizes each and joins.
+    snapshot.summaryParts.joinToString(" · ") { part ->
+        context.coreString(part.key, mapOf("count" to part.count.toInt()))
+    }
 
 private fun BridgeDownloadSnapshot.activeProgress(): BridgeDownloadTransferProgress? =
     downloads.firstNotNullOfOrNull { (it.state as? BridgeDownloadState.Active)?.progress }

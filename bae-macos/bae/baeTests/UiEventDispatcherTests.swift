@@ -506,6 +506,7 @@ private final class FakeAppHandle: AppHandle, @unchecked Sendable {
         BridgeDownloadSnapshot(
             downloads: [],
             total: BridgeDownloadProgress(queued: 0, active: 0, failed: 0),
+            summaryParts: [],
             paused: false
         )
     }
@@ -514,6 +515,7 @@ private final class FakeAppHandle: AppHandle, @unchecked Sendable {
         BridgeExportSnapshot(
             exports: [],
             total: BridgeExportProgress(queued: 0, active: 0, failed: 0),
+            summaryParts: [],
             paused: false
         )
     }

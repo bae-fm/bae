@@ -42,6 +42,37 @@ pub struct ReleaseQueueProgress {
     pub failed: u32,
 }
 
+/// One part of a queue summary line: a catalog key and the count to render it
+/// with (e.g. `core.queue.downloading` × 2). Core decides which parts appear, in
+/// what order, and that a zero drops out; the UI resolves each key against its
+/// catalog and joins the parts. Written five times across the apps before this.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CountLabel {
+    pub key: String,
+    pub count: u32,
+}
+
+impl ReleaseQueueProgress {
+    /// The summary parts for a release queue: its active verb (`active_key`,
+    /// e.g. downloading vs exporting), then failed, then queued — each part
+    /// dropped when its count is zero. The order and the drop rule are the
+    /// decision; only the active verb differs by queue, so the caller names it.
+    pub fn summary_parts(&self, active_key: &str) -> Vec<CountLabel> {
+        [
+            (active_key, self.active),
+            ("core.queue.failed", self.failed),
+            ("core.queue.queued", self.queued),
+        ]
+        .into_iter()
+        .filter(|(_, count)| *count > 0)
+        .map(|(key, count)| CountLabel {
+            key: key.to_string(),
+            count,
+        })
+        .collect()
+    }
+}
+
 #[derive(Debug, Clone, Default)]
 pub struct ReleaseQueueSnapshot<Extra, Progress> {
     pub ops: Vec<ReleaseQueueOp<Extra, Progress>>,
@@ -327,6 +358,38 @@ impl<Extra: Clone> ReleaseQueue<Extra, u8> {
 mod tests {
     use super::*;
     use std::sync::Arc;
+
+    /// The summary parts read active-then-failed-then-queued, drop any zero, and
+    /// take the active verb the caller names — so download and export share this
+    /// one decision and differ only in that verb.
+    #[test]
+    fn summary_parts_order_drop_and_active_verb() {
+        let progress = ReleaseQueueProgress {
+            queued: 3,
+            active: 2,
+            failed: 0,
+        };
+        assert_eq!(
+            progress.summary_parts("core.queue.downloading"),
+            vec![
+                CountLabel {
+                    key: "core.queue.downloading".to_string(),
+                    count: 2,
+                },
+                CountLabel {
+                    key: "core.queue.queued".to_string(),
+                    count: 3,
+                },
+            ],
+            "failed is zero and drops; the active verb is the caller's"
+        );
+        assert!(
+            ReleaseQueueProgress::default()
+                .summary_parts("core.queue.exporting")
+                .is_empty(),
+            "an idle queue has no parts"
+        );
+    }
 
     fn op(release_id: &str) -> ReleaseQueueOp<(), u8> {
         ReleaseQueueOp {

@@ -23,7 +23,7 @@ pub use outbox_snapshot::{
     DeleteOp, OutboxSnapshot, UploadActivity, UploadFileOp, UploadProgress, UploadReleaseGroup,
     UploadState,
 };
-pub use release_queue::ReleaseQueue;
+pub use release_queue::{CountLabel, ReleaseQueue};
 pub use search::{LibrarySearchQuery, SEARCH_RESULT_LIMIT};
 pub use upload_sessions::UploadSessions;
 pub use upload_throughput::UploadThroughput;

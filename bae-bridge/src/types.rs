@@ -1978,9 +1978,29 @@ pub struct BridgeDownloadProgress {
 pub struct BridgeDownloadSnapshot {
     pub downloads: Vec<BridgeDownloadOp>,
     pub total: BridgeDownloadProgress,
+    /// The one-line queue summary's parts (downloading/failed/queued, each
+    /// dropped when zero), decided by core. The UI resolves each key with its
+    /// count and joins — it does not choose which counts appear or their order.
+    pub summary_parts: Vec<BridgeCountLabel>,
     /// True when the user paused the download queue. Drives the pause/resume
     /// toggle in the Downloads pane.
     pub paused: bool,
+}
+
+/// One part of a queue summary line — a catalog key and its count. Mirror of
+/// bae-core's `CountLabel`. Which parts appear, in what order, and that a zero
+/// drops out is core's decision; the UI resolves the key and joins the parts.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeCountLabel {
+    pub key: String,
+    pub count: u32,
+}
+
+impl BridgeCountLabel {
+    pub(crate) fn from_core(label: bae_core::library::CountLabel) -> Self {
+        let bae_core::library::CountLabel { key, count } = label;
+        Self { key, count }
+    }
 }
 
 /// A queued export's state. Mirror of bae-core's `ExportState`.
@@ -2024,6 +2044,9 @@ pub struct BridgeExportProgress {
 pub struct BridgeExportSnapshot {
     pub exports: Vec<BridgeExportOp>,
     pub total: BridgeExportProgress,
+    /// The one-line queue summary's parts (exporting/failed/queued), decided by
+    /// core. The UI resolves each key and joins.
+    pub summary_parts: Vec<BridgeCountLabel>,
     /// True when the user paused the export queue. Drives the pause/resume
     /// toggle in the Exporting pane.
     pub paused: bool,
@@ -2088,6 +2111,10 @@ pub struct BridgeOutboxSnapshot {
     pub total: BridgeUploadProgress,
     /// Derived from `deletes.len()`.
     pub pending_deletes: u32,
+    /// The one-line queue summary's parts (uploading/failed/queued/pending
+    /// deletes, each dropped when zero), decided by core. The UI resolves each
+    /// key and joins.
+    pub summary_parts: Vec<BridgeCountLabel>,
     /// True when the user has paused the upload pipeline. Drives the
     /// pause/resume toggle and suppresses throughput/ETA in the UI.
     pub paused: bool,

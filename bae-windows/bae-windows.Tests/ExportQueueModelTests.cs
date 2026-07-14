@@ -25,47 +25,6 @@ public sealed class ExportQueueModelTests
     }
 
     [Fact]
-    public void SummaryParts_Idle_IsEmpty()
-    {
-        Assert.Empty(ExportQueueModel.SummaryParts(active: 0, failed: 0, queued: 0));
-    }
-
-    [Fact]
-    public void SummaryParts_EachCountAlone()
-    {
-        Assert.Equal(
-            new[] { ("core.queue.exporting", 3L) },
-            ExportQueueModel.SummaryParts(active: 3, failed: 0, queued: 0));
-        Assert.Equal(
-            new[] { ("core.queue.failed", 2L) },
-            ExportQueueModel.SummaryParts(active: 0, failed: 2, queued: 0));
-        Assert.Equal(
-            new[] { ("core.queue.queued", 5L) },
-            ExportQueueModel.SummaryParts(active: 0, failed: 0, queued: 5));
-    }
-
-    [Fact]
-    public void SummaryParts_AllThree_InExportingFailedQueuedOrder()
-    {
-        var parts = ExportQueueModel.SummaryParts(active: 1, failed: 2, queued: 3);
-        Assert.Equal(
-            new[]
-            {
-                ("core.queue.exporting", 1L),
-                ("core.queue.failed", 2L),
-                ("core.queue.queued", 3L),
-            },
-            parts);
-    }
-
-    [Fact]
-    public void SummaryParts_CountsPassThrough()
-    {
-        var parts = ExportQueueModel.SummaryParts(active: 11, failed: 22, queued: 33);
-        Assert.Equal(new long[] { 11, 22, 33 }, parts.Select(p => p.Count));
-    }
-
-    [Fact]
     public void Retry_GatedOnFailures()
     {
         Assert.False(ExportQueueModel.RetryEnabled(0));

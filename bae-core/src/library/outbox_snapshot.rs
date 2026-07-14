@@ -199,6 +199,27 @@ impl OutboxSnapshot {
     pub fn pending_delete_count(&self) -> u32 {
         self.deletes.len() as u32
     }
+
+    /// The summary line's parts: uploading, then failed, then queued, then any
+    /// pending deletes — each dropped when zero. The order and drop rule are the
+    /// decision, made once here rather than in each app's storage band.
+    pub fn summary_parts(&self) -> Vec<crate::library::release_queue::CountLabel> {
+        use crate::library::release_queue::CountLabel;
+        let mut parts = crate::library::release_queue::ReleaseQueueProgress {
+            queued: self.total.queued,
+            active: self.total.active,
+            failed: self.total.failed,
+        }
+        .summary_parts("core.queue.uploading");
+        let pending_deletes = self.pending_delete_count();
+        if pending_deletes > 0 {
+            parts.push(CountLabel {
+                key: "core.outbox.pending_deletes".to_string(),
+                count: pending_deletes,
+            });
+        }
+        parts
+    }
 }
 
 /// A group under construction: `display_title` stays unresolved (`None`)

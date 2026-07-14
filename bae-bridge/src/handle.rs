@@ -1748,6 +1748,11 @@ impl crate::types::BridgeOutboxSnapshot {
             })
             .collect();
         let pending_deletes = snapshot.pending_delete_count();
+        let summary_parts = snapshot
+            .summary_parts()
+            .into_iter()
+            .map(crate::types::BridgeCountLabel::from_core)
+            .collect();
 
         let bae_core::library::OutboxSnapshot {
             upload_groups,
@@ -1770,6 +1775,7 @@ impl crate::types::BridgeOutboxSnapshot {
             per_release,
             total: crate::types::BridgeUploadProgress::from_core(total),
             pending_deletes,
+            summary_parts,
             paused,
             throughput_bps,
             eta_seconds,
@@ -1900,6 +1906,12 @@ fn release_queue_progress_counts(
 
 impl crate::types::BridgeDownloadSnapshot {
     fn from_core(snapshot: bae_core::library::DownloadSnapshot) -> Self {
+        let summary_parts = snapshot
+            .total
+            .summary_parts("core.queue.downloading")
+            .into_iter()
+            .map(crate::types::BridgeCountLabel::from_core)
+            .collect();
         let (downloads, total, paused) = project_release_queue_snapshot(
             snapshot,
             crate::types::BridgeDownloadOp::from_core,
@@ -1908,6 +1920,7 @@ impl crate::types::BridgeDownloadSnapshot {
         crate::types::BridgeDownloadSnapshot {
             downloads,
             total,
+            summary_parts,
             paused,
         }
     }
@@ -1969,6 +1982,12 @@ impl crate::types::BridgeExportOp {
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 impl crate::types::BridgeExportSnapshot {
     fn from_core(snapshot: bae_core::library::ExportSnapshot) -> Self {
+        let summary_parts = snapshot
+            .total
+            .summary_parts("core.queue.exporting")
+            .into_iter()
+            .map(crate::types::BridgeCountLabel::from_core)
+            .collect();
         let (exports, total, paused) = project_release_queue_snapshot(
             snapshot,
             crate::types::BridgeExportOp::from_core,
@@ -1977,6 +1996,7 @@ impl crate::types::BridgeExportSnapshot {
         crate::types::BridgeExportSnapshot {
             exports,
             total,
+            summary_parts,
             paused,
         }
     }

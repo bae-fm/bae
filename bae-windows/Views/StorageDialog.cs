@@ -598,13 +598,12 @@ internal sealed class StorageDialog
                 Text = Loc.Chrome(ExportQueueModel.BandTitleKey(paused)),
                 VerticalAlignment = VerticalAlignment.Center,
             });
-            var summaryParts = ExportQueueModel.SummaryParts(
-                snapshot.Total.Active, snapshot.Total.Failed, snapshot.Total.Queued);
-            if (!paused && summaryParts.Count > 0)
+            if (!paused && snapshot.SummaryParts.Count > 0)
             {
                 band.Children.Add(new TextBlock
                 {
-                    Text = string.Join(" · ", summaryParts.Select(part => Loc.Core(part.Key, "count", part.Count))),
+                    // Core decides the parts, order, and drop-if-zero; this joins.
+                    Text = QueueSummaryText(snapshot.SummaryParts),
                     Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray),
                     VerticalAlignment = VerticalAlignment.Center,
                 });
@@ -1149,16 +1148,15 @@ internal sealed class StorageDialog
     private static BridgeDownloadTransferProgress? DownloadProgress(BridgeDownloadState state) =>
         state is BridgeDownloadState.Active active ? active.Progress : null;
 
-    private static string OutboxSummary(BridgeOutboxSnapshot snapshot)
-    {
-        var parts = new List<string>();
-        if (snapshot.Total.Active > 0) parts.Add(Loc.Core("core.queue.uploading", "count", snapshot.Total.Active));
-        if (snapshot.Total.Failed > 0) parts.Add(Loc.Core("core.queue.failed", "count", snapshot.Total.Failed));
-        if (snapshot.Total.Queued > 0) parts.Add(Loc.Core("core.queue.queued", "count", snapshot.Total.Queued));
-        if (snapshot.Deletes.Length > 0)
-            parts.Add(Loc.Core("core.outbox.pending_deletes", "count", snapshot.Deletes.Length));
-        return string.Join(" · ", parts);
-    }
+    // Core decides the outbox summary's parts (uploading/failed/queued/pending
+    // deletes), their order, and the drop-if-zero rule; this only localizes and
+    // joins them.
+    private static string OutboxSummary(BridgeOutboxSnapshot snapshot) =>
+        QueueSummaryText(snapshot.SummaryParts);
+
+    // Render core's queue-summary parts into one " · "-joined line.
+    private static string QueueSummaryText(IReadOnlyList<BridgeCountLabel> parts) =>
+        string.Join(" · ", parts.Select(part => Loc.Core(part.Key, "count", part.Count)));
 
     private static string OutboxThroughputLabel(BridgeOutboxSnapshot snapshot) =>
         snapshot.ThroughputBps > 0

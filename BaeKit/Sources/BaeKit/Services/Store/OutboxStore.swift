@@ -58,6 +58,7 @@ public class OutboxStore {
                 activity: nil,
             ),
             pendingDeletes: 0,
+            summaryParts: [],
             paused: false,
             throughputBps: 0,
             etaSeconds: nil,

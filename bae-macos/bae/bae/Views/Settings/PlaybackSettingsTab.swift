@@ -97,6 +97,7 @@ struct PlaybackSettingsTab: View {
             BridgeDownloadSnapshot(
                 downloads: [],
                 total: BridgeDownloadProgress(queued: 0, active: 0, failed: 0),
+                summaryParts: [],
                 paused: false
             )
         }

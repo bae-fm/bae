@@ -181,6 +181,7 @@ object BridgeFixtures {
                     active = active,
                     failed = failed,
                 ),
+            summaryParts = emptyList(),
             paused = paused,
         )
 
@@ -199,6 +200,7 @@ object BridgeFixtures {
                     activity = null,
                 ),
             pendingDeletes = 0u,
+            summaryParts = emptyList(),
             paused = paused,
             throughputBps = 0uL,
             etaSeconds = null,

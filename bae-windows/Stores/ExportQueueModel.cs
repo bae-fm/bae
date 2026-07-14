@@ -18,27 +18,6 @@ public static class ExportQueueModel
     public static string BandTitleKey(bool paused) =>
         paused ? "download.paused" : "export.title";
 
-    // The Core-table count labels for the band summary, in exporting/failed/
-    // queued order, non-zero counts only. The caller renders each through
-    // Loc.Core and joins with " · " — the same composition macOS's summary uses.
-    public static List<(string Key, long Count)> SummaryParts(long active, long failed, long queued)
-    {
-        var parts = new List<(string Key, long Count)>();
-        if (active > 0)
-        {
-            parts.Add(("core.queue.exporting", active));
-        }
-        if (failed > 0)
-        {
-            parts.Add(("core.queue.failed", failed));
-        }
-        if (queued > 0)
-        {
-            parts.Add(("core.queue.queued", queued));
-        }
-        return parts;
-    }
-
     // Retry-failed is offered only when something is failed.
     public static bool RetryEnabled(long failedCount) => failedCount > 0;
 
