@@ -139,6 +139,8 @@ struct LibrarySessionOpenerTests {
             encryptionKeyStored: encryptionKeyStored,
             encryptionKeyFingerprint: fingerprint,
             pauseBetweenSides: false,
+            maxConcurrentUploads: 3,
+            maxConcurrentDownloads: 3,
             showRemainingTime: false,
             exportLocation: .askEachTime,
             exportFilenameTemplate: "",
