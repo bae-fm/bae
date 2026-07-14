@@ -231,6 +231,7 @@
     <string name="download_waiting">Waiting to download</string>
     <string name="resume">Resume</string>
     <string name="downloads_empty">No downloads</string>
+    <string name="downloads_concurrency_label">Simultaneous downloads</string>
     <plurals name="download_file_count">
         <item quantity="one">%1$d file</item>
         <item quantity="other">%1$d files</item>
