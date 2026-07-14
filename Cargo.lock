@@ -1334,7 +1334,7 @@ dependencies = [
 [[package]]
 name = "coven"
 version = "1.0.0-rc.1"
-source = "git+https://github.com/bae-fm/coven?rev=d64cd8f86d3d6e95254042f315e7208b492caf6a#d64cd8f86d3d6e95254042f315e7208b492caf6a"
+source = "git+https://github.com/bae-fm/coven?rev=d1b5d1242fffad3db845bc17758eb917ca36681b#d1b5d1242fffad3db845bc17758eb917ca36681b"
 dependencies = [
  "android-native-keyring-store",
  "apple-native-keyring-store",
@@ -1377,7 +1377,7 @@ dependencies = [
 [[package]]
 name = "coven-core"
 version = "1.0.0-rc.1"
-source = "git+https://github.com/bae-fm/coven?rev=d64cd8f86d3d6e95254042f315e7208b492caf6a#d64cd8f86d3d6e95254042f315e7208b492caf6a"
+source = "git+https://github.com/bae-fm/coven?rev=d1b5d1242fffad3db845bc17758eb917ca36681b#d1b5d1242fffad3db845bc17758eb917ca36681b"
 dependencies = [
  "async-trait",
  "base64",
