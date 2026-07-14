@@ -91,12 +91,12 @@ restage_and_fail_if_changed "cargo fmt"
 if has_changes_in "bae-core" || has_changes_in "bae-test-support"; then
     cd bae-core
 
-    run_check "clippy lib (bae-core)" cargo clippy --lib -- -D warnings -A unexpected_cfgs -A deprecated || {
+    run_check "clippy lib (bae-core)" cargo clippy --lib -- -D warnings || {
         echo "Fix the warnings above and try again"
         exit 1
     }
 
-    run_check "clippy tests (bae-core)" cargo clippy --tests --features test-utils -- -D warnings -A unexpected_cfgs -A deprecated || {
+    run_check "clippy tests (bae-core)" cargo clippy --tests --features test-utils -- -D warnings || {
         exit 1
     }
 
@@ -104,14 +104,14 @@ if has_changes_in "bae-core" || has_changes_in "bae-test-support"; then
 
     # The run above builds bae-test-support as a dependency, which enforces the
     # workspace's rustc denies on it but does not run clippy's own lints there.
-    run_check "clippy (bae-test-support)" cargo clippy -p bae-test-support -- -D warnings -A unexpected_cfgs -A deprecated || {
+    run_check "clippy (bae-test-support)" cargo clippy -p bae-test-support -- -D warnings || {
         exit 1
     }
 fi
 
 # bae-bridge checks (depends on bae-core)
 if has_changes_in "bae-bridge" || has_changes_in "bae-core"; then
-    run_check "clippy (bae-bridge)" cargo clippy -p bae-bridge -- -D warnings -A unexpected_cfgs -A deprecated || {
+    run_check "clippy (bae-bridge)" cargo clippy -p bae-bridge -- -D warnings || {
         echo "Fix the warnings above and try again"
         exit 1
     }
