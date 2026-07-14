@@ -540,6 +540,14 @@ internal static class NativeBae
     internal static string? SetPauseBetweenSides(AppHandle handle, bool enabled) =>
         CaptureError(() => handle.SetPauseBetweenSides(enabled));
 
+    internal static BridgeConfig GetConfig(AppHandle handle) => handle.GetConfig();
+
+    internal static string? SetMaxConcurrentUploads(AppHandle handle, uint n) =>
+        CaptureError(() => handle.SetMaxConcurrentUploads(n));
+
+    internal static string? SetMaxConcurrentDownloads(AppHandle handle, uint n) =>
+        CaptureError(() => handle.SetMaxConcurrentDownloads(n));
+
     /// <summary>Whether the seek bar's leading label counts down the time remaining.
     /// A synced preference: the write fires a config invalidation, which is what
     /// re-renders the bar.</summary>

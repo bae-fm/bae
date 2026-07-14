@@ -961,8 +961,45 @@ internal sealed class StorageDialog
         await LoadExports();
         await LoadOutbox();
 
+        // Device-local transfer concurrency (1..8). Always visible, unlike the
+        // queue panels that hide when idle; desktop configures both directions.
+        // SelectedIndex is seeded before wiring SelectionChanged so seeding does
+        // not fire a spurious write. bae-core carries the value, not the bound.
+        ComboBox MakeConcurrencyPicker(string header, uint current, Func<AppHandle, uint, string?> apply)
+        {
+            var combo = new ComboBox { Header = header };
+            for (uint i = 1; i <= 8; i++)
+            {
+                combo.Items.Add(new ComboBoxItem { Content = i.ToString(), Tag = i });
+            }
+            combo.SelectedIndex = (int)current - 1;
+            combo.SelectionChanged += async (_, _) =>
+            {
+                if (combo.SelectedItem is ComboBoxItem item && item.Tag is uint n)
+                {
+                    var (_, error) = await _session.RunForCurrentHandle(handle => apply(handle, n));
+                    if (error is not null)
+                    {
+                        storageStatus.Text = error;
+                    }
+                }
+            };
+            return combo;
+        }
+
+        var transferPanel = new StackPanel { Spacing = 4 };
+        var (_, transferConfig) = await _session.RunForCurrentHandle(NativeBae.GetConfig);
+        if (transferConfig is { } cfg)
+        {
+            transferPanel.Children.Add(MakeConcurrencyPicker(
+                "Simultaneous downloads", cfg.MaxConcurrentDownloads, NativeBae.SetMaxConcurrentDownloads));
+            transferPanel.Children.Add(MakeConcurrencyPicker(
+                "Simultaneous uploads", cfg.MaxConcurrentUploads, NativeBae.SetMaxConcurrentUploads));
+        }
+
         var content = new StackPanel { Spacing = 8 };
         content.Children.Add(storageStatus);
+        content.Children.Add(transferPanel);
         content.Children.Add(downloadsPanel);
         content.Children.Add(exportsPanel);
         content.Children.Add(outboxPanel);
