@@ -2,42 +2,43 @@ package fm.bae.app.ui
 
 import org.junit.Assert.assertEquals
 import org.junit.Test
+import uniffi.bae_bridge.BridgeSyncIndicator
 
 /**
- * The settings sync row's state derives from the runtime snapshot's error and
- * readiness. A present error is a failed cycle and wins over readiness (offer a
- * reconnect); absent error distinguishes a live loop from one still coming up.
+ * The settings sync row maps core's indicator variant to its rendered state; the
+ * precedence itself is core's (bae-core's `sync_indicator_tests`). The error line
+ * rides alongside the Error variant, which carries only the fact of an error.
  */
 class SettingsSyncStatusTest {
     @Test
     fun errorMapsToDisconnectedCarryingTheMessage() {
         assertEquals(
             SettingsSyncStatus.Disconnected("network unreachable"),
-            settingsSyncStatus(syncError = "network unreachable", syncReady = false),
+            settingsSyncStatus(BridgeSyncIndicator.Error, syncError = "network unreachable"),
         )
     }
 
     @Test
-    fun errorWinsOverReadiness() {
-        assertEquals(
-            SettingsSyncStatus.Disconnected("bucket rejected the request"),
-            settingsSyncStatus(syncError = "bucket rejected the request", syncReady = true),
-        )
-    }
-
-    @Test
-    fun readyWithoutErrorMapsToSynced() {
+    fun syncedMapsToSynced() {
         assertEquals(
             SettingsSyncStatus.Synced,
-            settingsSyncStatus(syncError = null, syncReady = true),
+            settingsSyncStatus(BridgeSyncIndicator.Synced(lastSyncTime = 100L), syncError = null),
         )
     }
 
     @Test
-    fun notReadyWithoutErrorMapsToSyncing() {
+    fun syncingMapsToSyncing() {
         assertEquals(
             SettingsSyncStatus.Syncing,
-            settingsSyncStatus(syncError = null, syncReady = false),
+            settingsSyncStatus(BridgeSyncIndicator.Syncing, syncError = null),
+        )
+    }
+
+    @Test
+    fun idleMapsToSyncing() {
+        assertEquals(
+            SettingsSyncStatus.Syncing,
+            settingsSyncStatus(BridgeSyncIndicator.Idle, syncError = null),
         )
     }
 }

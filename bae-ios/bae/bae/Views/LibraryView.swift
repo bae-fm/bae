@@ -365,19 +365,17 @@ private struct LibrarySyncToolbarStatus: View {
 
     var body: some View {
         Group {
+            // The live spinner is its own element, driven by an in-progress cycle;
+            // the badge word comes from core's indicator when no cycle is running.
             if configStore.syncing {
                 ProgressView()
                     .controlSize(.small)
                     .accessibilityLabel(Text("syncing\u{2026}"))
             }
             else {
-                Text(
-                    configStore.syncReady
-                        ? String(localized: "synced")
-                        : String(localized: "syncing\u{2026}")
-                )
-                .font(.caption)
-                .foregroundStyle(.secondary)
+                Text(syncStatusLabel(configStore.syncIndicator))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
         }
         .frame(width: 56, height: 20, alignment: .trailing)

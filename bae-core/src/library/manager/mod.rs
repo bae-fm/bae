@@ -240,6 +240,120 @@ pub struct SyncStatusSnapshot {
     pub sync_ready: bool,
 }
 
+/// What the sync indicator shows, in precedence order. One decision, so the four
+/// front-ends stop each writing their own — and so `Synced` can only ever carry a
+/// time when the loop is actually running, which is the bug it replaces (a stale
+/// timestamp read as "Synced" on a loop that never came up).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum SyncIndicator {
+    /// A sync error is present. The banner shows its line; the badge shows the
+    /// error state.
+    Error,
+    /// A sync cycle is actively running.
+    Syncing,
+    /// The loop is running and idle. Carries the last successful sync time, the
+    /// only place it is exposed — so it cannot be shown for a stopped loop.
+    Synced { last_sync_time: Option<i64> },
+    /// A cloud home is connected but its loop is not running, with nothing to
+    /// report. Neither an error nor "synced".
+    Idle,
+}
+
+impl SyncIndicator {
+    /// The one place the indicator's precedence lives. Error over an active cycle
+    /// over a running-and-idle loop over nothing. `last_sync_time` reaches the
+    /// result only through `Synced`, so it cannot surface for a stopped loop.
+    pub fn resolve(
+        has_error: bool,
+        syncing: bool,
+        sync_ready: bool,
+        last_sync_time: Option<i64>,
+    ) -> SyncIndicator {
+        if has_error {
+            SyncIndicator::Error
+        } else if syncing {
+            SyncIndicator::Syncing
+        } else if sync_ready {
+            SyncIndicator::Synced { last_sync_time }
+        } else {
+            SyncIndicator::Idle
+        }
+    }
+}
+
+impl SyncStatusSnapshot {
+    /// The indicator this status resolves to.
+    pub fn indicator(&self) -> SyncIndicator {
+        SyncIndicator::resolve(
+            self.error.is_some(),
+            self.syncing,
+            self.sync_ready,
+            self.last_sync_time,
+        )
+    }
+}
+
+#[cfg(test)]
+mod sync_indicator_tests {
+    use super::*;
+
+    fn snapshot(
+        sync_ready: bool,
+        syncing: bool,
+        error: bool,
+        time: Option<i64>,
+    ) -> SyncStatusSnapshot {
+        SyncStatusSnapshot {
+            error: error.then(|| crate::ui::UiError::Diagnostic {
+                category: crate::ui::UiErrorCategory::Network,
+                detail: "boom".to_string(),
+            }),
+            last_sync_time: time,
+            syncing,
+            sync_ready,
+        }
+    }
+
+    /// An error wins over everything, including a ready loop with a recent sync.
+    #[test]
+    fn error_wins() {
+        assert_eq!(
+            snapshot(true, false, true, Some(100)).indicator(),
+            SyncIndicator::Error
+        );
+    }
+
+    /// An active cycle shows as syncing even once the loop is ready.
+    #[test]
+    fn an_active_cycle_shows_syncing() {
+        assert_eq!(
+            snapshot(true, true, false, Some(100)).indicator(),
+            SyncIndicator::Syncing
+        );
+    }
+
+    /// A ready, idle loop is synced and carries its time.
+    #[test]
+    fn a_ready_idle_loop_is_synced_with_its_time() {
+        assert_eq!(
+            snapshot(true, false, false, Some(100)).indicator(),
+            SyncIndicator::Synced {
+                last_sync_time: Some(100)
+            }
+        );
+    }
+
+    /// The bug this replaces: a loop that never came up is Idle, not Synced —
+    /// even with a stale timestamp from a previous session.
+    #[test]
+    fn a_stopped_loop_with_a_stale_time_is_idle_not_synced() {
+        assert_eq!(
+            snapshot(false, false, false, Some(100)).indicator(),
+            SyncIndicator::Idle
+        );
+    }
+}
+
 #[derive(Debug, Clone)]
 struct SyncStatusState {
     error: Option<String>,

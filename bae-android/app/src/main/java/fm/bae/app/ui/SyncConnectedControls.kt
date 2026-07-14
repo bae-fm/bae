@@ -28,6 +28,7 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeSyncConfig
+import uniffi.bae_bridge.BridgeSyncIndicator
 import uniffi.bae_bridge.BridgeSyncProvider
 
 /**
@@ -48,13 +49,17 @@ internal sealed interface SettingsSyncStatus {
 }
 
 internal fun settingsSyncStatus(
+    indicator: BridgeSyncIndicator,
     syncError: String?,
-    syncReady: Boolean,
 ): SettingsSyncStatus =
-    when {
-        syncError != null -> SettingsSyncStatus.Disconnected(syncError)
-        syncReady -> SettingsSyncStatus.Synced
-        else -> SettingsSyncStatus.Syncing
+    when (indicator) {
+        // The reconnect row needs the error's line; the indicator only says an
+        // error exists, so the line rides alongside.
+        is BridgeSyncIndicator.Error -> SettingsSyncStatus.Disconnected(syncError.orEmpty())
+
+        is BridgeSyncIndicator.Synced -> SettingsSyncStatus.Synced
+
+        is BridgeSyncIndicator.Syncing, is BridgeSyncIndicator.Idle -> SettingsSyncStatus.Syncing
     }
 
 /**
@@ -69,7 +74,7 @@ internal fun settingsSyncStatus(
 internal fun SyncConnectedControls(
     session: OpenLibrary,
     sync: BridgeSyncConfig,
-    syncReady: Boolean,
+    indicator: BridgeSyncIndicator,
     syncError: String?,
     ioDispatcher: CoroutineDispatcher,
 ) {
@@ -80,8 +85,8 @@ internal fun SyncConnectedControls(
 
     SyncProviderRows(sync = sync)
     SettingsSyncStatusRow(
+        indicator = indicator,
         syncError = syncError,
-        syncReady = syncReady,
         onReconnect = { session.appHandle.triggerSync() },
     )
 
@@ -138,11 +143,11 @@ internal fun SyncConnectedControls(
  */
 @Composable
 private fun SettingsSyncStatusRow(
+    indicator: BridgeSyncIndicator,
     syncError: String?,
-    syncReady: Boolean,
     onReconnect: () -> Unit,
 ) {
-    when (val status = settingsSyncStatus(syncError, syncReady)) {
+    when (val status = settingsSyncStatus(indicator, syncError)) {
         is SettingsSyncStatus.Disconnected -> {
             Text(
                 text = stringResource(R.string.settings_sync_disconnected),

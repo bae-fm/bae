@@ -63,6 +63,7 @@ import uniffi.bae_bridge.BridgeConfig
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeLibrary
 import uniffi.bae_bridge.BridgeScreen
+import uniffi.bae_bridge.BridgeSyncIndicator
 import uniffi.bae_bridge.BridgeTelemetryEvent
 
 /**
@@ -83,6 +84,7 @@ fun SettingsScreen(
 ) {
     val config by session.configStore.config.collectAsState()
     val syncReady by session.configStore.syncReady.collectAsState()
+    val syncIndicator by session.configStore.syncIndicator.collectAsState()
     val syncError by session.configStore.syncError.collectAsState()
     val allLibraries by libraries.collectAsState()
     var confirmLeave by remember { mutableStateOf(false) }
@@ -103,7 +105,7 @@ fun SettingsScreen(
         SettingsConfigSection(
             session = session,
             config = config,
-            syncReady = syncReady,
+            syncIndicator = syncIndicator,
             syncError = syncError,
             ioDispatcher = ioDispatcher,
         )
@@ -256,7 +258,7 @@ private fun SettingsLibrarySection(
 private fun SettingsConfigSection(
     session: OpenLibrary,
     config: BridgeConfig,
-    syncReady: Boolean,
+    syncIndicator: BridgeSyncIndicator,
     syncError: String?,
     ioDispatcher: CoroutineDispatcher,
 ) {
@@ -274,7 +276,7 @@ private fun SettingsConfigSection(
             SyncConnectedControls(
                 session = session,
                 sync = sync,
-                syncReady = syncReady,
+                indicator = syncIndicator,
                 syncError = syncError,
                 ioDispatcher = ioDispatcher,
             )

@@ -2676,6 +2676,43 @@ pub struct BridgeSyncStatusSnapshot {
     pub sync_ready: bool,
 }
 
+/// What the sync indicator shows, in precedence order. Mirror of bae-core's
+/// `SyncIndicator`. The UI maps a variant to a label and colour and renders the
+/// `Synced` time; it never decides which state wins — a stale timestamp used to
+/// read as "Synced" on a loop that never came up, on Windows, because each app
+/// wrote its own precedence.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeSyncIndicator {
+    Error,
+    Syncing,
+    Synced { last_sync_time: Option<i64> },
+    Idle,
+}
+
+impl BridgeSyncIndicator {
+    fn from_core(indicator: bae_core::library::SyncIndicator) -> Self {
+        use bae_core::library::SyncIndicator;
+        match indicator {
+            SyncIndicator::Error => Self::Error,
+            SyncIndicator::Syncing => Self::Syncing,
+            SyncIndicator::Synced { last_sync_time } => Self::Synced { last_sync_time },
+            SyncIndicator::Idle => Self::Idle,
+        }
+    }
+}
+
+/// The sync indicator for a status snapshot — the precedence decided in bae-core.
+/// The UI holds the snapshot already; this turns it into the one badge state.
+#[uniffi::export]
+pub fn bridge_sync_indicator(snapshot: &BridgeSyncStatusSnapshot) -> BridgeSyncIndicator {
+    BridgeSyncIndicator::from_core(bae_core::library::SyncIndicator::resolve(
+        snapshot.error.is_some(),
+        snapshot.syncing,
+        snapshot.sync_ready,
+        snapshot.last_sync_time,
+    ))
+}
+
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeSortField {
     Title,

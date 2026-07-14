@@ -664,22 +664,21 @@ public sealed partial class MainWindow : Window
             SyncBanner.IsOpen = true;
         }
 
-        var indicator = SyncIndicatorModel.Resolve(_sync.ErrorText is not null, _sync.Syncing, _sync.LastSyncTime);
-        switch (indicator.Kind)
+        switch (_sync.Indicator)
         {
-            case SyncIndicatorKind.Error:
+            case BridgeSyncIndicator.Error:
                 SyncIndicator.Text = Loc.Chrome("sync.error_title");
                 SyncIndicator.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Salmon);
                 break;
-            case SyncIndicatorKind.Syncing:
+            case BridgeSyncIndicator.Syncing:
                 SyncIndicator.Text = Loc.Chrome("sync.syncing");
                 SyncIndicator.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray);
                 break;
-            case SyncIndicatorKind.Synced:
-                SyncIndicator.Text = Loc.Chrome("sync.synced", "time", indicator.LastSyncTime);
+            case BridgeSyncIndicator.Synced:
+                SyncIndicator.Text = Loc.Chrome("sync.synced", "time", _sync.LastSyncTime);
                 SyncIndicator.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray);
                 break;
-            case SyncIndicatorKind.Blank:
+            case BridgeSyncIndicator.Idle:
                 SyncIndicator.Text = string.Empty;
                 break;
         }

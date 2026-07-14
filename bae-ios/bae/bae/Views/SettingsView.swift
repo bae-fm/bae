@@ -282,9 +282,7 @@ private struct SyncConnectedControls: View {
             else {
                 LabeledContent(
                     "Status",
-                    value: configStore.syncReady
-                        ? String(localized: "Synced")
-                        : String(localized: "Syncing\u{2026}")
+                    value: syncStatusLabel(configStore.syncIndicator)
                 )
             }
 

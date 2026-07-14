@@ -6,9 +6,10 @@ using Xunit;
 namespace Bae.Windows.Tests;
 
 /// <summary>
-/// Locks the toolbar sync indicator's precedence (error &gt; syncing &gt;
-/// last-sync &gt; blank) and the last-sync timestamp format. Timestamp cases pin
-/// an explicit culture, as the Loc formatter tests do.
+/// Locks the last-sync timestamp format for the toolbar's Synced badge. The
+/// badge's precedence is decided in bae-core (bae-core's `sync_indicator_tests`)
+/// and reached through BridgeSyncIndicator; only the time rendering is the UI's.
+/// Timestamp cases pin an explicit culture, as the Loc formatter tests do.
 /// </summary>
 public sealed class SyncIndicatorModelTests
 {
@@ -25,40 +26,6 @@ public sealed class SyncIndicatorModelTests
         {
             CultureInfo.CurrentCulture = prevCulture;
         }
-    }
-
-    // ── Precedence: error > syncing > last-sync > blank ──
-
-    [Fact]
-    public void Resolve_ErrorWinsOverEverything()
-    {
-        var text = SyncIndicatorModel.Resolve(hasError: true, syncing: true, lastSyncTime: "2:32 PM");
-        Assert.Equal(SyncIndicatorKind.Error, text.Kind);
-        Assert.Null(text.LastSyncTime);
-    }
-
-    [Fact]
-    public void Resolve_SyncingWinsOverLastSync()
-    {
-        var text = SyncIndicatorModel.Resolve(hasError: false, syncing: true, lastSyncTime: "2:32 PM");
-        Assert.Equal(SyncIndicatorKind.Syncing, text.Kind);
-        Assert.Null(text.LastSyncTime);
-    }
-
-    [Fact]
-    public void Resolve_SyncedCarriesTime()
-    {
-        var text = SyncIndicatorModel.Resolve(hasError: false, syncing: false, lastSyncTime: "2:32 PM");
-        Assert.Equal(SyncIndicatorKind.Synced, text.Kind);
-        Assert.Equal("2:32 PM", text.LastSyncTime);
-    }
-
-    [Fact]
-    public void Resolve_BlankWhenNothing()
-    {
-        var text = SyncIndicatorModel.Resolve(hasError: false, syncing: false, lastSyncTime: null);
-        Assert.Equal(SyncIndicatorKind.Blank, text.Kind);
-        Assert.Null(text.LastSyncTime);
     }
 
     // ── FormatSyncTime ──

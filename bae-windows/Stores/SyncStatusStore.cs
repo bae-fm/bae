@@ -10,9 +10,16 @@ internal sealed class SyncStatusStore
 {
     private readonly SessionStore _session;
 
-    // The localized sync-error line, or null when sync is healthy.
+    // The localized sync-error line, or null when sync is healthy. Kept for the
+    // reconnect banner; the toolbar badge is driven by Indicator.
     public string? ErrorText { get; private set; }
-    public bool Syncing { get; private set; }
+
+    // The badge state, decided by core (error > syncing > synced > idle). The UI
+    // maps it to a label and colour and never re-derives which state wins.
+    public BridgeSyncIndicator Indicator { get; private set; } = new BridgeSyncIndicator.Idle();
+
+    // The formatted last-sync time, set only when Indicator is Synced — so a stale
+    // timestamp can never accompany a stopped loop.
     public string? LastSyncTime { get; private set; }
 
     public event Action? Changed;
@@ -45,15 +52,17 @@ internal sealed class SyncStatusStore
         }
 
         ErrorText = status.Error is null ? null : BridgeDisplay.LocalizedLine(status.Error);
-        Syncing = status.Syncing;
-        LastSyncTime = SyncIndicatorModel.FormatSyncTime(status.LastSyncTime);
+        Indicator = BaeBridgeMethods.BridgeSyncIndicator(status);
+        LastSyncTime = Indicator is BridgeSyncIndicator.Synced synced
+            ? SyncIndicatorModel.FormatSyncTime(synced.LastSyncTime)
+            : null;
         Changed?.Invoke();
     }
 
     public void Reset()
     {
         ErrorText = null;
-        Syncing = false;
+        Indicator = new BridgeSyncIndicator.Idle();
         LastSyncTime = null;
         Changed?.Invoke();
     }

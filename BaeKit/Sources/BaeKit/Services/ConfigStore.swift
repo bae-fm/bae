@@ -13,6 +13,11 @@ public class ConfigStore {
     /// but lands here, not on the `Config` mirror, since it changes
     /// independently of any persisted setting. Settings/pairing gate on this.
     public var syncReady: Bool
+    /// The sync badge state, decided by core (error > syncing > synced > idle).
+    /// The UI maps a variant to a label; it never re-derives which state wins,
+    /// which is how a stale timestamp used to read as "Synced" on a loop that
+    /// never came up.
+    public var syncIndicator: BridgeSyncIndicator = .idle
     /// Sync loop's latest error, or nil when sync is healthy. Set/cleared by
     /// the sync-status projection from `getSyncStatus()`. The Library settings
     /// tab surfaces this as a reconnect banner (generic line + copyable
@@ -75,6 +80,7 @@ public class ConfigStore {
         // banner clear rather than showing an empty one.
         syncError = snapshot.error.flatMap { DisplayError($0) }
         syncReady = snapshot.syncReady
+        syncIndicator = bridgeSyncIndicator(snapshot: snapshot)
         #if os(iOS)
             syncing = snapshot.syncing
         #endif

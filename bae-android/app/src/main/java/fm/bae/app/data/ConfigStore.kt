@@ -5,7 +5,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import uniffi.bae_bridge.BridgeConfig
+import uniffi.bae_bridge.BridgeSyncIndicator
 import uniffi.bae_bridge.BridgeSyncStatusSnapshot
+import uniffi.bae_bridge.bridgeSyncIndicator
 
 /**
  * Library configuration mirror. Holds the latest [BridgeConfig] plus the
@@ -42,6 +44,14 @@ class ConfigStore(
     private val _syncError = MutableStateFlow<String?>(null)
     val syncError: StateFlow<String?> = _syncError.asStateFlow()
 
+    /**
+     * The toolbar/settings badge state, decided by core (error > syncing > synced
+     * > idle). The UI maps a variant to a label; it never re-derives which state
+     * wins, which is how a stale timestamp used to read as "Synced".
+     */
+    private val _syncIndicator = MutableStateFlow<BridgeSyncIndicator>(BridgeSyncIndicator.Idle)
+    val syncIndicator: StateFlow<BridgeSyncIndicator> = _syncIndicator.asStateFlow()
+
     /** Transient app-level error surfaced by `Error` events. */
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
@@ -57,6 +67,7 @@ class ConfigStore(
         _syncReady.value = status.syncReady
         _syncing.value = status.syncing
         _syncError.value = status.error?.let { errors.line(it) }
+        _syncIndicator.value = bridgeSyncIndicator(status)
     }
 
     /**
