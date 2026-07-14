@@ -8,8 +8,8 @@
 use bae_core::db::{Database, LibraryImageType};
 use bae_core::discogs::models::{DiscogsArtist, DiscogsRelease, DiscogsTrack};
 use bae_core::import::{
-    CoverSelection, IdentityChoice, ImportCommand, ImportProgress, ImportService, MetadataRef,
-    MetadataSource, StorageMode,
+    CoverSelection, IdentityChoice, ImportCommand, ImportProgress, MetadataRef, MetadataSource,
+    StorageMode,
 };
 use bae_core::library::LibraryManager;
 use bae_core::util::content_type::ContentType;
@@ -17,30 +17,11 @@ use bae_test_support as support;
 use coven::StoreDir;
 use std::fs;
 use std::path::Path;
+use support::start_test_import;
+use support::tracing_init;
 use support::{seed_discogs_test_release, test_config_and_keys, wait_for_import_complete};
 use tempfile::TempDir;
 use tracing::info;
-
-fn start_test_import(
-    runtime_handle: tokio::runtime::Handle,
-    library_manager: LibraryManager,
-) -> bae_core::import::ImportServiceHandle {
-    ImportService::start(
-        runtime_handle.clone(),
-        library_manager,
-        bae_core::import::cover_art::CoverArtArchiveClient::hermetic(),
-    )
-}
-
-/// Initialize tracing for tests
-fn tracing_init() {
-    let _ = tracing_subscriber::fmt()
-        .with_test_writer()
-        .with_line_number(true)
-        .with_target(false)
-        .with_file(true)
-        .try_init();
-}
 
 /// Test import with cover selection: files stay in place (no cloud home),
 /// but cover selection, audio format records, and progress events all work.

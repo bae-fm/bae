@@ -12,6 +12,7 @@
 //! `coven_make_local`) over a `SyncManager` connected to an injected cloud home.
 
 use bae_test_support as support;
+use support::tracing_init;
 
 use bae_core::album_detail::ReleaseStorageState;
 use bae_core::db::{Database, DbAlbum, DbFile, DbRelease, Pressing, ReleaseMetadataSource};
@@ -27,15 +28,6 @@ use std::path::Path;
 use std::sync::Arc;
 use tempfile::TempDir;
 use uuid::Uuid;
-
-fn tracing_init() {
-    let _ = tracing_subscriber::fmt()
-        .with_test_writer()
-        .with_line_number(true)
-        .with_target(false)
-        .with_file(true)
-        .try_init();
-}
 
 // ---------------------------------------------------------------------------
 // Helpers

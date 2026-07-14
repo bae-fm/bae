@@ -10,15 +10,14 @@
 //! is independent of storage configuration).
 use bae_core::db::{Database, DbAudioSegmentRole};
 use bae_core::discogs::models::{DiscogsArtist, DiscogsRelease, DiscogsTrack};
-use bae_core::import::{
-    IdentityChoice, ImportCommand, ImportService, MetadataRef, MetadataSource, StorageMode,
-};
+use bae_core::import::{IdentityChoice, ImportCommand, MetadataRef, MetadataSource, StorageMode};
 use bae_core::library::LibraryManager;
 use bae_core::util::content_type::ContentType;
 use bae_test_support as support;
 use coven::StoreDir;
 use std::path::Path;
 use std::time::Duration;
+use support::start_test_import;
 use support::{
     assert_captured_matches_reference, samples_as_f32, seed_discogs_test_release,
     test_config_and_keys, tracing_init, wait_for_import_complete,
@@ -27,16 +26,6 @@ use tempfile::TempDir;
 use tokio::time::timeout;
 use tracing::info;
 
-fn start_test_import(
-    runtime_handle: tokio::runtime::Handle,
-    library_manager: LibraryManager,
-) -> bae_core::import::ImportServiceHandle {
-    ImportService::start(
-        runtime_handle.clone(),
-        library_manager,
-        bae_core::import::cover_art::CoverArtArchiveClient::hermetic(),
-    )
-}
 /// CUE/FLAC imports record each track's sample window correctly.
 ///
 /// Each track records its `[start_sample, end_sample)` window within the single

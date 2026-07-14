@@ -6,6 +6,7 @@
 //! `test-fixtures/alac/`). Nothing is mocked: every assertion runs through
 //! the same code paths production uses.
 use bae_test_support as support;
+use support::start_test_import;
 
 use bae_core::audio_codec::{decode_audio, probe_audio_from_path};
 use bae_core::cue_flac::parse_cue_sheet;
@@ -15,9 +16,7 @@ use bae_core::import::discid::compute_discid_from_categorized;
 use bae_core::import::folder_scanner::{
     collect_release_candidate_files, scan_for_candidates_with_callback, AudioContent, ScanItem,
 };
-use bae_core::import::{
-    IdentityChoice, ImportCommand, ImportService, MetadataRef, MetadataSource, StorageMode,
-};
+use bae_core::import::{IdentityChoice, ImportCommand, MetadataRef, MetadataSource, StorageMode};
 use bae_core::library::LibraryManager;
 use bae_core::util::content_type::ContentType;
 use coven::StoreDir;
@@ -32,17 +31,6 @@ fn fixture_dir() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("test-fixtures")
         .join("alac")
-}
-
-fn start_test_import(
-    runtime_handle: tokio::runtime::Handle,
-    library_manager: LibraryManager,
-) -> bae_core::import::ImportServiceHandle {
-    ImportService::start(
-        runtime_handle.clone(),
-        library_manager,
-        bae_core::import::cover_art::CoverArtArchiveClient::hermetic(),
-    )
 }
 
 fn make_discogs_release(id: &str, title: &str, tracks: &[&str]) -> DiscogsRelease {

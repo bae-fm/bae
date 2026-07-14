@@ -32,6 +32,7 @@ use coven::StoreDir;
 use serial_test::serial;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
+use support::start_test_import;
 use support::{
     seed_discogs_test_release, test_config_and_keys, tracing_init, wait_for_import_complete,
 };
@@ -60,17 +61,6 @@ const WINDOW: Duration = Duration::from_secs(4);
 /// per audio-second); the regression *ratio* is not. Calibrated for the runner
 /// this test lands on — recalibrate if that runner changes.
 const MAX_REALTIME_FACTOR: f64 = 0.20;
-
-fn start_test_import(
-    runtime_handle: tokio::runtime::Handle,
-    library_manager: LibraryManager,
-) -> bae_core::import::ImportServiceHandle {
-    bae_core::import::ImportService::start(
-        runtime_handle.clone(),
-        library_manager,
-        bae_core::import::cover_art::CoverArtArchiveClient::hermetic(),
-    )
-}
 
 /// Run the `ffmpeg` command-line tool to generate a fixture, failing loudly
 /// with an actionable message if it is missing.

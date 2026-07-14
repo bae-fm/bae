@@ -12,6 +12,7 @@ use coven::StoreDir;
 use coven::{IdProvider, SequentialIdProvider};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
+use support::start_test_import;
 use support::{
     samples_as_f32, seed_discogs_test_release, test_config_and_keys, tracing_init,
     try_wait_for_import_complete, wait_for_import_complete,
@@ -361,17 +362,6 @@ async fn observe_boundary(
         }
     }
     outcome
-}
-
-fn start_test_import(
-    runtime_handle: tokio::runtime::Handle,
-    library_manager: LibraryManager,
-) -> bae_core::import::ImportServiceHandle {
-    bae_core::import::ImportService::start(
-        runtime_handle.clone(),
-        library_manager,
-        bae_core::import::cover_art::CoverArtArchiveClient::hermetic(),
-    )
 }
 
 /// Capture-stream receiver kept alive so the sink's `create_stream` has a

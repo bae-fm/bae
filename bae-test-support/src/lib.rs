@@ -202,6 +202,22 @@ fn import_terminal_ids(progress: &bae_core::import::ImportProgress) -> Option<(S
 ///
 /// Local imports emit `Complete`. Remote imports emit `RemoteUploadQueued`: the
 /// import worker is finished, while remote completion waits for coven upload
+/// Start an [`ImportService`] wired to a hermetic cover-art client — the shared
+/// setup every import/playback test binary needs, so none of them keep a private
+/// copy that can drift from the others.
+///
+/// [`ImportService`]: bae_core::import::ImportService
+pub fn start_test_import(
+    runtime_handle: tokio::runtime::Handle,
+    library_manager: bae_core::library::LibraryManager,
+) -> bae_core::import::ImportServiceHandle {
+    bae_core::import::ImportService::start(
+        runtime_handle.clone(),
+        library_manager,
+        bae_core::import::cover_art::CoverArtArchiveClient::hermetic(),
+    )
+}
+
 /// confirmation.
 /// Panics on failure.
 pub async fn wait_for_import_complete(
