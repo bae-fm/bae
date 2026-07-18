@@ -2059,12 +2059,14 @@ impl crate::types::BridgePlaybackContext {
     fn from_core(context: bae_core::queue::ResolvedContext) -> Self {
         let bae_core::queue::ResolvedContext {
             source,
+            source_title,
             shuffled,
             upcoming,
             upcoming_total,
         } = context;
         crate::types::BridgePlaybackContext {
             kind: crate::types::BridgePlaybackSourceKind::from_core(&source),
+            source_title,
             shuffled,
             upcoming: upcoming
                 .into_iter()

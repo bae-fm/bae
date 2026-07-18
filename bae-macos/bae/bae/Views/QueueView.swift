@@ -57,11 +57,9 @@ struct QueueView: View {
     var body: some View {
         VStack(spacing: 0) {
             header
-            Divider()
 
             if isActive {
-                nowPlayingSection
-                Divider()
+                nowPlayingCard
             }
 
             if isEmpty {
@@ -94,6 +92,9 @@ struct QueueView: View {
                         // fully resolved, so it never has a load hook or unloaded
                         // rows.
                         QueueSection(
+                            // The manual lane labels itself only when it has
+                            // rows; the context header below always shows (it
+                            // names what's playing, not just the lane).
                             title: manual.isEmpty
                                 ? nil : String(localized: "Up Next"),
                             shuffled: false,
@@ -123,9 +124,7 @@ struct QueueView: View {
                             // placeholder for those rows and fetches the range
                             // around them.
                             QueueSection(
-                                title: manual.isEmpty
-                                    ? nil
-                                    : Self.contextSectionTitle(context.kind),
+                                title: Self.contextSectionTitle(context),
                                 shuffled: context.shuffled,
                                 count: context.upcomingTotal,
                                 itemAt: { playbackStore.upcomingItem(at: $0) },
@@ -167,15 +166,19 @@ struct QueueView: View {
     }
 
     /// The context section's title, by what it plays from: a release keeps the
-    /// "Playing From" label; the library names itself. Resolving a localized key
-    /// by the source kind is the UI's locale-rendering job — the kind crosses the
-    /// bridge as an enum, the prose stays here.
-    private static func contextSectionTitle(_ kind: BridgePlaybackSourceKind)
+    /// "Playing From" label — suffixed with the album title when core resolved
+    /// one — and the library names itself. Resolving a localized key by the
+    /// source kind is the UI's locale-rendering job — the kind and title cross
+    /// the bridge as data, the prose stays here.
+    private static func contextSectionTitle(_ context: QueuePlaybackContext)
         -> String
     {
-        switch kind {
+        switch context.kind {
         case .release:
-            return String(localized: "Playing From")
+            guard let sourceTitle = context.sourceTitle else {
+                return String(localized: "Playing From")
+            }
+            return String(localized: "Playing From") + " · " + sourceTitle
         case .library:
             return String(localized: "Your Library")
         }
@@ -184,55 +187,84 @@ struct QueueView: View {
     // MARK: - Header
 
     private var header: some View {
-        HStack {
+        HStack(alignment: .firstTextBaseline) {
             Text("Queue")
-                .font(.headline)
+                .font(.system(size: 22, weight: .heavy))
             Spacer()
             // Clear empties only the manual lane; the context (the release being
             // played from) survives, so the control disables on an empty manual
             // lane regardless of the context.
             Button("Clear") { onClear() }
                 .buttonStyle(.plain)
+                .font(.system(size: 12, weight: .semibold))
                 .foregroundStyle(.secondary)
                 .disabled(manual.isEmpty)
         }
-        .padding()
+        .padding(.horizontal, 20)
+        .padding(.top, 18)
+        .padding(.bottom, 12)
     }
 
     // MARK: - Now Playing
 
-    private var nowPlayingSection: some View {
-        HStack(spacing: 10) {
+    /// The now-playing card: cover, an accent eyebrow label, title/artist, and
+    /// a slim progress strip. Tinted with the accent so the playing track reads
+    /// as a distinct object above the queue lanes, not another row.
+    private var nowPlayingCard: some View {
+        HStack(spacing: 12) {
             nowPlayingArt
-                .frame(width: 40, height: 40)
-                .clipShape(RoundedRectangle(cornerRadius: 3))
+                .frame(width: 56, height: 56)
+                .clipShape(RoundedRectangle(cornerRadius: 9))
+                .shadow(color: Theme.accent.opacity(0.35), radius: 8, y: 4)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text("Now Playing")
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
+                    .font(.system(size: 9, weight: .bold))
+                    .tracking(1.3)
+                    .textCase(.uppercase)
+                    .foregroundStyle(Theme.accent)
                 if let title = nowPlayingTitle {
                     Text(title)
-                        .font(.callout)
-                        .fontWeight(.medium)
+                        .font(.system(size: 14, weight: .bold))
                         .lineLimit(1)
                 }
                 if let artist = nowPlayingArtist {
                     Text(artist)
-                        .font(.caption)
+                        .font(.system(size: 11, weight: .medium))
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                 }
+                ProgressStripRepresentable()
+                    .frame(height: 10)
+                    .padding(.top, 6)
             }
 
-            Spacer()
+            Spacer(minLength: 0)
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
+        .padding(12)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Theme.accent.opacity(0.16),
+                            Theme.placeholder.opacity(0.35),
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(Theme.accent.opacity(0.28), lineWidth: 1)
+        )
+        .padding(.horizontal, 14)
+        .padding(.bottom, 6)
     }
 
     private var nowPlayingArt: some View {
-        ImageView(content: nowPlayingCover, pointSize: 40)
+        ImageView(content: nowPlayingCover, pointSize: 56)
     }
 }
 
@@ -619,112 +651,99 @@ private struct QueueSection: View {
                         && coordinator.draggedEntryId(in: laneId) == item?.id
                     let isRemoving =
                         item.map { removingEntryIds.contains($0.id) } ?? false
-                    VStack(spacing: 0) {
-                        queueRow(item, index: slot.displaySlot)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 2)
-                        // An explicit 1pt rule, not `Divider()`: macOS gives
-                        // Divider ~10pt of layout with the hairline centered,
-                        // which padded every row out and left the visible
-                        // border 5pt above the row's edge — so the insertion
-                        // line overlay (pinned to the edge) read as sitting
-                        // inside the item.
-                        Rectangle()
-                            .fill(.white.opacity(0.08))
-                            .frame(height: 1)
-                            .padding(.leading, 62)
-                    }
-                    // Optimistic removal: one linear curve drives the fade
-                    // and the collapse together. The content stays full-size,
-                    // pinned to the top — the bottom edge rises over it (a
-                    // top-aligned zero frame + clip), never squishing it. The
-                    // clip sits BEFORE the drag offset in the chain, so it
-                    // clips in the row's own space and cannot clip a dragged
-                    // row's translated rendering.
-                    // No scoped animation on the frame: the collapse rides
-                    // the withAnimation transaction from the remove action, so
-                    // every downstream layout shift (rows below, the whole
-                    // next section) animates in the SAME spring — a scoped
-                    // animation here moved only this row smoothly and let the
-                    // rest snap. The fade alone keeps its own linear curve.
-                    .frame(height: isRemoving ? 0 : nil, alignment: .top)
-                    .clipped()
-                    .opacity(isRemoving ? 0 : 1)
-                    .animation(.linear(duration: 0.25), value: isRemoving)
-                    // The manual lane's insertion line serves both external
-                    // track drops and a context-row drag hovering here (a
-                    // cross-lane enqueue); the context lane never shows one.
-                    // Anchored to the BOTTOM of the row above the gap — the
-                    // same edge the row's 1pt rule renders on — so the line
-                    // draws over that rule; a top-anchored line on the row
-                    // below kept landing visibly under it. Gap 0 (above the
-                    // first row) is the one gap with no row above; it anchors
-                    // to row 0's top instead.
-                    .overlay(alignment: .bottom) {
-                        if acceptsExternalDrops,
-                            insertGapForLine == slot.displaySlot + 1
-                        {
-                            insertionLine
-                                .allowsHitTesting(false)
+                    queueRow(item, index: slot.displaySlot)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 1)
+                        // Optimistic removal: one linear curve drives the fade
+                        // and the collapse together. The content stays full-size,
+                        // pinned to the top — the bottom edge rises over it (a
+                        // top-aligned zero frame + clip), never squishing it. The
+                        // clip sits BEFORE the drag offset in the chain, so it
+                        // clips in the row's own space and cannot clip a dragged
+                        // row's translated rendering.
+                        // No scoped animation on the frame: the collapse rides
+                        // the withAnimation transaction from the remove action, so
+                        // every downstream layout shift (rows below, the whole
+                        // next section) animates in the SAME spring — a scoped
+                        // animation here moved only this row smoothly and let the
+                        // rest snap. The fade alone keeps its own linear curve.
+                        .frame(height: isRemoving ? 0 : nil, alignment: .top)
+                        .clipped()
+                        .opacity(isRemoving ? 0 : 1)
+                        .animation(.linear(duration: 0.25), value: isRemoving)
+                        // The manual lane's insertion line serves both external
+                        // track drops and a context-row drag hovering here (a
+                        // cross-lane enqueue); the context lane never shows one.
+                        // Anchored to the BOTTOM of the row above the gap; a
+                        // top-anchored line on the row below kept landing visibly
+                        // under it. Gap 0 (above the first row) is the one gap
+                        // with no row above; it anchors to row 0's top instead.
+                        .overlay(alignment: .bottom) {
+                            if acceptsExternalDrops,
+                                insertGapForLine == slot.displaySlot + 1
+                            {
+                                insertionLine
+                                    .allowsHitTesting(false)
+                            }
                         }
-                    }
-                    .overlay(alignment: .top) {
-                        if acceptsExternalDrops, slot.displaySlot == 0,
-                            insertGapForLine == 0
-                        {
-                            insertionLine
-                                .allowsHitTesting(false)
+                        .overlay(alignment: .top) {
+                            if acceptsExternalDrops, slot.displaySlot == 0,
+                                insertGapForLine == 0
+                            {
+                                insertionLine
+                                    .allowsHitTesting(false)
+                            }
                         }
-                    }
-                    // The dragged row tracks the cursor exactly (offset from
-                    // whatever display slot it currently occupies), floats over
-                    // its siblings — across the lane boundary too — and never
-                    // animates; the siblings do, as they shift around it.
-                    .offset(
-                        y: isDragged
-                            ? coordinator.draggedRowOffset(
-                                displaySlot: slot.displaySlot
-                            ) : 0
-                    )
-                    .zIndex(isDragged ? 1 : 0)
-                    .shadow(
-                        color: .black.opacity(isDragged ? 0.25 : 0),
-                        radius: 6,
-                        y: 2
-                    )
-                    .transaction { transaction in
-                        if isDragged {
-                            transaction.animation = nil
+                        // The dragged row tracks the cursor exactly (offset from
+                        // whatever display slot it currently occupies), floats over
+                        // its siblings — across the lane boundary too — and never
+                        // animates; the siblings do, as they shift around it.
+                        .offset(
+                            y: isDragged
+                                ? coordinator.draggedRowOffset(
+                                    displaySlot: slot.displaySlot
+                                ) : 0
+                        )
+                        .zIndex(isDragged ? 1 : 0)
+                        .shadow(
+                            color: .black.opacity(isDragged ? 0.25 : 0),
+                            radius: 6,
+                            y: 2
+                        )
+                        .transaction { transaction in
+                            if isDragged {
+                                transaction.animation = nil
+                            }
                         }
-                    }
-                    .task(
-                        id: QueueRowLoadID(
-                            epoch: loadEpoch,
-                            index: slot.sourceIndex
-                        )
-                    ) {
-                        guard item == nil, let loadRange else {
-                            return
+                        .task(
+                            id: QueueRowLoadID(
+                                epoch: loadEpoch,
+                                index: slot.sourceIndex
+                            )
+                        ) {
+                            guard item == nil, let loadRange else {
+                                return
+                            }
+                            let first = max(
+                                0,
+                                slot.sourceIndex - queueUpcomingLoadBatchSize
+                                    / 2
+                            )
+                            let end = min(
+                                first + queueUpcomingLoadBatchSize,
+                                count
+                            )
+                            await loadRange(first, end - first)
                         }
-                        let first = max(
-                            0,
-                            slot.sourceIndex - queueUpcomingLoadBatchSize / 2
+                        .onDrop(
+                            of: [UTType.plainText],
+                            delegate: QueueDropDelegate(
+                                targetIndex: slot.displaySlot,
+                                acceptsExternalDrops: acceptsExternalDrops,
+                                dropInsertIndex: $dropInsertIndex,
+                                onInsertTracks: onInsertTracks,
+                            )
                         )
-                        let end = min(
-                            first + queueUpcomingLoadBatchSize,
-                            count
-                        )
-                        await loadRange(first, end - first)
-                    }
-                    .onDrop(
-                        of: [UTType.plainText],
-                        delegate: QueueDropDelegate(
-                            targetIndex: slot.displaySlot,
-                            acceptsExternalDrops: acceptsExternalDrops,
-                            dropInsertIndex: $dropInsertIndex,
-                            onInsertTracks: onInsertTracks,
-                        )
-                    )
                 }
             }
             // The rows region's frame in the pane space: the coordinator maps
@@ -858,17 +877,19 @@ extension QueueSection {
             HStack(spacing: 6) {
                 if let title {
                     Text(title)
-                        .font(.caption)
-                        .fontWeight(.semibold)
+                        .font(.system(size: 10, weight: .bold))
+                        .tracking(1.2)
+                        .textCase(.uppercase)
                         .foregroundStyle(.secondary)
+                        .lineLimit(1)
                 }
                 Spacer()
                 if let onSetShuffle {
                     shuffleToggle(onSetShuffle)
                 }
             }
-            .padding(.horizontal, 12)
-            .padding(.top, 10)
+            .padding(.horizontal, 20)
+            .padding(.top, 12)
             .padding(.bottom, 4)
         }
     }
@@ -882,11 +903,15 @@ extension QueueSection {
             onSetShuffle(!shuffled)
         } label: {
             Image(systemName: "shuffle")
-                .font(.caption2)
-                .foregroundStyle(shuffled ? Color.accentColor : .secondary)
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(shuffled ? Theme.accent : .secondary)
                 // Same 28pt slot as the rows' X column, so the glyphs align
                 // vertically — and the same comfortable hit target.
                 .frame(width: 28, height: 28)
+                .background(
+                    RoundedRectangle(cornerRadius: 7)
+                        .fill(shuffled ? Theme.accentSoft : .clear)
+                )
                 .contentShape(Rectangle())
         }
         .buttonStyle(PressableIconButtonStyle())
@@ -1003,15 +1028,15 @@ private struct QueueItemRow: View {
     private var removeHovered = false
 
     var body: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: 12) {
             artWithHoverOverlay
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(item.title)
-                    .font(.callout)
+                    .font(.system(size: 13, weight: .semibold))
                     .lineLimit(1)
                 Text(item.albumTitle)
-                    .font(.caption)
+                    .font(.system(size: 11, weight: .medium))
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
             }
@@ -1022,12 +1047,14 @@ private struct QueueItemRow: View {
             // needed hover-state plumbing (and broke when rows slid under a
             // stationary pointer) for no real estate gain.
             Text(item.durationLabel)
-                .font(.caption.monospacedDigit())
+                .font(.system(size: 11, weight: .semibold).monospacedDigit())
                 .foregroundStyle(.secondary)
             Button(action: { onRemove(item.id) }) {
                 Image(systemName: "xmark")
                     .font(.caption)
-                    .foregroundStyle(removeHovered ? .primary : .secondary)
+                    .foregroundStyle(
+                        removeHovered ? Theme.accent : .secondary
+                    )
                     // Faint at rest, bright on hover: always present and
                     // hittable (a hover-revealed X can't reveal itself on a
                     // row that slides under a stationary pointer), without
@@ -1036,9 +1063,11 @@ private struct QueueItemRow: View {
                     // Same small glyph, comfortable click target.
                     .frame(width: 28, height: 28)
                     .background(
-                        Circle()
-                            .fill(.white.opacity(removeHovered ? 0.12 : 0))
-                            .frame(width: 20, height: 20)
+                        RoundedRectangle(cornerRadius: 7)
+                            .fill(
+                                Theme.accent.opacity(removeHovered ? 0.22 : 0)
+                            )
+                            .frame(width: 24, height: 24)
                     )
                     .contentShape(Rectangle())
             }
@@ -1046,6 +1075,14 @@ private struct QueueItemRow: View {
             .onHover { removeHovered = $0 }
             .help("Remove from queue")
         }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 6)
+        // Hover chrome toggles by fill only — rows stay uniform height, which
+        // the drag coordinator's row-pitch math depends on.
+        .background(
+            RoundedRectangle(cornerRadius: 10)
+                .fill(.white.opacity(isHovered ? 0.06 : 0))
+        )
         .contentShape(Rectangle())
         .onHover(perform: onHoverChanged)
         .onTapGesture(count: 2) {
@@ -1062,20 +1099,20 @@ private struct QueueItemRow: View {
     // so revealing it on hover doesn't resize the row and re-lay-out the lane.
     private var artWithHoverOverlay: some View {
         ZStack {
-            ImageView(coverImageId: item.coverImageId, pointSize: 40)
-                .frame(width: 40, height: 40)
-                .clipShape(RoundedRectangle(cornerRadius: 3))
+            ImageView(coverImageId: item.coverImageId, pointSize: 44)
+                .frame(width: 44, height: 44)
+                .clipShape(RoundedRectangle(cornerRadius: 8))
 
-            RoundedRectangle(cornerRadius: 3)
+            RoundedRectangle(cornerRadius: 8)
                 .fill(.black.opacity(0.5))
-                .frame(width: 40, height: 40)
+                .frame(width: 44, height: 44)
                 .opacity(isHovered ? 1 : 0)
             Button(action: { onSkipTo(item.id) }) {
                 Image(systemName: "play.fill")
                     .font(.caption)
                     .foregroundColor(.white)
                     // The whole hovered cover is the target, not the glyph.
-                    .frame(width: 40, height: 40)
+                    .frame(width: 44, height: 44)
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
@@ -1089,10 +1126,10 @@ private struct QueueItemRow: View {
 /// flight for it via the row's `.task(id:)`.
 private struct QueuePlaceholderRow: View {
     var body: some View {
-        HStack(spacing: 10) {
-            RoundedRectangle(cornerRadius: 3)
+        HStack(spacing: 12) {
+            RoundedRectangle(cornerRadius: 8)
                 .fill(.secondary.opacity(0.15))
-                .frame(width: 40, height: 40)
+                .frame(width: 44, height: 44)
             VStack(alignment: .leading, spacing: 4) {
                 RoundedRectangle(cornerRadius: 3)
                     .fill(.secondary.opacity(0.15))
@@ -1103,6 +1140,8 @@ private struct QueuePlaceholderRow: View {
             }
             Spacer()
         }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 6)
     }
 }
 
@@ -1190,57 +1229,3 @@ private struct QueueDropDelegate: DropDelegate {
             && info.hasItemsConforming(to: [UTType.plainText])
     }
 }
-
-#if DEBUG
-    extension QueueView {
-        /// Preview builder — fixes the image resolver and the action callbacks
-        /// to inert defaults and injects `store` (queue state now flows through
-        /// `@Environment`, not by-value props) so a preview states only its queue.
-        @MainActor
-        static func preview(
-            isActive: Bool,
-            nowPlayingTitle: String?,
-            nowPlayingArtist: String?,
-            store: PlaybackStore
-        ) -> some View {
-            QueueView(
-                isActive: isActive,
-                nowPlayingTitle: nowPlayingTitle,
-                nowPlayingArtist: nowPlayingArtist,
-                nowPlayingCover: nil,
-                onClear: {},
-                onSkipTo: { _ in },
-                onRemove: { _ in },
-                onReorder: { _, _ in },
-                onInsertTracks: { _, _ in },
-                onSetShuffle: { _ in }
-            )
-            .environment(store)
-            .environment(Queue.stub)
-        }
-    }
-
-    // MARK: - Previews
-
-    #Preview("With items") {
-        QueueView.preview(
-            isActive: true,
-            nowPlayingTitle: PreviewData.nowPlayingTitle,
-            nowPlayingArtist: PreviewData.nowPlayingArtist,
-            store: PreviewData.queueStore(manualCount: 2, shuffled: true)
-        )
-        .frame(width: 350, height: 500)
-        .environment(MediaPaths.stub)
-    }
-
-    #Preview("Empty") {
-        QueueView.preview(
-            isActive: false,
-            nowPlayingTitle: nil,
-            nowPlayingArtist: nil,
-            store: PreviewData.queueStore(manualCount: 0, context: nil)
-        )
-        .frame(width: 350, height: 400)
-        .environment(MediaPaths.stub)
-    }
-#endif

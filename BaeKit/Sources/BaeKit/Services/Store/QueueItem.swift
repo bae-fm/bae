@@ -42,12 +42,17 @@ public struct QueueItem: Identifiable, Equatable, Sendable {
 /// directly.
 public struct QueuePlaybackContext: Equatable, Sendable {
     public let kind: BridgePlaybackSourceKind
+    /// The display title of what the context plays from — the album title when
+    /// the source is a single release, `nil` for a multi-release source or the
+    /// whole library. The UI appends it to the localized section label.
+    public let sourceTitle: String?
     public let shuffled: Bool
     public let upcoming: [QueueItem]
     public let upcomingTotal: Int
 
     public init(bridge: BridgePlaybackContext) {
         kind = bridge.kind
+        sourceTitle = bridge.sourceTitle
         shuffled = bridge.shuffled
         upcoming = bridge.upcoming.map(QueueItem.init(bridge:))
         upcomingTotal = Int(bridge.upcomingTotal)
@@ -55,11 +60,13 @@ public struct QueuePlaybackContext: Equatable, Sendable {
 
     public init(
         kind: BridgePlaybackSourceKind,
+        sourceTitle: String?,
         shuffled: Bool,
         upcoming: [QueueItem],
         upcomingTotal: Int
     ) {
         self.kind = kind
+        self.sourceTitle = sourceTitle
         self.shuffled = shuffled
         self.upcoming = upcoming
         self.upcomingTotal = upcomingTotal

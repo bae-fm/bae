@@ -78,6 +78,7 @@ class QueueProjectionTest {
             context =
                 BridgePlaybackContext(
                     kind = BridgePlaybackSourceKind.RELEASE,
+                    sourceTitle = null,
                     shuffled = false,
                     upcoming = listOf(entry("c1"), entry("c2")),
                     upcomingTotal = 2uL,
@@ -103,6 +104,7 @@ class QueueProjectionTest {
             context =
                 BridgePlaybackContext(
                     kind = BridgePlaybackSourceKind.RELEASE,
+                    sourceTitle = null,
                     shuffled = true,
                     upcoming = listOf(entry("c")),
                     upcomingTotal = 1uL,
@@ -125,6 +127,7 @@ class QueueProjectionTest {
             context =
                 BridgePlaybackContext(
                     kind = BridgePlaybackSourceKind.LIBRARY,
+                    sourceTitle = null,
                     shuffled = false,
                     upcoming = listOf(entry("c")),
                     upcomingTotal = 1uL,
@@ -164,6 +167,7 @@ class QueueProjectionTest {
             context =
                 BridgePlaybackContext(
                     kind = BridgePlaybackSourceKind.RELEASE,
+                    sourceTitle = null,
                     shuffled = false,
                     upcoming = listOf(entry("c")),
                     upcomingTotal = 1uL,

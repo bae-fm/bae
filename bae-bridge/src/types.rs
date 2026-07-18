@@ -2689,6 +2689,11 @@ impl BridgePlaybackSourceKind {
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgePlaybackContext {
     pub kind: BridgePlaybackSourceKind,
+    /// The display title of what the context plays from — the album title when
+    /// the source is a single release, `None` for a multi-release source or
+    /// the whole library. The UI appends it to the section label; the label
+    /// prose itself stays UI-side (localized).
+    pub source_title: Option<String>,
     pub shuffled: bool,
     /// The first page of the not-yet-played tail — not the whole tail. See
     /// `upcoming_total` for the full length and `get_queue_upcoming_page` for

@@ -31,6 +31,10 @@ pub struct QueueItem {
 #[derive(Debug, Clone)]
 pub struct ResolvedContext {
     pub source: crate::playback::ContextSource,
+    /// The display title of what the context plays from — the album title when
+    /// the source is a single release, `None` for a multi-release source or the
+    /// whole library (those label themselves by kind alone).
+    pub source_title: Option<String>,
     pub shuffled: bool,
     /// The first [`QUEUE_UPCOMING_WINDOW`] entries of the tail — not the whole
     /// tail. Later indices are fetched on demand via `get_queue_upcoming_page`.

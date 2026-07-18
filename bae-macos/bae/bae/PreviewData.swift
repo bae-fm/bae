@@ -81,6 +81,8 @@
                     context: context.map { kind in
                         BridgePlaybackContext(
                             kind: kind,
+                            sourceTitle: kind == .release
+                                ? "Neon Frequencies" : nil,
                             shuffled: shuffled,
                             upcoming: upcoming,
                             upcomingTotal: UInt64(upcoming.count)

@@ -62,6 +62,7 @@ class SeekToMediaItemTest {
             context =
                 BridgePlaybackContext(
                     kind = BridgePlaybackSourceKind.RELEASE,
+                    sourceTitle = null,
                     shuffled = false,
                     upcoming = listOf(entry("c")),
                     upcomingTotal = 1uL,

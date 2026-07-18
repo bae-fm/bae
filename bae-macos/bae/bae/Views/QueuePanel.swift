@@ -1,4 +1,5 @@
 import BaeKit
+import Combine
 import SwiftUI
 
 /// The queue, presented as a floating panel INSIDE the main window, anchored
@@ -43,17 +44,73 @@ struct QueuePanel: View {
             onInsertTracks: onInsertTracks,
             onSetShuffle: { queue.setShuffle($0) },
         )
-        .frame(width: 350)
-        .frame(maxHeight: 500)
-        // The panel paints the chrome the popover window used to supply:
-        // frosted system material (which lifts it off the equally-dark window
+        .frame(width: 420)
+        .frame(maxHeight: 560)
+        // The panel paints the chrome the popover window used to supply: an
+        // elevated-surface gradient (which lifts it off the darker window
         // behind), a hairline edge, and a deep shadow.
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
-        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .background(
+            LinearGradient(
+                colors: [Theme.surfaceElevated, Theme.surface],
+                startPoint: .top,
+                endPoint: .bottom
+            ),
+            in: RoundedRectangle(cornerRadius: 18)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 18))
         .overlay(
-            RoundedRectangle(cornerRadius: 12)
+            RoundedRectangle(cornerRadius: 18)
                 .stroke(.white.opacity(0.16), lineWidth: 1)
         )
         .shadow(color: .black.opacity(0.5), radius: 30, y: 10)
     }
 }
+
+#if DEBUG
+    // MARK: - Previews
+
+    /// Previews render the panel — the queue's root, chrome included — with the
+    /// same environment wiring production uses: now-playing and the lanes come
+    /// off the `PlaybackStore`, commands go to the stub `Queue`.
+    @MainActor
+    private func queuePanelPreview(store: PlaybackStore) -> some View {
+        QueuePanel(onInsertTracks: { _, _ in })
+            .environment(store)
+            .environment(Queue.stub)
+            .environment(MediaPaths.stub)
+            .environment(
+                \.playbackPositionPublisher,
+                Just(
+                    PlaybackPositionEvent.position(
+                        progress: 0.34,
+                        positionMs: 73_000,
+                        durationMs: 214_000
+                    )
+                )
+                .eraseToAnyPublisher()
+            )
+            .padding(40)
+            .background(Theme.background)
+    }
+
+    #Preview("With items") {
+        let store = PreviewData.queueStore(manualCount: 2, shuffled: true)
+        store.play(
+            track: NowPlayingTrack(
+                trackId: "t-np",
+                trackTitle: PreviewData.nowPlayingTitle,
+                artistNames: PreviewData.nowPlayingArtist,
+                albumId: "a-01",
+                coverImageId: nil,
+                durationMs: 214_000
+            )
+        )
+        return queuePanelPreview(store: store)
+    }
+
+    #Preview("Empty") {
+        queuePanelPreview(
+            store: PreviewData.queueStore(manualCount: 0, context: nil)
+        )
+    }
+#endif

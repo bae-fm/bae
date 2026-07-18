@@ -132,18 +132,52 @@ impl LibraryManager {
         let (context_items, manual_items): (Vec<_>, Vec<_>) = items
             .into_iter()
             .partition(|i| context_ids.contains(i.entry_id.as_str()));
+        let context = match projection.context {
+            None => None,
+            Some(c) => {
+                let source_title = self.context_source_title(&c.source).await?;
+                Some(crate::queue::ResolvedContext {
+                    source: c.source,
+                    source_title,
+                    shuffled: c.shuffled,
+                    upcoming: context_items,
+                    upcoming_total,
+                })
+            }
+        };
         Ok(crate::queue::ResolvedQueueSnapshot {
             manual: manual_items,
-            context: projection.context.map(|c| crate::queue::ResolvedContext {
-                source: c.source,
-                shuffled: c.shuffled,
-                upcoming: context_items,
-                upcoming_total,
-            }),
+            context,
             has_next: projection.has_next,
             has_previous: projection.has_previous,
             revision: projection.revision,
         })
+    }
+
+    /// The display title for a context source: the album title of a single
+    /// release. Multi-release and library sources return `None` — they label
+    /// themselves by kind alone.
+    async fn context_source_title(
+        &self,
+        source: &crate::playback::ContextSource,
+    ) -> Result<Option<String>, LibraryError> {
+        let crate::playback::ContextSource::Release(release_id) = source else {
+            return Ok(None);
+        };
+        let Some(release) = self.database.find_release_by_id(release_id).await? else {
+            // A context can outlive its release (deleted while its tail still
+            // plays); the section header then labels by kind alone.
+            tracing::warn!("no release {release_id} for the playing context; omitting its title");
+            return Ok(None);
+        };
+        let Some(album) = self.database.find_album_by_id(&release.album_id).await? else {
+            tracing::warn!(
+                "no album {} for the playing context's release {release_id}; omitting its title",
+                release.album_id
+            );
+            return Ok(None);
+        };
+        Ok(Some(album.title))
     }
 
     /// The file record for a blob id — streaming looks the id up on the track's
