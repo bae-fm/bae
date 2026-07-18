@@ -3,28 +3,13 @@
 //! at open; the applied version becomes the wire `schema_version`.
 
 /// The ordered migration ladder. Versions are 1-based and contiguous.
+/// Pre-1.0 the ladder stays a single migration: schema changes fold into the
+/// initial one (`rm -rf ~/.bae` is the migration strategy) rather than
+/// accreting steps nobody's deployed database needs.
 pub fn all() -> Vec<coven::Migration> {
-    vec![
-        coven::Migration::sql(1, "initial", include_str!("../migrations/001_initial.sql")),
-        coven::Migration::sql(
-            2,
-            "blob_content_hash",
-            include_str!("../migrations/002_blob_content_hash.sql"),
-        ),
-        coven::Migration::sql(
-            3,
-            "image_blob_id",
-            include_str!("../migrations/003_image_blob_id.sql"),
-        ),
-        coven::Migration::sql(
-            4,
-            "drop_imports",
-            include_str!("../migrations/004_drop_imports.sql"),
-        ),
-        coven::Migration::sql(
-            5,
-            "shuffle_anchor",
-            include_str!("../migrations/005_shuffle_anchor.sql"),
-        ),
-    ]
+    vec![coven::Migration::sql(
+        1,
+        "initial",
+        include_str!("../migrations/001_initial.sql"),
+    )]
 }

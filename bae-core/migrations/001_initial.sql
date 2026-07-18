@@ -226,6 +226,11 @@ CREATE TABLE IF NOT EXISTS release_files (
     cloud_path TEXT,
     _updated_at TEXT NOT NULL,
     created_at TEXT NOT NULL,
+    -- Lowercase-hex SHA-256 of the blob's plaintext (coven's
+    -- `BlobDecl::hash_column`), signed on the row alongside the declared size
+    -- and verified against the decrypted bytes on a Remote fetch. NULL = not
+    -- yet populated; surfaces only as a failed Remote fetch of that blob.
+    hash TEXT,
     FOREIGN KEY (release_id) REFERENCES releases (id) ON DELETE CASCADE
 ) STRICT;
 
@@ -285,7 +290,7 @@ CREATE TABLE IF NOT EXISTS audio_format_segments (
 -- FK on `id` makes coven gate the cover as a child of its release and ride the
 -- release's gate without keeping it alive (declared `.asset()`).
 CREATE TABLE IF NOT EXISTS covers (
-    -- The release id this cover belongs to (1:1), and the cover blob's id.
+    -- The release id this cover belongs to (1:1).
     id TEXT PRIMARY KEY,
     content_type TEXT NOT NULL,
     file_size INTEGER NOT NULL,
@@ -300,13 +305,21 @@ CREATE TABLE IF NOT EXISTS covers (
     cloud_path TEXT,
     _updated_at TEXT NOT NULL,
     created_at TEXT NOT NULL,
+    -- Content hash, as on release_files.hash.
+    hash TEXT,
+    -- The id of the coven blob holding this cover's bytes. Distinct from the
+    -- row id (which is the release id and cannot move): coven names one
+    -- immutable byte-string per (namespace, blob id), so replacing a cover
+    -- repoints the row at a NEW blob id rather than writing new bytes under
+    -- the old one — which coven refuses (`BlobAlreadyReferenced`).
+    blob_id TEXT NOT NULL,
     FOREIGN KEY (id) REFERENCES releases (id) ON DELETE CASCADE
 ) STRICT;
 
 -- Artist images — bae-produced, 1:1 with an artist (`id` IS the artist id). A
 -- coven host-provided · CacheEager *asset* of `artists`, same shape as `covers`.
 CREATE TABLE IF NOT EXISTS artist_images (
-    -- The artist id this image belongs to (1:1), and the image blob's id.
+    -- The artist id this image belongs to (1:1).
     id TEXT PRIMARY KEY,
     content_type TEXT NOT NULL,
     file_size INTEGER NOT NULL,
@@ -320,6 +333,11 @@ CREATE TABLE IF NOT EXISTS artist_images (
     cloud_path TEXT,
     _updated_at TEXT NOT NULL,
     created_at TEXT NOT NULL,
+    -- Content hash, as on release_files.hash.
+    hash TEXT,
+    -- The id of the coven blob holding this image's bytes — a new one per
+    -- stored image, as on covers.blob_id.
+    blob_id TEXT NOT NULL,
     FOREIGN KEY (id) REFERENCES artists (id) ON DELETE CASCADE
 ) STRICT;
 
@@ -330,18 +348,6 @@ CREATE TABLE IF NOT EXISTS release_metadata (
     json TEXT NOT NULL,
     fetched_at TEXT NOT NULL,
     UNIQUE(release_id, source)
-);
-
-CREATE TABLE IF NOT EXISTS imports (
-    id TEXT PRIMARY KEY,
-    status TEXT NOT NULL,
-    release_id TEXT REFERENCES releases(id),
-    album_title TEXT NOT NULL,
-    artist_name TEXT NOT NULL,
-    folder_path TEXT NOT NULL,
-    created_at INTEGER NOT NULL,
-    updated_at INTEGER NOT NULL,
-    error_message TEXT
 );
 
 -- Indexes
@@ -363,8 +369,6 @@ CREATE INDEX IF NOT EXISTS idx_tracks_release_id ON tracks (release_id);
 CREATE INDEX IF NOT EXISTS idx_release_files_release_id ON release_files (release_id);
 CREATE INDEX IF NOT EXISTS idx_audio_formats_track_id ON audio_formats (track_id);
 CREATE INDEX IF NOT EXISTS idx_audio_format_segments_format_id ON audio_format_segments (audio_format_id);
-CREATE INDEX IF NOT EXISTS idx_imports_status ON imports (status);
-CREATE INDEX IF NOT EXISTS idx_imports_release_id ON imports (release_id);
 
 -- Device-local playback queue, restored after a restart on the same device.
 -- NOT synced: no `_updated_at` and absent from `synced_tables()`, the same
@@ -387,6 +391,11 @@ CREATE TABLE IF NOT EXISTS playback_state (
     id               TEXT PRIMARY KEY,
     source           TEXT,
     shuffle_seed     INTEGER,
+    -- The track fronted when shuffle was toggled on over a playing context,
+    -- kept so restore re-derives the fronted order (the seed alone reproduces
+    -- only the raw permutation). NULL for sequential order and un-anchored
+    -- shuffled orders.
+    shuffle_anchor   TEXT,
     cursor           INTEGER,
     manual           TEXT NOT NULL,
     repeat           TEXT NOT NULL,
