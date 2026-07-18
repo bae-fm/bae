@@ -240,6 +240,7 @@ impl PlaybackQueue {
             entries,
             cursor,
             traversal,
+            removed_track_ids: std::collections::HashSet::new(),
         }
     }
 
@@ -299,6 +300,24 @@ impl PlaybackQueue {
             return;
         };
         let anchor_track_id = ctx.current().track_id.clone();
+        // `source_tracks` is the release's full list, but tracks the user
+        // removed from the context are edits that survive a shuffle toggle —
+        // rebuilding from the unfiltered source would resurrect every removal.
+        // Filtering by the recorded removals (not by current membership) keeps
+        // tracks newly added to the source eligible to enter the order.
+        let source_tracks: Vec<String> = source_tracks
+            .into_iter()
+            .filter(|t| !ctx.removed_track_ids.contains(t))
+            .collect();
+        if source_tracks.is_empty() {
+            // Everything the re-fetched source offers was removed from this
+            // context; an empty rebuild would leave a cursor with no entry.
+            warn!(
+                "set_shuffle: no re-fetched source track survives the \
+                 context's removals; leaving the order unchanged"
+            );
+            return;
+        }
         let traversal = if on {
             Traversal::Shuffled {
                 seed,
@@ -323,6 +342,9 @@ impl PlaybackQueue {
             entries,
             cursor,
             traversal,
+            // The removals survive the rebuild — they are what filtered the
+            // source above, and the next toggle filters through them again.
+            removed_track_ids: ctx.removed_track_ids.clone(),
         });
         self.revision += 1;
     }
@@ -402,6 +424,10 @@ impl PlaybackQueue {
                     .as_mut()
                     .expect("locate reported a context entry");
                 let removed = ctx.entries.remove(pos);
+                // A user edit that outlives this materialization: shuffle
+                // toggles rebuild from the re-fetched source and filter it
+                // through the recorded removals.
+                ctx.removed_track_ids.insert(removed.track_id.clone());
                 if pos < ctx.cursor {
                     ctx.cursor -= 1;
                 }
@@ -1124,6 +1150,65 @@ mod tests {
                 "seed {seed}: every other track stays upcoming after a reshuffle"
             );
         }
+    }
+
+    /// Tracks removed from the context stay removed across a shuffle toggle:
+    /// the re-fetched source is filtered to the context's surviving tracks, so
+    /// a reshuffle permutes what's actually queued rather than resurrecting
+    /// every removal from the release's full track list.
+    #[test]
+    fn test_set_shuffle_on_excludes_removed_context_tracks() {
+        let mut q = queue();
+        q.play_release(
+            rel_src("r1"),
+            rel(&["t1", "t2", "t3", "t4", "t5"]),
+            ContextStart::Index(0),
+        );
+        // Remove t2 and t4 from the tail.
+        let t2_id = q.upcoming()[0].id.clone();
+        let t4_id = q.upcoming()[2].id.clone();
+        q.remove(&t2_id);
+        q.remove(&t4_id);
+
+        q.set_shuffle(true, rel(&["t1", "t2", "t3", "t4", "t5"]), 7);
+
+        assert_eq!(q.current_track_id(), Some("t1"));
+        let mut rest = upcoming_tracks(&q);
+        rest.sort();
+        assert_eq!(
+            rest,
+            vec!["t3", "t5"],
+            "removed tracks stay removed through a reshuffle"
+        );
+    }
+
+    /// Same for turning shuffle off: the restored sequential order is the
+    /// source order of the surviving tracks, not the full source.
+    #[test]
+    fn test_set_shuffle_off_excludes_removed_context_tracks() {
+        let mut q = queue();
+        q.play_release(
+            rel_src("r1"),
+            rel(&["t1", "t2", "t3", "t4", "t5"]),
+            ContextStart::Index(0),
+        );
+        q.set_shuffle(true, rel(&["t1", "t2", "t3", "t4", "t5"]), 7);
+        let t_removed = q.upcoming()[0].id.clone();
+        let removed_track = q.upcoming()[0].track_id.clone();
+        q.remove(&t_removed);
+
+        q.set_shuffle(false, rel(&["t1", "t2", "t3", "t4", "t5"]), 0);
+
+        assert_eq!(q.current_track_id(), Some("t1"));
+        let expected: Vec<&str> = ["t2", "t3", "t4", "t5"]
+            .into_iter()
+            .filter(|t| *t != removed_track)
+            .collect();
+        assert_eq!(
+            upcoming_tracks(&q),
+            expected,
+            "the sequential order resumes without the removed track"
+        );
     }
 
     /// A snapshot taken after a shuffle toggle restores the identical order:

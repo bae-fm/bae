@@ -76,6 +76,12 @@ pub(crate) struct PlaybackContext {
     pub cursor: usize,
     /// How `entries` was ordered — replayed/re-derived on `Context` repeat.
     pub traversal: Traversal,
+    /// Tracks the user removed from this context. A shuffle toggle rebuilds
+    /// the order from the re-fetched source and filters it through this set —
+    /// membership alone can't distinguish a user removal from a track newly
+    /// added to the source, and only the former stays out. Session-scoped: a
+    /// fresh context starts empty.
+    pub removed_track_ids: std::collections::HashSet<String>,
 }
 
 impl PlaybackContext {
