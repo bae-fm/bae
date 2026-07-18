@@ -34,6 +34,7 @@ async fn playback_state_saves_loads_replaces_and_clears() {
         context: Some(DbPlaybackContext {
             source: "rel-1".to_string(),
             shuffle_seed: Some(seed as i64),
+            shuffle_anchor: None,
             cursor: 3,
         }),
         manual: r#"["t1","t2"]"#.to_string(),

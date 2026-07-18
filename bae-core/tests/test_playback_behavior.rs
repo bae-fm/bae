@@ -4004,6 +4004,7 @@ async fn test_restore_drops_context_when_cursor_past_shrunk_tracks() {
         context: Some(bae_core::db::DbPlaybackContext {
             source: release.id.clone(),
             shuffle_seed: None,
+            shuffle_anchor: None,
             cursor: 5,
         }),
         manual: serde_json::to_string(&vec![manual_track_id.clone()]).unwrap(),
@@ -4385,6 +4386,7 @@ async fn test_restore_drops_deleted_context_keeps_manual() {
         context: Some(bae_core::db::DbPlaybackContext {
             source: "release-that-was-deleted".to_string(),
             shuffle_seed: None,
+            shuffle_anchor: None,
             cursor: 0,
         }),
         manual: format!("[{:?}]", track_id),

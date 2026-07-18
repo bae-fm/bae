@@ -21,5 +21,10 @@ pub fn all() -> Vec<coven::Migration> {
             "drop_imports",
             include_str!("../migrations/004_drop_imports.sql"),
         ),
+        coven::Migration::sql(
+            5,
+            "shuffle_anchor",
+            include_str!("../migrations/005_shuffle_anchor.sql"),
+        ),
     ]
 }

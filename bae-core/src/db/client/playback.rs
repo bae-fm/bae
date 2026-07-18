@@ -71,20 +71,26 @@ impl Database {
     pub async fn save_playback_state(&self, state: &DbPlaybackState) -> Result<(), DbError> {
         let state = state.clone();
         self.call(move |conn| {
-            // Flatten the context substruct back to the table's three nullable
-            // columns: all three NULL when no context is playing.
-            let (source, shuffle_seed, cursor) = match &state.context {
-                Some(ctx) => (Some(&ctx.source), ctx.shuffle_seed, Some(ctx.cursor)),
-                None => (None, None, None),
+            // Flatten the context substruct back to the table's nullable
+            // columns: all NULL when no context is playing.
+            let (source, shuffle_seed, shuffle_anchor, cursor) = match &state.context {
+                Some(ctx) => (
+                    Some(&ctx.source),
+                    ctx.shuffle_seed,
+                    ctx.shuffle_anchor.as_ref(),
+                    Some(ctx.cursor),
+                ),
+                None => (None, None, None, None),
             };
             conn.execute(
                 "INSERT OR REPLACE INTO playback_state \
-                     (id, source, shuffle_seed, cursor, manual, repeat, \
+                     (id, source, shuffle_seed, shuffle_anchor, cursor, manual, repeat, \
                       current_track_id, position_ms, volume, is_muted) \
-                     VALUES ('current', ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                     VALUES ('current', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 params![
                     source,
                     shuffle_seed,
+                    shuffle_anchor,
                     cursor,
                     state.manual,
                     state.repeat,
@@ -111,7 +117,7 @@ impl Database {
             // `None` is no row at all — the two stay distinct below.
             let loaded = conn
                 .query_row(
-                    "SELECT source, shuffle_seed, cursor, manual, repeat, \
+                    "SELECT source, shuffle_seed, shuffle_anchor, cursor, manual, repeat, \
                      current_track_id, position_ms, volume, is_muted \
                      FROM playback_state WHERE id = 'current'",
                     [],
@@ -121,11 +127,13 @@ impl Database {
                         // present is a corrupt row.
                         let source: Option<String> = row.get("source")?;
                         let shuffle_seed: Option<i64> = row.get("shuffle_seed")?;
+                        let shuffle_anchor: Option<String> = row.get("shuffle_anchor")?;
                         let cursor: Option<i64> = row.get("cursor")?;
                         let context = match (source, cursor) {
                             (Some(source), Some(cursor)) => Some(DbPlaybackContext {
                                 source,
                                 shuffle_seed,
+                                shuffle_anchor,
                                 cursor,
                             }),
                             (None, None) => None,

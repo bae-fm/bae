@@ -190,17 +190,30 @@ impl PlaybackQueue {
 
     /// Order a source's tracks under a traversal and mint a fresh
     /// per-instance id per track: a shuffled traversal re-permutes `tracks` from
-    /// its seed (the same seed yields the same order, so a restored shuffle
-    /// reproduces what was played); a sequential one keeps source order. Shared
-    /// by `build_context` (which pairs the order with a caller-supplied cursor)
-    /// and `set_shuffle` (which derives the cursor from the playing track).
+    /// its seed and fronts its anchor when it has one (the same seed and anchor
+    /// yield the same order, so a restored shuffle reproduces what was played);
+    /// a sequential one keeps source order. Shared by `build_context` (which
+    /// pairs the order with a caller-supplied cursor) and `set_shuffle` (which
+    /// derives the cursor from the playing track).
     fn materialize_entries(
         &self,
         mut tracks: Vec<String>,
-        traversal: Traversal,
+        traversal: &Traversal,
     ) -> Vec<QueueEntry> {
-        if let Traversal::Shuffled { seed } = traversal {
-            shuffled_traversal(&mut tracks, seed);
+        if let Traversal::Shuffled { seed, anchor } = traversal {
+            shuffled_traversal(&mut tracks, *seed);
+            if let Some(anchor) = anchor {
+                match tracks.iter().position(|t| t == anchor) {
+                    Some(pos) => {
+                        let track = tracks.remove(pos);
+                        tracks.insert(0, track);
+                    }
+                    None => warn!(
+                        "shuffle anchor {anchor} absent from the source; \
+                         keeping the raw shuffled order"
+                    ),
+                }
+            }
         }
         tracks.into_iter().map(|t| self.mint(t)).collect()
     }
@@ -217,7 +230,7 @@ impl PlaybackQueue {
         cursor: usize,
         traversal: Traversal,
     ) -> PlaybackContext {
-        let entries = self.materialize_entries(tracks, traversal);
+        let entries = self.materialize_entries(tracks, &traversal);
         debug_assert!(
             cursor < entries.len(),
             "caller must pass an in-range cursor"
@@ -244,7 +257,9 @@ impl PlaybackQueue {
         self.manual.clear();
         let (cursor, traversal) = match start {
             ContextStart::Index(index) => (index, Traversal::Sequential),
-            ContextStart::Shuffled { seed } => (0, Traversal::Shuffled { seed }),
+            // A shuffled play-from-scratch starts at the raw order's head — no
+            // track was playing, so there is nothing to front.
+            ContextStart::Shuffled { seed } => (0, Traversal::Shuffled { seed, anchor: None }),
         };
         let context = self.build_context(source, track_ids, cursor, traversal);
         let track = context.current().track_id.clone();
@@ -264,7 +279,10 @@ impl PlaybackQueue {
     }
 
     /// Set the playing context to sequential or shuffled order while the playing
-    /// track keeps playing. `on` materializes a shuffled order from `seed`; off
+    /// track keeps playing. `on` materializes a shuffled order from `seed` with
+    /// the playing context track fronted (the traversal's anchor), so the whole
+    /// rest of the source stays upcoming — a randomly-placed anchor would strand
+    /// everything before it behind the cursor, where Next never reaches. Off
     /// restores `source_tracks` order. `source_tracks` is the context's own source
     /// release in source order (the service re-fetched it). The new order is stable
     /// until changed again — Previous walks exactly it, not a fresh shuffle per
@@ -282,11 +300,14 @@ impl PlaybackQueue {
         };
         let anchor_track_id = ctx.current().track_id.clone();
         let traversal = if on {
-            Traversal::Shuffled { seed }
+            Traversal::Shuffled {
+                seed,
+                anchor: Some(anchor_track_id.clone()),
+            }
         } else {
             Traversal::Sequential
         };
-        let entries = self.materialize_entries(source_tracks, traversal);
+        let entries = self.materialize_entries(source_tracks, &traversal);
         let cursor = entries
             .iter()
             .position(|e| e.track_id == anchor_track_id)
@@ -313,7 +334,7 @@ impl PlaybackQueue {
         QueueSnapshot {
             context: self.context.as_ref().map(|ctx| ContextSnapshot {
                 source: ctx.source.clone(),
-                traversal: ctx.traversal,
+                traversal: ctx.traversal.clone(),
                 cursor: ctx.cursor,
             }),
             manual: self.manual.iter().map(|e| e.track_id.clone()).collect(),
@@ -588,7 +609,7 @@ impl PlaybackQueue {
             .context
             .as_mut()
             .expect("rederive_context: context present");
-        if let Traversal::Shuffled { seed } = ctx.traversal {
+        if let Traversal::Shuffled { seed, .. } = ctx.traversal {
             ctx.traversal = shuffled_traversal(&mut ctx.entries, seed.wrapping_add(1));
         }
     }
@@ -1077,6 +1098,54 @@ mod tests {
         let mut all = q.context_order();
         all.sort();
         assert_eq!(all, vec!["t1", "t2", "t3", "t4", "t5"], "no track is lost");
+    }
+
+    /// Turning shuffle on keeps the WHOLE rest of the release upcoming: the
+    /// playing track fronts the new order rather than landing at a random
+    /// position, which would strand everything before it behind the cursor
+    /// where Next never reaches. Checked across seeds — with a random anchor
+    /// position this held only when the anchor happened to land first.
+    #[test]
+    fn test_set_shuffle_on_fronts_the_playing_track() {
+        for seed in 0..8 {
+            let mut q = queue();
+            q.play_release(
+                rel_src("r1"),
+                rel(&["t1", "t2", "t3", "t4", "t5"]),
+                ContextStart::Index(2),
+            );
+            q.set_shuffle(true, rel(&["t1", "t2", "t3", "t4", "t5"]), seed);
+            assert_eq!(q.current_track_id(), Some("t3"));
+            let mut rest = upcoming_tracks(&q);
+            rest.sort();
+            assert_eq!(
+                rest,
+                vec!["t1", "t2", "t4", "t5"],
+                "seed {seed}: every other track stays upcoming after a reshuffle"
+            );
+        }
+    }
+
+    /// A snapshot taken after a shuffle toggle restores the identical order:
+    /// the fronted track rides in the traversal, so re-deriving from the seed
+    /// reproduces the fronted order, not the raw permutation.
+    #[test]
+    fn test_snapshot_restore_reproduces_a_toggled_shuffle_order() {
+        let mut q = queue();
+        q.play_release(
+            rel_src("r1"),
+            rel(&["t1", "t2", "t3", "t4", "t5"]),
+            ContextStart::Index(2),
+        );
+        q.set_shuffle(true, rel(&["t1", "t2", "t3", "t4", "t5"]), 7);
+        q.next_entry();
+        let current_before = q.current_track_id().unwrap().to_string();
+        let upcoming_before = upcoming_tracks(&q);
+
+        let mut restored = queue();
+        restored.restore(q.snapshot(), rel(&["t1", "t2", "t3", "t4", "t5"]));
+        assert_eq!(restored.current_track_id().unwrap(), current_before);
+        assert_eq!(upcoming_tracks(&restored), upcoming_before);
     }
 
     #[test]

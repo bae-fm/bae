@@ -318,6 +318,11 @@ pub struct DbPlaybackContext {
     /// The `u64` shuffle seed reinterpreted as `i64` (SQLite's integer type) so
     /// the high bit round-trips. `None` = sequential (source) order.
     pub shuffle_seed: Option<i64>,
+    /// The track fronted when shuffle was toggled on over a playing context
+    /// (`Traversal::Shuffled::anchor`) — re-deriving the order from the seed
+    /// alone would reproduce the raw permutation, not the fronted one. `None`
+    /// for sequential order and for shuffled orders with no fronted track.
+    pub shuffle_anchor: Option<String>,
     /// Index into the (ordered) tracks of the track currently playing.
     pub cursor: i64,
 }

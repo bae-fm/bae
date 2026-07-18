@@ -416,13 +416,17 @@ impl PlaybackService {
             return;
         }
         let snap = self.playback_queue.snapshot();
-        let context = snap.context.map(|ctx| DbPlaybackContext {
-            source: source_to_str(&ctx.source),
-            shuffle_seed: match ctx.traversal {
-                Traversal::Shuffled { seed } => Some(seed as i64),
-                Traversal::Sequential => None,
-            },
-            cursor: ctx.cursor as i64,
+        let context = snap.context.map(|ctx| {
+            let (shuffle_seed, shuffle_anchor) = match ctx.traversal {
+                Traversal::Shuffled { seed, anchor } => (Some(seed as i64), anchor),
+                Traversal::Sequential => (None, None),
+            };
+            DbPlaybackContext {
+                source: source_to_str(&ctx.source),
+                shuffle_seed,
+                shuffle_anchor,
+                cursor: ctx.cursor as i64,
+            }
         });
         let position_ms =
             (*self.current_position_shared.lock().unwrap()).map(|d| d.as_millis() as i64);

@@ -34,13 +34,17 @@ impl ContextSource {
     }
 }
 
-/// How the context's track order was derived, kept so `Context` repeat can
-/// re-derive it: `Sequential` replays the source order; `Shuffled` re-permutes
-/// with a fresh seed each loop.
-#[derive(Clone, Copy)]
+/// How the context's track order was derived, kept so `Context` repeat and
+/// restore can re-derive it: `Sequential` replays the source order; `Shuffled`
+/// permutes the source by `seed`, then moves `anchor` — the track that was
+/// playing when shuffle was turned on — to the front, so the whole rest of the
+/// source stays upcoming instead of landing behind the cursor where Next never
+/// reaches. `anchor` is `None` for orders no track was fronted into (a
+/// shuffled play-from-scratch, a repeat wrap's fresh pass).
+#[derive(Clone)]
 pub enum Traversal {
     Sequential,
-    Shuffled { seed: u64 },
+    Shuffled { seed: u64, anchor: Option<String> },
 }
 
 /// How a release becomes the playing context: at a chosen track in source order,
@@ -100,7 +104,7 @@ pub(crate) fn shuffled_traversal<T>(items: &mut [T], seed: u64) -> Traversal {
     use rand::SeedableRng;
     let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
     items.shuffle(&mut rng);
-    Traversal::Shuffled { seed }
+    Traversal::Shuffled { seed, anchor: None }
 }
 
 #[cfg(test)]

@@ -5826,6 +5826,7 @@ async fn test_playback_state_source_column_round_trips_both_kinds() {
             context: Some(DbPlaybackContext {
                 source: source_to_str(&source),
                 shuffle_seed: Some(11),
+                shuffle_anchor: None,
                 cursor: 0,
             }),
             manual: "[]".to_string(),

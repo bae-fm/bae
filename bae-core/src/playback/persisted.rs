@@ -62,9 +62,21 @@ impl PersistedPlayback {
                         return None;
                     }
                 };
-                let traversal = match ctx.shuffle_seed {
-                    Some(seed) => Traversal::Shuffled { seed: seed as u64 },
-                    None => Traversal::Sequential,
+                let traversal = match (ctx.shuffle_seed, ctx.shuffle_anchor) {
+                    (Some(seed), anchor) => Traversal::Shuffled {
+                        seed: seed as u64,
+                        anchor,
+                    },
+                    (None, None) => Traversal::Sequential,
+                    // The anchor is only ever written next to a seed; one
+                    // without the other is a corrupt row.
+                    (None, Some(anchor)) => {
+                        warn!(
+                            "discarding the playback resume cache: shuffle anchor \
+                             {anchor:?} present without a shuffle seed"
+                        );
+                        return None;
+                    }
                 };
                 // A malformed source discards the whole row; `source_from_str`
                 // logs the specific reason before returning `None`.
@@ -181,6 +193,7 @@ mod tests {
             context: Some(DbPlaybackContext {
                 source: "rel-A".to_string(),
                 shuffle_seed: Some(99),
+                shuffle_anchor: None,
                 cursor: 2,
             }),
             manual: r#"["m1","m2"]"#.to_string(),
@@ -200,7 +213,10 @@ mod tests {
         assert_eq!(context.cursor, 2);
         assert!(matches!(
             context.traversal,
-            Traversal::Shuffled { seed: 99 }
+            Traversal::Shuffled {
+                seed: 99,
+                anchor: None
+            }
         ));
         assert_eq!(parsed.queue.manual, vec!["m1", "m2"]);
         assert_eq!(parsed.queue.current_track_id.as_deref(), Some("t3"));
@@ -216,6 +232,7 @@ mod tests {
             context: Some(DbPlaybackContext {
                 source: "rel-A".to_string(),
                 shuffle_seed: None,
+                shuffle_anchor: None,
                 cursor: 0,
             }),
             ..valid_row()
@@ -233,6 +250,7 @@ mod tests {
             context: Some(DbPlaybackContext {
                 source: source_to_str(&ContextSource::Library),
                 shuffle_seed: Some(7),
+                shuffle_anchor: None,
                 cursor: 0,
             }),
             ..valid_row()
@@ -278,6 +296,7 @@ mod tests {
             context: Some(DbPlaybackContext {
                 source: "[not valid json".to_string(),
                 shuffle_seed: None,
+                shuffle_anchor: None,
                 cursor: 0,
             }),
             ..valid_row()
@@ -295,6 +314,7 @@ mod tests {
                     "rel-B".into(),
                 ])),
                 shuffle_seed: None,
+                shuffle_anchor: None,
                 cursor: 1,
             }),
             ..valid_row()
@@ -343,6 +363,7 @@ mod tests {
             context: Some(DbPlaybackContext {
                 source: "rel-A".to_string(),
                 shuffle_seed: None,
+                shuffle_anchor: None,
                 cursor: -1,
             }),
             ..valid_row()
