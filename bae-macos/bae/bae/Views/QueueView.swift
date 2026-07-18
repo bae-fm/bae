@@ -84,7 +84,15 @@ struct QueueView: View {
                 // No overlay scroller: inside the fixed-size popover it only
                 // ever showed up as a flash when the pane animates in.
                 ScrollView {
-                    LazyVStack(spacing: 0) {
+                    // A plain VStack, NOT LazyVStack: zIndex is inert across a
+                    // lazy container's children (each cell composites in its
+                    // own layer, in order), so the drag-source section could
+                    // never rise above the other — a manual-lane row dragged
+                    // over the context section rendered underneath it. The
+                    // laziness deferred nothing anyway: the sections are the
+                    // only two children, and each materializes wholesale as
+                    // one cell.
+                    VStack(spacing: 0) {
                         // The manual lane drains first, so it is shown first. It
                         // accepts external track drops (Play Next / Add to Queue
                         // land here); the context section, being the release's own
@@ -611,12 +619,9 @@ private struct QueueSection: View {
     /// Display slots 0..<count, each resolved to its source index (identity
     /// in canonical order, or permuted while a drag is live) and an identity —
     /// the entry id when loaded, a slot sentinel when not. A `LazyMapCollection`
-    /// rather than a materialized array: `itemAt` is only ever called for rows
-    /// `ForEach`/`LazyVStack` actually need (visible rows plus a small buffer),
-    /// preserving the windowed-loading contract's whole point for a
-    /// library-scaled context lane — building an eager `[QueueRowSlot]` here
-    /// would call `itemAt` for every index up front regardless of what's
-    /// on screen.
+    /// rather than a materialized array, so no `[QueueRowSlot]` is allocated
+    /// per render; `itemAt` still runs for every index the `ForEach` renders —
+    /// which, in the sections' plain `VStack`, is all of them.
     private var rowSlots: LazyMapCollection<Range<Int>, QueueRowSlot> {
         // Derived fresh against the CURRENT count on every render — a queue
         // change mid-drag can't leave a stale-length permutation.
