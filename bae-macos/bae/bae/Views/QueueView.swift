@@ -604,8 +604,12 @@ private struct QueueSection: View {
     /// `shuffled` state. `nil` on the manual lane, which has no shuffle control.
     let onSetShuffle: ((Bool) -> Void)?
 
+    /// The hovered row, by entry id — NOT by display slot: a removal above the
+    /// pointer slides the lane up and re-indexes every row without firing new
+    /// hover events, so a stored slot ends up pointing one row past the one
+    /// actually under the pointer. The id follows the row wherever it lands.
     @State
-    private var hoveredIndex: Int?
+    private var hoveredEntryId: String?
     @State
     private var dropInsertIndex: Int?
     /// Rows removed optimistically: the X collapses the row on the spot, the
@@ -809,12 +813,12 @@ private struct QueueSection: View {
                 (0..<count).contains { itemAt($0)?.id == id }
             }
         }
-        // A drag started: drop the stored hover slot. `.onHover` won't fire
-        // again until the gesture ends, so without this the pre-drag value
-        // would resurface on whichever row holds that slot afterwards.
+        // A drag started: drop the stored hover. `.onHover` won't fire again
+        // until the gesture ends, so without this the pre-drag value would
+        // resurface afterwards.
         .onChange(of: coordinator.isDragging) {
             if coordinator.isDragging {
-                hoveredIndex = nil
+                hoveredEntryId = nil
             }
         }
     }
@@ -937,17 +941,26 @@ extension QueueSection {
             if let item {
                 QueueItemRow(
                     item: item,
-                    // Hover chrome is suppressed for the whole drag: the
-                    // pre-drag `hoveredIndex` goes stale once rows start
-                    // shuffling — without the guard, whatever row holds that
-                    // display slot wears the remove/play chrome mid-drag.
-                    isHovered: hoveredIndex == index
+                    // Hover chrome is suppressed for the whole drag: rows
+                    // sliding under the stationary pointer fire hover events
+                    // mid-drag — without the guard, whichever row slides by
+                    // wears the remove/play chrome.
+                    isHovered: hoveredEntryId == item.id
                         && !coordinator.isDragging,
                     onHoverChanged: { hovering in
                         guard !coordinator.isDragging else {
                             return
                         }
-                        hoveredIndex = hovering ? index : nil
+                        if hovering {
+                            hoveredEntryId = item.id
+                        }
+                        else if hoveredEntryId == item.id {
+                            // Only the row that owns the hover clears it: a
+                            // collapsing row's exit event can land AFTER the
+                            // row sliding into its place claimed the hover,
+                            // and must not wipe that claim.
+                            hoveredEntryId = nil
+                        }
                     },
                     onSkipTo: onSkipTo,
                     onRemove: { id in
