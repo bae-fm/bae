@@ -1061,37 +1061,43 @@ private struct QueueItemRow: View {
 
             Spacer()
 
-            // Duration and the remove X coexist — no hover swap: the swap
-            // needed hover-state plumbing (and broke when rows slid under a
-            // stationary pointer) for no real estate gain.
-            Text(item.durationLabel)
-                .font(.system(size: 11, weight: .semibold).monospacedDigit())
-                .foregroundStyle(.secondary)
-            Button(action: { onRemove(item.id) }) {
-                Image(systemName: "xmark")
-                    .font(.caption)
-                    .foregroundStyle(
-                        removeHovered ? Theme.accent : .secondary
+            // The duration swaps for the remove X on row hover, in one fixed
+            // slot (opacity toggles, never conditional inclusion) so the row
+            // can't resize. Safe now that hover is identity-based: a row
+            // sliding under a stationary pointer claims the hover itself, so
+            // the X is present exactly when the pointer is on the row.
+            ZStack {
+                Text(item.durationLabel)
+                    .font(
+                        .system(size: 11, weight: .semibold).monospacedDigit()
                     )
-                    // Faint at rest, bright on hover: always present and
-                    // hittable (a hover-revealed X can't reveal itself on a
-                    // row that slides under a stationary pointer), without
-                    // reading as a column of controls.
-                    .opacity(removeHovered ? 1 : 0.4)
-                    // Same small glyph, comfortable click target.
-                    .frame(width: 28, height: 28)
-                    .background(
-                        RoundedRectangle(cornerRadius: 7)
-                            .fill(
-                                Theme.accent.opacity(removeHovered ? 0.22 : 0)
-                            )
-                            .frame(width: 24, height: 24)
-                    )
-                    .contentShape(Rectangle())
+                    .foregroundStyle(.secondary)
+                    .opacity(isHovered ? 0 : 1)
+                Button(action: { onRemove(item.id) }) {
+                    Image(systemName: "xmark")
+                        .font(.caption)
+                        .foregroundStyle(
+                            removeHovered ? Theme.accent : .secondary
+                        )
+                        // Same small glyph, comfortable click target.
+                        .frame(width: 28, height: 28)
+                        .background(
+                            RoundedRectangle(cornerRadius: 7)
+                                .fill(
+                                    Theme.accent.opacity(
+                                        removeHovered ? 0.22 : 0
+                                    )
+                                )
+                                .frame(width: 24, height: 24)
+                        )
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(PressableIconButtonStyle())
+                .onHover { removeHovered = $0 }
+                .help("Remove from queue")
+                .opacity(isHovered ? 1 : 0)
+                .allowsHitTesting(isHovered)
             }
-            .buttonStyle(PressableIconButtonStyle())
-            .onHover { removeHovered = $0 }
-            .help("Remove from queue")
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 6)
