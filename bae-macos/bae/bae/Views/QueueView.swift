@@ -215,7 +215,7 @@ struct QueueView: View {
             nowPlayingArt
                 .frame(width: 56, height: 56)
                 .clipShape(RoundedRectangle(cornerRadius: 9))
-                .shadow(color: Theme.accent.opacity(0.35), radius: 8, y: 4)
+                .shadow(color: .black.opacity(0.35), radius: 8, y: 4)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text("Now Playing")
@@ -247,8 +247,8 @@ struct QueueView: View {
                 .fill(
                     LinearGradient(
                         colors: [
-                            Theme.accent.opacity(0.16),
-                            Theme.placeholder.opacity(0.35),
+                            Theme.accent.opacity(0.04),
+                            Theme.placeholder.opacity(0.3),
                         ],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
@@ -257,7 +257,7 @@ struct QueueView: View {
         )
         .overlay(
             RoundedRectangle(cornerRadius: 12)
-                .stroke(Theme.accent.opacity(0.28), lineWidth: 1)
+                .stroke(.white.opacity(0.08), lineWidth: 1)
         )
         .padding(.horizontal, 14)
         .padding(.bottom, 6)

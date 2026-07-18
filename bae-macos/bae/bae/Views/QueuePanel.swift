@@ -45,7 +45,7 @@ struct QueuePanel: View {
             onSetShuffle: { queue.setShuffle($0) },
         )
         .frame(width: 420)
-        .frame(maxHeight: 560)
+        .frame(maxHeight: 640)
         // The panel paints the chrome the popover window used to supply: an
         // elevated-surface gradient (which lifts it off the darker window
         // behind), a hairline edge, and a deep shadow.
@@ -71,30 +71,45 @@ struct QueuePanel: View {
 
     /// Previews render the panel — the queue's root, chrome included — with the
     /// same environment wiring production uses: now-playing and the lanes come
-    /// off the `PlaybackStore`, commands go to the stub `Queue`.
+    /// off the `PlaybackStore`, and commands go to the echoing preview `Queue`,
+    /// whose snapshot re-application stands in for core's `QueueUpdated` echo —
+    /// without it, a committed drag's display order never reconciles and the
+    /// next drag misbehaves.
     @MainActor
-    private func queuePanelPreview(store: PlaybackStore) -> some View {
-        QueuePanel(onInsertTracks: { _, _ in })
-            .environment(store)
-            .environment(Queue.stub)
-            .environment(MediaPaths.stub)
-            .environment(
-                \.playbackPositionPublisher,
-                Just(
-                    PlaybackPositionEvent.position(
-                        progress: 0.34,
-                        positionMs: 73_000,
-                        durationMs: 214_000
-                    )
+    private func queuePanelPreview(
+        store: PlaybackStore,
+        queue: Queue
+    ) -> some View {
+        QueuePanel(onInsertTracks: { ids, index in
+            queue.insertInQueue(ids, UInt32(index))
+        })
+        .environment(store)
+        .environment(queue)
+        .environment(MediaPaths.stub)
+        .environment(
+            \.playbackPositionPublisher,
+            Just(
+                PlaybackPositionEvent.position(
+                    progress: 0.34,
+                    positionMs: 73_000,
+                    durationMs: 214_000
                 )
-                .eraseToAnyPublisher()
             )
-            .padding(40)
-            .background(Theme.background)
+            .eraseToAnyPublisher()
+        )
+        .padding(40)
+        // The preview canvas proposes ideal size, under which the panel's
+        // ScrollView collapses; a firm frame stands in for the window the
+        // ZStack overlay proposes in the app.
+        .frame(width: 500, height: 720)
+        .background(Theme.background)
     }
 
     #Preview("With items") {
-        let store = PreviewData.queueStore(manualCount: 2, shuffled: true)
+        let (store, queue) = PreviewData.echoingQueue(
+            manualCount: 2,
+            shuffled: true
+        )
         store.play(
             track: NowPlayingTrack(
                 trackId: "t-np",
@@ -105,12 +120,14 @@ struct QueuePanel: View {
                 durationMs: 214_000
             )
         )
-        return queuePanelPreview(store: store)
+        return queuePanelPreview(store: store, queue: queue)
     }
 
     #Preview("Empty") {
-        queuePanelPreview(
-            store: PreviewData.queueStore(manualCount: 0, context: nil)
+        let (store, queue) = PreviewData.echoingQueue(
+            manualCount: 0,
+            context: false
         )
+        return queuePanelPreview(store: store, queue: queue)
     }
 #endif

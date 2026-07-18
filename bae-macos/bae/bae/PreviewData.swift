@@ -2,6 +2,176 @@
     import BaeKit
     import Foundation
 
+    /// The in-memory queue behind `PreviewData.echoingQueue`: holds the two
+    /// lanes, applies each command the way core would, and pushes the result
+    /// into the store as a fresh snapshot. A dependency fake — the views under
+    /// preview run their production code against it.
+    @MainActor
+    private final class PreviewQueueModel {
+        private let store: PlaybackStore
+        private var manual: [BridgeQueueEntry]
+        private var upcoming: [BridgeQueueEntry]
+        /// The context's unshuffled order, kept so turning shuffle off restores
+        /// it (filtered to entries still present).
+        private let orderedUpcoming: [BridgeQueueEntry]
+        private let hasContext: Bool
+        private var shuffled: Bool
+        private var revision: UInt64 = 1
+        /// Uniques the entry ids this model mints for inserted tracks.
+        private var mintedEntryCount = 0
+
+        init(
+            store: PlaybackStore,
+            manual: [BridgeQueueEntry],
+            upcoming: [BridgeQueueEntry],
+            hasContext: Bool,
+            shuffled: Bool
+        ) {
+            self.store = store
+            self.manual = manual
+            self.upcoming = upcoming
+            orderedUpcoming = upcoming
+            self.hasContext = hasContext
+            self.shuffled = shuffled
+            apply()
+        }
+
+        private func apply() {
+            revision += 1
+            store.applyQueueSnapshot(
+                BridgeQueueSnapshot(
+                    manual: manual,
+                    context: hasContext
+                        ? BridgePlaybackContext(
+                            kind: .release,
+                            sourceTitle: "Neon Frequencies",
+                            shuffled: shuffled,
+                            upcoming: upcoming,
+                            upcomingTotal: UInt64(upcoming.count)
+                        ) : nil,
+                    hasNext: !manual.isEmpty || !upcoming.isEmpty,
+                    hasPrevious: false,
+                    revision: revision
+                )
+            )
+        }
+
+        func remove(_ entryId: String) {
+            manual.removeAll { $0.entryId == entryId }
+            upcoming.removeAll { $0.entryId == entryId }
+            apply()
+        }
+
+        func clear() {
+            manual = []
+            apply()
+        }
+
+        /// Move `entryId` before `beforeEntryId` within its lane; `nil` moves
+        /// it to the lane's end — core's reorder semantics.
+        func reorder(_ entryId: String, before beforeEntryId: String?) {
+            func moved(in lane: [BridgeQueueEntry]) -> [BridgeQueueEntry]? {
+                guard
+                    let from = lane.firstIndex(where: {
+                        $0.entryId == entryId
+                    })
+                else {
+                    return nil
+                }
+                var lane = lane
+                let entry = lane.remove(at: from)
+                if let beforeEntryId,
+                    let to = lane.firstIndex(where: {
+                        $0.entryId == beforeEntryId
+                    })
+                {
+                    lane.insert(entry, at: to)
+                }
+                else {
+                    lane.append(entry)
+                }
+                return lane
+            }
+            if let lane = moved(in: manual) {
+                manual = lane
+            }
+            else if let lane = moved(in: upcoming) {
+                upcoming = lane
+            }
+            apply()
+        }
+
+        /// Play the entry: it becomes now playing, and it — plus whatever sat
+        /// before it in its lane — leaves the queue, the way core drains
+        /// skipped-over entries.
+        func skipTo(_ entryId: String) {
+            let entry: BridgeQueueEntry
+            if let index = manual.firstIndex(where: { $0.entryId == entryId }) {
+                entry = manual[index]
+                manual.removeSubrange(...index)
+            }
+            else if let index = upcoming.firstIndex(where: {
+                $0.entryId == entryId
+            }) {
+                entry = upcoming[index]
+                upcoming.removeSubrange(...index)
+            }
+            else {
+                return
+            }
+            store.play(
+                track: NowPlayingTrack(
+                    trackId: entry.trackId,
+                    trackTitle: entry.title,
+                    artistNames: entry.artistNames,
+                    albumId: "a-01",
+                    coverImageId: entry.coverImageId,
+                    durationMs: UInt64(entry.durationMs ?? 0)
+                )
+            )
+            apply()
+        }
+
+        func setShuffle(_ on: Bool) {
+            shuffled = on
+            if on {
+                upcoming.shuffle()
+            }
+            else {
+                let present = Set(upcoming.map(\.entryId))
+                upcoming = orderedUpcoming.filter {
+                    present.contains($0.entryId)
+                }
+            }
+            apply()
+        }
+
+        func insert(trackIds: [String], at index: Int) {
+            // A cross-lane drag inserts a context row's track: carry its
+            // metadata over. Unknown ids (a library drop) get a bare entry.
+            let entries = trackIds.map { trackId in
+                mintedEntryCount += 1
+                let source =
+                    upcoming.first { $0.trackId == trackId }
+                    ?? PreviewData.queueEntries.first {
+                        $0.trackId == trackId
+                    }
+                return BridgeQueueEntry(
+                    entryId: "preview-minted-\(mintedEntryCount)",
+                    trackId: trackId,
+                    title: source?.title ?? "Track \(trackId)",
+                    artistNames: source?.artistNames ?? "Artist Name",
+                    durationMs: source?.durationMs ?? 200_000,
+                    albumTitle: source?.albumTitle ?? "Album Title",
+                    coverImageId: source?.coverImageId
+                )
+            }
+            let at = min(max(index, 0), manual.count)
+            manual.insert(contentsOf: entries, at: at)
+            apply()
+        }
+    }
+
     /// Shared sample data for SwiftUI #Preview blocks.
     /// Album/artist/track names match bae-mocks/fixtures/data.json.
     enum PreviewData {
@@ -94,6 +264,64 @@
                 )
             )
             return store
+        }
+
+        /// A store plus a `Queue` whose commands mutate an in-memory queue and
+        /// re-apply a fresh snapshot (revision bumped) — the preview stand-in
+        /// for core's `QueueUpdated` echo. Echo-driven view behavior (the
+        /// post-reorder hold clearing, the removal unmount, the shuffle flip)
+        /// only works in a preview against this; against `Queue.stub` the echo
+        /// never lands and a second drag starts from a stale display order.
+        @MainActor
+        static func echoingQueue(
+            manualCount: Int,
+            context: Bool = true,
+            shuffled: Bool = false
+        ) -> (store: PlaybackStore, queue: Queue) {
+            let store = PlaybackStore()
+            let model = PreviewQueueModel(
+                store: store,
+                manual: Array(queueEntries.prefix(manualCount)),
+                upcoming: context
+                    ? Array(queueEntries.suffix(from: manualCount)) : [],
+                hasContext: context,
+                shuffled: shuffled
+            )
+            return (
+                store,
+                Queue(
+                    insertInQueue: { ids, index in
+                        Task { @MainActor in
+                            model.insert(trackIds: ids, at: Int(index))
+                        }
+                    },
+                    removeEntry: { id in
+                        Task { @MainActor in
+                            model.remove(id)
+                        }
+                    },
+                    clearQueue: {
+                        Task { @MainActor in
+                            model.clear()
+                        }
+                    },
+                    reorderEntry: { id, before in
+                        Task { @MainActor in
+                            model.reorder(id, before: before)
+                        }
+                    },
+                    skipToEntry: { id in
+                        Task { @MainActor in
+                            model.skipTo(id)
+                        }
+                    },
+                    setShuffle: { on in
+                        Task { @MainActor in
+                            model.setShuffle(on)
+                        }
+                    }
+                )
+            )
         }
 
         // MARK: - Now Playing
