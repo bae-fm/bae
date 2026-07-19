@@ -2,18 +2,12 @@ import BaeKit
 import Combine
 import SwiftUI
 
-/// The queue, presented as a floating panel INSIDE the main window, anchored
-/// above the now-playing bar's queue button. Deliberately not an `NSPopover`:
-/// SwiftUI's popover runs its own dismissal monitors (an anchor click closes
-/// it before the button's action even runs) and hosts content in a separate
-/// window whose show/close animation stutters under main-thread work and
-/// ignores presenter-side animation entirely. In-tree, the entrance/exit
-/// springs, dismissal routing, and drag sessions are all ours.
-///
-/// Dismissal matches the old `.applicationDefined` popover: the queue button,
-/// the close control, or the menu toggle — clicks elsewhere in the window keep
-/// working and keep the panel open (transport stays usable while the queue is
-/// up).
+/// The queue, docked as a fixed-width sidebar between the title bar and the
+/// now-playing bar. Docked rather than floating so the window's content
+/// reflows beside it — nothing is ever occluded while it's open, which is
+/// what lets album cards and track rows be dragged into its drop sites.
+/// Toggled by the queue button or the menu; clicks elsewhere in the window
+/// keep working and keep the panel open.
 struct QueuePanel: View {
     @Environment(PlaybackStore.self)
     private var playbackStore
@@ -45,24 +39,21 @@ struct QueuePanel: View {
             onSetShuffle: { queue.setShuffle($0) },
         )
         .frame(width: 420)
-        .frame(maxHeight: 640)
-        // The panel paints the chrome the popover window used to supply: an
-        // elevated-surface gradient (which lifts it off the darker window
-        // behind), a hairline edge, and a deep shadow.
+        .frame(maxHeight: .infinity)
+        // Sidebar chrome: an elevated-surface gradient that lifts it off the
+        // darker content beside it, and a hairline on the docked edge.
         .background(
             LinearGradient(
                 colors: [Theme.surfaceElevated, Theme.surface],
                 startPoint: .top,
                 endPoint: .bottom
-            ),
-            in: RoundedRectangle(cornerRadius: 18)
+            )
         )
-        .clipShape(RoundedRectangle(cornerRadius: 18))
-        .overlay(
-            RoundedRectangle(cornerRadius: 18)
-                .stroke(.white.opacity(0.16), lineWidth: 1)
-        )
-        .shadow(color: .black.opacity(0.5), radius: 30, y: 10)
+        .overlay(alignment: .leading) {
+            Rectangle()
+                .fill(.white.opacity(0.16))
+                .frame(width: 1)
+        }
     }
 }
 
@@ -97,11 +88,10 @@ struct QueuePanel: View {
             )
             .eraseToAnyPublisher()
         )
-        .padding(40)
         // The preview canvas proposes ideal size, under which the panel's
-        // ScrollView collapses; a firm frame stands in for the window the
-        // ZStack overlay proposes in the app.
-        .frame(width: 500, height: 720)
+        // ScrollView collapses; a firm height stands in for the window slot
+        // the sidebar fills in the app.
+        .frame(height: 720)
         .background(Theme.background)
     }
 

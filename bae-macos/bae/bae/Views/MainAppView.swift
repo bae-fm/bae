@@ -34,62 +34,50 @@ struct MainAppView: View {
 
     var body: some View {
         ZStack {
-            // Main layout: title bar, active section, now playing bar
+            // Main layout: title bar, active section + docked queue, now
+            // playing bar
             VStack(spacing: 0) {
                 TitleBar(searchText: $searchText)
 
-                // Only the active section is in the view tree: SwiftUI's
-                // .onHover is backed by AppKit tracking areas, which ignore
-                // both opacity and hit-testing, so a permanently-mounted
-                // inactive section leaks its hover chrome (popovers, tooltips)
-                // through to whichever section is showing.
-                if uiStore.activeSection == .library {
-                    LibrarySection()
+                HStack(spacing: 0) {
+                    // Only the active section is in the view tree: SwiftUI's
+                    // .onHover is backed by AppKit tracking areas, which ignore
+                    // both opacity and hit-testing, so a permanently-mounted
+                    // inactive section leaks its hover chrome (popovers,
+                    // tooltips) through to whichever section is showing.
+                    Group {
+                        if uiStore.activeSection == .library {
+                            LibrarySection()
+                        }
+                        else {
+                            ImportView()
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+
+                    // Queue — docked as a sidebar, so the content reflows
+                    // beside it and nothing is ever occluded while dragging
+                    // albums or tracks into its drop sites. Toggled by the
+                    // queue button or the menu; no click-away.
+                    if uiStore.showQueue {
+                        QueuePanel(
+                            onInsertTracks: { ids, index in
+                                queueActions.insertInQueue(ids, at: index)
+                            }
+                        )
+                        .transition(.move(edge: .trailing))
+                    }
                 }
-                else {
-                    ImportView()
-                }
+                .animation(
+                    .spring(duration: 0.24, bounce: 0.12),
+                    value: uiStore.showQueue
+                )
+
                 Divider()
                 NowPlayingBarContainer(
                     onDropToQueue: { ids in queueActions.addToQueue(ids) },
                 )
             }
-
-            // Queue panel — floats above the now-playing bar, bottom right.
-            // In-window rather than a popover so its animations and dismissal
-            // are owned here (see QueuePanel). Springs from the bar edge.
-            // No click-away catcher: the rest of the window stays interactive
-            // while the queue is up, so album cards can be dragged from the
-            // grid into the panel's drop sites. Dismissal is the queue button
-            // or the menu toggle.
-            Group {
-                if uiStore.showQueue {
-                    QueuePanel(
-                        onInsertTracks: { ids, index in
-                            queueActions.insertInQueue(ids, at: index)
-                        }
-                    )
-                    .padding(.trailing, 12)
-                    // Clear the 72pt bar plus a small gap.
-                    .padding(.bottom, 80)
-                    // Transition before the alignment frame so the scale
-                    // anchors on the panel's own corner, not the window's.
-                    .transition(
-                        .scale(scale: 0.95, anchor: .bottomTrailing)
-                            .combined(with: .opacity)
-                            .combined(with: .offset(y: 10))
-                    )
-                    .frame(
-                        maxWidth: .infinity,
-                        maxHeight: .infinity,
-                        alignment: .bottomTrailing
-                    )
-                }
-            }
-            .animation(
-                .spring(duration: 0.24, bounce: 0.12),
-                value: uiStore.showQueue
-            )
 
             // Lightbox overlay
             if let cursor = uiStore.lightbox {
