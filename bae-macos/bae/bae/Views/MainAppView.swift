@@ -58,28 +58,32 @@ struct MainAppView: View {
             // Queue panel — floats above the now-playing bar, bottom right.
             // In-window rather than a popover so its animations and dismissal
             // are owned here (see QueuePanel). Springs from the bar edge.
+            // No click-away catcher: the rest of the window stays interactive
+            // while the queue is up, so album cards can be dragged from the
+            // grid into the panel's drop sites. Dismissal is the queue button
+            // or the menu toggle.
             Group {
                 if uiStore.showQueue {
-                    ZStack(alignment: .bottomTrailing) {
-                        // Click-away dismissal, popover-style: the catcher
-                        // absorbs the click that closes the panel.
-                        Color.clear
-                            .contentShape(Rectangle())
-                            .onTapGesture { uiStore.showQueue = false }
-                        QueuePanel(
-                            onInsertTracks: { ids, index in
-                                queueActions.insertInQueue(ids, at: index)
-                            }
-                        )
-                        .padding(.trailing, 12)
-                        // Clear the 72pt bar plus a small gap.
-                        .padding(.bottom, 80)
-                        .transition(
-                            .scale(scale: 0.95, anchor: .bottomTrailing)
-                                .combined(with: .opacity)
-                                .combined(with: .offset(y: 10))
-                        )
-                    }
+                    QueuePanel(
+                        onInsertTracks: { ids, index in
+                            queueActions.insertInQueue(ids, at: index)
+                        }
+                    )
+                    .padding(.trailing, 12)
+                    // Clear the 72pt bar plus a small gap.
+                    .padding(.bottom, 80)
+                    // Transition before the alignment frame so the scale
+                    // anchors on the panel's own corner, not the window's.
+                    .transition(
+                        .scale(scale: 0.95, anchor: .bottomTrailing)
+                            .combined(with: .opacity)
+                            .combined(with: .offset(y: 10))
+                    )
+                    .frame(
+                        maxWidth: .infinity,
+                        maxHeight: .infinity,
+                        alignment: .bottomTrailing
+                    )
                 }
             }
             .animation(
