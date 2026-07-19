@@ -78,18 +78,31 @@ struct ImageView: View {
         }
     }
 
-    @ViewBuilder
+    /// What the art `Image` draws before a bitmap is available: a 1pt
+    /// transparent image, so the view renders nothing but exists. Nonzero size
+    /// keeps `aspectRatio` away from a 0/0 ratio.
+    private static let emptyImage = NSImage(size: NSSize(width: 1, height: 1))
+
     private var contentView: some View {
-        // `if let` rather than switching on `loadState`: the cache-served image
-        // and the one the load lands are the same instance, so the view keeps
-        // one structural identity across the pending → loaded flip instead of
-        // swapping leaves.
-        if let image = displayedImage {
-            Image(nsImage: image)
+        let image = displayedImage
+        // The art's Image view mounts on the first frame and only its contents
+        // change when a load lands. Animations interpolate the positions of
+        // views that existed when they started — a view inserted mid-flight
+        // snaps to its final position — so the art view must never be inserted
+        // later (e.g. while the queue sidebar is sliding in). The placeholder
+        // layers beneath it, opacity-toggled, instead of branching against it.
+        return ZStack {
+            placeholderView
+                .opacity(image == nil ? 1 : 0)
+            Image(nsImage: image ?? Self.emptyImage)
                 .resizable()
                 .aspectRatio(contentMode: contentMode)
         }
-        else if case .pending(let reason) = loadState {
+    }
+
+    @ViewBuilder
+    private var placeholderView: some View {
+        if case .pending(let reason) = loadState {
             ImagePlaceholderView(reason: reason, pointSize: pointSize)
         }
     }
