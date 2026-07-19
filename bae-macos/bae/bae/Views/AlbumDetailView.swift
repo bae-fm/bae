@@ -800,10 +800,11 @@ struct AlbumExpansionContent: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack(alignment: .top, spacing: 20) {
+            HStack(alignment: .top, spacing: 36) {
                 albumArt
-                    .frame(width: 400, height: 400)
-                    .clipShape(RoundedRectangle(cornerRadius: 6))
+                    .frame(width: 340, height: 340)
+                    .clipShape(RoundedRectangle(cornerRadius: 14))
+                    .shadow(color: .black.opacity(0.6), radius: 20, y: 12)
                     .contentShape(Rectangle())
                     .onTapGesture {
                         if !lightboxItems.isEmpty {
@@ -812,7 +813,8 @@ struct AlbumExpansionContent: View {
                     }
                 VStack(alignment: .leading, spacing: 4) {
                     Text(summary.title)
-                        .font(.title.bold())
+                        .font(.system(size: 30, weight: .heavy))
+                        .tracking(-0.5)
                         .lineLimit(1)
                     HStack(spacing: 8) {
                         Text(summary.artistNames)
@@ -824,24 +826,40 @@ struct AlbumExpansionContent: View {
                                 .foregroundStyle(.tertiary)
                         }
                     }
-                    .font(.callout)
+                    .font(.system(size: 15, weight: .semibold))
                     .lineLimit(1)
                     if releaseCursor.canCycle {
                         releasePicker
                     }
                     Text(selectedRelease.compactMetadata)
-                        .font(.caption)
+                        .font(.system(size: 12, weight: .medium))
                         .foregroundStyle(.tertiary)
-                    HStack(spacing: 8) {
+                    HStack(spacing: 10) {
                         Button(action: onPlay) {
-                            Label("Play", systemImage: "play.fill")
+                            HStack(spacing: 7) {
+                                Image(systemName: "play.fill")
+                                    .font(.system(size: 12, weight: .bold))
+                                Text("Play")
+                                    .font(.system(size: 15, weight: .bold))
+                            }
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 9)
+                            .background(
+                                Theme.accent,
+                                in: RoundedRectangle(cornerRadius: 10)
+                            )
+                            .shadow(
+                                color: Theme.accent.opacity(0.22),
+                                radius: 5,
+                                y: 3
+                            )
                         }
-                        .buttonStyle(.borderedProminent)
-                        .controlSize(.regular)
+                        .buttonStyle(.plain)
                         albumMenu
                     }
                     .padding(
-                        EdgeInsets(top: 6, leading: 0, bottom: 0, trailing: 0)
+                        EdgeInsets(top: 12, leading: 0, bottom: 0, trailing: 0)
                     )
                     AlbumTrackListView(
                         release: selectedRelease,
@@ -855,13 +873,24 @@ struct AlbumExpansionContent: View {
                         onAddToQueue: onAddToQueue,
                         onExportTrack: onExportTrack,
                     )
-                    .padding(.top, 8)
+                    .padding(.top, 18)
                 }
             }
         }
-        .padding(20)
-        .background(Theme.surface)
-        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .padding(32)
+        .background(
+            LinearGradient(
+                colors: [Theme.surfaceElevated, Theme.surface],
+                startPoint: .top,
+                endPoint: .bottom
+            ),
+            in: RoundedRectangle(cornerRadius: 18)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 18)
+                .strokeBorder(.white.opacity(0.08), lineWidth: 1)
+        )
+        .shadow(color: .black.opacity(0.45), radius: 28, y: 18)
         .overlay(alignment: .topTrailing) {
             Button {
                 withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) {
@@ -869,11 +898,16 @@ struct AlbumExpansionContent: View {
                 }
             } label: {
                 Image(systemName: "xmark")
-                    .font(.body)
+                    .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(.secondary)
+                    .frame(width: 30, height: 30)
+                    .background(
+                        .white.opacity(0.06),
+                        in: RoundedRectangle(cornerRadius: 9)
+                    )
             }
             .buttonStyle(.plain)
-            .padding(12)
+            .padding(16)
         }
     }
 
@@ -915,7 +949,13 @@ struct AlbumExpansionContent: View {
             }
         } label: {
             Image(systemName: "ellipsis")
-                .font(.body)
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(.secondary)
+                .frame(width: 36, height: 36)
+                .background(
+                    .white.opacity(0.07),
+                    in: RoundedRectangle(cornerRadius: 10)
+                )
         }
         .menuStyle(.borderlessButton)
         .menuIndicator(.hidden)
@@ -923,7 +963,7 @@ struct AlbumExpansionContent: View {
     }
 
     private var albumArt: some View {
-        ImageView(imageRef: selectedRelease.summary.cover, pointSize: 400)
+        ImageView(imageRef: selectedRelease.summary.cover, pointSize: 340)
     }
 
     private var releasePicker: some View {
@@ -978,9 +1018,9 @@ struct AlbumTrackListView: View {
     let onExportTrack: (String) -> Void
 
     @ScaledMetric(relativeTo: .body)
-    private var rowHeight: CGFloat = 36
+    private var rowHeight: CGFloat = 40
     @ScaledMetric(relativeTo: .body)
-    private var rowHeightCompilation: CGFloat = 47
+    private var rowHeightCompilation: CGFloat = 52
 
     var body: some View {
         let groups = release.trackGroups
@@ -998,16 +1038,18 @@ struct AlbumTrackListView: View {
                 let globalOffset = offsets[groupIndex]
                 if !group.sideHeaderText.isEmpty {
                     Text(group.sideHeaderText)
-                        .font(.caption)
+                        .font(.system(size: 10, weight: .bold))
+                        .tracking(1.2)
+                        .textCase(.uppercase)
                         .foregroundStyle(.secondary)
-                        .padding(.top, groupIndex == 0 ? 0 : 16)
-                        .padding(.bottom, 4)
+                        .padding(.top, groupIndex == 0 ? 0 : 18)
+                        .padding(.bottom, 6)
                 }
                 if group.tracks.count > 8 {
                     let mid = (group.tracks.count + 1) / 2
                     let left = Array(group.tracks.prefix(mid))
                     let right = Array(group.tracks.dropFirst(mid))
-                    HStack(alignment: .top, spacing: 24) {
+                    HStack(alignment: .top, spacing: 40) {
                         trackColumn(tracks: left, globalOffset: globalOffset)
                         trackColumn(
                             tracks: right,
@@ -1024,9 +1066,9 @@ struct AlbumTrackListView: View {
             }
             if !release.totalDurationText.isEmpty {
                 Text(release.totalDurationText)
-                    .font(.caption)
+                    .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(.tertiary)
-                    .padding(.top, 8)
+                    .padding(.top, 14)
             }
         }
     }
@@ -1083,46 +1125,48 @@ private struct TrackRowView: View {
 
     var body: some View {
         let isCurrentPlaying = isCurrent && isPlaying
-        HStack(alignment: .firstTextBaseline, spacing: 8) {
+        HStack(spacing: 14) {
+            // One leading slot carries the track number and everything that
+            // stands in for it — the hover play/pause, the playing speaker,
+            // the loading spinner. All stay in the layout tree, opacity-
+            // toggled, so the row's intrinsic size never changes and sibling
+            // rows don't re-measure.
             ZStack {
+                trackNumberLabel
+                    .font(.system(size: 13, weight: .medium).monospacedDigit())
+                    .foregroundStyle(.tertiary)
+                    .opacity(!isCurrent && !isHovered && !isLoading ? 1 : 0)
+
                 Button(action: isCurrent ? onTogglePlayPause : onPlay) {
                     Image(
                         systemName: isCurrentPlaying
                             ? "pause.fill" : "play.fill"
                     )
+                    .font(.system(size: 12, weight: .semibold))
                 }
                 .buttonStyle(.plain)
                 .opacity(isHovered && !isLoading ? 1 : 0)
                 .allowsHitTesting(isHovered && !isLoading)
 
-                Image(systemName: "speaker.fill")
-                    .foregroundStyle(Color.accentColor)
+                Image(systemName: "speaker.wave.2.fill")
+                    .font(.system(size: 11))
+                    .foregroundStyle(Theme.accent)
                     .opacity(isCurrent && !isHovered && !isLoading ? 1 : 0)
 
-                // Kept in the layout tree and opacity-toggled (not conditionally
-                // inserted) so the row's intrinsic size stays fixed across the
-                // loading transition — sibling rows don't re-measure.
                 ProgressView()
                     .controlSize(.small)
                     .opacity(isLoading ? 1 : 0)
                     .allowsHitTesting(isLoading)
             }
-            .font(.title3)
-            .frame(width: 20)
-            .alignmentGuide(.firstTextBaseline) { d in
-                d[VerticalAlignment.center] + 5
-            }
-            trackNumberLabel
-                .foregroundStyle(isCurrent ? Color.accentColor : .secondary)
-                .font(.callout.monospacedDigit())
+            .frame(width: 22)
             VStack(alignment: .leading, spacing: 2) {
                 Text(track.title)
-                    .font(.body)
-                    .foregroundStyle(isCurrent ? Color.accentColor : .primary)
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(isCurrent ? Theme.accent : .primary)
                     .lineLimit(1)
                 if let artist {
                     Text(artist)
-                        .font(.caption)
+                        .font(.system(size: 11, weight: .medium))
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                 }
@@ -1130,15 +1174,31 @@ private struct TrackRowView: View {
             Spacer(minLength: 0)
             if !track.durationLabel.isEmpty {
                 Text(track.durationLabel)
-                    .font(.callout.monospacedDigit())
+                    .font(
+                        .system(size: 12.5, weight: .medium).monospacedDigit()
+                    )
                     .foregroundStyle(.secondary)
             }
         }
-        .padding(.vertical, 8)
+        .padding(.horizontal, 10)
+        .frame(maxHeight: .infinity)
         .background(
-            RoundedRectangle(cornerRadius: 6)
-                .fill(Color.accentColor.opacity(highlightOpacity)),
+            ZStack {
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(.white.opacity(isHovered ? 0.05 : 0))
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(Theme.accent.opacity(highlightOpacity))
+            }
         )
+        // Each row closes with a hairline rule, the design's bordered list.
+        .overlay(alignment: .bottom) {
+            Rectangle()
+                .fill(.white.opacity(0.06))
+                .frame(height: 1)
+        }
+        // The row chrome (hover fill, rule) bleeds past the text column so
+        // the content stays aligned with the header block above the list.
+        .padding(.horizontal, -10)
         // Keyed on the flash's `seq` (not a subject) for the same reason the
         // grid scroll is: navigating here can remount this row, and durable
         // state survives that where a one-shot emit would be lost. Re-fires when

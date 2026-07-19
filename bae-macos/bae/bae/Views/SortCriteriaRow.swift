@@ -31,7 +31,7 @@ struct SortCriteriaRow<Criterion: SortCriterionRepresentable>: View {
     var criteria: [Criterion]
 
     var body: some View {
-        HStack(spacing: 4) {
+        HStack(spacing: 8) {
             ForEach($criteria, id: \.field) { $criterion in
                 let field = criterion.field
                 SortCriterionPill(
@@ -54,10 +54,16 @@ struct SortCriteriaRow<Criterion: SortCriterionRepresentable>: View {
                     }
                 } label: {
                     Image(systemName: "plus")
-                        .font(.callout)
+                        .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(.secondary)
+                        .frame(width: 30, height: 30)
+                        .background(
+                            Theme.placeholder.opacity(0.85),
+                            in: RoundedRectangle(cornerRadius: 9)
+                        )
                 }
                 .menuStyle(.borderlessButton)
+                .menuIndicator(.hidden)
                 .fixedSize()
                 .help("Add sort criterion")
             }

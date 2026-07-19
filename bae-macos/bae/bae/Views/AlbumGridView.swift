@@ -3,8 +3,8 @@ import SwiftUI
 import os.log
 
 private let albumGridLogger = Logger.bae("AlbumGridView")
-private let albumCardSize: CGFloat = 180
-private let gridSpacing: CGFloat = 24
+private let albumCardSize: CGFloat = 200
+private let gridSpacing: CGFloat = 30
 private let loadBatchSize = 50
 
 struct AlbumGridView<ExpansionContent: View>: View {
@@ -38,7 +38,7 @@ struct AlbumGridView<ExpansionContent: View>: View {
     private var gridFocused: Bool
 
     private static var maxContentWidth: CGFloat {
-        1200
+        1240
     }
 
     private static var contentPadding: CGFloat {
@@ -66,7 +66,7 @@ struct AlbumGridView<ExpansionContent: View>: View {
 
             ScrollViewReader { scrollProxy in
                 ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 28) {
+                    LazyVStack(alignment: .leading, spacing: 34) {
                         ForEach(0..<rowCount, id: \.self) { rowIndex in
                             HStack(spacing: gridSpacing) {
                                 ForEach(0..<columnCount, id: \.self) {
@@ -190,7 +190,6 @@ struct AlbumGridView<ExpansionContent: View>: View {
                 }
             }
         }
-        .background(Theme.background)
     }
 }
 
@@ -357,15 +356,19 @@ struct AlbumCardView: View {
     private var showMenu = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: 2) {
             albumArt
-                .clipShape(RoundedRectangle(cornerRadius: 8))
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .shadow(color: .black.opacity(0.55), radius: 14, y: 9)
+                // The open-detail ring sits off the art — a stroke floated
+                // outside the cover's edge, not a border eating into it.
                 .overlay(
-                    RoundedRectangle(cornerRadius: 8)
-                        .strokeBorder(
-                            Color.accentColor,
-                            lineWidth: isExpanded ? 3 : 0,
-                        ),
+                    RoundedRectangle(cornerRadius: 16)
+                        .inset(by: -4.5)
+                        .stroke(
+                            isExpanded ? Theme.accent : .clear,
+                            lineWidth: 3
+                        )
                 )
                 .overlay(alignment: .topTrailing) {
                     CardMenuButton(menu: menu, showMenu: $showMenu)
@@ -374,20 +377,19 @@ struct AlbumCardView: View {
                         .allowsHitTesting(isHovered || showMenu)
                 }
                 .onHover { isHovered = $0 }
-                .padding(.bottom, 6)
+                .padding(.bottom, 10)
             Text(title)
-                .font(.body)
-                .fontWeight(.medium)
+                .font(.system(size: 15, weight: .bold))
                 .lineLimit(1)
             Text(artistNames)
-                .font(.caption)
+                .font(.system(size: 13, weight: .medium))
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
             StableOptionalText(
                 text: year.map(String.init),
-                font: .caption2,
+                font: .system(size: 12, weight: .medium),
                 foreground: .tertiary,
-                lineHeight: 12
+                lineHeight: 14
             )
         }
         .padding(6)
@@ -395,7 +397,7 @@ struct AlbumCardView: View {
         // selection change never re-measures the row (layout stability).
         .background(
             RoundedRectangle(cornerRadius: 10)
-                .fill(Color.accentColor.opacity(0.18))
+                .fill(Theme.accentSoft)
                 .opacity(isSelected ? 1 : 0)
         )
         .contextMenu {
@@ -558,6 +560,9 @@ private class MenuItem: NSMenuItem {
                 AlbumDetailView(albumId: albumId)
             }
             .frame(width: width, height: height)
+            // The production grid is backdropped by LibraryView's page
+            // gradient; previews stand in with the flat base color.
+            .background(Theme.background)
         }
     }
 

@@ -15,7 +15,8 @@ struct LibraryModeHeading: View {
             }
         } label: {
             Text(uiStore.libraryBrowserMode.displayName)
-                .font(.system(size: 36, weight: .bold))
+                .font(.system(size: 40, weight: .heavy))
+                .tracking(-1)
         }
         .menuStyle(.borderlessButton)
         .fixedSize()

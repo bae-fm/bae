@@ -14,22 +14,23 @@ struct SortCriterionPill<Criterion: SortCriterionRepresentable>: View {
     let onRemove: () -> Void
 
     var body: some View {
-        HStack(spacing: 6) {
+        HStack(spacing: 7) {
             Button {
                 // Absolute set: the target direction is computed from the
                 // rendered one, not toggled blind.
                 criterion.direction =
                     criterion.direction == .ascending ? .descending : .ascending
             } label: {
-                HStack(spacing: 2) {
+                HStack(spacing: 5) {
                     Text(criterion.field.displayName)
+                        .font(.system(size: 13, weight: .semibold))
                     Image(
                         systemName: criterion.direction == .ascending
                             ? "arrow.up" : "arrow.down"
                     )
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundStyle(.secondary)
                 }
-                .font(.callout)
-                .foregroundStyle(.secondary)
             }
             .buttonStyle(.plain)
             .accessibilityLabel(criterion.field.displayName)
@@ -41,7 +42,7 @@ struct SortCriterionPill<Criterion: SortCriterionRepresentable>: View {
             if canRemove {
                 Button(action: onRemove) {
                     Image(systemName: "xmark")
-                        .font(.caption2)
+                        .font(.system(size: 9, weight: .bold))
                         .foregroundStyle(.secondary)
                 }
                 .buttonStyle(.plain)
@@ -49,8 +50,11 @@ struct SortCriterionPill<Criterion: SortCriterionRepresentable>: View {
                 .help("Remove sort criterion")
             }
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 4)
-        .background(Theme.surfaceElevated, in: Capsule())
+        .padding(.horizontal, 12)
+        .padding(.vertical, 7)
+        .background(
+            Theme.placeholder.opacity(0.85),
+            in: RoundedRectangle(cornerRadius: 9)
+        )
     }
 }

@@ -49,7 +49,17 @@ struct LibraryView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .background(Theme.background)
+        // The page sits on a faint radial lift toward the top-trailing corner
+        // rather than a flat fill, so the header band reads as its own region.
+        // One surface step above the base — any lighter reads as a spotlight.
+        .background(
+            RadialGradient(
+                colors: [Theme.surface, Theme.background],
+                center: UnitPoint(x: 0.8, y: -0.1),
+                startRadius: 0,
+                endRadius: 900
+            )
+        )
         .task(id: uiStore.libraryBrowserMode) {
             switch uiStore.libraryBrowserMode {
             case .albums:
@@ -169,7 +179,7 @@ extension LibraryView {
         }
         .padding(.horizontal, 16)
         .padding(.top, 40)
-        .padding(.bottom, 20)
+        .padding(.bottom, 24)
     }
 
     private func sortControls<
