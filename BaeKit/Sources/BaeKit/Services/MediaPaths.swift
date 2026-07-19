@@ -145,6 +145,37 @@ public final class MediaPaths: Sendable, Observable {
         public static let stub = MediaPaths()
     #endif
 
+    /// Cache key for a decoded library image. The pixel size pins the decode
+    /// resolution so the now-playing bar's 48pt decode never serves the detail
+    /// view's 400pt slot, and vice versa.
+    private func cacheKey(
+        _ source: LibraryImageSource,
+        pointSize: CGFloat,
+        displayScale: CGFloat
+    ) -> String {
+        let pixelSize = Int((pointSize * displayScale).rounded())
+        return "\(source.cacheToken)#\(pixelSize)"
+    }
+
+    /// The already-decoded image for `source`, or nil when it isn't cached.
+    /// Synchronous, so a view can render the image on its very first frame
+    /// after (re)mounting — an async load that lands mid-animation inserts the
+    /// image leaf with no prior position, which snaps it to its final place
+    /// while everything around it is still animating.
+    public func cachedLibraryImage(
+        _ source: LibraryImageSource,
+        pointSize: CGFloat,
+        displayScale: CGFloat
+    ) -> PlatformImage? {
+        imageCache.image(
+            for: cacheKey(
+                source,
+                pointSize: pointSize,
+                displayScale: displayScale
+            )
+        )
+    }
+
     /// Decoded library image for `source` at `pointSize`, reading from the cache
     /// when present and otherwise fetching the bytes (an image ref or a gallery
     /// slot via the bridge), decoding off the main thread, and caching the
@@ -156,10 +187,11 @@ public final class MediaPaths: Sendable, Observable {
         pointSize: CGFloat,
         displayScale: CGFloat
     ) async throws -> PlatformImage? {
-        // The pixel size pins the decode resolution so the now-playing bar's
-        // 48pt decode never serves the detail view's 400pt slot, and vice versa.
-        let pixelSize = Int((pointSize * displayScale).rounded())
-        let key = "\(source.cacheToken)#\(pixelSize)"
+        let key = cacheKey(
+            source,
+            pointSize: pointSize,
+            displayScale: displayScale
+        )
         if let cached = imageCache.image(for: key) {
             return cached
         }

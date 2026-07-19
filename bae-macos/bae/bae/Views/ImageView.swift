@@ -56,14 +56,40 @@ struct ImageView: View {
             }
     }
 
-    @ViewBuilder
-    private var contentView: some View {
+    /// The image to draw this frame. A completed load wins; while a load is
+    /// still pending, an already-decoded library image is served straight from
+    /// the cache so the first frame after (re)mount draws the real art — the
+    /// async load would otherwise land a frame later and insert the image leaf
+    /// mid-flight, snapping it to its final position inside any transition the
+    /// view mounted with (e.g. the queue sidebar sliding in).
+    private var displayedImage: NSImage? {
         switch loadState {
         case .loaded(let image):
+            return image
+        case .pending:
+            guard case .library(let source) = content else {
+                return nil
+            }
+            return mediaPaths.cachedLibraryImage(
+                source,
+                pointSize: pointSize,
+                displayScale: displayScale
+            )
+        }
+    }
+
+    @ViewBuilder
+    private var contentView: some View {
+        // `if let` rather than switching on `loadState`: the cache-served image
+        // and the one the load lands are the same instance, so the view keeps
+        // one structural identity across the pending → loaded flip instead of
+        // swapping leaves.
+        if let image = displayedImage {
             Image(nsImage: image)
                 .resizable()
                 .aspectRatio(contentMode: contentMode)
-        case .pending(let reason):
+        }
+        else if case .pending(let reason) = loadState {
             ImagePlaceholderView(reason: reason, pointSize: pointSize)
         }
     }

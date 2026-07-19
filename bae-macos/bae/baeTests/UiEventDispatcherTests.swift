@@ -191,6 +191,7 @@ struct UiEventDispatcherQueueTests {
                     ],
                     context: BridgePlaybackContext(
                         kind: .release,
+                        sourceTitle: nil,
                         shuffled: false,
                         upcoming: [
                             makeEntry(entryId: "upcoming-1", trackId: "track-2")
