@@ -1190,14 +1190,8 @@ private struct TrackRowView: View {
                     .fill(Theme.accent.opacity(highlightOpacity))
             }
         )
-        // Each row closes with a hairline rule, the design's bordered list.
-        .overlay(alignment: .bottom) {
-            Rectangle()
-                .fill(.white.opacity(0.06))
-                .frame(height: 1)
-        }
-        // The row chrome (hover fill, rule) bleeds past the text column so
-        // the content stays aligned with the header block above the list.
+        // The row chrome (the hover fill) bleeds past the text column so the
+        // content stays aligned with the header block above the list.
         .padding(.horizontal, -10)
         // Keyed on the flash's `seq` (not a subject) for the same reason the
         // grid scroll is: navigating here can remount this row, and durable
