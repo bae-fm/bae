@@ -176,21 +176,29 @@ extension LibraryView {
     /// expand/collapse flips.
     private var libraryHeader: some View {
         let progress = headerCollapse.progress
-        return HStack(alignment: .firstTextBaseline) {
+        return HStack(alignment: .bottom) {
             LibraryModeHeading(collapseProgress: progress)
             Spacer()
-            switch uiStore.libraryBrowserMode {
-            case .albums:
-                sortControls(session.albums)
-            case .composers:
-                sortControls(session.composers)
-            case .artists:
-                sortControls(session.artists)
+            Group {
+                switch uiStore.libraryBrowserMode {
+                case .albums:
+                    sortControls(session.albums)
+                case .composers:
+                    sortControls(session.composers)
+                case .artists:
+                    sortControls(session.artists)
+                }
             }
+            // A constant lift off the band's bottom edge: the heading sinks
+            // against the content edge in the compact state while the
+            // trailing controls hold their own vertical seat.
+            .padding(.bottom, 8)
         }
         .padding(.horizontal, 16)
         .padding(.top, 40 - 28 * progress)
-        .padding(.bottom, 24 - 12 * progress)
+        // The compact bottom inset nearly vanishes so the heading sits down
+        // against the content edge rather than floating in the band.
+        .padding(.bottom, 24 - 20 * progress)
         .animation(.smooth(duration: 0.2), value: progress)
     }
 
