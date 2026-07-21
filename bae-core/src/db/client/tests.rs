@@ -1720,6 +1720,15 @@ mod composer_mode_tests {
     }
 
     #[tokio::test]
+    async fn search_library_matches_album_artist_names() {
+        let (db, _tmp) = seeded_db().await;
+
+        let results = db.search_library("Album Artist A", 10).await.unwrap();
+        assert_eq!(results.albums.len(), 1);
+        assert_eq!(results.albums[0].id, "album-a");
+    }
+
+    #[tokio::test]
     async fn search_library_matches_composer_and_work_sort_names() {
         let (db, _tmp) = seeded_db().await;
 

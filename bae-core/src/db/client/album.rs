@@ -120,6 +120,7 @@ impl Database {
                         FROM albums a
                         JOIN artists art ON a.artist_id = art.id
                         WHERE a.title LIKE ? ESCAPE '\'
+                           OR art.name LIKE ? ESCAPE '\'
                         ORDER BY a.title
                         LIMIT ?
                         "#,
@@ -127,7 +128,7 @@ impl Database {
             );
             let mut album_stmt = conn.prepare(&album_query)?;
             let albums = album_stmt
-                .query_map(params![pattern, limit_i64], |row| {
+                .query_map(params![pattern, pattern, limit_i64], |row| {
                     let release_ids_json: String = row.get("release_ids_json")?;
                     let release_ids: Vec<String> = serde_json::from_str(&release_ids_json)
                         .map_err(|e| {
