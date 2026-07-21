@@ -24,6 +24,8 @@ struct LibraryView: View {
     var uiStore
     @Environment(LibraryBrowseSession.self)
     var session
+    @Environment(ConfigStore.self)
+    var configStore
 
     /// Detail payloads derived from `session.detailSelection` /
     /// `session.selectedArtistId`. View-local by design (see
@@ -169,10 +171,19 @@ extension LibraryView {
         }
     }
 
+    /// Whether the page spans the window instead of centering in the shared
+    /// capped column — the user's `libraryFullWidth` setting.
+    private var fullWidth: Bool {
+        configStore.config.libraryFullWidth
+    }
+
     /// Pinned above the content, fixed across mode switches. The heading *is*
     /// the mode switcher; the trailing controls are mode-specific.
     private var libraryHeader: some View {
-        LibraryHeader(collapseProgress: headerCollapse.progress) {
+        LibraryHeader(
+            collapseProgress: headerCollapse.progress,
+            fullWidth: fullWidth
+        ) {
             switch uiStore.libraryBrowserMode {
             case .albums:
                 sortControls(session.albums)
@@ -218,6 +229,7 @@ extension LibraryView {
                     AlbumGridView(
                         list: albumList,
                         sortCriteria: session.albums.sortCriteria,
+                        fullWidth: fullWidth,
                         selection: session.albumSelection,
                         onPlay: { albumIds in
                             playback.playReleases(
@@ -269,6 +281,7 @@ extension LibraryView {
                         composerDetailView
                             .frame(minWidth: 420)
                     }
+                    .libraryContentContainer(fullWidth: fullWidth)
                 }
             }
             else {
@@ -301,6 +314,7 @@ extension LibraryView {
                         artistDetailView
                             .frame(minWidth: 420)
                     }
+                    .libraryContentContainer(fullWidth: fullWidth)
                 }
             }
             else {
@@ -1004,6 +1018,7 @@ private struct WorkDetailView: View {
             .environment(libraryStore)
             .environment(uiStore)
             .environment(session)
+            .environment(PreviewData.configStore)
             .frame(width: 1100, height: 700)
             .windowBackground()
     }
@@ -1026,6 +1041,7 @@ private struct WorkDetailView: View {
             .environment(libraryStore)
             .environment(uiStore)
             .environment(session)
+            .environment(PreviewData.configStore)
             .frame(width: 1100, height: 700)
             .windowBackground()
     }
@@ -1092,6 +1108,30 @@ private struct WorkDetailView: View {
             .environment(libraryStore)
             .environment(uiStore)
             .environment(backing.session)
+            .environment(PreviewData.configStore)
+            .frame(width: 1500, height: 700)
+            .windowBackground()
+    }
+
+    /// The same populated grid with the width cap lifted
+    /// (`libraryFullWidth`): header and grid span the window edge to edge.
+    #Preview("Albums \u{2014} Grid, full width") {
+        let uiStore = UiStore()
+        let libraryStore = LibraryStore()
+        let backing = LibraryView.previewGridBacking(
+            uiStore: uiStore,
+            libraryStore: libraryStore
+        )
+        return LibraryView()
+            .environment(MediaPaths.stub)
+            .environment(Playback.stub)
+            .environment(Queue.stub)
+            .environment(Downloads.stub)
+            .environment(backing.library)
+            .environment(libraryStore)
+            .environment(uiStore)
+            .environment(backing.session)
+            .environment(PreviewData.configStore(libraryFullWidth: true))
             .frame(width: 1500, height: 700)
             .windowBackground()
     }
@@ -1114,6 +1154,7 @@ private struct WorkDetailView: View {
             .environment(libraryStore)
             .environment(uiStore)
             .environment(session)
+            .environment(PreviewData.configStore)
             .frame(width: 1100, height: 700)
             .windowBackground()
     }

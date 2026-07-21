@@ -1011,31 +1011,40 @@
         /// Shared preview ConfigStore. ConfigStore is a non-Sendable `@Observable`,
         /// so it needs `@MainActor` isolation to hold as a static.
         @MainActor
-        static let configStore = ConfigStore(
-            config: Config(
-                bridge: BridgeConfig(
-                    libraryId: "lib-preview",
-                    libraryName: "Preview Library",
-                    libraryPath: "/preview",
-                    encryptionKeyStored: false,
-                    encryptionKeyFingerprint: nil,
-                    pauseBetweenSides: false,
-                    maxConcurrentUploads: 3,
-                    maxConcurrentDownloads: 3,
-                    showRemainingTime: false,
-                    exportLocation: .askEachTime,
-                    exportFilenameTemplate: exportFilenameTemplate,
-                    exportPresets: exportPresets,
-                    defaultTrackExportSelection: .original,
-                    defaultReleaseExportSelection: .original,
-                    mcp: BridgeMcpConfig(enabled: false, port: 47777),
-                    discogsTokenStatus: .notConfigured,
-                    discogsUsable: false,
-                    sync: nil
-                )
-            ),
-            syncReady: false
-        )
+        static let configStore = configStore(libraryFullWidth: false)
+
+        /// A preview ConfigStore with the given library-width setting — the
+        /// full-width previews build their own; everything else shares the
+        /// `configStore` static above.
+        @MainActor
+        static func configStore(libraryFullWidth: Bool) -> ConfigStore {
+            ConfigStore(
+                config: Config(
+                    bridge: BridgeConfig(
+                        libraryId: "lib-preview",
+                        libraryName: "Preview Library",
+                        libraryPath: "/preview",
+                        encryptionKeyStored: false,
+                        encryptionKeyFingerprint: nil,
+                        pauseBetweenSides: false,
+                        maxConcurrentUploads: 3,
+                        maxConcurrentDownloads: 3,
+                        showRemainingTime: false,
+                        libraryFullWidth: libraryFullWidth,
+                        exportLocation: .askEachTime,
+                        exportFilenameTemplate: exportFilenameTemplate,
+                        exportPresets: exportPresets,
+                        defaultTrackExportSelection: .original,
+                        defaultReleaseExportSelection: .original,
+                        mcp: BridgeMcpConfig(enabled: false, port: 47777),
+                        discogsTokenStatus: .notConfigured,
+                        discogsUsable: false,
+                        sync: nil
+                    )
+                ),
+                syncReady: false
+            )
+        }
 
         /// Seeded ImportStore for the ImportView whole-view preview — the
         /// watched folder plus every folder candidate. ImportStore is a non-Sendable

@@ -393,9 +393,11 @@ extension BaeApp {
                 MainAppMenuCommands(
                     playback: appService.playback,
                     importer: appService.importer,
+                    library: appService.library,
                     libraryStore: appService.libraryStore,
                     playbackStore: appService.playbackStore,
                     uiStore: appDelegate.uiStore,
+                    configStore: appService.configStore,
                     libraries: appDelegate.libraries,
                     onNewLibrary: { mode in
                         appDelegate.welcomeInitialMode = mode

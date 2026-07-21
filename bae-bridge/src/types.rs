@@ -2328,6 +2328,10 @@ pub struct BridgeConfig {
     /// instead of showing the time elapsed. A synced preference, not a
     /// per-device one — the seek bar reads it and never stores a copy.
     pub show_remaining_time: bool,
+    /// Whether the library page spans the window's full width instead of
+    /// centering its content in a width-capped column. A synced preference;
+    /// the library page reads it and never stores a copy.
+    pub library_full_width: bool,
     /// Where release exports write: prompt each time, or a fixed folder.
     pub export_location: BridgeExportLocation,
     /// Template rendering a single-track export's suggested filename.

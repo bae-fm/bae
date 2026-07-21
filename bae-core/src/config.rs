@@ -230,7 +230,7 @@ where
 /// bump this.** `with_defaults` is the single place a field's default is stated —
 /// the migration fills an older file's missing keys straight from it, so there is
 /// no second table to keep in step.
-pub const CONFIG_VERSION: u32 = 3;
+pub const CONFIG_VERSION: u32 = 4;
 
 /// A file written before versioning existed. Such a file has no `version` key,
 /// and is missing every field added since it was written.
@@ -291,6 +291,9 @@ pub struct ConfigYaml {
     /// Whether the seek bar's leading label counts down the time remaining
     /// instead of showing the time elapsed.
     pub show_remaining_time: bool,
+    /// Whether the library page spans the window's full width instead of
+    /// centering its content in a width-capped column.
+    pub library_full_width: bool,
     /// Whether import fully decodes each track to verify it (fatal-error / frame
     /// shortfall), failing the import for a broken track rather than importing it
     /// and failing at play time. Rides the loudness decode, so it adds no work.
@@ -330,6 +333,7 @@ impl ConfigYaml {
             max_concurrent_uploads: self.max_concurrent_uploads,
             max_concurrent_downloads: self.max_concurrent_downloads,
             show_remaining_time: self.show_remaining_time,
+            library_full_width: self.library_full_width,
             verify_decode_on_import: self.verify_decode_on_import,
             mcp: self.mcp,
         }
@@ -356,6 +360,7 @@ impl From<&Config> for ConfigYaml {
             max_concurrent_uploads: config.max_concurrent_uploads,
             max_concurrent_downloads: config.max_concurrent_downloads,
             show_remaining_time: config.show_remaining_time,
+            library_full_width: config.library_full_width,
             verify_decode_on_import: config.verify_decode_on_import,
             mcp: config.mcp,
             cloud_home: config.cloud_home.clone(),
@@ -420,6 +425,10 @@ pub struct Config {
     /// preference like any other, so it follows the user to every device rather
     /// than living in each platform's own store.
     pub show_remaining_time: bool,
+    /// Whether the library page spans the window's full width instead of
+    /// centering its content in a width-capped column. Defaults to `false`
+    /// (capped). A synced preference, like `show_remaining_time`.
+    pub library_full_width: bool,
     /// Whether import verifies each track by fully decoding it, failing the import
     /// for a broken (truncated/corrupt) track. Defaults to `true`.
     pub verify_decode_on_import: bool,
@@ -571,6 +580,7 @@ impl Config {
             max_concurrent_downloads: NonZeroU32::new(DEFAULT_CONCURRENT_TRANSFERS)
                 .expect("DEFAULT_CONCURRENT_TRANSFERS is non-zero"),
             show_remaining_time: false,
+            library_full_width: false,
             verify_decode_on_import: true,
             mcp: McpConfig::disabled_default(),
         }
@@ -1185,6 +1195,7 @@ mod tests {
             "max_concurrent_uploads",
             "max_concurrent_downloads",
             "show_remaining_time",
+            "library_full_width",
             "verify_decode_on_import",
         ] {
             assert!(
@@ -1260,6 +1271,7 @@ mod tests {
             "max_concurrent_uploads",
             "max_concurrent_downloads",
             "show_remaining_time",
+            "library_full_width",
             "verify_decode_on_import",
             "mcp",
         ] {

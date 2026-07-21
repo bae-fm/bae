@@ -48,6 +48,14 @@ impl LibraryManager {
             .update(|c| c.show_remaining_time = enabled)
     }
 
+    /// Whether the library page spans the window's full width instead of
+    /// centering its content in a width-capped column. Pure display
+    /// preference: the write's config invalidation re-renders the page.
+    pub fn set_library_full_width(&self, enabled: bool) -> Result<(), crate::config::ConfigError> {
+        self.config_handle
+            .update(|c| c.library_full_width = enabled)
+    }
+
     /// Where release exports write: prompt each time, or a fixed default folder.
     pub fn export_location(&self) -> crate::config::ExportLocation {
         self.config_handle.config().export_location.clone()

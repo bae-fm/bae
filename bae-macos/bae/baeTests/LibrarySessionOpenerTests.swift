@@ -142,6 +142,7 @@ struct LibrarySessionOpenerTests {
             maxConcurrentUploads: 3,
             maxConcurrentDownloads: 3,
             showRemainingTime: false,
+                    libraryFullWidth: false,
             exportLocation: .askEachTime,
             exportFilenameTemplate: "",
             exportPresets: [],

@@ -188,9 +188,11 @@ struct RepeatModeMenuItems: View {
 struct MainAppMenuCommands: Commands {
     let playback: Playback
     let importer: Importer
+    let library: Library
     let libraryStore: LibraryStore
     let playbackStore: PlaybackStore
     let uiStore: UiStore
+    let configStore: ConfigStore
     /// Every library on this device, for the Open Library submenu. The active
     /// one is marked; the rest are switch targets.
     let libraries: [BridgeLibrary]
@@ -248,6 +250,26 @@ struct MainAppMenuCommands: Commands {
             Divider()
 
             LibraryModeCommandButtons(uiStore: uiStore)
+
+            Divider()
+
+            // Reads the synced `libraryFullWidth` config; the write goes
+            // through the bridge, and the resulting config invalidation
+            // refreshes `configStore` — which is what re-checks this item.
+            Toggle(
+                "Full-Width Library",
+                isOn: Binding(
+                    get: { configStore.config.libraryFullWidth },
+                    set: { enabled in
+                        do {
+                            try library.setLibraryFullWidth(enabled)
+                        }
+                        catch {
+                            uiStore.showError(error)
+                        }
+                    }
+                )
+            )
 
             Divider()
 

@@ -8,7 +8,8 @@ import Foundation
 /// Library reads — album/release lookups, pagination, search,
 /// storage-summary listing, prefetching release detail, resolving
 /// queue-input ids to flat track-id lists. The read side of bae-core's
-/// catalog, narrow to what view layers ask for.
+/// catalog, narrow to what view layers ask for — plus the library page's
+/// own display-preference write (`setLibraryFullWidth`).
 public final class Library: Sendable, Observable {
     public let getAlbumCount: @Sendable () async throws -> UInt64
     public let getAlbumPage:
@@ -57,6 +58,10 @@ public final class Library: Sendable, Observable {
         ) async throws -> BridgeReleasePrefetch
     public let resolveToTrackIds:
         @Sendable (_ ids: [String]) async throws -> [String]
+    /// Whether the library page spans the window's full width instead of
+    /// centering its content in a width-capped column. The write's config
+    /// invalidation re-renders the page through `ConfigStore`.
+    public let setLibraryFullWidth: @Sendable (_ enabled: Bool) throws -> Void
 
     public init(
         getAlbumCount: @escaping @Sendable () async throws -> UInt64 = {
@@ -137,7 +142,10 @@ public final class Library: Sendable, Observable {
         resolveToTrackIds:
             @escaping @Sendable ([String]) async throws -> [String] = {
                 _ in throw StubError.notImplemented
-            }
+            },
+        setLibraryFullWidth: @escaping @Sendable (Bool) throws -> Void = {
+            _ in throw StubError.notImplemented
+        }
     ) {
         self.getAlbumCount = getAlbumCount
         self.getAlbumPage = getAlbumPage
@@ -156,6 +164,7 @@ public final class Library: Sendable, Observable {
         self.findReleaseDetail = findReleaseDetail
         self.prefetchRelease = prefetchRelease
         self.resolveToTrackIds = resolveToTrackIds
+        self.setLibraryFullWidth = setLibraryFullWidth
     }
 
     // `prefetchRelease` backs the desktop import/metadata-prefetch flow and
@@ -232,6 +241,9 @@ public final class Library: Sendable, Observable {
                 },
                 resolveToTrackIds: {
                     try await handle.resolveToTrackIds(ids: $0)
+                },
+                setLibraryFullWidth: {
+                    try handle.setLibraryFullWidth(enabled: $0)
                 }
             )
         }

@@ -7,6 +7,9 @@ import SwiftUI
 /// (`HeaderCollapse.progress`).
 struct LibraryHeader<Trailing: View>: View {
     let collapseProgress: Double
+    /// Span the window instead of centering in the shared capped column
+    /// (`Config.libraryFullWidth`).
+    let fullWidth: Bool
     @ViewBuilder
     let trailing: Trailing
 
@@ -26,10 +29,9 @@ struct LibraryHeader<Trailing: View>: View {
         // The compact bottom inset shrinks so the heading sits low in the
         // band, with enough breathing room off the content edge.
         .padding(.bottom, 32 - 20 * collapseProgress)
-        // The same width cap the grid centers in, so the heading and sort
-        // controls line up with the content at every window width.
-        .frame(maxWidth: LibraryContentContainer.maxWidth)
-        .frame(maxWidth: .infinity)
+        // The same container the content centers in, so the heading and sort
+        // controls line up with it at every window width.
+        .libraryContentContainer(fullWidth: fullWidth)
         .animation(.easeOut(duration: 0.15), value: collapseProgress)
     }
 }
@@ -43,7 +45,10 @@ struct LibraryHeader<Trailing: View>: View {
         @State
         var headerCollapse = HeaderCollapse()
         VStack(spacing: 0) {
-            LibraryHeader(collapseProgress: headerCollapse.progress) {
+            LibraryHeader(
+                collapseProgress: headerCollapse.progress,
+                fullWidth: false
+            ) {
                 SortCriteriaRow(
                     criteria: .constant([
                         BridgeSortCriterion(

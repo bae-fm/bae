@@ -28,6 +28,10 @@ public struct Config: Equatable {
     /// instead of showing the time elapsed. A synced preference, so the bar
     /// reads it here rather than keeping its own copy per device.
     public let showRemainingTime: Bool
+    /// Whether the library page spans the window's full width instead of
+    /// centering its content in a width-capped column. A synced preference,
+    /// read here by the library page.
+    public let libraryFullWidth: Bool
     /// Where release exports write: prompt each time, or a fixed folder.
     public let exportLocation: BridgeExportLocation
     /// Template for the default filename a single-track export suggests. Core
@@ -54,6 +58,7 @@ public struct Config: Equatable {
         maxConcurrentUploads = bridge.maxConcurrentUploads
         maxConcurrentDownloads = bridge.maxConcurrentDownloads
         showRemainingTime = bridge.showRemainingTime
+        libraryFullWidth = bridge.libraryFullWidth
         exportLocation = bridge.exportLocation
         exportFilenameTemplate = bridge.exportFilenameTemplate
         exportPresets = bridge.exportPresets

@@ -19,6 +19,10 @@ struct AlbumGridView<ExpansionContent: View>: View {
     /// it to resolve an album's index for `revealAlbum`; the sort *controls*
     /// live in `LibraryView`'s pinned header.
     let sortCriteria: [BridgeSortCriterion]
+    /// Span the window instead of centering in the shared capped column
+    /// (`Config.libraryFullWidth`). Feeds the column-count math, so the cap
+    /// must be inside the ScrollView rather than wrapped around it.
+    let fullWidth: Bool
     /// Multi-selection state, owned by `LibraryView`. The grid reads it to render
     /// the selection tint and build bulk-action targets, and mutates it on
     /// modifier clicks / Esc / cmd-A.
@@ -40,7 +44,9 @@ struct AlbumGridView<ExpansionContent: View>: View {
     var body: some View {
         GeometryReader { geometry in
             let effectiveWidth =
-                min(geometry.size.width, LibraryContentContainer.maxWidth)
+                (fullWidth
+                    ? geometry.size.width
+                    : min(geometry.size.width, LibraryContentContainer.maxWidth))
                 - LibraryContentContainer.horizontalPadding * 2
             let columnCount = max(
                 1,
@@ -144,8 +150,7 @@ struct AlbumGridView<ExpansionContent: View>: View {
                         LibraryContentContainer.horizontalPadding
                     )
                     .padding(.bottom)
-                    .frame(maxWidth: LibraryContentContainer.maxWidth)
-                    .frame(maxWidth: .infinity)
+                    .libraryContentContainer(fullWidth: fullWidth)
                     // A click on the empty grid background (not on a card, whose
                     // own tap wins) clears the multi-selection.
                     .contentShape(Rectangle())
@@ -547,6 +552,7 @@ private class MenuItem: NSMenuItem {
             AlbumGridView(
                 list: list,
                 sortCriteria: sortCriteria,
+                fullWidth: false,
                 selection: AlbumGridSelection(),
                 onPlay: { _ in },
                 onAddToQueue: { _ in },

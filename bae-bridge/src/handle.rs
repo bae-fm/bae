@@ -572,6 +572,17 @@ impl AppHandle {
             .map_err(BridgeError::config)
     }
 
+    /// Whether the library page spans the window's full width instead of
+    /// centering its content in a width-capped column. The write fires a
+    /// config invalidation, which re-renders the page — no app keeps its own
+    /// copy.
+    pub fn set_library_full_width(&self, enabled: bool) -> Result<(), BridgeError> {
+        self.services
+            .library_manager()
+            .set_library_full_width(enabled)
+            .map_err(BridgeError::config)
+    }
+
     /// Set where release exports write: prompt each time, or a fixed folder.
     pub fn set_export_location(
         &self,

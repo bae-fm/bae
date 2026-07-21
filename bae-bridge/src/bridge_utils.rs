@@ -237,6 +237,7 @@ impl BridgeConfig {
             max_concurrent_uploads,
             max_concurrent_downloads,
             show_remaining_time,
+            library_full_width,
             // Import-time decode verification; not surfaced on the config screen.
             verify_decode_on_import: _,
             mcp,
@@ -254,6 +255,7 @@ impl BridgeConfig {
             max_concurrent_uploads: max_concurrent_uploads.get(),
             max_concurrent_downloads: max_concurrent_downloads.get(),
             show_remaining_time: *show_remaining_time,
+            library_full_width: *library_full_width,
             export_location: BridgeExportLocation::from_core(export_location),
             export_filename_template: export_filename_template.clone(),
             export_presets: export_presets

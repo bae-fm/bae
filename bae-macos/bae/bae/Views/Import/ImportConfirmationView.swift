@@ -637,6 +637,7 @@ struct CoverPickerView: View {
                         maxConcurrentUploads: 3,
                         maxConcurrentDownloads: 3,
                         showRemainingTime: false,
+                        libraryFullWidth: false,
                         exportLocation: .askEachTime,
                         exportFilenameTemplate: PreviewData
                             .exportFilenameTemplate,
