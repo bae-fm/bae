@@ -1729,6 +1729,22 @@ mod composer_mode_tests {
     }
 
     #[tokio::test]
+    async fn search_library_returns_artist_hits() {
+        let (db, _tmp) = seeded_db().await;
+
+        let results = db.search_library("Album Artist A", 10).await.unwrap();
+        assert_eq!(results.artists.len(), 1);
+        assert_eq!(results.artists[0].artist.id, "artist-album");
+        assert_eq!(results.artists[0].album_count, 1);
+
+        // Composer artists are artist rows too, but only surface as artist
+        // hits when they have albums; the seeded composer has none.
+        let composer = db.search_library("Displayed Composer A", 10).await.unwrap();
+        assert_eq!(composer.composers.len(), 1);
+        assert!(composer.artists.is_empty());
+    }
+
+    #[tokio::test]
     async fn search_library_matches_composer_and_work_sort_names() {
         let (db, _tmp) = seeded_db().await;
 

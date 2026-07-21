@@ -49,6 +49,7 @@ struct PendingTrackFlash {
 }
 
 enum LibraryNavigationTarget {
+    case artist(String)
     case composer(String)
     case work(String)
 }
@@ -167,6 +168,16 @@ class UiStore: @unchecked Sendable {
 
     func navigateToImport() {
         activeSection = .importing
+    }
+
+    func navigateToArtist(_ artistId: String) {
+        activeSection = .library
+        libraryBrowserMode = .artists
+        libraryNavigationSeq += 1
+        pendingLibraryNavigation = LibraryNavigationRequest(
+            target: .artist(artistId),
+            seq: libraryNavigationSeq
+        )
     }
 
     func navigateToComposer(_ artistId: String) {

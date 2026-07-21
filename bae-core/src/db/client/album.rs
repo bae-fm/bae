@@ -178,6 +178,17 @@ impl Database {
                 })?
                 .collect::<coven::rusqlite::Result<Vec<_>>>()?;
 
+            let mut artist_stmt = conn.prepare(&artist_summary_query(
+                Some(
+                    "WHERE ar.name LIKE ? ESCAPE '\\' \
+                         OR ar.sort_name LIKE ? ESCAPE '\\'",
+                ),
+                Some("ORDER BY ar.name LIMIT ?"),
+            ))?;
+            let artists = artist_stmt
+                .query_map(params![pattern, pattern, limit_i64], row_to_artist_summary)?
+                .collect::<coven::rusqlite::Result<Vec<_>>>()?;
+
             let mut composer_stmt = conn.prepare(&composer_summary_query(
                 Some(
                     "WHERE composer.name LIKE ? ESCAPE '\\' \
@@ -202,6 +213,7 @@ impl Database {
 
             Ok(DbLibrarySearchResults {
                 albums,
+                artists,
                 tracks,
                 composers,
                 works,

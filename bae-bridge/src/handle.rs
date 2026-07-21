@@ -324,6 +324,11 @@ impl AppHandle {
                 .into_iter()
                 .map(BridgeAlbumSearchResult::from_core)
                 .collect(),
+            artists: results
+                .artists
+                .into_iter()
+                .map(BridgeArtistSummary::from_core)
+                .collect(),
             tracks: results
                 .tracks
                 .into_iter()

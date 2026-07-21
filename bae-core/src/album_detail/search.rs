@@ -10,6 +10,7 @@ use crate::db::DbLibrarySearchResults;
 #[derive(Debug, Clone, Default)]
 pub struct SearchResults {
     pub albums: Vec<AlbumSearchResult>,
+    pub artists: Vec<ArtistSummary>,
     pub tracks: Vec<TrackSearchResult>,
     pub composers: Vec<ComposerSummary>,
     pub works: Vec<WorkSummary>,
@@ -18,12 +19,12 @@ pub struct SearchResults {
 impl SearchResults {
     /// `release_covers` is keyed by release id and serves every release-cover
     /// lookup the raw rows need: album primary release ids, track release ids,
-    /// and work representative release ids. `composer_images` is keyed by
-    /// artist id.
+    /// and work representative release ids. `artist_images` is keyed by artist
+    /// id and serves both the artist and composer hits.
     pub(crate) fn from_raw(
         raw: DbLibrarySearchResults,
         release_covers: &HashMap<String, ImageRef>,
-        composer_images: &HashMap<String, ImageRef>,
+        artist_images: &HashMap<String, ImageRef>,
     ) -> SearchResults {
         SearchResults {
             albums: raw
@@ -63,11 +64,19 @@ impl SearchResults {
                     }
                 })
                 .collect(),
+            artists: raw
+                .artists
+                .into_iter()
+                .map(|artist| {
+                    let image = artist_images.get(&artist.artist.id).cloned();
+                    ArtistSummary::from_raw(artist, image)
+                })
+                .collect(),
             composers: raw
                 .composers
                 .into_iter()
                 .map(|composer| {
-                    let image = composer_images.get(&composer.artist.id).cloned();
+                    let image = artist_images.get(&composer.artist.id).cloned();
                     ComposerSummary::from_raw(composer, image)
                 })
                 .collect(),

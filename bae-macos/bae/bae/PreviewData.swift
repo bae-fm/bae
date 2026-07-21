@@ -357,6 +357,14 @@
                         cover: nil
                     ),
                 ],
+                artists: [
+                    BridgeArtistSummary(
+                        artistId: "artist-a",
+                        name: "Artist Name A",
+                        albumCount: 2,
+                        image: nil
+                    )
+                ],
                 tracks: [
                     BridgeTrackSearchResult(
                         id: "t-03",

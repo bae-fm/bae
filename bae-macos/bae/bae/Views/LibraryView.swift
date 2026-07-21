@@ -325,6 +325,9 @@ extension LibraryView {
 
     private func applyLibraryNavigation(_ target: LibraryNavigationTarget) {
         switch target {
+        case .artist(let artistId):
+            session.selectArtist(artistId)
+            artistDetail = nil
         case .composer(let artistId):
             session.selectComposer(artistId)
             composerPaneDetail = .empty

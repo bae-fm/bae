@@ -90,13 +90,16 @@ impl LibraryManager {
                 .iter()
                 .filter_map(|w| w.representative_release_id.clone()),
         );
-        let artist_ids: Vec<String> = raw.composers.iter().map(|c| c.artist.id.clone()).collect();
+        // Artist and composer hits share one image prefetch: both are artist
+        // rows, keyed by artist id.
+        let mut artist_ids: Vec<String> = raw.artists.iter().map(|a| a.artist.id.clone()).collect();
+        artist_ids.extend(raw.composers.iter().map(|c| c.artist.id.clone()));
         let release_covers = self.cover_refs(&release_ids).await?;
-        let composer_images = self.artist_image_refs(&artist_ids).await?;
+        let artist_images = self.artist_image_refs(&artist_ids).await?;
         Ok(SearchResults::from_raw(
             raw,
             &release_covers,
-            &composer_images,
+            &artist_images,
         ))
     }
 

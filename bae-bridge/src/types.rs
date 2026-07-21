@@ -2418,6 +2418,7 @@ pub struct BridgeSaveSyncConfig {
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeSearchResults {
     pub albums: Vec<BridgeAlbumSearchResult>,
+    pub artists: Vec<BridgeArtistSummary>,
     pub tracks: Vec<BridgeTrackSearchResult>,
     pub composers: Vec<BridgeComposerSummary>,
     pub works: Vec<BridgeWorkSummary>,

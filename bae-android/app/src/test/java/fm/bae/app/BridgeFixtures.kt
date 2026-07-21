@@ -3,6 +3,7 @@ package fm.bae.app
 import uniffi.bae_bridge.BridgeAlbum
 import uniffi.bae_bridge.BridgeAlbumDetail
 import uniffi.bae_bridge.BridgeAlbumSearchResult
+import uniffi.bae_bridge.BridgeArtistSummary
 import uniffi.bae_bridge.BridgeComposerSummary
 import uniffi.bae_bridge.BridgeConfig
 import uniffi.bae_bridge.BridgeDiscogsTokenStatus
@@ -105,6 +106,18 @@ object BridgeFixtures {
             albumId = albumId,
             albumTitle = "Album Title",
             artistName = "Artist Name",
+            cover = null,
+        )
+
+    fun artistSummary(
+        artistId: String = "artist-1",
+        name: String = "Artist Name",
+    ): BridgeArtistSummary =
+        BridgeArtistSummary(
+            artistId = artistId,
+            name = name,
+            albumCount = 1L,
+            image = null,
         )
 
     fun composerSummary(
@@ -139,12 +152,14 @@ object BridgeFixtures {
 
     fun searchResults(
         albums: List<BridgeAlbumSearchResult> = emptyList(),
+        artists: List<BridgeArtistSummary> = emptyList(),
         tracks: List<BridgeTrackSearchResult> = emptyList(),
         composers: List<BridgeComposerSummary> = emptyList(),
         works: List<BridgeWorkSummary> = emptyList(),
     ): BridgeSearchResults =
         BridgeSearchResults(
             albums = albums,
+            artists = artists,
             tracks = tracks,
             composers = composers,
             works = works,

@@ -126,6 +126,7 @@ struct MainAppView: View {
                     SearchView(
                         results: uiStore.searchResults,
                         onSelectAlbum: selectAlbum,
+                        onSelectArtist: selectArtist,
                         onSelectComposer: selectComposer,
                         onSelectWork: selectWork,
                     )
@@ -176,6 +177,11 @@ struct MainAppView: View {
     private func selectAlbum(_ albumId: String) {
         closeSearchPopover()
         uiStore.selectAlbum(albumId)
+    }
+
+    private func selectArtist(_ artistId: String) {
+        closeSearchPopover()
+        uiStore.navigateToArtist(artistId)
     }
 
     private func selectComposer(_ artistId: String) {

@@ -971,6 +971,7 @@ impl DbLibraryImage {
 #[derive(Debug, Clone)]
 pub struct DbLibrarySearchResults {
     pub albums: Vec<DbAlbumSearchResult>,
+    pub artists: Vec<DbArtistSummary>,
     pub tracks: Vec<DbTrackSearchResult>,
     pub composers: Vec<DbComposerSummary>,
     pub works: Vec<DbWorkSummary>,

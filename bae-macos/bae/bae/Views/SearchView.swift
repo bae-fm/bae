@@ -4,6 +4,7 @@ import SwiftUI
 struct SearchView: View {
     let results: SearchResults?
     let onSelectAlbum: (String) -> Void
+    let onSelectArtist: (String) -> Void
     let onSelectComposer: (String) -> Void
     let onSelectWork: (String) -> Void
 
@@ -15,8 +16,9 @@ struct SearchView: View {
     var body: some View {
         Group {
             if let results {
-                if results.albums.isEmpty, results.tracks.isEmpty,
-                    results.composers.isEmpty, results.works.isEmpty
+                if results.albums.isEmpty, results.artists.isEmpty,
+                    results.tracks.isEmpty, results.composers.isEmpty,
+                    results.works.isEmpty
                 {
                     ContentUnavailableView.search(text: results.query)
                         .frame(height: 240)
@@ -68,6 +70,19 @@ struct SearchView: View {
                         title: album.title,
                         subtitle: albumSubtitle(album),
                         action: { onSelectAlbum(album.id) }
+                    )
+                }
+            }
+
+            if !results.artists.isEmpty {
+                sectionHeader("Artists")
+                ForEach(results.artists, id: \.id) { artist in
+                    SearchResultRow(
+                        cover: artist.image,
+                        title: artist.name,
+                        subtitle:
+                            "\(artist.albumCount) \(String(localized: "Albums"))",
+                        action: { onSelectArtist(artist.artistId) }
                     )
                 }
             }
@@ -205,6 +220,7 @@ private struct SearchResultRow: View {
         SearchView(
             results: PreviewData.searchResults,
             onSelectAlbum: { _ in },
+            onSelectArtist: { _ in },
             onSelectComposer: { _ in },
             onSelectWork: { _ in },
         )
@@ -217,6 +233,7 @@ private struct SearchResultRow: View {
             results: SearchResults(
                 bridge: BridgeSearchResults(
                     albums: [],
+                    artists: [],
                     tracks: [],
                     composers: [],
                     works: []
@@ -224,6 +241,7 @@ private struct SearchResultRow: View {
                 query: "placeholder"
             ),
             onSelectAlbum: { _ in },
+            onSelectArtist: { _ in },
             onSelectComposer: { _ in },
             onSelectWork: { _ in },
         )
