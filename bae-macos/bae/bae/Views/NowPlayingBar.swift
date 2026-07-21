@@ -125,30 +125,16 @@ struct NowPlayingBar: View {
         }
         .padding(.vertical, 14)
         .padding(.horizontal, 22)
-        .background(cardChrome)
-    }
-
-    // MARK: - Card chrome
-
-    private var cardChrome: some View {
-        RoundedRectangle(cornerRadius: 16)
-            .fill(.ultraThinMaterial)
-            .overlay(
-                RoundedRectangle(cornerRadius: 16)
-                    .fill(
-                        LinearGradient(
-                            colors: [Theme.surfaceElevated, Theme.surface],
-                            startPoint: .top,
-                            endPoint: .bottom,
-                        ),
-                    )
-                    .opacity(0.92),
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 16)
-                    .strokeBorder(Color.white.opacity(0.08), lineWidth: 1),
-            )
-            .shadow(color: .black.opacity(0.5), radius: 24, y: 10)
+        // Docked strip: the bar sits in the window's bottom row (below the
+        // content and the queue column), so nothing scrolls beneath it —
+        // a flat gradient fill under the Divider above, no card chrome.
+        .background(
+            LinearGradient(
+                colors: [Theme.surfaceElevated, Theme.surface],
+                startPoint: .top,
+                endPoint: .bottom,
+            ),
+        )
     }
 
     // MARK: - Left: track info

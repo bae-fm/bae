@@ -72,17 +72,11 @@ struct MainAppView: View {
                     .spring(duration: 0.24, bounce: 0.12),
                     value: uiStore.showQueue
                 )
-                // The bar floats over the content as a bottom safe-area inset:
-                // scrollables gain a matching inset so their last row clears
-                // it, and the grid scrolls beneath the card while the queue
-                // column ends above it.
-                .safeAreaInset(edge: .bottom) {
-                    NowPlayingBarContainer(
-                        onDropToQueue: { ids in queueActions.addToQueue(ids) },
-                    )
-                    .padding(.horizontal, 16)
-                    .padding(.bottom, 16)
-                }
+
+                Divider()
+                NowPlayingBarContainer(
+                    onDropToQueue: { ids in queueActions.addToQueue(ids) },
+                )
             }
 
             // Lightbox overlay
