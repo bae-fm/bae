@@ -51,6 +51,7 @@
     <string name="search_failed">തിരയൽ പരാജയപ്പെട്ടു</string>
     <string name="search_no_results">ഫലങ്ങളില്ല: “%1$s”</string>
     <string name="search_section_albums">ആൽബങ്ങൾ</string>
+    <string name="search_section_artists">കലാകാരന്മാർ</string>
     <string name="search_section_tracks">ട്രാക്കുകൾ</string>
     <string name="work_count">%1$d കൃതികൾ</string>
     <string name="work_detail_load_failed">ഈ കൃതി ലോഡ് ചെയ്യാനായില്ല.</string>

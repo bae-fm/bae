@@ -51,6 +51,7 @@
     <string name="search_failed">فشل البحث</string>
     <string name="search_no_results">لا توجد نتائج لـ ”%1$s“</string>
     <string name="search_section_albums">الألبومات</string>
+    <string name="search_section_artists">الفنانون</string>
     <string name="search_section_tracks">المقاطع</string>
     <string name="work_count">%1$d عمل</string>
     <string name="work_detail_load_failed">تعذر تحميل هذا العمل.</string>

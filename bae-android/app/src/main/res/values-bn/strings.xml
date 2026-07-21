@@ -51,6 +51,7 @@
     <string name="search_failed">অনুসন্ধান ব্যর্থ</string>
     <string name="search_no_results">কোনো ফল নেই: “%1$s”</string>
     <string name="search_section_albums">অ্যালবাম</string>
+    <string name="search_section_artists">শিল্পীরা</string>
     <string name="search_section_tracks">ট্র্যাক</string>
     <string name="work_count">%1$dটি কাজ</string>
     <string name="work_detail_load_failed">এই কাজ লোড করা যায়নি।</string>

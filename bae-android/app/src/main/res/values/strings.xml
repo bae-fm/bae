@@ -80,6 +80,7 @@
     <!-- %1$s = the query the user typed -->
     <string name="search_no_results">No results for “%1$s”</string>
     <string name="search_section_albums">Albums</string>
+    <string name="search_section_artists">Artists</string>
     <string name="search_section_tracks">Tracks</string>
     <string name="work_count">%1$d Works</string>
     <string name="work_detail_load_failed">Couldn\'t load this work.</string>

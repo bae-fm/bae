@@ -51,6 +51,7 @@
     <string name="search_failed">Zoeken mislukt</string>
     <string name="search_no_results">Geen resultaten: “%1$s”</string>
     <string name="search_section_albums">Albums</string>
+    <string name="search_section_artists">Artiesten</string>
     <string name="search_section_tracks">Nummers</string>
     <string name="work_count">%1$d werken</string>
     <string name="work_detail_load_failed">Kan dit werk niet laden.</string>

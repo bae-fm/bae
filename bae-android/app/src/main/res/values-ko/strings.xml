@@ -51,6 +51,7 @@
     <string name="search_failed">검색 실패</string>
     <string name="search_no_results">“%1$s”에 대한 결과 없음</string>
     <string name="search_section_albums">앨범</string>
+    <string name="search_section_artists">아티스트</string>
     <string name="search_section_tracks">트랙</string>
     <string name="work_count">작품 %1$d개</string>
     <string name="work_detail_load_failed">이 작품을 불러올 수 없습니다.</string>

@@ -51,6 +51,7 @@
     <string name="search_failed">搜尋失敗</string>
     <string name="search_no_results">沒有結果: “%1$s”</string>
     <string name="search_section_albums">專輯</string>
+    <string name="search_section_artists">藝人</string>
     <string name="search_section_tracks">曲目</string>
     <string name="work_count">%1$d 部作品</string>
     <string name="work_detail_load_failed">無法載入此作品。</string>

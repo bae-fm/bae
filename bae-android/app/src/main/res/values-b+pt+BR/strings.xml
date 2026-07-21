@@ -51,6 +51,7 @@
     <string name="search_failed">Falha na busca</string>
     <string name="search_no_results">Nenhum resultado para “%1$s”</string>
     <string name="search_section_albums">Álbuns</string>
+    <string name="search_section_artists">Artistas</string>
     <string name="search_section_tracks">Faixas</string>
     <string name="work_count">%1$d obras</string>
     <string name="work_detail_load_failed">Não foi possível carregar esta obra.</string>

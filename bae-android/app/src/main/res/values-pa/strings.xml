@@ -51,6 +51,7 @@
     <string name="search_failed">ਖੋਜ ਅਸਫਲ</string>
     <string name="search_no_results">ਕੋਈ ਨਤੀਜਾ ਨਹੀਂ: “%1$s”</string>
     <string name="search_section_albums">ਐਲਬਮਾਂ</string>
+    <string name="search_section_artists">ਕਲਾਕਾਰ</string>
     <string name="search_section_tracks">ਟ੍ਰੈਕ</string>
     <string name="work_count">%1$d ਰਚਨਾਵਾਂ</string>
     <string name="work_detail_load_failed">ਇਹ ਰਚਨਾ ਲੋਡ ਨਹੀਂ ਹੋ ਸਕੀ।</string>

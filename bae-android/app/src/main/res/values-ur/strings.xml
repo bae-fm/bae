@@ -51,6 +51,7 @@
     <string name="search_failed">تلاش ناکام</string>
     <string name="search_no_results">کوئی نتیجہ نہیں: “%1$s”</string>
     <string name="search_section_albums">البمز</string>
+    <string name="search_section_artists">فنکار</string>
     <string name="search_section_tracks">نغمے</string>
     <string name="work_count">%1$d کام</string>
     <string name="work_detail_load_failed">یہ کام لوڈ نہیں ہو سکا۔</string>

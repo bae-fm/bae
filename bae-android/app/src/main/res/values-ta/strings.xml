@@ -51,6 +51,7 @@
     <string name="search_failed">தேடல் தோல்வியடைந்தது</string>
     <string name="search_no_results">முடிவுகள் இல்லை: “%1$s”</string>
     <string name="search_section_albums">ஆல்பங்கள்</string>
+    <string name="search_section_artists">கலைஞர்கள்</string>
     <string name="search_section_tracks">பாடல்கள்</string>
     <string name="work_count">%1$d படைப்புகள்</string>
     <string name="work_detail_load_failed">இந்த படைப்பை ஏற்ற முடியவில்லை.</string>

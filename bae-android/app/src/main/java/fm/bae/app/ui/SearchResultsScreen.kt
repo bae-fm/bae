@@ -45,6 +45,7 @@ private val logger = BaeLogger(TAG)
 
 internal fun BridgeSearchResults.hasNoResults(): Boolean =
     albums.isEmpty() &&
+        artists.isEmpty() &&
         tracks.isEmpty() &&
         composers.isEmpty() &&
         works.isEmpty()
@@ -60,16 +61,18 @@ private suspend fun fetchSearchResults(
 
 /**
  * Library search results for a non-blank query. Debounces typing, runs the
- * bridge search, and renders two sections — Albums then Tracks. Both row types
- * open the album's detail (tracks never play directly); the parent routes the
- * tap through the same selected-album navigation as a grid card. Iterates and
- * renders only — the search call lives in [OpenLibrary.library].
+ * bridge search, and renders one section per result kind — Albums, Artists,
+ * Tracks, Composers, Works. Each row opens its subject's destination; the
+ * parent routes the tap through the same navigation as the corresponding grid
+ * card or list row. Iterates and renders only — the search call lives in
+ * [OpenLibrary.library].
  */
 @Composable
 fun SearchResultsScreen(
     session: OpenLibrary,
     query: String,
     onSelectAlbum: (String) -> Unit,
+    onSelectArtist: (String) -> Unit,
     onSelectComposer: (String) -> Unit,
     onSelectWork: (String) -> Unit,
 ) {
@@ -127,6 +130,7 @@ fun SearchResultsScreen(
                     results = current,
                     loadImage = session.library::imageBytes,
                     onSelectAlbum = onSelectAlbum,
+                    onSelectArtist = onSelectArtist,
                     onSelectComposer = onSelectComposer,
                     onSelectWork = onSelectWork,
                 )
@@ -140,6 +144,7 @@ private fun SearchResultsList(
     results: BridgeSearchResults,
     loadImage: suspend (imageId: String) -> ByteArray?,
     onSelectAlbum: (String) -> Unit,
+    onSelectArtist: (String) -> Unit,
     onSelectComposer: (String) -> Unit,
     onSelectWork: (String) -> Unit,
 ) {
@@ -151,6 +156,16 @@ private fun SearchResultsList(
                     album = album,
                     loadImage = loadImage,
                     onClick = { onSelectAlbum(album.id) },
+                )
+            }
+        }
+        if (results.artists.isNotEmpty()) {
+            item { SectionHeader(stringResource(R.string.search_section_artists)) }
+            items(results.artists, key = { "artist:${it.artistId}" }) { artist ->
+                ArtistSummaryRow(
+                    artist = artist,
+                    loadImage = loadImage,
+                    onClick = { onSelectArtist(artist.artistId) },
                 )
             }
         }

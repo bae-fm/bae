@@ -51,6 +51,7 @@
     <string name="search_failed">החיפוש נכשל</string>
     <string name="search_no_results">אין תוצאות עבור ”%1$s“</string>
     <string name="search_section_albums">אלבומים</string>
+    <string name="search_section_artists">אמנים</string>
     <string name="search_section_tracks">רצועות</string>
     <string name="work_count">%1$d יצירות</string>
     <string name="work_detail_load_failed">לא ניתן לטעון את היצירה הזו.</string>

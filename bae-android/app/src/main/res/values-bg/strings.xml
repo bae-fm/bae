@@ -51,6 +51,7 @@
     <string name="search_failed">Търсенето не бе успешно</string>
     <string name="search_no_results">Няма резултати за „%1$s“</string>
     <string name="search_section_albums">Албуми</string>
+    <string name="search_section_artists">Изпълнители</string>
     <string name="search_section_tracks">Песни</string>
     <string name="work_count">%1$d произведения</string>
     <string name="work_detail_load_failed">Това произведение не можа да бъде заредено.</string>

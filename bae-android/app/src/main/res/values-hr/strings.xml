@@ -51,6 +51,7 @@
     <string name="search_failed">Pretraživanje nije uspjelo</string>
     <string name="search_no_results">Nema rezultata za „%1$s”</string>
     <string name="search_section_albums">Albumi</string>
+    <string name="search_section_artists">Izvođači</string>
     <string name="search_section_tracks">Pjesme</string>
     <string name="work_count">%1$d djela</string>
     <string name="work_detail_load_failed">Nije moguće učitati ovo djelo.</string>

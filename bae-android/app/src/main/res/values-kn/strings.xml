@@ -51,6 +51,7 @@
     <string name="search_failed">ಹುಡುಕಾಟ ವಿಫಲವಾಯಿತು</string>
     <string name="search_no_results">ಫಲಿತಾಂಶಗಳಿಲ್ಲ: “%1$s”</string>
     <string name="search_section_albums">ಆಲ್ಬಮ್‌ಗಳು</string>
+    <string name="search_section_artists">ಕಲಾವಿದರು</string>
     <string name="search_section_tracks">ಟ್ರ್ಯಾಕ್‌ಗಳು</string>
     <string name="work_count">%1$d ಕೃತಿಗಳು</string>
     <string name="work_detail_load_failed">ಈ ಕೃತಿ ಲೋಡ್ ಆಗಲಿಲ್ಲ.</string>

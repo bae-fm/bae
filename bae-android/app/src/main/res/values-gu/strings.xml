@@ -51,6 +51,7 @@
     <string name="search_failed">શોધ નિષ્ફળ</string>
     <string name="search_no_results">કોઈ પરિણામ નથી: “%1$s”</string>
     <string name="search_section_albums">આલ્બમો</string>
+    <string name="search_section_artists">કલાકારો</string>
     <string name="search_section_tracks">ટ્રૅક્સ</string>
     <string name="work_count">%1$d કૃતિઓ</string>
     <string name="work_detail_load_failed">આ કૃતિ લોડ કરી શકાયી નહીં.</string>

@@ -51,6 +51,7 @@
     <string name="search_failed">検索に失敗しました</string>
     <string name="search_no_results">「%1$s」の結果なし</string>
     <string name="search_section_albums">アルバム</string>
+    <string name="search_section_artists">アーティスト</string>
     <string name="search_section_tracks">トラック</string>
     <string name="work_count">%1$d作品</string>
     <string name="work_detail_load_failed">この作品を読み込めませんでした。</string>

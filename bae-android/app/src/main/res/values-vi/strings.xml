@@ -51,6 +51,7 @@
     <string name="search_failed">Tìm kiếm thất bại</string>
     <string name="search_no_results">Không có kết quả: “%1$s”</string>
     <string name="search_section_albums">Album</string>
+    <string name="search_section_artists">Nghệ sĩ</string>
     <string name="search_section_tracks">Bản nhạc</string>
     <string name="work_count">%1$d tác phẩm</string>
     <string name="work_detail_load_failed">Không thể tải tác phẩm này.</string>

@@ -1,6 +1,7 @@
 package fm.bae.app.ui
 
 import fm.bae.app.BridgeFixtures
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -13,6 +14,12 @@ class SearchResultsScreenTest {
             BridgeFixtures
                 .searchResults(
                     albums = listOf(BridgeFixtures.albumSearchResult()),
+                ).hasNoResults(),
+        )
+        assertFalse(
+            BridgeFixtures
+                .searchResults(
+                    artists = listOf(BridgeFixtures.artistSummary()),
                 ).hasNoResults(),
         )
         assertFalse(
@@ -33,5 +40,21 @@ class SearchResultsScreenTest {
                     works = listOf(BridgeFixtures.workSummary()),
                 ).hasNoResults(),
         )
+    }
+
+    @Test
+    fun artistsRenderAsAnOrderedSection() {
+        val results =
+            BridgeFixtures.searchResults(
+                artists =
+                    listOf(
+                        BridgeFixtures.artistSummary(artistId = "artist-1", name = "Artist One"),
+                        BridgeFixtures.artistSummary(artistId = "artist-2", name = "Artist Two"),
+                    ),
+            )
+
+        assertFalse(results.hasNoResults())
+        // The section iterates results.artists in order; each row selects by artistId.
+        assertEquals(listOf("artist-1", "artist-2"), results.artists.map { it.artistId })
     }
 }

@@ -51,6 +51,7 @@
     <string name="search_failed">搜索失败</string>
     <string name="search_no_results">没有“%1$s”的结果</string>
     <string name="search_section_albums">专辑</string>
+    <string name="search_section_artists">艺人</string>
     <string name="search_section_tracks">曲目</string>
     <string name="work_count">%1$d 部作品</string>
     <string name="work_detail_load_failed">无法加载此作品。</string>

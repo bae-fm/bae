@@ -185,6 +185,7 @@ private fun LibraryBrowserContent(
                 session = session,
                 query = searchQuery,
                 onSelectAlbum = onSelectAlbum,
+                onSelectArtist = onSelectArtist,
                 onSelectComposer = onSelectComposer,
                 onSelectWork = onSelectWork,
             )

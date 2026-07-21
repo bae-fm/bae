@@ -51,6 +51,7 @@
     <string name="search_failed">Arama başarısız</string>
     <string name="search_no_results">Sonuç yok: “%1$s”</string>
     <string name="search_section_albums">Albümler</string>
+    <string name="search_section_artists">Sanatçılar</string>
     <string name="search_section_tracks">Parçalar</string>
     <string name="work_count">%1$d Eser</string>
     <string name="work_detail_load_failed">Bu eser yüklenemedi.</string>

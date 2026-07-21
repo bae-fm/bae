@@ -51,6 +51,7 @@
     <string name="search_failed">Не вдалося виконати пошук</string>
     <string name="search_no_results">Немає результатів для «%1$s»</string>
     <string name="search_section_albums">Альбоми</string>
+    <string name="search_section_artists">Виконавці</string>
     <string name="search_section_tracks">Треки</string>
     <string name="work_count">%1$d творів</string>
     <string name="work_detail_load_failed">Не вдалося завантажити цей твір.</string>

@@ -51,6 +51,7 @@
     <string name="search_failed">శోధన విఫలమైంది</string>
     <string name="search_no_results">ఫలితాలు లేవు: “%1$s”</string>
     <string name="search_section_albums">ఆల్బమ్‌లు</string>
+    <string name="search_section_artists">కళాకారులు</string>
     <string name="search_section_tracks">ట్రాక్‌లు</string>
     <string name="work_count">%1$d కృతులు</string>
     <string name="work_detail_load_failed">ఈ కృతిని లోడ్ చేయలేకపోయింది.</string>

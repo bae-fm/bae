@@ -51,6 +51,7 @@
     <string name="search_failed">Vyhledávání selhalo</string>
     <string name="search_no_results">Žádné výsledky pro „%1$s“</string>
     <string name="search_section_albums">Alba</string>
+    <string name="search_section_artists">Interpreti</string>
     <string name="search_section_tracks">Stopy</string>
     <string name="work_count">%1$d děl</string>
     <string name="work_detail_load_failed">Toto dílo se nepodařilo načíst.</string>

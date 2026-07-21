@@ -51,6 +51,7 @@
     <string name="search_failed">शोध अयशस्वी</string>
     <string name="search_no_results">निकाल नाहीत: “%1$s”</string>
     <string name="search_section_albums">अल्बम</string>
+    <string name="search_section_artists">कलाकार</string>
     <string name="search_section_tracks">गाणी</string>
     <string name="work_count">%1$d कृती</string>
     <string name="work_detail_load_failed">ही कृती लोड करता आली नाही.</string>
