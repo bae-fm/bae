@@ -36,7 +36,7 @@ struct TitleBar: View {
                 Spacer()
                 LibrarySearchField(
                     text: $searchText,
-                    prompt: "Artists, albums, tracks",
+                    prompt: "Search",
                     focused: $searchFocused,
                     onEscape: {
                         searchFocused = false
@@ -111,6 +111,13 @@ struct TitleBar: View {
             }
             else {
                 uiStore.showSearchPopover = false
+            }
+        }
+        // Refocusing the field reopens a dropdown that was dismissed (Escape,
+        // click-away) while a query and its results are still present.
+        .onChange(of: searchFocused) { _, focused in
+            if focused, !searchText.isEmpty, uiStore.searchResults != nil {
+                uiStore.showSearchPopover = true
             }
         }
     }

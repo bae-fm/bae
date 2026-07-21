@@ -20,7 +20,7 @@ struct SearchView: View {
                 }
             }
         }
-        .frame(width: 440, height: 350)
+        .frame(width: 572, height: 455)
         .background(
             RoundedRectangle(cornerRadius: 14)
                 .fill(
@@ -46,7 +46,7 @@ struct SearchView: View {
                     sectionHeader("Albums")
                     ForEach(results.albums, id: \.id) { album in
                         SearchResultRow(
-                            leading: albumArt(album),
+                            cover: album.cover,
                             title: album.title,
                             subtitle: albumSubtitle(album),
                             action: { onSelectAlbum(album.id) }
@@ -58,7 +58,7 @@ struct SearchView: View {
                     sectionHeader("Tracks")
                     ForEach(results.tracks, id: \.id) { track in
                         SearchResultRow(
-                            leading: rowGlyph("waveform"),
+                            cover: track.cover,
                             title: track.title,
                             subtitle: trackSubtitle(track),
                             trailing: track.durationLabel.isEmpty
@@ -72,7 +72,7 @@ struct SearchView: View {
                     sectionHeader("Composers")
                     ForEach(results.composers, id: \.id) { composer in
                         SearchResultRow(
-                            leading: rowGlyph("person.wave.2"),
+                            cover: composer.image,
                             title: composer.name,
                             subtitle:
                                 "\(composer.workCount) \(String(localized: "Works"))",
@@ -85,7 +85,7 @@ struct SearchView: View {
                     sectionHeader("Works")
                     ForEach(results.works, id: \.id) { work in
                         SearchResultRow(
-                            leading: rowGlyph("music.quarternote.3"),
+                            cover: work.representativeCover,
                             title: work.title,
                             subtitle: work.composerNames,
                             action: { onSelectWork(work.id) }
@@ -108,17 +108,6 @@ struct SearchView: View {
             .padding(.bottom, 2)
     }
 
-    private func albumArt(_ album: AlbumSearchResult) -> some View {
-        ImageView(imageRef: album.cover, pointSize: 46)
-            .clipShape(RoundedRectangle(cornerRadius: 8))
-    }
-
-    private func rowGlyph(_ systemName: String) -> some View {
-        Image(systemName: systemName)
-            .font(.system(size: 18))
-            .foregroundStyle(.secondary)
-    }
-
     private func albumSubtitle(_ album: AlbumSearchResult) -> String {
         if let year = album.year {
             "\(album.artistName) (\(year))"
@@ -137,10 +126,11 @@ struct SearchView: View {
     }
 }
 
-/// One search hit: leading art or glyph, a title over an optional subtitle, an
-/// optional trailing label (a track's duration), with a subtle hover fill.
-private struct SearchResultRow<Leading: View>: View {
-    let leading: Leading
+/// One search hit: 46×46 cover art (placeholder when absent), a title over an
+/// optional subtitle, an optional trailing label (a track's duration), with a
+/// subtle hover fill.
+private struct SearchResultRow: View {
+    let cover: BridgeImageRef?
     let title: String
     let subtitle: String?
     var trailing: String?
@@ -152,8 +142,9 @@ private struct SearchResultRow<Leading: View>: View {
     var body: some View {
         Button(action: action) {
             HStack(spacing: 12) {
-                leading
+                ImageView(imageRef: cover, pointSize: 46)
                     .frame(width: 46, height: 46)
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(title)
@@ -200,7 +191,7 @@ private struct SearchResultRow<Leading: View>: View {
             onSelectComposer: { _ in },
             onSelectWork: { _ in },
         )
-        .frame(width: 600, height: 500)
+        .frame(width: 700, height: 600)
         .environment(MediaPaths.stub)
     }
 
@@ -219,7 +210,7 @@ private struct SearchResultRow<Leading: View>: View {
             onSelectComposer: { _ in },
             onSelectWork: { _ in },
         )
-        .frame(width: 600, height: 400)
+        .frame(width: 700, height: 550)
         .environment(MediaPaths.stub)
     }
 #endif

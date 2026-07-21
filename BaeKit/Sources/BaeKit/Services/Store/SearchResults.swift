@@ -39,6 +39,7 @@ public struct TrackSearchResult: Equatable, Identifiable, Sendable {
     public let albumId: String
     public let albumTitle: String
     public let artistName: String
+    public let cover: BridgeImageRef?
 
     public var durationLabel: String { DurationClock.text(durationMs) }
 
@@ -49,6 +50,7 @@ public struct TrackSearchResult: Equatable, Identifiable, Sendable {
         albumId = bridge.albumId
         albumTitle = bridge.albumTitle
         artistName = bridge.artistName
+        cover = bridge.cover
     }
 }
 
