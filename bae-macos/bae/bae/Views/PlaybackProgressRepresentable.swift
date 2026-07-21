@@ -32,7 +32,7 @@ struct PlaybackProgressRepresentable: NSViewRepresentable {
     func makeNSView(context: Context) -> SeekBarNSView {
         let view = SeekBarNSView(
             showsRemainingTimeToggle: true,
-            fixedSliderWidth: 300
+            fixedSliderWidth: nil
         )
         apply(to: view)
         context.coordinator.subscribe(to: positionPublisher, view: view)

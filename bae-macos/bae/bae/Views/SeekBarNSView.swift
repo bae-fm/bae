@@ -40,14 +40,15 @@ class SeekBarNSView: NSView {
     /// the drag ends. Nil means the leading label follows playback.
     private var draggingPositionMs: UInt64?
 
-    /// `fixedSliderWidth` pins the slider's width (the now-playing bar's
-    /// 300pt track); nil lets the stack size it.
+    /// `fixedSliderWidth` pins the slider's width; nil lets the stack size it
+    /// to the space its container offers (the now-playing bar's center column,
+    /// the import preview player's row).
     init(showsRemainingTimeToggle: Bool, fixedSliderWidth: CGFloat?) {
         self.showsRemainingTimeToggle = showsRemainingTimeToggle
 
         let font = NSFont.monospacedDigitSystemFont(
-            ofSize: 10,
-            weight: .regular
+            ofSize: 11.5,
+            weight: .semibold
         )
         let color = NSColor.secondaryLabelColor
 
@@ -87,7 +88,7 @@ class SeekBarNSView: NSView {
 
         let stack = NSStackView(views: [elapsedField, slider, durationField])
         stack.orientation = .horizontal
-        stack.spacing = 8
+        stack.spacing = 11
         stack.translatesAutoresizingMaskIntoConstraints = false
         addSubview(stack)
 

@@ -39,6 +39,8 @@ struct NowPlayingBarContainer: View {
             volume: playbackStore.volume,
             isMuted: playbackStore.isMuted,
             repeatMode: playbackStore.repeatMode,
+            // nil while no playing context — the bar disables shuffle then.
+            shuffled: playbackStore.queueContext?.shuffled,
             showQueue: $uiStore.showQueue,
             onPlayPause: { playback.playPause(for: playbackStore.nowPlaying) },
             onNext: { playback.nextTrack() },
@@ -56,6 +58,7 @@ struct NowPlayingBarContainer: View {
             },
             onVolumeChange: { playback.setVolume($0) },
             onToggleMute: { playback.setMuted(!playbackStore.isMuted) },
+            onSetShuffle: { queue.setShuffle($0) },
             onCycleRepeat: {
                 playback.setRepeatMode(
                     bridgeNextRepeatMode(mode: playbackStore.repeatMode)
@@ -86,6 +89,9 @@ struct NowPlayingBar: View {
     let volume: Float
     let isMuted: Bool
     let repeatMode: BridgeRepeatMode
+    /// Playing-context shuffle state: `true`/`false` when a context is playing,
+    /// `nil` when there is none — which disables the shuffle button.
+    let shuffled: Bool?
     @Binding
     var showQueue: Bool
     let onPlayPause: () -> Void
@@ -95,6 +101,7 @@ struct NowPlayingBar: View {
     let onToggleRemainingTime: () -> Void
     let onVolumeChange: (Float) -> Void
     let onToggleMute: () -> Void
+    let onSetShuffle: (Bool) -> Void
     let onCycleRepeat: () -> Void
     let onDropToQueue: ([String]) -> Void
     let onNavigateToAlbum: () -> Void
@@ -102,24 +109,46 @@ struct NowPlayingBar: View {
 
     @State
     private var queueButtonDropTargeted = false
+    @State
+    private var playHovering = false
 
     var body: some View {
-        HStack(spacing: 16) {
+        HStack(spacing: 0) {
             trackInfo
-                .frame(width: 220, alignment: .leading)
+                .frame(maxWidth: .infinity, alignment: .leading)
 
-            Spacer()
-
-            transportControls
-
-            Spacer()
+            centerColumn
+                .frame(width: 460)
 
             trailingControls
-                .frame(width: 180, alignment: .trailing)
+                .frame(maxWidth: .infinity, alignment: .trailing)
         }
-        .padding(.horizontal, 16)
-        .frame(height: 72)
-        .background(Theme.surface)
+        .padding(.vertical, 14)
+        .padding(.horizontal, 22)
+        .background(cardChrome)
+    }
+
+    // MARK: - Card chrome
+
+    private var cardChrome: some View {
+        RoundedRectangle(cornerRadius: 16)
+            .fill(.ultraThinMaterial)
+            .overlay(
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(
+                        LinearGradient(
+                            colors: [Theme.surfaceElevated, Theme.surface],
+                            startPoint: .top,
+                            endPoint: .bottom,
+                        ),
+                    )
+                    .opacity(0.92),
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 16)
+                    .strokeBorder(Color.white.opacity(0.08), lineWidth: 1),
+            )
+            .shadow(color: .black.opacity(0.5), radius: 24, y: 10)
     }
 
     // MARK: - Left: track info
@@ -129,8 +158,9 @@ struct NowPlayingBar: View {
             if trackTitle != nil {
                 Button(action: onNavigateToAlbum) {
                     albumArt
-                        .frame(width: 48, height: 48)
-                        .clipShape(RoundedRectangle(cornerRadius: 6))
+                        .frame(width: 54, height: 54)
+                        .clipShape(RoundedRectangle(cornerRadius: 10))
+                        .shadow(color: .black.opacity(0.4), radius: 8, y: 4)
                         .accessibilityLabel("Album art")
                 }
                 .buttonStyle(.plain)
@@ -140,8 +170,8 @@ struct NowPlayingBar: View {
                 if let title = trackTitle {
                     Button(action: onNavigateToAlbum) {
                         Text(title)
-                            .font(.callout)
-                            .fontWeight(.medium)
+                            .font(.system(size: 15, weight: .bold))
+                            .tracking(-0.2)
                             .lineLimit(1)
                     }
                     .buttonStyle(.plain)
@@ -149,7 +179,7 @@ struct NowPlayingBar: View {
 
                 if let secondaryLine {
                     Text(secondaryLine)
-                        .font(.caption)
+                        .font(.system(size: 13, weight: .medium))
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                 }
@@ -158,45 +188,123 @@ struct NowPlayingBar: View {
     }
 
     private var albumArt: some View {
-        ImageView(content: cover, pointSize: 48)
+        ImageView(content: cover, pointSize: 54)
     }
 
     // MARK: - Center: transport controls + progress
 
-    private var transportControls: some View {
-        VStack(spacing: 4) {
-            HStack(spacing: 20) {
-                Button(action: onPrevious) {
-                    Image(systemName: "backward.fill")
-                        .font(.title3)
-                        .frame(width: 32, height: 32)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .help("Previous track")
-                .accessibilityLabel("Previous track")
+    private var centerColumn: some View {
+        VStack(spacing: 10) {
+            HStack(spacing: 22) {
+                shuffleButton
 
-                PlayPauseControl(
-                    isPlaying: isPlaying,
-                    isLoading: isLoading,
-                    glyphFont: .title2,
-                    spinnerControlSize: .small,
-                    targetSize: 36,
-                    onToggle: onPlayPause
+                navButton(
+                    "backward.fill",
+                    help: "Previous track",
+                    action: onPrevious
                 )
 
-                Button(action: onNext) {
-                    Image(systemName: "forward.fill")
-                        .font(.title3)
-                        .frame(width: 32, height: 32)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .help("Next track")
-                .accessibilityLabel("Next track")
+                playPauseButton
+
+                navButton(
+                    "forward.fill",
+                    help: "Next track",
+                    action: onNext
+                )
+
+                repeatButton
             }
 
             progressBar
+        }
+    }
+
+    private var shuffleButton: some View {
+        let enabled = shuffled != nil
+        let active = shuffled == true
+        return Button {
+            onSetShuffle(!(shuffled ?? false))
+        } label: {
+            toggleLabel("shuffle", active: active)
+        }
+        .buttonStyle(IconHoverButtonStyle())
+        .disabled(!enabled)
+        .opacity(enabled ? 1 : 0.4)
+        .help(active ? "Turn off shuffle" : "Shuffle")
+        .accessibilityLabel(active ? "Turn off shuffle" : "Shuffle")
+    }
+
+    private var repeatButton: some View {
+        let active = repeatMode != .off
+        let glyph = repeatMode == .track ? "repeat.1" : "repeat"
+        return Button(action: onCycleRepeat) {
+            toggleLabel(glyph, active: active)
+        }
+        .buttonStyle(IconHoverButtonStyle())
+        .help(repeatHelp)
+        .accessibilityLabel(repeatHelp)
+    }
+
+    /// Shuffle/repeat share the same 30pt slot: accent glyph on a soft accent
+    /// fill when active, secondary otherwise (hover brightening supplied by
+    /// `IconHoverButtonStyle`).
+    @ViewBuilder
+    private func toggleLabel(_ systemName: String, active: Bool) -> some View {
+        let glyph = Image(systemName: systemName)
+            .font(.system(size: 16, weight: .semibold))
+        Group {
+            if active {
+                glyph.foregroundStyle(Theme.accent)
+            }
+            else {
+                glyph
+            }
+        }
+        .frame(width: 30, height: 30)
+        .background(
+            RoundedRectangle(cornerRadius: 8)
+                .fill(active ? Theme.accentSoft : Color.clear),
+        )
+        .contentShape(Rectangle())
+    }
+
+    private func navButton(
+        _ systemName: String,
+        help: LocalizedStringKey,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            Image(systemName: systemName)
+                .font(.system(size: 20, weight: .medium))
+                .frame(width: 34, height: 34)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(IconHoverButtonStyle())
+        .help(help)
+        .accessibilityLabel(help)
+    }
+
+    private var playPauseButton: some View {
+        PlayPauseControl(
+            isPlaying: isPlaying,
+            isLoading: isLoading,
+            glyphFont: .system(size: 18, weight: .medium),
+            spinnerControlSize: .small,
+            targetSize: 48,
+            onToggle: onPlayPause,
+        )
+        .foregroundStyle(Color(white: 0.12))
+        // The window pins the dark scheme, but this control sits on a light
+        // circle: force the light scheme so the loading spinner (an
+        // NSProgressIndicator, which ignores `.tint`) draws dark on it.
+        .environment(\.colorScheme, .light)
+        .background(Circle().fill(Color(white: 0.97)))
+        .shadow(color: .black.opacity(0.5), radius: 9, y: 5)
+        .scaleEffect(playHovering ? 1.05 : 1.0)
+        .onHover { hovering in
+            withAnimation(.easeInOut(duration: 0.12)) {
+                playHovering = hovering
+            }
         }
     }
 
@@ -207,115 +315,107 @@ struct NowPlayingBar: View {
             onSeek: onSeek,
             onToggleRemainingTime: onToggleRemainingTime,
         )
-        .frame(width: 396, height: 20)
+        .frame(maxWidth: .infinity)
+        .frame(height: 20)
         .accessibilityLabel("Playback position")
     }
 
-    // MARK: - Right: volume + repeat
+    // MARK: - Right: queue + volume
 
     private var trailingControls: some View {
         HStack(spacing: 12) {
-            repeatButton
+            queueButton
 
-            Button(action: { showQueue.toggle() }) {
-                Image(systemName: "list.bullet")
-                    .foregroundColor(showQueue ? .accentColor : .secondary)
-                    .frame(width: 30, height: 30)
-                    .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .font(.title3)
-            .help("Queue")
-            .accessibilityLabel("Queue")
-            .padding(4)
-            .background(
-                RoundedRectangle(cornerRadius: 6)
-                    .fill(
-                        queueButtonDropTargeted
-                            ? Color.accentColor.opacity(0.3) : Color.clear
-                    ),
-            )
-            .scaleEffect(queueButtonDropTargeted ? 1.15 : 1.0)
-            .animation(
-                .easeInOut(duration: 0.15),
-                value: queueButtonDropTargeted
-            )
-            .dropDestination(for: String.self) { droppedIds, _ in
-                queueButtonDropTargeted = false
-                guard !droppedIds.isEmpty else {
-                    return false
-                }
-                onDropToQueue(droppedIds)
-                return true
-            } isTargeted: { targeted in
-                queueButtonDropTargeted = targeted
-            }
-            .overlay(alignment: .topTrailing) {
-                QueueAddBadge(
-                    events: queueAddPublisher,
-                    scheduler: .main,
-                    style: QueueAddBadgeStyle(
-                        textFont: .system(size: 10, weight: .semibold),
-                        symbolFont: .system(size: 8.5, weight: .bold),
-                        padding: EdgeInsets(
-                            top: 1,
-                            leading: 5,
-                            bottom: 1,
-                            trailing: 5
-                        ),
-                        fill: .accentColor,
-                        offset: CGSize(width: 6, height: -6)
-                    )
-                )
-            }
+            muteButton
 
-            Button(action: onToggleMute) {
-                Image(
-                    systemName: isMuted ? "speaker.slash.fill" : "speaker.fill"
-                )
-                .foregroundStyle(.secondary)
-                .frame(width: 30, height: 30)
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .font(.title3)
-            .help(isMuted ? "Unmute" : "Mute")
-            .accessibilityLabel(isMuted ? "Unmute" : "Mute")
-
-            Slider(
-                value: Binding(
-                    get: { volume },
-                    set: { onVolumeChange($0) },
-                ),
-                in: 0...1,
-            )
-            .frame(width: 80)
-            .accessibilityLabel("Volume")
+            SlimSlider(value: volume, onChange: onVolumeChange)
+                .frame(width: 96)
+                .accessibilityLabel("Volume")
         }
     }
 
-    private var repeatButton: some View {
-        Button(action: onCycleRepeat) {
-            Group {
-                switch repeatMode {
-                case .off:
-                    Image(systemName: "repeat")
-                        .foregroundStyle(.secondary)
-                case .context:
-                    Image(systemName: "repeat")
-                        .foregroundColor(.accentColor)
-                case .track:
-                    Image(systemName: "repeat.1")
-                        .foregroundColor(.accentColor)
-                }
-            }
-            .frame(width: 30, height: 30)
-            .contentShape(Rectangle())
+    private var queueButton: some View {
+        Button(action: { showQueue.toggle() }) {
+            queueGlyph
+                .frame(width: 32, height: 32)
+                .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
-        .font(.title3)
-        .help(repeatHelp)
-        .accessibilityLabel(repeatHelp)
+        .buttonStyle(IconHoverButtonStyle())
+        .help("Queue")
+        .accessibilityLabel("Queue")
+        .background(
+            RoundedRectangle(cornerRadius: 8)
+                .fill(
+                    queueButtonDropTargeted
+                        ? Theme.accent.opacity(0.3) : Color.clear
+                ),
+        )
+        .scaleEffect(queueButtonDropTargeted ? 1.15 : 1.0)
+        .animation(
+            .easeInOut(duration: 0.15),
+            value: queueButtonDropTargeted
+        )
+        .dropDestination(for: String.self) { droppedIds, _ in
+            queueButtonDropTargeted = false
+            guard !droppedIds.isEmpty else {
+                return false
+            }
+            onDropToQueue(droppedIds)
+            return true
+        } isTargeted: { targeted in
+            queueButtonDropTargeted = targeted
+        }
+        .overlay(alignment: .topTrailing) {
+            QueueAddBadge(
+                events: queueAddPublisher,
+                scheduler: .main,
+                style: QueueAddBadgeStyle(
+                    textFont: .system(size: 10, weight: .semibold),
+                    symbolFont: .system(size: 8.5, weight: .bold),
+                    padding: EdgeInsets(
+                        top: 1,
+                        leading: 5,
+                        bottom: 1,
+                        trailing: 5
+                    ),
+                    fill: Theme.accent,
+                    offset: CGSize(width: 6, height: -6)
+                )
+            )
+        }
+    }
+
+    @ViewBuilder
+    private var queueGlyph: some View {
+        let glyph = Image(systemName: "list.bullet")
+            .font(.system(size: 17, weight: .medium))
+        if showQueue {
+            glyph.foregroundStyle(Theme.accent)
+        }
+        else {
+            glyph
+        }
+    }
+
+    private var muteButton: some View {
+        Button(action: onToggleMute) {
+            Image(systemName: muteIconName)
+                .font(.system(size: 15, weight: .medium))
+                .frame(width: 30, height: 30)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(IconHoverButtonStyle())
+        .help(isMuted ? "Unmute" : "Mute")
+        .accessibilityLabel(isMuted ? "Unmute" : "Mute")
+    }
+
+    /// The rendered volume level chooses the speaker glyph: silenced when muted
+    /// or at zero, one wave up to the midpoint, two above it.
+    private var muteIconName: String {
+        if isMuted || volume == 0 {
+            return "speaker.slash.fill"
+        }
+        return volume <= 0.55 ? "speaker.wave.1.fill" : "speaker.wave.2.fill"
     }
 
     private var repeatHelp: LocalizedStringKey {
@@ -326,6 +426,33 @@ struct NowPlayingBar: View {
             "Repeat: context"
         case .track:
             "Repeat: track"
+        }
+    }
+}
+
+/// Hover treatment shared by every icon-only button in the bar: a rounded
+/// subtle fill while the pointer is over it, and the glyph stepping from the
+/// secondary color toward the primary. Buttons that carry an active-state tint
+/// (shuffle/repeat/queue) set their own glyph color, which wins over this base.
+private struct IconHoverButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        Hovering(configuration: configuration)
+    }
+
+    private struct Hovering: View {
+        let configuration: Configuration
+        @State
+        private var hovering = false
+
+        var body: some View {
+            configuration.label
+                .foregroundStyle(hovering ? Color.primary : Color.secondary)
+                .background(
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(Color.white.opacity(hovering ? 0.06 : 0)),
+                )
+                .opacity(configuration.isPressed ? 0.6 : 1)
+                .onHover { hovering = $0 }
         }
     }
 }
@@ -342,6 +469,7 @@ struct NowPlayingBar: View {
         let isPlaying: Bool
         var isLoading: Bool = false
         let repeatMode: BridgeRepeatMode
+        let shuffled: Bool?
 
         @State
         private var showQueue = false
@@ -362,6 +490,7 @@ struct NowPlayingBar: View {
                 volume: volume,
                 isMuted: isMuted,
                 repeatMode: repeatMode,
+                shuffled: shuffled,
                 showQueue: $showQueue,
                 onPlayPause: {},
                 onNext: {},
@@ -370,6 +499,7 @@ struct NowPlayingBar: View {
                 onToggleRemainingTime: {},
                 onVolumeChange: { volume = $0 },
                 onToggleMute: { isMuted.toggle() },
+                onSetShuffle: { _ in },
                 onCycleRepeat: {},
                 onDropToQueue: { _ in },
                 onNavigateToAlbum: {},
@@ -385,6 +515,7 @@ struct NowPlayingBar: View {
             artistNames: PreviewData.nowPlayingArtist,
             isPlaying: true,
             repeatMode: .off,
+            shuffled: false,
         )
         .environment(MediaPaths.stub)
         .environment(PreviewData.queueStore(manualCount: 2))
@@ -397,6 +528,20 @@ struct NowPlayingBar: View {
             artistNames: PreviewData.nowPlayingArtist,
             isPlaying: false,
             repeatMode: .context,
+            shuffled: false,
+        )
+        .environment(MediaPaths.stub)
+        .environment(PreviewData.queueStore(manualCount: 2, shuffled: true))
+        .environment(Queue.stub)
+    }
+
+    #Preview("Shuffle active") {
+        NowPlayingBarPreview(
+            trackTitle: PreviewData.nowPlayingTitle,
+            artistNames: PreviewData.nowPlayingArtist,
+            isPlaying: true,
+            repeatMode: .off,
+            shuffled: true,
         )
         .environment(MediaPaths.stub)
         .environment(PreviewData.queueStore(manualCount: 2, shuffled: true))
@@ -410,6 +555,7 @@ struct NowPlayingBar: View {
             isPlaying: true,
             isLoading: true,
             repeatMode: .off,
+            shuffled: nil,
         )
         .environment(MediaPaths.stub)
         .environment(PreviewData.queueStore(manualCount: 5, context: nil))
@@ -422,6 +568,7 @@ struct NowPlayingBar: View {
             artistNames: nil,
             isPlaying: false,
             repeatMode: .off,
+            shuffled: nil,
         )
         .environment(MediaPaths.stub)
         .environment(PreviewData.queueStore(manualCount: 0, context: nil))
