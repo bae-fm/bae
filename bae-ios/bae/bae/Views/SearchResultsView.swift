@@ -1,14 +1,15 @@
 import BaeKit
 import SwiftUI
 
-/// Library search results. Album and track rows open album detail; composer and
-/// work rows navigate to their bridge ids.
+/// Library search results. Album and track rows open album detail; artist,
+/// composer, and work rows navigate to their bridge ids.
 /// Iterates and renders only — the search call and the bridge→model mapping
 /// live in the data layer (`Library.searchLibrary` / `SearchResults`).
 struct SearchResultsView: View {
     let results: SearchResults?
     let error: String?
     let onSelectAlbum: (String) -> Void
+    let onSelectArtist: (String) -> Void
     let onSelectComposer: (String) -> Void
     let onSelectWork: (String) -> Void
 
@@ -17,8 +18,9 @@ struct SearchResultsView: View {
             centered(Text(error).foregroundStyle(.red))
         }
         else if let results {
-            if results.albums.isEmpty, results.tracks.isEmpty,
-                results.composers.isEmpty, results.works.isEmpty
+            if results.albums.isEmpty, results.artists.isEmpty,
+                results.tracks.isEmpty, results.composers.isEmpty,
+                results.works.isEmpty
             {
                 centered(
                     Text("No results for \u{201C}\(results.query)\u{201D}")
@@ -34,6 +36,18 @@ struct SearchResultsView: View {
                                     onSelectAlbum(album.id)
                                 } label: {
                                     AlbumResultRow(album: album)
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                    }
+                    if !results.artists.isEmpty {
+                        Section("Artists") {
+                            ForEach(results.artists, id: \.artistId) { artist in
+                                Button {
+                                    onSelectArtist(artist.artistId)
+                                } label: {
+                                    ArtistResultRow(artist: artist)
                                 }
                                 .buttonStyle(.plain)
                             }
@@ -106,6 +120,28 @@ private struct AlbumResultRow: View {
                     .font(.body)
                     .lineLimit(1)
                 Text(album.year.map { "\(album.artistName) \u{00B7} \($0)" } ?? album.artistName)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+            Spacer()
+        }
+    }
+}
+
+private struct ArtistResultRow: View {
+    let artist: BridgeArtistSummary
+
+    var body: some View {
+        HStack(spacing: 12) {
+            ImageView(imageRef: artist.image, pointSize: 48)
+                .frame(width: 48, height: 48)
+                .clipShape(RoundedRectangle(cornerRadius: 4))
+            VStack(alignment: .leading, spacing: 2) {
+                Text(artist.name)
+                    .font(.body)
+                    .lineLimit(1)
+                Text("\(artist.albumCount) \(String(localized: "Albums"))")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)

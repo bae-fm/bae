@@ -159,7 +159,7 @@ struct LibraryView: View {
             .navigationBarTitleDisplayMode(.inline)
             .searchable(
                 text: $searchQuery,
-                prompt: "Search albums, tracks, composers, and works"
+                prompt: "Search"
             )
             .task(id: searchQuery) {
                 await runSearch()
@@ -640,6 +640,7 @@ private struct LibraryContentView: View {
                 results: searchResults,
                 error: searchError,
                 onSelectAlbum: onSelectAlbum,
+                onSelectArtist: onSelectArtist,
                 onSelectComposer: onSelectComposer,
                 onSelectWork: onSelectWork
             )

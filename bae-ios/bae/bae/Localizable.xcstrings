@@ -14674,196 +14674,196 @@
         }
       }
     },
-    "Search albums, tracks, composers, and works": {
+    "Search": {
+      "comment": "iOS library search field placeholder",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Search albums, tracks, composers, and works"
+            "value": "Search"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Buscar álbumes, pistas, compositores y obras"
+            "value": "Buscar"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Rechercher des albums, pistes, compositeurs et œuvres"
+            "value": "Rechercher"
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Alben, Tracks, Komponisten und Werke suchen"
+            "value": "Suchen"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Buscar álbuns, faixas, compositores e obras"
+            "value": "Pesquisar"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "アルバム、トラック、作曲者、作品を検索"
+            "value": "検索"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "搜索专辑、曲目、作曲家和作品"
+            "value": "搜索"
           }
         },
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "البحث في الألبومات والمقاطع والمؤلفين والأعمال"
+            "value": "بحث"
           }
         },
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "חפש אלבומים, רצועות, מלחינים ויצירות"
+            "value": "חיפוש"
           }
         },
         "uk": {
           "stringUnit": {
             "state": "translated",
-            "value": "Пошук альбомів, треків, композиторів і творів"
+            "value": "Пошук"
           }
         },
         "bg": {
           "stringUnit": {
             "state": "translated",
-            "value": "Търсене в албуми, песни, композитори и произведения"
+            "value": "Търсене"
           }
         },
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Szukaj albumów, ścieżek, kompozytorów i dzieł"
+            "value": "Szukaj"
           }
         },
         "cs": {
           "stringUnit": {
             "state": "translated",
-            "value": "Hledat alba, stopy, skladatele a díla"
+            "value": "Hledat"
           }
         },
         "hr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Pretraži albume, pjesme, skladatelje i djela"
+            "value": "Pretraži"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "앨범, 트랙, 작곡가, 작품 검색"
+            "value": "검색"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "搜尋專輯、曲目、作曲者和作品"
+            "value": "搜尋"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Cerca album, brani, compositori e opere"
+            "value": "Cerca"
           }
         },
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Albüm, parça, besteci ve eser ara"
+            "value": "Ara"
           }
         },
         "vi": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tìm album, bản nhạc, nhà soạn nhạc và tác phẩm"
+            "value": "Tìm kiếm"
           }
         },
         "nl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Zoek albums, nummers, componisten en werken"
+            "value": "Zoeken"
           }
         },
         "hi": {
           "stringUnit": {
             "state": "translated",
-            "value": "एल्बम, ट्रैक, संगीतकार और कृतियां खोजें"
+            "value": "खोजें"
           }
         },
         "bn": {
           "stringUnit": {
             "state": "translated",
-            "value": "অ্যালবাম, ট্র্যাক, সুরকার ও কাজ অনুসন্ধান করুন"
+            "value": "অনুসন্ধান"
           }
         },
         "ta": {
           "stringUnit": {
             "state": "translated",
-            "value": "ஆல்பங்கள், பாடல்கள், இசையமைப்பாளர்கள், படைப்புகளைத் தேடு"
+            "value": "தேடு"
           }
         },
         "te": {
           "stringUnit": {
             "state": "translated",
-            "value": "ఆల్బమ్‌లు, ట్రాక్‌లు, సంగీతరచయితలు, కృతులను వెతుకు"
+            "value": "వెతకండి"
           }
         },
         "mr": {
           "stringUnit": {
             "state": "translated",
-            "value": "अल्बम, गाणी, संगीतकार आणि कृती शोधा"
+            "value": "शोधा"
           }
         },
         "ur": {
           "stringUnit": {
             "state": "translated",
-            "value": "البمز، نغمے، موسیقار، اور کام تلاش کریں"
+            "value": "تلاش کریں"
           }
         },
         "gu": {
           "stringUnit": {
             "state": "translated",
-            "value": "આલ્બમો, ટ્રૅક્સ, સંગીતકારો અને કૃતિઓ શોધો"
+            "value": "શોધો"
           }
         },
         "kn": {
           "stringUnit": {
             "state": "translated",
-            "value": "ಆಲ್ಬಮ್‌ಗಳು, ಟ್ರ್ಯಾಕ್‌ಗಳು, ಸಂಗೀತ ಸಂಯೋಜಕರು ಮತ್ತು ಕೃತಿಗಳನ್ನು ಹುಡುಕಿ"
+            "value": "ಹುಡುಕಿ"
           }
         },
         "ml": {
           "stringUnit": {
             "state": "translated",
-            "value": "ആൽബങ്ങൾ, ട്രാക്കുകൾ, സംഗീതരചയിതാക്കൾ, കൃതികൾ എന്നിവ തിരയുക"
+            "value": "തിരയുക"
           }
         },
         "pa": {
           "stringUnit": {
             "state": "translated",
-            "value": "ਐਲਬਮਾਂ, ਟ੍ਰੈਕ, ਸੰਗੀਤਕਾਰ ਅਤੇ ਰਚਨਾਵਾਂ ਖੋਜੋ"
+            "value": "ਖੋਜੋ"
           }
         },
         "th": {
           "stringUnit": {
             "state": "translated",
-            "value": "ค้นหาอัลบั้ม แทร็ก ผู้ประพันธ์ และผลงาน"
+            "value": "ค้นหา"
           }
         }
-      },
-      "comment": "iOS library search prompt"
+      }
     },
     "Settings": {
       "localizations": {
