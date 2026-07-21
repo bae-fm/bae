@@ -170,36 +170,18 @@ extension LibraryView {
     }
 
     /// Pinned above the content, fixed across mode switches. The heading *is*
-    /// the mode switcher; the trailing controls are mode-specific. Its
-    /// metrics scrub between full and compact off `headerCollapse.progress`;
-    /// the animation smooths the in-zone tracking and carries the latched
-    /// expand/collapse flips.
+    /// the mode switcher; the trailing controls are mode-specific.
     private var libraryHeader: some View {
-        let progress = headerCollapse.progress
-        return HStack(alignment: .bottom) {
-            LibraryModeHeading(collapseProgress: progress)
-            Spacer()
-            Group {
-                switch uiStore.libraryBrowserMode {
-                case .albums:
-                    sortControls(session.albums)
-                case .composers:
-                    sortControls(session.composers)
-                case .artists:
-                    sortControls(session.artists)
-                }
+        LibraryHeader(collapseProgress: headerCollapse.progress) {
+            switch uiStore.libraryBrowserMode {
+            case .albums:
+                sortControls(session.albums)
+            case .composers:
+                sortControls(session.composers)
+            case .artists:
+                sortControls(session.artists)
             }
-            // A constant lift off the band's bottom edge: the heading sinks
-            // against the content edge in the compact state while the
-            // trailing controls hold their own vertical seat.
-            .padding(.bottom, 8)
         }
-        .padding(.horizontal, 16)
-        .padding(.top, 40 - 28 * progress)
-        // The compact bottom inset nearly vanishes so the heading sits down
-        // against the content edge rather than floating in the band.
-        .padding(.bottom, 24 - 20 * progress)
-        .animation(.smooth(duration: 0.2), value: progress)
     }
 
     private func sortControls<
@@ -1041,6 +1023,57 @@ private struct WorkDetailView: View {
             .environment(Queue.stub)
             .environment(Downloads.stub)
             .environment(LibraryView.emptyLibrary)
+            .environment(libraryStore)
+            .environment(uiStore)
+            .environment(session)
+            .frame(width: 1100, height: 700)
+            .windowBackground()
+    }
+
+    /// Enough synthesized albums for the grid to scroll well past the
+    /// header's tracking zone, served through a canned-page `Library` behind
+    /// the real session — scrolling the canvas drives the header collapse
+    /// through the same `HeaderCollapse` pipeline the app uses. Expanding an
+    /// album shows the detail placeholder (no release details are seeded).
+    #Preview("Albums \u{2014} Grid") {
+        let uiStore = UiStore()
+        let libraryStore = LibraryStore()
+        let albums: [BridgeAlbum] = (0..<40)
+            .map { index in
+                BridgeAlbum(
+                    id: "grid-\(index)",
+                    title: "Album Title \(index + 1)",
+                    year: 1970 + Int32(index % 50),
+                    isCompilation: false,
+                    artistNames: "Artist Name \(index % 7 + 1)",
+                    releaseIds: ["rel-grid-\(index)"],
+                    primaryReleaseId: "rel-grid-\(index)",
+                    cover: nil,
+                )
+            }
+        let library = Library(
+            getAlbumCount: { UInt64(albums.count) },
+            getAlbumPage: { _, offset, limit in
+                let start = min(Int(offset), albums.count)
+                let end = min(start + Int(limit), albums.count)
+                return Array(albums[start..<end])
+            },
+            getAlbumIndex: { _, albumId in
+                albums.firstIndex { $0.id == albumId }.map(UInt64.init)
+            },
+        )
+        let session = LibraryBrowseSession(
+            library: library,
+            projectionRegistry: ProjectionRegistry(),
+            libraryStore: libraryStore,
+            uiStore: uiStore
+        )
+        return LibraryView()
+            .environment(MediaPaths.stub)
+            .environment(Playback.stub)
+            .environment(Queue.stub)
+            .environment(Downloads.stub)
+            .environment(library)
             .environment(libraryStore)
             .environment(uiStore)
             .environment(session)

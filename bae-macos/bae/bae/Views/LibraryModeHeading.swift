@@ -20,9 +20,9 @@ struct LibraryModeHeading: View {
         } label: {
             Text(uiStore.libraryBrowserMode.displayName)
                 .font(
-                    .system(size: 40 - 20 * collapseProgress, weight: .heavy)
+                    .system(size: 48 - 31 * collapseProgress, weight: .heavy)
                 )
-                .tracking(-1 + 0.7 * collapseProgress)
+                .tracking(-1.2 + 0.9 * collapseProgress)
                 .contentTransition(.interpolate)
         }
         .menuStyle(.borderlessButton)
