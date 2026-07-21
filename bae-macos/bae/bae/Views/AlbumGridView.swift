@@ -37,19 +37,11 @@ struct AlbumGridView<ExpansionContent: View>: View {
     @FocusState
     private var gridFocused: Bool
 
-    private static var maxContentWidth: CGFloat {
-        1240
-    }
-
-    private static var contentPadding: CGFloat {
-        16
-    }
-
     var body: some View {
         GeometryReader { geometry in
             let effectiveWidth =
-                min(geometry.size.width, Self.maxContentWidth) - Self
-                .contentPadding * 2
+                min(geometry.size.width, LibraryContentContainer.maxWidth)
+                - LibraryContentContainer.horizontalPadding * 2
             let columnCount = max(
                 1,
                 Int(
@@ -147,9 +139,12 @@ struct AlbumGridView<ExpansionContent: View>: View {
                             )
                         }
                     }
-                    .padding(.horizontal, Self.contentPadding)
+                    .padding(
+                        .horizontal,
+                        LibraryContentContainer.horizontalPadding
+                    )
                     .padding(.bottom)
-                    .frame(maxWidth: Self.maxContentWidth)
+                    .frame(maxWidth: LibraryContentContainer.maxWidth)
                     .frame(maxWidth: .infinity)
                     // A click on the empty grid background (not on a card, whose
                     // own tap wins) clears the multi-selection.

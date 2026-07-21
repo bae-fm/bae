@@ -16,11 +16,20 @@ struct LibraryHeader<Trailing: View>: View {
             Spacer()
             trailing
         }
-        .padding(.horizontal, 40)
-        .padding(.top, 40 - 32 * collapseProgress)
+        // Aligned to the album art's left edge: the shared container padding
+        // plus the card's own 6pt inset.
+        .padding(
+            .horizontal,
+            LibraryContentContainer.horizontalPadding + 6
+        )
+        .padding(.top, 56 - 42 * collapseProgress)
         // The compact bottom inset shrinks so the heading sits low in the
         // band, with enough breathing room off the content edge.
-        .padding(.bottom, 24 - 16 * collapseProgress)
+        .padding(.bottom, 32 - 20 * collapseProgress)
+        // The same width cap the grid centers in, so the heading and sort
+        // controls line up with the content at every window width.
+        .frame(maxWidth: LibraryContentContainer.maxWidth)
+        .frame(maxWidth: .infinity)
         .animation(.easeOut(duration: 0.15), value: collapseProgress)
     }
 }
