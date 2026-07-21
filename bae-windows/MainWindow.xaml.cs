@@ -155,10 +155,25 @@ public sealed partial class MainWindow : Window
         _sortControls = new LibrarySortControls(SortControls, _browser.Sort, ReloadBrowserForSortChange);
         BuildModeHeadingFlyout();
         SelectBrowserMode(BrowserMode.Albums, reload: false);
+        // The toolbar buttons are icon-only; each carries its former text label as
+        // the tooltip and accessible name (reusing the existing x:Uid strings).
+        SetIconButtonLabel(PlaybackMenuButton, "PlaybackMenuButton.Content");
+        SetIconButtonLabel(LibrariesButton, "LibrariesButton.Content");
+        SetIconButtonLabel(ImportButton, "ImportButton.Content");
+        SetIconButtonLabel(StorageButton, "StorageButton.Content");
+        SetIconButtonLabel(SettingsButton, "SettingsButton.Content");
+        // Close keeps its own more descriptive, localized "close library" tooltip
+        // (set by x:Uid); give it the glyph here so x:Uid's Content doesn't win, and
+        // read that tooltip back as the accessible name.
+        CloseLibraryButton.Content = new FontIcon { Glyph = "\uE8BB", FontSize = 16 };
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(
+            CloseLibraryButton, ToolTipService.GetToolTip(CloseLibraryButton) as string ?? string.Empty);
+        // Escape in a non-empty search box clears it and restores the browse pane;
+        // handledEventsToo so it fires even if the box marks Escape handled.
+        SearchBox.AddHandler(UIElement.KeyDownEvent, new KeyEventHandler(OnSearchBoxKeyDown), handledEventsToo: true);
         // The album tiles scroll under a header that collapses as any browse panel
         // scrolls; each panel's scroll drives the shared collapse model.
         AttachCollapseScroll(AlbumGrid, "albums");
-        AttachCollapseScroll(SearchResultsList, "search");
         AttachCollapseScroll(ComposerList, "composers");
         AttachCollapseScroll(ArtistList, "artists");
         // Fit the grid once its wrap panel is realized, and on every later resize.
@@ -275,7 +290,8 @@ public sealed partial class MainWindow : Window
             text => StatusText.Text = text,
             ShowComposerBrowser,
             ShowArtistBrowser,
-            _albumDetail.Show);
+            _albumDetail.Show,
+            SearchFlyout.Hide);
         _unlockDialog = new UnlockDialog(() => Content.XamlRoot, text => StatusText.Text = text, OpenLibrary);
         _joinDialog = new JoinLibraryDialog(
             () => Content.XamlRoot,
@@ -377,6 +393,20 @@ public sealed partial class MainWindow : Window
         if (string.IsNullOrEmpty(SearchBox.Text))
         {
             LoadCurrentBrowserMode();
+        }
+    }
+
+    // Escape clears a non-empty search box and drops back to the active browse
+    // pane, standing in for a clear button (the AutoSuggestBox's query-icon slot
+    // has no room for one).
+    private void OnSearchBoxKeyDown(object sender, KeyRoutedEventArgs e)
+    {
+        if (e.Key == VirtualKey.Escape && !string.IsNullOrEmpty(SearchBox.Text))
+        {
+            SearchBox.Text = string.Empty;
+            SearchFlyout.Hide();
+            LoadCurrentBrowserMode();
+            e.Handled = true;
         }
     }
 
@@ -523,7 +553,6 @@ public sealed partial class MainWindow : Window
         AlbumGrid.Visibility = Visibility.Visible;
         ComposerBrowser.Visibility = Visibility.Collapsed;
         ArtistBrowser.Visibility = Visibility.Collapsed;
-        SearchResultsList.Visibility = Visibility.Collapsed;
     }
 
     private void ShowComposerBrowser()
@@ -531,7 +560,6 @@ public sealed partial class MainWindow : Window
         AlbumGrid.Visibility = Visibility.Collapsed;
         ComposerBrowser.Visibility = Visibility.Visible;
         ArtistBrowser.Visibility = Visibility.Collapsed;
-        SearchResultsList.Visibility = Visibility.Collapsed;
     }
 
     private void ShowArtistBrowser()
@@ -539,15 +567,6 @@ public sealed partial class MainWindow : Window
         AlbumGrid.Visibility = Visibility.Collapsed;
         ComposerBrowser.Visibility = Visibility.Collapsed;
         ArtistBrowser.Visibility = Visibility.Visible;
-        SearchResultsList.Visibility = Visibility.Collapsed;
-    }
-
-    private void ShowSearchBrowser()
-    {
-        AlbumGrid.Visibility = Visibility.Collapsed;
-        ComposerBrowser.Visibility = Visibility.Collapsed;
-        ArtistBrowser.Visibility = Visibility.Collapsed;
-        SearchResultsList.Visibility = Visibility.Visible;
     }
 
     // Load the active mode's grid through the store, then render the status line
@@ -1283,6 +1302,7 @@ public sealed partial class MainWindow : Window
         var query = args.QueryText?.Trim() ?? string.Empty;
         if (query.Length == 0)
         {
+            SearchFlyout.Hide();
             LoadCurrentBrowserMode();
         }
         else
@@ -1291,8 +1311,9 @@ public sealed partial class MainWindow : Window
         }
     }
 
-    // Show the search pane and render the store's cover-attached results; a session
-    // closed mid-search leaves the current view in place.
+    // Render the store's cover-attached results into the dropdown anchored under
+    // the search field, over whatever browse pane is showing; a session closed
+    // mid-search leaves the current view in place.
     private void RenderSearch(BrowserSearch search)
     {
         if (search.HandleGone)
@@ -1300,11 +1321,14 @@ public sealed partial class MainWindow : Window
             return;
         }
 
-        // The album grid leaves the screen for the search results pane.
-        _albumSelection.Clear();
-        SyncAlbumSelectionTint();
-        ShowSearchBrowser();
         _browserPanes.RenderSearchResults(search.Results, search.Error);
+        // Transient show mode keeps focus in the search box (the default grab would
+        // pull it into the flyout after every submit); rows stay clickable/tabbable.
+        SearchFlyout.ShowAt(SearchBox, new FlyoutShowOptions
+        {
+            ShowMode = FlyoutShowMode.Transient,
+            Placement = FlyoutPlacementMode.BottomEdgeAlignedLeft,
+        });
     }
 
     private async void OnComposerClick(object sender, ItemClickEventArgs e)

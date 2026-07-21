@@ -1,9 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using Microsoft.UI;
 using Microsoft.UI.Dispatching;
+using Microsoft.UI.Text;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Data;
 using Microsoft.UI.Xaml.Media;
 using uniffi.bae_bridge;
 
@@ -17,16 +20,26 @@ namespace Bae.Windows;
 // lives on the window.
 internal sealed class BrowserPanes
 {
-    // One row of the search-results list: a section header, or a clickable
-    // result. Rendered in one virtualized ListView (sections as items, not a
-    // ScrollViewer over a StackPanel of hand-built rows) — the bridge already
-    // caps results at 50/section (~200 rows total), so this bounds the *render*
-    // cost, not the data; there is no paging to do here.
+    // One row of the search-results dropdown: a section header, a status message
+    // (no matches / failed), or a clickable result. Rendered in one virtualized
+    // ListView (sections as items, not a ScrollViewer over a StackPanel of
+    // hand-built rows) — the bridge already caps results at 50/section (~200 rows
+    // total), so this bounds the *render* cost, not the data; there is no paging.
     private abstract record SearchResultRow;
 
     private sealed record SearchHeaderRow(string Title) : SearchResultRow;
 
-    private sealed record SearchItemRow(string Title, string Subtitle, Func<System.Threading.Tasks.Task> Action)
+    private sealed record SearchMessageRow(string Text) : SearchResultRow;
+
+    // A result with cover art (album, composer, work — each exposes a "Cover"
+    // ImageSource and raises PropertyChanged as it loads).
+    private sealed record ArtResultRow(
+        object CoverSource, string Title, string Subtitle, string? Trailing, Func<System.Threading.Tasks.Task> Action)
+        : SearchResultRow;
+
+    // A result with a leading glyph instead of art (tracks, which carry no cover).
+    private sealed record GlyphResultRow(
+        string Glyph, string Title, string Subtitle, string? Trailing, Func<System.Threading.Tasks.Task> Action)
         : SearchResultRow;
 
     private readonly SessionStore _session;
@@ -39,6 +52,7 @@ internal sealed class BrowserPanes
     private readonly Action _showComposerBrowser;
     private readonly Action _showArtistBrowser;
     private readonly Func<string, string?, string?, System.Threading.Tasks.Task> _openAlbum;
+    private readonly Action _dismissSearch;
 
     public BrowserPanes(
         SessionStore session,
@@ -49,10 +63,12 @@ internal sealed class BrowserPanes
         Action<string> setStatus,
         Action showComposerBrowser,
         Action showArtistBrowser,
-        Func<string, string?, string?, System.Threading.Tasks.Task> openAlbum)
+        Func<string, string?, string?, System.Threading.Tasks.Task> openAlbum,
+        Action dismissSearch)
     {
         _session = session;
         _dispatcher = dispatcher;
+        _dismissSearch = dismissSearch;
         _searchResultsList = searchResultsList;
         _searchResultsList.ItemsSource = _searchResults;
         _searchResultsList.ContainerContentChanging += (_, args) =>
@@ -76,52 +92,71 @@ internal sealed class BrowserPanes
 
     public void ClearArtistDetail() => _artistDetailPane.Children.Clear();
 
-    private static FrameworkElement BuildSearchRowVisual(SearchResultRow row) => row switch
+    private FrameworkElement BuildSearchRowVisual(SearchResultRow row) => row switch
     {
         SearchHeaderRow header => new TextBlock
         {
             Text = header.Title,
-            Style = (Style)Application.Current.Resources["SubtitleTextBlockStyle"],
+            FontSize = 12,
+            FontWeight = FontWeights.ExtraBold,
+            CharacterSpacing = 40,
+            Foreground = Secondary,
+            Margin = new Thickness(8, 10, 8, 4),
         },
-        SearchItemRow item => SearchButton(item.Title, item.Subtitle, item.Action),
+        SearchMessageRow message => new TextBlock
+        {
+            Text = message.Text,
+            Foreground = Secondary,
+            TextWrapping = TextWrapping.Wrap,
+            Margin = new Thickness(8, 8, 8, 8),
+        },
+        ArtResultRow item => BuildResultButton(BuildArtLeading(item.CoverSource), item, item.Trailing),
+        GlyphResultRow item => BuildResultButton(BuildGlyphLeading(item.Glyph), item, item.Trailing),
         _ => throw new ArgumentOutOfRangeException(nameof(row), row, "Unknown search result row"),
     };
 
-    // Render the search-results list from the store's cover-attached results. The
-    // window has already flipped to the search pane; this fills the list and sets
-    // the status line (failure, no matches, or clear on results).
+    // Fill the dropdown from the store's cover-attached results: a status message
+    // when the search failed or found nothing, otherwise the sectioned rows. The
+    // window opens the dropdown after this returns.
     public void RenderSearchResults(LibrarySearchResults? results, string? error)
     {
         _searchResults.Clear();
         if (error is not null || results is null)
         {
-            _setStatus(error ?? Loc.Chrome("search.failed"));
+            _searchResults.Add(new SearchMessageRow(error ?? Loc.Chrome("search.failed")));
             return;
         }
 
         if (results.Albums.Count == 0 && results.Tracks.Count == 0
             && results.Composers.Count == 0 && results.Works.Count == 0)
         {
-            _setStatus(Loc.Chrome("search.no_matches"));
+            _searchResults.Add(new SearchMessageRow(Loc.Chrome("search.no_matches")));
             return;
         }
 
-        _setStatus(string.Empty);
         AddSearchSection(Loc.Chrome("search.section.albums"), results.Albums, album =>
-            new SearchItemRow(album.Title, album.Artist, () => _openAlbum(album.Id, null, null)));
+            new ArtResultRow(album, album.Title, AlbumSubtitle(album), null, () => _openAlbum(album.Id, null, null)));
         AddSearchSection(Loc.Chrome("search.section.tracks"), results.Tracks, track =>
-            new SearchItemRow(
-                track.Title, $"{track.ArtistName} — {track.AlbumTitle}", () => _openAlbum(track.AlbumId, null, null)));
+            // Segoe Fluent "Audio" glyph (U+E8D6) stands in for the waveform.
+            new GlyphResultRow(
+                "\uE8D6", track.Title, $"{track.ArtistName} — {track.AlbumTitle}", track.DurationLabel,
+                () => _openAlbum(track.AlbumId, null, null)));
         AddSearchSection(Loc.Chrome("search.section.composers"), results.Composers, composer =>
-            new SearchItemRow(composer.Name, composer.WorkCountText, () => ShowComposerDetail(composer.ArtistId)));
+            new ArtResultRow(
+                composer, composer.Name, composer.WorkCountText, null, () => ShowComposerDetail(composer.ArtistId)));
         AddSearchSection(Loc.Chrome("search.section.works"), results.Works, work =>
-            new SearchItemRow(work.Title, work.ComposerNames ?? string.Empty, () => ShowWorkDetail(work.WorkId)));
+            new ArtResultRow(
+                work, work.Title, work.ComposerNames ?? string.Empty, null, () => ShowWorkDetail(work.WorkId)));
     }
+
+    // "artist (year)" when the album carries a year, otherwise just the artist.
+    private static string AlbumSubtitle(Album album) =>
+        string.IsNullOrEmpty(album.YearText) ? album.Artist : $"{album.Artist} ({album.YearText})";
 
     private void AddSearchSection<T>(
         string title,
         IReadOnlyList<T> rows,
-        Func<T, SearchItemRow> project)
+        Func<T, SearchResultRow> project)
     {
         if (rows.Count == 0)
         {
@@ -135,29 +170,114 @@ internal sealed class BrowserPanes
         }
     }
 
-    private static Button SearchButton(string title, string subtitle, Func<System.Threading.Tasks.Task> action)
+    // The leading 46x46 cover slot, bound one-way to the source's "Cover" so it
+    // fills in as the async load lands (and detaches when the row is recycled).
+    private static Border BuildArtLeading(object coverSource)
     {
-        var panel = new StackPanel { Spacing = 2 };
-        panel.Children.Add(new TextBlock { Text = title, MaxLines = 1, TextTrimming = TextTrimming.CharacterEllipsis });
+        var image = new Image { Stretch = Stretch.UniformToFill };
+        image.SetBinding(Image.SourceProperty, new Binding
+        {
+            Source = coverSource,
+            Path = new PropertyPath("Cover"),
+            Mode = BindingMode.OneWay,
+        });
+        return new Border
+        {
+            Width = 46,
+            Height = 46,
+            CornerRadius = new CornerRadius(8),
+            Background = (Brush)Application.Current.Resources["CardBackgroundFillColorDefaultBrush"],
+            Child = image,
+        };
+    }
+
+    // The leading 46x46 glyph slot for a coverless result.
+    private static Border BuildGlyphLeading(string glyph) => new()
+    {
+        Width = 46,
+        Height = 46,
+        CornerRadius = new CornerRadius(8),
+        Background = (Brush)Application.Current.Resources["CardBackgroundFillColorDefaultBrush"],
+        Child = new FontIcon { Glyph = glyph, FontSize = 18, Foreground = Secondary },
+    };
+
+    // Assemble one result row: leading art/glyph, a title/subtitle column, an
+    // optional trailing label (a track's duration). The whole row is a rounded
+    // button whose default pointer-over supplies the hover fill; a click dismisses
+    // the dropdown, then runs the row's navigation.
+    private Button BuildResultButton(Border leading, SearchResultRow row, string? trailing)
+    {
+        var (title, subtitle, action) = row switch
+        {
+            ArtResultRow art => (art.Title, art.Subtitle, art.Action),
+            GlyphResultRow glyph => (glyph.Title, glyph.Subtitle, glyph.Action),
+            _ => throw new ArgumentOutOfRangeException(nameof(row)),
+        };
+
+        var text = new StackPanel { Spacing = 2, VerticalAlignment = VerticalAlignment.Center };
+        text.Children.Add(new TextBlock
+        {
+            Text = title,
+            FontSize = 16,
+            FontWeight = FontWeights.SemiBold,
+            MaxLines = 1,
+            TextTrimming = TextTrimming.CharacterEllipsis,
+        });
         if (!string.IsNullOrWhiteSpace(subtitle))
         {
-            panel.Children.Add(new TextBlock
+            text.Children.Add(new TextBlock
             {
                 Text = subtitle,
+                FontSize = 13,
+                FontWeight = FontWeights.Medium,
+                Foreground = Secondary,
                 MaxLines = 1,
                 TextTrimming = TextTrimming.CharacterEllipsis,
-                Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray),
             });
         }
+
+        var grid = new Grid { ColumnSpacing = 12, VerticalAlignment = VerticalAlignment.Center };
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        Grid.SetColumn(leading, 0);
+        Grid.SetColumn(text, 1);
+        grid.Children.Add(leading);
+        grid.Children.Add(text);
+        if (!string.IsNullOrWhiteSpace(trailing))
+        {
+            var duration = new TextBlock
+            {
+                Text = trailing,
+                FontSize = 14,
+                Foreground = Secondary,
+                VerticalAlignment = VerticalAlignment.Center,
+            };
+            Grid.SetColumn(duration, 2);
+            grid.Children.Add(duration);
+        }
+
         var button = new Button
         {
-            Content = panel,
+            Content = grid,
+            Background = new SolidColorBrush(Colors.Transparent),
+            BorderThickness = new Thickness(0),
+            CornerRadius = new CornerRadius(10),
+            Padding = new Thickness(8, 6, 8, 6),
             HorizontalAlignment = HorizontalAlignment.Stretch,
-            HorizontalContentAlignment = HorizontalAlignment.Left,
+            HorizontalContentAlignment = HorizontalAlignment.Stretch,
         };
-        button.Click += async (_, _) => await action();
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(
+            button, string.IsNullOrWhiteSpace(subtitle) ? title : $"{title}, {subtitle}");
+        button.Click += async (_, _) =>
+        {
+            _dismissSearch();
+            await action();
+        };
         return button;
     }
+
+    private static Brush Secondary => (Brush)Application.Current.Resources["TextFillColorSecondaryBrush"];
 
     public async System.Threading.Tasks.Task ShowComposerDetail(string artistId)
     {
