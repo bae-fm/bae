@@ -179,8 +179,13 @@ public sealed partial class MainWindow : Window
             NpProgress,
             NpVolume,
             NpPlayPause,
+            NpPlayGlyph,
             NpMute,
+            NpMuteGlyph,
             NpRepeat,
+            NpRepeatGlyph,
+            NpShuffle,
+            NpShuffleGlyph,
             NpPrev,
             NpNext,
             NpLoading,
@@ -191,6 +196,13 @@ public sealed partial class MainWindow : Window
         // affordance that they're clickable.
         ToolTipService.SetToolTip(NpCoverFrame, Loc.Chrome("nowplaying.go_to_album"));
         ToolTipService.SetToolTip(NpTitle, Loc.Chrome("nowplaying.go_to_album"));
+        // The icon-only transport buttons whose meaning never changes get a fixed
+        // accessible name and tooltip (the glyph alone exposes nothing to
+        // Narrator). The state-dependent ones — play/pause, mute, repeat, shuffle
+        // — are named by the controller as their state renders.
+        SetIconButtonLabel(NpPrev, "nowplaying.previous");
+        SetIconButtonLabel(NpNext, "nowplaying.next");
+        SetIconButtonLabel(NpQueue, "queue.title");
         _import = new ImportStore(_session, _shell, _mediaControls);
         _projections = new ProjectionRegistry();
         // In-flight release transfers (pin/unpin/manage/unmanage), driven by core's
@@ -929,6 +941,30 @@ public sealed partial class MainWindow : Window
         }
     }
 
+    // The play/pause circle grows slightly on hover and settles back on exit.
+    private void OnPlayPausePointerEntered(object sender, PointerRoutedEventArgs e) => AnimatePlayScale(1.05);
+
+    private void OnPlayPausePointerExited(object sender, PointerRoutedEventArgs e) => AnimatePlayScale(1.0);
+
+    private void AnimatePlayScale(double target)
+    {
+        var storyboard = new Storyboard();
+        foreach (var axis in new[] { "ScaleX", "ScaleY" })
+        {
+            var animation = new DoubleAnimation
+            {
+                To = target,
+                Duration = new Duration(TimeSpan.FromMilliseconds(120)),
+                EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut },
+                EnableDependentAnimation = true,
+            };
+            Storyboard.SetTarget(animation, NpPlayScale);
+            Storyboard.SetTargetProperty(animation, axis);
+            storyboard.Children.Add(animation);
+        }
+        storyboard.Begin();
+    }
+
     // A play/pause press names its target: pause what plays, resume what's
     // paused, nothing when stopped (there is no track to act on).
     private void DispatchPlayPause()
@@ -967,6 +1003,25 @@ public sealed partial class MainWindow : Window
         if (CurrentHandleOrNull() != null)
         {
             WithCurrentHandle(handle => NativeBae.SetRepeatMode(handle, NativeBae.NextRepeatMode(_playback.RepeatMode)));
+        }
+    }
+
+    // Give an icon-only button a fixed accessible name and matching tooltip from
+    // a chrome catalog key.
+    private static void SetIconButtonLabel(Button button, string key)
+    {
+        var label = Loc.Chrome(key);
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(button, label);
+        ToolTipService.SetToolTip(button, label);
+    }
+
+    // Shuffle names its target absolutely: the opposite of the playing context's
+    // current shuffled flag. The button is disabled when there's no context.
+    private void OnShuffle(object sender, RoutedEventArgs e)
+    {
+        if (CurrentHandleOrNull() != null)
+        {
+            WithCurrentHandle(handle => NativeBae.SetShuffle(handle, !(_playback.Context?.Shuffled ?? false)));
         }
     }
 

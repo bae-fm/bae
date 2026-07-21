@@ -27,7 +27,6 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
-            <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
         <Grid Grid.Row="0" Margin="24,16,24,0" ColumnSpacing="12">
             <Grid.ColumnDefinitions>
@@ -84,7 +83,7 @@
             x:Name="AlbumGrid"
             Grid.Row="1"
             ItemsSource="{x:Bind Albums}"
-            Padding="24"
+            Padding="24,24,24,128"
             SelectionMode="None"
             IsItemClickEnabled="True"
             CanDragItems="True"
@@ -130,7 +129,7 @@
         <Grid
             x:Name="ComposerBrowser"
             Grid.Row="1"
-            Margin="24"
+            Margin="24,24,24,128"
             ColumnSpacing="16"
             Visibility="Collapsed">
             <Grid.ColumnDefinitions>
@@ -169,7 +168,7 @@
         <Grid
             x:Name="ArtistBrowser"
             Grid.Row="1"
-            Margin="24"
+            Margin="24,24,24,128"
             ColumnSpacing="16"
             Visibility="Collapsed">
             <Grid.ColumnDefinitions>
@@ -208,7 +207,7 @@
         <ListView
             x:Name="SearchResultsList"
             Grid.Row="1"
-            Padding="24"
+            Padding="24,24,24,128"
             SelectionMode="None"
             Visibility="Collapsed" />
         <StackPanel
@@ -237,146 +236,307 @@
             Grid.Row="1"
             HorizontalAlignment="Right"
             Width="360"
+            Margin="0,0,0,112"
             Visibility="Collapsed"
             BorderThickness="1,0,0,0"
             BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
             Background="{ThemeResource LayerFillColorDefaultBrush}" />
+        <!-- The floating now-playing card: inset from the window edges, rounded,
+             translucent acrylic over the content scrolling beneath it. -->
         <Border
             x:Name="NowPlayingBar"
-            Grid.Row="2"
-            Padding="16,10"
+            Grid.Row="1"
+            VerticalAlignment="Bottom"
+            Margin="16"
+            CornerRadius="16"
             Visibility="Collapsed"
-            BorderThickness="0,1,0,0"
-            BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
-            Background="{ThemeResource LayerFillColorDefaultBrush}">
-            <Grid ColumnSpacing="12" VerticalAlignment="Center">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
-                </Grid.ColumnDefinitions>
-                <Border
-                    x:Name="NpCoverFrame"
-                    Grid.Column="0"
-                    Width="48"
-                    Height="48"
-                    CornerRadius="4"
-                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                    Tapped="OnNowPlayingInfoTapped">
-                    <Image x:Name="NpCover" Stretch="UniformToFill" />
+            BorderThickness="1"
+            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+            Background="{ThemeResource AcrylicInAppFillColorDefaultBrush}"
+            Translation="0,0,32">
+            <Border.Shadow>
+                <ThemeShadow />
+            </Border.Shadow>
+            <Grid>
+                <!-- Vertical sheen: elevated surface at the top fading to the base
+                     surface, clipped to the card's rounded corners. -->
+                <Border CornerRadius="16">
+                    <Border.Background>
+                        <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                            <GradientStop Color="{ThemeResource CardBackgroundFillColorDefault}" Offset="0" />
+                            <GradientStop Color="{ThemeResource CardBackgroundFillColorSecondary}" Offset="1" />
+                        </LinearGradientBrush>
+                    </Border.Background>
                 </Border>
-                <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
-                    <TextBlock
-                        x:Name="NpTitle"
-                        MaxLines="1"
-                        TextTrimming="CharacterEllipsis"
-                        Style="{StaticResource BodyStrongTextBlockStyle}"
-                        Tapped="OnNowPlayingInfoTapped" />
-                    <TextBlock
-                        x:Name="NpArtist"
-                        MaxLines="1"
-                        TextTrimming="CharacterEllipsis"
-                        Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                    <Grid ColumnSpacing="8" Margin="0,2,0,0">
+                <Grid Margin="20,12" VerticalAlignment="Center">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Left: cover + title/artist, truncating. Art and title open
+                         the playing album. -->
+                    <Grid Grid.Column="0" ColumnSpacing="12" VerticalAlignment="Center" Margin="0,0,16,0">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
-                        <TextBlock
-                            x:Name="NpElapsed"
+                        <Border
+                            x:Name="NpCoverFrame"
                             Grid.Column="0"
-                            Text="0:00"
-                            VerticalAlignment="Center"
-                            Style="{StaticResource CaptionTextBlockStyle}"
-                            Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                            Width="54"
+                            Height="54"
+                            CornerRadius="10"
+                            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                            Tapped="OnNowPlayingInfoTapped"
+                            Translation="0,0,8">
+                            <Border.Shadow>
+                                <ThemeShadow />
+                            </Border.Shadow>
+                            <Image x:Name="NpCover" Stretch="UniformToFill" />
+                        </Border>
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="1">
+                            <TextBlock
+                                x:Name="NpTitle"
+                                MaxLines="1"
+                                FontSize="15"
+                                FontWeight="SemiBold"
+                                TextTrimming="CharacterEllipsis"
+                                Tapped="OnNowPlayingInfoTapped" />
+                            <TextBlock
+                                x:Name="NpArtist"
+                                MaxLines="1"
+                                FontSize="13"
+                                FontWeight="Medium"
+                                TextTrimming="CharacterEllipsis"
+                                Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                        </StackPanel>
+                    </Grid>
+
+                    <!-- Center: transport row above the scrubber row, fixed width. -->
+                    <StackPanel Grid.Column="1" Width="460" VerticalAlignment="Center" Spacing="6">
+                        <StackPanel Orientation="Horizontal" Spacing="22" HorizontalAlignment="Center">
+                            <Button
+                                x:Name="NpShuffle"
+                                Width="30"
+                                Height="30"
+                                Padding="0"
+                                CornerRadius="8"
+                                Background="Transparent"
+                                BorderThickness="0"
+                                IsEnabled="False"
+                                Click="OnShuffle">
+                                <Button.KeyboardAccelerators>
+                                    <KeyboardAccelerator Modifiers="Control,Shift" Key="S" />
+                                </Button.KeyboardAccelerators>
+                                <FontIcon x:Name="NpShuffleGlyph" Glyph="&#xE8B1;" FontSize="16"
+                                          Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                            </Button>
+                            <Button
+                                x:Name="NpPrev"
+                                Width="34"
+                                Height="34"
+                                Padding="0"
+                                CornerRadius="8"
+                                Background="Transparent"
+                                BorderThickness="0"
+                                Click="OnPrevious">
+                                <Button.KeyboardAccelerators>
+                                    <KeyboardAccelerator Modifiers="Control,Shift" Key="P" />
+                                </Button.KeyboardAccelerators>
+                                <FontIcon Glyph="&#xE892;" FontSize="20" />
+                            </Button>
+                            <Grid Width="48" Height="48">
+                                <Button
+                                    x:Name="NpPlayPause"
+                                    Width="48"
+                                    Height="48"
+                                    Padding="0"
+                                    CornerRadius="24"
+                                    BorderThickness="0"
+                                    Background="{ThemeResource NowPlayingPlayFillBrush}"
+                                    Click="OnPlayPause"
+                                    Translation="0,0,12"
+                                    RenderTransformOrigin="0.5,0.5"
+                                    PointerEntered="OnPlayPausePointerEntered"
+                                    PointerExited="OnPlayPausePointerExited">
+                                    <Button.RenderTransform>
+                                        <ScaleTransform x:Name="NpPlayScale" ScaleX="1" ScaleY="1" />
+                                    </Button.RenderTransform>
+                                    <Button.Shadow>
+                                        <ThemeShadow />
+                                    </Button.Shadow>
+                                    <FontIcon x:Name="NpPlayGlyph" Glyph="&#xE768;" FontSize="20"
+                                              Foreground="{ThemeResource NowPlayingPlayGlyphBrush}" />
+                                </Button>
+                                <ProgressRing
+                                    x:Name="NpLoading"
+                                    Width="24"
+                                    Height="24"
+                                    IsActive="False"
+                                    Visibility="Collapsed"
+                                    IsHitTestVisible="False"
+                                    Foreground="{ThemeResource NowPlayingPlayGlyphBrush}"
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Center" />
+                            </Grid>
+                            <Button
+                                x:Name="NpNext"
+                                Width="34"
+                                Height="34"
+                                Padding="0"
+                                CornerRadius="8"
+                                Background="Transparent"
+                                BorderThickness="0"
+                                Click="OnNext">
+                                <Button.KeyboardAccelerators>
+                                    <KeyboardAccelerator Modifiers="Control,Shift" Key="N" />
+                                </Button.KeyboardAccelerators>
+                                <FontIcon Glyph="&#xE893;" FontSize="20" />
+                            </Button>
+                            <Button
+                                x:Name="NpRepeat"
+                                Width="30"
+                                Height="30"
+                                Padding="0"
+                                CornerRadius="8"
+                                Background="Transparent"
+                                BorderThickness="0"
+                                Click="OnRepeat">
+                                <Button.KeyboardAccelerators>
+                                    <KeyboardAccelerator Modifiers="Control" Key="R" />
+                                </Button.KeyboardAccelerators>
+                                <FontIcon x:Name="NpRepeatGlyph" Glyph="&#xE8EE;" FontSize="16"
+                                          Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                            </Button>
+                        </StackPanel>
+                        <Grid ColumnSpacing="11">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock
+                                x:Name="NpElapsed"
+                                Grid.Column="0"
+                                Text="0:00"
+                                MinWidth="34"
+                                TextAlignment="Right"
+                                VerticalAlignment="Center"
+                                FontSize="11.5"
+                                FontWeight="SemiBold"
+                                Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                            <Slider
+                                x:Name="NpProgress"
+                                Grid.Column="1"
+                                Minimum="0"
+                                Maximum="1"
+                                StepFrequency="0.001"
+                                VerticalAlignment="Center">
+                                <Slider.Resources>
+                                    <x:Double x:Key="SliderTrackThemeHeight">5</x:Double>
+                                    <SolidColorBrush x:Key="SliderThumbBackground" Color="Transparent" />
+                                    <!-- Progress fill: a subtle horizontal accent gradient. -->
+                                    <LinearGradientBrush x:Key="SliderTrackValueFill" StartPoint="0,0.5" EndPoint="1,0.5">
+                                        <GradientStop Color="{ThemeResource SystemAccentColor}" Offset="0" />
+                                        <GradientStop Color="{ThemeResource SystemAccentColorLight2}" Offset="1" />
+                                    </LinearGradientBrush>
+                                    <LinearGradientBrush x:Key="SliderTrackValueFillPointerOver" StartPoint="0,0.5" EndPoint="1,0.5">
+                                        <GradientStop Color="{ThemeResource SystemAccentColor}" Offset="0" />
+                                        <GradientStop Color="{ThemeResource SystemAccentColorLight2}" Offset="1" />
+                                    </LinearGradientBrush>
+                                    <LinearGradientBrush x:Key="SliderTrackValueFillPressed" StartPoint="0,0.5" EndPoint="1,0.5">
+                                        <GradientStop Color="{ThemeResource SystemAccentColor}" Offset="0" />
+                                        <GradientStop Color="{ThemeResource SystemAccentColorLight2}" Offset="1" />
+                                    </LinearGradientBrush>
+                                </Slider.Resources>
+                            </Slider>
+                            <TextBlock
+                                x:Name="NpDuration"
+                                Grid.Column="2"
+                                Text="0:00"
+                                MinWidth="34"
+                                VerticalAlignment="Center"
+                                FontSize="11.5"
+                                FontWeight="SemiBold"
+                                Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                        </Grid>
+                    </StackPanel>
+
+                    <!-- Right: queue toggle, mute, volume, trailing-aligned. -->
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6"
+                                HorizontalAlignment="Right" VerticalAlignment="Center">
+                        <Grid Width="32" Height="32">
+                            <Button
+                                x:Name="NpQueue"
+                                Width="32"
+                                Height="32"
+                                Padding="0"
+                                CornerRadius="8"
+                                Background="Transparent"
+                                BorderThickness="0"
+                                Click="OnQueueClick"
+                                AllowDrop="True" DragOver="OnQueueButtonDragOver" Drop="OnQueueButtonDrop">
+                                <Button.KeyboardAccelerators>
+                                    <KeyboardAccelerator Modifiers="Control,Shift" Key="Q" />
+                                </Button.KeyboardAccelerators>
+                                <FontIcon Glyph="&#xE8FD;" FontSize="17" />
+                            </Button>
+                            <Border
+                                x:Name="QueueAddBadge"
+                                Background="{ThemeResource AccentFillColorDefaultBrush}"
+                                CornerRadius="8"
+                                Padding="5,1"
+                                HorizontalAlignment="Right"
+                                VerticalAlignment="Top"
+                                Margin="0,-4,-4,0"
+                                IsHitTestVisible="False"
+                                Opacity="0"
+                                RenderTransformOrigin="0.5,0.5">
+                                <Border.RenderTransform>
+                                    <ScaleTransform x:Name="QueueAddBadgeScale" ScaleX="0.6" ScaleY="0.6" />
+                                </Border.RenderTransform>
+                                <TextBlock
+                                    x:Name="QueueAddBadgeText"
+                                    Text="+1"
+                                    FontSize="10"
+                                    FontWeight="SemiBold"
+                                    Foreground="White" />
+                            </Border>
+                        </Grid>
+                        <Button
+                            x:Name="NpMute"
+                            Width="30"
+                            Height="30"
+                            Padding="0"
+                            CornerRadius="8"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Click="OnMute">
+                            <Button.KeyboardAccelerators>
+                                <KeyboardAccelerator Modifiers="Control" Key="M" />
+                            </Button.KeyboardAccelerators>
+                            <FontIcon x:Name="NpMuteGlyph" Glyph="&#xE994;" FontSize="16" />
+                        </Button>
                         <Slider
-                            x:Name="NpProgress"
-                            Grid.Column="1"
+                            x:Name="NpVolume"
                             Minimum="0"
                             Maximum="1"
-                            StepFrequency="0.001"
-                            VerticalAlignment="Center" />
-                        <TextBlock
-                            x:Name="NpDuration"
-                            Grid.Column="2"
-                            Text="0:00"
+                            StepFrequency="0.01"
+                            Width="96"
                             VerticalAlignment="Center"
-                            Style="{StaticResource CaptionTextBlockStyle}"
-                            Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                    </Grid>
-                </StackPanel>
-                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
-                    <Button x:Name="NpRepeat" Content="↻" Click="OnRepeat">
-                        <Button.KeyboardAccelerators>
-                            <KeyboardAccelerator Modifiers="Control" Key="R" />
-                        </Button.KeyboardAccelerators>
-                    </Button>
-                    <Button x:Name="NpPrev" Content="⏮" Click="OnPrevious">
-                        <Button.KeyboardAccelerators>
-                            <KeyboardAccelerator Modifiers="Control,Shift" Key="P" />
-                        </Button.KeyboardAccelerators>
-                    </Button>
-                    <Grid>
-                        <Button x:Name="NpPlayPause" Content="⏯" Click="OnPlayPause" />
-                        <ProgressRing
-                            x:Name="NpLoading"
-                            Width="20"
-                            Height="20"
-                            IsActive="False"
-                            Visibility="Collapsed"
-                            IsHitTestVisible="False"
-                            HorizontalAlignment="Center"
-                            VerticalAlignment="Center" />
-                    </Grid>
-                    <Button x:Name="NpNext" Content="⏭" Click="OnNext">
-                        <Button.KeyboardAccelerators>
-                            <KeyboardAccelerator Modifiers="Control,Shift" Key="N" />
-                        </Button.KeyboardAccelerators>
-                    </Button>
-                    <Button x:Name="NpMute" Content="🔊" Click="OnMute">
-                        <Button.KeyboardAccelerators>
-                            <KeyboardAccelerator Modifiers="Control" Key="M" />
-                        </Button.KeyboardAccelerators>
-                    </Button>
-                    <Slider
-                        x:Name="NpVolume"
-                        Minimum="0"
-                        Maximum="1"
-                        StepFrequency="0.01"
-                        Width="80"
-                        VerticalAlignment="Center"
-                        ValueChanged="OnVolumeChanged" />
-                    <Grid>
-                        <Button x:Name="NpQueue" Content="☰" Click="OnQueueClick"
-                                AllowDrop="True" DragOver="OnQueueButtonDragOver" Drop="OnQueueButtonDrop">
-                            <Button.KeyboardAccelerators>
-                                <KeyboardAccelerator Modifiers="Control,Shift" Key="Q" />
-                            </Button.KeyboardAccelerators>
-                        </Button>
-                        <Border
-                            x:Name="QueueAddBadge"
-                            Background="{ThemeResource AccentFillColorDefaultBrush}"
-                            CornerRadius="8"
-                            Padding="5,1"
-                            HorizontalAlignment="Right"
-                            VerticalAlignment="Top"
-                            Margin="0,-4,-4,0"
-                            IsHitTestVisible="False"
-                            Opacity="0"
-                            RenderTransformOrigin="0.5,0.5">
-                            <Border.RenderTransform>
-                                <ScaleTransform x:Name="QueueAddBadgeScale" ScaleX="0.6" ScaleY="0.6" />
-                            </Border.RenderTransform>
-                            <TextBlock
-                                x:Name="QueueAddBadgeText"
-                                Text="+1"
-                                FontSize="10"
-                                FontWeight="SemiBold"
-                                Foreground="White" />
-                        </Border>
-                    </Grid>
-                </StackPanel>
+                            ValueChanged="OnVolumeChanged">
+                            <Slider.Resources>
+                                <x:Double x:Key="SliderTrackThemeHeight">5</x:Double>
+                                <SolidColorBrush x:Key="SliderThumbBackground" Color="Transparent" />
+                                <SolidColorBrush x:Key="SliderTrackValueFill" Color="{ThemeResource TextFillColorSecondary}" />
+                                <SolidColorBrush x:Key="SliderTrackValueFillPointerOver" Color="{ThemeResource TextFillColorSecondary}" />
+                                <SolidColorBrush x:Key="SliderTrackValueFillPressed" Color="{ThemeResource TextFillColorSecondary}" />
+                            </Slider.Resources>
+                        </Slider>
+                    </StackPanel>
+                </Grid>
             </Grid>
         </Border>
     </Grid>

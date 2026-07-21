@@ -1,10 +1,12 @@
 ﻿using System;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Animation;
 using uniffi.bae_bridge;
+using Windows.UI;
 
 namespace Bae.Windows;
 
@@ -28,14 +30,26 @@ internal sealed class NowPlayingBarController
     private readonly Slider _progress;
     private readonly Slider _volume;
     private readonly Button _playPause;
+    private readonly FontIcon _playPauseGlyph;
     private readonly Button _mute;
+    private readonly FontIcon _muteGlyph;
     private readonly Button _repeat;
+    private readonly FontIcon _repeatGlyph;
+    private readonly Button _shuffle;
+    private readonly FontIcon _shuffleGlyph;
     private readonly Button _previous;
     private readonly Button _next;
     private readonly ProgressRing _loading;
     private readonly Border _queueAddBadge;
     private readonly ScaleTransform _queueAddBadgeScale;
     private readonly TextBlock _queueAddBadgeText;
+
+    // Accent tint for active shuffle/repeat glyphs and their soft fill; the
+    // neutral tint for inactive ones. Resolved once from the app resources, the
+    // same brushes the queue pane's shuffle toggle uses.
+    private readonly Brush _accentBrush;
+    private readonly Brush _secondaryBrush;
+    private readonly Brush _accentSoftFill;
 
     // True while the user is dragging the seek slider, so progress events don't
     // fight the drag; the seek is set on release.
@@ -77,8 +91,13 @@ internal sealed class NowPlayingBarController
         Slider progress,
         Slider volume,
         Button playPause,
+        FontIcon playPauseGlyph,
         Button mute,
+        FontIcon muteGlyph,
         Button repeat,
+        FontIcon repeatGlyph,
+        Button shuffle,
+        FontIcon shuffleGlyph,
         Button previous,
         Button next,
         ProgressRing loading,
@@ -99,14 +118,23 @@ internal sealed class NowPlayingBarController
         _progress = progress;
         _volume = volume;
         _playPause = playPause;
+        _playPauseGlyph = playPauseGlyph;
         _mute = mute;
+        _muteGlyph = muteGlyph;
         _repeat = repeat;
+        _repeatGlyph = repeatGlyph;
+        _shuffle = shuffle;
+        _shuffleGlyph = shuffleGlyph;
         _previous = previous;
         _next = next;
         _loading = loading;
         _queueAddBadge = queueAddBadge;
         _queueAddBadgeScale = queueAddBadgeScale;
         _queueAddBadgeText = queueAddBadgeText;
+
+        _accentBrush = (Brush)Application.Current.Resources["AccentTextFillColorPrimaryBrush"];
+        _secondaryBrush = (Brush)Application.Current.Resources["TextFillColorSecondaryBrush"];
+        _accentSoftFill = new SolidColorBrush((Color)Application.Current.Resources["SystemAccentColor"]) { Opacity = 0.16 };
 
         // Seek on release, not on every drag tick. The Slider handles pointer
         // events internally, so register with handledEventsToo.
@@ -146,6 +174,9 @@ internal sealed class NowPlayingBarController
         _playback.RepeatChanged += OnRepeatChanged;
         _playback.TransportChanged += OnTransportChanged;
         _playback.QueueItemsAdded += OnQueueItemsAdded;
+        // Shuffle reflects the playing context's shuffled flag, delivered by the
+        // queue snapshot; disabled when there is no context to shuffle.
+        _playback.QueueChanged += RenderShuffle;
     }
 
     // Seed the volume slider from the current handle without echoing a SetVolume.
@@ -158,6 +189,7 @@ internal sealed class NowPlayingBarController
             _volume.Value = volume;
         }
         _suppressVolume = false;
+        RenderMuteIcon();
     }
 
     // The volume slider moved. Ignore programmatic changes; forward user changes
@@ -175,6 +207,7 @@ internal sealed class NowPlayingBarController
         _nowPlayingBar.Visibility = Visibility.Collapsed;
         _userSeeking = false;
         _lastPosition = null;
+        RenderShuffle();
     }
 
     private void OnNowPlayingChanged(NowPlayingBarTrack track)
@@ -182,13 +215,18 @@ internal sealed class NowPlayingBarController
         _nowPlayingBar.Visibility = Visibility.Visible;
         _title.Text = track.Title;
         _artist.Text = track.Artist;
-        _playPause.Content = track.IsPlaying ? "⏸" : "▶";
+        _playPauseGlyph.Glyph = track.IsPlaying ? "\uE769" : "\uE768";
+        // The name reads the action a press performs: pause while playing, play
+        // while paused.
+        var playPauseName = Loc.Chrome(track.IsPlaying ? "nowplaying.pause" : "action.play");
+        AutomationProperties.SetName(_playPause, playPauseName);
+        ToolTipService.SetToolTip(_playPause, playPauseName);
         _cover.Source = CoverImage.LoadImage(_session.CurrentHandleOrNull(), track.CoverImageId);
         // Audio is flowing: drop the buffering spinner, restore the play/pause
-        // control.
+        // glyph. The circle itself stays put through the swap.
         _loading.IsActive = false;
         _loading.Visibility = Visibility.Collapsed;
-        _playPause.Visibility = Visibility.Visible;
+        _playPauseGlyph.Visibility = Visibility.Visible;
         if (track.PauseReason is { } reason)
         {
             _ = ShowSidePauseDialog(reason);
@@ -202,16 +240,18 @@ internal sealed class NowPlayingBarController
         _lastPosition = null;
         _loading.IsActive = false;
         _loading.Visibility = Visibility.Collapsed;
-        _playPause.Visibility = Visibility.Visible;
+        _playPauseGlyph.Visibility = Visibility.Visible;
     }
 
     private void OnLoadingStarted()
     {
         // Core is preparing or buffering the track (initial load, or a seek to a
-        // position not yet downloaded). Show the bar with a spinner over the
-        // transport; the prior track's title/cover stay until PlaybackPlaying lands.
+        // position not yet downloaded). Show the bar with a spinner over the play
+        // circle; the circle stays and only its glyph hides, so the ring reads
+        // against the fill and neighbors don't shift. The prior track's
+        // title/cover stay until PlaybackPlaying lands.
         _nowPlayingBar.Visibility = Visibility.Visible;
-        _playPause.Visibility = Visibility.Collapsed;
+        _playPauseGlyph.Visibility = Visibility.Collapsed;
         _loading.IsActive = true;
         _loading.Visibility = Visibility.Visible;
     }
@@ -267,21 +307,64 @@ internal sealed class NowPlayingBarController
         _suppressVolume = true;
         _volume.Value = volume;
         _suppressVolume = false;
+        RenderMuteIcon();
     }
 
     private void OnMuteChanged(bool isMuted)
     {
-        _mute.Content = isMuted ? "🔇" : "🔊";
+        RenderMuteIcon();
     }
 
+    // The mute glyph reflects the rendered level: a slashed speaker when muted or
+    // at zero, one wave up to the mid threshold, two waves above it. The name
+    // reads the action a press performs: unmute while muted, mute otherwise.
+    private void RenderMuteIcon()
+    {
+        _muteGlyph.Glyph = (_playback.IsMuted || _volume.Value <= 0) switch
+        {
+            true => "\uE74F",
+            false when _volume.Value <= 0.55 => "\uE993",
+            false => "\uE994",
+        };
+        var name = Loc.Chrome(_playback.IsMuted ? "nowplaying.unmute" : "nowplaying.mute");
+        AutomationProperties.SetName(_mute, name);
+        ToolTipService.SetToolTip(_mute, name);
+    }
+
+    // Shuffle mirrors the playing context's shuffled flag: accent glyph over a
+    // soft accent fill when on, neutral when off, disabled when nothing is
+    // playing from a context to shuffle.
+    private void RenderShuffle()
+    {
+        var context = _playback.Context;
+        var shuffled = context?.Shuffled ?? false;
+        _shuffle.IsEnabled = context is not null;
+        _shuffleGlyph.Foreground = shuffled ? _accentBrush : _secondaryBrush;
+        _shuffle.Background = shuffled ? _accentSoftFill : new SolidColorBrush(Microsoft.UI.Colors.Transparent);
+        var key = shuffled ? "queue.shuffle.off" : "queue.shuffle.on";
+        ToolTipService.SetToolTip(_shuffle, Loc.Chrome(key));
+        AutomationProperties.SetName(_shuffle, Loc.Chrome(key));
+    }
+
+    // Repeat cycles glyph and tint together: repeat-one and repeat-all both tint
+    // to the accent when active, off shows the repeat-all glyph in neutral. The
+    // name reads the current mode so Narrator announces the state, not just a
+    // press target.
     private void OnRepeatChanged(BridgeRepeatMode mode)
     {
-        _repeat.Content = mode switch
+        _repeatGlyph.Glyph = mode == BridgeRepeatMode.Track ? "\uE8ED" : "\uE8EE";
+        _repeatGlyph.Foreground = mode == BridgeRepeatMode.Off ? _secondaryBrush : _accentBrush;
+        _repeat.Background = mode == BridgeRepeatMode.Off
+            ? new SolidColorBrush(Microsoft.UI.Colors.Transparent)
+            : _accentSoftFill;
+        var name = Loc.Chrome(mode switch
         {
-            BridgeRepeatMode.Track => "🔂",
-            BridgeRepeatMode.Context => "🔁",
-            _ => "↻",
-        };
+            BridgeRepeatMode.Track => "nowplaying.repeat_track",
+            BridgeRepeatMode.Context => "nowplaying.repeat_context",
+            _ => "nowplaying.repeat_off",
+        });
+        AutomationProperties.SetName(_repeat, name);
+        ToolTipService.SetToolTip(_repeat, name);
     }
 
     private void OnTransportChanged(bool hasPrevious, bool hasNext)

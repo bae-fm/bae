@@ -418,4 +418,12 @@
   <data name="menu.add_to_queue_count" xml:space="preserve"><value>{count, plural, one {Přidat # album do fronty} few {Přidat # alba do fronty} many {Přidat # alba do fronty} other {Přidat # alb do fronty}}</value></data>
   <data name="menu.pin_count" xml:space="preserve"><value>{count, plural, one {Připnout # album pro offline} few {Připnout # alba pro offline} many {Připnout # alba pro offline} other {Připnout # alb pro offline}}</value></data>
   <data name="shell.open_with_folder" xml:space="preserve"><value>otevřít pomocí {name}</value></data>
+  <data name="nowplaying.pause" xml:space="preserve"><value>Pozastavit</value></data>
+  <data name="nowplaying.mute" xml:space="preserve"><value>Ztlumit</value></data>
+  <data name="nowplaying.unmute" xml:space="preserve"><value>Zrušit ztlumení</value></data>
+  <data name="nowplaying.previous" xml:space="preserve"><value>Předchozí skladba</value></data>
+  <data name="nowplaying.next" xml:space="preserve"><value>Další skladba</value></data>
+  <data name="nowplaying.repeat_off" xml:space="preserve"><value>Opakování: vypnuto</value></data>
+  <data name="nowplaying.repeat_context" xml:space="preserve"><value>Opakování: kontext</value></data>
+  <data name="nowplaying.repeat_track" xml:space="preserve"><value>Opakování: skladba</value></data>
 </root>

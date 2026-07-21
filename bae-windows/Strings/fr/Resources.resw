@@ -418,4 +418,12 @@
   <data name="menu.add_to_queue_count" xml:space="preserve"><value>{count, plural, one {Ajouter # album à la file} other {Ajouter # albums à la file}}</value></data>
   <data name="menu.pin_count" xml:space="preserve"><value>{count, plural, one {Épingler # album hors ligne} other {Épingler # albums hors ligne}}</value></data>
   <data name="shell.open_with_folder" xml:space="preserve"><value>ouvrir avec {name}</value></data>
+  <data name="nowplaying.pause" xml:space="preserve"><value>Pause</value></data>
+  <data name="nowplaying.mute" xml:space="preserve"><value>Couper le son</value></data>
+  <data name="nowplaying.unmute" xml:space="preserve"><value>Rétablir le son</value></data>
+  <data name="nowplaying.previous" xml:space="preserve"><value>Piste précédente</value></data>
+  <data name="nowplaying.next" xml:space="preserve"><value>Piste suivante</value></data>
+  <data name="nowplaying.repeat_off" xml:space="preserve"><value>Répétition : désactivée</value></data>
+  <data name="nowplaying.repeat_context" xml:space="preserve"><value>Répéter : contexte</value></data>
+  <data name="nowplaying.repeat_track" xml:space="preserve"><value>Répétition : piste</value></data>
 </root>

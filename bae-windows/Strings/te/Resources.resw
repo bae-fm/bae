@@ -418,4 +418,12 @@
   <data name="menu.add_to_queue_count" xml:space="preserve"><value>{count, plural, one {# ఆల్బమ్ క్యూలో జోడించు} other {# ఆల్బమ్‌లు క్యూలో జోడించు}}</value></data>
   <data name="menu.pin_count" xml:space="preserve"><value>{count, plural, one {# ఆల్బమ్ ఆఫ్‌లైన్ కోసం పిన్ చేయి} other {# ఆల్బమ్‌లు ఆఫ్‌లైన్ కోసం పిన్ చేయి}}</value></data>
   <data name="shell.open_with_folder" xml:space="preserve"><value>{name}తో తెరువు</value></data>
+  <data name="nowplaying.pause" xml:space="preserve"><value>పాజ్</value></data>
+  <data name="nowplaying.mute" xml:space="preserve"><value>మ్యూట్</value></data>
+  <data name="nowplaying.unmute" xml:space="preserve"><value>మ్యూట్ తీసివేయి</value></data>
+  <data name="nowplaying.previous" xml:space="preserve"><value>మునుపటి ట్రాక్</value></data>
+  <data name="nowplaying.next" xml:space="preserve"><value>తదుపరి ట్రాక్</value></data>
+  <data name="nowplaying.repeat_off" xml:space="preserve"><value>పునరావృతం: ఆఫ్</value></data>
+  <data name="nowplaying.repeat_context" xml:space="preserve"><value>పునరావృతం: సందర్భం</value></data>
+  <data name="nowplaying.repeat_track" xml:space="preserve"><value>పునరావృతం: ట్రాక్</value></data>
 </root>
