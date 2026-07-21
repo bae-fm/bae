@@ -7,6 +7,11 @@ struct SearchView: View {
     let onSelectComposer: (String) -> Void
     let onSelectWork: (String) -> Void
 
+    /// Measured natural height of the result list, driving the card's
+    /// fit-to-content height.
+    @State
+    private var contentHeight: CGFloat = 0
+
     var body: some View {
         Group {
             if let results {
@@ -14,13 +19,27 @@ struct SearchView: View {
                     results.composers.isEmpty, results.works.isEmpty
                 {
                     ContentUnavailableView.search(text: results.query)
+                        .frame(height: 240)
                 }
                 else {
-                    resultsList(results)
+                    // The card hugs its results, scrolling once they outgrow
+                    // the cap. The viewport height is the measured content
+                    // height, clamped: `.frame(maxHeight:)` can't do this — a
+                    // max-frame fills to its cap regardless of content and
+                    // centers the child in the leftover space.
+                    ScrollView {
+                        resultsList(results)
+                            .onGeometryChange(for: CGFloat.self) { geo in
+                                geo.size.height
+                            } action: {
+                                contentHeight = $0
+                            }
+                    }
+                    .frame(height: min(contentHeight, 455))
                 }
             }
         }
-        .frame(width: 572, height: 455)
+        .frame(width: 572)
         .background(
             RoundedRectangle(cornerRadius: 14)
                 .fill(
@@ -40,61 +59,59 @@ struct SearchView: View {
     }
 
     private func resultsList(_ results: SearchResults) -> some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 2) {
-                if !results.albums.isEmpty {
-                    sectionHeader("Albums")
-                    ForEach(results.albums, id: \.id) { album in
-                        SearchResultRow(
-                            cover: album.cover,
-                            title: album.title,
-                            subtitle: albumSubtitle(album),
-                            action: { onSelectAlbum(album.id) }
-                        )
-                    }
-                }
-
-                if !results.tracks.isEmpty {
-                    sectionHeader("Tracks")
-                    ForEach(results.tracks, id: \.id) { track in
-                        SearchResultRow(
-                            cover: track.cover,
-                            title: track.title,
-                            subtitle: trackSubtitle(track),
-                            trailing: track.durationLabel.isEmpty
-                                ? nil : track.durationLabel,
-                            action: { onSelectAlbum(track.albumId) }
-                        )
-                    }
-                }
-
-                if !results.composers.isEmpty {
-                    sectionHeader("Composers")
-                    ForEach(results.composers, id: \.id) { composer in
-                        SearchResultRow(
-                            cover: composer.image,
-                            title: composer.name,
-                            subtitle:
-                                "\(composer.workCount) \(String(localized: "Works"))",
-                            action: { onSelectComposer(composer.id) }
-                        )
-                    }
-                }
-
-                if !results.works.isEmpty {
-                    sectionHeader("Works")
-                    ForEach(results.works, id: \.id) { work in
-                        SearchResultRow(
-                            cover: work.representativeCover,
-                            title: work.title,
-                            subtitle: work.composerNames,
-                            action: { onSelectWork(work.id) }
-                        )
-                    }
+        VStack(alignment: .leading, spacing: 2) {
+            if !results.albums.isEmpty {
+                sectionHeader("Albums")
+                ForEach(results.albums, id: \.id) { album in
+                    SearchResultRow(
+                        cover: album.cover,
+                        title: album.title,
+                        subtitle: albumSubtitle(album),
+                        action: { onSelectAlbum(album.id) }
+                    )
                 }
             }
-            .padding(8)
+
+            if !results.tracks.isEmpty {
+                sectionHeader("Tracks")
+                ForEach(results.tracks, id: \.id) { track in
+                    SearchResultRow(
+                        cover: track.cover,
+                        title: track.title,
+                        subtitle: trackSubtitle(track),
+                        trailing: track.durationLabel.isEmpty
+                            ? nil : track.durationLabel,
+                        action: { onSelectAlbum(track.albumId) }
+                    )
+                }
+            }
+
+            if !results.composers.isEmpty {
+                sectionHeader("Composers")
+                ForEach(results.composers, id: \.id) { composer in
+                    SearchResultRow(
+                        cover: composer.image,
+                        title: composer.name,
+                        subtitle:
+                            "\(composer.workCount) \(String(localized: "Works"))",
+                        action: { onSelectComposer(composer.id) }
+                    )
+                }
+            }
+
+            if !results.works.isEmpty {
+                sectionHeader("Works")
+                ForEach(results.works, id: \.id) { work in
+                    SearchResultRow(
+                        cover: work.representativeCover,
+                        title: work.title,
+                        subtitle: work.composerNames,
+                        action: { onSelectWork(work.id) }
+                    )
+                }
+            }
         }
+        .padding(8)
     }
 
     private func sectionHeader(_ title: LocalizedStringKey) -> some View {
@@ -104,8 +121,8 @@ struct SearchView: View {
             .foregroundStyle(.secondary)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, 8)
-            .padding(.top, 8)
-            .padding(.bottom, 2)
+            .padding(.top, 18)
+            .padding(.bottom, 4)
     }
 
     private func albumSubtitle(_ album: AlbumSearchResult) -> String {

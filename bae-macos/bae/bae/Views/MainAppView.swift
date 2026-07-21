@@ -27,6 +27,10 @@ struct MainAppView: View {
     var uiStore
     @State
     private var searchText: String = ""
+    /// The dropdown card's frame in the search overlay's space, fed to the
+    /// dismiss monitor so interactions inside the card don't close it.
+    @State
+    private var searchCardFrame: CGRect = .zero
 
     private var queueActions: QueueActions {
         QueueActions(library: library, queue: queue, uiStore: uiStore)
@@ -114,22 +118,43 @@ struct MainAppView: View {
                 GeometryReader { proxy in
                     let rect = proxy[anchor]
 
-                    Color.clear
-                        .contentShape(Rectangle())
-                        .onTapGesture {
-                            uiStore.showSearchPopover = false
-                            NSApp.keyWindow?.makeFirstResponder(nil)
-                        }
-
+                    // Anchored by its top edge 5pt under the field, trailing
+                    // edges aligned, so the card can be content-sized and grow
+                    // downward. Dismissal is the event monitor below, not a
+                    // click-swallowing scrim: an outside click closes the
+                    // dropdown AND still lands on its target.
                     SearchView(
                         results: uiStore.searchResults,
                         onSelectAlbum: selectAlbum,
                         onSelectComposer: selectComposer,
                         onSelectWork: selectWork,
                     )
-                    .frame(width: 572, height: 455, alignment: .topTrailing)
-                    .position(x: rect.maxX - 286, y: rect.maxY + 232.5)
+                    .onGeometryChange(for: CGRect.self) { geo in
+                        geo.frame(in: .named("searchOverlay"))
+                    } action: {
+                        searchCardFrame = $0
+                    }
+                    .padding(.leading, rect.maxX - 572)
+                    .padding(.top, rect.maxY + 5)
+                    .frame(
+                        maxWidth: .infinity,
+                        maxHeight: .infinity,
+                        alignment: .topLeading
+                    )
+                    .background(
+                        SearchDismissMonitor(
+                            insideRects: [searchCardFrame, rect],
+                            onClickAway: {
+                                uiStore.showSearchPopover = false
+                                NSApp.keyWindow?.makeFirstResponder(nil)
+                            },
+                            onScrollAway: {
+                                uiStore.showSearchPopover = false
+                            }
+                        )
+                    )
                 }
+                .coordinateSpace(name: "searchOverlay")
             }
         }
         .errorAlert(uiStore)
