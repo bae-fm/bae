@@ -40,6 +40,7 @@ public sealed partial class MainWindow : Window
     // mutation so the card tint (bound OneWay) stays current.
     private readonly AlbumGridSelectionModel _albumSelection = new();
     private readonly LibrarySortControls _sortControls;
+    private readonly HeaderCollapseModel _collapse = new();
     private readonly BrowserPanes _browserPanes;
     private readonly WelcomeView _welcomeView;
     private readonly LibrariesDialog _librariesDialog;
@@ -151,12 +152,17 @@ public sealed partial class MainWindow : Window
             ? FlowDirection.RightToLeft
             : FlowDirection.LeftToRight;
 
-        BrowserModeBox.Items.Add(Loc.Chrome("library.mode.albums"));
-        BrowserModeBox.Items.Add(Loc.Chrome("library.mode.artists"));
-        BrowserModeBox.Items.Add(Loc.Chrome("library.mode.composers"));
         _sortControls = new LibrarySortControls(SortControls, _browser.Sort, ReloadBrowserForSortChange);
-        _sortControls.Render();
-        BrowserModeBox.SelectedIndex = 0;
+        BuildModeHeadingFlyout();
+        SelectBrowserMode(BrowserMode.Albums, reload: false);
+        // The album tiles scroll under a header that collapses as any browse panel
+        // scrolls; each panel's scroll drives the shared collapse model.
+        AttachCollapseScroll(AlbumGrid, "albums");
+        AttachCollapseScroll(SearchResultsList, "search");
+        AttachCollapseScroll(ComposerList, "composers");
+        AttachCollapseScroll(ArtistList, "artists");
+        // Fit the grid once its wrap panel is realized, and on every later resize.
+        AlbumGrid.Loaded += (_, _) => ApplyGridMetrics();
 
         _shell = new ShellStore();
         _shell.Changed += RenderBanner;
@@ -315,6 +321,8 @@ public sealed partial class MainWindow : Window
         // on the projection registry while open, opens the approve flow for
         // add-device, and shares the one UpdateService with the launch-time check.
         _settings = new SettingsStore(_session);
+        // The content column's width cap follows the synced full-width preference.
+        _settings.Changed += ApplyLibraryWidth;
         _membersPane = new MembersPane(_session);
         _settingsDialog = new SettingsDialog(
             _session,
@@ -372,16 +380,132 @@ public sealed partial class MainWindow : Window
         }
     }
 
-    private void OnBrowserModeChanged(object sender, SelectionChangedEventArgs e)
+    // The mode heading's flyout picks the browse mode. Each item switches the mode
+    // and reloads; the heading itself carries the current mode's name.
+    private void BuildModeHeadingFlyout()
     {
-        _browser.Sort.SetMode(BrowserModeBox.SelectedIndex switch
+        foreach (var (mode, key) in new[]
         {
-            1 => BrowserMode.Artists,
-            2 => BrowserMode.Composers,
-            _ => BrowserMode.Albums,
-        });
+            (BrowserMode.Albums, "library.mode.albums"),
+            (BrowserMode.Artists, "library.mode.artists"),
+            (BrowserMode.Composers, "library.mode.composers"),
+        })
+        {
+            var item = new MenuFlyoutItem { Text = Loc.Chrome(key) };
+            var target = mode;
+            item.Click += (_, _) => SelectBrowserMode(target, reload: true);
+            ModeHeadingFlyout.Items.Add(item);
+        }
+    }
+
+    // Switch the browse mode: update the sort pills for the mode's criteria, retitle
+    // the heading, and (when a library is open) reload the grid.
+    private void SelectBrowserMode(BrowserMode mode, bool reload)
+    {
+        _browser.Sort.SetMode(mode);
         _sortControls.Render();
-        ReloadBrowserForSortChange();
+        ModeHeadingText.Text = Loc.Chrome(mode switch
+        {
+            BrowserMode.Artists => "library.mode.artists",
+            BrowserMode.Composers => "library.mode.composers",
+            _ => "library.mode.albums",
+        });
+        if (reload)
+        {
+            ReloadBrowserForSortChange();
+        }
+    }
+
+    // Cap or free the content column per the synced full-width preference, then
+    // re-fit the album grid to the new width.
+    private void ApplyLibraryWidth()
+    {
+        ContentColumn.MaxWidth = _settings.Current?.LibraryFullWidth == true ? double.PositiveInfinity : 1240;
+        ApplyGridMetrics();
+    }
+
+    // Fit the album grid's columns to the current width: equal cells at ~200 wide
+    // with a 30 gutter, each cell sized so a row fills exactly. Runs on size and
+    // full-width changes; a no-op until the wrap panel is realized.
+    private void ApplyGridMetrics()
+    {
+        if (AlbumGrid.ItemsPanelRoot is not ItemsWrapGrid wrap || AlbumGrid.ActualWidth <= 0)
+        {
+            return;
+        }
+        var metrics = AlbumGridColumns.Compute(AlbumGrid.ActualWidth);
+        wrap.ItemWidth = metrics.CellWidth;
+        // Art fills the cell minus its trailing gutter and is square; the text block
+        // and the bottom row gap complete the cell height.
+        var artSize = metrics.CellWidth - AlbumGridColumns.Gutter;
+        wrap.ItemHeight = artSize + TileTextHeight + AlbumGridColumns.RowGap;
+    }
+
+    // The reserved height below a tile's art: title (15) + artist (13) + year (12,
+    // always reserved) with their spacings and the tile's own padding.
+    private const double TileTextHeight = 84;
+
+    private void OnAlbumGridSizeChanged(object sender, SizeChangedEventArgs e) => ApplyGridMetrics();
+
+    // Keep each tile's art square: match its height to its (stretched) width.
+    private void OnTileArtSizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        if (sender is FrameworkElement art
+            && (double.IsNaN(art.Height) || Math.Abs(art.Height - e.NewSize.Width) > 0.5))
+        {
+            art.Height = e.NewSize.Width;
+        }
+    }
+
+    // Drive the header collapse from a browse panel's scroll: progress tracks the
+    // active panel's offset, and a settle snaps to the nearer end.
+    private void AttachCollapseScroll(Control panel, string scroller)
+    {
+        panel.Loaded += (_, _) =>
+        {
+            if (FindScrollViewer(panel) is not { } viewer)
+            {
+                return;
+            }
+            viewer.ViewChanged += (s, args) =>
+            {
+                var offset = ((ScrollViewer)s!).VerticalOffset;
+                ApplyCollapse(_collapse.ReportScroll(scroller, offset));
+                if (!args.IsIntermediate && _collapse.ReportSettled(scroller))
+                {
+                    ApplyCollapse(_collapse.Progress);
+                }
+            };
+        };
+    }
+
+    // Apply a collapse fraction to the heading and band: the heading scrubs from 56
+    // to 24 with its chevron and tracking, and the band's top/bottom padding tighten.
+    private void ApplyCollapse(double progress)
+    {
+        ModeHeadingText.FontSize = 56 - 32 * progress;
+        ModeHeadingText.CharacterSpacing = (int)Math.Round(-25 + 8 * progress);
+        ModeHeadingChevron.FontSize = 16 - 7 * progress;
+        HeaderBand.Padding = new Thickness(22, 56 - 42 * progress, 22, 32 - 20 * progress);
+    }
+
+    // The first ScrollViewer inside a control's realized template — the internal
+    // scroller a ListView/GridView hosts its items in.
+    private static ScrollViewer? FindScrollViewer(DependencyObject root)
+    {
+        if (root is ScrollViewer viewer)
+        {
+            return viewer;
+        }
+        var count = VisualTreeHelper.GetChildrenCount(root);
+        for (var i = 0; i < count; i++)
+        {
+            if (FindScrollViewer(VisualTreeHelper.GetChild(root, i)) is { } found)
+            {
+                return found;
+            }
+        }
+        return null;
     }
 
     // Reload the active grid after a sort or mode change, but only when a library is
@@ -461,6 +585,9 @@ public sealed partial class MainWindow : Window
         SyncAlbumSelectionTint();
         ShowAlbumBrowser();
         RenderGridStatus(load);
+        // Re-fit after the new items realize the wrap panel (a fresh ItemsSource
+        // rebuilds it), so cell sizing follows the current width.
+        DispatcherQueue.TryEnqueue(ApplyGridMetrics);
     }
 
     // Set the status line from a completed grid load; a handle-gone load leaves it

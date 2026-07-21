@@ -44,8 +44,6 @@
             <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
                 <TextBlock x:Name="SyncIndicator" VerticalAlignment="Center"
                            Foreground="Gray" TextWrapping="NoWrap" />
-                <ComboBox x:Name="BrowserModeBox" SelectionChanged="OnBrowserModeChanged" VerticalAlignment="Center" />
-                <StackPanel x:Name="SortControls" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center" />
                 <DropDownButton x:Uid="PlaybackMenuButton" Content="playback">
                     <DropDownButton.Flyout>
                         <MenuFlyout>
@@ -80,137 +78,233 @@
                 <Button x:Uid="SettingsButton" Content="settings" Click="OnSettingsClick" />
             </StackPanel>
         </Grid>
-        <GridView
-            x:Name="AlbumGrid"
-            Grid.Row="1"
-            ItemsSource="{x:Bind Albums}"
-            Padding="24"
-            SelectionMode="None"
-            IsItemClickEnabled="True"
-            CanDragItems="True"
-            DragItemsStarting="OnAlbumDragStarting"
-            ItemClick="OnAlbumClick"
-            RightTapped="OnAlbumGridRightTapped">
-            <GridView.ItemTemplate>
-                <DataTemplate x:DataType="local:Album">
-                    <Grid>
-                        <!-- The multi-selection tint: always in the layout tree, toggled by
-                             Opacity (not Visibility), so a selection change never re-measures
-                             the row — required in a virtualized, container-recycling GridView. -->
-                        <Border
-                            CornerRadius="10"
-                            Opacity="{x:Bind SelectionTintOpacity, Mode=OneWay}">
-                            <Border.Background>
-                                <SolidColorBrush Color="{ThemeResource SystemAccentColor}" Opacity="0.18" />
-                            </Border.Background>
-                        </Border>
-                        <StackPanel Width="180" Margin="8" Spacing="6">
-                            <Border
-                                Width="180"
-                                Height="180"
-                                CornerRadius="6"
-                                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
-                                <Image Source="{x:Bind Cover, Mode=OneWay}" Stretch="UniformToFill" />
-                            </Border>
-                            <TextBlock
-                                Text="{x:Bind Title}"
-                                MaxLines="1"
-                                TextTrimming="CharacterEllipsis"
-                                Style="{StaticResource BodyStrongTextBlockStyle}" />
-                            <TextBlock
-                                Text="{x:Bind Artist}"
-                                MaxLines="1"
-                                TextTrimming="CharacterEllipsis"
-                                Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                        </StackPanel>
-                    </Grid>
-                </DataTemplate>
-            </GridView.ItemTemplate>
-        </GridView>
-        <Grid
-            x:Name="ComposerBrowser"
-            Grid.Row="1"
-            Margin="24"
-            ColumnSpacing="16"
-            Visibility="Collapsed">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="320" />
-                <ColumnDefinition Width="*" />
-            </Grid.ColumnDefinitions>
-            <ListView
-                x:Name="ComposerList"
-                Grid.Column="0"
-                ItemsSource="{x:Bind Composers}"
+        <!-- The library content area's backdrop: a faint top-trailing lift fading
+             to the base background. Behind the capped content column. -->
+        <Border Grid.Row="1">
+            <Border.Background>
+                <RadialGradientBrush Center="0.8,-0.1" GradientOrigin="0.8,-0.1" RadiusX="0.9" RadiusY="0.9">
+                    <GradientStop Color="{ThemeResource CardBackgroundFillColorDefault}" Offset="0" />
+                    <GradientStop Color="Transparent" Offset="1" />
+                </RadialGradientBrush>
+            </Border.Background>
+        </Border>
+        <!-- The capped, centered content column: a header band above whichever
+             browse panel is visible. MaxWidth is lifted to full width by the
+             library_full_width preference (set in code). -->
+        <Grid x:Name="ContentColumn" Grid.Row="1" MaxWidth="1240" HorizontalAlignment="Stretch">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+            <Grid x:Name="HeaderBand" Grid.Row="0" Padding="22,56,22,32">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <!-- The mode heading is the mode switcher: a large heavy label with a
+                     chevron whose flyout picks albums / artists / composers. -->
+                <Button
+                    x:Name="ModeHeadingButton"
+                    Grid.Column="0"
+                    HorizontalAlignment="Left"
+                    VerticalAlignment="Bottom"
+                    Background="Transparent"
+                    BorderThickness="0"
+                    Padding="0">
+                    <Button.Flyout>
+                        <MenuFlyout x:Name="ModeHeadingFlyout" />
+                    </Button.Flyout>
+                    <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Bottom">
+                        <TextBlock
+                            x:Name="ModeHeadingText"
+                            FontSize="56"
+                            FontWeight="ExtraBold"
+                            CharacterSpacing="-25"
+                            VerticalAlignment="Bottom" />
+                        <FontIcon
+                            x:Name="ModeHeadingChevron"
+                            Glyph="&#xE70D;"
+                            FontSize="16"
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                            VerticalAlignment="Bottom" />
+                    </StackPanel>
+                </Button>
+                <StackPanel
+                    x:Name="SortControls"
+                    Grid.Column="1"
+                    Orientation="Horizontal"
+                    Spacing="8"
+                    VerticalAlignment="Bottom" />
+            </Grid>
+            <GridView
+                x:Name="AlbumGrid"
+                Grid.Row="1"
+                ItemsSource="{x:Bind Albums}"
+                Padding="16,0,16,24"
+                SelectionMode="None"
                 IsItemClickEnabled="True"
-                SelectionMode="Single"
-                ItemClick="OnComposerClick">
-                <ListView.ItemTemplate>
-                    <DataTemplate x:DataType="local:ComposerSummary">
-                        <StackPanel Orientation="Horizontal" Spacing="10" Padding="4">
+                CanDragItems="True"
+                SizeChanged="OnAlbumGridSizeChanged"
+                DragItemsStarting="OnAlbumDragStarting"
+                ItemClick="OnAlbumClick"
+                RightTapped="OnAlbumGridRightTapped">
+                <GridView.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <ItemsWrapGrid Orientation="Horizontal" />
+                    </ItemsPanelTemplate>
+                </GridView.ItemsPanel>
+                <GridView.ItemContainerStyle>
+                    <Style TargetType="GridViewItem">
+                        <Setter Property="Padding" Value="0" />
+                        <Setter Property="Margin" Value="0" />
+                        <Setter Property="MinWidth" Value="0" />
+                        <Setter Property="MinHeight" Value="0" />
+                        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                        <Setter Property="VerticalContentAlignment" Value="Stretch" />
+                    </Style>
+                </GridView.ItemContainerStyle>
+                <GridView.ItemTemplate>
+                    <DataTemplate x:DataType="local:Album">
+                        <!-- The cell reserves a trailing gutter and a bottom row gap so
+                             ItemsWrapGrid's equal cells read as spaced tiles. -->
+                        <Grid Margin="0,0,30,34">
+                            <!-- The multi-selection tint: always in the layout tree, toggled
+                                 by Opacity (not Visibility), so a selection change never
+                                 re-measures the tile — required in a virtualized,
+                                 container-recycling GridView. -->
                             <Border
-                                Width="42"
-                                Height="42"
-                                CornerRadius="6"
-                                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
-                                <Image Source="{x:Bind Cover, Mode=OneWay}" Stretch="UniformToFill" />
+                                CornerRadius="10"
+                                Opacity="{x:Bind SelectionTintOpacity, Mode=OneWay}">
+                                <Border.Background>
+                                    <SolidColorBrush Color="{ThemeResource SystemAccentColor}" Opacity="0.22" />
+                                </Border.Background>
                             </Border>
-                            <StackPanel VerticalAlignment="Center">
-                                <TextBlock Text="{x:Bind Name}" MaxLines="1" TextTrimming="CharacterEllipsis" />
-                                <TextBlock Text="{x:Bind WorkCountText}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                            <StackPanel Spacing="2" Padding="6">
+                                <!-- The art is square: it stretches to the cell width and
+                                     matches its height to its width on size change. -->
+                                <Border
+                                    CornerRadius="12"
+                                    HorizontalAlignment="Stretch"
+                                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                    SizeChanged="OnTileArtSizeChanged"
+                                    Translation="0,0,16">
+                                    <Border.Shadow>
+                                        <ThemeShadow />
+                                    </Border.Shadow>
+                                    <Image Source="{x:Bind Cover, Mode=OneWay}" Stretch="UniformToFill" />
+                                </Border>
+                                <TextBlock
+                                    Text="{x:Bind Title}"
+                                    FontSize="15"
+                                    FontWeight="Bold"
+                                    MaxLines="1"
+                                    TextTrimming="CharacterEllipsis"
+                                    Margin="0,8,0,0" />
+                                <TextBlock
+                                    Text="{x:Bind Artist}"
+                                    FontSize="13"
+                                    FontWeight="Medium"
+                                    MaxLines="1"
+                                    TextTrimming="CharacterEllipsis"
+                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                <!-- The year line keeps its height even when absent so tiles
+                                     stay uniform. -->
+                                <TextBlock
+                                    Text="{x:Bind YearText}"
+                                    FontSize="12"
+                                    FontWeight="Medium"
+                                    Height="16"
+                                    Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
                             </StackPanel>
-                        </StackPanel>
+                        </Grid>
                     </DataTemplate>
-                </ListView.ItemTemplate>
-            </ListView>
-            <ScrollViewer Grid.Column="1">
-                <StackPanel x:Name="ComposerDetailPane" Spacing="10" />
-            </ScrollViewer>
-        </Grid>
-        <Grid
-            x:Name="ArtistBrowser"
-            Grid.Row="1"
-            Margin="24"
-            ColumnSpacing="16"
-            Visibility="Collapsed">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="320" />
-                <ColumnDefinition Width="*" />
-            </Grid.ColumnDefinitions>
-            <ListView
-                x:Name="ArtistList"
-                Grid.Column="0"
-                ItemsSource="{x:Bind Artists}"
-                IsItemClickEnabled="True"
-                SelectionMode="Single"
-                ItemClick="OnArtistClick">
-                <ListView.ItemTemplate>
-                    <DataTemplate x:DataType="local:ArtistSummary">
-                        <StackPanel Orientation="Horizontal" Spacing="10" Padding="4">
-                            <Border
-                                Width="42"
-                                Height="42"
-                                CornerRadius="6"
-                                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
-                                <Image Source="{x:Bind Cover, Mode=OneWay}" Stretch="UniformToFill" />
-                            </Border>
-                            <StackPanel VerticalAlignment="Center">
-                                <TextBlock Text="{x:Bind Name}" MaxLines="1" TextTrimming="CharacterEllipsis" />
-                                <TextBlock Text="{x:Bind AlbumCountText}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                </GridView.ItemTemplate>
+            </GridView>
+            <Grid
+                x:Name="ComposerBrowser"
+                Grid.Row="1"
+                Margin="16,0,16,24"
+                ColumnSpacing="16"
+                Visibility="Collapsed">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="320" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <ListView
+                    x:Name="ComposerList"
+                    Grid.Column="0"
+                    ItemsSource="{x:Bind Composers}"
+                    IsItemClickEnabled="True"
+                    SelectionMode="Single"
+                    ItemClick="OnComposerClick">
+                    <ListView.ItemTemplate>
+                        <DataTemplate x:DataType="local:ComposerSummary">
+                            <StackPanel Orientation="Horizontal" Spacing="10" Padding="4">
+                                <Border
+                                    Width="42"
+                                    Height="42"
+                                    CornerRadius="6"
+                                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
+                                    <Image Source="{x:Bind Cover, Mode=OneWay}" Stretch="UniformToFill" />
+                                </Border>
+                                <StackPanel VerticalAlignment="Center">
+                                    <TextBlock Text="{x:Bind Name}" MaxLines="1" TextTrimming="CharacterEllipsis" />
+                                    <TextBlock Text="{x:Bind WorkCountText}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                </StackPanel>
                             </StackPanel>
-                        </StackPanel>
-                    </DataTemplate>
-                </ListView.ItemTemplate>
-            </ListView>
-            <ScrollViewer Grid.Column="1">
-                <StackPanel x:Name="ArtistDetailPane" Spacing="10" />
-            </ScrollViewer>
+                        </DataTemplate>
+                    </ListView.ItemTemplate>
+                </ListView>
+                <ScrollViewer Grid.Column="1">
+                    <StackPanel x:Name="ComposerDetailPane" Spacing="10" />
+                </ScrollViewer>
+            </Grid>
+            <Grid
+                x:Name="ArtistBrowser"
+                Grid.Row="1"
+                Margin="16,0,16,24"
+                ColumnSpacing="16"
+                Visibility="Collapsed">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="320" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <ListView
+                    x:Name="ArtistList"
+                    Grid.Column="0"
+                    ItemsSource="{x:Bind Artists}"
+                    IsItemClickEnabled="True"
+                    SelectionMode="Single"
+                    ItemClick="OnArtistClick">
+                    <ListView.ItemTemplate>
+                        <DataTemplate x:DataType="local:ArtistSummary">
+                            <StackPanel Orientation="Horizontal" Spacing="10" Padding="4">
+                                <Border
+                                    Width="42"
+                                    Height="42"
+                                    CornerRadius="6"
+                                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
+                                    <Image Source="{x:Bind Cover, Mode=OneWay}" Stretch="UniformToFill" />
+                                </Border>
+                                <StackPanel VerticalAlignment="Center">
+                                    <TextBlock Text="{x:Bind Name}" MaxLines="1" TextTrimming="CharacterEllipsis" />
+                                    <TextBlock Text="{x:Bind AlbumCountText}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                </StackPanel>
+                            </StackPanel>
+                        </DataTemplate>
+                    </ListView.ItemTemplate>
+                </ListView>
+                <ScrollViewer Grid.Column="1">
+                    <StackPanel x:Name="ArtistDetailPane" Spacing="10" />
+                </ScrollViewer>
+            </Grid>
+                <ListView
+                    x:Name="SearchResultsList"
+                    Grid.Row="1"
+                    Padding="16,0,16,24"
+                    SelectionMode="None"
+                    Visibility="Collapsed" />
         </Grid>
-        <ListView
-            x:Name="SearchResultsList"
-            Grid.Row="1"
-            Padding="24"
-            SelectionMode="None"
-            Visibility="Collapsed" />
         <StackPanel
             x:Name="EmptyState"
             Grid.Row="1"

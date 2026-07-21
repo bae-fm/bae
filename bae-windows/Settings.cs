@@ -29,6 +29,11 @@ public sealed class Settings
     /// follows the user to every device.</summary>
     public bool ShowRemainingTime { get; set; }
 
+    /// <summary>Whether the library content column spans the full window width
+    /// instead of the capped, centered column. A synced preference, so it follows
+    /// the user to every device.</summary>
+    public bool LibraryFullWidth { get; set; }
+
     /// <summary>Where release exports write: a fixed folder, or prompt each time.</summary>
     internal BridgeExportLocation ExportLocation { get; set; } = new BridgeExportLocation.AskEachTime();
 

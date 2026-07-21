@@ -983,6 +983,7 @@ internal static class NativeBae
             SyncReady = syncStatus.SyncReady,
             PauseBetweenSides = config.PauseBetweenSides,
             ShowRemainingTime = config.ShowRemainingTime,
+            LibraryFullWidth = config.LibraryFullWidth,
             ExportLocation = config.ExportLocation,
             ExportFilenameTemplate = config.ExportFilenameTemplate,
             ExportPresets = config.ExportPresets.Select(ExportPreset).ToList(),

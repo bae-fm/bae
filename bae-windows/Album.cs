@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel;
+using System.Globalization;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml.Media;
 using uniffi.bae_bridge;
@@ -39,6 +40,11 @@ public sealed class Album : INotifyPropertyChanged
     public string Title => _title;
     public string Artist => _artist;
     public int? Year { get; }
+
+    /// <summary>The year for the tile's year line, or an empty string when unknown
+    /// (the line keeps its height so tiles stay uniform). Plain digits, no group
+    /// separator — a four-digit year formats the same in every culture.</summary>
+    public string YearText => Year?.ToString(CultureInfo.CurrentCulture) ?? string.Empty;
 
     /// <summary>The album's canonical release — the default play/queue target.
     /// Null for search-result albums, whose bridge type doesn't carry it.</summary>
