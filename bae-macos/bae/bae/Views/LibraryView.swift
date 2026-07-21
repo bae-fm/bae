@@ -3,6 +3,24 @@ import SwiftUI
 
 private let listLoadBatchSize = 50
 
+extension Font {
+    /// The 14 pt medium title shared by every browse row (master list names,
+    /// work / release / recording titles).
+    fileprivate static let browseRowTitle = Font.system(
+        size: 14,
+        weight: .medium
+    )
+    /// The 11.5 pt secondary line under a browse row's title (counts, credits,
+    /// formats, album names).
+    fileprivate static let browseRowCaption = Font.system(size: 11.5)
+    /// The 15 pt bold section label ("Works", "Releases", "Recordings",
+    /// "Credits").
+    fileprivate static let browseSectionLabel = Font.system(
+        size: 15,
+        weight: .bold
+    )
+}
+
 private enum ComposerPaneDetail {
     case empty
     case composer(BridgeComposerDetail, work: BridgeWorkDetail?)
@@ -413,7 +431,9 @@ extension LibraryView {
                         }
                     }
                     if let loadedWorkDetail {
-                        Divider()
+                        Rectangle()
+                            .fill(Color.primary.opacity(0.08))
+                            .frame(height: 1)
                         WorkDetailView(
                             detail: loadedWorkDetail,
                             openWork: { workId in
@@ -462,10 +482,19 @@ extension LibraryView {
                 }
             }
             .padding(24)
+            .frame(maxWidth: 900, alignment: .leading)
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .reportsHeaderScroll(id: "composerDetail")
+        // The detail pane sits one surface step above the master list, with a
+        // hairline on its leading edge separating it from the base-background
+        // list.
         .background(Theme.surface)
+        .overlay(alignment: .leading) {
+            Rectangle()
+                .fill(Color.primary.opacity(0.08))
+                .frame(width: 1)
+        }
     }
 
     private var artistDetailView: some View {
@@ -649,6 +678,11 @@ where Row.ID: Sendable {
         List {
             ForEach(0..<list.totalCount, id: \.self) { index in
                 row(index)
+                    .listRowInsets(
+                        EdgeInsets(top: 0, leading: 10, bottom: 2, trailing: 10)
+                    )
+                    .listRowSeparator(.hidden)
+                    .listRowBackground(Color.clear)
                     .task(id: RowLoadID(epoch: list.loadEpoch, index: index)) {
                         let first = max(0, index - listLoadBatchSize / 2)
                         let end = min(
@@ -662,7 +696,10 @@ where Row.ID: Sendable {
                     }
             }
         }
+        .listStyle(.plain)
         .scrollContentBackground(.hidden)
+        .contentMargins(.top, 4, for: .scrollContent)
+        .contentMargins(.bottom, 20, for: .scrollContent)
         .reportsHeaderScroll(id: "browseList")
         .background(Theme.background)
     }
@@ -671,6 +708,8 @@ where Row.ID: Sendable {
 private struct BrowseListRow<Summary: BrowseSummaryDisplay>: View {
     @Environment(LibraryStore.self)
     private var libraryStore
+    @State
+    private var isHovered = false
 
     let id: String?
     let isSelected: Bool
@@ -689,68 +728,58 @@ private struct BrowseListRow<Summary: BrowseSummaryDisplay>: View {
                 SummaryRowPlaceholder()
                     .opacity(summary == nil ? 1 : 0)
                     .allowsHitTesting(summary == nil)
-                BrowseSummaryRow(summary: summary, isSelected: isSelected)
+                BrowseSummaryRow(summary: summary)
                     .opacity(summary == nil ? 0 : 1)
                     .allowsHitTesting(summary != nil)
             }
+            .padding(8)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: 7)
+                    .fill(rowFill)
+            )
+            .contentShape(RoundedRectangle(cornerRadius: 7))
         }
         .buttonStyle(.plain)
         .disabled(summary == nil)
+        .onHover { isHovered = $0 }
+    }
+
+    /// Selected rows carry the soft accent fill and keep it under hover; an
+    /// unselected row lifts to a faint foreground wash while hovered.
+    private var rowFill: Color {
+        if isSelected {
+            return Theme.accentSoft
+        }
+        return isHovered ? Color.primary.opacity(0.04) : .clear
     }
 }
 
 private struct BrowseSummaryRow<Summary: BrowseSummaryDisplay>: View {
     let summary: Summary?
-    let isSelected: Bool
 
     var body: some View {
         HStack(spacing: 12) {
-            ImageView(imageRef: summary?.image, pointSize: 36)
-                .frame(width: 36, height: 36)
+            ImageView(imageRef: summary?.image, pointSize: 40)
+                .frame(width: 40, height: 40)
                 .clipShape(RoundedRectangle(cornerRadius: 6))
-            VStack(alignment: .leading, spacing: 3) {
-                OptionalLineText(
+            VStack(alignment: .leading, spacing: 2) {
+                StableOptionalText(
                     text: summary?.name,
-                    font: .body,
-                    foreground: .primary
+                    font: .browseRowTitle,
+                    foreground: .primary,
+                    lineHeight: 17,
+                    lineLimit: 1
                 )
-                OptionalLineText(
+                StableOptionalText(
                     text: summary?.countText,
-                    font: .caption,
-                    foreground: .secondary
+                    font: .browseRowCaption,
+                    foreground: .secondary,
+                    lineHeight: 14,
+                    lineLimit: 1
                 )
             }
-        }
-        .padding(.vertical, 4)
-        .padding(.horizontal, 6)
-        .background(
-            RoundedRectangle(cornerRadius: 6)
-                .fill(isSelected ? Color.accentColor.opacity(0.18) : .clear)
-        )
-    }
-}
-
-private struct OptionalLineText: View {
-    let text: String?
-    let font: Font
-    let foreground: StableOptionalTextForeground
-
-    var body: some View {
-        StableOptionalText(
-            text: text,
-            font: font,
-            foreground: foreground,
-            lineHeight: lineHeight,
-            lineLimit: 1
-        )
-    }
-
-    private var lineHeight: CGFloat {
-        switch font {
-        case .caption:
-            12
-        default:
-            16
+            Spacer(minLength: 0)
         }
     }
 }
@@ -760,17 +789,17 @@ private struct SummaryRowPlaceholder: View {
         HStack(spacing: 12) {
             RoundedRectangle(cornerRadius: 6)
                 .fill(.secondary.opacity(0.15))
-                .frame(width: 36, height: 36)
-            VStack(alignment: .leading, spacing: 6) {
+                .frame(width: 40, height: 40)
+            VStack(alignment: .leading, spacing: 5) {
                 RoundedRectangle(cornerRadius: 3)
                     .fill(.secondary.opacity(0.15))
-                    .frame(width: 140, height: 12)
+                    .frame(width: 140, height: 11)
                 RoundedRectangle(cornerRadius: 3)
                     .fill(.secondary.opacity(0.12))
                     .frame(width: 80, height: 10)
             }
+            Spacer(minLength: 0)
         }
-        .padding(.vertical, 4)
     }
 }
 
@@ -782,12 +811,13 @@ private struct BrowseDetailHeader<Summary: BrowseSummaryDisplay>: View {
             ImageView(imageRef: summary.image, pointSize: 72)
                 .frame(width: 72, height: 72)
                 .clipShape(RoundedRectangle(cornerRadius: 8))
-            VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: 5) {
                 Text(summary.name)
-                    .font(.title.bold())
+                    .font(.system(size: 22, weight: .bold))
+                    .tracking(-0.3)
                     .lineLimit(2)
                 Text(summary.countText)
-                    .font(.callout)
+                    .font(.system(size: 13))
                     .foregroundStyle(.secondary)
             }
         }
@@ -821,27 +851,69 @@ private struct ArtistAlbumCard: View {
     }
 }
 
-private struct WorkSummaryRow: View {
-    let summary: BridgeWorkSummary
+/// A tappable image + title + secondary-line row shared by the works list and
+/// the selected work's releases. The image slot shows the placeholder when the
+/// entity has no art.
+private struct DetailMediaRow: View {
+    let image: BridgeImageRef?
+    let title: String
+    let subtitle: String?
 
     var body: some View {
         HStack(spacing: 12) {
-            ImageView(imageRef: summary.representativeCover, pointSize: 42)
+            ImageView(imageRef: image, pointSize: 42)
                 .frame(width: 42, height: 42)
                 .clipShape(RoundedRectangle(cornerRadius: 6))
-            VStack(alignment: .leading, spacing: 3) {
-                Text(summary.title)
-                    .font(.body)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.browseRowTitle)
                     .lineLimit(1)
-                OptionalLineText(
-                    text: summary.composerNames,
-                    font: .caption,
-                    foreground: .secondary
+                StableOptionalText(
+                    text: subtitle,
+                    font: .browseRowCaption,
+                    foreground: .secondary,
+                    lineHeight: 14,
+                    lineLimit: 1
                 )
             }
-            Spacer()
+            Spacer(minLength: 0)
         }
-        .padding(.vertical, 4)
+    }
+}
+
+/// The detail pane's row buttons: 6/8 padding, radius-8 rounding, a hover wash,
+/// and a negative horizontal margin so the hover fill bleeds to the pane's
+/// content edges while the content itself stays column-aligned.
+private struct DetailRowButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        DetailRow(configuration: configuration)
+    }
+
+    private struct DetailRow: View {
+        let configuration: Configuration
+        @State
+        private var isHovered = false
+
+        var body: some View {
+            configuration.label
+                .padding(.vertical, 6)
+                .padding(.horizontal, 8)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(fill)
+                )
+                .contentShape(Rectangle())
+                .onHover { isHovered = $0 }
+                .padding(.horizontal, -8)
+        }
+
+        private var fill: Color {
+            if configuration.isPressed {
+                return Color.primary.opacity(0.08)
+            }
+            return isHovered ? Color.primary.opacity(0.04) : .clear
+        }
     }
 }
 
@@ -850,23 +922,28 @@ private struct ComposerWorkGroupView: View {
     let openWork: (String) -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 2) {
             ForEach(parentRows, id: \.workId) { parent in
-                Button(action: { openWork(parent.workId) }) {
-                    WorkSummaryRow(summary: parent)
-                }
-                .buttonStyle(.plain)
+                workRow(parent)
             }
-            VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: 2) {
                 ForEach(group.works, id: \.workId) { work in
-                    Button(action: { openWork(work.workId) }) {
-                        WorkSummaryRow(summary: work)
-                    }
-                    .buttonStyle(.plain)
+                    workRow(work)
                 }
             }
             .padding(.leading, group.parent == nil ? 0 : 18)
         }
+    }
+
+    private func workRow(_ work: BridgeWorkSummary) -> some View {
+        Button(action: { openWork(work.workId) }) {
+            DetailMediaRow(
+                image: work.representativeCover,
+                title: work.title,
+                subtitle: work.composerNames
+            )
+        }
+        .buttonStyle(DetailRowButtonStyle())
     }
 
     private var parentRows: [BridgeWorkSummary] {
@@ -882,11 +959,13 @@ private struct SectionHeader: View {
 
     var body: some View {
         Text(title)
-            .font(.headline)
+            .font(.browseSectionLabel)
             .padding(.top, 4)
     }
 }
 
+/// A text-only detail row (a composer credit or a recording): title over an
+/// optional secondary line, no image slot and no hover — nothing to open.
 private struct CreditRow: View {
     let title: String
     let subtitle: String?
@@ -894,13 +973,13 @@ private struct CreditRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(title)
-                .font(.body)
+                .font(.browseRowTitle)
                 .lineLimit(1)
             StableOptionalText(
                 text: subtitle,
-                font: .caption,
+                font: .browseRowCaption,
                 foreground: .secondary,
-                lineHeight: 12,
+                lineHeight: 14,
                 lineLimit: 1
             )
         }
@@ -916,56 +995,49 @@ private struct WorkDetailView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text(detail.work.title)
-                .font(.title2.bold())
+                .font(.system(size: 18, weight: .bold))
+                .tracking(-0.2)
                 .lineLimit(2)
             if !detail.childWorks.isEmpty {
                 SectionHeader(title: String(localized: "Works"))
-                ForEach(detail.childWorks, id: \.workId) { work in
-                    Button(action: { openWork(work.workId) }) {
-                        WorkSummaryRow(summary: work)
+                VStack(alignment: .leading, spacing: 2) {
+                    ForEach(detail.childWorks, id: \.workId) { work in
+                        Button(action: { openWork(work.workId) }) {
+                            DetailMediaRow(
+                                image: work.representativeCover,
+                                title: work.title,
+                                subtitle: work.composerNames
+                            )
+                        }
+                        .buttonStyle(DetailRowButtonStyle())
                     }
-                    .buttonStyle(.plain)
                 }
             }
             if !detail.releases.isEmpty {
                 SectionHeader(title: String(localized: "Releases"))
-                ForEach(detail.releases, id: \.releaseId) { release in
-                    Button(action: {
-                        openAlbum(release.albumId, release.releaseId)
-                    }) {
-                        HStack(spacing: 12) {
-                            ImageView(imageRef: release.cover, pointSize: 42)
-                                .frame(width: 42, height: 42)
-                                .clipShape(RoundedRectangle(cornerRadius: 6))
-                            VStack(alignment: .leading, spacing: 3) {
-                                Text(release.albumTitle)
-                                    .font(.body)
-                                    .lineLimit(1)
-                                StableOptionalText(
-                                    text: workReleaseMetadata(release),
-                                    font: .caption,
-                                    foreground: .secondary,
-                                    lineHeight: 12,
-                                    lineLimit: 1
-                                )
-                            }
-                            Spacer()
+                VStack(alignment: .leading, spacing: 2) {
+                    ForEach(detail.releases, id: \.releaseId) { release in
+                        Button(action: {
+                            openAlbum(release.albumId, release.releaseId)
+                        }) {
+                            DetailMediaRow(
+                                image: release.cover,
+                                title: release.albumTitle,
+                                subtitle: workReleaseMetadata(release)
+                            )
                         }
+                        .buttonStyle(DetailRowButtonStyle())
                     }
-                    .buttonStyle(.plain)
                 }
             }
             if !detail.tracks.isEmpty {
                 SectionHeader(title: String(localized: "Recordings"))
-                ForEach(detail.tracks, id: \.trackId) { track in
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(track.trackTitle)
-                            .font(.body)
-                            .lineLimit(1)
-                        Text(track.albumTitle)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
+                VStack(alignment: .leading, spacing: 2) {
+                    ForEach(detail.tracks, id: \.trackId) { track in
+                        CreditRow(
+                            title: track.trackTitle,
+                            subtitle: track.albumTitle
+                        )
                     }
                 }
             }
@@ -1093,6 +1165,126 @@ private struct WorkDetailView: View {
             )
             return (library, session)
         }
+    }
+
+    extension LibraryView {
+        /// A canned composer library — a master list plus one composer's detail
+        /// (works, releases, recordings) — behind a real session, so the
+        /// composer detail preview renders the restyled master list and detail
+        /// pane through the production `LibraryView` body. Images are absent, so
+        /// every slot shows the placeholder treatment.
+        @MainActor
+        static func previewComposerBacking(
+            uiStore: UiStore,
+            libraryStore: LibraryStore
+        ) -> (library: Library, session: LibraryBrowseSession) {
+            let composers: [BridgeComposerSummary] = (0..<14)
+                .map { (index: Int) -> BridgeComposerSummary in
+                    let workCount = Int64(2 + index % 6)
+                    let releaseCount = Int64(3 + index % 4)
+                    return BridgeComposerSummary(
+                        artistId: "composer-\(index)",
+                        name: "Composer Name \(index + 1)",
+                        sortName: nil,
+                        workCount: workCount,
+                        linkedReleaseCount: releaseCount,
+                        unlinkedCreditCount: 0,
+                        image: nil,
+                    )
+                }
+            let works: [BridgeWorkSummary] = (0..<4)
+                .map { (index: Int) -> BridgeWorkSummary in
+                    BridgeWorkSummary(
+                        workId: "work-\(index)",
+                        title: "Work Title \(index + 1)",
+                        disambiguation: nil,
+                        workType: nil,
+                        parentWorkId: nil,
+                        composerNames: "Composer Name 1",
+                        linkedReleaseCount: Int64(1 + index),
+                        representativeReleaseId: nil,
+                        representativeCover: nil,
+                    )
+                }
+            let composerDetail = BridgeComposerDetail(
+                composer: composers[0],
+                workGroups: [
+                    BridgeComposerWorkGroup(
+                        id: "group-0",
+                        parent: nil,
+                        works: works
+                    )
+                ],
+                unlinkedReleaseRoles: [],
+                unlinkedTrackRoles: [],
+                defaultWorkId: "work-0",
+            )
+            let workDetail = BridgeWorkDetail(
+                work: works[0],
+                childWorks: [],
+                releases: (0..<3)
+                    .map { (index: Int) -> BridgeWorkReleaseSummary in
+                        BridgeWorkReleaseSummary(
+                            releaseId: "release-\(index)",
+                            albumId: "album-\(index)",
+                            albumTitle: "Album Title \(index + 1)",
+                            displayName: "Album Title \(index + 1)",
+                            format: "2\u{00D7}LP",
+                            cover: nil,
+                        )
+                    },
+                tracks: (0..<4)
+                    .map { (index: Int) -> BridgeWorkTrackSummary in
+                        BridgeWorkTrackSummary(
+                            trackId: "track-\(index)",
+                            trackTitle: "Track Title \(index + 1)",
+                            releaseId: "release-0",
+                            albumId: "album-0",
+                            albumTitle: "Album Title 1",
+                        )
+                    },
+            )
+            let library = Library(
+                getComposerCount: { UInt64(composers.count) },
+                getComposerPage: { _, offset, limit in
+                    let start = min(Int(offset), composers.count)
+                    let end = min(start + Int(limit), composers.count)
+                    return Array(composers[start..<end])
+                },
+                getComposerDetail: { _ in composerDetail },
+                getWorkDetail: { _ in workDetail },
+            )
+            let session = LibraryBrowseSession(
+                library: library,
+                projectionRegistry: ProjectionRegistry(),
+                libraryStore: libraryStore,
+                uiStore: uiStore
+            )
+            session.selectComposer("composer-0")
+            return (library, session)
+        }
+    }
+
+    #Preview("Composers \u{2014} Detail") {
+        let uiStore = UiStore()
+        uiStore.setLibraryBrowserMode(.composers)
+        let libraryStore = LibraryStore()
+        let backing = LibraryView.previewComposerBacking(
+            uiStore: uiStore,
+            libraryStore: libraryStore
+        )
+        return LibraryView()
+            .environment(MediaPaths.stub)
+            .environment(Playback.stub)
+            .environment(Queue.stub)
+            .environment(Downloads.stub)
+            .environment(backing.library)
+            .environment(libraryStore)
+            .environment(uiStore)
+            .environment(backing.session)
+            .environment(PreviewData.configStore)
+            .frame(width: 1200, height: 760)
+            .windowBackground()
     }
 
     #Preview("Albums \u{2014} Grid") {
