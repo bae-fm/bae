@@ -1019,15 +1019,19 @@
         ]
 
         /// Shared preview ConfigStore. ConfigStore is a non-Sendable `@Observable`,
-        /// so it needs `@MainActor` isolation to hold as a static.
+        /// so it needs `@MainActor` isolation to hold as a static. The explicit
+        /// type keeps the static preview analyzer able to see that
+        /// `.environment(PreviewData.configStore)` provides a `ConfigStore`.
         @MainActor
-        static let configStore = configStore(libraryFullWidth: false)
+        static let configStore: ConfigStore = makeConfigStore(
+            libraryFullWidth: false
+        )
 
         /// A preview ConfigStore with the given library-width setting — the
         /// full-width previews build their own; everything else shares the
         /// `configStore` static above.
         @MainActor
-        static func configStore(libraryFullWidth: Bool) -> ConfigStore {
+        static func makeConfigStore(libraryFullWidth: Bool) -> ConfigStore {
             ConfigStore(
                 config: Config(
                     bridge: BridgeConfig(

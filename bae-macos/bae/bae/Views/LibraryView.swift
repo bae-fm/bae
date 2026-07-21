@@ -1273,15 +1273,17 @@ private struct WorkDetailView: View {
             uiStore: uiStore,
             libraryStore: libraryStore
         )
+        let library: Library = backing.library
+        let session: LibraryBrowseSession = backing.session
         return LibraryView()
             .environment(MediaPaths.stub)
             .environment(Playback.stub)
             .environment(Queue.stub)
             .environment(Downloads.stub)
-            .environment(backing.library)
+            .environment(library)
             .environment(libraryStore)
             .environment(uiStore)
-            .environment(backing.session)
+            .environment(session)
             .environment(PreviewData.configStore)
             .frame(width: 1200, height: 760)
             .windowBackground()
@@ -1294,15 +1296,17 @@ private struct WorkDetailView: View {
             uiStore: uiStore,
             libraryStore: libraryStore
         )
+        let library: Library = backing.library
+        let session: LibraryBrowseSession = backing.session
         return LibraryView()
             .environment(MediaPaths.stub)
             .environment(Playback.stub)
             .environment(Queue.stub)
             .environment(Downloads.stub)
-            .environment(backing.library)
+            .environment(library)
             .environment(libraryStore)
             .environment(uiStore)
-            .environment(backing.session)
+            .environment(session)
             .environment(PreviewData.configStore)
             .frame(width: 1500, height: 700)
             .windowBackground()
@@ -1317,16 +1321,18 @@ private struct WorkDetailView: View {
             uiStore: uiStore,
             libraryStore: libraryStore
         )
+        let library: Library = backing.library
+        let session: LibraryBrowseSession = backing.session
         return LibraryView()
             .environment(MediaPaths.stub)
             .environment(Playback.stub)
             .environment(Queue.stub)
             .environment(Downloads.stub)
-            .environment(backing.library)
+            .environment(library)
             .environment(libraryStore)
             .environment(uiStore)
-            .environment(backing.session)
-            .environment(PreviewData.configStore(libraryFullWidth: true))
+            .environment(session)
+            .environment(PreviewData.makeConfigStore(libraryFullWidth: true))
             .frame(width: 1500, height: 700)
             .windowBackground()
     }
