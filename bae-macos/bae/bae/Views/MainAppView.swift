@@ -230,3 +230,27 @@ struct MainAppView: View {
         return true
     }
 }
+
+#if DEBUG
+    /// The full main window against stub services: title bar, library grid
+    /// over the canned 40-album session, and the now-playing bar with an
+    /// empty transport. Scrolling the grid drives the header collapse; the
+    /// queue and import sections mount on their normal toggles.
+    #Preview("Main app") {
+        let uiStore = UiStore()
+        let libraryStore = LibraryStore()
+        let backing = LibraryView.previewGridBacking(
+            uiStore: uiStore,
+            libraryStore: libraryStore
+        )
+        return MainAppView()
+            .environment(backing.library)
+            .environment(backing.session)
+            .environment(libraryStore)
+            .environment(uiStore)
+            .environment(PreviewAudio.stub)
+            .albumDetailPreviewEnvironment(store: libraryStore)
+            .frame(width: 1280, height: 800)
+            .windowBackground()
+    }
+#endif
