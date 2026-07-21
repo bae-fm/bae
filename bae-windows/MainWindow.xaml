@@ -298,40 +298,81 @@
                 x:Name="ComposerBrowser"
                 Grid.Row="1"
                 Margin="16,0,16,24"
-                ColumnSpacing="16"
+                ColumnSpacing="0"
                 Visibility="Collapsed">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="320" />
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
+                <!-- Master list on the base background: full-width rounded rows,
+                     subtle pointer-over fill, soft system-accent tint when selected
+                     (the accent pill is suppressed so the fill reads on its own). -->
                 <ListView
                     x:Name="ComposerList"
                     Grid.Column="0"
+                    Padding="10,4,10,20"
                     ItemsSource="{x:Bind Composers}"
                     IsItemClickEnabled="True"
                     SelectionMode="Single"
                     ItemClick="OnComposerClick">
+                    <ListView.Resources>
+                        <x:Boolean x:Key="ListViewItemSelectionIndicatorVisualEnabled">False</x:Boolean>
+                        <SolidColorBrush x:Key="ListViewItemBackgroundSelected" Color="{ThemeResource SystemAccentColor}" Opacity="0.2" />
+                        <SolidColorBrush x:Key="ListViewItemBackgroundSelectedPointerOver" Color="{ThemeResource SystemAccentColor}" Opacity="0.24" />
+                        <SolidColorBrush x:Key="ListViewItemBackgroundSelectedPressed" Color="{ThemeResource SystemAccentColor}" Opacity="0.24" />
+                        <SolidColorBrush x:Key="ListViewItemForegroundSelected" Color="{ThemeResource TextFillColorPrimary}" />
+                    </ListView.Resources>
+                    <ListView.ItemContainerStyle>
+                        <Style TargetType="ListViewItem">
+                            <Setter Property="CornerRadius" Value="7" />
+                            <Setter Property="Padding" Value="8" />
+                            <Setter Property="Margin" Value="0,0,0,2" />
+                            <Setter Property="MinHeight" Value="0" />
+                            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                        </Style>
+                    </ListView.ItemContainerStyle>
                     <ListView.ItemTemplate>
                         <DataTemplate x:DataType="local:ComposerSummary">
-                            <StackPanel Orientation="Horizontal" Spacing="10" Padding="4">
+                            <StackPanel Orientation="Horizontal" Spacing="10">
                                 <Border
-                                    Width="42"
-                                    Height="42"
+                                    Width="40"
+                                    Height="40"
                                     CornerRadius="6"
                                     Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
                                     <Image Source="{x:Bind Cover, Mode=OneWay}" Stretch="UniformToFill" />
                                 </Border>
-                                <StackPanel VerticalAlignment="Center">
-                                    <TextBlock Text="{x:Bind Name}" MaxLines="1" TextTrimming="CharacterEllipsis" />
-                                    <TextBlock Text="{x:Bind WorkCountText}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                <StackPanel VerticalAlignment="Center" Spacing="2">
+                                    <TextBlock
+                                        Text="{x:Bind Name}"
+                                        FontSize="14"
+                                        FontWeight="Medium"
+                                        MaxLines="1"
+                                        TextTrimming="CharacterEllipsis" />
+                                    <TextBlock
+                                        Text="{x:Bind WorkCountText}"
+                                        FontSize="11.5"
+                                        Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                                 </StackPanel>
                             </StackPanel>
                         </DataTemplate>
                     </ListView.ItemTemplate>
                 </ListView>
-                <ScrollViewer Grid.Column="1">
-                    <StackPanel x:Name="ComposerDetailPane" Spacing="10" />
-                </ScrollViewer>
+                <!-- Detail pane one surface step up, with a hairline on its leading
+                     edge; the content column is capped and inset. -->
+                <Border
+                    Grid.Column="1"
+                    Background="{ThemeResource LayerFillColorDefaultBrush}"
+                    BorderThickness="1,0,0,0"
+                    BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}">
+                    <ScrollViewer>
+                        <StackPanel
+                            x:Name="ComposerDetailPane"
+                            Margin="24"
+                            MaxWidth="900"
+                            HorizontalAlignment="Stretch"
+                            Spacing="20" />
+                    </ScrollViewer>
+                </Border>
             </Grid>
             <Grid
                 x:Name="ArtistBrowser"
