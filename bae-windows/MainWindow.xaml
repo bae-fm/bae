@@ -71,9 +71,18 @@
                                     <Setter Property="MinWidth" Value="468" />
                                     <Setter Property="MaxWidth" Value="572" />
                                     <Setter Property="MaxHeight" Value="728" />
+                                    <!-- Hug the results and top-align them: no height
+                                         floor, content pinned to the top, and the
+                                         presenter's own scroller off so the ListView
+                                         (capped below) does the scrolling and keeps
+                                         virtualizing. -->
+                                    <Setter Property="MinHeight" Value="0" />
+                                    <Setter Property="VerticalContentAlignment" Value="Top" />
                                     <Setter Property="BorderThickness" Value="1" />
                                     <Setter Property="BorderBrush" Value="{ThemeResource CardStrokeColorDefaultBrush}" />
                                     <Setter Property="ScrollViewer.HorizontalScrollMode" Value="Disabled" />
+                                    <Setter Property="ScrollViewer.VerticalScrollMode" Value="Disabled" />
+                                    <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Disabled" />
                                     <Setter Property="Background">
                                         <Setter.Value>
                                             <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
@@ -87,6 +96,8 @@
                             <ListView
                                 x:Name="SearchResultsList"
                                 Width="468"
+                                MaxHeight="712"
+                                VerticalAlignment="Top"
                                 SelectionMode="None" />
                         </Flyout>
                     </FlyoutBase.AttachedFlyout>

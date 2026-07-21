@@ -179,6 +179,10 @@ public sealed partial class MainWindow : Window
         SearchFlyout.Opened += (_, _) => _searchFlyoutOpen = true;
         SearchFlyout.Closed += (_, _) => _searchFlyoutOpen = false;
         SearchBox.GotFocus += OnSearchBoxGotFocus;
+        // A click outside the open dropdown both dismisses it AND lands on its
+        // target: routing the light-dismiss overlay's input to the window root lets
+        // the click through instead of being swallowed.
+        SearchFlyout.OverlayInputPassThroughElement = RootGrid;
         // The album tiles scroll under a header that collapses as any browse panel
         // scrolls; each panel's scroll drives the shared collapse model.
         AttachCollapseScroll(AlbumGrid, "albums");
@@ -507,6 +511,12 @@ public sealed partial class MainWindow : Window
             }
             viewer.ViewChanged += (s, args) =>
             {
+                // Scrolling the content behind the search dropdown dismisses it,
+                // matching a click-away.
+                if (_searchFlyoutOpen)
+                {
+                    SearchFlyout.Hide();
+                }
                 var offset = ((ScrollViewer)s!).VerticalOffset;
                 ApplyCollapse(_collapse.ReportScroll(scroller, offset));
                 if (!args.IsIntermediate && _collapse.ReportSettled(scroller))

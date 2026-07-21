@@ -98,7 +98,7 @@ internal sealed class BrowserPanes
             FontWeight = FontWeights.ExtraBold,
             CharacterSpacing = 40,
             Foreground = Secondary,
-            Margin = new Thickness(8, 10, 8, 4),
+            Margin = new Thickness(8, 18, 8, 4),
         },
         SearchMessageRow message => new TextBlock
         {
