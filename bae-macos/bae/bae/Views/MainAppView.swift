@@ -127,8 +127,8 @@ struct MainAppView: View {
                         onSelectComposer: selectComposer,
                         onSelectWork: selectWork,
                     )
-                    .frame(width: 400, height: 350, alignment: .topTrailing)
-                    .position(x: rect.maxX - 200, y: rect.maxY + 180)
+                    .frame(width: 440, height: 350, alignment: .topTrailing)
+                    .position(x: rect.maxX - 220, y: rect.maxY + 180)
                 }
             }
         }

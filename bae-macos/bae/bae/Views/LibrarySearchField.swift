@@ -1,3 +1,4 @@
+import BaeKit
 import SwiftUI
 
 /// Search field in the title bar for searching the library (artists, albums, tracks).
@@ -12,9 +13,10 @@ struct LibrarySearchField: View {
         HStack(spacing: 6) {
             Image(systemName: "magnifyingglass")
                 .foregroundStyle(.secondary)
-                .font(.caption)
+                .font(.system(size: 13, weight: .medium))
             TextField(prompt, text: $text)
                 .textFieldStyle(.plain)
+                .font(.system(size: 14, weight: .medium))
                 .focused(focused)
                 .onKeyPress(.escape) {
                     onEscape()
@@ -24,14 +26,26 @@ struct LibrarySearchField: View {
                 Button(action: { text = "" }) {
                     Image(systemName: "xmark.circle.fill")
                         .foregroundStyle(.secondary)
-                        .font(.caption)
+                        .font(.system(size: 13))
                 }
                 .buttonStyle(.plain)
             }
         }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 5)
-        .background(Color(nsColor: .controlBackgroundColor))
-        .clipShape(RoundedRectangle(cornerRadius: 6))
+        .padding(.horizontal, 10)
+        .frame(height: 38)
+        .background(
+            RoundedRectangle(cornerRadius: 10)
+                .fill(Theme.field)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10)
+                        .strokeBorder(
+                            focused.wrappedValue
+                                ? Theme.accent.opacity(0.7)
+                                : Color.white.opacity(0.08),
+                            lineWidth: 1
+                        )
+                )
+        )
+        .animation(.easeInOut(duration: 0.15), value: focused.wrappedValue)
     }
 }

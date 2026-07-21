@@ -16,171 +16,177 @@ struct SearchView: View {
                     ContentUnavailableView.search(text: results.query)
                 }
                 else {
-                    searchResultsList(results)
+                    resultsList(results)
                 }
             }
         }
-        .frame(width: 400, height: 350)
-        .background(Theme.surface)
-        .clipShape(RoundedRectangle(cornerRadius: 8))
-        .shadow(radius: 8)
+        .frame(width: 440, height: 350)
+        .background(
+            RoundedRectangle(cornerRadius: 14)
+                .fill(
+                    LinearGradient(
+                        colors: [Theme.surfaceElevated, Theme.surface],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                )
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 14))
+        .overlay(
+            RoundedRectangle(cornerRadius: 14)
+                .strokeBorder(Color.white.opacity(0.08), lineWidth: 1)
+        )
+        .shadow(color: .black.opacity(0.5), radius: 24, y: 12)
     }
 
-    private func searchResultsList(_ results: SearchResults) -> some View {
-        List {
-            if !results.albums.isEmpty {
-                Section("Albums") {
+    private func resultsList(_ results: SearchResults) -> some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 2) {
+                if !results.albums.isEmpty {
+                    sectionHeader("Albums")
                     ForEach(results.albums, id: \.id) { album in
-                        albumRow(album)
-                    }
-                }
-            }
-
-            if !results.tracks.isEmpty {
-                Section("Tracks") {
-                    ForEach(results.tracks, id: \.id) { track in
-                        trackRow(track)
-                    }
-                }
-            }
-
-            Section("Composers") {
-                ForEach(results.composers, id: \.id) { composer in
-                    composerRow(composer)
-                }
-            }
-            .opacity(results.composers.isEmpty ? 0 : 1)
-            .allowsHitTesting(!results.composers.isEmpty)
-
-            Section("Works") {
-                ForEach(results.works, id: \.id) { work in
-                    workRow(work)
-                }
-            }
-            .opacity(results.works.isEmpty ? 0 : 1)
-            .allowsHitTesting(!results.works.isEmpty)
-        }
-        .scrollContentBackground(.hidden)
-        .background(Theme.background)
-    }
-
-    private func albumRow(_ album: AlbumSearchResult) -> some View {
-        Button(action: { onSelectAlbum(album.id) }) {
-            HStack(spacing: 12) {
-                albumArt(album)
-                    .frame(width: 32, height: 32)
-                    .clipShape(RoundedRectangle(cornerRadius: 4))
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(album.title)
-                        .font(.body)
-                        .lineLimit(1)
-
-                    HStack(spacing: 4) {
-                        Text(album.artistName)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
-
-                        if let year = album.year {
-                            Text("(\(String(year)))")
-                                .font(.caption)
-                                .foregroundStyle(.tertiary)
-                        }
-                    }
-                }
-            }
-        }
-        .buttonStyle(.plain)
-    }
-
-    private func trackRow(_ track: TrackSearchResult) -> some View {
-        Button(action: {
-            onSelectAlbum(track.albumId)
-        }) {
-            HStack(spacing: 12) {
-                Image(systemName: "waveform")
-                    .frame(width: 32, height: 32)
-                    .foregroundStyle(.secondary)
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(track.title)
-                        .font(.body)
-                        .lineLimit(1)
-
-                    Text(
-                        String(
-                            format: String(localized: "%@ - %@"),
-                            track.artistName,
-                            track.albumTitle
+                        SearchResultRow(
+                            leading: albumArt(album),
+                            title: album.title,
+                            subtitle: albumSubtitle(album),
+                            action: { onSelectAlbum(album.id) }
                         )
-                    )
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
+                    }
                 }
 
-                Spacer()
-
-                if !track.durationLabel.isEmpty {
-                    Text(track.durationLabel)
-                        .font(.callout.monospacedDigit())
-                        .foregroundStyle(.secondary)
+                if !results.tracks.isEmpty {
+                    sectionHeader("Tracks")
+                    ForEach(results.tracks, id: \.id) { track in
+                        SearchResultRow(
+                            leading: rowGlyph("waveform"),
+                            title: track.title,
+                            subtitle: trackSubtitle(track),
+                            trailing: track.durationLabel.isEmpty
+                                ? nil : track.durationLabel,
+                            action: { onSelectAlbum(track.albumId) }
+                        )
+                    }
                 }
-            }
-        }
-        .buttonStyle(.plain)
-    }
 
-    private func composerRow(_ composer: BridgeComposerSummary) -> some View {
-        libraryEntityRow(
-            systemImage: "person.wave.2",
-            title: composer.name,
-            subtitle: "\(composer.workCount) \(String(localized: "Works"))",
-            action: { onSelectComposer(composer.id) }
-        )
-    }
+                if !results.composers.isEmpty {
+                    sectionHeader("Composers")
+                    ForEach(results.composers, id: \.id) { composer in
+                        SearchResultRow(
+                            leading: rowGlyph("person.wave.2"),
+                            title: composer.name,
+                            subtitle:
+                                "\(composer.workCount) \(String(localized: "Works"))",
+                            action: { onSelectComposer(composer.id) }
+                        )
+                    }
+                }
 
-    private func workRow(_ work: BridgeWorkSummary) -> some View {
-        libraryEntityRow(
-            systemImage: "music.quarternote.3",
-            title: work.title,
-            subtitle: work.composerNames,
-            action: { onSelectWork(work.id) }
-        )
-    }
-
-    private func libraryEntityRow(
-        systemImage: String,
-        title: String,
-        subtitle: String?,
-        action: @escaping () -> Void
-    ) -> some View {
-        Button(action: action) {
-            HStack(spacing: 12) {
-                Image(systemName: systemImage)
-                    .frame(width: 32, height: 32)
-                    .foregroundStyle(.secondary)
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(title)
-                        .font(.body)
-                        .lineLimit(1)
-                    StableOptionalText(
-                        text: subtitle,
-                        font: .caption,
-                        foreground: .secondary,
-                        lineHeight: 12,
-                        lineLimit: 1
-                    )
+                if !results.works.isEmpty {
+                    sectionHeader("Works")
+                    ForEach(results.works, id: \.id) { work in
+                        SearchResultRow(
+                            leading: rowGlyph("music.quarternote.3"),
+                            title: work.title,
+                            subtitle: work.composerNames,
+                            action: { onSelectWork(work.id) }
+                        )
+                    }
                 }
             }
+            .padding(8)
         }
-        .buttonStyle(.plain)
+    }
+
+    private func sectionHeader(_ title: LocalizedStringKey) -> some View {
+        Text(title)
+            .font(.system(size: 12, weight: .heavy))
+            .tracking(0.5)
+            .foregroundStyle(.secondary)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 8)
+            .padding(.top, 8)
+            .padding(.bottom, 2)
     }
 
     private func albumArt(_ album: AlbumSearchResult) -> some View {
-        ImageView(imageRef: album.cover, pointSize: 32)
+        ImageView(imageRef: album.cover, pointSize: 46)
+            .clipShape(RoundedRectangle(cornerRadius: 8))
+    }
+
+    private func rowGlyph(_ systemName: String) -> some View {
+        Image(systemName: systemName)
+            .font(.system(size: 18))
+            .foregroundStyle(.secondary)
+    }
+
+    private func albumSubtitle(_ album: AlbumSearchResult) -> String {
+        if let year = album.year {
+            "\(album.artistName) (\(year))"
+        }
+        else {
+            album.artistName
+        }
+    }
+
+    private func trackSubtitle(_ track: TrackSearchResult) -> String {
+        String(
+            format: String(localized: "%@ - %@"),
+            track.artistName,
+            track.albumTitle
+        )
+    }
+}
+
+/// One search hit: leading art or glyph, a title over an optional subtitle, an
+/// optional trailing label (a track's duration), with a subtle hover fill.
+private struct SearchResultRow<Leading: View>: View {
+    let leading: Leading
+    let title: String
+    let subtitle: String?
+    var trailing: String?
+    let action: () -> Void
+
+    @State
+    private var hovering = false
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 12) {
+                leading
+                    .frame(width: 46, height: 46)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .font(.system(size: 16, weight: .semibold))
+                        .lineLimit(1)
+                    StableOptionalText(
+                        text: subtitle,
+                        font: .system(size: 13, weight: .medium),
+                        foreground: .secondary,
+                        lineHeight: 14,
+                        lineLimit: 1
+                    )
+                }
+
+                Spacer(minLength: 8)
+
+                if let trailing {
+                    Text(trailing)
+                        .font(.system(size: 14).monospacedDigit())
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 6)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(Rectangle())
+            .background(
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(Color.white.opacity(hovering ? 0.06 : 0))
+            )
+        }
+        .buttonStyle(.plain)
+        .onHover { hovering = $0 }
     }
 }
 
