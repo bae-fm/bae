@@ -287,6 +287,7 @@
   <data name="library.no_composers" xml:space="preserve"><value>இசையமைப்பாளர்கள் இல்லை</value></data>
   <data name="library.no_artists" xml:space="preserve"><value>கலைஞர்கள் இல்லை</value></data>
   <data name="search.section.albums" xml:space="preserve"><value>ஆல்பங்கள்</value></data>
+  <data name="search.section.artists" xml:space="preserve"><value>கலைஞர்கள்</value></data>
   <data name="search.section.tracks" xml:space="preserve"><value>பாடல்கள்</value></data>
   <data name="search.section.composers" xml:space="preserve"><value>இசையமைப்பாளர்கள்</value></data>
   <data name="search.section.works" xml:space="preserve"><value>படைப்புகள்</value></data>

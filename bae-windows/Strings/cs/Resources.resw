@@ -287,6 +287,7 @@
   <data name="library.no_composers" xml:space="preserve"><value>Žádní skladatelé</value></data>
   <data name="library.no_artists" xml:space="preserve"><value>Žádní interpreti</value></data>
   <data name="search.section.albums" xml:space="preserve"><value>Alba</value></data>
+  <data name="search.section.artists" xml:space="preserve"><value>Interpreti</value></data>
   <data name="search.section.tracks" xml:space="preserve"><value>Stopy</value></data>
   <data name="search.section.composers" xml:space="preserve"><value>Skladatelé</value></data>
   <data name="search.section.works" xml:space="preserve"><value>Díla</value></data>

@@ -287,6 +287,7 @@
   <data name="library.no_composers" xml:space="preserve"><value>ਕੋਈ ਸੰਗੀਤਕਾਰ ਨਹੀਂ</value></data>
   <data name="library.no_artists" xml:space="preserve"><value>ਕੋਈ ਕਲਾਕਾਰ ਨਹੀਂ</value></data>
   <data name="search.section.albums" xml:space="preserve"><value>ਐਲਬਮਾਂ</value></data>
+  <data name="search.section.artists" xml:space="preserve"><value>ਕਲਾਕਾਰ</value></data>
   <data name="search.section.tracks" xml:space="preserve"><value>ਟ੍ਰੈਕ</value></data>
   <data name="search.section.composers" xml:space="preserve"><value>ਸੰਗੀਤਕਾਰ</value></data>
   <data name="search.section.works" xml:space="preserve"><value>ਰਚਨਾਵਾਂ</value></data>

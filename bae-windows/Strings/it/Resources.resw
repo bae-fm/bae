@@ -287,6 +287,7 @@
   <data name="library.no_composers" xml:space="preserve"><value>Nessun compositore</value></data>
   <data name="library.no_artists" xml:space="preserve"><value>Nessun artista</value></data>
   <data name="search.section.albums" xml:space="preserve"><value>Album</value></data>
+  <data name="search.section.artists" xml:space="preserve"><value>Artisti</value></data>
   <data name="search.section.tracks" xml:space="preserve"><value>Brani</value></data>
   <data name="search.section.composers" xml:space="preserve"><value>Compositori</value></data>
   <data name="search.section.works" xml:space="preserve"><value>Opere</value></data>

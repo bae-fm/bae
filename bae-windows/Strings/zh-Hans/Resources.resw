@@ -287,6 +287,7 @@
   <data name="library.no_composers" xml:space="preserve"><value>没有作曲家</value></data>
   <data name="library.no_artists" xml:space="preserve"><value>没有艺人</value></data>
   <data name="search.section.albums" xml:space="preserve"><value>专辑</value></data>
+  <data name="search.section.artists" xml:space="preserve"><value>艺人</value></data>
   <data name="search.section.tracks" xml:space="preserve"><value>曲目</value></data>
   <data name="search.section.composers" xml:space="preserve"><value>作曲家</value></data>
   <data name="search.section.works" xml:space="preserve"><value>作品</value></data>

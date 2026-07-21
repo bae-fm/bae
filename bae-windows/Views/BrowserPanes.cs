@@ -127,7 +127,7 @@ internal sealed class BrowserPanes
             return;
         }
 
-        if (results.Albums.Count == 0 && results.Tracks.Count == 0
+        if (results.Albums.Count == 0 && results.Artists.Count == 0 && results.Tracks.Count == 0
             && results.Composers.Count == 0 && results.Works.Count == 0)
         {
             _searchResults.Add(new SearchMessageRow(Loc.Chrome("search.no_matches")));
@@ -136,6 +136,9 @@ internal sealed class BrowserPanes
 
         AddSearchSection(Loc.Chrome("search.section.albums"), results.Albums, album =>
             new ArtResultRow(album, album.Title, AlbumSubtitle(album), null, () => _openAlbum(album.Id, null, null)));
+        AddSearchSection(Loc.Chrome("search.section.artists"), results.Artists, artist =>
+            new ArtResultRow(
+                artist, artist.Name, artist.AlbumCountText, null, () => ShowArtistDetail(artist.ArtistId)));
         AddSearchSection(Loc.Chrome("search.section.tracks"), results.Tracks, track =>
             new ArtResultRow(
                 track, track.Title, $"{track.ArtistName} — {track.AlbumTitle}", track.DurationLabel,

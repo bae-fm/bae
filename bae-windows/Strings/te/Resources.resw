@@ -287,6 +287,7 @@
   <data name="library.no_composers" xml:space="preserve"><value>సంగీతరచయితలు లేరు</value></data>
   <data name="library.no_artists" xml:space="preserve"><value>కళాకారులు లేరు</value></data>
   <data name="search.section.albums" xml:space="preserve"><value>ఆల్బమ్‌లు</value></data>
+  <data name="search.section.artists" xml:space="preserve"><value>కళాకారులు</value></data>
   <data name="search.section.tracks" xml:space="preserve"><value>ట్రాక్‌లు</value></data>
   <data name="search.section.composers" xml:space="preserve"><value>సంగీతరచయితలు</value></data>
   <data name="search.section.works" xml:space="preserve"><value>కృతులు</value></data>

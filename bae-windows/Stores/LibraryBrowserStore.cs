@@ -265,6 +265,10 @@ internal sealed class LibraryBrowserStore
             {
                 album.AttachCover(handle, _dispatcher);
             }
+            foreach (var artist in results.Artists)
+            {
+                artist.AttachCover(handle, _dispatcher);
+            }
             foreach (var track in results.Tracks)
             {
                 track.AttachCover(handle, _dispatcher);

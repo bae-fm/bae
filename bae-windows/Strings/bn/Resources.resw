@@ -287,6 +287,7 @@
   <data name="library.no_composers" xml:space="preserve"><value>কোনো সুরকার নেই</value></data>
   <data name="library.no_artists" xml:space="preserve"><value>কোনো শিল্পী নেই</value></data>
   <data name="search.section.albums" xml:space="preserve"><value>অ্যালবাম</value></data>
+  <data name="search.section.artists" xml:space="preserve"><value>শিল্পীরা</value></data>
   <data name="search.section.tracks" xml:space="preserve"><value>ট্র্যাক</value></data>
   <data name="search.section.composers" xml:space="preserve"><value>সুরকার</value></data>
   <data name="search.section.works" xml:space="preserve"><value>কাজ</value></data>

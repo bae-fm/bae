@@ -287,6 +287,7 @@
   <data name="library.no_composers" xml:space="preserve"><value>ไม่มีผู้ประพันธ์</value></data>
   <data name="library.no_artists" xml:space="preserve"><value>ไม่มีศิลปิน</value></data>
   <data name="search.section.albums" xml:space="preserve"><value>อัลบั้ม</value></data>
+  <data name="search.section.artists" xml:space="preserve"><value>ศิลปิน</value></data>
   <data name="search.section.tracks" xml:space="preserve"><value>แทร็ก</value></data>
   <data name="search.section.composers" xml:space="preserve"><value>ผู้ประพันธ์</value></data>
   <data name="search.section.works" xml:space="preserve"><value>ผลงาน</value></data>

@@ -287,6 +287,7 @@
   <data name="library.no_composers" xml:space="preserve"><value>کوئی موسیقار نہیں</value></data>
   <data name="library.no_artists" xml:space="preserve"><value>کوئی فنکار نہیں</value></data>
   <data name="search.section.albums" xml:space="preserve"><value>البمز</value></data>
+  <data name="search.section.artists" xml:space="preserve"><value>فنکار</value></data>
   <data name="search.section.tracks" xml:space="preserve"><value>نغمے</value></data>
   <data name="search.section.composers" xml:space="preserve"><value>موسیقار</value></data>
   <data name="search.section.works" xml:space="preserve"><value>کام</value></data>

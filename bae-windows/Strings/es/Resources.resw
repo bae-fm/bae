@@ -287,6 +287,7 @@
   <data name="library.no_composers" xml:space="preserve"><value>No hay compositores</value></data>
   <data name="library.no_artists" xml:space="preserve"><value>No hay artistas</value></data>
   <data name="search.section.albums" xml:space="preserve"><value>Álbumes</value></data>
+  <data name="search.section.artists" xml:space="preserve"><value>Artistas</value></data>
   <data name="search.section.tracks" xml:space="preserve"><value>Pistas</value></data>
   <data name="search.section.composers" xml:space="preserve"><value>Compositores</value></data>
   <data name="search.section.works" xml:space="preserve"><value>Obras</value></data>

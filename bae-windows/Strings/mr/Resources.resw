@@ -287,6 +287,7 @@
   <data name="library.no_composers" xml:space="preserve"><value>संगीतकार नाहीत</value></data>
   <data name="library.no_artists" xml:space="preserve"><value>कलाकार नाहीत</value></data>
   <data name="search.section.albums" xml:space="preserve"><value>अल्बम</value></data>
+  <data name="search.section.artists" xml:space="preserve"><value>कलाकार</value></data>
   <data name="search.section.tracks" xml:space="preserve"><value>गाणी</value></data>
   <data name="search.section.composers" xml:space="preserve"><value>संगीतकार</value></data>
   <data name="search.section.works" xml:space="preserve"><value>कृती</value></data>

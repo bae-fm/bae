@@ -287,6 +287,7 @@
   <data name="library.no_composers" xml:space="preserve"><value>작곡가 없음</value></data>
   <data name="library.no_artists" xml:space="preserve"><value>아티스트 없음</value></data>
   <data name="search.section.albums" xml:space="preserve"><value>앨범</value></data>
+  <data name="search.section.artists" xml:space="preserve"><value>아티스트</value></data>
   <data name="search.section.tracks" xml:space="preserve"><value>트랙</value></data>
   <data name="search.section.composers" xml:space="preserve"><value>작곡가</value></data>
   <data name="search.section.works" xml:space="preserve"><value>작품</value></data>

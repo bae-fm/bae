@@ -12,12 +12,14 @@ public sealed class LibrarySearchResults
     internal LibrarySearchResults(BridgeSearchResults results)
     {
         Albums = results.Albums.Select(album => new Album(album)).ToList();
+        Artists = results.Artists.Select(artist => new ArtistSummary(artist)).ToList();
         Tracks = results.Tracks.Select(track => new TrackSearchResult(track)).ToList();
         Composers = results.Composers.Select(composer => new ComposerSummary(composer)).ToList();
         Works = results.Works.Select(work => new WorkSummary(work)).ToList();
     }
 
     public List<Album> Albums { get; }
+    public List<ArtistSummary> Artists { get; }
     public List<TrackSearchResult> Tracks { get; }
     public List<ComposerSummary> Composers { get; }
     public List<WorkSummary> Works { get; }

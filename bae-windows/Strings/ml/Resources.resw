@@ -287,6 +287,7 @@
   <data name="library.no_composers" xml:space="preserve"><value>സംഗീതരചയിതാക്കളില്ല</value></data>
   <data name="library.no_artists" xml:space="preserve"><value>കലാകാരന്മാരില്ല</value></data>
   <data name="search.section.albums" xml:space="preserve"><value>ആൽബങ്ങൾ</value></data>
+  <data name="search.section.artists" xml:space="preserve"><value>കലാകാരന്മാർ</value></data>
   <data name="search.section.tracks" xml:space="preserve"><value>ട്രാക്കുകൾ</value></data>
   <data name="search.section.composers" xml:space="preserve"><value>സംഗീതരചയിതാക്കൾ</value></data>
   <data name="search.section.works" xml:space="preserve"><value>കൃതികൾ</value></data>

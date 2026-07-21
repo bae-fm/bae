@@ -287,6 +287,7 @@
   <data name="library.no_composers" xml:space="preserve"><value>Nema skladatelja</value></data>
   <data name="library.no_artists" xml:space="preserve"><value>Nema izvođača</value></data>
   <data name="search.section.albums" xml:space="preserve"><value>Albumi</value></data>
+  <data name="search.section.artists" xml:space="preserve"><value>Izvođači</value></data>
   <data name="search.section.tracks" xml:space="preserve"><value>Pjesme</value></data>
   <data name="search.section.composers" xml:space="preserve"><value>Skladatelji</value></data>
   <data name="search.section.works" xml:space="preserve"><value>Djela</value></data>
