@@ -18,15 +18,45 @@ struct LibraryModeHeading: View {
                 uiStore.setLibraryBrowserMode(mode)
             }
         } label: {
-            Text(uiStore.libraryBrowserMode.displayName)
+            // Our own chevron in place of the menu's built-in indicator,
+            // sized against the heading so it scales with the collapse
+            // instead of staying a fixed miniature. Concatenated into the
+            // heading's own Text so it rides the text run — after the word,
+            // and on its visual left in an RTL locale — instead of being a
+            // separate view a menu style may reposition.
+            (Text(uiStore.libraryBrowserMode.displayName)
                 .font(
-                    .system(size: 56 - 34 * collapseProgress, weight: .heavy)
+                    .system(size: 56 - 32 * collapseProgress, weight: .heavy)
                 )
                 .tracking(-1.4 + collapseProgress)
+                + Text(verbatim: " ")
+                + Text(Image(systemName: "chevron.down"))
+                .font(
+                    .system(size: 16 - 7 * collapseProgress, weight: .bold)
+                )
+                // Lifted off the baseline to sit optically centered on the
+                // heading's cap height.
+                .baselineOffset(14 - 9 * collapseProgress)
+                .foregroundColor(.secondary))
                 .contentTransition(.interpolate)
+                // The heading is all caps-height glyphs, but the line box
+                // still reserves descender space and the pull-down anchors
+                // below it. Trim that dead strip from the frame so the menu
+                // opens near the glyphs; scales with the font's descender.
+                .padding(.bottom, -(12 - 8 * collapseProgress))
         }
-        .menuStyle(.borderlessButton)
+        .menuStyle(.button)
+        .buttonStyle(StaticLabelButtonStyle())
+        .menuIndicator(.hidden)
         .fixedSize()
+    }
+}
+
+/// Renders the label as-is in every state: no pressed-state dimming while
+/// the heading's pull-down is open.
+private struct StaticLabelButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
     }
 }
 

@@ -16,7 +16,7 @@ struct LibraryHeader<Trailing: View>: View {
             Spacer()
             trailing
         }
-        // Aligned to the album art's left edge: the shared container padding
+        // Aligned to the album art's leading edge: the shared container padding
         // plus the card's own 6pt inset.
         .padding(
             .horizontal,
