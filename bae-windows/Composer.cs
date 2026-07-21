@@ -23,14 +23,19 @@ public sealed class LibrarySearchResults
     public List<WorkSummary> Works { get; }
 }
 
-public sealed class TrackSearchResult
+public sealed class TrackSearchResult : INotifyPropertyChanged
 {
     private readonly BridgeTrackSearchResult _track;
+    private readonly CoverImage.Binding _cover;
 
     internal TrackSearchResult(BridgeTrackSearchResult track)
     {
         _track = track;
+        _cover = new CoverImage.Binding(track.Cover);
+        _cover.SourceChanged += () => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Cover)));
     }
+
+    public event PropertyChangedEventHandler? PropertyChanged;
 
     public string Id => _track.Id;
     public string Title => _track.Title;
@@ -39,6 +44,11 @@ public sealed class TrackSearchResult
     public string AlbumTitle => _track.AlbumTitle;
     public string ArtistName => _track.ArtistName;
     public string DurationLabel => BridgeDisplay.Clock(DurationMs);
+
+    internal void AttachCover(LibraryHandle handle, DispatcherQueue dispatcherQueue) =>
+        _cover.Attach(handle, dispatcherQueue);
+
+    public ImageSource? Cover => _cover.Source;
 }
 
 public sealed class ComposerSummary : INotifyPropertyChanged

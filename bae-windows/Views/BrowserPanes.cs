@@ -31,15 +31,12 @@ internal sealed class BrowserPanes
 
     private sealed record SearchMessageRow(string Text) : SearchResultRow;
 
-    // A result with cover art (album, composer, work — each exposes a "Cover"
-    // ImageSource and raises PropertyChanged as it loads).
+    // A result row: every kind (album, track, composer, work) uses the same
+    // layout with a 46x46 cover slot. The cover source exposes a "Cover"
+    // ImageSource and raises PropertyChanged as it loads; when it has none, the
+    // slot's card fill stands in.
     private sealed record ArtResultRow(
         object CoverSource, string Title, string Subtitle, string? Trailing, Func<System.Threading.Tasks.Task> Action)
-        : SearchResultRow;
-
-    // A result with a leading glyph instead of art (tracks, which carry no cover).
-    private sealed record GlyphResultRow(
-        string Glyph, string Title, string Subtitle, string? Trailing, Func<System.Threading.Tasks.Task> Action)
         : SearchResultRow;
 
     private readonly SessionStore _session;
@@ -110,10 +107,13 @@ internal sealed class BrowserPanes
             TextWrapping = TextWrapping.Wrap,
             Margin = new Thickness(8, 8, 8, 8),
         },
-        ArtResultRow item => BuildResultButton(BuildArtLeading(item.CoverSource), item, item.Trailing),
-        GlyphResultRow item => BuildResultButton(BuildGlyphLeading(item.Glyph), item, item.Trailing),
+        ArtResultRow item => BuildResultButton(item),
         _ => throw new ArgumentOutOfRangeException(nameof(row), row, "Unknown search result row"),
     };
+
+    // Whether the dropdown currently holds any rows — the window re-shows it on
+    // focus only when a search has produced results (or a status message).
+    public bool HasResults => _searchResults.Count > 0;
 
     // Fill the dropdown from the store's cover-attached results: a status message
     // when the search failed or found nothing, otherwise the sectioned rows. The
@@ -137,9 +137,8 @@ internal sealed class BrowserPanes
         AddSearchSection(Loc.Chrome("search.section.albums"), results.Albums, album =>
             new ArtResultRow(album, album.Title, AlbumSubtitle(album), null, () => _openAlbum(album.Id, null, null)));
         AddSearchSection(Loc.Chrome("search.section.tracks"), results.Tracks, track =>
-            // Segoe Fluent "Audio" glyph (U+E8D6) stands in for the waveform.
-            new GlyphResultRow(
-                "\uE8D6", track.Title, $"{track.ArtistName} — {track.AlbumTitle}", track.DurationLabel,
+            new ArtResultRow(
+                track, track.Title, $"{track.ArtistName} — {track.AlbumTitle}", track.DurationLabel,
                 () => _openAlbum(track.AlbumId, null, null)));
         AddSearchSection(Loc.Chrome("search.section.composers"), results.Composers, composer =>
             new ArtResultRow(
@@ -191,28 +190,14 @@ internal sealed class BrowserPanes
         };
     }
 
-    // The leading 46x46 glyph slot for a coverless result.
-    private static Border BuildGlyphLeading(string glyph) => new()
-    {
-        Width = 46,
-        Height = 46,
-        CornerRadius = new CornerRadius(8),
-        Background = (Brush)Application.Current.Resources["CardBackgroundFillColorDefaultBrush"],
-        Child = new FontIcon { Glyph = glyph, FontSize = 18, Foreground = Secondary },
-    };
-
-    // Assemble one result row: leading art/glyph, a title/subtitle column, an
-    // optional trailing label (a track's duration). The whole row is a rounded
+    // Assemble one result row: the 46x46 cover slot, a title/subtitle column, and
+    // an optional trailing label (a track's duration). The whole row is a rounded
     // button whose default pointer-over supplies the hover fill; a click dismisses
     // the dropdown, then runs the row's navigation.
-    private Button BuildResultButton(Border leading, SearchResultRow row, string? trailing)
+    private Button BuildResultButton(ArtResultRow row)
     {
-        var (title, subtitle, action) = row switch
-        {
-            ArtResultRow art => (art.Title, art.Subtitle, art.Action),
-            GlyphResultRow glyph => (glyph.Title, glyph.Subtitle, glyph.Action),
-            _ => throw new ArgumentOutOfRangeException(nameof(row)),
-        };
+        var (title, subtitle, trailing, action) = (row.Title, row.Subtitle, row.Trailing, row.Action);
+        var leading = BuildArtLeading(row.CoverSource);
 
         var text = new StackPanel { Spacing = 2, VerticalAlignment = VerticalAlignment.Center };
         text.Children.Add(new TextBlock

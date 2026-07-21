@@ -2,7 +2,7 @@
 <root>
   <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
   <resheader name="version"><value>2.0</value></resheader>
-  <data name="SearchBox.PlaceholderText" xml:space="preserve"><value>пошук</value></data>
+  <data name="SearchBox.PlaceholderText" xml:space="preserve"><value>Пошук</value></data>
   <data name="LibrariesButton.Content" xml:space="preserve"><value>бібліотеки</value></data>
   <data name="PlaybackMenuButton.Content" xml:space="preserve"><value>відтворення</value></data>
   <data name="ShuffleLibraryMenuItem.Text" xml:space="preserve"><value>перемішати фонотеку</value></data>

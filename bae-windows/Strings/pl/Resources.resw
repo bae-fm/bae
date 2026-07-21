@@ -2,7 +2,7 @@
 <root>
   <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
   <resheader name="version"><value>2.0</value></resheader>
-  <data name="SearchBox.PlaceholderText" xml:space="preserve"><value>szukaj</value></data>
+  <data name="SearchBox.PlaceholderText" xml:space="preserve"><value>Szukaj</value></data>
   <data name="LibrariesButton.Content" xml:space="preserve"><value>biblioteki</value></data>
   <data name="PlaybackMenuButton.Content" xml:space="preserve"><value>odtwarzanie</value></data>
   <data name="ShuffleLibraryMenuItem.Text" xml:space="preserve"><value>odtwarzaj bibliotekę losowo</value></data>

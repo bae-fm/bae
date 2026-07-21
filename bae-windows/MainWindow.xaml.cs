@@ -41,6 +41,10 @@ public sealed partial class MainWindow : Window
     private readonly AlbumGridSelectionModel _albumSelection = new();
     private readonly LibrarySortControls _sortControls;
     private readonly HeaderCollapseModel _collapse = new();
+
+    // Tracks whether the search dropdown is open, so a re-focus doesn't re-show it
+    // while it already is (WinUI's FlyoutBase exposes no IsOpen).
+    private bool _searchFlyoutOpen;
     private readonly BrowserPanes _browserPanes;
     private readonly WelcomeView _welcomeView;
     private readonly LibrariesDialog _librariesDialog;
@@ -171,6 +175,10 @@ public sealed partial class MainWindow : Window
         // Escape in a non-empty search box clears it and restores the browse pane;
         // handledEventsToo so it fires even if the box marks Escape handled.
         SearchBox.AddHandler(UIElement.KeyDownEvent, new KeyEventHandler(OnSearchBoxKeyDown), handledEventsToo: true);
+        // Re-open the results dropdown when focus returns to a non-empty field.
+        SearchFlyout.Opened += (_, _) => _searchFlyoutOpen = true;
+        SearchFlyout.Closed += (_, _) => _searchFlyoutOpen = false;
+        SearchBox.GotFocus += OnSearchBoxGotFocus;
         // The album tiles scroll under a header that collapses as any browse panel
         // scrolls; each panel's scroll drives the shared collapse model.
         AttachCollapseScroll(AlbumGrid, "albums");
@@ -1322,13 +1330,29 @@ public sealed partial class MainWindow : Window
         }
 
         _browserPanes.RenderSearchResults(search.Results, search.Error);
-        // Transient show mode keeps focus in the search box (the default grab would
-        // pull it into the flyout after every submit); rows stay clickable/tabbable.
+        ShowSearchFlyout();
+    }
+
+    // Open the results dropdown under the field. Transient show mode keeps focus in
+    // the search box (the default grab would pull it into the flyout); rows stay
+    // clickable/tabbable.
+    private void ShowSearchFlyout() =>
         SearchFlyout.ShowAt(SearchBox, new FlyoutShowOptions
         {
             ShowMode = FlyoutShowMode.Transient,
             Placement = FlyoutPlacementMode.BottomEdgeAlignedLeft,
         });
+
+    // Re-show the dropdown when focus returns to a non-empty field that already has
+    // results, so a click-away doesn't strand them. Guarded against re-showing when
+    // it is already open (and the guard also keeps the Transient show from fighting
+    // the focus event).
+    private void OnSearchBoxGotFocus(object sender, RoutedEventArgs e)
+    {
+        if (!_searchFlyoutOpen && !string.IsNullOrEmpty(SearchBox.Text) && _browserPanes.HasResults)
+        {
+            ShowSearchFlyout();
+        }
     }
 
     private async void OnComposerClick(object sender, ItemClickEventArgs e)
