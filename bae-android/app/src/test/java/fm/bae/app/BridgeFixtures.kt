@@ -245,6 +245,7 @@ object BridgeFixtures {
             maxConcurrentUploads = 3u,
             maxConcurrentDownloads = 3u,
             showRemainingTime = false,
+            libraryFullWidth = false,
             exportLocation = BridgeExportLocation.AskEachTime,
             exportFilenameTemplate = "{track_number} - {title}",
             exportPresets = emptyList(),
