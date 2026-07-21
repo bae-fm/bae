@@ -426,4 +426,5 @@
   <data name="nowplaying.repeat_off" xml:space="preserve"><value>Lặp: tắt</value></data>
   <data name="nowplaying.repeat_context" xml:space="preserve"><value>Lặp: ngữ cảnh</value></data>
   <data name="nowplaying.repeat_track" xml:space="preserve"><value>Lặp: bản nhạc</value></data>
+  <data name="queue.now_playing" xml:space="preserve"><value>Đang phát</value></data>
 </root>

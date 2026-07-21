@@ -426,4 +426,5 @@
   <data name="nowplaying.repeat_off" xml:space="preserve"><value>పునరావృతం: ఆఫ్</value></data>
   <data name="nowplaying.repeat_context" xml:space="preserve"><value>పునరావృతం: సందర్భం</value></data>
   <data name="nowplaying.repeat_track" xml:space="preserve"><value>పునరావృతం: ట్రాక్</value></data>
+  <data name="queue.now_playing" xml:space="preserve"><value>ఇప్పుడు ప్లే అవుతోంది</value></data>
 </root>

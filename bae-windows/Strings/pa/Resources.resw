@@ -426,4 +426,5 @@
   <data name="nowplaying.repeat_off" xml:space="preserve"><value>ਦੁਹਰਾਵ: ਬੰਦ</value></data>
   <data name="nowplaying.repeat_context" xml:space="preserve"><value>ਦੁਹਰਾਵ: ਸੰਦਰਭ</value></data>
   <data name="nowplaying.repeat_track" xml:space="preserve"><value>ਦੁਹਰਾਵ: ਟ੍ਰੈਕ</value></data>
+  <data name="queue.now_playing" xml:space="preserve"><value>ਹੁਣ ਚੱਲ ਰਿਹਾ ਹੈ</value></data>
 </root>

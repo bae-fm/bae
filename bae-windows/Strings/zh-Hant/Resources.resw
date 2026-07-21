@@ -426,4 +426,5 @@
   <data name="nowplaying.repeat_off" xml:space="preserve"><value>重複：關閉</value></data>
   <data name="nowplaying.repeat_context" xml:space="preserve"><value>重複：內容</value></data>
   <data name="nowplaying.repeat_track" xml:space="preserve"><value>重複：曲目</value></data>
+  <data name="queue.now_playing" xml:space="preserve"><value>正在播放</value></data>
 </root>

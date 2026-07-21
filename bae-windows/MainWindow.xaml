@@ -236,11 +236,17 @@
             x:Name="QueuePaneHost"
             Grid.Row="1"
             HorizontalAlignment="Right"
-            Width="360"
+            Width="420"
             Visibility="Collapsed"
             BorderThickness="1,0,0,0"
-            BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
-            Background="{ThemeResource LayerFillColorDefaultBrush}" />
+            BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}">
+            <Border.Background>
+                <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                    <GradientStop Color="{ThemeResource CardBackgroundFillColorDefault}" Offset="0" />
+                    <GradientStop Color="{ThemeResource CardBackgroundFillColorSecondary}" Offset="1" />
+                </LinearGradientBrush>
+            </Border.Background>
+        </Border>
         <!-- The docked now-playing bar: a full-width strip in its own bottom row
              under a hairline, with a subtle vertical surface gradient for fill.
              The internals stay the redesigned card layout; only the outer chrome

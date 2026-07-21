@@ -426,4 +426,5 @@
   <data name="nowplaying.repeat_off" xml:space="preserve"><value>Повтор: вимкнено</value></data>
   <data name="nowplaying.repeat_context" xml:space="preserve"><value>Повтор: контекст</value></data>
   <data name="nowplaying.repeat_track" xml:space="preserve"><value>Повтор: трек</value></data>
+  <data name="queue.now_playing" xml:space="preserve"><value>Зараз відтворюється</value></data>
 </root>

@@ -426,4 +426,5 @@
   <data name="nowplaying.repeat_off" xml:space="preserve"><value>Herhalen: uit</value></data>
   <data name="nowplaying.repeat_context" xml:space="preserve"><value>Herhalen: context</value></data>
   <data name="nowplaying.repeat_track" xml:space="preserve"><value>Herhalen: nummer</value></data>
+  <data name="queue.now_playing" xml:space="preserve"><value>Speelt nu</value></data>
 </root>

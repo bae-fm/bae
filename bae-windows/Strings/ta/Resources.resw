@@ -426,4 +426,5 @@
   <data name="nowplaying.repeat_off" xml:space="preserve"><value>மீள்ச்சி: அணைப்பு</value></data>
   <data name="nowplaying.repeat_context" xml:space="preserve"><value>மீள்ச்சி: சூழல்</value></data>
   <data name="nowplaying.repeat_track" xml:space="preserve"><value>மீள்ச்சி: பாடல்</value></data>
+  <data name="queue.now_playing" xml:space="preserve"><value>இப்போது ஒலிக்கிறது</value></data>
 </root>

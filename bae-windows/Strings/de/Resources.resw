@@ -426,4 +426,5 @@
   <data name="nowplaying.repeat_off" xml:space="preserve"><value>Wiederholen: aus</value></data>
   <data name="nowplaying.repeat_context" xml:space="preserve"><value>Wiederholen: Kontext</value></data>
   <data name="nowplaying.repeat_track" xml:space="preserve"><value>Wiederholen: Titel</value></data>
+  <data name="queue.now_playing" xml:space="preserve"><value>Aktuelle Wiedergabe</value></data>
 </root>

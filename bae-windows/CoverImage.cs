@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
 using Microsoft.UI.Dispatching;
+using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
 using uniffi.bae_bridge;
@@ -171,6 +172,76 @@ internal static class CoverImage
         return Decode(ReadBytes(
             handle,
             appHandle => NativeBae.CoverImageBytes(appHandle, imageId)));
+    }
+
+    /// <summary>
+    /// Decoded covers keyed by image id alone — queue entries, whose bridge shape
+    /// carries a bare id with no content version. A changed cover isn't observed
+    /// mid-session (queue art is stable while a track sits in the lane), so the id
+    /// is a sufficient key; the cache spares the re-read/re-decode as recycled
+    /// rows rebind on scroll.
+    /// </summary>
+    private static readonly Dictionary<string, BitmapImage> IdCache = new();
+
+    /// <summary>
+    /// Bind an image control to the cover for an image id, loaded off the UI
+    /// thread and applied when it lands. Recycling-safe: the requested id is
+    /// stamped on the control's <see cref="Microsoft.UI.Xaml.FrameworkElement.Tag"/>
+    /// at bind time, and the async reply is applied only while that stamp still
+    /// matches — so if the row was recycled and rebound to another id (or cleared)
+    /// before the load finished, the stale reply is dropped rather than painting
+    /// the wrong cover. Clears the control first so a recycled row never shows the
+    /// previous cover while the new one loads. The decoded bitmap is still cached
+    /// (it is correct for its id); only the application to a since-recycled control
+    /// is guarded.
+    /// </summary>
+    public static void BindById(Image image, LibraryHandle? handle, string? imageId)
+    {
+        // Stamp the id this control now wants (or null when absent), so a slow
+        // reply for a since-recycled row can tell it is stale.
+        image.Tag = imageId;
+        image.Source = null;
+        if (string.IsNullOrEmpty(imageId) || handle is null)
+        {
+            return;
+        }
+
+        lock (CacheGate)
+        {
+            if (IdCache.TryGetValue(imageId, out var cached))
+            {
+                image.Source = cached;
+                return;
+            }
+        }
+
+        var dispatcher = image.DispatcherQueue;
+        _ = Task.Run(() => ReadBytes(handle, appHandle => NativeBae.CoverImageBytes(appHandle, imageId)))
+            .ContinueWith(
+                task =>
+                {
+                    var bytes = task.Status == TaskStatus.RanToCompletion ? task.Result : null;
+                    dispatcher.TryEnqueue(() =>
+                    {
+                        var bitmap = Decode(bytes);
+                        if (bitmap is null)
+                        {
+                            return;
+                        }
+                        lock (CacheGate)
+                        {
+                            IdCache[imageId] = bitmap;
+                        }
+                        // The row may have been recycled to another id (or cleared)
+                        // while this loaded; apply only if the control still wants
+                        // this id.
+                        if ((image.Tag as string) == imageId)
+                        {
+                            image.Source = bitmap;
+                        }
+                    });
+                },
+                TaskScheduler.Default);
     }
 
     /// <summary>

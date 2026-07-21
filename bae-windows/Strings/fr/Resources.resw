@@ -426,4 +426,5 @@
   <data name="nowplaying.repeat_off" xml:space="preserve"><value>Répétition : désactivée</value></data>
   <data name="nowplaying.repeat_context" xml:space="preserve"><value>Répéter : contexte</value></data>
   <data name="nowplaying.repeat_track" xml:space="preserve"><value>Répétition : piste</value></data>
+  <data name="queue.now_playing" xml:space="preserve"><value>Lecture en cours</value></data>
 </root>

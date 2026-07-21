@@ -426,4 +426,5 @@
   <data name="nowplaying.repeat_off" xml:space="preserve"><value>Ponavljanje: isključeno</value></data>
   <data name="nowplaying.repeat_context" xml:space="preserve"><value>Ponavljanje: kontekst</value></data>
   <data name="nowplaying.repeat_track" xml:space="preserve"><value>Ponavljanje: skladba</value></data>
+  <data name="queue.now_playing" xml:space="preserve"><value>Trenutno svira</value></data>
 </root>
