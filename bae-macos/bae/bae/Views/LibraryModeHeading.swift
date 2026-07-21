@@ -5,6 +5,10 @@ import SwiftUI
 /// dropdown switches modes, so the switcher stays in one fixed spot as the
 /// content below swaps. Reads and writes mode through the environment `UiStore`.
 struct LibraryModeHeading: View {
+    /// 0 = full page-heading size, 1 = compact strip; intermediate values
+    /// scrub between them as the content scrolls (`HeaderCollapse.progress`).
+    let collapseProgress: Double
+
     @Environment(UiStore.self)
     private var uiStore
 
@@ -15,8 +19,11 @@ struct LibraryModeHeading: View {
             }
         } label: {
             Text(uiStore.libraryBrowserMode.displayName)
-                .font(.system(size: 40, weight: .heavy))
-                .tracking(-1)
+                .font(
+                    .system(size: 40 - 20 * collapseProgress, weight: .heavy)
+                )
+                .tracking(-1 + 0.7 * collapseProgress)
+                .contentTransition(.interpolate)
         }
         .menuStyle(.borderlessButton)
         .fixedSize()
@@ -25,8 +32,12 @@ struct LibraryModeHeading: View {
 
 #if DEBUG
     #Preview {
-        LibraryModeHeading()
-            .padding()
-            .environment(UiStore())
+        VStack(alignment: .leading, spacing: 20) {
+            LibraryModeHeading(collapseProgress: 0)
+            LibraryModeHeading(collapseProgress: 0.5)
+            LibraryModeHeading(collapseProgress: 1)
+        }
+        .padding()
+        .environment(UiStore())
     }
 #endif

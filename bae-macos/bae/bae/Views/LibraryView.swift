@@ -33,6 +33,12 @@ struct LibraryView: View {
     private var composerPaneDetail: ComposerPaneDetail = .empty
     @State
     private var artistDetail: BridgeArtistDetail?
+    /// Collapse kinematics for the header, fed by the panes' scroll reports
+    /// (`reportsHeaderScroll`). The header scrubs between its full and
+    /// compact metrics off `headerCollapse.progress`, reclaiming the
+    /// vertical room the full-size heading occupies at rest.
+    @State
+    private var headerCollapse = HeaderCollapse()
 
     var body: some View {
         VStack(spacing: 0) {
@@ -48,6 +54,7 @@ struct LibraryView: View {
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .environment(headerCollapse)
         }
         // The page sits on a faint radial lift toward the top-trailing corner
         // rather than a flat fill, so the header band reads as its own region.
@@ -163,10 +170,14 @@ extension LibraryView {
     }
 
     /// Pinned above the content, fixed across mode switches. The heading *is*
-    /// the mode switcher; the trailing controls are mode-specific.
+    /// the mode switcher; the trailing controls are mode-specific. Its
+    /// metrics scrub between full and compact off `headerCollapse.progress`;
+    /// the animation smooths the in-zone tracking and carries the latched
+    /// expand/collapse flips.
     private var libraryHeader: some View {
-        HStack(alignment: .firstTextBaseline) {
-            LibraryModeHeading()
+        let progress = headerCollapse.progress
+        return HStack(alignment: .firstTextBaseline) {
+            LibraryModeHeading(collapseProgress: progress)
             Spacer()
             switch uiStore.libraryBrowserMode {
             case .albums:
@@ -178,8 +189,9 @@ extension LibraryView {
             }
         }
         .padding(.horizontal, 16)
-        .padding(.top, 40)
-        .padding(.bottom, 24)
+        .padding(.top, 40 - 28 * progress)
+        .padding(.bottom, 24 - 12 * progress)
+        .animation(.smooth(duration: 0.2), value: progress)
     }
 
     private func sortControls<
@@ -445,6 +457,7 @@ extension LibraryView {
             .padding(24)
             .frame(maxWidth: .infinity, alignment: .leading)
         }
+        .reportsHeaderScroll(id: "composerDetail")
         .background(Theme.surface)
     }
 
@@ -480,6 +493,7 @@ extension LibraryView {
             .padding(24)
             .frame(maxWidth: .infinity, alignment: .leading)
         }
+        .reportsHeaderScroll(id: "artistDetail")
         .background(Theme.surface)
     }
 
@@ -642,6 +656,7 @@ where Row.ID: Sendable {
             }
         }
         .scrollContentBackground(.hidden)
+        .reportsHeaderScroll(id: "browseList")
         .background(Theme.background)
     }
 }

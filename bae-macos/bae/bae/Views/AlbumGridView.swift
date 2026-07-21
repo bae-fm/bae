@@ -160,6 +160,7 @@ struct AlbumGridView<ExpansionContent: View>: View {
                         }
                     }
                 }
+                .reportsHeaderScroll(id: "albumGrid")
                 .focusable()
                 .focusEffectDisabled()
                 .focused($gridFocused)
