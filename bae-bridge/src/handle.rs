@@ -2627,13 +2627,14 @@ impl BridgeAlbumSearchResult {
 
 impl BridgeTrackSearchResult {
     fn from_core(t: bae_core::album_detail::TrackSearchResult) -> Self {
-        let bae_core::db::DbTrackSearchResult {
+        let bae_core::album_detail::TrackSearchResult {
             id,
             title,
             duration_ms,
             album_id,
             album_title,
             artist_name,
+            cover,
         } = t;
         BridgeTrackSearchResult {
             id,
@@ -2642,6 +2643,7 @@ impl BridgeTrackSearchResult {
             album_id,
             album_title,
             artist_name,
+            cover: cover.map(crate::types::BridgeImageRef::from_core),
         }
     }
 }

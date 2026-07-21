@@ -70,9 +70,11 @@ impl LibraryManager {
             .database
             .search_library(query.as_str(), crate::library::SEARCH_RESULT_LIMIT)
             .await?;
-        // Prefetch the cover of each album's *resolved* primary release — the same
-        // id `SearchResults::from_raw` looks the cover up by.
-        let primary_ids: Vec<String> = raw
+        // Prefetch every release cover the resolver looks up, in one batch:
+        // each album's *resolved* primary release, each track's own release,
+        // and each work's representative release — all keyed by release id,
+        // the same ids `SearchResults::from_raw` reads back.
+        let mut release_ids: Vec<String> = raw
             .albums
             .iter()
             .filter_map(|a| {
@@ -82,20 +84,19 @@ impl LibraryManager {
                 )
             })
             .collect();
+        release_ids.extend(raw.tracks.iter().map(|t| t.release_id.clone()));
+        release_ids.extend(
+            raw.works
+                .iter()
+                .filter_map(|w| w.representative_release_id.clone()),
+        );
         let artist_ids: Vec<String> = raw.composers.iter().map(|c| c.artist.id.clone()).collect();
-        let work_release_ids: Vec<String> = raw
-            .works
-            .iter()
-            .filter_map(|w| w.representative_release_id.clone())
-            .collect();
-        let album_covers = self.cover_refs(&primary_ids).await?;
+        let release_covers = self.cover_refs(&release_ids).await?;
         let composer_images = self.artist_image_refs(&artist_ids).await?;
-        let work_covers = self.cover_refs(&work_release_ids).await?;
         Ok(SearchResults::from_raw(
             raw,
-            &album_covers,
+            &release_covers,
             &composer_images,
-            &work_covers,
         ))
     }
 

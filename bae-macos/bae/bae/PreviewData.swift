@@ -364,7 +364,8 @@
                         durationMs: 198_000,
                         albumId: "a-02",
                         albumTitle: "Album Title B",
-                        artistName: "Artist Name A"
+                        artistName: "Artist Name A",
+                        cover: nil
                     ),
                     BridgeTrackSearchResult(
                         id: "t-05",
@@ -372,7 +373,8 @@
                         durationMs: 187_000,
                         albumId: "a-03",
                         albumTitle: "Album Title C",
-                        artistName: "Artist Name B"
+                        artistName: "Artist Name B",
+                        cover: nil
                     ),
                 ],
                 composers: [

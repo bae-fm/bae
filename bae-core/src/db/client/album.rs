@@ -150,7 +150,8 @@ impl Database {
 
             let mut track_stmt = conn.prepare(
                 r#"
-                        SELECT t.id, t.title, t.duration_ms, r.album_id,
+                        SELECT t.id, t.title, t.duration_ms, t.release_id,
+                               r.album_id,
                                a.title as album_title,
                                art.name as artist_name
                         FROM tracks t
@@ -168,6 +169,7 @@ impl Database {
                         id: row.get("id")?,
                         title: row.get("title")?,
                         duration_ms: row.get("duration_ms")?,
+                        release_id: row.get("release_id")?,
                         album_id: row.get("album_id")?,
                         album_title: row.get("album_title")?,
                         artist_name: row.get("artist_name")?,

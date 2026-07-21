@@ -2442,6 +2442,9 @@ pub struct BridgeTrackSearchResult {
     pub album_id: String,
     pub album_title: String,
     pub artist_name: String,
+    /// The cover of the track's own release, or `None`. Same fetch/caching
+    /// contract as [`BridgeAlbumSearchResult::cover`].
+    pub cover: Option<BridgeImageRef>,
 }
 
 #[derive(Debug, Clone, uniffi::Record)]

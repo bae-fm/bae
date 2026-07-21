@@ -997,6 +997,9 @@ pub struct DbTrackSearchResult {
     pub id: String,
     pub title: String,
     pub duration_ms: Option<i64>,
+    /// The release the track belongs to — the key the resolver looks the
+    /// track's cover up by.
+    pub release_id: String,
     pub album_id: String,
     pub album_title: String,
     pub artist_name: String,
