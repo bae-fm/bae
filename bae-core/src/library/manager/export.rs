@@ -4,7 +4,10 @@ use super::*;
 use crate::storage::path_fragment::validate_path_fragment;
 use tracing::info;
 
-const EXPORT_MARKER_FILE: &str = ".bae-export";
+/// A hidden file bae writes into every output folder — export or save — naming
+/// the release id. It is what lets a re-run safely replace a prior bae output of
+/// the same folder; an unmarked directory at the target is never touched.
+const OUTPUT_MARKER_FILE: &str = ".bae-output";
 
 impl LibraryManager {
     // ── Export queue ─────────────────────────────────────────────────
@@ -734,7 +737,7 @@ fn write_export_marker(
     staging_dir: &std::path::Path,
     release_id: &str,
 ) -> Result<(), LibraryError> {
-    std::fs::write(staging_dir.join(EXPORT_MARKER_FILE), release_id)?;
+    std::fs::write(staging_dir.join(OUTPUT_MARKER_FILE), release_id)?;
     Ok(())
 }
 
@@ -745,9 +748,9 @@ fn replace_export_dir(
     release_id: &str,
 ) -> Result<(), LibraryError> {
     let had_existing = final_dir.exists();
-    if had_existing && !final_dir.join(EXPORT_MARKER_FILE).exists() {
+    if had_existing && !final_dir.join(OUTPUT_MARKER_FILE).exists() {
         return Err(LibraryError::Import(format!(
-            "export target exists and is not a prior bae export: {}",
+            "output target exists and is not a prior bae output: {}",
             final_dir.display()
         )));
     }
@@ -861,7 +864,7 @@ mod tests {
         let temp = tempfile::tempdir().expect("create temp dir");
         let final_dir = temp.path().join("album");
         std::fs::create_dir(&final_dir).expect("create prior export dir");
-        std::fs::write(final_dir.join(EXPORT_MARKER_FILE), b"release-1")
+        std::fs::write(final_dir.join(OUTPUT_MARKER_FILE), b"release-1")
             .expect("write prior marker");
         std::fs::write(final_dir.join("prior.txt"), b"prior").expect("write prior export");
 
@@ -885,14 +888,14 @@ mod tests {
 
         let staging_dir = temp.path().join("staging");
         std::fs::create_dir(&staging_dir).expect("create staging dir");
-        std::fs::write(staging_dir.join(EXPORT_MARKER_FILE), b"release-1").expect("write marker");
+        std::fs::write(staging_dir.join(OUTPUT_MARKER_FILE), b"release-1").expect("write marker");
         std::fs::write(staging_dir.join("export.txt"), b"export").expect("write export");
 
         let error = replace_export_dir(&staging_dir, &final_dir, "album", "release-1")
             .expect_err("unmarked existing target must be refused");
 
         assert!(
-            error.to_string().contains("is not a prior bae export"),
+            error.to_string().contains("is not a prior bae output"),
             "unexpected error: {error}",
         );
         assert_eq!(
@@ -908,13 +911,13 @@ mod tests {
         let temp = tempfile::tempdir().expect("create temp dir");
         let final_dir = temp.path().join("album");
         std::fs::create_dir(&final_dir).expect("create prior export dir");
-        std::fs::write(final_dir.join(EXPORT_MARKER_FILE), b"release-1")
+        std::fs::write(final_dir.join(OUTPUT_MARKER_FILE), b"release-1")
             .expect("write prior marker");
         std::fs::write(final_dir.join("prior.txt"), b"prior").expect("write prior export");
 
         let staging_dir = temp.path().join("staging");
         std::fs::create_dir(&staging_dir).expect("create staging dir");
-        std::fs::write(staging_dir.join(EXPORT_MARKER_FILE), b"release-1").expect("write marker");
+        std::fs::write(staging_dir.join(OUTPUT_MARKER_FILE), b"release-1").expect("write marker");
         std::fs::write(staging_dir.join("export.txt"), b"export").expect("write export");
 
         replace_export_dir(&staging_dir, &final_dir, "album", "release-1")
