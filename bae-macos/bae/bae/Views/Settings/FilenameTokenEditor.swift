@@ -33,8 +33,10 @@ struct FilenameTokenEditor: View {
         .frame(maxWidth: .infinity, minHeight: 24, alignment: .leading)
         .padding(6)
         .background(
+            // The same fill a text field uses, so the pattern reads as an
+            // editable input next to the Name field, not a panel.
             RoundedRectangle(cornerRadius: 6)
-                .fill(.quinary)
+                .fill(Color(nsColor: .textBackgroundColor))
                 .stroke(.separator)
         )
         .dropDestination(for: String.self) { items, _ in

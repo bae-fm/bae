@@ -1,55 +1,100 @@
 import BaeKit
 import SwiftUI
 
-/// One export preset as a disclosure row: collapsed, the name, a settings
-/// summary, and which export menus offer it; expanded, the full editor. Every
-/// control writes a whole updated preset up through `update` — the caller
-/// saves the preset set and the change round-trips via `configChanged`.
+/// The edit sheet for one export preset. Every control writes a whole updated
+/// preset up through `update` — the caller saves the preset set and the change
+/// round-trips via `configChanged`, so the sheet always renders the stored
+/// state and Done only closes it. Deleting lives on the preset's list row,
+/// not here.
 struct ExportPresetEditor: View {
     let preset: BridgeExportPreset
-    @Binding
-    var isExpanded: Bool
     let update: (BridgeExportPreset) -> Void
-    let delete: () -> Void
 
-    /// Editable copy of the name, committed on submit or focus loss so
-    /// mid-edit keystrokes don't churn config writes.
+    @Environment(\.dismiss)
+    private var dismiss
+
+    /// Editable copies of the free-form fields, committed on submit or focus
+    /// loss so mid-edit keystrokes don't churn config writes. Invalid drafts
+    /// never commit; they disable Done instead.
     @State
     private var nameDraft = ""
+    @State
+    private var bitrateDraft = ""
     @FocusState
     private var nameFocused: Bool
-    @State
-    private var confirmingDelete = false
 
     var body: some View {
-        DisclosureGroup(isExpanded: $isExpanded) {
-            nameRow
-            formatRow
-            PresetCodecEditor(preset: preset, update: update)
-            pregapRow
-            filenameRows
-            scopeRow
-            deleteRow
-        } label: {
-            ExportPresetSummaryRow(preset: preset)
+        VStack(spacing: 0) {
+            Form {
+                nameRow
+                formatRow
+                PresetCodecEditor(
+                    preset: preset,
+                    bitrateDraft: $bitrateDraft,
+                    update: update
+                )
+                pregapRow
+                filenameGroup
+                scopeRow
+            }
+            .formStyle(.grouped)
+            HStack {
+                Spacer()
+                Button("Done") { dismiss() }
+                    .keyboardShortcut(.defaultAction)
+                    .disabled(!nameValid || !bitrateValid)
+            }
+            .padding([.horizontal, .bottom], 16)
         }
+        .frame(width: 480, height: 540)
         .task(id: preset.name) {
             nameDraft = preset.name
         }
+        .task(id: preset.codec.bitrateKbps) {
+            if let bitrateKbps = preset.codec.bitrateKbps {
+                bitrateDraft = String(bitrateKbps)
+            }
+        }
+    }
+
+    private var nameValid: Bool {
+        !nameDraft.trimmingCharacters(in: .whitespaces).isEmpty
+    }
+
+    /// The bitrate draft parses and lands in the codec's supported range;
+    /// lossless codecs carry no bitrate to validate.
+    private var bitrateValid: Bool {
+        guard let range = preset.codec.kind.bitrateRange else { return true }
+        guard let value = UInt32(bitrateDraft) else { return false }
+        return range.contains(value)
     }
 
     private var nameRow: some View {
-        TextField("Name", text: $nameDraft)
-            .focused($nameFocused)
-            .onSubmit(commitName)
-            .onChange(of: nameFocused) { _, focused in
-                if !focused {
-                    commitName()
+        LabeledContent("Name") {
+            TextField("Name", text: $nameDraft)
+                .labelsHidden()
+                .textFieldStyle(.roundedBorder)
+                .multilineTextAlignment(.leading)
+                .frame(width: 200)
+                .focused($nameFocused)
+                .onSubmit(commitName)
+                .onChange(of: nameFocused) { _, focused in
+                    if !focused {
+                        commitName()
+                    }
                 }
-            }
+        }
+        .presetEditorRowInsets()
     }
 
     private var formatRow: some View {
+        LabeledContent("Format") {
+            formatPicker
+        }
+        .presetEditorRowInsets()
+    }
+
+    private var formatPicker: some View {
         Picker(
             "Format",
             selection: Binding(
@@ -71,9 +116,17 @@ struct ExportPresetEditor: View {
                 Text(kind.label).tag(kind)
             }
         }
+        .labelsHidden()
     }
 
     private var pregapRow: some View {
+        LabeledContent("Pregap") {
+            pregapPicker
+        }
+        .presetEditorRowInsets()
+    }
+
+    private var pregapPicker: some View {
         Picker(
             "Pregap",
             selection: Binding(
@@ -100,10 +153,10 @@ struct ExportPresetEditor: View {
                     .tag(BridgeExportPregapPlacement.singleFileWithCue)
             }
         }
+        .labelsHidden()
     }
 
-    @ViewBuilder
-    private var filenameRows: some View {
+    private var filenameGroup: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Filename format")
             FilenameTokenEditor(
@@ -120,6 +173,8 @@ struct ExportPresetEditor: View {
             .font(.caption)
             .foregroundStyle(.secondary)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .presetEditorRowInsets()
     }
 
     private var scopeRow: some View {
@@ -130,18 +185,7 @@ struct ExportPresetEditor: View {
             }
         }
         .disabled(preset.pregapPlacement == .singleFileWithCue)
-    }
-
-    private var deleteRow: some View {
-        Button("Delete preset…", role: .destructive) {
-            confirmingDelete = true
-        }
-        .confirmationDialog(
-            "Delete the “\(preset.name)” preset?",
-            isPresented: $confirmingDelete
-        ) {
-            Button("Delete", role: .destructive, action: delete)
-        }
+        .presetEditorRowInsets()
     }
 
     private var previewFilename: String {
@@ -152,7 +196,7 @@ struct ExportPresetEditor: View {
     }
 
     private func commitName() {
-        guard nameDraft != preset.name else { return }
+        guard nameValid, nameDraft != preset.name else { return }
         var changed = preset
         changed.name = nameDraft
         update(changed)
@@ -189,9 +233,20 @@ struct ExportPresetEditor: View {
     }
 }
 
-/// The collapsed row: name over a settings summary, with the export menus the
-/// preset appears in as trailing badges.
-private struct ExportPresetSummaryRow: View {
+extension View {
+    /// The edit sheet's card padding: how far every grouped-form row's
+    /// content sits from the card's edges, on top of the platform's own row
+    /// insets. (`listRowInsets` is ignored by macOS grouped forms, so this
+    /// pads the row content itself.)
+    fileprivate func presetEditorRowInsets() -> some View {
+        padding(EdgeInsets(top: 2, leading: 8, bottom: 0, trailing: 8))
+    }
+}
+
+/// A preset's list row in settings: name over a settings summary, with the
+/// export menus the preset appears in as trailing badges. Clicking the row
+/// opens `ExportPresetEditor`.
+struct ExportPresetSummaryRow: View {
     let preset: BridgeExportPreset
 
     var body: some View {
@@ -237,59 +292,69 @@ private struct ScopeBadge: View {
 }
 
 /// The bit depth or bitrate row, per the codec family: lossless codecs carry a
-/// bit depth, lossy ones a bitrate.
+/// bit depth, lossy ones a bitrate. The bitrate edits through the sheet-owned
+/// draft; only in-range values commit.
 private struct PresetCodecEditor: View {
     let preset: BridgeExportPreset
+    @Binding
+    var bitrateDraft: String
     let update: (BridgeExportPreset) -> Void
 
-    private static let bitrateFormatter: NumberFormatter = {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .none
-        formatter.minimum = 1
-        formatter.maximum = 512
-        return formatter
-    }()
+    @FocusState
+    private var bitrateFocused: Bool
 
     var body: some View {
         switch preset.codec {
         case .flac, .wav, .aiff:
-            Picker(
-                "Bit depth",
-                selection: Binding(
-                    get: { preset.codec.bitDepth ?? .source },
-                    set: { bitDepth in
-                        var changed = preset
-                        changed.codec = preset.codec.with(bitDepth: bitDepth)
-                        update(changed)
-                    }
-                )
-            ) {
-                Text("Source").tag(BridgeExportBitDepth.source)
-                Text("16-bit").tag(BridgeExportBitDepth.bits16)
-                Text("24-bit").tag(BridgeExportBitDepth.bits24)
-                Text("32-bit").tag(BridgeExportBitDepth.bits32)
-            }
-        case .mp3, .opusOgg:
-            LabeledContent("Bitrate") {
-                TextField(
-                    "Bitrate",
-                    value: Binding(
-                        get: { preset.codec.bitrateKbps ?? 0 },
-                        set: { bitrateKbps in
+            LabeledContent("Bit depth") {
+                Picker(
+                    "Bit depth",
+                    selection: Binding(
+                        get: { preset.codec.bitDepth ?? .source },
+                        set: { bitDepth in
                             var changed = preset
                             changed.codec = preset.codec.with(
-                                bitrateKbps: bitrateKbps
+                                bitDepth: bitDepth
                             )
                             update(changed)
                         }
-                    ),
-                    formatter: Self.bitrateFormatter
-                )
+                    )
+                ) {
+                    Text("Source").tag(BridgeExportBitDepth.source)
+                    Text("16-bit").tag(BridgeExportBitDepth.bits16)
+                    Text("24-bit").tag(BridgeExportBitDepth.bits24)
+                    Text("32-bit").tag(BridgeExportBitDepth.bits32)
+                }
                 .labelsHidden()
-                .textFieldStyle(.roundedBorder)
-                .frame(width: 96)
             }
+            .presetEditorRowInsets()
+        case .mp3, .opusOgg:
+            LabeledContent("Bitrate") {
+                TextField("Bitrate", text: $bitrateDraft)
+                    .labelsHidden()
+                    .textFieldStyle(.roundedBorder)
+                    .frame(width: 96)
+                    .focused($bitrateFocused)
+                    .onSubmit(commitBitrate)
+                    .onChange(of: bitrateFocused) { _, focused in
+                        if !focused {
+                            commitBitrate()
+                        }
+                    }
+            }
+            .presetEditorRowInsets()
         }
+    }
+
+    private func commitBitrate() {
+        guard let range = preset.codec.kind.bitrateRange,
+            let value = UInt32(bitrateDraft),
+            range.contains(value),
+            value != preset.codec.bitrateKbps
+        else { return }
+        var changed = preset
+        changed.codec = preset.codec.with(bitrateKbps: value)
+        update(changed)
     }
 }
 
@@ -319,6 +384,16 @@ enum ExportPresetKind: CaseIterable {
         case .opusOgg: .opusOgg(bitrateKbps: 192)
         case .wav: .wav(bitDepth: .source)
         case .aiff: .aiff(bitDepth: .source)
+        }
+    }
+
+    /// The bitrate range core's preset validation accepts for the lossy
+    /// families; nil for lossless, which carry no bitrate.
+    var bitrateRange: ClosedRange<UInt32>? {
+        switch self {
+        case .mp3: 32...320
+        case .opusOgg: 32...512
+        case .flac, .wav, .aiff: nil
         }
     }
 }
@@ -443,3 +518,16 @@ extension BridgeExportPregapPlacement {
         }
     }
 }
+
+#if DEBUG
+    #Preview("Export preset editor") {
+        @Previewable
+        @State
+        var preset = PreviewData.exportPresets[0]
+
+        ExportPresetEditor(
+            preset: preset,
+            update: { preset = $0 }
+        )
+    }
+#endif

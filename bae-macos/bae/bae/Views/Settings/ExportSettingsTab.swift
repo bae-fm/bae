@@ -14,8 +14,15 @@ struct ExportSettingsTab: View {
     @Environment(UiStore.self)
     private var uiStore
 
+    /// The preset whose edit sheet is open. A wrapper so `sheet(item:)` gets
+    /// an `Identifiable` value; the sheet reads the live preset from config by
+    /// this id, so edits round-tripping through `configChanged` re-render it.
+    private struct EditingPreset: Identifiable {
+        let id: String
+    }
+
     @State
-    private var expandedPresetIds: Set<String> = []
+    private var editingPreset: EditingPreset?
 
     var body: some View {
         Form {
@@ -24,6 +31,15 @@ struct ExportSettingsTab: View {
             presetsSection
         }
         .formStyle(.grouped)
+        .sheet(item: $editingPreset) { editing in
+            // The preset can be gone by the time the sheet renders — deleted
+            // from the sheet itself, or replaced by a config round-trip.
+            if let preset = configStore.config.exportPresets.first(where: {
+                $0.id == editing.id
+            }) {
+                ExportPresetEditor(preset: preset, update: replacePreset)
+            }
+        }
     }
 
     private var releaseExportsSection: some View {
@@ -68,10 +84,9 @@ struct ExportSettingsTab: View {
     private var presetsSection: some View {
         Section {
             ForEach(configStore.config.exportPresets, id: \.id) { preset in
-                ExportPresetEditor(
+                PresetRow(
                     preset: preset,
-                    isExpanded: expandedBinding(preset.id),
-                    update: replacePreset,
+                    edit: { editingPreset = EditingPreset(id: preset.id) },
                     delete: { deletePreset(id: preset.id) }
                 )
             }
@@ -122,20 +137,6 @@ struct ExportSettingsTab: View {
         )
     }
 
-    private func expandedBinding(_ id: String) -> Binding<Bool> {
-        Binding(
-            get: { expandedPresetIds.contains(id) },
-            set: { expanded in
-                if expanded {
-                    expandedPresetIds.insert(id)
-                }
-                else {
-                    expandedPresetIds.remove(id)
-                }
-            }
-        )
-    }
-
     private func replacePreset(_ preset: BridgeExportPreset) {
         let presets = configStore.config.exportPresets.map {
             $0.id == preset.id ? preset : $0
@@ -145,7 +146,6 @@ struct ExportSettingsTab: View {
 
     private func deletePreset(id: String) {
         let presets = configStore.config.exportPresets.filter { $0.id != id }
-        expandedPresetIds.remove(id)
         set { try exports.setExportPresets(presets) }
     }
 
@@ -161,7 +161,6 @@ struct ExportSettingsTab: View {
             appliesToTrack: true,
             appliesToRelease: true
         )
-        expandedPresetIds.insert(preset.id)
         set {
             try exports.setExportPresets(
                 configStore.config.exportPresets + [preset]
@@ -197,6 +196,41 @@ struct ExportSettingsTab: View {
         }
         catch {
             uiStore.showError(error)
+        }
+    }
+}
+
+/// One preset in the settings list: the summary row opens the edit sheet; the
+/// trailing minus removes the preset behind a confirmation.
+private struct PresetRow: View {
+    let preset: BridgeExportPreset
+    let edit: () -> Void
+    let delete: () -> Void
+
+    @State
+    private var confirmingDelete = false
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Button(action: edit) {
+                ExportPresetSummaryRow(preset: preset)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            Button {
+                confirmingDelete = true
+            } label: {
+                Image(systemName: "minus")
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+            .accessibilityLabel(Text("Delete preset"))
+            .confirmationDialog(
+                "Delete the “\(preset.name)” preset?",
+                isPresented: $confirmingDelete
+            ) {
+                Button("Delete", role: .destructive, action: delete)
+            }
         }
     }
 }
