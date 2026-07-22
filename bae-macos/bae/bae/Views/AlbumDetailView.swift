@@ -13,19 +13,19 @@ struct ReleaseRef: Identifiable, Equatable {
     let id: String
 }
 
-private struct ExportSavePanel {
+private struct SaveFilePanel {
     let savePanel: NSSavePanel
     let formatPopup: NSPopUpButton
-    let formatDelegate: ExportFormatDelegate
+    let formatDelegate: SaveFormatDelegate
 }
 
 /// A track-save format choice paired with the stem its preset's pattern
 /// suggests. Built together in one pass, so the stem is never absent — the
 /// track panel and its format delegate read it directly, no lookup or fallback.
 /// (The release flow doesn't pre-render stems, so this pairing is panel-local
-/// rather than a field on the shared `ExportFormatChoice`.)
+/// rather than a field on the shared `SaveFormatChoice`.)
 private struct TrackSaveChoice {
-    let choice: ExportFormatChoice
+    let choice: SaveFormatChoice
     let suggestedStem: String
 }
 
@@ -47,11 +47,11 @@ struct AlbumDetailView: View {
     var sync
     @Environment(Downloads.self)
     var downloads
-    @Environment(Exports.self)
-    var exports
+    @Environment(Outputs.self)
+    var outputs
     @Environment(ConfigStore.self)
     var configStore
-    @Environment(Export.self)
+    @Environment(TrackSave.self)
     var export
     @Environment(LibraryStore.self)
     var libraryStore
@@ -467,12 +467,12 @@ extension AlbumDetailView {
     /// release's locality. The copy runs on the output queue and surfaces in the
     /// Storage Manager's Exporting pane.
     private func exportRelease(releaseId: String) {
-        guard let targetDir = ExportTarget.resolveExportDir() else {
+        guard let targetDir = OutputTarget.resolveExportDir() else {
             return
         }
         Task {
             do {
-                try await exports.enqueueExport(releaseId, targetDir)
+                try await outputs.enqueueExport(releaseId, targetDir)
             }
             catch {
                 exportError = error.displayLine
@@ -485,7 +485,7 @@ extension AlbumDetailView {
     /// queue as export.
     private func saveReleaseAs(releaseId: String) {
         guard
-            let target = ExportTarget.resolveReleaseSave(
+            let target = OutputTarget.resolveReleaseSave(
                 config: configStore.config
             )
         else {
@@ -493,7 +493,7 @@ extension AlbumDetailView {
         }
         Task {
             do {
-                try await exports.enqueueReleaseSave(
+                try await outputs.enqueueReleaseSave(
                     releaseId,
                     target.targetDir,
                     target.presetId
@@ -643,8 +643,8 @@ extension AlbumDetailView {
     private func exportTrack(trackId: String) {
         exportTask?.cancel()
         exportTask = Task {
-            let choices = ExportFormatChoice.trackChoices(
-                presets: configStore.config.exportPresets
+            let choices = SaveFormatChoice.trackChoices(
+                presets: configStore.config.savePresets
             )
             guard
                 let selectedIndex = choices.firstIndex(where: {
@@ -681,7 +681,7 @@ extension AlbumDetailView {
                 )
             }
 
-            let panel = makeExportSavePanel(
+            let panel = makeSaveFilePanel(
                 saveChoices: saveChoices,
                 selectedIndex: selectedIndex
             )
@@ -719,10 +719,10 @@ extension AlbumDetailView {
     /// sync as the preset changes. Seeded from the default preset's suggestion;
     /// the caller runs the panel and reads `formatPopup` for the chosen preset.
     /// The delegate must be retained for the modal's lifetime.
-    private func makeExportSavePanel(
+    private func makeSaveFilePanel(
         saveChoices: [TrackSaveChoice],
         selectedIndex: Int
-    ) -> ExportSavePanel {
+    ) -> SaveFilePanel {
         let selected = saveChoices[selectedIndex]
         let stem = selected.suggestedStem
 
@@ -732,7 +732,7 @@ extension AlbumDetailView {
 
         // Format picker accessory: swaps extension and re-suggests the stem on
         // change (the delegate replaces it only when the user hasn't edited it).
-        let formatDelegate = ExportFormatDelegate(
+        let formatDelegate = SaveFormatDelegate(
             panel: panel,
             saveChoices: saveChoices,
             lastSuggestion: stem
@@ -744,7 +744,7 @@ extension AlbumDetailView {
         formatPopup.addItems(withTitles: saveChoices.map(\.choice.title))
         formatPopup.selectItem(at: selectedIndex)
         formatPopup.target = formatDelegate
-        formatPopup.action = #selector(ExportFormatDelegate.formatChanged(_:))
+        formatPopup.action = #selector(SaveFormatDelegate.formatChanged(_:))
 
         let accessoryContainer = NSView(
             frame: NSRect(x: 0, y: 0, width: 250, height: 34)
@@ -760,7 +760,7 @@ extension AlbumDetailView {
             panel.allowedContentTypes = [type]
         }
 
-        return ExportSavePanel(
+        return SaveFilePanel(
             savePanel: panel,
             formatPopup: formatPopup,
             formatDelegate: formatDelegate
@@ -1466,7 +1466,7 @@ struct ManageConfirmSheet: View {
     }
 }
 
-// MARK: - ExportFormatDelegate
+// MARK: - SaveFormatDelegate
 
 /// Target-action handler for the format popup in the track save panel. On a
 /// format change it swaps the filename extension and content type, and
@@ -1475,7 +1475,7 @@ struct ManageConfirmSheet: View {
 /// carries its pre-rendered stem (async work can't run during `runModal`), so
 /// the suggestion is always present.
 @MainActor
-private class ExportFormatDelegate: NSObject {
+private class SaveFormatDelegate: NSObject {
     weak var panel: NSSavePanel?
     let saveChoices: [TrackSaveChoice]
     /// The stem the panel currently shows as an unedited suggestion. When the

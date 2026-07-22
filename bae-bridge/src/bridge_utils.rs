@@ -1,157 +1,129 @@
 use crate::types::{
-    BridgeConfig, BridgeDiscogsTokenStatus, BridgeExportBitDepth, BridgeExportFilenameToken,
-    BridgeExportPregapPlacement, BridgeExportPreset, BridgeExportPresetCodec, BridgeMcpConfig,
-    BridgeOutputKind, BridgeSyncConfig, BridgeSyncProvider,
+    BridgeConfig, BridgeDiscogsTokenStatus, BridgeMcpConfig, BridgeOutputKind, BridgeSaveBitDepth,
+    BridgeSaveCodec, BridgeSaveFilenameToken, BridgeSavePregapPlacement, BridgeSavePreset,
+    BridgeSyncConfig, BridgeSyncProvider,
 };
 
-impl BridgeExportBitDepth {
-    pub(crate) fn from_core(bit_depth: bae_core::config::ExportBitDepth) -> Self {
+impl BridgeSaveBitDepth {
+    pub(crate) fn from_core(bit_depth: bae_core::config::SaveBitDepth) -> Self {
         match bit_depth {
-            bae_core::config::ExportBitDepth::Source => BridgeExportBitDepth::Source,
-            bae_core::config::ExportBitDepth::Bits16 => BridgeExportBitDepth::Bits16,
-            bae_core::config::ExportBitDepth::Bits24 => BridgeExportBitDepth::Bits24,
-            bae_core::config::ExportBitDepth::Bits32 => BridgeExportBitDepth::Bits32,
+            bae_core::config::SaveBitDepth::Source => BridgeSaveBitDepth::Source,
+            bae_core::config::SaveBitDepth::Bits16 => BridgeSaveBitDepth::Bits16,
+            bae_core::config::SaveBitDepth::Bits24 => BridgeSaveBitDepth::Bits24,
+            bae_core::config::SaveBitDepth::Bits32 => BridgeSaveBitDepth::Bits32,
         }
     }
 
-    pub(crate) fn into_core(self) -> bae_core::config::ExportBitDepth {
+    pub(crate) fn into_core(self) -> bae_core::config::SaveBitDepth {
         match self {
-            BridgeExportBitDepth::Source => bae_core::config::ExportBitDepth::Source,
-            BridgeExportBitDepth::Bits16 => bae_core::config::ExportBitDepth::Bits16,
-            BridgeExportBitDepth::Bits24 => bae_core::config::ExportBitDepth::Bits24,
-            BridgeExportBitDepth::Bits32 => bae_core::config::ExportBitDepth::Bits32,
+            BridgeSaveBitDepth::Source => bae_core::config::SaveBitDepth::Source,
+            BridgeSaveBitDepth::Bits16 => bae_core::config::SaveBitDepth::Bits16,
+            BridgeSaveBitDepth::Bits24 => bae_core::config::SaveBitDepth::Bits24,
+            BridgeSaveBitDepth::Bits32 => bae_core::config::SaveBitDepth::Bits32,
         }
     }
 }
 
-impl BridgeExportPresetCodec {
-    pub(crate) fn from_core(codec: &bae_core::config::ExportPresetCodec) -> Self {
+impl BridgeSaveCodec {
+    pub(crate) fn from_core(codec: &bae_core::config::SaveCodec) -> Self {
         match codec {
-            bae_core::config::ExportPresetCodec::Flac { bit_depth } => {
-                BridgeExportPresetCodec::Flac {
-                    bit_depth: BridgeExportBitDepth::from_core(*bit_depth),
-                }
-            }
-            bae_core::config::ExportPresetCodec::Mp3 { bitrate_kbps } => {
-                BridgeExportPresetCodec::Mp3 {
-                    bitrate_kbps: *bitrate_kbps,
-                }
-            }
-            bae_core::config::ExportPresetCodec::OpusOgg { bitrate_kbps } => {
-                BridgeExportPresetCodec::OpusOgg {
-                    bitrate_kbps: *bitrate_kbps,
-                }
-            }
-            bae_core::config::ExportPresetCodec::Wav { bit_depth } => {
-                BridgeExportPresetCodec::Wav {
-                    bit_depth: BridgeExportBitDepth::from_core(*bit_depth),
-                }
-            }
-            bae_core::config::ExportPresetCodec::Aiff { bit_depth } => {
-                BridgeExportPresetCodec::Aiff {
-                    bit_depth: BridgeExportBitDepth::from_core(*bit_depth),
-                }
-            }
+            bae_core::config::SaveCodec::Flac { bit_depth } => BridgeSaveCodec::Flac {
+                bit_depth: BridgeSaveBitDepth::from_core(*bit_depth),
+            },
+            bae_core::config::SaveCodec::Mp3 { bitrate_kbps } => BridgeSaveCodec::Mp3 {
+                bitrate_kbps: *bitrate_kbps,
+            },
+            bae_core::config::SaveCodec::OpusOgg { bitrate_kbps } => BridgeSaveCodec::OpusOgg {
+                bitrate_kbps: *bitrate_kbps,
+            },
+            bae_core::config::SaveCodec::Wav { bit_depth } => BridgeSaveCodec::Wav {
+                bit_depth: BridgeSaveBitDepth::from_core(*bit_depth),
+            },
+            bae_core::config::SaveCodec::Aiff { bit_depth } => BridgeSaveCodec::Aiff {
+                bit_depth: BridgeSaveBitDepth::from_core(*bit_depth),
+            },
         }
     }
 
-    pub(crate) fn into_core(self) -> bae_core::config::ExportPresetCodec {
+    pub(crate) fn into_core(self) -> bae_core::config::SaveCodec {
         match self {
-            BridgeExportPresetCodec::Flac { bit_depth } => {
-                bae_core::config::ExportPresetCodec::Flac {
-                    bit_depth: bit_depth.into_core(),
-                }
+            BridgeSaveCodec::Flac { bit_depth } => bae_core::config::SaveCodec::Flac {
+                bit_depth: bit_depth.into_core(),
+            },
+            BridgeSaveCodec::Mp3 { bitrate_kbps } => {
+                bae_core::config::SaveCodec::Mp3 { bitrate_kbps }
             }
-            BridgeExportPresetCodec::Mp3 { bitrate_kbps } => {
-                bae_core::config::ExportPresetCodec::Mp3 { bitrate_kbps }
+            BridgeSaveCodec::OpusOgg { bitrate_kbps } => {
+                bae_core::config::SaveCodec::OpusOgg { bitrate_kbps }
             }
-            BridgeExportPresetCodec::OpusOgg { bitrate_kbps } => {
-                bae_core::config::ExportPresetCodec::OpusOgg { bitrate_kbps }
-            }
-            BridgeExportPresetCodec::Wav { bit_depth } => {
-                bae_core::config::ExportPresetCodec::Wav {
-                    bit_depth: bit_depth.into_core(),
-                }
-            }
-            BridgeExportPresetCodec::Aiff { bit_depth } => {
-                bae_core::config::ExportPresetCodec::Aiff {
-                    bit_depth: bit_depth.into_core(),
-                }
-            }
+            BridgeSaveCodec::Wav { bit_depth } => bae_core::config::SaveCodec::Wav {
+                bit_depth: bit_depth.into_core(),
+            },
+            BridgeSaveCodec::Aiff { bit_depth } => bae_core::config::SaveCodec::Aiff {
+                bit_depth: bit_depth.into_core(),
+            },
         }
     }
 }
 
-impl BridgeExportPregapPlacement {
-    pub(crate) fn from_core(placement: bae_core::config::ExportPregapPlacement) -> Self {
+impl BridgeSavePregapPlacement {
+    pub(crate) fn from_core(placement: bae_core::config::SavePregapPlacement) -> Self {
         match placement {
-            bae_core::config::ExportPregapPlacement::AppendToPreviousExceptHtoa => {
-                BridgeExportPregapPlacement::AppendToPreviousExceptHtoa
+            bae_core::config::SavePregapPlacement::AppendToPreviousExceptHtoa => {
+                BridgeSavePregapPlacement::AppendToPreviousExceptHtoa
             }
-            bae_core::config::ExportPregapPlacement::AppendToPreviousIncludingHtoa => {
-                BridgeExportPregapPlacement::AppendToPreviousIncludingHtoa
+            bae_core::config::SavePregapPlacement::AppendToPreviousIncludingHtoa => {
+                BridgeSavePregapPlacement::AppendToPreviousIncludingHtoa
             }
-            bae_core::config::ExportPregapPlacement::Exclude => {
-                BridgeExportPregapPlacement::Exclude
-            }
-            bae_core::config::ExportPregapPlacement::SingleFileWithCue => {
-                BridgeExportPregapPlacement::SingleFileWithCue
+            bae_core::config::SavePregapPlacement::Exclude => BridgeSavePregapPlacement::Exclude,
+            bae_core::config::SavePregapPlacement::SingleFileWithCue => {
+                BridgeSavePregapPlacement::SingleFileWithCue
             }
         }
     }
 
-    pub(crate) fn into_core(self) -> bae_core::config::ExportPregapPlacement {
+    pub(crate) fn into_core(self) -> bae_core::config::SavePregapPlacement {
         match self {
-            BridgeExportPregapPlacement::AppendToPreviousExceptHtoa => {
-                bae_core::config::ExportPregapPlacement::AppendToPreviousExceptHtoa
+            BridgeSavePregapPlacement::AppendToPreviousExceptHtoa => {
+                bae_core::config::SavePregapPlacement::AppendToPreviousExceptHtoa
             }
-            BridgeExportPregapPlacement::AppendToPreviousIncludingHtoa => {
-                bae_core::config::ExportPregapPlacement::AppendToPreviousIncludingHtoa
+            BridgeSavePregapPlacement::AppendToPreviousIncludingHtoa => {
+                bae_core::config::SavePregapPlacement::AppendToPreviousIncludingHtoa
             }
-            BridgeExportPregapPlacement::Exclude => {
-                bae_core::config::ExportPregapPlacement::Exclude
-            }
-            BridgeExportPregapPlacement::SingleFileWithCue => {
-                bae_core::config::ExportPregapPlacement::SingleFileWithCue
+            BridgeSavePregapPlacement::Exclude => bae_core::config::SavePregapPlacement::Exclude,
+            BridgeSavePregapPlacement::SingleFileWithCue => {
+                bae_core::config::SavePregapPlacement::SingleFileWithCue
             }
         }
     }
 }
 
-impl BridgeExportFilenameToken {
-    pub(crate) fn from_core(token: bae_core::config::ExportFilenameToken) -> Self {
+impl BridgeSaveFilenameToken {
+    pub(crate) fn from_core(token: bae_core::config::SaveFilenameToken) -> Self {
         match token {
-            bae_core::config::ExportFilenameToken::Title => BridgeExportFilenameToken::Title,
-            bae_core::config::ExportFilenameToken::Artist => BridgeExportFilenameToken::Artist,
-            bae_core::config::ExportFilenameToken::Album => BridgeExportFilenameToken::Album,
-            bae_core::config::ExportFilenameToken::Year => BridgeExportFilenameToken::Year,
-            bae_core::config::ExportFilenameToken::TrackNumber => {
-                BridgeExportFilenameToken::TrackNumber
+            bae_core::config::SaveFilenameToken::Title => BridgeSaveFilenameToken::Title,
+            bae_core::config::SaveFilenameToken::Artist => BridgeSaveFilenameToken::Artist,
+            bae_core::config::SaveFilenameToken::Album => BridgeSaveFilenameToken::Album,
+            bae_core::config::SaveFilenameToken::Year => BridgeSaveFilenameToken::Year,
+            bae_core::config::SaveFilenameToken::TrackNumber => {
+                BridgeSaveFilenameToken::TrackNumber
             }
-            bae_core::config::ExportFilenameToken::DiscNumber => {
-                BridgeExportFilenameToken::DiscNumber
-            }
-            bae_core::config::ExportFilenameToken::TrackTotal => {
-                BridgeExportFilenameToken::TrackTotal
-            }
+            bae_core::config::SaveFilenameToken::DiscNumber => BridgeSaveFilenameToken::DiscNumber,
+            bae_core::config::SaveFilenameToken::TrackTotal => BridgeSaveFilenameToken::TrackTotal,
         }
     }
 
-    pub(crate) fn into_core(self) -> bae_core::config::ExportFilenameToken {
+    pub(crate) fn into_core(self) -> bae_core::config::SaveFilenameToken {
         match self {
-            BridgeExportFilenameToken::Title => bae_core::config::ExportFilenameToken::Title,
-            BridgeExportFilenameToken::Artist => bae_core::config::ExportFilenameToken::Artist,
-            BridgeExportFilenameToken::Album => bae_core::config::ExportFilenameToken::Album,
-            BridgeExportFilenameToken::Year => bae_core::config::ExportFilenameToken::Year,
-            BridgeExportFilenameToken::TrackNumber => {
-                bae_core::config::ExportFilenameToken::TrackNumber
+            BridgeSaveFilenameToken::Title => bae_core::config::SaveFilenameToken::Title,
+            BridgeSaveFilenameToken::Artist => bae_core::config::SaveFilenameToken::Artist,
+            BridgeSaveFilenameToken::Album => bae_core::config::SaveFilenameToken::Album,
+            BridgeSaveFilenameToken::Year => bae_core::config::SaveFilenameToken::Year,
+            BridgeSaveFilenameToken::TrackNumber => {
+                bae_core::config::SaveFilenameToken::TrackNumber
             }
-            BridgeExportFilenameToken::DiscNumber => {
-                bae_core::config::ExportFilenameToken::DiscNumber
-            }
-            BridgeExportFilenameToken::TrackTotal => {
-                bae_core::config::ExportFilenameToken::TrackTotal
-            }
+            BridgeSaveFilenameToken::DiscNumber => bae_core::config::SaveFilenameToken::DiscNumber,
+            BridgeSaveFilenameToken::TrackTotal => bae_core::config::SaveFilenameToken::TrackTotal,
         }
     }
 }
@@ -170,9 +142,9 @@ impl BridgeOutputKind {
     }
 }
 
-impl BridgeExportPreset {
-    pub(crate) fn from_core(preset: &bae_core::config::ExportPreset) -> Self {
-        let bae_core::config::ExportPreset {
+impl BridgeSavePreset {
+    pub(crate) fn from_core(preset: &bae_core::config::SavePreset) -> Self {
+        let bae_core::config::SavePreset {
             id,
             name,
             codec,
@@ -182,26 +154,26 @@ impl BridgeExportPreset {
             applies_to_release,
             embed_cover,
         } = preset;
-        BridgeExportPreset {
+        BridgeSavePreset {
             id: id.clone(),
             name: name.clone(),
-            codec: BridgeExportPresetCodec::from_core(codec),
+            codec: BridgeSaveCodec::from_core(codec),
             // Derived from the codec; the core preset re-derives it on `into_core`.
             extension: codec.extension().to_string(),
             filename_tokens: filename_tokens
                 .iter()
                 .copied()
-                .map(BridgeExportFilenameToken::from_core)
+                .map(BridgeSaveFilenameToken::from_core)
                 .collect(),
-            pregap_placement: BridgeExportPregapPlacement::from_core(*pregap_placement),
+            pregap_placement: BridgeSavePregapPlacement::from_core(*pregap_placement),
             applies_to_track: *applies_to_track,
             applies_to_release: *applies_to_release,
             embed_cover: *embed_cover,
         }
     }
 
-    pub(crate) fn into_core(self) -> bae_core::config::ExportPreset {
-        let BridgeExportPreset {
+    pub(crate) fn into_core(self) -> bae_core::config::SavePreset {
+        let BridgeSavePreset {
             id,
             name,
             codec,
@@ -214,13 +186,13 @@ impl BridgeExportPreset {
             // dropped.
             extension: _,
         } = self;
-        bae_core::config::ExportPreset {
+        bae_core::config::SavePreset {
             id,
             name,
             codec: codec.into_core(),
             filename_tokens: filename_tokens
                 .into_iter()
-                .map(BridgeExportFilenameToken::into_core)
+                .map(BridgeSaveFilenameToken::into_core)
                 .collect(),
             pregap_placement: pregap_placement.into_core(),
             applies_to_track,
@@ -248,7 +220,7 @@ impl BridgeConfig {
             discogs: _,
             // Playback loudness policy; not surfaced on the config screen.
             replay_gain_mode: _,
-            export_presets,
+            save_presets,
             default_track_save_preset,
             default_release_save_preset,
             pause_between_sides,
@@ -274,9 +246,9 @@ impl BridgeConfig {
             max_concurrent_downloads: max_concurrent_downloads.get(),
             show_remaining_time: *show_remaining_time,
             library_full_width: *library_full_width,
-            export_presets: export_presets
+            save_presets: save_presets
                 .iter()
-                .map(BridgeExportPreset::from_core)
+                .map(BridgeSavePreset::from_core)
                 .collect(),
             default_track_save_preset: default_track_save_preset.clone(),
             default_release_save_preset: default_release_save_preset.clone(),

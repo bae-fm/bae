@@ -250,7 +250,7 @@ object BridgeFixtures {
             exportLocation = BridgeExportLocation.AskEachTime,
             exportFilenameTokens =
                 listOf(BridgeExportFilenameToken.TRACK_NUMBER, BridgeExportFilenameToken.TITLE),
-            exportPresets = emptyList(),
+            savePresets = emptyList(),
             defaultTrackExportSelection = BridgeExportSelection.Original,
             defaultReleaseExportSelection = BridgeExportSelection.Original,
             mcp = BridgeMcpConfig(enabled = false, port = 47777u),

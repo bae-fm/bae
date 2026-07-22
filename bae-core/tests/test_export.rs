@@ -8,7 +8,7 @@
 use bae_test_support as support;
 
 use bae_core::config::{
-    ExportBitDepth, ExportFilenameToken, ExportPregapPlacement, ExportPreset, ExportPresetCodec,
+    SaveBitDepth, SaveCodec, SaveFilenameToken, SavePregapPlacement, SavePreset,
 };
 use bae_core::db::Database;
 use bae_core::import::{IdentityChoice, ImportCommand, StorageMode};
@@ -180,32 +180,32 @@ async fn save_track_suggested_name_uses_the_preset_tokens() {
     let release_id = import_unknown_local(&f, &album_dir).await;
     let tracks = f.mgr.get_tracks_for_release(&release_id).await.unwrap();
 
-    let mut presets = f.mgr.export_presets();
-    presets.push(ExportPreset {
+    let mut presets = f.mgr.save_presets();
+    presets.push(SavePreset {
         id: "title-only".to_string(),
         name: "Title only".to_string(),
-        codec: ExportPresetCodec::Flac {
-            bit_depth: ExportBitDepth::Source,
+        codec: SaveCodec::Flac {
+            bit_depth: SaveBitDepth::Source,
         },
-        filename_tokens: vec![ExportFilenameToken::Title],
-        pregap_placement: ExportPregapPlacement::AppendToPreviousExceptHtoa,
+        filename_tokens: vec![SaveFilenameToken::Title],
+        pregap_placement: SavePregapPlacement::AppendToPreviousExceptHtoa,
         applies_to_track: true,
         applies_to_release: false,
         embed_cover: true,
     });
-    presets.push(ExportPreset {
+    presets.push(SavePreset {
         id: "num-title".to_string(),
         name: "Number and title".to_string(),
-        codec: ExportPresetCodec::Flac {
-            bit_depth: ExportBitDepth::Source,
+        codec: SaveCodec::Flac {
+            bit_depth: SaveBitDepth::Source,
         },
-        filename_tokens: vec![ExportFilenameToken::TrackNumber, ExportFilenameToken::Title],
-        pregap_placement: ExportPregapPlacement::AppendToPreviousExceptHtoa,
+        filename_tokens: vec![SaveFilenameToken::TrackNumber, SaveFilenameToken::Title],
+        pregap_placement: SavePregapPlacement::AppendToPreviousExceptHtoa,
         applies_to_track: true,
         applies_to_release: false,
         embed_cover: true,
     });
-    f.mgr.set_export_presets(presets).unwrap();
+    f.mgr.set_save_presets(presets).unwrap();
 
     let title_only = f
         .mgr
@@ -240,7 +240,7 @@ async fn save_track_suggested_name_uses_the_preset_tokens() {
 /// release, `embed_cover: true` carries the bytes and `false` carries none — the
 /// blob read is skipped entirely.
 #[tokio::test]
-async fn get_export_track_plan_skips_cover_read_when_not_embedding() {
+async fn get_save_track_plan_skips_cover_read_when_not_embedding() {
     support::tracing_init();
     let f = ExportFixture::new().await;
     let album_dir = f.temp_path().join("album");
@@ -253,7 +253,7 @@ async fn get_export_track_plan_skips_cover_read_when_not_embedding() {
 
     let with_cover = f
         .mgr
-        .get_export_track_plan(&tracks[0].id, true)
+        .get_save_track_plan(&tracks[0].id, true)
         .await
         .expect("plan with embedding");
     assert!(
@@ -263,7 +263,7 @@ async fn get_export_track_plan_skips_cover_read_when_not_embedding() {
 
     let without_cover = f
         .mgr
-        .get_export_track_plan(&tracks[0].id, false)
+        .get_save_track_plan(&tracks[0].id, false)
         .await
         .expect("plan without embedding");
     assert!(
@@ -312,21 +312,21 @@ async fn export_release_single_file_with_cue_writes_image_and_cue() {
     let second_bytes = support::write_tagged_flac(&album_dir, "02.flac", "Track Two");
     let release_id = import_unknown_local(&f, &album_dir).await;
 
-    let image_preset = ExportPreset {
+    let image_preset = SavePreset {
         id: "flac-image".to_string(),
         name: "FLAC image".to_string(),
-        codec: ExportPresetCodec::Flac {
-            bit_depth: ExportBitDepth::Source,
+        codec: SaveCodec::Flac {
+            bit_depth: SaveBitDepth::Source,
         },
-        filename_tokens: vec![ExportFilenameToken::TrackNumber, ExportFilenameToken::Title],
-        pregap_placement: ExportPregapPlacement::SingleFileWithCue,
+        filename_tokens: vec![SaveFilenameToken::TrackNumber, SaveFilenameToken::Title],
+        pregap_placement: SavePregapPlacement::SingleFileWithCue,
         applies_to_track: false,
         applies_to_release: true,
         embed_cover: true,
     };
-    let mut presets = f.mgr.export_presets();
+    let mut presets = f.mgr.save_presets();
     presets.push(image_preset.clone());
-    f.mgr.set_export_presets(presets).unwrap();
+    f.mgr.set_save_presets(presets).unwrap();
 
     let target = f.temp_path().join("export-target");
     fs::create_dir_all(&target).unwrap();

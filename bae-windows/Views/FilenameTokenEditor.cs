@@ -17,10 +17,10 @@ internal sealed class FilenameTokenEditor
 
     private readonly WrapPanel _chips = new() { Spacing = 5 };
     private readonly WrapPanel _addRow = new() { Spacing = 5 };
-    private readonly Action<List<BridgeExportFilenameToken>> _onChanged;
-    private List<BridgeExportFilenameToken> _tokens = new();
+    private readonly Action<List<BridgeSaveFilenameToken>> _onChanged;
+    private List<BridgeSaveFilenameToken> _tokens = new();
 
-    public FilenameTokenEditor(Action<List<BridgeExportFilenameToken>> onChanged)
+    public FilenameTokenEditor(Action<List<BridgeSaveFilenameToken>> onChanged)
     {
         _onChanged = onChanged;
         var panel = new StackPanel { Spacing = 6 };
@@ -37,7 +37,7 @@ internal sealed class FilenameTokenEditor
         View = panel;
     }
 
-    public void Render(IReadOnlyList<BridgeExportFilenameToken> tokens)
+    public void Render(IReadOnlyList<BridgeSaveFilenameToken> tokens)
     {
         _tokens = tokens.ToList();
 
@@ -48,7 +48,7 @@ internal sealed class FilenameTokenEditor
         }
 
         _addRow.Children.Clear();
-        var available = ExportFilenameTokenDisplay.All
+        var available = SaveFilenameTokenDisplay.All
             .Where(token => !_tokens.Contains(token))
             .ToList();
         _addRow.Visibility = available.Count == 0 ? Visibility.Collapsed : Visibility.Visible;
@@ -58,7 +58,7 @@ internal sealed class FilenameTokenEditor
         }
         _addRow.Children.Add(new TextBlock
         {
-            Text = Loc.Chrome("settings.export.add_token"),
+            Text = Loc.Chrome("settings.formats.add_token"),
             Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray),
             VerticalAlignment = VerticalAlignment.Center,
         });
@@ -70,9 +70,9 @@ internal sealed class FilenameTokenEditor
 
     // A chip: the token's label with a small dismiss glyph; clicking removes
     // the token from the pattern.
-    private Button Chip(BridgeExportFilenameToken token)
+    private Button Chip(BridgeSaveFilenameToken token)
     {
-        var label = ExportFilenameTokenDisplay.Label(token);
+        var label = SaveFilenameTokenDisplay.Label(token);
         var content = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6 };
         content.Children.Add(new TextBlock { Text = label });
         content.Children.Add(new FontIcon
@@ -89,17 +89,17 @@ internal sealed class FilenameTokenEditor
         };
         AutomationProperties.SetName(
             chip,
-            Loc.Chrome("settings.export.remove_token", "token", label));
+            Loc.Chrome("settings.formats.remove_token", "token", label));
         chip.Click += (_, _) => _onChanged(_tokens.Where(t => t != token).ToList());
         return chip;
     }
 
     // An add-row entry: clicking appends the token to the pattern.
-    private Button AddButton(BridgeExportFilenameToken token)
+    private Button AddButton(BridgeSaveFilenameToken token)
     {
         var button = new Button
         {
-            Content = ExportFilenameTokenDisplay.Label(token),
+            Content = SaveFilenameTokenDisplay.Label(token),
             Padding = new Thickness(8, 2, 8, 3),
             Background = new SolidColorBrush(Microsoft.UI.Colors.Transparent),
         };

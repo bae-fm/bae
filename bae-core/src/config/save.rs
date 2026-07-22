@@ -3,10 +3,10 @@ use serde::{Deserialize, Serialize};
 
 /// One piece of an export filename pattern. A pattern is an ordered token list;
 /// rendering substitutes each token's value from the track's metadata and joins
-/// the non-empty values with single spaces (see `render_export_filename`). The
+/// the non-empty values with single spaces (see `render_save_filename`). The
 /// extension is added by the exporter from the chosen format, not the pattern.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum ExportFilenameToken {
+pub enum SaveFilenameToken {
     Title,
     Artist,
     Album,
@@ -17,21 +17,21 @@ pub enum ExportFilenameToken {
 }
 
 /// The default filename pattern a new preset starts with: the zero-padded track
-/// number, then the title. Only [`default_export_presets`] uses it now — the
+/// number, then the title. Only [`default_save_presets`] uses it now — the
 /// global filename-token config is gone.
-fn default_export_filename_tokens() -> Vec<ExportFilenameToken> {
-    vec![ExportFilenameToken::TrackNumber, ExportFilenameToken::Title]
+fn default_save_filename_tokens() -> Vec<SaveFilenameToken> {
+    vec![SaveFilenameToken::TrackNumber, SaveFilenameToken::Title]
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum ExportBitDepth {
+pub enum SaveBitDepth {
     Source,
     Bits16,
     Bits24,
     Bits32,
 }
 
-impl ExportBitDepth {
+impl SaveBitDepth {
     pub fn resolve(self, source_bits: Option<i64>) -> u32 {
         match self {
             Self::Source => source_bits
@@ -46,15 +46,15 @@ impl ExportBitDepth {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub enum ExportPresetCodec {
-    Flac { bit_depth: ExportBitDepth },
+pub enum SaveCodec {
+    Flac { bit_depth: SaveBitDepth },
     Mp3 { bitrate_kbps: u32 },
     OpusOgg { bitrate_kbps: u32 },
-    Wav { bit_depth: ExportBitDepth },
-    Aiff { bit_depth: ExportBitDepth },
+    Wav { bit_depth: SaveBitDepth },
+    Aiff { bit_depth: SaveBitDepth },
 }
 
-impl ExportPresetCodec {
+impl SaveCodec {
     pub fn extension(&self) -> &'static str {
         match self {
             Self::Flac { .. } => "flac",
@@ -74,24 +74,24 @@ impl ExportPresetCodec {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum ExportPregapPlacement {
+pub enum SavePregapPlacement {
     AppendToPreviousExceptHtoa,
     AppendToPreviousIncludingHtoa,
     Exclude,
     SingleFileWithCue,
 }
 
-fn default_export_pregap_placement() -> ExportPregapPlacement {
-    ExportPregapPlacement::AppendToPreviousExceptHtoa
+fn default_export_pregap_placement() -> SavePregapPlacement {
+    SavePregapPlacement::AppendToPreviousExceptHtoa
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct ExportPreset {
+pub struct SavePreset {
     pub id: String,
     pub name: String,
-    pub codec: ExportPresetCodec,
-    pub filename_tokens: Vec<ExportFilenameToken>,
-    pub pregap_placement: ExportPregapPlacement,
+    pub codec: SaveCodec,
+    pub filename_tokens: Vec<SaveFilenameToken>,
+    pub pregap_placement: SavePregapPlacement,
     pub applies_to_track: bool,
     pub applies_to_release: bool,
     /// Whether saved files embed the release's cover art. When false, the cover
@@ -100,7 +100,7 @@ pub struct ExportPreset {
     pub embed_cover: bool,
 }
 
-impl ExportPreset {
+impl SavePreset {
     pub fn validate(&self) -> Result<(), ConfigError> {
         if self.id.trim().is_empty() {
             return Err(ConfigError::Config("export preset id is empty".to_string()));
@@ -117,15 +117,14 @@ impl ExportPreset {
                 self.id
             )));
         }
-        if self.pregap_placement == ExportPregapPlacement::SingleFileWithCue
-            && self.applies_to_track
+        if self.pregap_placement == SavePregapPlacement::SingleFileWithCue && self.applies_to_track
         {
             return Err(ConfigError::Config(format!(
                 "export preset {} uses single-file CUE and cannot apply to track export",
                 self.id
             )));
         }
-        if self.pregap_placement == ExportPregapPlacement::SingleFileWithCue
+        if self.pregap_placement == SavePregapPlacement::SingleFileWithCue
             && !self.codec.supports_single_file_cue()
         {
             return Err(ConfigError::Config(format!(
@@ -134,7 +133,7 @@ impl ExportPreset {
             )));
         }
         match self.codec {
-            ExportPresetCodec::Mp3 { bitrate_kbps } => {
+            SaveCodec::Mp3 { bitrate_kbps } => {
                 if !(32..=320).contains(&bitrate_kbps) {
                     return Err(ConfigError::Config(format!(
                         "export preset {} has unsupported MP3 bitrate {}",
@@ -142,7 +141,7 @@ impl ExportPreset {
                     )));
                 }
             }
-            ExportPresetCodec::OpusOgg { bitrate_kbps } => {
+            SaveCodec::OpusOgg { bitrate_kbps } => {
                 if !(32..=512).contains(&bitrate_kbps) {
                     return Err(ConfigError::Config(format!(
                         "export preset {} has unsupported Opus bitrate {}",
@@ -150,33 +149,31 @@ impl ExportPreset {
                     )));
                 }
             }
-            ExportPresetCodec::Flac { .. }
-            | ExportPresetCodec::Wav { .. }
-            | ExportPresetCodec::Aiff { .. } => {}
+            SaveCodec::Flac { .. } | SaveCodec::Wav { .. } | SaveCodec::Aiff { .. } => {}
         }
         Ok(())
     }
 }
 
-pub(super) fn default_export_presets() -> Vec<ExportPreset> {
+pub(super) fn default_save_presets() -> Vec<SavePreset> {
     vec![
-        ExportPreset {
+        SavePreset {
             id: "flac".to_string(),
             name: "FLAC".to_string(),
-            codec: ExportPresetCodec::Flac {
-                bit_depth: ExportBitDepth::Source,
+            codec: SaveCodec::Flac {
+                bit_depth: SaveBitDepth::Source,
             },
-            filename_tokens: default_export_filename_tokens(),
+            filename_tokens: default_save_filename_tokens(),
             pregap_placement: default_export_pregap_placement(),
             applies_to_track: true,
             applies_to_release: true,
             embed_cover: true,
         },
-        ExportPreset {
+        SavePreset {
             id: "mp3".to_string(),
             name: "MP3".to_string(),
-            codec: ExportPresetCodec::Mp3 { bitrate_kbps: 320 },
-            filename_tokens: default_export_filename_tokens(),
+            codec: SaveCodec::Mp3 { bitrate_kbps: 320 },
+            filename_tokens: default_save_filename_tokens(),
             pregap_placement: default_export_pregap_placement(),
             applies_to_track: true,
             applies_to_release: true,
@@ -191,14 +188,14 @@ mod tests {
 
     #[test]
     fn single_file_cue_preset_is_release_only() {
-        let preset = ExportPreset {
+        let preset = SavePreset {
             id: "flac-image".to_string(),
             name: "FLAC image".to_string(),
-            codec: ExportPresetCodec::Flac {
-                bit_depth: ExportBitDepth::Source,
+            codec: SaveCodec::Flac {
+                bit_depth: SaveBitDepth::Source,
             },
-            filename_tokens: default_export_filename_tokens(),
-            pregap_placement: ExportPregapPlacement::SingleFileWithCue,
+            filename_tokens: default_save_filename_tokens(),
+            pregap_placement: SavePregapPlacement::SingleFileWithCue,
             applies_to_track: true,
             applies_to_release: true,
             embed_cover: true,
@@ -209,18 +206,18 @@ mod tests {
             .expect_err("single-file CUE cannot be a track export preset");
         assert!(err.to_string().contains("cannot apply to track export"));
 
-        let release_only = ExportPreset {
+        let release_only = SavePreset {
             applies_to_track: false,
             ..preset
         };
         release_only.validate().unwrap();
 
-        let opus_image = ExportPreset {
+        let opus_image = SavePreset {
             id: "opus-image".to_string(),
             name: "Opus image".to_string(),
-            codec: ExportPresetCodec::OpusOgg { bitrate_kbps: 192 },
-            filename_tokens: default_export_filename_tokens(),
-            pregap_placement: ExportPregapPlacement::SingleFileWithCue,
+            codec: SaveCodec::OpusOgg { bitrate_kbps: 192 },
+            filename_tokens: default_save_filename_tokens(),
+            pregap_placement: SavePregapPlacement::SingleFileWithCue,
             applies_to_track: false,
             applies_to_release: true,
             embed_cover: true,

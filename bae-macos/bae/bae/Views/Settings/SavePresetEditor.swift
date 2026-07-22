@@ -6,9 +6,9 @@ import SwiftUI
 /// round-trips via `configChanged`, so the sheet always renders the stored
 /// state and Done only closes it. Deleting lives on the preset's list row,
 /// not here.
-struct ExportPresetEditor: View {
-    let preset: BridgeExportPreset
-    let update: (BridgeExportPreset) -> Void
+struct SavePresetEditor: View {
+    let preset: BridgeSavePreset
+    let update: (BridgeSavePreset) -> Void
 
     @Environment(\.dismiss)
     private var dismiss
@@ -113,7 +113,7 @@ struct ExportPresetEditor: View {
                 }
             )
         ) {
-            ForEach(ExportPresetKind.allCases, id: \.self) { kind in
+            ForEach(SavePresetKind.allCases, id: \.self) { kind in
                 Text(kind.label).tag(kind)
             }
         }
@@ -144,14 +144,14 @@ struct ExportPresetEditor: View {
             )
         ) {
             Text("Append except HTOA")
-                .tag(BridgeExportPregapPlacement.appendToPreviousExceptHtoa)
+                .tag(BridgeSavePregapPlacement.appendToPreviousExceptHtoa)
             Text("Append including HTOA")
-                .tag(BridgeExportPregapPlacement.appendToPreviousIncludingHtoa)
+                .tag(BridgeSavePregapPlacement.appendToPreviousIncludingHtoa)
             Text("Exclude")
-                .tag(BridgeExportPregapPlacement.exclude)
+                .tag(BridgeSavePregapPlacement.exclude)
             if preset.codec.supportsSingleFileCue {
                 Text("Single file + CUE")
-                    .tag(BridgeExportPregapPlacement.singleFileWithCue)
+                    .tag(BridgeSavePregapPlacement.singleFileWithCue)
             }
         }
         .labelsHidden()
@@ -206,7 +206,7 @@ struct ExportPresetEditor: View {
     }
 
     private var previewFilename: String {
-        BridgeExportFilenameToken.previewFilename(
+        BridgeSaveFilenameToken.previewFilename(
             tokens: preset.filenameTokens,
             fileExtension: preset.codec.fileExtension
         )
@@ -262,9 +262,9 @@ extension View {
 
 /// A preset's list row in settings: name over a settings summary, with the
 /// export menus the preset appears in as trailing badges. Clicking the row
-/// opens `ExportPresetEditor`.
-struct ExportPresetSummaryRow: View {
-    let preset: BridgeExportPreset
+/// opens `SavePresetEditor`.
+struct SavePresetSummaryRow: View {
+    let preset: BridgeSavePreset
 
     var body: some View {
         HStack(alignment: .center) {
@@ -312,10 +312,10 @@ private struct ScopeBadge: View {
 /// bit depth, lossy ones a bitrate. The bitrate edits through the sheet-owned
 /// draft; only in-range values commit.
 private struct PresetCodecEditor: View {
-    let preset: BridgeExportPreset
+    let preset: BridgeSavePreset
     @Binding
     var bitrateDraft: String
-    let update: (BridgeExportPreset) -> Void
+    let update: (BridgeSavePreset) -> Void
 
     @FocusState
     private var bitrateFocused: Bool
@@ -337,10 +337,10 @@ private struct PresetCodecEditor: View {
                         }
                     )
                 ) {
-                    Text("Source").tag(BridgeExportBitDepth.source)
-                    Text("16-bit").tag(BridgeExportBitDepth.bits16)
-                    Text("24-bit").tag(BridgeExportBitDepth.bits24)
-                    Text("32-bit").tag(BridgeExportBitDepth.bits32)
+                    Text("Source").tag(BridgeSaveBitDepth.source)
+                    Text("16-bit").tag(BridgeSaveBitDepth.bits16)
+                    Text("24-bit").tag(BridgeSaveBitDepth.bits24)
+                    Text("32-bit").tag(BridgeSaveBitDepth.bits32)
                 }
                 .labelsHidden()
             }
@@ -376,7 +376,7 @@ private struct PresetCodecEditor: View {
 }
 
 /// The codec families the Format picker and the add-preset menu offer.
-enum ExportPresetKind: CaseIterable {
+enum SavePresetKind: CaseIterable {
     case flac
     case mp3
     case opusOgg
@@ -394,7 +394,7 @@ enum ExportPresetKind: CaseIterable {
         }
     }
 
-    var defaultCodec: BridgeExportPresetCodec {
+    var defaultCodec: BridgeSaveCodec {
         switch self {
         case .flac: .flac(bitDepth: .source)
         case .mp3: .mp3(bitrateKbps: 320)
@@ -415,8 +415,8 @@ enum ExportPresetKind: CaseIterable {
     }
 }
 
-extension BridgeExportPresetCodec {
-    var kind: ExportPresetKind {
+extension BridgeSaveCodec {
+    var kind: SavePresetKind {
         switch self {
         case .flac: .flac
         case .mp3: .mp3
@@ -429,7 +429,7 @@ extension BridgeExportPresetCodec {
     /// Switch codec family, carrying the parameter that still applies: bit
     /// depth across lossless codecs, bitrate across lossy ones (clamped into
     /// MP3's supported range). A cross-family switch takes the family default.
-    func switched(to kind: ExportPresetKind) -> BridgeExportPresetCodec {
+    func switched(to kind: SavePresetKind) -> BridgeSaveCodec {
         switch kind {
         case .flac: .flac(bitDepth: bitDepth ?? .source)
         case .wav: .wav(bitDepth: bitDepth ?? .source)
@@ -440,7 +440,7 @@ extension BridgeExportPresetCodec {
     }
 
     /// The lossless family's bit depth; nil for lossy codecs.
-    var bitDepth: BridgeExportBitDepth? {
+    var bitDepth: BridgeSaveBitDepth? {
         switch self {
         case .flac(let bitDepth), .wav(let bitDepth), .aiff(let bitDepth):
             bitDepth
@@ -459,7 +459,7 @@ extension BridgeExportPresetCodec {
         }
     }
 
-    func with(bitDepth: BridgeExportBitDepth) -> BridgeExportPresetCodec {
+    func with(bitDepth: BridgeSaveBitDepth) -> BridgeSaveCodec {
         switch self {
         case .flac: .flac(bitDepth: bitDepth)
         case .wav: .wav(bitDepth: bitDepth)
@@ -468,7 +468,7 @@ extension BridgeExportPresetCodec {
         }
     }
 
-    func with(bitrateKbps: UInt32) -> BridgeExportPresetCodec {
+    func with(bitrateKbps: UInt32) -> BridgeSaveCodec {
         switch self {
         case .mp3: .mp3(bitrateKbps: bitrateKbps)
         case .opusOgg: .opusOgg(bitrateKbps: bitrateKbps)
@@ -508,7 +508,7 @@ extension BridgeExportPresetCodec {
     }
 }
 
-extension BridgeExportBitDepth {
+extension BridgeSaveBitDepth {
     /// The summary line's bit-depth part: "Source" alone reads as nothing in a
     /// "FLAC · Source · …" join, so the source case names what it is.
     var summaryLabel: String {
@@ -521,7 +521,7 @@ extension BridgeExportBitDepth {
     }
 }
 
-extension BridgeExportPregapPlacement {
+extension BridgeSavePregapPlacement {
     var label: String {
         switch self {
         case .appendToPreviousExceptHtoa:
@@ -540,9 +540,9 @@ extension BridgeExportPregapPlacement {
     #Preview("Export preset editor") {
         @Previewable
         @State
-        var preset = PreviewData.exportPresets[0]
+        var preset = PreviewData.savePresets[0]
 
-        ExportPresetEditor(
+        SavePresetEditor(
             preset: preset,
             update: { preset = $0 }
         )

@@ -380,7 +380,7 @@ internal sealed class SettingsWindow
         // Export: filename pattern, default formats, and presets. The section
         // renders from the settings re-read and writes through the bridge;
         // errors land in the shared settings error line.
-        var exportSection = new ExportSettingsSection(
+        var exportSection = new FormatsSettingsSection(
             _session,
             _settings,
             () => _window?.Content.XamlRoot,

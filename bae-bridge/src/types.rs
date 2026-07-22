@@ -1610,7 +1610,7 @@ pub enum BridgeInvalidation {
     SyncStatus,
     Outbox,
     DownloadQueue,
-    ExportQueue,
+    OutputQueue,
     ImportCandidateList,
     ImportCandidate { key: String },
     WatchedFolders,
@@ -1632,7 +1632,7 @@ impl BridgeInvalidation {
             CoreInvalidation::SyncStatus => Self::SyncStatus,
             CoreInvalidation::Outbox => Self::Outbox,
             CoreInvalidation::DownloadQueue => Self::DownloadQueue,
-            CoreInvalidation::ExportQueue => Self::ExportQueue,
+            CoreInvalidation::OutputQueue => Self::OutputQueue,
             CoreInvalidation::ImportCandidateList => Self::ImportCandidateList,
             CoreInvalidation::ImportCandidate { key } => Self::ImportCandidate { key },
             CoreInvalidation::WatchedFolders => Self::WatchedFolders,
@@ -2003,9 +2003,9 @@ impl BridgeCountLabel {
     }
 }
 
-/// A queued export's state. Mirror of bae-core's `ExportState`.
+/// A queued export's state. Mirror of bae-core's `OutputState`.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
-pub enum BridgeExportState {
+pub enum BridgeOutputState {
     Queued,
     Active { percent: u8 },
     Failed { error: String },
@@ -2021,10 +2021,10 @@ pub enum BridgeOutputKind {
 }
 
 /// One queued release output — a whole release being written out to a folder,
-/// either a verbatim export or a preset save. Mirror of bae-core's `ExportOp`;
+/// either a verbatim export or a preset save. Mirror of bae-core's `OutputOp`;
 /// carries raw fields the UI renders directly.
 #[derive(Debug, Clone, uniffi::Record)]
-pub struct BridgeExportOp {
+pub struct BridgeOutputOp {
     pub release_id: String,
     /// The chosen destination directory; the release's source folder is
     /// reconstructed under it.
@@ -2036,27 +2036,27 @@ pub struct BridgeExportOp {
     pub total_size: i64,
     /// Enqueue time as Unix epoch milliseconds, for the queued relative label.
     pub created_at: i64,
-    pub state: BridgeExportState,
+    pub state: BridgeOutputState,
     /// Whether this row is a verbatim export or a preset save; drives the row's
     /// state text and (for saves) the preset name in the detail line.
     pub kind: BridgeOutputKind,
 }
 
 /// Per-state counts for the export queue, driving the pane header. No bytes:
-/// exports track an overall percent per release, not aggregate bytes.
+/// outputs track an overall percent per release, not aggregate bytes.
 #[derive(Debug, Clone, Default, uniffi::Record)]
-pub struct BridgeExportProgress {
+pub struct BridgeOutputProgress {
     pub queued: u32,
     pub active: u32,
     pub failed: u32,
 }
 
 /// The in-memory export queue snapshot the Storage Manager's Exporting pane
-/// renders. Mirror of bae-core's `ExportSnapshot`; the UI renders it verbatim.
+/// renders. Mirror of bae-core's `OutputSnapshot`; the UI renders it verbatim.
 #[derive(Debug, Clone, uniffi::Record)]
-pub struct BridgeExportSnapshot {
-    pub exports: Vec<BridgeExportOp>,
-    pub total: BridgeExportProgress,
+pub struct BridgeOutputSnapshot {
+    pub outputs: Vec<BridgeOutputOp>,
+    pub total: BridgeOutputProgress,
     /// The one-line queue summary's parts (exporting/failed/queued), decided by
     /// core. The UI resolves each key and joins.
     pub summary_parts: Vec<BridgeCountLabel>,
@@ -2337,7 +2337,7 @@ pub struct BridgeConfig {
     /// the library page reads it and never stores a copy.
     pub library_full_width: bool,
     /// Configured export presets offered by release and track export.
-    pub export_presets: Vec<BridgeExportPreset>,
+    pub save_presets: Vec<BridgeSavePreset>,
     /// Id of the preset a track save defaults to (a valid, track-applicable
     /// preset id; core keeps it non-dangling).
     pub default_track_save_preset: String,
@@ -2959,7 +2959,7 @@ pub struct BridgeInviteCodeInfo {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
-pub enum BridgeExportBitDepth {
+pub enum BridgeSaveBitDepth {
     Source,
     Bits16,
     Bits24,
@@ -2968,9 +2968,9 @@ pub enum BridgeExportBitDepth {
 
 /// One piece of an export filename pattern — an ordered token list; rendering
 /// substitutes each token's value and joins the non-empty values with single
-/// spaces. Mirror of bae-core's `ExportFilenameToken`.
+/// spaces. Mirror of bae-core's `SaveFilenameToken`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
-pub enum BridgeExportFilenameToken {
+pub enum BridgeSaveFilenameToken {
     Title,
     Artist,
     Album,
@@ -2981,16 +2981,16 @@ pub enum BridgeExportFilenameToken {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
-pub enum BridgeExportPresetCodec {
-    Flac { bit_depth: BridgeExportBitDepth },
+pub enum BridgeSaveCodec {
+    Flac { bit_depth: BridgeSaveBitDepth },
     Mp3 { bitrate_kbps: u32 },
     OpusOgg { bitrate_kbps: u32 },
-    Wav { bit_depth: BridgeExportBitDepth },
-    Aiff { bit_depth: BridgeExportBitDepth },
+    Wav { bit_depth: BridgeSaveBitDepth },
+    Aiff { bit_depth: BridgeSaveBitDepth },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
-pub enum BridgeExportPregapPlacement {
+pub enum BridgeSavePregapPlacement {
     AppendToPreviousExceptHtoa,
     AppendToPreviousIncludingHtoa,
     Exclude,
@@ -2998,13 +2998,13 @@ pub enum BridgeExportPregapPlacement {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
-pub struct BridgeExportPreset {
+pub struct BridgeSavePreset {
     pub id: String,
     pub name: String,
-    pub codec: BridgeExportPresetCodec,
+    pub codec: BridgeSaveCodec,
     pub extension: String,
-    pub filename_tokens: Vec<BridgeExportFilenameToken>,
-    pub pregap_placement: BridgeExportPregapPlacement,
+    pub filename_tokens: Vec<BridgeSaveFilenameToken>,
+    pub pregap_placement: BridgeSavePregapPlacement,
     pub applies_to_track: bool,
     pub applies_to_release: bool,
     /// Whether saved files embed the release's cover art.
@@ -3021,6 +3021,7 @@ pub enum BridgeErrorCategory {
     Internal,
     Import,
     Export,
+    Save,
     /// A cloud provider rejected the request or the setup is misconfigured (bad
     /// credentials, denied permission, a bucket/folder that isn't set).
     Credentials,
@@ -3087,11 +3088,17 @@ impl BridgeError {
     pub(crate) fn import(detail: impl std::fmt::Display) -> Self {
         Self::diagnostic(BridgeErrorCategory::Import, detail)
     }
-    /// Desktop-only with the export surface it reports on: iOS/Android compile
-    /// out the export queue and the track exporter entirely.
+    /// Desktop-only with the output surface it reports on: iOS/Android compile
+    /// out the output queue and the track saver entirely.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub(crate) fn export(detail: impl std::fmt::Display) -> Self {
         Self::diagnostic(BridgeErrorCategory::Export, detail)
+    }
+    /// Desktop-only, like [`Self::export`]: reports a save (rendered-output)
+    /// failure.
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    pub(crate) fn save(detail: impl std::fmt::Display) -> Self {
+        Self::diagnostic(BridgeErrorCategory::Save, detail)
     }
 }
 
@@ -3124,6 +3131,7 @@ pub fn bridge_error_category_key(category: BridgeErrorCategory) -> String {
         BridgeErrorCategory::Internal => "core.error.category.internal",
         BridgeErrorCategory::Import => "core.error.category.import",
         BridgeErrorCategory::Export => "core.error.category.export",
+        BridgeErrorCategory::Save => "core.error.category.save",
         BridgeErrorCategory::Credentials => "core.error.category.credentials",
         BridgeErrorCategory::Network => "core.error.category.network",
         BridgeErrorCategory::Keyring => "core.error.category.keyring",
@@ -3217,6 +3225,7 @@ impl BridgeErrorCategory {
             UiErrorCategory::Internal => BridgeErrorCategory::Internal,
             UiErrorCategory::Import => BridgeErrorCategory::Import,
             UiErrorCategory::Export => BridgeErrorCategory::Export,
+            UiErrorCategory::Save => BridgeErrorCategory::Save,
             UiErrorCategory::Credentials => BridgeErrorCategory::Credentials,
             UiErrorCategory::Network => BridgeErrorCategory::Network,
             UiErrorCategory::Keyring => BridgeErrorCategory::Keyring,
@@ -4282,7 +4291,7 @@ mod loc_key_coverage {
         // Storage queue summary (UI composes counts).
         "core.queue.uploading",
         "core.queue.downloading",
-        "core.queue.exporting",
+        "core.queue.output",
         "core.queue.failed",
         "core.queue.queued",
         "core.download.bytes_progress",
@@ -4500,6 +4509,7 @@ mod loc_key_coverage {
             BridgeErrorCategory::Internal,
             BridgeErrorCategory::Import,
             BridgeErrorCategory::Export,
+            BridgeErrorCategory::Save,
             BridgeErrorCategory::Credentials,
             BridgeErrorCategory::Network,
             BridgeErrorCategory::Keyring,
@@ -4511,6 +4521,7 @@ mod loc_key_coverage {
                 BridgeErrorCategory::Internal => "core.error.category.internal",
                 BridgeErrorCategory::Import => "core.error.category.import",
                 BridgeErrorCategory::Export => "core.error.category.export",
+                BridgeErrorCategory::Save => "core.error.category.save",
                 BridgeErrorCategory::Credentials => "core.error.category.credentials",
                 BridgeErrorCategory::Network => "core.error.category.network",
                 BridgeErrorCategory::Keyring => "core.error.category.keyring",
@@ -4683,22 +4694,22 @@ mod conversion_roundtrip {
 
     #[test]
     fn export_preset_round_trips_and_re_derives_extension() {
-        let core = bae_core::config::ExportPreset {
+        let core = bae_core::config::SavePreset {
             id: "preset-1".to_string(),
             name: "Preset One".to_string(),
-            codec: bae_core::config::ExportPresetCodec::Flac {
-                bit_depth: bae_core::config::ExportBitDepth::Bits24,
+            codec: bae_core::config::SaveCodec::Flac {
+                bit_depth: bae_core::config::SaveBitDepth::Bits24,
             },
             filename_tokens: vec![
-                bae_core::config::ExportFilenameToken::Artist,
-                bae_core::config::ExportFilenameToken::Title,
+                bae_core::config::SaveFilenameToken::Artist,
+                bae_core::config::SaveFilenameToken::Title,
             ],
-            pregap_placement: bae_core::config::ExportPregapPlacement::Exclude,
+            pregap_placement: bae_core::config::SavePregapPlacement::Exclude,
             applies_to_track: true,
             applies_to_release: false,
             embed_cover: false,
         };
-        let bridge = BridgeExportPreset::from_core(&core);
+        let bridge = BridgeSavePreset::from_core(&core);
         // `extension` is derived from the codec, not carried in the core preset.
         assert_eq!(bridge.extension, core.codec.extension());
         assert!(!bridge.embed_cover);

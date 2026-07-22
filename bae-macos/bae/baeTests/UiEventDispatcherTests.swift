@@ -472,7 +472,7 @@ private func makeAppService(handle: FakeAppHandle = FakeAppHandle())
             maxConcurrentDownloads: 3,
             showRemainingTime: false,
                     libraryFullWidth: false,
-            exportPresets: [],
+            savePresets: [],
             defaultTrackSavePreset: "flac",
             defaultReleaseSavePreset: "flac",
             mcp: BridgeMcpConfig(enabled: false, port: 47777),
@@ -513,10 +513,10 @@ private final class FakeAppHandle: AppHandle, @unchecked Sendable {
         )
     }
 
-    override func getExportSnapshot() -> BridgeExportSnapshot {
-        BridgeExportSnapshot(
+    override func getOutputSnapshot() -> BridgeOutputSnapshot {
+        BridgeOutputSnapshot(
             exports: [],
-            total: BridgeExportProgress(queued: 0, active: 0, failed: 0),
+            total: BridgeOutputProgress(queued: 0, active: 0, failed: 0),
             summaryParts: [],
             paused: false
         )

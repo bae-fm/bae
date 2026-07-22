@@ -302,49 +302,49 @@
   <data name="work.open_failed" xml:space="preserve"><value>Không thể mở chi tiết tác phẩm</value></data>
   <data name="work.count" xml:space="preserve"><value>{count} tác phẩm</value></data>
   <data name="album.count" xml:space="preserve"><value>{count} album</value></data>
-  <data name="settings.export.default_track_format" xml:space="preserve"><value>Định dạng bản nhạc mặc định</value></data>
-  <data name="settings.export.default_release_format" xml:space="preserve"><value>Định dạng bản phát hành mặc định</value></data>
-  <data name="settings.export.presets" xml:space="preserve"><value>Cài đặt sẵn</value></data>
-  <data name="settings.export.preset_name" xml:space="preserve"><value>Tên</value></data>
-  <data name="settings.export.preset_track" xml:space="preserve"><value>Bản nhạc</value></data>
-  <data name="settings.export.preset_release" xml:space="preserve"><value>Bản phát hành</value></data>
-  <data name="settings.export.preset_pregap" xml:space="preserve"><value>Pregap</value></data>
-  <data name="settings.export.pregap.append_except_htoa" xml:space="preserve"><value>Nối thêm trừ HTOA</value></data>
-  <data name="settings.export.pregap.append_including_htoa" xml:space="preserve"><value>Nối thêm gồm cả HTOA</value></data>
-  <data name="settings.export.pregap.exclude" xml:space="preserve"><value>Loại trừ</value></data>
-  <data name="settings.export.pregap.single_file_with_cue" xml:space="preserve"><value>Một tệp + CUE</value></data>
-  <data name="settings.export.filename_format" xml:space="preserve"><value>Định dạng tên tệp</value></data>
-  <data name="settings.export.release_exports" xml:space="preserve"><value>Lượt xuất bản phát hành</value></data>
-  <data name="settings.export.track_exports" xml:space="preserve"><value>Lượt xuất bản nhạc</value></data>
-  <data name="settings.export.add_token" xml:space="preserve"><value>Thêm:</value></data>
-  <data name="settings.export.remove_token" xml:space="preserve"><value>Xóa {token}</value></data>
-  <data name="settings.export.token.title" xml:space="preserve"><value>Tiêu đề</value></data>
-  <data name="settings.export.token.artist" xml:space="preserve"><value>Nghệ sĩ</value></data>
-  <data name="settings.export.token.album" xml:space="preserve"><value>Album</value></data>
-  <data name="settings.export.token.year" xml:space="preserve"><value>Năm</value></data>
-  <data name="settings.export.token.track_number" xml:space="preserve"><value>Số bản nhạc</value></data>
-  <data name="settings.export.token.disc_number" xml:space="preserve"><value>Số đĩa</value></data>
-  <data name="settings.export.token.track_total" xml:space="preserve"><value>Tổng số bản nhạc</value></data>
-  <data name="settings.export.sample.title" xml:space="preserve"><value>Tên bản nhạc</value></data>
-  <data name="settings.export.sample.artist" xml:space="preserve"><value>Tên nghệ sĩ</value></data>
-  <data name="settings.export.sample.album" xml:space="preserve"><value>Tên album</value></data>
-  <data name="settings.export.preview" xml:space="preserve"><value>Xem trước: {filename}</value></data>
-  <data name="settings.export.presets_footer" xml:space="preserve"><value>Cài đặt sẵn xuất hiện trong menu xuất của bản nhạc và bản phát hành.</value></data>
-  <data name="settings.export.preset_format" xml:space="preserve"><value>Định dạng</value></data>
-  <data name="settings.export.add_preset" xml:space="preserve"><value>Thêm cài đặt sẵn</value></data>
-  <data name="settings.export.delete_preset" xml:space="preserve"><value>Xóa cài đặt sẵn</value></data>
-  <data name="settings.export.delete_confirm" xml:space="preserve"><value>Xóa cài đặt sẵn “{name}”?</value></data>
-  <data name="settings.export.codec_mp3" xml:space="preserve"><value>MP3 {kbps} kbps</value></data>
-  <data name="settings.export.codec_opus" xml:space="preserve"><value>Opus {kbps} kbps</value></data>
-  <data name="settings.export.bit_depth.source_summary" xml:space="preserve"><value>Độ sâu bit của nguồn</value></data>
-  <data name="settings.export.show_in_menus" xml:space="preserve"><value>Hiển thị trong menu xuất cho</value></data>
-  <data name="settings.export.embed_cover" xml:space="preserve"><value>Nhúng ảnh bìa</value></data>
-  <data name="settings.export.bit_depth_label" xml:space="preserve"><value>Độ sâu bit</value></data>
-  <data name="settings.export.bit_depth.source" xml:space="preserve"><value>Nguồn</value></data>
-  <data name="settings.export.bit_depth.bits16" xml:space="preserve"><value>16-bit</value></data>
-  <data name="settings.export.bit_depth.bits24" xml:space="preserve"><value>24-bit</value></data>
-  <data name="settings.export.bit_depth.bits32" xml:space="preserve"><value>32-bit</value></data>
-  <data name="settings.export.bitrate" xml:space="preserve"><value>Tốc độ bit</value></data>
+  <data name="settings.formats.default_track_format" xml:space="preserve"><value>Định dạng bản nhạc mặc định</value></data>
+  <data name="settings.formats.default_release_format" xml:space="preserve"><value>Định dạng bản phát hành mặc định</value></data>
+  <data name="settings.formats.presets" xml:space="preserve"><value>Cài đặt sẵn</value></data>
+  <data name="settings.formats.preset_name" xml:space="preserve"><value>Tên</value></data>
+  <data name="settings.formats.preset_track" xml:space="preserve"><value>Bản nhạc</value></data>
+  <data name="settings.formats.preset_release" xml:space="preserve"><value>Bản phát hành</value></data>
+  <data name="settings.formats.preset_pregap" xml:space="preserve"><value>Pregap</value></data>
+  <data name="settings.formats.pregap.append_except_htoa" xml:space="preserve"><value>Nối thêm trừ HTOA</value></data>
+  <data name="settings.formats.pregap.append_including_htoa" xml:space="preserve"><value>Nối thêm gồm cả HTOA</value></data>
+  <data name="settings.formats.pregap.exclude" xml:space="preserve"><value>Loại trừ</value></data>
+  <data name="settings.formats.pregap.single_file_with_cue" xml:space="preserve"><value>Một tệp + CUE</value></data>
+  <data name="settings.formats.filename_format" xml:space="preserve"><value>Định dạng tên tệp</value></data>
+  <data name="settings.formats.release_saves" xml:space="preserve"><value>Lượt lưu bản phát hành</value></data>
+  <data name="settings.formats.track_saves" xml:space="preserve"><value>Lượt lưu bản nhạc</value></data>
+  <data name="settings.formats.add_token" xml:space="preserve"><value>Thêm:</value></data>
+  <data name="settings.formats.remove_token" xml:space="preserve"><value>Xóa {token}</value></data>
+  <data name="settings.formats.token.title" xml:space="preserve"><value>Tiêu đề</value></data>
+  <data name="settings.formats.token.artist" xml:space="preserve"><value>Nghệ sĩ</value></data>
+  <data name="settings.formats.token.album" xml:space="preserve"><value>Album</value></data>
+  <data name="settings.formats.token.year" xml:space="preserve"><value>Năm</value></data>
+  <data name="settings.formats.token.track_number" xml:space="preserve"><value>Số bản nhạc</value></data>
+  <data name="settings.formats.token.disc_number" xml:space="preserve"><value>Số đĩa</value></data>
+  <data name="settings.formats.token.track_total" xml:space="preserve"><value>Tổng số bản nhạc</value></data>
+  <data name="settings.formats.sample.title" xml:space="preserve"><value>Tên bản nhạc</value></data>
+  <data name="settings.formats.sample.artist" xml:space="preserve"><value>Tên nghệ sĩ</value></data>
+  <data name="settings.formats.sample.album" xml:space="preserve"><value>Tên album</value></data>
+  <data name="settings.formats.preview" xml:space="preserve"><value>Xem trước: {filename}</value></data>
+  <data name="settings.formats.presets_footer" xml:space="preserve"><value>Cài đặt sẵn xuất hiện trong menu xuất của bản nhạc và bản phát hành.</value></data>
+  <data name="settings.formats.preset_format" xml:space="preserve"><value>Định dạng</value></data>
+  <data name="settings.formats.add_preset" xml:space="preserve"><value>Thêm cài đặt sẵn</value></data>
+  <data name="settings.formats.delete_preset" xml:space="preserve"><value>Xóa cài đặt sẵn</value></data>
+  <data name="settings.formats.delete_confirm" xml:space="preserve"><value>Xóa cài đặt sẵn “{name}”?</value></data>
+  <data name="settings.formats.codec_mp3" xml:space="preserve"><value>MP3 {kbps} kbps</value></data>
+  <data name="settings.formats.codec_opus" xml:space="preserve"><value>Opus {kbps} kbps</value></data>
+  <data name="settings.formats.bit_depth.source_summary" xml:space="preserve"><value>Độ sâu bit của nguồn</value></data>
+  <data name="settings.formats.show_in_menus" xml:space="preserve"><value>Hiển thị trong menu xuất cho</value></data>
+  <data name="settings.formats.embed_cover" xml:space="preserve"><value>Nhúng ảnh bìa</value></data>
+  <data name="settings.formats.bit_depth_label" xml:space="preserve"><value>Độ sâu bit</value></data>
+  <data name="settings.formats.bit_depth.source" xml:space="preserve"><value>Nguồn</value></data>
+  <data name="settings.formats.bit_depth.bits16" xml:space="preserve"><value>16-bit</value></data>
+  <data name="settings.formats.bit_depth.bits24" xml:space="preserve"><value>24-bit</value></data>
+  <data name="settings.formats.bit_depth.bits32" xml:space="preserve"><value>32-bit</value></data>
+  <data name="settings.formats.bitrate" xml:space="preserve"><value>Tốc độ bit</value></data>
   <data name="outbox.state.uploading" xml:space="preserve"><value>Đang tải lên</value></data>
   <data name="outbox.state.queued" xml:space="preserve"><value>Đang chờ</value></data>
   <data name="outbox.state.retrying" xml:space="preserve"><value>Đang thử lại</value></data>
@@ -392,7 +392,7 @@
   <data name="import.sort.oldest" xml:space="preserve"><value>Ngày thêm (cũ nhất)</value></data>
   <data name="nowplaying.show_remaining" xml:space="preserve"><value>hiện thời gian còn lại</value></data>
   <data name="nowplaying.show_elapsed" xml:space="preserve"><value>hiện thời gian đã phát</value></data>
-  <data name="export.title" xml:space="preserve"><value>đang xuất</value></data>
+  <data name="output.title" xml:space="preserve"><value>xuất và lưu</value></data>
   <data name="export.state.exporting" xml:space="preserve"><value>đang xuất {percent}%</value></data>
   <data name="export.state.saving" xml:space="preserve"><value>đang lưu {percent}%</value></data>
   <data name="import.documents" xml:space="preserve"><value>Tài liệu</value></data>

@@ -3,7 +3,7 @@ import Foundation
 
 /// Single-track save to a chosen output path under a preset. Used by the
 /// release-detail "Save As…" affordance.
-final class Export: Sendable, Observable {
+final class TrackSave: Sendable, Observable {
     let saveTrack:
         @Sendable (
             _ trackId: String, _ outputPath: String, _ presetId: String
@@ -48,6 +48,6 @@ final class Export: Sendable, Observable {
 
     #if DEBUG
         // periphery:ignore
-        static let stub = Export()
+        static let stub = TrackSave()
     #endif
 }

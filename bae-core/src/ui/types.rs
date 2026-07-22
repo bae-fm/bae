@@ -9,6 +9,7 @@ pub enum UiErrorCategory {
     Internal,
     Import,
     Export,
+    Save,
     /// A cloud provider rejected the request or the setup is misconfigured: bad
     /// credentials, denied permission, a bucket/folder that isn't set. The user
     /// fixes the cloud settings; retrying unchanged won't help.
@@ -112,7 +113,7 @@ pub enum Invalidation {
     SyncStatus,
     Outbox,
     DownloadQueue,
-    ExportQueue,
+    OutputQueue,
     ImportCandidateList,
     ImportCandidate { key: String },
     WatchedFolders,

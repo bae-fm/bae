@@ -592,16 +592,16 @@ impl AppHandle {
             .map_err(BridgeError::config)
     }
 
-    pub fn set_export_presets(
+    pub fn set_save_presets(
         &self,
-        presets: Vec<crate::types::BridgeExportPreset>,
+        presets: Vec<crate::types::BridgeSavePreset>,
     ) -> Result<(), BridgeError> {
         self.services
             .library_manager()
-            .set_export_presets(
+            .set_save_presets(
                 presets
                     .into_iter()
-                    .map(crate::types::BridgeExportPreset::into_core)
+                    .map(crate::types::BridgeSavePreset::into_core)
                     .collect(),
             )
             .map_err(BridgeError::config)
@@ -1511,9 +1511,9 @@ impl AppHandle {
 
     /// The current export-queue snapshot. Export invalidations tell the
     /// Exporting pane to read it again.
-    pub fn get_export_snapshot(&self) -> crate::types::BridgeExportSnapshot {
-        crate::types::BridgeExportSnapshot::from_core(
-            self.services.library_manager().export_snapshot(),
+    pub fn get_output_snapshot(&self) -> crate::types::BridgeOutputSnapshot {
+        crate::types::BridgeOutputSnapshot::from_core(
+            self.services.library_manager().output_snapshot(),
         )
     }
 
@@ -1550,25 +1550,25 @@ impl AppHandle {
                 &preset_id,
             )
             .await
-            .map_err(BridgeError::export)
+            .map_err(BridgeError::save)
     }
 
     /// Pause or resume the export queue. The in-flight export finishes; the queue
     /// stops starting new ones until resumed.
-    pub fn set_exports_paused(&self, paused: bool) {
-        self.services.library_manager().set_exports_paused(paused);
+    pub fn set_outputs_paused(&self, paused: bool) {
+        self.services.library_manager().set_outputs_paused(paused);
     }
 
     /// Cancel a release's export — drops a queued/failed entry or aborts the
     /// in-flight one (a partial copy never lands its destination file).
-    pub fn cancel_export(&self, release_id: String) {
-        self.services.library_manager().cancel_export(&release_id);
+    pub fn cancel_output(&self, release_id: String) {
+        self.services.library_manager().cancel_output(&release_id);
     }
 
     /// Retry every failed export now (flips them back to queued and wakes the
     /// worker).
-    pub fn retry_exports(&self) {
-        self.services.library_manager().retry_exports();
+    pub fn retry_outputs(&self) {
+        self.services.library_manager().retry_outputs();
     }
 
     // ── Track save ───────────────────────────────────────────────────
@@ -1586,7 +1586,7 @@ impl AppHandle {
             .library_manager()
             .save_track(&track_id, std::path::Path::new(&output_path), &preset_id)
             .await
-            .map_err(|e| BridgeError::export(format!("{e}")))
+            .map_err(|e| BridgeError::save(format!("{e}")))
     }
 
     /// The default filename stem (no extension) a single-track "Save As…"
@@ -1602,7 +1602,7 @@ impl AppHandle {
             .library_manager()
             .save_track_suggested_name(&track_id, &preset_id)
             .await
-            .map_err(|e| BridgeError::export(format!("{e}")))
+            .map_err(|e| BridgeError::save(format!("{e}")))
     }
 }
 
@@ -1660,7 +1660,7 @@ async fn pump_ui_events(
                     BridgeInvalidation::SyncStatus,
                     BridgeInvalidation::Outbox,
                     BridgeInvalidation::DownloadQueue,
-                    BridgeInvalidation::ExportQueue,
+                    BridgeInvalidation::OutputQueue,
                     BridgeInvalidation::ImportCandidateList,
                     BridgeInvalidation::WatchedFolders,
                 ] {
@@ -1948,21 +1948,21 @@ impl crate::types::BridgeDownloadProgress {
 }
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
-impl crate::types::BridgeExportState {
-    fn from_core(state: bae_core::library::ExportState) -> Self {
-        use crate::types::BridgeExportState;
-        use bae_core::library::ExportState;
+impl crate::types::BridgeOutputState {
+    fn from_core(state: bae_core::library::OutputState) -> Self {
+        use crate::types::BridgeOutputState;
+        use bae_core::library::OutputState;
         match state {
-            ExportState::Queued => BridgeExportState::Queued,
-            ExportState::Active { progress } => BridgeExportState::Active { percent: progress },
-            ExportState::Failed { error } => BridgeExportState::Failed { error },
+            OutputState::Queued => BridgeOutputState::Queued,
+            OutputState::Active { progress } => BridgeOutputState::Active { percent: progress },
+            OutputState::Failed { error } => BridgeOutputState::Failed { error },
         }
     }
 }
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
-impl crate::types::BridgeExportOp {
-    fn from_core(op: bae_core::library::ExportOp) -> Self {
+impl crate::types::BridgeOutputOp {
+    fn from_core(op: bae_core::library::OutputOp) -> Self {
         let bae_core::library::release_queue::ReleaseQueueOp {
             release_id,
             title,
@@ -1972,36 +1972,36 @@ impl crate::types::BridgeExportOp {
             payload,
             state,
         } = op;
-        let bae_core::library::export_snapshot::ExportRequest { target_dir, kind } = payload;
-        crate::types::BridgeExportOp {
+        let bae_core::library::output_snapshot::OutputRequest { target_dir, kind } = payload;
+        crate::types::BridgeOutputOp {
             release_id,
             target_dir: target_dir.to_string_lossy().to_string(),
             title,
             file_count,
             total_size,
             created_at,
-            state: crate::types::BridgeExportState::from_core(state),
+            state: crate::types::BridgeOutputState::from_core(state),
             kind: crate::types::BridgeOutputKind::from_core(&kind),
         }
     }
 }
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
-impl crate::types::BridgeExportSnapshot {
-    fn from_core(snapshot: bae_core::library::ExportSnapshot) -> Self {
+impl crate::types::BridgeOutputSnapshot {
+    fn from_core(snapshot: bae_core::library::OutputSnapshot) -> Self {
         let summary_parts = snapshot
             .total
-            .summary_parts("core.queue.exporting")
+            .summary_parts("core.queue.output")
             .into_iter()
             .map(crate::types::BridgeCountLabel::from_core)
             .collect();
-        let (exports, total, paused) = project_release_queue_snapshot(
+        let (outputs, total, paused) = project_release_queue_snapshot(
             snapshot,
-            crate::types::BridgeExportOp::from_core,
-            crate::types::BridgeExportProgress::from_core,
+            crate::types::BridgeOutputOp::from_core,
+            crate::types::BridgeOutputProgress::from_core,
         );
-        crate::types::BridgeExportSnapshot {
-            exports,
+        crate::types::BridgeOutputSnapshot {
+            outputs,
             total,
             summary_parts,
             paused,
@@ -2010,10 +2010,10 @@ impl crate::types::BridgeExportSnapshot {
 }
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
-impl crate::types::BridgeExportProgress {
-    fn from_core(p: bae_core::library::ExportProgress) -> Self {
+impl crate::types::BridgeOutputProgress {
+    fn from_core(p: bae_core::library::OutputProgress) -> Self {
         let (queued, active, failed) = release_queue_progress_counts(p);
-        crate::types::BridgeExportProgress {
+        crate::types::BridgeOutputProgress {
             queued,
             active,
             failed,
@@ -3355,7 +3355,7 @@ mod tests {
             crate::types::BridgeInvalidation::AlbumList,
             crate::types::BridgeInvalidation::Outbox,
             crate::types::BridgeInvalidation::DownloadQueue,
-            crate::types::BridgeInvalidation::ExportQueue,
+            crate::types::BridgeInvalidation::OutputQueue,
             crate::types::BridgeInvalidation::SyncStatus,
             crate::types::BridgeInvalidation::Queue,
             crate::types::BridgeInvalidation::Config,

@@ -35,10 +35,10 @@ extension BridgeDownloadSnapshot {
     public var summaryText: String { QueueSummary.line(summaryParts) }
 }
 
-// The export queue is desktop-gated, so `BridgeExportSnapshot` isn't generated
+// The export queue is desktop-gated, so `BridgeOutputSnapshot` isn't generated
 // for iOS. The outbox and download snapshots exist on both platforms.
 #if !os(iOS)
-    extension BridgeExportSnapshot {
+    extension BridgeOutputSnapshot {
         public var summaryText: String { QueueSummary.line(summaryParts) }
     }
 #endif

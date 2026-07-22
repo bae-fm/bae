@@ -66,7 +66,7 @@ struct PlaybackSettingsTab: View {
                     maxConcurrentDownloads: 3,
                     showRemainingTime: false,
                     libraryFullWidth: false,
-                    exportPresets: PreviewData.exportPresets,
+                    savePresets: PreviewData.savePresets,
                     defaultTrackSavePreset: "flac",
                     defaultReleaseSavePreset: "flac",
                     mcp: BridgeMcpConfig(enabled: false, port: 47777),

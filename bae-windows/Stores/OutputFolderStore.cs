@@ -8,12 +8,12 @@ namespace Bae.Windows;
 // per-run choice, never config; this is only a UI convenience memory (the Windows
 // sibling of macOS's lastExportFolder), so a failed read or write degrades to "no
 // folder" rather than taking the app down.
-internal static class ExportFolderStore
+internal static class OutputFolderStore
 {
     private static string FilePath => Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
         "bae",
-        "export-folder.txt");
+        "output-folder.txt");
 
     // The remembered folder, or null when nothing is saved yet or the file is
     // blank/unreadable.

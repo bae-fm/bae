@@ -5,11 +5,11 @@ import Foundation
 /// out to a folder, pause/resume the queue, cancel a release's export, and retry
 /// failed ones. Mirrors `Downloads`, wrapping the corresponding `handle.*`
 /// methods. The queue itself lives in bae-core; the Exporting pane reads its
-/// state from `ExportStore` (the export projection is the sole writer).
-final class Exports: Sendable, Observable {
+/// state from `OutputStore` (the export projection is the sole writer).
+final class Outputs: Sendable, Observable {
     /// Enqueue a verbatim release export to `targetDir`. It joins the serial
     /// output queue; the worker drains it one release at a time. Fire-and-forget
-    /// — progress and queue state arrive via `exportQueueChanged` events.
+    /// — progress and queue state arrive via `outputQueueChanged` events.
     let enqueueExport:
         @Sendable (_ releaseId: String, _ targetDir: String) async throws ->
             Void
@@ -21,15 +21,14 @@ final class Exports: Sendable, Observable {
         ) async throws -> Void
     /// Pause or resume the export queue. The in-flight export finishes; the
     /// queue stops starting new ones until resumed.
-    let setExportsPaused: @Sendable (_ paused: Bool) -> Void
+    let setOutputsPaused: @Sendable (_ paused: Bool) -> Void
     /// Cancel a release's export — drops a queued/failed entry or aborts the
     /// in-flight one (a partial copy never lands its destination file).
-    let cancelExport: @Sendable (_ releaseId: String) -> Void
+    let cancelOutput: @Sendable (_ releaseId: String) -> Void
     /// Retry every failed export now (flips them back to queued).
-    let retryExports: @Sendable () -> Void
+    let retryOutputs: @Sendable () -> Void
     /// Replace configured export presets.
-    let setExportPresets:
-        @Sendable (_ presets: [BridgeExportPreset]) throws -> Void
+    let setSavePresets: @Sendable (_ presets: [BridgeSavePreset]) throws -> Void
     let setDefaultTrackSavePreset: @Sendable (_ presetId: String) throws -> Void
     let setDefaultReleaseSavePreset:
         @Sendable (_ presetId: String) throws -> Void
@@ -45,11 +44,11 @@ final class Exports: Sendable, Observable {
             async throws -> Void =
             { _, _, _ in
             },
-        setExportsPaused: @escaping @Sendable (Bool) -> Void = { _ in },
-        cancelExport: @escaping @Sendable (String) -> Void = { _ in },
-        retryExports: @escaping @Sendable () -> Void = {},
-        setExportPresets:
-            @escaping @Sendable ([BridgeExportPreset]) throws -> Void = { _ in
+        setOutputsPaused: @escaping @Sendable (Bool) -> Void = { _ in },
+        cancelOutput: @escaping @Sendable (String) -> Void = { _ in },
+        retryOutputs: @escaping @Sendable () -> Void = {},
+        setSavePresets:
+            @escaping @Sendable ([BridgeSavePreset]) throws -> Void = { _ in
             },
         setDefaultTrackSavePreset:
             @escaping @Sendable (String) throws -> Void = { _ in
@@ -60,10 +59,10 @@ final class Exports: Sendable, Observable {
     ) {
         self.enqueueExport = enqueueExport
         self.enqueueReleaseSave = enqueueReleaseSave
-        self.setExportsPaused = setExportsPaused
-        self.cancelExport = cancelExport
-        self.retryExports = retryExports
-        self.setExportPresets = setExportPresets
+        self.setOutputsPaused = setOutputsPaused
+        self.cancelOutput = cancelOutput
+        self.retryOutputs = retryOutputs
+        self.setSavePresets = setSavePresets
         self.setDefaultTrackSavePreset = setDefaultTrackSavePreset
         self.setDefaultReleaseSavePreset = setDefaultReleaseSavePreset
     }
@@ -80,10 +79,10 @@ final class Exports: Sendable, Observable {
                     presetId: $2
                 )
             },
-            setExportsPaused: { handle.setExportsPaused(paused: $0) },
-            cancelExport: { handle.cancelExport(releaseId: $0) },
-            retryExports: { handle.retryExports() },
-            setExportPresets: { try handle.setExportPresets(presets: $0) },
+            setOutputsPaused: { handle.setOutputsPaused(paused: $0) },
+            cancelOutput: { handle.cancelOutput(releaseId: $0) },
+            retryOutputs: { handle.retryOutputs() },
+            setSavePresets: { try handle.setSavePresets(presets: $0) },
             setDefaultTrackSavePreset: {
                 try handle.setDefaultTrackSavePreset(presetId: $0)
             },
@@ -95,6 +94,6 @@ final class Exports: Sendable, Observable {
 
     #if DEBUG
         // periphery:ignore
-        static let stub = Exports()
+        static let stub = Outputs()
     #endif
 }

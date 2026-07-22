@@ -40,7 +40,7 @@ internal sealed class ReleaseActionDialogs
     }
 
     // Verbatim export: no format choice, just a destination folder. The picked
-    // folder is remembered in ExportFolderStore as the last-used output folder
+    // folder is remembered in OutputFolderStore as the last-used output folder
     // (the Windows sibling of macOS's lastExportFolder).
     public async System.Threading.Tasks.Task ShowExportRelease(string releaseId)
     {
@@ -70,7 +70,7 @@ internal sealed class ReleaseActionDialogs
         {
             return;
         }
-        var releasePresets = settings.ExportPresets
+        var releasePresets = settings.SavePresets
             .Where(preset => preset.AppliesToRelease)
             .ToList();
         // Config validation guarantees a release-applicable preset and a valid
@@ -83,7 +83,7 @@ internal sealed class ReleaseActionDialogs
 
         var formatPicker = new ComboBox
         {
-            Header = Loc.Chrome("settings.export.default_release_format"),
+            Header = Loc.Chrome("settings.formats.default_release_format"),
             MinWidth = 260,
         };
         var defaultIndex = 0;
@@ -150,7 +150,7 @@ internal sealed class ReleaseActionDialogs
         {
             return null;
         }
-        ExportFolderStore.Save(folder.Path);
+        OutputFolderStore.Save(folder.Path);
         return folder.Path;
     }
 

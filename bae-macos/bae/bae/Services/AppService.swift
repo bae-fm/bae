@@ -28,7 +28,7 @@ final class AppService: BaeKit.AppService {
     /// In-memory export queue mirror — per-release state and summary. The export
     /// projection is the sole writer; the Storage Manager's Exporting pane reads
     /// it.
-    let exportStore: ExportStore
+    let outputStore: OutputStore
 
     /// The library browser's session state (lists, selections, sort criteria).
     /// `lazy` because its constructor needs `library`/`projectionRegistry`/
@@ -48,10 +48,10 @@ final class AppService: BaeKit.AppService {
     let previewAudio: PreviewAudio
     let releaseEditor: ReleaseEditor
     let importer: Importer
-    let exports: Exports
+    let outputs: Outputs
     let discogs: Discogs
     let automation: Automation
-    let export: Export
+    let export: TrackSave
 
     init(
         appHandle: AppHandle,
@@ -67,15 +67,15 @@ final class AppService: BaeKit.AppService {
             appHandle.getImportCandidates()
         )
         // Seed the Exporting pane from the in-memory export queue.
-        // `getExportSnapshot` is infallible — no fallback.
-        exportStore = ExportStore(snapshot: appHandle.getExportSnapshot())
+        // `getOutputSnapshot` is infallible — no fallback.
+        outputStore = OutputStore(snapshot: appHandle.getOutputSnapshot())
         previewAudio = PreviewAudio(handle: appHandle)
         releaseEditor = ReleaseEditor(handle: appHandle)
         importer = Importer(handle: appHandle)
-        exports = Exports(handle: appHandle)
+        outputs = Outputs(handle: appHandle)
         discogs = Discogs(handle: appHandle)
         automation = Automation(handle: appHandle)
-        export = Export(handle: appHandle)
+        export = TrackSave(handle: appHandle)
         super
             .init(
                 appHandle: appHandle,
@@ -154,16 +154,16 @@ final class AppService: BaeKit.AppService {
 }
 
 extension AppService {
-    private func makeExportProjection() -> Projection<BridgeExportSnapshot> {
+    private func makeExportProjection() -> Projection<BridgeOutputSnapshot> {
         Projection(
-            domain: .exportQueue,
+            domain: .outputQueue,
             query: { [appHandle] _ in
                 try await DetachedWork.run {
-                    appHandle.getExportSnapshot()
+                    appHandle.getOutputSnapshot()
                 }
             },
-            apply: { [exportStore] snapshot in
-                exportStore.applySnapshot(snapshot)
+            apply: { [outputStore] snapshot in
+                outputStore.applySnapshot(snapshot)
             },
             onError: { [uiStore] error in uiStore.showError(error) }
         )

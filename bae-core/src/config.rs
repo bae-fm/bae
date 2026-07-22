@@ -6,20 +6,18 @@ use tokio::sync::watch;
 use tracing::{debug, info, warn};
 
 mod dev;
-mod export;
 mod keyring;
+mod save;
 
 pub use dev::seed_dev_keyring;
-pub use export::{
-    ExportBitDepth, ExportFilenameToken, ExportPregapPlacement, ExportPreset, ExportPresetCodec,
-};
 pub use keyring::init_keyring;
 #[cfg(any(test, feature = "test-utils"))]
 pub use keyring::install_test_keyring;
+pub use save::{SaveBitDepth, SaveCodec, SaveFilenameToken, SavePregapPlacement, SavePreset};
 
 use crate::util::atomic_write::{write_atomic, write_atomic_io, WriteError};
 use dev::dev_mode_enabled;
-use export::default_export_presets;
+use save::default_save_presets;
 
 pub const MCP_DEFAULT_PORT: u16 = 47777;
 
@@ -275,7 +273,7 @@ pub struct ConfigYaml {
     /// How loudness normalization is applied at playback.
     pub replay_gain_mode: ReplayGainMode,
     /// Configured export presets offered by release and track export.
-    pub export_presets: Vec<ExportPreset>,
+    pub save_presets: Vec<SavePreset>,
     /// Id of the preset a track save defaults to. A required, valid preset id
     /// that applies to track saves (config validation keeps it non-dangling).
     pub default_track_save_preset: String,
@@ -325,7 +323,7 @@ impl ConfigYaml {
             },
             discogs: self.discogs,
             replay_gain_mode: self.replay_gain_mode,
-            export_presets: self.export_presets,
+            save_presets: self.save_presets,
             default_track_save_preset: self.default_track_save_preset,
             default_release_save_preset: self.default_release_save_preset,
             pause_between_sides: self.pause_between_sides,
@@ -350,7 +348,7 @@ impl From<&Config> for ConfigYaml {
             encryption_key_stored: config.encryption_key_stored,
             encryption_key_fingerprint: config.encryption_key_fingerprint.clone(),
             replay_gain_mode: config.replay_gain_mode,
-            export_presets: config.export_presets.clone(),
+            save_presets: config.save_presets.clone(),
             default_track_save_preset: config.default_track_save_preset.clone(),
             default_release_save_preset: config.default_release_save_preset.clone(),
             pause_between_sides: config.pause_between_sides,
@@ -400,7 +398,7 @@ pub struct Config {
     /// How loudness normalization is applied at playback. Defaults to `Off`.
     pub replay_gain_mode: ReplayGainMode,
     /// Configured export presets offered by release and track export.
-    pub export_presets: Vec<ExportPreset>,
+    pub save_presets: Vec<SavePreset>,
     /// Id of the preset a track save defaults to. A required, valid preset id
     /// that applies to track saves (config validation keeps it non-dangling).
     pub default_track_save_preset: String,
@@ -564,7 +562,7 @@ impl Config {
             inner: coven::Config::with_defaults(library_id, device_id, library_dir, library_name),
             discogs: None,
             replay_gain_mode: ReplayGainMode::Off,
-            export_presets: default_export_presets(),
+            save_presets: default_save_presets(),
             default_track_save_preset: "flac".to_string(),
             default_release_save_preset: "flac".to_string(),
             pause_between_sides: false,
@@ -1036,18 +1034,18 @@ mod tests {
         let tmp = TempDir::new().unwrap();
         let mut config = make_test_config("lib", tmp.path().to_path_buf());
         // Filename tokens are per-preset now; a preset's edited pattern survives.
-        config.export_presets[0].filename_tokens =
-            vec![ExportFilenameToken::Artist, ExportFilenameToken::Title];
+        config.save_presets[0].filename_tokens =
+            vec![SaveFilenameToken::Artist, SaveFilenameToken::Title];
         config.save_to_config_yaml().unwrap();
 
         let yaml: ConfigYaml =
             serde_yaml::from_str(&std::fs::read_to_string(tmp.path().join("config.yaml")).unwrap())
                 .unwrap();
         assert_eq!(
-            yaml.export_presets[0].filename_tokens,
-            vec![ExportFilenameToken::Artist, ExportFilenameToken::Title]
+            yaml.save_presets[0].filename_tokens,
+            vec![SaveFilenameToken::Artist, SaveFilenameToken::Title]
         );
-        assert_eq!(yaml.export_presets, config.export_presets);
+        assert_eq!(yaml.save_presets, config.save_presets);
         assert_eq!(
             yaml.default_track_save_preset,
             config.default_track_save_preset
@@ -1158,7 +1156,7 @@ mod tests {
             "encryption_key_stored",
             "encryption_key_fingerprint",
             "replay_gain_mode",
-            "export_presets",
+            "save_presets",
             "default_track_save_preset",
             "default_release_save_preset",
             "pause_between_sides",
@@ -1232,7 +1230,7 @@ mod tests {
             "encryption_key_stored",
             "encryption_key_fingerprint",
             "replay_gain_mode",
-            "export_presets",
+            "save_presets",
             "default_track_save_preset",
             "default_release_save_preset",
             "pause_between_sides",

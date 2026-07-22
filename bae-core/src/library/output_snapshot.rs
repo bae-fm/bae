@@ -8,13 +8,13 @@ use super::release_queue::{
 };
 use std::path::PathBuf;
 
-pub type ExportState = ReleaseQueueState<u8>;
-pub type ExportOp = ReleaseQueueOp<ExportRequest, u8>;
-pub type ExportProgress = ReleaseQueueProgress;
-pub type ExportSnapshot = ReleaseQueueSnapshot<ExportRequest, u8>;
+pub type OutputState = ReleaseQueueState<u8>;
+pub type OutputOp = ReleaseQueueOp<OutputRequest, u8>;
+pub type OutputProgress = ReleaseQueueProgress;
+pub type OutputSnapshot = ReleaseQueueSnapshot<OutputRequest, u8>;
 
 #[derive(Debug, Clone)]
-pub struct ExportRequest {
+pub struct OutputRequest {
     pub target_dir: PathBuf,
     pub kind: OutputKind,
 }
@@ -27,9 +27,9 @@ pub struct ExportRequest {
 #[derive(Debug, Clone)]
 pub enum OutputKind {
     Export,
-    Save { preset: crate::config::ExportPreset },
+    Save { preset: crate::config::SavePreset },
 }
 
-pub fn build_export_snapshot(exports: &[ExportOp], paused: bool) -> ExportSnapshot {
+pub fn build_output_snapshot(exports: &[OutputOp], paused: bool) -> OutputSnapshot {
     build_release_queue_snapshot(exports, paused)
 }

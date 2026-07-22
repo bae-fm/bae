@@ -14,7 +14,7 @@ namespace Bae.Windows;
 // into the settings re-read (Render) with no optimistic mutation; preset edits
 // send the whole set (set-state), never one mutated field. Mirrors macOS's
 // ExportSettingsTab.
-internal sealed class ExportSettingsSection
+internal sealed class FormatsSettingsSection
 {
     public StackPanel View { get; } = new() { Spacing = 8 };
 
@@ -24,8 +24,8 @@ internal sealed class ExportSettingsSection
     private readonly Action<string> _showError;
     private readonly Action _clearError;
 
-    private readonly ComboBox _defaultTrack = new() { Header = Loc.Chrome("settings.export.default_track_format") };
-    private readonly ComboBox _defaultRelease = new() { Header = Loc.Chrome("settings.export.default_release_format") };
+    private readonly ComboBox _defaultTrack = new() { Header = Loc.Chrome("settings.formats.default_track_format") };
+    private readonly ComboBox _defaultRelease = new() { Header = Loc.Chrome("settings.formats.default_release_format") };
     private readonly StackPanel _presetPanel = new() { Spacing = 8 };
 
     private bool _rendering;
@@ -35,7 +35,7 @@ internal sealed class ExportSettingsSection
     // (the dialog renders once at open).
     private Settings? _current;
 
-    public ExportSettingsSection(
+    public FormatsSettingsSection(
         SessionStore session,
         SettingsStore settings,
         Func<XamlRoot?> dialogRoot,
@@ -53,16 +53,16 @@ internal sealed class ExportSettingsSection
         _defaultRelease.SelectionChanged += async (_, _) =>
             await SaveDefaultSelection(_defaultRelease, release: true);
 
-        View.Children.Add(SectionLabel(Loc.Chrome("settings.export.release_exports")));
+        View.Children.Add(SectionLabel(Loc.Chrome("settings.formats.release_saves")));
         View.Children.Add(_defaultRelease);
-        View.Children.Add(SectionLabel(Loc.Chrome("settings.export.track_exports")));
+        View.Children.Add(SectionLabel(Loc.Chrome("settings.formats.track_saves")));
         View.Children.Add(_defaultTrack);
-        View.Children.Add(SectionLabel(Loc.Chrome("settings.export.presets")));
+        View.Children.Add(SectionLabel(Loc.Chrome("settings.formats.presets")));
         View.Children.Add(_presetPanel);
         View.Children.Add(AddPresetButton());
         View.Children.Add(new TextBlock
         {
-            Text = Loc.Chrome("settings.export.presets_footer"),
+            Text = Loc.Chrome("settings.formats.presets_footer"),
             TextWrapping = TextWrapping.Wrap,
             Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray),
         });
@@ -102,7 +102,7 @@ internal sealed class ExportSettingsSection
         var selected = release
             ? settings.DefaultReleaseSavePreset
             : settings.DefaultTrackSavePreset;
-        foreach (var preset in settings.ExportPresets.Where(
+        foreach (var preset in settings.SavePresets.Where(
             p => release ? p.AppliesToRelease : p.AppliesToTrack))
         {
             combo.Items.Add(new ComboBoxItem
@@ -142,7 +142,7 @@ internal sealed class ExportSettingsSection
     private void RenderPresets(Settings settings)
     {
         _presetPanel.Children.Clear();
-        foreach (var preset in settings.ExportPresets)
+        foreach (var preset in settings.SavePresets)
         {
             _presetPanel.Children.Add(PresetRow(settings, preset));
         }
@@ -151,7 +151,7 @@ internal sealed class ExportSettingsSection
     // One preset in the list: the summary row opens the edit dialog; the
     // trailing minus removes the preset behind a confirmation. Mirrors macOS's
     // PresetRow.
-    private Grid PresetRow(Settings settings, ExportPreset preset)
+    private Grid PresetRow(Settings settings, SavePreset preset)
     {
         var row = new Grid { ColumnSpacing = 12 };
         row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
@@ -177,7 +177,7 @@ internal sealed class ExportSettingsSection
             VerticalAlignment = VerticalAlignment.Center,
         };
         Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(
-            remove, Loc.Chrome("settings.export.delete_preset"));
+            remove, Loc.Chrome("settings.formats.delete_preset"));
         remove.Click += async (_, _) => await ConfirmDeletePreset(settings, preset);
         Grid.SetColumn(remove, 1);
         row.Children.Add(remove);
@@ -187,7 +187,7 @@ internal sealed class ExportSettingsSection
     // The edit dialog. Every control inside writes through immediately (the
     // dialog renders from the same mutate-and-save closures the expanders
     // used), so Close is the only button.
-    private async System.Threading.Tasks.Task ShowPresetEditor(Settings settings, ExportPreset preset)
+    private async System.Threading.Tasks.Task ShowPresetEditor(Settings settings, SavePreset preset)
     {
         if (_dialogRoot() is not { } root)
         {
@@ -205,7 +205,7 @@ internal sealed class ExportSettingsSection
         await dialog.ShowAsync();
     }
 
-    private async System.Threading.Tasks.Task ConfirmDeletePreset(Settings settings, ExportPreset preset)
+    private async System.Threading.Tasks.Task ConfirmDeletePreset(Settings settings, SavePreset preset)
     {
         if (_dialogRoot() is not { } root)
         {
@@ -213,7 +213,7 @@ internal sealed class ExportSettingsSection
         }
         var dialog = new ContentDialog
         {
-            Title = Loc.Chrome("settings.export.delete_confirm", "name", preset.Name),
+            Title = Loc.Chrome("settings.formats.delete_confirm", "name", preset.Name),
             PrimaryButtonText = Loc.Chrome("action.delete"),
             CloseButtonText = Loc.Chrome("action.cancel"),
             DefaultButton = ContentDialogButton.Close,
@@ -223,13 +223,13 @@ internal sealed class ExportSettingsSection
         {
             return;
         }
-        settings.ExportPresets.Remove(preset);
-        await SavePresets(settings.ExportPresets);
+        settings.SavePresets.Remove(preset);
+        await SavePresets(settings.SavePresets);
     }
 
     // The collapsed row: name over a settings summary, with the export menus
     // the preset appears in as trailing badges.
-    private static Grid PresetHeader(ExportPreset preset)
+    private static Grid PresetHeader(SavePreset preset)
     {
         var header = new Grid();
         header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
@@ -257,11 +257,11 @@ internal sealed class ExportSettingsSection
         };
         if (preset.AppliesToTrack)
         {
-            badges.Children.Add(ScopeBadge(Loc.Chrome("settings.export.preset_track")));
+            badges.Children.Add(ScopeBadge(Loc.Chrome("settings.formats.preset_track")));
         }
         if (preset.AppliesToRelease)
         {
-            badges.Children.Add(ScopeBadge(Loc.Chrome("settings.export.preset_release")));
+            badges.Children.Add(ScopeBadge(Loc.Chrome("settings.formats.preset_release")));
         }
         Grid.SetColumn(badges, 1);
         header.Children.Add(badges);
@@ -277,7 +277,7 @@ internal sealed class ExportSettingsSection
         VerticalAlignment = VerticalAlignment.Center,
     };
 
-    private static string PresetSummary(ExportPreset preset)
+    private static string PresetSummary(SavePreset preset)
     {
         var parts = new List<string> { CodecLabel(preset.Codec) };
         if (LosslessBitDepth(preset.Codec) is { } bitDepth)
@@ -304,36 +304,36 @@ internal sealed class ExportSettingsSection
         return row;
     }
 
-    private StackPanel PresetEditor(Settings settings, ExportPreset preset)
+    private StackPanel PresetEditor(Settings settings, SavePreset preset)
     {
         // One block on a fixed rhythm, matching macOS's expanded editor.
         var editor = new StackPanel { Spacing = 11 };
         editor.Children.Add(LabeledRow(
-            Loc.Chrome("settings.export.preset_name"), PresetNameBox(settings, preset)));
+            Loc.Chrome("settings.formats.preset_name"), PresetNameBox(settings, preset)));
         editor.Children.Add(LabeledRow(
-            Loc.Chrome("settings.export.preset_format"), PresetFormatCombo(settings, preset)));
+            Loc.Chrome("settings.formats.preset_format"), PresetFormatCombo(settings, preset)));
         editor.Children.Add(PresetCodecRow(settings, preset));
         var scopes = PresetScopeBoxes(settings, preset);
         editor.Children.Add(LabeledRow(
-            Loc.Chrome("settings.export.preset_pregap"),
+            Loc.Chrome("settings.formats.preset_pregap"),
             PresetPregapCombo(settings, preset, scopes)));
 
         // The filename pattern is its own tighter sub-group: label, chip
         // field, add row, and the sample preview.
         var filenameGroup = new StackPanel { Spacing = 6 };
-        filenameGroup.Children.Add(new TextBlock { Text = Loc.Chrome("settings.export.filename_format") });
+        filenameGroup.Children.Add(new TextBlock { Text = Loc.Chrome("settings.formats.filename_format") });
         var patternEditor = new FilenameTokenEditor(tokens =>
         {
             preset.FilenameTokens = tokens;
-            _ = SavePresets(settings.ExportPresets);
+            _ = SavePresets(settings.SavePresets);
         });
         patternEditor.Render(preset.FilenameTokens);
         filenameGroup.Children.Add(patternEditor.View);
         var preview = PreviewLine();
         preview.Text = Loc.Chrome(
-            "settings.export.preview",
+            "settings.formats.preview",
             "filename",
-            ExportFilenameTokenDisplay.PreviewFilename(preset.FilenameTokens, preset.Extension));
+            SaveFilenameTokenDisplay.PreviewFilename(preset.FilenameTokens, preset.Extension));
         filenameGroup.Children.Add(preview);
         editor.Children.Add(filenameGroup);
 
@@ -342,11 +342,11 @@ internal sealed class ExportSettingsSection
         return editor;
     }
 
-    private CheckBox PresetEmbedCoverBox(Settings settings, ExportPreset preset)
+    private CheckBox PresetEmbedCoverBox(Settings settings, SavePreset preset)
     {
         var embed = new CheckBox
         {
-            Content = Loc.Chrome("settings.export.embed_cover"),
+            Content = Loc.Chrome("settings.formats.embed_cover"),
             IsChecked = preset.EmbedCover,
         };
         async System.Threading.Tasks.Task Save()
@@ -356,14 +356,14 @@ internal sealed class ExportSettingsSection
                 return;
             }
             preset.EmbedCover = embed.IsChecked == true;
-            await SavePresets(settings.ExportPresets);
+            await SavePresets(settings.SavePresets);
         }
         embed.Checked += async (_, _) => await Save();
         embed.Unchecked += async (_, _) => await Save();
         return embed;
     }
 
-    private TextBox PresetNameBox(Settings settings, ExportPreset preset)
+    private TextBox PresetNameBox(Settings settings, SavePreset preset)
     {
         var name = new TextBox
         {
@@ -384,7 +384,7 @@ internal sealed class ExportSettingsSection
                 return;
             }
             preset.Name = text;
-            await SavePresets(settings.ExportPresets);
+            await SavePresets(settings.SavePresets);
         }
         name.LostFocus += async (_, _) => await Commit();
         name.KeyDown += async (_, args) =>
@@ -398,7 +398,7 @@ internal sealed class ExportSettingsSection
         return name;
     }
 
-    private ComboBox PresetFormatCombo(Settings settings, ExportPreset preset)
+    private ComboBox PresetFormatCombo(Settings settings, SavePreset preset)
     {
         var format = new ComboBox();
         foreach (var kind in PresetKinds)
@@ -422,19 +422,19 @@ internal sealed class ExportSettingsSection
             preset.Codec = SwitchedCodec(preset.Codec, kind);
             // The file extension rides on the bridge preset (core derives it from
             // the codec); the config round-trip refreshes it, so it isn't set here.
-            if (preset.PregapPlacement == BridgeExportPregapPlacement.SingleFileWithCue
-                && preset.Codec is BridgeExportPresetCodec.OpusOgg)
+            if (preset.PregapPlacement == BridgeSavePregapPlacement.SingleFileWithCue
+                && preset.Codec is BridgeSaveCodec.OpusOgg)
             {
-                preset.PregapPlacement = BridgeExportPregapPlacement.AppendToPreviousExceptHtoa;
+                preset.PregapPlacement = BridgeSavePregapPlacement.AppendToPreviousExceptHtoa;
             }
-            await SavePresets(settings.ExportPresets);
+            await SavePresets(settings.SavePresets);
         };
         return format;
     }
 
     // The bit depth or bitrate row, per the codec family: lossless codecs
     // carry a bit depth, lossy ones a bitrate.
-    private Grid PresetCodecRow(Settings settings, ExportPreset preset)
+    private Grid PresetCodecRow(Settings settings, SavePreset preset)
     {
         if (LosslessBitDepth(preset.Codec) is { } currentBitDepth)
         {
@@ -452,21 +452,21 @@ internal sealed class ExportSettingsSection
             {
                 if (_rendering
                     || bitDepth.SelectedItem is not ComboBoxItem item
-                    || item.Tag is not BridgeExportBitDepth selected
+                    || item.Tag is not BridgeSaveBitDepth selected
                     || selected == LosslessBitDepth(preset.Codec))
                 {
                     return;
                 }
                 preset.Codec = preset.Codec switch
                 {
-                    BridgeExportPresetCodec.Flac => new BridgeExportPresetCodec.Flac(selected),
-                    BridgeExportPresetCodec.Wav => new BridgeExportPresetCodec.Wav(selected),
-                    BridgeExportPresetCodec.Aiff => new BridgeExportPresetCodec.Aiff(selected),
+                    BridgeSaveCodec.Flac => new BridgeSaveCodec.Flac(selected),
+                    BridgeSaveCodec.Wav => new BridgeSaveCodec.Wav(selected),
+                    BridgeSaveCodec.Aiff => new BridgeSaveCodec.Aiff(selected),
                     _ => preset.Codec,
                 };
-                await SavePresets(settings.ExportPresets);
+                await SavePresets(settings.SavePresets);
             };
-            return LabeledRow(Loc.Chrome("settings.export.bit_depth_label"), bitDepth);
+            return LabeledRow(Loc.Chrome("settings.formats.bit_depth_label"), bitDepth);
         }
 
         var bitrate = new TextBox
@@ -493,11 +493,11 @@ internal sealed class ExportSettingsSection
             }
             preset.Codec = preset.Codec switch
             {
-                BridgeExportPresetCodec.Mp3 => new BridgeExportPresetCodec.Mp3(kbps),
-                BridgeExportPresetCodec.OpusOgg => new BridgeExportPresetCodec.OpusOgg(kbps),
+                BridgeSaveCodec.Mp3 => new BridgeSaveCodec.Mp3(kbps),
+                BridgeSaveCodec.OpusOgg => new BridgeSaveCodec.OpusOgg(kbps),
                 _ => preset.Codec,
             };
-            await SavePresets(settings.ExportPresets);
+            await SavePresets(settings.SavePresets);
         }
         bitrate.LostFocus += async (_, _) => await Commit();
         bitrate.KeyDown += async (_, args) =>
@@ -508,23 +508,23 @@ internal sealed class ExportSettingsSection
                 await Commit();
             }
         };
-        return LabeledRow(Loc.Chrome("settings.export.bitrate"), bitrate);
+        return LabeledRow(Loc.Chrome("settings.formats.bitrate"), bitrate);
     }
 
     private (StackPanel Row, CheckBox Track, CheckBox Release) PresetScopeBoxes(
-        Settings settings, ExportPreset preset)
+        Settings settings, SavePreset preset)
     {
         var track = new CheckBox
         {
-            Content = Loc.Chrome("settings.export.preset_track"),
+            Content = Loc.Chrome("settings.formats.preset_track"),
             IsChecked = preset.AppliesToTrack,
         };
         var release = new CheckBox
         {
-            Content = Loc.Chrome("settings.export.preset_release"),
+            Content = Loc.Chrome("settings.formats.preset_release"),
             IsChecked = preset.AppliesToRelease,
         };
-        var singleFileCue = preset.PregapPlacement == BridgeExportPregapPlacement.SingleFileWithCue;
+        var singleFileCue = preset.PregapPlacement == BridgeSavePregapPlacement.SingleFileWithCue;
         track.IsEnabled = !singleFileCue;
         release.IsEnabled = !singleFileCue;
         async System.Threading.Tasks.Task Save()
@@ -535,7 +535,7 @@ internal sealed class ExportSettingsSection
             }
             preset.AppliesToTrack = track.IsChecked == true;
             preset.AppliesToRelease = release.IsChecked == true;
-            await SavePresets(settings.ExportPresets);
+            await SavePresets(settings.SavePresets);
         }
         track.Checked += async (_, _) => await Save();
         track.Unchecked += async (_, _) => await Save();
@@ -545,13 +545,13 @@ internal sealed class ExportSettingsSection
         var boxes = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 12 };
         boxes.Children.Add(track);
         boxes.Children.Add(release);
-        var row = LabeledRow(Loc.Chrome("settings.export.show_in_menus"), boxes);
+        var row = LabeledRow(Loc.Chrome("settings.formats.show_in_menus"), boxes);
         return (row, track, release);
     }
 
     private ComboBox PresetPregapCombo(
         Settings settings,
-        ExportPreset preset,
+        SavePreset preset,
         (StackPanel Row, CheckBox Track, CheckBox Release) scopes)
     {
         var pregap = new ComboBox();
@@ -568,13 +568,13 @@ internal sealed class ExportSettingsSection
         {
             if (_rendering
                 || pregap.SelectedItem is not ComboBoxItem item
-                || item.Tag is not BridgeExportPregapPlacement placement
+                || item.Tag is not BridgeSavePregapPlacement placement
                 || placement == preset.PregapPlacement)
             {
                 return;
             }
             preset.PregapPlacement = placement;
-            if (placement == BridgeExportPregapPlacement.SingleFileWithCue)
+            if (placement == BridgeSavePregapPlacement.SingleFileWithCue)
             {
                 // A single-file image is inherently a whole-release export.
                 // Snapping the checkboxes fires their change handlers; the
@@ -586,9 +586,9 @@ internal sealed class ExportSettingsSection
                 scopes.Release.IsChecked = true;
                 _rendering = false;
             }
-            scopes.Track.IsEnabled = placement != BridgeExportPregapPlacement.SingleFileWithCue;
-            scopes.Release.IsEnabled = placement != BridgeExportPregapPlacement.SingleFileWithCue;
-            await SavePresets(settings.ExportPresets);
+            scopes.Track.IsEnabled = placement != BridgeSavePregapPlacement.SingleFileWithCue;
+            scopes.Release.IsEnabled = placement != BridgeSavePregapPlacement.SingleFileWithCue;
+            await SavePresets(settings.SavePresets);
         };
         return pregap;
     }
@@ -604,7 +604,7 @@ internal sealed class ExportSettingsSection
         }
         return new DropDownButton
         {
-            Content = Loc.Chrome("settings.export.add_preset"),
+            Content = Loc.Chrome("settings.formats.add_preset"),
             Flyout = flyout,
         };
     }
@@ -612,8 +612,8 @@ internal sealed class ExportSettingsSection
     // The filename pattern a newly added preset starts with — the zero-padded
     // track number then the title, matching core's default. The user edits it in
     // the preset dialog; there is no global pattern anymore.
-    private static List<BridgeExportFilenameToken> DefaultPresetFilenameTokens() =>
-        new() { BridgeExportFilenameToken.TrackNumber, BridgeExportFilenameToken.Title };
+    private static List<BridgeSaveFilenameToken> DefaultPresetFilenameTokens() =>
+        new() { BridgeSaveFilenameToken.TrackNumber, BridgeSaveFilenameToken.Title };
 
     private async System.Threading.Tasks.Task AddPreset(string kind)
     {
@@ -621,8 +621,8 @@ internal sealed class ExportSettingsSection
         {
             return;
         }
-        var codec = SwitchedCodec(new BridgeExportPresetCodec.Flac(BridgeExportBitDepth.Source), kind);
-        var preset = new ExportPreset
+        var codec = SwitchedCodec(new BridgeSaveCodec.Flac(BridgeSaveBitDepth.Source), kind);
+        var preset = new SavePreset
         {
             Id = Guid.NewGuid().ToString("N"),
             Name = KindLabel(kind),
@@ -630,16 +630,16 @@ internal sealed class ExportSettingsSection
             // Extension is derived by core from the codec and filled on the config
             // round-trip; the local default ("") is only a placeholder until then.
             FilenameTokens = DefaultPresetFilenameTokens(),
-            PregapPlacement = BridgeExportPregapPlacement.AppendToPreviousExceptHtoa,
+            PregapPlacement = BridgeSavePregapPlacement.AppendToPreviousExceptHtoa,
             AppliesToTrack = true,
             AppliesToRelease = true,
             EmbedCover = true,
         };
-        settings.ExportPresets.Add(preset);
-        await SavePresets(settings.ExportPresets);
+        settings.SavePresets.Add(preset);
+        await SavePresets(settings.SavePresets);
     }
 
-    private async System.Threading.Tasks.Task SavePresets(List<ExportPreset> presets)
+    private async System.Threading.Tasks.Task SavePresets(List<SavePreset> presets)
     {
         if (_rendering)
         {
@@ -647,7 +647,7 @@ internal sealed class ExportSettingsSection
         }
         _clearError();
         var (current, error) = await _session.RunForCurrentHandle(
-            handle => NativeBae.SetExportPresets(handle, presets));
+            handle => NativeBae.SetSavePresets(handle, presets));
         if (!current)
         {
             return;
@@ -674,118 +674,118 @@ internal sealed class ExportSettingsSection
         _ => "FLAC",
     };
 
-    private static string CodecKind(BridgeExportPresetCodec codec) => codec switch
+    private static string CodecKind(BridgeSaveCodec codec) => codec switch
     {
-        BridgeExportPresetCodec.Mp3 => "mp3",
-        BridgeExportPresetCodec.OpusOgg => "opus_ogg",
-        BridgeExportPresetCodec.Wav => "wav",
-        BridgeExportPresetCodec.Aiff => "aiff",
+        BridgeSaveCodec.Mp3 => "mp3",
+        BridgeSaveCodec.OpusOgg => "opus_ogg",
+        BridgeSaveCodec.Wav => "wav",
+        BridgeSaveCodec.Aiff => "aiff",
         _ => "flac",
     };
 
     // Switch codec family, carrying the parameter that still applies: bit
     // depth across lossless codecs, bitrate across lossy ones (clamped into
     // MP3's supported range). A cross-family switch takes the family default.
-    private static BridgeExportPresetCodec SwitchedCodec(BridgeExportPresetCodec codec, string kind)
+    private static BridgeSaveCodec SwitchedCodec(BridgeSaveCodec codec, string kind)
     {
-        var bitDepth = LosslessBitDepth(codec) ?? BridgeExportBitDepth.Source;
+        var bitDepth = LosslessBitDepth(codec) ?? BridgeSaveBitDepth.Source;
         var bitrate = LossyBitrate(codec);
         return kind switch
         {
-            "mp3" => new BridgeExportPresetCodec.Mp3(Math.Clamp(bitrate ?? 320, 32, 320)),
-            "opus_ogg" => new BridgeExportPresetCodec.OpusOgg(bitrate ?? 192),
-            "wav" => new BridgeExportPresetCodec.Wav(bitDepth),
-            "aiff" => new BridgeExportPresetCodec.Aiff(bitDepth),
-            _ => new BridgeExportPresetCodec.Flac(bitDepth),
+            "mp3" => new BridgeSaveCodec.Mp3(Math.Clamp(bitrate ?? 320, 32, 320)),
+            "opus_ogg" => new BridgeSaveCodec.OpusOgg(bitrate ?? 192),
+            "wav" => new BridgeSaveCodec.Wav(bitDepth),
+            "aiff" => new BridgeSaveCodec.Aiff(bitDepth),
+            _ => new BridgeSaveCodec.Flac(bitDepth),
         };
     }
 
     // The lossless family's bit depth; null for lossy codecs.
-    private static BridgeExportBitDepth? LosslessBitDepth(BridgeExportPresetCodec codec) =>
+    private static BridgeSaveBitDepth? LosslessBitDepth(BridgeSaveCodec codec) =>
         codec switch
         {
-            BridgeExportPresetCodec.Flac flac => flac.BitDepth,
-            BridgeExportPresetCodec.Wav wav => wav.BitDepth,
-            BridgeExportPresetCodec.Aiff aiff => aiff.BitDepth,
+            BridgeSaveCodec.Flac flac => flac.BitDepth,
+            BridgeSaveCodec.Wav wav => wav.BitDepth,
+            BridgeSaveCodec.Aiff aiff => aiff.BitDepth,
             _ => null,
         };
 
     // The lossy family's bitrate; null for lossless codecs.
-    private static uint? LossyBitrate(BridgeExportPresetCodec codec) => codec switch
+    private static uint? LossyBitrate(BridgeSaveCodec codec) => codec switch
     {
-        BridgeExportPresetCodec.Mp3 mp3 => mp3.BitrateKbps,
-        BridgeExportPresetCodec.OpusOgg opus => opus.BitrateKbps,
+        BridgeSaveCodec.Mp3 mp3 => mp3.BitrateKbps,
+        BridgeSaveCodec.OpusOgg opus => opus.BitrateKbps,
         _ => null,
     };
 
     // The bitrate range core's preset validation accepts for the lossy
     // families; null for lossless, which carry no bitrate.
-    private static (uint Min, uint Max)? BitrateRange(BridgeExportPresetCodec codec) => codec switch
+    private static (uint Min, uint Max)? BitrateRange(BridgeSaveCodec codec) => codec switch
     {
-        BridgeExportPresetCodec.Mp3 => (32u, 320u),
-        BridgeExportPresetCodec.OpusOgg => (32u, 512u),
+        BridgeSaveCodec.Mp3 => (32u, 320u),
+        BridgeSaveCodec.OpusOgg => (32u, 512u),
         _ => null,
     };
 
-    private static string CodecLabel(BridgeExportPresetCodec codec) => codec switch
+    private static string CodecLabel(BridgeSaveCodec codec) => codec switch
     {
-        BridgeExportPresetCodec.Mp3 mp3 =>
-            Loc.Chrome("settings.export.codec_mp3", "kbps", mp3.BitrateKbps),
-        BridgeExportPresetCodec.OpusOgg opus =>
-            Loc.Chrome("settings.export.codec_opus", "kbps", opus.BitrateKbps),
-        BridgeExportPresetCodec.Wav => "WAV",
-        BridgeExportPresetCodec.Aiff => "AIFF",
+        BridgeSaveCodec.Mp3 mp3 =>
+            Loc.Chrome("settings.formats.codec_mp3", "kbps", mp3.BitrateKbps),
+        BridgeSaveCodec.OpusOgg opus =>
+            Loc.Chrome("settings.formats.codec_opus", "kbps", opus.BitrateKbps),
+        BridgeSaveCodec.Wav => "WAV",
+        BridgeSaveCodec.Aiff => "AIFF",
         _ => "FLAC",
     };
 
     // The summary line's bit-depth part: "Source" alone reads as nothing in a
     // "FLAC · Source · …" join, so the source case names what it is.
-    private static string BitDepthSummaryLabel(BridgeExportBitDepth bitDepth) => bitDepth switch
+    private static string BitDepthSummaryLabel(BridgeSaveBitDepth bitDepth) => bitDepth switch
     {
-        BridgeExportBitDepth.Source => Loc.Chrome("settings.export.bit_depth.source_summary"),
-        BridgeExportBitDepth.Bits16 => Loc.Chrome("settings.export.bit_depth.bits16"),
-        BridgeExportBitDepth.Bits24 => Loc.Chrome("settings.export.bit_depth.bits24"),
-        _ => Loc.Chrome("settings.export.bit_depth.bits32"),
+        BridgeSaveBitDepth.Source => Loc.Chrome("settings.formats.bit_depth.source_summary"),
+        BridgeSaveBitDepth.Bits16 => Loc.Chrome("settings.formats.bit_depth.bits16"),
+        BridgeSaveBitDepth.Bits24 => Loc.Chrome("settings.formats.bit_depth.bits24"),
+        _ => Loc.Chrome("settings.formats.bit_depth.bits32"),
     };
 
-    private static List<(string Label, BridgeExportBitDepth Value)> BitDepthChoices() => new()
+    private static List<(string Label, BridgeSaveBitDepth Value)> BitDepthChoices() => new()
     {
-        (Loc.Chrome("settings.export.bit_depth.source"), BridgeExportBitDepth.Source),
-        (Loc.Chrome("settings.export.bit_depth.bits16"), BridgeExportBitDepth.Bits16),
-        (Loc.Chrome("settings.export.bit_depth.bits24"), BridgeExportBitDepth.Bits24),
-        (Loc.Chrome("settings.export.bit_depth.bits32"), BridgeExportBitDepth.Bits32),
+        (Loc.Chrome("settings.formats.bit_depth.source"), BridgeSaveBitDepth.Source),
+        (Loc.Chrome("settings.formats.bit_depth.bits16"), BridgeSaveBitDepth.Bits16),
+        (Loc.Chrome("settings.formats.bit_depth.bits24"), BridgeSaveBitDepth.Bits24),
+        (Loc.Chrome("settings.formats.bit_depth.bits32"), BridgeSaveBitDepth.Bits32),
     };
 
-    private static string PregapLabel(BridgeExportPregapPlacement placement) => placement switch
+    private static string PregapLabel(BridgeSavePregapPlacement placement) => placement switch
     {
-        BridgeExportPregapPlacement.AppendToPreviousExceptHtoa =>
-            Loc.Chrome("settings.export.pregap.append_except_htoa"),
-        BridgeExportPregapPlacement.AppendToPreviousIncludingHtoa =>
-            Loc.Chrome("settings.export.pregap.append_including_htoa"),
-        BridgeExportPregapPlacement.Exclude => Loc.Chrome("settings.export.pregap.exclude"),
-        _ => Loc.Chrome("settings.export.pregap.single_file_with_cue"),
+        BridgeSavePregapPlacement.AppendToPreviousExceptHtoa =>
+            Loc.Chrome("settings.formats.pregap.append_except_htoa"),
+        BridgeSavePregapPlacement.AppendToPreviousIncludingHtoa =>
+            Loc.Chrome("settings.formats.pregap.append_including_htoa"),
+        BridgeSavePregapPlacement.Exclude => Loc.Chrome("settings.formats.pregap.exclude"),
+        _ => Loc.Chrome("settings.formats.pregap.single_file_with_cue"),
     };
 
-    private static List<(string Label, BridgeExportPregapPlacement Value)> PregapChoices(
-        BridgeExportPresetCodec codec)
+    private static List<(string Label, BridgeSavePregapPlacement Value)> PregapChoices(
+        BridgeSaveCodec codec)
     {
-        var choices = new List<(string Label, BridgeExportPregapPlacement Value)>
+        var choices = new List<(string Label, BridgeSavePregapPlacement Value)>
         {
             (
-                Loc.Chrome("settings.export.pregap.append_except_htoa"),
-                BridgeExportPregapPlacement.AppendToPreviousExceptHtoa
+                Loc.Chrome("settings.formats.pregap.append_except_htoa"),
+                BridgeSavePregapPlacement.AppendToPreviousExceptHtoa
             ),
             (
-                Loc.Chrome("settings.export.pregap.append_including_htoa"),
-                BridgeExportPregapPlacement.AppendToPreviousIncludingHtoa
+                Loc.Chrome("settings.formats.pregap.append_including_htoa"),
+                BridgeSavePregapPlacement.AppendToPreviousIncludingHtoa
             ),
-            (Loc.Chrome("settings.export.pregap.exclude"), BridgeExportPregapPlacement.Exclude),
+            (Loc.Chrome("settings.formats.pregap.exclude"), BridgeSavePregapPlacement.Exclude),
         };
-        if (codec is not BridgeExportPresetCodec.OpusOgg)
+        if (codec is not BridgeSaveCodec.OpusOgg)
         {
             choices.Add((
-                Loc.Chrome("settings.export.pregap.single_file_with_cue"),
-                BridgeExportPregapPlacement.SingleFileWithCue
+                Loc.Chrome("settings.formats.pregap.single_file_with_cue"),
+                BridgeSavePregapPlacement.SingleFileWithCue
             ));
         }
         return choices;

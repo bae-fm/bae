@@ -36,7 +36,7 @@ public sealed class Settings
 
     /// <summary>Configured export presets offered by release and track export.
     /// The filename pattern is a per-preset property — there is no global one.</summary>
-    public List<ExportPreset> ExportPresets { get; set; } = new();
+    public List<SavePreset> SavePresets { get; set; } = new();
 
     /// <summary>Id of the preset a track save defaults to (valid + track-applicable).</summary>
     public string DefaultTrackSavePreset { get; set; } = "flac";
@@ -158,14 +158,14 @@ public sealed class Settings
     }
 }
 
-public sealed class ExportPreset
+public sealed class SavePreset
 {
     public string Id { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
-    internal BridgeExportPresetCodec Codec { get; set; } = new BridgeExportPresetCodec.Flac(BridgeExportBitDepth.Source);
+    internal BridgeSaveCodec Codec { get; set; } = new BridgeSaveCodec.Flac(BridgeSaveBitDepth.Source);
     public string Extension { get; set; } = string.Empty;
-    internal List<BridgeExportFilenameToken> FilenameTokens { get; set; } = new();
-    internal BridgeExportPregapPlacement PregapPlacement { get; set; } = BridgeExportPregapPlacement.AppendToPreviousExceptHtoa;
+    internal List<BridgeSaveFilenameToken> FilenameTokens { get; set; } = new();
+    internal BridgeSavePregapPlacement PregapPlacement { get; set; } = BridgeSavePregapPlacement.AppendToPreviousExceptHtoa;
     public bool AppliesToTrack { get; set; }
     public bool AppliesToRelease { get; set; }
 

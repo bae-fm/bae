@@ -1006,12 +1006,12 @@
         )
 
         /// Default single-track export filename pattern, for seeding preview
-        /// configs (mirrors bae-core's `default_export_filename_tokens`).
-        static let exportFilenameTokens: [BridgeExportFilenameToken] = [
+        /// configs (mirrors bae-core's `default_save_filename_tokens`).
+        static let exportFilenameTokens: [BridgeSaveFilenameToken] = [
             .trackNumber, .title,
         ]
-        static let exportPresets: [BridgeExportPreset] = [
-            BridgeExportPreset(
+        static let savePresets: [BridgeSavePreset] = [
+            BridgeSavePreset(
                 id: "flac",
                 name: "FLAC",
                 codec: .flac(bitDepth: .source),
@@ -1022,7 +1022,7 @@
                 appliesToRelease: true,
                 embedCover: true
             ),
-            BridgeExportPreset(
+            BridgeSavePreset(
                 id: "mp3",
                 name: "MP3",
                 codec: .mp3(bitrateKbps: 320),
@@ -1062,7 +1062,7 @@
                         maxConcurrentDownloads: 3,
                         showRemainingTime: false,
                         libraryFullWidth: libraryFullWidth,
-                        exportPresets: exportPresets,
+                        savePresets: savePresets,
                         defaultTrackSavePreset: "flac",
                         defaultReleaseSavePreset: "flac",
                         mcp: BridgeMcpConfig(enabled: false, port: 47777),

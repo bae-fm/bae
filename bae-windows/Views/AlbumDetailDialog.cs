@@ -547,7 +547,7 @@ internal sealed class AlbumDetailDialog
         {
             return;
         }
-        var trackPresets = settings.ExportPresets
+        var trackPresets = settings.SavePresets
             .Where(preset => preset.AppliesToTrack)
             .ToList();
         // Config validation guarantees at least one track-applicable preset and a
@@ -560,7 +560,7 @@ internal sealed class AlbumDetailDialog
         }
         var formatPicker = new ComboBox
         {
-            Header = Loc.Chrome("settings.export.default_track_format"),
+            Header = Loc.Chrome("settings.formats.default_track_format"),
             MinWidth = 260,
         };
         var defaultIndex = 0;

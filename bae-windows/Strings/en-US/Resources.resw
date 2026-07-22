@@ -302,49 +302,49 @@
   <data name="work.open_failed" xml:space="preserve"><value>Could not open work detail</value></data>
   <data name="work.count" xml:space="preserve"><value>{count} Works</value></data>
   <data name="album.count" xml:space="preserve"><value>{count} Albums</value></data>
-  <data name="settings.export.default_track_format" xml:space="preserve"><value>Default track format</value></data>
-  <data name="settings.export.default_release_format" xml:space="preserve"><value>Default release format</value></data>
-  <data name="settings.export.presets" xml:space="preserve"><value>Presets</value></data>
-  <data name="settings.export.preset_name" xml:space="preserve"><value>Name</value></data>
-  <data name="settings.export.preset_track" xml:space="preserve"><value>Track</value></data>
-  <data name="settings.export.preset_release" xml:space="preserve"><value>Release</value></data>
-  <data name="settings.export.preset_pregap" xml:space="preserve"><value>Pregap</value></data>
-  <data name="settings.export.pregap.append_except_htoa" xml:space="preserve"><value>Append except HTOA</value></data>
-  <data name="settings.export.pregap.append_including_htoa" xml:space="preserve"><value>Append including HTOA</value></data>
-  <data name="settings.export.pregap.exclude" xml:space="preserve"><value>Exclude</value></data>
-  <data name="settings.export.pregap.single_file_with_cue" xml:space="preserve"><value>Single file + CUE</value></data>
-  <data name="settings.export.filename_format" xml:space="preserve"><value>Filename format</value></data>
-  <data name="settings.export.release_exports" xml:space="preserve"><value>Release exports</value></data>
-  <data name="settings.export.track_exports" xml:space="preserve"><value>Track exports</value></data>
-  <data name="settings.export.add_token" xml:space="preserve"><value>Add:</value></data>
-  <data name="settings.export.remove_token" xml:space="preserve"><value>Remove {token}</value></data>
-  <data name="settings.export.token.title" xml:space="preserve"><value>Title</value></data>
-  <data name="settings.export.token.artist" xml:space="preserve"><value>Artist</value></data>
-  <data name="settings.export.token.album" xml:space="preserve"><value>Album</value></data>
-  <data name="settings.export.token.year" xml:space="preserve"><value>Year</value></data>
-  <data name="settings.export.token.track_number" xml:space="preserve"><value>Track №</value></data>
-  <data name="settings.export.token.disc_number" xml:space="preserve"><value>Disc №</value></data>
-  <data name="settings.export.token.track_total" xml:space="preserve"><value>Track total</value></data>
-  <data name="settings.export.sample.title" xml:space="preserve"><value>Track Title</value></data>
-  <data name="settings.export.sample.artist" xml:space="preserve"><value>Artist Name</value></data>
-  <data name="settings.export.sample.album" xml:space="preserve"><value>Album Title</value></data>
-  <data name="settings.export.preview" xml:space="preserve"><value>Preview: {filename}</value></data>
-  <data name="settings.export.presets_footer" xml:space="preserve"><value>Presets appear in the export menu on tracks and releases.</value></data>
-  <data name="settings.export.preset_format" xml:space="preserve"><value>Format</value></data>
-  <data name="settings.export.add_preset" xml:space="preserve"><value>Add preset</value></data>
-  <data name="settings.export.delete_preset" xml:space="preserve"><value>Delete preset</value></data>
-  <data name="settings.export.delete_confirm" xml:space="preserve"><value>Delete the “{name}” preset?</value></data>
-  <data name="settings.export.codec_mp3" xml:space="preserve"><value>MP3 {kbps} kbps</value></data>
-  <data name="settings.export.codec_opus" xml:space="preserve"><value>Opus {kbps} kbps</value></data>
-  <data name="settings.export.bit_depth.source_summary" xml:space="preserve"><value>Source bit depth</value></data>
-  <data name="settings.export.show_in_menus" xml:space="preserve"><value>Show in export menu for</value></data>
-  <data name="settings.export.embed_cover" xml:space="preserve"><value>Embed cover art</value></data>
-  <data name="settings.export.bit_depth_label" xml:space="preserve"><value>Bit depth</value></data>
-  <data name="settings.export.bit_depth.source" xml:space="preserve"><value>Source</value></data>
-  <data name="settings.export.bit_depth.bits16" xml:space="preserve"><value>16-bit</value></data>
-  <data name="settings.export.bit_depth.bits24" xml:space="preserve"><value>24-bit</value></data>
-  <data name="settings.export.bit_depth.bits32" xml:space="preserve"><value>32-bit</value></data>
-  <data name="settings.export.bitrate" xml:space="preserve"><value>Bitrate</value></data>
+  <data name="settings.formats.default_track_format" xml:space="preserve"><value>Default track format</value></data>
+  <data name="settings.formats.default_release_format" xml:space="preserve"><value>Default release format</value></data>
+  <data name="settings.formats.presets" xml:space="preserve"><value>Presets</value></data>
+  <data name="settings.formats.preset_name" xml:space="preserve"><value>Name</value></data>
+  <data name="settings.formats.preset_track" xml:space="preserve"><value>Track</value></data>
+  <data name="settings.formats.preset_release" xml:space="preserve"><value>Release</value></data>
+  <data name="settings.formats.preset_pregap" xml:space="preserve"><value>Pregap</value></data>
+  <data name="settings.formats.pregap.append_except_htoa" xml:space="preserve"><value>Append except HTOA</value></data>
+  <data name="settings.formats.pregap.append_including_htoa" xml:space="preserve"><value>Append including HTOA</value></data>
+  <data name="settings.formats.pregap.exclude" xml:space="preserve"><value>Exclude</value></data>
+  <data name="settings.formats.pregap.single_file_with_cue" xml:space="preserve"><value>Single file + CUE</value></data>
+  <data name="settings.formats.filename_format" xml:space="preserve"><value>Filename format</value></data>
+  <data name="settings.formats.release_saves" xml:space="preserve"><value>Release saves</value></data>
+  <data name="settings.formats.track_saves" xml:space="preserve"><value>Track saves</value></data>
+  <data name="settings.formats.add_token" xml:space="preserve"><value>Add:</value></data>
+  <data name="settings.formats.remove_token" xml:space="preserve"><value>Remove {token}</value></data>
+  <data name="settings.formats.token.title" xml:space="preserve"><value>Title</value></data>
+  <data name="settings.formats.token.artist" xml:space="preserve"><value>Artist</value></data>
+  <data name="settings.formats.token.album" xml:space="preserve"><value>Album</value></data>
+  <data name="settings.formats.token.year" xml:space="preserve"><value>Year</value></data>
+  <data name="settings.formats.token.track_number" xml:space="preserve"><value>Track №</value></data>
+  <data name="settings.formats.token.disc_number" xml:space="preserve"><value>Disc №</value></data>
+  <data name="settings.formats.token.track_total" xml:space="preserve"><value>Track total</value></data>
+  <data name="settings.formats.sample.title" xml:space="preserve"><value>Track Title</value></data>
+  <data name="settings.formats.sample.artist" xml:space="preserve"><value>Artist Name</value></data>
+  <data name="settings.formats.sample.album" xml:space="preserve"><value>Album Title</value></data>
+  <data name="settings.formats.preview" xml:space="preserve"><value>Preview: {filename}</value></data>
+  <data name="settings.formats.presets_footer" xml:space="preserve"><value>Presets appear in the export menu on tracks and releases.</value></data>
+  <data name="settings.formats.preset_format" xml:space="preserve"><value>Format</value></data>
+  <data name="settings.formats.add_preset" xml:space="preserve"><value>Add preset</value></data>
+  <data name="settings.formats.delete_preset" xml:space="preserve"><value>Delete preset</value></data>
+  <data name="settings.formats.delete_confirm" xml:space="preserve"><value>Delete the “{name}” preset?</value></data>
+  <data name="settings.formats.codec_mp3" xml:space="preserve"><value>MP3 {kbps} kbps</value></data>
+  <data name="settings.formats.codec_opus" xml:space="preserve"><value>Opus {kbps} kbps</value></data>
+  <data name="settings.formats.bit_depth.source_summary" xml:space="preserve"><value>Source bit depth</value></data>
+  <data name="settings.formats.show_in_menus" xml:space="preserve"><value>Show in export menu for</value></data>
+  <data name="settings.formats.embed_cover" xml:space="preserve"><value>Embed cover art</value></data>
+  <data name="settings.formats.bit_depth_label" xml:space="preserve"><value>Bit depth</value></data>
+  <data name="settings.formats.bit_depth.source" xml:space="preserve"><value>Source</value></data>
+  <data name="settings.formats.bit_depth.bits16" xml:space="preserve"><value>16-bit</value></data>
+  <data name="settings.formats.bit_depth.bits24" xml:space="preserve"><value>24-bit</value></data>
+  <data name="settings.formats.bit_depth.bits32" xml:space="preserve"><value>32-bit</value></data>
+  <data name="settings.formats.bitrate" xml:space="preserve"><value>Bitrate</value></data>
   <data name="outbox.state.uploading" xml:space="preserve"><value>Uploading</value></data>
   <data name="outbox.state.queued" xml:space="preserve"><value>Queued</value></data>
   <data name="outbox.state.retrying" xml:space="preserve"><value>Retrying</value></data>
@@ -392,7 +392,7 @@
   <data name="import.sort.oldest" xml:space="preserve"><value>Date Added (Oldest)</value></data>
   <data name="nowplaying.show_remaining" xml:space="preserve"><value>show remaining time</value></data>
   <data name="nowplaying.show_elapsed" xml:space="preserve"><value>show elapsed time</value></data>
-  <data name="export.title" xml:space="preserve"><value>exporting</value></data>
+  <data name="output.title" xml:space="preserve"><value>export &amp; save</value></data>
   <data name="export.state.exporting" xml:space="preserve"><value>exporting {percent}%</value></data>
   <data name="export.state.saving" xml:space="preserve"><value>saving {percent}%</value></data>
   <data name="import.documents" xml:space="preserve"><value>Documents</value></data>

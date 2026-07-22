@@ -569,33 +569,33 @@ internal sealed class StorageDialog
         async System.Threading.Tasks.Task LoadExports()
         {
             exportsPanel.Children.Clear();
-            var (current, snapshot) = await _session.RunForCurrentHandle(NativeBae.ExportSnapshot);
+            var (current, snapshot) = await _session.RunForCurrentHandle(NativeBae.OutputSnapshot);
             if (!current)
             {
                 return;
             }
 
             // Hidden when the export queue is idle, like the downloads panel.
-            if (snapshot.Exports.Length == 0)
+            if (snapshot.Outputs.Length == 0)
             {
                 return;
             }
 
-            static OutputKind OutputKindOf(BridgeExportOp op) =>
+            static OutputKind OutputKindOf(BridgeOutputOp op) =>
                 op.Kind is BridgeOutputKind.Save ? OutputKind.Save : OutputKind.Export;
 
-            string StateLabel(BridgeExportOp op) => op.State switch
+            string StateLabel(BridgeOutputOp op) => op.State switch
             {
-                BridgeExportState.Active active => Loc.Chrome(
-                    ExportQueueModel.StateKey(ExportRowKind.Active, OutputKindOf(op)),
-                    "percent", ExportQueueModel.ClampPercent((int)active.Percent)),
-                BridgeExportState.Failed => Loc.Chrome(
-                    ExportQueueModel.StateKey(ExportRowKind.Failed, OutputKindOf(op))),
-                _ => Loc.Chrome(ExportQueueModel.StateKey(ExportRowKind.Queued, OutputKindOf(op))),
+                BridgeOutputState.Active active => Loc.Chrome(
+                    OutputQueueModel.StateKey(OutputRowKind.Active, OutputKindOf(op)),
+                    "percent", OutputQueueModel.ClampPercent((int)active.Percent)),
+                BridgeOutputState.Failed => Loc.Chrome(
+                    OutputQueueModel.StateKey(OutputRowKind.Failed, OutputKindOf(op))),
+                _ => Loc.Chrome(OutputQueueModel.StateKey(OutputRowKind.Queued, OutputKindOf(op))),
             };
 
             // A save row names its preset on the detail line; an export doesn't.
-            static string PresetSuffix(BridgeExportOp op) =>
+            static string PresetSuffix(BridgeOutputOp op) =>
                 op.Kind is BridgeOutputKind.Save save ? $" · {save.PresetName}" : string.Empty;
 
             // Header: a label (or "paused"), the count summary, Retry (only with
@@ -604,7 +604,7 @@ internal sealed class StorageDialog
             var band = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
             band.Children.Add(new TextBlock
             {
-                Text = Loc.Chrome(ExportQueueModel.BandTitleKey(paused)),
+                Text = Loc.Chrome(OutputQueueModel.BandTitleKey(paused)),
                 VerticalAlignment = VerticalAlignment.Center,
             });
             if (!paused && snapshot.SummaryParts.Length > 0)
@@ -620,20 +620,20 @@ internal sealed class StorageDialog
             var retry = new Button
             {
                 Content = Loc.Chrome("outbox.retry_now"),
-                IsEnabled = ExportQueueModel.RetryEnabled(snapshot.Total.Failed),
+                IsEnabled = OutputQueueModel.RetryEnabled(snapshot.Total.Failed),
             };
             retry.Click += async (_, _) =>
             {
                 retry.IsEnabled = false;
-                await _session.RunForCurrentHandle(NativeBae.RetryExports);
+                await _session.RunForCurrentHandle(NativeBae.RetryOutputs);
                 await LoadExports();
             };
             band.Children.Add(retry);
-            var pause = new Button { Content = Loc.Chrome(ExportQueueModel.PauseToggleKey(paused)) };
+            var pause = new Button { Content = Loc.Chrome(OutputQueueModel.PauseToggleKey(paused)) };
             pause.Click += async (_, _) =>
             {
                 pause.IsEnabled = false;
-                await _session.RunForCurrentHandle(handle => NativeBae.SetExportsPaused(handle, !paused));
+                await _session.RunForCurrentHandle(handle => NativeBae.SetOutputsPaused(handle, !paused));
                 await LoadExports();
             };
             band.Children.Add(pause);
@@ -641,7 +641,7 @@ internal sealed class StorageDialog
 
             // One row per export: title, "N files · size · state", an optional
             // progress bar while active, and a cancel.
-            foreach (var op in snapshot.Exports)
+            foreach (var op in snapshot.Outputs)
             {
                 var itemGrid = new Grid { ColumnSpacing = 8 };
                 itemGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
@@ -656,18 +656,18 @@ internal sealed class StorageDialog
                 };
                 // A failed export carries its error on the detail line's tooltip,
                 // like the outbox file rows.
-                if (op.State is BridgeExportState.Failed failed)
+                if (op.State is BridgeOutputState.Failed failed)
                 {
                     ToolTipService.SetToolTip(detail, failed.Error);
                 }
                 labelColumn.Children.Add(detail);
-                if (op.State is BridgeExportState.Active active)
+                if (op.State is BridgeOutputState.Active active)
                 {
                     labelColumn.Children.Add(new ProgressBar
                     {
                         Minimum = 0,
                         Maximum = 100,
-                        Value = ExportQueueModel.ClampPercent((int)active.Percent),
+                        Value = OutputQueueModel.ClampPercent((int)active.Percent),
                         Height = 4,
                     });
                 }
@@ -679,7 +679,7 @@ internal sealed class StorageDialog
                 cancel.Click += async (_, _) =>
                 {
                     cancel.IsEnabled = false;
-                    await _session.RunForCurrentHandle(handle => NativeBae.CancelExport(handle, releaseId));
+                    await _session.RunForCurrentHandle(handle => NativeBae.CancelOutput(handle, releaseId));
                     await LoadExports();
                 };
                 Grid.SetColumn(cancel, 1);
@@ -1040,7 +1040,7 @@ internal sealed class StorageDialog
                 _ = LoadDownloads();
                 _ = LoadStorageRows();
             }),
-            _projections.Register(typeof(BridgeInvalidation.ExportQueue), () => _ = LoadExports()),
+            _projections.Register(typeof(BridgeInvalidation.OutputQueue), () => _ = LoadExports()),
             _projections.Register(typeof(BridgeInvalidation.Album), () => _ = LoadStorageRows()),
             _projections.Register(typeof(BridgeInvalidation.Release), () => _ = LoadStorageRows()),
         };

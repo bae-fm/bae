@@ -13,11 +13,11 @@ struct StorageManagerView: View {
     private var sync
     @Environment(Downloads.self)
     private var downloads
-    @Environment(Exports.self)
-    private var exports
+    @Environment(Outputs.self)
+    private var outputs
     @Environment(ConfigStore.self)
     private var configStore
-    // OutboxSection / DownloadsSection / ExportingSection read their stores and
+    // OutboxSection / DownloadsSection / OutputSection read their stores and
     // services at the leaf; uiStore is read here to surface outbox action errors
     // in this window (it's a separate scene from MainAppView, which owns the
     // other error alert).
@@ -92,7 +92,7 @@ struct StorageManagerView: View {
             }
 
             DownloadsSection()
-            ExportingSection()
+            OutputSection()
             OutboxSection()
             Divider()
             TransferConcurrencyBar()
@@ -104,7 +104,7 @@ struct StorageManagerView: View {
                     releaseEditor: releaseEditor,
                     sync: sync,
                     downloads: downloads,
-                    exports: exports,
+                    outputs: outputs,
                     configStore: configStore,
                     uiStore: uiStore,
                 )
@@ -492,36 +492,36 @@ private struct DownloadRow: View {
 
 /// Pane showing the in-memory export queue: a header with the summary and
 /// pause/retry controls, and a per-release row list. Hidden when the queue is
-/// idle. Reads `ExportStore` at the leaf; the export projection is the sole
-/// writer, so actions don't optimistically mutate — an `.exportQueue`
+/// idle. Reads `OutputStore` at the leaf; the export projection is the sole
+/// writer, so actions don't optimistically mutate — an `.outputQueue`
 /// invalidation refetches and refreshes the section. Mirrors
 /// `DownloadsSection`.
-private struct ExportingSection: View {
-    @Environment(ExportStore.self)
-    private var exportStore
-    @Environment(Exports.self)
-    private var exports
+private struct OutputSection: View {
+    @Environment(OutputStore.self)
+    private var outputStore
+    @Environment(Outputs.self)
+    private var outputs
 
     var body: some View {
-        let snapshot = exportStore.snapshot
-        if !snapshot.exports.isEmpty {
+        let snapshot = outputStore.snapshot
+        if !snapshot.outputs.isEmpty {
             Divider()
             VStack(spacing: 0) {
                 QueueSectionHeader(
                     icon: "square.and.arrow.up",
-                    title: "Exporting",
+                    title: "Export & Save",
                     paused: snapshot.paused,
                     summaryText: snapshot.summaryText,
                     retryDisabled: snapshot.total.failed == 0,
-                    onSetPaused: { exports.setExportsPaused($0) },
-                    onRetry: { exports.retryExports() }
+                    onSetPaused: { outputs.setOutputsPaused($0) },
+                    onRetry: { outputs.retryOutputs() }
                 )
                 Divider()
                 ScrollView {
                     LazyVStack(spacing: 0) {
-                        ForEach(snapshot.exports, id: \.releaseId) { op in
-                            ExportRow(op: op) {
-                                exports.cancelExport(op.releaseId)
+                        ForEach(snapshot.outputs, id: \.releaseId) { op in
+                            OutputRow(op: op) {
+                                outputs.cancelOutput(op.releaseId)
                             }
                             Divider()
                         }
@@ -537,8 +537,8 @@ private struct ExportingSection: View {
 /// One output-queue row: album title, file count, size (plus the preset name for
 /// a save), a state badge (Queued / Exporting or Saving at a percent / Failed
 /// with the reason in a tooltip), and a cancel button.
-private struct ExportRow: View {
-    let op: BridgeExportOp
+private struct OutputRow: View {
+    let op: BridgeOutputOp
     let onCancel: () -> Void
 
     private var presetName: String? {

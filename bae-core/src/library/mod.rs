@@ -1,11 +1,11 @@
 pub mod app_services;
 pub mod download_snapshot;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub mod export;
-pub mod export_snapshot;
 pub mod manager;
 pub mod outbox_snapshot;
+pub mod output_snapshot;
 pub mod release_queue;
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+pub mod save;
 pub mod search;
 pub(crate) mod sync_controller;
 pub mod sync_events;
@@ -15,15 +15,15 @@ pub use app_services::*;
 pub use download_snapshot::{
     DownloadOp, DownloadProgress, DownloadSnapshot, DownloadState, DownloadTransferProgress,
 };
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub use export::ExportService;
-pub use export_snapshot::{ExportOp, ExportProgress, ExportSnapshot, ExportState, OutputKind};
 pub use manager::*;
 pub use outbox_snapshot::{
     DeleteOp, OutboxSnapshot, UploadActivity, UploadFileOp, UploadProgress, UploadReleaseGroup,
     UploadState,
 };
+pub use output_snapshot::{OutputKind, OutputOp, OutputProgress, OutputSnapshot, OutputState};
 pub use release_queue::{CountLabel, ReleaseQueue};
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+pub use save::SaveService;
 pub use search::{LibrarySearchQuery, SEARCH_RESULT_LIMIT};
 pub use upload_sessions::UploadSessions;
 pub use upload_throughput::UploadThroughput;
@@ -40,7 +40,7 @@ use tokio::sync::watch;
 pub use tokio_util::sync::CancellationToken;
 
 pub type DownloadQueue = ReleaseQueue<(), DownloadTransferProgress>;
-pub type ExportQueue = ReleaseQueue<export_snapshot::ExportRequest, u8>;
+pub type OutputQueue = ReleaseQueue<output_snapshot::OutputRequest, u8>;
 
 #[derive(Debug, thiserror::Error)]
 pub enum RestoreFromCodeError {

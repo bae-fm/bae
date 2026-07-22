@@ -191,7 +191,7 @@ enum ReleaseCommand {
         #[arg(long)]
         target_dir: PathBuf,
     },
-    ExportStatus,
+    OutputStatus,
     Reidentify {
         release_id: String,
         #[arg(long)]
@@ -459,7 +459,7 @@ fn tool_call_for_command(command: &Command) -> Result<(AutomationTool, Value), C
                     })?,
                 ))
             }
-            ReleaseCommand::ExportStatus => Ok((AutomationTool::ExportStatus, Value::Null)),
+            ReleaseCommand::OutputStatus => Ok((AutomationTool::OutputStatus, Value::Null)),
             ReleaseCommand::Reidentify {
                 release_id,
                 choice_json,

@@ -485,16 +485,16 @@ internal static class NativeBae
 
     internal static void RetryDownloads(AppHandle handle) => handle.RetryDownloads();
 
-    internal static BridgeExportSnapshot ExportSnapshot(AppHandle handle) =>
-        handle.GetExportSnapshot();
+    internal static BridgeOutputSnapshot OutputSnapshot(AppHandle handle) =>
+        handle.GetOutputSnapshot();
 
-    internal static void SetExportsPaused(AppHandle handle, bool paused) =>
-        handle.SetExportsPaused(paused);
+    internal static void SetOutputsPaused(AppHandle handle, bool paused) =>
+        handle.SetOutputsPaused(paused);
 
-    internal static void CancelExport(AppHandle handle, string releaseId) =>
-        handle.CancelExport(releaseId);
+    internal static void CancelOutput(AppHandle handle, string releaseId) =>
+        handle.CancelOutput(releaseId);
 
-    internal static void RetryExports(AppHandle handle) => handle.RetryExports();
+    internal static void RetryOutputs(AppHandle handle) => handle.RetryOutputs();
 
     internal static string? RetryOutbox(AppHandle handle) => CaptureError(() => Await(handle.RetryOutbox()));
 
@@ -554,9 +554,9 @@ internal static class NativeBae
     internal static string? SetShowRemainingTime(AppHandle handle, bool enabled) =>
         CaptureError(() => handle.SetShowRemainingTime(enabled));
 
-    internal static string? SetExportPresets(AppHandle handle, IEnumerable<ExportPreset> presets) =>
-        CaptureError(() => handle.SetExportPresets(
-            presets.Select(ExportPresetBridge).ToArray()));
+    internal static string? SetSavePresets(AppHandle handle, IEnumerable<SavePreset> presets) =>
+        CaptureError(() => handle.SetSavePresets(
+            presets.Select(SavePresetBridge).ToArray()));
 
     internal static string? SetDefaultTrackSavePreset(AppHandle handle, string presetId) =>
         CaptureError(() => handle.SetDefaultTrackSavePreset(presetId));
@@ -981,7 +981,7 @@ internal static class NativeBae
             PauseBetweenSides = config.PauseBetweenSides,
             ShowRemainingTime = config.ShowRemainingTime,
             LibraryFullWidth = config.LibraryFullWidth,
-            ExportPresets = config.ExportPresets.Select(ExportPreset).ToList(),
+            SavePresets = config.SavePresets.Select(SavePreset).ToList(),
             DefaultTrackSavePreset = config.DefaultTrackSavePreset,
             DefaultReleaseSavePreset = config.DefaultReleaseSavePreset,
             McpEnabled = config.Mcp.Enabled,
@@ -1197,7 +1197,7 @@ internal static class NativeBae
             _ => throw new ArgumentOutOfRangeException(nameof(source), source, "Unknown cover image source"),
         };
 
-    private static ExportPreset ExportPreset(BridgeExportPreset preset) =>
+    private static SavePreset SavePreset(BridgeSavePreset preset) =>
         new()
         {
             Id = preset.Id,
@@ -1211,7 +1211,7 @@ internal static class NativeBae
             EmbedCover = preset.EmbedCover,
         };
 
-    private static BridgeExportPreset ExportPresetBridge(ExportPreset preset) =>
+    private static BridgeSavePreset SavePresetBridge(SavePreset preset) =>
         new(
             preset.Id,
             preset.Name,

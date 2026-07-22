@@ -385,7 +385,7 @@ mod tests {
         );
         assert!(
             ReleaseQueueProgress::default()
-                .summary_parts("core.queue.exporting")
+                .summary_parts("core.queue.output")
                 .is_empty(),
             "an idle queue has no parts"
         );

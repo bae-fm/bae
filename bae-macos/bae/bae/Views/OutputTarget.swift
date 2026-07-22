@@ -5,18 +5,18 @@ import Foundation
 /// One preset the user can pick in a save flow: its display name, the file
 /// extension its codec produces (carried across the bridge on the preset), and
 /// its id. Built from the configured presets, filtered to the relevant level.
-struct ExportFormatChoice {
+struct SaveFormatChoice {
     let title: String
     let extensionName: String
     let presetId: String
 
     static func trackChoices(
-        presets: [BridgeExportPreset]
-    ) -> [ExportFormatChoice] {
+        presets: [BridgeSavePreset]
+    ) -> [SaveFormatChoice] {
         presets
             .filter(\.appliesToTrack)
             .map {
-                ExportFormatChoice(
+                SaveFormatChoice(
                     title: $0.name,
                     extensionName: $0.extension,
                     presetId: $0.id
@@ -25,12 +25,12 @@ struct ExportFormatChoice {
     }
 
     static func releaseChoices(
-        presets: [BridgeExportPreset]
-    ) -> [ExportFormatChoice] {
+        presets: [BridgeSavePreset]
+    ) -> [SaveFormatChoice] {
         presets
             .filter(\.appliesToRelease)
             .map {
-                ExportFormatChoice(
+                SaveFormatChoice(
                     title: $0.name,
                     extensionName: $0.extension,
                     presetId: $0.id
@@ -48,12 +48,12 @@ struct ReleaseSaveTarget {
 
 /// Destination pickers for release-level output. Export chooses a folder only
 /// (verbatim, no format); save chooses a folder plus a preset. Both seed and
-/// write back `lastExportFolder` (per-device UI memory, not synced config).
+/// write back `lastOutputFolder` (per-device UI memory, not synced config).
 /// Returns `nil` when the user cancels, so the caller enqueues nothing.
-enum ExportTarget {
+enum OutputTarget {
     /// UserDefaults key for the last folder a release output was written to.
     /// Per-device UI convenience, not synced config — it only seeds the picker.
-    private static let lastExportFolderKey = "lastExportFolder"
+    private static let lastOutputFolderKey = "lastOutputFolder"
 
     /// Verbatim export: a plain folder dialog, no format anywhere. Returns the
     /// chosen directory.
@@ -64,7 +64,7 @@ enum ExportTarget {
             return nil
         }
         let dir = url.path(percentEncoded: false)
-        UserDefaults.standard.set(dir, forKey: lastExportFolderKey)
+        UserDefaults.standard.set(dir, forKey: lastOutputFolderKey)
         return dir
     }
 
@@ -73,8 +73,8 @@ enum ExportTarget {
     /// plus preset id.
     @MainActor
     static func resolveReleaseSave(config: Config) -> ReleaseSaveTarget? {
-        let choices = ExportFormatChoice.releaseChoices(
-            presets: config.exportPresets
+        let choices = SaveFormatChoice.releaseChoices(
+            presets: config.savePresets
         )
         guard
             let selectedIndex = choices.firstIndex(where: {
@@ -95,7 +95,7 @@ enum ExportTarget {
             return nil
         }
         let dir = url.path(percentEncoded: false)
-        UserDefaults.standard.set(dir, forKey: lastExportFolderKey)
+        UserDefaults.standard.set(dir, forKey: lastOutputFolderKey)
         return ReleaseSaveTarget(
             targetDir: dir,
             presetId: choices[popup.indexOfSelectedItem].presetId
@@ -109,7 +109,7 @@ enum ExportTarget {
         panel.canChooseFiles = false
         panel.canCreateDirectories = true
         panel.prompt = String(localized: "Export Here")
-        if let last = UserDefaults.standard.string(forKey: lastExportFolderKey),
+        if let last = UserDefaults.standard.string(forKey: lastOutputFolderKey),
             !last.isEmpty
         {
             panel.directoryURL = URL(fileURLWithPath: last)
@@ -128,7 +128,7 @@ enum ExportTarget {
 
     @MainActor
     private static func makeFormatPopup(
-        choices: [ExportFormatChoice],
+        choices: [SaveFormatChoice],
         selectedIndex: Int
     ) -> NSPopUpButton {
         let popup = NSPopUpButton(

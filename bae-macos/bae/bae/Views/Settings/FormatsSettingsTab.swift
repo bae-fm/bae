@@ -3,14 +3,14 @@ import SwiftUI
 
 /// Export preferences: the release-export destination and default format, the
 /// single-track suggested-filename pattern and default format, and the export
-/// presets. Every control writes through the `Exports` service and round-trips
+/// presets. Every control writes through the `Outputs` service and round-trips
 /// back via a `configChanged` event into `ConfigStore` — no optimistic local
 /// mutation and no separate save step.
-struct ExportSettingsTab: View {
+struct FormatsSettingsTab: View {
     @Environment(ConfigStore.self)
     private var configStore
-    @Environment(Exports.self)
-    private var exports
+    @Environment(Outputs.self)
+    private var outputs
     @Environment(UiStore.self)
     private var uiStore
 
@@ -26,24 +26,24 @@ struct ExportSettingsTab: View {
 
     var body: some View {
         Form {
-            releaseExportsSection
-            trackExportsSection
+            releaseSavesSection
+            trackSavesSection
             presetsSection
         }
         .formStyle(.grouped)
         .sheet(item: $editingPreset) { editing in
             // The preset can be gone by the time the sheet renders — deleted
             // from the sheet itself, or replaced by a config round-trip.
-            if let preset = configStore.config.exportPresets.first(where: {
+            if let preset = configStore.config.savePresets.first(where: {
                 $0.id == editing.id
             }) {
-                ExportPresetEditor(preset: preset, update: replacePreset)
+                SavePresetEditor(preset: preset, update: replacePreset)
             }
         }
     }
 
-    private var releaseExportsSection: some View {
-        Section("Release exports") {
+    private var releaseSavesSection: some View {
+        Section("Release saves") {
             presetPicker(
                 presets: releasePresets,
                 selection: defaultReleasePresetBinding()
@@ -51,8 +51,8 @@ struct ExportSettingsTab: View {
         }
     }
 
-    private var trackExportsSection: some View {
-        Section("Track exports") {
+    private var trackSavesSection: some View {
+        Section("Track saves") {
             presetPicker(
                 presets: trackPresets,
                 selection: defaultTrackPresetBinding()
@@ -62,7 +62,7 @@ struct ExportSettingsTab: View {
 
     private var presetsSection: some View {
         Section {
-            ForEach(configStore.config.exportPresets, id: \.id) { preset in
+            ForEach(configStore.config.savePresets, id: \.id) { preset in
                 PresetRow(
                     preset: preset,
                     edit: { editingPreset = EditingPreset(id: preset.id) },
@@ -70,7 +70,7 @@ struct ExportSettingsTab: View {
                 )
             }
             Menu("Add preset") {
-                ForEach(ExportPresetKind.allCases, id: \.self) { kind in
+                ForEach(SavePresetKind.allCases, id: \.self) { kind in
                     Button(kind.label) { addPreset(kind) }
                 }
             }
@@ -85,7 +85,7 @@ struct ExportSettingsTab: View {
     }
 
     private func presetPicker(
-        presets: [BridgeExportPreset],
+        presets: [BridgeSavePreset],
         selection: Binding<String>
     ) -> some View {
         Picker("Default format", selection: selection) {
@@ -95,36 +95,35 @@ struct ExportSettingsTab: View {
         }
     }
 
-    private var trackPresets: [BridgeExportPreset] {
-        configStore.config.exportPresets.filter(\.appliesToTrack)
+    private var trackPresets: [BridgeSavePreset] {
+        configStore.config.savePresets.filter(\.appliesToTrack)
     }
 
-    private var releasePresets: [BridgeExportPreset] {
-        configStore.config.exportPresets.filter(\.appliesToRelease)
+    private var releasePresets: [BridgeSavePreset] {
+        configStore.config.savePresets.filter(\.appliesToRelease)
     }
 
-    private func replacePreset(_ preset: BridgeExportPreset) {
-        let presets = configStore.config.exportPresets.map {
+    private func replacePreset(_ preset: BridgeSavePreset) {
+        let presets = configStore.config.savePresets.map {
             $0.id == preset.id ? preset : $0
         }
-        set { try exports.setExportPresets(presets) }
+        set { try outputs.setSavePresets(presets) }
     }
 
     private func deletePreset(id: String) {
-        let presets = configStore.config.exportPresets.filter { $0.id != id }
-        set { try exports.setExportPresets(presets) }
+        let presets = configStore.config.savePresets.filter { $0.id != id }
+        set { try outputs.setSavePresets(presets) }
     }
 
     /// The filename pattern a newly added preset starts with — the zero-padded
     /// track number then the title, matching core's default. The user edits it
     /// in the preset editor; there is no global pattern anymore.
-    private static let defaultPresetFilenameTokens:
-        [BridgeExportFilenameToken] =
-            [.trackNumber, .title]
+    private static let defaultPresetFilenameTokens: [BridgeSaveFilenameToken] =
+        [.trackNumber, .title]
 
-    private func addPreset(_ kind: ExportPresetKind) {
+    private func addPreset(_ kind: SavePresetKind) {
         let codec = kind.defaultCodec
-        let preset = BridgeExportPreset(
+        let preset = BridgeSavePreset(
             id: UUID().uuidString.replacingOccurrences(of: "-", with: ""),
             name: kind.label,
             codec: codec,
@@ -136,8 +135,8 @@ struct ExportSettingsTab: View {
             embedCover: true
         )
         set {
-            try exports.setExportPresets(
-                configStore.config.exportPresets + [preset]
+            try outputs.setSavePresets(
+                configStore.config.savePresets + [preset]
             )
         }
     }
@@ -146,7 +145,7 @@ struct ExportSettingsTab: View {
         Binding(
             get: { configStore.config.defaultTrackSavePreset },
             set: { id in
-                set { try exports.setDefaultTrackSavePreset(id) }
+                set { try outputs.setDefaultTrackSavePreset(id) }
             }
         )
     }
@@ -155,7 +154,7 @@ struct ExportSettingsTab: View {
         Binding(
             get: { configStore.config.defaultReleaseSavePreset },
             set: { id in
-                set { try exports.setDefaultReleaseSavePreset(id) }
+                set { try outputs.setDefaultReleaseSavePreset(id) }
             }
         )
     }
@@ -173,7 +172,7 @@ struct ExportSettingsTab: View {
 /// One preset in the settings list: the summary row opens the edit sheet; the
 /// trailing minus removes the preset behind a confirmation.
 private struct PresetRow: View {
-    let preset: BridgeExportPreset
+    let preset: BridgeSavePreset
     let edit: () -> Void
     let delete: () -> Void
 
@@ -183,7 +182,7 @@ private struct PresetRow: View {
     var body: some View {
         HStack(spacing: 12) {
             Button(action: edit) {
-                ExportPresetSummaryRow(preset: preset)
+                SavePresetSummaryRow(preset: preset)
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
@@ -207,9 +206,9 @@ private struct PresetRow: View {
 
 #if DEBUG
     #Preview("Export Settings") {
-        ExportSettingsTab()
+        FormatsSettingsTab()
             .environment(PreviewData.configStore)
-            .environment(Exports.stub)
+            .environment(Outputs.stub)
             .environment(UiStore())
             .frame(width: 500, height: 600)
     }

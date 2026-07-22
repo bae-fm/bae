@@ -269,7 +269,7 @@ object UiEventAdapter {
             }
 
             BridgeInvalidation.Queue,
-            BridgeInvalidation.ExportQueue,
+            BridgeInvalidation.OutputQueue,
             BridgeInvalidation.ImportCandidateList,
             is BridgeInvalidation.ImportCandidate,
             BridgeInvalidation.WatchedFolders,

@@ -33,7 +33,7 @@ public struct Config: Equatable {
     /// read here by the library page.
     public let libraryFullWidth: Bool
     /// Configured export presets offered by release and track export.
-    public let exportPresets: [BridgeExportPreset]
+    public let savePresets: [BridgeSavePreset]
     /// Id of the preset a track save defaults to (valid + track-applicable).
     public let defaultTrackSavePreset: String
     /// Id of the preset a release save defaults to (valid + release-applicable).
@@ -54,7 +54,7 @@ public struct Config: Equatable {
         maxConcurrentDownloads = bridge.maxConcurrentDownloads
         showRemainingTime = bridge.showRemainingTime
         libraryFullWidth = bridge.libraryFullWidth
-        exportPresets = bridge.exportPresets
+        savePresets = bridge.savePresets
         defaultTrackSavePreset = bridge.defaultTrackSavePreset
         defaultReleaseSavePreset = bridge.defaultReleaseSavePreset
         mcp = bridge.mcp

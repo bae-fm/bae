@@ -1,4 +1,4 @@
-use crate::library::manager::ExportTrackPlan;
+use crate::library::manager::SaveTrackPlan;
 use crate::playback::{DecodedPcm, PlaybackError};
 use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -10,31 +10,31 @@ use tracing::{debug, warn};
 /// value; an absent value (no year, say) drops out, and the non-empty values
 /// join with single spaces. The result goes through `sanitize_filename_stem`;
 /// if that leaves it empty, fall back to the sanitized title, then to "track".
-pub fn render_export_filename(
-    tokens: &[crate::config::ExportFilenameToken],
-    resolved: &crate::library::manager::ResolvedExportTags,
+pub fn render_save_filename(
+    tokens: &[crate::config::SaveFilenameToken],
+    resolved: &crate::library::manager::ResolvedSaveTags,
 ) -> String {
-    use crate::config::ExportFilenameToken;
+    use crate::config::SaveFilenameToken;
 
     let tags = &resolved.tags;
     let rendered = tokens
         .iter()
         .map(|token| match token {
-            ExportFilenameToken::Title => tags.title.clone(),
-            ExportFilenameToken::Artist => tags.artist.clone(),
-            ExportFilenameToken::Album => tags.album.clone(),
+            SaveFilenameToken::Title => tags.title.clone(),
+            SaveFilenameToken::Artist => tags.artist.clone(),
+            SaveFilenameToken::Album => tags.album.clone(),
             // An absent year / disc / track number renders empty and drops out
             // of the join. That is a legitimate state for a filename pattern,
             // not an error.
-            ExportFilenameToken::Year => tags.year.map(|y| y.to_string()).unwrap_or_default(),
+            SaveFilenameToken::Year => tags.year.map(|y| y.to_string()).unwrap_or_default(),
             // Zero-padded to two digits so tracks sort lexically; empty when the
             // track carries no number.
-            ExportFilenameToken::TrackNumber => resolved
+            SaveFilenameToken::TrackNumber => resolved
                 .track_number
                 .map(|n| format!("{n:02}"))
                 .unwrap_or_default(),
-            ExportFilenameToken::DiscNumber => tags.disc.map(|d| d.to_string()).unwrap_or_default(),
-            ExportFilenameToken::TrackTotal => resolved.total_tracks.to_string(),
+            SaveFilenameToken::DiscNumber => tags.disc.map(|d| d.to_string()).unwrap_or_default(),
+            SaveFilenameToken::TrackTotal => resolved.total_tracks.to_string(),
         })
         .filter(|value| !value.is_empty())
         .collect::<Vec<_>>()
@@ -85,7 +85,7 @@ pub(crate) fn sanitize_filename_stem(input: &str) -> String {
         .to_string()
 }
 
-pub struct ExportService;
+pub struct SaveService;
 
 struct CancelOnDrop(Arc<AtomicBool>);
 
@@ -131,7 +131,7 @@ impl Drop for OutputPathsGuard {
     }
 }
 
-impl ExportService {
+impl SaveService {
     /// Export a single track to the given format.
     ///
     /// For one-file-per-track: decodes and re-encodes to the target format.
@@ -140,20 +140,20 @@ impl ExportService {
     ///
     /// On future-drop the cancel flag flips, the encoder loop exits between
     /// frames, and any partially-written output file is removed.
-    pub async fn export_track(
-        plan: ExportTrackPlan,
+    pub async fn save_track(
+        plan: SaveTrackPlan,
         output_path: &Path,
-        preset: crate::config::ExportPreset,
+        preset: crate::config::SavePreset,
     ) -> Result<(), String> {
-        Self::export_track_with_codec(plan, output_path, preset.codec).await
+        Self::save_track_with_codec(plan, output_path, preset.codec).await
     }
 
-    pub async fn export_release_image_with_cue(
-        mut plans: Vec<ExportTrackPlan>,
+    pub async fn save_release_image_with_cue(
+        mut plans: Vec<SaveTrackPlan>,
         output_audio_path: &Path,
         output_cue_path: &Path,
         catalog: Option<String>,
-        preset: crate::config::ExportPreset,
+        preset: crate::config::SavePreset,
     ) -> Result<(), String> {
         if plans.is_empty() {
             return Err("release image export requires at least one track".to_string());
@@ -274,7 +274,7 @@ impl ExportService {
         let output_cue_path_owned = output_cue_path.to_path_buf();
         let cancel_for_blocking = Arc::clone(&cancel);
         let codec = preset.codec;
-        let tags = crate::library::manager::ExportTags {
+        let tags = crate::library::manager::SaveTags {
             title: release_title.clone(),
             artist: release_performer,
             album: release_title,
@@ -336,10 +336,10 @@ impl ExportService {
         Ok(())
     }
 
-    async fn export_track_with_codec(
-        mut plan: ExportTrackPlan,
+    async fn save_track_with_codec(
+        mut plan: SaveTrackPlan,
         output_path: &Path,
-        codec: crate::config::ExportPresetCodec,
+        codec: crate::config::SaveCodec,
     ) -> Result<(), String> {
         let track_id = plan.audio_meta.track.id.clone();
         debug!("Exporting track {} to {}", track_id, output_path.display());
@@ -410,12 +410,12 @@ impl ExportService {
 
 fn encode_pcm_with_codec(
     decoded_pcm: &DecodedPcm,
-    codec: &crate::config::ExportPresetCodec,
+    codec: &crate::config::SaveCodec,
     source_bits_per_sample: Option<i64>,
     cancel: &std::sync::atomic::AtomicBool,
 ) -> Result<(Vec<u8>, lofty::tag::TagType), String> {
     let encoded_data = match codec {
-        crate::config::ExportPresetCodec::Flac { bit_depth } => crate::audio_codec::encode_to_flac(
+        crate::config::SaveCodec::Flac { bit_depth } => crate::audio_codec::encode_to_flac(
             decoded_pcm.raw_samples(),
             decoded_pcm.sample_rate(),
             decoded_pcm.channels(),
@@ -423,7 +423,7 @@ fn encode_pcm_with_codec(
             cancel,
         )
         .map_err(|e| format!("Failed to encode FLAC: {e}"))?,
-        crate::config::ExportPresetCodec::Mp3 { bitrate_kbps } => {
+        crate::config::SaveCodec::Mp3 { bitrate_kbps } => {
             crate::audio_codec::encode_to_mp3_with_bitrate(
                 decoded_pcm.raw_samples(),
                 decoded_pcm.sample_rate(),
@@ -433,7 +433,7 @@ fn encode_pcm_with_codec(
             )
             .map_err(|e| format!("Failed to encode MP3: {e}"))?
         }
-        crate::config::ExportPresetCodec::OpusOgg { bitrate_kbps } => {
+        crate::config::SaveCodec::OpusOgg { bitrate_kbps } => {
             crate::audio_codec::encode_to_opus_ogg(
                 decoded_pcm.raw_samples(),
                 decoded_pcm.sample_rate(),
@@ -443,7 +443,7 @@ fn encode_pcm_with_codec(
             )
             .map_err(|e| format!("Failed to encode Opus/Ogg: {e}"))?
         }
-        crate::config::ExportPresetCodec::Wav { bit_depth } => crate::audio_codec::encode_to_wav(
+        crate::config::SaveCodec::Wav { bit_depth } => crate::audio_codec::encode_to_wav(
             decoded_pcm.raw_samples(),
             decoded_pcm.sample_rate(),
             decoded_pcm.channels(),
@@ -451,7 +451,7 @@ fn encode_pcm_with_codec(
             cancel,
         )
         .map_err(|e| format!("Failed to encode WAV: {e}"))?,
-        crate::config::ExportPresetCodec::Aiff { bit_depth } => crate::audio_codec::encode_to_aiff(
+        crate::config::SaveCodec::Aiff { bit_depth } => crate::audio_codec::encode_to_aiff(
             decoded_pcm.raw_samples(),
             decoded_pcm.sample_rate(),
             decoded_pcm.channels(),
@@ -462,11 +462,11 @@ fn encode_pcm_with_codec(
     };
 
     let tag_type = match codec {
-        crate::config::ExportPresetCodec::Flac { .. } => lofty::tag::TagType::VorbisComments,
-        crate::config::ExportPresetCodec::Mp3 { .. } => lofty::tag::TagType::Id3v2,
-        crate::config::ExportPresetCodec::OpusOgg { .. } => lofty::tag::TagType::VorbisComments,
-        crate::config::ExportPresetCodec::Wav { .. } => lofty::tag::TagType::RiffInfo,
-        crate::config::ExportPresetCodec::Aiff { .. } => lofty::tag::TagType::AiffText,
+        crate::config::SaveCodec::Flac { .. } => lofty::tag::TagType::VorbisComments,
+        crate::config::SaveCodec::Mp3 { .. } => lofty::tag::TagType::Id3v2,
+        crate::config::SaveCodec::OpusOgg { .. } => lofty::tag::TagType::VorbisComments,
+        crate::config::SaveCodec::Wav { .. } => lofty::tag::TagType::RiffInfo,
+        crate::config::SaveCodec::Aiff { .. } => lofty::tag::TagType::AiffText,
     };
 
     Ok((encoded_data, tag_type))
@@ -528,13 +528,13 @@ fn render_cue_sheet(
     cue
 }
 
-fn cue_file_type(codec: &crate::config::ExportPresetCodec) -> Result<&'static str, String> {
+fn cue_file_type(codec: &crate::config::SaveCodec) -> Result<&'static str, String> {
     match codec {
-        crate::config::ExportPresetCodec::Mp3 { .. } => Ok("MP3"),
-        crate::config::ExportPresetCodec::Aiff { .. } => Ok("AIFF"),
-        crate::config::ExportPresetCodec::Flac { .. }
-        | crate::config::ExportPresetCodec::Wav { .. } => Ok("WAVE"),
-        crate::config::ExportPresetCodec::OpusOgg { .. } => Err(
+        crate::config::SaveCodec::Mp3 { .. } => Ok("MP3"),
+        crate::config::SaveCodec::Aiff { .. } => Ok("AIFF"),
+        crate::config::SaveCodec::Flac { .. }
+        | crate::config::SaveCodec::Wav { .. } => Ok("WAVE"),
+        crate::config::SaveCodec::OpusOgg { .. } => Err(
             "single-file CUE export does not support Opus/Ogg because CUE has no Opus/Ogg file type"
                 .to_string(),
         ),
@@ -579,7 +579,7 @@ fn non_negative_samples(samples: Option<i64>) -> Result<u64, String> {
 fn write_tags(
     path: &Path,
     tag_type: lofty::tag::TagType,
-    tags: &crate::library::manager::ExportTags,
+    tags: &crate::library::manager::SaveTags,
     track_number: Option<u32>,
     total_tracks: u32,
     is_digital: bool,
@@ -644,7 +644,7 @@ fn write_tags(
 
 /// Decode the track's source audio (already read into the plan) to PCM, for
 /// re-encoding. Decodes each whole backing file, then trims to the sample window.
-async fn load_track_audio(plan: &mut ExportTrackPlan) -> Result<DecodedPcm, PlaybackError> {
+async fn load_track_audio(plan: &mut SaveTrackPlan) -> Result<DecodedPcm, PlaybackError> {
     let track_id = plan.audio_meta.track.id.clone();
 
     let audio_data_owned = std::mem::take(&mut plan.audio_bytes);
@@ -727,7 +727,7 @@ async fn load_track_audio(plan: &mut ExportTrackPlan) -> Result<DecodedPcm, Play
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::library::manager::{ExportTags, ResolvedExportTags};
+    use crate::library::manager::{ResolvedSaveTags, SaveTags};
 
     fn resolved(
         title: &str,
@@ -735,9 +735,9 @@ mod tests {
         total_tracks: usize,
         disc: Option<i32>,
         year: Option<i32>,
-    ) -> ResolvedExportTags {
-        ResolvedExportTags {
-            tags: ExportTags {
+    ) -> ResolvedSaveTags {
+        ResolvedSaveTags {
+            tags: SaveTags {
                 title: title.to_string(),
                 artist: "Artist Name".to_string(),
                 album: "Album Title".to_string(),
@@ -750,13 +750,13 @@ mod tests {
         }
     }
 
-    use crate::config::ExportFilenameToken::{Album, Artist, Title, TrackNumber, Year};
+    use crate::config::SaveFilenameToken::{Album, Artist, Title, TrackNumber, Year};
 
     #[test]
     fn default_pattern_all_present_pads_track_number() {
         let r = resolved("Track Title", Some(3), 10, None, Some(2001));
         assert_eq!(
-            render_export_filename(&[TrackNumber, Title], &r),
+            render_save_filename(&[TrackNumber, Title], &r),
             "03 Track Title"
         );
     }
@@ -765,7 +765,7 @@ mod tests {
     fn absent_values_drop_out_of_the_join() {
         let r = resolved("Track Title", None, 10, None, None);
         assert_eq!(
-            render_export_filename(&[TrackNumber, Title, Year], &r),
+            render_save_filename(&[TrackNumber, Title, Year], &r),
             "Track Title"
         );
     }
@@ -774,7 +774,7 @@ mod tests {
     fn full_pattern_substitutes_every_token() {
         let r = resolved("Track Title", Some(3), 10, Some(2), Some(2001));
         assert_eq!(
-            render_export_filename(&[Artist, Album, TrackNumber, Title], &r),
+            render_save_filename(&[Artist, Album, TrackNumber, Title], &r),
             "Artist Name Album Title 03 Track Title"
         );
     }
@@ -782,13 +782,13 @@ mod tests {
     #[test]
     fn slash_and_colon_become_dashes() {
         let r = resolved("Some/Weird:Title", None, 1, None, None);
-        assert_eq!(render_export_filename(&[Title], &r), "Some-Weird-Title");
+        assert_eq!(render_save_filename(&[Title], &r), "Some-Weird-Title");
     }
 
     #[test]
     fn path_escape_leaves_no_separator() {
         let r = resolved("../secret", None, 1, None, None);
-        let name = render_export_filename(&[Title], &r);
+        let name = render_save_filename(&[Title], &r);
         assert!(!name.contains('/'), "no forward slash in {name}");
         assert!(!name.contains('\\'), "no backslash in {name}");
     }
@@ -796,7 +796,7 @@ mod tests {
     #[test]
     fn empty_render_falls_back_to_title() {
         let r = resolved("Fallback Title", None, 1, None, None);
-        assert_eq!(render_export_filename(&[TrackNumber], &r), "Fallback Title");
+        assert_eq!(render_save_filename(&[TrackNumber], &r), "Fallback Title");
     }
 
     #[test]
@@ -882,7 +882,7 @@ mod tests {
             buf.into_inner()
         };
 
-        let tags = ExportTags {
+        let tags = SaveTags {
             title: "Track Title".to_string(),
             artist: "Artist Name".to_string(),
             album: "Album Title".to_string(),
@@ -932,7 +932,7 @@ mod tests {
             .collect();
         let flac = crate::audio_codec::encode_to_flac(&samples, 44100, 1, 16, &cancel).unwrap();
 
-        let tags = ExportTags {
+        let tags = SaveTags {
             title: "Track Title".to_string(),
             artist: "Artist Name".to_string(),
             album: "Album Title".to_string(),

@@ -143,7 +143,7 @@ struct LibrarySessionOpenerTests {
             maxConcurrentDownloads: 3,
             showRemainingTime: false,
                     libraryFullWidth: false,
-            exportPresets: [],
+            savePresets: [],
             defaultTrackSavePreset: "flac",
             defaultReleaseSavePreset: "flac",
             mcp: BridgeMcpConfig(enabled: false, port: 47777),

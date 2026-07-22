@@ -56,13 +56,13 @@ impl LibraryManager {
             .update(|c| c.library_full_width = enabled)
     }
 
-    pub fn export_presets(&self) -> Vec<crate::config::ExportPreset> {
-        self.config_handle.config().export_presets.clone()
+    pub fn save_presets(&self) -> Vec<crate::config::SavePreset> {
+        self.config_handle.config().save_presets.clone()
     }
 
-    pub fn set_export_presets(
+    pub fn set_save_presets(
         &self,
-        presets: Vec<crate::config::ExportPreset>,
+        presets: Vec<crate::config::SavePreset>,
     ) -> Result<(), crate::config::ConfigError> {
         let mut ids = std::collections::HashSet::new();
         for preset in &presets {
@@ -87,7 +87,7 @@ impl LibraryManager {
         };
         Self::validate_default_save_preset(&default_track, &presets, true)?;
         Self::validate_default_save_preset(&default_release, &presets, false)?;
-        self.config_handle.update(|c| c.export_presets = presets)
+        self.config_handle.update(|c| c.save_presets = presets)
     }
 
     pub fn set_default_track_save_preset(
@@ -96,7 +96,7 @@ impl LibraryManager {
     ) -> Result<(), crate::config::ConfigError> {
         Self::validate_default_save_preset(
             &preset_id,
-            &self.config_handle.config().export_presets,
+            &self.config_handle.config().save_presets,
             true,
         )?;
         self.config_handle
@@ -109,7 +109,7 @@ impl LibraryManager {
     ) -> Result<(), crate::config::ConfigError> {
         Self::validate_default_save_preset(
             &preset_id,
-            &self.config_handle.config().export_presets,
+            &self.config_handle.config().save_presets,
             false,
         )?;
         self.config_handle
@@ -121,7 +121,7 @@ impl LibraryManager {
     /// cover the level, so a stored default is never dangling or wrong-level.
     fn validate_default_save_preset(
         preset_id: &str,
-        presets: &[crate::config::ExportPreset],
+        presets: &[crate::config::SavePreset],
         track_level: bool,
     ) -> Result<(), crate::config::ConfigError> {
         let Some(preset) = presets.iter().find(|preset| preset.id == *preset_id) else {

@@ -45,7 +45,7 @@ use crate::diagnostics::{Diagnostics, SyncOperation, TelemetryEvent};
 use crate::keys::BaeStoreKeysExt;
 use crate::keys::StoreKeys;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
-use crate::library::export::ExportService;
+use crate::library::save::SaveService;
 use crate::library::sync_controller::SyncController;
 use crate::playback::QueueEntry;
 use crate::queue::QueueItem;
@@ -80,8 +80,10 @@ mod image;
 mod import;
 mod lifecycle;
 mod locality;
+mod output;
 mod playback_state;
 mod release;
+mod save;
 mod storage;
 mod sync;
 mod track;
@@ -105,6 +107,12 @@ pub enum LibraryError {
     Io(#[from] std::io::Error),
     #[error("Import error: {0}")]
     Import(String),
+    /// A verbatim release export (reproducing the imported file set) failed.
+    #[error("Export error: {0}")]
+    Export(String),
+    /// A save (rendered output — track or release) failed.
+    #[error("Save error: {0}")]
+    Save(String),
     /// A user-submitted release metadata edit failed its invariants (blank album
     /// title, no album artist). The editor's typed error, so every surface reports
     /// the same rule rather than its own hand-written sentence.
@@ -175,6 +183,8 @@ impl LibraryError {
             LibraryError::CloudSetup(_) => C::Credentials,
             LibraryError::Sync(e) => sync_category(e),
             LibraryError::Import(_) | LibraryError::Edit(_) => C::Import,
+            LibraryError::Export(_) => C::Export,
+            LibraryError::Save(_) => C::Save,
             LibraryError::MasterKey(_) => C::Keyring,
             LibraryError::Io(_)
             | LibraryError::TrackMapping(_)
@@ -386,7 +396,7 @@ pub(crate) struct ImportReplacementPlan {
 }
 
 /// All DB data needed to play or serve a track: the internal aggregate behind
-/// `resolve_track_audio`, also carried inside `ExportTrackPlan` for the export
+/// `resolve_track_audio`, also carried inside `SaveTrackPlan` for the export
 /// decoder. Callers that only need resolved playback data use
 /// `ResolvedTrackAudio`; the export path still needs the raw rows (a segment's
 /// byte range, its CUE sample bounds) for whole-file decode, so this raw shape
@@ -590,7 +600,7 @@ pub struct PlayContext {
 
 /// Tag fields to embed on an exported track file.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub struct ExportTags {
+pub struct SaveTags {
     pub title: String,
     pub artist: String,
     pub album: String,
@@ -605,54 +615,54 @@ pub struct ExportTags {
 /// from the database alone: no audio or cover read, so the filename-suggestion
 /// path can build it without touching a whole file or the cloud.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub struct ResolvedExportTags {
-    pub tags: ExportTags,
+pub struct ResolvedSaveTags {
+    pub tags: SaveTags,
     pub track_number: Option<i32>,
     pub total_tracks: usize,
     pub is_digital: bool,
 }
 
 /// Pre-assembled data for exporting a single track. Everything
-/// `ExportService::export_track` needs comes out of a single
-/// `LibraryManager::get_export_track_plan` call; the export service
+/// `SaveService::save_track` needs comes out of a single
+/// `LibraryManager::get_save_track_plan` call; the export service
 /// never chases back into the database to resolve tags, paths, or
 /// neighbours.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub struct ExportTrackPlan {
+pub struct SaveTrackPlan {
     /// Source audio files read at plan time, keyed by release file id.
-    pub(crate) audio_bytes: Vec<ExportAudioBytes>,
+    pub(crate) audio_bytes: Vec<SaveAudioBytes>,
     /// The track's tag data, exactly as the filename template and the tag writer
     /// take it — embedded rather than copied field by field, so the plan and the
     /// template always describe the same track.
-    pub resolved: ResolvedExportTags,
+    pub resolved: ResolvedSaveTags,
     /// The cover image bytes to embed, read through coven at plan time, or `None`
     /// when the album has no primary release with a cover.
     pub cover_image_bytes: Option<Vec<u8>>,
     /// The source/silence window to encode for this export. Playback uses the
     /// stored audio format directly; export can exclude or move CUE pregaps.
-    pub(crate) audio_window: ExportAudioWindow,
-    /// Raw audio-format aggregate. Held internally so `ExportService::export_track`
+    pub(crate) audio_window: SaveAudioWindow,
+    /// Raw audio-format aggregate. Held internally so `SaveService::save_track`
     /// can decode CUE-split byte ranges / APE sample bounds without re-resolving.
     pub(crate) audio_meta: TrackAudioMeta,
 }
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub(crate) struct ExportAudioBytes {
+pub(crate) struct SaveAudioBytes {
     pub file_id: String,
     pub bytes: Vec<u8>,
 }
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[derive(Debug, Clone)]
-pub(crate) struct ExportAudioWindow {
-    pub segments: Vec<ExportAudioSegmentWindow>,
+pub(crate) struct SaveAudioWindow {
+    pub segments: Vec<SaveAudioSegmentWindow>,
     pub leading_silence_samples: u64,
     pub trailing_silence_samples: u64,
 }
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[derive(Debug, Clone)]
-pub(crate) struct ExportAudioSegmentWindow {
+pub(crate) struct SaveAudioSegmentWindow {
     pub file_id: String,
     pub source_start_sample: u64,
     pub source_end_sample: Option<u64>,
@@ -818,8 +828,8 @@ pub enum LibraryEvent {
     },
     /// The in-memory export queue changed — carries the full snapshot so the
     /// Storage Manager re-renders its Exporting pane.
-    ExportQueueChanged {
-        snapshot: crate::library::ExportSnapshot,
+    OutputQueueChanged {
+        snapshot: crate::library::OutputSnapshot,
     },
 }
 /// Persistence and queries for albums, tracks, and files: import state
@@ -865,7 +875,7 @@ pub struct LibraryManager {
     /// release state — it only reads and writes to a user directory. Desktop-only:
     /// see the `export` module above.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    export_queue: Arc<crate::library::ExportQueue>,
+    output_queue: Arc<crate::library::OutputQueue>,
     /// The upload observer coven reports blob transitions to. coven holds only a
     /// `Weak` to it (through `WeakUploadObserver`), so this strong `Arc` is its
     /// sole owner and its lifetime is the manager's: when the last manager clone
@@ -985,7 +995,7 @@ impl LibraryManager {
             transfer_actions: Arc::new(Mutex::new(HashMap::new())),
             download_queue: Arc::new(crate::library::DownloadQueue::new()),
             #[cfg(not(any(target_os = "ios", target_os = "android")))]
-            export_queue: Arc::new(crate::library::ExportQueue::new()),
+            output_queue: Arc::new(crate::library::OutputQueue::new()),
             _upload_observer: Some(observer),
         };
         manager.start_queue_workers();
@@ -1040,7 +1050,7 @@ impl LibraryManager {
             transfer_actions: Arc::new(Mutex::new(HashMap::new())),
             download_queue: Arc::new(crate::library::DownloadQueue::new()),
             #[cfg(not(any(target_os = "ios", target_os = "android")))]
-            export_queue: Arc::new(crate::library::ExportQueue::new()),
+            output_queue: Arc::new(crate::library::OutputQueue::new()),
             _upload_observer: None,
         };
         manager.start_queue_workers();
@@ -1053,7 +1063,7 @@ impl LibraryManager {
         });
         #[cfg(not(any(target_os = "ios", target_os = "android")))]
         self.spawn_queue_worker(|manager| async move {
-            manager.run_export_worker().await;
+            manager.run_output_worker().await;
         });
     }
 
@@ -1301,24 +1311,24 @@ impl LibraryManager {
     }
 
     /// Build the current export-queue snapshot and emit it as
-    /// `ExportQueueChanged`. Called at every queue mutation (enqueue, worker
+    /// `OutputQueueChanged`. Called at every queue mutation (enqueue, worker
     /// pick-up, per-file progress, success, failure, cancel, retry,
     /// pause/resume) so the Storage Manager's Exporting pane stays current.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    pub(crate) fn emit_export_queue_changed(&self) {
-        self.emit(LibraryEvent::ExportQueueChanged {
-            snapshot: self.export_snapshot(),
+    pub(crate) fn emit_output_queue_changed(&self) {
+        self.emit(LibraryEvent::OutputQueueChanged {
+            snapshot: self.output_snapshot(),
         });
     }
 
     /// The current export-queue snapshot — per-release state built from the
     /// in-memory queue. Seeds the Exporting pane before the first
-    /// `ExportQueueChanged` event arrives.
+    /// `OutputQueueChanged` event arrives.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    pub fn export_snapshot(&self) -> crate::library::ExportSnapshot {
-        crate::library::export_snapshot::build_export_snapshot(
-            &self.export_queue.ops(),
-            self.export_queue.is_paused(),
+    pub fn output_snapshot(&self) -> crate::library::OutputSnapshot {
+        crate::library::output_snapshot::build_output_snapshot(
+            &self.output_queue.ops(),
+            self.output_queue.is_paused(),
         )
     }
 

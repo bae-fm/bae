@@ -832,16 +832,16 @@ pub struct ReleaseExportInput {
 }
 
 /// Acknowledges that an export was enqueued. The copy runs on the background
-/// export queue; poll `export_status` for progress.
+/// export queue; poll `output_status` for progress.
 #[derive(Debug, Clone, Serialize)]
 pub struct AutomationReleaseExport {
     pub release_id: String,
 }
 
-/// A queued export's state, mirroring bae-core's `ExportState`.
+/// A queued export's state, mirroring bae-core's `OutputState`.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "snake_case")]
-pub enum AutomationExportState {
+pub enum AutomationOutputState {
     Queued,
     Active { percent: u8 },
     Failed { error: String },
@@ -856,33 +856,33 @@ pub enum AutomationOutputKind {
     Save { preset_name: String },
 }
 
-/// One queued release output in the `export_status` snapshot.
+/// One queued release output in the `output_status` snapshot.
 #[derive(Debug, Clone, Serialize)]
-pub struct AutomationExportOp {
+pub struct AutomationOutputOp {
     pub release_id: String,
     pub target_dir: String,
     pub title: String,
     pub file_count: i64,
     pub total_size: i64,
     pub created_at: i64,
-    pub state: AutomationExportState,
+    pub state: AutomationOutputState,
     /// Whether this row is a verbatim export or a preset save.
     pub kind: AutomationOutputKind,
 }
 
 /// Per-state counts for the export queue.
 #[derive(Debug, Clone, Default, Serialize)]
-pub struct AutomationExportProgress {
+pub struct AutomationOutputProgress {
     pub queued: u32,
     pub active: u32,
     pub failed: u32,
 }
 
-/// The in-memory export queue snapshot returned by `export_status`.
+/// The in-memory export queue snapshot returned by `output_status`.
 #[derive(Debug, Clone, Serialize)]
-pub struct AutomationExportSnapshot {
-    pub exports: Vec<AutomationExportOp>,
-    pub total: AutomationExportProgress,
+pub struct AutomationOutputSnapshot {
+    pub outputs: Vec<AutomationOutputOp>,
+    pub total: AutomationOutputProgress,
     pub paused: bool,
 }
 
@@ -971,6 +971,7 @@ impl From<LibraryError> for AutomationError {
             LibraryError::Database(e) => Self::Database(e.to_string()),
             LibraryError::Io(e) => Self::Unavailable(e.to_string()),
             LibraryError::Import(e) => Self::Import(e),
+            LibraryError::Export(e) | LibraryError::Save(e) => Self::Unavailable(e),
             // A rejected metadata edit is the caller's bad input, not an import
             // failure — MCP sees it as `validation`, the kind it can act on.
             LibraryError::Edit(e) => Self::Validation(e.to_string()),
@@ -1427,8 +1428,8 @@ impl Automation {
     }
 
     /// The current export-queue snapshot: per-release state and rolled-up counts.
-    pub fn export_status(&self) -> AutomationExportSnapshot {
-        automation_export_snapshot(self.services.library_manager().export_snapshot())
+    pub fn output_status(&self) -> AutomationOutputSnapshot {
+        automation_output_snapshot(self.services.library_manager().output_snapshot())
     }
 
     pub async fn reidentify_release(
@@ -1558,9 +1559,9 @@ impl Automation {
                         .await?,
                 )
             }
-            AutomationTool::ExportStatus => {
+            AutomationTool::OutputStatus => {
                 expect_no_args(args, tool.name())?;
-                to_value(self.export_status())
+                to_value(self.output_status())
             }
             AutomationTool::ReleaseReidentify => {
                 let input: ReleaseReidentifyInput = from_value(args)?;
@@ -1603,7 +1604,7 @@ pub enum AutomationTool {
     ImportStart,
     ReleaseDetailGet,
     ReleaseExport,
-    ExportStatus,
+    OutputStatus,
     ReleaseReidentify,
     ReleaseMetadataReset,
     ReleaseMetadataUpdate,
@@ -1703,8 +1704,8 @@ impl AutomationTool {
             input: AutomationToolInput::ReleaseExport,
         },
         AutomationToolDescriptor {
-            tool: AutomationTool::ExportStatus,
-            name: "export_status",
+            tool: AutomationTool::OutputStatus,
+            name: "output_status",
             description: "Get the export queue snapshot (per-release progress)",
             input: AutomationToolInput::Empty,
         },
@@ -1870,20 +1871,20 @@ fn empty_input_schema() -> Map<String, Value> {
     schema
 }
 
-fn automation_export_snapshot(
-    snapshot: bae_core::library::ExportSnapshot,
-) -> AutomationExportSnapshot {
-    use bae_core::library::{ExportState, OutputKind};
-    let exports = snapshot
+fn automation_output_snapshot(
+    snapshot: bae_core::library::OutputSnapshot,
+) -> AutomationOutputSnapshot {
+    use bae_core::library::{OutputKind, OutputState};
+    let outputs = snapshot
         .ops
         .into_iter()
         .map(|op| {
             let state = match op.state {
-                ExportState::Queued => AutomationExportState::Queued,
-                ExportState::Active { progress } => {
-                    AutomationExportState::Active { percent: progress }
+                OutputState::Queued => AutomationOutputState::Queued,
+                OutputState::Active { progress } => {
+                    AutomationOutputState::Active { percent: progress }
                 }
-                ExportState::Failed { error } => AutomationExportState::Failed { error },
+                OutputState::Failed { error } => AutomationOutputState::Failed { error },
             };
             let kind = match op.payload.kind {
                 OutputKind::Export => AutomationOutputKind::Export,
@@ -1891,7 +1892,7 @@ fn automation_export_snapshot(
                     preset_name: preset.name,
                 },
             };
-            AutomationExportOp {
+            AutomationOutputOp {
                 release_id: op.release_id,
                 target_dir: op.payload.target_dir.to_string_lossy().to_string(),
                 title: op.title,
@@ -1903,9 +1904,9 @@ fn automation_export_snapshot(
             }
         })
         .collect();
-    AutomationExportSnapshot {
-        exports,
-        total: AutomationExportProgress {
+    AutomationOutputSnapshot {
+        outputs,
+        total: AutomationOutputProgress {
             queued: snapshot.total.queued,
             active: snapshot.total.active,
             failed: snapshot.total.failed,

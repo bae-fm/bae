@@ -76,39 +76,39 @@ async fn setup_test_manager_with_library_id(library_id: &str) -> (LibraryManager
 }
 
 #[tokio::test]
-async fn set_export_presets_rejects_removing_selected_default() {
+async fn set_save_presets_rejects_removing_selected_default() {
     let (manager, _temp_dir) = setup_test_manager().await;
     manager
         .set_default_track_save_preset("mp3".to_string())
         .unwrap();
 
     let presets_without_mp3: Vec<_> = manager
-        .export_presets()
+        .save_presets()
         .into_iter()
         .filter(|preset| preset.id != "mp3")
         .collect();
     let err = manager
-        .set_export_presets(presets_without_mp3)
+        .set_save_presets(presets_without_mp3)
         .expect_err("selected default preset cannot be removed");
 
     assert!(err.to_string().contains("unknown export preset mp3"));
     assert!(manager
-        .export_presets()
+        .save_presets()
         .iter()
         .any(|preset| preset.id == "mp3"));
 }
 
 /// A release-only preset (single-file CUE) that a track save must refuse.
 #[cfg(test)]
-fn release_only_image_preset() -> crate::config::ExportPreset {
-    crate::config::ExportPreset {
+fn release_only_image_preset() -> crate::config::SavePreset {
+    crate::config::SavePreset {
         id: "flac-image".to_string(),
         name: "FLAC image".to_string(),
-        codec: crate::config::ExportPresetCodec::Flac {
-            bit_depth: crate::config::ExportBitDepth::Source,
+        codec: crate::config::SaveCodec::Flac {
+            bit_depth: crate::config::SaveBitDepth::Source,
         },
-        filename_tokens: vec![crate::config::ExportFilenameToken::Title],
-        pregap_placement: crate::config::ExportPregapPlacement::SingleFileWithCue,
+        filename_tokens: vec![crate::config::SaveFilenameToken::Title],
+        pregap_placement: crate::config::SavePregapPlacement::SingleFileWithCue,
         applies_to_track: false,
         applies_to_release: true,
         embed_cover: true,
@@ -127,9 +127,9 @@ async fn set_default_save_preset_rejects_unknown_and_wrong_level() {
         "an unknown preset id is rejected"
     );
 
-    let mut presets = manager.export_presets();
+    let mut presets = manager.save_presets();
     presets.push(release_only_image_preset());
-    manager.set_export_presets(presets).unwrap();
+    manager.set_save_presets(presets).unwrap();
 
     assert!(
         manager
@@ -147,9 +147,9 @@ async fn set_default_save_preset_rejects_unknown_and_wrong_level() {
 #[tokio::test]
 async fn save_track_rejects_release_only_preset() {
     let (manager, _temp_dir) = setup_test_manager().await;
-    let mut presets = manager.export_presets();
+    let mut presets = manager.save_presets();
     presets.push(release_only_image_preset());
-    manager.set_export_presets(presets).unwrap();
+    manager.set_save_presets(presets).unwrap();
 
     let err = manager
         .save_track(
@@ -171,7 +171,7 @@ async fn save_track_rejects_release_only_preset() {
 async fn enqueue_release_save_captures_the_preset() {
     let (manager, temp_dir) = setup_test_manager().await;
     let release_id = insert_pinnable_release(&manager).await;
-    manager.set_exports_paused(true);
+    manager.set_outputs_paused(true);
 
     let target = temp_dir.path().join("save-out");
     manager
@@ -181,7 +181,7 @@ async fn enqueue_release_save_captures_the_preset() {
 
     // Rename the "flac" preset after enqueue; the queued save keeps the old one.
     let edited: Vec<_> = manager
-        .export_presets()
+        .save_presets()
         .into_iter()
         .map(|mut preset| {
             if preset.id == "flac" {
@@ -190,9 +190,9 @@ async fn enqueue_release_save_captures_the_preset() {
             preset
         })
         .collect();
-    manager.set_export_presets(edited).unwrap();
+    manager.set_save_presets(edited).unwrap();
 
-    let snap = manager.export_snapshot();
+    let snap = manager.output_snapshot();
     let crate::library::OutputKind::Save { preset } = &snap.ops[0].payload.kind else {
         panic!("expected a queued save op");
     };
@@ -3805,24 +3805,24 @@ enum PoisonedFragment<'a> {
 /// state (enqueue, dedup, target_dir, cancel) is observable deterministically
 /// without the export path racing the assertions.
 #[tokio::test]
-async fn export_queue_enqueue_dedups_and_cancels_while_paused() {
+async fn output_queue_enqueue_dedups_and_cancels_while_paused() {
     let (manager, temp_dir) = setup_test_manager().await;
     let release_id = insert_pinnable_release(&manager).await;
 
-    manager.set_exports_paused(true);
+    manager.set_outputs_paused(true);
 
     let target = temp_dir.path().join("export-out");
     manager
         .enqueue_export(&release_id, target.clone())
         .await
         .unwrap();
-    let snap = manager.export_snapshot();
+    let snap = manager.output_snapshot();
     assert_eq!(snap.total.queued, 1);
     assert_eq!(snap.ops.len(), 1);
     assert_eq!(snap.ops[0].title, "Test Album");
     assert_eq!(snap.ops[0].file_count, 1);
     assert_eq!(snap.ops[0].payload.target_dir, target);
-    assert_eq!(snap.ops[0].state, crate::library::ExportState::Queued);
+    assert_eq!(snap.ops[0].state, crate::library::OutputState::Queued);
     assert!(snap.paused);
 
     // Re-enqueuing the same release is a no-op: still one entry.
@@ -3830,11 +3830,11 @@ async fn export_queue_enqueue_dedups_and_cancels_while_paused() {
         .enqueue_export(&release_id, target.clone())
         .await
         .unwrap();
-    assert_eq!(manager.export_snapshot().ops.len(), 1);
+    assert_eq!(manager.output_snapshot().ops.len(), 1);
 
     // Cancel drops the entry.
-    manager.cancel_export(&release_id);
-    assert!(manager.export_snapshot().ops.is_empty());
+    manager.cancel_output(&release_id);
+    assert!(manager.output_snapshot().ops.is_empty());
 }
 
 /// The verbatim copy-out: exported bytes equal the source bytes, laid out at
@@ -3875,7 +3875,7 @@ async fn export_writes_exact_bytes_in_source_folder_and_leaves_release_remote() 
         .unwrap();
 
     // Success removes the entry from the queue.
-    let done = wait_for(|| manager.export_snapshot().ops.is_empty()).await;
+    let done = wait_for(|| manager.output_snapshot().ops.is_empty()).await;
     assert!(done, "the export should complete and clear the queue");
 
     // Byte-accuracy + folder layout.
@@ -4040,7 +4040,7 @@ async fn assert_export_rejects_invalid_path(
 }
 
 /// A write error (an unwritable target) marks the export `Failed` with a message
-/// and keeps it in the queue; `retry_exports` flips it back to `Queued`.
+/// and keeps it in the queue; `retry_outputs` flips it back to `Queued`.
 #[cfg(feature = "test-utils")]
 #[tokio::test]
 async fn export_write_error_marks_failed_and_retries() {
@@ -4068,29 +4068,29 @@ async fn export_write_error_marks_failed_and_retries() {
 
     let failed = wait_for(|| {
         matches!(
-            manager.export_snapshot().ops.first().map(|op| &op.state),
-            Some(crate::library::ExportState::Failed { .. })
+            manager.output_snapshot().ops.first().map(|op| &op.state),
+            Some(crate::library::OutputState::Failed { .. })
         )
     })
     .await;
     assert!(failed, "an unwritable target marks the export Failed");
-    assert_eq!(manager.export_snapshot().total.failed, 1);
+    assert_eq!(manager.output_snapshot().total.failed, 1);
 
     // Retry flips it back to Queued (it'll fail again, but stays tracked).
-    manager.retry_exports();
+    manager.retry_outputs();
     assert!(manager
-        .export_snapshot()
+        .output_snapshot()
         .ops
         .first()
         .is_some_and(|op| matches!(
             op.state,
-            crate::library::ExportState::Queued
-                | crate::library::ExportState::Active { .. }
-                | crate::library::ExportState::Failed { .. }
+            crate::library::OutputState::Queued
+                | crate::library::OutputState::Active { .. }
+                | crate::library::OutputState::Failed { .. }
         )));
 
-    manager.cancel_export(&release_id);
-    let cleared = wait_for(|| manager.export_snapshot().ops.is_empty()).await;
+    manager.cancel_output(&release_id);
+    let cleared = wait_for(|| manager.output_snapshot().ops.is_empty()).await;
     assert!(cleared, "cancel removes the entry");
 }
 
@@ -4138,7 +4138,7 @@ async fn export_mid_failure_leaves_no_partial_output_at_final_path() {
 
     // Pause so the source file can be deleted before the worker runs, making the
     // later read fail deterministically rather than racing the copy.
-    manager.set_exports_paused(true);
+    manager.set_outputs_paused(true);
     let target = temp_dir.path().join("export-out");
     std::fs::create_dir_all(&target).unwrap();
     manager
@@ -4146,12 +4146,12 @@ async fn export_mid_failure_leaves_no_partial_output_at_final_path() {
         .await
         .unwrap();
     std::fs::remove_file(source_dir.join("02.flac")).unwrap();
-    manager.set_exports_paused(false);
+    manager.set_outputs_paused(false);
 
     let failed = wait_for(|| {
         matches!(
-            manager.export_snapshot().ops.first().map(|op| &op.state),
-            Some(crate::library::ExportState::Failed { .. })
+            manager.output_snapshot().ops.first().map(|op| &op.state),
+            Some(crate::library::OutputState::Failed { .. })
         )
     })
     .await;

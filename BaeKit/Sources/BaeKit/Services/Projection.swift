@@ -28,7 +28,7 @@ public enum BridgeInvalidationDomain: Hashable {
     case syncStatus
     case outbox
     case downloadQueue
-    case exportQueue
+    case outputQueue
     case importCandidateList
     case importCandidate
     case watchedFolders
@@ -59,8 +59,8 @@ extension BridgeInvalidation {
             return .outbox
         case .downloadQueue:
             return .downloadQueue
-        case .exportQueue:
-            return .exportQueue
+        case .outputQueue:
+            return .outputQueue
         case .importCandidateList:
             return .importCandidateList
         case .importCandidate:

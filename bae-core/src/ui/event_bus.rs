@@ -31,7 +31,7 @@ impl UiEventBus {
             Invalidation::SyncStatus,
             Invalidation::Outbox,
             Invalidation::DownloadQueue,
-            Invalidation::ExportQueue,
+            Invalidation::OutputQueue,
         ] {
             self.invalidate(invalidation);
         }
@@ -486,8 +486,8 @@ impl UiEventBus {
                     Ok(LibraryEvent::DownloadQueueChanged { .. }) => {
                         bus.invalidate(Invalidation::DownloadQueue);
                     }
-                    Ok(LibraryEvent::ExportQueueChanged { .. }) => {
-                        bus.invalidate(Invalidation::ExportQueue);
+                    Ok(LibraryEvent::OutputQueueChanged { .. }) => {
+                        bus.invalidate(Invalidation::OutputQueue);
                     }
                     Err(tokio::sync::broadcast::error::RecvError::Lagged(n)) => {
                         tracing::warn!("Library event bus lagged by {n} events");
@@ -628,7 +628,7 @@ mod tests {
             Invalidation::SyncStatus,
             Invalidation::Outbox,
             Invalidation::DownloadQueue,
-            Invalidation::ExportQueue,
+            Invalidation::OutputQueue,
         ];
 
         for invalidation in expected {

@@ -302,49 +302,49 @@
   <data name="work.open_failed" xml:space="preserve"><value>കൃതിയുടെ വിശദാംശം തുറക്കാനായില്ല</value></data>
   <data name="work.count" xml:space="preserve"><value>{count} കൃതികൾ</value></data>
   <data name="album.count" xml:space="preserve"><value>{count} ആൽബങ്ങൾ</value></data>
-  <data name="settings.export.default_track_format" xml:space="preserve"><value>സ്ഥിര ട്രാക്ക് ഫോർമാറ്റ്</value></data>
-  <data name="settings.export.default_release_format" xml:space="preserve"><value>സ്ഥിര പതിപ്പ് ഫോർമാറ്റ്</value></data>
-  <data name="settings.export.presets" xml:space="preserve"><value>മുൻക്രമീകരണങ്ങൾ</value></data>
-  <data name="settings.export.preset_name" xml:space="preserve"><value>പേര്</value></data>
-  <data name="settings.export.preset_track" xml:space="preserve"><value>ട്രാക്ക്</value></data>
-  <data name="settings.export.preset_release" xml:space="preserve"><value>പതിപ്പ്</value></data>
-  <data name="settings.export.preset_pregap" xml:space="preserve"><value>പ്രീഗ്യാപ്</value></data>
-  <data name="settings.export.pregap.append_except_htoa" xml:space="preserve"><value>HTOA ഒഴികെ ചേർക്കുക</value></data>
-  <data name="settings.export.pregap.append_including_htoa" xml:space="preserve"><value>HTOA ഉൾപ്പെടെ ചേർക്കുക</value></data>
-  <data name="settings.export.pregap.exclude" xml:space="preserve"><value>ഒഴിവാക്കുക</value></data>
-  <data name="settings.export.pregap.single_file_with_cue" xml:space="preserve"><value>ഒറ്റ ഫയൽ + CUE</value></data>
-  <data name="settings.export.filename_format" xml:space="preserve"><value>ഫയൽനാമ ഫോർമാറ്റ്</value></data>
-  <data name="settings.export.release_exports" xml:space="preserve"><value>പതിപ്പ് കയറ്റുമതികൾ</value></data>
-  <data name="settings.export.track_exports" xml:space="preserve"><value>ട്രാക്ക് കയറ്റുമതികൾ</value></data>
-  <data name="settings.export.add_token" xml:space="preserve"><value>ചേർക്കുക:</value></data>
-  <data name="settings.export.remove_token" xml:space="preserve"><value>{token} നീക്കംചെയ്യുക</value></data>
-  <data name="settings.export.token.title" xml:space="preserve"><value>ശീർഷകം</value></data>
-  <data name="settings.export.token.artist" xml:space="preserve"><value>കലാകാരൻ</value></data>
-  <data name="settings.export.token.album" xml:space="preserve"><value>ആൽബം</value></data>
-  <data name="settings.export.token.year" xml:space="preserve"><value>വർഷം</value></data>
-  <data name="settings.export.token.track_number" xml:space="preserve"><value>ട്രാക്ക് നം.</value></data>
-  <data name="settings.export.token.disc_number" xml:space="preserve"><value>ഡിസ്ക് നം.</value></data>
-  <data name="settings.export.token.track_total" xml:space="preserve"><value>ആകെ ട്രാക്കുകൾ</value></data>
-  <data name="settings.export.sample.title" xml:space="preserve"><value>ട്രാക്ക് ശീർഷകം</value></data>
-  <data name="settings.export.sample.artist" xml:space="preserve"><value>ആർട്ടിസ്റ്റിന്റെ പേര്</value></data>
-  <data name="settings.export.sample.album" xml:space="preserve"><value>ആൽബം ശീർഷകം</value></data>
-  <data name="settings.export.preview" xml:space="preserve"><value>പ്രിവ്യൂ: {filename}</value></data>
-  <data name="settings.export.presets_footer" xml:space="preserve"><value>മുൻക്രമീകരണങ്ങൾ ട്രാക്കുകളുടെയും പതിപ്പുകളുടെയും കയറ്റുമതി മെനുവിൽ കാണാം.</value></data>
-  <data name="settings.export.preset_format" xml:space="preserve"><value>ഫോർമാറ്റ്</value></data>
-  <data name="settings.export.add_preset" xml:space="preserve"><value>മുൻക്രമീകരണം ചേർക്കുക</value></data>
-  <data name="settings.export.delete_preset" xml:space="preserve"><value>മുൻക്രമീകരണം ഇല്ലാതാക്കുക</value></data>
-  <data name="settings.export.delete_confirm" xml:space="preserve"><value>“{name}” മുൻക്രമീകരണം ഇല്ലാതാക്കണോ?</value></data>
-  <data name="settings.export.codec_mp3" xml:space="preserve"><value>MP3 {kbps} kbps</value></data>
-  <data name="settings.export.codec_opus" xml:space="preserve"><value>Opus {kbps} kbps</value></data>
-  <data name="settings.export.bit_depth.source_summary" xml:space="preserve"><value>ഉറവിട ബിറ്റ് ഡെപ്ത്</value></data>
-  <data name="settings.export.show_in_menus" xml:space="preserve"><value>ഇതിന്റെ കയറ്റുമതി മെനുവിൽ കാണിക്കുക</value></data>
-  <data name="settings.export.embed_cover" xml:space="preserve"><value>കവർ ആർട്ട് ഉൾപ്പെടുത്തുക</value></data>
-  <data name="settings.export.bit_depth_label" xml:space="preserve"><value>ബിറ്റ് ആഴം</value></data>
-  <data name="settings.export.bit_depth.source" xml:space="preserve"><value>ഉറവിടം</value></data>
-  <data name="settings.export.bit_depth.bits16" xml:space="preserve"><value>16-ബിറ്റ്</value></data>
-  <data name="settings.export.bit_depth.bits24" xml:space="preserve"><value>24-ബിറ്റ്</value></data>
-  <data name="settings.export.bit_depth.bits32" xml:space="preserve"><value>32-ബിറ്റ്</value></data>
-  <data name="settings.export.bitrate" xml:space="preserve"><value>ബിറ്റ് നിരക്ക്</value></data>
+  <data name="settings.formats.default_track_format" xml:space="preserve"><value>സ്ഥിര ട്രാക്ക് ഫോർമാറ്റ്</value></data>
+  <data name="settings.formats.default_release_format" xml:space="preserve"><value>സ്ഥിര പതിപ്പ് ഫോർമാറ്റ്</value></data>
+  <data name="settings.formats.presets" xml:space="preserve"><value>മുൻക്രമീകരണങ്ങൾ</value></data>
+  <data name="settings.formats.preset_name" xml:space="preserve"><value>പേര്</value></data>
+  <data name="settings.formats.preset_track" xml:space="preserve"><value>ട്രാക്ക്</value></data>
+  <data name="settings.formats.preset_release" xml:space="preserve"><value>പതിപ്പ്</value></data>
+  <data name="settings.formats.preset_pregap" xml:space="preserve"><value>പ്രീഗ്യാപ്</value></data>
+  <data name="settings.formats.pregap.append_except_htoa" xml:space="preserve"><value>HTOA ഒഴികെ ചേർക്കുക</value></data>
+  <data name="settings.formats.pregap.append_including_htoa" xml:space="preserve"><value>HTOA ഉൾപ്പെടെ ചേർക്കുക</value></data>
+  <data name="settings.formats.pregap.exclude" xml:space="preserve"><value>ഒഴിവാക്കുക</value></data>
+  <data name="settings.formats.pregap.single_file_with_cue" xml:space="preserve"><value>ഒറ്റ ഫയൽ + CUE</value></data>
+  <data name="settings.formats.filename_format" xml:space="preserve"><value>ഫയൽനാമ ഫോർമാറ്റ്</value></data>
+  <data name="settings.formats.release_saves" xml:space="preserve"><value>പതിപ്പ് സംരക്ഷണങ്ങൾ</value></data>
+  <data name="settings.formats.track_saves" xml:space="preserve"><value>ട്രാക്ക് സംരക്ഷണങ്ങൾ</value></data>
+  <data name="settings.formats.add_token" xml:space="preserve"><value>ചേർക്കുക:</value></data>
+  <data name="settings.formats.remove_token" xml:space="preserve"><value>{token} നീക്കംചെയ്യുക</value></data>
+  <data name="settings.formats.token.title" xml:space="preserve"><value>ശീർഷകം</value></data>
+  <data name="settings.formats.token.artist" xml:space="preserve"><value>കലാകാരൻ</value></data>
+  <data name="settings.formats.token.album" xml:space="preserve"><value>ആൽബം</value></data>
+  <data name="settings.formats.token.year" xml:space="preserve"><value>വർഷം</value></data>
+  <data name="settings.formats.token.track_number" xml:space="preserve"><value>ട്രാക്ക് നം.</value></data>
+  <data name="settings.formats.token.disc_number" xml:space="preserve"><value>ഡിസ്ക് നം.</value></data>
+  <data name="settings.formats.token.track_total" xml:space="preserve"><value>ആകെ ട്രാക്കുകൾ</value></data>
+  <data name="settings.formats.sample.title" xml:space="preserve"><value>ട്രാക്ക് ശീർഷകം</value></data>
+  <data name="settings.formats.sample.artist" xml:space="preserve"><value>ആർട്ടിസ്റ്റിന്റെ പേര്</value></data>
+  <data name="settings.formats.sample.album" xml:space="preserve"><value>ആൽബം ശീർഷകം</value></data>
+  <data name="settings.formats.preview" xml:space="preserve"><value>പ്രിവ്യൂ: {filename}</value></data>
+  <data name="settings.formats.presets_footer" xml:space="preserve"><value>മുൻക്രമീകരണങ്ങൾ ട്രാക്കുകളുടെയും പതിപ്പുകളുടെയും കയറ്റുമതി മെനുവിൽ കാണാം.</value></data>
+  <data name="settings.formats.preset_format" xml:space="preserve"><value>ഫോർമാറ്റ്</value></data>
+  <data name="settings.formats.add_preset" xml:space="preserve"><value>മുൻക്രമീകരണം ചേർക്കുക</value></data>
+  <data name="settings.formats.delete_preset" xml:space="preserve"><value>മുൻക്രമീകരണം ഇല്ലാതാക്കുക</value></data>
+  <data name="settings.formats.delete_confirm" xml:space="preserve"><value>“{name}” മുൻക്രമീകരണം ഇല്ലാതാക്കണോ?</value></data>
+  <data name="settings.formats.codec_mp3" xml:space="preserve"><value>MP3 {kbps} kbps</value></data>
+  <data name="settings.formats.codec_opus" xml:space="preserve"><value>Opus {kbps} kbps</value></data>
+  <data name="settings.formats.bit_depth.source_summary" xml:space="preserve"><value>ഉറവിട ബിറ്റ് ഡെപ്ത്</value></data>
+  <data name="settings.formats.show_in_menus" xml:space="preserve"><value>ഇതിന്റെ കയറ്റുമതി മെനുവിൽ കാണിക്കുക</value></data>
+  <data name="settings.formats.embed_cover" xml:space="preserve"><value>കവർ ആർട്ട് ഉൾപ്പെടുത്തുക</value></data>
+  <data name="settings.formats.bit_depth_label" xml:space="preserve"><value>ബിറ്റ് ആഴം</value></data>
+  <data name="settings.formats.bit_depth.source" xml:space="preserve"><value>ഉറവിടം</value></data>
+  <data name="settings.formats.bit_depth.bits16" xml:space="preserve"><value>16-ബിറ്റ്</value></data>
+  <data name="settings.formats.bit_depth.bits24" xml:space="preserve"><value>24-ബിറ്റ്</value></data>
+  <data name="settings.formats.bit_depth.bits32" xml:space="preserve"><value>32-ബിറ്റ്</value></data>
+  <data name="settings.formats.bitrate" xml:space="preserve"><value>ബിറ്റ് നിരക്ക്</value></data>
   <data name="outbox.state.uploading" xml:space="preserve"><value>അപ്ലോഡ് ചെയ്യുന്നു</value></data>
   <data name="outbox.state.queued" xml:space="preserve"><value>ക്യൂവിൽ</value></data>
   <data name="outbox.state.retrying" xml:space="preserve"><value>വീണ്ടും ശ്രമിക്കുന്നു</value></data>
@@ -392,7 +392,7 @@
   <data name="import.sort.oldest" xml:space="preserve"><value>ചേർത്ത തീയതി (പഴയത്)</value></data>
   <data name="nowplaying.show_remaining" xml:space="preserve"><value>ശേഷിക്കുന്ന സമയം കാണിക്കുക</value></data>
   <data name="nowplaying.show_elapsed" xml:space="preserve"><value>കഴിഞ്ഞ സമയം കാണിക്കുക</value></data>
-  <data name="export.title" xml:space="preserve"><value>കയറ്റുമതി ചെയ്യുന്നു</value></data>
+  <data name="output.title" xml:space="preserve"><value>കയറ്റുമതിയും സംരക്ഷണവും</value></data>
   <data name="export.state.exporting" xml:space="preserve"><value>{percent}% കയറ്റുമതി ചെയ്യുന്നു</value></data>
   <data name="export.state.saving" xml:space="preserve"><value>{percent}% സംരക്ഷിക്കുന്നു</value></data>
   <data name="import.documents" xml:space="preserve"><value>ഡോക്യുമെന്റുകൾ</value></data>

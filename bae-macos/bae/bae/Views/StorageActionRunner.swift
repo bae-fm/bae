@@ -23,7 +23,7 @@ final class StorageActionRunner {
     private let releaseEditor: ReleaseEditor
     private let sync: Sync
     private let downloads: Downloads
-    private let exports: Exports
+    private let outputs: Outputs
     private let configStore: ConfigStore
     private let uiStore: UiStore
 
@@ -35,14 +35,14 @@ final class StorageActionRunner {
         releaseEditor: ReleaseEditor,
         sync: Sync,
         downloads: Downloads,
-        exports: Exports,
+        outputs: Outputs,
         configStore: ConfigStore,
         uiStore: UiStore
     ) {
         self.releaseEditor = releaseEditor
         self.sync = sync
         self.downloads = downloads
-        self.exports = exports
+        self.outputs = outputs
         self.configStore = configStore
         self.uiStore = uiStore
     }
@@ -52,13 +52,13 @@ final class StorageActionRunner {
     /// output queue, which serializes the batch and reports progress via the
     /// Exporting pane.
     func export(releaseIds: [String]) {
-        guard let targetDir = ExportTarget.resolveExportDir() else {
+        guard let targetDir = OutputTarget.resolveExportDir() else {
             return
         }
         Task {
             for releaseId in releaseIds {
                 do {
-                    try await exports.enqueueExport(releaseId, targetDir)
+                    try await outputs.enqueueExport(releaseId, targetDir)
                 }
                 catch {
                     uiStore.showError(error)
@@ -73,7 +73,7 @@ final class StorageActionRunner {
     /// export.
     func saveAs(releaseIds: [String]) {
         guard
-            let target = ExportTarget.resolveReleaseSave(
+            let target = OutputTarget.resolveReleaseSave(
                 config: configStore.config
             )
         else {
@@ -82,7 +82,7 @@ final class StorageActionRunner {
         Task {
             for releaseId in releaseIds {
                 do {
-                    try await exports.enqueueReleaseSave(
+                    try await outputs.enqueueReleaseSave(
                         releaseId,
                         target.targetDir,
                         target.presetId

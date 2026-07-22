@@ -302,49 +302,49 @@
   <data name="work.open_failed" xml:space="preserve"><value>Данните за произведението не можаха да бъдат отворени</value></data>
   <data name="work.count" xml:space="preserve"><value>{count} произведения</value></data>
   <data name="album.count" xml:space="preserve"><value>{count} албума</value></data>
-  <data name="settings.export.default_track_format" xml:space="preserve"><value>Формат на песните по подразбиране</value></data>
-  <data name="settings.export.default_release_format" xml:space="preserve"><value>Формат на изданията по подразбиране</value></data>
-  <data name="settings.export.presets" xml:space="preserve"><value>Шаблони</value></data>
-  <data name="settings.export.preset_name" xml:space="preserve"><value>Име</value></data>
-  <data name="settings.export.preset_track" xml:space="preserve"><value>Песен</value></data>
-  <data name="settings.export.preset_release" xml:space="preserve"><value>Издание</value></data>
-  <data name="settings.export.preset_pregap" xml:space="preserve"><value>Предпауза</value></data>
-  <data name="settings.export.pregap.append_except_htoa" xml:space="preserve"><value>Добавяне без HTOA</value></data>
-  <data name="settings.export.pregap.append_including_htoa" xml:space="preserve"><value>Добавяне с HTOA</value></data>
-  <data name="settings.export.pregap.exclude" xml:space="preserve"><value>Изключване</value></data>
-  <data name="settings.export.pregap.single_file_with_cue" xml:space="preserve"><value>Един файл + CUE</value></data>
-  <data name="settings.export.filename_format" xml:space="preserve"><value>Формат на името на файла</value></data>
-  <data name="settings.export.release_exports" xml:space="preserve"><value>Експорти на издания</value></data>
-  <data name="settings.export.track_exports" xml:space="preserve"><value>Експорти на песни</value></data>
-  <data name="settings.export.add_token" xml:space="preserve"><value>Добавяне:</value></data>
-  <data name="settings.export.remove_token" xml:space="preserve"><value>Премахване на {token}</value></data>
-  <data name="settings.export.token.title" xml:space="preserve"><value>Заглавие</value></data>
-  <data name="settings.export.token.artist" xml:space="preserve"><value>Изпълнител</value></data>
-  <data name="settings.export.token.album" xml:space="preserve"><value>Албум</value></data>
-  <data name="settings.export.token.year" xml:space="preserve"><value>Година</value></data>
-  <data name="settings.export.token.track_number" xml:space="preserve"><value>№ на песен</value></data>
-  <data name="settings.export.token.disc_number" xml:space="preserve"><value>№ на диск</value></data>
-  <data name="settings.export.token.track_total" xml:space="preserve"><value>Общо песни</value></data>
-  <data name="settings.export.sample.title" xml:space="preserve"><value>Заглавие на песен</value></data>
-  <data name="settings.export.sample.artist" xml:space="preserve"><value>Име на изпълнител</value></data>
-  <data name="settings.export.sample.album" xml:space="preserve"><value>Заглавие на албум</value></data>
-  <data name="settings.export.preview" xml:space="preserve"><value>Преглед: {filename}</value></data>
-  <data name="settings.export.presets_footer" xml:space="preserve"><value>Шаблоните се показват в менюто за експорт на песни и издания.</value></data>
-  <data name="settings.export.preset_format" xml:space="preserve"><value>Формат</value></data>
-  <data name="settings.export.add_preset" xml:space="preserve"><value>Добавяне на шаблон</value></data>
-  <data name="settings.export.delete_preset" xml:space="preserve"><value>Изтриване на шаблона</value></data>
-  <data name="settings.export.delete_confirm" xml:space="preserve"><value>Да се изтрие ли шаблонът „{name}“?</value></data>
-  <data name="settings.export.codec_mp3" xml:space="preserve"><value>MP3 {kbps} kbps</value></data>
-  <data name="settings.export.codec_opus" xml:space="preserve"><value>Opus {kbps} kbps</value></data>
-  <data name="settings.export.bit_depth.source_summary" xml:space="preserve"><value>Битова дълбочина на източника</value></data>
-  <data name="settings.export.show_in_menus" xml:space="preserve"><value>Показване в менюто за експорт за</value></data>
-  <data name="settings.export.embed_cover" xml:space="preserve"><value>Вграждане на обложка</value></data>
-  <data name="settings.export.bit_depth_label" xml:space="preserve"><value>Битова дълбочина</value></data>
-  <data name="settings.export.bit_depth.source" xml:space="preserve"><value>Източник</value></data>
-  <data name="settings.export.bit_depth.bits16" xml:space="preserve"><value>16-битов</value></data>
-  <data name="settings.export.bit_depth.bits24" xml:space="preserve"><value>24-битов</value></data>
-  <data name="settings.export.bit_depth.bits32" xml:space="preserve"><value>32-битов</value></data>
-  <data name="settings.export.bitrate" xml:space="preserve"><value>Битрейт</value></data>
+  <data name="settings.formats.default_track_format" xml:space="preserve"><value>Формат на песните по подразбиране</value></data>
+  <data name="settings.formats.default_release_format" xml:space="preserve"><value>Формат на изданията по подразбиране</value></data>
+  <data name="settings.formats.presets" xml:space="preserve"><value>Шаблони</value></data>
+  <data name="settings.formats.preset_name" xml:space="preserve"><value>Име</value></data>
+  <data name="settings.formats.preset_track" xml:space="preserve"><value>Песен</value></data>
+  <data name="settings.formats.preset_release" xml:space="preserve"><value>Издание</value></data>
+  <data name="settings.formats.preset_pregap" xml:space="preserve"><value>Предпауза</value></data>
+  <data name="settings.formats.pregap.append_except_htoa" xml:space="preserve"><value>Добавяне без HTOA</value></data>
+  <data name="settings.formats.pregap.append_including_htoa" xml:space="preserve"><value>Добавяне с HTOA</value></data>
+  <data name="settings.formats.pregap.exclude" xml:space="preserve"><value>Изключване</value></data>
+  <data name="settings.formats.pregap.single_file_with_cue" xml:space="preserve"><value>Един файл + CUE</value></data>
+  <data name="settings.formats.filename_format" xml:space="preserve"><value>Формат на името на файла</value></data>
+  <data name="settings.formats.release_saves" xml:space="preserve"><value>Запазвания на издания</value></data>
+  <data name="settings.formats.track_saves" xml:space="preserve"><value>Запазвания на песни</value></data>
+  <data name="settings.formats.add_token" xml:space="preserve"><value>Добавяне:</value></data>
+  <data name="settings.formats.remove_token" xml:space="preserve"><value>Премахване на {token}</value></data>
+  <data name="settings.formats.token.title" xml:space="preserve"><value>Заглавие</value></data>
+  <data name="settings.formats.token.artist" xml:space="preserve"><value>Изпълнител</value></data>
+  <data name="settings.formats.token.album" xml:space="preserve"><value>Албум</value></data>
+  <data name="settings.formats.token.year" xml:space="preserve"><value>Година</value></data>
+  <data name="settings.formats.token.track_number" xml:space="preserve"><value>№ на песен</value></data>
+  <data name="settings.formats.token.disc_number" xml:space="preserve"><value>№ на диск</value></data>
+  <data name="settings.formats.token.track_total" xml:space="preserve"><value>Общо песни</value></data>
+  <data name="settings.formats.sample.title" xml:space="preserve"><value>Заглавие на песен</value></data>
+  <data name="settings.formats.sample.artist" xml:space="preserve"><value>Име на изпълнител</value></data>
+  <data name="settings.formats.sample.album" xml:space="preserve"><value>Заглавие на албум</value></data>
+  <data name="settings.formats.preview" xml:space="preserve"><value>Преглед: {filename}</value></data>
+  <data name="settings.formats.presets_footer" xml:space="preserve"><value>Шаблоните се показват в менюто за експорт на песни и издания.</value></data>
+  <data name="settings.formats.preset_format" xml:space="preserve"><value>Формат</value></data>
+  <data name="settings.formats.add_preset" xml:space="preserve"><value>Добавяне на шаблон</value></data>
+  <data name="settings.formats.delete_preset" xml:space="preserve"><value>Изтриване на шаблона</value></data>
+  <data name="settings.formats.delete_confirm" xml:space="preserve"><value>Да се изтрие ли шаблонът „{name}“?</value></data>
+  <data name="settings.formats.codec_mp3" xml:space="preserve"><value>MP3 {kbps} kbps</value></data>
+  <data name="settings.formats.codec_opus" xml:space="preserve"><value>Opus {kbps} kbps</value></data>
+  <data name="settings.formats.bit_depth.source_summary" xml:space="preserve"><value>Битова дълбочина на източника</value></data>
+  <data name="settings.formats.show_in_menus" xml:space="preserve"><value>Показване в менюто за експорт за</value></data>
+  <data name="settings.formats.embed_cover" xml:space="preserve"><value>Вграждане на обложка</value></data>
+  <data name="settings.formats.bit_depth_label" xml:space="preserve"><value>Битова дълбочина</value></data>
+  <data name="settings.formats.bit_depth.source" xml:space="preserve"><value>Източник</value></data>
+  <data name="settings.formats.bit_depth.bits16" xml:space="preserve"><value>16-битов</value></data>
+  <data name="settings.formats.bit_depth.bits24" xml:space="preserve"><value>24-битов</value></data>
+  <data name="settings.formats.bit_depth.bits32" xml:space="preserve"><value>32-битов</value></data>
+  <data name="settings.formats.bitrate" xml:space="preserve"><value>Битрейт</value></data>
   <data name="outbox.state.uploading" xml:space="preserve"><value>Качване</value></data>
   <data name="outbox.state.queued" xml:space="preserve"><value>В опашка</value></data>
   <data name="outbox.state.retrying" xml:space="preserve"><value>Повторен опит</value></data>
@@ -392,7 +392,7 @@
   <data name="import.sort.oldest" xml:space="preserve"><value>Дата на добавяне (най-стари)</value></data>
   <data name="nowplaying.show_remaining" xml:space="preserve"><value>показване на оставащото време</value></data>
   <data name="nowplaying.show_elapsed" xml:space="preserve"><value>показване на изминалото време</value></data>
-  <data name="export.title" xml:space="preserve"><value>експортиране</value></data>
+  <data name="output.title" xml:space="preserve"><value>експорт и запазване</value></data>
   <data name="export.state.exporting" xml:space="preserve"><value>експортиране {percent}%</value></data>
   <data name="export.state.saving" xml:space="preserve"><value>запазване {percent}%</value></data>
   <data name="import.documents" xml:space="preserve"><value>Документи</value></data>

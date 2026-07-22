@@ -6,8 +6,8 @@ import SwiftUI
 /// pattern doesn't use yet. Every edit sends the whole new token list up —
 /// the caller writes it through and the change round-trips via `configChanged`.
 struct FilenameTokenEditor: View {
-    let tokens: [BridgeExportFilenameToken]
-    let setTokens: ([BridgeExportFilenameToken]) -> Void
+    let tokens: [BridgeSaveFilenameToken]
+    let setTokens: ([BridgeSaveFilenameToken]) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -70,18 +70,18 @@ struct FilenameTokenEditor: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    private var availableTokens: [BridgeExportFilenameToken] {
-        BridgeExportFilenameToken.allTokens.filter { !tokens.contains($0) }
+    private var availableTokens: [BridgeSaveFilenameToken] {
+        BridgeSaveFilenameToken.allTokens.filter { !tokens.contains($0) }
     }
 
     /// Reinsert a dragged chip before `target`, or at the end when the drop
     /// landed on the field background rather than a chip.
     private func dropToken(
         _ items: [String],
-        before target: BridgeExportFilenameToken?
+        before target: BridgeSaveFilenameToken?
     ) -> Bool {
         guard let id = items.first,
-            let dragged = BridgeExportFilenameToken(dragId: id),
+            let dragged = BridgeSaveFilenameToken(dragId: id),
             tokens.contains(dragged),
             dragged != target
         else { return false }
@@ -98,7 +98,7 @@ struct FilenameTokenEditor: View {
 }
 
 private struct TokenChip: View {
-    let token: BridgeExportFilenameToken
+    let token: BridgeSaveFilenameToken
     let remove: () -> Void
 
     var body: some View {
@@ -195,7 +195,7 @@ struct FlowLayout: Layout {
     }
 }
 
-extension BridgeExportFilenameToken {
+extension BridgeSaveFilenameToken {
     /// Every token, in the order the "Add:" row offers them.
     static let allTokens: [Self] = [
         .trackNumber, .title, .artist, .album, .year, .discNumber, .trackTotal,
@@ -266,7 +266,7 @@ extension BridgeExportFilenameToken {
     #Preview("Filename token editor") {
         @Previewable
         @State
-        var tokens: [BridgeExportFilenameToken] = [
+        var tokens: [BridgeSaveFilenameToken] = [
             .trackNumber, .title,
         ]
         Form {
