@@ -1,7 +1,9 @@
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+use crate::types::BridgeOutputKind;
 use crate::types::{
-    BridgeConfig, BridgeDiscogsTokenStatus, BridgeMcpConfig, BridgeOutputKind, BridgeSaveBitDepth,
-    BridgeSaveCodec, BridgeSaveFilenameToken, BridgeSavePregapPlacement, BridgeSavePreset,
-    BridgeSyncConfig, BridgeSyncProvider,
+    BridgeConfig, BridgeDiscogsTokenStatus, BridgeMcpConfig, BridgeSaveBitDepth, BridgeSaveCodec,
+    BridgeSaveFilenameToken, BridgeSavePregapPlacement, BridgeSavePreset, BridgeSyncConfig,
+    BridgeSyncProvider,
 };
 
 impl BridgeSaveBitDepth {
@@ -128,6 +130,9 @@ impl BridgeSaveFilenameToken {
     }
 }
 
+// The output queue and its bridge functions are desktop-only (handle.rs gates
+// them off ios/android), so this conversion's one consumer is too.
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 impl BridgeOutputKind {
     /// Display-only: a save carries its preset's resolved name, not an id — the
     /// queue row never dereferences a preset. No `into_core`; enqueue takes a
