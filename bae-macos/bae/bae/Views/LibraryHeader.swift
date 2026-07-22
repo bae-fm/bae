@@ -25,7 +25,7 @@ struct LibraryHeader<Trailing: View>: View {
             .horizontal,
             LibraryContentContainer.horizontalPadding + 6
         )
-        .padding(.top, 56 - 42 * collapseProgress)
+        .padding(.top, 66 - 52 * collapseProgress)
         // The compact bottom inset shrinks so the heading sits low in the
         // band, with enough breathing room off the content edge.
         .padding(.bottom, 32 - 20 * collapseProgress)

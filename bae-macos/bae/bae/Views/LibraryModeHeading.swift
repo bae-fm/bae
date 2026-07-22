@@ -26,17 +26,17 @@ struct LibraryModeHeading: View {
             // separate view a menu style may reposition.
             (Text(uiStore.libraryBrowserMode.displayName)
                 .font(
-                    .system(size: 56 - 32 * collapseProgress, weight: .heavy)
+                    .system(size: 46 - 22 * collapseProgress, weight: .heavy)
                 )
-                .tracking(-1.4 + collapseProgress)
+                .tracking(-1.1 + 0.7 * collapseProgress)
                 + Text(verbatim: " ")
                 + Text(Image(systemName: "chevron.down"))
                 .font(
-                    .system(size: 16 - 7 * collapseProgress, weight: .bold)
+                    .system(size: 14 - 5 * collapseProgress, weight: .bold)
                 )
                 // Lifted off the baseline to sit optically centered on the
                 // heading's cap height.
-                .baselineOffset(14 - 9 * collapseProgress)
+                .baselineOffset(11 - 6 * collapseProgress)
                 .foregroundColor(.secondary))
                 .contentTransition(.interpolate)
                 // The heading is all caps-height glyphs, but the line box
