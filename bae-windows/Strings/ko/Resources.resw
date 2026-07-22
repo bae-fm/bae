@@ -332,6 +332,7 @@
   <data name="settings.export.preset_format" xml:space="preserve"><value>형식</value></data>
   <data name="settings.export.add_preset" xml:space="preserve"><value>프리셋 추가</value></data>
   <data name="settings.export.delete_preset" xml:space="preserve"><value>프리셋 삭제</value></data>
+  <data name="settings.export.delete_confirm" xml:space="preserve"><value>“{name}” 프리셋을 삭제하겠습니까?</value></data>
   <data name="settings.export.codec_mp3" xml:space="preserve"><value>MP3 {kbps} kbps</value></data>
   <data name="settings.export.codec_opus" xml:space="preserve"><value>Opus {kbps} kbps</value></data>
   <data name="settings.export.bit_depth.source_summary" xml:space="preserve"><value>소스 비트 심도</value></data>

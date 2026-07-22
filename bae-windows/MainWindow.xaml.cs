@@ -71,7 +71,7 @@ public sealed partial class MainWindow : Window
     private readonly StorageDialog _storageDialog;
     private readonly SettingsStore _settings;
     private readonly MembersPane _membersPane;
-    private readonly SettingsDialog _settingsDialog;
+    private readonly SettingsWindow _settingsWindow;
 
     // Drives the system media transport controls (hardware media keys + the
     // Windows media flyout) from playback events. One instance for the window's
@@ -345,16 +345,16 @@ public sealed partial class MainWindow : Window
             _import,
             _importPicker);
 
-        // The settings dialog and its store/panes. It registers its config re-read
-        // on the projection registry while open, opens the approve flow for
-        // add-device, and shares the one UpdateService with the launch-time check.
+        // The settings window and its store/panes. It registers its config
+        // re-read on the projection registry while open, opens the approve flow
+        // for add-device, and shares the one UpdateService with the launch-time
+        // check.
         _settings = new SettingsStore(_session);
         // The content column's width cap follows the synced full-width preference.
         _settings.Changed += ApplyLibraryWidth;
         _membersPane = new MembersPane(_session);
-        _settingsDialog = new SettingsDialog(
+        _settingsWindow = new SettingsWindow(
             _session,
-            () => Content.XamlRoot,
             () => WinRT.Interop.WindowNative.GetWindowHandle(this),
             DispatcherQueue,
             _settings,
@@ -362,7 +362,6 @@ public sealed partial class MainWindow : Window
             _approveDialog,
             _updateService,
             _projections,
-            text => StatusText.Text = text,
             OpenLibrary,
             CloseLibrary);
 
@@ -1550,9 +1549,9 @@ public sealed partial class MainWindow : Window
         await _storageDialog.Show();
     }
 
-    private async void OnSettingsClick(object sender, RoutedEventArgs e)
+    private void OnSettingsClick(object sender, RoutedEventArgs e)
     {
-        await _settingsDialog.Show();
+        _settingsWindow.Show();
     }
 
     // Place the window at its saved bounds and maximized state. Wrapped whole:

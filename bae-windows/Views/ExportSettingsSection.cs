@@ -21,6 +21,7 @@ internal sealed class ExportSettingsSection
     private readonly SessionStore _session;
     private readonly SettingsStore _settings;
     private readonly Func<System.Threading.Tasks.Task<string?>> _pickFolder;
+    private readonly Func<XamlRoot?> _dialogRoot;
     private readonly Action<string> _showError;
     private readonly Action _clearError;
 
@@ -31,9 +32,6 @@ internal sealed class ExportSettingsSection
     private readonly TextBlock _patternPreview = PreviewLine();
     private readonly StackPanel _presetPanel = new() { Spacing = 8 };
 
-    // Which preset expanders are open, preserved across the re-render every
-    // config invalidation triggers.
-    private readonly HashSet<string> _expandedPresetIds = new();
     private bool _rendering;
 
     // The settings snapshot the section last rendered — the list the preset
@@ -45,12 +43,14 @@ internal sealed class ExportSettingsSection
         SessionStore session,
         SettingsStore settings,
         Func<System.Threading.Tasks.Task<string?>> pickFolder,
+        Func<XamlRoot?> dialogRoot,
         Action<string> showError,
         Action clearError)
     {
         _session = session;
         _settings = settings;
         _pickFolder = pickFolder;
+        _dialogRoot = dialogRoot;
         _showError = showError;
         _clearError = clearError;
         _patternEditor = new FilenameTokenEditor(
@@ -285,23 +285,87 @@ internal sealed class ExportSettingsSection
         _presetPanel.Children.Clear();
         foreach (var preset in settings.ExportPresets)
         {
-            _presetPanel.Children.Add(PresetExpander(settings, preset));
+            _presetPanel.Children.Add(PresetRow(settings, preset));
         }
     }
 
-    private Expander PresetExpander(Settings settings, ExportPreset preset)
+    // One preset in the list: the summary row opens the edit dialog; the
+    // trailing minus removes the preset behind a confirmation. Mirrors macOS's
+    // PresetRow.
+    private Grid PresetRow(Settings settings, ExportPreset preset)
     {
-        var expander = new Expander
+        var row = new Grid { ColumnSpacing = 12 };
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+        var open = new Button
         {
-            Header = PresetHeader(preset),
-            Content = PresetEditor(settings, preset),
-            IsExpanded = _expandedPresetIds.Contains(preset.Id),
+            Content = PresetHeader(preset),
+            Background = new SolidColorBrush(Microsoft.UI.Colors.Transparent),
+            BorderThickness = new Thickness(0),
+            Padding = new Thickness(4, 6, 4, 6),
             HorizontalAlignment = HorizontalAlignment.Stretch,
             HorizontalContentAlignment = HorizontalAlignment.Stretch,
         };
-        expander.Expanding += (_, _) => _expandedPresetIds.Add(preset.Id);
-        expander.Collapsed += (_, _) => _expandedPresetIds.Remove(preset.Id);
-        return expander;
+        open.Click += async (_, _) => await ShowPresetEditor(settings, preset);
+        row.Children.Add(open);
+
+        var remove = new Button
+        {
+            // Segoe Fluent's Remove (minus) glyph.
+            Content = new FontIcon { Glyph = "\uE738", FontSize = 12 },
+            Padding = new Thickness(8, 4, 8, 5),
+            VerticalAlignment = VerticalAlignment.Center,
+        };
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(
+            remove, Loc.Chrome("settings.export.delete_preset"));
+        remove.Click += async (_, _) => await ConfirmDeletePreset(settings, preset);
+        Grid.SetColumn(remove, 1);
+        row.Children.Add(remove);
+        return row;
+    }
+
+    // The edit dialog. Every control inside writes through immediately (the
+    // dialog renders from the same mutate-and-save closures the expanders
+    // used), so Close is the only button.
+    private async System.Threading.Tasks.Task ShowPresetEditor(Settings settings, ExportPreset preset)
+    {
+        if (_dialogRoot() is not { } root)
+        {
+            return;
+        }
+        var editor = PresetEditor(settings, preset);
+        editor.MinWidth = 420;
+        var dialog = new ContentDialog
+        {
+            Title = preset.Name,
+            Content = new ScrollViewer { Content = editor },
+            CloseButtonText = Loc.Chrome("action.close"),
+            XamlRoot = root,
+        };
+        await dialog.ShowAsync();
+    }
+
+    private async System.Threading.Tasks.Task ConfirmDeletePreset(Settings settings, ExportPreset preset)
+    {
+        if (_dialogRoot() is not { } root)
+        {
+            return;
+        }
+        var dialog = new ContentDialog
+        {
+            Title = Loc.Chrome("settings.export.delete_confirm", "name", preset.Name),
+            PrimaryButtonText = Loc.Chrome("action.delete"),
+            CloseButtonText = Loc.Chrome("action.cancel"),
+            DefaultButton = ContentDialogButton.Close,
+            XamlRoot = root,
+        };
+        if (await dialog.ShowAsync() != ContentDialogResult.Primary)
+        {
+            return;
+        }
+        settings.ExportPresets.Remove(preset);
+        await SavePresets(settings.ExportPresets);
     }
 
     // The collapsed row: name over a settings summary, with the export menus
@@ -365,37 +429,56 @@ internal sealed class ExportSettingsSection
         return string.Join(" · ", parts);
     }
 
+    // A justified editor row: the label leading, the control trailing.
+    private static Grid LabeledRow(string label, FrameworkElement control)
+    {
+        var row = new Grid();
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        row.Children.Add(new TextBlock
+        {
+            Text = label,
+            VerticalAlignment = VerticalAlignment.Center,
+        });
+        Grid.SetColumn(control, 1);
+        row.Children.Add(control);
+        return row;
+    }
+
     private StackPanel PresetEditor(Settings settings, ExportPreset preset)
     {
-        var editor = new StackPanel { Spacing = 8 };
-        editor.Children.Add(PresetNameBox(settings, preset));
-        editor.Children.Add(PresetFormatCombo(settings, preset));
-        editor.Children.Add(PresetCodecControl(settings, preset));
+        // One block on a fixed rhythm, matching macOS's expanded editor.
+        var editor = new StackPanel { Spacing = 11 };
+        editor.Children.Add(LabeledRow(
+            Loc.Chrome("settings.export.preset_name"), PresetNameBox(settings, preset)));
+        editor.Children.Add(LabeledRow(
+            Loc.Chrome("settings.export.preset_format"), PresetFormatCombo(settings, preset)));
+        editor.Children.Add(PresetCodecRow(settings, preset));
         var scopes = PresetScopeBoxes(settings, preset);
-        editor.Children.Add(PresetPregapCombo(settings, preset, scopes));
-        editor.Children.Add(new TextBlock { Text = Loc.Chrome("settings.export.filename_format") });
+        editor.Children.Add(LabeledRow(
+            Loc.Chrome("settings.export.preset_pregap"),
+            PresetPregapCombo(settings, preset, scopes)));
+
+        // The filename pattern is its own tighter sub-group: label, chip
+        // field, add row, and the sample preview.
+        var filenameGroup = new StackPanel { Spacing = 6 };
+        filenameGroup.Children.Add(new TextBlock { Text = Loc.Chrome("settings.export.filename_format") });
         var patternEditor = new FilenameTokenEditor(tokens =>
         {
             preset.FilenameTokens = tokens;
             _ = SavePresets(settings.ExportPresets);
         });
         patternEditor.Render(preset.FilenameTokens);
-        editor.Children.Add(patternEditor.View);
+        filenameGroup.Children.Add(patternEditor.View);
         var preview = PreviewLine();
         preview.Text = Loc.Chrome(
             "settings.export.preview",
             "filename",
             ExportFilenameTokenDisplay.PreviewFilename(preset.FilenameTokens, preset.Extension));
-        editor.Children.Add(preview);
+        filenameGroup.Children.Add(preview);
+        editor.Children.Add(filenameGroup);
+
         editor.Children.Add(scopes.Row);
-        var delete = new Button { Content = Loc.Chrome("settings.export.delete_preset") };
-        delete.Click += async (_, _) =>
-        {
-            _expandedPresetIds.Remove(preset.Id);
-            settings.ExportPresets.Remove(preset);
-            await SavePresets(settings.ExportPresets);
-        };
-        editor.Children.Add(delete);
         return editor;
     }
 
@@ -403,13 +486,20 @@ internal sealed class ExportSettingsSection
     {
         var name = new TextBox
         {
-            Header = Loc.Chrome("settings.export.preset_name"),
             Text = preset.Name,
+            Width = 200,
         };
         async System.Threading.Tasks.Task Commit()
         {
             if (name.Text is not string text || text == preset.Name)
             {
+                return;
+            }
+            // A blank name never saves (core rejects it); snap the box back
+            // to the stored name instead of round-tripping an error.
+            if (string.IsNullOrWhiteSpace(text))
+            {
+                name.Text = preset.Name;
                 return;
             }
             preset.Name = text;
@@ -429,7 +519,7 @@ internal sealed class ExportSettingsSection
 
     private ComboBox PresetFormatCombo(Settings settings, ExportPreset preset)
     {
-        var format = new ComboBox { Header = Loc.Chrome("settings.export.preset_format") };
+        var format = new ComboBox();
         foreach (var kind in PresetKinds)
         {
             format.Items.Add(new ComboBoxItem
@@ -460,13 +550,13 @@ internal sealed class ExportSettingsSection
         return format;
     }
 
-    // The bit depth or bitrate control, per the codec family: lossless codecs
+    // The bit depth or bitrate row, per the codec family: lossless codecs
     // carry a bit depth, lossy ones a bitrate.
-    private FrameworkElement PresetCodecControl(Settings settings, ExportPreset preset)
+    private Grid PresetCodecRow(Settings settings, ExportPreset preset)
     {
         if (LosslessBitDepth(preset.Codec) is { } currentBitDepth)
         {
-            var bitDepth = new ComboBox { Header = Loc.Chrome("settings.export.bit_depth_label") };
+            var bitDepth = new ComboBox();
             foreach (var (label, value) in BitDepthChoices())
             {
                 bitDepth.Items.Add(new ComboBoxItem
@@ -494,19 +584,27 @@ internal sealed class ExportSettingsSection
                 };
                 await SavePresets(settings.ExportPresets);
             };
-            return bitDepth;
+            return LabeledRow(Loc.Chrome("settings.export.bit_depth_label"), bitDepth);
         }
 
         var bitrate = new TextBox
         {
-            Header = Loc.Chrome("settings.export.bitrate"),
             Text = (LossyBitrate(preset.Codec) ?? 0).ToString(CultureInfo.InvariantCulture),
+            Width = 96,
         };
         async System.Threading.Tasks.Task Commit()
         {
-            // An unparseable draft crosses as 0, which core rejects with the
-            // range error the alert then shows — nothing is silently kept.
-            uint.TryParse(bitrate.Text, NumberStyles.None, CultureInfo.InvariantCulture, out var kbps);
+            // Only a parseable, in-range bitrate saves (mirroring core's
+            // preset validation); anything else snaps the box back to the
+            // stored value instead of round-tripping an error.
+            if (!uint.TryParse(bitrate.Text, NumberStyles.None, CultureInfo.InvariantCulture, out var kbps)
+                || BitrateRange(preset.Codec) is not { } range
+                || kbps < range.Min
+                || kbps > range.Max)
+            {
+                bitrate.Text = (LossyBitrate(preset.Codec) ?? 0).ToString(CultureInfo.InvariantCulture);
+                return;
+            }
             if (kbps == LossyBitrate(preset.Codec))
             {
                 return;
@@ -528,7 +626,7 @@ internal sealed class ExportSettingsSection
                 await Commit();
             }
         };
-        return bitrate;
+        return LabeledRow(Loc.Chrome("settings.export.bitrate"), bitrate);
     }
 
     private (StackPanel Row, CheckBox Track, CheckBox Release) PresetScopeBoxes(
@@ -562,14 +660,10 @@ internal sealed class ExportSettingsSection
         release.Checked += async (_, _) => await Save();
         release.Unchecked += async (_, _) => await Save();
 
-        var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 12 };
-        row.Children.Add(new TextBlock
-        {
-            Text = Loc.Chrome("settings.export.show_in_menus"),
-            VerticalAlignment = VerticalAlignment.Center,
-        });
-        row.Children.Add(track);
-        row.Children.Add(release);
+        var boxes = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 12 };
+        boxes.Children.Add(track);
+        boxes.Children.Add(release);
+        var row = LabeledRow(Loc.Chrome("settings.export.show_in_menus"), boxes);
         return (row, track, release);
     }
 
@@ -578,7 +672,7 @@ internal sealed class ExportSettingsSection
         ExportPreset preset,
         (StackPanel Row, CheckBox Track, CheckBox Release) scopes)
     {
-        var pregap = new ComboBox { Header = Loc.Chrome("settings.export.preset_pregap") };
+        var pregap = new ComboBox();
         foreach (var (label, value) in PregapChoices(preset.Codec))
         {
             pregap.Items.Add(new ComboBoxItem
@@ -651,7 +745,6 @@ internal sealed class ExportSettingsSection
             AppliesToTrack = true,
             AppliesToRelease = true,
         };
-        _expandedPresetIds.Add(preset.Id);
         settings.ExportPresets.Add(preset);
         await SavePresets(settings.ExportPresets);
     }
@@ -741,6 +834,15 @@ internal sealed class ExportSettingsSection
     {
         BridgeExportPresetCodec.Mp3 mp3 => mp3.BitrateKbps,
         BridgeExportPresetCodec.OpusOgg opus => opus.BitrateKbps,
+        _ => null,
+    };
+
+    // The bitrate range core's preset validation accepts for the lossy
+    // families; null for lossless, which carry no bitrate.
+    private static (uint Min, uint Max)? BitrateRange(BridgeExportPresetCodec codec) => codec switch
+    {
+        BridgeExportPresetCodec.Mp3 => (32u, 320u),
+        BridgeExportPresetCodec.OpusOgg => (32u, 512u),
         _ => null,
     };
 

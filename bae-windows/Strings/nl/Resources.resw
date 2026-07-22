@@ -332,6 +332,7 @@
   <data name="settings.export.preset_format" xml:space="preserve"><value>Formaat</value></data>
   <data name="settings.export.add_preset" xml:space="preserve"><value>Voeg preset toe</value></data>
   <data name="settings.export.delete_preset" xml:space="preserve"><value>Preset verwijderen</value></data>
+  <data name="settings.export.delete_confirm" xml:space="preserve"><value>Preset '{name}' verwijderen?</value></data>
   <data name="settings.export.codec_mp3" xml:space="preserve"><value>MP3 {kbps} kbps</value></data>
   <data name="settings.export.codec_opus" xml:space="preserve"><value>Opus {kbps} kbps</value></data>
   <data name="settings.export.bit_depth.source_summary" xml:space="preserve"><value>Bitdiepte van bron</value></data>

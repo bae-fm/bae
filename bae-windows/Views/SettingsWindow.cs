@@ -13,17 +13,17 @@ using DispatcherQueue = Microsoft.UI.Dispatching.DispatcherQueue;
 
 namespace Bae.Windows;
 
-// The settings dialog: Discogs key, cloud sync (disconnect / S3 / OAuth), export
-// template and presets, MCP automation, devices, recovery code, updates, lock,
-// and remove. Reads the current settings through the settings store and
-// re-renders when a config invalidation (or an in-dialog connect/disconnect)
-// reloads them; those registrations live only while the dialog is open. The
-// lock, remove, add-device, and apply-update flows close the dialog and run
-// after it returns (a nested ContentDialog can't open over it).
-internal sealed class SettingsDialog
+// The settings window: Discogs key, cloud sync (disconnect / S3 / OAuth),
+// export destination/pattern/presets, MCP automation, devices, recovery code,
+// updates, lock, and remove. Reads the current settings through the settings
+// store and re-renders when a config invalidation (or an in-window
+// connect/disconnect) reloads them; those registrations live only while the
+// window is open. Being a window rather than a ContentDialog, dialogs (the
+// preset editor, confirmations, the approve flow) open over it directly — the
+// old close-and-run-after dances are gone.
+internal sealed class SettingsWindow
 {
     private readonly SessionStore _session;
-    private readonly Func<XamlRoot?> _xamlRoot;
     private readonly Func<IntPtr> _windowHandle;
     private readonly DispatcherQueue _dispatcher;
     private readonly SettingsStore _settings;
@@ -31,13 +31,15 @@ internal sealed class SettingsDialog
     private readonly ApproveDeviceDialog _approveDialog;
     private readonly UpdateService _updateService;
     private readonly ProjectionRegistry _projections;
-    private readonly Action<string> _setStatus;
     private readonly Action<string> _openLibrary;
     private readonly Func<System.Threading.Tasks.Task> _closeToWelcome;
 
-    public SettingsDialog(
+    // The one open settings window; Show re-activates it instead of stacking
+    // a second.
+    private Window? _window;
+
+    public SettingsWindow(
         SessionStore session,
-        Func<XamlRoot?> xamlRoot,
         Func<IntPtr> windowHandle,
         DispatcherQueue dispatcher,
         SettingsStore settings,
@@ -45,12 +47,10 @@ internal sealed class SettingsDialog
         ApproveDeviceDialog approveDialog,
         UpdateService updateService,
         ProjectionRegistry projections,
-        Action<string> setStatus,
         Action<string> openLibrary,
         Func<System.Threading.Tasks.Task> closeToWelcome)
     {
         _session = session;
-        _xamlRoot = xamlRoot;
         _windowHandle = windowHandle;
         _dispatcher = dispatcher;
         _settings = settings;
@@ -58,13 +58,17 @@ internal sealed class SettingsDialog
         _approveDialog = approveDialog;
         _updateService = updateService;
         _projections = projections;
-        _setStatus = setStatus;
         _openLibrary = openLibrary;
         _closeToWelcome = closeToWelcome;
     }
 
-    public async System.Threading.Tasks.Task Show()
+    public void Show()
     {
+        if (_window is { } open)
+        {
+            open.Activate();
+            return;
+        }
         if (_session.CurrentHandleOrNull() == null)
         {
             return;
@@ -224,7 +228,6 @@ internal sealed class SettingsDialog
         var syncStatus = new TextBlock { Text = s.SyncStatusText };
         // Two-step disconnect: the first click surfaces the data-loss warning (when
         // releases live only in the cloud) inline and arms; the second confirms.
-        // A nested ContentDialog can't open over the settings dialog.
         var disconnect = new Button { Content = Loc.Chrome("settings.sync.disconnect") };
         var disconnectArmed = false;
         disconnect.Click += async (_, _) =>
@@ -392,7 +395,12 @@ internal sealed class SettingsDialog
         // The section renders from the settings re-read and writes through the
         // bridge; errors land in the shared settings error line.
         var exportSection = new ExportSettingsSection(
-            _session, _settings, PickExportFolder, ShowSettingsError, ClearSettingsError);
+            _session,
+            _settings,
+            PickExportFolder,
+            () => _window?.Content.XamlRoot,
+            ShowSettingsError,
+            ClearSettingsError);
 
         var automationLabel = new TextBlock
         {
@@ -603,7 +611,6 @@ internal sealed class SettingsDialog
         // "this device" marker. The owner can add a device (which opens the
         // approve flow) or remove one (which rotates the library key). The list
         // loads off the UI thread; the add-device button only renders for an owner.
-        var addDeviceRequested = false;
         content.Children.Add(new TextBlock
         {
             Text = Loc.Chrome("members.title"),
@@ -668,7 +675,6 @@ internal sealed class SettingsDialog
             Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray),
         });
 
-        var restartUpdateRequested = false;
         Button? updateRestartButton = null;
         Action? unsubscribeUpdates = null;
         if (_updateService.IsAvailable)
@@ -705,9 +711,9 @@ internal sealed class SettingsDialog
             checkUpdates.Click += async (_, _) => await _updateService.CheckAsync();
 
             // State transitions arrive on a worker thread; marshal to the UI
-            // thread. Subscribed for the dialog's lifetime, so reopening settings
-            // reflects a background download that finished while it was closed
-            // (the phase lives on the service, not the dialog).
+            // thread. Subscribed for the window's lifetime, so reopening
+            // settings reflects a background download that finished while it
+            // was closed (the phase lives on the service, not the window).
             void OnUpdateStateChanged(UpdateFlowState state) =>
                 _dispatcher.TryEnqueue(() => RenderUpdates(state));
             _updateService.StateChanged += OnUpdateStateChanged;
@@ -721,7 +727,6 @@ internal sealed class SettingsDialog
 
         // Lock this library: forget its encryption key on this device. Sync stops
         // and the library reopens to the unlock prompt; local files stay.
-        var lockRequested = false;
         var lockButton = new Button { Content = Loc.Chrome("settings.lock_library") };
         content.Children.Add(lockButton);
 
@@ -730,11 +735,8 @@ internal sealed class SettingsDialog
         // any cloud copy untouched. Two-step armed confirm, like disconnect: the
         // first click reads the outbox snapshot off the UI thread to decide
         // whether to call out unlanded cloud work, renders the confirmation body
-        // inline, and arms; the second click requests the forget and closes the
-        // dialog — the destructive work runs after ShowAsync returns (the
-        // post-close dance, like lock), because a nested ContentDialog can't
-        // open over this one.
-        var forgetRequested = false;
+        // inline, and arms; the second click forgets the library and closes the
+        // window.
         var removeArmed = false;
         content.Children.Add(new TextBlock
         {
@@ -758,17 +760,31 @@ internal sealed class SettingsDialog
         };
         content.Children.Add(removeConfirmText);
 
-        var dialog = new ContentDialog
+        var window = new Window { Title = Loc.Chrome("settings.title") };
+        window.Content = new ScrollViewer
         {
-            Title = Loc.Chrome("settings.title"),
-            Content = new ScrollViewer { Content = content },
-            CloseButtonText = Loc.Chrome("action.close"),
-            XamlRoot = _xamlRoot(),
+            Content = content,
+            Padding = new Thickness(24, 16, 24, 24),
         };
-        lockButton.Click += (_, _) =>
+        _window = window;
+
+        lockButton.Click += async (_, _) =>
         {
-            lockRequested = true;
-            dialog.Hide();
+            var (lockCurrent, error) = await _session.RunForCurrentHandle(NativeBae.LockActiveLibrary);
+            if (!lockCurrent)
+            {
+                return;
+            }
+            if (error is not null)
+            {
+                ShowSettingsError(error);
+                return;
+            }
+
+            // The key is forgotten now, so re-opening lands on the unlock prompt.
+            window.Close();
+            await _session.ShutdownAndFreeCurrentHandle();
+            _openLibrary(s.LibraryId);
         };
         removeButton.Click += async (_, _) =>
         {
@@ -798,34 +814,55 @@ internal sealed class SettingsDialog
                 return;
             }
 
-            forgetRequested = true;
-            dialog.Hide();
+            var (forgetCurrent, error) = await _session.RunForCurrentHandle(NativeBae.ForgetLibrary);
+            if (!forgetCurrent)
+            {
+                return;
+            }
+            if (error is not null)
+            {
+                ShowSettingsError(Loc.Chrome("settings.remove.failed", "error", error));
+                return;
+            }
+
+            // The local directory is gone; tear the handle down and return to
+            // the welcome chooser, mirroring macOS's closeLibrary().
+            window.Close();
+            await _closeToWelcome();
         };
 
-        // The restart button applies a staged update: hide the dialog and run the
-        // apply after ShowAsync returns (a nested dialog can't open over this one,
-        // same as the lock dance). Only wired when the updates section rendered it.
+        // The restart button applies a staged update. ApplyUpdatesAndRestart
+        // exits the process, so this is a second app-exit path: flush telemetry
+        // through the standalone sink first, then gate the state-saving
+        // shutdown on the same restore-on-launch preference OnClosed does.
+        // Only wired when the updates section rendered it.
         if (updateRestartButton is not null)
         {
-            updateRestartButton.Click += (_, _) =>
+            updateRestartButton.Click += async (_, _) =>
             {
-                restartUpdateRequested = true;
-                dialog.Hide();
+                window.Close();
+                BaeDiagnostics.Flush();
+                if (PersistPlaybackStore.Load())
+                {
+                    await _session.ShutdownAndFreeCurrentHandle();
+                }
+                _updateService.ApplyAndRestart();
             };
         }
 
-        // Now that the dialog exists, load the device list into its placeholder.
-        // The add-device button (owner-only) arms the approve flow and closes the
-        // settings dialog — a nested ContentDialog can't open over it, so the
-        // approve flow runs after this one returns (mirroring the lock dance).
-        _ = _membersPane.LoadInto(membersHost, () =>
+        // Load the device list into its placeholder. The add-device button
+        // (owner-only) runs the approve flow's dialog over the main window —
+        // the settings window stays open — and refreshes the device list when
+        // the flow finishes.
+        async void OnAddDevice()
         {
-            addDeviceRequested = true;
-            dialog.Hide();
-        });
+            await _approveDialog.Show();
+            _ = _membersPane.LoadInto(membersHost, OnAddDevice);
+        }
+        _ = _membersPane.LoadInto(membersHost, OnAddDevice);
 
         // Re-read the (generated bridge-pre-computed) settings into the live labels so a
-        // config invalidation — or a connect/disconnect in this dialog — updates
+        // config invalidation — or a connect/disconnect in this window — updates
         // them in place instead of requiring a reopen. The store's Reload raises
         // Changed; this renders from its fresh snapshot.
         void Refresh()
@@ -846,8 +883,8 @@ internal sealed class SettingsDialog
             removeFooter.Text = Loc.Chrome(ForgetLibraryModel.FooterKey(fresh.HasCloudHome));
         }
         _settings.Changed += Refresh;
-        // A config invalidation reloads the store while the dialog is open; the
-        // registration is disposed on close.
+        // A config invalidation reloads the store while the window is open;
+        // the registration is disposed on close.
         var configRegistration = _projections.Register(
             typeof(BridgeInvalidation.Config), () => _settings.Reload());
 
@@ -857,72 +894,21 @@ internal sealed class SettingsDialog
         // on a result it changes the status, firing a config invalidation.
         _ = _session.RunForCurrentHandle(NativeBae.RevalidateDiscogsToken);
 
-        await dialog.ShowAsync();
-        _settings.Changed -= Refresh;
-        configRegistration.Dispose();
-        unsubscribeUpdates?.Invoke();
-
-        if (restartUpdateRequested)
+        // Closed fires for the user's close chrome and for every flow above
+        // that calls window.Close().
+        window.Closed += (_, _) =>
         {
-            // ApplyUpdatesAndRestart exits the process, so this is a second
-            // app-exit path: flush telemetry through the standalone sink first,
-            // then gate the state-saving shutdown on the same restore-on-launch
-            // preference OnClosed does — the work OnClosed would otherwise do.
-            BaeDiagnostics.Flush();
-            if (PersistPlaybackStore.Load())
-            {
-                await _session.ShutdownAndFreeCurrentHandle();
-            }
-            _updateService.ApplyAndRestart();
-            return;
-        }
+            _settings.Changed -= Refresh;
+            configRegistration.Dispose();
+            unsubscribeUpdates?.Invoke();
+            _window = null;
+        };
 
-        if (lockRequested)
-        {
-            var (lockCurrent, error) = await _session.RunForCurrentHandle(NativeBae.LockActiveLibrary);
-            if (!lockCurrent)
-            {
-                return;
-            }
-            if (error is not null)
-            {
-                _setStatus(error);
-                return;
-            }
-
-            // The key is forgotten now, so re-opening lands on the unlock prompt.
-            await _session.ShutdownAndFreeCurrentHandle();
-
-            _openLibrary(s.LibraryId);
-            return;
-        }
-
-        if (forgetRequested)
-        {
-            var (forgetCurrent, error) = await _session.RunForCurrentHandle(NativeBae.ForgetLibrary);
-            if (!forgetCurrent)
-            {
-                return;
-            }
-            if (error is not null)
-            {
-                _setStatus(Loc.Chrome("settings.remove.failed", "error", error));
-                return;
-            }
-
-            // The local directory is gone; tear the handle down and return to
-            // the welcome chooser, mirroring macOS's closeLibrary().
-            await _closeToWelcome();
-            return;
-        }
-
-        // Add-a-device closed settings to open the approve flow (no nested
-        // dialogs). Run it, then reopen settings so the refreshed device list
-        // shows the newly-approved device.
-        if (addDeviceRequested)
-        {
-            await _approveDialog.Show();
-            await Show();
-        }
+        window.Activate();
+        // Size the client area; AppWindow speaks physical pixels, so scale by
+        // the live rasterization factor.
+        var scale = window.Content.XamlRoot?.RasterizationScale ?? 1.0;
+        window.AppWindow.ResizeClient(new global::Windows.Graphics.SizeInt32(
+            (int)(560 * scale), (int)(760 * scale)));
     }
 }
