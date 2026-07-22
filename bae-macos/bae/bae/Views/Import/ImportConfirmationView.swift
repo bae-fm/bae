@@ -639,8 +639,8 @@ struct CoverPickerView: View {
                         showRemainingTime: false,
                         libraryFullWidth: false,
                         exportLocation: .askEachTime,
-                        exportFilenameTemplate: PreviewData
-                            .exportFilenameTemplate,
+                        exportFilenameTokens: PreviewData
+                            .exportFilenameTokens,
                         exportPresets: PreviewData.exportPresets,
                         defaultTrackExportSelection: .original,
                         defaultReleaseExportSelection: .original,

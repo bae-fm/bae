@@ -307,25 +307,41 @@
   <data name="settings.export.preset_track" xml:space="preserve"><value>ટ્રૅક</value></data>
   <data name="settings.export.preset_release" xml:space="preserve"><value>પ્રકાશન</value></data>
   <data name="settings.export.preset_pregap" xml:space="preserve"><value>પૂર્વવિરામ</value></data>
-  <data name="settings.export.add_flac" xml:space="preserve"><value>FLAC ઉમેરો</value></data>
-  <data name="settings.export.add_mp3" xml:space="preserve"><value>MP3 ઉમેરો</value></data>
-  <data name="settings.export.add_opus" xml:space="preserve"><value>Opus ઉમેરો</value></data>
-  <data name="settings.export.add_wav" xml:space="preserve"><value>WAV ઉમેરો</value></data>
-  <data name="settings.export.add_aiff" xml:space="preserve"><value>AIFF ઉમેરો</value></data>
   <data name="settings.export.pregap.append_except_htoa" xml:space="preserve"><value>HTOA સિવાય ઉમેરો</value></data>
   <data name="settings.export.pregap.append_including_htoa" xml:space="preserve"><value>HTOA સહિત ઉમેરો</value></data>
   <data name="settings.export.pregap.exclude" xml:space="preserve"><value>બાકાત કરો</value></data>
   <data name="settings.export.pregap.single_file_with_cue" xml:space="preserve"><value>એક ફાઇલ + CUE</value></data>
-  <data name="action.remove" xml:space="preserve"><value>દૂર કરો</value></data>
   <data name="settings.export.filename_format" xml:space="preserve"><value>ફાઇલનામ બંધારણ</value></data>
-  <data name="settings.export.tokens_help" xml:space="preserve"><value>ઉપલબ્ધ ટોકન: {title} {artist} {album} {year} {track_number} {disc_number} {track_total}</value></data>
+  <data name="settings.export.release_exports" xml:space="preserve"><value>પ્રકાશન નિકાસો</value></data>
+  <data name="settings.export.track_exports" xml:space="preserve"><value>ટ્રૅક નિકાસો</value></data>
+  <data name="settings.export.choose_folder" xml:space="preserve"><value>અન્ય…</value></data>
+  <data name="settings.export.add_token" xml:space="preserve"><value>ઉમેરો:</value></data>
+  <data name="settings.export.remove_token" xml:space="preserve"><value>{token} દૂર કરો</value></data>
+  <data name="settings.export.token.title" xml:space="preserve"><value>શીર્ષક</value></data>
+  <data name="settings.export.token.artist" xml:space="preserve"><value>કલાકાર</value></data>
+  <data name="settings.export.token.album" xml:space="preserve"><value>એલ્બમ</value></data>
+  <data name="settings.export.token.year" xml:space="preserve"><value>વર્ષ</value></data>
+  <data name="settings.export.token.track_number" xml:space="preserve"><value>ટ્રૅક નં.</value></data>
+  <data name="settings.export.token.disc_number" xml:space="preserve"><value>ડિસ્ક નં.</value></data>
+  <data name="settings.export.token.track_total" xml:space="preserve"><value>કુલ ટ્રૅક</value></data>
+  <data name="settings.export.sample.title" xml:space="preserve"><value>ટ્રૅક શીર્ષક</value></data>
+  <data name="settings.export.sample.artist" xml:space="preserve"><value>કલાકારનું નામ</value></data>
+  <data name="settings.export.sample.album" xml:space="preserve"><value>આલ્બમ શીર્ષક</value></data>
+  <data name="settings.export.preview" xml:space="preserve"><value>પૂર્વાવલોકન: {filename}</value></data>
+  <data name="settings.export.presets_footer" xml:space="preserve"><value>પૂર્વનિયોજનો ટ્રૅક અને પ્રકાશનોના નિકાસ મેનૂમાં દેખાય છે.</value></data>
+  <data name="settings.export.preset_format" xml:space="preserve"><value>બંધારણ</value></data>
+  <data name="settings.export.add_preset" xml:space="preserve"><value>પૂર્વનિયોજન ઉમેરો</value></data>
+  <data name="settings.export.delete_preset" xml:space="preserve"><value>પૂર્વનિયોજન કાઢી નાખો</value></data>
+  <data name="settings.export.codec_mp3" xml:space="preserve"><value>MP3 {kbps} kbps</value></data>
+  <data name="settings.export.codec_opus" xml:space="preserve"><value>Opus {kbps} kbps</value></data>
+  <data name="settings.export.bit_depth.source_summary" xml:space="preserve"><value>સ્રોતની બિટ ઊંડાઈ</value></data>
+  <data name="settings.export.show_in_menus" xml:space="preserve"><value>આના નિકાસ મેનૂમાં બતાવો</value></data>
   <data name="settings.export.bit_depth_label" xml:space="preserve"><value>બિટ ઊંડાઈ</value></data>
   <data name="settings.export.bit_depth.source" xml:space="preserve"><value>સ્રોત</value></data>
   <data name="settings.export.bit_depth.bits16" xml:space="preserve"><value>16-bit</value></data>
   <data name="settings.export.bit_depth.bits24" xml:space="preserve"><value>24-bit</value></data>
   <data name="settings.export.bit_depth.bits32" xml:space="preserve"><value>32-bit</value></data>
   <data name="settings.export.bitrate" xml:space="preserve"><value>બિટદર</value></data>
-  <data name="settings.export.save_failed" xml:space="preserve"><value>નિકાસ સેટિંગ્સ સાચવી શકાઈ નહીં</value></data>
   <data name="outbox.state.uploading" xml:space="preserve"><value>અપલોડ થઈ રહ્યું છે</value></data>
   <data name="outbox.state.queued" xml:space="preserve"><value>કતારમાં</value></data>
   <data name="outbox.state.retrying" xml:space="preserve"><value>ફરી પ્રયાસ થઈ રહ્યો છે</value></data>
@@ -375,11 +391,8 @@
   <data name="nowplaying.show_elapsed" xml:space="preserve"><value>વીતેલો સમય બતાવો</value></data>
   <data name="export.title" xml:space="preserve"><value>નિકાસ થઈ રહી છે</value></data>
   <data name="export.state.exporting" xml:space="preserve"><value>{percent}% નિકાસ થઈ રહી છે</value></data>
-  <data name="settings.export.save_to_folder" xml:space="preserve"><value>ફોલ્ડરમાં સાચવો</value></data>
   <data name="settings.export.ask_each_time" xml:space="preserve"><value>દર વખત પૂછો</value></data>
   <data name="settings.export.location" xml:space="preserve"><value>સ્થાન</value></data>
-  <data name="settings.export.change_folder" xml:space="preserve"><value>બદલો</value></data>
-  <data name="settings.export.no_folder" xml:space="preserve"><value>કોઈ ફોલ્ડર પસંદ કર્યું નથી</value></data>
   <data name="import.documents" xml:space="preserve"><value>દસ્તાવેજો</value></data>
   <data name="import.document.read_failed" xml:space="preserve"><value>{name} વાંચી શકાયું નહીં: {error}</value></data>
   <data name="libraries.reveal" xml:space="preserve"><value>ફાઇલ એક્સપ્લોરરમાં બતાવો</value></data>

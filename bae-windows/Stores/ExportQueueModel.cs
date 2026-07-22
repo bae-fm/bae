@@ -45,14 +45,9 @@ public static class ExportQueueModel
     public static string? DestinationFor(bool isFixed, string? fixedDir) =>
         isFixed && !string.IsNullOrWhiteSpace(fixedDir) ? fixedDir : null;
 
-    // The path shown in the settings Location row: the configured folder when
-    // fixed, else the last-remembered folder, else null (the caller shows the
-    // no-folder placeholder).
-    public static string? LocationRowPath(bool isFixed, string? fixedDir, string? remembered) =>
-        isFixed ? fixedDir : remembered;
-
-    // Selecting "save to a folder" prompts when nothing is remembered;
-    // otherwise the remembered folder is applied directly.
-    public static bool FixedSelectionNeedsPrompt(string? remembered) =>
-        string.IsNullOrWhiteSpace(remembered);
+    // The folder entry the settings Location popup offers: the configured
+    // folder when fixed, else the last-remembered folder, else null (no folder
+    // entry on the menu).
+    public static string? OfferedFolder(bool isFixed, string? fixedDir, string? remembered) =>
+        isFixed ? fixedDir : string.IsNullOrWhiteSpace(remembered) ? null : remembered;
 }

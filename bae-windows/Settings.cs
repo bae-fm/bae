@@ -37,8 +37,9 @@ public sealed class Settings
     /// <summary>Where release exports write: a fixed folder, or prompt each time.</summary>
     internal BridgeExportLocation ExportLocation { get; set; } = new BridgeExportLocation.AskEachTime();
 
-    /// <summary>Template rendering a single-track export's suggested filename.</summary>
-    public string ExportFilenameTemplate { get; set; } = string.Empty;
+    /// <summary>The ordered token list rendering a single-track export's
+    /// suggested filename.</summary>
+    internal List<BridgeExportFilenameToken> ExportFilenameTokens { get; set; } = new();
 
     /// <summary>Configured export presets offered by release and track export.</summary>
     public List<ExportPreset> ExportPresets { get; set; } = new();
@@ -169,7 +170,7 @@ public sealed class ExportPreset
     public string Name { get; set; } = string.Empty;
     internal BridgeExportPresetCodec Codec { get; set; } = new BridgeExportPresetCodec.Flac(BridgeExportBitDepth.Source);
     public string Extension { get; set; } = string.Empty;
-    public string FilenameTemplate { get; set; } = string.Empty;
+    internal List<BridgeExportFilenameToken> FilenameTokens { get; set; } = new();
     internal BridgeExportPregapPlacement PregapPlacement { get; set; } = BridgeExportPregapPlacement.AppendToPreviousExceptHtoa;
     public bool AppliesToTrack { get; set; }
     public bool AppliesToRelease { get; set; }

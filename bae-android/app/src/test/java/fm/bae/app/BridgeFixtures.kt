@@ -11,6 +11,7 @@ import uniffi.bae_bridge.BridgeDownloadOp
 import uniffi.bae_bridge.BridgeDownloadProgress
 import uniffi.bae_bridge.BridgeDownloadSnapshot
 import uniffi.bae_bridge.BridgeDownloadState
+import uniffi.bae_bridge.BridgeExportFilenameToken
 import uniffi.bae_bridge.BridgeExportLocation
 import uniffi.bae_bridge.BridgeExportSelection
 import uniffi.bae_bridge.BridgeGalleryItem
@@ -247,7 +248,8 @@ object BridgeFixtures {
             showRemainingTime = false,
             libraryFullWidth = false,
             exportLocation = BridgeExportLocation.AskEachTime,
-            exportFilenameTemplate = "{track_number} - {title}",
+            exportFilenameTokens =
+                listOf(BridgeExportFilenameToken.TRACK_NUMBER, BridgeExportFilenameToken.TITLE),
             exportPresets = emptyList(),
             defaultTrackExportSelection = BridgeExportSelection.Original,
             defaultReleaseExportSelection = BridgeExportSelection.Original,

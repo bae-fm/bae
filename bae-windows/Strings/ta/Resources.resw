@@ -307,25 +307,41 @@
   <data name="settings.export.preset_track" xml:space="preserve"><value>பாடல்</value></data>
   <data name="settings.export.preset_release" xml:space="preserve"><value>வெளியீடு</value></data>
   <data name="settings.export.preset_pregap" xml:space="preserve"><value>முன் இடைவெளி</value></data>
-  <data name="settings.export.add_flac" xml:space="preserve"><value>FLAC சேர்க்கவும்</value></data>
-  <data name="settings.export.add_mp3" xml:space="preserve"><value>MP3 சேர்க்கவும்</value></data>
-  <data name="settings.export.add_opus" xml:space="preserve"><value>Opus சேர்க்கவும்</value></data>
-  <data name="settings.export.add_wav" xml:space="preserve"><value>WAV சேர்க்கவும்</value></data>
-  <data name="settings.export.add_aiff" xml:space="preserve"><value>AIFF சேர்க்கவும்</value></data>
   <data name="settings.export.pregap.append_except_htoa" xml:space="preserve"><value>HTOA தவிர இணைக்கவும்</value></data>
   <data name="settings.export.pregap.append_including_htoa" xml:space="preserve"><value>HTOA உட்பட இணைக்கவும்</value></data>
   <data name="settings.export.pregap.exclude" xml:space="preserve"><value>விலக்கு</value></data>
   <data name="settings.export.pregap.single_file_with_cue" xml:space="preserve"><value>ஒரு கோப்பு + CUE</value></data>
-  <data name="action.remove" xml:space="preserve"><value>நீக்கு</value></data>
   <data name="settings.export.filename_format" xml:space="preserve"><value>கோப்புப்பெயர் வடிவம்</value></data>
-  <data name="settings.export.tokens_help" xml:space="preserve"><value>கிடைக்கும் குறியீடுகள்: {title} {artist} {album} {year} {track_number} {disc_number} {track_total}</value></data>
+  <data name="settings.export.release_exports" xml:space="preserve"><value>வெளியீட்டு ஏற்றுமதிகள்</value></data>
+  <data name="settings.export.track_exports" xml:space="preserve"><value>பாடல் ஏற்றுமதிகள்</value></data>
+  <data name="settings.export.choose_folder" xml:space="preserve"><value>மற்றவை…</value></data>
+  <data name="settings.export.add_token" xml:space="preserve"><value>சேர்:</value></data>
+  <data name="settings.export.remove_token" xml:space="preserve"><value>{token}ஐ அகற்று</value></data>
+  <data name="settings.export.token.title" xml:space="preserve"><value>தலைப்பு</value></data>
+  <data name="settings.export.token.artist" xml:space="preserve"><value>கலைஞர்</value></data>
+  <data name="settings.export.token.album" xml:space="preserve"><value>ஆல்பம்</value></data>
+  <data name="settings.export.token.year" xml:space="preserve"><value>ஆண்டு</value></data>
+  <data name="settings.export.token.track_number" xml:space="preserve"><value>பாடல் எண்</value></data>
+  <data name="settings.export.token.disc_number" xml:space="preserve"><value>வட்டு எண்</value></data>
+  <data name="settings.export.token.track_total" xml:space="preserve"><value>மொத்த பாடல்கள்</value></data>
+  <data name="settings.export.sample.title" xml:space="preserve"><value>பாடல் தலைப்பு</value></data>
+  <data name="settings.export.sample.artist" xml:space="preserve"><value>கலைஞர் பெயர்</value></data>
+  <data name="settings.export.sample.album" xml:space="preserve"><value>ஆல்பத் தலைப்பு</value></data>
+  <data name="settings.export.preview" xml:space="preserve"><value>முன்னோட்டம்: {filename}</value></data>
+  <data name="settings.export.presets_footer" xml:space="preserve"><value>முன்னமைவுகள் பாடல்கள் மற்றும் வெளியீடுகளின் ஏற்றுமதி மெனுவில் தோன்றும்.</value></data>
+  <data name="settings.export.preset_format" xml:space="preserve"><value>வடிவம்</value></data>
+  <data name="settings.export.add_preset" xml:space="preserve"><value>முன்னமைவைச் சேர்க்கவும்</value></data>
+  <data name="settings.export.delete_preset" xml:space="preserve"><value>முன்னமைவை நீக்கு</value></data>
+  <data name="settings.export.codec_mp3" xml:space="preserve"><value>MP3 {kbps} kbps</value></data>
+  <data name="settings.export.codec_opus" xml:space="preserve"><value>Opus {kbps} kbps</value></data>
+  <data name="settings.export.bit_depth.source_summary" xml:space="preserve"><value>மூல பிட் ஆழம்</value></data>
+  <data name="settings.export.show_in_menus" xml:space="preserve"><value>இதன் ஏற்றுமதி மெனுவில் காட்டு</value></data>
   <data name="settings.export.bit_depth_label" xml:space="preserve"><value>பிட் ஆழம்</value></data>
   <data name="settings.export.bit_depth.source" xml:space="preserve"><value>மூலம்</value></data>
   <data name="settings.export.bit_depth.bits16" xml:space="preserve"><value>16-bit</value></data>
   <data name="settings.export.bit_depth.bits24" xml:space="preserve"><value>24-bit</value></data>
   <data name="settings.export.bit_depth.bits32" xml:space="preserve"><value>32-bit</value></data>
   <data name="settings.export.bitrate" xml:space="preserve"><value>பிட் வீதம்</value></data>
-  <data name="settings.export.save_failed" xml:space="preserve"><value>ஏற்றுமதி அமைப்புகளைச் சேமிக்க முடியவில்லை</value></data>
   <data name="outbox.state.uploading" xml:space="preserve"><value>பதிவேற்றுகிறது</value></data>
   <data name="outbox.state.queued" xml:space="preserve"><value>வரிசையில்</value></data>
   <data name="outbox.state.retrying" xml:space="preserve"><value>மீண்டும் முயற்சிக்கிறது</value></data>
@@ -375,11 +391,8 @@
   <data name="nowplaying.show_elapsed" xml:space="preserve"><value>கடந்த நேரத்தைக் காட்டு</value></data>
   <data name="export.title" xml:space="preserve"><value>ஏற்றுமதி செய்யப்படுகிறது</value></data>
   <data name="export.state.exporting" xml:space="preserve"><value>{percent}% ஏற்றுமதி செய்யப்படுகிறது</value></data>
-  <data name="settings.export.save_to_folder" xml:space="preserve"><value>கோப்புறையில் சேமி</value></data>
   <data name="settings.export.ask_each_time" xml:space="preserve"><value>ஒவ்வொரு முறையும் கேள்</value></data>
   <data name="settings.export.location" xml:space="preserve"><value>இடம்</value></data>
-  <data name="settings.export.change_folder" xml:space="preserve"><value>மாற்று</value></data>
-  <data name="settings.export.no_folder" xml:space="preserve"><value>கோப்புறை தேர்வு செய்யப்படவில்லை</value></data>
   <data name="import.documents" xml:space="preserve"><value>ஆவணங்கள்</value></data>
   <data name="import.document.read_failed" xml:space="preserve"><value>{name} ஐப் படிக்க முடியவில்லை: {error}</value></data>
   <data name="libraries.reveal" xml:space="preserve"><value>கோப்பு எக்ஸ்ப்ளோரரில் காட்டு</value></data>

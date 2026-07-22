@@ -6,72 +6,40 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use tracing::{debug, warn};
 
-/// Render a single-track export's suggested filename stem (no extension) from a
-/// template and the track's tag data. The tokens are
-/// `{title} {artist} {album} {year} {track_number} {disc_number} {track_total}`;
-/// an unknown `{...}` stays literal, and an absent value (no year, say)
-/// substitutes empty. The result goes through `sanitize_filename_stem`; if that
-/// leaves it empty, fall back to the sanitized title, then to "track".
+/// Render a single-track export's suggested filename stem (no extension) from
+/// the ordered token list and the track's tag data. Each token substitutes its
+/// value; an absent value (no year, say) drops out, and the non-empty values
+/// join with single spaces. The result goes through `sanitize_filename_stem`;
+/// if that leaves it empty, fall back to the sanitized title, then to "track".
 pub fn render_export_filename(
-    template: &str,
+    tokens: &[crate::config::ExportFilenameToken],
     resolved: &crate::library::manager::ResolvedExportTags,
 ) -> String {
+    use crate::config::ExportFilenameToken;
+
     let tags = &resolved.tags;
-    // An absent year / disc / track number renders empty. That is a legitimate
-    // state for a filename template, not an error, and the sanitize step below
-    // closes whatever separator gap it leaves.
-    let substitute = |token: &str| -> Option<String> {
-        Some(match token {
-            "title" => tags.title.clone(),
-            "artist" => tags.artist.clone(),
-            "album" => tags.album.clone(),
-            "year" => tags.year.map(|y| y.to_string()).unwrap_or_default(),
+    let rendered = tokens
+        .iter()
+        .map(|token| match token {
+            ExportFilenameToken::Title => tags.title.clone(),
+            ExportFilenameToken::Artist => tags.artist.clone(),
+            ExportFilenameToken::Album => tags.album.clone(),
+            // An absent year / disc / track number renders empty and drops out
+            // of the join. That is a legitimate state for a filename pattern,
+            // not an error.
+            ExportFilenameToken::Year => tags.year.map(|y| y.to_string()).unwrap_or_default(),
             // Zero-padded to two digits so tracks sort lexically; empty when the
             // track carries no number.
-            "track_number" => resolved
+            ExportFilenameToken::TrackNumber => resolved
                 .track_number
                 .map(|n| format!("{n:02}"))
                 .unwrap_or_default(),
-            "disc_number" => tags.disc.map(|d| d.to_string()).unwrap_or_default(),
-            "track_total" => resolved.total_tracks.to_string(),
-            _ => return None,
+            ExportFilenameToken::DiscNumber => tags.disc.map(|d| d.to_string()).unwrap_or_default(),
+            ExportFilenameToken::TrackTotal => resolved.total_tracks.to_string(),
         })
-    };
-
-    // One left-to-right scan: a substituted value is appended to `rendered` and
-    // never re-scanned, so a tag value that itself contains `{title}` is emitted
-    // literally rather than substituted a second time.
-    let mut rendered = String::new();
-    let mut chars = template.chars().peekable();
-    while let Some(ch) = chars.next() {
-        if ch != '{' {
-            rendered.push(ch);
-            continue;
-        }
-        let mut token = String::new();
-        let mut closed = false;
-        while let Some(&c) = chars.peek() {
-            chars.next();
-            if c == '}' {
-                closed = true;
-                break;
-            }
-            token.push(c);
-        }
-        match (closed, substitute(&token)) {
-            (true, Some(value)) => rendered.push_str(&value),
-            // Unknown token or an unterminated `{` — emit verbatim.
-            (true, None) => {
-                rendered.push('{');
-                rendered.push_str(&token);
-                rendered.push('}');
-            }
-            (false, _) => {
-                rendered.push('{');
-                rendered.push_str(&token);
-            }
-        }
-    }
+        .filter(|value| !value.is_empty())
+        .collect::<Vec<_>>()
+        .join(" ");
 
     let stem = sanitize_filename_stem(&rendered);
     if !stem.is_empty() {
@@ -842,68 +810,53 @@ mod tests {
         }
     }
 
+    use crate::config::ExportFilenameToken::{Album, Artist, Title, TrackNumber, Year};
+
     #[test]
-    fn default_template_all_present_pads_track_number() {
+    fn default_pattern_all_present_pads_track_number() {
         let r = resolved("Track Title", Some(3), 10, None, Some(2001));
         assert_eq!(
-            render_export_filename("{track_number} - {title}", &r),
-            "03 - Track Title"
+            render_export_filename(&[TrackNumber, Title], &r),
+            "03 Track Title"
         );
     }
 
     #[test]
-    fn absent_track_number_trims_leading_separator() {
-        let r = resolved("Track Title", None, 10, None, Some(2001));
+    fn absent_values_drop_out_of_the_join() {
+        let r = resolved("Track Title", None, 10, None, None);
         assert_eq!(
-            render_export_filename("{track_number} - {title}", &r),
+            render_export_filename(&[TrackNumber, Title, Year], &r),
             "Track Title"
         );
     }
 
     #[test]
-    fn full_template_substitutes_every_token() {
+    fn full_pattern_substitutes_every_token() {
         let r = resolved("Track Title", Some(3), 10, Some(2), Some(2001));
         assert_eq!(
-            render_export_filename("{artist} - {album} - {track_number} - {title}", &r),
-            "Artist Name - Album Title - 03 - Track Title"
+            render_export_filename(&[Artist, Album, TrackNumber, Title], &r),
+            "Artist Name Album Title 03 Track Title"
         );
     }
 
     #[test]
     fn slash_and_colon_become_dashes() {
         let r = resolved("Some/Weird:Title", None, 1, None, None);
-        assert_eq!(render_export_filename("{title}", &r), "Some-Weird-Title");
+        assert_eq!(render_export_filename(&[Title], &r), "Some-Weird-Title");
     }
 
     #[test]
     fn path_escape_leaves_no_separator() {
         let r = resolved("../secret", None, 1, None, None);
-        let name = render_export_filename("{title}", &r);
+        let name = render_export_filename(&[Title], &r);
         assert!(!name.contains('/'), "no forward slash in {name}");
         assert!(!name.contains('\\'), "no backslash in {name}");
     }
 
     #[test]
-    fn unknown_token_is_left_literal() {
-        let r = resolved("Track Title", None, 1, None, None);
-        assert_eq!(render_export_filename("{foo}", &r), "{foo}");
-    }
-
-    #[test]
-    fn tag_value_containing_a_token_is_not_re_substituted() {
-        // The title itself is the string "{title}"; a single left-to-right scan
-        // emits it verbatim rather than treating it as another token.
-        let r = resolved("{title}", None, 1, None, None);
-        assert_eq!(render_export_filename("{title}", &r), "{title}");
-    }
-
-    #[test]
     fn empty_render_falls_back_to_title() {
         let r = resolved("Fallback Title", None, 1, None, None);
-        assert_eq!(
-            render_export_filename("{track_number}", &r),
-            "Fallback Title"
-        );
+        assert_eq!(render_export_filename(&[TrackNumber], &r), "Fallback Title");
     }
 
     #[test]

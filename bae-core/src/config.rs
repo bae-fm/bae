@@ -11,8 +11,8 @@ mod keyring;
 
 pub use dev::seed_dev_keyring;
 pub use export::{
-    ExportBitDepth, ExportLocation, ExportPregapPlacement, ExportPreset, ExportPresetCodec,
-    ExportSelection,
+    ExportBitDepth, ExportFilenameToken, ExportLocation, ExportPregapPlacement, ExportPreset,
+    ExportPresetCodec, ExportSelection,
 };
 pub use keyring::init_keyring;
 #[cfg(any(test, feature = "test-utils"))]
@@ -20,7 +20,7 @@ pub use keyring::install_test_keyring;
 
 use crate::util::atomic_write::{write_atomic, write_atomic_io, WriteError};
 use dev::dev_mode_enabled;
-use export::{default_export_filename_template, default_export_presets};
+use export::{default_export_filename_tokens, default_export_presets};
 
 pub const MCP_DEFAULT_PORT: u16 = 47777;
 
@@ -230,7 +230,12 @@ where
 /// bump this.** `with_defaults` is the single place a field's default is stated —
 /// the migration fills an older file's missing keys straight from it, so there is
 /// no second table to keep in step.
-pub const CONFIG_VERSION: u32 = 4;
+///
+/// v5 replaced `export_filename_template` (a `{token}` string) with
+/// `export_filename_tokens` (an ordered token list), in the config and in each
+/// export preset. The migration only fills missing keys, so a pre-v5 file fails
+/// to load; pre-1.0 that is the accepted outcome, not a case to shim.
+pub const CONFIG_VERSION: u32 = 5;
 
 /// A file written before versioning existed. Such a file has no `version` key,
 /// and is missing every field added since it was written.
@@ -273,8 +278,9 @@ pub struct ConfigYaml {
     pub replay_gain_mode: ReplayGainMode,
     /// Where release exports write.
     pub export_location: ExportLocation,
-    /// Template for the default filename a single-track export suggests.
-    pub export_filename_template: String,
+    /// The ordered token list rendering a single-track export's suggested
+    /// filename.
+    pub export_filename_tokens: Vec<ExportFilenameToken>,
     /// Configured export presets offered by release and track export.
     pub export_presets: Vec<ExportPreset>,
     /// Default selected option in the track export picker.
@@ -325,7 +331,7 @@ impl ConfigYaml {
             discogs: self.discogs,
             replay_gain_mode: self.replay_gain_mode,
             export_location: self.export_location,
-            export_filename_template: self.export_filename_template,
+            export_filename_tokens: self.export_filename_tokens,
             export_presets: self.export_presets,
             default_track_export_selection: self.default_track_export_selection,
             default_release_export_selection: self.default_release_export_selection,
@@ -352,7 +358,7 @@ impl From<&Config> for ConfigYaml {
             encryption_key_fingerprint: config.encryption_key_fingerprint.clone(),
             replay_gain_mode: config.replay_gain_mode,
             export_location: config.export_location.clone(),
-            export_filename_template: config.export_filename_template.clone(),
+            export_filename_tokens: config.export_filename_tokens.clone(),
             export_presets: config.export_presets.clone(),
             default_track_export_selection: config.default_track_export_selection.clone(),
             default_release_export_selection: config.default_release_export_selection.clone(),
@@ -404,8 +410,9 @@ pub struct Config {
     pub replay_gain_mode: ReplayGainMode,
     /// Where release exports write. Defaults to prompting each time.
     pub export_location: ExportLocation,
-    /// Template for the default filename a single-track export suggests.
-    pub export_filename_template: String,
+    /// The ordered token list rendering a single-track export's suggested
+    /// filename.
+    pub export_filename_tokens: Vec<ExportFilenameToken>,
     /// Configured export presets offered by release and track export.
     pub export_presets: Vec<ExportPreset>,
     /// Default selected option in the track export picker.
@@ -570,7 +577,7 @@ impl Config {
             discogs: None,
             replay_gain_mode: ReplayGainMode::Off,
             export_location: ExportLocation::AskEachTime,
-            export_filename_template: default_export_filename_template(),
+            export_filename_tokens: default_export_filename_tokens(),
             export_presets: default_export_presets(),
             default_track_export_selection: ExportSelection::Original,
             default_release_export_selection: ExportSelection::Original,
@@ -1068,13 +1075,17 @@ mod tests {
     fn export_settings_survive_yaml_roundtrip() {
         let tmp = TempDir::new().unwrap();
         let mut config = make_test_config("lib", tmp.path().to_path_buf());
-        config.export_filename_template = "{artist} - {title}".to_string();
+        config.export_filename_tokens =
+            vec![ExportFilenameToken::Artist, ExportFilenameToken::Title];
         config.save_to_config_yaml().unwrap();
 
         let yaml: ConfigYaml =
             serde_yaml::from_str(&std::fs::read_to_string(tmp.path().join("config.yaml")).unwrap())
                 .unwrap();
-        assert_eq!(yaml.export_filename_template, "{artist} - {title}");
+        assert_eq!(
+            yaml.export_filename_tokens,
+            vec![ExportFilenameToken::Artist, ExportFilenameToken::Title]
+        );
         assert_eq!(yaml.export_presets, config.export_presets);
         assert_eq!(
             yaml.default_track_export_selection,
@@ -1187,7 +1198,7 @@ mod tests {
             "encryption_key_fingerprint",
             "replay_gain_mode",
             "export_location",
-            "export_filename_template",
+            "export_filename_tokens",
             "export_presets",
             "default_track_export_selection",
             "default_release_export_selection",
@@ -1263,7 +1274,7 @@ mod tests {
             "encryption_key_fingerprint",
             "replay_gain_mode",
             "export_location",
-            "export_filename_template",
+            "export_filename_tokens",
             "export_presets",
             "default_track_export_selection",
             "default_release_export_selection",

@@ -29,9 +29,10 @@ final class Exports: Sendable, Observable {
     /// a `configChanged` event into `ConfigStore`.
     let setExportLocation:
         @Sendable (_ location: BridgeExportLocation) throws -> Void
-    /// Set the template for a single-track export's suggested filename. The
-    /// change round-trips back through a `configChanged` event.
-    let setExportFilenameTemplate: @Sendable (_ template: String) throws -> Void
+    /// Set the ordered token list for a single-track export's suggested
+    /// filename. The change round-trips back through a `configChanged` event.
+    let setExportFilenameTokens:
+        @Sendable (_ tokens: [BridgeExportFilenameToken]) throws -> Void
     /// Replace configured export presets.
     let setExportPresets:
         @Sendable (_ presets: [BridgeExportPreset]) throws -> Void
@@ -52,8 +53,10 @@ final class Exports: Sendable, Observable {
         setExportLocation:
             @escaping @Sendable (BridgeExportLocation) throws -> Void = { _ in
             },
-        setExportFilenameTemplate:
-            @escaping @Sendable (String) throws -> Void = { _ in },
+        setExportFilenameTokens:
+            @escaping @Sendable ([BridgeExportFilenameToken]) throws -> Void = {
+                _ in
+            },
         setExportPresets:
             @escaping @Sendable ([BridgeExportPreset]) throws -> Void = { _ in
             },
@@ -69,7 +72,7 @@ final class Exports: Sendable, Observable {
         self.cancelExport = cancelExport
         self.retryExports = retryExports
         self.setExportLocation = setExportLocation
-        self.setExportFilenameTemplate = setExportFilenameTemplate
+        self.setExportFilenameTokens = setExportFilenameTokens
         self.setExportPresets = setExportPresets
         self.setDefaultTrackExportSelection = setDefaultTrackExportSelection
         self.setDefaultReleaseExportSelection =
@@ -89,8 +92,8 @@ final class Exports: Sendable, Observable {
             cancelExport: { handle.cancelExport(releaseId: $0) },
             retryExports: { handle.retryExports() },
             setExportLocation: { try handle.setExportLocation(location: $0) },
-            setExportFilenameTemplate: {
-                try handle.setExportFilenameTemplate(template: $0)
+            setExportFilenameTokens: {
+                try handle.setExportFilenameTokens(tokens: $0)
             },
             setExportPresets: { try handle.setExportPresets(presets: $0) },
             setDefaultTrackExportSelection: {

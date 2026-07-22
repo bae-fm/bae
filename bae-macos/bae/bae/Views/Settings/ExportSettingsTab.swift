@@ -1,10 +1,11 @@
 import BaeKit
 import SwiftUI
 
-/// Export preferences: the single-track "Save As…" suggested-filename template
-/// and metadata selection, plus the release-export destination policy. Track
-/// controls write through the `Exports` service and round-trip back via a
-/// `configChanged` event into `ConfigStore` — no optimistic local mutation.
+/// Export preferences: the release-export destination and default format, the
+/// single-track suggested-filename pattern and default format, and the export
+/// presets. Every control writes through the `Exports` service and round-trips
+/// back via a `configChanged` event into `ConfigStore` — no optimistic local
+/// mutation and no separate save step.
 struct ExportSettingsTab: View {
     @Environment(ConfigStore.self)
     private var configStore
@@ -13,94 +14,92 @@ struct ExportSettingsTab: View {
     @Environment(UiStore.self)
     private var uiStore
 
-    /// Editable copy of the filename template, seeded from config and saved on
-    /// submit. Kept as a draft so mid-edit keystrokes don't churn config.
     @State
-    private var templateDraft = ""
-    @State
-    private var presetDrafts: [BridgeExportPreset] = []
+    private var expandedPresetIds: Set<String> = []
 
     var body: some View {
         Form {
-            Section("Release exports") {
-                ExportLocationPicker(
-                    configStore: configStore,
-                    setLocation: exports.setExportLocation,
-                    showError: { @MainActor error in uiStore.showError(error) }
-                )
-                Picker(
-                    "Default format",
-                    selection: defaultReleaseSelectionBinding()
-                ) {
-                    Text("Original").tag(BridgeExportSelection.original)
-                    ForEach(releasePresets, id: \.id) { preset in
-                        Text(preset.name)
-                            .tag(
-                                BridgeExportSelection.preset(
-                                    presetId: preset.id
-                                )
-                            )
-                    }
-                }
-            }
+            releaseExportsSection
+            trackExportsSection
+            presetsSection
+        }
+        .formStyle(.grouped)
+    }
 
-            Section {
-                Picker(
-                    "Default format",
-                    selection: defaultTrackSelectionBinding()
-                ) {
-                    Text("Original").tag(BridgeExportSelection.original)
-                    ForEach(trackPresets, id: \.id) { preset in
-                        Text(preset.name)
-                            .tag(
-                                BridgeExportSelection.preset(
-                                    presetId: preset.id
-                                )
-                            )
+    private var releaseExportsSection: some View {
+        Section("Release exports") {
+            ExportLocationPicker(
+                configStore: configStore,
+                setLocation: exports.setExportLocation,
+                showError: { @MainActor error in uiStore.showError(error) }
+            )
+            selectionPicker(
+                presets: releasePresets,
+                selection: defaultReleaseSelectionBinding()
+            )
+        }
+    }
+
+    private var trackExportsSection: some View {
+        Section {
+            selectionPicker(
+                presets: trackPresets,
+                selection: defaultTrackSelectionBinding()
+            )
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Filename format")
+                FilenameTokenEditor(
+                    tokens: configStore.config.exportFilenameTokens,
+                    setTokens: { tokens in
+                        set { try exports.setExportFilenameTokens(tokens) }
                     }
-                }
-                LabeledContent("Filename format") {
-                    HStack(spacing: 8) {
-                        TextField("Filename format", text: $templateDraft)
-                            .labelsHidden()
-                            .textFieldStyle(.roundedBorder)
-                            .onSubmit(saveTemplate)
-                        Button("Save", action: saveTemplate)
-                    }
-                }
-            } header: {
-                Text("Track exports")
-            } footer: {
-                Text(
-                    "Available tokens: {title} {artist} {album} {year} {track_number} {disc_number} {track_total}"
                 )
+            }
+        } header: {
+            Text("Track exports")
+        } footer: {
+            Text("Preview: \(Text(trackPreviewFilename).monospaced())")
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity, alignment: .leading)
-            }
+        }
+    }
 
-            Section("Presets") {
-                ForEach($presetDrafts, id: \.id) { $preset in
-                    ExportPresetRow(preset: $preset) {
-                        presetDrafts.removeAll { $0.id == preset.id }
-                    }
-                }
-                Menu("Add preset") {
-                    Button("FLAC") { addPreset(.flac) }
-                    Button("MP3") { addPreset(.mp3) }
-                    Button("Opus") { addPreset(.opusOgg) }
-                    Button("WAV") { addPreset(.wav) }
-                    Button("AIFF") { addPreset(.aiff) }
-                }
-                Button("Save presets", action: savePresets)
+    private var presetsSection: some View {
+        Section {
+            ForEach(configStore.config.exportPresets, id: \.id) { preset in
+                ExportPresetEditor(
+                    preset: preset,
+                    isExpanded: expandedBinding(preset.id),
+                    update: replacePreset,
+                    delete: { deletePreset(id: preset.id) }
+                )
             }
+            Menu("Add preset") {
+                ForEach(ExportPresetKind.allCases, id: \.self) { kind in
+                    Button(kind.label) { addPreset(kind) }
+                }
+            }
+        } header: {
+            Text("Presets")
+        } footer: {
+            Text("Presets appear in the export menu on tracks and releases.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .formStyle(.grouped)
-        .task(id: configStore.config.exportFilenameTemplate) {
-            templateDraft = configStore.config.exportFilenameTemplate
-        }
-        .task(id: configStore.config.exportPresets) {
-            presetDrafts = configStore.config.exportPresets
+    }
+
+    private func selectionPicker(
+        presets: [BridgeExportPreset],
+        selection: Binding<BridgeExportSelection>
+    ) -> some View {
+        Picker("Default format", selection: selection) {
+            Text("Original").tag(BridgeExportSelection.original)
+            ForEach(presets, id: \.id) { preset in
+                Text(preset.name)
+                    .tag(BridgeExportSelection.preset(presetId: preset.id))
+            }
         }
     }
 
@@ -112,28 +111,62 @@ struct ExportSettingsTab: View {
         configStore.config.exportPresets.filter(\.appliesToRelease)
     }
 
-    private func saveTemplate() {
-        set { try exports.setExportFilenameTemplate(templateDraft) }
+    /// The sample the pattern footer previews. "Original" keeps the source
+    /// format, so the sample shows a representative extension; a preset
+    /// default would still export whatever its own pattern renders, and the
+    /// preset rows below preview that themselves.
+    private var trackPreviewFilename: String {
+        BridgeExportFilenameToken.previewFilename(
+            tokens: configStore.config.exportFilenameTokens,
+            fileExtension: "flac"
+        )
     }
 
-    private func savePresets() {
-        set { try exports.setExportPresets(presetDrafts) }
+    private func expandedBinding(_ id: String) -> Binding<Bool> {
+        Binding(
+            get: { expandedPresetIds.contains(id) },
+            set: { expanded in
+                if expanded {
+                    expandedPresetIds.insert(id)
+                }
+                else {
+                    expandedPresetIds.remove(id)
+                }
+            }
+        )
+    }
+
+    private func replacePreset(_ preset: BridgeExportPreset) {
+        let presets = configStore.config.exportPresets.map {
+            $0.id == preset.id ? preset : $0
+        }
+        set { try exports.setExportPresets(presets) }
+    }
+
+    private func deletePreset(id: String) {
+        let presets = configStore.config.exportPresets.filter { $0.id != id }
+        expandedPresetIds.remove(id)
+        set { try exports.setExportPresets(presets) }
     }
 
     private func addPreset(_ kind: ExportPresetKind) {
-        let codec = kind.codec
-        presetDrafts.append(
-            BridgeExportPreset(
-                id: UUID().uuidString.replacingOccurrences(of: "-", with: ""),
-                name: kind.label,
-                codec: codec,
-                extension: codec.fileExtension,
-                filenameTemplate: templateDraft,
-                pregapPlacement: .appendToPreviousExceptHtoa,
-                appliesToTrack: true,
-                appliesToRelease: true
-            )
+        let codec = kind.defaultCodec
+        let preset = BridgeExportPreset(
+            id: UUID().uuidString.replacingOccurrences(of: "-", with: ""),
+            name: kind.label,
+            codec: codec,
+            extension: codec.fileExtension,
+            filenameTokens: configStore.config.exportFilenameTokens,
+            pregapPlacement: .appendToPreviousExceptHtoa,
+            appliesToTrack: true,
+            appliesToRelease: true
         )
+        expandedPresetIds.insert(preset.id)
+        set {
+            try exports.setExportPresets(
+                configStore.config.exportPresets + [preset]
+            )
+        }
     }
 
     private func defaultTrackSelectionBinding() -> Binding<
@@ -162,244 +195,8 @@ struct ExportSettingsTab: View {
         do {
             try apply()
         }
-        catch let error as BridgeError {
-            uiStore.showError(error)
-        }
         catch {
             uiStore.showError(error)
-        }
-    }
-}
-
-private struct ExportPresetRow: View {
-    @Binding
-    var preset: BridgeExportPreset
-    var delete: () -> Void
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            TextField("Name", text: $preset.name)
-            TextField("Filename format", text: $preset.filenameTemplate)
-            HStack {
-                Text(preset.codec.label)
-                Spacer()
-                Toggle("Track", isOn: appliesToTrackBinding)
-                    .disabled(preset.pregapPlacement == .singleFileWithCue)
-                Toggle("Release", isOn: appliesToReleaseBinding)
-                    .disabled(preset.pregapPlacement == .singleFileWithCue)
-            }
-            PresetCodecEditor(preset: $preset)
-            Picker("Pregap", selection: pregapPlacementBinding) {
-                Text("Append except HTOA")
-                    .tag(
-                        BridgeExportPregapPlacement.appendToPreviousExceptHtoa
-                    )
-                Text("Append including HTOA")
-                    .tag(
-                        BridgeExportPregapPlacement
-                            .appendToPreviousIncludingHtoa
-                    )
-                Text("Exclude")
-                    .tag(BridgeExportPregapPlacement.exclude)
-                Text("Single file + CUE")
-                    .tag(BridgeExportPregapPlacement.singleFileWithCue)
-                    .disabled(!preset.codec.supportsSingleFileCue)
-            }
-            HStack {
-                Button("Delete", role: .destructive, action: delete)
-            }
-        }
-    }
-
-    private var appliesToTrackBinding: Binding<Bool> {
-        Binding(
-            get: {
-                preset.pregapPlacement != .singleFileWithCue
-                    && preset.appliesToTrack
-            },
-            set: { enabled in
-                preset.appliesToTrack =
-                    enabled && preset.pregapPlacement != .singleFileWithCue
-            }
-        )
-    }
-
-    private var appliesToReleaseBinding: Binding<Bool> {
-        Binding(
-            get: {
-                preset.pregapPlacement == .singleFileWithCue
-                    || preset.appliesToRelease
-            },
-            set: { enabled in
-                preset.appliesToRelease =
-                    enabled || preset.pregapPlacement == .singleFileWithCue
-            }
-        )
-    }
-
-    private var pregapPlacementBinding: Binding<BridgeExportPregapPlacement> {
-        Binding(
-            get: { preset.pregapPlacement },
-            set: { placement in
-                preset.pregapPlacement = placement
-                if placement == .singleFileWithCue {
-                    preset.appliesToTrack = false
-                    preset.appliesToRelease = true
-                }
-            }
-        )
-    }
-}
-
-extension BridgeExportPresetCodec {
-    fileprivate var supportsSingleFileCue: Bool {
-        switch self {
-        case .opusOgg:
-            false
-        case .flac, .mp3, .wav, .aiff:
-            true
-        }
-    }
-}
-
-private struct PresetCodecEditor: View {
-    @Binding
-    var preset: BridgeExportPreset
-
-    private static let bitrateFormatter: NumberFormatter = {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .none
-        formatter.minimum = 1
-        formatter.maximum = 512
-        return formatter
-    }()
-
-    var body: some View {
-        switch preset.codec {
-        case .flac, .wav, .aiff:
-            Picker("Bit depth", selection: bitDepthBinding) {
-                Text("Source").tag(BridgeExportBitDepth.source)
-                Text("16-bit").tag(BridgeExportBitDepth.bits16)
-                Text("24-bit").tag(BridgeExportBitDepth.bits24)
-                Text("32-bit").tag(BridgeExportBitDepth.bits32)
-            }
-        case .mp3, .opusOgg:
-            LabeledContent("Bitrate") {
-                TextField(
-                    "Bitrate",
-                    value: bitrateBinding,
-                    formatter: Self.bitrateFormatter
-                )
-                .labelsHidden()
-                .textFieldStyle(.roundedBorder)
-                .frame(width: 96)
-            }
-        }
-    }
-
-    private var bitDepthBinding: Binding<BridgeExportBitDepth> {
-        Binding(
-            get: {
-                switch preset.codec {
-                case .flac(let bitDepth),
-                    .wav(let bitDepth),
-                    .aiff(let bitDepth):
-                    bitDepth
-                case .mp3, .opusOgg:
-                    .source
-                }
-            },
-            set: { bitDepth in
-                switch preset.codec {
-                case .flac:
-                    preset.codec = .flac(bitDepth: bitDepth)
-                    preset.extension = preset.codec.fileExtension
-                case .wav:
-                    preset.codec = .wav(bitDepth: bitDepth)
-                    preset.extension = preset.codec.fileExtension
-                case .aiff:
-                    preset.codec = .aiff(bitDepth: bitDepth)
-                    preset.extension = preset.codec.fileExtension
-                case .mp3, .opusOgg:
-                    break
-                }
-            }
-        )
-    }
-
-    private var bitrateBinding: Binding<UInt32> {
-        Binding(
-            get: {
-                switch preset.codec {
-                case .mp3(let bitrateKbps),
-                    .opusOgg(let bitrateKbps):
-                    bitrateKbps
-                case .flac, .wav, .aiff:
-                    0
-                }
-            },
-            set: { bitrateKbps in
-                switch preset.codec {
-                case .mp3:
-                    preset.codec = .mp3(bitrateKbps: bitrateKbps)
-                    preset.extension = preset.codec.fileExtension
-                case .opusOgg:
-                    preset.codec = .opusOgg(bitrateKbps: bitrateKbps)
-                    preset.extension = preset.codec.fileExtension
-                case .flac, .wav, .aiff:
-                    break
-                }
-            }
-        )
-    }
-}
-
-private enum ExportPresetKind {
-    case flac
-    case mp3
-    case opusOgg
-    case wav
-    case aiff
-
-    var label: String {
-        switch self {
-        case .flac: "FLAC"
-        case .mp3: "MP3"
-        case .opusOgg: "Opus"
-        case .wav: "WAV"
-        case .aiff: "AIFF"
-        }
-    }
-
-    var codec: BridgeExportPresetCodec {
-        switch self {
-        case .flac: .flac(bitDepth: .source)
-        case .mp3: .mp3(bitrateKbps: 320)
-        case .opusOgg: .opusOgg(bitrateKbps: 192)
-        case .wav: .wav(bitDepth: .source)
-        case .aiff: .aiff(bitDepth: .source)
-        }
-    }
-}
-
-extension BridgeExportPresetCodec {
-    fileprivate var label: String {
-        switch self {
-        case .flac: "FLAC"
-        case .mp3(let bitrateKbps): "MP3 \(bitrateKbps) kbps"
-        case .opusOgg(let bitrateKbps): "Opus \(bitrateKbps) kbps"
-        case .wav: "WAV"
-        case .aiff: "AIFF"
-        }
-    }
-
-    fileprivate var fileExtension: String {
-        switch self {
-        case .flac: "flac"
-        case .mp3: "mp3"
-        case .opusOgg: "ogg"
-        case .wav: "wav"
-        case .aiff: "aiff"
         }
     }
 }
@@ -410,6 +207,6 @@ extension BridgeExportPresetCodec {
             .environment(PreviewData.configStore)
             .environment(Exports.stub)
             .environment(UiStore())
-            .frame(width: 500, height: 500)
+            .frame(width: 500, height: 600)
     }
 #endif

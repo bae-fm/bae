@@ -232,3 +232,32 @@ nl	settings.export.bit_depth.bits32
 nl	edit.field.label
 nl	edit.field.barcode
 nl	storage.column.album
+
+# Export settings redesign: codec labels are proper nouns plus the universal
+# kbps unit; "Pregap" is the established technical loanword in these locales
+# (their resw preset rows already used it); "Album" matches the loanword
+# entries above; nl "Release-exports" is the catalog's established compound.
+it	MP3 %lld kbps
+it	Opus %lld kbps
+it	Pregap
+it	settings.export.codec_mp3
+it	settings.export.codec_opus
+it	settings.export.token.album
+nl	MP3 %lld kbps
+nl	Opus %lld kbps
+nl	Pregap
+nl	settings.export.codec_mp3
+nl	settings.export.codec_opus
+nl	settings.export.release_exports
+nl	settings.export.token.album
+tr	MP3 %lld kbps
+tr	Opus %lld kbps
+tr	Pregap
+tr	settings.export.codec_mp3
+tr	settings.export.codec_opus
+vi	MP3 %lld kbps
+vi	Opus %lld kbps
+vi	Pregap
+vi	settings.export.codec_mp3
+vi	settings.export.codec_opus
+vi	settings.export.token.album

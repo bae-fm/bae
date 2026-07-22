@@ -2334,8 +2334,9 @@ pub struct BridgeConfig {
     pub library_full_width: bool,
     /// Where release exports write: prompt each time, or a fixed folder.
     pub export_location: BridgeExportLocation,
-    /// Template rendering a single-track export's suggested filename.
-    pub export_filename_template: String,
+    /// The ordered token list rendering a single-track export's suggested
+    /// filename.
+    pub export_filename_tokens: Vec<BridgeExportFilenameToken>,
     /// Configured export presets offered by release and track export.
     pub export_presets: Vec<BridgeExportPreset>,
     /// Default selected option in the track export picker.
@@ -2964,6 +2965,20 @@ pub enum BridgeExportBitDepth {
     Bits32,
 }
 
+/// One piece of an export filename pattern — an ordered token list; rendering
+/// substitutes each token's value and joins the non-empty values with single
+/// spaces. Mirror of bae-core's `ExportFilenameToken`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeExportFilenameToken {
+    Title,
+    Artist,
+    Album,
+    Year,
+    TrackNumber,
+    DiscNumber,
+    TrackTotal,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeExportPresetCodec {
     Flac { bit_depth: BridgeExportBitDepth },
@@ -2993,7 +3008,7 @@ pub struct BridgeExportPreset {
     pub name: String,
     pub codec: BridgeExportPresetCodec,
     pub extension: String,
-    pub filename_template: String,
+    pub filename_tokens: Vec<BridgeExportFilenameToken>,
     pub pregap_placement: BridgeExportPregapPlacement,
     pub applies_to_track: bool,
     pub applies_to_release: bool,
@@ -4677,7 +4692,10 @@ mod conversion_roundtrip {
             codec: bae_core::config::ExportPresetCodec::Flac {
                 bit_depth: bae_core::config::ExportBitDepth::Bits24,
             },
-            filename_template: "{artist} - {title}".to_string(),
+            filename_tokens: vec![
+                bae_core::config::ExportFilenameToken::Artist,
+                bae_core::config::ExportFilenameToken::Title,
+            ],
             pregap_placement: bae_core::config::ExportPregapPlacement::Exclude,
             applies_to_track: true,
             applies_to_release: false,

@@ -473,7 +473,7 @@ private func makeAppService(handle: FakeAppHandle = FakeAppHandle())
             showRemainingTime: false,
                     libraryFullWidth: false,
             exportLocation: .askEachTime,
-            exportFilenameTemplate: "",
+            exportFilenameTokens: [],
             exportPresets: [],
             defaultTrackExportSelection: .original,
             defaultReleaseExportSelection: .original,

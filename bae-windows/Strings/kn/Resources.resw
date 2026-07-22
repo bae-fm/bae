@@ -307,25 +307,41 @@
   <data name="settings.export.preset_track" xml:space="preserve"><value>ಟ್ರ್ಯಾಕ್</value></data>
   <data name="settings.export.preset_release" xml:space="preserve"><value>ಬಿಡುಗಡೆ</value></data>
   <data name="settings.export.preset_pregap" xml:space="preserve"><value>ಪೂರ್ವಅಂತರ</value></data>
-  <data name="settings.export.add_flac" xml:space="preserve"><value>FLAC ಸೇರಿಸಿ</value></data>
-  <data name="settings.export.add_mp3" xml:space="preserve"><value>MP3 ಸೇರಿಸಿ</value></data>
-  <data name="settings.export.add_opus" xml:space="preserve"><value>Opus ಸೇರಿಸಿ</value></data>
-  <data name="settings.export.add_wav" xml:space="preserve"><value>WAV ಸೇರಿಸಿ</value></data>
-  <data name="settings.export.add_aiff" xml:space="preserve"><value>AIFF ಸೇರಿಸಿ</value></data>
   <data name="settings.export.pregap.append_except_htoa" xml:space="preserve"><value>HTOA ಹೊರತುಪಡಿಸಿ ಸೇರಿಸಿ</value></data>
   <data name="settings.export.pregap.append_including_htoa" xml:space="preserve"><value>HTOA ಸೇರಿಸಿ ಸೇರಿಸಿ</value></data>
   <data name="settings.export.pregap.exclude" xml:space="preserve"><value>ಹೊರತುಪಡಿಸಿ</value></data>
   <data name="settings.export.pregap.single_file_with_cue" xml:space="preserve"><value>ಒಂದು ಫೈಲ್ + CUE</value></data>
-  <data name="action.remove" xml:space="preserve"><value>ತೆಗೆದುಹಾಕಿ</value></data>
   <data name="settings.export.filename_format" xml:space="preserve"><value>ಕಡತದ ಹೆಸರು ಸ್ವರೂಪ</value></data>
-  <data name="settings.export.tokens_help" xml:space="preserve"><value>ಲಭ್ಯವಿರುವ ಟೋಕನ್‌ಗಳು: {title} {artist} {album} {year} {track_number} {disc_number} {track_total}</value></data>
+  <data name="settings.export.release_exports" xml:space="preserve"><value>ಬಿಡುಗಡೆ ರಫ್ತುಗಳು</value></data>
+  <data name="settings.export.track_exports" xml:space="preserve"><value>ಹಾಡು ರಫ್ತುಗಳು</value></data>
+  <data name="settings.export.choose_folder" xml:space="preserve"><value>ಇತರೆ…</value></data>
+  <data name="settings.export.add_token" xml:space="preserve"><value>ಸೇರಿಸಿ:</value></data>
+  <data name="settings.export.remove_token" xml:space="preserve"><value>{token} ತೆಗೆದುಹಾಕಿ</value></data>
+  <data name="settings.export.token.title" xml:space="preserve"><value>ಶೀರ್ಷಿಕೆ</value></data>
+  <data name="settings.export.token.artist" xml:space="preserve"><value>ಕಲಾವಿದ</value></data>
+  <data name="settings.export.token.album" xml:space="preserve"><value>ಆಲ್ಬಮ್</value></data>
+  <data name="settings.export.token.year" xml:space="preserve"><value>ವರ್ಷ</value></data>
+  <data name="settings.export.token.track_number" xml:space="preserve"><value>ಟ್ರ್ಯಾಕ್ ಸಂ.</value></data>
+  <data name="settings.export.token.disc_number" xml:space="preserve"><value>ಡಿಸ್ಕ್ ಸಂ.</value></data>
+  <data name="settings.export.token.track_total" xml:space="preserve"><value>ಒಟ್ಟು ಟ್ರ್ಯಾಕ್‌ಗಳು</value></data>
+  <data name="settings.export.sample.title" xml:space="preserve"><value>ಹಾಡಿನ ಶೀರ್ಷಿಕೆ</value></data>
+  <data name="settings.export.sample.artist" xml:space="preserve"><value>ಕಲಾವಿದರ ಹೆಸರು</value></data>
+  <data name="settings.export.sample.album" xml:space="preserve"><value>ಆಲ್ಬಮ್ ಶೀರ್ಷಿಕೆ</value></data>
+  <data name="settings.export.preview" xml:space="preserve"><value>ಮುನ್ನೋಟ: {filename}</value></data>
+  <data name="settings.export.presets_footer" xml:space="preserve"><value>ಪ್ರೀಸೆಟ್‌ಗಳು ಹಾಡುಗಳು ಮತ್ತು ಬಿಡುಗಡೆಗಳ ರಫ್ತು ಮೆನುವಿನಲ್ಲಿ ಕಾಣಿಸುತ್ತವೆ.</value></data>
+  <data name="settings.export.preset_format" xml:space="preserve"><value>ಸ್ವರೂಪ</value></data>
+  <data name="settings.export.add_preset" xml:space="preserve"><value>ಪ್ರೀಸೆಟ್ ಸೇರಿಸಿ</value></data>
+  <data name="settings.export.delete_preset" xml:space="preserve"><value>ಪ್ರೀಸೆಟ್ ಅಳಿಸಿ</value></data>
+  <data name="settings.export.codec_mp3" xml:space="preserve"><value>MP3 {kbps} kbps</value></data>
+  <data name="settings.export.codec_opus" xml:space="preserve"><value>Opus {kbps} kbps</value></data>
+  <data name="settings.export.bit_depth.source_summary" xml:space="preserve"><value>ಮೂಲ ಬಿಟ್ ಆಳ</value></data>
+  <data name="settings.export.show_in_menus" xml:space="preserve"><value>ಇದರ ರಫ್ತು ಮೆನುವಿನಲ್ಲಿ ತೋರಿಸಿ</value></data>
   <data name="settings.export.bit_depth_label" xml:space="preserve"><value>ಬಿಟ್ ಆಳ</value></data>
   <data name="settings.export.bit_depth.source" xml:space="preserve"><value>ಮೂಲ</value></data>
   <data name="settings.export.bit_depth.bits16" xml:space="preserve"><value>16-bit</value></data>
   <data name="settings.export.bit_depth.bits24" xml:space="preserve"><value>24-bit</value></data>
   <data name="settings.export.bit_depth.bits32" xml:space="preserve"><value>32-bit</value></data>
   <data name="settings.export.bitrate" xml:space="preserve"><value>ಬಿಟ್‌ರೇಟ್</value></data>
-  <data name="settings.export.save_failed" xml:space="preserve"><value>ರಫ್ತು ಸೆಟ್ಟಿಂಗ್‌ಗಳನ್ನು ಉಳಿಸಲಾಗಲಿಲ್ಲ</value></data>
   <data name="outbox.state.uploading" xml:space="preserve"><value>ಅಪ್‌ಲೋಡ್ ಆಗುತ್ತಿದೆ</value></data>
   <data name="outbox.state.queued" xml:space="preserve"><value>ಸರದಿಯಲ್ಲಿದೆ</value></data>
   <data name="outbox.state.retrying" xml:space="preserve"><value>ಮರುಪ್ರಯತ್ನಿಸುತ್ತಿದೆ</value></data>
@@ -375,11 +391,8 @@
   <data name="nowplaying.show_elapsed" xml:space="preserve"><value>ಕಳೆದ ಸಮಯವನ್ನು ತೋರಿಸಿ</value></data>
   <data name="export.title" xml:space="preserve"><value>ರಫ್ತು ಮಾಡಲಾಗುತ್ತಿದೆ</value></data>
   <data name="export.state.exporting" xml:space="preserve"><value>{percent}% ರಫ್ತು ಮಾಡಲಾಗುತ್ತಿದೆ</value></data>
-  <data name="settings.export.save_to_folder" xml:space="preserve"><value>ಫೋಲ್ಡರ್‌ಗೆ ಉಳಿಸಿ</value></data>
   <data name="settings.export.ask_each_time" xml:space="preserve"><value>ಪ್ರತಿ ಬಾರಿ ಕೇಳಿ</value></data>
   <data name="settings.export.location" xml:space="preserve"><value>ಸ್ಥಳ</value></data>
-  <data name="settings.export.change_folder" xml:space="preserve"><value>ಬದಲಿಸಿ</value></data>
-  <data name="settings.export.no_folder" xml:space="preserve"><value>ಯಾವುದೇ ಫೋಲ್ಡರ್ ಆಯ್ಕೆ ಮಾಡಿಲ್ಲ</value></data>
   <data name="import.documents" xml:space="preserve"><value>ದಾಖಲೆಗಳು</value></data>
   <data name="import.document.read_failed" xml:space="preserve"><value>{name} ಓದಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ: {error}</value></data>
   <data name="libraries.reveal" xml:space="preserve"><value>ಫೈಲ್ ಎಕ್ಸ್‌ಪ್ಲೋರರ್‌ನಲ್ಲಿ ತೋರಿಸಿ</value></data>

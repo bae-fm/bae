@@ -992,16 +992,18 @@
             name: "Downloads"
         )
 
-        /// Default single-track export filename template, for seeding preview
-        /// configs (mirrors bae-core's `default_export_filename_template`).
-        static let exportFilenameTemplate = "{track_number} - {title}"
+        /// Default single-track export filename pattern, for seeding preview
+        /// configs (mirrors bae-core's `default_export_filename_tokens`).
+        static let exportFilenameTokens: [BridgeExportFilenameToken] = [
+            .trackNumber, .title,
+        ]
         static let exportPresets: [BridgeExportPreset] = [
             BridgeExportPreset(
                 id: "flac",
                 name: "FLAC",
                 codec: .flac(bitDepth: .source),
                 extension: "flac",
-                filenameTemplate: exportFilenameTemplate,
+                filenameTokens: exportFilenameTokens,
                 pregapPlacement: .appendToPreviousExceptHtoa,
                 appliesToTrack: true,
                 appliesToRelease: true
@@ -1011,7 +1013,7 @@
                 name: "MP3",
                 codec: .mp3(bitrateKbps: 320),
                 extension: "mp3",
-                filenameTemplate: exportFilenameTemplate,
+                filenameTokens: exportFilenameTokens,
                 pregapPlacement: .appendToPreviousExceptHtoa,
                 appliesToTrack: true,
                 appliesToRelease: true
@@ -1046,7 +1048,7 @@
                         showRemainingTime: false,
                         libraryFullWidth: libraryFullWidth,
                         exportLocation: .askEachTime,
-                        exportFilenameTemplate: exportFilenameTemplate,
+                        exportFilenameTokens: exportFilenameTokens,
                         exportPresets: exportPresets,
                         defaultTrackExportSelection: .original,
                         defaultReleaseExportSelection: .original,

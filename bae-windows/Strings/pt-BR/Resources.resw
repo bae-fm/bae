@@ -307,25 +307,41 @@
   <data name="settings.export.preset_track" xml:space="preserve"><value>Faixa</value></data>
   <data name="settings.export.preset_release" xml:space="preserve"><value>Lançamento</value></data>
   <data name="settings.export.preset_pregap" xml:space="preserve"><value>Pregap</value></data>
-  <data name="settings.export.add_flac" xml:space="preserve"><value>Adicionar FLAC</value></data>
-  <data name="settings.export.add_mp3" xml:space="preserve"><value>Adicionar MP3</value></data>
-  <data name="settings.export.add_opus" xml:space="preserve"><value>Adicionar Opus</value></data>
-  <data name="settings.export.add_wav" xml:space="preserve"><value>Adicionar WAV</value></data>
-  <data name="settings.export.add_aiff" xml:space="preserve"><value>Adicionar AIFF</value></data>
   <data name="settings.export.pregap.append_except_htoa" xml:space="preserve"><value>Anexar exceto HTOA</value></data>
   <data name="settings.export.pregap.append_including_htoa" xml:space="preserve"><value>Anexar incluindo HTOA</value></data>
   <data name="settings.export.pregap.exclude" xml:space="preserve"><value>Excluir</value></data>
   <data name="settings.export.pregap.single_file_with_cue" xml:space="preserve"><value>Arquivo único + CUE</value></data>
-  <data name="action.remove" xml:space="preserve"><value>Remover</value></data>
   <data name="settings.export.filename_format" xml:space="preserve"><value>Formato do nome do arquivo</value></data>
-  <data name="settings.export.tokens_help" xml:space="preserve"><value>Tokens disponíveis: {title} {artist} {album} {year} {track_number} {disc_number} {track_total}</value></data>
+  <data name="settings.export.release_exports" xml:space="preserve"><value>Exportações de lançamentos</value></data>
+  <data name="settings.export.track_exports" xml:space="preserve"><value>Exportações de faixas</value></data>
+  <data name="settings.export.choose_folder" xml:space="preserve"><value>Outro…</value></data>
+  <data name="settings.export.add_token" xml:space="preserve"><value>Adicionar:</value></data>
+  <data name="settings.export.remove_token" xml:space="preserve"><value>Remover {token}</value></data>
+  <data name="settings.export.token.title" xml:space="preserve"><value>Título</value></data>
+  <data name="settings.export.token.artist" xml:space="preserve"><value>Artista</value></data>
+  <data name="settings.export.token.album" xml:space="preserve"><value>Álbum</value></data>
+  <data name="settings.export.token.year" xml:space="preserve"><value>Ano</value></data>
+  <data name="settings.export.token.track_number" xml:space="preserve"><value>Nº da faixa</value></data>
+  <data name="settings.export.token.disc_number" xml:space="preserve"><value>Nº do disco</value></data>
+  <data name="settings.export.token.track_total" xml:space="preserve"><value>Total de faixas</value></data>
+  <data name="settings.export.sample.title" xml:space="preserve"><value>Título da faixa</value></data>
+  <data name="settings.export.sample.artist" xml:space="preserve"><value>Nome do artista</value></data>
+  <data name="settings.export.sample.album" xml:space="preserve"><value>Título do álbum</value></data>
+  <data name="settings.export.preview" xml:space="preserve"><value>Prévia: {filename}</value></data>
+  <data name="settings.export.presets_footer" xml:space="preserve"><value>As predefinições aparecem no menu de exportação de faixas e lançamentos.</value></data>
+  <data name="settings.export.preset_format" xml:space="preserve"><value>Formato</value></data>
+  <data name="settings.export.add_preset" xml:space="preserve"><value>Adicionar predefinição</value></data>
+  <data name="settings.export.delete_preset" xml:space="preserve"><value>Excluir predefinição</value></data>
+  <data name="settings.export.codec_mp3" xml:space="preserve"><value>MP3 {kbps} kbps</value></data>
+  <data name="settings.export.codec_opus" xml:space="preserve"><value>Opus {kbps} kbps</value></data>
+  <data name="settings.export.bit_depth.source_summary" xml:space="preserve"><value>Profundidade de bits da origem</value></data>
+  <data name="settings.export.show_in_menus" xml:space="preserve"><value>Mostrar no menu de exportação para</value></data>
   <data name="settings.export.bit_depth_label" xml:space="preserve"><value>Profundidade de bits</value></data>
   <data name="settings.export.bit_depth.source" xml:space="preserve"><value>Origem</value></data>
   <data name="settings.export.bit_depth.bits16" xml:space="preserve"><value>16-bit</value></data>
   <data name="settings.export.bit_depth.bits24" xml:space="preserve"><value>24-bit</value></data>
   <data name="settings.export.bit_depth.bits32" xml:space="preserve"><value>32-bit</value></data>
   <data name="settings.export.bitrate" xml:space="preserve"><value>Taxa de bits</value></data>
-  <data name="settings.export.save_failed" xml:space="preserve"><value>Não foi possível salvar as configurações de exportação</value></data>
   <data name="outbox.state.uploading" xml:space="preserve"><value>Enviando</value></data>
   <data name="outbox.state.queued" xml:space="preserve"><value>Na fila</value></data>
   <data name="outbox.state.retrying" xml:space="preserve"><value>Tentando novamente</value></data>
@@ -375,11 +391,8 @@
   <data name="nowplaying.show_elapsed" xml:space="preserve"><value>mostrar tempo decorrido</value></data>
   <data name="export.title" xml:space="preserve"><value>exportando</value></data>
   <data name="export.state.exporting" xml:space="preserve"><value>exportando {percent}%</value></data>
-  <data name="settings.export.save_to_folder" xml:space="preserve"><value>Salvar em uma pasta</value></data>
   <data name="settings.export.ask_each_time" xml:space="preserve"><value>Perguntar sempre</value></data>
   <data name="settings.export.location" xml:space="preserve"><value>Localização</value></data>
-  <data name="settings.export.change_folder" xml:space="preserve"><value>Alterar</value></data>
-  <data name="settings.export.no_folder" xml:space="preserve"><value>Nenhuma pasta escolhida</value></data>
   <data name="import.documents" xml:space="preserve"><value>Documentos</value></data>
   <data name="import.document.read_failed" xml:space="preserve"><value>Não foi possível ler {name}: {error}</value></data>
   <data name="libraries.reveal" xml:space="preserve"><value>mostrar no Explorador de Arquivos</value></data>

@@ -371,7 +371,7 @@ impl LibraryManager {
         let meta = TrackAudioMeta::resolve(&self.database, track_id).await?;
         let resolved = self.resolve_export_tags(&meta).await?;
         Ok(crate::library::export::render_export_filename(
-            &self.export_filename_template(),
+            &self.export_filename_tokens(),
             &resolved,
         ))
     }
@@ -508,7 +508,7 @@ impl LibraryManager {
             );
 
             let stem = crate::library::export::render_export_filename(
-                &preset.filename_template,
+                &preset.filename_tokens,
                 &plan.resolved,
             );
             let output_path = unique_export_path(

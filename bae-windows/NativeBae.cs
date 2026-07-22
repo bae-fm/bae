@@ -554,8 +554,8 @@ internal static class NativeBae
     internal static string? SetShowRemainingTime(AppHandle handle, bool enabled) =>
         CaptureError(() => handle.SetShowRemainingTime(enabled));
 
-    internal static string? SetExportFilenameTemplate(AppHandle handle, string template) =>
-        CaptureError(() => handle.SetExportFilenameTemplate(template));
+    internal static string? SetExportFilenameTokens(AppHandle handle, IEnumerable<BridgeExportFilenameToken> tokens) =>
+        CaptureError(() => handle.SetExportFilenameTokens(tokens.ToList()));
 
     internal static string? SetExportLocation(AppHandle handle, BridgeExportLocation location) =>
         CaptureError(() => handle.SetExportLocation(location));
@@ -985,7 +985,7 @@ internal static class NativeBae
             ShowRemainingTime = config.ShowRemainingTime,
             LibraryFullWidth = config.LibraryFullWidth,
             ExportLocation = config.ExportLocation,
-            ExportFilenameTemplate = config.ExportFilenameTemplate,
+            ExportFilenameTokens = config.ExportFilenameTokens,
             ExportPresets = config.ExportPresets.Select(ExportPreset).ToList(),
             DefaultTrackExportSelection = config.DefaultTrackExportSelection,
             DefaultReleaseExportSelection = config.DefaultReleaseExportSelection,
@@ -1209,7 +1209,7 @@ internal static class NativeBae
             Name = preset.Name,
             Codec = preset.Codec,
             Extension = preset.Extension,
-            FilenameTemplate = preset.FilenameTemplate,
+            FilenameTokens = preset.FilenameTokens,
             PregapPlacement = preset.PregapPlacement,
             AppliesToTrack = preset.AppliesToTrack,
             AppliesToRelease = preset.AppliesToRelease,
@@ -1221,7 +1221,7 @@ internal static class NativeBae
             preset.Name,
             preset.Codec,
             preset.Extension,
-            preset.FilenameTemplate,
+            preset.FilenameTokens,
             preset.PregapPlacement,
             preset.AppliesToTrack,
             preset.AppliesToRelease);

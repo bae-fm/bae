@@ -599,11 +599,20 @@ impl AppHandle {
             .map_err(BridgeError::config)
     }
 
-    /// Set the template rendering a single-track export's suggested filename.
-    pub fn set_export_filename_template(&self, template: String) -> Result<(), BridgeError> {
+    /// Set the ordered token list rendering a single-track export's suggested
+    /// filename.
+    pub fn set_export_filename_tokens(
+        &self,
+        tokens: Vec<crate::types::BridgeExportFilenameToken>,
+    ) -> Result<(), BridgeError> {
         self.services
             .library_manager()
-            .set_export_filename_template(template)
+            .set_export_filename_tokens(
+                tokens
+                    .into_iter()
+                    .map(crate::types::BridgeExportFilenameToken::into_core)
+                    .collect(),
+            )
             .map_err(BridgeError::config)
     }
 

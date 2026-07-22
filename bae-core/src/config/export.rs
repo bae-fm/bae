@@ -16,11 +16,25 @@ pub enum ExportLocation {
     Fixed(PathBuf),
 }
 
-/// Template for the default filename a single-track export suggests. Tokens are
-/// substituted from the track's metadata; see `render_export_filename`. The
-/// extension is added by the exporter from the chosen format, not the template.
-pub(super) fn default_export_filename_template() -> String {
-    "{track_number} - {title}".to_string()
+/// One piece of an export filename pattern. A pattern is an ordered token list;
+/// rendering substitutes each token's value from the track's metadata and joins
+/// the non-empty values with single spaces (see `render_export_filename`). The
+/// extension is added by the exporter from the chosen format, not the pattern.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ExportFilenameToken {
+    Title,
+    Artist,
+    Album,
+    Year,
+    TrackNumber,
+    DiscNumber,
+    TrackTotal,
+}
+
+/// The default filename pattern a single-track export suggests: the zero-padded
+/// track number, then the title.
+pub(super) fn default_export_filename_tokens() -> Vec<ExportFilenameToken> {
+    vec![ExportFilenameToken::TrackNumber, ExportFilenameToken::Title]
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -96,7 +110,7 @@ pub struct ExportPreset {
     pub id: String,
     pub name: String,
     pub codec: ExportPresetCodec,
-    pub filename_template: String,
+    pub filename_tokens: Vec<ExportFilenameToken>,
     pub pregap_placement: ExportPregapPlacement,
     pub applies_to_track: bool,
     pub applies_to_release: bool,
@@ -168,7 +182,7 @@ pub(super) fn default_export_presets() -> Vec<ExportPreset> {
             codec: ExportPresetCodec::Flac {
                 bit_depth: ExportBitDepth::Source,
             },
-            filename_template: default_export_filename_template(),
+            filename_tokens: default_export_filename_tokens(),
             pregap_placement: default_export_pregap_placement(),
             applies_to_track: true,
             applies_to_release: true,
@@ -177,7 +191,7 @@ pub(super) fn default_export_presets() -> Vec<ExportPreset> {
             id: "mp3".to_string(),
             name: "MP3".to_string(),
             codec: ExportPresetCodec::Mp3 { bitrate_kbps: 320 },
-            filename_template: default_export_filename_template(),
+            filename_tokens: default_export_filename_tokens(),
             pregap_placement: default_export_pregap_placement(),
             applies_to_track: true,
             applies_to_release: true,
@@ -197,7 +211,7 @@ mod tests {
             codec: ExportPresetCodec::Flac {
                 bit_depth: ExportBitDepth::Source,
             },
-            filename_template: default_export_filename_template(),
+            filename_tokens: default_export_filename_tokens(),
             pregap_placement: ExportPregapPlacement::SingleFileWithCue,
             applies_to_track: true,
             applies_to_release: true,
@@ -218,7 +232,7 @@ mod tests {
             id: "opus-image".to_string(),
             name: "Opus image".to_string(),
             codec: ExportPresetCodec::OpusOgg { bitrate_kbps: 192 },
-            filename_template: default_export_filename_template(),
+            filename_tokens: default_export_filename_tokens(),
             pregap_placement: ExportPregapPlacement::SingleFileWithCue,
             applies_to_track: false,
             applies_to_release: true,

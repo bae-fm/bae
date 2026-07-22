@@ -2,18 +2,18 @@ import AppKit
 import BaeKit
 import SwiftUI
 
-/// Release-export destination control, styled as a radio group like a browser's
-/// "Downloads" location setting: pick a fixed folder — with a "Location" row
-/// that shows the path and a "Change" button — or prompt for a folder on every
-/// export. Writes through the `Exports` service; the change round-trips back via
-/// a `configChanged` event into `ConfigStore`, so the selection updates
-/// reactively without an optimistic write.
+/// Release-export destination control, styled like a browser's download
+/// location popup: the remembered folder (when there is one), "Ask each time",
+/// and "Other…" which prompts for a folder. Writes through the `Exports`
+/// service; the change round-trips back via a `configChanged` event into
+/// `ConfigStore`, so the selection updates reactively without an optimistic
+/// write — a cancelled prompt simply re-renders the stored choice.
 ///
 /// `lastExportFolder` is per-device UI convenience state (a local filesystem
-/// path): the folder to restore when the user re-selects "Save to a folder",
-/// and the greyed path shown while "Ask each time" is active. The authoritative
-/// destination stays the config enum, so it's written only after a fixed
-/// selection actually lands.
+/// path): while "Ask each time" is active it keeps the previous folder on the
+/// menu so re-selecting it needs no prompt. The authoritative destination
+/// stays the config enum, so it's written only after a fixed selection
+/// actually lands.
 struct ExportLocationPicker: View {
     let configStore: ConfigStore
     let setLocation: @Sendable (BridgeExportLocation) throws -> Void
@@ -24,92 +24,65 @@ struct ExportLocationPicker: View {
     @AppStorage("lastExportFolder")
     private var lastExportFolder = ""
 
-    var body: some View {
-        Group {
-            radioRow(
-                title: "Save to a folder",
-                isSelected: isFixed,
-                action: selectFixed
-            )
+    /// One popup entry. The folder case carries the full path; the menu shows
+    /// its display name.
+    private enum Choice: Hashable {
+        case folder(String)
+        case askEachTime
+        case chooseOther
+    }
 
-            LabeledContent("Location") {
-                HStack(spacing: 8) {
-                    Text(locationPath)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                        .truncationMode(.middle)
-                    Divider()
-                        .frame(height: 16)
-                    Button("Change", action: chooseFolder)
+    var body: some View {
+        Picker("Location", selection: selectionBinding) {
+            if let folder = offeredFolder {
+                Text(folderDisplayName(folder)).tag(Choice.folder(folder))
+            }
+            Text("Ask each time").tag(Choice.askEachTime)
+            Divider()
+            Text("Other…").tag(Choice.chooseOther)
+        }
+        .help(offeredFolder ?? "")
+    }
+
+    private var selectionBinding: Binding<Choice> {
+        Binding(
+            get: {
+                switch configStore.config.exportLocation {
+                case .fixed(let dir): .folder(dir)
+                case .askEachTime: .askEachTime
+                }
+            },
+            set: { choice in
+                switch choice {
+                case .folder(let dir):
+                    apply(.fixed(dir: dir))
+                case .askEachTime:
+                    apply(.askEachTime)
+                case .chooseOther:
+                    // Defer past the binding write: the panel runs modal, and
+                    // the picker re-renders from config either way — the
+                    // chosen folder when one lands, the stored choice on
+                    // cancel.
+                    Task { @MainActor in chooseFolder() }
                 }
             }
-            .disabled(!isFixed)
-            .foregroundStyle(isFixed ? Color.primary : Color.secondary)
-
-            radioRow(
-                title: "Ask each time",
-                isSelected: !isFixed,
-                action: selectAskEachTime
-            )
-        }
+        )
     }
 
-    /// A selectable row with a leading radio indicator; the whole row is the
-    /// hit target so a tap anywhere selects the option.
-    private func radioRow(
-        title: LocalizedStringKey,
-        isSelected: Bool,
-        action: @escaping () -> Void
-    ) -> some View {
-        Button(action: action) {
-            HStack(spacing: 8) {
-                Image(
-                    systemName: isSelected
-                        ? "largecircle.fill.circle" : "circle"
-                )
-                .foregroundStyle(isSelected ? Color.accentColor : .secondary)
-                Text(title)
-                Spacer()
-            }
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-    }
-
-    private var isFixed: Bool {
-        if case .fixed = configStore.config.exportLocation { return true }
-        return false
-    }
-
-    /// The path shown in the Location row: the configured folder when fixed,
-    /// otherwise the last-remembered folder, or a placeholder when the user has
-    /// never chosen one.
-    private var locationPath: String {
+    /// The folder entry on the menu: the configured folder when fixed,
+    /// otherwise the remembered one, or none when the user never chose a
+    /// folder.
+    private var offeredFolder: String? {
         switch configStore.config.exportLocation {
         case .fixed(let dir):
             return dir
         case .askEachTime:
-            return lastExportFolder.isEmpty
-                ? String(localized: "No folder chosen")
-                : lastExportFolder
+            return lastExportFolder.isEmpty ? nil : lastExportFolder
         }
     }
 
-    /// Select "Save to a folder". Reuse the remembered folder if there is one;
-    /// otherwise prompt, and if the user cancels, stay on "Ask each time".
-    private func selectFixed() {
-        guard !isFixed else { return }
-        if lastExportFolder.isEmpty {
-            chooseFolder()
-        }
-        else {
-            apply(.fixed(dir: lastExportFolder))
-        }
-    }
-
-    private func selectAskEachTime() {
-        guard isFixed else { return }
-        apply(.askEachTime)
+    private func folderDisplayName(_ dir: String) -> String {
+        URL(fileURLWithPath: dir).lastPathComponent
     }
 
     /// Prompt for a folder (directories only). On pick, set a fixed

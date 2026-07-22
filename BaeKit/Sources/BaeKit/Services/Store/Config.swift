@@ -34,9 +34,9 @@ public struct Config: Equatable {
     public let libraryFullWidth: Bool
     /// Where release exports write: prompt each time, or a fixed folder.
     public let exportLocation: BridgeExportLocation
-    /// Template for the default filename a single-track export suggests. Core
-    /// renders the tokens; the UI edits the raw string.
-    public let exportFilenameTemplate: String
+    /// The ordered token list rendering a single-track export's suggested
+    /// filename. Core renders the tokens; the UI edits the ordered list.
+    public let exportFilenameTokens: [BridgeExportFilenameToken]
     /// Configured export presets offered by release and track export.
     public let exportPresets: [BridgeExportPreset]
     /// Default selected option in the track export picker.
@@ -60,7 +60,7 @@ public struct Config: Equatable {
         showRemainingTime = bridge.showRemainingTime
         libraryFullWidth = bridge.libraryFullWidth
         exportLocation = bridge.exportLocation
-        exportFilenameTemplate = bridge.exportFilenameTemplate
+        exportFilenameTokens = bridge.exportFilenameTokens
         exportPresets = bridge.exportPresets
         defaultTrackExportSelection = bridge.defaultTrackExportSelection
         defaultReleaseExportSelection = bridge.defaultReleaseExportSelection

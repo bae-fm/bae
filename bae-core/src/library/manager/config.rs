@@ -68,17 +68,18 @@ impl LibraryManager {
         self.config_handle.update(|c| c.export_location = location)
     }
 
-    /// The template rendering a single-track export's suggested filename.
-    pub fn export_filename_template(&self) -> String {
-        self.config_handle.config().export_filename_template.clone()
+    /// The ordered token list rendering a single-track export's suggested
+    /// filename.
+    pub fn export_filename_tokens(&self) -> Vec<crate::config::ExportFilenameToken> {
+        self.config_handle.config().export_filename_tokens.clone()
     }
 
-    pub fn set_export_filename_template(
+    pub fn set_export_filename_tokens(
         &self,
-        template: String,
+        tokens: Vec<crate::config::ExportFilenameToken>,
     ) -> Result<(), crate::config::ConfigError> {
         self.config_handle
-            .update(|c| c.export_filename_template = template)
+            .update(|c| c.export_filename_tokens = tokens)
     }
 
     pub fn export_presets(&self) -> Vec<crate::config::ExportPreset> {

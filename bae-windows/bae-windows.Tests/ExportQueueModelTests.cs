@@ -75,34 +75,27 @@ public sealed class ExportQueueModelTests
     }
 
     [Fact]
-    public void LocationRowPath_Fixed_ShowsDir()
+    public void OfferedFolder_Fixed_ShowsDir()
     {
         Assert.Equal(
             "/music/exports",
-            ExportQueueModel.LocationRowPath(isFixed: true, fixedDir: "/music/exports", remembered: "/old"));
+            ExportQueueModel.OfferedFolder(isFixed: true, fixedDir: "/music/exports", remembered: "/old"));
     }
 
     [Fact]
-    public void LocationRowPath_AskWithRemembered_ShowsRemembered()
+    public void OfferedFolder_AskWithRemembered_ShowsRemembered()
     {
         Assert.Equal(
             "/old",
-            ExportQueueModel.LocationRowPath(isFixed: false, fixedDir: null, remembered: "/old"));
-    }
-
-    [Fact]
-    public void LocationRowPath_AskWithNothing_IsNull()
-    {
-        Assert.Null(ExportQueueModel.LocationRowPath(isFixed: false, fixedDir: null, remembered: null));
+            ExportQueueModel.OfferedFolder(isFixed: false, fixedDir: null, remembered: "/old"));
     }
 
     [Theory]
-    [InlineData(null, true)]
-    [InlineData("", true)]
-    [InlineData("   ", true)]
-    [InlineData("/music/exports", false)]
-    public void FixedSelectionNeedsPrompt_OnBlankRemembered(string? remembered, bool expected)
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void OfferedFolder_AskWithNothing_IsNull(string? remembered)
     {
-        Assert.Equal(expected, ExportQueueModel.FixedSelectionNeedsPrompt(remembered));
+        Assert.Null(ExportQueueModel.OfferedFolder(isFixed: false, fixedDir: null, remembered: remembered));
     }
 }

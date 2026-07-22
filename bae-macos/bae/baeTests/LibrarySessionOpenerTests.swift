@@ -144,7 +144,7 @@ struct LibrarySessionOpenerTests {
             showRemainingTime: false,
                     libraryFullWidth: false,
             exportLocation: .askEachTime,
-            exportFilenameTemplate: "",
+            exportFilenameTokens: [],
             exportPresets: [],
             defaultTrackExportSelection: .original,
             defaultReleaseExportSelection: .original,

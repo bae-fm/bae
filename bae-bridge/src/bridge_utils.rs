@@ -1,6 +1,6 @@
 use crate::types::{
-    BridgeConfig, BridgeDiscogsTokenStatus, BridgeExportBitDepth, BridgeExportLocation,
-    BridgeExportPregapPlacement, BridgeExportPreset, BridgeExportPresetCodec,
+    BridgeConfig, BridgeDiscogsTokenStatus, BridgeExportBitDepth, BridgeExportFilenameToken,
+    BridgeExportLocation, BridgeExportPregapPlacement, BridgeExportPreset, BridgeExportPresetCodec,
     BridgeExportSelection, BridgeMcpConfig, BridgeSyncConfig, BridgeSyncProvider,
 };
 
@@ -139,6 +139,44 @@ impl BridgeExportPregapPlacement {
     }
 }
 
+impl BridgeExportFilenameToken {
+    pub(crate) fn from_core(token: bae_core::config::ExportFilenameToken) -> Self {
+        match token {
+            bae_core::config::ExportFilenameToken::Title => BridgeExportFilenameToken::Title,
+            bae_core::config::ExportFilenameToken::Artist => BridgeExportFilenameToken::Artist,
+            bae_core::config::ExportFilenameToken::Album => BridgeExportFilenameToken::Album,
+            bae_core::config::ExportFilenameToken::Year => BridgeExportFilenameToken::Year,
+            bae_core::config::ExportFilenameToken::TrackNumber => {
+                BridgeExportFilenameToken::TrackNumber
+            }
+            bae_core::config::ExportFilenameToken::DiscNumber => {
+                BridgeExportFilenameToken::DiscNumber
+            }
+            bae_core::config::ExportFilenameToken::TrackTotal => {
+                BridgeExportFilenameToken::TrackTotal
+            }
+        }
+    }
+
+    pub(crate) fn into_core(self) -> bae_core::config::ExportFilenameToken {
+        match self {
+            BridgeExportFilenameToken::Title => bae_core::config::ExportFilenameToken::Title,
+            BridgeExportFilenameToken::Artist => bae_core::config::ExportFilenameToken::Artist,
+            BridgeExportFilenameToken::Album => bae_core::config::ExportFilenameToken::Album,
+            BridgeExportFilenameToken::Year => bae_core::config::ExportFilenameToken::Year,
+            BridgeExportFilenameToken::TrackNumber => {
+                bae_core::config::ExportFilenameToken::TrackNumber
+            }
+            BridgeExportFilenameToken::DiscNumber => {
+                bae_core::config::ExportFilenameToken::DiscNumber
+            }
+            BridgeExportFilenameToken::TrackTotal => {
+                bae_core::config::ExportFilenameToken::TrackTotal
+            }
+        }
+    }
+}
+
 impl BridgeExportSelection {
     pub(crate) fn from_core(selection: &bae_core::config::ExportSelection) -> Self {
         match selection {
@@ -167,7 +205,7 @@ impl BridgeExportPreset {
             id,
             name,
             codec,
-            filename_template,
+            filename_tokens,
             pregap_placement,
             applies_to_track,
             applies_to_release,
@@ -178,7 +216,11 @@ impl BridgeExportPreset {
             codec: BridgeExportPresetCodec::from_core(codec),
             // Derived from the codec; the core preset re-derives it on `into_core`.
             extension: codec.extension().to_string(),
-            filename_template: filename_template.clone(),
+            filename_tokens: filename_tokens
+                .iter()
+                .copied()
+                .map(BridgeExportFilenameToken::from_core)
+                .collect(),
             pregap_placement: BridgeExportPregapPlacement::from_core(*pregap_placement),
             applies_to_track: *applies_to_track,
             applies_to_release: *applies_to_release,
@@ -190,7 +232,7 @@ impl BridgeExportPreset {
             id,
             name,
             codec,
-            filename_template,
+            filename_tokens,
             pregap_placement,
             applies_to_track,
             applies_to_release,
@@ -202,7 +244,10 @@ impl BridgeExportPreset {
             id,
             name,
             codec: codec.into_core(),
-            filename_template,
+            filename_tokens: filename_tokens
+                .into_iter()
+                .map(BridgeExportFilenameToken::into_core)
+                .collect(),
             pregap_placement: pregap_placement.into_core(),
             applies_to_track,
             applies_to_release,
@@ -229,7 +274,7 @@ impl BridgeConfig {
             // Playback loudness policy; not surfaced on the config screen.
             replay_gain_mode: _,
             export_location,
-            export_filename_template,
+            export_filename_tokens,
             export_presets,
             default_track_export_selection,
             default_release_export_selection,
@@ -257,7 +302,11 @@ impl BridgeConfig {
             show_remaining_time: *show_remaining_time,
             library_full_width: *library_full_width,
             export_location: BridgeExportLocation::from_core(export_location),
-            export_filename_template: export_filename_template.clone(),
+            export_filename_tokens: export_filename_tokens
+                .iter()
+                .copied()
+                .map(BridgeExportFilenameToken::from_core)
+                .collect(),
             export_presets: export_presets
                 .iter()
                 .map(BridgeExportPreset::from_core)

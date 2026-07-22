@@ -8,7 +8,8 @@
 use bae_test_support as support;
 
 use bae_core::config::{
-    ExportBitDepth, ExportPregapPlacement, ExportPreset, ExportPresetCodec, ExportSelection,
+    ExportBitDepth, ExportFilenameToken, ExportPregapPlacement, ExportPreset, ExportPresetCodec,
+    ExportSelection,
 };
 use bae_core::db::Database;
 use bae_core::import::{IdentityChoice, ImportCommand, StorageMode};
@@ -220,7 +221,7 @@ async fn export_release_single_file_with_cue_writes_image_and_cue() {
         codec: ExportPresetCodec::Flac {
             bit_depth: ExportBitDepth::Source,
         },
-        filename_template: "{track_number} - {title}".to_string(),
+        filename_tokens: vec![ExportFilenameToken::TrackNumber, ExportFilenameToken::Title],
         pregap_placement: ExportPregapPlacement::SingleFileWithCue,
         applies_to_track: false,
         applies_to_release: true,
