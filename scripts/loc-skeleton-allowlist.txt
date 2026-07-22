@@ -175,20 +175,20 @@ it	settings.discogs.label
 it	settings.discogs.token_placeholder
 it	signal.kind.disc_id
 it	settings.automation.status.running
-it	settings.export.preset_pregap
-it	settings.export.bit_depth.bits16
-it	settings.export.bit_depth.bits24
-it	settings.export.bit_depth.bits32
-it	settings.export.bitrate
+it	settings.formats.preset_pregap
+it	settings.formats.bit_depth.bits16
+it	settings.formats.bit_depth.bits24
+it	settings.formats.bit_depth.bits32
+it	settings.formats.bitrate
 it	storage.column.album
 tr	action.ok
 tr	cloud.provider.s3
 tr	s3.field.bucket
 tr	signal.kind.disc_id
-tr	settings.export.preset_pregap
-tr	settings.export.bit_depth.bits16
-tr	settings.export.bit_depth.bits24
-tr	settings.export.bit_depth.bits32
+tr	settings.formats.preset_pregap
+tr	settings.formats.bit_depth.bits16
+tr	settings.formats.bit_depth.bits24
+tr	settings.formats.bit_depth.bits32
 tr	edit.tracks.col_number
 vi	action.ok
 vi	cloud.provider.s3
@@ -197,10 +197,10 @@ vi	search.field.album
 vi	settings.discogs.label
 vi	settings.discogs.token_placeholder
 vi	signal.kind.disc_id
-vi	settings.export.preset_pregap
-vi	settings.export.bit_depth.bits16
-vi	settings.export.bit_depth.bits24
-vi	settings.export.bit_depth.bits32
+vi	settings.formats.preset_pregap
+vi	settings.formats.bit_depth.bits16
+vi	settings.formats.bit_depth.bits24
+vi	settings.formats.bit_depth.bits32
 vi	storage.column.album
 nl	action.ok
 nl	album.release_picker
@@ -223,12 +223,12 @@ nl	album.count
 nl	search.section.albums
 nl	search.section.releases
 nl	search.section.credits
-nl	settings.export.presets
-nl	settings.export.preset_release
-nl	settings.export.preset_pregap
-nl	settings.export.bit_depth.bits16
-nl	settings.export.bit_depth.bits24
-nl	settings.export.bit_depth.bits32
+nl	settings.formats.presets
+nl	settings.formats.preset_release
+nl	settings.formats.preset_pregap
+nl	settings.formats.bit_depth.bits16
+nl	settings.formats.bit_depth.bits24
+nl	settings.formats.bit_depth.bits32
 nl	edit.field.label
 nl	edit.field.barcode
 nl	storage.column.album
@@ -240,24 +240,23 @@ nl	storage.column.album
 it	MP3 %lld kbps
 it	Opus %lld kbps
 it	Pregap
-it	settings.export.codec_mp3
-it	settings.export.codec_opus
-it	settings.export.token.album
+it	settings.formats.codec_mp3
+it	settings.formats.codec_opus
+it	settings.formats.token.album
 nl	MP3 %lld kbps
 nl	Opus %lld kbps
 nl	Pregap
-nl	settings.export.codec_mp3
-nl	settings.export.codec_opus
-nl	settings.export.release_exports
-nl	settings.export.token.album
+nl	settings.formats.codec_mp3
+nl	settings.formats.codec_opus
+nl	settings.formats.token.album
 tr	MP3 %lld kbps
 tr	Opus %lld kbps
 tr	Pregap
-tr	settings.export.codec_mp3
-tr	settings.export.codec_opus
+tr	settings.formats.codec_mp3
+tr	settings.formats.codec_opus
 vi	MP3 %lld kbps
 vi	Opus %lld kbps
 vi	Pregap
-vi	settings.export.codec_mp3
-vi	settings.export.codec_opus
-vi	settings.export.token.album
+vi	settings.formats.codec_mp3
+vi	settings.formats.codec_opus
+vi	settings.formats.token.album
