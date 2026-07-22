@@ -16,10 +16,7 @@ struct SearchView: View {
     var body: some View {
         Group {
             if let results {
-                if results.albums.isEmpty, results.artists.isEmpty,
-                    results.tracks.isEmpty, results.composers.isEmpty,
-                    results.works.isEmpty
-                {
+                if showsEmptyState {
                     ContentUnavailableView.search(text: results.query)
                         .frame(height: 240)
                 }
@@ -58,6 +55,22 @@ struct SearchView: View {
                 .strokeBorder(Color.white.opacity(0.08), lineWidth: 1)
         )
         .shadow(color: .black.opacity(0.5), radius: 24, y: 12)
+        // The result list's height is measured (`contentHeight` above), so on
+        // the mount frame the card would render as a zero-height sliver of
+        // chrome before the measurement lands. Hold it invisible until then;
+        // the empty state needs no measurement and shows immediately.
+        .opacity(showsEmptyState || contentHeight > 0 ? 1 : 0)
+    }
+
+    /// Whether the card is showing the fixed-height no-results state rather
+    /// than the measured result list.
+    private var showsEmptyState: Bool {
+        guard let results else {
+            return false
+        }
+        return results.albums.isEmpty && results.artists.isEmpty
+            && results.tracks.isEmpty && results.composers.isEmpty
+            && results.works.isEmpty
     }
 
     private func resultsList(_ results: SearchResults) -> some View {
