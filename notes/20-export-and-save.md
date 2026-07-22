@@ -28,7 +28,7 @@ rewriting, no renaming, no cover embedding, no file filtering. Export has no
 format options because format is not a degree of freedom — fidelity to the
 imported set *is* the feature.
 
-One addition rides along: a hidden `.bae-export` marker file naming the
+One addition rides along: a hidden `.bae-output` marker file naming the
 release id. It is what lets a re-export safely replace a prior export of the
 same folder (an unmarked directory at the target is never touched). The files
 themselves are still exact; the folder carries one extra hidden file.
@@ -38,9 +38,9 @@ Mechanics:
 - Reads each blob through coven's locality-aware read — a Remote release
   fetches from cloud/cache and decrypts. Export never requires a local copy
   and never changes release state: no gate flips, no locality change.
-- Destination follows the browser download-folder model
-  (`OutputLocation`): ask each time, or a fixed directory. Output lands at
-  `<dir>/<source_folder_name>/`.
+- Destination is chosen per export in a folder dialog, seeded with the
+  last-used output folder (remembered by the UI; destination is a per-run
+  choice, not configuration). Output lands at `<dir>/<source_folder_name>/`.
 - Releases queue through the serial output queue, shared with release-level
   save (one release-level output at a time, pause/cancel/retry, transient
   across restarts).
@@ -93,10 +93,13 @@ pregap placement, cover embedding, and which levels the preset applies to
   index points computed from the sample windows). Release level only, and
   only for codecs CUE can name (not Opus/Ogg).
 
-Destinations: a release-level save targets a directory (the same
-`OutputLocation` and serial output queue as export); a track-level save runs
-through the platform save panel, seeded with the rendered filename
-suggestion — seeding reads only the database, never audio or the cloud.
+Destinations: a release-level save targets a directory chosen the same way
+as export's (folder dialog, last-used seed) and runs through the same serial
+output queue; its output folder carries the same `.bae-output` marker with
+the same replacement rules. A track-level save runs through the platform
+save panel, seeded with the selected preset's rendered filename suggestion —
+re-rendered when the preset changes, and seeding reads only the database,
+never audio or the cloud.
 
 Like export, save reads through coven (cloud-only sources download +
 decrypt), and output is atomic: partial files are removed on failure or
