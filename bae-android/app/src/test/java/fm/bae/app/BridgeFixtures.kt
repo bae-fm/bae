@@ -11,15 +11,17 @@ import uniffi.bae_bridge.BridgeDownloadOp
 import uniffi.bae_bridge.BridgeDownloadProgress
 import uniffi.bae_bridge.BridgeDownloadSnapshot
 import uniffi.bae_bridge.BridgeDownloadState
-import uniffi.bae_bridge.BridgeExportFilenameToken
-import uniffi.bae_bridge.BridgeExportLocation
-import uniffi.bae_bridge.BridgeExportSelection
 import uniffi.bae_bridge.BridgeGalleryItem
 import uniffi.bae_bridge.BridgeLibrary
 import uniffi.bae_bridge.BridgeMcpConfig
 import uniffi.bae_bridge.BridgeOutboxSnapshot
 import uniffi.bae_bridge.BridgeRelease
 import uniffi.bae_bridge.BridgeReleaseStorageState
+import uniffi.bae_bridge.BridgeSaveBitDepth
+import uniffi.bae_bridge.BridgeSaveCodec
+import uniffi.bae_bridge.BridgeSaveFilenameToken
+import uniffi.bae_bridge.BridgeSavePregapPlacement
+import uniffi.bae_bridge.BridgeSavePreset
 import uniffi.bae_bridge.BridgeSearchResults
 import uniffi.bae_bridge.BridgeTrackGroup
 import uniffi.bae_bridge.BridgeTrackSearchResult
@@ -247,12 +249,27 @@ object BridgeFixtures {
             maxConcurrentDownloads = 3u,
             showRemainingTime = false,
             libraryFullWidth = false,
-            exportLocation = BridgeExportLocation.AskEachTime,
-            exportFilenameTokens =
-                listOf(BridgeExportFilenameToken.TRACK_NUMBER, BridgeExportFilenameToken.TITLE),
-            savePresets = emptyList(),
-            defaultTrackExportSelection = BridgeExportSelection.Original,
-            defaultReleaseExportSelection = BridgeExportSelection.Original,
+            savePresets =
+                listOf(
+                    BridgeSavePreset(
+                        id = "flac",
+                        name = "FLAC",
+                        codec = BridgeSaveCodec.Flac(bitDepth = BridgeSaveBitDepth.SOURCE),
+                        extension = "flac",
+                        filenameTokens =
+                            listOf(
+                                BridgeSaveFilenameToken.TRACK_NUMBER,
+                                BridgeSaveFilenameToken.TITLE,
+                            ),
+                        pregapPlacement =
+                            BridgeSavePregapPlacement.APPEND_TO_PREVIOUS_EXCEPT_HTOA,
+                        appliesToTrack = true,
+                        appliesToRelease = true,
+                        embedCover = true,
+                    )
+                ),
+            defaultTrackSavePreset = "flac",
+            defaultReleaseSavePreset = "flac",
             mcp = BridgeMcpConfig(enabled = false, port = 47777u),
             discogsTokenStatus = BridgeDiscogsTokenStatus.NOT_CONFIGURED,
             discogsUsable = false,
