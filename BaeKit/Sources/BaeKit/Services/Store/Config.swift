@@ -32,8 +32,6 @@ public struct Config: Equatable {
     /// centering its content in a width-capped column. A synced preference,
     /// read here by the library page.
     public let libraryFullWidth: Bool
-    /// Where release exports write: prompt each time, or a fixed folder.
-    public let exportLocation: BridgeExportLocation
     /// The ordered token list rendering a single-track export's suggested
     /// filename. Core renders the tokens; the UI edits the ordered list.
     public let exportFilenameTokens: [BridgeExportFilenameToken]
@@ -59,7 +57,6 @@ public struct Config: Equatable {
         maxConcurrentDownloads = bridge.maxConcurrentDownloads
         showRemainingTime = bridge.showRemainingTime
         libraryFullWidth = bridge.libraryFullWidth
-        exportLocation = bridge.exportLocation
         exportFilenameTokens = bridge.exportFilenameTokens
         exportPresets = bridge.exportPresets
         defaultTrackExportSelection = bridge.defaultTrackExportSelection

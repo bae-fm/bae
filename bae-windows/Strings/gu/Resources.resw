@@ -314,7 +314,6 @@
   <data name="settings.export.filename_format" xml:space="preserve"><value>ફાઇલનામ બંધારણ</value></data>
   <data name="settings.export.release_exports" xml:space="preserve"><value>પ્રકાશન નિકાસો</value></data>
   <data name="settings.export.track_exports" xml:space="preserve"><value>ટ્રૅક નિકાસો</value></data>
-  <data name="settings.export.choose_folder" xml:space="preserve"><value>અન્ય…</value></data>
   <data name="settings.export.add_token" xml:space="preserve"><value>ઉમેરો:</value></data>
   <data name="settings.export.remove_token" xml:space="preserve"><value>{token} દૂર કરો</value></data>
   <data name="settings.export.token.title" xml:space="preserve"><value>શીર્ષક</value></data>
@@ -392,8 +391,6 @@
   <data name="nowplaying.show_elapsed" xml:space="preserve"><value>વીતેલો સમય બતાવો</value></data>
   <data name="export.title" xml:space="preserve"><value>નિકાસ થઈ રહી છે</value></data>
   <data name="export.state.exporting" xml:space="preserve"><value>{percent}% નિકાસ થઈ રહી છે</value></data>
-  <data name="settings.export.ask_each_time" xml:space="preserve"><value>દર વખત પૂછો</value></data>
-  <data name="settings.export.location" xml:space="preserve"><value>સ્થાન</value></data>
   <data name="import.documents" xml:space="preserve"><value>દસ્તાવેજો</value></data>
   <data name="import.document.read_failed" xml:space="preserve"><value>{name} વાંચી શકાયું નહીં: {error}</value></data>
   <data name="libraries.reveal" xml:space="preserve"><value>ફાઇલ એક્સપ્લોરરમાં બતાવો</value></data>

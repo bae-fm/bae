@@ -314,7 +314,6 @@
   <data name="settings.export.filename_format" xml:space="preserve"><value>مسل نام ساخت</value></data>
   <data name="settings.export.release_exports" xml:space="preserve"><value>اشاعت برآمدات</value></data>
   <data name="settings.export.track_exports" xml:space="preserve"><value>نغمہ برآمدات</value></data>
-  <data name="settings.export.choose_folder" xml:space="preserve"><value>دیگر…</value></data>
   <data name="settings.export.add_token" xml:space="preserve"><value>شامل کریں:</value></data>
   <data name="settings.export.remove_token" xml:space="preserve"><value>{token} ہٹائیں</value></data>
   <data name="settings.export.token.title" xml:space="preserve"><value>عنوان</value></data>
@@ -392,8 +391,6 @@
   <data name="nowplaying.show_elapsed" xml:space="preserve"><value>گزرا ہوا وقت دکھائیں</value></data>
   <data name="export.title" xml:space="preserve"><value>برآمد ہو رہا ہے</value></data>
   <data name="export.state.exporting" xml:space="preserve"><value>{percent}% برآمد ہو رہا ہے</value></data>
-  <data name="settings.export.ask_each_time" xml:space="preserve"><value>ہر بار پوچھیں</value></data>
-  <data name="settings.export.location" xml:space="preserve"><value>مقام</value></data>
   <data name="import.documents" xml:space="preserve"><value>دستاویزات</value></data>
   <data name="import.document.read_failed" xml:space="preserve"><value>{name} پڑھا نہیں جا سکا: {error}</value></data>
   <data name="libraries.reveal" xml:space="preserve"><value>فائل ایکسپلورر میں دکھائیں</value></data>

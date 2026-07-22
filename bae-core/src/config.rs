@@ -11,8 +11,8 @@ mod keyring;
 
 pub use dev::seed_dev_keyring;
 pub use export::{
-    ExportBitDepth, ExportFilenameToken, ExportLocation, ExportPregapPlacement, ExportPreset,
-    ExportPresetCodec, ExportSelection,
+    ExportBitDepth, ExportFilenameToken, ExportPregapPlacement, ExportPreset, ExportPresetCodec,
+    ExportSelection,
 };
 pub use keyring::init_keyring;
 #[cfg(any(test, feature = "test-utils"))]
@@ -275,8 +275,6 @@ pub struct ConfigYaml {
     pub encryption_key_fingerprint: Option<String>,
     /// How loudness normalization is applied at playback.
     pub replay_gain_mode: ReplayGainMode,
-    /// Where release exports write.
-    pub export_location: ExportLocation,
     /// The ordered token list rendering a single-track export's suggested
     /// filename.
     pub export_filename_tokens: Vec<ExportFilenameToken>,
@@ -329,7 +327,6 @@ impl ConfigYaml {
             },
             discogs: self.discogs,
             replay_gain_mode: self.replay_gain_mode,
-            export_location: self.export_location,
             export_filename_tokens: self.export_filename_tokens,
             export_presets: self.export_presets,
             default_track_export_selection: self.default_track_export_selection,
@@ -356,7 +353,6 @@ impl From<&Config> for ConfigYaml {
             encryption_key_stored: config.encryption_key_stored,
             encryption_key_fingerprint: config.encryption_key_fingerprint.clone(),
             replay_gain_mode: config.replay_gain_mode,
-            export_location: config.export_location.clone(),
             export_filename_tokens: config.export_filename_tokens.clone(),
             export_presets: config.export_presets.clone(),
             default_track_export_selection: config.default_track_export_selection.clone(),
@@ -407,8 +403,6 @@ pub struct Config {
     pub discogs: Option<DiscogsValidation>,
     /// How loudness normalization is applied at playback. Defaults to `Off`.
     pub replay_gain_mode: ReplayGainMode,
-    /// Where release exports write. Defaults to prompting each time.
-    pub export_location: ExportLocation,
     /// The ordered token list rendering a single-track export's suggested
     /// filename.
     pub export_filename_tokens: Vec<ExportFilenameToken>,
@@ -575,7 +569,6 @@ impl Config {
             inner: coven::Config::with_defaults(library_id, device_id, library_dir, library_name),
             discogs: None,
             replay_gain_mode: ReplayGainMode::Off,
-            export_location: ExportLocation::AskEachTime,
             export_filename_tokens: default_export_filename_tokens(),
             export_presets: default_export_presets(),
             default_track_export_selection: ExportSelection::Original,
@@ -1045,32 +1038,6 @@ mod tests {
     }
 
     #[test]
-    fn export_location_defaults_to_ask_each_time() {
-        let tmp = TempDir::new().unwrap();
-        let config = make_test_config("lib", tmp.path().to_path_buf());
-        assert_eq!(config.export_location, ExportLocation::AskEachTime);
-    }
-
-    #[test]
-    fn export_location_roundtrips_both_variants() {
-        for location in [
-            ExportLocation::AskEachTime,
-            ExportLocation::Fixed(PathBuf::from("/exports/music")),
-        ] {
-            let tmp = TempDir::new().unwrap();
-            let mut config = make_test_config("lib", tmp.path().to_path_buf());
-            config.export_location = location.clone();
-            config.save_to_config_yaml().unwrap();
-
-            let yaml: ConfigYaml = serde_yaml::from_str(
-                &std::fs::read_to_string(tmp.path().join("config.yaml")).unwrap(),
-            )
-            .unwrap();
-            assert_eq!(yaml.export_location, location);
-        }
-    }
-
-    #[test]
     fn export_settings_survive_yaml_roundtrip() {
         let tmp = TempDir::new().unwrap();
         let mut config = make_test_config("lib", tmp.path().to_path_buf());
@@ -1196,7 +1163,6 @@ mod tests {
             "encryption_key_stored",
             "encryption_key_fingerprint",
             "replay_gain_mode",
-            "export_location",
             "export_filename_tokens",
             "export_presets",
             "default_track_export_selection",
@@ -1272,7 +1238,6 @@ mod tests {
             "encryption_key_stored",
             "encryption_key_fingerprint",
             "replay_gain_mode",
-            "export_location",
             "export_filename_tokens",
             "export_presets",
             "default_track_export_selection",

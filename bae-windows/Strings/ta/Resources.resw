@@ -314,7 +314,6 @@
   <data name="settings.export.filename_format" xml:space="preserve"><value>கோப்புப்பெயர் வடிவம்</value></data>
   <data name="settings.export.release_exports" xml:space="preserve"><value>வெளியீட்டு ஏற்றுமதிகள்</value></data>
   <data name="settings.export.track_exports" xml:space="preserve"><value>பாடல் ஏற்றுமதிகள்</value></data>
-  <data name="settings.export.choose_folder" xml:space="preserve"><value>மற்றவை…</value></data>
   <data name="settings.export.add_token" xml:space="preserve"><value>சேர்:</value></data>
   <data name="settings.export.remove_token" xml:space="preserve"><value>{token}ஐ அகற்று</value></data>
   <data name="settings.export.token.title" xml:space="preserve"><value>தலைப்பு</value></data>
@@ -392,8 +391,6 @@
   <data name="nowplaying.show_elapsed" xml:space="preserve"><value>கடந்த நேரத்தைக் காட்டு</value></data>
   <data name="export.title" xml:space="preserve"><value>ஏற்றுமதி செய்யப்படுகிறது</value></data>
   <data name="export.state.exporting" xml:space="preserve"><value>{percent}% ஏற்றுமதி செய்யப்படுகிறது</value></data>
-  <data name="settings.export.ask_each_time" xml:space="preserve"><value>ஒவ்வொரு முறையும் கேள்</value></data>
-  <data name="settings.export.location" xml:space="preserve"><value>இடம்</value></data>
   <data name="import.documents" xml:space="preserve"><value>ஆவணங்கள்</value></data>
   <data name="import.document.read_failed" xml:space="preserve"><value>{name} ஐப் படிக்க முடியவில்லை: {error}</value></data>
   <data name="libraries.reveal" xml:space="preserve"><value>கோப்பு எக்ஸ்ப்ளோரரில் காட்டு</value></data>

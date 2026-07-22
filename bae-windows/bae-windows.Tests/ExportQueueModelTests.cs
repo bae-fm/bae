@@ -6,8 +6,7 @@ using Xunit;
 namespace Bae.Windows.Tests;
 
 // The export queue's pure decision layer: the band/state catalog keys, the
-// count summary, retry/pause gating, percent clamping, and the export
-// destination and settings Location-row resolution.
+// count summary, retry/pause gating, and percent clamping.
 public sealed class ExportQueueModelTests
 {
     [Fact]
@@ -49,53 +48,5 @@ public sealed class ExportQueueModelTests
     public void ClampPercent_ClampsToRange(int input, int expected)
     {
         Assert.Equal(expected, ExportQueueModel.ClampPercent(input));
-    }
-
-    [Theory]
-    [InlineData(false, "/music/exports")]
-    [InlineData(false, null)]
-    public void DestinationFor_AskEachTime_AlwaysPrompts(bool isFixed, string? dir)
-    {
-        Assert.Null(ExportQueueModel.DestinationFor(isFixed, dir));
-    }
-
-    [Theory]
-    [InlineData(null)]
-    [InlineData("")]
-    [InlineData("   ")]
-    public void DestinationFor_FixedButBlank_Prompts(string? dir)
-    {
-        Assert.Null(ExportQueueModel.DestinationFor(isFixed: true, dir));
-    }
-
-    [Fact]
-    public void DestinationFor_FixedWithDir_UsesDir()
-    {
-        Assert.Equal("/music/exports", ExportQueueModel.DestinationFor(isFixed: true, "/music/exports"));
-    }
-
-    [Fact]
-    public void OfferedFolder_Fixed_ShowsDir()
-    {
-        Assert.Equal(
-            "/music/exports",
-            ExportQueueModel.OfferedFolder(isFixed: true, fixedDir: "/music/exports", remembered: "/old"));
-    }
-
-    [Fact]
-    public void OfferedFolder_AskWithRemembered_ShowsRemembered()
-    {
-        Assert.Equal(
-            "/old",
-            ExportQueueModel.OfferedFolder(isFixed: false, fixedDir: null, remembered: "/old"));
-    }
-
-    [Theory]
-    [InlineData(null)]
-    [InlineData("")]
-    [InlineData("   ")]
-    public void OfferedFolder_AskWithNothing_IsNull(string? remembered)
-    {
-        Assert.Null(ExportQueueModel.OfferedFolder(isFixed: false, fixedDir: null, remembered: remembered));
     }
 }

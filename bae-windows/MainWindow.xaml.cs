@@ -355,7 +355,6 @@ public sealed partial class MainWindow : Window
         _membersPane = new MembersPane(_session);
         _settingsWindow = new SettingsWindow(
             _session,
-            () => WinRT.Interop.WindowNative.GetWindowHandle(this),
             DispatcherQueue,
             _settings,
             _membersPane,

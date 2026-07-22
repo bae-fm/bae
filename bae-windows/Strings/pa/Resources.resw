@@ -314,7 +314,6 @@
   <data name="settings.export.filename_format" xml:space="preserve"><value>ਫਾਈਲ ਨਾਂ ਫਾਰਮੈਟ</value></data>
   <data name="settings.export.release_exports" xml:space="preserve"><value>ਰਿਲੀਜ਼ ਨਿਰਯਾਤ</value></data>
   <data name="settings.export.track_exports" xml:space="preserve"><value>ਟ੍ਰੈਕ ਨਿਰਯਾਤ</value></data>
-  <data name="settings.export.choose_folder" xml:space="preserve"><value>ਹੋਰ…</value></data>
   <data name="settings.export.add_token" xml:space="preserve"><value>ਜੋੜੋ:</value></data>
   <data name="settings.export.remove_token" xml:space="preserve"><value>{token} ਹਟਾਓ</value></data>
   <data name="settings.export.token.title" xml:space="preserve"><value>ਸਿਰਲੇਖ</value></data>
@@ -392,8 +391,6 @@
   <data name="nowplaying.show_elapsed" xml:space="preserve"><value>ਬੀਤਿਆ ਸਮਾਂ ਦਿਖਾਓ</value></data>
   <data name="export.title" xml:space="preserve"><value>ਨਿਰਯਾਤ ਕੀਤਾ ਜਾ ਰਿਹਾ ਹੈ</value></data>
   <data name="export.state.exporting" xml:space="preserve"><value>{percent}% ਨਿਰਯਾਤ ਕੀਤਾ ਜਾ ਰਿਹਾ ਹੈ</value></data>
-  <data name="settings.export.ask_each_time" xml:space="preserve"><value>ਹਰ ਵਾਰ ਪੁੱਛੋ</value></data>
-  <data name="settings.export.location" xml:space="preserve"><value>ਟਿਕਾਣਾ</value></data>
   <data name="import.documents" xml:space="preserve"><value>ਦਸਤਾਵੇਜ਼</value></data>
   <data name="import.document.read_failed" xml:space="preserve"><value>{name} ਪੜ੍ਹਿਆ ਨਹੀਂ ਜਾ ਸਕਿਆ: {error}</value></data>
   <data name="libraries.reveal" xml:space="preserve"><value>ਫਾਈਲ ਐਕਸਪਲੋਰਰ ਵਿੱਚ ਦਿਖਾਓ</value></data>

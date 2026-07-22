@@ -1,20 +1,5 @@
 use coven::ConfigError;
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
-
-/// Where a release export writes its files — the browser download-folder model.
-///
-/// - `AskEachTime` — prompt for a destination directory on every export.
-/// - `Fixed(dir)` — a configured default directory; exports go straight there
-///   without a prompt.
-///
-/// Export reconstructs the release's source folder under the chosen directory
-/// (`<dir>/<source_folder_name>/`).
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub enum ExportLocation {
-    AskEachTime,
-    Fixed(PathBuf),
-}
 
 /// One piece of an export filename pattern. A pattern is an ordered token list;
 /// rendering substitutes each token's value from the track's metadata and joins

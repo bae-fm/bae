@@ -588,17 +588,6 @@ impl AppHandle {
             .map_err(BridgeError::config)
     }
 
-    /// Set where release exports write: prompt each time, or a fixed folder.
-    pub fn set_export_location(
-        &self,
-        location: crate::types::BridgeExportLocation,
-    ) -> Result<(), BridgeError> {
-        self.services
-            .library_manager()
-            .set_export_location(crate::types::BridgeExportLocation::into_core(location))
-            .map_err(BridgeError::config)
-    }
-
     /// Set the ordered token list rendering a single-track export's suggested
     /// filename.
     pub fn set_export_filename_tokens(

@@ -314,7 +314,6 @@
   <data name="settings.export.filename_format" xml:space="preserve"><value>Formato de nombre de archivo</value></data>
   <data name="settings.export.release_exports" xml:space="preserve"><value>Exportaciones de lanzamientos</value></data>
   <data name="settings.export.track_exports" xml:space="preserve"><value>Exportaciones de pistas</value></data>
-  <data name="settings.export.choose_folder" xml:space="preserve"><value>Otro…</value></data>
   <data name="settings.export.add_token" xml:space="preserve"><value>Añadir:</value></data>
   <data name="settings.export.remove_token" xml:space="preserve"><value>Quitar {token}</value></data>
   <data name="settings.export.token.title" xml:space="preserve"><value>Título</value></data>
@@ -392,8 +391,6 @@
   <data name="nowplaying.show_elapsed" xml:space="preserve"><value>mostrar el tiempo transcurrido</value></data>
   <data name="export.title" xml:space="preserve"><value>exportando</value></data>
   <data name="export.state.exporting" xml:space="preserve"><value>exportando {percent}%</value></data>
-  <data name="settings.export.ask_each_time" xml:space="preserve"><value>Preguntar cada vez</value></data>
-  <data name="settings.export.location" xml:space="preserve"><value>Ubicación</value></data>
   <data name="import.documents" xml:space="preserve"><value>Documentos</value></data>
   <data name="import.document.read_failed" xml:space="preserve"><value>No se pudo leer {name}: {error}</value></data>
   <data name="libraries.reveal" xml:space="preserve"><value>mostrar en el Explorador de archivos</value></data>

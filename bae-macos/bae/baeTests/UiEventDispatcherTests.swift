@@ -472,7 +472,6 @@ private func makeAppService(handle: FakeAppHandle = FakeAppHandle())
             maxConcurrentDownloads: 3,
             showRemainingTime: false,
                     libraryFullWidth: false,
-            exportLocation: .askEachTime,
             exportFilenameTokens: [],
             exportPresets: [],
             defaultTrackExportSelection: .original,

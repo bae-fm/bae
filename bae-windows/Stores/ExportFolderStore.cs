@@ -3,12 +3,11 @@ using System.IO;
 
 namespace Bae.Windows;
 
-// The last fixed export folder, remembered per device so re-selecting "save to a
-// folder" can restore it without re-prompting and the settings Location row can
-// show it under "ask each time". The authoritative destination is core's export
-// location config; this is only a UI convenience memory (the Windows sibling of
-// macOS's lastExportFolder), so a failed read or write degrades to "no folder"
-// rather than taking the app down.
+// The last output folder a release export wrote to, remembered per device so the
+// folder picker can seed itself with it on the next export. The destination is a
+// per-run choice, never config; this is only a UI convenience memory (the Windows
+// sibling of macOS's lastExportFolder), so a failed read or write degrades to "no
+// folder" rather than taking the app down.
 internal static class ExportFolderStore
 {
     private static string FilePath => Path.Combine(
@@ -36,7 +35,7 @@ internal static class ExportFolderStore
         return null;
     }
 
-    // Remember the folder a fixed export location just landed on.
+    // Remember the folder a release export just wrote into.
     public static void Save(string dir)
     {
         try

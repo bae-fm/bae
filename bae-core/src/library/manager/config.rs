@@ -56,18 +56,6 @@ impl LibraryManager {
             .update(|c| c.library_full_width = enabled)
     }
 
-    /// Where release exports write: prompt each time, or a fixed default folder.
-    pub fn export_location(&self) -> crate::config::ExportLocation {
-        self.config_handle.config().export_location.clone()
-    }
-
-    pub fn set_export_location(
-        &self,
-        location: crate::config::ExportLocation,
-    ) -> Result<(), crate::config::ConfigError> {
-        self.config_handle.update(|c| c.export_location = location)
-    }
-
     /// The ordered token list rendering a single-track export's suggested
     /// filename.
     pub fn export_filename_tokens(&self) -> Vec<crate::config::ExportFilenameToken> {

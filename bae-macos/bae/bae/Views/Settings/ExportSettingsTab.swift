@@ -44,11 +44,6 @@ struct ExportSettingsTab: View {
 
     private var releaseExportsSection: some View {
         Section("Release exports") {
-            ExportLocationPicker(
-                configStore: configStore,
-                setLocation: exports.setExportLocation,
-                showError: { @MainActor error in uiStore.showError(error) }
-            )
             selectionPicker(
                 presets: releasePresets,
                 selection: defaultReleaseSelectionBinding()

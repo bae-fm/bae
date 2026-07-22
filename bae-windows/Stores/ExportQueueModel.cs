@@ -6,11 +6,10 @@ namespace Bae.Windows;
 // edge so this decision layer stays free of WinRT and uniffi types.
 public enum ExportRowKind { Queued, Active, Failed }
 
-// The pure decision layer behind the storage dialog's Exporting section and the
-// settings export-location control. The export queue renders from the snapshot
-// and actions never optimistically mutate — this only maps counts and state to
-// catalog keys and resolves the export destination and the settings Location
-// row, so it is unit-tested apart from the WinUI surface that renders it.
+// The pure decision layer behind the storage dialog's Exporting section. The
+// export queue renders from the snapshot and actions never optimistically
+// mutate — this only maps counts and state to catalog keys, so it is
+// unit-tested apart from the WinUI surface that renders it.
 public static class ExportQueueModel
 {
     // The band's leading label: the generic paused note while paused, else the
@@ -38,16 +37,4 @@ public static class ExportQueueModel
     // Progress percent clamped to 0..100 for the bar and the label.
     public static int ClampPercent(int percent) =>
         percent < 0 ? 0 : percent > 100 ? 100 : percent;
-
-    // The destination for a release export: the configured fixed directory, or
-    // null meaning "prompt for a folder". A fixed location with a blank
-    // directory degrades to prompting rather than exporting to nowhere.
-    public static string? DestinationFor(bool isFixed, string? fixedDir) =>
-        isFixed && !string.IsNullOrWhiteSpace(fixedDir) ? fixedDir : null;
-
-    // The folder entry the settings Location popup offers: the configured
-    // folder when fixed, else the last-remembered folder, else null (no folder
-    // entry on the menu).
-    public static string? OfferedFolder(bool isFixed, string? fixedDir, string? remembered) =>
-        isFixed ? fixedDir : string.IsNullOrWhiteSpace(remembered) ? null : remembered;
 }

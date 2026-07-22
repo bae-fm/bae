@@ -314,7 +314,6 @@
   <data name="settings.export.filename_format" xml:space="preserve"><value>Format nazwy pliku</value></data>
   <data name="settings.export.release_exports" xml:space="preserve"><value>Eksporty wydań</value></data>
   <data name="settings.export.track_exports" xml:space="preserve"><value>Eksporty ścieżek</value></data>
-  <data name="settings.export.choose_folder" xml:space="preserve"><value>Inne…</value></data>
   <data name="settings.export.add_token" xml:space="preserve"><value>Dodaj:</value></data>
   <data name="settings.export.remove_token" xml:space="preserve"><value>Usuń {token}</value></data>
   <data name="settings.export.token.title" xml:space="preserve"><value>Tytuł</value></data>
@@ -392,8 +391,6 @@
   <data name="nowplaying.show_elapsed" xml:space="preserve"><value>pokaż miniony czas</value></data>
   <data name="export.title" xml:space="preserve"><value>eksportowanie</value></data>
   <data name="export.state.exporting" xml:space="preserve"><value>eksportowanie {percent}%</value></data>
-  <data name="settings.export.ask_each_time" xml:space="preserve"><value>Pytaj za każdym razem</value></data>
-  <data name="settings.export.location" xml:space="preserve"><value>Lokalizacja</value></data>
   <data name="import.documents" xml:space="preserve"><value>Dokumenty</value></data>
   <data name="import.document.read_failed" xml:space="preserve"><value>Nie można odczytać {name}: {error}</value></data>
   <data name="libraries.reveal" xml:space="preserve"><value>pokaż w Eksploratorze plików</value></data>

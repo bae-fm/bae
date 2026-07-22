@@ -24,7 +24,6 @@ namespace Bae.Windows;
 internal sealed class SettingsWindow
 {
     private readonly SessionStore _session;
-    private readonly Func<IntPtr> _windowHandle;
     private readonly DispatcherQueue _dispatcher;
     private readonly SettingsStore _settings;
     private readonly MembersPane _membersPane;
@@ -40,7 +39,6 @@ internal sealed class SettingsWindow
 
     public SettingsWindow(
         SessionStore session,
-        Func<IntPtr> windowHandle,
         DispatcherQueue dispatcher,
         SettingsStore settings,
         MembersPane membersPane,
@@ -51,7 +49,6 @@ internal sealed class SettingsWindow
         Func<System.Threading.Tasks.Task> closeToWelcome)
     {
         _session = session;
-        _windowHandle = windowHandle;
         _dispatcher = dispatcher;
         _settings = settings;
         _membersPane = membersPane;
@@ -380,24 +377,12 @@ internal sealed class SettingsWindow
             Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray),
         };
 
-        // The folder picker for a fixed export location, run in the app window.
-        // Returns the chosen path, or null when the user cancelled.
-        async System.Threading.Tasks.Task<string?> PickExportFolder()
-        {
-            var picker = new global::Windows.Storage.Pickers.FolderPicker();
-            picker.FileTypeFilter.Add("*");
-            WinRT.Interop.InitializeWithWindow.Initialize(picker, _windowHandle());
-            var folder = await picker.PickSingleFolderAsync();
-            return folder?.Path;
-        }
-
-        // Export: destination, filename pattern, default formats, and presets.
-        // The section renders from the settings re-read and writes through the
-        // bridge; errors land in the shared settings error line.
+        // Export: filename pattern, default formats, and presets. The section
+        // renders from the settings re-read and writes through the bridge;
+        // errors land in the shared settings error line.
         var exportSection = new ExportSettingsSection(
             _session,
             _settings,
-            PickExportFolder,
             () => _window?.Content.XamlRoot,
             ShowSettingsError,
             ClearSettingsError);

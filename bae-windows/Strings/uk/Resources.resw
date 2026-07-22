@@ -314,7 +314,6 @@
   <data name="settings.export.filename_format" xml:space="preserve"><value>Формат імені файлу</value></data>
   <data name="settings.export.release_exports" xml:space="preserve"><value>Експорт релізів</value></data>
   <data name="settings.export.track_exports" xml:space="preserve"><value>Експорт треків</value></data>
-  <data name="settings.export.choose_folder" xml:space="preserve"><value>Інше…</value></data>
   <data name="settings.export.add_token" xml:space="preserve"><value>Додати:</value></data>
   <data name="settings.export.remove_token" xml:space="preserve"><value>Вилучити {token}</value></data>
   <data name="settings.export.token.title" xml:space="preserve"><value>Назва</value></data>
@@ -392,8 +391,6 @@
   <data name="nowplaying.show_elapsed" xml:space="preserve"><value>показати час, що минув</value></data>
   <data name="export.title" xml:space="preserve"><value>експорт</value></data>
   <data name="export.state.exporting" xml:space="preserve"><value>експорт {percent}%</value></data>
-  <data name="settings.export.ask_each_time" xml:space="preserve"><value>Запитувати щоразу</value></data>
-  <data name="settings.export.location" xml:space="preserve"><value>Розташування</value></data>
   <data name="import.documents" xml:space="preserve"><value>Документи</value></data>
   <data name="import.document.read_failed" xml:space="preserve"><value>Не вдалося прочитати {name}: {error}</value></data>
   <data name="libraries.reveal" xml:space="preserve"><value>показати в Провіднику</value></data>

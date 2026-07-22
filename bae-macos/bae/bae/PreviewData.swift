@@ -1047,7 +1047,6 @@
                         maxConcurrentDownloads: 3,
                         showRemainingTime: false,
                         libraryFullWidth: libraryFullWidth,
-                        exportLocation: .askEachTime,
                         exportFilenameTokens: exportFilenameTokens,
                         exportPresets: exportPresets,
                         defaultTrackExportSelection: .original,

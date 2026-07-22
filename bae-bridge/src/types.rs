@@ -2052,15 +2052,6 @@ pub struct BridgeExportSnapshot {
     pub paused: bool,
 }
 
-/// Where release exports write — the browser download-folder model. Mirror of
-/// bae-core's `ExportLocation`. `Fixed` carries the configured directory as a
-/// path string.
-#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
-pub enum BridgeExportLocation {
-    AskEachTime,
-    Fixed { dir: String },
-}
-
 /// One file in a release's upload group: what the queue pane's per-file rows
 /// render. Mirror of bae-core's `UploadFileOp`, with the state flattened into
 /// `state` + `bytes_done` + `last_error` so the UI doesn't switch on
@@ -2332,8 +2323,6 @@ pub struct BridgeConfig {
     /// centering its content in a width-capped column. A synced preference;
     /// the library page reads it and never stores a copy.
     pub library_full_width: bool,
-    /// Where release exports write: prompt each time, or a fixed folder.
-    pub export_location: BridgeExportLocation,
     /// The ordered token list rendering a single-track export's suggested
     /// filename.
     pub export_filename_tokens: Vec<BridgeExportFilenameToken>,

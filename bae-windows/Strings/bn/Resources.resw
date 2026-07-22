@@ -314,7 +314,6 @@
   <data name="settings.export.filename_format" xml:space="preserve"><value>ফাইলনামের ফরম্যাট</value></data>
   <data name="settings.export.release_exports" xml:space="preserve"><value>রিলিজ এক্সপোর্ট</value></data>
   <data name="settings.export.track_exports" xml:space="preserve"><value>ট্র্যাক এক্সপোর্ট</value></data>
-  <data name="settings.export.choose_folder" xml:space="preserve"><value>অন্যান্য…</value></data>
   <data name="settings.export.add_token" xml:space="preserve"><value>যোগ করুন:</value></data>
   <data name="settings.export.remove_token" xml:space="preserve"><value>{token} সরান</value></data>
   <data name="settings.export.token.title" xml:space="preserve"><value>শিরোনাম</value></data>
@@ -392,8 +391,6 @@
   <data name="nowplaying.show_elapsed" xml:space="preserve"><value>অতিবাহিত সময় দেখান</value></data>
   <data name="export.title" xml:space="preserve"><value>এক্সপোর্ট করা হচ্ছে</value></data>
   <data name="export.state.exporting" xml:space="preserve"><value>{percent}% এক্সপোর্ট হচ্ছে</value></data>
-  <data name="settings.export.ask_each_time" xml:space="preserve"><value>প্রতিবার জিজ্ঞাসা করুন</value></data>
-  <data name="settings.export.location" xml:space="preserve"><value>অবস্থান</value></data>
   <data name="import.documents" xml:space="preserve"><value>ডকুমেন্ট</value></data>
   <data name="import.document.read_failed" xml:space="preserve"><value>{name} পড়া যায়নি: {error}</value></data>
   <data name="libraries.reveal" xml:space="preserve"><value>ফাইল এক্সপ্লোরারে দেখান</value></data>

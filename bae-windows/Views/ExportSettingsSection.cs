@@ -20,12 +20,10 @@ internal sealed class ExportSettingsSection
 
     private readonly SessionStore _session;
     private readonly SettingsStore _settings;
-    private readonly Func<System.Threading.Tasks.Task<string?>> _pickFolder;
     private readonly Func<XamlRoot?> _dialogRoot;
     private readonly Action<string> _showError;
     private readonly Action _clearError;
 
-    private readonly ComboBox _location = new() { Header = Loc.Chrome("settings.export.location") };
     private readonly ComboBox _defaultTrack = new() { Header = Loc.Chrome("settings.export.default_track_format") };
     private readonly ComboBox _defaultRelease = new() { Header = Loc.Chrome("settings.export.default_release_format") };
     private readonly FilenameTokenEditor _patternEditor;
@@ -42,28 +40,24 @@ internal sealed class ExportSettingsSection
     public ExportSettingsSection(
         SessionStore session,
         SettingsStore settings,
-        Func<System.Threading.Tasks.Task<string?>> pickFolder,
         Func<XamlRoot?> dialogRoot,
         Action<string> showError,
         Action clearError)
     {
         _session = session;
         _settings = settings;
-        _pickFolder = pickFolder;
         _dialogRoot = dialogRoot;
         _showError = showError;
         _clearError = clearError;
         _patternEditor = new FilenameTokenEditor(
             tokens => _ = SavePatternTokens(tokens));
 
-        _location.SelectionChanged += async (_, _) => await OnLocationSelected();
         _defaultTrack.SelectionChanged += async (_, _) =>
             await SaveDefaultSelection(_defaultTrack, release: false);
         _defaultRelease.SelectionChanged += async (_, _) =>
             await SaveDefaultSelection(_defaultRelease, release: true);
 
         View.Children.Add(SectionLabel(Loc.Chrome("settings.export.release_exports")));
-        View.Children.Add(_location);
         View.Children.Add(_defaultRelease);
         View.Children.Add(SectionLabel(Loc.Chrome("settings.export.track_exports")));
         View.Children.Add(_defaultTrack);
@@ -88,7 +82,6 @@ internal sealed class ExportSettingsSection
     {
         _current = settings;
         _rendering = true;
-        RenderLocation(settings);
         _patternEditor.Render(settings.ExportFilenameTokens);
         _patternPreview.Text = Loc.Chrome(
             "settings.export.preview",
@@ -115,96 +108,6 @@ internal sealed class ExportSettingsSection
         TextWrapping = TextWrapping.Wrap,
         Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray),
     };
-
-    // ── Location ─────────────────────────────────────────────────────────────
-
-    // The destination popup, the browser download-location model: the
-    // remembered folder (when there is one), "Ask each time", and "Choose…"
-    // which prompts. The authoritative destination is core's export-location
-    // config; the remembered folder is a local convenience so re-selecting the
-    // previous folder needs no prompt.
-    private void RenderLocation(Settings settings)
-    {
-        var fixedLocation = settings.ExportLocation as BridgeExportLocation.Fixed;
-        var isFixed = fixedLocation is not null;
-        var offered = ExportQueueModel.OfferedFolder(
-            isFixed, fixedLocation?.Dir, ExportFolderStore.Load());
-
-        _location.Items.Clear();
-        if (offered is not null)
-        {
-            _location.Items.Add(new ComboBoxItem
-            {
-                Content = FolderDisplayName(offered),
-                Tag = new BridgeExportLocation.Fixed(offered),
-                IsSelected = isFixed,
-            });
-        }
-        _location.Items.Add(new ComboBoxItem
-        {
-            Content = Loc.Chrome("settings.export.ask_each_time"),
-            Tag = new BridgeExportLocation.AskEachTime(),
-            IsSelected = !isFixed,
-        });
-        _location.Items.Add(new ComboBoxItem
-        {
-            Content = Loc.Chrome("settings.export.choose_folder"),
-        });
-        ToolTipService.SetToolTip(_location, offered);
-    }
-
-    private static string FolderDisplayName(string dir)
-    {
-        var name = Path.GetFileName(
-            dir.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
-        return name.Length == 0 ? dir : name;
-    }
-
-    private async System.Threading.Tasks.Task OnLocationSelected()
-    {
-        if (_rendering || _location.SelectedItem is not ComboBoxItem item)
-        {
-            return;
-        }
-        if (item.Tag is BridgeExportLocation location)
-        {
-            await SaveLocation(location);
-            return;
-        }
-        // The untagged item is "Choose…": prompt, and on cancel re-render the
-        // stored choice back into the popup.
-        var dir = await _pickFolder();
-        if (dir is null)
-        {
-            _settings.Reload();
-            return;
-        }
-        await SaveLocation(new BridgeExportLocation.Fixed(dir));
-    }
-
-    // Write the export location through the bridge and let the config
-    // invalidation re-read settle the controls. A fixed folder is remembered
-    // only after the write lands; an error snaps the controls back.
-    private async System.Threading.Tasks.Task SaveLocation(BridgeExportLocation location)
-    {
-        _clearError();
-        var (current, error) = await _session.RunForCurrentHandle(
-            handle => NativeBae.SetExportLocation(handle, location));
-        if (!current)
-        {
-            return;
-        }
-        if (error is not null)
-        {
-            _showError(error);
-            _settings.Reload();
-            return;
-        }
-        if (location is BridgeExportLocation.Fixed fixedLocation)
-        {
-            ExportFolderStore.Save(fixedLocation.Dir);
-        }
-    }
 
     // ── Filename pattern and default formats ────────────────────────────────
 

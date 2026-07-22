@@ -100,22 +100,19 @@ internal sealed class ReleaseActionDialogs
             return;
         }
 
-        // The destination follows the export-location config: a fixed folder
-        // enqueues straight there, ask-each-time prompts for a folder.
-        var fixedLocation = settings.ExportLocation as BridgeExportLocation.Fixed;
-        var targetDir = ExportQueueModel.DestinationFor(fixedLocation is not null, fixedLocation?.Dir);
-        if (targetDir is null)
+        // The destination is a per-run choice: always prompt for a folder. The
+        // picked folder is remembered in ExportFolderStore as the last-used
+        // output folder (the Windows sibling of macOS's lastExportFolder).
+        var picker = new global::Windows.Storage.Pickers.FolderPicker();
+        picker.FileTypeFilter.Add("*");
+        WinRT.Interop.InitializeWithWindow.Initialize(picker, _windowHandle());
+        var folder = await picker.PickSingleFolderAsync();
+        if (folder is null)
         {
-            var picker = new global::Windows.Storage.Pickers.FolderPicker();
-            picker.FileTypeFilter.Add("*");
-            WinRT.Interop.InitializeWithWindow.Initialize(picker, _windowHandle());
-            var folder = await picker.PickSingleFolderAsync();
-            if (folder is null)
-            {
-                return;
-            }
-            targetDir = folder.Path;
+            return;
         }
+        var targetDir = folder.Path;
+        ExportFolderStore.Save(targetDir);
 
         var (exportCurrent, error) = await _session.RunForCurrentHandle(
             handle => NativeBae.ExportRelease(handle, releaseId, targetDir, selection));

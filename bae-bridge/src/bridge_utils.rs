@@ -1,29 +1,8 @@
 use crate::types::{
     BridgeConfig, BridgeDiscogsTokenStatus, BridgeExportBitDepth, BridgeExportFilenameToken,
-    BridgeExportLocation, BridgeExportPregapPlacement, BridgeExportPreset, BridgeExportPresetCodec,
+    BridgeExportPregapPlacement, BridgeExportPreset, BridgeExportPresetCodec,
     BridgeExportSelection, BridgeMcpConfig, BridgeSyncConfig, BridgeSyncProvider,
 };
-
-impl BridgeExportLocation {
-    /// A fixed folder's path crosses as a string.
-    pub(crate) fn from_core(location: &bae_core::config::ExportLocation) -> Self {
-        match location {
-            bae_core::config::ExportLocation::AskEachTime => BridgeExportLocation::AskEachTime,
-            bae_core::config::ExportLocation::Fixed(dir) => BridgeExportLocation::Fixed {
-                dir: dir.to_string_lossy().to_string(),
-            },
-        }
-    }
-
-    pub(crate) fn into_core(self) -> bae_core::config::ExportLocation {
-        match self {
-            BridgeExportLocation::AskEachTime => bae_core::config::ExportLocation::AskEachTime,
-            BridgeExportLocation::Fixed { dir } => {
-                bae_core::config::ExportLocation::Fixed(std::path::PathBuf::from(dir))
-            }
-        }
-    }
-}
 
 impl BridgeExportBitDepth {
     pub(crate) fn from_core(bit_depth: bae_core::config::ExportBitDepth) -> Self {
@@ -273,7 +252,6 @@ impl BridgeConfig {
             discogs: _,
             // Playback loudness policy; not surfaced on the config screen.
             replay_gain_mode: _,
-            export_location,
             export_filename_tokens,
             export_presets,
             default_track_export_selection,
@@ -301,7 +279,6 @@ impl BridgeConfig {
             max_concurrent_downloads: max_concurrent_downloads.get(),
             show_remaining_time: *show_remaining_time,
             library_full_width: *library_full_width,
-            export_location: BridgeExportLocation::from_core(export_location),
             export_filename_tokens: export_filename_tokens
                 .iter()
                 .copied()

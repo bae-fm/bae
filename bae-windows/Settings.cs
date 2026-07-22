@@ -34,9 +34,6 @@ public sealed class Settings
     /// the user to every device.</summary>
     public bool LibraryFullWidth { get; set; }
 
-    /// <summary>Where release exports write: a fixed folder, or prompt each time.</summary>
-    internal BridgeExportLocation ExportLocation { get; set; } = new BridgeExportLocation.AskEachTime();
-
     /// <summary>The ordered token list rendering a single-track export's
     /// suggested filename.</summary>
     internal List<BridgeExportFilenameToken> ExportFilenameTokens { get; set; } = new();

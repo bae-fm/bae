@@ -314,7 +314,6 @@
   <data name="settings.export.filename_format" xml:space="preserve"><value>ఫైల్ పేరు ఫార్మాట్</value></data>
   <data name="settings.export.release_exports" xml:space="preserve"><value>విడుదల ఎగుమతులు</value></data>
   <data name="settings.export.track_exports" xml:space="preserve"><value>ట్రాక్ ఎగుమతులు</value></data>
-  <data name="settings.export.choose_folder" xml:space="preserve"><value>ఇతర…</value></data>
   <data name="settings.export.add_token" xml:space="preserve"><value>జోడించు:</value></data>
   <data name="settings.export.remove_token" xml:space="preserve"><value>{token} తీసివేయి</value></data>
   <data name="settings.export.token.title" xml:space="preserve"><value>శీర్షిక</value></data>
@@ -392,8 +391,6 @@
   <data name="nowplaying.show_elapsed" xml:space="preserve"><value>గడిచిన సమయాన్ని చూపించు</value></data>
   <data name="export.title" xml:space="preserve"><value>ఎగుమతి చేస్తోంది</value></data>
   <data name="export.state.exporting" xml:space="preserve"><value>ఎగుమతి చేస్తోంది {percent}%</value></data>
-  <data name="settings.export.ask_each_time" xml:space="preserve"><value>ప్రతిసారీ అడుగు</value></data>
-  <data name="settings.export.location" xml:space="preserve"><value>స్థానం</value></data>
   <data name="import.documents" xml:space="preserve"><value>పత్రాలు</value></data>
   <data name="import.document.read_failed" xml:space="preserve"><value>{name} చదవలేకపోయింది: {error}</value></data>
   <data name="libraries.reveal" xml:space="preserve"><value>ఫైల్ ఎక్స్‌ప్లోరర్‌లో చూపించు</value></data>

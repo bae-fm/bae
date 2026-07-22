@@ -314,7 +314,6 @@
   <data name="settings.export.filename_format" xml:space="preserve"><value>Dosya adı biçimi</value></data>
   <data name="settings.export.release_exports" xml:space="preserve"><value>Yayın dışa aktarımları</value></data>
   <data name="settings.export.track_exports" xml:space="preserve"><value>Parça dışa aktarımları</value></data>
-  <data name="settings.export.choose_folder" xml:space="preserve"><value>Diğer…</value></data>
   <data name="settings.export.add_token" xml:space="preserve"><value>Ekle:</value></data>
   <data name="settings.export.remove_token" xml:space="preserve"><value>{token} kaldır</value></data>
   <data name="settings.export.token.title" xml:space="preserve"><value>Başlık</value></data>
@@ -392,8 +391,6 @@
   <data name="nowplaying.show_elapsed" xml:space="preserve"><value>geçen süreyi göster</value></data>
   <data name="export.title" xml:space="preserve"><value>dışa aktarılıyor</value></data>
   <data name="export.state.exporting" xml:space="preserve"><value>dışa aktarılıyor {percent}%</value></data>
-  <data name="settings.export.ask_each_time" xml:space="preserve"><value>Her seferinde sor</value></data>
-  <data name="settings.export.location" xml:space="preserve"><value>Konum</value></data>
   <data name="import.documents" xml:space="preserve"><value>Belgeler</value></data>
   <data name="import.document.read_failed" xml:space="preserve"><value>{name} okunamadı: {error}</value></data>
   <data name="libraries.reveal" xml:space="preserve"><value>Dosya Gezgini'nde göster</value></data>

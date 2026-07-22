@@ -39,13 +39,18 @@ struct ReleaseExportTarget {
     let selection: BridgeExportSelection
 }
 
-/// Resolves the destination directory and format for a release export from the
-/// current config: the format choices come from the export presets, the default
-/// selection and export-location setting from the config. A fixed location
-/// returns straight away; "ask each time" opens one `NSOpenPanel`. Returns `nil`
-/// when the user picks no folder, so the caller enqueues nothing. Shared by
-/// every export-trigger call site.
+/// Resolves the destination directory and format for a release export. The
+/// format choices come from the export presets; the default selection from the
+/// config. The destination is always chosen in a folder dialog, seeded with the
+/// last-used output folder (`lastExportFolder`, per-device UI memory) and
+/// written back after the user picks. Returns `nil` when the user picks no
+/// folder, so the caller enqueues nothing. Shared by every export-trigger call
+/// site.
 enum ExportTarget {
+    /// UserDefaults key for the last folder a release output was written to.
+    /// Per-device UI convenience, not synced config — it only seeds the picker.
+    private static let lastExportFolderKey = "lastExportFolder"
+
     @MainActor
     static func resolveRelease(config: Config) -> ReleaseExportTarget? {
         let choices = ExportFormatChoice.releaseChoices(
@@ -61,56 +66,30 @@ enum ExportTarget {
             return nil
         }
 
-        switch config.exportLocation {
-        case .fixed(let dir):
-            guard
-                let selection = resolveReleaseSelection(
-                    choices: choices,
-                    selectedIndex: selectedIndex
-                )
-            else {
-                return nil
-            }
-            return ReleaseExportTarget(targetDir: dir, selection: selection)
-        case .askEachTime:
-            let panel = NSOpenPanel()
-            panel.canChooseDirectories = true
-            panel.canChooseFiles = false
-            panel.canCreateDirectories = true
-            panel.prompt = String(localized: "Export Here")
-            let popup = makeFormatPopup(
-                choices: choices,
-                selectedIndex: selectedIndex
-            )
-            panel.accessoryView = formatAccessoryView(popup: popup)
-            guard panel.runModal() == .OK, let url = panel.url else {
-                return nil
-            }
-            return ReleaseExportTarget(
-                targetDir: url.path(percentEncoded: false),
-                selection: choices[popup.indexOfSelectedItem].selection
-            )
+        let panel = NSOpenPanel()
+        panel.canChooseDirectories = true
+        panel.canChooseFiles = false
+        panel.canCreateDirectories = true
+        panel.prompt = String(localized: "Export Here")
+        if let last = UserDefaults.standard.string(forKey: lastExportFolderKey),
+            !last.isEmpty
+        {
+            panel.directoryURL = URL(fileURLWithPath: last)
         }
-    }
-
-    @MainActor
-    private static func resolveReleaseSelection(
-        choices: [ExportFormatChoice],
-        selectedIndex: Int
-    ) -> BridgeExportSelection? {
-        let alert = NSAlert()
-        alert.messageText = String(localized: "Export")
-        alert.addButton(withTitle: String(localized: "Export"))
-        alert.addButton(withTitle: String(localized: "Cancel"))
         let popup = makeFormatPopup(
             choices: choices,
             selectedIndex: selectedIndex
         )
-        alert.accessoryView = formatAccessoryView(popup: popup)
-        guard alert.runModal() == .alertFirstButtonReturn else {
+        panel.accessoryView = formatAccessoryView(popup: popup)
+        guard panel.runModal() == .OK, let url = panel.url else {
             return nil
         }
-        return choices[popup.indexOfSelectedItem].selection
+        let targetDir = url.path(percentEncoded: false)
+        UserDefaults.standard.set(targetDir, forKey: lastExportFolderKey)
+        return ReleaseExportTarget(
+            targetDir: targetDir,
+            selection: choices[popup.indexOfSelectedItem].selection
+        )
     }
 
     @MainActor

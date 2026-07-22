@@ -557,9 +557,6 @@ internal static class NativeBae
     internal static string? SetExportFilenameTokens(AppHandle handle, IEnumerable<BridgeExportFilenameToken> tokens) =>
         CaptureError(() => handle.SetExportFilenameTokens(tokens.ToList()));
 
-    internal static string? SetExportLocation(AppHandle handle, BridgeExportLocation location) =>
-        CaptureError(() => handle.SetExportLocation(location));
-
     internal static string? SetExportPresets(AppHandle handle, IEnumerable<ExportPreset> presets) =>
         CaptureError(() => handle.SetExportPresets(
             presets.Select(ExportPresetBridge).ToArray()));
@@ -984,7 +981,6 @@ internal static class NativeBae
             PauseBetweenSides = config.PauseBetweenSides,
             ShowRemainingTime = config.ShowRemainingTime,
             LibraryFullWidth = config.LibraryFullWidth,
-            ExportLocation = config.ExportLocation,
             ExportFilenameTokens = config.ExportFilenameTokens,
             ExportPresets = config.ExportPresets.Select(ExportPreset).ToList(),
             DefaultTrackExportSelection = config.DefaultTrackExportSelection,

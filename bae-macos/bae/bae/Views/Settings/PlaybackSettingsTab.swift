@@ -66,7 +66,6 @@ struct PlaybackSettingsTab: View {
                     maxConcurrentDownloads: 3,
                     showRemainingTime: false,
                     libraryFullWidth: false,
-                    exportLocation: .askEachTime,
                     exportFilenameTokens: PreviewData.exportFilenameTokens,
                     exportPresets: PreviewData.exportPresets,
                     defaultTrackExportSelection: .original,
