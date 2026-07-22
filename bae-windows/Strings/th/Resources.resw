@@ -302,9 +302,11 @@
   <data name="work.open_failed" xml:space="preserve"><value>ไม่สามารถเปิดรายละเอียดผลงานได้</value></data>
   <data name="work.count" xml:space="preserve"><value>ผลงาน {count} รายการ</value></data>
   <data name="album.count" xml:space="preserve"><value>อัลบั้ม {count} รายการ</value></data>
-  <data name="settings.formats.default_track_format" xml:space="preserve"><value>รูปแบบแทร็กเริ่มต้น</value></data>
-  <data name="settings.formats.default_release_format" xml:space="preserve"><value>รูปแบบรีลีสเริ่มต้น</value></data>
-  <data name="settings.formats.presets" xml:space="preserve"><value>ค่าที่ตั้งไว้</value></data>
+  <data name="settings.formats.default_track_format" xml:space="preserve"><value>แทร็ก</value></data>
+  <data name="settings.formats.default_release_format" xml:space="preserve"><value>รีลีส</value></data>
+  <data name="settings.formats.formats" xml:space="preserve"><value>รูปแบบ</value></data>
+  <data name="settings.formats.defaults" xml:space="preserve"><value>ค่าเริ่มต้น</value></data>
+  <data name="settings.formats.advanced" xml:space="preserve"><value>ขั้นสูง</value></data>
   <data name="settings.formats.preset_name" xml:space="preserve"><value>ชื่อ</value></data>
   <data name="settings.formats.preset_track" xml:space="preserve"><value>แทร็ก</value></data>
   <data name="settings.formats.preset_release" xml:space="preserve"><value>รีลีส</value></data>
@@ -314,14 +316,12 @@
   <data name="settings.formats.pregap.exclude" xml:space="preserve"><value>ยกเว้น</value></data>
   <data name="settings.formats.pregap.single_file_with_cue" xml:space="preserve"><value>ไฟล์เดียว + CUE</value></data>
   <data name="settings.formats.filename_format" xml:space="preserve"><value>รูปแบบชื่อไฟล์</value></data>
-  <data name="settings.formats.release_saves" xml:space="preserve"><value>การบันทึกรีลีส</value></data>
-  <data name="settings.formats.track_saves" xml:space="preserve"><value>การบันทึกแทร็ก</value></data>
   <data name="settings.formats.add_token" xml:space="preserve"><value>เพิ่ม:</value></data>
   <data name="settings.formats.remove_token" xml:space="preserve"><value>นำ {token} ออก</value></data>
   <data name="settings.formats.token.title" xml:space="preserve"><value>ชื่อ</value></data>
   <data name="settings.formats.token.artist" xml:space="preserve"><value>ศิลปิน</value></data>
   <data name="settings.formats.token.album" xml:space="preserve"><value>อัลบั้ม</value></data>
-  <data name="settings.formats.token.year" xml:space="preserve"><value>ปี</value></data>
+  <data name="settings.formats.token.year" xml:space="preserve"><value>ปีที่วางจำหน่าย</value></data>
   <data name="settings.formats.token.track_number" xml:space="preserve"><value>หมายเลขแทร็ก</value></data>
   <data name="settings.formats.token.disc_number" xml:space="preserve"><value>หมายเลขแผ่น</value></data>
   <data name="settings.formats.token.track_total" xml:space="preserve"><value>จำนวนแทร็กทั้งหมด</value></data>
@@ -336,7 +336,6 @@
   <data name="settings.formats.delete_confirm" xml:space="preserve"><value>ลบค่าที่ตั้งไว้ “{name}” หรือไม่</value></data>
   <data name="settings.formats.codec_mp3" xml:space="preserve"><value>MP3 {kbps} kbps</value></data>
   <data name="settings.formats.codec_opus" xml:space="preserve"><value>Opus {kbps} kbps</value></data>
-  <data name="settings.formats.bit_depth.source_summary" xml:space="preserve"><value>ความลึกบิตของแหล่งที่มา</value></data>
   <data name="settings.formats.show_in_menus" xml:space="preserve"><value>แสดงในเมนูส่งออกสำหรับ</value></data>
   <data name="settings.formats.embed_cover" xml:space="preserve"><value>ฝังภาพปก</value></data>
   <data name="settings.formats.bit_depth_label" xml:space="preserve"><value>ความลึกบิต</value></data>

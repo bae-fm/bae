@@ -53,11 +53,7 @@ internal sealed class FormatsSettingsSection
         _defaultRelease.SelectionChanged += async (_, _) =>
             await SaveDefaultSelection(_defaultRelease, release: true);
 
-        View.Children.Add(SectionLabel(Loc.Chrome("settings.formats.release_saves")));
-        View.Children.Add(_defaultRelease);
-        View.Children.Add(SectionLabel(Loc.Chrome("settings.formats.track_saves")));
-        View.Children.Add(_defaultTrack);
-        View.Children.Add(SectionLabel(Loc.Chrome("settings.formats.presets")));
+        View.Children.Add(SectionLabel(Loc.Chrome("settings.formats.formats")));
         View.Children.Add(_presetPanel);
         View.Children.Add(AddPresetButton());
         View.Children.Add(new TextBlock
@@ -66,6 +62,9 @@ internal sealed class FormatsSettingsSection
             TextWrapping = TextWrapping.Wrap,
             Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray),
         });
+        View.Children.Add(SectionLabel(Loc.Chrome("settings.formats.defaults")));
+        View.Children.Add(_defaultRelease);
+        View.Children.Add(_defaultTrack);
     }
 
     // Drive every control from the persisted settings. Called on open and on
@@ -277,16 +276,7 @@ internal sealed class FormatsSettingsSection
         VerticalAlignment = VerticalAlignment.Center,
     };
 
-    private static string PresetSummary(SavePreset preset)
-    {
-        var parts = new List<string> { CodecLabel(preset.Codec) };
-        if (LosslessBitDepth(preset.Codec) is { } bitDepth)
-        {
-            parts.Add(BitDepthSummaryLabel(bitDepth));
-        }
-        parts.Add(PregapLabel(preset.PregapPlacement));
-        return string.Join(" · ", parts);
-    }
+    private static string PresetSummary(SavePreset preset) => CodecLabel(preset.Codec);
 
     // A justified editor row: the label leading, the control trailing.
     private static Grid LabeledRow(string label, FrameworkElement control)
@@ -306,17 +296,19 @@ internal sealed class FormatsSettingsSection
 
     private StackPanel PresetEditor(Settings settings, SavePreset preset)
     {
-        // One block on a fixed rhythm, matching macOS's expanded editor.
+        // One block on a fixed rhythm, matching macOS's editor: the primary
+        // settings up top, bit depth and pregap tucked under Advanced.
         var editor = new StackPanel { Spacing = 11 };
         editor.Children.Add(LabeledRow(
             Loc.Chrome("settings.formats.preset_name"), PresetNameBox(settings, preset)));
         editor.Children.Add(LabeledRow(
             Loc.Chrome("settings.formats.preset_format"), PresetFormatCombo(settings, preset)));
-        editor.Children.Add(PresetCodecRow(settings, preset));
-        var scopes = PresetScopeBoxes(settings, preset);
-        editor.Children.Add(LabeledRow(
-            Loc.Chrome("settings.formats.preset_pregap"),
-            PresetPregapCombo(settings, preset, scopes)));
+        // Bitrate is a lossy preset's primary quality setting, so it stays in
+        // the main form; lossless presets carry no bitrate.
+        if (LossyBitrate(preset.Codec) is not null)
+        {
+            editor.Children.Add(PresetBitrateRow(settings, preset));
+        }
 
         // The filename pattern is its own tighter sub-group: label, chip
         // field, add row, and the sample preview.
@@ -337,8 +329,27 @@ internal sealed class FormatsSettingsSection
         filenameGroup.Children.Add(preview);
         editor.Children.Add(filenameGroup);
 
-        editor.Children.Add(scopes.Row);
         editor.Children.Add(PresetEmbedCoverBox(settings, preset));
+        var scopes = PresetScopeBoxes(settings, preset);
+        editor.Children.Add(scopes.Row);
+
+        // Advanced: bit depth (lossless only) and pregap placement.
+        var advanced = new StackPanel { Spacing = 11 };
+        if (LosslessBitDepth(preset.Codec) is not null)
+        {
+            advanced.Children.Add(PresetBitDepthRow(settings, preset));
+        }
+        advanced.Children.Add(LabeledRow(
+            Loc.Chrome("settings.formats.preset_pregap"),
+            PresetPregapCombo(settings, preset, scopes)));
+        editor.Children.Add(new Expander
+        {
+            Header = Loc.Chrome("settings.formats.advanced"),
+            Content = advanced,
+            IsExpanded = false,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            HorizontalContentAlignment = HorizontalAlignment.Stretch,
+        });
         return editor;
     }
 
@@ -419,6 +430,11 @@ internal sealed class FormatsSettingsSection
             {
                 return;
             }
+            // A default name follows the format; a name the user typed stays put.
+            if (preset.Name == KindLabel(CodecKind(preset.Codec)))
+            {
+                preset.Name = KindLabel(kind);
+            }
             preset.Codec = SwitchedCodec(preset.Codec, kind);
             // The file extension rides on the bridge preset (core derives it from
             // the codec); the config round-trip refreshes it, so it isn't set here.
@@ -432,43 +448,47 @@ internal sealed class FormatsSettingsSection
         return format;
     }
 
-    // The bit depth or bitrate row, per the codec family: lossless codecs
-    // carry a bit depth, lossy ones a bitrate.
-    private Grid PresetCodecRow(Settings settings, SavePreset preset)
+    // The bit-depth row for lossless presets. It lives in the editor's
+    // Advanced group — a secondary setting most presets keep at the source
+    // depth. Only built for a lossless codec, which always carries a bit depth.
+    private Grid PresetBitDepthRow(Settings settings, SavePreset preset)
     {
-        if (LosslessBitDepth(preset.Codec) is { } currentBitDepth)
+        var currentBitDepth = LosslessBitDepth(preset.Codec) ?? BridgeSaveBitDepth.Source;
+        var bitDepth = new ComboBox();
+        foreach (var (label, value) in BitDepthChoices())
         {
-            var bitDepth = new ComboBox();
-            foreach (var (label, value) in BitDepthChoices())
+            bitDepth.Items.Add(new ComboBoxItem
             {
-                bitDepth.Items.Add(new ComboBoxItem
-                {
-                    Content = label,
-                    Tag = value,
-                    IsSelected = currentBitDepth == value,
-                });
-            }
-            bitDepth.SelectionChanged += async (_, _) =>
-            {
-                if (_rendering
-                    || bitDepth.SelectedItem is not ComboBoxItem item
-                    || item.Tag is not BridgeSaveBitDepth selected
-                    || selected == LosslessBitDepth(preset.Codec))
-                {
-                    return;
-                }
-                preset.Codec = preset.Codec switch
-                {
-                    BridgeSaveCodec.Flac => new BridgeSaveCodec.Flac(selected),
-                    BridgeSaveCodec.Wav => new BridgeSaveCodec.Wav(selected),
-                    BridgeSaveCodec.Aiff => new BridgeSaveCodec.Aiff(selected),
-                    _ => preset.Codec,
-                };
-                await SavePresets(settings.SavePresets);
-            };
-            return LabeledRow(Loc.Chrome("settings.formats.bit_depth_label"), bitDepth);
+                Content = label,
+                Tag = value,
+                IsSelected = currentBitDepth == value,
+            });
         }
+        bitDepth.SelectionChanged += async (_, _) =>
+        {
+            if (_rendering
+                || bitDepth.SelectedItem is not ComboBoxItem item
+                || item.Tag is not BridgeSaveBitDepth selected
+                || selected == LosslessBitDepth(preset.Codec))
+            {
+                return;
+            }
+            preset.Codec = preset.Codec switch
+            {
+                BridgeSaveCodec.Flac => new BridgeSaveCodec.Flac(selected),
+                BridgeSaveCodec.Wav => new BridgeSaveCodec.Wav(selected),
+                BridgeSaveCodec.Aiff => new BridgeSaveCodec.Aiff(selected),
+                _ => preset.Codec,
+            };
+            await SavePresets(settings.SavePresets);
+        };
+        return LabeledRow(Loc.Chrome("settings.formats.bit_depth_label"), bitDepth);
+    }
 
+    // The bitrate row for lossy presets. Only built for a lossy codec, which
+    // always carries a bitrate.
+    private Grid PresetBitrateRow(Settings settings, SavePreset preset)
+    {
         var bitrate = new TextBox
         {
             Text = (LossyBitrate(preset.Codec) ?? 0).ToString(CultureInfo.InvariantCulture),
@@ -593,20 +613,17 @@ internal sealed class FormatsSettingsSection
         return pregap;
     }
 
-    private DropDownButton AddPresetButton()
+    private Button AddPresetButton()
     {
-        var flyout = new MenuFlyout();
-        foreach (var kind in PresetKinds)
+        var add = new Button
         {
-            var item = new MenuFlyoutItem { Text = KindLabel(kind) };
-            item.Click += async (_, _) => await AddPreset(kind);
-            flyout.Items.Add(item);
-        }
-        return new DropDownButton
-        {
-            Content = Loc.Chrome("settings.formats.add_preset"),
-            Flyout = flyout,
+            // Segoe Fluent's Add (plus) glyph.
+            Content = new FontIcon { Glyph = "\uE710", FontSize = 12 },
         };
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(
+            add, Loc.Chrome("settings.formats.add_preset"));
+        add.Click += async (_, _) => await AddPreset();
+        return add;
     }
 
     // The filename pattern a newly added preset starts with — the zero-padded
@@ -615,18 +632,21 @@ internal sealed class FormatsSettingsSection
     private static List<BridgeSaveFilenameToken> DefaultPresetFilenameTokens() =>
         new() { BridgeSaveFilenameToken.TrackNumber, BridgeSaveFilenameToken.Title };
 
-    private async System.Threading.Tasks.Task AddPreset(string kind)
+    // Add a preset with the FLAC default and open its editor: the plus button
+    // creates the preset, then the user picks the format and settings in the
+    // dialog. The editor opens only after the save lands, so it reads a preset
+    // config already holds.
+    private async System.Threading.Tasks.Task AddPreset()
     {
         if (_current is not { } settings)
         {
             return;
         }
-        var codec = SwitchedCodec(new BridgeSaveCodec.Flac(BridgeSaveBitDepth.Source), kind);
         var preset = new SavePreset
         {
             Id = Guid.NewGuid().ToString("N"),
-            Name = KindLabel(kind),
-            Codec = codec,
+            Name = KindLabel("flac"),
+            Codec = new BridgeSaveCodec.Flac(BridgeSaveBitDepth.Source),
             // Extension is derived by core from the codec and filled on the config
             // round-trip; the local default ("") is only a placeholder until then.
             FilenameTokens = DefaultPresetFilenameTokens(),
@@ -636,27 +656,35 @@ internal sealed class FormatsSettingsSection
             EmbedCover = true,
         };
         settings.SavePresets.Add(preset);
-        await SavePresets(settings.SavePresets);
+        if (await SavePresets(settings.SavePresets))
+        {
+            await ShowPresetEditor(settings, preset);
+        }
     }
 
-    private async System.Threading.Tasks.Task SavePresets(List<SavePreset> presets)
+    // Returns whether the presets persisted, so a caller that opens follow-up
+    // UI on the saved preset (add-preset opening its editor) acts only after
+    // the write lands.
+    private async System.Threading.Tasks.Task<bool> SavePresets(List<SavePreset> presets)
     {
         if (_rendering)
         {
-            return;
+            return false;
         }
         _clearError();
         var (current, error) = await _session.RunForCurrentHandle(
             handle => NativeBae.SetSavePresets(handle, presets));
         if (!current)
         {
-            return;
+            return false;
         }
         if (error is not null)
         {
             _showError(error);
             _settings.Reload();
+            return false;
         }
+        return true;
     }
 
     // ── Codec display and switching ──────────────────────────────────────────
@@ -738,32 +766,12 @@ internal sealed class FormatsSettingsSection
         _ => "FLAC",
     };
 
-    // The summary line's bit-depth part: "Source" alone reads as nothing in a
-    // "FLAC · Source · …" join, so the source case names what it is.
-    private static string BitDepthSummaryLabel(BridgeSaveBitDepth bitDepth) => bitDepth switch
-    {
-        BridgeSaveBitDepth.Source => Loc.Chrome("settings.formats.bit_depth.source_summary"),
-        BridgeSaveBitDepth.Bits16 => Loc.Chrome("settings.formats.bit_depth.bits16"),
-        BridgeSaveBitDepth.Bits24 => Loc.Chrome("settings.formats.bit_depth.bits24"),
-        _ => Loc.Chrome("settings.formats.bit_depth.bits32"),
-    };
-
     private static List<(string Label, BridgeSaveBitDepth Value)> BitDepthChoices() => new()
     {
         (Loc.Chrome("settings.formats.bit_depth.source"), BridgeSaveBitDepth.Source),
         (Loc.Chrome("settings.formats.bit_depth.bits16"), BridgeSaveBitDepth.Bits16),
         (Loc.Chrome("settings.formats.bit_depth.bits24"), BridgeSaveBitDepth.Bits24),
         (Loc.Chrome("settings.formats.bit_depth.bits32"), BridgeSaveBitDepth.Bits32),
-    };
-
-    private static string PregapLabel(BridgeSavePregapPlacement placement) => placement switch
-    {
-        BridgeSavePregapPlacement.AppendToPreviousExceptHtoa =>
-            Loc.Chrome("settings.formats.pregap.append_except_htoa"),
-        BridgeSavePregapPlacement.AppendToPreviousIncludingHtoa =>
-            Loc.Chrome("settings.formats.pregap.append_including_htoa"),
-        BridgeSavePregapPlacement.Exclude => Loc.Chrome("settings.formats.pregap.exclude"),
-        _ => Loc.Chrome("settings.formats.pregap.single_file_with_cue"),
     };
 
     private static List<(string Label, BridgeSavePregapPlacement Value)> PregapChoices(

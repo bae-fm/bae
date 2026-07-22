@@ -20,6 +20,8 @@ struct SavePresetEditor: View {
     private var nameDraft = ""
     @State
     private var bitrateDraft = ""
+    @State
+    private var advancedExpanded = false
     @FocusState
     private var nameFocused: Bool
 
@@ -28,15 +30,25 @@ struct SavePresetEditor: View {
             Form {
                 nameRow
                 formatRow
-                PresetCodecEditor(
-                    preset: preset,
-                    bitrateDraft: $bitrateDraft,
-                    update: update
-                )
-                pregapRow
+                if preset.codec.bitrateKbps != nil {
+                    PresetBitrateRow(
+                        preset: preset,
+                        bitrateDraft: $bitrateDraft,
+                        update: update
+                    )
+                }
                 filenameGroup
-                scopeRow
                 coverRow
+                scopeRow
+                DisclosureGroup(isExpanded: $advancedExpanded) {
+                    if preset.codec.bitDepth != nil {
+                        PresetBitDepthRow(preset: preset, update: update)
+                    }
+                    pregapRow
+                } label: {
+                    Text("Advanced")
+                }
+                .presetEditorRowInsets()
             }
             .formStyle(.grouped)
             HStack {
@@ -104,6 +116,11 @@ struct SavePresetEditor: View {
                     var changed = preset
                     changed.codec = preset.codec.switched(to: kind)
                     changed.extension = changed.codec.fileExtension
+                    // A default name follows the format; a name the user typed
+                    // stays put.
+                    if preset.name == preset.codec.kind.label {
+                        changed.name = kind.label
+                    }
                     if changed.pregapPlacement == .singleFileWithCue,
                         !changed.codec.supportsSingleFileCue
                     {
@@ -286,12 +303,7 @@ struct SavePresetSummaryRow: View {
     }
 
     private var summary: String {
-        var parts = [preset.codec.label]
-        if let bitDepth = preset.codec.bitDepth {
-            parts.append(bitDepth.summaryLabel)
-        }
-        parts.append(preset.pregapPlacement.label)
-        return parts.joined(separator: " · ")
+        preset.codec.label
     }
 }
 
@@ -308,10 +320,10 @@ private struct ScopeBadge: View {
     }
 }
 
-/// The bit depth or bitrate row, per the codec family: lossless codecs carry a
-/// bit depth, lossy ones a bitrate. The bitrate edits through the sheet-owned
-/// draft; only in-range values commit.
-private struct PresetCodecEditor: View {
+/// The bitrate row for lossy presets — the primary quality setting, so it sits
+/// in the main form. The bitrate edits through the sheet-owned draft; only
+/// in-range values commit.
+private struct PresetBitrateRow: View {
     let preset: BridgeSavePreset
     @Binding
     var bitrateDraft: String
@@ -321,46 +333,20 @@ private struct PresetCodecEditor: View {
     private var bitrateFocused: Bool
 
     var body: some View {
-        switch preset.codec {
-        case .flac, .wav, .aiff:
-            LabeledContent("Bit depth") {
-                Picker(
-                    "Bit depth",
-                    selection: Binding(
-                        get: { preset.codec.bitDepth ?? .source },
-                        set: { bitDepth in
-                            var changed = preset
-                            changed.codec = preset.codec.with(
-                                bitDepth: bitDepth
-                            )
-                            update(changed)
-                        }
-                    )
-                ) {
-                    Text("Source").tag(BridgeSaveBitDepth.source)
-                    Text("16-bit").tag(BridgeSaveBitDepth.bits16)
-                    Text("24-bit").tag(BridgeSaveBitDepth.bits24)
-                    Text("32-bit").tag(BridgeSaveBitDepth.bits32)
-                }
+        LabeledContent("Bitrate") {
+            TextField("Bitrate", text: $bitrateDraft)
                 .labelsHidden()
-            }
-            .presetEditorRowInsets()
-        case .mp3, .opusOgg:
-            LabeledContent("Bitrate") {
-                TextField("Bitrate", text: $bitrateDraft)
-                    .labelsHidden()
-                    .textFieldStyle(.roundedBorder)
-                    .frame(width: 96)
-                    .focused($bitrateFocused)
-                    .onSubmit(commitBitrate)
-                    .onChange(of: bitrateFocused) { _, focused in
-                        if !focused {
-                            commitBitrate()
-                        }
+                .textFieldStyle(.roundedBorder)
+                .frame(width: 96)
+                .focused($bitrateFocused)
+                .onSubmit(commitBitrate)
+                .onChange(of: bitrateFocused) { _, focused in
+                    if !focused {
+                        commitBitrate()
                     }
-            }
-            .presetEditorRowInsets()
+                }
         }
+        .presetEditorRowInsets()
     }
 
     private func commitBitrate() {
@@ -375,7 +361,37 @@ private struct PresetCodecEditor: View {
     }
 }
 
-/// The codec families the Format picker and the add-preset menu offer.
+/// The bit-depth row for lossless presets. It lives in the editor's Advanced
+/// group — a secondary setting most presets keep at the source depth.
+private struct PresetBitDepthRow: View {
+    let preset: BridgeSavePreset
+    let update: (BridgeSavePreset) -> Void
+
+    var body: some View {
+        LabeledContent("Bit depth") {
+            Picker(
+                "Bit depth",
+                selection: Binding(
+                    get: { preset.codec.bitDepth ?? .source },
+                    set: { bitDepth in
+                        var changed = preset
+                        changed.codec = preset.codec.with(bitDepth: bitDepth)
+                        update(changed)
+                    }
+                )
+            ) {
+                Text("Source").tag(BridgeSaveBitDepth.source)
+                Text("16-bit").tag(BridgeSaveBitDepth.bits16)
+                Text("24-bit").tag(BridgeSaveBitDepth.bits24)
+                Text("32-bit").tag(BridgeSaveBitDepth.bits32)
+            }
+            .labelsHidden()
+        }
+        .presetEditorRowInsets()
+    }
+}
+
+/// The codec families the Format picker offers.
 enum SavePresetKind: CaseIterable {
     case flac
     case mp3
@@ -504,34 +520,6 @@ extension BridgeSaveCodec {
         case .opusOgg: "ogg"
         case .wav: "wav"
         case .aiff: "aiff"
-        }
-    }
-}
-
-extension BridgeSaveBitDepth {
-    /// The summary line's bit-depth part: "Source" alone reads as nothing in a
-    /// "FLAC · Source · …" join, so the source case names what it is.
-    var summaryLabel: String {
-        switch self {
-        case .source: String(localized: "Source bit depth")
-        case .bits16: String(localized: "16-bit")
-        case .bits24: String(localized: "24-bit")
-        case .bits32: String(localized: "32-bit")
-        }
-    }
-}
-
-extension BridgeSavePregapPlacement {
-    var label: String {
-        switch self {
-        case .appendToPreviousExceptHtoa:
-            String(localized: "Append except HTOA")
-        case .appendToPreviousIncludingHtoa:
-            String(localized: "Append including HTOA")
-        case .exclude:
-            String(localized: "Exclude")
-        case .singleFileWithCue:
-            String(localized: "Single file + CUE")
         }
     }
 }

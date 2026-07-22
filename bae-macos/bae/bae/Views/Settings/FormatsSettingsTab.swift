@@ -4,8 +4,7 @@ import SwiftUI
 /// Export preferences: the export presets and the default preset for release
 /// and track saves. Every control writes through the `Outputs` service and
 /// round-trips back via a `configChanged` event into `ConfigStore` — no
-/// optimistic local
-/// mutation and no separate save step.
+/// optimistic local mutation and no separate save step.
 struct FormatsSettingsTab: View {
     @Environment(ConfigStore.self)
     private var configStore
@@ -65,11 +64,12 @@ struct FormatsSettingsTab: View {
                     delete: { deletePreset(id: preset.id) }
                 )
             }
-            Menu("Add preset") {
-                ForEach(SavePresetKind.allCases, id: \.self) { kind in
-                    Button(kind.label) { addPreset(kind) }
-                }
+            Button(action: addPreset) {
+                Image(systemName: "plus")
             }
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+            .accessibilityLabel(Text("Add preset"))
         } header: {
             Text("Formats")
         } footer: {
@@ -118,11 +118,15 @@ struct FormatsSettingsTab: View {
     private static let defaultPresetFilenameTokens: [BridgeSaveFilenameToken] =
         [.trackNumber, .title]
 
-    private func addPreset(_ kind: SavePresetKind) {
-        let codec = kind.defaultCodec
+    /// Add a preset with the FLAC default and open its editor: the plus button
+    /// creates the preset, then the user picks the format and settings in the
+    /// sheet. The editor opens only after the save succeeds, so the sheet reads
+    /// a preset that config already holds.
+    private func addPreset() {
+        let codec = SavePresetKind.flac.defaultCodec
         let preset = BridgeSavePreset(
             id: UUID().uuidString.replacingOccurrences(of: "-", with: ""),
-            name: kind.label,
+            name: SavePresetKind.flac.label,
             codec: codec,
             extension: codec.fileExtension,
             filenameTokens: Self.defaultPresetFilenameTokens,
@@ -135,6 +139,7 @@ struct FormatsSettingsTab: View {
             try outputs.setSavePresets(
                 configStore.config.savePresets + [preset]
             )
+            editingPreset = EditingPreset(id: preset.id)
         }
     }
 

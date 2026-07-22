@@ -206,7 +206,7 @@ extension BridgeSaveFilenameToken {
         case .title: String(localized: "Title")
         case .artist: String(localized: "Artist")
         case .album: String(localized: "Album")
-        case .year: String(localized: "Year")
+        case .year: String(localized: "Release year")
         case .trackNumber: String(localized: "Track №")
         case .discNumber: String(localized: "Disc №")
         case .trackTotal: String(localized: "Track total")

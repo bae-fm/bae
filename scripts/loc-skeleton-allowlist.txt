@@ -223,7 +223,7 @@ nl	album.count
 nl	search.section.albums
 nl	search.section.releases
 nl	search.section.credits
-nl	settings.formats.presets
+nl	settings.formats.default_release_format
 nl	settings.formats.preset_release
 nl	settings.formats.preset_pregap
 nl	settings.formats.bit_depth.bits16

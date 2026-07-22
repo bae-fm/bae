@@ -302,9 +302,11 @@
   <data name="work.open_failed" xml:space="preserve"><value>ಕೃತಿ ವಿವರ ತೆರೆಯಲಾಗಲಿಲ್ಲ</value></data>
   <data name="work.count" xml:space="preserve"><value>{count} ಕೃತಿಗಳು</value></data>
   <data name="album.count" xml:space="preserve"><value>{count} ಆಲ್ಬಮ್‌ಗಳು</value></data>
-  <data name="settings.formats.default_track_format" xml:space="preserve"><value>ಪೂರ್ವನಿಯೋಜಿತ ಹಾಡು ಸ್ವರೂಪ</value></data>
-  <data name="settings.formats.default_release_format" xml:space="preserve"><value>ಪೂರ್ವನಿಯೋಜಿತ ಬಿಡುಗಡೆ ಸ್ವರೂಪ</value></data>
-  <data name="settings.formats.presets" xml:space="preserve"><value>ಪ್ರೀಸೆಟ್‌ಗಳು</value></data>
+  <data name="settings.formats.default_track_format" xml:space="preserve"><value>ಟ್ರ್ಯಾಕ್‌ಗಳು</value></data>
+  <data name="settings.formats.default_release_format" xml:space="preserve"><value>ಬಿಡುಗಡೆ</value></data>
+  <data name="settings.formats.formats" xml:space="preserve"><value>ಫಾರ್ಮ್ಯಾಟ್‌ಗಳು</value></data>
+  <data name="settings.formats.defaults" xml:space="preserve"><value>ಡೀಫಾಲ್ಟ್‌ಗಳು</value></data>
+  <data name="settings.formats.advanced" xml:space="preserve"><value>ಸುಧಾರಿತ</value></data>
   <data name="settings.formats.preset_name" xml:space="preserve"><value>ಹೆಸರು</value></data>
   <data name="settings.formats.preset_track" xml:space="preserve"><value>ಟ್ರ್ಯಾಕ್</value></data>
   <data name="settings.formats.preset_release" xml:space="preserve"><value>ಬಿಡುಗಡೆ</value></data>
@@ -314,14 +316,12 @@
   <data name="settings.formats.pregap.exclude" xml:space="preserve"><value>ಹೊರತುಪಡಿಸಿ</value></data>
   <data name="settings.formats.pregap.single_file_with_cue" xml:space="preserve"><value>ಒಂದು ಫೈಲ್ + CUE</value></data>
   <data name="settings.formats.filename_format" xml:space="preserve"><value>ಕಡತದ ಹೆಸರು ಸ್ವರೂಪ</value></data>
-  <data name="settings.formats.release_saves" xml:space="preserve"><value>ಬಿಡುಗಡೆ ಉಳಿಸುವಿಕೆಗಳು</value></data>
-  <data name="settings.formats.track_saves" xml:space="preserve"><value>ಹಾಡು ಉಳಿಸುವಿಕೆಗಳು</value></data>
   <data name="settings.formats.add_token" xml:space="preserve"><value>ಸೇರಿಸಿ:</value></data>
   <data name="settings.formats.remove_token" xml:space="preserve"><value>{token} ತೆಗೆದುಹಾಕಿ</value></data>
   <data name="settings.formats.token.title" xml:space="preserve"><value>ಶೀರ್ಷಿಕೆ</value></data>
   <data name="settings.formats.token.artist" xml:space="preserve"><value>ಕಲಾವಿದ</value></data>
   <data name="settings.formats.token.album" xml:space="preserve"><value>ಆಲ್ಬಮ್</value></data>
-  <data name="settings.formats.token.year" xml:space="preserve"><value>ವರ್ಷ</value></data>
+  <data name="settings.formats.token.year" xml:space="preserve"><value>ಬಿಡುಗಡೆ ವರ್ಷ</value></data>
   <data name="settings.formats.token.track_number" xml:space="preserve"><value>ಟ್ರ್ಯಾಕ್ ಸಂ.</value></data>
   <data name="settings.formats.token.disc_number" xml:space="preserve"><value>ಡಿಸ್ಕ್ ಸಂ.</value></data>
   <data name="settings.formats.token.track_total" xml:space="preserve"><value>ಒಟ್ಟು ಟ್ರ್ಯಾಕ್‌ಗಳು</value></data>
@@ -336,7 +336,6 @@
   <data name="settings.formats.delete_confirm" xml:space="preserve"><value>“{name}” ಪ್ರೀಸೆಟ್ ಅಳಿಸುವುದೇ?</value></data>
   <data name="settings.formats.codec_mp3" xml:space="preserve"><value>MP3 {kbps} kbps</value></data>
   <data name="settings.formats.codec_opus" xml:space="preserve"><value>Opus {kbps} kbps</value></data>
-  <data name="settings.formats.bit_depth.source_summary" xml:space="preserve"><value>ಮೂಲ ಬಿಟ್ ಆಳ</value></data>
   <data name="settings.formats.show_in_menus" xml:space="preserve"><value>ಇದರ ರಫ್ತು ಮೆನುವಿನಲ್ಲಿ ತೋರಿಸಿ</value></data>
   <data name="settings.formats.embed_cover" xml:space="preserve"><value>ಕವರ್ ಆರ್ಟ್ ಎಂಬೆಡ್ ಮಾಡಿ</value></data>
   <data name="settings.formats.bit_depth_label" xml:space="preserve"><value>ಬಿಟ್ ಆಳ</value></data>

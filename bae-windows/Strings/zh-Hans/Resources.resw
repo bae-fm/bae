@@ -302,9 +302,11 @@
   <data name="work.open_failed" xml:space="preserve"><value>无法打开作品详情</value></data>
   <data name="work.count" xml:space="preserve"><value>{count} 部作品</value></data>
   <data name="album.count" xml:space="preserve"><value>{count} 张专辑</value></data>
-  <data name="settings.formats.default_track_format" xml:space="preserve"><value>默认曲目格式</value></data>
-  <data name="settings.formats.default_release_format" xml:space="preserve"><value>默认发行格式</value></data>
-  <data name="settings.formats.presets" xml:space="preserve"><value>预设</value></data>
+  <data name="settings.formats.default_track_format" xml:space="preserve"><value>曲目</value></data>
+  <data name="settings.formats.default_release_format" xml:space="preserve"><value>发行</value></data>
+  <data name="settings.formats.formats" xml:space="preserve"><value>格式</value></data>
+  <data name="settings.formats.defaults" xml:space="preserve"><value>默认</value></data>
+  <data name="settings.formats.advanced" xml:space="preserve"><value>高级</value></data>
   <data name="settings.formats.preset_name" xml:space="preserve"><value>名称</value></data>
   <data name="settings.formats.preset_track" xml:space="preserve"><value>曲目</value></data>
   <data name="settings.formats.preset_release" xml:space="preserve"><value>发行</value></data>
@@ -314,14 +316,12 @@
   <data name="settings.formats.pregap.exclude" xml:space="preserve"><value>排除</value></data>
   <data name="settings.formats.pregap.single_file_with_cue" xml:space="preserve"><value>单个文件 + CUE</value></data>
   <data name="settings.formats.filename_format" xml:space="preserve"><value>文件名格式</value></data>
-  <data name="settings.formats.release_saves" xml:space="preserve"><value>发行保存</value></data>
-  <data name="settings.formats.track_saves" xml:space="preserve"><value>曲目保存</value></data>
   <data name="settings.formats.add_token" xml:space="preserve"><value>添加：</value></data>
   <data name="settings.formats.remove_token" xml:space="preserve"><value>移除{token}</value></data>
   <data name="settings.formats.token.title" xml:space="preserve"><value>标题</value></data>
   <data name="settings.formats.token.artist" xml:space="preserve"><value>艺术家</value></data>
   <data name="settings.formats.token.album" xml:space="preserve"><value>专辑</value></data>
-  <data name="settings.formats.token.year" xml:space="preserve"><value>年份</value></data>
+  <data name="settings.formats.token.year" xml:space="preserve"><value>发行年份</value></data>
   <data name="settings.formats.token.track_number" xml:space="preserve"><value>曲目编号</value></data>
   <data name="settings.formats.token.disc_number" xml:space="preserve"><value>光盘编号</value></data>
   <data name="settings.formats.token.track_total" xml:space="preserve"><value>曲目总数</value></data>
@@ -336,7 +336,6 @@
   <data name="settings.formats.delete_confirm" xml:space="preserve"><value>删除预设“{name}”？</value></data>
   <data name="settings.formats.codec_mp3" xml:space="preserve"><value>MP3 {kbps} kbps</value></data>
   <data name="settings.formats.codec_opus" xml:space="preserve"><value>Opus {kbps} kbps</value></data>
-  <data name="settings.formats.bit_depth.source_summary" xml:space="preserve"><value>来源位深度</value></data>
   <data name="settings.formats.show_in_menus" xml:space="preserve"><value>显示在导出菜单中：</value></data>
   <data name="settings.formats.embed_cover" xml:space="preserve"><value>嵌入封面</value></data>
   <data name="settings.formats.bit_depth_label" xml:space="preserve"><value>位深</value></data>

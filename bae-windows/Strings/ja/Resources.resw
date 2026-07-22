@@ -302,9 +302,11 @@
   <data name="work.open_failed" xml:space="preserve"><value>作品の詳細を開けませんでした</value></data>
   <data name="work.count" xml:space="preserve"><value>{count}作品</value></data>
   <data name="album.count" xml:space="preserve"><value>{count}枚のアルバム</value></data>
-  <data name="settings.formats.default_track_format" xml:space="preserve"><value>デフォルトのトラック形式</value></data>
-  <data name="settings.formats.default_release_format" xml:space="preserve"><value>デフォルトのリリース形式</value></data>
-  <data name="settings.formats.presets" xml:space="preserve"><value>プリセット</value></data>
+  <data name="settings.formats.default_track_format" xml:space="preserve"><value>トラック</value></data>
+  <data name="settings.formats.default_release_format" xml:space="preserve"><value>リリース</value></data>
+  <data name="settings.formats.formats" xml:space="preserve"><value>フォーマット</value></data>
+  <data name="settings.formats.defaults" xml:space="preserve"><value>デフォルト</value></data>
+  <data name="settings.formats.advanced" xml:space="preserve"><value>詳細</value></data>
   <data name="settings.formats.preset_name" xml:space="preserve"><value>名前</value></data>
   <data name="settings.formats.preset_track" xml:space="preserve"><value>トラック</value></data>
   <data name="settings.formats.preset_release" xml:space="preserve"><value>リリース</value></data>
@@ -314,14 +316,12 @@
   <data name="settings.formats.pregap.exclude" xml:space="preserve"><value>除外</value></data>
   <data name="settings.formats.pregap.single_file_with_cue" xml:space="preserve"><value>単一ファイル + CUE</value></data>
   <data name="settings.formats.filename_format" xml:space="preserve"><value>ファイル名の形式</value></data>
-  <data name="settings.formats.release_saves" xml:space="preserve"><value>リリースの保存</value></data>
-  <data name="settings.formats.track_saves" xml:space="preserve"><value>トラックの保存</value></data>
   <data name="settings.formats.add_token" xml:space="preserve"><value>追加:</value></data>
   <data name="settings.formats.remove_token" xml:space="preserve"><value>{token}を削除</value></data>
   <data name="settings.formats.token.title" xml:space="preserve"><value>タイトル</value></data>
   <data name="settings.formats.token.artist" xml:space="preserve"><value>アーティスト</value></data>
   <data name="settings.formats.token.album" xml:space="preserve"><value>アルバム</value></data>
-  <data name="settings.formats.token.year" xml:space="preserve"><value>年</value></data>
+  <data name="settings.formats.token.year" xml:space="preserve"><value>リリース年</value></data>
   <data name="settings.formats.token.track_number" xml:space="preserve"><value>トラック番号</value></data>
   <data name="settings.formats.token.disc_number" xml:space="preserve"><value>ディスク番号</value></data>
   <data name="settings.formats.token.track_total" xml:space="preserve"><value>トラック総数</value></data>
@@ -336,7 +336,6 @@
   <data name="settings.formats.delete_confirm" xml:space="preserve"><value>プリセット“{name}”を削除しますか？</value></data>
   <data name="settings.formats.codec_mp3" xml:space="preserve"><value>MP3 {kbps} kbps</value></data>
   <data name="settings.formats.codec_opus" xml:space="preserve"><value>Opus {kbps} kbps</value></data>
-  <data name="settings.formats.bit_depth.source_summary" xml:space="preserve"><value>ソースのビット深度</value></data>
   <data name="settings.formats.show_in_menus" xml:space="preserve"><value>エクスポートメニューに表示:</value></data>
   <data name="settings.formats.embed_cover" xml:space="preserve"><value>カバーアートを埋め込む</value></data>
   <data name="settings.formats.bit_depth_label" xml:space="preserve"><value>ビット深度</value></data>

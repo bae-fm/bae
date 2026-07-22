@@ -302,9 +302,11 @@
   <data name="work.open_failed" xml:space="preserve"><value>Не вдалося відкрити відомості про твір</value></data>
   <data name="work.count" xml:space="preserve"><value>{count} творів</value></data>
   <data name="album.count" xml:space="preserve"><value>{count} альбомів</value></data>
-  <data name="settings.formats.default_track_format" xml:space="preserve"><value>Формат треку за замовчуванням</value></data>
-  <data name="settings.formats.default_release_format" xml:space="preserve"><value>Формат релізу за замовчуванням</value></data>
-  <data name="settings.formats.presets" xml:space="preserve"><value>Пресети</value></data>
+  <data name="settings.formats.default_track_format" xml:space="preserve"><value>Треки</value></data>
+  <data name="settings.formats.default_release_format" xml:space="preserve"><value>Реліз</value></data>
+  <data name="settings.formats.formats" xml:space="preserve"><value>Формати</value></data>
+  <data name="settings.formats.defaults" xml:space="preserve"><value>Типові значення</value></data>
+  <data name="settings.formats.advanced" xml:space="preserve"><value>Додатково</value></data>
   <data name="settings.formats.preset_name" xml:space="preserve"><value>Назва</value></data>
   <data name="settings.formats.preset_track" xml:space="preserve"><value>Трек</value></data>
   <data name="settings.formats.preset_release" xml:space="preserve"><value>Реліз</value></data>
@@ -314,14 +316,12 @@
   <data name="settings.formats.pregap.exclude" xml:space="preserve"><value>Виключити</value></data>
   <data name="settings.formats.pregap.single_file_with_cue" xml:space="preserve"><value>Один файл + CUE</value></data>
   <data name="settings.formats.filename_format" xml:space="preserve"><value>Формат імені файлу</value></data>
-  <data name="settings.formats.release_saves" xml:space="preserve"><value>Збереження релізів</value></data>
-  <data name="settings.formats.track_saves" xml:space="preserve"><value>Збереження треків</value></data>
   <data name="settings.formats.add_token" xml:space="preserve"><value>Додати:</value></data>
   <data name="settings.formats.remove_token" xml:space="preserve"><value>Вилучити {token}</value></data>
   <data name="settings.formats.token.title" xml:space="preserve"><value>Назва</value></data>
   <data name="settings.formats.token.artist" xml:space="preserve"><value>Виконавець</value></data>
   <data name="settings.formats.token.album" xml:space="preserve"><value>Альбом</value></data>
-  <data name="settings.formats.token.year" xml:space="preserve"><value>Рік</value></data>
+  <data name="settings.formats.token.year" xml:space="preserve"><value>Рік випуску</value></data>
   <data name="settings.formats.token.track_number" xml:space="preserve"><value>№ треку</value></data>
   <data name="settings.formats.token.disc_number" xml:space="preserve"><value>№ диска</value></data>
   <data name="settings.formats.token.track_total" xml:space="preserve"><value>Усього треків</value></data>
@@ -336,7 +336,6 @@
   <data name="settings.formats.delete_confirm" xml:space="preserve"><value>Видалити пресет «{name}»?</value></data>
   <data name="settings.formats.codec_mp3" xml:space="preserve"><value>MP3 {kbps} kbps</value></data>
   <data name="settings.formats.codec_opus" xml:space="preserve"><value>Opus {kbps} kbps</value></data>
-  <data name="settings.formats.bit_depth.source_summary" xml:space="preserve"><value>Бітова глибина джерела</value></data>
   <data name="settings.formats.show_in_menus" xml:space="preserve"><value>Показувати в меню експорту для</value></data>
   <data name="settings.formats.embed_cover" xml:space="preserve"><value>Вбудувати обкладинку</value></data>
   <data name="settings.formats.bit_depth_label" xml:space="preserve"><value>Бітова глибина</value></data>
