@@ -1,10 +1,10 @@
 import BaeKit
 import SwiftUI
 
-/// Export preferences: the release-export destination and default format, the
-/// single-track suggested-filename pattern and default format, and the export
-/// presets. Every control writes through the `Outputs` service and round-trips
-/// back via a `configChanged` event into `ConfigStore` — no optimistic local
+/// Export preferences: the export presets and the default preset for release
+/// and track saves. Every control writes through the `Outputs` service and
+/// round-trips back via a `configChanged` event into `ConfigStore` — no
+/// optimistic local
 /// mutation and no separate save step.
 struct FormatsSettingsTab: View {
     @Environment(ConfigStore.self)
@@ -26,9 +26,8 @@ struct FormatsSettingsTab: View {
 
     var body: some View {
         Form {
-            releaseSavesSection
-            trackSavesSection
-            presetsSection
+            formatsSection
+            defaultsSection
         }
         .formStyle(.grouped)
         .sheet(item: $editingPreset) { editing in
@@ -42,25 +41,22 @@ struct FormatsSettingsTab: View {
         }
     }
 
-    private var releaseSavesSection: some View {
-        Section("Release saves") {
+    private var defaultsSection: some View {
+        Section("Defaults") {
             presetPicker(
+                label: "Release",
                 presets: releasePresets,
                 selection: defaultReleasePresetBinding()
             )
-        }
-    }
-
-    private var trackSavesSection: some View {
-        Section("Track saves") {
             presetPicker(
+                label: "Tracks",
                 presets: trackPresets,
                 selection: defaultTrackPresetBinding()
             )
         }
     }
 
-    private var presetsSection: some View {
+    private var formatsSection: some View {
         Section {
             ForEach(configStore.config.savePresets, id: \.id) { preset in
                 PresetRow(
@@ -75,7 +71,7 @@ struct FormatsSettingsTab: View {
                 }
             }
         } header: {
-            Text("Presets")
+            Text("Formats")
         } footer: {
             Text("Presets appear in the export menu on tracks and releases.")
                 .font(.caption)
@@ -85,10 +81,11 @@ struct FormatsSettingsTab: View {
     }
 
     private func presetPicker(
+        label: LocalizedStringKey,
         presets: [BridgeSavePreset],
         selection: Binding<String>
     ) -> some View {
-        Picker("Default format", selection: selection) {
+        Picker(label, selection: selection) {
             ForEach(presets, id: \.id) { preset in
                 Text(preset.name).tag(preset.id)
             }
