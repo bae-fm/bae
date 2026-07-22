@@ -52,10 +52,13 @@ Mechanics:
 "Save As" — a workup that produces standalone output files. Track level or
 release level.
 
-Save decodes the source audio and produces output in a chosen file format.
-When the output format differs from the source, that is a transcode. When it
-matches, it is still a workup: the output is a proper self-contained file —
-split out of any image, tagged from bae's metadata, named by pattern.
+A save always names its output format: the preset specifies the codec, and
+the source audio is decoded and encoded to it. Whether that format matches
+the source's is irrelevant — there is no "keep the original format" save;
+original is export's contract, not a save option. Even when the preset's
+codec coincides with the source's, the output is a constructed file: split
+out of any image, tagged from bae's metadata, named by pattern. The source's
+shape never shows in the result.
 
 **Image splitting.** A CUE/single-file source (one image file backing many
 tracks) has no per-track files to hand out, so save extracts: decode the
@@ -77,13 +80,6 @@ copied.
 (FLAC/WAV/AIFF with bit depth, MP3/Opus with bitrate), filename tokens,
 pregap placement, cover embedding, and which levels the preset applies to
 (track, release).
-
-**Original format** is a format choice, not a different operation: "don't
-transcode". A track whose source is a standalone whole file passes through as
-its verbatim bytes (its existing embedded tags come along untouched). A track
-backed by an image must be constructed, so it is split losslessly (lossless
-sources only — a lossy image cannot be split without a transcode, which
-"original" by definition refuses) and gets the full workup.
 
 **Release-level save** produces one of two shapes, chosen by the preset:
 
@@ -111,7 +107,7 @@ cancel.
 |---|---|---|
 | level | release | release or track |
 | source of truth | imported bytes | bae's metadata + decoded audio |
-| transcode | never | when the format differs |
+| audio bytes | verbatim | decoded, encoded to the preset codec |
 | image splitting | never (image stays an image) | yes (tracks are constructed) |
 | tags | untouched | written from bae |
 | cover | as imported (a file among files) | optionally embedded |
@@ -136,7 +132,10 @@ The code predates the split and calls both "export". The mapping:
   with `ExportPreset` / `ExportFilenameToken` / `ExportPregapPlacement` in
   `config/export.rs` as the preset vocabulary.
 
-Two seams the vocabulary hides: `ExportSelection` exists only because the two
-operations share one entry point (a save preset and "original" are presented
-as siblings when they are different operations), and cover embedding is
-currently unconditional rather than a preset option.
+Seams the vocabulary hides: `ExportSelection` presents "original" and a
+preset as sibling choices of one operation, when in the model original *is*
+export and a save always carries a preset — the enum dissolves once each
+operation has exactly one shape. The track-level `ExportSelection::Original`
+path (`ExportService::export_original_track`, `export_track_extension`'s
+original arm) is a save without a format, which the model eliminates. And
+cover embedding is currently unconditional rather than a preset option.
