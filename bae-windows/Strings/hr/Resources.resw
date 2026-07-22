@@ -3,14 +3,14 @@
   <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
   <resheader name="version"><value>2.0</value></resheader>
   <data name="SearchBox.PlaceholderText" xml:space="preserve"><value>Pretraži</value></data>
-  <data name="LibrariesButton.Content" xml:space="preserve"><value>fonoteke</value></data>
-  <data name="PlaybackMenuButton.Content" xml:space="preserve"><value>reprodukcija</value></data>
+  <data name="toolbar.libraries" xml:space="preserve"><value>fonoteke</value></data>
+  <data name="toolbar.playback" xml:space="preserve"><value>reprodukcija</value></data>
   <data name="ShuffleLibraryMenuItem.Text" xml:space="preserve"><value>nasumično reproduciraj biblioteku</value></data>
   <data name="CloseLibraryButton.Content" xml:space="preserve"><value>zatvori</value></data>
   <data name="CloseLibraryButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve"><value>zatvori fonoteku</value></data>
-  <data name="ImportButton.Content" xml:space="preserve"><value>uvoz</value></data>
-  <data name="StorageButton.Content" xml:space="preserve"><value>pohrana</value></data>
-  <data name="SettingsButton.Content" xml:space="preserve"><value>postavke</value></data>
+  <data name="toolbar.import" xml:space="preserve"><value>uvoz</value></data>
+  <data name="toolbar.storage" xml:space="preserve"><value>pohrana</value></data>
+  <data name="toolbar.settings" xml:space="preserve"><value>postavke</value></data>
   <data name="action.cancel" xml:space="preserve"><value>Odustani</value></data>
   <data name="action.close" xml:space="preserve"><value>Zatvori</value></data>
   <data name="action.delete" xml:space="preserve"><value>Izbriši</value></data>

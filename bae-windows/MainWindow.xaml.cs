@@ -161,11 +161,11 @@ public sealed partial class MainWindow : Window
         SelectBrowserMode(BrowserMode.Albums, reload: false);
         // The toolbar buttons are icon-only; each carries its former text label as
         // the tooltip and accessible name (reusing the existing x:Uid strings).
-        SetIconButtonLabel(PlaybackMenuButton, "PlaybackMenuButton.Content");
-        SetIconButtonLabel(LibrariesButton, "LibrariesButton.Content");
-        SetIconButtonLabel(ImportButton, "ImportButton.Content");
-        SetIconButtonLabel(StorageButton, "StorageButton.Content");
-        SetIconButtonLabel(SettingsButton, "SettingsButton.Content");
+        SetIconButtonLabel(PlaybackMenuButton, "toolbar.playback");
+        SetIconButtonLabel(LibrariesButton, "toolbar.libraries");
+        SetIconButtonLabel(ImportButton, "toolbar.import");
+        SetIconButtonLabel(StorageButton, "toolbar.storage");
+        SetIconButtonLabel(SettingsButton, "toolbar.settings");
         // Close keeps its own more descriptive, localized "close library" tooltip
         // (set by x:Uid); give it the glyph here so x:Uid's Content doesn't win, and
         // read that tooltip back as the accessible name.

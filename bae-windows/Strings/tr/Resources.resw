@@ -3,14 +3,14 @@
   <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
   <resheader name="version"><value>2.0</value></resheader>
   <data name="SearchBox.PlaceholderText" xml:space="preserve"><value>Ara</value></data>
-  <data name="LibrariesButton.Content" xml:space="preserve"><value>kitaplıklar</value></data>
-  <data name="PlaybackMenuButton.Content" xml:space="preserve"><value>çalma</value></data>
+  <data name="toolbar.libraries" xml:space="preserve"><value>kitaplıklar</value></data>
+  <data name="toolbar.playback" xml:space="preserve"><value>çalma</value></data>
   <data name="ShuffleLibraryMenuItem.Text" xml:space="preserve"><value>kitaplığı karıştır</value></data>
   <data name="CloseLibraryButton.Content" xml:space="preserve"><value>kapat</value></data>
   <data name="CloseLibraryButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve"><value>kitaplığı kapat</value></data>
-  <data name="ImportButton.Content" xml:space="preserve"><value>içe aktar</value></data>
-  <data name="StorageButton.Content" xml:space="preserve"><value>Depolama</value></data>
-  <data name="SettingsButton.Content" xml:space="preserve"><value>ayarlar</value></data>
+  <data name="toolbar.import" xml:space="preserve"><value>içe aktar</value></data>
+  <data name="toolbar.storage" xml:space="preserve"><value>Depolama</value></data>
+  <data name="toolbar.settings" xml:space="preserve"><value>ayarlar</value></data>
   <data name="action.cancel" xml:space="preserve"><value>İptal</value></data>
   <data name="action.close" xml:space="preserve"><value>Kapat</value></data>
   <data name="action.delete" xml:space="preserve"><value>Sil</value></data>
