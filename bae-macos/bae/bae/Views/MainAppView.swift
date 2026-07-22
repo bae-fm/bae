@@ -268,12 +268,13 @@ struct MainAppView: View {
     /// empty transport. Scrolling the grid drives the header collapse; the
     /// queue and import sections mount on their normal toggles.
     ///
-    /// Fixed layout on purpose: the canvas's simulated window adds fake
-    /// chrome with a top safe-area inset, and the view's own
-    /// `ignoresSafeArea` (correct in the real chromeless window) slides the
-    /// top bar underneath it. A fixed layout has no chrome, so the bar is
-    /// visible.
-    #Preview("Main app", traits: .fixedLayout(width: 1280, height: 800)) {
+    /// The canvas's simulated window adds fake chrome with a top safe-area
+    /// inset, and the view's own `ignoresSafeArea` (correct in the real
+    /// chromeless window) slides the top bar underneath that chrome when the
+    /// view sits flush against the safe-area boundary. One point of top
+    /// padding keeps it off the boundary — the ignore has nothing adjacent
+    /// to extend into, and the bar stays visible.
+    #Preview("Main app") {
         let uiStore = UiStore()
         let libraryStore = LibraryStore()
         let backing = LibraryView.previewGridBacking(
@@ -289,6 +290,7 @@ struct MainAppView: View {
             .environment(uiStore)
             .environment(PreviewAudio.stub)
             .albumDetailPreviewEnvironment(store: libraryStore)
+            .padding(.top, 1)
             .frame(width: 1280, height: 800)
             .windowBackground()
     }
