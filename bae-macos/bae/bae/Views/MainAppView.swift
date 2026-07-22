@@ -267,7 +267,13 @@ struct MainAppView: View {
     /// over the canned 40-album session, and the now-playing bar with an
     /// empty transport. Scrolling the grid drives the header collapse; the
     /// queue and import sections mount on their normal toggles.
-    #Preview("Main app") {
+    ///
+    /// Fixed layout on purpose: the canvas's simulated window adds fake
+    /// chrome with a top safe-area inset, and the view's own
+    /// `ignoresSafeArea` (correct in the real chromeless window) slides the
+    /// top bar underneath it. A fixed layout has no chrome, so the bar is
+    /// visible.
+    #Preview("Main app", traits: .fixedLayout(width: 1280, height: 800)) {
         let uiStore = UiStore()
         let libraryStore = LibraryStore()
         let backing = LibraryView.previewGridBacking(
