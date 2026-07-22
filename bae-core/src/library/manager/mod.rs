@@ -468,10 +468,8 @@ pub struct ResolvedTrackAudioSegment {
     pub file_id: String,
     pub cloud_path: Option<String>,
     pub file_size: u64,
-    pub start_sample: u64,
-    pub end_sample: Option<u64>,
-    pub start_byte: Option<u64>,
-    pub end_byte: Option<u64>,
+    /// Where this segment sits inside its backing file, in samples and bytes.
+    pub span: crate::db::SegmentSpan,
 }
 
 /// All resolved data needed to set up a playback reader for a track.
@@ -524,10 +522,7 @@ impl ResolvedTrackAudio {
                     file_id: segment.file_id.clone(),
                     cloud_path: audio_file.cloud_path.clone(),
                     file_size: audio_file.file_size as u64,
-                    start_sample: segment.start_sample as u64,
-                    end_sample: segment.end_sample.map(|sample| sample as u64),
-                    start_byte: segment.start_byte.map(|byte| byte as u64),
-                    end_byte: segment.end_byte.map(|byte| byte as u64),
+                    span: segment.span(),
                 }
             })
             .collect();
@@ -642,9 +637,10 @@ pub struct SaveTrackPlan {
     /// The cover image bytes to embed, read through coven at plan time, or `None`
     /// when the album has no primary release with a cover.
     pub cover_image_bytes: Option<Vec<u8>>,
-    /// The source/silence window to encode for this export. Playback uses the
-    /// stored audio format directly; export can exclude or move CUE pregaps.
-    pub(crate) audio_window: SaveAudioWindow,
+    /// The source/silence window to decode for this save — the same decode-window
+    /// type playback runs. Playback uses the stored audio format directly; a save
+    /// can exclude or move CUE pregaps (its builders take the placement).
+    pub(crate) decode: crate::playback::stream_pipeline::StreamDecodeParams,
     /// Raw audio-format aggregate. Held internally so `SaveService::save_track`
     /// can decode CUE-split byte ranges / APE sample bounds without re-resolving.
     pub(crate) audio_meta: TrackAudioMeta,
@@ -656,22 +652,6 @@ pub struct SaveTrackPlan {
 pub(crate) struct SaveAudioBuffer {
     pub file_id: String,
     pub buffer: crate::playback::SharedSparseBuffer,
-}
-
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-#[derive(Debug, Clone)]
-pub(crate) struct SaveAudioWindow {
-    pub segments: Vec<SaveAudioSegmentWindow>,
-    pub leading_silence_samples: u64,
-    pub trailing_silence_samples: u64,
-}
-
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-#[derive(Debug, Clone)]
-pub(crate) struct SaveAudioSegmentWindow {
-    pub file_id: String,
-    pub source_start_sample: u64,
-    pub source_end_sample: Option<u64>,
 }
 
 /// Which image to use when changing an album's cover art.

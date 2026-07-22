@@ -10,7 +10,7 @@ use std::path::{Path, PathBuf};
 use tracing::warn;
 
 use crate::audio_codec::ProbeResult;
-use crate::db::{DbAudioFormat, DbAudioSegment, DbAudioSegmentRole};
+use crate::db::{DbAudioFormat, DbAudioSegment, DbAudioSegmentRole, SegmentSpan};
 use crate::import::types::{CueFlacAnalysis, TrackFile};
 use crate::import::ImportError;
 use crate::util::content_type::ContentType;
@@ -287,10 +287,7 @@ impl ImportService {
         segment_index: i64,
         role: DbAudioSegmentRole,
         file_id: &str,
-        start_sample: u64,
-        end_sample: Option<u64>,
-        start_byte: Option<u64>,
-        end_byte: Option<u64>,
+        span: SegmentSpan,
         ids: &dyn coven::IdProvider,
         now: chrono::DateTime<chrono::Utc>,
     ) -> DbAudioSegment {
@@ -300,10 +297,10 @@ impl ImportService {
             segment_index,
             role,
             file_id: file_id.to_string(),
-            start_sample: start_sample as i64,
-            end_sample: end_sample.map(|sample| sample as i64),
-            start_byte: start_byte.map(|byte| byte as i64),
-            end_byte: end_byte.map(|byte| byte as i64),
+            start_sample: span.start_sample as i64,
+            end_sample: span.end_sample.map(|sample| sample as i64),
+            start_byte: span.start_byte.map(|byte| byte as i64),
+            end_byte: span.end_byte.map(|byte| byte as i64),
             created_at: now,
         }
     }
@@ -366,10 +363,12 @@ impl ImportService {
                 segments.len() as i64,
                 DbAudioSegmentRole::AudioPregap,
                 pregap_file_id,
-                start_sample,
-                end_sample,
-                start_byte,
-                end_byte,
+                SegmentSpan {
+                    start_sample,
+                    end_sample,
+                    start_byte,
+                    end_byte,
+                },
                 ids,
                 now,
             ));
@@ -391,10 +390,12 @@ impl ImportService {
             segments.len() as i64,
             DbAudioSegmentRole::Main,
             main_file_id,
-            start_sample,
-            end_sample,
-            start_byte,
-            end_byte,
+            SegmentSpan {
+                start_sample,
+                end_sample,
+                start_byte,
+                end_byte,
+            },
             ids,
             now,
         ));
@@ -465,10 +466,7 @@ impl ImportService {
                         0,
                         DbAudioSegmentRole::Main,
                         file_id,
-                        0,
-                        None,
-                        None,
-                        None,
+                        SegmentSpan::whole_file(),
                         ids,
                         now,
                     );

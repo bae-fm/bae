@@ -591,33 +591,28 @@ impl PlaybackPreparedTrack {
                 continue;
             }
             let segment_len = segment
+                .span
                 .end_sample
-                .map(|end| end.saturating_sub(segment.start_sample));
+                .map(|end| end.saturating_sub(segment.span.start_sample));
             if let Some(len) = segment_len {
                 if remaining_offset >= len {
                     remaining_offset -= len;
                     continue;
                 }
             }
-            let target_sample = segment.start_sample + remaining_offset;
-            let seek_to_byte = if remaining_offset == 0 && self.content_type != ContentType::Ape {
-                segment.start_byte
-            } else {
-                None
-            };
             segments.push(SegmentDecodeParams {
                 buffer: segment.buffer.clone(),
-                seek_to_byte,
-                target_sample,
-                stop_at_sample: segment.end_sample,
-                end_byte: segment.end_byte,
+                span: segment.span,
+                start_offset: remaining_offset,
             });
             remaining_offset = 0;
         }
 
         StreamDecodeParams {
             segments,
+            byte_seekable: self.content_type != ContentType::Ape,
             leading_silence_frames,
+            trailing_silence_frames: 0,
         }
     }
 
@@ -688,10 +683,8 @@ struct PreparedAudioSegment {
     role: DbAudioSegmentRole,
     file_id: String,
     buffer: SharedSparseBuffer,
-    start_sample: u64,
-    end_sample: Option<u64>,
-    start_byte: Option<u64>,
-    end_byte: Option<u64>,
+    /// Where this segment sits inside its backing file, in samples and bytes.
+    span: crate::db::SegmentSpan,
 }
 
 #[derive(Clone)]
@@ -922,7 +915,7 @@ async fn prepare_track_for_playback(
                 segment.cloud_path.as_deref(),
                 segment.file_size,
                 fetch_arbiter.clone(),
-                segment.start_byte,
+                segment.span.start_byte,
                 resolved.content_type == crate::util::content_type::ContentType::Ape,
             );
             reader.start_reading(
@@ -936,10 +929,7 @@ async fn prepare_track_for_playback(
             role: segment.role.clone(),
             file_id: segment.file_id.clone(),
             buffer,
-            start_sample: segment.start_sample,
-            end_sample: segment.end_sample,
-            start_byte: segment.start_byte,
-            end_byte: segment.end_byte,
+            span: segment.span,
         });
     }
 

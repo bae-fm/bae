@@ -381,13 +381,13 @@ async fn test_cue_ape_records_track_timing() {
 
         // A CUE+APE track is a sample window of the shared file.
         assert_eq!(
-            segment.start_sample,
+            segment.span.start_sample,
             expected_start_sample[i],
             "Track {} start_sample",
             i + 1,
         );
         assert_eq!(
-            segment.end_sample,
+            segment.span.end_sample,
             expected_end_sample[i],
             "Track {} end_sample",
             i + 1,
@@ -397,8 +397,8 @@ async fn test_cue_ape_records_track_timing() {
             "Track {} '{}': start_sample={}, end_sample={:?}",
             i + 1,
             track.title,
-            segment.start_sample,
-            segment.end_sample,
+            segment.span.start_sample,
+            segment.span.end_sample,
         );
     }
 }

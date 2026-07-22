@@ -328,20 +328,22 @@ impl PreviewPlayer {
             }
         }
 
-        // Preview is a single whole-file window. `target_sample` trims the first
-        // output sample exactly at the seek target (0 for a fresh play).
-        let target_sample = seek_to
+        // Preview is a single whole-file window; the offset into it is the seek
+        // target (0 for a fresh play), and the lead-in trim makes the first
+        // output sample exact. No recorded landing byte exists for an
+        // unimported file, so the decoder sample-seeks.
+        let start_offset = seek_to
             .map(|d| (d.as_secs_f64() * sample_rate as f64) as u64)
             .unwrap_or(0);
         let decode = StreamDecodeParams {
             segments: vec![SegmentDecodeParams {
                 buffer: buffer.clone(),
-                seek_to_byte: None,
-                target_sample,
-                stop_at_sample: None,
-                end_byte: None, // preview auditions the whole file
+                span: crate::db::SegmentSpan::whole_file(), // audition the whole file
+                start_offset,
             }],
+            byte_seekable: true,
             leading_silence_frames: 0,
+            trailing_silence_frames: 0,
         };
 
         // Preview never chains, and plays an unimported file (no stored loudness

@@ -202,11 +202,11 @@ async fn import_standalone_alac_m4a() {
     let segment = &resolved.segments[0];
 
     assert_eq!(
-        segment.start_sample, 0,
+        segment.span.start_sample, 0,
         "standalone track starts at sample 0"
     );
     assert_eq!(
-        segment.end_sample, None,
+        segment.span.end_sample, None,
         "standalone track runs to EOF (no end sample)"
     );
 }
@@ -243,8 +243,8 @@ async fn import_standalone_aac_m4a() {
         .expect("resolve track audio");
 
     assert_eq!(resolved.segments.len(), 1);
-    assert_eq!(resolved.segments[0].start_sample, 0);
-    assert_eq!(resolved.segments[0].end_sample, None);
+    assert_eq!(resolved.segments[0].span.start_sample, 0);
+    assert_eq!(resolved.segments[0].span.end_sample, None);
 }
 
 // ─────────────────────────────── Scanner test ───────────────────────────────
@@ -397,13 +397,13 @@ async fn import_cue_alac_pair() {
         let segment = &resolved.segments[0];
 
         assert_eq!(
-            segment.start_sample,
+            segment.span.start_sample,
             START_SAMPLES[i],
             "track {} start_sample",
             i + 1
         );
         assert_eq!(
-            segment.end_sample,
+            segment.span.end_sample,
             END_SAMPLES[i],
             "track {} end_sample",
             i + 1

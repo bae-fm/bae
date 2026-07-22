@@ -56,32 +56,59 @@ pub(crate) struct StreamPipelineStart {
     pub(crate) audio_events: AudioEventReceiver,
 }
 
-/// One track's decoder windows: its segments in play order, preceded by
-/// `leading_silence_frames` of generated silence (a CUE `PREGAP` directive).
+/// One track's decode window — the one shape both playback and the save
+/// re-encoder run: its segments in play order, preceded by
+/// `leading_silence_frames` of generated silence (a CUE `PREGAP` directive) and
+/// followed by `trailing_silence_frames` (a save relocating the next track's
+/// generated pregap; always 0 for playback).
+#[derive(Clone)]
 pub(crate) struct StreamDecodeParams {
     pub(crate) segments: Vec<SegmentDecodeParams>,
+    /// Whether the demuxer may jump by byte to a segment's recorded start_byte.
+    /// False for APE, which has no per-frame byte positions and sample-seeks
+    /// its mandatory index instead.
+    pub(crate) byte_seekable: bool,
     pub(crate) leading_silence_frames: u64,
+    pub(crate) trailing_silence_frames: u64,
 }
 
-/// One decoder window. `target_sample` is where FFmpeg trims lead-in (the
-/// segment's start plus any seek offset). The seek to it is either a by-byte jump
-/// (`seek_to_byte`, a lossless track's natural start) or a sample seek (APE, or a
-/// mid-track seek); the `target_sample` trim makes the first output sample exact
-/// either way. `stop_at_sample` ends output at the segment's end (`None` = to EOF).
+/// One decoder window: the segment's span within its backing file, the buffer
+/// its bytes stream through, and the sample offset into the segment where
+/// output starts (a mid-track seek; 0 for a natural start). The seek policy —
+/// byte jump vs sample seek, and the lead-in trim target — derives from these
+/// via [`Self::target_sample`] and [`Self::seek_to_byte`].
+#[derive(Clone)]
 pub(crate) struct SegmentDecodeParams {
     pub(crate) buffer: SharedSparseBuffer,
-    pub(crate) seek_to_byte: Option<u64>,
-    pub(crate) target_sample: u64,
-    pub(crate) stop_at_sample: Option<u64>,
-    /// The segment's end byte offset -- the read-ahead ceiling. `None` = whole file.
-    pub(crate) end_byte: Option<u64>,
+    pub(crate) span: crate::db::SegmentSpan,
+    pub(crate) start_offset: u64,
+}
+
+impl SegmentDecodeParams {
+    /// First sample to emit: the segment's start plus the seek offset. FFmpeg
+    /// trims the lead-in the seek lands before this (a frame may begin before
+    /// it), so the first output sample is exact.
+    pub(crate) fn target_sample(&self) -> u64 {
+        self.span.start_sample + self.start_offset
+    }
+
+    /// The demuxer jump for this segment: the recorded landing byte, only at a
+    /// natural start (`start_offset == 0`) of a byte-seekable codec. A mid-track
+    /// seek or APE sample-seeks to [`Self::target_sample`] instead.
+    pub(crate) fn seek_to_byte(&self, byte_seekable: bool) -> Option<u64> {
+        if self.start_offset == 0 && byte_seekable {
+            self.span.start_byte
+        } else {
+            None
+        }
+    }
 }
 
 impl StreamDecodeParams {
     /// Run the streaming decoder for each segment in turn: FFmpeg seeks (by byte
-    /// or by sample), trims lead-in at `target_sample`, and stops at
-    /// `stop_at_sample`. Shared by the play/seek, preload, and preview paths so
-    /// they can't drift on the seek/trim mapping.
+    /// or by sample), trims lead-in at the segment's target sample, and stops at
+    /// the segment's end sample. Shared by the play/seek, preload, and preview
+    /// paths so they can't drift on the seek/trim mapping.
     pub(crate) fn run_decoder(
         &self,
         sink: &mut TrackSink,
@@ -95,21 +122,29 @@ impl StreamDecodeParams {
         }
 
         for segment in &self.segments {
-            let seek_to_sample = if segment.seek_to_byte.is_some() {
+            let seek_to_byte = segment.seek_to_byte(self.byte_seekable);
+            let seek_to_sample = if seek_to_byte.is_some() {
                 None
             } else {
-                Some(segment.target_sample)
+                Some(segment.target_sample())
             };
             crate::audio_codec::decode_audio_streaming(
                 segment.buffer.clone(),
                 sink,
-                segment.seek_to_byte,
+                seek_to_byte,
                 seek_to_sample,
-                Some(segment.target_sample),
-                segment.stop_at_sample,
-                segment.end_byte,
+                Some(segment.target_sample()),
+                segment.span.end_sample,
+                segment.span.end_byte,
                 cancel.clone(),
             )?;
+            if cancel.load(Ordering::Relaxed) || sink.is_cancelled() {
+                return Err(StreamingDecodeError::InputCancelled);
+            }
+        }
+
+        if self.trailing_silence_frames > 0 {
+            sink.push_silence_frames_blocking(self.trailing_silence_frames);
             if cancel.load(Ordering::Relaxed) || sink.is_cancelled() {
                 return Err(StreamingDecodeError::InputCancelled);
             }
@@ -478,12 +513,12 @@ mod tests {
         StreamDecodeParams {
             segments: vec![SegmentDecodeParams {
                 buffer,
-                seek_to_byte: None,
-                target_sample: 0,
-                stop_at_sample: None,
-                end_byte: None,
+                span: crate::db::SegmentSpan::whole_file(),
+                start_offset: 0,
             }],
+            byte_seekable: true,
             leading_silence_frames: 0,
+            trailing_silence_frames: 0,
         }
     }
 

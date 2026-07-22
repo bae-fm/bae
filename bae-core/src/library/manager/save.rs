@@ -4,6 +4,7 @@
 //! [`super::output`]; the verbatim export arm in [`super::export`].
 
 use super::*;
+use crate::playback::stream_pipeline::{SegmentDecodeParams, StreamDecodeParams};
 
 impl LibraryManager {
     /// Resolve one track's tag data from the database alone — the tag fields, its
@@ -97,10 +98,10 @@ impl LibraryManager {
         };
 
         Ok(SaveTrackPlan {
+            decode: save_decode_from_meta(&meta, &audio_buffers)?,
             audio_buffers,
             resolved,
             cover_image_bytes,
-            audio_window: save_window_from_meta(&meta),
             audio_meta: meta,
         })
     }
@@ -137,6 +138,65 @@ impl LibraryManager {
             }),
         );
         buffer
+    }
+
+    /// Build the decode window for a standalone track file under `placement`
+    /// and install it on the plan — first opening streams for any next-track
+    /// pregap file the plan didn't already hold (a multi-FILE CUE can put the
+    /// appended pregap in a file this track doesn't use).
+    fn set_track_file_decode(
+        &self,
+        plan: &mut SaveTrackPlan,
+        next_meta: Option<&TrackAudioMeta>,
+        placement: crate::config::SavePregapPlacement,
+        is_first_track: bool,
+    ) -> Result<(), LibraryError> {
+        use crate::config::SavePregapPlacement;
+
+        if let Some(next) = next_meta {
+            if matches!(
+                placement,
+                SavePregapPlacement::AppendToPreviousExceptHtoa
+                    | SavePregapPlacement::AppendToPreviousIncludingHtoa
+            ) {
+                self.open_streams_for_next_pregap(plan, next);
+            }
+        }
+        plan.decode = save_decode_for_track_file(
+            &plan.audio_meta,
+            next_meta,
+            placement,
+            is_first_track,
+            &plan.audio_buffers,
+        )?;
+        Ok(())
+    }
+
+    /// Open streams for the next track's pregap-segment files that this track's
+    /// plan didn't already open.
+    fn open_streams_for_next_pregap(&self, plan: &mut SaveTrackPlan, next: &TrackAudioMeta) {
+        for segment in next
+            .audio_segments
+            .iter()
+            .filter(|segment| segment.role == crate::db::DbAudioSegmentRole::AudioPregap)
+        {
+            if plan
+                .audio_buffers
+                .iter()
+                .any(|buffer| buffer.file_id == segment.file_id)
+            {
+                continue;
+            }
+            let file = next
+                .audio_files
+                .iter()
+                .find(|file| file.id == segment.file_id)
+                .expect("TrackAudioMeta resolves every segment file");
+            plan.audio_buffers.push(super::SaveAudioBuffer {
+                file_id: file.id.clone(),
+                buffer: self.open_release_file_stream(file),
+            });
+        }
     }
 
     /// The default filename (stem, no extension) a single-track "Save As…"
@@ -209,12 +269,12 @@ impl LibraryManager {
         } else {
             None
         };
-        plan.audio_window = save_window_for_track_file(
-            &plan.audio_meta,
+        self.set_track_file_decode(
+            &mut plan,
             next_meta.as_ref(),
             preset.pregap_placement,
             track_index == 0,
-        );
+        )?;
         SaveService::save_track(plan, output_path, preset)
             .await
             .map_err(LibraryError::Save)
@@ -245,12 +305,12 @@ impl LibraryManager {
             } else {
                 None
             };
-            plan.audio_window = save_window_for_track_file(
-                &plan.audio_meta,
+            self.set_track_file_decode(
+                &mut plan,
                 next_meta.as_ref(),
                 preset.pregap_placement,
                 index == 0,
-            );
+            )?;
 
             let stem =
                 crate::library::save::render_save_filename(&preset.filename_tokens, &plan.resolved);
@@ -282,8 +342,10 @@ impl LibraryManager {
             let mut plan = self
                 .get_save_track_plan(&track.id, preset.embed_cover)
                 .await?;
-            plan.audio_window = save_window_from_meta(&plan.audio_meta);
-            plan.audio_window.leading_silence_samples =
+            // The plan already carries the as-stored window (every segment, no
+            // silence); the image save only adds the track's generated pregap
+            // as leading silence so the CUE indexes line up.
+            plan.decode.leading_silence_frames =
                 non_negative_samples(plan.audio_meta.audio_format.generated_pregap_samples);
             plans.push(plan);
         }
@@ -318,32 +380,44 @@ impl LibraryManager {
     }
 }
 
-fn save_window_from_meta(meta: &TrackAudioMeta) -> super::SaveAudioWindow {
-    super::SaveAudioWindow {
-        segments: save_segment_windows(meta, true),
-        leading_silence_samples: 0,
-        trailing_silence_samples: 0,
-    }
+/// The decode window for a track exactly as stored: every segment (audio
+/// pregap included), no added silence. The CUE-image save seeds each track
+/// from this and sets its leading generated-pregap silence itself.
+fn save_decode_from_meta(
+    meta: &TrackAudioMeta,
+    buffers: &[super::SaveAudioBuffer],
+) -> Result<StreamDecodeParams, LibraryError> {
+    Ok(StreamDecodeParams {
+        segments: save_decode_segments(meta, buffers, true)?,
+        byte_seekable: byte_seekable(meta),
+        leading_silence_frames: 0,
+        trailing_silence_frames: 0,
+    })
 }
 
-fn save_window_for_track_file(
+/// The decode window for a standalone track file under `placement`: the CUE
+/// audio pregap can be excluded, kept (HTOA on the first track), or relocated —
+/// the *next* track's pregap segments appended here, with its generated pregap
+/// as trailing silence.
+fn save_decode_for_track_file(
     meta: &TrackAudioMeta,
     next_meta: Option<&TrackAudioMeta>,
     placement: crate::config::SavePregapPlacement,
     is_first_track: bool,
-) -> super::SaveAudioWindow {
+    buffers: &[super::SaveAudioBuffer],
+) -> Result<StreamDecodeParams, LibraryError> {
     let own_audio_pregap = non_negative_samples(meta.audio_format.pregap_samples);
     let own_generated_pregap = non_negative_samples(meta.audio_format.generated_pregap_samples);
     let includes_htoa = is_first_track
         && placement == crate::config::SavePregapPlacement::AppendToPreviousIncludingHtoa;
-    let mut segments = save_segment_windows(meta, includes_htoa || own_audio_pregap == 0);
-    let leading_silence_samples = if includes_htoa {
+    let mut segments = save_decode_segments(meta, buffers, includes_htoa || own_audio_pregap == 0)?;
+    let leading_silence_frames = if includes_htoa {
         own_generated_pregap
     } else {
         0
     };
 
-    let mut trailing_silence_samples = 0;
+    let mut trailing_silence_frames = 0;
     if matches!(
         placement,
         crate::config::SavePregapPlacement::AppendToPreviousExceptHtoa
@@ -352,56 +426,81 @@ fn save_window_for_track_file(
         if let Some(next) = next_meta {
             let next_audio_pregap = non_negative_samples(next.audio_format.pregap_samples);
             if next_audio_pregap > 0 {
-                segments.extend(save_segment_windows_for_role(
+                segments.extend(save_decode_segments_for_role(
                     next,
+                    buffers,
                     crate::db::DbAudioSegmentRole::AudioPregap,
-                ));
+                )?);
             }
-            trailing_silence_samples =
+            trailing_silence_frames =
                 non_negative_samples(next.audio_format.generated_pregap_samples);
         }
     }
 
-    super::SaveAudioWindow {
+    Ok(StreamDecodeParams {
         segments,
-        leading_silence_samples,
-        trailing_silence_samples,
-    }
+        byte_seekable: byte_seekable(meta),
+        leading_silence_frames,
+        trailing_silence_frames,
+    })
 }
 
-fn save_segment_windows(
+/// Whether this track's codec supports a by-byte jump to a recorded landing.
+/// Same dispatch playback applies: APE has no per-frame byte positions and
+/// sample-seeks its mandatory index instead.
+fn byte_seekable(meta: &TrackAudioMeta) -> bool {
+    meta.audio_format.content_type != crate::util::content_type::ContentType::Ape
+}
+
+fn save_decode_segments(
     meta: &TrackAudioMeta,
+    buffers: &[super::SaveAudioBuffer],
     include_audio_pregap: bool,
-) -> Vec<super::SaveAudioSegmentWindow> {
+) -> Result<Vec<SegmentDecodeParams>, LibraryError> {
     meta.audio_segments
         .iter()
         .filter(|segment| {
             include_audio_pregap || segment.role == crate::db::DbAudioSegmentRole::Main
         })
-        .map(save_segment_window)
+        .map(|segment| save_segment_decode(segment, buffers))
         .collect()
 }
 
-fn save_segment_windows_for_role(
+fn save_decode_segments_for_role(
     meta: &TrackAudioMeta,
+    buffers: &[super::SaveAudioBuffer],
     role: crate::db::DbAudioSegmentRole,
-) -> Vec<super::SaveAudioSegmentWindow> {
+) -> Result<Vec<SegmentDecodeParams>, LibraryError> {
     meta.audio_segments
         .iter()
         .filter(|segment| segment.role == role)
-        .map(save_segment_window)
+        .map(|segment| save_segment_decode(segment, buffers))
         .collect()
 }
 
-fn save_segment_window(segment: &crate::db::DbAudioSegment) -> super::SaveAudioSegmentWindow {
-    super::SaveAudioSegmentWindow {
-        file_id: segment.file_id.clone(),
-        source_start_sample: u64::try_from(segment.start_sample)
-            .expect("audio segment start_sample is non-negative"),
-        source_end_sample: segment
-            .end_sample
-            .map(|sample| u64::try_from(sample).expect("audio segment end_sample is non-negative")),
-    }
+fn save_segment_decode(
+    segment: &crate::db::DbAudioSegment,
+    buffers: &[super::SaveAudioBuffer],
+) -> Result<SegmentDecodeParams, LibraryError> {
+    Ok(SegmentDecodeParams {
+        buffer: segment_stream(buffers, &segment.file_id)?,
+        span: segment.span(),
+        start_offset: 0,
+    })
+}
+
+/// The opened stream for `file_id` in the plan's registry. Missing means the
+/// window references a file no stream was opened for — fail at build time
+/// rather than mid-decode.
+fn segment_stream(
+    buffers: &[super::SaveAudioBuffer],
+    file_id: &str,
+) -> Result<crate::playback::SharedSparseBuffer, LibraryError> {
+    buffers
+        .iter()
+        .find(|buffer| buffer.file_id == file_id)
+        .map(|buffer| buffer.buffer.clone())
+        .ok_or_else(|| LibraryError::Save(format!("no audio stream opened for file {file_id}")))
 }
 
 fn non_negative_samples(samples: Option<i64>) -> u64 {

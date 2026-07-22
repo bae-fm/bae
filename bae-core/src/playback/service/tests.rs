@@ -307,10 +307,7 @@ fn test_prepared_track_with_file(
             role: DbAudioSegmentRole::Main,
             file_id: file_id.to_string(),
             buffer,
-            start_sample: 0,
-            end_sample: None,
-            start_byte: None,
-            end_byte: None,
+            span: crate::db::SegmentSpan::whole_file(),
         }],
         sample_rate: 44_100,
         channels: 2,
@@ -1079,19 +1076,23 @@ fn direct_start_skips_audio_and_generated_pregap_segments() {
             role: DbAudioSegmentRole::AudioPregap,
             file_id: "pregap-file".to_string(),
             buffer: pregap_buffer,
-            start_sample: 1_000,
-            end_sample: None,
-            start_byte: Some(100),
-            end_byte: None,
+            span: crate::db::SegmentSpan {
+                start_sample: 1_000,
+                end_sample: None,
+                start_byte: Some(100),
+                end_byte: None,
+            },
         },
         PreparedAudioSegment {
             role: DbAudioSegmentRole::Main,
             file_id: "main-file".to_string(),
             buffer: main_buffer.clone(),
-            start_sample: 44_100,
-            end_sample: Some(88_200),
-            start_byte: Some(2_000),
-            end_byte: Some(4_000),
+            span: crate::db::SegmentSpan {
+                start_sample: 44_100,
+                end_sample: Some(88_200),
+                start_byte: Some(2_000),
+                end_byte: Some(4_000),
+            },
         },
     ];
 
@@ -1100,8 +1101,11 @@ fn direct_start_skips_audio_and_generated_pregap_segments() {
     assert_eq!(decode.leading_silence_frames, 0);
     assert_eq!(decode.segments.len(), 1);
     assert_eq!(decode.segments[0].buffer.id(), main_buffer.id());
-    assert_eq!(decode.segments[0].target_sample, 44_100);
-    assert_eq!(decode.segments[0].seek_to_byte, Some(2_000));
+    assert_eq!(decode.segments[0].target_sample(), 44_100);
+    assert_eq!(
+        decode.segments[0].seek_to_byte(decode.byte_seekable),
+        Some(2_000)
+    );
 }
 
 #[test]
@@ -1117,19 +1121,23 @@ fn natural_start_includes_audio_and_generated_pregap_segments() {
             role: DbAudioSegmentRole::AudioPregap,
             file_id: "pregap-file".to_string(),
             buffer: pregap_buffer.clone(),
-            start_sample: 1_000,
-            end_sample: None,
-            start_byte: Some(100),
-            end_byte: None,
+            span: crate::db::SegmentSpan {
+                start_sample: 1_000,
+                end_sample: None,
+                start_byte: Some(100),
+                end_byte: None,
+            },
         },
         PreparedAudioSegment {
             role: DbAudioSegmentRole::Main,
             file_id: "main-file".to_string(),
             buffer: main_buffer,
-            start_sample: 44_100,
-            end_sample: Some(88_200),
-            start_byte: Some(2_000),
-            end_byte: Some(4_000),
+            span: crate::db::SegmentSpan {
+                start_sample: 44_100,
+                end_sample: Some(88_200),
+                start_byte: Some(2_000),
+                end_byte: Some(4_000),
+            },
         },
     ];
 
@@ -1138,8 +1146,11 @@ fn natural_start_includes_audio_and_generated_pregap_segments() {
     assert_eq!(decode.leading_silence_frames, 441);
     assert_eq!(decode.segments.len(), 2);
     assert_eq!(decode.segments[0].buffer.id(), pregap_buffer.id());
-    assert_eq!(decode.segments[0].target_sample, 1_000);
-    assert_eq!(decode.segments[0].seek_to_byte, Some(100));
+    assert_eq!(decode.segments[0].target_sample(), 1_000);
+    assert_eq!(
+        decode.segments[0].seek_to_byte(decode.byte_seekable),
+        Some(100)
+    );
 }
 
 #[test]

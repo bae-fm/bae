@@ -494,7 +494,38 @@ impl DbAudioSegmentRole {
     }
 }
 
+/// Where a segment begins and ends inside its backing file, in samples and in
+/// bytes — the one declaration of the window every layer above the row carries
+/// (resolved, prepared-for-playback, decode params). `end_sample`/`end_byte`
+/// `None` = to end of file; `start_byte` `None` = byte 0 / no recorded landing.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct SegmentSpan {
+    /// First sample of the segment within its backing file.
+    pub start_sample: u64,
+    /// One past the segment's last sample within its backing file.
+    pub end_sample: Option<u64>,
+    /// Byte the segment begins at within its backing file (the demuxer's
+    /// recorded seek landing).
+    pub start_byte: Option<u64>,
+    /// One past the segment's last byte within its backing file.
+    pub end_byte: Option<u64>,
+}
+
+impl SegmentSpan {
+    /// The whole backing file: start at sample 0, run to EOF.
+    pub fn whole_file() -> Self {
+        Self {
+            start_sample: 0,
+            end_sample: None,
+            start_byte: None,
+            end_byte: None,
+        }
+    }
+}
+
 /// One ordered file-backed window that supplies samples for an audio format.
+/// The window columns stay `i64` (SQLite's integer type); [`Self::span`] is the
+/// single conversion to the unsigned [`SegmentSpan`] everything above reads.
 #[derive(Debug, Clone)]
 pub struct DbAudioSegment {
     pub id: String,
@@ -511,6 +542,24 @@ pub struct DbAudioSegment {
     /// One past this segment's last byte within its backing file.
     pub end_byte: Option<i64>,
     pub created_at: DateTime<Utc>,
+}
+
+impl DbAudioSegment {
+    /// The row's window in unsigned coordinates. A negative stored value is a
+    /// corrupt row; fail loud rather than wrap.
+    pub fn span(&self) -> SegmentSpan {
+        let non_negative = |what: &str, value: i64| {
+            u64::try_from(value).unwrap_or_else(|_| {
+                panic!("audio segment {} has negative {what}: {value}", self.id)
+            })
+        };
+        SegmentSpan {
+            start_sample: non_negative("start_sample", self.start_sample),
+            end_sample: self.end_sample.map(|v| non_negative("end_sample", v)),
+            start_byte: self.start_byte.map(|v| non_negative("start_byte", v)),
+            end_byte: self.end_byte.map(|v| non_negative("end_byte", v)),
+        }
+    }
 }
 impl DbAlbumArtist {
     pub fn new(

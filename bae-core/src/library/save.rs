@@ -177,8 +177,8 @@ impl SaveService {
 
         for (index, plan) in plans.iter_mut().enumerate() {
             let pregap_sample_frames = plan
-                .audio_window
-                .leading_silence_samples
+                .decode
+                .leading_silence_frames
                 .checked_add(non_negative_samples(
                     plan.audio_meta.audio_format.pregap_samples,
                 )?)
@@ -648,32 +648,27 @@ fn write_tags(
 async fn load_track_audio(plan: &mut SaveTrackPlan) -> Result<DecodedPcm, PlaybackError> {
     let track_id = plan.audio_meta.track.id.clone();
 
-    let audio_buffers = std::mem::take(&mut plan.audio_buffers);
+    // The save's own decode window (CUE pregaps can be excluded or relocated
+    // without changing playback's raw track window); each segment holds its
+    // stream, so cloning the window moves only Arcs into the blocking decode.
+    let window = plan.decode.clone();
     debug!(
-        "Loading audio for track {} ({} source file(s))",
+        "Loading audio for track {} ({} segment(s))",
         track_id,
-        audio_buffers.len()
+        window.segments.len()
     );
-
-    // Export uses its own window so CUE pregaps can be excluded or appended to
-    // the previous track without changing playback's raw track window.
-    let window = plan.audio_window.clone();
 
     let mut decoded = tokio::task::spawn_blocking(move || -> Result<DecodedPcm, String> {
         let mut out_samples = Vec::new();
         let mut sample_rate = None;
         let mut channels = None;
         for segment in &window.segments {
-            let source = audio_buffers
-                .iter()
-                .find(|audio| audio.file_id == segment.file_id)
-                .ok_or_else(|| format!("no audio stream for file {}", segment.file_id))?;
-            let start_sample =
-                (segment.source_start_sample > 0).then_some(segment.source_start_sample);
+            let start = segment.target_sample();
+            let start_sample = (start > 0).then_some(start);
             let mut decoded = crate::audio_codec::decode_audio(
-                source.buffer.clone(),
+                segment.buffer.clone(),
                 start_sample,
-                segment.source_end_sample,
+                segment.span.end_sample,
             )
             .map_err(|e| e.to_string())?;
             match (sample_rate, channels) {
@@ -705,13 +700,13 @@ async fn load_track_audio(plan: &mut SaveTrackPlan) -> Result<DecodedPcm, Playba
         decoded.channels()
     );
 
-    if window.leading_silence_samples > 0 || window.trailing_silence_samples > 0 {
+    if window.leading_silence_frames > 0 || window.trailing_silence_frames > 0 {
         let channels = decoded.channels() as usize;
-        let leading = usize::try_from(window.leading_silence_samples)
+        let leading = usize::try_from(window.leading_silence_frames)
             .map_err(|_| PlaybackError::flac("leading silence exceeds addressable memory"))?
             .checked_mul(channels)
             .ok_or_else(|| PlaybackError::flac("leading silence sample count overflow"))?;
-        let trailing = usize::try_from(window.trailing_silence_samples)
+        let trailing = usize::try_from(window.trailing_silence_frames)
             .map_err(|_| PlaybackError::flac("trailing silence exceeds addressable memory"))?
             .checked_mul(channels)
             .ok_or_else(|| PlaybackError::flac("trailing silence sample count overflow"))?;
