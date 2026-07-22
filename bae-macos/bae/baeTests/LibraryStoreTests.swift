@@ -191,6 +191,7 @@ struct SearchResultsTests {
         let results = SearchResults(
             bridge: BridgeSearchResults(
                 albums: [],
+                artists: [],
                 tracks: [],
                 composers: [],
                 works: [
