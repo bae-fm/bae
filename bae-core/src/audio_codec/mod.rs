@@ -1,11 +1,13 @@
 //! Unified audio codec module using FFmpeg.
 //!
-//! Provides decoding (any format to PCM), encoding (PCM to FLAC), and
-//! seektable generation. Uses custom AVIO for in-memory decoding.
+//! Provides decoding (any format to PCM, streamed from a sparse buffer),
+//! encoding (PCM to FLAC/MP3/Opus/WAV/AIFF, streamed frame by frame into an
+//! output sink), and seektable generation.
 
 use std::fmt;
 use std::os::raw::{c_int, c_void};
 use std::ptr;
+use std::sync::Arc;
 use tracing::debug;
 
 mod avio;
@@ -19,6 +21,7 @@ use avio::{
     avio_write_callback, avio_write_seek_callback, free_custom_avio_context, WriteAvioContext,
 };
 
+pub(crate) use decode::decode_audio_to_sink_with_seek;
 pub use decode::{decode_audio, decode_audio_streaming, decode_audio_to_sink};
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use probe::seek_landing_bytes;
@@ -105,111 +108,9 @@ pub(crate) fn av_err_str(errnum: i32) -> String {
     }
 }
 
-/// Encode full-range interleaved i32 samples to FLAC bytes, in memory, at
-/// `bits_per_sample` depth.
-///
-/// `cancel` is checked between frames. When set, the encoder returns
-/// `Err("encoding cancelled")` early — there is no partial output to keep.
-pub fn encode_to_flac(
-    samples: &[i32],
-    sample_rate: u32,
-    channels: u32,
-    bits_per_sample: u32,
-    cancel: &std::sync::atomic::AtomicBool,
-) -> Result<Vec<u8>, String> {
-    unsafe {
-        encode_avio(
-            samples,
-            sample_rate,
-            channels,
-            EncodeFormat::Flac { bits_per_sample },
-            cancel,
-        )
-    }
-}
-
-pub fn encode_to_mp3_with_bitrate(
-    samples: &[i32],
-    sample_rate: u32,
-    channels: u32,
-    bitrate_kbps: u32,
-    cancel: &std::sync::atomic::AtomicBool,
-) -> Result<Vec<u8>, String> {
-    unsafe {
-        encode_avio(
-            samples,
-            sample_rate,
-            channels,
-            EncodeFormat::Mp3 { bitrate_kbps },
-            cancel,
-        )
-    }
-}
-
-pub fn encode_to_wav(
-    samples: &[i32],
-    sample_rate: u32,
-    channels: u32,
-    bits_per_sample: u32,
-    cancel: &std::sync::atomic::AtomicBool,
-) -> Result<Vec<u8>, String> {
-    unsafe {
-        encode_avio(
-            samples,
-            sample_rate,
-            channels,
-            EncodeFormat::PcmWav { bits_per_sample },
-            cancel,
-        )
-    }
-}
-
-pub fn encode_to_aiff(
-    samples: &[i32],
-    sample_rate: u32,
-    channels: u32,
-    bits_per_sample: u32,
-    cancel: &std::sync::atomic::AtomicBool,
-) -> Result<Vec<u8>, String> {
-    unsafe {
-        encode_avio(
-            samples,
-            sample_rate,
-            channels,
-            EncodeFormat::PcmAiff { bits_per_sample },
-            cancel,
-        )
-    }
-}
-
-pub fn encode_to_opus_ogg(
-    samples: &[i32],
-    sample_rate: u32,
-    channels: u32,
-    bitrate_kbps: u32,
-    cancel: &std::sync::atomic::AtomicBool,
-) -> Result<Vec<u8>, String> {
-    unsafe {
-        let output_rate = 48_000;
-        let resampled;
-        let encode_samples = if sample_rate == output_rate {
-            samples
-        } else {
-            resampled = resample_i32_packed(samples, sample_rate, output_rate, channels)?;
-            &resampled
-        };
-        encode_avio(
-            encode_samples,
-            output_rate,
-            channels,
-            EncodeFormat::OpusOgg { bitrate_kbps },
-            cancel,
-        )
-    }
-}
-
-#[derive(Clone, Copy)]
-enum EncodeFormat {
+/// The encoder's output codec + container, with its codec-specific knobs.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum EncodeFormat {
     Flac { bits_per_sample: u32 },
     Mp3 { bitrate_kbps: u32 },
     OpusOgg { bitrate_kbps: u32 },
@@ -304,15 +205,6 @@ impl EncodeFormat {
             },
             Self::Mp3 { .. } => Ok(AVSampleFormat::AV_SAMPLE_FMT_S16P),
             Self::OpusOgg { .. } => Ok(AVSampleFormat::AV_SAMPLE_FMT_S16),
-        }
-    }
-
-    fn output_capacity(self, samples_len: usize) -> usize {
-        match self {
-            Self::Flac { .. } => samples_len * 2,
-            Self::Mp3 { .. } => samples_len,
-            Self::OpusOgg { .. } => samples_len,
-            Self::PcmWav { .. } | Self::PcmAiff { .. } => samples_len * 4,
         }
     }
 
@@ -419,82 +311,6 @@ impl EncodeFormat {
     }
 }
 
-unsafe fn resample_i32_packed(
-    samples: &[i32],
-    input_rate: u32,
-    output_rate: u32,
-    channels: u32,
-) -> Result<Vec<i32>, String> {
-    use ffmpeg_sys_next::*;
-
-    if channels == 0 {
-        return Err("channel count must be greater than zero".to_string());
-    }
-    let channels_usize = channels as usize;
-    if !samples.len().is_multiple_of(channels_usize) {
-        return Err("sample count must be divisible by channel count".to_string());
-    }
-
-    let input_frames = samples.len() / channels_usize;
-    let mut ch_layout: AVChannelLayout = std::mem::zeroed();
-    av_channel_layout_default(&mut ch_layout, channels as c_int);
-
-    let mut swr_ctx: *mut SwrContext = ptr::null_mut();
-    let ret = swr_alloc_set_opts2(
-        &mut swr_ctx,
-        &ch_layout,
-        AVSampleFormat::AV_SAMPLE_FMT_S32,
-        output_rate as c_int,
-        &ch_layout,
-        AVSampleFormat::AV_SAMPLE_FMT_S32,
-        input_rate as c_int,
-        0,
-        ptr::null_mut(),
-    );
-    if ret < 0 || swr_ctx.is_null() {
-        return Err(format!(
-            "Failed to allocate Opus resampler: {}",
-            av_err_str(ret)
-        ));
-    }
-    let ret = swr_init(swr_ctx);
-    if ret < 0 {
-        swr_free(&mut swr_ctx);
-        return Err(format!(
-            "Failed to init Opus resampler: {}",
-            av_err_str(ret)
-        ));
-    }
-
-    let capacity_frames = swr_get_out_samples(swr_ctx, input_frames as c_int);
-    if capacity_frames < 0 {
-        swr_free(&mut swr_ctx);
-        return Err(format!(
-            "Failed to size Opus resampler output: {}",
-            av_err_str(capacity_frames)
-        ));
-    }
-    let mut output = vec![0i32; capacity_frames as usize * channels_usize];
-    let input_ptr = samples.as_ptr() as *const u8;
-    let output_ptr = output.as_mut_ptr() as *mut u8;
-    let converted = swr_convert(
-        swr_ctx,
-        &output_ptr,
-        capacity_frames,
-        &input_ptr,
-        input_frames as c_int,
-    );
-    swr_free(&mut swr_ctx);
-    if converted < 0 {
-        return Err(format!(
-            "Failed to resample for Opus: {}",
-            av_err_str(converted)
-        ));
-    }
-    output.truncate(converted as usize * channels_usize);
-    Ok(output)
-}
-
 fn pcm_codec_id(bits_per_sample: u32, big_endian: bool) -> ffmpeg_sys_next::AVCodecID {
     match (bits_per_sample, big_endian) {
         (1..=16, false) => ffmpeg_sys_next::AVCodecID::AV_CODEC_ID_PCM_S16LE,
@@ -507,8 +323,12 @@ fn pcm_codec_id(bits_per_sample: u32, big_endian: bool) -> ffmpeg_sys_next::AVCo
     }
 }
 
+/// Build the muxer's AVIO over the encoder's sink. The seek callback is
+/// installed only for a seekable sink; without one FFmpeg takes each muxer's
+/// streaming path.
 unsafe fn allocate_write_avio(
     write_ctx: &mut WriteAvioContext,
+    seekable: bool,
 ) -> Result<*mut ffmpeg_sys_next::AVIOContext, String> {
     use ffmpeg_sys_next::*;
 
@@ -523,7 +343,11 @@ unsafe fn allocate_write_avio(
         write_ctx as *mut WriteAvioContext as *mut c_void,
         None,
         Some(avio_write_callback),
-        Some(avio_write_seek_callback),
+        if seekable {
+            Some(avio_write_seek_callback)
+        } else {
+            None
+        },
     );
     if avio.is_null() {
         av_free(avio_buffer as *mut c_void);
@@ -558,123 +382,74 @@ unsafe fn receive_and_write_packets(
     Ok(())
 }
 
-unsafe fn encode_avio(
-    samples: &[i32],
+/// A seekable byte sink for the encoder: a file, or an in-memory cursor in
+/// tests. Every encode format accepts one — the muxer can seek back and patch
+/// its header.
+pub trait WriteSeek: std::io::Write + std::io::Seek + Send {}
+impl<T: std::io::Write + std::io::Seek + Send> WriteSeek for T {}
+
+/// Formats whose muxer has a true streaming path — no header patch-back — so
+/// they may write to a non-seekable sink. Today that is Ogg alone: FLAC's
+/// STREAMINFO (total samples, md5), MP3's Xing/LAME header, and the RIFF/FORM
+/// sizes of WAV/AIFF are all patched by seeking back over the header.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum StreamEncodeFormat {
+    OpusOgg { bitrate_kbps: u32 },
+}
+
+impl From<StreamEncodeFormat> for EncodeFormat {
+    fn from(format: StreamEncodeFormat) -> Self {
+        match format {
+            StreamEncodeFormat::OpusOgg { bitrate_kbps } => EncodeFormat::OpusOgg { bitrate_kbps },
+        }
+    }
+}
+
+/// The FFmpeg half of a live encode, opened on the first `on_format`.
+struct OpenEncoder {
+    codec_ctx: EncodeCodecContext,
+    muxer: EncodeMuxer,
+    frame_packet: EncodeFramePacket,
+    /// Persistent resampler (input rate → the codec's rate) for Opus at a
+    /// non-48 kHz input; null otherwise. Converts chunk by chunk; its tail is
+    /// drained at `finish`.
+    swr_ctx: *mut ffmpeg_sys_next::SwrContext,
+    /// The announced input shape; a later `on_format` must match it.
     sample_rate: u32,
     channels: u32,
-    format: EncodeFormat,
-    cancel: &std::sync::atomic::AtomicBool,
-) -> Result<Vec<u8>, String> {
-    use ffmpeg_sys_next::*;
+    samples_per_frame: usize,
+    /// Post-resample samples awaiting a full codec frame.
+    pending: Vec<i32>,
+    pts: i64,
+}
 
-    if channels == 0 {
-        return Err("channel count must be greater than zero".to_string());
-    }
-    let channels_usize = channels as usize;
-    if !samples.len().is_multiple_of(channels_usize) {
-        return Err("sample count must be divisible by channel count".to_string());
-    }
-
-    let sample_format = format.sample_format()?;
-
-    let codec = avcodec_find_encoder(format.codec_id());
-    if codec.is_null() {
-        return Err(format.encoder_missing_message().to_string());
-    }
-
-    let codec_ctx = avcodec_alloc_context3(codec);
-    if codec_ctx.is_null() {
-        return Err("Failed to allocate codec context".to_string());
-    }
-    let codec_ctx = EncodeCodecContext { ptr: codec_ctx };
-    format.configure_codec_context(codec_ctx.ptr, sample_format, sample_rate, channels);
-    let ret = avcodec_open2(codec_ctx.ptr, codec, ptr::null_mut());
-    if ret < 0 {
-        return Err(format!(
-            "Failed to open {} encoder: {}",
-            format.label(),
-            av_err_str(ret)
-        ));
-    }
-
-    let mut write_ctx =
-        WriteAvioContext::new(Vec::with_capacity(format.output_capacity(samples.len())));
-    let avio = allocate_write_avio(&mut write_ctx)?;
-
-    let mut fmt_ctx: *mut AVFormatContext = ptr::null_mut();
-    let ret = avformat_alloc_output_context2(
-        &mut fmt_ctx,
-        ptr::null(),
-        format.format_name(),
-        ptr::null(),
-    );
-    if ret < 0 || fmt_ctx.is_null() {
-        free_custom_avio_context(avio);
-        return Err("Failed to create output context".to_string());
-    }
-    (*fmt_ctx).pb = avio;
-    (*fmt_ctx).flags |= AVFMT_FLAG_CUSTOM_IO as c_int;
-    let mut muxer = EncodeMuxer {
-        fmt_ctx,
-        avio,
-        write_trailer_on_drop: false,
-    };
-
-    let stream = avformat_new_stream(muxer.fmt_ctx, ptr::null());
-    if stream.is_null() {
-        return Err("Failed to create stream".to_string());
-    }
-    let ret = avcodec_parameters_from_context((*stream).codecpar, codec_ctx.ptr);
-    if ret < 0 {
-        return Err(format!("Failed to copy codec params: {}", av_err_str(ret)));
-    }
-    let ret = avformat_write_header(muxer.fmt_ctx, ptr::null_mut());
-    if ret < 0 {
-        return Err(format!("Failed to write header: {}", av_err_str(ret)));
-    }
-    muxer.write_trailer_on_drop = true;
-
-    let frame = av_frame_alloc();
-    if frame.is_null() {
-        return Err("Failed to allocate frame".to_string());
-    }
-
-    let packet = av_packet_alloc();
-    if packet.is_null() {
-        av_frame_free(&mut (frame as *mut _));
-        return Err("Failed to allocate packet".to_string());
-    }
-    let frame_packet = EncodeFramePacket { frame, packet };
-
-    let frame_size = if (*codec_ctx.ptr).frame_size > 0 {
-        (*codec_ctx.ptr).frame_size as usize
-    } else {
-        format.default_frame_size()
-    };
-    let samples_per_frame = frame_size * channels_usize;
-    let mut sample_offset = 0;
-    let mut pts: i64 = 0;
-
-    while sample_offset < samples.len() {
-        // Skip av_write_trailer on cancel: a muxer patches its trailer (FLAC
-        // STREAMINFO, MP3 Xing) from frame state only completed frames populate,
-        // so running it over a partial stream is unsafe. The output is discarded
-        // anyway.
-        if cancel.load(std::sync::atomic::Ordering::Relaxed) {
-            muxer.write_trailer_on_drop = false;
-            return Err("encoding cancelled".to_string());
+impl Drop for OpenEncoder {
+    fn drop(&mut self) {
+        unsafe {
+            ffmpeg_sys_next::swr_free(&mut self.swr_ctx);
         }
+    }
+}
 
-        let remaining = samples.len() - sample_offset;
-        let chunk_samples = remaining.min(samples_per_frame);
-        let chunk_frames = chunk_samples / channels_usize;
+impl OpenEncoder {
+    /// Encode the first `chunk_samples` of `pending` as one frame and drain the
+    /// muxer's packets.
+    unsafe fn encode_pending_frame(
+        &mut self,
+        format: EncodeFormat,
+        chunk_samples: usize,
+    ) -> Result<(), String> {
+        use ffmpeg_sys_next::*;
 
-        (*frame_packet.frame).format = (*codec_ctx.ptr).sample_fmt as c_int;
-        (*frame_packet.frame).ch_layout = (*codec_ctx.ptr).ch_layout;
-        (*frame_packet.frame).sample_rate = sample_rate as c_int;
-        (*frame_packet.frame).nb_samples = chunk_frames as c_int;
+        let channels = self.channels as usize;
+        let chunk_frames = chunk_samples / channels;
 
-        let ret = av_frame_get_buffer(frame_packet.frame, 0);
+        (*self.frame_packet.frame).format = (*self.codec_ctx.ptr).sample_fmt as c_int;
+        (*self.frame_packet.frame).ch_layout = (*self.codec_ctx.ptr).ch_layout;
+        (*self.frame_packet.frame).sample_rate = (*self.codec_ctx.ptr).sample_rate;
+        (*self.frame_packet.frame).nb_samples = chunk_frames as c_int;
+
+        let ret = av_frame_get_buffer(self.frame_packet.frame, 0);
         if ret < 0 {
             return Err(format!(
                 "Failed to allocate frame buffer: {}",
@@ -682,7 +457,7 @@ unsafe fn encode_avio(
             ));
         }
 
-        let ret = av_frame_make_writable(frame_packet.frame);
+        let ret = av_frame_make_writable(self.frame_packet.frame);
         if ret < 0 {
             return Err(format!(
                 "Failed to make frame writable: {}",
@@ -691,46 +466,511 @@ unsafe fn encode_avio(
         }
 
         format.write_samples(
-            frame_packet.frame,
-            samples,
-            sample_offset,
+            self.frame_packet.frame,
+            &self.pending,
+            0,
             chunk_samples,
             chunk_frames,
-            channels_usize,
+            channels,
         );
 
-        (*frame_packet.frame).pts = pts;
-        pts += chunk_frames as i64;
+        (*self.frame_packet.frame).pts = self.pts;
+        self.pts += chunk_frames as i64;
 
-        let ret = avcodec_send_frame(codec_ctx.ptr, frame_packet.frame);
+        let ret = avcodec_send_frame(self.codec_ctx.ptr, self.frame_packet.frame);
         if ret < 0 {
             return Err(format!("Failed to send frame: {}", av_err_str(ret)));
         }
-        av_frame_unref(frame_packet.frame);
+        av_frame_unref(self.frame_packet.frame);
 
-        receive_and_write_packets(codec_ctx.ptr, frame_packet.packet, muxer.fmt_ctx)?;
+        receive_and_write_packets(
+            self.codec_ctx.ptr,
+            self.frame_packet.packet,
+            self.muxer.fmt_ctx,
+        )?;
 
-        sample_offset += chunk_samples;
+        self.pending.drain(..chunk_samples);
+        Ok(())
     }
 
-    let ret = avcodec_send_frame(codec_ctx.ptr, ptr::null());
-    if ret < 0 {
-        return Err(format!("Failed to flush encoder: {}", av_err_str(ret)));
+    /// Convert an input chunk through the resampler (if any) into `pending`.
+    unsafe fn absorb(&mut self, samples: &[i32]) -> Result<(), String> {
+        use ffmpeg_sys_next::*;
+
+        if self.swr_ctx.is_null() {
+            self.pending.extend_from_slice(samples);
+            return Ok(());
+        }
+
+        let channels = self.channels as usize;
+        let input_frames = samples.len() / channels;
+        let capacity_frames = swr_get_out_samples(self.swr_ctx, input_frames as c_int);
+        if capacity_frames < 0 {
+            return Err(format!(
+                "Failed to size resampler output: {}",
+                av_err_str(capacity_frames)
+            ));
+        }
+        let out_offset = self.pending.len();
+        self.pending
+            .resize(out_offset + capacity_frames as usize * channels, 0);
+        let input_ptr = samples.as_ptr() as *const u8;
+        let output_ptr = self.pending[out_offset..].as_mut_ptr() as *mut u8;
+        let converted = swr_convert(
+            self.swr_ctx,
+            &output_ptr,
+            capacity_frames,
+            &input_ptr,
+            input_frames as c_int,
+        );
+        if converted < 0 {
+            return Err(format!("Failed to resample: {}", av_err_str(converted)));
+        }
+        self.pending
+            .truncate(out_offset + converted as usize * channels);
+        Ok(())
     }
-    receive_and_write_packets(codec_ctx.ptr, frame_packet.packet, muxer.fmt_ctx)?;
 
-    let ret = av_write_trailer(muxer.fmt_ctx);
-    muxer.write_trailer_on_drop = false;
-    if ret < 0 {
-        return Err(format!("Failed to write trailer: {}", av_err_str(ret)));
+    /// Drain the resampler's buffered tail into `pending` (no new input).
+    unsafe fn drain_resampler(&mut self) -> Result<(), String> {
+        use ffmpeg_sys_next::*;
+
+        if self.swr_ctx.is_null() {
+            return Ok(());
+        }
+        let channels = self.channels as usize;
+        loop {
+            let capacity_frames = swr_get_out_samples(self.swr_ctx, 0);
+            if capacity_frames < 0 {
+                return Err(format!(
+                    "Failed to size resampler tail: {}",
+                    av_err_str(capacity_frames)
+                ));
+            }
+            if capacity_frames == 0 {
+                return Ok(());
+            }
+            let out_offset = self.pending.len();
+            self.pending
+                .resize(out_offset + capacity_frames as usize * channels, 0);
+            let output_ptr = self.pending[out_offset..].as_mut_ptr() as *mut u8;
+            let converted = swr_convert(self.swr_ctx, &output_ptr, capacity_frames, ptr::null(), 0);
+            if converted < 0 {
+                return Err(format!(
+                    "Failed to drain resampler: {}",
+                    av_err_str(converted)
+                ));
+            }
+            self.pending
+                .truncate(out_offset + converted as usize * channels);
+            if converted == 0 {
+                return Ok(());
+            }
+        }
+    }
+}
+
+/// PCM in → encoded bytes out, one frame at a time, as a [`DecodedSink`]: the
+/// decode's `on_format` opens the codec and muxer and writes the header, each
+/// `on_samples` chunk fills frames and drains packets into the output sink, and
+/// [`Self::finish`] flushes the codec, writes the trailer, and surfaces any
+/// failure recorded mid-stream (the trait's methods cannot return errors — the
+/// unsafe decoder can't unwind through the sink). Resident memory is one codec
+/// frame plus the 32 KiB AVIO buffer.
+///
+/// The two constructors are the two output types: [`Self::seekable`] accepts
+/// every format (the muxer may seek back and patch its header);
+/// [`Self::streaming`] accepts only [`StreamEncodeFormat`] — pairing a
+/// header-patching muxer with a sink it cannot patch is unrepresentable, so a
+/// file with a lying header cannot be written.
+pub struct StreamingEncoder {
+    /// FFmpeg state; declared before `sink` so its muxer (whose AVIO points at
+    /// the sink box) is torn down first.
+    open: Option<OpenEncoder>,
+    format: EncodeFormat,
+    /// Heap-pinned: the muxer's AVIO holds a raw pointer to it.
+    sink: Box<WriteAvioContext>,
+    seekable_sink: bool,
+    /// Checked per encoded frame. Once set, the encoder records "encoding
+    /// cancelled" and stops writing — no trailer, since a muxer patches its
+    /// trailer from frame state only completed streams populate.
+    cancel: Arc<std::sync::atomic::AtomicBool>,
+    /// First failure recorded during the stream; later calls are absorbed.
+    error: Option<String>,
+    /// Interleaved samples accepted through `on_samples` (pre-resample).
+    samples_accepted: u64,
+}
+
+impl StreamingEncoder {
+    /// Encode `format` into a seekable sink (a file; an in-memory cursor in
+    /// tests). The muxer's header patch-back works, so totals and sizes in the
+    /// header are real.
+    pub fn seekable(
+        format: EncodeFormat,
+        out: Box<dyn WriteSeek>,
+        cancel: Arc<std::sync::atomic::AtomicBool>,
+    ) -> Self {
+        Self::new(format, WriteAvioContext::Seekable(out), true, cancel)
     }
 
-    avio_flush(muxer.avio);
+    /// Encode a streaming-safe format into a non-seekable sink (a socket). No
+    /// seek callback is installed, so FFmpeg takes the muxer's streaming path.
+    pub fn streaming(
+        format: StreamEncodeFormat,
+        out: Box<dyn std::io::Write + Send>,
+        cancel: Arc<std::sync::atomic::AtomicBool>,
+    ) -> Self {
+        Self::new(
+            format.into(),
+            WriteAvioContext::Streaming(out),
+            false,
+            cancel,
+        )
+    }
 
-    drop(muxer);
-    let result = write_ctx.into_inner();
+    fn new(
+        format: EncodeFormat,
+        sink: WriteAvioContext,
+        seekable_sink: bool,
+        cancel: Arc<std::sync::atomic::AtomicBool>,
+    ) -> Self {
+        Self {
+            open: None,
+            format,
+            sink: Box::new(sink),
+            seekable_sink,
+            cancel,
+            error: None,
+            samples_accepted: 0,
+        }
+    }
 
-    debug!("Encoded {} bytes of {} data", result.len(), format.label());
+    /// Interleaved frames accepted through `on_samples` so far, at the input
+    /// rate. The CUE-image save reads per-track deltas off this for its INDEX
+    /// lines.
+    pub fn frames_accepted(&self) -> u64 {
+        match &self.open {
+            Some(open) => self.samples_accepted / u64::from(open.channels.max(1)),
+            None => 0,
+        }
+    }
 
-    Ok(result)
+    /// The first failure recorded during the stream, if any. Lets a driver
+    /// running several decodes into one encoder stop at the failing one
+    /// instead of feeding a dead encoder to the end.
+    pub fn error(&self) -> Option<&str> {
+        self.error.as_deref()
+    }
+
+    fn record_error(&mut self, message: String) {
+        // A failed stream must not get a trailer: a muxer patches it from
+        // frame state only completed streams populate.
+        if let Some(open) = &mut self.open {
+            open.muxer.write_trailer_on_drop = false;
+        }
+        if self.error.is_none() {
+            self.error = Some(message);
+        }
+    }
+
+    /// Open the codec + muxer for the announced input shape and write the
+    /// header.
+    unsafe fn open_encoder(
+        &mut self,
+        sample_rate: u32,
+        channels: u32,
+    ) -> Result<OpenEncoder, String> {
+        use ffmpeg_sys_next::*;
+
+        if channels == 0 {
+            return Err("channel count must be greater than zero".to_string());
+        }
+        let format = self.format;
+        // Opus encodes at 48 kHz regardless of the input rate; the resampler
+        // below converts each chunk.
+        let output_rate = match format {
+            EncodeFormat::OpusOgg { .. } => 48_000,
+            _ => sample_rate,
+        };
+        let sample_format = format.sample_format()?;
+
+        let codec = avcodec_find_encoder(format.codec_id());
+        if codec.is_null() {
+            return Err(format.encoder_missing_message().to_string());
+        }
+
+        let codec_ctx = avcodec_alloc_context3(codec);
+        if codec_ctx.is_null() {
+            return Err("Failed to allocate codec context".to_string());
+        }
+        let codec_ctx = EncodeCodecContext { ptr: codec_ctx };
+        format.configure_codec_context(codec_ctx.ptr, sample_format, output_rate, channels);
+        let ret = avcodec_open2(codec_ctx.ptr, codec, ptr::null_mut());
+        if ret < 0 {
+            return Err(format!(
+                "Failed to open {} encoder: {}",
+                format.label(),
+                av_err_str(ret)
+            ));
+        }
+
+        let avio = allocate_write_avio(self.sink.as_mut(), self.seekable_sink)?;
+
+        let mut fmt_ctx: *mut AVFormatContext = ptr::null_mut();
+        let ret = avformat_alloc_output_context2(
+            &mut fmt_ctx,
+            ptr::null(),
+            format.format_name(),
+            ptr::null(),
+        );
+        if ret < 0 || fmt_ctx.is_null() {
+            free_custom_avio_context(avio);
+            return Err("Failed to create output context".to_string());
+        }
+        (*fmt_ctx).pb = avio;
+        (*fmt_ctx).flags |= AVFMT_FLAG_CUSTOM_IO as c_int;
+        let mut muxer = EncodeMuxer {
+            fmt_ctx,
+            avio,
+            write_trailer_on_drop: false,
+        };
+
+        let stream = avformat_new_stream(muxer.fmt_ctx, ptr::null());
+        if stream.is_null() {
+            return Err("Failed to create stream".to_string());
+        }
+        let ret = avcodec_parameters_from_context((*stream).codecpar, codec_ctx.ptr);
+        if ret < 0 {
+            return Err(format!("Failed to copy codec params: {}", av_err_str(ret)));
+        }
+        let ret = avformat_write_header(muxer.fmt_ctx, ptr::null_mut());
+        if ret < 0 {
+            return Err(format!("Failed to write header: {}", av_err_str(ret)));
+        }
+        muxer.write_trailer_on_drop = true;
+
+        let frame = av_frame_alloc();
+        if frame.is_null() {
+            return Err("Failed to allocate frame".to_string());
+        }
+        let packet = av_packet_alloc();
+        if packet.is_null() {
+            av_frame_free(&mut (frame as *mut _));
+            return Err("Failed to allocate packet".to_string());
+        }
+        let frame_packet = EncodeFramePacket { frame, packet };
+
+        let mut swr_ctx: *mut SwrContext = ptr::null_mut();
+        if output_rate != sample_rate {
+            let mut ch_layout: AVChannelLayout = std::mem::zeroed();
+            av_channel_layout_default(&mut ch_layout, channels as c_int);
+            let ret = swr_alloc_set_opts2(
+                &mut swr_ctx,
+                &ch_layout,
+                AVSampleFormat::AV_SAMPLE_FMT_S32,
+                output_rate as c_int,
+                &ch_layout,
+                AVSampleFormat::AV_SAMPLE_FMT_S32,
+                sample_rate as c_int,
+                0,
+                ptr::null_mut(),
+            );
+            if ret < 0 || swr_ctx.is_null() {
+                return Err(format!("Failed to allocate resampler: {}", av_err_str(ret)));
+            }
+            let ret = swr_init(swr_ctx);
+            if ret < 0 {
+                swr_free(&mut swr_ctx);
+                return Err(format!("Failed to init resampler: {}", av_err_str(ret)));
+            }
+        }
+
+        let frame_size = if (*codec_ctx.ptr).frame_size > 0 {
+            (*codec_ctx.ptr).frame_size as usize
+        } else {
+            format.default_frame_size()
+        };
+
+        Ok(OpenEncoder {
+            codec_ctx,
+            muxer,
+            frame_packet,
+            swr_ctx,
+            sample_rate,
+            channels,
+            samples_per_frame: frame_size * channels as usize,
+            pending: Vec::new(),
+            pts: 0,
+        })
+    }
+
+    /// Flush the codec, drain the resampler tail, write the trailer, and flush
+    /// the sink. Surfaces the first error recorded during the stream, and fails
+    /// on a cancelled encode (no trailer is written in either case).
+    pub fn finish(mut self) -> Result<(), String> {
+        use ffmpeg_sys_next::*;
+
+        if let Some(error) = self.error.take() {
+            return Err(error);
+        }
+        let Some(mut open) = self.open.take() else {
+            return Err("nothing encoded: the decode announced no format".to_string());
+        };
+
+        // SAFETY: all pointers below were allocated by `open_encoder` and are
+        // torn down exactly once via the RAII wrappers in `open`.
+        unsafe {
+            open.drain_resampler().inspect_err(|_| {
+                open.muxer.write_trailer_on_drop = false;
+            })?;
+
+            if open.pending.len() % open.channels as usize != 0 {
+                open.muxer.write_trailer_on_drop = false;
+                return Err("sample count must be divisible by channel count".to_string());
+            }
+            if !open.pending.is_empty() {
+                let remaining = open.pending.len();
+                open.encode_pending_frame(self.format, remaining)
+                    .inspect_err(|_| {
+                        open.muxer.write_trailer_on_drop = false;
+                    })?;
+            }
+
+            if self.cancel.load(std::sync::atomic::Ordering::Relaxed) {
+                open.muxer.write_trailer_on_drop = false;
+                return Err("encoding cancelled".to_string());
+            }
+
+            let ret = avcodec_send_frame(open.codec_ctx.ptr, ptr::null());
+            if ret < 0 {
+                open.muxer.write_trailer_on_drop = false;
+                return Err(format!("Failed to flush encoder: {}", av_err_str(ret)));
+            }
+            receive_and_write_packets(
+                open.codec_ctx.ptr,
+                open.frame_packet.packet,
+                open.muxer.fmt_ctx,
+            )
+            .inspect_err(|_| {
+                open.muxer.write_trailer_on_drop = false;
+            })?;
+
+            let ret = av_write_trailer(open.muxer.fmt_ctx);
+            open.muxer.write_trailer_on_drop = false;
+            if ret < 0 {
+                return Err(format!("Failed to write trailer: {}", av_err_str(ret)));
+            }
+
+            avio_flush(open.muxer.avio);
+        }
+
+        // Free the muxer (and its AVIO over the sink) before flushing and
+        // dropping the sink itself.
+        drop(open);
+        self.sink
+            .flush()
+            .map_err(|e| format!("Failed to flush encode sink: {e}"))?;
+
+        debug!("Encoded {} stream finished", self.format.label());
+        Ok(())
+    }
+}
+
+impl DecodedSink for StreamingEncoder {
+    fn on_format(&mut self, sample_rate: u32, channels: u32) {
+        if self.error.is_some() {
+            return;
+        }
+        match &self.open {
+            Some(open) => {
+                if open.sample_rate != sample_rate || open.channels != channels {
+                    self.record_error(format!(
+                        "PCM shape changed mid-encode: {}Hz/{}ch then {sample_rate}Hz/{channels}ch",
+                        open.sample_rate, open.channels
+                    ));
+                }
+            }
+            None => {
+                // SAFETY: first open; all allocated pointers are owned by the
+                // returned OpenEncoder's RAII wrappers.
+                match unsafe { self.open_encoder(sample_rate, channels) } {
+                    Ok(open) => self.open = Some(open),
+                    Err(e) => self.record_error(e),
+                }
+            }
+        }
+    }
+
+    fn on_samples(&mut self, samples: &[i32]) {
+        if self.error.is_some() || samples.is_empty() {
+            return;
+        }
+        if self.open.is_none() {
+            self.record_error("samples arrived before a format was announced".to_string());
+            return;
+        }
+        self.samples_accepted += samples.len() as u64;
+
+        // SAFETY: `open` holds valid FFmpeg state built by `open_encoder`.
+        let result = unsafe {
+            let open = self.open.as_mut().expect("checked above");
+            let mut outcome = open.absorb(samples);
+            while outcome.is_ok() && open.pending.len() >= open.samples_per_frame {
+                if self.cancel.load(std::sync::atomic::Ordering::Relaxed) {
+                    outcome = Err("encoding cancelled".to_string());
+                    break;
+                }
+                let chunk = open.samples_per_frame;
+                outcome = open.encode_pending_frame(self.format, chunk);
+            }
+            outcome
+        };
+        if let Err(e) = result {
+            self.record_error(e);
+        }
+    }
+}
+
+/// Whole-buffer convenience over [`StreamingEncoder`] for fixtures and tests:
+/// encode interleaved i32 PCM into an in-memory seekable sink.
+#[cfg(any(test, feature = "test-utils"))]
+pub fn encode_i32(
+    format: EncodeFormat,
+    samples: &[i32],
+    sample_rate: u32,
+    channels: u32,
+) -> Result<Vec<u8>, String> {
+    use std::io::{Cursor, Seek, SeekFrom, Write};
+    use std::sync::{Arc as StdArc, Mutex};
+
+    /// Hands the encoder a boxed sink while keeping a handle to read the bytes
+    /// back after `finish` drops the encoder's box.
+    #[derive(Clone)]
+    struct SharedCursor(StdArc<Mutex<Cursor<Vec<u8>>>>);
+    impl Write for SharedCursor {
+        fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+            self.0.lock().unwrap().write(buf)
+        }
+        fn flush(&mut self) -> std::io::Result<()> {
+            self.0.lock().unwrap().flush()
+        }
+    }
+    impl Seek for SharedCursor {
+        fn seek(&mut self, pos: SeekFrom) -> std::io::Result<u64> {
+            self.0.lock().unwrap().seek(pos)
+        }
+    }
+
+    let shared = SharedCursor(StdArc::new(Mutex::new(Cursor::new(Vec::new()))));
+    let mut encoder = StreamingEncoder::seekable(
+        format,
+        Box::new(shared.clone()),
+        std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)),
+    );
+    encoder.on_format(sample_rate, channels);
+    encoder.on_samples(samples);
+    encoder.finish()?;
+    let cursor = StdArc::try_unwrap(shared.0)
+        .map_err(|_| "encode sink still shared after finish".to_string())?;
+    Ok(cursor.into_inner().unwrap().into_inner())
 }

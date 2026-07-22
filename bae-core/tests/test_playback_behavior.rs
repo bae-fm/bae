@@ -4733,9 +4733,15 @@ static MULTI_WINDOW_FLAC: std::sync::LazyLock<Vec<u8>> = std::sync::LazyLock::ne
             }
         })
         .collect();
-    let cancel = std::sync::atomic::AtomicBool::new(false);
-    let flac = bae_core::audio_codec::encode_to_flac(&samples, SAMPLE_RATE, 2, 16, &cancel)
-        .expect("encode the multi-window noise FLAC");
+    let flac = bae_core::audio_codec::encode_i32(
+        bae_core::audio_codec::EncodeFormat::Flac {
+            bits_per_sample: 16,
+        },
+        &samples,
+        SAMPLE_RATE,
+        2,
+    )
+    .expect("encode the multi-window noise FLAC");
     assert!(
         flac.len() > 24 * 1024 * 1024,
         "the fixture must span several 4 MiB fetch windows, got {} bytes",

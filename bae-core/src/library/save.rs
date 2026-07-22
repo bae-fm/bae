@@ -1,5 +1,5 @@
+use crate::audio_codec::{EncodeFormat, StreamingEncoder};
 use crate::library::manager::SaveTrackPlan;
-use crate::playback::{DecodedPcm, PlaybackError};
 use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -149,7 +149,7 @@ impl SaveService {
     }
 
     pub async fn save_release_image_with_cue(
-        mut plans: Vec<SaveTrackPlan>,
+        plans: Vec<SaveTrackPlan>,
         output_audio_path: &Path,
         output_cue_path: &Path,
         catalog: Option<String>,
@@ -164,87 +164,16 @@ impl SaveService {
 
         let cancel = Arc::new(AtomicBool::new(false));
         let _cancel_guard = CancelOnDrop(Arc::clone(&cancel));
-        let mut combined_samples = Vec::new();
-        let mut cue_tracks = Vec::with_capacity(plans.len());
-        let mut sample_rate = None;
-        let mut channels = None;
+
         let source_bits_per_sample = plans[0].audio_meta.audio_format.bits_per_sample;
+        let sample_rate = stored_sample_rate(&plans[0])?;
+        let channels = stored_channels(&plans[0])?;
         let release_title = plans[0].resolved.tags.album.clone();
         let release_performer = plans[0].resolved.tags.artist.clone();
         let cover_image_bytes = plans[0].cover_image_bytes.clone();
         let is_digital = plans[0].resolved.is_digital;
-        let mut current_sample_frame = 0u64;
-
-        for (index, plan) in plans.iter_mut().enumerate() {
-            let pregap_sample_frames = plan
-                .decode
-                .leading_silence_frames
-                .checked_add(non_negative_samples(
-                    plan.audio_meta.audio_format.pregap_samples,
-                )?)
-                .ok_or_else(|| "CUE pregap sample count overflow".to_string())?;
-            let decoded_pcm = load_track_audio(plan).await.map_err(|e| e.to_string())?;
-            match (sample_rate, channels) {
-                (None, None) => {
-                    sample_rate = Some(decoded_pcm.sample_rate());
-                    channels = Some(decoded_pcm.channels());
-                }
-                (Some(rate), Some(channel_count))
-                    if rate == decoded_pcm.sample_rate()
-                        && channel_count == decoded_pcm.channels() => {}
-                _ => {
-                    return Err(format!(
-                        "release image export requires matching PCM shape; track {} is {}Hz/{}ch",
-                        plan.audio_meta.track.id,
-                        decoded_pcm.sample_rate(),
-                        decoded_pcm.channels()
-                    ));
-                }
-            }
-
-            let channel_count = usize::try_from(decoded_pcm.channels())
-                .map_err(|_| "channel count exceeds addressable memory".to_string())?;
-            if channel_count == 0 {
-                return Err("decoded audio has zero channels".to_string());
-            }
-            if decoded_pcm.raw_samples().len() % channel_count != 0 {
-                return Err(format!(
-                    "decoded sample count is not divisible by channel count for track {}",
-                    plan.audio_meta.track.id
-                ));
-            }
-            let segment_sample_frames =
-                u64::try_from(decoded_pcm.raw_samples().len() / channel_count)
-                    .map_err(|_| "decoded sample count exceeds CUE addressable range")?;
-            if pregap_sample_frames > segment_sample_frames {
-                return Err(format!(
-                    "track {} pregap exceeds decoded segment length",
-                    plan.audio_meta.track.id
-                ));
-            }
-
-            cue_tracks.push(CueTrack {
-                number: u8::try_from(index + 1)
-                    .map_err(|_| "CUE track number exceeds 99".to_string())?,
-                title: plan.resolved.tags.title.clone(),
-                performer: plan.resolved.tags.artist.clone(),
-                index_00_sample_frame: (pregap_sample_frames > 0).then_some(current_sample_frame),
-                index_01_sample_frame: current_sample_frame
-                    .checked_add(pregap_sample_frames)
-                    .ok_or_else(|| "CUE index sample count overflow".to_string())?,
-            });
-            current_sample_frame = current_sample_frame
-                .checked_add(segment_sample_frames)
-                .ok_or_else(|| "release image sample count overflow".to_string())?;
-            combined_samples.extend_from_slice(decoded_pcm.raw_samples());
-        }
-
-        let sample_rate =
-            sample_rate.ok_or_else(|| "release image export requires audio".to_string())?;
-        if sample_rate == 0 {
-            return Err("release image export requires a non-zero sample rate".to_string());
-        }
-        let channels = channels.ok_or_else(|| "release image export requires audio".to_string())?;
+        let year = plans[0].resolved.tags.year;
+        let cue_file_type = cue_file_type(&preset.codec)?;
         let audio_filename = output_audio_path
             .file_name()
             .and_then(|name| name.to_str())
@@ -255,57 +184,103 @@ impl SaveService {
                 )
             })?
             .to_string();
-        let cue = render_cue_sheet(
-            &release_title,
-            &release_performer,
-            catalog
-                .as_deref()
-                .map(str::trim)
-                .filter(|catalog| !catalog.is_empty()),
-            plans[0].resolved.tags.year,
-            &audio_filename,
-            cue_file_type(&preset.codec)?,
-            sample_rate,
-            &cue_tracks,
-        );
 
-        let decoded_pcm = DecodedPcm::new(combined_samples, sample_rate, channels);
-        let output_audio_path_owned = output_audio_path.to_path_buf();
-        let output_cue_path_owned = output_cue_path.to_path_buf();
-        let cancel_for_blocking = Arc::clone(&cancel);
-        let codec = preset.codec;
+        let format = encode_format(&preset.codec, source_bits_per_sample);
+        let tag_type = codec_tag_type(&preset.codec);
         let tags = crate::library::manager::SaveTags {
             title: release_title.clone(),
-            artist: release_performer,
-            album: release_title,
-            year: plans[0].resolved.tags.year,
+            artist: release_performer.clone(),
+            album: release_title.clone(),
+            year,
             disc: None,
         };
         let total_tracks = plans.len() as u32;
+
+        let output_audio_path_owned = output_audio_path.to_path_buf();
+        let output_cue_path_owned = output_cue_path.to_path_buf();
+        let cancel_for_blocking = Arc::clone(&cancel);
 
         tokio::task::spawn_blocking(move || -> Result<(), String> {
             let mut output_guard = OutputPathsGuard::new(vec![
                 output_audio_path_owned.clone(),
                 output_cue_path_owned.clone(),
             ]);
-            let (encoded_data, tag_type) = encode_pcm_with_codec(
-                &decoded_pcm,
-                &codec,
-                source_bits_per_sample,
-                &cancel_for_blocking,
-            )?;
+
+            let file = std::fs::File::create(&output_audio_path_owned)
+                .map_err(|e| format!("Failed to create release image: {e}"))?;
+            let mut encoder =
+                StreamingEncoder::seekable(format, Box::new(file), cancel_for_blocking.clone());
+
+            // One track at a time into the shared encoder: silence + segments
+            // stream through, and the accepted-frame delta is the track's length
+            // for its CUE INDEX lines. The encoder's equal-shape rule turns a
+            // PCM-shape change between tracks into a loud failure.
+            let mut cue_tracks = Vec::with_capacity(plans.len());
+            let mut current_sample_frame = 0u64;
+            for (index, plan) in plans.iter().enumerate() {
+                let pregap_sample_frames = plan
+                    .decode
+                    .leading_silence_frames
+                    .checked_add(non_negative_samples(
+                        plan.audio_meta.audio_format.pregap_samples,
+                    )?)
+                    .ok_or_else(|| "CUE pregap sample count overflow".to_string())?;
+
+                let frames_before = encoder.frames_accepted();
+                plan.decode.run_to_sink(
+                    sample_rate,
+                    channels,
+                    &mut encoder,
+                    cancel_for_blocking.clone(),
+                )?;
+                if let Some(error) = encoder.error() {
+                    return Err(error.to_string());
+                }
+                let segment_sample_frames = encoder.frames_accepted() - frames_before;
+                if pregap_sample_frames > segment_sample_frames {
+                    return Err(format!(
+                        "track {} pregap exceeds decoded segment length",
+                        plan.audio_meta.track.id
+                    ));
+                }
+
+                cue_tracks.push(CueTrack {
+                    number: u8::try_from(index + 1)
+                        .map_err(|_| "CUE track number exceeds 99".to_string())?,
+                    title: plan.resolved.tags.title.clone(),
+                    performer: plan.resolved.tags.artist.clone(),
+                    index_00_sample_frame: (pregap_sample_frames > 0)
+                        .then_some(current_sample_frame),
+                    index_01_sample_frame: current_sample_frame
+                        .checked_add(pregap_sample_frames)
+                        .ok_or_else(|| {
+                        "CUE index sample count overflow".to_string()
+                    })?,
+                });
+                current_sample_frame = current_sample_frame
+                    .checked_add(segment_sample_frames)
+                    .ok_or_else(|| "release image sample count overflow".to_string())?;
+            }
+
+            encoder.finish()?;
 
             if cancel_for_blocking.load(Ordering::Relaxed) {
                 return Err("export cancelled".to_string());
             }
 
-            std::fs::write(&output_audio_path_owned, &encoded_data)
-                .map_err(|e| format!("Failed to write release image: {e}"))?;
-
-            if cancel_for_blocking.load(Ordering::Relaxed) {
-                return Err("export cancelled".to_string());
-            }
-
+            let cue = render_cue_sheet(
+                &release_title,
+                &release_performer,
+                catalog
+                    .as_deref()
+                    .map(str::trim)
+                    .filter(|catalog| !catalog.is_empty()),
+                year,
+                &audio_filename,
+                cue_file_type,
+                sample_rate,
+                &cue_tracks,
+            );
             std::fs::write(&output_cue_path_owned, cue)
                 .map_err(|e| format!("Failed to write CUE sheet: {e}"))?;
 
@@ -337,7 +312,7 @@ impl SaveService {
     }
 
     async fn save_track_with_codec(
-        mut plan: SaveTrackPlan,
+        plan: SaveTrackPlan,
         output_path: &Path,
         codec: crate::config::SaveCodec,
     ) -> Result<(), String> {
@@ -347,38 +322,37 @@ impl SaveService {
         let cancel = Arc::new(AtomicBool::new(false));
         let _cancel_guard = CancelOnDrop(Arc::clone(&cancel));
 
-        let decoded_pcm = load_track_audio(&mut plan)
-            .await
-            .map_err(|e| e.to_string())?;
+        let format = encode_format(&codec, plan.audio_meta.audio_format.bits_per_sample);
+        let tag_type = codec_tag_type(&codec);
+        let sample_rate = stored_sample_rate(&plan)?;
+        let channels = stored_channels(&plan)?;
 
         let output_path_owned = output_path.to_path_buf();
         let cancel_for_blocking = Arc::clone(&cancel);
-        let encoded_len = tokio::task::spawn_blocking(move || -> Result<usize, String> {
+        tokio::task::spawn_blocking(move || -> Result<(), String> {
             let mut output_guard = OutputPathsGuard::new(vec![output_path_owned.clone()]);
 
-            let (encoded_data, tag_type) = encode_pcm_with_codec(
-                &decoded_pcm,
-                &codec,
-                plan.audio_meta.audio_format.bits_per_sample,
-                &cancel_for_blocking,
+            let file = std::fs::File::create(&output_path_owned)
+                .map_err(|e| format!("Failed to create track file: {e}"))?;
+            let mut encoder =
+                StreamingEncoder::seekable(format, Box::new(file), cancel_for_blocking.clone());
+            plan.decode.run_to_sink(
+                sample_rate,
+                channels,
+                &mut encoder,
+                cancel_for_blocking.clone(),
             )?;
+            // `finish` closes the muxer and drops the file handle, so the tag
+            // writer below reads a fully-flushed file.
+            encoder.finish()?;
 
-            // Cancel check at every blocking boundary. Each fs::write /
-            // write_tags call can run for a while on slow disks; checking
-            // around them keeps the cancel-to-cleanup window tight. On
-            // bail-out OutputFileGuard removes whatever was written.
+            // Cancel check at every blocking boundary. write_tags can run for a
+            // while on slow disks; checking around it keeps the
+            // cancel-to-cleanup window tight. On bail-out OutputPathsGuard
+            // removes whatever was written.
             if cancel_for_blocking.load(Ordering::Relaxed) {
                 return Err("export cancelled".to_string());
             }
-
-            std::fs::write(&output_path_owned, &encoded_data)
-                .map_err(|e| format!("Failed to write track file: {e}"))?;
-
-            if cancel_for_blocking.load(Ordering::Relaxed) {
-                return Err("export cancelled".to_string());
-            }
-
-            let cover_data = plan.cover_image_bytes.as_deref();
 
             write_tags(
                 &output_path_owned,
@@ -387,7 +361,7 @@ impl SaveService {
                 plan.resolved.track_number.map(|n| n as u32),
                 plan.resolved.total_tracks as u32,
                 plan.resolved.is_digital,
-                cover_data,
+                plan.cover_image_bytes.as_deref(),
             )?;
 
             if cancel_for_blocking.load(Ordering::Relaxed) {
@@ -395,81 +369,80 @@ impl SaveService {
             }
 
             output_guard.commit();
-            Ok(encoded_data.len())
+            Ok(())
         })
         .await
         .map_err(|e| format!("encode task join error: {e}"))??;
 
-        debug!(
-            "Successfully exported track {} ({} bytes)",
-            track_id, encoded_len
-        );
+        debug!("Successfully exported track {}", track_id);
         Ok(())
     }
 }
 
-fn encode_pcm_with_codec(
-    decoded_pcm: &DecodedPcm,
+/// The stored sample rate for this plan's track, validated usable. The decode
+/// re-announces the probed rate, so a stored-vs-probed mismatch still fails
+/// loud at the encoder.
+fn stored_sample_rate(plan: &SaveTrackPlan) -> Result<u32, String> {
+    u32::try_from(plan.audio_meta.audio_format.sample_rate)
+        .ok()
+        .filter(|&rate| rate > 0)
+        .ok_or_else(|| {
+            format!(
+                "stored sample rate {} is unusable",
+                plan.audio_meta.audio_format.sample_rate
+            )
+        })
+}
+
+/// The stored channel count for this plan's track, validated non-zero.
+fn stored_channels(plan: &SaveTrackPlan) -> Result<u32, String> {
+    u32::try_from(plan.audio_meta.audio_format.channels)
+        .ok()
+        .filter(|&channels| channels > 0)
+        .ok_or_else(|| {
+            format!(
+                "stored channel count {} is unusable",
+                plan.audio_meta.audio_format.channels
+            )
+        })
+}
+
+/// The encoder format for a save codec, with bit depths resolved against the
+/// source.
+fn encode_format(
     codec: &crate::config::SaveCodec,
     source_bits_per_sample: Option<i64>,
-    cancel: &std::sync::atomic::AtomicBool,
-) -> Result<(Vec<u8>, lofty::tag::TagType), String> {
-    let encoded_data = match codec {
-        crate::config::SaveCodec::Flac { bit_depth } => crate::audio_codec::encode_to_flac(
-            decoded_pcm.raw_samples(),
-            decoded_pcm.sample_rate(),
-            decoded_pcm.channels(),
-            bit_depth.resolve(source_bits_per_sample),
-            cancel,
-        )
-        .map_err(|e| format!("Failed to encode FLAC: {e}"))?,
-        crate::config::SaveCodec::Mp3 { bitrate_kbps } => {
-            crate::audio_codec::encode_to_mp3_with_bitrate(
-                decoded_pcm.raw_samples(),
-                decoded_pcm.sample_rate(),
-                decoded_pcm.channels(),
-                *bitrate_kbps,
-                cancel,
-            )
-            .map_err(|e| format!("Failed to encode MP3: {e}"))?
-        }
-        crate::config::SaveCodec::OpusOgg { bitrate_kbps } => {
-            crate::audio_codec::encode_to_opus_ogg(
-                decoded_pcm.raw_samples(),
-                decoded_pcm.sample_rate(),
-                decoded_pcm.channels(),
-                *bitrate_kbps,
-                cancel,
-            )
-            .map_err(|e| format!("Failed to encode Opus/Ogg: {e}"))?
-        }
-        crate::config::SaveCodec::Wav { bit_depth } => crate::audio_codec::encode_to_wav(
-            decoded_pcm.raw_samples(),
-            decoded_pcm.sample_rate(),
-            decoded_pcm.channels(),
-            bit_depth.resolve(source_bits_per_sample),
-            cancel,
-        )
-        .map_err(|e| format!("Failed to encode WAV: {e}"))?,
-        crate::config::SaveCodec::Aiff { bit_depth } => crate::audio_codec::encode_to_aiff(
-            decoded_pcm.raw_samples(),
-            decoded_pcm.sample_rate(),
-            decoded_pcm.channels(),
-            bit_depth.resolve(source_bits_per_sample),
-            cancel,
-        )
-        .map_err(|e| format!("Failed to encode AIFF: {e}"))?,
-    };
+) -> EncodeFormat {
+    use crate::config::SaveCodec;
+    match codec {
+        SaveCodec::Flac { bit_depth } => EncodeFormat::Flac {
+            bits_per_sample: bit_depth.resolve(source_bits_per_sample),
+        },
+        SaveCodec::Mp3 { bitrate_kbps } => EncodeFormat::Mp3 {
+            bitrate_kbps: *bitrate_kbps,
+        },
+        SaveCodec::OpusOgg { bitrate_kbps } => EncodeFormat::OpusOgg {
+            bitrate_kbps: *bitrate_kbps,
+        },
+        SaveCodec::Wav { bit_depth } => EncodeFormat::PcmWav {
+            bits_per_sample: bit_depth.resolve(source_bits_per_sample),
+        },
+        SaveCodec::Aiff { bit_depth } => EncodeFormat::PcmAiff {
+            bits_per_sample: bit_depth.resolve(source_bits_per_sample),
+        },
+    }
+}
 
-    let tag_type = match codec {
-        crate::config::SaveCodec::Flac { .. } => lofty::tag::TagType::VorbisComments,
-        crate::config::SaveCodec::Mp3 { .. } => lofty::tag::TagType::Id3v2,
-        crate::config::SaveCodec::OpusOgg { .. } => lofty::tag::TagType::VorbisComments,
-        crate::config::SaveCodec::Wav { .. } => lofty::tag::TagType::RiffInfo,
-        crate::config::SaveCodec::Aiff { .. } => lofty::tag::TagType::AiffText,
-    };
-
-    Ok((encoded_data, tag_type))
+/// The tag container lofty writes for a save codec's output file.
+fn codec_tag_type(codec: &crate::config::SaveCodec) -> lofty::tag::TagType {
+    use crate::config::SaveCodec;
+    match codec {
+        SaveCodec::Flac { .. } => lofty::tag::TagType::VorbisComments,
+        SaveCodec::Mp3 { .. } => lofty::tag::TagType::Id3v2,
+        SaveCodec::OpusOgg { .. } => lofty::tag::TagType::VorbisComments,
+        SaveCodec::Wav { .. } => lofty::tag::TagType::RiffInfo,
+        SaveCodec::Aiff { .. } => lofty::tag::TagType::AiffText,
+    }
 }
 
 struct CueTrack {
@@ -642,84 +615,6 @@ fn write_tags(
     Ok(())
 }
 
-/// Decode the track's source audio to PCM, for re-encoding, streaming each
-/// backing file through the plan's sparse buffers and trimming to the sample
-/// window.
-async fn load_track_audio(plan: &mut SaveTrackPlan) -> Result<DecodedPcm, PlaybackError> {
-    let track_id = plan.audio_meta.track.id.clone();
-
-    // The save's own decode window (CUE pregaps can be excluded or relocated
-    // without changing playback's raw track window); each segment holds its
-    // stream, so cloning the window moves only Arcs into the blocking decode.
-    let window = plan.decode.clone();
-    debug!(
-        "Loading audio for track {} ({} segment(s))",
-        track_id,
-        window.segments.len()
-    );
-
-    let mut decoded = tokio::task::spawn_blocking(move || -> Result<DecodedPcm, String> {
-        let mut out_samples = Vec::new();
-        let mut sample_rate = None;
-        let mut channels = None;
-        for segment in &window.segments {
-            let start = segment.target_sample();
-            let start_sample = (start > 0).then_some(start);
-            let mut decoded = crate::audio_codec::decode_audio(
-                segment.buffer.clone(),
-                start_sample,
-                segment.span.end_sample,
-            )
-            .map_err(|e| e.to_string())?;
-            match (sample_rate, channels) {
-                (None, None) => {
-                    sample_rate = Some(decoded.sample_rate);
-                    channels = Some(decoded.channels);
-                }
-                (Some(rate), Some(ch)) if rate == decoded.sample_rate && ch == decoded.channels => {
-                }
-                _ => return Err("decoded export segments have incompatible formats".to_string()),
-            }
-            out_samples.append(&mut decoded.samples);
-        }
-        Ok(DecodedPcm::new(
-            out_samples,
-            sample_rate.unwrap_or(44_100),
-            channels.unwrap_or(2),
-        ))
-    })
-    .await
-    .map_err(PlaybackError::task)?
-    .map_err(PlaybackError::flac)?;
-
-    debug!(
-        "Successfully decoded track {}: {} samples, {}Hz, {} channels",
-        track_id,
-        decoded.raw_samples().len(),
-        decoded.sample_rate(),
-        decoded.channels()
-    );
-
-    if window.leading_silence_frames > 0 || window.trailing_silence_frames > 0 {
-        let channels = decoded.channels() as usize;
-        let leading = usize::try_from(window.leading_silence_frames)
-            .map_err(|_| PlaybackError::flac("leading silence exceeds addressable memory"))?
-            .checked_mul(channels)
-            .ok_or_else(|| PlaybackError::flac("leading silence sample count overflow"))?;
-        let trailing = usize::try_from(window.trailing_silence_frames)
-            .map_err(|_| PlaybackError::flac("trailing silence exceeds addressable memory"))?
-            .checked_mul(channels)
-            .ok_or_else(|| PlaybackError::flac("trailing silence sample count overflow"))?;
-        let mut samples = Vec::with_capacity(leading + decoded.raw_samples().len() + trailing);
-        samples.resize(leading, 0);
-        samples.extend_from_slice(decoded.raw_samples());
-        samples.resize(samples.len() + trailing, 0);
-        decoded = DecodedPcm::new(samples, decoded.sample_rate(), decoded.channels());
-    }
-
-    Ok(decoded)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -863,11 +758,18 @@ mod tests {
         use lofty::tag::TagType;
 
         crate::audio_codec::init();
-        let cancel = std::sync::atomic::AtomicBool::new(false);
         let samples: Vec<i32> = (0..4410)
             .map(|i| ((i as f64 * 0.02).sin() * 0.5 * i32::MAX as f64) as i32)
             .collect();
-        let flac = crate::audio_codec::encode_to_flac(&samples, 44100, 1, 16, &cancel).unwrap();
+        let flac = crate::audio_codec::encode_i32(
+            crate::audio_codec::EncodeFormat::Flac {
+                bits_per_sample: 16,
+            },
+            &samples,
+            44100,
+            1,
+        )
+        .unwrap();
 
         let cover_bytes = {
             let img = image::RgbImage::from_pixel(8, 8, image::Rgb([120, 40, 200]));
@@ -922,11 +824,18 @@ mod tests {
         use lofty::tag::TagType;
 
         crate::audio_codec::init();
-        let cancel = std::sync::atomic::AtomicBool::new(false);
         let samples: Vec<i32> = (0..4410)
             .map(|i| ((i as f64 * 0.02).sin() * 0.5 * i32::MAX as f64) as i32)
             .collect();
-        let flac = crate::audio_codec::encode_to_flac(&samples, 44100, 1, 16, &cancel).unwrap();
+        let flac = crate::audio_codec::encode_i32(
+            crate::audio_codec::EncodeFormat::Flac {
+                bits_per_sample: 16,
+            },
+            &samples,
+            44100,
+            1,
+        )
+        .unwrap();
 
         let tags = SaveTags {
             title: "Track Title".to_string(),

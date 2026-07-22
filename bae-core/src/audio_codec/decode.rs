@@ -751,14 +751,53 @@ pub fn decode_audio_to_sink(
     sink: &mut dyn DecodedSink,
     cancel: Arc<std::sync::atomic::AtomicBool>,
 ) -> Result<(), String> {
-    // SAFETY: every FFmpeg pointer the decode allocates lives and dies inside it.
-    unsafe { decode_buffer_to_sink_impl(buffer, start_sample, end_sample, sink, cancel) }
+    decode_audio_to_sink_with_seek(
+        buffer,
+        None,
+        start_sample,
+        start_sample,
+        end_sample,
+        sink,
+        cancel,
+    )
 }
 
+/// The i32 decode with playback's full seek dispatch: jump by byte to a
+/// recorded landing (`seek_to_byte`), or seek by sample; trim the lead-in at
+/// `start_at_sample`; stop at `stop_at_sample`. [`decode_audio_to_sink`] is the
+/// sample-window special case. The save re-encoder drives this with the same
+/// per-segment derivation playback uses.
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn decode_audio_to_sink_with_seek(
+    buffer: SharedSparseBuffer,
+    seek_to_byte: Option<u64>,
+    seek_to_sample: Option<u64>,
+    start_at_sample: Option<u64>,
+    stop_at_sample: Option<u64>,
+    sink: &mut dyn DecodedSink,
+    cancel: Arc<std::sync::atomic::AtomicBool>,
+) -> Result<(), String> {
+    // SAFETY: every FFmpeg pointer the decode allocates lives and dies inside it.
+    unsafe {
+        decode_buffer_to_sink_impl(
+            buffer,
+            seek_to_byte,
+            seek_to_sample,
+            start_at_sample,
+            stop_at_sample,
+            sink,
+            cancel,
+        )
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
 unsafe fn decode_buffer_to_sink_impl(
     buffer: SharedSparseBuffer,
-    start_sample: Option<u64>,
-    end_sample: Option<u64>,
+    seek_to_byte: Option<u64>,
+    seek_to_sample: Option<u64>,
+    start_at_sample: Option<u64>,
+    stop_at_sample: Option<u64>,
     sink: &mut dyn DecodedSink,
     cancel: Arc<std::sync::atomic::AtomicBool>,
 ) -> Result<(), String> {
@@ -799,8 +838,8 @@ unsafe fn decode_buffer_to_sink_impl(
                 audio.codecpar,
                 (*audio.codecpar).sample_rate as u32,
                 (*audio.codecpar).ch_layout.nb_channels as u32,
-                start_sample,
-                end_sample,
+                start_at_sample,
+                stop_at_sample,
                 sink,
             );
             close_input_and_free_custom_avio(&mut fmt_ctx, avio);
@@ -844,7 +883,26 @@ unsafe fn decode_buffer_to_sink_impl(
 
     let time_base = (*audio.stream).time_base;
 
-    if let Some(sample_pos) = start_sample {
+    // The same seek dispatch as the playback path: a by-byte jump lands on the
+    // recorded frame boundary (no seektable consulted); otherwise seek by
+    // sample. The `start_at_sample` trim below makes the first output sample
+    // exact either way.
+    if let Some(byte_pos) = seek_to_byte {
+        let ret = av_seek_frame(
+            fmt_ctx,
+            audio.stream_index,
+            byte_pos as i64,
+            AVSEEK_FLAG_BYTE as c_int,
+        );
+        if ret < 0 {
+            warn!(
+                "byte seek to {byte_pos} failed ({}); decoding from the start",
+                av_err_str(ret)
+            );
+        } else {
+            avcodec_flush_buffers(codec_ctx);
+        }
+    } else if let Some(sample_pos) = seek_to_sample {
         seek_to_sample_or_warn(fmt_ctx, audio.stream_index, sample_pos);
     }
 
@@ -887,8 +945,8 @@ unsafe fn decode_buffer_to_sink_impl(
         time_base,
         sample_rate,
         channels as usize,
-        start_sample,
-        end_sample,
+        start_at_sample,
+        stop_at_sample,
         &mut out,
     );
 

@@ -1242,13 +1242,16 @@ mod tests {
     #[test]
     fn mp3_with_id3v2_tags() {
         crate::audio_codec::init();
-        let cancel = std::sync::atomic::AtomicBool::new(false);
         // 0.5s of stereo 44.1kHz silence is enough for FFmpeg to emit a
         // valid MP3 the tag writer can attach to.
         let samples = vec![0i32; 44_100 / 2 * 2];
-        let mp3_bytes =
-            crate::audio_codec::encode_to_mp3_with_bitrate(&samples, 44_100, 2, 320, &cancel)
-                .expect("encode mp3");
+        let mp3_bytes = crate::audio_codec::encode_i32(
+            crate::audio_codec::EncodeFormat::Mp3 { bitrate_kbps: 320 },
+            &samples,
+            44_100,
+            2,
+        )
+        .expect("encode mp3");
 
         let temp = TempDir::new().unwrap();
         let mp3_path = temp.path().join("01.mp3");

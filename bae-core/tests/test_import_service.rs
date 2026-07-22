@@ -1080,12 +1080,13 @@ fn sine(amplitude: f64, sample_rate: u32, secs: f64, spikes: bool) -> Vec<i32> {
 
 /// Write a synthetic 16-bit stereo FLAC of `samples` to `path`.
 fn write_flac(path: &Path, samples: &[i32], sample_rate: u32) {
-    let bytes = bae_core::audio_codec::encode_to_flac(
+    let bytes = bae_core::audio_codec::encode_i32(
+        bae_core::audio_codec::EncodeFormat::Flac {
+            bits_per_sample: 16,
+        },
         samples,
         sample_rate,
         2,
-        16,
-        &std::sync::atomic::AtomicBool::new(false),
     )
     .expect("encode synthetic FLAC");
     fs::write(path, bytes).unwrap();

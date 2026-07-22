@@ -151,6 +151,70 @@ impl StreamDecodeParams {
         }
         Ok(())
     }
+
+    /// Decode this window into a [`DecodedSink`] — the save re-encoder's
+    /// driver, sharing the per-segment seek derivation with [`Self::run_decoder`]:
+    /// announce the stored format, push the leading silence, decode each
+    /// segment, push the trailing silence. Blocking; run it off the async
+    /// runtime.
+    ///
+    /// `sample_rate`/`channels` come from the stored audio format; each
+    /// segment's decode re-announces the probed values, so a sink that checks
+    /// (the encoder) turns a stored-vs-probed mismatch into a loud failure.
+    pub(crate) fn run_to_sink(
+        &self,
+        sample_rate: u32,
+        channels: u32,
+        sink: &mut dyn crate::audio_codec::DecodedSink,
+        cancel: Arc<AtomicBool>,
+    ) -> Result<(), String> {
+        sink.on_format(sample_rate, channels);
+        push_silence_to_sink(sink, self.leading_silence_frames, channels, &cancel)?;
+        for segment in &self.segments {
+            let seek_to_byte = segment.seek_to_byte(self.byte_seekable);
+            let seek_to_sample = if seek_to_byte.is_some() {
+                None
+            } else {
+                Some(segment.target_sample())
+            };
+            crate::audio_codec::decode_audio_to_sink_with_seek(
+                segment.buffer.clone(),
+                seek_to_byte,
+                seek_to_sample,
+                Some(segment.target_sample()),
+                segment.span.end_sample,
+                sink,
+                cancel.clone(),
+            )?;
+        }
+        push_silence_to_sink(sink, self.trailing_silence_frames, channels, &cancel)?;
+        Ok(())
+    }
+}
+
+/// Push `frames` frames of silence into the sink in chunks, checking `cancel`
+/// between chunks so an aborted save stops promptly.
+fn push_silence_to_sink(
+    sink: &mut dyn crate::audio_codec::DecodedSink,
+    frames: u64,
+    channels: u32,
+    cancel: &AtomicBool,
+) -> Result<(), String> {
+    if frames == 0 {
+        return Ok(());
+    }
+    const CHUNK_FRAMES: u64 = 4096;
+    let zeros = vec![0i32; (CHUNK_FRAMES * u64::from(channels)) as usize];
+    let mut remaining = frames;
+    while remaining > 0 {
+        if cancel.load(Ordering::Relaxed) {
+            return Err("decode input cancelled".to_string());
+        }
+        let chunk = remaining.min(CHUNK_FRAMES);
+        sink.on_samples(&zeros[..(chunk * u64::from(channels)) as usize]);
+        remaining -= chunk;
+    }
+    Ok(())
 }
 
 /// A just-spawned decoder thread: the consumer `TrackStream` it fills, the

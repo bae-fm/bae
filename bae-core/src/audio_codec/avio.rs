@@ -6,7 +6,7 @@
 //! directly.
 
 use crate::playback::SharedSparseBuffer;
-use std::io::{Cursor, Seek, SeekFrom, Write};
+use std::io::{Seek, SeekFrom, Write};
 use std::os::raw::{c_int, c_void};
 use std::sync::Arc;
 use tracing::warn;
@@ -98,10 +98,34 @@ pub(crate) unsafe extern "C" fn streaming_avio_seek_callback(
     }
 }
 
-// --- AVIO write context for encoding to memory ---
+// --- AVIO write context for encoding ---
 
-/// Accumulates an encode's output bytes in memory.
-pub(super) type WriteAvioContext = Cursor<Vec<u8>>;
+/// The byte sink an encode's muxer writes into. The two shapes are the
+/// encoder's two output types: a seekable sink (a file, an in-memory cursor)
+/// lets the muxer seek back and patch its header (FLAC STREAMINFO, MP3
+/// Xing/LAME, RIFF/FORM sizes); a streaming sink (a socket) cannot seek, and
+/// no seek callback is installed over it, so FFmpeg takes the muxer's
+/// streaming path.
+pub(super) enum WriteAvioContext {
+    Seekable(Box<dyn super::WriteSeek>),
+    Streaming(Box<dyn Write + Send>),
+}
+
+impl WriteAvioContext {
+    fn write_all(&mut self, buf: &[u8]) -> std::io::Result<()> {
+        match self {
+            Self::Seekable(sink) => sink.write_all(buf),
+            Self::Streaming(sink) => sink.write_all(buf),
+        }
+    }
+
+    pub(super) fn flush(&mut self) -> std::io::Result<()> {
+        match self {
+            Self::Seekable(sink) => sink.flush(),
+            Self::Streaming(sink) => sink.flush(),
+        }
+    }
+}
 
 pub(super) unsafe extern "C" fn avio_write_callback(
     opaque: *mut c_void,
@@ -122,23 +146,38 @@ pub(super) unsafe extern "C" fn avio_write_callback(
 }
 
 /// Lets a muxer seek back to patch its header (FLAC STREAMINFO, MP3 Xing).
+/// Installed only over a seekable sink; the streaming arm can't be reached
+/// (FFmpeg has no seek callback to call there) and answers -1 if it somehow is.
 pub(super) unsafe extern "C" fn avio_write_seek_callback(
     opaque: *mut c_void,
     offset: i64,
     whence: c_int,
 ) -> i64 {
     let ctx = &mut *(opaque as *mut WriteAvioContext);
-
-    // AVSEEK_SIZE asks for the size rather than seeking.
-    if whence == ffmpeg_sys_next::AVSEEK_SIZE as c_int {
-        let Ok(len) = i64::try_from(ctx.get_ref().len()) else {
-            warn!(
-                "AVIO write seek size exceeds i64: {} byte(s)",
-                ctx.get_ref().len()
-            );
+    let sink = match ctx {
+        WriteAvioContext::Seekable(sink) => sink,
+        WriteAvioContext::Streaming(_) => {
+            warn!("AVIO seek invoked on a streaming (non-seekable) encode sink");
             return -1;
+        }
+    };
+
+    // AVSEEK_SIZE asks for the size rather than seeking: report the end
+    // position, then restore the cursor.
+    if whence == ffmpeg_sys_next::AVSEEK_SIZE as c_int {
+        let size = (|| -> std::io::Result<u64> {
+            let pos = sink.stream_position()?;
+            let end = sink.seek(SeekFrom::End(0))?;
+            sink.seek(SeekFrom::Start(pos))?;
+            Ok(end)
+        })();
+        return match size.map(i64::try_from) {
+            Ok(Ok(len)) => len,
+            Ok(Err(_)) | Err(_) => {
+                warn!("AVIO write seek could not report the sink size");
+                -1
+            }
         };
-        return len;
     }
 
     let seek_from = match whence {
@@ -154,7 +193,7 @@ pub(super) unsafe extern "C" fn avio_write_seek_callback(
         _ => return -1,
     };
 
-    let pos = match ctx.seek(seek_from).and_then(|pos| {
+    let pos = match sink.seek(seek_from).and_then(|pos| {
         i64::try_from(pos).map_err(|_| {
             std::io::Error::new(
                 std::io::ErrorKind::InvalidInput,

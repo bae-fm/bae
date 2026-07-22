@@ -5,7 +5,6 @@ mod context;
 #[cfg(not(target_os = "android"))]
 pub mod cpal_output;
 pub mod data_source;
-mod decoded_pcm;
 mod error;
 pub mod format;
 mod persisted;
@@ -27,7 +26,6 @@ pub use audio_output::{
     AudioError, AudioOutput, AudioState, AudioStream, CompletionEvent, PositionEvent,
 };
 pub use context::{ContextSource, ContextStart};
-pub use decoded_pcm::DecodedPcm;
 pub use error::PlaybackError;
 pub use persisted::{repeat_to_str, source_to_str, PersistedPlayback};
 pub use progress::{PlaybackProgress, PlaybackQueueProjection, PreviewState};

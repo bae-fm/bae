@@ -78,8 +78,15 @@ fn truncated_flac_packet_stream() -> Vec<u8> {
     let original_samples: Vec<i32> = (0..44100)
         .map(|i| ((i as f64 * 0.01).sin() * 0.5 * i32::MAX as f64) as i32)
         .collect();
-    let cancel = std::sync::atomic::AtomicBool::new(false);
-    let mut flac_data = encode_to_flac(&original_samples, 44100, 1, 16, &cancel).unwrap();
+    let mut flac_data = encode_i32(
+        EncodeFormat::Flac {
+            bits_per_sample: 16,
+        },
+        &original_samples,
+        44100,
+        1,
+    )
+    .unwrap();
     flac_data.truncate(flac_data.len() / 2);
     flac_data
 }
@@ -171,8 +178,15 @@ fn seek_landing_bytes_track_sample_positions() {
     let samples: Vec<i32> = (0..total)
         .map(|i| ((i as f64 * 0.02).sin() * 0.5 * i32::MAX as f64) as i32)
         .collect();
-    let cancel = std::sync::atomic::AtomicBool::new(false);
-    let flac = encode_to_flac(&samples, sample_rate, 1, 16, &cancel).unwrap();
+    let flac = encode_i32(
+        EncodeFormat::Flac {
+            bits_per_sample: 16,
+        },
+        &samples,
+        sample_rate,
+        1,
+    )
+    .unwrap();
 
     let mut file = tempfile::NamedTempFile::new().unwrap();
     std::io::Write::write_all(&mut file, &flac).unwrap();
@@ -429,8 +443,15 @@ async fn i32_decode_streams_from_a_live_fill_and_stays_windowed() {
     let samples: Vec<i32> = (0..sample_rate as usize * seconds * 2)
         .map(|i| (i as u32).wrapping_mul(2_654_435_761) as i32)
         .collect();
-    let cancel = std::sync::atomic::AtomicBool::new(false);
-    let wav = encode_to_wav(&samples, sample_rate, 2, 16, &cancel).unwrap();
+    let wav = encode_i32(
+        EncodeFormat::PcmWav {
+            bits_per_sample: 16,
+        },
+        &samples,
+        sample_rate,
+        2,
+    )
+    .unwrap();
     drop(samples);
 
     let never = || Arc::new(std::sync::atomic::AtomicBool::new(false));
@@ -509,8 +530,15 @@ fn i32_decode_fails_loud_when_the_buffer_is_cancelled_mid_stream() {
     }
 
     let samples = vec![0i32; 44_100 * 2]; // 1s stereo silence
-    let cancel_flag = std::sync::atomic::AtomicBool::new(false);
-    let wav = encode_to_wav(&samples, 44_100, 2, 16, &cancel_flag).unwrap();
+    let wav = encode_i32(
+        EncodeFormat::PcmWav {
+            bits_per_sample: 16,
+        },
+        &samples,
+        44_100,
+        2,
+    )
+    .unwrap();
 
     // Only the front half is ever delivered; the decode blocks on the rest
     // until the cancel below unblocks it.
@@ -546,8 +574,15 @@ fn test_decode_encode_roundtrip() {
     // 1 second of silence at 44100Hz stereo.
     let original_samples: Vec<i32> = vec![0i32; 44100 * 2];
 
-    let cancel = std::sync::atomic::AtomicBool::new(false);
-    let flac_data = encode_to_flac(&original_samples, 44100, 2, 16, &cancel).unwrap();
+    let flac_data = encode_i32(
+        EncodeFormat::Flac {
+            bits_per_sample: 16,
+        },
+        &original_samples,
+        44100,
+        2,
+    )
+    .unwrap();
 
     assert!(flac_data.len() > 42);
     assert_eq!(&flac_data[0..4], b"fLaC");
@@ -595,8 +630,13 @@ fn test_encode_mp3() {
         })
         .collect();
 
-    let cancel = std::sync::atomic::AtomicBool::new(false);
-    let mp3_data = encode_to_mp3_with_bitrate(&samples, sample_rate, 2, 320, &cancel).unwrap();
+    let mp3_data = encode_i32(
+        EncodeFormat::Mp3 { bitrate_kbps: 320 },
+        &samples,
+        sample_rate,
+        2,
+    )
+    .unwrap();
 
     // An MP3 opens with either an ID3 tag or a frame sync word.
     assert!(
@@ -632,8 +672,13 @@ fn test_encode_opus_ogg() {
         })
         .collect();
 
-    let cancel = std::sync::atomic::AtomicBool::new(false);
-    let opus_data = encode_to_opus_ogg(&samples, sample_rate, 2, 192, &cancel).unwrap();
+    let opus_data = encode_i32(
+        EncodeFormat::OpusOgg { bitrate_kbps: 192 },
+        &samples,
+        sample_rate,
+        2,
+    )
+    .unwrap();
 
     assert!(
         opus_data.len() > 100,
@@ -667,8 +712,15 @@ fn test_flac_roundtrip_is_lossless() {
         })
         .collect();
 
-    let cancel = std::sync::atomic::AtomicBool::new(false);
-    let flac_data = encode_to_flac(&original, sample_rate, 1, 16, &cancel).unwrap();
+    let flac_data = encode_i32(
+        EncodeFormat::Flac {
+            bits_per_sample: 16,
+        },
+        &original,
+        sample_rate,
+        1,
+    )
+    .unwrap();
     let decoded = decode_audio(buffer_from(&flac_data), None, None).unwrap();
 
     let compare_len = original.len().min(decoded.samples.len());
@@ -708,8 +760,15 @@ fn test_streaming_decode() {
     let samples: Vec<i32> = (0..44100)
         .map(|i| ((i as f64 * 0.01).sin() * 0.5 * i32::MAX as f64) as i32)
         .collect();
-    let cancel = std::sync::atomic::AtomicBool::new(false);
-    let flac_data = encode_to_flac(&samples, 44100, 1, 16, &cancel).unwrap();
+    let flac_data = encode_i32(
+        EncodeFormat::Flac {
+            bits_per_sample: 16,
+        },
+        &samples,
+        44100,
+        1,
+    )
+    .unwrap();
 
     let buffer = create_sparse_buffer(flac_data.len() as u64);
     let (mut sink, mut source, _ready) = create_track_stream_pair_with_capacity(44100, 1, 100000);
@@ -828,9 +887,13 @@ fn check_seek_to_produces_correct_samples(sample_rate: u32, channels: u32, bits_
         }
     }
 
-    let cancel = std::sync::atomic::AtomicBool::new(false);
-    let flac_data =
-        encode_to_flac(&original, sample_rate, channels, bits_per_sample, &cancel).unwrap();
+    let flac_data = encode_i32(
+        EncodeFormat::Flac { bits_per_sample },
+        &original,
+        sample_rate,
+        channels,
+    )
+    .unwrap();
     let ground_truth = decode_audio(buffer_from(&flac_data), None, None).unwrap();
 
     let seek_sample = sample_rate as u64; // 1 second
@@ -1188,4 +1251,120 @@ fn byte_seek_to_landing_is_sample_exact() {
             f64::NAN
         },
     );
+}
+
+/// A streaming (non-seekable) Opus/Ogg encode produces a valid stream: the Ogg
+/// muxer has a true streaming path, so a plain `Write` sink with no seek
+/// callback still yields a decodable file. This is the sink type a socket
+/// would use.
+#[test]
+fn streaming_opus_encode_into_a_plain_write_sink_is_decodable() {
+    use std::sync::Mutex;
+
+    init();
+
+    /// A Write-only sink (no Seek): bytes land in a shared Vec.
+    #[derive(Clone)]
+    struct SharedVec(Arc<Mutex<Vec<u8>>>);
+    impl std::io::Write for SharedVec {
+        fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+            self.0.lock().unwrap().extend_from_slice(buf);
+            Ok(buf.len())
+        }
+        fn flush(&mut self) -> std::io::Result<()> {
+            Ok(())
+        }
+    }
+
+    let sample_rate = 44_100u32;
+    let samples: Vec<i32> = (0..sample_rate as usize * 2)
+        .map(|i| {
+            let t = (i / 2) as f64 / sample_rate as f64;
+            (0.5 * i32::MAX as f64 * (2.0 * std::f64::consts::PI * 440.0 * t).sin()) as i32
+        })
+        .collect();
+
+    let out = SharedVec(Arc::new(Mutex::new(Vec::new())));
+    let mut encoder = StreamingEncoder::streaming(
+        StreamEncodeFormat::OpusOgg { bitrate_kbps: 192 },
+        Box::new(out.clone()),
+        Arc::new(std::sync::atomic::AtomicBool::new(false)),
+    );
+    encoder.on_format(sample_rate, 2);
+    encoder.on_samples(&samples);
+    encoder.finish().expect("streaming Opus encode");
+
+    let bytes = out.0.lock().unwrap().clone();
+    assert!(
+        bytes.len() > 100,
+        "Opus/Ogg stream too small: {}",
+        bytes.len()
+    );
+    assert_eq!(&bytes[0..4], b"OggS");
+
+    let decoded = decode_audio(buffer_from(&bytes), None, None).expect("decode streamed Opus");
+    assert_eq!(decoded.sample_rate, 48_000);
+    assert_eq!(decoded.channels, 2);
+    assert!(!decoded.samples.is_empty());
+}
+
+/// A seekable FLAC encode's patched STREAMINFO carries the real total-sample
+/// count — the header patch-back the seekable sink exists for. STREAMINFO's
+/// 36-bit total-samples field sits at bytes 21..26 of the file (after "fLaC" +
+/// the 4-byte block header + 10 bytes of rates/counts), high bits first.
+#[test]
+fn seekable_flac_encode_patches_streaminfo_total_samples() {
+    init();
+
+    let frames = 44_100u64; // 1s mono
+    let samples: Vec<i32> = vec![0i32; frames as usize];
+    let flac = encode_i32(
+        EncodeFormat::Flac {
+            bits_per_sample: 16,
+        },
+        &samples,
+        44_100,
+        1,
+    )
+    .expect("encode FLAC");
+    assert_eq!(&flac[0..4], b"fLaC");
+
+    // STREAMINFO: byte 21 low nibble = total-samples bits 32..36, bytes 22..26
+    // = bits 0..32.
+    let total = ((u64::from(flac[21] & 0x0F)) << 32)
+        | (u64::from(flac[22]) << 24)
+        | (u64::from(flac[23]) << 16)
+        | (u64::from(flac[24]) << 8)
+        | u64::from(flac[25]);
+    assert_eq!(
+        total, frames,
+        "STREAMINFO total_samples must be patched to the real frame count"
+    );
+}
+
+/// A PCM-shape change mid-encode (two decodes with different formats feeding
+/// one encoder) is recorded and surfaces at finish — the guarantee the
+/// CUE-image save relies on instead of its old pre-encode shape check.
+#[test]
+fn encoder_rejects_a_pcm_shape_change_mid_stream() {
+    init();
+
+    let mut encoder = StreamingEncoder::seekable(
+        EncodeFormat::Flac {
+            bits_per_sample: 16,
+        },
+        Box::new(std::io::Cursor::new(Vec::new())),
+        Arc::new(std::sync::atomic::AtomicBool::new(false)),
+    );
+    encoder.on_format(44_100, 2);
+    encoder.on_samples(&[0i32; 8820]);
+    encoder.on_format(48_000, 2); // a second track probes to a different rate
+    assert!(
+        encoder.error().is_some(),
+        "the shape change must be recorded when it happens"
+    );
+    let err = encoder
+        .finish()
+        .expect_err("finish must surface the shape change");
+    assert!(err.contains("PCM shape changed"), "unexpected error: {err}");
 }
