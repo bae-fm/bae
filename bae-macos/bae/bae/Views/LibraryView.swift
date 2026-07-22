@@ -1206,8 +1206,37 @@ private struct WorkDetailView: View {
                         representativeCover: nil,
                     )
                 }
-            let composerDetail = BridgeComposerDetail(
+            let composerDetail = previewComposerDetail(
                 composer: composers[0],
+                works: works
+            )
+            let workDetail = previewWorkDetail(work: works[0])
+            let library = Library(
+                getComposerCount: { UInt64(composers.count) },
+                getComposerPage: { _, offset, limit in
+                    let start = min(Int(offset), composers.count)
+                    let end = min(start + Int(limit), composers.count)
+                    return Array(composers[start..<end])
+                },
+                getComposerDetail: { _ in composerDetail },
+                getWorkDetail: { _ in workDetail },
+            )
+            let session = LibraryBrowseSession(
+                library: library,
+                projectionRegistry: ProjectionRegistry(),
+                libraryStore: libraryStore,
+                uiStore: uiStore
+            )
+            session.selectComposer("composer-0")
+            return (library, session)
+        }
+
+        private static func previewComposerDetail(
+            composer: BridgeComposerSummary,
+            works: [BridgeWorkSummary]
+        ) -> BridgeComposerDetail {
+            BridgeComposerDetail(
+                composer: composer,
                 workGroups: [
                     BridgeComposerWorkGroup(
                         id: "group-0",
@@ -1219,8 +1248,13 @@ private struct WorkDetailView: View {
                 unlinkedTrackRoles: [],
                 defaultWorkId: "work-0",
             )
-            let workDetail = BridgeWorkDetail(
-                work: works[0],
+        }
+
+        private static func previewWorkDetail(
+            work: BridgeWorkSummary
+        ) -> BridgeWorkDetail {
+            BridgeWorkDetail(
+                work: work,
                 childWorks: [],
                 releases: (0..<3)
                     .map { (index: Int) -> BridgeWorkReleaseSummary in
@@ -1244,24 +1278,6 @@ private struct WorkDetailView: View {
                         )
                     },
             )
-            let library = Library(
-                getComposerCount: { UInt64(composers.count) },
-                getComposerPage: { _, offset, limit in
-                    let start = min(Int(offset), composers.count)
-                    let end = min(start + Int(limit), composers.count)
-                    return Array(composers[start..<end])
-                },
-                getComposerDetail: { _ in composerDetail },
-                getWorkDetail: { _ in workDetail },
-            )
-            let session = LibraryBrowseSession(
-                library: library,
-                projectionRegistry: ProjectionRegistry(),
-                libraryStore: libraryStore,
-                uiStore: uiStore
-            )
-            session.selectComposer("composer-0")
-            return (library, session)
         }
     }
 

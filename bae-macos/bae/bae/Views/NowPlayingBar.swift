@@ -306,9 +306,22 @@ struct NowPlayingBar: View {
         .accessibilityLabel("Playback position")
     }
 
-    // MARK: - Right: queue + volume
+    private var repeatHelp: LocalizedStringKey {
+        switch repeatMode {
+        case .off:
+            "Repeat: off"
+        case .context:
+            "Repeat: context"
+        case .track:
+            "Repeat: track"
+        }
+    }
+}
 
-    private var trailingControls: some View {
+// MARK: - Right: queue + volume
+
+extension NowPlayingBar {
+    fileprivate var trailingControls: some View {
         HStack(spacing: 12) {
             queueButton
 
@@ -320,7 +333,7 @@ struct NowPlayingBar: View {
         }
     }
 
-    private var queueButton: some View {
+    fileprivate var queueButton: some View {
         Button(action: { showQueue.toggle() }) {
             queueGlyph
                 .frame(width: 32, height: 32)
@@ -372,7 +385,7 @@ struct NowPlayingBar: View {
     }
 
     @ViewBuilder
-    private var queueGlyph: some View {
+    fileprivate var queueGlyph: some View {
         let glyph = Image(systemName: "list.bullet")
             .font(.system(size: 17, weight: .medium))
         if showQueue {
@@ -383,7 +396,7 @@ struct NowPlayingBar: View {
         }
     }
 
-    private var muteButton: some View {
+    fileprivate var muteButton: some View {
         Button(action: onToggleMute) {
             Image(systemName: muteIconName)
                 .font(.system(size: 15, weight: .medium))
@@ -397,22 +410,11 @@ struct NowPlayingBar: View {
 
     /// The rendered volume level chooses the speaker glyph: silenced when muted
     /// or at zero, one wave up to the midpoint, two above it.
-    private var muteIconName: String {
+    fileprivate var muteIconName: String {
         if isMuted || volume == 0 {
             return "speaker.slash.fill"
         }
         return volume <= 0.55 ? "speaker.wave.1.fill" : "speaker.wave.2.fill"
-    }
-
-    private var repeatHelp: LocalizedStringKey {
-        switch repeatMode {
-        case .off:
-            "Repeat: off"
-        case .context:
-            "Repeat: context"
-        case .track:
-            "Repeat: track"
-        }
     }
 }
 

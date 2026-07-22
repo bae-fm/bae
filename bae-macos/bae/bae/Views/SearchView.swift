@@ -62,71 +62,68 @@ struct SearchView: View {
 
     private func resultsList(_ results: SearchResults) -> some View {
         VStack(alignment: .leading, spacing: 2) {
-            if !results.albums.isEmpty {
-                sectionHeader("Albums")
-                ForEach(results.albums, id: \.id) { album in
-                    SearchResultRow(
-                        cover: album.cover,
-                        title: album.title,
-                        subtitle: albumSubtitle(album),
-                        action: { onSelectAlbum(album.id) }
-                    )
-                }
+            resultsSection("Albums", results.albums, id: \.id) { album in
+                SearchResultRow(
+                    cover: album.cover,
+                    title: album.title,
+                    subtitle: albumSubtitle(album),
+                    action: { onSelectAlbum(album.id) }
+                )
             }
-
-            if !results.artists.isEmpty {
-                sectionHeader("Artists")
-                ForEach(results.artists, id: \.id) { artist in
-                    SearchResultRow(
-                        cover: artist.image,
-                        title: artist.name,
-                        subtitle:
-                            "\(artist.albumCount) \(String(localized: "Albums"))",
-                        action: { onSelectArtist(artist.artistId) }
-                    )
-                }
+            resultsSection("Artists", results.artists, id: \.id) { artist in
+                SearchResultRow(
+                    cover: artist.image,
+                    title: artist.name,
+                    subtitle:
+                        "\(artist.albumCount) \(String(localized: "Albums"))",
+                    action: { onSelectArtist(artist.artistId) }
+                )
             }
-
-            if !results.tracks.isEmpty {
-                sectionHeader("Tracks")
-                ForEach(results.tracks, id: \.id) { track in
-                    SearchResultRow(
-                        cover: track.cover,
-                        title: track.title,
-                        subtitle: trackSubtitle(track),
-                        trailing: track.durationLabel.isEmpty
-                            ? nil : track.durationLabel,
-                        action: { onSelectAlbum(track.albumId) }
-                    )
-                }
+            resultsSection("Tracks", results.tracks, id: \.id) { track in
+                SearchResultRow(
+                    cover: track.cover,
+                    title: track.title,
+                    subtitle: trackSubtitle(track),
+                    trailing: track.durationLabel.isEmpty
+                        ? nil : track.durationLabel,
+                    action: { onSelectAlbum(track.albumId) }
+                )
             }
-
-            if !results.composers.isEmpty {
-                sectionHeader("Composers")
-                ForEach(results.composers, id: \.id) { composer in
-                    SearchResultRow(
-                        cover: composer.image,
-                        title: composer.name,
-                        subtitle:
-                            "\(composer.workCount) \(String(localized: "Works"))",
-                        action: { onSelectComposer(composer.id) }
-                    )
-                }
+            resultsSection("Composers", results.composers, id: \.id) {
+                composer in
+                SearchResultRow(
+                    cover: composer.image,
+                    title: composer.name,
+                    subtitle:
+                        "\(composer.workCount) \(String(localized: "Works"))",
+                    action: { onSelectComposer(composer.id) }
+                )
             }
-
-            if !results.works.isEmpty {
-                sectionHeader("Works")
-                ForEach(results.works, id: \.id) { work in
-                    SearchResultRow(
-                        cover: work.representativeCover,
-                        title: work.title,
-                        subtitle: work.composerNames,
-                        action: { onSelectWork(work.id) }
-                    )
-                }
+            resultsSection("Works", results.works, id: \.id) { work in
+                SearchResultRow(
+                    cover: work.representativeCover,
+                    title: work.title,
+                    subtitle: work.composerNames,
+                    action: { onSelectWork(work.id) }
+                )
             }
         }
         .padding(8)
+    }
+
+    /// One search-result section: a header plus a row per item, rendered only
+    /// when the section is non-empty.
+    @ViewBuilder
+    private func resultsSection<Item, ID: Hashable, Row: View>(
+        _ title: LocalizedStringKey,
+        _ items: [Item],
+        id: KeyPath<Item, ID>,
+        @ViewBuilder row: @escaping (Item) -> Row
+    ) -> some View {
+        if !items.isEmpty {
+            sectionHeader(title)
+            ForEach(items, id: id) { row($0) }
+        }
     }
 
     private func sectionHeader(_ title: LocalizedStringKey) -> some View {
