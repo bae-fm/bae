@@ -302,29 +302,22 @@ pub struct DbRelease {
     pub created_at: DateTime<Utc>,
 }
 
-/// The playing context of a saved `playback_state` row: what is being played, how
-/// its tracks are ordered, and where the cursor sits. A substruct so "no context
-/// playing" (a single track, or nothing) is one `None` instead of three columns
-/// that are only ever all-present or all-absent — see
+/// The playing context of a saved `playback_state` row: the recipe to refill the
+/// lane on restart — what it played from, and whether it was shuffled. A
+/// substruct so "no context playing" (a single track, or nothing) is one `None`
+/// instead of two columns that are only ever both-present or both-absent — see
 /// `many-fields-none-together-means-a-missing-type`. The SQLite columns stay flat
-/// (`source`, `shuffle_seed`, `cursor`); the DB client splits this apart on save
-/// and reassembles it on load.
+/// (`source`, `shuffled`); the DB client splits this apart on save and
+/// reassembles it on load.
 #[derive(Debug, Clone, PartialEq)]
 pub struct DbPlaybackContext {
-    /// What the context plays from, encoded for the flat column: a release id, or
-    /// the library sentinel. See `source_to_str`/`source_from_str` in
-    /// `playback::persisted`.
+    /// What the context plays from, encoded for the flat column: a release id, a
+    /// JSON array of release ids, or the library sentinel. See
+    /// `source_to_str`/`source_from_str` in `playback::persisted`.
     pub source: String,
-    /// The `u64` shuffle seed reinterpreted as `i64` (SQLite's integer type) so
-    /// the high bit round-trips. `None` = sequential (source) order.
-    pub shuffle_seed: Option<i64>,
-    /// The track fronted when shuffle was toggled on over a playing context
-    /// (`Traversal::Shuffled::anchor`) — re-deriving the order from the seed
-    /// alone would reproduce the raw permutation, not the fronted one. `None`
-    /// for sequential order and for shuffled orders with no fronted track.
-    pub shuffle_anchor: Option<String>,
-    /// Index into the (ordered) tracks of the track currently playing.
-    pub cursor: i64,
+    /// Whether the lane was shuffled. Restore permutes the refilled lane afresh
+    /// — the session's shuffled order is deliberately not persisted.
+    pub shuffled: bool,
 }
 
 /// The single device-local `playback_state` row. Mirrors the table columns; the
@@ -344,7 +337,7 @@ pub struct DbPlaybackState {
 
 /// The outcome of reading the device-local `playback_state` resume cache. The
 /// row is bae's own write, so a structurally-impossible row (a `source` present
-/// without a `cursor`, or vice versa) is corruption — kept distinct from an
+/// without a `shuffled`, or vice versa) is corruption — kept distinct from an
 /// absent row so the caller can count it and clear it rather than silently
 /// starting fresh over a masked failure.
 pub enum LoadedPlaybackState {

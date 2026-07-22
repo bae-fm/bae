@@ -185,28 +185,17 @@ impl PlaybackService {
 
         // -- All fallible work first; the queue is untouched until it succeeds. --
 
-        // Re-materialize the context from its source's current tracks (deleted
-        // tracks fall out of the re-fetch). A fetch error abandons the restore; an
-        // empty result means the source is gone (the release was deleted, or the
-        // library is now empty); a result shorter than the saved cursor means the
-        // source shrank below where we were playing. Either way we drop the context
-        // and restore the manual lane only, so `build_context` only ever sees an
-        // in-range cursor.
+        // Refill the context lane from its source's current tracks (deleted tracks
+        // fall out of the re-fetch). A fetch error abandons the restore; an empty
+        // result means the source is gone (the release was deleted, or the library
+        // is now empty), so the context drops and the manual lane restores alone.
+        // The queue makes the same call for a recipe it can't resume (no current
+        // track, or one the source no longer holds).
         let (context, context_tracks) = match &parsed.queue.context {
             Some(cs) => match self.fetch_source_tracks(&cs.source).await {
                 Ok(tracks) if tracks.is_empty() => {
                     debug!(
                         "resume context source {:?} is gone; restoring the manual lane only",
-                        cs.source
-                    );
-                    (None, Vec::new())
-                }
-                Ok(tracks) if cs.cursor >= tracks.len() => {
-                    warn!(
-                        "saved cursor {} is past the {} current tracks of {:?}; \
-                         restoring the manual lane only",
-                        cs.cursor,
-                        tracks.len(),
                         cs.source
                     );
                     (None, Vec::new())
@@ -269,6 +258,9 @@ impl PlaybackService {
                 repeat,
             },
             context_tracks,
+            // A shuffled lane comes back freshly permuted — the session's shuffled
+            // order was never stored.
+            rand::random(),
         );
         emit_progress(
             &self.progress_tx,
@@ -334,10 +326,9 @@ impl PlaybackService {
 
     /// Fetch a context's tracks in source order for the source it plays from:
     /// a release's ordered track ids, several releases' track ids concatenated in
-    /// input order, or every library track. The one place the service re-derives a
-    /// context's tracks (the shuffle toggle, restore, and any future
-    /// `Context`-repeat re-fetch dispatch here so the sources stay in lockstep). A
-    /// missing release fails the whole re-fetch — the caller leaves the queue
+    /// input order, or every library track. The one place the service turns a
+    /// source into tracks, so a fill and a restore agree on what it holds. A
+    /// missing release fails the whole fetch — the caller leaves the queue
     /// unchanged rather than silently dropping tracks from a live order.
     pub(super) async fn fetch_source_tracks(
         &self,
@@ -416,17 +407,9 @@ impl PlaybackService {
             return;
         }
         let snap = self.playback_queue.snapshot();
-        let context = snap.context.map(|ctx| {
-            let (shuffle_seed, shuffle_anchor) = match ctx.traversal {
-                Traversal::Shuffled { seed, anchor } => (Some(seed as i64), anchor),
-                Traversal::Sequential => (None, None),
-            };
-            DbPlaybackContext {
-                source: source_to_str(&ctx.source),
-                shuffle_seed,
-                shuffle_anchor,
-                cursor: ctx.cursor as i64,
-            }
+        let context = snap.context.map(|ctx| DbPlaybackContext {
+            source: source_to_str(&ctx.source),
+            shuffled: ctx.shuffled,
         });
         let position_ms =
             (*self.current_position_shared.lock().unwrap()).map(|d| d.as_millis() as i64);

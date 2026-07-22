@@ -373,8 +373,11 @@ CREATE INDEX IF NOT EXISTS idx_audio_format_segments_format_id ON audio_format_s
 -- Device-local playback queue, restored after a restart on the same device.
 -- NOT synced: no `_updated_at` and absent from `synced_tables()`, the same
 -- device-local convention as coven's own bookkeeping tables. A single row
--- (id = 'current'). `source` is the context's release id (NULL for a single
--- track); `shuffle_seed` NULL means sequential, else shuffled with that seed.
+-- (id = 'current'). The row is the recipe to refill the queue, not its rows:
+-- `source` is what the context lane played from (NULL for a single track),
+-- `shuffled` whether that lane was shuffled, `manual` the Up Next track ids,
+-- and `current_track_id` the resume point. Session edits (removals, reorders,
+-- the shuffled order) are not stored — restore rebuilds a pristine lane.
 
 CREATE INDEX IF NOT EXISTS idx_work_artists_artist ON work_artists(artist_id);
 CREATE INDEX IF NOT EXISTS idx_work_artists_work ON work_artists(work_id);
@@ -390,13 +393,10 @@ CREATE INDEX IF NOT EXISTS idx_track_artist_roles_track ON track_artist_roles(tr
 CREATE TABLE IF NOT EXISTS playback_state (
     id               TEXT PRIMARY KEY,
     source           TEXT,
-    shuffle_seed     INTEGER,
-    -- The track fronted when shuffle was toggled on over a playing context,
-    -- kept so restore re-derives the fronted order (the seed alone reproduces
-    -- only the raw permutation). NULL for sequential order and un-anchored
-    -- shuffled orders.
-    shuffle_anchor   TEXT,
-    cursor           INTEGER,
+    -- Whether the context lane was shuffled. Restore refills the lane from
+    -- `source` and permutes it afresh; the session's shuffled order is not
+    -- stored. NULL exactly when `source` is (no context playing).
+    shuffled         INTEGER,
     manual           TEXT NOT NULL,
     repeat           TEXT NOT NULL,
     current_track_id TEXT,

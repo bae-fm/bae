@@ -1,4 +1,4 @@
-use crate::playback::queue::QueueEntry;
+use crate::playback::queue::{QueueEntry, QueueEntryId};
 
 /// What the queue is playing from: a single release (its track order), several
 /// releases concatenated in the order they were chosen, or the whole library. A
@@ -34,17 +34,17 @@ impl ContextSource {
     }
 }
 
-/// How the context's track order was derived, kept so `Context` repeat and
-/// restore can re-derive it: `Sequential` replays the source order; `Shuffled`
-/// permutes the source by `seed`, then moves `anchor` — the track that was
-/// playing when shuffle was turned on — to the front, so the whole rest of the
-/// source stays upcoming instead of landing behind the cursor where Next never
-/// reaches. `anchor` is `None` for orders no track was fronted into (a
-/// shuffled play-from-scratch, a repeat wrap's fresh pass).
-#[derive(Clone)]
-pub enum Traversal {
-    Sequential,
-    Shuffled { seed: u64, anchor: Option<String> },
+/// The lane's shuffle state, present exactly while the lane is shuffled — its
+/// absence is what "sequential" means.
+pub(crate) struct ShuffleState {
+    /// Every row's id in the order the lane had at the moment shuffle turned on.
+    /// Unshuffling rearranges the upcoming rows into their relative positions
+    /// here. Recorded for the whole lane, not just the upcoming tail, so it stays
+    /// well-defined after a repeat wrap moves played rows back into upcoming.
+    pub restore_order: Vec<QueueEntryId>,
+    /// Seed for the next in-place permutation of the lane. A repeat wrap
+    /// re-permutes; taking the seed advances it, so each pass differs.
+    pub next_seed: u64,
 }
 
 /// How a release becomes the playing context: at a chosen track in source order,
@@ -57,31 +57,25 @@ pub enum ContextStart {
     Shuffled { seed: u64 },
 }
 
-/// The thing playback is "playing from": a source's track order, traversed by a
-/// cursor.
+/// The thing playback is "playing from": the rows a source filled the lane with,
+/// traversed by a cursor.
 ///
-/// The tracks are held as per-instance [`QueueEntry`]s so the cursor walks
-/// forward (advance) and backward (Previous) over stable row ids, and `Context`
-/// repeat loops the stored order without re-fetching it. The whole order is held
-/// expanded — a release is small, and the library materializes to cheap track-id
-/// strings.
+/// The rows are the single authority over what plays: every operation — shuffle,
+/// removal, reorder, a repeat wrap — is surgery on `entries` themselves, and
+/// nothing consults `source` again during a session. The tracks are held as
+/// per-instance [`QueueEntry`]s so the cursor walks forward (advance) and
+/// backward (Previous) over stable row ids. The whole lane is held expanded — a
+/// release is small, and the library materializes to cheap track-id strings.
 pub(crate) struct PlaybackContext {
-    /// What this order came from (a release, or the whole library). Read by
-    /// persistence and the shuffle/repeat re-derive to re-fetch the tracks and
-    /// re-materialize the order.
+    /// What filled this lane (a release, several, or the whole library). Read for
+    /// exactly two things: the UI's section label, and the restart recipe.
     pub source: ContextSource,
-    /// The release's tracks in play order, each with a stable per-instance id.
+    /// The lane's rows in play order, each with a stable per-instance id.
     pub entries: Vec<QueueEntry>,
     /// Index into `entries` of the context track currently playing.
     pub cursor: usize,
-    /// How `entries` was ordered — replayed/re-derived on `Context` repeat.
-    pub traversal: Traversal,
-    /// Tracks the user removed from this context. A shuffle toggle rebuilds
-    /// the order from the re-fetched source and filters it through this set —
-    /// membership alone can't distinguish a user removal from a track newly
-    /// added to the source, and only the former stays out. Session-scoped: a
-    /// fresh context starts empty.
-    pub removed_track_ids: std::collections::HashSet<String>,
+    /// Present exactly while the lane is shuffled; `None` is sequential.
+    pub shuffle: Option<ShuffleState>,
 }
 
 impl PlaybackContext {
@@ -100,17 +94,16 @@ impl PlaybackContext {
     }
 }
 
-/// Permute `items` from `seed` and report the matching traversal. The queue uses
-/// this both when first shuffling a release and when re-deriving a shuffled
-/// context for a repeat loop. The same seed yields the same order, so a shuffled
-/// order does not change until it is re-derived — which is what lets Previous
-/// step back over the exact order that was played.
-pub(crate) fn shuffled_traversal<T>(items: &mut [T], seed: u64) -> Traversal {
+/// Permute `items` in place from `seed`. The queue permutes a slice of the lane
+/// (the upcoming tail, when shuffle turns on) or the whole lane (a fill, or a
+/// repeat wrap's fresh pass). The permutation is stable for a seed, so a shuffled
+/// order does not change until something permutes it again — which is what lets
+/// Previous step back over the exact order that was played.
+pub(crate) fn permute<T>(items: &mut [T], seed: u64) {
     use rand::seq::SliceRandom;
     use rand::SeedableRng;
     let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
     items.shuffle(&mut rng);
-    Traversal::Shuffled { seed, anchor: None }
 }
 
 #[cfg(test)]

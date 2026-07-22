@@ -27,15 +27,12 @@ async fn playback_state_saves_loads_replaces_and_clears() {
         LoadedPlaybackState::Absent
     ));
 
-    // A shuffled context whose seed has the high bit set: it must survive the
-    // SQLite i64 column round-trip.
-    let seed: u64 = 0xFFFF_FFFF_FFFF_FFFF;
+    // A shuffled context: the flag rides the nullable INTEGER column alongside
+    // the source, and reads back as a bool.
     let row = DbPlaybackState {
         context: Some(DbPlaybackContext {
             source: "rel-1".to_string(),
-            shuffle_seed: Some(seed as i64),
-            shuffle_anchor: None,
-            cursor: 3,
+            shuffled: true,
         }),
         manual: r#"["t1","t2"]"#.to_string(),
         repeat: "context".to_string(),
@@ -51,8 +48,7 @@ async fn playback_state_saves_loads_replaces_and_clears() {
     };
     let context = loaded.context.expect("a context");
     assert_eq!(context.source, "rel-1");
-    assert_eq!(context.shuffle_seed.map(|s| s as u64), Some(seed));
-    assert_eq!(context.cursor, 3);
+    assert!(context.shuffled);
     assert_eq!(loaded.manual, r#"["t1","t2"]"#);
     assert_eq!(loaded.repeat, "context");
     assert_eq!(loaded.current_track_id.as_deref(), Some("t5"));

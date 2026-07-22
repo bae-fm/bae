@@ -2331,21 +2331,21 @@ mod playback_state_load_tests {
         (db, tmp)
     }
 
-    /// `source` and `cursor` are written together, so a row carrying one without
-    /// the other is corrupt: `load_playback_state` reports `Corrupt` rather than
-    /// inventing a cursor or masking it as an absent cache.
+    /// `source` and `shuffled` are written together, so a row carrying one
+    /// without the other is corrupt: `load_playback_state` reports `Corrupt`
+    /// rather than inventing a flag or masking it as an absent cache.
     #[tokio::test]
-    async fn mismatched_source_and_cursor_discards_the_cache() {
+    async fn mismatched_source_and_shuffled_discards_the_cache() {
         let (db, _tmp) = empty_db().await;
 
-        // Write a row by hand with a present source but a NULL cursor --
+        // Write a row by hand with a present source but a NULL shuffled --
         // `save_playback_state` never produces this, so we insert it directly.
         db.call(|conn| {
             conn.execute(
                 "INSERT INTO playback_state \
-                     (id, source, shuffle_seed, cursor, manual, repeat, \
+                     (id, source, shuffled, manual, repeat, \
                       current_track_id, position_ms, volume, is_muted) \
-                     VALUES ('current', 'rel-1', NULL, NULL, '[]', 'off', \
+                     VALUES ('current', 'rel-1', NULL, '[]', 'off', \
                       NULL, NULL, 1.0, 0)",
                 [],
             )

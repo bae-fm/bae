@@ -1,10 +1,10 @@
-use std::collections::{HashSet, VecDeque};
+use std::collections::{HashMap, HashSet, VecDeque};
 
 use tracing::warn;
 
 use super::RepeatMode;
 use crate::playback::context::{
-    shuffled_traversal, ContextSource, ContextStart, PlaybackContext, Traversal,
+    permute, ContextSource, ContextStart, PlaybackContext, ShuffleState,
 };
 use coven::IdRef;
 
@@ -58,13 +58,14 @@ enum EntryLocation {
     Context(usize),
 }
 
-/// The persistable view of a playing context (what it plays from and how it's
-/// ordered), without the per-instance entry ids — those are local UI identity,
-/// re-minted on restore. Re-materialized from `source` + `traversal` on load.
+/// The persistable view of a playing context: the recipe to refill the lane, not
+/// the lane itself. Session edits (removals, reorders, the shuffled order) are
+/// deliberately not persisted — storing the row list would rewrite a
+/// library-sized blob on every edit. Restore fills the lane from `source` in
+/// source order and shuffles it afresh when `shuffled`.
 pub struct ContextSnapshot {
     pub source: ContextSource,
-    pub traversal: Traversal,
-    pub cursor: usize,
+    pub shuffled: bool,
 }
 
 /// The persistable view of the whole queue. The service pairs this with the live
@@ -89,6 +90,28 @@ fn before_insert_index(before_pos: Option<usize>, from: usize, len: usize) -> us
         Some(pos) if pos > from => pos - 1,
         Some(pos) => pos,
         None => len,
+    }
+}
+
+/// Pair a lane's rows with the cursor and shuffle state that complete a context.
+/// The caller passes non-empty `entries` and an in-range `cursor` (`play_release`
+/// validates its index; `restore` derives the cursor from the current track's
+/// position), so a present context is always non-empty with a valid cursor.
+fn build_context(
+    source: ContextSource,
+    entries: Vec<QueueEntry>,
+    cursor: usize,
+    shuffle: Option<ShuffleState>,
+) -> PlaybackContext {
+    debug_assert!(
+        cursor < entries.len(),
+        "caller must pass a non-empty lane and an in-range cursor"
+    );
+    PlaybackContext {
+        source,
+        entries,
+        cursor,
+        shuffle,
     }
 }
 
@@ -188,81 +211,42 @@ impl PlaybackQueue {
 
     // -- Context ---------------------------------------------------------------
 
-    /// Order a source's tracks under a traversal and mint a fresh
-    /// per-instance id per track: a shuffled traversal re-permutes `tracks` from
-    /// its seed and fronts its anchor when it has one (the same seed and anchor
-    /// yield the same order, so a restored shuffle reproduces what was played);
-    /// a sequential one keeps source order. Shared by `build_context` (which
-    /// pairs the order with a caller-supplied cursor) and `set_shuffle` (which
-    /// derives the cursor from the playing track).
-    fn materialize_entries(
-        &self,
-        mut tracks: Vec<String>,
-        traversal: &Traversal,
-    ) -> Vec<QueueEntry> {
-        if let Traversal::Shuffled { seed, anchor } = traversal {
-            shuffled_traversal(&mut tracks, *seed);
-            if let Some(anchor) = anchor {
-                match tracks.iter().position(|t| t == anchor) {
-                    Some(pos) => {
-                        let track = tracks.remove(pos);
-                        tracks.insert(0, track);
-                    }
-                    None => warn!(
-                        "shuffle anchor {anchor} absent from the source; \
-                         keeping the raw shuffled order"
-                    ),
-                }
-            }
-        }
+    /// Mint one row per track, in the order given. Rows enter the context lane
+    /// only here — at fill time — so mid-session the lane can shrink and
+    /// rearrange but never grow.
+    fn mint_entries(&self, tracks: Vec<String>) -> Vec<QueueEntry> {
         tracks.into_iter().map(|t| self.mint(t)).collect()
     }
 
-    /// Build a `PlaybackContext` from a source's tracks under a traversal,
-    /// pairing the materialized order with `cursor`. The caller passes non-empty
-    /// `tracks` and an in-range `cursor` (`play_release` validates its index;
-    /// `restore` validates the saved cursor against the re-fetched tracks), so the
-    /// context is non-empty with a valid cursor.
-    fn build_context(
-        &self,
-        source: ContextSource,
-        tracks: Vec<String>,
-        cursor: usize,
-        traversal: Traversal,
-    ) -> PlaybackContext {
-        let entries = self.materialize_entries(tracks, &traversal);
-        debug_assert!(
-            cursor < entries.len(),
-            "caller must pass an in-range cursor"
-        );
-        PlaybackContext {
-            source,
-            entries,
-            cursor,
-            traversal,
-            removed_track_ids: std::collections::HashSet::new(),
-        }
-    }
-
-    /// Make a source's tracks the playing context: build their order under
-    /// `start`, set the cursor, and make the cursor entry current. Clears the
-    /// manual lane (a fresh playback session). Returns the track to play. The
-    /// caller passes a non-empty `track_ids` (and an in-range `Index`); the
-    /// context is therefore non-empty with a valid cursor.
+    /// Make a source's tracks the playing context: fill the lane, set the cursor,
+    /// and make the cursor row current. Returns the track to play. Up Next is
+    /// untouched — it is the user's own arrangement and drains before the new
+    /// context. The caller passes a non-empty `track_ids` (and an in-range
+    /// `Index`); the lane is therefore non-empty with a valid cursor.
     pub fn play_release(
         &mut self,
         source: ContextSource,
         track_ids: Vec<String>,
         start: ContextStart,
     ) -> String {
-        self.manual.clear();
-        let (cursor, traversal) = match start {
-            ContextStart::Index(index) => (index, Traversal::Sequential),
-            // A shuffled play-from-scratch starts at the raw order's head — no
-            // track was playing, so there is nothing to front.
-            ContextStart::Shuffled { seed } => (0, Traversal::Shuffled { seed, anchor: None }),
+        let mut entries = self.mint_entries(track_ids);
+        let (cursor, shuffle) = match start {
+            ContextStart::Index(index) => (index, None),
+            ContextStart::Shuffled { seed } => {
+                // Stamped before the permutation, so a later unshuffle lands the
+                // lane back in source order.
+                let restore_order = entries.iter().map(|e| e.id.clone()).collect();
+                permute(&mut entries, seed);
+                (
+                    0,
+                    Some(ShuffleState {
+                        restore_order,
+                        next_seed: seed.wrapping_add(1),
+                    }),
+                )
+            }
         };
-        let context = self.build_context(source, track_ids, cursor, traversal);
+        let context = build_context(source, entries, cursor, shuffle);
         let track = context.current().track_id.clone();
         self.current = Some(context.current().clone());
         self.context = Some(context);
@@ -270,94 +254,68 @@ impl PlaybackQueue {
         track
     }
 
-    /// Play a single track with no surrounding context — nothing is queued after
-    /// it. Used when a track's release can't be loaded; clears the manual lane.
+    /// Play a single track with no surrounding context. Used when a track's
+    /// release can't be loaded. Up Next is untouched and drains after it.
     pub fn play_single(&mut self, track_id: String) {
-        self.manual.clear();
         self.context = None;
         self.current = Some(self.mint(track_id));
         self.revision += 1;
     }
 
-    /// Set the playing context to sequential or shuffled order while the playing
-    /// track keeps playing. `on` materializes a shuffled order from `seed` with
-    /// the playing context track fronted (the traversal's anchor), so the whole
-    /// rest of the source stays upcoming — a randomly-placed anchor would strand
-    /// everything before it behind the cursor, where Next never reaches. Off
-    /// restores `source_tracks` order. `source_tracks` is the context's own source
-    /// release in source order (the service re-fetched it). The new order is stable
-    /// until changed again — Previous walks exactly it, not a fresh shuffle per
-    /// skip. `seed` is used only when `on`.
-    ///
-    /// The cursor lands on the context's own cursor track — the one the context is
-    /// playing from — which came from `source_tracks` and so is present in the new
-    /// order. (When a manual-lane track is the playing track, the context isn't the
-    /// `current` entry; it resumes from where its cursor sat, not from the start.
-    /// `self.manual` and `self.current` are untouched.)
-    pub fn set_shuffle(&mut self, on: bool, source_tracks: Vec<String>, seed: u64) {
-        let Some(ctx) = self.context.as_ref() else {
+    /// Set the context lane to shuffled or sequential order in place. The rows are
+    /// the authority — nothing is re-fetched, so removals and reorders survive the
+    /// toggle and no track can enter the lane. The current row and the history
+    /// before it never move; only the upcoming tail is rearranged. `seed` is used
+    /// only when turning shuffle on.
+    pub fn set_shuffle(&mut self, on: bool, seed: u64) {
+        let Some(ctx) = self.context.as_mut() else {
             warn!("set_shuffle: no playing context to shuffle; ignoring");
             return;
         };
-        let anchor_track_id = ctx.current().track_id.clone();
-        // `source_tracks` is the release's full list, but tracks the user
-        // removed from the context are edits that survive a shuffle toggle —
-        // rebuilding from the unfiltered source would resurrect every removal.
-        // Filtering by the recorded removals (not by current membership) keeps
-        // tracks newly added to the source eligible to enter the order.
-        let source_tracks: Vec<String> = source_tracks
-            .into_iter()
-            .filter(|t| !ctx.removed_track_ids.contains(t))
-            .collect();
-        if source_tracks.is_empty() {
-            // Everything the re-fetched source offers was removed from this
-            // context; an empty rebuild would leave a cursor with no entry.
-            warn!(
-                "set_shuffle: no re-fetched source track survives the \
-                 context's removals; leaving the order unchanged"
-            );
+        if ctx.shuffle.is_some() == on {
             return;
         }
-        let traversal = if on {
-            Traversal::Shuffled {
-                seed,
-                anchor: Some(anchor_track_id.clone()),
+        let upcoming = ctx.cursor + 1;
+        match ctx.shuffle.take() {
+            Some(state) => {
+                // Every upcoming row's id is in `restore_order` — rows enter the
+                // lane only at fill time, and the stamp covers the whole lane —
+                // so sorting by position in it is total. Rows removed while
+                // shuffled are simply absent from the slice being sorted, and
+                // every survivor keeps its place in line.
+                let position: HashMap<&QueueEntryId, usize> = state
+                    .restore_order
+                    .iter()
+                    .enumerate()
+                    .map(|(i, id)| (id, i))
+                    .collect();
+                ctx.entries[upcoming..].sort_by_key(|e| {
+                    *position
+                        .get(&e.id)
+                        .expect("every lane row was stamped when shuffle turned on")
+                });
             }
-        } else {
-            Traversal::Sequential
-        };
-        let entries = self.materialize_entries(source_tracks, &traversal);
-        let cursor = entries
-            .iter()
-            .position(|e| e.track_id == anchor_track_id)
-            .unwrap_or_else(|| {
-                warn!(
-                    "set_shuffle: context track {anchor_track_id} absent from \
-                     re-fetched source; resuming the context at its start"
-                );
-                0
-            });
-        self.context = Some(PlaybackContext {
-            source: ctx.source.clone(),
-            entries,
-            cursor,
-            traversal,
-            // The removals survive the rebuild — they are what filtered the
-            // source above, and the next toggle filters through them again.
-            removed_track_ids: ctx.removed_track_ids.clone(),
-        });
+            None => {
+                let restore_order = ctx.entries.iter().map(|e| e.id.clone()).collect();
+                permute(&mut ctx.entries[upcoming..], seed);
+                ctx.shuffle = Some(ShuffleState {
+                    restore_order,
+                    next_seed: seed.wrapping_add(1),
+                });
+            }
+        }
         self.revision += 1;
     }
 
     // -- Persistence -----------------------------------------------------------
 
-    /// The persistable view of the queue (track ids and ordering, no entry ids).
+    /// The persistable view of the queue (the refill recipe and track ids, no
+    /// entry ids).
     pub fn snapshot(&self) -> QueueSnapshot {
         QueueSnapshot {
             context: self.context.as_ref().map(|ctx| ContextSnapshot {
                 source: ctx.source.clone(),
-                traversal: ctx.traversal.clone(),
-                cursor: ctx.cursor,
+                shuffled: ctx.shuffle.is_some(),
             }),
             manual: self.manual.iter().map(|e| e.track_id.clone()).collect(),
             current_track_id: self.current.as_ref().map(|e| e.track_id.clone()),
@@ -365,25 +323,31 @@ impl PlaybackQueue {
         }
     }
 
-    /// Rebuild from a snapshot. `context_tracks` is the source release's tracks in
-    /// SOURCE order (the service fetched them from the snapshot's context source);
-    /// empty when there is no context. Re-materializes the context order under the
-    /// stored traversal — a shuffled order re-derives identically from its seed, so
-    /// the cursor still lands on the same track — re-instantiates the manual lane
-    /// with fresh entry ids, restores repeat, and sets `current` from
-    /// `current_track_id`.
-    pub fn restore(&mut self, snapshot: QueueSnapshot, context_tracks: Vec<String>) {
+    /// Rebuild from a snapshot. `context_tracks` is the source's tracks in SOURCE
+    /// order (the service re-fetched them); empty when there is no context.
+    /// `shuffle_seed` permutes a shuffled restore and is unused otherwise.
+    ///
+    /// The lane comes back pristine — session edits were never persisted. A
+    /// sequential restore is source order with the cursor on the current track,
+    /// so history is the source prefix and Previous works; a shuffled restore is
+    /// the current track first with the rest freshly permuted behind it.
+    pub fn restore(
+        &mut self,
+        snapshot: QueueSnapshot,
+        context_tracks: Vec<String>,
+        shuffle_seed: u64,
+    ) {
         self.repeat = snapshot.repeat;
         self.manual = snapshot.manual.into_iter().map(|t| self.mint(t)).collect();
-        self.context = match snapshot.context {
-            Some(cs) if !context_tracks.is_empty() => {
-                Some(self.build_context(cs.source, context_tracks, cs.cursor, cs.traversal))
-            }
-            _ => None,
-        };
+        self.context = self.restore_context(
+            snapshot.context,
+            context_tracks,
+            snapshot.current_track_id.as_deref(),
+            shuffle_seed,
+        );
         // The playing track is a manual entry or the context's cursor entry. If it
-        // is neither — the track survives but its context was dropped (the release
-        // shrank past the cursor) — resume it as a standalone track.
+        // is neither — the track survives but its context was dropped (the source
+        // no longer holds it) — resume it as a standalone track.
         if let Some(tid) = snapshot.current_track_id {
             let from_manual = self.manual.iter().find(|e| e.track_id == tid).cloned();
             let from_context = self
@@ -402,6 +366,60 @@ impl PlaybackQueue {
             self.current = None;
         }
         self.revision += 1;
+    }
+
+    /// Refill the context lane from a snapshot's recipe, or drop it. The recipe
+    /// only resumes when it is whole: a source with tracks, and a current track
+    /// the lane can put the cursor on. Any other shape logs what was missing and
+    /// yields `None` — [`PlaybackQueue::restore`] then resumes the current track
+    /// standalone rather than cueing a lane the user was never playing.
+    fn restore_context(
+        &self,
+        snapshot: Option<ContextSnapshot>,
+        tracks: Vec<String>,
+        current_track_id: Option<&str>,
+        shuffle_seed: u64,
+    ) -> Option<PlaybackContext> {
+        let cs = snapshot?;
+        if tracks.is_empty() {
+            warn!("resume context {:?} has no tracks; dropping it", cs.source);
+            return None;
+        }
+        let Some(current) = current_track_id else {
+            warn!(
+                "resume context {:?} has no current track to resume at; dropping it",
+                cs.source
+            );
+            return None;
+        };
+        let Some(index) = tracks.iter().position(|t| t == current) else {
+            warn!(
+                "resume current track {current:?} is absent from the {} tracks of {:?}; \
+                 dropping the context",
+                tracks.len(),
+                cs.source
+            );
+            return None;
+        };
+        let mut entries = self.mint_entries(tracks);
+        if !cs.shuffled {
+            return Some(build_context(cs.source, entries, index, None));
+        }
+        // Stamped over source order before the permutation, so unshuffling after
+        // a restart lands the lane in source order.
+        let restore_order = entries.iter().map(|e| e.id.clone()).collect();
+        let current = entries.remove(index);
+        permute(&mut entries, shuffle_seed);
+        entries.insert(0, current);
+        Some(build_context(
+            cs.source,
+            entries,
+            0,
+            Some(ShuffleState {
+                restore_order,
+                next_seed: shuffle_seed.wrapping_add(1),
+            }),
+        ))
     }
 
     // -- id-based operations across both lanes ---------------------------------
@@ -424,10 +442,6 @@ impl PlaybackQueue {
                     .as_mut()
                     .expect("locate reported a context entry");
                 let removed = ctx.entries.remove(pos);
-                // A user edit that outlives this materialization: shuffle
-                // toggles rebuild from the re-fetched source and filter it
-                // through the recorded removals.
-                ctx.removed_track_ids.insert(removed.track_id.clone());
                 if pos < ctx.cursor {
                     ctx.cursor -= 1;
                 }
@@ -616,27 +630,31 @@ impl PlaybackQueue {
         }
 
         // The manual lane and the context tail are both exhausted. Under
-        // `Context` repeat, loop the (non-empty) context from its start, re-
-        // deriving a shuffled order with a fresh seed so each pass differs.
+        // `Context` repeat, loop the (non-empty) lane from its start, permuting
+        // it afresh when shuffled so each pass differs.
         if self.repeat == RepeatMode::Context && self.context.is_some() {
-            self.rederive_context();
+            self.repermute_for_repeat_pass();
             return NextEntry::Play(self.play_context_at(0));
         }
 
         NextEntry::Stop
     }
 
-    /// Re-derive the context's order for a fresh repeat pass: a shuffled context
-    /// re-permutes its entries with the next seed so the loop is a different
-    /// order; a sequential one is left as-is. The cursor is reset to the start by
-    /// the `play_context_at(0)` that follows.
-    fn rederive_context(&mut self) {
+    /// Permute the whole lane for a fresh repeat pass when it is shuffled — a new
+    /// pass over the same rows, so removals and reorders carry into it. Taking the
+    /// seed advances it, so consecutive passes differ. `restore_order` is left
+    /// alone: it stamps the lane, not this pass, so unshuffling after a wrap is
+    /// still well-defined. A sequential lane keeps its order; the cursor is reset
+    /// to the start by the `play_context_at(0)` that follows.
+    fn repermute_for_repeat_pass(&mut self) {
         let ctx = self
             .context
             .as_mut()
-            .expect("rederive_context: context present");
-        if let Traversal::Shuffled { seed, .. } = ctx.traversal {
-            ctx.traversal = shuffled_traversal(&mut ctx.entries, seed.wrapping_add(1));
+            .expect("repermute_for_repeat_pass: context present");
+        if let Some(shuffle) = ctx.shuffle.as_mut() {
+            let seed = shuffle.next_seed;
+            shuffle.next_seed = seed.wrapping_add(1);
+            permute(&mut ctx.entries, seed);
         }
     }
 
@@ -707,7 +725,7 @@ impl PlaybackQueue {
     pub fn context_projection(&self) -> Option<ContextProjection> {
         self.context.as_ref().map(|ctx| ContextProjection {
             source: ctx.source.clone(),
-            shuffled: matches!(ctx.traversal, Traversal::Shuffled { .. }),
+            shuffled: ctx.shuffle.is_some(),
             upcoming: ctx.upcoming().to_vec(),
         })
     }
@@ -747,14 +765,15 @@ impl PlaybackQueue {
     }
 
     /// The only edge that can produce a physical-side pause: the next track in
-    /// the current release context while that context is sequential. Manual
-    /// queue entries and shuffled traversals are not physical side playback.
+    /// the current release context while that lane is sequential. Manual queue
+    /// entries and a shuffled lane are not physical side playback — shuffling
+    /// closes this gate, unshuffling reopens it.
     pub fn next_sequential_context_track(&self) -> Option<&str> {
         if !self.manual.is_empty() {
             return None;
         }
         let ctx = self.context.as_ref()?;
-        if !matches!(ctx.traversal, Traversal::Sequential) {
+        if ctx.shuffle.is_some() {
             return None;
         }
         ctx.upcoming().first().map(|e| e.track_id.as_str())
@@ -778,15 +797,8 @@ impl PlaybackQueue {
         self.revision
     }
 
-    /// What the playing context plays from (a release or the library), or `None`
-    /// when nothing is playing. The shuffle toggle and `Context` repeat read this
-    /// to re-fetch the context's source tracks before re-materializing the order.
-    pub fn context_source(&self) -> Option<&ContextSource> {
-        self.context.as_ref().map(|ctx| &ctx.source)
-    }
-
-    /// The whole context order (including the tracks behind the cursor) as track
-    /// ids. For tests that assert re-materialization keeps every track.
+    /// The whole context lane (including the rows behind the cursor) as track
+    /// ids. For tests that assert an operation kept every row.
     #[cfg(test)]
     fn context_order(&self) -> Vec<String> {
         let ctx = self
@@ -997,6 +1009,42 @@ mod tests {
         assert_eq!(upcoming_tracks(&q), vec!["t3"]);
     }
 
+    /// Up Next is the user's own arrangement: filling the context lane leaves it
+    /// alone, and it still drains before the newly filled context.
+    #[test]
+    fn test_play_release_leaves_up_next_intact() {
+        let mut q = queue();
+        q.add_to_queue(rel(&["m1", "m2"]));
+
+        let first = q.play_release(
+            rel_src("r1"),
+            rel(&["t1", "t2", "t3"]),
+            ContextStart::Index(0),
+        );
+
+        assert_eq!(first, "t1");
+        assert_eq!(
+            upcoming_tracks(&q),
+            vec!["m1", "m2", "t2", "t3"],
+            "Up Next survives the fill and drains first"
+        );
+        assert!(matches!(q.next_entry(), NextEntry::Play(t) if t == "m1"));
+        assert!(matches!(q.next_entry(), NextEntry::Play(t) if t == "m2"));
+        assert!(matches!(q.next_entry(), NextEntry::Play(t) if t == "t2"));
+    }
+
+    #[test]
+    fn test_play_single_leaves_up_next_intact() {
+        let mut q = queue();
+        q.add_to_queue(rel(&["m1", "m2"]));
+
+        q.play_single("solo".into());
+
+        assert_eq!(q.current_track_id(), Some("solo"));
+        assert_eq!(upcoming_tracks(&q), vec!["m1", "m2"]);
+        assert!(matches!(q.next_entry(), NextEntry::Play(t) if t == "m1"));
+    }
+
     #[test]
     fn test_play_release_shuffled_keeps_all_tracks() {
         let mut q = queue();
@@ -1010,47 +1058,9 @@ mod tests {
         assert_eq!(all, vec!["t1", "t2", "t3", "t4"]);
     }
 
-    /// Both shuffle entry points — playing a release pre-shuffled, and toggling
-    /// shuffle on later over an already-playing sequential context — derive the
-    /// same order from the same seed each time, not a fresh random one per call.
-    #[test]
-    fn shuffle_entry_points_are_deterministic_for_a_seed() {
-        let play_release_shuffled_order = |seed| {
-            let mut q = queue();
-            q.play_release(
-                rel_src("r1"),
-                rel(&["t1", "t2", "t3", "t4", "t5"]),
-                ContextStart::Shuffled { seed },
-            );
-            full_order(&q)
-        };
-        assert_eq!(
-            play_release_shuffled_order(42),
-            play_release_shuffled_order(42),
-            "play_release with a shuffled start yields the same order for the same seed"
-        );
-
-        let set_shuffle_on_order = |seed| {
-            let mut q = queue();
-            q.play_release(
-                rel_src("r1"),
-                rel(&["t1", "t2", "t3", "t4", "t5"]),
-                ContextStart::Index(0),
-            );
-            q.set_shuffle(true, rel(&["t1", "t2", "t3", "t4", "t5"]), seed);
-            q.context_order()
-        };
-        assert_eq!(
-            set_shuffle_on_order(42),
-            set_shuffle_on_order(42),
-            "set_shuffle(true) yields the same order for the same seed"
-        );
-    }
-
-    /// A repeating shuffled context loops a freshly re-derived order each pass,
-    /// not the same order every time. Both passes' orders are read from the queue
-    /// (no re-implementation of the shuffle) and are deterministic for a fixed
-    /// seed.
+    /// A repeating shuffled lane loops a freshly permuted order each pass, not
+    /// the same order every time. Both passes' orders are read from the queue (no
+    /// re-implementation of the shuffle) and are deterministic for a fixed seed.
     #[test]
     fn test_context_repeat_shuffled_loops_a_re_derived_order() {
         let mut q = queue();
@@ -1078,6 +1088,71 @@ mod tests {
         assert_ne!(
             first_pass, second_pass,
             "but in a freshly re-derived order each pass"
+        );
+    }
+
+    /// Stamping the WHOLE lane (not just the upcoming tail) is what keeps
+    /// unshuffle well-defined after a repeat wrap has moved played rows back into
+    /// upcoming: the post-wrap unshuffle lands every upcoming row in the stamp's
+    /// relative order.
+    #[test]
+    fn test_unshuffle_after_a_repeat_wrap_lands_in_the_stamped_order() {
+        let mut q = queue();
+        q.play_release(
+            rel_src("r1"),
+            rel(&["t1", "t2", "t3", "t4", "t5"]),
+            ContextStart::Index(0),
+        );
+        // Shuffle on from the head, so the stamp is source order.
+        q.set_shuffle(true, 7);
+        q.set_repeat_mode(RepeatMode::Context);
+        // Play through the pass; the next advance wraps and re-permutes the lane.
+        for _ in 0..4 {
+            q.next_entry();
+        }
+        assert!(matches!(q.next_entry(), NextEntry::Play(_)));
+
+        q.set_shuffle(false, 0);
+
+        let wrapped_current = q.current_track_id().unwrap().to_string();
+        let expected: Vec<&str> = ["t1", "t2", "t3", "t4", "t5"]
+            .into_iter()
+            .filter(|t| *t != wrapped_current)
+            .collect();
+        assert_eq!(
+            upcoming_tracks(&q),
+            expected,
+            "every row after the wrap's cursor sits in the stamped order"
+        );
+    }
+
+    /// A sequential lane under `Context` repeat wraps to row 0 in the same order,
+    /// carrying the session's removals and reorders into the next pass.
+    #[test]
+    fn test_context_repeat_sequential_wrap_carries_edits_into_the_next_pass() {
+        let mut q = queue();
+        q.play_release(
+            rel_src("r1"),
+            rel(&["t1", "t2", "t3", "t4"]),
+            ContextStart::Index(0),
+        );
+        // Remove t2 and move t4 ahead of t3: the lane becomes [t1, t4, t3].
+        let up = q.upcoming();
+        let t2_id = up[0].id.clone();
+        let t3_id = up[1].id.clone();
+        let t4_id = up[2].id.clone();
+        q.remove(&t2_id);
+        q.reorder(&t4_id, Some(&t3_id));
+        assert_eq!(q.context_order(), vec!["t1", "t4", "t3"]);
+
+        q.set_repeat_mode(RepeatMode::Context);
+        q.next_entry(); // t4
+        q.next_entry(); // t3
+        assert!(matches!(q.next_entry(), NextEntry::Play(t) if t == "t1"));
+        assert_eq!(
+            q.context_order(),
+            vec!["t1", "t4", "t3"],
+            "the wrap replays the edited lane, not the source"
         );
     }
 
@@ -1110,7 +1185,7 @@ mod tests {
         );
         assert_eq!(q.current_track_id(), Some("t3"));
 
-        q.set_shuffle(true, rel(&["t1", "t2", "t3", "t4", "t5"]), 7);
+        q.set_shuffle(true, 7);
 
         // The playing track keeps playing; the cursor sits on it.
         assert_eq!(q.current_track_id(), Some("t3"));
@@ -1120,19 +1195,19 @@ mod tests {
             "the context reports shuffled after turning shuffle on"
         );
 
-        // Every source track is retained in the new order, just re-ordered.
+        // Every row is retained in the new order, just re-ordered.
         let mut all = q.context_order();
         all.sort();
         assert_eq!(all, vec!["t1", "t2", "t3", "t4", "t5"], "no track is lost");
     }
 
-    /// Turning shuffle on keeps the WHOLE rest of the release upcoming: the
-    /// playing track fronts the new order rather than landing at a random
-    /// position, which would strand everything before it behind the cursor
-    /// where Next never reaches. Checked across seeds — with a random anchor
-    /// position this held only when the anchor happened to land first.
+    /// Turning shuffle on is surgery on the upcoming tail alone: the current row
+    /// and the history before it stay exactly where they were, and every unplayed
+    /// row stays upcoming — none is stranded behind the cursor where Next never
+    /// reaches. Checked across seeds, since a permutation that happens to fix a
+    /// row in place would hide the bug.
     #[test]
-    fn test_set_shuffle_on_fronts_the_playing_track() {
+    fn test_set_shuffle_on_keeps_history_and_permutes_only_upcoming() {
         for seed in 0..8 {
             let mut q = queue();
             q.play_release(
@@ -1140,64 +1215,89 @@ mod tests {
                 rel(&["t1", "t2", "t3", "t4", "t5"]),
                 ContextStart::Index(2),
             );
-            q.set_shuffle(true, rel(&["t1", "t2", "t3", "t4", "t5"]), seed);
-            assert_eq!(q.current_track_id(), Some("t3"));
+            q.set_shuffle(true, seed);
+
+            assert_eq!(q.current_track_id(), Some("t3"), "seed {seed}");
+            assert_eq!(
+                q.context_order()[..3],
+                ["t1", "t2", "t3"],
+                "seed {seed}: the history and the current row never move"
+            );
             let mut rest = upcoming_tracks(&q);
             rest.sort();
             assert_eq!(
                 rest,
-                vec!["t1", "t2", "t4", "t5"],
-                "seed {seed}: every other track stays upcoming after a reshuffle"
+                vec!["t4", "t5"],
+                "seed {seed}: every unplayed row stays upcoming"
             );
         }
     }
 
-    /// Tracks removed from the context stay removed across a shuffle toggle:
-    /// the re-fetched source is filtered to the context's surviving tracks, so
-    /// a reshuffle permutes what's actually queued rather than resurrecting
-    /// every removal from the release's full track list.
+    /// The lane is the authority: a reorder made before shuffling round-trips
+    /// exactly, because the stamp taken when shuffle turns on is lane order — not
+    /// album order.
     #[test]
-    fn test_set_shuffle_on_excludes_removed_context_tracks() {
+    fn test_shuffle_round_trip_restores_a_reordered_lane_not_source_order() {
         let mut q = queue();
         q.play_release(
             rel_src("r1"),
             rel(&["t1", "t2", "t3", "t4", "t5"]),
             ContextStart::Index(0),
         );
-        // Remove t2 and t4 from the tail.
-        let t2_id = q.upcoming()[0].id.clone();
-        let t4_id = q.upcoming()[2].id.clone();
-        q.remove(&t2_id);
-        q.remove(&t4_id);
+        // Move t5 to the front of the upcoming tail: [t2, t3, t4, t5] → [t5, t2, t3, t4].
+        let up = q.upcoming();
+        let t5_id = up[3].id.clone();
+        let t2_id = up[0].id.clone();
+        q.reorder(&t5_id, Some(&t2_id));
+        let reordered = upcoming_tracks(&q);
+        assert_eq!(reordered, vec!["t5", "t2", "t3", "t4"]);
 
-        q.set_shuffle(true, rel(&["t1", "t2", "t3", "t4", "t5"]), 7);
+        q.set_shuffle(true, 7);
+        q.set_shuffle(false, 0);
 
-        assert_eq!(q.current_track_id(), Some("t1"));
-        let mut rest = upcoming_tracks(&q);
-        rest.sort();
         assert_eq!(
-            rest,
-            vec!["t3", "t5"],
-            "removed tracks stay removed through a reshuffle"
+            upcoming_tracks(&q),
+            reordered,
+            "unshuffling lands the lane back in ITS order, not the album's"
         );
     }
 
-    /// Same for turning shuffle off: the restored sequential order is the
-    /// source order of the surviving tracks, not the full source.
+    /// Shuffle on then off with no edits in between round-trips to the original
+    /// lane order.
     #[test]
-    fn test_set_shuffle_off_excludes_removed_context_tracks() {
+    fn test_shuffle_round_trip_with_no_edits_is_the_identity() {
+        let mut q = queue();
+        q.play_release(
+            rel_src("r1"),
+            rel(&["t1", "t2", "t3", "t4", "t5", "t6"]),
+            ContextStart::Index(1),
+        );
+        let before = q.context_order();
+
+        q.set_shuffle(true, 42);
+        q.set_shuffle(false, 0);
+
+        assert_eq!(q.context_order(), before);
+        assert_eq!(q.current_track_id(), Some("t2"));
+    }
+
+    /// A row removed while shuffled is gone for the rest of the session — no
+    /// later operation resurrects it, because no later operation consults
+    /// anything but the rows. Every other unplayed row keeps its place in line.
+    #[test]
+    fn test_a_row_removed_while_shuffled_is_absent_after_unshuffling() {
         let mut q = queue();
         q.play_release(
             rel_src("r1"),
             rel(&["t1", "t2", "t3", "t4", "t5"]),
             ContextStart::Index(0),
         );
-        q.set_shuffle(true, rel(&["t1", "t2", "t3", "t4", "t5"]), 7);
-        let t_removed = q.upcoming()[0].id.clone();
+        q.set_shuffle(true, 7);
         let removed_track = q.upcoming()[0].track_id.clone();
-        q.remove(&t_removed);
+        let removed_id = q.upcoming()[0].id.clone();
+        q.remove(&removed_id);
 
-        q.set_shuffle(false, rel(&["t1", "t2", "t3", "t4", "t5"]), 0);
+        q.set_shuffle(false, 0);
 
         assert_eq!(q.current_track_id(), Some("t1"));
         let expected: Vec<&str> = ["t2", "t3", "t4", "t5"]
@@ -1207,30 +1307,41 @@ mod tests {
         assert_eq!(
             upcoming_tracks(&q),
             expected,
-            "the sequential order resumes without the removed track"
+            "the removed row is absent; the survivors keep their place in line"
         );
     }
 
-    /// A snapshot taken after a shuffle toggle restores the identical order:
-    /// the fronted track rides in the traversal, so re-deriving from the seed
-    /// reproduces the fronted order, not the raw permutation.
+    /// `set_shuffle` names the state it wants, so asking for the state the lane is
+    /// already in changes nothing — no re-permutation, no revision bump.
     #[test]
-    fn test_snapshot_restore_reproduces_a_toggled_shuffle_order() {
+    fn test_set_shuffle_to_the_current_state_is_idempotent() {
         let mut q = queue();
         q.play_release(
             rel_src("r1"),
             rel(&["t1", "t2", "t3", "t4", "t5"]),
-            ContextStart::Index(2),
+            ContextStart::Index(0),
         );
-        q.set_shuffle(true, rel(&["t1", "t2", "t3", "t4", "t5"]), 7);
-        q.next_entry();
-        let current_before = q.current_track_id().unwrap().to_string();
-        let upcoming_before = upcoming_tracks(&q);
+        q.set_shuffle(true, 7);
+        let order = q.context_order();
+        let revision = q.revision();
 
-        let mut restored = queue();
-        restored.restore(q.snapshot(), rel(&["t1", "t2", "t3", "t4", "t5"]));
-        assert_eq!(restored.current_track_id().unwrap(), current_before);
-        assert_eq!(upcoming_tracks(&restored), upcoming_before);
+        q.set_shuffle(true, 99);
+
+        assert_eq!(q.context_order(), order, "the lane is not re-permuted");
+        assert_eq!(
+            q.revision(),
+            revision,
+            "an already-shuffled lane doesn't bump"
+        );
+
+        q.set_shuffle(false, 0);
+        let sequential_revision = q.revision();
+        q.set_shuffle(false, 0);
+        assert_eq!(
+            q.revision(),
+            sequential_revision,
+            "an already-sequential lane doesn't bump"
+        );
     }
 
     #[test]
@@ -1244,11 +1355,11 @@ mod tests {
         assert_eq!(q.current_track_id(), Some("t3"));
 
         // On then off; the playing track rides through to a restored source order.
-        q.set_shuffle(true, rel(&["t1", "t2", "t3", "t4", "t5"]), 7);
+        q.set_shuffle(true, 7);
         assert!(q.context_projection().unwrap().shuffled);
         assert_eq!(q.current_track_id(), Some("t3"));
 
-        q.set_shuffle(false, rel(&["t1", "t2", "t3", "t4", "t5"]), 0);
+        q.set_shuffle(false, 0);
 
         // Same playing track; the order is back to source order, cursor on it.
         assert_eq!(q.current_track_id(), Some("t3"));
@@ -1264,8 +1375,37 @@ mod tests {
         );
     }
 
+    /// A shuffled fill permutes the whole lane; unshuffling it lands on source
+    /// order from the track that is playing.
+    #[test]
+    fn test_shuffled_fill_then_unshuffle_yields_source_order() {
+        let mut q = queue();
+        q.play_release(
+            rel_src("r1"),
+            rel(&["t1", "t2", "t3", "t4", "t5"]),
+            ContextStart::Shuffled { seed: 7 },
+        );
+        let played_first = q.current_track_id().unwrap().to_string();
+
+        q.set_shuffle(false, 0);
+
+        assert_eq!(
+            q.current_track_id().unwrap(),
+            played_first,
+            "the playing track keeps playing"
+        );
+        let expected: Vec<&str> = ["t1", "t2", "t3", "t4", "t5"]
+            .into_iter()
+            .filter(|t| *t != played_first)
+            .collect();
+        assert_eq!(upcoming_tracks(&q), expected, "source order resumes");
+    }
+
     // -- persistence round-trips -----------------------------------------------
 
+    /// A sequential restore rebuilds source order with the cursor on the track
+    /// that was playing, so the history behind it is the source prefix and
+    /// Previous works. The session's edits are deliberately not in the recipe.
     #[test]
     fn test_snapshot_restore_sequential_context() {
         let mut q = queue();
@@ -1279,20 +1419,24 @@ mod tests {
             snap.context.as_ref().unwrap().source,
             ContextSource::Release("rel-A".into())
         );
+        assert!(!snap.context.as_ref().unwrap().shuffled);
         assert_eq!(snap.current_track_id.as_deref(), Some("t2"));
 
         let mut restored = queue();
-        restored.restore(snap, rel(&["t1", "t2", "t3"]));
+        restored.restore(snap, rel(&["t1", "t2", "t3"]), 0);
         assert_eq!(restored.current_track_id(), Some("t2"));
         assert_eq!(upcoming_tracks(&restored), vec!["t3"]);
         assert!(
             restored.has_previous(),
-            "the cursor (1) restored, so t1 is behind"
+            "the cursor landed on t2's source position, so t1 is behind it"
         );
     }
 
+    /// A shuffled restore puts the playing track first with the rest freshly
+    /// permuted behind it: the shuffled order and the history do not survive a
+    /// restart, and unshuffling afterwards lands on source order.
     #[test]
-    fn test_snapshot_restore_shuffled_keeps_cursor_on_same_track() {
+    fn test_snapshot_restore_shuffled_fronts_the_current_track() {
         let mut q = queue();
         q.play_release(
             rel_src("rel-A"),
@@ -1302,14 +1446,57 @@ mod tests {
         q.next_entry();
         q.next_entry();
         let current_before = q.current_track_id().unwrap().to_string();
-        let upcoming_before = upcoming_tracks(&q);
 
-        // Restore from the SOURCE order; re-deriving from the same seed reproduces
-        // the shuffled order, so the cursor lands on the same track.
         let mut restored = queue();
-        restored.restore(q.snapshot(), rel(&["t1", "t2", "t3", "t4", "t5"]));
+        restored.restore(q.snapshot(), rel(&["t1", "t2", "t3", "t4", "t5"]), 5);
+
         assert_eq!(restored.current_track_id().unwrap(), current_before);
-        assert_eq!(upcoming_tracks(&restored), upcoming_before);
+        assert!(
+            restored.context_projection().unwrap().shuffled,
+            "the lane comes back shuffled"
+        );
+        assert!(
+            !restored.has_previous(),
+            "the current track is first, so nothing is behind it"
+        );
+        let mut rest = upcoming_tracks(&restored);
+        rest.sort();
+        let expected: Vec<&str> = ["t1", "t2", "t3", "t4", "t5"]
+            .into_iter()
+            .filter(|t| *t != current_before)
+            .collect();
+        assert_eq!(rest, expected, "the rest of the source is behind it");
+
+        restored.set_shuffle(false, 0);
+        assert_eq!(
+            upcoming_tracks(&restored),
+            expected,
+            "unshuffling after a restart yields source order"
+        );
+    }
+
+    /// A recipe whose current track the source no longer holds can't be resumed:
+    /// the context drops and the track resumes standalone.
+    #[test]
+    fn test_snapshot_restore_drops_a_context_missing_its_current_track() {
+        let snapshot = QueueSnapshot {
+            context: Some(ContextSnapshot {
+                source: rel_src("r1"),
+                shuffled: false,
+            }),
+            manual: vec!["m1".into()],
+            current_track_id: Some("ghost".into()),
+            repeat: RepeatMode::Off,
+        };
+        let mut q = queue();
+        q.restore(snapshot, rel(&["t1", "t2"]), 0);
+
+        assert_eq!(q.current_track_id(), Some("ghost"));
+        assert!(
+            q.context_projection().is_none(),
+            "the context is dropped rather than cued at a track nobody was playing"
+        );
+        assert_eq!(upcoming_tracks(&q), vec!["m1"], "the manual lane survives");
     }
 
     #[test]
@@ -1321,7 +1508,7 @@ mod tests {
         assert!(snap.context.is_none());
 
         let mut restored = queue();
-        restored.restore(snap, vec![]);
+        restored.restore(snap, vec![], 0);
         assert_eq!(restored.current_track_id(), Some("solo"));
         assert_eq!(upcoming_tracks(&restored), vec!["m1", "m2"]);
     }
@@ -1636,8 +1823,8 @@ mod tests {
 
     /// The only edge that yields a physical side pause: the next track of a
     /// sequential release context, with an empty manual lane. All other shapes —
-    /// no context, a shuffled traversal, a pending manual entry, or the last
-    /// context track — report `None`.
+    /// no context, a shuffled lane, a pending manual entry, or the last context
+    /// track — report `None`.
     #[test]
     fn test_next_sequential_context_track_all_branches() {
         // No context at all → None.
@@ -1656,7 +1843,7 @@ mod tests {
         q.add_to_queue(rel(&["m1"]));
         assert_eq!(q.next_sequential_context_track(), None);
 
-        // A shuffled traversal is not a physical side → None.
+        // A shuffled lane is not a physical side → None.
         let mut shuffled = queue();
         shuffled.play_release(
             rel_src("r1"),
@@ -1671,6 +1858,34 @@ mod tests {
         assert_eq!(last.next_sequential_context_track(), None);
     }
 
+    /// Shuffling closes the physical-side-pause gate and unshuffling reopens it —
+    /// a sided release only pauses between sides while the lane is in its own
+    /// order.
+    #[test]
+    fn test_shuffle_closes_the_side_pause_gate_and_unshuffle_reopens_it() {
+        let mut q = queue();
+        q.play_release(
+            rel_src("r1"),
+            rel(&["t1", "t2", "t3"]),
+            ContextStart::Index(0),
+        );
+        assert_eq!(q.next_sequential_context_track(), Some("t2"));
+
+        q.set_shuffle(true, 7);
+        assert_eq!(
+            q.next_sequential_context_track(),
+            None,
+            "a shuffled lane has no physical-side edge"
+        );
+
+        q.set_shuffle(false, 0);
+        assert_eq!(
+            q.next_sequential_context_track(),
+            Some("t2"),
+            "unshuffling reopens the gate on the restored order"
+        );
+    }
+
     // -- set_shuffle edge cases ------------------------------------------------
 
     /// With nothing playing there is no context to reorder, so `set_shuffle` is a
@@ -1678,62 +1893,9 @@ mod tests {
     #[test]
     fn test_set_shuffle_with_no_context_is_noop() {
         let mut q = queue();
-        q.set_shuffle(true, rel(&["t1", "t2", "t3"]), 7);
+        q.set_shuffle(true, 7);
         assert!(q.context_projection().is_none());
         assert_eq!(q.current_track_id(), None);
-    }
-
-    /// When the playing track is absent from the re-fetched source (the release
-    /// shrank under it), the shuffle toggle resumes the new order from its start
-    /// rather than dropping the context.
-    #[test]
-    fn test_set_shuffle_anchor_missing_resumes_at_start() {
-        let mut q = queue();
-        q.play_release(
-            rel_src("r1"),
-            rel(&["t1", "t2", "t3"]),
-            ContextStart::Index(1),
-        );
-        assert!(q.has_previous(), "cursor sits on t2, so t1 is behind it");
-
-        // The re-fetched source no longer contains the playing track t2.
-        q.set_shuffle(false, rel(&["x1", "x2", "x3"]), 0);
-
-        assert_eq!(
-            q.context_order(),
-            vec!["x1", "x2", "x3"],
-            "the new source order replaces the old one"
-        );
-        assert!(
-            !q.has_previous(),
-            "the cursor reset to the start of the new order"
-        );
-    }
-
-    // -- restore fallback ------------------------------------------------------
-
-    /// A restored current track that is neither a manual entry nor the context's
-    /// cursor track (its context was dropped when the release shrank past the
-    /// cursor) resumes standalone with a freshly minted entry.
-    #[test]
-    fn test_restore_current_in_neither_lane_resumes_standalone() {
-        let snapshot = QueueSnapshot {
-            context: Some(ContextSnapshot {
-                source: rel_src("r1"),
-                traversal: Traversal::Sequential,
-                cursor: 0,
-            }),
-            manual: vec!["m1".into()],
-            current_track_id: Some("ghost".into()),
-            repeat: RepeatMode::Off,
-        };
-        let mut q = queue();
-        // Context cursor lands on t1; the manual lane holds m1; "ghost" is neither.
-        q.restore(snapshot, rel(&["t1", "t2"]));
-        assert_eq!(q.current_track_id(), Some("ghost"));
-        // The context and manual lane are still restored around the standalone
-        // current track.
-        assert_eq!(q.context_order(), vec!["t1", "t2"]);
     }
 
     // -- previous_action with a manual current ---------------------------------
@@ -1831,7 +1993,7 @@ mod tests {
         q.skip_to(&ctx_id);
         assert_eq!(q.revision(), 7, "skip_to a context entry bumps");
 
-        q.set_shuffle(true, rel(&["t1", "t2", "t3"]), 7);
+        q.set_shuffle(true, 7);
         assert_eq!(q.revision(), 8, "set_shuffle bumps");
 
         q.clear();
@@ -1858,7 +2020,7 @@ mod tests {
         assert_eq!(q.skip_to(&QueueEntryId("nope".into())), None);
         assert_eq!(q.revision(), after_add, "unknown skip_to id doesn't bump");
 
-        q.set_shuffle(true, rel(&["x"]), 1);
+        q.set_shuffle(true, 1);
         assert_eq!(
             q.revision(),
             after_add,

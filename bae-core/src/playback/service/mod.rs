@@ -34,7 +34,7 @@
 use super::RepeatMode;
 use super::{
     repeat_to_str, source_to_str, ContextSource, ContextStart, NextEntry, PersistedPlayback,
-    PlaybackQueue, PreviousAction, QueueEntryId, QueueSnapshot, Traversal,
+    PlaybackQueue, PreviousAction, QueueEntryId, QueueSnapshot,
 };
 use crate::audio_codec::StreamingDecodeError;
 use crate::db::{DbAudioSegmentRole, DbPlaybackContext, DbPlaybackState};
@@ -247,9 +247,9 @@ pub(crate) enum PlaybackCommand {
     },
     ClearQueue,
     SetRepeatMode(RepeatMode),
-    /// Set the playing context to sequential or shuffled order. `true` mints a
-    /// fresh seed and materializes a shuffled order; `false` restores source order.
-    /// The current track keeps playing.
+    /// Set the context lane to shuffled or sequential order. `true` mints a fresh
+    /// seed and permutes the upcoming rows; `false` puts them back in the order
+    /// the lane had when shuffle turned on. The current track keeps playing.
     SetShuffle(bool),
     /// Re-run the side-pause staging decision for the currently preloaded next
     /// track. Sent after `pause_between_sides` is turned on: staging is decided
@@ -1980,24 +1980,13 @@ impl PlaybackService {
                     self.apply_repeat_mode(mode).await;
                 }
                 PlaybackCommand::SetShuffle(on) => {
-                    match self.playback_queue.context_source().cloned() {
-                        Some(source) => match self.fetch_source_tracks(&source).await {
-                            Ok(source_tracks) => {
-                                // A fresh seed, so the order is reproducible and
-                                // `Context` repeat can re-derive it. `set_shuffle`
-                                // uses it only when turning shuffle on.
-                                let seed = rand::random();
-                                self.playback_queue.set_shuffle(on, source_tracks, seed);
-                                self.emit_queue_update();
-                                self.persist_playback_state().await;
-                            }
-                            Err(e) => warn!(
-                                "SetShuffle: couldn't fetch source tracks for {source:?}: {e}; \
-                                 leaving the queue unchanged"
-                            ),
-                        },
-                        None => warn!("SetShuffle: no playing context; nothing to shuffle"),
-                    }
+                    // The seed for the permutation `set_shuffle` performs on the
+                    // rows it already holds; it uses it only when turning shuffle
+                    // on. Shuffling changes what plays next, so the preload and
+                    // the staged side-pause reconcile like any queue mutation.
+                    let seed: u64 = rand::random();
+                    self.playback_queue.set_shuffle(on, seed);
+                    self.on_queue_mutated().await;
                 }
                 PlaybackCommand::ReevaluateSidePauseStaging => {
                     self.reevaluate_side_pause_staging().await;

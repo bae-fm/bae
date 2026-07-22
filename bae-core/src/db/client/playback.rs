@@ -73,25 +73,18 @@ impl Database {
         self.call(move |conn| {
             // Flatten the context substruct back to the table's nullable
             // columns: all NULL when no context is playing.
-            let (source, shuffle_seed, shuffle_anchor, cursor) = match &state.context {
-                Some(ctx) => (
-                    Some(&ctx.source),
-                    ctx.shuffle_seed,
-                    ctx.shuffle_anchor.as_ref(),
-                    Some(ctx.cursor),
-                ),
-                None => (None, None, None, None),
+            let (source, shuffled) = match &state.context {
+                Some(ctx) => (Some(&ctx.source), Some(ctx.shuffled)),
+                None => (None, None),
             };
             conn.execute(
                 "INSERT OR REPLACE INTO playback_state \
-                     (id, source, shuffle_seed, shuffle_anchor, cursor, manual, repeat, \
+                     (id, source, shuffled, manual, repeat, \
                       current_track_id, position_ms, volume, is_muted) \
-                     VALUES ('current', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                     VALUES ('current', ?, ?, ?, ?, ?, ?, ?, ?)",
                 params![
                     source,
-                    shuffle_seed,
-                    shuffle_anchor,
-                    cursor,
+                    shuffled,
                     state.manual,
                     state.repeat,
                     state.current_track_id,
@@ -117,36 +110,31 @@ impl Database {
             // `None` is no row at all — the two stay distinct below.
             let loaded = conn
                 .query_row(
-                    "SELECT source, shuffle_seed, shuffle_anchor, cursor, manual, repeat, \
+                    "SELECT source, shuffled, manual, repeat, \
                      current_track_id, position_ms, volume, is_muted \
                      FROM playback_state WHERE id = 'current'",
                     [],
                     |row| {
-                        // `source` and `cursor` are written together: both present
-                        // is a context, both absent is no context, exactly one
-                        // present is a corrupt row.
+                        // `source` and `shuffled` are written together: both
+                        // present is a context, both absent is no context,
+                        // exactly one present is a corrupt row.
                         let source: Option<String> = row.get("source")?;
-                        let shuffle_seed: Option<i64> = row.get("shuffle_seed")?;
-                        let shuffle_anchor: Option<String> = row.get("shuffle_anchor")?;
-                        let cursor: Option<i64> = row.get("cursor")?;
-                        let context = match (source, cursor) {
-                            (Some(source), Some(cursor)) => Some(DbPlaybackContext {
-                                source,
-                                shuffle_seed,
-                                shuffle_anchor,
-                                cursor,
-                            }),
+                        let shuffled: Option<bool> = row.get("shuffled")?;
+                        let context = match (source, shuffled) {
+                            (Some(source), Some(shuffled)) => {
+                                Some(DbPlaybackContext { source, shuffled })
+                            }
                             (None, None) => None,
                             (Some(source), None) => {
                                 warn!(
                                     "discarding the playback resume cache: source {source:?} \
-                                     present but cursor is NULL"
+                                     present but shuffled is NULL"
                                 );
                                 return Ok(None);
                             }
-                            (None, Some(cursor)) => {
+                            (None, Some(shuffled)) => {
                                 warn!(
-                                    "discarding the playback resume cache: cursor {cursor} \
+                                    "discarding the playback resume cache: shuffled {shuffled} \
                                      present but source is NULL"
                                 );
                                 return Ok(None);

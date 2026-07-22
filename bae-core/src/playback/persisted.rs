@@ -8,7 +8,7 @@
 
 use tracing::warn;
 
-use super::{ContextSnapshot, ContextSource, QueueSnapshot, RepeatMode, Traversal};
+use super::{ContextSnapshot, ContextSource, QueueSnapshot, RepeatMode};
 use crate::db::DbPlaybackState;
 
 /// The validated device-local resume cache: a queue snapshot plus the live
@@ -52,39 +52,12 @@ impl PersistedPlayback {
 
         let context = match row.context {
             Some(ctx) => {
-                let cursor = match usize::try_from(ctx.cursor) {
-                    Ok(cursor) => cursor,
-                    Err(_) => {
-                        warn!(
-                            "discarding the playback resume cache: negative context cursor {}",
-                            ctx.cursor
-                        );
-                        return None;
-                    }
-                };
-                let traversal = match (ctx.shuffle_seed, ctx.shuffle_anchor) {
-                    (Some(seed), anchor) => Traversal::Shuffled {
-                        seed: seed as u64,
-                        anchor,
-                    },
-                    (None, None) => Traversal::Sequential,
-                    // The anchor is only ever written next to a seed; one
-                    // without the other is a corrupt row.
-                    (None, Some(anchor)) => {
-                        warn!(
-                            "discarding the playback resume cache: shuffle anchor \
-                             {anchor:?} present without a shuffle seed"
-                        );
-                        return None;
-                    }
-                };
                 // A malformed source discards the whole row; `source_from_str`
                 // logs the specific reason before returning `None`.
                 let source = source_from_str(ctx.source)?;
                 Some(ContextSnapshot {
                     source,
-                    traversal,
-                    cursor,
+                    shuffled: ctx.shuffled,
                 })
             }
             None => None,
@@ -192,9 +165,7 @@ mod tests {
         DbPlaybackState {
             context: Some(DbPlaybackContext {
                 source: "rel-A".to_string(),
-                shuffle_seed: Some(99),
-                shuffle_anchor: None,
-                cursor: 2,
+                shuffled: true,
             }),
             manual: r#"["m1","m2"]"#.to_string(),
             repeat: "context".to_string(),
@@ -210,14 +181,7 @@ mod tests {
         let parsed = PersistedPlayback::from_row(valid_row()).expect("a valid row parses");
         let context = parsed.queue.context.expect("the context survives");
         assert_eq!(context.source, ContextSource::Release("rel-A".into()));
-        assert_eq!(context.cursor, 2);
-        assert!(matches!(
-            context.traversal,
-            Traversal::Shuffled {
-                seed: 99,
-                anchor: None
-            }
-        ));
+        assert!(context.shuffled);
         assert_eq!(parsed.queue.manual, vec!["m1", "m2"]);
         assert_eq!(parsed.queue.current_track_id.as_deref(), Some("t3"));
         assert_eq!(parsed.queue.repeat, RepeatMode::Context);
@@ -226,20 +190,22 @@ mod tests {
         assert!(parsed.is_muted);
     }
 
+    /// The `shuffled` flag round-trips both ways — a sequential row is not
+    /// silently read back as shuffled.
     #[test]
-    fn sequential_context_has_no_seed() {
-        let row = DbPlaybackState {
-            context: Some(DbPlaybackContext {
-                source: "rel-A".to_string(),
-                shuffle_seed: None,
-                shuffle_anchor: None,
-                cursor: 0,
-            }),
-            ..valid_row()
-        };
-        let parsed = PersistedPlayback::from_row(row).expect("a valid row parses");
-        let context = parsed.queue.context.expect("the context survives");
-        assert!(matches!(context.traversal, Traversal::Sequential));
+    fn shuffled_flag_round_trips_both_ways() {
+        for shuffled in [false, true] {
+            let row = DbPlaybackState {
+                context: Some(DbPlaybackContext {
+                    source: "rel-A".to_string(),
+                    shuffled,
+                }),
+                ..valid_row()
+            };
+            let parsed = PersistedPlayback::from_row(row).expect("a valid row parses");
+            let context = parsed.queue.context.expect("the context survives");
+            assert_eq!(context.shuffled, shuffled);
+        }
     }
 
     /// A row whose `source` is the library sentinel decodes back to the library
@@ -249,9 +215,7 @@ mod tests {
         let row = DbPlaybackState {
             context: Some(DbPlaybackContext {
                 source: source_to_str(&ContextSource::Library),
-                shuffle_seed: Some(7),
-                shuffle_anchor: None,
-                cursor: 0,
+                shuffled: true,
             }),
             ..valid_row()
         };
@@ -295,9 +259,7 @@ mod tests {
         let row = DbPlaybackState {
             context: Some(DbPlaybackContext {
                 source: "[not valid json".to_string(),
-                shuffle_seed: None,
-                shuffle_anchor: None,
-                cursor: 0,
+                shuffled: false,
             }),
             ..valid_row()
         };
@@ -313,9 +275,7 @@ mod tests {
                     "rel-A".into(),
                     "rel-B".into(),
                 ])),
-                shuffle_seed: None,
-                shuffle_anchor: None,
-                cursor: 1,
+                shuffled: false,
             }),
             ..valid_row()
         };
@@ -352,20 +312,6 @@ mod tests {
     fn unknown_repeat_discards_the_row() {
         let row = DbPlaybackState {
             repeat: "sideways".to_string(),
-            ..valid_row()
-        };
-        assert!(PersistedPlayback::from_row(row).is_none());
-    }
-
-    #[test]
-    fn negative_cursor_discards_the_row() {
-        let row = DbPlaybackState {
-            context: Some(DbPlaybackContext {
-                source: "rel-A".to_string(),
-                shuffle_seed: None,
-                shuffle_anchor: None,
-                cursor: -1,
-            }),
             ..valid_row()
         };
         assert!(PersistedPlayback::from_row(row).is_none());

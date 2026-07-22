@@ -2589,8 +2589,11 @@ async fn current_release_id(handle: &bae_core::playback::PlaybackHandle) -> Stri
     }
 }
 
+/// `SetShuffle` permutes and unpermutes the context lane the queue already
+/// holds — nothing is re-fetched — and the track that is playing keeps playing
+/// through both toggles.
 #[tokio::test]
-async fn set_shuffle_materializes_then_re_derives_context_order() {
+async fn set_shuffle_permutes_and_unpermutes_the_context_lane_in_place() {
     let mut fixture = PlaybackTestFixture::new().await;
     let first = fixture.track_ids[0].clone();
     let second = fixture.track_ids[1].clone();
@@ -2614,11 +2617,11 @@ async fn set_shuffle_materializes_then_re_derives_context_order() {
         .expect("queue projection");
     assert!(
         shuffled.context.as_ref().is_some_and(|c| c.shuffled),
-        "SetShuffle(true) materializes a shuffled context"
+        "SetShuffle(true) puts the lane in shuffled order"
     );
 
-    // Shuffle off re-derives the sequential order: the not-yet-played tail is the
-    // two tracks after the current one, in release order.
+    // Shuffle off unpermutes the lane: the not-yet-played tail is the two tracks
+    // after the current one, in release order.
     fixture.playback_handle.set_shuffle(false);
     let sequential = fixture
         .playback_handle
@@ -2628,7 +2631,7 @@ async fn set_shuffle_materializes_then_re_derives_context_order() {
     let ctx = sequential.context.expect("still a playing context");
     assert!(
         !ctx.shuffled,
-        "SetShuffle(false) re-derives the sequential order"
+        "SetShuffle(false) puts the lane back in sequential order"
     );
     let upcoming: Vec<String> = ctx.upcoming.iter().map(|e| e.track_id.clone()).collect();
     assert_eq!(
@@ -2637,9 +2640,74 @@ async fn set_shuffle_materializes_then_re_derives_context_order() {
         "sequential upcoming is source order after the current track"
     );
 
-    // Re-deriving the context order projects correctly, but that alone
-    // doesn't prove the currently-playing track's audio survived the churn.
+    // The lane projects correctly, but that alone doesn't prove the
+    // currently-playing track's audio survived the churn.
     assert_position_advances(&mut fixture.progress_rx).await;
+}
+
+/// Shuffling changes what plays next, so the preloaded next track has to follow
+/// the reshuffled queue front. The preload is not an optimization the queue can
+/// disagree with: `Next` and the natural advance both play the preloaded track
+/// in preference to asking the queue, while advancing the cursor past the row
+/// the queue calls the front. A shuffle that emits its new order without
+/// reconciling the preload therefore plays the pre-shuffle track over a lane
+/// whose cursor has moved somewhere else — the speakers and the queue the UI
+/// renders disagree about what is playing.
+#[tokio::test]
+async fn shuffling_makes_the_next_track_follow_the_reshuffled_queue_front() {
+    let mut fixture = PlaybackTestFixture::new().await;
+    let first = fixture.track_ids[0].clone();
+    let sequential_next = fixture.track_ids[1].clone();
+    fixture.playback_handle.play(first.clone());
+    fixture
+        .wait_for_state(
+            |s| matches!(s, PlaybackState::Playing { track_info, .. } if track_info.track_id == first),
+            Duration::from_secs(5),
+        )
+        .await
+        .expect("the release starts playing");
+    // Playing the release preloaded its sequential next track; that is the stale
+    // preload a shuffle has to displace.
+
+    // Each SetShuffle mints its own seed, so a permutation of the two-track tail
+    // leaves the front alone about half the time. Reshuffle until it moves —
+    // only then is a stale preload distinguishable from a reconciled one — and
+    // read the new front off the projection, the same way a UI learns it.
+    let mut shuffled_next = None;
+    for _ in 0..32 {
+        fixture.playback_handle.set_shuffle(true);
+        let front = fixture
+            .playback_handle
+            .queue_projection()
+            .await
+            .expect("queue projection")
+            .context
+            .expect("a playing context")
+            .upcoming
+            .first()
+            .expect("the shuffled lane still has an upcoming track")
+            .track_id
+            .clone();
+        if front != sequential_next {
+            shuffled_next = Some(front);
+            break;
+        }
+        fixture.playback_handle.set_shuffle(false);
+    }
+    let shuffled_next =
+        shuffled_next.expect("a shuffle that moves a different track to the lane's front");
+
+    fixture.playback_handle.next();
+
+    fixture
+        .wait_for_state(
+            |s| matches!(s, PlaybackState::Playing { track_info, .. } if track_info.track_id == shuffled_next),
+            Duration::from_secs(10),
+        )
+        .await
+        .expect(
+            "the track after a shuffle is the lane's new front, not the one preloaded before it",
+        );
 }
 
 #[tokio::test]
@@ -3929,136 +3997,6 @@ async fn test_restore_emits_seeked_at_saved_position() {
     handle.stop();
 }
 
-/// A saved context cursor that points past the source release's *current* tracks
-/// (the release shrank between sessions — tracks were deleted) can't resume
-/// there. Restore must drop the context and keep only the manual lane, never
-/// silently snap the cursor back into range.
-///
-/// `has_previous` is the discriminator: a dropped context has no track before
-/// the cursor (`false`); a context that survived with a snapped-back cursor
-/// would sit past the start (`true`). The manual track must still be queued.
-#[tokio::test]
-async fn test_restore_drops_context_when_cursor_past_shrunk_tracks() {
-    tracing_init();
-
-    let temp_dir = TempDir::new().unwrap();
-    let db_path = temp_dir.path().join("test.db");
-    let album_dir = temp_dir.path().join("album");
-    std::fs::create_dir_all(&album_dir).unwrap();
-    let database = Database::new_test(
-        db_path.to_str().unwrap(),
-        std::sync::Arc::new(coven::SystemClock),
-        std::sync::Arc::new(coven::UuidProvider),
-    )
-    .await
-    .unwrap();
-    let database_arc = Arc::new(database.clone());
-    let library_dir = StoreDir::new(temp_dir.path().to_path_buf());
-    let (config_handle, key_service) = test_config_and_keys(&library_dir);
-    let library_manager = LibraryManager::new(
-        (*database_arc).clone(),
-        config_handle,
-        key_service,
-        std::sync::Arc::new(coven::SystemClock),
-        std::sync::Arc::new(coven::UuidProvider),
-        bae_core::diagnostics::Diagnostics::noop(),
-        tokio::runtime::Handle::current(),
-    );
-    let runtime_handle = tokio::runtime::Handle::current();
-    let _ = generate_test_flac_files(&album_dir);
-    let discogs_release = create_test_album();
-    let release_id_key = seed_discogs_test_release(discogs_release);
-    let import_handle = start_test_import(runtime_handle.clone(), library_manager.clone());
-    let import_id = uuid::Uuid::new_v4().to_string();
-    import_handle
-        .send_command(ImportCommand {
-            import_id: import_id.clone(),
-            candidate_key: "test".to_string(),
-            folder: album_dir,
-            selected_cover: None,
-            storage_mode: StorageMode::Local,
-            pin: false,
-            identity_choice: IdentityChoice::Exact {
-                release_ref: MetadataRef::new(release_id_key, MetadataSource::Discogs),
-            },
-            user_edit: None,
-        })
-        .unwrap();
-    let mut import_progress_rx = import_handle.subscribe_import(import_id);
-    let _ = wait_for_import_complete(&mut import_progress_rx).await;
-    let release = library_manager
-        .get_releases_for_album(&library_manager.get_albums(&[]).await.unwrap()[0].id)
-        .await
-        .unwrap()
-        .remove(0);
-    let tracks = library_manager
-        .get_tracks_for_release(&release.id)
-        .await
-        .unwrap();
-    assert_eq!(tracks.len(), 3, "the fixture release has three tracks");
-    // The manual entry is the last track; it must survive the restore. The
-    // context source is the same release with a cursor past its three tracks.
-    let manual_track_id = tracks[2].id.clone();
-
-    let state = bae_core::db::DbPlaybackState {
-        context: Some(bae_core::db::DbPlaybackContext {
-            source: release.id.clone(),
-            shuffle_seed: None,
-            shuffle_anchor: None,
-            cursor: 5,
-        }),
-        manual: serde_json::to_string(&vec![manual_track_id.clone()]).unwrap(),
-        repeat: "off".to_string(),
-        current_track_id: Some(manual_track_id.clone()),
-        position_ms: Some(0),
-        volume: 0.8,
-        is_muted: false,
-    };
-    library_manager.save_playback_state(&state).await.unwrap();
-
-    let (handle, _capture_rx) = start_capture_service(library_manager, runtime_handle);
-    let mut progress_rx = handle.subscribe_progress();
-
-    // Wait for the queue update restore emits once it commits the restored queue.
-    let deadline = Instant::now() + Duration::from_secs(5);
-    let mut queue_update = None;
-    while Instant::now() < deadline {
-        match timeout(Duration::from_millis(100), progress_rx.recv()).await {
-            Ok(Some(PlaybackProgress::QueueUpdated(projection))) => {
-                queue_update = Some((
-                    projection.manual,
-                    projection.context,
-                    projection.has_previous,
-                ));
-                break;
-            }
-            Ok(Some(_)) => continue,
-            Ok(None) | Err(_) => continue,
-        }
-    }
-
-    let (manual, context, has_previous) = queue_update.expect("restore emits a queue update");
-    assert!(
-        !has_previous,
-        "the context was dropped, so nothing sits before the cursor"
-    );
-    assert!(
-        context.is_none(),
-        "the cursor was past the release, so the context is dropped entirely: {context:?}"
-    );
-    let queued: Vec<&str> = manual.iter().map(|e| e.track_id.as_str()).collect();
-    assert!(
-        queued.contains(&manual_track_id.as_str()),
-        "the manual lane survives the restore: {queued:?}"
-    );
-    assert!(
-        !queued.contains(&tracks[0].id.as_str()) && !queued.contains(&tracks[1].id.as_str()),
-        "the dropped context contributes no tracks: {queued:?}"
-    );
-
-    handle.stop();
-}
-
 /// The persist-on-change wiring is load-bearing: playing a release writes the
 /// device-local `playback_state` row, and stopping clears it — so a restart
 /// resumes a live session but never re-cues a finished one.
@@ -4385,9 +4323,7 @@ async fn test_restore_drops_deleted_context_keeps_manual() {
     let state = bae_core::db::DbPlaybackState {
         context: Some(bae_core::db::DbPlaybackContext {
             source: "release-that-was-deleted".to_string(),
-            shuffle_seed: None,
-            shuffle_anchor: None,
-            cursor: 0,
+            shuffled: false,
         }),
         manual: format!("[{:?}]", track_id),
         repeat: "off".to_string(),
@@ -5933,11 +5869,11 @@ async fn skip_to_entry_jumps_to_that_queue_entry_over_sparse_buffer() {
     assert_position_advances(&mut playback.progress_rx).await;
 }
 
-/// Multi-window port of `set_shuffle_materializes_then_re_derives_context_order`:
-/// re-deriving the context order must not disturb the currently-playing
-/// track's audio.
+/// Multi-window port of
+/// `set_shuffle_permutes_and_unpermutes_the_context_lane_in_place`: rearranging
+/// the lane must not disturb the currently-playing track's audio.
 #[tokio::test(flavor = "multi_thread")]
-async fn set_shuffle_re_derives_context_order_over_sparse_buffer() {
+async fn set_shuffle_rearranges_the_context_lane_over_sparse_buffer() {
     let mut playback = MultiWindowPlayback::new("multi-window-set-shuffle").await;
     let first = playback.track_ids[0].clone();
     playback.play_and_wait(&first).await;
@@ -5950,7 +5886,7 @@ async fn set_shuffle_re_derives_context_order_over_sparse_buffer() {
         .expect("queue projection");
     assert!(
         shuffled.context.as_ref().is_some_and(|c| c.shuffled),
-        "SetShuffle(true) materializes a shuffled context"
+        "SetShuffle(true) puts the lane in shuffled order"
     );
 
     playback.playback_handle.set_shuffle(false);
@@ -5964,7 +5900,7 @@ async fn set_shuffle_re_derives_context_order_over_sparse_buffer() {
             .context
             .expect("still a playing context")
             .shuffled,
-        "SetShuffle(false) re-derives the sequential order"
+        "SetShuffle(false) puts the lane back in sequential order"
     );
 
     assert_position_advances(&mut playback.progress_rx).await;

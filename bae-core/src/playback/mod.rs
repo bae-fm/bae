@@ -26,7 +26,7 @@ pub use audio_output::{
 pub use audio_output::{
     AudioError, AudioOutput, AudioState, AudioStream, CompletionEvent, PositionEvent,
 };
-pub use context::{ContextSource, ContextStart, Traversal};
+pub use context::{ContextSource, ContextStart};
 pub use decoded_pcm::DecodedPcm;
 pub use error::PlaybackError;
 pub use persisted::{repeat_to_str, source_to_str, PersistedPlayback};
