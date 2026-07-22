@@ -1060,7 +1060,6 @@
                         maxConcurrentDownloads: 3,
                         showRemainingTime: false,
                         libraryFullWidth: libraryFullWidth,
-                        exportFilenameTokens: exportFilenameTokens,
                         exportPresets: exportPresets,
                         defaultTrackSavePreset: "flac",
                         defaultReleaseSavePreset: "flac",

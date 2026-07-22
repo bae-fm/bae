@@ -32,9 +32,6 @@ public struct Config: Equatable {
     /// centering its content in a width-capped column. A synced preference,
     /// read here by the library page.
     public let libraryFullWidth: Bool
-    /// The ordered token list rendering a single-track export's suggested
-    /// filename. Core renders the tokens; the UI edits the ordered list.
-    public let exportFilenameTokens: [BridgeExportFilenameToken]
     /// Configured export presets offered by release and track export.
     public let exportPresets: [BridgeExportPreset]
     /// Id of the preset a track save defaults to (valid + track-applicable).
@@ -57,7 +54,6 @@ public struct Config: Equatable {
         maxConcurrentDownloads = bridge.maxConcurrentDownloads
         showRemainingTime = bridge.showRemainingTime
         libraryFullWidth = bridge.libraryFullWidth
-        exportFilenameTokens = bridge.exportFilenameTokens
         exportPresets = bridge.exportPresets
         defaultTrackSavePreset = bridge.defaultTrackSavePreset
         defaultReleaseSavePreset = bridge.defaultReleaseSavePreset

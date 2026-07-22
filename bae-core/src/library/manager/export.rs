@@ -418,18 +418,29 @@ impl LibraryManager {
         })
     }
 
-    /// The default filename (stem, no extension) a single-track "Save As…" export
-    /// suggests for `track_id`, rendered from the configured template and the
-    /// track's tag data. Reads no audio and no cover — only the database — so
+    /// The default filename (stem, no extension) a single-track "Save As…"
+    /// suggests for `track_id` under the preset named by `preset_id` (must exist
+    /// and apply to track saves), rendered from that preset's token pattern and
+    /// the track's tag data. Reads no audio and no cover — only the database — so
     /// seeding a save panel never touches a whole file or the cloud.
-    pub async fn export_track_suggested_name(
+    pub async fn save_track_suggested_name(
         &self,
         track_id: &str,
+        preset_id: &str,
     ) -> Result<String, LibraryError> {
+        let preset = self
+            .export_presets()
+            .into_iter()
+            .find(|preset| preset.id == preset_id && preset.applies_to_track)
+            .ok_or_else(|| {
+                LibraryError::Import(format!(
+                    "export preset {preset_id} is not available for track save"
+                ))
+            })?;
         let meta = TrackAudioMeta::resolve(&self.database, track_id).await?;
         let resolved = self.resolve_export_tags(&meta).await?;
         Ok(crate::library::export::render_export_filename(
-            &self.export_filename_tokens(),
+            &preset.filename_tokens,
             &resolved,
         ))
     }

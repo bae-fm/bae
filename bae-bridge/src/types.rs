@@ -2336,9 +2336,6 @@ pub struct BridgeConfig {
     /// centering its content in a width-capped column. A synced preference;
     /// the library page reads it and never stores a copy.
     pub library_full_width: bool,
-    /// The ordered token list rendering a single-track export's suggested
-    /// filename.
-    pub export_filename_tokens: Vec<BridgeExportFilenameToken>,
     /// Configured export presets offered by release and track export.
     pub export_presets: Vec<BridgeExportPreset>,
     /// Id of the preset a track save defaults to (a valid, track-applicable

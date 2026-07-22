@@ -599,17 +599,17 @@ internal sealed class AlbumDetailDialog
         picker.FileTypeChoices.Add(
             selectedPreset.TrackPickerLabel,
             new List<string> { selectedPreset.FileExtension });
-        // Seed the suggested name from the configured filename template,
-        // which the core renders and sanitizes from this track's metadata
-        // (falling back to the title, then a fixed stem, on its own). A
-        // null return — or a throw — means that render failed (the core
-        // logged the cause); surface it and abort rather than exporting
-        // under a guessed name.
+        // Seed the suggested name from the chosen preset's filename pattern,
+        // which the core renders and sanitizes from this track's metadata. The
+        // format dialog runs before the picker, so one call suffices. A null
+        // return — or a throw — means that render failed (the core logged the
+        // cause); surface it and abort rather than saving under a guessed name.
         string? stem;
         try
         {
             var (nameCurrent, suggestedName) = await _session.RunForCurrentHandle(
-                handle => NativeBae.ExportTrackSuggestedName(handle, track.TrackId));
+                handle => NativeBae.SaveTrackSuggestedName(
+                    handle, track.TrackId, selectedPreset.Id));
             if (!nameCurrent)
             {
                 return;
@@ -618,7 +618,7 @@ internal sealed class AlbumDetailDialog
         }
         catch (Exception ex)
         {
-            BaeDiagnostics.Logger.Error("export suggested-name lookup threw", ex);
+            BaeDiagnostics.Logger.Error("save suggested-name lookup threw", ex);
             stem = null;
         }
         if (stem is null)

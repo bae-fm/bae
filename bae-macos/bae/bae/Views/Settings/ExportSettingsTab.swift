@@ -52,27 +52,11 @@ struct ExportSettingsTab: View {
     }
 
     private var trackExportsSection: some View {
-        Section {
+        Section("Track exports") {
             presetPicker(
                 presets: trackPresets,
                 selection: defaultTrackPresetBinding()
             )
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Filename format")
-                FilenameTokenEditor(
-                    tokens: configStore.config.exportFilenameTokens,
-                    setTokens: { tokens in
-                        set { try exports.setExportFilenameTokens(tokens) }
-                    }
-                )
-            }
-        } header: {
-            Text("Track exports")
-        } footer: {
-            Text("Preview: \(Text(trackPreviewFilename).monospaced())")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 
@@ -119,16 +103,6 @@ struct ExportSettingsTab: View {
         configStore.config.exportPresets.filter(\.appliesToRelease)
     }
 
-    /// The sample the pattern footer previews. The sample shows a representative
-    /// extension; each preset renders whatever its own pattern produces, and the
-    /// preset rows below preview that themselves.
-    private var trackPreviewFilename: String {
-        BridgeExportFilenameToken.previewFilename(
-            tokens: configStore.config.exportFilenameTokens,
-            fileExtension: "flac"
-        )
-    }
-
     private func replacePreset(_ preset: BridgeExportPreset) {
         let presets = configStore.config.exportPresets.map {
             $0.id == preset.id ? preset : $0
@@ -141,6 +115,13 @@ struct ExportSettingsTab: View {
         set { try exports.setExportPresets(presets) }
     }
 
+    /// The filename pattern a newly added preset starts with — the zero-padded
+    /// track number then the title, matching core's default. The user edits it
+    /// in the preset editor; there is no global pattern anymore.
+    private static let defaultPresetFilenameTokens:
+        [BridgeExportFilenameToken] =
+            [.trackNumber, .title]
+
     private func addPreset(_ kind: ExportPresetKind) {
         let codec = kind.defaultCodec
         let preset = BridgeExportPreset(
@@ -148,7 +129,7 @@ struct ExportSettingsTab: View {
             name: kind.label,
             codec: codec,
             extension: codec.fileExtension,
-            filenameTokens: configStore.config.exportFilenameTokens,
+            filenameTokens: Self.defaultPresetFilenameTokens,
             pregapPlacement: .appendToPreviousExceptHtoa,
             appliesToTrack: true,
             appliesToRelease: true

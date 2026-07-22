@@ -34,11 +34,8 @@ public sealed class Settings
     /// the user to every device.</summary>
     public bool LibraryFullWidth { get; set; }
 
-    /// <summary>The ordered token list rendering a single-track export's
-    /// suggested filename.</summary>
-    internal List<BridgeExportFilenameToken> ExportFilenameTokens { get; set; } = new();
-
-    /// <summary>Configured export presets offered by release and track export.</summary>
+    /// <summary>Configured export presets offered by release and track export.
+    /// The filename pattern is a per-preset property — there is no global one.</summary>
     public List<ExportPreset> ExportPresets { get; set; } = new();
 
     /// <summary>Id of the preset a track save defaults to (valid + track-applicable).</summary>

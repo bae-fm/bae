@@ -26,8 +26,6 @@ internal sealed class ExportSettingsSection
 
     private readonly ComboBox _defaultTrack = new() { Header = Loc.Chrome("settings.export.default_track_format") };
     private readonly ComboBox _defaultRelease = new() { Header = Loc.Chrome("settings.export.default_release_format") };
-    private readonly FilenameTokenEditor _patternEditor;
-    private readonly TextBlock _patternPreview = PreviewLine();
     private readonly StackPanel _presetPanel = new() { Spacing = 8 };
 
     private bool _rendering;
@@ -49,8 +47,6 @@ internal sealed class ExportSettingsSection
         _dialogRoot = dialogRoot;
         _showError = showError;
         _clearError = clearError;
-        _patternEditor = new FilenameTokenEditor(
-            tokens => _ = SavePatternTokens(tokens));
 
         _defaultTrack.SelectionChanged += async (_, _) =>
             await SaveDefaultSelection(_defaultTrack, release: false);
@@ -61,9 +57,6 @@ internal sealed class ExportSettingsSection
         View.Children.Add(_defaultRelease);
         View.Children.Add(SectionLabel(Loc.Chrome("settings.export.track_exports")));
         View.Children.Add(_defaultTrack);
-        View.Children.Add(new TextBlock { Text = Loc.Chrome("settings.export.filename_format") });
-        View.Children.Add(_patternEditor.View);
-        View.Children.Add(_patternPreview);
         View.Children.Add(SectionLabel(Loc.Chrome("settings.export.presets")));
         View.Children.Add(_presetPanel);
         View.Children.Add(AddPresetButton());
@@ -82,14 +75,6 @@ internal sealed class ExportSettingsSection
     {
         _current = settings;
         _rendering = true;
-        _patternEditor.Render(settings.ExportFilenameTokens);
-        _patternPreview.Text = Loc.Chrome(
-            "settings.export.preview",
-            "filename",
-            // "Original" keeps the source format, so the sample shows a
-            // representative extension; preset defaults preview themselves in
-            // their own rows below.
-            ExportFilenameTokenDisplay.PreviewFilename(settings.ExportFilenameTokens, "flac"));
         PopulateSelection(_defaultTrack, settings, release: false);
         PopulateSelection(_defaultRelease, settings, release: true);
         RenderPresets(settings);
@@ -109,28 +94,7 @@ internal sealed class ExportSettingsSection
         Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray),
     };
 
-    // ── Filename pattern and default formats ────────────────────────────────
-
-    private async System.Threading.Tasks.Task SavePatternTokens(
-        List<BridgeExportFilenameToken> tokens)
-    {
-        if (_rendering)
-        {
-            return;
-        }
-        _clearError();
-        var (current, error) = await _session.RunForCurrentHandle(
-            handle => NativeBae.SetExportFilenameTokens(handle, tokens));
-        if (!current)
-        {
-            return;
-        }
-        if (error is not null)
-        {
-            _showError(error);
-            _settings.Reload();
-        }
-    }
+    // ── Default formats ─────────────────────────────────────────────────────
 
     private void PopulateSelection(ComboBox combo, Settings settings, bool release)
     {
@@ -623,6 +587,12 @@ internal sealed class ExportSettingsSection
         };
     }
 
+    // The filename pattern a newly added preset starts with — the zero-padded
+    // track number then the title, matching core's default. The user edits it in
+    // the preset dialog; there is no global pattern anymore.
+    private static List<BridgeExportFilenameToken> DefaultPresetFilenameTokens() =>
+        new() { BridgeExportFilenameToken.TrackNumber, BridgeExportFilenameToken.Title };
+
     private async System.Threading.Tasks.Task AddPreset(string kind)
     {
         if (_current is not { } settings)
@@ -637,7 +607,7 @@ internal sealed class ExportSettingsSection
             Codec = codec,
             // Extension is derived by core from the codec and filled on the config
             // round-trip; the local default ("") is only a placeholder until then.
-            FilenameTokens = settings.ExportFilenameTokens.ToList(),
+            FilenameTokens = DefaultPresetFilenameTokens(),
             PregapPlacement = BridgeExportPregapPlacement.AppendToPreviousExceptHtoa,
             AppliesToTrack = true,
             AppliesToRelease = true,

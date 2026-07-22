@@ -244,7 +244,6 @@ impl BridgeConfig {
             discogs: _,
             // Playback loudness policy; not surfaced on the config screen.
             replay_gain_mode: _,
-            export_filename_tokens,
             export_presets,
             default_track_save_preset,
             default_release_save_preset,
@@ -271,11 +270,6 @@ impl BridgeConfig {
             max_concurrent_downloads: max_concurrent_downloads.get(),
             show_remaining_time: *show_remaining_time,
             library_full_width: *library_full_width,
-            export_filename_tokens: export_filename_tokens
-                .iter()
-                .copied()
-                .map(BridgeExportFilenameToken::from_core)
-                .collect(),
             export_presets: export_presets
                 .iter()
                 .map(BridgeExportPreset::from_core)

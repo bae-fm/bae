@@ -27,10 +27,6 @@ final class Exports: Sendable, Observable {
     let cancelExport: @Sendable (_ releaseId: String) -> Void
     /// Retry every failed export now (flips them back to queued).
     let retryExports: @Sendable () -> Void
-    /// Set the ordered token list for a single-track export's suggested
-    /// filename. The change round-trips back through a `configChanged` event.
-    let setExportFilenameTokens:
-        @Sendable (_ tokens: [BridgeExportFilenameToken]) throws -> Void
     /// Replace configured export presets.
     let setExportPresets:
         @Sendable (_ presets: [BridgeExportPreset]) throws -> Void
@@ -52,10 +48,6 @@ final class Exports: Sendable, Observable {
         setExportsPaused: @escaping @Sendable (Bool) -> Void = { _ in },
         cancelExport: @escaping @Sendable (String) -> Void = { _ in },
         retryExports: @escaping @Sendable () -> Void = {},
-        setExportFilenameTokens:
-            @escaping @Sendable ([BridgeExportFilenameToken]) throws -> Void = {
-                _ in
-            },
         setExportPresets:
             @escaping @Sendable ([BridgeExportPreset]) throws -> Void = { _ in
             },
@@ -71,7 +63,6 @@ final class Exports: Sendable, Observable {
         self.setExportsPaused = setExportsPaused
         self.cancelExport = cancelExport
         self.retryExports = retryExports
-        self.setExportFilenameTokens = setExportFilenameTokens
         self.setExportPresets = setExportPresets
         self.setDefaultTrackSavePreset = setDefaultTrackSavePreset
         self.setDefaultReleaseSavePreset = setDefaultReleaseSavePreset
@@ -92,9 +83,6 @@ final class Exports: Sendable, Observable {
             setExportsPaused: { handle.setExportsPaused(paused: $0) },
             cancelExport: { handle.cancelExport(releaseId: $0) },
             retryExports: { handle.retryExports() },
-            setExportFilenameTokens: {
-                try handle.setExportFilenameTokens(tokens: $0)
-            },
             setExportPresets: { try handle.setExportPresets(presets: $0) },
             setDefaultTrackSavePreset: {
                 try handle.setDefaultTrackSavePreset(presetId: $0)

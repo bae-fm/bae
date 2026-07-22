@@ -342,8 +342,8 @@ internal static class NativeBae
     internal static string? SaveRelease(AppHandle handle, string releaseId, string targetDir, string presetId) =>
         CaptureError(() => Await(handle.EnqueueReleaseSave(releaseId, targetDir, presetId)));
 
-    internal static string? ExportTrackSuggestedName(AppHandle handle, string trackId) =>
-        CaptureValue(() => Await(handle.ExportTrackSuggestedName(trackId)));
+    internal static string? SaveTrackSuggestedName(AppHandle handle, string trackId, string presetId) =>
+        CaptureValue(() => Await(handle.SaveTrackSuggestedName(trackId, presetId)));
 
     internal static (BridgeFile[]? Images, string? Error) GetReleaseImages(AppHandle handle, string releaseId) =>
         CaptureBridgeValue(() =>
@@ -553,9 +553,6 @@ internal static class NativeBae
     /// re-renders the bar.</summary>
     internal static string? SetShowRemainingTime(AppHandle handle, bool enabled) =>
         CaptureError(() => handle.SetShowRemainingTime(enabled));
-
-    internal static string? SetExportFilenameTokens(AppHandle handle, IEnumerable<BridgeExportFilenameToken> tokens) =>
-        CaptureError(() => handle.SetExportFilenameTokens(tokens.ToList()));
 
     internal static string? SetExportPresets(AppHandle handle, IEnumerable<ExportPreset> presets) =>
         CaptureError(() => handle.SetExportPresets(
@@ -984,7 +981,6 @@ internal static class NativeBae
             PauseBetweenSides = config.PauseBetweenSides,
             ShowRemainingTime = config.ShowRemainingTime,
             LibraryFullWidth = config.LibraryFullWidth,
-            ExportFilenameTokens = config.ExportFilenameTokens,
             ExportPresets = config.ExportPresets.Select(ExportPreset).ToList(),
             DefaultTrackSavePreset = config.DefaultTrackSavePreset,
             DefaultReleaseSavePreset = config.DefaultReleaseSavePreset,

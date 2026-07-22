@@ -167,6 +167,73 @@ async fn export_track_from_cloud_only_release() {
     assert_eq!(exported_pcm.samples, original_pcm.samples);
 }
 
+/// The track-save filename suggestion renders the *selected* preset's token
+/// pattern: two presets with different patterns give different stems for the
+/// same track. DB-only — no audio or cloud read.
+#[tokio::test]
+async fn save_track_suggested_name_uses_the_preset_tokens() {
+    support::tracing_init();
+    let f = ExportFixture::new().await;
+    let album_dir = f.temp_path().join("album");
+    fs::create_dir_all(&album_dir).unwrap();
+    support::write_tagged_flac(&album_dir, "01.flac", "Track One");
+    let release_id = import_unknown_local(&f, &album_dir).await;
+    let tracks = f.mgr.get_tracks_for_release(&release_id).await.unwrap();
+
+    let mut presets = f.mgr.export_presets();
+    presets.push(ExportPreset {
+        id: "title-only".to_string(),
+        name: "Title only".to_string(),
+        codec: ExportPresetCodec::Flac {
+            bit_depth: ExportBitDepth::Source,
+        },
+        filename_tokens: vec![ExportFilenameToken::Title],
+        pregap_placement: ExportPregapPlacement::AppendToPreviousExceptHtoa,
+        applies_to_track: true,
+        applies_to_release: false,
+    });
+    presets.push(ExportPreset {
+        id: "num-title".to_string(),
+        name: "Number and title".to_string(),
+        codec: ExportPresetCodec::Flac {
+            bit_depth: ExportBitDepth::Source,
+        },
+        filename_tokens: vec![ExportFilenameToken::TrackNumber, ExportFilenameToken::Title],
+        pregap_placement: ExportPregapPlacement::AppendToPreviousExceptHtoa,
+        applies_to_track: true,
+        applies_to_release: false,
+    });
+    f.mgr.set_export_presets(presets).unwrap();
+
+    let title_only = f
+        .mgr
+        .save_track_suggested_name(&tracks[0].id, "title-only")
+        .await
+        .expect("title-only preset renders a stem");
+    let num_title = f
+        .mgr
+        .save_track_suggested_name(&tracks[0].id, "num-title")
+        .await
+        .expect("num-title preset renders a stem");
+
+    assert_eq!(title_only, "Track One");
+    assert_ne!(
+        title_only, num_title,
+        "a different token pattern must yield a different stem"
+    );
+    assert!(
+        num_title.contains("Track One"),
+        "the number-and-title stem still contains the title: {num_title}"
+    );
+
+    // An unknown preset id can't back a track suggestion.
+    let err = f
+        .mgr
+        .save_track_suggested_name(&tracks[0].id, "no-such-preset")
+        .await;
+    assert!(err.is_err(), "an unknown preset id is rejected");
+}
+
 /// Exporting a whole cloud-only release downloads each file and writes the
 /// raw bytes — byte-identical to what was uploaded.
 #[tokio::test]

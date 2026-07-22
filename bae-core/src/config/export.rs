@@ -16,9 +16,10 @@ pub enum ExportFilenameToken {
     TrackTotal,
 }
 
-/// The default filename pattern a single-track export suggests: the zero-padded
-/// track number, then the title.
-pub(super) fn default_export_filename_tokens() -> Vec<ExportFilenameToken> {
+/// The default filename pattern a new preset starts with: the zero-padded track
+/// number, then the title. Only [`default_export_presets`] uses it now — the
+/// global filename-token config is gone.
+fn default_export_filename_tokens() -> Vec<ExportFilenameToken> {
     vec![ExportFilenameToken::TrackNumber, ExportFilenameToken::Title]
 }
 

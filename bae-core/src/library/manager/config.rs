@@ -56,20 +56,6 @@ impl LibraryManager {
             .update(|c| c.library_full_width = enabled)
     }
 
-    /// The ordered token list rendering a single-track export's suggested
-    /// filename.
-    pub fn export_filename_tokens(&self) -> Vec<crate::config::ExportFilenameToken> {
-        self.config_handle.config().export_filename_tokens.clone()
-    }
-
-    pub fn set_export_filename_tokens(
-        &self,
-        tokens: Vec<crate::config::ExportFilenameToken>,
-    ) -> Result<(), crate::config::ConfigError> {
-        self.config_handle
-            .update(|c| c.export_filename_tokens = tokens)
-    }
-
     pub fn export_presets(&self) -> Vec<crate::config::ExportPreset> {
         self.config_handle.config().export_presets.clone()
     }

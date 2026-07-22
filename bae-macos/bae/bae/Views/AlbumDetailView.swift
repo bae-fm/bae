@@ -19,6 +19,16 @@ private struct ExportSavePanel {
     let formatDelegate: ExportFormatDelegate
 }
 
+/// A track-save format choice paired with the stem its preset's pattern
+/// suggests. Built together in one pass, so the stem is never absent — the
+/// track panel and its format delegate read it directly, no lookup or fallback.
+/// (The release flow doesn't pre-render stems, so this pairing is panel-local
+/// rather than a field on the shared `ExportFormatChoice`.)
+private struct TrackSaveChoice {
+    let choice: ExportFormatChoice
+    let suggestedStem: String
+}
+
 // MARK: - AlbumDetailView (wiring view)
 
 struct AlbumDetailView: View {
@@ -633,29 +643,48 @@ extension AlbumDetailView {
     private func exportTrack(trackId: String) {
         exportTask?.cancel()
         exportTask = Task {
-            // Core renders the suggested filename stem from the configured
-            // template; a failure surfaces rather than falling back to a raw
-            // title, which would hide the error.
-            let stem: String
-            do {
-                stem = try await export.suggestedName(trackId)
-            }
-            catch is CancellationError {
-                return
-            }
-            catch {
-                exportError = error.displayLine
-                return
-            }
-
             let choices = ExportFormatChoice.trackChoices(
                 presets: configStore.config.exportPresets
             )
-            guard let panel = makeExportSavePanel(stem: stem, choices: choices)
+            guard
+                let selectedIndex = choices.firstIndex(where: {
+                    $0.presetId == configStore.config.defaultTrackSavePreset
+                })
             else {
                 exportError = String(localized: "Default format")
                 return
             }
+
+            // Core renders each preset's suggested stem from its own token
+            // pattern; a failure surfaces rather than falling back to a raw
+            // title. Pre-render every preset up front, paired with its choice,
+            // so the format popup can swap the stem synchronously during the
+            // modal panel (async work can't run during `runModal`).
+            var saveChoices: [TrackSaveChoice] = []
+            for choice in choices {
+                let stem: String
+                do {
+                    stem = try await export.suggestedName(
+                        trackId,
+                        choice.presetId
+                    )
+                }
+                catch is CancellationError {
+                    return
+                }
+                catch {
+                    exportError = error.displayLine
+                    return
+                }
+                saveChoices.append(
+                    TrackSaveChoice(choice: choice, suggestedStem: stem)
+                )
+            }
+
+            let panel = makeExportSavePanel(
+                saveChoices: saveChoices,
+                selectedIndex: selectedIndex
+            )
             let formatPopup = panel.formatPopup
             let response = panel.savePanel.runModal()
             _ = panel.formatDelegate  // prevent deallocation during modal
@@ -670,7 +699,8 @@ extension AlbumDetailView {
                 return
             }
 
-            let presetId = choices[formatPopup.indexOfSelectedItem].presetId
+            let presetId =
+                saveChoices[formatPopup.indexOfSelectedItem].choice.presetId
             let outputPath = url.path(percentEncoded: false)
             do {
                 try await export.saveTrack(trackId, outputPath, presetId)
@@ -684,37 +714,34 @@ extension AlbumDetailView {
         }
     }
 
-    /// Build the save panel for a track export, with its format-picker accessory
-    /// view wired to a delegate that keeps the filename extension in sync. The
-    /// caller runs the panel and reads `formatPopup` for the chosen selection;
-    /// the delegate must be retained for the modal's lifetime.
+    /// Build the save panel for a track save, with its format-picker accessory
+    /// wired to a delegate that keeps the extension and the suggested stem in
+    /// sync as the preset changes. Seeded from the default preset's suggestion;
+    /// the caller runs the panel and reads `formatPopup` for the chosen preset.
+    /// The delegate must be retained for the modal's lifetime.
     private func makeExportSavePanel(
-        stem: String,
-        choices: [ExportFormatChoice]
-    ) -> ExportSavePanel? {
-        guard
-            let selectedIndex = choices.firstIndex(where: {
-                $0.presetId == configStore.config.defaultTrackSavePreset
-            })
-        else {
-            return nil
-        }
-        let defaultExt = choices[selectedIndex].extensionName
+        saveChoices: [TrackSaveChoice],
+        selectedIndex: Int
+    ) -> ExportSavePanel {
+        let selected = saveChoices[selectedIndex]
+        let stem = selected.suggestedStem
 
         let panel = NSSavePanel()
-        panel.nameFieldStringValue = "\(stem).\(defaultExt)"
+        panel.nameFieldStringValue = "\(stem).\(selected.choice.extensionName)"
         panel.canCreateDirectories = true
 
-        // Format picker accessory view with target-action to update extension
+        // Format picker accessory: swaps extension and re-suggests the stem on
+        // change (the delegate replaces it only when the user hasn't edited it).
         let formatDelegate = ExportFormatDelegate(
             panel: panel,
-            choices: choices
+            saveChoices: saveChoices,
+            lastSuggestion: stem
         )
         let formatPopup = NSPopUpButton(
             frame: NSRect(x: 0, y: 0, width: 200, height: 24),
             pullsDown: false
         )
-        formatPopup.addItems(withTitles: choices.map(\.title))
+        formatPopup.addItems(withTitles: saveChoices.map(\.choice.title))
         formatPopup.selectItem(at: selectedIndex)
         formatPopup.target = formatDelegate
         formatPopup.action = #selector(ExportFormatDelegate.formatChanged(_:))
@@ -729,7 +756,7 @@ extension AlbumDetailView {
         accessoryContainer.addSubview(formatPopup)
         panel.accessoryView = accessoryContainer
 
-        if let type = UTType(filenameExtension: defaultExt) {
+        if let type = UTType(filenameExtension: selected.choice.extensionName) {
             panel.allowedContentTypes = [type]
         }
 
@@ -1441,16 +1468,29 @@ struct ManageConfirmSheet: View {
 
 // MARK: - ExportFormatDelegate
 
-/// Target-action handler for the format popup in the export save panel.
-/// Updates the filename extension and allowed content types when the user changes format.
+/// Target-action handler for the format popup in the track save panel. On a
+/// format change it swaps the filename extension and content type, and
+/// re-suggests the stem from the newly selected preset's pattern — but only when
+/// the user hasn't edited the stem away from the last suggestion. Each choice
+/// carries its pre-rendered stem (async work can't run during `runModal`), so
+/// the suggestion is always present.
 @MainActor
 private class ExportFormatDelegate: NSObject {
     weak var panel: NSSavePanel?
-    let choices: [ExportFormatChoice]
+    let saveChoices: [TrackSaveChoice]
+    /// The stem the panel currently shows as an unedited suggestion. When the
+    /// visible stem still equals this, the user hasn't typed over it, so a
+    /// format change is free to replace it with the new preset's suggestion.
+    var lastSuggestion: String
 
-    init(panel: NSSavePanel, choices: [ExportFormatChoice]) {
+    init(
+        panel: NSSavePanel,
+        saveChoices: [TrackSaveChoice],
+        lastSuggestion: String
+    ) {
         self.panel = panel
-        self.choices = choices
+        self.saveChoices = saveChoices
+        self.lastSuggestion = lastSuggestion
     }
 
     @objc
@@ -1458,12 +1498,17 @@ private class ExportFormatDelegate: NSObject {
         guard let panel else {
             return
         }
-        let ext = choices[sender.indexOfSelectedItem].extensionName
-        let currentName = panel.nameFieldStringValue
-        let stem = (currentName as NSString).deletingPathExtension
+        let selected = saveChoices[sender.indexOfSelectedItem]
+        let currentStem =
+            (panel.nameFieldStringValue as NSString).deletingPathExtension
+        var stem = currentStem
+        if currentStem == lastSuggestion {
+            stem = selected.suggestedStem
+            lastSuggestion = selected.suggestedStem
+        }
 
-        panel.nameFieldStringValue = "\(stem).\(ext)"
-        if let type = UTType(filenameExtension: ext) {
+        panel.nameFieldStringValue = "\(stem).\(selected.choice.extensionName)"
+        if let type = UTType(filenameExtension: selected.choice.extensionName) {
             panel.allowedContentTypes = [type]
         }
     }

@@ -472,7 +472,6 @@ private func makeAppService(handle: FakeAppHandle = FakeAppHandle())
             maxConcurrentDownloads: 3,
             showRemainingTime: false,
                     libraryFullWidth: false,
-            exportFilenameTokens: [],
             exportPresets: [],
             defaultTrackSavePreset: "flac",
             defaultReleaseSavePreset: "flac",

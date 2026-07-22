@@ -592,23 +592,6 @@ impl AppHandle {
             .map_err(BridgeError::config)
     }
 
-    /// Set the ordered token list rendering a single-track export's suggested
-    /// filename.
-    pub fn set_export_filename_tokens(
-        &self,
-        tokens: Vec<crate::types::BridgeExportFilenameToken>,
-    ) -> Result<(), BridgeError> {
-        self.services
-            .library_manager()
-            .set_export_filename_tokens(
-                tokens
-                    .into_iter()
-                    .map(crate::types::BridgeExportFilenameToken::into_core)
-                    .collect(),
-            )
-            .map_err(BridgeError::config)
-    }
-
     pub fn set_export_presets(
         &self,
         presets: Vec<crate::types::BridgeExportPreset>,
@@ -1607,15 +1590,17 @@ impl AppHandle {
     }
 
     /// The default filename stem (no extension) a single-track "Save As…"
-    /// suggests for `track_id`, rendered from the configured template. Reads only
-    /// the database — no audio or cover — while seeding a save panel.
-    pub async fn export_track_suggested_name(
+    /// suggests for `track_id` under the preset named by `preset_id`, rendered
+    /// from that preset's token pattern. Reads only the database — no audio or
+    /// cover — while seeding a save panel.
+    pub async fn save_track_suggested_name(
         &self,
         track_id: String,
+        preset_id: String,
     ) -> Result<String, BridgeError> {
         self.services
             .library_manager()
-            .export_track_suggested_name(&track_id)
+            .save_track_suggested_name(&track_id, &preset_id)
             .await
             .map_err(|e| BridgeError::export(format!("{e}")))
     }

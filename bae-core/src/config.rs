@@ -19,7 +19,7 @@ pub use keyring::install_test_keyring;
 
 use crate::util::atomic_write::{write_atomic, write_atomic_io, WriteError};
 use dev::dev_mode_enabled;
-use export::{default_export_filename_tokens, default_export_presets};
+use export::default_export_presets;
 
 pub const MCP_DEFAULT_PORT: u16 = 47777;
 
@@ -274,9 +274,6 @@ pub struct ConfigYaml {
     pub encryption_key_fingerprint: Option<String>,
     /// How loudness normalization is applied at playback.
     pub replay_gain_mode: ReplayGainMode,
-    /// The ordered token list rendering a single-track export's suggested
-    /// filename.
-    pub export_filename_tokens: Vec<ExportFilenameToken>,
     /// Configured export presets offered by release and track export.
     pub export_presets: Vec<ExportPreset>,
     /// Id of the preset a track save defaults to. A required, valid preset id
@@ -328,7 +325,6 @@ impl ConfigYaml {
             },
             discogs: self.discogs,
             replay_gain_mode: self.replay_gain_mode,
-            export_filename_tokens: self.export_filename_tokens,
             export_presets: self.export_presets,
             default_track_save_preset: self.default_track_save_preset,
             default_release_save_preset: self.default_release_save_preset,
@@ -354,7 +350,6 @@ impl From<&Config> for ConfigYaml {
             encryption_key_stored: config.encryption_key_stored,
             encryption_key_fingerprint: config.encryption_key_fingerprint.clone(),
             replay_gain_mode: config.replay_gain_mode,
-            export_filename_tokens: config.export_filename_tokens.clone(),
             export_presets: config.export_presets.clone(),
             default_track_save_preset: config.default_track_save_preset.clone(),
             default_release_save_preset: config.default_release_save_preset.clone(),
@@ -404,9 +399,6 @@ pub struct Config {
     pub discogs: Option<DiscogsValidation>,
     /// How loudness normalization is applied at playback. Defaults to `Off`.
     pub replay_gain_mode: ReplayGainMode,
-    /// The ordered token list rendering a single-track export's suggested
-    /// filename.
-    pub export_filename_tokens: Vec<ExportFilenameToken>,
     /// Configured export presets offered by release and track export.
     pub export_presets: Vec<ExportPreset>,
     /// Id of the preset a track save defaults to. A required, valid preset id
@@ -572,7 +564,6 @@ impl Config {
             inner: coven::Config::with_defaults(library_id, device_id, library_dir, library_name),
             discogs: None,
             replay_gain_mode: ReplayGainMode::Off,
-            export_filename_tokens: default_export_filename_tokens(),
             export_presets: default_export_presets(),
             default_track_save_preset: "flac".to_string(),
             default_release_save_preset: "flac".to_string(),
@@ -1044,7 +1035,8 @@ mod tests {
     fn export_settings_survive_yaml_roundtrip() {
         let tmp = TempDir::new().unwrap();
         let mut config = make_test_config("lib", tmp.path().to_path_buf());
-        config.export_filename_tokens =
+        // Filename tokens are per-preset now; a preset's edited pattern survives.
+        config.export_presets[0].filename_tokens =
             vec![ExportFilenameToken::Artist, ExportFilenameToken::Title];
         config.save_to_config_yaml().unwrap();
 
@@ -1052,7 +1044,7 @@ mod tests {
             serde_yaml::from_str(&std::fs::read_to_string(tmp.path().join("config.yaml")).unwrap())
                 .unwrap();
         assert_eq!(
-            yaml.export_filename_tokens,
+            yaml.export_presets[0].filename_tokens,
             vec![ExportFilenameToken::Artist, ExportFilenameToken::Title]
         );
         assert_eq!(yaml.export_presets, config.export_presets);
@@ -1166,7 +1158,6 @@ mod tests {
             "encryption_key_stored",
             "encryption_key_fingerprint",
             "replay_gain_mode",
-            "export_filename_tokens",
             "export_presets",
             "default_track_save_preset",
             "default_release_save_preset",
@@ -1241,7 +1232,6 @@ mod tests {
             "encryption_key_stored",
             "encryption_key_fingerprint",
             "replay_gain_mode",
-            "export_filename_tokens",
             "export_presets",
             "default_track_save_preset",
             "default_release_save_preset",
