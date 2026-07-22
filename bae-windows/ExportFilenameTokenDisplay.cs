@@ -1,4 +1,4 @@
-using uniffi.bae_bridge;
+﻿using uniffi.bae_bridge;
 
 namespace Bae.Windows;
 
