@@ -111,6 +111,7 @@ fn release_only_image_preset() -> crate::config::ExportPreset {
         pregap_placement: crate::config::ExportPregapPlacement::SingleFileWithCue,
         applies_to_track: false,
         applies_to_release: true,
+        embed_cover: true,
     }
 }
 

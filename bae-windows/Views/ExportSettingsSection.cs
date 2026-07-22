@@ -338,7 +338,29 @@ internal sealed class ExportSettingsSection
         editor.Children.Add(filenameGroup);
 
         editor.Children.Add(scopes.Row);
+        editor.Children.Add(PresetEmbedCoverBox(settings, preset));
         return editor;
+    }
+
+    private CheckBox PresetEmbedCoverBox(Settings settings, ExportPreset preset)
+    {
+        var embed = new CheckBox
+        {
+            Content = Loc.Chrome("settings.export.embed_cover"),
+            IsChecked = preset.EmbedCover,
+        };
+        async System.Threading.Tasks.Task Save()
+        {
+            if (_rendering)
+            {
+                return;
+            }
+            preset.EmbedCover = embed.IsChecked == true;
+            await SavePresets(settings.ExportPresets);
+        }
+        embed.Checked += async (_, _) => await Save();
+        embed.Unchecked += async (_, _) => await Save();
+        return embed;
     }
 
     private TextBox PresetNameBox(Settings settings, ExportPreset preset)
@@ -611,6 +633,7 @@ internal sealed class ExportSettingsSection
             PregapPlacement = BridgeExportPregapPlacement.AppendToPreviousExceptHtoa,
             AppliesToTrack = true,
             AppliesToRelease = true,
+            EmbedCover = true,
         };
         settings.ExportPresets.Add(preset);
         await SavePresets(settings.ExportPresets);

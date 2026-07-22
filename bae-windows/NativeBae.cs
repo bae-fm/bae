@@ -1208,6 +1208,7 @@ internal static class NativeBae
             PregapPlacement = preset.PregapPlacement,
             AppliesToTrack = preset.AppliesToTrack,
             AppliesToRelease = preset.AppliesToRelease,
+            EmbedCover = preset.EmbedCover,
         };
 
     private static BridgeExportPreset ExportPresetBridge(ExportPreset preset) =>
@@ -1219,7 +1220,8 @@ internal static class NativeBae
             preset.FilenameTokens,
             preset.PregapPlacement,
             preset.AppliesToTrack,
-            preset.AppliesToRelease);
+            preset.AppliesToRelease,
+            preset.EmbedCover);
 
     private static string DiscogsStatusTag(BridgeDiscogsTokenStatus status) =>
         status switch

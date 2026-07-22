@@ -23,6 +23,8 @@ path = "src/lib.rs"
 bae-core = { path = "../bae-core", features = ["test-utils"] }
 coven = { workspace = true, features = ["test-utils"] }
 hex = "0.4"
+# For synthesizing a folder-cover image in tests that need a release with art.
+image = { version = "0.25", default-features = false, features = ["png"] }
 lofty = "0.24"
 tempfile = "3.8"
 tokio = { version = "1.0", features = ["full"] }

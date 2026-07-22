@@ -1019,7 +1019,8 @@
                 filenameTokens: exportFilenameTokens,
                 pregapPlacement: .appendToPreviousExceptHtoa,
                 appliesToTrack: true,
-                appliesToRelease: true
+                appliesToRelease: true,
+                embedCover: true
             ),
             BridgeExportPreset(
                 id: "mp3",
@@ -1029,7 +1030,8 @@
                 filenameTokens: exportFilenameTokens,
                 pregapPlacement: .appendToPreviousExceptHtoa,
                 appliesToTrack: true,
-                appliesToRelease: true
+                appliesToRelease: true,
+                embedCover: true
             ),
         ]
 

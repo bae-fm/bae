@@ -917,6 +917,7 @@ dependencies = [
  "bae-core",
  "coven",
  "hex",
+ "image",
  "lofty",
  "tempfile",
  "tokio",

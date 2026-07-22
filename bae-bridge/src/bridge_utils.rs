@@ -180,6 +180,7 @@ impl BridgeExportPreset {
             pregap_placement,
             applies_to_track,
             applies_to_release,
+            embed_cover,
         } = preset;
         BridgeExportPreset {
             id: id.clone(),
@@ -195,6 +196,7 @@ impl BridgeExportPreset {
             pregap_placement: BridgeExportPregapPlacement::from_core(*pregap_placement),
             applies_to_track: *applies_to_track,
             applies_to_release: *applies_to_release,
+            embed_cover: *embed_cover,
         }
     }
 
@@ -207,6 +209,7 @@ impl BridgeExportPreset {
             pregap_placement,
             applies_to_track,
             applies_to_release,
+            embed_cover,
             // The core preset re-derives this from `codec`; the carried value is
             // dropped.
             extension: _,
@@ -222,6 +225,7 @@ impl BridgeExportPreset {
             pregap_placement: pregap_placement.into_core(),
             applies_to_track,
             applies_to_release,
+            embed_cover,
         }
     }
 }

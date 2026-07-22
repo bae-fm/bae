@@ -36,6 +36,7 @@ struct ExportPresetEditor: View {
                 pregapRow
                 filenameGroup
                 scopeRow
+                coverRow
             }
             .formStyle(.grouped)
             HStack {
@@ -186,6 +187,22 @@ struct ExportPresetEditor: View {
         }
         .disabled(preset.pregapPlacement == .singleFileWithCue)
         .presetEditorRowInsets()
+    }
+
+    private var coverRow: some View {
+        Toggle("Embed cover art", isOn: embedCoverBinding)
+            .presetEditorRowInsets()
+    }
+
+    private var embedCoverBinding: Binding<Bool> {
+        Binding(
+            get: { preset.embedCover },
+            set: { enabled in
+                var changed = preset
+                changed.embedCover = enabled
+                update(changed)
+            }
+        )
     }
 
     private var previewFilename: String {

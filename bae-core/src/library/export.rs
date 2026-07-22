@@ -917,4 +917,52 @@ mod tests {
         assert_eq!(tag.disk(), Some(1));
         assert!(!tag.pictures().is_empty(), "cover embedded");
     }
+
+    /// The counterpart: when the preset doesn't embed (so the plan carries no
+    /// cover bytes), `write_tags` embeds no picture — every other tag still lands.
+    #[test]
+    fn write_tags_without_cover_embeds_no_picture() {
+        use lofty::prelude::*;
+        use lofty::tag::TagType;
+
+        crate::audio_codec::init();
+        let cancel = std::sync::atomic::AtomicBool::new(false);
+        let samples: Vec<i32> = (0..4410)
+            .map(|i| ((i as f64 * 0.02).sin() * 0.5 * i32::MAX as f64) as i32)
+            .collect();
+        let flac = crate::audio_codec::encode_to_flac(&samples, 44100, 1, 16, &cancel).unwrap();
+
+        let tags = ExportTags {
+            title: "Track Title".to_string(),
+            artist: "Artist Name".to_string(),
+            album: "Album Title".to_string(),
+            year: Some(2001),
+            disc: Some(1),
+        };
+
+        let dir = tempfile::TempDir::new().unwrap();
+        let path = dir.path().join("tagged.flac");
+        std::fs::write(&path, &flac).unwrap();
+        write_tags(
+            &path,
+            TagType::VorbisComments,
+            &tags,
+            Some(3),
+            10,
+            true,
+            None,
+        )
+        .unwrap();
+
+        let tagged = lofty::read_from_path(&path).unwrap();
+        let tag = tagged
+            .tag(TagType::VorbisComments)
+            .expect("VorbisComments tag present");
+        assert_eq!(tag.title().as_deref(), Some("Track Title"));
+        assert_eq!(tag.track(), Some(3));
+        assert!(
+            tag.pictures().is_empty(),
+            "no cover bytes means no embedded picture"
+        );
+    }
 }

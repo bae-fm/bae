@@ -132,7 +132,8 @@ struct ExportSettingsTab: View {
             filenameTokens: Self.defaultPresetFilenameTokens,
             pregapPlacement: .appendToPreviousExceptHtoa,
             appliesToTrack: true,
-            appliesToRelease: true
+            appliesToRelease: true,
+            embedCover: true
         )
         set {
             try exports.setExportPresets(

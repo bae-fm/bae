@@ -338,6 +338,7 @@
   <data name="settings.export.codec_opus" xml:space="preserve"><value>Opus {kbps} kbps</value></data>
   <data name="settings.export.bit_depth.source_summary" xml:space="preserve"><value>ഉറവിട ബിറ്റ് ഡെപ്ത്</value></data>
   <data name="settings.export.show_in_menus" xml:space="preserve"><value>ഇതിന്റെ കയറ്റുമതി മെനുവിൽ കാണിക്കുക</value></data>
+  <data name="settings.export.embed_cover" xml:space="preserve"><value>കവർ ആർട്ട് ഉൾപ്പെടുത്തുക</value></data>
   <data name="settings.export.bit_depth_label" xml:space="preserve"><value>ബിറ്റ് ആഴം</value></data>
   <data name="settings.export.bit_depth.source" xml:space="preserve"><value>ഉറവിടം</value></data>
   <data name="settings.export.bit_depth.bits16" xml:space="preserve"><value>16-ബിറ്റ്</value></data>

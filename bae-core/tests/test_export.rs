@@ -191,6 +191,7 @@ async fn save_track_suggested_name_uses_the_preset_tokens() {
         pregap_placement: ExportPregapPlacement::AppendToPreviousExceptHtoa,
         applies_to_track: true,
         applies_to_release: false,
+        embed_cover: true,
     });
     presets.push(ExportPreset {
         id: "num-title".to_string(),
@@ -202,6 +203,7 @@ async fn save_track_suggested_name_uses_the_preset_tokens() {
         pregap_placement: ExportPregapPlacement::AppendToPreviousExceptHtoa,
         applies_to_track: true,
         applies_to_release: false,
+        embed_cover: true,
     });
     f.mgr.set_export_presets(presets).unwrap();
 
@@ -232,6 +234,42 @@ async fn save_track_suggested_name_uses_the_preset_tokens() {
         .save_track_suggested_name(&tracks[0].id, "no-such-preset")
         .await;
     assert!(err.is_err(), "an unknown preset id is rejected");
+}
+
+/// Plan assembly reads the cover only when the preset embeds: with art on the
+/// release, `embed_cover: true` carries the bytes and `false` carries none — the
+/// blob read is skipped entirely.
+#[tokio::test]
+async fn get_export_track_plan_skips_cover_read_when_not_embedding() {
+    support::tracing_init();
+    let f = ExportFixture::new().await;
+    let album_dir = f.temp_path().join("album");
+    fs::create_dir_all(&album_dir).unwrap();
+    support::write_tagged_flac(&album_dir, "01.flac", "Track One");
+    // A folder cover so the imported release actually has art to embed.
+    support::write_cover_png(&album_dir.join("cover.png"));
+    let release_id = import_unknown_local(&f, &album_dir).await;
+    let tracks = f.mgr.get_tracks_for_release(&release_id).await.unwrap();
+
+    let with_cover = f
+        .mgr
+        .get_export_track_plan(&tracks[0].id, true)
+        .await
+        .expect("plan with embedding");
+    assert!(
+        with_cover.cover_image_bytes.is_some(),
+        "embedding reads the release's cover"
+    );
+
+    let without_cover = f
+        .mgr
+        .get_export_track_plan(&tracks[0].id, false)
+        .await
+        .expect("plan without embedding");
+    assert!(
+        without_cover.cover_image_bytes.is_none(),
+        "not embedding skips the cover read"
+    );
 }
 
 /// Exporting a whole cloud-only release downloads each file and writes the
@@ -284,6 +322,7 @@ async fn export_release_single_file_with_cue_writes_image_and_cue() {
         pregap_placement: ExportPregapPlacement::SingleFileWithCue,
         applies_to_track: false,
         applies_to_release: true,
+        embed_cover: true,
     };
     let mut presets = f.mgr.export_presets();
     presets.push(image_preset.clone());

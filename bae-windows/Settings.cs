@@ -169,6 +169,9 @@ public sealed class ExportPreset
     public bool AppliesToTrack { get; set; }
     public bool AppliesToRelease { get; set; }
 
+    /// <summary>Whether saved files embed the release's cover art.</summary>
+    public bool EmbedCover { get; set; } = true;
+
     [JsonIgnore]
     public string FileExtension => Extension.StartsWith(".", StringComparison.Ordinal) ? Extension : $".{Extension}";
 

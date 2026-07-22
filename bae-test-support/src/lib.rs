@@ -252,6 +252,15 @@ pub async fn try_wait_for_import_complete(
     Err("Progress channel closed without completion".to_string())
 }
 
+/// Write a small solid-color PNG to `path` — a folder cover an import picks up,
+/// so a test release actually has art (for exercising cover-embedding paths).
+pub fn write_cover_png(path: &std::path::Path) {
+    let img = image::RgbImage::from_pixel(16, 16, image::Rgb([90, 30, 160]));
+    image::DynamicImage::ImageRgb8(img)
+        .save_with_format(path, image::ImageFormat::Png)
+        .expect("write cover png");
+}
+
 pub async fn read_cover_image_blob(
     db: &bae_core::db::Database,
     mgr: &bae_core::library::LibraryManager,

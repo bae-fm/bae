@@ -94,6 +94,10 @@ pub struct ExportPreset {
     pub pregap_placement: ExportPregapPlacement,
     pub applies_to_track: bool,
     pub applies_to_release: bool,
+    /// Whether saved files embed the release's cover art. When false, the cover
+    /// blob is never read — no wasted download/decrypt for a preset that won't
+    /// embed it.
+    pub embed_cover: bool,
 }
 
 impl ExportPreset {
@@ -166,6 +170,7 @@ pub(super) fn default_export_presets() -> Vec<ExportPreset> {
             pregap_placement: default_export_pregap_placement(),
             applies_to_track: true,
             applies_to_release: true,
+            embed_cover: true,
         },
         ExportPreset {
             id: "mp3".to_string(),
@@ -175,6 +180,7 @@ pub(super) fn default_export_presets() -> Vec<ExportPreset> {
             pregap_placement: default_export_pregap_placement(),
             applies_to_track: true,
             applies_to_release: true,
+            embed_cover: true,
         },
     ]
 }
@@ -195,6 +201,7 @@ mod tests {
             pregap_placement: ExportPregapPlacement::SingleFileWithCue,
             applies_to_track: true,
             applies_to_release: true,
+            embed_cover: true,
         };
 
         let err = preset
@@ -216,6 +223,7 @@ mod tests {
             pregap_placement: ExportPregapPlacement::SingleFileWithCue,
             applies_to_track: false,
             applies_to_release: true,
+            embed_cover: true,
         };
         let err = opus_image
             .validate()

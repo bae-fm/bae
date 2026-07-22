@@ -379,9 +379,14 @@ impl LibraryManager {
     /// neighbour counts, and the raw audio-format aggregate for decoding.
     /// Cloud-only tracks download + decrypt here — export never requires a
     /// local copy.
+    ///
+    /// `embed_cover` is the preset's choice: when false the cover blob is never
+    /// read (no wasted download/decrypt), so `cover_image_bytes` is `Some` only
+    /// when the preset embeds *and* the release has art.
     pub async fn get_export_track_plan(
         &self,
         track_id: &str,
+        embed_cover: bool,
     ) -> Result<ExportTrackPlan, LibraryError> {
         let meta = TrackAudioMeta::resolve(&self.database, track_id).await?;
         let resolved = self.resolve_export_tags(&meta).await?;
@@ -403,10 +408,15 @@ impl LibraryManager {
         }
 
         // The exported file embeds the art of the release the track is actually on,
-        // not the album's primary release's — the same rule playback applies.
-        let cover_image_bytes = match self.cover_ref(&meta.release.id).await? {
-            Some(image) => self.read_image_blob(&image).await?,
-            None => None,
+        // not the album's primary release's — the same rule playback applies. When
+        // the preset doesn't embed, skip the blob read entirely.
+        let cover_image_bytes = if embed_cover {
+            match self.cover_ref(&meta.release.id).await? {
+                Some(image) => self.read_image_blob(&image).await?,
+                None => None,
+            }
+        } else {
+            None
         };
 
         Ok(ExportTrackPlan {
@@ -464,7 +474,9 @@ impl LibraryManager {
                     "export preset {preset_id} is not available for track save"
                 ))
             })?;
-        let mut plan = self.get_export_track_plan(track_id).await?;
+        let mut plan = self
+            .get_export_track_plan(track_id, preset.embed_cover)
+            .await?;
         let release_tracks = self
             .database
             .get_tracks_for_release(&plan.audio_meta.release.id)
@@ -514,7 +526,9 @@ impl LibraryManager {
         let mut used_paths = std::collections::HashSet::new();
 
         for (index, track) in tracks.iter().enumerate() {
-            let mut plan = self.get_export_track_plan(&track.id).await?;
+            let mut plan = self
+                .get_export_track_plan(&track.id, preset.embed_cover)
+                .await?;
             let next_meta = if index + 1 < tracks.len() {
                 Some(TrackAudioMeta::resolve(&self.database, &tracks[index + 1].id).await?)
             } else {
@@ -563,7 +577,9 @@ impl LibraryManager {
     ) -> Result<(), LibraryError> {
         let mut plans = Vec::with_capacity(tracks.len());
         for track in tracks {
-            let mut plan = self.get_export_track_plan(&track.id).await?;
+            let mut plan = self
+                .get_export_track_plan(&track.id, preset.embed_cover)
+                .await?;
             plan.audio_window = export_window_from_meta(&plan.audio_meta);
             plan.audio_window.leading_silence_samples =
                 non_negative_samples(plan.audio_meta.audio_format.generated_pregap_samples);

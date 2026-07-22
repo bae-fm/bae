@@ -3007,6 +3007,8 @@ pub struct BridgeExportPreset {
     pub pregap_placement: BridgeExportPregapPlacement,
     pub applies_to_track: bool,
     pub applies_to_release: bool,
+    /// Whether saved files embed the release's cover art.
+    pub embed_cover: bool,
 }
 
 /// The kind of diagnostic failure. The UI shows one generic localized line per
@@ -4694,10 +4696,12 @@ mod conversion_roundtrip {
             pregap_placement: bae_core::config::ExportPregapPlacement::Exclude,
             applies_to_track: true,
             applies_to_release: false,
+            embed_cover: false,
         };
         let bridge = BridgeExportPreset::from_core(&core);
         // `extension` is derived from the codec, not carried in the core preset.
         assert_eq!(bridge.extension, core.codec.extension());
+        assert!(!bridge.embed_cover);
         assert_eq!(core, bridge.into_core());
     }
 
