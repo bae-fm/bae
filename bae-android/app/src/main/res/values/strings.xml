@@ -58,6 +58,8 @@
 
     <!-- Queue -->
     <string name="queue_clear">Clear</string>
+    <string name="queue_clear_up_next">Clear Up Next</string>
+    <string name="queue_clear_playing_from">Clear Playing From</string>
     <string name="queue_section_now_playing">Now Playing</string>
     <string name="queue_section_up_next">Up Next</string>
     <string name="queue_section_playing_from">Playing From</string>

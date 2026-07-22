@@ -37,6 +37,8 @@
     <string name="unmute">Stummschaltung aufheben</string>
     <string name="now_playing_track_by_artist">Aktuelle Wiedergabe, %1$s von %2$s</string>
     <string name="queue_clear">Leeren</string>
+    <string name="queue_clear_up_next">„Als Nächstes“ leeren</string>
+    <string name="queue_clear_playing_from">Wiedergabequelle leeren</string>
     <string name="queue_section_now_playing">Aktuelle Wiedergabe</string>
     <string name="queue_section_up_next">Als Nächstes</string>
     <string name="queue_section_playing_from">Wird abgespielt aus</string>

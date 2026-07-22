@@ -150,7 +150,9 @@
   <data name="outbox.read_failed" xml:space="preserve"><value>no se pudo leer la bandeja de salida</value></data>
   <data name="outbox.resume" xml:space="preserve"><value>reanudar</value></data>
   <data name="outbox.retry_now" xml:space="preserve"><value>reintentar ahora</value></data>
-  <data name="queue.clear" xml:space="preserve"><value>vaciar la cola</value></data>
+  <data name="queue.clear" xml:space="preserve"><value>vaciar</value></data>
+  <data name="queue.clear.playing_from" xml:space="preserve"><value>vaciar la fuente de reproducción</value></data>
+  <data name="queue.clear.up_next" xml:space="preserve"><value>vaciar «A continuación»</value></data>
   <data name="queue.remove_item" xml:space="preserve"><value>Quitar de la cola</value></data>
   <data name="queue.section.playing_from" xml:space="preserve"><value>Reproduciendo desde</value></data>
   <data name="queue.section.your_library" xml:space="preserve"><value>Tu biblioteca</value></data>

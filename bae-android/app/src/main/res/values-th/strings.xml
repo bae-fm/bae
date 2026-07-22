@@ -37,6 +37,8 @@
     <string name="unmute">เปิดเสียง</string>
     <string name="now_playing_track_by_artist">กำลังเล่น: %1$s · %2$s</string>
     <string name="queue_clear">ล้าง</string>
+    <string name="queue_clear_up_next">ล้างรายการ “ถัดไป”</string>
+    <string name="queue_clear_playing_from">ล้างแหล่งที่กำลังเล่น</string>
     <string name="queue_section_now_playing">กำลังเล่น</string>
     <string name="queue_section_up_next">ถัดไป</string>
     <string name="queue_section_playing_from">กำลังเล่นจาก</string>

@@ -37,6 +37,8 @@
     <string name="unmute">Изключване на заглушаването</string>
     <string name="now_playing_track_by_artist">Текущо възпроизвеждане, %1$s от %2$s</string>
     <string name="queue_clear">Изчистване</string>
+    <string name="queue_clear_up_next">Изчистване на „Следва“</string>
+    <string name="queue_clear_playing_from">Изчистване на източника на възпроизвеждане</string>
     <string name="queue_section_now_playing">Текущо възпроизвеждане</string>
     <string name="queue_section_up_next">Следва</string>
     <string name="queue_section_playing_from">Възпроизвежда се от</string>

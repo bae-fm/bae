@@ -150,7 +150,9 @@
   <data name="outbox.read_failed" xml:space="preserve"><value>อ่านกล่องขาออกไม่ได้</value></data>
   <data name="outbox.resume" xml:space="preserve"><value>เล่นต่อ</value></data>
   <data name="outbox.retry_now" xml:space="preserve"><value>ลองอีกครั้งตอนนี้</value></data>
-  <data name="queue.clear" xml:space="preserve"><value>ล้างคิว</value></data>
+  <data name="queue.clear" xml:space="preserve"><value>ล้าง</value></data>
+  <data name="queue.clear.playing_from" xml:space="preserve"><value>ล้างแหล่งที่กำลังเล่น</value></data>
+  <data name="queue.clear.up_next" xml:space="preserve"><value>ล้างรายการ “ถัดไป”</value></data>
   <data name="queue.remove_item" xml:space="preserve"><value>นำออกจากคิว</value></data>
   <data name="queue.section.playing_from" xml:space="preserve"><value>กำลังเล่นจาก</value></data>
   <data name="queue.section.your_library" xml:space="preserve"><value>คลังของคุณ</value></data>

@@ -245,7 +245,11 @@ pub(crate) enum PlaybackCommand {
         entry_id: QueueEntryId,
         before: Option<QueueEntryId>,
     },
-    ClearQueue,
+    /// Empty the manual lane, leaving the context lane playing.
+    ClearUpNext,
+    /// Drop the context lane. The playing track keeps playing; when it ends, Up
+    /// Next drains and then playback stops.
+    ClearPlayingFrom,
     SetRepeatMode(RepeatMode),
     /// Set the context lane to shuffled or sequential order. `true` mints a fresh
     /// seed and permutes the upcoming rows; `false` puts them back in the order
@@ -432,8 +436,11 @@ impl PlaybackHandle {
             PlaybackCommand::ReorderQueue { entry_id, before },
         );
     }
-    pub fn clear_queue(&self) {
-        dispatch_command(&self.command_tx, PlaybackCommand::ClearQueue);
+    pub fn clear_up_next(&self) {
+        dispatch_command(&self.command_tx, PlaybackCommand::ClearUpNext);
+    }
+    pub fn clear_playing_from(&self) {
+        dispatch_command(&self.command_tx, PlaybackCommand::ClearPlayingFrom);
     }
     pub fn set_repeat_mode(&self, mode: RepeatMode) {
         dispatch_command(&self.command_tx, PlaybackCommand::SetRepeatMode(mode));
@@ -1972,8 +1979,12 @@ impl PlaybackService {
                     }
                     self.on_queue_mutated().await;
                 }
-                PlaybackCommand::ClearQueue => {
-                    self.playback_queue.clear();
+                PlaybackCommand::ClearUpNext => {
+                    self.playback_queue.clear_up_next();
+                    self.on_queue_mutated().await;
+                }
+                PlaybackCommand::ClearPlayingFrom => {
+                    self.playback_queue.clear_playing_from();
                     self.on_queue_mutated().await;
                 }
                 PlaybackCommand::SetRepeatMode(mode) => {
@@ -2089,7 +2100,8 @@ fn playback_command_kind(command: &PlaybackCommand) -> Option<PlaybackCommandKin
         | PlaybackCommand::AddToQueue(_)
         | PlaybackCommand::AddNext(_)
         | PlaybackCommand::InsertInQueue(_, _)
-        | PlaybackCommand::ClearQueue
+        | PlaybackCommand::ClearUpNext
+        | PlaybackCommand::ClearPlayingFrom
         | PlaybackCommand::ReevaluateSidePauseStaging
         | PlaybackCommand::SetVolume(_)
         | PlaybackCommand::SetMuted(_)

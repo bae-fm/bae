@@ -37,6 +37,8 @@
     <string name="unmute">Dempen uit</string>
     <string name="now_playing_track_by_artist">Speelt nu: %1$s · %2$s</string>
     <string name="queue_clear">Wissen</string>
+    <string name="queue_clear_up_next">‘Volgende’ wissen</string>
+    <string name="queue_clear_playing_from">Afspeelbron wissen</string>
     <string name="queue_section_now_playing">Speelt nu</string>
     <string name="queue_section_up_next">Volgende</string>
     <string name="queue_section_playing_from">Afspelen vanuit</string>

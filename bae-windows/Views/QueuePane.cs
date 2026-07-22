@@ -50,7 +50,6 @@ internal sealed class QueuePane
     // Shell chrome, built once per open and held so events update it in place. Null
     // while the pane is closed, which is the guard the now-playing handlers check
     // before touching any visual.
-    private Button? _clearButton;
     private ContentControl? _listSlot;
     private Border? _card;
     private Image? _cardCover;
@@ -145,7 +144,6 @@ internal sealed class QueuePane
         }
         _playback.QueueChanged -= Rebuild;
         _host.Child = null;
-        _clearButton = null;
         _listSlot = null;
         _card = null;
         _cardCover = null;
@@ -203,8 +201,7 @@ internal sealed class QueuePane
     // whole between events. QueueChanged is also the invalidation signal for any
     // in-flight incremental-load page fetch on the PREVIOUS collection instance:
     // this always constructs a fresh QueuePaneRowCollection, so a stale reply lands
-    // on an abandoned instance nobody renders. The header and card are untouched —
-    // only Clear's enablement tracks the manual lane.
+    // on an abandoned instance nobody renders. The header and card are untouched.
     private void Rebuild()
     {
         var manual = _playback.ManualQueue;
@@ -240,10 +237,6 @@ internal sealed class QueuePane
         }
 
         _listSlot!.Content = BuildQueueList(rows, manual);
-        if (_clearButton is not null)
-        {
-            _clearButton.IsEnabled = manual.Count > 0;
-        }
     }
 
     // The context section's title: the whole library, or "Playing From" a release —
@@ -261,8 +254,8 @@ internal sealed class QueuePane
             : $"{playingFrom} · {context.SourceTitle}";
     }
 
-    // The pane header: the "queue" title, a Clear button that empties the manual
-    // lane (disabled while it is empty), and a close button that hides the pane.
+    // The pane header: the "queue" title and a close button that hides the pane.
+    // Each lane clears itself from its own section header.
     private Grid BuildHeader()
     {
         var title = new TextBlock
@@ -272,21 +265,6 @@ internal sealed class QueuePane
             FontWeight = FontWeights.ExtraBold,
             VerticalAlignment = VerticalAlignment.Center,
         };
-
-        _clearButton = new Button
-        {
-            Content = Loc.Chrome("queue.clear"),
-            Background = new SolidColorBrush(Colors.Transparent),
-            BorderThickness = new Thickness(0),
-            Foreground = Secondary,
-            FontSize = 12,
-            FontWeight = FontWeights.SemiBold,
-            Padding = new Thickness(6, 4, 6, 4),
-            VerticalAlignment = VerticalAlignment.Center,
-            IsEnabled = _playback.ManualQueue.Count > 0,
-        };
-        AutomationName(_clearButton, "queue.clear");
-        _clearButton.Click += (_, _) => _session.WithCurrentHandle(NativeBae.QueueClear);
 
         var close = new Button
         {
@@ -302,12 +280,9 @@ internal sealed class QueuePane
         var grid = new Grid { Padding = new Thickness(20, 18, 12, 12) };
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         Grid.SetColumn(title, 0);
-        Grid.SetColumn(_clearButton, 1);
-        Grid.SetColumn(close, 2);
+        Grid.SetColumn(close, 1);
         grid.Children.Add(title);
-        grid.Children.Add(_clearButton);
         grid.Children.Add(close);
         return grid;
     }
@@ -662,8 +637,7 @@ internal sealed class QueuePane
     // (including a fresh page landing).
     private FrameworkElement BuildRowVisual(QueueRow? row, QueuePaneRowCollection rows) => row switch
     {
-        SectionHeaderRow { Shuffled: null } header => QueueSectionLabel(header.Text),
-        SectionHeaderRow header => ContextSectionLabel(header.Text, header.Shuffled!.Value),
+        SectionHeaderRow header => QueueSectionLabel(header),
         EntryRow entry => BuildEntryRow(entry, rows),
         EmptyManualRow => BuildEmptyDropArea(),
         TrailingDropRow => BuildTrailingDropArea(),
@@ -710,26 +684,16 @@ internal sealed class QueuePane
         Background = new SolidColorBrush(Colors.Transparent),
     };
 
-    // A plain section header for the manual "Up Next" lane (never shuffled, no
-    // shuffle control): a small, wide-tracked, uppercase secondary label.
-    private static TextBlock QueueSectionLabel(string text) => new()
-    {
-        Text = text.ToUpper(CultureInfo.CurrentUICulture),
-        FontSize = 10,
-        FontWeight = FontWeights.Bold,
-        CharacterSpacing = 120,
-        Foreground = Secondary,
-        Margin = new Thickness(8, 12, 8, 4),
-    };
-
-    // The context section's header: the same label style plus a shuffle toggle
-    // that flips the context between sequential and shuffled order while the
-    // current track keeps playing.
-    private Grid ContextSectionLabel(string text, bool shuffled)
+    // A lane's section header: a small, wide-tracked, uppercase label, the Clear
+    // that empties THIS lane, and — on the context lane only — a shuffle toggle
+    // that flips its order while the current track keeps playing. A header is
+    // emitted only for a lane that has rows, so its Clear always has something
+    // to clear.
+    private Grid QueueSectionLabel(SectionHeaderRow header)
     {
         var label = new TextBlock
         {
-            Text = text.ToUpper(CultureInfo.CurrentUICulture),
+            Text = header.Text.ToUpper(CultureInfo.CurrentUICulture),
             FontSize = 10,
             FontWeight = FontWeights.Bold,
             CharacterSpacing = 120,
@@ -739,8 +703,58 @@ internal sealed class QueuePane
             VerticalAlignment = VerticalAlignment.Center,
         };
 
-        // Segoe MDL2 Assets "Shuffle" glyph (U+E8B1): accent on a soft-accent fill
-        // when on, secondary when off.
+        var controls = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            VerticalAlignment = VerticalAlignment.Center,
+        };
+        controls.Children.Add(ClearLaneButton(header.Lane));
+        if (header.Shuffled is bool shuffled)
+        {
+            controls.Children.Add(ShuffleToggle(shuffled));
+        }
+
+        var row = new Grid { Margin = new Thickness(8, 12, 8, 4) };
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        Grid.SetColumn(label, 0);
+        Grid.SetColumn(controls, 1);
+        row.Children.Add(label);
+        row.Children.Add(controls);
+        return row;
+    }
+
+    // A lane's Clear. The visible word stays "clear" — the label beside it already
+    // names the lane — while the tooltip and the automation name spell out which
+    // lane it empties, for anyone reading the button on its own.
+    private Button ClearLaneButton(QueueLane lane)
+    {
+        var (nameKey, clear) = lane switch
+        {
+            QueueLane.Manual => ("queue.clear.up_next", (Action<AppHandle>)NativeBae.QueueClearUpNext),
+            QueueLane.Context => ("queue.clear.playing_from", NativeBae.QueueClearPlayingFrom),
+            _ => throw new ArgumentOutOfRangeException(nameof(lane), lane, "Unknown queue lane"),
+        };
+        var button = new Button
+        {
+            Content = Loc.Chrome("queue.clear"),
+            Background = new SolidColorBrush(Colors.Transparent),
+            BorderThickness = new Thickness(0),
+            Foreground = Secondary,
+            FontSize = 10,
+            FontWeight = FontWeights.Bold,
+            Padding = new Thickness(6, 4, 6, 4),
+            VerticalAlignment = VerticalAlignment.Center,
+        };
+        AutomationName(button, nameKey);
+        button.Click += (_, _) => _session.WithCurrentHandle(clear);
+        return button;
+    }
+
+    // Segoe MDL2 Assets "Shuffle" glyph (U+E8B1): accent on a soft-accent fill
+    // when on, secondary when off.
+    private Button ShuffleToggle(bool shuffled)
+    {
         var toggle = new Button
         {
             Content = new FontIcon
@@ -757,18 +771,9 @@ internal sealed class QueuePane
             Background = shuffled ? AccentSoftFill() : new SolidColorBrush(Colors.Transparent),
             VerticalAlignment = VerticalAlignment.Center,
         };
-        var shuffleKey = shuffled ? "queue.shuffle.off" : "queue.shuffle.on";
-        AutomationName(toggle, shuffleKey);
+        AutomationName(toggle, shuffled ? "queue.shuffle.off" : "queue.shuffle.on");
         toggle.Click += (_, _) => _session.WithCurrentHandle(handle => NativeBae.SetShuffle(handle, !shuffled));
-
-        var row = new Grid { Margin = new Thickness(8, 12, 8, 4) };
-        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        Grid.SetColumn(label, 0);
-        Grid.SetColumn(toggle, 1);
-        row.Children.Add(label);
-        row.Children.Add(toggle);
-        return row;
+        return toggle;
     }
 
     // A queue entry row: cover, title/album, and a trailing slot that swaps the

@@ -37,6 +37,8 @@
     <string name="unmute">음소거 해제</string>
     <string name="now_playing_track_by_artist">지금 재생 중, %2$s의 %1$s</string>
     <string name="queue_clear">지우기</string>
+    <string name="queue_clear_up_next">‘다음 재생’ 지우기</string>
+    <string name="queue_clear_playing_from">‘재생 위치’ 지우기</string>
     <string name="queue_section_now_playing">지금 재생 중</string>
     <string name="queue_section_up_next">다음 재생</string>
     <string name="queue_section_playing_from">재생 위치</string>

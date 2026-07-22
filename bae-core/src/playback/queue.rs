@@ -202,9 +202,9 @@ impl PlaybackQueue {
         self.revision += 1;
     }
 
-    /// Clear the manual lane. The context (the release being played from) is
-    /// left intact — matching "Clear" leaving "Continue Playing".
-    pub fn clear(&mut self) {
+    /// Empty the manual lane ("Clear Up Next"). The context lane is untouched —
+    /// each lane's Clear empties only its own section.
+    pub fn clear_up_next(&mut self) {
         self.manual.clear();
         self.revision += 1;
     }
@@ -304,6 +304,20 @@ impl PlaybackQueue {
                 });
             }
         }
+        self.revision += 1;
+    }
+
+    /// Drop the whole context lane ("Clear Playing From") — its rows, its
+    /// history, its cursor, and the label the UI drew from its source. The
+    /// playing track is deliberately left alone: it keeps playing, and when it
+    /// ends Up Next drains and then playback stops. Nothing to clear without a
+    /// context, so that logs and leaves the revision alone.
+    pub fn clear_playing_from(&mut self) {
+        if self.context.is_none() {
+            warn!("clear_playing_from: nothing is playing from a source; ignoring");
+            return;
+        }
+        self.context = None;
         self.revision += 1;
     }
 
@@ -950,7 +964,7 @@ mod tests {
     }
 
     #[test]
-    fn test_clear_empties_manual_keeps_context() {
+    fn test_clear_up_next_empties_manual_keeps_context() {
         let mut q = queue();
         q.play_release(
             rel_src("r1"),
@@ -958,9 +972,71 @@ mod tests {
             ContextStart::Index(0),
         );
         q.add_to_queue(rel(&["m1", "m2"]));
-        q.clear();
+        q.clear_up_next();
         // Manual gone; context tail (t2, t3) survives.
         assert_eq!(upcoming_tracks(&q), vec!["t2", "t3"]);
+    }
+
+    /// Clearing the context lane drops its rows, its history, and its label
+    /// while the playing track keeps playing — the lane it came from is gone,
+    /// not the audio.
+    #[test]
+    fn test_clear_playing_from_drops_the_context_keeping_the_current_track() {
+        let mut q = queue();
+        q.play_release(
+            rel_src("r1"),
+            rel(&["t1", "t2", "t3"]),
+            ContextStart::Index(1),
+        );
+        assert!(q.has_previous(), "t1 sits behind the cursor");
+
+        q.clear_playing_from();
+
+        assert_eq!(
+            q.current_track_id(),
+            Some("t2"),
+            "the playing track keeps playing"
+        );
+        assert!(
+            q.context_projection().is_none(),
+            "the context section is gone"
+        );
+        assert!(!q.has_previous(), "its history went with it");
+        assert!(upcoming_tracks(&q).is_empty());
+    }
+
+    /// After clearing the context lane, Up Next drains and then playback stops —
+    /// there is no lane left to fall through to.
+    #[test]
+    fn test_clear_playing_from_then_up_next_drains_and_stops() {
+        let mut q = queue();
+        q.play_release(
+            rel_src("r1"),
+            rel(&["t1", "t2", "t3"]),
+            ContextStart::Index(0),
+        );
+        q.add_to_queue(rel(&["m1"]));
+
+        q.clear_playing_from();
+
+        assert!(matches!(q.next_entry(), NextEntry::Play(t) if t == "m1"));
+        assert!(matches!(q.next_entry(), NextEntry::Stop));
+    }
+
+    #[test]
+    fn test_clear_playing_from_with_no_context_is_noop() {
+        let mut q = queue();
+        q.add_to_queue(rel(&["m1"]));
+        let revision = q.revision();
+
+        q.clear_playing_from();
+
+        assert_eq!(
+            q.revision(),
+            revision,
+            "nothing to clear, so the projection didn't change"
+        );
+        assert_eq!(upcoming_tracks(&q), vec!["m1"]);
     }
 
     #[test]
@@ -1996,8 +2072,11 @@ mod tests {
         q.set_shuffle(true, 7);
         assert_eq!(q.revision(), 8, "set_shuffle bumps");
 
-        q.clear();
-        assert_eq!(q.revision(), 9, "clear bumps");
+        q.clear_up_next();
+        assert_eq!(q.revision(), 9, "clear_up_next bumps");
+
+        q.clear_playing_from();
+        assert_eq!(q.revision(), 10, "clear_playing_from bumps");
     }
 
     /// Unknown ids and other documented no-ops don't bump the revision.
@@ -2025,6 +2104,13 @@ mod tests {
             q.revision(),
             after_add,
             "set_shuffle with no playing context doesn't bump"
+        );
+
+        q.clear_playing_from();
+        assert_eq!(
+            q.revision(),
+            after_add,
+            "clear_playing_from with no context doesn't bump"
         );
     }
 

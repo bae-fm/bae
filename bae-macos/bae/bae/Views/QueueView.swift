@@ -17,7 +17,8 @@ struct QueueView: View {
     let nowPlayingTitle: String?
     let nowPlayingArtist: String?
     let nowPlayingCover: ImageContent?
-    let onClear: () -> Void
+    let onClearUpNext: () -> Void
+    let onClearPlayingFrom: () -> Void
     let onSkipTo: (String) -> Void
     let onRemove: (String) -> Void
     /// Move the entry `entryId` to sit before `beforeEntryId`; `nil` moves it
@@ -117,6 +118,7 @@ struct QueueView: View {
                             laneId: .manual,
                             coordinator: dragCoordinator,
                             queueRevision: playbackStore.revision,
+                            onClear: onClearUpNext,
                             onSkipTo: onSkipTo,
                             onRemove: onRemove,
                             onReorder: onReorder,
@@ -148,6 +150,7 @@ struct QueueView: View {
                                 laneId: .context,
                                 coordinator: dragCoordinator,
                                 queueRevision: playbackStore.revision,
+                                onClear: onClearPlayingFrom,
                                 onSkipTo: onSkipTo,
                                 onRemove: onRemove,
                                 onReorder: onReorder,
@@ -194,23 +197,15 @@ struct QueueView: View {
 
     // MARK: - Header
 
+    // Each lane clears itself from its own section header; this one names the
+    // pane and nothing else.
     private var header: some View {
-        HStack(alignment: .firstTextBaseline) {
-            Text("Queue")
-                .font(.system(size: 22, weight: .heavy))
-            Spacer()
-            // Clear empties only the manual lane; the context (the release being
-            // played from) survives, so the control disables on an empty manual
-            // lane regardless of the context.
-            Button("Clear") { onClear() }
-                .buttonStyle(.plain)
-                .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(.secondary)
-                .disabled(manual.isEmpty)
-        }
-        .padding(.horizontal, 20)
-        .padding(.top, 18)
-        .padding(.bottom, 12)
+        Text("Queue")
+            .font(.system(size: 22, weight: .heavy))
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 20)
+            .padding(.top, 18)
+            .padding(.bottom, 12)
     }
 
     // MARK: - Now Playing
@@ -596,6 +591,9 @@ private struct QueueSection: View {
     /// dropped: the canonical order the new snapshot carries already equals
     /// what was on screen, so clearing it is visually a no-op, not a snap.
     let queueRevision: UInt64
+    /// Empty this lane. Shown in the section header only while the lane has
+    /// rows — an empty section has nothing to clear, so it offers nothing.
+    let onClear: () -> Void
     let onSkipTo: (String) -> Void
     let onRemove: (String) -> Void
     let onReorder: (_ entryId: String, _ beforeEntryId: String?) -> Void
@@ -882,7 +880,7 @@ extension QueueSection {
 
     @ViewBuilder
     private var sectionHeader: some View {
-        if title != nil || onSetShuffle != nil {
+        if title != nil || onSetShuffle != nil || count > 0 {
             HStack(spacing: 6) {
                 if let title {
                     Text(title)
@@ -893,6 +891,9 @@ extension QueueSection {
                         .lineLimit(1)
                 }
                 Spacer()
+                if count > 0 {
+                    clearButton
+                }
                 if let onSetShuffle {
                     shuffleToggle(onSetShuffle)
                 }
@@ -900,6 +901,30 @@ extension QueueSection {
             .padding(.horizontal, 20)
             .padding(.top, 12)
             .padding(.bottom, 4)
+        }
+    }
+
+    /// This lane's Clear. The visible word stays "Clear" — the header beside it
+    /// already names the lane — while the tooltip and the accessibility label
+    /// spell out which lane it empties, for anyone reading it out of context.
+    private var clearButton: some View {
+        Button("Clear") { onClear() }
+            .buttonStyle(.plain)
+            .font(.system(size: 10, weight: .bold))
+            .tracking(1.2)
+            .textCase(.uppercase)
+            .foregroundStyle(.secondary)
+            .help(clearLaneLabel)
+            .accessibilityLabel(clearLaneLabel)
+    }
+
+    /// What this lane's Clear empties, named for the tooltip and VoiceOver.
+    private var clearLaneLabel: String {
+        switch laneId {
+        case .manual:
+            return String(localized: "Clear Up Next")
+        case .context:
+            return String(localized: "Clear Playing From")
         }
     }
 

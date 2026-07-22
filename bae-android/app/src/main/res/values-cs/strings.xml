@@ -37,6 +37,8 @@
     <string name="unmute">Zrušit ztlumení</string>
     <string name="now_playing_track_by_artist">Právě hraje, %1$s od %2$s</string>
     <string name="queue_clear">Vymazat</string>
+    <string name="queue_clear_up_next">Vymazat „Další v pořadí“</string>
+    <string name="queue_clear_playing_from">Vymazat zdroj přehrávání</string>
     <string name="queue_section_now_playing">Právě hraje</string>
     <string name="queue_section_up_next">Další v pořadí</string>
     <string name="queue_section_playing_from">Přehrává se z</string>

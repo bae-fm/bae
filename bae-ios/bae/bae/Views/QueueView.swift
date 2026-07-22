@@ -34,8 +34,9 @@ struct QueueLane {
 /// The play queue, presented as a sheet: the currently-playing track, then a
 /// reorderable "Up Next" list. Reads the authoritative now-playing and queue
 /// off the shared `PlaybackStore`; mutations go straight to the `Queue` service
-/// (`clearQueue` / `removeEntry` / `reorderEntry` / `skipToEntry`) and reflect
-/// back as a `QueueUpdated` event that re-populates `queueItems`.
+/// (`clearUpNext` / `clearPlayingFrom` / `removeEntry` / `reorderEntry` /
+/// `skipToEntry`) and reflect back as a `QueueUpdated` event that re-populates
+/// `queueItems`.
 ///
 /// The view iterates and renders only — `durationLabel` is pre-formatted and the
 /// queue arrives pre-ordered. The current track is never in `queueItems`; it
@@ -65,13 +66,8 @@ struct QueueView: View {
             .navigationTitle("Queue")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    // Clear empties only the manual lane; the context (the release
-                    // being played from) survives, so it disables on an empty
-                    // manual lane regardless of the context.
-                    Button("Clear") { queue.clearQueue() }
-                        .disabled(playbackStore.manualQueue.isEmpty)
-                }
+                // Each lane clears itself from its own section header, so the
+                // toolbar carries only Done.
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Done") { dismiss() }
                 }
@@ -99,7 +95,7 @@ struct QueueView: View {
             }
         }
         else {
-            Section("Up Next") {
+            Section {
                 // Reorder handles are always on (see `upNextRows`); a tap always
                 // skips, and skipping dismisses the sheet. Always fully resolved,
                 // so no load hook.
@@ -114,6 +110,8 @@ struct QueueView: View {
                     queue: queue,
                     onSkipped: { dismiss() }
                 )
+            } header: {
+                upNextHeader(queue: queue)
             }
         }
     }
@@ -154,11 +152,26 @@ struct QueueView: View {
     }
 }
 
-/// The context-section header with its shuffle toggle — shared by the queue
-/// sheet and the expanded player's embedded queue so the control can't drift.
-/// The title names what's playing — a release ("Playing From") vs the whole
-/// library — by `kind`. The toggle is tinted when on; tapping it flips the
-/// context's order while the current track keeps playing.
+/// The manual lane's header — shared by the queue sheet and the expanded
+/// player's embedded queue so the control can't drift. Both surfaces render this
+/// section only while the lane has rows, which is exactly when its Clear should
+/// be present.
+@MainActor
+@ViewBuilder
+func upNextHeader(queue: Queue) -> some View {
+    HStack(spacing: 6) {
+        Text("Up Next")
+        Spacer()
+        clearLaneButton(label: Text("Clear Up Next")) { queue.clearUpNext() }
+    }
+}
+
+/// The context-section header with its Clear and shuffle toggle — shared by the
+/// queue sheet and the expanded player's embedded queue so the controls can't
+/// drift. The title names what's playing — a release ("Playing From") vs the
+/// whole library — by `kind`. The toggle is tinted when on; tapping it flips the
+/// context's order while the current track keeps playing. Clearing drops the
+/// whole section; the playing track keeps playing.
 @MainActor
 @ViewBuilder
 func playingFromHeader(
@@ -169,6 +182,9 @@ func playingFromHeader(
     HStack(spacing: 6) {
         Text(contextSectionTitle(kind))
         Spacer()
+        clearLaneButton(label: Text("Clear Playing From")) {
+            queue.clearPlayingFrom()
+        }
         Button {
             queue.setShuffle(!shuffled)
         } label: {
@@ -180,6 +196,21 @@ func playingFromHeader(
             shuffled ? Text("Turn off shuffle") : Text("Shuffle")
         )
     }
+}
+
+/// A lane's Clear, as it sits in that lane's section header. The visible word
+/// stays "Clear" — the header beside it already names the lane — while `label`
+/// spells the lane out for VoiceOver, which reads the button on its own.
+@MainActor
+@ViewBuilder
+func clearLaneButton(
+    label: Text,
+    action: @escaping () -> Void
+) -> some View {
+    Button("Clear", action: action)
+        .buttonStyle(.plain)
+        .foregroundStyle(Theme.accent)
+        .accessibilityLabel(label)
 }
 
 /// The context section's title, by what it plays from: a release keeps the

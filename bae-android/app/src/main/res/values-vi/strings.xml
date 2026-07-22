@@ -37,6 +37,8 @@
     <string name="unmute">Bật tiếng</string>
     <string name="now_playing_track_by_artist">Đang phát: %1$s · %2$s</string>
     <string name="queue_clear">Xóa</string>
+    <string name="queue_clear_up_next">Xóa “Tiếp theo”</string>
+    <string name="queue_clear_playing_from">Xóa nguồn phát</string>
     <string name="queue_section_now_playing">Đang phát</string>
     <string name="queue_section_up_next">Tiếp theo</string>
     <string name="queue_section_playing_from">Đang phát từ</string>

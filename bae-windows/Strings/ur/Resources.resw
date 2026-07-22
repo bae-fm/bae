@@ -150,7 +150,9 @@
   <data name="outbox.read_failed" xml:space="preserve"><value>آؤٹ باکس پڑھا نہیں جا سکا</value></data>
   <data name="outbox.resume" xml:space="preserve"><value>جاری رکھیں</value></data>
   <data name="outbox.retry_now" xml:space="preserve"><value>اب دوبارہ کوشش کریں</value></data>
-  <data name="queue.clear" xml:space="preserve"><value>قطار صاف کریں</value></data>
+  <data name="queue.clear" xml:space="preserve"><value>صاف کریں</value></data>
+  <data name="queue.clear.playing_from" xml:space="preserve"><value>پلے بیک ماخذ صاف کریں</value></data>
+  <data name="queue.clear.up_next" xml:space="preserve"><value>“اگلا” فہرست صاف کریں</value></data>
   <data name="queue.remove_item" xml:space="preserve"><value>قطار سے ہٹائیں</value></data>
   <data name="queue.section.playing_from" xml:space="preserve"><value>یہاں سے چل رہا ہے</value></data>
   <data name="queue.section.your_library" xml:space="preserve"><value>آپ کی لائبریری</value></data>

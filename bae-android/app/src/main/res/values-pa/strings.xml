@@ -37,6 +37,8 @@
     <string name="unmute">ਅਨਮਿਊਟ</string>
     <string name="now_playing_track_by_artist">ਹੁਣ ਚੱਲ ਰਿਹਾ ਹੈ: %1$s · %2$s</string>
     <string name="queue_clear">ਸਾਫ਼ ਕਰੋ</string>
+    <string name="queue_clear_up_next">“ਅੱਗੇ” ਸੂਚੀ ਸਾਫ਼ ਕਰੋ</string>
+    <string name="queue_clear_playing_from">ਪਲੇਬੈਕ ਸਰੋਤ ਸਾਫ਼ ਕਰੋ</string>
     <string name="queue_section_now_playing">ਹੁਣ ਚੱਲ ਰਿਹਾ ਹੈ</string>
     <string name="queue_section_up_next">ਅੱਗੇ</string>
     <string name="queue_section_playing_from">ਇੱਥੋਂ ਚੱਲ ਰਿਹਾ ਹੈ</string>

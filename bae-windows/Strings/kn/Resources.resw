@@ -150,7 +150,9 @@
   <data name="outbox.read_failed" xml:space="preserve"><value>ಹೊರಪೆಟ್ಟಿಗೆ ಓದಲಾಗಲಿಲ್ಲ</value></data>
   <data name="outbox.resume" xml:space="preserve"><value>ಮುಂದುವರಿಸಿ</value></data>
   <data name="outbox.retry_now" xml:space="preserve"><value>ಈಗ ಮರುಪ್ರಯತ್ನಿಸಿ</value></data>
-  <data name="queue.clear" xml:space="preserve"><value>ಸಾಲು ತೆರವುಗೊಳಿಸಿ</value></data>
+  <data name="queue.clear" xml:space="preserve"><value>ತೆರವುಗೊಳಿಸಿ</value></data>
+  <data name="queue.clear.playing_from" xml:space="preserve"><value>ಪ್ಲೇಬ್ಯಾಕ್ ಮೂಲವನ್ನು ತೆರವುಗೊಳಿಸಿ</value></data>
+  <data name="queue.clear.up_next" xml:space="preserve"><value>“ಮುಂದೆ” ಪಟ್ಟಿಯನ್ನು ತೆರವುಗೊಳಿಸಿ</value></data>
   <data name="queue.remove_item" xml:space="preserve"><value>ಸರತಿಯಿಂದ ತೆಗೆದುಹಾಕಿ</value></data>
   <data name="queue.section.playing_from" xml:space="preserve"><value>ಇದರಿಂದ ಪ್ಲೇ ಆಗುತ್ತಿದೆ</value></data>
   <data name="queue.section.your_library" xml:space="preserve"><value>ನಿಮ್ಮ ಲೈಬ್ರರಿ</value></data>

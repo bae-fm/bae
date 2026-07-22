@@ -150,7 +150,9 @@
   <data name="outbox.read_failed" xml:space="preserve"><value>kan de outbox niet lezen</value></data>
   <data name="outbox.resume" xml:space="preserve"><value>hervatten</value></data>
   <data name="outbox.retry_now" xml:space="preserve"><value>nu opnieuw proberen</value></data>
-  <data name="queue.clear" xml:space="preserve"><value>wachtrij wissen</value></data>
+  <data name="queue.clear" xml:space="preserve"><value>wissen</value></data>
+  <data name="queue.clear.playing_from" xml:space="preserve"><value>afspeelbron wissen</value></data>
+  <data name="queue.clear.up_next" xml:space="preserve"><value>‘Volgende’ wissen</value></data>
   <data name="queue.remove_item" xml:space="preserve"><value>Uit wachtrij verwijderen</value></data>
   <data name="queue.section.playing_from" xml:space="preserve"><value>Afspelen vanuit</value></data>
   <data name="queue.section.your_library" xml:space="preserve"><value>Je bibliotheek</value></data>

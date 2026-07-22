@@ -37,6 +37,8 @@
     <string name="unmute">ミュート解除</string>
     <string name="now_playing_track_by_artist">再生中、%2$s の %1$s</string>
     <string name="queue_clear">クリア</string>
+    <string name="queue_clear_up_next">「次に再生」をクリア</string>
+    <string name="queue_clear_playing_from">「再生元」をクリア</string>
     <string name="queue_section_now_playing">再生中</string>
     <string name="queue_section_up_next">次に再生</string>
     <string name="queue_section_playing_from">再生元</string>

@@ -37,6 +37,8 @@
     <string name="unmute">અનમ્યૂટ</string>
     <string name="now_playing_track_by_artist">હમણાં વગડે છે: %1$s · %2$s</string>
     <string name="queue_clear">સાફ કરો</string>
+    <string name="queue_clear_up_next">“આગળ” સૂચિ સાફ કરો</string>
+    <string name="queue_clear_playing_from">પ્લેબૅક સ્રોત સાફ કરો</string>
     <string name="queue_section_now_playing">હમણાં વગડે છે</string>
     <string name="queue_section_up_next">આગળ</string>
     <string name="queue_section_playing_from">આમાંથી વાગે છે</string>

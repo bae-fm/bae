@@ -37,6 +37,8 @@
     <string name="unmute">Riattiva audio</string>
     <string name="now_playing_track_by_artist">In riproduzione: %1$s · %2$s</string>
     <string name="queue_clear">Cancella</string>
+    <string name="queue_clear_up_next">Cancella «A seguire»</string>
+    <string name="queue_clear_playing_from">Cancella la sorgente di riproduzione</string>
     <string name="queue_section_now_playing">In riproduzione</string>
     <string name="queue_section_up_next">A seguire</string>
     <string name="queue_section_playing_from">In riproduzione da</string>

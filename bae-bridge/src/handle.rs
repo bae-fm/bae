@@ -525,8 +525,12 @@ impl AppHandle {
             .reorder_entry(QueueEntryId(entry_id), before_entry_id.map(QueueEntryId));
     }
 
-    pub fn clear_queue(&self) {
-        self.services.playback().clear_queue();
+    pub fn clear_up_next(&self) {
+        self.services.playback().clear_up_next();
+    }
+
+    pub fn clear_playing_from(&self) {
+        self.services.playback().clear_playing_from();
     }
 
     pub fn skip_to_entry(&self, entry_id: String) {

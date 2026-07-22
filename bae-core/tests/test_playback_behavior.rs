@@ -2455,9 +2455,9 @@ async fn assert_preload_refreshed_after_queue_mutation<F>(
     fixture.playback_handle.add_to_queue(initial_queue);
     fixture.playback_handle.play(track0.to_string());
 
-    // `play` clears the queue and repopulates it from the track's release
-    // context with fresh entry ids, so capture the entries *after* play settles:
-    // drain up to the Playing state, keeping the latest QueueUpdated.
+    // `play` refills the context lane from the track's release, minting fresh
+    // entry ids, and leaves Up Next alone — so capture the entries *after* play
+    // settles: drain up to the Playing state, keeping the latest QueueUpdated.
     let (played, entries) = fixture
         .wait_for_playing_capturing_queue(Duration::from_secs(5))
         .await;
@@ -2826,7 +2826,7 @@ async fn skip_to_entry_jumps_to_that_queue_entry() {
 }
 
 #[tokio::test]
-async fn clear_queue_empties_the_manual_lane_keeping_the_context() {
+async fn clear_up_next_empties_the_manual_lane_keeping_the_context() {
     let mut fixture = PlaybackTestFixture::new().await;
     let first = fixture.track_ids[0].clone();
     let second = fixture.track_ids[1].clone();
@@ -2849,7 +2849,7 @@ async fn clear_queue_empties_the_manual_lane_keeping_the_context() {
         "the manual lane has the added track"
     );
 
-    fixture.playback_handle.clear_queue();
+    fixture.playback_handle.clear_up_next();
     let after = fixture
         .playback_handle
         .queue_projection()
@@ -2857,12 +2857,52 @@ async fn clear_queue_empties_the_manual_lane_keeping_the_context() {
         .expect("queue projection");
     assert!(
         after.manual.is_empty(),
-        "ClearQueue empties the manual lane"
+        "ClearUpNext empties the manual lane"
     );
     assert!(
         after.context.is_some(),
-        "ClearQueue leaves the playing context intact"
+        "ClearUpNext leaves the playing context intact"
     );
+}
+
+/// The counterpart: clearing "Playing From" drops the section the release
+/// filled, but not the track coming out of the speakers — that keeps playing,
+/// and Up Next keeps its rows.
+#[tokio::test]
+async fn clear_playing_from_drops_the_context_while_the_track_keeps_playing() {
+    let mut fixture = PlaybackTestFixture::new().await;
+    let first = fixture.track_ids[0].clone();
+    let queued = fixture.track_ids[2].clone();
+    fixture.playback_handle.play(first.clone());
+    fixture
+        .wait_for_state(
+            |s| matches!(s, PlaybackState::Playing { track_info, .. } if track_info.track_id == first),
+            Duration::from_secs(5),
+        )
+        .await
+        .expect("the release starts playing");
+    fixture.playback_handle.add_to_queue(vec![queued.clone()]);
+
+    fixture.playback_handle.clear_playing_from();
+
+    let after = fixture
+        .playback_handle
+        .queue_projection()
+        .await
+        .expect("queue projection");
+    assert!(
+        after.context.is_none(),
+        "the context section leaves the snapshot entirely"
+    );
+    let manual: Vec<String> = after.manual.iter().map(|e| e.track_id.clone()).collect();
+    assert_eq!(manual, vec![queued], "Up Next is untouched");
+    assert!(
+        !after.has_previous,
+        "the context's history went with it, so there is nothing to step back to"
+    );
+
+    // The section is gone from the queue; the audio is not.
+    assert_position_advances(&mut fixture.progress_rx).await;
 }
 
 #[tokio::test]

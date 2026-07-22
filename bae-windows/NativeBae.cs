@@ -782,8 +782,9 @@ internal static class NativeBae
     internal static void PlayRelease(AppHandle handle, string releaseId, long startTrackIndex, bool shuffle) =>
         handle.PlayRelease(releaseId, startTrackIndex < 0 ? null : checked((uint)startTrackIndex), shuffle);
 
-    // The album grid's bulk play: replaces the queue with every targeted
-    // album's primary release, in the given order.
+    // The album grid's bulk play: fills the context lane with every targeted
+    // album's primary release, in the given order. Up Next is left alone and
+    // still drains first.
     internal static void PlayReleases(AppHandle handle, IReadOnlyList<string> releaseIds) =>
         handle.PlayReleases(releaseIds.ToArray());
 
@@ -824,7 +825,9 @@ internal static class NativeBae
     internal static void QueueReorder(AppHandle handle, string entryId, string? beforeEntryId) =>
         handle.ReorderEntry(entryId, beforeEntryId);
 
-    internal static void QueueClear(AppHandle handle) => handle.ClearQueue();
+    internal static void QueueClearUpNext(AppHandle handle) => handle.ClearUpNext();
+
+    internal static void QueueClearPlayingFrom(AppHandle handle) => handle.ClearPlayingFrom();
 
     // One page of the context's upcoming tail past the window QueueUpdated
     // already carries. offset 0 is the first not-yet-played entry after the

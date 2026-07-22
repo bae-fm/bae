@@ -37,6 +37,8 @@
     <string name="unmute">Wyłącz wyciszenie</string>
     <string name="now_playing_track_by_artist">Teraz odtwarzane, %1$s — %2$s</string>
     <string name="queue_clear">Wyczyść</string>
+    <string name="queue_clear_up_next">Wyczyść „Następne w kolejce”</string>
+    <string name="queue_clear_playing_from">Wyczyść źródło odtwarzania</string>
     <string name="queue_section_now_playing">Teraz odtwarzane</string>
     <string name="queue_section_up_next">Następne w kolejce</string>
     <string name="queue_section_playing_from">Odtwarzanie z</string>

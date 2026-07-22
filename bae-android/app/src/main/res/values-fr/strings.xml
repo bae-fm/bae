@@ -37,6 +37,8 @@
     <string name="unmute">Rétablir le son</string>
     <string name="now_playing_track_by_artist">Lecture en cours, %1$s par %2$s</string>
     <string name="queue_clear">Vider</string>
+    <string name="queue_clear_up_next">Vider « À suivre »</string>
+    <string name="queue_clear_playing_from">Vider la source de lecture</string>
     <string name="queue_section_now_playing">Lecture en cours</string>
     <string name="queue_section_up_next">À suivre</string>
     <string name="queue_section_playing_from">Lecture depuis</string>

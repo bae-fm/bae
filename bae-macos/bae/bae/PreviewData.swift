@@ -14,7 +14,7 @@
         /// The context's unshuffled order, kept so turning shuffle off restores
         /// it (filtered to entries still present).
         private let orderedUpcoming: [BridgeQueueEntry]
-        private let hasContext: Bool
+        private var hasContext: Bool
         private var shuffled: Bool
         private var revision: UInt64 = 1
         /// Uniques the entry ids this model mints for inserted tracks.
@@ -62,8 +62,16 @@
             apply()
         }
 
-        func clear() {
+        func clearUpNext() {
             manual = []
+            apply()
+        }
+
+        /// Drop the context lane: its rows and its section go, the now-playing
+        /// track stays — core's `clear_playing_from`.
+        func clearPlayingFrom() {
+            upcoming = []
+            hasContext = false
             apply()
         }
 
@@ -300,9 +308,14 @@
                             model.remove(id)
                         }
                     },
-                    clearQueue: {
+                    clearUpNext: {
                         Task { @MainActor in
-                            model.clear()
+                            model.clearUpNext()
+                        }
+                    },
+                    clearPlayingFrom: {
+                        Task { @MainActor in
+                            model.clearPlayingFrom()
                         }
                     },
                     reorderEntry: { id, before in

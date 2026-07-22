@@ -150,7 +150,9 @@
   <data name="outbox.read_failed" xml:space="preserve"><value>не вдалося прочитати чергу надсилання</value></data>
   <data name="outbox.resume" xml:space="preserve"><value>продовжити</value></data>
   <data name="outbox.retry_now" xml:space="preserve"><value>повторити зараз</value></data>
-  <data name="queue.clear" xml:space="preserve"><value>очистити чергу</value></data>
+  <data name="queue.clear" xml:space="preserve"><value>очистити</value></data>
+  <data name="queue.clear.playing_from" xml:space="preserve"><value>очистити джерело відтворення</value></data>
+  <data name="queue.clear.up_next" xml:space="preserve"><value>очистити „Далі в черзі“</value></data>
   <data name="queue.remove_item" xml:space="preserve"><value>Вилучити з черги</value></data>
   <data name="queue.section.playing_from" xml:space="preserve"><value>Відтворюється з</value></data>
   <data name="queue.section.your_library" xml:space="preserve"><value>Ваша фонотека</value></data>

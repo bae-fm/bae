@@ -150,7 +150,9 @@
   <data name="outbox.read_failed" xml:space="preserve"><value>आउटबॉक्स वाचता आला नाही</value></data>
   <data name="outbox.resume" xml:space="preserve"><value>पुन्हा सुरू करा</value></data>
   <data name="outbox.retry_now" xml:space="preserve"><value>आता पुन्हा प्रयत्न करा</value></data>
-  <data name="queue.clear" xml:space="preserve"><value>रांग रिकामी करा</value></data>
+  <data name="queue.clear" xml:space="preserve"><value>साफ करा</value></data>
+  <data name="queue.clear.playing_from" xml:space="preserve"><value>प्लेबॅक स्रोत साफ करा</value></data>
+  <data name="queue.clear.up_next" xml:space="preserve"><value>“पुढे” यादी साफ करा</value></data>
   <data name="queue.remove_item" xml:space="preserve"><value>रांगेतून काढा</value></data>
   <data name="queue.section.playing_from" xml:space="preserve"><value>येथून वाजत आहे</value></data>
   <data name="queue.section.your_library" xml:space="preserve"><value>तुमची लायब्ररी</value></data>

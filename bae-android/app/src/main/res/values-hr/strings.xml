@@ -37,6 +37,8 @@
     <string name="unmute">Uključi zvuk</string>
     <string name="now_playing_track_by_artist">Trenutno svira, %1$s — izvođač %2$s</string>
     <string name="queue_clear">Očisti</string>
+    <string name="queue_clear_up_next">Očisti „Sljedeće na redu“</string>
+    <string name="queue_clear_playing_from">Očisti izvor reprodukcije</string>
     <string name="queue_section_now_playing">Trenutno svira</string>
     <string name="queue_section_up_next">Sljedeće na redu</string>
     <string name="queue_section_playing_from">Reproducira se iz</string>

@@ -37,6 +37,8 @@
     <string name="unmute">Sesi aç</string>
     <string name="now_playing_track_by_artist">Çalıyor: %1$s · %2$s</string>
     <string name="queue_clear">Temizle</string>
+    <string name="queue_clear_up_next">“Sıradaki” listesini temizle</string>
+    <string name="queue_clear_playing_from">Çalma kaynağını temizle</string>
     <string name="queue_section_now_playing">Çalıyor</string>
     <string name="queue_section_up_next">Sıradaki</string>
     <string name="queue_section_playing_from">Şuradan çalınıyor</string>

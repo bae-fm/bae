@@ -42,6 +42,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import fm.bae.app.BaeLogger
@@ -66,8 +68,9 @@ private const val QUEUE_UPCOMING_LOAD_BATCH_SIZE = 100
  * The play queue, presented in a bottom sheet: the currently-playing track, then
  * a drag-reorderable "Up Next" list. Reads the authoritative queue and now-
  * playing off the [fm.bae.app.playback.BaeCorePlayer]; mutations go straight to
- * the bridge (`clearQueue`/`removeEntry`/`reorderEntry`/`skipToEntry`) and
- * reflect back as a `QueueUpdated` event that re-hydrates the projection.
+ * the bridge (`clearUpNext`/`clearPlayingFrom`/`removeEntry`/`reorderEntry`/
+ * `skipToEntry`) and reflect back as a `QueueUpdated` event that re-hydrates the
+ * projection.
  *
  * Each [QueueItem] carries a unique per-instance `entryId` — stable even when
  * the same track is queued twice — so rows key on it directly and remove/
@@ -90,9 +93,9 @@ fun QueueScreen(
         modifier = Modifier.fillMaxWidth(),
         contentPadding = PaddingValues(bottom = 24.dp),
     ) {
-        // Clear empties only the manual lane (the context survives), so it
-        // disables on an empty manual lane regardless of the context.
-        item(key = "header") { QueueHeader(session = session, isClearDisabled = order.manual.isEmpty()) }
+        // Each lane clears itself from its own section label; this header names
+        // the sheet and nothing else.
+        item(key = "header") { QueueHeader() }
         nowPlaying?.let { np ->
             item(key = "nowplaying") {
                 SectionLabel(stringResource(R.string.queue_section_now_playing))
@@ -256,7 +259,7 @@ internal fun LazyListScope.queueContent(
     }
 
     if (order.manual.isNotEmpty()) {
-        item(key = "uphdr") { SectionLabel(stringResource(R.string.queue_section_up_next)) }
+        item(key = "uphdr") { UpNextSectionLabel(session) }
         // Always fully resolved, so no load hook.
         queueRows(
             session,
@@ -353,33 +356,13 @@ private fun LazyListScope.queueRows(
 }
 
 @Composable
-private fun QueueHeader(
-    session: OpenLibrary,
-    isClearDisabled: Boolean,
-) {
-    Row(
+private fun QueueHeader() {
+    Text(
+        text = stringResource(R.string.queue),
+        style = MaterialTheme.typography.titleMedium,
+        fontWeight = FontWeight.Bold,
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(
-            text = stringResource(R.string.queue),
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.weight(1f),
-        )
-        TextButton(
-            onClick = {
-                try {
-                    session.appHandle.clearQueue()
-                } catch (e: Exception) {
-                    logger.error("clearQueue failed", e)
-                }
-            },
-            enabled = !isClearDisabled,
-        ) {
-            Text(stringResource(R.string.queue_clear))
-        }
-    }
+    )
 }
 
 @Composable
@@ -396,13 +379,11 @@ private fun SectionLabel(text: String) {
     )
 }
 
-// The context section's label, with a shuffle toggle that flips the context
-// between sequential and shuffled order while the current track keeps playing.
+// A section label with controls beside it — the shape both lane headers share.
 @Composable
-private fun ContextSectionLabel(
-    session: OpenLibrary,
+private fun SectionLabelRow(
     text: String,
-    shuffled: Boolean,
+    trailing: @Composable () -> Unit,
 ) {
     Row(
         modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp),
@@ -415,6 +396,59 @@ private fun ContextSectionLabel(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.weight(1f),
         )
+        trailing()
+    }
+}
+
+// A lane's Clear, as it sits in that lane's section label. The visible word stays
+// "Clear" — the label beside it already names the lane — while the content
+// description spells the lane out, since a screen reader reads the button alone.
+@Composable
+private fun ClearLaneButton(
+    contentDescriptionRes: Int,
+    onClear: () -> Unit,
+) {
+    val description = stringResource(contentDescriptionRes)
+    TextButton(
+        onClick = onClear,
+        modifier = Modifier.semantics { this.contentDescription = description },
+    ) {
+        Text(stringResource(R.string.queue_clear))
+    }
+}
+
+// The manual lane's label, with the Clear that empties it. Rendered only while
+// the lane has rows, which is exactly when it has something to clear.
+@Composable
+private fun UpNextSectionLabel(session: OpenLibrary) {
+    SectionLabelRow(text = stringResource(R.string.queue_section_up_next)) {
+        ClearLaneButton(R.string.queue_clear_up_next) {
+            try {
+                session.appHandle.clearUpNext()
+            } catch (e: Exception) {
+                logger.error("clearUpNext failed", e)
+            }
+        }
+    }
+}
+
+// The context section's label, with a Clear that drops the whole section (the
+// playing track keeps playing) and a shuffle toggle that flips the context
+// between sequential and shuffled order while the current track keeps playing.
+@Composable
+private fun ContextSectionLabel(
+    session: OpenLibrary,
+    text: String,
+    shuffled: Boolean,
+) {
+    SectionLabelRow(text = text) {
+        ClearLaneButton(R.string.queue_clear_playing_from) {
+            try {
+                session.appHandle.clearPlayingFrom()
+            } catch (e: Exception) {
+                logger.error("clearPlayingFrom failed", e)
+            }
+        }
         IconButton(
             onClick = {
                 try {

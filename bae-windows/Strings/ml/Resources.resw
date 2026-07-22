@@ -150,7 +150,9 @@
   <data name="outbox.read_failed" xml:space="preserve"><value>ഔട്ട്‌ബോക്സ് വായിക്കാനായില്ല</value></data>
   <data name="outbox.resume" xml:space="preserve"><value>തുടരുക</value></data>
   <data name="outbox.retry_now" xml:space="preserve"><value>ഇപ്പോൾ വീണ്ടും ശ്രമിക്കുക</value></data>
-  <data name="queue.clear" xml:space="preserve"><value>നിര ശൂന്യമാക്കുക</value></data>
+  <data name="queue.clear" xml:space="preserve"><value>മായ്ക്കുക</value></data>
+  <data name="queue.clear.playing_from" xml:space="preserve"><value>പ്ലേബാക്ക് ഉറവിടം മായ്ക്കുക</value></data>
+  <data name="queue.clear.up_next" xml:space="preserve"><value>“അടുത്തത്” പട്ടിക മായ്ക്കുക</value></data>
   <data name="queue.remove_item" xml:space="preserve"><value>ക്യൂയിൽ നിന്ന് നീക്കുക</value></data>
   <data name="queue.section.playing_from" xml:space="preserve"><value>ഇതിൽ നിന്ന് പ്ലേ ചെയ്യുന്നു</value></data>
   <data name="queue.section.your_library" xml:space="preserve"><value>നിങ്ങളുടെ ലൈബ്രറി</value></data>

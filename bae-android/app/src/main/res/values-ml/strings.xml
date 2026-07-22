@@ -37,6 +37,8 @@
     <string name="unmute">മ്യൂട്ട് നീക്കുക</string>
     <string name="now_playing_track_by_artist">ഇപ്പോൾ പ്ലേ ചെയ്യുന്നു: %1$s · %2$s</string>
     <string name="queue_clear">മായ്ക്കുക</string>
+    <string name="queue_clear_up_next">“അടുത്തത്” പട്ടിക മായ്ക്കുക</string>
+    <string name="queue_clear_playing_from">പ്ലേബാക്ക് ഉറവിടം മായ്ക്കുക</string>
     <string name="queue_section_now_playing">ഇപ്പോൾ പ്ലേ ചെയ്യുന്നു</string>
     <string name="queue_section_up_next">അടുത്തത്</string>
     <string name="queue_section_playing_from">ഇതിൽ നിന്ന് പ്ലേ ചെയ്യുന്നു</string>

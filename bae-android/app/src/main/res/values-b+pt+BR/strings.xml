@@ -37,6 +37,8 @@
     <string name="unmute">Reativar som</string>
     <string name="now_playing_track_by_artist">Tocando agora, %1$s de %2$s</string>
     <string name="queue_clear">Limpar</string>
+    <string name="queue_clear_up_next">Limpar “A seguir”</string>
+    <string name="queue_clear_playing_from">Limpar a fonte de reprodução</string>
     <string name="queue_section_now_playing">Tocando agora</string>
     <string name="queue_section_up_next">A seguir</string>
     <string name="queue_section_playing_from">Tocando de</string>

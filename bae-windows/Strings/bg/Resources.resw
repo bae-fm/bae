@@ -150,7 +150,9 @@
   <data name="outbox.read_failed" xml:space="preserve"><value>изходящата опашка не може да бъде прочетена</value></data>
   <data name="outbox.resume" xml:space="preserve"><value>продължаване</value></data>
   <data name="outbox.retry_now" xml:space="preserve"><value>повторен опит сега</value></data>
-  <data name="queue.clear" xml:space="preserve"><value>изчистване на опашката</value></data>
+  <data name="queue.clear" xml:space="preserve"><value>изчистване</value></data>
+  <data name="queue.clear.playing_from" xml:space="preserve"><value>изчистване на източника на възпроизвеждане</value></data>
+  <data name="queue.clear.up_next" xml:space="preserve"><value>изчистване на „Следва“</value></data>
   <data name="queue.remove_item" xml:space="preserve"><value>Премахване от опашката</value></data>
   <data name="queue.section.playing_from" xml:space="preserve"><value>Възпроизвежда се от</value></data>
   <data name="queue.section.your_library" xml:space="preserve"><value>Вашата библиотека</value></data>

@@ -37,6 +37,8 @@
     <string name="unmute">取消静音</string>
     <string name="now_playing_track_by_artist">正在播放，%1$s — %2$s</string>
     <string name="queue_clear">清空</string>
+    <string name="queue_clear_up_next">清空“接下来”</string>
+    <string name="queue_clear_playing_from">清空当前播放来源</string>
     <string name="queue_section_now_playing">正在播放</string>
     <string name="queue_section_up_next">接下来</string>
     <string name="queue_section_playing_from">来自</string>

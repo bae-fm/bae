@@ -150,7 +150,9 @@
   <data name="outbox.read_failed" xml:space="preserve"><value>வெளிச்செல்லும் பெட்டியை வாசிக்க முடியவில்லை</value></data>
   <data name="outbox.resume" xml:space="preserve"><value>தொடரவும்</value></data>
   <data name="outbox.retry_now" xml:space="preserve"><value>இப்போது மீண்டும் முயற்சி செய்</value></data>
-  <data name="queue.clear" xml:space="preserve"><value>வரிசையை காலி செய்</value></data>
+  <data name="queue.clear" xml:space="preserve"><value>அழி</value></data>
+  <data name="queue.clear.playing_from" xml:space="preserve"><value>இயக்க மூலத்தை அழி</value></data>
+  <data name="queue.clear.up_next" xml:space="preserve"><value>“அடுத்து” பட்டியலை அழி</value></data>
   <data name="queue.remove_item" xml:space="preserve"><value>வரிசையிலிருந்து அகற்று</value></data>
   <data name="queue.section.playing_from" xml:space="preserve"><value>இதிலிருந்து இயக்குகிறது</value></data>
   <data name="queue.section.your_library" xml:space="preserve"><value>உங்கள் நூலகம்</value></data>

@@ -150,7 +150,9 @@
   <data name="outbox.read_failed" xml:space="preserve"><value>無法讀取寄件匣</value></data>
   <data name="outbox.resume" xml:space="preserve"><value>繼續</value></data>
   <data name="outbox.retry_now" xml:space="preserve"><value>立即重試</value></data>
-  <data name="queue.clear" xml:space="preserve"><value>清除佇列</value></data>
+  <data name="queue.clear" xml:space="preserve"><value>清除</value></data>
+  <data name="queue.clear.playing_from" xml:space="preserve"><value>清除目前播放來源</value></data>
+  <data name="queue.clear.up_next" xml:space="preserve"><value>清除「待播清單」</value></data>
   <data name="queue.remove_item" xml:space="preserve"><value>從佇列移除</value></data>
   <data name="queue.section.playing_from" xml:space="preserve"><value>來自</value></data>
   <data name="queue.section.your_library" xml:space="preserve"><value>你的資料庫</value></data>

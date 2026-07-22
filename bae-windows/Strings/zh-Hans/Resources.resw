@@ -150,7 +150,9 @@
   <data name="outbox.read_failed" xml:space="preserve"><value>无法读取发件箱</value></data>
   <data name="outbox.resume" xml:space="preserve"><value>继续</value></data>
   <data name="outbox.retry_now" xml:space="preserve"><value>立即重试</value></data>
-  <data name="queue.clear" xml:space="preserve"><value>清空队列</value></data>
+  <data name="queue.clear" xml:space="preserve"><value>清空</value></data>
+  <data name="queue.clear.playing_from" xml:space="preserve"><value>清空当前播放来源</value></data>
+  <data name="queue.clear.up_next" xml:space="preserve"><value>清空“接下来”</value></data>
   <data name="queue.remove_item" xml:space="preserve"><value>从队列移除</value></data>
   <data name="queue.section.playing_from" xml:space="preserve"><value>来自</value></data>
   <data name="queue.section.your_library" xml:space="preserve"><value>你的音乐库</value></data>

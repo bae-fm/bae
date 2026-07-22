@@ -29,7 +29,8 @@ struct QueuePanel: View {
             nowPlayingTitle: track?.trackTitle,
             nowPlayingArtist: track?.artistNames,
             nowPlayingCover: cover,
-            onClear: { queue.clearQueue() },
+            onClearUpNext: { queue.clearUpNext() },
+            onClearPlayingFrom: { queue.clearPlayingFrom() },
             onSkipTo: { queue.skipToEntry($0) },
             onRemove: { queue.removeEntry($0) },
             onReorder: { entryId, beforeEntryId in

@@ -37,6 +37,8 @@
     <string name="unmute">ஒலி இயக்கு</string>
     <string name="now_playing_track_by_artist">இப்போது ஒலிக்கிறது: %1$s · %2$s</string>
     <string name="queue_clear">அழி</string>
+    <string name="queue_clear_up_next">“அடுத்து” பட்டியலை அழி</string>
+    <string name="queue_clear_playing_from">இயக்க மூலத்தை அழி</string>
     <string name="queue_section_now_playing">இப்போது ஒலிக்கிறது</string>
     <string name="queue_section_up_next">அடுத்து</string>
     <string name="queue_section_playing_from">இதிலிருந்து இயக்குகிறது</string>

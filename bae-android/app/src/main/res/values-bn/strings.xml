@@ -37,6 +37,8 @@
     <string name="unmute">মিউট খুলুন</string>
     <string name="now_playing_track_by_artist">এখন চলছে: %1$s · %2$s</string>
     <string name="queue_clear">মুছুন</string>
+    <string name="queue_clear_up_next">“এরপর” তালিকা মুছুন</string>
+    <string name="queue_clear_playing_from">প্লেব্যাক উৎস মুছুন</string>
     <string name="queue_section_now_playing">এখন চলছে</string>
     <string name="queue_section_up_next">এরপর</string>
     <string name="queue_section_playing_from">যা থেকে চলছে</string>

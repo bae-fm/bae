@@ -11,7 +11,10 @@ public final class Queue: Sendable, Observable {
     public let insertInQueue:
         @Sendable (_ trackIds: [String], _ index: UInt32) -> Void
     public let removeEntry: @Sendable (_ entryId: String) -> Void
-    public let clearQueue: @Sendable () -> Void
+    /// Empty the manual lane, leaving the context lane playing.
+    public let clearUpNext: @Sendable () -> Void
+    /// Drop the context lane. The playing track keeps playing.
+    public let clearPlayingFrom: @Sendable () -> Void
     /// Move `entryId` to sit before `beforeEntryId`; `nil` moves it to the end.
     public let reorderEntry:
         @Sendable (_ entryId: String, _ beforeEntryId: String?) -> Void
@@ -37,7 +40,8 @@ public final class Queue: Sendable, Observable {
             _ in
         },
         removeEntry: @escaping @Sendable (String) -> Void = { _ in },
-        clearQueue: @escaping @Sendable () -> Void = {},
+        clearUpNext: @escaping @Sendable () -> Void = {},
+        clearPlayingFrom: @escaping @Sendable () -> Void = {},
         reorderEntry: @escaping @Sendable (String, String?) -> Void = { _, _ in
         },
         skipToEntry: @escaping @Sendable (String) -> Void = { _ in },
@@ -54,7 +58,8 @@ public final class Queue: Sendable, Observable {
         self.addReleaseNext = addReleaseNext
         self.insertInQueue = insertInQueue
         self.removeEntry = removeEntry
-        self.clearQueue = clearQueue
+        self.clearUpNext = clearUpNext
+        self.clearPlayingFrom = clearPlayingFrom
         self.reorderEntry = reorderEntry
         self.skipToEntry = skipToEntry
         self.setShuffle = setShuffle
@@ -69,7 +74,8 @@ public final class Queue: Sendable, Observable {
             addReleaseNext: { handle.addReleaseNext(releaseId: $0) },
             insertInQueue: { handle.insertInQueue(trackIds: $0, index: $1) },
             removeEntry: { handle.removeEntry(entryId: $0) },
-            clearQueue: { handle.clearQueue() },
+            clearUpNext: { handle.clearUpNext() },
+            clearPlayingFrom: { handle.clearPlayingFrom() },
             reorderEntry: {
                 handle.reorderEntry(entryId: $0, beforeEntryId: $1)
             },

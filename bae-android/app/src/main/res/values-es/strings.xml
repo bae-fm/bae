@@ -37,6 +37,8 @@
     <string name="unmute">Quitar silencio</string>
     <string name="now_playing_track_by_artist">En reproducción, %1$s de %2$s</string>
     <string name="queue_clear">Vaciar</string>
+    <string name="queue_clear_up_next">Vaciar «A continuación»</string>
+    <string name="queue_clear_playing_from">Vaciar la fuente de reproducción</string>
     <string name="queue_section_now_playing">En reproducción</string>
     <string name="queue_section_up_next">A continuación</string>
     <string name="queue_section_playing_from">Reproduciendo desde</string>

@@ -37,6 +37,8 @@
     <string name="unmute">آواز بحال</string>
     <string name="now_playing_track_by_artist">اب چل رہا ہے: %1$s · %2$s</string>
     <string name="queue_clear">صاف کریں</string>
+    <string name="queue_clear_up_next">“اگلا” فہرست صاف کریں</string>
+    <string name="queue_clear_playing_from">پلے بیک ماخذ صاف کریں</string>
     <string name="queue_section_now_playing">اب چل رہا ہے</string>
     <string name="queue_section_up_next">اگلا</string>
     <string name="queue_section_playing_from">یہاں سے چل رہا ہے</string>

@@ -37,6 +37,8 @@
     <string name="unmute">إلغاء الكتم</string>
     <string name="now_playing_track_by_artist">قيد التشغيل الآن، %1$s لـ %2$s</string>
     <string name="queue_clear">مسح</string>
+    <string name="queue_clear_up_next">مسح «التالي»</string>
+    <string name="queue_clear_playing_from">مسح مصدر التشغيل</string>
     <string name="queue_section_now_playing">قيد التشغيل الآن</string>
     <string name="queue_section_up_next">التالي</string>
     <string name="queue_section_playing_from">يُشغّل من</string>

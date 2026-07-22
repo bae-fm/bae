@@ -37,6 +37,8 @@
     <string name="unmute">בטל השתקה</string>
     <string name="now_playing_track_by_artist">מתנגן כעת, %1$s מאת %2$s</string>
     <string name="queue_clear">נקה</string>
+    <string name="queue_clear_up_next">נקה את “הבא בתור”</string>
+    <string name="queue_clear_playing_from">נקה את מקור ההשמעה</string>
     <string name="queue_section_now_playing">מתנגן כעת</string>
     <string name="queue_section_up_next">הבא בתור</string>
     <string name="queue_section_playing_from">מנגן מתוך</string>
