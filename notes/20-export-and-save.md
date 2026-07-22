@@ -1,0 +1,142 @@
+# Export and save
+
+Two distinct ways audio leaves the library. They look similar (both write
+files to a place the user picks) but their contracts are opposites, and
+conflating them muddles both.
+
+- **Export** is the inverse of import. It reproduces the file set that was
+  imported, byte for byte. What came in comes out.
+- **Save** is "Save As". It produces *output* — a workup of what bae knows
+  about the music, rendered into standalone files in a chosen format.
+
+The crispest way to tell them apart: export returns the files you gave bae;
+save renders the music bae has. Metadata edits made inside bae are invisible
+to export (source bytes are never rewritten) and authoritative for save
+(they're what gets tagged into the output).
+
+## Export
+
+Release level only. A release was imported as a folder of files; export
+reconstructs that folder.
+
+**Contract: the import ↔ export round trip is bit-identical.** Every imported
+file comes back with its verbatim bytes, at its original relative path
+(`original_filename`, which may include subfolders like `CD1/…`), under the
+release's `source_folder_name`. Audio, cue sheets, logs, artwork, scans —
+whatever the import took, in its original layout. No transcoding, no tag
+rewriting, no renaming, no cover embedding, no file filtering. Export has no
+format options because format is not a degree of freedom — fidelity to the
+imported set *is* the feature.
+
+One addition rides along: a hidden `.bae-export` marker file naming the
+release id. It is what lets a re-export safely replace a prior export of the
+same folder (an unmarked directory at the target is never touched). The files
+themselves are still exact; the folder carries one extra hidden file.
+
+Mechanics:
+
+- Reads each blob through coven's locality-aware read — a Remote release
+  fetches from cloud/cache and decrypts. Export never requires a local copy
+  and never changes release state: no gate flips, no locality change.
+- Destination follows the browser download-folder model
+  (`ExportLocation`): ask each time, or a fixed directory. Output lands at
+  `<dir>/<source_folder_name>/`.
+- Releases queue through the serial export queue (one at a time,
+  pause/cancel/retry, transient across restarts).
+- All-or-nothing: files write into a hidden staging directory that is renamed
+  into place only after every file succeeds; failure or cancel removes the
+  staging directory and leaves nothing at the final path.
+
+## Save
+
+"Save As" — a workup that produces standalone output files. Track level or
+release level.
+
+Save decodes the source audio and produces output in a chosen file format.
+When the output format differs from the source, that is a transcode. When it
+matches, it is still a workup: the output is a proper self-contained file —
+split out of any image, tagged from bae's metadata, named by pattern.
+
+**Image splitting.** A CUE/single-file source (one image file backing many
+tracks) has no per-track files to hand out, so save extracts: decode the
+image, cut the track's sample window, encode a standalone file. This is
+inherent to save — a track saved from an image is always constructed, never
+copied.
+
+**The workup**, applied to every constructed output file:
+
+- Tags written from bae's metadata: title, artist, album, year, track
+  number/total, disc (digital media only — sides are not discs).
+- Cover art embedded, optionally (a preset choice). The embedded art is the
+  release's own cover.
+- Filename rendered from the preset's token pattern (title, artist, album,
+  year, track number, disc number, track total), sanitized for
+  macOS/Windows.
+
+**Presets** (`ExportPreset` today) bundle the save options: codec + quality
+(FLAC/WAV/AIFF with bit depth, MP3/Opus with bitrate), filename tokens,
+pregap placement, cover embedding, and which levels the preset applies to
+(track, release).
+
+**Original format** is a format choice, not a different operation: "don't
+transcode". A track whose source is a standalone whole file passes through as
+its verbatim bytes (its existing embedded tags come along untouched). A track
+backed by an image must be constructed, so it is split losslessly (lossless
+sources only — a lossy image cannot be split without a transcode, which
+"original" by definition refuses) and gets the full workup.
+
+**Release-level save** produces one of two shapes, chosen by the preset:
+
+- **File per track**: every track saved as its own file, names deduplicated
+  within the output folder. Pregap placement options decide where CUE pregap
+  audio goes (append to previous track, include or exclude the hidden
+  track-one pregap, or exclude pregaps entirely).
+- **Single file + CUE**: the whole release as one audio image plus a
+  generated CUE sheet (title, performer, catalog/barcode, date, per-track
+  index points computed from the sample windows). Release level only, and
+  only for codecs CUE can name (not Opus/Ogg).
+
+Destinations: a release-level save targets a directory (same download-folder
+model and serial queue as export); a track-level save runs through the
+platform save panel, seeded with the rendered filename suggestion — seeding
+reads only the database, never audio or the cloud.
+
+Like export, save reads through coven (cloud-only sources download +
+decrypt), and output is atomic: partial files are removed on failure or
+cancel.
+
+## The line between them
+
+| | export | save |
+|---|---|---|
+| level | release | release or track |
+| source of truth | imported bytes | bae's metadata + decoded audio |
+| transcode | never | when the format differs |
+| image splitting | never (image stays an image) | yes (tracks are constructed) |
+| tags | untouched | written from bae |
+| cover | as imported (a file among files) | optionally embedded |
+| filenames | original, verbatim | rendered from token pattern |
+| options | destination only | preset: format, quality, naming, pregaps, cover |
+| metadata edits in bae | invisible | applied |
+
+"I want my rip back" is export. "I want files for my phone / another player /
+a friend's format" is save.
+
+## Where this lives in code today
+
+The code predates the split and calls both "export". The mapping:
+
+- Export = `ExportSelection::Original` through the release export queue
+  (`library/manager/export.rs`: `enqueue_export`, `export_release_to_dir`,
+  `export_one_file`, the staging/marker/replace machinery).
+- Save = `ExportSelection::Preset` at release level
+  (`export_release_tracks_to_dir`, `export_release_image_with_cue_to_dir`)
+  and the whole track-level path (`export_track`,
+  `export_track_suggested_name`, `ExportService` in `library/export.rs`),
+  with `ExportPreset` / `ExportFilenameToken` / `ExportPregapPlacement` in
+  `config/export.rs` as the preset vocabulary.
+
+Two seams the vocabulary hides: `ExportSelection` exists only because the two
+operations share one entry point (a save preset and "original" are presented
+as siblings when they are different operations), and cover embedding is
+currently unconditional rather than a preset option.
