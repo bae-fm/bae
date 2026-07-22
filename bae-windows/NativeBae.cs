@@ -1,4 +1,5 @@
-﻿using System.Text.Json;
+﻿using System.Linq;
+using System.Text.Json;
 using uniffi.bae_bridge;
 
 namespace Bae.Windows;
@@ -1204,7 +1205,7 @@ internal static class NativeBae
             Name = preset.Name,
             Codec = preset.Codec,
             Extension = preset.Extension,
-            FilenameTokens = preset.FilenameTokens,
+            FilenameTokens = preset.FilenameTokens.ToList(),
             PregapPlacement = preset.PregapPlacement,
             AppliesToTrack = preset.AppliesToTrack,
             AppliesToRelease = preset.AppliesToRelease,
@@ -1217,7 +1218,7 @@ internal static class NativeBae
             preset.Name,
             preset.Codec,
             preset.Extension,
-            preset.FilenameTokens,
+            preset.FilenameTokens.ToArray(),
             preset.PregapPlacement,
             preset.AppliesToTrack,
             preset.AppliesToRelease,

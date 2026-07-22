@@ -511,7 +511,7 @@ internal sealed class FormatsSettingsSection
         return LabeledRow(Loc.Chrome("settings.formats.bitrate"), bitrate);
     }
 
-    private (StackPanel Row, CheckBox Track, CheckBox Release) PresetScopeBoxes(
+    private (Grid Row, CheckBox Track, CheckBox Release) PresetScopeBoxes(
         Settings settings, SavePreset preset)
     {
         var track = new CheckBox
