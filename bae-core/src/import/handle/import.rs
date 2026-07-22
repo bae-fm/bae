@@ -173,7 +173,7 @@ impl ImportServiceHandle {
     ) -> Result<String, crate::import::ImportError> {
         let import_id = command.import_id.clone();
         self.requests_tx
-            .send(command)
+            .send(crate::import::service::ImportWorkerMessage::Import(command))
             .map_err(|_| crate::import::ImportError::Internal {
                 detail: "Failed to queue import command".to_string(),
             })?;

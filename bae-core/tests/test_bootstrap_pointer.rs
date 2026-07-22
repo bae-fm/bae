@@ -209,10 +209,12 @@ fn bootstrap_that_fails_leaves_active_pointer() {
 /// Dropping a `RunningApp` releases coven's exclusive store-open lock, so the same
 /// library can be reopened in-process — even when the caller never ran the
 /// graceful `shutdown`. The lock is held by every `LibraryManager` clone through
-/// the shared coven handle; the playback service runs on its own thread holding
-/// one such clone and only stops on an explicit command, so without a teardown on
-/// drop that thread — and the lock — outlives the `RunningApp`, and the reopen
-/// fails with "store is already open".
+/// the shared coven handle; the playback and import services each run on their
+/// own thread holding one such clone and only stop on an explicit command, so
+/// without a teardown join on drop those threads — and the lock — outlive the
+/// `RunningApp`, and the reopen fails with "store is already open" (the import
+/// worker's exit raced the reopen before it was joined, so this passed only
+/// most of the time).
 #[test]
 #[serial]
 fn dropping_running_app_releases_the_store_lock_for_reopen() {

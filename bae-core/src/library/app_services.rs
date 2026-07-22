@@ -20,17 +20,21 @@ struct AppServicesInner {
 }
 
 impl Drop for AppServicesInner {
-    /// Stop and join the playback service thread when the last `AppServices` clone
-    /// drops — i.e. when the app is torn down. That thread runs on its own OS
-    /// thread and, because the service loop holds its own command sender, only
-    /// stops on an explicit `Shutdown`; nothing else joins it. Until it exits it
-    /// holds a `LibraryManager` clone, and through the shared coven handle that
-    /// pins the store's exclusive open lock — so without this teardown the same
-    /// library can't be reopened in-process (a `RunningApp` dropped without the
-    /// graceful `shutdown` leaks the thread and the lock). A no-op if `shutdown`
-    /// already ran: the join handle is taken once.
+    /// Stop and join the playback and import worker threads when the last
+    /// `AppServices` clone drops — i.e. when the app is torn down. Each runs on
+    /// its own OS thread and, because a live command sender sits in this very
+    /// struct, only stops on an explicit `Shutdown`; nothing else joins them.
+    /// Until a thread exits it holds a `LibraryManager` clone, and through the
+    /// shared coven handle that pins the store's exclusive open lock — so
+    /// without joining *every* such thread the same library can't be reopened
+    /// in-process (a `RunningApp` dropped without the graceful `shutdown` leaks
+    /// the thread and the lock, and an unjoined import worker made the reopen a
+    /// race it usually — not always — won). No-ops if `shutdown` already ran:
+    /// each join handle is taken once.
     fn drop(&mut self) {
         self.playback.stop_and_join();
+        #[cfg(not(any(target_os = "ios", target_os = "android")))]
+        self.import.stop_and_join();
     }
 }
 

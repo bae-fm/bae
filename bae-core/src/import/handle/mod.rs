@@ -446,7 +446,13 @@ fn validation_from_validate_result(
 /// client serve every caller transparently.
 #[derive(Clone)]
 pub struct ImportServiceHandle {
-    requests_tx: mpsc::UnboundedSender<ImportCommand>,
+    requests_tx: mpsc::UnboundedSender<crate::import::service::ImportWorkerMessage>,
+    /// The worker's OS thread, joined once at teardown (`stop_and_join`). The
+    /// thread holds a `LibraryManager` clone, which pins coven's exclusive
+    /// store-open lock — until it exits the same library can't reopen
+    /// in-process, so teardown must not return before the join. Shared across
+    /// handle clones; `take`n by whichever runs the join.
+    worker_thread: Arc<Mutex<Option<std::thread::JoinHandle<()>>>>,
     library_manager: LibraryManager,
     /// Unified event channel — all import service events go here.
     /// `pub(crate)` because `app.rs` clones it to seed the identify and signals
@@ -510,7 +516,8 @@ pub(crate) enum WatcherCommand {
 
 impl ImportServiceHandle {
     pub(crate) fn new(
-        requests_tx: mpsc::UnboundedSender<ImportCommand>,
+        requests_tx: mpsc::UnboundedSender<crate::import::service::ImportWorkerMessage>,
+        worker_thread: std::thread::JoinHandle<()>,
         library_manager: LibraryManager,
         runtime_handle: tokio::runtime::Handle,
         watcher_tx: mpsc::UnboundedSender<WatcherCommand>,
@@ -522,6 +529,7 @@ impl ImportServiceHandle {
     ) -> Self {
         Self {
             requests_tx,
+            worker_thread: Arc::new(Mutex::new(Some(worker_thread))),
             library_manager,
             event_tx,
             folder_registry,
@@ -530,6 +538,32 @@ impl ImportServiceHandle {
             folder_watcher,
             runtime_handle,
             cover_art_archive,
+        }
+    }
+
+    /// Stop and join the worker thread. Idempotent (the join handle is taken
+    /// once); called from `AppServicesInner`'s drop so the worker's
+    /// `LibraryManager` clone — and the store-open lock it pins — is released
+    /// before teardown returns. An explicit `Shutdown` message rather than
+    /// channel closure: `self` holds a live sender, so the channel can't close
+    /// before the join.
+    pub fn stop_and_join(&self) {
+        let Some(join_handle) = self.worker_thread.lock().unwrap().take() else {
+            return;
+        };
+        if self
+            .requests_tx
+            .send(crate::import::service::ImportWorkerMessage::Shutdown)
+            .is_err()
+        {
+            // The worker already exited (its loop only ends on Shutdown or a
+            // panic); the join below surfaces which.
+            tracing::warn!("import command channel closed before shutdown");
+        }
+        // A panicked worker thread already reported itself; joining from Drop
+        // must not repropagate, but the panic shouldn't vanish either.
+        if let Err(panic) = join_handle.join() {
+            tracing::warn!("import worker thread panicked before join: {panic:?}");
         }
     }
 

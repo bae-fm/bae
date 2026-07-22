@@ -72,8 +72,18 @@ fn storage_mode_label(mode: &StorageMode) -> &'static str {
 
 use crate::import::handle::send_event;
 
+/// What the import worker thread receives: an import to run, or the teardown
+/// signal `ImportServiceHandle::stop_and_join` sends. The explicit signal (vs
+/// waiting for the channel to close) exists because the handle owning the last
+/// sender is itself a field of the struct whose `Drop` performs the join —
+/// channel closure could never arrive before the join deadlocked.
+pub(crate) enum ImportWorkerMessage {
+    Import(ImportCommand),
+    Shutdown,
+}
+
 pub struct ImportService {
-    commands_rx: mpsc::UnboundedReceiver<ImportCommand>,
+    commands_rx: mpsc::UnboundedReceiver<ImportWorkerMessage>,
     event_tx: broadcast::Sender<crate::import::handle::ImportEvent>,
     library_manager: LibraryManager,
     /// The base backoff the commit worker's remote-cover download retries
@@ -358,7 +368,7 @@ impl ImportService {
             candidate_state.clone(),
         );
 
-        std::thread::spawn(move || {
+        let worker_thread = std::thread::spawn(move || {
             let rt = tokio::runtime::Builder::new_current_thread()
                 .enable_all()
                 .build()
@@ -371,14 +381,18 @@ impl ImportService {
                     cover_retry_base_delay,
                 };
 
-                while let Some(command) = service.commands_rx.recv().await {
-                    service.do_import(command).await;
+                while let Some(message) = service.commands_rx.recv().await {
+                    match message {
+                        ImportWorkerMessage::Import(command) => service.do_import(command).await,
+                        ImportWorkerMessage::Shutdown => break,
+                    }
                 }
             });
         });
 
         ImportServiceHandle::new(
             commands_tx,
+            worker_thread,
             library_manager_for_handle,
             runtime_handle,
             watcher_tx,
