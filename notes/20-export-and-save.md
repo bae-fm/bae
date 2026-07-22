@@ -39,10 +39,11 @@ Mechanics:
   fetches from cloud/cache and decrypts. Export never requires a local copy
   and never changes release state: no gate flips, no locality change.
 - Destination follows the browser download-folder model
-  (`ExportLocation`): ask each time, or a fixed directory. Output lands at
+  (`OutputLocation`): ask each time, or a fixed directory. Output lands at
   `<dir>/<source_folder_name>/`.
-- Releases queue through the serial export queue (one at a time,
-  pause/cancel/retry, transient across restarts).
+- Releases queue through the serial output queue, shared with release-level
+  save (one release-level output at a time, pause/cancel/retry, transient
+  across restarts).
 - All-or-nothing: files write into a hidden staging directory that is renamed
   into place only after every file succeeds; failure or cancel removes the
   staging directory and leaves nothing at the final path.
@@ -76,7 +77,7 @@ copied.
   year, track number, disc number, track total), sanitized for
   macOS/Windows.
 
-**Presets** (`ExportPreset` today) bundle the save options: codec + quality
+**Presets** (`SavePreset`) bundle the save options: codec + quality
 (FLAC/WAV/AIFF with bit depth, MP3/Opus with bitrate), filename tokens,
 pregap placement, cover embedding, and which levels the preset applies to
 (track, release).
@@ -92,10 +93,10 @@ pregap placement, cover embedding, and which levels the preset applies to
   index points computed from the sample windows). Release level only, and
   only for codecs CUE can name (not Opus/Ogg).
 
-Destinations: a release-level save targets a directory (same download-folder
-model and serial queue as export); a track-level save runs through the
-platform save panel, seeded with the rendered filename suggestion — seeding
-reads only the database, never audio or the cloud.
+Destinations: a release-level save targets a directory (the same
+`OutputLocation` and serial output queue as export); a track-level save runs
+through the platform save panel, seeded with the rendered filename
+suggestion — seeding reads only the database, never audio or the cloud.
 
 Like export, save reads through coven (cloud-only sources download +
 decrypt), and output is atomic: partial files are removed on failure or
@@ -117,25 +118,3 @@ cancel.
 
 "I want my rip back" is export. "I want files for my phone / another player /
 a friend's format" is save.
-
-## Where this lives in code today
-
-The code predates the split and calls both "export". The mapping:
-
-- Export = `ExportSelection::Original` through the release export queue
-  (`library/manager/export.rs`: `enqueue_export`, `export_release_to_dir`,
-  `export_one_file`, the staging/marker/replace machinery).
-- Save = `ExportSelection::Preset` at release level
-  (`export_release_tracks_to_dir`, `export_release_image_with_cue_to_dir`)
-  and the whole track-level path (`export_track`,
-  `export_track_suggested_name`, `ExportService` in `library/export.rs`),
-  with `ExportPreset` / `ExportFilenameToken` / `ExportPregapPlacement` in
-  `config/export.rs` as the preset vocabulary.
-
-Seams the vocabulary hides: `ExportSelection` presents "original" and a
-preset as sibling choices of one operation, when in the model original *is*
-export and a save always carries a preset — the enum dissolves once each
-operation has exactly one shape. The track-level `ExportSelection::Original`
-path (`ExportService::export_original_track`, `export_track_extension`'s
-original arm) is a save without a format, which the model eliminates. And
-cover embedding is currently unconditional rather than a preset option.
