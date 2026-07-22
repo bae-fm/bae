@@ -148,9 +148,9 @@ pub struct DbTrackArtistRole {
 ///
 /// Albums carry no per-source identity of their own — identity lives per release
 /// in the `release_identities` side table, and cross-source equivalences surface
-/// implicitly when an album's releases hold rows in several sources. See
-/// `notes/17-release-identity.md` for the loose attach rule and why album-level
-/// identity columns don't fit it.
+/// implicitly when an album's releases hold rows in several sources. Releases
+/// attach to albums loosely (title/artist match), so album-level identity
+/// columns would claim a certainty the attach rule doesn't have.
 #[derive(Debug, Clone, PartialEq)]
 pub struct DbAlbum {
     pub id: String,

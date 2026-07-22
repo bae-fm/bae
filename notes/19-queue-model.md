@@ -1,7 +1,7 @@
 # The queue
 
-How playback's queue behaves. Companion to `14-playback-architecture.md`
-(which covers the audio pipeline); this note covers what plays next and why.
+How playback's queue behaves: what plays next and why. (The audio pipeline
+itself is out of scope here.)
 
 ## Shape
 
