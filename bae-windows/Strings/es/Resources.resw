@@ -329,7 +329,7 @@
   <data name="settings.formats.sample.artist" xml:space="preserve"><value>Nombre del artista</value></data>
   <data name="settings.formats.sample.album" xml:space="preserve"><value>Título del álbum</value></data>
   <data name="settings.formats.preview" xml:space="preserve"><value>Vista previa: {filename}</value></data>
-  <data name="settings.formats.presets_footer" xml:space="preserve"><value>Los preajustes aparecen en el menú de exportación de pistas y lanzamientos.</value></data>
+  <data name="settings.formats.presets_footer" xml:space="preserve"><value>Los formatos aparecen en «Guardar como…» en pistas y lanzamientos.</value></data>
   <data name="settings.formats.preset_format" xml:space="preserve"><value>Formato</value></data>
   <data name="settings.formats.add_preset" xml:space="preserve"><value>Añadir preajuste</value></data>
   <data name="settings.formats.delete_preset" xml:space="preserve"><value>Eliminar preajuste</value></data>

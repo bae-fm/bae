@@ -329,7 +329,7 @@
   <data name="settings.formats.sample.artist" xml:space="preserve"><value>藝人名稱</value></data>
   <data name="settings.formats.sample.album" xml:space="preserve"><value>專輯標題</value></data>
   <data name="settings.formats.preview" xml:space="preserve"><value>預覽：{filename}</value></data>
-  <data name="settings.formats.presets_footer" xml:space="preserve"><value>預設會顯示於曲目與發行的匯出選單中。</value></data>
+  <data name="settings.formats.presets_footer" xml:space="preserve"><value>格式會顯示在曲目和發行的「另存為…」中。</value></data>
   <data name="settings.formats.preset_format" xml:space="preserve"><value>格式</value></data>
   <data name="settings.formats.add_preset" xml:space="preserve"><value>加入預設</value></data>
   <data name="settings.formats.delete_preset" xml:space="preserve"><value>刪除預設</value></data>

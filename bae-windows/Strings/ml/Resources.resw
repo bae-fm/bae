@@ -329,7 +329,7 @@
   <data name="settings.formats.sample.artist" xml:space="preserve"><value>ആർട്ടിസ്റ്റിന്റെ പേര്</value></data>
   <data name="settings.formats.sample.album" xml:space="preserve"><value>ആൽബം ശീർഷകം</value></data>
   <data name="settings.formats.preview" xml:space="preserve"><value>പ്രിവ്യൂ: {filename}</value></data>
-  <data name="settings.formats.presets_footer" xml:space="preserve"><value>മുൻക്രമീകരണങ്ങൾ ട്രാക്കുകളുടെയും പതിപ്പുകളുടെയും കയറ്റുമതി മെനുവിൽ കാണാം.</value></data>
+  <data name="settings.formats.presets_footer" xml:space="preserve"><value>ട്രാക്കുകളിലും പതിപ്പുകളിലും "ഇങ്ങനെ സംരക്ഷിക്കുക…" എന്നതിൽ ഫോർമാറ്റുകൾ കാണാം.</value></data>
   <data name="settings.formats.preset_format" xml:space="preserve"><value>ഫോർമാറ്റ്</value></data>
   <data name="settings.formats.add_preset" xml:space="preserve"><value>മുൻക്രമീകരണം ചേർക്കുക</value></data>
   <data name="settings.formats.delete_preset" xml:space="preserve"><value>മുൻക്രമീകരണം ഇല്ലാതാക്കുക</value></data>

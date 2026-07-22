@@ -329,7 +329,7 @@
   <data name="settings.formats.sample.artist" xml:space="preserve"><value>艺人名称</value></data>
   <data name="settings.formats.sample.album" xml:space="preserve"><value>专辑标题</value></data>
   <data name="settings.formats.preview" xml:space="preserve"><value>预览：{filename}</value></data>
-  <data name="settings.formats.presets_footer" xml:space="preserve"><value>预设会显示在曲目和发行的导出菜单中。</value></data>
+  <data name="settings.formats.presets_footer" xml:space="preserve"><value>格式显示在曲目和发行的"存储为…"中。</value></data>
   <data name="settings.formats.preset_format" xml:space="preserve"><value>格式</value></data>
   <data name="settings.formats.add_preset" xml:space="preserve"><value>添加预设</value></data>
   <data name="settings.formats.delete_preset" xml:space="preserve"><value>删除预设</value></data>

@@ -329,7 +329,7 @@
   <data name="settings.formats.sample.artist" xml:space="preserve"><value>아티스트 이름</value></data>
   <data name="settings.formats.sample.album" xml:space="preserve"><value>앨범 제목</value></data>
   <data name="settings.formats.preview" xml:space="preserve"><value>미리보기: {filename}</value></data>
-  <data name="settings.formats.presets_footer" xml:space="preserve"><value>프리셋은 트랙과 릴리스의 내보내기 메뉴에 나타납니다.</value></data>
+  <data name="settings.formats.presets_footer" xml:space="preserve"><value>형식은 트랙과 릴리스의 "다른 이름으로 저장…"에 표시됩니다.</value></data>
   <data name="settings.formats.preset_format" xml:space="preserve"><value>형식</value></data>
   <data name="settings.formats.add_preset" xml:space="preserve"><value>프리셋 추가</value></data>
   <data name="settings.formats.delete_preset" xml:space="preserve"><value>프리셋 삭제</value></data>

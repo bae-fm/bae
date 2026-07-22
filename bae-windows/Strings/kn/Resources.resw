@@ -329,7 +329,7 @@
   <data name="settings.formats.sample.artist" xml:space="preserve"><value>ಕಲಾವಿದರ ಹೆಸರು</value></data>
   <data name="settings.formats.sample.album" xml:space="preserve"><value>ಆಲ್ಬಮ್ ಶೀರ್ಷಿಕೆ</value></data>
   <data name="settings.formats.preview" xml:space="preserve"><value>ಮುನ್ನೋಟ: {filename}</value></data>
-  <data name="settings.formats.presets_footer" xml:space="preserve"><value>ಪ್ರೀಸೆಟ್‌ಗಳು ಹಾಡುಗಳು ಮತ್ತು ಬಿಡುಗಡೆಗಳ ರಫ್ತು ಮೆನುವಿನಲ್ಲಿ ಕಾಣಿಸುತ್ತವೆ.</value></data>
+  <data name="settings.formats.presets_footer" xml:space="preserve"><value>ಫಾರ್ಮ್ಯಾಟ್‌ಗಳು ಟ್ರ್ಯಾಕ್ ಮತ್ತು ಬಿಡುಗಡೆಗಳಲ್ಲಿ "ಹೀಗೆ ಉಳಿಸಿ…"ನಲ್ಲಿ ಕಾಣಿಸುತ್ತವೆ.</value></data>
   <data name="settings.formats.preset_format" xml:space="preserve"><value>ಸ್ವರೂಪ</value></data>
   <data name="settings.formats.add_preset" xml:space="preserve"><value>ಪ್ರೀಸೆಟ್ ಸೇರಿಸಿ</value></data>
   <data name="settings.formats.delete_preset" xml:space="preserve"><value>ಪ್ರೀಸೆಟ್ ಅಳಿಸಿ</value></data>

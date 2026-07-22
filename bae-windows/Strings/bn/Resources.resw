@@ -329,7 +329,7 @@
   <data name="settings.formats.sample.artist" xml:space="preserve"><value>শিল্পীর নাম</value></data>
   <data name="settings.formats.sample.album" xml:space="preserve"><value>অ্যালবামের শিরোনাম</value></data>
   <data name="settings.formats.preview" xml:space="preserve"><value>প্রিভিউ: {filename}</value></data>
-  <data name="settings.formats.presets_footer" xml:space="preserve"><value>প্রিসেটগুলি ট্র্যাক ও রিলিজের এক্সপোর্ট মেনুতে দেখা যায়।</value></data>
+  <data name="settings.formats.presets_footer" xml:space="preserve"><value>ফরম্যাটগুলি ট্র্যাক ও রিলিজের "নামে সংরক্ষণ করুন…"-এ দেখা যায়।</value></data>
   <data name="settings.formats.preset_format" xml:space="preserve"><value>ফরম্যাট</value></data>
   <data name="settings.formats.add_preset" xml:space="preserve"><value>প্রিসেট যোগ করুন</value></data>
   <data name="settings.formats.delete_preset" xml:space="preserve"><value>প্রিসেট মুছুন</value></data>

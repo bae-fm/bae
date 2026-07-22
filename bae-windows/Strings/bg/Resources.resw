@@ -329,7 +329,7 @@
   <data name="settings.formats.sample.artist" xml:space="preserve"><value>Име на изпълнител</value></data>
   <data name="settings.formats.sample.album" xml:space="preserve"><value>Заглавие на албум</value></data>
   <data name="settings.formats.preview" xml:space="preserve"><value>Преглед: {filename}</value></data>
-  <data name="settings.formats.presets_footer" xml:space="preserve"><value>Шаблоните се показват в менюто за експорт на песни и издания.</value></data>
+  <data name="settings.formats.presets_footer" xml:space="preserve"><value>Форматите се показват в "Запазване като…" за песни и издания.</value></data>
   <data name="settings.formats.preset_format" xml:space="preserve"><value>Формат</value></data>
   <data name="settings.formats.add_preset" xml:space="preserve"><value>Добавяне на шаблон</value></data>
   <data name="settings.formats.delete_preset" xml:space="preserve"><value>Изтриване на шаблона</value></data>

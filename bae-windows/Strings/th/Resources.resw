@@ -329,7 +329,7 @@
   <data name="settings.formats.sample.artist" xml:space="preserve"><value>ชื่อศิลปิน</value></data>
   <data name="settings.formats.sample.album" xml:space="preserve"><value>ชื่ออัลบั้ม</value></data>
   <data name="settings.formats.preview" xml:space="preserve"><value>ตัวอย่าง: {filename}</value></data>
-  <data name="settings.formats.presets_footer" xml:space="preserve"><value>ค่าที่ตั้งไว้จะปรากฏในเมนูส่งออกของแทร็กและรีลีส</value></data>
+  <data name="settings.formats.presets_footer" xml:space="preserve"><value>รูปแบบจะปรากฏใน "บันทึกเป็น…" บนแทร็กและรีลีส</value></data>
   <data name="settings.formats.preset_format" xml:space="preserve"><value>รูปแบบ</value></data>
   <data name="settings.formats.add_preset" xml:space="preserve"><value>เพิ่มค่าที่ตั้งไว้</value></data>
   <data name="settings.formats.delete_preset" xml:space="preserve"><value>ลบค่าที่ตั้งไว้</value></data>

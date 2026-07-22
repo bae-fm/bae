@@ -329,7 +329,7 @@
   <data name="settings.formats.sample.artist" xml:space="preserve"><value>Ime izvođača</value></data>
   <data name="settings.formats.sample.album" xml:space="preserve"><value>Naslov albuma</value></data>
   <data name="settings.formats.preview" xml:space="preserve"><value>Pregled: {filename}</value></data>
-  <data name="settings.formats.presets_footer" xml:space="preserve"><value>Predlošci se prikazuju u izborniku izvoza pjesama i izdanja.</value></data>
+  <data name="settings.formats.presets_footer" xml:space="preserve"><value>Formati se prikazuju u "Spremi kao…" na pjesmama i izdanjima.</value></data>
   <data name="settings.formats.preset_format" xml:space="preserve"><value>Format</value></data>
   <data name="settings.formats.add_preset" xml:space="preserve"><value>Dodaj predložak</value></data>
   <data name="settings.formats.delete_preset" xml:space="preserve"><value>Izbriši predložak</value></data>

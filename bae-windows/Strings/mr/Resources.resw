@@ -329,7 +329,7 @@
   <data name="settings.formats.sample.artist" xml:space="preserve"><value>कलाकाराचे नाव</value></data>
   <data name="settings.formats.sample.album" xml:space="preserve"><value>अल्बमचे शीर्षक</value></data>
   <data name="settings.formats.preview" xml:space="preserve"><value>पूर्वावलोकन: {filename}</value></data>
-  <data name="settings.formats.presets_footer" xml:space="preserve"><value>पूर्वनियोजने गाणी आणि प्रकाशनांच्या निर्यात मेनूमध्ये दिसतात.</value></data>
+  <data name="settings.formats.presets_footer" xml:space="preserve"><value>स्वरूप गाणी आणि प्रकाशनांवर "म्हणून जतन करा…" मध्ये दिसतात.</value></data>
   <data name="settings.formats.preset_format" xml:space="preserve"><value>स्वरूप</value></data>
   <data name="settings.formats.add_preset" xml:space="preserve"><value>पूर्वनियोजन जोडा</value></data>
   <data name="settings.formats.delete_preset" xml:space="preserve"><value>पूर्वनियोजन हटवा</value></data>

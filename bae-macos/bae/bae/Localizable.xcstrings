@@ -63714,193 +63714,192 @@
         }
       }
     },
-    "Presets appear in the export menu on tracks and releases." : {
-      "comment" : "Export settings: presets section footer",
+    "Formats appear in Save As… on tracks and releases." : {
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "تظهر الإعدادات المسبقة في قائمة التصدير على المقاطع والإصدارات."
+            "value" : "تظهر الصيغ في \"حفظ باسم…\" للمقاطع والإصدارات."
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Шаблоните се показват в менюто за експорт на песни и издания."
+            "value" : "Форматите се показват в \"Запазване като…\" за песни и издания."
           }
         },
         "bn" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "প্রিসেটগুলি ট্র্যাক ও রিলিজের এক্সপোর্ট মেনুতে দেখা যায়।"
+            "value" : "ফরম্যাটগুলি ট্র্যাক ও রিলিজের \"নামে সংরক্ষণ করুন…\"-এ দেখা যায়।"
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Předvolby se zobrazují v nabídce exportu u stop a vydání."
+            "value" : "Formáty se zobrazují v nabídce „Uložit jako…“ u stop a vydání."
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Voreinstellungen erscheinen im Export-Menü von Tracks und Releases."
+            "value" : "Formate erscheinen unter „Speichern unter …“ bei Tracks und Releases."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Presets appear in the export menu on tracks and releases."
+            "value" : "Formats appear in Save As… on tracks and releases."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Los preajustes aparecen en el menú de exportación de pistas y lanzamientos."
+            "value" : "Los formatos aparecen en «Guardar como…» en pistas y lanzamientos."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Les préréglages apparaissent dans le menu d'export des pistes et des sorties."
+            "value" : "Les formats apparaissent dans « Enregistrer sous… » pour les pistes et les sorties."
           }
         },
         "gu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "પૂર્વનિયોજનો ટ્રૅક અને પ્રકાશનોના નિકાસ મેનૂમાં દેખાય છે."
+            "value" : "ફોર્મેટ ટ્રૅક્સ અને પ્રકાશનો પર \"આ રીતે સાચવો…\"માં દેખાય છે."
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "הגדרות קבועות מופיעות בתפריט הייצוא של רצועות והוצאות."
+            "value" : "פורמטים מופיעים ב\"שמור בשם…\" ברצועות ובהוצאות."
           }
         },
         "hi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "पूर्व-सेट ट्रैक और रिलीज के निर्यात मेनू में दिखाई देते हैं।"
+            "value" : "फ़ॉर्मैट ट्रैक और रिलीज़ पर \"इस रूप में सहेजें…\" में दिखाई देते हैं।"
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Predlošci se prikazuju u izborniku izvoza pjesama i izdanja."
+            "value" : "Formati se prikazuju u \"Spremi kao…\" na pjesmama i izdanjima."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "I preset compaiono nel menu di esportazione di brani e pubblicazioni."
+            "value" : "I formati compaiono in \"Salva con nome…\" su brani e pubblicazioni."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "プリセットはトラックとリリースのエクスポートメニューに表示されます。"
+            "value" : "フォーマットはトラックとリリースの「別名で保存…」に表示されます。"
           }
         },
         "kn" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ಪ್ರೀಸೆಟ್‌ಗಳು ಹಾಡುಗಳು ಮತ್ತು ಬಿಡುಗಡೆಗಳ ರಫ್ತು ಮೆನುವಿನಲ್ಲಿ ಕಾಣಿಸುತ್ತವೆ."
+            "value" : "ಫಾರ್ಮ್ಯಾಟ್‌ಗಳು ಟ್ರ್ಯಾಕ್ ಮತ್ತು ಬಿಡುಗಡೆಗಳಲ್ಲಿ \"ಹೀಗೆ ಉಳಿಸಿ…\"ನಲ್ಲಿ ಕಾಣಿಸುತ್ತವೆ."
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "프리셋은 트랙과 릴리스의 내보내기 메뉴에 나타납니다."
+            "value" : "형식은 트랙과 릴리스의 \"다른 이름으로 저장…\"에 표시됩니다."
           }
         },
         "ml" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "മുൻക്രമീകരണങ്ങൾ ട്രാക്കുകളുടെയും പതിപ്പുകളുടെയും കയറ്റുമതി മെനുവിൽ കാണാം."
+            "value" : "ട്രാക്കുകളിലും പതിപ്പുകളിലും \"ഇങ്ങനെ സംരക്ഷിക്കുക…\" എന്നതിൽ ഫോർമാറ്റുകൾ കാണാം."
           }
         },
         "mr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "पूर्वनियोजने गाणी आणि प्रकाशनांच्या निर्यात मेनूमध्ये दिसतात."
+            "value" : "स्वरूप गाणी आणि प्रकाशनांवर \"म्हणून जतन करा…\" मध्ये दिसतात."
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Presets verschijnen in het exportmenu van nummers en releases."
+            "value" : "Formaten verschijnen in \"Bewaar als…\" bij nummers en releases."
           }
         },
         "pa" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ਪ੍ਰੀਸੈੱਟ ਟ੍ਰੈਕਾਂ ਅਤੇ ਰਿਲੀਜ਼ਾਂ ਦੇ ਨਿਰਯਾਤ ਮੀਨੂ ਵਿੱਚ ਦਿਖਾਈ ਦਿੰਦੇ ਹਨ।"
+            "value" : "ਫਾਰਮੈਟ ਟ੍ਰੈਕ ਅਤੇ ਰਿਲੀਜ਼ਾਂ ’ਤੇ \"ਇਸ ਤਰ੍ਹਾਂ ਸੰਭਾਲੋ…\" ਵਿੱਚ ਦਿਖਾਈ ਦਿੰਦੇ ਹਨ।"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ustawienia pojawiają się w menu eksportu ścieżek i wydań."
+            "value" : "Formaty pojawiają się w „Zapisz jako…” przy ścieżkach i wydaniach."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "As predefinições aparecem no menu de exportação de faixas e lançamentos."
+            "value" : "Os formatos aparecem em \"Salvar como…\" em faixas e lançamentos."
           }
         },
         "ta" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "முன்னமைவுகள் பாடல்கள் மற்றும் வெளியீடுகளின் ஏற்றுமதி மெனுவில் தோன்றும்."
+            "value" : "வடிவங்கள் பாடல்கள் மற்றும் வெளியீடுகளில் \"இவ்வாறு சேமி…\" இல் தோன்றும்."
           }
         },
         "te" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ప్రీసెట్‌లు ట్రాక్‌లు మరియు విడుదలల ఎగుమతి మెనూలో కనిపిస్తాయి."
+            "value" : "ఫార్మాట్‌లు ట్రాక్‌లు మరియు విడుదలలపై \"ఇలా సేవ్ చేయి…\"లో కనిపిస్తాయి."
           }
         },
         "th" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ค่าที่ตั้งไว้จะปรากฏในเมนูส่งออกของแทร็กและรีลีส"
+            "value" : "รูปแบบจะปรากฏใน \"บันทึกเป็น…\" บนแทร็กและรีลีส"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ön ayarlar parça ve yayınların dışa aktarma menüsünde görünür."
+            "value" : "Biçimler, parçalarda ve yayınlarda \"Farklı Kaydet…\" içinde görünür."
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Пресети з'являються в меню експорту треків і релізів."
+            "value" : "Формати з'являються в \"Зберегти як…\" для треків і релізів."
           }
         },
         "ur" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "پیش سیٹس نغموں اور اشاعتوں کے برآمد مینو میں ظاہر ہوتے ہیں۔"
+            "value" : "فارمیٹس نغموں اور اشاعتوں پر \"بطور محفوظ کریں…\" میں ظاہر ہوتے ہیں۔"
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Cài đặt sẵn xuất hiện trong menu xuất của bản nhạc và bản phát hành."
+            "value" : "Các định dạng xuất hiện trong \"Lưu thành…\" trên bản nhạc và bản phát hành."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "预设会显示在曲目和发行的导出菜单中。"
+            "value" : "格式显示在曲目和发行的\"存储为…\"中。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "預設會顯示於曲目與發行的匯出選單中。"
+            "value" : "格式會顯示在曲目和發行的「另存為…」中。"
           }
         }
       }

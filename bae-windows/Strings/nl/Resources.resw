@@ -329,7 +329,7 @@
   <data name="settings.formats.sample.artist" xml:space="preserve"><value>Artiestennaam</value></data>
   <data name="settings.formats.sample.album" xml:space="preserve"><value>Albumtitel</value></data>
   <data name="settings.formats.preview" xml:space="preserve"><value>Voorbeeld: {filename}</value></data>
-  <data name="settings.formats.presets_footer" xml:space="preserve"><value>Presets verschijnen in het exportmenu van nummers en releases.</value></data>
+  <data name="settings.formats.presets_footer" xml:space="preserve"><value>Formaten verschijnen in "Bewaar als…" bij nummers en releases.</value></data>
   <data name="settings.formats.preset_format" xml:space="preserve"><value>Formaat</value></data>
   <data name="settings.formats.add_preset" xml:space="preserve"><value>Voeg preset toe</value></data>
   <data name="settings.formats.delete_preset" xml:space="preserve"><value>Preset verwijderen</value></data>

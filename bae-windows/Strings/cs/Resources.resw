@@ -329,7 +329,7 @@
   <data name="settings.formats.sample.artist" xml:space="preserve"><value>Jméno umělce</value></data>
   <data name="settings.formats.sample.album" xml:space="preserve"><value>Název alba</value></data>
   <data name="settings.formats.preview" xml:space="preserve"><value>Náhled: {filename}</value></data>
-  <data name="settings.formats.presets_footer" xml:space="preserve"><value>Předvolby se zobrazují v nabídce exportu u stop a vydání.</value></data>
+  <data name="settings.formats.presets_footer" xml:space="preserve"><value>Formáty se zobrazují v nabídce „Uložit jako…“ u stop a vydání.</value></data>
   <data name="settings.formats.preset_format" xml:space="preserve"><value>Formát</value></data>
   <data name="settings.formats.add_preset" xml:space="preserve"><value>Přidat předvolbu</value></data>
   <data name="settings.formats.delete_preset" xml:space="preserve"><value>Smazat předvolbu</value></data>

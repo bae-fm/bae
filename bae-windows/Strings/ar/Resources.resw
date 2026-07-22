@@ -329,7 +329,7 @@
   <data name="settings.formats.sample.artist" xml:space="preserve"><value>اسم الفنان</value></data>
   <data name="settings.formats.sample.album" xml:space="preserve"><value>عنوان الألبوم</value></data>
   <data name="settings.formats.preview" xml:space="preserve"><value>معاينة: {filename}</value></data>
-  <data name="settings.formats.presets_footer" xml:space="preserve"><value>تظهر الإعدادات المسبقة في قائمة التصدير على المقاطع والإصدارات.</value></data>
+  <data name="settings.formats.presets_footer" xml:space="preserve"><value>تظهر الصيغ في "حفظ باسم…" للمقاطع والإصدارات.</value></data>
   <data name="settings.formats.preset_format" xml:space="preserve"><value>الصيغة</value></data>
   <data name="settings.formats.add_preset" xml:space="preserve"><value>إضافة إعداد مسبق</value></data>
   <data name="settings.formats.delete_preset" xml:space="preserve"><value>حذف الإعداد المسبق</value></data>

@@ -329,7 +329,7 @@
   <data name="settings.formats.sample.artist" xml:space="preserve"><value>கலைஞர் பெயர்</value></data>
   <data name="settings.formats.sample.album" xml:space="preserve"><value>ஆல்பத் தலைப்பு</value></data>
   <data name="settings.formats.preview" xml:space="preserve"><value>முன்னோட்டம்: {filename}</value></data>
-  <data name="settings.formats.presets_footer" xml:space="preserve"><value>முன்னமைவுகள் பாடல்கள் மற்றும் வெளியீடுகளின் ஏற்றுமதி மெனுவில் தோன்றும்.</value></data>
+  <data name="settings.formats.presets_footer" xml:space="preserve"><value>வடிவங்கள் பாடல்கள் மற்றும் வெளியீடுகளில் "இவ்வாறு சேமி…" இல் தோன்றும்.</value></data>
   <data name="settings.formats.preset_format" xml:space="preserve"><value>வடிவம்</value></data>
   <data name="settings.formats.add_preset" xml:space="preserve"><value>முன்னமைவைச் சேர்க்கவும்</value></data>
   <data name="settings.formats.delete_preset" xml:space="preserve"><value>முன்னமைவை நீக்கு</value></data>

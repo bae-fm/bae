@@ -329,7 +329,7 @@
   <data name="settings.formats.sample.artist" xml:space="preserve"><value>ਕਲਾਕਾਰ ਦਾ ਨਾਂ</value></data>
   <data name="settings.formats.sample.album" xml:space="preserve"><value>ਐਲਬਮ ਸਿਰਲੇਖ</value></data>
   <data name="settings.formats.preview" xml:space="preserve"><value>ਝਲਕ: {filename}</value></data>
-  <data name="settings.formats.presets_footer" xml:space="preserve"><value>ਪ੍ਰੀਸੈੱਟ ਟ੍ਰੈਕਾਂ ਅਤੇ ਰਿਲੀਜ਼ਾਂ ਦੇ ਨਿਰਯਾਤ ਮੀਨੂ ਵਿੱਚ ਦਿਖਾਈ ਦਿੰਦੇ ਹਨ।</value></data>
+  <data name="settings.formats.presets_footer" xml:space="preserve"><value>ਫਾਰਮੈਟ ਟ੍ਰੈਕ ਅਤੇ ਰਿਲੀਜ਼ਾਂ ’ਤੇ "ਇਸ ਤਰ੍ਹਾਂ ਸੰਭਾਲੋ…" ਵਿੱਚ ਦਿਖਾਈ ਦਿੰਦੇ ਹਨ।</value></data>
   <data name="settings.formats.preset_format" xml:space="preserve"><value>ਫਾਰਮੈਟ</value></data>
   <data name="settings.formats.add_preset" xml:space="preserve"><value>ਪ੍ਰੀਸੈੱਟ ਸ਼ਾਮਲ ਕਰੋ</value></data>
   <data name="settings.formats.delete_preset" xml:space="preserve"><value>ਪ੍ਰੀਸੈੱਟ ਮਿਟਾਓ</value></data>

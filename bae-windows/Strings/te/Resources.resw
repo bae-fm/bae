@@ -329,7 +329,7 @@
   <data name="settings.formats.sample.artist" xml:space="preserve"><value>కళాకారుడి పేరు</value></data>
   <data name="settings.formats.sample.album" xml:space="preserve"><value>ఆల్బమ్ శీర్షిక</value></data>
   <data name="settings.formats.preview" xml:space="preserve"><value>ప్రివ్యూ: {filename}</value></data>
-  <data name="settings.formats.presets_footer" xml:space="preserve"><value>ప్రీసెట్‌లు ట్రాక్‌లు మరియు విడుదలల ఎగుమతి మెనూలో కనిపిస్తాయి.</value></data>
+  <data name="settings.formats.presets_footer" xml:space="preserve"><value>ఫార్మాట్‌లు ట్రాక్‌లు మరియు విడుదలలపై "ఇలా సేవ్ చేయి…"లో కనిపిస్తాయి.</value></data>
   <data name="settings.formats.preset_format" xml:space="preserve"><value>ఫార్మాట్</value></data>
   <data name="settings.formats.add_preset" xml:space="preserve"><value>ప్రీసెట్ జోడించు</value></data>
   <data name="settings.formats.delete_preset" xml:space="preserve"><value>ప్రీసెట్ తొలగించు</value></data>

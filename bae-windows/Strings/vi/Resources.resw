@@ -329,7 +329,7 @@
   <data name="settings.formats.sample.artist" xml:space="preserve"><value>Tên nghệ sĩ</value></data>
   <data name="settings.formats.sample.album" xml:space="preserve"><value>Tên album</value></data>
   <data name="settings.formats.preview" xml:space="preserve"><value>Xem trước: {filename}</value></data>
-  <data name="settings.formats.presets_footer" xml:space="preserve"><value>Cài đặt sẵn xuất hiện trong menu xuất của bản nhạc và bản phát hành.</value></data>
+  <data name="settings.formats.presets_footer" xml:space="preserve"><value>Các định dạng xuất hiện trong "Lưu thành…" trên bản nhạc và bản phát hành.</value></data>
   <data name="settings.formats.preset_format" xml:space="preserve"><value>Định dạng</value></data>
   <data name="settings.formats.add_preset" xml:space="preserve"><value>Thêm cài đặt sẵn</value></data>
   <data name="settings.formats.delete_preset" xml:space="preserve"><value>Xóa cài đặt sẵn</value></data>

@@ -329,7 +329,7 @@
   <data name="settings.formats.sample.artist" xml:space="preserve"><value>Nome artista</value></data>
   <data name="settings.formats.sample.album" xml:space="preserve"><value>Titolo album</value></data>
   <data name="settings.formats.preview" xml:space="preserve"><value>Anteprima: {filename}</value></data>
-  <data name="settings.formats.presets_footer" xml:space="preserve"><value>I preset compaiono nel menu di esportazione di brani e pubblicazioni.</value></data>
+  <data name="settings.formats.presets_footer" xml:space="preserve"><value>I formati compaiono in "Salva con nome…" su brani e pubblicazioni.</value></data>
   <data name="settings.formats.preset_format" xml:space="preserve"><value>Formato</value></data>
   <data name="settings.formats.add_preset" xml:space="preserve"><value>Aggiungi preset</value></data>
   <data name="settings.formats.delete_preset" xml:space="preserve"><value>Elimina preset</value></data>

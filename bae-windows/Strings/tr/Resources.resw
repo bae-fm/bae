@@ -329,7 +329,7 @@
   <data name="settings.formats.sample.artist" xml:space="preserve"><value>Sanatçı adı</value></data>
   <data name="settings.formats.sample.album" xml:space="preserve"><value>Albüm adı</value></data>
   <data name="settings.formats.preview" xml:space="preserve"><value>Önizleme: {filename}</value></data>
-  <data name="settings.formats.presets_footer" xml:space="preserve"><value>Ön ayarlar parça ve yayınların dışa aktarma menüsünde görünür.</value></data>
+  <data name="settings.formats.presets_footer" xml:space="preserve"><value>Biçimler, parçalarda ve yayınlarda "Farklı Kaydet…" içinde görünür.</value></data>
   <data name="settings.formats.preset_format" xml:space="preserve"><value>Biçim</value></data>
   <data name="settings.formats.add_preset" xml:space="preserve"><value>Ön ayar ekle</value></data>
   <data name="settings.formats.delete_preset" xml:space="preserve"><value>Ön ayarı sil</value></data>

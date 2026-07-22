@@ -329,7 +329,7 @@
   <data name="settings.formats.sample.artist" xml:space="preserve"><value>Ім'я виконавця</value></data>
   <data name="settings.formats.sample.album" xml:space="preserve"><value>Назва альбому</value></data>
   <data name="settings.formats.preview" xml:space="preserve"><value>Попередній перегляд: {filename}</value></data>
-  <data name="settings.formats.presets_footer" xml:space="preserve"><value>Пресети з'являються в меню експорту треків і релізів.</value></data>
+  <data name="settings.formats.presets_footer" xml:space="preserve"><value>Формати з'являються в "Зберегти як…" для треків і релізів.</value></data>
   <data name="settings.formats.preset_format" xml:space="preserve"><value>Формат</value></data>
   <data name="settings.formats.add_preset" xml:space="preserve"><value>Додати пресет</value></data>
   <data name="settings.formats.delete_preset" xml:space="preserve"><value>Видалити пресет</value></data>

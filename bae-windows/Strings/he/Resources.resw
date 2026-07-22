@@ -329,7 +329,7 @@
   <data name="settings.formats.sample.artist" xml:space="preserve"><value>שם האמן</value></data>
   <data name="settings.formats.sample.album" xml:space="preserve"><value>שם האלבום</value></data>
   <data name="settings.formats.preview" xml:space="preserve"><value>תצוגה מקדימה: {filename}</value></data>
-  <data name="settings.formats.presets_footer" xml:space="preserve"><value>הגדרות קבועות מופיעות בתפריט הייצוא של רצועות והוצאות.</value></data>
+  <data name="settings.formats.presets_footer" xml:space="preserve"><value>פורמטים מופיעים ב"שמור בשם…" ברצועות ובהוצאות.</value></data>
   <data name="settings.formats.preset_format" xml:space="preserve"><value>פורמט</value></data>
   <data name="settings.formats.add_preset" xml:space="preserve"><value>הוסף הגדרה קבועה</value></data>
   <data name="settings.formats.delete_preset" xml:space="preserve"><value>מחק הגדרה קבועה</value></data>

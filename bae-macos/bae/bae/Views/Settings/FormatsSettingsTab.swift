@@ -73,7 +73,7 @@ struct FormatsSettingsTab: View {
         } header: {
             Text("Formats")
         } footer: {
-            Text("Presets appear in the export menu on tracks and releases.")
+            Text("Formats appear in Save As… on tracks and releases.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity, alignment: .leading)

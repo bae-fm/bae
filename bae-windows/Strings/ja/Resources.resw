@@ -329,7 +329,7 @@
   <data name="settings.formats.sample.artist" xml:space="preserve"><value>アーティスト名</value></data>
   <data name="settings.formats.sample.album" xml:space="preserve"><value>アルバムタイトル</value></data>
   <data name="settings.formats.preview" xml:space="preserve"><value>プレビュー: {filename}</value></data>
-  <data name="settings.formats.presets_footer" xml:space="preserve"><value>プリセットはトラックとリリースのエクスポートメニューに表示されます。</value></data>
+  <data name="settings.formats.presets_footer" xml:space="preserve"><value>フォーマットはトラックとリリースの「別名で保存…」に表示されます。</value></data>
   <data name="settings.formats.preset_format" xml:space="preserve"><value>フォーマット</value></data>
   <data name="settings.formats.add_preset" xml:space="preserve"><value>プリセットを追加</value></data>
   <data name="settings.formats.delete_preset" xml:space="preserve"><value>プリセットを削除</value></data>
