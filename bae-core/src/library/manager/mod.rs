@@ -80,9 +80,11 @@ mod image;
 mod import;
 mod lifecycle;
 mod locality;
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod output;
 mod playback_state;
 mod release;
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod save;
 mod storage;
 mod sync;
