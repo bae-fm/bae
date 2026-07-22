@@ -1,193 +1,193 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
-    "Delete preset" : {
-      "comment" : "Export preset editor: accessibility label of the remove (minus) button",
+    "Delete format" : {
+      "comment" : "Formats settings: accessibility label of the remove (minus) button on a format row",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "حذف الإعداد المسبق"
+            "value" : "حذف الصيغة"
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Изтриване на шаблона"
+            "value" : "Изтриване на формата"
           }
         },
         "bn" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "প্রিসেট মুছুন"
+            "value" : "ফরম্যাট মুছুন"
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Smazat předvolbu"
+            "value" : "Smazat formát"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Voreinstellung löschen"
+            "value" : "Format löschen"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Delete preset"
+            "value" : "Delete format"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Eliminar preajuste"
+            "value" : "Eliminar formato"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Supprimer le préréglage"
+            "value" : "Supprimer le format"
           }
         },
         "gu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "પૂર્વનિયોજન કાઢી નાખો"
+            "value" : "ફોર્મેટ કાઢી નાખો"
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "מחק הגדרה קבועה"
+            "value" : "מחק פורמט"
           }
         },
         "hi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "पूर्व-सेट हटाएँ"
+            "value" : "फ़ॉर्मैट हटाएँ"
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Izbriši predložak"
+            "value" : "Izbriši format"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Elimina preset"
+            "value" : "Elimina formato"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "プリセットを削除"
+            "value" : "フォーマットを削除"
           }
         },
         "kn" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ಪ್ರೀಸೆಟ್ ಅಳಿಸಿ"
+            "value" : "ಫಾರ್ಮ್ಯಾಟ್ ಅಳಿಸಿ"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "프리셋 삭제"
+            "value" : "형식 삭제"
           }
         },
         "ml" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "മുൻക്രമീകരണം ഇല്ലാതാക്കുക"
+            "value" : "ഫോർമാറ്റ് ഇല്ലാതാക്കുക"
           }
         },
         "mr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "पूर्वनियोजन हटवा"
+            "value" : "स्वरूप हटवा"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Preset verwijderen"
+            "value" : "Formaat verwijderen"
           }
         },
         "pa" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ਪ੍ਰੀਸੈੱਟ ਮਿਟਾਓ"
+            "value" : "ਫਾਰਮੈਟ ਮਿਟਾਓ"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Usuń ustawienie"
+            "value" : "Usuń format"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Excluir predefinição"
+            "value" : "Excluir formato"
           }
         },
         "ta" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "முன்னமைவை நீக்கு"
+            "value" : "வடிவத்தை நீக்கு"
           }
         },
         "te" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ప్రీసెట్ తొలగించు"
+            "value" : "ఫార్మాట్ తొలగించు"
           }
         },
         "th" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ลบค่าที่ตั้งไว้"
+            "value" : "ลบรูปแบบ"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ön ayarı sil"
+            "value" : "Biçimi sil"
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Видалити пресет"
+            "value" : "Видалити формат"
           }
         },
         "ur" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "پیش سیٹ حذف کریں"
+            "value" : "فارمیٹ حذف کریں"
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Xóa cài đặt sẵn"
+            "value" : "Xóa định dạng"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "删除预设"
+            "value" : "删除格式"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "刪除預設"
+            "value" : "刪除格式"
           }
         }
       }
@@ -6477,193 +6477,192 @@
         }
       }
     },
-    "Add preset" : {
-      "extractionState" : "stale",
+    "Add format" : {
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "إضافة إعداد مسبق"
+            "value" : "إضافة صيغة"
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Добавяне на шаблон"
+            "value" : "Добавяне на формат"
           }
         },
         "bn" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "প্রিসেট যোগ করুন"
+            "value" : "ফরম্যাট যোগ করুন"
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Přidat předvolbu"
+            "value" : "Přidat formát"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Voreinstellung hinzufügen"
+            "value" : "Format hinzufügen"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Add preset"
+            "value" : "Add format"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Añadir preajuste"
+            "value" : "Añadir formato"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ajouter un préréglage"
+            "value" : "Ajouter un format"
           }
         },
         "gu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "પૂર્વનિયોજન ઉમેરો"
+            "value" : "ફોર્મેટ ઉમેરો"
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "הוסף הגדרה קבועה"
+            "value" : "הוסף פורמט"
           }
         },
         "hi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "पूर्व-सेट जोड़ें"
+            "value" : "फ़ॉर्मैट जोड़ें"
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dodaj predložak"
+            "value" : "Dodaj format"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Aggiungi preset"
+            "value" : "Aggiungi formato"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "プリセットを追加"
+            "value" : "フォーマットを追加"
           }
         },
         "kn" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ಪ್ರೀಸೆಟ್ ಸೇರಿಸಿ"
+            "value" : "ಫಾರ್ಮ್ಯಾಟ್ ಸೇರಿಸಿ"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "프리셋 추가"
+            "value" : "형식 추가"
           }
         },
         "ml" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "മുൻക്രമീകരണം ചേർക്കുക"
+            "value" : "ഫോർമാറ്റ് ചേർക്കുക"
           }
         },
         "mr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "पूर्वनियोजन जोडा"
+            "value" : "स्वरूप जोडा"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Voeg preset toe"
+            "value" : "Voeg formaat toe"
           }
         },
         "pa" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ਪ੍ਰੀਸੈੱਟ ਸ਼ਾਮਲ ਕਰੋ"
+            "value" : "ਫਾਰਮੈਟ ਸ਼ਾਮਲ ਕਰੋ"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dodaj ustawienie"
+            "value" : "Dodaj format"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Adicionar predefinição"
+            "value" : "Adicionar formato"
           }
         },
         "ta" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "முன்னமைவைச் சேர்க்கவும்"
+            "value" : "வடிவத்தைச் சேர்க்கவும்"
           }
         },
         "te" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ప్రీసెట్ జోడించు"
+            "value" : "ఫార్మాట్ జోడించు"
           }
         },
         "th" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "เพิ่มค่าที่ตั้งไว้"
+            "value" : "เพิ่มรูปแบบ"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ön ayar ekle"
+            "value" : "Biçim ekle"
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Додати пресет"
+            "value" : "Додати формат"
           }
         },
         "ur" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "پیش سیٹ شامل کریں"
+            "value" : "فارمیٹ شامل کریں"
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Thêm cài đặt sẵn"
+            "value" : "Thêm định dạng"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "添加预设"
+            "value" : "添加格式"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "加入預設"
+            "value" : "加入格式"
           }
         }
       }
@@ -25079,194 +25078,193 @@
         }
       }
     },
-    "Delete the “%@” preset?" : {
-      "comment" : "Export preset delete confirmation title; %@ is the preset name",
-      "extractionState" : "stale",
+    "Delete the “%@” format?" : {
+      "comment" : "Format delete confirmation title; %@ is the format name",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "هل تريد حذف الإعداد المسبق ”%@“؟"
+            "value" : "هل تريد حذف الصيغة ”%@“؟"
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Да се изтрие ли шаблонът „%@“?"
+            "value" : "Да се изтрие ли форматът „%@“?"
           }
         },
         "bn" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "“%@” প্রিসেট মুছবেন?"
+            "value" : "“%@” ফরম্যাট মুছবেন?"
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Smazat předvolbu „%@“?"
+            "value" : "Smazat formát „%@“?"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Voreinstellung „%@“ löschen?"
+            "value" : "Format „%@“ löschen?"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Delete the “%@” preset?"
+            "value" : "Delete the “%@” format?"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "¿Eliminar el preajuste “%@”?"
+            "value" : "¿Eliminar el formato “%@”?"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Supprimer le préréglage « %@ » ?"
+            "value" : "Supprimer le format « %@ » ?"
           }
         },
         "gu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "“%@” પૂર્વનિયોજન કાઢી નાખવું?"
+            "value" : "“%@” ફોર્મેટ કાઢી નાખવું?"
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "למחוק את ההגדרה הקבועה ”%@“?"
+            "value" : "למחוק את הפורמט ”%@“?"
           }
         },
         "hi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "“%@” पूर्व-सेट हटाएँ?"
+            "value" : "“%@” फ़ॉर्मैट हटाएँ?"
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Izbrisati predložak “%@”?"
+            "value" : "Izbrisati format “%@”?"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Eliminare il preset “%@”?"
+            "value" : "Eliminare il formato “%@”?"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "プリセット“%@”を削除しますか？"
+            "value" : "フォーマット“%@”を削除しますか？"
           }
         },
         "kn" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "“%@” ಪ್ರೀಸೆಟ್ ಅಳಿಸುವುದೇ?"
+            "value" : "“%@” ಫಾರ್ಮ್ಯಾಟ್ ಅಳಿಸುವುದೇ?"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "“%@” 프리셋을 삭제하겠습니까?"
+            "value" : "“%@” 형식을 삭제하겠습니까?"
           }
         },
         "ml" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "“%@” മുൻക്രമീകരണം ഇല്ലാതാക്കണോ?"
+            "value" : "“%@” ഫോർമാറ്റ് ഇല്ലാതാക്കണോ?"
           }
         },
         "mr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "“%@” पूर्वनियोजन हटवायचे?"
+            "value" : "“%@” स्वरूप हटवायचे?"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Preset '%@' verwijderen?"
+            "value" : "Formaat '%@' verwijderen?"
           }
         },
         "pa" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "“%@” ਪ੍ਰੀਸੈੱਟ ਮਿਟਾਉਣਾ ਹੈ?"
+            "value" : "“%@” ਫਾਰਮੈਟ ਮਿਟਾਉਣਾ ਹੈ?"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Usunąć ustawienie „%@”?"
+            "value" : "Usunąć format „%@”?"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Excluir a predefinição “%@”?"
+            "value" : "Excluir o formato “%@”?"
           }
         },
         "ta" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "“%@” முன்னமைவை நீக்கவா?"
+            "value" : "“%@” வடிவத்தை நீக்கவா?"
           }
         },
         "te" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "“%@” ప్రీసెట్ తొలగించాలా?"
+            "value" : "“%@” ఫార్మాట్ తొలగించాలా?"
           }
         },
         "th" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ลบค่าที่ตั้งไว้ “%@” หรือไม่"
+            "value" : "ลบรูปแบบ “%@” หรือไม่"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "“%@” ön ayarı silinsin mi?"
+            "value" : "“%@” biçimi silinsin mi?"
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Видалити пресет «%@»?"
+            "value" : "Видалити формат «%@»?"
           }
         },
         "ur" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "کیا ”%@“ پیش سیٹ حذف کریں؟"
+            "value" : "کیا ”%@“ فارمیٹ حذف کریں؟"
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Xóa cài đặt sẵn “%@”?"
+            "value" : "Xóa định dạng “%@”?"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "删除预设“%@”？"
+            "value" : "删除格式“%@”？"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "刪除預設「%@」？"
+            "value" : "刪除格式「%@」？"
           }
         }
       }
@@ -35819,192 +35817,192 @@
         }
       }
     },
-    "Filename format" : {
+    "File naming" : {
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "تنسيق اسم الملف"
+            "value" : "تسمية الملف"
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Формат на името на файла"
+            "value" : "Именуване на файла"
           }
         },
         "bn" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ফাইলনামের ফরম্যাট"
+            "value" : "ফাইলের নামকরণ"
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Formát názvu souboru"
+            "value" : "Pojmenování souboru"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dateinamenformat"
+            "value" : "Dateibenennung"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Filename format"
+            "value" : "File naming"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Formato de nombre de archivo"
+            "value" : "Nombre del archivo"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Format du nom de fichier"
+            "value" : "Nom du fichier"
           }
         },
         "gu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ફાઇલનામ બંધારણ"
+            "value" : "ફાઇલનું નામકરણ"
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "פורמט שם קובץ"
+            "value" : "שם הקובץ"
           }
         },
         "hi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "फाइलनाम प्रारूप"
+            "value" : "फ़ाइल नामकरण"
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Format naziva datoteke"
+            "value" : "Imenovanje datoteke"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Formato nome file"
+            "value" : "Nome del file"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ファイル名の形式"
+            "value" : "ファイル名"
           }
         },
         "kn" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ಕಡತದ ಹೆಸರು ಸ್ವರೂಪ"
+            "value" : "ಕಡತದ ಹೆಸರಿಡುವಿಕೆ"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "파일 이름 형식"
+            "value" : "파일 이름 지정"
           }
         },
         "ml" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ഫയൽനാമ ഫോർമാറ്റ്"
+            "value" : "ഫയലിന്റെ പേരിടൽ"
           }
         },
         "mr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "फाईलनाव स्वरूप"
+            "value" : "फाईलचे नामकरण"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bestandsnaamformaat"
+            "value" : "Bestandsnaamgeving"
           }
         },
         "pa" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ਫਾਈਲ ਨਾਂ ਫਾਰਮੈਟ"
+            "value" : "ਫਾਈਲ ਦਾ ਨਾਮਕਰਨ"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Format nazwy pliku"
+            "value" : "Nazewnictwo plików"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Formato do nome do arquivo"
+            "value" : "Nome do arquivo"
           }
         },
         "ta" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "கோப்புப்பெயர் வடிவம்"
+            "value" : "கோப்புப் பெயரிடல்"
           }
         },
         "te" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ఫైల్ పేరు ఫార్మాట్"
+            "value" : "ఫైల్ పేరు పెట్టడం"
           }
         },
         "th" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "รูปแบบชื่อไฟล์"
+            "value" : "การตั้งชื่อไฟล์"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dosya adı biçimi"
+            "value" : "Dosya adlandırma"
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Формат імені файлу"
+            "value" : "Найменування файлу"
           }
         },
         "ur" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "مسل نام ساخت"
+            "value" : "مسل کا نام"
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Định dạng tên tệp"
+            "value" : "Đặt tên tệp"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "文件名格式"
+            "value" : "文件命名"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "檔名格式"
+            "value" : "檔案命名"
           }
         }
       }
@@ -81737,194 +81735,384 @@
         }
       }
     },
-    "Show in export menu for" : {
-      "comment" : "Export preset editor: label before the Track/Release checkboxes",
-      "extractionState" : "stale",
+    "Show in Save As… for" : {
+      "comment" : "Format editor: label before the Track/Release toggles",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "إظهار في قائمة التصدير لـ"
+            "value" : "إظهار في \"حفظ باسم…\" لـ"
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Показване в менюто за експорт за"
+            "value" : "Показване в \"Запазване като…\" за"
           }
         },
         "bn" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "এর এক্সপোর্ট মেনুতে দেখান"
+            "value" : "এর \"নামে সংরক্ষণ করুন…\"-এ দেখান"
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Zobrazit v nabídce exportu pro"
+            "value" : "Zobrazit v nabídce „Uložit jako…“ pro"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Im Export-Menü anzeigen für"
+            "value" : "Unter „Speichern unter …“ anzeigen für"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Show in export menu for"
+            "value" : "Show in Save As… for"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mostrar en el menú de exportación para"
+            "value" : "Mostrar en «Guardar como…» para"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Afficher dans le menu d'export pour"
+            "value" : "Afficher dans « Enregistrer sous… » pour"
           }
         },
         "gu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "આના નિકાસ મેનૂમાં બતાવો"
+            "value" : "આના \"આ રીતે સાચવો…\"માં બતાવો"
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "הצג בתפריט הייצוא עבור"
+            "value" : "הצג ב\"שמור בשם…\" עבור"
           }
         },
         "hi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "इसके निर्यात मेनू में दिखाएँ"
+            "value" : "इसके \"इस रूप में सहेजें…\" में दिखाएँ"
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Prikaži u izborniku izvoza za"
+            "value" : "Prikaži u \"Spremi kao…\" za"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mostra nel menu di esportazione per"
+            "value" : "Mostra in \"Salva con nome…\" per"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "エクスポートメニューに表示:"
+            "value" : "「別名で保存…」に表示:"
           }
         },
         "kn" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ಇದರ ರಫ್ತು ಮೆನುವಿನಲ್ಲಿ ತೋರಿಸಿ"
+            "value" : "ಇದರ \"ಹೀಗೆ ಉಳಿಸಿ…\"ನಲ್ಲಿ ತೋರಿಸಿ"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "내보내기 메뉴에 표시:"
+            "value" : "\"다른 이름으로 저장…\"에 표시:"
           }
         },
         "ml" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ഇതിന്റെ കയറ്റുമതി മെനുവിൽ കാണിക്കുക"
+            "value" : "ഇതിന്റെ \"ഇങ്ങനെ സംരക്ഷിക്കുക…\" എന്നതിൽ കാണിക്കുക"
           }
         },
         "mr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "याच्या निर्यात मेनूमध्ये दाखवा"
+            "value" : "याच्या \"म्हणून जतन करा…\" मध्ये दाखवा"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tonen in exportmenu voor"
+            "value" : "Tonen in \"Bewaar als…\" voor"
           }
         },
         "pa" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ਇਸਦੇ ਨਿਰਯਾਤ ਮੀਨੂ ਵਿੱਚ ਦਿਖਾਓ"
+            "value" : "ਇਸਦੇ \"ਇਸ ਤਰ੍ਹਾਂ ਸੰਭਾਲੋ…\" ਵਿੱਚ ਦਿਖਾਓ"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pokaż w menu eksportu dla"
+            "value" : "Pokaż w „Zapisz jako…” dla"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mostrar no menu de exportação para"
+            "value" : "Mostrar em \"Salvar como…\" para"
           }
         },
         "ta" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "இதன் ஏற்றுமதி மெனுவில் காட்டு"
+            "value" : "இதன் \"இவ்வாறு சேமி…\" இல் காட்டு"
           }
         },
         "te" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "దీని ఎగుమతి మెనూలో చూపించు"
+            "value" : "దీని \"ఇలా సేవ్ చేయి…\"లో చూపించు"
           }
         },
         "th" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "แสดงในเมนูส่งออกสำหรับ"
+            "value" : "แสดงใน \"บันทึกเป็น…\" สำหรับ"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Şunun dışa aktarma menüsünde göster:"
+            "value" : "Şunun için \"Farklı Kaydet…\" içinde göster:"
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Показувати в меню експорту для"
+            "value" : "Показувати в \"Зберегти як…\" для"
           }
         },
         "ur" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "اس کے برآمد مینو میں دکھائیں"
+            "value" : "اس کے \"بطور محفوظ کریں…\" میں دکھائیں"
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Hiển thị trong menu xuất cho"
+            "value" : "Hiển thị trong \"Lưu thành…\" cho"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "显示在导出菜单中："
+            "value" : "在\"存储为…\"中显示:"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "顯示於匯出選單："
+            "value" : "在「另存為…」中顯示:"
+          }
+        }
+      }
+    },
+    "The format Save As… starts with." : {
+      "comment" : "Formats settings: caption under the Defaults section",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "الصيغة التي يبدأ بها \"حفظ باسم…\"."
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Форматът, с който започва \"Запазване като…\"."
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "\"নামে সংরক্ষণ করুন…\" যে ফরম্যাট দিয়ে শুরু হয়।"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Formát, se kterým „Uložit jako…“ začíná."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Das Format, mit dem „Speichern unter …“ beginnt."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The format Save As… starts with."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El formato con el que empieza «Guardar como…»."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le format par lequel « Enregistrer sous… » commence."
+          }
+        },
+        "gu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "\"આ રીતે સાચવો…\" જે ફોર્મેટથી શરૂ થાય છે."
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הפורמט שאיתו \"שמור בשם…\" מתחיל."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "वह फ़ॉर्मैट जिससे \"इस रूप में सहेजें…\" शुरू होता है।"
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Format kojim započinje \"Spremi kao…\"."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Il formato con cui inizia \"Salva con nome…\"."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "「別名で保存…」が最初に使う形式。"
+          }
+        },
+        "kn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "\"ಹೀಗೆ ಉಳಿಸಿ…\" ಪ್ರಾರಂಭವಾಗುವ ಫಾರ್ಮ್ಯಾಟ್."
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "\"다른 이름으로 저장…\"이 처음 사용하는 형식."
+          }
+        },
+        "ml" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "\"ഇങ്ങനെ സംരക്ഷിക്കുക…\" തുടങ്ങുന്ന ഫോർമാറ്റ്."
+          }
+        },
+        "mr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "\"म्हणून जतन करा…\" ज्या स्वरूपाने सुरू होते ते."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Het formaat waarmee \"Bewaar als…\" begint."
+          }
+        },
+        "pa" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ਉਹ ਫਾਰਮੈਟ ਜਿਸ ਨਾਲ \"ਇਸ ਤਰ੍ਹਾਂ ਸੰਭਾਲੋ…\" ਸ਼ੁਰੂ ਹੁੰਦਾ ਹੈ।"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Format, od którego zaczyna „Zapisz jako…”."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O formato com que \"Salvar como…\" começa."
+          }
+        },
+        "ta" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "\"இவ்வாறு சேமி…\" தொடங்கும் வடிவம்."
+          }
+        },
+        "te" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "\"ఇలా సేవ్ చేయి…\" ప్రారంభమయ్యే ఫార్మాట్."
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "รูปแบบที่ \"บันทึกเป็น…\" เริ่มต้นด้วย"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "\"Farklı Kaydet…\" işleminin başladığı biçim."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Формат, з якого починається \"Зберегти як…\"."
+          }
+        },
+        "ur" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "وہ فارمیٹ جس سے \"بطور محفوظ کریں…\" شروع ہوتا ہے۔"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Định dạng mà \"Lưu thành…\" bắt đầu."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "\"存储为…\"默认使用的格式。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "「另存為…」預設使用的格式。"
           }
         }
       }

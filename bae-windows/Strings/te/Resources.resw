@@ -306,6 +306,7 @@
   <data name="settings.formats.default_release_format" xml:space="preserve"><value>విడుదల</value></data>
   <data name="settings.formats.formats" xml:space="preserve"><value>ఫార్మాట్‌లు</value></data>
   <data name="settings.formats.defaults" xml:space="preserve"><value>డిఫాల్ట్‌లు</value></data>
+  <data name="settings.formats.defaults_footer" xml:space="preserve"><value>"ఇలా సేవ్ చేయి…" ప్రారంభమయ్యే ఫార్మాట్.</value></data>
   <data name="settings.formats.advanced" xml:space="preserve"><value>అధునాతన</value></data>
   <data name="settings.formats.preset_name" xml:space="preserve"><value>పేరు</value></data>
   <data name="settings.formats.preset_track" xml:space="preserve"><value>ట్రాక్</value></data>
@@ -315,7 +316,7 @@
   <data name="settings.formats.pregap.append_including_htoa" xml:space="preserve"><value>HTOA సహా జోడించు</value></data>
   <data name="settings.formats.pregap.exclude" xml:space="preserve"><value>మినహాయించు</value></data>
   <data name="settings.formats.pregap.single_file_with_cue" xml:space="preserve"><value>ఒకే ఫైల్ + CUE</value></data>
-  <data name="settings.formats.filename_format" xml:space="preserve"><value>ఫైల్ పేరు ఫార్మాట్</value></data>
+  <data name="settings.formats.filename_format" xml:space="preserve"><value>ఫైల్ పేరు పెట్టడం</value></data>
   <data name="settings.formats.add_token" xml:space="preserve"><value>జోడించు:</value></data>
   <data name="settings.formats.remove_token" xml:space="preserve"><value>{token} తీసివేయి</value></data>
   <data name="settings.formats.token.title" xml:space="preserve"><value>శీర్షిక</value></data>
@@ -331,12 +332,12 @@
   <data name="settings.formats.preview" xml:space="preserve"><value>ప్రివ్యూ: {filename}</value></data>
   <data name="settings.formats.presets_footer" xml:space="preserve"><value>ఫార్మాట్‌లు ట్రాక్‌లు మరియు విడుదలలపై "ఇలా సేవ్ చేయి…"లో కనిపిస్తాయి.</value></data>
   <data name="settings.formats.preset_format" xml:space="preserve"><value>ఫార్మాట్</value></data>
-  <data name="settings.formats.add_preset" xml:space="preserve"><value>ప్రీసెట్ జోడించు</value></data>
-  <data name="settings.formats.delete_preset" xml:space="preserve"><value>ప్రీసెట్ తొలగించు</value></data>
-  <data name="settings.formats.delete_confirm" xml:space="preserve"><value>“{name}” ప్రీసెట్ తొలగించాలా?</value></data>
+  <data name="settings.formats.add_preset" xml:space="preserve"><value>ఫార్మాట్ జోడించు</value></data>
+  <data name="settings.formats.delete_preset" xml:space="preserve"><value>ఫార్మాట్ తొలగించు</value></data>
+  <data name="settings.formats.delete_confirm" xml:space="preserve"><value>“{name}” ఫార్మాట్ తొలగించాలా?</value></data>
   <data name="settings.formats.codec_mp3" xml:space="preserve"><value>MP3 {kbps} kbps</value></data>
   <data name="settings.formats.codec_opus" xml:space="preserve"><value>Opus {kbps} kbps</value></data>
-  <data name="settings.formats.show_in_menus" xml:space="preserve"><value>దీని ఎగుమతి మెనూలో చూపించు</value></data>
+  <data name="settings.formats.show_in_menus" xml:space="preserve"><value>దీని "ఇలా సేవ్ చేయి…"లో చూపించు</value></data>
   <data name="settings.formats.embed_cover" xml:space="preserve"><value>కవర్ ఆర్ట్‌ను పొందుపరచండి</value></data>
   <data name="settings.formats.bit_depth_label" xml:space="preserve"><value>బిట్ డెప్త్</value></data>
   <data name="settings.formats.bit_depth.source" xml:space="preserve"><value>మూలం</value></data>

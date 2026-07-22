@@ -41,7 +41,7 @@ struct FormatsSettingsTab: View {
     }
 
     private var defaultsSection: some View {
-        Section("Defaults") {
+        Section {
             presetPicker(
                 label: "Release",
                 presets: releasePresets,
@@ -52,6 +52,13 @@ struct FormatsSettingsTab: View {
                 presets: trackPresets,
                 selection: defaultTrackPresetBinding()
             )
+        } header: {
+            Text("Defaults")
+        } footer: {
+            Text("The format Save As… starts with.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 
@@ -61,15 +68,15 @@ struct FormatsSettingsTab: View {
                 PresetRow(
                     preset: preset,
                     edit: { editingPreset = EditingPreset(id: preset.id) },
+                    update: replacePreset,
                     delete: { deletePreset(id: preset.id) }
                 )
             }
             Button(action: addPreset) {
-                Image(systemName: "plus")
+                Label("Add format", systemImage: "plus")
             }
             .buttonStyle(.bordered)
             .controlSize(.small)
-            .accessibilityLabel(Text("Add preset"))
         } header: {
             Text("Formats")
         } footer: {
@@ -171,11 +178,14 @@ struct FormatsSettingsTab: View {
     }
 }
 
-/// One preset in the settings list: the summary row opens the edit sheet; the
-/// trailing minus removes the preset behind a confirmation.
+/// One format in the settings list: the summary opens the edit sheet, the
+/// inline Track/Release toggles set which Save As… scopes it appears under, and
+/// the trailing minus removes it behind a confirmation. A prop-driven leaf —
+/// every scope change writes the whole updated preset back through `update`.
 private struct PresetRow: View {
     let preset: BridgeSavePreset
     let edit: () -> Void
+    let update: (BridgeSavePreset) -> Void
     let delete: () -> Void
 
     @State
@@ -188,6 +198,7 @@ private struct PresetRow: View {
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+            scopeToggles
             Button {
                 confirmingDelete = true
             } label: {
@@ -195,19 +206,47 @@ private struct PresetRow: View {
             }
             .buttonStyle(.bordered)
             .controlSize(.small)
-            .accessibilityLabel(Text("Delete preset"))
+            .accessibilityLabel(Text("Delete format"))
             .confirmationDialog(
-                "Delete the “\(preset.name)” preset?",
+                "Delete the “\(preset.name)” format?",
                 isPresented: $confirmingDelete
             ) {
                 Button("Delete", role: .destructive, action: delete)
             }
         }
     }
+
+    /// The Track and Release scope toggles. A single-file+CUE image is a
+    /// whole-release export, so the pregap choice fixes its scope: Track reads
+    /// off, Release reads on, and neither is editable here — the same gating
+    /// the editor applies to its scope row.
+    private var scopeToggles: some View {
+        HStack(spacing: 8) {
+            Toggle("Track", isOn: trackScopeBinding)
+            Toggle("Release", isOn: releaseScopeBinding)
+        }
+        .toggleStyle(.button)
+        .controlSize(.small)
+        .disabled(preset.pregapPlacement == .singleFileWithCue)
+    }
+
+    private var trackScopeBinding: Binding<Bool> {
+        Binding(
+            get: { preset.trackScopeOn },
+            set: { on in update(preset.withTrackScope(on)) }
+        )
+    }
+
+    private var releaseScopeBinding: Binding<Bool> {
+        Binding(
+            get: { preset.releaseScopeOn },
+            set: { on in update(preset.withReleaseScope(on)) }
+        )
+    }
 }
 
 #if DEBUG
-    #Preview("Export Settings") {
+    #Preview("Formats settings") {
         FormatsSettingsTab()
             .environment(PreviewData.configStore)
             .environment(Outputs.stub)

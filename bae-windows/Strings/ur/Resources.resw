@@ -306,6 +306,7 @@
   <data name="settings.formats.default_release_format" xml:space="preserve"><value>اشاعت</value></data>
   <data name="settings.formats.formats" xml:space="preserve"><value>فارمیٹس</value></data>
   <data name="settings.formats.defaults" xml:space="preserve"><value>ڈیفالٹس</value></data>
+  <data name="settings.formats.defaults_footer" xml:space="preserve"><value>وہ فارمیٹ جس سے "بطور محفوظ کریں…" شروع ہوتا ہے۔</value></data>
   <data name="settings.formats.advanced" xml:space="preserve"><value>ایڈوانسڈ</value></data>
   <data name="settings.formats.preset_name" xml:space="preserve"><value>نام</value></data>
   <data name="settings.formats.preset_track" xml:space="preserve"><value>نغمہ</value></data>
@@ -315,7 +316,7 @@
   <data name="settings.formats.pregap.append_including_htoa" xml:space="preserve"><value>HTOA سمیت شامل کریں</value></data>
   <data name="settings.formats.pregap.exclude" xml:space="preserve"><value>خارج کریں</value></data>
   <data name="settings.formats.pregap.single_file_with_cue" xml:space="preserve"><value>ایک مسل + CUE</value></data>
-  <data name="settings.formats.filename_format" xml:space="preserve"><value>مسل نام ساخت</value></data>
+  <data name="settings.formats.filename_format" xml:space="preserve"><value>مسل کا نام</value></data>
   <data name="settings.formats.add_token" xml:space="preserve"><value>شامل کریں:</value></data>
   <data name="settings.formats.remove_token" xml:space="preserve"><value>{token} ہٹائیں</value></data>
   <data name="settings.formats.token.title" xml:space="preserve"><value>عنوان</value></data>
@@ -331,12 +332,12 @@
   <data name="settings.formats.preview" xml:space="preserve"><value>پیش منظر: {filename}</value></data>
   <data name="settings.formats.presets_footer" xml:space="preserve"><value>فارمیٹس نغموں اور اشاعتوں پر "بطور محفوظ کریں…" میں ظاہر ہوتے ہیں۔</value></data>
   <data name="settings.formats.preset_format" xml:space="preserve"><value>ساخت</value></data>
-  <data name="settings.formats.add_preset" xml:space="preserve"><value>پیش سیٹ شامل کریں</value></data>
-  <data name="settings.formats.delete_preset" xml:space="preserve"><value>پیش سیٹ حذف کریں</value></data>
-  <data name="settings.formats.delete_confirm" xml:space="preserve"><value>کیا ”{name}“ پیش سیٹ حذف کریں؟</value></data>
+  <data name="settings.formats.add_preset" xml:space="preserve"><value>فارمیٹ شامل کریں</value></data>
+  <data name="settings.formats.delete_preset" xml:space="preserve"><value>فارمیٹ حذف کریں</value></data>
+  <data name="settings.formats.delete_confirm" xml:space="preserve"><value>کیا ”{name}“ فارمیٹ حذف کریں؟</value></data>
   <data name="settings.formats.codec_mp3" xml:space="preserve"><value>MP3 {kbps} kbps</value></data>
   <data name="settings.formats.codec_opus" xml:space="preserve"><value>Opus {kbps} kbps</value></data>
-  <data name="settings.formats.show_in_menus" xml:space="preserve"><value>اس کے برآمد مینو میں دکھائیں</value></data>
+  <data name="settings.formats.show_in_menus" xml:space="preserve"><value>اس کے "بطور محفوظ کریں…" میں دکھائیں</value></data>
   <data name="settings.formats.embed_cover" xml:space="preserve"><value>کور آرٹ سرایت کریں</value></data>
   <data name="settings.formats.bit_depth_label" xml:space="preserve"><value>بٹ گہرائی</value></data>
   <data name="settings.formats.bit_depth.source" xml:space="preserve"><value>ماخذ</value></data>

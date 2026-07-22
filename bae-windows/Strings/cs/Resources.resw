@@ -306,6 +306,7 @@
   <data name="settings.formats.default_release_format" xml:space="preserve"><value>Vydání</value></data>
   <data name="settings.formats.formats" xml:space="preserve"><value>Formáty</value></data>
   <data name="settings.formats.defaults" xml:space="preserve"><value>Výchozí nastavení</value></data>
+  <data name="settings.formats.defaults_footer" xml:space="preserve"><value>Formát, se kterým „Uložit jako…“ začíná.</value></data>
   <data name="settings.formats.advanced" xml:space="preserve"><value>Pokročilé</value></data>
   <data name="settings.formats.preset_name" xml:space="preserve"><value>Název</value></data>
   <data name="settings.formats.preset_track" xml:space="preserve"><value>Stopa</value></data>
@@ -315,7 +316,7 @@
   <data name="settings.formats.pregap.append_including_htoa" xml:space="preserve"><value>Připojit včetně HTOA</value></data>
   <data name="settings.formats.pregap.exclude" xml:space="preserve"><value>Vyloučit</value></data>
   <data name="settings.formats.pregap.single_file_with_cue" xml:space="preserve"><value>Jeden soubor + CUE</value></data>
-  <data name="settings.formats.filename_format" xml:space="preserve"><value>Formát názvu souboru</value></data>
+  <data name="settings.formats.filename_format" xml:space="preserve"><value>Pojmenování souboru</value></data>
   <data name="settings.formats.add_token" xml:space="preserve"><value>Přidat:</value></data>
   <data name="settings.formats.remove_token" xml:space="preserve"><value>Odebrat {token}</value></data>
   <data name="settings.formats.token.title" xml:space="preserve"><value>Název</value></data>
@@ -331,12 +332,12 @@
   <data name="settings.formats.preview" xml:space="preserve"><value>Náhled: {filename}</value></data>
   <data name="settings.formats.presets_footer" xml:space="preserve"><value>Formáty se zobrazují v nabídce „Uložit jako…“ u stop a vydání.</value></data>
   <data name="settings.formats.preset_format" xml:space="preserve"><value>Formát</value></data>
-  <data name="settings.formats.add_preset" xml:space="preserve"><value>Přidat předvolbu</value></data>
-  <data name="settings.formats.delete_preset" xml:space="preserve"><value>Smazat předvolbu</value></data>
-  <data name="settings.formats.delete_confirm" xml:space="preserve"><value>Smazat předvolbu „{name}“?</value></data>
+  <data name="settings.formats.add_preset" xml:space="preserve"><value>Přidat formát</value></data>
+  <data name="settings.formats.delete_preset" xml:space="preserve"><value>Smazat formát</value></data>
+  <data name="settings.formats.delete_confirm" xml:space="preserve"><value>Smazat formát „{name}“?</value></data>
   <data name="settings.formats.codec_mp3" xml:space="preserve"><value>MP3 {kbps} kbps</value></data>
   <data name="settings.formats.codec_opus" xml:space="preserve"><value>Opus {kbps} kbps</value></data>
-  <data name="settings.formats.show_in_menus" xml:space="preserve"><value>Zobrazit v nabídce exportu pro</value></data>
+  <data name="settings.formats.show_in_menus" xml:space="preserve"><value>Zobrazit v nabídce „Uložit jako…“ pro</value></data>
   <data name="settings.formats.embed_cover" xml:space="preserve"><value>Vložit obal alba</value></data>
   <data name="settings.formats.bit_depth_label" xml:space="preserve"><value>Bitová hloubka</value></data>
   <data name="settings.formats.bit_depth.source" xml:space="preserve"><value>Zdroj</value></data>

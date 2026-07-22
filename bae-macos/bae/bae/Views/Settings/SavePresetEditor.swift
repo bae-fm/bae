@@ -28,18 +28,24 @@ struct SavePresetEditor: View {
     var body: some View {
         VStack(spacing: 0) {
             Form {
-                nameRow
-                formatRow
-                if preset.codec.bitrateKbps != nil {
-                    PresetBitrateRow(
-                        preset: preset,
-                        bitrateDraft: $bitrateDraft,
-                        update: update
-                    )
+                Section {
+                    nameRow
+                    formatRow
+                    if preset.codec.bitrateKbps != nil {
+                        PresetBitrateRow(
+                            preset: preset,
+                            bitrateDraft: $bitrateDraft,
+                            update: update
+                        )
+                    }
                 }
-                filenameGroup
-                coverRow
-                scopeRow
+                Section("File naming") {
+                    filenameGroup
+                }
+                Section {
+                    coverRow
+                    scopeRow
+                }
                 DisclosureGroup(isExpanded: $advancedExpanded) {
                     if preset.codec.bitDepth != nil {
                         PresetBitDepthRow(preset: preset, update: update)
@@ -176,7 +182,6 @@ struct SavePresetEditor: View {
 
     private var filenameGroup: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Filename format")
             FilenameTokenEditor(
                 tokens: preset.filenameTokens,
                 setTokens: { tokens in
@@ -196,7 +201,7 @@ struct SavePresetEditor: View {
     }
 
     private var scopeRow: some View {
-        LabeledContent("Show in export menu for") {
+        LabeledContent("Show in Save As… for") {
             HStack(spacing: 16) {
                 Toggle("Track", isOn: appliesToTrackBinding)
                 Toggle("Release", isOn: appliesToReleaseBinding)
@@ -238,32 +243,46 @@ struct SavePresetEditor: View {
 
     private var appliesToTrackBinding: Binding<Bool> {
         Binding(
-            get: {
-                preset.pregapPlacement != .singleFileWithCue
-                    && preset.appliesToTrack
-            },
-            set: { enabled in
-                var changed = preset
-                changed.appliesToTrack =
-                    enabled && preset.pregapPlacement != .singleFileWithCue
-                update(changed)
-            }
+            get: { preset.trackScopeOn },
+            set: { enabled in update(preset.withTrackScope(enabled)) }
         )
     }
 
     private var appliesToReleaseBinding: Binding<Bool> {
         Binding(
-            get: {
-                preset.pregapPlacement == .singleFileWithCue
-                    || preset.appliesToRelease
-            },
-            set: { enabled in
-                var changed = preset
-                changed.appliesToRelease =
-                    enabled || preset.pregapPlacement == .singleFileWithCue
-                update(changed)
-            }
+            get: { preset.releaseScopeOn },
+            set: { enabled in update(preset.withReleaseScope(enabled)) }
         )
+    }
+}
+
+extension BridgeSavePreset {
+    /// Whether the Track scope reads as on. A single-file+CUE image is a
+    /// whole-release export, so Track can never be on for it.
+    var trackScopeOn: Bool {
+        pregapPlacement != .singleFileWithCue && appliesToTrack
+    }
+
+    /// Whether the Release scope reads as on. A single-file+CUE image is a
+    /// whole-release export, so Release always reads on for it.
+    var releaseScopeOn: Bool {
+        pregapPlacement == .singleFileWithCue || appliesToRelease
+    }
+
+    /// This preset with Track applicability set to `on`, honoring the
+    /// single-file+CUE rule that forbids a track scope.
+    func withTrackScope(_ on: Bool) -> BridgeSavePreset {
+        var changed = self
+        changed.appliesToTrack = on && pregapPlacement != .singleFileWithCue
+        return changed
+    }
+
+    /// This preset with Release applicability set to `on`, honoring the
+    /// single-file+CUE rule that forces a release scope.
+    func withReleaseScope(_ on: Bool) -> BridgeSavePreset {
+        var changed = self
+        changed.appliesToRelease = on || pregapPlacement == .singleFileWithCue
+        return changed
     }
 }
 
@@ -277,9 +296,9 @@ extension View {
     }
 }
 
-/// A preset's list row in settings: name over a settings summary, with the
-/// export menus the preset appears in as trailing badges. Clicking the row
-/// opens `SavePresetEditor`.
+/// A preset's list row in settings: name over a codec summary. The Track and
+/// Release scopes it appears under are separate inline toggles in the list row,
+/// not part of this label. Clicking the row opens `SavePresetEditor`.
 struct SavePresetSummaryRow: View {
     let preset: BridgeSavePreset
 
@@ -293,30 +312,11 @@ struct SavePresetSummaryRow: View {
                     .foregroundStyle(.secondary)
             }
             Spacer()
-            if preset.appliesToTrack {
-                ScopeBadge(label: Text("Track"))
-            }
-            if preset.appliesToRelease {
-                ScopeBadge(label: Text("Release"))
-            }
         }
     }
 
     private var summary: String {
         preset.codec.label
-    }
-}
-
-private struct ScopeBadge: View {
-    let label: Text
-
-    var body: some View {
-        label
-            .font(.caption)
-            .foregroundStyle(.secondary)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 1)
-            .background(Capsule().fill(.quaternary))
     }
 }
 

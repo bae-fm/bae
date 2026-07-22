@@ -1,19 +1,19 @@
 ﻿using System.Globalization;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Media;
 using uniffi.bae_bridge;
 using Windows.System;
 
 namespace Bae.Windows;
 
-// The settings dialog's Export section: the release-export destination popup
-// and default format, the single-track filename pattern (token chips with a
-// preview) and default format, and the export presets as expanders whose
-// controls save on every change. Writes round-trip through config invalidation
-// into the settings re-read (Render) with no optimistic mutation; preset edits
-// send the whole set (set-state), never one mutated field. Mirrors macOS's
-// ExportSettingsTab.
+// The settings dialog's Formats section: the format list (inline Save As…
+// scope toggles, edit dialog, add/remove) and the default format per save
+// target. Writes round-trip through config invalidation into the settings
+// re-read (Render) with no optimistic mutation; preset edits send the whole
+// set (set-state), never one mutated field. Mirrors macOS's
+// FormatsSettingsTab.
 internal sealed class FormatsSettingsSection
 {
     public StackPanel View { get; } = new() { Spacing = 8 };
@@ -63,6 +63,12 @@ internal sealed class FormatsSettingsSection
             Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray),
         });
         View.Children.Add(SectionLabel(Loc.Chrome("settings.formats.defaults")));
+        View.Children.Add(new TextBlock
+        {
+            Text = Loc.Chrome("settings.formats.defaults_footer"),
+            TextWrapping = TextWrapping.Wrap,
+            Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray),
+        });
         View.Children.Add(_defaultRelease);
         View.Children.Add(_defaultTrack);
     }
@@ -147,13 +153,15 @@ internal sealed class FormatsSettingsSection
         }
     }
 
-    // One preset in the list: the summary row opens the edit dialog; the
-    // trailing minus removes the preset behind a confirmation. Mirrors macOS's
+    // One format in the list: the summary opens the edit dialog, the inline
+    // Track/Release toggles set which Save As\u2026 scopes it appears under, and the
+    // trailing minus removes it behind a confirmation. Mirrors macOS's
     // PresetRow.
     private Grid PresetRow(Settings settings, SavePreset preset)
     {
         var row = new Grid { ColumnSpacing = 12 };
         row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
         var open = new Button
@@ -168,6 +176,10 @@ internal sealed class FormatsSettingsSection
         open.Click += async (_, _) => await ShowPresetEditor(settings, preset);
         row.Children.Add(open);
 
+        var scopes = PresetScopeToggles(settings, preset);
+        Grid.SetColumn(scopes, 1);
+        row.Children.Add(scopes);
+
         var remove = new Button
         {
             // Segoe Fluent's Remove (minus) glyph.
@@ -178,9 +190,55 @@ internal sealed class FormatsSettingsSection
         Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(
             remove, Loc.Chrome("settings.formats.delete_preset"));
         remove.Click += async (_, _) => await ConfirmDeletePreset(settings, preset);
-        Grid.SetColumn(remove, 1);
+        Grid.SetColumn(remove, 2);
         row.Children.Add(remove);
         return row;
+    }
+
+    // The inline Track/Release scope toggles for a list row, writing the whole
+    // updated preset through SavePresets. A single-file+CUE image is a
+    // whole-release export, so the pregap choice fixes its scope: Track reads
+    // off, Release reads on, and neither is editable \u2014 the same gating the
+    // editor's scope checkboxes apply.
+    private StackPanel PresetScopeToggles(Settings settings, SavePreset preset)
+    {
+        var singleFileCue = preset.PregapPlacement == BridgeSavePregapPlacement.SingleFileWithCue;
+        var track = new ToggleButton
+        {
+            Content = Loc.Chrome("settings.formats.preset_track"),
+            IsChecked = !singleFileCue && preset.AppliesToTrack,
+            IsEnabled = !singleFileCue,
+        };
+        var release = new ToggleButton
+        {
+            Content = Loc.Chrome("settings.formats.preset_release"),
+            IsChecked = singleFileCue || preset.AppliesToRelease,
+            IsEnabled = !singleFileCue,
+        };
+        async System.Threading.Tasks.Task Save()
+        {
+            if (_rendering)
+            {
+                return;
+            }
+            preset.AppliesToTrack = track.IsChecked == true && !singleFileCue;
+            preset.AppliesToRelease = release.IsChecked == true || singleFileCue;
+            await SavePresets(settings.SavePresets);
+        }
+        track.Checked += async (_, _) => await Save();
+        track.Unchecked += async (_, _) => await Save();
+        release.Checked += async (_, _) => await Save();
+        release.Unchecked += async (_, _) => await Save();
+
+        var panel = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = 6,
+            VerticalAlignment = VerticalAlignment.Center,
+        };
+        panel.Children.Add(track);
+        panel.Children.Add(release);
+        return panel;
     }
 
     // The edit dialog. Every control inside writes through immediately (the
@@ -226,14 +284,11 @@ internal sealed class FormatsSettingsSection
         await SavePresets(settings.SavePresets);
     }
 
-    // The collapsed row: name over a settings summary, with the export menus
-    // the preset appears in as trailing badges.
-    private static Grid PresetHeader(SavePreset preset)
+    // The list row's label: name over a codec summary. The Track and Release
+    // scopes it appears under are separate inline toggles in the row, not part
+    // of this label.
+    private static StackPanel PresetHeader(SavePreset preset)
     {
-        var header = new Grid();
-        header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-
         var titles = new StackPanel { Spacing = 2 };
         titles.Children.Add(new TextBlock
         {
@@ -246,35 +301,8 @@ internal sealed class FormatsSettingsSection
             Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray),
             FontSize = 12,
         });
-        header.Children.Add(titles);
-
-        var badges = new StackPanel
-        {
-            Orientation = Orientation.Horizontal,
-            Spacing = 6,
-            VerticalAlignment = VerticalAlignment.Center,
-        };
-        if (preset.AppliesToTrack)
-        {
-            badges.Children.Add(ScopeBadge(Loc.Chrome("settings.formats.preset_track")));
-        }
-        if (preset.AppliesToRelease)
-        {
-            badges.Children.Add(ScopeBadge(Loc.Chrome("settings.formats.preset_release")));
-        }
-        Grid.SetColumn(badges, 1);
-        header.Children.Add(badges);
-        return header;
+        return titles;
     }
-
-    private static Border ScopeBadge(string text) => new()
-    {
-        Child = new TextBlock { Text = text, FontSize = 11 },
-        CornerRadius = new CornerRadius(9),
-        Padding = new Thickness(9, 1, 9, 2),
-        Background = new SolidColorBrush(Microsoft.UI.Colors.Gray) { Opacity = 0.25 },
-        VerticalAlignment = VerticalAlignment.Center,
-    };
 
     private static string PresetSummary(SavePreset preset) => CodecLabel(preset.Codec);
 
@@ -615,13 +643,19 @@ internal sealed class FormatsSettingsSection
 
     private Button AddPresetButton()
     {
-        var add = new Button
+        var content = new StackPanel
         {
-            // Segoe Fluent's Add (plus) glyph.
-            Content = new FontIcon { Glyph = "\uE710", FontSize = 12 },
+            Orientation = Orientation.Horizontal,
+            Spacing = 6,
         };
-        Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(
-            add, Loc.Chrome("settings.formats.add_preset"));
+        // Segoe Fluent's Add (plus) glyph, leading a visible label.
+        content.Children.Add(new FontIcon { Glyph = "\uE710", FontSize = 12 });
+        content.Children.Add(new TextBlock
+        {
+            Text = Loc.Chrome("settings.formats.add_preset"),
+            VerticalAlignment = VerticalAlignment.Center,
+        });
+        var add = new Button { Content = content };
         add.Click += async (_, _) => await AddPreset();
         return add;
     }
