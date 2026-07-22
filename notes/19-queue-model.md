@@ -7,14 +7,15 @@ itself is out of scope here.)
 
 The queue is two owned lanes and a current-track slot.
 
-- **Current**: the track playing right now. It belongs to neither lane; lane
-  operations never touch it.
+- **Current**: the track playing right now. It occupies its own slot, listed in
+  neither lane; no lane edit — clear, remove, reorder — interrupts it.
 - **Up Next** (the manual lane): tracks the user explicitly queued. Drains
   first, in the order shown.
 - **Playing From** (the context lane): the tracks of whatever source the user
   pressed play on — a release, several releases, or the whole library — with a
-  cursor marking how far playback has gotten. Rows after the cursor are
-  upcoming; rows before it are history.
+  cursor on the row that is playing. Rows after the cursor are upcoming; rows
+  before it are history; the cursor row itself is the current track, so it is
+  listed in neither.
 
 The rows are the single authority over what plays. The source that filled the
 context lane is remembered (`ContextSource`) for exactly two things: the
@@ -63,9 +64,9 @@ section has rows:
 ## Shuffle
 
 Shuffle is a property of the context lane; Up Next order is always exactly
-what the user arranged. The lane carries `restore_order: Option<Vec<entry
-id>>` — `None` when sequential, and, while shuffled, the whole lane's row
-order from the moment shuffle turned on.
+what the user arranged. While shuffled, the lane records a `restore_order` —
+every row's id in the order the lane had at the moment shuffle turned on. A
+sequential lane records none, and that absence is what "sequential" means.
 
 - **On**: record `restore_order`, permute the upcoming rows in place. Current
   and history don't move.
@@ -90,7 +91,7 @@ after a repeat wrap moves played rows back into upcoming.
 
 With `pause_between_sides` enabled, playback holds for confirmation when one
 physical side ends and the next begins: the next track comes from the context
-lane, the lane is sequential (`restore_order` is `None`), Up Next is empty,
+lane, the lane is sequential, Up Next is empty,
 both tracks are from the same release, and their side letters differ. The
 prompt names the medium (vinyl or cassette) and the side that ended.
 
@@ -109,9 +110,9 @@ edited rows. Restart restores a pristine lane:
 - Shuffled: current track first, the rest freshly permuted behind it —
   shuffle order and history don't survive restart.
 
-Faithfully persisting edited rows (storing the id list) is deliberately not
-done: it would rewrite a potentially library-sized blob on every edit. The
-model leaves it possible.
+The recipe is what's stored because faithfully persisting the edited rows —
+the whole id list — would rewrite a potentially library-sized blob on every
+edit.
 
 ## Projection
 
