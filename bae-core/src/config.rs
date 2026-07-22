@@ -226,16 +226,15 @@ where
 /// upgraded on read by `migrate_to_current`; a file carrying a newer one is
 /// refused, because this build cannot know what its fields mean.
 ///
-/// **Adding a field to `ConfigYaml`: add it to [`Config::with_defaults`] too, and
-/// bump this.** `with_defaults` is the single place a field's default is stated —
-/// the migration fills an older file's missing keys straight from it, so there is
+/// **Adding a field to `ConfigYaml`: add it to [`Config::with_defaults`] too.**
+/// `with_defaults` is the single place a field's default is stated — the
+/// migration fills an older file's missing keys straight from it, so there is
 /// no second table to keep in step.
 ///
-/// v5 replaced `export_filename_template` (a `{token}` string) with
-/// `export_filename_tokens` (an ordered token list), in the config and in each
-/// export preset. The migration only fills missing keys, so a pre-v5 file fails
-/// to load; pre-1.0 that is the accepted outcome, not a case to shim.
-pub const CONFIG_VERSION: u32 = 5;
+/// Pinned at 1 until launch: pre-launch schema changes edit the shape in place
+/// and the developer fixes or resets their local library (`rm -rf ~/.bae`);
+/// versioned upgrades start when real users have libraries to carry forward.
+pub const CONFIG_VERSION: u32 = 1;
 
 /// A file written before versioning existed. Such a file has no `version` key,
 /// and is missing every field added since it was written.
