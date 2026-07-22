@@ -495,7 +495,7 @@ fn measure_decode_baseline_factor(fixture: &PlaybackTestFixture, label: &str) ->
     let mut audio_seconds = 0.0f64;
     let mut passes = 0u32;
     let cpu_time = loop {
-        let decoded = bae_core::audio_codec::decode_audio(&bytes, None, None)
+        let decoded = bae_core::audio_codec::decode_audio(buffer_from(&bytes), None, None)
             .unwrap_or_else(|e| panic!("{label}: decode the source file for the baseline: {e}"));
         let frames = decoded.samples.len() as f64 / decoded.channels as f64;
         audio_seconds += frames / decoded.sample_rate as f64;
@@ -620,4 +620,12 @@ async fn test_playback_cpu_mp3() {
     .expect("set up MP3 playback fixture");
 
     assert_playback_efficient(&mut fixture, "MP3").await;
+}
+
+/// A sparse buffer pre-filled with the whole byte slice, so a decode exercises
+/// the window logic without waiting on a fill.
+fn buffer_from(bytes: &[u8]) -> bae_core::playback::SharedSparseBuffer {
+    let buffer = bae_core::playback::sparse_buffer::create_sparse_buffer(bytes.len() as u64);
+    buffer.append_at(0, bytes);
+    buffer
 }

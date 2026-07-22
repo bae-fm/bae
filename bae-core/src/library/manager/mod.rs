@@ -631,8 +631,10 @@ pub struct ResolvedSaveTags {
 /// neighbours.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub struct SaveTrackPlan {
-    /// Source audio files read at plan time, keyed by release file id.
-    pub(crate) audio_bytes: Vec<SaveAudioBytes>,
+    /// Source audio files opened for streaming at plan time, keyed by release
+    /// file id. Each buffer is filled on demand through coven's locality-aware
+    /// ranged read, so the save decoder pulls windows instead of whole files.
+    pub(crate) audio_buffers: Vec<SaveAudioBuffer>,
     /// The track's tag data, exactly as the filename template and the tag writer
     /// take it — embedded rather than copied field by field, so the plan and the
     /// template always describe the same track.
@@ -648,10 +650,12 @@ pub struct SaveTrackPlan {
     pub(crate) audio_meta: TrackAudioMeta,
 }
 
+/// One release file the save decoder streams from: its sparse buffer, filled
+/// on demand by a reader spawned at plan time.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub(crate) struct SaveAudioBytes {
+pub(crate) struct SaveAudioBuffer {
     pub file_id: String,
-    pub bytes: Vec<u8>,
+    pub buffer: crate::playback::SharedSparseBuffer,
 }
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]

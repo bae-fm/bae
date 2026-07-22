@@ -162,8 +162,10 @@ async fn export_track_from_cloud_only_release() {
     // FLAC is lossless: the exported file decodes to the same PCM as the
     // cloud copy.
     let exported = fs::read(&out).unwrap();
-    let exported_pcm = bae_core::audio_codec::decode_audio(&exported, None, None).unwrap();
-    let original_pcm = bae_core::audio_codec::decode_audio(&original_bytes, None, None).unwrap();
+    let exported_pcm =
+        bae_core::audio_codec::decode_audio(buffer_from(&exported), None, None).unwrap();
+    let original_pcm =
+        bae_core::audio_codec::decode_audio(buffer_from(&original_bytes), None, None).unwrap();
     assert_eq!(exported_pcm.samples, original_pcm.samples);
 }
 
@@ -362,13 +364,15 @@ async fn export_release_single_file_with_cue_writes_image_and_cue() {
     assert!(cue.contains("  TRACK 02 AUDIO"));
 
     let image_pcm = bae_core::audio_codec::decode_audio(
-        &fs::read(subdir.join("album.flac")).unwrap(),
+        buffer_from(&fs::read(subdir.join("album.flac")).unwrap()),
         None,
         None,
     )
     .unwrap();
-    let first_pcm = bae_core::audio_codec::decode_audio(&first_bytes, None, None).unwrap();
-    let second_pcm = bae_core::audio_codec::decode_audio(&second_bytes, None, None).unwrap();
+    let first_pcm =
+        bae_core::audio_codec::decode_audio(buffer_from(&first_bytes), None, None).unwrap();
+    let second_pcm =
+        bae_core::audio_codec::decode_audio(buffer_from(&second_bytes), None, None).unwrap();
     assert_eq!(
         image_pcm.samples.len(),
         first_pcm.samples.len() + second_pcm.samples.len()
@@ -401,4 +405,12 @@ async fn export_release_missing_blob_is_hard_error() {
         fs::read_dir(&target).unwrap().next().is_none(),
         "failed export must leave no release folder or marker"
     );
+}
+
+/// A sparse buffer pre-filled with the whole byte slice, so a decode exercises
+/// the window logic without waiting on a fill.
+fn buffer_from(bytes: &[u8]) -> bae_core::playback::SharedSparseBuffer {
+    let buffer = bae_core::playback::sparse_buffer::create_sparse_buffer(bytes.len() as u64);
+    buffer.append_at(0, bytes);
+    buffer
 }

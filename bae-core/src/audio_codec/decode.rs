@@ -1,12 +1,14 @@
-//! Decoding any audio format to PCM: the in-memory `decode_audio` path (returns
-//! or streams interleaved i32 samples) and the sparse-buffer-backed
-//! `decode_audio_streaming` loop (pushes f32 samples to a `TrackSink`), plus the
-//! per-thread FFmpeg fatal-error counter that tracks decode failures.
+//! Decoding any audio format to PCM. Every decode reads its compressed bytes
+//! from a `SparseStreamingBuffer` — the only way bytes reach a decoder — through
+//! one shared packet/frame/trim loop with two output stages: interleaved i32
+//! into a `DecodedSink` (`decode_audio_to_sink`, used by loudness and save) and
+//! packed f32 into a `TrackSink` (`decode_audio_streaming`, used by playback).
+//! Also home to the per-thread FFmpeg fatal-error counter that tracks decode
+//! failures.
 
 use super::avio::{
-    avio_read_callback, avio_seek_callback, close_input_and_free_custom_avio,
-    free_custom_avio_context, free_format_and_custom_avio, streaming_avio_read_callback,
-    streaming_avio_seek_callback, AvioContext, StreamingAvioContext,
+    close_input_and_free_custom_avio, free_custom_avio_context, free_format_and_custom_avio,
+    streaming_avio_read_callback, streaming_avio_seek_callback, StreamingAvioContext,
 };
 use super::{av_err_str, DecodedAudio, DecodedSink, StreamingDecodeError, AVIO_BUFFER_SIZE};
 use crate::playback::{SharedSparseBuffer, TrackSink};
@@ -50,7 +52,7 @@ unsafe fn free_decode_resources(
     close_input_and_free_custom_avio(fmt_ctx, avio);
 }
 
-struct InMemoryDecodeResources {
+struct DecodeResources {
     frame: *mut ffmpeg_sys_next::AVFrame,
     packet: *mut ffmpeg_sys_next::AVPacket,
     swr_ctx: *mut ffmpeg_sys_next::SwrContext,
@@ -59,7 +61,7 @@ struct InMemoryDecodeResources {
     avio: *mut ffmpeg_sys_next::AVIOContext,
 }
 
-impl Drop for InMemoryDecodeResources {
+impl Drop for DecodeResources {
     fn drop(&mut self) {
         unsafe {
             free_decode_resources(
@@ -74,20 +76,20 @@ impl Drop for InMemoryDecodeResources {
     }
 }
 
-struct StreamingDecodeResources {
-    core: Option<InMemoryDecodeResources>,
+struct BufferDecodeResources {
+    core: Option<DecodeResources>,
     avio_ctx_ptr: *mut StreamingAvioContext,
 }
 
-impl StreamingDecodeResources {
-    fn core(&self) -> &InMemoryDecodeResources {
+impl BufferDecodeResources {
+    fn core(&self) -> &DecodeResources {
         self.core
             .as_ref()
             .expect("streaming decode resources missing core resources")
     }
 }
 
-impl Drop for StreamingDecodeResources {
+impl Drop for BufferDecodeResources {
     fn drop(&mut self) {
         if let Some(core) = self.core.take() {
             drop(core);
@@ -374,10 +376,328 @@ fn install_ffmpeg_log_callback() {
     });
 }
 
-/// Decode any audio format to interleaved i32 PCM. `start_sample`/`end_sample`
-/// trim the output to that sample range; `None`/`None` decodes the whole stream.
+/// A probed demuxer over a sparse buffer: the format context wired to a
+/// streaming AVIO whose reads block until the buffer's fill delivers the
+/// bytes. `avio_ctx_ptr` owns the reader; it is freed by the caller (via
+/// `BufferDecodeResources` or explicitly on an error path).
+struct BufferInput {
+    fmt_ctx: *mut ffmpeg_sys_next::AVFormatContext,
+    avio: *mut ffmpeg_sys_next::AVIOContext,
+    avio_ctx_ptr: *mut StreamingAvioContext,
+}
+
+enum BufferInputError {
+    Alloc(&'static str),
+    Open(i32),
+    Probe(i32),
+}
+
+impl BufferInputError {
+    fn message(&self) -> String {
+        match self {
+            Self::Alloc(what) => (*what).to_string(),
+            Self::Open(ret) => format!("Failed to open input: {}", av_err_str(*ret)),
+            Self::Probe(ret) => format!("Failed to find stream info: {}", av_err_str(*ret)),
+        }
+    }
+}
+
+/// Build the streaming AVIO over `buffer` and open + probe the demuxer on it.
+/// On error, everything allocated so far — including the AVIO context box — is
+/// freed before returning.
+unsafe fn open_buffer_input(
+    buffer: &SharedSparseBuffer,
+    cancel_token: Arc<std::sync::atomic::AtomicBool>,
+) -> Result<BufferInput, BufferInputError> {
+    use ffmpeg_sys_next::*;
+
+    let reader = buffer.new_reader_with_cancel(cancel_token.clone());
+    let avio_ctx = Box::new(StreamingAvioContext {
+        reader: std::sync::Mutex::new(reader),
+        buffer: buffer.clone(),
+        cancel_token,
+    });
+    let avio_ctx_ptr = Box::into_raw(avio_ctx);
+
+    // FFmpeg takes ownership of this buffer.
+    let avio_buffer = av_malloc(AVIO_BUFFER_SIZE) as *mut u8;
+    if avio_buffer.is_null() {
+        let _ = Box::from_raw(avio_ctx_ptr);
+        return Err(BufferInputError::Alloc("Failed to allocate AVIO buffer"));
+    }
+
+    let avio = avio_alloc_context(
+        avio_buffer,
+        AVIO_BUFFER_SIZE as c_int,
+        0,
+        avio_ctx_ptr as *mut c_void,
+        Some(streaming_avio_read_callback),
+        None,
+        Some(streaming_avio_seek_callback),
+    );
+    if avio.is_null() {
+        av_free(avio_buffer as *mut c_void);
+        let _ = Box::from_raw(avio_ctx_ptr);
+        return Err(BufferInputError::Alloc("Failed to create AVIO context"));
+    }
+
+    // Without this, `avformat_seek_file` refuses to seek the stream at all.
+    (*avio).seekable = AVIO_SEEKABLE_NORMAL as c_int;
+
+    let Ok(mut fmt_ctx) = allocate_input_format_context(avio, |fmt_ctx| {
+        // Make the demuxer load its seek index from the file's own seektable.
+        // FLAC (and MP3) only populate that index when this flag is set; without
+        // it, avformat_seek_file ignores the seektable and binary-searches the
+        // file -- reading the end, then bisecting frame by frame. Over a cloud
+        // home each of those reads is a separate ranged fetch (~15 of them, ~1s
+        // each), so a single track start or in-track seek stalls for ~10s. With
+        // the flag, a seektable-bearing FLAC seeks in one fetch. No-op for
+        // APE/MP4/WAV, which are already indexed (see
+        // notes/ffmpeg-seek-behavior.md).
+        (*fmt_ctx).flags |= AVFMT_FLAG_FAST_SEEK as c_int;
+    }) else {
+        let _ = Box::from_raw(avio_ctx_ptr);
+        return Err(BufferInputError::Alloc("Failed to allocate format context"));
+    };
+
+    if let Err(e) = open_and_probe_input(&mut fmt_ctx, avio) {
+        let error = match e {
+            InputOpenProbeError::Open(ret) => {
+                free_format_and_custom_avio(fmt_ctx, avio);
+                BufferInputError::Open(ret)
+            }
+            InputOpenProbeError::Probe(ret) => {
+                close_input_and_free_custom_avio(&mut fmt_ctx, avio);
+                BufferInputError::Probe(ret)
+            }
+        };
+        let _ = Box::from_raw(avio_ctx_ptr);
+        return Err(error);
+    }
+
+    Ok(BufferInput {
+        fmt_ctx,
+        avio,
+        avio_ctx_ptr,
+    })
+}
+
+/// The output stage of the shared decode loop: converts each decoded frame to
+/// its sample type and pushes the trimmed window to its consumer.
+trait FrameOutput {
+    /// Whether the consumer is cancelled; checked between packets and frames.
+    fn cancelled(&self) -> bool;
+
+    /// Convert `frame` into the output's sample type, holding the result
+    /// internally, and return its interleaved length (the window trim needs the
+    /// length before the push).
+    ///
+    /// # Safety
+    /// `swr_ctx` and `frame` must be valid, matching FFmpeg pointers.
+    unsafe fn convert(
+        &mut self,
+        swr_ctx: *mut ffmpeg_sys_next::SwrContext,
+        frame: *const ffmpeg_sys_next::AVFrame,
+        channels: usize,
+    ) -> Result<usize, String>;
+
+    /// Push `[skip_start, take_end)` of the converted frame. `false` means the
+    /// consumer stopped (a cancelled sink); the loop then exits without
+    /// flushing.
+    fn push(&mut self, skip_start: usize, take_end: usize) -> bool;
+}
+
+/// i32 → `DecodedSink` output stage (loudness measurement, save re-encode,
+/// tests). Cancellation comes from the caller's token.
+struct SinkOutput<'a> {
+    sink: &'a mut dyn DecodedSink,
+    cancel: &'a std::sync::atomic::AtomicBool,
+    converted: Vec<i32>,
+}
+
+impl FrameOutput for SinkOutput<'_> {
+    fn cancelled(&self) -> bool {
+        self.cancel.load(std::sync::atomic::Ordering::Relaxed)
+    }
+
+    unsafe fn convert(
+        &mut self,
+        swr_ctx: *mut ffmpeg_sys_next::SwrContext,
+        frame: *const ffmpeg_sys_next::AVFrame,
+        channels: usize,
+    ) -> Result<usize, String> {
+        self.converted = convert_frame_to_i32(swr_ctx, frame, channels)?;
+        Ok(self.converted.len())
+    }
+
+    fn push(&mut self, skip_start: usize, take_end: usize) -> bool {
+        self.sink.on_samples(&self.converted[skip_start..take_end]);
+        true
+    }
+}
+
+/// f32 → `TrackSink` output stage (playback): chunked pushes that re-check
+/// cancellation, plus the first-sample latency log and the output tally.
+struct TrackOutput<'a> {
+    sink: &'a mut TrackSink,
+    converted: Vec<f32>,
+    samples_output: u64,
+    first_sample_logged: bool,
+    buffer: &'a SharedSparseBuffer,
+    decode_start: Instant,
+}
+
+impl FrameOutput for TrackOutput<'_> {
+    fn cancelled(&self) -> bool {
+        self.sink.is_cancelled()
+    }
+
+    unsafe fn convert(
+        &mut self,
+        swr_ctx: *mut ffmpeg_sys_next::SwrContext,
+        frame: *const ffmpeg_sys_next::AVFrame,
+        channels: usize,
+    ) -> Result<usize, String> {
+        self.converted = convert_frame_to_f32(swr_ctx, frame, channels)?;
+        Ok(self.converted.len())
+    }
+
+    fn push(&mut self, skip_start: usize, take_end: usize) -> bool {
+        let samples = &self.converted[skip_start..take_end];
+        self.samples_output += samples.len() as u64;
+        if samples.is_empty() {
+            return true;
+        }
+        if !self.first_sample_logged {
+            self.first_sample_logged = true;
+            info!(
+                "first audio sample: buffer={} fetched {}B from coven in {}ms",
+                self.buffer.id(),
+                self.buffer.bytes_fetched(),
+                self.decode_start.elapsed().as_millis(),
+            );
+        }
+        push_samples_to_sink(self.sink, samples)
+    }
+}
+
+/// The shared packet/frame/trim loop both decode paths run: read packets for
+/// the audio stream, decode frames, trim each to `[start_sample, stop_sample)`
+/// via `frame_output_window`, and push the window into `out`. Flushes the
+/// decoder afterwards unless the window's end was reached (flushing past it
+/// would emit samples past the window) or the consumer stopped.
+unsafe fn run_decode_loop(
+    res: &DecodeResources,
+    stream_index: c_int,
+    time_base: ffmpeg_sys_next::AVRational,
+    sample_rate: u32,
+    channels: usize,
+    start_sample: Option<u64>,
+    stop_sample: Option<u64>,
+    out: &mut dyn FrameOutput,
+) -> Result<(), String> {
+    use ffmpeg_sys_next::*;
+
+    let mut tracked_sample_pos: i64 = -1;
+    let mut reached_stop = false;
+    let mut consumer_stopped = false;
+
+    'packets: while av_read_frame(res.fmt_ctx, res.packet) >= 0 {
+        if out.cancelled() || reached_stop {
+            av_packet_unref(res.packet);
+            break;
+        }
+
+        if (*res.packet).stream_index != stream_index {
+            av_packet_unref(res.packet);
+            continue;
+        }
+
+        let ret = avcodec_send_packet(res.codec_ctx, res.packet);
+        av_packet_unref(res.packet);
+
+        if ret < 0 {
+            return Err(format!(
+                "Failed to send packet to decoder: {}",
+                av_err_str(ret)
+            ));
+        }
+
+        while avcodec_receive_frame(res.codec_ctx, res.frame) >= 0 {
+            if out.cancelled() {
+                break;
+            }
+
+            let num_samples = (*res.frame).nb_samples as usize;
+            let pts = (*res.frame).pts;
+            let (frame_start, frame_end) = frame_sample_bounds(
+                pts,
+                num_samples,
+                time_base,
+                sample_rate,
+                &mut tracked_sample_pos,
+            );
+
+            let converted_len = out.convert(res.swr_ctx, res.frame, channels)?;
+            match frame_output_window(
+                frame_start,
+                frame_end,
+                converted_len,
+                channels,
+                start_sample,
+                stop_sample,
+            ) {
+                FrameOutputWindow::Skip => {}
+                FrameOutputWindow::Stop => {
+                    reached_stop = true;
+                    break;
+                }
+                FrameOutputWindow::Emit {
+                    skip_start,
+                    take_end,
+                    reached_end,
+                } => {
+                    reached_stop = reached_end;
+                    if !out.push(skip_start, take_end) {
+                        consumer_stopped = true;
+                        break 'packets;
+                    }
+                }
+            }
+        }
+
+        if reached_stop {
+            break;
+        }
+    }
+
+    // Flushing after the window's end would emit samples past it; a stopped
+    // consumer has nowhere to put them.
+    if !reached_stop && !consumer_stopped {
+        let ret = avcodec_send_packet(res.codec_ctx, ptr::null());
+        if ret < 0 {
+            return Err(format!("Failed to flush decoder: {}", av_err_str(ret)));
+        }
+        while avcodec_receive_frame(res.codec_ctx, res.frame) >= 0 {
+            if out.cancelled() {
+                break;
+            }
+            let converted_len = out.convert(res.swr_ctx, res.frame, channels)?;
+            if converted_len > 0 && !out.push(0, converted_len) {
+                break;
+            }
+        }
+    }
+
+    Ok(())
+}
+
+/// Decode a `[start_sample, end_sample)` window from the buffer to interleaved
+/// i32 PCM, collected whole. `None`/`None` decodes the whole stream. Blocking —
+/// run it off the async runtime; reads block until the buffer's fill delivers
+/// each window.
 pub fn decode_audio(
-    data: &[u8],
+    buffer: SharedSparseBuffer,
     start_sample: Option<u64>,
     end_sample: Option<u64>,
 ) -> Result<DecodedAudio, String> {
@@ -385,7 +705,8 @@ pub fn decode_audio(
         samples: Vec::new(),
         format: None,
     };
-    decode_audio_to_sink(data, start_sample, end_sample, &mut sink)?;
+    let never_cancelled = Arc::new(std::sync::atomic::AtomicBool::new(false));
+    decode_audio_to_sink(buffer, start_sample, end_sample, &mut sink, never_cancelled)?;
     // `decode_audio_to_sink` returning Ok means the format was probed, so
     // `on_format` ran before any samples.
     let (sample_rate, channels) = sink
@@ -414,75 +735,47 @@ impl DecodedSink for CollectingSink {
     }
 }
 
-/// Stream-decode audio, pushing the format then each interleaved-i32 chunk into
-/// `sink` instead of returning a buffered `Vec`. Same window semantics as
-/// [`decode_audio`]; `start_sample`/`end_sample` trim the decoded range.
+/// Stream-decode a `[start_sample, end_sample)` window from the buffer, pushing
+/// the format then each interleaved-i32 chunk into `sink`. `cancel` aborts
+/// between frames. Blocking — run it off the async runtime.
+///
+/// Sets no read-ahead ceiling on its reader: the fill keeps one window
+/// (`MIN_READAHEAD`) ahead of the decode and evicts behind it, so a whole-file
+/// decode holds about one window of compressed bytes. (Playback's ceiling
+/// exists to buffer the rest of a track against network stalls; a decode that
+/// consumes as fast as it reads needs only the cushion.)
 pub fn decode_audio_to_sink(
-    data: &[u8],
+    buffer: SharedSparseBuffer,
     start_sample: Option<u64>,
     end_sample: Option<u64>,
     sink: &mut dyn DecodedSink,
+    cancel: Arc<std::sync::atomic::AtomicBool>,
 ) -> Result<(), String> {
     // SAFETY: every FFmpeg pointer the decode allocates lives and dies inside it.
-    unsafe { decode_audio_avio(data, start_sample, end_sample, sink) }
+    unsafe { decode_buffer_to_sink_impl(buffer, start_sample, end_sample, sink, cancel) }
 }
 
-unsafe fn decode_audio_avio(
-    data: &[u8],
+unsafe fn decode_buffer_to_sink_impl(
+    buffer: SharedSparseBuffer,
     start_sample: Option<u64>,
     end_sample: Option<u64>,
     sink: &mut dyn DecodedSink,
+    cancel: Arc<std::sync::atomic::AtomicBool>,
 ) -> Result<(), String> {
     use ffmpeg_sys_next::*;
 
     // Count this decode's fatal FFmpeg errors, so the sink can flag a track whose
     // audio bytes fail to decode (import's decode-verify rides this pass). The
-    // counter is reset after `find_stream_info` below, not here: probing an
+    // counter is reset after the probe below, not here: probing an
     // attached-picture stream (an embedded cover) emits its own fatal-level logs
     // that say nothing about the audio.
     install_ffmpeg_log_callback();
 
-    let mut avio_ctx = Box::new(AvioContext {
-        data: data.as_ptr(),
-        size: data.len(),
-        pos: 0,
-    });
-
-    // FFmpeg takes ownership of this buffer.
-    let avio_buffer_size = AVIO_BUFFER_SIZE;
-    let avio_buffer = av_malloc(avio_buffer_size) as *mut u8;
-    if avio_buffer.is_null() {
-        return Err("Failed to allocate AVIO buffer".to_string());
-    }
-
-    let avio = avio_alloc_context(
-        avio_buffer,
-        avio_buffer_size as c_int,
-        0, // read-only
-        avio_ctx.as_mut() as *mut AvioContext as *mut c_void,
-        Some(avio_read_callback),
-        None, // no write
-        Some(avio_seek_callback),
-    );
-    if avio.is_null() {
-        av_free(avio_buffer as *mut c_void);
-        return Err("Failed to create AVIO context".to_string());
-    }
-
-    let mut fmt_ctx = allocate_input_format_context(avio, |_| {})
-        .map_err(|()| "Failed to allocate format context".to_string())?;
-    if let Err(e) = open_and_probe_input(&mut fmt_ctx, avio) {
-        return match e {
-            InputOpenProbeError::Open(ret) => {
-                free_format_and_custom_avio(fmt_ctx, avio);
-                Err(format!("Failed to open input: {}", av_err_str(ret)))
-            }
-            InputOpenProbeError::Probe(ret) => {
-                close_input_and_free_custom_avio(&mut fmt_ctx, avio);
-                Err(format!("Failed to find stream info: {}", av_err_str(ret)))
-            }
-        };
-    }
+    let BufferInput {
+        mut fmt_ctx,
+        avio,
+        avio_ctx_ptr,
+    } = open_buffer_input(&buffer, cancel.clone()).map_err(|e| e.message())?;
 
     // Count only the audio decode's errors: probing an embedded cover during
     // `find_stream_info` above may have logged its own.
@@ -492,6 +785,7 @@ unsafe fn decode_audio_avio(
         Ok(opened) => opened,
         Err(ProbedAudioCodecOpenError::MissingStream(e)) => {
             close_input_and_free_custom_avio(&mut fmt_ctx, avio);
+            let _ = Box::from_raw(avio_ctx_ptr);
             return Err(e);
         }
         Err(ProbedAudioCodecOpenError::Codec {
@@ -510,12 +804,13 @@ unsafe fn decode_audio_avio(
                 sink,
             );
             close_input_and_free_custom_avio(&mut fmt_ctx, avio);
-            drop(avio_ctx);
+            let _ = Box::from_raw(avio_ctx_ptr);
             sink.set_decode_error_count(get_ffmpeg_errors());
             return result;
         }
         Err(ProbedAudioCodecOpenError::Codec { error, .. }) => {
             close_input_and_free_custom_avio(&mut fmt_ctx, avio);
+            let _ = Box::from_raw(avio_ctx_ptr);
             return Err(error.message());
         }
     };
@@ -525,6 +820,7 @@ unsafe fn decode_audio_avio(
     if channels == 0 {
         avcodec_free_context(&mut (codec_ctx as *mut _));
         close_input_and_free_custom_avio(&mut fmt_ctx, avio);
+        let _ = Box::from_raw(avio_ctx_ptr);
         return Err(CHANNEL_COUNT_ERROR.to_string());
     }
 
@@ -541,6 +837,7 @@ unsafe fn decode_audio_avio(
         Err(e) => {
             avcodec_free_context(&mut (codec_ctx as *mut _));
             close_input_and_free_custom_avio(&mut fmt_ctx, avio);
+            let _ = Box::from_raw(avio_ctx_ptr);
             return Err(e);
         }
     };
@@ -563,99 +860,53 @@ unsafe fn decode_audio_avio(
             &mut fmt_ctx,
             avio,
         );
+        let _ = Box::from_raw(avio_ctx_ptr);
         return Err("Failed to allocate frame/packet".to_string());
     }
 
-    let resources = InMemoryDecodeResources {
-        frame,
-        packet,
-        swr_ctx,
-        codec_ctx,
-        fmt_ctx,
-        avio,
+    let resources = BufferDecodeResources {
+        core: Some(DecodeResources {
+            frame,
+            packet,
+            swr_ctx,
+            codec_ctx,
+            fmt_ctx,
+            avio,
+        }),
+        avio_ctx_ptr,
     };
-    let mut tracked_sample_pos: i64 = -1;
 
-    // Decode packets, trimming each frame to the [start_sample, end_sample) window.
-    let mut reached_end = false;
-    while av_read_frame(resources.fmt_ctx, resources.packet) >= 0 {
-        if (*resources.packet).stream_index != audio.stream_index {
-            av_packet_unref(resources.packet);
-            continue;
-        }
-
-        let ret = avcodec_send_packet(resources.codec_ctx, resources.packet);
-        av_packet_unref(resources.packet);
-
-        if ret < 0 {
-            return Err(format!(
-                "Failed to send packet to decoder: {}",
-                av_err_str(ret)
-            ));
-        }
-
-        while avcodec_receive_frame(resources.codec_ctx, resources.frame) >= 0 {
-            let num_samples = (*resources.frame).nb_samples as usize;
-            let pts = (*resources.frame).pts;
-            let (frame_start, frame_end) = frame_sample_bounds(
-                pts,
-                num_samples,
-                time_base,
-                sample_rate,
-                &mut tracked_sample_pos,
-            );
-
-            let frame_samples_vec =
-                convert_frame_to_i32(resources.swr_ctx, resources.frame, channels as usize)?;
-            match frame_output_window(
-                frame_start,
-                frame_end,
-                frame_samples_vec.len(),
-                channels as usize,
-                start_sample,
-                end_sample,
-            ) {
-                FrameOutputWindow::Skip => {}
-                FrameOutputWindow::Stop => {
-                    reached_end = true;
-                    break;
-                }
-                FrameOutputWindow::Emit {
-                    skip_start,
-                    take_end,
-                    reached_end: window_reached_end,
-                } => {
-                    sink.on_samples(&frame_samples_vec[skip_start..take_end]);
-                    if window_reached_end {
-                        reached_end = true;
-                    }
-                }
-            }
-        }
-
-        if reached_end {
-            break;
-        }
-    }
-
-    // Flushing after the window's end would emit samples past it.
-    if !reached_end {
-        let ret = avcodec_send_packet(resources.codec_ctx, ptr::null());
-        if ret < 0 {
-            return Err(format!("Failed to flush decoder: {}", av_err_str(ret)));
-        }
-        while avcodec_receive_frame(resources.codec_ctx, resources.frame) >= 0 {
-            let frame_samples_vec =
-                convert_frame_to_i32(resources.swr_ctx, resources.frame, channels as usize)?;
-            sink.on_samples(&frame_samples_vec);
-        }
-    }
+    let mut out = SinkOutput {
+        sink,
+        cancel: &cancel,
+        converted: Vec::new(),
+    };
+    let result = run_decode_loop(
+        resources.core(),
+        audio.stream_index,
+        time_base,
+        sample_rate,
+        channels as usize,
+        start_sample,
+        end_sample,
+        &mut out,
+    );
 
     drop(resources);
-    drop(avio_ctx);
 
     // A verifying sink flags a broken decode off this count.
     sink.set_decode_error_count(get_ffmpeg_errors());
+
+    result?;
+
+    // A cancelled input (a failed fill cancelling the buffer, or the caller
+    // aborting) leaves the output truncated; reporting success would let a
+    // consumer treat a partial decode as the whole window. The AVIO read
+    // callback sets this token when the buffer is cancelled under the decode,
+    // so both abort paths land here.
+    if cancel.load(std::sync::atomic::Ordering::Relaxed) {
+        return Err("decode input cancelled".to_string());
+    }
 
     Ok(())
 }
@@ -930,85 +1181,20 @@ unsafe fn decode_audio_streaming_impl(
     // audio sample -- the whole "how long before playback starts" window.
     let decode_start = Instant::now();
 
-    // The reader's read-ahead ceiling is set after the seek below, once it sits at
-    // the track's start -- so the fill buffers the rest of the current track rather
-    // than reading ahead from byte 0 during the probe.
-    let reader = buffer.new_reader_with_cancel(cancel_token.clone());
     let cancel_status = cancel_token.clone();
-    let avio_ctx = Box::new(StreamingAvioContext {
-        reader: std::sync::Mutex::new(reader),
-        buffer: buffer.clone(),
-        cancel_token,
-    });
-    let avio_ctx_ptr = Box::into_raw(avio_ctx);
-
-    // FFmpeg takes ownership of this buffer.
-    let avio_buffer_size = AVIO_BUFFER_SIZE;
-    let avio_buffer = av_malloc(avio_buffer_size) as *mut u8;
-    if avio_buffer.is_null() {
-        let _ = Box::from_raw(avio_ctx_ptr);
-        return Err(StreamingDecodeError::decode(
-            "Failed to allocate AVIO buffer",
-        ));
-    }
-
-    let avio = avio_alloc_context(
-        avio_buffer,
-        avio_buffer_size as c_int,
-        0,
-        avio_ctx_ptr as *mut c_void,
-        Some(streaming_avio_read_callback),
-        None,
-        Some(streaming_avio_seek_callback),
-    );
-    if avio.is_null() {
-        av_free(avio_buffer as *mut c_void);
-        let _ = Box::from_raw(avio_ctx_ptr);
-        return Err(StreamingDecodeError::decode(
-            "Failed to create AVIO context",
-        ));
-    }
-
-    // Without this, `avformat_seek_file` refuses to seek the stream at all.
-    (*avio).seekable = AVIO_SEEKABLE_NORMAL as c_int;
-
-    let mut fmt_ctx = allocate_input_format_context(avio, |fmt_ctx| {
-        // Make the demuxer load its seek index from the file's own seektable.
-        // FLAC (and MP3) only populate that index when this flag is set; without
-        // it, avformat_seek_file ignores the seektable and binary-searches the
-        // file -- reading the end, then bisecting frame by frame. Over a cloud
-        // home each of those reads is a separate ranged fetch (~15 of them, ~1s
-        // each), so a single track start or in-track seek stalls for ~10s. With
-        // the flag, a seektable-bearing FLAC seeks in one fetch. No-op for
-        // APE/MP4/WAV, which are already indexed (see
-        // notes/ffmpeg-seek-behavior.md).
-        (*fmt_ctx).flags |= AVFMT_FLAG_FAST_SEEK as c_int;
-    })
-    .map_err(|()| {
-        let _ = Box::from_raw(avio_ctx_ptr);
-        StreamingDecodeError::decode("Failed to allocate format context")
+    let BufferInput {
+        mut fmt_ctx,
+        avio,
+        avio_ctx_ptr,
+    } = open_buffer_input(&buffer, cancel_token).map_err(|e| {
+        let message = e.message();
+        match e {
+            BufferInputError::Alloc(_) => StreamingDecodeError::decode(message),
+            BufferInputError::Open(_) | BufferInputError::Probe(_) => {
+                StreamingDecodeError::input_error(&cancel_status, message)
+            }
+        }
     })?;
-
-    if let Err(e) = open_and_probe_input(&mut fmt_ctx, avio) {
-        let error = match e {
-            InputOpenProbeError::Open(ret) => {
-                free_format_and_custom_avio(fmt_ctx, avio);
-                StreamingDecodeError::input_error(
-                    &cancel_status,
-                    format!("Failed to open input: {}", av_err_str(ret)),
-                )
-            }
-            InputOpenProbeError::Probe(ret) => {
-                close_input_and_free_custom_avio(&mut fmt_ctx, avio);
-                StreamingDecodeError::input_error(
-                    &cancel_status,
-                    format!("Failed to find stream info: {}", av_err_str(ret)),
-                )
-            }
-        };
-        let _ = Box::from_raw(avio_ctx_ptr);
-        return Err(error);
-    }
 
     let (audio, codec_ctx) = match open_probed_audio_codec(fmt_ctx) {
         Ok(opened) => opened,
@@ -1133,8 +1319,8 @@ unsafe fn decode_audio_streaming_impl(
         ));
     }
 
-    let resources = StreamingDecodeResources {
-        core: Some(InMemoryDecodeResources {
+    let resources = BufferDecodeResources {
+        core: Some(DecodeResources {
             frame,
             packet,
             swr_ctx,
@@ -1144,124 +1330,28 @@ unsafe fn decode_audio_streaming_impl(
         }),
         avio_ctx_ptr,
     };
-    let mut samples_output: u64 = 0;
-    let mut reached_stop = false;
-    let mut tracked_sample_pos: i64 = -1;
-    let mut first_sample_logged = false;
-
-    while av_read_frame(resources.core().fmt_ctx, resources.core().packet) >= 0 {
-        if sink.is_cancelled() || reached_stop {
-            av_packet_unref(resources.core().packet);
-            break;
-        }
-
-        if (*resources.core().packet).stream_index != audio.stream_index {
-            av_packet_unref(resources.core().packet);
-            continue;
-        }
-
-        let ret = avcodec_send_packet(resources.core().codec_ctx, resources.core().packet);
-        av_packet_unref(resources.core().packet);
-
-        if ret < 0 {
-            return Err(StreamingDecodeError::decode(format!(
-                "Failed to send packet to decoder: {}",
-                av_err_str(ret)
-            )));
-        }
-
-        while avcodec_receive_frame(resources.core().codec_ctx, resources.core().frame) >= 0 {
-            if sink.is_cancelled() {
-                break;
-            }
-
-            let num_samples = (*resources.core().frame).nb_samples as usize;
-            let output_buf = convert_frame_to_f32(
-                resources.core().swr_ctx,
-                resources.core().frame,
-                channels as usize,
-            )
-            .map_err(StreamingDecodeError::decode)?;
-            let pts = (*resources.core().frame).pts;
-            let (frame_start_sample, frame_end_sample) = frame_sample_bounds(
-                pts,
-                num_samples,
-                (*audio.stream).time_base,
-                sample_rate,
-                &mut tracked_sample_pos,
-            );
-            let samples_to_output = match frame_output_window(
-                frame_start_sample,
-                frame_end_sample,
-                output_buf.len(),
-                channels as usize,
-                start_at_sample,
-                stop_at_sample,
-            ) {
-                FrameOutputWindow::Skip => continue,
-                FrameOutputWindow::Stop => {
-                    reached_stop = true;
-                    break;
-                }
-                FrameOutputWindow::Emit {
-                    skip_start,
-                    take_end,
-                    reached_end,
-                } => {
-                    reached_stop = reached_end;
-                    &output_buf[skip_start..take_end]
-                }
-            };
-
-            samples_output += samples_to_output.len() as u64;
-
-            if !samples_to_output.is_empty() {
-                if !first_sample_logged {
-                    first_sample_logged = true;
-                    info!(
-                        "first audio sample: buffer={} fetched {}B from coven in {}ms",
-                        buffer.id(),
-                        buffer.bytes_fetched(),
-                        decode_start.elapsed().as_millis(),
-                    );
-                }
-                if !push_samples_to_sink(sink, samples_to_output) {
-                    break;
-                }
-            }
-        }
-    }
-
-    // Flushing after `stop_at_sample` would emit samples past the track's end.
-    if !reached_stop {
-        let ret = avcodec_send_packet(resources.core().codec_ctx, ptr::null());
-        if ret < 0 {
-            return Err(StreamingDecodeError::decode(format!(
-                "Failed to flush decoder: {}",
-                av_err_str(ret)
-            )));
-        }
-        while avcodec_receive_frame(resources.core().codec_ctx, resources.core().frame) >= 0 {
-            if sink.is_cancelled() {
-                break;
-            }
-
-            let output_buf = convert_frame_to_f32(
-                resources.core().swr_ctx,
-                resources.core().frame,
-                channels as usize,
-            )
-            .map_err(StreamingDecodeError::decode)?;
-
-            samples_output += output_buf.len() as u64;
-
-            if !output_buf.is_empty() && !push_samples_to_sink(sink, &output_buf) {
-                break;
-            }
-        }
-    }
+    let mut out = TrackOutput {
+        sink,
+        converted: Vec::new(),
+        samples_output: 0,
+        first_sample_logged: false,
+        buffer: &buffer,
+        decode_start,
+    };
+    let loop_result = run_decode_loop(
+        resources.core(),
+        audio.stream_index,
+        (*audio.stream).time_base,
+        sample_rate,
+        channels as usize,
+        start_at_sample,
+        stop_at_sample,
+        &mut out,
+    );
+    let samples_output = out.samples_output;
 
     drop(resources);
+    loop_result.map_err(StreamingDecodeError::decode)?;
 
     let error_count = get_ffmpeg_errors();
     if error_count > 0 {

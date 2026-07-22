@@ -230,7 +230,8 @@ async fn test_cue_flac_playback_uses_track_positions() {
     let reference_data =
         std::fs::read(fixture_dir.join("02 Test Artist - Track Two (White Noise).flac"))
             .expect("read reference");
-    let reference = decode_audio(&reference_data, None, None).expect("decode reference");
+    let reference =
+        decode_audio(buffer_from(&reference_data), None, None).expect("decode reference");
     let channels = reference.channels as usize;
     let sample_rate = reference.sample_rate;
     let reference_f32 = samples_as_f32(&reference);
@@ -541,7 +542,7 @@ async fn test_cue_flac_export_single_track() {
 
     // Decode the exported file and check its duration
     let exported_data = std::fs::read(&export_path).expect("read exported file");
-    let decoded = decode_audio(&exported_data, None, None).expect("decode exported");
+    let decoded = decode_audio(buffer_from(&exported_data), None, None).expect("decode exported");
 
     let exported_duration_ms = decoded.samples.len() as u64 * 1000
         / (decoded.sample_rate as u64 * decoded.channels as u64);
@@ -605,13 +606,16 @@ async fn test_cue_flac_gapless_track_boundary() {
         .save_track(&tracks[1].id, &t2_path, "flac")
         .await
         .expect("export track 2");
-    let t1 = decode_audio(&std::fs::read(&t1_path).unwrap(), None, None).expect("decode track 1");
-    let t2 = decode_audio(&std::fs::read(&t2_path).unwrap(), None, None).expect("decode track 2");
+    let t1 = decode_audio(buffer_from(&std::fs::read(&t1_path).unwrap()), None, None)
+        .expect("decode track 1");
+    let t2 = decode_audio(buffer_from(&std::fs::read(&t2_path).unwrap()), None, None)
+        .expect("decode track 2");
 
     // Ground truth: the source file decoded once.
     let source =
         Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/cue_flac/Test Album.flac");
-    let full = decode_audio(&std::fs::read(&source).unwrap(), None, None).expect("decode full");
+    let full = decode_audio(buffer_from(&std::fs::read(&source).unwrap()), None, None)
+        .expect("decode full");
 
     // Concatenating the two exported tracks reproduces the continuous source.
     let combined: Vec<i32> = t1
@@ -681,4 +685,12 @@ fn create_test_discogs_release() -> DiscogsRelease {
         ],
         master_id: Some("test-master".to_string()),
     }
+}
+
+/// A sparse buffer pre-filled with the whole byte slice, so a decode exercises
+/// the window logic without waiting on a fill.
+fn buffer_from(bytes: &[u8]) -> bae_core::playback::SharedSparseBuffer {
+    let buffer = bae_core::playback::sparse_buffer::create_sparse_buffer(bytes.len() as u64);
+    buffer.append_at(0, bytes);
+    buffer
 }

@@ -2799,14 +2799,13 @@ async fn insert_local_release_without_local_files(
 }
 
 /// Read one byte through the production audio reader and return the playback
-/// error reason its progress channel reports.
+/// error reason its fill-error handler reports.
 async fn playback_error_reason_for_file(
     manager: &LibraryManager,
     file: &DbFile,
 ) -> crate::ui::PlaybackErrorReason {
     use crate::playback::data_source::{create_audio_reader, FetchArbiter};
     use crate::playback::sparse_buffer::create_sparse_buffer;
-    use crate::playback::PlaybackProgress;
 
     let buffer = create_sparse_buffer(file.file_size as u64);
     let reader = create_audio_reader(
@@ -2818,8 +2817,13 @@ async fn playback_error_reason_for_file(
         None,
         false,
     );
-    let (progress_tx, mut progress_rx) = tokio::sync::mpsc::unbounded_channel();
-    reader.start_reading(buffer.clone(), progress_tx);
+    let (error_tx, mut error_rx) = tokio::sync::mpsc::unbounded_channel();
+    reader.start_reading(
+        buffer.clone(),
+        Box::new(move |error| {
+            let _ = error_tx.send(error);
+        }),
+    );
     // Register demand so the fill fetches; the failed fetch cancels the
     // buffer, which unblocks this read with `None`.
     let demand = tokio::task::spawn_blocking(move || {
@@ -2828,12 +2832,11 @@ async fn playback_error_reason_for_file(
         r.read(&mut b)
     });
     let reason = tokio::time::timeout(std::time::Duration::from_secs(10), async {
-        loop {
-            match progress_rx.recv().await.expect("progress channel open") {
-                PlaybackProgress::PlaybackError { reason } => break reason,
-                _ => continue,
-            }
-        }
+        error_rx
+            .recv()
+            .await
+            .expect("error channel open")
+            .into_ui_reason()
     })
     .await
     .expect("a playback error must be reported");

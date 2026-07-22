@@ -130,7 +130,10 @@ impl PreviewPlayer {
 
         let buffer = create_sparse_buffer(source_size);
         let reader: Box<dyn AudioDataReader> = Box::new(LocalReader::new(path.clone()));
-        reader.start_reading(buffer.clone(), self.progress_tx.clone());
+        reader.start_reading(
+            buffer.clone(),
+            crate::playback::service::playback_fill_error_handler(self.progress_tx.clone()),
+        );
 
         let started = self
             .start_streaming(

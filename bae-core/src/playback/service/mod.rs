@@ -876,6 +876,22 @@ fn ensure_resolved_audio_format(
     Ok(())
 }
 
+/// The playback shape of a fill-error handler: a failed byte fill halts the
+/// track by emitting `PlaybackProgress::PlaybackError` to the UI. (The fill
+/// itself cancels the buffer right after, unblocking the decoder.)
+pub(crate) fn playback_fill_error_handler(
+    progress_tx: tokio_mpsc::UnboundedSender<PlaybackProgress>,
+) -> crate::playback::data_source::FillErrorHandler {
+    Box::new(move |error| {
+        emit_progress(
+            &progress_tx,
+            PlaybackProgress::PlaybackError {
+                reason: error.into_ui_reason(),
+            },
+        );
+    })
+}
+
 async fn prepare_track_for_playback(
     library_manager: &LibraryManager,
     track_id: &str,
@@ -909,7 +925,10 @@ async fn prepare_track_for_playback(
                 segment.start_byte,
                 resolved.content_type == crate::util::content_type::ContentType::Ape,
             );
-            reader.start_reading(buffer.clone(), progress_tx.clone());
+            reader.start_reading(
+                buffer.clone(),
+                playback_fill_error_handler(progress_tx.clone()),
+            );
             shared_file_buffers.insert(segment.file_id.clone(), buffer.clone());
             buffer
         };

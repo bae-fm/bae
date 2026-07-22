@@ -642,16 +642,17 @@ fn write_tags(
     Ok(())
 }
 
-/// Decode the track's source audio (already read into the plan) to PCM, for
-/// re-encoding. Decodes each whole backing file, then trims to the sample window.
+/// Decode the track's source audio to PCM, for re-encoding, streaming each
+/// backing file through the plan's sparse buffers and trimming to the sample
+/// window.
 async fn load_track_audio(plan: &mut SaveTrackPlan) -> Result<DecodedPcm, PlaybackError> {
     let track_id = plan.audio_meta.track.id.clone();
 
-    let audio_data_owned = std::mem::take(&mut plan.audio_bytes);
+    let audio_buffers = std::mem::take(&mut plan.audio_buffers);
     debug!(
         "Loading audio for track {} ({} source file(s))",
         track_id,
-        audio_data_owned.len()
+        audio_buffers.len()
     );
 
     // Export uses its own window so CUE pregaps can be excluded or appended to
@@ -663,14 +664,14 @@ async fn load_track_audio(plan: &mut SaveTrackPlan) -> Result<DecodedPcm, Playba
         let mut sample_rate = None;
         let mut channels = None;
         for segment in &window.segments {
-            let bytes = audio_data_owned
+            let source = audio_buffers
                 .iter()
                 .find(|audio| audio.file_id == segment.file_id)
-                .ok_or_else(|| format!("missing export bytes for file {}", segment.file_id))?;
+                .ok_or_else(|| format!("no audio stream for file {}", segment.file_id))?;
             let start_sample =
                 (segment.source_start_sample > 0).then_some(segment.source_start_sample);
             let mut decoded = crate::audio_codec::decode_audio(
-                &bytes.bytes,
+                source.buffer.clone(),
                 start_sample,
                 segment.source_end_sample,
             )

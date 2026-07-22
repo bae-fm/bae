@@ -1,14 +1,13 @@
 //! Custom FFmpeg AVIO contexts and their callbacks.
 //!
-//! `AvioContext` reads from an in-memory byte slice, `StreamingAvioContext` reads
-//! from a sparse buffer whose reads block until the bytes arrive, and
-//! `WriteAvioContext` accumulates encoded output. Each pairs with the
-//! `unsafe extern "C"` read/write/seek callbacks FFmpeg invokes directly.
+//! `StreamingAvioContext` reads from a sparse buffer whose reads block until
+//! the bytes arrive, and `WriteAvioContext` accumulates encoded output. Each
+//! pairs with the `unsafe extern "C"` read/write/seek callbacks FFmpeg invokes
+//! directly.
 
 use crate::playback::SharedSparseBuffer;
 use std::io::{Cursor, Seek, SeekFrom, Write};
 use std::os::raw::{c_int, c_void};
-use std::ptr;
 use std::sync::Arc;
 use tracing::warn;
 
@@ -34,58 +33,6 @@ pub(super) unsafe fn free_format_and_custom_avio(
 ) {
     ffmpeg_sys_next::avformat_free_context(fmt_ctx);
     free_custom_avio_context(avio);
-}
-
-/// The in-memory byte slice an `AvioContext` decode reads from, plus its cursor.
-pub(super) struct AvioContext {
-    pub(super) data: *const u8,
-    pub(super) size: usize,
-    pub(super) pos: usize,
-}
-
-pub(super) unsafe extern "C" fn avio_read_callback(
-    opaque: *mut c_void,
-    buf: *mut u8,
-    buf_size: c_int,
-) -> c_int {
-    let ctx = &mut *(opaque as *mut AvioContext);
-    let remaining = ctx.size - ctx.pos;
-    let to_read = (buf_size as usize).min(remaining);
-
-    if to_read == 0 {
-        return ffmpeg_sys_next::AVERROR_EOF;
-    }
-
-    ptr::copy_nonoverlapping(ctx.data.add(ctx.pos), buf, to_read);
-    ctx.pos += to_read;
-    to_read as c_int
-}
-
-pub(super) unsafe extern "C" fn avio_seek_callback(
-    opaque: *mut c_void,
-    offset: i64,
-    whence: c_int,
-) -> i64 {
-    let ctx = &mut *(opaque as *mut AvioContext);
-
-    // AVSEEK_SIZE asks for the size rather than seeking.
-    if whence == ffmpeg_sys_next::AVSEEK_SIZE as c_int {
-        return ctx.size as i64;
-    }
-
-    let new_pos = match whence {
-        0 => offset as usize,                     // SEEK_SET
-        1 => (ctx.pos as i64 + offset) as usize,  // SEEK_CUR
-        2 => (ctx.size as i64 + offset) as usize, // SEEK_END
-        _ => return -1,
-    };
-
-    if new_pos > ctx.size {
-        return -1;
-    }
-
-    ctx.pos = new_pos;
-    new_pos as i64
 }
 
 // --- Streaming AVIO over a sparse buffer ---

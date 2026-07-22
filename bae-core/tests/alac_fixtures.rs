@@ -479,7 +479,7 @@ fn cue_alac_cue_sheet_has_three_tracks() {
 #[test]
 fn decode_alac_fixture_smoke() {
     let bytes = std::fs::read(fixture_dir().join("silence-alac.m4a")).expect("read alac");
-    let decoded = decode_audio(&bytes, None, None).expect("decode alac");
+    let decoded = decode_audio(buffer_from(&bytes), None, None).expect("decode alac");
 
     assert_eq!(decoded.sample_rate, 44100);
     assert_eq!(decoded.channels, 2);
@@ -504,4 +504,12 @@ fn decode_alac_fixture_smoke() {
         decoded.sample_rate,
         decoded.channels,
     );
+}
+
+/// A sparse buffer pre-filled with the whole byte slice, so a decode exercises
+/// the window logic without waiting on a fill.
+fn buffer_from(bytes: &[u8]) -> bae_core::playback::SharedSparseBuffer {
+    let buffer = bae_core::playback::sparse_buffer::create_sparse_buffer(bytes.len() as u64);
+    buffer.append_at(0, bytes);
+    buffer
 }

@@ -4,13 +4,11 @@
 //! - Local files (non-storage releases, or storage releases with local backend)
 //! - Cloud storage (storage releases with cloud backend)
 
-use crate::playback::progress::{emit_progress, PlaybackProgress};
 use crate::playback::sparse_buffer::{ReaderDemand, SharedSparseBuffer, SparseStreamingBuffer};
 use crate::playback::PlaybackError;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Weak};
 use std::time::Instant;
-use tokio::sync::mpsc as tokio_mpsc;
 use tokio::sync::Notify;
 use tracing::{debug, error, info};
 
@@ -95,7 +93,13 @@ impl FetchArbiter {
     }
 }
 
-/// Reads audio data into a sparse buffer for streaming playback.
+/// Invoked at most once, when the fill fails; the buffer is cancelled right
+/// after, so blocked readers unblock and the decoder surfaces the failure.
+/// Playback emits a `PlaybackProgress::PlaybackError` here; loudness and save
+/// log the cause and let their decode failure carry the outcome.
+pub type FillErrorHandler = Box<dyn FnOnce(PlaybackError) + Send>;
+
+/// Reads audio data into a sparse buffer for streaming decode.
 ///
 /// Local reads serve plaintext bytes from disk; cloud reads apply the home's
 /// at-rest cipher to each blob — decrypting under the library key on an opaque
@@ -109,11 +113,7 @@ pub trait AudioDataReader: Send + 'static {
     /// window and memory stays bounded to a window around the playhead instead
     /// of the whole file. On an opaque home the cloud reader decrypts each
     /// window as it lands; on a browsable one it reads the bytes verbatim.
-    fn start_reading(
-        self: Box<Self>,
-        buffer: SharedSparseBuffer,
-        progress_tx: tokio_mpsc::UnboundedSender<PlaybackProgress>,
-    );
+    fn start_reading(self: Box<Self>, buffer: SharedSparseBuffer, on_error: FillErrorHandler);
 }
 
 /// Reads from local filesystem.
@@ -131,27 +131,18 @@ impl LocalReader {
     }
 }
 
-fn fail_audio_read(
-    progress_tx: &tokio_mpsc::UnboundedSender<PlaybackProgress>,
-    buffer: &SharedSparseBuffer,
-    error: PlaybackError,
-) {
+fn fail_audio_read(on_error: FillErrorHandler, buffer: &SharedSparseBuffer, error: PlaybackError) {
     // A buffer that is already cancelled means teardown ran before this read
     // returned: the user switched away while a reader was parked in an in-flight
     // `read().await` past its top-of-loop cancel check. The Err it eventually
-    // returns belongs to the abandoned track. Emitting PlaybackError here would
-    // halt the track the user just started, so suppress it and exit cancelled.
+    // returns belongs to the abandoned track. Reporting it here would halt the
+    // track the user just started, so suppress it and exit cancelled.
     if buffer.is_cancelled() {
         debug!("ignoring read failure on a cancelled buffer: {error}");
         return;
     }
     error!("audio read failed: {error}");
-    emit_progress(
-        progress_tx,
-        PlaybackProgress::PlaybackError {
-            reason: error.into_ui_reason(),
-        },
-    );
+    on_error(error);
     buffer.cancel();
 }
 
@@ -159,12 +150,12 @@ fn fail_audio_read(
 /// the buffer is already gone, the track was torn down before this error
 /// surfaced -- there's nothing to halt, so just log and drop it.
 fn report_fill_failure(
-    progress_tx: &tokio_mpsc::UnboundedSender<PlaybackProgress>,
+    on_error: FillErrorHandler,
     buffer: &Weak<SparseStreamingBuffer>,
     error: PlaybackError,
 ) {
     match buffer.upgrade() {
-        Some(buf) => fail_audio_read(progress_tx, &buf, error),
+        Some(buf) => fail_audio_read(on_error, &buf, error),
         None => debug!("ignoring fill failure on a dropped buffer: {error}"),
     }
 }
@@ -180,11 +171,7 @@ fn prepare_fill(buffer: SharedSparseBuffer) -> (Arc<Notify>, Weak<SparseStreamin
 }
 
 impl AudioDataReader for LocalReader {
-    fn start_reading(
-        self: Box<Self>,
-        buffer: SharedSparseBuffer,
-        progress_tx: tokio_mpsc::UnboundedSender<PlaybackProgress>,
-    ) {
+    fn start_reading(self: Box<Self>, buffer: SharedSparseBuffer, on_error: FillErrorHandler) {
         let path = self.path;
         let (wake, buffer) = prepare_fill(buffer);
 
@@ -195,7 +182,7 @@ impl AudioDataReader for LocalReader {
                 Ok(f) => f,
                 Err(e) => {
                     report_fill_failure(
-                        &progress_tx,
+                        on_error,
                         &buffer,
                         PlaybackError::io(format!("Failed to open file {path}: {e}")),
                     );
@@ -228,7 +215,7 @@ impl AudioDataReader for LocalReader {
             .await;
 
             if let Err(e) = result {
-                report_fill_failure(&progress_tx, &buffer, e);
+                report_fill_failure(on_error, &buffer, e);
             }
         });
     }
@@ -325,11 +312,7 @@ pub struct CovenBlobReader {
 }
 
 impl AudioDataReader for CovenBlobReader {
-    fn start_reading(
-        self: Box<Self>,
-        buffer: SharedSparseBuffer,
-        progress_tx: tokio_mpsc::UnboundedSender<PlaybackProgress>,
-    ) {
+    fn start_reading(self: Box<Self>, buffer: SharedSparseBuffer, on_error: FillErrorHandler) {
         let CovenBlobReader {
             handle,
             db,
@@ -429,7 +412,7 @@ impl AudioDataReader for CovenBlobReader {
             .await;
 
             if let Err(e) = result {
-                report_fill_failure(&progress_tx, &buffer, e);
+                report_fill_failure(on_error, &buffer, e);
             }
         });
     }
@@ -639,6 +622,7 @@ mod tests {
     use std::sync::Mutex;
     use std::time::Duration;
     use tempfile::NamedTempFile;
+    use tokio::sync::mpsc as tokio_mpsc;
     use tokio::time::timeout;
 
     /// Ordered record of `read_range(start, end)` calls, shared with a test.
@@ -699,20 +683,26 @@ mod tests {
             .expect("drain task")
     }
 
-    async fn next_playback_error(
-        progress_rx: &mut tokio_mpsc::UnboundedReceiver<PlaybackProgress>,
+    /// A fill-error handler that forwards the error into a channel, plus the
+    /// receiving end, so a test can assert on the reported failure.
+    fn capturing_error_handler() -> (
+        FillErrorHandler,
+        tokio_mpsc::UnboundedReceiver<PlaybackError>,
+    ) {
+        let (tx, rx) = tokio_mpsc::unbounded_channel();
+        (
+            Box::new(move |error| {
+                let _ = tx.send(error);
+            }),
+            rx,
+        )
+    }
+
+    async fn next_fill_error(
+        error_rx: &mut tokio_mpsc::UnboundedReceiver<PlaybackError>,
         context: &str,
     ) -> String {
-        use crate::ui::{PlaybackErrorReason, UiError};
-        match progress_rx.recv().await.expect(context) {
-            PlaybackProgress::PlaybackError {
-                reason:
-                    PlaybackErrorReason::Diagnostic {
-                        error: UiError::Diagnostic { detail, .. },
-                    },
-            } => detail,
-            other => panic!("expected diagnostic playback error, got: {other:?}"),
-        }
+        error_rx.recv().await.expect(context).to_string()
     }
 
     const WINDOW: u64 = CLOUD_STREAM_READ_SIZE;
@@ -1103,8 +1093,7 @@ mod tests {
         let reader = Box::new(LocalReader::new(
             temp_file.path().to_str().expect("temp path is UTF-8"),
         ));
-        let (progress_tx, _progress_rx) = tokio_mpsc::unbounded_channel();
-        reader.start_reading(buffer.clone(), progress_tx);
+        reader.start_reading(buffer.clone(), Box::new(|_| {}));
         let weak = Arc::downgrade(&buffer);
 
         // Let the spawned fill run to its park. With no reader it fetches nothing
@@ -1197,8 +1186,7 @@ mod tests {
         ));
         let buffer = create_sparse_buffer(test_data.len() as u64);
 
-        let (progress_tx, _progress_rx) = tokio_mpsc::unbounded_channel();
-        reader.start_reading(buffer.clone(), progress_tx);
+        reader.start_reading(buffer.clone(), Box::new(|_| {}));
         let result = drain_async(buffer.clone()).await;
 
         assert_eq!(result, test_data);
@@ -1225,8 +1213,7 @@ mod tests {
         let mut seek_reader = buffer.new_reader();
         assert!(seek_reader.seek(6 * WINDOW));
 
-        let (progress_tx, _progress_rx) = tokio_mpsc::unbounded_channel();
-        reader.start_reading(buffer.clone(), progress_tx);
+        reader.start_reading(buffer.clone(), Box::new(|_| {}));
 
         let chunk_len = 4096usize;
         let read = tokio::task::spawn_blocking(move || {
@@ -1265,8 +1252,8 @@ mod tests {
         let reader = Box::new(LocalReader::new(path));
         let buffer = create_sparse_buffer(test_data.len() as u64);
 
-        let (progress_tx, mut progress_rx) = tokio_mpsc::unbounded_channel();
-        reader.start_reading(buffer.clone(), progress_tx);
+        let (on_error, mut error_rx) = capturing_error_handler();
+        reader.start_reading(buffer.clone(), on_error);
         let result = drain_async(buffer.clone()).await;
 
         // Buffer should be cancelled (error case)
@@ -1275,9 +1262,9 @@ mod tests {
             "Buffer should be cancelled for nonexistent file"
         );
         assert!(result.is_empty());
-        let error = next_playback_error(
-            &mut progress_rx,
-            "local open failure should emit playback error",
+        let error = next_fill_error(
+            &mut error_rx,
+            "local open failure should report a fill error",
         )
         .await;
         assert!(
@@ -1295,15 +1282,15 @@ mod tests {
         ));
         let buffer = create_sparse_buffer(1);
 
-        let (progress_tx, mut progress_rx) = tokio_mpsc::unbounded_channel();
-        reader.start_reading(buffer.clone(), progress_tx);
+        let (on_error, mut error_rx) = capturing_error_handler();
+        reader.start_reading(buffer.clone(), on_error);
         let result = drain_async(buffer.clone()).await;
 
         assert!(buffer.is_cancelled());
         assert!(result.is_empty());
-        let error = next_playback_error(
-            &mut progress_rx,
-            "local read failure should emit playback error",
+        let error = next_fill_error(
+            &mut error_rx,
+            "local read failure should report a fill error",
         )
         .await;
         assert!(

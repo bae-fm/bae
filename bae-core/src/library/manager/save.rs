@@ -60,10 +60,10 @@ impl LibraryManager {
     }
 
     /// Assemble everything `SaveService::save_track` needs for a
-    /// track in one pass: source audio bytes, tag fields, cover image bytes,
-    /// neighbour counts, and the raw audio-format aggregate for decoding.
-    /// Cloud-only tracks download + decrypt here — export never requires a
-    /// local copy.
+    /// track in one pass: streaming handles on the source audio, tag fields,
+    /// cover image bytes, neighbour counts, and the raw audio-format aggregate
+    /// for decoding. Cloud-only tracks stream + decrypt window by window during
+    /// the decode — export never requires a local copy.
     ///
     /// `embed_cover` is the preset's choice: when false the cover blob is never
     /// read (no wasted download/decrypt), so `cover_image_bytes` is `Some` only
@@ -76,19 +76,11 @@ impl LibraryManager {
         let meta = TrackAudioMeta::resolve(&self.database, track_id).await?;
         let resolved = self.resolve_save_tags(&meta).await?;
 
-        let mut audio_bytes = Vec::new();
+        let mut audio_buffers = Vec::new();
         for audio_file in &meta.audio_files {
-            let bytes = crate::storage::transfer::read_release_file_bytes(audio_file, self)
-                .await
-                .map_err(|e| {
-                    LibraryError::TrackMapping(format!(
-                        "Couldn't read audio file {} for track {track_id}: {e}",
-                        audio_file.id
-                    ))
-                })?;
-            audio_bytes.push(super::SaveAudioBytes {
+            audio_buffers.push(super::SaveAudioBuffer {
                 file_id: audio_file.id.clone(),
-                bytes,
+                buffer: self.open_release_file_stream(audio_file),
             });
         }
 
@@ -105,12 +97,46 @@ impl LibraryManager {
         };
 
         Ok(SaveTrackPlan {
-            audio_bytes,
+            audio_buffers,
             resolved,
             cover_image_bytes,
             audio_window: save_window_from_meta(&meta),
             audio_meta: meta,
         })
+    }
+
+    /// Open a streaming read of one release file for the save decoder: a
+    /// sparse buffer sized to the stored file size, filled on demand through
+    /// coven's locality-aware ranged read (the user's own file, the local
+    /// store, the cache, or the cloud with decrypt). A read failure — or a
+    /// blob shorter than the stored size — cancels the buffer, which fails the
+    /// decode loudly.
+    fn open_release_file_stream(
+        &self,
+        file: &crate::db::DbFile,
+    ) -> crate::playback::SharedSparseBuffer {
+        use crate::playback::data_source::{create_audio_reader, FetchArbiter};
+
+        let buffer = crate::playback::sparse_buffer::create_sparse_buffer(file.file_size as u64);
+        // A fresh arbiter per file: save has no foreground track to prioritize,
+        // so every fetch runs ungated.
+        let reader = create_audio_reader(
+            self,
+            &file.id,
+            file.cloud_path.as_deref(),
+            file.file_size as u64,
+            FetchArbiter::new(),
+            None,
+            false,
+        );
+        let file_id = file.id.clone();
+        reader.start_reading(
+            buffer.clone(),
+            Box::new(move |error| {
+                tracing::warn!("save: streaming release file {file_id} failed: {error}");
+            }),
+        );
+        buffer
     }
 
     /// The default filename (stem, no extension) a single-track "Save As…"

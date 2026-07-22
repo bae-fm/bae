@@ -14,6 +14,9 @@ use tracing::{debug, warn};
 
 use crate::import::handle::send_event;
 use crate::import::types::TrackFile;
+use crate::playback::data_source::{AudioDataReader, LocalReader};
+use crate::playback::sparse_buffer::create_sparse_buffer;
+use crate::playback::SharedSparseBuffer;
 
 /// The album loudness/peak plus the tracks whose decode looked broken (import
 /// decode-verify). `broken` carries a human-readable line per broken track (its
@@ -174,9 +177,11 @@ impl crate::audio_codec::DecodedSink for LoudnessProgressSink {
 /// album-level `(loudness_lufs, peak_linear)`.
 ///
 /// Each track's window is decoded and measured on a blocking thread (FFmpeg
-/// decode is blocking CPU work). A file's source bytes are read once and shared
-/// across its tracks (the tracks of a CUE image), but decoding one track window
-/// at a time bounds transient PCM memory to a single track.
+/// decode is blocking CPU work). A file's compressed bytes stream through one
+/// shared `SparseStreamingBuffer` across its tracks (the tracks of a CUE
+/// image); the fill keeps a window ahead of the decode and evicts behind it,
+/// and decoding one track window at a time bounds transient PCM memory to a
+/// single track.
 ///
 /// A track whose decode/measure fails, or that is too quiet to have a usable
 /// loudness, keeps NULL loudness/peak and still imports — the skip is logged with
@@ -196,23 +201,40 @@ pub(super) async fn measure_loudness(
 ) -> LoudnessResult {
     use ebur128::EbuR128;
 
-    // Read once per file and share across its tracks (every CUE track of one
-    // image points at the same bytes). An unreadable file yields `None`, so its
-    // tracks are skipped rather than measured against missing bytes.
+    // Stream once per file and share across its tracks (every CUE track of one
+    // image reads the same sparse buffer; the fill evicts what the decodes have
+    // passed, so only a window of compressed bytes stays resident). A file that
+    // can't be stat'd (or has a non-UTF-8 path the reader can't carry) yields
+    // `None`, so its tracks are skipped rather than measured against missing
+    // bytes; a read failure mid-stream cancels the buffer and surfaces as that
+    // track's decode failure.
     let path_by_file_id: HashMap<String, PathBuf> = file_ids
         .iter()
         .map(|(path, id)| (id.clone(), path.clone()))
         .collect();
-    let mut file_bytes: HashMap<String, Option<Arc<Vec<u8>>>> = HashMap::new();
+    let mut file_buffers: HashMap<String, Option<SharedSparseBuffer>> = HashMap::new();
     for (file_id, path) in &path_by_file_id {
-        file_bytes.entry(file_id.clone()).or_insert_with(|| {
-            match std::fs::read(path) {
-                Ok(bytes) => Some(Arc::new(bytes)),
+        file_buffers.entry(file_id.clone()).or_insert_with(|| {
+            let size = match std::fs::metadata(path) {
+                Ok(metadata) => metadata.len(),
                 Err(e) => {
-                    warn!("loudness: cannot read {path:?} to measure: {e}; its tracks stay unmeasured");
-                    None
+                    warn!("loudness: cannot stat {path:?} to measure: {e}; its tracks stay unmeasured");
+                    return None;
                 }
-            }
+            };
+            let Some(path_str) = path.to_str() else {
+                warn!("loudness: non-UTF-8 path {path:?}; its tracks stay unmeasured");
+                return None;
+            };
+            let buffer = create_sparse_buffer(size);
+            let error_path = path.clone();
+            Box::new(LocalReader::new(path_str)).start_reading(
+                buffer.clone(),
+                Box::new(move |error| {
+                    warn!("loudness: streaming {error_path:?} failed: {error}");
+                }),
+            );
+            Some(buffer)
         });
     }
 
@@ -269,7 +291,7 @@ pub(super) async fn measure_loudness(
         let mut decode_segments = Vec::new();
         let mut missing_segment = false;
         for segment in &segments {
-            let Some(bytes) = file_bytes.get(&segment.file_id).and_then(|b| b.clone()) else {
+            let Some(buffer) = file_buffers.get(&segment.file_id).and_then(|b| b.clone()) else {
                 warn!(
                     "loudness: cannot read segment source file {} for track {}; track stays unmeasured",
                     segment.file_id,
@@ -279,7 +301,7 @@ pub(super) async fn measure_loudness(
                 break;
             };
             decode_segments.push((
-                bytes,
+                buffer,
                 segment.start_sample as u64,
                 segment.end_sample.map(|sample| sample as u64),
             ));
@@ -310,12 +332,14 @@ pub(super) async fn measure_loudness(
             // A decode that fails outright is broken, but so is one that returns
             // Ok over fatal errors or a truncated body — `broken_reason` reads the
             // error count and frame shortfall the sink captured.
-            for (bytes, start_sample, end_sample) in decode_segments {
+            let never_cancelled = Arc::new(std::sync::atomic::AtomicBool::new(false));
+            for (buffer, start_sample, end_sample) in decode_segments {
                 if let Err(e) = crate::audio_codec::decode_audio_to_sink(
-                    &bytes,
+                    buffer,
                     Some(start_sample),
                     end_sample,
                     &mut sink,
+                    never_cancelled.clone(),
                 ) {
                     warn!(
                         "loudness: decode failed for track {}: {e}; track stays unmeasured",
@@ -473,9 +497,23 @@ mod tests {
         let end = 26 * sr;
         let total = end - start;
 
+        // Pre-filled buffers: the decode never waits on a fill, so the test
+        // exercises the window/verify logic, not streaming.
+        let buffer_of = |bytes: &[u8]| {
+            let buffer = create_sparse_buffer(bytes.len() as u64);
+            buffer.append_at(0, bytes);
+            buffer
+        };
+        let never = || Arc::new(std::sync::atomic::AtomicBool::new(false));
+
         let mut sink = sink_with(Some(total), 0, 0);
-        let ok =
-            crate::audio_codec::decode_audio_to_sink(&clean, Some(start), Some(end), &mut sink);
+        let ok = crate::audio_codec::decode_audio_to_sink(
+            buffer_of(&clean),
+            Some(start),
+            Some(end),
+            &mut sink,
+            never(),
+        );
         assert!(ok.is_ok(), "intact decode should succeed: {ok:?}");
         assert!(
             sink.broken_reason().is_none(),
@@ -487,8 +525,13 @@ mod tests {
         // audio, so the decode errors out or yields far too few frames.
         let truncated = &clean[..clean.len() * 6 / 10];
         let mut sink = sink_with(Some(total), 0, 0);
-        let res =
-            crate::audio_codec::decode_audio_to_sink(truncated, Some(start), Some(end), &mut sink);
+        let res = crate::audio_codec::decode_audio_to_sink(
+            buffer_of(truncated),
+            Some(start),
+            Some(end),
+            &mut sink,
+            never(),
+        );
         assert!(
             res.is_err() || sink.broken_reason().is_some(),
             "truncated fixture window must be flagged broken (decode {res:?}, decoded {} of {total})",

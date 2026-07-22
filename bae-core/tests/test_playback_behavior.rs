@@ -3298,7 +3298,8 @@ async fn test_cue_flac_seek() {
     let reference_data =
         std::fs::read(fixture_dir.join("02 Test Artist - Track Two (White Noise).flac"))
             .expect("read reference");
-    let reference = decode_audio(&reference_data, None, None).expect("decode reference");
+    let reference =
+        decode_audio(buffer_from(&reference_data), None, None).expect("decode reference");
     let channels = reference.channels as usize;
     let sample_rate = reference.sample_rate;
     let reference_f32 = samples_as_f32(&reference);
@@ -3415,7 +3416,8 @@ async fn test_direct_play_skips_pregap_cue_flac() {
     let reference_data =
         std::fs::read(fixture_dir.join("02 Test Artist - Track Two (White Noise).flac"))
             .expect("read reference");
-    let reference = decode_audio(&reference_data, None, None).expect("decode reference");
+    let reference =
+        decode_audio(buffer_from(&reference_data), None, None).expect("decode reference");
     let channels = reference.channels as usize;
     let sample_rate = reference.sample_rate;
     let reference_f32 = samples_as_f32(&reference);
@@ -3877,7 +3879,8 @@ async fn test_cue_flac_seek_respects_track_end_boundary() {
     let reference_data =
         std::fs::read(fixture_dir.join("02 Test Artist - Track Two (White Noise).flac"))
             .expect("read reference");
-    let reference = decode_audio(&reference_data, None, None).expect("decode reference");
+    let reference =
+        decode_audio(buffer_from(&reference_data), None, None).expect("decode reference");
     let channels = reference.channels as usize;
     let sample_rate = reference.sample_rate;
     let reference_f32 = samples_as_f32(&reference);
@@ -6285,4 +6288,12 @@ async fn seek_within_the_last_track_over_remote_cloud() {
     wait_for_position_advance(&mut playback.progress_rx)
         .await
         .expect("audio must keep flowing after the seek over a real ranged cloud read");
+}
+
+/// A sparse buffer pre-filled with the whole byte slice, so a decode exercises
+/// the window logic without waiting on a fill.
+fn buffer_from(bytes: &[u8]) -> bae_core::playback::SharedSparseBuffer {
+    let buffer = bae_core::playback::sparse_buffer::create_sparse_buffer(bytes.len() as u64);
+    buffer.append_at(0, bytes);
+    buffer
 }

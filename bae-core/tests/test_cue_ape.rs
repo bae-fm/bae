@@ -233,7 +233,7 @@ async fn test_cue_ape_track2_samples_match_xld_reference() {
     let ape_data = std::fs::read(&ape_path).expect("read ape");
 
     // Decode the full APE file (no seeking -- APE frames are stateful)
-    let full_decoded = decode_audio(&ape_data, None, None).expect("decode full APE");
+    let full_decoded = decode_audio(buffer_from(&ape_data), None, None).expect("decode full APE");
     let channels = full_decoded.channels as usize;
     let sample_rate = full_decoded.sample_rate;
 
@@ -251,7 +251,7 @@ async fn test_cue_ape_track2_samples_match_xld_reference() {
 
     // Decode XLD reference
     let ref_data = std::fs::read(&ref_path).expect("read reference");
-    let reference = decode_audio(&ref_data, None, None).expect("decode reference");
+    let reference = decode_audio(buffer_from(&ref_data), None, None).expect("decode reference");
 
     assert_eq!(reference.sample_rate, sample_rate, "sample rate mismatch");
     assert_eq!(
@@ -557,7 +557,8 @@ async fn test_cue_ape_track_playback_matches_reference() {
             .join("cue_ape");
         let reference_data =
             std::fs::read(fixture_dir.join(reference_file)).expect("read reference");
-        let reference = decode_audio(&reference_data, None, None).expect("decode reference");
+        let reference =
+            decode_audio(buffer_from(&reference_data), None, None).expect("decode reference");
         let channels = reference.channels as usize;
         let sample_rate = reference.sample_rate;
         let reference_f32 = samples_as_f32(&reference);
@@ -656,7 +657,8 @@ async fn test_cue_ape_seek() {
         .join("cue_ape");
     let reference_data =
         std::fs::read(fixture_dir.join("02 Test Artist - Track Two.flac")).expect("read reference");
-    let reference = decode_audio(&reference_data, None, None).expect("decode reference");
+    let reference =
+        decode_audio(buffer_from(&reference_data), None, None).expect("decode reference");
     let channels = reference.channels as usize;
     let sample_rate = reference.sample_rate;
     let reference_f32 = samples_as_f32(&reference);
@@ -830,7 +832,8 @@ async fn test_cue_ape_auto_advance_no_replay() {
         .join("cue_ape");
     let reference_data =
         std::fs::read(fixture_dir.join("02 Test Artist - Track Two.flac")).expect("read reference");
-    let reference = decode_audio(&reference_data, None, None).expect("decode reference");
+    let reference =
+        decode_audio(buffer_from(&reference_data), None, None).expect("decode reference");
     let channels = reference.channels as usize;
     let sample_rate = reference.sample_rate;
 
@@ -939,7 +942,8 @@ async fn test_cue_ape_next_track() {
         .join("cue_ape");
     let reference_data =
         std::fs::read(fixture_dir.join("02 Test Artist - Track Two.flac")).expect("read reference");
-    let reference = decode_audio(&reference_data, None, None).expect("decode reference");
+    let reference =
+        decode_audio(buffer_from(&reference_data), None, None).expect("decode reference");
     let channels = reference.channels as usize;
     let sample_rate = reference.sample_rate;
     let reference_f32 = samples_as_f32(&reference);
@@ -1267,4 +1271,12 @@ async fn test_multi_disc_cue_ape_remote_pin() {
 #[tokio::test]
 async fn test_multi_disc_cue_ape_remote_unpin() {
     assert_multi_disc_cue_ape_per_disc_mapping(StorageMode::Remote, false).await;
+}
+
+/// A sparse buffer pre-filled with the whole byte slice, so a decode exercises
+/// the window logic without waiting on a fill.
+fn buffer_from(bytes: &[u8]) -> bae_core::playback::SharedSparseBuffer {
+    let buffer = bae_core::playback::sparse_buffer::create_sparse_buffer(bytes.len() as u64);
+    buffer.append_at(0, bytes);
+    buffer
 }
