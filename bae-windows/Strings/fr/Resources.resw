@@ -118,6 +118,8 @@
   <data name="menu.change_cover" xml:space="preserve"><value>Changer la pochette…</value></data>
   <data name="menu.delete" xml:space="preserve"><value>Supprimer…</value></data>
   <data name="menu.export" xml:space="preserve"><value>Exporter…</value></data>
+  <data name="menu.save_as" xml:space="preserve"><value>Enregistrer sous…</value></data>
+  <data name="save.title" xml:space="preserve"><value>Enregistrer sous</value></data>
   <data name="menu.play" xml:space="preserve"><value>Lire</value></data>
   <data name="menu.play_next" xml:space="preserve"><value>Lire à la suite</value></data>
   <data name="menu.set_primary" xml:space="preserve"><value>Définir comme édition principale</value></data>
@@ -247,7 +249,6 @@
   <data name="sync.reconnect" xml:space="preserve"><value>Reconnecter</value></data>
   <data name="sync.synced" xml:space="preserve"><value>synchronisé {time}</value></data>
   <data name="sync.syncing" xml:space="preserve"><value>synchronisation…</value></data>
-  <data name="track.export.original" xml:space="preserve"><value>Original</value></data>
   <data name="track.export.prepare_failed" xml:space="preserve"><value>Impossible de préparer l’export.</value></data>
   <data name="welcome.choose_library" xml:space="preserve"><value>choisir une bibliothèque</value></data>
   <data name="welcome.join_library" xml:space="preserve"><value>rejoindre une bibliothèque</value></data>
@@ -301,7 +302,6 @@
   <data name="work.open_failed" xml:space="preserve"><value>Impossible d’ouvrir les détails de l’œuvre</value></data>
   <data name="work.count" xml:space="preserve"><value>{count} œuvres</value></data>
   <data name="album.count" xml:space="preserve"><value>{count} albums</value></data>
-  <data name="settings.export.label" xml:space="preserve"><value>Exporter</value></data>
   <data name="settings.export.default_track_format" xml:space="preserve"><value>Format de piste par défaut</value></data>
   <data name="settings.export.default_release_format" xml:space="preserve"><value>Format de sortie par défaut</value></data>
   <data name="settings.export.presets" xml:space="preserve"><value>Préréglages</value></data>
@@ -393,6 +393,7 @@
   <data name="nowplaying.show_elapsed" xml:space="preserve"><value>afficher le temps écoulé</value></data>
   <data name="export.title" xml:space="preserve"><value>exportation</value></data>
   <data name="export.state.exporting" xml:space="preserve"><value>exportation {percent}%</value></data>
+  <data name="export.state.saving" xml:space="preserve"><value>enregistrement {percent}%</value></data>
   <data name="import.documents" xml:space="preserve"><value>Documents</value></data>
   <data name="import.document.read_failed" xml:space="preserve"><value>Impossible de lire {name}: {error}</value></data>
   <data name="libraries.reveal" xml:space="preserve"><value>afficher dans l'Explorateur de fichiers</value></data>

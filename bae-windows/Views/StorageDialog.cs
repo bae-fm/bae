@@ -581,13 +581,22 @@ internal sealed class StorageDialog
                 return;
             }
 
+            static OutputKind OutputKindOf(BridgeExportOp op) =>
+                op.Kind is BridgeOutputKind.Save ? OutputKind.Save : OutputKind.Export;
+
             string StateLabel(BridgeExportOp op) => op.State switch
             {
                 BridgeExportState.Active active => Loc.Chrome(
-                    "export.state.exporting", "percent", ExportQueueModel.ClampPercent((int)active.Percent)),
-                BridgeExportState.Failed => Loc.Chrome(ExportQueueModel.StateKey(ExportRowKind.Failed)),
-                _ => Loc.Chrome(ExportQueueModel.StateKey(ExportRowKind.Queued)),
+                    ExportQueueModel.StateKey(ExportRowKind.Active, OutputKindOf(op)),
+                    "percent", ExportQueueModel.ClampPercent((int)active.Percent)),
+                BridgeExportState.Failed => Loc.Chrome(
+                    ExportQueueModel.StateKey(ExportRowKind.Failed, OutputKindOf(op))),
+                _ => Loc.Chrome(ExportQueueModel.StateKey(ExportRowKind.Queued, OutputKindOf(op))),
             };
+
+            // A save row names its preset on the detail line; an export doesn't.
+            static string PresetSuffix(BridgeExportOp op) =>
+                op.Kind is BridgeOutputKind.Save save ? $" · {save.PresetName}" : string.Empty;
 
             // Header: a label (or "paused"), the count summary, Retry (only with
             // failures), and a pause/resume toggle — mirroring the downloads band.
@@ -642,7 +651,7 @@ internal sealed class StorageDialog
                 labelColumn.Children.Add(new TextBlock { Text = op.Title, TextWrapping = TextWrapping.Wrap });
                 var detail = new TextBlock
                 {
-                    Text = $"{Loc.Chrome("storage.files", "count", op.FileCount)} · {Loc.Bytes(op.TotalSize)} · {StateLabel(op)}",
+                    Text = $"{Loc.Chrome("storage.files", "count", op.FileCount)} · {Loc.Bytes(op.TotalSize)}{PresetSuffix(op)} · {StateLabel(op)}",
                     Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray),
                 };
                 // A failed export carries its error on the detail line's tooltip,

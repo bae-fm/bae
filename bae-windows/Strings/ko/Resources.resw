@@ -118,6 +118,8 @@
   <data name="menu.change_cover" xml:space="preserve"><value>커버 변경…</value></data>
   <data name="menu.delete" xml:space="preserve"><value>삭제…</value></data>
   <data name="menu.export" xml:space="preserve"><value>내보내기…</value></data>
+  <data name="menu.save_as" xml:space="preserve"><value>다른 이름으로 저장…</value></data>
+  <data name="save.title" xml:space="preserve"><value>다른 이름으로 저장</value></data>
   <data name="menu.play" xml:space="preserve"><value>재생</value></data>
   <data name="menu.play_next" xml:space="preserve"><value>다음에 재생</value></data>
   <data name="menu.set_primary" xml:space="preserve"><value>기본 릴리스로 설정</value></data>
@@ -247,7 +249,6 @@
   <data name="sync.reconnect" xml:space="preserve"><value>다시 연결</value></data>
   <data name="sync.synced" xml:space="preserve"><value>{time}에 동기화됨</value></data>
   <data name="sync.syncing" xml:space="preserve"><value>동기화 중…</value></data>
-  <data name="track.export.original" xml:space="preserve"><value>원본</value></data>
   <data name="track.export.prepare_failed" xml:space="preserve"><value>내보내기를 준비할 수 없습니다.</value></data>
   <data name="welcome.choose_library" xml:space="preserve"><value>라이브러리 선택</value></data>
   <data name="welcome.join_library" xml:space="preserve"><value>라이브러리 참여</value></data>
@@ -301,7 +302,6 @@
   <data name="work.open_failed" xml:space="preserve"><value>작품 세부 정보를 열 수 없음</value></data>
   <data name="work.count" xml:space="preserve"><value>작품 {count}개</value></data>
   <data name="album.count" xml:space="preserve"><value>앨범 {count}개</value></data>
-  <data name="settings.export.label" xml:space="preserve"><value>내보내기</value></data>
   <data name="settings.export.default_track_format" xml:space="preserve"><value>기본 트랙 형식</value></data>
   <data name="settings.export.default_release_format" xml:space="preserve"><value>기본 릴리스 형식</value></data>
   <data name="settings.export.presets" xml:space="preserve"><value>프리셋</value></data>
@@ -393,6 +393,7 @@
   <data name="nowplaying.show_elapsed" xml:space="preserve"><value>경과 시간 표시</value></data>
   <data name="export.title" xml:space="preserve"><value>내보내는 중</value></data>
   <data name="export.state.exporting" xml:space="preserve"><value>내보내는 중 {percent}%</value></data>
+  <data name="export.state.saving" xml:space="preserve"><value>저장 중 {percent}%</value></data>
   <data name="import.documents" xml:space="preserve"><value>문서</value></data>
   <data name="import.document.read_failed" xml:space="preserve"><value>{name}을(를) 읽을 수 없음: {error}</value></data>
   <data name="libraries.reveal" xml:space="preserve"><value>파일 탐색기에서 보기</value></data>

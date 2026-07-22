@@ -1,6 +1,5 @@
 use crate::library::manager::ExportTrackPlan;
 use crate::playback::{DecodedPcm, PlaybackError};
-use crate::util::content_type::ContentType;
 use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -133,53 +132,6 @@ impl Drop for OutputPathsGuard {
 }
 
 impl ExportService {
-    pub async fn export_original_track(
-        mut plan: ExportTrackPlan,
-        output_path: &Path,
-    ) -> Result<(), String> {
-        let format = &plan.audio_meta.audio_format;
-        let whole_segment = plan.audio_window.segments.len() == 1
-            && plan.audio_window.segments[0].source_start_sample == 0
-            && plan.audio_window.segments[0].source_end_sample.is_none()
-            && plan.audio_window.leading_silence_samples == 0
-            && plan.audio_window.trailing_silence_samples == 0;
-        let output_path_owned = output_path.to_path_buf();
-        if whole_segment {
-            let segment_file_id = plan.audio_window.segments[0].file_id.clone();
-            let audio_bytes = std::mem::take(&mut plan.audio_bytes)
-                .into_iter()
-                .find(|audio| audio.file_id == segment_file_id)
-                .map(|audio| audio.bytes)
-                .ok_or_else(|| format!("missing export bytes for file {segment_file_id}"))?;
-            tokio::task::spawn_blocking(move || -> Result<(), String> {
-                let mut output_guard = OutputPathsGuard::new(vec![output_path_owned.clone()]);
-                std::fs::write(&output_path_owned, &audio_bytes)
-                    .map_err(|e| format!("Failed to write original track file: {e}"))?;
-                output_guard.commit();
-                Ok(())
-            })
-            .await
-            .map_err(|e| format!("original export task join error: {e}"))??;
-            return Ok(());
-        }
-
-        if !is_lossless_original_source(&format.content_type) {
-            return Err(format!(
-                "Original export cannot split {} without transcoding",
-                format.content_type.display_name()
-            ));
-        }
-
-        Self::export_track_with_codec(
-            plan,
-            output_path,
-            crate::config::ExportPresetCodec::Flac {
-                bit_depth: crate::config::ExportBitDepth::Source,
-            },
-        )
-        .await
-    }
-
     /// Export a single track to the given format.
     ///
     /// For one-file-per-track: decodes and re-encodes to the target format.
@@ -619,18 +571,6 @@ fn non_negative_samples(samples: Option<i64>) -> Result<u64, String> {
         }
         None => Ok(0),
     }
-}
-
-fn is_lossless_original_source(content_type: &ContentType) -> bool {
-    matches!(
-        content_type,
-        ContentType::Flac
-            | ContentType::Ape
-            | ContentType::Alac
-            | ContentType::Pcm
-            | ContentType::WavPack
-            | ContentType::Dsd
-    )
 }
 
 /// Write every known metadata tag that describes this exported file. Cover art

@@ -17,21 +17,59 @@ impl LibraryManager {
     // locality-aware read) and writes to a user directory, so a Remote release
     // stays Remote and no gate flips, external ref changes, or cloud tombstones.
 
-    /// Enqueue a release to export its files verbatim to `target_dir`. Skips ids
-    /// already in the queue (any state); otherwise resolves its title /
-    /// file_count / total_size from its storage summary so the Exporting pane can
-    /// render the row without a re-query. Wakes the parked worker and emits a
-    /// fresh `ExportQueueChanged`.
+    /// Enqueue a release to export its files verbatim to `target_dir` — the
+    /// inverse of import, reconstructing the imported file set byte-for-byte.
     pub async fn enqueue_export(
         &self,
         release_id: &str,
         target_dir: std::path::PathBuf,
-        selection: crate::config::ExportSelection,
+    ) -> Result<(), LibraryError> {
+        self.enqueue_output(release_id, target_dir, crate::library::OutputKind::Export)
+            .await
+    }
+
+    /// Enqueue a release-level save to `target_dir` under the preset named by
+    /// `preset_id`. The preset is resolved (must exist and apply to release
+    /// saves) and captured whole into the queue payload, so a later config edit
+    /// or delete can't change or break this queued save.
+    pub async fn enqueue_release_save(
+        &self,
+        release_id: &str,
+        target_dir: std::path::PathBuf,
+        preset_id: &str,
+    ) -> Result<(), LibraryError> {
+        let preset = self
+            .export_presets()
+            .into_iter()
+            .find(|preset| preset.id == preset_id && preset.applies_to_release)
+            .ok_or_else(|| {
+                LibraryError::Import(format!(
+                    "export preset {preset_id} is not available for release save"
+                ))
+            })?;
+        self.enqueue_output(
+            release_id,
+            target_dir,
+            crate::library::OutputKind::Save { preset },
+        )
+        .await
+    }
+
+    /// Shared enqueue body for both release-level outputs. Skips ids already in
+    /// the queue (any state); otherwise resolves its title / file_count /
+    /// total_size from its storage summary so the Exporting pane can render the
+    /// row without a re-query. Wakes the parked worker and emits a fresh
+    /// `ExportQueueChanged`.
+    async fn enqueue_output(
+        &self,
+        release_id: &str,
+        target_dir: std::path::PathBuf,
+        kind: crate::library::OutputKind,
     ) -> Result<(), LibraryError> {
         // The target dir round-trips back to the Exporting pane as a string (the
         // snapshot renders `target_dir` for each row), so it must be valid UTF-8.
         // Fail loud here rather than let a non-UTF-8 path be lossily rewritten into
-        // a different directory the export would then write to.
+        // a different directory the output would then write to.
         target_dir.to_str().ok_or_else(|| {
             LibraryError::Import(format!(
                 "export target directory is not valid UTF-8: {}",
@@ -40,7 +78,7 @@ impl LibraryManager {
         })?;
 
         if self.export_queue.contains(release_id) {
-            debug!("enqueue_export: {release_id} already queued, skipping");
+            debug!("enqueue_output: {release_id} already queued, skipping");
             return Ok(());
         }
         let summary = self
@@ -56,10 +94,7 @@ impl LibraryManager {
             file_count: summary.file_count,
             total_size: summary.total_size,
             created_at: self.clock.now().timestamp_millis(),
-            payload: crate::library::export_snapshot::ExportRequest {
-                target_dir,
-                selection,
-            },
+            payload: crate::library::export_snapshot::ExportRequest { target_dir, kind },
             state: crate::library::ExportState::Queued,
         };
         if self.export_queue.enqueue(op) {
@@ -109,11 +144,25 @@ impl LibraryManager {
     /// per-release percent and re-emits the snapshot as it writes each file.
     pub(super) async fn run_export_worker(&self) {
         use crate::library::release_queue::{run_serial_worker, RunningOp};
+        use crate::library::OutputKind;
+        use std::sync::atomic::{AtomicBool, Ordering};
+
+        // The completion telemetry differs by kind (export vs save), but the
+        // `on_done` hook only receives the release id. The worker is strictly
+        // serial — start, then on_done, never interleaved — so the running op's
+        // kind is stashed here by `start` and read back by `on_done`. An atomic
+        // (not a `Cell`) so the borrowing closures stay `Send`, which the spawned
+        // worker future requires.
+        let running_is_save = AtomicBool::new(false);
 
         run_serial_worker(
             &self.export_queue,
             "Export",
-            |op| async move {
+            |op| {
+                running_is_save.store(
+                    matches!(op.payload.kind, OutputKind::Save { .. }),
+                    Ordering::Relaxed,
+                );
                 let release_id = op.release_id.clone();
                 let worker = self.clone();
                 let task = self.runtime_handle.spawn(async move {
@@ -122,27 +171,34 @@ impl LibraryManager {
                         .await
                 });
                 let abort = task.abort_handle();
-                let outcome = async move {
-                    match task.await {
-                        Ok(result) => result,
-                        // Aborted by a cancel, which also removed the entry — the
-                        // driver's `contains` check is what reads that as a cancel.
-                        Err(join_error) if join_error.is_cancelled() => Err(LibraryError::Import(
-                            format!("export of {release_id} was cancelled"),
-                        )),
-                        Err(join_error) => Err(LibraryError::Import(format!(
-                            "export task for {release_id} panicked: {join_error}"
-                        ))),
-                    }
-                };
-                Ok((0, RunningOp { abort, outcome }))
+                async move {
+                    let outcome = async move {
+                        match task.await {
+                            Ok(result) => result,
+                            // Aborted by a cancel, which also removed the entry — the
+                            // driver's `contains` check is what reads that as a cancel.
+                            Err(join_error) if join_error.is_cancelled() => {
+                                Err(LibraryError::Import(format!(
+                                    "export of {release_id} was cancelled"
+                                )))
+                            }
+                            Err(join_error) => Err(LibraryError::Import(format!(
+                                "export task for {release_id} panicked: {join_error}"
+                            ))),
+                        }
+                    };
+                    Ok((0, RunningOp { abort, outcome }))
+                }
             },
             || self.emit_export_queue_changed(),
             |release_id, result| {
                 let release_id = crate::diagnostics::LocalId(release_id.to_string());
-                self.diagnostics().event(match result {
-                    Ok(()) => TelemetryEvent::ExportCompleted { release_id },
-                    Err(_) => TelemetryEvent::ExportFailed { release_id },
+                let is_save = running_is_save.load(Ordering::Relaxed);
+                self.diagnostics().event(match (is_save, result) {
+                    (false, Ok(())) => TelemetryEvent::ExportCompleted { release_id },
+                    (false, Err(_)) => TelemetryEvent::ExportFailed { release_id },
+                    (true, Ok(())) => TelemetryEvent::SaveCompleted { release_id },
+                    (true, Err(_)) => TelemetryEvent::SaveFailed { release_id },
                 });
             },
         )
@@ -185,21 +241,16 @@ impl LibraryManager {
                 .join(format!(".{folder}.export-{release_id}")),
         )?;
 
-        let files = self.database.get_files_for_release(release_id).await?;
-        let selection_kind = match &request.selection {
-            crate::config::ExportSelection::Original => "original",
-            crate::config::ExportSelection::Preset { .. } => "preset",
-        };
-        info!(
-            release_id,
-            folder = folder.as_str(),
-            file_count = files.len(),
-            selection = selection_kind,
-            "Exporting release"
-        );
-
-        match request.selection {
-            crate::config::ExportSelection::Original => {
+        match request.kind {
+            crate::library::OutputKind::Export => {
+                let files = self.database.get_files_for_release(release_id).await?;
+                info!(
+                    release_id,
+                    folder = folder.as_str(),
+                    file_count = files.len(),
+                    kind = "export",
+                    "Writing release output"
+                );
                 let total = files.len();
                 for (index, file) in files.iter().enumerate() {
                     self.export_one_file(file, staging.path()).await?;
@@ -207,8 +258,15 @@ impl LibraryManager {
                     self.set_export_progress(release_id, percent);
                 }
             }
-            crate::config::ExportSelection::Preset { preset_id } => {
-                self.export_release_tracks_to_dir(release_id, &preset_id, staging.path())
+            crate::library::OutputKind::Save { preset } => {
+                info!(
+                    release_id,
+                    folder = folder.as_str(),
+                    kind = "save",
+                    preset = preset.id.as_str(),
+                    "Writing release output"
+                );
+                self.export_release_tracks_to_dir(release_id, preset, staging.path())
                     .await?;
             }
         }
@@ -243,21 +301,21 @@ impl LibraryManager {
         Ok(())
     }
 
-    /// Export a release verbatim to `target_dir`, bypassing the export
-    /// queue. Production always goes through `enqueue_export`; only a test
-    /// helper for exercising the copy directly.
+    /// Write a release's output to `target_dir`, bypassing the output queue.
+    /// Production always goes through `enqueue_export` / `enqueue_release_save`;
+    /// only a test helper for exercising the write directly.
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn export_release(
         &self,
         release_id: &str,
         target_dir: &Path,
-        selection: crate::config::ExportSelection,
+        kind: crate::library::OutputKind,
     ) -> Result<(), LibraryError> {
         self.export_release_to_dir(
             release_id,
             crate::library::export_snapshot::ExportRequest {
                 target_dir: target_dir.to_path_buf(),
-                selection,
+                kind,
             },
         )
         .await
@@ -376,113 +434,64 @@ impl LibraryManager {
         ))
     }
 
-    pub async fn export_track_extension(
-        &self,
-        track_id: &str,
-        selection: crate::config::ExportSelection,
-    ) -> Result<String, LibraryError> {
-        match selection {
-            crate::config::ExportSelection::Original => {
-                let meta = TrackAudioMeta::resolve(&self.database, track_id).await?;
-                Ok(meta.audio_format.content_type.file_extension().to_string())
-            }
-            crate::config::ExportSelection::Preset { preset_id } => {
-                let preset = self
-                    .export_presets()
-                    .into_iter()
-                    .find(|preset| preset.id == preset_id && preset.applies_to_track)
-                    .ok_or_else(|| {
-                        LibraryError::Import(format!(
-                            "export preset {preset_id} is not available for track export"
-                        ))
-                    })?;
-                Ok(preset.codec.extension().to_string())
-            }
-        }
-    }
-
-    pub async fn export_track(
+    /// Save one track to `output_path` under the preset named by `preset_id`
+    /// (must exist and apply to track saves). The source audio is decoded and
+    /// re-encoded to the preset's codec, tagged from bae's metadata, and cover
+    /// art embedded — always a constructed file, never a verbatim copy.
+    pub async fn save_track(
         &self,
         track_id: &str,
         output_path: &Path,
-        selection: crate::config::ExportSelection,
+        preset_id: &str,
     ) -> Result<(), LibraryError> {
-        match selection {
-            crate::config::ExportSelection::Original => {
-                let mut plan = self.get_export_track_plan(track_id).await?;
-                plan.audio_window = export_window_for_track_file(
-                    &plan.audio_meta,
-                    None,
-                    crate::config::ExportPregapPlacement::Exclude,
-                    false,
-                );
-                ExportService::export_original_track(plan, output_path)
-                    .await
-                    .map_err(LibraryError::Import)
-            }
-            crate::config::ExportSelection::Preset { preset_id } => {
-                let preset = self
-                    .export_presets()
-                    .into_iter()
-                    .find(|preset| preset.id == preset_id && preset.applies_to_track)
-                    .ok_or_else(|| {
-                        LibraryError::Import(format!(
-                            "export preset {preset_id} is not available for track export"
-                        ))
-                    })?;
-                let mut plan = self.get_export_track_plan(track_id).await?;
-                let release_tracks = self
-                    .database
-                    .get_tracks_for_release(&plan.audio_meta.release.id)
-                    .await?;
-                let track_index = release_tracks
-                    .iter()
-                    .position(|track| track.id == plan.audio_meta.track.id)
-                    .ok_or_else(|| {
-                        LibraryError::Import(format!(
-                            "track {} is not ordered in release {}",
-                            plan.audio_meta.track.id, plan.audio_meta.release.id
-                        ))
-                    })?;
-                let next_meta = if track_index + 1 < release_tracks.len() {
-                    Some(
-                        TrackAudioMeta::resolve(
-                            &self.database,
-                            &release_tracks[track_index + 1].id,
-                        )
-                        .await?,
-                    )
-                } else {
-                    None
-                };
-                plan.audio_window = export_window_for_track_file(
-                    &plan.audio_meta,
-                    next_meta.as_ref(),
-                    preset.pregap_placement,
-                    track_index == 0,
-                );
-                ExportService::export_track(plan, output_path, preset)
-                    .await
-                    .map_err(LibraryError::Import)
-            }
-        }
+        let preset = self
+            .export_presets()
+            .into_iter()
+            .find(|preset| preset.id == preset_id && preset.applies_to_track)
+            .ok_or_else(|| {
+                LibraryError::Import(format!(
+                    "export preset {preset_id} is not available for track save"
+                ))
+            })?;
+        let mut plan = self.get_export_track_plan(track_id).await?;
+        let release_tracks = self
+            .database
+            .get_tracks_for_release(&plan.audio_meta.release.id)
+            .await?;
+        let track_index = release_tracks
+            .iter()
+            .position(|track| track.id == plan.audio_meta.track.id)
+            .ok_or_else(|| {
+                LibraryError::Import(format!(
+                    "track {} is not ordered in release {}",
+                    plan.audio_meta.track.id, plan.audio_meta.release.id
+                ))
+            })?;
+        let next_meta = if track_index + 1 < release_tracks.len() {
+            Some(
+                TrackAudioMeta::resolve(&self.database, &release_tracks[track_index + 1].id)
+                    .await?,
+            )
+        } else {
+            None
+        };
+        plan.audio_window = export_window_for_track_file(
+            &plan.audio_meta,
+            next_meta.as_ref(),
+            preset.pregap_placement,
+            track_index == 0,
+        );
+        ExportService::export_track(plan, output_path, preset)
+            .await
+            .map_err(LibraryError::Import)
     }
 
     async fn export_release_tracks_to_dir(
         &self,
         release_id: &str,
-        preset_id: &str,
+        preset: crate::config::ExportPreset,
         staging_dir: &std::path::Path,
     ) -> Result<(), LibraryError> {
-        let preset = self
-            .export_presets()
-            .into_iter()
-            .find(|preset| preset.id == preset_id && preset.applies_to_release)
-            .ok_or_else(|| {
-                LibraryError::Import(format!(
-                    "export preset {preset_id} is not available for release export"
-                ))
-            })?;
         let tracks = self.database.get_tracks_for_release(release_id).await?;
         let total = tracks.len();
         if preset.pregap_placement == crate::config::ExportPregapPlacement::SingleFileWithCue {

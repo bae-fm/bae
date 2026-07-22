@@ -118,6 +118,8 @@
   <data name="menu.change_cover" xml:space="preserve"><value>Cambia copertina…</value></data>
   <data name="menu.delete" xml:space="preserve"><value>Elimina…</value></data>
   <data name="menu.export" xml:space="preserve"><value>Esporta…</value></data>
+  <data name="menu.save_as" xml:space="preserve"><value>Salva con nome…</value></data>
+  <data name="save.title" xml:space="preserve"><value>Salva con nome</value></data>
   <data name="menu.play" xml:space="preserve"><value>Riproduci</value></data>
   <data name="menu.play_next" xml:space="preserve"><value>Riproduci dopo</value></data>
   <data name="menu.set_primary" xml:space="preserve"><value>Imposta come pubblicazione principale</value></data>
@@ -247,7 +249,6 @@
   <data name="sync.reconnect" xml:space="preserve"><value>Riconnetti</value></data>
   <data name="sync.synced" xml:space="preserve"><value>sincronizzato {time}</value></data>
   <data name="sync.syncing" xml:space="preserve"><value>sincronizzazione…</value></data>
-  <data name="track.export.original" xml:space="preserve"><value>Originale</value></data>
   <data name="track.export.prepare_failed" xml:space="preserve"><value>Impossibile preparare l'esportazione.</value></data>
   <data name="welcome.choose_library" xml:space="preserve"><value>scegli una libreria</value></data>
   <data name="welcome.join_library" xml:space="preserve"><value>unisciti a una libreria</value></data>
@@ -301,7 +302,6 @@
   <data name="work.open_failed" xml:space="preserve"><value>Impossibile aprire il dettaglio dell'opera</value></data>
   <data name="work.count" xml:space="preserve"><value>{count} opere</value></data>
   <data name="album.count" xml:space="preserve"><value>{count} album</value></data>
-  <data name="settings.export.label" xml:space="preserve"><value>Esporta</value></data>
   <data name="settings.export.default_track_format" xml:space="preserve"><value>Formato brano predefinito</value></data>
   <data name="settings.export.default_release_format" xml:space="preserve"><value>Formato pubblicazione predefinito</value></data>
   <data name="settings.export.presets" xml:space="preserve"><value>Preset</value></data>
@@ -393,6 +393,7 @@
   <data name="nowplaying.show_elapsed" xml:space="preserve"><value>mostra il tempo trascorso</value></data>
   <data name="export.title" xml:space="preserve"><value>esportazione</value></data>
   <data name="export.state.exporting" xml:space="preserve"><value>esportazione {percent}%</value></data>
+  <data name="export.state.saving" xml:space="preserve"><value>salvataggio {percent}%</value></data>
   <data name="import.documents" xml:space="preserve"><value>Documenti</value></data>
   <data name="import.document.read_failed" xml:space="preserve"><value>Impossibile leggere {name}: {error}</value></data>
   <data name="libraries.reveal" xml:space="preserve"><value>mostra in Esplora file</value></data>

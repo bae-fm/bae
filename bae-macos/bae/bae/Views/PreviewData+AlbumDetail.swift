@@ -77,6 +77,7 @@
                 onReIdentify: {},
                 onManage: {},
                 onExportRelease: {},
+                onSaveReleaseAs: {},
                 onSetPrimaryRelease: {},
                 onDeleteRelease: {},
                 onExportTrack: { _ in },

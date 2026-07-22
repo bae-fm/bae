@@ -17,7 +17,7 @@ pub use download_snapshot::{
 };
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use export::ExportService;
-pub use export_snapshot::{ExportOp, ExportProgress, ExportSnapshot, ExportState};
+pub use export_snapshot::{ExportOp, ExportProgress, ExportSnapshot, ExportState, OutputKind};
 pub use manager::*;
 pub use outbox_snapshot::{
     DeleteOp, OutboxSnapshot, UploadActivity, UploadFileOp, UploadProgress, UploadReleaseGroup,

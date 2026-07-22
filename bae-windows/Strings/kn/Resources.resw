@@ -118,6 +118,8 @@
   <data name="menu.change_cover" xml:space="preserve"><value>ಕವರ್ ಬದಲಿಸಿ…</value></data>
   <data name="menu.delete" xml:space="preserve"><value>ಅಳಿಸಿ…</value></data>
   <data name="menu.export" xml:space="preserve"><value>ರಫ್ತು…</value></data>
+  <data name="menu.save_as" xml:space="preserve"><value>ಹೀಗೆ ಉಳಿಸಿ…</value></data>
+  <data name="save.title" xml:space="preserve"><value>ಹೀಗೆ ಉಳಿಸಿ</value></data>
   <data name="menu.play" xml:space="preserve"><value>ಪ್ಲೇ</value></data>
   <data name="menu.play_next" xml:space="preserve"><value>ಮುಂದೆ ಪ್ಲೇ ಮಾಡಿ</value></data>
   <data name="menu.set_primary" xml:space="preserve"><value>ಪ್ರಾಥಮಿಕ ಬಿಡುಗಡೆ ಆಗಿ ಹೊಂದಿಸಿ</value></data>
@@ -247,7 +249,6 @@
   <data name="sync.reconnect" xml:space="preserve"><value>ಮತ್ತೆ ಸಂಪರ್ಕಿಸಿ</value></data>
   <data name="sync.synced" xml:space="preserve"><value>{time} ಸಿಂಕ್ ಆಗಿದೆ</value></data>
   <data name="sync.syncing" xml:space="preserve"><value>ಸಿಂಕ್ ಆಗುತ್ತಿದೆ…</value></data>
-  <data name="track.export.original" xml:space="preserve"><value>ಮೂಲ</value></data>
   <data name="track.export.prepare_failed" xml:space="preserve"><value>ರಫ್ತನ್ನು ಸಿದ್ಧಪಡಿಸಲಾಗಲಿಲ್ಲ.</value></data>
   <data name="welcome.choose_library" xml:space="preserve"><value>ಗ್ರಂಥಾಲಯ ಆಯ್ಕೆಮಾಡಿ</value></data>
   <data name="welcome.join_library" xml:space="preserve"><value>ಲೈಬ್ರರಿಗೆ ಸೇರಿ</value></data>
@@ -301,7 +302,6 @@
   <data name="work.open_failed" xml:space="preserve"><value>ಕೃತಿ ವಿವರ ತೆರೆಯಲಾಗಲಿಲ್ಲ</value></data>
   <data name="work.count" xml:space="preserve"><value>{count} ಕೃತಿಗಳು</value></data>
   <data name="album.count" xml:space="preserve"><value>{count} ಆಲ್ಬಮ್‌ಗಳು</value></data>
-  <data name="settings.export.label" xml:space="preserve"><value>ರಫ್ತು</value></data>
   <data name="settings.export.default_track_format" xml:space="preserve"><value>ಪೂರ್ವನಿಯೋಜಿತ ಹಾಡು ಸ್ವರೂಪ</value></data>
   <data name="settings.export.default_release_format" xml:space="preserve"><value>ಪೂರ್ವನಿಯೋಜಿತ ಬಿಡುಗಡೆ ಸ್ವರೂಪ</value></data>
   <data name="settings.export.presets" xml:space="preserve"><value>ಪ್ರೀಸೆಟ್‌ಗಳು</value></data>
@@ -393,6 +393,7 @@
   <data name="nowplaying.show_elapsed" xml:space="preserve"><value>ಕಳೆದ ಸಮಯವನ್ನು ತೋರಿಸಿ</value></data>
   <data name="export.title" xml:space="preserve"><value>ರಫ್ತು ಮಾಡಲಾಗುತ್ತಿದೆ</value></data>
   <data name="export.state.exporting" xml:space="preserve"><value>{percent}% ರಫ್ತು ಮಾಡಲಾಗುತ್ತಿದೆ</value></data>
+  <data name="export.state.saving" xml:space="preserve"><value>{percent}% ಉಳಿಸಲಾಗುತ್ತಿದೆ</value></data>
   <data name="import.documents" xml:space="preserve"><value>ದಾಖಲೆಗಳು</value></data>
   <data name="import.document.read_failed" xml:space="preserve"><value>{name} ಓದಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ: {error}</value></data>
   <data name="libraries.reveal" xml:space="preserve"><value>ಫೈಲ್ ಎಕ್ಸ್‌ಪ್ಲೋರರ್‌ನಲ್ಲಿ ತೋರಿಸಿ</value></data>

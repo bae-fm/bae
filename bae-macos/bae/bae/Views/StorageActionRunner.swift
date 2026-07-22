@@ -47,25 +47,45 @@ final class StorageActionRunner {
         self.uiStore = uiStore
     }
 
-    /// Export each release to a folder. The destination comes
-    /// from the export-location setting: a fixed folder enqueues straight away;
-    /// "ask each time" opens one `NSOpenPanel` and exports the whole batch into
-    /// the chosen folder. No folder chosen → nothing enqueued. Each enqueue joins
-    /// the in-memory export queue, which serializes the batch and reports progress
-    /// via the Exporting pane.
+    /// Export each release verbatim to a folder chosen once for the whole batch.
+    /// No folder chosen → nothing enqueued. Each enqueue joins the in-memory
+    /// output queue, which serializes the batch and reports progress via the
+    /// Exporting pane.
     func export(releaseIds: [String]) {
+        guard let targetDir = ExportTarget.resolveExportDir() else {
+            return
+        }
+        Task {
+            for releaseId in releaseIds {
+                do {
+                    try await exports.enqueueExport(releaseId, targetDir)
+                }
+                catch {
+                    uiStore.showError(error)
+                    return
+                }
+            }
+        }
+    }
+
+    /// Save each release under one preset + folder chosen once for the whole
+    /// batch. No folder chosen → nothing enqueued. Joins the same output queue as
+    /// export.
+    func saveAs(releaseIds: [String]) {
         guard
-            let target = ExportTarget.resolveRelease(config: configStore.config)
+            let target = ExportTarget.resolveReleaseSave(
+                config: configStore.config
+            )
         else {
             return
         }
         Task {
             for releaseId in releaseIds {
                 do {
-                    try await exports.enqueueExport(
+                    try await exports.enqueueReleaseSave(
                         releaseId,
                         target.targetDir,
-                        target.selection
+                        target.presetId
                     )
                 }
                 catch {

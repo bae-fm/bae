@@ -118,6 +118,8 @@
   <data name="menu.change_cover" xml:space="preserve"><value>Change cover…</value></data>
   <data name="menu.delete" xml:space="preserve"><value>Delete…</value></data>
   <data name="menu.export" xml:space="preserve"><value>Export…</value></data>
+  <data name="menu.save_as" xml:space="preserve"><value>Save As…</value></data>
+  <data name="save.title" xml:space="preserve"><value>Save As</value></data>
   <data name="menu.play" xml:space="preserve"><value>Play</value></data>
   <data name="menu.play_next" xml:space="preserve"><value>Play Next</value></data>
   <data name="menu.set_primary" xml:space="preserve"><value>Set as primary release</value></data>
@@ -247,7 +249,6 @@
   <data name="sync.reconnect" xml:space="preserve"><value>Reconnect</value></data>
   <data name="sync.synced" xml:space="preserve"><value>synced {time}</value></data>
   <data name="sync.syncing" xml:space="preserve"><value>syncing…</value></data>
-  <data name="track.export.original" xml:space="preserve"><value>Original</value></data>
   <data name="track.export.prepare_failed" xml:space="preserve"><value>Couldn't prepare the export.</value></data>
   <data name="welcome.choose_library" xml:space="preserve"><value>choose a library</value></data>
   <data name="welcome.join_library" xml:space="preserve"><value>join a library</value></data>
@@ -301,7 +302,6 @@
   <data name="work.open_failed" xml:space="preserve"><value>Could not open work detail</value></data>
   <data name="work.count" xml:space="preserve"><value>{count} Works</value></data>
   <data name="album.count" xml:space="preserve"><value>{count} Albums</value></data>
-  <data name="settings.export.label" xml:space="preserve"><value>Export</value></data>
   <data name="settings.export.default_track_format" xml:space="preserve"><value>Default track format</value></data>
   <data name="settings.export.default_release_format" xml:space="preserve"><value>Default release format</value></data>
   <data name="settings.export.presets" xml:space="preserve"><value>Presets</value></data>
@@ -393,6 +393,7 @@
   <data name="nowplaying.show_elapsed" xml:space="preserve"><value>show elapsed time</value></data>
   <data name="export.title" xml:space="preserve"><value>exporting</value></data>
   <data name="export.state.exporting" xml:space="preserve"><value>exporting {percent}%</value></data>
+  <data name="export.state.saving" xml:space="preserve"><value>saving {percent}%</value></data>
   <data name="import.documents" xml:space="preserve"><value>Documents</value></data>
   <data name="import.document.read_failed" xml:space="preserve"><value>Could not read {name}: {error}</value></data>
   <data name="libraries.reveal" xml:space="preserve"><value>show in Explorer</value></data>

@@ -520,7 +520,6 @@ impl CueFlacCaptureFixture {
 #[tokio::test]
 async fn test_cue_flac_export_single_track() {
     use bae_core::audio_codec::decode_audio;
-    use bae_core::config::ExportSelection;
 
     tracing_init();
 
@@ -536,13 +535,7 @@ async fn test_cue_flac_export_single_track() {
     // Export track 2 (index 1) as FLAC
     let export_path = temp_root.path().join("exported_track2.flac");
     library_manager
-        .export_track(
-            &tracks[1].id,
-            &export_path,
-            ExportSelection::Preset {
-                preset_id: "flac".to_string(),
-            },
-        )
+        .save_track(&tracks[1].id, &export_path, "flac")
         .await
         .expect("export track");
 
@@ -591,7 +584,6 @@ async fn test_cue_flac_export_single_track() {
 #[tokio::test]
 async fn test_cue_flac_gapless_track_boundary() {
     use bae_core::audio_codec::decode_audio;
-    use bae_core::config::ExportSelection;
 
     tracing_init();
     let temp_root = TempDir::new().expect("temp root");
@@ -605,24 +597,12 @@ async fn test_cue_flac_gapless_track_boundary() {
     // Export track 1 and track 2 through the real export path, then decode each.
     let t1_path = temp_root.path().join("t1.flac");
     library_manager
-        .export_track(
-            &tracks[0].id,
-            &t1_path,
-            ExportSelection::Preset {
-                preset_id: "flac".to_string(),
-            },
-        )
+        .save_track(&tracks[0].id, &t1_path, "flac")
         .await
         .expect("export track 1");
     let t2_path = temp_root.path().join("t2.flac");
     library_manager
-        .export_track(
-            &tracks[1].id,
-            &t2_path,
-            ExportSelection::Preset {
-                preset_id: "flac".to_string(),
-            },
-        )
+        .save_track(&tracks[1].id, &t2_path, "flac")
         .await
         .expect("export track 2");
     let t1 = decode_audio(&std::fs::read(&t1_path).unwrap(), None, None).expect("decode track 1");

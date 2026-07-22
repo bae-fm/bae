@@ -1,7 +1,7 @@
 use crate::types::{
     BridgeConfig, BridgeDiscogsTokenStatus, BridgeExportBitDepth, BridgeExportFilenameToken,
-    BridgeExportPregapPlacement, BridgeExportPreset, BridgeExportPresetCodec,
-    BridgeExportSelection, BridgeMcpConfig, BridgeSyncConfig, BridgeSyncProvider,
+    BridgeExportPregapPlacement, BridgeExportPreset, BridgeExportPresetCodec, BridgeMcpConfig,
+    BridgeOutputKind, BridgeSyncConfig, BridgeSyncProvider,
 };
 
 impl BridgeExportBitDepth {
@@ -156,24 +156,16 @@ impl BridgeExportFilenameToken {
     }
 }
 
-impl BridgeExportSelection {
-    pub(crate) fn from_core(selection: &bae_core::config::ExportSelection) -> Self {
-        match selection {
-            bae_core::config::ExportSelection::Original => BridgeExportSelection::Original,
-            bae_core::config::ExportSelection::Preset { preset_id } => {
-                BridgeExportSelection::Preset {
-                    preset_id: preset_id.clone(),
-                }
-            }
-        }
-    }
-
-    pub(crate) fn into_core(self) -> bae_core::config::ExportSelection {
-        match self {
-            BridgeExportSelection::Original => bae_core::config::ExportSelection::Original,
-            BridgeExportSelection::Preset { preset_id } => {
-                bae_core::config::ExportSelection::Preset { preset_id }
-            }
+impl BridgeOutputKind {
+    /// Display-only: a save carries its preset's resolved name, not an id — the
+    /// queue row never dereferences a preset. No `into_core`; enqueue takes a
+    /// preset id directly.
+    pub(crate) fn from_core(kind: &bae_core::library::OutputKind) -> Self {
+        match kind {
+            bae_core::library::OutputKind::Export => BridgeOutputKind::Export,
+            bae_core::library::OutputKind::Save { preset } => BridgeOutputKind::Save {
+                preset_name: preset.name.clone(),
+            },
         }
     }
 }
@@ -254,8 +246,8 @@ impl BridgeConfig {
             replay_gain_mode: _,
             export_filename_tokens,
             export_presets,
-            default_track_export_selection,
-            default_release_export_selection,
+            default_track_save_preset,
+            default_release_save_preset,
             pause_between_sides,
             max_concurrent_uploads,
             max_concurrent_downloads,
@@ -288,12 +280,8 @@ impl BridgeConfig {
                 .iter()
                 .map(BridgeExportPreset::from_core)
                 .collect(),
-            default_track_export_selection: BridgeExportSelection::from_core(
-                default_track_export_selection,
-            ),
-            default_release_export_selection: BridgeExportSelection::from_core(
-                default_release_export_selection,
-            ),
+            default_track_save_preset: default_track_save_preset.clone(),
+            default_release_save_preset: default_release_save_preset.clone(),
             mcp: BridgeMcpConfig {
                 enabled: *enabled,
                 port: *port,

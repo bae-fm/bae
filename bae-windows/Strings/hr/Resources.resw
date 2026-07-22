@@ -118,6 +118,8 @@
   <data name="menu.change_cover" xml:space="preserve"><value>Promijeni omot…</value></data>
   <data name="menu.delete" xml:space="preserve"><value>Izbriši…</value></data>
   <data name="menu.export" xml:space="preserve"><value>Izvoz…</value></data>
+  <data name="menu.save_as" xml:space="preserve"><value>Spremi kao…</value></data>
+  <data name="save.title" xml:space="preserve"><value>Spremi kao</value></data>
   <data name="menu.play" xml:space="preserve"><value>Reproduciraj</value></data>
   <data name="menu.play_next" xml:space="preserve"><value>Reproduciraj sljedeće</value></data>
   <data name="menu.set_primary" xml:space="preserve"><value>Postavi kao primarno izdanje</value></data>
@@ -247,7 +249,6 @@
   <data name="sync.reconnect" xml:space="preserve"><value>Ponovno poveži</value></data>
   <data name="sync.synced" xml:space="preserve"><value>sinkronizirano {time}</value></data>
   <data name="sync.syncing" xml:space="preserve"><value>sinkronizacija…</value></data>
-  <data name="track.export.original" xml:space="preserve"><value>Izvorno</value></data>
   <data name="track.export.prepare_failed" xml:space="preserve"><value>Nije moguće pripremiti izvoz.</value></data>
   <data name="welcome.choose_library" xml:space="preserve"><value>odaberite fonoteku</value></data>
   <data name="welcome.join_library" xml:space="preserve"><value>pridruži se fonoteci</value></data>
@@ -301,7 +302,6 @@
   <data name="work.open_failed" xml:space="preserve"><value>Nije moguće otvoriti detalje djela</value></data>
   <data name="work.count" xml:space="preserve"><value>{count} djela</value></data>
   <data name="album.count" xml:space="preserve"><value>{count} albuma</value></data>
-  <data name="settings.export.label" xml:space="preserve"><value>Izvoz</value></data>
   <data name="settings.export.default_track_format" xml:space="preserve"><value>Zadani format pjesme</value></data>
   <data name="settings.export.default_release_format" xml:space="preserve"><value>Zadani format izdanja</value></data>
   <data name="settings.export.presets" xml:space="preserve"><value>Predlošci</value></data>
@@ -393,6 +393,7 @@
   <data name="nowplaying.show_elapsed" xml:space="preserve"><value>prikaži proteklo vrijeme</value></data>
   <data name="export.title" xml:space="preserve"><value>izvoz</value></data>
   <data name="export.state.exporting" xml:space="preserve"><value>izvoz {percent}%</value></data>
+  <data name="export.state.saving" xml:space="preserve"><value>spremanje {percent}%</value></data>
   <data name="import.documents" xml:space="preserve"><value>Dokumenti</value></data>
   <data name="import.document.read_failed" xml:space="preserve"><value>Nije moguće pročitati {name}: {error}</value></data>
   <data name="libraries.reveal" xml:space="preserve"><value>prikaži u Eksploreru za datoteke</value></data>

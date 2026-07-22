@@ -118,6 +118,8 @@
   <data name="menu.change_cover" xml:space="preserve"><value>سرورق بدلیں…</value></data>
   <data name="menu.delete" xml:space="preserve"><value>حذف کریں…</value></data>
   <data name="menu.export" xml:space="preserve"><value>برآمد…</value></data>
+  <data name="menu.save_as" xml:space="preserve"><value>بطور محفوظ کریں…</value></data>
+  <data name="save.title" xml:space="preserve"><value>بطور محفوظ کریں</value></data>
   <data name="menu.play" xml:space="preserve"><value>چلائیں</value></data>
   <data name="menu.play_next" xml:space="preserve"><value>اگلا چلائیں</value></data>
   <data name="menu.set_primary" xml:space="preserve"><value>بنیادی اشاعت مقرر کریں</value></data>
@@ -247,7 +249,6 @@
   <data name="sync.reconnect" xml:space="preserve"><value>دوبارہ جوڑیں</value></data>
   <data name="sync.synced" xml:space="preserve"><value>{time} مطابقت پذیر</value></data>
   <data name="sync.syncing" xml:space="preserve"><value>مطابقت پذیری ہو رہی ہے…</value></data>
-  <data name="track.export.original" xml:space="preserve"><value>اصل</value></data>
   <data name="track.export.prepare_failed" xml:space="preserve"><value>برآمد تیار نہیں ہو سکی۔</value></data>
   <data name="welcome.choose_library" xml:space="preserve"><value>لائبریری منتخب کریں</value></data>
   <data name="welcome.join_library" xml:space="preserve"><value>کتب خانے میں شامل ہوں</value></data>
@@ -301,7 +302,6 @@
   <data name="work.open_failed" xml:space="preserve"><value>کام کی تفصیل نہیں کھل سکی</value></data>
   <data name="work.count" xml:space="preserve"><value>{count} کام</value></data>
   <data name="album.count" xml:space="preserve"><value>{count} البمز</value></data>
-  <data name="settings.export.label" xml:space="preserve"><value>برآمد</value></data>
   <data name="settings.export.default_track_format" xml:space="preserve"><value>طے شدہ نغمہ ساخت</value></data>
   <data name="settings.export.default_release_format" xml:space="preserve"><value>طے شدہ اشاعت ساخت</value></data>
   <data name="settings.export.presets" xml:space="preserve"><value>پیش سیٹس</value></data>
@@ -393,6 +393,7 @@
   <data name="nowplaying.show_elapsed" xml:space="preserve"><value>گزرا ہوا وقت دکھائیں</value></data>
   <data name="export.title" xml:space="preserve"><value>برآمد ہو رہا ہے</value></data>
   <data name="export.state.exporting" xml:space="preserve"><value>{percent}% برآمد ہو رہا ہے</value></data>
+  <data name="export.state.saving" xml:space="preserve"><value>{percent}% محفوظ ہو رہا ہے</value></data>
   <data name="import.documents" xml:space="preserve"><value>دستاویزات</value></data>
   <data name="import.document.read_failed" xml:space="preserve"><value>{name} پڑھا نہیں جا سکا: {error}</value></data>
   <data name="libraries.reveal" xml:space="preserve"><value>فائل ایکسپلورر میں دکھائیں</value></data>

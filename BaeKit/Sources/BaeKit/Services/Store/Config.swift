@@ -37,10 +37,10 @@ public struct Config: Equatable {
     public let exportFilenameTokens: [BridgeExportFilenameToken]
     /// Configured export presets offered by release and track export.
     public let exportPresets: [BridgeExportPreset]
-    /// Default selected option in the track export picker.
-    public let defaultTrackExportSelection: BridgeExportSelection
-    /// Default selected option in the release export picker.
-    public let defaultReleaseExportSelection: BridgeExportSelection
+    /// Id of the preset a track save defaults to (valid + track-applicable).
+    public let defaultTrackSavePreset: String
+    /// Id of the preset a release save defaults to (valid + release-applicable).
+    public let defaultReleaseSavePreset: String
     public let mcp: BridgeMcpConfig
 
     public var hasCloudHome: Bool { sync != nil }
@@ -59,8 +59,8 @@ public struct Config: Equatable {
         libraryFullWidth = bridge.libraryFullWidth
         exportFilenameTokens = bridge.exportFilenameTokens
         exportPresets = bridge.exportPresets
-        defaultTrackExportSelection = bridge.defaultTrackExportSelection
-        defaultReleaseExportSelection = bridge.defaultReleaseExportSelection
+        defaultTrackSavePreset = bridge.defaultTrackSavePreset
+        defaultReleaseSavePreset = bridge.defaultReleaseSavePreset
         mcp = bridge.mcp
     }
 

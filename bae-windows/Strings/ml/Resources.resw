@@ -118,6 +118,8 @@
   <data name="menu.change_cover" xml:space="preserve"><value>കവർ മാറ്റുക…</value></data>
   <data name="menu.delete" xml:space="preserve"><value>ഇല്ലാതാക്കുക…</value></data>
   <data name="menu.export" xml:space="preserve"><value>കയറ്റുമതി…</value></data>
+  <data name="menu.save_as" xml:space="preserve"><value>ഇങ്ങനെ സംരക്ഷിക്കുക…</value></data>
+  <data name="save.title" xml:space="preserve"><value>ഇങ്ങനെ സംരക്ഷിക്കുക</value></data>
   <data name="menu.play" xml:space="preserve"><value>പ്ലേ</value></data>
   <data name="menu.play_next" xml:space="preserve"><value>അടുത്തതായി പ്ലേ ചെയ്യുക</value></data>
   <data name="menu.set_primary" xml:space="preserve"><value>പ്രധാന പതിപ്പായി സജ്ജമാക്കുക</value></data>
@@ -247,7 +249,6 @@
   <data name="sync.reconnect" xml:space="preserve"><value>വീണ്ടും ബന്ധിപ്പിക്കുക</value></data>
   <data name="sync.synced" xml:space="preserve"><value>{time} സിങ്ക് ചെയ്തു</value></data>
   <data name="sync.syncing" xml:space="preserve"><value>സിങ്ക് ചെയ്യുന്നു…</value></data>
-  <data name="track.export.original" xml:space="preserve"><value>ഒറിജിനൽ</value></data>
   <data name="track.export.prepare_failed" xml:space="preserve"><value>കയറ്റുമതി തയ്യാറാക്കാനായില്ല.</value></data>
   <data name="welcome.choose_library" xml:space="preserve"><value>ഒരു ലൈബ്രറി തിരഞ്ഞെടുക്കുക</value></data>
   <data name="welcome.join_library" xml:space="preserve"><value>ശേഖരത്തിൽ ചേരുക</value></data>
@@ -301,7 +302,6 @@
   <data name="work.open_failed" xml:space="preserve"><value>കൃതിയുടെ വിശദാംശം തുറക്കാനായില്ല</value></data>
   <data name="work.count" xml:space="preserve"><value>{count} കൃതികൾ</value></data>
   <data name="album.count" xml:space="preserve"><value>{count} ആൽബങ്ങൾ</value></data>
-  <data name="settings.export.label" xml:space="preserve"><value>കയറ്റുമതി</value></data>
   <data name="settings.export.default_track_format" xml:space="preserve"><value>സ്ഥിര ട്രാക്ക് ഫോർമാറ്റ്</value></data>
   <data name="settings.export.default_release_format" xml:space="preserve"><value>സ്ഥിര പതിപ്പ് ഫോർമാറ്റ്</value></data>
   <data name="settings.export.presets" xml:space="preserve"><value>മുൻക്രമീകരണങ്ങൾ</value></data>
@@ -393,6 +393,7 @@
   <data name="nowplaying.show_elapsed" xml:space="preserve"><value>കഴിഞ്ഞ സമയം കാണിക്കുക</value></data>
   <data name="export.title" xml:space="preserve"><value>കയറ്റുമതി ചെയ്യുന്നു</value></data>
   <data name="export.state.exporting" xml:space="preserve"><value>{percent}% കയറ്റുമതി ചെയ്യുന്നു</value></data>
+  <data name="export.state.saving" xml:space="preserve"><value>{percent}% സംരക്ഷിക്കുന്നു</value></data>
   <data name="import.documents" xml:space="preserve"><value>ഡോക്യുമെന്റുകൾ</value></data>
   <data name="import.document.read_failed" xml:space="preserve"><value>{name} വായിക്കാനായില്ല: {error}</value></data>
   <data name="libraries.reveal" xml:space="preserve"><value>ഫയൽ എക്സ്‌പ്ലോററിൽ കാണിക്കുക</value></data>

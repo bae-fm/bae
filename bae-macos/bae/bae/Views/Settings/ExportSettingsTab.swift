@@ -44,18 +44,18 @@ struct ExportSettingsTab: View {
 
     private var releaseExportsSection: some View {
         Section("Release exports") {
-            selectionPicker(
+            presetPicker(
                 presets: releasePresets,
-                selection: defaultReleaseSelectionBinding()
+                selection: defaultReleasePresetBinding()
             )
         }
     }
 
     private var trackExportsSection: some View {
         Section {
-            selectionPicker(
+            presetPicker(
                 presets: trackPresets,
-                selection: defaultTrackSelectionBinding()
+                selection: defaultTrackPresetBinding()
             )
             VStack(alignment: .leading, spacing: 8) {
                 Text("Filename format")
@@ -100,15 +100,13 @@ struct ExportSettingsTab: View {
         }
     }
 
-    private func selectionPicker(
+    private func presetPicker(
         presets: [BridgeExportPreset],
-        selection: Binding<BridgeExportSelection>
+        selection: Binding<String>
     ) -> some View {
         Picker("Default format", selection: selection) {
-            Text("Original").tag(BridgeExportSelection.original)
             ForEach(presets, id: \.id) { preset in
-                Text(preset.name)
-                    .tag(BridgeExportSelection.preset(presetId: preset.id))
+                Text(preset.name).tag(preset.id)
             }
         }
     }
@@ -121,9 +119,8 @@ struct ExportSettingsTab: View {
         configStore.config.exportPresets.filter(\.appliesToRelease)
     }
 
-    /// The sample the pattern footer previews. "Original" keeps the source
-    /// format, so the sample shows a representative extension; a preset
-    /// default would still export whatever its own pattern renders, and the
+    /// The sample the pattern footer previews. The sample shows a representative
+    /// extension; each preset renders whatever its own pattern produces, and the
     /// preset rows below preview that themselves.
     private var trackPreviewFilename: String {
         BridgeExportFilenameToken.previewFilename(
@@ -163,24 +160,20 @@ struct ExportSettingsTab: View {
         }
     }
 
-    private func defaultTrackSelectionBinding() -> Binding<
-        BridgeExportSelection
-    > {
+    private func defaultTrackPresetBinding() -> Binding<String> {
         Binding(
-            get: { configStore.config.defaultTrackExportSelection },
-            set: { selection in
-                set { try exports.setDefaultTrackExportSelection(selection) }
+            get: { configStore.config.defaultTrackSavePreset },
+            set: { id in
+                set { try exports.setDefaultTrackSavePreset(id) }
             }
         )
     }
 
-    private func defaultReleaseSelectionBinding()
-        -> Binding<BridgeExportSelection>
-    {
+    private func defaultReleasePresetBinding() -> Binding<String> {
         Binding(
-            get: { configStore.config.defaultReleaseExportSelection },
-            set: { selection in
-                set { try exports.setDefaultReleaseExportSelection(selection) }
+            get: { configStore.config.defaultReleaseSavePreset },
+            set: { id in
+                set { try exports.setDefaultReleaseSavePreset(id) }
             }
         )
     }

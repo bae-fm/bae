@@ -118,6 +118,8 @@
   <data name="menu.change_cover" xml:space="preserve"><value>カバーを変更…</value></data>
   <data name="menu.delete" xml:space="preserve"><value>削除…</value></data>
   <data name="menu.export" xml:space="preserve"><value>エクスポート…</value></data>
+  <data name="menu.save_as" xml:space="preserve"><value>別名で保存…</value></data>
+  <data name="save.title" xml:space="preserve"><value>別名で保存</value></data>
   <data name="menu.play" xml:space="preserve"><value>再生</value></data>
   <data name="menu.play_next" xml:space="preserve"><value>次に再生</value></data>
   <data name="menu.set_primary" xml:space="preserve"><value>主要リリースに設定</value></data>
@@ -247,7 +249,6 @@
   <data name="sync.reconnect" xml:space="preserve"><value>再接続</value></data>
   <data name="sync.synced" xml:space="preserve"><value>{time} に同期済み</value></data>
   <data name="sync.syncing" xml:space="preserve"><value>同期中…</value></data>
-  <data name="track.export.original" xml:space="preserve"><value>オリジナル</value></data>
   <data name="track.export.prepare_failed" xml:space="preserve"><value>エクスポートを準備できませんでした。</value></data>
   <data name="welcome.choose_library" xml:space="preserve"><value>ライブラリを選択</value></data>
   <data name="welcome.join_library" xml:space="preserve"><value>ライブラリに参加</value></data>
@@ -301,7 +302,6 @@
   <data name="work.open_failed" xml:space="preserve"><value>作品の詳細を開けませんでした</value></data>
   <data name="work.count" xml:space="preserve"><value>{count}作品</value></data>
   <data name="album.count" xml:space="preserve"><value>{count}枚のアルバム</value></data>
-  <data name="settings.export.label" xml:space="preserve"><value>エクスポート</value></data>
   <data name="settings.export.default_track_format" xml:space="preserve"><value>デフォルトのトラック形式</value></data>
   <data name="settings.export.default_release_format" xml:space="preserve"><value>デフォルトのリリース形式</value></data>
   <data name="settings.export.presets" xml:space="preserve"><value>プリセット</value></data>
@@ -393,6 +393,7 @@
   <data name="nowplaying.show_elapsed" xml:space="preserve"><value>経過時間を表示</value></data>
   <data name="export.title" xml:space="preserve"><value>エクスポート中</value></data>
   <data name="export.state.exporting" xml:space="preserve"><value>{percent}%エクスポート中</value></data>
+  <data name="export.state.saving" xml:space="preserve"><value>{percent}%保存中</value></data>
   <data name="import.documents" xml:space="preserve"><value>ドキュメント</value></data>
   <data name="import.document.read_failed" xml:space="preserve"><value>{name}を読み取れませんでした: {error}</value></data>
   <data name="libraries.reveal" xml:space="preserve"><value>エクスプローラーで表示</value></data>

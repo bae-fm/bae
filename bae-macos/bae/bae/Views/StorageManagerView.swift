@@ -534,12 +534,17 @@ private struct ExportingSection: View {
 
 }
 
-/// One export-queue row: album title, file count, size, a state badge (Queued /
-/// Exporting at a percent / Failed with the reason in a tooltip), and a cancel
-/// button.
+/// One output-queue row: album title, file count, size (plus the preset name for
+/// a save), a state badge (Queued / Exporting or Saving at a percent / Failed
+/// with the reason in a tooltip), and a cancel button.
 private struct ExportRow: View {
     let op: BridgeExportOp
     let onCancel: () -> Void
+
+    private var presetName: String? {
+        if case .save(let name) = op.kind { return name }
+        return nil
+    }
 
     var body: some View {
         QueueRow(
@@ -551,12 +556,23 @@ private struct ExportRow: View {
             Text(op.title)
                 .lineLimit(1)
 
-            Text("\(op.fileCount) files · \(op.totalSizeText)")
+            detailLine
                 .font(.caption)
                 .monospacedDigit()
                 .foregroundStyle(.secondary)
         } badge: {
             stateBadge
+        }
+    }
+
+    /// "12 files · 213 MB", with the preset name appended for a save.
+    @ViewBuilder
+    private var detailLine: some View {
+        if let presetName {
+            Text("\(op.fileCount) files · \(op.totalSizeText) · \(presetName)")
+        }
+        else {
+            Text("\(op.fileCount) files · \(op.totalSizeText)")
         }
     }
 
@@ -567,15 +583,28 @@ private struct ExportRow: View {
             Label("Queued", systemImage: "clock")
                 .foregroundStyle(.secondary)
         case .active(let percent):
-            Label(
-                "Exporting \(Int(percent))%",
-                systemImage: "square.and.arrow.up.fill"
-            )
-            .foregroundStyle(.orange)
+            activeBadge(percent: Int(percent))
+                .foregroundStyle(.orange)
         case .failed(let error):
             Label("Failed", systemImage: "exclamationmark.triangle.fill")
                 .foregroundStyle(.red)
                 .help(error)
+        }
+    }
+
+    @ViewBuilder
+    private func activeBadge(percent: Int) -> some View {
+        switch op.kind {
+        case .export:
+            Label(
+                "Exporting \(percent)%",
+                systemImage: "square.and.arrow.up.fill"
+            )
+        case .save:
+            Label(
+                "Saving \(percent)%",
+                systemImage: "square.and.arrow.down.fill"
+            )
         }
     }
 }

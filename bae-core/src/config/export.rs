@@ -85,12 +85,6 @@ fn default_export_pregap_placement() -> ExportPregapPlacement {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub enum ExportSelection {
-    Original,
-    Preset { preset_id: String },
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ExportPreset {
     pub id: String,
     pub name: String,

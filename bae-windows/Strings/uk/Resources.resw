@@ -118,6 +118,8 @@
   <data name="menu.change_cover" xml:space="preserve"><value>Змінити обкладинку…</value></data>
   <data name="menu.delete" xml:space="preserve"><value>Видалити…</value></data>
   <data name="menu.export" xml:space="preserve"><value>Експортувати…</value></data>
+  <data name="menu.save_as" xml:space="preserve"><value>Зберегти як…</value></data>
+  <data name="save.title" xml:space="preserve"><value>Зберегти як</value></data>
   <data name="menu.play" xml:space="preserve"><value>Відтворити</value></data>
   <data name="menu.play_next" xml:space="preserve"><value>Відтворити наступним</value></data>
   <data name="menu.set_primary" xml:space="preserve"><value>Зробити основним релізом</value></data>
@@ -247,7 +249,6 @@
   <data name="sync.reconnect" xml:space="preserve"><value>Підключити знову</value></data>
   <data name="sync.synced" xml:space="preserve"><value>синхронізовано {time}</value></data>
   <data name="sync.syncing" xml:space="preserve"><value>синхронізація…</value></data>
-  <data name="track.export.original" xml:space="preserve"><value>Оригінал</value></data>
   <data name="track.export.prepare_failed" xml:space="preserve"><value>Не вдалося підготувати експорт.</value></data>
   <data name="welcome.choose_library" xml:space="preserve"><value>виберіть бібліотеку</value></data>
   <data name="welcome.join_library" xml:space="preserve"><value>приєднатися до бібліотеки</value></data>
@@ -301,7 +302,6 @@
   <data name="work.open_failed" xml:space="preserve"><value>Не вдалося відкрити відомості про твір</value></data>
   <data name="work.count" xml:space="preserve"><value>{count} творів</value></data>
   <data name="album.count" xml:space="preserve"><value>{count} альбомів</value></data>
-  <data name="settings.export.label" xml:space="preserve"><value>Експорт</value></data>
   <data name="settings.export.default_track_format" xml:space="preserve"><value>Формат треку за замовчуванням</value></data>
   <data name="settings.export.default_release_format" xml:space="preserve"><value>Формат релізу за замовчуванням</value></data>
   <data name="settings.export.presets" xml:space="preserve"><value>Пресети</value></data>
@@ -393,6 +393,7 @@
   <data name="nowplaying.show_elapsed" xml:space="preserve"><value>показати час, що минув</value></data>
   <data name="export.title" xml:space="preserve"><value>експорт</value></data>
   <data name="export.state.exporting" xml:space="preserve"><value>експорт {percent}%</value></data>
+  <data name="export.state.saving" xml:space="preserve"><value>збереження {percent}%</value></data>
   <data name="import.documents" xml:space="preserve"><value>Документи</value></data>
   <data name="import.document.read_failed" xml:space="preserve"><value>Не вдалося прочитати {name}: {error}</value></data>
   <data name="libraries.reveal" xml:space="preserve"><value>показати в Провіднику</value></data>

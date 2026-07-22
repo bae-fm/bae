@@ -135,25 +135,17 @@ internal sealed class ExportSettingsSection
     private void PopulateSelection(ComboBox combo, Settings settings, bool release)
     {
         combo.Items.Clear();
-        var original = ExportSelection.Original();
         var selected = release
-            ? settings.DefaultReleaseExportSelection
-            : settings.DefaultTrackExportSelection;
-        combo.Items.Add(new ComboBoxItem
-        {
-            Content = Loc.Chrome("track.export.original"),
-            Tag = original,
-            IsSelected = ExportSelection.Equal(selected, original),
-        });
+            ? settings.DefaultReleaseSavePreset
+            : settings.DefaultTrackSavePreset;
         foreach (var preset in settings.ExportPresets.Where(
             p => release ? p.AppliesToRelease : p.AppliesToTrack))
         {
-            var selection = ExportSelection.Preset(preset.Id);
             combo.Items.Add(new ComboBoxItem
             {
                 Content = preset.Name,
-                Tag = selection,
-                IsSelected = ExportSelection.Equal(selected, selection),
+                Tag = preset.Id,
+                IsSelected = preset.Id == selected,
             });
         }
     }
@@ -162,14 +154,14 @@ internal sealed class ExportSettingsSection
     {
         if (_rendering
             || combo.SelectedItem is not ComboBoxItem item
-            || item.Tag is not BridgeExportSelection selection)
+            || item.Tag is not string presetId)
         {
             return;
         }
         _clearError();
         var (current, error) = await _session.RunForCurrentHandle(handle => release
-            ? NativeBae.SetDefaultReleaseExportSelection(handle, selection)
-            : NativeBae.SetDefaultTrackExportSelection(handle, selection));
+            ? NativeBae.SetDefaultReleaseSavePreset(handle, presetId)
+            : NativeBae.SetDefaultTrackSavePreset(handle, presetId));
         if (!current)
         {
             return;
@@ -442,7 +434,8 @@ internal sealed class ExportSettingsSection
                 return;
             }
             preset.Codec = SwitchedCodec(preset.Codec, kind);
-            preset.Extension = CodecExtension(preset.Codec);
+            // The file extension rides on the bridge preset (core derives it from
+            // the codec); the config round-trip refreshes it, so it isn't set here.
             if (preset.PregapPlacement == BridgeExportPregapPlacement.SingleFileWithCue
                 && preset.Codec is BridgeExportPresetCodec.OpusOgg)
             {
@@ -642,7 +635,8 @@ internal sealed class ExportSettingsSection
             Id = Guid.NewGuid().ToString("N"),
             Name = KindLabel(kind),
             Codec = codec,
-            Extension = CodecExtension(codec),
+            // Extension is derived by core from the codec and filled on the config
+            // round-trip; the local default ("") is only a placeholder until then.
             FilenameTokens = settings.ExportFilenameTokens.ToList(),
             PregapPlacement = BridgeExportPregapPlacement.AppendToPreviousExceptHtoa,
             AppliesToTrack = true,
@@ -712,15 +706,6 @@ internal sealed class ExportSettingsSection
             _ => new BridgeExportPresetCodec.Flac(bitDepth),
         };
     }
-
-    private static string CodecExtension(BridgeExportPresetCodec codec) => codec switch
-    {
-        BridgeExportPresetCodec.Mp3 => "mp3",
-        BridgeExportPresetCodec.OpusOgg => "ogg",
-        BridgeExportPresetCodec.Wav => "wav",
-        BridgeExportPresetCodec.Aiff => "aiff",
-        _ => "flac",
-    };
 
     // The lossless family's bit depth; null for lossy codecs.
     private static BridgeExportBitDepth? LosslessBitDepth(BridgeExportPresetCodec codec) =>

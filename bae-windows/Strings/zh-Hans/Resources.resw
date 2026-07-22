@@ -118,6 +118,8 @@
   <data name="menu.change_cover" xml:space="preserve"><value>更换封面…</value></data>
   <data name="menu.delete" xml:space="preserve"><value>删除…</value></data>
   <data name="menu.export" xml:space="preserve"><value>导出…</value></data>
+  <data name="menu.save_as" xml:space="preserve"><value>存储为…</value></data>
+  <data name="save.title" xml:space="preserve"><value>存储为</value></data>
   <data name="menu.play" xml:space="preserve"><value>播放</value></data>
   <data name="menu.play_next" xml:space="preserve"><value>下一首播放</value></data>
   <data name="menu.set_primary" xml:space="preserve"><value>设为主版本</value></data>
@@ -247,7 +249,6 @@
   <data name="sync.reconnect" xml:space="preserve"><value>重新连接</value></data>
   <data name="sync.synced" xml:space="preserve"><value>已同步 {time}</value></data>
   <data name="sync.syncing" xml:space="preserve"><value>同步中…</value></data>
-  <data name="track.export.original" xml:space="preserve"><value>原始</value></data>
   <data name="track.export.prepare_failed" xml:space="preserve"><value>无法准备导出。</value></data>
   <data name="welcome.choose_library" xml:space="preserve"><value>选择一个库</value></data>
   <data name="welcome.join_library" xml:space="preserve"><value>加入曲库</value></data>
@@ -301,7 +302,6 @@
   <data name="work.open_failed" xml:space="preserve"><value>无法打开作品详情</value></data>
   <data name="work.count" xml:space="preserve"><value>{count} 部作品</value></data>
   <data name="album.count" xml:space="preserve"><value>{count} 张专辑</value></data>
-  <data name="settings.export.label" xml:space="preserve"><value>导出</value></data>
   <data name="settings.export.default_track_format" xml:space="preserve"><value>默认曲目格式</value></data>
   <data name="settings.export.default_release_format" xml:space="preserve"><value>默认发行格式</value></data>
   <data name="settings.export.presets" xml:space="preserve"><value>预设</value></data>
@@ -393,6 +393,7 @@
   <data name="nowplaying.show_elapsed" xml:space="preserve"><value>显示已播放时间</value></data>
   <data name="export.title" xml:space="preserve"><value>正在导出</value></data>
   <data name="export.state.exporting" xml:space="preserve"><value>正在导出 {percent}%</value></data>
+  <data name="export.state.saving" xml:space="preserve"><value>正在保存 {percent}%</value></data>
   <data name="import.documents" xml:space="preserve"><value>文档</value></data>
   <data name="import.document.read_failed" xml:space="preserve"><value>无法读取{name}: {error}</value></data>
   <data name="libraries.reveal" xml:space="preserve"><value>在文件资源管理器中显示</value></data>

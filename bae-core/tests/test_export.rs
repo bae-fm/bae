@@ -9,11 +9,10 @@ use bae_test_support as support;
 
 use bae_core::config::{
     ExportBitDepth, ExportFilenameToken, ExportPregapPlacement, ExportPreset, ExportPresetCodec,
-    ExportSelection,
 };
 use bae_core::db::Database;
 use bae_core::import::{IdentityChoice, ImportCommand, StorageMode};
-use bae_core::library::LibraryManager;
+use bae_core::library::{LibraryManager, OutputKind};
 use coven::EncryptionService;
 use coven::InMemoryCloudHome;
 use coven::StoreDir;
@@ -156,15 +155,9 @@ async fn export_track_from_cloud_only_release() {
 
     let out = f.temp_path().join("exported.flac");
     f.mgr
-        .export_track(
-            &tracks[0].id,
-            &out,
-            ExportSelection::Preset {
-                preset_id: "flac".to_string(),
-            },
-        )
+        .save_track(&tracks[0].id, &out, "flac")
         .await
-        .expect("cloud-only track must export");
+        .expect("cloud-only track must save");
 
     // FLAC is lossless: the exported file decodes to the same PCM as the
     // cloud copy.
@@ -188,7 +181,7 @@ async fn export_release_from_cloud_only_release() {
     let target = f.temp_path().join("export-target");
     fs::create_dir_all(&target).unwrap();
     f.mgr
-        .export_release(&release_id, &target, ExportSelection::Original)
+        .export_release(&release_id, &target, OutputKind::Export)
         .await
         .expect("cloud-only release must export");
 
@@ -214,8 +207,7 @@ async fn export_release_single_file_with_cue_writes_image_and_cue() {
     let second_bytes = support::write_tagged_flac(&album_dir, "02.flac", "Track Two");
     let release_id = import_unknown_local(&f, &album_dir).await;
 
-    let mut presets = f.mgr.export_presets();
-    presets.push(ExportPreset {
+    let image_preset = ExportPreset {
         id: "flac-image".to_string(),
         name: "FLAC image".to_string(),
         codec: ExportPresetCodec::Flac {
@@ -225,7 +217,9 @@ async fn export_release_single_file_with_cue_writes_image_and_cue() {
         pregap_placement: ExportPregapPlacement::SingleFileWithCue,
         applies_to_track: false,
         applies_to_release: true,
-    });
+    };
+    let mut presets = f.mgr.export_presets();
+    presets.push(image_preset.clone());
     f.mgr.set_export_presets(presets).unwrap();
 
     let target = f.temp_path().join("export-target");
@@ -234,12 +228,12 @@ async fn export_release_single_file_with_cue_writes_image_and_cue() {
         .export_release(
             &release_id,
             &target,
-            ExportSelection::Preset {
-                preset_id: "flac-image".to_string(),
+            OutputKind::Save {
+                preset: image_preset,
             },
         )
         .await
-        .expect("single-file CUE release export must succeed");
+        .expect("single-file CUE release save must succeed");
 
     let subdir = fs::read_dir(&target)
         .unwrap()
@@ -294,7 +288,7 @@ async fn export_release_missing_blob_is_hard_error() {
     fs::create_dir_all(&target).unwrap();
     let result = f
         .mgr
-        .export_release(&release_id, &target, ExportSelection::Original)
+        .export_release(&release_id, &target, OutputKind::Export)
         .await;
     assert!(result.is_err(), "missing blob must fail the export");
     assert!(

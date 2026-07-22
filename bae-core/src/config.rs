@@ -12,7 +12,6 @@ mod keyring;
 pub use dev::seed_dev_keyring;
 pub use export::{
     ExportBitDepth, ExportFilenameToken, ExportPregapPlacement, ExportPreset, ExportPresetCodec,
-    ExportSelection,
 };
 pub use keyring::init_keyring;
 #[cfg(any(test, feature = "test-utils"))]
@@ -280,10 +279,12 @@ pub struct ConfigYaml {
     pub export_filename_tokens: Vec<ExportFilenameToken>,
     /// Configured export presets offered by release and track export.
     pub export_presets: Vec<ExportPreset>,
-    /// Default selected option in the track export picker.
-    pub default_track_export_selection: ExportSelection,
-    /// Default selected option in the release export picker.
-    pub default_release_export_selection: ExportSelection,
+    /// Id of the preset a track save defaults to. A required, valid preset id
+    /// that applies to track saves (config validation keeps it non-dangling).
+    pub default_track_save_preset: String,
+    /// Id of the preset a release save defaults to. A required, valid preset id
+    /// that applies to release saves (config validation keeps it non-dangling).
+    pub default_release_save_preset: String,
     /// Whether playback pauses between vinyl/cassette sides.
     pub pause_between_sides: bool,
     /// How many blob uploads coven's upload drain runs at once. Device-local (a
@@ -329,8 +330,8 @@ impl ConfigYaml {
             replay_gain_mode: self.replay_gain_mode,
             export_filename_tokens: self.export_filename_tokens,
             export_presets: self.export_presets,
-            default_track_export_selection: self.default_track_export_selection,
-            default_release_export_selection: self.default_release_export_selection,
+            default_track_save_preset: self.default_track_save_preset,
+            default_release_save_preset: self.default_release_save_preset,
             pause_between_sides: self.pause_between_sides,
             max_concurrent_uploads: self.max_concurrent_uploads,
             max_concurrent_downloads: self.max_concurrent_downloads,
@@ -355,8 +356,8 @@ impl From<&Config> for ConfigYaml {
             replay_gain_mode: config.replay_gain_mode,
             export_filename_tokens: config.export_filename_tokens.clone(),
             export_presets: config.export_presets.clone(),
-            default_track_export_selection: config.default_track_export_selection.clone(),
-            default_release_export_selection: config.default_release_export_selection.clone(),
+            default_track_save_preset: config.default_track_save_preset.clone(),
+            default_release_save_preset: config.default_release_save_preset.clone(),
             pause_between_sides: config.pause_between_sides,
             max_concurrent_uploads: config.max_concurrent_uploads,
             max_concurrent_downloads: config.max_concurrent_downloads,
@@ -408,10 +409,12 @@ pub struct Config {
     pub export_filename_tokens: Vec<ExportFilenameToken>,
     /// Configured export presets offered by release and track export.
     pub export_presets: Vec<ExportPreset>,
-    /// Default selected option in the track export picker.
-    pub default_track_export_selection: ExportSelection,
-    /// Default selected option in the release export picker.
-    pub default_release_export_selection: ExportSelection,
+    /// Id of the preset a track save defaults to. A required, valid preset id
+    /// that applies to track saves (config validation keeps it non-dangling).
+    pub default_track_save_preset: String,
+    /// Id of the preset a release save defaults to. A required, valid preset id
+    /// that applies to release saves (config validation keeps it non-dangling).
+    pub default_release_save_preset: String,
     /// Whether playback pauses between vinyl/cassette sides.
     pub pause_between_sides: bool,
     /// How many blob uploads coven's upload drain runs at once. Device-local: a
@@ -571,8 +574,8 @@ impl Config {
             replay_gain_mode: ReplayGainMode::Off,
             export_filename_tokens: default_export_filename_tokens(),
             export_presets: default_export_presets(),
-            default_track_export_selection: ExportSelection::Original,
-            default_release_export_selection: ExportSelection::Original,
+            default_track_save_preset: "flac".to_string(),
+            default_release_save_preset: "flac".to_string(),
             pause_between_sides: false,
             max_concurrent_uploads: NonZeroU32::new(DEFAULT_CONCURRENT_TRANSFERS)
                 .expect("DEFAULT_CONCURRENT_TRANSFERS is non-zero"),
@@ -1054,12 +1057,12 @@ mod tests {
         );
         assert_eq!(yaml.export_presets, config.export_presets);
         assert_eq!(
-            yaml.default_track_export_selection,
-            config.default_track_export_selection
+            yaml.default_track_save_preset,
+            config.default_track_save_preset
         );
         assert_eq!(
-            yaml.default_release_export_selection,
-            config.default_release_export_selection
+            yaml.default_release_save_preset,
+            config.default_release_save_preset
         );
     }
 
@@ -1165,8 +1168,8 @@ mod tests {
             "replay_gain_mode",
             "export_filename_tokens",
             "export_presets",
-            "default_track_export_selection",
-            "default_release_export_selection",
+            "default_track_save_preset",
+            "default_release_save_preset",
             "pause_between_sides",
             "max_concurrent_uploads",
             "max_concurrent_downloads",
@@ -1240,8 +1243,8 @@ mod tests {
             "replay_gain_mode",
             "export_filename_tokens",
             "export_presets",
-            "default_track_export_selection",
-            "default_release_export_selection",
+            "default_track_save_preset",
+            "default_release_save_preset",
             "pause_between_sides",
             "max_concurrent_uploads",
             "max_concurrent_downloads",

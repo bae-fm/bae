@@ -145,6 +145,7 @@ internal sealed class AlbumDetailDialog
         };
         var changeCoverItem = new MenuFlyoutItem { Text = Loc.Chrome("menu.change_cover") };
         var exportReleaseItem = new MenuFlyoutItem { Text = Loc.Chrome("menu.export") };
+        var saveAsReleaseItem = new MenuFlyoutItem { Text = Loc.Chrome("menu.save_as") };
         var deleteItem = new MenuFlyoutItem { Text = Loc.Chrome("menu.delete") };
         moreMenu.Items.Add(playNextItem);
         moreMenu.Items.Add(addQueueItem);
@@ -153,6 +154,7 @@ internal sealed class AlbumDetailDialog
             moreMenu.Items.Add(setPrimaryItem);
         }
         moreMenu.Items.Add(exportReleaseItem);
+        moreMenu.Items.Add(saveAsReleaseItem);
         moreMenu.Items.Add(changeCoverItem);
         moreMenu.Items.Add(deleteItem);
         moreButton.Flyout = moreMenu;
@@ -236,7 +238,7 @@ internal sealed class AlbumDetailDialog
             playNextTrack.Click += (_, _) => QueueTrack(track, next: true);
             var addQueueTrack = new MenuFlyoutItem { Text = Loc.Chrome("menu.add_to_queue") };
             addQueueTrack.Click += (_, _) => QueueTrack(track, next: false);
-            var exportTrack = new MenuFlyoutItem { Text = Loc.Chrome("menu.export") };
+            var exportTrack = new MenuFlyoutItem { Text = Loc.Chrome("menu.save_as") };
             exportTrack.Click += async (_, _) => await ExportTrack(track, statusLine);
             menu.Items.Add(play);
             menu.Items.Add(playNextTrack);
@@ -440,6 +442,7 @@ internal sealed class AlbumDetailDialog
         // ShowAsync returns (the gallery/edit/re-identify pattern).
         var changeCoverRequested = false;
         var exportReleaseRequested = false;
+        var saveReleaseAsRequested = false;
         changeCoverItem.Click += (_, _) =>
         {
             changeCoverRequested = true;
@@ -448,6 +451,11 @@ internal sealed class AlbumDetailDialog
         exportReleaseItem.Click += (_, _) =>
         {
             exportReleaseRequested = true;
+            dialog.Hide();
+        };
+        saveAsReleaseItem.Click += (_, _) =>
+        {
+            saveReleaseAsRequested = true;
             dialog.Hide();
         };
         deleteItem.Click += (_, _) =>
@@ -506,6 +514,10 @@ internal sealed class AlbumDetailDialog
         {
             await _releaseActions.ShowExportRelease(selectedRelease.ReleaseId);
         }
+        else if (saveReleaseAsRequested && !string.IsNullOrEmpty(selectedRelease.ReleaseId))
+        {
+            await _releaseActions.ShowSaveReleaseAs(selectedRelease.ReleaseId);
+        }
         else if (deleteRequested)
         {
             await _releaseActions.ConfirmDeleteRelease(selectedRelease.ReleaseId);
@@ -521,10 +533,10 @@ internal sealed class AlbumDetailDialog
         }
     }
 
-    // The per-track "Save As…" export: choose a format (the original files, or a
-    // track-applicable preset), seed the filename from the configured template,
-    // then export to the picked path. Errors surface in the album-detail status
-    // line, which the modal doesn't occlude here (the pickers are OS dialogs).
+    // The per-track "Save As…": choose a track-applicable preset, seed the
+    // filename from the configured template, then save to the picked path. Errors
+    // surface in the album-detail status line, which the modal doesn't occlude
+    // here (the pickers are OS dialogs).
     private async System.Threading.Tasks.Task ExportTrack(Track track, TextBlock statusLine)
     {
         statusLine.Visibility = Visibility.Collapsed;
@@ -538,57 +550,37 @@ internal sealed class AlbumDetailDialog
         var trackPresets = settings.ExportPresets
             .Where(preset => preset.AppliesToTrack)
             .ToList();
-        var originalSelection = ExportSelection.Original();
-        var (extensionCurrent, originalExtension) = await _session.RunForCurrentHandle(
-            handle => NativeBae.ExportTrackExtension(handle, track.TrackId, originalSelection));
-        if (!extensionCurrent)
-        {
-            return;
-        }
-        if (originalExtension is null)
+        // Config validation guarantees at least one track-applicable preset and a
+        // valid default; guard anyway rather than crash if that's ever violated.
+        if (trackPresets.Count == 0)
         {
             statusLine.Text = Loc.Chrome("track.export.prepare_failed");
             statusLine.Visibility = Visibility.Visible;
             return;
         }
-        var choices = new List<(string Label, string Extension, BridgeExportSelection Selection)>
-        {
-            (Loc.Chrome("track.export.original"), $".{originalExtension}", originalSelection),
-        };
-        choices.AddRange(trackPresets.Select(preset => (
-            preset.TrackPickerLabel,
-            preset.FileExtension,
-            ExportSelection.Preset(preset.Id))));
         var formatPicker = new ComboBox
         {
             Header = Loc.Chrome("settings.export.default_track_format"),
             MinWidth = 260,
         };
-        var defaultIndex = -1;
-        for (var index = 0; index < choices.Count; index++)
+        var defaultIndex = 0;
+        for (var index = 0; index < trackPresets.Count; index++)
         {
-            var choice = choices[index];
-            if (ExportSelection.Equal(choice.Selection, settings.DefaultTrackExportSelection))
+            if (trackPresets[index].Id == settings.DefaultTrackSavePreset)
             {
                 defaultIndex = index;
             }
             formatPicker.Items.Add(new ComboBoxItem
             {
-                Content = choice.Label,
+                Content = trackPresets[index].TrackPickerLabel,
             });
-        }
-        if (defaultIndex < 0)
-        {
-            statusLine.Text = Loc.Chrome("track.export.prepare_failed");
-            statusLine.Visibility = Visibility.Visible;
-            return;
         }
         formatPicker.SelectedIndex = defaultIndex;
         var formatDialog = new ContentDialog
         {
-            Title = Loc.Chrome("settings.export.label"),
+            Title = Loc.Chrome("save.title"),
             Content = formatPicker,
-            PrimaryButtonText = Loc.Chrome("settings.export.label"),
+            PrimaryButtonText = Loc.Chrome("action.save"),
             CloseButtonText = Loc.Chrome("action.cancel"),
             XamlRoot = _xamlRoot(),
         };
@@ -603,10 +595,10 @@ internal sealed class AlbumDetailDialog
             statusLine.Visibility = Visibility.Visible;
             return;
         }
-        var selectedChoice = choices[formatPicker.SelectedIndex];
+        var selectedPreset = trackPresets[formatPicker.SelectedIndex];
         picker.FileTypeChoices.Add(
-            selectedChoice.Label,
-            new List<string> { selectedChoice.Extension });
+            selectedPreset.TrackPickerLabel,
+            new List<string> { selectedPreset.FileExtension });
         // Seed the suggested name from the configured filename template,
         // which the core renders and sanitizes from this track's metadata
         // (falling back to the title, then a fixed stem, on its own). A
@@ -643,9 +635,9 @@ internal sealed class AlbumDetailDialog
         }
 
         var path = file.Path;
-        var (exportCurrent, error) = await _session.RunForCurrentHandle(
-            handle => NativeBae.ExportTrack(handle, track.TrackId, path, selectedChoice.Selection));
-        if (!exportCurrent)
+        var (saveCurrent, error) = await _session.RunForCurrentHandle(
+            handle => NativeBae.SaveTrack(handle, track.TrackId, path, selectedPreset.Id));
+        if (!saveCurrent)
         {
             return;
         }

@@ -624,27 +624,17 @@ impl AppHandle {
             .map_err(BridgeError::config)
     }
 
-    pub fn set_default_track_export_selection(
-        &self,
-        selection: crate::types::BridgeExportSelection,
-    ) -> Result<(), BridgeError> {
+    pub fn set_default_track_save_preset(&self, preset_id: String) -> Result<(), BridgeError> {
         self.services
             .library_manager()
-            .set_default_track_export_selection(crate::types::BridgeExportSelection::into_core(
-                selection,
-            ))
+            .set_default_track_save_preset(preset_id)
             .map_err(BridgeError::config)
     }
 
-    pub fn set_default_release_export_selection(
-        &self,
-        selection: crate::types::BridgeExportSelection,
-    ) -> Result<(), BridgeError> {
+    pub fn set_default_release_save_preset(&self, preset_id: String) -> Result<(), BridgeError> {
         self.services
             .library_manager()
-            .set_default_release_export_selection(crate::types::BridgeExportSelection::into_core(
-                selection,
-            ))
+            .set_default_release_save_preset(preset_id)
             .map_err(BridgeError::config)
     }
 
@@ -1544,22 +1534,37 @@ impl AppHandle {
         )
     }
 
-    /// Enqueue a release export to `target_dir`. It joins
-    /// the in-memory serial export queue; the worker drains it one release at a
-    /// time. The storage-summary lookup (resolving the pane row's title/size)
-    /// happens here; the deep cloud read + copy runs on the queue worker.
+    /// Enqueue a verbatim release export to `target_dir`. It joins the in-memory
+    /// serial output queue; the worker drains it one release at a time. The
+    /// storage-summary lookup (resolving the pane row's title/size) happens here;
+    /// the deep cloud read + copy runs on the queue worker.
     pub async fn enqueue_export(
         &self,
         release_id: String,
         target_dir: String,
-        selection: crate::types::BridgeExportSelection,
     ) -> Result<(), BridgeError> {
         self.services
             .library_manager()
-            .enqueue_export(
+            .enqueue_export(&release_id, std::path::PathBuf::from(target_dir))
+            .await
+            .map_err(BridgeError::export)
+    }
+
+    /// Enqueue a release-level save to `target_dir` under the preset named by
+    /// `preset_id`. The preset is resolved and captured whole at enqueue time,
+    /// so a later config edit can't change or break this queued save.
+    pub async fn enqueue_release_save(
+        &self,
+        release_id: String,
+        target_dir: String,
+        preset_id: String,
+    ) -> Result<(), BridgeError> {
+        self.services
+            .library_manager()
+            .enqueue_release_save(
                 &release_id,
                 std::path::PathBuf::from(target_dir),
-                crate::types::BridgeExportSelection::into_core(selection),
+                &preset_id,
             )
             .await
             .map_err(BridgeError::export)
@@ -1583,26 +1588,25 @@ impl AppHandle {
         self.services.library_manager().retry_exports();
     }
 
-    // ── Track export ─────────────────────────────────────────────────
+    // ── Track save ───────────────────────────────────────────────────
 
-    pub async fn export_track(
+    /// Save one track to `output_path` under the preset named by `preset_id`
+    /// (must apply to track saves). Always a constructed file — decoded, encoded
+    /// to the preset codec, tagged, cover embedded — never a verbatim copy.
+    pub async fn save_track(
         &self,
         track_id: String,
         output_path: String,
-        selection: crate::types::BridgeExportSelection,
+        preset_id: String,
     ) -> Result<(), BridgeError> {
         self.services
             .library_manager()
-            .export_track(
-                &track_id,
-                std::path::Path::new(&output_path),
-                crate::types::BridgeExportSelection::into_core(selection),
-            )
+            .save_track(&track_id, std::path::Path::new(&output_path), &preset_id)
             .await
             .map_err(|e| BridgeError::export(format!("{e}")))
     }
 
-    /// The default filename stem (no extension) a single-track "Save As…" export
+    /// The default filename stem (no extension) a single-track "Save As…"
     /// suggests for `track_id`, rendered from the configured template. Reads only
     /// the database — no audio or cover — while seeding a save panel.
     pub async fn export_track_suggested_name(
@@ -1612,21 +1616,6 @@ impl AppHandle {
         self.services
             .library_manager()
             .export_track_suggested_name(&track_id)
-            .await
-            .map_err(|e| BridgeError::export(format!("{e}")))
-    }
-
-    pub async fn export_track_extension(
-        &self,
-        track_id: String,
-        selection: crate::types::BridgeExportSelection,
-    ) -> Result<String, BridgeError> {
-        self.services
-            .library_manager()
-            .export_track_extension(
-                &track_id,
-                crate::types::BridgeExportSelection::into_core(selection),
-            )
             .await
             .map_err(|e| BridgeError::export(format!("{e}")))
     }
@@ -1998,11 +1987,7 @@ impl crate::types::BridgeExportOp {
             payload,
             state,
         } = op;
-        let bae_core::library::export_snapshot::ExportRequest {
-            target_dir,
-            // The chosen codec/format selection drives the copy, not this row.
-            selection: _,
-        } = payload;
+        let bae_core::library::export_snapshot::ExportRequest { target_dir, kind } = payload;
         crate::types::BridgeExportOp {
             release_id,
             target_dir: target_dir.to_string_lossy().to_string(),
@@ -2011,6 +1996,7 @@ impl crate::types::BridgeExportOp {
             total_size,
             created_at,
             state: crate::types::BridgeExportState::from_core(state),
+            kind: crate::types::BridgeOutputKind::from_core(&kind),
         }
     }
 }
@@ -3320,7 +3306,6 @@ mod tests {
                 .enqueue_export(
                     "missing-release".to_string(),
                     root.join("exports").to_string_lossy().into_owned(),
-                    crate::types::BridgeExportSelection::Original,
                 )
                 .await
         });

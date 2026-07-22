@@ -2011,8 +2011,18 @@ pub enum BridgeExportState {
     Failed { error: String },
 }
 
-/// One queued export — a whole release being copied out verbatim to a folder.
-/// Mirror of bae-core's `ExportOp`; carries raw fields the UI renders directly.
+/// What a queued release-level output produces, for display in the queue row.
+/// Mirror of bae-core's `OutputKind`; a save carries its preset's display name
+/// (resolved at enqueue, not an id — the row never dereferences a preset).
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeOutputKind {
+    Export,
+    Save { preset_name: String },
+}
+
+/// One queued release output — a whole release being written out to a folder,
+/// either a verbatim export or a preset save. Mirror of bae-core's `ExportOp`;
+/// carries raw fields the UI renders directly.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeExportOp {
     pub release_id: String,
@@ -2027,6 +2037,9 @@ pub struct BridgeExportOp {
     /// Enqueue time as Unix epoch milliseconds, for the queued relative label.
     pub created_at: i64,
     pub state: BridgeExportState,
+    /// Whether this row is a verbatim export or a preset save; drives the row's
+    /// state text and (for saves) the preset name in the detail line.
+    pub kind: BridgeOutputKind,
 }
 
 /// Per-state counts for the export queue, driving the pane header. No bytes:
@@ -2328,10 +2341,12 @@ pub struct BridgeConfig {
     pub export_filename_tokens: Vec<BridgeExportFilenameToken>,
     /// Configured export presets offered by release and track export.
     pub export_presets: Vec<BridgeExportPreset>,
-    /// Default selected option in the track export picker.
-    pub default_track_export_selection: BridgeExportSelection,
-    /// Default selected option in the release export picker.
-    pub default_release_export_selection: BridgeExportSelection,
+    /// Id of the preset a track save defaults to (a valid, track-applicable
+    /// preset id; core keeps it non-dangling).
+    pub default_track_save_preset: String,
+    /// Id of the preset a release save defaults to (a valid, release-applicable
+    /// preset id; core keeps it non-dangling).
+    pub default_release_save_preset: String,
     pub mcp: BridgeMcpConfig,
     pub discogs_token_status: BridgeDiscogsTokenStatus,
     /// Whether Discogs can be used as a metadata source (a stored key that
@@ -2983,12 +2998,6 @@ pub enum BridgeExportPregapPlacement {
     AppendToPreviousIncludingHtoa,
     Exclude,
     SingleFileWithCue,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
-pub enum BridgeExportSelection {
-    Original,
-    Preset { preset_id: String },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]

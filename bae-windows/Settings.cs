@@ -41,11 +41,11 @@ public sealed class Settings
     /// <summary>Configured export presets offered by release and track export.</summary>
     public List<ExportPreset> ExportPresets { get; set; } = new();
 
-    /// <summary>Default selected option in the track export picker.</summary>
-    internal BridgeExportSelection DefaultTrackExportSelection { get; set; } = new BridgeExportSelection.Original();
+    /// <summary>Id of the preset a track save defaults to (valid + track-applicable).</summary>
+    public string DefaultTrackSavePreset { get; set; } = "flac";
 
-    /// <summary>Default selected option in the release export picker.</summary>
-    internal BridgeExportSelection DefaultReleaseExportSelection { get; set; } = new BridgeExportSelection.Original();
+    /// <summary>Id of the preset a release save defaults to (valid + release-applicable).</summary>
+    public string DefaultReleaseSavePreset { get; set; } = "flac";
 
     public bool McpEnabled { get; set; }
     public ushort McpPort { get; set; }

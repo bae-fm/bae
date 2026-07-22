@@ -118,6 +118,8 @@
   <data name="menu.change_cover" xml:space="preserve"><value>मुखपृष्ठ बदला…</value></data>
   <data name="menu.delete" xml:space="preserve"><value>हटवा…</value></data>
   <data name="menu.export" xml:space="preserve"><value>निर्यात…</value></data>
+  <data name="menu.save_as" xml:space="preserve"><value>म्हणून जतन करा…</value></data>
+  <data name="save.title" xml:space="preserve"><value>म्हणून जतन करा</value></data>
   <data name="menu.play" xml:space="preserve"><value>प्ले</value></data>
   <data name="menu.play_next" xml:space="preserve"><value>पुढे वाजवा</value></data>
   <data name="menu.set_primary" xml:space="preserve"><value>प्राथमिक प्रकाशन म्हणून सेट करा</value></data>
@@ -247,7 +249,6 @@
   <data name="sync.reconnect" xml:space="preserve"><value>पुन्हा कनेक्ट करा</value></data>
   <data name="sync.synced" xml:space="preserve"><value>{time} समक्रमित</value></data>
   <data name="sync.syncing" xml:space="preserve"><value>समक्रमण होत आहे…</value></data>
-  <data name="track.export.original" xml:space="preserve"><value>मूळ</value></data>
   <data name="track.export.prepare_failed" xml:space="preserve"><value>निर्यात तयार करता आली नाही.</value></data>
   <data name="welcome.choose_library" xml:space="preserve"><value>लायब्ररी निवडा</value></data>
   <data name="welcome.join_library" xml:space="preserve"><value>संग्रहालयात जोडा</value></data>
@@ -301,7 +302,6 @@
   <data name="work.open_failed" xml:space="preserve"><value>कृती तपशील उघडता आला नाही</value></data>
   <data name="work.count" xml:space="preserve"><value>{count} कृती</value></data>
   <data name="album.count" xml:space="preserve"><value>{count} अल्बम</value></data>
-  <data name="settings.export.label" xml:space="preserve"><value>निर्यात</value></data>
   <data name="settings.export.default_track_format" xml:space="preserve"><value>मुलभूत गाणे स्वरूप</value></data>
   <data name="settings.export.default_release_format" xml:space="preserve"><value>मुलभूत प्रकाशन स्वरूप</value></data>
   <data name="settings.export.presets" xml:space="preserve"><value>पूर्वनियोजने</value></data>
@@ -393,6 +393,7 @@
   <data name="nowplaying.show_elapsed" xml:space="preserve"><value>झालेला वेळ दाखवा</value></data>
   <data name="export.title" xml:space="preserve"><value>निर्यात करत आहे</value></data>
   <data name="export.state.exporting" xml:space="preserve"><value>{percent}% निर्यात करत आहे</value></data>
+  <data name="export.state.saving" xml:space="preserve"><value>{percent}% जतन करत आहे</value></data>
   <data name="import.documents" xml:space="preserve"><value>दस्तऐवज</value></data>
   <data name="import.document.read_failed" xml:space="preserve"><value>{name} वाचता आले नाही: {error}</value></data>
   <data name="libraries.reveal" xml:space="preserve"><value>फाइल एक्सप्लोररमध्ये दाखवा</value></data>

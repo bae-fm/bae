@@ -39,52 +39,73 @@ internal sealed class ReleaseActionDialogs
         _lightbox = lightbox;
     }
 
+    // Verbatim export: no format choice, just a destination folder. The picked
+    // folder is remembered in ExportFolderStore as the last-used output folder
+    // (the Windows sibling of macOS's lastExportFolder).
     public async System.Threading.Tasks.Task ShowExportRelease(string releaseId)
+    {
+        var targetDir = await PickOutputFolder();
+        if (targetDir is null)
+        {
+            return;
+        }
+        var (exportCurrent, error) = await _session.RunForCurrentHandle(
+            handle => NativeBae.ExportRelease(handle, releaseId, targetDir));
+        if (!exportCurrent)
+        {
+            return;
+        }
+        if (error is not null)
+        {
+            _setStatus(error);
+        }
+    }
+
+    // Release-level save: pick a release-applicable preset, then a destination
+    // folder, then enqueue the save (the preset is captured whole at enqueue).
+    public async System.Threading.Tasks.Task ShowSaveReleaseAs(string releaseId)
     {
         var (settingsCurrent, settings) = await _session.RunForCurrentHandle(NativeBae.GetSettings);
         if (!settingsCurrent)
         {
             return;
         }
-        var choices = new List<(string Label, BridgeExportSelection Selection)>
-        {
-            (Loc.Chrome("track.export.original"), ExportSelection.Original()),
-        };
-        choices.AddRange(settings.ExportPresets
+        var releasePresets = settings.ExportPresets
             .Where(preset => preset.AppliesToRelease)
-            .Select(preset => (preset.Name, ExportSelection.Preset(preset.Id))));
+            .ToList();
+        // Config validation guarantees a release-applicable preset and a valid
+        // default; guard anyway rather than crash if that's ever violated.
+        if (releasePresets.Count == 0)
+        {
+            _setStatus(Loc.Chrome("track.export.prepare_failed"));
+            return;
+        }
 
         var formatPicker = new ComboBox
         {
             Header = Loc.Chrome("settings.export.default_release_format"),
             MinWidth = 260,
         };
-        var defaultIndex = -1;
-        for (var index = 0; index < choices.Count; index++)
+        var defaultIndex = 0;
+        for (var index = 0; index < releasePresets.Count; index++)
         {
-            var choice = choices[index];
-            if (ExportSelection.Equal(choice.Selection, settings.DefaultReleaseExportSelection))
+            if (releasePresets[index].Id == settings.DefaultReleaseSavePreset)
             {
                 defaultIndex = index;
             }
             formatPicker.Items.Add(new ComboBoxItem
             {
-                Content = choice.Label,
-                Tag = choice.Selection,
+                Content = releasePresets[index].Name,
+                Tag = releasePresets[index].Id,
             });
-        }
-        if (defaultIndex < 0)
-        {
-            _setStatus(Loc.Chrome("track.export.prepare_failed"));
-            return;
         }
         formatPicker.SelectedIndex = defaultIndex;
 
         var dialog = new ContentDialog
         {
-            Title = Loc.Chrome("settings.export.label"),
+            Title = Loc.Chrome("save.title"),
             Content = formatPicker,
-            PrimaryButtonText = Loc.Chrome("settings.export.label"),
+            PrimaryButtonText = Loc.Chrome("action.save"),
             CloseButtonText = Loc.Chrome("action.cancel"),
             XamlRoot = _xamlRoot(),
         };
@@ -94,29 +115,20 @@ internal sealed class ReleaseActionDialogs
             return;
         }
         if (formatPicker.SelectedItem is not ComboBoxItem selectedItem
-            || selectedItem.Tag is not BridgeExportSelection selection)
+            || selectedItem.Tag is not string presetId)
         {
             _setStatus(Loc.Chrome("track.export.prepare_failed"));
             return;
         }
 
-        // The destination is a per-run choice: always prompt for a folder. The
-        // picked folder is remembered in ExportFolderStore as the last-used
-        // output folder (the Windows sibling of macOS's lastExportFolder).
-        var picker = new global::Windows.Storage.Pickers.FolderPicker();
-        picker.FileTypeFilter.Add("*");
-        WinRT.Interop.InitializeWithWindow.Initialize(picker, _windowHandle());
-        var folder = await picker.PickSingleFolderAsync();
-        if (folder is null)
+        var targetDir = await PickOutputFolder();
+        if (targetDir is null)
         {
             return;
         }
-        var targetDir = folder.Path;
-        ExportFolderStore.Save(targetDir);
-
-        var (exportCurrent, error) = await _session.RunForCurrentHandle(
-            handle => NativeBae.ExportRelease(handle, releaseId, targetDir, selection));
-        if (!exportCurrent)
+        var (saveCurrent, error) = await _session.RunForCurrentHandle(
+            handle => NativeBae.SaveRelease(handle, releaseId, targetDir, presetId));
+        if (!saveCurrent)
         {
             return;
         }
@@ -124,6 +136,22 @@ internal sealed class ReleaseActionDialogs
         {
             _setStatus(error);
         }
+    }
+
+    // Prompt for a destination folder, remembering the pick as the last-used
+    // output folder. Returns null when the user cancels.
+    private async System.Threading.Tasks.Task<string?> PickOutputFolder()
+    {
+        var picker = new global::Windows.Storage.Pickers.FolderPicker();
+        picker.FileTypeFilter.Add("*");
+        WinRT.Interop.InitializeWithWindow.Initialize(picker, _windowHandle());
+        var folder = await picker.PickSingleFolderAsync();
+        if (folder is null)
+        {
+            return null;
+        }
+        ExportFolderStore.Save(folder.Path);
+        return folder.Path;
     }
 
     public async System.Threading.Tasks.Task ConfirmDeleteRelease(string releaseId)

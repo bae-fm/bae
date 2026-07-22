@@ -769,15 +769,21 @@ extension StorageTableView.Coordinator: NSMenuDelegate {
                 )
             )
         }
-        // Export is available for every release regardless of locality — it's a
-        // pure copy-out that changes no state — so it isn't one of the
-        // core-computed `storageActions`; offer it on its own for any
-        // non-transitioning target.
+        // Export (verbatim) and Save As (preset workup) are pure outputs that
+        // change no state, so both are offered for every release regardless of
+        // locality — not among the core-computed `storageActions`.
         addMenuItem(
             to: menu,
             title: String(localized: "Export…"),
             action: #selector(runExportAction(_:)),
             symbol: "square.and.arrow.up",
+            representedObject: targets
+        )
+        addMenuItem(
+            to: menu,
+            title: String(localized: "Save As…"),
+            action: #selector(runSaveAsAction(_:)),
+            symbol: "square.and.arrow.down",
             representedObject: targets
         )
     }
@@ -846,6 +852,15 @@ extension StorageTableView.Coordinator: NSMenuDelegate {
             return
         }
         runner.export(releaseIds: releaseIds)
+    }
+
+    @objc
+    private func runSaveAsAction(_ sender: NSMenuItem) {
+        guard let releaseIds = sender.representedObject as? [String] else {
+            logger.error("Save As menu item carried no release ids")
+            return
+        }
+        runner.saveAs(releaseIds: releaseIds)
     }
 
     /// Storage actions every targeted release allows, preserving the order the

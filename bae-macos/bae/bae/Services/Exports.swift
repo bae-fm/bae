@@ -7,14 +7,17 @@ import Foundation
 /// methods. The queue itself lives in bae-core; the Exporting pane reads its
 /// state from `ExportStore` (the export projection is the sole writer).
 final class Exports: Sendable, Observable {
-    /// Enqueue a release export to `targetDir`. It joins
-    /// the serial export queue; the worker drains it one release at a time.
-    /// Fire-and-forget — progress and queue state arrive via `exportQueueChanged`
-    /// events.
+    /// Enqueue a verbatim release export to `targetDir`. It joins the serial
+    /// output queue; the worker drains it one release at a time. Fire-and-forget
+    /// — progress and queue state arrive via `exportQueueChanged` events.
     let enqueueExport:
+        @Sendable (_ releaseId: String, _ targetDir: String) async throws ->
+            Void
+    /// Enqueue a release-level save to `targetDir` under `presetId`. The preset
+    /// is captured whole at enqueue, so a later config edit can't drift it.
+    let enqueueReleaseSave:
         @Sendable (
-            _ releaseId: String, _ targetDir: String,
-            _ selection: BridgeExportSelection
+            _ releaseId: String, _ targetDir: String, _ presetId: String
         ) async throws -> Void
     /// Pause or resume the export queue. The in-flight export finishes; the
     /// queue stops starting new ones until resumed.
@@ -31,14 +34,18 @@ final class Exports: Sendable, Observable {
     /// Replace configured export presets.
     let setExportPresets:
         @Sendable (_ presets: [BridgeExportPreset]) throws -> Void
-    let setDefaultTrackExportSelection:
-        @Sendable (_ selection: BridgeExportSelection) throws -> Void
-    let setDefaultReleaseExportSelection:
-        @Sendable (_ selection: BridgeExportSelection) throws -> Void
+    let setDefaultTrackSavePreset: @Sendable (_ presetId: String) throws -> Void
+    let setDefaultReleaseSavePreset:
+        @Sendable (_ presetId: String) throws -> Void
 
     init(
         enqueueExport:
-            @escaping @Sendable (String, String, BridgeExportSelection)
+            @escaping @Sendable (String, String)
+            async throws -> Void =
+            { _, _ in
+            },
+        enqueueReleaseSave:
+            @escaping @Sendable (String, String, String)
             async throws -> Void =
             { _, _, _ in
             },
@@ -52,31 +59,34 @@ final class Exports: Sendable, Observable {
         setExportPresets:
             @escaping @Sendable ([BridgeExportPreset]) throws -> Void = { _ in
             },
-        setDefaultTrackExportSelection:
-            @escaping @Sendable (BridgeExportSelection) throws -> Void = { _ in
+        setDefaultTrackSavePreset:
+            @escaping @Sendable (String) throws -> Void = { _ in
             },
-        setDefaultReleaseExportSelection:
-            @escaping @Sendable (BridgeExportSelection) throws -> Void = { _ in
+        setDefaultReleaseSavePreset:
+            @escaping @Sendable (String) throws -> Void = { _ in
             }
     ) {
         self.enqueueExport = enqueueExport
+        self.enqueueReleaseSave = enqueueReleaseSave
         self.setExportsPaused = setExportsPaused
         self.cancelExport = cancelExport
         self.retryExports = retryExports
         self.setExportFilenameTokens = setExportFilenameTokens
         self.setExportPresets = setExportPresets
-        self.setDefaultTrackExportSelection = setDefaultTrackExportSelection
-        self.setDefaultReleaseExportSelection =
-            setDefaultReleaseExportSelection
+        self.setDefaultTrackSavePreset = setDefaultTrackSavePreset
+        self.setDefaultReleaseSavePreset = setDefaultReleaseSavePreset
     }
 
     convenience init(handle: any AppHandleProtocol) {
         self.init(
             enqueueExport: {
-                try await handle.enqueueExport(
+                try await handle.enqueueExport(releaseId: $0, targetDir: $1)
+            },
+            enqueueReleaseSave: {
+                try await handle.enqueueReleaseSave(
                     releaseId: $0,
                     targetDir: $1,
-                    selection: $2
+                    presetId: $2
                 )
             },
             setExportsPaused: { handle.setExportsPaused(paused: $0) },
@@ -86,11 +96,11 @@ final class Exports: Sendable, Observable {
                 try handle.setExportFilenameTokens(tokens: $0)
             },
             setExportPresets: { try handle.setExportPresets(presets: $0) },
-            setDefaultTrackExportSelection: {
-                try handle.setDefaultTrackExportSelection(selection: $0)
+            setDefaultTrackSavePreset: {
+                try handle.setDefaultTrackSavePreset(presetId: $0)
             },
-            setDefaultReleaseExportSelection: {
-                try handle.setDefaultReleaseExportSelection(selection: $0)
+            setDefaultReleaseSavePreset: {
+                try handle.setDefaultReleaseSavePreset(presetId: $0)
             }
         )
     }

@@ -118,6 +118,8 @@
   <data name="menu.change_cover" xml:space="preserve"><value>ਕਵਰ ਬਦਲੋ…</value></data>
   <data name="menu.delete" xml:space="preserve"><value>ਮਿਟਾਓ…</value></data>
   <data name="menu.export" xml:space="preserve"><value>ਨਿਰਯਾਤ…</value></data>
+  <data name="menu.save_as" xml:space="preserve"><value>ਇਸ ਤਰ੍ਹਾਂ ਸੰਭਾਲੋ…</value></data>
+  <data name="save.title" xml:space="preserve"><value>ਇਸ ਤਰ੍ਹਾਂ ਸੰਭਾਲੋ</value></data>
   <data name="menu.play" xml:space="preserve"><value>ਚਲਾਓ</value></data>
   <data name="menu.play_next" xml:space="preserve"><value>ਅੱਗੇ ਚਲਾਓ</value></data>
   <data name="menu.set_primary" xml:space="preserve"><value>ਮੁੱਖ ਰਿਲੀਜ਼ ਵਜੋਂ ਸੈੱਟ ਕਰੋ</value></data>
@@ -247,7 +249,6 @@
   <data name="sync.reconnect" xml:space="preserve"><value>ਮੁੜ ਕਨੈਕਟ ਕਰੋ</value></data>
   <data name="sync.synced" xml:space="preserve"><value>{time} ਸਿੰਕ ਹੋਇਆ</value></data>
   <data name="sync.syncing" xml:space="preserve"><value>ਸਿੰਕ ਹੋ ਰਿਹਾ ਹੈ…</value></data>
-  <data name="track.export.original" xml:space="preserve"><value>ਮੂਲ</value></data>
   <data name="track.export.prepare_failed" xml:space="preserve"><value>ਨਿਰਯਾਤ ਤਿਆਰ ਨਹੀਂ ਕੀਤਾ ਜਾ ਸਕਿਆ।</value></data>
   <data name="welcome.choose_library" xml:space="preserve"><value>ਲਾਇਬ੍ਰੇਰੀ ਚੁਣੋ</value></data>
   <data name="welcome.join_library" xml:space="preserve"><value>ਲਾਇਬ੍ਰੇਰੀ ਵਿੱਚ ਸ਼ਾਮਲ ਹੋਵੋ</value></data>
@@ -301,7 +302,6 @@
   <data name="work.open_failed" xml:space="preserve"><value>ਰਚਨਾ ਵੇਰਵਾ ਖੋਲ੍ਹਿਆ ਨਹੀਂ ਜਾ ਸਕਿਆ</value></data>
   <data name="work.count" xml:space="preserve"><value>{count} ਰਚਨਾਵਾਂ</value></data>
   <data name="album.count" xml:space="preserve"><value>{count} ਐਲਬਮਾਂ</value></data>
-  <data name="settings.export.label" xml:space="preserve"><value>ਨਿਰਯਾਤ</value></data>
   <data name="settings.export.default_track_format" xml:space="preserve"><value>ਡਿਫਾਲਟ ਟ੍ਰੈਕ ਫਾਰਮੈਟ</value></data>
   <data name="settings.export.default_release_format" xml:space="preserve"><value>ਡਿਫਾਲਟ ਰਿਲੀਜ਼ ਫਾਰਮੈਟ</value></data>
   <data name="settings.export.presets" xml:space="preserve"><value>ਪ੍ਰੀਸੈੱਟ</value></data>
@@ -393,6 +393,7 @@
   <data name="nowplaying.show_elapsed" xml:space="preserve"><value>ਬੀਤਿਆ ਸਮਾਂ ਦਿਖਾਓ</value></data>
   <data name="export.title" xml:space="preserve"><value>ਨਿਰਯਾਤ ਕੀਤਾ ਜਾ ਰਿਹਾ ਹੈ</value></data>
   <data name="export.state.exporting" xml:space="preserve"><value>{percent}% ਨਿਰਯਾਤ ਕੀਤਾ ਜਾ ਰਿਹਾ ਹੈ</value></data>
+  <data name="export.state.saving" xml:space="preserve"><value>{percent}% ਸੰਭਾਲਿਆ ਜਾ ਰਿਹਾ ਹੈ</value></data>
   <data name="import.documents" xml:space="preserve"><value>ਦਸਤਾਵੇਜ਼</value></data>
   <data name="import.document.read_failed" xml:space="preserve"><value>{name} ਪੜ੍ਹਿਆ ਨਹੀਂ ਜਾ ਸਕਿਆ: {error}</value></data>
   <data name="libraries.reveal" xml:space="preserve"><value>ਫਾਈਲ ਐਕਸਪਲੋਰਰ ਵਿੱਚ ਦਿਖਾਓ</value></data>

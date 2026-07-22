@@ -146,6 +146,9 @@ struct AlbumDetailView: View {
                         onExportRelease: {
                             exportRelease(releaseId: selectedReleaseId)
                         },
+                        onSaveReleaseAs: {
+                            saveReleaseAs(releaseId: selectedReleaseId)
+                        },
                         onSetPrimaryRelease: {
                             setPrimaryRelease(releaseId: selectedReleaseId)
                         },
@@ -425,6 +428,7 @@ extension AlbumDetailView {
                     performStorageAction(action, releaseId: detail.id)
                 },
                 onExport: { exportRelease(releaseId: detail.id) },
+                onSaveAs: { saveReleaseAs(releaseId: detail.id) },
                 onDone: { uiStore.dismissModal() },
             )
             .frame(width: 640, height: 600)
@@ -448,23 +452,41 @@ extension AlbumDetailView {
         }
     }
 
-    /// Export a release to a folder — a pure copy-out when Original is selected.
-    /// changes no state, so it's offered regardless of the release's locality.
-    /// The destination comes from the export-location setting (a fixed folder, or
-    /// an `NSOpenPanel` when set to ask each time); the copy runs on the export
-    /// queue and surfaces in the Storage Manager's Exporting pane.
+    /// Export a release verbatim to a folder — a pure copy-out that reproduces
+    /// the imported file set. Changes no state, so it's offered regardless of the
+    /// release's locality. The copy runs on the output queue and surfaces in the
+    /// Storage Manager's Exporting pane.
     private func exportRelease(releaseId: String) {
+        guard let targetDir = ExportTarget.resolveExportDir() else {
+            return
+        }
+        Task {
+            do {
+                try await exports.enqueueExport(releaseId, targetDir)
+            }
+            catch {
+                exportError = error.displayLine
+            }
+        }
+    }
+
+    /// Save a release under a chosen preset + folder — a rendered workup (decode,
+    /// encode, tags, cover) rather than a verbatim copy. Runs on the same output
+    /// queue as export.
+    private func saveReleaseAs(releaseId: String) {
         guard
-            let target = ExportTarget.resolveRelease(config: configStore.config)
+            let target = ExportTarget.resolveReleaseSave(
+                config: configStore.config
+            )
         else {
             return
         }
         Task {
             do {
-                try await exports.enqueueExport(
+                try await exports.enqueueReleaseSave(
                     releaseId,
                     target.targetDir,
-                    target.selection
+                    target.presetId
                 )
             }
             catch {
@@ -626,21 +648,9 @@ extension AlbumDetailView {
                 return
             }
 
-            let originalExtension: String
-            do {
-                originalExtension = try await export.extensionForSelection(
-                    trackId,
-                    .original
-                )
-            }
-            catch is CancellationError {
-                return
-            }
-            catch {
-                exportError = error.displayLine
-                return
-            }
-            let choices = exportChoices(originalExtension: originalExtension)
+            let choices = ExportFormatChoice.trackChoices(
+                presets: configStore.config.exportPresets
+            )
             guard let panel = makeExportSavePanel(stem: stem, choices: choices)
             else {
                 exportError = String(localized: "Default format")
@@ -655,47 +665,23 @@ extension AlbumDetailView {
             guard let url = panel.savePanel.url else {
                 Logger.bae("export")
                     .warning(
-                        "save panel returned .OK with no URL; skipping export"
+                        "save panel returned .OK with no URL; skipping save"
                     )
                 return
             }
 
-            let selection = choices[formatPopup.indexOfSelectedItem].selection
+            let presetId = choices[formatPopup.indexOfSelectedItem].presetId
             let outputPath = url.path(percentEncoded: false)
             do {
-                try await export.exportTrack(trackId, outputPath, selection)
+                try await export.saveTrack(trackId, outputPath, presetId)
             }
             catch is CancellationError {
-                // view dismissed mid-export; OutputFileGuard cleaned up
+                // view dismissed mid-save; OutputFileGuard cleaned up
             }
             catch {
                 exportError = error.displayLine
             }
         }
-    }
-
-    private func exportChoices(originalExtension: String)
-        -> [ExportFormatChoice]
-    {
-        var choices = [
-            ExportFormatChoice(
-                title: String(localized: "Original"),
-                extensionName: originalExtension,
-                selection: .original
-            )
-        ]
-        choices.append(
-            contentsOf: configStore.config.exportPresets
-                .filter(\.appliesToTrack)
-                .map {
-                    ExportFormatChoice(
-                        title: $0.name,
-                        extensionName: $0.extension,
-                        selection: .preset(presetId: $0.id)
-                    )
-                }
-        )
-        return choices
     }
 
     /// Build the save panel for a track export, with its format-picker accessory
@@ -708,16 +694,12 @@ extension AlbumDetailView {
     ) -> ExportSavePanel? {
         guard
             let selectedIndex = choices.firstIndex(where: {
-                $0.selection == configStore.config.defaultTrackExportSelection
+                $0.presetId == configStore.config.defaultTrackSavePreset
             })
         else {
             return nil
         }
-        guard let defaultExt = choices[selectedIndex].extensionName else {
-            preconditionFailure(
-                "track export choices must carry file extensions"
-            )
-        }
+        let defaultExt = choices[selectedIndex].extensionName
 
         let panel = NSSavePanel()
         panel.nameFieldStringValue = "\(stem).\(defaultExt)"
@@ -789,6 +771,7 @@ struct AlbumExpansionContent: View {
     let onReIdentify: () -> Void
     let onManage: () -> Void
     let onExportRelease: () -> Void
+    let onSaveReleaseAs: () -> Void
     let onSetPrimaryRelease: () -> Void
     let onDeleteRelease: () -> Void
     let onExportTrack: (String) -> Void
@@ -938,7 +921,8 @@ struct AlbumExpansionContent: View {
             Button("Edit metadata...") { onEditMetadata() }
             Button("Re-identify...") { onReIdentify() }
             Button("Storage...") { onManage() }
-            Button("Export...") { onExportRelease() }
+            Button("Export…") { onExportRelease() }
+            Button("Save As…") { onSaveReleaseAs() }
             if releaseCursor.canCycle, canSetAsPrimaryRelease {
                 Divider()
                 Button("Set as Primary Release") { onSetPrimaryRelease() }
@@ -1235,7 +1219,7 @@ private struct TrackRowView: View {
             Button("Play Next") { onAddNext(track.id) }
             Button("Add to Queue") { onAddToQueue(track.id) }
             Divider()
-            Button("Save As...") { onExportTrack(track.id) }
+            Button("Save As…") { onExportTrack(track.id) }
         }
         .draggable(track.id)
     }
@@ -1251,6 +1235,7 @@ struct ManageReleaseSheet: View {
     let release: ReleaseDetail
     let onAction: (BridgeReleaseStorageAction) -> Void
     let onExport: () -> Void
+    let onSaveAs: () -> Void
     let onDone: () -> Void
 
     /// Column the file table sorts by. Defaults to filename; the user clicks a
@@ -1276,7 +1261,8 @@ struct ManageReleaseSheet: View {
             StorageStatusBand(
                 release: release,
                 onAction: onAction,
-                onExport: onExport
+                onExport: onExport,
+                onSaveAs: onSaveAs
             )
             Divider()
             filesSection
@@ -1333,6 +1319,7 @@ private struct StorageStatusBand: View {
     let release: ReleaseDetail
     let onAction: (BridgeReleaseStorageAction) -> Void
     let onExport: () -> Void
+    let onSaveAs: () -> Void
     @Environment(OutboxStore.self)
     private var outboxStore
 
@@ -1410,11 +1397,14 @@ private struct StorageStatusBand: View {
                     Label(action.label, systemImage: action.systemImage)
                 }
             }
-            // Export is a pure copy-out (no state change), so it's offered for
-            // every release regardless of locality — not one of the
-            // core-computed `storageActions`.
+            // Export (verbatim) and Save As (preset workup) are pure outputs —
+            // no state change — so both are offered for every release regardless
+            // of locality, not among the core-computed `storageActions`.
             Button(action: { onExport() }) {
                 Label("Export…", systemImage: "square.and.arrow.up")
+            }
+            Button(action: { onSaveAs() }) {
+                Label("Save As…", systemImage: "square.and.arrow.down")
             }
         }
     }
@@ -1468,11 +1458,7 @@ private class ExportFormatDelegate: NSObject {
         guard let panel else {
             return
         }
-        guard let ext = choices[sender.indexOfSelectedItem].extensionName else {
-            preconditionFailure(
-                "track export choices must carry file extensions"
-            )
-        }
+        let ext = choices[sender.indexOfSelectedItem].extensionName
         let currentName = panel.nameFieldStringValue
         let stem = (currentName as NSString).deletingPathExtension
 

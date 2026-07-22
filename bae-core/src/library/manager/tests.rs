@@ -79,9 +79,7 @@ async fn setup_test_manager_with_library_id(library_id: &str) -> (LibraryManager
 async fn set_export_presets_rejects_removing_selected_default() {
     let (manager, _temp_dir) = setup_test_manager().await;
     manager
-        .set_default_track_export_selection(crate::config::ExportSelection::Preset {
-            preset_id: "mp3".to_string(),
-        })
+        .set_default_track_save_preset("mp3".to_string())
         .unwrap();
 
     let presets_without_mp3: Vec<_> = manager
@@ -98,6 +96,109 @@ async fn set_export_presets_rejects_removing_selected_default() {
         .export_presets()
         .iter()
         .any(|preset| preset.id == "mp3"));
+}
+
+/// A release-only preset (single-file CUE) that a track save must refuse.
+#[cfg(test)]
+fn release_only_image_preset() -> crate::config::ExportPreset {
+    crate::config::ExportPreset {
+        id: "flac-image".to_string(),
+        name: "FLAC image".to_string(),
+        codec: crate::config::ExportPresetCodec::Flac {
+            bit_depth: crate::config::ExportBitDepth::Source,
+        },
+        filename_tokens: vec![crate::config::ExportFilenameToken::Title],
+        pregap_placement: crate::config::ExportPregapPlacement::SingleFileWithCue,
+        applies_to_track: false,
+        applies_to_release: true,
+    }
+}
+
+/// A save default must name a preset that exists and applies to its level.
+#[tokio::test]
+async fn set_default_save_preset_rejects_unknown_and_wrong_level() {
+    let (manager, _temp_dir) = setup_test_manager().await;
+
+    assert!(
+        manager
+            .set_default_track_save_preset("no-such-preset".to_string())
+            .is_err(),
+        "an unknown preset id is rejected"
+    );
+
+    let mut presets = manager.export_presets();
+    presets.push(release_only_image_preset());
+    manager.set_export_presets(presets).unwrap();
+
+    assert!(
+        manager
+            .set_default_track_save_preset("flac-image".to_string())
+            .is_err(),
+        "a release-only preset can't be the track-save default"
+    );
+    manager
+        .set_default_release_save_preset("flac-image".to_string())
+        .expect("a release-applicable preset is a valid release default");
+}
+
+/// `save_track` resolves the preset first, so a release-only preset is refused
+/// before any track work — the id need not even exist as a track.
+#[tokio::test]
+async fn save_track_rejects_release_only_preset() {
+    let (manager, _temp_dir) = setup_test_manager().await;
+    let mut presets = manager.export_presets();
+    presets.push(release_only_image_preset());
+    manager.set_export_presets(presets).unwrap();
+
+    let err = manager
+        .save_track(
+            "any-track",
+            std::path::Path::new("/tmp/out.flac"),
+            "flac-image",
+        )
+        .await
+        .expect_err("a release-only preset can't back a track save");
+    assert!(
+        err.to_string().contains("not available for track save"),
+        "unexpected error: {err}"
+    );
+}
+
+/// The preset is captured whole at enqueue: editing (or deleting) it afterward
+/// can't change or break the already-queued save.
+#[tokio::test]
+async fn enqueue_release_save_captures_the_preset() {
+    let (manager, temp_dir) = setup_test_manager().await;
+    let release_id = insert_pinnable_release(&manager).await;
+    manager.set_exports_paused(true);
+
+    let target = temp_dir.path().join("save-out");
+    manager
+        .enqueue_release_save(&release_id, target, "flac")
+        .await
+        .unwrap();
+
+    // Rename the "flac" preset after enqueue; the queued save keeps the old one.
+    let edited: Vec<_> = manager
+        .export_presets()
+        .into_iter()
+        .map(|mut preset| {
+            if preset.id == "flac" {
+                preset.name = "FLAC EDITED".to_string();
+            }
+            preset
+        })
+        .collect();
+    manager.set_export_presets(edited).unwrap();
+
+    let snap = manager.export_snapshot();
+    let crate::library::OutputKind::Save { preset } = &snap.ops[0].payload.kind else {
+        panic!("expected a queued save op");
+    };
+    assert_eq!(
+        preset.name, "FLAC",
+        "the queued save uses the preset captured at enqueue, not the edited one"
+    );
 }
 
 async fn rename_table_for_test(manager: &LibraryManager, from: &str, to: &str) {
@@ -3711,11 +3812,7 @@ async fn export_queue_enqueue_dedups_and_cancels_while_paused() {
 
     let target = temp_dir.path().join("export-out");
     manager
-        .enqueue_export(
-            &release_id,
-            target.clone(),
-            crate::config::ExportSelection::Original,
-        )
+        .enqueue_export(&release_id, target.clone())
         .await
         .unwrap();
     let snap = manager.export_snapshot();
@@ -3729,11 +3826,7 @@ async fn export_queue_enqueue_dedups_and_cancels_while_paused() {
 
     // Re-enqueuing the same release is a no-op: still one entry.
     manager
-        .enqueue_export(
-            &release_id,
-            target.clone(),
-            crate::config::ExportSelection::Original,
-        )
+        .enqueue_export(&release_id, target.clone())
         .await
         .unwrap();
     assert_eq!(manager.export_snapshot().ops.len(), 1);
@@ -3776,11 +3869,7 @@ async fn export_writes_exact_bytes_in_source_folder_and_leaves_release_remote() 
 
     let target = temp_dir.path().join("export-out");
     manager
-        .enqueue_export(
-            &release_id,
-            target.clone(),
-            crate::config::ExportSelection::Original,
-        )
+        .enqueue_export(&release_id, target.clone())
         .await
         .unwrap();
 
@@ -3932,11 +4021,7 @@ async fn assert_export_rejects_invalid_path(
 ) {
     let target = temp_dir.join("export-out");
     let error = manager
-        .export_release(
-            release_id,
-            &target,
-            crate::config::ExportSelection::Original,
-        )
+        .export_release(release_id, &target, crate::library::OutputKind::Export)
         .await
         .expect_err(message);
 
@@ -3976,11 +4061,7 @@ async fn export_write_error_marks_failed_and_retries() {
     std::fs::write(&blocker, b"a file, not a directory").unwrap();
 
     manager
-        .enqueue_export(
-            &release_id,
-            blocker.clone(),
-            crate::config::ExportSelection::Original,
-        )
+        .enqueue_export(&release_id, blocker.clone())
         .await
         .unwrap();
 
@@ -4060,11 +4141,7 @@ async fn export_mid_failure_leaves_no_partial_output_at_final_path() {
     let target = temp_dir.path().join("export-out");
     std::fs::create_dir_all(&target).unwrap();
     manager
-        .enqueue_export(
-            &release.id,
-            target.clone(),
-            crate::config::ExportSelection::Original,
-        )
+        .enqueue_export(&release.id, target.clone())
         .await
         .unwrap();
     std::fs::remove_file(source_dir.join("02.flac")).unwrap();

@@ -118,6 +118,8 @@
   <data name="menu.change_cover" xml:space="preserve"><value>அட்டையை மாற்று…</value></data>
   <data name="menu.delete" xml:space="preserve"><value>நீக்கு…</value></data>
   <data name="menu.export" xml:space="preserve"><value>ஏற்றுமதி…</value></data>
+  <data name="menu.save_as" xml:space="preserve"><value>இவ்வாறு சேமி…</value></data>
+  <data name="save.title" xml:space="preserve"><value>இவ்வாறு சேமி</value></data>
   <data name="menu.play" xml:space="preserve"><value>இயக்கு</value></data>
   <data name="menu.play_next" xml:space="preserve"><value>அடுத்து இயக்கு</value></data>
   <data name="menu.set_primary" xml:space="preserve"><value>முதன்மை வெளியீடாக அமை</value></data>
@@ -247,7 +249,6 @@
   <data name="sync.reconnect" xml:space="preserve"><value>மீண்டும் இணை</value></data>
   <data name="sync.synced" xml:space="preserve"><value>{time} ஒத்திசைக்கப்பட்டது</value></data>
   <data name="sync.syncing" xml:space="preserve"><value>ஒத்திசைக்கிறது…</value></data>
-  <data name="track.export.original" xml:space="preserve"><value>அசல்</value></data>
   <data name="track.export.prepare_failed" xml:space="preserve"><value>ஏற்றுமதியைத் தயாரிக்க முடியவில்லை.</value></data>
   <data name="welcome.choose_library" xml:space="preserve"><value>ஒரு நூலகத்தைத் தேர்ந்தெடு</value></data>
   <data name="welcome.join_library" xml:space="preserve"><value>நூலகத்தில் சேர்</value></data>
@@ -301,7 +302,6 @@
   <data name="work.open_failed" xml:space="preserve"><value>படைப்பு விவரத்தைத் திறக்க முடியவில்லை</value></data>
   <data name="work.count" xml:space="preserve"><value>{count} படைப்புகள்</value></data>
   <data name="album.count" xml:space="preserve"><value>{count} ஆல்பங்கள்</value></data>
-  <data name="settings.export.label" xml:space="preserve"><value>ஏற்றுமதி</value></data>
   <data name="settings.export.default_track_format" xml:space="preserve"><value>இயல்புநிலை பாடல் வடிவம்</value></data>
   <data name="settings.export.default_release_format" xml:space="preserve"><value>இயல்புநிலை வெளியீட்டு வடிவம்</value></data>
   <data name="settings.export.presets" xml:space="preserve"><value>முன்னமைவுகள்</value></data>
@@ -393,6 +393,7 @@
   <data name="nowplaying.show_elapsed" xml:space="preserve"><value>கடந்த நேரத்தைக் காட்டு</value></data>
   <data name="export.title" xml:space="preserve"><value>ஏற்றுமதி செய்யப்படுகிறது</value></data>
   <data name="export.state.exporting" xml:space="preserve"><value>{percent}% ஏற்றுமதி செய்யப்படுகிறது</value></data>
+  <data name="export.state.saving" xml:space="preserve"><value>{percent}% சேமிக்கப்படுகிறது</value></data>
   <data name="import.documents" xml:space="preserve"><value>ஆவணங்கள்</value></data>
   <data name="import.document.read_failed" xml:space="preserve"><value>{name} ஐப் படிக்க முடியவில்லை: {error}</value></data>
   <data name="libraries.reveal" xml:space="preserve"><value>கோப்பு எக்ஸ்ப்ளோரரில் காட்டு</value></data>

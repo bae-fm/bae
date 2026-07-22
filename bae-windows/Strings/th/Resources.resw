@@ -118,6 +118,8 @@
   <data name="menu.change_cover" xml:space="preserve"><value>เปลี่ยนปก…</value></data>
   <data name="menu.delete" xml:space="preserve"><value>ลบ…</value></data>
   <data name="menu.export" xml:space="preserve"><value>ส่งออก…</value></data>
+  <data name="menu.save_as" xml:space="preserve"><value>บันทึกเป็น…</value></data>
+  <data name="save.title" xml:space="preserve"><value>บันทึกเป็น</value></data>
   <data name="menu.play" xml:space="preserve"><value>เล่น</value></data>
   <data name="menu.play_next" xml:space="preserve"><value>เล่นถัดไป</value></data>
   <data name="menu.set_primary" xml:space="preserve"><value>ตั้งเป็นรีลีสหลัก</value></data>
@@ -247,7 +249,6 @@
   <data name="sync.reconnect" xml:space="preserve"><value>เชื่อมต่ออีกครั้ง</value></data>
   <data name="sync.synced" xml:space="preserve"><value>ซิงค์แล้ว {time}</value></data>
   <data name="sync.syncing" xml:space="preserve"><value>กำลังซิงค์…</value></data>
-  <data name="track.export.original" xml:space="preserve"><value>ต้นฉบับ</value></data>
   <data name="track.export.prepare_failed" xml:space="preserve"><value>เตรียมการส่งออกไม่ได้</value></data>
   <data name="welcome.choose_library" xml:space="preserve"><value>เลือกคลัง</value></data>
   <data name="welcome.join_library" xml:space="preserve"><value>เข้าร่วมคลัง</value></data>
@@ -301,7 +302,6 @@
   <data name="work.open_failed" xml:space="preserve"><value>ไม่สามารถเปิดรายละเอียดผลงานได้</value></data>
   <data name="work.count" xml:space="preserve"><value>ผลงาน {count} รายการ</value></data>
   <data name="album.count" xml:space="preserve"><value>อัลบั้ม {count} รายการ</value></data>
-  <data name="settings.export.label" xml:space="preserve"><value>ส่งออก</value></data>
   <data name="settings.export.default_track_format" xml:space="preserve"><value>รูปแบบแทร็กเริ่มต้น</value></data>
   <data name="settings.export.default_release_format" xml:space="preserve"><value>รูปแบบรีลีสเริ่มต้น</value></data>
   <data name="settings.export.presets" xml:space="preserve"><value>ค่าที่ตั้งไว้</value></data>
@@ -393,6 +393,7 @@
   <data name="nowplaying.show_elapsed" xml:space="preserve"><value>แสดงเวลาที่ผ่านไป</value></data>
   <data name="export.title" xml:space="preserve"><value>กำลังส่งออก</value></data>
   <data name="export.state.exporting" xml:space="preserve"><value>กำลังส่งออก {percent}%</value></data>
+  <data name="export.state.saving" xml:space="preserve"><value>กำลังบันทึก {percent}%</value></data>
   <data name="import.documents" xml:space="preserve"><value>เอกสาร</value></data>
   <data name="import.document.read_failed" xml:space="preserve"><value>ไม่สามารถอ่าน {name}: {error}</value></data>
   <data name="libraries.reveal" xml:space="preserve"><value>แสดงใน File Explorer</value></data>

@@ -31,12 +31,17 @@ public sealed class ExportQueueModelTests
     }
 
     [Theory]
-    [InlineData(ExportRowKind.Queued, "download.state.queued")]
-    [InlineData(ExportRowKind.Active, "export.state.exporting")]
-    [InlineData(ExportRowKind.Failed, "download.state.failed")]
-    public void StateKey_MapsEachKind(ExportRowKind kind, string expected)
+    // Queued and failed reuse the generic download-state keys regardless of
+    // output kind; only the active key differs by kind.
+    [InlineData(ExportRowKind.Queued, OutputKind.Export, "download.state.queued")]
+    [InlineData(ExportRowKind.Queued, OutputKind.Save, "download.state.queued")]
+    [InlineData(ExportRowKind.Failed, OutputKind.Export, "download.state.failed")]
+    [InlineData(ExportRowKind.Failed, OutputKind.Save, "download.state.failed")]
+    [InlineData(ExportRowKind.Active, OutputKind.Export, "export.state.exporting")]
+    [InlineData(ExportRowKind.Active, OutputKind.Save, "export.state.saving")]
+    public void StateKey_MapsEachKind(ExportRowKind kind, OutputKind outputKind, string expected)
     {
-        Assert.Equal(expected, ExportQueueModel.StateKey(kind));
+        Assert.Equal(expected, ExportQueueModel.StateKey(kind, outputKind));
     }
 
     [Theory]

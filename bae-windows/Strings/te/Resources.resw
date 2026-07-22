@@ -118,6 +118,8 @@
   <data name="menu.change_cover" xml:space="preserve"><value>కవర్ మార్చు…</value></data>
   <data name="menu.delete" xml:space="preserve"><value>తొలగించు…</value></data>
   <data name="menu.export" xml:space="preserve"><value>ఎగుమతి…</value></data>
+  <data name="menu.save_as" xml:space="preserve"><value>ఇలా సేవ్ చేయి…</value></data>
+  <data name="save.title" xml:space="preserve"><value>ఇలా సేవ్ చేయి</value></data>
   <data name="menu.play" xml:space="preserve"><value>ప్లే</value></data>
   <data name="menu.play_next" xml:space="preserve"><value>తర్వాత ప్లే చేయి</value></data>
   <data name="menu.set_primary" xml:space="preserve"><value>ప్రాధమిక విడుదలగా సెట్ చేయి</value></data>
@@ -247,7 +249,6 @@
   <data name="sync.reconnect" xml:space="preserve"><value>మళ్లీ కనెక్ట్</value></data>
   <data name="sync.synced" xml:space="preserve"><value>{time}కి సింక్ చేయబడింది</value></data>
   <data name="sync.syncing" xml:space="preserve"><value>సింక్ చేస్తోంది…</value></data>
-  <data name="track.export.original" xml:space="preserve"><value>అసలు</value></data>
   <data name="track.export.prepare_failed" xml:space="preserve"><value>ఎగుమతిని సిద్ధం చేయలేకపోయింది.</value></data>
   <data name="welcome.choose_library" xml:space="preserve"><value>లైబ్రరీని ఎంచుకోండి</value></data>
   <data name="welcome.join_library" xml:space="preserve"><value>లైబ్రరీలో చేరు</value></data>
@@ -301,7 +302,6 @@
   <data name="work.open_failed" xml:space="preserve"><value>కృతి వివరాన్ని తెరవలేకపోయింది</value></data>
   <data name="work.count" xml:space="preserve"><value>{count} కృతులు</value></data>
   <data name="album.count" xml:space="preserve"><value>{count} ఆల్బమ్‌లు</value></data>
-  <data name="settings.export.label" xml:space="preserve"><value>ఎగుమతి</value></data>
   <data name="settings.export.default_track_format" xml:space="preserve"><value>డిఫాల్ట్ ట్రాక్ ఫార్మాట్</value></data>
   <data name="settings.export.default_release_format" xml:space="preserve"><value>డిఫాల్ట్ విడుదల ఫార్మాట్</value></data>
   <data name="settings.export.presets" xml:space="preserve"><value>ప్రీసెట్‌లు</value></data>
@@ -393,6 +393,7 @@
   <data name="nowplaying.show_elapsed" xml:space="preserve"><value>గడిచిన సమయాన్ని చూపించు</value></data>
   <data name="export.title" xml:space="preserve"><value>ఎగుమతి చేస్తోంది</value></data>
   <data name="export.state.exporting" xml:space="preserve"><value>ఎగుమతి చేస్తోంది {percent}%</value></data>
+  <data name="export.state.saving" xml:space="preserve"><value>సేవ్ చేస్తోంది {percent}%</value></data>
   <data name="import.documents" xml:space="preserve"><value>పత్రాలు</value></data>
   <data name="import.document.read_failed" xml:space="preserve"><value>{name} చదవలేకపోయింది: {error}</value></data>
   <data name="libraries.reveal" xml:space="preserve"><value>ఫైల్ ఎక్స్‌ప్లోరర్‌లో చూపించు</value></data>

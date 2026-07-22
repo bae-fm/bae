@@ -847,7 +847,16 @@ pub enum AutomationExportState {
     Failed { error: String },
 }
 
-/// One queued export in the `export_status` snapshot.
+/// What a queued release output produces. Mirrors bae-core's `OutputKind`; a
+/// save carries its preset's display name (resolved at enqueue).
+#[derive(Debug, Clone, Serialize)]
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum AutomationOutputKind {
+    Export,
+    Save { preset_name: String },
+}
+
+/// One queued release output in the `export_status` snapshot.
 #[derive(Debug, Clone, Serialize)]
 pub struct AutomationExportOp {
     pub release_id: String,
@@ -857,6 +866,8 @@ pub struct AutomationExportOp {
     pub total_size: i64,
     pub created_at: i64,
     pub state: AutomationExportState,
+    /// Whether this row is a verbatim export or a preset save.
+    pub kind: AutomationOutputKind,
 }
 
 /// Per-state counts for the export queue.
@@ -1410,11 +1421,7 @@ impl Automation {
     ) -> Result<AutomationReleaseExport, AutomationError> {
         self.services
             .library_manager()
-            .enqueue_export(
-                &release_id,
-                PathBuf::from(target_dir),
-                bae_core::config::ExportSelection::Original,
-            )
+            .enqueue_export(&release_id, PathBuf::from(target_dir))
             .await?;
         Ok(AutomationReleaseExport { release_id })
     }
@@ -1866,7 +1873,7 @@ fn empty_input_schema() -> Map<String, Value> {
 fn automation_export_snapshot(
     snapshot: bae_core::library::ExportSnapshot,
 ) -> AutomationExportSnapshot {
-    use bae_core::library::ExportState;
+    use bae_core::library::{ExportState, OutputKind};
     let exports = snapshot
         .ops
         .into_iter()
@@ -1878,6 +1885,12 @@ fn automation_export_snapshot(
                 }
                 ExportState::Failed { error } => AutomationExportState::Failed { error },
             };
+            let kind = match op.payload.kind {
+                OutputKind::Export => AutomationOutputKind::Export,
+                OutputKind::Save { preset } => AutomationOutputKind::Save {
+                    preset_name: preset.name,
+                },
+            };
             AutomationExportOp {
                 release_id: op.release_id,
                 target_dir: op.payload.target_dir.to_string_lossy().to_string(),
@@ -1886,6 +1899,7 @@ fn automation_export_snapshot(
                 total_size: op.total_size,
                 created_at: op.created_at,
                 state,
+                kind,
             }
         })
         .collect();

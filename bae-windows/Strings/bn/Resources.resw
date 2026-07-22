@@ -118,6 +118,8 @@
   <data name="menu.change_cover" xml:space="preserve"><value>কভার পরিবর্তন করুন…</value></data>
   <data name="menu.delete" xml:space="preserve"><value>মুছুন…</value></data>
   <data name="menu.export" xml:space="preserve"><value>এক্সপোর্ট…</value></data>
+  <data name="menu.save_as" xml:space="preserve"><value>নামে সংরক্ষণ করুন…</value></data>
+  <data name="save.title" xml:space="preserve"><value>নামে সংরক্ষণ করুন</value></data>
   <data name="menu.play" xml:space="preserve"><value>চালান</value></data>
   <data name="menu.play_next" xml:space="preserve"><value>এরপর চালান</value></data>
   <data name="menu.set_primary" xml:space="preserve"><value>প্রাথমিক রিলিজ হিসেবে সেট করুন</value></data>
@@ -247,7 +249,6 @@
   <data name="sync.reconnect" xml:space="preserve"><value>আবার সংযোগ</value></data>
   <data name="sync.synced" xml:space="preserve"><value>সিঙ্ক হয়েছে {time}</value></data>
   <data name="sync.syncing" xml:space="preserve"><value>সিঙ্ক হচ্ছে…</value></data>
-  <data name="track.export.original" xml:space="preserve"><value>মূল</value></data>
   <data name="track.export.prepare_failed" xml:space="preserve"><value>এক্সপোর্ট প্রস্তুত করা যায়নি।</value></data>
   <data name="welcome.choose_library" xml:space="preserve"><value>একটি লাইব্রেরি বেছে নিন</value></data>
   <data name="welcome.join_library" xml:space="preserve"><value>লাইব্রেরিতে যোগ দিন</value></data>
@@ -301,7 +302,6 @@
   <data name="work.open_failed" xml:space="preserve"><value>কাজের বিবরণ খোলা যায়নি</value></data>
   <data name="work.count" xml:space="preserve"><value>{count}টি কাজ</value></data>
   <data name="album.count" xml:space="preserve"><value>{count}টি অ্যালবাম</value></data>
-  <data name="settings.export.label" xml:space="preserve"><value>এক্সপোর্ট</value></data>
   <data name="settings.export.default_track_format" xml:space="preserve"><value>ডিফল্ট ট্র্যাক ফরম্যাট</value></data>
   <data name="settings.export.default_release_format" xml:space="preserve"><value>ডিফল্ট রিলিজ ফরম্যাট</value></data>
   <data name="settings.export.presets" xml:space="preserve"><value>প্রিসেট</value></data>
@@ -393,6 +393,7 @@
   <data name="nowplaying.show_elapsed" xml:space="preserve"><value>অতিবাহিত সময় দেখান</value></data>
   <data name="export.title" xml:space="preserve"><value>এক্সপোর্ট করা হচ্ছে</value></data>
   <data name="export.state.exporting" xml:space="preserve"><value>{percent}% এক্সপোর্ট হচ্ছে</value></data>
+  <data name="export.state.saving" xml:space="preserve"><value>{percent}% সংরক্ষণ হচ্ছে</value></data>
   <data name="import.documents" xml:space="preserve"><value>ডকুমেন্ট</value></data>
   <data name="import.document.read_failed" xml:space="preserve"><value>{name} পড়া যায়নি: {error}</value></data>
   <data name="libraries.reveal" xml:space="preserve"><value>ফাইল এক্সপ্লোরারে দেখান</value></data>

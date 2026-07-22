@@ -88,64 +88,59 @@ impl LibraryManager {
                 )));
             }
         }
-        let (default_track_export_selection, default_release_export_selection) = {
+        // Both save defaults are required, valid preset ids: re-validate them
+        // against the new list so deleting a default's preset (or the last
+        // preset applicable to a level) is rejected rather than leaving a
+        // dangling default.
+        let (default_track, default_release) = {
             let config = self.config_handle.config();
             (
-                config.default_track_export_selection.clone(),
-                config.default_release_export_selection.clone(),
+                config.default_track_save_preset.clone(),
+                config.default_release_save_preset.clone(),
             )
         };
-        Self::validate_export_selection_against_presets(
-            &default_track_export_selection,
-            &presets,
-            true,
-        )?;
-        Self::validate_export_selection_against_presets(
-            &default_release_export_selection,
-            &presets,
-            false,
-        )?;
+        Self::validate_default_save_preset(&default_track, &presets, true)?;
+        Self::validate_default_save_preset(&default_release, &presets, false)?;
         self.config_handle.update(|c| c.export_presets = presets)
     }
 
-    pub fn set_default_track_export_selection(
+    pub fn set_default_track_save_preset(
         &self,
-        selection: crate::config::ExportSelection,
+        preset_id: String,
     ) -> Result<(), crate::config::ConfigError> {
-        Self::validate_export_selection_against_presets(
-            &selection,
+        Self::validate_default_save_preset(
+            &preset_id,
             &self.config_handle.config().export_presets,
             true,
         )?;
         self.config_handle
-            .update(|c| c.default_track_export_selection = selection)
+            .update(|c| c.default_track_save_preset = preset_id)
     }
 
-    pub fn set_default_release_export_selection(
+    pub fn set_default_release_save_preset(
         &self,
-        selection: crate::config::ExportSelection,
+        preset_id: String,
     ) -> Result<(), crate::config::ConfigError> {
-        Self::validate_export_selection_against_presets(
-            &selection,
+        Self::validate_default_save_preset(
+            &preset_id,
             &self.config_handle.config().export_presets,
             false,
         )?;
         self.config_handle
-            .update(|c| c.default_release_export_selection = selection)
+            .update(|c| c.default_release_save_preset = preset_id)
     }
 
-    fn validate_export_selection_against_presets(
-        selection: &crate::config::ExportSelection,
+    /// A save default must name a preset that exists and applies to its level
+    /// (track or release). Rejects an unknown id or one whose preset doesn't
+    /// cover the level, so a stored default is never dangling or wrong-level.
+    fn validate_default_save_preset(
+        preset_id: &str,
         presets: &[crate::config::ExportPreset],
         track_level: bool,
     ) -> Result<(), crate::config::ConfigError> {
-        let crate::config::ExportSelection::Preset { preset_id } = selection else {
-            return Ok(());
-        };
         let Some(preset) = presets.iter().find(|preset| preset.id == *preset_id) else {
             return Err(crate::config::ConfigError::Config(format!(
-                "unknown export preset {}",
-                preset_id
+                "unknown export preset {preset_id}"
             )));
         };
         let allowed = if track_level {
@@ -157,8 +152,7 @@ impl LibraryManager {
             Ok(())
         } else {
             Err(crate::config::ConfigError::Config(format!(
-                "export preset {} does not apply to this export level",
-                preset_id
+                "export preset {preset_id} does not apply to this export level"
             )))
         }
     }

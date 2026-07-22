@@ -2,70 +2,108 @@ import AppKit
 import BaeKit
 import Foundation
 
+/// One preset the user can pick in a save flow: its display name, the file
+/// extension its codec produces (carried across the bridge on the preset), and
+/// its id. Built from the configured presets, filtered to the relevant level.
 struct ExportFormatChoice {
     let title: String
-    let extensionName: String?
-    let selection: BridgeExportSelection
+    let extensionName: String
+    let presetId: String
 
-    @MainActor
+    static func trackChoices(
+        presets: [BridgeExportPreset]
+    ) -> [ExportFormatChoice] {
+        presets
+            .filter(\.appliesToTrack)
+            .map {
+                ExportFormatChoice(
+                    title: $0.name,
+                    extensionName: $0.extension,
+                    presetId: $0.id
+                )
+            }
+    }
+
     static func releaseChoices(
         presets: [BridgeExportPreset]
     ) -> [ExportFormatChoice] {
-        var choices = [
-            ExportFormatChoice(
-                title: String(localized: "Original"),
-                extensionName: nil,
-                selection: .original
-            )
-        ]
-        choices.append(
-            contentsOf:
-                presets
-                .filter(\.appliesToRelease)
-                .map {
-                    ExportFormatChoice(
-                        title: $0.name,
-                        extensionName: $0.extension,
-                        selection: .preset(presetId: $0.id)
-                    )
-                }
-        )
-        return choices
+        presets
+            .filter(\.appliesToRelease)
+            .map {
+                ExportFormatChoice(
+                    title: $0.name,
+                    extensionName: $0.extension,
+                    presetId: $0.id
+                )
+            }
     }
 }
 
-struct ReleaseExportTarget {
+/// A resolved release-save destination: the chosen folder plus the preset to
+/// render with.
+struct ReleaseSaveTarget {
     let targetDir: String
-    let selection: BridgeExportSelection
+    let presetId: String
 }
 
-/// Resolves the destination directory and format for a release export. The
-/// format choices come from the export presets; the default selection from the
-/// config. The destination is always chosen in a folder dialog, seeded with the
-/// last-used output folder (`lastExportFolder`, per-device UI memory) and
-/// written back after the user picks. Returns `nil` when the user picks no
-/// folder, so the caller enqueues nothing. Shared by every export-trigger call
-/// site.
+/// Destination pickers for release-level output. Export chooses a folder only
+/// (verbatim, no format); save chooses a folder plus a preset. Both seed and
+/// write back `lastExportFolder` (per-device UI memory, not synced config).
+/// Returns `nil` when the user cancels, so the caller enqueues nothing.
 enum ExportTarget {
     /// UserDefaults key for the last folder a release output was written to.
     /// Per-device UI convenience, not synced config — it only seeds the picker.
     private static let lastExportFolderKey = "lastExportFolder"
 
+    /// Verbatim export: a plain folder dialog, no format anywhere. Returns the
+    /// chosen directory.
     @MainActor
-    static func resolveRelease(config: Config) -> ReleaseExportTarget? {
+    static func resolveExportDir() -> String? {
+        let panel = makeFolderPanel()
+        guard panel.runModal() == .OK, let url = panel.url else {
+            return nil
+        }
+        let dir = url.path(percentEncoded: false)
+        UserDefaults.standard.set(dir, forKey: lastExportFolderKey)
+        return dir
+    }
+
+    /// Release save: a folder dialog with a preset-picker accessory (release
+    /// presets, default `defaultReleaseSavePreset`). Returns the chosen folder
+    /// plus preset id.
+    @MainActor
+    static func resolveReleaseSave(config: Config) -> ReleaseSaveTarget? {
         let choices = ExportFormatChoice.releaseChoices(
             presets: config.exportPresets
         )
         guard
-            let selectedIndex = selectedFormatIndex(
-                choices: choices,
-                defaultSelection: config.defaultReleaseExportSelection
-            )
+            let selectedIndex = choices.firstIndex(where: {
+                $0.presetId == config.defaultReleaseSavePreset
+            })
         else {
             showDefaultFormatUnavailableAlert()
             return nil
         }
 
+        let panel = makeFolderPanel()
+        let popup = makeFormatPopup(
+            choices: choices,
+            selectedIndex: selectedIndex
+        )
+        panel.accessoryView = formatAccessoryView(popup: popup)
+        guard panel.runModal() == .OK, let url = panel.url else {
+            return nil
+        }
+        let dir = url.path(percentEncoded: false)
+        UserDefaults.standard.set(dir, forKey: lastExportFolderKey)
+        return ReleaseSaveTarget(
+            targetDir: dir,
+            presetId: choices[popup.indexOfSelectedItem].presetId
+        )
+    }
+
+    @MainActor
+    private static func makeFolderPanel() -> NSOpenPanel {
         let panel = NSOpenPanel()
         panel.canChooseDirectories = true
         panel.canChooseFiles = false
@@ -76,28 +114,7 @@ enum ExportTarget {
         {
             panel.directoryURL = URL(fileURLWithPath: last)
         }
-        let popup = makeFormatPopup(
-            choices: choices,
-            selectedIndex: selectedIndex
-        )
-        panel.accessoryView = formatAccessoryView(popup: popup)
-        guard panel.runModal() == .OK, let url = panel.url else {
-            return nil
-        }
-        let targetDir = url.path(percentEncoded: false)
-        UserDefaults.standard.set(targetDir, forKey: lastExportFolderKey)
-        return ReleaseExportTarget(
-            targetDir: targetDir,
-            selection: choices[popup.indexOfSelectedItem].selection
-        )
-    }
-
-    @MainActor
-    private static func selectedFormatIndex(
-        choices: [ExportFormatChoice],
-        defaultSelection: BridgeExportSelection
-    ) -> Int? {
-        choices.firstIndex { $0.selection == defaultSelection }
+        return panel
     }
 
     @MainActor

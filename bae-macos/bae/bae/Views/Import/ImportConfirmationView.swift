@@ -641,8 +641,8 @@ struct CoverPickerView: View {
                         exportFilenameTokens: PreviewData
                             .exportFilenameTokens,
                         exportPresets: PreviewData.exportPresets,
-                        defaultTrackExportSelection: .original,
-                        defaultReleaseExportSelection: .original,
+                        defaultTrackSavePreset: "flac",
+                        defaultReleaseSavePreset: "flac",
                         mcp: BridgeMcpConfig(enabled: false, port: 47777),
                         discogsTokenStatus: .notConfigured,
                         discogsUsable: false,

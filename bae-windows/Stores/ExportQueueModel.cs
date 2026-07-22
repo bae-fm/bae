@@ -6,6 +6,10 @@ namespace Bae.Windows;
 // edge so this decision layer stays free of WinRT and uniffi types.
 public enum ExportRowKind { Queued, Active, Failed }
 
+// Whether an output row is a verbatim export or a preset save. Projected from
+// the bridge `BridgeOutputKind` at the dialog edge, like `ExportRowKind`.
+public enum OutputKind { Export, Save }
+
 // The pure decision layer behind the storage dialog's Exporting section. The
 // export queue renders from the snapshot and actions never optimistically
 // mutate — this only maps counts and state to catalog keys, so it is
@@ -25,11 +29,13 @@ public static class ExportQueueModel
         paused ? "outbox.resume" : "outbox.pause";
 
     // A row's state label key. Queued and failed reuse the download-state keys
-    // (their values are generic); active is export-specific because it carries
-    // the percent.
-    public static string StateKey(ExportRowKind kind) => kind switch
+    // (their values are generic); the active key carries the percent and differs
+    // by output kind — exporting vs saving.
+    public static string StateKey(ExportRowKind kind, OutputKind outputKind) => kind switch
     {
-        ExportRowKind.Active => "export.state.exporting",
+        ExportRowKind.Active => outputKind == OutputKind.Save
+            ? "export.state.saving"
+            : "export.state.exporting",
         ExportRowKind.Failed => "download.state.failed",
         _ => "download.state.queued",
     };

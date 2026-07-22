@@ -118,6 +118,8 @@
   <data name="menu.change_cover" xml:space="preserve"><value>આવરણ બદલો…</value></data>
   <data name="menu.delete" xml:space="preserve"><value>કાઢી નાખો…</value></data>
   <data name="menu.export" xml:space="preserve"><value>નિકાસ…</value></data>
+  <data name="menu.save_as" xml:space="preserve"><value>આ રીતે સાચવો…</value></data>
+  <data name="save.title" xml:space="preserve"><value>આ રીતે સાચવો</value></data>
   <data name="menu.play" xml:space="preserve"><value>ચાલુ કરો</value></data>
   <data name="menu.play_next" xml:space="preserve"><value>આગળ વગાડો</value></data>
   <data name="menu.set_primary" xml:space="preserve"><value>પ્રાથમિક પ્રકાશન તરીકે સેટ કરો</value></data>
@@ -247,7 +249,6 @@
   <data name="sync.reconnect" xml:space="preserve"><value>ફરી જોડો</value></data>
   <data name="sync.synced" xml:space="preserve"><value>{time} સિંક થયું</value></data>
   <data name="sync.syncing" xml:space="preserve"><value>સિંક થઈ રહ્યું છે…</value></data>
-  <data name="track.export.original" xml:space="preserve"><value>મૂળ</value></data>
   <data name="track.export.prepare_failed" xml:space="preserve"><value>નિકાસ તૈયાર કરી શકાયી નહીં.</value></data>
   <data name="welcome.choose_library" xml:space="preserve"><value>લાઇબ્રેરી પસંદ કરો</value></data>
   <data name="welcome.join_library" xml:space="preserve"><value>લાઇબ્રેરીમાં જોડાઓ</value></data>
@@ -301,7 +302,6 @@
   <data name="work.open_failed" xml:space="preserve"><value>કૃતિની વિગત ખોલી શકાયી નહીં</value></data>
   <data name="work.count" xml:space="preserve"><value>{count} કૃતિઓ</value></data>
   <data name="album.count" xml:space="preserve"><value>{count} આલ્બમ</value></data>
-  <data name="settings.export.label" xml:space="preserve"><value>નિકાસ</value></data>
   <data name="settings.export.default_track_format" xml:space="preserve"><value>મૂળભૂત ટ્રૅક બંધારણ</value></data>
   <data name="settings.export.default_release_format" xml:space="preserve"><value>મૂળભૂત પ્રકાશન બંધારણ</value></data>
   <data name="settings.export.presets" xml:space="preserve"><value>પૂર્વનિયોજનો</value></data>
@@ -393,6 +393,7 @@
   <data name="nowplaying.show_elapsed" xml:space="preserve"><value>વીતેલો સમય બતાવો</value></data>
   <data name="export.title" xml:space="preserve"><value>નિકાસ થઈ રહી છે</value></data>
   <data name="export.state.exporting" xml:space="preserve"><value>{percent}% નિકાસ થઈ રહી છે</value></data>
+  <data name="export.state.saving" xml:space="preserve"><value>{percent}% સાચવાઈ રહ્યું છે</value></data>
   <data name="import.documents" xml:space="preserve"><value>દસ્તાવેજો</value></data>
   <data name="import.document.read_failed" xml:space="preserve"><value>{name} વાંચી શકાયું નહીં: {error}</value></data>
   <data name="libraries.reveal" xml:space="preserve"><value>ફાઇલ એક્સપ્લોરરમાં બતાવો</value></data>

@@ -118,6 +118,8 @@
   <data name="menu.change_cover" xml:space="preserve"><value>Kapağı değiştir…</value></data>
   <data name="menu.delete" xml:space="preserve"><value>Sil…</value></data>
   <data name="menu.export" xml:space="preserve"><value>Dışa aktar…</value></data>
+  <data name="menu.save_as" xml:space="preserve"><value>Farklı Kaydet…</value></data>
+  <data name="save.title" xml:space="preserve"><value>Farklı Kaydet</value></data>
   <data name="menu.play" xml:space="preserve"><value>Çal</value></data>
   <data name="menu.play_next" xml:space="preserve"><value>Sırada çal</value></data>
   <data name="menu.set_primary" xml:space="preserve"><value>Birincil yayın olarak ayarla</value></data>
@@ -247,7 +249,6 @@
   <data name="sync.reconnect" xml:space="preserve"><value>Yeniden bağlan</value></data>
   <data name="sync.synced" xml:space="preserve"><value>{time} eşzamanlandı</value></data>
   <data name="sync.syncing" xml:space="preserve"><value>eşzamanlanıyor…</value></data>
-  <data name="track.export.original" xml:space="preserve"><value>Özgün</value></data>
   <data name="track.export.prepare_failed" xml:space="preserve"><value>Dışa aktarım hazırlanamadı.</value></data>
   <data name="welcome.choose_library" xml:space="preserve"><value>bir kitaplık seç</value></data>
   <data name="welcome.join_library" xml:space="preserve"><value>kitaplığa katıl</value></data>
@@ -301,7 +302,6 @@
   <data name="work.open_failed" xml:space="preserve"><value>Eser ayrıntısı açılamadı</value></data>
   <data name="work.count" xml:space="preserve"><value>{count} Eser</value></data>
   <data name="album.count" xml:space="preserve"><value>{count} Albüm</value></data>
-  <data name="settings.export.label" xml:space="preserve"><value>Dışa aktar</value></data>
   <data name="settings.export.default_track_format" xml:space="preserve"><value>Varsayılan parça biçimi</value></data>
   <data name="settings.export.default_release_format" xml:space="preserve"><value>Varsayılan yayın biçimi</value></data>
   <data name="settings.export.presets" xml:space="preserve"><value>Ön ayarlar</value></data>
@@ -393,6 +393,7 @@
   <data name="nowplaying.show_elapsed" xml:space="preserve"><value>geçen süreyi göster</value></data>
   <data name="export.title" xml:space="preserve"><value>dışa aktarılıyor</value></data>
   <data name="export.state.exporting" xml:space="preserve"><value>dışa aktarılıyor {percent}%</value></data>
+  <data name="export.state.saving" xml:space="preserve"><value>kaydediliyor {percent}%</value></data>
   <data name="import.documents" xml:space="preserve"><value>Belgeler</value></data>
   <data name="import.document.read_failed" xml:space="preserve"><value>{name} okunamadı: {error}</value></data>
   <data name="libraries.reveal" xml:space="preserve"><value>Dosya Gezgini'nde göster</value></data>

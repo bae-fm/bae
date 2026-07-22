@@ -118,6 +118,8 @@
   <data name="menu.change_cover" xml:space="preserve"><value>Zmień okładkę…</value></data>
   <data name="menu.delete" xml:space="preserve"><value>Usuń…</value></data>
   <data name="menu.export" xml:space="preserve"><value>Eksportuj…</value></data>
+  <data name="menu.save_as" xml:space="preserve"><value>Zapisz jako…</value></data>
+  <data name="save.title" xml:space="preserve"><value>Zapisz jako</value></data>
   <data name="menu.play" xml:space="preserve"><value>Odtwórz</value></data>
   <data name="menu.play_next" xml:space="preserve"><value>Odtwórz jako następne</value></data>
   <data name="menu.set_primary" xml:space="preserve"><value>Ustaw jako wydanie główne</value></data>
@@ -247,7 +249,6 @@
   <data name="sync.reconnect" xml:space="preserve"><value>Połącz ponownie</value></data>
   <data name="sync.synced" xml:space="preserve"><value>zsynchronizowano {time}</value></data>
   <data name="sync.syncing" xml:space="preserve"><value>synchronizowanie…</value></data>
-  <data name="track.export.original" xml:space="preserve"><value>Oryginał</value></data>
   <data name="track.export.prepare_failed" xml:space="preserve"><value>Nie udało się przygotować eksportu.</value></data>
   <data name="welcome.choose_library" xml:space="preserve"><value>wybierz bibliotekę</value></data>
   <data name="welcome.join_library" xml:space="preserve"><value>dołącz do biblioteki</value></data>
@@ -301,7 +302,6 @@
   <data name="work.open_failed" xml:space="preserve"><value>Nie udało się otworzyć szczegółów dzieła</value></data>
   <data name="work.count" xml:space="preserve"><value>{count} dzieł</value></data>
   <data name="album.count" xml:space="preserve"><value>{count} albumów</value></data>
-  <data name="settings.export.label" xml:space="preserve"><value>Eksportuj</value></data>
   <data name="settings.export.default_track_format" xml:space="preserve"><value>Domyślny format ścieżki</value></data>
   <data name="settings.export.default_release_format" xml:space="preserve"><value>Domyślny format wydania</value></data>
   <data name="settings.export.presets" xml:space="preserve"><value>Ustawienia</value></data>
@@ -393,6 +393,7 @@
   <data name="nowplaying.show_elapsed" xml:space="preserve"><value>pokaż miniony czas</value></data>
   <data name="export.title" xml:space="preserve"><value>eksportowanie</value></data>
   <data name="export.state.exporting" xml:space="preserve"><value>eksportowanie {percent}%</value></data>
+  <data name="export.state.saving" xml:space="preserve"><value>zapisywanie {percent}%</value></data>
   <data name="import.documents" xml:space="preserve"><value>Dokumenty</value></data>
   <data name="import.document.read_failed" xml:space="preserve"><value>Nie można odczytać {name}: {error}</value></data>
   <data name="libraries.reveal" xml:space="preserve"><value>pokaż w Eksploratorze plików</value></data>

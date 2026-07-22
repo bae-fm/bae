@@ -361,6 +361,16 @@ telemetry_events! {
         release_id: LocalId,
     },
 
+    /// A release finished saving its tracks to a user folder (desktop only).
+    SaveCompleted, "save_completed", Info {
+        release_id: LocalId,
+    },
+
+    /// A release save failed or its task panicked (desktop only).
+    SaveFailed, "save_failed", Error {
+        release_id: LocalId,
+    },
+
     /// A cloud provider connection was configured and started.
     CloudProviderConnected, "cloud_provider_connected", Info {
         provider: CloudProvider,
@@ -586,6 +596,23 @@ mod tests {
         assert_eq!(failed.name(), "export_failed");
         assert_eq!(failed.level(), DiagnosticLevel::Error);
         assert_eq!(failed.fields()["release_id"], serde_json::json!("rel-7"));
+    }
+
+    #[test]
+    fn save_completed_and_failed_carry_release_and_differ_by_level() {
+        let completed = TelemetryEvent::SaveCompleted {
+            release_id: LocalId("rel-9".to_string()),
+        };
+        assert_eq!(completed.name(), "save_completed");
+        assert_eq!(completed.level(), DiagnosticLevel::Info);
+        assert_eq!(completed.fields()["release_id"], serde_json::json!("rel-9"));
+
+        let failed = TelemetryEvent::SaveFailed {
+            release_id: LocalId("rel-9".to_string()),
+        };
+        assert_eq!(failed.name(), "save_failed");
+        assert_eq!(failed.level(), DiagnosticLevel::Error);
+        assert_eq!(failed.fields()["release_id"], serde_json::json!("rel-9"));
     }
 
     #[test]
