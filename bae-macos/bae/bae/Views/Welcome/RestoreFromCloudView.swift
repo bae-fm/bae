@@ -98,7 +98,11 @@ struct RestoreFromCloudView: View {
                         draft: $draft,
                         oauthConnected: oauthTokenJson != nil,
                         isAuthorizing: isAuthorizing,
-                        onConnect: { doOAuthAuthorize(provider: $0) },
+                        onConnect: { provider in
+                            #if BAE_OAUTH_PROVIDERS
+                                doOAuthAuthorize(provider: provider)
+                            #endif
+                        },
                         onCancelAuth: { isAuthorizing = false },
                     )
                 }
