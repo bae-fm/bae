@@ -247,8 +247,11 @@ enum PreviewData {
         query: "placeholder"
     )
 
-    // MARK: - Seeded stores
+}
 
+// MARK: - Seeded stores
+
+extension PreviewData {
     /// A `LibraryStore` holding the fixture album summaries and one seeded
     /// release detail, so the grid and album screen render content.
     @MainActor
