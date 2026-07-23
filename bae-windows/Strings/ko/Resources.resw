@@ -448,6 +448,6 @@
   <data name="nowplaying.casting_to" xml:space="preserve"><value>{device}(으)로 전송 중</value></data>
   <data name="nowplaying.cast.disconnect" xml:space="preserve"><value>연결 해제</value></data>
   <data name="nowplaying.cast.no_devices" xml:space="preserve"><value>전송 기기를 찾을 수 없음</value></data>
-  <data name="gallery.menu" xml:space="preserve"><value>컴포넌트 갤러리</value></data>
-  <data name="gallery.title" xml:space="preserve"><value>컴포넌트 갤러리</value></data>
+  <data name="component_gallery.menu" xml:space="preserve"><value>컴포넌트 갤러리</value></data>
+  <data name="component_gallery.title" xml:space="preserve"><value>컴포넌트 갤러리</value></data>
 </root>

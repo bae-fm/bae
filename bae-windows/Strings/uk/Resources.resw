@@ -448,6 +448,6 @@
   <data name="nowplaying.casting_to" xml:space="preserve"><value>Трансляція на {device}</value></data>
   <data name="nowplaying.cast.disconnect" xml:space="preserve"><value>Відключити</value></data>
   <data name="nowplaying.cast.no_devices" xml:space="preserve"><value>Пристроїв для трансляції не знайдено</value></data>
-  <data name="gallery.menu" xml:space="preserve"><value>галерея компонентів</value></data>
-  <data name="gallery.title" xml:space="preserve"><value>галерея компонентів</value></data>
+  <data name="component_gallery.menu" xml:space="preserve"><value>галерея компонентів</value></data>
+  <data name="component_gallery.title" xml:space="preserve"><value>галерея компонентів</value></data>
 </root>

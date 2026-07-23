@@ -448,6 +448,6 @@
   <data name="nowplaying.casting_to" xml:space="preserve"><value>กำลังแคสต์ไปยัง {device}</value></data>
   <data name="nowplaying.cast.disconnect" xml:space="preserve"><value>ตัดการเชื่อมต่อ</value></data>
   <data name="nowplaying.cast.no_devices" xml:space="preserve"><value>ไม่พบอุปกรณ์แคสต์</value></data>
-  <data name="gallery.menu" xml:space="preserve"><value>แกลเลอรีคอมโพเนนต์</value></data>
-  <data name="gallery.title" xml:space="preserve"><value>แกลเลอรีคอมโพเนนต์</value></data>
+  <data name="component_gallery.menu" xml:space="preserve"><value>แกลเลอรีคอมโพเนนต์</value></data>
+  <data name="component_gallery.title" xml:space="preserve"><value>แกลเลอรีคอมโพเนนต์</value></data>
 </root>

@@ -448,6 +448,6 @@
   <data name="nowplaying.casting_to" xml:space="preserve"><value>{device} वर कास्ट होत आहे</value></data>
   <data name="nowplaying.cast.disconnect" xml:space="preserve"><value>डिस्कनेक्ट करा</value></data>
   <data name="nowplaying.cast.no_devices" xml:space="preserve"><value>कोणतेही कास्ट डिव्हाइस आढळले नाही</value></data>
-  <data name="gallery.menu" xml:space="preserve"><value>कंपोनंट गॅलरी</value></data>
-  <data name="gallery.title" xml:space="preserve"><value>कंपोनंट गॅलरी</value></data>
+  <data name="component_gallery.menu" xml:space="preserve"><value>कंपोनंट गॅलरी</value></data>
+  <data name="component_gallery.title" xml:space="preserve"><value>कंपोनंट गॅलरी</value></data>
 </root>

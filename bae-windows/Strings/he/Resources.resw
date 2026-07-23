@@ -448,6 +448,6 @@
   <data name="nowplaying.casting_to" xml:space="preserve"><value>מפעיל Cast אל {device}</value></data>
   <data name="nowplaying.cast.disconnect" xml:space="preserve"><value>ניתוק</value></data>
   <data name="nowplaying.cast.no_devices" xml:space="preserve"><value>לא נמצאו מכשירי Cast</value></data>
-  <data name="gallery.menu" xml:space="preserve"><value>גלריית רכיבים</value></data>
-  <data name="gallery.title" xml:space="preserve"><value>גלריית רכיבים</value></data>
+  <data name="component_gallery.menu" xml:space="preserve"><value>גלריית רכיבים</value></data>
+  <data name="component_gallery.title" xml:space="preserve"><value>גלריית רכיבים</value></data>
 </root>

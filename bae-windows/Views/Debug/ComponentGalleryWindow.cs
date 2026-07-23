@@ -33,7 +33,7 @@ internal sealed class ComponentGalleryWindow : Window
 
     public ComponentGalleryWindow()
     {
-        Title = Loc.Chrome("gallery.title");
+        Title = Loc.Chrome("component_gallery.title");
 
         var sidebar = new ListView { SelectionMode = ListViewSelectionMode.Single, Width = 260 };
         foreach (var entry in Entries)

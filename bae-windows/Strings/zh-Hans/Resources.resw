@@ -448,6 +448,6 @@
   <data name="nowplaying.casting_to" xml:space="preserve"><value>正在投放到{device}</value></data>
   <data name="nowplaying.cast.disconnect" xml:space="preserve"><value>断开连接</value></data>
   <data name="nowplaying.cast.no_devices" xml:space="preserve"><value>未找到投放设备</value></data>
-  <data name="gallery.menu" xml:space="preserve"><value>组件库</value></data>
-  <data name="gallery.title" xml:space="preserve"><value>组件库</value></data>
+  <data name="component_gallery.menu" xml:space="preserve"><value>组件库</value></data>
+  <data name="component_gallery.title" xml:space="preserve"><value>组件库</value></data>
 </root>

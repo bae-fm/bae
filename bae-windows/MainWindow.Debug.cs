@@ -16,7 +16,7 @@ public sealed partial class MainWindow
     // shipping chrome.
     private void AddDebugMenu()
     {
-        var item = new MenuFlyoutItem { Text = Loc.Chrome("gallery.menu") };
+        var item = new MenuFlyoutItem { Text = Loc.Chrome("component_gallery.menu") };
         item.Click += (_, _) => ShowComponentGallery();
         var flyout = new MenuFlyout();
         flyout.Items.Add(item);
@@ -28,7 +28,7 @@ public sealed partial class MainWindow
             Content = new FontIcon { Glyph = "", FontSize = 16 },
             Flyout = flyout,
         };
-        ToolTipService.SetToolTip(button, Loc.Chrome("gallery.menu"));
+        ToolTipService.SetToolTip(button, Loc.Chrome("component_gallery.menu"));
         ToolbarButtons.Children.Insert(0, button);
     }
 
