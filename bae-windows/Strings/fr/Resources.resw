@@ -444,10 +444,10 @@
   <data name="nowplaying.repeat_context" xml:space="preserve"><value>Répéter : contexte</value></data>
   <data name="nowplaying.repeat_track" xml:space="preserve"><value>Répétition : piste</value></data>
   <data name="queue.now_playing" xml:space="preserve"><value>Lecture en cours</value></data>
-  <data name="nowplaying.cast" xml:space="preserve"><value>Cast</value></data>
-  <data name="nowplaying.casting_to" xml:space="preserve"><value>Casting to {device}</value></data>
-  <data name="nowplaying.cast.disconnect" xml:space="preserve"><value>Disconnect</value></data>
-  <data name="nowplaying.cast.no_devices" xml:space="preserve"><value>No Cast devices found</value></data>
+  <data name="nowplaying.cast" xml:space="preserve"><value>Caster</value></data>
+  <data name="nowplaying.casting_to" xml:space="preserve"><value>Diffusion sur {device}</value></data>
+  <data name="nowplaying.cast.disconnect" xml:space="preserve"><value>Déconnecter</value></data>
+  <data name="nowplaying.cast.no_devices" xml:space="preserve"><value>Aucun appareil Cast trouvé</value></data>
   <data name="gallery.menu" xml:space="preserve"><value>galerie de composants</value></data>
   <data name="gallery.title" xml:space="preserve"><value>galerie de composants</value></data>
 </root>
