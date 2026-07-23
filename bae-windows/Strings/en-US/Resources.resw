@@ -288,6 +288,7 @@
   <data name="settings.subsonic.enable" xml:space="preserve"><value>Enable Subsonic server</value></data>
   <data name="settings.subsonic.port" xml:space="preserve"><value>Port</value></data>
   <data name="settings.subsonic.username" xml:space="preserve"><value>Username</value></data>
+  <data name="settings.subsonic.allow_network" xml:space="preserve"><value>Allow connections from other devices on your network</value></data>
   <data name="settings.subsonic.password" xml:space="preserve"><value>Password</value></data>
   <data name="settings.subsonic.save_password" xml:space="preserve"><value>save password</value></data>
   <data name="settings.subsonic.password_help" xml:space="preserve"><value>The password is stored in the keyring, not in the config file. Clients authenticate with the username and password.</value></data>

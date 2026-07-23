@@ -297,6 +297,7 @@ mod tests {
                 enabled: true,
                 port,
                 username: "listener".to_string(),
+                bind_address: "127.0.0.1".to_string(),
             },
         );
 

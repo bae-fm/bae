@@ -505,6 +505,7 @@ async fn subsonic_config_rejects_invalid_and_persists_valid() {
         enabled: true,
         port: crate::config::SUBSONIC_DEFAULT_PORT,
         username: String::new(),
+        bind_address: "127.0.0.1".to_string(),
     };
     assert!(manager
         .set_subsonic_config(enabled_without_username)
@@ -518,6 +519,7 @@ async fn subsonic_config_rejects_invalid_and_persists_valid() {
         enabled: true,
         port: crate::config::SUBSONIC_DEFAULT_PORT + 1,
         username: "listener".to_string(),
+        bind_address: "0.0.0.0".to_string(),
     };
     manager.set_subsonic_config(valid.clone()).unwrap();
     assert_eq!(manager.get_config().subsonic, valid);

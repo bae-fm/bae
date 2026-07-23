@@ -73,7 +73,8 @@ struct PlaybackSettingsTab: View {
                     subsonic: BridgeSubsonicConfig(
                         enabled: false,
                         port: 4533,
-                        username: ""
+                        username: "",
+                        bindAddress: "127.0.0.1"
                     ),
                     discogsTokenStatus: .notConfigured,
                     discogsUsable: false,

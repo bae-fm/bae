@@ -59,10 +59,12 @@ pub struct SubsonicServerController {
 enum SubsonicServerControllerState {
     Disabled,
     Running {
+        /// The address and port the running server is bound to, and the username
+        /// it authenticates against. A config that changes any of these must
+        /// restart the server, so all three form the identity `apply_config`
+        /// compares against the running server.
+        bind_address: String,
         port: u16,
-        /// The username the running server authenticates against. A config that
-        /// keeps the same port but changes the username must still restart, so
-        /// the running username is part of the identity `apply_config` compares.
         username: String,
         url: String,
         cancellation: CancellationToken,
@@ -95,10 +97,10 @@ impl SubsonicServerController {
     }
 
     /// Bring the running server in line with `config`. Disabled config stops the
-    /// server; an enabled config (re)starts it whenever the port or username
-    /// differs from what is already running. A password change is not visible
-    /// here — the password is keyring-only — so the host drives it through
-    /// [`Self::restart`].
+    /// server; an enabled config (re)starts it whenever the bind address, port,
+    /// or username differs from what is already running. A password change is not
+    /// visible here — the password is keyring-only — so the host drives it
+    /// through [`Self::restart`].
     pub async fn apply_config(&self, config: SubsonicConfig) -> SubsonicServerStatus {
         if !config.enabled {
             self.shutdown().await;
@@ -114,15 +116,25 @@ impl SubsonicServerController {
 
         {
             let state = self.inner.lock().await;
-            if let SubsonicServerControllerState::Running { port, username, .. } = &*state {
-                if *port == config.port && *username == config.username {
+            if let SubsonicServerControllerState::Running {
+                bind_address,
+                port,
+                username,
+                ..
+            } = &*state
+            {
+                if *bind_address == config.bind_address
+                    && *port == config.port
+                    && *username == config.username
+                {
                     return state.status();
                 }
             }
         }
 
         self.shutdown().await;
-        self.start(config.port, config.username).await
+        self.start(config.bind_address, config.port, config.username)
+            .await
     }
 
     /// Stop and re-apply `config`, so a running server picks up a credential
@@ -158,7 +170,12 @@ impl SubsonicServerController {
         }
     }
 
-    async fn start(&self, port: u16, username: String) -> SubsonicServerStatus {
+    async fn start(
+        &self,
+        bind_address: String,
+        port: u16,
+        username: String,
+    ) -> SubsonicServerStatus {
         let password = match self.password_provider.as_ref()() {
             Ok(password) => password.unwrap_or_default(),
             Err(detail) => {
@@ -185,13 +202,25 @@ impl SubsonicServerController {
             password,
         };
 
-        let addr = SocketAddr::from(([127, 0, 0, 1], port));
+        // `validate` already guaranteed the address parses; surface a parse
+        // failure as a config error rather than unwrapping.
+        let ip = match bind_address.parse::<std::net::IpAddr>() {
+            Ok(ip) => ip,
+            Err(e) => {
+                return self
+                    .record_error(SubsonicServerError::InvalidConfig {
+                        detail: format!("invalid bind address {bind_address:?}: {e}"),
+                    })
+                    .await;
+            }
+        };
+        let addr = SocketAddr::new(ip, port);
         let listener = match tokio::net::TcpListener::bind(addr).await {
             Ok(listener) => listener,
             Err(e) => {
                 return self
                     .record_error(SubsonicServerError::BindFailed {
-                        detail: format!("failed to bind 127.0.0.1:{port}: {e}"),
+                        detail: format!("failed to bind {bind_address}:{port}: {e}"),
                     })
                     .await;
             }
@@ -224,10 +253,11 @@ impl SubsonicServerController {
             }
         });
 
-        let url = format!("http://127.0.0.1:{port}/rest");
+        let url = format!("http://{bind_address}:{port}/rest");
         let status = SubsonicServerStatus::Running { url: url.clone() };
         let mut state = self.inner.lock().await;
         *state = SubsonicServerControllerState::Running {
+            bind_address,
             port,
             username,
             url,
@@ -306,6 +336,16 @@ mod tests {
         SubsonicServerController::new(manager.clone(), password_provider(password))
     }
 
+    /// An enabled config on loopback with the given port and username.
+    fn enabled_config(port: u16, username: &str) -> SubsonicConfig {
+        SubsonicConfig {
+            enabled: true,
+            port,
+            username: username.to_string(),
+            bind_address: "127.0.0.1".to_string(),
+        }
+    }
+
     #[tokio::test]
     async fn disabled_config_reports_disabled() {
         let (manager, _temp) = test_manager().await;
@@ -320,11 +360,7 @@ mod tests {
     async fn enabled_with_valid_credential_runs() {
         let (manager, _temp) = test_manager().await;
         let controller = controller(&manager, Some("s3cret"));
-        let config = SubsonicConfig {
-            enabled: true,
-            port: free_port(),
-            username: "listener".to_string(),
-        };
+        let config = enabled_config(free_port(), "listener");
         let status = controller.apply_config(config).await;
         assert!(
             matches!(status, SubsonicServerStatus::Running { .. }),
@@ -338,11 +374,7 @@ mod tests {
         let (manager, _temp) = test_manager().await;
         let controller = controller(&manager, None);
         let port = free_port();
-        let config = SubsonicConfig {
-            enabled: true,
-            port,
-            username: "listener".to_string(),
-        };
+        let config = enabled_config(port, "listener");
         let status = controller.apply_config(config).await;
         assert!(
             matches!(
@@ -367,11 +399,7 @@ mod tests {
             manager.clone(),
             Arc::new(|| Err("keyring is locked".to_string())),
         );
-        let config = SubsonicConfig {
-            enabled: true,
-            port: free_port(),
-            username: "listener".to_string(),
-        };
+        let config = enabled_config(free_port(), "listener");
         let status = controller.apply_config(config).await;
         assert!(
             matches!(
@@ -388,11 +416,7 @@ mod tests {
     async fn transitions_disabled_enabled_disabled() {
         let (manager, _temp) = test_manager().await;
         let controller = controller(&manager, Some("s3cret"));
-        let enabled = SubsonicConfig {
-            enabled: true,
-            port: free_port(),
-            username: "listener".to_string(),
-        };
+        let enabled = enabled_config(free_port(), "listener");
 
         assert!(matches!(
             controller
@@ -421,11 +445,7 @@ mod tests {
         let (manager, _temp) = test_manager().await;
         let controller = controller(&manager, Some("s3cret"));
         let port = free_port();
-        let config = SubsonicConfig {
-            enabled: true,
-            port,
-            username: "listener".to_string(),
-        };
+        let config = enabled_config(port, "listener");
         assert!(matches!(
             controller.apply_config(config).await,
             SubsonicServerStatus::Running { .. }
@@ -436,6 +456,39 @@ mod tests {
             SubsonicServerStatus::Disabled
         ));
         // Once shut down, the port is released and can be bound again.
+        assert!(
+            std::net::TcpListener::bind(("127.0.0.1", port)).is_ok(),
+            "shutdown must release the bound port"
+        );
+    }
+
+    /// Changing only the bind address (same port, same username) restarts the
+    /// server: the URL reflects the new address, and the old loopback binding is
+    /// released. `apply_config` must not treat a bind-address change as no-op.
+    #[tokio::test]
+    async fn changing_bind_address_restarts_the_server() {
+        let (manager, _temp) = test_manager().await;
+        let controller = controller(&manager, Some("s3cret"));
+        let port = free_port();
+
+        let loopback = enabled_config(port, "listener");
+        let status = controller.apply_config(loopback).await;
+        assert!(
+            matches!(&status, SubsonicServerStatus::Running { url } if url.contains("127.0.0.1")),
+            "loopback config runs on 127.0.0.1, got {status:?}"
+        );
+
+        let lan = SubsonicConfig {
+            bind_address: "0.0.0.0".to_string(),
+            ..enabled_config(port, "listener")
+        };
+        let status = controller.apply_config(lan).await;
+        assert!(
+            matches!(&status, SubsonicServerStatus::Running { url } if url.contains("0.0.0.0")),
+            "a bind-address change must restart on the new address, got {status:?}"
+        );
+
+        controller.shutdown().await;
         assert!(
             std::net::TcpListener::bind(("127.0.0.1", port)).is_ok(),
             "shutdown must release the bound port"

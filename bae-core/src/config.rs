@@ -145,14 +145,18 @@ impl SubsonicCredential {
 }
 
 /// On-disk Subsonic server settings. The password is keyring-only (like the MCP
-/// bearer token), so it is not here; only the non-secret `enabled`, `port`, and
-/// `username` persist. The server controller combines this `username` with the
-/// keyring password into the runtime [`SubsonicCredential`].
+/// bearer token), so it is not here; only the non-secret `enabled`, `port`,
+/// `username`, and `bind_address` persist. The server controller combines this
+/// `username` with the keyring password into the runtime [`SubsonicCredential`].
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SubsonicConfig {
     pub enabled: bool,
     pub port: u16,
     pub username: String,
+    /// The IP address the server binds. `127.0.0.1` (the default) keeps it on
+    /// this machine; `0.0.0.0` opens it to other devices on the network. Stored
+    /// as a string but validated to parse as an [`std::net::IpAddr`].
+    pub bind_address: String,
 }
 
 impl SubsonicConfig {
@@ -161,6 +165,7 @@ impl SubsonicConfig {
             enabled: false,
             port: SUBSONIC_DEFAULT_PORT,
             username: String::new(),
+            bind_address: "127.0.0.1".to_string(),
         }
     }
 
@@ -177,6 +182,12 @@ impl SubsonicConfig {
             return Err(ConfigError::Config(
                 "Subsonic server requires a username when enabled".to_string(),
             ));
+        }
+        if self.bind_address.parse::<std::net::IpAddr>().is_err() {
+            return Err(ConfigError::Config(format!(
+                "Subsonic bind address {:?} is not a valid IP address",
+                self.bind_address
+            )));
         }
         Ok(())
     }
@@ -1236,6 +1247,7 @@ mod tests {
             enabled: true,
             port: 0,
             username: "listener".to_string(),
+            bind_address: "127.0.0.1".to_string(),
         };
         assert!(config.validate().is_err(), "port 0 is not a real endpoint");
     }
@@ -1246,6 +1258,7 @@ mod tests {
             enabled: true,
             port: SUBSONIC_DEFAULT_PORT,
             username: String::new(),
+            bind_address: "127.0.0.1".to_string(),
         };
         assert!(
             config.validate().is_err(),
@@ -1254,9 +1267,38 @@ mod tests {
     }
 
     #[test]
+    fn subsonic_config_rejects_non_ip_bind_address() {
+        let config = SubsonicConfig {
+            enabled: true,
+            port: SUBSONIC_DEFAULT_PORT,
+            username: "listener".to_string(),
+            bind_address: "not-an-ip".to_string(),
+        };
+        assert!(
+            config.validate().is_err(),
+            "a bind address that isn't an IP must be rejected"
+        );
+    }
+
+    #[test]
+    fn subsonic_config_allows_lan_bind_address() {
+        let config = SubsonicConfig {
+            enabled: true,
+            port: SUBSONIC_DEFAULT_PORT,
+            username: "listener".to_string(),
+            bind_address: "0.0.0.0".to_string(),
+        };
+        assert!(
+            config.validate().is_ok(),
+            "0.0.0.0 opens the server to the network and is valid"
+        );
+    }
+
+    #[test]
     fn subsonic_config_allows_disabled_without_username() {
         let config = SubsonicConfig::disabled_default();
         assert!(config.username.is_empty());
+        assert_eq!(config.bind_address, "127.0.0.1");
         assert!(
             config.validate().is_ok(),
             "a disabled server needs no username"

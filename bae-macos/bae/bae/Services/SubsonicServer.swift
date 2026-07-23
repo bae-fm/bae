@@ -6,14 +6,18 @@ import Foundation
 /// read back into observable state.
 final class SubsonicServer: Sendable, Observable {
     let setServerConfig:
-        @Sendable (_ enabled: Bool, _ portText: String, _ username: String)
+        @Sendable (
+            _ enabled: Bool, _ portText: String, _ username: String,
+            _ bindAddress: String
+        )
             async throws -> Void
     let getServerStatus: @Sendable () async -> BridgeSubsonicServerStatus
     let setPassword: @Sendable (_ password: String) async throws -> Void
 
     init(
         setServerConfig:
-            @escaping @Sendable (Bool, String, String) async throws -> Void,
+            @escaping @Sendable (Bool, String, String, String) async throws ->
+            Void,
         getServerStatus:
             @escaping @Sendable () async -> BridgeSubsonicServerStatus,
         setPassword: @escaping @Sendable (String) async throws -> Void
@@ -32,7 +36,8 @@ final class SubsonicServer: Sendable, Observable {
                 try handle.setSubsonicServerConfig(
                     enabled: $0,
                     port: port,
-                    username: $2
+                    username: $2,
+                    bindAddress: $3
                 )
             },
             getServerStatus: { handle.getSubsonicServerStatus() },

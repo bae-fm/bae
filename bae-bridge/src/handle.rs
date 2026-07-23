@@ -1141,12 +1141,14 @@ impl AppHandle {
         enabled: bool,
         port: u16,
         username: String,
+        bind_address: String,
     ) -> Result<(), BridgeError> {
         self.app
             .set_subsonic_config(bae_core::config::SubsonicConfig {
                 enabled,
                 port,
                 username,
+                bind_address,
             })
             .map_err(BridgeError::config)
     }

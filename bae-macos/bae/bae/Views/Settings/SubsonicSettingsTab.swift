@@ -32,6 +32,11 @@ struct SubsonicSettingsContent: View {
     private var username = ""
     @State
     private var password = ""
+    /// Whether the server binds a network-reachable address. On maps to
+    /// `0.0.0.0` (reachable from other devices on the LAN), off to `127.0.0.1`
+    /// (this machine only). The raw IP never reaches the user.
+    @State
+    private var allowNetwork = false
     @State
     private var status: BridgeSubsonicServerStatus = .disabled
     @State
@@ -89,6 +94,13 @@ struct SubsonicSettingsContent: View {
                             .disabled(isWorking)
                     }
                 }
+                Toggle(
+                    "Allow connections from other devices on your network",
+                    isOn: Binding(
+                        get: { allowNetwork },
+                        set: { setAllowNetwork($0) }
+                    )
+                )
                 statusRow
                 if let message {
                     Text(message.text)
@@ -157,10 +169,18 @@ struct SubsonicSettingsContent: View {
         enabled = config.enabled
         portText = String(config.port)
         username = config.username
+        // Anything other than pure loopback means the server is reachable from
+        // the network, so the toggle reads on.
+        allowNetwork = config.bindAddress != "127.0.0.1"
     }
 
     private func setEnabled(_ target: Bool) {
         enabled = target
+        applyConfig()
+    }
+
+    private func setAllowNetwork(_ target: Bool) {
+        allowNetwork = target
         applyConfig()
     }
 
@@ -171,13 +191,15 @@ struct SubsonicSettingsContent: View {
         let targetEnabled = enabled
         let portText = portText
         let username = username
+        let bindAddress = allowNetwork ? "0.0.0.0" : "127.0.0.1"
         mutationTask = Task {
             defer { mutationTask = nil }
             do {
                 try await subsonic.setServerConfig(
                     targetEnabled,
                     portText,
-                    username
+                    username,
+                    bindAddress
                 )
                 status = await subsonic.getServerStatus()
             }
@@ -242,7 +264,7 @@ struct SubsonicSettingsContent: View {
     #Preview("Subsonic") {
         SubsonicSettingsContent(
             subsonic: SubsonicServer(
-                setServerConfig: { _, _, _ in },
+                setServerConfig: { _, _, _, _ in },
                 getServerStatus: {
                     .running(url: "http://127.0.0.1:4533/rest")
                 },

@@ -2387,6 +2387,10 @@ pub struct BridgeSubsonicConfig {
     pub enabled: bool,
     pub port: u16,
     pub username: String,
+    /// The IP the server binds. `127.0.0.1` keeps it on this machine; `0.0.0.0`
+    /// opens it to other devices on the network. The UI presents this as a
+    /// network-access toggle rather than a raw address field.
+    pub bind_address: String,
 }
 
 #[derive(Debug, Clone, uniffi::Enum)]

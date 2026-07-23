@@ -250,6 +250,7 @@ impl BridgeConfig {
             enabled: subsonic_enabled,
             port: subsonic_port,
             username: subsonic_username,
+            bind_address: subsonic_bind_address,
         } = subsonic;
 
         BridgeConfig {
@@ -277,6 +278,7 @@ impl BridgeConfig {
                 enabled: *subsonic_enabled,
                 port: *subsonic_port,
                 username: subsonic_username.clone(),
+                bind_address: subsonic_bind_address.clone(),
             },
             discogs_usable: discogs_status.is_usable(),
             discogs_token_status: match discogs_status {

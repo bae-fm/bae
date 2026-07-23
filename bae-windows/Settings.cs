@@ -51,6 +51,11 @@ public sealed class Settings
     public bool SubsonicEnabled { get; set; }
     public ushort SubsonicPort { get; set; }
     public string SubsonicUsername { get; set; } = string.Empty;
+
+    /// <summary>The IP the server binds. "127.0.0.1" keeps it on this machine;
+    /// "0.0.0.0" opens it to other devices on the network. The UI presents this
+    /// as a network-access toggle, not a raw address field.</summary>
+    public string SubsonicBindAddress { get; set; } = "127.0.0.1";
     internal BridgeSubsonicServerStatus SubsonicStatus { get; set; } = new BridgeSubsonicServerStatus.Disabled();
     public bool HasCloudHome => SyncProvider is not null;
 

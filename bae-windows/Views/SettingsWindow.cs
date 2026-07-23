@@ -546,6 +546,11 @@ internal sealed class SettingsWindow
             Header = Loc.Chrome("settings.subsonic.username"),
             Text = s.SubsonicUsername,
         };
+        var subsonicAllowNetwork = new CheckBox
+        {
+            Content = Loc.Chrome("settings.subsonic.allow_network"),
+            IsChecked = s.SubsonicBindAddress != "127.0.0.1",
+        };
         var subsonicPassword = new PasswordBox
         {
             Header = Loc.Chrome("settings.subsonic.password"),
@@ -581,6 +586,7 @@ internal sealed class SettingsWindow
             subsonicEnabled.IsChecked = settings.SubsonicEnabled;
             subsonicPort.Text = settings.SubsonicPort.ToString(CultureInfo.InvariantCulture);
             subsonicUsername.Text = settings.SubsonicUsername;
+            subsonicAllowNetwork.IsChecked = settings.SubsonicBindAddress != "127.0.0.1";
             subsonicStatus.Text = settings.SubsonicStatusText;
             refreshingSettings = false;
         }
@@ -598,9 +604,10 @@ internal sealed class SettingsWindow
                 return;
             }
 
+            var bindAddress = subsonicAllowNetwork.IsChecked == true ? "0.0.0.0" : "127.0.0.1";
             ClearSettingsError();
             var (current, error) = await _session.RunForCurrentHandle(
-                handle => NativeBae.SetSubsonicServerConfig(handle, enabled, port, subsonicUsername.Text ?? string.Empty));
+                handle => NativeBae.SetSubsonicServerConfig(handle, enabled, port, subsonicUsername.Text ?? string.Empty, bindAddress));
             if (!current)
             {
                 return;
@@ -645,6 +652,8 @@ internal sealed class SettingsWindow
 
         subsonicEnabled.Checked += async (_, _) => await SetSubsonicConfig(true);
         subsonicEnabled.Unchecked += async (_, _) => await SetSubsonicConfig(false);
+        subsonicAllowNetwork.Checked += async (_, _) => await SetSubsonicConfig(subsonicEnabled.IsChecked == true);
+        subsonicAllowNetwork.Unchecked += async (_, _) => await SetSubsonicConfig(subsonicEnabled.IsChecked == true);
         saveSubsonic.Click += async (_, _) => await SetSubsonicConfig(subsonicEnabled.IsChecked == true);
         refreshSubsonic.Click += async (_, _) => await RefreshSubsonicStatus();
         saveSubsonicPassword.Click += async (_, _) => await SaveSubsonicPassword();
@@ -664,6 +673,7 @@ internal sealed class SettingsWindow
         content.Children.Add(subsonicEnabled);
         content.Children.Add(subsonicPort);
         content.Children.Add(subsonicUsername);
+        content.Children.Add(subsonicAllowNetwork);
         content.Children.Add(subsonicPassword);
         content.Children.Add(subsonicPasswordHelp);
         content.Children.Add(subsonicButtons);

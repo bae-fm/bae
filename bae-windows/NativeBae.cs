@@ -581,8 +581,8 @@ internal static class NativeBae
     internal static string? SetMcpToken(AppHandle handle, string token) =>
         CaptureError(() => handle.SetMcpToken(token));
 
-    internal static string? SetSubsonicServerConfig(AppHandle handle, bool enabled, ushort port, string username) =>
-        CaptureError(() => handle.SetSubsonicServerConfig(enabled, port, username));
+    internal static string? SetSubsonicServerConfig(AppHandle handle, bool enabled, ushort port, string username, string bindAddress) =>
+        CaptureError(() => handle.SetSubsonicServerConfig(enabled, port, username, bindAddress));
 
     internal static BridgeSubsonicServerStatus SubsonicServerStatus(AppHandle handle) => handle.GetSubsonicServerStatus();
 
@@ -1004,6 +1004,7 @@ internal static class NativeBae
             SubsonicEnabled = config.Subsonic.Enabled,
             SubsonicPort = config.Subsonic.Port,
             SubsonicUsername = config.Subsonic.Username,
+            SubsonicBindAddress = config.Subsonic.BindAddress,
             SubsonicStatus = subsonicStatus,
         };
 
