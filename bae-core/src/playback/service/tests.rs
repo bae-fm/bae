@@ -336,6 +336,7 @@ fn test_resolved_track_audio(
         generated_pregap_samples: None,
         sample_rate,
         channels,
+        bits_per_sample: Some(16),
         content_type: crate::util::content_type::ContentType::Flac,
         track_loudness_lufs: None,
         track_peak_linear: None,

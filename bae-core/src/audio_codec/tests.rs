@@ -1308,6 +1308,64 @@ fn streaming_opus_encode_into_a_plain_write_sink_is_decodable() {
     assert!(!decoded.samples.is_empty());
 }
 
+/// A streaming (non-seekable) MP3 encode produces a decodable stream: the MP3
+/// muxer's Xing/LAME VBR header is patched by seeking back, so the streaming
+/// sink disables it (`write_xing=0`), leaving a plain CBR frame stream that
+/// needs no seek-back. A socket serving a transcode uses this sink.
+#[test]
+fn streaming_mp3_encode_into_a_plain_write_sink_is_decodable() {
+    use std::sync::Mutex;
+
+    init();
+
+    /// A Write-only sink (no Seek): bytes land in a shared Vec.
+    #[derive(Clone)]
+    struct SharedVec(Arc<Mutex<Vec<u8>>>);
+    impl std::io::Write for SharedVec {
+        fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+            self.0.lock().unwrap().extend_from_slice(buf);
+            Ok(buf.len())
+        }
+        fn flush(&mut self) -> std::io::Result<()> {
+            Ok(())
+        }
+    }
+
+    let sample_rate = 44_100u32;
+    let seconds = 2;
+    let samples: Vec<i32> = (0..sample_rate as usize * 2 * seconds)
+        .map(|i| {
+            let t = (i / 2) as f64 / sample_rate as f64;
+            (0.5 * i32::MAX as f64 * (2.0 * std::f64::consts::PI * 440.0 * t).sin()) as i32
+        })
+        .collect();
+
+    let out = SharedVec(Arc::new(Mutex::new(Vec::new())));
+    let mut encoder = StreamingEncoder::streaming(
+        StreamEncodeFormat::Mp3 { bitrate_kbps: 128 },
+        Box::new(out.clone()),
+        Arc::new(std::sync::atomic::AtomicBool::new(false)),
+    );
+    encoder.on_format(sample_rate, 2);
+    encoder.on_samples(&samples);
+    encoder.finish().expect("streaming MP3 encode");
+
+    let bytes = out.0.lock().unwrap().clone();
+    assert!(bytes.len() > 100, "MP3 stream too small: {}", bytes.len());
+
+    let decoded = decode_audio(buffer_from(&bytes), None, None).expect("decode streamed MP3");
+    assert_eq!(decoded.sample_rate, sample_rate);
+    assert_eq!(decoded.channels, 2);
+    // The decode recovers roughly the source duration (MP3's encoder/decoder
+    // delay shifts the exact frame count, so allow a generous window).
+    let decoded_frames = decoded.samples.len() / 2;
+    let expected_frames = sample_rate as usize * seconds;
+    assert!(
+        decoded_frames > expected_frames * 3 / 4,
+        "decoded {decoded_frames} frames, expected near {expected_frames}"
+    );
+}
+
 /// A seekable FLAC encode's patched STREAMINFO carries the real total-sample
 /// count — the header patch-back the seekable sink exists for. STREAMINFO's
 /// 36-bit total-samples field sits at bytes 21..26 of the file (after "fLaC" +

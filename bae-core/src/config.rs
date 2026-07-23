@@ -113,6 +113,28 @@ pub struct McpConfig {
     pub port: u16,
 }
 
+/// The single login the Subsonic/OpenSubsonic server (bae-subsonic) accepts.
+/// A third-party client authenticates with `username` plus a salted-token
+/// derivation of `password` (`t = md5(password + salt)`); the server checks the
+/// supplied username and token against this credential. Empty strings mean no
+/// credential is configured — no client can authenticate.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SubsonicCredential {
+    pub username: String,
+    pub password: String,
+}
+
+impl SubsonicCredential {
+    /// The unset credential: empty username and password. No client login
+    /// matches it, so the server rejects every request until one is configured.
+    pub fn empty() -> Self {
+        Self {
+            username: String::new(),
+            password: String::new(),
+        }
+    }
+}
+
 impl McpConfig {
     pub fn disabled_default() -> Self {
         Self {
@@ -299,6 +321,8 @@ pub struct ConfigYaml {
     pub verify_decode_on_import: bool,
     /// Local automation server configuration.
     pub mcp: McpConfig,
+    /// The credential the Subsonic/OpenSubsonic server accepts.
+    pub subsonic: SubsonicCredential,
     /// Cloud home provider + per-provider settings. Flattened so the on-disk
     /// keys sit at the top level.
     #[serde(flatten)]
@@ -333,6 +357,7 @@ impl ConfigYaml {
             library_full_width: self.library_full_width,
             verify_decode_on_import: self.verify_decode_on_import,
             mcp: self.mcp,
+            subsonic: self.subsonic,
         }
     }
 }
@@ -358,6 +383,7 @@ impl From<&Config> for ConfigYaml {
             library_full_width: config.library_full_width,
             verify_decode_on_import: config.verify_decode_on_import,
             mcp: config.mcp,
+            subsonic: config.subsonic.clone(),
             cloud_home: config.cloud_home.clone(),
         }
     }
@@ -427,6 +453,10 @@ pub struct Config {
     pub verify_decode_on_import: bool,
     /// Local automation server configuration. The bearer token is keyring-only.
     pub mcp: McpConfig,
+    /// The credential the Subsonic/OpenSubsonic server accepts. Unlike the MCP
+    /// bearer token, this login lives in config (the server verifies a salted
+    /// token derived from it).
+    pub subsonic: SubsonicCredential,
 }
 
 impl std::ops::Deref for Config {
@@ -574,6 +604,7 @@ impl Config {
             library_full_width: false,
             verify_decode_on_import: true,
             mcp: McpConfig::disabled_default(),
+            subsonic: SubsonicCredential::empty(),
         }
     }
 

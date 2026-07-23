@@ -389,17 +389,27 @@ pub trait WriteSeek: std::io::Write + std::io::Seek + Send {}
 impl<T: std::io::Write + std::io::Seek + Send> WriteSeek for T {}
 
 /// Formats whose muxer has a true streaming path — no header patch-back — so
-/// they may write to a non-seekable sink. Today that is Ogg alone: FLAC's
-/// STREAMINFO (total samples, md5), MP3's Xing/LAME header, and the RIFF/FORM
-/// sizes of WAV/AIFF are all patched by seeking back over the header.
+/// they may write to a non-seekable sink.
+///
+/// - **Ogg** streams natively.
+/// - **MP3** streams once its Xing/LAME VBR header is disabled (`write_xing=0`,
+///   set in [`StreamingEncoder::open_encoder`] for the non-seekable sink),
+///   leaving a plain CBR frame stream with nothing to seek back and patch.
+///
+/// FLAC's STREAMINFO (total samples, md5) and the RIFF/FORM sizes of WAV/AIFF
+/// have no such streaming mode — they are always patched by seeking back over
+/// the header — so they stay out of this enum: pairing a header-patching muxer
+/// with a sink it cannot patch is unrepresentable.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StreamEncodeFormat {
+    Mp3 { bitrate_kbps: u32 },
     OpusOgg { bitrate_kbps: u32 },
 }
 
 impl From<StreamEncodeFormat> for EncodeFormat {
     fn from(format: StreamEncodeFormat) -> Self {
         match format {
+            StreamEncodeFormat::Mp3 { bitrate_kbps } => EncodeFormat::Mp3 { bitrate_kbps },
             StreamEncodeFormat::OpusOgg { bitrate_kbps } => EncodeFormat::OpusOgg { bitrate_kbps },
         }
     }
@@ -743,7 +753,17 @@ impl StreamingEncoder {
         if ret < 0 {
             return Err(format!("Failed to copy codec params: {}", av_err_str(ret)));
         }
-        let ret = avformat_write_header(muxer.fmt_ctx, ptr::null_mut());
+        // The MP3 muxer writes a Xing/LAME VBR header frame it patches by seeking
+        // back at trailer time. A non-seekable sink (a socket) can't be patched,
+        // so drop the header entirely — the result is a plain CBR frame stream
+        // that needs no seek-back. Only the streaming sink sets this; the seekable
+        // save path keeps the Xing header.
+        let mut muxer_options: *mut AVDictionary = ptr::null_mut();
+        if !self.seekable_sink && matches!(format, EncodeFormat::Mp3 { .. }) {
+            av_dict_set(&mut muxer_options, c"write_xing".as_ptr(), c"0".as_ptr(), 0);
+        }
+        let ret = avformat_write_header(muxer.fmt_ctx, &mut muxer_options);
+        av_dict_free(&mut muxer_options);
         if ret < 0 {
             return Err(format!("Failed to write header: {}", av_err_str(ret)));
         }

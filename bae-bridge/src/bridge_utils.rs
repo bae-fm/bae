@@ -236,6 +236,9 @@ impl BridgeConfig {
             // Import-time decode verification; not surfaced on the config screen.
             verify_decode_on_import: _,
             mcp,
+            // The Subsonic server's credential; the server is not wired into any
+            // app's launch or settings UI, so it isn't surfaced here.
+            subsonic: _,
         } = config;
 
         let bae_core::config::McpConfig { enabled, port } = mcp;

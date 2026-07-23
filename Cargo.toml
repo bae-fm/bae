@@ -7,6 +7,7 @@ members = [
     "bae-desktop",
     "bae-loc",
     "bae-mcp",
+    "bae-subsonic",
     "bae-test-support",
 ]
 resolver = "2"

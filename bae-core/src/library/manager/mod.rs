@@ -488,6 +488,11 @@ pub struct ResolvedTrackAudio {
     pub generated_pregap_samples: Option<i64>,
     pub sample_rate: u32,
     pub channels: u32,
+    /// Bits per sample as stored at import (16, 24, …). `None` for lossy codecs,
+    /// where the source has no fixed sample depth. Carried so callers that
+    /// describe the audio to a client (the Subsonic server's `bitDepth`) don't
+    /// re-fetch the raw audio-format row.
+    pub bits_per_sample: Option<u32>,
     /// This track's audio codec, as stored at import. Playback dispatches the
     /// track-start seek on it: FLAC/lossless byte-seek to `start_byte`; APE
     /// sample-seeks its mandatory index and also prefetches the file's end (its
@@ -537,6 +542,10 @@ impl ResolvedTrackAudio {
             generated_pregap_samples: meta.audio_format.generated_pregap_samples,
             sample_rate: meta.audio_format.sample_rate as u32,
             channels: meta.audio_format.channels as u32,
+            bits_per_sample: meta
+                .audio_format
+                .bits_per_sample
+                .and_then(|bits| u32::try_from(bits).ok()),
             content_type: meta.audio_format.content_type.clone(),
             track_loudness_lufs: meta.audio_format.track_loudness_lufs,
             track_peak_linear: meta.audio_format.track_peak_linear,
