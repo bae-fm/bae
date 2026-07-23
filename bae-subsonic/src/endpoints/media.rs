@@ -329,15 +329,22 @@ fn stream_encode_format(codec: &SaveCodec) -> Result<(StreamEncodeFormat, &'stat
             },
             "audio/ogg",
         )),
-        SaveCodec::Flac { .. } | SaveCodec::Wav { .. } | SaveCodec::Aiff { .. } => Err(
-            SubError::generic("stream transcode supports only mp3 and opus"),
-        ),
+        // AAC saves mux into M4A (`ipod`), whose moov atom is patched by seeking
+        // — not streaming-safe, so it is rejected here like the lossless codecs.
+        SaveCodec::Flac { .. }
+        | SaveCodec::Wav { .. }
+        | SaveCodec::Aiff { .. }
+        | SaveCodec::Aac { .. } => Err(SubError::generic(
+            "stream transcode supports only mp3 and opus",
+        )),
     }
 }
 
 fn codec_bitrate_kbps(codec: &SaveCodec) -> u32 {
     match codec {
-        SaveCodec::Mp3 { bitrate_kbps } | SaveCodec::OpusOgg { bitrate_kbps } => *bitrate_kbps,
+        SaveCodec::Mp3 { bitrate_kbps }
+        | SaveCodec::OpusOgg { bitrate_kbps }
+        | SaveCodec::Aac { bitrate_kbps } => *bitrate_kbps,
         SaveCodec::Flac { .. } | SaveCodec::Wav { .. } | SaveCodec::Aiff { .. } => 128,
     }
 }
