@@ -105,5 +105,7 @@ struct NowPlayingBarContainer: View {
             .environment(UiStore())
             .environment(PreviewData.configStore)
             .environment(MediaPaths.stub)
+            .environment(Cast.stub)
+            .environment(CastStore())
     }
 #endif

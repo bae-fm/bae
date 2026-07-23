@@ -15,10 +15,10 @@ final class Cast: Sendable, Observable {
     let stopCasting: @Sendable () -> Void
 
     init(
-        startDiscovery: @escaping @Sendable () -> Void,
-        stopDiscovery: @escaping @Sendable () -> Void,
-        castTo: @escaping @Sendable (String) throws -> Void,
-        stopCasting: @escaping @Sendable () -> Void
+        startDiscovery: @escaping @Sendable () -> Void = {},
+        stopDiscovery: @escaping @Sendable () -> Void = {},
+        castTo: @escaping @Sendable (String) throws -> Void = { _ in },
+        stopCasting: @escaping @Sendable () -> Void = {}
     ) {
         self.startDiscovery = startDiscovery
         self.stopDiscovery = stopDiscovery
@@ -34,4 +34,9 @@ final class Cast: Sendable, Observable {
             stopCasting: { handle.stopCasting() }
         )
     }
+
+    #if DEBUG
+        // periphery:ignore
+        static let stub = Cast()
+    #endif
 }
