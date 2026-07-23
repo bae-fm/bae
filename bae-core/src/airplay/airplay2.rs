@@ -11,6 +11,10 @@
 //! as associated data, and the nonce appended to the datagram — the AirPlay 2
 //! realtime convention pyatv streams to HomePods with.
 //!
+//! Sources: pyatv (MIT, `master` @ 2024) and `jburnhams/airplay2-rs` (MIT, `main`
+//! @ 2026). Crates: x25519-dalek 2, ed25519-dalek 2, chacha20poly1305 0.10,
+//! hkdf 0.12.
+//!
 //! This is the transport-agnostic crypto: it produces and consumes each message
 //! *body*, so the session drives the POSTs and the tests drive it against a
 //! scripted fake receiver that runs the verify server independently.

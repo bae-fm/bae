@@ -2286,6 +2286,7 @@ async fn set_volume_while_remote_sets_the_device_volume() {
 struct FakeAirPlayControlState {
     flushed: std::sync::atomic::AtomicU64,
     reanchored: std::sync::atomic::AtomicU64,
+    failed: std::sync::atomic::AtomicBool,
 }
 
 struct FakeAirPlayControl(Arc<FakeAirPlayControlState>);
@@ -2301,7 +2302,9 @@ impl crate::playback::airplay_output::AirPlayStreamControl for FakeAirPlayContro
             .reanchored
             .fetch_add(1, std::sync::atomic::Ordering::Release);
     }
-    fn set_volume(&self, _level: f32) {}
+    fn has_failed(&self) -> bool {
+        self.0.failed.load(std::sync::atomic::Ordering::Acquire)
+    }
     fn frames_sent(&self) -> u64 {
         0
     }
@@ -2543,5 +2546,36 @@ async fn play_on_airplay_swaps_the_sink_and_keeps_decode_local() {
     assert!(
         !service.renderer.is_remote(),
         "AirPlay keeps decoding locally — it is not a fetch-a-URL remote renderer"
+    );
+}
+
+/// A dead AirPlay receiver (the session reports transport failure) ends AirPlay
+/// and returns to local — surfaced on the regular position path rather than
+/// erroring silently forever.
+#[tokio::test]
+async fn airplay_receiver_death_ends_airplay_and_returns_to_local() {
+    let (_home, mut service, _progress_rx) = seeded_playback_service(&[("r", &["t"])]).await;
+    service.slot = active_slot(
+        test_prepared_track("t", create_sparse_buffer(1_024)),
+        TrackPhase::Playing,
+    );
+    let state = install_airplay(&mut service, 88_200, 0.5);
+
+    // The receiver went away: the session reports the transport as failed.
+    state
+        .failed
+        .store(true, std::sync::atomic::Ordering::Release);
+
+    // A routine position tick catches it and ends AirPlay.
+    service
+        .handle_position_event(
+            Arc::new(test_track_fmt("t")),
+            std::time::Duration::from_secs(1),
+        )
+        .await;
+
+    assert!(
+        !service.renderer.is_airplay(),
+        "a dead receiver ends AirPlay and returns to the local renderer"
     );
 }

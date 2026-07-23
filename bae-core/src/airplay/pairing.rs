@@ -4,8 +4,8 @@
 //! Transient pairing is the first four states (M1–M4) of HomeKit pair-setup with
 //! the transient flag set: no PIN, no persistent identity stored. The SRP shared
 //! secret it establishes is what the audio-stream encryption keys are later
-//! derived from. This is the flow pyatv's `hap_transient` (MIT) runs against real
-//! HomePods:
+//! derived from. This is the flow pyatv's `hap_transient` (MIT, `master` @ 2024)
+//! runs against real HomePods:
 //!
 //! 1. `POST /pair-pin-start` (empty) — the session sends this to open the flow.
 //! 2. `POST /pair-setup` with `{Method=0, State=M1, Flags=Transient}`.

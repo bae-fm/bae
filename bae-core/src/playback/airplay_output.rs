@@ -37,8 +37,9 @@ pub trait AirPlayStreamControl: Send + Sync {
     fn flush(&self);
     /// Re-anchor the pacing after a FLUSH (resume / post-seek).
     fn reanchor(&self);
-    /// Set the receiver volume (0.0–1.0).
-    fn set_volume(&self, level: f32);
+    /// Whether the audio flow to the receiver has failed persistently (a dead
+    /// receiver), so the service should end AirPlay.
+    fn has_failed(&self) -> bool;
     /// Frames handed to the receiver so far.
     fn frames_sent(&self) -> u64;
     /// The receiver's audio latency in frames.
@@ -122,9 +123,10 @@ impl AudioOutput for AirPlayOutput {
     }
 
     fn set_volume(&self, volume: f32) {
-        // AirPlay applies volume as local gain in the drain (the receiver plays at
-        // its own level); the session's SET_PARAMETER is driven separately by the
-        // service through the control handle.
+        // Local gain IS the AirPlay volume path: the drain multiplies samples by
+        // this before they're packetized, so the user hears the change. The
+        // receiver stays at its own hardware level (the session's one initial
+        // SET_PARAMETER seeds it at full); there is no per-change device round-trip.
         self.controls.set_volume(volume);
     }
 
@@ -310,13 +312,15 @@ impl AirPlaySink for RaopSink {
         .map_err(|e| AudioError::StreamBuildError(e.to_string()))?;
 
         let control: Arc<dyn AirPlayStreamControl> = Arc::new(RaopControlOps(session.control()));
-        Ok((Box::new(RaopGuard(session)), control))
+        Ok((Box::new(RaopGuard { _session: session }), control))
     }
 }
 
 /// Holds the session alive; dropping it tears down the receiver and threads. The
 /// field is never read — it exists only for its `Drop`.
-struct RaopGuard(#[allow(dead_code)] RaopSession);
+struct RaopGuard {
+    _session: RaopSession,
+}
 impl AirPlayStreamGuard for RaopGuard {}
 
 /// Adapts the RAOP control handle (whose ops return `Result`) to the infallible
@@ -334,10 +338,8 @@ impl AirPlayStreamControl for RaopControlOps {
         self.0.reanchor();
     }
 
-    fn set_volume(&self, level: f32) {
-        if let Err(e) = self.0.set_volume(level) {
-            warn!("airplay volume failed: {e}");
-        }
+    fn has_failed(&self) -> bool {
+        self.0.has_failed()
     }
 
     fn frames_sent(&self) -> u64 {
@@ -358,6 +360,8 @@ pub struct Ap2Sink {
     /// The receiver's AirPlay control port (`_airplay._tcp`, usually 7000).
     pub airplay_port: u16,
     pub latency_frames: Option<u32>,
+    /// The clock the receiver requires, decided from its features — PTP or NTP.
+    pub timing: crate::airplay::airplay2::TimingProtocol,
 }
 
 impl AirPlaySink for Ap2Sink {
@@ -367,17 +371,20 @@ impl AirPlaySink for Ap2Sink {
             self.airplay_port,
             source,
             self.latency_frames,
+            self.timing,
             Arc::new(SystemClock::new()),
         )
         .map_err(|e| AudioError::StreamBuildError(e.to_string()))?;
 
         let control: Arc<dyn AirPlayStreamControl> = Arc::new(Ap2ControlOps(session.control()));
-        Ok((Box::new(Ap2Guard(session)), control))
+        Ok((Box::new(Ap2Guard { _session: session }), control))
     }
 }
 
 /// Holds the AirPlay 2 session alive; dropping it tears the receiver down.
-struct Ap2Guard(#[allow(dead_code)] crate::airplay::ap2_session::Ap2Session);
+struct Ap2Guard {
+    _session: crate::airplay::ap2_session::Ap2Session,
+}
 impl AirPlayStreamGuard for Ap2Guard {}
 
 /// Adapts the AirPlay 2 session control (whose ops return `Result`) to the
@@ -398,7 +405,9 @@ impl AirPlayStreamControl for Ap2ControlOps {
         }
     }
 
-    fn set_volume(&self, _level: f32) {}
+    fn has_failed(&self) -> bool {
+        self.0.has_failed()
+    }
 
     fn frames_sent(&self) -> u64 {
         self.0.frames_sent()
@@ -466,7 +475,9 @@ mod tests {
         fn reanchor(&self) {
             self.0.reanchored.store(true, Ordering::Release);
         }
-        fn set_volume(&self, _level: f32) {}
+        fn has_failed(&self) -> bool {
+            false
+        }
         fn frames_sent(&self) -> u64 {
             self.0.frames.load(Ordering::Relaxed)
         }

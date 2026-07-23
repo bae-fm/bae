@@ -209,6 +209,30 @@ mod tests {
         assert_eq!(receiver.next_block().unwrap().unwrap(), b"hello world");
     }
 
+    /// The HKDF primitive matches RFC 5869's published Test Case 1 (SHA-256), so
+    /// the derivation the control/audio keys ride on is validated against the
+    /// standard, not only against itself.
+    #[test]
+    fn hkdf_matches_rfc5869_test_case_1() {
+        use hkdf::Hkdf;
+        use sha2::Sha256;
+
+        let ikm = [0x0bu8; 22];
+        let salt: Vec<u8> = (0x00u8..=0x0c).collect();
+        let info: Vec<u8> = (0xf0u8..=0xf9).collect();
+
+        let hk = Hkdf::<Sha256>::new(Some(&salt), &ikm);
+        let mut okm = [0u8; 42];
+        hk.expand(&info, &mut okm).unwrap();
+
+        let expected = hex::decode(
+            "3cb25f25faacd57a90434f64d0362f2a2d2d0a90cf1a5a4c5db02d56ecc4c5bf\
+             34007208d5b887185865",
+        )
+        .unwrap();
+        assert_eq!(okm.as_slice(), expected.as_slice());
+    }
+
     /// The audio key and control keys are distinct expansions of one secret.
     #[test]
     fn derived_keys_are_distinct() {

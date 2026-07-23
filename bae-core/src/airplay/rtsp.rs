@@ -181,11 +181,21 @@ impl RtspResponse {
             }
         }
 
-        let content_length = headers
+        // A missing Content-Length means no body; a present-but-malformed one is a
+        // protocol error, not silently an empty body (which would desync the
+        // stream and mask a corrupt response).
+        let content_length = match headers
             .iter()
             .find(|(k, _)| k.eq_ignore_ascii_case("Content-Length"))
-            .and_then(|(_, v)| v.trim().parse::<usize>().ok())
-            .unwrap_or(0);
+        {
+            Some((_, v)) => v.trim().parse::<usize>().map_err(|_| {
+                io::Error::new(
+                    io::ErrorKind::InvalidData,
+                    format!("malformed RTSP Content-Length: {v:?}"),
+                )
+            })?,
+            None => 0,
+        };
         let mut body = vec![0u8; content_length];
         reader.read_exact(&mut body)?;
 
@@ -369,8 +379,9 @@ fn read_request(reader: &mut impl BufRead) -> io::Result<ParsedRequest> {
     let content_length = headers
         .iter()
         .find(|(k, _)| k.eq_ignore_ascii_case("Content-Length"))
-        .and_then(|(_, v)| v.trim().parse::<usize>().ok())
-        .unwrap_or(0);
+        .map_or(0, |(_, v)| {
+            v.trim().parse::<usize>().expect("valid content-length")
+        });
     let mut body = vec![0u8; content_length];
     reader.read_exact(&mut body)?;
     Ok(ParsedRequest { method, headers })

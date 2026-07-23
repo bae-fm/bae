@@ -21,6 +21,7 @@ use super::airplay2::{Ap2AudioCipher, PairVerify};
 use super::ap2_channel::{audio_key, HapChannel};
 use super::bplist::{self, Plist};
 use super::pairing::{PairingError, TransientPairing};
+use super::rtp::NtpTime;
 use super::rtsp::{Method, RtspConnection, RtspRequest, RtspResponse};
 use super::session::{CHANNELS, SAMPLE_RATE};
 use super::stream::{MonotonicClock, PayloadCrypto, PcmSource, RaopStream, StreamEndpoints};
@@ -134,16 +135,20 @@ pub fn set_rate_anchor_body(rate: u8, rtp_time: u32, ptp_anchor: Option<(u64, u3
     Plist::Dict(entries)
 }
 
-/// The receiver's ports parsed from a SETUP audio-stream response plist.
+/// The receiver's ports and reported latency parsed from a SETUP audio-stream
+/// response plist.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Ap2StreamPorts {
     /// Where audio datagrams go (`dataPort`).
     pub data_port: u16,
     /// Where sync datagrams go (`controlPort`).
     pub control_port: u16,
+    /// The receiver's `audioLatency` in frames, when reported.
+    pub audio_latency_frames: Option<u32>,
 }
 
-/// Pull the receiver's `dataPort`/`controlPort` out of a SETUP streams response.
+/// Pull the receiver's `dataPort`/`controlPort` (and `audioLatency`, if present)
+/// out of a SETUP streams response.
 pub fn parse_stream_ports(response: &Plist) -> Option<Ap2StreamPorts> {
     let stream = match response.get("streams")? {
         Plist::Array(items) => items.first()?,
@@ -152,6 +157,10 @@ pub fn parse_stream_ports(response: &Plist) -> Option<Ap2StreamPorts> {
     Some(Ap2StreamPorts {
         data_port: stream.get("dataPort")?.as_integer()? as u16,
         control_port: stream.get("controlPort")?.as_integer()? as u16,
+        audio_latency_frames: stream
+            .get("audioLatency")
+            .and_then(Plist::as_integer)
+            .map(|v| v as u32),
     })
 }
 
@@ -462,6 +471,7 @@ pub struct Ap2SessionControl {
     control: Arc<Mutex<Ap2Control>>,
     reanchor: Arc<AtomicU64>,
     frames_sent: Arc<AtomicU64>,
+    failed: Arc<std::sync::atomic::AtomicBool>,
     latency_frames: u32,
 }
 
@@ -486,6 +496,11 @@ impl Ap2SessionControl {
         self.frames_sent.load(Ordering::Relaxed)
     }
 
+    /// Whether the audio flow to the receiver has failed persistently.
+    pub fn has_failed(&self) -> bool {
+        self.failed.load(Ordering::Relaxed)
+    }
+
     pub fn latency_frames(&self) -> u32 {
         self.latency_frames
     }
@@ -507,8 +522,11 @@ impl Ap2Session {
         airplay_port: u16,
         source: Box<dyn PcmSource>,
         latency_frames: Option<u32>,
+        timing: super::airplay2::TimingProtocol,
         clock: Arc<dyn MonotonicClock>,
     ) -> Result<Self, Ap2Error> {
+        use super::airplay2::TimingProtocol;
+
         let mut conn = RtspConnection::connect(receiver, airplay_port, "bae/1 (AirPlay 2)")?;
         let local_ip = conn.local_addr();
 
@@ -526,10 +544,24 @@ impl Ap2Session {
         let group_uuid = uuid::Uuid::new_v4().to_string();
         let uri = format!("rtsp://{local_ip}/{session_uuid}");
 
+        // A receiver that requires PTP is told so, and its SETRATEANCHORTIME carries
+        // the network-time anchor; NTP receivers use the RAOP-style timing responder
+        // and no anchor. The decision is the one `TimingProtocol::from_features` made.
+        let (timing_protocol, ptp_anchor) = match timing {
+            TimingProtocol::Ptp => {
+                let now = NtpTime::now();
+                let timeline_id = rand::random::<u64>();
+                (
+                    "PTP".to_string(),
+                    Some((u64::from(now.seconds), now.fraction, timeline_id)),
+                )
+            }
+            TimingProtocol::Ntp => ("NTP".to_string(), None),
+        };
+
         let mut control = Ap2Control::new(conn.into_stream(), &shared, uri, "bae/1 (AirPlay 2)")?;
         let params = Ap2SetupParams {
-            // NTP timing (the RAOP responder) — the fallback where PTP isn't required.
-            timing_protocol: "NTP".to_string(),
+            timing_protocol,
             group_uuid,
             session_uuid,
             mac_address: local_mac_address(),
@@ -537,11 +569,15 @@ impl Ap2Session {
             local_control_port,
             local_timing_port,
             peers: vec![local_ip, receiver],
-            ptp_anchor: None,
+            ptp_anchor,
         };
         let ports = control.run_setup_sequence(&shk, &params)?;
 
-        let latency = latency_frames.unwrap_or(DEFAULT_LATENCY_FRAMES);
+        // The receiver's reported latency wins; the caller's value is the fallback.
+        let latency = ports
+            .audio_latency_frames
+            .or(latency_frames)
+            .unwrap_or(DEFAULT_LATENCY_FRAMES);
         let endpoints = StreamEndpoints {
             receiver,
             audio_port: ports.data_port,
@@ -567,6 +603,7 @@ impl Ap2Session {
             control: Arc::new(Mutex::new(control)),
             reanchor: stream.reanchor_handle(),
             frames_sent: stream.frames_sent_handle(),
+            failed: stream.failed_handle(),
             latency_frames: latency,
         };
         Ok(Ap2Session {
@@ -808,7 +845,9 @@ mod tests {
             if let Some((k, v)) = header.split_once(':') {
                 match k.trim().to_ascii_lowercase().as_str() {
                     "cseq" => cseq = v.trim().to_string(),
-                    "content-length" => content_length = v.trim().parse().unwrap_or(0),
+                    "content-length" => {
+                        content_length = v.trim().parse().expect("valid content-length")
+                    }
                     _ => {}
                 }
             }
@@ -889,7 +928,7 @@ mod tests {
             if let Some((k, v)) = h.split_once(':') {
                 match k.trim().to_ascii_lowercase().as_str() {
                     "cseq" => cseq = v.trim().to_string(),
-                    "content-length" => len = v.trim().parse().unwrap_or(0),
+                    "content-length" => len = v.trim().parse().expect("valid content-length"),
                     _ => {}
                 }
             }
@@ -899,12 +938,18 @@ mod tests {
         (method, path, cseq, body)
     }
 
-    /// The whole AirPlay 2 session end to end: the fake receiver serves transient
-    /// pair-setup and pair-verify as the independent side, decrypts the encrypted
-    /// RTSP sequence and an audio datagram with its own derivations, and asserts
-    /// the control order, the SETUP `shk`, and the decrypted PCM.
-    #[test]
-    fn full_ap2_session_pairs_sets_up_and_streams_encrypted_audio() {
+    /// What the fake receiver captured over one full session.
+    struct Captured {
+        methods: Vec<String>,
+        saw_shk: bool,
+        timing_protocol: String,
+        anchor_has_network_time: bool,
+        pcm: Vec<u8>,
+    }
+
+    /// Run a whole AirPlay 2 session against the scripted fake receiver with the
+    /// sender using `timing`, returning what the receiver saw.
+    fn run_full_ap2_session(timing: super::super::airplay2::TimingProtocol) -> Captured {
         let tcp = TcpListener::bind(("127.0.0.1", 0)).unwrap();
         let addr = tcp.local_addr().unwrap();
         // Bind the audio (data) socket up front so its real port rides in SETUP.
@@ -1016,12 +1061,24 @@ mod tests {
 
             let mut methods = Vec::new();
             let mut saw_shk = false;
+            let mut timing_protocol = String::new();
+            let mut anchor_has_network_time = false;
             for step in 0..5 {
                 let (method, cseq, body) = read_encrypted_request(&mut reader, &mut channel);
                 if method == "SETUP" && body.get("streams").is_some() {
                     if let Plist::Array(items) = body.get("streams").unwrap() {
                         saw_shk = items[0].get("shk") == Some(&Plist::Data(shk.to_vec()));
                     }
+                }
+                if method == "SETUP" && body.get("timingProtocol").is_some() {
+                    timing_protocol = body
+                        .get("timingProtocol")
+                        .and_then(Plist::as_string)
+                        .unwrap_or("")
+                        .to_string();
+                }
+                if method == "SETRATEANCHORTIME" {
+                    anchor_has_network_time = body.get("networkTimeSecs").is_some();
                 }
                 methods.push(method.clone());
                 let reply = match (method.as_str(), step) {
@@ -1064,7 +1121,13 @@ mod tests {
                 )
                 .expect("audio datagram decrypts with the shk-derived key");
 
-            (methods, saw_shk, pcm)
+            Captured {
+                methods,
+                saw_shk,
+                timing_protocol,
+                anchor_has_network_time,
+                pcm,
+            }
         });
 
         // The sender: pair, set up, and stream five packets of known PCM.
@@ -1073,24 +1136,49 @@ mod tests {
             addr.port(),
             Box::new(FixedSource { packets_left: 5 }),
             Some(88_200),
+            timing,
             Arc::new(crate::airplay::stream::SystemClock::new()),
         )
         .expect("AirPlay 2 session starts");
 
-        let (methods, saw_shk, pcm) = server.join().unwrap();
+        let captured = server.join().unwrap();
+        drop(session);
+        captured
+    }
+
+    /// A full NTP session: the control order, the shk, and the decrypted PCM, with
+    /// NTP timing (no network-time anchor).
+    #[test]
+    fn full_ap2_session_pairs_sets_up_and_streams_encrypted_audio() {
+        let c = run_full_ap2_session(super::super::airplay2::TimingProtocol::Ntp);
         assert_eq!(
-            methods,
+            c.methods,
             vec!["SETUP", "SETUP", "SETPEERS", "SETRATEANCHORTIME", "RECORD"],
             "the AirPlay 2 control sequence runs in order over the encrypted channel"
         );
         assert!(
-            saw_shk,
+            c.saw_shk,
             "SETUP carried the shk audio key derived from pair-verify"
         );
+        assert_eq!(c.timing_protocol, "NTP");
+        assert!(
+            !c.anchor_has_network_time,
+            "NTP carries no network-time anchor"
+        );
         // One packet = 352 stereo frames of 0x0102, little-endian.
-        assert_eq!(pcm.len(), 352 * 2 * 2);
-        assert_eq!(&pcm[..4], &[0x02, 0x01, 0x02, 0x01]);
+        assert_eq!(c.pcm.len(), 352 * 2 * 2);
+        assert_eq!(&c.pcm[..4], &[0x02, 0x01, 0x02, 0x01]);
+    }
 
-        drop(session);
+    /// A PTP-required receiver: SETUP advertises PTP and SETRATEANCHORTIME carries
+    /// the network-time anchor — the decision `TimingProtocol::from_features` makes.
+    #[test]
+    fn ptp_receiver_gets_ptp_timing_and_the_network_anchor() {
+        let c = run_full_ap2_session(super::super::airplay2::TimingProtocol::Ptp);
+        assert_eq!(c.timing_protocol, "PTP");
+        assert!(
+            c.anchor_has_network_time,
+            "PTP carries the network-time anchor in SETRATEANCHORTIME"
+        );
     }
 }

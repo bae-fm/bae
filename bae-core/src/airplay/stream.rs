@@ -237,6 +237,9 @@ pub struct RaopStream {
     frames_sent: Arc<AtomicU64>,
     /// Bumped to re-anchor the pacing after a FLUSH (resume / seek).
     reanchor: Arc<AtomicU64>,
+    /// Set when the audio flow to the receiver fails persistently — a dead
+    /// receiver — so the session end can be surfaced rather than erroring silently.
+    failed: Arc<AtomicBool>,
 }
 
 impl RaopStream {
@@ -266,6 +269,7 @@ impl RaopStream {
         let stop = Arc::new(AtomicBool::new(false));
         let frames_sent = Arc::new(AtomicU64::new(0));
         let reanchor = Arc::new(AtomicU64::new(0));
+        let failed = Arc::new(AtomicBool::new(false));
 
         let mut threads = vec![
             spawn_audio_thread(AudioThread {
@@ -280,6 +284,7 @@ impl RaopStream {
                 stop: stop.clone(),
                 frames_sent: frames_sent.clone(),
                 reanchor: reanchor.clone(),
+                failed: failed.clone(),
             }),
             spawn_timing_thread(timing_socket, stop.clone()),
         ];
@@ -300,6 +305,7 @@ impl RaopStream {
             threads,
             frames_sent,
             reanchor,
+            failed,
         })
     }
 
@@ -317,6 +323,12 @@ impl RaopStream {
     /// The re-anchor epoch, shared so a control handle can trigger a re-anchor.
     pub fn reanchor_handle(&self) -> Arc<AtomicU64> {
         self.reanchor.clone()
+    }
+
+    /// The transport-failure flag, shared so a control handle can report a dead
+    /// receiver to the service.
+    pub fn failed_handle(&self) -> Arc<AtomicBool> {
+        self.failed.clone()
     }
 
     /// Re-anchor the pacing after a FLUSH: the audio thread resets its lead and
@@ -351,6 +363,7 @@ struct AudioThread {
     stop: Arc<AtomicBool>,
     frames_sent: Arc<AtomicU64>,
     reanchor: Arc<AtomicU64>,
+    failed: Arc<AtomicBool>,
 }
 
 /// Pull PCM one packet at a time, pace by the clock, and send. Persistent: a
@@ -360,9 +373,13 @@ struct AudioThread {
 /// re-anchor resets the pacing lead and clock and re-marks the next packet.
 fn spawn_audio_thread(mut t: AudioThread) -> JoinHandle<()> {
     let channels = 2usize; // L16 stereo; the session negotiates 44.1/16/2.
+                           // Consecutive audio-send failures before the receiver is declared dead — a
+                           // handful of packets (~50 ms) so a transient blip doesn't end the session.
+    const FAILURE_THRESHOLD: u32 = 20;
     std::thread::spawn(move || {
         let mut buf = vec![0i16; FRAMES_PER_PACKET as usize * channels];
         let mut seen_reanchor = t.reanchor.load(Ordering::Acquire);
+        let mut consecutive_failures = 0u32;
         while !t.stop.load(Ordering::Acquire) {
             let epoch = t.reanchor.load(Ordering::Acquire);
             if epoch != seen_reanchor {
@@ -384,8 +401,17 @@ fn spawn_audio_thread(mut t: AudioThread) -> JoinHandle<()> {
                     break;
                 }
                 let packet = t.packetizer.packet(&buf);
-                if let Err(e) = t.socket.send_to(&packet, t.dst) {
-                    debug!("airplay audio send failed: {e}");
+                match t.socket.send_to(&packet, t.dst) {
+                    Ok(_) => consecutive_failures = 0,
+                    Err(e) => {
+                        debug!("airplay audio send failed: {e}");
+                        consecutive_failures += 1;
+                        if consecutive_failures >= FAILURE_THRESHOLD {
+                            // The receiver is unreachable — surface the death rather
+                            // than erroring silently forever.
+                            t.failed.store(true, Ordering::Release);
+                        }
+                    }
                 }
                 t.pacer.record_packet();
                 t.frames_sent
@@ -573,6 +599,7 @@ mod tests {
             stop,
             frames_sent: frames_sent.clone(),
             reanchor: reanchor.clone(),
+            failed: Arc::new(AtomicBool::new(false)),
         });
         (handle, frames_sent, reanchor)
     }

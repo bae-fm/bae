@@ -1,12 +1,13 @@
 //! SRP-6a, the password-authenticated key exchange HomeKit pairing runs on.
 //!
 //! The math is written directly over bignums to the semantics a real receiver
-//! accepts, established by pyatv's use of the `srptools` library (BSD) — which
-//! pairs real HomePods — and cross-checked against the published RFC 5054
-//! Appendix B test vector (see the tests). The RustCrypto `srp` crate is
-//! deliberately *not* used: its `M1` proof is `H(A|B|K)` (its own source notes
-//! this is not the spec) and it does not pad `A`/`B` in `u`, so a real receiver
-//! rejects its proof. The reference semantics here are:
+//! accepts, established by pyatv's (MIT, `master` @ 2024) use of the `srptools`
+//! library (BSD) — which pairs real HomePods — and cross-checked against the
+//! published RFC 5054 Appendix B test vector (see the tests). The RustCrypto
+//! `srp` crate (0.6, the current release, whose source was read) is deliberately
+//! *not* used: its `M1` proof is `H(A|B|K)` (its own source notes this is not the
+//! spec) and it does not pad `A`/`B` in `u`, so a real receiver rejects its
+//! proof. The reference semantics here are:
 //!
 //! - `k = H(N | PAD(g))`
 //! - `x = H(s | H(I | ":" | P))`

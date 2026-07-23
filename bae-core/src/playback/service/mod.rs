@@ -1391,6 +1391,19 @@ impl PlaybackService {
     }
 
     async fn handle_position_event(&mut self, fmt: Arc<TrackFmt>, pos: std::time::Duration) {
+        // A dead AirPlay receiver surfaces here — the audio thread keeps ticking
+        // while its sends fail, so this regular path catches the failure and ends
+        // AirPlay, resuming local paused (the shape a Cast/DLNA `ended` status has).
+        if self
+            .renderer
+            .airplay_control()
+            .is_some_and(|c| c.has_failed())
+        {
+            info!("airplay receiver unreachable; ending AirPlay and resuming local");
+            self.end_airplay_and_resume_local().await;
+            return;
+        }
+
         // Samples are flowing, so any starvation episode is over.
         self.reset_starvation_episode();
         let mut actual_pos = fmt.position_offset + pos;

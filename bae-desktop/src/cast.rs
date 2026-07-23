@@ -10,6 +10,7 @@
 
 use std::sync::{Arc, Mutex};
 
+use bae_core::airplay::airplay2::TimingProtocol;
 use bae_core::airplay::capabilities::{Dialect, RaopEncryption};
 use bae_core::airplay::{AirPlayCapabilities, AirPlayDiscovery};
 use bae_core::cast::{CastDiscovery, RustCastChannel};
@@ -53,6 +54,8 @@ fn build_airplay_sink(
             receiver: addr,
             airplay_port: port,
             latency_frames: Some(AIRPLAY_LATENCY_FRAMES),
+            // The receiver's features decide whether it requires PTP or accepts NTP.
+            timing: TimingProtocol::from_features(capabilities.features),
         })),
         Dialect::Raop => {
             let raop = capabilities

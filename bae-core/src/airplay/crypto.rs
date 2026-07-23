@@ -12,10 +12,12 @@
 //!
 //! The public key is Apple's, a 2048-bit modulus with exponent 65537 extracted
 //! from shipping AirPort Express hardware. It is public data (documented since
-//! 2004); this copy is taken from the MIT-licensed `Airstream` project. Without
-//! the matching private key a sender can only *wrap* a key to the receiver, never
-//! read one back — which is exactly the sender's role, so no round-trip against
-//! the real key is possible (or needed).
+//! 2004); this copy is the modulus of the keypair in the MIT-licensed `Airstream`
+//! project (`qasim/Airstream`, `master`, `Airstream/Airport.h`), extracted with
+//! openssl. Without the matching private key a sender can only *wrap* a key to
+//! the receiver, never read one back — which is exactly the sender's role, so no
+//! round-trip against the real key is possible (or needed). Crates: rsa 0.9,
+//! aes 0.8, cbc 0.1.
 
 use aes::cipher::block_padding::NoPadding;
 use aes::cipher::{BlockEncryptMut, KeyIvInit};

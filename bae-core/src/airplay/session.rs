@@ -145,9 +145,19 @@ fn expect_success(step: &'static str, response: &RtspResponse) -> Result<(), Rao
     }
 }
 
+/// The receiver's `Audio-Latency` (in frames), when it reports one on a SETUP or
+/// RECORD response — the ~2 s buffer the sender paces ahead by and offsets the
+/// position back by.
+fn parse_audio_latency(response: &RtspResponse) -> Option<u32> {
+    response
+        .header("Audio-Latency")
+        .and_then(|v| v.trim().parse().ok())
+}
+
 /// Drive the §7.1 RTSP sequence to arm a receiver: OPTIONS, ANNOUNCE the SDP,
 /// SETUP announcing the sender's `control_port`/`timing_port`, RECORD with the
-/// RTP anchor, and an initial volume SET_PARAMETER. Returns the receiver's ports.
+/// RTP anchor, and an initial volume SET_PARAMETER. Returns the receiver's ports
+/// and the audio latency it reported, if any.
 #[allow(clippy::too_many_arguments)]
 pub fn perform_handshake(
     conn: &mut RtspConnection,
@@ -158,7 +168,7 @@ pub fn perform_handshake(
     initial_sequence: u16,
     initial_timestamp: u32,
     volume: f32,
-) -> Result<NegotiatedTransport, RaopError> {
+) -> Result<(NegotiatedTransport, Option<u32>), RaopError> {
     let options = conn.request(&RtspRequest::new(Method::Options, "*"))?;
     expect_success("OPTIONS", &options)?;
 
@@ -191,6 +201,8 @@ pub fn perform_handshake(
             ),
     )?;
     expect_success("RECORD", &record)?;
+    // The receiver reports its audio latency on SETUP or RECORD; RECORD wins.
+    let audio_latency = parse_audio_latency(&record).or_else(|| parse_audio_latency(&setup));
 
     let volume_body = format!("volume: {:.6}\r\n", volume_to_raop_db(volume));
     let set_volume = conn.request(&RtspRequest::with_body(
@@ -201,7 +213,7 @@ pub fn perform_handshake(
     ))?;
     expect_success("SET_PARAMETER", &set_volume)?;
 
-    Ok(negotiated)
+    Ok((negotiated, audio_latency))
 }
 
 /// A cloneable handle to a running RAOP session's transport controls: FLUSH,
@@ -215,6 +227,7 @@ pub struct RaopControl {
     uri: String,
     reanchor: Arc<AtomicU64>,
     frames_sent: Arc<AtomicU64>,
+    failed: Arc<std::sync::atomic::AtomicBool>,
     latency_frames: u32,
 }
 
@@ -250,6 +263,12 @@ impl RaopControl {
     /// Frames handed to the receiver so far.
     pub fn frames_sent(&self) -> u64 {
         self.frames_sent.load(Ordering::Relaxed)
+    }
+
+    /// Whether the audio flow to the receiver has failed persistently (a dead
+    /// receiver), so the session should be ended.
+    pub fn has_failed(&self) -> bool {
+        self.failed.load(Ordering::Relaxed)
     }
 
     /// The receiver's audio latency in frames — the offset between frames sent and
@@ -305,7 +324,7 @@ impl RaopSession {
         let sdp = build_announce_sdp(session_id, local_ip, receiver, &cipher);
 
         let initial_timestamp = 0u32;
-        let negotiated = perform_handshake(
+        let (negotiated, reported_latency) = perform_handshake(
             &mut conn,
             &uri,
             &sdp,
@@ -316,13 +335,17 @@ impl RaopSession {
             volume,
         )?;
 
+        // The receiver's reported latency wins; the caller's value is the fallback,
+        // and the constant only the last resort when neither is known.
+        let latency = reported_latency
+            .or(latency_frames)
+            .unwrap_or(DEFAULT_LATENCY_FRAMES);
         let endpoints = StreamEndpoints {
             receiver,
             audio_port: negotiated.server_port,
             control_port: negotiated.control_port,
-            latency_frames: latency_frames.unwrap_or(DEFAULT_LATENCY_FRAMES),
+            latency_frames: latency,
         };
-        let latency = latency_frames.unwrap_or(DEFAULT_LATENCY_FRAMES);
         let stream = RaopStream::spawn(
             source,
             PayloadCrypto::Raop(cipher),
@@ -342,6 +365,7 @@ impl RaopSession {
             uri,
             reanchor: stream.reanchor_handle(),
             frames_sent: stream.frames_sent_handle(),
+            failed: stream.failed_handle(),
             latency_frames: latency,
         };
         Ok(RaopSession {
@@ -450,6 +474,9 @@ mod tests {
                 let extra = if method == "SETUP" {
                     "Session: ABCD1234\r\nTransport: RTP/AVP/UDP;unicast;server_port=6000;\
                      control_port=6001;timing_port=6002\r\n"
+                } else if method == "RECORD" {
+                    // The receiver reports its audio latency in frames.
+                    "Audio-Latency: 11025\r\n"
                 } else {
                     ""
                 };
@@ -464,12 +491,17 @@ mod tests {
 
         let mut conn = RtspConnection::connect(addr.ip(), addr.port(), "bae/test").unwrap();
         let sdp = build_announce_sdp(7, conn.local_addr(), addr.ip(), &RaopCipher::none());
-        let negotiated =
+        let (negotiated, audio_latency) =
             perform_handshake(&mut conn, "rtsp://x/7", &sdp, 6100, 6200, 0, 0, 0.5).unwrap();
 
         assert_eq!(negotiated.server_port, 6000);
         assert_eq!(negotiated.control_port, 6001);
         assert_eq!(negotiated.timing_port, 6002);
+        assert_eq!(
+            audio_latency,
+            Some(11_025),
+            "the receiver's reported Audio-Latency is parsed and returned"
+        );
 
         let (methods, announce_sdp, volume_body) = server.join().unwrap();
         assert_eq!(
@@ -502,7 +534,9 @@ mod tests {
             if let Some((key, value)) = header.split_once(':') {
                 match key.trim().to_ascii_lowercase().as_str() {
                     "cseq" => cseq = value.trim().to_string(),
-                    "content-length" => content_length = value.trim().parse().unwrap_or(0),
+                    "content-length" => {
+                        content_length = value.trim().parse().expect("valid content-length")
+                    }
                     _ => {}
                 }
             }
