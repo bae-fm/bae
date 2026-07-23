@@ -10,7 +10,7 @@ import SwiftUI
 /// input: the queue panel's now-playing card shows where playback is; seeking
 /// stays with the transport bar.
 final class ProgressStripNSView: NSView {
-    private let bar = ProgressBarView()
+    private let bar = ProgressTrackNSView(trackHeight: 4)
     private let elapsedField: NSTextField
 
     private var positionMs: UInt64 = 0
@@ -79,45 +79,6 @@ final class ProgressStripNSView: NSView {
                 showRemaining: false
             )
             .leading
-    }
-}
-
-/// The strip's bar: a rounded track with an accent fill up to `progress`.
-private final class ProgressBarView: NSView {
-    var progress: Double = 0 {
-        didSet {
-            if progress != oldValue {
-                needsDisplay = true
-            }
-        }
-    }
-
-    override func draw(_: NSRect) {
-        let radius = bounds.height / 2
-        NSColor.white.withAlphaComponent(0.12).setFill()
-        NSBezierPath(roundedRect: bounds, xRadius: radius, yRadius: radius)
-            .fill()
-
-        let fillWidth = bounds.width * CGFloat(min(max(progress, 0), 1))
-        guard fillWidth > 0 else {
-            return
-        }
-        let fillRect = NSRect(
-            x: 0,
-            y: 0,
-            width: max(fillWidth, bounds.height),
-            height: bounds.height
-        )
-        let accent = NSColor(Theme.accent)
-        let lighter =
-            accent.blended(withFraction: 0.25, of: .white) ?? accent
-        let path = NSBezierPath(
-            roundedRect: fillRect,
-            xRadius: radius,
-            yRadius: radius
-        )
-        NSGradient(starting: accent, ending: lighter)?
-            .draw(in: path, angle: 0)
     }
 }
 

@@ -70,8 +70,7 @@ struct ImportConfirmationCardAction: View {
                             )
                             .foregroundStyle(.secondary)
                             .font(.callout)
-                            ProgressView(value: progress.fraction)
-                                .progressViewStyle(.linear)
+                            ProgressTrackBar(progress: progress.fraction)
                                 .frame(width: 160)
                         }
                     }

@@ -22,8 +22,7 @@ struct OutboxFileRow: View {
             Spacer()
 
             if file.state == .uploading {
-                ProgressView(value: fraction)
-                    .progressViewStyle(.linear)
+                ProgressTrackBar(progress: fraction)
                     .frame(width: 140)
             }
 

@@ -8,8 +8,7 @@ struct OutboxTotalProgress: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            ProgressView(value: snapshot.total.fraction)
-                .progressViewStyle(.linear)
+            ProgressTrackBar(progress: snapshot.total.fraction)
                 // Dim the bar while paused so the visual matches the "Paused"
                 // chip in the band above — paused-but-mid-progress reads as
                 // active otherwise.

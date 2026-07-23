@@ -9,7 +9,7 @@ import AppKit
 /// loudness — N/M"); the bar is the overall scan `fraction`.
 class ImportLoudnessProgressNSView: NSView {
     private let label: NSTextField
-    private let bar: NSProgressIndicator
+    private let bar: ProgressTrackNSView
 
     override init(frame: NSRect) {
         label = NSTextField(labelWithString: "")
@@ -17,12 +17,8 @@ class ImportLoudnessProgressNSView: NSView {
         label.textColor = .secondaryLabelColor
         label.translatesAutoresizingMaskIntoConstraints = false
 
-        bar = NSProgressIndicator()
-        bar.isIndeterminate = false
-        bar.minValue = 0
-        bar.maxValue = 1
-        bar.doubleValue = 0
-        bar.controlSize = .small
+        bar = ProgressTrackNSView()
+        bar.progress = 0
         bar.translatesAutoresizingMaskIntoConstraints = false
 
         super.init(frame: frame)
@@ -62,6 +58,6 @@ class ImportLoudnessProgressNSView: NSView {
             Int(tracksDone),
             Int(tracksTotal)
         )
-        bar.doubleValue = fraction
+        bar.progress = fraction
     }
 }

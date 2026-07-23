@@ -50,8 +50,7 @@ struct StorageStatusBand: View {
 
     private func progressBar(value: Double? = nil, label: String) -> some View {
         VStack(alignment: .leading, spacing: 4) {
-            ProgressView(value: value)
-                .progressViewStyle(.linear)
+            ProgressTrackBar(progress: value)
             Text(label)
                 .font(.callout)
                 .foregroundStyle(.secondary)

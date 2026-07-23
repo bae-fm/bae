@@ -41,8 +41,7 @@ struct OutboxReleaseRow: View {
 
                 Spacer()
 
-                ProgressView(value: group.progress.fraction)
-                    .progressViewStyle(.linear)
+                ProgressTrackBar(progress: group.progress.fraction)
                     .frame(width: 140)
 
                 stateBadge

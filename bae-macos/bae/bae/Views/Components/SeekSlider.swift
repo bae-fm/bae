@@ -46,8 +46,8 @@ class SeekSlider: NSSlider {
     }
 }
 
-/// Draws the slim seek/progress track: a 5pt rounded groove in a neutral
-/// low-opacity fill, its played portion filled with the accent gradient, and
+/// Draws the slim seek track through the shared `ProgressTrackDrawing`, so the
+/// interactive seek bar and every passive bar in the app share one look, and
 /// no knob. `SeekSlider.mouseDown` still relies on this cell's default
 /// `knobRect`/`barRect` geometry for click-to-seek math.
 final class SlimSeekSliderCell: NSSliderCell {
@@ -57,34 +57,11 @@ final class SlimSeekSliderCell: NSSliderCell {
         var bar = rect
         bar.origin.y = rect.midY - trackHeight / 2
         bar.size.height = trackHeight
-        let radius = trackHeight / 2
-
-        NSColor.white.withAlphaComponent(0.12).setFill()
-        NSBezierPath(roundedRect: bar, xRadius: radius, yRadius: radius).fill()
 
         let span = maxValue - minValue
-        guard span > 0 else { return }
-        let fraction = max(0, min(1, CGFloat((doubleValue - minValue) / span)))
-        guard fraction > 0 else { return }
-
-        var fill = bar
-        fill.size.width = bar.width * fraction
-        let fillPath = NSBezierPath(
-            roundedRect: fill,
-            xRadius: radius,
-            yRadius: radius
-        )
-
-        let base = NSColor(Theme.accent)
-        guard let lighter = base.blended(withFraction: 0.3, of: .white),
-            let gradient = NSGradient(starting: base, ending: lighter)
-        else {
-            assertionFailure("accent gradient could not be built")
-            base.setFill()
-            fillPath.fill()
-            return
-        }
-        gradient.draw(in: fillPath, angle: 0)
+        let fraction =
+            span > 0 ? min(max((doubleValue - minValue) / span, 0), 1) : 0
+        ProgressTrackDrawing.draw(in: bar, fraction: fraction)
     }
 
     override func drawKnob(_: NSRect) {
