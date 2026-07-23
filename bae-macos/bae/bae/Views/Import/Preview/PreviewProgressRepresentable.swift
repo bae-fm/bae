@@ -3,13 +3,6 @@ import BaeKit
 import Combine
 import SwiftUI
 
-// MARK: - Event type
-
-enum PreviewProgressEvent {
-    case position(progress: Double, positionMs: UInt64)
-    case reset
-}
-
 // MARK: - Environment key
 
 extension EnvironmentValues {
@@ -72,3 +65,21 @@ struct PreviewProgressRepresentable: NSViewRepresentable {
         }
     }
 }
+
+#if DEBUG
+    #Preview("Preview progress bar") {
+        PreviewProgressRepresentable(
+            durationMs: 195_000,
+            onSeek: { _ in },
+        )
+        .environment(
+            \.previewProgressPublisher,
+            Just(
+                PreviewProgressEvent.position(progress: 0.4, positionMs: 78_000)
+            )
+            .eraseToAnyPublisher()
+        )
+        .frame(width: 320, height: 40)
+        .padding()
+    }
+#endif

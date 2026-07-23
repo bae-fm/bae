@@ -2,23 +2,6 @@ import AppKit
 import BaeKit
 import SwiftUI
 
-/// Sizing for the docked confirm pane, shared between the pane (drag clamp) and
-/// its container (frame height) so they never disagree. Non-generic so the
-/// container can call `clamp` without pinning the pane's `Content` type.
-enum ImportPaneLayout {
-    static let minHeight: CGFloat = 220
-    static let maxHeight: CGFloat = 500
-    /// Keep at least this much of the results list visible above the pane.
-    private static let resultsFloor: CGFloat = 140
-
-    /// Clamp a requested height to [min, capped-max], where the cap also
-    /// reserves the results floor.
-    static func clamp(_ requested: CGFloat, available: CGFloat) -> CGFloat {
-        let cap = max(minHeight, min(maxHeight, available - resultsFloor))
-        return max(minHeight, min(cap, requested))
-    }
-}
-
 /// Docked, draggable confirm pane that slides up over the still-visible
 /// results list. The drag handle resizes it (220–500pt, capped to keep the
 /// results readable above); the header carries the title and a close button;

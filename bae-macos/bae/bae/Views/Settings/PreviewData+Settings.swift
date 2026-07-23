@@ -2,12 +2,45 @@
     import BaeKit
     import Foundation
 
-    // Preview fixtures for the Library settings flow — a membership chain (this
-    // device as owner plus one removable member), a decoded join request, a
-    // `Sync` whose reads serve those fixtures, and connected/erroring config
-    // stores. Generic placeholder identities throughout; the pubkeys and
-    // fingerprints are arbitrary hex.
+    // Preview fixtures for the settings flows — the save-format presets and
+    // their filename tokens, plus the Library membership chain (this device as
+    // owner plus one removable member), a decoded join request, a `Sync` whose
+    // reads serve those fixtures, and connected/erroring config stores. Generic
+    // placeholder identities throughout; the pubkeys and fingerprints are
+    // arbitrary hex.
     extension PreviewData {
+        // MARK: - Formats
+
+        /// Default single-track export filename pattern, for seeding preview
+        /// configs (mirrors bae-core's `default_save_filename_tokens`).
+        static let exportFilenameTokens: [BridgeSaveFilenameToken] = [
+            .trackNumber, .title,
+        ]
+        static let savePresets: [BridgeSavePreset] = [
+            BridgeSavePreset(
+                id: "flac",
+                name: "FLAC",
+                codec: .flac(bitDepth: .source),
+                extension: "flac",
+                filenameTokens: exportFilenameTokens,
+                pregapPlacement: .appendToPreviousExceptHtoa,
+                appliesToTrack: true,
+                appliesToRelease: true,
+                embedCover: true
+            ),
+            BridgeSavePreset(
+                id: "mp3",
+                name: "MP3",
+                codec: .mp3(bitrateKbps: 320),
+                extension: "mp3",
+                filenameTokens: exportFilenameTokens,
+                pregapPlacement: .appendToPreviousExceptHtoa,
+                appliesToTrack: true,
+                appliesToRelease: true,
+                embedCover: true
+            ),
+        ]
+
         // MARK: - Membership
 
         static let members: [BridgeMember] = [

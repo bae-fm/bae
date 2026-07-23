@@ -998,37 +998,7 @@
             uniqueKeysWithValues: albumDetailList.map { ($0.album.id, $0) }
         )
 
-        // MARK: - Config, formats, and edit-metadata fixtures
-
-        /// Default single-track export filename pattern, for seeding preview
-        /// configs (mirrors bae-core's `default_save_filename_tokens`).
-        static let exportFilenameTokens: [BridgeSaveFilenameToken] = [
-            .trackNumber, .title,
-        ]
-        static let savePresets: [BridgeSavePreset] = [
-            BridgeSavePreset(
-                id: "flac",
-                name: "FLAC",
-                codec: .flac(bitDepth: .source),
-                extension: "flac",
-                filenameTokens: exportFilenameTokens,
-                pregapPlacement: .appendToPreviousExceptHtoa,
-                appliesToTrack: true,
-                appliesToRelease: true,
-                embedCover: true
-            ),
-            BridgeSavePreset(
-                id: "mp3",
-                name: "MP3",
-                codec: .mp3(bitrateKbps: 320),
-                extension: "mp3",
-                filenameTokens: exportFilenameTokens,
-                pregapPlacement: .appendToPreviousExceptHtoa,
-                appliesToTrack: true,
-                appliesToRelease: true,
-                embedCover: true
-            ),
-        ]
+        // MARK: - Config and edit-metadata fixtures
 
         /// Shared preview ConfigStore. ConfigStore is a non-Sendable `@Observable`,
         /// so it needs `@MainActor` isolation to hold as a static. The explicit
