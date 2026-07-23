@@ -136,12 +136,14 @@ private struct CastPickerPopover: View {
     }
 
     /// A flavor hint for a picker row: a plain speaker for Cast, a TV glyph for a
-    /// UPnP renderer (commonly a TV or AV receiver). The list itself isn't
-    /// segregated by protocol — a speaker is a speaker.
+    /// UPnP renderer (commonly a TV or AV receiver), and the AirPlay glyph for an
+    /// AirPlay receiver. The list itself isn't segregated by protocol — a speaker
+    /// is a speaker.
     private func deviceIcon(_ kind: BridgeRendererKind) -> String {
         switch kind {
         case .cast: "hifispeaker"
         case .dlna: "tv"
+        case .airPlay: "airplayaudio"
         }
     }
 }

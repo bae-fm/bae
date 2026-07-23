@@ -2435,6 +2435,7 @@ pub struct BridgeCastDevice {
 pub enum BridgeRendererKind {
     Cast,
     Dlna,
+    AirPlay,
 }
 
 // The conversion is only used by the desktop-gated `get_cast_devices` handle fn.
@@ -2444,6 +2445,7 @@ impl BridgeCastDevice {
         let kind = match device.kind() {
             bae_core::renderer::RendererKind::Cast => BridgeRendererKind::Cast,
             bae_core::renderer::RendererKind::Dlna => BridgeRendererKind::Dlna,
+            bae_core::renderer::RendererKind::AirPlay => BridgeRendererKind::AirPlay,
         };
         Self {
             id: device.id,

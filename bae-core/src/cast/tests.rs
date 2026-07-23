@@ -14,7 +14,7 @@ fn v4(a: u8, b: u8, c: u8, d: u8) -> IpAddr {
 fn cast_addr(device: &RendererDevice) -> (IpAddr, u16) {
     match device.connection {
         RendererConnection::Cast { addr, port } => (addr, port),
-        RendererConnection::Dlna { .. } => panic!("cast discovery must map to a Cast connection"),
+        _ => panic!("cast discovery must map to a Cast connection"),
     }
 }
 

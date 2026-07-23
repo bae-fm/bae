@@ -8,12 +8,17 @@
 
 use std::net::IpAddr;
 
+use crate::airplay::AirPlayCapabilities;
+
 /// Which flavor of remote renderer a device is. Surfaced to the UI as a tag; the
 /// picker does not segregate the list by it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RendererKind {
     Cast,
     Dlna,
+    /// An AirPlay receiver (RAOP or AirPlay 2). Unlike Cast/DLNA it does not fetch
+    /// a URL — bae pushes decoded audio to it — but it shares the one device list.
+    AirPlay,
 }
 
 /// A discovered remote renderer: enough to display it and to connect a channel.
@@ -36,6 +41,7 @@ impl RendererDevice {
         match self.connection {
             RendererConnection::Cast { .. } => RendererKind::Cast,
             RendererConnection::Dlna { .. } => RendererKind::Dlna,
+            RendererConnection::AirPlay { .. } => RendererKind::AirPlay,
         }
     }
 }
@@ -52,5 +58,13 @@ pub enum RendererConnection {
         /// `None` when the renderer advertises no RenderingControl service
         /// (volume is then unsupported).
         rendering_control_url: Option<String>,
+    },
+    /// An AirPlay receiver at a LAN address, with what it announced about itself
+    /// (the dialect, whether it needs a PIN, the RAOP audio parameters) so the
+    /// sender can decide how to connect.
+    AirPlay {
+        addr: IpAddr,
+        port: u16,
+        capabilities: AirPlayCapabilities,
     },
 }

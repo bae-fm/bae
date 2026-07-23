@@ -18,9 +18,7 @@ fn dlna_urls(device: &RendererDevice) -> (String, Option<String>) {
             av_transport_url,
             rendering_control_url,
         } => (av_transport_url.clone(), rendering_control_url.clone()),
-        RendererConnection::Cast { .. } => {
-            panic!("a device description must parse to a DLNA connection")
-        }
+        _ => panic!("a device description must parse to a DLNA connection"),
     }
 }
 

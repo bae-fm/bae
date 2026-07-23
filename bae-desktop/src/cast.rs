@@ -10,10 +10,13 @@
 
 use std::sync::{Arc, Mutex};
 
+use bae_core::airplay::capabilities::{Dialect, RaopEncryption};
+use bae_core::airplay::{AirPlayCapabilities, AirPlayDiscovery};
 use bae_core::cast::{CastDiscovery, RustCastChannel};
 use bae_core::config::SubsonicCredential;
 use bae_core::dlna::{DlnaChannel, DlnaDiscovery};
 use bae_core::library::{AppServices, LibraryManager};
+use bae_core::playback::airplay_output::{AirPlaySink, RaopSink};
 use bae_core::playback::{PlaybackHandle, PlaybackProgress};
 use bae_core::renderer::{
     cast_stream_format, dlna_stream_format, CoverUrlProvider, MediaUrlProvider, RendererChannel,
@@ -27,6 +30,50 @@ use tokio::runtime::Handle;
 use tokio::task::JoinHandle;
 use tokio_util::sync::CancellationToken;
 use tracing::warn;
+
+/// The RAOP audio latency the sender assumes when a receiver doesn't report one
+/// — ~2 s at 44.1 kHz. Used both to pace the stream ahead and to offset the
+/// position the UI shows back to what is audible.
+const AIRPLAY_LATENCY_FRAMES: u32 = 88_200;
+
+/// Build the push-audio sink for an AirPlay receiver, or a kind-specific error
+/// when it can't be driven: a PIN-gated receiver, an AirPlay-2-only receiver
+/// (whose streaming isn't wired yet), or one offering only encryption the sender
+/// can't provide. RAOP receivers pick unencrypted when offered, else RSA-AES.
+fn build_airplay_sink(
+    addr: std::net::IpAddr,
+    port: u16,
+    capabilities: &AirPlayCapabilities,
+) -> Result<Box<dyn AirPlaySink>, CastError> {
+    if capabilities.requires_pin {
+        return Err(CastError::AirPlayPinRequired);
+    }
+    match capabilities.dialect {
+        Dialect::AirPlay2 => Err(CastError::AirPlay2Unsupported),
+        Dialect::Raop => {
+            let raop = capabilities
+                .raop
+                .as_ref()
+                .ok_or(CastError::AirPlayEncryptionUnsupported)?;
+            let encryption = if raop.encryption.contains(&RaopEncryption::None) {
+                RaopEncryption::None
+            } else if raop.encryption.contains(&RaopEncryption::RsaAes) {
+                RaopEncryption::RsaAes
+            } else {
+                return Err(CastError::AirPlayEncryptionUnsupported);
+            };
+            Ok(Box::new(RaopSink {
+                receiver: addr,
+                rtsp_port: port,
+                encryption,
+                latency_frames: Some(AIRPLAY_LATENCY_FRAMES),
+                // The receiver plays at its hardware volume; bae attenuates locally
+                // in the output drain, so seed the session at full.
+                initial_volume: 1.0,
+            }))
+        }
+    }
+}
 
 /// The current cast status, snapshot for the UI.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -44,6 +91,12 @@ pub enum CastError {
     Connect(String),
     /// The ephemeral serving couldn't be started (bind / no LAN address).
     Serving(String),
+    /// The AirPlay receiver demands a user PIN, which the sender doesn't support.
+    AirPlayPinRequired,
+    /// The receiver only speaks AirPlay 2, whose audio streaming isn't wired yet.
+    AirPlay2Unsupported,
+    /// The RAOP receiver only offers audio encryption the sender can't provide.
+    AirPlayEncryptionUnsupported,
 }
 
 impl std::fmt::Display for CastError {
@@ -59,6 +112,20 @@ impl std::fmt::Display for CastError {
                     "couldn't start serving audio to the Cast device: {detail}"
                 )
             }
+            CastError::AirPlayPinRequired => {
+                write!(
+                    f,
+                    "this AirPlay receiver needs a PIN, which isn't supported"
+                )
+            }
+            CastError::AirPlay2Unsupported => write!(
+                f,
+                "this receiver only supports AirPlay 2, which isn't supported yet"
+            ),
+            CastError::AirPlayEncryptionUnsupported => write!(
+                f,
+                "this AirPlay receiver requires an encryption the sender can't provide"
+            ),
         }
     }
 }
@@ -139,6 +206,7 @@ pub struct CastController {
     /// speaker, whatever its protocol.
     cast_discovery: Mutex<CastDiscovery>,
     dlna_discovery: Mutex<DlnaDiscovery>,
+    airplay_discovery: Mutex<AirPlayDiscovery>,
     inner: Arc<Mutex<Inner>>,
 }
 
@@ -155,20 +223,27 @@ impl CastController {
         }));
         let cast_discovery = CastDiscovery::new();
         let dlna_discovery = DlnaDiscovery::new();
-        // Forward either discovery's list changes to the UI as an invalidation,
-        // so an open picker requeries the merged list as devices come and go.
+        let airplay_discovery = AirPlayDiscovery::new();
+        // Forward each discovery's list changes to the UI as an invalidation, so
+        // an open picker requeries the merged list as devices come and go.
         Self::spawn_device_list_forwarder(
             cast_discovery.subscribe(),
             ui_event_bus.clone(),
             &runtime,
         );
-        Self::spawn_device_list_forwarder(dlna_discovery.subscribe(), ui_event_bus, &runtime);
+        Self::spawn_device_list_forwarder(
+            dlna_discovery.subscribe(),
+            ui_event_bus.clone(),
+            &runtime,
+        );
+        Self::spawn_device_list_forwarder(airplay_discovery.subscribe(), ui_event_bus, &runtime);
         let controller = Self {
             runtime: runtime.clone(),
             manager: services.library_manager().clone(),
             playback: services.playback().clone(),
             cast_discovery: Mutex::new(cast_discovery),
             dlna_discovery: Mutex::new(dlna_discovery),
+            airplay_discovery: Mutex::new(airplay_discovery),
             inner: inner.clone(),
         };
         controller.spawn_status_follower();
@@ -224,19 +299,22 @@ impl CastController {
     pub fn start_discovery(&self) {
         self.cast_discovery.lock().unwrap().start();
         self.dlna_discovery.lock().unwrap().start();
+        self.airplay_discovery.lock().unwrap().start();
     }
 
-    /// Stop browsing on both protocols (the picker closed).
+    /// Stop browsing on every protocol (the picker closed).
     pub fn stop_discovery(&self) {
         self.cast_discovery.lock().unwrap().stop();
         self.dlna_discovery.lock().unwrap().stop();
+        self.airplay_discovery.lock().unwrap().stop();
     }
 
-    /// The current merged device list — Cast and UPnP devices in one list, sorted
-    /// by name for a stable picker.
+    /// The current merged device list — Cast, UPnP, and AirPlay devices in one
+    /// list, sorted by name for a stable picker.
     pub fn devices(&self) -> Vec<RendererDevice> {
         let mut devices = self.cast_discovery.lock().unwrap().devices();
         devices.extend(self.dlna_discovery.lock().unwrap().devices());
+        devices.extend(self.airplay_discovery.lock().unwrap().devices());
         devices.sort_by(|a, b| a.name.cmp(&b.name).then(a.id.cmp(&b.id)));
         devices
     }
@@ -255,6 +333,23 @@ impl CastController {
             .into_iter()
             .find(|device| device.id == device_id)
             .ok_or(CastError::DeviceNotFound)?;
+
+        // AirPlay is not a fetch-a-URL renderer: build the push-audio sink and hand
+        // it to playback, which keeps decoding locally. No ephemeral server needed.
+        if let RendererConnection::AirPlay {
+            addr,
+            port,
+            capabilities,
+        } = &device.connection
+        {
+            let sink = build_airplay_sink(*addr, *port, capabilities)?;
+            self.inner.lock().unwrap().status = CastStatus::Casting {
+                device_name: device.name.clone(),
+            };
+            self.playback
+                .play_on_airplay(sink, device.name, AIRPLAY_LATENCY_FRAMES);
+            return Ok(());
+        }
 
         let (channel, stream_format) = self.build_channel(&device.connection)?;
 
@@ -307,6 +402,11 @@ impl CastController {
                         .map_err(|e| CastError::Connect(e.to_string()))?;
                 Ok((Box::new(channel), dlna_stream_format))
             }
+            // AirPlay is handled in `cast_to` before it reaches here — it has no
+            // fetch-a-URL channel.
+            RendererConnection::AirPlay { .. } => Err(CastError::Connect(
+                "AirPlay does not use a control channel".to_string(),
+            )),
         }
     }
 

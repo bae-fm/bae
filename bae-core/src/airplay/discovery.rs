@@ -19,6 +19,7 @@ use mdns_sd::{ResolvedService, ServiceDaemon, ServiceEvent};
 use tracing::{debug, warn};
 
 use super::capabilities::{AirPlayCapabilities, Dialect};
+use crate::renderer::{RendererConnection, RendererDevice};
 
 /// The two AirPlay service types browsed for.
 const SERVICE_TYPES: [&str; 2] = ["_airplay._tcp.local.", "_raop._tcp.local."];
@@ -38,12 +39,28 @@ pub struct AirPlayDevice {
     pub capabilities: AirPlayCapabilities,
 }
 
+impl AirPlayDevice {
+    /// Project into the merged renderer-device list the picker shows across
+    /// flavors, carrying what the sender needs to open the connection.
+    pub fn to_renderer_device(&self) -> RendererDevice {
+        RendererDevice {
+            id: self.id.clone(),
+            name: self.name.clone(),
+            connection: RendererConnection::AirPlay {
+                addr: self.addr,
+                port: self.port,
+                capabilities: self.capabilities.clone(),
+            },
+        }
+    }
+}
+
 /// Browses for AirPlay receivers and publishes the current list over a watch
 /// channel. Start and stop with the picker's visibility; a stopped discovery
 /// holds no mDNS daemon and no browse threads.
 pub struct AirPlayDiscovery {
-    devices_tx: tokio::sync::watch::Sender<Vec<AirPlayDevice>>,
-    devices_rx: tokio::sync::watch::Receiver<Vec<AirPlayDevice>>,
+    devices_tx: tokio::sync::watch::Sender<Vec<RendererDevice>>,
+    devices_rx: tokio::sync::watch::Receiver<Vec<RendererDevice>>,
     running: Option<Running>,
 }
 
@@ -62,14 +79,15 @@ impl AirPlayDiscovery {
         }
     }
 
-    /// Subscribe to the live device list. The current snapshot is available
-    /// immediately on the returned receiver.
-    pub fn subscribe(&self) -> tokio::sync::watch::Receiver<Vec<AirPlayDevice>> {
+    /// Subscribe to the live device list — merged renderer devices, so the
+    /// picker's one forwarder handles AirPlay like Cast and UPnP. The current
+    /// snapshot is available immediately on the returned receiver.
+    pub fn subscribe(&self) -> tokio::sync::watch::Receiver<Vec<RendererDevice>> {
         self.devices_rx.clone()
     }
 
     /// The current device list snapshot.
-    pub fn devices(&self) -> Vec<AirPlayDevice> {
+    pub fn devices(&self) -> Vec<RendererDevice> {
         self.devices_rx.borrow().clone()
     }
 
@@ -160,7 +178,7 @@ struct DeviceTable {
 fn run_browse(
     events: mdns_sd::Receiver<ServiceEvent>,
     table: std::sync::Arc<std::sync::Mutex<DeviceTable>>,
-    devices_tx: tokio::sync::watch::Sender<Vec<AirPlayDevice>>,
+    devices_tx: tokio::sync::watch::Sender<Vec<RendererDevice>>,
 ) {
     while let Ok(event) = events.recv() {
         let changed = {
@@ -188,7 +206,10 @@ fn run_browse(
         if !changed {
             continue;
         }
-        let snapshot = snapshot(&table.lock().unwrap());
+        let snapshot: Vec<RendererDevice> = snapshot(&table.lock().unwrap())
+            .iter()
+            .map(AirPlayDevice::to_renderer_device)
+            .collect();
         if devices_tx.send(snapshot).is_err() {
             debug!("airplay discovery: no watchers for the device list");
         }
