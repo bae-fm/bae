@@ -308,8 +308,15 @@ impl PlaybackService {
         if let Renderer::Remote(remote) = &self.renderer {
             remote.session.stop();
         }
-        if self.renderer.is_remote() {
-            self.renderer = Renderer::Local;
+        // On AirPlay, decode is local: take the saved local sink out now so it can
+        // be restored after the teardown below drops the AirPlay output (which
+        // tears the receiver session down). Both remote flavors return to local.
+        let was_playing_on_device = !matches!(self.renderer, Renderer::Local);
+        let restore_local_output = match std::mem::replace(&mut self.renderer, Renderer::Local) {
+            Renderer::AirPlay(airplay) => Some(airplay.saved_output),
+            _ => None,
+        };
+        if was_playing_on_device {
             emit_progress(
                 &self.progress_tx,
                 PlaybackProgress::RemoteStatusChanged { device_name: None },
@@ -320,6 +327,11 @@ impl PlaybackService {
         // unparks), and every cached file buffer. Shared with the remote switch,
         // which reuses the same teardown before installing the remote track.
         self.teardown_local_playback();
+        // Restore the local output sink after the AirPlay one (and its session)
+        // is gone, so the next play uses the DAC again.
+        if let Some(saved_output) = restore_local_output {
+            self.audio_output = saved_output;
+        }
         self.sync_audio_state();
         self.emit_state();
         // With the slot Stopped this clears the durable row — on every stop path

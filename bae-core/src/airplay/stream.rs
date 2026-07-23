@@ -15,8 +15,8 @@
 //! and [`RaopStream`] is the thin runtime that owns the sockets and threads.
 
 use std::net::{IpAddr, SocketAddr, UdpSocket};
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::{Arc, Mutex};
 use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
 
@@ -32,9 +32,10 @@ pub const FRAMES_PER_PACKET: u32 = 352;
 /// this adapts the playback ring buffer; tests drive it with a scripted ramp.
 pub trait PcmSource: Send {
     /// Fill `out` (interleaved i16, up to one packet's worth) with the next
-    /// frames and return how many *frames* were produced. A short read (fewer
-    /// than `out.len() / channels`) means the source has drained; the stream
-    /// zero-pads the remainder. `0` means fully drained.
+    /// frames and return how many *frames* were produced. `0` means no audio is
+    /// available right now — the stream is paused, starved, or between tracks —
+    /// and the stream sends nothing this packet rather than treating it as the
+    /// end: the session's lifetime, not the source, decides when streaming stops.
     fn next_frames(&mut self, out: &mut [i16]) -> usize;
 }
 
@@ -104,6 +105,13 @@ impl Packetizer {
     pub fn next_sequence(&self) -> u16 {
         self.sequence
     }
+
+    /// Re-anchor after a FLUSH: the next packet carries the marker bit again so
+    /// the receiver treats the resumed stream as a fresh start. The RTP timestamp
+    /// keeps advancing — the sync packet re-establishes the mapping.
+    pub fn reanchor(&mut self) {
+        self.first = true;
+    }
 }
 
 /// Decides how many packets are due by a moment in the stream, so the sender runs
@@ -147,21 +155,24 @@ impl Pacer {
     }
 }
 
-/// A monotonic clock the pacing loop reads elapsed time from. Injectable so tests
-/// don't sleep.
+/// A monotonic clock the pacing loop reads elapsed time from, and re-anchors on a
+/// FLUSH. Injectable so tests don't sleep.
 pub trait MonotonicClock: Send + Sync {
+    /// Time since the clock was created or last [`reset`](MonotonicClock::reset).
     fn elapsed(&self) -> Duration;
+    /// Restart the elapsed count from now (the re-anchor point after a FLUSH).
+    fn reset(&self);
 }
 
-/// The real clock: elapsed since construction.
+/// The real clock: elapsed since the last reset.
 pub struct SystemClock {
-    start: Instant,
+    start: Mutex<Instant>,
 }
 
 impl SystemClock {
     pub fn new() -> Self {
         SystemClock {
-            start: Instant::now(),
+            start: Mutex::new(Instant::now()),
         }
     }
 }
@@ -174,7 +185,11 @@ impl Default for SystemClock {
 
 impl MonotonicClock for SystemClock {
     fn elapsed(&self) -> Duration {
-        self.start.elapsed()
+        self.start.lock().unwrap().elapsed()
+    }
+
+    fn reset(&self) {
+        *self.start.lock().unwrap() = Instant::now();
     }
 }
 
@@ -195,7 +210,9 @@ pub struct StreamEndpoints {
 pub struct RaopStream {
     stop: Arc<AtomicBool>,
     threads: Vec<JoinHandle<()>>,
-    frames_sent: Arc<std::sync::atomic::AtomicU64>,
+    frames_sent: Arc<AtomicU64>,
+    /// Bumped to re-anchor the pacing after a FLUSH (resume / seek).
+    reanchor: Arc<AtomicU64>,
 }
 
 impl RaopStream {
@@ -221,19 +238,23 @@ impl RaopStream {
         let control_dst = SocketAddr::new(endpoints.receiver, endpoints.control_port);
 
         let stop = Arc::new(AtomicBool::new(false));
-        let frames_sent = Arc::new(std::sync::atomic::AtomicU64::new(0));
+        let frames_sent = Arc::new(AtomicU64::new(0));
+        let reanchor = Arc::new(AtomicU64::new(0));
 
         let threads = vec![
-            spawn_audio_thread(
+            spawn_audio_thread(AudioThread {
                 source,
-                Packetizer::new(ssrc, cipher, channels, 0, initial_timestamp),
-                Pacer::new(sample_rate, endpoints.latency_frames),
-                audio_socket,
-                audio_dst,
-                clock.clone(),
-                stop.clone(),
-                frames_sent.clone(),
-            ),
+                packetizer: Packetizer::new(ssrc, cipher, channels, 0, initial_timestamp),
+                pacer: Pacer::new(sample_rate, endpoints.latency_frames),
+                sample_rate,
+                latency_frames: endpoints.latency_frames,
+                socket: audio_socket,
+                dst: audio_dst,
+                clock: clock.clone(),
+                stop: stop.clone(),
+                frames_sent: frames_sent.clone(),
+                reanchor: reanchor.clone(),
+            }),
             spawn_sync_thread(
                 control_socket,
                 control_dst,
@@ -250,12 +271,31 @@ impl RaopStream {
             stop,
             threads,
             frames_sent,
+            reanchor,
         })
     }
 
     /// Frames handed to the receiver so far — the basis for the audible position.
     pub fn frames_sent(&self) -> u64 {
         self.frames_sent.load(Ordering::Relaxed)
+    }
+
+    /// The cumulative frames-sent counter, shared so a control handle off the
+    /// stream can read the audible position.
+    pub fn frames_sent_handle(&self) -> Arc<AtomicU64> {
+        self.frames_sent.clone()
+    }
+
+    /// The re-anchor epoch, shared so a control handle can trigger a re-anchor.
+    pub fn reanchor_handle(&self) -> Arc<AtomicU64> {
+        self.reanchor.clone()
+    }
+
+    /// Re-anchor the pacing after a FLUSH: the audio thread resets its lead and
+    /// clock and re-marks the next packet, so a resumed or sought stream starts
+    /// fresh rather than bursting to catch a stale clock.
+    pub fn reanchor(&self) {
+        self.reanchor.fetch_add(1, Ordering::Release);
     }
 }
 
@@ -270,49 +310,65 @@ impl Drop for RaopStream {
     }
 }
 
-/// Pull PCM one packet at a time, pace by the clock, and send. Ends when the
-/// source drains or the stop flag is set.
-#[allow(clippy::too_many_arguments)]
-fn spawn_audio_thread(
-    mut source: Box<dyn PcmSource>,
-    mut packetizer: Packetizer,
-    mut pacer: Pacer,
+/// The state one audio-sender thread owns.
+struct AudioThread {
+    source: Box<dyn PcmSource>,
+    packetizer: Packetizer,
+    pacer: Pacer,
+    sample_rate: u32,
+    latency_frames: u32,
     socket: UdpSocket,
     dst: SocketAddr,
     clock: Arc<dyn MonotonicClock>,
     stop: Arc<AtomicBool>,
-    frames_sent: Arc<std::sync::atomic::AtomicU64>,
-) -> JoinHandle<()> {
+    frames_sent: Arc<AtomicU64>,
+    reanchor: Arc<AtomicU64>,
+}
+
+/// Pull PCM one packet at a time, pace by the clock, and send. Persistent: a
+/// source with nothing to give (paused, starved, between tracks) yields no
+/// packet but the thread lives on — only [`RaopStream`] being dropped (the stop
+/// flag) ends it, so pause and gapless track swaps don't tear the stream down. A
+/// re-anchor resets the pacing lead and clock and re-marks the next packet.
+fn spawn_audio_thread(mut t: AudioThread) -> JoinHandle<()> {
     let channels = 2usize; // L16 stereo; the session negotiates 44.1/16/2.
     std::thread::spawn(move || {
-        let packet_len = FRAMES_PER_PACKET as usize * channels;
-        let mut buf = vec![0i16; packet_len];
-        let mut drained = false;
-        while !stop.load(Ordering::Acquire) && !drained {
-            let due = pacer.packets_due(clock.elapsed());
-            if due == 0 {
-                std::thread::sleep(Duration::from_millis(5));
-                continue;
+        let mut buf = vec![0i16; FRAMES_PER_PACKET as usize * channels];
+        let mut seen_reanchor = t.reanchor.load(Ordering::Acquire);
+        while !t.stop.load(Ordering::Acquire) {
+            let epoch = t.reanchor.load(Ordering::Acquire);
+            if epoch != seen_reanchor {
+                t.pacer = Pacer::new(t.sample_rate, t.latency_frames);
+                t.clock.reset();
+                t.packetizer.reanchor();
+                seen_reanchor = epoch;
             }
+
+            let due = t.pacer.packets_due(t.clock.elapsed());
+            let mut sent_any = false;
             for _ in 0..due {
-                if stop.load(Ordering::Acquire) {
+                if t.stop.load(Ordering::Acquire) {
                     break;
                 }
                 buf.iter_mut().for_each(|s| *s = 0);
-                let frames = source.next_frames(&mut buf);
-                if frames == 0 {
-                    drained = true;
+                if t.source.next_frames(&mut buf) == 0 {
+                    // Nothing to send this packet; wait rather than end.
                     break;
                 }
-                let packet = packetizer.packet(&buf);
-                if let Err(e) = socket.send_to(&packet, dst) {
+                let packet = t.packetizer.packet(&buf);
+                if let Err(e) = t.socket.send_to(&packet, t.dst) {
                     debug!("airplay audio send failed: {e}");
                 }
-                pacer.record_packet();
-                frames_sent.store(pacer.frames_sent(), Ordering::Relaxed);
+                t.pacer.record_packet();
+                t.frames_sent
+                    .fetch_add(u64::from(FRAMES_PER_PACKET), Ordering::Relaxed);
+                sent_any = true;
+            }
+            if due == 0 || !sent_any {
+                std::thread::sleep(Duration::from_millis(5));
             }
         }
-        debug!("airplay audio thread ended (drained={drained})");
+        debug!("airplay audio thread ended");
     })
 }
 
@@ -441,48 +497,94 @@ mod tests {
         assert_eq!(pacer.frames_sent(), 250 * u64::from(FRAMES_PER_PACKET));
     }
 
-    /// A drained source stops the audio thread promptly. Uses a fixed-frame source
-    /// and a clock pinned far ahead so all packets are immediately due.
-    #[test]
-    fn audio_thread_ends_when_source_drains() {
-        struct FixedSource {
-            packets_left: usize,
-        }
-        impl PcmSource for FixedSource {
-            fn next_frames(&mut self, out: &mut [i16]) -> usize {
-                if self.packets_left == 0 {
-                    return 0;
-                }
-                self.packets_left -= 1;
-                out.fill(1);
-                out.len() / 2
+    /// A source that yields a fixed number of packets then reports nothing.
+    struct FixedSource {
+        packets_left: usize,
+    }
+    impl PcmSource for FixedSource {
+        fn next_frames(&mut self, out: &mut [i16]) -> usize {
+            if self.packets_left == 0 {
+                return 0;
             }
+            self.packets_left -= 1;
+            out.fill(1);
+            out.len() / 2
         }
-        struct FarAheadClock;
-        impl MonotonicClock for FarAheadClock {
-            fn elapsed(&self) -> Duration {
-                Duration::from_secs(3600)
-            }
-        }
+    }
 
-        let socket = UdpSocket::bind(("127.0.0.1", 0)).unwrap();
-        let frames_sent = Arc::new(std::sync::atomic::AtomicU64::new(0));
-        let stop = Arc::new(AtomicBool::new(false));
-        let handle = spawn_audio_thread(
-            Box::new(FixedSource { packets_left: 3 }),
-            Packetizer::new(1, RaopCipher::none(), 2, 0, 0),
-            Pacer::new(44_100, 88_200),
-            socket,
-            "127.0.0.1:9".parse().unwrap(),
-            Arc::new(FarAheadClock),
+    /// A clock pinned far ahead so every packet is immediately due.
+    struct FarAheadClock;
+    impl MonotonicClock for FarAheadClock {
+        fn elapsed(&self) -> Duration {
+            Duration::from_secs(3600)
+        }
+        fn reset(&self) {}
+    }
+
+    fn audio_thread(
+        source: Box<dyn PcmSource>,
+        stop: Arc<AtomicBool>,
+    ) -> (JoinHandle<()>, Arc<AtomicU64>, Arc<AtomicU64>) {
+        let frames_sent = Arc::new(AtomicU64::new(0));
+        let reanchor = Arc::new(AtomicU64::new(0));
+        let handle = spawn_audio_thread(AudioThread {
+            source,
+            packetizer: Packetizer::new(1, RaopCipher::none(), 2, 0, 0),
+            pacer: Pacer::new(44_100, 88_200),
+            sample_rate: 44_100,
+            latency_frames: 88_200,
+            socket: UdpSocket::bind(("127.0.0.1", 0)).unwrap(),
+            dst: "127.0.0.1:9".parse().unwrap(),
+            clock: Arc::new(FarAheadClock),
             stop,
-            frames_sent.clone(),
+            frames_sent: frames_sent.clone(),
+            reanchor: reanchor.clone(),
+        });
+        (handle, frames_sent, reanchor)
+    }
+
+    /// A source that drains does NOT end the thread — the stream is persistent, so
+    /// it keeps running (idle) until the stop flag is set, and it sent exactly the
+    /// frames the source produced.
+    #[test]
+    fn audio_thread_is_persistent_across_a_drained_source() {
+        let stop = Arc::new(AtomicBool::new(false));
+        let (handle, frames_sent, _reanchor) =
+            audio_thread(Box::new(FixedSource { packets_left: 3 }), stop.clone());
+
+        // Wait for the three packets to be sent; the thread stays alive after.
+        let deadline = Instant::now() + Duration::from_secs(2);
+        while frames_sent.load(Ordering::Relaxed) < 3 * u64::from(FRAMES_PER_PACKET) {
+            assert!(Instant::now() < deadline, "packets were not sent in time");
+            std::thread::sleep(Duration::from_millis(5));
+        }
+        assert!(
+            !handle.is_finished(),
+            "the thread persists past a drained source"
         );
+
+        stop.store(true, Ordering::Release);
         handle.join().unwrap();
         assert_eq!(
             frames_sent.load(Ordering::Relaxed),
-            3 * u64::from(FRAMES_PER_PACKET),
-            "exactly the three packets' worth of frames were sent before draining"
+            3 * u64::from(FRAMES_PER_PACKET)
+        );
+    }
+
+    /// A re-anchor re-marks the stream: after it fires, a packet carries the RTP
+    /// marker bit again.
+    #[test]
+    fn reanchor_re_marks_the_next_packet() {
+        let mut p = Packetizer::new(1, RaopCipher::none(), 2, 0, 0);
+        let first = p.packet(&[0, 0, 0, 0]);
+        assert_eq!(first[1], 0xE0, "first packet is marked");
+        let second = p.packet(&[0, 0, 0, 0]);
+        assert_eq!(second[1], 0x60, "later packets are unmarked");
+        p.reanchor();
+        let after = p.packet(&[0, 0, 0, 0]);
+        assert_eq!(
+            after[1], 0xE0,
+            "the packet after a re-anchor is marked again"
         );
     }
 }

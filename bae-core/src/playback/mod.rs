@@ -1,5 +1,6 @@
 #[cfg(target_os = "android")]
 pub mod aaudio_output;
+pub mod airplay_output;
 pub mod audio_output;
 mod context;
 #[cfg(not(target_os = "android"))]

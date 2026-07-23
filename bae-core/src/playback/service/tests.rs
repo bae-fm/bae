@@ -2277,3 +2277,132 @@ async fn set_volume_while_remote_sets_the_device_volume() {
         "setting the volume while remote must set the device's volume"
     );
 }
+
+// -- AirPlay renderer-seam tests --
+
+/// Records the control operations the service drives an AirPlay stream through,
+/// standing in for the RAOP session so the seam is tested without a receiver.
+#[derive(Default)]
+struct FakeAirPlayControlState {
+    flushed: std::sync::atomic::AtomicU64,
+    reanchored: std::sync::atomic::AtomicU64,
+}
+
+struct FakeAirPlayControl(Arc<FakeAirPlayControlState>);
+
+impl crate::playback::airplay_output::AirPlayStreamControl for FakeAirPlayControl {
+    fn flush(&self) {
+        self.0
+            .flushed
+            .fetch_add(1, std::sync::atomic::Ordering::Release);
+    }
+    fn reanchor(&self) {
+        self.0
+            .reanchored
+            .fetch_add(1, std::sync::atomic::Ordering::Release);
+    }
+    fn set_volume(&self, _level: f32) {}
+    fn frames_sent(&self) -> u64 {
+        0
+    }
+    fn latency_frames(&self) -> u32 {
+        88_200
+    }
+}
+
+/// Install an AirPlay renderer on `service` with a fake control published, a
+/// tagged saved local output (volume `saved_tag`), and the given latency.
+fn install_airplay(
+    service: &mut PlaybackService,
+    latency_frames: u32,
+    saved_tag: f32,
+) -> Arc<FakeAirPlayControlState> {
+    let state = Arc::new(FakeAirPlayControlState::default());
+    let control: Arc<dyn crate::playback::airplay_output::AirPlayStreamControl> =
+        Arc::new(FakeAirPlayControl(state.clone()));
+    let control_slot: crate::playback::airplay_output::ControlSlot =
+        Arc::new(std::sync::Mutex::new(Some(control)));
+    let saved = TestAudioOutput::new();
+    saved.set_volume(saved_tag);
+    service.renderer = Renderer::AirPlay(renderer::AirPlayRenderer {
+        control_slot,
+        saved_output: Box::new(saved),
+        latency_frames,
+        last_position: std::time::Duration::ZERO,
+    });
+    state
+}
+
+#[tokio::test]
+async fn airplay_pause_flushes_and_resume_reanchors() {
+    let (_home, mut service, _progress_rx) = test_playback_service().await;
+    let buffer = create_sparse_buffer(1_024);
+    service.slot = active_slot(test_prepared_track("t", buffer), TrackPhase::Playing);
+    let state = install_airplay(&mut service, 88_200, 0.5);
+
+    service.pause();
+    assert_eq!(
+        state.flushed.load(std::sync::atomic::Ordering::Acquire),
+        1,
+        "pause FLUSHes the receiver"
+    );
+    assert_eq!(
+        state.reanchored.load(std::sync::atomic::Ordering::Acquire),
+        0
+    );
+
+    service.resume().await;
+    assert_eq!(
+        state.reanchored.load(std::sync::atomic::Ordering::Acquire),
+        1,
+        "resume re-anchors the pacing"
+    );
+}
+
+#[tokio::test]
+async fn airplay_position_is_offset_by_receiver_latency() {
+    let (_home, mut service, mut progress_rx) = test_playback_service().await;
+    let buffer = create_sparse_buffer(1_024);
+    service.slot = active_slot(test_prepared_track("t", buffer), TrackPhase::Playing);
+    // 88_200 frames at 44.1 kHz = 2 s of latency.
+    install_airplay(&mut service, 88_200, 0.5);
+
+    // A tick at 5 s of decoded position: the audible position is 5 − 2 = 3 s.
+    let mut fmt = test_track_fmt("t");
+    fmt.duration_ms = 60_000;
+    service
+        .handle_position_event(Arc::new(fmt), std::time::Duration::from_secs(5))
+        .await;
+
+    let position = loop {
+        match progress_rx.try_recv() {
+            Ok(PlaybackProgress::PositionUpdate { position_ms, .. }) => break position_ms,
+            Ok(_) => continue,
+            Err(_) => panic!("expected a PositionUpdate"),
+        }
+    };
+    assert_eq!(
+        position, 3_000,
+        "position reflects the ~2 s receiver latency"
+    );
+}
+
+#[tokio::test]
+async fn airplay_stop_restores_the_local_output_and_returns_to_local() {
+    let (_home, mut service, _progress_rx) = test_playback_service().await;
+    let buffer = create_sparse_buffer(1_024);
+    service.slot = active_slot(test_prepared_track("t", buffer), TrackPhase::Playing);
+    install_airplay(&mut service, 88_200, 0.777);
+
+    service.stop().await;
+
+    assert!(
+        !service.renderer.is_airplay(),
+        "stop returns to the local renderer"
+    );
+    assert_eq!(
+        service.audio_output.get_volume(),
+        0.777,
+        "the saved local output sink is restored"
+    );
+}

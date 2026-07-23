@@ -295,8 +295,12 @@ pub(crate) enum PlaybackCommand {
     /// position. The connected channel, URL providers, and format gate ride in
     /// the payload.
     PlayOn(Box<RemoteConnect>),
-    /// Stop remote playback: end the session and resume the local renderer, paused
-    /// at the device's last reported position.
+    /// Switch playback to an AirPlay receiver: keep decoding locally but swap the
+    /// output sink to push audio to the device. The sink, name, and latency ride
+    /// in the payload.
+    PlayOnAirPlay(Box<renderer::AirPlayConnect>),
+    /// Stop remote or AirPlay playback: end the session and resume the local
+    /// renderer, paused at the last position.
     StopRemote,
     /// A status update from the active remote session's poll loop — drives the
     /// progress feed, queue-advance on device end-of-track, and detection of a
@@ -438,7 +442,25 @@ impl PlaybackHandle {
             })),
         );
     }
-    /// Stop remote playback and resume local playback, paused at the device's
+    /// Switch playback to an AirPlay receiver via `sink` (built off the service
+    /// thread by bae-desktop with the device's address, encryption, and reported
+    /// latency). Decode stays local; only the output sink is swapped.
+    pub fn play_on_airplay(
+        &self,
+        sink: Box<dyn crate::playback::airplay_output::AirPlaySink>,
+        device_name: String,
+        latency_frames: u32,
+    ) {
+        dispatch_command(
+            &self.command_tx,
+            PlaybackCommand::PlayOnAirPlay(Box::new(renderer::AirPlayConnect {
+                sink,
+                device_name,
+                latency_frames,
+            })),
+        );
+    }
+    /// Stop remote or AirPlay playback and resume local playback, paused at the
     /// last position.
     pub fn stop_remote(&self) {
         dispatch_command(&self.command_tx, PlaybackCommand::StopRemote);
@@ -1371,7 +1393,17 @@ impl PlaybackService {
     async fn handle_position_event(&mut self, fmt: Arc<TrackFmt>, pos: std::time::Duration) {
         // Samples are flowing, so any starvation episode is over.
         self.reset_starvation_episode();
-        let actual_pos = fmt.position_offset + pos;
+        let mut actual_pos = fmt.position_offset + pos;
+        // On AirPlay the drain has pulled (and the stream sent) audio the receiver
+        // has not yet played — the ~2 s buffer ahead. Offset the position back by
+        // the receiver latency so the bar matches what is audible, not what has
+        // been transmitted.
+        if let Renderer::AirPlay(airplay) = &self.renderer {
+            let latency = std::time::Duration::from_secs_f64(
+                f64::from(airplay.latency_frames) / f64::from(crate::airplay::session::SAMPLE_RATE),
+            );
+            actual_pos = actual_pos.saturating_sub(latency);
+        }
         *self.current_position_shared.lock().unwrap() = Some(actual_pos);
         let raw_pos_ms = actual_pos.as_millis() as u64;
         let progress =
@@ -2110,6 +2142,9 @@ impl PlaybackService {
                 PlaybackCommand::PlayOn(connect) => {
                     self.handle_play_on(*connect).await;
                 }
+                PlaybackCommand::PlayOnAirPlay(connect) => {
+                    self.handle_play_on_airplay(*connect).await;
+                }
                 PlaybackCommand::StopRemote => {
                     self.handle_stop_remote().await;
                 }
@@ -2177,6 +2212,7 @@ fn playback_command_kind(command: &PlaybackCommand) -> Option<PlaybackCommandKin
         | PlaybackCommand::Shutdown(_)
         | PlaybackCommand::SaveState(_)
         | PlaybackCommand::PlayOn(_)
+        | PlaybackCommand::PlayOnAirPlay(_)
         | PlaybackCommand::StopRemote
         | PlaybackCommand::RemoteStatus(_) => None,
         #[cfg(target_os = "macos")]

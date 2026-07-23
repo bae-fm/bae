@@ -23,16 +23,79 @@ use crate::renderer::{
 };
 
 /// Where the current track plays. `Local` is the default; `Remote` holds the live
-/// session and everything needed to keep loading tracks onto the device as the
-/// queue advances.
+/// session for a fetch-a-URL device (Cast/DLNA); `AirPlay` keeps decoding locally
+/// and only swaps the output sink to push audio to the receiver.
 pub(super) enum Renderer {
     Local,
     Remote(RemoteRenderer),
+    AirPlay(AirPlayRenderer),
 }
 
 impl Renderer {
+    /// True only for a fetch-a-URL device: the local decode pipeline is torn down
+    /// and the device is driven by transport commands. AirPlay is *not* remote in
+    /// this sense — it decodes locally and swaps only the output sink.
     pub(super) fn is_remote(&self) -> bool {
         matches!(self, Renderer::Remote(_))
+    }
+
+    pub(super) fn is_airplay(&self) -> bool {
+        matches!(self, Renderer::AirPlay(_))
+    }
+
+    /// The live AirPlay stream's control handle, if AirPlay is the active
+    /// renderer and its stream has started.
+    pub(super) fn airplay_control(
+        &self,
+    ) -> Option<std::sync::Arc<dyn crate::playback::airplay_output::AirPlayStreamControl>> {
+        match self {
+            Renderer::AirPlay(r) => r.control(),
+            _ => None,
+        }
+    }
+}
+
+/// A live AirPlay session driven through the swapped output sink. The decode
+/// pipeline runs unchanged; this holds the control handle the service drives
+/// pause/resume/seek through, the local output to restore when AirPlay ends, and
+/// the receiver latency the audible position is offset by.
+pub(super) struct AirPlayRenderer {
+    /// The live stream's control, published by the output on `create_stream`.
+    pub(super) control_slot: crate::playback::airplay_output::ControlSlot,
+    /// The local (cpal/aaudio) output, put back when AirPlay playback ends.
+    pub(super) saved_output: Box<dyn crate::playback::audio_output::AudioOutput>,
+    /// The receiver's audio latency in frames — the offset between what has been
+    /// sent and what is audible, for the position the UI shows.
+    pub(super) latency_frames: u32,
+    /// The device's last playback position, for the handoff back to local.
+    pub(super) last_position: Duration,
+}
+
+impl AirPlayRenderer {
+    /// The live stream's control handle, once `create_stream` has published it.
+    pub(super) fn control(
+        &self,
+    ) -> Option<std::sync::Arc<dyn crate::playback::airplay_output::AirPlayStreamControl>> {
+        self.control_slot.lock().unwrap().clone()
+    }
+}
+
+/// Everything a `PlayOnAirPlay` command carries: the sink that opens the RAOP
+/// session (built off the service thread by bae-desktop with the device's
+/// address, encryption, and latency), the device's display name, and the
+/// receiver latency. A manual `Debug` keeps `PlaybackCommand`'s derive working.
+pub(crate) struct AirPlayConnect {
+    pub(crate) sink: Box<dyn crate::playback::airplay_output::AirPlaySink>,
+    pub(crate) device_name: String,
+    pub(crate) latency_frames: u32,
+}
+
+impl std::fmt::Debug for AirPlayConnect {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("AirPlayConnect")
+            .field("device_name", &self.device_name)
+            .field("latency_frames", &self.latency_frames)
+            .finish_non_exhaustive()
     }
 }
 
@@ -157,10 +220,14 @@ impl PlaybackService {
         }
     }
 
-    /// User-initiated stop of remote playback: stop the device, then resume local
-    /// playback paused at the device's last position.
+    /// User-initiated stop of device playback: end the session and resume local
+    /// playback paused at the last position — for whichever device flavor is live.
     pub(super) async fn handle_stop_remote(&mut self) {
-        self.end_remote_and_resume_local(true).await;
+        if self.renderer.is_airplay() {
+            self.end_airplay_and_resume_local().await;
+        } else {
+            self.end_remote_and_resume_local(true).await;
+        }
     }
 
     /// Apply one device status. Ignored when playing locally (a stale update from
@@ -193,7 +260,8 @@ impl PlaybackService {
                 }
                 remote.last_position
             }
-            Renderer::Local => return,
+            // AirPlay ends through `end_airplay_and_resume_local`, not here.
+            Renderer::Local | Renderer::AirPlay(_) => return,
         };
         let current = self.current_track_id().map(str::to_string);
 
@@ -387,6 +455,102 @@ impl PlaybackService {
             0.0
         } else {
             self.audio_output.get_volume()
+        }
+    }
+
+    /// Switch to AirPlay: keep decoding locally but swap the output sink so the
+    /// decoded PCM is pushed to the receiver instead of the DAC. The queue, the
+    /// slot, the decoder, and the advance path are unchanged — only where the
+    /// audio goes changes, so `play_track` takes its ordinary local branch.
+    pub(super) async fn handle_play_on_airplay(&mut self, connect: AirPlayConnect) {
+        let AirPlayConnect {
+            sink,
+            device_name,
+            latency_frames,
+        } = connect;
+
+        let current = self.current_track_id().map(str::to_string);
+        let position = self
+            .current_position_shared
+            .lock()
+            .unwrap()
+            .unwrap_or(Duration::ZERO);
+        let target = self.current_play_target();
+        let volume = self.effective_volume();
+
+        // Tear the current local pipeline down; `play_track` rebuilds it below,
+        // this time feeding the AirPlay sink.
+        self.teardown_local_playback();
+
+        let (airplay_output, control_slot) =
+            crate::playback::airplay_output::AirPlayOutput::new(sink, volume);
+        let saved_output = std::mem::replace(&mut self.audio_output, Box::new(airplay_output));
+        self.renderer = Renderer::AirPlay(AirPlayRenderer {
+            control_slot,
+            saved_output,
+            latency_frames,
+            last_position: position,
+        });
+        emit_progress(
+            &self.progress_tx,
+            PlaybackProgress::RemoteStatusChanged {
+                device_name: Some(device_name),
+            },
+        );
+
+        match current {
+            Some(track_id) => {
+                self.play_track(
+                    &track_id,
+                    TrackStart::Position(position),
+                    target,
+                    TrackTransition::Manual,
+                )
+                .await;
+            }
+            None => {
+                self.slot = PlaybackSlot::Stopped;
+                self.sync_audio_state();
+                self.emit_state();
+            }
+        }
+    }
+
+    /// End AirPlay playback: drop the AirPlay output (which tears the receiver
+    /// session down), restore the saved local output, and resume local playback
+    /// paused at the last position.
+    pub(super) async fn end_airplay_and_resume_local(&mut self) {
+        let (saved_output, last_position) =
+            match std::mem::replace(&mut self.renderer, Renderer::Local) {
+                Renderer::AirPlay(r) => (r.saved_output, r.last_position),
+                other => {
+                    self.renderer = other;
+                    return;
+                }
+            };
+        let current = self.current_track_id().map(str::to_string);
+
+        // Dropping the current output (the AirPlay stream) tears the receiver
+        // session down; then restore the local sink.
+        self.teardown_local_playback();
+        self.audio_output = saved_output;
+        emit_progress(
+            &self.progress_tx,
+            PlaybackProgress::RemoteStatusChanged { device_name: None },
+        );
+
+        match current {
+            Some(track_id) => {
+                self.play_track(
+                    &track_id,
+                    TrackStart::Position(last_position),
+                    PlayTarget::Paused(PausePhase::Manual),
+                    TrackTransition::Manual,
+                )
+                .await;
+                self.emit_position_display(last_position.as_millis() as u64, track_id);
+            }
+            None => self.stop().await,
         }
     }
 

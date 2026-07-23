@@ -462,6 +462,10 @@ impl PlaybackService {
         if let Renderer::Remote(remote) = &self.renderer {
             remote.session.pause();
         }
+        // On AirPlay, decode is local: `sync_audio_state` below stops the sink
+        // pulling, and a FLUSH drops the receiver's buffered audio so resume
+        // starts clean rather than replaying the ~2 s already sent.
+        let airplay = self.renderer.airplay_control();
         // Pausing during a load collapses the Loading phase to Paused, so the
         // pending TrackReady no longer matches and is ignored. A Stopped or
         // still-resolving slot is a no-op (nothing is playing to pause).
@@ -469,6 +473,9 @@ impl PlaybackService {
             cur.phase = TrackPhase::Paused(PausePhase::Manual);
             self.sync_audio_state();
             self.emit_state();
+        }
+        if let Some(control) = airplay {
+            control.flush();
         }
     }
 
@@ -487,10 +494,17 @@ impl PlaybackService {
         if let Renderer::Remote(remote) = &self.renderer {
             remote.session.play();
         }
+        // On AirPlay, re-anchor the pacing after the FLUSH so the resumed stream
+        // starts fresh rather than bursting to catch a clock that ran during the
+        // pause.
+        let airplay = self.renderer.airplay_control();
         if let PlaybackSlot::Active(cur) = &mut self.slot {
             cur.phase = TrackPhase::Playing;
             self.sync_audio_state();
             self.emit_state();
+        }
+        if let Some(control) = airplay {
+            control.reanchor();
         }
     }
 }

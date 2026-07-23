@@ -11,7 +11,8 @@
 //! order, against a scripted fake receiver with no UDP and no real device.
 
 use std::net::{IpAddr, UdpSocket};
-use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::{Arc, Mutex};
 
 use super::crypto::RaopCipher;
 use super::rtp::NtpTime;
@@ -201,13 +202,75 @@ pub fn perform_handshake(
     Ok(negotiated)
 }
 
-/// A live RAOP session: the control connection and the running audio stream.
-/// Dropping it stops the stream threads; [`RaopSession::teardown`] also releases
-/// the receiver.
-pub struct RaopSession {
-    conn: RtspConnection,
+/// A cloneable handle to a running RAOP session's transport controls: FLUSH,
+/// re-anchor, volume, and teardown, plus the audible-position counter. The audio
+/// output holds the session while the playback service drives it through one of
+/// these from its own thread — the RTSP control connection is guarded by a mutex
+/// because only these methods (never the UDP threads) touch it.
+#[derive(Clone)]
+pub struct RaopControl {
+    rtsp: Arc<Mutex<RtspConnection>>,
     uri: String,
-    stream: RaopStream,
+    reanchor: Arc<AtomicU64>,
+    frames_sent: Arc<AtomicU64>,
+    latency_frames: u32,
+}
+
+impl RaopControl {
+    /// FLUSH the receiver's buffer (pause / pre-seek).
+    pub fn flush(&self) -> Result<(), RaopError> {
+        self.rtsp_request(Method::Flush, "FLUSH")
+    }
+
+    /// Re-anchor the pacing (resume / post-seek): the audio thread restarts its
+    /// lead and re-marks the stream.
+    pub fn reanchor(&self) {
+        self.reanchor.fetch_add(1, Ordering::Release);
+    }
+
+    /// Set the receiver volume (0.0–1.0) via SET_PARAMETER.
+    pub fn set_volume(&self, level: f32) -> Result<(), RaopError> {
+        let body = format!("volume: {:.6}\r\n", volume_to_raop_db(level));
+        let response = self.rtsp.lock().unwrap().request(&RtspRequest::with_body(
+            Method::SetParameter,
+            &self.uri,
+            "text/parameters",
+            body.into_bytes(),
+        ))?;
+        expect_success("SET_PARAMETER", &response)
+    }
+
+    /// TEARDOWN the session on the receiver.
+    pub fn teardown(&self) -> Result<(), RaopError> {
+        self.rtsp_request(Method::Teardown, "TEARDOWN")
+    }
+
+    /// Frames handed to the receiver so far.
+    pub fn frames_sent(&self) -> u64 {
+        self.frames_sent.load(Ordering::Relaxed)
+    }
+
+    /// The receiver's audio latency in frames — the offset between frames sent and
+    /// what is audible, for the position the UI shows.
+    pub fn latency_frames(&self) -> u32 {
+        self.latency_frames
+    }
+
+    fn rtsp_request(&self, method: Method, step: &'static str) -> Result<(), RaopError> {
+        let response = self
+            .rtsp
+            .lock()
+            .unwrap()
+            .request(&RtspRequest::new(method, &self.uri))?;
+        expect_success(step, &response)
+    }
+}
+
+/// A live RAOP session: the control connection and the running audio stream.
+/// Dropping it tears the receiver down and stops the stream threads.
+pub struct RaopSession {
+    control: RaopControl,
+    _stream: RaopStream,
 }
 
 impl RaopSession {
@@ -257,6 +320,7 @@ impl RaopSession {
             control_port: negotiated.control_port,
             latency_frames: latency_frames.unwrap_or(DEFAULT_LATENCY_FRAMES),
         };
+        let latency = latency_frames.unwrap_or(DEFAULT_LATENCY_FRAMES);
         let stream = RaopStream::spawn(
             source,
             cipher,
@@ -270,41 +334,23 @@ impl RaopSession {
             clock,
         )?;
 
-        Ok(RaopSession { conn, uri, stream })
+        let control = RaopControl {
+            rtsp: Arc::new(Mutex::new(conn)),
+            uri,
+            reanchor: stream.reanchor_handle(),
+            frames_sent: stream.frames_sent_handle(),
+            latency_frames: latency,
+        };
+        Ok(RaopSession {
+            control,
+            _stream: stream,
+        })
     }
 
-    /// Frames handed to the receiver so far — the basis for the audible position
-    /// (frames minus the receiver latency).
-    pub fn frames_sent(&self) -> u64 {
-        self.stream.frames_sent()
-    }
-
-    /// Set the receiver volume (0.0–1.0) via SET_PARAMETER.
-    pub fn set_volume(&mut self, level: f32) -> Result<(), RaopError> {
-        let body = format!("volume: {:.6}\r\n", volume_to_raop_db(level));
-        let response = self.conn.request(&RtspRequest::with_body(
-            Method::SetParameter,
-            &self.uri,
-            "text/parameters",
-            body.into_bytes(),
-        ))?;
-        expect_success("SET_PARAMETER", &response)
-    }
-
-    /// FLUSH the receiver's buffer (pause / pre-seek).
-    pub fn flush(&mut self) -> Result<(), RaopError> {
-        let response = self
-            .conn
-            .request(&RtspRequest::new(Method::Flush, &self.uri))?;
-        expect_success("FLUSH", &response)
-    }
-
-    /// TEARDOWN the session on the receiver.
-    pub fn teardown(&mut self) -> Result<(), RaopError> {
-        let response = self
-            .conn
-            .request(&RtspRequest::new(Method::Teardown, &self.uri))?;
-        expect_success("TEARDOWN", &response)
+    /// A cloneable handle to this session's transport controls, for the playback
+    /// service to drive pause/resume/seek/volume/teardown and read position.
+    pub fn control(&self) -> RaopControl {
+        self.control.clone()
     }
 }
 
@@ -312,9 +358,7 @@ impl Drop for RaopSession {
     fn drop(&mut self) {
         // Best-effort receiver teardown; the stream threads stop when the
         // `RaopStream` field drops.
-        let _ = self
-            .conn
-            .request(&RtspRequest::new(Method::Teardown, &self.uri));
+        let _ = self.control.teardown();
     }
 }
 

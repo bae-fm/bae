@@ -53,6 +53,14 @@ impl PlaybackService {
             return;
         }
 
+        // On AirPlay, decode is local so the rebuild below re-fills the sink at the
+        // new position; FLUSH the receiver's stale buffer now and re-anchor once
+        // the rebuilt stream is installed.
+        let airplay = self.renderer.airplay_control();
+        if let Some(control) = &airplay {
+            control.flush();
+        }
+
         // Time the rebuild: from here to the rebuilt stream being installed.
         let seek_started_at = std::time::Instant::now();
         let generation = self.next_load_generation();
@@ -175,5 +183,9 @@ impl PlaybackService {
 
         let raw_pos_ms = position.as_millis() as u64;
         self.emit_position_display(raw_pos_ms, track_id);
+
+        if let Some(control) = &airplay {
+            control.reanchor();
+        }
     }
 }
