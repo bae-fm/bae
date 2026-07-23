@@ -73,17 +73,11 @@ struct WelcomeView: View {
     /// chrome with the populated `LibrarySetup` so no flow touches the real
     /// library directory or keychain.
     #Preview("Choose") {
-        WelcomeWindowChrome {
-            WelcomeView(onLibraryReady: { _ in })
-        }
-        .environment(PreviewData.welcomeSetup)
+        PreviewScenes.welcome()
     }
 
     #Preview("Restore") {
-        WelcomeWindowChrome {
-            WelcomeView(onLibraryReady: { _ in }, initialMode: .restore)
-        }
-        .environment(PreviewData.welcomeSetup)
+        PreviewScenes.welcomeRestore()
     }
 
     #Preview("Join") {

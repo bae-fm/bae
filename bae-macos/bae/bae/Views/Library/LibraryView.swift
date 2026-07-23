@@ -537,26 +537,8 @@ extension LibraryView {
     }
 
     #Preview("Albums \u{2014} Grid") {
-        let uiStore = UiStore()
-        let libraryStore = LibraryStore()
-        let backing = LibraryView.previewGridBacking(
-            uiStore: uiStore,
-            libraryStore: libraryStore
-        )
-        let library: Library = backing.library
-        let session: LibraryBrowseSession = backing.session
-        return LibraryView()
-            .environment(MediaPaths.stub)
-            .environment(Playback.stub)
-            .environment(Queue.stub)
-            .environment(Downloads.stub)
-            .environment(library)
-            .environment(libraryStore)
-            .environment(uiStore)
-            .environment(session)
-            .environment(PreviewData.configStore)
+        PreviewScenes.libraryGrid()
             .frame(width: 1500, height: 700)
-            .windowBackground()
     }
 
     /// The same populated grid with the width cap lifted

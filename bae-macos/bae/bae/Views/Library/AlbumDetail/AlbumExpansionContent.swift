@@ -249,51 +249,8 @@ struct AlbumExpansionContent: View {
 }
 
 #if DEBUG
-    @MainActor
-    private func previewExpansion(
-        albumId: String,
-        currentTrackId: String? = nil,
-        loadingTrackId: String? = nil,
-        isPlaying: Bool = false,
-    ) -> some View {
-        let store = LibraryStore()
-        guard let album = PreviewData.albumDetails[albumId] else {
-            fatalError("no preview album for id: \(albumId)")
-        }
-        store.internAlbumDetail(album)
-        guard let summary = store.albumSummaries[albumId] else {
-            fatalError(
-                "preview seed did not create summary for id: \(albumId)"
-            )
-        }
-        guard let primary = store.releaseDetails[summary.primaryReleaseId]
-        else {
-            fatalError(
-                "no releaseDetail seeded for id: \(summary.primaryReleaseId)"
-            )
-        }
-        let cursor = PreviewData.releaseCursor(
-            releaseIds: summary.releaseIds,
-            preferring: summary.primaryReleaseId
-        )
-        return
-            PreviewData.albumExpansionContent(
-                summary: summary,
-                selectedRelease: primary,
-                releaseCursor: .constant(cursor),
-                currentTrackId: currentTrackId,
-                loadingTrackId: loadingTrackId,
-                isPlaying: isPlaying,
-            )
-            .padding()
-            .frame(width: 1100)
-            .background(Theme.background)
-            .environment(UiStore())
-            .environment(store)
-    }
-
     #Preview("Single Disc") {
-        previewExpansion(
+        PreviewData.albumExpansionScene(
             albumId: "a-01",
             currentTrackId: "t-d1-2",
             isPlaying: true
@@ -301,7 +258,7 @@ struct AlbumExpansionContent: View {
     }
 
     #Preview("Single Disc — Track Loading") {
-        previewExpansion(
+        PreviewData.albumExpansionScene(
             albumId: "a-01",
             currentTrackId: "t-d1-2",
             loadingTrackId: "t-d1-3",
@@ -310,15 +267,12 @@ struct AlbumExpansionContent: View {
     }
 
     #Preview("Vinyl — Two Sides") {
-        previewExpansion(
-            albumId: "a-21",
-            currentTrackId: "t-d2-3",
-            isPlaying: true
-        )
+        // The album-detail gallery scene renders this exact composition.
+        PreviewScenes.albumDetail()
     }
 
     #Preview("CD — Two Discs") {
-        previewExpansion(albumId: "a-22")
+        PreviewData.albumExpansionScene(albumId: "a-22")
     }
 
     private struct MultiReleasePreview: View {

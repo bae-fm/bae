@@ -84,6 +84,56 @@
             )
         }
 
+        /// The expanded album detail for one seeded fixture album, sized to its
+        /// natural width over the dark background — the shared body of
+        /// `AlbumExpansionContent`'s previews and the `album-detail` gallery
+        /// scene. Seeds a throwaway store from `albumDetails[albumId]`, derives
+        /// the summary and primary release, and builds the content over a
+        /// constant cursor. Fails loud when the fixture id is unseeded.
+        @MainActor
+        static func albumExpansionScene(
+            albumId: String,
+            currentTrackId: String? = nil,
+            loadingTrackId: String? = nil,
+            isPlaying: Bool = false
+        ) -> some View {
+            let store = LibraryStore()
+            guard let album = albumDetails[albumId] else {
+                fatalError("no preview album for id: \(albumId)")
+            }
+            store.internAlbumDetail(album)
+            guard let summary = store.albumSummaries[albumId] else {
+                fatalError(
+                    "preview seed did not create summary for: \(albumId)"
+                )
+            }
+            guard let primary = store.releaseDetails[summary.primaryReleaseId]
+            else {
+                fatalError(
+                    "no releaseDetail seeded for id: \(summary.primaryReleaseId)"
+                )
+            }
+            let cursor = releaseCursor(
+                releaseIds: summary.releaseIds,
+                preferring: summary.primaryReleaseId
+            )
+            return
+                albumExpansionContent(
+                    summary: summary,
+                    selectedRelease: primary,
+                    releaseCursor: .constant(cursor),
+                    currentTrackId: currentTrackId,
+                    loadingTrackId: loadingTrackId,
+                    isPlaying: isPlaying
+                )
+                .padding()
+                .frame(width: 1100)
+                .background(Theme.background)
+                .environment(UiStore())
+                .environment(store)
+                .environment(MediaPaths.stub)
+        }
+
         /// The primary release's fat detail for a seeded preview album — tracks,
         /// groups, and duration, drawn from the same seed the album-detail tree
         /// reads. Used by the leaf previews that take a `ReleaseDetail` directly
