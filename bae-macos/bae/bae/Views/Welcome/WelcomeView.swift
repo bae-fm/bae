@@ -55,9 +55,3 @@ struct WelcomeView: View {
         }
     }
 }
-
-#if DEBUG
-    #Preview {
-        WelcomeView(onLibraryReady: { _ in })
-    }
-#endif
