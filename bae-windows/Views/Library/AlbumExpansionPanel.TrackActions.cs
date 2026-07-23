@@ -3,26 +3,25 @@ using System.Collections.Generic;
 using System.Linq;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Animation;
 using uniffi.bae_bridge;
-using Windows.System;
 
 namespace Bae.Windows;
 
-// Per-track actions from the detail dialog: exporting a single track and the
-// flash-on-realize highlight when the list scrolls to it. Split out of
-// AlbumDetailDialog.cs unchanged.
-internal sealed partial class AlbumDetailDialog
+// Per-track actions from the album expansion: exporting a single track and the
+// flash-on-realize highlight when the track list scrolls to the reveal target.
+// Ported from AlbumDetailDialog.TrackActions.cs; the only change is that errors
+// go to the window status line (the panel is not a modal that could occlude it),
+// so ExportTrack no longer threads an in-panel status TextBlock.
+internal sealed partial class AlbumExpansionPanel
 {
     // The per-track "Save As…": choose a track-applicable preset, seed the
-    // filename from the configured template, then save to the picked path. Errors
-    // surface in the album-detail status line, which the modal doesn't occlude
-    // here (the pickers are OS dialogs).
-    private async System.Threading.Tasks.Task ExportTrack(Track track, TextBlock statusLine)
+    // filename from the configured template, then save to the picked path. The
+    // format pickers are OS/ContentDialogs, which the panel (not being modal)
+    // opens directly.
+    private async System.Threading.Tasks.Task ExportTrack(Track track)
     {
-        statusLine.Visibility = Visibility.Collapsed;
         var picker = new global::Windows.Storage.Pickers.FileSavePicker();
         WinRT.Interop.InitializeWithWindow.Initialize(picker, _windowHandle());
         var (settingsCurrent, settings) = await _session.RunForCurrentHandle(NativeBae.GetSettings);
@@ -37,8 +36,7 @@ internal sealed partial class AlbumDetailDialog
         // valid default; guard anyway rather than crash if that's ever violated.
         if (trackPresets.Count == 0)
         {
-            statusLine.Text = Loc.Chrome("track.export.prepare_failed");
-            statusLine.Visibility = Visibility.Visible;
+            _setStatus(Loc.Chrome("track.export.prepare_failed"));
             return;
         }
         var formatPicker = new ComboBox
@@ -74,25 +72,22 @@ internal sealed partial class AlbumDetailDialog
         }
         if (formatPicker.SelectedIndex < 0)
         {
-            statusLine.Text = Loc.Chrome("track.export.prepare_failed");
-            statusLine.Visibility = Visibility.Visible;
+            _setStatus(Loc.Chrome("track.export.prepare_failed"));
             return;
         }
         var selectedPreset = trackPresets[formatPicker.SelectedIndex];
         picker.FileTypeChoices.Add(
             selectedPreset.TrackPickerLabel,
             new List<string> { selectedPreset.FileExtension });
-        // Seed the suggested name from the chosen preset's filename pattern,
-        // which the core renders and sanitizes from this track's metadata. The
-        // format dialog runs before the picker, so one call suffices. A null
-        // return — or a throw — means that render failed (the core logged the
-        // cause); surface it and abort rather than saving under a guessed name.
+        // Seed the suggested name from the chosen preset's filename pattern, which
+        // the core renders and sanitizes from this track's metadata. A null return
+        // — or a throw — means that render failed (the core logged the cause);
+        // surface it and abort rather than saving under a guessed name.
         string? stem;
         try
         {
             var (nameCurrent, suggestedName) = await _session.RunForCurrentHandle(
-                handle => NativeBae.SaveTrackSuggestedName(
-                    handle, track.TrackId, selectedPreset.Id));
+                handle => NativeBae.SaveTrackSuggestedName(handle, track.TrackId, selectedPreset.Id));
             if (!nameCurrent)
             {
                 return;
@@ -106,8 +101,7 @@ internal sealed partial class AlbumDetailDialog
         }
         if (stem is null)
         {
-            statusLine.Text = Loc.Chrome("track.export.prepare_failed");
-            statusLine.Visibility = Visibility.Visible;
+            _setStatus(Loc.Chrome("track.export.prepare_failed"));
             return;
         }
         picker.SuggestedFileName = stem;
@@ -120,25 +114,21 @@ internal sealed partial class AlbumDetailDialog
         var path = file.Path;
         var (saveCurrent, error) = await _session.RunForCurrentHandle(
             handle => NativeBae.SaveTrack(handle, track.TrackId, path, selectedPreset.Id));
-        if (!saveCurrent)
+        if (saveCurrent && error is not null)
         {
-            return;
-        }
-        if (error is not null)
-        {
-            statusLine.Text = error;
-            statusLine.Visibility = Visibility.Visible;
+            _setStatus(error);
         }
     }
 
-    // ScrollIntoView realizes the target row's container only after a later layout
-    // pass, so poll for it across a few UI ticks before flashing. Without this the
-    // flash silently no-ops for any track below the initial viewport — the common
-    // case for "go to now playing". Gives up after a bounded number of attempts.
+    // The track list's container realizes only after a later layout pass, so poll
+    // for the target row across a few UI ticks before flashing. When found, bring
+    // it into the outer scroller (the list's own scroll is disabled) and flash it.
+    // Gives up after a bounded number of attempts.
     private static void FlashTrackRowWhenRealized(ListView list, Track track, int attemptsLeft)
     {
         if (list.ContainerFromItem(track) is ListViewItem row)
         {
+            row.StartBringIntoView();
             FlashRow(row);
             return;
         }

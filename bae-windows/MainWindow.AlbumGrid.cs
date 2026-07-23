@@ -25,12 +25,13 @@ namespace Bae.Windows;
 public sealed partial class MainWindow : Window
 {
     // Dispatch by the modifiers held at click time: Ctrl toggles the clicked
-    // album, Shift extends the range from the anchor, and a plain click clears
-    // the multi-selection and opens the detail dialog. Modifier clicks never
-    // open the dialog.
-    private async void OnAlbumClick(object sender, ItemClickEventArgs e)
+    // album, Shift extends the range from the anchor, and a plain click toggles
+    // the album's inline detail expansion (clearing the multi-selection).
+    // Modifier clicks never open the expansion. Per-card (the grid ListView
+    // virtualizes rows, not cards), so the album is the card's DataContext.
+    private void OnAlbumCardTapped(object sender, TappedRoutedEventArgs e)
     {
-        if (CurrentHandleOrNull() == null || e.ClickedItem is not Album album)
+        if (CurrentHandleOrNull() == null || (sender as FrameworkElement)?.DataContext is not Album album)
         {
             return;
         }
@@ -48,18 +49,15 @@ public sealed partial class MainWindow : Window
             return;
         }
 
-        _albumSelection.Clear();
-        SyncAlbumSelectionTint();
-        await _albumDetail.Show(album.Id);
+        ToggleAlbumExpansion(album);
     }
 
     // Right-click / long-press on an album card: the bulk-action menu for
     // whatever the card targets — the whole multi-selection (visible order)
     // for a member card, else just that card. Never mutates the selection.
-    private void OnAlbumGridRightTapped(object sender, RightTappedRoutedEventArgs e)
+    private void OnAlbumCardRightTapped(object sender, RightTappedRoutedEventArgs e)
     {
-        if (CurrentHandleOrNull() == null
-            || (e.OriginalSource as FrameworkElement)?.DataContext is not Album album)
+        if (CurrentHandleOrNull() == null || (sender as FrameworkElement)?.DataContext is not Album album)
         {
             return;
         }
@@ -74,7 +72,7 @@ public sealed partial class MainWindow : Window
         }
 
         e.Handled = true;
-        var element = (FrameworkElement)e.OriginalSource;
+        var element = (FrameworkElement)sender;
         menu.ShowAt(element, new FlyoutShowOptions { Position = e.GetPosition(element) });
     }
 

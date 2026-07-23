@@ -254,6 +254,7 @@ public sealed partial class MainWindow : Window
         _nowPlayingBar.Reset();
         _queuePane.Hide();
         _import.Reset();
+        CollapseAlbumExpansion();
         _browser.Reset();
         _albumSelection.Clear();
         _transferProgress.Reset();

@@ -14,6 +14,7 @@ public sealed class Album : INotifyPropertyChanged
     private readonly string _artist;
     private readonly CoverImage.Binding _cover;
     private bool _isSelected;
+    private bool _isExpanded;
 
     internal Album(BridgeAlbumSearchResult album) : this(album.Id, album.Title, album.ArtistName, album.Year, album.Cover)
     {
@@ -78,4 +79,29 @@ public sealed class Album : INotifyPropertyChanged
     /// StaticResource converter (the generated lookup passes the Window, which
     /// isn't a FrameworkElement in WinUI 3).</summary>
     public double SelectionTintOpacity => _isSelected ? 1.0 : 0.0;
+
+    /// <summary>Whether this album's inline detail expansion is open — the one
+    /// album (at most) whose card shows the accent ring and hosts the expansion
+    /// panel below its grid row. Distinct from <see cref="IsSelected"/>: the
+    /// expansion is a single-album, plain-click concern; multi-select is
+    /// modifier-driven. Opening an expansion clears the multi-selection.</summary>
+    public bool IsExpanded
+    {
+        get => _isExpanded;
+        set
+        {
+            if (_isExpanded == value)
+            {
+                return;
+            }
+            _isExpanded = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsExpanded)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ExpansionRingOpacity)));
+        }
+    }
+
+    /// <summary>The accent ring's opacity on the expanded card's cover, toggled
+    /// (not shown/hidden) so a card the grid recycles never re-measures — the
+    /// same discipline as <see cref="SelectionTintOpacity"/>.</summary>
+    public double ExpansionRingOpacity => _isExpanded ? 1.0 : 0.0;
 }

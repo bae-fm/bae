@@ -117,25 +117,22 @@ public sealed partial class MainWindow : Window
     }
 
     // Fit the album grid's columns to the current width: equal cells at ~200 wide
-    // with a 30 gutter, each cell sized so a row fills exactly. Runs on size and
-    // full-width changes; a no-op until the wrap panel is realized.
+    // with a 30 gutter, each card sized so a row fills exactly. Runs on size and
+    // full-width changes; a no-op until the grid has a width.
     private void ApplyGridMetrics()
     {
-        if (AlbumGrid.ItemsPanelRoot is not ItemsWrapGrid wrap || AlbumGrid.ActualWidth <= 0)
+        if (AlbumGrid.ActualWidth <= 0)
         {
             return;
         }
         var metrics = AlbumGridColumns.Compute(AlbumGrid.ActualWidth);
-        wrap.ItemWidth = metrics.CellWidth;
-        // Art fills the cell minus its trailing gutter and is square; the text block
-        // and the bottom row gap complete the cell height.
-        var artSize = metrics.CellWidth - AlbumGridColumns.Gutter;
-        wrap.ItemHeight = artSize + TileTextHeight + AlbumGridColumns.RowGap;
+        // The card content width is the cell minus its trailing gutter (each card
+        // carries that gutter as a right margin so a row fills exactly). Update the
+        // shared width first, then the column count — a width change that keeps the
+        // count only re-sizes cards; a count change regroups the rows.
+        _gridLayout.CardWidth = metrics.CellWidth - AlbumGridColumns.Gutter;
+        _albumRows.ColumnCount = metrics.Columns;
     }
-
-    // The reserved height below a tile's art: title (15) + artist (13) + year (12,
-    // always reserved) with their spacings and the tile's own padding.
-    private const double TileTextHeight = 84;
 
     private void OnAlbumGridSizeChanged(object sender, SizeChangedEventArgs e) => ApplyGridMetrics();
 
@@ -243,6 +240,12 @@ public sealed partial class MainWindow : Window
     // album pane flips only once a load lands, so a handle-gone bail leaves it as-is.
     private void LoadCurrentBrowserMode()
     {
+        // Any grid reload or mode switch tears down an open inline expansion: its
+        // album's row is about to be rebuilt (or the mode is leaving the grid), and
+        // the panel holds live storage-band registrations to dispose. A reveal that
+        // reloads first then re-expands runs this before it expands, so it is safe.
+        CollapseAlbumExpansion();
+
         if (_browser.Sort.Mode == BrowserMode.Composers)
         {
             ShowComposerBrowser();

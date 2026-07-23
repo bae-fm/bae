@@ -151,18 +151,16 @@ public sealed partial class MainWindow : Window
     // Start a drag from an album card: carry the album ids as the newline-joined
     // payload the queue pane decodes — the whole multi-selection (visible order)
     // when the pressed card is part of it, else just that card. Cancelled when no
-    // library is open. Never mutates the selection.
-    private void OnAlbumDragStarting(object sender, DragItemsStartingEventArgs e)
+    // library is open. Never mutates the selection. Per-card (the grid ListView's
+    // own drag would carry the row), so the album is the card's DataContext.
+    private void OnAlbumCardDragStarting(UIElement sender, DragStartingEventArgs e)
     {
-        if (CurrentHandleOrNull() == null)
+        if (CurrentHandleOrNull() == null || (sender as FrameworkElement)?.DataContext is not Album album)
         {
             e.Cancel = true;
             return;
         }
-        var pressed = e.Items.OfType<Album>().FirstOrDefault();
-        var ids = pressed is null
-            ? e.Items.OfType<Album>().Select(album => album.Id).ToList()
-            : _albumSelection.OrderedTargets(pressed.Id, AlbumPosition);
+        var ids = _albumSelection.OrderedTargets(album.Id, AlbumPosition);
         e.Data.SetText(QueueDragPayload.Encode(ids));
         e.Data.RequestedOperation = DataPackageOperation.Copy;
     }

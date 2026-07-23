@@ -65,7 +65,6 @@ public sealed partial class MainWindow : Window
     private readonly ImportPickerDialog _importPicker;
     private readonly ImportConfirmDialog _importConfirm;
     private readonly ReleaseActionDialogs _releaseActions;
-    private readonly AlbumDetailDialog _albumDetail;
     private readonly QueuePane _queuePane;
     private readonly LightboxOverlay _lightbox;
     private readonly StorageStore _storage;
@@ -124,6 +123,10 @@ public sealed partial class MainWindow : Window
         // exist before InitializeComponent evaluates those bindings.
         _session = new SessionStore(DispatcherQueue);
         _browser = new LibraryBrowserStore(_session, DispatcherQueue);
+        // The album grid binds x:Bind AlbumRows to this row projection over the
+        // browser store's flat album collection, so it must exist before
+        // InitializeComponent evaluates that binding.
+        _albumRows = new AlbumGridRows(_browser.Albums);
 
         InitializeComponent();
         Closed += OnClosed;
@@ -189,8 +192,13 @@ public sealed partial class MainWindow : Window
         AttachCollapseScroll(AlbumGrid, "albums");
         AttachCollapseScroll(ComposerList, "composers");
         AttachCollapseScroll(ArtistList, "artists");
-        // Fit the grid once its wrap panel is realized, and on every later resize.
+        // Fit the grid once it has a width, and on every later resize.
         AlbumGrid.Loaded += (_, _) => ApplyGridMetrics();
+        // The grid ListView pages rows from the row projection over the flat album
+        // collection; each realized row builds its cards (and, for the row holding
+        // the expanded album, the inline detail panel) in OnAlbumRowChanging.
+        AlbumGrid.ItemsSource = _albumRows;
+        AlbumGrid.ContainerContentChanging += OnAlbumRowChanging;
 
         _shell = new ShellStore();
         _shell.Changed += RenderBanner;
@@ -260,9 +268,10 @@ public sealed partial class MainWindow : Window
         // the album-detail storage band so both run transitions the same way.
         _storage = new StorageStore(_session, _transferProgress);
 
-        // Album detail and the per-release action dialogs it opens, plus the queue
-        // dialog. Album detail is the shared entry point from the grid, the panes,
-        // the now-playing jump, and the import "view in library" banner.
+        // The per-release action dialogs the inline album expansion opens. The
+        // expansion panel itself is built per open in ExpandAlbum from these
+        // stores; it is the shared album entry point from the grid, the panes, the
+        // now-playing jump, and the import "view in library" banner.
         _releaseActions = new ReleaseActionDialogs(
             _session,
             () => Content.XamlRoot,
@@ -270,15 +279,6 @@ public sealed partial class MainWindow : Window
             text => StatusText.Text = text,
             _projections,
             _lightbox);
-        _albumDetail = new AlbumDetailDialog(
-            _session,
-            () => Content.XamlRoot,
-            () => WinRT.Interop.WindowNative.GetWindowHandle(this),
-            text => StatusText.Text = text,
-            _releaseActions,
-            _storage,
-            _transferProgress,
-            _projections);
         _queuePane = new QueuePane(
             _session,
             _playback,
@@ -307,7 +307,7 @@ public sealed partial class MainWindow : Window
             text => StatusText.Text = text,
             ShowComposerBrowser,
             ShowArtistBrowser,
-            _albumDetail.Show,
+            RevealAlbum,
             SearchFlyout.Hide);
         _unlockDialog = new UnlockDialog(() => Content.XamlRoot, text => StatusText.Text = text, OpenLibrary);
         _joinDialog = new JoinLibraryDialog(
@@ -341,7 +341,7 @@ public sealed partial class MainWindow : Window
         // The import flow: the confirm step (which can open an album), the picker
         // that leads to it, and the folder-scan dialog that opens the picker.
         _importConfirm = new ImportConfirmDialog(
-            _session, () => Content.XamlRoot, albumId => _albumDetail.Show(albumId), _lightbox);
+            _session, () => Content.XamlRoot, albumId => RevealAlbum(albumId), _lightbox);
         _importPicker = new ImportPickerDialog(_session, () => Content.XamlRoot, _import, _importConfirm);
         _importDialog = new ImportDialog(
             _session,

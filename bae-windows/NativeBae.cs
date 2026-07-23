@@ -373,6 +373,30 @@ internal static class NativeBae
             .Select(album => new Album(album))
             .ToList());
 
+    // The 0-based position of an album under the active sort, matching
+    // GetAlbumPage's ordering, or null when the album isn't present. Lets a
+    // reveal page in and scroll to an album whose page may never have been
+    // fetched. Value-typed result (Option<u64>), so it can't use
+    // CaptureBridgeValue's reference-type contract — it mirrors
+    // CloudOnlyReleaseCount's explicit capture instead.
+    internal static (long? Index, string? Error) AlbumIndex(
+        AppHandle handle, IReadOnlyList<SortCriterion<AlbumSortField>> criteria, string albumId)
+    {
+        try
+        {
+            var index = Await(handle.GetAlbumIndex(ToBridge(criteria), albumId));
+            return (index is null ? null : checked((long)index.Value), null);
+        }
+        catch (BridgeException.Cancelled)
+        {
+            return (null, null);
+        }
+        catch (BridgeException exception)
+        {
+            return (null, exception.Message);
+        }
+    }
+
     internal static long ComposerCount(AppHandle handle) =>
         checked((long)Await(handle.GetComposerCount()));
 

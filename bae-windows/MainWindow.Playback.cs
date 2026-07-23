@@ -175,7 +175,7 @@ public sealed partial class MainWindow : Window
             return;
         }
 
-        await _albumDetail.Show(albumId, scrollToTrackId: _playback.NowPlayingTrackId);
+        await RevealAlbum(albumId, scrollToTrackId: _playback.NowPlayingTrackId);
     }
 
     // Space toggles play/pause from anywhere — except while typing in a text
