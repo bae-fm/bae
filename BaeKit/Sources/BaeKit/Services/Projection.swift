@@ -32,6 +32,7 @@ public enum BridgeInvalidationDomain: Hashable {
     case importCandidateList
     case importCandidate
     case watchedFolders
+    case castDevices
 }
 
 extension BridgeInvalidation {
@@ -67,6 +68,8 @@ extension BridgeInvalidation {
             return .importCandidate
         case .watchedFolders:
             return .watchedFolders
+        case .castDevices:
+            return .castDevices
         }
     }
 }

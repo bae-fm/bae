@@ -973,6 +973,19 @@ impl crate::types::BridgeMcpServerError {
 }
 
 #[cfg(feature = "desktop")]
+impl crate::types::BridgeCastStatus {
+    fn from_core(status: bae_desktop::CastStatus) -> Self {
+        use crate::types::BridgeCastStatus;
+        match status {
+            bae_desktop::CastStatus::NotCasting => BridgeCastStatus::NotCasting,
+            bae_desktop::CastStatus::Casting { device_name } => {
+                BridgeCastStatus::Casting { device_name }
+            }
+        }
+    }
+}
+
+#[cfg(feature = "desktop")]
 impl crate::types::BridgeSubsonicServerStatus {
     fn from_core(status: bae_desktop::SubsonicServerStatus) -> Self {
         use crate::types::BridgeSubsonicServerStatus;
@@ -1161,6 +1174,45 @@ impl AppHandle {
         self.app
             .set_subsonic_password(&password)
             .map_err(BridgeError::config)
+    }
+
+    /// Start browsing for Cast devices (call when the device picker opens).
+    pub fn start_cast_discovery(&self) {
+        self.app.start_cast_discovery();
+    }
+
+    /// Stop browsing for Cast devices (call when the device picker closes).
+    pub fn stop_cast_discovery(&self) {
+        self.app.stop_cast_discovery();
+    }
+
+    /// The current list of discovered Cast devices. Requery on a
+    /// `CastDevices` invalidation.
+    pub fn get_cast_devices(&self) -> Vec<crate::types::BridgeCastDevice> {
+        self.app
+            .cast_devices()
+            .0
+            .into_iter()
+            .map(crate::types::BridgeCastDevice::from_core)
+            .collect()
+    }
+
+    /// Cast playback to the device with `device_id`.
+    pub fn cast_to(&self, device_id: String) -> Result<(), BridgeError> {
+        self.app
+            .cast_to(&device_id)
+            .map_err(|e| BridgeError::internal(e.to_string()))
+    }
+
+    /// Stop casting and return playback to local output.
+    pub fn stop_casting(&self) {
+        self.app.stop_casting();
+    }
+
+    /// Whether playback is currently on a Cast device, and which. Refresh on a
+    /// `CastStatusChanged` event.
+    pub fn get_cast_status(&self) -> crate::types::BridgeCastStatus {
+        crate::types::BridgeCastStatus::from_core(self.app.cast_status())
     }
 
     /// Validate then persist a Discogs API token, returning what happened so the
@@ -2499,6 +2551,11 @@ fn convert_ui_event(event: bae_core::ui::UiBusEvent) -> Option<crate::types::Bri
         }
         UiBusEvent::ReleaseTransferEnded { release_id } => {
             Some(BridgeUiEvent::ReleaseTransferEnded { release_id })
+        }
+
+        // ── Cast ───────────────────────────────────────────────────
+        UiBusEvent::CastStatusChanged { device_name } => {
+            Some(BridgeUiEvent::CastStatusChanged { device_name })
         }
 
         // ── Errors ─────────────────────────────────────────────────

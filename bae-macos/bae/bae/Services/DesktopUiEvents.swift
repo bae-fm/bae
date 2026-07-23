@@ -1,9 +1,9 @@
 import BaeKit
 
 /// The events the shared `UiEventDispatcher` declines that macOS still handles
-/// itself: import preview playback and per-track loudness-measurement progress
-/// during an import. Anything else the dispatcher declines is dropped — macOS's
-/// policy for events no shared arm consumes.
+/// itself: import preview playback, per-track loudness-measurement progress
+/// during an import, and cast-status changes. Anything else the dispatcher
+/// declines is dropped — macOS's policy for events no shared arm consumes.
 enum DesktopUiEvents {
     @MainActor
     static func apply(_ event: BridgeUiEvent, appService: AppService) {
@@ -55,6 +55,9 @@ enum DesktopUiEvents {
                     fraction: Double(fraction)
                 )
             )
+
+        case .castStatusChanged(let deviceName):
+            appService.castStore.applyStatus(deviceName: deviceName)
 
         default:
             break

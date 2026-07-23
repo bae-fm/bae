@@ -17,6 +17,7 @@ use bae_core::cast::{
 use bae_core::config::SubsonicCredential;
 use bae_core::library::{AppServices, LibraryManager};
 use bae_core::playback::{PlaybackHandle, PlaybackProgress};
+use bae_core::ui::{Invalidation, UiBusEvent, UiEventBus};
 use md5::{Digest, Md5};
 use rand::RngCore;
 use tokio::runtime::Handle;
@@ -140,20 +141,36 @@ struct Inner {
 }
 
 impl CastController {
-    pub fn new(services: &AppServices, runtime: Handle) -> Self {
+    pub fn new(services: &AppServices, ui_event_bus: UiEventBus, runtime: Handle) -> Self {
         let inner = Arc::new(Mutex::new(Inner {
             server: None,
             status: CastStatus::NotCasting,
         }));
+        let discovery = CastDiscovery::new();
+        // Forward device-list changes to the UI as an invalidation, so an open
+        // picker requeries the list as devices come and go.
+        Self::spawn_device_list_forwarder(discovery.subscribe(), ui_event_bus, &runtime);
         let controller = Self {
             runtime: runtime.clone(),
             manager: services.library_manager().clone(),
             playback: services.playback().clone(),
-            discovery: Mutex::new(CastDiscovery::new()),
+            discovery: Mutex::new(discovery),
             inner: inner.clone(),
         };
         controller.spawn_status_follower();
         controller
+    }
+
+    fn spawn_device_list_forwarder(
+        mut devices: tokio::sync::watch::Receiver<Vec<CastDevice>>,
+        ui_event_bus: UiEventBus,
+        runtime: &Handle,
+    ) {
+        runtime.spawn(async move {
+            while devices.changed().await.is_ok() {
+                ui_event_bus.emit(UiBusEvent::Invalidated(Invalidation::CastDevices));
+            }
+        });
     }
 
     /// Follow the playback service's `CastStatusChanged` events: update the

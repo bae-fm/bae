@@ -298,6 +298,8 @@ extension BaeApp {
             .environment(appDelegate.appService?.automation)
             .environment(appDelegate.appService?.subsonic)
             .environment(appDelegate.appService?.export)
+            .environment(appDelegate.appService?.cast)
+            .environment(appDelegate.appService?.castStore)
             .environment(appDelegate.appService?.outboxStore)
             .environment(appDelegate.appService?.downloadStore)
             .environment(appDelegate.appService?.outputStore)

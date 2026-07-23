@@ -111,7 +111,8 @@ impl DesktopApp {
         let initial_subsonic = services.library_manager().get_config().subsonic;
         runtime.block_on(subsonic_controller.apply_config(initial_subsonic));
 
-        let cast_controller = CastController::new(&services, runtime.handle().clone());
+        let cast_controller =
+            CastController::new(&services, ui_event_bus.clone(), runtime.handle().clone());
 
         let config_controller = controller.clone();
         let config_subsonic_controller = subsonic_controller.clone();

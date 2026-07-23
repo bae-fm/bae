@@ -1614,6 +1614,7 @@ pub enum BridgeInvalidation {
     ImportCandidateList,
     ImportCandidate { key: String },
     WatchedFolders,
+    CastDevices,
 }
 
 impl BridgeInvalidation {
@@ -1636,6 +1637,7 @@ impl BridgeInvalidation {
             CoreInvalidation::ImportCandidateList => Self::ImportCandidateList,
             CoreInvalidation::ImportCandidate { key } => Self::ImportCandidate { key },
             CoreInvalidation::WatchedFolders => Self::WatchedFolders,
+            CoreInvalidation::CastDevices => Self::CastDevices,
         }
     }
 }
@@ -1761,6 +1763,14 @@ pub enum BridgeUiEvent {
     /// indicator. Failure text still arrives via the thrown error.
     ReleaseTransferEnded {
         release_id: String,
+    },
+
+    // ── Cast ───────────────────────────────────────────────────────
+    /// The active renderer changed: `Some(name)` when playback moved to a Cast
+    /// device, `None` when it returned to local output. Drives the cast button's
+    /// active state and the "Casting to <name>" row.
+    CastStatusChanged {
+        device_name: Option<String>,
     },
 
     // ── Errors ─────────────────────────────────────────────────────
@@ -2406,6 +2416,35 @@ pub enum BridgeSubsonicServerError {
     CredentialUnavailable { detail: String },
     BindFailed { detail: String },
     ServerFailed { detail: String },
+}
+
+/// A discovered Cast device, for the device picker.
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeCastDevice {
+    /// Opaque id passed back to `cast_to`.
+    pub id: String,
+    /// Display name shown in the picker.
+    pub name: String,
+}
+
+// The conversion is only used by the desktop-gated `get_cast_devices` handle fn.
+#[cfg(feature = "desktop")]
+impl BridgeCastDevice {
+    pub(crate) fn from_core(device: bae_core::cast::CastDevice) -> Self {
+        Self {
+            id: device.id,
+            name: device.name,
+        }
+    }
+}
+
+/// Whether playback is on a Cast device and, if so, which. The `from_core`
+/// mapping lives in `handle.rs` with the other `bae_desktop` conversions (the
+/// desktop crate is feature-gated).
+#[derive(Debug, Clone, uniffi::Enum)]
+pub enum BridgeCastStatus {
+    NotCasting,
+    Casting { device_name: String },
 }
 
 /// Cloud sync settings for a connected provider. `provider` carries the

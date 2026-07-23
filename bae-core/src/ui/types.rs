@@ -117,6 +117,8 @@ pub enum Invalidation {
     ImportCandidateList,
     ImportCandidate { key: String },
     WatchedFolders,
+    // The discovered Cast device list changed; the UI requeries it.
+    CastDevices,
 }
 
 /// Top-level UI event. One enum for everything. Events that carry a new value
@@ -246,6 +248,14 @@ pub enum UiBusEvent {
     /// indicator. Failure text still arrives via the thrown error.
     ReleaseTransferEnded {
         release_id: String,
+    },
+
+    // ── Cast ───────────────────────────────────────────────────────
+    /// The active renderer changed: `Some(name)` when playback moved to a Cast
+    /// device, `None` when it returned to local output. Drives the cast button's
+    /// active state and the "Casting to <name>" row.
+    CastStatusChanged {
+        device_name: Option<String>,
     },
 
     // ── Errors ─────────────────────────────────────────────────────

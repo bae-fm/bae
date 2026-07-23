@@ -72,6 +72,7 @@ struct NowPlayingBarContainer: View {
             },
             queueAddPublisher: playbackStore.queueItemsAddedSubject
                 .eraseToAnyPublisher(),
+            castControl: AnyView(CastButton()),
         )
         .sidePausePromptAlert()
     }
@@ -106,6 +107,9 @@ struct NowPlayingBar: View {
     let onDropToQueue: ([String]) -> Void
     let onNavigateToAlbum: () -> Void
     let queueAddPublisher: AnyPublisher<Int, Never>
+    /// The Cast control, injected by the container (it reads the cast
+    /// environment); an empty view in previews.
+    let castControl: AnyView
 
     @State
     private var queueButtonDropTargeted = false
@@ -323,6 +327,8 @@ struct NowPlayingBar: View {
 extension NowPlayingBar {
     fileprivate var trailingControls: some View {
         HStack(spacing: 12) {
+            castControl
+
             queueButton
 
             muteButton
@@ -465,6 +471,7 @@ extension NowPlayingBar {
                 onDropToQueue: { _ in },
                 onNavigateToAlbum: {},
                 queueAddPublisher: Empty().eraseToAnyPublisher(),
+                castControl: AnyView(EmptyView()),
             )
             .frame(width: 1100)
         }
