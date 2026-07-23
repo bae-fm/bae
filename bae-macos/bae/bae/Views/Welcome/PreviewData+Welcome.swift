@@ -81,5 +81,27 @@
                 userInfo: [NSLocalizedDescriptionKey: message]
             )
         }
+
+        /// A `LibrarySetup` whose reads serve the fixtures above — the
+        /// populated welcome previews inject it, so no preview ever touches
+        /// the real library directory or keychain.
+        static let welcomeSetup = LibrarySetup(
+            discoverLibraries: { welcomeLibraries },
+            decodeRestoreCode: { code in
+                guard
+                    let entry = welcomeKeychainEntries.first(where: {
+                        $0.code == code
+                    })
+                else {
+                    throw StubError.notImplemented
+                }
+                return entry.info
+            },
+            fetchRestoreCodes: {
+                welcomeKeychainEntries.map {
+                    (libraryId: $0.info.libraryId, code: $0.code)
+                }
+            },
+        )
     }
 #endif

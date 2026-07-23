@@ -1,0 +1,160 @@
+import BaeKit
+import Foundation
+
+/// A started join the view can await and abort: `join` blocks its worker until
+/// the library is ready; `cancel` aborts the bridge-side work so a superseded
+/// or abandoned join stops instead of completing against a stale library.
+struct JoinOperation: Sendable {
+    let join: @Sendable () throws -> BridgeLibrary
+    let cancel: @Sendable () -> Void
+}
+
+// The bridge's free functions, bound at file scope where their names are
+// unambiguous — inside `LibrarySetup` the field names shadow them.
+private let bridgeDiscoverLibraries = discoverLibraries
+private let bridgeCreateLibrary = createLibrary(name:)
+private let bridgeDecodeRestoreCode = decodeRestoreCode(code:)
+private let bridgeDecodeInviteCode = decodeInviteCode(code:)
+private let bridgeRestoreFromCode = restoreFromCode(code:oauthTokenJson:)
+private let bridgeRestoreFromCloud = restoreFromCloud(libraryName:config:)
+private let bridgeGenerateJoinRequest = generateJoinRequest(email:)
+private let bridgeJoinFromCodeOperation =
+    joinFromCodeOperation(code:joinRequestCode:oauthTokenJson:)
+private let bridgeOauthAuthorize = oauthAuthorize(provider:)
+private let bridgeOauthCancel = oauthCancel
+private let bridgeFetchAccountEmail = fetchAccountEmail(
+    provider:
+    oauthTokenJson:
+)
+
+/// Pre-library operations the welcome flow drives: on-device discovery,
+/// create, restore, join, the keychain restore codes, and provider OAuth.
+/// Wraps the bridge's free functions and `KeychainService` behind one
+/// injectable seam so previews never read or write real application data.
+/// The code decoders ride along because previews hand out fixture codes only
+/// this seam can "decode"; the pure validators (`validateRestoreConfig`,
+/// `availableCloudProviders`) stay free functions — they touch no state.
+final class LibrarySetup: Sendable, Observable {
+    let discoverLibraries: @Sendable () throws -> [BridgeLibrary]
+    /// Create a library named by core's default generator.
+    let createLibrary: @Sendable () throws -> BridgeLibrary
+    let decodeRestoreCode:
+        @Sendable (_ code: String) throws -> BridgeRestoreCodeInfo
+    let decodeInviteCode:
+        @Sendable (_ code: String) throws -> BridgeInviteCodeInfo
+    let restoreFromCode:
+        @Sendable (_ code: String, _ oauthTokenJson: String?) throws ->
+            BridgeLibrary
+    let restoreFromCloud:
+        @Sendable (_ libraryName: String?, _ config: BridgeRestoreConfig)
+            throws -> BridgeLibrary
+    let generateJoinRequest:
+        @Sendable (_ email: String?) throws -> BridgeJoinRequest
+    /// Start a join for an invite code; the returned operation runs it.
+    let joinFromCode:
+        @Sendable (
+            _ code: String, _ joinRequestCode: String,
+            _ oauthTokenJson: String?
+        ) throws -> JoinOperation
+    /// Restore codes any of the user's devices stored in the iCloud keychain.
+    let fetchRestoreCodes: @Sendable () -> [(libraryId: String, code: String)]
+    let deleteRestoreCode: @Sendable (_ libraryId: String) -> Void
+    let oauthAuthorize:
+        @Sendable (_ provider: BridgeCloudProvider) throws -> String
+    let oauthCancel: @Sendable () -> Void
+    let fetchAccountEmail:
+        @Sendable (_ provider: BridgeCloudProvider, _ oauthTokenJson: String)
+            throws -> String
+
+    init(
+        discoverLibraries: @escaping @Sendable () throws -> [BridgeLibrary] =
+            { [] },
+        createLibrary: @escaping @Sendable () throws -> BridgeLibrary = {
+            throw StubError.notImplemented
+        },
+        decodeRestoreCode:
+            @escaping @Sendable (String) throws -> BridgeRestoreCodeInfo = {
+                _ in throw StubError.notImplemented
+            },
+        decodeInviteCode:
+            @escaping @Sendable (String) throws -> BridgeInviteCodeInfo = {
+                _ in throw StubError.notImplemented
+            },
+        restoreFromCode:
+            @escaping @Sendable (String, String?) throws -> BridgeLibrary = {
+                _,
+                _ in throw StubError.notImplemented
+            },
+        restoreFromCloud:
+            @escaping @Sendable (String?, BridgeRestoreConfig) throws ->
+            BridgeLibrary = { _, _ in throw StubError.notImplemented },
+        generateJoinRequest:
+            @escaping @Sendable (String?) throws -> BridgeJoinRequest = { _ in
+                throw StubError.notImplemented
+            },
+        joinFromCode:
+            @escaping @Sendable (String, String, String?) throws ->
+            JoinOperation = { _, _, _ in throw StubError.notImplemented },
+        fetchRestoreCodes:
+            @escaping @Sendable () -> [(libraryId: String, code: String)] = {
+                []
+            },
+        deleteRestoreCode: @escaping @Sendable (String) -> Void = { _ in },
+        oauthAuthorize:
+            @escaping @Sendable (BridgeCloudProvider) throws -> String = {
+                _ in throw StubError.notImplemented
+            },
+        oauthCancel: @escaping @Sendable () -> Void = {},
+        fetchAccountEmail:
+            @escaping @Sendable (BridgeCloudProvider, String) throws -> String =
+            { _, _ in throw StubError.notImplemented }
+    ) {
+        self.discoverLibraries = discoverLibraries
+        self.createLibrary = createLibrary
+        self.decodeRestoreCode = decodeRestoreCode
+        self.decodeInviteCode = decodeInviteCode
+        self.restoreFromCode = restoreFromCode
+        self.restoreFromCloud = restoreFromCloud
+        self.generateJoinRequest = generateJoinRequest
+        self.joinFromCode = joinFromCode
+        self.fetchRestoreCodes = fetchRestoreCodes
+        self.deleteRestoreCode = deleteRestoreCode
+        self.oauthAuthorize = oauthAuthorize
+        self.oauthCancel = oauthCancel
+        self.fetchAccountEmail = fetchAccountEmail
+    }
+
+    /// The production wiring: the bridge's free functions plus the keychain.
+    /// The OAuth closures are wired in every build — the bridge always exports
+    /// them — while the `BAE_OAUTH_PROVIDERS` flag gates the UI that calls.
+    static let live = LibrarySetup(
+        discoverLibraries: bridgeDiscoverLibraries,
+        createLibrary: { try bridgeCreateLibrary(nil) },
+        decodeRestoreCode: bridgeDecodeRestoreCode,
+        decodeInviteCode: bridgeDecodeInviteCode,
+        restoreFromCode: bridgeRestoreFromCode,
+        restoreFromCloud: bridgeRestoreFromCloud,
+        generateJoinRequest: bridgeGenerateJoinRequest,
+        joinFromCode: { code, joinRequestCode, oauthTokenJson in
+            let operation = try bridgeJoinFromCodeOperation(
+                code,
+                joinRequestCode,
+                oauthTokenJson
+            )
+            return JoinOperation(
+                join: { try operation.join() },
+                cancel: { operation.cancel() }
+            )
+        },
+        fetchRestoreCodes: KeychainService.fetchAllRestoreCodes,
+        deleteRestoreCode: KeychainService.deleteRestoreCode(libraryId:),
+        oauthAuthorize: bridgeOauthAuthorize,
+        oauthCancel: bridgeOauthCancel,
+        fetchAccountEmail: bridgeFetchAccountEmail
+    )
+
+    #if DEBUG
+        // periphery:ignore
+        static let stub = LibrarySetup()
+    #endif
+}

@@ -11,6 +11,9 @@ struct RestoreFromCloudView: View {
     let onLibraryReady: (BridgeLibrary) -> Void
     let onBack: () -> Void
 
+    @Environment(LibrarySetup.self)
+    private var setup
+
     @State
     private var restoreCodeInput = ""
     /// The decode of the current restore-code input: `nil` when the input is
@@ -155,7 +158,7 @@ struct RestoreFromCloudView: View {
     private func decode(
         restoreCode raw: String
     ) -> Result<BridgeRestoreCodeInfo, Error> {
-        Result { try decodeRestoreCode(code: raw) }
+        Result { try setup.decodeRestoreCode(raw) }
     }
 
     // MARK: - Validation
@@ -190,16 +193,18 @@ struct RestoreFromCloudView: View {
     private func doRestoreFromCode() {
         let code = restoreCodeInput
         let token = oauthTokenJson
+        let restore = setup.restoreFromCode
         runRestore {
-            try restoreFromCode(code: code, oauthTokenJson: token)
+            try restore(code, token)
         }
     }
 
     private func doRestoreManual() {
         let config = draft.buildRestoreConfig(oauthTokenJson: oauthTokenJson)
         let name: String? = draft.libraryName.isEmpty ? nil : draft.libraryName
+        let restore = setup.restoreFromCloud
         runRestore {
-            try restoreFromCloud(libraryName: name, config: config)
+            try restore(name, config)
         }
     }
 
@@ -238,9 +243,10 @@ struct RestoreFromCloudView: View {
         private func doOAuthAuthorize(provider: BridgeCloudProvider) {
             isAuthorizing = true
             error = nil
+            let authorize = setup.oauthAuthorize
             Task.detached {
                 do {
-                    let tokenJson = try oauthAuthorize(provider: provider)
+                    let tokenJson = try authorize(provider)
                     await MainActor.run {
                         guard isAuthorizing else {
                             return
@@ -266,5 +272,6 @@ struct RestoreFromCloudView: View {
             onLibraryReady: { _ in },
             onBack: {},
         )
+        .environment(LibrarySetup.stub)
     }
 #endif

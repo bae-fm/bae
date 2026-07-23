@@ -12,6 +12,9 @@ struct JoinLibraryView: View {
     let onLibraryReady: (BridgeLibrary) -> Void
     let onBack: () -> Void
 
+    @Environment(LibrarySetup.self)
+    private var setup
+
     /// The cloud provider the joiner picked for the library they're adding this
     /// device to. `nil` until picked — while `nil` the join flow shows the
     /// provider picker and no code is generated yet. Picking an OAuth provider
@@ -79,7 +82,7 @@ struct JoinLibraryView: View {
                     onSelect: { selectJoinProvider($0) },
                     onCancel: {
                         #if BAE_OAUTH_PROVIDERS
-                            oauthCancel()
+                            setup.oauthCancel()
                         #endif
                         genTask?.cancel()
                         isAuthorizing = false
@@ -121,7 +124,7 @@ struct JoinLibraryView: View {
             decodedInvite =
                 trimmed.isEmpty
                 ? nil
-                : Result { try decodeInviteCode(code: newInput) }
+                : Result { try setup.decodeInviteCode(newInput) }
         }
         .onDisappear {
             genTask?.cancel()
@@ -168,14 +171,13 @@ struct JoinLibraryView: View {
             case .googleDrive, .dropbox, .oneDrive:
                 isAuthorizing = true
                 do {
+                    let authorize = setup.oauthAuthorize
+                    let fetchEmail = setup.fetchAccountEmail
                     let tokenJson = try await DetachedWork.run {
-                        try oauthAuthorize(provider: provider)
+                        try authorize(provider)
                     }
                     let email = try await DetachedWork.run {
-                        try fetchAccountEmail(
-                            provider: provider,
-                            oauthTokenJson: tokenJson
-                        )
+                        try fetchEmail(provider, tokenJson)
                     }
                     isAuthorizing = false
                     oauthTokenJson = tokenJson
@@ -201,9 +203,10 @@ struct JoinLibraryView: View {
     private func generateJoinCode() async {
         joinRequest = nil
         let email = joinEmail
+        let generate = setup.generateJoinRequest
         do {
             let generated = try await DetachedWork.run {
-                try generateJoinRequest(email: email)
+                try generate(email)
             }
             joinRequest = .success(generated)
         }
@@ -237,12 +240,12 @@ struct JoinLibraryView: View {
         isJoining = true
         error = nil
         joinTask = Task {
-            let operation: JoinFromCodeOperation
+            let operation: JoinOperation
             do {
-                operation = try joinFromCodeOperation(
-                    code: code,
-                    joinRequestCode: joinRequestCode,
-                    oauthTokenJson: token
+                operation = try setup.joinFromCode(
+                    code,
+                    joinRequestCode,
+                    token
                 )
             }
             catch {
@@ -279,5 +282,6 @@ struct JoinLibraryView: View {
             onLibraryReady: { _ in },
             onBack: {},
         )
+        .environment(LibrarySetup.stub)
     }
 #endif

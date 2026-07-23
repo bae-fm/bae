@@ -100,18 +100,21 @@ struct BaeApp: App {
 
     /// WelcomeView constructed with the deep-link mode if a menu item
     /// requested one (Restore from Code), else the default chooser. Bound
-    /// to the same callback for both paths.
-    @ViewBuilder
+    /// to the same callback for both paths, over the live pre-library
+    /// operations — previews inject stubs through the same seam.
     private var welcomeView: some View {
-        if let mode = appDelegate.welcomeInitialMode {
-            WelcomeView(
-                onLibraryReady: { lib in appDelegate.openLibrary(lib) },
-                initialMode: mode,
-            )
+        Group {
+            if let mode = appDelegate.welcomeInitialMode {
+                WelcomeView(
+                    onLibraryReady: { lib in appDelegate.openLibrary(lib) },
+                    initialMode: mode,
+                )
+            }
+            else {
+                WelcomeView { lib in appDelegate.openLibrary(lib) }
+            }
         }
-        else {
-            WelcomeView { lib in appDelegate.openLibrary(lib) }
-        }
+        .environment(LibrarySetup.live)
     }
 
     /// Main-window content once the first library has opened. Switching

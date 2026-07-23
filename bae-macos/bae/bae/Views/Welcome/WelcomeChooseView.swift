@@ -13,6 +13,9 @@ struct WelcomeChooseView: View {
     let onJoin: () -> Void
     let onRestore: () -> Void
 
+    @Environment(LibrarySetup.self)
+    private var setup
+
     @State
     private var isCreating = false
     @State
@@ -85,7 +88,7 @@ struct WelcomeChooseView: View {
                     },
                     onCancelAuth: {
                         #if BAE_OAUTH_PROVIDERS
-                            oauthCancel()
+                            setup.oauthCancel()
                         #endif
                         isAuthorizing = false
                     },
@@ -157,14 +160,15 @@ struct WelcomeChooseView: View {
         else {
             return
         }
-        KeychainService.deleteRestoreCode(libraryId: entry.info.libraryId)
+        setup.deleteRestoreCode(entry.info.libraryId)
         keychainEntries.removeAll { $0.code == code }
     }
 
     private func loadLocalLibraries() async {
         do {
+            let discover = setup.discoverLibraries
             let discovered = try await DetachedWork.run {
-                try discoverLibraries()
+                try discover()
             }
             try Task.checkCancellation()
             localLibraries = discovered
@@ -181,13 +185,15 @@ struct WelcomeChooseView: View {
 
     private func checkKeychainForRestoreCodes() async {
         do {
+            let fetch = setup.fetchRestoreCodes
+            let decode = setup.decodeRestoreCode
             let decoded = try await DetachedWork.run {
-                let stored = KeychainService.fetchAllRestoreCodes()
+                let stored = fetch()
                 var decoded: [(code: String, info: BridgeRestoreCodeInfo)] =
                     []
                 for entry in stored {
                     do {
-                        let info = try decodeRestoreCode(code: entry.code)
+                        let info = try decode(entry.code)
                         decoded.append((code: entry.code, info: info))
                     }
                     catch {
@@ -214,9 +220,10 @@ struct WelcomeChooseView: View {
     private func doCreate() {
         isCreating = true
         error = nil
+        let create = setup.createLibrary
         Task.detached {
             do {
-                let info = try createLibrary(name: nil)
+                let info = try create()
                 await MainActor.run {
                     isCreating = false
                     onLibraryReady(info)
@@ -236,13 +243,14 @@ struct WelcomeChooseView: View {
     /// OAuth token a connect step already produced.
     private func doRestoreFromCode(code: String) {
         let token = oauthTokenJson
+        let restore = setup.restoreFromCode
         restoreTask?.cancel()
         isRestoring = true
         error = nil
         restoreTask = Task {
             do {
                 let restored = try await DetachedWork.run {
-                    try restoreFromCode(code: code, oauthTokenJson: token)
+                    try restore(code, token)
                 }
                 try Task.checkCancellation()
                 isRestoring = false
@@ -265,9 +273,10 @@ struct WelcomeChooseView: View {
         private func doOAuthAuthorize(provider: BridgeCloudProvider) {
             isAuthorizing = true
             error = nil
+            let authorize = setup.oauthAuthorize
             Task.detached {
                 do {
-                    let tokenJson = try oauthAuthorize(provider: provider)
+                    let tokenJson = try authorize(provider)
                     await MainActor.run {
                         guard isAuthorizing else {
                             return
@@ -288,11 +297,21 @@ struct WelcomeChooseView: View {
 }
 
 #if DEBUG
-    #Preview {
+    #Preview("First run") {
         WelcomeChooseView(
             onLibraryReady: { _ in },
             onJoin: {},
             onRestore: {},
         )
+        .environment(LibrarySetup.stub)
+    }
+
+    #Preview("Libraries and restore codes") {
+        WelcomeChooseView(
+            onLibraryReady: { _ in },
+            onJoin: {},
+            onRestore: {},
+        )
+        .environment(PreviewData.welcomeSetup)
     }
 #endif
