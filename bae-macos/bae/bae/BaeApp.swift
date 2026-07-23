@@ -264,7 +264,7 @@ extension BaeApp {
     private var mainWindow: some Scene {
         Window("bae", id: "main") {
             libraryModals(
-                Group {
+                MainWindowChrome(loadError: appDelegate.loadError) {
                     if appDelegate.hasShell {
                         detailContent
                     }
@@ -276,16 +276,7 @@ extension BaeApp {
                         }
                     }
                 }
-                .frame(minWidth: 900, minHeight: 600)
-                .windowBackground()
                 .navigationTitle(windowTitle)
-                .overlay(alignment: .bottom) {
-                    if let loadError = appDelegate.loadError {
-                        Text(loadError)
-                            .foregroundStyle(.red)
-                            .padding()
-                    }
-                }
             )
             .environment(appDelegate.appService?.playbackStore)
             .environment(appDelegate.appService?.configStore)
@@ -554,11 +545,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         do {
             let libraries = try discoverLibraries()
             self.libraries = libraries
-            if libraries.isEmpty {
+            // Auto-open only a library whose config loaded. A broken one
+            // (unreadable config.yaml) can't open — auto-trying it would just
+            // strand its failure banner under the welcome screen, where the
+            // chooser already shows the library with its error.
+            guard
+                let openable = libraries.first(where: { $0.error == nil })
+            else {
                 screen = .welcome
                 return
             }
-            openLibrary(libraries[0])
+            openLibrary(openable)
         }
         catch {
             loadError = error.displayLine

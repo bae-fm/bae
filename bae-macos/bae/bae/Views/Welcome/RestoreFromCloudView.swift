@@ -268,10 +268,12 @@ struct RestoreFromCloudView: View {
 
 #if DEBUG
     #Preview {
-        RestoreFromCloudView(
-            onLibraryReady: { _ in },
-            onBack: {},
-        )
+        MainWindowChrome(loadError: nil) {
+            RestoreFromCloudView(
+                onLibraryReady: { _ in },
+                onBack: {},
+            )
+        }
         .environment(LibrarySetup.stub)
     }
 #endif

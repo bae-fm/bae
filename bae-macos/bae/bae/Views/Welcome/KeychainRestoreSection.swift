@@ -72,9 +72,11 @@ struct KeychainRestoreSection: View {
 
                             HStack(spacing: 8) {
                                 ZStack(alignment: .trailing) {
-                                    Button(
-                                        "Connect \(entry.info.cloudProvider.displayName)"
-                                    ) {
+                                    // The provider is named in the row's
+                                    // caption, so the button doesn't repeat it
+                                    // — the long form was what truncated the
+                                    // library name at the section's width.
+                                    Button("Connect") {
                                         onConnect(entry.info)
                                     }
                                     // Disabled (not just hidden) when it isn't

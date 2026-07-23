@@ -60,6 +60,29 @@ struct WelcomeChooseView: View {
     }
 
     var body: some View {
+        // Scrolls only when the content outgrows the window (a populated
+        // choose screen in a short window); the min-height keeps the Spacers
+        // centering the content whenever it fits.
+        GeometryReader { geometry in
+            ScrollView {
+                content
+                    .frame(
+                        maxWidth: .infinity,
+                        minHeight: geometry.size.height
+                    )
+            }
+            .scrollBounceBehavior(.basedOnSize)
+        }
+        .task {
+            await loadLocalLibraries()
+        }
+        .task {
+            await checkKeychainForRestoreCodes()
+        }
+        .onDisappear { restoreTask?.cancel() }
+    }
+
+    private var content: some View {
         VStack(spacing: 32) {
             Spacer()
             Text(verbatim: "bae")
@@ -142,13 +165,6 @@ struct WelcomeChooseView: View {
             Spacer()
         }
         .padding()
-        .task {
-            await loadLocalLibraries()
-        }
-        .task {
-            await checkKeychainForRestoreCodes()
-        }
-        .onDisappear { restoreTask?.cancel() }
     }
 
     /// Remove a keychain restore code (and its entry) after the section's
@@ -298,20 +314,37 @@ struct WelcomeChooseView: View {
 
 #if DEBUG
     #Preview("First run") {
-        WelcomeChooseView(
-            onLibraryReady: { _ in },
-            onJoin: {},
-            onRestore: {},
-        )
+        MainWindowChrome(loadError: nil) {
+            WelcomeChooseView(
+                onLibraryReady: { _ in },
+                onJoin: {},
+                onRestore: {},
+            )
+        }
         .environment(LibrarySetup.stub)
     }
 
     #Preview("Libraries and restore codes") {
-        WelcomeChooseView(
-            onLibraryReady: { _ in },
-            onJoin: {},
-            onRestore: {},
-        )
+        MainWindowChrome(loadError: nil) {
+            WelcomeChooseView(
+                onLibraryReady: { _ in },
+                onJoin: {},
+                onRestore: {},
+            )
+        }
+        .environment(PreviewData.welcomeSetup)
+    }
+
+    #Preview("Library failed to open") {
+        MainWindowChrome(
+            loadError: "The library's settings could not be read."
+        ) {
+            WelcomeChooseView(
+                onLibraryReady: { _ in },
+                onJoin: {},
+                onRestore: {},
+            )
+        }
         .environment(PreviewData.welcomeSetup)
     }
 #endif

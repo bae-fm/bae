@@ -278,10 +278,12 @@ struct JoinLibraryView: View {
 
 #if DEBUG
     #Preview {
-        JoinLibraryView(
-            onLibraryReady: { _ in },
-            onBack: {},
-        )
+        MainWindowChrome(loadError: nil) {
+            JoinLibraryView(
+                onLibraryReady: { _ in },
+                onBack: {},
+            )
+        }
         .environment(LibrarySetup.stub)
     }
 #endif
