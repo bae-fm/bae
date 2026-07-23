@@ -55,11 +55,6 @@ struct OnboardingEntryScreen: View {
 
 #if DEBUG
 #Preview {
-    OnboardingEntryScreen(
-        error: nil,
-        onJoin: {},
-        onScanRecovery: {},
-        onPasteRecovery: {}
-    )
+    PreviewScenes.welcome()
 }
 #endif
