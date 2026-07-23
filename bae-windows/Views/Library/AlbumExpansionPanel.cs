@@ -27,6 +27,7 @@ namespace Bae.Windows;
 internal sealed partial class AlbumExpansionPanel : IDisposable
 {
     private readonly SessionStore _session;
+    private readonly Microsoft.UI.Dispatching.DispatcherQueue _dispatcher;
     private readonly Func<XamlRoot?> _xamlRoot;
     private readonly Func<IntPtr> _windowHandle;
     private readonly Action<string> _setStatus;
@@ -45,6 +46,7 @@ internal sealed partial class AlbumExpansionPanel : IDisposable
 
     public AlbumExpansionPanel(
         SessionStore session,
+        Microsoft.UI.Dispatching.DispatcherQueue dispatcher,
         Func<XamlRoot?> xamlRoot,
         Func<IntPtr> windowHandle,
         Action<string> setStatus,
@@ -55,6 +57,7 @@ internal sealed partial class AlbumExpansionPanel : IDisposable
         Action onClose)
     {
         _session = session;
+        _dispatcher = dispatcher;
         _xamlRoot = xamlRoot;
         _windowHandle = windowHandle;
         _setStatus = setStatus;
@@ -93,6 +96,17 @@ internal sealed partial class AlbumExpansionPanel : IDisposable
         {
             _setStatus(Loc.Chrome("album.open_failed"));
             return null;
+        }
+
+        // Attach the current handle to every release so its own cover loads off the
+        // UI thread through the same (id, version) cache the grid tiles use; the
+        // large cover binds to the selected release's.
+        if (_session.CurrentHandleOrNull() is { } coverHandle)
+        {
+            foreach (var release in detail.Releases)
+            {
+                release.AttachCover(coverHandle, _dispatcher);
+            }
         }
 
         // The release the panel acts on: when revealing a now-playing track, the
@@ -395,6 +409,20 @@ internal sealed partial class AlbumExpansionPanel : IDisposable
         }
         RenderTotalDuration();
 
+        // The large cover on the left, bound OneWay to the selected release's own
+        // cover so it fills in as the async load lands and re-points when the
+        // picker switches release. A release with no cover of its own falls back to
+        // the album card's cover rather than showing blank art.
+        var coverImage = new Image { Stretch = Stretch.UniformToFill };
+        void RebindCover()
+        {
+            coverImage.ClearValue(Image.SourceProperty);
+            coverImage.SetBinding(Image.SourceProperty, selectedRelease.HasOwnCover
+                ? new Binding { Source = selectedRelease, Path = new PropertyPath(nameof(Release.Cover)), Mode = BindingMode.OneWay }
+                : new Binding { Source = card, Path = new PropertyPath(nameof(Album.Cover)), Mode = BindingMode.OneWay });
+        }
+        RebindCover();
+
         var detailStack = new StackPanel { Spacing = 8 };
         detailStack.Children.Add(title);
         detailStack.Children.Add(artist);
@@ -414,6 +442,7 @@ internal sealed partial class AlbumExpansionPanel : IDisposable
                     selectedRelease = release;
                     trackList.ItemsSource = selectedRelease.Tracks;
                     storageRelease = release;
+                    RebindCover();
                     RenderStorageBand();
                     RenderTotalDuration();
                 }
@@ -425,16 +454,8 @@ internal sealed partial class AlbumExpansionPanel : IDisposable
         detailStack.Children.Add(trackList);
         detailStack.Children.Add(totalDuration);
 
-        // The large cover on the left; a click opens the release's gallery (the
-        // dialog's secondary button). Bound OneWay so it fills in as the async
-        // cover load lands.
-        var coverImage = new Image { Stretch = Stretch.UniformToFill };
-        coverImage.SetBinding(Image.SourceProperty, new Binding
-        {
-            Source = card,
-            Path = new PropertyPath(nameof(Album.Cover)),
-            Mode = BindingMode.OneWay,
-        });
+        // A click on the cover opens the release's gallery (the dialog's secondary
+        // button).
         var coverBorder = new Border
         {
             Width = 300,

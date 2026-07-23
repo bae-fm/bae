@@ -1,5 +1,8 @@
 ﻿using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq;
+using Microsoft.UI.Dispatching;
+using Microsoft.UI.Xaml.Media;
 using uniffi.bae_bridge;
 
 namespace Bae.Windows;
@@ -23,19 +26,39 @@ public sealed class AlbumDetail
 }
 
 /// <summary>One release within an album's detail, shown in the release picker.</summary>
-public sealed class Release
+public sealed class Release : INotifyPropertyChanged
 {
     private readonly BridgeRelease _release;
+    private readonly CoverImage.Binding _cover;
 
     internal Release(BridgeRelease release)
     {
         _release = release;
         Tracks = release.Tracks.Select(track => new Track(track)).ToList();
+        _cover = new CoverImage.Binding(release.Cover);
+        _cover.SourceChanged += () => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Cover)));
     }
+
+    public event PropertyChangedEventHandler? PropertyChanged;
 
     public string ReleaseId => _release.Id;
     public string DisplayName => _release.DisplayName;
     public List<Track> Tracks { get; }
+
+    /// <summary>Attach the current handle so the release's own cover loads off the
+    /// UI thread and applies when it lands — the same (id, version) cache path the
+    /// grid tiles use.</summary>
+    internal void AttachCover(LibraryHandle handle, DispatcherQueue dispatcherQueue) =>
+        _cover.Attach(handle, dispatcherQueue);
+
+    /// <summary>The release's own cover, or null while it loads / when the release
+    /// has none. The album expansion's large art binds here per selected release.</summary>
+    public ImageSource? Cover => _cover.Source;
+
+    /// <summary>Whether this release carries its own cover reference. When it
+    /// doesn't, the expansion falls back to the album card's cover rather than
+    /// showing blank art.</summary>
+    internal bool HasOwnCover => _release.Cover is not null;
 
     /// <summary>Total playing time across the release's tracks, in the words core
     /// chose for it ("39 min", "3 hr, 42 min"); empty when no track reports a

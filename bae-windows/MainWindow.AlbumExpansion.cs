@@ -238,6 +238,7 @@ public sealed partial class MainWindow : Window
 
         var panel = new AlbumExpansionPanel(
             _session,
+            DispatcherQueue,
             () => Content.XamlRoot,
             () => WinRT.Interop.WindowNative.GetWindowHandle(this),
             text => StatusText.Text = text,
