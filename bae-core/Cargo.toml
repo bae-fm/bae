@@ -54,6 +54,13 @@ tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
 tempfile = "3.8"
 notify = "8.2.0"
 notify-debouncer-full = "0.7.0"
+# Google Cast sender (src/cast/): the CASTV2 protocol over TLS to Chromecast/Nest
+# devices, and mDNS service discovery of them. `thread_safe` makes rust_cast's
+# `CastDevice` Send so the session can own it on its own OS thread. Compiled on
+# every platform (only desktop wires the UI), so the cast module builds
+# everywhere; the receiver fetches audio itself over HTTP.
+rust_cast = { version = "0.21", features = ["thread_safe"] }
+mdns-sd = "0.20"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 getrandom = { version = "0.2", features = ["js"] }

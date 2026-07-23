@@ -3,6 +3,7 @@
 pub mod album_detail;
 pub mod app;
 pub mod audio_codec;
+pub mod cast;
 #[doc(hidden)]
 pub mod config;
 pub mod cue_flac;
