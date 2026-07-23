@@ -9,11 +9,31 @@ public partial class App : Application
 
     public App()
     {
+#if DEBUG
+        // In screenshot-capture mode, force the dark look (matching the macOS
+        // capture) app-wide: the scene brushes resolve against the app theme, and
+        // Application.RequestedTheme can only be set here, in the constructor.
+        if (ShotCapture.TryGetOutputDir(Environment.GetCommandLineArgs(), out _))
+        {
+            RequestedTheme = ApplicationTheme.Dark;
+        }
+#endif
         InitializeComponent();
     }
 
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
+#if DEBUG
+        // Screenshot-capture mode: render the named preview scenes to PNGs and
+        // exit. It never opens the keychain, a library, or ~/.bae, so it returns
+        // before any of the normal library startup below runs.
+        if (ShotCapture.TryGetOutputDir(Environment.GetCommandLineArgs(), out var shotsDir))
+        {
+            _ = ShotCapture.RunAsync(shotsDir);
+            return;
+        }
+#endif
+
         // Telemetry first, from compiled-in values only, so the sink exists for
         // every later launch step (crash reporter, keyring, library open) and any
         // failure it reports.

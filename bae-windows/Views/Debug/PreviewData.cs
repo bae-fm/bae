@@ -1,5 +1,6 @@
 ﻿#if DEBUG
 using System.Collections.Generic;
+using uniffi.bae_bridge;
 
 namespace Bae.Windows;
 
@@ -9,6 +10,16 @@ namespace Bae.Windows;
 // only in DEBUG builds, alongside the gallery it feeds.
 internal static class PreviewData
 {
+    // Fixture libraries for the welcome chooser: two on-disk libraries the
+    // welcome scene lists as re-openable, plus the create/restore actions. Local
+    // only (no cloud provider), inactive, no open error — placeholder ids/names,
+    // no keychain or on-disk library behind them.
+    internal static List<BridgeLibrary> WelcomeLibraries { get; } = new()
+    {
+        new BridgeLibrary("lib-home", "Home Library", @"C:\Users\Example\Music\Home", null, false, null),
+        new BridgeLibrary("lib-studio", "Studio Library", @"C:\Users\Example\Music\Studio", null, false, null),
+    };
+
     // A signals row covering the render states SignalBadgeRow.Build draws: a
     // matched disc-id, an in-flight barcode lookup, an unmatched catalog number,
     // and an excluded (struck-through) badge.
