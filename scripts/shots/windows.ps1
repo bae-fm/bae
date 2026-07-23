@@ -72,7 +72,17 @@ foreach ($dll in @('bae_bridge.dll', 'uniffi_bae_bridge.dll')) {
 # 5. Run the capture. It renders every scene and exits 0 (all) or 1 (any failed).
 #    Bound the run so a render hang fails the job rather than blocking forever.
 $proc = Start-Process -FilePath $exe -ArgumentList @('--capture-shots', $OutputDir) -PassThru
-if (-not $proc.WaitForExit(180000)) {
+$exited = $proc.WaitForExit(180000)
+
+# The app has no visible stderr, so always surface its stage log — on success,
+# failure, and timeout alike — before deciding the run's fate.
+$log = Join-Path $OutputDir 'capture.log'
+Write-Host '----- capture.log -----'
+if (Test-Path $log) { Get-Content $log | ForEach-Object { Write-Host $_ } }
+else { Write-Host '(capture.log not found)' }
+Write-Host '----- end capture.log -----'
+
+if (-not $exited) {
     $proc.Kill()
     throw 'capture run timed out'
 }

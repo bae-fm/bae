@@ -16,6 +16,7 @@ public partial class App : Application
         if (ShotCapture.TryGetOutputDir(Environment.GetCommandLineArgs(), out _))
         {
             RequestedTheme = ApplicationTheme.Dark;
+            ShotCapture.Log("App ctor: capture mode, dark theme set");
         }
 #endif
         InitializeComponent();
@@ -24,11 +25,13 @@ public partial class App : Application
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
 #if DEBUG
+        ShotCapture.Log("App.OnLaunched entry");
         // Screenshot-capture mode: render the named preview scenes to PNGs and
         // exit. It never opens the keychain, a library, or ~/.bae, so it returns
         // before any of the normal library startup below runs.
         if (ShotCapture.TryGetOutputDir(Environment.GetCommandLineArgs(), out var shotsDir))
         {
+            ShotCapture.Log("App.OnLaunched: capture branch taken");
             _ = ShotCapture.RunAsync(shotsDir);
             return;
         }

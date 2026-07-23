@@ -39,6 +39,19 @@ public static class Program
     [STAThread]
     private static void Main(string[] args)
     {
+#if DEBUG
+        // Screenshot-capture mode bypasses everything below — the Velopack hooks
+        // and the single-instance redirect serve a real app session, not a
+        // one-shot render pass, and a second running instance must not redirect
+        // the capture away. Detected here, before any of that plumbing, so a log
+        // line lands even if startup stalls.
+        if (ShotCapture.TryGetOutputDir(args, out var captureDir))
+        {
+            RunCapture(captureDir);
+            return;
+        }
+#endif
+
         // Must run before anything else: handles the Velopack install / update /
         // uninstall hook arguments and exits the process for them. The
         // pre-uninstall hook removes the registry state OnLaunched asserts on
@@ -79,6 +92,31 @@ public static class Program
             _ = new App();
         });
     }
+
+#if DEBUG
+    // The capture-mode startup: the minimal WinUI bring-up (COM wrappers, XAML
+    // process check, Application.Start) with the Velopack hooks and single-instance
+    // redirect skipped. Each stage logs to <captureDir>\capture.log so a stall is
+    // attributable even though a WinExe has no visible stderr. App.OnLaunched then
+    // takes the capture branch and renders the scenes.
+    private static void RunCapture(string captureDir)
+    {
+        ShotCapture.BeginCapture(captureDir);
+        ShotCapture.Log("Program.Main: capture mode; skipping Velopack + single-instancing");
+        WinRT.ComWrappersSupport.InitializeComWrappers();
+        ShotCapture.Log("Program.Main: ComWrappers initialized");
+        XamlCheckProcessRequirements();
+        ShotCapture.Log("Program.Main: XamlCheckProcessRequirements passed; starting Application");
+        Microsoft.UI.Xaml.Application.Start(p =>
+        {
+            var context = new DispatcherQueueSynchronizationContext(
+                DispatcherQueue.GetForCurrentThread());
+            SynchronizationContext.SetSynchronizationContext(context);
+            _ = new App();
+        });
+        ShotCapture.Log("Program.Main: Application.Start returned");
+    }
+#endif
 
     // Redirect this launch's activation to the already-running instance and
     // block until it has been received, without a bare .AsTask().Wait() on the
