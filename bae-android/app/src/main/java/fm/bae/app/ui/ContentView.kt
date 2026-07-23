@@ -67,10 +67,29 @@ fun ContentView(
         AppSessionHolder.openDiscoveredOrOnboard(context) { screen = it }
     }
 
-    // One cover-bytes cache for the app's composition lifetime, handed to every
-    // cover leaf through the composition local so they don't each thread it.
-    val coverCache = remember { CoverBytesCache() }
+    BaeAppChrome {
+        AppScreenRouter(
+            screen = screen,
+            oauthLinking = oauthLinking,
+            oauthLinkingError = oauthLinkingError,
+            shortcutAction = shortcutAction,
+            onShortcutHandled = onShortcutHandled,
+            onScreen = { screen = it },
+        )
+    }
+}
 
+/**
+ * The app's root chrome: theme, the full-size background surface, the shared
+ * cover-bytes cache (one per composition lifetime, handed to every cover leaf
+ * through the composition local so they don't each thread it), and the
+ * safe-drawing inset padding every screen sits inside. Screen bodies render
+ * inside this. Screenshot captures render a scene inside the same chrome so a
+ * captured screen looks exactly like the shipped one.
+ */
+@Composable
+internal fun BaeAppChrome(content: @Composable () -> Unit) {
+    val coverCache = remember { CoverBytesCache() }
     BaeTheme {
         Surface(
             modifier = Modifier.fillMaxSize(),
@@ -78,14 +97,7 @@ fun ContentView(
         ) {
             CompositionLocalProvider(LocalCoverBytesCache provides coverCache) {
                 Box(modifier = Modifier.fillMaxSize().safeDrawingPadding()) {
-                    AppScreenRouter(
-                        screen = screen,
-                        oauthLinking = oauthLinking,
-                        oauthLinkingError = oauthLinkingError,
-                        shortcutAction = shortcutAction,
-                        onShortcutHandled = onShortcutHandled,
-                        onScreen = { screen = it },
-                    )
+                    content()
                 }
             }
         }

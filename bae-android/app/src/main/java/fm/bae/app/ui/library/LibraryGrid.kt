@@ -14,6 +14,7 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
@@ -35,6 +36,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
+import fm.bae.app.ui.BaeAppChrome
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.components.CoverBytesCache
@@ -45,6 +47,10 @@ import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeAlbum
 
 private const val PULL_REFRESH_SETTLE_MS = 900L
+
+// How many fixture albums the library-grid screenshot scene renders — enough to
+// fill a couple of scrolled rows on a phone.
+private const val SCENE_ALBUM_COUNT = 9
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -90,26 +96,70 @@ internal fun LibraryGridContent(
             }
 
             else -> {
-                LazyVerticalGrid(
-                    columns = GridCells.Adaptive(minSize = 150.dp),
-                    state = gridState,
-                    contentPadding = PaddingValues(12.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                    modifier = Modifier.fillMaxSize(),
-                ) {
-                    items(page.order, key = { it }) { albumId ->
-                        val album = page.albums[albumId] ?: return@items
-                        AlbumGridCard(
-                            album = album,
-                            loadImage = session.library::imageBytes,
-                            onClick = { onSelectAlbum(albumId) },
-                        )
-                    }
-                }
+                LibraryGridBacking(
+                    albums = page.order.map { page.albums.getValue(it) },
+                    gridState = gridState,
+                    loadImage = session.library::imageBytes,
+                    onSelectAlbum = onSelectAlbum,
+                )
             }
         }
     }
+}
+
+/**
+ * The album grid itself: adaptive columns of cover cards over a resolved album
+ * list. Split out of [LibraryGridContent] so the `library-grid` screenshot scene
+ * and the dev preview render the same grid the library shows, without a live
+ * session — the caller supplies the albums, the cover-byte loader, and the
+ * selection callback.
+ */
+@Composable
+private fun LibraryGridBacking(
+    albums: List<BridgeAlbum>,
+    gridState: LazyGridState,
+    loadImage: suspend (imageId: String) -> ByteArray?,
+    onSelectAlbum: (String) -> Unit,
+) {
+    LazyVerticalGrid(
+        columns = GridCells.Adaptive(minSize = 150.dp),
+        state = gridState,
+        contentPadding = PaddingValues(12.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+        modifier = Modifier.fillMaxSize(),
+    ) {
+        items(albums, key = { it.id }) { album ->
+            AlbumGridCard(
+                album = album,
+                loadImage = loadImage,
+                onClick = { onSelectAlbum(album.id) },
+            )
+        }
+    }
+}
+
+/**
+ * The `library-grid` screenshot scene: a full grid of fixture albums in the app
+ * chrome. Cover bytes never load (the loader returns null), so cards show the
+ * placeholder cover icon — deterministic, no session.
+ */
+@Composable
+internal fun LibraryGridScene() {
+    BaeAppChrome {
+        LibraryGridBacking(
+            albums = List(SCENE_ALBUM_COUNT) { i -> PreviewData.album(id = "alb-$i", title = "Album ${i + 1}") },
+            gridState = rememberLazyGridState(),
+            loadImage = { null },
+            onSelectAlbum = {},
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun LibraryGridScenePreview() {
+    LibraryGridScene()
 }
 
 @Composable

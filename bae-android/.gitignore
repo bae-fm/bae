@@ -1,0 +1,4 @@
+# Compose screenshot reference PNGs — rendered on demand by
+# scripts/shots/android.sh's update*ScreenshotTest run, not a committed baseline.
+# The plugin writes them under src/<variant>/screenshotTest/reference/.
+app/src/*/screenshotTest/reference/

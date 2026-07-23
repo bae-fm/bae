@@ -2,6 +2,7 @@ plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
+    id("com.android.compose.screenshot")
 }
 
 // Release builds (CI) inject these; local dev builds fall back to dev markers.
@@ -25,6 +26,11 @@ fun buildConfigString(value: String?): String =
 android {
     namespace = "fm.bae.app"
     compileSdk = 35
+
+    // Turns on the Compose Preview Screenshot Testing source set (screenshotTest)
+    // and its render tasks. scripts/shots/android.sh runs
+    // updateFullDebugScreenshotTest to capture the scenes; nothing else uses it.
+    experimentalProperties["android.experimental.enableScreenshotTest"] = true
 
     defaultConfig {
         applicationId = "fm.bae.app"
@@ -202,4 +208,9 @@ dependencies {
     debugImplementation("androidx.compose.ui:ui-tooling")
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.robolectric:robolectric:4.15.1")
+    // The screenshotTest source set renders @Preview scenes via layoutlib; it
+    // needs the tooling on its own classpath (the BOM keeps it on the same
+    // Compose version as the app).
+    screenshotTestImplementation(composeBom)
+    screenshotTestImplementation("androidx.compose.ui:ui-tooling")
 }

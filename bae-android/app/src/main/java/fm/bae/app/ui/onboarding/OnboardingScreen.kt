@@ -40,6 +40,7 @@ import androidx.core.content.ContextCompat
 import fm.bae.app.BaeLogger
 import fm.bae.app.OAuthLinker
 import fm.bae.app.R
+import fm.bae.app.ui.BaeAppChrome
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.components.QRScannerScreen
 import kotlinx.coroutines.launch
@@ -350,10 +351,15 @@ private fun OnboardingContainer(content: @Composable ColumnScope.() -> Unit) {
     )
 }
 
-@Preview(showBackground = true)
+/**
+ * The first-run welcome screen with no attempt in flight, wrapped in the app
+ * chrome — the shared composition the `welcome` screenshot scene and the dev
+ * preview below both render. Renders the production [OnboardingIdleContent] with
+ * inert callbacks; no session or camera is touched.
+ */
 @Composable
-private fun OnboardingIdleContentPreview() {
-    BaeTheme {
+internal fun WelcomeScene() {
+    BaeAppChrome {
         OnboardingIdleContent(
             error = null,
             showPasteDialog = false,
@@ -369,6 +375,12 @@ private fun OnboardingIdleContentPreview() {
                 ),
         )
     }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun WelcomeScenePreview() {
+    WelcomeScene()
 }
 
 @Preview(showBackground = true)

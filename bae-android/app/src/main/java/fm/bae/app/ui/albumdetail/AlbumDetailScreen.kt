@@ -67,16 +67,37 @@ import uniffi.bae_bridge.BridgeAlbumDetail
 import uniffi.bae_bridge.BridgeGallerySource
 import uniffi.bae_bridge.BridgeImageRef
 import uniffi.bae_bridge.BridgeRelease
+import uniffi.bae_bridge.BridgeTrackSide
 
 private const val TAG = "bae.AlbumDetailScreen"
 private val logger = BaeLogger(TAG)
 
-private data class AlbumPlaybackState(
+internal data class AlbumPlaybackState(
     val currentTrackId: String?,
     val isPlaying: Boolean,
 )
 
-private data class AlbumDetailCallbacks(
+/**
+ * The two locale-rendered, core-derived labels the track list needs: a track
+ * group's side header ("Side A" / "Disc 2", empty for a flat single side) and a
+ * track's duration clock. Both reach into bae-core over the bridge, so they
+ * travel together as a dependency — production supplies the real renderers, the
+ * screenshot scene supplies inert stubs (the bridge/FFI can't run under the
+ * preview renderer).
+ */
+internal data class AlbumTrackLabels(
+    val sideHeader: (BridgeTrackSide) -> String,
+    val trackDuration: (durationMs: Long?) -> String,
+)
+
+/** The production track labels: the real bridge-backed locale renderers. */
+private fun albumTrackLabels(context: android.content.Context): AlbumTrackLabels =
+    AlbumTrackLabels(
+        sideHeader = { it.sideHeaderText(context) },
+        trackDuration = { context.durationClockText(it) },
+    )
+
+internal data class AlbumDetailCallbacks(
     val fetchGalleryBytes: suspend (releaseId: String, source: BridgeGallerySource) -> ByteArray,
     val loadCoverImage: suspend (imageId: String) -> ByteArray?,
     val onSelectRelease: (String) -> Unit,
@@ -148,12 +169,13 @@ fun AlbumDetailScreen(
             } else {
                 val release = loaded.releases.firstOrNull { it.id == selectedReleaseId }
                 AlbumDetailContent(
-                    session = session,
                     detail = loaded,
                     selectedRelease = release,
                     cover = release?.cover,
                     playback = AlbumPlaybackState(nowPlaying?.trackId, isPlaying),
                     callbacks = buildAlbumDetailCallbacks(session, release) { selectedReleaseId = it },
+                    releaseDownloadControl = { rel -> ReleaseDownloadControl(session = session, release = rel) },
+                    trackLabels = albumTrackLabels(appContext),
                 )
             }
         }
@@ -275,13 +297,14 @@ private fun buildAlbumDetailCallbacks(
 }
 
 @Composable
-private fun AlbumDetailContent(
-    session: OpenLibrary,
+internal fun AlbumDetailContent(
     detail: BridgeAlbumDetail,
     selectedRelease: BridgeRelease?,
     cover: BridgeImageRef?,
     playback: AlbumPlaybackState,
     callbacks: AlbumDetailCallbacks,
+    releaseDownloadControl: @Composable (BridgeRelease) -> Unit,
+    trackLabels: AlbumTrackLabels,
 ) {
     val album = detail.album
     val context = LocalContext.current
@@ -328,9 +351,9 @@ private fun AlbumDetailContent(
         }
 
         if (selectedRelease != null) {
-            item { ReleaseDownloadControl(session = session, release = selectedRelease) }
+            item { releaseDownloadControl(selectedRelease) }
             item { AlbumActionButtons(callbacks) }
-            albumTrackGroups(selectedRelease, playback, callbacks, context)
+            albumTrackGroups(selectedRelease, playback, callbacks, context, trackLabels)
         }
     }
 }
@@ -435,16 +458,17 @@ private fun androidx.compose.foundation.lazy.LazyListScope.albumTrackGroups(
     playback: AlbumPlaybackState,
     callbacks: AlbumDetailCallbacks,
     context: android.content.Context,
+    trackLabels: AlbumTrackLabels,
 ) {
     // Flatten groups to a release-wide track index so taps map to the ordered
     // list the player builds from the same flattening.
     var runningIndex = 0
     release.trackGroups.forEach { group ->
-        val sideHeader = group.side.sideHeaderText(context)
-        if (sideHeader.isNotEmpty()) {
+        val header = trackLabels.sideHeader(group.side)
+        if (header.isNotEmpty()) {
             item {
                 Text(
-                    text = sideHeader,
+                    text = header,
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = 8.dp),
@@ -460,7 +484,7 @@ private fun androidx.compose.foundation.lazy.LazyListScope.albumTrackGroups(
                         positionLabel = track.positionText,
                         title = track.title,
                         artistNames = track.displayArtist,
-                        durationLabel = context.durationClockText(track.durationMs),
+                        durationLabel = trackLabels.trackDuration(track.durationMs),
                         isCurrent = isCurrent,
                         isPlaying = playback.isPlaying,
                     ),
@@ -522,21 +546,22 @@ private fun AlbumDetailHeaderPreview() {
 @Composable
 private fun AlbumActionButtonsPreview() {
     BaeTheme {
-        AlbumActionButtons(
-            callbacks =
-                AlbumDetailCallbacks(
-                    fetchGalleryBytes = { _, _ -> ByteArray(0) },
-                    loadCoverImage = { _ -> null },
-                    onSelectRelease = {},
-                    onTogglePlayPause = {},
-                    onPlayTrackAt = {},
-                    onPlayRelease = {},
-                    onShuffleRelease = {},
-                    onPlayReleaseNext = {},
-                    onAddReleaseToQueue = {},
-                    onPlayTrackNext = {},
-                    onAddTrackToQueue = {},
-                ),
-        )
+        AlbumActionButtons(callbacks = inertAlbumDetailCallbacks())
     }
 }
+
+/** Inert callbacks for rendering the album detail body without a live session. */
+internal fun inertAlbumDetailCallbacks(): AlbumDetailCallbacks =
+    AlbumDetailCallbacks(
+        fetchGalleryBytes = { _, _ -> ByteArray(0) },
+        loadCoverImage = { _ -> null },
+        onSelectRelease = {},
+        onTogglePlayPause = {},
+        onPlayTrackAt = {},
+        onPlayRelease = {},
+        onShuffleRelease = {},
+        onPlayReleaseNext = {},
+        onAddReleaseToQueue = {},
+        onPlayTrackNext = {},
+        onAddTrackToQueue = {},
+    )
