@@ -1768,7 +1768,7 @@ pub enum BridgeUiEvent {
     // ── Cast ───────────────────────────────────────────────────────
     /// The active renderer changed: `Some(name)` when playback moved to a Cast
     /// device, `None` when it returned to local output. Drives the cast button's
-    /// active state and the "Casting to <name>" row.
+    /// active state and the "Casting to `<name>`" row.
     CastStatusChanged {
         device_name: Option<String>,
     },

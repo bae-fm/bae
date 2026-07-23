@@ -5,7 +5,7 @@
 //! ([`crate::dlna`]). Both are the same shape — the device fetches a track's
 //! audio over HTTP and is driven by transport commands — so everything but the
 //! wire is shared here: the command [`channel`] trait, the [`session`] that
-//! drives one connected device from its own thread, the served-[`format`] gate,
+//! drives one connected device from its own thread, the served-[`mod@format`] gate,
 //! and the merged [`device`] list.
 //!
 //! This is decoupled from both the audio URL source (the caller injects one) and

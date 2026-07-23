@@ -72,7 +72,7 @@ pub enum PlaybackProgress {
     /// The active renderer changed: `Some(name)` when playback moved to a remote
     /// renderer (Cast or DLNA), `None` when it returned to local output (a user
     /// stop or a device-side end). The UI reflects the speaker button's active
-    /// state and the "Playing on <name>" row from this.
+    /// state and the "Playing on `<name>`" row from this.
     RemoteStatusChanged {
         device_name: Option<String>,
     },
