@@ -27,10 +27,12 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import fm.bae.app.BaeLogger
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
+import fm.bae.app.ui.BaeTheme
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -49,7 +51,6 @@ internal fun RecoveryCodeDialog(
     onDismiss: () -> Unit,
 ) {
     val context = LocalContext.current
-    val clipboard = LocalClipboardManager.current
     var code by remember { mutableStateOf<String?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
 
@@ -64,6 +65,21 @@ internal fun RecoveryCodeDialog(
         }
     }
 
+    RecoveryCodeDialogContent(code = code, error = error, onDismiss = onDismiss)
+}
+
+/**
+ * The dialog body: the secret warning plus the resolved [code], its [error], or a
+ * spinner while it is being generated. Prop-driven so each state renders without a
+ * session.
+ */
+@Composable
+private fun RecoveryCodeDialogContent(
+    code: String?,
+    error: String?,
+    onDismiss: () -> Unit,
+) {
+    val clipboard = LocalClipboardManager.current
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.settings_recovery_code)) },
@@ -109,4 +125,28 @@ internal fun RecoveryCodeDialog(
             TextButton(onClick = onDismiss) { Text(stringResource(R.string.close)) }
         },
     )
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun RecoveryCodeDialogContentReadyPreview() {
+    BaeTheme {
+        RecoveryCodeDialogContent(code = "AAAA-BBBB-CCCC-DDDD-EEEE", error = null, onDismiss = {})
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun RecoveryCodeDialogContentLoadingPreview() {
+    BaeTheme {
+        RecoveryCodeDialogContent(code = null, error = null, onDismiss = {})
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun RecoveryCodeDialogContentErrorPreview() {
+    BaeTheme {
+        RecoveryCodeDialogContent(code = null, error = "Could not generate a recovery code.", onDismiss = {})
+    }
 }

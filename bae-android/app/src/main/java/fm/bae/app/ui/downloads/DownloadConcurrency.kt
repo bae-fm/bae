@@ -14,11 +14,13 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import fm.bae.app.BaeLogger
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.localizedLine
+import fm.bae.app.ui.BaeTheme
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -31,7 +33,8 @@ private val logger = BaeLogger("bae.DownloadConcurrency")
  * Device-local download concurrency: how many blobs a pin fetches at once (1..8).
  * Mobile has no upload control — the app makes no uploads. Writes through the
  * config setter and lets the next config snapshot re-render; a rejected value
- * surfaces an error and the prior selection stands.
+ * surfaces an error and the prior selection stands. This entry holds the session
+ * so the picker below stays prop-driven.
  */
 @Composable
 internal fun DownloadConcurrencyRow(
@@ -40,6 +43,19 @@ internal fun DownloadConcurrencyRow(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    DownloadConcurrencySelector(
+        value = value,
+        onSelect = { option -> scope.launch { setDownloadConcurrency(session, context, option) } },
+    )
+}
+
+/** The concurrency picker: the current [value] highlighted, a tap reporting the
+ *  chosen count through [onSelect]. Prop-driven so it renders without a session. */
+@Composable
+private fun DownloadConcurrencySelector(
+    value: UInt,
+    onSelect: (UInt) -> Unit,
+) {
     // 1..8 = bae-core's MAX_CONCURRENT_TRANSFERS; the bridge carries the value,
     // not the bound, so the UI states the range.
     val options = (1u..8u).toList()
@@ -54,13 +70,21 @@ internal fun DownloadConcurrencyRow(
             options.forEachIndexed { index, option ->
                 SegmentedButton(
                     selected = option == value,
-                    onClick = { scope.launch { setDownloadConcurrency(session, context, option) } },
+                    onClick = { onSelect(option) },
                     shape = SegmentedButtonDefaults.itemShape(index = index, count = options.size),
                 ) {
                     Text(option.toString())
                 }
             }
         }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun DownloadConcurrencySelectorPreview() {
+    BaeTheme {
+        DownloadConcurrencySelector(value = 3u, onSelect = {})
     }
 }
 
