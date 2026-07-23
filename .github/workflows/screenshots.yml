@@ -1,0 +1,191 @@
+name: Screenshots
+
+# Captures the shared UI scenes on all four platforms (scripts/shots/*) and
+# publishes the scene x platform gallery to GitHub Pages. Setup steps mirror
+# each platform's build workflow (ci.yml / ios.yml / android-build.yml /
+# windows.yml) — the scripts do the building; the jobs provision toolchains.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  macos:
+    name: Capture macOS
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ./.github/actions/setup-macos
+      - uses: ./.github/actions/setup-rust
+      - name: Install xcodegen
+        run: brew install xcodegen
+      - name: Capture
+        run: ./scripts/shots/macos.sh shots-out
+      - uses: actions/upload-artifact@v4
+        with:
+          name: shots-macos
+          path: shots-out/*.png
+          if-no-files-found: error
+
+  ios:
+    name: Capture iOS
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ./.github/actions/setup-macos
+      - uses: ./.github/actions/setup-rust
+      - name: Cache cross-built iOS FFmpeg
+        id: ffmpeg-cache
+        uses: actions/cache@v5
+        with:
+          path: bae-ffmpeg/ios
+          key: ffmpeg-ios-${{ hashFiles('scripts/build-ffmpeg-ios.sh') }}
+      - name: Build iOS FFmpeg (on cache miss)
+        if: steps.ffmpeg-cache.outputs.cache-hit != 'true'
+        run: ./scripts/build-ffmpeg-ios.sh
+      - name: Install xcodegen
+        run: brew install xcodegen
+      - name: Capture
+        run: ./scripts/shots/ios.sh shots-out
+      - uses: actions/upload-artifact@v4
+        with:
+          name: shots-ios
+          path: shots-out/*.png
+          if-no-files-found: error
+
+  android:
+    name: Capture Android
+    runs-on: ubuntu-latest
+    env:
+      NDK_VERSION: 29.0.14206865
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ./.github/actions/setup-linux
+      - uses: ./.github/actions/setup-rust
+      - name: Setup JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Install pinned Android NDK + SDK platform
+        run: |
+          SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          yes | "$SDKMANAGER" --licenses >/dev/null
+          "$SDKMANAGER" "ndk;${NDK_VERSION}" "platforms;android-35" "build-tools;35.0.0"
+          echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/${NDK_VERSION}" >> "$GITHUB_ENV"
+      - name: Cache cross-built Android FFmpeg
+        id: ffmpeg-cache
+        uses: actions/cache@v5
+        with:
+          path: bae-ffmpeg/android
+          key: ffmpeg-android-${{ env.NDK_VERSION }}-${{ hashFiles('scripts/build-ffmpeg-android.sh') }}
+      - name: Build Android FFmpeg (on cache miss)
+        if: steps.ffmpeg-cache.outputs.cache-hit != 'true'
+        run: ./scripts/build-ffmpeg-android.sh
+      - name: Capture
+        run: ./scripts/shots/android.sh shots-out
+      - uses: actions/upload-artifact@v4
+        with:
+          name: shots-android
+          path: shots-out/*.png
+          if-no-files-found: error
+
+  windows:
+    name: Capture Windows
+    runs-on: windows-latest
+    env:
+      FFMPEG_VERSION: v8.1.2-bae6
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          submodules: recursive
+      - name: Install Rust (pinned toolchain)
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "1.95.0"
+          targets: x86_64-pc-windows-msvc
+      - name: Install sccache
+        uses: mozilla-actions/sccache-action@v0.0.10
+      - name: Set LIBCLANG_PATH (LLVM pre-installed on windows-latest)
+        shell: pwsh
+        run: |
+          echo "LIBCLANG_PATH=C:\Program Files\LLVM\bin" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+      - name: Fetch libdiscid (MusicBrainz Windows binary)
+        shell: pwsh
+        run: |
+          $url = "https://github.com/metabrainz/libdiscid/releases/download/v0.6.5/libdiscid-0.6.5-win.zip"
+          curl.exe -L $url -o libdiscid.zip
+          Expand-Archive -Path libdiscid.zip -DestinationPath "$PWD\libdiscid" -Force
+          $x64 = "$PWD\libdiscid\libdiscid-0.6.5-win\x64"
+          echo "LIB=$x64;$env:LIB" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          echo "$x64" | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
+      - name: Fetch bae-ffmpeg (Windows x86_64)
+        shell: pwsh
+        run: |
+          $dist = "$PWD\bae-ffmpeg\dist"
+          New-Item -ItemType Directory -Force -Path $dist | Out-Null
+          $url = "https://github.com/bae-fm/bae-ffmpeg/releases/download/$env:FFMPEG_VERSION/ffmpeg-windows-x86_64.zip"
+          curl.exe -L $url -o ffmpeg.zip
+          Expand-Archive -Path ffmpeg.zip -DestinationPath $dist -Force
+          New-Item -ItemType Directory -Force -Path "$dist\lib" | Out-Null
+          Copy-Item "$dist\bin\*.lib" "$dist\lib\" -Force
+          echo "FFMPEG_DIR=$dist" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          echo "BINDGEN_EXTRA_CLANG_ARGS=-I$dist\include" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          echo "$dist\bin" | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
+      - name: Provision ffmpeg's mingw runtime deps (msys2)
+        shell: pwsh
+        run: |
+          C:\msys64\usr\bin\bash.exe -lc "pacman -S --noconfirm --needed mingw-w64-x86_64-lame mingw-w64-x86_64-opus mingw-w64-x86_64-libiconv mingw-w64-x86_64-zlib mingw-w64-x86_64-gcc-libs"
+          echo "C:\msys64\mingw64\bin" | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
+      - name: Install .NET 8 SDK
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: "8.0.x"
+      - name: Install uniffi-bindgen-cs
+        run: cargo install --git https://github.com/NordSecurity/uniffi-bindgen-cs.git --tag 'v0.11.0+v0.31.0' uniffi-bindgen-cs --locked
+      - name: Set up MSBuild
+        uses: microsoft/setup-msbuild@v2
+      - name: Add Windows SDK bin to PATH (makepri for resources.pri)
+        shell: pwsh
+        run: |
+          $makepri = Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\bin\*\x64\makepri.exe" -ErrorAction SilentlyContinue |
+            Sort-Object FullName -Descending | Select-Object -First 1
+          if (-not $makepri) { throw "makepri.exe not found in the Windows SDK" }
+          Add-Content -Path $env:GITHUB_PATH -Value $makepri.Directory.FullName
+      - name: Capture
+        shell: pwsh
+        run: ./scripts/shots/windows.ps1 shots-out
+      - uses: actions/upload-artifact@v4
+        with:
+          name: shots-windows
+          path: shots-out/*.png
+          if-no-files-found: error
+
+  gallery:
+    name: Publish gallery
+    needs: [macos, ios, android, windows]
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: shots-*
+          path: all-shots
+      - name: Build gallery site
+        run: python3 scripts/shots/gallery.py all-shots site --sha "${GITHUB_SHA::9}"
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+      - id: deploy
+        uses: actions/deploy-pages@v4
