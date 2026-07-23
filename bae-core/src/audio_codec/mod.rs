@@ -21,6 +21,10 @@ use avio::{
     avio_write_callback, avio_write_seek_callback, free_custom_avio_context, WriteAvioContext,
 };
 
+// Only the desktop-gated save path (StreamDecodeParams::run_to_sink) consumes
+// this re-export; on iOS/Android that caller is compiled out, so the import is
+// unused there and fails the deny(warnings) mobile clippy build.
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub(crate) use decode::decode_audio_to_sink_with_seek;
 pub use decode::{decode_audio, decode_audio_streaming, decode_audio_to_sink};
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
