@@ -37,6 +37,18 @@ hex = "0.4"
 # All are RustCrypto/num crates on the same digest-0.10 stack as `sha2`; new deps
 # (coven does not pin them, correcting the plan's premise), solely for AirPlay.
 num-bigint = "0.4"
+# RAOP (AirPlay 1) audio encryption (src/airplay/crypto.rs). Legacy `et=1`
+# receivers take an AES-128 session key the sender RSA-OAEP(SHA-1)-wraps to a
+# fixed public key baked into every AirPort Express, then AES-128-CBC-encrypt
+# each audio packet's payload (per-packet IV reset, trailing `len%16` bytes left
+# in the clear — openairplay spec §7.2). rsa on num-bigint-dig, aes/cbc on the
+# cipher-0.4 stack `chacha20poly1305` already pulls in. sha1 moves to prod for
+# the OAEP hash (it was dev-only for the SRP RFC 5054 vector).
+rsa = "0.9"
+aes = "0.8"
+cbc = "0.1"
+base64 = "0.22"
+sha1 = "0.10"
 async-trait = "0.1"
 dirs = "5.0"
 axum = "0.7"
@@ -146,10 +158,6 @@ tokio = { version = "1.0", features = ["test-util"] }
 serial_test = "3.4.0"
 # coven's deterministic clock/id fakes for bae's tests (off in production builds).
 coven = { workspace = true, features = ["test-utils"] }
-# SHA-1 is used only by the SRP unit test, to check the SRP math against the
-# published RFC 5054 Appendix B vector (which is specified with SHA-1). Production
-# SRP uses SHA-512.
-sha1 = "0.10"
 
 [[test]]
 name = "test_playback_behavior"

@@ -19,10 +19,14 @@
 //! announce, and [`rtsp`] is the control connection both dialects drive.
 
 pub mod capabilities;
+pub mod crypto;
 pub mod discovery;
 pub mod pairing;
+pub mod rtp;
 pub mod rtsp;
+pub mod session;
 pub mod srp;
+pub mod stream;
 pub mod tlv8;
 
 pub use capabilities::{AirPlayCapabilities, Dialect, RaopCodec, RaopEncryption, RaopParams};
