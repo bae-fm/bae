@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -46,6 +47,11 @@ internal static class ShotCapture
     private const int FrameTimeoutMs = 5000;
     private const int RenderTimeoutMs = 20000;
     private const int PixelsTimeoutMs = 10000;
+
+    // The off-thread watchdog window per scene — longer than every on-thread wait
+    // above combined, so it fires only on a true UI-thread block, well under the
+    // script's global run timeout.
+    private const int SceneWatchdogMs = 60000;
 
     // Point the log at <outputDir>\capture.log and record process entry. Called
     // from Program.Main before any startup plumbing.
@@ -180,64 +186,77 @@ internal static class ShotCapture
             (int)Math.Ceiling(scene.Width * scale), (int)Math.Ceiling(scene.Height * scale)));
         Log($"scene '{scene.Id}': window activated, scale={scale}");
 
-        if (await AwaitOr(loaded.Task, LoadedTimeoutMs, $"scene '{scene.Id}' Loaded"))
+        // A background watchdog logs even if the UI thread wedges — a render that
+        // blocks on a pending decode would otherwise silence the on-thread
+        // timeouts below, so an off-thread writer is what surfaces the stall.
+        // Cancelled in the finally once the scene settles.
+        var watchdog = StartWatchdog($"scene '{scene.Id}'", SceneWatchdogMs);
+        try
         {
-            Log($"scene '{scene.Id}': Loaded fired");
+            if (await AwaitOr(loaded.Task, LoadedTimeoutMs, $"scene '{scene.Id}' Loaded"))
+            {
+                Log($"scene '{scene.Id}': Loaded fired");
+            }
+
+            root.UpdateLayout();
+            // Let the compositor commit one frame before reading pixels back. A
+            // miss here is non-fatal — the render still runs and the blank check
+            // catches a dead compositor.
+            await AwaitOr(WaitForNextFrameAsync(), FrameTimeoutMs, $"scene '{scene.Id}' frame tick");
+
+            Log($"scene '{scene.Id}': render start");
+            var bitmap = new RenderTargetBitmap();
+            if (!await AwaitOr(bitmap.RenderAsync(root).AsTask(), RenderTimeoutMs, $"scene '{scene.Id}' RenderAsync"))
+            {
+                throw new TimeoutException("RenderAsync did not complete");
+            }
+
+            var pixelsTask = bitmap.GetPixelsAsync().AsTask();
+            if (!await AwaitOr(pixelsTask, PixelsTimeoutMs, $"scene '{scene.Id}' GetPixelsAsync"))
+            {
+                throw new TimeoutException("GetPixelsAsync did not complete");
+            }
+
+            var pixelBuffer = await pixelsTask;
+            var pixels = new byte[pixelBuffer.Length];
+            using (var reader = DataReader.FromBuffer(pixelBuffer))
+            {
+                reader.ReadBytes(pixels);
+            }
+
+            var blank = IsAllZero(pixels);
+            Log($"scene '{scene.Id}': pixels read: {pixels.Length} bytes, {bitmap.PixelWidth}x{bitmap.PixelHeight}, allZero={blank}");
+            if (blank)
+            {
+                // A blank render (nothing realized / dead compositor) must fail the
+                // scene, not write an empty PNG that passes the existence check.
+                throw new InvalidOperationException("render produced all-zero (blank) pixels");
+            }
+
+            var file = await folder.CreateFileAsync(
+                $"{scene.Id}@{Platform}.png", CreationCollisionOption.ReplaceExisting);
+            using (var stream = await file.OpenAsync(FileAccessMode.ReadWrite))
+            {
+                var encoder = await BitmapEncoder.CreateAsync(BitmapEncoder.PngEncoderId, stream);
+                encoder.SetPixelData(
+                    BitmapPixelFormat.Bgra8,
+                    BitmapAlphaMode.Premultiplied,
+                    (uint)bitmap.PixelWidth,
+                    (uint)bitmap.PixelHeight,
+                    96,
+                    96,
+                    pixels);
+                await encoder.FlushAsync();
+            }
+
+            Log($"scene '{scene.Id}': PNG written");
         }
-
-        root.UpdateLayout();
-        // Let the compositor commit one frame before reading pixels back. A miss
-        // here is non-fatal — the render still runs and the blank check catches a
-        // dead compositor.
-        await AwaitOr(WaitForNextFrameAsync(), FrameTimeoutMs, $"scene '{scene.Id}' frame tick");
-
-        Log($"scene '{scene.Id}': render start");
-        var bitmap = new RenderTargetBitmap();
-        if (!await AwaitOr(bitmap.RenderAsync(root).AsTask(), RenderTimeoutMs, $"scene '{scene.Id}' RenderAsync"))
+        finally
         {
-            throw new TimeoutException("RenderAsync did not complete");
+            watchdog.Cancel();
+            watchdog.Dispose();
+            window.Close();
         }
-
-        var pixelsTask = bitmap.GetPixelsAsync().AsTask();
-        if (!await AwaitOr(pixelsTask, PixelsTimeoutMs, $"scene '{scene.Id}' GetPixelsAsync"))
-        {
-            throw new TimeoutException("GetPixelsAsync did not complete");
-        }
-
-        var pixelBuffer = await pixelsTask;
-        var pixels = new byte[pixelBuffer.Length];
-        using (var reader = DataReader.FromBuffer(pixelBuffer))
-        {
-            reader.ReadBytes(pixels);
-        }
-
-        var blank = IsAllZero(pixels);
-        Log($"scene '{scene.Id}': pixels read: {pixels.Length} bytes, {bitmap.PixelWidth}x{bitmap.PixelHeight}, allZero={blank}");
-        if (blank)
-        {
-            // A blank render (nothing realized / dead compositor) must fail the
-            // scene, not write an empty PNG that passes the existence check.
-            throw new InvalidOperationException("render produced all-zero (blank) pixels");
-        }
-
-        var file = await folder.CreateFileAsync(
-            $"{scene.Id}@{Platform}.png", CreationCollisionOption.ReplaceExisting);
-        using (var stream = await file.OpenAsync(FileAccessMode.ReadWrite))
-        {
-            var encoder = await BitmapEncoder.CreateAsync(BitmapEncoder.PngEncoderId, stream);
-            encoder.SetPixelData(
-                BitmapPixelFormat.Bgra8,
-                BitmapAlphaMode.Premultiplied,
-                (uint)bitmap.PixelWidth,
-                (uint)bitmap.PixelHeight,
-                96,
-                96,
-                pixels);
-            await encoder.FlushAsync();
-        }
-
-        Log($"scene '{scene.Id}': PNG written");
-        window.Close();
     }
 
     // Await a task but give up after timeoutMs, logging the stage that stalled.
@@ -254,6 +273,29 @@ internal static class ShotCapture
 
         Log($"{stage}: TIMED OUT after {timeoutMs}ms");
         return false;
+    }
+
+    // A background timer that logs from a threadpool thread unless cancelled in
+    // time. The on-thread AwaitOr timeouts cannot fire while the UI thread is
+    // wedged (their continuations need that thread), so this off-thread writer is
+    // what surfaces a render that blocks the dispatcher.
+    private static CancellationTokenSource StartWatchdog(string stage, int timeoutMs)
+    {
+        var cts = new CancellationTokenSource();
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await Task.Delay(timeoutMs, cts.Token).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                return;
+            }
+
+            Log($"{stage}: WATCHDOG {timeoutMs}ms elapsed with no completion — UI thread may be blocked (e.g. inside RenderAsync)");
+        });
+        return cts;
     }
 
     // Whether the pixel buffer is entirely zero — a transparent-black (blank)

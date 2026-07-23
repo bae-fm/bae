@@ -69,6 +69,24 @@ foreach ($dll in @('bae_bridge.dll', 'uniffi_bae_bridge.dll')) {
     Copy-Item $src $exeDir -Force
 }
 
+# 4b. Ensure the unpackaged resource index sits beside the exe. ResourceLoader
+#     (Loc.cs) loads resources.pri from the executable's directory; the
+#     self-contained build's makepri step can emit it to a different output
+#     folder than the one the launched exe lives in, which fails Loc with a
+#     FileNotFoundException. Diagnose (log the exe path and whether it is already
+#     there) and, if missing, copy the one built under bin next to the exe.
+Write-Host "exe: $exe"
+$exePri = Join-Path $exeDir 'resources.pri'
+if (Test-Path $exePri) {
+    Write-Host 'resources.pri: already present beside exe'
+} else {
+    $pri = Get-ChildItem -Path (Join-Path $repoRoot 'bae-windows\bin') -Recurse -Filter 'resources.pri' -ErrorAction SilentlyContinue |
+        Sort-Object LastWriteTime -Descending | Select-Object -First 1 -ExpandProperty FullName
+    if (-not $pri) { throw 'resources.pri not found in build output (makepri did not run?)' }
+    Write-Host "resources.pri: missing beside exe; copying from $pri"
+    Copy-Item $pri $exeDir -Force
+}
+
 # 5. Run the capture. It renders every scene and exits 0 (all) or 1 (any failed).
 #    Bound the run so a render hang fails the job rather than blocking forever.
 $proc = Start-Process -FilePath $exe -ArgumentList @('--capture-shots', $OutputDir) -PassThru
