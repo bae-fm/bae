@@ -111,38 +111,6 @@ private struct DownloadConcurrencyControl: View {
     }
 }
 
-/// One line summarizing the download queue: a "Paused" chip when the user has
-/// paused it, otherwise the count summary (downloading / failed / queued).
-/// `compact` shrinks it to caption size for the library strip.
-struct DownloadQueueSummaryLine: View {
-    let snapshot: BridgeDownloadSnapshot
-    let compact: Bool
-
-    var body: some View {
-        Group {
-            if snapshot.paused {
-                Label("Paused", systemImage: "pause.circle.fill")
-                    .foregroundStyle(.orange)
-            }
-            else if !snapshot.summaryText.isEmpty {
-                Text(snapshot.summaryText)
-                    .foregroundStyle(.secondary)
-            }
-        }
-        .font(compact ? .caption : nil)
-    }
-}
-
-/// The "waiting in the download queue" status, shown on a queued row and on the
-/// album-detail control for a release that hasn't started downloading yet.
-struct WaitingToDownloadLabel: View {
-    var body: some View {
-        Label("Waiting to download", systemImage: "clock")
-            .font(.caption)
-            .foregroundStyle(.secondary)
-    }
-}
-
 /// One download-queue row: album title, file count and size, and the state —
 /// a waiting label, the live progress bar, or the failure message.
 private struct DownloadQueueRow: View {
