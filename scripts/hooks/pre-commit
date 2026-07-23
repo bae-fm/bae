@@ -6,6 +6,8 @@ set -e
 #   bae-core: no local deps; dev-depends on bae-test-support (its tests)
 #   bae-test-support: depends on bae-core
 #   bae-bridge: depends on bae-core
+#   bae-subsonic: depends on bae-core
+#   bae-desktop: depends on bae-core, bae-mcp, bae-subsonic
 #   bae-macos: depends on bae-bridge (Swift native app)
 
 # Use target-macos to avoid busting iOS/Android caches
@@ -105,6 +107,23 @@ if has_changes_in "bae-core" || has_changes_in "bae-test-support"; then
     # The run above builds bae-test-support as a dependency, which enforces the
     # workspace's rustc denies on it but does not run clippy's own lints there.
     run_check "clippy (bae-test-support)" cargo clippy -p bae-test-support -- -D warnings || {
+        exit 1
+    }
+fi
+
+# bae-subsonic and bae-desktop checks (depend on bae-core). A bae-core type
+# change can break them silently otherwise: nothing else in this hook compiles
+# either crate, which is how a SaveCodec variant addition once broke
+# bae-subsonic on main without any gate noticing.
+if has_changes_in "bae-subsonic" || has_changes_in "bae-desktop" \
+    || has_changes_in "bae-core"; then
+    run_check "clippy (bae-subsonic)" cargo clippy -p bae-subsonic --all-targets -- -D warnings || {
+        echo "Fix the warnings above and try again"
+        exit 1
+    }
+
+    run_check "clippy (bae-desktop)" cargo clippy -p bae-desktop --all-targets -- -D warnings || {
+        echo "Fix the warnings above and try again"
         exit 1
     }
 fi

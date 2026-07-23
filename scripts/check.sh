@@ -246,6 +246,8 @@ check "cargo test (bae-bridge --lib, desktop)" \
 check "cargo test (bae-automation)"    cargo test -p bae-automation
 check "cargo test (bae-mcp)"           cargo test -p bae-mcp
 check "cargo test (bae-cli)"           cargo test -p bae-cli
+check "cargo test (bae-subsonic)"      cargo test -p bae-subsonic
+check "cargo test (bae-desktop)"       cargo test -p bae-desktop
 # Chrome-string orphan gate (the `core.*` keys are gated by loc_key_coverage in
 # the bae-bridge test above). Mirrors CI's "localization + bridge tests"; fails
 # on unreferenced, un-allowlisted catalog keys so dead/renamed keys are caught
