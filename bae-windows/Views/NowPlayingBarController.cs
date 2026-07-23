@@ -2,6 +2,7 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Animation;
@@ -19,6 +20,7 @@ internal sealed class NowPlayingBarController
 {
     private readonly SessionStore _session;
     private readonly PlaybackStore _playback;
+    private readonly CastStore _cast;
     private readonly Func<XamlRoot?> _xamlRoot;
 
     private readonly Border _nowPlayingBar;
@@ -40,6 +42,9 @@ internal sealed class NowPlayingBarController
     private readonly Button _previous;
     private readonly Button _next;
     private readonly ProgressRing _loading;
+    private readonly Button _castButton;
+    private readonly FontIcon _castGlyph;
+    private readonly MenuFlyout _castFlyout;
     private readonly Border _queueAddBadge;
     private readonly ScaleTransform _queueAddBadgeScale;
     private readonly TextBlock _queueAddBadgeText;
@@ -80,6 +85,7 @@ internal sealed class NowPlayingBarController
     public NowPlayingBarController(
         SessionStore session,
         PlaybackStore playback,
+        CastStore cast,
         Func<bool> showRemainingTime,
         Func<XamlRoot?> xamlRoot,
         Border nowPlayingBar,
@@ -101,12 +107,15 @@ internal sealed class NowPlayingBarController
         Button previous,
         Button next,
         ProgressRing loading,
+        Button castButton,
+        FontIcon castGlyph,
         Border queueAddBadge,
         ScaleTransform queueAddBadgeScale,
         TextBlock queueAddBadgeText)
     {
         _session = session;
         _playback = playback;
+        _cast = cast;
         _showRemainingTime = showRemainingTime;
         _xamlRoot = xamlRoot;
         _nowPlayingBar = nowPlayingBar;
@@ -128,6 +137,9 @@ internal sealed class NowPlayingBarController
         _previous = previous;
         _next = next;
         _loading = loading;
+        _castButton = castButton;
+        _castGlyph = castGlyph;
+        _castFlyout = new MenuFlyout { Placement = FlyoutPlacementMode.Top };
         _queueAddBadge = queueAddBadge;
         _queueAddBadgeScale = queueAddBadgeScale;
         _queueAddBadgeText = queueAddBadgeText;
@@ -177,6 +189,19 @@ internal sealed class NowPlayingBarController
         // Shuffle reflects the playing context's shuffled flag, delivered by the
         // queue snapshot; disabled when there is no context to shuffle.
         _playback.QueueChanged += RenderShuffle;
+
+        // Cast: a device-picker flyout. Discovery runs only while it's open; the
+        // menu rebuilds each open and on device-list / status changes while open.
+        _castButton.Flyout = _castFlyout;
+        _castFlyout.Opening += (_, _) =>
+        {
+            _cast.StartDiscovery();
+            PopulateCastFlyout();
+        };
+        _castFlyout.Closed += (_, _) => _cast.StopDiscovery();
+        _cast.StatusChanged += OnCastStatusChanged;
+        _cast.DevicesChanged += OnCastDevicesChanged;
+        RenderCastButton();
     }
 
     // Seed the volume slider from the current handle without echoing a SetVolume.
@@ -371,6 +396,84 @@ internal sealed class NowPlayingBarController
     {
         _previous.IsEnabled = hasPrevious;
         _next.IsEnabled = hasNext;
+    }
+
+    private void OnCastStatusChanged()
+    {
+        RenderCastButton();
+        if (_castFlyout.IsOpen)
+        {
+            PopulateCastFlyout();
+        }
+    }
+
+    private void OnCastDevicesChanged()
+    {
+        if (_castFlyout.IsOpen)
+        {
+            PopulateCastFlyout();
+        }
+    }
+
+    // The cast glyph tints to the accent over a soft accent fill while casting,
+    // neutral otherwise. The name reads the active device, or "Cast" when idle.
+    private void RenderCastButton()
+    {
+        var casting = _cast.IsCasting;
+        _castGlyph.Foreground = casting ? _accentBrush : _secondaryBrush;
+        _castButton.Background = casting
+            ? _accentSoftFill
+            : new SolidColorBrush(Microsoft.UI.Colors.Transparent);
+        var name = casting
+            ? Loc.Chrome("nowplaying.casting_to", "device", _cast.CastingDeviceName ?? string.Empty)
+            : Loc.Chrome("nowplaying.cast");
+        AutomationProperties.SetName(_castButton, name);
+        ToolTipService.SetToolTip(_castButton, name);
+    }
+
+    // Rebuild the device picker: the active-casting header and disconnect action
+    // (when casting), then the discovered devices, or an empty-state line.
+    private void PopulateCastFlyout()
+    {
+        _castFlyout.Items.Clear();
+
+        if (_cast.CastingDeviceName is { } castingName)
+        {
+            _castFlyout.Items.Add(new MenuFlyoutItem
+            {
+                Text = Loc.Chrome("nowplaying.casting_to", "device", castingName),
+                IsEnabled = false,
+            });
+            var disconnect = new MenuFlyoutItem { Text = Loc.Chrome("nowplaying.cast.disconnect") };
+            disconnect.Click += (_, _) => _cast.StopCasting();
+            _castFlyout.Items.Add(disconnect);
+            _castFlyout.Items.Add(new MenuFlyoutSeparator());
+        }
+
+        if (_cast.Devices.Count == 0)
+        {
+            _castFlyout.Items.Add(new MenuFlyoutItem
+            {
+                Text = Loc.Chrome("nowplaying.cast.no_devices"),
+                IsEnabled = false,
+            });
+            return;
+        }
+
+        foreach (var device in _cast.Devices)
+        {
+            var deviceId = device.Id;
+            var item = new MenuFlyoutItem { Text = device.Name };
+            item.Click += (_, _) =>
+            {
+                var error = _cast.CastTo(deviceId);
+                if (error is not null)
+                {
+                    BaeDiagnostics.Logger.Warning($"Cast to {deviceId} failed: {error}");
+                }
+            };
+            _castFlyout.Items.Add(item);
+        }
     }
 
     private void OnQueueItemsAdded(int count)

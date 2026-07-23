@@ -814,6 +814,22 @@ internal static class NativeBae
 
     internal static float GetVolume(AppHandle handle) => Await(handle.GetVolume());
 
+    // -- Cast --
+
+    internal static IReadOnlyList<BridgeCastDevice> GetCastDevices(AppHandle handle) =>
+        handle.GetCastDevices();
+
+    internal static void StartCastDiscovery(AppHandle handle) => handle.StartCastDiscovery();
+
+    internal static void StopCastDiscovery(AppHandle handle) => handle.StopCastDiscovery();
+
+    // Returns a localized error line on failure (connect/serving), or null on
+    // success.
+    internal static string? CastTo(AppHandle handle, string deviceId) =>
+        CaptureError(() => handle.CastTo(deviceId));
+
+    internal static void StopCasting(AppHandle handle) => handle.StopCasting();
+
     internal static void SetRepeatMode(AppHandle handle, BridgeRepeatMode mode) => handle.SetRepeatMode(mode);
 
     /// <summary>The mode the repeat button steps to next. Playback only accepts an

@@ -55,6 +55,7 @@ public sealed partial class MainWindow : Window
     private readonly ShellStore _shell;
     private readonly SyncStatusStore _sync;
     private readonly PlaybackStore _playback;
+    private readonly CastStore _cast;
     private readonly ProjectionRegistry _projections;
     private readonly TransferProgressStore _transferProgress;
     private readonly UiEventRouter _router;
@@ -194,11 +195,13 @@ public sealed partial class MainWindow : Window
         _shell = new ShellStore();
         _shell.Changed += RenderBanner;
         _playback = new PlaybackStore();
+        _cast = new CastStore(_session);
         _sync = new SyncStatusStore(_session);
         _sync.Changed += RenderSyncStatus;
         _nowPlayingBar = new NowPlayingBarController(
             _session,
             _playback,
+            _cast,
             // Read at call time: the settings mirror is built further down, and
             // seeded from the handle once a library is open.
             () => _settings.Current?.ShowRemainingTime ?? false,
@@ -222,6 +225,8 @@ public sealed partial class MainWindow : Window
             NpPrev,
             NpNext,
             NpLoading,
+            NpCast,
+            NpCastGlyph,
             QueueAddBadge,
             QueueAddBadgeScale,
             QueueAddBadgeText);
@@ -244,7 +249,7 @@ public sealed partial class MainWindow : Window
         // the router so it can route into it, and shared with the stores below.
         _transferProgress = new TransferProgressStore();
         _router = new UiEventRouter(
-            _playback, _shell, _projections, _mediaControls, _import.HandlePreviewEvent, _transferProgress);
+            _playback, _shell, _projections, _mediaControls, _import.HandlePreviewEvent, _transferProgress, _cast);
         _session.UiEvent += _router.Route;
 
         // The artwork lightbox: opened from the album gallery and the import
@@ -390,6 +395,7 @@ public sealed partial class MainWindow : Window
         _projections.Register(typeof(BridgeInvalidation.ImportCandidateList), _import.RefreshCandidates);
         _projections.Register(typeof(BridgeInvalidation.ImportCandidate), _import.RefreshCandidates);
         _projections.Register(typeof(BridgeInvalidation.WatchedFolders), _import.RefreshCandidates);
+        _projections.Register(typeof(BridgeInvalidation.CastDevices), _cast.RefreshDevices);
     }
 
     private void OnConfigInvalidated()

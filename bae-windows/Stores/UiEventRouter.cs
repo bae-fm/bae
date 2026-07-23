@@ -18,6 +18,7 @@ internal sealed class UiEventRouter
     private readonly MediaControlService _mediaControls;
     private readonly Action<BridgeUiEvent> _importEvents;
     private readonly TransferProgressStore _transfers;
+    private readonly CastStore _cast;
 
     public UiEventRouter(
         PlaybackStore playback,
@@ -25,7 +26,8 @@ internal sealed class UiEventRouter
         ProjectionRegistry projections,
         MediaControlService mediaControls,
         Action<BridgeUiEvent> importEvents,
-        TransferProgressStore transfers)
+        TransferProgressStore transfers,
+        CastStore cast)
     {
         _playback = playback;
         _shell = shell;
@@ -33,6 +35,7 @@ internal sealed class UiEventRouter
         _mediaControls = mediaControls;
         _importEvents = importEvents;
         _transfers = transfers;
+        _cast = cast;
     }
 
     public void Route(BridgeUiEvent evt)
@@ -126,6 +129,11 @@ internal sealed class UiEventRouter
                 // indicator. Core's drop guard guarantees this event even on abort,
                 // so overlay entries cannot leak.
                 _transfers.Clear(ended.ReleaseId);
+                break;
+            case BridgeUiEvent.CastStatusChanged cast:
+                // The active renderer changed — casting to a device, or back to
+                // local (a user stop or a receiver-side end core detected).
+                _cast.ApplyStatus(cast.DeviceName);
                 break;
             default:
                 // A BridgeUiEvent variant with no arm above: log the drift so a new

@@ -662,9 +662,19 @@
                     </Grid>
                 </StackPanel>
 
-                <!-- Right: queue toggle, mute, volume, trailing-aligned. -->
+                <!-- Right: cast, queue toggle, mute, volume, trailing-aligned. -->
                 <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6"
                             HorizontalAlignment="Right" VerticalAlignment="Center">
+                    <Button
+                        x:Name="NpCast"
+                        Width="30"
+                        Height="30"
+                        Padding="0"
+                        CornerRadius="8"
+                        Background="Transparent"
+                        BorderThickness="0">
+                        <FontIcon x:Name="NpCastGlyph" Glyph="&#xEC15;" FontSize="16" />
+                    </Button>
                     <Grid Width="32" Height="32">
                         <Button
                             x:Name="NpQueue"
