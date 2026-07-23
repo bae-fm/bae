@@ -205,11 +205,17 @@ pub enum TransportState {
 }
 
 /// Parse `GetPositionInfo`'s response into position and duration. A missing,
-/// `NOT_IMPLEMENTED`, or unparseable time is carried as `None`.
+/// `NOT_IMPLEMENTED`, or unparseable time is carried as `None`. A zero
+/// `TrackDuration` is treated as unknown (`None`): renderers report `0:00:00`
+/// while a track loads, and a real track never has zero length — carrying it as
+/// a duration would let end-of-track detection fire off a fake value. A zero
+/// `RelTime` is a genuine position 0 and is kept.
 pub fn parse_position_info(body: &str) -> PositionInfo {
     PositionInfo {
         rel_time: element_text(body, "RelTime").and_then(|t| parse_hms(&t)),
-        track_duration: element_text(body, "TrackDuration").and_then(|t| parse_hms(&t)),
+        track_duration: element_text(body, "TrackDuration")
+            .and_then(|t| parse_hms(&t))
+            .filter(|duration| !duration.is_zero()),
     }
 }
 

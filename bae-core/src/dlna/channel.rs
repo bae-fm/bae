@@ -21,7 +21,7 @@ use crate::renderer::{
     ReceiverStatus, RendererChannel, RendererError, RendererMedia, RendererPlayerState,
 };
 
-use super::soap::{self, DidlMetadata, SoapRequest, TransportState};
+use super::soap::{self, DidlMetadata, PositionInfo, SoapRequest, TransportState};
 
 /// How close to the reported duration a stopped renderer must have reached for
 /// the stop to count as a natural end rather than a mid-track halt.
@@ -53,6 +53,10 @@ struct PlaybackTracking {
     /// Set once end-of-track has been reported, so it fires exactly once (the
     /// renderer keeps reporting STOPPED after the track ends).
     end_reported: bool,
+    /// The renderer has reported a position (any `RelTime`) at least once since
+    /// the last load. `false` for a renderer that only ever answers
+    /// `RelTime: NOT_IMPLEMENTED` — the position rule can't apply to it.
+    has_reported_position: bool,
     /// The last position observed while not stopped — the renderer resets RelTime
     /// to zero on stop, so the pre-stop value is what says whether it played
     /// through.
@@ -128,7 +132,7 @@ impl DlnaChannel {
         if self.playback.stopped_by_us || !self.playback.has_played || self.playback.end_reported {
             return RendererPlayerState::Idle;
         }
-        if self.played_through() {
+        if self.is_end_of_track() {
             self.playback.end_reported = true;
             RendererPlayerState::Finished
         } else {
@@ -138,13 +142,27 @@ impl DlnaChannel {
         }
     }
 
-    /// Whether the last observed position reached (within slack) the track's
-    /// duration. Unknown duration is treated as played-through, since a STOPPED
-    /// after playing is otherwise indistinguishable from a natural end.
-    fn played_through(&self) -> bool {
+    /// Whether a STOPPED (after playing, not by us) is a natural end.
+    fn is_end_of_track(&self) -> bool {
+        if !self.playback.has_reported_position {
+            // Position-less renderer (only ever `RelTime: NOT_IMPLEMENTED`): we
+            // genuinely cannot tell a natural end from a device-remote mid-track
+            // stop. Choose end-of-track so auto-advance works on these renderers;
+            // the cost is a rare spurious advance when someone stops from the
+            // device's own remote.
+            debug!(
+                "dlna: STOPPED with no position ever reported; treating as end-of-track \
+                 (auto-advance; a device-remote stop can't be told apart here)"
+            );
+            return true;
+        }
+        // A position was reported, so the position rule applies: a natural end
+        // reaches within slack of a known duration. An unknown duration (never
+        // reported, or reported as zero while loading) can't confirm an end, so a
+        // stop off it is treated as mid-track, not finished.
         match (self.playback.last_position, self.playback.duration) {
             (Some(position), Some(duration)) => position + END_OF_TRACK_SLACK >= duration,
-            _ => true,
+            _ => false,
         }
     }
 }
@@ -209,17 +227,25 @@ impl RendererChannel for DlnaChannel {
             self.post(&self.av_transport_url.clone(), soap::get_transport_info())?;
         let transport = soap::parse_transport_state(&transport_body);
 
-        let position_info = self
+        let position_info = match self
             .post(&self.av_transport_url.clone(), soap::get_position_info())
-            .map(|body| soap::parse_position_info(&body))
-            .unwrap_or_default();
+        {
+            Ok(body) => soap::parse_position_info(&body),
+            Err(error) => {
+                debug!("dlna: GetPositionInfo failed (position unavailable this poll): {error}");
+                PositionInfo::default()
+            }
+        };
         if let Some(duration) = position_info.track_duration {
             self.playback.duration = Some(duration);
         }
-        // Record the position only while not stopped: renderers zero RelTime on
-        // stop, and the pre-stop value is what end-of-track detection needs.
-        if !matches!(transport, TransportState::Stopped) {
-            if let Some(position) = position_info.rel_time {
+        if let Some(position) = position_info.rel_time {
+            // The renderer reports a position, so the position rule can apply to
+            // its stops (a position-less renderer never reaches here).
+            self.playback.has_reported_position = true;
+            // Record the position only while not stopped: renderers zero RelTime
+            // on stop, and the pre-stop value is what end-of-track needs.
+            if !matches!(transport, TransportState::Stopped) {
                 self.playback.last_position = Some(position);
             }
         }

@@ -7,6 +7,12 @@
 //! implementations — Cast over CASTV2 (`crate::cast`) and UPnP over SOAP
 //! (`crate::dlna`) — differ only in their wire; the session, poll loop, and
 //! everything above them are shared. Tests supply a fake implementation.
+//!
+//! This trait is specifically the "the device fetches a URL and is driven by
+//! commands" shape. A push-audio renderer like AirPlay — where bae keeps
+//! decoding and streams the audio to the receiver, which never fetches a URL — is
+//! a different renderer flavor and is deliberately outside this trait; it belongs
+//! beside `Renderer::Remote` as its own variant, not as a third channel here.
 
 use std::fmt;
 use std::time::Duration;

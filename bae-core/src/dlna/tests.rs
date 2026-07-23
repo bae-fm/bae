@@ -633,3 +633,91 @@ fn poll_of_unreachable_renderer_is_a_connection_error() {
         "an unreachable renderer must surface as a terminal connection error"
     );
 }
+
+// -- end-of-track inference: position-less and zero-duration renderers ---------
+
+/// Drive a channel to PLAYING (recording whatever position the renderer reports),
+/// then flip it to STOPPED and return the state the next poll classifies it as.
+fn stopped_state_after(rel_time: &str, track_duration: &str) -> RendererPlayerState {
+    let runtime = tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()
+        .unwrap();
+    let state: Shared = Arc::new(Mutex::new(FakeRenderer {
+        transport_state: "PLAYING".to_string(),
+        rel_time: rel_time.to_string(),
+        track_duration: track_duration.to_string(),
+        ..FakeRenderer::default()
+    }));
+    let base = runtime.block_on(start_fake_renderer(state.clone()));
+    let mut channel = channel_to(&base);
+    // Observe PLAYING so has_played is set and any position is recorded.
+    assert_eq!(
+        channel.poll_status().unwrap().player_state,
+        RendererPlayerState::Playing
+    );
+    state.lock().unwrap().transport_state = "STOPPED".to_string();
+    channel.poll_status().unwrap().player_state
+}
+
+/// A renderer that never reports a position (`RelTime: NOT_IMPLEMENTED`, a
+/// documented quirk) still auto-advances on STOPPED: we can't tell a natural end
+/// from a device-remote stop, and working auto-advance is the better default.
+#[test]
+fn stop_without_any_reported_position_is_finished() {
+    assert_eq!(
+        stopped_state_after("NOT_IMPLEMENTED", "NOT_IMPLEMENTED"),
+        RendererPlayerState::Finished,
+        "a position-less renderer must still advance the queue on STOPPED"
+    );
+}
+
+/// While loading, renderers commonly report `TrackDuration=0:00:00`. Once a real
+/// position has been seen, a STOPPED must NOT read as end-of-track off that fake
+/// zero duration.
+#[test]
+fn zero_duration_with_reported_position_is_not_finished() {
+    assert_eq!(
+        stopped_state_after("0:00:30", "0:00:00"),
+        RendererPlayerState::Idle,
+        "a zero TrackDuration must not make a mid-track stop look finished"
+    );
+}
+
+/// The 5s end-of-track slack: within 5s of the reported duration is a natural
+/// end; further out is a mid-track stop.
+#[test]
+fn end_of_track_respects_the_five_second_slack() {
+    // duration − 4s → within slack → finished.
+    assert_eq!(
+        stopped_state_after("0:02:56", "0:03:00"),
+        RendererPlayerState::Finished,
+        "4s short of the end is a natural end"
+    );
+    // duration − 6s → outside slack → mid-track stop.
+    assert_eq!(
+        stopped_state_after("0:02:54", "0:03:00"),
+        RendererPlayerState::Idle,
+        "6s short of the end is not a natural end"
+    );
+}
+
+/// A zero `TrackDuration` (reported while a track loads) is unknown, not a real
+/// zero-length track; a zero `RelTime` is a genuine position 0.
+#[test]
+fn zero_track_duration_parses_as_unknown() {
+    let body = r#"<u:GetPositionInfoResponse xmlns:u="urn:schemas-upnp-org:service:AVTransport:1">
+      <TrackDuration>0:00:00</TrackDuration>
+      <RelTime>0:00:00</RelTime>
+    </u:GetPositionInfoResponse>"#;
+    let info = parse_position_info(body);
+    assert_eq!(
+        info.rel_time,
+        Some(Duration::ZERO),
+        "a zero RelTime is a real position, not absent"
+    );
+    assert_eq!(
+        info.track_duration, None,
+        "a zero TrackDuration is unknown (still loading), not a real duration"
+    );
+}
