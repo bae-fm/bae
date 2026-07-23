@@ -20,12 +20,28 @@ private let bridgeRestoreFromCloud = restoreFromCloud(libraryName:config:)
 private let bridgeGenerateJoinRequest = generateJoinRequest(email:)
 private let bridgeJoinFromCodeOperation =
     joinFromCodeOperation(code:joinRequestCode:oauthTokenJson:)
-private let bridgeOauthAuthorize = oauthAuthorize(provider:)
-private let bridgeOauthCancel = oauthCancel
-private let bridgeFetchAccountEmail = fetchAccountEmail(
-    provider:
-    oauthTokenJson:
-)
+// The OAuth functions exist only in builds whose bridge compiles the OAuth
+// providers (the S3-only build omits them entirely); elsewhere the bindings
+// fall back to the same not-implemented stubs the initializer defaults to,
+// and the BAE_OAUTH_PROVIDERS-gated UI never calls them.
+#if BAE_OAUTH_PROVIDERS
+    private let bridgeOauthAuthorize = oauthAuthorize(provider:)
+    private let bridgeOauthCancel = oauthCancel
+    private let bridgeFetchAccountEmail = fetchAccountEmail(
+        provider:
+        oauthTokenJson:
+    )
+#else
+    private let bridgeOauthAuthorize:
+        @Sendable (BridgeCloudProvider) throws -> String = { _ in
+            throw StubError.notImplemented
+        }
+    private let bridgeOauthCancel: @Sendable () -> Void = {}
+    private let bridgeFetchAccountEmail:
+        @Sendable (BridgeCloudProvider, String) throws -> String = { _, _ in
+            throw StubError.notImplemented
+        }
+#endif
 
 /// Pre-library operations the welcome flow drives: on-device discovery,
 /// create, restore, join, the keychain restore codes, and provider OAuth.

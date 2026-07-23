@@ -24,7 +24,7 @@ struct TrackNumberCell: View {
         var number: Int32? = 7
         @Previewable
         @State
-        var blank: Int32? = nil
+        var blank: Int32?
         HStack(spacing: 12) {
             TrackNumberCell(value: $number).frame(width: 60)
             // Unset — renders blank.

@@ -537,7 +537,7 @@ extension QueueSection {
         count: Int,
         acceptsExternalDrops: Bool,
         laneId: QueueLaneID,
-        onSetShuffle: ((Bool) -> Void)?
+        onSetShuffle: ((Bool) -> Void)? = nil
     ) -> some View {
         let items = Array(PreviewData.queueItems.prefix(count))
         return QueueSection(

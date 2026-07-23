@@ -197,6 +197,11 @@ struct WelcomeChooseView: View {
         }
     }
 
+}
+
+// MARK: - Actions
+
+extension WelcomeChooseView {
     /// Remove a keychain restore code (and its entry) after the section's
     /// confirmation. The section holds the confirmation dialog; the confirmed
     /// delete calls up here so the keychain write and the entry drop stay with

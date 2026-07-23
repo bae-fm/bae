@@ -614,6 +614,36 @@ extension AlbumDetailView {
         }
     }
 
+    /// Core renders each preset's suggested stem from its own token pattern;
+    /// a failure surfaces rather than falling back to a raw title. Every
+    /// preset pre-renders up front, paired with its choice, so the format
+    /// popup can swap the stem synchronously during the modal panel (async
+    /// work can't run during `runModal`). Nil means the export stops — the
+    /// failure already surfaced (or was a cancellation).
+    private func renderedSaveChoices(
+        trackId: String,
+        choices: [SaveFormatChoice]
+    ) async -> [TrackSaveChoice]? {
+        var saveChoices: [TrackSaveChoice] = []
+        for choice in choices {
+            let stem: String
+            do {
+                stem = try await export.suggestedName(trackId, choice.presetId)
+            }
+            catch is CancellationError {
+                return nil
+            }
+            catch {
+                exportError = error.displayLine
+                return nil
+            }
+            saveChoices.append(
+                TrackSaveChoice(choice: choice, suggestedStem: stem)
+            )
+        }
+        return saveChoices
+    }
+
     private func exportTrack(trackId: String) {
         exportTask?.cancel()
         exportTask = Task {
@@ -629,31 +659,12 @@ extension AlbumDetailView {
                 return
             }
 
-            // Core renders each preset's suggested stem from its own token
-            // pattern; a failure surfaces rather than falling back to a raw
-            // title. Pre-render every preset up front, paired with its choice,
-            // so the format popup can swap the stem synchronously during the
-            // modal panel (async work can't run during `runModal`).
-            var saveChoices: [TrackSaveChoice] = []
-            for choice in choices {
-                let stem: String
-                do {
-                    stem = try await export.suggestedName(
-                        trackId,
-                        choice.presetId
-                    )
-                }
-                catch is CancellationError {
-                    return
-                }
-                catch {
-                    exportError = error.displayLine
-                    return
-                }
-                saveChoices.append(
-                    TrackSaveChoice(choice: choice, suggestedStem: stem)
+            guard
+                let saveChoices = await renderedSaveChoices(
+                    trackId: trackId,
+                    choices: choices
                 )
-            }
+            else { return }
 
             let panel = TrackSavePanel.make(
                 saveChoices: saveChoices,

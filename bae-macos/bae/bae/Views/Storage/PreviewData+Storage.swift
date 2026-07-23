@@ -395,9 +395,9 @@
             title: String,
             artist: String,
             storageState: BridgeReleaseStorageState,
-            pinned: Bool,
-            fileCount: Int64,
-            totalSize: Int64
+            pinned: Bool = false,
+            fileCount: Int64 = 12,
+            totalSize: Int64 = 210_000_000
         ) -> BridgeStorageRow {
             BridgeStorageRow(
                 release: BridgeReleaseSummary(
