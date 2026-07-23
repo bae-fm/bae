@@ -1,7 +1,6 @@
 import AuthenticationServices
 import BaeKit
 import SwiftUI
-import UIKit
 import os.log
 
 private let logger = Logger.bae("OnboardingView")
@@ -117,25 +116,80 @@ struct OnboardingView: View {
     var body: some View {
         Group {
             if linkFlow != nil {
-                linkingView
+                OnboardingLinkingScreen(onCancel: { cancelLink() })
             }
             else {
                 switch mode {
                 case .entry:
-                    entryView
+                    OnboardingEntryScreen(
+                        error: error,
+                        onJoin: {
+                            error = nil
+                            mode = .join
+                        },
+                        onScanRecovery: {
+                            error = nil
+                            CameraPermission.requestThenScan(
+                                present: { showScanner = true },
+                                onError: { error = $0 }
+                            )
+                        },
+                        onPasteRecovery: {
+                            error = nil
+                            pasteInput = ""
+                            showPasteSheet = true
+                        }
+                    )
                 case .join:
                     joinView
                 }
             }
         }
         .fullScreenCover(isPresented: $showScanner) {
-            scannerSheet(onScanned: { link(code: $0) })
+            ScannerSheet(
+                onScanned: { code in
+                    showScanner = false
+                    showInviteScanner = false
+                    link(code: code)
+                },
+                onError: { message in
+                    showScanner = false
+                    showInviteScanner = false
+                    error = message
+                },
+                onClose: {
+                    showScanner = false
+                    showInviteScanner = false
+                }
+            )
         }
         .fullScreenCover(isPresented: $showInviteScanner) {
-            scannerSheet(onScanned: { inviteCodeInput = $0 })
+            ScannerSheet(
+                onScanned: { code in
+                    showScanner = false
+                    showInviteScanner = false
+                    inviteCodeInput = code
+                },
+                onError: { message in
+                    showScanner = false
+                    showInviteScanner = false
+                    error = message
+                },
+                onClose: {
+                    showScanner = false
+                    showInviteScanner = false
+                }
+            )
         }
         .sheet(isPresented: $showPasteSheet) {
-            pasteSheet
+            PasteRecoveryCodeSheet(
+                input: $pasteInput,
+                onCancel: { showPasteSheet = false },
+                onConnect: { code in
+                    showPasteSheet = false
+                    link(code: code)
+                }
+            )
         }
         .onDisappear {
             linkFlow?.cancel()
@@ -151,173 +205,6 @@ struct OnboardingView: View {
         )
         #endif
     }
-
-    private var entryView: some View {
-        onboardingScreen {
-            Image(systemName: "music.note.house.fill")
-                .font(.system(size: 72))
-                .foregroundStyle(Theme.accent)
-            Text("bae")
-                .font(.system(size: 48, weight: .bold))
-            secondaryText(
-                "Add this device to a library you already have on another device."
-            )
-
-            VStack(spacing: 12) {
-                Button {
-                    error = nil
-                    mode = .join
-                } label: {
-                    Text("Join a library")
-                        .frame(maxWidth: 240)
-                }
-                .buttonStyle(.borderedProminent)
-
-                Button {
-                    error = nil
-                    CameraPermission.requestThenScan(
-                        present: { showScanner = true },
-                        onError: { error = $0 }
-                    )
-                } label: {
-                    Text("Scan recovery code")
-                        .frame(maxWidth: 240)
-                }
-                .buttonStyle(.bordered)
-
-                Button {
-                    error = nil
-                    pasteInput = ""
-                    showPasteSheet = true
-                } label: {
-                    Text("Paste recovery code")
-                        .frame(maxWidth: 240)
-                }
-                .buttonStyle(.bordered)
-            }
-            .padding(.top, 16)
-
-            if let error {
-                Text(error)
-                    .font(.callout)
-                    .foregroundStyle(.red)
-                    .multilineTextAlignment(.center)
-                    .frame(maxWidth: 320)
-            }
-        }
-    }
-
-    private var linkingView: some View {
-        onboardingScreen {
-            ProgressView()
-                .controlSize(.large)
-            Text("Connecting to your library")
-                .font(.headline)
-                .multilineTextAlignment(.center)
-            secondaryText("bae is setting up the library on this device.")
-            Button("Cancel") {
-                cancelLink()
-            }
-            .buttonStyle(.bordered)
-            .padding(.top, 8)
-        }
-    }
-
-    private func onboardingScreen<Content: View>(
-        @ViewBuilder content: () -> Content
-    ) -> some View {
-        VStack(spacing: 16) {
-            Spacer()
-            content()
-            Spacer()
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding(32)
-    }
-
-    private func secondaryText(_ text: LocalizedStringKey) -> some View {
-        Text(text)
-            .font(.body)
-            .foregroundStyle(.secondary)
-            .multilineTextAlignment(.center)
-            .frame(maxWidth: 320)
-    }
-
-    private func scannerSheet(
-        onScanned: @escaping (String) -> Void
-    ) -> some View {
-        ZStack(alignment: .topTrailing) {
-            QRScannerView(
-                onScanned: { code in
-                    showScanner = false
-                    showInviteScanner = false
-                    onScanned(code)
-                },
-                onError: { message in
-                    showScanner = false
-                    showInviteScanner = false
-                    error = message
-                }
-            )
-            .ignoresSafeArea()
-            Button {
-                showScanner = false
-                showInviteScanner = false
-            } label: {
-                Image(systemName: "xmark.circle.fill")
-                    .font(.title)
-                    .foregroundStyle(.white)
-                    .padding()
-            }
-        }
-    }
-
-    private var pasteSheet: some View {
-        NavigationStack {
-            VStack(alignment: .leading, spacing: 16) {
-                Text(
-                    "Paste your recovery code. Use this only when you have no other device available to approve this one."
-                )
-                .font(.callout)
-                .foregroundStyle(.secondary)
-                TextField(
-                    "Paste your recovery code",
-                    text: $pasteInput,
-                    axis: .vertical
-                )
-                .textFieldStyle(.roundedBorder)
-                .font(.body.monospaced())
-                .textInputAutocapitalization(.never)
-                .autocorrectionDisabled()
-                .lineLimit(3, reservesSpace: true)
-                Spacer()
-            }
-            .padding()
-            .navigationTitle("Paste recovery code")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { showPasteSheet = false }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Connect") {
-                        let code = pasteInput.trimmingCharacters(
-                            in: .whitespacesAndNewlines
-                        )
-                        showPasteSheet = false
-                        link(code: code)
-                    }
-                    .disabled(
-                        pasteInput.trimmingCharacters(
-                            in: .whitespacesAndNewlines
-                        )
-                        .isEmpty
-                    )
-                }
-            }
-        }
-    }
-
 }
 
 // MARK: - Join flow
@@ -327,10 +214,41 @@ extension OnboardingView {
         NavigationStack {
             Group {
                 if joinProvider == nil {
-                    joinProviderPicker
+                    JoinProviderPicker(
+                        providers: availableCloudProviders(),
+                        isAuthorizing: isAuthorizing,
+                        error: error,
+                        onSelect: { selectJoinProvider($0) }
+                    )
                 }
                 else {
-                    joinCodeExchange
+                    JoinCodeExchange(
+                        joinRequest: joinRequest,
+                        inviteCode: $inviteCodeInput,
+                        decodedInvite: decodedInvite,
+                        joinTokenJson: joinTokenJson,
+                        error: error,
+                        onRetryGenerate: {
+                            genTask?.cancel()
+                            genTask = Task { await generateJoinCode() }
+                        },
+                        onScanInvite: {
+                            error = nil
+                            CameraPermission.requestThenScan(
+                                present: { showInviteScanner = true },
+                                onError: { error = $0 }
+                            )
+                        },
+                        onInviteChanged: { newInput in
+                            let trimmed = newInput.trimmingCharacters(
+                                in: .whitespaces
+                            )
+                            decodedInvite =
+                                trimmed.isEmpty
+                                ? nil
+                                : Result { try decodeInviteCode(code: trimmed) }
+                        }
+                    )
                 }
             }
             .navigationTitle("Join a library")
@@ -372,173 +290,6 @@ extension OnboardingView {
             joinEmail = nil
             joinRequest = nil
             error = nil
-        }
-    }
-
-    /// Step one of the join flow: pick the cloud provider the target library
-    /// uses. For an OAuth provider this authenticates up front so the account
-    /// email is baked into the join-request; for S3/iCloud it goes straight to
-    /// generating a code with no email.
-    fileprivate var joinProviderPicker: some View {
-        List {
-            Section {
-                if isAuthorizing {
-                    HStack(spacing: 8) {
-                        ProgressView()
-                        Text("Signing in...")
-                            .foregroundStyle(.secondary)
-                    }
-                    .frame(maxWidth: .infinity)
-                }
-                else {
-                    ForEach(availableCloudProviders(), id: \.self) { provider in
-                        Button(provider.displayName) {
-                            selectJoinProvider(provider)
-                        }
-                    }
-                }
-            } header: {
-                Text("Choose the cloud provider the library you're joining uses.")
-            }
-            if let error {
-                Section {
-                    Text(error)
-                        .foregroundStyle(.red)
-                        .font(.callout)
-                }
-            }
-        }
-    }
-
-    /// Step two of the join flow: show this device's code and take the invite
-    /// code the approving device hands back. Reached only after a provider is
-    /// picked, so the code is already generated (with the account email for an
-    /// OAuth provider).
-    fileprivate var joinCodeExchange: some View {
-        List {
-            Section("This device's code") {
-                joinRequestRow
-            }
-            Section("Invite code") {
-                inviteCodeRow
-            }
-            if let error {
-                Section {
-                    Text(error)
-                        .foregroundStyle(.red)
-                        .font(.callout)
-                }
-            }
-        }
-    }
-
-    @ViewBuilder
-    fileprivate var joinRequestRow: some View {
-        switch joinRequest {
-        case nil:
-            ProgressView()
-                .frame(maxWidth: .infinity)
-        case .success(let generated):
-            VStack(spacing: 12) {
-                Text(
-                    "On a device already in your library, open Settings \u{2192} Members \u{2192} Add a device and scan or paste this."
-                )
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-
-                CodeShareBlock(
-                    code: generated.code,
-                    contentDescription: "This device's join code",
-                    qrSize: 180
-                )
-
-                // The approving device shows this same fingerprint; matching
-                // them confirms the right device is being added.
-                Text("This device: \(generated.fingerprint)")
-                    .font(.caption.monospaced())
-                    .foregroundStyle(.secondary)
-            }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 4)
-        case .failure(let genError):
-            VStack(spacing: 8) {
-                Text(genError.displayLine ?? "")
-                    .foregroundStyle(.red)
-                    .font(.callout)
-                Button("Try again") {
-                    genTask?.cancel()
-                    genTask = Task { await generateJoinCode() }
-                }
-            }
-            .frame(maxWidth: .infinity)
-        }
-    }
-
-    @ViewBuilder
-    fileprivate var inviteCodeRow: some View {
-        Text(
-            "Once that device approves this one, enter the invite code it shows."
-        )
-        .font(.caption)
-        .foregroundStyle(.secondary)
-
-        HStack(spacing: 8) {
-            TextField("Paste invite code", text: $inviteCodeInput)
-                .font(.body.monospaced())
-                .textInputAutocapitalization(.never)
-                .autocorrectionDisabled()
-            Button("Scan") {
-                error = nil
-                CameraPermission.requestThenScan(
-                    present: { showInviteScanner = true },
-                    onError: { error = $0 }
-                )
-            }
-        }
-        .onChange(of: inviteCodeInput) { _, newInput in
-            let trimmed = newInput.trimmingCharacters(in: .whitespaces)
-            decodedInvite =
-                trimmed.isEmpty
-                ? nil
-                : Result { try decodeInviteCode(code: trimmed) }
-        }
-
-        if case .success(let info) = decodedInvite {
-            LabeledContent("Library", value: info.libraryName)
-            LabeledContent(
-                "Provider",
-                value: info.cloudProvider.displayName
-            )
-            LabeledContent(
-                "Owner",
-                value: info.ownerFingerprint
-            )
-            #if BAE_OAUTH_PROVIDERS
-            // OAuth is done up front at provider selection, so a token is
-            // already held. A missing token here means the joiner picked a
-            // provider that doesn't match this library — send them back.
-            if info.needsOauth && joinTokenJson == nil {
-                Text(
-                    "This library needs a signed-in provider. Go back and choose the provider it uses."
-                )
-                .foregroundStyle(.red)
-                .font(.callout)
-            }
-            #else
-            if info.needsOauth {
-                Text(
-                    "This library uses a provider this build can't connect to."
-                )
-                .foregroundStyle(.red)
-                .font(.callout)
-            }
-            #endif
-        }
-        else if case .failure(let decodeError) = decodedInvite {
-            Text(decodeError.displayLine ?? "")
-                .foregroundStyle(.red)
-                .font(.callout)
         }
     }
 
@@ -881,21 +632,3 @@ extension OnboardingView {
         return false
     }
 }
-
-#if BAE_OAUTH_PROVIDERS
-private struct PresentationAnchorReader: UIViewRepresentable {
-    @Binding
-    var presentationAnchor: ASPresentationAnchor?
-
-    func makeUIView(context: Context) -> UIView {
-        UIView(frame: .zero)
-    }
-
-    func updateUIView(_ uiView: UIView, context: Context) {
-        let window = uiView.window
-        DispatchQueue.main.async {
-            presentationAnchor = window
-        }
-    }
-}
-#endif
