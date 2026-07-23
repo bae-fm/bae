@@ -39,6 +39,7 @@ public struct Config: Equatable {
     /// Id of the preset a release save defaults to (valid + release-applicable).
     public let defaultReleaseSavePreset: String
     public let mcp: BridgeMcpConfig
+    public let subsonic: BridgeSubsonicConfig
 
     public var hasCloudHome: Bool { sync != nil }
 
@@ -58,6 +59,7 @@ public struct Config: Equatable {
         defaultTrackSavePreset = bridge.defaultTrackSavePreset
         defaultReleaseSavePreset = bridge.defaultReleaseSavePreset
         mcp = bridge.mcp
+        subsonic = bridge.subsonic
     }
 
     /// The storage state to import into. `Managed` only when a cloud home

@@ -51,6 +51,7 @@ final class AppService: BaeKit.AppService {
     let outputs: Outputs
     let discogs: Discogs
     let automation: Automation
+    let subsonic: SubsonicServer
     let export: TrackSave
 
     init(
@@ -75,6 +76,7 @@ final class AppService: BaeKit.AppService {
         outputs = Outputs(handle: appHandle)
         discogs = Discogs(handle: appHandle)
         automation = Automation(handle: appHandle)
+        subsonic = SubsonicServer(handle: appHandle)
         export = TrackSave(handle: appHandle)
         super
             .init(
