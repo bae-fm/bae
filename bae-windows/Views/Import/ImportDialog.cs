@@ -17,9 +17,10 @@ internal sealed class ImportDialog
     private readonly Func<IntPtr> _windowHandle;
     private readonly ImportStore _import;
     private readonly ImportPickerDialog _picker;
+    private readonly Action<string> _showImportError;
 
-    // True while the dialog is showing. The window-drop handler reads it to avoid
-    // opening a second ContentDialog over an already-open import dialog.
+    // True while the dialog is showing. ImportFolder reads it to avoid opening a
+    // second ContentDialog over an already-open import dialog.
     public bool IsOpen { get; private set; }
 
     public ImportDialog(
@@ -27,13 +28,40 @@ internal sealed class ImportDialog
         Func<XamlRoot?> xamlRoot,
         Func<IntPtr> windowHandle,
         ImportStore import,
-        ImportPickerDialog picker)
+        ImportPickerDialog picker,
+        Action<string> showImportError)
     {
         _session = session;
         _xamlRoot = xamlRoot;
         _windowHandle = windowHandle;
         _import = import;
         _picker = picker;
+        _showImportError = showImportError;
+    }
+
+    // Scan a folder and open the dialog on its candidates — candidates stream into
+    // the import store and the dialog (bound to that list) shows them, on a scan
+    // error too, matching macOS, which navigates to import regardless of the scan
+    // result. Shared by the window drop target and a folder activation intent (the
+    // folder verb or bae://import); the caller has already confirmed a library is
+    // open.
+    public async System.Threading.Tasks.Task ImportFolder(string folderPath)
+    {
+        var (current, error) = await _import.ScanFolder(folderPath);
+        if (!current)
+        {
+            return;
+        }
+        if (error is not null)
+        {
+            _showImportError(error);
+        }
+
+        // Skip if one is already open (only one ContentDialog can open at a time).
+        if (!IsOpen)
+        {
+            await Show();
+        }
     }
 
     public async System.Threading.Tasks.Task Show()

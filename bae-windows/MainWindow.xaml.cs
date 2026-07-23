@@ -328,7 +328,8 @@ public sealed partial class MainWindow : Window
             () => Content.XamlRoot,
             () => WinRT.Interop.WindowNative.GetWindowHandle(this),
             _import,
-            _importPicker);
+            _importPicker,
+            ShowImportBanner);
 
         // The settings window and its store/panes. It registers its config
         // re-read on the projection registry while open, opens the approve flow

@@ -162,7 +162,7 @@ public sealed partial class MainWindow : Window
                         "Ignored a folder-import activation: no library is open.");
                     return;
                 }
-                await ImportFolder(importFolder.Path);
+                await _importDialog.ImportFolder(importFolder.Path);
                 return;
             default:
                 throw new ArgumentOutOfRangeException(nameof(intent), intent, "Unknown activation intent");

@@ -90,32 +90,7 @@ public sealed partial class MainWindow : Window
             return;
         }
 
-        await ImportFolder(folderPath);
-    }
-
-    // Scan a folder and open the import dialog on its candidates — candidates
-    // stream into the import store and the dialog (bound to that list) shows
-    // them, on a scan error too, matching macOS, which navigates to import
-    // regardless of the scan result. Shared by the window drop target and a
-    // folder activation intent (the folder verb or bae://import); the caller
-    // has already confirmed a library is open.
-    private async System.Threading.Tasks.Task ImportFolder(string folderPath)
-    {
-        var (current, error) = await _import.ScanFolder(folderPath);
-        if (!current)
-        {
-            return;
-        }
-        if (error is not null)
-        {
-            ShowImportBanner(error);
-        }
-
-        // Skip if one is already open (only one ContentDialog can open at a time).
-        if (!_importDialog.IsOpen)
-        {
-            await _importDialog.Show();
-        }
+        await _importDialog.ImportFolder(folderPath);
     }
 
     private void ShowImportBanner(string message)
