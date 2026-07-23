@@ -198,6 +198,7 @@ struct StorageManagerView: View {
     #Preview("Full screen") {
         StorageManagerView()
             .environment(PreviewData.storageLibrary())
+            .environment(MediaPaths.stub)
             .environment(LibraryStore())
             .environment(ReleaseEditor.stub)
             .environment(Sync.stub)
