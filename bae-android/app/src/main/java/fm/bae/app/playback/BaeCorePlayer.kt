@@ -39,7 +39,7 @@ import uniffi.bae_bridge.BridgeRepeatMode
 import uniffi.bae_bridge.BridgeSidePausePrompt
 import uniffi.bae_bridge.BridgeUiEvent
 
-/** Now-playing snapshot the [fm.bae.app.ui.NowPlayingBar] renders. */
+/** Now-playing snapshot the [fm.bae.app.ui.playback.NowPlayingBar] renders. */
 data class NowPlaying(
     val trackId: String,
     val title: String,
@@ -61,7 +61,7 @@ data class PlaybackPosition(
     val durationMs: Long?,
 )
 
-/** One queue entry the [fm.bae.app.ui.QueueScreen] renders. The UI projection
+/** One queue entry the [fm.bae.app.ui.playback.QueueScreen] renders. The UI projection
  *  of the player's internal queue metadata: [durationMs] is the track's raw
  *  length (null when core reports none), which the row renders as a clock label;
  *  [coverImageId] is the cover image id (a release id) the row fetches bytes
@@ -97,7 +97,7 @@ data class QueueContext(
     fun itemAt(index: Int): QueueItem? = upcoming.getOrNull(index) ?: pagedUpcoming[index]
 }
 
-/** The queue's two lanes the [fm.bae.app.ui.QueueScreen] renders as distinct
+/** The queue's two lanes the [fm.bae.app.ui.playback.QueueScreen] renders as distinct
  *  sections: the manual lane ("Up Next") and the [context] (or null when nothing
  *  plays from a release). Kept separate, not flattened. [revision] is the queue
  *  revision this projection was built from — a UI stamps its
