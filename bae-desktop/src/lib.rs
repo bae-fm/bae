@@ -1,8 +1,11 @@
 #![deny(unreachable_pub, dead_code)]
 
+mod cast;
+
 use std::sync::Arc;
 
 use bae_core::app::{bootstrap as bootstrap_core, BootstrapError, RunningApp};
+use bae_core::cast::CastDevice;
 use bae_core::config::{ConfigError, McpConfig, SubsonicConfig};
 use bae_core::diagnostics::Diagnostics;
 use bae_core::library::{AppServices, LibraryManager};
@@ -13,12 +16,15 @@ use bae_subsonic::SubsonicServerController;
 pub use bae_subsonic::{SubsonicServerError, SubsonicServerStatus};
 use tokio::runtime::Runtime;
 
+pub use cast::{CastController, CastError, CastStatus};
+
 pub struct DesktopApp {
     pub runtime: Runtime,
     pub services: AppServices,
     pub ui_event_bus: UiEventBus,
     mcp_controller: McpServerController,
     subsonic_controller: SubsonicServerController,
+    cast_controller: CastController,
 }
 
 #[derive(Debug)]
@@ -105,6 +111,8 @@ impl DesktopApp {
         let initial_subsonic = services.library_manager().get_config().subsonic;
         runtime.block_on(subsonic_controller.apply_config(initial_subsonic));
 
+        let cast_controller = CastController::new(&services, runtime.handle().clone());
+
         let config_controller = controller.clone();
         let config_subsonic_controller = subsonic_controller.clone();
         let mut config_rx = services.library_manager().subscribe_config_changes();
@@ -133,7 +141,44 @@ impl DesktopApp {
             ui_event_bus,
             mcp_controller: controller,
             subsonic_controller,
+            cast_controller,
         }
+    }
+
+    /// The current list of discovered Cast devices plus a receiver that updates
+    /// as devices come and go.
+    pub fn cast_devices(
+        &self,
+    ) -> (
+        Vec<CastDevice>,
+        tokio::sync::watch::Receiver<Vec<CastDevice>>,
+    ) {
+        self.cast_controller.devices()
+    }
+
+    /// Start browsing for Cast devices (the device picker opened).
+    pub fn start_cast_discovery(&self) {
+        self.cast_controller.start_discovery();
+    }
+
+    /// Stop browsing for Cast devices (the device picker closed).
+    pub fn stop_cast_discovery(&self) {
+        self.cast_controller.stop_discovery();
+    }
+
+    /// Cast playback to the device with `device_id`.
+    pub fn cast_to(&self, device_id: &str) -> Result<(), CastError> {
+        self.cast_controller.cast_to(device_id)
+    }
+
+    /// Stop casting and return playback to local output.
+    pub fn stop_casting(&self) {
+        self.cast_controller.stop_casting();
+    }
+
+    /// The current cast status (whether casting, and to which device).
+    pub fn cast_status(&self) -> CastStatus {
+        self.cast_controller.status()
     }
 
     pub fn mcp_server_status(&self) -> McpServerStatus {
