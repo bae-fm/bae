@@ -23,6 +23,7 @@ import uniffi.bae_bridge.BridgeSaveFilenameToken
 import uniffi.bae_bridge.BridgeSavePregapPlacement
 import uniffi.bae_bridge.BridgeSavePreset
 import uniffi.bae_bridge.BridgeSearchResults
+import uniffi.bae_bridge.BridgeSubsonicConfig
 import uniffi.bae_bridge.BridgeTrackGroup
 import uniffi.bae_bridge.BridgeTrackSearchResult
 import uniffi.bae_bridge.BridgeUploadProgress
@@ -266,7 +267,7 @@ object BridgeFixtures {
                         appliesToTrack = true,
                         appliesToRelease = true,
                         embedCover = true,
-                    )
+                    ),
                 ),
             defaultTrackSavePreset = "flac",
             defaultReleaseSavePreset = "flac",
@@ -274,5 +275,12 @@ object BridgeFixtures {
             discogsTokenStatus = BridgeDiscogsTokenStatus.NOT_CONFIGURED,
             discogsUsable = false,
             sync = null,
+            subsonic =
+                BridgeSubsonicConfig(
+                    enabled = false,
+                    port = 4533u,
+                    username = "",
+                    bindAddress = "127.0.0.1",
+                ),
         )
 }
