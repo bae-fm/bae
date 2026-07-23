@@ -100,7 +100,7 @@ public sealed partial class MainWindow : Window
         // above leaves the welcome in place rather than stranding the user.
         _welcomeView.Dismiss();
 
-        LoadCurrentBrowserMode();
+        _libraryBrowser.LoadCurrentBrowserMode();
         _nowPlayingBar.SeedVolume();
         // Seed the config mirror: the now-playing bar reads its time-label mode
         // from it, so it must be populated before the first position tick.
@@ -254,13 +254,10 @@ public sealed partial class MainWindow : Window
         _nowPlayingBar.Reset();
         _queuePane.Hide();
         _import.Reset();
-        CollapseAlbumExpansion();
-        _browser.Reset();
-        _albumSelection.Clear();
+        // The browser drops its inline expansion, browse collections, selection,
+        // and search, and clears the status and shuffle-enabled surfaces.
+        _libraryBrowser.Reset();
         _transferProgress.Reset();
-        SearchBox.Text = string.Empty;
-        StatusText.Text = string.Empty;
-        ShuffleLibraryItem.IsEnabled = false;
         _mediaControls.Deactivate();
         // The banners report the old library's sync / playback errors; clear them
         // so they don't describe state the next library (or none) doesn't have.

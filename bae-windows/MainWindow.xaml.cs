@@ -31,21 +31,14 @@ namespace Bae.Windows;
 /// </summary>
 public sealed partial class MainWindow : Window
 {
-    // The library session (handle + event subscription) and the stores it drives.
+    // The library session (handle + event subscription) and the store the library
+    // browser reads. The store is constructed here (composition root) and handed to
+    // the browser view along with the ContentColumn's named elements.
     private readonly SessionStore _session;
     private readonly LibraryBrowserStore _browser;
-    // The album grid's multi-selection, a browsing-session concern owned here
-    // like the browser store itself. Modifier clicks/Esc/Ctrl+A mutate it; the
-    // window syncs Album.IsSelected over the loaded collection after every
-    // mutation so the card tint (bound OneWay) stays current.
-    private readonly AlbumGridSelectionModel _albumSelection = new();
-    private readonly LibrarySortControls _sortControls;
-    private readonly HeaderCollapseModel _collapse = new();
-
-    // Tracks whether the search dropdown is open, so a re-focus doesn't re-show it
-    // while it already is (WinUI's FlyoutBase exposes no IsOpen).
-    private bool _searchFlyoutOpen;
-    private readonly BrowserPanes _browserPanes;
+    // The library content column: album grid, composer/artist lists, and search,
+    // with the mode/sort/collapse chrome around them. Owns its own browse state.
+    private readonly LibraryBrowser _libraryBrowser;
     private readonly WelcomeView _welcomeView;
     private readonly LibrariesDialog _librariesDialog;
     private readonly JoinLibraryDialog _joinDialog;
@@ -109,24 +102,13 @@ public sealed partial class MainWindow : Window
     [DllImport("user32.dll")]
     private static extern bool SetForegroundWindow(IntPtr hWnd);
 
-    // x:Bind Albums/Composers/Artists in the shell resolve here; the collections
-    // live in the browser store (constructed before InitializeComponent so
-    // these are non-null when the bindings first evaluate).
-    public ObservableCollection<Album> Albums => _browser.Albums;
-    public ObservableCollection<ComposerSummary> Composers => _browser.Composers;
-    public ObservableCollection<ArtistSummary> Artists => _browser.Artists;
-
     public MainWindow()
     {
-        // The browser store owns the Albums/Composers/Artists collections the
-        // shell binds to with x:Bind, so it (and the session it reads) must
-        // exist before InitializeComponent evaluates those bindings.
+        // The session and the browse store the library browser reads. The store
+        // sets its collections' ItemsSource in code (no x:Bind), so nothing here
+        // needs to exist before InitializeComponent.
         _session = new SessionStore(DispatcherQueue);
         _browser = new LibraryBrowserStore(_session, DispatcherQueue);
-        // The album grid binds x:Bind AlbumRows to this row projection over the
-        // browser store's flat album collection, so it must exist before
-        // InitializeComponent evaluates that binding.
-        _albumRows = new AlbumGridRows(_browser.Albums);
 
         InitializeComponent();
         Closed += OnClosed;
@@ -160,9 +142,6 @@ public sealed partial class MainWindow : Window
             ? FlowDirection.RightToLeft
             : FlowDirection.LeftToRight;
 
-        _sortControls = new LibrarySortControls(SortControls, _browser.Sort, ReloadBrowserForSortChange);
-        BuildModeHeadingFlyout();
-        SelectBrowserMode(BrowserMode.Albums, reload: false);
         // The toolbar buttons are icon-only; each carries its former text label as
         // the tooltip and accessible name (reusing the existing x:Uid strings).
         SetIconButtonLabel(PlaybackMenuButton, "toolbar.playback");
@@ -176,29 +155,6 @@ public sealed partial class MainWindow : Window
         CloseLibraryButton.Content = new FontIcon { Glyph = "\uE8BB", FontSize = 16 };
         Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(
             CloseLibraryButton, ToolTipService.GetToolTip(CloseLibraryButton) as string ?? string.Empty);
-        // Escape in a non-empty search box clears it and restores the browse pane;
-        // handledEventsToo so it fires even if the box marks Escape handled.
-        SearchBox.AddHandler(UIElement.KeyDownEvent, new KeyEventHandler(OnSearchBoxKeyDown), handledEventsToo: true);
-        // Re-open the results dropdown when focus returns to a non-empty field.
-        SearchFlyout.Opened += (_, _) => _searchFlyoutOpen = true;
-        SearchFlyout.Closed += (_, _) => _searchFlyoutOpen = false;
-        SearchBox.GotFocus += OnSearchBoxGotFocus;
-        // A click outside the open dropdown both dismisses it AND lands on its
-        // target: routing the light-dismiss overlay's input to the window root lets
-        // the click through instead of being swallowed.
-        SearchFlyout.OverlayInputPassThroughElement = RootGrid;
-        // The album tiles scroll under a header that collapses as any browse panel
-        // scrolls; each panel's scroll drives the shared collapse model.
-        AttachCollapseScroll(AlbumGrid, "albums");
-        AttachCollapseScroll(ComposerList, "composers");
-        AttachCollapseScroll(ArtistList, "artists");
-        // Fit the grid once it has a width, and on every later resize.
-        AlbumGrid.Loaded += (_, _) => ApplyGridMetrics();
-        // The grid ListView pages rows from the row projection over the flat album
-        // collection; each realized row builds its cards (and, for the row holding
-        // the expanded album, the inline detail panel) in OnAlbumRowChanging.
-        AlbumGrid.ItemsSource = _albumRows;
-        AlbumGrid.ContainerContentChanging += OnAlbumRowChanging;
 
         _shell = new ShellStore();
         _shell.Changed += RenderBanner;
@@ -295,20 +251,40 @@ public sealed partial class MainWindow : Window
             _projections,
             _transferProgress);
 
-        // The composer/search panes and the library-lifecycle dialogs. The window
-        // stays the navigation shell (open/close/switch); these render and drive
-        // their own screens, calling back for the operations it owns.
-        _browserPanes = new BrowserPanes(
+        // The library content column: the album grid, composer/artist lists, and
+        // search, with the mode/sort/collapse chrome. The window stays the
+        // navigation shell (open/close/switch) and hands the browser the
+        // ContentColumn's named elements plus the status/shuffle surfaces it writes.
+        _libraryBrowser = new LibraryBrowser(
             _session,
+            _browser,
+            _shell,
+            _releaseActions,
+            _storage,
+            _transferProgress,
+            _projections,
+            _queuePane,
             DispatcherQueue,
-            SearchResultsList,
+            () => Content.XamlRoot,
+            () => WinRT.Interop.WindowNative.GetWindowHandle(this),
+            text => StatusText.Text = text,
+            enabled => ShuffleLibraryItem.IsEnabled = enabled,
+            AlbumGrid,
+            ComposerBrowser,
+            ArtistBrowser,
+            ComposerList,
+            ArtistList,
             ComposerDetailPane,
             ArtistDetailPane,
-            text => StatusText.Text = text,
-            ShowComposerBrowser,
-            ShowArtistBrowser,
-            RevealAlbum,
-            SearchFlyout.Hide);
+            SearchResultsList,
+            ModeHeadingText,
+            ModeHeadingChevron,
+            ModeHeadingFlyout,
+            SortControls,
+            HeaderBand,
+            SearchBox,
+            SearchFlyout,
+            RootGrid);
         _unlockDialog = new UnlockDialog(() => Content.XamlRoot, text => StatusText.Text = text, OpenLibrary);
         _joinDialog = new JoinLibraryDialog(
             () => Content.XamlRoot,
@@ -341,7 +317,7 @@ public sealed partial class MainWindow : Window
         // The import flow: the confirm step (which can open an album), the picker
         // that leads to it, and the folder-scan dialog that opens the picker.
         _importConfirm = new ImportConfirmDialog(
-            _session, () => Content.XamlRoot, albumId => RevealAlbum(albumId), _lightbox);
+            _session, () => Content.XamlRoot, albumId => _libraryBrowser.RevealAlbum(albumId), _lightbox);
         _importPicker = new ImportPickerDialog(_session, () => Content.XamlRoot, _import, _importConfirm);
         _importDialog = new ImportDialog(
             _session,
@@ -383,6 +359,41 @@ public sealed partial class MainWindow : Window
         // check-on-appear. Fire-and-forget: the service catches and logs every
         // failure and this is async I/O, so it never blocks startup.
         _ = _updateService.CheckInBackgroundAsync();
+    }
+
+    // Wire core's invalidations to the reloads they drive. Static consumers (the
+    // library browser, sync status, import candidates) register for the window's
+    // lifetime; the storage and settings dialogs supply their live-refresh
+    // callbacks while open. Composition-root wiring: the handlers live in the
+    // views/stores, the registration is the window's.
+    private void RegisterProjections()
+    {
+        _projections.Register(typeof(BridgeInvalidation.AlbumList), _libraryBrowser.ReloadBrowserFromInvalidation);
+        _projections.Register(typeof(BridgeInvalidation.ComposerList), _libraryBrowser.ReloadBrowserFromInvalidation);
+        _projections.Register(typeof(BridgeInvalidation.ArtistList), _libraryBrowser.ReloadBrowserFromInvalidation);
+        _projections.Register(typeof(BridgeInvalidation.SyncStatus), _sync.Refresh);
+        // Config changes reach the now-playing bar's time-label mode, which is a
+        // synced preference: flipping it on another device re-renders the bar here.
+        _projections.Register(typeof(BridgeInvalidation.Config), OnConfigInvalidated);
+        _projections.Register(typeof(BridgeInvalidation.ImportCandidateList), _import.RefreshCandidates);
+        _projections.Register(typeof(BridgeInvalidation.ImportCandidate), _import.RefreshCandidates);
+        _projections.Register(typeof(BridgeInvalidation.WatchedFolders), _import.RefreshCandidates);
+        _projections.Register(typeof(BridgeInvalidation.CastDevices), _cast.RefreshDevices);
+    }
+
+    private void OnConfigInvalidated()
+    {
+        _settings.Reload();
+        _nowPlayingBar.RefreshTimeLabelMode();
+    }
+
+    // Cap or free the content column per the synced full-width preference, then
+    // re-fit the album grid to the new width. The width cap is the shell skeleton's
+    // (ContentColumn); the grid re-fit is the browser's.
+    private void ApplyLibraryWidth()
+    {
+        ContentColumn.MaxWidth = _settings.Current?.LibraryFullWidth == true ? double.PositiveInfinity : 1240;
+        _libraryBrowser.ApplyGridMetrics();
     }
 
 }

@@ -55,8 +55,7 @@
                     HorizontalAlignment="Left"
                     VerticalAlignment="Center"
                     PlaceholderText="Search"
-                    QueryIcon="Find"
-                    QuerySubmitted="OnSearchSubmitted">
+                    QueryIcon="Find">
                     <AutoSuggestBox.Resources>
                         <!-- Border turns accent while focused; the field keeps the
                              framework's recessed control fill. -->
@@ -221,8 +220,7 @@
                 x:Name="AlbumGrid"
                 Grid.Row="1"
                 Padding="16,0,16,24"
-                SelectionMode="None"
-                SizeChanged="OnAlbumGridSizeChanged">
+                SelectionMode="None">
                 <ListView.Resources>
                     <!-- The row is layout only; the cards are the interactive
                          elements, so a row container never shows a pointer-over or
@@ -258,10 +256,8 @@
                     x:Name="ComposerList"
                     Grid.Column="0"
                     Padding="10,4,10,20"
-                    ItemsSource="{x:Bind Composers}"
                     IsItemClickEnabled="True"
-                    SelectionMode="Single"
-                    ItemClick="OnComposerClick">
+                    SelectionMode="Single">
                     <ListView.Resources>
                         <x:Boolean x:Key="ListViewItemSelectionIndicatorVisualEnabled">False</x:Boolean>
                         <SolidColorBrush x:Key="ListViewItemBackgroundSelected" Color="{ThemeResource SystemAccentColor}" Opacity="0.2" />
@@ -334,10 +330,8 @@
                 <ListView
                     x:Name="ArtistList"
                     Grid.Column="0"
-                    ItemsSource="{x:Bind Artists}"
                     IsItemClickEnabled="True"
-                    SelectionMode="Single"
-                    ItemClick="OnArtistClick">
+                    SelectionMode="Single">
                     <ListView.ItemTemplate>
                         <DataTemplate x:DataType="local:ArtistSummary">
                             <StackPanel Orientation="Horizontal" Spacing="10" Padding="4">

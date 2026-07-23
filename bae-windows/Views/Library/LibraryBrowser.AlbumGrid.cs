@@ -3,17 +3,22 @@ using System.Collections.Generic;
 using System.Linq;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Data;
+using Microsoft.UI.Xaml.Input;
+using Windows.ApplicationModel.DataTransfer;
+using Windows.System;
 
 namespace Bae.Windows;
 
-// MainWindow: the album grid's row/card rendering and the inline detail
-// expansion that replaces the old modal AlbumDetailDialog. The grid is a ListView
-// of row items (AlbumGridRow); each realized row is built here — its cards, and
-// under the row that holds the expanded album, the AlbumExpansionPanel. This
-// mirrors macOS's LazyVStack of rows, each followed by an expansion slot keyed
+// LibraryBrowser: the album grid's row/card rendering and the inline detail
+// expansion that replaces the old modal AlbumDetailDialog, plus the album-card
+// click / right-tap / drag dispatch and the multi-selection tint. The grid is a
+// ListView of row items (AlbumGridRow); each realized row is built here — its
+// cards, and under the row that holds the expanded album, the AlbumExpansionPanel.
+// This mirrors macOS's LazyVStack of rows, each followed by an expansion slot keyed
 // off a single selected-album id.
-public sealed partial class MainWindow : Window
+internal sealed partial class LibraryBrowser
 {
     // The page size a reveal pages the flat album collection forward by until the
     // target album is loaded.
@@ -23,7 +28,7 @@ public sealed partial class MainWindow : Window
     // that keeps the column count never rebuilds rows.
     private readonly AlbumGridLayout _gridLayout = new();
 
-    // The row projection over the flat album collection, bound to AlbumGrid.
+    // The row projection over the flat album collection, bound to the album grid.
     // Assigned in the constructor once the browser store exists.
     private AlbumGridRows _albumRows = null!;
 
@@ -146,6 +151,209 @@ public sealed partial class MainWindow : Window
             Mode = BindingMode.OneWay,
         });
 
+    // Dispatch by the modifiers held at click time: Ctrl toggles the clicked
+    // album, Shift extends the range from the anchor, and a plain click toggles
+    // the album's inline detail expansion (clearing the multi-selection).
+    // Modifier clicks never open the expansion. Per-card (the grid ListView
+    // virtualizes rows, not cards), so the album is the card's DataContext.
+    private void OnAlbumCardTapped(object sender, TappedRoutedEventArgs e)
+    {
+        if (_session.CurrentHandleOrNull() == null || (sender as FrameworkElement)?.DataContext is not Album album)
+        {
+            return;
+        }
+
+        if (IsModifierDown(VirtualKey.Control))
+        {
+            _albumSelection.Toggle(album.Id);
+            SyncAlbumSelectionTint();
+            return;
+        }
+        if (IsModifierDown(VirtualKey.Shift))
+        {
+            _albumSelection.ExtendRange(album.Id, AlbumPosition, AlbumIdAt);
+            SyncAlbumSelectionTint();
+            return;
+        }
+
+        ToggleAlbumExpansion(album);
+    }
+
+    // Right-click / long-press on an album card: the bulk-action menu for
+    // whatever the card targets — the whole multi-selection (visible order)
+    // for a member card, else just that card. Never mutates the selection.
+    private void OnAlbumCardRightTapped(object sender, RightTappedRoutedEventArgs e)
+    {
+        if (_session.CurrentHandleOrNull() == null || (sender as FrameworkElement)?.DataContext is not Album album)
+        {
+            return;
+        }
+
+        var targets = _albumSelection.OrderedTargets(album.Id, AlbumPosition);
+        var menu = targets.Count == 1
+            ? BuildSingleAlbumCardMenu(album)
+            : BuildBulkAlbumCardMenu(targets);
+        if (menu is null)
+        {
+            return;
+        }
+
+        e.Handled = true;
+        var element = (FrameworkElement)sender;
+        menu.ShowAt(element, new FlyoutShowOptions { Position = e.GetPosition(element) });
+    }
+
+    // The pre-existing single-album menu: release-based actions on the card's
+    // primary release. Null when the album carries none (defensive — every
+    // grid-loaded album has one; only a search-result album wouldn't).
+    private MenuFlyout? BuildSingleAlbumCardMenu(Album album)
+    {
+        var releaseId = album.PrimaryReleaseId;
+        if (string.IsNullOrEmpty(releaseId))
+        {
+            return null;
+        }
+        return AlbumCardMenu.Build(
+            targetCount: 1,
+            onPlay: () =>
+            {
+                _session.WithCurrentHandle(handle => NativeBae.PlayRelease(handle, releaseId, -1, false));
+                return System.Threading.Tasks.Task.CompletedTask;
+            },
+            onPlayNext: () =>
+            {
+                _session.WithCurrentHandle(handle => NativeBae.AddReleaseNext(handle, releaseId));
+                return System.Threading.Tasks.Task.CompletedTask;
+            },
+            onAddToQueue: () =>
+            {
+                _session.WithCurrentHandle(handle => NativeBae.AddReleaseToQueue(handle, releaseId));
+                return System.Threading.Tasks.Task.CompletedTask;
+            },
+            onPin: () => PinReleases(new[] { releaseId }));
+    }
+
+    // The bulk menu for a multi-selected card: batch actions over every
+    // targeted album, in visible grid order.
+    private MenuFlyout BuildBulkAlbumCardMenu(IReadOnlyList<string> targets)
+    {
+        var primaryReleaseIds = PrimaryReleaseIds(targets);
+        return AlbumCardMenu.Build(
+            targetCount: targets.Count,
+            onPlay: () =>
+            {
+                _session.WithCurrentHandle(handle => NativeBae.PlayReleases(handle, primaryReleaseIds));
+                return System.Threading.Tasks.Task.CompletedTask;
+            },
+            onPlayNext: () => _queuePane.AddAlbumsToQueue(targets, addNext: true),
+            onAddToQueue: () => _queuePane.AddAlbumsToQueue(targets, addNext: false),
+            onPin: () => PinReleases(primaryReleaseIds));
+    }
+
+    // Enqueue releases to pin for offline, surfacing a failure through the
+    // shell error banner. Runs off the UI thread: the pin enqueue awaits core's
+    // async library-manager call.
+    private async System.Threading.Tasks.Task PinReleases(IReadOnlyList<string> releaseIds)
+    {
+        var (current, error) = await _session.RunForCurrentHandle(handle => releaseIds.Count == 1
+            ? NativeBae.PinRelease(handle, releaseIds[0])
+            : NativeBae.PinReleases(handle, releaseIds));
+        if (current && error is not null)
+        {
+            _shell.ShowBanner(InfoBarSeverity.Error, Loc.Chrome("error.title"), error);
+        }
+    }
+
+    // The targeted albums' primary release ids, in target order, dropping any
+    // target with none (a search-result album would have none; grid albums
+    // always do).
+    private List<string> PrimaryReleaseIds(IReadOnlyList<string> albumIds)
+    {
+        var albumsById = _browser.Albums.ToDictionary(album => album.Id);
+        return albumIds
+            .Select(id => albumsById.TryGetValue(id, out var album) ? album.PrimaryReleaseId : null)
+            .Where(releaseId => !string.IsNullOrEmpty(releaseId))
+            .Select(releaseId => releaseId!)
+            .ToList();
+    }
+
+    // The clicked album's index in the loaded grid, or null if it isn't loaded —
+    // the position delegate AlbumGridSelectionModel needs for range-extend and
+    // ordered targets.
+    private int? AlbumPosition(string id)
+    {
+        for (var i = 0; i < _browser.Albums.Count; i++)
+        {
+            if (_browser.Albums[i].Id == id)
+            {
+                return i;
+            }
+        }
+        return null;
+    }
+
+    private string? AlbumIdAt(int index) =>
+        index >= 0 && index < _browser.Albums.Count ? _browser.Albums[index].Id : null;
+
+    // Sync every loaded album's tint from the selection model. Called after
+    // every mutation; O(loaded count), which is at most the first page (500).
+    private void SyncAlbumSelectionTint()
+    {
+        foreach (var album in _browser.Albums)
+        {
+            album.IsSelected = _albumSelection.Contains(album.Id);
+        }
+    }
+
+    private static bool IsModifierDown(VirtualKey key) =>
+        Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(key)
+            .HasFlag(global::Windows.UI.Core.CoreVirtualKeyStates.Down);
+
+    // Start a drag from an album card: carry the album ids as the newline-joined
+    // payload the queue pane decodes — the whole multi-selection (visible order)
+    // when the pressed card is part of it, else just that card. Cancelled when no
+    // library is open. Never mutates the selection. Per-card (the grid ListView's
+    // own drag would carry the row), so the album is the card's DataContext.
+    private void OnAlbumCardDragStarting(UIElement sender, DragStartingEventArgs e)
+    {
+        if (_session.CurrentHandleOrNull() == null || (sender as FrameworkElement)?.DataContext is not Album album)
+        {
+            e.Cancel = true;
+            return;
+        }
+        var ids = _albumSelection.OrderedTargets(album.Id, AlbumPosition);
+        e.Data.SetText(QueueDragPayload.Encode(ids));
+        e.Data.RequestedOperation = DataPackageOperation.Copy;
+    }
+
+    // Escape over the album grid clears a non-empty multi-selection. Routed here
+    // from the window's global key handler; returns whether it consumed the key.
+    public bool HandleEscapeSelection()
+    {
+        if (_albumGrid.Visibility != Visibility.Visible || _albumSelection.IsEmpty)
+        {
+            return false;
+        }
+        _albumSelection.Clear();
+        SyncAlbumSelectionTint();
+        return true;
+    }
+
+    // Ctrl+A over the album grid selects every loaded album. Routed here from the
+    // window's global key handler (which owns the focused-text-input guard) for any
+    // 'A' press; the Ctrl-held and grid-visible checks are this view's, so a bare
+    // 'A' falls through untouched. Returns whether it consumed the key.
+    public bool HandleSelectAll()
+    {
+        if (_albumGrid.Visibility != Visibility.Visible || !IsModifierDown(VirtualKey.Control))
+        {
+            return false;
+        }
+        _albumSelection.SelectAll(_browser.Albums.Select(album => album.Id).ToList());
+        SyncAlbumSelectionTint();
+        return true;
+    }
+
     // A plain card click toggles the expansion for its album (macOS's plain-click
     // behavior); a second click on the same card collapses it.
     private void ToggleAlbumExpansion(Album album)
@@ -174,10 +382,10 @@ public sealed partial class MainWindow : Window
 
         var panel = new AlbumExpansionPanel(
             _session,
-            DispatcherQueue,
-            () => Content.XamlRoot,
-            () => WinRT.Interop.WindowNative.GetWindowHandle(this),
-            text => StatusText.Text = text,
+            _dispatcher,
+            _xamlRoot,
+            _windowHandle,
+            _setStatus,
             _releaseActions,
             _storage,
             _transferProgress,
@@ -207,7 +415,7 @@ public sealed partial class MainWindow : Window
         _currentExpansion?.Dispose();
         _currentExpansion = null;
         _expansionContent = null;
-        foreach (var album in Albums)
+        foreach (var album in _browser.Albums)
         {
             if (album.Id == id)
             {
@@ -224,7 +432,7 @@ public sealed partial class MainWindow : Window
     private void RefreshRowContainerFor(string albumId)
     {
         var row = _albumRows.FirstOrDefault(candidate => candidate.Cards.Any(album => album.Id == albumId));
-        if (row is not null && AlbumGrid.ContainerFromItem(row) is ListViewItem container)
+        if (row is not null && _albumGrid.ContainerFromItem(row) is ListViewItem container)
         {
             container.Content = BuildRowVisual(row);
         }
@@ -236,10 +444,10 @@ public sealed partial class MainWindow : Window
     // track row inside the panel; initialReleaseId picks a starting release. A
     // bridge gap for the album index (not present under the current sort) is
     // surfaced, not worked around with a client-side scan.
-    private async System.Threading.Tasks.Task RevealAlbum(
+    public async System.Threading.Tasks.Task RevealAlbum(
         string albumId, string? scrollToTrackId = null, string? initialReleaseId = null)
     {
-        if (CurrentHandleOrNull() == null)
+        if (_session.CurrentHandleOrNull() == null)
         {
             return;
         }
@@ -250,10 +458,10 @@ public sealed partial class MainWindow : Window
         {
             SelectBrowserMode(BrowserMode.Albums, reload: true);
         }
-        else if (!string.IsNullOrEmpty(SearchBox.Text))
+        else if (!string.IsNullOrEmpty(_searchBox.Text))
         {
-            SearchBox.Text = string.Empty;
-            SearchFlyout.Hide();
+            _searchBox.Text = string.Empty;
+            _searchFlyout.Hide();
             LoadCurrentBrowserMode();
         }
 
@@ -265,7 +473,7 @@ public sealed partial class MainWindow : Window
         }
         if (result.Error is not null)
         {
-            StatusText.Text = result.Error;
+            _setStatus(result.Error);
             return;
         }
         if (result.Index is not long index)
@@ -276,11 +484,11 @@ public sealed partial class MainWindow : Window
 
         // The album's page may never have been fetched; page forward until it is,
         // then re-fit the rows so the target's row exists to scroll to.
-        while (Albums.Count <= index && _browser.Albums.HasMoreItems)
+        while (_browser.Albums.Count <= index && _browser.Albums.HasMoreItems)
         {
             await _browser.Albums.LoadMoreItemsAsync(RevealPageSize);
         }
-        if (Albums.Count <= index)
+        if (_browser.Albums.Count <= index)
         {
             return;
         }
@@ -289,9 +497,9 @@ public sealed partial class MainWindow : Window
         var rowIndex = (int)(index / columnCount);
         if (rowIndex < _albumRows.Count)
         {
-            AlbumGrid.ScrollIntoView(_albumRows[rowIndex]);
+            _albumGrid.ScrollIntoView(_albumRows[rowIndex]);
         }
-        var target = Albums.FirstOrDefault(album => album.Id == albumId);
+        var target = _browser.Albums.FirstOrDefault(album => album.Id == albumId);
         if (target is not null)
         {
             await ExpandAlbum(target, scrollToTrackId, initialReleaseId);

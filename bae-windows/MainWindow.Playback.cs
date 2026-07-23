@@ -127,7 +127,7 @@ public sealed partial class MainWindow : Window
     // Ctrl+F focuses the search box from anywhere in the window.
     private void OnFocusSearchAccelerator(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args)
     {
-        SearchBox.Focus(FocusState.Programmatic);
+        _libraryBrowser.FocusSearch();
         args.Handled = true;
     }
 
@@ -175,7 +175,7 @@ public sealed partial class MainWindow : Window
             return;
         }
 
-        await RevealAlbum(albumId, scrollToTrackId: _playback.NowPlayingTrackId);
+        await _libraryBrowser.RevealAlbum(albumId, scrollToTrackId: _playback.NowPlayingTrackId);
     }
 
     // Space toggles play/pause from anywhere — except while typing in a text
@@ -198,10 +198,8 @@ public sealed partial class MainWindow : Window
             return;
         }
 
-        if (e.Key == VirtualKey.Escape && AlbumGrid.Visibility == Visibility.Visible && !_albumSelection.IsEmpty)
+        if (e.Key == VirtualKey.Escape && _libraryBrowser.HandleEscapeSelection())
         {
-            _albumSelection.Clear();
-            SyncAlbumSelectionTint();
             e.Handled = true;
             return;
         }
@@ -210,12 +208,10 @@ public sealed partial class MainWindow : Window
         var focusedTextInput = focused is TextBox || focused is AutoSuggestBox;
 
         // Ctrl+A selects every loaded album, guarded by the same focused-text-input
-        // check as Space so Ctrl+A in the search box still selects its text.
-        if (e.Key == VirtualKey.A && !focusedTextInput
-            && AlbumGrid.Visibility == Visibility.Visible && IsModifierDown(VirtualKey.Control))
+        // check as Space so Ctrl+A in the search box still selects its text; the
+        // browser owns the Ctrl-held and album-grid-visible checks.
+        if (e.Key == VirtualKey.A && !focusedTextInput && _libraryBrowser.HandleSelectAll())
         {
-            _albumSelection.SelectAll(Albums.Select(album => album.Id).ToList());
-            SyncAlbumSelectionTint();
             e.Handled = true;
             return;
         }

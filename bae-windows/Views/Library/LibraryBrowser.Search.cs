@@ -1,32 +1,20 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using System.Globalization;
-using System.Linq;
-using System.Runtime.InteropServices;
-using Microsoft.UI.Windowing;
-using Microsoft.UI.Xaml;
+﻿using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Input;
-using Microsoft.UI.Xaml.Media;
-using Microsoft.UI.Xaml.Media.Animation;
-using Microsoft.UI.Xaml.Media.Imaging;
-using uniffi.bae_bridge;
-using Windows.ApplicationModel.DataTransfer;
-using Windows.Graphics;
-using Windows.Storage;
 using Windows.System;
 
 namespace Bae.Windows;
 
-// MainWindow: the library search flyout and its result-click handlers. Split
-// out of MainWindow.xaml.cs unchanged.
-public sealed partial class MainWindow : Window
+// LibraryBrowser: the library search field and its results dropdown. The query
+// runs through the browser store; BrowserPanes renders the cover-attached rows
+// into the flyout anchored under the field, over whatever browse pane is showing.
+// The composer/artist list clicks open their detail through BrowserPanes too.
+internal sealed partial class LibraryBrowser
 {
     private void OnSearchSubmitted(AutoSuggestBox sender, AutoSuggestBoxQuerySubmittedEventArgs args)
     {
-        if (CurrentHandleOrNull() == null)
+        if (_session.CurrentHandleOrNull() == null)
         {
             return;
         }
@@ -34,7 +22,7 @@ public sealed partial class MainWindow : Window
         var query = args.QueryText?.Trim() ?? string.Empty;
         if (query.Length == 0)
         {
-            SearchFlyout.Hide();
+            _searchFlyout.Hide();
             LoadCurrentBrowserMode();
         }
         else
@@ -61,7 +49,7 @@ public sealed partial class MainWindow : Window
     // the search box (the default grab would pull it into the flyout); rows stay
     // clickable/tabbable.
     private void ShowSearchFlyout() =>
-        SearchFlyout.ShowAt(SearchBox, new FlyoutShowOptions
+        _searchFlyout.ShowAt(_searchBox, new FlyoutShowOptions
         {
             ShowMode = FlyoutShowMode.Transient,
             Placement = FlyoutPlacementMode.BottomEdgeAlignedLeft,
@@ -73,15 +61,29 @@ public sealed partial class MainWindow : Window
     // the focus event).
     private void OnSearchBoxGotFocus(object sender, RoutedEventArgs e)
     {
-        if (!_searchFlyoutOpen && !string.IsNullOrEmpty(SearchBox.Text) && _browserPanes.HasResults)
+        if (!_searchFlyoutOpen && !string.IsNullOrEmpty(_searchBox.Text) && _browserPanes.HasResults)
         {
             ShowSearchFlyout();
         }
     }
 
+    // Escape clears a non-empty search box and drops back to the active browse
+    // pane, standing in for a clear button (the AutoSuggestBox's query-icon slot
+    // has no room for one).
+    private void OnSearchBoxKeyDown(object sender, KeyRoutedEventArgs e)
+    {
+        if (e.Key == VirtualKey.Escape && !string.IsNullOrEmpty(_searchBox.Text))
+        {
+            _searchBox.Text = string.Empty;
+            _searchFlyout.Hide();
+            LoadCurrentBrowserMode();
+            e.Handled = true;
+        }
+    }
+
     private async void OnComposerClick(object sender, ItemClickEventArgs e)
     {
-        if (CurrentHandleOrNull() == null || e.ClickedItem is not ComposerSummary composer)
+        if (_session.CurrentHandleOrNull() == null || e.ClickedItem is not ComposerSummary composer)
         {
             return;
         }
@@ -91,7 +93,7 @@ public sealed partial class MainWindow : Window
 
     private async void OnArtistClick(object sender, ItemClickEventArgs e)
     {
-        if (CurrentHandleOrNull() == null || e.ClickedItem is not ArtistSummary artist)
+        if (_session.CurrentHandleOrNull() == null || e.ClickedItem is not ArtistSummary artist)
         {
             return;
         }
