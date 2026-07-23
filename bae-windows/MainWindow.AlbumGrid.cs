@@ -181,14 +181,4 @@ public sealed partial class MainWindow : Window
     private static bool IsModifierDown(VirtualKey key) =>
         Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(key)
             .HasFlag(global::Windows.UI.Core.CoreVirtualKeyStates.Down);
-
-    private async void OnStorageClick(object sender, RoutedEventArgs e)
-    {
-        await _storageDialog.Show();
-    }
-
-    private void OnSettingsClick(object sender, RoutedEventArgs e)
-    {
-        _settingsWindow.Show();
-    }
 }

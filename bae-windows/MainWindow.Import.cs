@@ -24,26 +24,6 @@ namespace Bae.Windows;
 // queue-button drag/drop. Split out of MainWindow.xaml.cs unchanged.
 public sealed partial class MainWindow : Window
 {
-    private async void OnCloseLibraryClick(object sender, RoutedEventArgs e)
-    {
-        await CloseLibrary();
-    }
-
-    private void OnShuffleLibraryClick(object sender, RoutedEventArgs e)
-    {
-        WithCurrentHandle(NativeBae.PlayLibraryShuffled);
-    }
-
-    private async void OnLibrariesClick(object sender, RoutedEventArgs e)
-    {
-        await _librariesDialog.Show();
-    }
-
-    private async void OnImportClick(object sender, RoutedEventArgs e)
-    {
-        await _importDialog.Show();
-    }
-
     // Accept a dragged folder anywhere over the window (matching macOS, which
     // imports a folder dropped on its window). DragOver fires continuously, so
     // keep it to the cheap format check; the real work happens in OnWindowDrop.
