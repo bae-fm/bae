@@ -278,7 +278,7 @@ struct JoinLibraryView: View {
 
 #if DEBUG
     #Preview {
-        MainWindowChrome(loadError: nil) {
+        WelcomeWindowChrome(loadError: nil) {
             JoinLibraryView(
                 onLibraryReady: { _ in },
                 onBack: {},

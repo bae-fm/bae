@@ -23,6 +23,33 @@ private enum AppRuntime {
     }
 }
 
+/// Swaps the welcome and main windows as the shell comes and goes. Sits in
+/// both windows' backgrounds — whichever window is up when the shell state
+/// flips performs the swap (opening an already-open window and dismissing an
+/// absent one are no-ops).
+private struct WindowSwapDriver: View {
+    let hasShell: Bool
+
+    @Environment(\.openWindow)
+    private var openWindow
+    @Environment(\.dismissWindow)
+    private var dismissWindow
+
+    var body: some View {
+        Color.clear
+            .onChange(of: hasShell) { _, hasShell in
+                if hasShell {
+                    openWindow(id: "main")
+                    dismissWindow(id: "welcome")
+                }
+                else {
+                    openWindow(id: "welcome")
+                    dismissWindow(id: "main")
+                }
+            }
+    }
+}
+
 enum AppScreen {
     case loading
     case welcome
@@ -254,6 +281,7 @@ struct BaeApp: App {
     }
 
     var body: some Scene {
+        welcomeWindow
         mainWindow
         storageManagerWindow
         settingsWindow
@@ -261,22 +289,41 @@ struct BaeApp: App {
 }
 
 extension BaeApp {
+    /// The bootstrap window: fixed-size, presented at launch, dismissed once
+    /// a library opens (and re-presented when the last one closes). Loading,
+    /// welcome, and unlock all render here — pre-shell, there is no other
+    /// window.
+    private var welcomeWindow: some Scene {
+        Window("bae", id: "welcome") {
+            WelcomeWindowChrome(loadError: appDelegate.loadError) {
+                // Bootstrap screens lay out as a vertical stack (the loading
+                // case centers a spinner between two Spacers).
+                VStack(spacing: 0) {
+                    bootstrapContent
+                }
+            }
+            .navigationTitle("bae")
+            .background(WindowSwapDriver(hasShell: appDelegate.hasShell))
+            .onAppear {
+                #if !DEBUG
+                    updaterController.updater.checkForUpdatesInBackground()
+                #endif
+            }
+        }
+        .windowStyle(.hiddenTitleBar)
+        .windowResizability(.contentSize)
+        .restorationBehavior(.disabled)
+        .defaultLaunchBehavior(.presented)
+    }
+
     private var mainWindow: some Scene {
         Window("bae", id: "main") {
             libraryModals(
                 MainWindowChrome(loadError: appDelegate.loadError) {
-                    if appDelegate.hasShell {
-                        detailContent
-                    }
-                    else {
-                        // Bootstrap screens lay out as a vertical stack (the
-                        // loading case centers a spinner between two Spacers).
-                        VStack(spacing: 0) {
-                            bootstrapContent
-                        }
-                    }
+                    detailContent
                 }
                 .navigationTitle(windowTitle)
+                .background(WindowSwapDriver(hasShell: appDelegate.hasShell))
             )
             .environment(appDelegate.appService?.playbackStore)
             .environment(appDelegate.appService?.configStore)
@@ -307,13 +354,14 @@ extension BaeApp {
             .environment(\.previewProgressPublisher, previewPublisher)
             .environment(\.importLoudnessPublisher, importLoudnessPublisher)
             .environment(appDelegate.uiStore)
-            .onAppear {
-                #if !DEBUG
-                    updaterController.updater.checkForUpdatesInBackground()
-                #endif
-            }
         }
         .windowStyle(.hiddenTitleBar)
+        .defaultSize(
+            width: MainWindow.defaultSize.width,
+            height: MainWindow.defaultSize.height
+        )
+        .restorationBehavior(.disabled)
+        .defaultLaunchBehavior(.suppressed)
         .commandsRemoved()
     }
 

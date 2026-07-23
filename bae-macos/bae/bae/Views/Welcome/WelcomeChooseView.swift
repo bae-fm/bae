@@ -314,7 +314,7 @@ struct WelcomeChooseView: View {
 
 #if DEBUG
     #Preview("First run") {
-        MainWindowChrome(loadError: nil) {
+        WelcomeWindowChrome(loadError: nil) {
             WelcomeChooseView(
                 onLibraryReady: { _ in },
                 onJoin: {},
@@ -325,7 +325,7 @@ struct WelcomeChooseView: View {
     }
 
     #Preview("Libraries and restore codes") {
-        MainWindowChrome(loadError: nil) {
+        WelcomeWindowChrome(loadError: nil) {
             WelcomeChooseView(
                 onLibraryReady: { _ in },
                 onJoin: {},
@@ -336,7 +336,7 @@ struct WelcomeChooseView: View {
     }
 
     #Preview("Library failed to open") {
-        MainWindowChrome(
+        WelcomeWindowChrome(
             loadError: "The library's settings could not be read."
         ) {
             WelcomeChooseView(
