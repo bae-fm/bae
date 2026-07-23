@@ -27,3 +27,21 @@ struct StorageFooter: View {
         .padding(.vertical, 8)
     }
 }
+
+#if DEBUG
+    #Preview("With total") {
+        StorageFooter(
+            list: PreviewData.storageList(store: LibraryStore()),
+            totalSize: 857_000_000
+        )
+        .frame(width: 700)
+    }
+
+    #Preview("Total not yet loaded") {
+        StorageFooter(
+            list: PreviewData.storageList(store: LibraryStore()),
+            totalSize: nil
+        )
+        .frame(width: 700)
+    }
+#endif

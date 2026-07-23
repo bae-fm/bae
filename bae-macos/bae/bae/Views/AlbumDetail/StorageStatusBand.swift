@@ -98,3 +98,56 @@ struct StorageStatusBand: View {
         }
     }
 }
+
+#if DEBUG
+    @MainActor
+    private func previewStorageBand(
+        storageState: BridgeReleaseStorageState,
+        pinned: Bool,
+        storageActions: [BridgeReleaseStorageAction]
+    ) -> some View {
+        StorageStatusBand(
+            release: PreviewData.storageRelease(
+                storageState: storageState,
+                pinned: pinned,
+                storageActions: storageActions
+            ),
+            onAction: { _ in },
+            onExport: {},
+            onSaveAs: {}
+        )
+        .frame(width: 560)
+        .background(Theme.background)
+        .environment(OutboxStore(snapshot: OutboxStore.emptySnapshot))
+    }
+
+    // Unmanaged (local): the only offered transition is uploading to the cloud.
+    #Preview("Storage Band — Local") {
+        previewStorageBand(
+            storageState: .local,
+            pinned: false,
+            storageActions: [.makeRemote]
+        )
+        .preferredColorScheme(.dark)
+    }
+
+    // In the cloud, not kept offline: can pin or pull back local.
+    #Preview("Storage Band — Cloud") {
+        previewStorageBand(
+            storageState: .remote,
+            pinned: false,
+            storageActions: [.pin, .makeLocal]
+        )
+        .preferredColorScheme(.dark)
+    }
+
+    // In the cloud, pinned for offline: can unpin or pull back local.
+    #Preview("Storage Band — Pinned") {
+        previewStorageBand(
+            storageState: .remote,
+            pinned: true,
+            storageActions: [.unpin, .makeLocal]
+        )
+        .preferredColorScheme(.dark)
+    }
+#endif

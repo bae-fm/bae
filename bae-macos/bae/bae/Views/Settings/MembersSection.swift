@@ -209,3 +209,14 @@ private struct RoleBadge: View {
         }
     }
 }
+
+#if DEBUG
+    #Preview("Devices") {
+        Form {
+            MembersSection()
+        }
+        .formStyle(.grouped)
+        .frame(width: 500, height: 320)
+        .environment(PreviewData.previewSync)
+    }
+#endif

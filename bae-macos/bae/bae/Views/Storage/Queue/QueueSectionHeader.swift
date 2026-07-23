@@ -61,3 +61,35 @@ extension QueueSectionHeader where Leading == EmptyView {
         ) { EmptyView() }
     }
 }
+
+#if DEBUG
+    #Preview("Active") {
+        QueueSectionHeader(
+            icon: "arrow.down.circle",
+            title: "Downloads",
+            paused: false,
+            summaryText: "1 downloading · 2 queued",
+            retryDisabled: true,
+            onSetPaused: { _ in },
+            onRetry: {}
+        )
+        .frame(width: 640)
+    }
+
+    #Preview("Paused, with leading slot") {
+        QueueSectionHeader(
+            icon: "arrow.up.arrow.down.circle",
+            title: "Sync queue",
+            paused: true,
+            summaryText: "",
+            retryDisabled: false,
+            onSetPaused: { _ in },
+            onRetry: {},
+            leading: {
+                Image(systemName: "chevron.down")
+                    .foregroundStyle(.secondary)
+            }
+        )
+        .frame(width: 640)
+    }
+#endif

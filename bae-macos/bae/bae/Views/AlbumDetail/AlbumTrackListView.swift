@@ -99,3 +99,41 @@ struct AlbumTrackListView: View {
         }
     }
 }
+
+#if DEBUG
+    @MainActor
+    private func previewTrackList(
+        albumId: String,
+        playFirstTrack: Bool = false
+    ) -> some View {
+        let detail = PreviewData.releaseDetail(albumId: albumId)
+        return AlbumTrackListView(
+            release: detail,
+            isCompilation: false,
+            currentTrackId: playFirstTrack ? detail.tracks.first?.id : nil,
+            loadingTrackId: nil,
+            isPlaying: playFirstTrack,
+            onPlayFromTrack: { _ in },
+            onTogglePlayPause: {},
+            onAddNext: { _ in },
+            onAddToQueue: { _ in },
+            onExportTrack: { _ in },
+        )
+        .padding(24)
+        .frame(width: 540)
+        .background(Theme.background)
+        .environment(UiStore())
+    }
+
+    // Single flat side, first track playing.
+    #Preview("Track List — Single Disc") {
+        previewTrackList(albumId: "a-01", playFirstTrack: true)
+            .preferredColorScheme(.dark)
+    }
+
+    // Two sides with headers; the long sides split into two columns.
+    #Preview("Track List — Two Discs") {
+        previewTrackList(albumId: "a-22")
+            .preferredColorScheme(.dark)
+    }
+#endif

@@ -74,3 +74,26 @@ struct SortCriteriaRow<Criterion: SortCriterionRepresentable>: View {
         Set(criteria.map(\.field))
     }
 }
+
+#if DEBUG
+    #Preview("Sort Criteria Row") {
+        @Previewable
+        @State
+        var criteria: [BridgeSortCriterion] = [
+            BridgeSortCriterion(field: .dateAdded, direction: .descending),
+            BridgeSortCriterion(field: .title, direction: .ascending),
+        ]
+        SortCriteriaRow(criteria: $criteria)
+            .padding()
+    }
+
+    #Preview("Sort Criteria Row \u{2014} Single") {
+        @Previewable
+        @State
+        var criteria: [BridgeSortCriterion] = [
+            BridgeSortCriterion(field: .artist, direction: .ascending)
+        ]
+        SortCriteriaRow(criteria: $criteria)
+            .padding()
+    }
+#endif

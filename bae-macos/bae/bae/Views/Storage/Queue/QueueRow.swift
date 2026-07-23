@@ -52,3 +52,22 @@ func queuedRelativeLabel(_ epochMs: Int64) -> String {
     formatter.unitsStyle = .abbreviated
     return formatter.localizedString(for: date, relativeTo: Date())
 }
+
+#if DEBUG
+    #Preview("Queue row") {
+        QueueRow(
+            icon: "arrow.down.circle",
+            createdAt: Int64(Date().timeIntervalSince1970 * 1000) - 120_000,
+            cancelHelp: "Cancel this item",
+            onCancel: {}
+        ) {
+            Text("Album Title")
+                .lineLimit(1)
+        } badge: {
+            Label("Queued", systemImage: "clock")
+                .foregroundStyle(.secondary)
+        }
+        .frame(width: 640)
+        .padding(.vertical)
+    }
+#endif

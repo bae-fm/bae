@@ -80,3 +80,15 @@ struct OutboxFileRow: View {
         )
     }
 }
+
+#if DEBUG
+    #Preview("File states") {
+        VStack(spacing: 0) {
+            ForEach(PreviewData.uploadFileOps, id: \.fileId) { file in
+                OutboxFileRow(file: file)
+            }
+        }
+        .frame(width: 640)
+        .padding(.vertical)
+    }
+#endif

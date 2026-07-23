@@ -129,3 +129,43 @@ struct ComposerDetailPane: View {
         }
     }
 }
+
+#if DEBUG
+    #Preview("Composer \u{2014} Detail") {
+        @Previewable
+        @State
+        var paneDetail = ComposerPaneDetail.composer(
+            PreviewData.composerDetail,
+            work: PreviewData.workDetail
+        )
+        let uiStore = UiStore()
+        let libraryStore = PreviewData.seededComposerStore()
+        let session = PreviewData.browseSession(
+            libraryStore: libraryStore,
+            uiStore: uiStore
+        )
+        session.selectComposer("composer-0")
+        return ComposerDetailPane(paneDetail: $paneDetail)
+            .frame(width: 620, height: 720)
+            .environment(session)
+            .environment(uiStore)
+            .environment(MediaPaths.stub)
+    }
+
+    #Preview("Composer \u{2014} Empty") {
+        @Previewable
+        @State
+        var paneDetail = ComposerPaneDetail.empty
+        let uiStore = UiStore()
+        let libraryStore = LibraryStore()
+        let session = PreviewData.browseSession(
+            libraryStore: libraryStore,
+            uiStore: uiStore
+        )
+        return ComposerDetailPane(paneDetail: $paneDetail)
+            .frame(width: 620, height: 720)
+            .environment(session)
+            .environment(uiStore)
+            .environment(MediaPaths.stub)
+    }
+#endif

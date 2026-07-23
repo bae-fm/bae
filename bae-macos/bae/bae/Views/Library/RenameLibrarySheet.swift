@@ -71,3 +71,35 @@ struct RenameLibrarySheet: View {
         .frame(width: 420, height: 240)
     }
 }
+
+#if DEBUG
+    #Preview("Rename Library") {
+        @Previewable
+        @State
+        var state = RenameLibrarySheetState(
+            id: "lib-preview",
+            newName: "Album Library",
+            error: nil
+        )
+        RenameLibrarySheet(
+            state: $state,
+            onCancel: {},
+            onCommit: { _ in }
+        )
+    }
+
+    #Preview("Rename Library \u{2014} Error") {
+        @Previewable
+        @State
+        var state = RenameLibrarySheetState(
+            id: "lib-preview",
+            newName: "Album Library",
+            error: "A library with that name already exists"
+        )
+        RenameLibrarySheet(
+            state: $state,
+            onCancel: {},
+            onCommit: { _ in }
+        )
+    }
+#endif

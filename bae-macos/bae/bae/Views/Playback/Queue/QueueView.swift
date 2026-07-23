@@ -267,3 +267,58 @@ struct QueueView: View {
         ImageView(content: nowPlayingCover, pointSize: 56)
     }
 }
+
+#if DEBUG
+    // MARK: - Previews
+
+    /// Renders the pane with the queue state read from a store in the
+    /// environment (the two lanes) and commands sent to `Queue.stub`; the
+    /// prop callbacks are no-ops, so drags and clicks settle back rather than
+    /// mutating anything.
+    @MainActor
+    private func queueViewPreview(
+        store: PlaybackStore,
+        isActive: Bool
+    ) -> some View {
+        QueueView(
+            isActive: isActive,
+            nowPlayingTitle: PreviewData.nowPlayingTitle,
+            nowPlayingArtist: PreviewData.nowPlayingArtist,
+            nowPlayingCover: nil,
+            onClearUpNext: {},
+            onClearPlayingFrom: {},
+            onSkipTo: { _ in },
+            onRemove: { _ in },
+            onReorder: { _, _ in },
+            onInsertTracks: { _, _ in },
+            onSetShuffle: { _ in },
+        )
+        .frame(width: 420, height: 720)
+        .background(Theme.surface)
+        .environment(store)
+        .environment(Queue.stub)
+        .environment(MediaPaths.stub)
+    }
+
+    #Preview("With items") {
+        let store = PreviewData.queueStore(manualCount: 2, shuffled: true)
+        store.play(
+            track: NowPlayingTrack(
+                trackId: "t-np",
+                trackTitle: PreviewData.nowPlayingTitle,
+                artistNames: PreviewData.nowPlayingArtist,
+                albumId: "a-01",
+                coverImageId: nil,
+                durationMs: 214_000,
+            )
+        )
+        return queueViewPreview(store: store, isActive: true)
+    }
+
+    #Preview("Empty") {
+        queueViewPreview(
+            store: PreviewData.queueStore(manualCount: 0, context: nil),
+            isActive: false,
+        )
+    }
+#endif

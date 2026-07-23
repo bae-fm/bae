@@ -23,3 +23,16 @@ struct LibraryModeButtons: View {
         }
     }
 }
+
+#if DEBUG
+    #Preview("Library Mode Buttons") {
+        let uiStore = UiStore()
+        uiStore.setLibraryBrowserMode(.composers)
+        return Menu("Browse Mode") {
+            LibraryModeButtons(uiStore: uiStore, select: { _ in })
+        }
+        .menuStyle(.button)
+        .padding()
+        .frame(width: 220)
+    }
+#endif

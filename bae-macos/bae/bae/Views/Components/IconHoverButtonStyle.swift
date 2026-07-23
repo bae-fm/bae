@@ -1,3 +1,4 @@
+import BaeKit
 import SwiftUI
 
 /// Hover treatment shared by icon-only buttons (the now-playing bar's transport
@@ -27,3 +28,33 @@ struct IconHoverButtonStyle: ButtonStyle {
         }
     }
 }
+
+#if DEBUG
+    #Preview("Icon Hover Button Style") {
+        // Icon-only buttons hosting the style — hover a glyph to see the rounded
+        // fill and the secondary→primary step.
+        HStack(spacing: 16) {
+            Button {
+            } label: {
+                Image(systemName: "backward.fill")
+            }
+            Button {
+            } label: {
+                Image(systemName: "play.fill")
+            }
+            Button {
+            } label: {
+                Image(systemName: "forward.fill")
+            }
+            Button {
+            } label: {
+                Image(systemName: "gearshape")
+            }
+        }
+        .buttonStyle(IconHoverButtonStyle())
+        .font(.system(size: 16, weight: .semibold))
+        .padding(28)
+        .background(Theme.background)
+        .preferredColorScheme(.dark)
+    }
+#endif

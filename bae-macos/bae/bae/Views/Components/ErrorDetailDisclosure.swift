@@ -52,3 +52,26 @@ struct ErrorDetailDisclosure: View {
         }
     }
 }
+
+#if DEBUG
+    #Preview("Error Detail Disclosure") {
+        VStack(alignment: .leading, spacing: 22) {
+            // Hard failure carrying opaque detail — the disclosure row shows.
+            ErrorDetailDisclosure(error: PreviewData.displayErrorWithDetail)
+            // Warning tint, no detail — line only.
+            ErrorDetailDisclosure(
+                error: PreviewData.displayErrorSimple,
+                tint: .orange
+            )
+            // Icon suppressed (inline banner variant).
+            ErrorDetailDisclosure(
+                error: PreviewData.displayErrorSimple,
+                showIcon: false
+            )
+        }
+        .padding(24)
+        .frame(width: 440)
+        .background(Theme.background)
+        .preferredColorScheme(.dark)
+    }
+#endif

@@ -151,3 +151,41 @@ struct ImportSearchFormView: View {
         }
     }
 }
+
+#if DEBUG
+    // MARK: - Previews
+
+    #Preview("General search") {
+        ImportSearchFormView(
+            activeTab: .constant(.general),
+            activeSource: .constant(.musicBrainz),
+            searchArtist: .constant("Artist Name"),
+            searchAlbum: .constant("Album Title"),
+            searchCatalog: .constant(""),
+            searchBarcode: .constant(""),
+            discogsEnabled: true,
+            signals: PreviewData.settledSignals,
+            onSearch: {},
+            onOpenSettings: {},
+        )
+        .frame(width: 560)
+        .windowBackground()
+    }
+
+    #Preview("Catalog search") {
+        ImportSearchFormView(
+            activeTab: .constant(.catalogNumber),
+            activeSource: .constant(.musicBrainz),
+            searchArtist: .constant(""),
+            searchAlbum: .constant(""),
+            searchCatalog: .constant("WPCR-80001"),
+            searchBarcode: .constant(""),
+            discogsEnabled: false,
+            signals: PreviewData.settledSignals,
+            onSearch: {},
+            onOpenSettings: {},
+        )
+        .frame(width: 560)
+        .windowBackground()
+    }
+#endif

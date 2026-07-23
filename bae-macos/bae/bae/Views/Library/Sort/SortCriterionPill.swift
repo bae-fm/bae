@@ -58,3 +58,34 @@ struct SortCriterionPill<Criterion: SortCriterionRepresentable>: View {
         )
     }
 }
+
+#if DEBUG
+    #Preview("Sort Criterion Pill") {
+        @Previewable
+        @State
+        var ascending = BridgeSortCriterion(
+            field: .title,
+            direction: .ascending
+        )
+        @Previewable
+        @State
+        var descending = BridgeSortCriterion(
+            field: .dateAdded,
+            direction: .descending
+        )
+        HStack(spacing: 8) {
+            SortCriterionPill(
+                criterion: $ascending,
+                canRemove: true,
+                onRemove: {}
+            )
+            // Only criterion left: not removable.
+            SortCriterionPill(
+                criterion: $descending,
+                canRemove: false,
+                onRemove: {}
+            )
+        }
+        .padding()
+    }
+#endif

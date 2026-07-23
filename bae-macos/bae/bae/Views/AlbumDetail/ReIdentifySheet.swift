@@ -386,3 +386,18 @@ extension ReIdentifySheet {
         closeAndNavigate()
     }
 }
+
+#if DEBUG
+    // The stub importer's auto-identify is a no-op, so the sheet seeds its
+    // candidate and renders the search pane in its starting (manual-only) state.
+    #Preview("Re-identify Sheet") {
+        ReIdentifySheet(
+            releaseId: "rel-a-01",
+            displayName: "Album Title \u{00B7} 2019 \u{00B7} CD",
+            trackCount: 8,
+            onClose: {},
+        )
+        .albumDetailPreviewEnvironment(store: PreviewData.seededLibraryStore())
+        .preferredColorScheme(.dark)
+    }
+#endif

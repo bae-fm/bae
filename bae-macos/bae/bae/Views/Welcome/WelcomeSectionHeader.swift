@@ -22,3 +22,23 @@ struct WelcomeSectionHeader: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
+
+#if DEBUG
+    #Preview("Plain") {
+        WelcomeSectionHeader(title: "On this device")
+            .frame(width: 400)
+            .padding()
+    }
+
+    #Preview("With info tip") {
+        WelcomeSectionHeader(
+            title: "Restore from iCloud Keychain",
+            infoTip: InfoTip(
+                text:
+                    "Libraries whose restore codes are saved in your keychain."
+            ),
+        )
+        .frame(width: 400)
+        .padding()
+    }
+#endif

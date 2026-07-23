@@ -51,3 +51,22 @@ struct SignalBadgePopover: View {
         .frame(width: 246)
     }
 }
+
+#if DEBUG
+    // MARK: - Previews
+
+    #Preview("Badge popover") {
+        SignalBadgePopover(
+            signal: BridgeToolbarSignal(
+                kind: .catalog,
+                role: .filter,
+                value: "WPCR-80001",
+                origin: .folderName,
+                state: .confirms(count: 1),
+                excluded: false
+            )
+        )
+        .padding()
+        .windowBackground()
+    }
+#endif

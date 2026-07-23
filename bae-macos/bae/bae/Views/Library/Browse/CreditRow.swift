@@ -22,3 +22,14 @@ struct CreditRow: View {
         .padding(.vertical, 4)
     }
 }
+
+#if DEBUG
+    #Preview("Credit Row") {
+        VStack(alignment: .leading, spacing: 8) {
+            CreditRow(title: "Album Title", subtitle: "Arranger")
+            CreditRow(title: "Track Title", subtitle: nil)
+        }
+        .padding()
+        .frame(width: 420, alignment: .leading)
+    }
+#endif

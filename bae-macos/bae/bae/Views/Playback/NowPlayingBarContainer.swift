@@ -77,3 +77,33 @@ struct NowPlayingBarContainer: View {
         .sidePausePromptAlert()
     }
 }
+
+#if DEBUG
+    // MARK: - Previews
+
+    /// Drives the container with the same environment the app wires: the
+    /// services as stubs, a config store, and a `PlaybackStore` pre-seeded with
+    /// a now-playing track and a queue so the bar renders a full playing state.
+    #Preview("Playing") {
+        let store = PreviewData.queueStore(manualCount: 2)
+        store.play(
+            track: NowPlayingTrack(
+                trackId: "t-np",
+                trackTitle: PreviewData.nowPlayingTitle,
+                artistNames: PreviewData.nowPlayingArtist,
+                albumId: "a-01",
+                coverImageId: nil,
+                durationMs: 222_000,
+            )
+        )
+        return NowPlayingBarContainer(onDropToQueue: { _ in })
+            .frame(width: 1100)
+            .background(Theme.background)
+            .environment(Playback.stub)
+            .environment(Queue.stub)
+            .environment(store)
+            .environment(UiStore())
+            .environment(PreviewData.configStore)
+            .environment(MediaPaths.stub)
+    }
+#endif

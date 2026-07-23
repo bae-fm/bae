@@ -63,3 +63,49 @@ struct StorageStateLabel: View {
         }
     }
 }
+
+#if DEBUG
+    #Preview("Storage states") {
+        VStack(alignment: .leading, spacing: 10) {
+            // Resting states: unmanaged, cloud, pinned.
+            StorageStateLabel(
+                release: PreviewData.storageRelease(
+                    id: "r-local",
+                    storageState: .local
+                )
+            )
+            StorageStateLabel(
+                release: PreviewData.storageRelease(
+                    id: "r-cloud",
+                    storageState: .remote,
+                    pinned: false
+                )
+            )
+            StorageStateLabel(
+                release: PreviewData.storageRelease(
+                    id: "r-pinned",
+                    storageState: .remote,
+                    pinned: true
+                )
+            )
+            // An in-flight transition wins over the resting state.
+            StorageStateLabel(
+                release: PreviewData.storageRelease(
+                    id: "r-transfer",
+                    storageState: .remote,
+                    transfer: .pin
+                )
+            )
+            // A queued upload (id present in the injected outbox snapshot)
+            // wins over the resting state.
+            StorageStateLabel(
+                release: PreviewData.storageRelease(
+                    id: "rel-up-1",
+                    storageState: .remote
+                )
+            )
+        }
+        .padding()
+        .environment(PreviewData.outboxStore())
+    }
+#endif

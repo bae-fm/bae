@@ -47,3 +47,34 @@ struct ArtistDetailPane: View {
         .background(Theme.surface)
     }
 }
+
+#if DEBUG
+    #Preview("Artist \u{2014} Loaded") {
+        let uiStore = UiStore()
+        let libraryStore = PreviewData.seededArtistStore()
+        let session = PreviewData.browseSession(
+            libraryStore: libraryStore,
+            uiStore: uiStore
+        )
+        session.selectArtist("artist-0")
+        return ArtistDetailPane(detail: PreviewData.artistDetail)
+            .frame(width: 520, height: 640)
+            .environment(session)
+            .environment(uiStore)
+            .environment(MediaPaths.stub)
+    }
+
+    #Preview("Artist \u{2014} Placeholder") {
+        let uiStore = UiStore()
+        let libraryStore = LibraryStore()
+        let session = PreviewData.browseSession(
+            libraryStore: libraryStore,
+            uiStore: uiStore
+        )
+        return ArtistDetailPane(detail: nil)
+            .frame(width: 520, height: 640)
+            .environment(session)
+            .environment(uiStore)
+            .environment(MediaPaths.stub)
+    }
+#endif

@@ -150,3 +150,31 @@ struct CoverPickerView: View {
     }
 
 }
+
+#if DEBUG
+    // MARK: - Previews
+
+    #Preview("With covers") {
+        CoverPickerView(
+            remoteCoverArts: PreviewData.remoteCovers,
+            localArtwork: PreviewData.bridgeCandidateFiles.artwork,
+            selectedCover: PreviewData.remoteCovers.first?.coverChoice,
+            onSelect: { _ in },
+            onDone: {},
+        )
+        .frame(width: 520, height: 620)
+        .importPreviewEnvironment()
+    }
+
+    #Preview("Empty") {
+        CoverPickerView(
+            remoteCoverArts: [],
+            localArtwork: [],
+            selectedCover: nil,
+            onSelect: { _ in },
+            onDone: {},
+        )
+        .frame(width: 520, height: 620)
+        .importPreviewEnvironment()
+    }
+#endif

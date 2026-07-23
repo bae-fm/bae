@@ -1,3 +1,4 @@
+import BaeKit
 import SwiftUI
 
 /// Animates a popover's content in on mount — a short spring of scale+fade
@@ -38,3 +39,24 @@ extension View {
     }
 
 }
+
+#if DEBUG
+    // Hosts a sample popover body with the entrance modifier — it springs from the
+    // top anchor on appear and rests at full scale/opacity.
+    #Preview("Popover Entrance") {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Add to queue")
+                .font(.headline)
+            Text("Springs in from its anchor when the popover appears.")
+                .font(.callout)
+                .foregroundStyle(.secondary)
+        }
+        .padding(16)
+        .frame(width: 240)
+        .background(Theme.surface, in: RoundedRectangle(cornerRadius: 10))
+        .popoverEntrance(anchor: .top)
+        .padding(48)
+        .background(Theme.background)
+        .preferredColorScheme(.dark)
+    }
+#endif

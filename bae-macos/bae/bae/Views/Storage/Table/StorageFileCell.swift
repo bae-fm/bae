@@ -36,3 +36,33 @@ struct StorageFileCell: View {
         .padding(.horizontal, 4)
     }
 }
+
+#if DEBUG
+    #Preview("Audio file") {
+        HStack(spacing: 0) {
+            ForEach(StorageTableColumn.allCases, id: \.self) { column in
+                StorageFileCell(
+                    file: PreviewData.storageAudioFile,
+                    column: column
+                )
+                .frame(width: 110)
+            }
+        }
+        .frame(width: 700)
+        .padding(.vertical)
+    }
+
+    #Preview("Image file (no format)") {
+        HStack(spacing: 0) {
+            ForEach(StorageTableColumn.allCases, id: \.self) { column in
+                StorageFileCell(
+                    file: PreviewData.storageImageFile,
+                    column: column
+                )
+                .frame(width: 110)
+            }
+        }
+        .frame(width: 700)
+        .padding(.vertical)
+    }
+#endif

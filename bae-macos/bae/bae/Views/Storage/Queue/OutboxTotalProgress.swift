@@ -39,3 +39,17 @@ struct OutboxTotalProgress: View {
         .padding(.vertical, 4)
     }
 }
+
+#if DEBUG
+    #Preview("Active") {
+        OutboxTotalProgress(snapshot: PreviewData.outboxSnapshot())
+            .frame(width: 700)
+    }
+
+    #Preview("Paused") {
+        OutboxTotalProgress(
+            snapshot: PreviewData.outboxSnapshot(paused: true)
+        )
+        .frame(width: 700)
+    }
+#endif

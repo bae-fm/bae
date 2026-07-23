@@ -41,3 +41,30 @@ struct PresetBitrateRow: View {
         update(changed)
     }
 }
+
+#if DEBUG
+    // MARK: - Previews
+
+    /// Owns the bitrate draft the editor's sheet normally holds, seeded from the
+    /// lossy preset fixture.
+    private struct PresetBitrateRowPreview: View {
+        @State
+        private var draft = "320"
+
+        var body: some View {
+            Form {
+                PresetBitrateRow(
+                    preset: PreviewData.savePresets[1],
+                    bitrateDraft: $draft,
+                    update: { _ in },
+                )
+            }
+            .formStyle(.grouped)
+            .frame(width: 460)
+        }
+    }
+
+    #Preview("Bitrate") {
+        PresetBitrateRowPreview()
+    }
+#endif

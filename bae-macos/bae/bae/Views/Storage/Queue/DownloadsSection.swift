@@ -45,3 +45,23 @@ struct DownloadsSection: View {
     }
 
 }
+
+#if DEBUG
+    #Preview("Populated") {
+        DownloadsSection()
+            .environment(PreviewData.downloadStore())
+            .environment(Downloads.stub)
+            .frame(width: 680)
+    }
+
+    #Preview("Paused") {
+        DownloadsSection()
+            .environment(
+                PreviewData.downloadStore(
+                    PreviewData.downloadSnapshot(paused: true)
+                )
+            )
+            .environment(Downloads.stub)
+            .frame(width: 680)
+    }
+#endif

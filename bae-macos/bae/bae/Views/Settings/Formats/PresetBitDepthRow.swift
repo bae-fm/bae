@@ -30,3 +30,16 @@ struct PresetBitDepthRow: View {
         .presetEditorRowInsets()
     }
 }
+
+#if DEBUG
+    #Preview("Bit depth") {
+        Form {
+            PresetBitDepthRow(
+                preset: PreviewData.savePresets[0],
+                update: { _ in },
+            )
+        }
+        .formStyle(.grouped)
+        .frame(width: 460)
+    }
+#endif

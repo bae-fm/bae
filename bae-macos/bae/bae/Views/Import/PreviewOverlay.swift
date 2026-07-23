@@ -55,3 +55,18 @@ struct PreviewOverlay: View {
         )
     }
 }
+
+#if DEBUG
+    // MARK: - Previews
+
+    #Preview("Preview overlay") {
+        PreviewOverlay(
+            path: "/Music/Downloads/Album Title/01 Track Title.flac",
+            isPlaying: true,
+            durationMs: 210_000,
+        )
+        .frame(width: 600, height: 400)
+        .environment(PreviewAudio.stub)
+        .windowBackground()
+    }
+#endif

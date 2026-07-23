@@ -160,3 +160,58 @@ struct SignalBadge: View {
             )
     }
 }
+
+#if DEBUG
+    // MARK: - Previews
+
+    #Preview("Signal badges") {
+        VStack(alignment: .leading, spacing: 10) {
+            SignalBadge(
+                signal: BridgeToolbarSignal(
+                    kind: .discId,
+                    role: .identity,
+                    value: "Xx0Yy1Zz2Aa3Bb4Cc5",
+                    origin: .discToc,
+                    state: .found(count: 3),
+                    excluded: false
+                ),
+                onToggle: {},
+            )
+            SignalBadge(
+                signal: BridgeToolbarSignal(
+                    kind: .catalog,
+                    role: .filter,
+                    value: "WPCR-80001",
+                    origin: .folderName,
+                    state: .confirms(count: 1),
+                    excluded: false
+                ),
+                onToggle: {},
+            )
+            SignalBadge(
+                signal: BridgeToolbarSignal(
+                    kind: .barcode,
+                    role: .identity,
+                    value: "0123456789012",
+                    origin: .artwork,
+                    state: .lookingUp,
+                    excluded: false
+                ),
+                onToggle: {},
+            )
+            SignalBadge(
+                signal: BridgeToolbarSignal(
+                    kind: .barcode,
+                    role: .identity,
+                    value: "0123456789012",
+                    origin: .artwork,
+                    state: .found(count: 4),
+                    excluded: true
+                ),
+                onToggle: {},
+            )
+        }
+        .padding()
+        .windowBackground()
+    }
+#endif

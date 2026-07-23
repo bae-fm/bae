@@ -226,3 +226,19 @@ struct ApproveDeviceSheet: View {
         }
     }
 }
+
+#if DEBUG
+    // MARK: - Previews
+
+    /// The sheet opens on its capture step (paste-or-scan). The QR scanner
+    /// sub-view needs a camera, which the preview canvas has none of, so it
+    /// renders empty — the paste field and the surrounding chrome are what this
+    /// previews. `invite` returns a placeholder code without touching sync.
+    #Preview("Add a device") {
+        ApproveDeviceSheet(
+            invite: { _, _ in "invite-code-preview" },
+            onDismiss: {},
+            onApproved: {},
+        )
+    }
+#endif

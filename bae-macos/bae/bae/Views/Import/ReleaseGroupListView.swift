@@ -55,3 +55,32 @@ struct ReleaseGroupListView: View {
         .padding(.top, 4)
     }
 }
+
+#if DEBUG
+    // MARK: - Previews
+
+    #Preview("Exact match") {
+        ReleaseGroupListView(
+            groups: [PreviewData.searchGroupExact],
+            isImporting: false,
+            libraryStatuses: [:],
+            provenance: PreviewData.searchProvenanceExact,
+            selectedReleaseId: nil,
+            onSelect: { _ in },
+        )
+        .frame(width: 620, height: 520)
+        .importPreviewEnvironment()
+    }
+
+    #Preview("Manual results") {
+        ReleaseGroupListView(
+            groups: PreviewData.searchGroupsManual,
+            isImporting: false,
+            libraryStatuses: [:],
+            selectedReleaseId: nil,
+            onSelect: { _ in },
+        )
+        .frame(width: 620, height: 520)
+        .importPreviewEnvironment()
+    }
+#endif

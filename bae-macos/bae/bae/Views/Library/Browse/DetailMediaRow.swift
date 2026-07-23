@@ -30,3 +30,23 @@ struct DetailMediaRow: View {
         }
     }
 }
+
+#if DEBUG
+    #Preview("Detail Media Row") {
+        VStack(alignment: .leading, spacing: 8) {
+            DetailMediaRow(
+                image: nil,
+                title: "Work Title",
+                subtitle: "Composer Name"
+            )
+            DetailMediaRow(
+                image: nil,
+                title: "Album Title",
+                subtitle: nil
+            )
+        }
+        .padding()
+        .frame(width: 420, alignment: .leading)
+        .environment(MediaPaths.stub)
+    }
+#endif

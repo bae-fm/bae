@@ -714,3 +714,25 @@ extension View {
         }
     }
 }
+
+#if DEBUG
+    #Preview("Album Detail — Single Disc") {
+        AlbumDetailView(albumId: "a-01")
+            .frame(width: 1100, height: 780)
+            .background(Theme.background)
+            .albumDetailPreviewEnvironment(
+                store: PreviewData.seededLibraryStore()
+            )
+            .preferredColorScheme(.dark)
+    }
+
+    #Preview("Album Detail — Multiple Releases") {
+        AlbumDetailView(albumId: "a-04")
+            .frame(width: 1100, height: 780)
+            .background(Theme.background)
+            .albumDetailPreviewEnvironment(
+                store: PreviewData.seededLibraryStore()
+            )
+            .preferredColorScheme(.dark)
+    }
+#endif

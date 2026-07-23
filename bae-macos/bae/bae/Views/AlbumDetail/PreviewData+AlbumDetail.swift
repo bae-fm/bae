@@ -83,6 +83,124 @@
                 onExportTrack: { _ in },
             )
         }
+
+        /// The primary release's fat detail for a seeded preview album — tracks,
+        /// groups, and duration, drawn from the same seed the album-detail tree
+        /// reads. Used by the leaf previews that take a `ReleaseDetail` directly
+        /// (track list, track row).
+        @MainActor
+        static func releaseDetail(albumId: String) -> ReleaseDetail {
+            let store = seededLibraryStore()
+            guard let summary = store.albumSummaries[albumId],
+                let detail = store.releaseDetails[summary.primaryReleaseId]
+            else {
+                fatalError("no preview release detail for album \(albumId)")
+            }
+            return detail
+        }
+
+        /// One `Track` for the `TrackRowView` previews. `displayArtist` non-nil
+        /// exercises the compilation row (core sets it only for compilations).
+        static func previewTrack(
+            id: String = "t-preview",
+            title: String = "Track Title",
+            position: String = "1",
+            durationMs: Int64? = 214_000,
+            displayArtist: String? = nil
+        ) -> Track {
+            Track(
+                from: BridgeTrack(
+                    id: id,
+                    title: title,
+                    side: 1,
+                    trackNumber: 1,
+                    durationMs: durationMs,
+                    artistNames: displayArtist ?? "Artist Name",
+                    displayArtist: displayArtist,
+                    positionText: position
+                )
+            )
+        }
+
+        /// Audio + cover files for the storage sheet's file table.
+        static let previewReleaseFiles: [BridgeFile] = [
+            BridgeFile(
+                id: "f-1",
+                originalFilename: "01 - Track Title.flac",
+                fileSize: 38_400_000,
+                contentType: "Audio",
+                isImage: false,
+                audioFormat: BridgeAudioFormat(
+                    codec: "FLAC",
+                    sampleRateHz: 44_100,
+                    bitsPerSample: 16,
+                    bitrateKbps: nil,
+                    channels: 2
+                )
+            ),
+            BridgeFile(
+                id: "f-2",
+                originalFilename: "02 - Track Title.flac",
+                fileSize: 41_100_000,
+                contentType: "Audio",
+                isImage: false,
+                audioFormat: BridgeAudioFormat(
+                    codec: "FLAC",
+                    sampleRateHz: 44_100,
+                    bitsPerSample: 16,
+                    bitrateKbps: nil,
+                    channels: 2
+                )
+            ),
+            BridgeFile(
+                id: "f-cover",
+                originalFilename: "cover.jpg",
+                fileSize: 2_450_000,
+                contentType: "Image",
+                isImage: true,
+                audioFormat: nil
+            ),
+        ]
+
+        /// A `ReleaseDetail` in a chosen storage state, for the storage band and
+        /// manage-sheet previews: the storage status line, the pin flag, and the
+        /// core-computed actions all vary by locality, so each state is its own
+        /// fixture rather than a mutation of one.
+        @MainActor
+        static func storageRelease(
+            storageState: BridgeReleaseStorageState,
+            pinned: Bool,
+            storageActions: [BridgeReleaseStorageAction],
+            files: [BridgeFile] = previewReleaseFiles
+        ) -> ReleaseDetail {
+            let bridge = BridgeRelease(
+                id: "rel-storage-preview",
+                albumId: "a-storage-preview",
+                displayName: "2019 \u{00B7} CD",
+                year: 2019,
+                format: "CD",
+                label: "Some Label",
+                catalogNumber: "CAT-0001",
+                country: "US",
+                storageState: storageState,
+                pinned: pinned,
+                storageActions: storageActions,
+                transferAction: nil,
+                tracks: [],
+                trackGroups: [],
+                files: files,
+                imageFiles: [],
+                galleryItems: [],
+                totalDuration: .minutesOnly(minutes: 39),
+                fileCount: Int64(files.count),
+                totalSize: files.reduce(Int64(0)) { $0 + $1.fileSize },
+                cover: nil
+            )
+            return ReleaseDetail(
+                summary: ReleaseSummary(from: bridge),
+                bridge: bridge
+            )
+        }
     }
 
     extension View {

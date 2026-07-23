@@ -20,3 +20,16 @@ struct StorageRowPlaceholderCell: View {
         .padding(.horizontal, 4)
     }
 }
+
+#if DEBUG
+    #Preview("Placeholder row") {
+        HStack(spacing: 0) {
+            ForEach(StorageTableColumn.allCases, id: \.self) { column in
+                StorageRowPlaceholderCell(column: column)
+                    .frame(width: 110)
+            }
+        }
+        .frame(width: 700)
+        .padding(.vertical)
+    }
+#endif

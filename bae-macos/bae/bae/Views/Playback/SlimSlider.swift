@@ -1,3 +1,4 @@
+import BaeKit
 import SwiftUI
 
 /// A slim, knobless slider for the now-playing bar's volume: a 5pt capsule
@@ -50,3 +51,25 @@ struct SlimSlider: View {
         }
     }
 }
+
+#if DEBUG
+    // MARK: - Previews
+
+    /// Holds the value the way the now-playing bar does — the control keeps no
+    /// copy, so dragging updates the host's state and re-renders the fill.
+    private struct SlimSliderPreview: View {
+        @State
+        var value: Float
+
+        var body: some View {
+            SlimSlider(value: value, onChange: { value = $0 })
+                .frame(width: 120)
+                .padding()
+                .background(Theme.surface)
+        }
+    }
+
+    #Preview("Volume") {
+        SlimSliderPreview(value: 0.6)
+    }
+#endif

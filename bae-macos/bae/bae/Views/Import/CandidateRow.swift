@@ -93,3 +93,66 @@ struct CandidateRow: View {
         Image(systemName: systemName).foregroundStyle(style)
     }
 }
+
+#if DEBUG
+    // MARK: - Previews
+
+    #Preview("Candidate states") {
+        VStack(alignment: .leading, spacing: 0) {
+            CandidateRow(
+                displayName: "Album Title One",
+                revealPath: "/Music/Downloads/Album Title One",
+                status: nil,
+                isAdded: false,
+                skipped: false,
+                isLikelyDupe: false,
+                onSkip: { _ in },
+            )
+            CandidateRow(
+                displayName: "Album Title Two",
+                revealPath: "/Music/Downloads/Album Title Two",
+                status: nil,
+                isAdded: false,
+                skipped: false,
+                isLikelyDupe: true,
+                onSkip: { _ in },
+            )
+            CandidateRow(
+                displayName: "Album Title Three",
+                revealPath: "/Music/Downloads/Album Title Three",
+                status: .importing(
+                    progressPercent: 45,
+                    step: .running(phase: .measuringLoudness)
+                ),
+                isAdded: false,
+                skipped: false,
+                isLikelyDupe: false,
+                onSkip: { _ in },
+            )
+            CandidateRow(
+                displayName: "Album Title Four",
+                revealPath: "/Music/Downloads/Album Title Four",
+                status: .complete(
+                    releaseId: "preview-release",
+                    albumId: "preview-album"
+                ),
+                isAdded: false,
+                skipped: false,
+                isLikelyDupe: false,
+                onSkip: { _ in },
+            )
+            CandidateRow(
+                displayName: "Album Title Five",
+                revealPath: "/Music/Downloads/Album Title Five",
+                status: nil,
+                isAdded: false,
+                skipped: true,
+                isLikelyDupe: false,
+                onSkip: { _ in },
+            )
+        }
+        .padding()
+        .frame(width: 320)
+        .importPreviewEnvironment()
+    }
+#endif

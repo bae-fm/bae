@@ -22,3 +22,16 @@ struct OutboxDeleteRow: View {
         }
     }
 }
+
+#if DEBUG
+    #Preview("Pending delete") {
+        VStack(spacing: 0) {
+            ForEach(PreviewData.deleteOps, id: \.id) { op in
+                OutboxDeleteRow(op: op, onCancel: {})
+                Divider()
+            }
+        }
+        .frame(width: 640)
+        .padding(.vertical)
+    }
+#endif

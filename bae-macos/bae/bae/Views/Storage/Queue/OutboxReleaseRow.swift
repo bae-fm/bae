@@ -89,3 +89,17 @@ struct OutboxReleaseRow: View {
         }
     }
 }
+
+#if DEBUG
+    #Preview("Uploading release") {
+        OutboxReleaseRow(group: PreviewData.uploadGroup, onCancel: {})
+            .frame(width: 700)
+            .padding(.vertical)
+    }
+
+    #Preview("Completed release") {
+        OutboxReleaseRow(group: PreviewData.uploadGroupDone, onCancel: {})
+            .frame(width: 700)
+            .padding(.vertical)
+    }
+#endif

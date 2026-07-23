@@ -523,3 +523,69 @@ extension QueueSection {
         }
     }
 }
+
+#if DEBUG
+    // MARK: - Previews
+
+    /// Hosts one lane over a fresh drag coordinator and the named pane
+    /// coordinate space the section's gestures address, resolving rows from a
+    /// slice of the shared queue fixtures.
+    @MainActor
+    private func queueSectionPreview(
+        title: String?,
+        shuffled: Bool,
+        count: Int,
+        acceptsExternalDrops: Bool,
+        laneId: QueueLaneID,
+        onSetShuffle: ((Bool) -> Void)?
+    ) -> some View {
+        let items = Array(PreviewData.queueItems.prefix(count))
+        return QueueSection(
+            title: title,
+            shuffled: shuffled,
+            count: count,
+            itemAt: { index in
+                items.indices.contains(index) ? items[index] : nil
+            },
+            loadEpoch: 0,
+            loadRange: nil,
+            acceptsExternalDrops: acceptsExternalDrops,
+            laneId: laneId,
+            coordinator: QueueDragCoordinator(),
+            queueRevision: 1,
+            onClear: {},
+            onSkipTo: { _ in },
+            onRemove: { _ in },
+            onReorder: { _, _ in },
+            onInsertTracks: { _, _ in },
+            onSetShuffle: onSetShuffle,
+        )
+        .frame(width: 400)
+        .padding(.vertical)
+        .background(Theme.surface)
+        .coordinateSpace(name: "queuePane")
+        .environment(MediaPaths.stub)
+    }
+
+    #Preview("Up Next lane") {
+        queueSectionPreview(
+            title: "Up Next",
+            shuffled: false,
+            count: 2,
+            acceptsExternalDrops: true,
+            laneId: .manual,
+            onSetShuffle: nil,
+        )
+    }
+
+    #Preview("Context lane — shuffled") {
+        queueSectionPreview(
+            title: "Playing From · Neon Frequencies",
+            shuffled: true,
+            count: 5,
+            acceptsExternalDrops: false,
+            laneId: .context,
+            onSetShuffle: { _ in },
+        )
+    }
+#endif

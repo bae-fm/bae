@@ -38,3 +38,18 @@ struct InvalidCandidateRow: View {
         }
     }
 }
+
+#if DEBUG
+    // MARK: - Previews
+
+    #Preview("Invalid candidate") {
+        InvalidCandidateRow(
+            displayName: "Broken Rip",
+            reason: .corruptAudioFile(path: "03.flac"),
+            revealPath: "/Music/Downloads/Broken Rip",
+        )
+        .padding()
+        .frame(width: 320)
+        .windowBackground()
+    }
+#endif

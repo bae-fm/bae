@@ -65,3 +65,31 @@ struct WelcomeView: View {
         }
     }
 }
+
+#if DEBUG
+    // MARK: - Previews
+
+    /// The three flows the switcher lands on, each in the welcome window's
+    /// chrome with the populated `LibrarySetup` so no flow touches the real
+    /// library directory or keychain.
+    #Preview("Choose") {
+        WelcomeWindowChrome {
+            WelcomeView(onLibraryReady: { _ in })
+        }
+        .environment(PreviewData.welcomeSetup)
+    }
+
+    #Preview("Restore") {
+        WelcomeWindowChrome {
+            WelcomeView(onLibraryReady: { _ in }, initialMode: .restore)
+        }
+        .environment(PreviewData.welcomeSetup)
+    }
+
+    #Preview("Join") {
+        WelcomeWindowChrome {
+            WelcomeView(onLibraryReady: { _ in }, initialMode: .join)
+        }
+        .environment(PreviewData.welcomeSetup)
+    }
+#endif

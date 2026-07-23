@@ -73,3 +73,19 @@ struct WorkDetailView: View {
         return release.displayName
     }
 }
+
+#if DEBUG
+    #Preview("Work Detail") {
+        ScrollView {
+            WorkDetailView(
+                detail: PreviewData.workDetail,
+                openWork: { _ in },
+                openAlbum: { _, _ in }
+            )
+            .padding(24)
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .frame(width: 560, height: 640)
+        .environment(MediaPaths.stub)
+    }
+#endif

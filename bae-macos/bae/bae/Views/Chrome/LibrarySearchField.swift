@@ -49,3 +49,36 @@ struct LibrarySearchField: View {
         .animation(.easeInOut(duration: 0.15), value: focused.wrappedValue)
     }
 }
+
+#if DEBUG
+    // MARK: - Previews
+
+    /// Owns the text and focus state the title bar normally provides — the
+    /// "With query" variant seeds text so the clear button shows.
+    private struct LibrarySearchFieldPreview: View {
+        @State
+        var text: String
+        @FocusState
+        private var focused: Bool
+
+        var body: some View {
+            LibrarySearchField(
+                text: $text,
+                prompt: "Search",
+                focused: $focused,
+                onEscape: {},
+            )
+            .frame(width: 300)
+            .padding()
+            .background(Theme.surface)
+        }
+    }
+
+    #Preview("Empty") {
+        LibrarySearchFieldPreview(text: "")
+    }
+
+    #Preview("With query") {
+        LibrarySearchFieldPreview(text: "Artist Name")
+    }
+#endif

@@ -40,3 +40,15 @@ struct ComposerWorkGroupView: View {
         return [parent]
     }
 }
+
+#if DEBUG
+    #Preview("Composer Work Group") {
+        ComposerWorkGroupView(
+            group: PreviewData.composerWorkGroup,
+            openWork: { _ in }
+        )
+        .padding()
+        .frame(width: 460, alignment: .leading)
+        .environment(MediaPaths.stub)
+    }
+#endif

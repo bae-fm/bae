@@ -1,3 +1,4 @@
+import BaeKit
 import SwiftUI
 
 enum StableOptionalTextForeground {
@@ -70,3 +71,33 @@ struct StableOptionalText: View {
         }
     }
 }
+
+#if DEBUG
+    #Preview("Stable Optional Text") {
+        // The nil row reserves the same line height as the present rows, so a
+        // stack of these never shifts when a value appears or disappears.
+        VStack(alignment: .leading, spacing: 8) {
+            StableOptionalText(
+                text: "Track Title",
+                font: .system(size: 14, weight: .medium),
+                lineHeight: 18
+            )
+            StableOptionalText(
+                text: nil,
+                font: .system(size: 14, weight: .medium),
+                foreground: .secondary,
+                lineHeight: 18
+            )
+            StableOptionalText(
+                text: "Artist Name",
+                font: .system(size: 12),
+                foreground: .tertiary,
+                lineHeight: 16
+            )
+        }
+        .padding(24)
+        .frame(width: 240, alignment: .leading)
+        .background(Theme.background)
+        .preferredColorScheme(.dark)
+    }
+#endif

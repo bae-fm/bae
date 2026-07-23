@@ -57,3 +57,16 @@ struct DownloadRow: View {
         }
     }
 }
+
+#if DEBUG
+    #Preview("Download states") {
+        VStack(spacing: 0) {
+            ForEach(PreviewData.downloadOps, id: \.releaseId) { op in
+                DownloadRow(op: op, onCancel: {})
+                Divider()
+            }
+        }
+        .frame(width: 640)
+        .padding(.vertical)
+    }
+#endif

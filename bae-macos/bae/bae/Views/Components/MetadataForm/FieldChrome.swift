@@ -34,3 +34,25 @@ struct FieldChrome: ViewModifier {
         return boxed ? .white.opacity(0.07) : .clear
     }
 }
+
+#if DEBUG
+    #Preview("Field Chrome") {
+        // The four resting/focused × boxed/borderless combinations the chrome
+        // renders, hosting plain text where a real field would sit.
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Boxed · resting")
+                .modifier(FieldChrome(focused: false, boxed: true))
+            Text("Boxed · focused")
+                .modifier(FieldChrome(focused: true, boxed: true))
+            Text("Borderless · resting")
+                .modifier(FieldChrome(focused: false, boxed: false))
+            Text("Borderless · focused")
+                .modifier(FieldChrome(focused: true, boxed: false))
+        }
+        .font(.system(size: 13))
+        .padding(24)
+        .frame(width: 300, alignment: .leading)
+        .background(Theme.background)
+        .preferredColorScheme(.dark)
+    }
+#endif

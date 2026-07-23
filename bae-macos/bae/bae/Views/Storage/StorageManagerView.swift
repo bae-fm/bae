@@ -193,3 +193,22 @@ struct StorageManagerView: View {
         }
     }
 }
+
+#if DEBUG
+    #Preview("Full screen") {
+        StorageManagerView()
+            .environment(PreviewData.storageLibrary())
+            .environment(LibraryStore())
+            .environment(ReleaseEditor.stub)
+            .environment(Sync.stub)
+            .environment(Downloads.stub)
+            .environment(Outputs.stub)
+            .environment(PreviewData.configStore)
+            .environment(UiStore())
+            .environment(ProjectionRegistry())
+            .environment(PreviewData.downloadStore())
+            .environment(PreviewData.outputStore())
+            .environment(PreviewData.outboxStore())
+            .frame(width: 940, height: 760)
+    }
+#endif

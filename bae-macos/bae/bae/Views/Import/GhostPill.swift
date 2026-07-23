@@ -31,3 +31,20 @@ struct GhostPill: View {
         .onHover { hovering = $0 }
     }
 }
+
+#if DEBUG
+    // MARK: - Previews
+
+    #Preview("Ghost pills") {
+        HStack(spacing: 8) {
+            GhostPill(
+                icon: "magnifyingglass",
+                label: "Search manually",
+                action: {}
+            )
+            GhostPill(icon: nil, label: "Skip identifying", action: {})
+        }
+        .padding()
+        .windowBackground()
+    }
+#endif

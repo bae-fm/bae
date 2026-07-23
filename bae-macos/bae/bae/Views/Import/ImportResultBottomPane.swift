@@ -125,3 +125,26 @@ struct ImportResultBottomPane<Content: View>: View {
         }
     }
 }
+
+#if DEBUG
+    // MARK: - Previews
+
+    #Preview("Docked pane") {
+        ImportResultBottomPane(
+            height: .constant(320),
+            dragging: .constant(false),
+            available: 800,
+            onClose: {},
+        ) {
+            VStack {
+                Spacer()
+                Text("Confirmation content")
+                    .foregroundStyle(.secondary)
+                Spacer()
+            }
+            .frame(maxWidth: .infinity)
+        }
+        .frame(width: 700, height: 360)
+        .windowBackground()
+    }
+#endif

@@ -79,3 +79,14 @@ struct ReleaseGroupCard: View {
         }
     }
 }
+
+#if DEBUG
+    // MARK: - Previews
+
+    #Preview("Release group card") {
+        ReleaseGroupCard(group: PreviewData.searchGroupExact)
+            .padding()
+            .frame(width: 560)
+            .importPreviewEnvironment()
+    }
+#endif

@@ -147,3 +147,33 @@ private struct InlineCompletionTextFieldNS: NSViewRepresentable {
         }
     }
 }
+
+#if DEBUG
+    // MARK: - Previews
+
+    #Preview("Idle") {
+        AutocompleteTextField(
+            text: .constant(""),
+            placeholder: "Artist",
+            suggestions: ["Artist Name", "Album Title", "Label Name"],
+            isLoading: false,
+            onSubmit: {},
+        )
+        .frame(width: 260)
+        .padding()
+        .windowBackground()
+    }
+
+    #Preview("Loading with text") {
+        AutocompleteTextField(
+            text: .constant("Art"),
+            placeholder: "Artist",
+            suggestions: ["Artist Name"],
+            isLoading: true,
+            onSubmit: {},
+        )
+        .frame(width: 260)
+        .padding()
+        .windowBackground()
+    }
+#endif

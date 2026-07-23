@@ -31,3 +31,16 @@ struct SyncErrorBanner: View {
         }
     }
 }
+
+#if DEBUG
+    #Preview("Sync failing") {
+        Form {
+            Section("Sync") {
+                SyncErrorBanner(onReconnect: {})
+            }
+        }
+        .formStyle(.grouped)
+        .frame(width: 500)
+        .environment(PreviewData.syncErrorConfigStore)
+    }
+#endif

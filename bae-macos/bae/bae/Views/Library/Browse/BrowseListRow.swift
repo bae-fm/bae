@@ -102,3 +102,34 @@ private struct SummaryRowPlaceholder: View {
         }
     }
 }
+
+#if DEBUG
+    #Preview("Browse List Row") {
+        let libraryStore = PreviewData.seededComposerStore()
+        return VStack(spacing: 4) {
+            BrowseListRow(
+                id: "composer-0",
+                isSelected: false,
+                summaries: \.composerSummaries,
+                select: { _ in }
+            )
+            BrowseListRow(
+                id: "composer-1",
+                isSelected: true,
+                summaries: \.composerSummaries,
+                select: { _ in }
+            )
+            // Not in the store: renders the shimmer placeholder.
+            BrowseListRow(
+                id: "composer-unloaded",
+                isSelected: false,
+                summaries: \.composerSummaries,
+                select: { _ in }
+            )
+        }
+        .padding()
+        .frame(width: 320)
+        .environment(libraryStore)
+        .environment(MediaPaths.stub)
+    }
+#endif

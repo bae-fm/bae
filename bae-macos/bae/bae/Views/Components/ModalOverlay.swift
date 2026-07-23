@@ -1,3 +1,4 @@
+import BaeKit
 import SwiftUI
 
 struct ModalOverlay<Content: View>: View {
@@ -26,3 +27,28 @@ struct ModalOverlay<Content: View>: View {
         }
     }
 }
+
+#if DEBUG
+    #Preview("Modal Overlay") {
+        ModalOverlay(onDismiss: {}) {
+            VStack(spacing: 12) {
+                Text("Sample Modal")
+                    .font(.headline)
+                Text(
+                    "Any content hosts inside the dimmed, dismissible overlay."
+                )
+                .font(.callout)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                Button("Done") {}
+                    .buttonStyle(.borderedProminent)
+            }
+            .padding(32)
+            .frame(width: 320)
+            .background(Theme.surface)
+        }
+        .frame(width: 620, height: 420)
+        .background(Theme.background)
+        .preferredColorScheme(.dark)
+    }
+#endif

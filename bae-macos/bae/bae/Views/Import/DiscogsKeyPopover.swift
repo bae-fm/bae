@@ -39,3 +39,15 @@ struct DiscogsKeyPopover: View {
         }
     }
 }
+
+#if DEBUG
+    // MARK: - Previews
+
+    #Preview("Popover") {
+        DiscogsKeyPopover(
+            isPresented: .constant(true),
+            hoverTask: .constant(nil),
+            onOpenSettings: {},
+        )
+    }
+#endif

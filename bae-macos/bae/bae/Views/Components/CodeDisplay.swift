@@ -1,3 +1,4 @@
+import BaeKit
 import SwiftUI
 
 /// QR image + selectable monospaced code + "Copy code" button — the cluster
@@ -45,3 +46,27 @@ struct CodeDisplay: View {
         }
     }
 }
+
+#if DEBUG
+    #Preview("Code Display") {
+        VStack(spacing: 28) {
+            // Bare cluster: QR + code + copy button.
+            VStack(spacing: 12) {
+                CodeDisplay(code: "BAE-4F2A-9C81-7D30", qrSize: 160)
+            }
+            Divider()
+            // With this device's fingerprint line between code and copy button.
+            VStack(spacing: 12) {
+                CodeDisplay(
+                    code: "BAE-4F2A-9C81-7D30",
+                    qrSize: 160,
+                    deviceFingerprint: "AB12 CD34 EF56 7890"
+                )
+            }
+        }
+        .padding(28)
+        .frame(width: 320)
+        .background(Theme.background)
+        .preferredColorScheme(.dark)
+    }
+#endif

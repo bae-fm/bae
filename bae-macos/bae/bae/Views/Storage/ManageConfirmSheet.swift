@@ -26,3 +26,10 @@ struct ManageConfirmSheet: View {
         .padding()
     }
 }
+
+#if DEBUG
+    #Preview("Move into library") {
+        ManageConfirmSheet(onConfirm: { _ in }, onCancel: {})
+            .frame(width: 420)
+    }
+#endif

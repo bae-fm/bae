@@ -59,3 +59,17 @@ struct CandidateTabBar: View {
         .buttonStyle(.plain)
     }
 }
+
+#if DEBUG
+    // MARK: - Previews
+
+    #Preview("Tab bar") {
+        CandidateTabBar(
+            activeTab: .constant(.new),
+            importStore: PreviewData.folderImportStore
+        )
+        .padding()
+        .frame(width: 320)
+        .windowBackground()
+    }
+#endif

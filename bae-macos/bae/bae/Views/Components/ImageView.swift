@@ -258,3 +258,27 @@ extension ImageView {
         )
     }
 }
+
+#if DEBUG
+    #Preview("Image View") {
+        // The preview MediaPaths stub resolves no bytes, so every slot settles on
+        // its placeholder: nil content shows the "unavailable" art, a library
+        // cover id shows the same once its load comes back empty, and the compact
+        // slot exercises the smaller placeholder chrome (< 56pt).
+        HStack(alignment: .top, spacing: 16) {
+            ImageView(imageRef: nil, pointSize: 120)
+                .frame(width: 120, height: 120)
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+            ImageView(coverImageId: "preview-cover", pointSize: 120)
+                .frame(width: 120, height: 120)
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+            ImageView(source: nil, pointSize: 44)
+                .frame(width: 44, height: 44)
+                .clipShape(RoundedRectangle(cornerRadius: 6))
+        }
+        .padding(28)
+        .background(Theme.background)
+        .environment(MediaPaths.stub)
+        .preferredColorScheme(.dark)
+    }
+#endif

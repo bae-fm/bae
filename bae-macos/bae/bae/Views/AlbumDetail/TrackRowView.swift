@@ -148,3 +148,81 @@ struct TrackRowView: View {
         Text(track.positionText)
     }
 }
+
+#if DEBUG
+    @MainActor
+    private func previewTrackRow(
+        track: Track,
+        artist: String? = nil,
+        isCurrent: Bool = false,
+        isLoading: Bool = false,
+        isPlaying: Bool = false
+    ) -> some View {
+        TrackRowView(
+            track: track,
+            artist: artist,
+            isCurrent: isCurrent,
+            isLoading: isLoading,
+            isPlaying: isPlaying,
+            onPlay: {},
+            onTogglePlayPause: {},
+            onAddNext: { _ in },
+            onAddToQueue: { _ in },
+            onExportTrack: { _ in },
+        )
+        .frame(height: 40)
+    }
+
+    #Preview("Track Row") {
+        VStack(spacing: 0) {
+            // Resting.
+            previewTrackRow(
+                track: PreviewData.previewTrack(
+                    title: "Track Title",
+                    position: "1"
+                )
+            )
+            // Current + playing (pause glyph, accent title, speaker when unhovered).
+            previewTrackRow(
+                track: PreviewData.previewTrack(
+                    title: "Track Title",
+                    position: "2"
+                ),
+                isCurrent: true,
+                isPlaying: true
+            )
+            // Current + paused.
+            previewTrackRow(
+                track: PreviewData.previewTrack(
+                    title: "Track Title",
+                    position: "3"
+                ),
+                isCurrent: true,
+                isPlaying: false
+            )
+            // Loading (spinner in the leading slot).
+            previewTrackRow(
+                track: PreviewData.previewTrack(
+                    title: "Track Title",
+                    position: "4"
+                ),
+                isLoading: true
+            )
+            // Compilation row: core supplies a per-track display artist.
+            previewTrackRow(
+                track: PreviewData.previewTrack(
+                    title: "Track Title",
+                    position: "5",
+                    displayArtist: "Featured Artist"
+                ),
+                artist: "Featured Artist"
+            )
+            .frame(height: 52)
+        }
+        .padding(24)
+        .frame(width: 460)
+        .background(Theme.background)
+        .environment(UiStore())
+        .preferredColorScheme(.dark)
+    }
+#endif

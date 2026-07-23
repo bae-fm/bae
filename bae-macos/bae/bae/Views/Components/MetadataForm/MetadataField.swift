@@ -1,3 +1,4 @@
+import BaeKit
 import SwiftUI
 
 /// A `String` text field styled to the confirm-pane vocabulary: a recessed
@@ -33,3 +34,35 @@ struct MetadataField: View {
         }
     }
 }
+
+#if DEBUG
+    #Preview("Metadata Field") {
+        @Previewable
+        @State
+        var albumTitle = "Album Title"
+        @Previewable
+        @State
+        var catalogNumber = "CAT-0001"
+        @Previewable
+        @State
+        var borderless = ""
+        VStack(spacing: 12) {
+            MetadataField(placeholder: "Album title", text: $albumTitle)
+            MetadataField(
+                placeholder: "Catalog number",
+                text: $catalogNumber,
+                monospaced: true
+            )
+            // Borderless cell: transparent until focused. Empty shows placeholder.
+            MetadataField(
+                placeholder: "Track title",
+                text: $borderless,
+                boxed: false
+            )
+        }
+        .padding(24)
+        .frame(width: 300)
+        .background(Theme.background)
+        .preferredColorScheme(.dark)
+    }
+#endif

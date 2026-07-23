@@ -38,3 +38,30 @@ struct StorageReleaseCell: View {
         .padding(.horizontal, 4)
     }
 }
+
+#if DEBUG
+    #Preview("Release across columns") {
+        HStack(spacing: 0) {
+            ForEach(StorageTableColumn.allCases, id: \.self) { column in
+                StorageReleaseCell(
+                    release: PreviewData.storageRelease(
+                        albumId: PreviewData.storageAlbum.id,
+                        storageState: .remote,
+                        pinned: true
+                    ),
+                    album: PreviewData.storageAlbum,
+                    column: column
+                )
+                .frame(width: 110)
+            }
+        }
+        .frame(width: 700)
+        .padding(.vertical)
+        .environment(
+            PreviewData.outboxStore(
+                PreviewData.outboxSnapshot(uploadGroups: [], deletes: [])
+            )
+        )
+        .environment(MediaPaths.stub)
+    }
+#endif

@@ -18,3 +18,16 @@ struct ImportCheckboxToggle: View {
             .font(.callout)
     }
 }
+
+#if DEBUG
+    // MARK: - Previews
+
+    #Preview("Checkbox toggles") {
+        VStack(alignment: .leading, spacing: 8) {
+            ImportCheckboxToggle("Managed", isOn: .constant(true))
+            ImportCheckboxToggle("Keep local copy", isOn: .constant(false))
+        }
+        .padding()
+        .windowBackground()
+    }
+#endif

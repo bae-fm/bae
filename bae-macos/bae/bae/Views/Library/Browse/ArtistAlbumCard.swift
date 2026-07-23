@@ -28,3 +28,12 @@ struct ArtistAlbumCard: View {
         .buttonStyle(.plain)
     }
 }
+
+#if DEBUG
+    #Preview("Artist Album Card") {
+        ArtistAlbumCard(album: PreviewData.albums[0], onTap: {})
+            .frame(width: 160)
+            .padding()
+            .environment(MediaPaths.stub)
+    }
+#endif

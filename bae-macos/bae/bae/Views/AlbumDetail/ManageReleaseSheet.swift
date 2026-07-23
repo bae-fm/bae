@@ -84,3 +84,23 @@ struct ManageReleaseSheet: View {
         }
     }
 }
+
+#if DEBUG
+    #Preview("Manage Release Sheet") {
+        ManageReleaseSheet(
+            release: PreviewData.storageRelease(
+                storageState: .remote,
+                pinned: false,
+                storageActions: [.pin, .makeLocal]
+            ),
+            onAction: { _ in },
+            onExport: {},
+            onSaveAs: {},
+            onDone: {},
+        )
+        .frame(width: 640, height: 600)
+        .background(Theme.background)
+        .environment(OutboxStore(snapshot: OutboxStore.emptySnapshot))
+        .preferredColorScheme(.dark)
+    }
+#endif

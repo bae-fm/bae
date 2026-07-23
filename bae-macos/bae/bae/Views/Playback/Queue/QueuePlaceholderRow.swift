@@ -1,3 +1,4 @@
+import BaeKit
 import SwiftUI
 
 /// A not-yet-loaded queue row: a skeleton shape, no text — `loadRange` is
@@ -22,3 +23,12 @@ struct QueuePlaceholderRow: View {
         .padding(.vertical, 6)
     }
 }
+
+#if DEBUG
+    #Preview("Loading row") {
+        QueuePlaceholderRow()
+            .frame(width: 380)
+            .padding()
+            .background(Theme.surface)
+    }
+#endif

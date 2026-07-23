@@ -44,3 +44,23 @@ struct OutputSection: View {
     }
 
 }
+
+#if DEBUG
+    #Preview("Populated") {
+        OutputSection()
+            .environment(PreviewData.outputStore())
+            .environment(Outputs.stub)
+            .frame(width: 700)
+    }
+
+    #Preview("Paused") {
+        OutputSection()
+            .environment(
+                PreviewData.outputStore(
+                    PreviewData.outputSnapshot(paused: true)
+                )
+            )
+            .environment(Outputs.stub)
+            .frame(width: 700)
+    }
+#endif

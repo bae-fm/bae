@@ -1,3 +1,4 @@
+import BaeKit
 import SwiftUI
 
 /// A "?" icon that shows an info popover on hover.
@@ -51,3 +52,30 @@ struct InfoTip: View {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3, execute: task)
     }
 }
+
+#if DEBUG
+    // The info popover is hover-driven, so a static preview shows the "?" trigger
+    // glyph beside its label; hovering it in the live preview opens the popover.
+    #Preview("Info Tip") {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(spacing: 8) {
+                Text("Encryption key")
+                InfoTip(
+                    text:
+                        "Your library is encrypted with a key only this device holds."
+                )
+            }
+            HStack(spacing: 8) {
+                Text("Watched folder")
+                InfoTip(
+                    text: "New rips dropped here are picked up automatically.",
+                    learnMoreURL: URL(string: "https://example.com/docs"),
+                    arrowEdge: .trailing
+                )
+            }
+        }
+        .padding(28)
+        .background(Theme.background)
+        .preferredColorScheme(.dark)
+    }
+#endif

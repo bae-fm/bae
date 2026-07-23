@@ -62,3 +62,41 @@ struct CodeShareSheet: View {
         .frame(width: 400, height: 440)
     }
 }
+
+#if DEBUG
+    // MARK: - Previews
+
+    /// Holds the async result the presenter normally writes after the sheet is
+    /// up, so each variant renders one of the loading / loaded / failed states.
+    private struct CodeShareSheetPreview: View {
+        @State
+        var result: Result<String, Error>?
+
+        var body: some View {
+            CodeShareSheet(result: $result, onDismiss: {})
+        }
+    }
+
+    #Preview("Loading") {
+        CodeShareSheetPreview(result: nil)
+    }
+
+    #Preview("Code") {
+        CodeShareSheetPreview(result: .success("recovery-code-preview-abcdef"))
+    }
+
+    #Preview("Failed") {
+        CodeShareSheetPreview(
+            result: .failure(
+                NSError(
+                    domain: "preview",
+                    code: 1,
+                    userInfo: [
+                        NSLocalizedDescriptionKey:
+                            "Couldn't generate a recovery code."
+                    ],
+                )
+            )
+        )
+    }
+#endif

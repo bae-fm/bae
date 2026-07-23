@@ -1,3 +1,4 @@
+import BaeKit
 import ObjectiveC
 import SwiftUI
 
@@ -122,3 +123,18 @@ struct TrafficLightOffset: ViewModifier {
             .background(TrafficLightHelper(xOffset: xOffset, yOffset: yOffset))
     }
 }
+
+#if DEBUG
+    // MARK: - Previews
+
+    /// The modifier repositions the real window's traffic-light buttons via
+    /// AppKit; the preview canvas has no `NSWindow`, so the helper's setup is a
+    /// no-op here and this hosts a sample surface only to confirm the modifier
+    /// composes and leaves its content unchanged.
+    #Preview("Hosted") {
+        Rectangle()
+            .fill(Theme.surface)
+            .frame(width: 400, height: 120)
+            .modifier(TrafficLightOffset(xOffset: 12, yOffset: 8))
+    }
+#endif

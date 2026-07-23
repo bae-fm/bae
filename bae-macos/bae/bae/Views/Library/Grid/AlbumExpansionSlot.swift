@@ -1,3 +1,4 @@
+import BaeKit
 import SwiftUI
 
 /// The full-width detail slot rendered under a grid row: it holds the album
@@ -17,3 +18,30 @@ struct AlbumExpansionSlot<ExpansionContent: View>: View {
         }
     }
 }
+
+#if DEBUG
+    private func previewExpansion(_ id: String) -> some View {
+        RoundedRectangle(cornerRadius: 10)
+            .fill(Theme.surface)
+            .frame(height: 120)
+            .overlay(Text("Expansion for \(id)"))
+            .padding(.vertical, 8)
+    }
+
+    #Preview("Album Expansion Slot") {
+        VStack(spacing: 0) {
+            // Selected: the slot holds its expansion content.
+            AlbumExpansionSlot(
+                selectedId: "album-0",
+                expansionContent: previewExpansion
+            )
+            // Unselected: an inert zero-height placeholder.
+            AlbumExpansionSlot(
+                selectedId: nil,
+                expansionContent: previewExpansion
+            )
+        }
+        .padding()
+        .frame(width: 480)
+    }
+#endif

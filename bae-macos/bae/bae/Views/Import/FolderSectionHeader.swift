@@ -44,3 +44,33 @@ struct FolderSectionHeader: View {
         }
     }
 }
+
+#if DEBUG
+    // MARK: - Previews
+
+    #Preview("Expanded") {
+        FolderSectionHeader(
+            folder: PreviewData.importWatchedFolder,
+            count: 12,
+            isCollapsed: false,
+            onToggle: {},
+            onRemove: {},
+        )
+        .padding()
+        .frame(width: 320)
+        .windowBackground()
+    }
+
+    #Preview("Collapsed") {
+        FolderSectionHeader(
+            folder: PreviewData.importWatchedFolder,
+            count: 12,
+            isCollapsed: true,
+            onToggle: {},
+            onRemove: {},
+        )
+        .padding()
+        .frame(width: 320)
+        .windowBackground()
+    }
+#endif

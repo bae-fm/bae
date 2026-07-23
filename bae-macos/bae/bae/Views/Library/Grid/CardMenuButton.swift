@@ -66,3 +66,14 @@ private class MenuItem: NSMenuItem {
         handler()
     }
 }
+
+#if DEBUG
+    #Preview("Card Menu Button") {
+        CardMenuButton(
+            menu: PreviewData.albumCardMenu(),
+            showMenu: .constant(false)
+        )
+        .padding()
+        .background(Color.gray)
+    }
+#endif

@@ -72,3 +72,44 @@ private struct LoadErrorLine: View {
         }
     }
 }
+
+#if DEBUG
+    // MARK: - Previews
+
+    /// Sample shell content standing in for the app's screens, so the chrome
+    /// previews show the frame — minimum size, themed background, and the error
+    /// line — around something rather than empty space.
+    private struct ChromeSampleContent: View {
+        var body: some View {
+            VStack(spacing: 12) {
+                Image(systemName: "music.note.list")
+                    .font(.system(size: 48))
+                    .foregroundStyle(.secondary)
+                Text("Shell content")
+                    .font(.title2)
+                    .foregroundStyle(.secondary)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+    }
+
+    #Preview("Main window") {
+        MainWindowChrome(loadError: nil) {
+            ChromeSampleContent()
+        }
+    }
+
+    #Preview("Main window — load error") {
+        MainWindowChrome(
+            loadError: "The library's settings could not be read."
+        ) {
+            ChromeSampleContent()
+        }
+    }
+
+    #Preview("Welcome window") {
+        WelcomeWindowChrome {
+            ChromeSampleContent()
+        }
+    }
+#endif

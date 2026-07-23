@@ -307,3 +307,29 @@ private struct RecoveryCodeSection: View {
         }
     }
 }
+
+#if DEBUG
+    // MARK: - Previews
+
+    @MainActor
+    private func librarySettingsTabPreview(
+        configStore: ConfigStore
+    ) -> some View {
+        LibrarySettingsTab(onForgetLibrary: {})
+            .frame(width: 500, height: 640)
+            .environment(PreviewData.previewSync)
+            .environment(configStore)
+            .environment(UiStore())
+            .environment(OutboxStore(snapshot: OutboxStore.emptySnapshot))
+    }
+
+    #Preview("Not connected") {
+        librarySettingsTabPreview(configStore: PreviewData.configStore)
+    }
+
+    #Preview("Connected") {
+        librarySettingsTabPreview(
+            configStore: PreviewData.connectedConfigStore
+        )
+    }
+#endif

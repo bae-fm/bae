@@ -84,3 +84,23 @@ struct MetadataOnlyNote: View {
         )
     }
 }
+
+#if DEBUG
+    // MARK: - Previews
+
+    #Preview("Exact pressing") {
+        ImportAsToggle(isMetadataOnly: false, onSelectExactness: { _ in })
+            .padding()
+            .windowBackground()
+    }
+
+    #Preview("Metadata only") {
+        VStack(alignment: .leading, spacing: 10) {
+            ImportAsToggle(isMetadataOnly: true, onSelectExactness: { _ in })
+            MetadataOnlyNote()
+        }
+        .padding()
+        .frame(width: 420)
+        .windowBackground()
+    }
+#endif

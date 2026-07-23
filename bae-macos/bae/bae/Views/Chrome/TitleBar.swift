@@ -178,3 +178,26 @@ private struct SectionSegmentedControl: View {
         )
     }
 }
+
+#if DEBUG
+    // MARK: - Previews
+
+    /// Owns the search text the title bar binds to and injects the two services
+    /// it reads from the environment as stubs. An empty query keeps the search
+    /// task's debounce from firing.
+    private struct TitleBarPreview: View {
+        @State
+        private var searchText = ""
+
+        var body: some View {
+            TitleBar(searchText: $searchText)
+                .frame(width: 1100)
+                .environment(Library.stub)
+                .environment(UiStore())
+        }
+    }
+
+    #Preview("Title bar") {
+        TitleBarPreview()
+    }
+#endif

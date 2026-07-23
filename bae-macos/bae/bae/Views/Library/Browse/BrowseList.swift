@@ -40,3 +40,22 @@ where Row.ID: Sendable {
         .background(Theme.background)
     }
 }
+
+#if DEBUG
+    #Preview("Browse List") {
+        let libraryStore = PreviewData.seededComposerStore()
+        let list = PreviewData.composerList()
+        return BrowseList(list: list) { index in
+            let id = list.idAt(index)
+            return BrowseListRow(
+                id: id,
+                isSelected: index == 0,
+                summaries: \.composerSummaries,
+                select: { _ in }
+            )
+        }
+        .frame(width: 340, height: 600)
+        .environment(libraryStore)
+        .environment(MediaPaths.stub)
+    }
+#endif

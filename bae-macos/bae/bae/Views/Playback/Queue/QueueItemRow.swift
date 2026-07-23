@@ -118,3 +118,37 @@ struct QueueItemRow: View {
         }
     }
 }
+
+#if DEBUG
+    // MARK: - Previews
+
+    /// Hosts the row's own hover so the "Hovered" variant shows the remove X and
+    /// the play overlay the section normally toggles.
+    private struct QueueItemRowPreview: View {
+        let item: QueueItem
+        @State
+        var isHovered: Bool
+
+        var body: some View {
+            QueueItemRow(
+                item: item,
+                isHovered: isHovered,
+                onHoverChanged: { isHovered = $0 },
+                onSkipTo: { _ in },
+                onRemove: { _ in },
+            )
+            .frame(width: 380)
+            .padding()
+            .background(Theme.surface)
+            .environment(MediaPaths.stub)
+        }
+    }
+
+    #Preview("Resting") {
+        QueueItemRowPreview(item: PreviewData.queueItems[0], isHovered: false)
+    }
+
+    #Preview("Hovered") {
+        QueueItemRowPreview(item: PreviewData.queueItems[1], isHovered: true)
+    }
+#endif
