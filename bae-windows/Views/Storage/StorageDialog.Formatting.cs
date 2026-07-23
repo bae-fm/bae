@@ -1,0 +1,160 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Controls.Primitives;
+using Microsoft.UI.Xaml.Media;
+using uniffi.bae_bridge;
+
+namespace Bae.Windows;
+
+// Static, stateless helpers for StorageDialog: the shared grid/cell/tab
+// construction and the locale-rendered outbox / download / upload labels.
+// Split out of StorageDialog.cs; behavior unchanged.
+internal sealed partial class StorageDialog
+{
+    // Selected-row highlight: a faint accent tint, or transparent when not
+    // selected. Static so LoadStorageRows and RefreshRowHighlights agree.
+    private static Brush RowBackground(bool isSelected) =>
+        isSelected
+            ? new SolidColorBrush(Microsoft.UI.Colors.SteelBlue) { Opacity = 0.25 }
+            : new SolidColorBrush(Microsoft.UI.Colors.Transparent);
+
+    // The six-column grid shared by the header and each row: Album and Artist
+    // stretch, Format / Storage auto-size, Files and Size auto-size (right-
+    // aligned in the cell).
+    private static Grid MakeStorageGrid()
+    {
+        var grid = new Grid { ColumnSpacing = 8 };
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(2, GridUnitType.Star) });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(2, GridUnitType.Star) });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        return grid;
+    }
+
+    private static TextBlock AddCell(Grid grid, int column, string text, bool rightAligned = false)
+    {
+        var block = new TextBlock
+        {
+            Text = text,
+            VerticalAlignment = VerticalAlignment.Center,
+            TextWrapping = TextWrapping.Wrap,
+            HorizontalAlignment = rightAligned ? HorizontalAlignment.Right : HorizontalAlignment.Left,
+        };
+        Grid.SetColumn(block, column);
+        grid.Children.Add(block);
+        return block;
+    }
+
+    // Emphasize the active tab and gray the inactive ones, matching the import
+    // dialog's tab bar.
+    private static void StyleTab(Button tab, bool active)
+    {
+        tab.FontWeight = active
+            ? Microsoft.UI.Text.FontWeights.SemiBold
+            : Microsoft.UI.Text.FontWeights.Normal;
+        if (active)
+        {
+            tab.ClearValue(Control.ForegroundProperty);
+        }
+        else
+        {
+            tab.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray);
+        }
+    }
+
+    private static BridgeDownloadTransferProgress? DownloadProgress(BridgeDownloadState state) =>
+        state is BridgeDownloadState.Active active ? active.Progress : null;
+
+    // Core decides the outbox summary's parts (uploading/failed/queued/pending
+    // deletes), their order, and the drop-if-zero rule; this only localizes and
+    // joins them.
+    private static string OutboxSummary(BridgeOutboxSnapshot snapshot) =>
+        QueueSummaryText(snapshot.SummaryParts);
+
+    // Render core's queue-summary parts into one " · "-joined line.
+    private static string QueueSummaryText(IReadOnlyList<BridgeCountLabel> parts) =>
+        string.Join(" · ", parts.Select(part => Loc.Core(part.Key, "count", part.Count)));
+
+    private static string OutboxThroughputLabel(BridgeOutboxSnapshot snapshot) =>
+        snapshot.ThroughputBps > 0
+            ? Loc.Core("core.outbox.throughput", "rate", Loc.Bytes(checked((long)snapshot.ThroughputBps)))
+            : string.Empty;
+
+    private static string OutboxEtaLabel(BridgeOutboxSnapshot snapshot) =>
+        snapshot.EtaSeconds is { } seconds
+            ? Loc.Core("core.outbox.eta", "duration", BridgeDisplay.Clock(checked(checked((long)seconds) * 1000)))
+            : string.Empty;
+
+    private static string OutboxBytesLabel(BridgeOutboxSnapshot snapshot)
+    {
+        if (snapshot.Total.BytesTotal == 0) return string.Empty;
+        return Loc.Core(
+            "core.outbox.bytes_progress",
+            new Dictionary<string, object?>
+            {
+                ["done"] = Loc.Bytes(checked((long)snapshot.Total.BytesDone)),
+                ["total"] = Loc.Bytes(checked((long)snapshot.Total.BytesTotal)),
+            });
+    }
+
+    // A release group's aggregate badge, mirroring the macOS queue pane: the
+    // dominant activity plus the unshipped file count. Finished releases
+    // aren't rendered, so there is no terminal badge. Empty for a group core
+    // would never emit (no activity).
+    private static string UploadBadgeLabel(BridgeUploadProgress progress)
+    {
+        var pending = progress.Queued + progress.Active + progress.Failed;
+        return progress.Activity switch
+        {
+            BridgeUploadActivity.Uploading => Loc.Chrome("outbox.badge.uploading", "count", pending),
+            BridgeUploadActivity.Queued => Loc.Chrome("outbox.badge.queued", "count", pending),
+            BridgeUploadActivity.Retrying => Loc.Chrome("outbox.badge.retrying", "count", pending),
+            _ => string.Empty,
+        };
+    }
+
+    // A release group's byte progress: "45.2 MB of 103.1 MB", cumulative over
+    // the queue burst, matching the bar beside it.
+    private static string UploadBytesLabel(BridgeUploadProgress progress)
+    {
+        return Loc.Core(
+            "core.outbox.bytes_progress",
+            new Dictionary<string, object?>
+            {
+                ["done"] = Loc.Bytes(checked((long)progress.BytesDone)),
+                ["total"] = Loc.Bytes(checked((long)progress.BytesTotal)),
+            });
+    }
+
+    private static string FileStateLabel(BridgeUploadFileState state) => state switch
+    {
+        BridgeUploadFileState.Uploading => Loc.Chrome("outbox.state.uploading"),
+        BridgeUploadFileState.Queued => Loc.Chrome("outbox.state.queued"),
+        BridgeUploadFileState.Retrying => Loc.Chrome("outbox.state.retrying"),
+        BridgeUploadFileState.Done => Loc.Chrome("outbox.state.done"),
+        _ => throw new ArgumentOutOfRangeException(nameof(state), state, "Unknown upload file state"),
+    };
+
+    // A file's byte text: "6.2 MB of 12.4 MB" while transferring; just the
+    // size otherwise.
+    private static string FileBytesLabel(BridgeUploadFileOp file)
+    {
+        var total = Loc.Bytes(checked((long)file.BytesTotal));
+        if (file.State != BridgeUploadFileState.Uploading) return total;
+        return Loc.Core(
+            "core.outbox.bytes_progress",
+            new Dictionary<string, object?>
+            {
+                ["done"] = Loc.Bytes(checked((long)file.BytesDone)),
+                ["total"] = total,
+            });
+    }
+
+    private static string DeleteLabel(BridgeDeleteOp delete) =>
+        $"{delete.CloudKey} — {Loc.Chrome("outbox.delete.kind")}";
+}
