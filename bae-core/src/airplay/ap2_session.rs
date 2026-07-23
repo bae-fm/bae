@@ -13,11 +13,20 @@
 //! decrypts with the pair-verify key and checks the order and contents.
 
 use std::io::{BufReader, Read, Write};
-use std::net::{IpAddr, TcpStream};
+use std::net::{IpAddr, TcpStream, UdpSocket};
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::{Arc, Mutex};
 
+use super::airplay2::{Ap2AudioCipher, PairVerify};
 use super::ap2_channel::{audio_key, HapChannel};
 use super::bplist::{self, Plist};
-use super::rtsp::{Method, RtspRequest, RtspResponse};
+use super::pairing::{PairingError, TransientPairing};
+use super::rtsp::{Method, RtspConnection, RtspRequest, RtspResponse};
+use super::session::{CHANNELS, SAMPLE_RATE};
+use super::stream::{MonotonicClock, PayloadCrypto, PcmSource, RaopStream, StreamEndpoints};
+
+/// The AirPlay 2 audio latency in frames when a receiver doesn't report one.
+const DEFAULT_LATENCY_FRAMES: u32 = 88_200;
 
 const BPLIST_CONTENT_TYPE: &str = "application/x-apple-binary-plist";
 
@@ -151,8 +160,13 @@ pub fn parse_stream_ports(response: &Plist) -> Option<Ap2StreamPorts> {
 pub enum Ap2Error {
     Io(std::io::Error),
     Channel(super::ap2_channel::ChannelError),
-    Rejected { step: &'static str, status: u16 },
+    Rejected {
+        step: &'static str,
+        status: u16,
+    },
     BadBody(&'static str),
+    /// Transient pair-setup or pair-verify failed.
+    Pairing(PairingError),
 }
 
 impl std::fmt::Display for Ap2Error {
@@ -164,11 +178,18 @@ impl std::fmt::Display for Ap2Error {
                 write!(f, "receiver rejected {step} (status {status})")
             }
             Ap2Error::BadBody(what) => write!(f, "AirPlay 2 response body: {what}"),
+            Ap2Error::Pairing(e) => write!(f, "AirPlay 2 pairing failed: {e}"),
         }
     }
 }
 
 impl std::error::Error for Ap2Error {}
+
+impl From<PairingError> for Ap2Error {
+    fn from(e: PairingError) -> Self {
+        Ap2Error::Pairing(e)
+    }
+}
 
 impl From<std::io::Error> for Ap2Error {
     fn from(e: std::io::Error) -> Self {
@@ -315,6 +336,31 @@ impl Ap2Control {
         Ok(ports)
     }
 
+    /// Change the playback rate with a fresh SETRATEANCHORTIME — `0` pauses the
+    /// receiver's rendering, `1` resumes it. AirPlay 2's equivalent of RAOP's
+    /// FLUSH / re-anchor.
+    pub fn set_rate(&mut self, rate: u8) -> Result<(), Ap2Error> {
+        self.request_expecting(
+            &RtspRequest::with_body(
+                Method::SetRateAnchorTime,
+                self.uri.clone(),
+                BPLIST_CONTENT_TYPE,
+                bplist::encode(&set_rate_anchor_body(rate, 0, None)),
+            ),
+            "SETRATEANCHORTIME",
+        )?;
+        Ok(())
+    }
+
+    /// TEARDOWN the session over the encrypted channel.
+    pub fn teardown(&mut self) -> Result<(), Ap2Error> {
+        self.request_expecting(
+            &RtspRequest::new(Method::Teardown, self.uri.clone()),
+            "TEARDOWN",
+        )?;
+        Ok(())
+    }
+
     /// Send a plist-bodied request and decode the response body as a plist.
     fn plist_request(
         &mut self,
@@ -362,6 +408,198 @@ pub struct Ap2SetupParams {
     pub peers: Vec<IpAddr>,
     /// The PTP anchor (network seconds, fraction, timeline id) when timing is PTP.
     pub ptp_anchor: Option<(u64, u32, u64)>,
+}
+
+/// Drive transient pair-setup (SRP) over the plaintext RTSP socket. The SRP
+/// shared secret proves transient pairing; the channel keys come from the
+/// pair-verify that follows.
+fn run_pair_setup(conn: &mut RtspConnection) -> Result<(), Ap2Error> {
+    let mut pairing = TransientPairing::new();
+    let m1 = pairing.start()?;
+    let m2 = pair_post(conn, "/pair-setup", m1)?;
+    let m3 = pairing.handle_m2(&m2)?;
+    let m4 = pair_post(conn, "/pair-setup", m3)?;
+    pairing.handle_m4(&m4)?;
+    Ok(())
+}
+
+/// Drive pair-verify (X25519 + Ed25519) over the plaintext RTSP socket, returning
+/// the shared secret the encrypted channel and audio stream are keyed from.
+fn run_pair_verify(conn: &mut RtspConnection) -> Result<[u8; 32], Ap2Error> {
+    let mut verify = PairVerify::new();
+    let m1 = verify.start()?;
+    let m2 = pair_post(conn, "/pair-verify", m1)?;
+    let m3 = verify.handle_m2(&m2)?;
+    let m4 = pair_post(conn, "/pair-verify", m3)?;
+    Ok(verify.handle_m4(&m4)?)
+}
+
+/// POST a TLV8 pairing body and return the response body, or an error on a
+/// non-2xx status.
+fn pair_post(conn: &mut RtspConnection, path: &str, body: Vec<u8>) -> Result<Vec<u8>, Ap2Error> {
+    let response = conn.request(&RtspRequest::with_body(
+        Method::Post,
+        path,
+        "application/octet-stream",
+        body,
+    ))?;
+    if response.is_success() {
+        Ok(response.body)
+    } else {
+        Err(Ap2Error::Rejected {
+            step: "pairing",
+            status: response.status,
+        })
+    }
+}
+
+/// A cloneable handle to a running AirPlay 2 session's controls, matching the
+/// RAOP one's shape: pause (rate 0) / resume (rate 1 + re-anchor) map to
+/// SETRATEANCHORTIME, teardown to an encrypted TEARDOWN. The encrypted control
+/// connection is behind a mutex because only these methods touch it.
+#[derive(Clone)]
+pub struct Ap2SessionControl {
+    control: Arc<Mutex<Ap2Control>>,
+    reanchor: Arc<AtomicU64>,
+    frames_sent: Arc<AtomicU64>,
+    latency_frames: u32,
+}
+
+impl Ap2SessionControl {
+    /// Pause the receiver's rendering (rate 0) — AirPlay 2's FLUSH.
+    pub fn flush(&self) -> Result<(), Ap2Error> {
+        self.control.lock().unwrap().set_rate(0)
+    }
+
+    /// Resume rendering (rate 1) and re-anchor the sender's pacing.
+    pub fn reanchor(&self) -> Result<(), Ap2Error> {
+        self.reanchor.fetch_add(1, Ordering::Release);
+        self.control.lock().unwrap().set_rate(1)
+    }
+
+    /// TEARDOWN the session on the receiver.
+    pub fn teardown(&self) -> Result<(), Ap2Error> {
+        self.control.lock().unwrap().teardown()
+    }
+
+    pub fn frames_sent(&self) -> u64 {
+        self.frames_sent.load(Ordering::Relaxed)
+    }
+
+    pub fn latency_frames(&self) -> u32 {
+        self.latency_frames
+    }
+}
+
+/// A live AirPlay 2 session: the encrypted control connection and the running
+/// audio stream. Dropping it tears the receiver down and stops the threads.
+pub struct Ap2Session {
+    control: Ap2SessionControl,
+    _stream: RaopStream,
+}
+
+impl Ap2Session {
+    /// Connect to an AirPlay 2 receiver, run transient pair-setup then pair-verify,
+    /// drive the encrypted SETUP/SETPEERS/SETRATEANCHORTIME/RECORD sequence, and
+    /// start streaming `source` as ChaCha-encrypted audio.
+    pub fn start(
+        receiver: IpAddr,
+        airplay_port: u16,
+        source: Box<dyn PcmSource>,
+        latency_frames: Option<u32>,
+        clock: Arc<dyn MonotonicClock>,
+    ) -> Result<Self, Ap2Error> {
+        let mut conn = RtspConnection::connect(receiver, airplay_port, "bae/1 (AirPlay 2)")?;
+        let local_ip = conn.local_addr();
+
+        run_pair_setup(&mut conn)?;
+        let shared = run_pair_verify(&mut conn)?;
+
+        // Bind the timing/control sockets before SETUP so their ports are announced.
+        let timing_socket = UdpSocket::bind((IpAddr::from([0, 0, 0, 0]), 0))?;
+        let control_socket = UdpSocket::bind((IpAddr::from([0, 0, 0, 0]), 0))?;
+        let local_timing_port = timing_socket.local_addr()?.port();
+        let local_control_port = control_socket.local_addr()?.port();
+
+        let shk = audio_key(&shared);
+        let session_uuid = uuid::Uuid::new_v4().to_string();
+        let group_uuid = uuid::Uuid::new_v4().to_string();
+        let uri = format!("rtsp://{local_ip}/{session_uuid}");
+
+        let mut control = Ap2Control::new(conn.into_stream(), &shared, uri, "bae/1 (AirPlay 2)")?;
+        let params = Ap2SetupParams {
+            // NTP timing (the RAOP responder) — the fallback where PTP isn't required.
+            timing_protocol: "NTP".to_string(),
+            group_uuid,
+            session_uuid,
+            mac_address: local_mac_address(),
+            local_ip,
+            local_control_port,
+            local_timing_port,
+            peers: vec![local_ip, receiver],
+            ptp_anchor: None,
+        };
+        let ports = control.run_setup_sequence(&shk, &params)?;
+
+        let latency = latency_frames.unwrap_or(DEFAULT_LATENCY_FRAMES);
+        let endpoints = StreamEndpoints {
+            receiver,
+            audio_port: ports.data_port,
+            control_port: ports.control_port,
+            latency_frames: latency,
+        };
+        let cipher = Ap2AudioCipher::from_shared_secret(&shared);
+        let stream = RaopStream::spawn(
+            source,
+            PayloadCrypto::Ap2(cipher),
+            endpoints,
+            rand::random::<u32>(),
+            SAMPLE_RATE,
+            CHANNELS,
+            0,
+            timing_socket,
+            control_socket,
+            clock,
+            false, // AirPlay 2 anchors with SETRATEANCHORTIME, not RAOP sync packets
+        )?;
+
+        let session_control = Ap2SessionControl {
+            control: Arc::new(Mutex::new(control)),
+            reanchor: stream.reanchor_handle(),
+            frames_sent: stream.frames_sent_handle(),
+            latency_frames: latency,
+        };
+        Ok(Ap2Session {
+            control: session_control,
+            _stream: stream,
+        })
+    }
+
+    /// A cloneable handle to this session's controls, for the output layer.
+    pub fn control(&self) -> Ap2SessionControl {
+        self.control.clone()
+    }
+}
+
+impl Drop for Ap2Session {
+    fn drop(&mut self) {
+        let _ = self.control.teardown();
+    }
+}
+
+/// A locally-administered MAC-shaped identifier for the SETUP session body. Real
+/// receivers don't authenticate it in a transient session; it's random per run.
+fn local_mac_address() -> String {
+    let b: [u8; 6] = rand::random();
+    format!(
+        "{:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
+        b[0] | 0x02,
+        b[1],
+        b[2],
+        b[3],
+        b[4],
+        b[5]
+    )
 }
 
 #[cfg(test)]
@@ -596,5 +834,263 @@ mod tests {
         .into_bytes();
         out.extend_from_slice(body);
         out
+    }
+
+    // -- Full AirPlay 2 session against a scripted fake receiver --
+
+    use crate::airplay::secure_rng::SecureRng;
+    use crate::airplay::srp::SrpGroup;
+    use crate::airplay::stream::PcmSource;
+    use crate::airplay::tlv8::{state, tlv_type, Tlv8};
+    use chacha20poly1305::aead::{Aead, KeyInit, Payload};
+    use chacha20poly1305::{ChaCha20Poly1305, Key, Nonce};
+    use std::net::UdpSocket;
+    use std::time::Duration;
+
+    /// A source that yields `packets` packets of full-scale stereo frames (each
+    /// sample `0x0102`), then nothing.
+    struct FixedSource {
+        packets_left: usize,
+    }
+    impl PcmSource for FixedSource {
+        fn next_frames(&mut self, out: &mut [i16]) -> usize {
+            if self.packets_left == 0 {
+                return 0;
+            }
+            self.packets_left -= 1;
+            out.fill(0x0102);
+            out.len() / 2
+        }
+    }
+
+    fn pv_nonce(label: &[u8; 8]) -> Nonce {
+        let mut b = [0u8; 12];
+        b[4..].copy_from_slice(label);
+        Nonce::from(b)
+    }
+
+    /// Read one plaintext RTSP request (method, path, CSeq, body) from the pairing
+    /// phase.
+    fn read_plaintext_request(reader: &mut impl BufRead) -> (String, String, String, Vec<u8>) {
+        let mut line = String::new();
+        reader.read_line(&mut line).unwrap();
+        let mut parts = line.split(' ');
+        let method = parts.next().unwrap_or("").to_string();
+        let path = parts.next().unwrap_or("").to_string();
+        let mut cseq = String::new();
+        let mut len = 0usize;
+        loop {
+            let mut h = String::new();
+            reader.read_line(&mut h).unwrap();
+            let h = h.trim_end_matches(['\r', '\n']);
+            if h.is_empty() {
+                break;
+            }
+            if let Some((k, v)) = h.split_once(':') {
+                match k.trim().to_ascii_lowercase().as_str() {
+                    "cseq" => cseq = v.trim().to_string(),
+                    "content-length" => len = v.trim().parse().unwrap_or(0),
+                    _ => {}
+                }
+            }
+        }
+        let mut body = vec![0u8; len];
+        std::io::Read::read_exact(reader, &mut body).unwrap();
+        (method, path, cseq, body)
+    }
+
+    /// The whole AirPlay 2 session end to end: the fake receiver serves transient
+    /// pair-setup and pair-verify as the independent side, decrypts the encrypted
+    /// RTSP sequence and an audio datagram with its own derivations, and asserts
+    /// the control order, the SETUP `shk`, and the decrypted PCM.
+    #[test]
+    fn full_ap2_session_pairs_sets_up_and_streams_encrypted_audio() {
+        let tcp = TcpListener::bind(("127.0.0.1", 0)).unwrap();
+        let addr = tcp.local_addr().unwrap();
+        // Bind the audio (data) socket up front so its real port rides in SETUP.
+        let data_udp = UdpSocket::bind(("127.0.0.1", 0)).unwrap();
+        data_udp
+            .set_read_timeout(Some(Duration::from_secs(5)))
+            .unwrap();
+        let data_port = data_udp.local_addr().unwrap().port();
+
+        let server = std::thread::spawn(move || {
+            let (stream, _) = tcp.accept().unwrap();
+            let mut reader = std::io::BufReader::new(stream.try_clone().unwrap());
+            let mut writer = stream;
+
+            // -- Pairing (plaintext). The SRP secret is discarded by the sender, so
+            // a valid B and a bare M4 suffice; pair-verify's X25519 secret is real.
+            let group = SrpGroup::rfc5054_3072();
+            let b_pub = group
+                .g
+                .modpow(&num_bigint::BigUint::from_bytes_be(&[0x7Cu8; 32]), &group.n);
+            let respond = |writer: &mut TcpStream, cseq: &str, body: Vec<u8>| {
+                let mut out = format!(
+                    "RTSP/1.0 200 OK\r\nCSeq: {cseq}\r\nContent-Length: {}\r\n\r\n",
+                    body.len()
+                )
+                .into_bytes();
+                out.extend_from_slice(&body);
+                writer.write_all(&out).unwrap();
+                writer.flush().unwrap();
+            };
+
+            // pair-setup M1 -> M2 (salt + B)
+            let (_m, _p, cseq, _b) = read_plaintext_request(&mut reader);
+            respond(
+                &mut writer,
+                &cseq,
+                Tlv8::new()
+                    .push_u8(tlv_type::STATE, state::M2)
+                    .push(tlv_type::SALT, vec![0xA5u8; 16])
+                    .push(tlv_type::PUBLIC_KEY, b_pub.to_bytes_be())
+                    .encode(),
+            );
+            // pair-setup M3 -> M4 (bare)
+            let (_m, _p, cseq, _b) = read_plaintext_request(&mut reader);
+            respond(
+                &mut writer,
+                &cseq,
+                Tlv8::new().push_u8(tlv_type::STATE, state::M4).encode(),
+            );
+
+            // pair-verify M1 -> M2 (device eph + signed encrypted identity)
+            use ed25519_dalek::{Signer, SigningKey};
+            use x25519_dalek::{PublicKey, StaticSecret};
+            let eph = StaticSecret::random_from_rng(SecureRng);
+            let eph_pub = PublicKey::from(&eph);
+            let signing = SigningKey::generate(&mut SecureRng);
+            let (_m, _p, cseq, m1) = read_plaintext_request(&mut reader);
+            let m1_tlv = Tlv8::decode(&m1).unwrap();
+            let sender_pub: [u8; 32] = m1_tlv
+                .get(tlv_type::PUBLIC_KEY)
+                .unwrap()
+                .try_into()
+                .unwrap();
+            let shared = eph.diffie_hellman(&PublicKey::from(sender_pub)).to_bytes();
+            let session_key = crate::airplay::ap2_channel::hkdf32(
+                b"Pair-Verify-Encrypt-Salt",
+                &shared,
+                b"Pair-Verify-Encrypt-Info",
+            );
+            let cipher = ChaCha20Poly1305::new(Key::from_slice(&session_key));
+            let mut signed = Vec::new();
+            signed.extend_from_slice(eph_pub.as_bytes());
+            signed.extend_from_slice(&sender_pub);
+            let sig = signing.sign(&signed);
+            let inner = Tlv8::new()
+                .push(tlv_type::IDENTIFIER, b"fake".to_vec())
+                .push(tlv_type::SIGNATURE, sig.to_bytes().to_vec())
+                .encode();
+            let sealed = cipher
+                .encrypt(
+                    &pv_nonce(b"PV-Msg02"),
+                    Payload {
+                        msg: &inner,
+                        aad: &[],
+                    },
+                )
+                .unwrap();
+            respond(
+                &mut writer,
+                &cseq,
+                Tlv8::new()
+                    .push_u8(tlv_type::STATE, state::M2)
+                    .push(tlv_type::PUBLIC_KEY, eph_pub.as_bytes().to_vec())
+                    .push(tlv_type::ENCRYPTED_DATA, sealed)
+                    .encode(),
+            );
+            // pair-verify M3 -> M4 (bare)
+            let (_m, _p, cseq, _m3) = read_plaintext_request(&mut reader);
+            respond(
+                &mut writer,
+                &cseq,
+                Tlv8::new().push_u8(tlv_type::STATE, state::M4).encode(),
+            );
+
+            // -- Encrypted control channel (keys derived from the verify secret).
+            let (write, read) = control_keys(&shared);
+            let mut channel = HapChannel::from_keys(&read, &write);
+            let shk = audio_key(&shared);
+
+            let mut methods = Vec::new();
+            let mut saw_shk = false;
+            for step in 0..5 {
+                let (method, cseq, body) = read_encrypted_request(&mut reader, &mut channel);
+                if method == "SETUP" && body.get("streams").is_some() {
+                    if let Plist::Array(items) = body.get("streams").unwrap() {
+                        saw_shk = items[0].get("shk") == Some(&Plist::Data(shk.to_vec()));
+                    }
+                }
+                methods.push(method.clone());
+                let reply = match (method.as_str(), step) {
+                    ("SETUP", 0) => bplist::encode(&Plist::Dict(vec![(
+                        "eventPort".to_string(),
+                        Plist::Integer(1),
+                    )])),
+                    ("SETUP", 1) => bplist::encode(&Plist::Dict(vec![(
+                        "streams".to_string(),
+                        Plist::Array(vec![Plist::Dict(vec![
+                            ("dataPort".to_string(), Plist::Integer(u64::from(data_port))),
+                            ("controlPort".to_string(), Plist::Integer(1)),
+                        ])]),
+                    )])),
+                    _ => Vec::new(),
+                };
+                writer
+                    .write_all(&channel.seal(&build_response(&cseq, &reply)))
+                    .unwrap();
+                writer.flush().unwrap();
+            }
+
+            // -- Receive one audio datagram and decrypt it with the shk-derived key.
+            let mut buf = [0u8; 4096];
+            let (len, _from) = data_udp.recv_from(&mut buf).unwrap();
+            let datagram = &buf[..len];
+            let header = &datagram[..12];
+            let nonce_tail = &datagram[len - 8..];
+            let ciphertext = &datagram[12..len - 8];
+            let mut nonce = [0u8; 12];
+            nonce[4..].copy_from_slice(nonce_tail);
+            let audio_cipher = ChaCha20Poly1305::new(Key::from_slice(&shk));
+            let pcm = audio_cipher
+                .decrypt(
+                    Nonce::from_slice(&nonce),
+                    Payload {
+                        msg: ciphertext,
+                        aad: &header[4..12],
+                    },
+                )
+                .expect("audio datagram decrypts with the shk-derived key");
+
+            (methods, saw_shk, pcm)
+        });
+
+        // The sender: pair, set up, and stream five packets of known PCM.
+        let session = Ap2Session::start(
+            addr.ip(),
+            addr.port(),
+            Box::new(FixedSource { packets_left: 5 }),
+            Some(88_200),
+            Arc::new(crate::airplay::stream::SystemClock::new()),
+        )
+        .expect("AirPlay 2 session starts");
+
+        let (methods, saw_shk, pcm) = server.join().unwrap();
+        assert_eq!(
+            methods,
+            vec!["SETUP", "SETUP", "SETPEERS", "SETRATEANCHORTIME", "RECORD"],
+            "the AirPlay 2 control sequence runs in order over the encrypted channel"
+        );
+        assert!(
+            saw_shk,
+            "SETUP carried the shk audio key derived from pair-verify"
+        );
+        // One packet = 352 stereo frames of 0x0102, little-endian.
+        assert_eq!(pcm.len(), 352 * 2 * 2);
+        assert_eq!(&pcm[..4], &[0x02, 0x01, 0x02, 0x01]);
+
+        drop(session);
     }
 }

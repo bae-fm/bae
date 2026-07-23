@@ -269,6 +269,66 @@ impl AirPlayStreamControl for RaopControlOps {
     }
 }
 
+// -- The AirPlay 2 receiver connection --
+
+/// The parameters an [`AirPlaySink`] needs to open an AirPlay 2 session: pair
+/// (transient) then push ChaCha-encrypted audio to a HomePod-class receiver.
+pub struct Ap2Sink {
+    pub receiver: IpAddr,
+    /// The receiver's AirPlay control port (`_airplay._tcp`, usually 7000).
+    pub airplay_port: u16,
+    pub latency_frames: Option<u32>,
+}
+
+impl AirPlaySink for Ap2Sink {
+    fn start(&self, source: Box<dyn PcmSource>) -> Result<StartedStream, AudioError> {
+        let session = crate::airplay::ap2_session::Ap2Session::start(
+            self.receiver,
+            self.airplay_port,
+            source,
+            self.latency_frames,
+            Arc::new(SystemClock::new()),
+        )
+        .map_err(|e| AudioError::StreamBuildError(e.to_string()))?;
+
+        let control: Arc<dyn AirPlayStreamControl> = Arc::new(Ap2ControlOps(session.control()));
+        Ok((Box::new(Ap2Guard(session)), control))
+    }
+}
+
+/// Holds the AirPlay 2 session alive; dropping it tears the receiver down.
+struct Ap2Guard(#[allow(dead_code)] crate::airplay::ap2_session::Ap2Session);
+impl AirPlayStreamGuard for Ap2Guard {}
+
+/// Adapts the AirPlay 2 session control (whose ops return `Result`) to the
+/// infallible [`AirPlayStreamControl`], logging transport failures. Pause/resume
+/// map to SETRATEANCHORTIME rate changes; volume is applied locally in the drain.
+struct Ap2ControlOps(crate::airplay::ap2_session::Ap2SessionControl);
+
+impl AirPlayStreamControl for Ap2ControlOps {
+    fn flush(&self) {
+        if let Err(e) = self.0.flush() {
+            warn!("airplay 2 pause (rate 0) failed: {e}");
+        }
+    }
+
+    fn reanchor(&self) {
+        if let Err(e) = self.0.reanchor() {
+            warn!("airplay 2 resume (rate 1) failed: {e}");
+        }
+    }
+
+    fn set_volume(&self, _level: f32) {}
+
+    fn frames_sent(&self) -> u64 {
+        self.0.frames_sent()
+    }
+
+    fn latency_frames(&self) -> u32 {
+        self.0.latency_frames()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

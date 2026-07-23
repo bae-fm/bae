@@ -260,6 +260,14 @@ impl RtspConnection {
         self.writer.set_read_timeout(timeout)
     }
 
+    /// Take the underlying TCP stream back, for handing a control connection off to
+    /// the encrypted transport after AirPlay 2 pair-verify. The buffered reader is
+    /// dropped — safe only when the last response was fully consumed (each RTSP
+    /// request reads exactly its `Content-Length` body, so nothing is left over).
+    pub fn into_stream(self) -> TcpStream {
+        self.writer
+    }
+
     pub fn local_addr(&self) -> IpAddr {
         self.local_addr
     }

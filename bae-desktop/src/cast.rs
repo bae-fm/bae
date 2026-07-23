@@ -16,7 +16,7 @@ use bae_core::cast::{CastDiscovery, RustCastChannel};
 use bae_core::config::SubsonicCredential;
 use bae_core::dlna::{DlnaChannel, DlnaDiscovery};
 use bae_core::library::{AppServices, LibraryManager};
-use bae_core::playback::airplay_output::{AirPlaySink, RaopSink};
+use bae_core::playback::airplay_output::{AirPlaySink, Ap2Sink, RaopSink};
 use bae_core::playback::{PlaybackHandle, PlaybackProgress};
 use bae_core::renderer::{
     cast_stream_format, dlna_stream_format, CoverUrlProvider, MediaUrlProvider, RendererChannel,
@@ -49,7 +49,11 @@ fn build_airplay_sink(
         return Err(CastError::AirPlayPinRequired);
     }
     match capabilities.dialect {
-        Dialect::AirPlay2 => Err(CastError::AirPlay2Unsupported),
+        Dialect::AirPlay2 => Ok(Box::new(Ap2Sink {
+            receiver: addr,
+            airplay_port: port,
+            latency_frames: Some(AIRPLAY_LATENCY_FRAMES),
+        })),
         Dialect::Raop => {
             let raop = capabilities
                 .raop
@@ -93,8 +97,6 @@ pub enum CastError {
     Serving(String),
     /// The AirPlay receiver demands a user PIN, which the sender doesn't support.
     AirPlayPinRequired,
-    /// The receiver only speaks AirPlay 2, whose audio streaming isn't wired yet.
-    AirPlay2Unsupported,
     /// The RAOP receiver only offers audio encryption the sender can't provide.
     AirPlayEncryptionUnsupported,
 }
@@ -118,10 +120,6 @@ impl std::fmt::Display for CastError {
                     "this AirPlay receiver needs a PIN, which isn't supported"
                 )
             }
-            CastError::AirPlay2Unsupported => write!(
-                f,
-                "this receiver only supports AirPlay 2, which isn't supported yet"
-            ),
             CastError::AirPlayEncryptionUnsupported => write!(
                 f,
                 "this AirPlay receiver requires an encryption the sender can't provide"

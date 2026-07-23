@@ -17,7 +17,9 @@ use std::sync::{Arc, Mutex};
 use super::crypto::RaopCipher;
 use super::rtp::NtpTime;
 use super::rtsp::{Method, RtspConnection, RtspRequest, RtspResponse};
-use super::stream::{MonotonicClock, PcmSource, RaopStream, StreamEndpoints, FRAMES_PER_PACKET};
+use super::stream::{
+    MonotonicClock, PayloadCrypto, PcmSource, RaopStream, StreamEndpoints, FRAMES_PER_PACKET,
+};
 
 /// RAOP streams 44.1 kHz / 16-bit / stereo — bae's pipeline resamples to it.
 pub const SAMPLE_RATE: u32 = 44_100;
@@ -323,7 +325,7 @@ impl RaopSession {
         let latency = latency_frames.unwrap_or(DEFAULT_LATENCY_FRAMES);
         let stream = RaopStream::spawn(
             source,
-            cipher,
+            PayloadCrypto::Raop(cipher),
             endpoints,
             ssrc,
             SAMPLE_RATE,
@@ -332,6 +334,7 @@ impl RaopSession {
             timing_socket,
             control_socket,
             clock,
+            true, // RAOP sends periodic sync packets
         )?;
 
         let control = RaopControl {

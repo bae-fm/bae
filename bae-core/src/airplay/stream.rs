@@ -39,11 +39,20 @@ pub trait PcmSource: Send {
     fn next_frames(&mut self, out: &mut [i16]) -> usize;
 }
 
+/// How a packet's PCM payload is encrypted — the one thing the two dialects
+/// differ on in the send path. RAOP encrypts the payload in place (AES-128-CBC or
+/// not at all); AirPlay 2 seals it with ChaCha20-Poly1305, the RTP header's
+/// timestamp+SSRC as associated data, and the 8-byte nonce trailing the datagram.
+pub enum PayloadCrypto {
+    Raop(RaopCipher),
+    Ap2(super::airplay2::Ap2AudioCipher),
+}
+
 /// Turns each packet's PCM into RTP audio bytes, advancing the sequence and
 /// timestamp and encrypting the payload. Pure and deterministic.
 pub struct Packetizer {
     ssrc: u32,
-    cipher: RaopCipher,
+    crypto: PayloadCrypto,
     channels: u32,
     sequence: u16,
     timestamp: u32,
@@ -55,14 +64,14 @@ impl Packetizer {
     /// packet after RECORD/FLUSH, which carries the RTP marker bit.
     pub fn new(
         ssrc: u32,
-        cipher: RaopCipher,
+        crypto: PayloadCrypto,
         channels: u32,
         initial_sequence: u16,
         initial_timestamp: u32,
     ) -> Self {
         Packetizer {
             ssrc,
-            cipher,
+            crypto,
             channels,
             sequence: initial_sequence,
             timestamp: initial_timestamp,
@@ -78,15 +87,29 @@ impl Packetizer {
         for sample in frames {
             payload.extend_from_slice(&sample.to_le_bytes());
         }
-        self.cipher.encrypt_packet(&mut payload);
 
-        let packet = rtp::audio_packet(
-            self.first,
-            self.sequence,
-            self.timestamp,
-            self.ssrc,
-            &payload,
-        );
+        let packet = match &mut self.crypto {
+            PayloadCrypto::Raop(cipher) => {
+                cipher.encrypt_packet(&mut payload);
+                rtp::audio_packet(
+                    self.first,
+                    self.sequence,
+                    self.timestamp,
+                    self.ssrc,
+                    &payload,
+                )
+            }
+            PayloadCrypto::Ap2(cipher) => {
+                // The AAD is the header's timestamp+SSRC (bytes 4..12); build the
+                // header first, seal against it, then append the sealed payload
+                // (ciphertext+tag+8-byte nonce).
+                let mut packet =
+                    rtp::audio_packet(self.first, self.sequence, self.timestamp, self.ssrc, &[]);
+                let sealed = cipher.seal(&packet[4..12], &payload);
+                packet.extend_from_slice(&sealed);
+                packet
+            }
+        };
 
         self.first = false;
         self.sequence = self.sequence.wrapping_add(1);
@@ -205,8 +228,9 @@ pub struct StreamEndpoints {
     pub latency_frames: u32,
 }
 
-/// The live RAOP audio stream: the three UDP flows and their threads. Dropping it
-/// stops every thread. Created by the session after RECORD.
+/// The live push-audio stream shared by both dialects: the UDP audio flow, the
+/// timing responder, and — for RAOP — the periodic sync packets. Dropping it
+/// stops every thread. Created by a session after RECORD.
 pub struct RaopStream {
     stop: Arc<AtomicBool>,
     threads: Vec<JoinHandle<()>>,
@@ -216,14 +240,15 @@ pub struct RaopStream {
 }
 
 impl RaopStream {
-    /// Spawn the audio, sync, and timing threads over already-bound sockets.
-    /// `timing_socket` and `control_socket` are the sockets whose ports the
-    /// session announced in SETUP: the receiver sends timing requests to the
-    /// former, and sync packets go out from the latter.
+    /// Spawn the audio, (optional) sync, and timing threads over already-bound
+    /// sockets. `timing_socket` and `control_socket` are the sockets whose ports
+    /// the session announced in SETUP: the receiver sends timing requests to the
+    /// former, and RAOP sync packets go out from the latter. AirPlay 2 anchors its
+    /// timeline with SETRATEANCHORTIME instead, so it passes `send_sync = false`.
     #[allow(clippy::too_many_arguments)]
     pub fn spawn(
         source: Box<dyn PcmSource>,
-        cipher: RaopCipher,
+        crypto: PayloadCrypto,
         endpoints: StreamEndpoints,
         ssrc: u32,
         sample_rate: u32,
@@ -232,6 +257,7 @@ impl RaopStream {
         timing_socket: UdpSocket,
         control_socket: UdpSocket,
         clock: Arc<dyn MonotonicClock>,
+        send_sync: bool,
     ) -> std::io::Result<Self> {
         let audio_socket = UdpSocket::bind((IpAddr::from([0, 0, 0, 0]), 0))?;
         let audio_dst = SocketAddr::new(endpoints.receiver, endpoints.audio_port);
@@ -241,10 +267,10 @@ impl RaopStream {
         let frames_sent = Arc::new(AtomicU64::new(0));
         let reanchor = Arc::new(AtomicU64::new(0));
 
-        let threads = vec![
+        let mut threads = vec![
             spawn_audio_thread(AudioThread {
                 source,
-                packetizer: Packetizer::new(ssrc, cipher, channels, 0, initial_timestamp),
+                packetizer: Packetizer::new(ssrc, crypto, channels, 0, initial_timestamp),
                 pacer: Pacer::new(sample_rate, endpoints.latency_frames),
                 sample_rate,
                 latency_frames: endpoints.latency_frames,
@@ -255,7 +281,10 @@ impl RaopStream {
                 frames_sent: frames_sent.clone(),
                 reanchor: reanchor.clone(),
             }),
-            spawn_sync_thread(
+            spawn_timing_thread(timing_socket, stop.clone()),
+        ];
+        if send_sync {
+            threads.push(spawn_sync_thread(
                 control_socket,
                 control_dst,
                 initial_timestamp,
@@ -263,9 +292,8 @@ impl RaopStream {
                 frames_sent.clone(),
                 sample_rate,
                 stop.clone(),
-            ),
-            spawn_timing_thread(timing_socket, stop.clone()),
-        ];
+            ));
+        }
 
         Ok(RaopStream {
             stop,
@@ -443,7 +471,13 @@ mod tests {
     /// advancing sequence and timestamp per packet — a golden fixture.
     #[test]
     fn packetizer_is_golden_unencrypted() {
-        let mut p = Packetizer::new(0xDEAD_BEEF, RaopCipher::none(), 2, 100, 1000);
+        let mut p = Packetizer::new(
+            0xDEAD_BEEF,
+            PayloadCrypto::Raop(RaopCipher::none()),
+            2,
+            100,
+            1000,
+        );
         // One "packet" of two stereo frames: L,R,L,R.
         let pkt = p.packet(&[0x0102, 0x0304, 0x0506, 0x0708]);
         assert_eq!(
@@ -469,8 +503,8 @@ mod tests {
     fn packetizer_encrypts_payload_only() {
         use super::super::crypto::apple_public_key;
         let cipher = RaopCipher::from_key_iv(&apple_public_key(), [0x11; 16], [0x22; 16]).unwrap();
-        let mut enc = Packetizer::new(1, cipher, 2, 0, 0);
-        let mut plain = Packetizer::new(1, RaopCipher::none(), 2, 0, 0);
+        let mut enc = Packetizer::new(1, PayloadCrypto::Raop(cipher), 2, 0, 0);
+        let mut plain = Packetizer::new(1, PayloadCrypto::Raop(RaopCipher::none()), 2, 0, 0);
         // 16 stereo frames = 64 bytes payload = four whole AES blocks.
         let pcm: Vec<i16> = (0..32).collect();
         let e = enc.packet(&pcm);
@@ -529,7 +563,7 @@ mod tests {
         let reanchor = Arc::new(AtomicU64::new(0));
         let handle = spawn_audio_thread(AudioThread {
             source,
-            packetizer: Packetizer::new(1, RaopCipher::none(), 2, 0, 0),
+            packetizer: Packetizer::new(1, PayloadCrypto::Raop(RaopCipher::none()), 2, 0, 0),
             pacer: Pacer::new(44_100, 88_200),
             sample_rate: 44_100,
             latency_frames: 88_200,
@@ -575,7 +609,7 @@ mod tests {
     /// marker bit again.
     #[test]
     fn reanchor_re_marks_the_next_packet() {
-        let mut p = Packetizer::new(1, RaopCipher::none(), 2, 0, 0);
+        let mut p = Packetizer::new(1, PayloadCrypto::Raop(RaopCipher::none()), 2, 0, 0);
         let first = p.packet(&[0, 0, 0, 0]);
         assert_eq!(first[1], 0xE0, "first packet is marked");
         let second = p.packet(&[0, 0, 0, 0]);
