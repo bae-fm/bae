@@ -52,3 +52,5 @@ struct ComposerWorkGroupView: View {
         .environment(MediaPaths.stub)
     }
 #endif
+
+extension BridgeComposerWorkGroup: Identifiable {}
