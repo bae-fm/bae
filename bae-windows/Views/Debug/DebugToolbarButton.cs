@@ -4,20 +4,25 @@ using Microsoft.UI.Xaml.Controls;
 
 namespace Bae.Windows;
 
-// MainWindow: the debug-only toolbar entry that opens the component gallery (the
-// WinUI preview analogue). Compiled only in DEBUG builds; AddDebugMenu is called
-// from the constructor under the same #if.
-public sealed partial class MainWindow
+// DEBUG-only: the leading toolbar entry that opens the component gallery (the
+// WinUI preview analogue). Owns the single gallery-window instance so a second
+// click re-activates the open one rather than opening another. Attached to the
+// toolbar's button strip from MainWindow's composition root under the same #if.
+// Compiled only in DEBUG builds.
+internal sealed class DebugToolbarButton
 {
-    private ComponentGalleryWindow? _componentGallery;
+    private ComponentGalleryWindow? _gallery;
 
-    // Add a debug toolbar button whose flyout opens the component gallery. Placed
-    // at the leading edge of the toolbar's button strip so it doesn't shift the
-    // shipping chrome.
-    private void AddDebugMenu()
+    // Add the gallery button at the leading edge of the toolbar's button strip so
+    // it doesn't shift the shipping chrome. The button's flyout item captures the
+    // owner (which holds the single-instance window), so the owner lives as long
+    // as the button does.
+    public static void Attach(Panel toolbarButtons)
     {
+        var owner = new DebugToolbarButton();
+
         var item = new MenuFlyoutItem { Text = Loc.Chrome("component_gallery.menu") };
-        item.Click += (_, _) => ShowComponentGallery();
+        item.Click += (_, _) => owner.Show();
         var flyout = new MenuFlyout();
         flyout.Items.Add(item);
 
@@ -29,19 +34,19 @@ public sealed partial class MainWindow
             Flyout = flyout,
         };
         ToolTipService.SetToolTip(button, Loc.Chrome("component_gallery.menu"));
-        ToolbarButtons.Children.Insert(0, button);
+        toolbarButtons.Children.Insert(0, button);
     }
 
-    private void ShowComponentGallery()
+    private void Show()
     {
-        if (_componentGallery is { } open)
+        if (_gallery is { } open)
         {
             open.Activate();
             return;
         }
         var window = new ComponentGalleryWindow();
-        _componentGallery = window;
-        window.Closed += (_, _) => _componentGallery = null;
+        _gallery = window;
+        window.Closed += (_, _) => _gallery = null;
         window.Activate();
         // AppWindow speaks physical pixels, so scale by the live rasterization
         // factor (available once activated), matching SettingsWindow.

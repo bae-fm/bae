@@ -376,7 +376,7 @@ public sealed partial class MainWindow : Window
 #if DEBUG
         // Debug-only: the component-gallery toolbar entry (the WinUI preview
         // analogue). Compiled out of Release.
-        AddDebugMenu();
+        DebugToolbarButton.Attach(ToolbarButtons);
 #endif
 
         // Check for an update in the background at launch, like macOS's Sparkle
