@@ -2165,7 +2165,7 @@ impl crate::types::BridgeQueueEntry {
             track_id,
             title,
             artist_names,
-            duration_ms,
+            duration_clock: crate::types::BridgeDurationClock::from_millis(duration_ms),
             album_title,
             cover_image_id,
         }
@@ -2635,6 +2635,7 @@ impl BridgeTrack {
             title,
             side,
             track_number,
+            duration_clock: crate::types::BridgeDurationClock::from_millis(duration_ms),
             duration_ms,
             artist_names,
             display_artist,
@@ -2646,8 +2647,10 @@ impl BridgeTrack {
 impl BridgeTrackGroup {
     fn from_core(g: bae_core::album_detail::TrackGroup) -> Self {
         let bae_core::album_detail::TrackGroup { side, tracks } = g;
+        let side = crate::types::BridgeTrackSide::from_core(side);
         BridgeTrackGroup {
-            side: crate::types::BridgeTrackSide::from_core(side),
+            header_key: side.header_key().map(str::to_string),
+            side,
             tracks: tracks.into_iter().map(BridgeTrack::from_core).collect(),
         }
     }
@@ -2750,7 +2753,7 @@ impl BridgeTrackSearchResult {
         BridgeTrackSearchResult {
             id,
             title,
-            duration_ms,
+            duration_clock: crate::types::BridgeDurationClock::from_millis(duration_ms),
             album_id,
             album_title,
             artist_name,
@@ -3325,6 +3328,133 @@ mod tests {
         fn on_event(&self, event: crate::types::BridgeUiEvent) {
             self.events.lock().unwrap().push(event);
         }
+    }
+
+    fn track_detail(
+        position: bae_core::album_detail::TrackPosition,
+        duration_ms: Option<i64>,
+    ) -> bae_core::album_detail::TrackDetail {
+        bae_core::album_detail::TrackDetail {
+            id: "track-1".to_string(),
+            title: "Track".to_string(),
+            side: 1,
+            track_number: Some(1),
+            duration_ms,
+            artist_names: "Artist".to_string(),
+            display_artist: None,
+            position_text: "1".to_string(),
+            position,
+        }
+    }
+
+    #[test]
+    fn track_group_precomputes_header_key_per_side() {
+        use bae_core::album_detail::{TrackPosition, TrackSide};
+
+        let cases = [
+            (
+                TrackSide::Sided {
+                    side_letter: "A".to_string(),
+                },
+                TrackPosition::Sided {
+                    side_letter: "A".to_string(),
+                    number: 1,
+                },
+                Some("core.track.side"),
+            ),
+            (
+                TrackSide::Disc { disc: 2 },
+                TrackPosition::Disc { disc: 2, number: 1 },
+                Some("core.track.disc"),
+            ),
+            (TrackSide::Flat, TrackPosition::Flat { number: 1 }, None),
+        ];
+
+        for (side, position, expected) in cases {
+            let group =
+                crate::types::BridgeTrackGroup::from_core(bae_core::album_detail::TrackGroup {
+                    side,
+                    tracks: vec![track_detail(position, Some(187_000))],
+                });
+            assert_eq!(group.header_key.as_deref(), expected);
+        }
+    }
+
+    #[test]
+    fn track_precomputes_duration_clock() {
+        use bae_core::album_detail::TrackPosition;
+
+        // A present duration renders a clock while the raw number is retained.
+        let present = crate::types::BridgeTrack::from_core(track_detail(
+            TrackPosition::Flat { number: 1 },
+            Some(187_000),
+        ));
+        assert_eq!(present.duration_ms, Some(187_000));
+        let clock = present
+            .duration_clock
+            .expect("clock for a present duration");
+        assert_eq!((clock.minutes, clock.seconds), (3, 7));
+
+        // An absent duration has nothing to label.
+        let absent = crate::types::BridgeTrack::from_core(track_detail(
+            TrackPosition::Flat { number: 1 },
+            None,
+        ));
+        assert_eq!(absent.duration_ms, None);
+        assert!(absent.duration_clock.is_none());
+    }
+
+    fn track_search_result(duration_ms: Option<i64>) -> bae_core::album_detail::TrackSearchResult {
+        bae_core::album_detail::TrackSearchResult {
+            id: "track-1".to_string(),
+            title: "Track".to_string(),
+            duration_ms,
+            album_id: "album-1".to_string(),
+            album_title: "Album".to_string(),
+            artist_name: "Artist".to_string(),
+            cover: None,
+        }
+    }
+
+    #[test]
+    fn track_search_result_precomputes_duration_clock() {
+        // A present duration renders a clock; the raw number does not cross.
+        let present =
+            crate::types::BridgeTrackSearchResult::from_core(track_search_result(Some(187_000)));
+        let clock = present
+            .duration_clock
+            .expect("clock for a present duration");
+        assert_eq!((clock.minutes, clock.seconds), (3, 7));
+
+        // An absent duration has nothing to label.
+        let absent = crate::types::BridgeTrackSearchResult::from_core(track_search_result(None));
+        assert!(absent.duration_clock.is_none());
+    }
+
+    fn queue_item(duration_ms: Option<i64>) -> bae_core::queue::QueueItem {
+        bae_core::queue::QueueItem {
+            entry_id: "entry-1".to_string(),
+            track_id: "track-1".to_string(),
+            title: "Track".to_string(),
+            artist_names: "Artist".to_string(),
+            duration_ms,
+            album_title: "Album".to_string(),
+            cover_image_id: None,
+        }
+    }
+
+    #[test]
+    fn queue_entry_precomputes_duration_clock() {
+        // A present duration renders a clock; the raw number does not cross.
+        let present = crate::types::BridgeQueueEntry::from_core(queue_item(Some(187_000)));
+        let clock = present
+            .duration_clock
+            .expect("clock for a present duration");
+        assert_eq!((clock.minutes, clock.seconds), (3, 7));
+
+        // An absent duration has nothing to label.
+        let absent = crate::types::BridgeQueueEntry::from_core(queue_item(None));
+        assert!(absent.duration_clock.is_none());
     }
 
     #[cfg(not(feature = "desktop"))]

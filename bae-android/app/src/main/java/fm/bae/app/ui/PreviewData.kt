@@ -12,6 +12,7 @@ import uniffi.bae_bridge.BridgeDownloadProgress
 import uniffi.bae_bridge.BridgeDownloadSnapshot
 import uniffi.bae_bridge.BridgeDownloadState
 import uniffi.bae_bridge.BridgeDownloadTransferProgress
+import uniffi.bae_bridge.BridgeDurationClock
 import uniffi.bae_bridge.BridgeGalleryItem
 import uniffi.bae_bridge.BridgeGallerySource
 import uniffi.bae_bridge.BridgeImageRef
@@ -47,6 +48,15 @@ object PreviewData {
     private val placeholderPubkey = "0".repeat(64)
     private val placeholderPubkeyAlt = "1".repeat(64)
 
+    // Preview track length (3:34), and the same value as a pre-built clock. The
+    // clock is constructed in-process — never via the `bridgeClock` FFI — so the
+    // fixtures render under the Compose preview renderer (layoutlib), which can't
+    // call into the native bridge. Both are named so the literals aren't inline
+    // magic numbers in the fixture expression bodies below.
+    private const val TRACK_DURATION_MS = 214_000L
+    private val trackDurationClock =
+        BridgeDurationClock(negative = false, hours = null, minutes = 3u, seconds = 34u)
+
     fun imageRef(id: String = "img-1"): BridgeImageRef =
         BridgeImageRef(
             id = id,
@@ -81,7 +91,8 @@ object PreviewData {
             title = title,
             side = 0,
             trackNumber = trackNumber,
-            durationMs = 214_000L,
+            durationMs = TRACK_DURATION_MS,
+            durationClock = trackDurationClock,
             artistNames = "Artist Name",
             displayArtist = null,
             positionText = trackNumber?.toString() ?: "",
@@ -89,7 +100,7 @@ object PreviewData {
 
     fun trackGroup(
         tracks: List<BridgeTrack> = listOf(track("trk-1", "Track Title", 1), track("trk-2", "Another Track", 2)),
-    ): BridgeTrackGroup = BridgeTrackGroup(side = BridgeTrackSide.Flat, tracks = tracks)
+    ): BridgeTrackGroup = BridgeTrackGroup(side = BridgeTrackSide.Flat, headerKey = null, tracks = tracks)
 
     fun release(
         id: String = "rel-alb-1",
@@ -145,7 +156,7 @@ object PreviewData {
         BridgeTrackSearchResult(
             id = id,
             title = "Track Title",
-            durationMs = 214_000L,
+            durationClock = trackDurationClock,
             albumId = albumId,
             albumTitle = "Album Title",
             artistName = "Artist Name",

@@ -52,6 +52,7 @@ class LibraryBrowseTreeTest {
             side = 0,
             trackNumber = null,
             durationMs = 180_000L,
+            durationClock = null,
             artistNames = "Artist Name",
             displayArtist = null,
             positionText = "1",
@@ -105,10 +106,12 @@ class LibraryBrowseTreeTest {
                         listOf(
                             BridgeTrackGroup(
                                 side = BridgeTrackSide.Sided("A"),
+                                headerKey = "core.track.side",
                                 tracks = listOf(track("t0", "Opener"), track("t1", "Second")),
                             ),
                             BridgeTrackGroup(
                                 side = BridgeTrackSide.Sided("B"),
+                                headerKey = "core.track.side",
                                 tracks = listOf(track("t2", "Third")),
                             ),
                         ),
@@ -142,6 +145,7 @@ class LibraryBrowseTreeTest {
                         listOf(
                             BridgeTrackGroup(
                                 side = BridgeTrackSide.Flat,
+                                headerKey = null,
                                 tracks = listOf(track("t0", "A"), track("t1", "B"), track("t2", "C")),
                             ),
                         ),
@@ -272,6 +276,7 @@ class LibraryBrowseTreeTest {
                         listOf(
                             BridgeTrackGroup(
                                 side = BridgeTrackSide.Flat,
+                                headerKey = null,
                                 tracks = listOf(track("t0", "A"), track("t1", "B")),
                             ),
                         ),
@@ -306,6 +311,7 @@ class LibraryBrowseTreeTest {
                         listOf(
                             BridgeTrackGroup(
                                 side = BridgeTrackSide.Flat,
+                                headerKey = null,
                                 tracks = listOf(track("t0", "A"), track("t1", "B")),
                             ),
                         ),

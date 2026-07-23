@@ -49,7 +49,7 @@ import androidx.compose.ui.unit.dp
 import fm.bae.app.BaeLogger
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
-import fm.bae.app.durationClockText
+import fm.bae.app.durationClockLabel
 import fm.bae.app.durationUnitsText
 import fm.bae.app.runLoggedBridgeCommand
 import fm.bae.app.sideHeaderText
@@ -67,7 +67,6 @@ import uniffi.bae_bridge.BridgeAlbumDetail
 import uniffi.bae_bridge.BridgeGallerySource
 import uniffi.bae_bridge.BridgeImageRef
 import uniffi.bae_bridge.BridgeRelease
-import uniffi.bae_bridge.BridgeTrackSide
 
 private const val TAG = "bae.AlbumDetailScreen"
 private val logger = BaeLogger(TAG)
@@ -76,26 +75,6 @@ internal data class AlbumPlaybackState(
     val currentTrackId: String?,
     val isPlaying: Boolean,
 )
-
-/**
- * The two locale-rendered, core-derived labels the track list needs: a track
- * group's side header ("Side A" / "Disc 2", empty for a flat single side) and a
- * track's duration clock. Both reach into bae-core over the bridge, so they
- * travel together as a dependency — production supplies the real renderers, the
- * screenshot scene supplies inert stubs (the bridge/FFI can't run under the
- * preview renderer).
- */
-internal data class AlbumTrackLabels(
-    val sideHeader: (BridgeTrackSide) -> String,
-    val trackDuration: (durationMs: Long?) -> String,
-)
-
-/** The production track labels: the real bridge-backed locale renderers. */
-private fun albumTrackLabels(context: android.content.Context): AlbumTrackLabels =
-    AlbumTrackLabels(
-        sideHeader = { it.sideHeaderText(context) },
-        trackDuration = { context.durationClockText(it) },
-    )
 
 internal data class AlbumDetailCallbacks(
     val fetchGalleryBytes: suspend (releaseId: String, source: BridgeGallerySource) -> ByteArray,
@@ -175,7 +154,6 @@ fun AlbumDetailScreen(
                     playback = AlbumPlaybackState(nowPlaying?.trackId, isPlaying),
                     callbacks = buildAlbumDetailCallbacks(session, release) { selectedReleaseId = it },
                     releaseDownloadControl = { rel -> ReleaseDownloadControl(session = session, release = rel) },
-                    trackLabels = albumTrackLabels(appContext),
                 )
             }
         }
@@ -304,7 +282,6 @@ internal fun AlbumDetailContent(
     playback: AlbumPlaybackState,
     callbacks: AlbumDetailCallbacks,
     releaseDownloadControl: @Composable (BridgeRelease) -> Unit,
-    trackLabels: AlbumTrackLabels,
 ) {
     val album = detail.album
     val context = LocalContext.current
@@ -353,7 +330,7 @@ internal fun AlbumDetailContent(
         if (selectedRelease != null) {
             item { releaseDownloadControl(selectedRelease) }
             item { AlbumActionButtons(callbacks) }
-            albumTrackGroups(selectedRelease, playback, callbacks, context, trackLabels)
+            albumTrackGroups(selectedRelease, playback, callbacks, context)
         }
     }
 }
@@ -458,13 +435,12 @@ private fun androidx.compose.foundation.lazy.LazyListScope.albumTrackGroups(
     playback: AlbumPlaybackState,
     callbacks: AlbumDetailCallbacks,
     context: android.content.Context,
-    trackLabels: AlbumTrackLabels,
 ) {
     // Flatten groups to a release-wide track index so taps map to the ordered
     // list the player builds from the same flattening.
     var runningIndex = 0
     release.trackGroups.forEach { group ->
-        val header = trackLabels.sideHeader(group.side)
+        val header = group.sideHeaderText(context)
         if (header.isNotEmpty()) {
             item {
                 Text(
@@ -484,7 +460,7 @@ private fun androidx.compose.foundation.lazy.LazyListScope.albumTrackGroups(
                         positionLabel = track.positionText,
                         title = track.title,
                         artistNames = track.displayArtist,
-                        durationLabel = trackLabels.trackDuration(track.durationMs),
+                        durationLabel = context.durationClockLabel(track.durationClock),
                         isCurrent = isCurrent,
                         isPlaying = playback.isPlaying,
                     ),

@@ -12,6 +12,10 @@ import fm.bae.app.ui.PreviewData
  * with inert callbacks and no download control (that control needs a live
  * session, and core offers none for a local fixture release). No image bytes
  * load, so covers show the placeholder icon.
+ *
+ * The side header and track duration are pre-computed fields on the fixture rows
+ * (a null header key for the flat side, a clock built in-process), so they
+ * render under the preview renderer with no bridge/FFI call.
  */
 @Composable
 internal fun AlbumDetailScene() {
@@ -23,11 +27,6 @@ internal fun AlbumDetailScene() {
             playback = AlbumPlaybackState(currentTrackId = null, isPlaying = false),
             callbacks = inertAlbumDetailCallbacks(),
             releaseDownloadControl = {},
-            // The side header and track duration reach bae-core over the bridge
-            // (JNA/FFI), which can't run under the preview renderer; stub them
-            // like the cover loader above. The fixture is a single flat side, so
-            // the real side header is empty here too — the stub matches what ships.
-            trackLabels = AlbumTrackLabels(sideHeader = { "" }, trackDuration = { "" }),
         )
     }
 }

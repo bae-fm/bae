@@ -106,7 +106,7 @@ object BridgeFixtures {
         BridgeTrackSearchResult(
             id = id,
             title = "Track Title",
-            durationMs = null,
+            durationClock = null,
             albumId = albumId,
             albumTitle = "Album Title",
             artistName = "Artist Name",

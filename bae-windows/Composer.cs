@@ -41,11 +41,10 @@ public sealed class TrackSearchResult : INotifyPropertyChanged
 
     public string Id => _track.Id;
     public string Title => _track.Title;
-    public long? DurationMs => _track.DurationMs;
     public string AlbumId => _track.AlbumId;
     public string AlbumTitle => _track.AlbumTitle;
     public string ArtistName => _track.ArtistName;
-    public string DurationLabel => BridgeDisplay.Clock(DurationMs);
+    public string DurationLabel => BridgeDisplay.Clock(_track.DurationClock);
 
     internal void AttachCover(LibraryHandle handle, DispatcherQueue dispatcherQueue) =>
         _cover.Attach(handle, dispatcherQueue);

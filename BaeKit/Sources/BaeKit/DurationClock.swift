@@ -11,9 +11,17 @@ import Foundation
 /// why the rendering is here and not in core.
 public enum DurationClock {
     /// The clock label for a duration in ms; "" when there is nothing to label
-    /// (no duration, or a negative one).
+    /// (no duration, or a negative one). For a value known only as milliseconds
+    /// at render time (an outbox ETA); a static row instead carries its clock as
+    /// a `BridgeDurationClock` field and renders it through ``label(_:)``.
     public static func text(_ ms: Int64?) -> String {
         render(bridgeClock(ms: ms))
+    }
+
+    /// The clock label for a pre-computed clock — the fields core rendered onto
+    /// a row at conversion; "" when there is nothing to label.
+    public static func label(_ clock: BridgeDurationClock?) -> String {
+        render(clock)
     }
 
     /// The seek bar's two labels: the leading one shows the elapsed position or

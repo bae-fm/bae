@@ -31,13 +31,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import fm.bae.app.R
-import fm.bae.app.durationClockText
+import fm.bae.app.durationClockLabel
 import fm.bae.app.playback.NowPlaying
 import fm.bae.app.playback.QueueItem
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.components.CoverBytesCache
 import fm.bae.app.ui.components.CoverImage
 import fm.bae.app.ui.components.LocalCoverBytesCache
+import uniffi.bae_bridge.BridgeDurationClock
 
 // The queue's row renderers — the current-track row, a loaded queue row, the
 // not-yet-loaded skeleton, and the shared title/artist block. Kept beside the
@@ -110,7 +111,7 @@ internal fun QueueRow(
         QueueItemText(item, modifier = Modifier.weight(1f))
         // The label is empty when core reports no duration; keep the slot in the
         // tree and toggle via alpha so rows align.
-        val durationLabel = LocalContext.current.durationClockText(item.durationMs)
+        val durationLabel = LocalContext.current.durationClockLabel(item.durationClock)
         Text(
             text = durationLabel,
             style = MaterialTheme.typography.bodySmall,
@@ -215,7 +216,9 @@ private val previewQueueItem =
         title = "Track Title",
         artist = "Artist Name",
         albumTitle = "Album Title",
-        durationMs = 214_000L,
+        // Built in-process (never the `bridgeClock` FFI) so the @Preview renders
+        // under layoutlib, which can't call into the native bridge.
+        durationClock = BridgeDurationClock(negative = false, hours = null, minutes = 3u, seconds = 34u),
         coverImageId = "rel-1",
     )
 

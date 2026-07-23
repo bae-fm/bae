@@ -17,6 +17,14 @@ internal static class BridgeDisplay
     internal static string Clock(ulong milliseconds) =>
         Clock(checked((long)milliseconds));
 
+    /// <summary>
+    /// The label for a clock core pre-computed onto a row at conversion, or an
+    /// empty string when there is nothing to label. A static row carries its
+    /// clock as a field rather than paying an FFI call per row to render it.
+    /// </summary>
+    internal static string Clock(BridgeDurationClock? clock) =>
+        Render(clock);
+
     private static string Render(BridgeDurationClock? clock) =>
         clock is null
             ? string.Empty

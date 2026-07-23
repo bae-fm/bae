@@ -36,7 +36,7 @@ class SeekToMediaItemTest {
             trackId = "track-$id",
             title = "Title $id",
             artistNames = "Artist Name",
-            durationMs = 180_000L,
+            durationClock = null,
             albumTitle = "Album Title",
             coverImageId = null,
         )

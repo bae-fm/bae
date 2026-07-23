@@ -134,7 +134,9 @@
                     artistNames: entry.artistNames,
                     albumId: "a-01",
                     coverImageId: entry.coverImageId,
-                    durationMs: UInt64(entry.durationMs ?? 0)
+                    // The queue entry carries only a clock label, not raw ms;
+                    // the preview now-playing bar just needs a plausible total.
+                    durationMs: 200_000
                 )
             )
             apply()
@@ -169,7 +171,8 @@
                     trackId: trackId,
                     title: source?.title ?? "Track \(trackId)",
                     artistNames: source?.artistNames ?? "Artist Name",
-                    durationMs: source?.durationMs ?? 200_000,
+                    durationClock: source?.durationClock
+                        ?? bridgeClock(ms: 200_000),
                     albumTitle: source?.albumTitle ?? "Album Title",
                     coverImageId: source?.coverImageId
                 )
@@ -198,7 +201,7 @@
                 trackId: "t-01",
                 title: "Track Title 1",
                 artistNames: "Artist Name A",
-                durationMs: 210_000,
+                durationClock: bridgeClock(ms: 210_000),
                 albumTitle: "Album Title A",
                 coverImageId: nil
             ),
@@ -207,7 +210,7 @@
                 trackId: "t-02",
                 title: "Track Title 2",
                 artistNames: "Artist Name A",
-                durationMs: 240_000,
+                durationClock: bridgeClock(ms: 240_000),
                 albumTitle: "Album Title A",
                 coverImageId: nil
             ),
@@ -216,7 +219,7 @@
                 trackId: "t-03",
                 title: "Track Title 3",
                 artistNames: "Artist Name B",
-                durationMs: 198_000,
+                durationClock: bridgeClock(ms: 198_000),
                 albumTitle: "Album Title B",
                 coverImageId: nil
             ),
@@ -225,7 +228,7 @@
                 trackId: "t-04",
                 title: "Track Title 4",
                 artistNames: "Artist Name B",
-                durationMs: 225_000,
+                durationClock: bridgeClock(ms: 225_000),
                 albumTitle: "Album Title B",
                 coverImageId: nil
             ),
@@ -234,7 +237,7 @@
                 trackId: "t-05",
                 title: "Track Title 5",
                 artistNames: "Artist Name C",
-                durationMs: 187_000,
+                durationClock: bridgeClock(ms: 187_000),
                 albumTitle: "Album Title C",
                 coverImageId: nil
             ),
@@ -382,7 +385,7 @@
                     BridgeTrackSearchResult(
                         id: "t-03",
                         title: "Track Title 3",
-                        durationMs: 198_000,
+                        durationClock: bridgeClock(ms: 198_000),
                         albumId: "a-02",
                         albumTitle: "Album Title B",
                         artistName: "Artist Name A",
@@ -391,7 +394,7 @@
                     BridgeTrackSearchResult(
                         id: "t-05",
                         title: "Track Title 5",
-                        durationMs: 187_000,
+                        durationClock: bridgeClock(ms: 187_000),
                         albumId: "a-03",
                         albumTitle: "Album Title C",
                         artistName: "Artist Name B",
@@ -481,6 +484,7 @@
                         side: side,
                         trackNumber: Int32(index + 1),
                         durationMs: durationMs,
+                        durationClock: bridgeClock(ms: durationMs),
                         artistNames: artist,
                         displayArtist: nil,
                         positionText: positionText(index),
@@ -511,7 +515,13 @@
                     isVinyl
                     ? .sided(sideLetter: letter) : .disc(disc: sideNumber)
                 return (
-                    tracks, BridgeTrackGroup(side: groupSide, tracks: tracks)
+                    tracks,
+                    BridgeTrackGroup(
+                        side: groupSide,
+                        headerKey: isVinyl
+                            ? "core.track.side" : "core.track.disc",
+                        tracks: tracks
+                    )
                 )
             }
             let (tracks1, group1) = side(1, letter: "A", names: disc1)
@@ -556,6 +566,7 @@
                         trackGroups: [
                             BridgeTrackGroup(
                                 side: .flat,
+                                headerKey: nil,
                                 tracks: makeTracks(tracks, artist: artist)
                             )
                         ],
@@ -664,6 +675,7 @@
                         groups = [
                             BridgeTrackGroup(
                                 side: .flat,
+                                headerKey: nil,
                                 tracks: allTracks
                             )
                         ]

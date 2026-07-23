@@ -32,7 +32,7 @@ import androidx.compose.ui.unit.dp
 import fm.bae.app.BaeLogger
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
-import fm.bae.app.durationClockText
+import fm.bae.app.durationClockLabel
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.components.CoverBytesCache
@@ -286,7 +286,7 @@ private fun TrackResultRow(
                 maxLines = 1,
             )
         }
-        val durationLabel = LocalContext.current.durationClockText(track.durationMs)
+        val durationLabel = LocalContext.current.durationClockLabel(track.durationClock)
         if (durationLabel.isNotEmpty()) {
             Spacer(modifier = Modifier.width(12.dp))
             Text(

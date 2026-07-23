@@ -30,6 +30,7 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.AppHandle
+import uniffi.bae_bridge.BridgeDurationClock
 import uniffi.bae_bridge.BridgeLoadingTrackInfo
 import uniffi.bae_bridge.BridgePlaybackContext
 import uniffi.bae_bridge.BridgePlaybackPauseReason
@@ -62,10 +63,10 @@ data class PlaybackPosition(
 )
 
 /** One queue entry the [fm.bae.app.ui.playback.QueueScreen] renders. The UI projection
- *  of the player's internal queue metadata: [durationMs] is the track's raw
- *  length (null when core reports none), which the row renders as a clock label;
- *  [coverImageId] is the cover image id (a release id) the row fetches bytes
- *  for. [entryId] is the per-instance id the row keys on and that
+ *  of the player's internal queue metadata: [durationClock] is the track length
+ *  as a clock label's fields (null when core reports none), which the row renders
+ *  directly; [coverImageId] is the cover image id (a release id) the row fetches
+ *  bytes for. [entryId] is the per-instance id the row keys on and that
  *  remove/reorder/skip target — unique even when the same track is queued
  *  twice. */
 data class QueueItem(
@@ -74,7 +75,7 @@ data class QueueItem(
     val title: String,
     val artist: String,
     val albumTitle: String,
-    val durationMs: Long?,
+    val durationClock: BridgeDurationClock?,
     val coverImageId: String?,
 )
 
@@ -426,11 +427,12 @@ class BaeCorePlayer(
         val title: String,
         val artist: String,
         val albumTitle: String,
-        /** The track's raw length, or null when core reports none. Carried by
-         *  queue entries; the Playing/Paused payload has no duration, so the
-         *  current-track override leaves it null (the queue projection reads the
-         *  duration off the queue entry, not this override). */
-        val durationMs: Long?,
+        /** The track length as a clock label's fields, or null when core reports
+         *  none. Carried by queue entries; the Playing/Paused payload has no
+         *  duration, so the current-track override leaves it null (the queue
+         *  projection reads the duration off the queue entry, not this
+         *  override). */
+        val durationClock: BridgeDurationClock?,
         /** The cover image id (a release id) whose bytes the now-playing artwork
          *  and the in-app rows fetch, or null when the track has no cover. */
         val coverImageId: String?,
@@ -837,7 +839,7 @@ class BaeCorePlayer(
             title = title,
             artist = artist,
             albumTitle = albumTitle,
-            durationMs = null,
+            durationClock = null,
             coverImageId = coverImageId,
         )
 
@@ -1059,7 +1061,7 @@ class BaeCorePlayer(
             title = title,
             artist = artist,
             albumTitle = albumTitle,
-            durationMs = durationMs,
+            durationClock = durationClock,
             coverImageId = coverImageId,
         )
     }
@@ -1071,7 +1073,7 @@ class BaeCorePlayer(
             title = title,
             artist = artistNames,
             albumTitle = albumTitle,
-            durationMs = durationMs,
+            durationClock = durationClock,
             coverImageId = coverImageId,
         )
 

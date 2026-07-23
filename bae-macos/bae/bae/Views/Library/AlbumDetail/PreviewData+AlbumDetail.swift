@@ -165,6 +165,7 @@
                     side: 1,
                     trackNumber: 1,
                     durationMs: durationMs,
+                    durationClock: bridgeClock(ms: durationMs),
                     artistNames: displayArtist ?? "Artist Name",
                     displayArtist: displayArtist,
                     positionText: position

@@ -371,13 +371,31 @@ impl BridgeTrackSide {
             TrackSide::Flat => Self::Flat,
         }
     }
+
+    /// Localization key for this side's header word ("Side" / "Disc"), or `None`
+    /// for `Flat` (single-disc digital has no header). Pre-computed onto
+    /// [`BridgeTrackGroup::header_key`] at conversion; the UI resolves the key
+    /// and substitutes the side letter / disc number `side` carries.
+    pub(crate) fn header_key(&self) -> Option<&'static str> {
+        match self {
+            Self::Sided { .. } => Some("core.track.side"),
+            Self::Disc { .. } => Some("core.track.disc"),
+            Self::Flat => None,
+        }
+    }
 }
 
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeTrackGroup {
-    /// The group's side discriminant; the UI renders the "Side A" / "Disc 2"
-    /// header from it (`Flat` means no header).
+    /// The group's side discriminant; the UI substitutes the letter / disc
+    /// number into the header format (`Flat` means no header).
     pub side: BridgeTrackSide,
+    /// Localization key for the group header word ("core.track.side" /
+    /// "core.track.disc"), or `None` for `Flat`. Core-rendered at conversion so
+    /// a track list reads a field per group instead of an FFI call per group;
+    /// the UI resolves the key against the `Core` table and interpolates the
+    /// letter / number `side` carries.
+    pub header_key: Option<String>,
     pub tracks: Vec<BridgeTrack>,
 }
 
@@ -387,7 +405,14 @@ pub struct BridgeTrack {
     pub title: String,
     pub side: i32,
     pub track_number: Option<i32>,
+    /// Raw track length in milliseconds; `None` when core reports none. Retained
+    /// alongside `duration_clock` because a consumer needs the number itself —
+    /// Android sets it on the media-session `MediaMetadata` for a queued track.
     pub duration_ms: Option<i64>,
+    /// The track length as a clock label's fields ("3:07"), or `None` when there
+    /// is nothing to label. Core-rendered at conversion so a track row reads a
+    /// field instead of an FFI call; the UI formats the fields for its locale.
+    pub duration_clock: Option<BridgeDurationClock>,
     /// Effective comma-joined artist names for display (the track's own
     /// artists when it has per-track artist rows, otherwise the album
     /// artists). Always populated.
@@ -435,6 +460,13 @@ impl BridgeDurationClock {
             seconds,
         }
     }
+
+    /// The clock for a duration in milliseconds, or `None` when there is nothing
+    /// to label (an absent duration, or a negative one — a gap in the data, not
+    /// a short track). Pre-computed onto the static row types at conversion.
+    pub(crate) fn from_millis(ms: Option<i64>) -> Option<Self> {
+        bae_core::util::duration::DurationClock::from_millis(ms).map(Self::from_core)
+    }
 }
 
 /// Mirror of bae-core's `DurationUnits` — a duration named in words ("39 min",
@@ -472,7 +504,7 @@ impl BridgeDurationUnits {
 /// absent duration, or a negative one (a gap in the data, not a short track).
 #[uniffi::export]
 pub fn bridge_clock(ms: Option<i64>) -> Option<BridgeDurationClock> {
-    bae_core::util::duration::DurationClock::from_millis(ms).map(BridgeDurationClock::from_core)
+    BridgeDurationClock::from_millis(ms)
 }
 
 /// The two clocks a seek bar shows. Mirror of bae-core's `SeekBarClocks`.
@@ -503,18 +535,6 @@ pub fn bridge_seek_bar(
     BridgeSeekBarClocks {
         leading: BridgeDurationClock::from_core(leading),
         trailing: trailing.map(BridgeDurationClock::from_core),
-    }
-}
-
-/// Localization key for a track group's header word, given its side, or `None`
-/// for `Flat` (single-disc digital has no header). The UI resolves the key and
-/// substitutes the side letter / disc number the side carries.
-#[uniffi::export]
-pub fn bridge_track_header_key(side: BridgeTrackSide) -> Option<String> {
-    match side {
-        BridgeTrackSide::Sided { .. } => Some("core.track.side".to_string()),
-        BridgeTrackSide::Disc { .. } => Some("core.track.disc".to_string()),
-        BridgeTrackSide::Flat => None,
     }
 }
 
@@ -2526,7 +2546,10 @@ pub struct BridgeAlbumSearchResult {
 pub struct BridgeTrackSearchResult {
     pub id: String,
     pub title: String,
-    pub duration_ms: Option<i64>,
+    /// The track length as a clock label's fields ("3:07"), or `None` when there
+    /// is nothing to label. The raw milliseconds do not cross — the search row
+    /// only ever shows the clock, never the number.
+    pub duration_clock: Option<BridgeDurationClock>,
     pub album_id: String,
     pub album_title: String,
     pub artist_name: String,
@@ -2728,7 +2751,10 @@ pub struct BridgeQueueEntry {
     pub track_id: String,
     pub title: String,
     pub artist_names: String,
-    pub duration_ms: Option<i64>,
+    /// The track length as a clock label's fields ("3:07"), or `None` when there
+    /// is nothing to label. The raw milliseconds do not cross — a queue row only
+    /// ever shows the clock, never the number.
+    pub duration_clock: Option<BridgeDurationClock>,
     pub album_title: String,
     pub cover_image_id: Option<String>,
 }
@@ -4428,7 +4454,8 @@ mod loc_key_coverage {
             keys.push(expected.to_string());
         }
 
-        // bridge_track_header_key — Flat carries no key (None).
+        // BridgeTrackSide::header_key — Flat carries no key (None). This is what
+        // BridgeTrackGroup::header_key is built from at conversion.
         for s in [
             BridgeTrackSide::Sided {
                 side_letter: "A".to_string(),
@@ -4441,7 +4468,7 @@ mod loc_key_coverage {
                 BridgeTrackSide::Disc { .. } => Some("core.track.disc"),
                 BridgeTrackSide::Flat => None,
             };
-            assert_eq!(bridge_track_header_key(s).as_deref(), expected);
+            assert_eq!(s.header_key(), expected);
             if let Some(k) = expected {
                 keys.push(k.to_string());
             }

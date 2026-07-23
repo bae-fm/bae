@@ -73,6 +73,7 @@ enum PreviewData {
                     side: 1,
                     trackNumber: trackNumber,
                     durationMs: durationMs,
+                    durationClock: bridgeClock(ms: durationMs),
                     artistNames: "Artist Name 1",
                     displayArtist: nil,
                     positionText: String(index)
@@ -96,7 +97,7 @@ enum PreviewData {
             storageActions: [],
             transferAction: nil,
             tracks: songs,
-            trackGroups: [BridgeTrackGroup(side: .flat, tracks: songs)],
+            trackGroups: [BridgeTrackGroup(side: .flat, headerKey: nil, tracks: songs)],
             files: [],
             imageFiles: [],
             galleryItems: [],
@@ -147,7 +148,7 @@ enum PreviewData {
                 trackId: "t-\(index)",
                 title: "Track Title \(index)",
                 artistNames: "Artist Name 1",
-                durationMs: Int64(180_000 + index * 15_000),
+                durationClock: bridgeClock(ms: Int64(180_000 + index * 15_000)),
                 albumTitle: "Album Title 1",
                 coverImageId: nil
             )
@@ -233,7 +234,7 @@ enum PreviewData {
                 BridgeTrackSearchResult(
                     id: "t-1",
                     title: "Track Title 1",
-                    durationMs: 195_000,
+                    durationClock: bridgeClock(ms: 195_000),
                     albumId: "a-1",
                     albumTitle: "Album Title 1",
                     artistName: "Artist Name 1",

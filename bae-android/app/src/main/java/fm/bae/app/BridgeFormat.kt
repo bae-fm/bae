@@ -2,9 +2,9 @@ package fm.bae.app
 
 import android.content.Context
 import uniffi.bae_bridge.BridgeAudioFormat
+import uniffi.bae_bridge.BridgeTrackGroup
 import uniffi.bae_bridge.BridgeTrackSide
 import uniffi.bae_bridge.bridgeAudioChannelsKey
-import uniffi.bae_bridge.bridgeTrackHeaderKey
 import java.text.NumberFormat
 
 private const val HZ_PER_KHZ = 1000.0
@@ -18,23 +18,23 @@ private const val HZ_PER_KHZ = 1000.0
 /**
  * The localized track-group header ("Side A" / "Disc 2"), or empty for the flat
  * single-disc case (no header). bae-core decides the case and the side letter /
- * disc number; the "Side" / "Disc" word comes from the catalog key the core
- * owns, with the letter / number substituted in. Mirrors macOS
- * `BridgeTrackSide.sideHeaderText`.
+ * disc number, and hands over the header word's catalog key on the group
+ * (`headerKey`); this resolves the word and substitutes the letter / number.
+ * Mirrors macOS `TrackGroup.sideHeaderText`.
  */
-fun BridgeTrackSide.sideHeaderText(context: Context): String {
-    val key = bridgeTrackHeaderKey(this) ?: return ""
-    return when (this) {
+fun BridgeTrackGroup.sideHeaderText(context: Context): String {
+    val key = headerKey ?: return ""
+    return when (val s = side) {
         is BridgeTrackSide.Sided -> {
-            context.coreString(key, mapOf("letter" to sideLetter))
+            context.coreString(key, mapOf("letter" to s.sideLetter))
         }
 
         is BridgeTrackSide.Disc -> {
-            context.coreString(key, mapOf("disc" to disc))
+            context.coreString(key, mapOf("disc" to s.disc))
         }
 
-        // Unreachable: bridgeTrackHeaderKey returns null for Flat, so the
-        // elvis above already returned. Kept for exhaustiveness.
+        // Unreachable: headerKey is null for Flat, so the elvis above already
+        // returned. Kept for exhaustiveness.
         is BridgeTrackSide.Flat -> {
             ""
         }

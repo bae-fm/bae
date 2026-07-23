@@ -367,7 +367,7 @@ internal sealed partial class QueuePane
 
         var duration = new TextBlock
         {
-            Text = BridgeDisplay.Clock(row.Entry.DurationMs),
+            Text = BridgeDisplay.Clock(row.Entry.DurationClock),
             FontSize = 11,
             FontWeight = FontWeights.SemiBold,
             Foreground = Secondary,

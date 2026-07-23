@@ -11,6 +11,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
+import uniffi.bae_bridge.BridgeDurationClock
 import uniffi.bae_bridge.BridgePlaybackContext
 import uniffi.bae_bridge.BridgePlaybackSourceKind
 import uniffi.bae_bridge.BridgeQueueEntry
@@ -25,23 +26,29 @@ import uniffi.bae_bridge.BridgeQueueEntry
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
 class QueueProjectionTest {
+    // A fixed clock (3:00) the projection copies straight through — its value is
+    // never asserted, only that the entry's clock reaches the projected item.
+    // Built in-process, never via the `bridgeClock` FFI, which the unit test's
+    // fake handle never loads.
+    private val sampleClock = BridgeDurationClock(negative = false, hours = null, minutes = 3u, seconds = 0u)
+
     private fun entry(
         id: String,
-        durationMs: Long? = 180_000L,
+        durationClock: BridgeDurationClock? = sampleClock,
         coverImageId: String? = "cover-$id",
     ) = BridgeQueueEntry(
         entryId = "entry-$id",
         trackId = "track-$id",
         title = "Title $id",
         artistNames = "Artist Name",
-        durationMs = durationMs,
+        durationClock = durationClock,
         albumTitle = "Album Title",
         coverImageId = coverImageId,
     )
 
     private fun item(
         id: String,
-        durationMs: Long? = 180_000L,
+        durationClock: BridgeDurationClock? = sampleClock,
         coverImageId: String? = "cover-$id",
     ) = QueueItem(
         entryId = "entry-$id",
@@ -49,7 +56,7 @@ class QueueProjectionTest {
         title = "Title $id",
         artist = "Artist Name",
         albumTitle = "Album Title",
-        durationMs = durationMs,
+        durationClock = durationClock,
         coverImageId = coverImageId,
     )
 
@@ -146,7 +153,7 @@ class QueueProjectionTest {
         val player = player()
 
         player.onQueueUpdated(
-            manual = listOf(entry("a", durationMs = null, coverImageId = null)),
+            manual = listOf(entry("a", durationClock = null, coverImageId = null)),
             context = null,
             hasNext = false,
             hasPrevious = false,
@@ -155,7 +162,7 @@ class QueueProjectionTest {
 
         val manual = player.queue.value.manual
         val projected = manual.single()
-        assertNull(projected.durationMs)
+        assertNull(projected.durationClock)
         assertNull(projected.coverImageId)
     }
 

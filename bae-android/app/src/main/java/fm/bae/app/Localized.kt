@@ -5,7 +5,6 @@ import android.icu.text.MessageFormat
 import android.text.format.Formatter
 import uniffi.bae_bridge.BridgeDurationClock
 import uniffi.bae_bridge.BridgeDurationUnits
-import uniffi.bae_bridge.bridgeClock
 import java.util.Locale
 
 private const val HOURS_KEY = "core.duration.hours"
@@ -50,11 +49,11 @@ fun Context.coreString(
 fun Context.currentLocale(): Locale = resources.configuration.locales[0]
 
 /**
- * The clock label for a duration in ms (e.g. "3:07"), or empty when there is
- * nothing to label. Core decides the label's fields — whether it has an hours
- * field, and whether it exists at all; this renders them for the locale.
+ * The clock label for a pre-computed clock (e.g. "3:07"), or empty when there is
+ * nothing to label. Core rendered the clock's fields onto the row at conversion;
+ * this renders them for the current locale.
  */
-fun Context.durationClockText(ms: Long?): String = clockText(bridgeClock(ms), currentLocale())
+fun Context.durationClockLabel(clock: BridgeDurationClock?): String = clockText(clock, currentLocale())
 
 /**
  * A total playing time in words — "39 min", "3 hr", "3 hr, 42 min". Core decides

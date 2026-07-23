@@ -100,7 +100,6 @@ public sealed class Track
 
     public string TrackId => _track.Id;
     public string Title => _track.Title;
-    public long? DurationMs => _track.DurationMs;
     public string Artist => _track.ArtistNames;
 
     /// <summary>The artist to show on the row, or null for none — core's decision
@@ -110,7 +109,7 @@ public sealed class Track
     public string? DisplayArtist => _track.DisplayArtist;
 
     public string PositionLabel => _track.PositionText;
-    public string DurationLabel => BridgeDisplay.Clock(DurationMs);
+    public string DurationLabel => BridgeDisplay.Clock(_track.DurationClock);
 
     /// <summary>The list row; used as the default item text. The display artist
     /// sits between the title and the duration when core provides one.</summary>

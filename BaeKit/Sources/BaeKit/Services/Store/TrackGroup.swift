@@ -5,33 +5,24 @@ private let logger = Logger.bae("TrackGroup")
 
 public struct TrackGroup {
     public var side: BridgeTrackSide
+    /// The catalog key for the header word ("core.track.side" / "core.track.disc"),
+    /// or `nil` for a flat single-disc group. Core-rendered onto the bridge row.
+    public var headerKey: String?
     public var tracks: [Track]
 
     /// The group header for the current locale: "Side A" / "Disc 2", or empty
     /// for a flat single-disc group (no header). bae-core decides the case and
-    /// the side letter / disc number; the UI resolves the "Side"/"Disc" word
-    /// from the catalog key and substitutes the number.
-    public var sideHeaderText: String { side.sideHeaderText }
-
-    public init(from bridge: BridgeTrackGroup) {
-        side = bridge.side
-        tracks = bridge.tracks.map(Track.init(from:))
-    }
-}
-
-extension BridgeTrackSide {
-    /// The localized group header ("Side A" / "Disc 2"), or empty for the flat
-    /// case. The word comes from the catalog key bae-core owns; the side letter
-    /// / disc number is substituted in.
+    /// the side letter / disc number, and hands over the header word's catalog
+    /// key; the UI resolves the word and substitutes the letter / number.
     public var sideHeaderText: String {
-        guard let key = bridgeTrackHeaderKey(side: self) else { return "" }
+        guard let key = headerKey else { return "" }
         let format = NSLocalizedString(
             key,
             tableName: "Core",
             bundle: .main,
             comment: ""
         )
-        switch self {
+        switch side {
         case .sided(let sideLetter):
             return String(format: format, sideLetter)
         case .disc(let disc):
@@ -46,5 +37,11 @@ extension BridgeTrackSide {
             logger.warning("unhandled BridgeTrackSide case in sideHeaderText")
             return ""
         }
+    }
+
+    public init(from bridge: BridgeTrackGroup) {
+        side = bridge.side
+        headerKey = bridge.headerKey
+        tracks = bridge.tracks.map(Track.init(from:))
     }
 }

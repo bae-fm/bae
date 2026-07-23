@@ -263,7 +263,7 @@ struct UiEventDispatcherQueueTests {
             trackId: trackId,
             title: "Track Title",
             artistNames: "Artist Name",
-            durationMs: 180_000,
+            durationClock: bridgeClock(ms: 180_000),
             albumTitle: "Album Title",
             coverImageId: nil
         )
