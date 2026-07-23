@@ -67,8 +67,6 @@ pub(super) struct AirPlayRenderer {
     /// The receiver's audio latency in frames — the offset between what has been
     /// sent and what is audible, for the position the UI shows.
     pub(super) latency_frames: u32,
-    /// The device's last playback position, for the handoff back to local.
-    pub(super) last_position: Duration,
 }
 
 impl AirPlayRenderer {
@@ -489,7 +487,6 @@ impl PlaybackService {
             control_slot,
             saved_output,
             latency_frames,
-            last_position: position,
         });
         emit_progress(
             &self.progress_tx,
@@ -520,14 +517,21 @@ impl PlaybackService {
     /// session down), restore the saved local output, and resume local playback
     /// paused at the last position.
     pub(super) async fn end_airplay_and_resume_local(&mut self) {
-        let (saved_output, last_position) =
-            match std::mem::replace(&mut self.renderer, Renderer::Local) {
-                Renderer::AirPlay(r) => (r.saved_output, r.last_position),
-                other => {
-                    self.renderer = other;
-                    return;
-                }
-            };
+        let saved_output = match std::mem::replace(&mut self.renderer, Renderer::Local) {
+            Renderer::AirPlay(r) => r.saved_output,
+            other => {
+                self.renderer = other;
+                return;
+            }
+        };
+        // Decode is local, so the live position is the shared one the drain's ticks
+        // keep current (latency-adjusted) — read it now, before teardown clears it,
+        // so local resumes where playback actually is, not the switch-time point.
+        let last_position = self
+            .current_position_shared
+            .lock()
+            .unwrap()
+            .unwrap_or(Duration::ZERO);
         let current = self.current_track_id().map(str::to_string);
 
         // Dropping the current output (the AirPlay stream) tears the receiver

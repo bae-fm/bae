@@ -2328,7 +2328,6 @@ fn install_airplay(
         control_slot,
         saved_output: Box::new(saved),
         latency_frames,
-        last_position: std::time::Duration::ZERO,
     });
     state
 }
@@ -2404,5 +2403,145 @@ async fn airplay_stop_restores_the_local_output_and_returns_to_local() {
         service.audio_output.get_volume(),
         0.777,
         "the saved local output sink is restored"
+    );
+}
+
+/// Stopping AirPlay resumes local at the position playback actually reached: the
+/// resume position is read from the live shared position at teardown, so the
+/// `AirPlayRenderer` carries no separately-stored position that could go stale.
+/// (Fully exercising the resumed local decode needs a real imported track; here
+/// the position source and the return-to-local are asserted.)
+#[tokio::test]
+async fn airplay_stop_reads_the_live_position_and_returns_to_local() {
+    let (_home, mut service, _progress_rx) = seeded_playback_service(&[("r", &["t"])]).await;
+    service.slot = active_slot(
+        test_prepared_track("t", create_sparse_buffer(1_024)),
+        TrackPhase::Playing,
+    );
+    let saved_tag = 0.5;
+    install_airplay(&mut service, 88_200, saved_tag);
+
+    // Playback progressed on AirPlay: decode is local, so the shared position is
+    // the live one the resume reads.
+    *service.current_position_shared.lock().unwrap() = Some(std::time::Duration::from_secs(30));
+
+    service.handle_stop_remote().await;
+
+    assert!(
+        !service.renderer.is_airplay(),
+        "stop returns to the local renderer"
+    );
+    assert_eq!(
+        service.audio_output.get_volume(),
+        saved_tag,
+        "the saved local output sink is restored"
+    );
+}
+
+/// Seeking while on AirPlay FLUSHes the receiver and re-anchors the pacing (decode
+/// is local, so the rebuild re-fills the sink at the new position).
+#[tokio::test]
+async fn airplay_seek_flushes_and_reanchors() {
+    let (_home, mut service, _progress_rx) = seeded_playback_service(&[("r", &["t"])]).await;
+    let buffer = create_sparse_buffer(64 * 1024);
+    service.slot = active_slot(
+        test_prepared_track("t", buffer.clone()),
+        TrackPhase::Playing,
+    );
+    let (_sink, source, _ready) = create_track_stream_pair(44_100, 2);
+    let (_tx, audio_rx) = audio_event_channel();
+    service.output = Some(test_output(
+        Arc::new(Mutex::new(source::PlaybackSource::new(
+            source,
+            test_track_fmt("t"),
+        ))),
+        audio_rx,
+    ));
+    service.current_position_shared =
+        Arc::new(std::sync::Mutex::new(Some(std::time::Duration::ZERO)));
+    let state = install_airplay(&mut service, 88_200, 0.5);
+
+    service.seek(std::time::Duration::from_secs(20)).await;
+
+    assert!(
+        state.flushed.load(std::sync::atomic::Ordering::Acquire) >= 1,
+        "seek FLUSHes the receiver's buffer"
+    );
+    assert!(
+        state.reanchored.load(std::sync::atomic::Ordering::Acquire) >= 1,
+        "seek re-anchors the pacing"
+    );
+}
+
+/// A local end-of-decode advances the queue while the AirPlay renderer stays
+/// installed — playback moves to the next track on the same receiver.
+#[tokio::test]
+async fn airplay_advance_on_local_end_stays_on_airplay() {
+    let (_home, mut service, _progress_rx) = seeded_playback_service(&[("r", &["a", "b"])]).await;
+    service.playback_queue.play_release(
+        ContextSource::Release("r".to_string()),
+        vec!["a".to_string(), "b".to_string()],
+        ContextStart::Index(0),
+    );
+    service.slot = active_slot(
+        test_prepared_track("a", create_sparse_buffer(1_024)),
+        TrackPhase::Playing,
+    );
+    install_airplay(&mut service, 88_200, 0.5);
+
+    service.handle_auto_advance("a".to_string()).await;
+
+    assert!(
+        service.renderer.is_airplay(),
+        "the AirPlay renderer stays installed across an auto-advance"
+    );
+}
+
+/// A no-op AirPlay sink for driving `handle_play_on_airplay`: it accepts the PCM
+/// source without touching a socket.
+struct NoopAirPlaySink;
+impl crate::playback::airplay_output::AirPlaySink for NoopAirPlaySink {
+    fn start(
+        &self,
+        _source: Box<dyn crate::airplay::stream::PcmSource>,
+    ) -> Result<crate::playback::airplay_output::StartedStream, AudioError> {
+        struct Guard;
+        impl crate::playback::airplay_output::AirPlayStreamGuard for Guard {}
+        Ok((
+            Box::new(Guard),
+            Arc::new(FakeAirPlayControl(Arc::new(
+                FakeAirPlayControlState::default(),
+            ))),
+        ))
+    }
+}
+
+/// `handle_play_on_airplay` swaps to the AirPlay output and installs the AirPlay
+/// renderer without turning playback "remote" — decode stays local, so the queue
+/// and slot are driven by the local pipeline, not device transport commands.
+/// (Driven with nothing playing so the swap isn't torn down by the unit harness's
+/// undecodable seed track; the local decode path is covered by the seek/advance
+/// tests.)
+#[tokio::test]
+async fn play_on_airplay_swaps_the_sink_and_keeps_decode_local() {
+    let (_home, mut service, _progress_rx) = test_playback_service().await;
+    // Nothing playing: AirPlay arms without a track to re-decode.
+    service.slot = PlaybackSlot::Stopped;
+
+    service
+        .handle_play_on_airplay(renderer::AirPlayConnect {
+            sink: Box::new(NoopAirPlaySink),
+            device_name: "Living Room".to_string(),
+            latency_frames: 88_200,
+        })
+        .await;
+
+    assert!(
+        service.renderer.is_airplay(),
+        "the AirPlay renderer is installed"
+    );
+    assert!(
+        !service.renderer.is_remote(),
+        "AirPlay keeps decoding locally — it is not a fetch-a-URL remote renderer"
     );
 }
