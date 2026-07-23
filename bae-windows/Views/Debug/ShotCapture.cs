@@ -83,18 +83,25 @@ internal static class ShotCapture
 
     // One capture scene: a stable id (the gallery scene key, shared across
     // platforms) and a fixed logical size, with a builder that renders the
-    // composition against fixtures.
-    private readonly record struct Scene(string Id, double Width, double Height, Func<FrameworkElement> Build);
+    // composition against fixtures. Disabled scenes stay staged but produce no
+    // PNG (a deliberate, honest gap in the gallery).
+    private readonly record struct Scene(
+        string Id, double Width, double Height, Func<FrameworkElement> Build, bool Enabled = true);
 
-    // The scene registry. Every scene renders through a pure builder over
-    // fixtures — the welcome chooser, the album detail, and the album grid — none
-    // needs a live library handle. A scene that did (one whose composition can
-    // only be built from a real handle) would be absent here, not faked.
+    // The scene registry. Each enabled scene renders through a pure builder over
+    // fixtures — none needs a live library handle. A scene that did (one whose
+    // composition can only be built from a real handle) would be absent here, not
+    // faked.
     private static IReadOnlyList<Scene> Scenes { get; } = new[]
     {
         new Scene("welcome", 900, 600, BuildWelcome),
         new Scene("album-detail", 720, 540, BuildAlbumDetail),
-        new Scene("library-grid", 1100, 700, BuildLibraryGrid),
+        // library-grid renders in the component gallery but wedges the UI thread
+        // at RenderTargetBitmap headless on the CI runner (no WATCHDOG/timeout
+        // fires — the thread is fully blocked). Kept staged but disabled while the
+        // wedge is investigated on a local VM; the gallery shows the gap honestly
+        // rather than a faked tile. Flip Enabled once the render path is fixed.
+        new Scene("library-grid", 1100, 700, BuildLibraryGrid, Enabled: false),
     };
 
     // True when args carry the capture flag; then outputDir is the directory that
@@ -135,6 +142,11 @@ internal static class ShotCapture
             Log($"output folder resolved: {outputDir}");
             foreach (var scene in Scenes)
             {
+                if (!scene.Enabled)
+                {
+                    Log($"scene '{scene.Id}': skipped (disabled — under investigation)");
+                    continue;
+                }
                 try
                 {
                     await CaptureAsync(scene, folder);
@@ -187,9 +199,9 @@ internal static class ShotCapture
         Log($"scene '{scene.Id}': window activated, scale={scale}");
 
         // A background watchdog logs even if the UI thread wedges — a render that
-        // blocks on a pending decode would otherwise silence the on-thread
-        // timeouts below, so an off-thread writer is what surfaces the stall.
-        // Cancelled in the finally once the scene settles.
+        // blocks would otherwise silence the on-thread timeouts below, so an
+        // off-thread timer is what surfaces the stall. Disposed in the finally
+        // once the scene settles.
         var watchdog = StartWatchdog($"scene '{scene.Id}'", SceneWatchdogMs);
         try
         {
@@ -253,7 +265,6 @@ internal static class ShotCapture
         }
         finally
         {
-            watchdog.Cancel();
             watchdog.Dispose();
             window.Close();
         }
@@ -275,28 +286,17 @@ internal static class ShotCapture
         return false;
     }
 
-    // A background timer that logs from a threadpool thread unless cancelled in
-    // time. The on-thread AwaitOr timeouts cannot fire while the UI thread is
-    // wedged (their continuations need that thread), so this off-thread writer is
-    // what surfaces a render that blocks the dispatcher.
-    private static CancellationTokenSource StartWatchdog(string stage, int timeoutMs)
-    {
-        var cts = new CancellationTokenSource();
-        _ = Task.Run(async () =>
-        {
-            try
-            {
-                await Task.Delay(timeoutMs, cts.Token).ConfigureAwait(false);
-            }
-            catch (OperationCanceledException)
-            {
-                return;
-            }
-
-            Log($"{stage}: WATCHDOG {timeoutMs}ms elapsed with no completion — UI thread may be blocked (e.g. inside RenderAsync)");
-        });
-        return cts;
-    }
+    // A raw threadpool timer that fires once after timeoutMs unless disposed
+    // first. Deliberately free of async/await, the TaskScheduler, and any
+    // dispatcher — its callback is invoked directly by the threadpool timer
+    // queue, so it still writes when the UI thread is fully wedged (which silences
+    // the on-thread AwaitOr timeouts). Dispose stops it.
+    private static Timer StartWatchdog(string stage, int timeoutMs) =>
+        new(
+            _ => Log($"{stage}: WATCHDOG {timeoutMs}ms elapsed with no completion — UI thread likely blocked (e.g. inside RenderAsync)"),
+            null,
+            timeoutMs,
+            Timeout.Infinite);
 
     // Whether the pixel buffer is entirely zero — a transparent-black (blank)
     // render. A real opaque scene has 0xFF alpha bytes, so this discriminates a

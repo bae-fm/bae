@@ -29,10 +29,20 @@ internal static class Loc
 #if !BAE_PURE_FORMATTERS
     // The Core table holds bridge-originated keys (core.*) and shared chrome
     // (ui.*); both are generated from the master catalog. Bare app chrome lives
-    // in the default Resources table. ResourceLoader maps a table name to its
-    // compiled .resw subtree.
-    private static readonly ResourceLoader CoreLoader = new("Core");
-    private static readonly ResourceLoader ChromeLoader = new();
+    // in the default Resources table. The second ResourceLoader argument is the
+    // .resw subtree ("Core"); the default table takes no subtree.
+    //
+    // The index is passed as an absolute path. A bare/relative resource-file name
+    // resolves against the process working directory, which is the install
+    // directory only when the app is launched from there; launched from elsewhere
+    // (the capture harness runs the exe from the repo root) the load throws
+    // FileNotFound. AppContext.BaseDirectory is the executable's own directory,
+    // where the build writes resources.pri, so the installed app and any
+    // launch-directory both resolve.
+    private static readonly string ResourceIndexPath =
+        Path.Combine(AppContext.BaseDirectory, "resources.pri");
+    private static readonly ResourceLoader CoreLoader = new(ResourceIndexPath, "Core");
+    private static readonly ResourceLoader ChromeLoader = new(ResourceIndexPath);
 
     // One formatter per culture name. The MessageFormat instance compiles and
     // caches each pattern; its locale drives plural-category selection ("one" vs

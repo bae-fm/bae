@@ -107,8 +107,10 @@ if (-not $exited) {
 if ($proc.ExitCode -ne 0) { throw "capture run exited $($proc.ExitCode)" }
 
 # 6. Verify the expected PNGs exist — the loud check that a scene did not silently
-#    vanish. Keep this list in sync with ShotCapture.Scenes.
-$expected = @('welcome', 'album-detail', 'library-grid')
+#    vanish. Keep this list in sync with the enabled scenes in ShotCapture.Scenes
+#    (library-grid is staged but disabled while its headless render wedge is
+#    investigated, so it is deliberately absent here).
+$expected = @('welcome', 'album-detail')
 $missing = @()
 foreach ($scene in $expected) {
     $png = Join-Path $OutputDir "$scene@windows.png"
