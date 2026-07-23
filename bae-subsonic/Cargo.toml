@@ -13,9 +13,10 @@ path = "src/lib.rs"
 bae-core = { path = "../bae-core" }
 axum = { version = "0.8", default-features = false, features = ["http1", "tokio", "query"] }
 bytes = "1"
-futures = "0.3"
 hex = "0.4"
-md-5 = "0.10"
+# Keyed `md5` (its lib name) so cargo-machete resolves `use md5::…` — the crate
+# is `md-5` but exposes `md5`, which machete's package-name heuristic misreads.
+md5 = { package = "md-5", version = "0.10" }
 serde_json = "1"
 tokio = { version = "1", features = ["net", "sync", "rt", "macros"] }
 tokio-util = "0.7"
@@ -27,7 +28,7 @@ bae-test-support = { path = "../bae-test-support" }
 bae-core = { path = "../bae-core", features = ["test-utils"] }
 tempfile = "3"
 tokio = { version = "1", features = ["net", "sync", "rt", "rt-multi-thread", "macros", "time"] }
-md-5 = "0.10"
+md5 = { package = "md-5", version = "0.10" }
 hex = "0.4"
 serde_json = "1"
 tower = { version = "0.5", features = ["util"] }

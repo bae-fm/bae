@@ -17,8 +17,9 @@ tracing = { workspace = true }
 axum = { version = "0.8", default-features = false, features = ["http1", "tokio"] }
 tokio-util = "0.7"
 # The salted-token the minted media URLs carry (md5(password + salt)), matching
-# bae-subsonic's auth check.
-md-5 = "0.10"
+# bae-subsonic's auth check. Keyed `md5` (its lib name) so cargo-machete resolves
+# `use md5::…`; the crate is `md-5` but exposes `md5`.
+md5 = { package = "md-5", version = "0.10" }
 hex = "0.4"
 rand = "0.9"
 # The LAN IP the receiver reaches this machine at (the ephemeral server binds
