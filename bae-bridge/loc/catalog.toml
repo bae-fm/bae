@@ -683,6 +683,10 @@ ml = "നിങ്ങളുടെ ഉപകരണത്തിന്റെ സു
 pa = "ਤੁਹਾਡੇ ਡੀਵਾਈਸ ਦੇ ਸੁਰੱਖਿਅਤ ਸਟੋਰੇਜ ਤੱਕ ਪਹੁੰਚ ਨਹੀਂ ਹੋ ਸਕੀ।"
 th = "เข้าถึงที่จัดเก็บข้อมูลที่ปลอดภัยของอุปกรณ์ไม่ได้"
 
+[messages."core.error.category.airplay_unsupported"]
+comment = "Error line shown in the device picker when an AirPlay receiver can't be driven — it demands a PIN, or offers only audio encryption the sender doesn't implement."
+value = "This AirPlay receiver isn't supported."
+
 [messages."core.error.category.membership"]
 comment = "Generic error line: a library-sharing membership operation failed."
 value = "Something went wrong updating library sharing."

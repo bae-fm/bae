@@ -1198,9 +1198,19 @@ impl AppHandle {
 
     /// Cast playback to the device with `device_id`.
     pub fn cast_to(&self, device_id: String) -> Result<(), BridgeError> {
-        self.app
-            .cast_to(&device_id)
-            .map_err(|e| BridgeError::internal(e.to_string()))
+        self.app.cast_to(&device_id).map_err(|e| {
+            let detail = e.to_string();
+            match e {
+                // AirPlay receivers the sender can't drive get their own localized
+                // picker line, not the generic internal-error one.
+                bae_desktop::CastError::AirPlayPinRequired
+                | bae_desktop::CastError::AirPlayEncryptionUnsupported => BridgeError::diagnostic(
+                    crate::types::BridgeErrorCategory::AirPlayUnsupported,
+                    detail,
+                ),
+                _ => BridgeError::internal(detail),
+            }
+        })
     }
 
     /// Stop casting and return playback to local output.

@@ -3118,6 +3118,9 @@ pub enum BridgeErrorCategory {
     /// A library-sharing membership operation failed (the membership chain, an
     /// invite, or cross-device key rotation).
     Membership,
+    /// An AirPlay receiver can't be driven — it demands a PIN, or offers only
+    /// audio encryption the sender doesn't implement.
+    AirPlayUnsupported,
 }
 
 /// What a `NotFound` was looking for, so the UI can localize "… not found".
@@ -3222,6 +3225,7 @@ pub fn bridge_error_category_key(category: BridgeErrorCategory) -> String {
         BridgeErrorCategory::Network => "core.error.category.network",
         BridgeErrorCategory::Keyring => "core.error.category.keyring",
         BridgeErrorCategory::Membership => "core.error.category.membership",
+        BridgeErrorCategory::AirPlayUnsupported => "core.error.category.airplay_unsupported",
     }
     .to_string()
 }
@@ -4600,6 +4604,7 @@ mod loc_key_coverage {
             BridgeErrorCategory::Network,
             BridgeErrorCategory::Keyring,
             BridgeErrorCategory::Membership,
+            BridgeErrorCategory::AirPlayUnsupported,
         ] {
             let expected = match c {
                 BridgeErrorCategory::Database => "core.error.category.database",
@@ -4612,6 +4617,9 @@ mod loc_key_coverage {
                 BridgeErrorCategory::Network => "core.error.category.network",
                 BridgeErrorCategory::Keyring => "core.error.category.keyring",
                 BridgeErrorCategory::Membership => "core.error.category.membership",
+                BridgeErrorCategory::AirPlayUnsupported => {
+                    "core.error.category.airplay_unsupported"
+                }
             };
             assert_eq!(bridge_error_category_key(c), expected);
             keys.push(expected.to_string());
