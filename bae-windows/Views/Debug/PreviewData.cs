@@ -80,29 +80,65 @@ internal static class PreviewData
             ("Album Title Twelve", "Artist Twelve", "2020", SolidCover(0x70, 0xA0, 0x9A)),
         };
 
-    // A solid-color placeholder cover: an 8x8 BGRA bitmap the tile's
-    // UniformToFill Image scales up to a flat color, standing in for real cover
-    // art with no file or handle behind it.
-    private static WriteableBitmap SolidCover(byte r, byte g, byte b)
+    // A solid-color placeholder cover: a small 24-bit BMP composed in memory
+    // (pure byte math — no WinRT buffer APIs) and decoded through the same
+    // MemoryStream → AsRandomAccessStream → BitmapImage.SetSource path CoverImage
+    // uses, standing in for real cover art with no file or handle behind it.
+    private static BitmapImage SolidCover(byte r, byte g, byte b)
     {
         const int side = 8;
-        var bitmap = new WriteableBitmap(side, side);
-        var pixels = new byte[side * side * 4];
-        for (var i = 0; i < pixels.Length; i += 4)
+        const int headerSize = 54; // BITMAPFILEHEADER (14) + BITMAPINFOHEADER (40)
+        var rowSize = (side * 3 + 3) / 4 * 4; // 24-bit rows padded to 4 bytes
+        var bmp = new byte[headerSize + rowSize * side];
+
+        // BITMAPFILEHEADER: "BM", file size, and the pixel-data offset.
+        bmp[0] = (byte)'B';
+        bmp[1] = (byte)'M';
+        WriteUInt32(bmp, 2, (uint)bmp.Length);
+        WriteUInt32(bmp, 10, headerSize);
+
+        // BITMAPINFOHEADER: 40-byte header, dimensions, 1 plane, 24 bpp, BI_RGB.
+        // The remaining fields stay zero (the array is zero-initialized).
+        WriteUInt32(bmp, 14, 40);
+        WriteInt32(bmp, 18, side);
+        WriteInt32(bmp, 22, side);
+        WriteUInt16(bmp, 26, 1);
+        WriteUInt16(bmp, 28, 24);
+
+        // Solid BGR pixels (bottom-up rows, padding left zero).
+        for (var y = 0; y < side; y++)
         {
-            pixels[i] = b;
-            pixels[i + 1] = g;
-            pixels[i + 2] = r;
-            pixels[i + 3] = 0xFF;
+            var rowStart = headerSize + y * rowSize;
+            for (var x = 0; x < side; x++)
+            {
+                var pixel = rowStart + x * 3;
+                bmp[pixel] = b;
+                bmp[pixel + 1] = g;
+                bmp[pixel + 2] = r;
+            }
         }
 
-        using (var stream = bitmap.PixelBuffer.AsStream())
-        {
-            stream.Write(pixels, 0, pixels.Length);
-        }
-
-        bitmap.Invalidate();
+        using var stream = new MemoryStream(bmp);
+        var bitmap = new BitmapImage();
+        bitmap.SetSource(stream.AsRandomAccessStream());
         return bitmap;
+    }
+
+    private static void WriteUInt32(byte[] buffer, int offset, uint value)
+    {
+        buffer[offset] = (byte)value;
+        buffer[offset + 1] = (byte)(value >> 8);
+        buffer[offset + 2] = (byte)(value >> 16);
+        buffer[offset + 3] = (byte)(value >> 24);
+    }
+
+    private static void WriteInt32(byte[] buffer, int offset, int value) =>
+        WriteUInt32(buffer, offset, (uint)value);
+
+    private static void WriteUInt16(byte[] buffer, int offset, ushort value)
+    {
+        buffer[offset] = (byte)value;
+        buffer[offset + 1] = (byte)(value >> 8);
     }
 
     // Placeholder header values for the album-expansion header block.
