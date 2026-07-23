@@ -20,7 +20,10 @@
 
 pub mod capabilities;
 pub mod discovery;
+pub mod pairing;
 pub mod rtsp;
+pub mod srp;
+pub mod tlv8;
 
 pub use capabilities::{AirPlayCapabilities, Dialect, RaopCodec, RaopEncryption, RaopParams};
 pub use discovery::{AirPlayDevice, AirPlayDiscovery};

@@ -27,6 +27,16 @@ uuid = { version = "1.0", features = ["v4"] }
 chrono = { version = "0.4", features = ["serde"] }
 sha2 = "0.10"
 hex = "0.4"
+# AirPlay 2 HomeKit pairing (src/airplay/pairing.rs). The password-less
+# "transient" pair-setup is SRP6a with the 3072-bit group + SHA-512. The
+# RustCrypto `srp` crate can't be used: its M1 proof is `H(A|B|K)` (its own
+# source calls this non-spec), whereas HomeKit receivers require the full
+# `H(H(N)^H(g) | H(I) | s | A | B | K)` and PAD(A)|PAD(B) for u — the semantics
+# pyatv pairs real HomePods with via `srptools`. So the SRP math is written
+# directly over `num-bigint` (bignum modexp) to those reference semantics.
+# All are RustCrypto/num crates on the same digest-0.10 stack as `sha2`; new deps
+# (coven does not pin them, correcting the plan's premise), solely for AirPlay.
+num-bigint = "0.4"
 async-trait = "0.1"
 dirs = "5.0"
 axum = "0.7"
@@ -136,6 +146,10 @@ tokio = { version = "1.0", features = ["test-util"] }
 serial_test = "3.4.0"
 # coven's deterministic clock/id fakes for bae's tests (off in production builds).
 coven = { workspace = true, features = ["test-utils"] }
+# SHA-1 is used only by the SRP unit test, to check the SRP math against the
+# published RFC 5054 Appendix B vector (which is specified with SHA-1). Production
+# SRP uses SHA-512.
+sha1 = "0.10"
 
 [[test]]
 name = "test_playback_behavior"
