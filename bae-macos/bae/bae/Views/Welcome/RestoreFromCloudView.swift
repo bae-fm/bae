@@ -268,7 +268,7 @@ struct RestoreFromCloudView: View {
 
 #if DEBUG
     #Preview {
-        WelcomeWindowChrome(loadError: nil) {
+        WelcomeWindowChrome {
             RestoreFromCloudView(
                 onLibraryReady: { _ in },
                 onBack: {},

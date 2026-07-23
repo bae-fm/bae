@@ -41,12 +41,12 @@ struct MainWindowChrome<Content: View>: View {
 }
 
 /// The welcome window's chrome around the bootstrap screens (welcome,
-/// loading, unlock) — the fixed window size, the themed background, and the
-/// same load-error line. BaeApp renders it live; the welcome previews render
-/// the same composition, so the canvas shows a screen exactly as the window
-/// does and the two cannot drift apart.
+/// loading, unlock) — the fixed window size and the themed background. A failed
+/// library open surfaces inline in the welcome chooser (its callout), not as a
+/// bottom line here. BaeApp renders it live; the welcome previews render the
+/// same composition, so the canvas shows a screen exactly as the window does
+/// and the two cannot drift apart.
 struct WelcomeWindowChrome<Content: View>: View {
-    let loadError: String?
     @ViewBuilder
     let content: Content
 
@@ -57,15 +57,10 @@ struct WelcomeWindowChrome<Content: View>: View {
                 height: WelcomeWindow.size.height
             )
             .windowBackground()
-            .overlay(alignment: .bottom) {
-                LoadErrorLine(loadError: loadError)
-            }
     }
 }
 
-/// The bottom-of-window line reporting a failed library open, shared by both
-/// windows' chrome: a failed open from the welcome chooser shows it there; a
-/// failed switch shows it under the shell.
+/// The bottom-of-window line reporting a failed library switch under the shell.
 private struct LoadErrorLine: View {
     let loadError: String?
 

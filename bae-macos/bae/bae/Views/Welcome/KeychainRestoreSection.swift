@@ -21,17 +21,13 @@ struct KeychainRestoreSection: View {
 
     var body: some View {
         VStack(spacing: 12) {
-            HStack(spacing: 4) {
-                Text(
-                    entries.count == 1
-                        ? "Restore your library" : "Restore your libraries"
-                )
-                .font(.headline)
-                InfoTip(
+            WelcomeSectionHeader(
+                title: "Restore from this Mac's keychain",
+                infoTip: InfoTip(
                     text: "Found from a previous setup on this Mac.",
                     learnMoreURL: URL(string: "https://bae.fm/sync/restore"),
-                )
-            }
+                ),
+            )
             ForEach(Array(entries.enumerated()), id: \.offset) {
                 _,
                 entry in
@@ -102,7 +98,7 @@ struct KeychainRestoreSection: View {
                                 Button(role: .destructive) {
                                     deleteConfirmCode = entry.code
                                 } label: {
-                                    Image(systemName: "trash")
+                                    Image(systemName: "xmark")
                                         .font(.callout)
                                 }
                                 .buttonStyle(.borderless)
@@ -118,7 +114,7 @@ struct KeychainRestoreSection: View {
                 .clipShape(RoundedRectangle(cornerRadius: 8))
             }
         }
-        .frame(maxWidth: 320)
+        .frame(maxWidth: WelcomeLayout.columnWidth)
         .confirmationDialog(
             "Remove this library from your keychain?",
             isPresented: Binding(

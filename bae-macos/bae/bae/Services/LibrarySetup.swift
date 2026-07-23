@@ -65,6 +65,10 @@ final class LibrarySetup: Sendable, Observable {
     let fetchAccountEmail:
         @Sendable (_ provider: BridgeCloudProvider, _ oauthTokenJson: String)
             throws -> String
+    /// Reveal a library's folder in Finder — the broken-library row's "Show in
+    /// Finder" action. Injected so previews get the no-op default instead of
+    /// opening a real Finder window when the row's button is clicked.
+    let revealInFinder: @Sendable (_ path: String) -> Void
 
     init(
         discoverLibraries: @escaping @Sendable () throws -> [BridgeLibrary] =
@@ -107,7 +111,8 @@ final class LibrarySetup: Sendable, Observable {
         oauthCancel: @escaping @Sendable () -> Void = {},
         fetchAccountEmail:
             @escaping @Sendable (BridgeCloudProvider, String) throws -> String =
-            { _, _ in throw StubError.notImplemented }
+            { _, _ in throw StubError.notImplemented },
+        revealInFinder: @escaping @Sendable (String) -> Void = { _ in }
     ) {
         self.discoverLibraries = discoverLibraries
         self.createLibrary = createLibrary
@@ -122,6 +127,7 @@ final class LibrarySetup: Sendable, Observable {
         self.oauthAuthorize = oauthAuthorize
         self.oauthCancel = oauthCancel
         self.fetchAccountEmail = fetchAccountEmail
+        self.revealInFinder = revealInFinder
     }
 
     /// The production wiring: the bridge's free functions plus the keychain.
@@ -150,7 +156,8 @@ final class LibrarySetup: Sendable, Observable {
         deleteRestoreCode: KeychainService.deleteRestoreCode(libraryId:),
         oauthAuthorize: bridgeOauthAuthorize,
         oauthCancel: bridgeOauthCancel,
-        fetchAccountEmail: bridgeFetchAccountEmail
+        fetchAccountEmail: bridgeFetchAccountEmail,
+        revealInFinder: { SystemActions.revealInFinder(path: $0) }
     )
 
     #if DEBUG

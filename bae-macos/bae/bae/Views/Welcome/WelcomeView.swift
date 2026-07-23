@@ -7,6 +7,10 @@ import SwiftUI
 /// flow fresh `@State` every time it appears, so nothing leaks between flows.
 struct WelcomeView: View {
     let onLibraryReady: (BridgeLibrary) -> Void
+    /// A failed library open, shown as the chooser's inline callout. Only the
+    /// first-run bootstrap carries it; the deep-link initializer (restore-from-
+    /// code) lands on a flow with its own error line, so it stays nil there.
+    let loadError: String?
 
     enum Mode {
         case choose
@@ -18,8 +22,12 @@ struct WelcomeView: View {
     private var mode: Mode
 
     /// Default initializer used by first-run flow. Lands on `.choose`.
-    init(onLibraryReady: @escaping (BridgeLibrary) -> Void) {
+    init(
+        onLibraryReady: @escaping (BridgeLibrary) -> Void,
+        loadError: String? = nil
+    ) {
         self.onLibraryReady = onLibraryReady
+        self.loadError = loadError
         self._mode = State(initialValue: .choose)
     }
 
@@ -31,6 +39,7 @@ struct WelcomeView: View {
         initialMode: Mode
     ) {
         self.onLibraryReady = onLibraryReady
+        self.loadError = nil
         self._mode = State(initialValue: initialMode)
     }
 
@@ -38,6 +47,7 @@ struct WelcomeView: View {
         switch mode {
         case .choose:
             WelcomeChooseView(
+                loadError: loadError,
                 onLibraryReady: onLibraryReady,
                 onJoin: { mode = .join },
                 onRestore: { mode = .restore },

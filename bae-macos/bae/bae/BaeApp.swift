@@ -128,8 +128,12 @@ struct BaeApp: App {
     /// WelcomeView constructed with the deep-link mode if a menu item
     /// requested one (Restore from Code), else the default chooser. Bound
     /// to the same callback for both paths, over the live pre-library
-    /// operations — previews inject stubs through the same seam.
-    private var welcomeView: some View {
+    /// operations — previews inject stubs through the same seam. The caller
+    /// names the load error to surface: the bootstrap window passes the
+    /// delegate's (a failed open belongs on the chooser), while the shell's
+    /// Add Library sheet passes nil — a failed *switch* is the shell
+    /// chrome's story, not the sheet's.
+    private func welcomeView(loadError: String?) -> some View {
         Group {
             if let mode = appDelegate.welcomeInitialMode {
                 WelcomeView(
@@ -138,7 +142,10 @@ struct BaeApp: App {
                 )
             }
             else {
-                WelcomeView { lib in appDelegate.openLibrary(lib) }
+                WelcomeView(
+                    onLibraryReady: { lib in appDelegate.openLibrary(lib) },
+                    loadError: loadError,
+                )
             }
         }
         .environment(LibrarySetup.live)
@@ -191,7 +198,7 @@ struct BaeApp: App {
                     set: { appDelegate.showAddLibrarySheet = $0 }
                 )
             ) {
-                welcomeView
+                welcomeView(loadError: nil)
             }
             .sheet(
                 item: Binding(
@@ -254,7 +261,7 @@ struct BaeApp: App {
             ProgressView("Loading...")
             Spacer()
         case .welcome:
-            welcomeView
+            welcomeView(loadError: appDelegate.loadError)
         case .unlock(
             let libraryId,
             let libraryName,
@@ -274,9 +281,13 @@ struct BaeApp: App {
                 onCancel: { appDelegate.screen = .welcome },
             )
         case .library:
-            // Shouldn't happen: hasShell becomes true the moment we
-            // reach .library. Fall through to MainAppView defensively.
-            MainAppView()
+            // The instant between the shell opening and the window swap
+            // dismissing this window. Never MainAppView here — the shell's
+            // service environments live only in the main window's subtree,
+            // and rendering it without them crashes.
+            Spacer()
+            ProgressView()
+            Spacer()
         }
     }
 
@@ -295,7 +306,7 @@ extension BaeApp {
     /// window.
     private var welcomeWindow: some Scene {
         Window("bae", id: "welcome") {
-            WelcomeWindowChrome(loadError: appDelegate.loadError) {
+            WelcomeWindowChrome {
                 // Bootstrap screens lay out as a vertical stack (the loading
                 // case centers a spinner between two Spacers).
                 VStack(spacing: 0) {

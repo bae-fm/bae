@@ -9,6 +9,10 @@ private let logger = Logger.bae("WelcomeChooseView")
 /// join, restore-from-cloud). Owns the on-device discovery and the keychain
 /// restore machinery the entry rows drive.
 struct WelcomeChooseView: View {
+    /// A failed library open, surfaced inline as a callout under the subtitle.
+    /// Prop-drilled from the app (the welcome window's chrome no longer carries
+    /// it); nil when nothing failed.
+    let loadError: String?
     let onLibraryReady: (BridgeLibrary) -> Void
     let onJoin: () -> Void
     let onRestore: () -> Void
@@ -90,11 +94,15 @@ struct WelcomeChooseView: View {
             Text("Get started with your music library.")
                 .font(.title3)
                 .foregroundStyle(.secondary)
+            if let loadError {
+                WelcomeLoadErrorCallout(message: loadError)
+            }
             if !localLibraries.isEmpty {
                 LocalLibrariesSection(
                     libraries: localLibraries,
                     disabled: isCreating || isRestoring,
                     onOpen: onLibraryReady,
+                    onShowInFinder: { setup.revealInFinder($0.path) },
                 )
             }
             if !restorableEntries.isEmpty {
@@ -118,44 +126,11 @@ struct WelcomeChooseView: View {
                     onDelete: deleteKeychainEntry,
                 )
             }
-            VStack(spacing: 12) {
-                if !hasExistingLibraries {
-                    Button(action: doCreate) {
-                        if isCreating {
-                            ProgressView()
-                                .controlSize(.small)
-                        }
-                        else {
-                            Text("Create new library")
-                        }
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .disabled(isCreating || isRestoring)
-                    .keyboardShortcut(.defaultAction)
-                }
-                else {
-                    Button(action: doCreate) {
-                        if isCreating {
-                            ProgressView()
-                                .controlSize(.small)
-                        }
-                        else {
-                            Text("Create new library")
-                        }
-                    }
-                    .buttonStyle(.bordered)
-                    .disabled(isCreating || isRestoring)
-                }
-                Button(action: onJoin) {
-                    Text("Join a library")
-                }
-                .buttonStyle(.bordered)
-                .disabled(isCreating || isRestoring)
-                Button(action: onRestore) {
-                    Text("Restore from cloud")
-                }
-                .buttonStyle(.bordered)
-                .disabled(isCreating || isRestoring)
+            if hasExistingLibraries {
+                populatedActions
+            }
+            else {
+                firstRunActions
             }
             if let error {
                 Text(error)
@@ -165,6 +140,61 @@ struct WelcomeChooseView: View {
             Spacer()
         }
         .padding()
+    }
+
+    /// The Create button's label: a spinner while a create is in flight, the
+    /// title otherwise. Shared by both action layouts so the spinner behaves
+    /// the same whether Create is the prominent first-run action or one small
+    /// button among several.
+    @ViewBuilder
+    private var createButtonLabel: some View {
+        if isCreating {
+            ProgressView()
+                .controlSize(.small)
+        }
+        else {
+            Text("Create new library")
+        }
+    }
+
+    /// First run (no library on this device, nothing to restore): three stacked
+    /// buttons at one width, Create the prominent default action.
+    private var firstRunActions: some View {
+        VStack(spacing: 12) {
+            Button(action: doCreate) { createButtonLabel }
+                .buttonStyle(.borderedProminent)
+                .frame(width: 240)
+                .disabled(isCreating || isRestoring)
+                .keyboardShortcut(.defaultAction)
+            Button("Join a library", action: onJoin)
+                .buttonStyle(.bordered)
+                .frame(width: 240)
+                .disabled(isCreating || isRestoring)
+            Button("Restore from cloud", action: onRestore)
+                .buttonStyle(.bordered)
+                .frame(width: 240)
+                .disabled(isCreating || isRestoring)
+        }
+    }
+
+    /// A library or restore entry already exists, so the three actions drop to
+    /// a secondary horizontal row under a divider — Create is no longer the
+    /// headline; opening or restoring an existing library is.
+    private var populatedActions: some View {
+        VStack(spacing: 12) {
+            Divider()
+                .frame(maxWidth: WelcomeLayout.columnWidth)
+            HStack(spacing: 12) {
+                Button(action: doCreate) { createButtonLabel }
+                    .disabled(isCreating || isRestoring)
+                Button("Join a library", action: onJoin)
+                    .disabled(isCreating || isRestoring)
+                Button("Restore from cloud", action: onRestore)
+                    .disabled(isCreating || isRestoring)
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+        }
     }
 
     /// Remove a keychain restore code (and its entry) after the section's
@@ -312,10 +342,52 @@ struct WelcomeChooseView: View {
     #endif
 }
 
+/// The shared width of the populated choose screen's column. The libraries and
+/// keychain sections, the divider, and the bottom actions all pin to it so the
+/// screen reads as one column rather than a stack of differently-sized blocks.
+enum WelcomeLayout {
+    static let columnWidth: CGFloat = 400
+}
+
+/// The inline callout shown when a library failed to open: a warning glyph, a
+/// bold title, the underlying message, and a line pointing at the ways forward.
+/// A tinted rounded rect (native red opacities, not the mockup's hex colors)
+/// sitting under the subtitle, column-width.
+private struct WelcomeLoadErrorCallout: View {
+    let message: String
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .foregroundStyle(.red)
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Library failed to open")
+                    .font(.headline)
+                Text(message)
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                Text("Choose another library or restore from cloud.")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(12)
+        .frame(maxWidth: WelcomeLayout.columnWidth, alignment: .leading)
+        .background(Color.red.opacity(0.1))
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .strokeBorder(Color.red.opacity(0.3))
+        )
+    }
+}
+
 #if DEBUG
     #Preview("First run") {
-        WelcomeWindowChrome(loadError: nil) {
+        WelcomeWindowChrome {
             WelcomeChooseView(
+                loadError: nil,
                 onLibraryReady: { _ in },
                 onJoin: {},
                 onRestore: {},
@@ -325,8 +397,9 @@ struct WelcomeChooseView: View {
     }
 
     #Preview("Libraries and restore codes") {
-        WelcomeWindowChrome(loadError: nil) {
+        WelcomeWindowChrome {
             WelcomeChooseView(
+                loadError: nil,
                 onLibraryReady: { _ in },
                 onJoin: {},
                 onRestore: {},
@@ -336,10 +409,9 @@ struct WelcomeChooseView: View {
     }
 
     #Preview("Library failed to open") {
-        WelcomeWindowChrome(
-            loadError: "The library's settings could not be read."
-        ) {
+        WelcomeWindowChrome {
             WelcomeChooseView(
+                loadError: "The library's settings could not be read.",
                 onLibraryReady: { _ in },
                 onJoin: {},
                 onRestore: {},

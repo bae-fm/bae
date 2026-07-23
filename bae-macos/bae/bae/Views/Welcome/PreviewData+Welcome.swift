@@ -11,15 +11,18 @@
             BridgeLibrary(
                 id: "lib-01",
                 name: "My Library",
-                path: "/preview/My Library",
+                path: "/Users/preview/Music/bae/My Library",
                 cloudProvider: .s3,
                 isActive: false,
                 error: nil,
             ),
+            // A broken library's `name` is its directory id — the name is
+            // exactly what couldn't be read — so the fixture mirrors that: the
+            // id stands in for the name, and the path points at that folder.
             BridgeLibrary(
-                id: "lib-02",
-                name: "lib-02",
-                path: "/preview/broken",
+                id: "9f3a2b10c4d8",
+                name: "9f3a2b10c4d8",
+                path: "/Users/preview/Music/bae/9f3a2b10c4d8",
                 cloudProvider: nil,
                 isActive: false,
                 error: "config.yaml could not be read",
