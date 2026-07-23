@@ -1,4 +1,6 @@
 ﻿using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Automation;
+using Microsoft.UI.Xaml.Controls;
 using uniffi.bae_bridge;
 
 namespace Bae.Windows;
@@ -9,6 +11,16 @@ namespace Bae.Windows;
 // features behind them live in their own views; only this forwarding stays.
 public sealed partial class MainWindow : Window
 {
+    // Give an icon-only chrome button a fixed accessible name and matching tooltip
+    // from a chrome catalog key. Used for the toolbar buttons and the now-playing
+    // bar's fixed-meaning icons (prev/next/queue), set from the composition root.
+    private static void SetIconButtonLabel(Button button, string key)
+    {
+        var label = Loc.Chrome(key);
+        AutomationProperties.SetName(button, label);
+        ToolTipService.SetToolTip(button, label);
+    }
+
     private async void OnLibrariesClick(object sender, RoutedEventArgs e) => await _librariesDialog.Show();
 
     private async void OnImportClick(object sender, RoutedEventArgs e) => await _importDialog.Show();

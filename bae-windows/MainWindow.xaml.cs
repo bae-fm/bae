@@ -193,7 +193,11 @@ public sealed partial class MainWindow : Window
             NpCastGlyph,
             QueueAddBadge,
             QueueAddBadgeScale,
-            QueueAddBadgeText);
+            QueueAddBadgeText,
+            NpPlayScale,
+            NpCoverFrame,
+            // Read at call time: the library browser is constructed further down.
+            (albumId, trackId) => _libraryBrowser.RevealAlbum(albumId, trackId));
         // The bar's art and title open the playing album; the tooltip is the
         // affordance that they're clickable.
         ToolTipService.SetToolTip(NpCoverFrame, Loc.Chrome("nowplaying.go_to_album"));

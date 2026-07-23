@@ -428,7 +428,6 @@
                         Height="54"
                         CornerRadius="10"
                         Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                        Tapped="OnNowPlayingInfoTapped"
                         Translation="0,0,8">
                         <Border.Shadow>
                             <ThemeShadow />
@@ -441,8 +440,7 @@
                             MaxLines="1"
                             FontSize="15"
                             FontWeight="SemiBold"
-                            TextTrimming="CharacterEllipsis"
-                            Tapped="OnNowPlayingInfoTapped" />
+                            TextTrimming="CharacterEllipsis" />
                         <TextBlock
                             x:Name="NpArtist"
                             MaxLines="1"
@@ -464,8 +462,7 @@
                             CornerRadius="8"
                             Background="Transparent"
                             BorderThickness="0"
-                            IsEnabled="False"
-                            Click="OnShuffle">
+                            IsEnabled="False">
                             <Button.KeyboardAccelerators>
                                 <KeyboardAccelerator Modifiers="Control,Shift" Key="S" />
                             </Button.KeyboardAccelerators>
@@ -479,8 +476,7 @@
                             Padding="0"
                             CornerRadius="8"
                             Background="Transparent"
-                            BorderThickness="0"
-                            Click="OnPrevious">
+                            BorderThickness="0">
                             <Button.KeyboardAccelerators>
                                 <KeyboardAccelerator Modifiers="Control,Shift" Key="P" />
                             </Button.KeyboardAccelerators>
@@ -495,11 +491,8 @@
                                 CornerRadius="24"
                                 BorderThickness="0"
                                 Background="{ThemeResource NowPlayingPlayFillBrush}"
-                                Click="OnPlayPause"
                                 Translation="0,0,12"
-                                RenderTransformOrigin="0.5,0.5"
-                                PointerEntered="OnPlayPausePointerEntered"
-                                PointerExited="OnPlayPausePointerExited">
+                                RenderTransformOrigin="0.5,0.5">
                                 <Button.RenderTransform>
                                     <ScaleTransform x:Name="NpPlayScale" ScaleX="1" ScaleY="1" />
                                 </Button.RenderTransform>
@@ -527,8 +520,7 @@
                             Padding="0"
                             CornerRadius="8"
                             Background="Transparent"
-                            BorderThickness="0"
-                            Click="OnNext">
+                            BorderThickness="0">
                             <Button.KeyboardAccelerators>
                                 <KeyboardAccelerator Modifiers="Control,Shift" Key="N" />
                             </Button.KeyboardAccelerators>
@@ -541,8 +533,7 @@
                             Padding="0"
                             CornerRadius="8"
                             Background="Transparent"
-                            BorderThickness="0"
-                            Click="OnRepeat">
+                            BorderThickness="0">
                             <Button.KeyboardAccelerators>
                                 <KeyboardAccelerator Modifiers="Control" Key="R" />
                             </Button.KeyboardAccelerators>
@@ -661,8 +652,7 @@
                         Padding="0"
                         CornerRadius="8"
                         Background="Transparent"
-                        BorderThickness="0"
-                        Click="OnMute">
+                        BorderThickness="0">
                         <Button.KeyboardAccelerators>
                             <KeyboardAccelerator Modifiers="Control" Key="M" />
                         </Button.KeyboardAccelerators>
@@ -674,8 +664,7 @@
                         Maximum="1"
                         StepFrequency="0.01"
                         Width="96"
-                        VerticalAlignment="Center"
-                        ValueChanged="OnVolumeChanged">
+                        VerticalAlignment="Center">
                         <Slider.Resources>
                             <x:Double x:Key="SliderTrackThemeHeight">5</x:Double>
                             <SolidColorBrush x:Key="SliderThumbBackground" Color="Transparent" />

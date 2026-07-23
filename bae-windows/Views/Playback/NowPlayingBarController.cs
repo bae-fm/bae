@@ -49,6 +49,16 @@ internal sealed class NowPlayingBarController
     private readonly ScaleTransform _queueAddBadgeScale;
     private readonly TextBlock _queueAddBadgeText;
 
+    // The play-circle's scale transform (hover grows it slightly) and the cover
+    // frame whose tap jumps to the playing album.
+    private readonly ScaleTransform _playScale;
+    private readonly Border _coverFrame;
+
+    // Jump to an album's inline detail, scrolling a track into view. Registered by
+    // the composition root as the library browser's RevealAlbum; the bar's art /
+    // title tap and the window's Ctrl+L both route through it.
+    private readonly Func<string, string?, System.Threading.Tasks.Task> _revealAlbum;
+
     // Accent tint for active shuffle/repeat glyphs and their soft fill; the
     // neutral tint for inactive ones. Resolved once from the app resources, the
     // same brushes the queue pane's shuffle toggle uses.
@@ -111,7 +121,10 @@ internal sealed class NowPlayingBarController
         FontIcon castGlyph,
         Border queueAddBadge,
         ScaleTransform queueAddBadgeScale,
-        TextBlock queueAddBadgeText)
+        TextBlock queueAddBadgeText,
+        ScaleTransform playScale,
+        Border coverFrame,
+        Func<string, string?, System.Threading.Tasks.Task> revealAlbum)
     {
         _session = session;
         _playback = playback;
@@ -143,6 +156,9 @@ internal sealed class NowPlayingBarController
         _queueAddBadge = queueAddBadge;
         _queueAddBadgeScale = queueAddBadgeScale;
         _queueAddBadgeText = queueAddBadgeText;
+        _playScale = playScale;
+        _coverFrame = coverFrame;
+        _revealAlbum = revealAlbum;
 
         _accentBrush = (Brush)Application.Current.Resources["AccentTextFillColorPrimaryBrush"];
         _secondaryBrush = (Brush)Application.Current.Resources["TextFillColorSecondaryBrush"];
@@ -202,6 +218,95 @@ internal sealed class NowPlayingBarController
         _cast.StatusChanged += OnCastStatusChanged;
         _cast.DevicesChanged += OnCastDevicesChanged;
         RenderCastButton();
+
+        // The transport controls. Each press names an absolute target (pause/resume,
+        // the opposite shuffle/mute flag, the next repeat mode); all no-op with no
+        // open library. The play circle grows slightly on hover.
+        _playPause.Click += (_, _) => TogglePlayPause();
+        _playPause.PointerEntered += (_, _) => AnimatePlayScale(1.05);
+        _playPause.PointerExited += (_, _) => AnimatePlayScale(1.0);
+        _previous.Click += (_, _) => WithLibrary(NativeBae.Previous);
+        _next.Click += (_, _) => WithLibrary(NativeBae.Next);
+        _repeat.Click += (_, _) =>
+            WithLibrary(handle => NativeBae.SetRepeatMode(handle, NativeBae.NextRepeatMode(_playback.RepeatMode)));
+        _shuffle.Click += (_, _) =>
+            WithLibrary(handle => NativeBae.SetShuffle(handle, !(_playback.Context?.Shuffled ?? false)));
+        _mute.Click += (_, _) => WithLibrary(handle => NativeBae.SetMuted(handle, !_playback.IsMuted));
+        _volume.ValueChanged += (_, _) => HandleVolumeSliderChanged();
+
+        // The bar's art and title jump to the playing album (the window sets their
+        // "go to album" tooltips alongside the other fixed transport labels).
+        _coverFrame.Tapped += OnNowPlayingInfoTapped;
+        _title.Tapped += OnNowPlayingInfoTapped;
+    }
+
+    // Toggle play/pause from the button or the window's Space key. A press names
+    // its target: pause what plays, resume what's paused, nothing when stopped.
+    public void TogglePlayPause()
+    {
+        if (_session.CurrentHandleOrNull() == null)
+        {
+            return;
+        }
+        switch (_playback.PlayState)
+        {
+            case TransportPlayState.Playing:
+                _session.WithCurrentHandle(NativeBae.Pause);
+                break;
+            case TransportPlayState.Paused:
+                _session.WithCurrentHandle(NativeBae.Resume);
+                break;
+            case TransportPlayState.Stopped:
+                break;
+        }
+    }
+
+    // Open the playing track's album and scroll it into view, flashing the track.
+    // The bar's art/title tap and the window's Ctrl+L both land here. No-op when
+    // nothing is playing.
+    public async System.Threading.Tasks.Task GoToNowPlaying()
+    {
+        var albumId = _playback.NowPlayingAlbumId;
+        if (_session.CurrentHandleOrNull() == null || string.IsNullOrEmpty(albumId))
+        {
+            return;
+        }
+        await _revealAlbum(albumId, _playback.NowPlayingTrackId);
+    }
+
+    private void OnNowPlayingInfoTapped(object sender, TappedRoutedEventArgs e)
+    {
+        e.Handled = true;
+        _ = GoToNowPlaying();
+    }
+
+    // Run a transport action against the open library, or nothing when none is open.
+    private void WithLibrary(Action<AppHandle> action)
+    {
+        if (_session.CurrentHandleOrNull() != null)
+        {
+            _session.WithCurrentHandle(action);
+        }
+    }
+
+    // The play/pause circle grows slightly on hover and settles back on exit.
+    private void AnimatePlayScale(double target)
+    {
+        var storyboard = new Storyboard();
+        foreach (var axis in new[] { "ScaleX", "ScaleY" })
+        {
+            var animation = new DoubleAnimation
+            {
+                To = target,
+                Duration = new Duration(TimeSpan.FromMilliseconds(120)),
+                EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut },
+                EnableDependentAnimation = true,
+            };
+            Storyboard.SetTarget(animation, _playScale);
+            Storyboard.SetTargetProperty(animation, axis);
+            storyboard.Children.Add(animation);
+        }
+        storyboard.Begin();
     }
 
     // Seed the volume slider from the current handle without echoing a SetVolume.
