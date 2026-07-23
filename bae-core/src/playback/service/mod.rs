@@ -1915,25 +1915,7 @@ impl PlaybackService {
                     }
                 }
                 PlaybackCommand::SetVolume(volume) => {
-                    self.audio_output.set_volume(volume);
-                    // Keep the receiver's volume in step so it survives the
-                    // handoff back to local playback.
-                    if let Renderer::Cast(cast) = &self.renderer {
-                        cast.session.set_volume(volume);
-                    }
-
-                    if volume > 0.0 && self.is_muted {
-                        self.is_muted = false;
-                        emit_progress(
-                            &self.progress_tx,
-                            PlaybackProgress::MuteChanged { is_muted: false },
-                        );
-                    }
-
-                    emit_progress(
-                        &self.progress_tx,
-                        PlaybackProgress::VolumeChanged { volume },
-                    );
+                    self.set_volume(volume);
                 }
                 PlaybackCommand::SetMuted(muted) => {
                     if muted == self.is_muted {

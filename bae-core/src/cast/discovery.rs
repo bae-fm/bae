@@ -82,13 +82,19 @@ impl CastDiscovery {
             Ok(events) => events,
             Err(e) => {
                 warn!("cast discovery: failed to browse {CAST_SERVICE_TYPE}: {e}");
-                let _ = daemon.shutdown();
+                if let Err(shutdown_err) = daemon.shutdown() {
+                    debug!(
+                        "cast discovery: mDNS daemon shutdown after browse failure: {shutdown_err}"
+                    );
+                }
                 return;
             }
         };
         // Reset to an empty list at the start of a fresh browse so a stale
         // snapshot from a previous session isn't shown before the first event.
-        let _ = self.devices_tx.send(Vec::new());
+        // `send_replace` writes the value with no Result to swallow (a watch
+        // sender is only "closed" when every receiver drops, but this holds one).
+        self.devices_tx.send_replace(Vec::new());
         let devices_tx = self.devices_tx.clone();
         let reader = std::thread::spawn(move || run_browse(events, devices_tx));
         self.running = Some(Running { daemon, reader });

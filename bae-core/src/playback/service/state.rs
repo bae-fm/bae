@@ -436,6 +436,27 @@ impl PlaybackService {
         }
     }
 
+    /// Set the output volume. While casting, the receiver's volume is set too so
+    /// it stays in step and survives the handoff back to local. Unmutes on a
+    /// non-zero level, and always emits `VolumeChanged`.
+    pub(super) fn set_volume(&mut self, volume: f32) {
+        self.audio_output.set_volume(volume);
+        if let Renderer::Cast(cast) = &self.renderer {
+            cast.session.set_volume(volume);
+        }
+        if volume > 0.0 && self.is_muted {
+            self.is_muted = false;
+            emit_progress(
+                &self.progress_tx,
+                PlaybackProgress::MuteChanged { is_muted: false },
+            );
+        }
+        emit_progress(
+            &self.progress_tx,
+            PlaybackProgress::VolumeChanged { volume },
+        );
+    }
+
     pub(super) fn pause(&mut self) {
         // While casting, the receiver holds playback: pause it too.
         if let Renderer::Cast(cast) = &self.renderer {

@@ -9,6 +9,8 @@ use std::fmt;
 use std::net::IpAddr;
 use std::time::Duration;
 
+use tracing::debug;
+
 /// The media a LOAD hands the receiver: the URL it fetches over HTTP and the
 /// metadata it shows on-screen.
 #[derive(Debug, Clone, PartialEq)]
@@ -51,8 +53,10 @@ pub struct ReceiverStatus {
     pub position: Option<Duration>,
     /// The current media's duration, when the receiver reports it.
     pub duration: Option<Duration>,
-    /// Receiver volume level, 0.0–1.0.
-    pub volume: f32,
+    /// Receiver volume level (0.0–1.0), or `None` when the receiver omitted it —
+    /// carried as absent rather than invented, so a UI slider isn't jumped to a
+    /// fabricated level.
+    pub volume: Option<f32>,
 }
 
 /// A failure talking to the receiver. `Connection` is terminal — it means the
@@ -258,15 +262,20 @@ impl CastChannel for RustCastChannel {
     fn poll_status(&mut self) -> Result<ReceiverStatus, CastError> {
         // Keep the receiver's sender-liveness check satisfied. rust_cast's
         // blocking status read does not answer the device's PINGs, so send an
-        // unsolicited PONG each cycle.
-        let _ = self.device.heartbeat.pong();
+        // unsolicited PONG each cycle. A pong failure is not terminal here (the
+        // status read below surfaces a real disconnect) — log it and continue.
+        if let Err(error) = self.device.heartbeat.pong() {
+            debug!("cast heartbeat pong failed: {error}");
+        }
 
         let receiver_status = self
             .device
             .receiver
             .get_status()
             .map_err(|e| CastError::Connection(e.to_string()))?;
-        let volume = receiver_status.volume.level.unwrap_or(1.0);
+        // The receiver's level, carried as-is (`None` when omitted) rather than
+        // invented.
+        let volume = receiver_status.volume.level;
 
         let Some(media_session_id) = self.media_session_id else {
             // Nothing loaded yet: the receiver is idle, volume is all we have.

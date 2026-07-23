@@ -1882,7 +1882,7 @@ impl CastChannel for FakeCastChannel {
             player_state: CastPlayerState::Playing,
             position: None,
             duration: None,
-            volume: 1.0,
+            volume: Some(1.0),
         })
     }
 }
@@ -2043,7 +2043,7 @@ async fn cast_finished_advances_queue_and_loads_next() {
             player_state: CastPlayerState::Finished,
             position: None,
             duration: None,
-            volume: 1.0,
+            volume: Some(1.0),
             ended: false,
         })
         .await;
@@ -2087,7 +2087,7 @@ async fn cast_status_feeds_progress() {
             player_state: CastPlayerState::Playing,
             position: Some(std::time::Duration::from_secs(30)),
             duration: Some(std::time::Duration::from_secs(180)),
-            volume: 1.0,
+            volume: Some(1.0),
             ended: false,
         })
         .await;
@@ -2149,5 +2149,127 @@ async fn stop_casting_stops_receiver_and_returns_to_local() {
     assert!(
         saw_not_casting,
         "stopping casting announces CastStatusChanged(None)"
+    );
+}
+
+/// A plain `stop()` while casting must stop the receiver and return to local —
+/// stop means stop (pause is what keeps the session warm). Without routing stop
+/// through the renderer, the local slot goes Stopped while the receiver stays
+/// connected and playing.
+#[tokio::test]
+async fn stop_while_casting_stops_receiver_and_returns_to_local() {
+    let (_home, mut service, mut rx) = casting_service(&[("rel-1", &["t1"])]).await;
+    service.playback_queue.play_release(
+        ContextSource::Release("rel-1".to_string()),
+        vec!["t1".to_string()],
+        ContextStart::Index(0),
+    );
+    let buffer = create_sparse_buffer(1_024);
+    service.slot = active_slot(test_prepared_track("t1", buffer), TrackPhase::Playing);
+
+    let channel = FakeCastChannel::new();
+    let state = channel.state.clone();
+    service.handle_cast_to(cast_connect(channel)).await;
+    assert!(wait_until(|| !state.lock().unwrap().loads.is_empty()));
+    while rx.try_recv().is_ok() {}
+
+    service.stop().await;
+
+    assert!(
+        !service.renderer.is_casting(),
+        "stop must return the renderer to local"
+    );
+    assert!(
+        wait_until(|| state.lock().unwrap().stops == 1),
+        "stop must stop the receiver, not leave it playing"
+    );
+    assert!(
+        matches!(service.slot, PlaybackSlot::Stopped),
+        "the slot must be Stopped after stop"
+    );
+    let mut saw_not_casting = false;
+    while let Ok(progress) = rx.try_recv() {
+        if let PlaybackProgress::CastStatusChanged { device_name: None } = progress {
+            saw_not_casting = true;
+        }
+    }
+    assert!(
+        saw_not_casting,
+        "stopping while casting announces CastStatusChanged(None)"
+    );
+}
+
+/// Set up a casting service over a single fake-backed track `t1`, current at
+/// position 0, and return the service plus the fake channel's shared state.
+async fn casting_over_fake() -> (
+    TempDir,
+    PlaybackService,
+    Arc<Mutex<FakeCastState>>,
+    tokio_mpsc::UnboundedReceiver<PlaybackProgress>,
+) {
+    let (home, mut service, rx) = casting_service(&[("rel-1", &["t1"])]).await;
+    service.playback_queue.play_release(
+        ContextSource::Release("rel-1".to_string()),
+        vec!["t1".to_string()],
+        ContextStart::Index(0),
+    );
+    let buffer = create_sparse_buffer(1_024);
+    service.slot = active_slot(test_prepared_track("t1", buffer), TrackPhase::Playing);
+    *service.current_position_shared.lock().unwrap() = Some(std::time::Duration::ZERO);
+
+    let channel = FakeCastChannel::new();
+    let state = channel.state.clone();
+    service.handle_cast_to(cast_connect(channel)).await;
+    assert!(wait_until(|| !state.lock().unwrap().loads.is_empty()));
+    (home, service, state, rx)
+}
+
+/// Pause while casting routes to the receiver.
+#[tokio::test]
+async fn pause_while_casting_pauses_the_receiver() {
+    let (_home, mut service, state, _rx) = casting_over_fake().await;
+    service.pause();
+    assert!(
+        wait_until(|| state.lock().unwrap().pauses == 1),
+        "pause while casting must pause the receiver"
+    );
+}
+
+/// Resume while casting routes to the receiver.
+#[tokio::test]
+async fn resume_while_casting_plays_the_receiver() {
+    let (_home, mut service, state, _rx) = casting_over_fake().await;
+    service.pause();
+    assert!(wait_until(|| state.lock().unwrap().pauses == 1));
+    service.resume().await;
+    assert!(
+        wait_until(|| state.lock().unwrap().plays == 1),
+        "resume while casting must play the receiver"
+    );
+}
+
+/// Seek while casting routes to the receiver (and skips the local rebuild path).
+#[tokio::test]
+async fn seek_while_casting_seeks_the_receiver() {
+    let (_home, mut service, state, _rx) = casting_over_fake().await;
+    service.seek(std::time::Duration::from_secs(45)).await;
+    assert!(
+        wait_until(|| state
+            .lock()
+            .unwrap()
+            .seeks
+            .contains(&std::time::Duration::from_secs(45))),
+        "seek while casting must seek the receiver"
+    );
+}
+
+/// Setting the volume while casting sets the receiver's volume too.
+#[tokio::test]
+async fn set_volume_while_casting_sets_the_receiver_volume() {
+    let (_home, mut service, state, _rx) = casting_over_fake().await;
+    service.set_volume(0.3);
+    assert!(
+        wait_until(|| state.lock().unwrap().volumes.contains(&0.3)),
+        "setting the volume while casting must set the receiver's volume"
     );
 }

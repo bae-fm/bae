@@ -301,6 +301,20 @@ impl PlaybackService {
     }
 
     pub(super) async fn stop(&mut self) {
+        // Stop means stop, on whichever renderer: while casting, end the receiver
+        // session (pause is what keeps it warm) and return to local before the
+        // teardown lands the slot in Stopped. A caller that already dropped to
+        // local (`fail_cast`, `end_cast_and_resume_local`) skips this.
+        if let Renderer::Cast(cast) = &self.renderer {
+            cast.session.stop();
+        }
+        if self.renderer.is_casting() {
+            self.renderer = Renderer::Local;
+            emit_progress(
+                &self.progress_tx,
+                PlaybackProgress::CastStatusChanged { device_name: None },
+            );
+        }
         // Tear the local pipeline down: preview, current decoder, preload, the
         // persistent output (its source cancelled first so a ring-parked decoder
         // unparks), and every cached file buffer. Shared with the cast switch,

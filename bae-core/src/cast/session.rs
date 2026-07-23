@@ -27,7 +27,9 @@ pub struct CastSessionStatus {
     pub player_state: CastPlayerState,
     pub position: Option<Duration>,
     pub duration: Option<Duration>,
-    pub volume: f32,
+    /// The receiver's volume level, or `None` when it was omitted (not
+    /// fabricated).
+    pub volume: Option<f32>,
     pub ended: bool,
 }
 
@@ -48,7 +50,7 @@ impl CastSessionStatus {
             player_state: CastPlayerState::Idle,
             position: None,
             duration: None,
-            volume: 0.0,
+            volume: None,
             ended: true,
         }
     }
