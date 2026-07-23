@@ -140,15 +140,19 @@ struct QueueItemRow: View {
             .frame(width: 380)
             .padding()
             .background(Theme.surface)
-            .environment(MediaPaths.stub)
         }
     }
 
+    // The environment lives on the #Preview root (not inside QueueItemRowPreview's
+    // body) so the missing-environment audit, which only reads the preview
+    // closure's modifier chain, can see it.
     #Preview("Resting") {
         QueueItemRowPreview(item: PreviewData.queueItems[0], isHovered: false)
+            .environment(MediaPaths.stub)
     }
 
     #Preview("Hovered") {
         QueueItemRowPreview(item: PreviewData.queueItems[1], isHovered: true)
+            .environment(MediaPaths.stub)
     }
 #endif

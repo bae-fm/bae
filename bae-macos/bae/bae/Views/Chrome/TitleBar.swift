@@ -192,12 +192,15 @@ private struct SectionSegmentedControl: View {
         var body: some View {
             TitleBar(searchText: $searchText)
                 .frame(width: 1100)
-                .environment(Library.stub)
-                .environment(UiStore())
         }
     }
 
+    // The environment lives on the #Preview root (not inside TitleBarPreview's
+    // body) so the missing-environment audit, which only reads the preview
+    // closure's modifier chain, can see it.
     #Preview("Title bar") {
         TitleBarPreview()
+            .environment(Library.stub)
+            .environment(UiStore())
     }
 #endif

@@ -289,6 +289,8 @@ struct MainAppView: View {
             .environment(libraryStore)
             .environment(uiStore)
             .environment(PreviewAudio.stub)
+            .environment(Cast.stub)
+            .environment(CastStore())
             .albumDetailPreviewEnvironment(store: libraryStore)
             .padding(.top, 1)
             .frame(width: 1280, height: 800)

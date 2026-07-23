@@ -17,15 +17,20 @@ struct LibrarySection: View {
             uiStore: uiStore,
             libraryStore: libraryStore
         )
+        // Bind the tuple members to explicitly-typed locals: the audit resolves
+        // `.environment(library)`/`.environment(session)` by the local's type
+        // but leaves a bare `backing.library` member access unresolved.
+        let library: Library = backing.library
+        let session: LibraryBrowseSession = backing.session
         return LibrarySection()
             .environment(MediaPaths.stub)
             .environment(Playback.stub)
             .environment(Queue.stub)
             .environment(Downloads.stub)
-            .environment(backing.library)
+            .environment(library)
             .environment(libraryStore)
             .environment(uiStore)
-            .environment(backing.session)
+            .environment(session)
             .environment(PreviewData.configStore)
             .frame(width: 1400, height: 720)
             .windowBackground()

@@ -728,22 +728,22 @@ extension View {
 
 #if DEBUG
     #Preview("Album Detail — Single Disc") {
+        // Bind the seeded store to a `store` local the audit can resolve, so it
+        // credits the LibraryStore that albumDetailPreviewEnvironment injects.
+        let store = PreviewData.seededLibraryStore()
         AlbumDetailView(albumId: "a-01")
             .frame(width: 1100, height: 780)
             .background(Theme.background)
-            .albumDetailPreviewEnvironment(
-                store: PreviewData.seededLibraryStore()
-            )
+            .albumDetailPreviewEnvironment(store: store)
             .preferredColorScheme(.dark)
     }
 
     #Preview("Album Detail — Multiple Releases") {
+        let store = PreviewData.seededLibraryStore()
         AlbumDetailView(albumId: "a-04")
             .frame(width: 1100, height: 780)
             .background(Theme.background)
-            .albumDetailPreviewEnvironment(
-                store: PreviewData.seededLibraryStore()
-            )
+            .albumDetailPreviewEnvironment(store: store)
             .preferredColorScheme(.dark)
     }
 #endif
