@@ -51,7 +51,7 @@ struct MainAppView: View {
                     // tooltips) through to whichever section is showing.
                     Group {
                         if uiStore.activeSection == .library {
-                            LibrarySection()
+                            LibraryView()
                         }
                         else {
                             ImportView()
