@@ -2,11 +2,11 @@ use super::*;
 
 impl PlaybackService {
     pub(super) async fn seek(&mut self, position: std::time::Duration) {
-        // While casting, the receiver owns the timeline: seek it, refresh the
-        // position display, and skip the whole local decoder-rebuild path.
-        if self.renderer.is_casting() {
-            if let Renderer::Cast(cast) = &self.renderer {
-                cast.session.seek(position);
+        // While playing remotely, the device owns the timeline: seek it, refresh
+        // the position display, and skip the whole local decoder-rebuild path.
+        if self.renderer.is_remote() {
+            if let Renderer::Remote(remote) = &self.renderer {
+                remote.session.seek(position);
             }
             *self.current_position_shared.lock().unwrap() = Some(position);
             if let Some(track_id) = self.current_track_id().map(str::to_string) {

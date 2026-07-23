@@ -6,15 +6,19 @@
 //! drive it with transport commands, polling for position. The renderer fetches
 //! and decodes the audio itself; bae is the control point and the HTTP source.
 //!
-//! Control is SOAP over HTTP ([`soap`]): the four AVTransport transport actions
-//! plus RenderingControl volume, with position read by polling `GetPositionInfo`.
+//! Control is SOAP over HTTP: the four AVTransport transport actions plus
+//! RenderingControl volume, with position read by polling `GetPositionInfo`.
 //! [`soap`] builds each envelope and parses the poll responses as pure string
-//! work; the blocking HTTP POST that carries an envelope is the caller's.
+//! work; [`channel::DlnaChannel`] carries them over blocking HTTP and presents
+//! the renderer as the shared [`crate::renderer::RendererChannel`], including the
+//! end-of-track inference UPnP's reason-less STOPPED requires.
 
+pub mod channel;
 pub mod discovery;
 pub mod soap;
 
-pub use discovery::{DlnaDevice, DlnaDiscovery};
+pub use channel::DlnaChannel;
+pub use discovery::DlnaDiscovery;
 
 #[cfg(test)]
 mod tests;

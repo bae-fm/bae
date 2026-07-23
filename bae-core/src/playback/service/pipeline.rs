@@ -173,11 +173,11 @@ impl PlaybackService {
             self.telemetry_track_started(track_id, transition);
         }
 
-        // Cast is a second renderer behind the same queue: load the track onto
-        // the receiver instead of the local decode pipeline. Everything above
-        // (telemetry) is shared; the local path below is skipped.
-        if self.renderer.is_casting() {
-            self.play_track_cast(track_id, start, target).await;
+        // A remote renderer is a second renderer behind the same queue: load the
+        // track onto the device instead of the local decode pipeline. Everything
+        // above (telemetry) is shared; the local path below is skipped.
+        if self.renderer.is_remote() {
+            self.play_track_remote(track_id, start, target).await;
             return;
         }
 
@@ -301,24 +301,24 @@ impl PlaybackService {
     }
 
     pub(super) async fn stop(&mut self) {
-        // Stop means stop, on whichever renderer: while casting, end the receiver
-        // session (pause is what keeps it warm) and return to local before the
-        // teardown lands the slot in Stopped. A caller that already dropped to
-        // local (`fail_cast`, `end_cast_and_resume_local`) skips this.
-        if let Renderer::Cast(cast) = &self.renderer {
-            cast.session.stop();
+        // Stop means stop, on whichever renderer: while playing remotely, end the
+        // device session (pause is what keeps it warm) and return to local before
+        // the teardown lands the slot in Stopped. A caller that already dropped to
+        // local (`fail_remote`, `end_remote_and_resume_local`) skips this.
+        if let Renderer::Remote(remote) = &self.renderer {
+            remote.session.stop();
         }
-        if self.renderer.is_casting() {
+        if self.renderer.is_remote() {
             self.renderer = Renderer::Local;
             emit_progress(
                 &self.progress_tx,
-                PlaybackProgress::CastStatusChanged { device_name: None },
+                PlaybackProgress::RemoteStatusChanged { device_name: None },
             );
         }
         // Tear the local pipeline down: preview, current decoder, preload, the
         // persistent output (its source cancelled first so a ring-parked decoder
-        // unparks), and every cached file buffer. Shared with the cast switch,
-        // which reuses the same teardown before installing the receiver track.
+        // unparks), and every cached file buffer. Shared with the remote switch,
+        // which reuses the same teardown before installing the remote track.
         self.teardown_local_playback();
         self.sync_audio_state();
         self.emit_state();

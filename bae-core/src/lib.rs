@@ -28,6 +28,7 @@ pub mod musicbrainz;
 pub mod network;
 pub mod playback;
 pub mod queue;
+pub mod renderer;
 pub mod retry;
 mod serde_helpers;
 // The extraction machinery (OCR, disc-ID compute) is desktop-only and gated

@@ -233,7 +233,7 @@ impl UiEventBus {
                     PlaybackProgress::PlaybackError { reason } => {
                         bus.emit(UiBusEvent::PlaybackError { reason });
                     }
-                    PlaybackProgress::CastStatusChanged { device_name } => {
+                    PlaybackProgress::RemoteStatusChanged { device_name } => {
                         bus.emit(UiBusEvent::CastStatusChanged { device_name });
                     }
                     _ => {}

@@ -436,13 +436,13 @@ impl PlaybackService {
         }
     }
 
-    /// Set the output volume. While casting, the receiver's volume is set too so
-    /// it stays in step and survives the handoff back to local. Unmutes on a
-    /// non-zero level, and always emits `VolumeChanged`.
+    /// Set the output volume. While playing remotely, the device's volume is set
+    /// too so it stays in step and survives the handoff back to local. Unmutes on
+    /// a non-zero level, and always emits `VolumeChanged`.
     pub(super) fn set_volume(&mut self, volume: f32) {
         self.audio_output.set_volume(volume);
-        if let Renderer::Cast(cast) = &self.renderer {
-            cast.session.set_volume(volume);
+        if let Renderer::Remote(remote) = &self.renderer {
+            remote.session.set_volume(volume);
         }
         if volume > 0.0 && self.is_muted {
             self.is_muted = false;
@@ -458,9 +458,9 @@ impl PlaybackService {
     }
 
     pub(super) fn pause(&mut self) {
-        // While casting, the receiver holds playback: pause it too.
-        if let Renderer::Cast(cast) = &self.renderer {
-            cast.session.pause();
+        // While playing remotely, the device holds playback: pause it too.
+        if let Renderer::Remote(remote) = &self.renderer {
+            remote.session.pause();
         }
         // Pausing during a load collapses the Loading phase to Paused, so the
         // pending TrackReady no longer matches and is ignored. A Stopped or
@@ -483,9 +483,9 @@ impl PlaybackService {
             return;
         }
 
-        // While casting, the receiver holds playback: resume it too.
-        if let Renderer::Cast(cast) = &self.renderer {
-            cast.session.play();
+        // While playing remotely, the device holds playback: resume it too.
+        if let Renderer::Remote(remote) = &self.renderer {
+            remote.session.play();
         }
         if let PlaybackSlot::Active(cur) = &mut self.slot {
             cur.phase = TrackPhase::Playing;

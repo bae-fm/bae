@@ -9,6 +9,20 @@ use super::discovery::{parse_device_description, parse_ssdp_location};
 use super::soap::{
     self, parse_position_info, parse_transport_state, DidlMetadata, PositionInfo, TransportState,
 };
+use crate::renderer::{RendererConnection, RendererDevice};
+
+/// The DLNA connection's control URLs, for asserting on a parsed device.
+fn dlna_urls(device: &RendererDevice) -> (String, Option<String>) {
+    match &device.connection {
+        RendererConnection::Dlna {
+            av_transport_url,
+            rendering_control_url,
+        } => (av_transport_url.clone(), rendering_control_url.clone()),
+        RendererConnection::Cast { .. } => {
+            panic!("a device description must parse to a DLNA connection")
+        }
+    }
+}
 
 // -- SSDP response → location -------------------------------------------------
 
@@ -67,12 +81,11 @@ fn description_with_relative_control_urls_resolves_against_location() {
 
     assert_eq!(device.id, "uuid:11111111-2222-3333-4444-555555555555");
     assert_eq!(device.name, "Living Room Receiver");
+    assert_eq!(device.kind(), crate::renderer::RendererKind::Dlna);
+    let (av, rc) = dlna_urls(&device);
+    assert_eq!(av, "http://192.168.1.50:8080/desc/AVTransport/control");
     assert_eq!(
-        device.av_transport_url,
-        "http://192.168.1.50:8080/desc/AVTransport/control"
-    );
-    assert_eq!(
-        device.rendering_control_url.as_deref(),
+        rc.as_deref(),
         Some("http://192.168.1.50:8080/desc/RenderingControl/control")
     );
 }
@@ -94,13 +107,11 @@ fn description_without_friendly_name_falls_back_to_host() {
     let device = parse_device_description(xml, "http://10.0.0.9:49152/dev.xml")
         .expect("still usable without a friendly name");
     assert_eq!(device.name, "10.0.0.9");
+    let (av, rc) = dlna_urls(&device);
     // An absolute-path controlURL resolves against the location's origin.
-    assert_eq!(
-        device.av_transport_url,
-        "http://10.0.0.9:49152/upnp/control/AVTransport1"
-    );
+    assert_eq!(av, "http://10.0.0.9:49152/upnp/control/AVTransport1");
     // No RenderingControl service: volume is simply unsupported.
-    assert!(device.rendering_control_url.is_none());
+    assert!(rc.is_none());
 }
 
 #[test]
@@ -121,7 +132,8 @@ fn description_control_url_on_another_host_and_port_is_kept_absolute() {
     let device =
         parse_device_description(xml, "http://192.168.1.50:8080/description.xml").expect("usable");
     assert_eq!(
-        device.av_transport_url, "http://192.168.1.77:9000/AVTransport/control",
+        dlna_urls(&device).0,
+        "http://192.168.1.77:9000/AVTransport/control",
         "an absolute controlURL on another host/port is used verbatim"
     );
 }
@@ -145,7 +157,8 @@ fn description_url_base_overrides_location_for_resolution() {
     let device =
         parse_device_description(xml, "http://192.168.1.50:8080/desc.xml").expect("usable");
     assert_eq!(
-        device.av_transport_url, "http://192.168.1.50:2870/ctl/avt",
+        dlna_urls(&device).0,
+        "http://192.168.1.50:2870/ctl/avt",
         "control URLs resolve against URLBase when the description carries one"
     );
 }
@@ -360,5 +373,263 @@ fn transport_state_without_element_is_other() {
         ),
         TransportState::Other,
         "a response missing the state element is unknown, not a known state"
+    );
+}
+
+// -- DLNA channel over a fake HTTP renderer -----------------------------------
+//
+// The routing tests the plan requires: driving a real `DlnaChannel` against a
+// fake renderer that records the SOAP actions it receives and answers the status
+// polls from scripted state. This is the class of test that caught the Cast
+// `stop()` bug — here it pins that our own `stop()` is never misread as an
+// end-of-track advance, and that a STOPPED after playing through is.
+
+use std::sync::{Arc, Mutex};
+
+use crate::renderer::{RendererChannel, RendererError, RendererMedia, RendererPlayerState};
+
+use super::channel::DlnaChannel;
+
+/// The fake renderer's scripted state and the record of what it was asked to do.
+#[derive(Default)]
+struct FakeRenderer {
+    /// SOAP action names received, in order (e.g. "SetAVTransportURI", "Play").
+    actions: Vec<String>,
+    /// The `CurrentTransportState` the next GetTransportInfo returns.
+    transport_state: String,
+    /// The `RelTime` / `TrackDuration` the next GetPositionInfo returns.
+    rel_time: String,
+    track_duration: String,
+}
+
+type Shared = Arc<Mutex<FakeRenderer>>;
+
+/// Extract the action name from a `SOAPACTION` header value
+/// (`"urn:…:AVTransport:1#Play"` → `Play`).
+fn action_name(soap_action: &str) -> String {
+    soap_action
+        .trim_matches('"')
+        .rsplit('#')
+        .next()
+        .unwrap_or_default()
+        .to_string()
+}
+
+/// The SOAP response body for one action, reading scripted state for the polls.
+fn response_for(action: &str, state: &FakeRenderer) -> String {
+    let inner = match action {
+        "GetTransportInfo" => format!(
+            "<CurrentTransportState>{}</CurrentTransportState>\
+             <CurrentTransportStatus>OK</CurrentTransportStatus><CurrentSpeed>1</CurrentSpeed>",
+            state.transport_state
+        ),
+        "GetPositionInfo" => format!(
+            "<Track>1</Track><TrackDuration>{}</TrackDuration><RelTime>{}</RelTime>",
+            state.track_duration, state.rel_time
+        ),
+        _ => String::new(),
+    };
+    format!(
+        "<?xml version=\"1.0\"?>\
+         <s:Envelope xmlns:s=\"http://schemas.xmlsoap.org/soap/envelope/\"><s:Body>\
+         <u:{action}Response xmlns:u=\"urn:schemas-upnp-org:service:AVTransport:1\">{inner}\
+         </u:{action}Response></s:Body></s:Envelope>"
+    )
+}
+
+/// Start a fake renderer on the given runtime, returning its base URL and shared
+/// state. One handler serves both control URLs — the action is in the header.
+async fn start_fake_renderer(state: Shared) -> String {
+    use axum::extract::State;
+    use axum::http::HeaderMap;
+    use axum::routing::post;
+    use axum::Router;
+
+    async fn handle(State(state): State<Shared>, headers: HeaderMap, _body: String) -> String {
+        let action = headers
+            .get("SOAPACTION")
+            .and_then(|v| v.to_str().ok())
+            .map(action_name)
+            .unwrap_or_default();
+        let mut guard = state.lock().unwrap();
+        guard.actions.push(action.clone());
+        response_for(&action, &guard)
+    }
+
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let addr = listener.local_addr().unwrap();
+    let router = Router::new()
+        .route("/avt", post(handle))
+        .route("/rc", post(handle))
+        .with_state(state);
+    tokio::spawn(async move {
+        let _ = axum::serve(listener, router).await;
+    });
+    format!("http://{addr}")
+}
+
+fn test_media() -> RendererMedia {
+    RendererMedia {
+        url: "http://source/stream?id=t1".to_string(),
+        content_type: "audio/flac".to_string(),
+        title: "Title".to_string(),
+        artist: "Artist".to_string(),
+        album: "Album".to_string(),
+        cover_url: None,
+        duration: Some(Duration::from_secs(180)),
+    }
+}
+
+fn channel_to(base: &str) -> DlnaChannel {
+    DlnaChannel::connect(format!("{base}/avt"), Some(format!("{base}/rc"))).unwrap()
+}
+
+/// Every transport command reaches the renderer as its SOAP action. A load is a
+/// `SetAVTransportURI` followed by `Play`; volume goes to RenderingControl.
+#[test]
+fn channel_routes_each_command_to_its_soap_action() {
+    let runtime = tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()
+        .unwrap();
+    let state: Shared = Arc::new(Mutex::new(FakeRenderer::default()));
+    let base = runtime.block_on(start_fake_renderer(state.clone()));
+
+    let mut channel = channel_to(&base);
+    channel.load(&test_media()).unwrap();
+    channel.pause().unwrap();
+    channel.seek(Duration::from_secs(42)).unwrap();
+    channel.set_volume(0.5).unwrap();
+    channel.play().unwrap();
+    channel.stop().unwrap();
+
+    let actions = state.lock().unwrap().actions.clone();
+    assert_eq!(
+        actions,
+        vec![
+            "SetAVTransportURI",
+            "Play",
+            "Pause",
+            "Seek",
+            "SetVolume",
+            "Play",
+            "Stop",
+        ],
+        "each command must reach the renderer as its SOAP action"
+    );
+}
+
+/// A renderer that plays through to (near) the track's end and then reports
+/// STOPPED is a natural end: the channel surfaces `Finished` for the queue to
+/// advance on.
+#[test]
+fn stopped_after_playing_through_is_finished() {
+    let runtime = tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()
+        .unwrap();
+    let state: Shared = Arc::new(Mutex::new(FakeRenderer {
+        transport_state: "PLAYING".to_string(),
+        rel_time: "0:03:00".to_string(),
+        track_duration: "0:03:00".to_string(),
+        ..FakeRenderer::default()
+    }));
+    let base = runtime.block_on(start_fake_renderer(state.clone()));
+    let mut channel = channel_to(&base);
+
+    // Playing at the end of the track.
+    let playing = channel.poll_status().unwrap();
+    assert_eq!(playing.player_state, RendererPlayerState::Playing);
+
+    // The renderer stops after playing through.
+    state.lock().unwrap().transport_state = "STOPPED".to_string();
+    let stopped = channel.poll_status().unwrap();
+    assert_eq!(
+        stopped.player_state,
+        RendererPlayerState::Finished,
+        "STOPPED after playing through must be the queue-advance signal"
+    );
+
+    // It fires exactly once — a later poll while still STOPPED is idle.
+    let again = channel.poll_status().unwrap();
+    assert_eq!(again.player_state, RendererPlayerState::Idle);
+}
+
+/// The stop() bug guard: our own `stop()` produces a STOPPED that must NOT be
+/// read as an end-of-track advance, even though the renderer had played.
+#[test]
+fn our_own_stop_is_not_read_as_finished() {
+    let runtime = tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()
+        .unwrap();
+    let state: Shared = Arc::new(Mutex::new(FakeRenderer {
+        transport_state: "PLAYING".to_string(),
+        rel_time: "0:03:00".to_string(),
+        track_duration: "0:03:00".to_string(),
+        ..FakeRenderer::default()
+    }));
+    let base = runtime.block_on(start_fake_renderer(state.clone()));
+    let mut channel = channel_to(&base);
+
+    assert_eq!(
+        channel.poll_status().unwrap().player_state,
+        RendererPlayerState::Playing
+    );
+
+    // We stop it; the renderer goes STOPPED as a result.
+    channel.stop().unwrap();
+    state.lock().unwrap().transport_state = "STOPPED".to_string();
+
+    assert_eq!(
+        channel.poll_status().unwrap().player_state,
+        RendererPlayerState::Idle,
+        "a STOPPED that follows our own stop() must not advance the queue"
+    );
+}
+
+/// A STOPPED reached mid-track (not near the end — e.g. someone pressed stop on
+/// the device's own remote) is idle, not an end-of-track advance.
+#[test]
+fn stopped_mid_track_is_idle_not_finished() {
+    let runtime = tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()
+        .unwrap();
+    let state: Shared = Arc::new(Mutex::new(FakeRenderer {
+        transport_state: "PLAYING".to_string(),
+        rel_time: "0:00:30".to_string(),
+        track_duration: "0:03:00".to_string(),
+        ..FakeRenderer::default()
+    }));
+    let base = runtime.block_on(start_fake_renderer(state.clone()));
+    let mut channel = channel_to(&base);
+
+    assert_eq!(
+        channel.poll_status().unwrap().player_state,
+        RendererPlayerState::Playing
+    );
+    state.lock().unwrap().transport_state = "STOPPED".to_string();
+    assert_eq!(
+        channel.poll_status().unwrap().player_state,
+        RendererPlayerState::Idle,
+        "a STOPPED well before the end is not a natural end"
+    );
+}
+
+/// A poll against an unreachable renderer is a terminal connection error, which
+/// the session reads as the remote session ending (resume local).
+#[test]
+fn poll_of_unreachable_renderer_is_a_connection_error() {
+    // Bind then drop a listener to get a port nothing is serving.
+    let dead_port = {
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        listener.local_addr().unwrap().port()
+    };
+    let mut channel =
+        DlnaChannel::connect(format!("http://127.0.0.1:{dead_port}/avt"), None).unwrap();
+    assert!(
+        matches!(channel.poll_status(), Err(RendererError::Connection(_))),
+        "an unreachable renderer must surface as a terminal connection error"
     );
 }

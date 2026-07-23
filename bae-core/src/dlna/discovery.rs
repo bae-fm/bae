@@ -16,6 +16,8 @@ use std::time::{Duration, Instant};
 
 use tracing::{debug, warn};
 
+use crate::renderer::{RendererConnection, RendererDevice};
+
 /// The SSDP multicast endpoint every `M-SEARCH` is sent to.
 const SSDP_MULTICAST: &str = "239.255.255.250:1900";
 /// The device type searched for: a UPnP A/V MediaRenderer.
@@ -28,27 +30,13 @@ const RESEARCH_INTERVAL: Duration = Duration::from_secs(5);
 /// Timeout for fetching a responder's device-description document.
 const DESCRIPTION_TIMEOUT: Duration = Duration::from_secs(5);
 
-/// A discovered MediaRenderer: enough to display it and to drive it over SOAP.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct DlnaDevice {
-    /// Stable device identifier (the device's UDN, `uuid:…`), used to route
-    /// playback and to de-duplicate a device that answers several searches.
-    pub id: String,
-    /// Human-readable name to show in the picker (the device's `friendlyName`).
-    pub name: String,
-    /// Absolute control URL for the AVTransport service (load/play/seek/stop).
-    pub av_transport_url: String,
-    /// Absolute control URL for RenderingControl (volume), when the renderer
-    /// advertises the service. `None` renderers simply don't take a volume set.
-    pub rendering_control_url: Option<String>,
-}
-
-/// Browses for MediaRenderers over SSDP and publishes the current list. Start and
-/// stop with the picker's visibility; a stopped discovery holds no socket and no
-/// search thread.
+/// Browses for MediaRenderers over SSDP and publishes the current list as
+/// [`RendererDevice`]s so the picker shows one merged list. Start and stop with
+/// the picker's visibility; a stopped discovery holds no socket and no search
+/// thread.
 pub struct DlnaDiscovery {
-    devices_tx: tokio::sync::watch::Sender<Vec<DlnaDevice>>,
-    devices_rx: tokio::sync::watch::Receiver<Vec<DlnaDevice>>,
+    devices_tx: tokio::sync::watch::Sender<Vec<RendererDevice>>,
+    devices_rx: tokio::sync::watch::Receiver<Vec<RendererDevice>>,
     /// The running search: its stop flag and the thread draining responses.
     /// `None` while stopped.
     running: Option<Running>,
@@ -71,12 +59,12 @@ impl DlnaDiscovery {
 
     /// Subscribe to the live device list. The current snapshot is available
     /// immediately on the returned receiver.
-    pub fn subscribe(&self) -> tokio::sync::watch::Receiver<Vec<DlnaDevice>> {
+    pub fn subscribe(&self) -> tokio::sync::watch::Receiver<Vec<RendererDevice>> {
         self.devices_rx.clone()
     }
 
     /// The current device list snapshot.
-    pub fn devices(&self) -> Vec<DlnaDevice> {
+    pub fn devices(&self) -> Vec<RendererDevice> {
         self.devices_rx.borrow().clone()
     }
 
@@ -158,7 +146,7 @@ fn msearch_datagram() -> String {
 fn run_search(
     socket: UdpSocket,
     stop: Arc<AtomicBool>,
-    devices_tx: tokio::sync::watch::Sender<Vec<DlnaDevice>>,
+    devices_tx: tokio::sync::watch::Sender<Vec<RendererDevice>>,
 ) {
     let client = match reqwest::blocking::Client::builder()
         .timeout(DESCRIPTION_TIMEOUT)
@@ -180,7 +168,7 @@ fn run_search(
     // Every location fetched, so a renderer answering repeated searches is
     // described once; the device map is keyed by UDN so several NICs collapse.
     let mut fetched_locations: HashSet<String> = HashSet::new();
-    let mut by_id: HashMap<String, DlnaDevice> = HashMap::new();
+    let mut by_id: HashMap<String, RendererDevice> = HashMap::new();
     let mut buf = [0u8; 2048];
 
     while !stop.load(Ordering::Relaxed) {
@@ -226,7 +214,7 @@ fn run_search(
 
 /// Fetch and parse a responder's device-description document into a device, or
 /// `None` when the fetch fails or the description isn't a usable renderer.
-fn fetch_device(client: &reqwest::blocking::Client, location: &str) -> Option<DlnaDevice> {
+fn fetch_device(client: &reqwest::blocking::Client, location: &str) -> Option<RendererDevice> {
     let xml = match client.get(location).send().and_then(|r| r.text()) {
         Ok(xml) => xml,
         Err(e) => {
@@ -239,8 +227,8 @@ fn fetch_device(client: &reqwest::blocking::Client, location: &str) -> Option<Dl
 
 /// A stable, de-duplicated device list: one entry per UDN, sorted by name for a
 /// stable UI.
-fn snapshot(by_id: &HashMap<String, DlnaDevice>) -> Vec<DlnaDevice> {
-    let mut devices: Vec<DlnaDevice> = by_id.values().cloned().collect();
+fn snapshot(by_id: &HashMap<String, RendererDevice>) -> Vec<RendererDevice> {
+    let mut devices: Vec<RendererDevice> = by_id.values().cloned().collect();
     devices.sort_by(|a, b| a.name.cmp(&b.name).then(a.id.cmp(&b.id)));
     devices
 }
@@ -263,13 +251,13 @@ pub(super) fn parse_ssdp_location(response: &str) -> Option<String> {
     None
 }
 
-/// Parse a device-description document (fetched from `location`) into a
-/// [`DlnaDevice`]. Returns `None` when the XML doesn't parse or the device has no
-/// AVTransport service (it can't be played to). Control URLs are resolved to
+/// Parse a device-description document (fetched from `location`) into a UPnP
+/// [`RendererDevice`]. Returns `None` when the XML doesn't parse or the device
+/// has no AVTransport service (it can't be played to). Control URLs are resolved to
 /// absolute form against `URLBase` when present, else against `location` — so a
 /// relative `controlURL`, an absolute-path one, and one naming another host/port
 /// all land as a full URL.
-pub(super) fn parse_device_description(xml: &str, location: &str) -> Option<DlnaDevice> {
+pub(super) fn parse_device_description(xml: &str, location: &str) -> Option<RendererDevice> {
     let doc = roxmltree::Document::parse(xml).ok()?;
 
     let base = doc
@@ -308,11 +296,13 @@ pub(super) fn parse_device_description(xml: &str, location: &str) -> Option<Dlna
         }
     }
 
-    Some(DlnaDevice {
+    Some(RendererDevice {
         id,
         name,
-        av_transport_url: av_transport_url?,
-        rendering_control_url,
+        connection: RendererConnection::Dlna {
+            av_transport_url: av_transport_url?,
+            rendering_control_url,
+        },
     })
 }
 

@@ -2,12 +2,14 @@
 //!
 //! The service drives one queue; a *renderer* is where the current track plays.
 //! [`Renderer::Local`] is the in-process decode + cpal path (the rest of this
-//! module); [`Renderer::Cast`] hands playback to a connected Cast device, which
-//! fetches audio over HTTP itself. The slot, queue, selection, shuffle, and
-//! repeat logic are identical for both — only the transport differs.
+//! module); [`Renderer::Remote`] hands playback to a connected remote renderer —
+//! a Cast receiver or a UPnP MediaRenderer — which fetches the audio over HTTP
+//! itself and is driven by transport commands. The slot, queue, selection,
+//! shuffle, and repeat logic are identical for both — only the transport differs,
+//! and the two remote flavors differ only in the channel behind the session.
 //!
-//! While casting, the slot still holds the current track (its metadata drives
-//! the UI and the shared queue-advance path), but with no local decoder or
+//! While playing remotely, the slot still holds the current track (its metadata
+//! drives the UI and the shared queue-advance path), but with no local decoder or
 //! sparse buffers: the current track carries a no-op [`stub_decoder`] and
 //! empty segments, so `play_track`/`handle_auto_advance`/`persist` all work
 //! unchanged while the cpal pipeline stays idle.
@@ -16,69 +18,76 @@ use std::sync::atomic::AtomicBool;
 use std::time::Duration;
 
 use super::*;
-use crate::cast::{cast_stream_format, CastMedia, CastPlayerState, CastSession, CastSessionStatus};
+use crate::renderer::{
+    RendererMedia, RendererPlayerState, RendererSession, RendererSessionStatus, StreamFormatFn,
+};
 
-/// Where the current track plays. `Local` is the default; `Cast` holds the live
-/// session and everything needed to keep loading tracks onto the receiver as the
+/// Where the current track plays. `Local` is the default; `Remote` holds the live
+/// session and everything needed to keep loading tracks onto the device as the
 /// queue advances.
 pub(super) enum Renderer {
     Local,
-    Cast(CastRenderer),
+    Remote(RemoteRenderer),
 }
 
 impl Renderer {
-    pub(super) fn is_casting(&self) -> bool {
-        matches!(self, Renderer::Cast(_))
+    pub(super) fn is_remote(&self) -> bool {
+        matches!(self, Renderer::Remote(_))
     }
 }
 
-/// A live cast session and the state the service needs to keep serving it: the
-/// URL providers (to mint each track's media as the queue advances) and the
-/// receiver's last reported position (for the handoff back to local playback
-/// when casting stops). The device name isn't held here — it rides the
-/// `CastStatusChanged` event out to the UI, which caches it.
-pub(super) struct CastRenderer {
-    pub(super) session: CastSession,
-    pub(super) stream_url_provider: crate::cast::MediaUrlProvider,
-    pub(super) cover_url_provider: crate::cast::CoverUrlProvider,
-    /// The receiver's most recent playback position, updated from each status.
-    /// Local playback resumes here when casting ends.
+/// A live remote-renderer session and the state the service needs to keep serving
+/// it: the URL providers (to mint each track's media as the queue advances), the
+/// flavor's stream-format gate (to pick raw vs. transcode per codec), and the
+/// device's last reported position (for the handoff back to local playback when
+/// remote playback stops). The device name isn't held here — it rides the
+/// `RemoteStatusChanged` event out to the UI, which caches it.
+pub(super) struct RemoteRenderer {
+    pub(super) session: RendererSession,
+    pub(super) stream_url_provider: crate::renderer::MediaUrlProvider,
+    pub(super) cover_url_provider: crate::renderer::CoverUrlProvider,
+    /// The flavor-specific safe-set gate (Cast vs. DLNA differ on Opus).
+    pub(super) stream_format: StreamFormatFn,
+    /// The device's most recent playback position, updated from each status.
+    /// Local playback resumes here when remote playback ends.
     pub(super) last_position: Duration,
 }
 
-/// Everything a `CastTo` command carries to start casting: the connected channel
-/// (built off the service thread by bae-desktop), the device's display name, and
-/// the injected URL providers. A manual `Debug` keeps `PlaybackCommand`'s derive
-/// working without the un-`Debug` channel/closures.
-pub(crate) struct CastConnect {
-    pub(crate) channel: Box<dyn crate::cast::CastChannel>,
+/// Everything a `PlayOn` command carries to start remote playback: the connected
+/// channel (built off the service thread by bae-desktop), the device's display
+/// name, the injected URL providers, and the flavor's stream-format gate. A
+/// manual `Debug` keeps `PlaybackCommand`'s derive working without the un-`Debug`
+/// channel/closures.
+pub(crate) struct RemoteConnect {
+    pub(crate) channel: Box<dyn crate::renderer::RendererChannel>,
     pub(crate) device_name: String,
-    pub(crate) stream_url_provider: crate::cast::MediaUrlProvider,
-    pub(crate) cover_url_provider: crate::cast::CoverUrlProvider,
+    pub(crate) stream_url_provider: crate::renderer::MediaUrlProvider,
+    pub(crate) cover_url_provider: crate::renderer::CoverUrlProvider,
+    pub(crate) stream_format: StreamFormatFn,
 }
 
-impl std::fmt::Debug for CastConnect {
+impl std::fmt::Debug for RemoteConnect {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("CastConnect")
+        f.debug_struct("RemoteConnect")
             .field("device_name", &self.device_name)
             .finish_non_exhaustive()
     }
 }
 
-/// The status callback the session reports through: it dispatches each receiver
-/// status back onto the service's command loop as a `CastStatus` command, so
+/// The status callback the session reports through: it dispatches each device
+/// status back onto the service's command loop as a `RemoteStatus` command, so
 /// status handling stays serial with every other command.
 pub(super) fn status_callback(
     command_tx: tokio_mpsc::UnboundedSender<PlaybackCommand>,
-) -> crate::cast::StatusCallback {
-    Arc::new(move |status: CastSessionStatus| {
-        dispatch_command(&command_tx, PlaybackCommand::CastStatus(status));
+) -> crate::renderer::StatusCallback {
+    Arc::new(move |status: RendererSessionStatus| {
+        dispatch_command(&command_tx, PlaybackCommand::RemoteStatus(status));
     })
 }
 
-/// A no-op stand-in for the local decoder while casting: the thread has already
-/// exited and the token is never read. It keeps `CurrentTrack`'s shape (one
-/// always-present decoder) without a real decode running.
+/// A no-op stand-in for the local decoder while playing remotely: the thread has
+/// already exited and the token is never read. It keeps `CurrentTrack`'s shape
+/// (one always-present decoder) without a real decode running.
 pub(super) fn stub_decoder() -> TrackDecoder {
     TrackDecoder {
         handle: std::thread::spawn(|| {}),
@@ -87,15 +96,16 @@ pub(super) fn stub_decoder() -> TrackDecoder {
 }
 
 impl PlaybackService {
-    /// Switch to casting: capture the current track and position, tear the local
-    /// pipeline down (keeping the queue), start the session, and reissue the
-    /// current track to the receiver at its position.
-    pub(super) async fn handle_cast_to(&mut self, connect: CastConnect) {
-        let CastConnect {
+    /// Switch to remote playback: capture the current track and position, tear the
+    /// local pipeline down (keeping the queue), start the session, and reissue the
+    /// current track to the device at its position.
+    pub(super) async fn handle_play_on(&mut self, connect: RemoteConnect) {
+        let RemoteConnect {
             channel,
             device_name,
             stream_url_provider,
             cover_url_provider,
+            stream_format,
         } = connect;
 
         let current = self.current_track_id().map(str::to_string);
@@ -104,7 +114,7 @@ impl PlaybackService {
             .lock()
             .unwrap()
             .unwrap_or(Duration::ZERO);
-        // Carry the current play/pause intent to the receiver.
+        // Carry the current play/pause intent to the device.
         let target = self.current_play_target();
         let volume = self.effective_volume();
 
@@ -112,17 +122,18 @@ impl PlaybackService {
         // queue and its cursor are untouched.
         self.teardown_local_playback();
 
-        let session = CastSession::start(channel, status_callback(self.command_tx.clone()));
+        let session = RendererSession::start(channel, status_callback(self.command_tx.clone()));
         session.set_volume(volume);
-        self.renderer = Renderer::Cast(CastRenderer {
+        self.renderer = Renderer::Remote(RemoteRenderer {
             session,
             stream_url_provider,
             cover_url_provider,
+            stream_format,
             last_position: position,
         });
         emit_progress(
             &self.progress_tx,
-            PlaybackProgress::CastStatusChanged {
+            PlaybackProgress::RemoteStatusChanged {
                 device_name: Some(device_name),
             },
         );
@@ -138,7 +149,7 @@ impl PlaybackService {
                 .await;
             }
             None => {
-                // Nothing was playing: casting is armed but idle.
+                // Nothing was playing: remote playback is armed but idle.
                 self.slot = PlaybackSlot::Stopped;
                 self.sync_audio_state();
                 self.emit_state();
@@ -146,41 +157,41 @@ impl PlaybackService {
         }
     }
 
-    /// User-initiated stop casting: stop the receiver, then resume local
-    /// playback paused at the receiver's last position.
-    pub(super) async fn handle_stop_casting(&mut self) {
-        self.end_cast_and_resume_local(true).await;
+    /// User-initiated stop of remote playback: stop the device, then resume local
+    /// playback paused at the device's last position.
+    pub(super) async fn handle_stop_remote(&mut self) {
+        self.end_remote_and_resume_local(true).await;
     }
 
-    /// Apply one receiver status. Ignored when not casting (a stale update from a
-    /// session that already ended). A terminal `ended` update — a receiver-side
+    /// Apply one device status. Ignored when playing locally (a stale update from
+    /// a session that already ended). A terminal `ended` update — a device-side
     /// stop — resumes local playback; otherwise the position feed and the slot
-    /// phase are reconciled to the receiver.
-    pub(super) async fn handle_cast_status(&mut self, status: CastSessionStatus) {
-        if !self.renderer.is_casting() {
+    /// phase are reconciled to the device.
+    pub(super) async fn handle_remote_status(&mut self, status: RendererSessionStatus) {
+        if !self.renderer.is_remote() {
             return;
         }
         if status.ended {
-            info!("cast session ended (receiver-side); resuming local playback");
-            self.end_cast_and_resume_local(false).await;
+            info!("remote session ended (device-side); resuming local playback");
+            self.end_remote_and_resume_local(false).await;
             return;
         }
-        if let (Renderer::Cast(cast), Some(position)) = (&mut self.renderer, status.position) {
-            cast.last_position = position;
+        if let (Renderer::Remote(remote), Some(position)) = (&mut self.renderer, status.position) {
+            remote.last_position = position;
         }
-        self.apply_cast_status(status).await;
+        self.apply_remote_status(status).await;
     }
 
-    /// End the cast session and resume the local renderer, paused at the
-    /// receiver's last position. `stop_receiver` stops receiver playback first
-    /// (a user-initiated stop); a receiver-side end has already stopped it.
-    async fn end_cast_and_resume_local(&mut self, stop_receiver: bool) {
+    /// End the remote session and resume the local renderer, paused at the
+    /// device's last position. `stop_device` stops device playback first (a
+    /// user-initiated stop); a device-side end has already stopped it.
+    async fn end_remote_and_resume_local(&mut self, stop_device: bool) {
         let last_position = match &self.renderer {
-            Renderer::Cast(cast) => {
-                if stop_receiver {
-                    cast.session.stop();
+            Renderer::Remote(remote) => {
+                if stop_device {
+                    remote.session.stop();
                 }
-                cast.last_position
+                remote.last_position
             }
             Renderer::Local => return,
         };
@@ -190,7 +201,7 @@ impl PlaybackService {
         self.renderer = Renderer::Local;
         emit_progress(
             &self.progress_tx,
-            PlaybackProgress::CastStatusChanged { device_name: None },
+            PlaybackProgress::RemoteStatusChanged { device_name: None },
         );
         self.teardown_local_playback();
 
@@ -209,10 +220,10 @@ impl PlaybackService {
         }
     }
 
-    /// Reconcile the slot and the progress feed to a non-terminal receiver
-    /// status: emit a position update, and drive queue-advance / phase changes
-    /// off the receiver's player state.
-    async fn apply_cast_status(&mut self, status: CastSessionStatus) {
+    /// Reconcile the slot and the progress feed to a non-terminal device status:
+    /// emit a position update, and drive queue-advance / phase changes off the
+    /// device's player state.
+    async fn apply_remote_status(&mut self, status: RendererSessionStatus) {
         let PlaybackSlot::Active(cur) = &self.slot else {
             return;
         };
@@ -241,8 +252,8 @@ impl PlaybackService {
         }
 
         match status.player_state {
-            CastPlayerState::Finished => {
-                // The receiver reached end-of-track: advance the shared queue
+            RendererPlayerState::Finished => {
+                // The device reached end-of-track: advance the shared queue
                 // through the one advance entry point, exactly like local
                 // end-of-track.
                 if let PlaybackSlot::Active(cur) = &mut self.slot {
@@ -250,16 +261,18 @@ impl PlaybackService {
                 }
                 self.handle_auto_advance(track_id).await;
             }
-            CastPlayerState::Playing => self.set_cast_phase(TrackPhase::Playing),
-            CastPlayerState::Paused => self.set_cast_phase(TrackPhase::Paused(PausePhase::Manual)),
+            RendererPlayerState::Playing => self.set_remote_phase(TrackPhase::Playing),
+            RendererPlayerState::Paused => {
+                self.set_remote_phase(TrackPhase::Paused(PausePhase::Manual))
+            }
             // Buffering/idle are transient; the installed phase stands.
-            CastPlayerState::Buffering | CastPlayerState::Idle => {}
+            RendererPlayerState::Buffering | RendererPlayerState::Idle => {}
         }
     }
 
-    /// Move the current cast track to `phase` and emit, but only on a real
-    /// change (the receiver reports its state every poll).
-    fn set_cast_phase(&mut self, phase: TrackPhase) {
+    /// Move the current remote track to `phase` and emit, but only on a real
+    /// change (the device reports its state every poll).
+    fn set_remote_phase(&mut self, phase: TrackPhase) {
         let PlaybackSlot::Active(cur) = &mut self.slot else {
             return;
         };
@@ -271,16 +284,16 @@ impl PlaybackService {
         self.emit_state();
     }
 
-    /// Load `track_id` onto the receiver: resolve its metadata (no local buffers
-    /// or decoder), mint its media URL, and install it as the current track.
-    /// The cast branch of `play_track`.
-    pub(super) async fn play_track_cast(
+    /// Load `track_id` onto the device: resolve its metadata (no local buffers or
+    /// decoder), mint its media URL, and install it as the current track. The
+    /// remote branch of `play_track`.
+    pub(super) async fn play_track_remote(
         &mut self,
         track_id: &str,
         start: TrackStart,
         target: PlayTarget,
     ) {
-        // Tear the previous cast track's slot down (stub decoder, empty
+        // Tear the previous remote track's slot down (stub decoder, empty
         // segments — nothing to release).
         self.teardown_current_track();
 
@@ -297,8 +310,8 @@ impl PlaybackService {
         {
             Ok(pair) => pair,
             Err(e) => {
-                error!("cast: failed to resolve track {track_id}: {e}");
-                self.fail_cast(PlaybackError::database(e).into_ui_reason())
+                error!("remote: failed to resolve track {track_id}: {e}");
+                self.fail_remote(PlaybackError::database(e).into_ui_reason())
                     .await;
                 return;
             }
@@ -308,42 +321,42 @@ impl PlaybackService {
         let prepared = finalize_playback_track(resolved, track_info, Vec::new(), replay_gain_mode);
 
         // The content-type gate is decided here, where the track's type is
-        // known, and passed to the provider (which renders the URL) so the URL's
-        // format and the declared MIME below never disagree.
-        let format = cast_stream_format(&content_type);
-
-        // Build and send the receiver media under the cast renderer's providers.
-        let Renderer::Cast(cast) = &self.renderer else {
-            // Raced out of casting before the resolve returned; nothing to do.
+        // known, through the flavor's own safe-set, and passed to the provider
+        // (which renders the URL) so the URL's format and the declared MIME below
+        // never disagree.
+        let Renderer::Remote(remote) = &self.renderer else {
+            // Raced out of remote playback before the resolve returned.
             return;
         };
-        let url = match (cast.stream_url_provider)(track_id, format) {
+        let format = (remote.stream_format)(&content_type);
+
+        let url = match (remote.stream_url_provider)(track_id, format) {
             Ok(url) => url,
             Err(reason) => {
-                error!("cast: failed to mint media URL for {track_id}: {reason}");
-                self.fail_cast(crate::ui::PlaybackErrorReason::internal(
-                    "Couldn't build the audio URL for the Cast device.",
+                error!("remote: failed to mint media URL for {track_id}: {reason}");
+                self.fail_remote(crate::ui::PlaybackErrorReason::internal(
+                    "Couldn't build the audio URL for the renderer.",
                 ))
                 .await;
                 return;
             }
         };
-        let media = CastMedia {
+        let media = RendererMedia {
             url,
             content_type: format.content_type_str(&content_type),
             title: prepared.track_info.track_title.clone(),
             artist: prepared.track_info.artist_names.clone(),
             album: prepared.track_info.album_title.clone(),
-            cover_url: (cast.cover_url_provider)(track_id),
+            cover_url: (remote.cover_url_provider)(track_id),
             duration: Some(prepared.duration),
         };
         let start_position = start.position(prepared.total_pregap_ms());
-        cast.session.load(media);
+        remote.session.load(media);
         if start_position > Duration::ZERO {
-            cast.session.seek(start_position);
+            remote.session.seek(start_position);
         }
         if matches!(target, PlayTarget::Paused(_)) {
-            cast.session.pause();
+            remote.session.pause();
         }
 
         *self.current_position_shared.lock().unwrap() = Some(start_position);
@@ -352,9 +365,9 @@ impl PlaybackService {
         self.persist_playback_state().await;
     }
 
-    /// A cast track load failed: surface the error and stop casting, dropping
-    /// back to a stopped local renderer.
-    async fn fail_cast(&mut self, reason: crate::ui::PlaybackErrorReason) {
+    /// A remote track load failed: surface the error and stop remote playback,
+    /// dropping back to a stopped local renderer.
+    async fn fail_remote(&mut self, reason: crate::ui::PlaybackErrorReason) {
         emit_progress(
             &self.progress_tx,
             PlaybackProgress::PlaybackError { reason },
@@ -362,12 +375,12 @@ impl PlaybackService {
         self.renderer = Renderer::Local;
         emit_progress(
             &self.progress_tx,
-            PlaybackProgress::CastStatusChanged { device_name: None },
+            PlaybackProgress::RemoteStatusChanged { device_name: None },
         );
         self.stop().await;
     }
 
-    /// The current (effective) output volume — 0 while muted, so the receiver is
+    /// The current (effective) output volume — 0 while muted, so the device is
     /// seeded to match what the user hears.
     fn effective_volume(&self) -> f32 {
         if self.is_muted {
@@ -379,8 +392,8 @@ impl PlaybackService {
 
     /// Tear down the local audio pipeline — the current decoder, the preload, the
     /// cpal output, and the file buffers — without emitting or persisting. Shared
-    /// by `stop` (which then emits Stopped) and the cast switch (which then
-    /// installs the cast track).
+    /// by `stop` (which then emits Stopped) and the remote switch (which then
+    /// installs the remote track).
     pub(super) fn teardown_local_playback(&mut self) {
         self.stop_preview_for_main_playback();
         self.teardown_current_track();

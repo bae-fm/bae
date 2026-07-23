@@ -2430,7 +2430,7 @@ pub struct BridgeCastDevice {
 // The conversion is only used by the desktop-gated `get_cast_devices` handle fn.
 #[cfg(feature = "desktop")]
 impl BridgeCastDevice {
-    pub(crate) fn from_core(device: bae_core::cast::CastDevice) -> Self {
+    pub(crate) fn from_core(device: bae_core::renderer::RendererDevice) -> Self {
         Self {
             id: device.id,
             name: device.name,

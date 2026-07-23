@@ -1,11 +1,13 @@
-//! A live cast session: one connected device, driven on its own thread.
+//! A live remote-renderer session: one connected device, driven on its own
+//! thread.
 //!
-//! [`CastSession`] owns a [`CastChannel`] and the thread that talks to it. The
-//! thread interleaves commands (load/play/pause/seek/volume/stop) with a status
-//! poll on a fixed interval, reporting every status — and the session's end — to
-//! a caller-supplied callback. The callback is the seam to the playback service:
-//! the session never names playback types, so bae-core's cast module stays
-//! decoupled from the renderer that consumes it.
+//! [`RendererSession`] owns a [`RendererChannel`] and the thread that talks to
+//! it. The thread interleaves commands (load/play/pause/seek/volume/stop) with a
+//! status poll on a fixed interval, reporting every status — and the session's
+//! end — to a caller-supplied callback. The callback is the seam to the playback
+//! service: the session never names playback types, so this stays decoupled from
+//! the renderer that consumes it. Both the Cast and the UPnP channels are driven
+//! by this one session unchanged.
 
 use std::sync::mpsc;
 use std::sync::Arc;
@@ -14,26 +16,28 @@ use std::time::Duration;
 
 use tracing::{debug, warn};
 
-use super::channel::{CastChannel, CastError, CastMedia, CastPlayerState, ReceiverStatus};
+use super::channel::{
+    ReceiverStatus, RendererChannel, RendererError, RendererMedia, RendererPlayerState,
+};
 
-/// How often the session polls the receiver for status between commands.
+/// How often the session polls the renderer for status between commands.
 const POLL_INTERVAL: Duration = Duration::from_millis(500);
 
 /// A status update from the session's poll loop. `ended` marks the terminal
-/// update: the connection was lost or the receiver stopped, and no further
+/// update: the connection was lost or the renderer stopped, and no further
 /// updates follow.
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub struct CastSessionStatus {
-    pub player_state: CastPlayerState,
+pub struct RendererSessionStatus {
+    pub player_state: RendererPlayerState,
     pub position: Option<Duration>,
     pub duration: Option<Duration>,
-    /// The receiver's volume level, or `None` when it was omitted (not
+    /// The renderer's volume level, or `None` when it was omitted (not
     /// fabricated).
     pub volume: Option<f32>,
     pub ended: bool,
 }
 
-impl CastSessionStatus {
+impl RendererSessionStatus {
     fn from_receiver(status: ReceiverStatus) -> Self {
         Self {
             player_state: status.player_state,
@@ -47,7 +51,7 @@ impl CastSessionStatus {
     /// The terminal update sent once when the session ends.
     fn ended() -> Self {
         Self {
-            player_state: CastPlayerState::Idle,
+            player_state: RendererPlayerState::Idle,
             position: None,
             duration: None,
             volume: None,
@@ -59,11 +63,11 @@ impl CastSessionStatus {
 /// Called on the session thread for every status change and once for session
 /// end. The playback service supplies one that dispatches the status back onto
 /// its command loop.
-pub type StatusCallback = Arc<dyn Fn(CastSessionStatus) + Send + Sync>;
+pub type StatusCallback = Arc<dyn Fn(RendererSessionStatus) + Send + Sync>;
 
 /// Commands the session thread executes against the channel.
 enum SessionCommand {
-    Load(Box<CastMedia>),
+    Load(Box<RendererMedia>),
     Play,
     Pause,
     Seek(Duration),
@@ -71,9 +75,9 @@ enum SessionCommand {
     Stop,
 }
 
-/// A connected cast session. Dropping it ends the poll loop and joins its
-/// thread. Commands are fire-and-forget onto the session thread.
-pub struct CastSession {
+/// A connected remote-renderer session. Dropping it ends the poll loop and joins
+/// its thread. Commands are fire-and-forget onto the session thread.
+pub struct RendererSession {
     /// `None` only transiently, during `Drop`: the sender is dropped first so
     /// the thread's `recv_timeout` sees the disconnect and exits before the
     /// join.
@@ -81,11 +85,11 @@ pub struct CastSession {
     thread: Option<JoinHandle<()>>,
 }
 
-impl CastSession {
+impl RendererSession {
     /// Start a session over an already-connected `channel`, spawning its poll
     /// thread. `on_status` receives every status update and the terminal
     /// `ended` update.
-    pub fn start(channel: Box<dyn CastChannel>, on_status: StatusCallback) -> Self {
+    pub fn start(channel: Box<dyn RendererChannel>, on_status: StatusCallback) -> Self {
         let (command_tx, command_rx) = mpsc::channel();
         let thread = std::thread::spawn(move || run_session(channel, command_rx, on_status));
         Self {
@@ -94,8 +98,8 @@ impl CastSession {
         }
     }
 
-    /// Load `media` on the receiver and start playing it.
-    pub fn load(&self, media: CastMedia) {
+    /// Load `media` on the renderer and start playing it.
+    pub fn load(&self, media: RendererMedia) {
         self.send(SessionCommand::Load(Box::new(media)));
     }
 
@@ -115,7 +119,7 @@ impl CastSession {
         self.send(SessionCommand::SetVolume(level));
     }
 
-    /// Stop playback on the receiver, leaving the session connected.
+    /// Stop playback on the renderer, leaving the session connected.
     pub fn stop(&self) {
         self.send(SessionCommand::Stop);
     }
@@ -126,19 +130,19 @@ impl CastSession {
             .as_ref()
             .is_some_and(|tx| tx.send(command).is_ok());
         if !sent {
-            debug!("cast session command dropped: the session thread has ended");
+            debug!("renderer session command dropped: the session thread has ended");
         }
     }
 }
 
-impl Drop for CastSession {
+impl Drop for RendererSession {
     fn drop(&mut self) {
         // Drop the sender first so the thread's `recv_timeout` wakes with a
         // disconnect and exits its loop; only then can the join complete.
         self.command_tx = None;
         if let Some(thread) = self.thread.take() {
             if thread.join().is_err() {
-                warn!("cast session thread panicked before join");
+                warn!("renderer session thread panicked before join");
             }
         }
     }
@@ -146,16 +150,16 @@ impl Drop for CastSession {
 
 /// The session thread body: interleave commands with a status poll every
 /// [`POLL_INTERVAL`], reporting each status. A connection failure — from a
-/// command or a poll — ends the session (the receiver stopped, or the network
+/// command or a poll — ends the session (the renderer stopped, or the network
 /// dropped): report the terminal update once and exit.
 fn run_session(
-    mut channel: Box<dyn CastChannel>,
+    mut channel: Box<dyn RendererChannel>,
     command_rx: mpsc::Receiver<SessionCommand>,
     on_status: StatusCallback,
 ) {
-    // An initial poll surfaces the receiver's starting state promptly.
+    // An initial poll surfaces the renderer's starting state promptly.
     if poll_and_report(channel.as_mut(), &on_status).is_break() {
-        on_status(CastSessionStatus::ended());
+        on_status(RendererSessionStatus::ended());
         return;
     }
 
@@ -163,19 +167,19 @@ fn run_session(
         match command_rx.recv_timeout(POLL_INTERVAL) {
             Ok(command) => {
                 if run_command(channel.as_mut(), command).is_break() {
-                    on_status(CastSessionStatus::ended());
+                    on_status(RendererSessionStatus::ended());
                     return;
                 }
                 // Reflect the command's effect immediately rather than waiting
                 // for the next poll tick.
                 if poll_and_report(channel.as_mut(), &on_status).is_break() {
-                    on_status(CastSessionStatus::ended());
+                    on_status(RendererSessionStatus::ended());
                     return;
                 }
             }
             Err(mpsc::RecvTimeoutError::Timeout) => {
                 if poll_and_report(channel.as_mut(), &on_status).is_break() {
-                    on_status(CastSessionStatus::ended());
+                    on_status(RendererSessionStatus::ended());
                     return;
                 }
             }
@@ -186,10 +190,10 @@ fn run_session(
     }
 }
 
-/// Run one command. A [`CastError::Connection`] is terminal (`Break`); other
+/// Run one command. A [`RendererError::Connection`] is terminal (`Break`); other
 /// errors are logged and playback continues (`Continue`).
 fn run_command(
-    channel: &mut dyn CastChannel,
+    channel: &mut dyn RendererChannel,
     command: SessionCommand,
 ) -> std::ops::ControlFlow<()> {
     let result = match command {
@@ -205,12 +209,12 @@ fn run_command(
 
 /// Poll status and report it. A connection failure is terminal.
 fn poll_and_report(
-    channel: &mut dyn CastChannel,
+    channel: &mut dyn RendererChannel,
     on_status: &StatusCallback,
 ) -> std::ops::ControlFlow<()> {
     match channel.poll_status() {
         Ok(status) => {
-            on_status(CastSessionStatus::from_receiver(status));
+            on_status(RendererSessionStatus::from_receiver(status));
             std::ops::ControlFlow::Continue(())
         }
         Err(error) => classify(Err(error)),
@@ -219,15 +223,15 @@ fn poll_and_report(
 
 /// Map a channel result to control flow: a lost connection ends the session; any
 /// other error is logged and the session continues.
-fn classify(result: Result<(), CastError>) -> std::ops::ControlFlow<()> {
+fn classify(result: Result<(), RendererError>) -> std::ops::ControlFlow<()> {
     match result {
         Ok(()) => std::ops::ControlFlow::Continue(()),
-        Err(CastError::Connection(detail)) => {
-            debug!("cast session ending: {detail}");
+        Err(RendererError::Connection(detail)) => {
+            debug!("renderer session ending: {detail}");
             std::ops::ControlFlow::Break(())
         }
         Err(error) => {
-            warn!("cast command failed (session continues): {error}");
+            warn!("renderer command failed (session continues): {error}");
             std::ops::ControlFlow::Continue(())
         }
     }

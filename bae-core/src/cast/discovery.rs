@@ -12,27 +12,18 @@ use std::thread::JoinHandle;
 use mdns_sd::{ResolvedService, ServiceDaemon, ServiceEvent};
 use tracing::{debug, warn};
 
+use crate::renderer::{RendererConnection, RendererDevice};
+
 /// The Cast service type browsed for.
 const CAST_SERVICE_TYPE: &str = "_googlecast._tcp.local.";
 
-/// A discovered Cast device: enough to display it and to open a channel to it.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct CastDevice {
-    /// Stable device identifier (the Cast `id` TXT value), used to route
-    /// `cast_to` and to de-duplicate a device seen on several addresses.
-    pub id: String,
-    /// Human-readable name to show in the picker (the Cast `fn` TXT value).
-    pub name: String,
-    pub addr: IpAddr,
-    pub port: u16,
-}
-
-/// Browses for Cast devices and publishes the current list over a watch channel.
-/// Start and stop with the picker's visibility; a stopped discovery holds no
-/// mDNS daemon and no browse thread.
+/// Browses for Cast devices and publishes the current list over a watch channel,
+/// as [`RendererDevice`]s so the picker shows one merged list. Start and stop
+/// with the picker's visibility; a stopped discovery holds no mDNS daemon and no
+/// browse thread.
 pub struct CastDiscovery {
-    devices_tx: tokio::sync::watch::Sender<Vec<CastDevice>>,
-    devices_rx: tokio::sync::watch::Receiver<Vec<CastDevice>>,
+    devices_tx: tokio::sync::watch::Sender<Vec<RendererDevice>>,
+    devices_rx: tokio::sync::watch::Receiver<Vec<RendererDevice>>,
     /// The running browse: the mDNS daemon and the thread draining its events.
     /// `None` while stopped.
     running: Option<Running>,
@@ -55,12 +46,12 @@ impl CastDiscovery {
 
     /// Subscribe to the live device list. The current snapshot is available
     /// immediately on the returned receiver.
-    pub fn subscribe(&self) -> tokio::sync::watch::Receiver<Vec<CastDevice>> {
+    pub fn subscribe(&self) -> tokio::sync::watch::Receiver<Vec<RendererDevice>> {
         self.devices_rx.clone()
     }
 
     /// The current device list snapshot.
-    pub fn devices(&self) -> Vec<CastDevice> {
+    pub fn devices(&self) -> Vec<RendererDevice> {
         self.devices_rx.borrow().clone()
     }
 
@@ -134,11 +125,11 @@ impl Drop for CastDiscovery {
 /// the channel closes (the daemon shut down).
 fn run_browse(
     events: mdns_sd::Receiver<ServiceEvent>,
-    devices_tx: tokio::sync::watch::Sender<Vec<CastDevice>>,
+    devices_tx: tokio::sync::watch::Sender<Vec<RendererDevice>>,
 ) {
     // Keyed by service fullname (what `ServiceRemoved` carries), so a device can
     // be dropped when it leaves.
-    let mut by_fullname: HashMap<String, CastDevice> = HashMap::new();
+    let mut by_fullname: HashMap<String, RendererDevice> = HashMap::new();
     while let Ok(event) = events.recv() {
         match event {
             ServiceEvent::ServiceResolved(resolved) => {
@@ -173,20 +164,20 @@ fn run_browse(
 
 /// A stable, de-duplicated device list: one entry per device id (a device seen
 /// on several addresses collapses to one), sorted by name for a stable UI.
-fn snapshot(by_fullname: &HashMap<String, CastDevice>) -> Vec<CastDevice> {
-    let mut by_id: HashMap<&str, CastDevice> = HashMap::new();
+fn snapshot(by_fullname: &HashMap<String, RendererDevice>) -> Vec<RendererDevice> {
+    let mut by_id: HashMap<&str, RendererDevice> = HashMap::new();
     for device in by_fullname.values() {
         by_id.entry(&device.id).or_insert_with(|| device.clone());
     }
-    let mut devices: Vec<CastDevice> = by_id.into_values().collect();
+    let mut devices: Vec<RendererDevice> = by_id.into_values().collect();
     devices.sort_by(|a, b| a.name.cmp(&b.name).then(a.id.cmp(&b.id)));
     devices
 }
 
-/// Map a resolved mDNS service to a [`CastDevice`]. The `ResolvedService` type
+/// Map a resolved mDNS service to a Cast [`RendererDevice`]. The `ResolvedService` type
 /// is opaque (non-exhaustive), so the pieces are pulled out here and mapped by
 /// the pure [`map_device`], which the tests drive directly.
-fn device_from_resolved(resolved: &ResolvedService) -> Option<CastDevice> {
+fn device_from_resolved(resolved: &ResolvedService) -> Option<RendererDevice> {
     map_device(
         &resolved.fullname,
         resolved.port,
@@ -196,18 +187,18 @@ fn device_from_resolved(resolved: &ResolvedService) -> Option<CastDevice> {
     )
 }
 
-/// Build a [`CastDevice`] from a service's fields, or `None` if it lacks what's
-/// needed to reach and name it: a device id, and at least one address. IPv4 is
-/// preferred — Cast receivers advertise it and the media receiver fetches over
-/// IPv4 LAN. The name falls back to the service instance label when a device
-/// advertises no `fn` value.
+/// Build a Cast [`RendererDevice`] from a service's fields, or `None` if it
+/// lacks what's needed to reach and name it: a device id, and at least one
+/// address. IPv4 is preferred — Cast receivers advertise it and the media
+/// receiver fetches over IPv4 LAN. The name falls back to the service instance
+/// label when a device advertises no `fn` value.
 pub(super) fn map_device(
     fullname: &str,
     port: u16,
     addresses: impl Iterator<Item = IpAddr>,
     id: Option<&str>,
     friendly_name: Option<&str>,
-) -> Option<CastDevice> {
+) -> Option<RendererDevice> {
     let id = id.map(str::trim).filter(|id| !id.is_empty())?;
     let name = friendly_name
         .map(str::trim)
@@ -224,11 +215,13 @@ pub(super) fn map_device(
         chosen.get_or_insert(addr);
     }
 
-    Some(CastDevice {
+    Some(RendererDevice {
         id: id.to_string(),
         name,
-        addr: chosen?,
-        port,
+        connection: RendererConnection::Cast {
+            addr: chosen?,
+            port,
+        },
     })
 }
 

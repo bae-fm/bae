@@ -1821,17 +1821,20 @@ async fn corrupt_resume_row_ships_resume_cache_corrupt_anomaly() {
     );
 }
 
-// -- renderer seam: casting ---------------------------------------------------
+// -- renderer seam: remote playback -------------------------------------------
 
-use crate::cast::{
-    CastChannel, CastError, CastMedia, CastPlayerState, CastSessionStatus, ReceiverStatus,
+use crate::renderer::{
+    cast_stream_format, ReceiverStatus, RendererChannel, RendererError, RendererMedia,
+    RendererPlayerState, RendererSessionStatus,
 };
 
-/// Shared, scriptable state for the fake cast channel: the commands the session
-/// issued and the status each poll returns.
+/// Shared, scriptable state for the fake renderer channel: the commands the
+/// session issued and the status each poll returns. The service drives any
+/// `RendererChannel`, so this one fake covers the transport routing for both
+/// renderer flavors.
 #[derive(Default)]
-struct FakeCastState {
-    loads: Vec<CastMedia>,
+struct FakeRendererState {
+    loads: Vec<RendererMedia>,
     seeks: Vec<std::time::Duration>,
     pauses: u32,
     plays: u32,
@@ -1840,46 +1843,46 @@ struct FakeCastState {
 }
 
 #[derive(Clone)]
-struct FakeCastChannel {
-    state: Arc<Mutex<FakeCastState>>,
+struct FakeRendererChannel {
+    state: Arc<Mutex<FakeRendererState>>,
 }
 
-impl FakeCastChannel {
+impl FakeRendererChannel {
     fn new() -> Self {
         Self {
-            state: Arc::new(Mutex::new(FakeCastState::default())),
+            state: Arc::new(Mutex::new(FakeRendererState::default())),
         }
     }
 }
 
-impl CastChannel for FakeCastChannel {
-    fn load(&mut self, media: &CastMedia) -> Result<(), CastError> {
+impl RendererChannel for FakeRendererChannel {
+    fn load(&mut self, media: &RendererMedia) -> Result<(), RendererError> {
         self.state.lock().unwrap().loads.push(media.clone());
         Ok(())
     }
-    fn play(&mut self) -> Result<(), CastError> {
+    fn play(&mut self) -> Result<(), RendererError> {
         self.state.lock().unwrap().plays += 1;
         Ok(())
     }
-    fn pause(&mut self) -> Result<(), CastError> {
+    fn pause(&mut self) -> Result<(), RendererError> {
         self.state.lock().unwrap().pauses += 1;
         Ok(())
     }
-    fn seek(&mut self, position: std::time::Duration) -> Result<(), CastError> {
+    fn seek(&mut self, position: std::time::Duration) -> Result<(), RendererError> {
         self.state.lock().unwrap().seeks.push(position);
         Ok(())
     }
-    fn set_volume(&mut self, level: f32) -> Result<(), CastError> {
+    fn set_volume(&mut self, level: f32) -> Result<(), RendererError> {
         self.state.lock().unwrap().volumes.push(level);
         Ok(())
     }
-    fn stop(&mut self) -> Result<(), CastError> {
+    fn stop(&mut self) -> Result<(), RendererError> {
         self.state.lock().unwrap().stops += 1;
         Ok(())
     }
-    fn poll_status(&mut self) -> Result<ReceiverStatus, CastError> {
+    fn poll_status(&mut self) -> Result<ReceiverStatus, RendererError> {
         Ok(ReceiverStatus {
-            player_state: CastPlayerState::Playing,
+            player_state: RendererPlayerState::Playing,
             position: None,
             duration: None,
             volume: Some(1.0),
@@ -1900,8 +1903,8 @@ fn wait_until(predicate: impl Fn() -> bool) -> bool {
 }
 
 /// Seed the audio format, segment, and backing file that make `track_id`
-/// resolvable, so the cast path can turn it into media. No real bytes on disk —
-/// the receiver, not bae, fetches the audio, so the cast path never decodes it.
+/// resolvable, so the remote path can turn it into media. No real bytes on disk —
+/// the device, not bae, fetches the audio, so the remote path never decodes it.
 async fn seed_playable_track(database: &crate::db::Database, release_id: &str, track_id: &str) {
     use crate::db::{DbAudioFormat, DbAudioSegment, DbAudioSegmentRole, DbFile};
     use crate::util::content_type::ContentType;
@@ -1945,9 +1948,9 @@ async fn seed_playable_track(database: &crate::db::Database, release_id: &str, t
         .unwrap();
 }
 
-/// A playback service over releases whose every track is resolvable to cast
+/// A playback service over releases whose every track is resolvable to remote
 /// media.
-async fn casting_service(
+async fn remote_service(
     releases: &[(&str, &[&str])],
 ) -> (
     TempDir,
@@ -1964,25 +1967,26 @@ async fn casting_service(
     (home, service, rx)
 }
 
-fn test_stream_provider() -> crate::cast::MediaUrlProvider {
-    Arc::new(|track_id: &str, _format| Ok(format!("http://cast.local/stream?id={track_id}")))
+fn test_stream_provider() -> crate::renderer::MediaUrlProvider {
+    Arc::new(|track_id: &str, _format| Ok(format!("http://renderer.local/stream?id={track_id}")))
 }
 
-fn cast_connect(channel: FakeCastChannel) -> CastConnect {
-    CastConnect {
+fn remote_connect(channel: FakeRendererChannel) -> RemoteConnect {
+    RemoteConnect {
         channel: Box::new(channel),
         device_name: "Living Room".to_string(),
         stream_url_provider: test_stream_provider(),
         cover_url_provider: Arc::new(|_| None),
+        stream_format: cast_stream_format,
     }
 }
 
-/// `cast_to` mid-track keeps the current track and queue position, switches the
-/// renderer to Cast, and reissues the current track to the receiver at its
+/// `play_on` mid-track keeps the current track and queue position, switches the
+/// renderer to Remote, and reissues the current track to the device at its
 /// current position (a LOAD plus a seek).
 #[tokio::test]
-async fn cast_to_reissues_current_track_at_position() {
-    let (_home, mut service, _rx) = casting_service(&[("rel-1", &["t1", "t2"])]).await;
+async fn play_on_reissues_current_track_at_position() {
+    let (_home, mut service, _rx) = remote_service(&[("rel-1", &["t1", "t2"])]).await;
     service.playback_queue.play_release(
         ContextSource::Release("rel-1".to_string()),
         vec!["t1".to_string(), "t2".to_string()],
@@ -1992,13 +1996,13 @@ async fn cast_to_reissues_current_track_at_position() {
     service.slot = active_slot(test_prepared_track("t1", buffer), TrackPhase::Playing);
     *service.current_position_shared.lock().unwrap() = Some(std::time::Duration::from_secs(30));
 
-    let channel = FakeCastChannel::new();
+    let channel = FakeRendererChannel::new();
     let state = channel.state.clone();
-    service.handle_cast_to(cast_connect(channel)).await;
+    service.handle_play_on(remote_connect(channel)).await;
 
     assert!(
-        service.renderer.is_casting(),
-        "the renderer switches to Cast"
+        service.renderer.is_remote(),
+        "the renderer switches to Remote"
     );
     assert_eq!(
         service.slot.current_track_id(),
@@ -2010,20 +2014,19 @@ async fn cast_to_reissues_current_track_at_position() {
             let s = state.lock().unwrap();
             s.loads.len() == 1 && s.seeks.contains(&std::time::Duration::from_secs(30))
         }),
-        "the current track is loaded onto the receiver and seeked to its position"
+        "the current track is loaded onto the device and seeked to its position"
     );
     assert_eq!(
         state.lock().unwrap().loads[0].url,
-        "http://cast.local/stream?id=t1"
+        "http://renderer.local/stream?id=t1"
     );
 }
 
-/// A receiver `IDLE(finished)` status advances the shared queue to the next
-/// track and loads it onto the receiver — the same advance path local
-/// end-of-track uses.
+/// A device `Finished` status advances the shared queue to the next track and
+/// loads it onto the device — the same advance path local end-of-track uses.
 #[tokio::test]
-async fn cast_finished_advances_queue_and_loads_next() {
-    let (_home, mut service, _rx) = casting_service(&[("rel-1", &["t1", "t2"])]).await;
+async fn remote_finished_advances_queue_and_loads_next() {
+    let (_home, mut service, _rx) = remote_service(&[("rel-1", &["t1", "t2"])]).await;
     service.playback_queue.play_release(
         ContextSource::Release("rel-1".to_string()),
         vec!["t1".to_string(), "t2".to_string()],
@@ -2033,14 +2036,14 @@ async fn cast_finished_advances_queue_and_loads_next() {
     service.slot = active_slot(test_prepared_track("t1", buffer), TrackPhase::Playing);
     *service.current_position_shared.lock().unwrap() = Some(std::time::Duration::ZERO);
 
-    let channel = FakeCastChannel::new();
+    let channel = FakeRendererChannel::new();
     let state = channel.state.clone();
-    service.handle_cast_to(cast_connect(channel)).await;
+    service.handle_play_on(remote_connect(channel)).await;
     assert!(wait_until(|| !state.lock().unwrap().loads.is_empty()));
 
     service
-        .handle_cast_status(CastSessionStatus {
-            player_state: CastPlayerState::Finished,
+        .handle_remote_status(RendererSessionStatus {
+            player_state: RendererPlayerState::Finished,
             position: None,
             duration: None,
             volume: Some(1.0),
@@ -2059,16 +2062,16 @@ async fn cast_finished_advances_queue_and_loads_next() {
             .unwrap()
             .loads
             .iter()
-            .any(|m| m.url == "http://cast.local/stream?id=t2")),
-        "the next track is loaded onto the receiver"
+            .any(|m| m.url == "http://renderer.local/stream?id=t2")),
+        "the next track is loaded onto the device"
     );
 }
 
-/// A non-terminal receiver status feeds the shared progress channel, so every UI
+/// A non-terminal device status feeds the shared progress channel, so every UI
 /// and the position store update exactly as for local playback.
 #[tokio::test]
-async fn cast_status_feeds_progress() {
-    let (_home, mut service, mut rx) = casting_service(&[("rel-1", &["t1"])]).await;
+async fn remote_status_feeds_progress() {
+    let (_home, mut service, mut rx) = remote_service(&[("rel-1", &["t1"])]).await;
     service.playback_queue.play_release(
         ContextSource::Release("rel-1".to_string()),
         vec!["t1".to_string()],
@@ -2077,14 +2080,14 @@ async fn cast_status_feeds_progress() {
     let buffer = create_sparse_buffer(1_024);
     service.slot = active_slot(test_prepared_track("t1", buffer), TrackPhase::Playing);
 
-    let channel = FakeCastChannel::new();
-    service.handle_cast_to(cast_connect(channel)).await;
+    let channel = FakeRendererChannel::new();
+    service.handle_play_on(remote_connect(channel)).await;
     // Drain the setup events.
     while rx.try_recv().is_ok() {}
 
     service
-        .handle_cast_status(CastSessionStatus {
-            player_state: CastPlayerState::Playing,
+        .handle_remote_status(RendererSessionStatus {
+            player_state: RendererPlayerState::Playing,
             position: Some(std::time::Duration::from_secs(30)),
             duration: Some(std::time::Duration::from_secs(180)),
             volume: Some(1.0),
@@ -2107,15 +2110,15 @@ async fn cast_status_feeds_progress() {
     }
     assert!(
         saw_position,
-        "the receiver's position must flow as a PositionUpdate for the current track"
+        "the device's position must flow as a PositionUpdate for the current track"
     );
 }
 
-/// Stopping casting stops the receiver, drops the renderer back to Local, and
-/// announces `CastStatusChanged(None)` so the UI leaves the casting state.
+/// Stopping remote playback stops the device, drops the renderer back to Local,
+/// and announces `RemoteStatusChanged(None)` so the UI leaves the remote state.
 #[tokio::test]
-async fn stop_casting_stops_receiver_and_returns_to_local() {
-    let (_home, mut service, mut rx) = casting_service(&[("rel-1", &["t1"])]).await;
+async fn stop_remote_stops_device_and_returns_to_local() {
+    let (_home, mut service, mut rx) = remote_service(&[("rel-1", &["t1"])]).await;
     service.playback_queue.play_release(
         ContextSource::Release("rel-1".to_string()),
         vec!["t1".to_string()],
@@ -2124,41 +2127,42 @@ async fn stop_casting_stops_receiver_and_returns_to_local() {
     let buffer = create_sparse_buffer(1_024);
     service.slot = active_slot(test_prepared_track("t1", buffer), TrackPhase::Playing);
 
-    let channel = FakeCastChannel::new();
+    let channel = FakeRendererChannel::new();
     let state = channel.state.clone();
-    service.handle_cast_to(cast_connect(channel)).await;
+    service.handle_play_on(remote_connect(channel)).await;
     assert!(wait_until(|| !state.lock().unwrap().loads.is_empty()));
     while rx.try_recv().is_ok() {}
 
-    service.handle_stop_casting().await;
+    service.handle_stop_remote().await;
 
     assert!(
-        !service.renderer.is_casting(),
+        !service.renderer.is_remote(),
         "the renderer returns to Local"
     );
     assert!(
         wait_until(|| state.lock().unwrap().stops == 1),
-        "the receiver is told to stop"
+        "the device is told to stop"
     );
-    let mut saw_not_casting = false;
+    let mut saw_not_remote = false;
     while let Ok(progress) = rx.try_recv() {
-        if let PlaybackProgress::CastStatusChanged { device_name: None } = progress {
-            saw_not_casting = true;
+        if let PlaybackProgress::RemoteStatusChanged { device_name: None } = progress {
+            saw_not_remote = true;
         }
     }
     assert!(
-        saw_not_casting,
-        "stopping casting announces CastStatusChanged(None)"
+        saw_not_remote,
+        "stopping remote playback announces RemoteStatusChanged(None)"
     );
 }
 
-/// A plain `stop()` while casting must stop the receiver and return to local —
-/// stop means stop (pause is what keeps the session warm). Without routing stop
-/// through the renderer, the local slot goes Stopped while the receiver stays
-/// connected and playing.
+/// A plain `stop()` while playing remotely must stop the device and return to
+/// local — stop means stop (pause is what keeps the session warm). Without
+/// routing stop through the renderer, the local slot goes Stopped while the
+/// device stays connected and playing. This is the routing bug the Cast round
+/// hit; the DLNA channel is held to the same contract in its own tests.
 #[tokio::test]
-async fn stop_while_casting_stops_receiver_and_returns_to_local() {
-    let (_home, mut service, mut rx) = casting_service(&[("rel-1", &["t1"])]).await;
+async fn stop_while_remote_stops_device_and_returns_to_local() {
+    let (_home, mut service, mut rx) = remote_service(&[("rel-1", &["t1"])]).await;
     service.playback_queue.play_release(
         ContextSource::Release("rel-1".to_string()),
         vec!["t1".to_string()],
@@ -2167,47 +2171,47 @@ async fn stop_while_casting_stops_receiver_and_returns_to_local() {
     let buffer = create_sparse_buffer(1_024);
     service.slot = active_slot(test_prepared_track("t1", buffer), TrackPhase::Playing);
 
-    let channel = FakeCastChannel::new();
+    let channel = FakeRendererChannel::new();
     let state = channel.state.clone();
-    service.handle_cast_to(cast_connect(channel)).await;
+    service.handle_play_on(remote_connect(channel)).await;
     assert!(wait_until(|| !state.lock().unwrap().loads.is_empty()));
     while rx.try_recv().is_ok() {}
 
     service.stop().await;
 
     assert!(
-        !service.renderer.is_casting(),
+        !service.renderer.is_remote(),
         "stop must return the renderer to local"
     );
     assert!(
         wait_until(|| state.lock().unwrap().stops == 1),
-        "stop must stop the receiver, not leave it playing"
+        "stop must stop the device, not leave it playing"
     );
     assert!(
         matches!(service.slot, PlaybackSlot::Stopped),
         "the slot must be Stopped after stop"
     );
-    let mut saw_not_casting = false;
+    let mut saw_not_remote = false;
     while let Ok(progress) = rx.try_recv() {
-        if let PlaybackProgress::CastStatusChanged { device_name: None } = progress {
-            saw_not_casting = true;
+        if let PlaybackProgress::RemoteStatusChanged { device_name: None } = progress {
+            saw_not_remote = true;
         }
     }
     assert!(
-        saw_not_casting,
-        "stopping while casting announces CastStatusChanged(None)"
+        saw_not_remote,
+        "stopping while remote announces RemoteStatusChanged(None)"
     );
 }
 
-/// Set up a casting service over a single fake-backed track `t1`, current at
-/// position 0, and return the service plus the fake channel's shared state.
-async fn casting_over_fake() -> (
+/// Set up a remote-playback service over a single fake-backed track `t1`, current
+/// at position 0, and return the service plus the fake channel's shared state.
+async fn remote_over_fake() -> (
     TempDir,
     PlaybackService,
-    Arc<Mutex<FakeCastState>>,
+    Arc<Mutex<FakeRendererState>>,
     tokio_mpsc::UnboundedReceiver<PlaybackProgress>,
 ) {
-    let (home, mut service, rx) = casting_service(&[("rel-1", &["t1"])]).await;
+    let (home, mut service, rx) = remote_service(&[("rel-1", &["t1"])]).await;
     service.playback_queue.play_release(
         ContextSource::Release("rel-1".to_string()),
         vec!["t1".to_string()],
@@ -2217,41 +2221,41 @@ async fn casting_over_fake() -> (
     service.slot = active_slot(test_prepared_track("t1", buffer), TrackPhase::Playing);
     *service.current_position_shared.lock().unwrap() = Some(std::time::Duration::ZERO);
 
-    let channel = FakeCastChannel::new();
+    let channel = FakeRendererChannel::new();
     let state = channel.state.clone();
-    service.handle_cast_to(cast_connect(channel)).await;
+    service.handle_play_on(remote_connect(channel)).await;
     assert!(wait_until(|| !state.lock().unwrap().loads.is_empty()));
     (home, service, state, rx)
 }
 
-/// Pause while casting routes to the receiver.
+/// Pause while remote routes to the device.
 #[tokio::test]
-async fn pause_while_casting_pauses_the_receiver() {
-    let (_home, mut service, state, _rx) = casting_over_fake().await;
+async fn pause_while_remote_pauses_the_device() {
+    let (_home, mut service, state, _rx) = remote_over_fake().await;
     service.pause();
     assert!(
         wait_until(|| state.lock().unwrap().pauses == 1),
-        "pause while casting must pause the receiver"
+        "pause while remote must pause the device"
     );
 }
 
-/// Resume while casting routes to the receiver.
+/// Resume while remote routes to the device.
 #[tokio::test]
-async fn resume_while_casting_plays_the_receiver() {
-    let (_home, mut service, state, _rx) = casting_over_fake().await;
+async fn resume_while_remote_plays_the_device() {
+    let (_home, mut service, state, _rx) = remote_over_fake().await;
     service.pause();
     assert!(wait_until(|| state.lock().unwrap().pauses == 1));
     service.resume().await;
     assert!(
         wait_until(|| state.lock().unwrap().plays == 1),
-        "resume while casting must play the receiver"
+        "resume while remote must play the device"
     );
 }
 
-/// Seek while casting routes to the receiver (and skips the local rebuild path).
+/// Seek while remote routes to the device (and skips the local rebuild path).
 #[tokio::test]
-async fn seek_while_casting_seeks_the_receiver() {
-    let (_home, mut service, state, _rx) = casting_over_fake().await;
+async fn seek_while_remote_seeks_the_device() {
+    let (_home, mut service, state, _rx) = remote_over_fake().await;
     service.seek(std::time::Duration::from_secs(45)).await;
     assert!(
         wait_until(|| state
@@ -2259,17 +2263,17 @@ async fn seek_while_casting_seeks_the_receiver() {
             .unwrap()
             .seeks
             .contains(&std::time::Duration::from_secs(45))),
-        "seek while casting must seek the receiver"
+        "seek while remote must seek the device"
     );
 }
 
-/// Setting the volume while casting sets the receiver's volume too.
+/// Setting the volume while remote sets the device's volume too.
 #[tokio::test]
-async fn set_volume_while_casting_sets_the_receiver_volume() {
-    let (_home, mut service, state, _rx) = casting_over_fake().await;
+async fn set_volume_while_remote_sets_the_device_volume() {
+    let (_home, mut service, state, _rx) = remote_over_fake().await;
     service.set_volume(0.3);
     assert!(
         wait_until(|| state.lock().unwrap().volumes.contains(&0.3)),
-        "setting the volume while casting must set the receiver's volume"
+        "setting the volume while remote must set the device's volume"
     );
 }

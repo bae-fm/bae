@@ -5,10 +5,10 @@ mod cast;
 use std::sync::Arc;
 
 use bae_core::app::{bootstrap as bootstrap_core, BootstrapError, RunningApp};
-use bae_core::cast::CastDevice;
 use bae_core::config::{ConfigError, McpConfig, SubsonicConfig};
 use bae_core::diagnostics::Diagnostics;
 use bae_core::library::{AppServices, LibraryManager};
+use bae_core::renderer::RendererDevice;
 use bae_core::ui::UiEventBus;
 use bae_mcp::{Automation, McpServerController};
 pub use bae_mcp::{McpServerError, McpServerStatus};
@@ -151,8 +151,8 @@ impl DesktopApp {
     pub fn cast_devices(
         &self,
     ) -> (
-        Vec<CastDevice>,
-        tokio::sync::watch::Receiver<Vec<CastDevice>>,
+        Vec<RendererDevice>,
+        tokio::sync::watch::Receiver<Vec<RendererDevice>>,
     ) {
         self.cast_controller.devices()
     }

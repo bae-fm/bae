@@ -10,13 +10,14 @@
 
 use std::sync::{Arc, Mutex};
 
-use bae_core::cast::{
-    CastDevice, CastDiscovery, CastStreamFormat, CoverUrlProvider, MediaUrlProvider,
-    RustCastChannel, CAST_TRANSCODE_BITRATE_KBPS,
-};
+use bae_core::cast::{CastDiscovery, RustCastChannel};
 use bae_core::config::SubsonicCredential;
 use bae_core::library::{AppServices, LibraryManager};
 use bae_core::playback::{PlaybackHandle, PlaybackProgress};
+use bae_core::renderer::{
+    cast_stream_format, CoverUrlProvider, MediaUrlProvider, RendererConnection, RendererDevice,
+    RendererStreamFormat, TRANSCODE_BITRATE_KBPS,
+};
 use bae_core::ui::{Invalidation, UiBusEvent, UiEventBus};
 use md5::{Digest, Md5};
 use rand::RngCore;
@@ -162,7 +163,7 @@ impl CastController {
     }
 
     fn spawn_device_list_forwarder(
-        mut devices: tokio::sync::watch::Receiver<Vec<CastDevice>>,
+        mut devices: tokio::sync::watch::Receiver<Vec<RendererDevice>>,
         ui_event_bus: UiEventBus,
         runtime: &Handle,
     ) {
@@ -181,7 +182,7 @@ impl CastController {
         let inner = self.inner.clone();
         self.runtime.spawn(async move {
             while let Some(event) = progress.recv().await {
-                let PlaybackProgress::CastStatusChanged { device_name } = event else {
+                let PlaybackProgress::RemoteStatusChanged { device_name } = event else {
                     continue;
                 };
                 match device_name {
@@ -220,8 +221,8 @@ impl CastController {
     pub fn devices(
         &self,
     ) -> (
-        Vec<CastDevice>,
-        tokio::sync::watch::Receiver<Vec<CastDevice>>,
+        Vec<RendererDevice>,
+        tokio::sync::watch::Receiver<Vec<RendererDevice>>,
     ) {
         let discovery = self.discovery.lock().unwrap();
         (discovery.devices(), discovery.subscribe())
@@ -244,9 +245,17 @@ impl CastController {
             .find(|device| device.id == device_id)
             .ok_or(CastError::DeviceNotFound)?;
 
+        let (addr, port) = match device.connection {
+            RendererConnection::Cast { addr, port } => (addr, port),
+            // Sentinel: DLNA devices don't reach the picker until the next commit
+            // generalizes the desktop device list to merge DlnaDiscovery. Only
+            // Cast connections are produced here, so this arm is unreachable; it's
+            // present to keep this commit's diff to the type rename.
+            RendererConnection::Dlna { .. } => return Err(CastError::DeviceNotFound),
+        };
+
         // The rust_cast connect blocks on the network; run it off the async
         // runtime so it never stalls a runtime thread.
-        let (addr, port) = (device.addr, device.port);
         let channel = self
             .runtime
             .block_on(async move {
@@ -260,15 +269,16 @@ impl CastController {
         let cover_provider = cover_url_provider(base_url, credential);
 
         // Optimistically reflect the target device; the service's event confirms
-        // it (and drives the receiver-side-end transition back).
+        // it (and drives the device-side-end transition back).
         self.inner.lock().unwrap().status = CastStatus::Casting {
             device_name: device.name.clone(),
         };
-        self.playback.cast_to(
+        self.playback.play_on(
             Box::new(channel),
             device.name,
             stream_provider,
             cover_provider,
+            cast_stream_format,
         );
         Ok(())
     }
@@ -276,7 +286,7 @@ impl CastController {
     /// Stop casting: tell the playback service, which ends the session and
     /// announces the return to local; the status follower then stops the server.
     pub fn stop_casting(&self) {
-        self.playback.stop_casting();
+        self.playback.stop_remote();
     }
 
     /// The ephemeral server's base URL and credential, starting it if it isn't
@@ -306,17 +316,15 @@ impl CastController {
 /// decided by the playback service (it knows the track's codec) and passed in;
 /// this only renders the URL.
 fn stream_url_provider(base_url: String, credential: SubsonicCredential) -> MediaUrlProvider {
-    Arc::new(move |track_id: &str, format: CastStreamFormat| {
+    Arc::new(move |track_id: &str, format: RendererStreamFormat| {
         let mut url = format!(
             "{base_url}/rest/stream?id=tr-{track_id}&{auth}&v=1.16.1&c=bae-cast",
             auth = auth_params(&credential),
         );
         match format {
-            CastStreamFormat::Raw => url.push_str("&format=raw"),
-            CastStreamFormat::TranscodeMp3 => {
-                url.push_str(&format!(
-                    "&format=mp3&maxBitRate={CAST_TRANSCODE_BITRATE_KBPS}"
-                ));
+            RendererStreamFormat::Raw => url.push_str("&format=raw"),
+            RendererStreamFormat::TranscodeMp3 => {
+                url.push_str(&format!("&format=mp3&maxBitRate={TRANSCODE_BITRATE_KBPS}"));
             }
         }
         Ok(url)
@@ -376,14 +384,14 @@ mod tests {
     fn stream_url_encodes_format_and_track() {
         let provider = stream_url_provider("http://10.0.0.5:9000".to_string(), credential());
 
-        let raw = provider("track-1", CastStreamFormat::Raw).unwrap();
+        let raw = provider("track-1", RendererStreamFormat::Raw).unwrap();
         assert!(raw.starts_with("http://10.0.0.5:9000/rest/stream?id=tr-track-1&"));
         assert!(raw.contains("&format=raw"), "{raw}");
         assert!(raw.contains("u=castuser"));
         assert!(raw.contains("&t="));
         assert!(raw.contains("&s="));
 
-        let transcoded = provider("track-2", CastStreamFormat::TranscodeMp3).unwrap();
+        let transcoded = provider("track-2", RendererStreamFormat::TranscodeMp3).unwrap();
         assert!(
             transcoded.contains("&format=mp3&maxBitRate=320"),
             "{transcoded}"
@@ -398,7 +406,7 @@ mod tests {
         let credential = credential();
         let url = stream_url_provider("http://host:1".to_string(), credential.clone())(
             "t",
-            CastStreamFormat::Raw,
+            RendererStreamFormat::Raw,
         )
         .unwrap();
 
@@ -418,8 +426,8 @@ mod tests {
     #[test]
     fn each_url_uses_a_fresh_salt() {
         let provider = stream_url_provider("http://host:1".to_string(), credential());
-        let a = provider("t", CastStreamFormat::Raw).unwrap();
-        let b = provider("t", CastStreamFormat::Raw).unwrap();
+        let a = provider("t", RendererStreamFormat::Raw).unwrap();
+        let b = provider("t", RendererStreamFormat::Raw).unwrap();
         assert_ne!(a, b, "a fresh salt per call yields distinct URLs");
     }
 
@@ -446,7 +454,7 @@ mod tests {
             let base = server.base_url.clone();
             let valid = stream_url_provider(base.clone(), server.credential.clone())(
                 "missing-track",
-                CastStreamFormat::Raw,
+                RendererStreamFormat::Raw,
             )
             .unwrap();
 
