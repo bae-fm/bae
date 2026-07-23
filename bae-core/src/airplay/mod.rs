@@ -19,6 +19,9 @@
 //! announce, and [`rtsp`] is the control connection both dialects drive.
 
 pub mod airplay2;
+pub mod ap2_channel;
+pub mod ap2_session;
+pub mod bplist;
 pub mod capabilities;
 pub mod crypto;
 pub mod discovery;

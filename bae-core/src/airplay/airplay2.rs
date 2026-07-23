@@ -18,9 +18,9 @@
 use chacha20poly1305::aead::{Aead, KeyInit, Payload};
 use chacha20poly1305::{ChaCha20Poly1305, Key, Nonce};
 use ed25519_dalek::{Signer, SigningKey};
-use hkdf::Hkdf;
-use sha2::Sha512;
 use x25519_dalek::{PublicKey, StaticSecret};
+
+use super::ap2_channel::hkdf32;
 
 use super::pairing::PairingError;
 use super::secure_rng::SecureRng;
@@ -31,15 +31,6 @@ fn pair_verify_nonce(label: &[u8; 8]) -> Nonce {
     let mut bytes = [0u8; 12];
     bytes[4..].copy_from_slice(label);
     Nonce::from(bytes)
-}
-
-/// HKDF-SHA512 expand of `ikm` under `salt`/`info` to a 32-byte key.
-fn hkdf_sha512(salt: &[u8], ikm: &[u8], info: &[u8]) -> [u8; 32] {
-    let hk = Hkdf::<Sha512>::new(Some(salt), ikm);
-    let mut okm = [0u8; 32];
-    hk.expand(info, &mut okm)
-        .expect("32 is a valid HKDF length");
-    okm
 }
 
 /// The pair-verify state machine, driven M1→M3 and yielding the X25519 shared
@@ -118,7 +109,7 @@ impl PairVerify {
             .ephemeral
             .diffie_hellman(&PublicKey::from(device_public))
             .to_bytes();
-        let session_key = hkdf_sha512(
+        let session_key = hkdf32(
             b"Pair-Verify-Encrypt-Salt",
             &shared,
             b"Pair-Verify-Encrypt-Info",
@@ -203,9 +194,10 @@ pub struct Ap2AudioCipher {
 }
 
 impl Ap2AudioCipher {
-    /// Derive the audio key from the pair-verify shared secret.
+    /// Derive the audio key (`shk`) from the pair-verify shared secret — the same
+    /// key the SETUP streams plist hands the receiver.
     pub fn from_shared_secret(shared: &[u8; 32]) -> Self {
-        let key = hkdf_sha512(b"", shared, b"AirPlay-Audio-Key");
+        let key = super::ap2_channel::audio_key(shared);
         Ap2AudioCipher {
             cipher: ChaCha20Poly1305::new(Key::from_slice(&key)),
             counter: 0,
@@ -329,7 +321,7 @@ mod tests {
                 .diffie_hellman(&PublicKey::from(sender_pub))
                 .to_bytes();
             self.shared = Some(shared);
-            let session_key = hkdf_sha512(
+            let session_key = hkdf32(
                 b"Pair-Verify-Encrypt-Salt",
                 &shared,
                 b"Pair-Verify-Encrypt-Info",
@@ -371,7 +363,7 @@ mod tests {
             assert_eq!(tlv.get_u8(tlv_type::STATE), Some(state::M3));
             let encrypted = tlv.get(tlv_type::ENCRYPTED_DATA).unwrap();
 
-            let session_key = hkdf_sha512(
+            let session_key = hkdf32(
                 b"Pair-Verify-Encrypt-Salt",
                 self.shared.as_ref().unwrap(),
                 b"Pair-Verify-Encrypt-Info",
@@ -452,7 +444,7 @@ mod tests {
         assert_eq!(ct.len(), payload.len() + 16, "payload + Poly1305 tag");
 
         // Decrypt independently to prove the seal.
-        let key = hkdf_sha512(b"", &shared, b"AirPlay-Audio-Key");
+        let key = crate::airplay::ap2_channel::audio_key(&shared);
         let dec = ChaCha20Poly1305::new(Key::from_slice(&key));
         let mut nonce_bytes = [0u8; 12];
         nonce_bytes[4..].copy_from_slice(nonce_tail);

@@ -28,6 +28,10 @@ pub enum Method {
     Flush,
     Teardown,
     Post,
+    /// AirPlay 2 timing-peer list (`SETPEERS`).
+    SetPeers,
+    /// AirPlay 2 RTP-timeline anchor (`SETRATEANCHORTIME`).
+    SetRateAnchorTime,
     Other(String),
 }
 
@@ -42,6 +46,8 @@ impl Method {
             Method::Flush => "FLUSH",
             Method::Teardown => "TEARDOWN",
             Method::Post => "POST",
+            Method::SetPeers => "SETPEERS",
+            Method::SetRateAnchorTime => "SETRATEANCHORTIME",
             Method::Other(s) => s,
         }
     }
