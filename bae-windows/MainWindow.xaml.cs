@@ -244,6 +244,9 @@ public sealed partial class MainWindow : Window
             _playback,
             QueuePaneHost,
             message => _shell.ShowBanner(InfoBarSeverity.Error, Loc.Chrome("error.playback_title"), message));
+        // The now-playing bar's queue button toggles the pane and is an append drop
+        // target; the pane owns that wiring.
+        _queuePane.AttachToggleButton(NpQueue);
 
         // The storage sheet. The dialog registers its live-refresh handlers on the
         // projection registry while open.

@@ -87,6 +87,40 @@ internal sealed partial class QueuePane
 
     public bool IsOpen => _host.Visibility == Visibility.Visible;
 
+    // Wire the queue button in the now-playing bar: a click (or its Ctrl+Shift+Q
+    // accelerator) toggles the pane, and a card dropped on it appends the album's
+    // tracks to the end of the manual lane — whether or not the pane is open. The
+    // caption names the append action, distinct from the in-pane drops' insert
+    // preview; e.Handled keeps the window's folder-drop handler from overwriting
+    // the accepted operation for a non-file drag.
+    public void AttachToggleButton(Button button)
+    {
+        button.Click += (_, _) => Toggle();
+        button.AllowDrop = true;
+        button.DragOver += (_, e) =>
+        {
+            if (_session.CurrentHandleOrNull() == null || !e.DataView.Contains(StandardDataFormats.Text))
+            {
+                return;
+            }
+            e.AcceptedOperation = DataPackageOperation.Copy;
+            if (e.DragUIOverride is not null)
+            {
+                e.DragUIOverride.Caption = Loc.Chrome("menu.add_to_queue");
+            }
+            e.Handled = true;
+        };
+        button.Drop += async (_, e) =>
+        {
+            if (_session.CurrentHandleOrNull() == null || !e.DataView.Contains(StandardDataFormats.Text))
+            {
+                return;
+            }
+            e.Handled = true;
+            await HandleButtonAppendDrop(e);
+        };
+    }
+
     // Show the pane if hidden, hide it if shown. Bound to the queue button and its
     // Ctrl+Shift+Q accelerator.
     public void Toggle()

@@ -1,27 +1,18 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using System.Globalization;
 using System.Linq;
-using System.Runtime.InteropServices;
-using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Controls.Primitives;
-using Microsoft.UI.Xaml.Input;
-using Microsoft.UI.Xaml.Media;
-using Microsoft.UI.Xaml.Media.Animation;
-using Microsoft.UI.Xaml.Media.Imaging;
 using uniffi.bae_bridge;
 using Windows.ApplicationModel.DataTransfer;
-using Windows.Graphics;
 using Windows.Storage;
-using Windows.System;
 
 namespace Bae.Windows;
 
-// MainWindow: the toolbar clicks, window folder-drop, folder import, and the
-// queue-button drag/drop. Split out of MainWindow.xaml.cs unchanged.
+// MainWindow: the whole-window folder drop target. A folder dropped anywhere over
+// the window is scanned and imported — the same dispatch a folder-verb / bae://
+// activation intent runs (HandleActivationIntent). The window reads the folder
+// path off the drop (window input) and hands it to ImportDialog; the scan-and-show
+// work lives there.
 public sealed partial class MainWindow : Window
 {
     // Accept a dragged folder anywhere over the window (matching macOS, which
@@ -44,10 +35,9 @@ public sealed partial class MainWindow : Window
         }
     }
 
-    // Scan a dropped folder and open the import dialog on its candidates. Mirrors
-    // the macOS window drop: the first dropped folder is scanned with clearFirst,
-    // candidates stream into the import store, and the dialog (bound to that list)
-    // shows them. Scanning runs off the UI thread; errors surface in the banner.
+    // Read the first dropped folder's path and hand it to the import dialog, which
+    // scans it and opens on its candidates. Mirrors the macOS window drop. Reading
+    // the drop payload runs off the UI thread; a read error surfaces in the banner.
     private async void OnWindowDrop(object sender, DragEventArgs e)
     {
         if (CurrentHandleOrNull() == null || !e.DataView.Contains(StandardDataFormats.StorageItems))
@@ -96,37 +86,5 @@ public sealed partial class MainWindow : Window
     private void ShowImportBanner(string message)
     {
         _shell.ShowBanner(InfoBarSeverity.Error, Loc.Chrome("import.error_title"), message);
-    }
-
-    private void OnQueueClick(object sender, RoutedEventArgs e)
-    {
-        _queuePane.Toggle();
-    }
-
-    // The queue button is also an append drop target: a card dropped on it adds
-    // the album's tracks to the end of the manual lane, and the +N badge animates
-    // from core's queue-items-added event.
-    private void OnQueueButtonDragOver(object sender, DragEventArgs e)
-    {
-        if (CurrentHandleOrNull() == null || !e.DataView.Contains(StandardDataFormats.Text))
-        {
-            return;
-        }
-        e.AcceptedOperation = DataPackageOperation.Copy;
-        if (e.DragUIOverride is not null)
-        {
-            e.DragUIOverride.Caption = Loc.Chrome("menu.add_to_queue");
-        }
-        e.Handled = true;
-    }
-
-    private async void OnQueueButtonDrop(object sender, DragEventArgs e)
-    {
-        if (CurrentHandleOrNull() == null || !e.DataView.Contains(StandardDataFormats.Text))
-        {
-            return;
-        }
-        e.Handled = true;
-        await _queuePane.HandleButtonAppendDrop(e);
     }
 }

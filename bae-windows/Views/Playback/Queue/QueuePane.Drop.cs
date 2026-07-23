@@ -71,7 +71,7 @@ internal sealed partial class QueuePane
     // Append a card dropped on the queue button to the end of the manual lane.
     // Shares the payload read and resolve path with the in-pane drops; the queue
     // button works whether or not the pane is open.
-    public async Task HandleButtonAppendDrop(DragEventArgs e)
+    private async Task HandleButtonAppendDrop(DragEventArgs e)
     {
         var ids = await ReadDropPayload(e);
         if (ids is null)

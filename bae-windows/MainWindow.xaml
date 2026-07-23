@@ -615,9 +615,7 @@
                             Padding="0"
                             CornerRadius="8"
                             Background="Transparent"
-                            BorderThickness="0"
-                            Click="OnQueueClick"
-                            AllowDrop="True" DragOver="OnQueueButtonDragOver" Drop="OnQueueButtonDrop">
+                            BorderThickness="0">
                             <Button.KeyboardAccelerators>
                                 <KeyboardAccelerator Modifiers="Control,Shift" Key="Q" />
                             </Button.KeyboardAccelerators>
