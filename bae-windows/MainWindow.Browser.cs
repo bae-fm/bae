@@ -136,16 +136,6 @@ public sealed partial class MainWindow : Window
 
     private void OnAlbumGridSizeChanged(object sender, SizeChangedEventArgs e) => ApplyGridMetrics();
 
-    // Keep each tile's art square: match its height to its (stretched) width.
-    private void OnTileArtSizeChanged(object sender, SizeChangedEventArgs e)
-    {
-        if (sender is FrameworkElement art
-            && (double.IsNaN(art.Height) || Math.Abs(art.Height - e.NewSize.Width) > 0.5))
-        {
-            art.Height = e.NewSize.Width;
-        }
-    }
-
     // Drive the header collapse from a browse panel's scroll: progress tracks the
     // active panel's offset, and a settle snaps to the nearer end.
     private void AttachCollapseScroll(Control panel, string scroller)

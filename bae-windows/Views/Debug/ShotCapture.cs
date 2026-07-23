@@ -37,14 +37,15 @@ internal static class ShotCapture
     // composition against fixtures.
     private readonly record struct Scene(string Id, double Width, double Height, Func<FrameworkElement> Build);
 
-    // The scene registry. library-grid is intentionally absent: its album cards
-    // are built by MainWindow instance methods bound to a live grid layout and
-    // library handle (cover images), not a pure builder, so it cannot be staged
-    // honestly from fixtures — omitted rather than faked.
+    // The scene registry. Every scene renders through a pure builder over
+    // fixtures — the welcome chooser, the album detail, and the album grid — none
+    // needs a live library handle. A scene that did (one whose composition can
+    // only be built from a real handle) would be absent here, not faked.
     private static IReadOnlyList<Scene> Scenes { get; } = new[]
     {
         new Scene("welcome", 900, 600, BuildWelcome),
         new Scene("album-detail", 720, 540, BuildAlbumDetail),
+        new Scene("library-grid", 1100, 700, BuildLibraryGrid),
     };
 
     // True when args carry the capture flag; then outputDir is the directory that
@@ -198,6 +199,45 @@ internal static class ShotCapture
             showRestoreFromCloud: () => Task.CompletedTask);
         welcome.Show();
         return host;
+    }
+
+    // The library grid: rows of the shared AlbumCardVisual tile (the same builder
+    // MainWindow's grid and the component gallery use) over fixture albums, laid
+    // out with the real AlbumGridColumns math for this width so the tiles flex to
+    // fill each row exactly as the live grid does. The fixed frame shows the top
+    // rows, as a grid viewport does.
+    private static FrameworkElement BuildLibraryGrid()
+    {
+        const double width = 1100;
+        var metrics = AlbumGridColumns.Compute(width);
+        var cardWidth = metrics.CellWidth - AlbumGridColumns.Gutter;
+        // A fixed fixture accent; the tint and ring it colors rest at zero opacity.
+        var accent = global::Windows.UI.Color.FromArgb(0xFF, 0x00, 0x78, 0xD7);
+
+        var rows = new StackPanel
+        {
+            Padding = new Thickness(
+                AlbumGridColumns.HorizontalInset,
+                AlbumGridColumns.HorizontalInset,
+                AlbumGridColumns.HorizontalInset,
+                0),
+        };
+        StackPanel? row = null;
+        var column = 0;
+        foreach (var card in PreviewData.GridCards)
+        {
+            if (row is null || column == metrics.Columns)
+            {
+                row = new StackPanel { Orientation = Orientation.Horizontal };
+                rows.Children.Add(row);
+                column = 0;
+            }
+            row.Children.Add(AlbumCardVisual.Build(
+                card.Title, card.Artist, card.Year, card.Cover, cardWidth, 0, 0, accent).Card);
+            column++;
+        }
+
+        return rows;
     }
 
     // The album detail composition: the header block and track rows the

@@ -1,11 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Numerics;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Data;
-using Microsoft.UI.Xaml.Media;
 
 namespace Bae.Windows;
 
@@ -110,96 +108,34 @@ public sealed partial class MainWindow : Window
         HorizontalAlignment = HorizontalAlignment.Center,
     };
 
-    // One album card: the art (with a hover-free selection tint and, when this is
-    // the expanded album, an accent ring), title, artist, and year — the tile the
-    // XAML DataTemplate used to render, now built in code so it can be laid out in
-    // a row alongside the injected expansion. Width binds to the shared card width
-    // and carries a trailing gutter so a row fills exactly; the click, right-tap,
-    // and drag are per-card (the ListView virtualizes rows, not cards).
+    // One album card: the shared AlbumCardVisual tile (the same one the capture
+    // scene and the component gallery build), with this window's live behavior
+    // attached — the dynamic values re-bound OneWay so a resize / selection /
+    // cover-load updates the card without a row rebuild, and the click, right-tap,
+    // and drag wired per-card (the ListView virtualizes rows, not cards).
     private FrameworkElement BuildAlbumCard(Album album)
     {
-        var tint = new Border
-        {
-            CornerRadius = new CornerRadius(10),
-            Background = new SolidColorBrush(AccentColor) { Opacity = 0.22 },
-        };
-        BindOneWay(tint, UIElement.OpacityProperty, album, nameof(Album.SelectionTintOpacity));
+        var parts = AlbumCardVisual.Build(
+            album.Title,
+            album.Artist,
+            album.YearText,
+            album.Cover,
+            _gridLayout.CardWidth,
+            album.SelectionTintOpacity,
+            album.ExpansionRingOpacity,
+            AccentColor);
 
-        var art = new Border
-        {
-            CornerRadius = new CornerRadius(12),
-            HorizontalAlignment = HorizontalAlignment.Stretch,
-            Background = (Brush)Application.Current.Resources["CardBackgroundFillColorDefaultBrush"],
-            Translation = new Vector3(0, 0, 16),
-            Shadow = new ThemeShadow(),
-        };
-        art.SizeChanged += OnTileArtSizeChanged;
-        var image = new Image { Stretch = Stretch.UniformToFill };
-        BindOneWay(image, Image.SourceProperty, album, nameof(Album.Cover));
-        art.Child = image;
+        BindOneWay(parts.Card, FrameworkElement.WidthProperty, _gridLayout, nameof(AlbumGridLayout.CardWidth));
+        BindOneWay(parts.Tint, UIElement.OpacityProperty, album, nameof(Album.SelectionTintOpacity));
+        BindOneWay(parts.Ring, UIElement.OpacityProperty, album, nameof(Album.ExpansionRingOpacity));
+        BindOneWay(parts.Cover, Image.SourceProperty, album, nameof(Album.Cover));
 
-        var ring = new Border
-        {
-            CornerRadius = new CornerRadius(12),
-            BorderThickness = new Thickness(2),
-            BorderBrush = new SolidColorBrush(AccentColor),
-            IsHitTestVisible = false,
-        };
-        BindOneWay(ring, UIElement.OpacityProperty, album, nameof(Album.ExpansionRingOpacity));
-
-        var artHost = new Grid { HorizontalAlignment = HorizontalAlignment.Stretch };
-        artHost.Children.Add(art);
-        artHost.Children.Add(ring);
-
-        var title = new TextBlock
-        {
-            Text = album.Title,
-            FontSize = 15,
-            FontWeight = Microsoft.UI.Text.FontWeights.Bold,
-            MaxLines = 1,
-            TextTrimming = TextTrimming.CharacterEllipsis,
-            Margin = new Thickness(0, 8, 0, 0),
-        };
-        var artist = new TextBlock
-        {
-            Text = album.Artist,
-            FontSize = 13,
-            FontWeight = Microsoft.UI.Text.FontWeights.Medium,
-            MaxLines = 1,
-            TextTrimming = TextTrimming.CharacterEllipsis,
-            Foreground = (Brush)Application.Current.Resources["TextFillColorSecondaryBrush"],
-        };
-        // The year line keeps its height even when absent so tiles stay uniform.
-        var year = new TextBlock
-        {
-            Text = album.YearText,
-            FontSize = 12,
-            FontWeight = Microsoft.UI.Text.FontWeights.Medium,
-            Height = 16,
-            Foreground = (Brush)Application.Current.Resources["TextFillColorTertiaryBrush"],
-        };
-
-        var content = new StackPanel { Spacing = 2, Padding = new Thickness(6) };
-        content.Children.Add(artHost);
-        content.Children.Add(title);
-        content.Children.Add(artist);
-        content.Children.Add(year);
-
-        var card = new Grid
-        {
-            // The trailing gutter and bottom row gap read as spaced tiles, as
-            // ItemsWrapGrid's equal cells did.
-            Margin = new Thickness(0, 0, AlbumGridColumns.Gutter, AlbumGridColumns.RowGap),
-            DataContext = album,
-            CanDrag = true,
-        };
-        BindOneWay(card, FrameworkElement.WidthProperty, _gridLayout, nameof(AlbumGridLayout.CardWidth));
-        card.Children.Add(tint);
-        card.Children.Add(content);
-        card.Tapped += OnAlbumCardTapped;
-        card.RightTapped += OnAlbumCardRightTapped;
-        card.DragStarting += OnAlbumCardDragStarting;
-        return card;
+        parts.Card.DataContext = album;
+        parts.Card.CanDrag = true;
+        parts.Card.Tapped += OnAlbumCardTapped;
+        parts.Card.RightTapped += OnAlbumCardRightTapped;
+        parts.Card.DragStarting += OnAlbumCardDragStarting;
+        return parts.Card;
     }
 
     private static void BindOneWay(FrameworkElement target, DependencyProperty property, object source, string path) =>

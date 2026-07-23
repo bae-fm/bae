@@ -31,6 +31,7 @@ internal sealed class ComponentGalleryWindow : Window
         new Entry("DialogPrimitives · cover tiles", BuildCoverTiles),
         new Entry("AlbumExpansionRows · header block", BuildExpansionHeader),
         new Entry("AlbumExpansionRows · track row", BuildExpansionTrackRows),
+        new Entry("AlbumCardVisual · tile", BuildAlbumCards),
     };
 
     public ComponentGalleryWindow()
@@ -156,6 +157,24 @@ internal sealed class ComponentGalleryWindow : Window
         panel.Children.Add(Header("AlbumExpansionRows.BuildHeaderBlock"));
         panel.Children.Add(AlbumExpansionRows.BuildHeaderBlock(
             PreviewData.ExpansionTitle, PreviewData.ExpansionArtist));
+        return panel;
+    }
+
+    private static FrameworkElement BuildAlbumCards()
+    {
+        var panel = Section();
+        panel.Children.Add(Header("AlbumCardVisual.Build (placeholder covers)"));
+        var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 12 };
+        // A fixed fixture accent; the tint and ring it colors rest at zero opacity.
+        var accent = global::Windows.UI.Color.FromArgb(0xFF, 0x00, 0x78, 0xD7);
+        var cards = PreviewData.GridCards;
+        for (var i = 0; i < 3 && i < cards.Count; i++)
+        {
+            var card = cards[i];
+            row.Children.Add(AlbumCardVisual.Build(
+                card.Title, card.Artist, card.Year, card.Cover, 200, 0, 0, accent).Card);
+        }
+        panel.Children.Add(row);
         return panel;
     }
 
