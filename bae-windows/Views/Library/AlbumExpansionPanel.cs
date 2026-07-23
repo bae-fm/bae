@@ -246,7 +246,7 @@ internal sealed partial class AlbumExpansionPanel : IDisposable
                 _setStatus(error);
             }
         }
-        trackList.ContainerContentChanging += (_, args) =>
+        trackList.ContainerContentChanging += (sender, args) =>
         {
             if (args.InRecycleQueue || args.Item is not Track track)
             {
