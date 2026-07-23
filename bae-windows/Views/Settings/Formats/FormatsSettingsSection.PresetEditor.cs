@@ -253,7 +253,7 @@ internal sealed partial class FormatsSettingsSection
     private ComboBox PresetPregapCombo(
         Settings settings,
         SavePreset preset,
-        (StackPanel Row, CheckBox Track, CheckBox Release) scopes)
+        (Grid Row, CheckBox Track, CheckBox Release) scopes)
     {
         var pregap = new ComboBox();
         foreach (var (label, value) in PregapChoices(preset.Codec))

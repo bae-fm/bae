@@ -63,12 +63,16 @@ enum PreviewData {
     static func tracks(count: Int) -> [BridgeTrack] {
         (1...count)
             .map { index in
-                BridgeTrack(
+                // Bound values first: the single-expression form exceeds the
+                // type checker's time budget on CI hardware.
+                let durationMs = Int64(180_000 + index * 15_000)
+                let trackNumber = Int32(index)
+                return BridgeTrack(
                     id: "t-\(index)",
                     title: "Track Title \(index)",
                     side: 1,
-                    trackNumber: Int32(index),
-                    durationMs: Int64(180_000 + index * 15_000),
+                    trackNumber: trackNumber,
+                    durationMs: durationMs,
                     artistNames: "Artist Name 1",
                     displayArtist: nil,
                     positionText: String(index)

@@ -421,7 +421,7 @@ impl<T: std::io::Write + std::io::Seek + Send> WriteSeek for T {}
 ///
 /// - **Ogg** streams natively.
 /// - **MP3** streams once its Xing/LAME VBR header is disabled (`write_xing=0`,
-///   set in [`StreamingEncoder::open_encoder`] for the non-seekable sink),
+///   set in `StreamingEncoder::open_encoder` for the non-seekable sink),
 ///   leaving a plain CBR frame stream with nothing to seek back and patch.
 ///
 /// FLAC's STREAMINFO (total samples, md5), the RIFF/FORM sizes of WAV/AIFF,
