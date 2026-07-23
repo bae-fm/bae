@@ -83,13 +83,17 @@ jobs:
     - name: Install xcodegen
       run: brew install xcodegen
 
-    - name: Install periphery + swiftlint
-      # Only the full cell runs the Swift lints (below): they read every .swift
-      # file's text regardless of which #if branch this edition compiles, so the
-      # result is edition-invariant — running them once is enough, and it keeps
-      # the baeium cell off the extra brew installs.
+    - name: Install periphery
+      # Only the full cell runs the dead-code + lint checks (below): they read
+      # every .swift file's text regardless of which #if branch this edition
+      # compiles, so the result is edition-invariant — running them once is
+      # enough, and it keeps the baeium cell off the extra brew install. This
+      # step's implicit success() gate is fine for periphery: its check step
+      # additionally requires the iOS build to have succeeded, which can only
+      # happen if this earlier install ran. swiftlint is not so lucky (see the
+      # lint step) — its check runs on !cancelled(), so it installs its own tool.
       if: ${{ inputs.edition == 'full' }}
-      run: brew install peripheryapp/periphery/periphery swiftlint
+      run: brew install peripheryapp/periphery/periphery
 
     - name: Build Rust bridge (iOS xcframework)
       run: ./bae-bridge/build-ios.sh
@@ -136,8 +140,13 @@ jobs:
           | xargs -0 xcrun swift-format lint -s
 
     - name: Swift lint (swiftlint)
+      # Runs on !cancelled() so lint violations still surface when an earlier
+      # check failed — which means a plain success()-gated install step would be
+      # skipped out from under it, leaving `swiftlint: command not found`. Install
+      # the tool here, in the step that uses it, mirroring the CI (macOS) job.
       if: ${{ inputs.edition == 'full' && !cancelled() }}
       run: |
+        brew install swiftlint
         swiftlint lint --strict --config .swiftlint.yml \
           bae-ios/bae/bae BaeKit/Sources/BaeKit
 
