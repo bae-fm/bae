@@ -189,6 +189,9 @@ object UiEventAdapter {
             is BridgeUiEvent.CandidateImportLoudnessProgress,
             is BridgeUiEvent.ReleaseTransferProgress,
             is BridgeUiEvent.ReleaseTransferEnded,
+            // Casting to a remote renderer is a desktop feature; Android has no
+            // cast UI, so the status change drives nothing here.
+            is BridgeUiEvent.CastStatusChanged,
             -> {
                 logger.debug("ignoring ${event::class.simpleName}")
             }
@@ -274,6 +277,8 @@ object UiEventAdapter {
             is BridgeInvalidation.ImportCandidate,
             BridgeInvalidation.WatchedFolders,
             is BridgeInvalidation.Composer,
+            // No cast device list on Android; nothing to refresh.
+            BridgeInvalidation.CastDevices,
             -> {
                 logger.debug("ignoring ${invalidation::class.simpleName}")
             }
