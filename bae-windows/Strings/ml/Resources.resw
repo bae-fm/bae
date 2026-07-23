@@ -446,8 +446,8 @@
   <data name="queue.now_playing" xml:space="preserve"><value>ഇപ്പോൾ പ്ലേ ചെയ്യുന്നു</value></data>
   <data name="nowplaying.cast" xml:space="preserve"><value>കാസ്റ്റ്</value></data>
   <data name="nowplaying.casting_to" xml:space="preserve"><value>{device}-ലേക്ക് കാസ്റ്റ് ചെയ്യുന്നു</value></data>
-  <data name="nowplaying.cast.disconnect" xml:space="preserve"><value>വിച്ഛേദിക്കുക</value></data>
-  <data name="nowplaying.cast.no_devices" xml:space="preserve"><value>കാസ്റ്റ് ഉപകരണങ്ങളൊന്നും കണ്ടെത്തിയില്ല</value></data>
+  <data name="nowplaying.cast_disconnect" xml:space="preserve"><value>വിച്ഛേദിക്കുക</value></data>
+  <data name="nowplaying.cast_no_devices" xml:space="preserve"><value>കാസ്റ്റ് ഉപകരണങ്ങളൊന്നും കണ്ടെത്തിയില്ല</value></data>
   <data name="component_gallery.menu" xml:space="preserve"><value>കമ്പോണന്റ് ഗാലറി</value></data>
   <data name="component_gallery.title" xml:space="preserve"><value>കമ്പോണന്റ് ഗാലറി</value></data>
 </root>

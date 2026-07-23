@@ -446,8 +446,8 @@
   <data name="queue.now_playing" xml:space="preserve"><value>Đang phát</value></data>
   <data name="nowplaying.cast" xml:space="preserve"><value>Truyền</value></data>
   <data name="nowplaying.casting_to" xml:space="preserve"><value>Đang truyền tới {device}</value></data>
-  <data name="nowplaying.cast.disconnect" xml:space="preserve"><value>Ngắt kết nối</value></data>
-  <data name="nowplaying.cast.no_devices" xml:space="preserve"><value>Không tìm thấy thiết bị truyền</value></data>
+  <data name="nowplaying.cast_disconnect" xml:space="preserve"><value>Ngắt kết nối</value></data>
+  <data name="nowplaying.cast_no_devices" xml:space="preserve"><value>Không tìm thấy thiết bị truyền</value></data>
   <data name="component_gallery.menu" xml:space="preserve"><value>thư viện thành phần</value></data>
   <data name="component_gallery.title" xml:space="preserve"><value>thư viện thành phần</value></data>
 </root>

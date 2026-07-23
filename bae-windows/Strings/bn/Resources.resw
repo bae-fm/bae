@@ -446,8 +446,8 @@
   <data name="queue.now_playing" xml:space="preserve"><value>এখন চলছে</value></data>
   <data name="nowplaying.cast" xml:space="preserve"><value>কাস্ট</value></data>
   <data name="nowplaying.casting_to" xml:space="preserve"><value>{device}-এ কাস্ট করা হচ্ছে</value></data>
-  <data name="nowplaying.cast.disconnect" xml:space="preserve"><value>সংযোগ বিচ্ছিন্ন করুন</value></data>
-  <data name="nowplaying.cast.no_devices" xml:space="preserve"><value>কোনো কাস্ট ডিভাইস পাওয়া যায়নি</value></data>
+  <data name="nowplaying.cast_disconnect" xml:space="preserve"><value>সংযোগ বিচ্ছিন্ন করুন</value></data>
+  <data name="nowplaying.cast_no_devices" xml:space="preserve"><value>কোনো কাস্ট ডিভাইস পাওয়া যায়নি</value></data>
   <data name="component_gallery.menu" xml:space="preserve"><value>কম্পোনেন্ট গ্যালারি</value></data>
   <data name="component_gallery.title" xml:space="preserve"><value>কম্পোনেন্ট গ্যালারি</value></data>
 </root>

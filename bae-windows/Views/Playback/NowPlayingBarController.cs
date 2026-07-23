@@ -444,7 +444,7 @@ internal sealed class NowPlayingBarController
                 Text = Loc.Chrome("nowplaying.casting_to", "device", castingName),
                 IsEnabled = false,
             });
-            var disconnect = new MenuFlyoutItem { Text = Loc.Chrome("nowplaying.cast.disconnect") };
+            var disconnect = new MenuFlyoutItem { Text = Loc.Chrome("nowplaying.cast_disconnect") };
             disconnect.Click += (_, _) => _cast.StopCasting();
             _castFlyout.Items.Add(disconnect);
             _castFlyout.Items.Add(new MenuFlyoutSeparator());
@@ -454,7 +454,7 @@ internal sealed class NowPlayingBarController
         {
             _castFlyout.Items.Add(new MenuFlyoutItem
             {
-                Text = Loc.Chrome("nowplaying.cast.no_devices"),
+                Text = Loc.Chrome("nowplaying.cast_no_devices"),
                 IsEnabled = false,
             });
             return;

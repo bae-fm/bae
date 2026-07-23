@@ -446,8 +446,8 @@
   <data name="queue.now_playing" xml:space="preserve"><value>ఇప్పుడు ప్లే అవుతోంది</value></data>
   <data name="nowplaying.cast" xml:space="preserve"><value>కాస్ట్</value></data>
   <data name="nowplaying.casting_to" xml:space="preserve"><value>{device}కి కాస్ట్ అవుతోంది</value></data>
-  <data name="nowplaying.cast.disconnect" xml:space="preserve"><value>డిస్‌కనెక్ట్ చేయి</value></data>
-  <data name="nowplaying.cast.no_devices" xml:space="preserve"><value>కాస్ట్ పరికరాలు కనుగొనబడలేదు</value></data>
+  <data name="nowplaying.cast_disconnect" xml:space="preserve"><value>డిస్‌కనెక్ట్ చేయి</value></data>
+  <data name="nowplaying.cast_no_devices" xml:space="preserve"><value>కాస్ట్ పరికరాలు కనుగొనబడలేదు</value></data>
   <data name="component_gallery.menu" xml:space="preserve"><value>కాంపోనెంట్ గ్యాలరీ</value></data>
   <data name="component_gallery.title" xml:space="preserve"><value>కాంపోనెంట్ గ్యాలరీ</value></data>
 </root>

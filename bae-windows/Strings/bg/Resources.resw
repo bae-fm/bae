@@ -446,8 +446,8 @@
   <data name="queue.now_playing" xml:space="preserve"><value>Текущо възпроизвеждане</value></data>
   <data name="nowplaying.cast" xml:space="preserve"><value>Предаване</value></data>
   <data name="nowplaying.casting_to" xml:space="preserve"><value>Предаване към {device}</value></data>
-  <data name="nowplaying.cast.disconnect" xml:space="preserve"><value>Прекъсване на връзката</value></data>
-  <data name="nowplaying.cast.no_devices" xml:space="preserve"><value>Няма намерени устройства за предаване</value></data>
+  <data name="nowplaying.cast_disconnect" xml:space="preserve"><value>Прекъсване на връзката</value></data>
+  <data name="nowplaying.cast_no_devices" xml:space="preserve"><value>Няма намерени устройства за предаване</value></data>
   <data name="component_gallery.menu" xml:space="preserve"><value>галерия с компоненти</value></data>
   <data name="component_gallery.title" xml:space="preserve"><value>галерия с компоненти</value></data>
 </root>

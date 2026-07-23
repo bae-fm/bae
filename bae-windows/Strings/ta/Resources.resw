@@ -446,8 +446,8 @@
   <data name="queue.now_playing" xml:space="preserve"><value>இப்போது ஒலிக்கிறது</value></data>
   <data name="nowplaying.cast" xml:space="preserve"><value>கேஸ்ட்</value></data>
   <data name="nowplaying.casting_to" xml:space="preserve"><value>{device}க்கு கேஸ்ட் செய்யப்படுகிறது</value></data>
-  <data name="nowplaying.cast.disconnect" xml:space="preserve"><value>துண்டி</value></data>
-  <data name="nowplaying.cast.no_devices" xml:space="preserve"><value>கேஸ்ட் சாதனங்கள் எதுவும் கிடைக்கவில்லை</value></data>
+  <data name="nowplaying.cast_disconnect" xml:space="preserve"><value>துண்டி</value></data>
+  <data name="nowplaying.cast_no_devices" xml:space="preserve"><value>கேஸ்ட் சாதனங்கள் எதுவும் கிடைக்கவில்லை</value></data>
   <data name="component_gallery.menu" xml:space="preserve"><value>கூறுகள் காட்சியகம்</value></data>
   <data name="component_gallery.title" xml:space="preserve"><value>கூறுகள் காட்சியகம்</value></data>
 </root>

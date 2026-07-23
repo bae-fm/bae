@@ -446,8 +446,8 @@
   <data name="queue.now_playing" xml:space="preserve"><value>In riproduzione</value></data>
   <data name="nowplaying.cast" xml:space="preserve"><value>Trasmetti</value></data>
   <data name="nowplaying.casting_to" xml:space="preserve"><value>In trasmissione su {device}</value></data>
-  <data name="nowplaying.cast.disconnect" xml:space="preserve"><value>Disconnetti</value></data>
-  <data name="nowplaying.cast.no_devices" xml:space="preserve"><value>Nessun dispositivo Cast trovato</value></data>
+  <data name="nowplaying.cast_disconnect" xml:space="preserve"><value>Disconnetti</value></data>
+  <data name="nowplaying.cast_no_devices" xml:space="preserve"><value>Nessun dispositivo Cast trovato</value></data>
   <data name="component_gallery.menu" xml:space="preserve"><value>galleria dei componenti</value></data>
   <data name="component_gallery.title" xml:space="preserve"><value>galleria dei componenti</value></data>
 </root>
