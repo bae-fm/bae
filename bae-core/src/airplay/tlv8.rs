@@ -14,18 +14,26 @@
 pub mod tlv_type {
     /// The pairing method (`kTLVType_Method`), `0x00` for pair-setup.
     pub const METHOD: u8 = 0x00;
+    /// A peer identifier — the controller's pairing id (`kTLVType_Identifier`),
+    /// carried inside the encrypted pair-verify sub-messages.
+    pub const IDENTIFIER: u8 = 0x01;
     /// The SRP salt `s` sent by the receiver (`kTLVType_Salt`).
     pub const SALT: u8 = 0x02;
-    /// An SRP public key — the receiver's `B` or the sender's `A`
-    /// (`kTLVType_PublicKey`).
+    /// An SRP or X25519 public key — the receiver's `B`/ephemeral or the sender's
+    /// `A`/ephemeral (`kTLVType_PublicKey`).
     pub const PUBLIC_KEY: u8 = 0x03;
     /// The SRP proof `M1`/`M2` (`kTLVType_Proof`).
     pub const PROOF: u8 = 0x04;
+    /// A ChaCha20-Poly1305 ciphertext + tag (`kTLVType_EncryptedData`), carrying
+    /// the signed identity in pair-verify M2/M3.
+    pub const ENCRYPTED_DATA: u8 = 0x05;
     /// The pairing state machine step, M1–M6 (`kTLVType_State`; pyatv calls it
     /// `SeqNo`).
     pub const STATE: u8 = 0x06;
     /// A receiver-reported error (`kTLVType_Error`).
     pub const ERROR: u8 = 0x07;
+    /// An Ed25519 signature over the ephemeral-key exchange (`kTLVType_Signature`).
+    pub const SIGNATURE: u8 = 0x0A;
     /// Apple's pairing flags (`kTLVType_Flags`), carrying the transient-pairing
     /// bit.
     pub const FLAGS: u8 = 0x13;

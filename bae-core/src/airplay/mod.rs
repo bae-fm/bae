@@ -18,12 +18,14 @@
 //! [`discovery`] browses for receivers, [`capabilities`] parses what they
 //! announce, and [`rtsp`] is the control connection both dialects drive.
 
+pub mod airplay2;
 pub mod capabilities;
 pub mod crypto;
 pub mod discovery;
 pub mod pairing;
 pub mod rtp;
 pub mod rtsp;
+mod secure_rng;
 pub mod session;
 pub mod srp;
 pub mod stream;

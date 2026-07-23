@@ -47,40 +47,13 @@ pub fn apple_public_key() -> RsaPublicKey {
     RsaPublicKey::new(n, e).expect("valid Apple RAOP public key")
 }
 
-/// The RSA randomness source for OAEP. `rsa` is built against `rand_core` 0.6;
-/// bae is on `rand` 0.9, so this adapter feeds the older trait from the current
-/// OS RNG. (No fixed seed — OAEP's padding must be random.)
-struct OaepRng;
-
-impl rsa::rand_core::RngCore for OaepRng {
-    fn next_u32(&mut self) -> u32 {
-        let mut b = [0u8; 4];
-        self.fill_bytes(&mut b);
-        u32::from_le_bytes(b)
-    }
-
-    fn next_u64(&mut self) -> u64 {
-        let mut b = [0u8; 8];
-        self.fill_bytes(&mut b);
-        u64::from_le_bytes(b)
-    }
-
-    fn fill_bytes(&mut self, dest: &mut [u8]) {
-        use rand::RngCore as _;
-        rand::rng().fill_bytes(dest);
-    }
-
-    fn try_fill_bytes(&mut self, dest: &mut [u8]) -> Result<(), rsa::rand_core::Error> {
-        self.fill_bytes(dest);
-        Ok(())
-    }
-}
-
-impl rsa::rand_core::CryptoRng for OaepRng {}
-
 /// RSA-OAEP(SHA-1)-encrypt `aes_key` to `public_key` for the SDP `rsaaeskey`.
 pub fn wrap_aes_key(public_key: &RsaPublicKey, aes_key: &[u8]) -> Result<Vec<u8>, rsa::Error> {
-    public_key.encrypt(&mut OaepRng, Oaep::new::<Sha1>(), aes_key)
+    public_key.encrypt(
+        &mut super::secure_rng::SecureRng,
+        Oaep::new::<Sha1>(),
+        aes_key,
+    )
 }
 
 /// The AES-128-CBC cipher a RAOP session applies to each audio packet, holding
@@ -271,7 +244,7 @@ mod tests {
     #[test]
     fn rsa_oaep_wrap_unwraps_with_matching_private_key() {
         use rsa::RsaPrivateKey;
-        let private = RsaPrivateKey::new(&mut OaepRng, 2048).unwrap();
+        let private = RsaPrivateKey::new(&mut super::super::secure_rng::SecureRng, 2048).unwrap();
         let public = private.to_public_key();
 
         let aes_key = [0xABu8; 16];
