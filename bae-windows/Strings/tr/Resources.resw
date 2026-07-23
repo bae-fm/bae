@@ -27,7 +27,6 @@
   <data name="album.edit.reset" xml:space="preserve"><value>Kaynağa Sıfırla</value></data>
   <data name="album.edit.reset_failed" xml:space="preserve"><value>kaynağa sıfırlanamadı</value></data>
   <data name="album.edit.title" xml:space="preserve"><value>üst veriyi düzenle</value></data>
-  <data name="album.gallery" xml:space="preserve"><value>Galeri</value></data>
   <data name="album.open_failed" xml:space="preserve"><value>bu albüm açılamadı</value></data>
   <data name="album.reidentify.label" xml:space="preserve"><value>yeniden tanımla</value></data>
   <data name="album.reidentify.confirm" xml:space="preserve"><value>Yeniden tanımla</value></data>

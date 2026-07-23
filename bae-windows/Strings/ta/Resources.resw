@@ -27,7 +27,6 @@
   <data name="album.edit.reset" xml:space="preserve"><value>மூலத்துக்கு மீட்டமை</value></data>
   <data name="album.edit.reset_failed" xml:space="preserve"><value>மூலத்துக்கு மீட்டமைக்க முடியவில்லை</value></data>
   <data name="album.edit.title" xml:space="preserve"><value>மெட்டாடேட்டாவைத் திருத்து</value></data>
-  <data name="album.gallery" xml:space="preserve"><value>காட்சியகம்</value></data>
   <data name="album.open_failed" xml:space="preserve"><value>இந்த ஆல்பத்தைத் திறக்க முடியவில்லை</value></data>
   <data name="album.reidentify.label" xml:space="preserve"><value>மீண்டும் அடையாளம் காண்</value></data>
   <data name="album.reidentify.confirm" xml:space="preserve"><value>மீண்டும் அடையாளம் காண்</value></data>

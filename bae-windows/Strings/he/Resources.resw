@@ -27,7 +27,6 @@
   <data name="album.edit.reset" xml:space="preserve"><value>אפס למקור</value></data>
   <data name="album.edit.reset_failed" xml:space="preserve"><value>לא ניתן לאפס למקור</value></data>
   <data name="album.edit.title" xml:space="preserve"><value>ערוך מטא-נתונים</value></data>
-  <data name="album.gallery" xml:space="preserve"><value>גלריה</value></data>
   <data name="album.open_failed" xml:space="preserve"><value>לא ניתן לפתוח את האלבום הזה</value></data>
   <data name="album.reidentify.label" xml:space="preserve"><value>זהה מחדש</value></data>
   <data name="album.reidentify.confirm" xml:space="preserve"><value>זהה מחדש</value></data>

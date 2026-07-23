@@ -27,7 +27,6 @@
   <data name="album.edit.reset" xml:space="preserve"><value>ഉറവിടത്തിലേക്ക് പുനഃസജ്ജമാക്കുക</value></data>
   <data name="album.edit.reset_failed" xml:space="preserve"><value>ഉറവിടത്തിലേക്ക് പുനഃസജ്ജമാക്കാനായില്ല</value></data>
   <data name="album.edit.title" xml:space="preserve"><value>മെറ്റാഡാറ്റ തിരുത്തുക</value></data>
-  <data name="album.gallery" xml:space="preserve"><value>ഗാലറി</value></data>
   <data name="album.open_failed" xml:space="preserve"><value>ഈ album തുറക്കാനായില്ല</value></data>
   <data name="album.reidentify.label" xml:space="preserve"><value>വീണ്ടും തിരിച്ചറിയുക</value></data>
   <data name="album.reidentify.confirm" xml:space="preserve"><value>വീണ്ടും തിരിച്ചറിയുക</value></data>

@@ -27,7 +27,6 @@
   <data name="album.edit.reset" xml:space="preserve"><value>Скинути до джерела</value></data>
   <data name="album.edit.reset_failed" xml:space="preserve"><value>не вдалося скинути до джерела</value></data>
   <data name="album.edit.title" xml:space="preserve"><value>редагувати метадані</value></data>
-  <data name="album.gallery" xml:space="preserve"><value>Галерея</value></data>
   <data name="album.open_failed" xml:space="preserve"><value>не вдалося відкрити цей альбом</value></data>
   <data name="album.reidentify.label" xml:space="preserve"><value>повторно ідентифікувати</value></data>
   <data name="album.reidentify.confirm" xml:space="preserve"><value>Повторно ідентифікувати</value></data>

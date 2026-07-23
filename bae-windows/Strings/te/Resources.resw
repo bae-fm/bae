@@ -27,7 +27,6 @@
   <data name="album.edit.reset" xml:space="preserve"><value>మూలానికి రీసెట్ చేయి</value></data>
   <data name="album.edit.reset_failed" xml:space="preserve"><value>మూలానికి రీసెట్ చేయలేకపోయింది</value></data>
   <data name="album.edit.title" xml:space="preserve"><value>మెటాడేటాను సవరించండి</value></data>
-  <data name="album.gallery" xml:space="preserve"><value>గ్యాలరీ</value></data>
   <data name="album.open_failed" xml:space="preserve"><value>ఈ ఆల్బమ్‌ను తెరవలేకపోయింది</value></data>
   <data name="album.reidentify.label" xml:space="preserve"><value>మళ్లీ గుర్తించు</value></data>
   <data name="album.reidentify.confirm" xml:space="preserve"><value>మళ్లీ గుర్తించు</value></data>

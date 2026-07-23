@@ -27,7 +27,6 @@
   <data name="album.edit.reset" xml:space="preserve"><value>Đặt lại về nguồn</value></data>
   <data name="album.edit.reset_failed" xml:space="preserve"><value>không thể đặt lại về nguồn</value></data>
   <data name="album.edit.title" xml:space="preserve"><value>sửa siêu dữ liệu</value></data>
-  <data name="album.gallery" xml:space="preserve"><value>Thư viện ảnh</value></data>
   <data name="album.open_failed" xml:space="preserve"><value>không thể mở album này</value></data>
   <data name="album.reidentify.label" xml:space="preserve"><value>nhận dạng lại</value></data>
   <data name="album.reidentify.confirm" xml:space="preserve"><value>Nhận dạng lại</value></data>

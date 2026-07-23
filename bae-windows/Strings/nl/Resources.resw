@@ -27,7 +27,6 @@
   <data name="album.edit.reset" xml:space="preserve"><value>Terugzetten naar bron</value></data>
   <data name="album.edit.reset_failed" xml:space="preserve"><value>kan niet terugzetten naar bron</value></data>
   <data name="album.edit.title" xml:space="preserve"><value>metadata bewerken</value></data>
-  <data name="album.gallery" xml:space="preserve"><value>Galerij</value></data>
   <data name="album.open_failed" xml:space="preserve"><value>kan dit album niet openen</value></data>
   <data name="album.reidentify.label" xml:space="preserve"><value>opnieuw identificeren</value></data>
   <data name="album.reidentify.confirm" xml:space="preserve"><value>Opnieuw identificeren</value></data>

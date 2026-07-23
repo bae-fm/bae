@@ -27,7 +27,6 @@
   <data name="album.edit.reset" xml:space="preserve"><value>Нулиране към източника</value></data>
   <data name="album.edit.reset_failed" xml:space="preserve"><value>не може да се нулира към източника</value></data>
   <data name="album.edit.title" xml:space="preserve"><value>редактиране на метаданните</value></data>
-  <data name="album.gallery" xml:space="preserve"><value>Галерия</value></data>
   <data name="album.open_failed" xml:space="preserve"><value>този албум не може да бъде отворен</value></data>
   <data name="album.reidentify.label" xml:space="preserve"><value>повторна идентификация</value></data>
   <data name="album.reidentify.confirm" xml:space="preserve"><value>Повторна идентификация</value></data>

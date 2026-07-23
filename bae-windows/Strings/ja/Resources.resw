@@ -27,7 +27,6 @@
   <data name="album.edit.reset" xml:space="preserve"><value>ソースにリセット</value></data>
   <data name="album.edit.reset_failed" xml:space="preserve"><value>ソースにリセットできませんでした</value></data>
   <data name="album.edit.title" xml:space="preserve"><value>メタデータを編集</value></data>
-  <data name="album.gallery" xml:space="preserve"><value>ギャラリー</value></data>
   <data name="album.open_failed" xml:space="preserve"><value>このアルバムを開けませんでした</value></data>
   <data name="album.reidentify.label" xml:space="preserve"><value>再識別</value></data>
   <data name="album.reidentify.confirm" xml:space="preserve"><value>再識別</value></data>

@@ -27,7 +27,6 @@
   <data name="album.edit.reset" xml:space="preserve"><value>重置为来源</value></data>
   <data name="album.edit.reset_failed" xml:space="preserve"><value>无法重置为来源</value></data>
   <data name="album.edit.title" xml:space="preserve"><value>编辑元数据</value></data>
-  <data name="album.gallery" xml:space="preserve"><value>图库</value></data>
   <data name="album.open_failed" xml:space="preserve"><value>无法打开此专辑</value></data>
   <data name="album.reidentify.label" xml:space="preserve"><value>重新识别</value></data>
   <data name="album.reidentify.confirm" xml:space="preserve"><value>重新识别</value></data>

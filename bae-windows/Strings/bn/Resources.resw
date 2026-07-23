@@ -27,7 +27,6 @@
   <data name="album.edit.reset" xml:space="preserve"><value>উৎসে রিসেট করুন</value></data>
   <data name="album.edit.reset_failed" xml:space="preserve"><value>উৎসে রিসেট করা যায়নি</value></data>
   <data name="album.edit.title" xml:space="preserve"><value>মেটাডেটা সম্পাদনা করুন</value></data>
-  <data name="album.gallery" xml:space="preserve"><value>গ্যালারি</value></data>
   <data name="album.open_failed" xml:space="preserve"><value>এই অ্যালবাম খোলা যায়নি</value></data>
   <data name="album.reidentify.label" xml:space="preserve"><value>আবার শনাক্ত করুন</value></data>
   <data name="album.reidentify.confirm" xml:space="preserve"><value>আবার শনাক্ত করুন</value></data>

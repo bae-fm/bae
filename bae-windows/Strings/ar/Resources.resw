@@ -27,7 +27,6 @@
   <data name="album.edit.reset" xml:space="preserve"><value>إعادة التعيين إلى المصدر</value></data>
   <data name="album.edit.reset_failed" xml:space="preserve"><value>تعذّرت إعادة التعيين إلى المصدر</value></data>
   <data name="album.edit.title" xml:space="preserve"><value>تحرير البيانات الوصفية</value></data>
-  <data name="album.gallery" xml:space="preserve"><value>المعرض</value></data>
   <data name="album.open_failed" xml:space="preserve"><value>تعذّر فتح هذا الألبوم</value></data>
   <data name="album.reidentify.label" xml:space="preserve"><value>إعادة التحديد</value></data>
   <data name="album.reidentify.confirm" xml:space="preserve"><value>إعادة التحديد</value></data>

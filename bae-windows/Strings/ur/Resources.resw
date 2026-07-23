@@ -27,7 +27,6 @@
   <data name="album.edit.reset" xml:space="preserve"><value>ماخذ پر ری سیٹ کریں</value></data>
   <data name="album.edit.reset_failed" xml:space="preserve"><value>ماخذ پر ری سیٹ نہیں ہو سکا</value></data>
   <data name="album.edit.title" xml:space="preserve"><value>میٹا ڈیٹا میں ترمیم کریں</value></data>
-  <data name="album.gallery" xml:space="preserve"><value>گیلری</value></data>
   <data name="album.open_failed" xml:space="preserve"><value>یہ album نہیں کھل سکا</value></data>
   <data name="album.reidentify.label" xml:space="preserve"><value>دوبارہ شناخت کریں</value></data>
   <data name="album.reidentify.confirm" xml:space="preserve"><value>دوبارہ شناخت کریں</value></data>

@@ -27,7 +27,6 @@
   <data name="album.edit.reset" xml:space="preserve"><value>ಮೂಲಕ್ಕೆ ಮರುಹೊಂದಿಸಿ</value></data>
   <data name="album.edit.reset_failed" xml:space="preserve"><value>ಮೂಲಕ್ಕೆ ಮರುಹೊಂದಿಸಲಾಗಲಿಲ್ಲ</value></data>
   <data name="album.edit.title" xml:space="preserve"><value>ಮೆಟಾಡೇಟಾ ಸಂಪಾದಿಸಿ</value></data>
-  <data name="album.gallery" xml:space="preserve"><value>ಗ್ಯಾಲರಿ</value></data>
   <data name="album.open_failed" xml:space="preserve"><value>ಈ ಆಲ್ಬಮ್ ತೆರೆಯಲಾಗಲಿಲ್ಲ</value></data>
   <data name="album.reidentify.label" xml:space="preserve"><value>ಮರುಗುರುತಿಸಿ</value></data>
   <data name="album.reidentify.confirm" xml:space="preserve"><value>ಮರುಗುರುತಿಸಿ</value></data>

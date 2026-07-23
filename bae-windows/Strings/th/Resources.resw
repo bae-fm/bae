@@ -27,7 +27,6 @@
   <data name="album.edit.reset" xml:space="preserve"><value>รีเซ็ตเป็นแหล่งที่มา</value></data>
   <data name="album.edit.reset_failed" xml:space="preserve"><value>รีเซ็ตเป็นแหล่งที่มาไม่ได้</value></data>
   <data name="album.edit.title" xml:space="preserve"><value>แก้ไขเมทาดาทา</value></data>
-  <data name="album.gallery" xml:space="preserve"><value>แกลเลอรี</value></data>
   <data name="album.open_failed" xml:space="preserve"><value>เปิดอัลบั้มนี้ไม่ได้</value></data>
   <data name="album.reidentify.label" xml:space="preserve"><value>ระบุใหม่</value></data>
   <data name="album.reidentify.confirm" xml:space="preserve"><value>ระบุใหม่</value></data>

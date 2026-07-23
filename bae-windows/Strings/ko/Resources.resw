@@ -27,7 +27,6 @@
   <data name="album.edit.reset" xml:space="preserve"><value>소스로 재설정</value></data>
   <data name="album.edit.reset_failed" xml:space="preserve"><value>소스로 재설정할 수 없음</value></data>
   <data name="album.edit.title" xml:space="preserve"><value>메타데이터 편집</value></data>
-  <data name="album.gallery" xml:space="preserve"><value>갤러리</value></data>
   <data name="album.open_failed" xml:space="preserve"><value>이 앨범을 열 수 없음</value></data>
   <data name="album.reidentify.label" xml:space="preserve"><value>다시 식별</value></data>
   <data name="album.reidentify.confirm" xml:space="preserve"><value>다시 식별</value></data>

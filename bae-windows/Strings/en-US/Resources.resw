@@ -27,7 +27,6 @@
   <data name="album.edit.reset" xml:space="preserve"><value>Reset to Source</value></data>
   <data name="album.edit.reset_failed" xml:space="preserve"><value>couldn't reset to source</value></data>
   <data name="album.edit.title" xml:space="preserve"><value>edit metadata</value></data>
-  <data name="album.gallery" xml:space="preserve"><value>Gallery</value></data>
   <data name="album.open_failed" xml:space="preserve"><value>couldn't open this album</value></data>
   <data name="album.reidentify.label" xml:space="preserve"><value>re-identify</value></data>
   <data name="album.reidentify.confirm" xml:space="preserve"><value>Re-identify</value></data>

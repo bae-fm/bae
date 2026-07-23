@@ -27,7 +27,6 @@
   <data name="album.edit.reset" xml:space="preserve"><value>ਸਰੋਤ ਤੇ ਰੀਸੈੱਟ ਕਰੋ</value></data>
   <data name="album.edit.reset_failed" xml:space="preserve"><value>ਸਰੋਤ ਤੇ ਰੀਸੈੱਟ ਨਹੀਂ ਕੀਤਾ ਜਾ ਸਕਿਆ</value></data>
   <data name="album.edit.title" xml:space="preserve"><value>ਮੈਟਾਡਾਟਾ ਸੋਧੋ</value></data>
-  <data name="album.gallery" xml:space="preserve"><value>ਗੈਲਰੀ</value></data>
   <data name="album.open_failed" xml:space="preserve"><value>ਇਹ ਐਲਬਮ ਖੋਲ੍ਹੀ ਨਹੀਂ ਜਾ ਸਕੀ</value></data>
   <data name="album.reidentify.label" xml:space="preserve"><value>ਮੁੜ ਪਛਾਣੋ</value></data>
   <data name="album.reidentify.confirm" xml:space="preserve"><value>ਮੁੜ ਪਛਾਣੋ</value></data>
