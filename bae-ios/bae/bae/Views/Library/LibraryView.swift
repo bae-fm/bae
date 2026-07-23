@@ -375,7 +375,7 @@ private struct LibrarySyncToolbarStatus: View {
                     .accessibilityLabel(Text("syncing\u{2026}"))
             }
             else {
-                Text(syncStatusLabel(configStore.syncIndicator))
+                Text(SyncIndicatorLabel.text(configStore.syncIndicator))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
