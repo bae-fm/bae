@@ -13,7 +13,10 @@ path = "src/lib.rs"
 
 [dependencies]
 coven = { workspace = true }
-reqwest = { workspace = true, features = ["form", "json", "query", "rustls"] }
+# `blocking` powers the DLNA control point (src/dlna/): its SSDP search thread
+# and the SOAP channel drive blocking HTTP off the async runtime, the same way
+# the Cast session owns its device on its own OS thread.
+reqwest = { workspace = true, features = ["blocking", "form", "json", "query", "rustls"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 serde_yaml = "0.9"
@@ -61,6 +64,10 @@ notify-debouncer-full = "0.7.0"
 # everywhere; the receiver fetches audio itself over HTTP.
 rust_cast = { version = "0.21", features = ["thread_safe"] }
 mdns-sd = "0.20"
+# UPnP/DLNA control point (src/dlna/): parses device-description and SOAP
+# response XML. Read-only DOM, pure Rust (builds on every platform). Outgoing
+# SOAP envelopes are hand-built with explicit escaping, so this is parse-only.
+roxmltree = "0.20"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 getrandom = { version = "0.2", features = ["js"] }

@@ -862,6 +862,7 @@ dependencies = [
  "rand 0.9.2",
  "regex",
  "reqwest",
+ "roxmltree",
  "rtrb",
  "rust_cast",
  "serde",
@@ -3858,6 +3859,7 @@ checksum = "ab3f43e3283ab1488b624b44b0e988d0acea0b3214e694730a055cb6b2efa801"
 dependencies = [
  "base64",
  "bytes",
+ "futures-channel",
  "futures-core",
  "futures-util",
  "http 1.4.0",
@@ -3960,6 +3962,12 @@ dependencies = [
  "serde_json",
  "syn 2.0.117",
 ]
+
+[[package]]
+name = "roxmltree"
+version = "0.20.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6c20b6793b5c2fa6553b250154b78d6d0db37e72700ae35fad9387a46f487c97"
 
 [[package]]
 name = "rsqlite-vfs"

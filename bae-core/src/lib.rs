@@ -10,6 +10,7 @@ pub mod cue_flac;
 pub mod db;
 pub mod diagnostics;
 pub mod discogs;
+pub mod dlna;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub mod identify;
 pub mod import;
