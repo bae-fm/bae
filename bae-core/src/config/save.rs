@@ -49,6 +49,7 @@ impl SaveBitDepth {
 pub enum SaveCodec {
     Flac { bit_depth: SaveBitDepth },
     Mp3 { bitrate_kbps: u32 },
+    Aac { bitrate_kbps: u32 },
     OpusOgg { bitrate_kbps: u32 },
     Wav { bit_depth: SaveBitDepth },
     Aiff { bit_depth: SaveBitDepth },
@@ -59,6 +60,7 @@ impl SaveCodec {
         match self {
             Self::Flac { .. } => "flac",
             Self::Mp3 { .. } => "mp3",
+            Self::Aac { .. } => "m4a",
             Self::OpusOgg { .. } => "ogg",
             Self::Wav { .. } => "wav",
             Self::Aiff { .. } => "aiff",
@@ -67,7 +69,7 @@ impl SaveCodec {
 
     pub fn supports_single_file_cue(&self) -> bool {
         match self {
-            Self::OpusOgg { .. } => false,
+            Self::Aac { .. } | Self::OpusOgg { .. } => false,
             Self::Flac { .. } | Self::Mp3 { .. } | Self::Wav { .. } | Self::Aiff { .. } => true,
         }
     }
@@ -137,6 +139,14 @@ impl SavePreset {
                 if !(32..=320).contains(&bitrate_kbps) {
                     return Err(ConfigError::Config(format!(
                         "export preset {} has unsupported MP3 bitrate {}",
+                        self.id, bitrate_kbps
+                    )));
+                }
+            }
+            SaveCodec::Aac { bitrate_kbps } => {
+                if !(32..=512).contains(&bitrate_kbps) {
+                    return Err(ConfigError::Config(format!(
+                        "export preset {} has unsupported AAC bitrate {}",
                         self.id, bitrate_kbps
                     )));
                 }
@@ -226,5 +236,32 @@ mod tests {
             .validate()
             .expect_err("single-file CUE requires a CUE-compatible codec");
         assert!(err.to_string().contains("unsupported codec"));
+    }
+
+    #[test]
+    fn aac_bitrate_is_validated_against_its_bounds() {
+        let preset = |bitrate_kbps: u32| SavePreset {
+            id: "aac".to_string(),
+            name: "AAC".to_string(),
+            codec: SaveCodec::Aac { bitrate_kbps },
+            filename_tokens: default_save_filename_tokens(),
+            pregap_placement: default_export_pregap_placement(),
+            applies_to_track: true,
+            applies_to_release: true,
+            embed_cover: true,
+        };
+
+        preset(32).validate().unwrap();
+        preset(256).validate().unwrap();
+        preset(512).validate().unwrap();
+
+        let err = preset(31)
+            .validate()
+            .expect_err("a bitrate below the minimum must be rejected");
+        assert!(err.to_string().contains("unsupported AAC bitrate"));
+        let err = preset(513)
+            .validate()
+            .expect_err("a bitrate above the maximum must be rejected");
+        assert!(err.to_string().contains("unsupported AAC bitrate"));
     }
 }

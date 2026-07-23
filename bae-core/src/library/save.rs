@@ -421,6 +421,9 @@ fn encode_format(
         SaveCodec::Mp3 { bitrate_kbps } => EncodeFormat::Mp3 {
             bitrate_kbps: *bitrate_kbps,
         },
+        SaveCodec::Aac { bitrate_kbps } => EncodeFormat::Aac {
+            bitrate_kbps: *bitrate_kbps,
+        },
         SaveCodec::OpusOgg { bitrate_kbps } => EncodeFormat::OpusOgg {
             bitrate_kbps: *bitrate_kbps,
         },
@@ -439,6 +442,7 @@ fn codec_tag_type(codec: &crate::config::SaveCodec) -> lofty::tag::TagType {
     match codec {
         SaveCodec::Flac { .. } => lofty::tag::TagType::VorbisComments,
         SaveCodec::Mp3 { .. } => lofty::tag::TagType::Id3v2,
+        SaveCodec::Aac { .. } => lofty::tag::TagType::Mp4Ilst,
         SaveCodec::OpusOgg { .. } => lofty::tag::TagType::VorbisComments,
         SaveCodec::Wav { .. } => lofty::tag::TagType::RiffInfo,
         SaveCodec::Aiff { .. } => lofty::tag::TagType::AiffText,
@@ -507,6 +511,10 @@ fn cue_file_type(codec: &crate::config::SaveCodec) -> Result<&'static str, Strin
         crate::config::SaveCodec::Aiff { .. } => Ok("AIFF"),
         crate::config::SaveCodec::Flac { .. }
         | crate::config::SaveCodec::Wav { .. } => Ok("WAVE"),
+        crate::config::SaveCodec::Aac { .. } => Err(
+            "single-file CUE export does not support AAC because CUE has no AAC file type"
+                .to_string(),
+        ),
         crate::config::SaveCodec::OpusOgg { .. } => Err(
             "single-file CUE export does not support Opus/Ogg because CUE has no Opus/Ogg file type"
                 .to_string(),
@@ -869,5 +877,69 @@ mod tests {
             tag.pictures().is_empty(),
             "no cover bytes means no embedded picture"
         );
+    }
+
+    /// AAC exports write MP4 `ilst` atoms. Encode a real .m4a, tag it with the
+    /// container `codec_tag_type` picks for AAC, and read every field back —
+    /// proving the tag type is wired to a container lofty writes natively.
+    #[test]
+    fn write_tags_round_trips_through_mp4_ilst() {
+        use lofty::prelude::*;
+        use lofty::tag::TagType;
+
+        crate::audio_codec::init();
+        let samples: Vec<i32> = (0..44_100 * 2)
+            .map(|i| ((i as f64 * 0.02).sin() * 0.5 * i32::MAX as f64) as i32)
+            .collect();
+        let m4a = crate::audio_codec::encode_i32(
+            crate::audio_codec::EncodeFormat::Aac { bitrate_kbps: 256 },
+            &samples,
+            44_100,
+            2,
+        )
+        .unwrap();
+
+        let cover_bytes = {
+            let img = image::RgbImage::from_pixel(8, 8, image::Rgb([120, 40, 200]));
+            let mut buf = std::io::Cursor::new(Vec::new());
+            image::DynamicImage::ImageRgb8(img)
+                .write_to(&mut buf, image::ImageFormat::Jpeg)
+                .unwrap();
+            buf.into_inner()
+        };
+
+        let tags = SaveTags {
+            title: "Track Title".to_string(),
+            artist: "Artist Name".to_string(),
+            album: "Album Title".to_string(),
+            year: Some(2001),
+            disc: Some(1),
+        };
+
+        let dir = tempfile::TempDir::new().unwrap();
+        let path = dir.path().join("tagged.m4a");
+        std::fs::write(&path, &m4a).unwrap();
+        let tag_type = codec_tag_type(&crate::config::SaveCodec::Aac { bitrate_kbps: 256 });
+        assert_eq!(tag_type, TagType::Mp4Ilst);
+        write_tags(
+            &path,
+            tag_type,
+            &tags,
+            Some(3),
+            10,
+            true,
+            Some(&cover_bytes),
+        )
+        .unwrap();
+
+        let tagged = lofty::read_from_path(&path).unwrap();
+        let tag = tagged.tag(TagType::Mp4Ilst).expect("MP4 ilst tag present");
+        assert_eq!(tag.title().as_deref(), Some("Track Title"));
+        assert_eq!(tag.artist().as_deref(), Some("Artist Name"));
+        assert_eq!(tag.album().as_deref(), Some("Album Title"));
+        assert_eq!(tag.track(), Some(3));
+        assert_eq!(tag.track_total(), Some(10));
+        assert_eq!(tag.disk(), Some(1));
+        assert!(!tag.pictures().is_empty(), "cover embedded");
     }
 }

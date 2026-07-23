@@ -1,7 +1,7 @@
 //! Unified audio codec module using FFmpeg.
 //!
 //! Provides decoding (any format to PCM, streamed from a sparse buffer),
-//! encoding (PCM to FLAC/MP3/Opus/WAV/AIFF, streamed frame by frame into an
+//! encoding (PCM to FLAC/MP3/AAC/Opus/WAV/AIFF, streamed frame by frame into an
 //! output sink), and seektable generation.
 
 use std::fmt;
@@ -113,6 +113,7 @@ pub(crate) fn av_err_str(errnum: i32) -> String {
 pub enum EncodeFormat {
     Flac { bits_per_sample: u32 },
     Mp3 { bitrate_kbps: u32 },
+    Aac { bitrate_kbps: u32 },
     OpusOgg { bitrate_kbps: u32 },
     PcmWav { bits_per_sample: u32 },
     PcmAiff { bits_per_sample: u32 },
@@ -167,6 +168,7 @@ impl EncodeFormat {
         match self {
             Self::Flac { .. } => "FLAC",
             Self::Mp3 { .. } => "MP3",
+            Self::Aac { .. } => "AAC",
             Self::OpusOgg { .. } => "Opus/Ogg",
             Self::PcmWav { .. } => "WAV",
             Self::PcmAiff { .. } => "AIFF",
@@ -177,6 +179,8 @@ impl EncodeFormat {
         match self {
             Self::Flac { .. } => c"flac".as_ptr(),
             Self::Mp3 { .. } => c"mp3".as_ptr(),
+            // The .m4a flavor of the MP4 muxer.
+            Self::Aac { .. } => c"ipod".as_ptr(),
             Self::OpusOgg { .. } => c"ogg".as_ptr(),
             Self::PcmWav { .. } => c"wav".as_ptr(),
             Self::PcmAiff { .. } => c"aiff".as_ptr(),
@@ -187,6 +191,7 @@ impl EncodeFormat {
         match self {
             Self::Flac { .. } => ffmpeg_sys_next::AVCodecID::AV_CODEC_ID_FLAC,
             Self::Mp3 { .. } => ffmpeg_sys_next::AVCodecID::AV_CODEC_ID_MP3,
+            Self::Aac { .. } => ffmpeg_sys_next::AVCodecID::AV_CODEC_ID_AAC,
             Self::OpusOgg { .. } => ffmpeg_sys_next::AVCodecID::AV_CODEC_ID_OPUS,
             Self::PcmWav { bits_per_sample } => pcm_codec_id(bits_per_sample, false),
             Self::PcmAiff { bits_per_sample } => pcm_codec_id(bits_per_sample, true),
@@ -204,6 +209,8 @@ impl EncodeFormat {
                 _ => Err(format!("Unsupported PCM bit depth: {bits_per_sample}")),
             },
             Self::Mp3 { .. } => Ok(AVSampleFormat::AV_SAMPLE_FMT_S16P),
+            // FFmpeg's native aac encoder accepts only planar float.
+            Self::Aac { .. } => Ok(AVSampleFormat::AV_SAMPLE_FMT_FLTP),
             Self::OpusOgg { .. } => Ok(AVSampleFormat::AV_SAMPLE_FMT_S16),
         }
     }
@@ -212,6 +219,7 @@ impl EncodeFormat {
         match self {
             Self::Flac { .. } => 4096,
             Self::Mp3 { .. } => 1152,
+            Self::Aac { .. } => 1024,
             Self::OpusOgg { .. } => 960,
             Self::PcmWav { .. } | Self::PcmAiff { .. } => 4096,
         }
@@ -221,6 +229,7 @@ impl EncodeFormat {
         match self {
             Self::Flac { .. } => "FLAC encoder not found",
             Self::Mp3 { .. } => "MP3 encoder not found (libmp3lame)",
+            Self::Aac { .. } => "AAC encoder not found",
             Self::OpusOgg { .. } => "Opus encoder not found (libopus)",
             Self::PcmWav { .. } => "WAV PCM encoder not found",
             Self::PcmAiff { .. } => "AIFF PCM encoder not found",
@@ -247,6 +256,9 @@ impl EncodeFormat {
                 (*codec_ctx).bits_per_raw_sample = bits_per_sample as c_int;
             }
             Self::Mp3 { bitrate_kbps } => {
+                (*codec_ctx).bit_rate = bitrate_kbps as i64 * 1000;
+            }
+            Self::Aac { bitrate_kbps } => {
                 (*codec_ctx).bit_rate = bitrate_kbps as i64 * 1000;
             }
             Self::OpusOgg { bitrate_kbps } => {
@@ -298,6 +310,18 @@ impl EncodeFormat {
                     for i in 0..chunk_frames {
                         let src_idx = sample_offset + i * channels + ch;
                         *dst.add(i) = (samples[src_idx] >> 16) as i16;
+                    }
+                }
+            }
+            Self::Aac { .. } => {
+                // Planar float, one buffer per channel: the full-range i32
+                // sample maps to [-1, 1) by dividing by 2^31.
+                const SCALE: f32 = 2_147_483_648.0;
+                for ch in 0..channels {
+                    let dst = (*frame).data[ch] as *mut f32;
+                    for i in 0..chunk_frames {
+                        let src_idx = sample_offset + i * channels + ch;
+                        *dst.add(i) = samples[src_idx] as f32 / SCALE;
                     }
                 }
             }
@@ -396,9 +420,10 @@ impl<T: std::io::Write + std::io::Seek + Send> WriteSeek for T {}
 ///   set in [`StreamingEncoder::open_encoder`] for the non-seekable sink),
 ///   leaving a plain CBR frame stream with nothing to seek back and patch.
 ///
-/// FLAC's STREAMINFO (total samples, md5) and the RIFF/FORM sizes of WAV/AIFF
-/// have no such streaming mode — they are always patched by seeking back over
-/// the header — so they stay out of this enum: pairing a header-patching muxer
+/// FLAC's STREAMINFO (total samples, md5), the RIFF/FORM sizes of WAV/AIFF,
+/// and the AAC/.m4a sample-table `moov` (written whole on finalize) have no
+/// such streaming mode — they are always patched by seeking back over the
+/// header — so they stay out of this enum: pairing a header-patching muxer
 /// with a sink it cannot patch is unrepresentable.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StreamEncodeFormat {

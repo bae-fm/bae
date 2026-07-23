@@ -395,6 +395,7 @@ private struct PresetBitDepthRow: View {
 enum SavePresetKind: CaseIterable {
     case flac
     case mp3
+    case aac
     case opusOgg
     case wav
     case aiff
@@ -404,6 +405,7 @@ enum SavePresetKind: CaseIterable {
         switch self {
         case .flac: "FLAC"
         case .mp3: "MP3"
+        case .aac: "AAC"
         case .opusOgg: "Opus"
         case .wav: "WAV"
         case .aiff: "AIFF"
@@ -414,6 +416,7 @@ enum SavePresetKind: CaseIterable {
         switch self {
         case .flac: .flac(bitDepth: .source)
         case .mp3: .mp3(bitrateKbps: 320)
+        case .aac: .aac(bitrateKbps: 256)
         case .opusOgg: .opusOgg(bitrateKbps: 192)
         case .wav: .wav(bitDepth: .source)
         case .aiff: .aiff(bitDepth: .source)
@@ -425,6 +428,7 @@ enum SavePresetKind: CaseIterable {
     var bitrateRange: ClosedRange<UInt32>? {
         switch self {
         case .mp3: 32...320
+        case .aac: 32...512
         case .opusOgg: 32...512
         case .flac, .wav, .aiff: nil
         }
@@ -436,6 +440,7 @@ extension BridgeSaveCodec {
         switch self {
         case .flac: .flac
         case .mp3: .mp3
+        case .aac: .aac
         case .opusOgg: .opusOgg
         case .wav: .wav
         case .aiff: .aiff
@@ -444,13 +449,15 @@ extension BridgeSaveCodec {
 
     /// Switch codec family, carrying the parameter that still applies: bit
     /// depth across lossless codecs, bitrate across lossy ones (clamped into
-    /// MP3's supported range). A cross-family switch takes the family default.
+    /// the target family's supported range). A cross-family switch takes the
+    /// family default.
     func switched(to kind: SavePresetKind) -> BridgeSaveCodec {
         switch kind {
         case .flac: .flac(bitDepth: bitDepth ?? .source)
         case .wav: .wav(bitDepth: bitDepth ?? .source)
         case .aiff: .aiff(bitDepth: bitDepth ?? .source)
         case .mp3: .mp3(bitrateKbps: min(max(bitrateKbps ?? 320, 32), 320))
+        case .aac: .aac(bitrateKbps: min(max(bitrateKbps ?? 256, 32), 512))
         case .opusOgg: .opusOgg(bitrateKbps: bitrateKbps ?? 192)
         }
     }
@@ -460,7 +467,7 @@ extension BridgeSaveCodec {
         switch self {
         case .flac(let bitDepth), .wav(let bitDepth), .aiff(let bitDepth):
             bitDepth
-        case .mp3, .opusOgg:
+        case .mp3, .aac, .opusOgg:
             nil
         }
     }
@@ -468,7 +475,8 @@ extension BridgeSaveCodec {
     /// The lossy family's bitrate; nil for lossless codecs.
     var bitrateKbps: UInt32? {
         switch self {
-        case .mp3(let bitrateKbps), .opusOgg(let bitrateKbps):
+        case .mp3(let bitrateKbps), .aac(let bitrateKbps),
+            .opusOgg(let bitrateKbps):
             bitrateKbps
         case .flac, .wav, .aiff:
             nil
@@ -480,13 +488,14 @@ extension BridgeSaveCodec {
         case .flac: .flac(bitDepth: bitDepth)
         case .wav: .wav(bitDepth: bitDepth)
         case .aiff: .aiff(bitDepth: bitDepth)
-        case .mp3, .opusOgg: self
+        case .mp3, .aac, .opusOgg: self
         }
     }
 
     func with(bitrateKbps: UInt32) -> BridgeSaveCodec {
         switch self {
         case .mp3: .mp3(bitrateKbps: bitrateKbps)
+        case .aac: .aac(bitrateKbps: bitrateKbps)
         case .opusOgg: .opusOgg(bitrateKbps: bitrateKbps)
         case .flac, .wav, .aiff: self
         }
@@ -494,7 +503,7 @@ extension BridgeSaveCodec {
 
     var supportsSingleFileCue: Bool {
         switch self {
-        case .opusOgg:
+        case .aac, .opusOgg:
             false
         case .flac, .mp3, .wav, .aiff:
             true
@@ -506,6 +515,8 @@ extension BridgeSaveCodec {
         case .flac: "FLAC"
         case .mp3(let bitrateKbps):
             String(localized: "MP3 \(Int(bitrateKbps)) kbps")
+        case .aac(let bitrateKbps):
+            String(localized: "AAC \(Int(bitrateKbps)) kbps")
         case .opusOgg(let bitrateKbps):
             String(localized: "Opus \(Int(bitrateKbps)) kbps")
         case .wav: "WAV"
@@ -517,6 +528,7 @@ extension BridgeSaveCodec {
         switch self {
         case .flac: "flac"
         case .mp3: "mp3"
+        case .aac: "m4a"
         case .opusOgg: "ogg"
         case .wav: "wav"
         case .aiff: "aiff"

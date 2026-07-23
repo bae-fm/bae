@@ -336,6 +336,7 @@
   <data name="settings.formats.delete_preset" xml:space="preserve"><value>형식 삭제</value></data>
   <data name="settings.formats.delete_confirm" xml:space="preserve"><value>“{name}” 형식을 삭제하겠습니까?</value></data>
   <data name="settings.formats.codec_mp3" xml:space="preserve"><value>MP3 {kbps} kbps</value></data>
+  <data name="settings.formats.codec_aac" xml:space="preserve"><value>AAC {kbps} kbps</value></data>
   <data name="settings.formats.codec_opus" xml:space="preserve"><value>Opus {kbps} kbps</value></data>
   <data name="settings.formats.show_in_menus" xml:space="preserve"><value>"다른 이름으로 저장…"에 표시:</value></data>
   <data name="settings.formats.embed_cover" xml:space="preserve"><value>커버 아트 포함</value></data>

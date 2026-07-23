@@ -658,6 +658,47 @@ fn test_encode_mp3() {
     assert!(decoded.samples.len() > 40000, "Too few decoded samples");
 }
 
+/// AAC export needs the native `aac` encoder (planar float input) and the
+/// `ipod`/.m4a muxer from the bundled FFmpeg. The muxer writes its sample-table
+/// index on finalize by seeking back, so this exercises the seekable path. AAC
+/// is lossy, so the round-trip checks the sample count, not exactness.
+#[test]
+fn test_encode_aac() {
+    init();
+
+    let sample_rate = 44100u32;
+    let duration_samples = sample_rate as usize;
+    let amplitude = 0.5 * i32::MAX as f64;
+    let samples: Vec<i32> = (0..duration_samples * 2)
+        .map(|i| {
+            let t = (i / 2) as f64 / sample_rate as f64;
+            (amplitude * (2.0 * std::f64::consts::PI * 440.0 * t).sin()) as i32
+        })
+        .collect();
+
+    let aac_data = encode_i32(
+        EncodeFormat::Aac { bitrate_kbps: 256 },
+        &samples,
+        sample_rate,
+        2,
+    )
+    .unwrap();
+
+    // An MP4 file (the .m4a flavor the ipod muxer writes) opens with an `ftyp`
+    // box: a 4-byte size, then the type "ftyp".
+    assert!(
+        aac_data.len() > 100,
+        "AAC data too small: {}",
+        aac_data.len()
+    );
+    assert_eq!(&aac_data[4..8], b"ftyp", "AAC output missing ftyp box");
+
+    let decoded = decode_audio(buffer_from(&aac_data), None, None).unwrap();
+    assert_eq!(decoded.sample_rate, 44100);
+    assert_eq!(decoded.channels, 2);
+    assert!(decoded.samples.len() > 40000, "Too few decoded samples");
+}
+
 #[test]
 fn test_encode_opus_ogg() {
     init();
@@ -691,6 +732,82 @@ fn test_encode_opus_ogg() {
     assert_eq!(decoded.sample_rate, 48_000);
     assert_eq!(decoded.channels, 2);
     assert!(!decoded.samples.is_empty());
+}
+
+/// AIFF export needs the big-endian PCM encoders and the aiff muxer from the
+/// bundled FFmpeg — every offered bit depth encodes and decodes back.
+#[test]
+fn test_encode_aiff() {
+    init();
+
+    let sample_rate = 44100u32;
+    let duration_samples = sample_rate as usize;
+    let amplitude = 0.5 * i32::MAX as f64;
+    let samples: Vec<i32> = (0..duration_samples * 2)
+        .map(|i| {
+            let t = (i / 2) as f64 / sample_rate as f64;
+            (amplitude * (2.0 * std::f64::consts::PI * 440.0 * t).sin()) as i32
+        })
+        .collect();
+
+    for bits_per_sample in [16u32, 24, 32] {
+        let aiff_data = encode_i32(
+            EncodeFormat::PcmAiff { bits_per_sample },
+            &samples,
+            sample_rate,
+            2,
+        )
+        .unwrap();
+
+        assert_eq!(
+            &aiff_data[0..4],
+            b"FORM",
+            "AIFF ({bits_per_sample}-bit) missing FORM chunk"
+        );
+        assert_eq!(
+            &aiff_data[8..12],
+            b"AIFF",
+            "AIFF ({bits_per_sample}-bit) missing AIFF form type"
+        );
+
+        let decoded = decode_audio(buffer_from(&aiff_data), None, None).unwrap();
+        assert_eq!(decoded.sample_rate, 44100);
+        assert_eq!(decoded.channels, 2);
+        assert!(decoded.samples.len() > 40000, "Too few decoded samples");
+    }
+}
+
+/// 32-bit WAV export needs the pcm_s32le encoder from the bundled FFmpeg — the
+/// bit-depth picker offers 32-bit for every lossless format.
+#[test]
+fn test_encode_wav_32() {
+    init();
+
+    let sample_rate = 44100u32;
+    let duration_samples = sample_rate as usize;
+    let amplitude = 0.5 * i32::MAX as f64;
+    let samples: Vec<i32> = (0..duration_samples * 2)
+        .map(|i| {
+            let t = (i / 2) as f64 / sample_rate as f64;
+            (amplitude * (2.0 * std::f64::consts::PI * 440.0 * t).sin()) as i32
+        })
+        .collect();
+
+    let wav_data = encode_i32(
+        EncodeFormat::PcmWav {
+            bits_per_sample: 32,
+        },
+        &samples,
+        sample_rate,
+        2,
+    )
+    .unwrap();
+
+    assert_eq!(&wav_data[0..4], b"RIFF");
+    let decoded = decode_audio(buffer_from(&wav_data), None, None).unwrap();
+    assert_eq!(decoded.sample_rate, 44100);
+    assert_eq!(decoded.channels, 2);
+    assert!(decoded.samples.len() > 40000, "Too few decoded samples");
 }
 
 /// A FLAC round-trip is lossless: every sample matches exactly. Any sample-

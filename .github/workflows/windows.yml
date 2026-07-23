@@ -15,7 +15,7 @@ jobs:
   build:
     runs-on: windows-latest
     env:
-      FFMPEG_VERSION: v8.1.2-bae5
+      FFMPEG_VERSION: v8.1.2-bae6
     steps:
       - uses: actions/checkout@v6
         with:

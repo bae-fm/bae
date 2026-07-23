@@ -35,6 +35,9 @@ impl BridgeSaveCodec {
             bae_core::config::SaveCodec::Mp3 { bitrate_kbps } => BridgeSaveCodec::Mp3 {
                 bitrate_kbps: *bitrate_kbps,
             },
+            bae_core::config::SaveCodec::Aac { bitrate_kbps } => BridgeSaveCodec::Aac {
+                bitrate_kbps: *bitrate_kbps,
+            },
             bae_core::config::SaveCodec::OpusOgg { bitrate_kbps } => BridgeSaveCodec::OpusOgg {
                 bitrate_kbps: *bitrate_kbps,
             },
@@ -54,6 +57,9 @@ impl BridgeSaveCodec {
             },
             BridgeSaveCodec::Mp3 { bitrate_kbps } => {
                 bae_core::config::SaveCodec::Mp3 { bitrate_kbps }
+            }
+            BridgeSaveCodec::Aac { bitrate_kbps } => {
+                bae_core::config::SaveCodec::Aac { bitrate_kbps }
             }
             BridgeSaveCodec::OpusOgg { bitrate_kbps } => {
                 bae_core::config::SaveCodec::OpusOgg { bitrate_kbps }

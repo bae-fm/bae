@@ -2984,6 +2984,7 @@ pub enum BridgeSaveFilenameToken {
 pub enum BridgeSaveCodec {
     Flac { bit_depth: BridgeSaveBitDepth },
     Mp3 { bitrate_kbps: u32 },
+    Aac { bitrate_kbps: u32 },
     OpusOgg { bitrate_kbps: u32 },
     Wav { bit_depth: BridgeSaveBitDepth },
     Aiff { bit_depth: BridgeSaveBitDepth },
