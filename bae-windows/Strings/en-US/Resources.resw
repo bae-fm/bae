@@ -284,6 +284,23 @@
   <data name="settings.automation.token_unavailable" xml:space="preserve"><value>MCP token unavailable</value></data>
   <data name="settings.automation.token_copied" xml:space="preserve"><value>token copied</value></data>
   <data name="settings.automation.token_rotated" xml:space="preserve"><value>token rotated and copied</value></data>
+  <data name="settings.subsonic.label" xml:space="preserve"><value>Subsonic</value></data>
+  <data name="settings.subsonic.enable" xml:space="preserve"><value>Enable Subsonic server</value></data>
+  <data name="settings.subsonic.port" xml:space="preserve"><value>Port</value></data>
+  <data name="settings.subsonic.username" xml:space="preserve"><value>Username</value></data>
+  <data name="settings.subsonic.password" xml:space="preserve"><value>Password</value></data>
+  <data name="settings.subsonic.save_password" xml:space="preserve"><value>save password</value></data>
+  <data name="settings.subsonic.password_help" xml:space="preserve"><value>The password is stored in the keyring, not in the config file. Clients authenticate with the username and password.</value></data>
+  <data name="settings.subsonic.password_saved" xml:space="preserve"><value>password saved</value></data>
+  <data name="settings.subsonic.refresh" xml:space="preserve"><value>refresh status</value></data>
+  <data name="settings.subsonic.invalid_port" xml:space="preserve"><value>enter a port from 1 to 65535</value></data>
+  <data name="settings.subsonic.status.running" xml:space="preserve"><value>Subsonic server: {url}</value></data>
+  <data name="settings.subsonic.status.disabled" xml:space="preserve"><value>Subsonic server disabled</value></data>
+  <data name="settings.subsonic.status.invalid_config" xml:space="preserve"><value>Invalid Subsonic server configuration</value></data>
+  <data name="settings.subsonic.status.credential_unavailable" xml:space="preserve"><value>Subsonic credential unavailable</value></data>
+  <data name="settings.subsonic.status.bind_failed" xml:space="preserve"><value>Subsonic server could not start</value></data>
+  <data name="settings.subsonic.status.server_failed" xml:space="preserve"><value>Subsonic server stopped</value></data>
+  <data name="settings.subsonic.status_unavailable" xml:space="preserve"><value>Subsonic status unavailable</value></data>
   <data name="library.mode.albums" xml:space="preserve"><value>Albums</value></data>
   <data name="library.mode.composers" xml:space="preserve"><value>Composers</value></data>
   <data name="library.mode.artists" xml:space="preserve"><value>Artists</value></data>

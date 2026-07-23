@@ -524,6 +524,131 @@ internal sealed class SettingsWindow
             mcpStatus.Text = Loc.Chrome("settings.automation.token_rotated");
         };
 
+        // Subsonic server: its own section beside Automation. Enable toggle, port,
+        // username, and a keyring-backed password, plus the server status line.
+        var subsonicLabel = new TextBlock
+        {
+            Text = Loc.Chrome("settings.subsonic.label"),
+            FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+        };
+        var subsonicEnabled = new CheckBox
+        {
+            Content = Loc.Chrome("settings.subsonic.enable"),
+            IsChecked = s.SubsonicEnabled,
+        };
+        var subsonicPort = new TextBox
+        {
+            Header = Loc.Chrome("settings.subsonic.port"),
+            Text = s.SubsonicPort.ToString(CultureInfo.InvariantCulture),
+        };
+        var subsonicUsername = new TextBox
+        {
+            Header = Loc.Chrome("settings.subsonic.username"),
+            Text = s.SubsonicUsername,
+        };
+        var subsonicPassword = new PasswordBox
+        {
+            Header = Loc.Chrome("settings.subsonic.password"),
+        };
+        var subsonicPasswordHelp = new TextBlock
+        {
+            Text = Loc.Chrome("settings.subsonic.password_help"),
+            TextWrapping = TextWrapping.Wrap,
+            Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray),
+        };
+        var subsonicStatus = new TextBlock
+        {
+            Text = s.SubsonicStatusText,
+            TextWrapping = TextWrapping.Wrap,
+            Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray),
+        };
+        var saveSubsonic = new Button { Content = Loc.Chrome("action.save") };
+        var refreshSubsonic = new Button { Content = Loc.Chrome("settings.subsonic.refresh") };
+        var saveSubsonicPassword = new Button { Content = Loc.Chrome("settings.subsonic.save_password") };
+        var subsonicButtons = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+        subsonicButtons.Children.Add(saveSubsonic);
+        subsonicButtons.Children.Add(refreshSubsonic);
+        subsonicButtons.Children.Add(saveSubsonicPassword);
+
+        void RenderSubsonic(Settings settings)
+        {
+            if (refreshingSettings)
+            {
+                return;
+            }
+
+            refreshingSettings = true;
+            subsonicEnabled.IsChecked = settings.SubsonicEnabled;
+            subsonicPort.Text = settings.SubsonicPort.ToString(CultureInfo.InvariantCulture);
+            subsonicUsername.Text = settings.SubsonicUsername;
+            subsonicStatus.Text = settings.SubsonicStatusText;
+            refreshingSettings = false;
+        }
+
+        async System.Threading.Tasks.Task SetSubsonicConfig(bool enabled)
+        {
+            if (refreshingSettings)
+            {
+                return;
+            }
+
+            if (!ushort.TryParse(subsonicPort.Text, NumberStyles.None, CultureInfo.InvariantCulture, out var port) || port == 0)
+            {
+                ShowSettingsError(Loc.Chrome("settings.subsonic.invalid_port"));
+                return;
+            }
+
+            ClearSettingsError();
+            var (current, error) = await _session.RunForCurrentHandle(
+                handle => NativeBae.SetSubsonicServerConfig(handle, enabled, port, subsonicUsername.Text ?? string.Empty));
+            if (!current)
+            {
+                return;
+            }
+            if (error is not null)
+            {
+                ShowSettingsError(error);
+                refreshingSettings = true;
+                subsonicEnabled.IsChecked = !enabled;
+                refreshingSettings = false;
+                return;
+            }
+            _settings.Reload();
+        }
+
+        async System.Threading.Tasks.Task RefreshSubsonicStatus()
+        {
+            var (current, status) = await _session.RunForCurrentHandle(NativeBae.SubsonicServerStatus);
+            if (!current)
+            {
+                return;
+            }
+            subsonicStatus.Text = Settings.SubsonicStatusTextFor(status);
+        }
+
+        async System.Threading.Tasks.Task SaveSubsonicPassword()
+        {
+            ClearSettingsError();
+            var (current, error) = await _session.RunForCurrentHandle(
+                handle => NativeBae.SetSubsonicPassword(handle, subsonicPassword.Password ?? string.Empty));
+            if (!current)
+            {
+                return;
+            }
+            if (error is not null)
+            {
+                ShowSettingsError(error);
+                return;
+            }
+            subsonicStatus.Text = Loc.Chrome("settings.subsonic.password_saved");
+        }
+
+        subsonicEnabled.Checked += async (_, _) => await SetSubsonicConfig(true);
+        subsonicEnabled.Unchecked += async (_, _) => await SetSubsonicConfig(false);
+        saveSubsonic.Click += async (_, _) => await SetSubsonicConfig(subsonicEnabled.IsChecked == true);
+        refreshSubsonic.Click += async (_, _) => await RefreshSubsonicStatus();
+        saveSubsonicPassword.Click += async (_, _) => await SaveSubsonicPassword();
+
         var discogsLabel = new TextBlock { Text = Loc.Chrome("settings.discogs.label") };
         content.Children.Add(libraryLabel);
         content.Children.Add(pauseBetweenSides);
@@ -535,6 +660,14 @@ internal sealed class SettingsWindow
         content.Children.Add(mcpPort);
         content.Children.Add(mcpButtons);
         content.Children.Add(mcpStatus);
+        content.Children.Add(subsonicLabel);
+        content.Children.Add(subsonicEnabled);
+        content.Children.Add(subsonicPort);
+        content.Children.Add(subsonicUsername);
+        content.Children.Add(subsonicPassword);
+        content.Children.Add(subsonicPasswordHelp);
+        content.Children.Add(subsonicButtons);
+        content.Children.Add(subsonicStatus);
         content.Children.Add(discogsLabel);
         content.Children.Add(tokenBox);
         content.Children.Add(buttons);
@@ -864,6 +997,7 @@ internal sealed class SettingsWindow
             refreshingSettings = false;
             exportSection.Render(fresh);
             RenderMcp(fresh);
+            RenderSubsonic(fresh);
             RenderDiscogs(fresh);
             removeFooter.Text = Loc.Chrome(ForgetLibraryModel.FooterKey(fresh.HasCloudHome));
         }

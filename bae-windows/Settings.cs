@@ -47,6 +47,11 @@ public sealed class Settings
     public bool McpEnabled { get; set; }
     public ushort McpPort { get; set; }
     internal BridgeMcpServerStatus McpStatus { get; set; } = new BridgeMcpServerStatus.Disabled();
+
+    public bool SubsonicEnabled { get; set; }
+    public ushort SubsonicPort { get; set; }
+    public string SubsonicUsername { get; set; } = string.Empty;
+    internal BridgeSubsonicServerStatus SubsonicStatus { get; set; } = new BridgeSubsonicServerStatus.Disabled();
     public bool HasCloudHome => SyncProvider is not null;
 
     /// <summary>
@@ -153,6 +158,32 @@ public sealed class Settings
             BridgeMcpServerError.BindFailed bind => (Loc.Chrome("settings.automation.status.bind_failed"), bind.Detail),
             BridgeMcpServerError.ServerFailed server => (Loc.Chrome("settings.automation.status.server_failed"), server.Detail),
             _ => (Loc.Chrome("settings.automation.status_unavailable"), string.Empty),
+        };
+        return string.IsNullOrEmpty(detail) ? summary : $"{summary}: {detail}";
+    }
+
+    [JsonIgnore]
+    public string SubsonicStatusText => SubsonicStatusTextFor(SubsonicStatus);
+
+    internal static string SubsonicStatusTextFor(BridgeSubsonicServerStatus status) => status switch
+    {
+        BridgeSubsonicServerStatus.Running running when !string.IsNullOrEmpty(running.Url) => Loc.Chrome(
+            "settings.subsonic.status.running",
+            "url",
+            running.Url),
+        BridgeSubsonicServerStatus.Error error => SubsonicErrorDisplayText(error.ErrorValue),
+        _ => Loc.Chrome("settings.subsonic.status.disabled"),
+    };
+
+    private static string SubsonicErrorDisplayText(BridgeSubsonicServerError error)
+    {
+        var (summary, detail) = error switch
+        {
+            BridgeSubsonicServerError.InvalidConfig invalid => (Loc.Chrome("settings.subsonic.status.invalid_config"), invalid.Detail),
+            BridgeSubsonicServerError.CredentialUnavailable credential => (Loc.Chrome("settings.subsonic.status.credential_unavailable"), credential.Detail),
+            BridgeSubsonicServerError.BindFailed bind => (Loc.Chrome("settings.subsonic.status.bind_failed"), bind.Detail),
+            BridgeSubsonicServerError.ServerFailed server => (Loc.Chrome("settings.subsonic.status.server_failed"), server.Detail),
+            _ => (Loc.Chrome("settings.subsonic.status_unavailable"), string.Empty),
         };
         return string.IsNullOrEmpty(detail) ? summary : $"{summary}: {detail}";
     }

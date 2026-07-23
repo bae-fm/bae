@@ -536,7 +536,11 @@ internal static class NativeBae
         });
 
     internal static Settings GetSettings(AppHandle handle) =>
-        Settings(handle.GetConfig(), handle.GetMcpServerStatus(), handle.GetSyncStatus());
+        Settings(
+            handle.GetConfig(),
+            handle.GetMcpServerStatus(),
+            handle.GetSubsonicServerStatus(),
+            handle.GetSyncStatus());
 
     internal static string? SetPauseBetweenSides(AppHandle handle, bool enabled) =>
         CaptureError(() => handle.SetPauseBetweenSides(enabled));
@@ -576,6 +580,14 @@ internal static class NativeBae
 
     internal static string? SetMcpToken(AppHandle handle, string token) =>
         CaptureError(() => handle.SetMcpToken(token));
+
+    internal static string? SetSubsonicServerConfig(AppHandle handle, bool enabled, ushort port, string username) =>
+        CaptureError(() => handle.SetSubsonicServerConfig(enabled, port, username));
+
+    internal static BridgeSubsonicServerStatus SubsonicServerStatus(AppHandle handle) => handle.GetSubsonicServerStatus();
+
+    internal static string? SetSubsonicPassword(AppHandle handle, string password) =>
+        CaptureError(() => handle.SetSubsonicPassword(password));
 
     internal static string? SaveDiscogsToken(AppHandle handle, string token) =>
         CaptureValue(() => DiscogsSaveOutcomeTag(Await(handle.SaveDiscogsToken(token))));
@@ -969,6 +981,7 @@ internal static class NativeBae
     private static Settings Settings(
         BridgeConfig config,
         BridgeMcpServerStatus mcpStatus,
+        BridgeSubsonicServerStatus subsonicStatus,
         BridgeSyncStatusSnapshot syncStatus) =>
         new()
         {
@@ -988,6 +1001,10 @@ internal static class NativeBae
             McpEnabled = config.Mcp.Enabled,
             McpPort = config.Mcp.Port,
             McpStatus = mcpStatus,
+            SubsonicEnabled = config.Subsonic.Enabled,
+            SubsonicPort = config.Subsonic.Port,
+            SubsonicUsername = config.Subsonic.Username,
+            SubsonicStatus = subsonicStatus,
         };
 
     private static List<ReleaseCandidateChoice> CandidateChoices(BridgeCandidateSearchResults results) =>
