@@ -153,8 +153,8 @@
   <data name="outbox.resume" xml:space="preserve"><value>sürdür</value></data>
   <data name="outbox.retry_now" xml:space="preserve"><value>şimdi yeniden dene</value></data>
   <data name="queue.clear" xml:space="preserve"><value>temizle</value></data>
-  <data name="queue.clear.playing_from" xml:space="preserve"><value>çalma kaynağını temizle</value></data>
-  <data name="queue.clear.up_next" xml:space="preserve"><value>“Sıradaki” listesini temizle</value></data>
+  <data name="queue.clear_playing_from" xml:space="preserve"><value>çalma kaynağını temizle</value></data>
+  <data name="queue.clear_up_next" xml:space="preserve"><value>“Sıradaki” listesini temizle</value></data>
   <data name="queue.remove_item" xml:space="preserve"><value>Sıradan kaldır</value></data>
   <data name="queue.section.playing_from" xml:space="preserve"><value>Şuradan çalınıyor</value></data>
   <data name="queue.section.your_library" xml:space="preserve"><value>Kitaplığınız</value></data>

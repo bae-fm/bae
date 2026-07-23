@@ -153,8 +153,8 @@
   <data name="outbox.resume" xml:space="preserve"><value>tiếp tục</value></data>
   <data name="outbox.retry_now" xml:space="preserve"><value>thử lại ngay</value></data>
   <data name="queue.clear" xml:space="preserve"><value>xóa</value></data>
-  <data name="queue.clear.playing_from" xml:space="preserve"><value>xóa nguồn phát</value></data>
-  <data name="queue.clear.up_next" xml:space="preserve"><value>xóa “Tiếp theo”</value></data>
+  <data name="queue.clear_playing_from" xml:space="preserve"><value>xóa nguồn phát</value></data>
+  <data name="queue.clear_up_next" xml:space="preserve"><value>xóa “Tiếp theo”</value></data>
   <data name="queue.remove_item" xml:space="preserve"><value>Xóa khỏi hàng đợi</value></data>
   <data name="queue.section.playing_from" xml:space="preserve"><value>Đang phát từ</value></data>
   <data name="queue.section.your_library" xml:space="preserve"><value>Thư viện của bạn</value></data>

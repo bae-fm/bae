@@ -283,8 +283,8 @@ internal sealed partial class QueuePane
     {
         var (nameKey, clear) = lane switch
         {
-            QueueLane.Manual => ("queue.clear.up_next", (Action<AppHandle>)NativeBae.QueueClearUpNext),
-            QueueLane.Context => ("queue.clear.playing_from", NativeBae.QueueClearPlayingFrom),
+            QueueLane.Manual => ("queue.clear_up_next", (Action<AppHandle>)NativeBae.QueueClearUpNext),
+            QueueLane.Context => ("queue.clear_playing_from", NativeBae.QueueClearPlayingFrom),
             _ => throw new ArgumentOutOfRangeException(nameof(lane), lane, "Unknown queue lane"),
         };
         var button = new Button

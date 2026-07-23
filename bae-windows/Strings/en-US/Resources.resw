@@ -153,8 +153,8 @@
   <data name="outbox.resume" xml:space="preserve"><value>resume</value></data>
   <data name="outbox.retry_now" xml:space="preserve"><value>retry now</value></data>
   <data name="queue.clear" xml:space="preserve"><value>clear</value></data>
-  <data name="queue.clear.playing_from" xml:space="preserve"><value>clear playing from</value></data>
-  <data name="queue.clear.up_next" xml:space="preserve"><value>clear up next</value></data>
+  <data name="queue.clear_playing_from" xml:space="preserve"><value>clear playing from</value></data>
+  <data name="queue.clear_up_next" xml:space="preserve"><value>clear up next</value></data>
   <data name="queue.remove_item" xml:space="preserve"><value>Remove from queue</value></data>
   <data name="queue.section.playing_from" xml:space="preserve"><value>Playing From</value></data>
   <data name="queue.section.your_library" xml:space="preserve"><value>Your Library</value></data>

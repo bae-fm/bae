@@ -153,8 +153,8 @@
   <data name="outbox.resume" xml:space="preserve"><value>המשך</value></data>
   <data name="outbox.retry_now" xml:space="preserve"><value>נסה שוב כעת</value></data>
   <data name="queue.clear" xml:space="preserve"><value>נקה</value></data>
-  <data name="queue.clear.playing_from" xml:space="preserve"><value>נקה את מקור ההשמעה</value></data>
-  <data name="queue.clear.up_next" xml:space="preserve"><value>נקה את “הבא בתור”</value></data>
+  <data name="queue.clear_playing_from" xml:space="preserve"><value>נקה את מקור ההשמעה</value></data>
+  <data name="queue.clear_up_next" xml:space="preserve"><value>נקה את “הבא בתור”</value></data>
   <data name="queue.remove_item" xml:space="preserve"><value>הסר מהתור</value></data>
   <data name="queue.section.playing_from" xml:space="preserve"><value>מנגן מתוך</value></data>
   <data name="queue.section.your_library" xml:space="preserve"><value>הספרייה שלך</value></data>

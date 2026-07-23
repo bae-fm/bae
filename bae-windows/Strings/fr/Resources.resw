@@ -153,8 +153,8 @@
   <data name="outbox.resume" xml:space="preserve"><value>reprendre</value></data>
   <data name="outbox.retry_now" xml:space="preserve"><value>réessayer maintenant</value></data>
   <data name="queue.clear" xml:space="preserve"><value>vider</value></data>
-  <data name="queue.clear.playing_from" xml:space="preserve"><value>vider la source de lecture</value></data>
-  <data name="queue.clear.up_next" xml:space="preserve"><value>vider « À suivre »</value></data>
+  <data name="queue.clear_playing_from" xml:space="preserve"><value>vider la source de lecture</value></data>
+  <data name="queue.clear_up_next" xml:space="preserve"><value>vider « À suivre »</value></data>
   <data name="queue.remove_item" xml:space="preserve"><value>Retirer de la file</value></data>
   <data name="queue.section.playing_from" xml:space="preserve"><value>Lecture depuis</value></data>
   <data name="queue.section.your_library" xml:space="preserve"><value>Votre bibliothèque</value></data>

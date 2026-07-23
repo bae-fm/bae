@@ -153,8 +153,8 @@
   <data name="outbox.resume" xml:space="preserve"><value>আবার শুরু করুন</value></data>
   <data name="outbox.retry_now" xml:space="preserve"><value>এখন আবার চেষ্টা করুন</value></data>
   <data name="queue.clear" xml:space="preserve"><value>মুছুন</value></data>
-  <data name="queue.clear.playing_from" xml:space="preserve"><value>প্লেব্যাক উৎস মুছুন</value></data>
-  <data name="queue.clear.up_next" xml:space="preserve"><value>“এরপর” তালিকা মুছুন</value></data>
+  <data name="queue.clear_playing_from" xml:space="preserve"><value>প্লেব্যাক উৎস মুছুন</value></data>
+  <data name="queue.clear_up_next" xml:space="preserve"><value>“এরপর” তালিকা মুছুন</value></data>
   <data name="queue.remove_item" xml:space="preserve"><value>সারি থেকে সরান</value></data>
   <data name="queue.section.playing_from" xml:space="preserve"><value>যা থেকে চলছে</value></data>
   <data name="queue.section.your_library" xml:space="preserve"><value>আপনার লাইব্রেরি</value></data>

@@ -153,8 +153,8 @@
   <data name="outbox.resume" xml:space="preserve"><value>再開</value></data>
   <data name="outbox.retry_now" xml:space="preserve"><value>今すぐ再試行</value></data>
   <data name="queue.clear" xml:space="preserve"><value>クリア</value></data>
-  <data name="queue.clear.playing_from" xml:space="preserve"><value>「再生元」をクリア</value></data>
-  <data name="queue.clear.up_next" xml:space="preserve"><value>「次に再生」をクリア</value></data>
+  <data name="queue.clear_playing_from" xml:space="preserve"><value>「再生元」をクリア</value></data>
+  <data name="queue.clear_up_next" xml:space="preserve"><value>「次に再生」をクリア</value></data>
   <data name="queue.remove_item" xml:space="preserve"><value>キューから削除</value></data>
   <data name="queue.section.playing_from" xml:space="preserve"><value>再生元</value></data>
   <data name="queue.section.your_library" xml:space="preserve"><value>ライブラリ</value></data>

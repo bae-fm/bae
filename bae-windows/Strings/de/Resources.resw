@@ -153,8 +153,8 @@
   <data name="outbox.resume" xml:space="preserve"><value>fortsetzen</value></data>
   <data name="outbox.retry_now" xml:space="preserve"><value>jetzt erneut versuchen</value></data>
   <data name="queue.clear" xml:space="preserve"><value>leeren</value></data>
-  <data name="queue.clear.playing_from" xml:space="preserve"><value>Wiedergabequelle leeren</value></data>
-  <data name="queue.clear.up_next" xml:space="preserve"><value>„Als Nächstes“ leeren</value></data>
+  <data name="queue.clear_playing_from" xml:space="preserve"><value>Wiedergabequelle leeren</value></data>
+  <data name="queue.clear_up_next" xml:space="preserve"><value>„Als Nächstes“ leeren</value></data>
   <data name="queue.remove_item" xml:space="preserve"><value>Aus Warteschlange entfernen</value></data>
   <data name="queue.section.playing_from" xml:space="preserve"><value>Wird abgespielt aus</value></data>
   <data name="queue.section.your_library" xml:space="preserve"><value>Deine Mediathek</value></data>

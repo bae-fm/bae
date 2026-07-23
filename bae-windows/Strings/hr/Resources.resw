@@ -153,8 +153,8 @@
   <data name="outbox.resume" xml:space="preserve"><value>nastavi</value></data>
   <data name="outbox.retry_now" xml:space="preserve"><value>pokušaj sada</value></data>
   <data name="queue.clear" xml:space="preserve"><value>očisti</value></data>
-  <data name="queue.clear.playing_from" xml:space="preserve"><value>očisti izvor reprodukcije</value></data>
-  <data name="queue.clear.up_next" xml:space="preserve"><value>očisti „Sljedeće na redu“</value></data>
+  <data name="queue.clear_playing_from" xml:space="preserve"><value>očisti izvor reprodukcije</value></data>
+  <data name="queue.clear_up_next" xml:space="preserve"><value>očisti „Sljedeće na redu“</value></data>
   <data name="queue.remove_item" xml:space="preserve"><value>Ukloni iz reda</value></data>
   <data name="queue.section.playing_from" xml:space="preserve"><value>Reproducira se iz</value></data>
   <data name="queue.section.your_library" xml:space="preserve"><value>Vaša biblioteka</value></data>
