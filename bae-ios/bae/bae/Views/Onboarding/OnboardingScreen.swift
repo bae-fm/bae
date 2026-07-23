@@ -34,3 +34,13 @@ struct OnboardingSecondaryText: View {
             .frame(maxWidth: 320)
     }
 }
+
+#if DEBUG
+#Preview {
+    OnboardingScreen {
+        Text("Screen title")
+            .font(.title)
+        OnboardingSecondaryText("A secondary explanatory line.")
+    }
+}
+#endif

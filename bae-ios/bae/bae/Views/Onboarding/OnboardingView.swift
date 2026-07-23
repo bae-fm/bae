@@ -632,3 +632,17 @@ extension OnboardingView {
         return false
     }
 }
+
+#if DEBUG
+#Preview {
+    #if BAE_OAUTH_PROVIDERS
+    OnboardingView(
+        oauthLinking: nil,
+        oauthLinkingError: nil,
+        onLinked: { _ in }
+    )
+    #else
+    OnboardingView(onLinked: { _ in })
+    #endif
+}
+#endif

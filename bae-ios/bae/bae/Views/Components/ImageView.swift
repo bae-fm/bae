@@ -91,3 +91,11 @@ extension ImageView {
         )
     }
 }
+
+#if DEBUG
+#Preview {
+    ImageView(imageRef: nil, pointSize: 120)
+        .frame(width: 120, height: 120)
+        .previewStores()
+}
+#endif

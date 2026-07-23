@@ -144,3 +144,17 @@ private struct DownloadQueueRow: View {
         }
     }
 }
+
+#if DEBUG
+#Preview {
+    DownloadsView()
+        .previewStores(
+            downloadStore: DownloadStore(
+                snapshot: PreviewData.downloadSnapshot(
+                    queued: 1,
+                    ops: [PreviewData.queuedDownloadOp]
+                )
+            )
+        )
+}
+#endif

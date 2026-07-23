@@ -45,3 +45,15 @@ struct ComposerSortMenu: View {
         }
     }
 }
+
+#if DEBUG
+#Preview {
+    @Previewable
+    @State
+    var criterion = BridgeComposerSortCriterion(
+        field: .name,
+        direction: .ascending
+    )
+    ComposerSortMenu(criterion: $criterion)
+}
+#endif

@@ -26,3 +26,9 @@ struct ScannerSheet: View {
         }
     }
 }
+
+#if DEBUG
+#Preview {
+    ScannerSheet(onScanned: { _ in }, onError: { _ in }, onClose: {})
+}
+#endif

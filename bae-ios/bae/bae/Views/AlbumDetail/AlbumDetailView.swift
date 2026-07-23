@@ -307,3 +307,12 @@ enum TrackArtistDisplay {
         }
     }
 }
+
+#if DEBUG
+#Preview {
+    NavigationStack {
+        AlbumDetailView(albumId: "a-1")
+    }
+    .previewStores()
+}
+#endif

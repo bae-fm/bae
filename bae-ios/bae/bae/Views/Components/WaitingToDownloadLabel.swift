@@ -9,3 +9,9 @@ struct WaitingToDownloadLabel: View {
             .foregroundStyle(.secondary)
     }
 }
+
+#if DEBUG
+#Preview {
+    WaitingToDownloadLabel()
+}
+#endif

@@ -91,3 +91,15 @@ struct AlbumDetailHeader: View {
         .tint(Theme.accent)
     }
 }
+
+#if DEBUG
+#Preview {
+    AlbumDetailHeader(
+        display: AlbumDetailDisplay(summary: PreviewData.albumSummary),
+        releaseId: "rel-a-1",
+        detail: PreviewData.releaseDetail,
+        showGallery: .constant(false)
+    )
+    .previewStores()
+}
+#endif

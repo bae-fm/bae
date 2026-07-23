@@ -141,3 +141,10 @@ struct ReleaseDownloadSection: View {
         }
     }
 }
+
+#if DEBUG
+#Preview {
+    ReleaseDownloadSection(releaseId: "rel-a-1", detail: PreviewData.releaseDetail)
+        .previewStores()
+}
+#endif

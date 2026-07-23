@@ -516,3 +516,10 @@ private extension Array where Element == LibraryRoute {
         )
     }
 }
+
+#if DEBUG
+#Preview {
+    LibraryView()
+        .previewStores()
+}
+#endif

@@ -20,3 +20,12 @@ struct TwoLineRow: View {
         }
     }
 }
+
+#if DEBUG
+#Preview {
+    List {
+        TwoLineRow(title: "Title", subtitle: "Subtitle")
+        TwoLineRow(title: "Title only", subtitle: nil)
+    }
+}
+#endif

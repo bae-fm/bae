@@ -220,3 +220,17 @@ private struct WorkResultRow: View {
         }
     }
 }
+
+#if DEBUG
+#Preview {
+    SearchResultsView(
+        results: PreviewData.searchResults,
+        error: nil,
+        onSelectAlbum: { _ in },
+        onSelectArtist: { _ in },
+        onSelectComposer: { _ in },
+        onSelectWork: { _ in }
+    )
+    .previewStores()
+}
+#endif

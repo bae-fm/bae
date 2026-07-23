@@ -164,3 +164,10 @@ struct NowPlayingBar: View {
         .accessibilityLabel("Repeat mode")
     }
 }
+
+#if DEBUG
+#Preview {
+    NowPlayingBar()
+        .previewStores()
+}
+#endif

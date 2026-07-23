@@ -276,3 +276,13 @@ struct ApproveDeviceView: View {
         }
     }
 }
+
+#if DEBUG
+#Preview {
+    ApproveDeviceView(
+        invite: { _, _ in "PREVIEW-INVITE-CODE" },
+        onDismiss: {},
+        onApproved: {}
+    )
+}
+#endif

@@ -51,3 +51,13 @@ struct CodeShareBlock: View {
         }
     }
 }
+
+#if DEBUG
+#Preview {
+    CodeShareBlock(
+        code: "PREVIEW-CODE",
+        contentDescription: "Preview code",
+        qrSize: 180
+    )
+}
+#endif

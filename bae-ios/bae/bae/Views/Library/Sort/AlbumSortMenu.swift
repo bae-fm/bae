@@ -40,3 +40,15 @@ struct AlbumSortMenu: View {
         }
     }
 }
+
+#if DEBUG
+#Preview {
+    @Previewable
+    @State
+    var field = BridgeSortField.dateAdded
+    @Previewable
+    @State
+    var direction = BridgeSortDirection.descending
+    AlbumSortMenu(sortField: $field, sortDirection: $direction)
+}
+#endif

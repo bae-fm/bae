@@ -139,3 +139,18 @@ struct JoinCodeExchange: View {
         }
     }
 }
+
+#if DEBUG
+#Preview {
+    JoinCodeExchange(
+        joinRequest: .success(PreviewData.joinRequest),
+        inviteCode: .constant(""),
+        decodedInvite: .success(PreviewData.inviteInfo),
+        joinTokenJson: nil,
+        error: nil,
+        onRetryGenerate: {},
+        onScanInvite: {},
+        onInviteChanged: { _ in }
+    )
+}
+#endif

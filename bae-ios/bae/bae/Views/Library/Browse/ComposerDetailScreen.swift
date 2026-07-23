@@ -125,3 +125,16 @@ private struct ComposerDetailContent: View {
         .listStyle(.insetGrouped)
     }
 }
+
+#if DEBUG
+#Preview {
+    NavigationStack {
+        ComposerDetailScreen(
+            artistId: "composer-1",
+            openWork: { _ in },
+            openAlbum: { _, _ in }
+        )
+    }
+    .previewStores()
+}
+#endif

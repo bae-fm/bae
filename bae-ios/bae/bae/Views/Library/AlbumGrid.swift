@@ -111,3 +111,20 @@ private struct AlbumCard: View {
         )
     }
 }
+
+#if DEBUG
+private struct AlbumGridPreview: View {
+    let store = PreviewData.libraryStore()
+    var body: some View {
+        AlbumGrid(
+            list: AlbumList.preview(albums: PreviewData.albums, store: store),
+            onSelect: { _ in }
+        )
+        .previewStores(libraryStore: store)
+    }
+}
+
+#Preview {
+    AlbumGridPreview()
+}
+#endif

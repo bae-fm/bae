@@ -166,3 +166,16 @@ private struct WorkSummaryRow: View {
         .padding(.vertical, 4)
     }
 }
+
+#if DEBUG
+#Preview {
+    NavigationStack {
+        WorkDetailScreen(
+            workId: "work-1",
+            openWork: { _ in },
+            openAlbum: { _ in }
+        )
+    }
+    .previewStores()
+}
+#endif

@@ -239,3 +239,10 @@ struct ExpandedNowPlayingView: View {
         }
     }
 }
+
+#if DEBUG
+#Preview {
+    ExpandedNowPlayingView()
+        .previewStores()
+}
+#endif

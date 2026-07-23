@@ -101,3 +101,12 @@ private struct ArtistDetailContent: View {
         .listStyle(.insetGrouped)
     }
 }
+
+#if DEBUG
+#Preview {
+    NavigationStack {
+        ArtistDetailScreen(artistId: "artist-1", openAlbum: { _ in })
+    }
+    .previewStores()
+}
+#endif

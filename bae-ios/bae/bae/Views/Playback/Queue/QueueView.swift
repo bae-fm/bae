@@ -217,3 +217,10 @@ private struct NowPlayingRow: View {
         }
     }
 }
+
+#if DEBUG
+#Preview {
+    QueueView()
+        .previewStores()
+}
+#endif

@@ -21,3 +21,9 @@ struct OnboardingLinkingScreen: View {
         }
     }
 }
+
+#if DEBUG
+#Preview {
+    OnboardingLinkingScreen(onCancel: {})
+}
+#endif

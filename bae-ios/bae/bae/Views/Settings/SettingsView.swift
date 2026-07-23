@@ -333,3 +333,10 @@ extension SettingsView {
         return "\(short) (\(build))"
     }
 }
+
+#if DEBUG
+#Preview {
+    SettingsView()
+        .previewStores()
+}
+#endif

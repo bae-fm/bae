@@ -180,3 +180,16 @@ final class PlaybackProgressUIView: UIView {
         onSeek(ratio)
     }
 }
+
+#if DEBUG
+#Preview {
+    ProgressBar(
+        positionSubject: PreviewData.playbackStore().playbackPositionSubject,
+        showRemainingTime: false,
+        onSeek: { _ in },
+        onToggleRemainingTime: {}
+    )
+    .frame(height: 60)
+    .padding()
+}
+#endif

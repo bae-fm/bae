@@ -22,3 +22,12 @@ struct DownloadQueueSummaryLine: View {
         .font(compact ? .caption : nil)
     }
 }
+
+#if DEBUG
+#Preview {
+    DownloadQueueSummaryLine(
+        snapshot: PreviewData.downloadSnapshot(queued: 2, active: 1),
+        compact: false
+    )
+}
+#endif

@@ -218,3 +218,12 @@ private struct RoleBadge: View {
         }
     }
 }
+
+#if DEBUG
+#Preview {
+    NavigationStack {
+        MembersView()
+    }
+    .previewStores()
+}
+#endif

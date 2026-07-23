@@ -97,3 +97,12 @@ struct RecoveryCodeView: View {
         }
     }
 }
+
+#if DEBUG
+#Preview {
+    RecoveryCodeView(
+        generate: { "PREVIEW-RECOVERY-CODE" },
+        onDismiss: {}
+    )
+}
+#endif

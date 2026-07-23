@@ -88,3 +88,12 @@ struct ArtistSummaryRow: View {
         .padding(.vertical, 4)
     }
 }
+
+#if DEBUG
+#Preview {
+    List {
+        ArtistSummaryRow(summary: PreviewData.artistSummary)
+    }
+    .previewStores()
+}
+#endif

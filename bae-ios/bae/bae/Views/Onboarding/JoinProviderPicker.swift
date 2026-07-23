@@ -42,3 +42,14 @@ struct JoinProviderPicker: View {
         }
     }
 }
+
+#if DEBUG
+#Preview {
+    JoinProviderPicker(
+        providers: PreviewData.cloudProviders,
+        isAuthorizing: false,
+        error: nil,
+        onSelect: { _ in }
+    )
+}
+#endif

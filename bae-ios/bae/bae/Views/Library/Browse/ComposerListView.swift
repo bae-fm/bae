@@ -88,3 +88,12 @@ struct ComposerSummaryRow: View {
         .padding(.vertical, 4)
     }
 }
+
+#if DEBUG
+#Preview {
+    List {
+        ComposerSummaryRow(summary: PreviewData.composerSummary)
+    }
+    .previewStores()
+}
+#endif

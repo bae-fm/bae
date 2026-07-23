@@ -45,3 +45,15 @@ struct ArtistSortMenu: View {
         }
     }
 }
+
+#if DEBUG
+#Preview {
+    @Previewable
+    @State
+    var criterion = BridgeArtistSortCriterion(
+        field: .name,
+        direction: .ascending
+    )
+    ArtistSortMenu(criterion: $criterion)
+}
+#endif

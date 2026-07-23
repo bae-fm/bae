@@ -138,3 +138,19 @@ private struct TrackRow: View {
         }
     }
 }
+
+#if DEBUG
+#Preview {
+    ScrollView {
+        TrackList(
+            detail: PreviewData.releaseDetail,
+            artistDisplay: .album,
+            onPlayTrackAt: { _ in },
+            onPlayNext: { _ in },
+            onAddToQueue: { _ in }
+        )
+        .padding()
+    }
+    .previewStores()
+}
+#endif

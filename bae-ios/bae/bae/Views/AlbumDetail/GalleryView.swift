@@ -304,3 +304,9 @@ private struct GalleryFailedView: View {
             .foregroundStyle(.white.opacity(0.7))
     }
 }
+
+#if DEBUG
+#Preview {
+    GalleryView(items: [], loadImage: { _ in Data() })
+}
+#endif

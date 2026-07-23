@@ -97,3 +97,33 @@ struct LibraryContentView: View {
         }
     }
 }
+
+#if DEBUG
+private struct LibraryContentPreview: View {
+    let store = PreviewData.libraryStore()
+    var body: some View {
+        LibraryContentView(
+            isSearching: false,
+            mode: .albums,
+            albumList: AlbumList.preview(
+                albums: PreviewData.albums,
+                store: store
+            ),
+            composerList: nil,
+            artistList: nil,
+            searchResults: nil,
+            searchError: nil,
+            sync: .stub,
+            onSelectAlbum: { _ in },
+            onSelectComposer: { _ in },
+            onSelectArtist: { _ in },
+            onSelectWork: { _ in }
+        )
+        .previewStores(libraryStore: store)
+    }
+}
+
+#Preview {
+    LibraryContentPreview()
+}
+#endif

@@ -110,3 +110,9 @@ class QRScannerViewController: UIViewController, AVCaptureMetadataOutputObjectsD
         }
     }
 }
+
+#if DEBUG
+#Preview {
+    QRScannerView(onScanned: { _ in }, onError: { _ in })
+}
+#endif

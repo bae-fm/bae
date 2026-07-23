@@ -55,3 +55,13 @@ struct QueueRowPlaceholder: View {
         .padding(.vertical, 4)
     }
 }
+
+#if DEBUG
+#Preview {
+    List {
+        QueueRow(item: PreviewData.queueItem)
+        QueueRowPlaceholder()
+    }
+    .previewStores()
+}
+#endif

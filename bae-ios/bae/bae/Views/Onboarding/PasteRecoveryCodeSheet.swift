@@ -53,3 +53,13 @@ struct PasteRecoveryCodeSheet: View {
         }
     }
 }
+
+#if DEBUG
+#Preview {
+    PasteRecoveryCodeSheet(
+        input: .constant(""),
+        onCancel: {},
+        onConnect: { _ in }
+    )
+}
+#endif
