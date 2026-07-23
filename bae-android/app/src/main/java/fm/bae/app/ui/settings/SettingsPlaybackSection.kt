@@ -18,12 +18,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import fm.bae.app.BaeLogger
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.RestorePlaybackPref
 import fm.bae.app.localizedLine
+import fm.bae.app.ui.BaeTheme
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.launch
@@ -119,5 +121,13 @@ private fun RestoreOnLaunchRow() {
                 RestorePlaybackPref.save(context, enabled)
             },
         )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun RestoreOnLaunchRowPreview() {
+    BaeTheme {
+        RestoreOnLaunchRow()
     }
 }

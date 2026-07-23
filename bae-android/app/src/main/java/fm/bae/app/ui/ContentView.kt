@@ -21,6 +21,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import fm.bae.app.AppScreen
 import fm.bae.app.AppSessionHolder
@@ -223,5 +224,21 @@ private fun FailedScreen(message: String) {
         contentAlignment = Alignment.Center,
     ) {
         Text(text = message, color = MaterialTheme.colorScheme.error)
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun LoadingScreenPreview() {
+    BaeTheme {
+        LoadingScreen()
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun FailedScreenPreview() {
+    BaeTheme {
+        FailedScreen(message = "Couldn't open the library.")
     }
 }

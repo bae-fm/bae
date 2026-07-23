@@ -29,6 +29,15 @@ complexity:
     # is a cohesive facade that grows one triad per browse mode, not a
     # god-class, so the default cap of 11 forces the same artificial split.
     thresholdInClasses: 20
+    # @Preview functions are dev-tooling previews, not API surface; a view file
+    # accumulates one per state variant by design, so don't count them toward a
+    # file's function total.
+    ignoreAnnotatedFunctions: ["Preview"]
+    # PreviewData is the cohesive fixture object every preview draws on — one
+    # small builder per Bridge record, growing with the bridge surface, not a
+    # god-object. It already carries one builder per record type, so it gets a
+    # cap above the class facade's.
+    thresholdInObjects: 30
 
 naming:
   # Jetpack Compose @Composable functions use PascalCase by convention
@@ -44,6 +53,10 @@ naming:
     active: false
 
 style:
+  # @Preview functions have no caller by design — the Compose tooling invokes
+  # them — so the unused-private check would fire on every one.
+  UnusedPrivateMember:
+    ignoreAnnotated: ["Preview"]
   MagicNumber:
     # Property declarations are the naming point for constants: `val Foo = Color(0xFF…)`
     # names the value. Inline literals in expressions are still flagged.

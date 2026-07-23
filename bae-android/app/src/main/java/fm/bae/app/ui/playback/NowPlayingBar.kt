@@ -26,6 +26,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -38,11 +39,17 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.coreString
+import fm.bae.app.playback.NowPlaying
+import fm.bae.app.ui.BaeTheme
+import fm.bae.app.ui.PreviewData
+import fm.bae.app.ui.components.CoverBytesCache
 import fm.bae.app.ui.components.CoverImage
+import fm.bae.app.ui.components.LocalCoverBytesCache
 import uniffi.bae_bridge.BridgeRepeatMode
 import uniffi.bae_bridge.bridgeNextRepeatMode
 
@@ -215,6 +222,46 @@ private fun NowPlayingTransportButtons(
                 } else {
                     MaterialTheme.colorScheme.primary
                 },
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun NowPlayingTrackInfoPreview() {
+    BaeTheme {
+        CompositionLocalProvider(LocalCoverBytesCache provides CoverBytesCache()) {
+            Row {
+                NowPlayingTrackInfo(
+                    track =
+                        NowPlaying(
+                            trackId = "trk-1",
+                            title = "Track Title",
+                            artist = "Artist Name",
+                            coverImageId = "rel-1",
+                            sidePausePrompt = null,
+                        ),
+                    loadImage = { _ -> null },
+                    onExpand = {},
+                )
+            }
+        }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun SidePauseAlertPreview() {
+    BaeTheme {
+        SidePauseAlert(
+            track =
+                NowPlaying(
+                    trackId = "trk-1",
+                    title = "Track Title",
+                    artist = "Artist Name",
+                    coverImageId = "rel-1",
+                    sidePausePrompt = PreviewData.sidePausePrompt(),
+                ),
         )
     }
 }

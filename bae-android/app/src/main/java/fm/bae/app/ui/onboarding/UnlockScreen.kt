@@ -29,8 +29,10 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import fm.bae.app.R
+import fm.bae.app.ui.BaeTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -157,5 +159,33 @@ private fun UnlockForm(
             Spacer(modifier = Modifier.height(16.dp))
             Text(text = error, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium)
         }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun UnlockFormPreview() {
+    BaeTheme {
+        UnlockForm(
+            info = UnlockLibraryInfo(name = "Library Name", fingerprint = "0a1b2c3d"),
+            keyHex = "",
+            isUnlocking = false,
+            error = null,
+            callbacks = UnlockCallbacks(onKeyHexChange = {}, onUnlock = {}, onCancel = {}),
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun UnlockFormErrorPreview() {
+    BaeTheme {
+        UnlockForm(
+            info = UnlockLibraryInfo(name = "Library Name", fingerprint = null),
+            keyHex = "abc123",
+            isUnlocking = false,
+            error = "That key didn't unlock the library.",
+            callbacks = UnlockCallbacks(onKeyHexChange = {}, onUnlock = {}, onCancel = {}),
+        )
     }
 }

@@ -39,10 +39,13 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import fm.bae.app.BaeLogger
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
+import fm.bae.app.ui.BaeTheme
+import fm.bae.app.ui.PreviewData
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -313,4 +316,36 @@ private fun RemoveDeviceDialog(
             TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
         },
     )
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun MembersTopBarPreview() {
+    BaeTheme {
+        MembersTopBar(onBack = {})
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun MembersListPreview() {
+    BaeTheme {
+        MembersList(membership = PreviewData.membership(), onAddDevice = {}, onRemove = {})
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun MemberRowPreview() {
+    BaeTheme {
+        MemberRow(member = PreviewData.member(), onRemove = {})
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun RemoveDeviceDialogPreview() {
+    BaeTheme {
+        RemoveDeviceDialog(member = PreviewData.member(), onConfirm = {}, onDismiss = {})
+    }
 }

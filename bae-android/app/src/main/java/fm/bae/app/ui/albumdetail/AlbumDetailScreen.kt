@@ -32,6 +32,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -43,6 +44,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import fm.bae.app.BaeLogger
 import fm.bae.app.OpenLibrary
@@ -52,7 +54,11 @@ import fm.bae.app.durationUnitsText
 import fm.bae.app.runLoggedBridgeCommand
 import fm.bae.app.sideHeaderText
 import fm.bae.app.text
+import fm.bae.app.ui.BaeTheme
+import fm.bae.app.ui.PreviewData
+import fm.bae.app.ui.components.CoverBytesCache
 import fm.bae.app.ui.components.CoverImage
+import fm.bae.app.ui.components.LocalCoverBytesCache
 import fm.bae.app.ui.playback.NowPlayingBar
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -484,5 +490,53 @@ private fun androidx.compose.foundation.lazy.LazyListScope.albumTrackGroups(
                 modifier = Modifier.padding(top = 8.dp),
             )
         }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun AlbumDetailTopBarPreview() {
+    BaeTheme {
+        AlbumDetailTopBar(onBack = {})
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun AlbumDetailHeaderPreview() {
+    BaeTheme {
+        CompositionLocalProvider(LocalCoverBytesCache provides CoverBytesCache()) {
+            AlbumDetailHeader(
+                detail = PreviewData.albumDetail(),
+                selectedRelease = PreviewData.release(),
+                cover = PreviewData.imageRef(),
+                loadImage = { _ -> null },
+                galleryItems = emptyList(),
+                onShowGallery = {},
+            )
+        }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun AlbumActionButtonsPreview() {
+    BaeTheme {
+        AlbumActionButtons(
+            callbacks =
+                AlbumDetailCallbacks(
+                    fetchGalleryBytes = { _, _ -> ByteArray(0) },
+                    loadCoverImage = { _ -> null },
+                    onSelectRelease = {},
+                    onTogglePlayPause = {},
+                    onPlayTrackAt = {},
+                    onPlayRelease = {},
+                    onShuffleRelease = {},
+                    onPlayReleaseNext = {},
+                    onAddReleaseToQueue = {},
+                    onPlayTrackNext = {},
+                    onAddTrackToQueue = {},
+                ),
+        )
     }
 }

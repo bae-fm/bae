@@ -20,6 +20,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -27,12 +28,16 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import fm.bae.app.R
 import fm.bae.app.durationClockText
 import fm.bae.app.playback.NowPlaying
 import fm.bae.app.playback.QueueItem
+import fm.bae.app.ui.BaeTheme
+import fm.bae.app.ui.components.CoverBytesCache
 import fm.bae.app.ui.components.CoverImage
+import fm.bae.app.ui.components.LocalCoverBytesCache
 
 // The queue's row renderers — the current-track row, a loaded queue row, the
 // not-yet-loaded skeleton, and the shared title/artist block. Kept beside the
@@ -191,5 +196,59 @@ private fun QueueItemText(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             maxLines = 1,
         )
+    }
+}
+
+private val previewNowPlaying =
+    NowPlaying(
+        trackId = "trk-1",
+        title = "Track Title",
+        artist = "Artist Name",
+        coverImageId = "rel-1",
+        sidePausePrompt = null,
+    )
+
+private val previewQueueItem =
+    QueueItem(
+        entryId = "entry-1",
+        trackId = "trk-1",
+        title = "Track Title",
+        artist = "Artist Name",
+        albumTitle = "Album Title",
+        durationMs = 214_000L,
+        coverImageId = "rel-1",
+    )
+
+@Preview(showBackground = true)
+@Composable
+private fun NowPlayingRowPreview() {
+    BaeTheme {
+        CompositionLocalProvider(LocalCoverBytesCache provides CoverBytesCache()) {
+            NowPlayingRow(np = previewNowPlaying, loadImage = { _ -> null })
+        }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun QueueRowPreview() {
+    BaeTheme {
+        CompositionLocalProvider(LocalCoverBytesCache provides CoverBytesCache()) {
+            QueueRow(
+                item = previewQueueItem,
+                loadImage = { _ -> null },
+                dragHandleModifier = Modifier,
+                onClick = {},
+                onRemove = {},
+            )
+        }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun QueueRowPlaceholderPreview() {
+    BaeTheme {
+        QueueRowPlaceholder()
     }
 }

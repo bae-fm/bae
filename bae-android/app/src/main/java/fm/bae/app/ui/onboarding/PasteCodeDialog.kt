@@ -15,8 +15,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import fm.bae.app.R
+import fm.bae.app.ui.BaeTheme
 
 /** The fixed wording of a [PasteCodeDialog], distinct per code it accepts. */
 class PasteDialogText(
@@ -66,4 +68,24 @@ fun PasteCodeDialog(
             TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
         },
     )
+}
+
+@Preview
+@Composable
+private fun PasteCodeDialogPreview() {
+    BaeTheme {
+        PasteCodeDialog(
+            text =
+                PasteDialogText(
+                    title = "Paste code",
+                    instructions = "Paste the code from your other device.",
+                    placeholder = "Code",
+                    confirmLabel = "Connect",
+                ),
+            pasteInput = "placeholder-code",
+            onInputChange = {},
+            onConfirm = {},
+            onDismiss = {},
+        )
+    }
 }

@@ -43,6 +43,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
@@ -53,6 +54,8 @@ import coil3.request.crossfade
 import coil3.size.Size
 import fm.bae.app.BaeLogger
 import fm.bae.app.R
+import fm.bae.app.ui.BaeTheme
+import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.components.LocalImageDispatcher
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
@@ -371,5 +374,18 @@ private fun RemoteGalleryImage(
                 )
             }
         }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun GalleryDialogPreview() {
+    BaeTheme {
+        GalleryDialog(
+            releaseId = "rel-1",
+            items = listOf(PreviewData.galleryItem()),
+            loadImage = { _ -> ByteArray(0) },
+            onDismiss = {},
+        )
     }
 }

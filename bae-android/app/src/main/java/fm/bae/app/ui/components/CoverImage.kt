@@ -4,6 +4,7 @@ import android.util.LruCache
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MusicNote
@@ -11,6 +12,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -21,11 +23,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import coil3.compose.LocalPlatformContext
 import coil3.request.ImageRequest
 import fm.bae.app.BaeLogger
+import fm.bae.app.ui.BaeTheme
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -232,6 +237,23 @@ private fun CoverTile(
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(iconPadding),
+            )
+        }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun CoverImagePreview() {
+    BaeTheme {
+        CompositionLocalProvider(LocalCoverBytesCache provides CoverBytesCache()) {
+            CoverImage(
+                coverId = null,
+                coverVersion = null,
+                loadImage = { _ -> null },
+                cornerRadius = 6.dp,
+                iconPadding = 24.dp,
+                modifier = Modifier.size(120.dp),
             )
         }
     }

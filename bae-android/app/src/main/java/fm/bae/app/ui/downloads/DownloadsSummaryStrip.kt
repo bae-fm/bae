@@ -19,9 +19,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import fm.bae.app.R
 import fm.bae.app.coreString
+import fm.bae.app.ui.BaeTheme
+import fm.bae.app.ui.PreviewData
 import uniffi.bae_bridge.BridgeDownloadSnapshot
 import uniffi.bae_bridge.BridgeDownloadState
 import uniffi.bae_bridge.BridgeDownloadTransferProgress
@@ -96,3 +99,30 @@ internal fun downloadQueueSummaryText(
 
 private fun BridgeDownloadSnapshot.activeProgress(): BridgeDownloadTransferProgress? =
     downloads.firstNotNullOfOrNull { (it.state as? BridgeDownloadState.Active)?.progress }
+
+@Preview(showBackground = true)
+@Composable
+private fun DownloadsSummaryStripPreview() {
+    BaeTheme {
+        DownloadsSummaryStrip(
+            snapshot =
+                PreviewData.downloadSnapshot(
+                    downloads =
+                        listOf(
+                            PreviewData.downloadOp(
+                                state = BridgeDownloadState.Active(PreviewData.downloadTransferProgress()),
+                            ),
+                        ),
+                ),
+            onTap = {},
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun DownloadsSummaryStripPausedPreview() {
+    BaeTheme {
+        DownloadsSummaryStrip(snapshot = PreviewData.downloadSnapshot(paused = true), onTap = {})
+    }
+}

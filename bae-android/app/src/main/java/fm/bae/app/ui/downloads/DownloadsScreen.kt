@@ -30,11 +30,14 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.coreString
 import fm.bae.app.formatFileSize
+import fm.bae.app.ui.BaeTheme
+import fm.bae.app.ui.PreviewData
 import uniffi.bae_bridge.BridgeDownloadOp
 import uniffi.bae_bridge.BridgeDownloadSnapshot
 import uniffi.bae_bridge.BridgeDownloadState
@@ -246,4 +249,29 @@ private fun BridgeDownloadTransferProgress.bytesProgressText(context: Context): 
 private fun ULong.requireDisplayableByteCount(): Long {
     require(this <= Long.MAX_VALUE.toULong()) { "download byte count exceeds display range" }
     return toLong()
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun DownloadsListPreview() {
+    BaeTheme {
+        DownloadsList(
+            snapshot =
+                PreviewData.downloadSnapshot(
+                    downloads =
+                        listOf(
+                            PreviewData.downloadOp(
+                                releaseId = "rel-1",
+                                state = BridgeDownloadState.Active(PreviewData.downloadTransferProgress()),
+                            ),
+                            PreviewData.downloadOp(releaseId = "rel-2", state = BridgeDownloadState.Queued),
+                            PreviewData.downloadOp(
+                                releaseId = "rel-3",
+                                state = BridgeDownloadState.Failed("Network unreachable"),
+                            ),
+                        ),
+                ),
+            onCancel = {},
+        )
+    }
 }

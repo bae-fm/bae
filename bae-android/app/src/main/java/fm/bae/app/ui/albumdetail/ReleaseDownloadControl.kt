@@ -30,11 +30,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import fm.bae.app.BaeLogger
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.localizedLine
+import fm.bae.app.ui.BaeTheme
+import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.downloads.DownloadProgressBytes
 import fm.bae.app.ui.downloads.WaitingToDownloadText
 import kotlinx.coroutines.CancellationException
@@ -210,5 +213,49 @@ private fun DownloadActionButton(
         Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp))
         Spacer(modifier = Modifier.width(8.dp))
         Text(text)
+    }
+}
+
+@Composable
+private fun DownloadControlBodyStub(status: BridgeReleaseDownloadStatus) {
+    DownloadControlBody(
+        status = status,
+        unpinning = false,
+        onDownload = {},
+        onCancel = {},
+        onRetry = {},
+        onRemove = {},
+    )
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun DownloadControlAvailablePreview() {
+    BaeTheme {
+        DownloadControlBodyStub(BridgeReleaseDownloadStatus.Available)
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun DownloadControlDownloadingPreview() {
+    BaeTheme {
+        DownloadControlBodyStub(BridgeReleaseDownloadStatus.Downloading(PreviewData.downloadTransferProgress()))
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun DownloadControlDownloadedPreview() {
+    BaeTheme {
+        DownloadControlBodyStub(BridgeReleaseDownloadStatus.Downloaded)
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun DownloadControlFailedPreview() {
+    BaeTheme {
+        DownloadControlBodyStub(BridgeReleaseDownloadStatus.Failed("Network unreachable"))
     }
 }

@@ -41,12 +41,16 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
+import fm.bae.app.ui.BaeTheme
 import uniffi.bae_bridge.BridgeArtistSortCriterion
+import uniffi.bae_bridge.BridgeArtistSortField
 import uniffi.bae_bridge.BridgeComposerSortCriterion
+import uniffi.bae_bridge.BridgeComposerSortField
 import uniffi.bae_bridge.BridgeSortCriterion
 import uniffi.bae_bridge.BridgeSortDirection
 import uniffi.bae_bridge.BridgeSortField
@@ -272,5 +276,45 @@ private fun SortMenu(
                 },
             )
         }
+    }
+}
+
+private val previewAlbumSort = BridgeSortCriterion(BridgeSortField.TITLE, BridgeSortDirection.ASCENDING)
+private val previewComposerSort =
+    BridgeComposerSortCriterion(BridgeComposerSortField.NAME, BridgeSortDirection.ASCENDING)
+private val previewArtistSort = BridgeArtistSortCriterion(BridgeArtistSortField.NAME, BridgeSortDirection.ASCENDING)
+
+@Preview(showBackground = true)
+@Composable
+private fun LibraryTopBarPreview() {
+    BaeTheme {
+        LibraryTopBar(
+            onOpenSearch = {},
+            onShuffleLibrary = {},
+            mode = LibraryBrowserMode.ALBUMS,
+            sortCriterion = previewAlbumSort,
+            onSortChange = {},
+            composerSortCriterion = previewComposerSort,
+            onComposerSortChange = {},
+            artistSortCriterion = previewArtistSort,
+            onArtistSortChange = {},
+            onSettings = {},
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun LibraryModeBarPreview() {
+    BaeTheme {
+        LibraryModeBar(mode = LibraryBrowserMode.ALBUMS, onModeChange = {})
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun LibrarySearchBarPreview() {
+    BaeTheme {
+        LibrarySearchBar(query = "search text", onQueryChange = {}, onClose = {})
     }
 }

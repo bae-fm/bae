@@ -43,9 +43,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
+import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.components.CoverImage
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeRepeatMode
@@ -285,5 +287,15 @@ private fun ExpandedVolumeRow(session: OpenLibrary) {
             valueRange = 0f..1f,
             modifier = Modifier.weight(1f).padding(horizontal = 8.dp),
         )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun ExpandedTrackInfoPreview() {
+    BaeTheme {
+        Column {
+            ExpandedTrackInfo(title = "Track Title", artist = "Artist Name")
+        }
     }
 }

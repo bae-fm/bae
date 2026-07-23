@@ -38,6 +38,7 @@ import com.google.zxing.PlanarYUVLuminanceSource
 import com.google.zxing.common.HybridBinarizer
 import fm.bae.app.BaeLogger
 import fm.bae.app.R
+import fm.bae.app.ui.BaeTheme
 import java.util.concurrent.ExecutorService
 
 private const val ANALYSIS_WIDTH = 1280
@@ -212,5 +213,19 @@ private fun QRScannerOverlay(
         Button(onClick = onDismiss, modifier = Modifier.padding(top = 16.dp)) {
             Text(stringResource(R.string.cancel))
         }
+    }
+}
+
+// Preview covers the scanner's chrome overlay; the camera preview surface itself
+// can't render outside a live camera session.
+@androidx.compose.ui.tooling.preview.Preview(showBackground = true)
+@Composable
+private fun QRScannerOverlayPreview() {
+    BaeTheme {
+        QRScannerOverlay(
+            modifier = Modifier,
+            instructions = "Point the camera at the code",
+            onDismiss = {},
+        )
     }
 }

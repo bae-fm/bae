@@ -33,12 +33,14 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import fm.bae.app.BaeLogger
 import fm.bae.app.OAuthLinker
 import fm.bae.app.R
+import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.components.QRScannerScreen
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeLibrary
@@ -346,4 +348,41 @@ private fun OnboardingContainer(content: @Composable ColumnScope.() -> Unit) {
         verticalArrangement = Arrangement.Center,
         content = content,
     )
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun OnboardingIdleContentPreview() {
+    BaeTheme {
+        OnboardingIdleContent(
+            error = null,
+            showPasteDialog = false,
+            pasteInput = "",
+            callbacks =
+                OnboardingIdleCallbacks(
+                    onScanQR = {},
+                    onShowPasteDialog = {},
+                    onPasteInputChange = {},
+                    onConnect = {},
+                    onDismissPaste = {},
+                    onJoinLibrary = {},
+                ),
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun OnboardingProgressLinkingPreview() {
+    BaeTheme {
+        OnboardingProgress(linking = true, onCancel = {})
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun OnboardingProgressJoiningPreview() {
+    BaeTheme {
+        OnboardingProgress(linking = false, onCancel = {})
+    }
 }

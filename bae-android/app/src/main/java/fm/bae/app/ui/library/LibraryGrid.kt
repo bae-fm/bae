@@ -21,6 +21,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -30,10 +31,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
+import fm.bae.app.ui.BaeTheme
+import fm.bae.app.ui.PreviewData
+import fm.bae.app.ui.components.CoverBytesCache
 import fm.bae.app.ui.components.CoverImage
+import fm.bae.app.ui.components.LocalCoverBytesCache
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeAlbum
@@ -135,5 +141,15 @@ private fun AlbumGridCard(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             maxLines = 1,
         )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun AlbumGridCardPreview() {
+    BaeTheme {
+        CompositionLocalProvider(LocalCoverBytesCache provides CoverBytesCache()) {
+            AlbumGridCard(album = PreviewData.album(), loadImage = { _ -> null }, onClick = {})
+        }
     }
 }

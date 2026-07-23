@@ -2,6 +2,7 @@ package fm.bae.app.ui.settings
 
 import android.content.Context
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.AlertDialog
@@ -20,10 +21,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.tooling.preview.Preview
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.coreString
 import fm.bae.app.localizedLine
+import fm.bae.app.ui.BaeTheme
+import fm.bae.app.ui.PreviewData
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeException
@@ -294,3 +298,13 @@ private fun disconnectErrorDetail(
         is BridgeException -> context.localizedLine(error)
         else -> error.message ?: error::class.java.simpleName
     }
+
+@Preview(showBackground = true)
+@Composable
+private fun SyncProviderRowsPreview() {
+    BaeTheme {
+        Column {
+            SyncProviderRows(sync = PreviewData.syncConfig())
+        }
+    }
+}

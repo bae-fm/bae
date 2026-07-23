@@ -25,8 +25,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import fm.bae.app.R
+import fm.bae.app.ui.BaeTheme
 
 internal data class TrackRowData(
     val positionLabel: String,
@@ -154,5 +156,45 @@ private fun TrackRowMenu(
                 },
             )
         }
+    }
+}
+
+private val previewTrackRowCallbacks = TrackRowCallbacks(onClick = {}, onPlayNext = {}, onAddToQueue = {})
+
+@Preview(showBackground = true)
+@Composable
+private fun TrackRowPreview() {
+    BaeTheme {
+        TrackRow(
+            data =
+                TrackRowData(
+                    positionLabel = "1",
+                    title = "Track Title",
+                    artistNames = "Artist Name",
+                    durationLabel = "3:34",
+                    isCurrent = false,
+                    isPlaying = false,
+                ),
+            callbacks = previewTrackRowCallbacks,
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun TrackRowCurrentPreview() {
+    BaeTheme {
+        TrackRow(
+            data =
+                TrackRowData(
+                    positionLabel = "2",
+                    title = "Track Title",
+                    artistNames = null,
+                    durationLabel = "4:12",
+                    isCurrent = true,
+                    isPlaying = true,
+                ),
+            callbacks = previewTrackRowCallbacks,
+        )
     }
 }

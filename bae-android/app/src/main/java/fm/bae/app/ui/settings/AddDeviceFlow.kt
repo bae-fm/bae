@@ -39,11 +39,13 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import fm.bae.app.BaeLogger
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
+import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.components.QRCodeImage
 import fm.bae.app.ui.components.QRScannerScreen
 import kotlinx.coroutines.CancellationException
@@ -415,4 +417,40 @@ private fun PasteJoinRequestDialog(
             TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
         },
     )
+}
+
+private val previewAddDeviceActions =
+    AddDeviceActions(onScan = {}, onPaste = {}, onConfirm = {}, onDismiss = {})
+
+@Preview(showBackground = true)
+@Composable
+private fun AddDeviceDialogCapturePreview() {
+    BaeTheme {
+        AddDeviceDialog(step = AddDeviceStep.Capture, error = null, actions = previewAddDeviceActions)
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun AddDeviceDialogInvitedPreview() {
+    BaeTheme {
+        AddDeviceDialog(
+            step = AddDeviceStep.Invited(inviteCode = "bae://invite/placeholder-code"),
+            error = null,
+            actions = previewAddDeviceActions,
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun PasteJoinRequestDialogPreview() {
+    BaeTheme {
+        PasteJoinRequestDialog(
+            pasteInput = "placeholder-request-code",
+            onInputChange = {},
+            onConfirm = {},
+            onDismiss = {},
+        )
+    }
 }

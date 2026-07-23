@@ -47,12 +47,15 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import fm.bae.app.BaeLogger
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.RestorePlaybackPref
 import fm.bae.app.localizedLine
+import fm.bae.app.ui.BaeTheme
+import fm.bae.app.ui.PreviewData
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -369,5 +372,29 @@ private fun SettingsLeaveSection(onRequestLeave: () -> Unit) {
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun SettingsLibrarySectionPreview() {
+    BaeTheme {
+        SettingsLibrarySection(
+            libraries =
+                listOf(
+                    PreviewData.library(),
+                    PreviewData.library(id = "lib-2", name = "Other Library", isActive = false),
+                ),
+            activeLibraryId = "lib-1",
+            onSwitchLibrary = {},
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun SettingsDevicesSectionPreview() {
+    BaeTheme {
+        SettingsDevicesSection(onManageDevices = {}, onRevealRecoveryCode = {})
     }
 }

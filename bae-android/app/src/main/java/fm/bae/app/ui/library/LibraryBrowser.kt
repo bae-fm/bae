@@ -20,11 +20,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import fm.bae.app.BaeLogger
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.data.DownloadStore
+import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.downloads.DownloadsSummaryStrip
 import fm.bae.app.ui.playback.NowPlayingBar
 import kotlinx.coroutines.CoroutineScope
@@ -376,6 +378,31 @@ private fun LibraryBrowserChrome(
             modifier = Modifier.fillMaxWidth(),
             color = MaterialTheme.colorScheme.primary,
             trackColor = MaterialTheme.colorScheme.surface,
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun LibraryBrowserChromePreview() {
+    BaeTheme {
+        LibraryBrowserChrome(
+            searchOpen = false,
+            searchQuery = "",
+            onSearchQueryChange = {},
+            onOpenSearch = {},
+            onCloseSearch = {},
+            mode = LibraryBrowserMode.ALBUMS,
+            onModeChange = {},
+            sortCriterion = DEFAULT_ALBUM_SORT,
+            onSortChange = {},
+            composerSortCriterion = DEFAULT_COMPOSER_SORT,
+            onComposerSortChange = {},
+            artistSortCriterion = DEFAULT_ARTIST_SORT,
+            onArtistSortChange = {},
+            syncing = false,
+            onShuffleLibrary = {},
+            onSettings = {},
         )
     }
 }

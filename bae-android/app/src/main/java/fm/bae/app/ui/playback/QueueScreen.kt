@@ -45,12 +45,14 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import fm.bae.app.BaeLogger
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.playback.NowPlaying
 import fm.bae.app.playback.QueueItem
+import fm.bae.app.ui.BaeTheme
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.ReorderableLazyListState
 import sh.calvin.reorderable.rememberReorderableLazyListState
@@ -478,3 +480,11 @@ private fun ContextSectionLabel(
 
 // NowPlayingRow / QueueRow / QueueRowPlaceholder / QueueItemText — the queue's
 // row renderers — live in QueueRow.kt.
+
+@Preview(showBackground = true)
+@Composable
+private fun QueueHeaderPreview() {
+    BaeTheme {
+        QueueHeader()
+    }
+}
