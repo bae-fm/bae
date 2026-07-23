@@ -1186,12 +1186,11 @@ impl AppHandle {
         self.app.stop_cast_discovery();
     }
 
-    /// The current list of discovered Cast devices. Requery on a
-    /// `CastDevices` invalidation.
+    /// The current list of discovered remote-renderer devices (Cast and UPnP).
+    /// Requery on a `CastDevices` invalidation.
     pub fn get_cast_devices(&self) -> Vec<crate::types::BridgeCastDevice> {
         self.app
             .cast_devices()
-            .0
             .into_iter()
             .map(crate::types::BridgeCastDevice::from_core)
             .collect()

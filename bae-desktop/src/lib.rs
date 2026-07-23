@@ -146,14 +146,9 @@ impl DesktopApp {
         }
     }
 
-    /// The current list of discovered Cast devices plus a receiver that updates
-    /// as devices come and go.
-    pub fn cast_devices(
-        &self,
-    ) -> (
-        Vec<RendererDevice>,
-        tokio::sync::watch::Receiver<Vec<RendererDevice>>,
-    ) {
+    /// The current merged list of discovered remote-renderer devices (Cast and
+    /// UPnP). Requery on a `CastDevices` invalidation.
+    pub fn cast_devices(&self) -> Vec<RendererDevice> {
         self.cast_controller.devices()
     }
 

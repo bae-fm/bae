@@ -12,11 +12,13 @@ use std::sync::{Arc, Mutex};
 
 use bae_core::cast::{CastDiscovery, RustCastChannel};
 use bae_core::config::SubsonicCredential;
+use bae_core::dlna::{DlnaChannel, DlnaDiscovery};
 use bae_core::library::{AppServices, LibraryManager};
 use bae_core::playback::{PlaybackHandle, PlaybackProgress};
 use bae_core::renderer::{
-    cast_stream_format, CoverUrlProvider, MediaUrlProvider, RendererConnection, RendererDevice,
-    RendererStreamFormat, TRANSCODE_BITRATE_KBPS,
+    cast_stream_format, dlna_stream_format, CoverUrlProvider, MediaUrlProvider, RendererChannel,
+    RendererConnection, RendererDevice, RendererStreamFormat, StreamFormatFn,
+    TRANSCODE_BITRATE_KBPS,
 };
 use bae_core::ui::{Invalidation, UiBusEvent, UiEventBus};
 use md5::{Digest, Md5};
@@ -132,7 +134,11 @@ pub struct CastController {
     runtime: Handle,
     manager: LibraryManager,
     playback: PlaybackHandle,
-    discovery: Mutex<CastDiscovery>,
+    /// Google Cast discovery (mDNS) and UPnP discovery (SSDP) run side by side;
+    /// their device lists are merged into one for the picker — a speaker is a
+    /// speaker, whatever its protocol.
+    cast_discovery: Mutex<CastDiscovery>,
+    dlna_discovery: Mutex<DlnaDiscovery>,
     inner: Arc<Mutex<Inner>>,
 }
 
@@ -147,15 +153,22 @@ impl CastController {
             server: None,
             status: CastStatus::NotCasting,
         }));
-        let discovery = CastDiscovery::new();
-        // Forward device-list changes to the UI as an invalidation, so an open
-        // picker requeries the list as devices come and go.
-        Self::spawn_device_list_forwarder(discovery.subscribe(), ui_event_bus, &runtime);
+        let cast_discovery = CastDiscovery::new();
+        let dlna_discovery = DlnaDiscovery::new();
+        // Forward either discovery's list changes to the UI as an invalidation,
+        // so an open picker requeries the merged list as devices come and go.
+        Self::spawn_device_list_forwarder(
+            cast_discovery.subscribe(),
+            ui_event_bus.clone(),
+            &runtime,
+        );
+        Self::spawn_device_list_forwarder(dlna_discovery.subscribe(), ui_event_bus, &runtime);
         let controller = Self {
             runtime: runtime.clone(),
             manager: services.library_manager().clone(),
             playback: services.playback().clone(),
-            discovery: Mutex::new(discovery),
+            cast_discovery: Mutex::new(cast_discovery),
+            dlna_discovery: Mutex::new(dlna_discovery),
             inner: inner.clone(),
         };
         controller.spawn_status_follower();
@@ -206,63 +219,44 @@ impl CastController {
         });
     }
 
-    /// Start browsing for devices (the picker opened). Idempotent.
+    /// Start browsing for devices on both protocols (the picker opened).
+    /// Idempotent.
     pub fn start_discovery(&self) {
-        self.discovery.lock().unwrap().start();
+        self.cast_discovery.lock().unwrap().start();
+        self.dlna_discovery.lock().unwrap().start();
     }
 
-    /// Stop browsing for devices (the picker closed).
+    /// Stop browsing on both protocols (the picker closed).
     pub fn stop_discovery(&self) {
-        self.discovery.lock().unwrap().stop();
+        self.cast_discovery.lock().unwrap().stop();
+        self.dlna_discovery.lock().unwrap().stop();
     }
 
-    /// The current device list plus a receiver that updates as devices come and
-    /// go.
-    pub fn devices(
-        &self,
-    ) -> (
-        Vec<RendererDevice>,
-        tokio::sync::watch::Receiver<Vec<RendererDevice>>,
-    ) {
-        let discovery = self.discovery.lock().unwrap();
-        (discovery.devices(), discovery.subscribe())
+    /// The current merged device list — Cast and UPnP devices in one list, sorted
+    /// by name for a stable picker.
+    pub fn devices(&self) -> Vec<RendererDevice> {
+        let mut devices = self.cast_discovery.lock().unwrap().devices();
+        devices.extend(self.dlna_discovery.lock().unwrap().devices());
+        devices.sort_by(|a, b| a.name.cmp(&b.name).then(a.id.cmp(&b.id)));
+        devices
     }
 
     pub fn status(&self) -> CastStatus {
         self.inner.lock().unwrap().status.clone()
     }
 
-    /// Cast to the device named by `device_id`: connect its control channel,
-    /// ensure the ephemeral server is serving, and hand the playback service the
-    /// channel plus the URL providers.
+    /// Play to the device named by `device_id`: build its control channel from
+    /// the device's connection (Cast or UPnP), ensure the ephemeral server is
+    /// serving, and hand the playback service the channel plus the URL providers
+    /// and the flavor's stream-format gate.
     pub fn cast_to(&self, device_id: &str) -> Result<(), CastError> {
         let device = self
-            .discovery
-            .lock()
-            .unwrap()
             .devices()
             .into_iter()
             .find(|device| device.id == device_id)
             .ok_or(CastError::DeviceNotFound)?;
 
-        let (addr, port) = match device.connection {
-            RendererConnection::Cast { addr, port } => (addr, port),
-            // Sentinel: DLNA devices don't reach the picker until the next commit
-            // generalizes the desktop device list to merge DlnaDiscovery. Only
-            // Cast connections are produced here, so this arm is unreachable; it's
-            // present to keep this commit's diff to the type rename.
-            RendererConnection::Dlna { .. } => return Err(CastError::DeviceNotFound),
-        };
-
-        // The rust_cast connect blocks on the network; run it off the async
-        // runtime so it never stalls a runtime thread.
-        let channel = self
-            .runtime
-            .block_on(async move {
-                tokio::task::spawn_blocking(move || RustCastChannel::connect(addr, port)).await
-            })
-            .map_err(|e| CastError::Connect(format!("connect task failed: {e}")))?
-            .map_err(|e| CastError::Connect(e.to_string()))?;
+        let (channel, stream_format) = self.build_channel(&device.connection)?;
 
         let (base_url, credential) = self.ensure_server()?;
         let stream_provider = stream_url_provider(base_url.clone(), credential.clone());
@@ -274,13 +268,46 @@ impl CastController {
             device_name: device.name.clone(),
         };
         self.playback.play_on(
-            Box::new(channel),
+            channel,
             device.name,
             stream_provider,
             cover_provider,
-            cast_stream_format,
+            stream_format,
         );
         Ok(())
+    }
+
+    /// Build the control channel for a device, and the stream-format gate its
+    /// flavor uses. Cast connects over the network (run off the runtime so it
+    /// never stalls a runtime thread); UPnP has no handshake — each SOAP action
+    /// is its own request.
+    fn build_channel(
+        &self,
+        connection: &RendererConnection,
+    ) -> Result<(Box<dyn RendererChannel>, StreamFormatFn), CastError> {
+        match connection {
+            RendererConnection::Cast { addr, port } => {
+                let (addr, port) = (*addr, *port);
+                let channel = self
+                    .runtime
+                    .block_on(async move {
+                        tokio::task::spawn_blocking(move || RustCastChannel::connect(addr, port))
+                            .await
+                    })
+                    .map_err(|e| CastError::Connect(format!("connect task failed: {e}")))?
+                    .map_err(|e| CastError::Connect(e.to_string()))?;
+                Ok((Box::new(channel), cast_stream_format))
+            }
+            RendererConnection::Dlna {
+                av_transport_url,
+                rendering_control_url,
+            } => {
+                let channel =
+                    DlnaChannel::connect(av_transport_url.clone(), rendering_control_url.clone())
+                        .map_err(|e| CastError::Connect(e.to_string()))?;
+                Ok((Box::new(channel), dlna_stream_format))
+            }
+        }
     }
 
     /// Stop casting: tell the playback service, which ends the session and

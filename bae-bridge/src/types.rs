@@ -2418,22 +2418,37 @@ pub enum BridgeSubsonicServerError {
     ServerFailed { detail: String },
 }
 
-/// A discovered Cast device, for the device picker.
+/// A discovered remote-renderer device (Cast or UPnP), for the device picker.
+/// One list, tagged by `kind` — the picker doesn't segregate by protocol.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeCastDevice {
     /// Opaque id passed back to `cast_to`.
     pub id: String,
     /// Display name shown in the picker.
     pub name: String,
+    /// Which protocol the device speaks, so the row can carry a flavor hint.
+    pub kind: BridgeRendererKind,
+}
+
+/// The protocol flavor of a discovered device.
+#[derive(Debug, Clone, Copy, uniffi::Enum)]
+pub enum BridgeRendererKind {
+    Cast,
+    Dlna,
 }
 
 // The conversion is only used by the desktop-gated `get_cast_devices` handle fn.
 #[cfg(feature = "desktop")]
 impl BridgeCastDevice {
     pub(crate) fn from_core(device: bae_core::renderer::RendererDevice) -> Self {
+        let kind = match device.kind() {
+            bae_core::renderer::RendererKind::Cast => BridgeRendererKind::Cast,
+            bae_core::renderer::RendererKind::Dlna => BridgeRendererKind::Dlna,
+        };
         Self {
             id: device.id,
             name: device.name,
+            kind,
         }
     }
 }
