@@ -69,6 +69,13 @@ pub enum PlaybackProgress {
     MuteChanged {
         is_muted: bool,
     },
+    /// The active renderer changed: `Some(name)` when playback moved to a Cast
+    /// device, `None` when it returned to local output (a user stop or a
+    /// receiver-side end). The UI reflects the cast button's active state and the
+    /// "Casting to <name>" row from this.
+    CastStatusChanged {
+        device_name: Option<String>,
+    },
     /// Playback error (e.g. storage offline) — a typed reason the UI renders
     /// for its locale.
     PlaybackError {

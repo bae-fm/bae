@@ -437,6 +437,10 @@ impl PlaybackService {
     }
 
     pub(super) fn pause(&mut self) {
+        // While casting, the receiver holds playback: pause it too.
+        if let Renderer::Cast(cast) = &self.renderer {
+            cast.session.pause();
+        }
         // Pausing during a load collapses the Loading phase to Paused, so the
         // pending TrackReady no longer matches and is ignored. A Stopped or
         // still-resolving slot is a no-op (nothing is playing to pause).
@@ -458,6 +462,10 @@ impl PlaybackService {
             return;
         }
 
+        // While casting, the receiver holds playback: resume it too.
+        if let Renderer::Cast(cast) = &self.renderer {
+            cast.session.play();
+        }
         if let PlaybackSlot::Active(cur) = &mut self.slot {
             cur.phase = TrackPhase::Playing;
             self.sync_audio_state();

@@ -2,6 +2,19 @@ use super::*;
 
 impl PlaybackService {
     pub(super) async fn seek(&mut self, position: std::time::Duration) {
+        // While casting, the receiver owns the timeline: seek it, refresh the
+        // position display, and skip the whole local decoder-rebuild path.
+        if self.renderer.is_casting() {
+            if let Renderer::Cast(cast) = &self.renderer {
+                cast.session.seek(position);
+            }
+            *self.current_position_shared.lock().unwrap() = Some(position);
+            if let Some(track_id) = self.current_track_id().map(str::to_string) {
+                self.emit_position_display(position.as_millis() as u64, track_id);
+            }
+            return;
+        }
+
         // Drain first so a pending gapless crossing is applied before we read the
         // current track — a seek arriving right at a boundary then rebuilds the
         // track the callback already advanced into, not the finishing one.

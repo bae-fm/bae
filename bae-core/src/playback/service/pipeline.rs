@@ -173,6 +173,14 @@ impl PlaybackService {
             self.telemetry_track_started(track_id, transition);
         }
 
+        // Cast is a second renderer behind the same queue: load the track onto
+        // the receiver instead of the local decode pipeline. Everything above
+        // (telemetry) is shared; the local path below is skipped.
+        if self.renderer.is_casting() {
+            self.play_track_cast(track_id, start, target).await;
+            return;
+        }
+
         // Tear the outgoing track and preload down first, so a manual switch
         // silences the old audio at once and stops the old decoders. Their file
         // buffers stay cached and live until the incoming track is prepared — only
@@ -293,33 +301,11 @@ impl PlaybackService {
     }
 
     pub(super) async fn stop(&mut self) {
-        // Nothing to resume into, so drop the preview's pause marker with it.
-        self.stop_preview_for_main_playback();
-
-        // The half `stop()` shares with a manual track switch: cancel the current
-        // decoder. Its buffers are covered by the cache-wide cancel below.
-        self.teardown_current_track();
-
-        // Clear the preload while `self.output` is still present, so a staged next
-        // source can be recovered from it and its sink cancelled.
-        self.clear_next_track_state();
-        // Cancel the output's source before dropping it, then drop the persistent
-        // output. Cancelling unparks the outgoing decoder even when it's blocked
-        // writing a full ring (`teardown_current_track` only set its AVIO token,
-        // which doesn't reach a write-parked decoder). Dropping the output then
-        // releases the device / drops the source / drops the audio-events receiver
-        // (and, for the capture sinks, joins the capture thread).
-        if let Some(out) = self.output.take() {
-            out.source.lock().unwrap().cancel();
-        }
-        // Stop means done with this album: cancel every cached file buffer
-        // (stopping its fill task and unblocking its readers) and drop the cache.
-        for buffer in self.shared_file_buffers.values() {
-            buffer.cancel();
-        }
-        self.shared_file_buffers.clear();
-        *self.current_position_shared.lock().unwrap() = None;
-        self.reset_starvation_episode();
+        // Tear the local pipeline down: preview, current decoder, preload, the
+        // persistent output (its source cancelled first so a ring-parked decoder
+        // unparks), and every cached file buffer. Shared with the cast switch,
+        // which reuses the same teardown before installing the receiver track.
+        self.teardown_local_playback();
         self.sync_audio_state();
         self.emit_state();
         // With the slot Stopped this clears the durable row — on every stop path

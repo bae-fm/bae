@@ -229,6 +229,7 @@ fn playback_service_over(
         starvation_episode: None,
         last_position_persist: None,
         first_audio_pending: None,
+        renderer: Renderer::Local,
     };
     (service, progress_rx)
 }
@@ -1817,5 +1818,336 @@ async fn corrupt_resume_row_ships_resume_cache_corrupt_anomaly() {
     assert_eq!(
         anomaly.fields["kind"],
         serde_json::json!("resume_cache_corrupt")
+    );
+}
+
+// -- renderer seam: casting ---------------------------------------------------
+
+use crate::cast::{
+    CastChannel, CastError, CastMedia, CastPlayerState, CastSessionStatus, ReceiverStatus,
+};
+
+/// Shared, scriptable state for the fake cast channel: the commands the session
+/// issued and the status each poll returns.
+#[derive(Default)]
+struct FakeCastState {
+    loads: Vec<CastMedia>,
+    seeks: Vec<std::time::Duration>,
+    pauses: u32,
+    plays: u32,
+    stops: u32,
+    volumes: Vec<f32>,
+}
+
+#[derive(Clone)]
+struct FakeCastChannel {
+    state: Arc<Mutex<FakeCastState>>,
+}
+
+impl FakeCastChannel {
+    fn new() -> Self {
+        Self {
+            state: Arc::new(Mutex::new(FakeCastState::default())),
+        }
+    }
+}
+
+impl CastChannel for FakeCastChannel {
+    fn load(&mut self, media: &CastMedia) -> Result<(), CastError> {
+        self.state.lock().unwrap().loads.push(media.clone());
+        Ok(())
+    }
+    fn play(&mut self) -> Result<(), CastError> {
+        self.state.lock().unwrap().plays += 1;
+        Ok(())
+    }
+    fn pause(&mut self) -> Result<(), CastError> {
+        self.state.lock().unwrap().pauses += 1;
+        Ok(())
+    }
+    fn seek(&mut self, position: std::time::Duration) -> Result<(), CastError> {
+        self.state.lock().unwrap().seeks.push(position);
+        Ok(())
+    }
+    fn set_volume(&mut self, level: f32) -> Result<(), CastError> {
+        self.state.lock().unwrap().volumes.push(level);
+        Ok(())
+    }
+    fn stop(&mut self) -> Result<(), CastError> {
+        self.state.lock().unwrap().stops += 1;
+        Ok(())
+    }
+    fn poll_status(&mut self) -> Result<ReceiverStatus, CastError> {
+        Ok(ReceiverStatus {
+            player_state: CastPlayerState::Playing,
+            position: None,
+            duration: None,
+            volume: 1.0,
+        })
+    }
+}
+
+/// Poll `predicate` until it holds or a 2s deadline passes.
+fn wait_until(predicate: impl Fn() -> bool) -> bool {
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(2);
+    while std::time::Instant::now() < deadline {
+        if predicate() {
+            return true;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(5));
+    }
+    predicate()
+}
+
+/// Seed the audio format, segment, and backing file that make `track_id`
+/// resolvable, so the cast path can turn it into media. No real bytes on disk —
+/// the receiver, not bae, fetches the audio, so the cast path never decodes it.
+async fn seed_playable_track(database: &crate::db::Database, release_id: &str, track_id: &str) {
+    use crate::db::{DbAudioFormat, DbAudioSegment, DbAudioSegmentRole, DbFile};
+    use crate::util::content_type::ContentType;
+    let now = chrono::Utc::now();
+    let file_id = format!("{track_id}-file");
+    let file = DbFile::new(
+        release_id,
+        "track.flac",
+        4_096,
+        ContentType::Flac,
+        file_id.clone(),
+        now,
+        None,
+    );
+    database.insert_file(&file).await.unwrap();
+    let audio_format_id = format!("{track_id}-af");
+    let audio_format = DbAudioFormat::new(
+        track_id,
+        ContentType::Flac,
+        44_100,
+        Some(16),
+        2,
+        audio_format_id.clone(),
+        now,
+    );
+    let segment = DbAudioSegment {
+        id: format!("{track_id}-seg"),
+        audio_format_id,
+        segment_index: 0,
+        role: DbAudioSegmentRole::Main,
+        file_id,
+        start_sample: 0,
+        end_sample: None,
+        start_byte: None,
+        end_byte: None,
+        created_at: now,
+    };
+    database
+        .insert_audio_format_with_segments_for_test(&audio_format, &[segment])
+        .await
+        .unwrap();
+}
+
+/// A playback service over releases whose every track is resolvable to cast
+/// media.
+async fn casting_service(
+    releases: &[(&str, &[&str])],
+) -> (
+    TempDir,
+    PlaybackService,
+    tokio_mpsc::UnboundedReceiver<PlaybackProgress>,
+) {
+    let (home, service, rx) = seeded_playback_service(releases).await;
+    let database = service.library_manager.database_for_test();
+    for (release_id, tracks) in releases {
+        for track_id in *tracks {
+            seed_playable_track(&database, release_id, track_id).await;
+        }
+    }
+    (home, service, rx)
+}
+
+fn test_stream_provider() -> crate::cast::MediaUrlProvider {
+    Arc::new(|track_id: &str, _format| Ok(format!("http://cast.local/stream?id={track_id}")))
+}
+
+fn cast_connect(channel: FakeCastChannel) -> CastConnect {
+    CastConnect {
+        channel: Box::new(channel),
+        device_name: "Living Room".to_string(),
+        stream_url_provider: test_stream_provider(),
+        cover_url_provider: Arc::new(|_| None),
+    }
+}
+
+/// `cast_to` mid-track keeps the current track and queue position, switches the
+/// renderer to Cast, and reissues the current track to the receiver at its
+/// current position (a LOAD plus a seek).
+#[tokio::test]
+async fn cast_to_reissues_current_track_at_position() {
+    let (_home, mut service, _rx) = casting_service(&[("rel-1", &["t1", "t2"])]).await;
+    service.playback_queue.play_release(
+        ContextSource::Release("rel-1".to_string()),
+        vec!["t1".to_string(), "t2".to_string()],
+        ContextStart::Index(0),
+    );
+    let buffer = create_sparse_buffer(1_024);
+    service.slot = active_slot(test_prepared_track("t1", buffer), TrackPhase::Playing);
+    *service.current_position_shared.lock().unwrap() = Some(std::time::Duration::from_secs(30));
+
+    let channel = FakeCastChannel::new();
+    let state = channel.state.clone();
+    service.handle_cast_to(cast_connect(channel)).await;
+
+    assert!(
+        service.renderer.is_casting(),
+        "the renderer switches to Cast"
+    );
+    assert_eq!(
+        service.slot.current_track_id(),
+        Some("t1"),
+        "the current track is unchanged"
+    );
+    assert!(
+        wait_until(|| {
+            let s = state.lock().unwrap();
+            s.loads.len() == 1 && s.seeks.contains(&std::time::Duration::from_secs(30))
+        }),
+        "the current track is loaded onto the receiver and seeked to its position"
+    );
+    assert_eq!(
+        state.lock().unwrap().loads[0].url,
+        "http://cast.local/stream?id=t1"
+    );
+}
+
+/// A receiver `IDLE(finished)` status advances the shared queue to the next
+/// track and loads it onto the receiver — the same advance path local
+/// end-of-track uses.
+#[tokio::test]
+async fn cast_finished_advances_queue_and_loads_next() {
+    let (_home, mut service, _rx) = casting_service(&[("rel-1", &["t1", "t2"])]).await;
+    service.playback_queue.play_release(
+        ContextSource::Release("rel-1".to_string()),
+        vec!["t1".to_string(), "t2".to_string()],
+        ContextStart::Index(0),
+    );
+    let buffer = create_sparse_buffer(1_024);
+    service.slot = active_slot(test_prepared_track("t1", buffer), TrackPhase::Playing);
+    *service.current_position_shared.lock().unwrap() = Some(std::time::Duration::ZERO);
+
+    let channel = FakeCastChannel::new();
+    let state = channel.state.clone();
+    service.handle_cast_to(cast_connect(channel)).await;
+    assert!(wait_until(|| !state.lock().unwrap().loads.is_empty()));
+
+    service
+        .handle_cast_status(CastSessionStatus {
+            player_state: CastPlayerState::Finished,
+            position: None,
+            duration: None,
+            volume: 1.0,
+            ended: false,
+        })
+        .await;
+
+    assert_eq!(
+        service.slot.current_track_id(),
+        Some("t2"),
+        "the queue advanced to the next track"
+    );
+    assert!(
+        wait_until(|| state
+            .lock()
+            .unwrap()
+            .loads
+            .iter()
+            .any(|m| m.url == "http://cast.local/stream?id=t2")),
+        "the next track is loaded onto the receiver"
+    );
+}
+
+/// A non-terminal receiver status feeds the shared progress channel, so every UI
+/// and the position store update exactly as for local playback.
+#[tokio::test]
+async fn cast_status_feeds_progress() {
+    let (_home, mut service, mut rx) = casting_service(&[("rel-1", &["t1"])]).await;
+    service.playback_queue.play_release(
+        ContextSource::Release("rel-1".to_string()),
+        vec!["t1".to_string()],
+        ContextStart::Index(0),
+    );
+    let buffer = create_sparse_buffer(1_024);
+    service.slot = active_slot(test_prepared_track("t1", buffer), TrackPhase::Playing);
+
+    let channel = FakeCastChannel::new();
+    service.handle_cast_to(cast_connect(channel)).await;
+    // Drain the setup events.
+    while rx.try_recv().is_ok() {}
+
+    service
+        .handle_cast_status(CastSessionStatus {
+            player_state: CastPlayerState::Playing,
+            position: Some(std::time::Duration::from_secs(30)),
+            duration: Some(std::time::Duration::from_secs(180)),
+            volume: 1.0,
+            ended: false,
+        })
+        .await;
+
+    let mut saw_position = false;
+    while let Ok(progress) = rx.try_recv() {
+        if let PlaybackProgress::PositionUpdate {
+            position_ms,
+            track_id,
+            ..
+        } = progress
+        {
+            if track_id == "t1" && position_ms == 30_000 {
+                saw_position = true;
+            }
+        }
+    }
+    assert!(
+        saw_position,
+        "the receiver's position must flow as a PositionUpdate for the current track"
+    );
+}
+
+/// Stopping casting stops the receiver, drops the renderer back to Local, and
+/// announces `CastStatusChanged(None)` so the UI leaves the casting state.
+#[tokio::test]
+async fn stop_casting_stops_receiver_and_returns_to_local() {
+    let (_home, mut service, mut rx) = casting_service(&[("rel-1", &["t1"])]).await;
+    service.playback_queue.play_release(
+        ContextSource::Release("rel-1".to_string()),
+        vec!["t1".to_string()],
+        ContextStart::Index(0),
+    );
+    let buffer = create_sparse_buffer(1_024);
+    service.slot = active_slot(test_prepared_track("t1", buffer), TrackPhase::Playing);
+
+    let channel = FakeCastChannel::new();
+    let state = channel.state.clone();
+    service.handle_cast_to(cast_connect(channel)).await;
+    assert!(wait_until(|| !state.lock().unwrap().loads.is_empty()));
+    while rx.try_recv().is_ok() {}
+
+    service.handle_stop_casting().await;
+
+    assert!(
+        !service.renderer.is_casting(),
+        "the renderer returns to Local"
+    );
+    assert!(
+        wait_until(|| state.lock().unwrap().stops == 1),
+        "the receiver is told to stop"
+    );
+    let mut saw_not_casting = false;
+    while let Ok(progress) = rx.try_recv() {
+        if let PlaybackProgress::CastStatusChanged { device_name: None } = progress {
+            saw_not_casting = true;
+        }
+    }
+    assert!(
+        saw_not_casting,
+        "stopping casting announces CastStatusChanged(None)"
     );
 }

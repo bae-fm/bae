@@ -71,6 +71,7 @@ mod output;
 mod pipeline;
 mod preview;
 mod queue_commands;
+mod renderer;
 mod seek;
 mod slot;
 mod starvation;
@@ -81,6 +82,7 @@ use crate::playback::stream_pipeline::{
     DecodeFailureReport, DecoderStart, SegmentDecodeParams, StreamDecodeParams,
 };
 use output::OutputStream;
+use renderer::{CastConnect, Renderer};
 use slot::{
     CurrentTrack, LoadGeneration, PausePhase, PlayIntent, PlayTarget, PlaybackSlot, TrackDecoder,
     TrackPhase,
@@ -288,6 +290,18 @@ pub(crate) enum PlaybackCommand {
     /// calls this when backgrounded — it can't call `Shutdown` (that stops the
     /// background audio), so this snapshots state for a later cold launch.
     SaveState(oneshot::Sender<()>),
+    /// Switch playback to a Cast device: stop the local renderer (keeping the
+    /// queue) and reissue the current track to the receiver at its current
+    /// position. The connected channel and URL providers ride in the payload.
+    CastTo(Box<CastConnect>),
+    /// Stop casting: end the session and resume the local renderer, paused at
+    /// the receiver's last reported position.
+    StopCasting,
+    /// A status update from the active cast session's poll loop — drives the
+    /// progress feed, queue-advance on receiver end-of-track, and detection of a
+    /// receiver-side stop. Ignored when not casting (a stale update from a
+    /// session that already ended).
+    CastStatus(crate::cast::CastSessionStatus),
 }
 /// Current playback state: track metadata and total duration only. Position
 /// (progress, elapsed, remaining) flows through `PlaybackProgress::PositionUpdate`
@@ -399,6 +413,31 @@ impl PlaybackHandle {
     }
     pub fn set_muted(&self, muted: bool) {
         dispatch_command(&self.command_tx, PlaybackCommand::SetMuted(muted));
+    }
+    /// Switch playback to a Cast device over `channel`, minting each track's
+    /// media URL through the injected providers. The channel is already
+    /// connected (bae-desktop builds it off the service thread).
+    pub fn cast_to(
+        &self,
+        channel: Box<dyn crate::cast::CastChannel>,
+        device_name: String,
+        stream_url_provider: crate::cast::MediaUrlProvider,
+        cover_url_provider: crate::cast::CoverUrlProvider,
+    ) {
+        dispatch_command(
+            &self.command_tx,
+            PlaybackCommand::CastTo(Box::new(CastConnect {
+                channel,
+                device_name,
+                stream_url_provider,
+                cover_url_provider,
+            })),
+        );
+    }
+    /// Stop casting and resume local playback, paused at the receiver's last
+    /// position.
+    pub fn stop_casting(&self) {
+        dispatch_command(&self.command_tx, PlaybackCommand::StopCasting);
     }
     pub fn subscribe_progress(&self) -> tokio_mpsc::UnboundedReceiver<PlaybackProgress> {
         self.progress_handle.subscribe_all()
@@ -1004,6 +1043,9 @@ pub struct PlaybackService {
     /// cleared/overwritten by the next load; resolved into a `first_audio` event
     /// when that load reaches Playing. `None` once emitted or for paused loads.
     first_audio_pending: Option<FirstAudioMeasurement>,
+    /// Where the current track plays: the local decode pipeline, or a connected
+    /// Cast device. `Local` by default; `cast_to`/`stop_casting` switch it.
+    renderer: Renderer,
 }
 
 /// A pending first-audio timing: the load whose arrival at Playing it measures,
@@ -1659,6 +1701,7 @@ impl PlaybackService {
                     starvation_episode: None,
                     last_position_persist: None,
                     first_audio_pending: None,
+                    renderer: Renderer::Local,
                 };
                 service.restore_from_cache(restore_playback).await;
                 service.run().await;
@@ -1873,6 +1916,11 @@ impl PlaybackService {
                 }
                 PlaybackCommand::SetVolume(volume) => {
                     self.audio_output.set_volume(volume);
+                    // Keep the receiver's volume in step so it survives the
+                    // handoff back to local playback.
+                    if let Renderer::Cast(cast) = &self.renderer {
+                        cast.session.set_volume(volume);
+                    }
 
                     if volume > 0.0 && self.is_muted {
                         self.is_muted = false;
@@ -1894,6 +1942,12 @@ impl PlaybackService {
                         self.pre_mute_volume = self.audio_output.get_volume();
                         self.is_muted = true;
                         self.audio_output.set_volume(0.0);
+                        // Receiver mute is flaky across devices, so muting maps
+                        // to receiver volume 0; the pre-mute level is remembered
+                        // above and restored on unmute.
+                        if let Renderer::Cast(cast) = &self.renderer {
+                            cast.session.set_volume(0.0);
+                        }
                         emit_progress(
                             &self.progress_tx,
                             PlaybackProgress::VolumeChanged { volume: 0.0 },
@@ -1906,6 +1960,9 @@ impl PlaybackService {
                         self.is_muted = false;
                         let vol = self.pre_mute_volume;
                         self.audio_output.set_volume(vol);
+                        if let Renderer::Cast(cast) = &self.renderer {
+                            cast.session.set_volume(vol);
+                        }
                         emit_progress(
                             &self.progress_tx,
                             PlaybackProgress::VolumeChanged { volume: vol },
@@ -2063,6 +2120,15 @@ impl PlaybackService {
                     self.persist_playback_state().await;
                     let _ = reply.send(());
                 }
+                PlaybackCommand::CastTo(connect) => {
+                    self.handle_cast_to(*connect).await;
+                }
+                PlaybackCommand::StopCasting => {
+                    self.handle_stop_casting().await;
+                }
+                PlaybackCommand::CastStatus(status) => {
+                    self.handle_cast_status(status).await;
+                }
             }
                 }
                 Ok(event) = library_event_rx.recv() => {
@@ -2122,7 +2188,10 @@ fn playback_command_kind(command: &PlaybackCommand) -> Option<PlaybackCommandKin
         | PlaybackCommand::GetVolume(_)
         | PlaybackCommand::GetQueueProjection(_)
         | PlaybackCommand::Shutdown(_)
-        | PlaybackCommand::SaveState(_) => None,
+        | PlaybackCommand::SaveState(_)
+        | PlaybackCommand::CastTo(_)
+        | PlaybackCommand::StopCasting
+        | PlaybackCommand::CastStatus(_) => None,
         #[cfg(target_os = "macos")]
         PlaybackCommand::OutputDeviceChanged => None,
     }

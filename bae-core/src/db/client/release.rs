@@ -454,6 +454,27 @@ impl Database {
         self.read(move |conn| get_files_for_release_on(conn, &release_id))
             .await
     }
+
+    /// Insert an audio format and its segments in one transaction — the rows the
+    /// import commit writes, exposed for tests that need a resolvable track
+    /// without running the whole import pipeline.
+    #[cfg(test)]
+    pub(crate) async fn insert_audio_format_with_segments_for_test(
+        &self,
+        audio_format: &DbAudioFormat,
+        segments: &[DbAudioSegment],
+    ) -> Result<(), DbError> {
+        let (audio_format, segments) = (audio_format.clone(), segments.to_vec());
+        self.call_sql(move |sql| {
+            let reg = sql.stamp();
+            insert_audio_format_row(sql.tx(), &audio_format, &reg)?;
+            for segment in &segments {
+                insert_audio_segment_row(sql.tx(), segment, &reg)?;
+            }
+            Ok(())
+        })
+        .await
+    }
     /// Find file by ID. Caller-provided ID — may not exist.
     pub async fn find_file_by_id(&self, file_id: &str) -> Result<Option<DbFile>, DbError> {
         let file_id = file_id.to_string();
