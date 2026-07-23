@@ -885,6 +885,10 @@ version = "0.1.0"
 dependencies = [
  "bae-core",
  "bae-mcp",
+ "bae-subsonic",
+ "bae-test-support",
+ "coven",
+ "tempfile",
  "tokio",
  "tracing",
 ]

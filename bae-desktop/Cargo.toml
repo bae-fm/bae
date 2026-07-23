@@ -8,8 +8,15 @@ publish = false
 [dependencies]
 bae-core = { path = "../bae-core" }
 bae-mcp = { path = "../bae-mcp" }
+bae-subsonic = { path = "../bae-subsonic" }
 tokio = { version = "1", features = ["rt", "sync"] }
 tracing = { workspace = true }
+
+[dev-dependencies]
+bae-test-support = { path = "../bae-test-support" }
+bae-core = { path = "../bae-core", features = ["test-utils"] }
+coven = { workspace = true }
+tempfile = "3"
 
 [lints]
 workspace = true

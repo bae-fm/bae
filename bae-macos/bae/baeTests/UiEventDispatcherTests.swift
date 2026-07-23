@@ -476,6 +476,7 @@ private func makeAppService(handle: FakeAppHandle = FakeAppHandle())
             defaultTrackSavePreset: "flac",
             defaultReleaseSavePreset: "flac",
             mcp: BridgeMcpConfig(enabled: false, port: 47777),
+            subsonic: BridgeSubsonicConfig(enabled: false, port: 4533, username: ""),
             discogsTokenStatus: .notConfigured,
             discogsUsable: false,
             sync: nil

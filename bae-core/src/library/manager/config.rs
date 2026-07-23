@@ -216,6 +216,25 @@ impl LibraryManager {
         Ok(self.key_service.set_mcp_token(&token)?)
     }
 
+    /// Set the Subsonic server config. Rejects `port == 0` (no real endpoint)
+    /// and an enabled server with no username (it could authenticate no one)
+    /// before persisting.
+    pub fn set_subsonic_config(
+        &self,
+        config: crate::config::SubsonicConfig,
+    ) -> Result<(), crate::config::ConfigError> {
+        config.validate()?;
+        self.config_handle.update(|c| c.subsonic = config)
+    }
+
+    pub fn get_subsonic_password(&self) -> Result<Option<String>, LibraryError> {
+        Ok(self.key_service.get_subsonic_password()?)
+    }
+
+    pub fn set_subsonic_password(&self, password: String) -> Result<(), LibraryError> {
+        Ok(self.key_service.set_subsonic_password(&password)?)
+    }
+
     /// Update the stored key's validation state. No-op when no key is stored —
     /// validation describes a key that exists.
     pub fn set_discogs_validation(

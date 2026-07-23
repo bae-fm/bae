@@ -2,8 +2,8 @@
 use crate::types::BridgeOutputKind;
 use crate::types::{
     BridgeConfig, BridgeDiscogsTokenStatus, BridgeMcpConfig, BridgeSaveBitDepth, BridgeSaveCodec,
-    BridgeSaveFilenameToken, BridgeSavePregapPlacement, BridgeSavePreset, BridgeSyncConfig,
-    BridgeSyncProvider,
+    BridgeSaveFilenameToken, BridgeSavePregapPlacement, BridgeSavePreset, BridgeSubsonicConfig,
+    BridgeSyncConfig, BridgeSyncProvider,
 };
 
 impl BridgeSaveBitDepth {
@@ -242,12 +242,15 @@ impl BridgeConfig {
             // Import-time decode verification; not surfaced on the config screen.
             verify_decode_on_import: _,
             mcp,
-            // The Subsonic server's credential; the server is not wired into any
-            // app's launch or settings UI, so it isn't surfaced here.
-            subsonic: _,
+            subsonic,
         } = config;
 
         let bae_core::config::McpConfig { enabled, port } = mcp;
+        let bae_core::config::SubsonicConfig {
+            enabled: subsonic_enabled,
+            port: subsonic_port,
+            username: subsonic_username,
+        } = subsonic;
 
         BridgeConfig {
             library_id: inner.store_id.clone(),
@@ -269,6 +272,11 @@ impl BridgeConfig {
             mcp: BridgeMcpConfig {
                 enabled: *enabled,
                 port: *port,
+            },
+            subsonic: BridgeSubsonicConfig {
+                enabled: *subsonic_enabled,
+                port: *subsonic_port,
+                username: subsonic_username.clone(),
             },
             discogs_usable: discogs_status.is_usable(),
             discogs_token_status: match discogs_status {

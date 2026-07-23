@@ -80,9 +80,9 @@ fn read_keyring_credential(ks: &StoreKeys, account_base: &str) -> Result<Option<
     }
 }
 
-/// bae-domain credentials layered on coven's `StoreKeys`: the Discogs API key
-/// and the local MCP bearer token. Bring this trait into scope to call these on
-/// a `StoreKeys`.
+/// bae-domain credentials layered on coven's `StoreKeys`: the Discogs API key,
+/// the local MCP bearer token, and the Subsonic server password. Bring this
+/// trait into scope to call these on a `StoreKeys`.
 ///
 /// The getters return `Result<Option<T>, KeyError>` for the same reason coven's
 /// do: `Ok(None)` is "not configured", `Err` is a real failure (keyring backend
@@ -94,6 +94,8 @@ pub trait BaeStoreKeysExt {
     fn delete_discogs_key(&self) -> Result<(), KeyError>;
     fn get_mcp_token(&self) -> Result<Option<String>, KeyError>;
     fn set_mcp_token(&self, value: &str) -> Result<(), KeyError>;
+    fn get_subsonic_password(&self) -> Result<Option<String>, KeyError>;
+    fn set_subsonic_password(&self, value: &str) -> Result<(), KeyError>;
     /// Remove this library's encryption key from the keyring. The running sync
     /// manager still holds it in memory, so the session keeps working — the lock
     /// takes effect on the next launch, which lands on the unlock screen.
@@ -134,6 +136,19 @@ impl BaeStoreKeysExt for StoreKeys {
             "mcp_bearer_token",
             value,
             "MCP bearer token saved to keyring",
+        )
+    }
+
+    fn get_subsonic_password(&self) -> Result<Option<String>, KeyError> {
+        read_keyring_credential(self, "subsonic_password")
+    }
+
+    fn set_subsonic_password(&self, value: &str) -> Result<(), KeyError> {
+        set_keyring_credential(
+            self,
+            "subsonic_password",
+            value,
+            "Subsonic server password saved to keyring",
         )
     }
 

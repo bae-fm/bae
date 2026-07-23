@@ -478,6 +478,51 @@ async fn mcp_token_is_keyring_backed_and_sets_target() {
     );
 }
 
+#[tokio::test]
+async fn subsonic_password_is_keyring_backed() {
+    let (manager, _temp_dir) = setup_test_manager().await;
+    assert!(manager.get_subsonic_password().unwrap().is_none());
+
+    manager.set_subsonic_password("s3cret".to_string()).unwrap();
+    assert_eq!(
+        manager.get_subsonic_password().unwrap().as_deref(),
+        Some("s3cret")
+    );
+
+    manager
+        .set_subsonic_password("rotated".to_string())
+        .unwrap();
+    assert_eq!(
+        manager.get_subsonic_password().unwrap().as_deref(),
+        Some("rotated")
+    );
+}
+
+#[tokio::test]
+async fn subsonic_config_rejects_invalid_and_persists_valid() {
+    let (manager, _temp_dir) = setup_test_manager().await;
+    let enabled_without_username = crate::config::SubsonicConfig {
+        enabled: true,
+        port: crate::config::SUBSONIC_DEFAULT_PORT,
+        username: String::new(),
+    };
+    assert!(manager
+        .set_subsonic_config(enabled_without_username)
+        .is_err());
+    assert_eq!(
+        manager.get_config().subsonic,
+        crate::config::SubsonicConfig::disabled_default()
+    );
+
+    let valid = crate::config::SubsonicConfig {
+        enabled: true,
+        port: crate::config::SUBSONIC_DEFAULT_PORT + 1,
+        username: "listener".to_string(),
+    };
+    manager.set_subsonic_config(valid.clone()).unwrap();
+    assert_eq!(manager.get_config().subsonic, valid);
+}
+
 fn create_test_album() -> DbAlbum {
     DbAlbum {
         id: Uuid::new_v4().to_string(),

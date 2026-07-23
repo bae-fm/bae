@@ -5,10 +5,11 @@
 //! native client to. The scope is the browse+play core; everything else
 //! (playlists, star/rating, jukebox, podcasts, downloads, …) is out of scope.
 //!
-//! The crate exposes [`serve`]; it is not started by any app here. A host
-//! constructs it with a [`LibraryManager`] handle and the configured
-//! [`SubsonicCredential`], then calls `serve(addr, …, cancellation)` — the same
-//! shape as `bae-mcp`. Nothing in `bae-core` depends on this crate.
+//! The desktop apps drive the server through [`SubsonicServerController`], which
+//! owns its lifecycle the way `bae-mcp`'s `McpServerController` does. The
+//! low-level entries stay public too: [`router`] builds the axum router (the
+//! seam integration tests drive), and [`serve`] binds an address and runs it.
+//! Nothing in `bae-core` depends on this crate.
 //!
 //! Implemented from the Subsonic API doc (subsonic.org) and the OpenSubsonic
 //! spec (opensubsonic.netlify.app) only.
@@ -25,6 +26,7 @@ use tokio_util::sync::CancellationToken;
 use tracing::warn;
 
 mod auth;
+mod controller;
 mod endpoints;
 mod envelope;
 mod error;
@@ -32,6 +34,8 @@ mod id;
 mod library_map;
 mod model;
 mod params;
+
+pub use controller::{SubsonicServerController, SubsonicServerError, SubsonicServerStatus};
 
 /// Shared handler state: the library and the one accepted credential.
 #[derive(Clone)]

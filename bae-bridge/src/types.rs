@@ -2345,6 +2345,7 @@ pub struct BridgeConfig {
     /// preset id; core keeps it non-dangling).
     pub default_release_save_preset: String,
     pub mcp: BridgeMcpConfig,
+    pub subsonic: BridgeSubsonicConfig,
     pub discogs_token_status: BridgeDiscogsTokenStatus,
     /// Whether Discogs can be used as a metadata source (a stored key that
     /// isn't rejected). Core decides the policy via `DiscogsTokenStatus::
@@ -2375,6 +2376,30 @@ pub enum BridgeMcpServerStatus {
 pub enum BridgeMcpServerError {
     InvalidConfig { detail: String },
     TokenUnavailable { detail: String },
+    BindFailed { detail: String },
+    ServerFailed { detail: String },
+}
+
+/// On-disk Subsonic server settings surfaced to the UI. The password is
+/// keyring-only and is set through `set_subsonic_password`, so it is not here.
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeSubsonicConfig {
+    pub enabled: bool,
+    pub port: u16,
+    pub username: String,
+}
+
+#[derive(Debug, Clone, uniffi::Enum)]
+pub enum BridgeSubsonicServerStatus {
+    Disabled,
+    Running { url: String },
+    Error { error: BridgeSubsonicServerError },
+}
+
+#[derive(Debug, Clone, uniffi::Enum)]
+pub enum BridgeSubsonicServerError {
+    InvalidConfig { detail: String },
+    CredentialUnavailable { detail: String },
     BindFailed { detail: String },
     ServerFailed { detail: String },
 }

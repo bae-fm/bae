@@ -21,6 +21,10 @@ use save::default_save_presets;
 
 pub const MCP_DEFAULT_PORT: u16 = 47777;
 
+/// The port Subsonic clients default to. bae's Subsonic server binds it unless
+/// the user picks another.
+pub const SUBSONIC_DEFAULT_PORT: u16 = 4533;
+
 /// Blob transfers bae runs at once, per direction, on a fresh library. Serial
 /// (1) is safe but slow; a small burst keeps a single stalled transfer from
 /// holding up the rest.
@@ -113,11 +117,16 @@ pub struct McpConfig {
     pub port: u16,
 }
 
-/// The single login the Subsonic/OpenSubsonic server (bae-subsonic) accepts.
-/// A third-party client authenticates with `username` plus a salted-token
-/// derivation of `password` (`t = md5(password + salt)`); the server checks the
-/// supplied username and token against this credential. Empty strings mean no
-/// credential is configured — no client can authenticate.
+/// The single login the Subsonic/OpenSubsonic server (bae-subsonic) accepts, as
+/// the server's auth uses it at request time. A third-party client authenticates
+/// with `username` plus a salted-token derivation of `password`
+/// (`t = md5(password + salt)`); the server checks the supplied username and
+/// token against this credential. Empty strings mean no credential is
+/// configured — no client can authenticate.
+///
+/// This is the *runtime* credential, assembled by the server controller from the
+/// on-disk [`SubsonicConfig`] username plus the keyring password; it is not
+/// stored on disk itself (the password never touches config).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SubsonicCredential {
     pub username: String,
@@ -132,6 +141,44 @@ impl SubsonicCredential {
             username: String::new(),
             password: String::new(),
         }
+    }
+}
+
+/// On-disk Subsonic server settings. The password is keyring-only (like the MCP
+/// bearer token), so it is not here; only the non-secret `enabled`, `port`, and
+/// `username` persist. The server controller combines this `username` with the
+/// keyring password into the runtime [`SubsonicCredential`].
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SubsonicConfig {
+    pub enabled: bool,
+    pub port: u16,
+    pub username: String,
+}
+
+impl SubsonicConfig {
+    pub fn disabled_default() -> Self {
+        Self {
+            enabled: false,
+            port: SUBSONIC_DEFAULT_PORT,
+            username: String::new(),
+        }
+    }
+
+    pub fn validate(&self) -> Result<(), ConfigError> {
+        if self.port == 0 {
+            return Err(ConfigError::Config(
+                "Subsonic port must be between 1 and 65535".to_string(),
+            ));
+        }
+        // An enabled server with no username can authenticate no client — the
+        // salted-token check compares against this username. Refuse to enable a
+        // server that would reject every login.
+        if self.enabled && self.username.is_empty() {
+            return Err(ConfigError::Config(
+                "Subsonic server requires a username when enabled".to_string(),
+            ));
+        }
+        Ok(())
     }
 }
 
@@ -321,8 +368,8 @@ pub struct ConfigYaml {
     pub verify_decode_on_import: bool,
     /// Local automation server configuration.
     pub mcp: McpConfig,
-    /// The credential the Subsonic/OpenSubsonic server accepts.
-    pub subsonic: SubsonicCredential,
+    /// Subsonic/OpenSubsonic server settings. The password is keyring-only.
+    pub subsonic: SubsonicConfig,
     /// Cloud home provider + per-provider settings. Flattened so the on-disk
     /// keys sit at the top level.
     #[serde(flatten)]
@@ -453,10 +500,10 @@ pub struct Config {
     pub verify_decode_on_import: bool,
     /// Local automation server configuration. The bearer token is keyring-only.
     pub mcp: McpConfig,
-    /// The credential the Subsonic/OpenSubsonic server accepts. Unlike the MCP
-    /// bearer token, this login lives in config (the server verifies a salted
-    /// token derived from it).
-    pub subsonic: SubsonicCredential,
+    /// Subsonic/OpenSubsonic server settings (`enabled`, `port`, `username`).
+    /// The password is keyring-only, like the MCP bearer token; the server
+    /// controller combines this `username` with it into the runtime credential.
+    pub subsonic: SubsonicConfig,
 }
 
 impl std::ops::Deref for Config {
@@ -604,7 +651,7 @@ impl Config {
             library_full_width: false,
             verify_decode_on_import: true,
             mcp: McpConfig::disabled_default(),
-            subsonic: SubsonicCredential::empty(),
+            subsonic: SubsonicConfig::disabled_default(),
         }
     }
 
@@ -1175,6 +1222,47 @@ mod tests {
         );
     }
 
+    #[test]
+    fn config_yaml_requires_subsonic() {
+        assert!(
+            parse_yaml_without("subsonic").is_err(),
+            "ConfigYaml should fail without subsonic"
+        );
+    }
+
+    #[test]
+    fn subsonic_config_rejects_port_zero() {
+        let config = SubsonicConfig {
+            enabled: true,
+            port: 0,
+            username: "listener".to_string(),
+        };
+        assert!(config.validate().is_err(), "port 0 is not a real endpoint");
+    }
+
+    #[test]
+    fn subsonic_config_rejects_enabled_without_username() {
+        let config = SubsonicConfig {
+            enabled: true,
+            port: SUBSONIC_DEFAULT_PORT,
+            username: String::new(),
+        };
+        assert!(
+            config.validate().is_err(),
+            "an enabled server with no username authenticates no one"
+        );
+    }
+
+    #[test]
+    fn subsonic_config_allows_disabled_without_username() {
+        let config = SubsonicConfig::disabled_default();
+        assert!(config.username.is_empty());
+        assert!(
+            config.validate().is_ok(),
+            "a disabled server needs no username"
+        );
+    }
+
     /// Every bae-local field except `device_id` is serialized unconditionally, so
     /// at the current `CONFIG_VERSION` a missing key means a corrupt or foreign
     /// file — the struct still refuses it rather than taking an implicit default.
@@ -1271,6 +1359,7 @@ mod tests {
             "library_full_width",
             "verify_decode_on_import",
             "mcp",
+            "subsonic",
         ] {
             let yaml = unversioned_yaml_without(key, &[]);
             let (config, migrated) = parse_config_yaml(&yaml)

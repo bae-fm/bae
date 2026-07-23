@@ -31,7 +31,7 @@ use crate::types::{
 #[cfg(feature = "desktop")]
 use crate::types::{
     BridgeImportCandidateSnapshot, BridgeImportCandidatesSnapshot, BridgeMcpServerStatus,
-    BridgeStorageMode,
+    BridgeStorageMode, BridgeSubsonicServerStatus,
 };
 
 #[derive(uniffi::Object)]
@@ -433,6 +433,7 @@ impl AppHandle {
         #[cfg(feature = "desktop")]
         {
             self.app.shutdown_mcp();
+            self.app.shutdown_subsonic();
             self.services.playback().shutdown().await;
         }
         #[cfg(not(feature = "desktop"))]
@@ -971,6 +972,45 @@ impl crate::types::BridgeMcpServerError {
     }
 }
 
+#[cfg(feature = "desktop")]
+impl crate::types::BridgeSubsonicServerStatus {
+    fn from_core(status: bae_desktop::SubsonicServerStatus) -> Self {
+        use crate::types::BridgeSubsonicServerStatus;
+        match status {
+            bae_desktop::SubsonicServerStatus::Disabled => BridgeSubsonicServerStatus::Disabled,
+            bae_desktop::SubsonicServerStatus::Running { url } => {
+                BridgeSubsonicServerStatus::Running { url }
+            }
+            bae_desktop::SubsonicServerStatus::Error { error } => {
+                BridgeSubsonicServerStatus::Error {
+                    error: crate::types::BridgeSubsonicServerError::from_core(error),
+                }
+            }
+        }
+    }
+}
+
+#[cfg(feature = "desktop")]
+impl crate::types::BridgeSubsonicServerError {
+    fn from_core(error: bae_desktop::SubsonicServerError) -> Self {
+        use crate::types::BridgeSubsonicServerError;
+        match error {
+            bae_desktop::SubsonicServerError::InvalidConfig { detail } => {
+                BridgeSubsonicServerError::InvalidConfig { detail }
+            }
+            bae_desktop::SubsonicServerError::CredentialUnavailable { detail } => {
+                BridgeSubsonicServerError::CredentialUnavailable { detail }
+            }
+            bae_desktop::SubsonicServerError::BindFailed { detail } => {
+                BridgeSubsonicServerError::BindFailed { detail }
+            }
+            bae_desktop::SubsonicServerError::ServerFailed { detail } => {
+                BridgeSubsonicServerError::ServerFailed { detail }
+            }
+        }
+    }
+}
+
 // =========================================================================
 // Release gallery (all platforms)
 // =========================================================================
@@ -1094,6 +1134,31 @@ impl AppHandle {
     pub fn set_mcp_token(&self, token: String) -> Result<(), BridgeError> {
         self.services.library_manager().set_mcp_token(token)?;
         Ok(())
+    }
+
+    pub fn set_subsonic_server_config(
+        &self,
+        enabled: bool,
+        port: u16,
+        username: String,
+    ) -> Result<(), BridgeError> {
+        self.app
+            .set_subsonic_config(bae_core::config::SubsonicConfig {
+                enabled,
+                port,
+                username,
+            })
+            .map_err(BridgeError::config)
+    }
+
+    pub fn get_subsonic_server_status(&self) -> BridgeSubsonicServerStatus {
+        BridgeSubsonicServerStatus::from_core(self.app.subsonic_server_status())
+    }
+
+    pub fn set_subsonic_password(&self, password: String) -> Result<(), BridgeError> {
+        self.app
+            .set_subsonic_password(&password)
+            .map_err(BridgeError::config)
     }
 
     /// Validate then persist a Discogs API token, returning what happened so the
