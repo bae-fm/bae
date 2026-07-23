@@ -91,7 +91,7 @@ impl AudioOutput for AirPlayOutput {
     fn create_stream(
         &mut self,
         source: Arc<Mutex<PlaybackSource>>,
-        _source_sample_rate: u32,
+        source_sample_rate: u32,
         source_channels: u32,
         audio_events: AudioEventSender,
         position_update_interval_ms: u32,
@@ -102,7 +102,12 @@ impl AudioOutput for AirPlayOutput {
             audio_events,
             position_update_interval_ms,
         );
-        let pcm_source = Box::new(DrainSource::new(drain, source_channels));
+        let pcm_source = Box::new(DrainSource::new(
+            drain,
+            self.controls.clone(),
+            source_sample_rate,
+            source_channels,
+        ));
         let (guard, control) = self.sink.start(pcm_source)?;
         *self.control_slot.lock().unwrap() = Some(control);
         Ok(Box::new(AirPlayAudioStream { _guard: guard }))
@@ -141,54 +146,129 @@ impl AudioStream for AirPlayAudioStream {
     }
 }
 
-/// Pulls f32 from the ring buffer through an [`AudioDrain`] and converts it to the
-/// interleaved 16-bit stereo PCM RAOP sends. A paused or drained drain yields no
-/// frames — the stream stays up (the session's lifetime ends it), so pause and
-/// gapless track swaps don't tear it down.
+/// The fixed format an AirPlay receiver takes: 44.1 kHz stereo.
+const AIRPLAY_RATE: u32 = 44_100;
+const AIRPLAY_CHANNELS: u32 = 2;
+/// Source frames pulled from the ring per drain iteration while filling a packet.
+const PULL_FRAMES: usize = 512;
+
+/// Pulls f32 from the ring buffer through an [`AudioDrain`], resamples it to the
+/// 44.1 kHz stereo a receiver expects (the decode pipeline fills the ring at the
+/// track's native rate), and converts to the interleaved 16-bit PCM the send path
+/// packetizes. A paused or drained drain yields no frames — the stream stays up
+/// (the session's lifetime ends it), so pause and gapless track swaps don't tear
+/// it down; the resampler's tail is flushed when the source drains.
 struct DrainSource {
     drain: AudioDrain,
-    source_channels: u32,
-    scratch: Vec<f32>,
+    /// A clone of the output's controls, to tell a paused drain from a drained one.
+    controls: AudioOutputControls,
+    source_channels: usize,
+    /// `None` when the source is already 44.1 kHz stereo (pass-through).
+    resampler: Option<crate::audio_codec::Resampler>,
+    /// Resampled 44.1 kHz stereo interleaved samples awaiting emission.
+    out_buf: Vec<f32>,
+    /// Source samples pulled per drain iteration.
+    in_scratch: Vec<f32>,
+    /// Whether the resampler's tail has been flushed for the current drain.
+    flushed: bool,
 }
 
 impl DrainSource {
-    fn new(drain: AudioDrain, source_channels: u32) -> Self {
+    fn new(
+        drain: AudioDrain,
+        controls: AudioOutputControls,
+        source_sample_rate: u32,
+        source_channels: u32,
+    ) -> Self {
+        let source_channels = source_channels.max(1);
+        let resampler = if source_sample_rate == AIRPLAY_RATE && source_channels == AIRPLAY_CHANNELS
+        {
+            None
+        } else {
+            crate::audio_codec::Resampler::new(
+                source_sample_rate,
+                source_channels,
+                AIRPLAY_RATE,
+                AIRPLAY_CHANNELS,
+            )
+            .map_err(|e| warn!("airplay resampler unavailable ({e}); sending at source rate"))
+            .ok()
+        };
         DrainSource {
             drain,
-            source_channels: source_channels.max(1),
-            scratch: Vec::new(),
+            controls,
+            source_channels: source_channels as usize,
+            resampler,
+            out_buf: Vec::new(),
+            in_scratch: Vec::new(),
+            flushed: false,
+        }
+    }
+
+    /// Pull one drain iteration and append its (resampled) 44.1 kHz stereo output
+    /// to `out_buf`. Returns whether anything was produced or the source is idle.
+    fn fill(&mut self) -> Pull {
+        self.in_scratch
+            .resize(PULL_FRAMES * self.source_channels, 0.0);
+        match self
+            .drain
+            .drain_iteration(&mut self.in_scratch, true, true, None)
+        {
+            DrainStatus::Samples { read } => {
+                self.flushed = false;
+                let input = &self.in_scratch[..read];
+                match &mut self.resampler {
+                    Some(r) => {
+                        if let Ok(out) = r.convert(input) {
+                            self.out_buf.extend_from_slice(&out);
+                        }
+                    }
+                    None => self.out_buf.extend_from_slice(input),
+                }
+                Pull::Produced
+            }
+            // A drained source (completion latched → Stopped) flushes the
+            // resampler's tail once; a paused source just waits.
+            DrainStatus::Idle => {
+                if !self.flushed && self.controls.get_state() == AudioState::Stopped {
+                    self.flushed = true;
+                    if let Some(r) = &mut self.resampler {
+                        if let Ok(tail) = r.flush() {
+                            let produced = !tail.is_empty();
+                            self.out_buf.extend_from_slice(&tail);
+                            if produced {
+                                return Pull::Produced;
+                            }
+                        }
+                    }
+                }
+                Pull::Idle
+            }
         }
     }
 }
 
+/// The outcome of one [`DrainSource::fill`].
+enum Pull {
+    Produced,
+    Idle,
+}
+
 impl PcmSource for DrainSource {
     fn next_frames(&mut self, out: &mut [i16]) -> usize {
-        let channels = self.source_channels as usize;
-        let frames_wanted = out.len() / 2;
-        self.scratch.resize(frames_wanted * channels, 0.0);
-
-        // Apply replay-gain/volume and zero the unfilled tail, exactly as the DAC
-        // path does.
-        let read = match self
-            .drain
-            .drain_iteration(&mut self.scratch, true, true, None)
-        {
-            DrainStatus::Samples { read } => read,
-            DrainStatus::Idle => return 0,
-        };
-
-        let frames_read = read / channels;
-        for f in 0..frames_read {
-            let (left, right) = if channels == 1 {
-                let mono = self.scratch[f];
-                (mono, mono)
-            } else {
-                (self.scratch[f * channels], self.scratch[f * channels + 1])
-            };
-            out[f * 2] = f32_to_i16(left);
-            out[f * 2 + 1] = f32_to_i16(right);
+        let want = out.len() / 2;
+        while self.out_buf.len() < want * 2 {
+            if matches!(self.fill(), Pull::Idle) {
+                break;
+            }
         }
-        frames_read
+        let take = want.min(self.out_buf.len() / 2);
+        for f in 0..take {
+            out[f * 2] = f32_to_i16(self.out_buf[f * 2]);
+            out[f * 2 + 1] = f32_to_i16(self.out_buf[f * 2 + 1]);
+        }
+        self.out_buf.drain(..take * 2);
+        take
     }
 }
 
@@ -448,6 +528,8 @@ mod tests {
         controls.set_state(AudioState::Paused);
         let mut paused = DrainSource::new(
             AudioDrain::new(controls.clone(), playing_source(4), tx, 100),
+            controls.clone(),
+            44_100,
             2,
         );
         let mut out = vec![0i16; 8];
@@ -457,11 +539,55 @@ mod tests {
         let (tx2, _rx2) = audio_event_channel();
         let controls2 = AudioOutputControls::new(1.0);
         controls2.set_state(AudioState::Playing);
-        let mut playing =
-            DrainSource::new(AudioDrain::new(controls2, playing_source(4), tx2, 100), 2);
+        let mut playing = DrainSource::new(
+            AudioDrain::new(controls2.clone(), playing_source(4), tx2, 100),
+            controls2,
+            44_100,
+            2,
+        );
         let mut out2 = vec![0i16; 8];
         assert_eq!(playing.next_frames(&mut out2), 4);
         assert!(out2.iter().all(|&s| s == i16::MAX));
+    }
+
+    /// A 48 kHz source through `DrainSource` comes out at 44.1 kHz: streaming a
+    /// whole 48 kHz second yields ~44 100 frames, not 48 000, so playback isn't
+    /// slowed and pitched down. (Without the resampler this yields 48 000.)
+    #[test]
+    fn drain_source_resamples_to_the_receiver_rate() {
+        // A ring large enough to hold the whole input without a concurrent reader.
+        let (mut sink, stream, _ready) =
+            crate::playback::create_track_stream_pair_with_capacity(48_000, 2, 48_000 * 2);
+        // 20 000 frames of 48 kHz stereo, then finish so the source drains.
+        sink.push_samples(&vec![0.0f32; 20_000 * 2]);
+        sink.mark_finished();
+        let source = Arc::new(Mutex::new(PlaybackSource::new(stream, track_fmt())));
+
+        let controls = AudioOutputControls::new(1.0);
+        controls.set_state(AudioState::Playing);
+        let (tx, _rx) = audio_event_channel();
+        let mut ds = DrainSource::new(
+            AudioDrain::new(controls.clone(), source, tx, 100),
+            controls,
+            48_000,
+            2,
+        );
+
+        let mut total = 0usize;
+        let mut out = vec![0i16; 352 * 2];
+        // Pull until the source drains and the resampler tail is flushed.
+        for _ in 0..1000 {
+            let f = ds.next_frames(&mut out);
+            if f == 0 {
+                break;
+            }
+            total += f;
+        }
+        // 20 000 frames at 48 kHz → 20 000 × 44100/48000 = 18 375 at 44.1 kHz.
+        assert!(
+            (total as i64 - 18_375).abs() < 400,
+            "expected ~18375 output frames at 44.1 kHz, got {total}"
+        );
     }
 
     #[test]
