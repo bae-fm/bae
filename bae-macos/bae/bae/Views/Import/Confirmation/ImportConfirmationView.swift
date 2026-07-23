@@ -48,8 +48,6 @@ struct ImportConfirmationView<CoverContent: View>: View {
     @ViewBuilder
     let coverContent: () -> CoverContent
 
-    @Environment(OutboxStore.self)
-    private var outboxStore
     @Environment(ConfigStore.self)
     private var configStore
 
@@ -58,26 +56,6 @@ struct ImportConfirmationView<CoverContent: View>: View {
             return true
         }
         return false
-    }
-
-    private var completedAlbumId: String? {
-        if case .complete(releaseId: _, albumId: let albumId) = importStatus {
-            return albumId
-        }
-        return nil
-    }
-
-    /// Cloud-upload progress for the imported release, while its files are
-    /// still queued. "Imported" means the rows are committed and the uploads
-    /// durably queued — this surfaces the remaining transfer instead of
-    /// presenting a cloud-only import as fully landed.
-    private var uploadProgress: BridgeUploadProgress? {
-        guard
-            case .complete(releaseId: let releaseId, albumId: _) = importStatus
-        else {
-            return nil
-        }
-        return outboxStore.progress(forRelease: releaseId)
     }
 
     /// `Import` stays disabled when the editor is in an invalid state
@@ -148,83 +126,6 @@ struct ImportConfirmationView<CoverContent: View>: View {
             .joined(separator: " · ")
     }
 
-    @ViewBuilder
-    private var cardAction: some View {
-        if isComplete {
-            VStack(alignment: .trailing, spacing: 2) {
-                if let progress = uploadProgress {
-                    if progress.failed > 0 {
-                        Label(
-                            "Imported — upload failed, retrying",
-                            systemImage: "exclamationmark.arrow.circlepath"
-                        )
-                        .foregroundStyle(.orange)
-                        .font(.callout)
-                        .help(
-                            "The cloud upload failed and retries automatically. See the Storage Manager for details."
-                        )
-                    }
-                    else {
-                        VStack(alignment: .trailing, spacing: 4) {
-                            Label(
-                                "Imported — uploading to cloud",
-                                systemImage: "icloud.and.arrow.up"
-                            )
-                            .foregroundStyle(.secondary)
-                            .font(.callout)
-                            ProgressView(value: progress.fraction)
-                                .progressViewStyle(.linear)
-                                .frame(width: 160)
-                        }
-                    }
-                }
-                else {
-                    Label("Imported", systemImage: "checkmark.circle.fill")
-                        .foregroundStyle(.green)
-                        .font(.callout)
-                }
-                if let albumId = completedAlbumId {
-                    Button("View in Library") { onViewInLibrary(albumId) }
-                        .buttonStyle(.link)
-                        .font(.callout)
-                }
-            }
-        }
-        else if let status = importStatus {
-            switch status {
-            case .importing(_, let step):
-                if case .running(.measuringLoudness)? = step {
-                    // The loudness pass is the long pole; show its live,
-                    // determinate per-track bar (updated imperatively off the
-                    // high-frequency signal) instead of an indeterminate spinner.
-                    ImportLoudnessProgressRepresentable(key: candidateKey)
-                        .frame(width: 200, height: 32)
-                }
-                else {
-                    HStack(spacing: 6) {
-                        ProgressView()
-                            .controlSize(.small)
-                        if let step {
-                            Text(step.localizedText)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                                .lineLimit(2)
-                        }
-                    }
-                }
-            case .error:
-                Button("Retry Import") { onConfirmImport() }
-                    .buttonStyle(.borderedProminent)
-            case .complete:
-                EmptyView()
-            }
-        }
-        else {
-            Button("Import") { onConfirmImport() }
-                .buttonStyle(.borderedProminent)
-                .disabled(actionDisabled)
-        }
-    }
 }
 
 // MARK: - Header card and status banners
@@ -256,7 +157,13 @@ extension ImportConfirmationView {
             albumSummary
 
             VStack(alignment: .trailing, spacing: 10) {
-                cardAction
+                ImportConfirmationCardAction(
+                    importStatus: importStatus,
+                    candidateKey: candidateKey,
+                    actionDisabled: actionDisabled,
+                    onConfirmImport: onConfirmImport,
+                    onViewInLibrary: onViewInLibrary,
+                )
                 if !importing, !isComplete {
                     if configStore.config.hasCloudHome {
                         HStack(spacing: 10) {
@@ -285,86 +192,15 @@ extension ImportConfirmationView {
         }
     }
 
-    @ViewBuilder
     fileprivate var statusBanners: some View {
-        if let libStatus = libraryStatus {
-            if libStatus.releaseInLibrary {
-                HStack(spacing: 8) {
-                    Image(systemName: "exclamationmark.triangle.fill")
-                        .foregroundStyle(.orange)
-                    Text("This release is already in your library")
-                        .font(.callout)
-                        .foregroundStyle(.orange)
-                    Spacer()
-                    if let albumId = libStatus.albumId {
-                        Button("View in Library") {
-                            onViewInLibrary(albumId)
-                        }
-                        .controlSize(.small)
-                    }
-                }
-                .padding(10)
-                .background(Color.orange.opacity(0.1))
-                .clipShape(RoundedRectangle(cornerRadius: 6))
-            }
-            else if libStatus.albumInLibrary {
-                HStack(spacing: 8) {
-                    Image(systemName: "info.circle.fill")
-                        .foregroundStyle(.blue)
-                    Text(
-                        "Another release of this album is in your library"
-                    )
-                    .font(.callout)
-                    Spacer()
-                    if let albumId = libStatus.albumId {
-                        Button("View in Library") {
-                            onViewInLibrary(albumId)
-                        }
-                        .controlSize(.small)
-                    }
-                }
-                .padding(10)
-                .background(Color.blue.opacity(0.1))
-                .clipShape(RoundedRectangle(cornerRadius: 6))
-            }
-        }
-
-        if trackCountMismatch {
-            HStack(spacing: 8) {
-                Image(systemName: "exclamationmark.triangle.fill")
-                    .foregroundStyle(.orange)
-                Text(
-                    "Track count mismatch: release has \(Int(expectedTrackCount)) tracks but local files don't match"
-                )
-                .font(.callout)
-                .foregroundStyle(.orange)
-            }
-            .padding(10)
-            .background(Color.orange.opacity(0.1))
-            .clipShape(RoundedRectangle(cornerRadius: 6))
-        }
-
-        if case .error(let bridgeError) = importStatus,
-            let displayed = DisplayError(bridgeError)
-        {
-            ErrorDetailDisclosure(error: displayed)
-                .padding(10)
-                .background(Color.red.opacity(0.1))
-                .clipShape(RoundedRectangle(cornerRadius: 6))
-        }
-
-        if let error {
-            HStack(spacing: 8) {
-                Image(systemName: "exclamationmark.triangle.fill")
-                    .foregroundStyle(.red)
-                Text(error)
-                    .font(.callout)
-                    .foregroundStyle(.red)
-            }
-            .padding(10)
-            .background(Color.red.opacity(0.1))
-            .clipShape(RoundedRectangle(cornerRadius: 6))
-        }
+        ImportConfirmationBanners(
+            libraryStatus: libraryStatus,
+            trackCountMismatch: trackCountMismatch,
+            expectedTrackCount: expectedTrackCount,
+            importStatus: importStatus,
+            error: error,
+            onViewInLibrary: onViewInLibrary,
+        )
     }
 }
 
@@ -423,37 +259,6 @@ extension ImportConfirmationView {
         .frame(width: 1212, height: 982)
         .windowBackground()
         .environment(OutboxStore(snapshot: OutboxStore.emptySnapshot))
-        .environment(
-            ConfigStore(
-                config: Config(
-                    bridge: BridgeConfig(
-                        libraryId: "lib-preview",
-                        libraryName: "Preview Library",
-                        libraryPath: "/preview",
-                        encryptionKeyStored: false,
-                        encryptionKeyFingerprint: nil,
-                        pauseBetweenSides: false,
-                        maxConcurrentUploads: 3,
-                        maxConcurrentDownloads: 3,
-                        showRemainingTime: false,
-                        libraryFullWidth: false,
-                        savePresets: PreviewData.savePresets,
-                        defaultTrackSavePreset: "flac",
-                        defaultReleaseSavePreset: "flac",
-                        mcp: BridgeMcpConfig(enabled: false, port: 47777),
-                        subsonic: BridgeSubsonicConfig(
-                            enabled: false,
-                            port: 4533,
-                            username: "",
-                            bindAddress: "127.0.0.1"
-                        ),
-                        discogsTokenStatus: .notConfigured,
-                        discogsUsable: false,
-                        sync: nil
-                    )
-                ),
-                syncReady: false
-            )
-        )
+        .environment(PreviewData.configStore)
     }
 #endif

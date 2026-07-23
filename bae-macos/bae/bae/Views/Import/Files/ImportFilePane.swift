@@ -45,7 +45,14 @@ struct ImportFilePane: View {
                     ForEach(Array(pairs.enumerated()), id: \.offset) {
                         _,
                         pair in
-                        cueFlacPairRow(pair).accentRail(isActive: true)
+                        CueFlacPairRow(
+                            pair: pair,
+                            previewingPath: previewingPath,
+                            onPreviewAudio: onPreviewAudio,
+                            onOpenDocument: onOpenDocument,
+                            onError: onError,
+                        )
+                        .accentRail(isActive: true)
                     }
                 }
             case .trackFiles(let files):
@@ -176,86 +183,6 @@ extension ImportFilePane {
         .buttonStyle(.plain)
     }
 
-    fileprivate func cueFlacPairRow(_ pair: BridgeCueFlacPair) -> some View {
-        let isPreviewingFlac = previewingPath == pair.flacLocalPath
-
-        return VStack(spacing: 4) {
-            HStack(alignment: .top) {
-                Image(
-                    systemName: isPreviewingFlac
-                        ? "speaker.wave.2.fill" : "opticaldisc"
-                )
-                .font(.callout)
-                .foregroundStyle(Theme.accent)
-                .frame(width: 20, alignment: .center)
-                VStack(alignment: .leading, spacing: 2) {
-                    Button {
-                        onPreviewAudio(pair.flacLocalPath)
-                    } label: {
-                        HStack {
-                            Text(pair.flacName)
-                                .font(.callout)
-                                .lineLimit(1)
-                                .truncationMode(.middle)
-                            Spacer()
-                            Text(pair.totalSizeText)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                                .padding(.leading, 8)
-                        }
-                        .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    cueFileRow(pair)
-                    Text("\(Int(pair.trackCount)) tracks")
-                        .font(.caption2)
-                        .fontWeight(.semibold)
-                        .foregroundStyle(Theme.accent)
-                        .padding(.horizontal, 7)
-                        .padding(.vertical, 1)
-                        .background(
-                            Theme.accentSoft,
-                            in: Capsule()
-                        )
-                        .padding(.top, 4)
-                }
-            }
-        }
-    }
-
-    fileprivate func cueFileRow(_ pair: BridgeCueFlacPair) -> some View {
-        HStack {
-            Button {
-                do {
-                    let text = try readTextFile(
-                        path: pair.cueLocalPath
-                    )
-                    onOpenDocument(pair.cueName, text)
-                }
-                catch {
-                    onError(
-                        String(
-                            localized:
-                                "Could not read \(pair.cueName): \(error.displayLine)"
-                        )
-                    )
-                }
-            } label: {
-                Text(pair.cueName)
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
-            }
-            .buttonStyle(.plain)
-            Spacer()
-            Text(pair.cueSizeText)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .padding(.leading, 8)
-        }
-    }
-
     fileprivate func fileRow(
         icon: String,
         file: BridgeFileInfo,
@@ -327,37 +254,6 @@ extension ImportFilePane {
     }
 }
 
-// MARK: - DocumentViewerView
-
-struct DocumentViewerView: View {
-    let name: String
-    let text: String
-    let onClose: () -> Void
-
-    var body: some View {
-        VStack(spacing: 0) {
-            HStack {
-                Text(name)
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-                Spacer()
-                Button("Done") { onClose() }
-                    .keyboardShortcut(.cancelAction)
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 8)
-            Divider()
-            ScrollView {
-                Text(text)
-                    .font(.system(.body, design: .monospaced))
-                    .textSelection(.enabled)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding()
-            }
-        }
-    }
-}
-
 // MARK: - Accent rail
 
 extension View {
@@ -407,16 +303,5 @@ extension View {
         .frame(width: 300, height: 500)
         .windowBackground()
         .environment(MediaPaths.stub)
-    }
-
-    #Preview("Document Viewer") {
-        DocumentViewerView(
-            name: "info.txt",
-            text:
-                "This is sample document content.\nLine 2 of the document.\nLine 3 with more text.",
-            onClose: {},
-        )
-        .frame(width: 600, height: 500)
-        .background(Theme.surface)
     }
 #endif

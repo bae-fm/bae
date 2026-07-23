@@ -92,7 +92,7 @@ struct ImportCandidateListContent: View {
                         }
                         .buttonStyle(.plain)
                     }
-                    sortMenu
+                    CandidateSortMenu(sortOrder: $sortOrder)
                     Button(action: onAddFolder) {
                         Image(systemName: "plus")
                     }
@@ -240,37 +240,6 @@ struct ImportCandidateListContent: View {
         }
     }
 
-    private var sortMenu: some View {
-        Menu {
-            Section("Sort") {
-                sortButton(.nameAZ, "Name (A\u{2013}Z)")
-                sortButton(.nameZA, "Name (Z\u{2013}A)")
-                sortButton(.dateAddedNewest, "Date Added (Newest)")
-                sortButton(.dateAddedOldest, "Date Added (Oldest)")
-            }
-        } label: {
-            Image(systemName: "ellipsis.circle")
-        }
-        .buttonStyle(.plain)
-        .foregroundStyle(.secondary)
-    }
-
-    @ViewBuilder
-    private func sortButton(
-        _ order: CandidateSortOrder,
-        _ label: LocalizedStringKey
-    ) -> some View {
-        Button {
-            sortOrder = order
-        } label: {
-            if sortOrder == order {
-                Label(label, systemImage: "checkmark")
-            }
-            else {
-                Text(label)
-            }
-        }
-    }
 }
 
 #if DEBUG
