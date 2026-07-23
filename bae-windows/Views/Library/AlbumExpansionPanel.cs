@@ -122,25 +122,10 @@ internal sealed partial class AlbumExpansionPanel : IDisposable
             ?? detail.Releases.FirstOrDefault(r => r.ReleaseId == detail.PrimaryReleaseId)
             ?? detail.Releases[0];
 
-        // Title + artist. The dialog carried the title in ContentDialog.Title;
-        // inline it is a heading in the panel.
-        var title = new TextBlock
-        {
-            Text = detail.Title,
-            FontSize = 24,
-            FontWeight = Microsoft.UI.Text.FontWeights.Bold,
-            MaxLines = 2,
-            TextTrimming = TextTrimming.CharacterEllipsis,
-        };
-        var artist = new TextBlock
-        {
-            Text = detail.Artist,
-            FontSize = 15,
-            FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
-            Foreground = (Brush)Application.Current.Resources["TextFillColorSecondaryBrush"],
-            MaxLines = 1,
-            TextTrimming = TextTrimming.CharacterEllipsis,
-        };
+        // Title + artist header. The dialog carried the title in
+        // ContentDialog.Title; inline it is a heading, built by the shared pure
+        // builder the component gallery also renders.
+        var headerBlock = AlbumExpansionRows.BuildHeaderBlock(detail.Title, detail.Artist);
 
         var playButton = new Button
         {
@@ -229,15 +214,15 @@ internal sealed partial class AlbumExpansionPanel : IDisposable
         actions.Children.Add(reidentifyButton);
         actions.Children.Add(moreButton);
 
-        // Track list: click a row to play the release from that track; right-tap
-        // for per-track queueing. Inline, the list sizes to content and the outer
-        // grid scrolls — its own vertical scroll is disabled so it doesn't cap or
-        // nest a second scroller (the dialog's MaxHeight cap is gone).
+        // Track list: each row plays the release from its track on click and offers
+        // per-track queueing on right-tap, built by the shared row builder the
+        // component gallery also renders. Inline, the list sizes to content and the
+        // outer grid scrolls — its own vertical scroll is disabled so it doesn't cap
+        // or nest a second scroller (the dialog's MaxHeight cap is gone).
         var trackList = new ListView
         {
             ItemsSource = selectedRelease.Tracks,
             SelectionMode = ListViewSelectionMode.None,
-            IsItemClickEnabled = true,
         };
         ScrollViewer.SetVerticalScrollMode(trackList, ScrollMode.Disabled);
         ScrollViewer.SetVerticalScrollBarVisibility(trackList, ScrollBarVisibility.Disabled);
@@ -261,33 +246,22 @@ internal sealed partial class AlbumExpansionPanel : IDisposable
                 _setStatus(error);
             }
         }
-        trackList.ItemClick += (_, args) =>
+        trackList.ContainerContentChanging += (_, args) =>
         {
-            if (args.ClickedItem is Track track)
-            {
-                PlayFromTrack(track);
-            }
-        };
-        trackList.RightTapped += (_, args) =>
-        {
-            if (args.OriginalSource is not FrameworkElement element || element.DataContext is not Track track)
+            if (args.InRecycleQueue || args.Item is not Track track)
             {
                 return;
             }
-            var menu = new MenuFlyout();
-            var play = new MenuFlyoutItem { Text = Loc.Chrome("menu.play") };
-            play.Click += (_, _) => PlayFromTrack(track);
-            var playNextTrack = new MenuFlyoutItem { Text = Loc.Chrome("menu.play_next") };
-            playNextTrack.Click += (_, _) => QueueTrack(track, next: true);
-            var addQueueTrack = new MenuFlyoutItem { Text = Loc.Chrome("menu.add_to_queue") };
-            addQueueTrack.Click += (_, _) => QueueTrack(track, next: false);
-            var exportTrack = new MenuFlyoutItem { Text = Loc.Chrome("menu.save_as") };
-            exportTrack.Click += async (_, _) => await ExportTrack(track);
-            menu.Items.Add(play);
-            menu.Items.Add(playNextTrack);
-            menu.Items.Add(addQueueTrack);
-            menu.Items.Add(exportTrack);
-            menu.ShowAt(element, new FlyoutShowOptions { Position = args.GetPosition(element) });
+            args.ItemContainer.Content = AlbumExpansionRows.BuildTrackRow(
+                track.PositionLabel,
+                track.Title,
+                track.DisplayArtist,
+                track.DurationLabel,
+                onPlay: () => PlayFromTrack(track),
+                onPlayNext: () => QueueTrack(track, next: true),
+                onAddToQueue: () => QueueTrack(track, next: false),
+                onExportTrack: () => _ = ExportTrack(track));
+            args.Handled = true;
         };
         // "Go to now playing" reveal: once the list realizes, bring the target
         // track's row into the outer scroller and flash it. selectedRelease was
@@ -424,8 +398,7 @@ internal sealed partial class AlbumExpansionPanel : IDisposable
         RebindCover();
 
         var detailStack = new StackPanel { Spacing = 8 };
-        detailStack.Children.Add(title);
-        detailStack.Children.Add(artist);
+        detailStack.Children.Add(headerBlock);
         // Release picker, only when the album has more than one pressing.
         if (detail.Releases.Count > 1)
         {

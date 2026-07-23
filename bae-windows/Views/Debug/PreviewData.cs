@@ -44,5 +44,21 @@ internal static class PreviewData
     // A placeholder share/recovery code for the code-display block: a QR image
     // plus the code as monospaced text. Not a real code.
     internal static string SampleCode { get; } = "BAE-DEMO-0000-1111-2222-3333";
+
+    // Placeholder header values for the album-expansion header block.
+    internal static string ExpansionTitle { get; } = "Album Title";
+
+    internal static string ExpansionArtist { get; } = "Artist Name";
+
+    // Placeholder track rows for the album-expansion track row: position, title,
+    // an optional row artist (core names one only for a compilation), and the
+    // duration. The array type is stated so the null artist is typed.
+    internal static IReadOnlyList<(string Position, string Title, string? Artist, string Duration)> ExpansionTracks { get; } =
+        new (string Position, string Title, string? Artist, string Duration)[]
+        {
+            ("1", "Track Title One", null, "3:14"),
+            ("2", "Track Title Two", "Guest Artist", "4:07"),
+            ("3", "Track Title Three", null, "2:58"),
+        };
 }
 #endif

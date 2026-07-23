@@ -29,6 +29,8 @@ internal sealed class ComponentGalleryWindow : Window
         new Entry("SaveFilenameTokenDisplay", BuildFilenameTokens),
         new Entry("DialogPrimitives · code display", BuildCodeDisplay),
         new Entry("DialogPrimitives · cover tiles", BuildCoverTiles),
+        new Entry("AlbumExpansionRows · header block", BuildExpansionHeader),
+        new Entry("AlbumExpansionRows · track row", BuildExpansionTrackRows),
     };
 
     public ComponentGalleryWindow()
@@ -145,6 +147,34 @@ internal sealed class ComponentGalleryWindow : Window
         row.Children.Add(DialogPrimitives.CoverTile(null, "Cover A"));
         row.Children.Add(DialogPrimitives.CoverTile(null, "Cover B"));
         panel.Children.Add(row);
+        return panel;
+    }
+
+    private static FrameworkElement BuildExpansionHeader()
+    {
+        var panel = Section();
+        panel.Children.Add(Header("AlbumExpansionRows.BuildHeaderBlock"));
+        panel.Children.Add(AlbumExpansionRows.BuildHeaderBlock(
+            PreviewData.ExpansionTitle, PreviewData.ExpansionArtist));
+        return panel;
+    }
+
+    private static FrameworkElement BuildExpansionTrackRows()
+    {
+        var panel = Section();
+        panel.Children.Add(Header("AlbumExpansionRows.BuildTrackRow"));
+        foreach (var track in PreviewData.ExpansionTracks)
+        {
+            panel.Children.Add(AlbumExpansionRows.BuildTrackRow(
+                track.Position,
+                track.Title,
+                track.Artist,
+                track.Duration,
+                onPlay: () => { },
+                onPlayNext: () => { },
+                onAddToQueue: () => { },
+                onExportTrack: () => { }));
+        }
         return panel;
     }
 }
