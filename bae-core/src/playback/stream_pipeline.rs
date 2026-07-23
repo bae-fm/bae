@@ -161,6 +161,9 @@ impl StreamDecodeParams {
     /// `sample_rate`/`channels` come from the stored audio format; each
     /// segment's decode re-announces the probed values, so a sink that checks
     /// (the encoder) turns a stored-vs-probed mismatch into a loud failure.
+    // Save/export only exists on desktop; without the gate this is dead code
+    // on mobile and fails the deny(dead_code) build there.
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub(crate) fn run_to_sink(
         &self,
         sample_rate: u32,
@@ -194,6 +197,7 @@ impl StreamDecodeParams {
 
 /// Push `frames` frames of silence into the sink in chunks, checking `cancel`
 /// between chunks so an aborted save stops promptly.
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 fn push_silence_to_sink(
     sink: &mut dyn crate::audio_codec::DecodedSink,
     frames: u64,
