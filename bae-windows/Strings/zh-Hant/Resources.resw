@@ -448,4 +448,6 @@
   <data name="nowplaying.casting_to" xml:space="preserve"><value>Casting to {device}</value></data>
   <data name="nowplaying.cast.disconnect" xml:space="preserve"><value>Disconnect</value></data>
   <data name="nowplaying.cast.no_devices" xml:space="preserve"><value>No Cast devices found</value></data>
+  <data name="gallery.menu" xml:space="preserve"><value>元件庫</value></data>
+  <data name="gallery.title" xml:space="preserve"><value>元件庫</value></data>
 </root>

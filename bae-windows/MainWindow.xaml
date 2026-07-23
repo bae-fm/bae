@@ -102,7 +102,7 @@
                         </Flyout>
                     </FlyoutBase.AttachedFlyout>
                 </AutoSuggestBox>
-                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6">
+                <StackPanel x:Name="ToolbarButtons" Grid.Column="1" Orientation="Horizontal" Spacing="6">
                     <TextBlock x:Name="SyncIndicator" VerticalAlignment="Center"
                                Foreground="Gray" TextWrapping="NoWrap" />
                     <!-- Playback menu: an icon button whose flyout shuffles the whole

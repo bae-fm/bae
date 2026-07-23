@@ -373,6 +373,12 @@ public sealed partial class MainWindow : Window
 
         LoadLibrary();
 
+#if DEBUG
+        // Debug-only: the component-gallery toolbar entry (the WinUI preview
+        // analogue). Compiled out of Release.
+        AddDebugMenu();
+#endif
+
         // Check for an update in the background at launch, like macOS's Sparkle
         // check-on-appear. Fire-and-forget: the service catches and logs every
         // failure and this is async I/O, so it never blocks startup.
