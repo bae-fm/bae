@@ -247,8 +247,9 @@ jobs:
           if (-not (Test-Path $pub)) { Write-Host "FAIL: publish dir not found at $pub"; exit 1 }
           Copy-Item "$pub\*" $stage -Recurse -Force
 
-          # The generated bridge DLLs are resolved from the app directory.
-          Copy-Item "target-windows\${{ matrix.arch.target }}\release\bae_bridge.dll" $stage -Force
+          # The generated bindings P/Invoke uniffi_bae_bridge only; bae_bridge.dll
+          # is its byte-identical build-time twin and never loads at runtime, so
+          # shipping it would double the 35 MB core for nothing.
           Copy-Item "target-windows\${{ matrix.arch.target }}\release\uniffi_bae_bridge.dll" $stage -Force
 
           # FFmpeg DLLs (the bridge links them). Self-contained as of

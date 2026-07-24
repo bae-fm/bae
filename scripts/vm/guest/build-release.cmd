@@ -32,10 +32,12 @@ set STAGE=C:\bae\stage-local
 if exist %STAGE% rmdir /s /q %STAGE%
 mkdir %STAGE%
 xcopy /e /y /q C:\bae\bae-windows\publish %STAGE%\ >nul || exit /b 1
-copy /y C:\bae\target-windows\aarch64-pc-windows-msvc\release\bae_bridge.dll %STAGE%\ >nul || exit /b 1
 copy /y C:\bae\target-windows\aarch64-pc-windows-msvc\release\uniffi_bae_bridge.dll %STAGE%\ >nul || exit /b 1
 copy /y C:\bae\bae-ffmpeg\dist\bin\*.dll %STAGE%\ >nul || exit /b 1
 if not exist %STAGE%\baeium.exe (echo FAIL: baeium.exe missing from stage & exit /b 1)
 
+rem The local channel keeps no history — vpk refuses to pack over an equal or
+rem newer version, and every local pack should simply replace the last.
+if exist C:\bae\velopack-local rmdir /s /q C:\bae\velopack-local
 vpk pack --packId baeium --packVersion 0.0.%BUILD_NUM% --packDir %STAGE% --mainExe baeium.exe --channel local --packTitle baeium --outputDir C:\bae\velopack-local || exit /b 1
 dir C:\bae\velopack-local

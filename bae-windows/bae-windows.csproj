@@ -83,7 +83,15 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.8.260508005" />
+    <!--
+      The WinUI split package, not the monolithic Microsoft.WindowsAppSDK
+      metapackage: it transitively brings Base (MRT resources for Loc),
+      Foundation (AppLifecycle single-instancing), and InteractiveExperiences —
+      the full surface this app uses — while leaving out the metapackage's
+      DWrite, Widgets, AI, and ML payloads, whose self-contained runtime
+      (onnxruntime, DirectML) would add ~40 MB the app never touches.
+    -->
+    <PackageReference Include="Microsoft.WindowsAppSDK.WinUI" Version="1.8.260505002" />
     <PackageReference Include="Sentry" Version="6.6.0" />
     <!--
       ICU MessageFormat 1 runtime. The localization catalog stores each message
@@ -173,7 +181,7 @@
   -->
   <Target Name="GenerateResourcesPri" AfterTargets="Build">
     <Exec
-      Command="makepri new /pr &quot;$(MSBuildProjectDirectory)&quot; /cf &quot;$(MSBuildProjectDirectory)\priconfig.xml&quot; /of &quot;$(OutDir)resources.pri&quot; /o"
+      Command="makepri new /pr &quot;$(MSBuildProjectDirectory)\Strings&quot; /cf &quot;$(MSBuildProjectDirectory)\priconfig.xml&quot; /of &quot;$(OutDir)resources.pri&quot; /o"
       ContinueOnError="false" />
   </Target>
 
@@ -183,7 +191,7 @@
        PRI and Loc dies at first use. -->
   <Target Name="GenerateResourcesPriPublish" AfterTargets="Publish">
     <Exec
-      Command="makepri new /pr &quot;$(MSBuildProjectDirectory)&quot; /cf &quot;$(MSBuildProjectDirectory)\priconfig.xml&quot; /of &quot;$(PublishDir)resources.pri&quot; /o"
+      Command="makepri new /pr &quot;$(MSBuildProjectDirectory)\Strings&quot; /cf &quot;$(MSBuildProjectDirectory)\priconfig.xml&quot; /of &quot;$(PublishDir)resources.pri&quot; /o"
       ContinueOnError="false" />
   </Target>
 
