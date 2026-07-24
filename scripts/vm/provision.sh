@@ -29,8 +29,11 @@ $SSH "powershell -Command \"\$dist = 'C:\\bae\\bae-ffmpeg\\dist'; New-Item -Item
 echo "== uniffi-bindgen-cs =="
 $SSH '"%USERPROFILE%\.cargo\bin\cargo" install --git https://github.com/NordSecurity/uniffi-bindgen-cs.git --tag "v0.11.0+v0.31.0" uniffi-bindgen-cs --locked'
 
+echo "== vpk (Velopack CLI, version-locked to the app's Velopack package) =="
+$SSH 'dotnet tool install --global vpk --version 1.2.0 || dotnet tool update --global vpk --version 1.2.0'
+
 echo "== helper scripts + task harness =="
-for f in hidden.vbs vmshot.ps1 bridge-build.cmd build-normal.cmd run-app.cmd; do
+for f in hidden.vbs vmshot.ps1 bridge-build.cmd build-normal.cmd build-release.cmd run-app.cmd tidy.ps1; do
   scp -q "scripts/vm/guest/${f}" "tom@${VM}:C:/Users/tom/${f}"
 done
 $SSH 'schtasks /create /f /tn baeRun /tr "wscript.exe C:\Users\tom\hidden.vbs \"cmd /c C:\Users\tom\run-app.cmd > C:\Users\tom\run-app.log 2>&1\"" /sc once /st 23:59 /it & schtasks /create /f /tn vmShot /tr "wscript.exe C:\Users\tom\hidden.vbs \"powershell -ExecutionPolicy Bypass -File C:\Users\tom\vmshot.ps1\"" /sc once /st 23:59 /it'

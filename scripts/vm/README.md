@@ -44,6 +44,13 @@ ssh tom@<ip> 'schtasks /run /tn baeRun'        # launch on the VM desktop
 ssh tom@<ip> 'schtasks /run /tn vmShot'        # screenshot → C:\Users\tom\vmshot.png
 ```
 
+That's the iterate loop. Separately, `build-release.cmd` runs the release
+lane locally — release bridge, self-contained publish, `vpk pack` — and drops
+a Setup.exe under `C:\bae\velopack-local` for exercising the installer path
+(channel `local`, so an installed test build never reads the public update
+feeds). `tidy.ps1` (staged to `C:\Users\tom`) sweeps consumer preinstalls and
+OS caches, keeping every build cache, and ReTrims so the host qcow2 shrinks.
+
 ## Hard-won facts baked into these scripts
 
 - **winget needs `--source winget` on every install**: the `msstore` source
