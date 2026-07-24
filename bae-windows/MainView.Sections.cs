@@ -5,11 +5,11 @@ using Microsoft.UI.Xaml.Media;
 
 namespace Bae.Windows;
 
-// MainWindow: the Library/Import section switcher (the title bar's segmented
+// MainView: the Library/Import section switcher (the title bar's segmented
 // pill, desktop story 3). The library section is the browse content column and
 // its empty state; the import section hosts ImportSection's content. Switching
 // toggles visibility only — both sections keep their state.
-public sealed partial class MainWindow : Window
+public sealed partial class MainView : UserControl
 {
     private bool _importSectionActive;
 

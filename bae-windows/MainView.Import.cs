@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Linq;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -8,12 +8,12 @@ using Windows.Storage;
 
 namespace Bae.Windows;
 
-// MainWindow: the whole-window folder drop target. A folder dropped anywhere over
+// MainView: the whole-window folder drop target. A folder dropped anywhere over
 // the window is scanned and imported — the same dispatch a folder-verb / bae://
-// activation intent runs (HandleActivationIntent). The window reads the folder
+// activation intent runs (HandleActivationIntent). The view reads the folder
 // path off the drop (window input) and hands it to ImportDialog; the scan-and-show
 // work lives there.
-public sealed partial class MainWindow : Window
+public sealed partial class MainView : UserControl
 {
     // Accept a dragged folder anywhere over the window (matching macOS, which
     // imports a folder dropped on its window). DragOver fires continuously, so
@@ -85,6 +85,6 @@ public sealed partial class MainWindow : Window
 
     private void ShowImportBanner(string message)
     {
-        _shell.ShowBanner(InfoBarSeverity.Error, Loc.Chrome("import.error_title"), message);
+        _appService.ShellStore.ShowBanner(InfoBarSeverity.Error, Loc.Chrome("import.error_title"), message);
     }
 }

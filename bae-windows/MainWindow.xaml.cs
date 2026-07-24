@@ -1,123 +1,50 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using System.Globalization;
-using System.Linq;
+using System;
 using System.Runtime.InteropServices;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
-using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Controls.Primitives;
-using Microsoft.UI.Xaml.Input;
-using Microsoft.UI.Xaml.Media;
-using Microsoft.UI.Xaml.Media.Animation;
-using Microsoft.UI.Xaml.Media.Imaging;
-using uniffi.bae_bridge;
-using Windows.ApplicationModel.DataTransfer;
-using Windows.Graphics;
-using Windows.Storage;
-using Windows.System;
 
 namespace Bae.Windows;
 
 /// <summary>
-/// The library grid. On launch it discovers the libraries on disk, opens the
-/// active one (or the first), and loads the first page of albums (newest first)
-/// into the grid. With no library present it offers to create one; with none
-/// discoverable (as in CI) the discovery list is empty and the same path runs.
+/// The thin host window for an open library. The coordinator (App) opens the
+/// handle first and passes the already-open session in; this window builds the
+/// <see cref="AppService"/> around it, hosts the <see cref="MainView"/> shell as
+/// its content, and keeps only the window-level concerns: bounds restore/save,
+/// presenter min-size, the <c>Closed</c> teardown, and foreground activation.
+/// Constructed only when a library is actually opening, so launch never flashes
+/// an empty shell.
 ///
-/// The handle is held for the window's lifetime (playback, events, and later
-/// screens reuse it) and released when the window closes.
+/// The handle is held (by the session) for the window's lifetime and freed when
+/// the window closes.
 /// </summary>
 public sealed partial class MainWindow : Window
 {
-    // The library session (handle + event subscription) and the store the library
-    // browser reads. The store is constructed here (composition root) and handed to
-    // the browser view along with the ContentColumn's named elements.
+    // The library session (handle + event subscription), owned by the
+    // coordinator and reused across the window swap. The window drives its
+    // teardown on close; the view drives its open-library lifecycle transitions.
     private readonly SessionStore _session;
-    // Root object for the open library: the narrow domain services (and, further
-    // on, the store bundle) built once around the session. Views and stores read
-    // their service off this instead of the session + NativeBae directly.
+    // Root object for the open library: the narrow domain services and the store
+    // bundle, built once around the session. Held so the Closed teardown can
+    // deactivate the transport controls, and handed to the view.
     private readonly AppService _appService;
-    private readonly LibraryBrowserStore _browser;
-    // The library content column: album grid, composer/artist lists, and search,
-    // with the mode/sort/collapse chrome around them. Owns its own browse state.
-    private readonly LibraryBrowser _libraryBrowser;
-    private readonly LibrariesDialog _librariesDialog;
-    private readonly ApproveDeviceDialog _approveDialog;
-    // The unlock prompt for switching to a locked library (the bootstrap unlock
-    // lives on the welcome window). Its re-open runs OpenLibrary in this window.
-    private readonly UnlockDialog _unlockDialog;
-    // Returns to a fresh welcome window: the coordinator (App) shuts this library
-    // down and swaps windows. Driven by the close-library button and the settings
-    // remove flow.
-    private readonly Func<System.Threading.Tasks.Task> _closeToWelcome;
-    private readonly ShellStore _shell;
-    private readonly SyncStatusStore _sync;
-    private readonly PlaybackStore _playback;
-    private readonly CastStore _cast;
-    private readonly ProjectionRegistry _projections;
-    private readonly TransferProgressStore _transferProgress;
-    private readonly UiEventRouter _router;
-    private readonly NowPlayingBarController _nowPlayingBar;
-    private readonly ImportStore _import;
-    private readonly ImportSection _importSection;
-    private readonly ImportPickerDialog _importPicker;
-    private readonly ImportConfirmDialog _importConfirm;
-    private readonly ReleaseActionDialogs _releaseActions;
-    private readonly QueuePane _queuePane;
-    private readonly LightboxOverlay _lightbox;
-    private readonly StorageStore _storage;
-    private readonly StorageDialog _storageDialog;
-    private readonly SettingsStore _settings;
-    private readonly MembersPane _membersPane;
-    private readonly SettingsWindow _settingsWindow;
-
-    // Drives the system media transport controls (hardware media keys + the
-    // Windows media flyout) from playback events. One instance for the window's
-    // lifetime; library switches deactivate it rather than recreating it.
-    private readonly MediaControlService _mediaControls;
-
-    // Drives the settings "updates" section: a launch-time background check and
-    // the manual check/download/apply from settings. Inert on a dev run or a
-    // loose-zip copy (IsAvailable is false).
-    private readonly UpdateService _updateService = new();
-
-    // The window's last-seen normal (restored-state) bounds and whether it is
-    // maximized, tracked from AppWindow.Changed and written once in OnClosed.
-    // Normal bounds are recorded even while maximized, so restoring down after a
-    // relaunch lands on the user's chosen size rather than a display-sized rect.
-    private PixelRect? _lastNormalBounds;
-    private bool _maximized;
-
-    // Set once OnClosed's first pass has run its teardown. `async void` means
-    // the window would otherwise die mid-await on the first `await` inside
-    // the handler; cancelling that first close (`args.Handled = true`), then
-    // awaiting the teardown, then closing again lets it actually finish
-    // before the process exits. See OnClosed. Also set by PrepareCloseForSwap,
-    // so the coordinator's follow-up Close() takes OnClosed's fast path.
-    private bool _closeTeardownDone;
+    // The library shell, hosted as this window's content. Owns the element-driven
+    // controllers and the open-library lifecycle transitions.
+    private readonly MainView _view;
 
     [DllImport("user32.dll")]
     private static extern bool SetForegroundWindow(IntPtr hWnd);
 
     // Constructed only when a library is actually opening: the coordinator (App)
     // opens the handle first and passes the already-open session in, so this
-    // constructor is the composition root AND finishes the open (FinishOpen). The
-    // launch intent is delivered after activation (enqueued below). closeToWelcome
-    // returns to the welcome window via the coordinator.
+    // constructor builds the AppService and view (whose construction finishes the
+    // open). The launch intent is delivered after activation (enqueued below).
+    // closeToWelcome returns to the welcome window via the coordinator.
     internal MainWindow(
         SessionStore session,
         Func<System.Threading.Tasks.Task> closeToWelcome,
         ActivationIntent? launchIntent)
     {
-        // The session (handle already open) and the browse store the library
-        // browser reads. The store sets its collections' ItemsSource in code (no
-        // x:Bind), so nothing here needs to exist before InitializeComponent.
         _session = session;
-        _appService = new AppService(_session);
-        _closeToWelcome = closeToWelcome;
-        _browser = new LibraryBrowserStore(_appService.Library, _appService.MediaPaths, DispatcherQueue);
 
         InitializeComponent();
         Closed += OnClosed;
@@ -138,236 +65,20 @@ public sealed partial class MainWindow : Window
         RestoreWindowBounds();
         AppWindow.Changed += OnAppWindowChanged;
 
-        // The window's HWND exists at construction, so bind the transport controls
-        // to it now — before FinishOpen starts the event stream that drives them.
-        _mediaControls = new MediaControlService(
-            WinRT.Interop.WindowNative.GetWindowHandle(this),
-            DispatcherQueue,
-            _appService.Playback,
-            imageId => _appService.MediaPaths.FetchCoverImageBytes(imageId));
+        // The window's HWND exists at construction, so the AppService binds the
+        // transport controls to it now — before the view's FinishOpen starts the
+        // event stream that drives them. Both the AppService (for the transport
+        // controls) and the view (for the dialogs that parent native pickers)
+        // take the handle as a callback since only this window can produce it.
+        Func<IntPtr> windowHandle = () => WinRT.Interop.WindowNative.GetWindowHandle(this);
+        _appService = new AppService(_session, DispatcherQueue, windowHandle);
+        _view = new MainView(_appService, _session, closeToWelcome, windowHandle);
+        Content = _view;
 
-        // Bind layout direction to the UI locale: ar/he (and any other RTL
-        // culture) lay out right-to-left. The whole tree inherits from the root
-        // grid, so this is the single place the app decides direction. macOS gets
-        // this from the system; on Windows the app sets it from the culture.
-        RootGrid.FlowDirection = CultureInfo.CurrentUICulture.TextInfo.IsRightToLeft
-            ? FlowDirection.RightToLeft
-            : FlowDirection.LeftToRight;
-
-        // The top bar per desktop story 3: the Library/Import switcher pill,
-        // the search field, and the settings gear. The gear opens Settings on
-        // click, like macOS; its right-click flyout carries the commands macOS
-        // keeps in the menu bar (chrome Windows doesn't have).
-        LibrarySegment.Content = Loc.Chrome("section.library");
-        ImportSegment.Content = Loc.Chrome("section.import");
-        StyleSectionPill();
-        SetIconButtonLabel(SettingsButton, "toolbar.settings");
-        LibrariesMenuItem.Text = Loc.Chrome("toolbar.libraries");
-        StorageMenuItem.Text = Loc.Chrome("toolbar.storage");
-        CloseLibraryMenuItem.Text = Loc.Chrome("toolbar.close_library");
-
-        _shell = new ShellStore();
-        _shell.Changed += RenderBanner;
-        _playback = new PlaybackStore();
-        _cast = new CastStore(_session);
-        _sync = new SyncStatusStore(_session);
-        _sync.Changed += RenderSyncStatus;
-        // Built before the now-playing bar: its constructor reads the
-        // remaining-time preference through the callback below, so the mirror
-        // must exist (Current stays null until a library seeds it).
-        _settings = new SettingsStore(_session);
-        // The content column's width cap follows the synced full-width preference.
-        _settings.Changed += ApplyLibraryWidth;
-        _nowPlayingBar = new NowPlayingBarController(
-            _session,
-            _appService.MediaPaths,
-            _appService.Playback,
-            _appService.Queue,
-            _playback,
-            _cast,
-            // Read at call time: the settings mirror is built further down, and
-            // seeded from the handle once a library is open.
-            () => _settings.Current?.ShowRemainingTime ?? false,
-            () => Content.XamlRoot,
-            NowPlayingBar,
-            NpCover,
-            NpTitle,
-            NpArtist,
-            NpElapsed,
-            NpDuration,
-            NpProgress,
-            NpVolume,
-            NpPlayPause,
-            NpPlayGlyph,
-            NpMute,
-            NpMuteGlyph,
-            NpRepeat,
-            NpRepeatGlyph,
-            NpShuffle,
-            NpShuffleGlyph,
-            NpPrev,
-            NpNext,
-            NpLoading,
-            NpCast,
-            NpCastGlyph,
-            QueueAddBadge,
-            QueueAddBadgeScale,
-            QueueAddBadgeText,
-            NpPlayScale,
-            NpCoverFrame,
-            // Read at call time: the library browser is constructed further down.
-            (albumId, trackId) => _libraryBrowser.RevealAlbum(albumId, trackId));
-        // The bar's art and title open the playing album; the tooltip is the
-        // affordance that they're clickable.
-        ToolTipService.SetToolTip(NpCoverFrame, Loc.Chrome("nowplaying.go_to_album"));
-        ToolTipService.SetToolTip(NpTitle, Loc.Chrome("nowplaying.go_to_album"));
-        // The icon-only transport buttons whose meaning never changes get a fixed
-        // accessible name and tooltip (the glyph alone exposes nothing to
-        // Narrator). The state-dependent ones — play/pause, mute, repeat, shuffle
-        // — are named by the controller as their state renders.
-        SetIconButtonLabel(NpPrev, "nowplaying.previous");
-        SetIconButtonLabel(NpNext, "nowplaying.next");
-        SetIconButtonLabel(NpQueue, "queue.title");
-        _import = new ImportStore(_session, _shell, _mediaControls);
-        _projections = new ProjectionRegistry();
-        // In-flight release transfers (pin/unpin/manage/unmanage), driven by core's
-        // ReleaseTransferProgress/Ended events the router routes, read by the
-        // storage dialog rows and the album-detail storage band. Constructed before
-        // the router so it can route into it, and shared with the stores below.
-        _transferProgress = new TransferProgressStore();
-        _router = new UiEventRouter(
-            _playback, _shell, _projections, _mediaControls, _import.HandlePreviewEvent, _transferProgress, _cast);
-        _session.UiEvent += _router.Route;
-
-        // The artwork lightbox: opened from the album gallery and the import
-        // confirmation's local artwork tiles.
-        _lightbox = new LightboxOverlay(() => Content.XamlRoot);
-
-        // The storage sheet's non-UI operations, shared by the storage dialog and
-        // the album-detail storage band so both run transitions the same way.
-        _storage = new StorageStore(_session, _transferProgress);
-
-        // The per-release action dialogs the inline album expansion opens. The
-        // expansion panel itself is built per open in ExpandAlbum from these
-        // stores; it is the shared album entry point from the grid, the panes, the
-        // now-playing jump, and the import "view in library" banner.
-        _releaseActions = new ReleaseActionDialogs(
-            _session,
-            _appService.MediaPaths,
-            () => Content.XamlRoot,
-            () => WinRT.Interop.WindowNative.GetWindowHandle(this),
-            text => StatusText.Text = text,
-            _projections,
-            _lightbox);
-        _queuePane = new QueuePane(
-            _session,
-            _appService.MediaPaths,
-            _appService.Library,
-            _appService.Queue,
-            _playback,
-            QueuePaneHost,
-            message => _shell.ShowBanner(InfoBarSeverity.Error, Loc.Chrome("error.playback_title"), message));
-        // The now-playing bar's queue button toggles the pane and is an append drop
-        // target; the pane owns that wiring.
-        _queuePane.AttachToggleButton(NpQueue);
-
-        // The storage sheet. The dialog registers its live-refresh handlers on the
-        // projection registry while open.
-        _storageDialog = new StorageDialog(
-            _session,
-            () => Content.XamlRoot,
-            () => WinRT.Interop.WindowNative.GetWindowHandle(this),
-            _storage,
-            _projections,
-            _transferProgress);
-
-        // The library content column: the album grid, composer/artist lists, and
-        // search, with the mode/sort/collapse chrome. The window stays the
-        // navigation shell (open/close/switch) and hands the browser the
-        // ContentColumn's named elements plus the status/shuffle surfaces it writes.
-        _libraryBrowser = new LibraryBrowser(
-            _session,
-            _appService.Library,
-            _appService.MediaPaths,
-            _appService.Playback,
-            _appService.Queue,
-            _appService.Downloads,
-            _browser,
-            _shell,
-            _releaseActions,
-            _storage,
-            _transferProgress,
-            _projections,
-            _queuePane,
-            DispatcherQueue,
-            () => Content.XamlRoot,
-            () => WinRT.Interop.WindowNative.GetWindowHandle(this),
-            text => StatusText.Text = text,
-            RenderEmptyState,
-            enabled => ShuffleLibraryItem.IsEnabled = enabled,
-            AlbumGrid,
-            ComposerBrowser,
-            ArtistBrowser,
-            ComposerList,
-            ArtistList,
-            ComposerDetailPane,
-            ArtistDetailPane,
-            SearchResultsList,
-            ModeHeadingText,
-            ModeHeadingChevron,
-            ModeHeadingFlyout,
-            SortControls,
-            HeaderBand,
-            SearchBox,
-            SearchFlyout,
-            RootGrid);
-        _unlockDialog = new UnlockDialog(() => Content.XamlRoot, text => StatusText.Text = text, OpenLibrary);
-        _approveDialog = new ApproveDeviceDialog(
-            () => Content.XamlRoot,
-            () => WinRT.Interop.WindowNative.GetWindowHandle(this),
-            _session);
-        _librariesDialog = new LibrariesDialog(
-            () => Content.XamlRoot,
-            _session,
-            LoadLibraries,
-            CreateLibraryOrReport,
-            SwitchLibrary);
-
-        // The import flow: the confirm step (which can open an album), the picker
-        // that leads to it, and the folder-scan dialog that opens the picker.
-        _importConfirm = new ImportConfirmDialog(
-            _session, () => Content.XamlRoot, albumId => _libraryBrowser.RevealAlbum(albumId), _lightbox);
-        _importPicker = new ImportPickerDialog(_session, () => Content.XamlRoot, _import, _importConfirm);
-        _importSection = new ImportSection(
-            _session,
-            () => WinRT.Interop.WindowNative.GetWindowHandle(this),
-            _import,
-            _importPicker,
-            ShowImportBanner,
-            () => SwitchSection(import: true));
-
-        // The settings window and its store/panes. It registers its config
-        // re-read on the projection registry while open, opens the approve flow
-        // for add-device, and shares the one UpdateService with the launch-time
-        // check.
-        _membersPane = new MembersPane(_session);
-        _settingsWindow = new SettingsWindow(
-            _session,
-            DispatcherQueue,
-            _settings,
-            _membersPane,
-            _approveDialog,
-            _updateService,
-            _projections,
-            OpenLibrary,
-            _closeToWelcome);
-
-        RegisterProjections();
-
-        // The handle is already open (the coordinator opened it before building
-        // this window), so finish the open now: load browse content, seed
-        // playback, subscribe to core events, report the screen.
-        FinishOpen();
+        // The view's constructor loaded the browse content; finish the open now
+        // that it is mounted — seed playback, subscribe to core events, report the
+        // screen. (A library switch reruns both steps inside the view.)
+        _view.FinishOpen();
 
         // Deliver a launch-time import intent after the coordinator activates the
         // window (right after this constructor returns), when the XamlRoot the
@@ -375,54 +86,27 @@ public sealed partial class MainWindow : Window
         // the constructor and that Activate call — unwinds.
         if (launchIntent is not null)
         {
-            DispatcherQueue.TryEnqueue(() => _ = HandleActivationIntent(launchIntent));
+            DispatcherQueue.TryEnqueue(() => _ = _view.HandleActivationIntent(launchIntent));
+        }
+    }
+
+    // Turn a redirected activation (a second launch while bae is already running)
+    // into the shell's import dispatch. The coordinator forwards it here; the view
+    // owns the handling.
+    internal System.Threading.Tasks.Task HandleActivationIntent(ActivationIntent intent) =>
+        _view.HandleActivationIntent(intent);
+
+    // Bring the window to the front for a redirected activation (a second
+    // launch while bae is already running): restore it first if minimized.
+    // The OS may downgrade this to a taskbar flash when foreground rights are
+    // denied to a background process — accepted, not worked around.
+    internal void BringToForeground()
+    {
+        if (AppWindow.Presenter is OverlappedPresenter { State: OverlappedPresenterState.Minimized } presenter)
+        {
+            presenter.Restore();
         }
 
-#if DEBUG
-        // Debug-only: the component-gallery toolbar entry (the WinUI preview
-        // analogue). Compiled out of Release.
-        DebugToolbarButton.Attach(ToolbarButtons);
-#endif
-
-        // Check for an update in the background at launch, like macOS's Sparkle
-        // check-on-appear. Fire-and-forget: the service catches and logs every
-        // failure and this is async I/O, so it never blocks startup.
-        _ = _updateService.CheckInBackgroundAsync();
+        SetForegroundWindow(WinRT.Interop.WindowNative.GetWindowHandle(this));
     }
-
-    // Wire core's invalidations to the reloads they drive. Static consumers (the
-    // library browser, sync status, import candidates) register for the window's
-    // lifetime; the storage and settings dialogs supply their live-refresh
-    // callbacks while open. Composition-root wiring: the handlers live in the
-    // views/stores, the registration is the window's.
-    private void RegisterProjections()
-    {
-        _projections.Register(typeof(BridgeInvalidation.AlbumList), _libraryBrowser.ReloadBrowserFromInvalidation);
-        _projections.Register(typeof(BridgeInvalidation.ComposerList), _libraryBrowser.ReloadBrowserFromInvalidation);
-        _projections.Register(typeof(BridgeInvalidation.ArtistList), _libraryBrowser.ReloadBrowserFromInvalidation);
-        _projections.Register(typeof(BridgeInvalidation.SyncStatus), _sync.Refresh);
-        // Config changes reach the now-playing bar's time-label mode, which is a
-        // synced preference: flipping it on another device re-renders the bar here.
-        _projections.Register(typeof(BridgeInvalidation.Config), OnConfigInvalidated);
-        _projections.Register(typeof(BridgeInvalidation.ImportCandidateList), _import.RefreshCandidates);
-        _projections.Register(typeof(BridgeInvalidation.ImportCandidate), _import.RefreshCandidates);
-        _projections.Register(typeof(BridgeInvalidation.WatchedFolders), _import.RefreshCandidates);
-        _projections.Register(typeof(BridgeInvalidation.CastDevices), _cast.RefreshDevices);
-    }
-
-    private void OnConfigInvalidated()
-    {
-        _settings.Reload();
-        _nowPlayingBar.RefreshTimeLabelMode();
-    }
-
-    // Cap or free the content column per the synced full-width preference, then
-    // re-fit the album grid to the new width. The width cap is the shell skeleton's
-    // (ContentColumn); the grid re-fit is the browser's.
-    private void ApplyLibraryWidth()
-    {
-        ContentColumn.MaxWidth = _settings.Current?.LibraryFullWidth == true ? double.PositiveInfinity : 1240;
-        _libraryBrowser.ApplyGridMetrics();
-    }
-
 }

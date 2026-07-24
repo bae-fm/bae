@@ -1,29 +1,15 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using System.Globalization;
-using System.Linq;
-using System.Runtime.InteropServices;
-using Microsoft.UI.Windowing;
-using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Controls.Primitives;
-using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
-using Microsoft.UI.Xaml.Media.Animation;
-using Microsoft.UI.Xaml.Media.Imaging;
 using uniffi.bae_bridge;
-using Windows.ApplicationModel.DataTransfer;
-using Windows.Graphics;
-using Windows.Storage;
-using Windows.System;
 
 namespace Bae.Windows;
 
-// MainWindow: opening, switching, and tearing down the active library, the
+// MainView: opening, switching, and tearing down the active library, the
 // activation-intent handling, and the sync/banner rendering. Split out of
-// MainWindow.xaml.cs unchanged.
-public sealed partial class MainWindow : Window
+// MainView.xaml.cs unchanged.
+public sealed partial class MainView : UserControl
 {
     // Create a new library, reporting failure through the caller's surface (the
     // library manager's status line). Returns the new id, or null on failure.
@@ -35,7 +21,7 @@ public sealed partial class MainWindow : Window
     private List<BridgeLibrary> LoadLibraries() =>
         LibraryDiscovery.Load(message => StatusText.Text = message);
 
-    // Open a library into this window. Reached only from a switch (SwitchLibrary,
+    // Open a library into this view. Reached only from a switch (SwitchLibrary,
     // after the previous library was torn down) and from the switch-to-locked
     // unlock prompt — the initial open runs in the coordinator, which builds the
     // window. A failed open lands on the status line; a locked target prompts for
@@ -55,24 +41,29 @@ public sealed partial class MainWindow : Window
                 return;
         }
 
+        // A switch reuses this same view: load the new library's browse content,
+        // then finish the session bring-up. (The initial open loads the content in
+        // the constructor and finishes via the host's FinishOpen call.)
+        _libraryBrowser.LoadCurrentBrowserMode();
         FinishOpen();
     }
 
-    // Finish opening a library whose handle is already open: load the browse
-    // content, seed playback, subscribe to core events, and report the screen.
-    // Run from the constructor (the coordinator opened the handle before building
-    // the window) and from a switch (OpenLibrary, after the previous library was
-    // torn down). Construction order is load-bearing: the settings mirror is
-    // reloaded before the now-playing bar's first tick reads its time-label mode.
-    private void FinishOpen()
+    // Finish opening a library whose handle is already open and whose browse
+    // content is loaded: seed playback, subscribe to core events, and report the
+    // screen. Run from the host (after it sets this view as its content) for the
+    // initial open, and from a switch (OpenLibrary, after the previous library was
+    // torn down). Kept separate from the browse load so a stubbed scene renders
+    // the content without this session-touching bring-up. Order is load-bearing:
+    // the settings mirror is reloaded before the now-playing bar's first tick
+    // reads its time-label mode.
+    internal void FinishOpen()
     {
-        _libraryBrowser.LoadCurrentBrowserMode();
         _nowPlayingBar.SeedVolume();
         // Seed the config mirror: the now-playing bar reads its time-label mode
         // from it, so it must be populated before the first position tick.
-        _settings.Reload();
+        _appService.SettingsStore.Reload();
         _nowPlayingBar.RefreshTimeLabelMode();
-        _sync.Refresh();
+        _appService.SyncStatusStore.Refresh();
         _session.Subscribe();
         // Host-originated telemetry: the library screen opened, through the
         // standalone sink. Infallible.
@@ -102,25 +93,11 @@ public sealed partial class MainWindow : Window
         }
     }
 
-    // Bring the window to the front for a redirected activation (a second
-    // launch while bae is already running): restore it first if minimized.
-    // The OS may downgrade this to a taskbar flash when foreground rights are
-    // denied to a background process — accepted, not worked around.
-    internal void BringToForeground()
-    {
-        if (AppWindow.Presenter is OverlappedPresenter { State: OverlappedPresenterState.Minimized } presenter)
-        {
-            presenter.Restore();
-        }
-
-        SetForegroundWindow(WinRT.Interop.WindowNative.GetWindowHandle(this));
-    }
-
     // Render the toolbar sync indicator and the sync banner from the sync store's
     // current state (subscribed to its Changed).
     private void RenderSyncStatus()
     {
-        if (_sync.ErrorText is null)
+        if (_appService.SyncStatusStore.ErrorText is null)
         {
             SyncBanner.IsOpen = false;
         }
@@ -130,12 +107,12 @@ public sealed partial class MainWindow : Window
             reconnect.Click += (_, _) => _appService.Sync.TriggerSync();
             SyncBanner.Severity = InfoBarSeverity.Error;
             SyncBanner.Title = Loc.Chrome("sync.error_title");
-            SyncBanner.Message = _sync.ErrorText;
+            SyncBanner.Message = _appService.SyncStatusStore.ErrorText;
             SyncBanner.ActionButton = reconnect;
             SyncBanner.IsOpen = true;
         }
 
-        switch (_sync.Indicator)
+        switch (_appService.SyncStatusStore.Indicator)
         {
             case BridgeSyncIndicator.Error:
                 SyncIndicator.Text = Loc.Chrome("sync.error_title");
@@ -146,7 +123,7 @@ public sealed partial class MainWindow : Window
                 SyncIndicator.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray);
                 break;
             case BridgeSyncIndicator.Synced:
-                SyncIndicator.Text = Loc.Chrome("sync.synced", "time", _sync.LastSyncTime);
+                SyncIndicator.Text = Loc.Chrome("sync.synced", "time", _appService.SyncStatusStore.LastSyncTime);
                 SyncIndicator.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Gray);
                 break;
             case BridgeSyncIndicator.Idle:
@@ -158,11 +135,11 @@ public sealed partial class MainWindow : Window
     // Render the shell error banner from the shell store (subscribed to Changed).
     private void RenderBanner()
     {
-        Banner.Severity = _shell.BannerSeverity;
-        Banner.Title = _shell.BannerTitle;
-        Banner.Message = _shell.BannerMessage;
+        Banner.Severity = _appService.ShellStore.BannerSeverity;
+        Banner.Title = _appService.ShellStore.BannerTitle;
+        Banner.Message = _appService.ShellStore.BannerMessage;
         Banner.ActionButton = null;
-        Banner.IsOpen = _shell.BannerIsOpen;
+        Banner.IsOpen = _appService.ShellStore.BannerIsOpen;
     }
 
     // Switch the active library: persist the current one's playback state, tear
@@ -180,28 +157,25 @@ public sealed partial class MainWindow : Window
     // reset every piece of per-library view state so nothing from it bleeds into
     // the next library opened in this same window. (Closing the library instead
     // destroys the window, so its view state needs no reset — see the
-    // coordinator's CloseLibrary.) Leaves the window with no library open.
+    // coordinator's CloseLibrary.) Leaves the view with no library open.
     private async System.Threading.Tasks.Task TearDownLibrary()
     {
         await _session.ShutdownAndFreeCurrentHandle();
 
-        _playback.Reset();
+        _appService.PlaybackStore.Reset();
         _nowPlayingBar.Reset();
         _queuePane.Hide();
-        _import.Reset();
+        _appService.ImportStore.Reset();
         // The browser drops its inline expansion, browse collections, selection,
         // and search, and clears the status and shuffle-enabled surfaces.
         _libraryBrowser.Reset();
-        _transferProgress.Reset();
-        _mediaControls.Deactivate();
+        _appService.TransferProgressStore.Reset();
+        _appService.MediaControlService.Deactivate();
         // The banners report the old library's sync / playback errors; clear them
         // so they don't describe state the next library (or none) doesn't have.
-        _shell.ClearBanner();
-        _sync.Reset();
+        _appService.ShellStore.ClearBanner();
+        _appService.SyncStatusStore.Reset();
     }
-
-    private System.Threading.Tasks.Task ShutdownAndFreeCurrentHandle() =>
-        _session.ShutdownAndFreeCurrentHandle();
 
     private LibraryHandle? CurrentHandleOrNull() =>
         _session.CurrentHandleOrNull();

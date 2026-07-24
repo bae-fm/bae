@@ -1,4 +1,4 @@
-﻿using System.Linq;
+using System.Linq;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
@@ -6,10 +6,10 @@ using Windows.System;
 
 namespace Bae.Windows;
 
-// MainWindow: the window's root input surface — the keyboard accelerators on the
+// MainView: the view's root input surface — the keyboard accelerators on the
 // root grid and the global KeyDown — routed to whichever feature view owns each
-// action. The behaviors live in those views; only the routing is the window's.
-public sealed partial class MainWindow : Window
+// action. The behaviors live in those views; only the routing is the view's.
+public sealed partial class MainView : UserControl
 {
     // Ctrl+F focuses the search box from anywhere in the window.
     private void OnFocusSearchAccelerator(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args)
@@ -71,7 +71,7 @@ public sealed partial class MainWindow : Window
             return;
         }
 
-        var focused = FocusManager.GetFocusedElement(Content.XamlRoot);
+        var focused = FocusManager.GetFocusedElement(XamlRoot);
         var focusedTextInput = focused is TextBox || focused is AutoSuggestBox;
 
         // Ctrl+A selects every loaded album, guarded by the same focused-text-input

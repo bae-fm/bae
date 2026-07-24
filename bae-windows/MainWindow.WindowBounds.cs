@@ -24,6 +24,21 @@ namespace Bae.Windows;
 // and the window Closed teardown. Split out of MainWindow.xaml.cs unchanged.
 public sealed partial class MainWindow : Window
 {
+    // The window's last-seen normal (restored-state) bounds and whether it is
+    // maximized, tracked from AppWindow.Changed and written once in OnClosed.
+    // Normal bounds are recorded even while maximized, so restoring down after a
+    // relaunch lands on the user's chosen size rather than a display-sized rect.
+    private PixelRect? _lastNormalBounds;
+    private bool _maximized;
+
+    // Set once OnClosed's first pass has run its teardown. `async void` means
+    // the window would otherwise die mid-await on the first `await` inside
+    // the handler; cancelling that first close (`args.Handled = true`), then
+    // awaiting the teardown, then closing again lets it actually finish
+    // before the process exits. See OnClosed. Also set by PrepareCloseForSwap,
+    // so the coordinator's follow-up Close() takes OnClosed's fast path.
+    private bool _closeTeardownDone;
+
     // Place the window at its saved bounds and maximized state. Wrapped whole:
     // placement must never take down launch, so any failure logs and leaves the
     // system's default placement.
@@ -102,7 +117,7 @@ public sealed partial class MainWindow : Window
 
     private async void OnClosed(object sender, WindowEventArgs args)
     {
-        if (!_closeTeardownDone && CurrentHandleOrNull() != null)
+        if (!_closeTeardownDone && _session.CurrentHandleOrNull() != null)
         {
             // First pass: cancel this close so the async teardown below can't
             // race process exit — `async void` would otherwise let the window
@@ -137,14 +152,14 @@ public sealed partial class MainWindow : Window
     {
         // Clear the transport controls first so no ghost entry lingers during
         // shutdown. Idempotent.
-        _mediaControls.Deactivate();
+        _appService.MediaControlService.Deactivate();
         // Flush buffered telemetry through the standalone sink before the library
         // handle is freed by the shutdown below.
         BaeDiagnostics.Flush();
         // Always shut down gracefully; the restore-on-launch preference gates the
         // restore at the next launch (passed to InitApp), not this save — the core
         // keeps the resume row current either way.
-        await ShutdownAndFreeCurrentHandle();
+        await _session.ShutdownAndFreeCurrentHandle();
         SaveWindowBounds();
         _closeTeardownDone = true;
     }
