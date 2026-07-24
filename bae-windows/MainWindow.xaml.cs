@@ -39,12 +39,15 @@ public sealed partial class MainWindow : Window
     // The library content column: album grid, composer/artist lists, and search,
     // with the mode/sort/collapse chrome around them. Owns its own browse state.
     private readonly LibraryBrowser _libraryBrowser;
-    private readonly WelcomeView _welcomeView;
     private readonly LibrariesDialog _librariesDialog;
-    private readonly JoinLibraryDialog _joinDialog;
     private readonly ApproveDeviceDialog _approveDialog;
+    // The unlock prompt for switching to a locked library (the bootstrap unlock
+    // lives on the welcome window). Its re-open runs OpenLibrary in this window.
     private readonly UnlockDialog _unlockDialog;
-    private readonly RestoreFromCloudDialog _restoreCloudDialog;
+    // Returns to a fresh welcome window: the coordinator (App) shuts this library
+    // down and swaps windows. Driven by the close-library button and the settings
+    // remove flow.
+    private readonly Func<System.Threading.Tasks.Task> _closeToWelcome;
     private readonly ShellStore _shell;
     private readonly SyncStatusStore _sync;
     private readonly PlaybackStore _playback;
@@ -87,27 +90,28 @@ public sealed partial class MainWindow : Window
     // the window would otherwise die mid-await on the first `await` inside
     // the handler; cancelling that first close (`args.Handled = true`), then
     // awaiting the teardown, then closing again lets it actually finish
-    // before the process exits. See OnClosed.
+    // before the process exits. See OnClosed. Also set by PrepareCloseForSwap,
+    // so the coordinator's follow-up Close() takes OnClosed's fast path.
     private bool _closeTeardownDone;
-
-    // The launch-time activation intent (a folder verb / bae://import command
-    // line, parsed by App.OnLaunched) latches here until the initial
-    // library-open attempt settles — a cold-start activation can arrive before
-    // an async unlock resolves, when CurrentHandleOrNull() would be null
-    // spuriously. A redirected activation (the app already warm) dispatches
-    // straight to HandleActivationIntent instead of going through this latch.
-    private bool _initialLibraryOpenSettled;
-    private ActivationIntent? _pendingLaunchIntent;
 
     [DllImport("user32.dll")]
     private static extern bool SetForegroundWindow(IntPtr hWnd);
 
-    public MainWindow()
+    // Constructed only when a library is actually opening: the coordinator (App)
+    // opens the handle first and passes the already-open session in, so this
+    // constructor is the composition root AND finishes the open (FinishOpen). The
+    // launch intent is delivered after activation (enqueued below). closeToWelcome
+    // returns to the welcome window via the coordinator.
+    public MainWindow(
+        SessionStore session,
+        Func<System.Threading.Tasks.Task> closeToWelcome,
+        ActivationIntent? launchIntent)
     {
-        // The session and the browse store the library browser reads. The store
-        // sets its collections' ItemsSource in code (no x:Bind), so nothing here
-        // needs to exist before InitializeComponent.
-        _session = new SessionStore(DispatcherQueue);
+        // The session (handle already open) and the browse store the library
+        // browser reads. The store sets its collections' ItemsSource in code (no
+        // x:Bind), so nothing here needs to exist before InitializeComponent.
+        _session = session;
+        _closeToWelcome = closeToWelcome;
         _browser = new LibraryBrowserStore(_session, DispatcherQueue);
 
         InitializeComponent();
@@ -122,7 +126,7 @@ public sealed partial class MainWindow : Window
         AppWindow.Changed += OnAppWindowChanged;
 
         // The window's HWND exists at construction, so bind the transport controls
-        // to it now — before LoadLibrary starts the event stream that drives them.
+        // to it now — before FinishOpen starts the event stream that drives them.
         _mediaControls = new MediaControlService(
             WinRT.Interop.WindowNative.GetWindowHandle(this),
             DispatcherQueue,
@@ -299,15 +303,6 @@ public sealed partial class MainWindow : Window
             SearchFlyout,
             RootGrid);
         _unlockDialog = new UnlockDialog(() => Content.XamlRoot, text => StatusText.Text = text, OpenLibrary);
-        _joinDialog = new JoinLibraryDialog(
-            () => Content.XamlRoot,
-            () => WinRT.Interop.WindowNative.GetWindowHandle(this),
-            () => _welcomeView.Dismiss(),
-            OpenLibrary);
-        _restoreCloudDialog = new RestoreFromCloudDialog(
-            () => Content.XamlRoot,
-            () => _welcomeView.Dismiss(),
-            OpenLibrary);
         _approveDialog = new ApproveDeviceDialog(
             () => Content.XamlRoot,
             () => WinRT.Interop.WindowNative.GetWindowHandle(this),
@@ -318,14 +313,6 @@ public sealed partial class MainWindow : Window
             LoadLibraries,
             CreateLibraryOrReport,
             SwitchLibrary);
-        _welcomeView = new WelcomeView(
-            EmptyState,
-            text => StatusText.Text = text,
-            LoadLibraries,
-            CreateLibraryOrReport,
-            OpenLibrary,
-            () => _joinDialog.Show(),
-            () => _restoreCloudDialog.Show());
 
         // The import flow: the confirm step (which can open an album), the picker
         // that leads to it, and the folder-scan dialog that opens the picker.
@@ -354,11 +341,23 @@ public sealed partial class MainWindow : Window
             _updateService,
             _projections,
             OpenLibrary,
-            CloseLibrary);
+            _closeToWelcome);
 
         RegisterProjections();
 
-        LoadLibrary();
+        // The handle is already open (the coordinator opened it before building
+        // this window), so finish the open now: load browse content, seed
+        // playback, subscribe to core events, report the screen.
+        FinishOpen();
+
+        // Deliver a launch-time import intent after the coordinator activates the
+        // window (right after this constructor returns), when the XamlRoot the
+        // import dialog needs exists. Enqueued work runs once the current stack —
+        // the constructor and that Activate call — unwinds.
+        if (launchIntent is not null)
+        {
+            DispatcherQueue.TryEnqueue(() => _ = HandleActivationIntent(launchIntent));
+        }
 
 #if DEBUG
         // Debug-only: the component-gallery toolbar entry (the WinUI preview

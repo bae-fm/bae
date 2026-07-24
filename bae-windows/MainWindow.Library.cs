@@ -26,80 +26,46 @@ namespace Bae.Windows;
 public sealed partial class MainWindow : Window
 {
     // Create a new library, reporting failure through the caller's surface (the
-    // welcome status line, or the library manager's). Returns the new id, or null
-    // on failure. Callers diverge only in how they open it.
-    private string? CreateLibraryOrReport(Action<string> reportError)
-    {
-        try
-        {
-            return NativeBae.CreateLibrary();
-        }
-        catch (BridgeException exception)
-        {
-            BaeDiagnostics.Logger.Error("Failed to create library.", exception);
-            reportError(exception.Message);
-            return null;
-        }
-    }
+    // library manager's status line). Returns the new id, or null on failure.
+    private string? CreateLibraryOrReport(Action<string> reportError) =>
+        LibraryDiscovery.Create(reportError);
 
     // The libraries discovered on this device. Empty when discovery fails or none
-    // exist; callers pick the active one, or list them.
-    private List<BridgeLibrary> LoadLibraries()
-    {
-        try
-        {
-            return NativeBae.Libraries();
-        }
-        catch (BridgeException exception)
-        {
-            BaeDiagnostics.Logger.Error("Failed to discover libraries.", exception);
-            StatusText.Text = exception.Message;
-            return new List<BridgeLibrary>();
-        }
-    }
+    // exist; the libraries manager and the Ctrl+N switch read it.
+    private List<BridgeLibrary> LoadLibraries() =>
+        LibraryDiscovery.Load(message => StatusText.Text = message);
 
-    private void LoadLibrary()
-    {
-        // A library whose config.yaml will not load is listed (so the user can see
-        // it is there), but it cannot be opened — never auto-open into one.
-        var libraries = LoadLibraries().Where(candidate => candidate.Error is null).ToList();
-        var library = libraries.FirstOrDefault(candidate => candidate.IsActive)
-            ?? libraries.FirstOrDefault();
-        if (library is null)
-        {
-            _welcomeView.Show();
-            // Settled: no library exists to hand a launch-time intent to, so
-            // it applies now as the no-op HandleActivationIntent logs.
-            SettleInitialLibraryOpen();
-            return;
-        }
-
-        OpenLibrary(library.Id);
-    }
-
+    // Open a library into this window. Reached only from a switch (SwitchLibrary,
+    // after the previous library was torn down) and from the switch-to-locked
+    // unlock prompt — the initial open runs in the coordinator, which builds the
+    // window. A failed open lands on the status line; a locked target prompts for
+    // its key (the re-open runs this same method).
     private void OpenLibrary(string libraryId)
     {
         switch (_session.OpenHandle(libraryId))
         {
             case OpenHandleResult.Failed:
                 StatusText.Text = Loc.Chrome("library.open_failed");
-                SettleInitialLibraryOpen();
                 return;
             case OpenHandleResult.NeedsUnlock:
                 // Encrypted library whose key isn't on this device: the session
                 // freed the handle it made; prompt for the key rather than show a
-                // half-open library. Unlocking re-opens with sync online, which
-                // settles the latch below through this same method; until then
-                // a pending launch intent stays latched.
+                // half-open library. Unlocking re-opens through this same method.
                 _ = _unlockDialog.Show(libraryId);
                 return;
         }
 
-        // Committed to showing this library: drop the welcome chooser if it's up.
-        // Done here (not at the call sites) so a failed open or an unlock detour
-        // above leaves the welcome in place rather than stranding the user.
-        _welcomeView.Dismiss();
+        FinishOpen();
+    }
 
+    // Finish opening a library whose handle is already open: load the browse
+    // content, seed playback, subscribe to core events, and report the screen.
+    // Run from the constructor (the coordinator opened the handle before building
+    // the window) and from a switch (OpenLibrary, after the previous library was
+    // torn down). Construction order is load-bearing: the settings mirror is
+    // reloaded before the now-playing bar's first tick reads its time-label mode.
+    private void FinishOpen()
+    {
         _libraryBrowser.LoadCurrentBrowserMode();
         _nowPlayingBar.SeedVolume();
         // Seed the config mirror: the now-playing bar reads its time-label mode
@@ -111,39 +77,6 @@ public sealed partial class MainWindow : Window
         // Host-originated telemetry: the library screen opened, through the
         // standalone sink. Infallible.
         NativeBae.ReportScreen(BaeDiagnostics.Handle, BridgeScreen.Library);
-        SettleInitialLibraryOpen();
-    }
-
-    // Set by App.OnLaunched once the window exists. Applies immediately when
-    // the initial library-open attempt has already settled (the common case:
-    // LoadLibrary runs synchronously in the constructor, before this is
-    // called); otherwise latches until SettleInitialLibraryOpen runs.
-    internal void SetPendingLaunchIntent(ActivationIntent intent)
-    {
-        if (_initialLibraryOpenSettled)
-        {
-            _ = HandleActivationIntent(intent);
-        }
-        else
-        {
-            _pendingLaunchIntent = intent;
-        }
-    }
-
-    // Idempotent: called at every terminal point of the launch-time
-    // LoadLibrary/OpenLibrary flow (no library found, a failed open, or a
-    // successful open), including the one that runs after an async unlock
-    // resolves. Only the first call after a pending intent was set has an
-    // effect; later calls (a manual library switch, for instance) find nothing
-    // latched.
-    private void SettleInitialLibraryOpen()
-    {
-        _initialLibraryOpenSettled = true;
-        if (_pendingLaunchIntent is { } intent)
-        {
-            _pendingLaunchIntent = null;
-            _ = HandleActivationIntent(intent);
-        }
     }
 
     // Turn a parsed activation intent (the folder verb, a dropped-on-the-exe
@@ -243,9 +176,11 @@ public sealed partial class MainWindow : Window
         OpenLibrary(libraryId);
     }
 
-    // Tear down the open library: shut down and free its handle, and reset every
-    // piece of per-library view state so nothing from it bleeds into the next
-    // library or the welcome chooser. Leaves the window with no library open.
+    // Tear down the open library for a switch: shut down and free its handle, and
+    // reset every piece of per-library view state so nothing from it bleeds into
+    // the next library opened in this same window. (Closing the library instead
+    // destroys the window, so its view state needs no reset — see the
+    // coordinator's CloseLibrary.) Leaves the window with no library open.
     private async System.Threading.Tasks.Task TearDownLibrary()
     {
         await _session.ShutdownAndFreeCurrentHandle();
@@ -263,19 +198,6 @@ public sealed partial class MainWindow : Window
         // so they don't describe state the next library (or none) doesn't have.
         _shell.ClearBanner();
         _sync.Reset();
-    }
-
-    // Close the open library and return to the welcome chooser, which now lists
-    // the libraries on disk so the user can reopen one or create another.
-    private async System.Threading.Tasks.Task CloseLibrary()
-    {
-        if (CurrentHandleOrNull() == null)
-        {
-            return;
-        }
-
-        await TearDownLibrary();
-        _welcomeView.Show();
     }
 
     private System.Threading.Tasks.Task ShutdownAndFreeCurrentHandle() =>

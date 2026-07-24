@@ -112,33 +112,48 @@ public sealed partial class MainWindow : Window
             // takes the fast path (no live handle) and lets the close
             // proceed.
             args.Handled = true;
-
-            // Clear the transport controls first so no ghost entry lingers
-            // during shutdown; OnClosed doesn't go through TearDownLibrary.
-            // Idempotent.
-            _mediaControls.Deactivate();
-            // Flush buffered telemetry through the standalone sink before the
-            // library handle is freed by the shutdown below.
-            BaeDiagnostics.Flush();
-            // Always shut down gracefully; the restore-on-launch preference
-            // gates the restore at the next launch (passed to InitApp), not
-            // this save — the core keeps the resume row current either way.
-            await ShutdownAndFreeCurrentHandle();
-            SaveWindowBounds();
-
-            _closeTeardownDone = true;
+            await TearDownForClose();
             Close();
             return;
         }
 
-        // Re-entry after the teardown above, or a close with no library ever
-        // opened: nothing left to await, so let the close proceed. Bounds are
-        // only saved here if the first pass didn't already run above.
+        // Re-entry after the teardown above, a coordinator swap that already ran
+        // PrepareCloseForSwap, or a close with no library ever opened: nothing
+        // left to await, so let the close proceed. Bounds are only saved here if
+        // no teardown pass already ran above.
         if (!_closeTeardownDone)
         {
             SaveWindowBounds();
         }
     }
+
+    // The window's teardown, shared by the user closing the window (app quit,
+    // via OnClosed) and the coordinator swapping to the welcome window (via
+    // PrepareCloseForSwap): clear the transport controls, flush telemetry, shut
+    // the handle down (persisting playback), and save the window bounds. Sets
+    // _closeTeardownDone so a follow-up Close() from either path proceeds without
+    // repeating the work.
+    private async System.Threading.Tasks.Task TearDownForClose()
+    {
+        // Clear the transport controls first so no ghost entry lingers during
+        // shutdown. Idempotent.
+        _mediaControls.Deactivate();
+        // Flush buffered telemetry through the standalone sink before the library
+        // handle is freed by the shutdown below.
+        BaeDiagnostics.Flush();
+        // Always shut down gracefully; the restore-on-launch preference gates the
+        // restore at the next launch (passed to InitApp), not this save — the core
+        // keeps the resume row current either way.
+        await ShutdownAndFreeCurrentHandle();
+        SaveWindowBounds();
+        _closeTeardownDone = true;
+    }
+
+    // Called by the coordinator (App) before it closes this window to return to
+    // the welcome flow: run the teardown while this is still the live window, so
+    // the handle is freed and bounds saved before the swap. The coordinator's
+    // follow-up Close() then takes OnClosed's already-torn-down fast path.
+    internal System.Threading.Tasks.Task PrepareCloseForSwap() => TearDownForClose();
 
     // Persist the last-seen normal bounds and maximized state, if the window
     // ever settled into a restored position, so the next launch reopens here.

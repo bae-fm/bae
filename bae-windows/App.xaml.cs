@@ -5,8 +5,6 @@ namespace Bae.Windows;
 
 public partial class App : Application
 {
-    private MainWindow? _window;
-
     public App()
     {
         // Record unhandled UI-dispatcher exceptions before anything else can throw
@@ -73,34 +71,10 @@ public partial class App : Application
         var intent = ActivationIntentModel.Parse(
             Environment.GetCommandLineArgs().Skip(1).ToList(), Directory.Exists);
 
-        _window = new MainWindow();
-        _window.Activate();
-
-        if (intent is not null)
-        {
-            _window.SetPendingLaunchIntent(intent);
-        }
-    }
-
-    // Marshal a redirected activation (a second launch while this instance is
-    // already running) onto the window's dispatcher: bring it forward always,
-    // matching macOS, where every activation focuses the app even when the URL
-    // carries no action, then dispatch the parsed intent when there is one.
-    internal void HandleRedirectedActivation(ActivationIntent? intent)
-    {
-        var window = _window;
-        if (window is null)
-        {
-            return;
-        }
-
-        window.DispatcherQueue.TryEnqueue(() =>
-        {
-            window.BringToForeground();
-            if (intent is not null)
-            {
-                _ = window.HandleActivationIntent(intent);
-            }
-        });
+        // Decide the first window: MainWindow when a library opens, else the
+        // welcome window. MainWindow is never constructed before a library is
+        // actually opening, so launch shows no empty shell. The coordinator
+        // (App.Session) owns the window swap from here on.
+        StartSession(intent);
     }
 }
