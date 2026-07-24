@@ -35,6 +35,10 @@ public sealed partial class MainWindow : Window
     // browser reads. The store is constructed here (composition root) and handed to
     // the browser view along with the ContentColumn's named elements.
     private readonly SessionStore _session;
+    // Root object for the open library: the narrow domain services (and, further
+    // on, the store bundle) built once around the session. Views and stores read
+    // their service off this instead of the session + NativeBae directly.
+    private readonly AppService _appService;
     private readonly LibraryBrowserStore _browser;
     // The library content column: album grid, composer/artist lists, and search,
     // with the mode/sort/collapse chrome around them. Owns its own browse state.
@@ -111,8 +115,9 @@ public sealed partial class MainWindow : Window
         // browser reads. The store sets its collections' ItemsSource in code (no
         // x:Bind), so nothing here needs to exist before InitializeComponent.
         _session = session;
+        _appService = new AppService(_session);
         _closeToWelcome = closeToWelcome;
-        _browser = new LibraryBrowserStore(_session, DispatcherQueue);
+        _browser = new LibraryBrowserStore(_appService.Library, _session, DispatcherQueue);
 
         InitializeComponent();
         Closed += OnClosed;

@@ -34,6 +34,7 @@ internal sealed class LibraryBrowserStore
 {
     private const ulong PageSize = 200;
 
+    private readonly LibraryService _library;
     private readonly SessionStore _session;
     private readonly DispatcherQueue _dispatcher;
 
@@ -43,8 +44,9 @@ internal sealed class LibraryBrowserStore
     public IncrementalBrowserCollection<ComposerSummary> Composers { get; }
     public IncrementalBrowserCollection<ArtistSummary> Artists { get; }
 
-    public LibraryBrowserStore(SessionStore session, DispatcherQueue dispatcher)
+    public LibraryBrowserStore(LibraryService library, SessionStore session, DispatcherQueue dispatcher)
     {
+        _library = library;
         _session = session;
         _dispatcher = dispatcher;
         Albums = new IncrementalBrowserCollection<Album>(FetchAlbumPage, LogPageError("albums"));
@@ -66,8 +68,7 @@ internal sealed class LibraryBrowserStore
     // collection so the rest pages in as the grid scrolls.
     public BrowserGridLoad LoadAlbums()
     {
-        var (current, page) = _session.WithCurrentHandle(
-            handle => NativeBae.AlbumPage(handle, 0, PageSize, Sort.Albums.Items));
+        var (current, page) = _library.AlbumPage(0, PageSize, Sort.Albums.Items);
         if (!current)
         {
             return new BrowserGridLoad(BrowserMode.Albums, BrowserLoadResult.HandleGone, null, false);
@@ -90,7 +91,7 @@ internal sealed class LibraryBrowserStore
             album.AttachCover(handle, _dispatcher);
             Albums.Add(album);
         }
-        var (countCurrent, total) = _session.WithCurrentHandle(NativeBae.AlbumCount);
+        var (countCurrent, total) = _library.AlbumCount();
         Albums.SeedFirstPage(countCurrent ? checked((ulong)total) : (ulong)page.Albums.Count, (ulong)page.Albums.Count);
 
         return new BrowserGridLoad(BrowserMode.Albums, BrowserLoadResult.Loaded, null, page.Albums.Count == 0);
@@ -102,8 +103,7 @@ internal sealed class LibraryBrowserStore
     public BrowserGridLoad LoadComposers()
     {
         Composers.Clear();
-        var (current, page) = _session.WithCurrentHandle(
-            handle => NativeBae.ComposerPage(handle, 0, PageSize, Sort.Composers.Items));
+        var (current, page) = _library.ComposerPage(0, PageSize, Sort.Composers.Items);
         if (!current)
         {
             return new BrowserGridLoad(BrowserMode.Composers, BrowserLoadResult.HandleGone, null, false);
@@ -124,7 +124,7 @@ internal sealed class LibraryBrowserStore
             composer.AttachCover(handle, _dispatcher);
             Composers.Add(composer);
         }
-        var (countCurrent, total) = _session.WithCurrentHandle(NativeBae.ComposerCount);
+        var (countCurrent, total) = _library.ComposerCount();
         Composers.SeedFirstPage(countCurrent ? checked((ulong)total) : (ulong)page.Composers.Count, (ulong)page.Composers.Count);
 
         return new BrowserGridLoad(BrowserMode.Composers, BrowserLoadResult.Loaded, null, page.Composers.Count == 0);
@@ -136,8 +136,7 @@ internal sealed class LibraryBrowserStore
     public BrowserGridLoad LoadArtists()
     {
         Artists.Clear();
-        var (current, page) = _session.WithCurrentHandle(
-            handle => NativeBae.ArtistPage(handle, 0, PageSize, Sort.Artists.Items));
+        var (current, page) = _library.ArtistPage(0, PageSize, Sort.Artists.Items);
         if (!current)
         {
             return new BrowserGridLoad(BrowserMode.Artists, BrowserLoadResult.HandleGone, null, false);
@@ -158,7 +157,7 @@ internal sealed class LibraryBrowserStore
             artist.AttachCover(handle, _dispatcher);
             Artists.Add(artist);
         }
-        var (countCurrent, total) = _session.WithCurrentHandle(NativeBae.ArtistCount);
+        var (countCurrent, total) = _library.ArtistCount();
         Artists.SeedFirstPage(countCurrent ? checked((ulong)total) : (ulong)page.Artists.Count, (ulong)page.Artists.Count);
 
         return new BrowserGridLoad(BrowserMode.Artists, BrowserLoadResult.Loaded, null, page.Artists.Count == 0);
@@ -169,8 +168,7 @@ internal sealed class LibraryBrowserStore
     private (bool Current, IReadOnlyList<Album>? Items, string? Error) FetchAlbumPage(
         ulong offset, ulong limit)
     {
-        var (current, page) = _session.WithCurrentHandle(
-            handle => NativeBae.AlbumPage(handle, offset, limit, Sort.Albums.Items));
+        var (current, page) = _library.AlbumPage(offset, limit, Sort.Albums.Items);
         if (!current)
         {
             return (false, null, null);
@@ -194,8 +192,7 @@ internal sealed class LibraryBrowserStore
     private (bool Current, IReadOnlyList<ComposerSummary>? Items, string? Error) FetchComposerPage(
         ulong offset, ulong limit)
     {
-        var (current, page) = _session.WithCurrentHandle(
-            handle => NativeBae.ComposerPage(handle, offset, limit, Sort.Composers.Items));
+        var (current, page) = _library.ComposerPage(offset, limit, Sort.Composers.Items);
         if (!current)
         {
             return (false, null, null);
@@ -219,8 +216,7 @@ internal sealed class LibraryBrowserStore
     private (bool Current, IReadOnlyList<ArtistSummary>? Items, string? Error) FetchArtistPage(
         ulong offset, ulong limit)
     {
-        var (current, page) = _session.WithCurrentHandle(
-            handle => NativeBae.ArtistPage(handle, offset, limit, Sort.Artists.Items));
+        var (current, page) = _library.ArtistPage(offset, limit, Sort.Artists.Items);
         if (!current)
         {
             return (false, null, null);
@@ -246,7 +242,7 @@ internal sealed class LibraryBrowserStore
     // error result passes through untouched.
     public BrowserSearch Search(string query)
     {
-        var (current, search) = _session.WithCurrentHandle(handle => NativeBae.Search(handle, query));
+        var (current, search) = _library.Search(query);
         if (!current)
         {
             return new BrowserSearch(HandleGone: true, null, null);
