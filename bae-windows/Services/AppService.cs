@@ -1,4 +1,5 @@
 using System;
+using uniffi.bae_bridge;
 
 namespace Bae.Windows;
 
@@ -28,4 +29,10 @@ internal sealed class AppService
         Downloads = DownloadsService.FromSession(session);
         Sync = SyncService.FromSession(session);
     }
+
+    /// <summary>Report that a host UI screen opened, as a typed telemetry event
+    /// through the process-lifetime sink. Infallible; the core owns every other
+    /// event. The macOS AppService.reportScreen analog.</summary>
+    public void ReportScreen(BridgeScreen screen) =>
+        NativeBae.ReportScreen(BaeDiagnostics.Handle, screen);
 }

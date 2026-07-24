@@ -76,7 +76,7 @@ public sealed partial class MainWindow : Window
         _session.Subscribe();
         // Host-originated telemetry: the library screen opened, through the
         // standalone sink. Infallible.
-        NativeBae.ReportScreen(BaeDiagnostics.Handle, BridgeScreen.Library);
+        _appService.ReportScreen(BridgeScreen.Library);
     }
 
     // Turn a parsed activation intent (the folder verb, a dropped-on-the-exe
@@ -127,7 +127,7 @@ public sealed partial class MainWindow : Window
         else
         {
             var reconnect = new Button { Content = Loc.Chrome("sync.reconnect") };
-            reconnect.Click += (_, _) => WithCurrentHandle(NativeBae.TriggerSync);
+            reconnect.Click += (_, _) => _appService.Sync.TriggerSync();
             SyncBanner.Severity = InfoBarSeverity.Error;
             SyncBanner.Title = Loc.Chrome("sync.error_title");
             SyncBanner.Message = _sync.ErrorText;
@@ -202,9 +202,6 @@ public sealed partial class MainWindow : Window
 
     private System.Threading.Tasks.Task ShutdownAndFreeCurrentHandle() =>
         _session.ShutdownAndFreeCurrentHandle();
-
-    private bool WithCurrentHandle(Action<AppHandle> action) =>
-        _session.WithCurrentHandle(action);
 
     private LibraryHandle? CurrentHandleOrNull() =>
         _session.CurrentHandleOrNull();

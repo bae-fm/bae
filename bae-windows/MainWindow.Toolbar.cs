@@ -28,7 +28,7 @@ public sealed partial class MainWindow : Window
     private void OnSettingsClick(object sender, RoutedEventArgs e) => _settingsWindow.Show();
 
     private void OnShuffleLibraryClick(object sender, RoutedEventArgs e) =>
-        WithCurrentHandle(NativeBae.PlayLibraryShuffled);
+        _appService.Playback.PlayLibraryShuffled();
 
     private async void OnCloseLibraryClick(object sender, RoutedEventArgs e) => await _closeToWelcome();
 }
