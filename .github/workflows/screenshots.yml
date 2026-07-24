@@ -99,7 +99,7 @@ jobs:
     name: Capture Windows
     runs-on: windows-latest
     env:
-      FFMPEG_VERSION: v8.1.2-bae6
+      FFMPEG_VERSION: v8.1.2-bae7
     steps:
       - uses: actions/checkout@v6
         with:
@@ -128,11 +128,6 @@ jobs:
           echo "FFMPEG_DIR=$dist" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
           echo "BINDGEN_EXTRA_CLANG_ARGS=-I$dist\include" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
           echo "$dist\bin" | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
-      - name: Provision ffmpeg's mingw runtime deps (msys2)
-        shell: pwsh
-        run: |
-          C:\msys64\usr\bin\bash.exe -lc "pacman -S --noconfirm --needed mingw-w64-x86_64-lame mingw-w64-x86_64-opus mingw-w64-x86_64-libiconv mingw-w64-x86_64-zlib mingw-w64-x86_64-gcc-libs"
-          echo "C:\msys64\mingw64\bin" | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
       - name: Install .NET 8 SDK
         uses: actions/setup-dotnet@v5
         with:

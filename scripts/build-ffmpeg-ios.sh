@@ -18,7 +18,7 @@
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-VERSION="v8.1.2-bae6"
+VERSION="v8.1.2-bae7"
 BASE_URL="https://github.com/bae-fm/bae-ffmpeg/releases/download/$VERSION"
 OUT="$REPO_ROOT/bae-ffmpeg/ios"
 

@@ -16,7 +16,7 @@ jobs:
   build:
     runs-on: windows-latest
     env:
-      FFMPEG_VERSION: v8.1.2-bae6
+      FFMPEG_VERSION: v8.1.2-bae7
     steps:
       - uses: actions/checkout@v6
         with:
@@ -54,14 +54,6 @@ jobs:
           # Homebrew include args .cargo/config.toml sets with force=false.
           echo "BINDGEN_EXTRA_CLANG_ARGS=-I$dist\include" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
           echo "$dist\bin" | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
-
-      - name: Provision ffmpeg's mingw runtime deps (msys2)
-        shell: pwsh
-        run: |
-          # bae-ffmpeg's Windows DLLs are a mingw build and depend on the mingw
-          # runtime (libiconv/lame/zlib/winpthread) without bundling it.
-          C:\msys64\usr\bin\bash.exe -lc "pacman -S --noconfirm --needed mingw-w64-x86_64-lame mingw-w64-x86_64-opus mingw-w64-x86_64-libiconv mingw-w64-x86_64-zlib mingw-w64-x86_64-gcc-libs"
-          echo "C:\msys64\mingw64\bin" | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
 
       - name: Check Rust formatting
         run: cargo fmt --all -- --check
@@ -148,6 +140,12 @@ jobs:
 
       - name: Build the WinUI app (full bindings)
         run: msbuild bae-windows\bae-windows.csproj /restore /p:Configuration=Debug /p:Platform=x64 /p:EnforceCodeStyleInBuild=true /p:BridgeBindingsDir=..\bae-bridge\csharp-bindings-full
+
+      - name: Run bae-core unit tests (Windows)
+        # The only place bae's Rust actually EXECUTES on Windows. Windows-only
+        # code paths (the atomic-write directory handling, path semantics) shipped
+        # broken while CI merely compiled them; this is the regression gate.
+        run: cargo test -p bae-core --lib --target x86_64-pc-windows-msvc
 
       - name: Clippy (baeium / default features)
         # The host clippy in ci.yml targets macOS, so lint the Windows target too.

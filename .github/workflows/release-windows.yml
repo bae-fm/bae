@@ -68,7 +68,7 @@ jobs:
     runs-on: windows-latest
     needs: calculate-version
     env:
-      FFMPEG_VERSION: v8.1.2-bae6
+      FFMPEG_VERSION: v8.1.2-bae7
       BAE_ENVIRONMENT: production
       BAE_DATADOG_SITE: ${{ secrets.BAE_DATADOG_SITE }}
       BAE_DATADOG_CLIENT_TOKEN: ${{ secrets.BAE_DATADOG_CLIENT_TOKEN }}
@@ -135,12 +135,6 @@ jobs:
           echo "BINDGEN_EXTRA_CLANG_ARGS=-I$dist\include" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
           echo "$dist\bin" | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
 
-      - name: Provision ffmpeg's mingw runtime deps (msys2)
-        shell: pwsh
-        run: |
-          C:\msys64\usr\bin\bash.exe -lc "pacman -S --noconfirm --needed mingw-w64-x86_64-lame mingw-w64-x86_64-opus mingw-w64-x86_64-libiconv mingw-w64-x86_64-zlib mingw-w64-x86_64-gcc-libs"
-          echo "C:\msys64\mingw64\bin" | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
-
       - name: Install uniffi-bindgen-cs
         run: cargo install --git https://github.com/NordSecurity/uniffi-bindgen-cs.git --tag 'v0.11.0+v0.31.0' uniffi-bindgen-cs --locked
 
@@ -205,12 +199,9 @@ jobs:
           Copy-Item "target-windows\x86_64-pc-windows-msvc\release\bae_bridge.dll" $stage -Force
           Copy-Item "target-windows\x86_64-pc-windows-msvc\release\uniffi_bae_bridge.dll" $stage -Force
 
-          # FFmpeg DLLs (the bridge links them) + their mingw runtime deps.
+          # FFmpeg DLLs (the bridge links them). Self-contained as of
+          # v8.1.2-bae7 — their codec deps and toolchain runtime are linked in.
           Copy-Item "$env:FFMPEG_DIR\bin\*.dll" $stage -Force
-          foreach ($d in @("libiconv-2.dll","libmp3lame-0.dll","libopus-0.dll","zlib1.dll","libwinpthread-1.dll","libgcc_s_seh-1.dll","libstdc++-6.dll")) {
-            $src = "C:\msys64\mingw64\bin\$d"
-            if (Test-Path $src) { Copy-Item $src $stage -Force }
-          }
           if ("${{ matrix.edition }}" -eq "full") {
             $sentryDll = Get-ChildItem sentry-native-build -Recurse -Filter sentry.dll | Select-Object -First 1
             $crashpadHandler = Get-ChildItem sentry-native-build -Recurse -Filter crashpad_handler.exe | Select-Object -First 1
