@@ -87,35 +87,38 @@ if (Test-Path $exePri) {
     Copy-Item $pri $exeDir -Force
 }
 
-# 5. Run the capture. It renders every scene and exits 0 (all) or 1 (any failed).
-#    Bound the run so a render hang fails the job rather than blocking forever.
-$proc = Start-Process -FilePath $exe -ArgumentList @('--capture-shots', $OutputDir) -PassThru
-$exited = $proc.WaitForExit(180000)
-
-# The app has no visible stderr, so always surface its stage log — on success,
-# failure, and timeout alike — before deciding the run's fate.
+# 5. Capture one scene per process. A second RenderTargetBitmap in one process
+#    wedges headless (the first render always succeeds, the second always hangs),
+#    so each enabled scene gets its own exe run with its own bounded timeout. This
+#    list is the source of truth for both the loop and the expected-PNG check;
+#    keep it in sync with the enabled scenes in ShotCapture.Scenes.
+$scenes = @('welcome', 'album-detail', 'library-grid')
 $log = Join-Path $OutputDir 'capture.log'
-Write-Host '----- capture.log -----'
-if (Test-Path $log) { Get-Content $log | ForEach-Object { Write-Host $_ } }
-else { Write-Host '(capture.log not found)' }
-Write-Host '----- end capture.log -----'
-
-if (-not $exited) {
-    $proc.Kill()
-    throw 'capture run timed out'
-}
-if ($proc.ExitCode -ne 0) { throw "capture run exited $($proc.ExitCode)" }
-
-# 6. Verify the expected PNGs exist — the loud check that a scene did not silently
-#    vanish. Keep this list in sync with the enabled scenes in ShotCapture.Scenes
-#    (library-grid is staged but disabled while its headless render wedge is
-#    investigated, so it is deliberately absent here).
-$expected = @('welcome', 'album-detail')
 $missing = @()
-foreach ($scene in $expected) {
+foreach ($scene in $scenes) {
+    if (Test-Path $log) { Remove-Item $log -Force }
+    Write-Host "=== capturing scene: $scene ==="
+    $proc = Start-Process -FilePath $exe `
+        -ArgumentList @('--capture-shots', $OutputDir, '--capture-scene', $scene) -PassThru
+    $exited = $proc.WaitForExit(90000)
+
+    # The app has no visible stderr, so always surface its stage log for this
+    # scene, whether it rendered, failed, or wedged.
+    Write-Host "----- capture.log ($scene) -----"
+    if (Test-Path $log) { Get-Content $log | ForEach-Object { Write-Host $_ } }
+    else { Write-Host '(capture.log not found)' }
+    Write-Host "----- end capture.log ($scene) -----"
+
+    if (-not $exited) {
+        $proc.Kill()
+        Write-Host "scene '$scene' timed out"
+    }
+
     $png = Join-Path $OutputDir "$scene@windows.png"
-    if (-not (Test-Path $png)) { $missing += $png }
+    if (-not (Test-Path $png)) { $missing += $scene }
 }
+
+# The loud check that no scene silently vanished.
 if ($missing.Count -gt 0) { throw "missing captures: $($missing -join ', ')" }
 
-Write-Host "captured $($expected.Count) scenes to $OutputDir"
+Write-Host "captured $($scenes.Count) scenes to $OutputDir"

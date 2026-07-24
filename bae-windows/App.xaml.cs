@@ -26,13 +26,14 @@ public partial class App : Application
     {
 #if DEBUG
         ShotCapture.Log("App.OnLaunched entry");
-        // Screenshot-capture mode: render the named preview scenes to PNGs and
-        // exit. It never opens the keychain, a library, or ~/.bae, so it returns
-        // before any of the normal library startup below runs.
-        if (ShotCapture.TryGetOutputDir(Environment.GetCommandLineArgs(), out var shotsDir))
+        // Screenshot-capture mode: render the requested preview scene(s) to PNGs
+        // and exit. It never opens the keychain, a library, or ~/.bae, so it
+        // returns before any of the normal library startup below runs.
+        var commandLine = Environment.GetCommandLineArgs();
+        if (ShotCapture.TryGetOutputDir(commandLine, out var shotsDir))
         {
             ShotCapture.Log("App.OnLaunched: capture branch taken");
-            _ = ShotCapture.RunAsync(shotsDir);
+            _ = ShotCapture.RunAsync(shotsDir, ShotCapture.GetSceneArg(commandLine));
             return;
         }
 #endif

@@ -2,7 +2,6 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -16,11 +15,16 @@ using Windows.Storage.Streams;
 namespace Bae.Windows;
 
 // DEBUG-only screenshot capture: `bae-windows.exe --capture-shots <dir>` renders
-// each named scene to <dir>\<scene>@windows.png and exits 0 (all scenes rendered)
-// or 1 (any scene failed). The scenes reuse the same fixtures (PreviewData) and
-// pure builders (WelcomeView, AlbumExpansionRows) the component gallery and the
-// production window render — no re-implemented view content. A scene that would
-// need a live library handle is absent from the registry, not faked.
+// scenes to <dir>\<scene>@windows.png. A second RenderTargetBitmap in one process
+// wedges headless (the first always succeeds, the second always hangs), so the
+// capture script drives ONE scene per process via `--capture-scene <id>`; without
+// that flag every enabled scene renders in the one process (fine on a real
+// desktop, wedges headless). Each run exits 0 (rendered) or 1 (failed).
+//
+// The scenes reuse the same fixtures (PreviewData) and pure builders (WelcomeView,
+// AlbumExpansionRows, AlbumCardVisual) the component gallery and the production
+// window render — no re-implemented view content. A scene that would need a live
+// library handle is absent from the registry, not faked.
 //
 // The capture runs the real app so RenderTargetBitmap has a live visual tree, but
 // Program.Main skips the Velopack hooks and single-instance redirect in capture
@@ -32,6 +36,10 @@ internal static class ShotCapture
     // The command-line flag App.OnLaunched checks. The output directory is the
     // argument that follows it (the capture script creates it before launch).
     internal const string Flag = "--capture-shots";
+
+    // Optional flag selecting a single scene by id (the argument that follows it),
+    // so the script can run one scene per process. Absent → all enabled scenes.
+    internal const string SceneFlag = "--capture-scene";
 
     // The platform suffix in the shared "<scene>@<platform>.png" gallery contract.
     private const string Platform = "windows";
@@ -47,11 +55,6 @@ internal static class ShotCapture
     private const int FrameTimeoutMs = 5000;
     private const int RenderTimeoutMs = 20000;
     private const int PixelsTimeoutMs = 10000;
-
-    // The off-thread watchdog window per scene — longer than every on-thread wait
-    // above combined, so it fires only on a true UI-thread block, well under the
-    // script's global run timeout.
-    private const int SceneWatchdogMs = 60000;
 
     // Point the log at <outputDir>\capture.log and record process entry. Called
     // from Program.Main before any startup plumbing.
@@ -96,12 +99,9 @@ internal static class ShotCapture
     {
         new Scene("welcome", 900, 600, BuildWelcome),
         new Scene("album-detail", 720, 540, BuildAlbumDetail),
-        // library-grid renders in the component gallery but wedges the UI thread
-        // at RenderTargetBitmap headless on the CI runner (no WATCHDOG/timeout
-        // fires — the thread is fully blocked). Kept staged but disabled while the
-        // wedge is investigated on a local VM; the gallery shows the gap honestly
-        // rather than a faked tile. Flip Enabled once the render path is fixed.
-        new Scene("library-grid", 1100, 700, BuildLibraryGrid, Enabled: false),
+        // Re-enabled now that each scene renders in its own process — the earlier
+        // wedge was the second render in a shared process, not this scene.
+        new Scene("library-grid", 1100, 700, BuildLibraryGrid),
     };
 
     // True when args carry the capture flag; then outputDir is the directory that
@@ -128,25 +128,42 @@ internal static class ShotCapture
         return false;
     }
 
-    // Render every scene to <outputDir>\<id>@windows.png, then exit the process.
-    // Each scene is attempted; a scene that throws is reported and marks the run
-    // failed, but the rest still render, so one broken scene never hides the
-    // others. The exit code is 0 only when every scene succeeded.
-    internal static async Task RunAsync(string outputDir)
+    // The single-scene id from --capture-scene, or null when the flag is absent
+    // (render all enabled scenes). Not a hard error when malformed — the caller
+    // (the script) always supplies a valid id, and a null falls back to all.
+    internal static string? GetSceneArg(IReadOnlyList<string> args)
     {
-        Log("RunAsync begin");
+        for (var i = 0; i < args.Count; i++)
+        {
+            if (args[i] == SceneFlag && i + 1 < args.Count && !string.IsNullOrEmpty(args[i + 1]))
+            {
+                return args[i + 1];
+            }
+        }
+
+        return null;
+    }
+
+    // Render the requested scene(s) to <outputDir>\<id>@windows.png, then exit the
+    // process. sceneId names one scene (one scene per process, the headless-safe
+    // path the script drives); null renders every enabled scene in this process.
+    // The exit code is 0 only when every rendered scene succeeded.
+    internal static async Task RunAsync(string outputDir, string? sceneId)
+    {
+        Log(sceneId is null ? "RunAsync begin (all enabled scenes)" : $"RunAsync begin (scene={sceneId})");
         var failed = false;
+        var rendered = 0;
         try
         {
             var folder = await StorageFolder.GetFolderFromPathAsync(outputDir);
             Log($"output folder resolved: {outputDir}");
             foreach (var scene in Scenes)
             {
-                if (!scene.Enabled)
+                if (!scene.Enabled || (sceneId is not null && scene.Id != sceneId))
                 {
-                    Log($"scene '{scene.Id}': skipped (disabled — under investigation)");
                     continue;
                 }
+                rendered++;
                 try
                 {
                     await CaptureAsync(scene, folder);
@@ -157,6 +174,12 @@ internal static class ShotCapture
                     failed = true;
                     Log($"scene '{scene.Id}': FAILED: {exception}");
                 }
+            }
+
+            if (rendered == 0)
+            {
+                failed = true;
+                Log($"no scene rendered (requested '{sceneId}' is unknown or disabled)");
             }
         }
         catch (Exception exception)
@@ -198,11 +221,6 @@ internal static class ShotCapture
             (int)Math.Ceiling(scene.Width * scale), (int)Math.Ceiling(scene.Height * scale)));
         Log($"scene '{scene.Id}': window activated, scale={scale}");
 
-        // A background watchdog logs even if the UI thread wedges — a render that
-        // blocks would otherwise silence the on-thread timeouts below, so an
-        // off-thread timer is what surfaces the stall. Disposed in the finally
-        // once the scene settles.
-        var watchdog = StartWatchdog($"scene '{scene.Id}'", SceneWatchdogMs);
         try
         {
             if (await AwaitOr(loaded.Task, LoadedTimeoutMs, $"scene '{scene.Id}' Loaded"))
@@ -265,7 +283,6 @@ internal static class ShotCapture
         }
         finally
         {
-            watchdog.Dispose();
             window.Close();
         }
     }
@@ -285,18 +302,6 @@ internal static class ShotCapture
         Log($"{stage}: TIMED OUT after {timeoutMs}ms");
         return false;
     }
-
-    // A raw threadpool timer that fires once after timeoutMs unless disposed
-    // first. Deliberately free of async/await, the TaskScheduler, and any
-    // dispatcher — its callback is invoked directly by the threadpool timer
-    // queue, so it still writes when the UI thread is fully wedged (which silences
-    // the on-thread AwaitOr timeouts). Dispose stops it.
-    private static Timer StartWatchdog(string stage, int timeoutMs) =>
-        new(
-            _ => Log($"{stage}: WATCHDOG {timeoutMs}ms elapsed with no completion — UI thread likely blocked (e.g. inside RenderAsync)"),
-            null,
-            timeoutMs,
-            Timeout.Infinite);
 
     // Whether the pixel buffer is entirely zero — a transparent-black (blank)
     // render. A real opaque scene has 0xFF alpha bytes, so this discriminates a
