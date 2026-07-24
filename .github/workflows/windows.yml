@@ -65,7 +65,7 @@ jobs:
           $dist = "$PWD\bae-ffmpeg\dist"
           New-Item -ItemType Directory -Force -Path $dist | Out-Null
           $url = "https://github.com/bae-fm/bae-ffmpeg/releases/download/$env:FFMPEG_VERSION/ffmpeg-windows-${{ matrix.ffmpeg_arch }}.zip"
-          curl.exe -L $url -o ffmpeg.zip
+          curl.exe -fsSL --retry 5 --retry-delay 3 $url -o ffmpeg.zip
           Expand-Archive -Path ffmpeg.zip -DestinationPath $dist -Force
           # The Windows build ships the .lib import libs in bin/ next to the DLLs,
           # with no lib/ or pkgconfig/; ffmpeg-sys-next expects the libs under lib/.

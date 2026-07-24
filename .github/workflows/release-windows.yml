@@ -158,7 +158,7 @@ jobs:
           $dist = "$PWD\bae-ffmpeg\dist"
           New-Item -ItemType Directory -Force -Path $dist | Out-Null
           $url = "https://github.com/bae-fm/bae-ffmpeg/releases/download/$env:FFMPEG_VERSION/ffmpeg-windows-${{ matrix.arch.ffmpeg_arch }}.zip"
-          curl.exe -L $url -o ffmpeg.zip
+          curl.exe -fsSL --retry 5 --retry-delay 3 $url -o ffmpeg.zip
           Expand-Archive -Path ffmpeg.zip -DestinationPath $dist -Force
           New-Item -ItemType Directory -Force -Path "$dist\lib" | Out-Null
           Copy-Item "$dist\bin\*.lib" "$dist\lib\" -Force
@@ -217,7 +217,7 @@ jobs:
         shell: pwsh
         run: |
           $version = "0.13.8"
-          curl.exe -L "https://github.com/getsentry/sentry-native/releases/download/$version/sentry-native.zip" -o sentry-native.zip
+          curl.exe -fsSL --retry 5 --retry-delay 3 "https://github.com/getsentry/sentry-native/releases/download/$version/sentry-native.zip" -o sentry-native.zip
           Expand-Archive -Path sentry-native.zip -DestinationPath sentry-native-src -Force
           cmake -S sentry-native-src -B sentry-native-build -A ${{ matrix.arch.msbuild_platform }} `
             -DSENTRY_BACKEND=crashpad `
