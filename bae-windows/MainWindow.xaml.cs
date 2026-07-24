@@ -162,6 +162,12 @@ public sealed partial class MainWindow : Window
         _cast = new CastStore(_session);
         _sync = new SyncStatusStore(_session);
         _sync.Changed += RenderSyncStatus;
+        // Built before the now-playing bar: its constructor reads the
+        // remaining-time preference through the callback below, so the mirror
+        // must exist (Current stays null until a library seeds it).
+        _settings = new SettingsStore(_session);
+        // The content column's width cap follows the synced full-width preference.
+        _settings.Changed += ApplyLibraryWidth;
         _nowPlayingBar = new NowPlayingBarController(
             _session,
             _playback,
@@ -338,9 +344,6 @@ public sealed partial class MainWindow : Window
         // re-read on the projection registry while open, opens the approve flow
         // for add-device, and shares the one UpdateService with the launch-time
         // check.
-        _settings = new SettingsStore(_session);
-        // The content column's width cap follows the synced full-width preference.
-        _settings.Changed += ApplyLibraryWidth;
         _membersPane = new MembersPane(_session);
         _settingsWindow = new SettingsWindow(
             _session,
