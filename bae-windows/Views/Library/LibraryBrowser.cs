@@ -146,6 +146,7 @@ internal sealed partial class LibraryBrowser
         // which calls back for the pane visibility and album reveal this view owns.
         _browserPanes = new BrowserPanes(
             session,
+            library,
             mediaPaths,
             dispatcher,
             searchResultsList,

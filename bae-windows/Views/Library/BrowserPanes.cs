@@ -40,6 +40,7 @@ internal sealed partial class BrowserPanes
         : SearchResultRow;
 
     private readonly SessionStore _session;
+    private readonly LibraryService _library;
     private readonly MediaPathsService _mediaPaths;
     private readonly DispatcherQueue _dispatcher;
     private readonly ListView _searchResultsList;
@@ -54,6 +55,7 @@ internal sealed partial class BrowserPanes
 
     public BrowserPanes(
         SessionStore session,
+        LibraryService library,
         MediaPathsService mediaPaths,
         DispatcherQueue dispatcher,
         ListView searchResultsList,
@@ -66,6 +68,7 @@ internal sealed partial class BrowserPanes
         Action dismissSearch)
     {
         _session = session;
+        _library = library;
         _mediaPaths = mediaPaths;
         _dispatcher = dispatcher;
         _dismissSearch = dismissSearch;

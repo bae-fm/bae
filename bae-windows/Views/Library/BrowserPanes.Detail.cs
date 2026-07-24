@@ -18,8 +18,7 @@ internal sealed partial class BrowserPanes
 {
     public async System.Threading.Tasks.Task ShowComposerDetail(string artistId)
     {
-        var (current, response) = await _session.RunForCurrentHandle(
-            handle => NativeBae.GetComposerDetail(handle, artistId));
+        var (current, response) = await _library.ComposerDetail(artistId);
         if (!current)
         {
             return;
@@ -90,8 +89,7 @@ internal sealed partial class BrowserPanes
 
     public async System.Threading.Tasks.Task ShowArtistDetail(string artistId)
     {
-        var (current, response) = await _session.RunForCurrentHandle(
-            handle => NativeBae.GetArtistDetail(handle, artistId));
+        var (current, response) = await _library.ArtistDetail(artistId);
         if (!current)
         {
             return;
@@ -297,8 +295,7 @@ internal sealed partial class BrowserPanes
 
     private async System.Threading.Tasks.Task ShowWorkDetail(string workId, bool replacePane = true)
     {
-        var (current, response) = await _session.RunForCurrentHandle(
-            handle => NativeBae.GetWorkDetail(handle, workId));
+        var (current, response) = await _library.WorkDetail(workId);
         if (!current)
         {
             return;
