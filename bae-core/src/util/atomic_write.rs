@@ -71,16 +71,15 @@ fn sync_parent_dir(parent: &Path) -> std::io::Result<()> {
 }
 
 #[cfg(windows)]
-fn sync_parent_dir(parent: &Path) -> std::io::Result<()> {
-    use std::os::windows::fs::OpenOptionsExt;
-
-    const FILE_FLAG_BACKUP_SEMANTICS: u32 = 0x0200_0000;
-
-    std::fs::OpenOptions::new()
-        .read(true)
-        .custom_flags(FILE_FLAG_BACKUP_SEMANTICS)
-        .open(parent)?
-        .sync_all()
+fn sync_parent_dir(_parent: &Path) -> std::io::Result<()> {
+    // The POSIX parent-directory fsync idiom does not translate: FlushFileBuffers
+    // on a directory handle needs write access, which a read-only open lacks, so
+    // the previous implementation failed every atomic write with ERROR_ACCESS_DENIED
+    // — os error 5 with no path, the launch-blocking "create library" failure.
+    // NTFS journals metadata itself; durability of the rename does not hang on a
+    // directory flush the way POSIX rename durability does, which is why database
+    // engines skip directory syncing on Windows entirely.
+    Ok(())
 }
 
 #[cfg(not(any(unix, windows)))]
