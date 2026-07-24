@@ -145,7 +145,9 @@ jobs:
         # The only place bae's Rust actually EXECUTES on Windows. Windows-only
         # code paths (the atomic-write directory handling, path semantics) shipped
         # broken while CI merely compiled them; this is the regression gate.
-        run: cargo test -p bae-core --lib --target x86_64-pc-windows-msvc
+        env:
+          RUST_BACKTRACE: "1"
+        run: cargo test -p bae-core --lib --target x86_64-pc-windows-msvc -- --nocapture --test-threads=1
 
       - name: Clippy (baeium / default features)
         # The host clippy in ci.yml targets macOS, so lint the Windows target too.

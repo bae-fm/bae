@@ -320,6 +320,22 @@ impl FileTree {
     /// Build a FileTree by recursively walking the filesystem from `root`.
     /// Skips hidden files/directories (names starting with '.') and noise files.
     pub(crate) fn from_filesystem(root: &Path) -> Result<Self, FolderScanError> {
+        // A root that exists but is not a directory is classified here to a
+        // stable, platform-independent error. Leaving it to `read_dir` below
+        // leaks the OS's own text — "Not a directory" on Unix, "The directory
+        // name is invalid" on Windows — which the watcher surfaces to the user
+        // verbatim. A *missing* root is deliberately left to `walk_dir`, so the
+        // rescan caller's `NotFound` branch still reconciles the folder's
+        // candidates to empty rather than treating it as a transient fault.
+        if let Ok(metadata) = fs::metadata(root) {
+            if !metadata.is_dir() {
+                return Err(FolderScanError::io(
+                    root,
+                    io::Error::from(io::ErrorKind::NotADirectory),
+                ));
+            }
+        }
+
         let mut files = Vec::new();
         Self::walk_dir(root, root, &mut files)?;
         Ok(Self::new(files))

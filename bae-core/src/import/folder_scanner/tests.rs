@@ -2078,13 +2078,7 @@ fn scan_reference_tree_matches_human_intent() {
 
     let top_level: std::collections::BTreeSet<String> = candidates
         .iter()
-        .map(|c| {
-            c.path
-                .strip_prefix(root)
-                .unwrap()
-                .to_string_lossy()
-                .to_string()
-        })
+        .map(|c| rel_slash(&c.path, root))
         .collect();
 
     let expected: std::collections::BTreeSet<String> = spec
@@ -2225,18 +2219,26 @@ struct ScenarioResult {
     root: PathBuf,
 }
 
+/// A candidate's path relative to `root`, rendered `/`-separated on every
+/// platform so the scenario assertions can compare against `/`-literal
+/// expectations. `Path::to_string_lossy` would emit the host separator (`\` on
+/// Windows) — the same reason production joins its `relative_path` from
+/// components rather than displaying the path.
+fn rel_slash(path: &Path, root: &Path) -> String {
+    path.strip_prefix(root)
+        .unwrap()
+        .components()
+        .map(|component| component.as_os_str().to_string_lossy())
+        .collect::<Vec<_>>()
+        .join("/")
+}
+
 impl ScenarioResult {
     /// Candidate rel paths, stripped of the tempdir prefix.
     fn top_level_paths(&self) -> Vec<String> {
         self.candidates
             .iter()
-            .map(|c| {
-                c.path
-                    .strip_prefix(&self.root)
-                    .unwrap()
-                    .to_string_lossy()
-                    .to_string()
-            })
+            .map(|c| rel_slash(&c.path, &self.root))
             .collect()
     }
 
