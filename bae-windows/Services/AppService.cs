@@ -16,6 +16,7 @@ internal sealed class AppService
     public MediaPathsService MediaPaths { get; }
     public PlaybackService Playback { get; }
     public QueueService Queue { get; }
+    public DownloadsService Downloads { get; }
 
     public AppService(SessionStore session)
     {
@@ -23,5 +24,6 @@ internal sealed class AppService
         MediaPaths = MediaPathsService.FromSession(session);
         Playback = PlaybackService.FromSession(session);
         Queue = QueueService.FromSession(session);
+        Downloads = DownloadsService.FromSession(session);
     }
 }

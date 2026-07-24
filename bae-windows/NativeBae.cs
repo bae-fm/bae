@@ -498,6 +498,10 @@ internal static class NativeBae
 
     internal static void RetryDownloads(AppHandle handle) => handle.RetryDownloads();
 
+    /// <summary>Cancel a release's download — drops a queued/failed entry or aborts
+    /// the in-flight one (the release stays cloud-only).</summary>
+    internal static void CancelDownload(AppHandle handle, string releaseId) => handle.CancelDownload(releaseId);
+
     internal static BridgeOutputSnapshot OutputSnapshot(AppHandle handle) =>
         handle.GetOutputSnapshot();
 
