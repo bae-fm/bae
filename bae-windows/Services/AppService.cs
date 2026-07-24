@@ -14,10 +14,14 @@ internal sealed class AppService
 {
     public LibraryService Library { get; }
     public MediaPathsService MediaPaths { get; }
+    public PlaybackService Playback { get; }
+    public QueueService Queue { get; }
 
     public AppService(SessionStore session)
     {
         Library = LibraryService.FromSession(session);
         MediaPaths = MediaPathsService.FromSession(session);
+        Playback = PlaybackService.FromSession(session);
+        Queue = QueueService.FromSession(session);
     }
 }
