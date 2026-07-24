@@ -173,27 +173,14 @@
   </Target>
 
   <!--
-    Unpackaged apps don't get a resources.pri built automatically. Compile every
-    Strings/<lang>/*.resw into one resources.pri next to the exe so ResourceLoader
-    resolves keys at runtime. makepri ships in the Windows SDK; priconfig.xml is
-    the committed config (stock makepri default with the MSIX <packaging> section
-    removed). Runs after build so the generated Core.resw is present.
+    No hand-rolled resources.pri: the SDK PRI pipeline compiles the explicit
+    PRIResource items above into the module PRI ($(AssemblyName).pri, present
+    in build and publish output alike) together with the framework resource
+    references self-contained deployment resolves WinUI's theme resources
+    through. A strings-only resources.pri beside it would shadow the module
+    PRI — MRT prefers that name for unpackaged apps — and the installed app
+    then dies on ms-appx:///Microsoft.UI.Xaml/Themes/themeresources.xaml.
   -->
-  <Target Name="GenerateResourcesPri" AfterTargets="Build">
-    <Exec
-      Command="makepri new /pr &quot;$(MSBuildProjectDirectory)\Strings&quot; /cf &quot;$(MSBuildProjectDirectory)\priconfig.xml&quot; /of &quot;$(OutDir)resources.pri&quot; /o"
-      ContinueOnError="false" />
-  </Target>
-
-  <!-- Publish computes its file list before GenerateResourcesPri runs, so the
-       build-output resources.pri never rides along; compile it straight into
-       the publish dir as well, or the installed app's ResourceLoader finds no
-       PRI and Loc dies at first use. -->
-  <Target Name="GenerateResourcesPriPublish" AfterTargets="Publish">
-    <Exec
-      Command="makepri new /pr &quot;$(MSBuildProjectDirectory)\Strings&quot; /cf &quot;$(MSBuildProjectDirectory)\priconfig.xml&quot; /of &quot;$(PublishDir)resources.pri&quot; /o"
-      ContinueOnError="false" />
-  </Target>
 
   <!-- The unpackaged app loads compiled XAML as loose .xbf files next to the
        exe (ms-appx URIs resolve against the app dir), and the WinUI targets
@@ -208,11 +195,6 @@
     <Copy SourceFiles="@(_LooseXbf)" DestinationFiles="@(_LooseXbf->'$(PublishDir)%(RecursiveDir)%(Filename)%(Extension)')" />
   </Target>
 
-  <!-- The committed resw + priconfig participate in the build but aren't compiled
-       as C#; mark them so they don't fall into the default C# globs. -->
-  <ItemGroup>
-    <None Include="priconfig.xml" />
-  </ItemGroup>
 
   <!--
     OAuth client credentials, supplied per build and gitignored. Copied next to the

@@ -90,14 +90,12 @@ jobs:
             rid: win-x64
             msbuild_platform: x64
             ffmpeg_arch: x86_64
-            sdk_bin_arch: x64
           - name: arm64
             runner: windows-11-arm
             target: aarch64-pc-windows-msvc
             rid: win-arm64
             msbuild_platform: ARM64
             ffmpeg_arch: aarch64
-            sdk_bin_arch: arm64
     steps:
       - uses: actions/checkout@v6
 
@@ -182,18 +180,6 @@ jobs:
 
       - name: Set up MSBuild
         uses: microsoft/setup-msbuild@v2
-
-      - name: Add Windows SDK bin to PATH (makepri for resources.pri)
-        shell: pwsh
-        run: |
-          # makepri.exe ships in the Windows 10 SDK but isn't on PATH on the
-          # runner; the csproj's GenerateResourcesPri target invokes it bare
-          # (see windows.yml). Add the newest SDK bin for this runner's arch.
-          $makepri = Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\bin\*\${{ matrix.arch.sdk_bin_arch }}\makepri.exe" -ErrorAction SilentlyContinue |
-            Sort-Object FullName -Descending | Select-Object -First 1
-          if (-not $makepri) { throw "makepri.exe not found in the Windows SDK" }
-          Add-Content -Path $env:GITHUB_PATH -Value $makepri.Directory.FullName
-          Write-Host "makepri on PATH: $($makepri.FullName)"
 
       - name: Build the WinUI app (Release, self-contained)
         # Self-contained twice over: SelfContained bundles the .NET runtime,

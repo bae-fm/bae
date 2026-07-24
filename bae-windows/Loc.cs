@@ -32,15 +32,17 @@ internal static class Loc
     // in the default Resources table. The second ResourceLoader argument is the
     // .resw subtree ("Core"); the default table takes no subtree.
     //
-    // The index is passed as an absolute path. A bare/relative resource-file name
-    // resolves against the process working directory, which is the install
-    // directory only when the app is launched from there; launched from elsewhere
-    // (the capture harness runs the exe from the repo root) the load throws
-    // FileNotFound. AppContext.BaseDirectory is the executable's own directory,
-    // where the build writes resources.pri, so the installed app and any
-    // launch-directory both resolve.
+    // The index is the SDK-built module PRI next to the exe, named after it
+    // ($(AssemblyName).pri — bae-windows.pri in dev, bae.pri / baeium.pri
+    // installed). It carries the resw tables together with the framework
+    // resource references self-contained installs resolve WinUI theme
+    // resources through; a separate strings-only resources.pri is not built —
+    // it would shadow the module PRI and break those theme lookups. Passed as
+    // an absolute path: a bare name resolves against the process working
+    // directory, which is not the install directory when launched from
+    // elsewhere (the capture harness runs the exe from the repo root).
     private static readonly string ResourceIndexPath =
-        Path.Combine(AppContext.BaseDirectory, "resources.pri");
+        Path.ChangeExtension(Environment.ProcessPath!, ".pri");
     private static readonly ResourceLoader CoreLoader = new(ResourceIndexPath, "Core");
     private static readonly ResourceLoader ChromeLoader = new(ResourceIndexPath);
 
