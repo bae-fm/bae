@@ -22,8 +22,19 @@ PLATFORM_LABELS = {
     "android": "Android",
     "windows": "Windows",
 }
-# Known scenes render in this order; unknown scene ids sort after, named as-is.
-SCENE_ORDER = ["welcome", "welcome-restore", "library-grid", "album-detail"]
+# The gallery is the stories' per-platform verification sheet: one row per
+# story scene (notes/desktop-stories.md), a column per platform. Scene ids are
+# story ids; a platform PNG with any other scene id is skipped (that platform's
+# harness renders scenes the stories don't cover yet).
+SCENE_ORDER = [
+    "story-1-first-run",
+    "story-3-empty-library",
+]
+
+STORY_LABELS = {
+    "story-1-first-run": "First run, empty machine",
+    "story-3-empty-library": "The empty library",
+}
 
 SHOT_RE = re.compile(r"^(?P<scene>[a-z0-9-]+)@(?P<platform>[a-z]+)\.png$")
 
@@ -40,10 +51,17 @@ def collect(shots_dir: pathlib.Path) -> dict[str, dict[str, pathlib.Path]]:
         platform = m["platform"]
         if platform not in PLATFORM_ORDER:
             sys.exit(f"unknown platform '{platform}' in {png.name}")
+        if m["scene"] not in SCENE_ORDER:
+            # A platform harness scene the stories don't cover; not an error,
+            # but say so rather than drop it silently.
+            print(f"skipping non-story scene: {png.name}")
+            continue
         prior = scenes.setdefault(m["scene"], {})
         if platform in prior:
             sys.exit(f"duplicate shot for {m['scene']}@{platform}")
         prior[platform] = png
+    if not scenes:
+        sys.exit("no story scenes found among the PNGs")
     return scenes
 
 
@@ -75,9 +93,12 @@ def build(shots_dir: pathlib.Path, site_dir: pathlib.Path, sha: str) -> None:
                 f"<img src='shots/{name}' alt='{html.escape(scene)} on "
                 f"{PLATFORM_LABELS[platform]}' loading='lazy'></a></td>"
             )
-        rows.append(
-            f"<tr><th scope='row'>{html.escape(scene)}</th>{''.join(cells)}</tr>"
+        label = STORY_LABELS.get(scene, "")
+        head = (
+            f"{html.escape(scene)}"
+            f"<span class='story'>{html.escape(label)}</span>"
         )
+        rows.append(f"<tr><th scope='row'>{head}</th>{''.join(cells)}</tr>")
 
     heads = "".join(f"<th scope='col'>{PLATFORM_LABELS[p]}</th>" for p in PLATFORM_ORDER)
     sha_line = (
@@ -101,6 +122,8 @@ def build(shots_dir: pathlib.Path, site_dir: pathlib.Path, sha: str) -> None:
          border-radius: 6px; border: 1px solid #2a2a30; display: block; }}
   td.missing {{ color: #55555e; }}
   .meta {{ color: #8a8a94; }}
+  .story {{ display: block; font-family: -apple-system, system-ui, sans-serif;
+           font-weight: 400; color: #8a8a94; white-space: normal; }}
   a {{ color: inherit; }}
 </style>
 </head>

@@ -18,3 +18,12 @@ three actions disable. No input is asked for; the library is created with a
 generated name. On success the welcome window closes and the library window
 opens on the new empty library. On failure an error line appears in red and
 the actions re-enable.
+
+## 3. The empty library
+
+Across the top: a Library/Import switcher, a search field, and a settings
+gear. Below, a large bold "Albums" heading — itself a dropdown switching to
+Composers or Artists — with sort controls opposite. The content area says "No
+albums" and "Import some music to get started" — text only, no icon. An idle
+now-playing bar rests along the bottom. Native window controls sit where each
+platform puts them.

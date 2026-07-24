@@ -14,24 +14,16 @@ struct ShotScene {
     let size: CGSize
     let makeView: () -> AnyView
 
-    /// Every macOS scene, in gallery order. A scene is present only when it has
-    /// a real staging; a missing scene is a deliberate omission, never a
-    /// swallowed failure.
+    /// Every macOS scene, in gallery order. Scene ids are desktop-story ids
+    /// (notes/desktop-stories.md) — the gallery is the stories' per-platform
+    /// verification sheet. A scene is present only when it has a real staging;
+    /// a missing scene is a deliberate omission, never a swallowed failure.
     static let all: [ShotScene] = [
-        ShotScene(id: "welcome", size: WelcomeWindow.size) {
+        ShotScene(id: "story-1-first-run", size: WelcomeWindow.size) {
             AnyView(PreviewScenes.welcome())
         },
-        ShotScene(id: "welcome-restore", size: WelcomeWindow.size) {
-            AnyView(PreviewScenes.welcomeRestore())
-        },
-        ShotScene(id: "library-grid", size: MainWindow.defaultSize) {
-            AnyView(PreviewScenes.libraryGrid())
-        },
-        ShotScene(
-            id: "album-detail",
-            size: CGSize(width: 1100, height: 900)
-        ) {
-            AnyView(PreviewScenes.albumDetail())
+        ShotScene(id: "story-3-empty-library", size: MainWindow.defaultSize) {
+            AnyView(PreviewScenes.libraryEmpty())
         },
     ]
 }

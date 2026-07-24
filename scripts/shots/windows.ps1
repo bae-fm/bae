@@ -92,7 +92,7 @@ if (Test-Path $exePri) {
 #    so each enabled scene gets its own exe run with its own bounded timeout. This
 #    list is the source of truth for both the loop and the expected-PNG check;
 #    keep it in sync with the enabled scenes in ShotCapture.Scenes.
-$scenes = @('welcome', 'album-detail', 'library-grid')
+$scenes = @('story-1-first-run')
 $log = Join-Path $OutputDir 'capture.log'
 $missing = @()
 foreach ($scene in $scenes) {
