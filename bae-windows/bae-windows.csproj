@@ -177,6 +177,16 @@
       ContinueOnError="false" />
   </Target>
 
+  <!-- Publish computes its file list before GenerateResourcesPri runs, so the
+       build-output resources.pri never rides along; compile it straight into
+       the publish dir as well, or the installed app's ResourceLoader finds no
+       PRI and Loc dies at first use. -->
+  <Target Name="GenerateResourcesPriPublish" AfterTargets="Publish">
+    <Exec
+      Command="makepri new /pr &quot;$(MSBuildProjectDirectory)&quot; /cf &quot;$(MSBuildProjectDirectory)\priconfig.xml&quot; /of &quot;$(PublishDir)resources.pri&quot; /o"
+      ContinueOnError="false" />
+  </Target>
+
   <!-- The committed resw + priconfig participate in the build but aren't compiled
        as C#; mark them so they don't fall into the default C# globs. -->
   <ItemGroup>

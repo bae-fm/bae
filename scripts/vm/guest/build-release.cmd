@@ -26,7 +26,7 @@ cd /d C:\bae
 
 for /f %%c in ('"%ProgramFiles%\Git\cmd\git.exe" rev-list --count HEAD') do set BUILD_NUM=%%c
 
-msbuild bae-windows\bae-windows.csproj /restore /t:Publish /p:Configuration=Release /p:Platform=ARM64 /p:SelfContained=true /p:RuntimeIdentifier=win-arm64 /p:PublishDir=publish\ /p:Version=0.0.%BUILD_NUM% /p:BridgeBindingsDir=..\bae-bridge\csharp-bindings-baeium /v:m || exit /b 1
+msbuild bae-windows\bae-windows.csproj /restore /t:Publish /p:Configuration=Release /p:Platform=ARM64 /p:SelfContained=true /p:RuntimeIdentifier=win-arm64 /p:WindowsAppSDKSelfContained=true /p:AssemblyName=baeium /p:PublishDir=publish\ /p:Version=0.0.%BUILD_NUM% /p:BridgeBindingsDir=..\bae-bridge\csharp-bindings-baeium /v:m || exit /b 1
 
 set STAGE=C:\bae\stage-local
 if exist %STAGE% rmdir /s /q %STAGE%
@@ -35,7 +35,7 @@ xcopy /e /y /q C:\bae\bae-windows\publish %STAGE%\ >nul || exit /b 1
 copy /y C:\bae\target-windows\aarch64-pc-windows-msvc\release\bae_bridge.dll %STAGE%\ >nul || exit /b 1
 copy /y C:\bae\target-windows\aarch64-pc-windows-msvc\release\uniffi_bae_bridge.dll %STAGE%\ >nul || exit /b 1
 copy /y C:\bae\bae-ffmpeg\dist\bin\*.dll %STAGE%\ >nul || exit /b 1
-ren %STAGE%\bae-windows.exe baeium.exe || exit /b 1
+if not exist %STAGE%\baeium.exe (echo FAIL: baeium.exe missing from stage & exit /b 1)
 
 vpk pack --packId baeium --packVersion 0.0.%BUILD_NUM% --packDir %STAGE% --mainExe baeium.exe --channel local --packTitle baeium --outputDir C:\bae\velopack-local || exit /b 1
 dir C:\bae\velopack-local

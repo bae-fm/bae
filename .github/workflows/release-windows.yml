@@ -117,6 +117,7 @@ jobs:
             "BAE_BRIDGE_CSHARP_BINDINGS_DIR=bae-bridge/csharp-bindings-baeium" | Out-File $env:GITHUB_ENV -Append
             "MSBUILD_BRIDGE_BINDINGS_DIR=..\bae-bridge\csharp-bindings-baeium" | Out-File $env:GITHUB_ENV -Append
             "EXE_NAME=baeium.exe" | Out-File $env:GITHUB_ENV -Append
+            "ASSEMBLY_NAME=baeium" | Out-File $env:GITHUB_ENV -Append
             "STAGE_DIR=baeium" | Out-File $env:GITHUB_ENV -Append
             "PACK_ID=baeium" | Out-File $env:GITHUB_ENV -Append
             "CHANNEL=baeium-win$channelArch" | Out-File $env:GITHUB_ENV -Append
@@ -127,6 +128,7 @@ jobs:
             "BAE_BRIDGE_CSHARP_BINDINGS_DIR=bae-bridge/csharp-bindings-full" | Out-File $env:GITHUB_ENV -Append
             "MSBUILD_BRIDGE_BINDINGS_DIR=..\bae-bridge\csharp-bindings-full" | Out-File $env:GITHUB_ENV -Append
             "EXE_NAME=bae.exe" | Out-File $env:GITHUB_ENV -Append
+            "ASSEMBLY_NAME=bae" | Out-File $env:GITHUB_ENV -Append
             "STAGE_DIR=bae" | Out-File $env:GITHUB_ENV -Append
             "PACK_ID=bae" | Out-File $env:GITHUB_ENV -Append
             "CHANNEL=win$channelArch" | Out-File $env:GITHUB_ENV -Append
@@ -194,15 +196,22 @@ jobs:
           Write-Host "makepri on PATH: $($makepri.FullName)"
 
       - name: Build the WinUI app (Release, self-contained)
-        # Self-contained so the zip runs without a separate .NET install. MSBuild
-        # (not `dotnet build`) — the WinUI XAML markup compiler needs the full VS
-        # toolchain (WMC1509). Publish to a known dir we then stage from.
+        # Self-contained twice over: SelfContained bundles the .NET runtime,
+        # WindowsAppSDKSelfContained bundles the Windows App SDK runtime — the
+        # installed app must not depend on a machine-wide WindowsAppRuntime
+        # redist. AssemblyName names every artifact (exe, deps.json, PRI) with
+        # the edition's final name at build time; a post-publish exe rename
+        # would orphan the module-named PRI and kill resource loading. MSBuild
+        # (not `dotnet build`) — the WinUI XAML markup compiler needs the full
+        # VS toolchain (WMC1509). Publish to a known dir we then stage from.
         shell: pwsh
         run: |
           $gitCommit = (git rev-parse --short HEAD).Trim()
           msbuild bae-windows\bae-windows.csproj /restore /t:Publish `
             /p:Configuration=Release /p:Platform=${{ matrix.arch.msbuild_platform }} `
             /p:SelfContained=true /p:RuntimeIdentifier=${{ matrix.arch.rid }} `
+            /p:WindowsAppSDKSelfContained=true `
+            /p:AssemblyName="$env:ASSEMBLY_NAME" `
             /p:PublishDir=publish\ `
             /p:Version=${{ needs.calculate-version.outputs.pack_version }} `
             /p:BAE_ENVIRONMENT="$env:BAE_ENVIRONMENT" `
@@ -260,11 +269,11 @@ jobs:
             if (-not (Test-Path "$stage\Sentry.dll")) { Write-Host "FAIL: managed Sentry.dll missing from stage"; exit 1 }
           }
 
-          # Name the launcher per edition (bae.exe / baeium.exe); vpk packs the
-          # staged dir into the installer/portable/feed below.
-          $exe = Get-ChildItem $stage -Filter "bae-windows.exe" | Select-Object -First 1
-          if (-not $exe) { Write-Host "FAIL: bae-windows.exe not found in staged output"; exit 1 }
-          Rename-Item $exe.FullName $env:EXE_NAME
+          # The publish built every artifact under the edition's name
+          # (AssemblyName above); confirm the launcher and its PRI are both
+          # present under it before vpk packs the staged dir.
+          if (-not (Test-Path "$stage\$env:EXE_NAME")) { Write-Host "FAIL: $env:EXE_NAME not found in staged output"; exit 1 }
+          if (-not ((Test-Path "$stage\$env:ASSEMBLY_NAME.pri") -or (Test-Path "$stage\resources.pri"))) { Write-Host "FAIL: no PRI staged next to $env:EXE_NAME"; exit 1 }
           Write-Host "PASS: staged $env:STAGE_DIR"
 
       - name: Upload Windows symbols to Sentry
