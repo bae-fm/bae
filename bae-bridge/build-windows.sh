@@ -7,8 +7,10 @@ export CARGO_TARGET_DIR="${CARGO_TARGET_DIR:-target-windows}"
 
 usage() {
     echo "Usage: $0 [--release]"
-    echo "  Builds bae-bridge for Windows x86_64. Debug by default."
+    echo "  Builds bae-bridge for Windows. Debug by default."
     echo ""
+    echo "  BAE_BRIDGE_TARGET selects the Rust target triple (default:"
+    echo "  'x86_64-pc-windows-msvc'; use 'aarch64-pc-windows-msvc' for ARM64)."
     echo "  BAE_BRIDGE_FEATURES selects the cargo feature set (default:"
     echo "  'oauth-providers,desktop'). BAE_BRIDGE_CSHARP_BINDINGS_DIR is the"
     echo "  generated C# output directory."
@@ -39,22 +41,26 @@ if [[ -z "${BAE_BRIDGE_CSHARP_BINDINGS_DIR:-}" ]]; then
     exit 1
 fi
 
-rustup target add x86_64-pc-windows-msvc
+# The Rust target triple. Defaults to x86_64; ARM64 CI sets aarch64. The host
+# arch is irrelevant here — an arm runner builds the aarch64 target natively.
+BAE_BRIDGE_TARGET="${BAE_BRIDGE_TARGET:-x86_64-pc-windows-msvc}"
 
-echo "Building bae-bridge for Windows x86_64 ($CARGO_PROFILE, features: ${BAE_BRIDGE_FEATURES:-(none)})..."
+rustup target add "$BAE_BRIDGE_TARGET"
+
+echo "Building bae-bridge for $BAE_BRIDGE_TARGET ($CARGO_PROFILE, features: ${BAE_BRIDGE_FEATURES:-(none)})..."
 RUSTC_WRAPPER="" cargo build $CARGO_FLAGS \
-    --target x86_64-pc-windows-msvc \
+    --target "$BAE_BRIDGE_TARGET" \
     -p bae-bridge \
     --features "$BAE_BRIDGE_FEATURES"
 
-STATIC_LIB="$CARGO_TARGET_DIR/x86_64-pc-windows-msvc/$CARGO_PROFILE/bae_bridge.lib"
+STATIC_LIB="$CARGO_TARGET_DIR/$BAE_BRIDGE_TARGET/$CARGO_PROFILE/bae_bridge.lib"
 if [[ ! -f "$STATIC_LIB" ]]; then
     echo "Expected staticlib not found: $STATIC_LIB" >&2
     exit 1
 fi
 
-BRIDGE_DLL="$CARGO_TARGET_DIR/x86_64-pc-windows-msvc/$CARGO_PROFILE/bae_bridge.dll"
-UNIFFI_BRIDGE_DLL="$CARGO_TARGET_DIR/x86_64-pc-windows-msvc/$CARGO_PROFILE/uniffi_bae_bridge.dll"
+BRIDGE_DLL="$CARGO_TARGET_DIR/$BAE_BRIDGE_TARGET/$CARGO_PROFILE/bae_bridge.dll"
+UNIFFI_BRIDGE_DLL="$CARGO_TARGET_DIR/$BAE_BRIDGE_TARGET/$CARGO_PROFILE/uniffi_bae_bridge.dll"
 if [[ ! -f "$BRIDGE_DLL" ]]; then
     echo "Expected DLL not found: $BRIDGE_DLL" >&2
     exit 1

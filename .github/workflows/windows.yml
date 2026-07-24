@@ -1,10 +1,12 @@
 name: Windows build
 
-# Builds the native Windows stack for x86_64-pc-windows-msvc: bae-core →
-# bae-bridge (uniffi metadata + bae_bridge.dll/uniffi_bae_bridge.dll) →
-# generated C# bindings, plus the WinUI 3 app compile check. The macOS host
-# can't cross-compile the native
-# deps, so this is the verification loop.
+# Builds the native Windows stack for both architectures — x86_64-pc-windows-msvc
+# on the x64 runner and aarch64-pc-windows-msvc on the native ARM64 runner:
+# bae-core → bae-bridge (uniffi metadata + bae_bridge.dll/uniffi_bae_bridge.dll) →
+# generated C# bindings, plus the WinUI 3 app compile check. The macOS host can't
+# cross-compile the native deps, so this is the verification loop. Each arch builds
+# natively on its own runner (the ARM64 runner is arm64, so aarch64 is its host
+# target — no cross-compile).
 # FFmpeg is a prebuilt release CI fetches (bae-ffmpeg) — no compiling here. The
 # MusicBrainz disc ID is computed in pure Rust (bae-core), so there is no
 # libdiscid to fetch or link.
@@ -14,7 +16,24 @@ on:
 
 jobs:
   build:
-    runs-on: windows-latest
+    name: ${{ matrix.arch }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x86_64
+            runner: windows-latest
+            target: x86_64-pc-windows-msvc
+            ffmpeg_arch: x86_64
+            msbuild_platform: x64
+            sdk_bin_arch: x64
+          - arch: aarch64
+            runner: windows-11-arm
+            target: aarch64-pc-windows-msvc
+            ffmpeg_arch: aarch64
+            msbuild_platform: ARM64
+            sdk_bin_arch: arm64
     env:
       FFMPEG_VERSION: v8.1.2-bae7
     steps:
@@ -26,23 +45,26 @@ jobs:
         uses: dtolnay/rust-toolchain@master
         with:
           toolchain: "1.95.0"
-          targets: x86_64-pc-windows-msvc
+          targets: ${{ matrix.target }}
           components: clippy
 
       - name: Install sccache
         uses: mozilla-actions/sccache-action@v0.0.10
 
-      - name: Set LIBCLANG_PATH (LLVM pre-installed on windows-latest)
+      - name: Set LIBCLANG_PATH (LLVM pre-installed on both Windows runners)
+        # The standalone LLVM install ships at the same path on windows-latest and
+        # windows-11-arm; on the ARM runner it's the arm64-native libclang bindgen
+        # needs (bindgen runs as the arm64 host process).
         shell: pwsh
         run: |
           echo "LIBCLANG_PATH=C:\Program Files\LLVM\bin" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
 
-      - name: Fetch bae-ffmpeg (Windows x86_64)
+      - name: Fetch bae-ffmpeg (Windows ${{ matrix.ffmpeg_arch }})
         shell: pwsh
         run: |
           $dist = "$PWD\bae-ffmpeg\dist"
           New-Item -ItemType Directory -Force -Path $dist | Out-Null
-          $url = "https://github.com/bae-fm/bae-ffmpeg/releases/download/$env:FFMPEG_VERSION/ffmpeg-windows-x86_64.zip"
+          $url = "https://github.com/bae-fm/bae-ffmpeg/releases/download/$env:FFMPEG_VERSION/ffmpeg-windows-${{ matrix.ffmpeg_arch }}.zip"
           curl.exe -L $url -o ffmpeg.zip
           Expand-Archive -Path ffmpeg.zip -DestinationPath $dist -Force
           # The Windows build ships the .lib import libs in bin/ next to the DLLs,
@@ -80,14 +102,14 @@ jobs:
       # across editions.
       - name: Build the Windows bridge (baeium, desktop)
         shell: bash
-        run: BAE_BRIDGE_FEATURES=desktop BAE_BRIDGE_CSHARP_BINDINGS_DIR=bae-bridge/csharp-bindings-baeium ./bae-bridge/build-windows.sh
+        run: BAE_BRIDGE_TARGET=${{ matrix.target }} BAE_BRIDGE_FEATURES=desktop BAE_BRIDGE_CSHARP_BINDINGS_DIR=bae-bridge/csharp-bindings-baeium ./bae-bridge/build-windows.sh
 
       - name: Confirm the bridge DLL was produced
         shell: pwsh
         run: |
           $dlls = @(
-            "target-windows\x86_64-pc-windows-msvc\debug\bae_bridge.dll",
-            "target-windows\x86_64-pc-windows-msvc\debug\uniffi_bae_bridge.dll"
+            "target-windows\${{ matrix.target }}\debug\bae_bridge.dll",
+            "target-windows\${{ matrix.target }}\debug\uniffi_bae_bridge.dll"
           )
           foreach ($dll in $dlls) {
             if (Test-Path $dll) { Write-Host "PASS: $dll ($((Get-Item $dll).Length) bytes)" }
@@ -97,7 +119,7 @@ jobs:
       - name: Build the Windows bridge (full edition, OAuth + desktop)
         # Windows has no cloudkit (Apple-only); full here is OAuth plus desktop.
         shell: bash
-        run: BAE_BRIDGE_FEATURES=oauth-providers,desktop BAE_BRIDGE_CSHARP_BINDINGS_DIR=bae-bridge/csharp-bindings-full ./bae-bridge/build-windows.sh
+        run: BAE_BRIDGE_TARGET=${{ matrix.target }} BAE_BRIDGE_FEATURES=oauth-providers,desktop BAE_BRIDGE_CSHARP_BINDINGS_DIR=bae-bridge/csharp-bindings-full ./bae-bridge/build-windows.sh
 
       - name: Check C# formatting
         # dotnet format uses .editorconfig rules. --verify-no-changes exits non-zero
@@ -119,39 +141,40 @@ jobs:
         run: |
           # makepri.exe ships in the Windows 10 SDK but isn't on PATH on the
           # runner; the csproj's GenerateResourcesPri target invokes it bare to
-          # compile resources.pri for the unpackaged app. Add the newest SDK x64
-          # bin so the bare `makepri` command resolves (otherwise exit 9009).
-          $makepri = Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\bin\*\x64\makepri.exe" -ErrorAction SilentlyContinue |
+          # compile resources.pri for the unpackaged app. Add the newest SDK bin
+          # for this runner's arch so the bare `makepri` command resolves
+          # (otherwise exit 9009).
+          $makepri = Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\bin\*\${{ matrix.sdk_bin_arch }}\makepri.exe" -ErrorAction SilentlyContinue |
             Sort-Object FullName -Descending | Select-Object -First 1
           if (-not $makepri) { throw "makepri.exe not found in the Windows SDK" }
           Add-Content -Path $env:GITHUB_PATH -Value $makepri.Directory.FullName
           Write-Host "makepri on PATH: $($makepri.FullName)"
 
       - name: Build the WinUI app (baeium bindings)
-        # Unpackaged WinUI 3 (C#/.NET) app, x64, framework-dependent. Proves the
-        # native UI stack compiles. Built with MSBuild, not `dotnet build`:
-        # the WinUI XAML markup compiler needs the full VS toolchain to resolve
-        # project-local x:DataType types (dotnet build drops the LocalAssembly
-        # parameter — WMC1509 — and fails type resolution). A non-zero exit fails.
+        # Unpackaged WinUI 3 (C#/.NET) app, framework-dependent. Proves the native
+        # UI stack compiles. Built with MSBuild, not `dotnet build`: the WinUI XAML
+        # markup compiler needs the full VS toolchain to resolve project-local
+        # x:DataType types (dotnet build drops the LocalAssembly parameter —
+        # WMC1509 — and fails type resolution). A non-zero exit fails.
         # EnforceCodeStyleInBuild=true makes IDE-level dead-code diagnostics
         # (IDE0051 unused private members, IDE0052 unread private members) fire
         # as build errors via .editorconfig severity settings.
-        run: msbuild bae-windows\bae-windows.csproj /restore /p:Configuration=Debug /p:Platform=x64 /p:EnforceCodeStyleInBuild=true /p:BridgeBindingsDir=..\bae-bridge\csharp-bindings-baeium
+        run: msbuild bae-windows\bae-windows.csproj /restore /p:Configuration=Debug /p:Platform=${{ matrix.msbuild_platform }} /p:EnforceCodeStyleInBuild=true /p:BridgeBindingsDir=..\bae-bridge\csharp-bindings-baeium
 
       - name: Build the WinUI app (full bindings)
-        run: msbuild bae-windows\bae-windows.csproj /restore /p:Configuration=Debug /p:Platform=x64 /p:EnforceCodeStyleInBuild=true /p:BridgeBindingsDir=..\bae-bridge\csharp-bindings-full
+        run: msbuild bae-windows\bae-windows.csproj /restore /p:Configuration=Debug /p:Platform=${{ matrix.msbuild_platform }} /p:EnforceCodeStyleInBuild=true /p:BridgeBindingsDir=..\bae-bridge\csharp-bindings-full
 
       - name: Run bae-core unit tests (Windows)
         # The only place bae's Rust actually EXECUTES on Windows. Windows-only
         # code paths (the atomic-write directory handling, path semantics) shipped
         # broken while CI merely compiled them; this is the regression gate.
-        run: cargo test -p bae-core --lib --target x86_64-pc-windows-msvc
+        run: cargo test -p bae-core --lib --target ${{ matrix.target }}
 
       - name: Clippy (baeium / default features)
         # The host clippy in ci.yml targets macOS, so lint the Windows target too.
-        run: cargo clippy -p bae-core -p bae-bridge --target x86_64-pc-windows-msvc -- -D warnings
+        run: cargo clippy -p bae-core -p bae-bridge --target ${{ matrix.target }} -- -D warnings
 
       - name: Clippy (full edition, OAuth + desktop)
         # Dead-code warnings are feature-specific, so lint the OAuth/desktop code
         # on the Windows target too. No cloudkit on Windows.
-        run: cargo clippy -p bae-core -p bae-bridge --target x86_64-pc-windows-msvc --features oauth-providers,desktop -- -D warnings
+        run: cargo clippy -p bae-core -p bae-bridge --target ${{ matrix.target }} --features oauth-providers,desktop -- -D warnings

@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <!--
-    Unpackaged WinUI 3 (C#/.NET) desktop app, x64. Binds bae-core through the
+    Unpackaged WinUI 3 (C#/.NET) desktop app, x64 and ARM64. Binds bae-core through the
     generated uniffi C# bindings. This project is C#, not a cargo crate, so it is
     deliberately outside the Rust workspace.
 
@@ -50,12 +50,13 @@
     <EnableDefaultPriItems>false</EnableDefaultPriItems>
 
     <!--
-      x64 only. Platforms drives the MSBuild configuration; RuntimeIdentifiers uses
-      the portable RID form (win-x64, not win10-x64) required by .NET 8 to avoid
-      NETSDK1083 "version-specific runtime identifier" errors.
+      x64 and ARM64. The build selects one with /p:Platform=x64|ARM64; both must be
+      listed here or MSBuild rejects the requested Platform. RuntimeIdentifiers uses
+      the portable RID form (win-x64/win-arm64, not win10-x64) required by .NET 8 to
+      avoid NETSDK1083 "version-specific runtime identifier" errors.
     -->
-    <Platforms>x64</Platforms>
-    <RuntimeIdentifiers>win-x64</RuntimeIdentifiers>
+    <Platforms>x64;ARM64</Platforms>
+    <RuntimeIdentifiers>win-x64;win-arm64</RuntimeIdentifiers>
     <!-- microsoft.windows.sdk.buildtools.msix ≥ 1.7.20250829.1 auto-includes
          *.resw files as PRIResource, duplicating our explicit glob below.
          Disable the default to keep our explicit <PRIResource> in control. -->
