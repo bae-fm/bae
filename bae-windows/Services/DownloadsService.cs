@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace Bae.Windows;
 
@@ -17,12 +18,12 @@ internal sealed class DownloadsService
 {
     /// <summary>Enqueue releases to pin for offline; they join the serial download
     /// queue. Fire-and-forget — progress arrives via download-queue events.</summary>
-    public Func<IReadOnlyList<string>, (bool Current, string? Error)> QueuePins { get; init; }
+    public Func<IReadOnlyList<string>, Task<(bool Current, string? Error)>> QueuePins { get; init; }
         = _ => throw new InvalidOperationException("DownloadsService stub: QueuePins not wired");
 
     /// <summary>Unpin a release: its blobs move to the evictable cache; the release
     /// stays remote and playable.</summary>
-    public Func<string, (bool Current, string? Error)> UnpinRelease { get; init; }
+    public Func<string, Task<(bool Current, string? Error)>> UnpinRelease { get; init; }
         = _ => throw new InvalidOperationException("DownloadsService stub: UnpinRelease not wired");
 
     /// <summary>Pause or resume the download queue. In-flight downloads finish; the
@@ -48,8 +49,8 @@ internal sealed class DownloadsService
     /// <summary>Wire every control through the open session's current handle.</summary>
     public static DownloadsService FromSession(SessionStore session) => new()
     {
-        QueuePins = releaseIds => session.WithCurrentHandle(handle => NativeBae.PinReleases(handle, releaseIds)),
-        UnpinRelease = releaseId => session.WithCurrentHandle(handle => NativeBae.UnpinRelease(handle, releaseId)),
+        QueuePins = releaseIds => session.RunForCurrentHandle(handle => NativeBae.PinReleases(handle, releaseIds)),
+        UnpinRelease = releaseId => session.RunForCurrentHandle(handle => NativeBae.UnpinRelease(handle, releaseId)),
         SetDownloadsPaused = paused => session.WithCurrentHandle(handle => NativeBae.SetDownloadsPaused(handle, paused)),
         CancelDownload = releaseId => session.WithCurrentHandle(handle => NativeBae.CancelDownload(handle, releaseId)),
         RetryDownloads = () => session.WithCurrentHandle(NativeBae.RetryDownloads),

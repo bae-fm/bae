@@ -217,17 +217,17 @@ internal sealed partial class LibraryBrowser
             targetCount: 1,
             onPlay: () =>
             {
-                _session.WithCurrentHandle(handle => NativeBae.PlayRelease(handle, releaseId, -1, false));
+                _playbackService.PlayRelease(releaseId, -1, false);
                 return System.Threading.Tasks.Task.CompletedTask;
             },
             onPlayNext: () =>
             {
-                _session.WithCurrentHandle(handle => NativeBae.AddReleaseNext(handle, releaseId));
+                _queueService.AddReleaseNext(releaseId);
                 return System.Threading.Tasks.Task.CompletedTask;
             },
             onAddToQueue: () =>
             {
-                _session.WithCurrentHandle(handle => NativeBae.AddReleaseToQueue(handle, releaseId));
+                _queueService.AddReleaseToQueue(releaseId);
                 return System.Threading.Tasks.Task.CompletedTask;
             },
             onPin: () => PinReleases(new[] { releaseId }));
@@ -242,7 +242,7 @@ internal sealed partial class LibraryBrowser
             targetCount: targets.Count,
             onPlay: () =>
             {
-                _session.WithCurrentHandle(handle => NativeBae.PlayReleases(handle, primaryReleaseIds));
+                _playbackService.PlayReleases(primaryReleaseIds);
                 return System.Threading.Tasks.Task.CompletedTask;
             },
             onPlayNext: () => _queuePane.AddAlbumsToQueue(targets, addNext: true),
@@ -255,9 +255,7 @@ internal sealed partial class LibraryBrowser
     // async library-manager call.
     private async System.Threading.Tasks.Task PinReleases(IReadOnlyList<string> releaseIds)
     {
-        var (current, error) = await _session.RunForCurrentHandle(handle => releaseIds.Count == 1
-            ? NativeBae.PinRelease(handle, releaseIds[0])
-            : NativeBae.PinReleases(handle, releaseIds));
+        var (current, error) = await _downloads.QueuePins(releaseIds);
         if (current && error is not null)
         {
             _shell.ShowBanner(InfoBarSeverity.Error, Loc.Chrome("error.title"), error);
@@ -383,6 +381,8 @@ internal sealed partial class LibraryBrowser
         var panel = new AlbumExpansionPanel(
             _session,
             _mediaPaths,
+            _playbackService,
+            _queueService,
             _dispatcher,
             _xamlRoot,
             _windowHandle,
@@ -466,8 +466,7 @@ internal sealed partial class LibraryBrowser
             LoadCurrentBrowserMode();
         }
 
-        var (current, result) = await _session.RunForCurrentHandle(
-            handle => NativeBae.AlbumIndex(handle, _browser.Sort.Albums.Items, albumId));
+        var (current, result) = await _library.AlbumIndex(_browser.Sort.Albums.Items, albumId);
         if (!current)
         {
             return;

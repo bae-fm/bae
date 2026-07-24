@@ -28,6 +28,8 @@ internal sealed partial class AlbumExpansionPanel : IDisposable
 {
     private readonly SessionStore _session;
     private readonly MediaPathsService _mediaPaths;
+    private readonly PlaybackService _playbackService;
+    private readonly QueueService _queueService;
     private readonly Microsoft.UI.Dispatching.DispatcherQueue _dispatcher;
     private readonly Func<XamlRoot?> _xamlRoot;
     private readonly Func<IntPtr> _windowHandle;
@@ -48,6 +50,8 @@ internal sealed partial class AlbumExpansionPanel : IDisposable
     public AlbumExpansionPanel(
         SessionStore session,
         MediaPathsService mediaPaths,
+        PlaybackService playbackService,
+        QueueService queueService,
         Microsoft.UI.Dispatching.DispatcherQueue dispatcher,
         Func<XamlRoot?> xamlRoot,
         Func<IntPtr> windowHandle,
@@ -60,6 +64,8 @@ internal sealed partial class AlbumExpansionPanel : IDisposable
     {
         _session = session;
         _mediaPaths = mediaPaths;
+        _playbackService = playbackService;
+        _queueService = queueService;
         _dispatcher = dispatcher;
         _xamlRoot = xamlRoot;
         _windowHandle = windowHandle;
@@ -150,8 +156,7 @@ internal sealed partial class AlbumExpansionPanel : IDisposable
         {
             if (!string.IsNullOrEmpty(selectedRelease.ReleaseId))
             {
-                _session.WithCurrentHandle(
-                    handle => NativeBae.AddReleaseNext(handle, selectedRelease.ReleaseId));
+                _queueService.AddReleaseNext(selectedRelease.ReleaseId);
             }
         };
         var addQueueItem = new MenuFlyoutItem { Text = Loc.Chrome("menu.add_to_queue") };
@@ -159,8 +164,7 @@ internal sealed partial class AlbumExpansionPanel : IDisposable
         {
             if (!string.IsNullOrEmpty(selectedRelease.ReleaseId))
             {
-                _session.WithCurrentHandle(
-                    handle => NativeBae.AddReleaseToQueue(handle, selectedRelease.ReleaseId));
+                _queueService.AddReleaseToQueue(selectedRelease.ReleaseId);
             }
         };
         var setPrimaryItem = new MenuFlyoutItem { Text = Loc.Chrome("menu.set_primary") };
@@ -231,16 +235,15 @@ internal sealed partial class AlbumExpansionPanel : IDisposable
         {
             if (!string.IsNullOrEmpty(selectedRelease.ReleaseId))
             {
-                _session.WithCurrentHandle(
-                    handle => NativeBae.PlayRelease(
-                        handle, selectedRelease.ReleaseId, selectedRelease.Tracks.IndexOf(track), false));
+                _playbackService.PlayRelease(
+                    selectedRelease.ReleaseId, selectedRelease.Tracks.IndexOf(track), false);
             }
         }
         void QueueTrack(Track track, bool next)
         {
-            var (queueCurrent, error) = _session.WithCurrentHandle(handle => next
-                ? NativeBae.AddNext(handle, new[] { track.TrackId })
-                : NativeBae.AddToQueue(handle, new[] { track.TrackId }));
+            var (queueCurrent, error) = next
+                ? _queueService.AddNext(new[] { track.TrackId })
+                : _queueService.AddToQueue(new[] { track.TrackId });
             if (queueCurrent && error is not null)
             {
                 _setStatus(error);
@@ -500,8 +503,7 @@ internal sealed partial class AlbumExpansionPanel : IDisposable
     {
         if (!string.IsNullOrEmpty(release.ReleaseId))
         {
-            _session.WithCurrentHandle(
-                handle => NativeBae.PlayRelease(handle, release.ReleaseId, -1, shuffle));
+            _playbackService.PlayRelease(release.ReleaseId, -1, shuffle);
         }
     }
 

@@ -287,7 +287,11 @@ public sealed partial class MainWindow : Window
         // ContentColumn's named elements plus the status/shuffle surfaces it writes.
         _libraryBrowser = new LibraryBrowser(
             _session,
+            _appService.Library,
             _appService.MediaPaths,
+            _appService.Playback,
+            _appService.Queue,
+            _appService.Downloads,
             _browser,
             _shell,
             _releaseActions,
