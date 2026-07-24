@@ -42,19 +42,7 @@ internal sealed partial class ReleaseActionDialogs
             entries.Add(new LightboxEntry(
                 item.Id,
                 capturedLabel,
-                () =>
-                {
-                    var handle = _session.CurrentHandleOrNull();
-                    if (handle is null)
-                    {
-                        return null;
-                    }
-                    return handle.TryUse(
-                        app => NativeBae.GalleryBytes(app, capturedReleaseId, capturedSource),
-                        out var bytes)
-                        ? bytes
-                        : null;
-                }));
+                () => _mediaPaths.FetchGalleryBytes(capturedReleaseId, capturedSource)));
         }
 
         _lightbox.Show(entries, 0);
