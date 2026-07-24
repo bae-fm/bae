@@ -17,6 +17,7 @@ internal sealed class AppService
     public PlaybackService Playback { get; }
     public QueueService Queue { get; }
     public DownloadsService Downloads { get; }
+    public SyncService Sync { get; }
 
     public AppService(SessionStore session)
     {
@@ -25,5 +26,6 @@ internal sealed class AppService
         Playback = PlaybackService.FromSession(session);
         Queue = QueueService.FromSession(session);
         Downloads = DownloadsService.FromSession(session);
+        Sync = SyncService.FromSession(session);
     }
 }

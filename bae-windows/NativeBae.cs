@@ -632,6 +632,11 @@ internal static class NativeBae
             secretKey,
             HomeStorage(storage)))));
 
+    /// <summary>Persist a pre-built sync config (the parity shape the service
+    /// carries), returning the error line on a failed write.</summary>
+    internal static string? SaveSyncConfig(AppHandle handle, BridgeSaveSyncConfig config) =>
+        CaptureError(() => Await(() => handle.SaveSyncConfig(config)));
+
     /// <summary>How many releases live only in the cloud and would become
     /// unplayable if this device disconnected; 0 means nothing is at risk. The
     /// caller renders the warning sentence from the count with its own locale's
@@ -655,8 +660,13 @@ internal static class NativeBae
 #if BAE_FULL_BRIDGE
     internal static string? SignInCloud(AppHandle handle, string provider, string storage) =>
         CaptureError(() => Await(() => handle.SignInCloudProvider(CloudProvider(provider), HomeStorage(storage))));
+
+    internal static string? SignInCloud(AppHandle handle, BridgeCloudProvider provider, BridgeHomeStorage storage) =>
+        CaptureError(() => Await(() => handle.SignInCloudProvider(provider, storage)));
 #else
     internal static string? SignInCloud(AppHandle handle, string provider, string storage) => throw new InvalidOperationException();
+
+    internal static string? SignInCloud(AppHandle handle, BridgeCloudProvider provider, BridgeHomeStorage storage) => throw new InvalidOperationException();
 #endif
 
     internal static string? DisconnectCloud(AppHandle handle) =>
@@ -672,6 +682,12 @@ internal static class NativeBae
 
     internal static string? InviteMember(AppHandle handle, string publicKeyHex) =>
         CaptureValue(() => Await(() => handle.InviteMember(publicKeyHex, providerAccountEmail: null)));
+
+    /// <summary>Approve a joining device by its public key, baking in the OAuth
+    /// account address to share the provider folder to; returns the invite code to
+    /// hand back, or the error line.</summary>
+    internal static string? InviteMember(AppHandle handle, string publicKeyHex, string? providerAccountEmail) =>
+        CaptureValue(() => Await(() => handle.InviteMember(publicKeyHex, providerAccountEmail)));
 
     internal static string? RemoveMember(AppHandle handle, string publicKeyHex) =>
         CaptureError(() => Await(() => handle.RemoveMember(publicKeyHex)));
