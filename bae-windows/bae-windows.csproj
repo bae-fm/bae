@@ -195,6 +195,19 @@
       ContinueOnError="false" />
   </Target>
 
+  <!-- The unpackaged app loads compiled XAML as loose .xbf files next to the
+       exe (ms-appx URIs resolve against the app dir), and the WinUI targets
+       put them in the build output but not in the publish file list — an
+       installed build without them dies in InitializeComponent with
+       XamlParseException. Carry them into publish explicitly. -->
+  <Target Name="PublishLooseXbf" AfterTargets="Publish">
+    <ItemGroup>
+      <_LooseXbf Include="$(OutDir)**\*.xbf" />
+    </ItemGroup>
+    <Error Condition="'@(_LooseXbf)' == ''" Text="No .xbf files in $(OutDir) to publish" />
+    <Copy SourceFiles="@(_LooseXbf)" DestinationFiles="@(_LooseXbf->'$(PublishDir)%(RecursiveDir)%(Filename)%(Extension)')" />
+  </Target>
+
   <!-- The committed resw + priconfig participate in the build but aren't compiled
        as C#; mark them so they don't fall into the default C# globs. -->
   <ItemGroup>
