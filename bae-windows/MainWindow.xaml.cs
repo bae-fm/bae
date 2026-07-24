@@ -102,7 +102,7 @@ public sealed partial class MainWindow : Window
     // constructor is the composition root AND finishes the open (FinishOpen). The
     // launch intent is delivered after activation (enqueued below). closeToWelcome
     // returns to the welcome window via the coordinator.
-    public MainWindow(
+    internal MainWindow(
         SessionStore session,
         Func<System.Threading.Tasks.Task> closeToWelcome,
         ActivationIntent? launchIntent)
