@@ -46,6 +46,10 @@ ssh tom@<ip> 'schtasks /run /tn vmShot'        # screenshot → C:\Users\tom\vms
 
 ## Hard-won facts baked into these scripts
 
+- **winget needs `--source winget` on every install**: the `msstore` source
+  fails certificate validation (0x8a15005e) on a fresh VM, and an unpinned
+  `winget install` aborts when any source errors — even after the community
+  source already found the package.
 - **x64, not ARM, for now**: prebuilt FFmpeg ships x64 (ARM artifact exists as
   of `windows-arm64` work — switch when bae grows its ARM lane); Windows runs
   x64 under emulation. `cargo test` must pass `--target x86_64-pc-windows-msvc`

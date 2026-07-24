@@ -11,10 +11,10 @@ SSH="ssh tom@${VM}"
 FFMPEG_VERSION="$(grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+-bae[0-9]+' .github/workflows/windows.yml | head -1)"
 
 echo "== toolchain (winget) =="
-$SSH 'winget install --id Git.Git -e --accept-source-agreements --accept-package-agreements --silent & winget install --id Microsoft.DotNet.SDK.8 -e --accept-package-agreements --silent & winget install --id Rustlang.Rustup -e --accept-package-agreements --silent & winget install --id LLVM.LLVM -e --accept-package-agreements --silent & winget install --id Mozilla.sccache -e --accept-package-agreements --silent & winget install --id Microsoft.WinDbg -e --accept-package-agreements --silent & winget install --id Microsoft.WindowsAppRuntime.1.6 -e --accept-package-agreements --silent & winget install --id Microsoft.DotNet.DesktopRuntime.8 --architecture x64 -e --accept-package-agreements --silent'
+$SSH 'winget install --id Git.Git --source winget -e --accept-source-agreements --accept-package-agreements --silent & winget install --id Microsoft.DotNet.SDK.8 --source winget -e --accept-package-agreements --silent & winget install --id Rustlang.Rustup --source winget -e --accept-package-agreements --silent & winget install --id LLVM.LLVM --source winget -e --accept-package-agreements --silent & winget install --id Mozilla.sccache --source winget -e --accept-package-agreements --silent & winget install --id Microsoft.WinDbg --source winget -e --accept-package-agreements --silent & winget install --id Microsoft.WindowsAppRuntime.1.6 --source winget -e --accept-package-agreements --silent & winget install --id Microsoft.DotNet.DesktopRuntime.8 --source winget --architecture x64 -e --accept-package-agreements --silent'
 
 echo "== VS Build Tools (the long one) =="
-$SSH 'winget install --id Microsoft.VisualStudio.2022.BuildTools -e --accept-package-agreements --silent --override "--quiet --wait --add Microsoft.VisualStudio.Workload.VCTools --add Microsoft.VisualStudio.Component.VC.Tools.x86.x64 --add Microsoft.VisualStudio.Component.VC.Tools.ARM64 --add Microsoft.VisualStudio.Component.Windows11SDK.22621 --add Microsoft.VisualStudio.ComponentGroup.UWP.BuildTools"'
+$SSH 'winget install --id Microsoft.VisualStudio.2022.BuildTools --source winget -e --accept-package-agreements --silent --override "--quiet --wait --nocache --add Microsoft.VisualStudio.Workload.VCTools --add Microsoft.VisualStudio.Component.VC.Tools.x86.x64 --add Microsoft.VisualStudio.Component.VC.Tools.ARM64 --add Microsoft.VisualStudio.Component.Windows11SDK.22621 --add Microsoft.VisualStudio.ComponentGroup.UWP.BuildTools"'
 
 echo "== rust toolchain =="
 $SSH '"%USERPROFILE%\.cargo\bin\rustup" toolchain install 1.95.0 --profile minimal && "%USERPROFILE%\.cargo\bin\rustup" target add x86_64-pc-windows-msvc --toolchain 1.95.0 && "%USERPROFILE%\.cargo\bin\rustup" default 1.95.0'
@@ -24,7 +24,7 @@ $SSH "\"%ProgramFiles%\\Git\\cmd\\git.exe\" clone --branch ${BRANCH} https://git
 $SSH 'cd /d C:\bae && "%ProgramFiles%\Git\cmd\git.exe" submodule update --init --recursive'
 
 echo "== ffmpeg dist (${FFMPEG_VERSION}, self-contained) =="
-$SSH "powershell -Command \"\$dist = 'C:\\bae\\bae-ffmpeg\\dist'; New-Item -ItemType Directory -Force \$dist | Out-Null; curl.exe -L https://github.com/bae-fm/bae-ffmpeg/releases/download/${FFMPEG_VERSION}/ffmpeg-windows-x86_64.zip -o \$env:TEMP\\ffmpeg.zip; Expand-Archive -Path \$env:TEMP\\ffmpeg.zip -DestinationPath \$dist -Force; New-Item -ItemType Directory -Force \$dist\\lib | Out-Null; Copy-Item \$dist\\bin\\*.lib \$dist\\lib\\ -Force\""
+$SSH "powershell -Command \"\$dist = 'C:\\bae\\bae-ffmpeg\\dist'; New-Item -ItemType Directory -Force \$dist | Out-Null; curl.exe -L https://github.com/bae-fm/bae-ffmpeg/releases/download/${FFMPEG_VERSION}/ffmpeg-windows-x86_64.zip -o \$env:TEMP\\ffmpeg.zip; Expand-Archive -Path \$env:TEMP\\ffmpeg.zip -DestinationPath \$dist -Force; Remove-Item \$env:TEMP\\ffmpeg.zip; New-Item -ItemType Directory -Force \$dist\\lib | Out-Null; Copy-Item \$dist\\bin\\*.lib \$dist\\lib\\ -Force\""
 
 echo "== uniffi-bindgen-cs =="
 $SSH '"%USERPROFILE%\.cargo\bin\cargo" install --git https://github.com/NordSecurity/uniffi-bindgen-cs.git --tag "v0.11.0+v0.31.0" uniffi-bindgen-cs --locked'
