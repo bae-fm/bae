@@ -60,7 +60,11 @@ internal sealed class SessionStore
             return OpenHandleResult.Failed;
         }
 
-        if (!NativeBae.HasEncryptionKey(handle))
+        // Locked means a key was established for this library but this device's
+        // keyring lacks it — the encryptionKeyStored config gate, as on macOS
+        // (LibrarySessionOpener). A fresh library has no key until cloud setup
+        // mints one; key absence alone is its normal unlocked state.
+        if (NativeBae.GetConfig(handle).EncryptionKeyStored && !NativeBae.HasEncryptionKey(handle))
         {
             NativeBae.HandleFree(handle);
             return OpenHandleResult.NeedsUnlock;
