@@ -23,6 +23,24 @@
             )
         }
 
+        /// `emptyLibrary` behind a real session — the backing for the empty
+        /// previews and the whole-window empty scene (desktop story 3), so
+        /// they exercise the actual zero-count empty-state branches.
+        @MainActor
+        static func previewEmptyBacking(
+            uiStore: UiStore,
+            libraryStore: LibraryStore
+        ) -> (library: Library, session: LibraryBrowseSession) {
+            let library = emptyLibrary
+            let session = LibraryBrowseSession(
+                library: library,
+                projectionRegistry: ProjectionRegistry(),
+                libraryStore: libraryStore,
+                uiStore: uiStore
+            )
+            return (library, session)
+        }
+
         /// Enough synthesized albums for the grid to scroll well past the
         /// header's tracking zone, served through a canned-page `Library`
         /// behind a real session — the populated backing for whole-screen

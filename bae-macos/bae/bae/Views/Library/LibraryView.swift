@@ -211,11 +211,11 @@ extension LibraryView {
                     }
                 }
                 else if albumList.totalCount == 0 {
-                    ContentUnavailableView(
-                        "No albums",
-                        systemImage: "square.stack",
-                        description: Text("Import some music to get started"),
-                    )
+                    ContentUnavailableView {
+                        Text("No albums")
+                    } description: {
+                        Text("Import some music to get started")
+                    }
                 }
                 else {
                     AlbumGridView(
@@ -258,11 +258,11 @@ extension LibraryView {
                     }
                 }
                 else if composerList.totalCount == 0 {
-                    ContentUnavailableView(
-                        "No composers",
-                        systemImage: "person.wave.2",
-                        description: Text("Import some music to get started"),
-                    )
+                    ContentUnavailableView {
+                        Text("No composers")
+                    } description: {
+                        Text("Import some music to get started")
+                    }
                 }
                 else {
                     HSplitView {
@@ -291,11 +291,11 @@ extension LibraryView {
                     }
                 }
                 else if artistList.totalCount == 0 {
-                    ContentUnavailableView(
-                        "No artists",
-                        systemImage: "music.mic",
-                        description: Text("Import some music to get started"),
-                    )
+                    ContentUnavailableView {
+                        Text("No artists")
+                    } description: {
+                        Text("Import some music to get started")
+                    }
                 }
                 else {
                     HSplitView {
@@ -470,17 +470,16 @@ extension LibraryView {
     #Preview("Albums \u{2014} Empty") {
         let uiStore = UiStore()
         let libraryStore = LibraryStore()
-        let session = LibraryBrowseSession(
-            library: LibraryView.emptyLibrary,
-            projectionRegistry: ProjectionRegistry(),
-            libraryStore: libraryStore,
-            uiStore: uiStore
+        let backing = LibraryView.previewEmptyBacking(
+            uiStore: uiStore,
+            libraryStore: libraryStore
         )
+        let session: LibraryBrowseSession = backing.session
         return LibraryView()
             .environment(Playback.stub)
             .environment(Queue.stub)
             .environment(Downloads.stub)
-            .environment(LibraryView.emptyLibrary)
+            .environment(backing.library)
             .environment(libraryStore)
             .environment(uiStore)
             .environment(session)
@@ -493,17 +492,16 @@ extension LibraryView {
         let uiStore = UiStore()
         uiStore.setLibraryBrowserMode(.composers)
         let libraryStore = LibraryStore()
-        let session = LibraryBrowseSession(
-            library: LibraryView.emptyLibrary,
-            projectionRegistry: ProjectionRegistry(),
-            libraryStore: libraryStore,
-            uiStore: uiStore
+        let backing = LibraryView.previewEmptyBacking(
+            uiStore: uiStore,
+            libraryStore: libraryStore
         )
+        let session: LibraryBrowseSession = backing.session
         return LibraryView()
             .environment(Playback.stub)
             .environment(Queue.stub)
             .environment(Downloads.stub)
-            .environment(LibraryView.emptyLibrary)
+            .environment(backing.library)
             .environment(libraryStore)
             .environment(uiStore)
             .environment(session)
@@ -570,17 +568,16 @@ extension LibraryView {
         let uiStore = UiStore()
         uiStore.setLibraryBrowserMode(.artists)
         let libraryStore = LibraryStore()
-        let session = LibraryBrowseSession(
-            library: LibraryView.emptyLibrary,
-            projectionRegistry: ProjectionRegistry(),
-            libraryStore: libraryStore,
-            uiStore: uiStore
+        let backing = LibraryView.previewEmptyBacking(
+            uiStore: uiStore,
+            libraryStore: libraryStore
         )
+        let session: LibraryBrowseSession = backing.session
         return LibraryView()
             .environment(Playback.stub)
             .environment(Queue.stub)
             .environment(Downloads.stub)
-            .environment(LibraryView.emptyLibrary)
+            .environment(backing.library)
             .environment(libraryStore)
             .environment(uiStore)
             .environment(session)

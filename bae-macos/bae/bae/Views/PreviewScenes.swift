@@ -47,6 +47,29 @@
                 .windowBackground()
         }
 
+        /// The full main window over a library with nothing in it — title bar,
+        /// empty albums state, idle now-playing bar (desktop story 3). Same
+        /// composition as `MainAppView`'s preview, over the shared empty
+        /// backing (`LibraryView.previewEmptyBacking`).
+        static func libraryEmpty() -> some View {
+            let uiStore = UiStore()
+            let libraryStore = LibraryStore()
+            let backing = LibraryView.previewEmptyBacking(
+                uiStore: uiStore,
+                libraryStore: libraryStore
+            )
+            return MainAppView()
+                .environment(backing.library)
+                .environment(backing.session)
+                .environment(libraryStore)
+                .environment(uiStore)
+                .environment(PreviewAudio.stub)
+                .environment(Cast.stub)
+                .environment(CastStore())
+                .albumDetailPreviewEnvironment(store: libraryStore)
+                .windowBackground()
+        }
+
         /// The expanded album detail for a two-sided vinyl fixture, mid-playback.
         static func albumDetail() -> some View {
             PreviewData.albumExpansionScene(

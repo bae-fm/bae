@@ -296,4 +296,12 @@ struct MainAppView: View {
             .frame(width: 1280, height: 800)
             .windowBackground()
     }
+
+    /// The empty library's whole window (desktop story 3) — the same
+    /// composition the shot harness renders.
+    #Preview("Main app \u{2014} Empty") {
+        PreviewScenes.libraryEmpty()
+            .padding(.top, 1)
+            .frame(width: 1280, height: 800)
+    }
 #endif
