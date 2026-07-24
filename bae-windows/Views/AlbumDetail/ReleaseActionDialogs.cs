@@ -17,6 +17,7 @@ namespace Bae.Windows;
 internal sealed partial class ReleaseActionDialogs
 {
     private readonly SessionStore _session;
+    private readonly MediaPathsService _mediaPaths;
     private readonly Func<XamlRoot?> _xamlRoot;
     private readonly Func<IntPtr> _windowHandle;
     private readonly Action<string> _setStatus;
@@ -25,6 +26,7 @@ internal sealed partial class ReleaseActionDialogs
 
     public ReleaseActionDialogs(
         SessionStore session,
+        MediaPathsService mediaPaths,
         Func<XamlRoot?> xamlRoot,
         Func<IntPtr> windowHandle,
         Action<string> setStatus,
@@ -32,6 +34,7 @@ internal sealed partial class ReleaseActionDialogs
         LightboxOverlay lightbox)
     {
         _session = session;
+        _mediaPaths = mediaPaths;
         _xamlRoot = xamlRoot;
         _windowHandle = windowHandle;
         _setStatus = setStatus;

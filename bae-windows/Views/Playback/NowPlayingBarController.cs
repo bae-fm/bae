@@ -19,6 +19,7 @@ namespace Bae.Windows;
 internal sealed class NowPlayingBarController
 {
     private readonly SessionStore _session;
+    private readonly MediaPathsService _mediaPaths;
     private readonly PlaybackStore _playback;
     private readonly CastStore _cast;
     private readonly Func<XamlRoot?> _xamlRoot;
@@ -94,6 +95,7 @@ internal sealed class NowPlayingBarController
 
     public NowPlayingBarController(
         SessionStore session,
+        MediaPathsService mediaPaths,
         PlaybackStore playback,
         CastStore cast,
         Func<bool> showRemainingTime,
@@ -127,6 +129,7 @@ internal sealed class NowPlayingBarController
         Func<string, string?, System.Threading.Tasks.Task> revealAlbum)
     {
         _session = session;
+        _mediaPaths = mediaPaths;
         _playback = playback;
         _cast = cast;
         _showRemainingTime = showRemainingTime;
@@ -374,7 +377,7 @@ internal sealed class NowPlayingBarController
         var playPauseName = Loc.Chrome(track.IsPlaying ? "nowplaying.pause" : "action.play");
         AutomationProperties.SetName(_playPause, playPauseName);
         ToolTipService.SetToolTip(_playPause, playPauseName);
-        _cover.Source = CoverImage.LoadImage(_session.CurrentHandleOrNull(), track.CoverImageId);
+        _cover.Source = CoverImage.LoadImage(_mediaPaths, track.CoverImageId);
         // Audio is flowing: drop the buffering spinner, restore the play/pause
         // glyph. The circle itself stays put through the swap.
         _loading.IsActive = false;

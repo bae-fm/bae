@@ -806,6 +806,30 @@ internal static class NativeBae
             identity,
             ReleaseUserEdit(userEdit)));
 
+    /// <summary>Filesystem path for the user's own external file behind a library
+    /// file (the DiscID re-read of a rip's LOG/CUE/audio), or null when there is
+    /// none. NOT for images — those go through the byte reads below.</summary>
+    internal static (string? Path, string? Error) FilePath(AppHandle handle, string fileId)
+    {
+        try
+        {
+            return (Await(() => handle.FilePath(fileId)), null);
+        }
+        catch (BridgeException.Cancelled)
+        {
+            return (null, null);
+        }
+        catch (BridgeException exception)
+        {
+            return (null, exception.Message);
+        }
+    }
+
+    /// <summary>Remote cover-art bytes for the import flow's cover-art search, or
+    /// null on a failed fetch (logged).</summary>
+    internal static byte[]? FetchCoverBytes(AppHandle handle, string url) =>
+        CaptureBytes(() => Await(() => handle.FetchCoverBytes(url)));
+
     internal static byte[]? ImageBytes(AppHandle? handle, BridgeImageRef image) =>
         handle is null ? null : CaptureBytes(() => Await(() => handle.FetchImageBytes(image)));
 

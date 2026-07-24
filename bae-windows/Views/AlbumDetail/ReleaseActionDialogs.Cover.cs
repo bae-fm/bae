@@ -145,13 +145,8 @@ internal sealed partial class ReleaseActionDialogs
             };
             foreach (var file in releaseImages)
             {
-                var handle = _session.CurrentHandleOrNull();
-                if (handle == null)
-                {
-                    return;
-                }
                 var source = CoverImage.LoadGalleryBytes(
-                    handle, releaseId, new BridgeGallerySource.ReleaseFile(file.Id));
+                    _mediaPaths, releaseId, new BridgeGallerySource.ReleaseFile(file.Id));
                 var selection = new BridgeCoverSelection.ReleaseImage(file.Id);
                 fileGrid.Children.Add(Tile(source, file.OriginalFilename, selection));
             }

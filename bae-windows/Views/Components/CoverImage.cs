@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
@@ -12,9 +12,9 @@ namespace Bae.Windows;
 
 /// <summary>
 /// Decodes a library image into a <see cref="BitmapImage"/> for the WinUI image
-/// controls. The bytes come through the generated bridge: versioned library
-/// images by image ref, now-playing covers by id, and gallery slots by their
-/// forwarded <c>source</c>. Core reads them locality-aware, fetching and
+/// controls. The bytes come through <see cref="MediaPathsService"/>: versioned
+/// library images by image ref, now-playing covers by id, and gallery slots by
+/// their forwarded <c>source</c>. Core reads them locality-aware, fetching and
 /// decrypting from the cloud when they aren't on disk, so the UI never resolves
 /// a filesystem path itself.
 ///
@@ -38,37 +38,10 @@ internal static class CoverImage
     private static readonly Dictionary<(string Id, string Version), BitmapImage> Cache = new();
     private static readonly object CacheGate = new();
 
-    /// <summary>
-    /// The decoded cover for an image reference (id + version), or null when
-    /// <paramref name="cover"/> is null or the bytes can't be read or decoded.
-    /// Used by the grid tile and the gallery's cover slot.
-    /// </summary>
-    public static BitmapImage? LoadByImageRef(LibraryHandle? handle, BridgeImageRef? cover)
-    {
-        if (cover is null)
-        {
-            return null;
-        }
-
-        var key = (cover.Id, cover.Version);
-        if (TryGetCached(key, out var cached))
-        {
-            return cached;
-        }
-
-        var bitmap = Decode(ReadImageRefBytes(handle, cover));
-        if (bitmap is not null)
-        {
-            CacheDecoded(key, bitmap);
-        }
-
-        return bitmap;
-    }
-
     internal sealed class Binding
     {
         private readonly BridgeImageRef? _cover;
-        private LibraryHandle? _handle;
+        private MediaPathsService? _mediaPaths;
         private DispatcherQueue? _dispatcherQueue;
         private ImageSource? _source;
         private (string Id, string Version)? _loadingKey;
@@ -90,16 +63,16 @@ internal static class CoverImage
             }
         }
 
-        internal void Attach(LibraryHandle handle, DispatcherQueue dispatcherQueue)
+        internal void Attach(MediaPathsService mediaPaths, DispatcherQueue dispatcherQueue)
         {
-            _handle = handle;
+            _mediaPaths = mediaPaths;
             _dispatcherQueue = dispatcherQueue;
             StartLoad();
         }
 
         private void StartLoad()
         {
-            if (_cover is null || _handle is null || _dispatcherQueue is null)
+            if (_cover is null || _mediaPaths is null || _dispatcherQueue is null)
             {
                 return;
             }
@@ -119,10 +92,10 @@ internal static class CoverImage
             }
 
             _loadingKey = key;
-            var handle = _handle;
+            var mediaPaths = _mediaPaths;
             var dispatcherQueue = _dispatcherQueue;
             var cover = _cover;
-            _ = Task.Run(() => ReadImageRefBytes(handle, cover)).ContinueWith(task =>
+            _ = Task.Run(() => mediaPaths.FetchImageBytes(cover)).ContinueWith(task =>
             {
                 byte[]? bytes = null;
                 if (task.Status == TaskStatus.RanToCompletion)
@@ -162,16 +135,14 @@ internal static class CoverImage
     /// cache under); null when <paramref name="imageId"/> is empty or the bytes
     /// can't be read or decoded.
     /// </summary>
-    public static BitmapImage? LoadImage(LibraryHandle? handle, string? imageId)
+    public static BitmapImage? LoadImage(MediaPathsService mediaPaths, string? imageId)
     {
         if (string.IsNullOrEmpty(imageId))
         {
             return null;
         }
 
-        return Decode(ReadBytes(
-            handle,
-            appHandle => NativeBae.CoverImageBytes(appHandle, imageId)));
+        return Decode(mediaPaths.FetchCoverImageBytes(imageId));
     }
 
     /// <summary>
@@ -195,13 +166,13 @@ internal static class CoverImage
     /// (it is correct for its id); only the application to a since-recycled control
     /// is guarded.
     /// </summary>
-    public static void BindById(Image image, LibraryHandle? handle, string? imageId)
+    public static void BindById(Image image, MediaPathsService mediaPaths, string? imageId)
     {
         // Stamp the id this control now wants (or null when absent), so a slow
         // reply for a since-recycled row can tell it is stale.
         image.Tag = imageId;
         image.Source = null;
-        if (string.IsNullOrEmpty(imageId) || handle is null)
+        if (string.IsNullOrEmpty(imageId))
         {
             return;
         }
@@ -216,7 +187,7 @@ internal static class CoverImage
         }
 
         var dispatcher = image.DispatcherQueue;
-        _ = Task.Run(() => ReadBytes(handle, appHandle => NativeBae.CoverImageBytes(appHandle, imageId)))
+        _ = Task.Run(() => mediaPaths.FetchCoverImageBytes(imageId))
             .ContinueWith(
                 task =>
                 {
@@ -248,15 +219,8 @@ internal static class CoverImage
     /// The decoded image for a gallery slot, given the item's generated source.
     /// Decoded fresh each call; null when the bytes can't be read or decoded.
     /// </summary>
-    public static BitmapImage? LoadGalleryBytes(LibraryHandle? handle, string releaseId, BridgeGallerySource source) =>
-        Decode(ReadBytes(
-            handle,
-            appHandle => NativeBae.GalleryBytes(appHandle, releaseId, source)));
-
-    private static byte[]? ReadImageRefBytes(LibraryHandle? handle, BridgeImageRef cover) =>
-        ReadBytes(
-            handle,
-            appHandle => NativeBae.ImageBytes(appHandle, cover));
+    public static BitmapImage? LoadGalleryBytes(MediaPathsService mediaPaths, string releaseId, BridgeGallerySource source) =>
+        Decode(mediaPaths.FetchGalleryBytes(releaseId, source));
 
     private static bool TryGetCached((string Id, string Version) key, out BitmapImage bitmap)
     {
@@ -280,9 +244,6 @@ internal static class CoverImage
             Cache[key] = bitmap;
         }
     }
-
-    private static byte[]? ReadBytes(LibraryHandle? handle, Func<AppHandle, byte[]?> read) =>
-        handle is not null && handle.TryUse(read, out var bytes) ? bytes : null;
 
     /// <summary>
     /// Decode image bytes into a <see cref="BitmapImage"/> through an in-memory

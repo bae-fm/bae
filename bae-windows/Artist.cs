@@ -25,8 +25,8 @@ public sealed class ArtistSummary : INotifyPropertyChanged
     public string Name => _artist.Name;
     public long AlbumCount => _artist.AlbumCount;
 
-    internal void AttachCover(LibraryHandle handle, DispatcherQueue dispatcherQueue) =>
-        _cover.Attach(handle, dispatcherQueue);
+    internal void AttachCover(MediaPathsService mediaPaths, DispatcherQueue dispatcherQueue) =>
+        _cover.Attach(mediaPaths, dispatcherQueue);
 
     public ImageSource? Cover => _cover.Source;
     public string AlbumCountText => Loc.Chrome("album.count", "count", Loc.Number(AlbumCount));

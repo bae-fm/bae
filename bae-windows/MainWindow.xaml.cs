@@ -117,7 +117,7 @@ public sealed partial class MainWindow : Window
         _session = session;
         _appService = new AppService(_session);
         _closeToWelcome = closeToWelcome;
-        _browser = new LibraryBrowserStore(_appService.Library, _session, DispatcherQueue);
+        _browser = new LibraryBrowserStore(_appService.Library, _appService.MediaPaths, DispatcherQueue);
 
         InitializeComponent();
         Closed += OnClosed;
@@ -144,12 +144,7 @@ public sealed partial class MainWindow : Window
             WinRT.Interop.WindowNative.GetWindowHandle(this),
             DispatcherQueue,
             WithCurrentHandle,
-            imageId =>
-            {
-                byte[]? bytes = null;
-                WithCurrentHandle(handle => bytes = NativeBae.CoverImageBytes(handle, imageId));
-                return bytes;
-            });
+            imageId => _appService.MediaPaths.FetchCoverImageBytes(imageId));
 
         // Bind layout direction to the UI locale: ar/he (and any other RTL
         // culture) lay out right-to-left. The whole tree inherits from the root
@@ -185,6 +180,7 @@ public sealed partial class MainWindow : Window
         _settings.Changed += ApplyLibraryWidth;
         _nowPlayingBar = new NowPlayingBarController(
             _session,
+            _appService.MediaPaths,
             _playback,
             _cast,
             // Read at call time: the settings mirror is built further down, and
@@ -255,6 +251,7 @@ public sealed partial class MainWindow : Window
         // now-playing jump, and the import "view in library" banner.
         _releaseActions = new ReleaseActionDialogs(
             _session,
+            _appService.MediaPaths,
             () => Content.XamlRoot,
             () => WinRT.Interop.WindowNative.GetWindowHandle(this),
             text => StatusText.Text = text,
@@ -262,6 +259,7 @@ public sealed partial class MainWindow : Window
             _lightbox);
         _queuePane = new QueuePane(
             _session,
+            _appService.MediaPaths,
             _playback,
             QueuePaneHost,
             message => _shell.ShowBanner(InfoBarSeverity.Error, Loc.Chrome("error.playback_title"), message));
@@ -285,6 +283,7 @@ public sealed partial class MainWindow : Window
         // ContentColumn's named elements plus the status/shuffle surfaces it writes.
         _libraryBrowser = new LibraryBrowser(
             _session,
+            _appService.MediaPaths,
             _browser,
             _shell,
             _releaseActions,

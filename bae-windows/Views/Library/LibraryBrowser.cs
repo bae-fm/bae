@@ -25,6 +25,7 @@ namespace Bae.Windows;
 internal sealed partial class LibraryBrowser
 {
     private readonly SessionStore _session;
+    private readonly MediaPathsService _mediaPaths;
     private readonly LibraryBrowserStore _browser;
     // The album grid's multi-selection: modifier clicks / Esc / Ctrl+A mutate it,
     // and the tint (bound OneWay) syncs from it after every mutation. A browse
@@ -67,6 +68,7 @@ internal sealed partial class LibraryBrowser
 
     public LibraryBrowser(
         SessionStore session,
+        MediaPathsService mediaPaths,
         LibraryBrowserStore browser,
         ShellStore shell,
         ReleaseActionDialogs releaseActions,
@@ -98,6 +100,7 @@ internal sealed partial class LibraryBrowser
         UIElement searchOverlayPassThrough)
     {
         _session = session;
+        _mediaPaths = mediaPaths;
         _browser = browser;
         _shell = shell;
         _releaseActions = releaseActions;
@@ -131,6 +134,7 @@ internal sealed partial class LibraryBrowser
         // which calls back for the pane visibility and album reveal this view owns.
         _browserPanes = new BrowserPanes(
             session,
+            mediaPaths,
             dispatcher,
             searchResultsList,
             composerDetailPane,

@@ -31,21 +31,16 @@ internal sealed partial class BrowserPanes
         }
 
         var detail = response.Detail;
-        var handle = _session.CurrentHandleOrNull();
-        if (handle == null)
-        {
-            return;
-        }
-        detail.Composer.AttachCover(handle, _dispatcher);
+        detail.Composer.AttachCover(_mediaPaths, _dispatcher);
         foreach (var group in detail.WorkGroups)
         {
             if (group.Parent is not null)
             {
-                group.Parent.AttachCover(handle, _dispatcher);
+                group.Parent.AttachCover(_mediaPaths, _dispatcher);
             }
             foreach (var work in group.Works)
             {
-                work.AttachCover(handle, _dispatcher);
+                work.AttachCover(_mediaPaths, _dispatcher);
             }
         }
 
@@ -108,15 +103,10 @@ internal sealed partial class BrowserPanes
         }
 
         var detail = response.Detail;
-        var handle = _session.CurrentHandleOrNull();
-        if (handle == null)
-        {
-            return;
-        }
-        detail.Artist.AttachCover(handle, _dispatcher);
+        detail.Artist.AttachCover(_mediaPaths, _dispatcher);
         foreach (var album in detail.Albums)
         {
-            album.AttachCover(handle, _dispatcher);
+            album.AttachCover(_mediaPaths, _dispatcher);
         }
 
         _showArtistBrowser();
@@ -320,19 +310,14 @@ internal sealed partial class BrowserPanes
         }
 
         var detail = response.Detail;
-        var handle = _session.CurrentHandleOrNull();
-        if (handle == null)
-        {
-            return;
-        }
-        detail.Work.AttachCover(handle, _dispatcher);
+        detail.Work.AttachCover(_mediaPaths, _dispatcher);
         foreach (var work in detail.ChildWorks)
         {
-            work.AttachCover(handle, _dispatcher);
+            work.AttachCover(_mediaPaths, _dispatcher);
         }
         foreach (var release in detail.Releases)
         {
-            release.AttachCover(handle, _dispatcher);
+            release.AttachCover(_mediaPaths, _dispatcher);
         }
 
         _showComposerBrowser();

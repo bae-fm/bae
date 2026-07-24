@@ -46,8 +46,8 @@ public sealed class TrackSearchResult : INotifyPropertyChanged
     public string ArtistName => _track.ArtistName;
     public string DurationLabel => BridgeDisplay.Clock(_track.DurationClock);
 
-    internal void AttachCover(LibraryHandle handle, DispatcherQueue dispatcherQueue) =>
-        _cover.Attach(handle, dispatcherQueue);
+    internal void AttachCover(MediaPathsService mediaPaths, DispatcherQueue dispatcherQueue) =>
+        _cover.Attach(mediaPaths, dispatcherQueue);
 
     public ImageSource? Cover => _cover.Source;
 }
@@ -73,8 +73,8 @@ public sealed class ComposerSummary : INotifyPropertyChanged
     public long LinkedReleaseCount => _composer.LinkedReleaseCount;
     public long UnlinkedCreditCount => _composer.UnlinkedCreditCount;
 
-    internal void AttachCover(LibraryHandle handle, DispatcherQueue dispatcherQueue) =>
-        _cover.Attach(handle, dispatcherQueue);
+    internal void AttachCover(MediaPathsService mediaPaths, DispatcherQueue dispatcherQueue) =>
+        _cover.Attach(mediaPaths, dispatcherQueue);
 
     public ImageSource? Cover => _cover.Source;
     public string WorkCountText => Loc.Chrome("work.count", "count", Loc.Number(WorkCount));
@@ -103,8 +103,8 @@ public sealed class WorkSummary : INotifyPropertyChanged
     public long LinkedReleaseCount => _work.LinkedReleaseCount;
     public string? RepresentativeReleaseId => _work.RepresentativeReleaseId;
 
-    internal void AttachCover(LibraryHandle handle, DispatcherQueue dispatcherQueue) =>
-        _cover.Attach(handle, dispatcherQueue);
+    internal void AttachCover(MediaPathsService mediaPaths, DispatcherQueue dispatcherQueue) =>
+        _cover.Attach(mediaPaths, dispatcherQueue);
 
     public ImageSource? Cover => _cover.Source;
 }
@@ -195,8 +195,8 @@ public sealed class WorkReleaseSummary : INotifyPropertyChanged
     public string DisplayName => _release.DisplayName;
     public string? Format => _release.Format;
 
-    internal void AttachCover(LibraryHandle handle, DispatcherQueue dispatcherQueue) =>
-        _cover.Attach(handle, dispatcherQueue);
+    internal void AttachCover(MediaPathsService mediaPaths, DispatcherQueue dispatcherQueue) =>
+        _cover.Attach(mediaPaths, dispatcherQueue);
 
     public ImageSource? CoverImage => _cover.Source;
     public string DisplaySubtitle =>

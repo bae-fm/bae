@@ -35,7 +35,7 @@ internal sealed class LibraryBrowserStore
     private const ulong PageSize = 200;
 
     private readonly LibraryService _library;
-    private readonly SessionStore _session;
+    private readonly MediaPathsService _mediaPaths;
     private readonly DispatcherQueue _dispatcher;
 
     public LibrarySort Sort { get; }
@@ -44,10 +44,10 @@ internal sealed class LibraryBrowserStore
     public IncrementalBrowserCollection<ComposerSummary> Composers { get; }
     public IncrementalBrowserCollection<ArtistSummary> Artists { get; }
 
-    public LibraryBrowserStore(LibraryService library, SessionStore session, DispatcherQueue dispatcher)
+    public LibraryBrowserStore(LibraryService library, MediaPathsService mediaPaths, DispatcherQueue dispatcher)
     {
         _library = library;
-        _session = session;
+        _mediaPaths = mediaPaths;
         _dispatcher = dispatcher;
         Albums = new IncrementalBrowserCollection<Album>(FetchAlbumPage, LogPageError("albums"));
         Composers = new IncrementalBrowserCollection<ComposerSummary>(FetchComposerPage, LogPageError("composers"));
@@ -74,12 +74,6 @@ internal sealed class LibraryBrowserStore
             return new BrowserGridLoad(BrowserMode.Albums, BrowserLoadResult.HandleGone, null, false);
         }
 
-        var handle = _session.CurrentHandleOrNull();
-        if (handle == null)
-        {
-            return new BrowserGridLoad(BrowserMode.Albums, BrowserLoadResult.HandleGone, null, false);
-        }
-
         Albums.Clear();
         if (page.Error is not null || page.Albums is null)
         {
@@ -88,7 +82,7 @@ internal sealed class LibraryBrowserStore
 
         foreach (var album in page.Albums)
         {
-            album.AttachCover(handle, _dispatcher);
+            album.AttachCover(_mediaPaths, _dispatcher);
             Albums.Add(album);
         }
         var (countCurrent, total) = _library.AlbumCount();
@@ -113,15 +107,9 @@ internal sealed class LibraryBrowserStore
             return new BrowserGridLoad(BrowserMode.Composers, BrowserLoadResult.Failed, page.Error, false);
         }
 
-        var handle = _session.CurrentHandleOrNull();
-        if (handle == null)
-        {
-            return new BrowserGridLoad(BrowserMode.Composers, BrowserLoadResult.HandleGone, null, false);
-        }
-
         foreach (var composer in page.Composers)
         {
-            composer.AttachCover(handle, _dispatcher);
+            composer.AttachCover(_mediaPaths, _dispatcher);
             Composers.Add(composer);
         }
         var (countCurrent, total) = _library.ComposerCount();
@@ -146,15 +134,9 @@ internal sealed class LibraryBrowserStore
             return new BrowserGridLoad(BrowserMode.Artists, BrowserLoadResult.Failed, page.Error, false);
         }
 
-        var handle = _session.CurrentHandleOrNull();
-        if (handle == null)
-        {
-            return new BrowserGridLoad(BrowserMode.Artists, BrowserLoadResult.HandleGone, null, false);
-        }
-
         foreach (var artist in page.Artists)
         {
-            artist.AttachCover(handle, _dispatcher);
+            artist.AttachCover(_mediaPaths, _dispatcher);
             Artists.Add(artist);
         }
         var (countCurrent, total) = _library.ArtistCount();
@@ -173,18 +155,13 @@ internal sealed class LibraryBrowserStore
         {
             return (false, null, null);
         }
-        var handle = _session.CurrentHandleOrNull();
-        if (handle == null)
-        {
-            return (false, null, null);
-        }
         if (page.Error is not null || page.Albums is null)
         {
             return (true, null, page.Error);
         }
         foreach (var album in page.Albums)
         {
-            album.AttachCover(handle, _dispatcher);
+            album.AttachCover(_mediaPaths, _dispatcher);
         }
         return (true, page.Albums, null);
     }
@@ -197,18 +174,13 @@ internal sealed class LibraryBrowserStore
         {
             return (false, null, null);
         }
-        var handle = _session.CurrentHandleOrNull();
-        if (handle == null)
-        {
-            return (false, null, null);
-        }
         if (page.Error is not null || page.Composers is null)
         {
             return (true, null, page.Error);
         }
         foreach (var composer in page.Composers)
         {
-            composer.AttachCover(handle, _dispatcher);
+            composer.AttachCover(_mediaPaths, _dispatcher);
         }
         return (true, page.Composers, null);
     }
@@ -221,18 +193,13 @@ internal sealed class LibraryBrowserStore
         {
             return (false, null, null);
         }
-        var handle = _session.CurrentHandleOrNull();
-        if (handle == null)
-        {
-            return (false, null, null);
-        }
         if (page.Error is not null || page.Artists is null)
         {
             return (true, null, page.Error);
         }
         foreach (var artist in page.Artists)
         {
-            artist.AttachCover(handle, _dispatcher);
+            artist.AttachCover(_mediaPaths, _dispatcher);
         }
         return (true, page.Artists, null);
     }
@@ -248,34 +215,28 @@ internal sealed class LibraryBrowserStore
             return new BrowserSearch(HandleGone: true, null, null);
         }
 
-        var handle = _session.CurrentHandleOrNull();
-        if (handle == null)
-        {
-            return new BrowserSearch(HandleGone: true, null, null);
-        }
-
         var results = search.Results;
         if (search.Error is null && results is not null)
         {
             foreach (var album in results.Albums)
             {
-                album.AttachCover(handle, _dispatcher);
+                album.AttachCover(_mediaPaths, _dispatcher);
             }
             foreach (var artist in results.Artists)
             {
-                artist.AttachCover(handle, _dispatcher);
+                artist.AttachCover(_mediaPaths, _dispatcher);
             }
             foreach (var track in results.Tracks)
             {
-                track.AttachCover(handle, _dispatcher);
+                track.AttachCover(_mediaPaths, _dispatcher);
             }
             foreach (var composer in results.Composers)
             {
-                composer.AttachCover(handle, _dispatcher);
+                composer.AttachCover(_mediaPaths, _dispatcher);
             }
             foreach (var work in results.Works)
             {
-                work.AttachCover(handle, _dispatcher);
+                work.AttachCover(_mediaPaths, _dispatcher);
             }
         }
 

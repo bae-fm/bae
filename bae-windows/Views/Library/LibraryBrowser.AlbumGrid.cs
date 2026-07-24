@@ -382,6 +382,7 @@ internal sealed partial class LibraryBrowser
 
         var panel = new AlbumExpansionPanel(
             _session,
+            _mediaPaths,
             _dispatcher,
             _xamlRoot,
             _windowHandle,

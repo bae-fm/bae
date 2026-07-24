@@ -13,9 +13,11 @@ namespace Bae.Windows;
 internal sealed class AppService
 {
     public LibraryService Library { get; }
+    public MediaPathsService MediaPaths { get; }
 
     public AppService(SessionStore session)
     {
         Library = LibraryService.FromSession(session);
+        MediaPaths = MediaPathsService.FromSession(session);
     }
 }

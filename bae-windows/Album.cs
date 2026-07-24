@@ -51,8 +51,8 @@ public sealed class Album : INotifyPropertyChanged
     /// Null for search-result albums, whose bridge type doesn't carry it.</summary>
     internal string? PrimaryReleaseId { get; }
 
-    internal void AttachCover(LibraryHandle handle, DispatcherQueue dispatcherQueue) =>
-        _cover.Attach(handle, dispatcherQueue);
+    internal void AttachCover(MediaPathsService mediaPaths, DispatcherQueue dispatcherQueue) =>
+        _cover.Attach(mediaPaths, dispatcherQueue);
 
     public ImageSource? Cover => _cover.Source;
 

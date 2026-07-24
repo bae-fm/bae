@@ -27,6 +27,7 @@ namespace Bae.Windows;
 internal sealed partial class AlbumExpansionPanel : IDisposable
 {
     private readonly SessionStore _session;
+    private readonly MediaPathsService _mediaPaths;
     private readonly Microsoft.UI.Dispatching.DispatcherQueue _dispatcher;
     private readonly Func<XamlRoot?> _xamlRoot;
     private readonly Func<IntPtr> _windowHandle;
@@ -46,6 +47,7 @@ internal sealed partial class AlbumExpansionPanel : IDisposable
 
     public AlbumExpansionPanel(
         SessionStore session,
+        MediaPathsService mediaPaths,
         Microsoft.UI.Dispatching.DispatcherQueue dispatcher,
         Func<XamlRoot?> xamlRoot,
         Func<IntPtr> windowHandle,
@@ -57,6 +59,7 @@ internal sealed partial class AlbumExpansionPanel : IDisposable
         Action onClose)
     {
         _session = session;
+        _mediaPaths = mediaPaths;
         _dispatcher = dispatcher;
         _xamlRoot = xamlRoot;
         _windowHandle = windowHandle;
@@ -98,15 +101,12 @@ internal sealed partial class AlbumExpansionPanel : IDisposable
             return null;
         }
 
-        // Attach the current handle to every release so its own cover loads off the
-        // UI thread through the same (id, version) cache the grid tiles use; the
-        // large cover binds to the selected release's.
-        if (_session.CurrentHandleOrNull() is { } coverHandle)
+        // Attach media paths to every release so its own cover loads off the UI
+        // thread through the same (id, version) cache the grid tiles use; the large
+        // cover binds to the selected release's.
+        foreach (var release in detail.Releases)
         {
-            foreach (var release in detail.Releases)
-            {
-                release.AttachCover(coverHandle, _dispatcher);
-            }
+            release.AttachCover(_mediaPaths, _dispatcher);
         }
 
         // The release the panel acts on: when revealing a now-playing track, the

@@ -43,6 +43,7 @@ namespace Bae.Windows;
 internal sealed partial class QueuePane
 {
     private readonly SessionStore _session;
+    private readonly MediaPathsService _mediaPaths;
     private readonly PlaybackStore _playback;
     private readonly Border _host;
     private readonly Action<string> _onError;
@@ -70,9 +71,10 @@ internal sealed partial class QueuePane
     // a scrubber.
     private long _renderedSecond = -1;
 
-    public QueuePane(SessionStore session, PlaybackStore playback, Border host, Action<string> onError)
+    public QueuePane(SessionStore session, MediaPathsService mediaPaths, PlaybackStore playback, Border host, Action<string> onError)
     {
         _session = session;
+        _mediaPaths = mediaPaths;
         _playback = playback;
         _host = host;
         _onError = onError;

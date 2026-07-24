@@ -48,8 +48,8 @@ public sealed class Release : INotifyPropertyChanged
     /// <summary>Attach the current handle so the release's own cover loads off the
     /// UI thread and applies when it lands — the same (id, version) cache path the
     /// grid tiles use.</summary>
-    internal void AttachCover(LibraryHandle handle, DispatcherQueue dispatcherQueue) =>
-        _cover.Attach(handle, dispatcherQueue);
+    internal void AttachCover(MediaPathsService mediaPaths, DispatcherQueue dispatcherQueue) =>
+        _cover.Attach(mediaPaths, dispatcherQueue);
 
     /// <summary>The release's own cover, or null while it loads / when the release
     /// has none. The album expansion's large art binds here per selected release.</summary>
