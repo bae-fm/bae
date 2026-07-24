@@ -13,6 +13,13 @@ set PATH=C:\bae\bae-ffmpeg\dist\bin;C:\Program Files\LLVM\bin;%USERPROFILE%\.car
 set BAE_BRIDGE_TARGET=aarch64-pc-windows-msvc
 set BAE_BRIDGE_FEATURES=desktop
 set BAE_BRIDGE_CSHARP_BINDINGS_DIR=bae-bridge/csharp-bindings-baeium
+rem Pin the MSVC linker: under Git bash a bare "link.exe" can resolve to GNU
+rem coreutils' link (see bridge-build.cmd).
+for /f "delims=" %%d in ('dir /b /ad "C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Tools\MSVC"') do set MSVC_VER=%%d
+set CARGO_TARGET_AARCH64_PC_WINDOWS_MSVC_LINKER=C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Tools\MSVC\%MSVC_VER%\bin\Hostarm64\arm64\link.exe
+rem vcvars provides LIB/INCLUDE for the pinned linker (rustc skips its own
+rem MSVC env injection when the linker is overridden).
+call "C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Auxiliary\Build\vcvarsall.bat" arm64 || exit /b 1
 cd /d C:\bae
 
 "%ProgramFiles%\Git\bin\bash.exe" ./bae-bridge/build-windows.sh --release || exit /b 1
