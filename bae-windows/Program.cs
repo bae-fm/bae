@@ -39,6 +39,11 @@ public static class Program
     [STAThread]
     private static void Main(string[] args)
     {
+        // Record any unhandled exception from process entry onward — before
+        // Velopack, single-instancing, or the Application exists — so a startup
+        // crash leaves a managed record instead of an anonymous stowed crash.
+        CrashCapture.InstallProcessHandlers();
+
 #if DEBUG
         // Screenshot-capture mode bypasses everything below — the Velopack hooks
         // and the single-instance redirect serve a real app session, not a

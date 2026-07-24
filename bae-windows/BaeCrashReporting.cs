@@ -37,6 +37,14 @@ internal static class BaeCrashReporting
         ConfigureNative(config);
     }
 
+    // Forward a managed exception caught by an unhandled-exception hook to Sentry.
+    // A no-op when the SDK was never initialized (an unconfigured edition, or a
+    // crash before Configure ran), which SentrySdk handles without throwing.
+    internal static void CaptureException(Exception exception)
+    {
+        SentrySdk.CaptureException(exception);
+    }
+
     private static CrashReportingConfig? Config()
     {
         if (!NativeBae.SupportsOAuthProviders())

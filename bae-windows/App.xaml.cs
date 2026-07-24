@@ -9,6 +9,9 @@ public partial class App : Application
 
     public App()
     {
+        // Record unhandled UI-dispatcher exceptions before anything else can throw
+        // (the process handlers are wired earlier, in Program.Main).
+        CrashCapture.InstallXamlHandler(this);
 #if DEBUG
         // In screenshot-capture mode, force the dark look (matching the macOS
         // capture) app-wide: the scene brushes resolve against the app theme, and
