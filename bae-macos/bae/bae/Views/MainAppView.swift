@@ -301,7 +301,5 @@ struct MainAppView: View {
     /// composition the shot harness renders.
     #Preview("Main app \u{2014} Empty") {
         PreviewScenes.libraryEmpty()
-            .padding(.top, 1)
-            .frame(width: 1280, height: 800)
     }
 #endif
