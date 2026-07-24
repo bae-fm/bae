@@ -57,10 +57,11 @@ OS caches, keeping every build cache, and ReTrims so the host qcow2 shrinks.
   fails certificate validation (0x8a15005e) on a fresh VM, and an unpinned
   `winget install` aborts when any source errors — even after the community
   source already found the package.
-- **x64, not ARM, for now**: prebuilt FFmpeg ships x64 (ARM artifact exists as
-  of `windows-arm64` work — switch when bae grows its ARM lane); Windows runs
-  x64 under emulation. `cargo test` must pass `--target x86_64-pc-windows-msvc`
-  or link failures follow (host is aarch64).
+- **Native aarch64, no emulation in the loop**: every build targets
+  `aarch64-pc-windows-msvc` (bae-ffmpeg ships an aarch64 dist; the CI arm lane
+  covers the same target). `cargo test` needs no `--target` — aarch64 is the
+  host. The public release lane (release-windows.yml) still ships x64 only, so
+  a CI-built installer runs on this VM under emulation.
 - **Scheduled tasks with `/it` need a logged-in desktop** — hence auto-logon.
   `/rl highest` (elevation) breaks WinUI file pickers and creates
   Administrators-owned state files a normal run then can't touch. Don't elevate
@@ -68,9 +69,10 @@ OS caches, keeping every build cache, and ReTrims so the host qcow2 shrinks.
 - **SSH sessions can't show windows**; anything windowed goes through the
   scheduled-task harness. SSH-launched app processes may also die silently —
   treat SSH as build/file transport only.
-- **WinDbg reads x64 dumps poorly from arm64**; the app's own crash log
-  (`%LOCALAPPDATA%\bae\crash.log`, written by CrashCapture) is the primary
-  crash record.
+- **The app's own crash log is the primary crash record**
+  (`%LOCALAPPDATA%\bae\crash.log`, written by CrashCapture). WinDbg reads
+  native arm64 dumps fine; it reads x64 dumps (an emulated CI installer build)
+  poorly from arm64.
 - **Growing the disk later**: `qemu-img resize` (brew qemu) on the .qcow2 in
   the UTM bundle, then delete the trailing recovery partition and
   `Resize-Partition` — the recovery partition blocks extension otherwise.
