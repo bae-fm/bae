@@ -58,7 +58,7 @@ macOS only for now. Requires Homebrew.
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 
 # System libraries
-brew install cmake pkg-config libdiscid
+brew install cmake pkg-config
 ```
 
 **Quick start:**

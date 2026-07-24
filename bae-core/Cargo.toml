@@ -137,8 +137,6 @@ windows-native-keyring-store = "0.5.1"
 [target.'cfg(not(any(target_os = "ios", target_os = "android")))'.dependencies]
 # Dev-mode `.env` loading (src/config/dev.rs).
 dotenvy = "0.15"
-# Disc-ID computation from a candidate's LOG/CUE (src/signals/disc_id.rs).
-discid = "0.5"
 # Loudness + true-peak measurement at import (src/loudness.rs). Pure Rust, no
 # system libs. Import-only: playback derives its gain from the stored
 # measurements with plain arithmetic (no ebur128 at playback). true_peak returns

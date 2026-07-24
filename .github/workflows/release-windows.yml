@@ -121,17 +121,6 @@ jobs:
           choco install -y sccache llvm
           echo "LIBCLANG_PATH=C:\Program Files\LLVM\bin" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
 
-      - name: Fetch libdiscid (MusicBrainz Windows binary)
-        shell: pwsh
-        run: |
-          $url = "https://github.com/metabrainz/libdiscid/releases/download/v0.6.5/libdiscid-0.6.5-win.zip"
-          curl.exe -L $url -o libdiscid.zip
-          Expand-Archive -Path libdiscid.zip -DestinationPath "$PWD\libdiscid" -Force
-          $x64 = "$PWD\libdiscid\libdiscid-0.6.5-win\x64"
-          echo "LIB=$x64;$env:LIB" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
-          echo "DISCID_BIN=$x64" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
-          echo "$x64" | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
-
       - name: Fetch bae-ffmpeg (Windows x86_64)
         shell: pwsh
         run: |
@@ -216,13 +205,12 @@ jobs:
           Copy-Item "target-windows\x86_64-pc-windows-msvc\release\bae_bridge.dll" $stage -Force
           Copy-Item "target-windows\x86_64-pc-windows-msvc\release\uniffi_bae_bridge.dll" $stage -Force
 
-          # FFmpeg DLLs (the bridge links them) + their mingw runtime deps + libdiscid.
+          # FFmpeg DLLs (the bridge links them) + their mingw runtime deps.
           Copy-Item "$env:FFMPEG_DIR\bin\*.dll" $stage -Force
           foreach ($d in @("libiconv-2.dll","libmp3lame-0.dll","libopus-0.dll","zlib1.dll","libwinpthread-1.dll","libgcc_s_seh-1.dll","libstdc++-6.dll")) {
             $src = "C:\msys64\mingw64\bin\$d"
             if (Test-Path $src) { Copy-Item $src $stage -Force }
           }
-          if (Test-Path "$env:DISCID_BIN\discid.dll") { Copy-Item "$env:DISCID_BIN\discid.dll" $stage -Force }
           if ("${{ matrix.edition }}" -eq "full") {
             $sentryDll = Get-ChildItem sentry-native-build -Recurse -Filter sentry.dll | Select-Object -First 1
             $crashpadHandler = Get-ChildItem sentry-native-build -Recurse -Filter crashpad_handler.exe | Select-Object -First 1

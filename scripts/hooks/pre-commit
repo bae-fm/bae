@@ -13,12 +13,6 @@ set -e
 # Use target-macos to avoid busting iOS/Android caches
 export CARGO_TARGET_DIR="${CARGO_TARGET_DIR:-target-macos}"
 
-# Ensure homebrew native libraries (e.g. libdiscid) are visible to the linker
-if command -v brew &> /dev/null; then
-    BREW_PREFIX="$(brew --prefix)"
-    export LIBRARY_PATH="${BREW_PREFIX}/lib${LIBRARY_PATH:+:$LIBRARY_PATH}"
-fi
-
 TMPFILE=$(mktemp)
 
 cleanup() {

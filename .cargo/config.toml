@@ -18,9 +18,3 @@ PKG_CONFIG_PATH = { value = "bae-ffmpeg/dist/lib/pkgconfig", relative = true, fo
 # (its per-ABI cross-builds override this inline with the android prefix, which
 # wins as a real env var over this force=false value).
 FFMPEG_DIR = { value = "bae-ffmpeg/dist", relative = true, force = false }
-# Homebrew provides genuinely-separate native deps (libdiscid), which discid-sys
-# finds via LIBRARY_PATH + clang include args (it does not use pkg-config). The
-# fork's ffmpeg lib/include dirs are layered on top of these by setup-ffmpeg.sh's
-# shell exports (fork-first); on Intel Macs Homebrew lives under /usr/local.
-LIBRARY_PATH = { value = "/opt/homebrew/lib:/usr/local/lib", force = false }
-BINDGEN_EXTRA_CLANG_ARGS = { value = "-I/opt/homebrew/include -I/usr/local/include", force = false }

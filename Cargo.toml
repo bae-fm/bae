@@ -73,13 +73,6 @@ opt-level = 3
 # `withTaskCancellationHandler` and `cancelFunc:`. If the upstream Swift
 # template changed shape, the bae-fm fork needs rebasing.
 [patch.crates-io]
-# discid + discid-sys assume libdiscid's C feature enum is unsigned, which holds
-# for clang but not MSVC (where C enums are signed `int`), so neither published
-# crate compiles for Windows. Vendored with the signedness casts
-# (third-party/discid{,-sys}); same versions, so they satisfy bae-core's `discid`
-# dependency. Drop once upstream ships an MSVC fix.
-discid = { path = "third-party/discid" }
-discid-sys = { path = "third-party/discid-sys" }
 uniffi = { git = "https://github.com/bae-fm/uniffi-rs", branch = "bae-swift-cancel" }
 uniffi_bindgen = { git = "https://github.com/bae-fm/uniffi-rs", branch = "bae-swift-cancel" }
 uniffi_core = { git = "https://github.com/bae-fm/uniffi-rs", branch = "bae-swift-cancel" }

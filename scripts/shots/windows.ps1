@@ -13,9 +13,9 @@
 # Runner prerequisites (provisioned by the calling workflow, the same way
 # .github/workflows/windows.yml provisions the Windows build job): the pinned
 # Rust toolchain with the x86_64-pc-windows-msvc target, uniffi-bindgen-cs,
-# LIBCLANG_PATH, the bae-ffmpeg dist on FFMPEG_DIR and its bin on PATH, libdiscid
-# on LIB and PATH, the msys2 mingw runtime on PATH, the .NET 8 SDK, MSBuild, and
-# makepri on PATH. bae-windows cannot build on any other host.
+# LIBCLANG_PATH, the bae-ffmpeg dist on FFMPEG_DIR and its bin on PATH, the msys2
+# mingw runtime on PATH, the .NET 8 SDK, MSBuild, and makepri on PATH.
+# bae-windows cannot build on any other host.
 
 param(
     [Parameter(Mandatory = $true)]
@@ -60,8 +60,8 @@ $exeDir = Split-Path $exe
 
 # 4. Place the native bridge DLLs next to the exe. They are resolved from the app
 #    directory (the loader does not search target-windows), so the run needs them
-#    copied in; the bridge's ffmpeg / libdiscid / mingw dependencies resolve from
-#    PATH, provisioned as above.
+#    copied in; the bridge's ffmpeg / mingw dependencies resolve from PATH,
+#    provisioned as above.
 $bridgeDir = Join-Path $repoRoot 'target-windows\x86_64-pc-windows-msvc\debug'
 foreach ($dll in @('bae_bridge.dll', 'uniffi_bae_bridge.dll')) {
     $src = Join-Path $bridgeDir $dll

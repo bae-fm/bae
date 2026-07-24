@@ -18,15 +18,9 @@ fi
 worktree_root="$(git rev-parse --show-toplevel)"
 cd "$worktree_root"
 
-# Match the pre-commit hook's build environment. A git hook runs without the
-# shell profile, so the homebrew native libs the bridge and app link against
-# (libdiscid) aren't on the linker path unless we add them. CARGO_TARGET_DIR
-# keeps the primed Rust artifacts where the pre-commit hook looks for them.
+# Match the pre-commit hook's build environment. CARGO_TARGET_DIR keeps the
+# primed Rust artifacts where the pre-commit hook looks for them.
 export CARGO_TARGET_DIR="${CARGO_TARGET_DIR:-target-macos}"
-if command -v brew &> /dev/null; then
-    BREW_PREFIX="$(brew --prefix)"
-    export LIBRARY_PATH="${BREW_PREFIX}/lib${LIBRARY_PATH:+:$LIBRARY_PATH}"
-fi
 
 # Project CLAUDE.md (gitignored). Convention: agent-instructions repo
 # at ~/dev/agent-instructions/projects/bae.md.

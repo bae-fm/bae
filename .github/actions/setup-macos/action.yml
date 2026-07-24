@@ -13,7 +13,7 @@ runs:
     - name: Install macOS dependencies
       shell: bash
       run: |
-        brew install libdiscid pkg-config openssl@3 switchaudio-osx lame opus
+        brew install pkg-config openssl@3 switchaudio-osx lame opus
 
     - name: Export Homebrew paths
       shell: bash

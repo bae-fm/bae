@@ -206,15 +206,10 @@ fn discid_from_raw_offsets(
         offsets
     );
 
-    let disc = discid::DiscId::put(1, &offsets).map_err(|e| {
-        MetadataDetectionError::Io(std::io::Error::other(format!(
-            "Failed to calculate DiscID: {}",
-            e
-        )))
-    })?;
-    let mb_discid_str = disc.id();
+    let mb_discid_str = super::discid_hash::musicbrainz_discid(&offsets)
+        .map_err(|e| invalid_discid_data(format!("Failed to calculate DiscID: {e}")))?;
     debug!("MusicBrainz DiscID calculated: {}", mb_discid_str);
-    Ok(mb_discid_str.to_string())
+    Ok(mb_discid_str)
 }
 
 /// MusicBrainz DiscID from a LOG file alone — the most direct method, since the

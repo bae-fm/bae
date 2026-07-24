@@ -24,13 +24,9 @@ OUT_DIR="$1"
 mkdir -p "$OUT_DIR"
 OUT_DIR="$(cd "$OUT_DIR" && pwd)"
 
-# The app host links FFmpeg and libdiscid from the repo's prebuilt dist, never a
-# system prefix — put both on the linker and dynamic-loader paths so the test
-# host launches (same setup scripts/check.sh uses).
-if command -v brew &>/dev/null; then
-    BREW_PREFIX="$(brew --prefix)"
-    export LIBRARY_PATH="${BREW_PREFIX}/lib${LIBRARY_PATH:+:$LIBRARY_PATH}"
-fi
+# The app host links FFmpeg from the repo's prebuilt dist, never a system prefix
+# — put it on the dynamic-loader path so the test host launches (same setup
+# scripts/check.sh uses).
 if [[ -d "$ROOT/bae-ffmpeg/dist/lib" ]]; then
     export DYLD_LIBRARY_PATH="$ROOT/bae-ffmpeg/dist/lib${DYLD_LIBRARY_PATH:+:$DYLD_LIBRARY_PATH}"
 fi

@@ -5,8 +5,9 @@ name: Windows build
 # generated C# bindings, plus the WinUI 3 app compile check. The macOS host
 # can't cross-compile the native
 # deps, so this is the verification loop.
-# The native deps are all prebuilt releases build.rs/CI fetch — no compiling
-# here: ffmpeg via bae-ffmpeg, libdiscid via MusicBrainz's prebuilt.
+# FFmpeg is a prebuilt release CI fetches (bae-ffmpeg) — no compiling here. The
+# MusicBrainz disc ID is computed in pure Rust (bae-core), so there is no
+# libdiscid to fetch or link.
 
 on:
   workflow_call:
@@ -35,20 +36,6 @@ jobs:
         shell: pwsh
         run: |
           echo "LIBCLANG_PATH=C:\Program Files\LLVM\bin" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
-
-      - name: Fetch libdiscid (MusicBrainz Windows binary)
-        shell: pwsh
-        run: |
-          # The `discid` crate (import disc-id matching) links discid.lib and has
-          # no bindgen/headers. libdiscid isn't in vcpkg, so use MusicBrainz's
-          # prebuilt x64 binary; the linker finds discid.lib via LIB, the DLL via
-          # PATH.
-          $url = "https://github.com/metabrainz/libdiscid/releases/download/v0.6.5/libdiscid-0.6.5-win.zip"
-          curl.exe -L $url -o libdiscid.zip
-          Expand-Archive -Path libdiscid.zip -DestinationPath "$PWD\libdiscid" -Force
-          $x64 = "$PWD\libdiscid\libdiscid-0.6.5-win\x64"
-          echo "LIB=$x64;$env:LIB" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
-          echo "$x64" | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
 
       - name: Fetch bae-ffmpeg (Windows x86_64)
         shell: pwsh

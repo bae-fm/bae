@@ -8,6 +8,8 @@ pub mod commit;
 pub mod cover_art;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub mod discid;
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+mod discid_hash;
 pub mod discogs_mapper;
 mod error;
 pub mod file_tag_mapper;

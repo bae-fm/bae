@@ -19,14 +19,12 @@ runs:
           /etc/apt/sources.list.d/packages-microsoft-prod.*
         sudo apt-get update
         # libasound2-dev: cpal builds its ALSA backend on Linux.
-        # libdiscid-dev: the discid binding links system libdiscid.
         # clang/libclang-dev: ffmpeg-sys-next runs bindgen against the headers.
         # nasm: aws-lc-sys assembles its primitives.
         # pulseaudio: a null sink so device-gated playback tests find an output
         #   device instead of skipping (the CPU test's probe needs none).
         sudo apt-get install -y --no-install-recommends \
           libasound2-dev \
-          libdiscid-dev \
           pkg-config \
           clang \
           libclang-dev \
