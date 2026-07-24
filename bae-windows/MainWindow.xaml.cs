@@ -143,7 +143,7 @@ public sealed partial class MainWindow : Window
         _mediaControls = new MediaControlService(
             WinRT.Interop.WindowNative.GetWindowHandle(this),
             DispatcherQueue,
-            WithCurrentHandle,
+            _appService.Playback,
             imageId => _appService.MediaPaths.FetchCoverImageBytes(imageId));
 
         // Bind layout direction to the UI locale: ar/he (and any other RTL
@@ -181,6 +181,8 @@ public sealed partial class MainWindow : Window
         _nowPlayingBar = new NowPlayingBarController(
             _session,
             _appService.MediaPaths,
+            _appService.Playback,
+            _appService.Queue,
             _playback,
             _cast,
             // Read at call time: the settings mirror is built further down, and

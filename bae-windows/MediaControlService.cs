@@ -3,7 +3,6 @@ using System.Threading.Tasks;
 using Microsoft.UI.Dispatching;
 using Windows.Media;
 using Windows.Storage.Streams;
-using uniffi.bae_bridge;
 
 namespace Bae.Windows;
 
@@ -18,7 +17,7 @@ internal sealed class MediaControlService
 {
     private readonly SystemMediaTransportControls _smtc;
     private readonly DispatcherQueue _dispatcherQueue;
-    private readonly Func<Action<AppHandle>, bool> _withCurrentHandle;
+    private readonly PlaybackService _playback;
     private readonly Func<string, byte[]?> _fetchCoverBytes;
     private readonly MediaControlState _state = new();
 
@@ -28,11 +27,11 @@ internal sealed class MediaControlService
     internal MediaControlService(
         IntPtr windowHandle,
         DispatcherQueue dispatcherQueue,
-        Func<Action<AppHandle>, bool> withCurrentHandle,
+        PlaybackService playback,
         Func<string, byte[]?> fetchCoverBytes)
     {
         _dispatcherQueue = dispatcherQueue;
-        _withCurrentHandle = withCurrentHandle;
+        _playback = playback;
         _fetchCoverBytes = fetchCoverBytes;
 
         _smtc = SystemMediaTransportControlsInterop.GetForWindow(windowHandle);
@@ -189,14 +188,14 @@ internal sealed class MediaControlService
         var previewing = _state.IsShowingPreview;
         var dispatched = button switch
         {
-            SystemMediaTransportControlsButton.Play when previewing => _withCurrentHandle(NativeBae.PreviewTogglePause),
-            SystemMediaTransportControlsButton.Pause when previewing => _withCurrentHandle(NativeBae.PreviewTogglePause),
-            SystemMediaTransportControlsButton.Play => _withCurrentHandle(NativeBae.Resume),
-            SystemMediaTransportControlsButton.Pause => _withCurrentHandle(NativeBae.Pause),
-            SystemMediaTransportControlsButton.Next when previewing => _withCurrentHandle(NativeBae.PreviewStop),
-            SystemMediaTransportControlsButton.Previous when previewing => _withCurrentHandle(NativeBae.PreviewStop),
-            SystemMediaTransportControlsButton.Next => _withCurrentHandle(NativeBae.Next),
-            SystemMediaTransportControlsButton.Previous => _withCurrentHandle(NativeBae.Previous),
+            SystemMediaTransportControlsButton.Play when previewing => _playback.PreviewTogglePause(),
+            SystemMediaTransportControlsButton.Pause when previewing => _playback.PreviewTogglePause(),
+            SystemMediaTransportControlsButton.Play => _playback.Resume(),
+            SystemMediaTransportControlsButton.Pause => _playback.Pause(),
+            SystemMediaTransportControlsButton.Next when previewing => _playback.PreviewStop(),
+            SystemMediaTransportControlsButton.Previous when previewing => _playback.PreviewStop(),
+            SystemMediaTransportControlsButton.Next => _playback.NextTrack(),
+            SystemMediaTransportControlsButton.Previous => _playback.PreviousTrack(),
             // Buttons this service never enables (stop, FF, rewind, shuffle,
             // repeat) — nothing to dispatch.
             _ => true,
@@ -227,7 +226,7 @@ internal sealed class MediaControlService
         bool dispatched;
         if (_state.IsShowingPreview)
         {
-            dispatched = _withCurrentHandle(handle => NativeBae.PreviewSeekByRatio(handle, ratio));
+            dispatched = _playback.PreviewSeekByRatio(ratio);
         }
         else
         {
@@ -241,7 +240,7 @@ internal sealed class MediaControlService
                     PushTimeline(timeline);
                 }
             }
-            dispatched = _withCurrentHandle(handle => NativeBae.SeekByRatio(handle, ratio));
+            dispatched = _playback.SeekByRatio(ratio);
         }
         if (!dispatched)
         {

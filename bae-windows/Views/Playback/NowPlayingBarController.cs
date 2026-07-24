@@ -20,6 +20,8 @@ internal sealed class NowPlayingBarController
 {
     private readonly SessionStore _session;
     private readonly MediaPathsService _mediaPaths;
+    private readonly PlaybackService _playbackService;
+    private readonly QueueService _queueService;
     private readonly PlaybackStore _playback;
     private readonly CastStore _cast;
     private readonly Func<XamlRoot?> _xamlRoot;
@@ -96,6 +98,8 @@ internal sealed class NowPlayingBarController
     public NowPlayingBarController(
         SessionStore session,
         MediaPathsService mediaPaths,
+        PlaybackService playbackService,
+        QueueService queueService,
         PlaybackStore playback,
         CastStore cast,
         Func<bool> showRemainingTime,
@@ -130,6 +134,8 @@ internal sealed class NowPlayingBarController
     {
         _session = session;
         _mediaPaths = mediaPaths;
+        _playbackService = playbackService;
+        _queueService = queueService;
         _playback = playback;
         _cast = cast;
         _showRemainingTime = showRemainingTime;
@@ -186,7 +192,7 @@ internal sealed class NowPlayingBarController
                     {
                         RenderSeekPosition(projection.Progress, projection.TargetPositionMs, projection.DurationMs);
                     }
-                    _session.WithCurrentHandle(handle => NativeBae.SeekByRatio(handle, _progress.Value));
+                    _playbackService.SeekByRatio(_progress.Value);
                 }
             }), true);
 
@@ -228,13 +234,13 @@ internal sealed class NowPlayingBarController
         _playPause.Click += (_, _) => TogglePlayPause();
         _playPause.PointerEntered += (_, _) => AnimatePlayScale(1.05);
         _playPause.PointerExited += (_, _) => AnimatePlayScale(1.0);
-        _previous.Click += (_, _) => WithLibrary(NativeBae.Previous);
-        _next.Click += (_, _) => WithLibrary(NativeBae.Next);
+        _previous.Click += (_, _) => _playbackService.PreviousTrack();
+        _next.Click += (_, _) => _playbackService.NextTrack();
         _repeat.Click += (_, _) =>
-            WithLibrary(handle => NativeBae.SetRepeatMode(handle, NativeBae.NextRepeatMode(_playback.RepeatMode)));
+            _playbackService.SetRepeatMode(_playbackService.NextRepeatMode(_playback.RepeatMode));
         _shuffle.Click += (_, _) =>
-            WithLibrary(handle => NativeBae.SetShuffle(handle, !(_playback.Context?.Shuffled ?? false)));
-        _mute.Click += (_, _) => WithLibrary(handle => NativeBae.SetMuted(handle, !_playback.IsMuted));
+            _queueService.SetShuffle(!(_playback.Context?.Shuffled ?? false));
+        _mute.Click += (_, _) => _playbackService.SetMuted(!_playback.IsMuted);
         _volume.ValueChanged += (_, _) => HandleVolumeSliderChanged();
 
         // The bar's art and title jump to the playing album (the window sets their
@@ -258,10 +264,10 @@ internal sealed class NowPlayingBarController
         switch (_playback.PlayState)
         {
             case TransportPlayState.Playing:
-                _session.WithCurrentHandle(NativeBae.Pause);
+                _playbackService.Pause();
                 break;
             case TransportPlayState.Paused:
-                _session.WithCurrentHandle(NativeBae.Resume);
+                _playbackService.Resume();
                 break;
             case TransportPlayState.Stopped:
                 break;
@@ -287,14 +293,6 @@ internal sealed class NowPlayingBarController
         _ = GoToNowPlaying();
     }
 
-    // Run a transport action against the open library, or nothing when none is open.
-    private void WithLibrary(Action<AppHandle> action)
-    {
-        if (_session.CurrentHandleOrNull() != null)
-        {
-            _session.WithCurrentHandle(action);
-        }
-    }
 
     // The play/pause circle grows slightly on hover and settles back on exit.
     private void AnimatePlayScale(double target)
@@ -320,7 +318,7 @@ internal sealed class NowPlayingBarController
     public void SeedVolume()
     {
         _suppressVolume = true;
-        var (current, volume) = _session.WithCurrentHandle(handle => NativeBae.GetVolume(handle));
+        var (current, volume) = _playbackService.GetVolume();
         if (current)
         {
             _volume.Value = volume;
@@ -335,7 +333,7 @@ internal sealed class NowPlayingBarController
     {
         if (!_suppressVolume && _session.CurrentHandleOrNull() != null)
         {
-            _session.WithCurrentHandle(handle => NativeBae.SetVolume(handle, (float)_volume.Value));
+            _playbackService.SetVolume((float)_volume.Value);
         }
     }
 
@@ -439,8 +437,7 @@ internal sealed class NowPlayingBarController
     // Ask core to flip the preference. Nothing is flipped locally: the write fires
     // a config invalidation, which lands back in RefreshTimeLabelMode.
     private void ToggleTimeLabel() =>
-        _session.WithCurrentHandle(
-            handle => NativeBae.SetShowRemainingTime(handle, !ShowRemaining));
+        _playbackService.SetShowRemainingTime(!ShowRemaining);
 
     // The preference changed (here, or on another device). Re-render the tooltip
     // and the labels from the last position, so the bar changes without waiting
