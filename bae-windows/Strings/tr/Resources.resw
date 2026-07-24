@@ -161,7 +161,6 @@
   <data name="queue.shuffle.off" xml:space="preserve"><value>karıştırmayı kapat</value></data>
   <data name="queue.shuffle.on" xml:space="preserve"><value>karıştır</value></data>
   <data name="queue.title" xml:space="preserve"><value>sıra</value></data>
-  <data name="restore.code_placeholder" xml:space="preserve"><value>geri yükleme kodu</value></data>
   <data name="restore.confirm" xml:space="preserve"><value>geri yükle</value></data>
   <data name="restore.failed" xml:space="preserve"><value>geri yükleme başarısız</value></data>
   <data name="restore.field.cloud_storage" xml:space="preserve"><value>bulut depolama</value></data>
@@ -170,10 +169,7 @@
   <data name="restore.field.library_name" xml:space="preserve"><value>kitaplık adı (isteğe bağlı)</value></data>
   <data name="restore.from_cloud" xml:space="preserve"><value>buluttan geri yükle</value></data>
   <data name="restore.from_cloud_title" xml:space="preserve"><value>buluttan geri yükle</value></data>
-  <data name="restore.from_code" xml:space="preserve"><value>koddan geri yükle</value></data>
   <data name="restore.in_progress" xml:space="preserve"><value>geri yükleniyor…</value></data>
-  <data name="restore.in_progress_named" xml:space="preserve"><value>{name} geri yükleniyor…</value></data>
-  <data name="restore.invalid_code" xml:space="preserve"><value>geçersiz geri yükleme kodu</value></data>
   <data name="s3.field.access_key" xml:space="preserve"><value>erişim anahtarı</value></data>
   <data name="s3.field.bucket" xml:space="preserve"><value>S3 bucket</value></data>
   <data name="s3.field.endpoint" xml:space="preserve"><value>uç nokta (isteğe bağlı)</value></data>
@@ -252,7 +248,6 @@
   <data name="welcome.choose_library" xml:space="preserve"><value>bir kitaplık seç</value></data>
   <data name="welcome.join_library" xml:space="preserve"><value>kitaplığa katıl</value></data>
   <data name="welcome.create_library" xml:space="preserve"><value>kitaplık oluştur</value></data>
-  <data name="welcome.no_library" xml:space="preserve"><value>henüz kitaplık yok</value></data>
   <data name="welcome.your_libraries" xml:space="preserve"><value>kitaplıklarınız</value></data>
   <data name="cloud.provider.icloud" xml:space="preserve"><value>iCloud</value></data>
   <data name="settings.discogs.connected" xml:space="preserve"><value>bağlandı</value></data>

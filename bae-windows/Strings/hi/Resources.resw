@@ -161,7 +161,6 @@
   <data name="queue.shuffle.off" xml:space="preserve"><value>शफल बंद करें</value></data>
   <data name="queue.shuffle.on" xml:space="preserve"><value>शफल</value></data>
   <data name="queue.title" xml:space="preserve"><value>कतार</value></data>
-  <data name="restore.code_placeholder" xml:space="preserve"><value>बहाली कोड</value></data>
   <data name="restore.confirm" xml:space="preserve"><value>बहाल करें</value></data>
   <data name="restore.failed" xml:space="preserve"><value>बहाली विफल</value></data>
   <data name="restore.field.cloud_storage" xml:space="preserve"><value>क्लाउड स्टोरेज</value></data>
@@ -170,10 +169,7 @@
   <data name="restore.field.library_name" xml:space="preserve"><value>लाइब्रेरी का नाम (वैकल्पिक)</value></data>
   <data name="restore.from_cloud" xml:space="preserve"><value>क्लाउड से बहाल करें</value></data>
   <data name="restore.from_cloud_title" xml:space="preserve"><value>क्लाउड से बहाल करें</value></data>
-  <data name="restore.from_code" xml:space="preserve"><value>कोड से बहाल करें</value></data>
   <data name="restore.in_progress" xml:space="preserve"><value>बहाल हो रहा है…</value></data>
-  <data name="restore.in_progress_named" xml:space="preserve"><value>{name} बहाल हो रहा है…</value></data>
-  <data name="restore.invalid_code" xml:space="preserve"><value>अमान्य बहाली कोड</value></data>
   <data name="s3.field.access_key" xml:space="preserve"><value>पहुंच कुंजी</value></data>
   <data name="s3.field.bucket" xml:space="preserve"><value>S3 बकेट</value></data>
   <data name="s3.field.endpoint" xml:space="preserve"><value>एंडपॉइंट (वैकल्पिक)</value></data>
@@ -252,7 +248,6 @@
   <data name="welcome.choose_library" xml:space="preserve"><value>लाइब्रेरी चुनें</value></data>
   <data name="welcome.join_library" xml:space="preserve"><value>लाइब्रेरी से जुड़ें</value></data>
   <data name="welcome.create_library" xml:space="preserve"><value>लाइब्रेरी बनाएं</value></data>
-  <data name="welcome.no_library" xml:space="preserve"><value>अभी कोई लाइब्रेरी नहीं</value></data>
   <data name="welcome.your_libraries" xml:space="preserve"><value>आपकी लाइब्रेरी</value></data>
   <data name="cloud.provider.icloud" xml:space="preserve"><value>iCloud</value></data>
   <data name="settings.discogs.connected" xml:space="preserve"><value>जुड़ा हुआ</value></data>

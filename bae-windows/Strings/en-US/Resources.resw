@@ -161,19 +161,15 @@
   <data name="queue.shuffle.off" xml:space="preserve"><value>turn off shuffle</value></data>
   <data name="queue.shuffle.on" xml:space="preserve"><value>shuffle</value></data>
   <data name="queue.title" xml:space="preserve"><value>queue</value></data>
-  <data name="restore.code_placeholder" xml:space="preserve"><value>restore code</value></data>
   <data name="restore.confirm" xml:space="preserve"><value>restore</value></data>
   <data name="restore.failed" xml:space="preserve"><value>restore failed</value></data>
   <data name="restore.field.cloud_storage" xml:space="preserve"><value>cloud storage</value></data>
   <data name="restore.field.encryption_key" xml:space="preserve"><value>encryption key (hex)</value></data>
   <data name="restore.field.library_id" xml:space="preserve"><value>library id</value></data>
   <data name="restore.field.library_name" xml:space="preserve"><value>library name (optional)</value></data>
-  <data name="restore.from_cloud" xml:space="preserve"><value>restore from cloud</value></data>
+  <data name="restore.from_cloud" xml:space="preserve"><value>Restore from cloud</value></data>
   <data name="restore.from_cloud_title" xml:space="preserve"><value>restore from cloud</value></data>
-  <data name="restore.from_code" xml:space="preserve"><value>restore from code</value></data>
   <data name="restore.in_progress" xml:space="preserve"><value>restoring…</value></data>
-  <data name="restore.in_progress_named" xml:space="preserve"><value>restoring {name}…</value></data>
-  <data name="restore.invalid_code" xml:space="preserve"><value>invalid restore code</value></data>
   <data name="s3.field.access_key" xml:space="preserve"><value>access key</value></data>
   <data name="s3.field.bucket" xml:space="preserve"><value>S3 bucket</value></data>
   <data name="s3.field.endpoint" xml:space="preserve"><value>endpoint (optional)</value></data>
@@ -249,10 +245,11 @@
   <data name="sync.synced" xml:space="preserve"><value>synced {time}</value></data>
   <data name="sync.syncing" xml:space="preserve"><value>syncing…</value></data>
   <data name="track.export.prepare_failed" xml:space="preserve"><value>Couldn't prepare the export.</value></data>
+  <data name="welcome.subtitle" xml:space="preserve"><value>Get started with your music library.</value></data>
+  <data name="library.create_failed" xml:space="preserve"><value>Couldn't create the library.</value></data>
   <data name="welcome.choose_library" xml:space="preserve"><value>choose a library</value></data>
-  <data name="welcome.join_library" xml:space="preserve"><value>join a library</value></data>
-  <data name="welcome.create_library" xml:space="preserve"><value>create library</value></data>
-  <data name="welcome.no_library" xml:space="preserve"><value>no library yet</value></data>
+  <data name="welcome.join_library" xml:space="preserve"><value>Join a library</value></data>
+  <data name="welcome.create_library" xml:space="preserve"><value>Create new library</value></data>
   <data name="welcome.your_libraries" xml:space="preserve"><value>your libraries</value></data>
   <data name="cloud.provider.icloud" xml:space="preserve"><value>iCloud</value></data>
   <data name="settings.discogs.connected" xml:space="preserve"><value>connected</value></data>

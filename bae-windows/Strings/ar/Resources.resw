@@ -161,7 +161,6 @@
   <data name="queue.shuffle.off" xml:space="preserve"><value>إيقاف التشغيل العشوائي</value></data>
   <data name="queue.shuffle.on" xml:space="preserve"><value>تشغيل عشوائي</value></data>
   <data name="queue.title" xml:space="preserve"><value>قائمة الانتظار</value></data>
-  <data name="restore.code_placeholder" xml:space="preserve"><value>رمز الاستعادة</value></data>
   <data name="restore.confirm" xml:space="preserve"><value>استعادة</value></data>
   <data name="restore.failed" xml:space="preserve"><value>فشلت الاستعادة</value></data>
   <data name="restore.field.cloud_storage" xml:space="preserve"><value>التخزين السحابي</value></data>
@@ -170,10 +169,7 @@
   <data name="restore.field.library_name" xml:space="preserve"><value>اسم المكتبة (اختياري)</value></data>
   <data name="restore.from_cloud" xml:space="preserve"><value>استعادة من السحابة</value></data>
   <data name="restore.from_cloud_title" xml:space="preserve"><value>استعادة من السحابة</value></data>
-  <data name="restore.from_code" xml:space="preserve"><value>استعادة من رمز</value></data>
   <data name="restore.in_progress" xml:space="preserve"><value>جارٍ الاستعادة…</value></data>
-  <data name="restore.in_progress_named" xml:space="preserve"><value>جارٍ استعادة {name}…</value></data>
-  <data name="restore.invalid_code" xml:space="preserve"><value>رمز استعادة غير صالح</value></data>
   <data name="s3.field.access_key" xml:space="preserve"><value>مفتاح الوصول</value></data>
   <data name="s3.field.bucket" xml:space="preserve"><value>حاوية S3</value></data>
   <data name="s3.field.endpoint" xml:space="preserve"><value>نقطة النهاية (اختياري)</value></data>
@@ -252,7 +248,6 @@
   <data name="welcome.choose_library" xml:space="preserve"><value>اختر مكتبة</value></data>
   <data name="welcome.join_library" xml:space="preserve"><value>الانضمام إلى مكتبة</value></data>
   <data name="welcome.create_library" xml:space="preserve"><value>إنشاء مكتبة</value></data>
-  <data name="welcome.no_library" xml:space="preserve"><value>لا توجد مكتبة بعد</value></data>
   <data name="welcome.your_libraries" xml:space="preserve"><value>مكتباتك</value></data>
   <data name="cloud.provider.icloud" xml:space="preserve"><value>iCloud</value></data>
   <data name="settings.discogs.connected" xml:space="preserve"><value>متصل</value></data>

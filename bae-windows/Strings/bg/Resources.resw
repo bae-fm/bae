@@ -161,7 +161,6 @@
   <data name="queue.shuffle.off" xml:space="preserve"><value>изключване на разбъркването</value></data>
   <data name="queue.shuffle.on" xml:space="preserve"><value>разбъркване</value></data>
   <data name="queue.title" xml:space="preserve"><value>опашка</value></data>
-  <data name="restore.code_placeholder" xml:space="preserve"><value>код за възстановяване</value></data>
   <data name="restore.confirm" xml:space="preserve"><value>възстановяване</value></data>
   <data name="restore.failed" xml:space="preserve"><value>възстановяването не бе успешно</value></data>
   <data name="restore.field.cloud_storage" xml:space="preserve"><value>облачно хранилище</value></data>
@@ -170,10 +169,7 @@
   <data name="restore.field.library_name" xml:space="preserve"><value>име на библиотеката (по избор)</value></data>
   <data name="restore.from_cloud" xml:space="preserve"><value>възстановяване от облака</value></data>
   <data name="restore.from_cloud_title" xml:space="preserve"><value>възстановяване от облака</value></data>
-  <data name="restore.from_code" xml:space="preserve"><value>възстановяване от код</value></data>
   <data name="restore.in_progress" xml:space="preserve"><value>възстановяване…</value></data>
-  <data name="restore.in_progress_named" xml:space="preserve"><value>възстановяване на {name}…</value></data>
-  <data name="restore.invalid_code" xml:space="preserve"><value>невалиден код за възстановяване</value></data>
   <data name="s3.field.access_key" xml:space="preserve"><value>ключ за достъп</value></data>
   <data name="s3.field.bucket" xml:space="preserve"><value>S3 кофа</value></data>
   <data name="s3.field.endpoint" xml:space="preserve"><value>крайна точка (по избор)</value></data>
@@ -252,7 +248,6 @@
   <data name="welcome.choose_library" xml:space="preserve"><value>изберете библиотека</value></data>
   <data name="welcome.join_library" xml:space="preserve"><value>присъединяване към библиотека</value></data>
   <data name="welcome.create_library" xml:space="preserve"><value>създаване на библиотека</value></data>
-  <data name="welcome.no_library" xml:space="preserve"><value>все още няма библиотека</value></data>
   <data name="welcome.your_libraries" xml:space="preserve"><value>вашите библиотеки</value></data>
   <data name="cloud.provider.icloud" xml:space="preserve"><value>iCloud</value></data>
   <data name="settings.discogs.connected" xml:space="preserve"><value>свързано</value></data>

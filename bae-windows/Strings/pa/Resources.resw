@@ -161,7 +161,6 @@
   <data name="queue.shuffle.off" xml:space="preserve"><value>ਰਲਵਾਂ ਚਲਾਉਣਾ ਬੰਦ ਕਰੋ</value></data>
   <data name="queue.shuffle.on" xml:space="preserve"><value>ਰਲਵਾਂ ਚਲਾਓ</value></data>
   <data name="queue.title" xml:space="preserve"><value>ਕਤਾਰ</value></data>
-  <data name="restore.code_placeholder" xml:space="preserve"><value>ਮੁੜ-ਬਹਾਲੀ ਕੋਡ</value></data>
   <data name="restore.confirm" xml:space="preserve"><value>ਮੁੜ-ਬਹਾਲ ਕਰੋ</value></data>
   <data name="restore.failed" xml:space="preserve"><value>ਮੁੜ-ਬਹਾਲੀ ਅਸਫਲ</value></data>
   <data name="restore.field.cloud_storage" xml:space="preserve"><value>ਕਲਾਊਡ ਸਟੋਰੇਜ</value></data>
@@ -170,10 +169,7 @@
   <data name="restore.field.library_name" xml:space="preserve"><value>ਲਾਇਬ੍ਰੇਰੀ ਨਾਮ (ਵਿਕਲਪਿਕ)</value></data>
   <data name="restore.from_cloud" xml:space="preserve"><value>ਕਲਾਊਡ ਤੋਂ ਮੁੜ-ਬਹਾਲ ਕਰੋ</value></data>
   <data name="restore.from_cloud_title" xml:space="preserve"><value>ਕਲਾਊਡ ਤੋਂ ਮੁੜ-ਬਹਾਲ ਕਰੋ</value></data>
-  <data name="restore.from_code" xml:space="preserve"><value>ਕੋਡ ਤੋਂ ਮੁੜ-ਬਹਾਲ ਕਰੋ</value></data>
   <data name="restore.in_progress" xml:space="preserve"><value>ਮੁੜ-ਬਹਾਲ ਹੋ ਰਿਹਾ ਹੈ…</value></data>
-  <data name="restore.in_progress_named" xml:space="preserve"><value>{name} ਮੁੜ-ਬਹਾਲ ਹੋ ਰਿਹਾ ਹੈ…</value></data>
-  <data name="restore.invalid_code" xml:space="preserve"><value>ਅਵੈਧ ਮੁੜ-ਬਹਾਲੀ ਕੋਡ</value></data>
   <data name="s3.field.access_key" xml:space="preserve"><value>ਐਕਸੈੱਸ ਕੁੰਜੀ</value></data>
   <data name="s3.field.bucket" xml:space="preserve"><value>S3 ਬਕਿਟ</value></data>
   <data name="s3.field.endpoint" xml:space="preserve"><value>ਅੰਤ-ਬਿੰਦੂ (ਵਿਕਲਪਿਕ)</value></data>
@@ -252,7 +248,6 @@
   <data name="welcome.choose_library" xml:space="preserve"><value>ਲਾਇਬ੍ਰੇਰੀ ਚੁਣੋ</value></data>
   <data name="welcome.join_library" xml:space="preserve"><value>ਲਾਇਬ੍ਰੇਰੀ ਵਿੱਚ ਸ਼ਾਮਲ ਹੋਵੋ</value></data>
   <data name="welcome.create_library" xml:space="preserve"><value>ਲਾਇਬ੍ਰੇਰੀ ਬਣਾਓ</value></data>
-  <data name="welcome.no_library" xml:space="preserve"><value>ਅਜੇ ਕੋਈ ਲਾਇਬ੍ਰੇਰੀ ਨਹੀਂ</value></data>
   <data name="welcome.your_libraries" xml:space="preserve"><value>ਤੁਹਾਡੀਆਂ ਲਾਇਬ੍ਰੇਰੀਆਂ</value></data>
   <data name="cloud.provider.icloud" xml:space="preserve"><value>iCloud</value></data>
   <data name="settings.discogs.connected" xml:space="preserve"><value>ਜੁੜਿਆ ਹੋਇਆ</value></data>

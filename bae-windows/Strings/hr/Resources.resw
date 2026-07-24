@@ -161,7 +161,6 @@
   <data name="queue.shuffle.off" xml:space="preserve"><value>isključi naizmjenično</value></data>
   <data name="queue.shuffle.on" xml:space="preserve"><value>naizmjenično</value></data>
   <data name="queue.title" xml:space="preserve"><value>red</value></data>
-  <data name="restore.code_placeholder" xml:space="preserve"><value>kod za vraćanje</value></data>
   <data name="restore.confirm" xml:space="preserve"><value>vrati</value></data>
   <data name="restore.failed" xml:space="preserve"><value>vraćanje nije uspjelo</value></data>
   <data name="restore.field.cloud_storage" xml:space="preserve"><value>pohrana u oblaku</value></data>
@@ -170,10 +169,7 @@
   <data name="restore.field.library_name" xml:space="preserve"><value>naziv fonoteke (neobavezno)</value></data>
   <data name="restore.from_cloud" xml:space="preserve"><value>vrati iz oblaka</value></data>
   <data name="restore.from_cloud_title" xml:space="preserve"><value>vrati iz oblaka</value></data>
-  <data name="restore.from_code" xml:space="preserve"><value>vrati pomoću koda</value></data>
   <data name="restore.in_progress" xml:space="preserve"><value>vraćanje…</value></data>
-  <data name="restore.in_progress_named" xml:space="preserve"><value>vraćanje {name}…</value></data>
-  <data name="restore.invalid_code" xml:space="preserve"><value>nevažeći kod za vraćanje</value></data>
   <data name="s3.field.access_key" xml:space="preserve"><value>pristupni ključ</value></data>
   <data name="s3.field.bucket" xml:space="preserve"><value>S3 spremnik</value></data>
   <data name="s3.field.endpoint" xml:space="preserve"><value>krajnja točka (neobavezno)</value></data>
@@ -252,7 +248,6 @@
   <data name="welcome.choose_library" xml:space="preserve"><value>odaberite fonoteku</value></data>
   <data name="welcome.join_library" xml:space="preserve"><value>pridruži se fonoteci</value></data>
   <data name="welcome.create_library" xml:space="preserve"><value>stvori fonoteku</value></data>
-  <data name="welcome.no_library" xml:space="preserve"><value>još nema fonoteke</value></data>
   <data name="welcome.your_libraries" xml:space="preserve"><value>vaše fonoteke</value></data>
   <data name="cloud.provider.icloud" xml:space="preserve"><value>iCloud</value></data>
   <data name="settings.discogs.connected" xml:space="preserve"><value>povezano</value></data>

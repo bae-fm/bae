@@ -161,7 +161,6 @@
   <data name="queue.shuffle.off" xml:space="preserve"><value>షఫుల్ ఆఫ్ చేయి</value></data>
   <data name="queue.shuffle.on" xml:space="preserve"><value>షఫుల్</value></data>
   <data name="queue.title" xml:space="preserve"><value>క్యూ</value></data>
-  <data name="restore.code_placeholder" xml:space="preserve"><value>పునరుద్ధరణ కోడ్</value></data>
   <data name="restore.confirm" xml:space="preserve"><value>పునరుద్ధరించు</value></data>
   <data name="restore.failed" xml:space="preserve"><value>పునరుద్ధరణ విఫలమైంది</value></data>
   <data name="restore.field.cloud_storage" xml:space="preserve"><value>క్లౌడ్ నిల్వ</value></data>
@@ -170,10 +169,7 @@
   <data name="restore.field.library_name" xml:space="preserve"><value>లైబ్రరీ పేరు (ఐచ్చికం)</value></data>
   <data name="restore.from_cloud" xml:space="preserve"><value>క్లౌడ్ నుంచి పునరుద్ధరించు</value></data>
   <data name="restore.from_cloud_title" xml:space="preserve"><value>క్లౌడ్ నుంచి పునరుద్ధరించు</value></data>
-  <data name="restore.from_code" xml:space="preserve"><value>కోడ్ నుంచి పునరుద్ధరించు</value></data>
   <data name="restore.in_progress" xml:space="preserve"><value>పునరుద్ధరిస్తోంది…</value></data>
-  <data name="restore.in_progress_named" xml:space="preserve"><value>{name} పునరుద్ధరిస్తోంది…</value></data>
-  <data name="restore.invalid_code" xml:space="preserve"><value>చెల్లని పునరుద్ధరణ కోడ్</value></data>
   <data name="s3.field.access_key" xml:space="preserve"><value>ప్రవేశ కీ</value></data>
   <data name="s3.field.bucket" xml:space="preserve"><value>S3 బకెట్</value></data>
   <data name="s3.field.endpoint" xml:space="preserve"><value>ముగింపు బిందువు (ఐచ్ఛికం)</value></data>
@@ -252,7 +248,6 @@
   <data name="welcome.choose_library" xml:space="preserve"><value>లైబ్రరీని ఎంచుకోండి</value></data>
   <data name="welcome.join_library" xml:space="preserve"><value>లైబ్రరీలో చేరు</value></data>
   <data name="welcome.create_library" xml:space="preserve"><value>లైబ్రరీని సృష్టించండి</value></data>
-  <data name="welcome.no_library" xml:space="preserve"><value>ఇంకా లైబ్రరీ లేదు</value></data>
   <data name="welcome.your_libraries" xml:space="preserve"><value>మీ లైబ్రరీలు</value></data>
   <data name="cloud.provider.icloud" xml:space="preserve"><value>iCloud</value></data>
   <data name="settings.discogs.connected" xml:space="preserve"><value>కనెక్ట్ అయింది</value></data>

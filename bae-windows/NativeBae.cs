@@ -202,7 +202,7 @@ internal static class NativeBae
 
     /// <summary>
     /// Run the desktop OAuth flow for a provider (google_drive / dropbox / onedrive)
-    /// and return the provider token JSON for <see cref="RestoreFromCode"/>.
+    /// and return the provider token JSON for <see cref="JoinFromCode"/>.
     /// The core opens the system browser and runs the 127.0.0.1 callback listener,
     /// so call off the UI thread.
     /// </summary>
@@ -217,18 +217,6 @@ internal static class NativeBae
 
     internal static string OAuthAuthorize(BridgeCloudProvider provider) => throw new InvalidOperationException();
 #endif
-
-    /// <summary>Decode a restore code for UI preview.</summary>
-    internal static BridgeRestoreCodeInfo DecodeRestoreCode(string code) =>
-        BaeBridgeMethods.DecodeRestoreCode(code);
-
-    /// <summary>
-    /// Restore a library from a code and return its id. For OAuth providers pass
-    /// the token JSON from <see cref="OAuthAuthorize"/>; for credential providers
-    /// pass null. Blocks on a cloud pull — call off the UI thread.
-    /// </summary>
-    internal static string RestoreFromCode(string code, string? oauthTokenJson) =>
-        BaeBridgeMethods.RestoreFromCode(code, oauthTokenJson).Id;
 
     /// <summary>
     /// This device's join-request code and the fingerprint it encodes, to hand

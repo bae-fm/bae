@@ -161,7 +161,6 @@
   <data name="queue.shuffle.off" xml:space="preserve"><value>desactivar aleatorio</value></data>
   <data name="queue.shuffle.on" xml:space="preserve"><value>aleatorio</value></data>
   <data name="queue.title" xml:space="preserve"><value>cola</value></data>
-  <data name="restore.code_placeholder" xml:space="preserve"><value>código de restauración</value></data>
   <data name="restore.confirm" xml:space="preserve"><value>restaurar</value></data>
   <data name="restore.failed" xml:space="preserve"><value>error al restaurar</value></data>
   <data name="restore.field.cloud_storage" xml:space="preserve"><value>almacenamiento en la nube</value></data>
@@ -170,10 +169,7 @@
   <data name="restore.field.library_name" xml:space="preserve"><value>nombre de la biblioteca (opcional)</value></data>
   <data name="restore.from_cloud" xml:space="preserve"><value>restaurar desde la nube</value></data>
   <data name="restore.from_cloud_title" xml:space="preserve"><value>restaurar desde la nube</value></data>
-  <data name="restore.from_code" xml:space="preserve"><value>restaurar desde código</value></data>
   <data name="restore.in_progress" xml:space="preserve"><value>restaurando…</value></data>
-  <data name="restore.in_progress_named" xml:space="preserve"><value>restaurando {name}…</value></data>
-  <data name="restore.invalid_code" xml:space="preserve"><value>código de restauración no válido</value></data>
   <data name="s3.field.access_key" xml:space="preserve"><value>clave de acceso</value></data>
   <data name="s3.field.bucket" xml:space="preserve"><value>bucket de S3</value></data>
   <data name="s3.field.endpoint" xml:space="preserve"><value>endpoint (opcional)</value></data>
@@ -252,7 +248,6 @@
   <data name="welcome.choose_library" xml:space="preserve"><value>elige una biblioteca</value></data>
   <data name="welcome.join_library" xml:space="preserve"><value>unirse a una biblioteca</value></data>
   <data name="welcome.create_library" xml:space="preserve"><value>crear biblioteca</value></data>
-  <data name="welcome.no_library" xml:space="preserve"><value>aún no hay biblioteca</value></data>
   <data name="welcome.your_libraries" xml:space="preserve"><value>tus bibliotecas</value></data>
   <data name="cloud.provider.icloud" xml:space="preserve"><value>iCloud</value></data>
   <data name="settings.discogs.connected" xml:space="preserve"><value>conectado</value></data>

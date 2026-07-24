@@ -161,7 +161,6 @@
   <data name="queue.shuffle.off" xml:space="preserve"><value>shuffle uitschakelen</value></data>
   <data name="queue.shuffle.on" xml:space="preserve"><value>shuffle</value></data>
   <data name="queue.title" xml:space="preserve"><value>wachtrij</value></data>
-  <data name="restore.code_placeholder" xml:space="preserve"><value>herstelcode</value></data>
   <data name="restore.confirm" xml:space="preserve"><value>herstellen</value></data>
   <data name="restore.failed" xml:space="preserve"><value>herstellen mislukt</value></data>
   <data name="restore.field.cloud_storage" xml:space="preserve"><value>cloudopslag</value></data>
@@ -170,10 +169,7 @@
   <data name="restore.field.library_name" xml:space="preserve"><value>bibliotheeknaam (optioneel)</value></data>
   <data name="restore.from_cloud" xml:space="preserve"><value>herstellen vanuit cloud</value></data>
   <data name="restore.from_cloud_title" xml:space="preserve"><value>herstellen vanuit cloud</value></data>
-  <data name="restore.from_code" xml:space="preserve"><value>herstellen vanaf code</value></data>
   <data name="restore.in_progress" xml:space="preserve"><value>herstellen…</value></data>
-  <data name="restore.in_progress_named" xml:space="preserve"><value>{name} herstellen…</value></data>
-  <data name="restore.invalid_code" xml:space="preserve"><value>ongeldige herstelcode</value></data>
   <data name="s3.field.access_key" xml:space="preserve"><value>toegangssleutel</value></data>
   <data name="s3.field.bucket" xml:space="preserve"><value>S3 bucket</value></data>
   <data name="s3.field.endpoint" xml:space="preserve"><value>endpoint (optioneel)</value></data>
@@ -252,7 +248,6 @@
   <data name="welcome.choose_library" xml:space="preserve"><value>kies een bibliotheek</value></data>
   <data name="welcome.join_library" xml:space="preserve"><value>aan een bibliotheek deelnemen</value></data>
   <data name="welcome.create_library" xml:space="preserve"><value>bibliotheek maken</value></data>
-  <data name="welcome.no_library" xml:space="preserve"><value>nog geen bibliotheek</value></data>
   <data name="welcome.your_libraries" xml:space="preserve"><value>je bibliotheken</value></data>
   <data name="cloud.provider.icloud" xml:space="preserve"><value>iCloud</value></data>
   <data name="settings.discogs.connected" xml:space="preserve"><value>verbonden</value></data>

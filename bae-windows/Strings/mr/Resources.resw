@@ -161,7 +161,6 @@
   <data name="queue.shuffle.off" xml:space="preserve"><value>मिसळणे बंद करा</value></data>
   <data name="queue.shuffle.on" xml:space="preserve"><value>मिसळा</value></data>
   <data name="queue.title" xml:space="preserve"><value>रांग</value></data>
-  <data name="restore.code_placeholder" xml:space="preserve"><value>पुनर्संचयित संकेत</value></data>
   <data name="restore.confirm" xml:space="preserve"><value>पुनर्संचयित करा</value></data>
   <data name="restore.failed" xml:space="preserve"><value>पुनर्संचयित करणे अयशस्वी</value></data>
   <data name="restore.field.cloud_storage" xml:space="preserve"><value>क्लाउड संचयन</value></data>
@@ -170,10 +169,7 @@
   <data name="restore.field.library_name" xml:space="preserve"><value>लायब्ररीचे नाव (ऐच्छिक)</value></data>
   <data name="restore.from_cloud" xml:space="preserve"><value>क्लाउडमधून पुनर्संचयित करा</value></data>
   <data name="restore.from_cloud_title" xml:space="preserve"><value>क्लाउडमधून पुनर्संचयित करा</value></data>
-  <data name="restore.from_code" xml:space="preserve"><value>संकेतामधून पुनर्संचयित करा</value></data>
   <data name="restore.in_progress" xml:space="preserve"><value>पुनर्संचयित करत आहे…</value></data>
-  <data name="restore.in_progress_named" xml:space="preserve"><value>{name} पुनर्संचयित करत आहे…</value></data>
-  <data name="restore.invalid_code" xml:space="preserve"><value>अवैध पुनर्संचयित संकेत</value></data>
   <data name="s3.field.access_key" xml:space="preserve"><value>प्रवेश कळ</value></data>
   <data name="s3.field.bucket" xml:space="preserve"><value>S3 बकेट</value></data>
   <data name="s3.field.endpoint" xml:space="preserve"><value>अंतबिंदू (ऐच्छिक)</value></data>
@@ -252,7 +248,6 @@
   <data name="welcome.choose_library" xml:space="preserve"><value>लायब्ररी निवडा</value></data>
   <data name="welcome.join_library" xml:space="preserve"><value>संग्रहालयात जोडा</value></data>
   <data name="welcome.create_library" xml:space="preserve"><value>लायब्ररी तयार करा</value></data>
-  <data name="welcome.no_library" xml:space="preserve"><value>अजून लायब्ररी नाही</value></data>
   <data name="welcome.your_libraries" xml:space="preserve"><value>तुमची संग्रहालये</value></data>
   <data name="cloud.provider.icloud" xml:space="preserve"><value>iCloud</value></data>
   <data name="settings.discogs.connected" xml:space="preserve"><value>जोडलेले</value></data>
