@@ -358,7 +358,30 @@ fn configure_logging() {
     install_logging_subscriber!(tracing_oslog::OsLogger::new("fm.bae.app", "default"))
 }
 
-#[cfg(not(any(target_os = "macos", target_os = "android", target_os = "ios")))]
+#[cfg(target_os = "windows")]
+fn configure_logging() {
+    // ETW is Windows' unified logging: a TraceLogging provider named
+    // "bae-core" (GUID derived from the name), captured with
+    // `logman start ... -p "*bae-core"` — the `log stream` equivalent. The
+    // fmt layer stays for console-attached runs.
+    match tracing_etw::LayerBuilder::new("bae-core").build() {
+        Ok(etw_layer) => install_logging_subscriber!(fmt_log_layer(), etw_layer),
+        Err(error) => {
+            // Nowhere structured to report this: ETW is the local sink and
+            // building its layer is what failed. Console logging still works;
+            // launch must not die over it.
+            eprintln!("ETW tracing layer initialization failed: {error}");
+            install_logging_subscriber!(fmt_log_layer())
+        }
+    }
+}
+
+#[cfg(not(any(
+    target_os = "macos",
+    target_os = "android",
+    target_os = "ios",
+    target_os = "windows",
+)))]
 fn configure_logging() {
     install_logging_subscriber!(fmt_log_layer())
 }

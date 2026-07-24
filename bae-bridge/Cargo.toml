@@ -41,6 +41,12 @@ tracing-oslog = "0.3"
 [target.'cfg(target_os = "android")'.dependencies]
 tracing-android = "0.2"
 
+[target.'cfg(target_os = "windows")'.dependencies]
+# ETW (TraceLogging) output for tracing — Windows' unified-logging equivalent.
+# Provider "bae-core", GUID derived from the name, so a capture session names
+# it as `logman ... -p "*bae-core"`.
+tracing-etw = "0.2"
+
 [dev-dependencies]
 # The validation-reason ↔ catalog cross-check test loads the master catalog.
 bae-loc = { path = "../bae-loc" }

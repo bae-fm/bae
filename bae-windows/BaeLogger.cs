@@ -1,8 +1,33 @@
 ﻿using System.Diagnostics;
+using System.Diagnostics.Tracing;
 using System.Reflection;
 using uniffi.bae_bridge;
 
 namespace Bae.Windows;
+
+/// <summary>
+/// The app's ETW (TraceLogging) provider — Windows' unified-logging sink,
+/// sibling of the Rust core's "bae-core" provider. Capture both with
+/// `logman start baeTrace -p "*bae-app" -p "*bae-core" -o trace.etl -ets`
+/// (see scripts/vm/guest/vmlog-start.cmd). The GUID derives from the name.
+/// </summary>
+[EventSource(Name = "bae-app")]
+internal sealed class BaeEventSource : EventSource
+{
+    internal static readonly BaeEventSource Log = new();
+
+    [Event(1, Level = EventLevel.Verbose)]
+    internal void Debug(string target, string message) => WriteEvent(1, target, message);
+
+    [Event(2, Level = EventLevel.Informational)]
+    internal void Info(string target, string message) => WriteEvent(2, target, message);
+
+    [Event(3, Level = EventLevel.Warning)]
+    internal void Warning(string target, string message) => WriteEvent(3, target, message);
+
+    [Event(4, Level = EventLevel.Error)]
+    internal void Error(string target, string message) => WriteEvent(4, target, message);
+}
 
 internal static class BaeDiagnostics
 {
@@ -98,7 +123,23 @@ internal sealed class BaeLogger
         string message,
         Exception? exception)
     {
-        TraceMessage(level, $"[{_target}] {Format(message, exception)}");
+        var formatted = Format(message, exception);
+        TraceMessage(level, $"[{_target}] {formatted}");
+        switch (level)
+        {
+            case "debug":
+                BaeEventSource.Log.Debug(_target, formatted);
+                break;
+            case "info":
+                BaeEventSource.Log.Info(_target, formatted);
+                break;
+            case "warn":
+                BaeEventSource.Log.Warning(_target, formatted);
+                break;
+            case "error":
+                BaeEventSource.Log.Error(_target, formatted);
+                break;
+        }
     }
 
     private static string Format(string message, Exception? exception) =>
