@@ -43,8 +43,10 @@ import DownloadButton from '../../../../components/DownloadButton.astro';
 
 Збірки Windows — це **непідписані** zip-архіви незапакованого застосунку. Розпакуйте й запустіть `bae.exe` / `baeium.exe`. SmartScreen може попередити під час першого запуску.
 
-<DownloadButton platform="windows" edition="full" class="sl-button primary">Завантажити bae для Windows</DownloadButton>
-<DownloadButton platform="windows" edition="baeium" class="sl-button">Завантажити baeium для Windows</DownloadButton>
+<DownloadButton platform="windows" edition="full" arch="x64" class="sl-button primary">Завантажити bae для Windows (x64)</DownloadButton>
+<DownloadButton platform="windows" edition="full" arch="arm64" class="sl-button primary">Завантажити bae для Windows (ARM64)</DownloadButton>
+<DownloadButton platform="windows" edition="baeium" arch="x64" class="sl-button">Завантажити baeium для Windows (x64)</DownloadButton>
+<DownloadButton platform="windows" edition="baeium" arch="arm64" class="sl-button">Завантажити baeium для Windows (ARM64)</DownloadButton>
 
 ## Linux
 

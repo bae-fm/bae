@@ -13,13 +13,19 @@ const REPO = 'bae-fm/bae';
 
 export type Platform = 'macos' | 'ios' | 'android' | 'windows';
 export type Edition = 'full' | 'baeium';
+/** Windows ships one installer per CPU architecture; other platforms ship one. */
+export type WindowsArch = 'x64' | 'arm64';
 
 /** The release asset filename per platform/edition, fixed by each build. */
-const ASSETS: Record<Platform, Record<Edition, string>> = {
+const ASSETS: Record<Exclude<Platform, 'windows'>, Record<Edition, string>> = {
   macos: { full: 'bae-macos.dmg', baeium: 'baeium-macos.dmg' },
   ios: { full: 'bae-ios.ipa', baeium: 'baeium-ios.ipa' },
   android: { full: 'bae-android.apk', baeium: 'baeium-android.apk' },
-  windows: { full: 'bae-windows-x64-setup.exe', baeium: 'baeium-windows-x64-setup.exe' },
+};
+/** Windows asset filenames per edition/arch, fixed by release-windows.yml. */
+const WINDOWS_ASSETS: Record<Edition, Record<WindowsArch, string>> = {
+  full: { x64: 'bae-windows-x64-setup.exe', arm64: 'bae-windows-arm64-setup.exe' },
+  baeium: { x64: 'baeium-windows-x64-setup.exe', arm64: 'baeium-windows-arm64-setup.exe' },
 };
 
 export interface EditionDownload {
@@ -28,8 +34,12 @@ export interface EditionDownload {
 }
 /** A platform's available editions; an edition with no asset yet is absent. */
 export type PlatformDownloads = Partial<Record<Edition, EditionDownload>>;
+/** Windows editions carry one download per arch; absent when not published. */
+export type WindowsDownloads = Partial<Record<Edition, Partial<Record<WindowsArch, EditionDownload>>>>;
 /** Latest per platform; a platform with no release yet is absent. */
-export type LatestManifest = Partial<Record<Platform, PlatformDownloads>>;
+export type LatestManifest = Partial<Record<Exclude<Platform, 'windows'>, PlatformDownloads>> & {
+  windows?: WindowsDownloads;
+};
 
 interface GhAsset {
   name: string;
@@ -79,38 +89,69 @@ async function fetchReleases(): Promise<GhRelease[]> {
   return (await res.json()) as GhRelease[];
 }
 
+/** The newest non-draft release whose tag starts with `<platform>-v`. */
+function latestRelease(releases: GhRelease[], platform: Platform) {
+  const prefix = `${platform}-v`;
+  const latest = releases
+    .filter((r) => !r.draft && r.tag_name.startsWith(prefix))
+    .map((r) => ({ release: r, version: r.tag_name.slice(prefix.length) }))
+    .sort((a, b) => compareVersions(b.version, a.version))[0];
+  if (!latest) {
+    // Expected for a platform that hasn't shipped: it's simply omitted, and its
+    // button renders "coming soon". Logged so the build shows which platforms
+    // resolved and which didn't.
+    console.info(`releases: no published ${platform}-v* release yet; omitting from manifest`);
+  }
+  return latest;
+}
+
+/** The named asset's download, or undefined with a warning naming the gap. */
+function assetDownload(
+  latest: { release: GhRelease; version: string },
+  assetName: string,
+  what: string,
+): EditionDownload | undefined {
+  const asset = latest.release.assets.find((a) => a.name === assetName);
+  if (!asset) {
+    // The release exists but is missing this asset. Anomalous for a full build;
+    // a known gap for baeium on macOS/iOS, whose serialized per-edition release
+    // matrix can't append the second edition to an immutable release. Either
+    // way, name what's missing rather than drop it silently.
+    console.warn(`releases: ${latest.release.tag_name} has no ${assetName} asset; omitting ${what}`);
+    return undefined;
+  }
+  return { version: latest.version, url: asset.browser_download_url };
+}
+
 function buildManifest(releases: GhRelease[]): LatestManifest {
   const manifest: LatestManifest = {};
-  for (const platform of Object.keys(ASSETS) as Platform[]) {
-    const prefix = `${platform}-v`;
-    const latest = releases
-      .filter((r) => !r.draft && r.tag_name.startsWith(prefix))
-      .map((r) => ({ release: r, version: r.tag_name.slice(prefix.length) }))
-      .sort((a, b) => compareVersions(b.version, a.version))[0];
-    if (!latest) {
-      // Expected for a platform that hasn't shipped (iOS, Windows): it's simply
-      // omitted, and its button renders "coming soon". Logged so the build shows
-      // which platforms resolved and which didn't.
-      console.info(`releases: no published ${platform}-v* release yet; omitting from manifest`);
-      continue;
-    }
+  for (const platform of Object.keys(ASSETS) as Exclude<Platform, 'windows'>[]) {
+    const latest = latestRelease(releases, platform);
+    if (!latest) continue;
     const downloads: PlatformDownloads = {};
     for (const edition of ['full', 'baeium'] as Edition[]) {
-      const asset = latest.release.assets.find((a) => a.name === ASSETS[platform][edition]);
-      if (asset) {
-        downloads[edition] = { version: latest.version, url: asset.browser_download_url };
-      } else {
-        // The release exists but is missing this edition's asset. Anomalous for a
-        // full build; a known gap for baeium on macOS/iOS, whose serialized
-        // per-edition release matrix can't append the second edition to an
-        // immutable release. Either way, name what's missing rather than drop it
-        // silently.
-        console.warn(
-          `releases: ${platform}-v${latest.version} has no ${ASSETS[platform][edition]} asset; omitting ${platform}/${edition}`,
-        );
-      }
+      const download = assetDownload(latest, ASSETS[platform][edition], `${platform}/${edition}`);
+      if (download) downloads[edition] = download;
     }
     if (Object.keys(downloads).length > 0) manifest[platform] = downloads;
+  }
+
+  const latestWindows = latestRelease(releases, 'windows');
+  if (latestWindows) {
+    const downloads: WindowsDownloads = {};
+    for (const edition of ['full', 'baeium'] as Edition[]) {
+      const arches: Partial<Record<WindowsArch, EditionDownload>> = {};
+      for (const arch of ['x64', 'arm64'] as WindowsArch[]) {
+        const download = assetDownload(
+          latestWindows,
+          WINDOWS_ASSETS[edition][arch],
+          `windows/${edition}/${arch}`,
+        );
+        if (download) arches[arch] = download;
+      }
+      if (Object.keys(arches).length > 0) downloads[edition] = arches;
+    }
+    if (Object.keys(downloads).length > 0) manifest.windows = downloads;
   }
   return manifest;
 }
