@@ -351,11 +351,6 @@ jobs:
     permissions:
       contents: write
     steps:
-    - name: Checkout the built commit
-      uses: actions/checkout@v6
-      with:
-        ref: ${{ github.sha }}
-
     - name: Download all editions' and arches' packages
       # Filenames are distinct across editions and arches (packId/channel are in
       # them), so merging every velopack/ dir into one is collision-free.
@@ -365,16 +360,10 @@ jobs:
         path: release-assets
         merge-multiple: true
 
-    - name: Create git tag
-      run: |
-        VERSION="${{ needs.calculate-version.outputs.version }}"
-        if ! git rev-parse "windows-v$VERSION" >/dev/null 2>&1; then
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git tag "windows-v$VERSION"
-          git push origin "windows-v$VERSION"
-        fi
-
+    # The tag is created by the release action via the Releases API, not `git
+    # push`: the workflow token may not push a tag whose commit touches workflow
+    # files ("refusing to allow a GitHub App to update workflow ... without
+    # `workflows` permission"), and the API path has no such restriction.
     # One immutable release per windows-v* tag carries both editions, so `vpk
     # upload github` (which creates/publishes its own release, once per channel)
     # can't be used — two invocations against one immutable tag would collide.
@@ -384,6 +373,7 @@ jobs:
       uses: softprops/action-gh-release@v2
       with:
         tag_name: windows-v${{ needs.calculate-version.outputs.version }}
+        target_commitish: ${{ github.sha }}
         files: release-assets/*
         body: |
           Windows builds, x64 and arm64. The setup installer installs bae
