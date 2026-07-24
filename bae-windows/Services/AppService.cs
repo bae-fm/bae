@@ -45,13 +45,39 @@ internal sealed class AppService
     // windowHandle is invoked once here (MediaControlService binds the HWND at
     // construction); the caller (MainWindow) has the live window handle.
     public AppService(SessionStore session, DispatcherQueue dispatcher, Func<IntPtr> windowHandle)
+        : this(
+            session,
+            dispatcher,
+            windowHandle,
+            LibraryService.FromSession(session),
+            MediaPathsService.FromSession(session),
+            PlaybackService.FromSession(session),
+            QueueService.FromSession(session),
+            DownloadsService.FromSession(session),
+            SyncService.FromSession(session))
     {
-        Library = LibraryService.FromSession(session);
-        MediaPaths = MediaPathsService.FromSession(session);
-        Playback = PlaybackService.FromSession(session);
-        Queue = QueueService.FromSession(session);
-        Downloads = DownloadsService.FromSession(session);
-        Sync = SyncService.FromSession(session);
+    }
+
+    // The six domain services are injected so a scene can override them (see
+    // Stubbed); the stores, transport controls, and router are the same for every
+    // composition and are built here around the given session and services.
+    private AppService(
+        SessionStore session,
+        DispatcherQueue dispatcher,
+        Func<IntPtr> windowHandle,
+        LibraryService library,
+        MediaPathsService mediaPaths,
+        PlaybackService playback,
+        QueueService queue,
+        DownloadsService downloads,
+        SyncService sync)
+    {
+        Library = library;
+        MediaPaths = mediaPaths;
+        Playback = playback;
+        Queue = queue;
+        Downloads = downloads;
+        Sync = sync;
 
         ShellStore = new ShellStore();
         PlaybackStore = new PlaybackStore();
@@ -86,6 +112,30 @@ internal sealed class AppService
         StorageStore = new StorageStore(session, TransferProgressStore);
         LibraryBrowserStore = new LibraryBrowserStore(Library, MediaPaths, dispatcher);
     }
+
+#if DEBUG
+    /// <summary>A scene composition for the screenshot gallery: every domain
+    /// service is a fail-loud stub except the caller-supplied <paramref name="library"/>,
+    /// so a render that touches any unwired delegate crashes the capture loudly
+    /// rather than drawing a lie. The stores are built around a handle-less
+    /// <paramref name="session"/>; the shell renders its content off the stub
+    /// library alone and never reaches a live handle.</summary>
+    public static AppService Stubbed(
+        SessionStore session,
+        DispatcherQueue dispatcher,
+        Func<IntPtr> windowHandle,
+        LibraryService library) =>
+        new(
+            session,
+            dispatcher,
+            windowHandle,
+            library,
+            new MediaPathsService(),
+            new PlaybackService(),
+            new QueueService(),
+            new DownloadsService(),
+            new SyncService());
+#endif
 
     /// <summary>Report that a host UI screen opened, as a typed telemetry event
     /// through the process-lifetime sink. Infallible; the core owns every other

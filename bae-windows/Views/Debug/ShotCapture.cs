@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
+using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
@@ -86,20 +87,23 @@ internal static class ShotCapture
 
     // One capture scene: a stable id (the gallery scene key, shared across
     // platforms) and a fixed logical size, with a builder that renders the
-    // composition against fixtures. Disabled scenes stay staged but produce no
-    // PNG (a deliberate, honest gap in the gallery).
+    // composition against fixtures. The builder receives the capture window's
+    // HWND for the scene (story 3) whose shell binds the system transport controls
+    // to it at construction. Disabled scenes stay staged but produce no PNG (a
+    // deliberate, honest gap in the gallery).
     private readonly record struct Scene(
-        string Id, double Width, double Height, Func<FrameworkElement> Build, bool Enabled = true);
+        string Id, double Width, double Height, Func<IntPtr, FrameworkElement> Build, bool Enabled = true);
 
     // The scene registry: desktop-story ids (notes/desktop-stories.md) — the
-    // gallery is the stories' per-platform verification sheet. Each enabled
-    // scene renders through a pure builder over fixtures — none needs a live
-    // library handle. A scene that did would be absent here, not faked: story 3
-    // (the empty library) is absent because the main-window shell can only be
-    // composed from a real session today.
+    // gallery is the stories' per-platform verification sheet. Each enabled scene
+    // renders through a pure builder over fixtures — none needs a live library
+    // handle. The empty-library shell (story 3) composes over AppService.Stubbed:
+    // every domain service is a fail-loud stub except an empty LibraryService, so
+    // the shell renders its content off that stub alone and never reaches a handle.
     private static IReadOnlyList<Scene> Scenes { get; } = new[]
     {
         new Scene("story-1-first-run", 900, 600, BuildWelcome),
+        new Scene("story-3-empty-library", 1350, 850, BuildStory3EmptyLibrary),
     };
 
     // True when args carry the capture flag; then outputDir is the directory that
@@ -193,6 +197,12 @@ internal static class ShotCapture
     private static async Task CaptureAsync(Scene scene, StorageFolder folder)
     {
         Log($"scene '{scene.Id}': build start");
+        // Create the window first so its HWND is available to the scene builder:
+        // the story-3 shell's AppService binds the system transport controls to it
+        // at construction, exactly like the production window. Benign for this
+        // throwaway capture window — it is closed as soon as the render is read.
+        var window = new Window();
+        var windowHandle = WinRT.Interop.WindowNative.GetWindowHandle(window);
         var root = new Grid
         {
             Width = scene.Width,
@@ -202,10 +212,9 @@ internal static class ShotCapture
             // so this resolves to the dark background.
             Background = (Brush)Application.Current.Resources["ApplicationPageBackgroundThemeBrush"],
         };
-        root.Children.Add(scene.Build());
+        root.Children.Add(scene.Build(windowHandle));
         Log($"scene '{scene.Id}': content built");
 
-        var window = new Window();
         var loaded = new TaskCompletionSource();
         root.Loaded += (_, _) => loaded.TrySetResult();
         window.Content = root;
@@ -334,8 +343,9 @@ internal static class ShotCapture
 
     // The first-run welcome chooser, staged with fixture libraries and no-op
     // callbacks. Drives WelcomeView's real Show() — the production path — rather
-    // than a re-implementation of it.
-    private static FrameworkElement BuildWelcome()
+    // than a re-implementation of it. The window handle is unused (the welcome
+    // chooser has no transport controls to bind).
+    private static FrameworkElement BuildWelcome(IntPtr windowHandle)
     {
         var host = new StackPanel
         {
@@ -354,6 +364,33 @@ internal static class ShotCapture
         return host;
     }
 
+    // The empty-library shell (desktop story 3): the production MainView over an
+    // AppService.Stubbed whose LibraryService reports zero counts and empty pages.
+    // The view's constructor loads the browse content off that stub, which drives
+    // the real zero-count empty-state branch — "no albums" over the docked idle
+    // now-playing bar. The session has no handle and every other service is a
+    // fail-loud stub, so nothing on this path reaches a live library.
+    private static FrameworkElement BuildStory3EmptyLibrary(IntPtr windowHandle)
+    {
+        var dispatcher = DispatcherQueue.GetForCurrentThread();
+        var session = new SessionStore(dispatcher);
+        var appService = AppService.Stubbed(session, dispatcher, () => windowHandle, EmptyLibrary());
+        return new MainView(appService, session, () => Task.CompletedTask, () => windowHandle);
+    }
 
+    // A LibraryService whose album/composer/artist counts are zero and whose pages
+    // are empty — the reads LoadCurrentBrowserMode makes to render the empty state.
+    // The (true, ...) currency flag marks the library present-but-empty (not a gone
+    // handle), so the browser shows the empty state rather than skipping the load.
+    // Every other read stays a fail-loud stub.
+    private static LibraryService EmptyLibrary() => new()
+    {
+        AlbumCount = () => (true, 0L),
+        AlbumPage = (_, _, _) => (true, (new List<Album>(), (string?)null)),
+        ComposerCount = () => (true, 0L),
+        ComposerPage = (_, _, _) => (true, (new List<ComposerSummary>(), (string?)null)),
+        ArtistCount = () => (true, 0L),
+        ArtistPage = (_, _, _) => (true, (new List<ArtistSummary>(), (string?)null)),
+    };
 }
 #endif
