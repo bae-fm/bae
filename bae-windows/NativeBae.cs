@@ -571,6 +571,12 @@ internal static class NativeBae
     internal static string? SetShowRemainingTime(AppHandle handle, bool enabled) =>
         CaptureError(() => handle.SetShowRemainingTime(enabled));
 
+    /// <summary>Whether the library page spans the window's full width. A synced
+    /// preference; the write fires a config invalidation, which re-renders the
+    /// page through the settings mirror.</summary>
+    internal static string? SetLibraryFullWidth(AppHandle handle, bool enabled) =>
+        CaptureError(() => handle.SetLibraryFullWidth(enabled));
+
     internal static string? SetSavePresets(AppHandle handle, IEnumerable<SavePreset> presets) =>
         CaptureError(() => handle.SetSavePresets(
             presets.Select(SavePresetBridge).ToArray()));
@@ -750,6 +756,14 @@ internal static class NativeBae
     internal static void PreviewStop(AppHandle handle) => handle.PreviewStop();
 
     internal static void PreviewTogglePause(AppHandle handle) => handle.PreviewTogglePause();
+
+    /// <summary>Prefetch a release's metadata from a source for the import
+    /// edit-form seed — the raw projection, before the confirm dialog composes it
+    /// with local artwork. <paramref name="localTrackCount"/> lets core align the
+    /// remote track list to the rip.</summary>
+    internal static (BridgeReleasePrefetch? Prefetch, string? Error) PrefetchRelease(
+        AppHandle handle, string releaseId, BridgeMetadataSource source, uint? localTrackCount) =>
+        CaptureBridgeValue(() => Await(() => handle.PrefetchRelease(releaseId, source, localTrackCount)));
 
     internal static (PrefetchedEdit? Prefetched, string? Error) PrefetchCandidateEdit(
         AppHandle handle,
