@@ -4,11 +4,7 @@
   <resheader name="version"><value>2.0</value></resheader>
   <data name="SearchBox.PlaceholderText" xml:space="preserve"><value>Ara</value></data>
   <data name="toolbar.libraries" xml:space="preserve"><value>kitaplıklar</value></data>
-  <data name="toolbar.playback" xml:space="preserve"><value>çalma</value></data>
   <data name="ShuffleLibraryMenuItem.Text" xml:space="preserve"><value>kitaplığı karıştır</value></data>
-  <data name="CloseLibraryButton.Content" xml:space="preserve"><value>kapat</value></data>
-  <data name="CloseLibraryButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve"><value>kitaplığı kapat</value></data>
-  <data name="toolbar.import" xml:space="preserve"><value>içe aktar</value></data>
   <data name="toolbar.storage" xml:space="preserve"><value>Depolama</value></data>
   <data name="toolbar.settings" xml:space="preserve"><value>ayarlar</value></data>
   <data name="action.cancel" xml:space="preserve"><value>İptal</value></data>
@@ -85,7 +81,6 @@
   <data name="import.scanning" xml:space="preserve"><value>taranıyor…</value></data>
   <data name="import.storage.keep_local" xml:space="preserve"><value>Yerel kopyayı tut</value></data>
   <data name="import.storage.managed" xml:space="preserve"><value>Yönetilen</value></data>
-  <data name="import.title" xml:space="preserve"><value>içe aktar</value></data>
   <data name="import.view_in_library" xml:space="preserve"><value>kitaplıkta görüntüle</value></data>
   <data name="join.title" xml:space="preserve"><value>kitaplığa katıl</value></data>
   <data name="join.intro" xml:space="preserve"><value>bu cihazı başka bir cihazda zaten sahip olduğunuz bir kitaplığa ekleyin.</value></data>

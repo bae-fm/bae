@@ -10,16 +10,8 @@ public partial class App : Application
         // Record unhandled UI-dispatcher exceptions before anything else can throw
         // (the process handlers are wired earlier, in Program.Main).
         CrashCapture.InstallXamlHandler(this);
-#if DEBUG
-        // In screenshot-capture mode, force the dark look (matching the macOS
-        // capture) app-wide: the scene brushes resolve against the app theme, and
-        // Application.RequestedTheme can only be set here, in the constructor.
-        if (ShotCapture.TryGetOutputDir(Environment.GetCommandLineArgs(), out _))
-        {
-            RequestedTheme = ApplicationTheme.Dark;
-            ShotCapture.Log("App ctor: capture mode, dark theme set");
-        }
-#endif
+        // The fixed dark bae look is App.xaml's RequestedTheme + palette; no
+        // per-mode theme forcing here.
         InitializeComponent();
     }
 

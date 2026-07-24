@@ -5,10 +5,11 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:local="using:Bae.Windows"
     Title="bae">
-    <!-- Background="Transparent" makes the whole window a hit-testable drop target,
-         so a folder can be dropped over empty areas (e.g. the empty-library state),
+    <!-- The page-background fill doubles as the drop-target surface: any painted
+         background (this one included) makes the whole window hit-testable, so a
+         folder can be dropped over empty areas (e.g. the empty-library state),
          not just over the grid. -->
-    <Grid x:Name="RootGrid" KeyDown="OnGlobalKeyDown" AllowDrop="True" DragOver="OnWindowDragOver" Drop="OnWindowDrop" Background="Transparent">
+    <Grid x:Name="RootGrid" KeyDown="OnGlobalKeyDown" AllowDrop="True" DragOver="OnWindowDragOver" Drop="OnWindowDrop" Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
         <Grid.KeyboardAccelerators>
             <KeyboardAccelerator Modifiers="Control" Key="F" Invoked="OnFocusSearchAccelerator" />
             <KeyboardAccelerator Modifiers="Control" Key="L" Invoked="OnGoToNowPlaying" />
@@ -23,6 +24,11 @@
             <KeyboardAccelerator Modifiers="Control" Key="Number7" Invoked="OnLibrarySwitchAccelerator" />
             <KeyboardAccelerator Modifiers="Control" Key="Number8" Invoked="OnLibrarySwitchAccelerator" />
             <KeyboardAccelerator Modifiers="Control" Key="Number9" Invoked="OnLibrarySwitchAccelerator" />
+            <!-- Ctrl+Shift+W, not bare Ctrl+W: closing the library is destructive
+                 (tears down to the welcome chooser), and bare Ctrl+W is the reflex
+                 for "close this tab/window". macOS guards it behind Shift too. -->
+            <KeyboardAccelerator Modifiers="Control,Shift" Key="W" Invoked="OnCloseLibraryAccelerator" />
+            <KeyboardAccelerator Modifiers="Control" Key="Number0" Invoked="OnStorageAccelerator" />
         </Grid.KeyboardAccelerators>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -40,19 +46,49 @@
                     <GradientStop Color="{ThemeResource CardBackgroundFillColorSecondary}" Offset="1" />
                 </LinearGradientBrush>
             </Border.Background>
-            <Grid Margin="16,0,16,0" ColumnSpacing="12" VerticalAlignment="Center">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
-                </Grid.ColumnDefinitions>
+            <Grid Margin="16,0,16,0" VerticalAlignment="Center">
+                <!-- The Library/Import switcher: the big segmented pill centered in
+                     the bar, the active segment filled with the accent — the same
+                     section switcher the macOS title bar centers. -->
+                <Border
+                    x:Name="SectionPill"
+                    HorizontalAlignment="Center"
+                    Margin="0,0,64,0"
+                    CornerRadius="11"
+                    Padding="4"
+                    Background="#101019"
+                    BorderThickness="1"
+                    BorderBrush="#0FFFFFFF">
+                    <StackPanel Orientation="Horizontal">
+                        <Button
+                            x:Name="LibrarySegment"
+                            Padding="20,7"
+                            CornerRadius="8"
+                            BorderThickness="0"
+                            FontSize="14.5"
+                            FontWeight="Bold"
+                            Click="OnLibrarySegmentClick" />
+                        <Button
+                            x:Name="ImportSegment"
+                            Padding="20,7"
+                            CornerRadius="8"
+                            BorderThickness="0"
+                            FontSize="14.5"
+                            FontWeight="Bold"
+                            Click="OnImportSegmentClick">
+                            <Button.KeyboardAccelerators>
+                                <KeyboardAccelerator Modifiers="Control" Key="I" />
+                            </Button.KeyboardAccelerators>
+                        </Button>
+                    </StackPanel>
+                </Border>
+                <StackPanel x:Name="ToolbarButtons" Orientation="Horizontal" Spacing="12" HorizontalAlignment="Right" VerticalAlignment="Center">
                 <AutoSuggestBox
                     x:Name="SearchBox"
                     x:Uid="SearchBox"
-                    Grid.Column="0"
                     Width="300"
                     Height="38"
                     CornerRadius="10"
-                    HorizontalAlignment="Left"
                     VerticalAlignment="Center"
                     PlaceholderText="Search"
                     QueryIcon="Find">
@@ -101,53 +137,29 @@
                         </Flyout>
                     </FlyoutBase.AttachedFlyout>
                 </AutoSuggestBox>
-                <StackPanel x:Name="ToolbarButtons" Grid.Column="1" Orientation="Horizontal" Spacing="6">
-                    <TextBlock x:Name="SyncIndicator" VerticalAlignment="Center"
-                               Foreground="Gray" TextWrapping="NoWrap" />
-                    <!-- Playback menu: an icon button whose flyout shuffles the whole
-                         library. -->
-                    <Button x:Name="PlaybackMenuButton" Style="{StaticResource ToolbarIconButtonStyle}">
-                        <FontIcon Glyph="&#xE768;" FontSize="16" />
-                        <Button.Flyout>
-                            <MenuFlyout>
-                                <MenuFlyoutItem
-                                    x:Name="ShuffleLibraryItem"
-                                    x:Uid="ShuffleLibraryMenuItem"
-                                    Text="shuffle library"
-                                    IsEnabled="False"
-                                    Click="OnShuffleLibraryClick" />
-                            </MenuFlyout>
-                        </Button.Flyout>
-                    </Button>
-                    <Button x:Name="LibrariesButton" Style="{StaticResource ToolbarIconButtonStyle}" Click="OnLibrariesClick">
-                        <FontIcon Glyph="&#xE8F1;" FontSize="16" />
-                    </Button>
-                    <!-- x:Uid keeps the distinct localized "close library" tooltip
-                         (a destructive action wants the clearer label); the glyph is
-                         set in code so x:Uid's Content string doesn't replace it. -->
-                    <Button x:Name="CloseLibraryButton" x:Uid="CloseLibraryButton" Style="{StaticResource ToolbarIconButtonStyle}" Click="OnCloseLibraryClick">
-                        <Button.KeyboardAccelerators>
-                            <!-- Ctrl+Shift+W, not bare Ctrl+W: closing the library is destructive
-                                 (tears down to the welcome chooser), and bare Ctrl+W is the reflex
-                                 for "close this tab/window". macOS guards it behind Shift too. -->
-                            <KeyboardAccelerator Modifiers="Control,Shift" Key="W" />
-                        </Button.KeyboardAccelerators>
-                    </Button>
-                    <Button x:Name="ImportButton" Style="{StaticResource ToolbarIconButtonStyle}" Click="OnImportClick">
-                        <FontIcon Glyph="&#xE8B5;" FontSize="16" />
-                        <Button.KeyboardAccelerators>
-                            <KeyboardAccelerator Modifiers="Control" Key="I" />
-                        </Button.KeyboardAccelerators>
-                    </Button>
-                    <Button x:Name="StorageButton" Style="{StaticResource ToolbarIconButtonStyle}" Click="OnStorageClick">
-                        <FontIcon Glyph="&#xE8B7;" FontSize="16" />
-                        <Button.KeyboardAccelerators>
-                            <KeyboardAccelerator Modifiers="Control" Key="Number0" />
-                        </Button.KeyboardAccelerators>
-                    </Button>
-                    <Button x:Name="SettingsButton" Style="{StaticResource ToolbarIconButtonStyle}" Click="OnSettingsClick">
-                        <FontIcon Glyph="&#xE713;" FontSize="16" />
-                    </Button>
+                <TextBlock x:Name="SyncIndicator" VerticalAlignment="Center"
+                           Foreground="Gray" TextWrapping="NoWrap" />
+                <!-- The gear: Settings on click, like macOS. The commands macOS
+                     keeps in its menu bar (a chrome Windows doesn't have) live in
+                     the gear's right-click flyout; their accelerators are global
+                     on the root grid. -->
+                <Button x:Name="SettingsButton" Style="{StaticResource ToolbarIconButtonStyle}" Click="OnSettingsClick">
+                    <FontIcon Glyph="&#xE713;" FontSize="16" />
+                    <Button.ContextFlyout>
+                        <MenuFlyout>
+                            <MenuFlyoutItem x:Name="LibrariesMenuItem" Click="OnLibrariesClick" />
+                            <MenuFlyoutItem x:Name="StorageMenuItem" Click="OnStorageClick" />
+                            <MenuFlyoutItem
+                                x:Name="ShuffleLibraryItem"
+                                x:Uid="ShuffleLibraryMenuItem"
+                                Text="shuffle library"
+                                IsEnabled="False"
+                                Click="OnShuffleLibraryClick" />
+                            <MenuFlyoutSeparator />
+                            <MenuFlyoutItem x:Name="CloseLibraryMenuItem" Click="OnCloseLibraryClick" />
+                        </MenuFlyout>
+                    </Button.ContextFlyout>
+                </Button>
                 </StackPanel>
             </Grid>
         </Border>
@@ -361,12 +373,30 @@
             HorizontalAlignment="Center"
             VerticalAlignment="Center"
             Spacing="12">
+            <!-- The library empty state (story 3): a title and a guidance line,
+                 text only. Collapsed unless the current browse mode is empty. -->
+            <StackPanel x:Name="EmptyStatePanel" Spacing="6" Visibility="Collapsed">
+                <TextBlock
+                    x:Name="EmptyTitle"
+                    HorizontalAlignment="Center"
+                    FontSize="24"
+                    Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                <TextBlock
+                    x:Name="EmptyGuidance"
+                    HorizontalAlignment="Center"
+                    FontSize="14"
+                    Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
+            </StackPanel>
             <TextBlock
                 x:Name="StatusText"
                 HorizontalAlignment="Center"
                 Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                 Style="{StaticResource BodyTextBlockStyle}" />
         </StackPanel>
+        <!-- The import section: the pill switcher swaps it in for the library
+             content. Hosts the import view (folders, tabs, candidates). -->
+        <Grid x:Name="ImportSectionHost" Grid.Row="1" Visibility="Collapsed"
+              MaxWidth="720" Margin="24,16,24,24" />
         <StackPanel Grid.Row="1" VerticalAlignment="Top" Margin="24,8,24,0" Spacing="8">
             <!-- General errors (playback, scan/library). Sync keeps its own
                  banner below so a recovered error can't dismiss a live sync failure. -->
@@ -395,10 +425,11 @@
              under a hairline, with a subtle vertical surface gradient for fill.
              The internals stay the redesigned card layout; only the outer chrome
              flattens. -->
+        <!-- Always docked: idle (empty fields, zeroed transport) when nothing
+             plays, per desktop story 3. -->
         <Border
             x:Name="NowPlayingBar"
             Grid.Row="2"
-            Visibility="Collapsed"
             BorderThickness="0,1,0,0"
             BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}">
             <Border.Background>

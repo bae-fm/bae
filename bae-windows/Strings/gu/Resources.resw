@@ -4,11 +4,7 @@
   <resheader name="version"><value>2.0</value></resheader>
   <data name="SearchBox.PlaceholderText" xml:space="preserve"><value>શોધો</value></data>
   <data name="toolbar.libraries" xml:space="preserve"><value>લાઇબ્રેરીઓ</value></data>
-  <data name="toolbar.playback" xml:space="preserve"><value>વગાડવું</value></data>
   <data name="ShuffleLibraryMenuItem.Text" xml:space="preserve"><value>લાઇબ્રેરી શફલ કરો</value></data>
-  <data name="CloseLibraryButton.Content" xml:space="preserve"><value>બંધ કરો</value></data>
-  <data name="CloseLibraryButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve"><value>લાઇબ્રેરી બંધ કરો</value></data>
-  <data name="toolbar.import" xml:space="preserve"><value>આયાત</value></data>
   <data name="toolbar.storage" xml:space="preserve"><value>સંગ્રહ</value></data>
   <data name="toolbar.settings" xml:space="preserve"><value>settings</value></data>
   <data name="action.cancel" xml:space="preserve"><value>રદ કરો</value></data>
@@ -85,7 +81,6 @@
   <data name="import.scanning" xml:space="preserve"><value>સ્કેન થઈ રહ્યું છે…</value></data>
   <data name="import.storage.keep_local" xml:space="preserve"><value>સ્થાનિક નકલ રાખો</value></data>
   <data name="import.storage.managed" xml:space="preserve"><value>સંચાલિત</value></data>
-  <data name="import.title" xml:space="preserve"><value>આયાત</value></data>
   <data name="import.view_in_library" xml:space="preserve"><value>લાઇબ્રેરીમાં જુઓ</value></data>
   <data name="join.title" xml:space="preserve"><value>લાઇબ્રેરીમાં જોડાઓ</value></data>
   <data name="join.intro" xml:space="preserve"><value>આ ઉપકરણને તમારા બીજા ઉપકરણ પર પહેલેથી રહેલી લાઇબ્રેરીમાં ઉમેરો.</value></data>

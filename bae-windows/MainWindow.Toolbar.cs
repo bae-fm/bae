@@ -23,8 +23,6 @@ public sealed partial class MainWindow : Window
 
     private async void OnLibrariesClick(object sender, RoutedEventArgs e) => await _librariesDialog.Show();
 
-    private async void OnImportClick(object sender, RoutedEventArgs e) => await _importDialog.Show();
-
     private async void OnStorageClick(object sender, RoutedEventArgs e) => await _storageDialog.Show();
 
     private void OnSettingsClick(object sender, RoutedEventArgs e) => _settingsWindow.Show();

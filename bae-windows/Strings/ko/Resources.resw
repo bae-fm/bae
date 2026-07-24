@@ -4,11 +4,7 @@
   <resheader name="version"><value>2.0</value></resheader>
   <data name="SearchBox.PlaceholderText" xml:space="preserve"><value>검색</value></data>
   <data name="toolbar.libraries" xml:space="preserve"><value>라이브러리</value></data>
-  <data name="toolbar.playback" xml:space="preserve"><value>재생</value></data>
   <data name="ShuffleLibraryMenuItem.Text" xml:space="preserve"><value>라이브러리 셔플</value></data>
-  <data name="CloseLibraryButton.Content" xml:space="preserve"><value>닫기</value></data>
-  <data name="CloseLibraryButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve"><value>라이브러리 닫기</value></data>
-  <data name="toolbar.import" xml:space="preserve"><value>가져오기</value></data>
   <data name="toolbar.storage" xml:space="preserve"><value>저장소</value></data>
   <data name="toolbar.settings" xml:space="preserve"><value>설정</value></data>
   <data name="action.cancel" xml:space="preserve"><value>취소</value></data>
@@ -85,7 +81,6 @@
   <data name="import.scanning" xml:space="preserve"><value>스캔 중…</value></data>
   <data name="import.storage.keep_local" xml:space="preserve"><value>로컬 복사본 유지</value></data>
   <data name="import.storage.managed" xml:space="preserve"><value>관리형</value></data>
-  <data name="import.title" xml:space="preserve"><value>가져오기</value></data>
   <data name="import.view_in_library" xml:space="preserve"><value>라이브러리에서 보기</value></data>
   <data name="join.title" xml:space="preserve"><value>라이브러리 참여</value></data>
   <data name="join.intro" xml:space="preserve"><value>다른 기기에 이미 있는 라이브러리에 이 기기를 추가합니다.</value></data>

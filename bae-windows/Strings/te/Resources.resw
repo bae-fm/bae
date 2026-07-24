@@ -4,11 +4,7 @@
   <resheader name="version"><value>2.0</value></resheader>
   <data name="SearchBox.PlaceholderText" xml:space="preserve"><value>వెతుకు</value></data>
   <data name="toolbar.libraries" xml:space="preserve"><value>లైబ్రరీలు</value></data>
-  <data name="toolbar.playback" xml:space="preserve"><value>ప్లేబ్యాక్</value></data>
   <data name="ShuffleLibraryMenuItem.Text" xml:space="preserve"><value>లైబ్రరీని షఫుల్ చేయి</value></data>
-  <data name="CloseLibraryButton.Content" xml:space="preserve"><value>మూసివేయి</value></data>
-  <data name="CloseLibraryButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve"><value>లైబ్రరీని మూసివేయండి</value></data>
-  <data name="toolbar.import" xml:space="preserve"><value>దిగుమతి</value></data>
   <data name="toolbar.storage" xml:space="preserve"><value>నిల్వ</value></data>
   <data name="toolbar.settings" xml:space="preserve"><value>సెట్టింగ్‌లు</value></data>
   <data name="action.cancel" xml:space="preserve"><value>రద్దు</value></data>
@@ -85,7 +81,6 @@
   <data name="import.scanning" xml:space="preserve"><value>స్కాన్ చేస్తోంది…</value></data>
   <data name="import.storage.keep_local" xml:space="preserve"><value>లోకల్ కాపీని ఉంచు</value></data>
   <data name="import.storage.managed" xml:space="preserve"><value>నిర్వహించబడుతోంది</value></data>
-  <data name="import.title" xml:space="preserve"><value>దిగుమతి</value></data>
   <data name="import.view_in_library" xml:space="preserve"><value>లైబ్రరీలో చూడండి</value></data>
   <data name="join.title" xml:space="preserve"><value>లైబ్రరీలో చేరు</value></data>
   <data name="join.intro" xml:space="preserve"><value>ఈ పరికరాన్ని మీకు ఇప్పటికే మరో పరికరంలో ఉన్న లైబ్రరీకి జోడించండి.</value></data>

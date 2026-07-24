@@ -4,11 +4,7 @@
   <resheader name="version"><value>2.0</value></resheader>
   <data name="SearchBox.PlaceholderText" xml:space="preserve"><value>தேடு</value></data>
   <data name="toolbar.libraries" xml:space="preserve"><value>நூலகங்கள்</value></data>
-  <data name="toolbar.playback" xml:space="preserve"><value>இயக்கல்</value></data>
   <data name="ShuffleLibraryMenuItem.Text" xml:space="preserve"><value>நூலகத்தை கலைத்து இயக்கு</value></data>
-  <data name="CloseLibraryButton.Content" xml:space="preserve"><value>மூடு</value></data>
-  <data name="CloseLibraryButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve"><value>நூலகத்தை மூடு</value></data>
-  <data name="toolbar.import" xml:space="preserve"><value>இறக்குமதி</value></data>
   <data name="toolbar.storage" xml:space="preserve"><value>சேமிப்பு</value></data>
   <data name="toolbar.settings" xml:space="preserve"><value>settings</value></data>
   <data name="action.cancel" xml:space="preserve"><value>ரத்து</value></data>
@@ -85,7 +81,6 @@
   <data name="import.scanning" xml:space="preserve"><value>வருடப்படுகிறது…</value></data>
   <data name="import.storage.keep_local" xml:space="preserve"><value>உள்ளூர் நகலை வைத்திரு</value></data>
   <data name="import.storage.managed" xml:space="preserve"><value>நிர்வகிக்கப்படுகிறது</value></data>
-  <data name="import.title" xml:space="preserve"><value>இறக்குமதி</value></data>
   <data name="import.view_in_library" xml:space="preserve"><value>நூலகத்தில் பார்</value></data>
   <data name="join.title" xml:space="preserve"><value>நூலகத்தில் சேர்</value></data>
   <data name="join.intro" xml:space="preserve"><value>இந்த சாதனத்தை உங்கள் மற்றொரு சாதனத்தில் ஏற்கனவே உள்ள நூலகத்தில் சேர்க்கவும்.</value></data>

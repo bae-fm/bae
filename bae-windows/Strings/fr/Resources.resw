@@ -4,11 +4,7 @@
   <resheader name="version"><value>2.0</value></resheader>
   <data name="SearchBox.PlaceholderText" xml:space="preserve"><value>Rechercher</value></data>
   <data name="toolbar.libraries" xml:space="preserve"><value>bibliothèques</value></data>
-  <data name="toolbar.playback" xml:space="preserve"><value>lecture</value></data>
   <data name="ShuffleLibraryMenuItem.Text" xml:space="preserve"><value>lecture aléatoire de la bibliothèque</value></data>
-  <data name="CloseLibraryButton.Content" xml:space="preserve"><value>fermer</value></data>
-  <data name="CloseLibraryButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve"><value>fermer la bibliothèque</value></data>
-  <data name="toolbar.import" xml:space="preserve"><value>importer</value></data>
   <data name="toolbar.storage" xml:space="preserve"><value>stockage</value></data>
   <data name="toolbar.settings" xml:space="preserve"><value>réglages</value></data>
   <data name="action.cancel" xml:space="preserve"><value>Annuler</value></data>
@@ -85,7 +81,6 @@
   <data name="import.scanning" xml:space="preserve"><value>analyse…</value></data>
   <data name="import.storage.keep_local" xml:space="preserve"><value>Conserver une copie locale</value></data>
   <data name="import.storage.managed" xml:space="preserve"><value>Gérés</value></data>
-  <data name="import.title" xml:space="preserve"><value>importer</value></data>
   <data name="import.view_in_library" xml:space="preserve"><value>voir dans la bibliothèque</value></data>
   <data name="join.title" xml:space="preserve"><value>rejoindre une bibliothèque</value></data>
   <data name="join.intro" xml:space="preserve"><value>ajoutez cet appareil à une bibliothèque que vous avez déjà sur un autre appareil.</value></data>

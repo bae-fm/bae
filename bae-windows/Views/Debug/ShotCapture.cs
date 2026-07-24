@@ -91,17 +91,15 @@ internal static class ShotCapture
     private readonly record struct Scene(
         string Id, double Width, double Height, Func<FrameworkElement> Build, bool Enabled = true);
 
-    // The scene registry. Each enabled scene renders through a pure builder over
-    // fixtures — none needs a live library handle. A scene that did (one whose
-    // composition can only be built from a real handle) would be absent here, not
-    // faked.
+    // The scene registry: desktop-story ids (notes/desktop-stories.md) — the
+    // gallery is the stories' per-platform verification sheet. Each enabled
+    // scene renders through a pure builder over fixtures — none needs a live
+    // library handle. A scene that did would be absent here, not faked: story 3
+    // (the empty library) is absent because the main-window shell can only be
+    // composed from a real session today.
     private static IReadOnlyList<Scene> Scenes { get; } = new[]
     {
-        new Scene("welcome", 900, 600, BuildWelcome),
-        new Scene("album-detail", 720, 540, BuildAlbumDetail),
-        // Re-enabled now that each scene renders in its own process — the earlier
-        // wedge was the second render in a shared process, not this scene.
-        new Scene("library-grid", 1100, 700, BuildLibraryGrid),
+        new Scene("story-1-first-run", 900, 600, BuildWelcome),
     };
 
     // True when args carry the capture flag; then outputDir is the directory that
@@ -356,72 +354,6 @@ internal static class ShotCapture
         return host;
     }
 
-    // The library grid: rows of the shared AlbumCardVisual tile (the same builder
-    // MainWindow's grid and the component gallery use) over fixture albums, laid
-    // out with the real AlbumGridColumns math for this width so the tiles flex to
-    // fill each row exactly as the live grid does. The fixed frame shows the top
-    // rows, as a grid viewport does.
-    private static FrameworkElement BuildLibraryGrid()
-    {
-        const double width = 1100;
-        var metrics = AlbumGridColumns.Compute(width);
-        var cardWidth = metrics.CellWidth - AlbumGridColumns.Gutter;
-        // A fixed fixture accent; the tint and ring it colors rest at zero opacity.
-        var accent = global::Windows.UI.Color.FromArgb(0xFF, 0x00, 0x78, 0xD7);
 
-        var rows = new StackPanel
-        {
-            Padding = new Thickness(
-                AlbumGridColumns.HorizontalInset,
-                AlbumGridColumns.HorizontalInset,
-                AlbumGridColumns.HorizontalInset,
-                0),
-        };
-        StackPanel? row = null;
-        var column = 0;
-        foreach (var card in PreviewData.GridCards)
-        {
-            if (row is null || column == metrics.Columns)
-            {
-                row = new StackPanel { Orientation = Orientation.Horizontal };
-                rows.Children.Add(row);
-                column = 0;
-            }
-            row.Children.Add(AlbumCardVisual.Build(
-                card.Title, card.Artist, card.Year, card.Cover, cardWidth, 0, 0, accent).Card);
-            column++;
-        }
-
-        return rows;
-    }
-
-    // The album detail composition: the header block and track rows the
-    // production expansion (AlbumExpansionPanel) and the component gallery build
-    // from the shared AlbumExpansionRows builders, here over PreviewData fixtures.
-    private static FrameworkElement BuildAlbumDetail()
-    {
-        var panel = new StackPanel
-        {
-            Spacing = 12,
-            Padding = new Thickness(24),
-            VerticalAlignment = VerticalAlignment.Center,
-        };
-        panel.Children.Add(AlbumExpansionRows.BuildHeaderBlock(
-            PreviewData.ExpansionTitle, PreviewData.ExpansionArtist));
-        foreach (var track in PreviewData.ExpansionTracks)
-        {
-            panel.Children.Add(AlbumExpansionRows.BuildTrackRow(
-                track.Position,
-                track.Title,
-                track.Artist,
-                track.Duration,
-                onPlay: () => { },
-                onPlayNext: () => { },
-                onAddToQueue: () => { },
-                onExportTrack: () => { }));
-        }
-
-        return panel;
-    }
 }
 #endif

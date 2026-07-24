@@ -4,11 +4,7 @@
   <resheader name="version"><value>2.0</value></resheader>
   <data name="SearchBox.PlaceholderText" xml:space="preserve"><value>Zoeken</value></data>
   <data name="toolbar.libraries" xml:space="preserve"><value>bibliotheken</value></data>
-  <data name="toolbar.playback" xml:space="preserve"><value>afspelen</value></data>
   <data name="ShuffleLibraryMenuItem.Text" xml:space="preserve"><value>bibliotheek shufflen</value></data>
-  <data name="CloseLibraryButton.Content" xml:space="preserve"><value>sluiten</value></data>
-  <data name="CloseLibraryButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve"><value>bibliotheek sluiten</value></data>
-  <data name="toolbar.import" xml:space="preserve"><value>importeren</value></data>
   <data name="toolbar.storage" xml:space="preserve"><value>Opslag</value></data>
   <data name="toolbar.settings" xml:space="preserve"><value>instellingen</value></data>
   <data name="action.cancel" xml:space="preserve"><value>Annuleren</value></data>
@@ -85,7 +81,6 @@
   <data name="import.scanning" xml:space="preserve"><value>scannen…</value></data>
   <data name="import.storage.keep_local" xml:space="preserve"><value>Lokale kopie behouden</value></data>
   <data name="import.storage.managed" xml:space="preserve"><value>Beheerd</value></data>
-  <data name="import.title" xml:space="preserve"><value>importeren</value></data>
   <data name="import.view_in_library" xml:space="preserve"><value>weergeven in bibliotheek</value></data>
   <data name="join.title" xml:space="preserve"><value>aan een bibliotheek deelnemen</value></data>
   <data name="join.intro" xml:space="preserve"><value>voeg dit apparaat toe aan een bibliotheek die je al op een ander apparaat hebt.</value></data>

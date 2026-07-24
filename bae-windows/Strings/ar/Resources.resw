@@ -4,11 +4,7 @@
   <resheader name="version"><value>2.0</value></resheader>
   <data name="SearchBox.PlaceholderText" xml:space="preserve"><value>بحث</value></data>
   <data name="toolbar.libraries" xml:space="preserve"><value>المكتبات</value></data>
-  <data name="toolbar.playback" xml:space="preserve"><value>التشغيل</value></data>
   <data name="ShuffleLibraryMenuItem.Text" xml:space="preserve"><value>تشغيل المكتبة عشوائيًا</value></data>
-  <data name="CloseLibraryButton.Content" xml:space="preserve"><value>إغلاق</value></data>
-  <data name="CloseLibraryButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve"><value>إغلاق المكتبة</value></data>
-  <data name="toolbar.import" xml:space="preserve"><value>استيراد</value></data>
   <data name="toolbar.storage" xml:space="preserve"><value>التخزين</value></data>
   <data name="toolbar.settings" xml:space="preserve"><value>الإعدادات</value></data>
   <data name="action.cancel" xml:space="preserve"><value>إلغاء</value></data>
@@ -85,7 +81,6 @@
   <data name="import.scanning" xml:space="preserve"><value>جارٍ الفحص…</value></data>
   <data name="import.storage.keep_local" xml:space="preserve"><value>الاحتفاظ بنسخة محلية</value></data>
   <data name="import.storage.managed" xml:space="preserve"><value>مُدار</value></data>
-  <data name="import.title" xml:space="preserve"><value>استيراد</value></data>
   <data name="import.view_in_library" xml:space="preserve"><value>العرض في المكتبة</value></data>
   <data name="join.title" xml:space="preserve"><value>الانضمام إلى مكتبة</value></data>
   <data name="join.intro" xml:space="preserve"><value>أضف هذا الجهاز إلى مكتبة لديك بالفعل على جهاز آخر.</value></data>

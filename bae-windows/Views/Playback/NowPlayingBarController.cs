@@ -238,6 +238,10 @@ internal sealed class NowPlayingBarController
         // "go to album" tooltips alongside the other fixed transport labels).
         _coverFrame.Tapped += OnNowPlayingInfoTapped;
         _title.Tapped += OnNowPlayingInfoTapped;
+
+        // The bar starts docked and idle (story 3); playback events take it
+        // from there.
+        RenderIdle();
     }
 
     // Toggle play/pause from the button or the window's Space key. A press names
@@ -334,15 +338,34 @@ internal sealed class NowPlayingBarController
 
     public void Reset()
     {
-        _nowPlayingBar.Visibility = Visibility.Collapsed;
+        RenderIdle();
         _userSeeking = false;
         _lastPosition = null;
         RenderShuffle();
     }
 
+    // Nothing is playing: the bar stays docked (story 3's idle now-playing
+    // bar) with empty track fields and a zeroed transport, matching macOS.
+    private void RenderIdle()
+    {
+        _nowPlayingBar.Visibility = Visibility.Visible;
+        _title.Text = string.Empty;
+        _artist.Text = string.Empty;
+        _cover.Source = null;
+        _coverFrame.Visibility = Visibility.Collapsed;
+        _progress.Value = 0;
+        _loading.IsActive = false;
+        _loading.Visibility = Visibility.Collapsed;
+        _playPauseGlyph.Visibility = Visibility.Visible;
+        _playPauseGlyph.Glyph = "\uE768";
+        _elapsed.Text = string.Empty;
+        _duration.Text = string.Empty;
+    }
+
     private void OnNowPlayingChanged(NowPlayingBarTrack track)
     {
         _nowPlayingBar.Visibility = Visibility.Visible;
+        _coverFrame.Visibility = Visibility.Visible;
         _title.Text = track.Title;
         _artist.Text = track.Artist;
         _playPauseGlyph.Glyph = track.IsPlaying ? "\uE769" : "\uE768";
@@ -365,12 +388,9 @@ internal sealed class NowPlayingBarController
 
     private void OnPlaybackStopped()
     {
-        _nowPlayingBar.Visibility = Visibility.Collapsed;
+        RenderIdle();
         _userSeeking = false;
         _lastPosition = null;
-        _loading.IsActive = false;
-        _loading.Visibility = Visibility.Collapsed;
-        _playPauseGlyph.Visibility = Visibility.Visible;
     }
 
     private void OnLoadingStarted()

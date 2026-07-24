@@ -80,7 +80,7 @@ public sealed partial class MainWindow : Window
             return;
         }
 
-        await _importDialog.ImportFolder(folderPath);
+        await _importSection.ImportFolder(folderPath);
     }
 
     private void ShowImportBanner(string message)

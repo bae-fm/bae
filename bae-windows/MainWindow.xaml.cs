@@ -57,7 +57,7 @@ public sealed partial class MainWindow : Window
     private readonly UiEventRouter _router;
     private readonly NowPlayingBarController _nowPlayingBar;
     private readonly ImportStore _import;
-    private readonly ImportDialog _importDialog;
+    private readonly ImportSection _importSection;
     private readonly ImportPickerDialog _importPicker;
     private readonly ImportConfirmDialog _importConfirm;
     private readonly ReleaseActionDialogs _releaseActions;
@@ -117,6 +117,14 @@ public sealed partial class MainWindow : Window
         InitializeComponent();
         Closed += OnClosed;
 
+        // The same floor the macOS main window enforces (MainWindow.minSize):
+        // below it the top bar's switcher, search, and gear can't lay out.
+        if (AppWindow.Presenter is OverlappedPresenter mainPresenter)
+        {
+            mainPresenter.PreferredMinimumWidth = 900;
+            mainPresenter.PreferredMinimumHeight = 600;
+        }
+
         // Restore the window to its last-used position, size, and maximized state
         // before the app activates it, so it appears already in place with no
         // flicker. The saved bounds are clamped to the current displays; anything
@@ -146,19 +154,17 @@ public sealed partial class MainWindow : Window
             ? FlowDirection.RightToLeft
             : FlowDirection.LeftToRight;
 
-        // The toolbar buttons are icon-only; each carries its former text label as
-        // the tooltip and accessible name (reusing the existing x:Uid strings).
-        SetIconButtonLabel(PlaybackMenuButton, "toolbar.playback");
-        SetIconButtonLabel(LibrariesButton, "toolbar.libraries");
-        SetIconButtonLabel(ImportButton, "toolbar.import");
-        SetIconButtonLabel(StorageButton, "toolbar.storage");
+        // The top bar per desktop story 3: the Library/Import switcher pill,
+        // the search field, and the settings gear. The gear opens Settings on
+        // click, like macOS; its right-click flyout carries the commands macOS
+        // keeps in the menu bar (chrome Windows doesn't have).
+        LibrarySegment.Content = Loc.Chrome("section.library");
+        ImportSegment.Content = Loc.Chrome("section.import");
+        StyleSectionPill();
         SetIconButtonLabel(SettingsButton, "toolbar.settings");
-        // Close keeps its own more descriptive, localized "close library" tooltip
-        // (set by x:Uid); give it the glyph here so x:Uid's Content doesn't win, and
-        // read that tooltip back as the accessible name.
-        CloseLibraryButton.Content = new FontIcon { Glyph = "\uE8BB", FontSize = 16 };
-        Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(
-            CloseLibraryButton, ToolTipService.GetToolTip(CloseLibraryButton) as string ?? string.Empty);
+        LibrariesMenuItem.Text = Loc.Chrome("toolbar.libraries");
+        StorageMenuItem.Text = Loc.Chrome("toolbar.storage");
+        CloseLibraryMenuItem.Text = Loc.Chrome("toolbar.close_library");
 
         _shell = new ShellStore();
         _shell.Changed += RenderBanner;
@@ -285,6 +291,7 @@ public sealed partial class MainWindow : Window
             () => Content.XamlRoot,
             () => WinRT.Interop.WindowNative.GetWindowHandle(this),
             text => StatusText.Text = text,
+            RenderEmptyState,
             enabled => ShuffleLibraryItem.IsEnabled = enabled,
             AlbumGrid,
             ComposerBrowser,
@@ -319,13 +326,13 @@ public sealed partial class MainWindow : Window
         _importConfirm = new ImportConfirmDialog(
             _session, () => Content.XamlRoot, albumId => _libraryBrowser.RevealAlbum(albumId), _lightbox);
         _importPicker = new ImportPickerDialog(_session, () => Content.XamlRoot, _import, _importConfirm);
-        _importDialog = new ImportDialog(
+        _importSection = new ImportSection(
             _session,
-            () => Content.XamlRoot,
             () => WinRT.Interop.WindowNative.GetWindowHandle(this),
             _import,
             _importPicker,
-            ShowImportBanner);
+            ShowImportBanner,
+            () => SwitchSection(import: true));
 
         // The settings window and its store/panes. It registers its config
         // re-read on the projection registry while open, opens the approve flow

@@ -4,11 +4,7 @@
   <resheader name="version"><value>2.0</value></resheader>
   <data name="SearchBox.PlaceholderText" xml:space="preserve"><value>تلاش</value></data>
   <data name="toolbar.libraries" xml:space="preserve"><value>کتب خانے</value></data>
-  <data name="toolbar.playback" xml:space="preserve"><value>چلانا</value></data>
   <data name="ShuffleLibraryMenuItem.Text" xml:space="preserve"><value>لائبریری کو شفل کریں</value></data>
-  <data name="CloseLibraryButton.Content" xml:space="preserve"><value>بند کریں</value></data>
-  <data name="CloseLibraryButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve"><value>لائبریری بند کریں</value></data>
-  <data name="toolbar.import" xml:space="preserve"><value>درآمد</value></data>
   <data name="toolbar.storage" xml:space="preserve"><value>اسٹوریج</value></data>
   <data name="toolbar.settings" xml:space="preserve"><value>settings</value></data>
   <data name="action.cancel" xml:space="preserve"><value>منسوخ</value></data>
@@ -85,7 +81,6 @@
   <data name="import.scanning" xml:space="preserve"><value>اسکین ہو رہا ہے…</value></data>
   <data name="import.storage.keep_local" xml:space="preserve"><value>مقامی نقل رکھیں</value></data>
   <data name="import.storage.managed" xml:space="preserve"><value>منظم</value></data>
-  <data name="import.title" xml:space="preserve"><value>درآمد</value></data>
   <data name="import.view_in_library" xml:space="preserve"><value>لائبریری میں دیکھیں</value></data>
   <data name="join.title" xml:space="preserve"><value>کتب خانے میں شامل ہوں</value></data>
   <data name="join.intro" xml:space="preserve"><value>اس آلے کو ایسے کتب خانے میں شامل کریں جو آپ کے دوسرے آلے پر پہلے سے ہے۔</value></data>

@@ -4,11 +4,7 @@
   <resheader name="version"><value>2.0</value></resheader>
   <data name="SearchBox.PlaceholderText" xml:space="preserve"><value>Търсене</value></data>
   <data name="toolbar.libraries" xml:space="preserve"><value>библиотеки</value></data>
-  <data name="toolbar.playback" xml:space="preserve"><value>възпроизвеждане</value></data>
   <data name="ShuffleLibraryMenuItem.Text" xml:space="preserve"><value>разбъркване на библиотеката</value></data>
-  <data name="CloseLibraryButton.Content" xml:space="preserve"><value>затваряне</value></data>
-  <data name="CloseLibraryButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve"><value>затваряне на библиотеката</value></data>
-  <data name="toolbar.import" xml:space="preserve"><value>внасяне</value></data>
   <data name="toolbar.storage" xml:space="preserve"><value>хранилище</value></data>
   <data name="toolbar.settings" xml:space="preserve"><value>настройки</value></data>
   <data name="action.cancel" xml:space="preserve"><value>Отказ</value></data>
@@ -85,7 +81,6 @@
   <data name="import.scanning" xml:space="preserve"><value>сканиране…</value></data>
   <data name="import.storage.keep_local" xml:space="preserve"><value>Запазване на локално копие</value></data>
   <data name="import.storage.managed" xml:space="preserve"><value>Управлявани</value></data>
-  <data name="import.title" xml:space="preserve"><value>внасяне</value></data>
   <data name="import.view_in_library" xml:space="preserve"><value>преглед в библиотеката</value></data>
   <data name="join.title" xml:space="preserve"><value>присъединяване към библиотека</value></data>
   <data name="join.intro" xml:space="preserve"><value>добавете това устройство към библиотека, която вече имате на друго устройство.</value></data>

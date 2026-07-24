@@ -6,45 +6,46 @@ using uniffi.bae_bridge;
 
 namespace Bae.Windows;
 
-// The import dialog: a folder scan source plus the live candidate list bound to
-// the import store. Clicking an unidentified candidate kicks off auto-identify;
-// once it has a result, clicking opens the picker. Shared by the toolbar import
-// button and the folder-drop handler.
-internal sealed class ImportDialog
+// The import section: a folder scan source plus the live candidate list bound
+// to the import store, hosted in the main window's content area and swapped in
+// by the Library/Import switcher (the macOS import section's counterpart).
+// Clicking an unidentified candidate kicks off auto-identify; once it has a
+// result, clicking opens the picker.
+internal sealed class ImportSection
 {
     private readonly SessionStore _session;
-    private readonly Func<XamlRoot?> _xamlRoot;
     private readonly Func<IntPtr> _windowHandle;
     private readonly ImportStore _import;
     private readonly ImportPickerDialog _picker;
     private readonly Action<string> _showImportError;
+    // Switch the main window to the import section (the folder-drop and
+    // activation flows land here with the section not necessarily active).
+    private readonly Action _openSection;
 
-    // True while the dialog is showing. ImportFolder reads it to avoid opening a
-    // second ContentDialog over an already-open import dialog.
-    public bool IsOpen { get; private set; }
+    private bool _attached;
 
-    public ImportDialog(
+    public ImportSection(
         SessionStore session,
-        Func<XamlRoot?> xamlRoot,
         Func<IntPtr> windowHandle,
         ImportStore import,
         ImportPickerDialog picker,
-        Action<string> showImportError)
+        Action<string> showImportError,
+        Action openSection)
     {
         _session = session;
-        _xamlRoot = xamlRoot;
         _windowHandle = windowHandle;
         _import = import;
         _picker = picker;
         _showImportError = showImportError;
+        _openSection = openSection;
     }
 
-    // Scan a folder and open the dialog on its candidates — candidates stream into
-    // the import store and the dialog (bound to that list) shows them, on a scan
-    // error too, matching macOS, which navigates to import regardless of the scan
-    // result. Shared by the window drop target and a folder activation intent (the
-    // folder verb or bae://import); the caller has already confirmed a library is
-    // open.
+    // Scan a folder and land on its candidates — candidates stream into the
+    // import store and the section (bound to that list) shows them, on a scan
+    // error too, matching macOS, which navigates to import regardless of the
+    // scan result. Shared by the window drop target and a folder activation
+    // intent (the folder verb or bae://import); the caller has already
+    // confirmed a library is open.
     public async System.Threading.Tasks.Task ImportFolder(string folderPath)
     {
         var (current, error) = await _import.ScanFolder(folderPath);
@@ -57,22 +58,31 @@ internal sealed class ImportDialog
             _showImportError(error);
         }
 
-        // Skip if one is already open (only one ContentDialog can open at a time).
-        if (!IsOpen)
-        {
-            await Show();
-        }
+        _openSection();
     }
 
-    public async System.Threading.Tasks.Task Show()
+    // Entering the section (a pill switch or a folder flow): land on the New
+    // tab with a fresh candidate list, as each macOS visit does.
+    public void OnEntered()
     {
         if (_session.CurrentHandleOrNull() == null)
         {
             return;
         }
-        // Each dialog open starts on the New tab, like the recreated macOS view.
         _import.SetActiveTab(CandidateTab.New);
         _import.RefreshCandidates();
+    }
+
+    // Build the section's content into its host once; the store subscriptions
+    // live as long as the window, so entering and leaving the section only
+    // toggles the host's visibility.
+    public void Attach(Panel host)
+    {
+        if (_attached)
+        {
+            return;
+        }
+        _attached = true;
 
         var scanButton = new Button { Content = Loc.Chrome("import.choose_folder") };
         var status = new TextBlock
@@ -151,7 +161,6 @@ internal sealed class ImportDialog
             ItemsSource = _import.Candidates,
             SelectionMode = ListViewSelectionMode.None,
             IsItemClickEnabled = true,
-            MaxHeight = 320,
         };
 
         // Each row builds imperatively: the candidate's one-line summary plus a
@@ -221,33 +230,22 @@ internal sealed class ImportDialog
             }
         };
 
-        var content = new StackPanel { Spacing = 8, Width = 420 };
-        content.Children.Add(scanButton);
-        content.Children.Add(foldersPanel);
-        content.Children.Add(status);
-        content.Children.Add(tabBar);
+        // Controls stacked over the candidate list, which takes the remaining
+        // height and scrolls itself (the ListView virtualizes).
+        var controls = new StackPanel { Spacing = 8 };
+        controls.Children.Add(scanButton);
+        controls.Children.Add(foldersPanel);
+        controls.Children.Add(status);
+        controls.Children.Add(tabBar);
+
+        var content = new Grid { RowSpacing = 8 };
+        content.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        content.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+        Grid.SetRow(controls, 0);
+        Grid.SetRow(list, 1);
+        content.Children.Add(controls);
         content.Children.Add(list);
-
-        var dialog = new ContentDialog
-        {
-            Title = Loc.Chrome("import.title"),
-            Content = content,
-            CloseButtonText = Loc.Chrome("action.close"),
-            XamlRoot = _xamlRoot(),
-        };
-
-        IsOpen = true;
-        try
-        {
-            await dialog.ShowAsync();
-        }
-        finally
-        {
-            IsOpen = false;
-            _import.CandidatesRefreshed -= RenderScanStatus;
-            _import.CandidatesRefreshed -= RenderFolders;
-            _import.CandidatesRefreshed -= RenderTabs;
-        }
+        host.Children.Add(content);
     }
 
     // One candidate row: the summary line, then a signals badge row underneath

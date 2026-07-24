@@ -40,6 +40,9 @@ internal sealed partial class LibraryBrowser
     private readonly Func<XamlRoot?> _xamlRoot;
     private readonly Func<IntPtr> _windowHandle;
     private readonly Action<string> _setStatus;
+    // The story-3 empty state: the current mode's empty-title chrome key, or
+    // null when the mode has content (or the load failed — errors are status).
+    private readonly Action<string?> _setEmptyState;
     private readonly Action<bool> _setShuffleLibraryEnabled;
 
     private readonly ListView _albumGrid;
@@ -75,6 +78,7 @@ internal sealed partial class LibraryBrowser
         Func<XamlRoot?> xamlRoot,
         Func<IntPtr> windowHandle,
         Action<string> setStatus,
+        Action<string?> setEmptyState,
         Action<bool> setShuffleLibraryEnabled,
         ListView albumGrid,
         Grid composerBrowser,
@@ -105,6 +109,7 @@ internal sealed partial class LibraryBrowser
         _xamlRoot = xamlRoot;
         _windowHandle = windowHandle;
         _setStatus = setStatus;
+        _setEmptyState = setEmptyState;
         _setShuffleLibraryEnabled = setShuffleLibraryEnabled;
         _albumGrid = albumGrid;
         _composerBrowser = composerBrowser;
@@ -391,17 +396,19 @@ internal sealed partial class LibraryBrowser
             case BrowserLoadResult.HandleGone:
                 return;
             case BrowserLoadResult.Failed:
+                _setEmptyState(null);
                 _setStatus(load.Error ?? Loc.Chrome("library.load_failed"));
                 return;
             default:
-                _setStatus(load.IsEmpty
-                    ? Loc.Chrome(load.Mode switch
+                _setStatus(string.Empty);
+                _setEmptyState(load.IsEmpty
+                    ? load.Mode switch
                     {
                         BrowserMode.Composers => "library.no_composers",
                         BrowserMode.Artists => "library.no_artists",
                         _ => "library.empty",
-                    })
-                    : string.Empty);
+                    }
+                    : null);
                 return;
         }
     }
@@ -420,6 +427,7 @@ internal sealed partial class LibraryBrowser
         _albumSelection.Clear();
         _searchBox.Text = string.Empty;
         _setStatus(string.Empty);
+        _setEmptyState(null);
         _setShuffleLibraryEnabled(false);
     }
 }
