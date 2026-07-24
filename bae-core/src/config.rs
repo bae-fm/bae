@@ -1081,7 +1081,12 @@ fn read_optional_file(path: &std::path::Path) -> Result<Option<String>, ConfigEr
     match std::fs::read_to_string(path) {
         Ok(content) => Ok(Some(content)),
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(None),
-        Err(e) => Err(ConfigError::Io(e)),
+        // Keep the path in the error: "Access is denied" without the file it
+        // was denied on is undiagnosable from a user report.
+        Err(e) => Err(ConfigError::Io(std::io::Error::new(
+            e.kind(),
+            format!("{}: {e}", path.display()),
+        ))),
     }
 }
 
