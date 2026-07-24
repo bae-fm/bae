@@ -250,8 +250,14 @@ jobs:
             $crashpadHandler = Get-ChildItem sentry-native-build -Recurse -Filter crashpad_handler.exe | Select-Object -First 1
             if (-not $sentryDll) { Write-Host "FAIL: sentry.dll not found"; exit 1 }
             if (-not $crashpadHandler) { Write-Host "FAIL: crashpad_handler.exe not found"; exit 1 }
-            Copy-Item $sentryDll.FullName $stage -Force
+            # Staged as sentry-native.dll (the name BaeCrashReporting P/Invokes):
+            # the flat stage dir is case-insensitive, so cmake's sentry.dll would
+            # clobber the managed Sentry.dll from the publish output — shipping a
+            # native PE where the .NET loader expects the Sentry assembly, which
+            # kills the app at module init.
+            Copy-Item $sentryDll.FullName "$stage\sentry-native.dll" -Force
             Copy-Item $crashpadHandler.FullName $stage -Force
+            if (-not (Test-Path "$stage\Sentry.dll")) { Write-Host "FAIL: managed Sentry.dll missing from stage"; exit 1 }
           }
 
           # Name the launcher per edition (bae.exe / baeium.exe); vpk packs the

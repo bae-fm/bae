@@ -121,36 +121,36 @@ internal sealed record CrashReportingConfig(
 
 internal static class NativeSentry
 {
-    [DllImport("sentry", EntryPoint = "sentry_options_new", CallingConvention = CallingConvention.Cdecl)]
+    [DllImport("sentry-native", EntryPoint = "sentry_options_new", CallingConvention = CallingConvention.Cdecl)]
     internal static extern nint OptionsNew();
 
-    [DllImport("sentry", EntryPoint = "sentry_options_set_dsn", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
+    [DllImport("sentry-native", EntryPoint = "sentry_options_set_dsn", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
     internal static extern void OptionsSetDsn(nint options, string dsn);
 
-    [DllImport("sentry", EntryPoint = "sentry_options_set_environment", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
+    [DllImport("sentry-native", EntryPoint = "sentry_options_set_environment", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
     internal static extern void OptionsSetEnvironment(nint options, string environment);
 
-    [DllImport("sentry", EntryPoint = "sentry_options_set_release", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
+    [DllImport("sentry-native", EntryPoint = "sentry_options_set_release", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
     internal static extern void OptionsSetRelease(nint options, string release);
 
-    [DllImport("sentry", EntryPoint = "sentry_options_set_dist", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
+    [DllImport("sentry-native", EntryPoint = "sentry_options_set_dist", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
     internal static extern void OptionsSetDist(nint options, string dist);
 
-    [DllImport("sentry", EntryPoint = "sentry_options_set_debug", CallingConvention = CallingConvention.Cdecl)]
+    [DllImport("sentry-native", EntryPoint = "sentry_options_set_debug", CallingConvention = CallingConvention.Cdecl)]
     internal static extern void OptionsSetDebug(nint options, int debug);
 
-    [DllImport("sentry", EntryPoint = "sentry_options_set_auto_session_tracking", CallingConvention = CallingConvention.Cdecl)]
+    [DllImport("sentry-native", EntryPoint = "sentry_options_set_auto_session_tracking", CallingConvention = CallingConvention.Cdecl)]
     internal static extern void OptionsSetAutoSessionTracking(nint options, int enabled);
 
-    [DllImport("sentry", EntryPoint = "sentry_options_set_handler_path", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
+    [DllImport("sentry-native", EntryPoint = "sentry_options_set_handler_path", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
     internal static extern void OptionsSetHandlerPath(nint options, string path);
 
-    [DllImport("sentry", EntryPoint = "sentry_options_set_database_path", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
+    [DllImport("sentry-native", EntryPoint = "sentry_options_set_database_path", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
     internal static extern void OptionsSetDatabasePath(nint options, string path);
 
-    [DllImport("sentry", EntryPoint = "sentry_init", CallingConvention = CallingConvention.Cdecl)]
+    [DllImport("sentry-native", EntryPoint = "sentry_init", CallingConvention = CallingConvention.Cdecl)]
     internal static extern int Init(nint options);
 
-    [DllImport("sentry", EntryPoint = "sentry_set_tag", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
+    [DllImport("sentry-native", EntryPoint = "sentry_set_tag", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
     internal static extern void SetTag(string key, string value);
 }
