@@ -1,5 +1,6 @@
 using System;
 using Microsoft.UI.Dispatching;
+using Microsoft.UI.Xaml.Controls;
 using uniffi.bae_bridge;
 
 namespace Bae.Windows;
@@ -92,7 +93,7 @@ internal sealed class AppService
             dispatcher,
             Playback,
             imageId => MediaPaths.FetchCoverImageBytes(imageId));
-        ImportStore = new ImportStore(session, ShellStore, MediaControlService);
+        ImportStore = new ImportStore(session, ShowError, MediaControlService);
         ProjectionRegistry = new ProjectionRegistry();
         // In-flight release transfers (pin/unpin/manage/unmanage), driven by
         // core's ReleaseTransferProgress/Ended events the router routes, read by
@@ -101,7 +102,7 @@ internal sealed class AppService
         TransferProgressStore = new TransferProgressStore();
         UiEventRouter = new UiEventRouter(
             PlaybackStore,
-            ShellStore,
+            ShowError,
             ProjectionRegistry,
             MediaControlService,
             ImportStore.HandlePreviewEvent,
@@ -136,6 +137,13 @@ internal sealed class AppService
             new DownloadsService(),
             new SyncService());
 #endif
+
+    /// <summary>Route a caught error to the shell's error banner — the macOS
+    /// AppService.showError analog, the single door feature code reaches for
+    /// instead of writing the shell store's banner directly. Every caller surfaces
+    /// an error, so the severity is fixed.</summary>
+    public void ShowError(string title, string message) =>
+        ShellStore.ShowBanner(InfoBarSeverity.Error, title, message);
 
     /// <summary>Report that a host UI screen opened, as a typed telemetry event
     /// through the process-lifetime sink. Infallible; the core owns every other

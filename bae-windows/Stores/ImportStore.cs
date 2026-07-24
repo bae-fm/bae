@@ -16,7 +16,7 @@ namespace Bae.Windows;
 internal sealed class ImportStore
 {
     private readonly SessionStore _session;
-    private readonly ShellStore _shell;
+    private readonly Action<string, string> _showError;
     private readonly MediaControlService _mediaControls;
 
     // The active tab's candidates in sort order, bound to the import dialog's list.
@@ -59,10 +59,10 @@ internal sealed class ImportStore
     // Shown after the elapsed position; null when nothing is previewing.
     private string? _previewDurationLabel;
 
-    public ImportStore(SessionStore session, ShellStore shell, MediaControlService mediaControls)
+    public ImportStore(SessionStore session, Action<string, string> showError, MediaControlService mediaControls)
     {
         _session = session;
-        _shell = shell;
+        _showError = showError;
         _mediaControls = mediaControls;
         SortOrder = ImportSortStore.Load();
     }
@@ -85,7 +85,7 @@ internal sealed class ImportStore
         var (rows, folders) = result;
         if (rows is null || folders is null)
         {
-            _shell.ShowBanner(InfoBarSeverity.Error, Loc.Chrome("import.error_title"), Loc.Chrome("import.failed"));
+            _showError(Loc.Chrome("import.error_title"), Loc.Chrome("import.failed"));
             return;
         }
 
@@ -202,7 +202,7 @@ internal sealed class ImportStore
             handle => NativeBae.RemoveWatchedFolder(handle, path));
         if (current && error is not null)
         {
-            _shell.ShowBanner(InfoBarSeverity.Error, Loc.Chrome("import.error_title"), error);
+            _showError(Loc.Chrome("import.error_title"), error);
         }
     }
 
@@ -215,7 +215,7 @@ internal sealed class ImportStore
             handle => NativeBae.SetCandidateSkipped(handle, key, skipped));
         if (current && error is not null)
         {
-            _shell.ShowBanner(InfoBarSeverity.Error, Loc.Chrome("import.error_title"), error);
+            _showError(Loc.Chrome("import.error_title"), error);
         }
     }
 

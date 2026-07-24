@@ -16,17 +16,20 @@ internal sealed class ImportPickerDialog
     private readonly SessionStore _session;
     private readonly Func<XamlRoot?> _xamlRoot;
     private readonly ImportStore _import;
+    private readonly PlaybackService _playback;
     private readonly ImportConfirmDialog _confirm;
 
     public ImportPickerDialog(
         SessionStore session,
         Func<XamlRoot?> xamlRoot,
         ImportStore import,
+        PlaybackService playback,
         ImportConfirmDialog confirm)
     {
         _session = session;
         _xamlRoot = xamlRoot;
         _import = import;
+        _playback = playback;
         _confirm = confirm;
     }
 
@@ -65,12 +68,11 @@ internal sealed class ImportPickerDialog
         if (candidate.AudioPaths.Count > 0)
         {
             var preview = new Button { Content = "▶ " + Loc.Chrome("import.preview") };
-            preview.Click += (_, _) => _session.WithCurrentHandle(
-                handle => NativeBae.PreviewPlay(handle, candidate.AudioPaths[0]));
+            preview.Click += (_, _) => _playback.PreviewPlay(candidate.AudioPaths[0]);
             var pause = new Button { Content = "⏸" };
-            pause.Click += (_, _) => _session.WithCurrentHandle(NativeBae.PreviewTogglePause);
+            pause.Click += (_, _) => _playback.PreviewTogglePause();
             var stop = new Button { Content = "⏹" };
-            stop.Click += (_, _) => _session.WithCurrentHandle(NativeBae.PreviewStop);
+            stop.Click += (_, _) => _playback.PreviewStop();
             // Live preview position, updated by PreviewProgress while the picker is open.
             var previewElapsed = new TextBlock { VerticalAlignment = VerticalAlignment.Center };
             renderPreview = () => previewElapsed.Text = _import.PreviewElapsedText;

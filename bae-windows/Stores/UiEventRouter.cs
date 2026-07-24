@@ -13,7 +13,7 @@ namespace Bae.Windows;
 internal sealed class UiEventRouter
 {
     private readonly PlaybackStore _playback;
-    private readonly ShellStore _shell;
+    private readonly Action<string, string> _showError;
     private readonly ProjectionRegistry _projections;
     private readonly MediaControlService _mediaControls;
     private readonly Action<BridgeUiEvent> _importEvents;
@@ -22,7 +22,7 @@ internal sealed class UiEventRouter
 
     public UiEventRouter(
         PlaybackStore playback,
-        ShellStore shell,
+        Action<string, string> showError,
         ProjectionRegistry projections,
         MediaControlService mediaControls,
         Action<BridgeUiEvent> importEvents,
@@ -30,7 +30,7 @@ internal sealed class UiEventRouter
         CastStore cast)
     {
         _playback = playback;
-        _shell = shell;
+        _showError = showError;
         _projections = projections;
         _mediaControls = mediaControls;
         _importEvents = importEvents;
@@ -98,14 +98,14 @@ internal sealed class UiEventRouter
                 // null when core says there is nothing to show.
                 if (BridgeDisplay.LocalizedLine(playbackError.Reason) is { } playbackLine)
                 {
-                    _shell.ShowBanner(InfoBarSeverity.Error, Loc.Chrome("error.playback_title"), playbackLine);
+                    _showError(Loc.Chrome("error.playback_title"), playbackLine);
                 }
                 break;
             case BridgeUiEvent.Error error:
                 // Null means a cancellation — the user's own doing — so no banner.
                 if (BridgeDisplay.LocalizedLine(error.ErrorValue) is { } errorLine)
                 {
-                    _shell.ShowBanner(InfoBarSeverity.Error, Loc.Chrome("error.title"), errorLine);
+                    _showError(Loc.Chrome("error.title"), errorLine);
                 }
                 break;
             case BridgeUiEvent.Invalidated invalidated:

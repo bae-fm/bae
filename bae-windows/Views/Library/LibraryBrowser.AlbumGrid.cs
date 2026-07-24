@@ -258,7 +258,7 @@ internal sealed partial class LibraryBrowser
         var (current, error) = await _downloads.QueuePins(releaseIds);
         if (current && error is not null)
         {
-            _shell.ShowBanner(InfoBarSeverity.Error, Loc.Chrome("error.title"), error);
+            _showError(Loc.Chrome("error.title"), error);
         }
     }
 

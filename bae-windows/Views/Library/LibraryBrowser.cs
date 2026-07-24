@@ -35,7 +35,7 @@ internal sealed partial class LibraryBrowser
     // and the tint (bound OneWay) syncs from it after every mutation. A browse
     // concern owned wholly here.
     private readonly AlbumGridSelectionModel _albumSelection = new();
-    private readonly ShellStore _shell;
+    private readonly Action<string, string> _showError;
     private readonly ReleaseActionDialogs _releaseActions;
     private readonly StorageStore _storage;
     private readonly TransferProgressStore _transferProgress;
@@ -78,7 +78,7 @@ internal sealed partial class LibraryBrowser
         QueueService queueService,
         DownloadsService downloads,
         LibraryBrowserStore browser,
-        ShellStore shell,
+        Action<string, string> showError,
         ReleaseActionDialogs releaseActions,
         StorageStore storage,
         TransferProgressStore transferProgress,
@@ -114,7 +114,7 @@ internal sealed partial class LibraryBrowser
         _queueService = queueService;
         _downloads = downloads;
         _browser = browser;
-        _shell = shell;
+        _showError = showError;
         _releaseActions = releaseActions;
         _storage = storage;
         _transferProgress = transferProgress;

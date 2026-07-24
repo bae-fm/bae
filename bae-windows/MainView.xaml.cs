@@ -180,8 +180,7 @@ public sealed partial class MainView : UserControl
             _appService.Queue,
             _appService.PlaybackStore,
             QueuePaneHost,
-            message => _appService.ShellStore.ShowBanner(
-                InfoBarSeverity.Error, Loc.Chrome("error.playback_title"), message));
+            message => _appService.ShowError(Loc.Chrome("error.playback_title"), message));
         // The now-playing bar's queue button toggles the pane and is an append drop
         // target; the pane owns that wiring.
         _queuePane.AttachToggleButton(NpQueue);
@@ -193,6 +192,7 @@ public sealed partial class MainView : UserControl
             () => XamlRoot,
             _windowHandle,
             _appService.StorageStore,
+            _appService.Downloads,
             _appService.ProjectionRegistry,
             _appService.TransferProgressStore);
 
@@ -208,7 +208,7 @@ public sealed partial class MainView : UserControl
             _appService.Queue,
             _appService.Downloads,
             _appService.LibraryBrowserStore,
-            _appService.ShellStore,
+            _appService.ShowError,
             _releaseActions,
             _appService.StorageStore,
             _appService.TransferProgressStore,
@@ -252,7 +252,8 @@ public sealed partial class MainView : UserControl
         // that leads to it, and the folder-scan dialog that opens the picker.
         _importConfirm = new ImportConfirmDialog(
             _session, () => XamlRoot, albumId => _libraryBrowser.RevealAlbum(albumId), _lightbox);
-        _importPicker = new ImportPickerDialog(_session, () => XamlRoot, _appService.ImportStore, _importConfirm);
+        _importPicker = new ImportPickerDialog(
+            _session, () => XamlRoot, _appService.ImportStore, _appService.Playback, _importConfirm);
         _importSection = new ImportSection(
             _session,
             _windowHandle,

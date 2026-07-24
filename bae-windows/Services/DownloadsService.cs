@@ -46,6 +46,19 @@ internal sealed class DownloadsService
     public Func<uint, (bool Current, string? Error)> SetMaxConcurrentDownloads { get; init; }
         = _ => throw new InvalidOperationException("DownloadsService stub: SetMaxConcurrentDownloads not wired");
 
+    /// <summary>Pause or resume the output (save/export) queue — the sibling of
+    /// the download queue on the storage sheet's Exporting band.</summary>
+    public Func<bool, bool> SetOutputsPaused { get; init; }
+        = _ => throw new InvalidOperationException("DownloadsService stub: SetOutputsPaused not wired");
+
+    /// <summary>Cancel a release's in-flight or queued output run.</summary>
+    public Func<string, bool> CancelOutput { get; init; }
+        = _ => throw new InvalidOperationException("DownloadsService stub: CancelOutput not wired");
+
+    /// <summary>Retry every failed output now (flips them back to queued).</summary>
+    public Func<bool> RetryOutputs { get; init; }
+        = () => throw new InvalidOperationException("DownloadsService stub: RetryOutputs not wired");
+
     /// <summary>Wire every control through the open session's current handle.</summary>
     public static DownloadsService FromSession(SessionStore session) => new()
     {
@@ -55,5 +68,8 @@ internal sealed class DownloadsService
         CancelDownload = releaseId => session.WithCurrentHandle(handle => NativeBae.CancelDownload(handle, releaseId)),
         RetryDownloads = () => session.WithCurrentHandle(NativeBae.RetryDownloads),
         SetMaxConcurrentDownloads = n => session.WithCurrentHandle(handle => NativeBae.SetMaxConcurrentDownloads(handle, n)),
+        SetOutputsPaused = paused => session.WithCurrentHandle(handle => NativeBae.SetOutputsPaused(handle, paused)),
+        CancelOutput = releaseId => session.WithCurrentHandle(handle => NativeBae.CancelOutput(handle, releaseId)),
+        RetryOutputs = () => session.WithCurrentHandle(NativeBae.RetryOutputs),
     };
 }

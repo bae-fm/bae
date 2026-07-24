@@ -85,6 +85,6 @@ public sealed partial class MainView : UserControl
 
     private void ShowImportBanner(string message)
     {
-        _appService.ShellStore.ShowBanner(InfoBarSeverity.Error, Loc.Chrome("import.error_title"), message);
+        _appService.ShowError(Loc.Chrome("import.error_title"), message);
     }
 }

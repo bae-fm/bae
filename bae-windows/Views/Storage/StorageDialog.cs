@@ -24,6 +24,7 @@ internal sealed partial class StorageDialog
     private readonly Func<XamlRoot?> _xamlRoot;
     private readonly Func<IntPtr> _windowHandle;
     private readonly StorageStore _storage;
+    private readonly DownloadsService _downloads;
     private readonly ProjectionRegistry _projections;
     private readonly TransferProgressStore _transfers;
 
@@ -32,6 +33,7 @@ internal sealed partial class StorageDialog
         Func<XamlRoot?> xamlRoot,
         Func<IntPtr> windowHandle,
         StorageStore storage,
+        DownloadsService downloads,
         ProjectionRegistry projections,
         TransferProgressStore transfers)
     {
@@ -39,6 +41,7 @@ internal sealed partial class StorageDialog
         _xamlRoot = xamlRoot;
         _windowHandle = windowHandle;
         _storage = storage;
+        _downloads = downloads;
         _projections = projections;
         _transfers = transfers;
     }
@@ -625,7 +628,7 @@ internal sealed partial class StorageDialog
             retry.Click += async (_, _) =>
             {
                 retry.IsEnabled = false;
-                await _session.RunForCurrentHandle(NativeBae.RetryOutputs);
+                _downloads.RetryOutputs();
                 await LoadExports();
             };
             band.Children.Add(retry);
@@ -633,7 +636,7 @@ internal sealed partial class StorageDialog
             pause.Click += async (_, _) =>
             {
                 pause.IsEnabled = false;
-                await _session.RunForCurrentHandle(handle => NativeBae.SetOutputsPaused(handle, !paused));
+                _downloads.SetOutputsPaused(!paused);
                 await LoadExports();
             };
             band.Children.Add(pause);
@@ -679,7 +682,7 @@ internal sealed partial class StorageDialog
                 cancel.Click += async (_, _) =>
                 {
                     cancel.IsEnabled = false;
-                    await _session.RunForCurrentHandle(handle => NativeBae.CancelOutput(handle, releaseId));
+                    _downloads.CancelOutput(releaseId);
                     await LoadExports();
                 };
                 Grid.SetColumn(cancel, 1);
