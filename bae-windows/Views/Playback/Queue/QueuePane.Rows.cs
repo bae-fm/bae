@@ -70,14 +70,14 @@ internal sealed partial class QueuePane
     // stale in-flight reply lands on an abandoned collection nobody renders.
     private sealed class QueuePaneRowCollection : ObservableCollection<QueueRow>, ISupportIncrementalLoading
     {
-        private readonly SessionStore _session;
+        private readonly QueueService _queue;
         private readonly ulong _revision;
         private readonly ulong _contextTotal;
         private ulong _contextLoadedCount;
 
-        public QueuePaneRowCollection(SessionStore session, ulong revision, ulong contextTotal)
+        public QueuePaneRowCollection(QueueService queue, ulong revision, ulong contextTotal)
         {
-            _session = session;
+            _queue = queue;
             _revision = revision;
             _contextTotal = contextTotal;
         }
@@ -94,8 +94,7 @@ internal sealed partial class QueuePane
         private async Task<LoadMoreItemsResult> LoadMoreItemsAsyncCore(uint count)
         {
             var offset = _contextLoadedCount;
-            var (current, resolved) = await _session.RunForCurrentHandle(
-                handle => NativeBae.QueueUpcomingPage(handle, checked((uint)offset), count));
+            var (current, resolved) = await _queue.GetUpcomingPage(checked((uint)offset), count);
             if (!current)
             {
                 return new LoadMoreItemsResult { Count = 0 };

@@ -86,7 +86,7 @@ internal sealed partial class QueuePane
         {
             if (args.ClickedItem is EntryRow clicked)
             {
-                _session.WithCurrentHandle(handle => NativeBae.QueueSkipTo(handle, clicked.EntryId));
+                _queueService.SkipToEntry(clicked.EntryId);
             }
         };
 
@@ -140,7 +140,7 @@ internal sealed partial class QueuePane
                 .Select(e => e.EntryId).ToList();
             var newIndex = laneEntryIds.IndexOf(moved.EntryId);
             var move = QueueReorderModel.ResolveMove(laneEntryIds, newIndex);
-            _session.WithCurrentHandle(handle => NativeBae.QueueReorder(handle, move.MovedEntryId, move.BeforeEntryId));
+            _queueService.ReorderEntry(move.MovedEntryId, move.BeforeEntryId);
         };
 
         // External album-card drops land only in the manual lane; the pointer's Y
@@ -161,7 +161,7 @@ internal sealed partial class QueuePane
         {
             return;
         }
-        _session.WithCurrentHandle(handle => NativeBae.QueueRemove(handle, item.EntryId));
+        _queueService.RemoveEntry(item.EntryId);
         rows.RemoveAt(index);
     }
 
@@ -283,8 +283,8 @@ internal sealed partial class QueuePane
     {
         var (nameKey, clear) = lane switch
         {
-            QueueLane.Manual => ("queue.clear_up_next", (Action<AppHandle>)NativeBae.QueueClearUpNext),
-            QueueLane.Context => ("queue.clear_playing_from", NativeBae.QueueClearPlayingFrom),
+            QueueLane.Manual => ("queue.clear_up_next", (Action)(() => _queueService.ClearUpNext())),
+            QueueLane.Context => ("queue.clear_playing_from", (Action)(() => _queueService.ClearPlayingFrom())),
             _ => throw new ArgumentOutOfRangeException(nameof(lane), lane, "Unknown queue lane"),
         };
         var button = new Button
@@ -299,7 +299,7 @@ internal sealed partial class QueuePane
             VerticalAlignment = VerticalAlignment.Center,
         };
         AutomationName(button, nameKey);
-        button.Click += (_, _) => _session.WithCurrentHandle(clear);
+        button.Click += (_, _) => clear();
         return button;
     }
 
@@ -324,7 +324,7 @@ internal sealed partial class QueuePane
             VerticalAlignment = VerticalAlignment.Center,
         };
         AutomationName(toggle, shuffled ? "queue.shuffle.off" : "queue.shuffle.on");
-        toggle.Click += (_, _) => _session.WithCurrentHandle(handle => NativeBae.SetShuffle(handle, !shuffled));
+        toggle.Click += (_, _) => _queueService.SetShuffle(!shuffled);
         return toggle;
     }
 

@@ -262,6 +262,8 @@ public sealed partial class MainWindow : Window
         _queuePane = new QueuePane(
             _session,
             _appService.MediaPaths,
+            _appService.Library,
+            _appService.Queue,
             _playback,
             QueuePaneHost,
             message => _shell.ShowBanner(InfoBarSeverity.Error, Loc.Chrome("error.playback_title"), message));

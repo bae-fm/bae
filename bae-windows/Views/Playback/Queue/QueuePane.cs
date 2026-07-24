@@ -44,6 +44,8 @@ internal sealed partial class QueuePane
 {
     private readonly SessionStore _session;
     private readonly MediaPathsService _mediaPaths;
+    private readonly LibraryService _library;
+    private readonly QueueService _queueService;
     private readonly PlaybackStore _playback;
     private readonly Border _host;
     private readonly Action<string> _onError;
@@ -71,10 +73,19 @@ internal sealed partial class QueuePane
     // a scrubber.
     private long _renderedSecond = -1;
 
-    public QueuePane(SessionStore session, MediaPathsService mediaPaths, PlaybackStore playback, Border host, Action<string> onError)
+    public QueuePane(
+        SessionStore session,
+        MediaPathsService mediaPaths,
+        LibraryService library,
+        QueueService queueService,
+        PlaybackStore playback,
+        Border host,
+        Action<string> onError)
     {
         _session = session;
         _mediaPaths = mediaPaths;
+        _library = library;
+        _queueService = queueService;
         _playback = playback;
         _host = host;
         _onError = onError;
@@ -209,7 +220,7 @@ internal sealed partial class QueuePane
         var context = _playback.Context;
         var revision = _playback.Revision;
 
-        var rows = new QueuePaneRowCollection(_session, revision, contextTotal: context?.UpcomingTotal ?? 0);
+        var rows = new QueuePaneRowCollection(_queueService, revision, contextTotal: context?.UpcomingTotal ?? 0);
 
         // "Up Next" labels the manual lane only when it has rows (an empty lane
         // shows its drop card without a heading, matching macOS).

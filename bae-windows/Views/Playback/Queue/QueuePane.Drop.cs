@@ -60,11 +60,7 @@ internal sealed partial class QueuePane
             {
                 return;
             }
-            await ResolveAndApply(ids, (handle, trackIds) =>
-            {
-                NativeBae.InsertInQueue(handle, trackIds, index);
-                return null;
-            });
+            await ResolveAndApply(ids, trackIds => (_queueService.InsertInQueue(trackIds, index), null));
         };
     }
 
@@ -78,7 +74,7 @@ internal sealed partial class QueuePane
         {
             return;
         }
-        await ResolveAndApply(ids, (handle, trackIds) => NativeBae.AddToQueue(handle, trackIds));
+        await ResolveAndApply(ids, trackIds => _queueService.AddToQueue(trackIds));
     }
 
     // The album grid's bulk Add to Queue / Play Next: resolves album ids to
@@ -86,9 +82,9 @@ internal sealed partial class QueuePane
     // and its error banner (the same route macOS's QueueActions gives both the
     // now-playing-bar drop and the grid's bulk menu).
     public Task AddAlbumsToQueue(IReadOnlyList<string> albumIds, bool addNext) =>
-        ResolveAndApply(albumIds, (handle, trackIds) => addNext
-            ? NativeBae.AddNext(handle, trackIds)
-            : NativeBae.AddToQueue(handle, trackIds));
+        ResolveAndApply(albumIds, trackIds => addNext
+            ? _queueService.AddNext(trackIds)
+            : _queueService.AddToQueue(trackIds));
 
     // Read and decode the drag payload, releasing the drop as soon as the data is
     // read. Null when the payload carries no ids (a Text drag that isn't ours).
@@ -146,11 +142,12 @@ internal sealed partial class QueuePane
     // pane's error banner, and an empty resolve is logged and dropped (the core
     // clamps the index, so a queue mutation racing the drop degrades to a clamped
     // insert).
-    private async Task ResolveAndApply(IReadOnlyList<string> ids, Func<AppHandle, IReadOnlyList<string>, string?> apply)
+    private async Task ResolveAndApply(
+        IReadOnlyList<string> ids, Func<IReadOnlyList<string>, (bool Current, string? Error)> apply)
     {
         var outcome = await Task.Run(() =>
         {
-            var (current, resolved) = _session.WithCurrentHandle(handle => NativeBae.ResolveToTrackIds(handle, ids));
+            var (current, resolved) = _library.ResolveToTrackIds(ids);
             if (!current)
             {
                 return (Current: false, Error: (string?)null, Empty: false);
@@ -164,8 +161,8 @@ internal sealed partial class QueuePane
             {
                 return (Current: true, Error: (string?)null, Empty: true);
             }
-            var applyError = _session.WithCurrentHandle(handle => apply(handle, trackIds));
-            return (Current: true, Error: applyError.Result, Empty: false);
+            var (_, applyError) = apply(trackIds);
+            return (Current: true, Error: applyError, Empty: false);
         });
 
         if (!outcome.Current)
