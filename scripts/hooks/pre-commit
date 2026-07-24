@@ -202,5 +202,15 @@ if has_changes_in "bae-macos" || has_changes_in "bae-bridge" \
     fi
 fi
 
+# bae-windows bridge boundary. The compiler can't see dependency direction, so
+# this fails loud if a view or store reaches for NativeBae outside the sanctioned
+# composition boundary. Pure Python — runs on the dev host without the Windows SDK.
+if has_changes_in "bae-windows"; then
+    run_check "windows bridge boundary" python3 scripts/windows-bridge-boundary.py || {
+        echo "A view or store reached for NativeBae outside the boundary. See above."
+        exit 1
+    }
+fi
+
 echo "✅ All checks passed"
 exit 0
