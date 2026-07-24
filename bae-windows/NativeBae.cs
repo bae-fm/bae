@@ -53,7 +53,7 @@ internal static class NativeBae
 
     /// <summary>Flush buffered telemetry through the standalone sink.</summary>
     internal static string? FlushDiagnostics(BridgeDiagnostics diagnostics) =>
-        CaptureError(() => Await(diagnostics.Flush()));
+        CaptureError(() => Await(() => diagnostics.Flush()));
 
     /// <summary>Report a host UI screen open as a typed telemetry event through
     /// the standalone sink. Infallible; the core owns every other event.</summary>
@@ -320,29 +320,29 @@ internal static class NativeBae
         CaptureError(() => handle.RenameLibrary(libraryId, name));
 
     internal static string? SetPrimaryRelease(AppHandle handle, string albumId, string releaseId) =>
-        CaptureError(() => Await(handle.SetPrimaryRelease(albumId, releaseId)));
+        CaptureError(() => Await(() => handle.SetPrimaryRelease(albumId, releaseId)));
 
     internal static string? SaveTrack(AppHandle handle, string trackId, string outputPath, string presetId) =>
-        CaptureError(() => Await(handle.SaveTrack(trackId, outputPath, presetId)));
+        CaptureError(() => Await(() => handle.SaveTrack(trackId, outputPath, presetId)));
 
     internal static string? ExportRelease(AppHandle handle, string releaseId, string targetDir) =>
-        CaptureError(() => Await(handle.EnqueueExport(releaseId, targetDir)));
+        CaptureError(() => Await(() => handle.EnqueueExport(releaseId, targetDir)));
 
     internal static string? SaveRelease(AppHandle handle, string releaseId, string targetDir, string presetId) =>
-        CaptureError(() => Await(handle.EnqueueReleaseSave(releaseId, targetDir, presetId)));
+        CaptureError(() => Await(() => handle.EnqueueReleaseSave(releaseId, targetDir, presetId)));
 
     internal static string? SaveTrackSuggestedName(AppHandle handle, string trackId, string presetId) =>
-        CaptureValue(() => Await(handle.SaveTrackSuggestedName(trackId, presetId)));
+        CaptureValue(() => Await(() => handle.SaveTrackSuggestedName(trackId, presetId)));
 
     internal static (BridgeFile[]? Images, string? Error) GetReleaseImages(AppHandle handle, string releaseId) =>
         CaptureBridgeValue(() =>
         {
-            var detail = Await(handle.FindReleaseDetail(releaseId));
+            var detail = Await(() => handle.FindReleaseDetail(releaseId));
             return detail?.ImageFiles.Where(file => file.IsImage).ToArray() ?? [];
         });
 
     internal static (BridgeRemoteCover[]? Covers, string? Error) FetchRemoteCovers(AppHandle handle, string releaseId) =>
-        CaptureBridgeValue(() => Await(handle.FetchRemoteCovers(releaseId)));
+        CaptureBridgeValue(() => Await(() => handle.FetchRemoteCovers(releaseId)));
 
     internal static string RemoteCoverThumbnailUrl(BridgeRemoteCover cover) =>
         CoverImageSourceUrl(cover.CoverChoice.ThumbnailSource);
@@ -351,13 +351,13 @@ internal static class NativeBae
         cover.CoverChoice.Selection;
 
     internal static string? ChangeCover(AppHandle handle, string albumId, string releaseId, BridgeCoverSelection selection) =>
-        CaptureError(() => Await(handle.ChangeCover(albumId, releaseId, selection)));
+        CaptureError(() => Await(() => handle.ChangeCover(albumId, releaseId, selection)));
 
     internal static long AlbumCount(AppHandle handle) =>
-        checked((long)Await(handle.GetAlbumCount()));
+        checked((long)Await(() => handle.GetAlbumCount()));
 
     internal static (List<Album>? Albums, string? Error) AlbumPage(AppHandle handle, ulong offset, ulong limit, IReadOnlyList<SortCriterion<AlbumSortField>> criteria) =>
-        CaptureBridgeValue(() => Await(handle.GetAlbumPage(ToBridge(criteria), offset, limit))
+        CaptureBridgeValue(() => Await(() => handle.GetAlbumPage(ToBridge(criteria), offset, limit))
             .Select(album => new Album(album))
             .ToList());
 
@@ -372,7 +372,7 @@ internal static class NativeBae
     {
         try
         {
-            var index = Await(handle.GetAlbumIndex(ToBridge(criteria), albumId));
+            var index = Await(() => handle.GetAlbumIndex(ToBridge(criteria), albumId));
             return (index is null ? null : checked((long)index.Value), null);
         }
         catch (BridgeException.Cancelled)
@@ -386,45 +386,45 @@ internal static class NativeBae
     }
 
     internal static long ComposerCount(AppHandle handle) =>
-        checked((long)Await(handle.GetComposerCount()));
+        checked((long)Await(() => handle.GetComposerCount()));
 
     internal static (List<ComposerSummary>? Composers, string? Error) ComposerPage(AppHandle handle, ulong offset, ulong limit, IReadOnlyList<SortCriterion<ComposerSortField>> criteria) =>
-        CaptureBridgeValue(() => Await(handle.GetComposerPage(ToBridge(criteria), offset, limit))
+        CaptureBridgeValue(() => Await(() => handle.GetComposerPage(ToBridge(criteria), offset, limit))
             .Select(composer => new ComposerSummary(composer))
             .ToList());
 
     internal static long ArtistCount(AppHandle handle) =>
-        checked((long)Await(handle.GetArtistCount()));
+        checked((long)Await(() => handle.GetArtistCount()));
 
     internal static (List<ArtistSummary>? Artists, string? Error) ArtistPage(AppHandle handle, ulong offset, ulong limit, IReadOnlyList<SortCriterion<ArtistSortField>> criteria) =>
-        CaptureBridgeValue(() => Await(handle.GetArtistPage(ToBridge(criteria), offset, limit))
+        CaptureBridgeValue(() => Await(() => handle.GetArtistPage(ToBridge(criteria), offset, limit))
             .Select(artist => new ArtistSummary(artist))
             .ToList());
 
     internal static (BridgeGalleryItem[]? Items, string? Error) Gallery(AppHandle handle, string releaseId) =>
         CaptureBridgeValue(() =>
         {
-            var detail = Await(handle.FindReleaseDetail(releaseId));
+            var detail = Await(() => handle.FindReleaseDetail(releaseId));
             return detail?.GalleryItems ?? [];
         });
 
     // Total releases matching a storage tab, for the dialog's incremental
     // loading collection to know when it has everything.
     internal static long StorageCount(AppHandle handle, StorageTab tab) =>
-        checked((long)Await(handle.StorageCount(ToBridge(tab))));
+        checked((long)Await(() => handle.StorageCount(ToBridge(tab))));
 
     // Sum of file sizes over every release matching a storage tab — the
     // dialog's footer "Total:" figure, independent of how many pages of the
     // tab's list have loaded.
     internal static long StorageTotalSize(AppHandle handle, StorageTab tab) =>
-        checked((long)Await(handle.StorageTotalSize(ToBridge(tab))));
+        checked((long)Await(() => handle.StorageTotalSize(ToBridge(tab))));
 
     // One page of storage rows for a tab, sorted server-side by the active
     // column — the dialog's incremental collection calls this per page instead
     // of fetching the whole library at once.
     internal static (BridgeStoragePage? Page, string? Error) StoragePage(
         AppHandle handle, StorageTab tab, StorageSortField field, SortDirection direction, ulong offset, ulong limit) =>
-        CaptureBridgeValue(() => Await(handle.StoragePage(
+        CaptureBridgeValue(() => Await(() => handle.StoragePage(
             new BridgeStorageSort(ToBridge(field), ToBridgeStorageDirection(direction)),
             ToBridge(tab),
             offset,
@@ -464,29 +464,29 @@ internal static class NativeBae
     internal static (Release? Release, string? Error) ReleaseStorage(AppHandle handle, string releaseId) =>
         CaptureBridgeValue(() =>
         {
-            var release = Await(handle.FindReleaseDetail(releaseId));
+            var release = Await(() => handle.FindReleaseDetail(releaseId));
             return release is null ? null : new Release(release);
         });
 
     internal static string? PinRelease(AppHandle handle, string releaseId) =>
-        CaptureError(() => Await(handle.QueuePinReleases([releaseId])));
+        CaptureError(() => Await(() => handle.QueuePinReleases([releaseId])));
 
     // The album grid's bulk pin: the same enqueue as PinRelease, over every
     // targeted album's primary release.
     internal static string? PinReleases(AppHandle handle, IReadOnlyList<string> releaseIds) =>
-        CaptureError(() => Await(handle.QueuePinReleases(releaseIds.ToArray())));
+        CaptureError(() => Await(() => handle.QueuePinReleases(releaseIds.ToArray())));
 
     internal static string? UnpinRelease(AppHandle handle, string releaseId) =>
-        CaptureError(() => Await(handle.UnpinRelease(releaseId)));
+        CaptureError(() => Await(() => handle.UnpinRelease(releaseId)));
 
     internal static string? MakeReleaseRemote(AppHandle handle, string releaseId, bool pin) =>
-        CaptureError(() => Await(handle.MakeReleaseRemote(releaseId, pin)));
+        CaptureError(() => Await(() => handle.MakeReleaseRemote(releaseId, pin)));
 
     internal static string? MakeReleaseLocal(AppHandle handle, string releaseId, string newPath) =>
-        CaptureError(() => Await(handle.MakeReleaseLocal(releaseId, newPath)));
+        CaptureError(() => Await(() => handle.MakeReleaseLocal(releaseId, newPath)));
 
     internal static (BridgeOutboxSnapshot? Snapshot, string? Error) OutboxSnapshot(AppHandle handle) =>
-        CaptureBridgeValue(() => Await(handle.GetOutboxSnapshot()));
+        CaptureBridgeValue(() => Await(() => handle.GetOutboxSnapshot()));
 
     internal static (BridgeDownloadSnapshot? Snapshot, string? Error) DownloadSnapshot(AppHandle handle) =>
         CaptureBridgeValue(handle.GetDownloadSnapshot);
@@ -509,41 +509,41 @@ internal static class NativeBae
 
     internal static void RetryOutputs(AppHandle handle) => handle.RetryOutputs();
 
-    internal static string? RetryOutbox(AppHandle handle) => CaptureError(() => Await(handle.RetryOutbox()));
+    internal static string? RetryOutbox(AppHandle handle) => CaptureError(() => Await(() => handle.RetryOutbox()));
 
     internal static string? SetSyncPaused(AppHandle handle, bool paused) =>
-        CaptureError(() => Await(handle.SetSyncPaused(paused)));
+        CaptureError(() => Await(() => handle.SetSyncPaused(paused)));
 
     internal static string? CancelOutboxItem(AppHandle handle, long id) =>
-        CaptureError(() => Await(handle.CancelOutboxItem(id)));
+        CaptureError(() => Await(() => handle.CancelOutboxItem(id)));
 
     internal static string? CancelReleaseTransition(AppHandle handle, string releaseId) =>
-        CaptureError(() => Await(handle.CancelReleaseTransition(releaseId)));
+        CaptureError(() => Await(() => handle.CancelReleaseTransition(releaseId)));
 
     internal static (LibrarySearchResults? Results, string? Error) Search(AppHandle handle, string query) =>
-        CaptureBridgeValue(() => new LibrarySearchResults(Await(handle.SearchLibrary(query))));
+        CaptureBridgeValue(() => new LibrarySearchResults(Await(() => handle.SearchLibrary(query))));
 
     internal static (AlbumDetail? Detail, string? Error) GetAlbumDetail(AppHandle handle, string albumId) =>
-        CaptureBridgeValue(() => new AlbumDetail(Await(handle.GetAlbumDetail(albumId))));
+        CaptureBridgeValue(() => new AlbumDetail(Await(() => handle.GetAlbumDetail(albumId))));
 
     internal static (ComposerDetail? Detail, string? Error) GetComposerDetail(AppHandle handle, string artistId) =>
         CaptureBridgeValue(() =>
         {
-            var detail = Await(handle.GetComposerDetail(artistId));
+            var detail = Await(() => handle.GetComposerDetail(artistId));
             return detail is null ? null : new ComposerDetail(detail);
         });
 
     internal static (ArtistDetail? Detail, string? Error) GetArtistDetail(AppHandle handle, string artistId) =>
         CaptureBridgeValue(() =>
         {
-            var detail = Await(handle.GetArtistDetail(artistId));
+            var detail = Await(() => handle.GetArtistDetail(artistId));
             return detail is null ? null : new ArtistDetail(detail);
         });
 
     internal static (WorkDetail? Detail, string? Error) GetWorkDetail(AppHandle handle, string workId) =>
         CaptureBridgeValue(() =>
         {
-            var detail = Await(handle.GetWorkDetail(workId));
+            var detail = Await(() => handle.GetWorkDetail(workId));
             return detail is null ? null : new WorkDetail(detail);
         });
 
@@ -602,10 +602,10 @@ internal static class NativeBae
         CaptureError(() => handle.SetSubsonicPassword(password));
 
     internal static string? SaveDiscogsToken(AppHandle handle, string token) =>
-        CaptureValue(() => DiscogsSaveOutcomeTag(Await(handle.SaveDiscogsToken(token))));
+        CaptureValue(() => DiscogsSaveOutcomeTag(Await(() => handle.SaveDiscogsToken(token))));
 
     internal static string? RevalidateDiscogsToken(AppHandle handle) =>
-        CaptureError(() => Await(handle.RevalidateDiscogsToken()));
+        CaptureError(() => Await(() => handle.RevalidateDiscogsToken()));
 
     internal static string? DeleteDiscogsToken(AppHandle handle) =>
         CaptureError(handle.RemoveDiscogsToken);
@@ -613,7 +613,7 @@ internal static class NativeBae
     internal static string? SaveSyncConfig(
         AppHandle handle, string bucket, string region, string endpoint,
         string keyPrefix, string accessKey, string secretKey, string storage) =>
-        CaptureError(() => Await(handle.SaveSyncConfig(new BridgeSaveSyncConfig(
+        CaptureError(() => Await(() => handle.SaveSyncConfig(new BridgeSaveSyncConfig(
             bucket,
             region,
             string.IsNullOrWhiteSpace(endpoint) ? null : endpoint.Trim(),
@@ -630,7 +630,7 @@ internal static class NativeBae
     {
         try
         {
-            return (checked((long)Await(handle.CloudOnlyReleaseCount())), null);
+            return (checked((long)Await(() => handle.CloudOnlyReleaseCount())), null);
         }
         catch (BridgeException.Cancelled)
         {
@@ -644,7 +644,7 @@ internal static class NativeBae
 
 #if BAE_FULL_BRIDGE
     internal static string? SignInCloud(AppHandle handle, string provider, string storage) =>
-        CaptureError(() => Await(handle.SignInCloudProvider(CloudProvider(provider), HomeStorage(storage))));
+        CaptureError(() => Await(() => handle.SignInCloudProvider(CloudProvider(provider), HomeStorage(storage))));
 #else
     internal static string? SignInCloud(AppHandle handle, string provider, string storage) => throw new InvalidOperationException();
 #endif
@@ -655,38 +655,38 @@ internal static class NativeBae
     internal static void TriggerSync(AppHandle handle) => handle.TriggerSync();
 
     internal static string? GenerateRestoreCode(AppHandle handle) =>
-        CaptureValue(() => Await(handle.GenerateRestoreCode()));
+        CaptureValue(() => Await(() => handle.GenerateRestoreCode()));
 
     internal static (BridgeMembership? Membership, string? Error) GetMembers(AppHandle handle) =>
-        CaptureBridgeValue(() => Await(handle.GetMembers()));
+        CaptureBridgeValue(() => Await(() => handle.GetMembers()));
 
     internal static string? InviteMember(AppHandle handle, string publicKeyHex) =>
-        CaptureValue(() => Await(handle.InviteMember(publicKeyHex, providerAccountEmail: null)));
+        CaptureValue(() => Await(() => handle.InviteMember(publicKeyHex, providerAccountEmail: null)));
 
     internal static string? RemoveMember(AppHandle handle, string publicKeyHex) =>
-        CaptureError(() => Await(handle.RemoveMember(publicKeyHex)));
+        CaptureError(() => Await(() => handle.RemoveMember(publicKeyHex)));
 
     internal static (BridgeRawReleaseEdit? Edit, string? Error) ReleaseEditSeed(AppHandle handle, string releaseId) =>
-        CaptureBridgeValue(() => Await(handle.SeedReleaseEdit(releaseId)));
+        CaptureBridgeValue(() => Await(() => handle.SeedReleaseEdit(releaseId)));
 
     internal static (BridgeRawReleaseEdit? Edit, string? Error) ResetMetadataToSource(AppHandle handle, string releaseId) =>
         CaptureBridgeValue(() => BaeBridgeMethods.RawReleaseEditFromUserEdit(
-            Await(handle.ResetMetadataToSource(releaseId)),
+            Await(() => handle.ResetMetadataToSource(releaseId)),
             "reset-track"));
 
     internal static string? ApplyReleaseEdit(AppHandle handle, string releaseId, BridgeRawReleaseEdit edit) =>
-        CaptureError(() => Await(handle.UpdateReleaseMetadataUserEdit(releaseId, ReleaseUserEdit(edit))));
+        CaptureError(() => Await(() => handle.UpdateReleaseMetadataUserEdit(releaseId, ReleaseUserEdit(edit))));
 
     internal static (List<ReleaseCandidateChoice>? Candidates, string? Error) SearchReleases(
         AppHandle handle,
         string source,
         string artist,
         string album) =>
-        CaptureBridgeValue(() => CandidateChoices(Await(handle.SearchForCandidate(
+        CaptureBridgeValue(() => CandidateChoices(Await(() => handle.SearchForCandidate(
             new BridgeSearchQuery.General(artist, album, MetadataSource(source))))));
 
     internal static string? ReidentifyRelease(AppHandle handle, string releaseId, BridgeIdentityChoice choice) =>
-        CaptureError(() => Await(handle.ReIdentifyRelease(releaseId, choice)));
+        CaptureError(() => Await(() => handle.ReIdentifyRelease(releaseId, choice)));
 
     internal static string? ScanFolder(AppHandle handle, string path, bool clearFirst) =>
         CaptureError(() => handle.AddWatchedFolder(path));
@@ -736,8 +736,8 @@ internal static class NativeBae
     /// untouched; the user's prior edits are overwritten by design.
     /// </summary>
     internal static string? RefreshMetadataFromSource(AppHandle handle, string releaseId) =>
-        CaptureError(() => Await(handle.UpdateReleaseMetadataUserEdit(
-            releaseId, Await(handle.ResetMetadataToSource(releaseId)))));
+        CaptureError(() => Await(async () => await handle.UpdateReleaseMetadataUserEdit(
+            releaseId, await handle.ResetMetadataToSource(releaseId))));
 
     internal static void ToggleSignalForCandidate(AppHandle handle, string candidateKey, string kind, string value) =>
         handle.ToggleSignalForCandidate(candidateKey, ExcludedSignal(kind, value));
@@ -768,14 +768,14 @@ internal static class NativeBae
         CaptureBridgeValue(() => new PrefetchedEdit
         {
             Edit = BaeBridgeMethods.RawReleaseEditFromUserEdit(
-                Await(handle.PreviewFileTagsForFolder(folderPath)), "unknown-track"),
+                Await(() => handle.PreviewFileTagsForFolder(folderPath)), "unknown-track"),
             LocalArtwork = LocalArtwork(handle.GetCandidate(folderPath)),
         });
 
     internal static (BridgeLibraryStatus? Status, string? Error) CheckReleaseInLibrary(AppHandle handle, string releaseId) =>
         CaptureBridgeValue(() =>
         {
-            var detail = Await(handle.FindReleaseDetail(releaseId));
+            var detail = Await(() => handle.FindReleaseDetail(releaseId));
             return detail is null
                 ? new BridgeLibraryStatus(releaseId, false, false, null, null)
                 : new BridgeLibraryStatus(releaseId, true, true, null, detail.AlbumId);
@@ -793,13 +793,13 @@ internal static class NativeBae
             ReleaseUserEdit(userEdit)));
 
     internal static byte[]? ImageBytes(AppHandle? handle, BridgeImageRef image) =>
-        handle is null ? null : CaptureBytes(() => Await(handle.FetchImageBytes(image)));
+        handle is null ? null : CaptureBytes(() => Await(() => handle.FetchImageBytes(image)));
 
     internal static byte[]? CoverImageBytes(AppHandle? handle, string imageId) =>
-        handle is null ? null : CaptureBytes(() => Await(handle.FetchCoverImageBytes(imageId)));
+        handle is null ? null : CaptureBytes(() => Await(() => handle.FetchCoverImageBytes(imageId)));
 
     internal static byte[]? GalleryBytes(AppHandle? handle, string releaseId, BridgeGallerySource source) =>
-        handle is null ? null : CaptureBytes(() => Await(handle.FetchGalleryBytes(releaseId, source)));
+        handle is null ? null : CaptureBytes(() => Await(() => handle.FetchGalleryBytes(releaseId, source)));
 
     internal static void PlayRelease(AppHandle handle, string releaseId, long startTrackIndex, bool shuffle) =>
         handle.PlayRelease(releaseId, startTrackIndex < 0 ? null : checked((uint)startTrackIndex), shuffle);
@@ -824,7 +824,7 @@ internal static class NativeBae
 
     internal static void SetMuted(AppHandle handle, bool muted) => handle.SetMuted(muted);
 
-    internal static float GetVolume(AppHandle handle) => Await(handle.GetVolume());
+    internal static float GetVolume(AppHandle handle) => Await(() => handle.GetVolume());
 
     // -- Cast --
 
@@ -871,7 +871,7 @@ internal static class NativeBae
     // already carries. offset 0 is the first not-yet-played entry after the
     // current track — the same coordinate space as BridgePlaybackContext.Upcoming.
     internal static (BridgeQueueUpcomingPage? Page, string? Error) QueueUpcomingPage(AppHandle handle, uint offset, uint limit) =>
-        CaptureBridgeValue(() => Await(handle.GetQueueUpcomingPage(offset, limit)));
+        CaptureBridgeValue(() => Await(() => handle.GetQueueUpcomingPage(offset, limit)));
 
     internal static void AddReleaseToQueue(AppHandle handle, string releaseId) => handle.AddReleaseToQueue(releaseId);
 
@@ -886,20 +886,30 @@ internal static class NativeBae
     // Expand a list of album or track ids to track ids (album ids resolve to the
     // primary release's tracks), for a queue insert that carries a drag payload.
     internal static (List<string>? Value, string? Error) ResolveToTrackIds(AppHandle handle, IReadOnlyList<string> ids) =>
-        CaptureBridgeValue(() => Await(handle.ResolveToTrackIds(ids.ToArray())).ToList());
+        CaptureBridgeValue(() => Await(() => handle.ResolveToTrackIds(ids.ToArray())).ToList());
 
     // Insert tracks into the manual lane at index (core clamps to the lane length).
     internal static void InsertInQueue(AppHandle handle, IReadOnlyList<string> trackIds, int index) =>
         handle.InsertInQueue(trackIds.ToArray(), checked((uint)index));
 
     internal static string? DeleteRelease(AppHandle handle, string releaseId) =>
-        CaptureError(() => Await(handle.DeleteRelease(releaseId)));
+        CaptureError(() => Await(() => handle.DeleteRelease(releaseId)));
 
-    internal static void Shutdown(AppHandle handle) => Await(handle.Shutdown());
+    internal static void Shutdown(AppHandle handle) => Await(() => handle.Shutdown());
 
-    private static T Await<T>(System.Threading.Tasks.Task<T> task) => task.GetAwaiter().GetResult();
+    // Start the bridge call on a threadpool thread and block until it finishes.
+    // The call must NOT start on the blocking thread: the generated async
+    // bindings' internal awaits capture the caller's SynchronizationContext, so
+    // a bridge call started on the UI thread posts its completion to the UI
+    // dispatcher — which a blocking wait on that same thread starves (observed
+    // as a permanent hang opening a library from the welcome chooser). Task.Run
+    // starts the call with no context, so completions never need the blocked
+    // thread.
+    private static T Await<T>(Func<System.Threading.Tasks.Task<T>> call) =>
+        System.Threading.Tasks.Task.Run(call).GetAwaiter().GetResult();
 
-    private static void Await(System.Threading.Tasks.Task task) => task.GetAwaiter().GetResult();
+    private static void Await(Func<System.Threading.Tasks.Task> call) =>
+        System.Threading.Tasks.Task.Run(call).GetAwaiter().GetResult();
 
     private static string? CaptureError(Action action)
     {
@@ -1048,7 +1058,7 @@ internal static class NativeBae
         string folderPath)
     {
         var localTrackCount = LocalTrackCount(handle.GetCandidate(folderPath));
-        var prefetch = Await(handle.PrefetchRelease(releaseId, source, localTrackCount));
+        var prefetch = Await(() => handle.PrefetchRelease(releaseId, source, localTrackCount));
         // A picked release claims the exact pressing by default; the confirm
         // dialog re-shapes this seed if the user switches to metadata only.
         var edit = ShapeCandidateEdit(prefetch.Seed, new BridgeIdentityChoice.Exact(releaseId, source));
