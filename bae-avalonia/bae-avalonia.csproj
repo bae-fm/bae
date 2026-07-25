@@ -73,6 +73,13 @@
     -->
     <PackageReference Include="Velopack" Version="1.2.0" />
     <!--
+      Crash reporting. The managed SDK reports the exceptions the unhandled-
+      exception hooks catch; the native handler it is configured alongside
+      (sentry-native + crashpad, shipped beside the executable by the release
+      lane) is what survives a crash the runtime never gets to report.
+    -->
+    <PackageReference Include="Sentry" Version="6.6.0" />
+    <!--
       D-Bus for the Linux MPRIS now-playing surface (bus name, exported object,
       property signals). Pinned to the version Avalonia.FreeDesktop resolves so
       one copy loads: releases after this one rename the connection type and drop

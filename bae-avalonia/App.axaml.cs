@@ -65,6 +65,10 @@ public sealed partial class App : Application
 
     public override void OnFrameworkInitializationCompleted()
     {
+        // The windowing platform is up by now, so the UI dispatcher is the real
+        // one; the hook has to be in place before the first job runs through it.
+        CrashCapture.InstallDispatcherHandler();
+
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
             // Every quit funnels through here: the last window closing, the OS
@@ -136,12 +140,14 @@ public sealed partial class App : Application
     }
 
     // Telemetry first (so the sink exists for every later step and any failure it
-    // reports), then the OS credential store before any library key is read, then
-    // the OAuth client credentials. Decide the first window: straight to the main
-    // window when an openable library exists, else the welcome window.
+    // reports), then crash reporting, then the OS credential store before any
+    // library key is read, then the OAuth client credentials. Decide the first
+    // window: straight to the main window when an openable library exists, else
+    // the welcome window.
     private void StartSession()
     {
         BaeDiagnostics.Configure();
+        BaeCrashReporting.Configure();
         BaeDiagnostics.Logger.Info("application launched");
         NativeBae.Startup(BaeDiagnostics.Handle);
         OAuthCreds.Register();

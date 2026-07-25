@@ -55,6 +55,8 @@ COMPOSITION_BOUNDARY = [
     # --- Process / session infrastructure (no library-domain UI). ---
     "Program.cs",
     "BaeLogger.cs",
+    "BaeCrashReporting.cs",     # edition-gated crash reporter
+    "CrashCapture.cs",
     "UpdateService.cs",
     "LibraryDiscovery.cs",
     "OAuthCreds.cs",            # cloud sign-in credential registration
@@ -70,8 +72,6 @@ APPS = {
     + [
         "App.xaml.cs",
         "App.Session.cs",
-        "BaeCrashReporting.cs",
-        "CrashCapture.cs",
         "ProtocolRegistration.cs",  # bae:// scheme registration
         # --- Dialogs not yet migrated onto services. The stores behind these ---
         # --- flows read through services now; the standalone dialogs still    ---

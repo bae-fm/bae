@@ -6,15 +6,20 @@ using Avalonia.Headless;
 
 namespace Bae.Desktop;
 
-// Plain Avalonia entry point: the Velopack hook, the single-instance election
-// that forwards a second launch's argv to the running instance, then the desktop
-// lifetime. In DEBUG the --capture-shots flag diverts to the off-screen headless
-// render path before any window opens.
+// Plain Avalonia entry point: the process-wide crash hooks, the Velopack hook,
+// the single-instance election that forwards a second launch's argv to the
+// running instance, then the desktop lifetime. In DEBUG the --capture-shots flag
+// diverts to the off-screen headless render path before any window opens.
 internal static class Program
 {
     [STAThread]
     public static int Main(string[] args)
     {
+        // Record any unhandled exception from process entry onward — before the
+        // Velopack hook, the single-instance election, or the app exists — so a
+        // startup crash leaves a managed record behind.
+        CrashCapture.InstallProcessHandlers();
+
 #if DEBUG
         // Capture mode serves a one-shot render, not a real session: no
         // single-instance redirect (a running instance must not divert it), no
@@ -50,6 +55,11 @@ internal static class Program
         }
 
         App.SingleInstance = single;
+        // An exception that escapes the main loop is an unhandled exception, so
+        // the process hook installed above already records it; the dispatcher
+        // hook records UI-thread failures at the throw site, before the unwind
+        // passes through the backend's native frames. Catching here as well would
+        // only write the same crash a third time.
         return BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
     }
 
