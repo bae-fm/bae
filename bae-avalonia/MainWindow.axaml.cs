@@ -40,7 +40,8 @@ internal sealed class MainWindow : Window
         // The import dialog's "view in library" jump reveals an album in the shell;
         // the shell is built just below, so the callback reads the field at call time.
         var importDialogs = new ImportDialogs(_app, modalHost, lightbox, albumId => _shell.OpenAlbum(albumId));
-        _shell = new MainShellView(_app, dialogs, importDialogs);
+        var storageDialog = new StorageDialog(_app, modalHost);
+        _shell = new MainShellView(_app, dialogs, importDialogs, storageDialog);
         var root = new Panel();
         root.Children.Add(_shell);
         root.Children.Add(modalHost);

@@ -29,7 +29,9 @@ internal sealed class ModalHost : Panel
         {
             HorizontalAlignment = HorizontalAlignment.Center,
             VerticalAlignment = VerticalAlignment.Center,
-            MaxWidth = 560,
+            // A cap wide enough for the storage sheet's table; narrower dialogs set
+            // their own MinWidth and stay content-sized well under it.
+            MaxWidth = 820,
             Margin = new Thickness(24),
         };
 

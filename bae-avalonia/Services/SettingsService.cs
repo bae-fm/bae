@@ -1,4 +1,5 @@
 ﻿using System;
+using uniffi.bae_bridge;
 
 namespace Bae.Desktop;
 
@@ -18,9 +19,16 @@ internal sealed class SettingsService
     public Func<(bool Current, Settings Settings)> GetSettings { get; init; }
         = () => throw new InvalidOperationException("SettingsService stub: GetSettings not wired");
 
+    /// <summary>The raw device-local config, for the storage sheet's transfer-
+    /// concurrency pickers, which seed from the current simultaneous up/download
+    /// counts. Not current when no handle is open.</summary>
+    public Func<(bool Current, BridgeConfig Config)> GetConfig { get; init; }
+        = () => throw new InvalidOperationException("SettingsService stub: GetConfig not wired");
+
     /// <summary>Wire the read through the open session's current handle.</summary>
     public static SettingsService FromSession(SessionStore session) => new()
     {
         GetSettings = () => session.WithCurrentHandle(NativeBae.GetSettings),
+        GetConfig = () => session.WithCurrentHandle(NativeBae.GetConfig),
     };
 }

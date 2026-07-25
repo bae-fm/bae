@@ -218,7 +218,8 @@ internal static class ShotCapture
         return new MainShellView(
             app,
             new ReleaseActionDialogs(app, modalHost, lightbox),
-            new ImportDialogs(app, modalHost, lightbox, _ => Task.CompletedTask));
+            new ImportDialogs(app, modalHost, lightbox, _ => Task.CompletedTask),
+            new StorageDialog(app, modalHost));
     }
 
     // A LibraryService whose album/composer/artist counts are zero and whose pages

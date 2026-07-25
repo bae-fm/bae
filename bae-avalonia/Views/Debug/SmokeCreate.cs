@@ -71,7 +71,8 @@ internal static class SmokeCreate
             var shell = new MainShellView(
                 app,
                 new ReleaseActionDialogs(app, modalHost, lightbox),
-                new ImportDialogs(app, modalHost, lightbox, _ => System.Threading.Tasks.Task.CompletedTask));
+                new ImportDialogs(app, modalHost, lightbox, _ => System.Threading.Tasks.Task.CompletedTask),
+                new StorageDialog(app, modalHost));
             var root = new Border { Width = 1350, Height = 850, Child = shell };
             root[!Border.BackgroundProperty] = new DynamicResourceExtension("BaeBackgroundBrush");
             var window = new Window

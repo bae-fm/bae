@@ -61,9 +61,11 @@ internal sealed class LibraryService
     public Func<string, (bool Current, (LibrarySearchResults? Results, string? Error) Result)> Search { get; init; }
         = _ => throw new InvalidOperationException("LibraryService stub: Search not wired");
 
-    /// <summary>Total releases matching a storage tab, for the storage dialog's
-    /// incremental collection to know when it has everything.</summary>
-    public Func<StorageTab, Task<(bool Current, long Count)>> StorageCount { get; init; }
+    /// <summary>Total releases matching a storage tab — the storage dialog's page
+    /// source count, so the incremental list knows the row total up front.
+    /// Synchronous, run off the UI thread by the page source (like the browse
+    /// counts).</summary>
+    public Func<StorageTab, (bool Current, long Count)> StorageCount { get; init; }
         = _ => throw new InvalidOperationException("LibraryService stub: StorageCount not wired");
 
     /// <summary>Sum of file sizes over every release matching a storage tab — the
@@ -121,7 +123,7 @@ internal sealed class LibraryService
         ArtistDetail = artistId =>
             session.RunForCurrentHandle(handle => NativeBae.GetArtistDetail(handle, artistId)),
         Search = query => session.WithCurrentHandle(handle => NativeBae.Search(handle, query)),
-        StorageCount = tab => session.RunForCurrentHandle(handle => NativeBae.StorageCount(handle, tab)),
+        StorageCount = tab => session.WithCurrentHandle(handle => NativeBae.StorageCount(handle, tab)),
         StorageTotalSize = tab => session.RunForCurrentHandle(handle => NativeBae.StorageTotalSize(handle, tab)),
         StoragePage = (tab, field, direction, offset, limit) =>
             session.WithCurrentHandle(handle => NativeBae.StoragePage(handle, tab, field, direction, offset, limit)),

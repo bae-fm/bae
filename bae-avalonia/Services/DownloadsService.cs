@@ -77,6 +77,12 @@ internal sealed class DownloadsService
     public Func<Task<(bool Current, (BridgeDownloadSnapshot? Snapshot, string? Error) Result)>> DownloadSnapshot { get; init; }
         = () => throw new InvalidOperationException("DownloadsService stub: DownloadSnapshot not wired");
 
+    /// <summary>The output (save/export) queue snapshot — the queued and in-flight
+    /// exports — for the storage sheet's Exporting band. Infallible bar a dropped
+    /// handle, so it carries currency but no error line.</summary>
+    public Func<Task<(bool Current, BridgeOutputSnapshot Snapshot)>> OutputSnapshot { get; init; }
+        = () => throw new InvalidOperationException("DownloadsService stub: OutputSnapshot not wired");
+
     /// <summary>Wire every control through the open session's current handle.</summary>
     public static DownloadsService FromSession(SessionStore session) => new()
     {
@@ -94,5 +100,6 @@ internal sealed class DownloadsService
         MakeReleaseLocal = (releaseId, newPath) =>
             session.RunForCurrentHandle(handle => NativeBae.MakeReleaseLocal(handle, releaseId, newPath)),
         DownloadSnapshot = () => session.RunForCurrentHandle(NativeBae.DownloadSnapshot),
+        OutputSnapshot = () => session.RunForCurrentHandle(NativeBae.OutputSnapshot),
     };
 }

@@ -430,6 +430,8 @@
   <data name="storage.column.artist" xml:space="preserve"><value>Artist</value></data>
   <data name="storage.column.format" xml:space="preserve"><value>Format</value></data>
   <data name="storage.column.storage" xml:space="preserve"><value>Storage</value></data>
+  <data name="storage.concurrency.downloads" xml:space="preserve"><value>Simultaneous downloads</value></data>
+  <data name="storage.concurrency.uploads" xml:space="preserve"><value>Simultaneous uploads</value></data>
   <data name="storage.column.files" xml:space="preserve"><value>Files</value></data>
   <data name="storage.column.size" xml:space="preserve"><value>Size</value></data>
   <data name="storage.footer.releases" xml:space="preserve"><value>{count, plural, one {# release} other {# releases}}</value></data>

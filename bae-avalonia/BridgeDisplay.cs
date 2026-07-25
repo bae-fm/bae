@@ -169,6 +169,13 @@ internal static class BridgeDisplay
     internal static string TransferActionToken(BridgeReleaseStorageAction action) =>
         NativeBae.TransferActionToken(action);
 
+    // The catalog key for a transition's in-flight progress verb, from its wire
+    // token (pin/unpin/manage/unmanage), or null for a token core doesn't name.
+    // The storage cell shows this verb while a release's transfer runs, whether the
+    // token comes from the live overlay or the row's own reported transfer action.
+    internal static string? TransferVerbKey(string token) =>
+        NativeBae.TransferActionKey(token);
+
     // The localization key for a cloud provider's label from its wire tag, or null
     // when the tag isn't one core names (the caller falls back to chrome).
     internal static string? CloudProviderLabelKey(string? provider) =>
