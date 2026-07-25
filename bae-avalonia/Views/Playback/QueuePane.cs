@@ -576,8 +576,78 @@ internal sealed class QueuePane
         // Double-click skips playback to this entry.
         hover.DoubleTapped += (_, _) => _app.Queue.SkipToEntry(row.Entry.EntryId);
         hover.ContextMenu = new ContextMenu { ItemsSource = new[] { RemoveMenuItem(row) } };
+        EnableRowReorder(hover, row);
         return hover;
     }
+
+    // The private data format a queue-row reorder drag carries (the moved entry id),
+    // distinct from an album-card drop's plain text so a row drop can tell them
+    // apart. Reorder stays within one lane and forwards a move-before to core.
+    private const string ReorderFormat = "application/x-bae-queue-reorder";
+
+    // Make a queue row both a reorder drag source and a same-lane drop target: a
+    // press that moves past a threshold drags the row (carrying its entry id and
+    // lane); dropping it on another row of the same lane moves it before that row.
+    private void EnableRowReorder(Control hover, EntryRow row)
+    {
+        Point? pressAt = null;
+        var dragging = false;
+        hover.PointerPressed += (_, e) =>
+        {
+            if (e.GetCurrentPoint(hover).Properties.IsLeftButtonPressed)
+            {
+                pressAt = e.GetPosition(hover);
+                dragging = false;
+            }
+        };
+        hover.PointerMoved += async (_, e) =>
+        {
+            if (pressAt is not { } start || dragging || !e.GetCurrentPoint(hover).Properties.IsLeftButtonPressed)
+            {
+                return;
+            }
+            var now = e.GetPosition(hover);
+            if (Math.Abs(now.X - start.X) < 6 && Math.Abs(now.Y - start.Y) < 6)
+            {
+                return;
+            }
+            dragging = true;
+            var data = new DataObject();
+            data.Set(ReorderFormat, row.Entry.EntryId + "\n" + (int)row.Lane);
+            await DragDrop.DoDragDrop(e, data, DragDropEffects.Move);
+        };
+        hover.PointerReleased += (_, _) => pressAt = null;
+
+        DragDrop.SetAllowDrop(hover, true);
+        hover.AddHandler(DragDrop.DragOverEvent, (_, e) =>
+        {
+            e.DragEffects = IsSameLaneReorder(e, row.Lane) ? DragDropEffects.Move : e.DragEffects;
+            if (IsSameLaneReorder(e, row.Lane))
+            {
+                e.Handled = true;
+            }
+        });
+        hover.AddHandler(DragDrop.DropEvent, (_, e) =>
+        {
+            if (!IsSameLaneReorder(e, row.Lane) || e.Data.Get(ReorderFormat) is not string payload)
+            {
+                return;
+            }
+            e.Handled = true;
+            var movedId = payload.Split('\n')[0];
+            if (movedId != row.Entry.EntryId)
+            {
+                // Move the dragged entry to just before this row.
+                _app.Queue.ReorderEntry(movedId, row.Entry.EntryId);
+            }
+        });
+    }
+
+    private static bool IsSameLaneReorder(DragEventArgs e, QueueLane lane) =>
+        e.Data.Get(ReorderFormat) is string payload
+        && payload.Split('\n') is { Length: 2 } parts
+        && int.TryParse(parts[1], out var laneOrdinal)
+        && laneOrdinal == (int)lane;
 
     private MenuItem RemoveMenuItem(EntryRow row)
     {
