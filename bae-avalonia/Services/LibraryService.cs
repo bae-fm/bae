@@ -26,6 +26,12 @@ internal sealed class LibraryService
     public Func<(bool Current, long Count)> AlbumCount { get; init; }
         = () => throw new InvalidOperationException("LibraryService stub: AlbumCount not wired");
 
+    /// <summary>One album's full detail — every release with its tracks — for the
+    /// inline album expansion. Async: the Windows consumer opened it off the UI
+    /// thread. The C# mirror of BaeKit's <c>Library.getAlbumDetail</c>.</summary>
+    public Func<string, Task<(bool Current, (AlbumDetail? Detail, string? Error) Response)>> AlbumDetail { get; init; }
+        = _ => throw new InvalidOperationException("LibraryService stub: AlbumDetail not wired");
+
     /// <summary>The 0-based position of an album under the active sort, or null
     /// when it isn't present — lets a reveal page in and scroll to it.</summary>
     public Func<IReadOnlyList<SortCriterion<AlbumSortField>>, string, Task<(bool Current, (long? Index, string? Error) Result)>> AlbumIndex { get; init; }
@@ -98,6 +104,8 @@ internal sealed class LibraryService
         AlbumPage = (offset, limit, criteria) =>
             session.WithCurrentHandle(handle => NativeBae.AlbumPage(handle, offset, limit, criteria)),
         AlbumCount = () => session.WithCurrentHandle(NativeBae.AlbumCount),
+        AlbumDetail = albumId =>
+            session.RunForCurrentHandle(handle => NativeBae.GetAlbumDetail(handle, albumId)),
         AlbumIndex = (criteria, albumId) =>
             session.RunForCurrentHandle(handle => NativeBae.AlbumIndex(handle, criteria, albumId)),
         ComposerPage = (offset, limit, criteria) =>

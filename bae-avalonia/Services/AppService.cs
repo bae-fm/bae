@@ -13,6 +13,11 @@ namespace Bae.Desktop;
 /// </summary>
 internal sealed class AppService
 {
+    // The open session — the handle lifecycle the services and stores are built
+    // around. Views read it only to guard an action on "is a library open?"
+    // (CurrentHandleOrNull); everything library-domain goes through the services.
+    public SessionStore Session { get; }
+
     // Domain services: narrow, per-domain projections of the open handle that
     // views and stores read instead of the session + NativeBae directly.
     public LibraryService Library { get; }
@@ -31,11 +36,13 @@ internal sealed class AppService
     // no-op stand-in.
     public IMediaControl MediaControl { get; }
 
+    // The library browser's data layer over the incremental-loading core: the
+    // album / composer / artist paginated lists and their sort. One per open
+    // library, like the other stores.
+    public LibraryBrowserStore LibraryBrowserStore { get; }
+
     // The reactive stores. One instance per open library: a switch builds a fresh
-    // AppService with fresh stores (mirroring macOS's AppService). The library
-    // grid store (LibraryBrowserStore) lands with the incremental-loading redesign
-    // in the parity port; the shell reads its empty-state from Library counts
-    // directly until then.
+    // AppService with fresh stores (mirroring macOS's AppService).
     public ShellStore ShellStore { get; }
     public PlaybackStore PlaybackStore { get; }
     public CastStore CastStore { get; }
@@ -79,6 +86,7 @@ internal sealed class AppService
         SettingsService settings,
         ImportService import)
     {
+        Session = session;
         Library = library;
         MediaPaths = mediaPaths;
         Playback = playback;
@@ -116,6 +124,26 @@ internal sealed class AppService
         // The storage sheet's non-UI operations, shared by the storage dialog and
         // the album-detail storage band so both run transitions the same way.
         StorageStore = new StorageStore(Downloads, Sync, TransferProgressStore);
+        // The library browser's paginated lists. A page / invalidate failure routes
+        // to the shell banner; a session-swap mid-fetch (an OperationCanceled) is
+        // the list being replaced and is dropped.
+        LibraryBrowserStore = new LibraryBrowserStore(Library, MediaPaths, dispatcher, HandleBrowseError);
+    }
+
+    private void HandleBrowseError(Exception exception)
+    {
+        switch (exception)
+        {
+            case OperationCanceledException:
+                return;
+            case PageLoadException page:
+                ShowError(Loc.Chrome("error.title"), page.Line ?? Loc.Chrome("library.load_failed"));
+                return;
+            default:
+                ShowError(Loc.Chrome("error.title"), Loc.Chrome("library.load_failed"));
+                BaeDiagnostics.Logger.Warning("A library page load failed.", exception);
+                return;
+        }
     }
 
 #if DEBUG
