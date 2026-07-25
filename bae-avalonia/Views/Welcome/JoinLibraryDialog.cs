@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Markup.Xaml.MarkupExtensions;
@@ -11,13 +12,12 @@ namespace Bae.Desktop;
 
 // Join a library that already lives on another device. This device generates its
 // join-request code (its public key); an existing owner approves it and reads
-// back an invite code, which the user pastes here. Decoding the invite runs the
-// OAuth sign-in when the provider needs it, then JoinFromCode pulls the library
-// down. Presented in the window's modal host.
+// back an invite code, which the user pastes or scans from an image here.
+// Decoding the invite runs the OAuth sign-in when the provider needs it, then
+// JoinFromCode pulls the library down. Presented in the window's modal host.
 //
-// The QR image for this device's code, and scanning an invite from an image, are
-// the QrCode/QrScanner rebuilds scheduled for the parity port; here the code is
-// selectable text with a copy button and the invite is pasted.
+// This device's own code is shown as a QR image (for the approving device's
+// camera) plus copyable text.
 internal sealed class JoinLibraryDialog
 {
     private readonly Action _dismissWelcome;
@@ -52,7 +52,12 @@ internal sealed class JoinLibraryDialog
             Watermark = Loc.Chrome("join.invite_placeholder"),
             HorizontalAlignment = HorizontalAlignment.Stretch,
         };
-        column.Children.Add(inviteBox);
+        var scan = new Button { Content = Loc.Chrome("action.scan"), Margin = new Thickness(8, 0, 0, 0) };
+        var inviteRow = new DockPanel { LastChildFill = true };
+        DockPanel.SetDock(scan, Dock.Right);
+        inviteRow.Children.Add(scan);
+        inviteRow.Children.Add(inviteBox);
+        column.Children.Add(inviteRow);
 
         var invitePreview = DialogUi.Body(string.Empty);
         invitePreview.IsVisible = false;
@@ -113,6 +118,14 @@ internal sealed class JoinLibraryDialog
         }
 
         inviteBox.TextChanged += (_, _) => DecodeInvite(inviteBox.Text?.Trim() ?? string.Empty);
+        scan.Click += async (_, _) =>
+        {
+            var scanned = await QrScanner.ScanFromFileAsync(scan);
+            if (scanned is not null)
+            {
+                inviteBox.Text = scanned.Trim();
+            }
+        };
         cancel.Click += (_, _) => close();
 
         join.Click += async (_, _) =>

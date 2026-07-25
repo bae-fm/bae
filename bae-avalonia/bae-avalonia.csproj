@@ -55,6 +55,15 @@
     -->
     <PackageReference Include="QRCoder" Version="1.6.0" />
     <!--
+      QR scanning from a picked image (screenshot/photo of the other device's
+      code). ZXing.Net decodes the QR; SkiaSharp (the same build Avalonia.Skia
+      renders through, pinned so there is one copy) reads the image into BGRA
+      pixels that feed ZXing's luminance source. The paste field is the
+      always-available fallback beside every scan entry point.
+    -->
+    <PackageReference Include="ZXing.Net" Version="0.16.9" />
+    <PackageReference Include="SkiaSharp" Version="2.88.9" />
+    <!--
       Installer + auto-update (cross-platform). Drives the in-app
       check/download/apply from the GitHub release assets; the vpk CLI that packs
       the release must match this version exactly.
