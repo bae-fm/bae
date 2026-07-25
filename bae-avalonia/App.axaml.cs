@@ -178,6 +178,16 @@ public sealed partial class App : Application
         NativeBae.Startup(BaeDiagnostics.Handle);
         OAuthCreds.Register();
 
+        // Assert this app as the OS handler for bae:// links and folders, gated to
+        // a real Velopack install so a dev run or a loose copy never points the
+        // user's desktop at build output. Asserting it on every launch is what keeps
+        // the command naming where the app is now, and re-resolves the labels that
+        // are localized after a locale change.
+        if (UpdateService.IsInstalled)
+        {
+            ProtocolRegistration.Register();
+        }
+
         _session = new SessionStore(Dispatcher.UIThread);
         // The OS now-playing surface is process-scoped, like the session it reads
         // through: a library switch frees and reopens the handle underneath both,

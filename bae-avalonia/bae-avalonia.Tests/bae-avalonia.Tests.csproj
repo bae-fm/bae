@@ -20,9 +20,10 @@
       preference, and the album-grid multi-selection) — plain BCL types; the
       stores and views that render bridge snapshots are verified by compilation.
     - The output-queue decision layer (OutputQueueModel), the update-flow layer
-      (UpdateFlow), the Remove-library decision layer (ForgetLibraryModel), and
-      the activation-intent model (ActivationIntentModel) — all over plain BCL
-      types; the shells that produce their states are verified by compilation.
+      (UpdateFlow), the Remove-library decision layer (ForgetLibraryModel), the
+      activation-intent model (ActivationIntentModel), and the desktop-entry text
+      the Linux handler registration writes (DesktopEntryModel) — all over plain
+      BCL types; the shells that produce their states are verified by compilation.
   -->
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
@@ -64,6 +65,7 @@
     <Compile Include="../Stores/PaginatedList.cs" Link="PaginatedList.cs" />
     <Compile Include="../Stores/LibraryPageSource.cs" Link="LibraryPageSource.cs" />
     <Compile Include="../ActivationIntentModel.cs" Link="ActivationIntentModel.cs" />
+    <Compile Include="../DesktopEntryModel.cs" Link="DesktopEntryModel.cs" />
   </ItemGroup>
 
   <ItemGroup>

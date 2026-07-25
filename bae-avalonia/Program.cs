@@ -43,7 +43,17 @@ internal static class Program
         // exits the process for them, so it runs before anything else initializes
         // — and before the single-instance election, which a hook run must not
         // take part in.
-        VelopackApp.Build().Run();
+        var velopack = VelopackApp.Build();
+        if (OperatingSystem.IsWindows())
+        {
+            // The pre-uninstall hook takes back the OS handler registration every
+            // normal launch asserts; it runs ahead of any resource initialization,
+            // so it must not reach for a localized string. Windows is the only
+            // platform with an uninstaller to run it — Velopack never triggers this
+            // hook elsewhere.
+            velopack.OnBeforeUninstallFastCallback(_ => ProtocolRegistration.Unregister());
+        }
+        velopack.Run();
 
         // One instance per edition. A second launch forwards its argv (a bae://
         // URL or file/folder args) to the running instance and exits.
