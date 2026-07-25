@@ -219,7 +219,8 @@ internal static class ShotCapture
             app,
             new ReleaseActionDialogs(app, modalHost, lightbox),
             new ImportDialogs(app, modalHost, lightbox, _ => Task.CompletedTask),
-            new StorageDialog(app, modalHost));
+            new StorageDialog(app, modalHost),
+            new SettingsWindow(app));
     }
 
     // A LibraryService whose album/composer/artist counts are zero and whose pages

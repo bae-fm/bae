@@ -41,7 +41,10 @@ internal sealed class MainWindow : Window
         // the shell is built just below, so the callback reads the field at call time.
         var importDialogs = new ImportDialogs(_app, modalHost, lightbox, albumId => _shell.OpenAlbum(albumId));
         var storageDialog = new StorageDialog(_app, modalHost);
-        _shell = new MainShellView(_app, dialogs, importDialogs, storageDialog);
+        // The settings window is a real window (like macOS's Settings scene) with
+        // its own modal host for its sub-dialogs; the gear opens it.
+        var settingsWindow = new SettingsWindow(_app);
+        _shell = new MainShellView(_app, dialogs, importDialogs, storageDialog, settingsWindow);
         var root = new Panel();
         root.Children.Add(_shell);
         root.Children.Add(modalHost);

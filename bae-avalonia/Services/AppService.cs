@@ -30,6 +30,9 @@ internal sealed class AppService
     public SettingsService Settings { get; }
     public ImportService Import { get; }
     public ReleaseEditorService ReleaseEditor { get; }
+    public DiscogsService Discogs { get; }
+    public AutomationService Automation { get; }
+    public SubsonicService Subsonic { get; }
 
     // The OS now-playing / media-key surface. One instance for the window's
     // lifetime; a library switch deactivates it rather than recreating it. The
@@ -68,7 +71,10 @@ internal sealed class AppService
             CastService.FromSession(session),
             SettingsService.FromSession(session),
             ImportService.FromSession(session),
-            ReleaseEditorService.FromSession(session))
+            ReleaseEditorService.FromSession(session),
+            DiscogsService.FromSession(session),
+            AutomationService.FromSession(session),
+            SubsonicService.FromSession(session))
     {
     }
 
@@ -87,7 +93,10 @@ internal sealed class AppService
         CastService cast,
         SettingsService settings,
         ImportService import,
-        ReleaseEditorService releaseEditor)
+        ReleaseEditorService releaseEditor,
+        DiscogsService discogs,
+        AutomationService automation,
+        SubsonicService subsonic)
     {
         Session = session;
         Library = library;
@@ -100,6 +109,9 @@ internal sealed class AppService
         Settings = settings;
         Import = import;
         ReleaseEditor = releaseEditor;
+        Discogs = discogs;
+        Automation = automation;
+        Subsonic = subsonic;
 
         ShellStore = new ShellStore();
         PlaybackStore = new PlaybackStore();
@@ -173,7 +185,10 @@ internal sealed class AppService
             new CastService(),
             new SettingsService(),
             new ImportService(),
-            new ReleaseEditorService());
+            new ReleaseEditorService(),
+            new DiscogsService(),
+            new AutomationService(),
+            new SubsonicService());
 #endif
 
     /// <summary>Route a caught error to the shell's error banner — the macOS

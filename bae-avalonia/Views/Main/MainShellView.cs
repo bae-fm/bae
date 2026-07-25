@@ -19,6 +19,7 @@ internal sealed class MainShellView : UserControl
 {
     private readonly AppService _app;
     private readonly StorageDialog _storageDialog;
+    private readonly SettingsWindow _settingsWindow;
     private readonly LibraryBrowserView _browser;
     private readonly ImportSectionView _importSection;
     private readonly QueuePane _queuePane;
@@ -30,10 +31,11 @@ internal sealed class MainShellView : UserControl
     private Border _importSegment = null!;
     private TextBlock _importLabel = null!;
 
-    public MainShellView(AppService app, ReleaseActionDialogs dialogs, ImportDialogs importDialogs, StorageDialog storageDialog)
+    public MainShellView(AppService app, ReleaseActionDialogs dialogs, ImportDialogs importDialogs, StorageDialog storageDialog, SettingsWindow settingsWindow)
     {
         _app = app;
         _storageDialog = storageDialog;
+        _settingsWindow = settingsWindow;
 
         var root = new Grid { RowDefinitions = new RowDefinitions("Auto,*,Auto") };
         SetBg(root, "BaeBackgroundBrush");
@@ -142,10 +144,11 @@ internal sealed class MainShellView : UserControl
             VerticalAlignment = VerticalAlignment.Center,
         };
         right.Children.Add(BuildSearchField());
-        // The gear opens Settings on click (wired with the settings window); its
-        // right-click flyout carries the commands macOS keeps in its menu bar —
-        // Storage today, the rest as their flows migrate.
+        // The gear opens Settings on click; its right-click flyout carries the
+        // commands macOS keeps in its menu bar — Storage today, the rest as their
+        // flows migrate.
         var gear = Icons.IconButton(Icons.Gear, 18, "BaeTextSecondaryBrush", 34);
+        gear.Click += (_, _) => _settingsWindow.Show();
         gear.ContextFlyout = BuildGearMenu();
         right.Children.Add(gear);
         grid.Children.Add(right);

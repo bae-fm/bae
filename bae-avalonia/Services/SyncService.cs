@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using uniffi.bae_bridge;
 
@@ -16,14 +17,19 @@ namespace Bae.Desktop;
 /// </summary>
 internal sealed class SyncService
 {
-    public Func<BridgeCloudProvider, BridgeHomeStorage, Task<(bool Current, string? Error)>> SignInCloudProvider { get; init; }
+    /// <summary>Run the OAuth browser sign-in for a provider (wire tag) at a home
+    /// storage mode (<c>opaque</c> / <c>browsable</c>), connecting it as the sync
+    /// home. The bridge maps the tags to its enums.</summary>
+    public Func<string, string, Task<(bool Current, string? Error)>> SignInCloudProvider { get; init; }
         = (_, _) => throw new InvalidOperationException("SyncService stub: SignInCloudProvider not wired");
 
     public Func<(bool Current, string? Error)> DisconnectCloudProvider { get; init; }
         = () => throw new InvalidOperationException("SyncService stub: DisconnectCloudProvider not wired");
 
-    public Func<BridgeSaveSyncConfig, Task<(bool Current, string? Error)>> SaveSyncConfig { get; init; }
-        = _ => throw new InvalidOperationException("SyncService stub: SaveSyncConfig not wired");
+    /// <summary>Connect an S3-compatible bucket as the sync home: the bucket probe
+    /// runs before the write. The bridge maps the storage-mode tag to its enum.</summary>
+    public Func<string, string, string, string, string, string, string, Task<(bool Current, string? Error)>> SaveSyncConfig { get; init; }
+        = (_, _, _, _, _, _, _) => throw new InvalidOperationException("SyncService stub: SaveSyncConfig not wired");
 
     /// <summary>Generate a fresh restore code (returns the code, or the error line).</summary>
     public Func<Task<(bool Current, string? Code)>> GenerateRestoreCode { get; init; }
@@ -96,13 +102,27 @@ internal sealed class SyncService
     public Func<Task<(bool Current, (BridgeOutboxSnapshot? Snapshot, string? Error) Result)>> OutboxSnapshot { get; init; }
         = () => throw new InvalidOperationException("SyncService stub: OutboxSnapshot not wired");
 
+    /// <summary>The cloud providers this build's native library links, as wire tags
+    /// (<c>s3</c>, <c>google_drive</c>, …). An S3-only build returns just S3, so the
+    /// settings cloud section offers no OAuth sign-in. Handle-less.</summary>
+    public Func<IReadOnlyList<string>> AvailableCloudProviders { get; init; }
+        = () => throw new InvalidOperationException("SyncService stub: AvailableCloudProviders not wired");
+
+    /// <summary>Decode a joining device's request code into its fingerprint / public
+    /// key / email, for the owner-side approve flow. Throws on an unparseable code.
+    /// Handle-less.</summary>
+    public Func<string, BridgeJoinRequestInfo> DecodeJoinRequest { get; init; }
+        = _ => throw new InvalidOperationException("SyncService stub: DecodeJoinRequest not wired");
+
     /// <summary>Wire every operation through the open session's current handle.</summary>
     public static SyncService FromSession(SessionStore session) => new()
     {
         SignInCloudProvider = (provider, storage) =>
             session.RunForCurrentHandle(handle => NativeBae.SignInCloud(handle, provider, storage)),
         DisconnectCloudProvider = () => session.WithCurrentHandle(NativeBae.DisconnectCloud),
-        SaveSyncConfig = config => session.RunForCurrentHandle(handle => NativeBae.SaveSyncConfig(handle, config)),
+        SaveSyncConfig = (bucket, region, endpoint, keyPrefix, accessKey, secretKey, storage) =>
+            session.RunForCurrentHandle(handle =>
+                NativeBae.SaveSyncConfig(handle, bucket, region, endpoint, keyPrefix, accessKey, secretKey, storage)),
         GenerateRestoreCode = () => session.RunForCurrentHandle(NativeBae.GenerateRestoreCode),
         GetMembers = () => session.RunForCurrentHandle(NativeBae.GetMembers),
         InviteMember = (publicKeyHex, email) =>
@@ -122,5 +142,7 @@ internal sealed class SyncService
         SetMaxConcurrentUploads = n => session.WithCurrentHandle(handle => NativeBae.SetMaxConcurrentUploads(handle, n)),
         SyncStatus = () => session.WithCurrentHandle(NativeBae.SyncStatus),
         OutboxSnapshot = () => session.RunForCurrentHandle(NativeBae.OutboxSnapshot),
+        AvailableCloudProviders = NativeBae.AvailableCloudProviders,
+        DecodeJoinRequest = NativeBae.DecodeJoinRequest,
     };
 }

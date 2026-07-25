@@ -83,6 +83,22 @@ internal sealed class DownloadsService
     public Func<Task<(bool Current, BridgeOutputSnapshot Snapshot)>> OutputSnapshot { get; init; }
         = () => throw new InvalidOperationException("DownloadsService stub: OutputSnapshot not wired");
 
+    /// <summary>Replace the configured export presets whole (the settings Formats
+    /// section sends the entire set, never one mutated field); returns the error
+    /// line, or null on success.</summary>
+    public Func<IReadOnlyList<SavePreset>, Task<(bool Current, string? Error)>> SetSavePresets { get; init; }
+        = _ => throw new InvalidOperationException("DownloadsService stub: SetSavePresets not wired");
+
+    /// <summary>Set the default save preset for a track-scope save; returns the
+    /// error line, or null on success.</summary>
+    public Func<string, Task<(bool Current, string? Error)>> SetDefaultTrackSavePreset { get; init; }
+        = _ => throw new InvalidOperationException("DownloadsService stub: SetDefaultTrackSavePreset not wired");
+
+    /// <summary>Set the default save preset for a release-scope save; returns the
+    /// error line, or null on success.</summary>
+    public Func<string, Task<(bool Current, string? Error)>> SetDefaultReleaseSavePreset { get; init; }
+        = _ => throw new InvalidOperationException("DownloadsService stub: SetDefaultReleaseSavePreset not wired");
+
     /// <summary>Wire every control through the open session's current handle.</summary>
     public static DownloadsService FromSession(SessionStore session) => new()
     {
@@ -101,5 +117,10 @@ internal sealed class DownloadsService
             session.RunForCurrentHandle(handle => NativeBae.MakeReleaseLocal(handle, releaseId, newPath)),
         DownloadSnapshot = () => session.RunForCurrentHandle(NativeBae.DownloadSnapshot),
         OutputSnapshot = () => session.RunForCurrentHandle(NativeBae.OutputSnapshot),
+        SetSavePresets = presets => session.RunForCurrentHandle(handle => NativeBae.SetSavePresets(handle, presets)),
+        SetDefaultTrackSavePreset = presetId =>
+            session.RunForCurrentHandle(handle => NativeBae.SetDefaultTrackSavePreset(handle, presetId)),
+        SetDefaultReleaseSavePreset = presetId =>
+            session.RunForCurrentHandle(handle => NativeBae.SetDefaultReleaseSavePreset(handle, presetId)),
     };
 }
