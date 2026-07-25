@@ -77,7 +77,12 @@ internal static class SmokeCreate
                 new ReleaseActionDialogs(app, modalHost, lightbox),
                 new ImportDialogs(app, modalHost, lightbox, _ => System.Threading.Tasks.Task.CompletedTask),
                 new StorageDialog(app, modalHost),
-                new SettingsWindow(app, closeLibrary, switchLibrary),
+                new SettingsWindow(
+                    app,
+                    new UpdateService(),
+                    closeLibrary,
+                    switchLibrary,
+                    () => System.Threading.Tasks.Task.CompletedTask),
                 new LibrariesDialog(app, modalHost, switchLibrary),
                 closeLibrary);
             var root = new Border { Width = 1350, Height = 850, Child = shell };

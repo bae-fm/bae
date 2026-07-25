@@ -26,8 +26,10 @@ internal sealed partial class MainWindow : Window
     public MainWindow(
         SessionStore session,
         IMediaControl mediaControl,
+        UpdateService updates,
         Func<Task> closeLibrary,
-        Func<string, Task> switchLibrary)
+        Func<string, Task> switchLibrary,
+        Func<Task> applyUpdateAndRestart)
     {
         _closeLibrary = closeLibrary;
         _switchLibrary = switchLibrary;
@@ -59,8 +61,11 @@ internal sealed partial class MainWindow : Window
         // switch and close callbacks are threaded to each.
         var librariesDialog = new LibrariesDialog(_app, modalHost, switchLibrary);
         // The settings window is a real window (like macOS's Settings scene) with
-        // its own modal host for its sub-dialogs; the gear opens it.
-        var settingsWindow = new SettingsWindow(_app, closeLibrary, switchLibrary);
+        // its own modal host for its sub-dialogs; the gear opens it. Its updates
+        // section drives the process-wide update service, and applying a staged
+        // update exits the app, so the coordinator owns that path too.
+        var settingsWindow = new SettingsWindow(
+            _app, updates, closeLibrary, switchLibrary, applyUpdateAndRestart);
         _shell = new MainShellView(
             _app, dialogs, importDialogs, storageDialog, settingsWindow, librariesDialog, closeLibrary);
         var root = new Panel();

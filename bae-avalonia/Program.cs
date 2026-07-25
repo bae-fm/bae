@@ -1,14 +1,15 @@
 using Avalonia;
+using Velopack;
 #if DEBUG
 using Avalonia.Headless;
 #endif
 
 namespace Bae.Desktop;
 
-// Plain Avalonia entry point. Single-instance forwarding and activation intents
-// arrive with the welcome/main windows; this stays the bare bootstrap. In DEBUG
-// the --capture-shots flag diverts to the off-screen headless render path before
-// any window opens.
+// Plain Avalonia entry point: the Velopack hook, the single-instance election
+// that forwards a second launch's argv to the running instance, then the desktop
+// lifetime. In DEBUG the --capture-shots flag diverts to the off-screen headless
+// render path before any window opens.
 internal static class Program
 {
     [STAThread]
@@ -32,6 +33,12 @@ internal static class Program
             return SmokeCreate.Run(smokeDir);
         }
 #endif
+
+        // Handles the Velopack install / update / uninstall hook arguments and
+        // exits the process for them, so it runs before anything else initializes
+        // — and before the single-instance election, which a hook run must not
+        // take part in.
+        VelopackApp.Build().Run();
 
         // One instance per edition. A second launch forwards its argv (a bae://
         // URL or file/folder args) to the running instance and exits.

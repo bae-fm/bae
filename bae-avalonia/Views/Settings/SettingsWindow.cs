@@ -13,9 +13,9 @@ namespace Bae.Desktop;
 
 // The settings window: library label, playback preferences, export formats, MCP
 // automation, the Subsonic server, the Discogs key, cloud sync (disconnect / S3 /
-// OAuth), devices (membership + approve), and the recovery code. A real window,
-// like macOS's Settings scene; its own modal host presents the sub-dialogs (the
-// preset editor, delete confirm, the approve flow) directly over it. Every read
+// OAuth), devices (membership + approve), the recovery code, and updates. A real
+// window, like macOS's Settings scene; its own modal host presents the sub-dialogs
+// (the preset editor, delete confirm, the approve flow) directly over it. Every read
 // and write goes through the app services, never NativeBae. Reads the settings
 // through the settings mirror and re-renders when a config invalidation — or an
 // in-window connect/disconnect — reloads them; those registrations live only
@@ -24,11 +24,17 @@ internal sealed partial class SettingsWindow
 {
     private readonly AppService _app;
 
-    // The coordinator's window-swap callbacks: closeToWelcome returns to the welcome
-    // chooser (after forgetting the library); switchLibrary re-opens a library (used
-    // to land on the unlock prompt after locking the current one).
+    // The process-wide update service the updates section renders and drives.
+    private readonly UpdateService _updates;
+
+    // The coordinator's callbacks: closeToWelcome returns to the welcome chooser
+    // (after forgetting the library); switchLibrary re-opens a library (used to land
+    // on the unlock prompt after locking the current one); applyUpdateAndRestart is
+    // an app-exit path — it tears the session down and relaunches into the staged
+    // update, so the coordinator owns it the way it owns quitting.
     private readonly Func<Task> _closeToWelcome;
     private readonly Func<string, Task> _switchLibrary;
+    private readonly Func<Task> _applyUpdateAndRestart;
 
     // The one open settings window; Show re-activates it instead of stacking a
     // second.
@@ -42,11 +48,18 @@ internal sealed partial class SettingsWindow
     private bool _refreshingSettings;
     private bool _discogsBusy;
 
-    public SettingsWindow(AppService app, Func<Task> closeToWelcome, Func<string, Task> switchLibrary)
+    public SettingsWindow(
+        AppService app,
+        UpdateService updates,
+        Func<Task> closeToWelcome,
+        Func<string, Task> switchLibrary,
+        Func<Task> applyUpdateAndRestart)
     {
         _app = app;
+        _updates = updates;
         _closeToWelcome = closeToWelcome;
         _switchLibrary = switchLibrary;
+        _applyUpdateAndRestart = applyUpdateAndRestart;
     }
 
     public void Show()
@@ -97,6 +110,7 @@ internal sealed partial class SettingsWindow
         BuildCloud(content, renderers);
         BuildMembers(content);
         BuildRecovery(content);
+        var unsubscribeUpdates = BuildUpdates(content);
         BuildLibraryLifecycle(content, renderers);
 
         foreach (var render in renderers)
@@ -144,6 +158,7 @@ internal sealed partial class SettingsWindow
         {
             _app.SettingsStore.Changed -= Refresh;
             configRegistration.Dispose();
+            unsubscribeUpdates?.Invoke();
             _window = null;
         };
 

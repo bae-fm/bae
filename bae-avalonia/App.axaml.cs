@@ -17,10 +17,12 @@ public sealed partial class App : Application
 {
     private SessionStore? _session;
     private IMediaControl? _mediaControl;
+    private UpdateService? _updateService;
     private MainWindow? _main;
     private WelcomeWindow? _welcome;
 
-    // Set once the quit teardown has started. The shutdown that follows it is
+    // Set once the exit teardown has started, by whichever exit runs it — the
+    // quit path or the update restart. The shutdown that follows the quit path is
     // forced and so never re-enters the handler, but a second quit request
     // arriving while the teardown is still running would, and must not run it
     // twice.
@@ -28,6 +30,7 @@ public sealed partial class App : Application
 
     private SessionStore Session => _session!;
     private IMediaControl MediaControl => _mediaControl!;
+    private UpdateService Updates => _updateService!;
 
     // The edition key for single-instancing and per-edition state. The full
     // (OAuth) edition compiles with BAE_FULL_BRIDGE; the baeium edition doesn't.
@@ -92,6 +95,29 @@ public sealed partial class App : Application
         }
 
         _quitting = true;
+        await TearDownSession();
+        desktop.Shutdown();
+    }
+
+    // Applying a staged update relaunches the app, so it is an exit like quitting
+    // and runs the same teardown: ApplyAndRestart never returns, and anything the
+    // teardown persists would otherwise be lost. The settings window has already
+    // closed itself by the time this runs.
+    private async Task ApplyUpdateAndRestart()
+    {
+        if (_quitting)
+        {
+            return;
+        }
+
+        _quitting = true;
+        await TearDownSession();
+        Updates.ApplyAndRestart();
+    }
+
+    // What every exit does before the process goes away.
+    private async Task TearDownSession()
+    {
         // Clear the now-playing surface first, so no entry for a library that is
         // going away lingers while the rest of the shutdown runs.
         MediaControl.Deactivate();
@@ -101,7 +127,12 @@ public sealed partial class App : Application
         // The handle's graceful shutdown is what persists playback state for the
         // next launch. A no-op when no library is open.
         await Session.ShutdownAndFreeCurrentHandle();
-        desktop.Shutdown();
+        // Release the surface here rather than leaving it to the lifetime's Exit,
+        // which an update restart never reaches: it hands the process to the new
+        // build, which asks for the same bus name and is refused while this one
+        // still holds it. Idempotent, so the Exit hook that covers an exit
+        // skipping this teardown stays as it is.
+        MediaControl.Dispose();
     }
 
     // Telemetry first (so the sink exists for every later step and any failure it
@@ -132,6 +163,15 @@ public sealed partial class App : Application
             quit: () => Dispatcher.UIThread.Post(() =>
                 (ApplicationLifetime as IClassicDesktopStyleApplicationLifetime)?.TryShutdown()));
 
+        // One update service for the process, so this launch check and the
+        // settings section share a single flow. The check is silent and
+        // fire-and-forget — the service catches and logs every failure, and this
+        // is async I/O, so it never blocks startup — and it runs from here rather
+        // than from the library window so a launch that lands on the welcome
+        // window checks too.
+        _updateService = new UpdateService();
+        _ = _updateService.CheckInBackgroundAsync();
+
         var libraries = LibraryDiscovery.Load(_ => { }).Where(library => library.Error is null).ToList();
         var openable = libraries.FirstOrDefault(library => library.IsActive)
             ?? libraries.FirstOrDefault();
@@ -161,7 +201,8 @@ public sealed partial class App : Application
                 return;
         }
 
-        var main = new MainWindow(Session, MediaControl, CloseLibrary, SwitchLibrary);
+        var main = new MainWindow(
+            Session, MediaControl, Updates, CloseLibrary, SwitchLibrary, ApplyUpdateAndRestart);
         _main = main;
         main.Show();
         // Attach from here rather than from the window's own Opened/Closed: a swap
