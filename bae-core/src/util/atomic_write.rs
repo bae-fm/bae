@@ -122,9 +122,15 @@ mod tests {
 
         let err = write_atomic(&path, b"new config").unwrap_err().into_inner();
 
+        // The rename onto a path already held by a directory fails, but the kind
+        // is the OS's call: `AlreadyExists`/`IsADirectory` on Unix, and
+        // `PermissionDenied` on Windows (`MoveFileEx` returns ERROR_ACCESS_DENIED,
+        // os error 5, when the destination is a directory).
         assert!(matches!(
             err.kind(),
-            std::io::ErrorKind::AlreadyExists | std::io::ErrorKind::IsADirectory
+            std::io::ErrorKind::AlreadyExists
+                | std::io::ErrorKind::IsADirectory
+                | std::io::ErrorKind::PermissionDenied
         ));
         assert!(path.is_dir());
         let temp_names: Vec<_> = std::fs::read_dir(tmp.path())
