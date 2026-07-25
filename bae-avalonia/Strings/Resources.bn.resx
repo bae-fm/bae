@@ -1,0 +1,442 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <data name="SearchBox.PlaceholderText" xml:space="preserve"><value>খুঁজুন</value></data>
+  <data name="toolbar.libraries" xml:space="preserve"><value>লাইব্রেরি</value></data>
+  <data name="ShuffleLibraryMenuItem.Text" xml:space="preserve"><value>লাইব্রেরি শাফল করুন</value></data>
+  <data name="toolbar.storage" xml:space="preserve"><value>স্টোরেজ</value></data>
+  <data name="toolbar.settings" xml:space="preserve"><value>সেটিংস</value></data>
+  <data name="action.cancel" xml:space="preserve"><value>বাতিল</value></data>
+  <data name="action.close" xml:space="preserve"><value>বন্ধ</value></data>
+  <data name="action.delete" xml:space="preserve"><value>মুছুন</value></data>
+  <data name="action.import" xml:space="preserve"><value>ইম্পোর্ট</value></data>
+  <data name="action.ok" xml:space="preserve"><value>OK</value></data>
+  <data name="action.play" xml:space="preserve"><value>চালান</value></data>
+  <data name="action.save" xml:space="preserve"><value>সংরক্ষণ</value></data>
+  <data name="action.search" xml:space="preserve"><value>অনুসন্ধান</value></data>
+  <data name="album.delete.body" xml:space="preserve"><value>এটি লাইব্রেরি থেকে রিলিজটি সরায়।</value></data>
+  <data name="album.delete.failed" xml:space="preserve"><value>মোছা যায়নি</value></data>
+  <data name="album.delete.title" xml:space="preserve"><value>রিলিজ মুছবেন?</value></data>
+  <data name="album.edit.label" xml:space="preserve"><value>সম্পাদনা করুন</value></data>
+  <data name="album.edit.load_failed" xml:space="preserve"><value>মেটাডেটা সম্পাদক লোড করা যায়নি</value></data>
+  <data name="album.edit.reset" xml:space="preserve"><value>উৎসে রিসেট করুন</value></data>
+  <data name="album.edit.reset_failed" xml:space="preserve"><value>উৎসে রিসেট করা যায়নি</value></data>
+  <data name="album.edit.title" xml:space="preserve"><value>মেটাডেটা সম্পাদনা করুন</value></data>
+  <data name="album.open_failed" xml:space="preserve"><value>এই অ্যালবাম খোলা যায়নি</value></data>
+  <data name="album.reidentify.label" xml:space="preserve"><value>আবার শনাক্ত করুন</value></data>
+  <data name="album.reidentify.confirm" xml:space="preserve"><value>আবার শনাক্ত করুন</value></data>
+  <data name="album.reidentify.title" xml:space="preserve"><value>আবার শনাক্ত করুন</value></data>
+  <data name="album.release_picker" xml:space="preserve"><value>রিলিজ</value></data>
+  <data name="album.shuffle" xml:space="preserve"><value>শাফল</value></data>
+  <data name="cloud.provider.dropbox" xml:space="preserve"><value>Dropbox</value></data>
+  <data name="cloud.provider.google_drive" xml:space="preserve"><value>Google Drive</value></data>
+  <data name="cloud.provider.onedrive" xml:space="preserve"><value>OneDrive</value></data>
+  <data name="cloud.provider.s3" xml:space="preserve"><value>S3</value></data>
+  <data name="cloud.signin.failed" xml:space="preserve"><value>ক্লাউড সাইন-ইন ব্যর্থ</value></data>
+  <data name="cloud.signin.in_progress" xml:space="preserve"><value>{provider}-এ সাইন ইন করা হচ্ছে…</value></data>
+  <data name="cloud.signin.not_configured" xml:space="preserve"><value>এই বিল্ডে ক্লাউড সাইন-ইন কনফিগার করা নেই (oauth-creds.json নেই)</value></data>
+  <data name="cloud.unsupported_provider" xml:space="preserve"><value>এই বিল্ড {provider} সিঙ্ক সমর্থন করে না</value></data>
+  <data name="cover.change_title" xml:space="preserve"><value>কভার পরিবর্তন করুন</value></data>
+  <data name="cover.fetch_failed" xml:space="preserve"><value>রিমোট কভার আনা যায়নি</value></data>
+  <data name="cover.fetching" xml:space="preserve"><value>কভার আনা হচ্ছে…</value></data>
+  <data name="cover.images_load_failed" xml:space="preserve"><value>এই রিলিজের ছবি লোড করা যায়নি</value></data>
+  <data name="cover.none_available" xml:space="preserve"><value>কোনো কভার আর্ট উপলব্ধ নেই — আমদানি তার ডিফল্ট কভার ব্যবহার করে।</value></data>
+  <data name="cover.none_remote" xml:space="preserve"><value>কোনো রিমোট কভার পাওয়া যায়নি</value></data>
+  <data name="cover.pick_hint" xml:space="preserve"><value>একটি কভার বাছুন, অথবা ডিফল্ট ব্যবহার করতে অনির্বাচিত রাখুন।</value></data>
+  <data name="cover.release_files" xml:space="preserve"><value>রিলিজ ফাইল</value></data>
+  <data name="cover.remote_sources" xml:space="preserve"><value>রিমোট উৎস</value></data>
+  <data name="cover.section_title" xml:space="preserve"><value>কভার</value></data>
+  <data name="cover.show_failed" xml:space="preserve"><value>রিমোট কভার দেখানো যায়নি: {detail}</value></data>
+  <data name="action.back" xml:space="preserve"><value>ফিরে যান</value></data>
+  <data name="action.copy" xml:space="preserve"><value>কপি করুন</value></data>
+  <data name="action.done" xml:space="preserve"><value>শেষ</value></data>
+  <data name="action.scan" xml:space="preserve"><value>স্ক্যান করুন…</value></data>
+  <data name="error.playback_title" xml:space="preserve"><value>প্লেব্যাক ত্রুটি</value></data>
+  <data name="error.title" xml:space="preserve"><value>ত্রুটি</value></data>
+  <data name="gallery.load_failed" xml:space="preserve"><value>গ্যালারি লোড করা যায়নি</value></data>
+  <data name="identify.conflict" xml:space="preserve"><value>দ্বন্দ্ব</value></data>
+  <data name="identify.found" xml:space="preserve"><value>{count, plural, one {পাওয়া গেছে (#)} other {পাওয়া গেছে (#)}}</value></data>
+  <data name="identify.identifying" xml:space="preserve"><value>শনাক্ত করা হচ্ছে…</value></data>
+  <data name="identify.manual" xml:space="preserve"><value>শুধু হাতে অনুসন্ধান</value></data>
+  <data name="identify.not_found" xml:space="preserve"><value>পাওয়া যায়নি</value></data>
+  <data name="import.already_in_library" xml:space="preserve"><value>এই রিলিজটি ইতিমধ্যে আপনার লাইব্রেরিতে আছে</value></data>
+  <data name="import.back_to_search" xml:space="preserve"><value>অনুসন্ধানে ফিরে যান</value></data>
+  <data name="import.choose_folder" xml:space="preserve"><value>ফোল্ডার বেছে নিন ও স্ক্যান করুন</value></data>
+  <data name="import.complete" xml:space="preserve"><value>আমদানি করা হয়েছে</value></data>
+  <data name="import.candidate.tracks" xml:space="preserve"><value>{count, plural, one {#টি ট্র্যাক} other {#টি ট্র্যাক}}</value></data>
+  <data name="import.confirm_title" xml:space="preserve"><value>আমদানি নিশ্চিত করুন</value></data>
+  <data name="import.drop_caption" xml:space="preserve"><value>স্ক্যান ও ইম্পোর্ট করুন</value></data>
+  <data name="import.drop_folder_only" xml:space="preserve"><value>আমদানির জন্য ফোল্ডার ছাড়ুন</value></data>
+  <data name="import.drop_read_failed" xml:space="preserve"><value>ছাড়া আইটেম পড়া যায়নি</value></data>
+  <data name="import.error_title" xml:space="preserve"><value>আমদানি ত্রুটি</value></data>
+  <data name="import.error.load_release" xml:space="preserve"><value>আমদানির রিলিজ লোড করা যায়নি</value></data>
+  <data name="import.failed" xml:space="preserve"><value>আমদানি ব্যর্থ</value></data>
+  <data name="import.field.artist_manual" xml:space="preserve"><value>শিল্পী (হাতে অনুসন্ধান)</value></data>
+  <data name="import.no_releases" xml:space="preserve"><value>কোনো রিলিজ পাওয়া যায়নি</value></data>
+  <data name="import.preview" xml:space="preserve"><value>প্রিভিউ</value></data>
+  <data name="import.progress.percent" xml:space="preserve"><value>{percent}% আমদানি হচ্ছে</value></data>
+  <data name="import.release_title" xml:space="preserve"><value>রিলিজ আমদানি করুন</value></data>
+  <data name="import.rerun_identify" xml:space="preserve"><value>শনাক্তকরণ আবার চালান</value></data>
+  <data name="import.scanning" xml:space="preserve"><value>স্ক্যান করা হচ্ছে…</value></data>
+  <data name="import.storage.keep_local" xml:space="preserve"><value>স্থানীয় কপি রাখুন</value></data>
+  <data name="import.storage.managed" xml:space="preserve"><value>পরিচালিত</value></data>
+  <data name="import.view_in_library" xml:space="preserve"><value>লাইব্রেরিতে দেখুন</value></data>
+  <data name="join.title" xml:space="preserve"><value>লাইব্রেরিতে যোগ দিন</value></data>
+  <data name="join.intro" xml:space="preserve"><value>আপনার অন্য ডিভাইসে থাকা লাইব্রেরিতে এই ডিভাইসটি যোগ করুন।</value></data>
+  <data name="join.this_device_code" xml:space="preserve"><value>এই ডিভাইসের কোড</value></data>
+  <data name="join.show_to_member" xml:space="preserve"><value>আপনার লাইব্রেরিতে আগে থেকেই থাকা ডিভাইসে সেটিংস → ডিভাইস → ডিভাইস যোগ করুন খুলুন এবং এটি স্ক্যান বা পেস্ট করুন।</value></data>
+  <data name="join.fingerprint" xml:space="preserve"><value>এই ডিভাইস: {fingerprint}</value></data>
+  <data name="join.generate_failed" xml:space="preserve"><value>এই ডিভাইসের কোড তৈরি করা যায়নি</value></data>
+  <data name="join.invite_label" xml:space="preserve"><value>আমন্ত্রণ কোড</value></data>
+  <data name="join.invite_hint" xml:space="preserve"><value>ওই ডিভাইসটি এটিকে অনুমোদন করলে, সেটি যে আমন্ত্রণ কোড দেখায় তা লিখুন।</value></data>
+  <data name="join.invite_placeholder" xml:space="preserve"><value>আমন্ত্রণ কোড পেস্ট করুন</value></data>
+  <data name="join.invalid_invite" xml:space="preserve"><value>অবৈধ আমন্ত্রণ কোড</value></data>
+  <data name="join.invite_for" xml:space="preserve"><value>{name} · {provider} · মালিক {fingerprint}</value></data>
+  <data name="join.confirm" xml:space="preserve"><value>যোগ দিন</value></data>
+  <data name="join.in_progress" xml:space="preserve"><value>{name}-এ যোগ দিচ্ছে…</value></data>
+  <data name="join.failed" xml:space="preserve"><value>লাইব্রেরিতে যোগ দেওয়া যায়নি</value></data>
+  <data name="libraries.active" xml:space="preserve"><value>{name}  ·  সক্রিয়</value></data>
+  <data name="libraries.new" xml:space="preserve"><value>নতুন লাইব্রেরি</value></data>
+  <data name="libraries.rename" xml:space="preserve"><value>নাম বদলান</value></data>
+  <data name="libraries.title" xml:space="preserve"><value>লাইব্রেরি</value></data>
+  <data name="library.empty" xml:space="preserve"><value>লাইব্রেরি খালি</value></data>
+  <data name="library.load_failed" xml:space="preserve"><value>লাইব্রেরি লোড করা যায়নি</value></data>
+  <data name="library.locked" xml:space="preserve"><value>লাইব্রেরি লক করা</value></data>
+  <data name="library.open_failed" xml:space="preserve"><value>লাইব্রেরি খোলা যায়নি</value></data>
+  <data name="library.unlock.body" xml:space="preserve"><value>এই লাইব্রেরি এনক্রিপ্ট করা এবং এর কী এই ডিভাইসে নেই। এটি আনলক করতে ৬৪-অক্ষরের হেক্স কী লিখুন।</value></data>
+  <data name="library.unlock.confirm" xml:space="preserve"><value>আনলক</value></data>
+  <data name="library.unlock.key_placeholder" xml:space="preserve"><value>৬৪-অক্ষরের হেক্স কী</value></data>
+  <data name="library.unlock.title" xml:space="preserve"><value>লাইব্রেরি আনলক করুন</value></data>
+  <data name="menu.add_to_queue" xml:space="preserve"><value>সারিতে যোগ করুন</value></data>
+  <data name="menu.change_cover" xml:space="preserve"><value>কভার পরিবর্তন করুন…</value></data>
+  <data name="menu.delete" xml:space="preserve"><value>মুছুন…</value></data>
+  <data name="menu.export" xml:space="preserve"><value>এক্সপোর্ট…</value></data>
+  <data name="menu.save_as" xml:space="preserve"><value>নামে সংরক্ষণ করুন…</value></data>
+  <data name="save.title" xml:space="preserve"><value>নামে সংরক্ষণ করুন</value></data>
+  <data name="menu.play" xml:space="preserve"><value>চালান</value></data>
+  <data name="menu.play_next" xml:space="preserve"><value>এরপর চালান</value></data>
+  <data name="menu.set_primary" xml:space="preserve"><value>প্রাথমিক রিলিজ হিসেবে সেট করুন</value></data>
+  <data name="menu.set_primary_done" xml:space="preserve"><value>প্রাথমিক রিলিজ হিসেবে সেট করুন</value></data>
+  <data name="members.title" xml:space="preserve"><value>ডিভাইস</value></data>
+  <data name="members.this_device" xml:space="preserve"><value>এই ডিভাইস</value></data>
+  <data name="members.role.owner" xml:space="preserve"><value>মালিক</value></data>
+  <data name="members.role.member" xml:space="preserve"><value>সদস্য</value></data>
+  <data name="members.role.follower" xml:space="preserve"><value>অনুসারী</value></data>
+  <data name="members.load_failed" xml:space="preserve"><value>ডিভাইস লোড করা যায়নি</value></data>
+  <data name="members.add" xml:space="preserve"><value>একটি ডিভাইস যোগ করুন…</value></data>
+  <data name="members.remove" xml:space="preserve"><value>সরান</value></data>
+  <data name="members.remove_confirm" xml:space="preserve"><value>এই ডিভাইস অ্যাক্সেস হারাবে এবং লাইব্রেরি কী ঘোরানো হবে। নিশ্চিত করতে আবার সরান ক্লিক করুন।</value></data>
+  <data name="members.approve.title" xml:space="preserve"><value>একটি ডিভাইস যোগ করুন</value></data>
+  <data name="members.approve.capture_hint" xml:space="preserve"><value>নতুন ডিভাইসে লাইব্রেরিতে যোগ দিন খুলে তার কোড দেখান। এখানে স্ক্যান করুন, অথবা নিচে পেস্ট করুন।</value></data>
+  <data name="members.approve.paste_placeholder" xml:space="preserve"><value>ডিভাইসের কোড পেস্ট করুন</value></data>
+  <data name="members.approve.decode" xml:space="preserve"><value>ডিকোড</value></data>
+  <data name="members.approve.invalid_request" xml:space="preserve"><value>অবৈধ ডিভাইস কোড</value></data>
+  <data name="members.approve.confirm_title" xml:space="preserve"><value>এই ডিভাইসটি অনুমোদন করবেন?</value></data>
+  <data name="members.approve.confirm_hint" xml:space="preserve"><value>এটি আপনার লাইব্রেরিতে যোগ হবে এবং সিঙ্ক করতে পারবে। এতে লেখার জন্য আপনি একটি কোড পাবেন।</value></data>
+  <data name="members.approve.confirm" xml:space="preserve"><value>অনুমোদন করুন</value></data>
+  <data name="members.approve.in_progress" xml:space="preserve"><value>ডিভাইস অনুমোদন করা হচ্ছে…</value></data>
+  <data name="members.approve.failed" xml:space="preserve"><value>এই ডিভাইসটি অনুমোদন করা যায়নি</value></data>
+  <data name="members.approve.invited_hint" xml:space="preserve"><value>নতুন ডিভাইসে এই কোড লিখুন।</value></data>
+  <data name="nowplaying.go_to_album" xml:space="preserve"><value>অ্যালবামে যান</value></data>
+  <data name="outbox.delete.kind" xml:space="preserve"><value>মুছুন</value></data>
+  <data name="outbox.cancel_item" xml:space="preserve"><value>বাতিল করুন</value></data>
+  <data name="outbox.load_failed" xml:space="preserve"><value>আউটবক্স লোড করা যায়নি</value></data>
+  <data name="outbox.pause" xml:space="preserve"><value>বিরতি</value></data>
+  <data name="outbox.read_failed" xml:space="preserve"><value>আউটবক্স পড়া যায়নি</value></data>
+  <data name="outbox.resume" xml:space="preserve"><value>আবার শুরু করুন</value></data>
+  <data name="outbox.retry_now" xml:space="preserve"><value>এখন আবার চেষ্টা করুন</value></data>
+  <data name="queue.clear" xml:space="preserve"><value>মুছুন</value></data>
+  <data name="queue.clear_playing_from" xml:space="preserve"><value>প্লেব্যাক উৎস মুছুন</value></data>
+  <data name="queue.clear_up_next" xml:space="preserve"><value>“এরপর” তালিকা মুছুন</value></data>
+  <data name="queue.remove_item" xml:space="preserve"><value>সারি থেকে সরান</value></data>
+  <data name="queue.section.playing_from" xml:space="preserve"><value>যা থেকে চলছে</value></data>
+  <data name="queue.section.your_library" xml:space="preserve"><value>আপনার লাইব্রেরি</value></data>
+  <data name="queue.section.up_next" xml:space="preserve"><value>এরপর</value></data>
+  <data name="queue.shuffle.off" xml:space="preserve"><value>শাফল বন্ধ করুন</value></data>
+  <data name="queue.shuffle.on" xml:space="preserve"><value>শাফল</value></data>
+  <data name="queue.title" xml:space="preserve"><value>সারি</value></data>
+  <data name="restore.confirm" xml:space="preserve"><value>রিস্টোর</value></data>
+  <data name="restore.failed" xml:space="preserve"><value>রিস্টোর ব্যর্থ</value></data>
+  <data name="restore.field.cloud_storage" xml:space="preserve"><value>ক্লাউড স্টোরেজ</value></data>
+  <data name="restore.field.encryption_key" xml:space="preserve"><value>এনক্রিপশন কী (হেক্স)</value></data>
+  <data name="restore.field.library_id" xml:space="preserve"><value>লাইব্রেরি ID</value></data>
+  <data name="restore.field.library_name" xml:space="preserve"><value>লাইব্রেরির নাম (ঐচ্ছিক)</value></data>
+  <data name="restore.from_cloud" xml:space="preserve"><value>ক্লাউড থেকে রিস্টোর করুন</value></data>
+  <data name="restore.from_cloud_title" xml:space="preserve"><value>ক্লাউড থেকে রিস্টোর করুন</value></data>
+  <data name="restore.in_progress" xml:space="preserve"><value>রিস্টোর হচ্ছে…</value></data>
+  <data name="s3.field.access_key" xml:space="preserve"><value>অ্যাক্সেস কী</value></data>
+  <data name="s3.field.bucket" xml:space="preserve"><value>S3 বাকেট</value></data>
+  <data name="s3.field.endpoint" xml:space="preserve"><value>এন্ডপয়েন্ট (ঐচ্ছিক)</value></data>
+  <data name="s3.field.key_prefix" xml:space="preserve"><value>কী প্রিফিক্স (ঐচ্ছিক)</value></data>
+  <data name="s3.field.region" xml:space="preserve"><value>অঞ্চল</value></data>
+  <data name="s3.field.secret_key" xml:space="preserve"><value>গোপন কী</value></data>
+  <data name="search.failed" xml:space="preserve"><value>অনুসন্ধান ব্যর্থ</value></data>
+  <data name="search.field.album" xml:space="preserve"><value>অ্যালবাম</value></data>
+  <data name="search.field.artist" xml:space="preserve"><value>শিল্পী</value></data>
+  <data name="search.field.source" xml:space="preserve"><value>উৎস</value></data>
+  <data name="search.no_matches" xml:space="preserve"><value>কোনো মিল নেই</value></data>
+  <data name="settings.discogs.label" xml:space="preserve"><value>Discogs টোকেন</value></data>
+  <data name="settings.discogs.recheck" xml:space="preserve"><value>আবার পরীক্ষা করুন</value></data>
+  <data name="settings.discogs.rejected" xml:space="preserve"><value>Discogs এই কী প্রত্যাখ্যান করেছে — এটি পরীক্ষা করে আবার সংরক্ষণ করুন।</value></data>
+  <data name="settings.discogs.remove" xml:space="preserve"><value>টোকেন সরান</value></data>
+  <data name="settings.discogs.save" xml:space="preserve"><value>টোকেন সংরক্ষণ করুন</value></data>
+  <data name="settings.discogs.save_failed" xml:space="preserve"><value>কী সংরক্ষণ করা যায়নি — কিছু ভুল হয়েছে।</value></data>
+  <data name="settings.discogs.token_placeholder" xml:space="preserve"><value>Discogs API টোকেন</value></data>
+  <data name="settings.discogs.validating" xml:space="preserve"><value>যাচাই করা হচ্ছে…</value></data>
+  <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>সাইডের মাঝে বিরতি</value></data>
+  <data name="settings.library_label" xml:space="preserve"><value>লাইব্রেরি: {name}</value></data>
+  <data name="settings.updates.title" xml:space="preserve"><value>আপডেট</value></data>
+  <data name="settings.updates.version" xml:space="preserve"><value>সংস্করণ {version}</value></data>
+  <data name="settings.updates.check" xml:space="preserve"><value>আপডেট পরীক্ষা করুন</value></data>
+  <data name="settings.updates.checking" xml:space="preserve"><value>পরীক্ষা করা হচ্ছে…</value></data>
+  <data name="settings.updates.up_to_date" xml:space="preserve"><value>হালনাগাদ</value></data>
+  <data name="settings.updates.downloading" xml:space="preserve"><value>ডাউনলোড হচ্ছে… {percent}%</value></data>
+  <data name="settings.updates.ready" xml:space="preserve"><value>সংস্করণ {version} প্রস্তুত — আপডেট করতে পুনরায় চালু করুন</value></data>
+  <data name="settings.updates.restart" xml:space="preserve"><value>এখন পুনরায় চালু করুন</value></data>
+  <data name="settings.updates.failed" xml:space="preserve"><value>আপডেট পরীক্ষা করা যায়নি</value></data>
+  <data name="settings.lock_library" xml:space="preserve"><value>লাইব্রেরি লক করুন</value></data>
+  <data name="settings.recovery.title" xml:space="preserve"><value>রিকভারি</value></data>
+  <data name="settings.recovery.intro" xml:space="preserve"><value>অনুমোদনের জন্য অন্য কোনো ডিভাইস না থাকলে আপনার রিকভারি কোড নতুন ডিভাইসে এই লাইব্রেরি ফিরিয়ে আনে। এটি যার কাছে আছে, সে পূর্ণ অ্যাক্সেস পাবে — গোপন রাখুন।</value></data>
+  <data name="settings.recovery.label" xml:space="preserve"><value>রিকভারি কোড</value></data>
+  <data name="settings.recovery.show" xml:space="preserve"><value>রিকভারি কোড দেখান…</value></data>
+  <data name="settings.recovery.unavailable" xml:space="preserve"><value>(অনুপলব্ধ — সিঙ্ক কি সংযুক্ত?)</value></data>
+  <data name="settings.s3.connect" xml:space="preserve"><value>S3 সংযোগ করুন</value></data>
+  <data name="settings.s3.connecting" xml:space="preserve"><value>S3-এ সংযোগ করা হচ্ছে…</value></data>
+  <data name="settings.storage.browsable" xml:space="preserve"><value>ব্রাউজযোগ্য — এনক্রিপ্ট না করে সংরক্ষিত</value></data>
+  <data name="settings.storage.mode" xml:space="preserve"><value>স্টোরেজ</value></data>
+  <data name="settings.storage.opaque" xml:space="preserve"><value>অস্বচ্ছ — প্রান্ত-থেকে-প্রান্ত এনক্রিপ্ট করা</value></data>
+  <data name="settings.sync.disconnect" xml:space="preserve"><value>সংযোগ বিচ্ছিন্ন করুন</value></data>
+  <data name="settings.sync.disconnect_confirm" xml:space="preserve"><value>{warning} নিশ্চিত করতে আবার সংযোগ বিচ্ছিন্ন করুন ক্লিক করুন।</value></data>
+  <data name="settings.sync.now" xml:space="preserve"><value>এখন সিঙ্ক করুন</value></data>
+  <data name="settings.title" xml:space="preserve"><value>সেটিংস</value></data>
+  <data name="signal.exclude" xml:space="preserve"><value>সংকেত বাদ দিন</value></data>
+  <data name="signal.include" xml:space="preserve"><value>সংকেত অন্তর্ভুক্ত করুন</value></data>
+  <data name="signal.kind.barcode" xml:space="preserve"><value>বারকোড</value></data>
+  <data name="signal.kind.catalog" xml:space="preserve"><value>ক্যাটালগ</value></data>
+  <data name="signal.kind.disc_id" xml:space="preserve"><value>ডিস্ক ID</value></data>
+  <data name="sort.artist" xml:space="preserve"><value>শিল্পী</value></data>
+  <data name="sort.criterion.add" xml:space="preserve"><value>সাজানো যোগ করুন</value></data>
+  <data name="sort.criterion.remove" xml:space="preserve"><value>সাজানো সরান</value></data>
+  <data name="sort.dateAdded" xml:space="preserve"><value>যোগ করার তারিখ</value></data>
+  <data name="sort.direction.ascending" xml:space="preserve"><value>ঊর্ধ্বক্রমে সাজান</value></data>
+  <data name="sort.direction.descending" xml:space="preserve"><value>অধঃক্রমে সাজান</value></data>
+  <data name="sort.name" xml:space="preserve"><value>নাম</value></data>
+  <data name="sort.title" xml:space="preserve"><value>শিরোনাম</value></data>
+  <data name="sort.year" xml:space="preserve"><value>বছর</value></data>
+  <data name="storage.action.manage" xml:space="preserve"><value>লাইব্রেরিতে সরান</value></data>
+  <data name="storage.action.pin" xml:space="preserve"><value>অফলাইনের জন্য পিন করুন</value></data>
+  <data name="storage.action.unmanage" xml:space="preserve"><value>লাইব্রেরি থেকে সরান…</value></data>
+  <data name="storage.action.unpin" xml:space="preserve"><value>স্থানীয় কপি সরান</value></data>
+  <data name="storage.files" xml:space="preserve"><value>{count, plural, one {#টি ফাইল} other {#টি ফাইল}}</value></data>
+  <data name="storage.load_failed" xml:space="preserve"><value>স্টোরেজ লোড করা যায়নি</value></data>
+  <data name="storage.pinned" xml:space="preserve"><value>পিন করা</value></data>
+  <data name="storage.read_failed" xml:space="preserve"><value>স্টোরেজ পড়া যায়নি</value></data>
+  <data name="storage.state.managed" xml:space="preserve"><value>পরিচালিত</value></data>
+  <data name="storage.state.unmanaged" xml:space="preserve"><value>অপরিচালিত</value></data>
+  <data name="storage.title" xml:space="preserve"><value>স্টোরেজ</value></data>
+  <data name="sync.error_title" xml:space="preserve"><value>সিঙ্ক ত্রুটি</value></data>
+  <data name="sync.reconnect" xml:space="preserve"><value>আবার সংযোগ</value></data>
+  <data name="sync.synced" xml:space="preserve"><value>সিঙ্ক হয়েছে {time}</value></data>
+  <data name="sync.syncing" xml:space="preserve"><value>সিঙ্ক হচ্ছে…</value></data>
+  <data name="track.export.prepare_failed" xml:space="preserve"><value>এক্সপোর্ট প্রস্তুত করা যায়নি।</value></data>
+  <data name="welcome.choose_library" xml:space="preserve"><value>একটি লাইব্রেরি বেছে নিন</value></data>
+  <data name="welcome.join_library" xml:space="preserve"><value>লাইব্রেরিতে যোগ দিন</value></data>
+  <data name="welcome.create_library" xml:space="preserve"><value>লাইব্রেরি তৈরি করুন</value></data>
+  <data name="welcome.your_libraries" xml:space="preserve"><value>আপনার লাইব্রেরি</value></data>
+  <data name="cloud.provider.icloud" xml:space="preserve"><value>iCloud</value></data>
+  <data name="settings.discogs.connected" xml:space="preserve"><value>সংযুক্ত</value></data>
+  <data name="settings.discogs.unvalidated" xml:space="preserve"><value>সংরক্ষিত — এখনও যাচাই করা যায়নি (অফলাইন)। আবার চেষ্টা করা হবে।</value></data>
+  <data name="settings.sync.initializing" xml:space="preserve"><value>শুরু করা হচ্ছে</value></data>
+  <data name="settings.sync.not_connected" xml:space="preserve"><value>সিঙ্ক: সংযুক্ত নয়</value></data>
+  <data name="settings.sync.ready" xml:space="preserve"><value>প্রস্তুত</value></data>
+  <data name="settings.sync.status" xml:space="preserve"><value>সিঙ্ক: {provider}{account} — {state}</value></data>
+  <data name="download.title" xml:space="preserve"><value>ডাউনলোড</value></data>
+  <data name="download.paused" xml:space="preserve"><value>বিরতিতে</value></data>
+  <data name="download.state.queued" xml:space="preserve"><value>সারিতে</value></data>
+  <data name="download.state.downloading" xml:space="preserve"><value>ডাউনলোড হচ্ছে</value></data>
+  <data name="download.state.failed" xml:space="preserve"><value>ব্যর্থ</value></data>
+  <data name="settings.automation.label" xml:space="preserve"><value>অটোমেশন</value></data>
+  <data name="settings.automation.enable_mcp" xml:space="preserve"><value>MCP সার্ভার চালু করুন</value></data>
+  <data name="settings.automation.port" xml:space="preserve"><value>পোর্ট</value></data>
+  <data name="settings.automation.refresh" xml:space="preserve"><value>অবস্থা রিফ্রেশ করুন</value></data>
+  <data name="settings.automation.copy_token" xml:space="preserve"><value>টোকেন কপি করুন</value></data>
+  <data name="settings.automation.rotate_token" xml:space="preserve"><value>টোকেন ঘোরান</value></data>
+  <data name="settings.automation.status.running" xml:space="preserve"><value>MCP সার্ভার: {url}</value></data>
+  <data name="settings.automation.status.disabled" xml:space="preserve"><value>MCP সার্ভার বন্ধ</value></data>
+  <data name="settings.automation.status.invalid_config" xml:space="preserve"><value>অবৈধ MCP সার্ভার কনফিগারেশন</value></data>
+  <data name="settings.automation.status.token_unavailable" xml:space="preserve"><value>MCP টোকেন অনুপলব্ধ</value></data>
+  <data name="settings.automation.status.bind_failed" xml:space="preserve"><value>MCP সার্ভার শুরু করা যায়নি</value></data>
+  <data name="settings.automation.status.server_failed" xml:space="preserve"><value>MCP সার্ভার বন্ধ হয়েছে</value></data>
+  <data name="settings.automation.invalid_port" xml:space="preserve"><value>1 থেকে 65535 পর্যন্ত একটি পোর্ট লিখুন</value></data>
+  <data name="settings.automation.status_unavailable" xml:space="preserve"><value>MCP অবস্থা পাওয়া যায়নি</value></data>
+  <data name="settings.automation.token_unavailable" xml:space="preserve"><value>MCP টোকেন অনুপলব্ধ</value></data>
+  <data name="settings.automation.token_copied" xml:space="preserve"><value>টোকেন কপি হয়েছে</value></data>
+  <data name="settings.automation.token_rotated" xml:space="preserve"><value>টোকেন ঘোরানো হয়েছে এবং কপি হয়েছে</value></data>
+  <data name="library.mode.albums" xml:space="preserve"><value>অ্যালবাম</value></data>
+  <data name="library.mode.composers" xml:space="preserve"><value>সুরকার</value></data>
+  <data name="library.mode.artists" xml:space="preserve"><value>শিল্পীরা</value></data>
+  <data name="library.no_composers" xml:space="preserve"><value>কোনো সুরকার নেই</value></data>
+  <data name="library.no_artists" xml:space="preserve"><value>কোনো শিল্পী নেই</value></data>
+  <data name="search.section.albums" xml:space="preserve"><value>অ্যালবাম</value></data>
+  <data name="search.section.artists" xml:space="preserve"><value>শিল্পীরা</value></data>
+  <data name="search.section.tracks" xml:space="preserve"><value>ট্র্যাক</value></data>
+  <data name="search.section.composers" xml:space="preserve"><value>সুরকার</value></data>
+  <data name="search.section.works" xml:space="preserve"><value>কাজ</value></data>
+  <data name="search.section.releases" xml:space="preserve"><value>রিলিজ</value></data>
+  <data name="search.section.credits" xml:space="preserve"><value>ক্রেডিট</value></data>
+  <data name="search.section.recordings" xml:space="preserve"><value>রেকর্ডিং</value></data>
+  <data name="composer.open_failed" xml:space="preserve"><value>সুরকারের বিবরণ খোলা যায়নি</value></data>
+  <data name="artist.open_failed" xml:space="preserve"><value>শিল্পীর বিবরণ খোলা যায়নি</value></data>
+  <data name="work.open_failed" xml:space="preserve"><value>কাজের বিবরণ খোলা যায়নি</value></data>
+  <data name="work.count" xml:space="preserve"><value>{count}টি কাজ</value></data>
+  <data name="album.count" xml:space="preserve"><value>{count}টি অ্যালবাম</value></data>
+  <data name="settings.formats.default_track_format" xml:space="preserve"><value>ট্র্যাক</value></data>
+  <data name="settings.formats.default_release_format" xml:space="preserve"><value>রিলিজ</value></data>
+  <data name="settings.formats.formats" xml:space="preserve"><value>ফরম্যাট</value></data>
+  <data name="settings.formats.defaults" xml:space="preserve"><value>ডিফল্ট</value></data>
+  <data name="settings.formats.defaults_footer" xml:space="preserve"><value>"নামে সংরক্ষণ করুন…" যে ফরম্যাট দিয়ে শুরু হয়।</value></data>
+  <data name="settings.formats.advanced" xml:space="preserve"><value>উন্নত</value></data>
+  <data name="settings.formats.preset_name" xml:space="preserve"><value>নাম</value></data>
+  <data name="settings.formats.preset_track" xml:space="preserve"><value>ট্র্যাক</value></data>
+  <data name="settings.formats.preset_release" xml:space="preserve"><value>রিলিজ</value></data>
+  <data name="settings.formats.preset_pregap" xml:space="preserve"><value>প্রিগ্যাপ</value></data>
+  <data name="settings.formats.pregap.append_except_htoa" xml:space="preserve"><value>HTOA ছাড়া সংযোজন করুন</value></data>
+  <data name="settings.formats.pregap.append_including_htoa" xml:space="preserve"><value>HTOA সহ সংযোজন করুন</value></data>
+  <data name="settings.formats.pregap.exclude" xml:space="preserve"><value>বাদ দিন</value></data>
+  <data name="settings.formats.pregap.single_file_with_cue" xml:space="preserve"><value>একক ফাইল + CUE</value></data>
+  <data name="settings.formats.filename_format" xml:space="preserve"><value>ফাইলের নামকরণ</value></data>
+  <data name="settings.formats.add_token" xml:space="preserve"><value>যোগ করুন:</value></data>
+  <data name="settings.formats.remove_token" xml:space="preserve"><value>{token} সরান</value></data>
+  <data name="settings.formats.token.title" xml:space="preserve"><value>শিরোনাম</value></data>
+  <data name="settings.formats.token.artist" xml:space="preserve"><value>শিল্পী</value></data>
+  <data name="settings.formats.token.album" xml:space="preserve"><value>অ্যালবাম</value></data>
+  <data name="settings.formats.token.year" xml:space="preserve"><value>প্রকাশের বছর</value></data>
+  <data name="settings.formats.token.track_number" xml:space="preserve"><value>ট্র্যাক নং</value></data>
+  <data name="settings.formats.token.disc_number" xml:space="preserve"><value>ডিস্ক নং</value></data>
+  <data name="settings.formats.token.track_total" xml:space="preserve"><value>মোট ট্র্যাক</value></data>
+  <data name="settings.formats.sample.title" xml:space="preserve"><value>ট্র্যাকের শিরোনাম</value></data>
+  <data name="settings.formats.sample.artist" xml:space="preserve"><value>শিল্পীর নাম</value></data>
+  <data name="settings.formats.sample.album" xml:space="preserve"><value>অ্যালবামের শিরোনাম</value></data>
+  <data name="settings.formats.preview" xml:space="preserve"><value>প্রিভিউ: {filename}</value></data>
+  <data name="settings.formats.presets_footer" xml:space="preserve"><value>ফরম্যাটগুলি ট্র্যাক ও রিলিজের "নামে সংরক্ষণ করুন…"-এ দেখা যায়।</value></data>
+  <data name="settings.formats.preset_format" xml:space="preserve"><value>ফরম্যাট</value></data>
+  <data name="settings.formats.add_preset" xml:space="preserve"><value>ফরম্যাট যোগ করুন</value></data>
+  <data name="settings.formats.delete_preset" xml:space="preserve"><value>ফরম্যাট মুছুন</value></data>
+  <data name="settings.formats.delete_confirm" xml:space="preserve"><value>“{name}” ফরম্যাট মুছবেন?</value></data>
+  <data name="settings.formats.codec_mp3" xml:space="preserve"><value>MP3 {kbps} kbps</value></data>
+  <data name="settings.formats.codec_aac" xml:space="preserve"><value>AAC {kbps} kbps</value></data>
+  <data name="settings.formats.codec_opus" xml:space="preserve"><value>Opus {kbps} kbps</value></data>
+  <data name="settings.formats.show_in_menus" xml:space="preserve"><value>এর "নামে সংরক্ষণ করুন…"-এ দেখান</value></data>
+  <data name="settings.formats.embed_cover" xml:space="preserve"><value>কভার আর্ট এমবেড করুন</value></data>
+  <data name="settings.formats.bit_depth_label" xml:space="preserve"><value>বিট গভীরতা</value></data>
+  <data name="settings.formats.bit_depth.source" xml:space="preserve"><value>উৎস</value></data>
+  <data name="settings.formats.bit_depth.bits16" xml:space="preserve"><value>১৬-বিট</value></data>
+  <data name="settings.formats.bit_depth.bits24" xml:space="preserve"><value>২৪-বিট</value></data>
+  <data name="settings.formats.bit_depth.bits32" xml:space="preserve"><value>৩২-বিট</value></data>
+  <data name="settings.formats.bitrate" xml:space="preserve"><value>বিটরেট</value></data>
+  <data name="outbox.state.uploading" xml:space="preserve"><value>আপলোড হচ্ছে</value></data>
+  <data name="outbox.state.queued" xml:space="preserve"><value>সারিতে</value></data>
+  <data name="outbox.state.retrying" xml:space="preserve"><value>আবার চেষ্টা হচ্ছে</value></data>
+  <data name="outbox.state.done" xml:space="preserve"><value>সম্পন্ন</value></data>
+  <data name="outbox.badge.uploading" xml:space="preserve"><value>আপলোড হচ্ছে ({count})</value></data>
+  <data name="outbox.badge.queued" xml:space="preserve"><value>সারিতে ({count})</value></data>
+  <data name="outbox.badge.retrying" xml:space="preserve"><value>আবার চেষ্টা হচ্ছে ({count})</value></data>
+  <data name="edit.field.album_title" xml:space="preserve"><value>অ্যালবামের শিরোনাম</value></data>
+  <data name="edit.field.album_artists" xml:space="preserve"><value>অ্যালবাম শিল্পীরা (কমা দিয়ে পৃথক)</value></data>
+  <data name="edit.field.year" xml:space="preserve"><value>বছর</value></data>
+  <data name="edit.field.format" xml:space="preserve"><value>ফরম্যাট</value></data>
+  <data name="edit.field.label" xml:space="preserve"><value>লেবেল</value></data>
+  <data name="edit.field.catalog_number" xml:space="preserve"><value>ক্যাটালগ নম্বর</value></data>
+  <data name="edit.field.country" xml:space="preserve"><value>দেশ</value></data>
+  <data name="edit.field.barcode" xml:space="preserve"><value>বারকোড</value></data>
+  <data name="edit.tracks.header" xml:space="preserve"><value>ট্র্যাক</value></data>
+  <data name="edit.tracks.col_title" xml:space="preserve"><value>শিরোনাম</value></data>
+  <data name="edit.tracks.col_artist" xml:space="preserve"><value>শিল্পী</value></data>
+  <data name="edit.tracks.col_side" xml:space="preserve"><value>সাইড</value></data>
+  <data name="edit.tracks.col_number" xml:space="preserve"><value>নং</value></data>
+  <data name="edit.tracks.artist_placeholder" xml:space="preserve"><value>অ্যালবাম শিল্পী</value></data>
+  <data name="identify.skip" xml:space="preserve"><value>শনাক্ত করা এড়িয়ে যান</value></data>
+  <data name="identify.import_as" xml:space="preserve"><value>এই হিসেবে ইম্পোর্ট করুন</value></data>
+  <data name="identify.exact_pressing" xml:space="preserve"><value>সঠিক প্রেসিং</value></data>
+  <data name="identify.metadata_only" xml:space="preserve"><value>শুধু মেটাডেটা</value></data>
+  <data name="identify.metadata_only_note" xml:space="preserve"><value>শুধু মেটাডেটা — প্রেসিং ক্ষেত্রগুলো ফাঁকা থাকে; শুধু অ্যালবাম গ্রুপ রেকর্ড করা হয়।</value></data>
+  <data name="album.reidentify.claim_header" xml:space="preserve"><value>এই প্রেসিংকে পরিচয় হিসেবে সেট করুন</value></data>
+  <data name="queue.drop_insert_caption" xml:space="preserve"><value>{position} নম্বর অবস্থানে যোগ করুন</value></data>
+  <data name="queue.empty.title" xml:space="preserve"><value>সারি খালি</value></data>
+  <data name="queue.empty.hint" xml:space="preserve"><value>অ্যালবাম এখানে টেনে আনুন বা একটি অ্যালবাম চালান</value></data>
+  <data name="album.reidentify.updated" xml:space="preserve"><value>পরিচয় আপডেট হয়েছে।</value></data>
+  <data name="album.reidentify.refresh_body" xml:space="preserve"><value>নতুন শনাক্ত করা উৎস থেকে অ্যালবাম, ট্র্যাক ও প্রেসিং ক্ষেত্রগুলো আনবেন? আপনার করা সম্পাদনা মুছে যাবে।</value></data>
+  <data name="album.reidentify.refresh_confirm" xml:space="preserve"><value>নতুন উৎস থেকে রিফ্রেশ করুন</value></data>
+  <data name="album.reidentify.keep_current" xml:space="preserve"><value>বর্তমান মেটাডেটা রাখুন</value></data>
+  <data name="import.tab.new" xml:space="preserve"><value>নতুন ({count})</value></data>
+  <data name="import.tab.added" xml:space="preserve"><value>যোগ করা হয়েছে ({count})</value></data>
+  <data name="import.tab.skipped" xml:space="preserve"><value>এড়ানো হয়েছে ({count})</value></data>
+  <data name="import.candidate.skip" xml:space="preserve"><value>এড়িয়ে যান</value></data>
+  <data name="import.candidate.unskip" xml:space="preserve"><value>নতুনে সরান</value></data>
+  <data name="import.folder.remove" xml:space="preserve"><value>ফোল্ডার সরান</value></data>
+  <data name="import.sort_by" xml:space="preserve"><value>সাজান</value></data>
+  <data name="import.sort.name_az" xml:space="preserve"><value>নাম (A–Z)</value></data>
+  <data name="import.sort.name_za" xml:space="preserve"><value>নাম (Z–A)</value></data>
+  <data name="import.sort.newest" xml:space="preserve"><value>যোগের তারিখ (নতুনতম)</value></data>
+  <data name="import.sort.oldest" xml:space="preserve"><value>যোগের তারিখ (পুরনোতম)</value></data>
+  <data name="nowplaying.show_remaining" xml:space="preserve"><value>অবশিষ্ট সময় দেখান</value></data>
+  <data name="nowplaying.show_elapsed" xml:space="preserve"><value>অতিবাহিত সময় দেখান</value></data>
+  <data name="output.title" xml:space="preserve"><value>এক্সপোর্ট ও সংরক্ষণ</value></data>
+  <data name="export.state.exporting" xml:space="preserve"><value>{percent}% এক্সপোর্ট হচ্ছে</value></data>
+  <data name="export.state.saving" xml:space="preserve"><value>{percent}% সংরক্ষণ হচ্ছে</value></data>
+  <data name="import.documents" xml:space="preserve"><value>ডকুমেন্ট</value></data>
+  <data name="import.document.read_failed" xml:space="preserve"><value>{name} পড়া যায়নি: {error}</value></data>
+  <data name="libraries.reveal" xml:space="preserve"><value>ফাইল এক্সপ্লোরারে দেখান</value></data>
+  <data name="libraries.copy_id" xml:space="preserve"><value>আইডি কপি করুন</value></data>
+  <data name="libraries.id_copied" xml:space="preserve"><value>লাইব্রেরি আইডি কপি হয়েছে</value></data>
+  <data name="libraries.reveal_failed" xml:space="preserve"><value>লাইব্রেরি ফোল্ডার খোলা যায়নি</value></data>
+  <data name="settings.playback.restore_on_launch" xml:space="preserve"><value>চালু হলে রিস্টোর করুন</value></data>
+  <data name="settings.playback.restore_on_launch_help" xml:space="preserve"><value>বন্ধ করার সময় বর্তমান ট্র্যাক, অবস্থান, সারি ও ভলিউম সংরক্ষণ করে এবং পরেরবার চালু হলে সেগুলো ফিরিয়ে আনে।</value></data>
+  <data name="gallery.counter" xml:space="preserve"><value>{index} এর {count}</value></data>
+  <data name="gallery.image_load_failed" xml:space="preserve"><value>ছবি লোড করা যায়নি</value></data>
+  <data name="gallery.previous" xml:space="preserve"><value>আগের ছবি</value></data>
+  <data name="gallery.next" xml:space="preserve"><value>পরবর্তী ছবি</value></data>
+  <data name="storage.tab.all" xml:space="preserve"><value>সব</value></data>
+  <data name="storage.tab.unmanaged" xml:space="preserve"><value>অপরিচালিত</value></data>
+  <data name="storage.tab.managed" xml:space="preserve"><value>পরিচালিত</value></data>
+  <data name="storage.tab.uploading" xml:space="preserve"><value>আপলোড হচ্ছে</value></data>
+  <data name="storage.column.album" xml:space="preserve"><value>অ্যালবাম</value></data>
+  <data name="storage.column.artist" xml:space="preserve"><value>শিল্পী</value></data>
+  <data name="storage.column.format" xml:space="preserve"><value>ফরম্যাট</value></data>
+  <data name="storage.column.storage" xml:space="preserve"><value>স্টোরেজ</value></data>
+  <data name="storage.column.files" xml:space="preserve"><value>ফাইল</value></data>
+  <data name="storage.column.size" xml:space="preserve"><value>আকার</value></data>
+  <data name="storage.footer.releases" xml:space="preserve"><value>{count, plural, one {#টি রিলিজ} other {#টি রিলিজ}}</value></data>
+  <data name="storage.footer.total" xml:space="preserve"><value>মোট: {size}</value></data>
+  <data name="settings.remove.title" xml:space="preserve"><value>সরান</value></data>
+  <data name="settings.remove.footer_synced" xml:space="preserve"><value>এই লাইব্রেরি এবং এর ডাউনলোড করা ফাইলগুলো এই পিসি থেকে সরিয়ে দেয়। ক্লাউডে আপনার লাইব্রেরি অক্ষত থাকে — আপনি পরে এখান থেকে এটি পুনরুদ্ধার করতে পারবেন।</value></data>
+  <data name="settings.remove.footer_unsynced" xml:space="preserve"><value>এই লাইব্রেরিটি সিঙ্ক করা নেই। এটি সরালে এর ক্যাটালগ — অ্যালবাম, মেটাডেটা সম্পাদনা এবং প্লে ইতিহাস — স্থায়ীভাবে মুছে যাবে। আপনার ফোল্ডারের অডিও ফাইলগুলো মুছে যাবে না।</value></data>
+  <data name="settings.remove.button" xml:space="preserve"><value>এই লাইব্রেরিটি এই পিসি থেকে সরান</value></data>
+  <data name="settings.remove.confirm_synced" xml:space="preserve"><value>ক্লাউডে আপনার লাইব্রেরি অক্ষত থাকে — আপনি পরে স্বাগত স্ক্রিন থেকে এটি পুনরুদ্ধার করতে পারবেন।</value></data>
+  <data name="settings.remove.confirm_unsynced" xml:space="preserve"><value>এই লাইব্রেরিটি কখনও সিঙ্ক করা হয়নি। এর ক্যাটালগ স্থায়ীভাবে মুছে যাবে; আপনার ফোল্ডারের অডিও ফাইলগুলো মুছে যাবে না।</value></data>
+  <data name="settings.remove.confirm_pending" xml:space="preserve"><value>কিছু পরিবর্তন এখনও আপলোড শেষ হয়নি এবং সেগুলো হারিয়ে যাবে।</value></data>
+  <data name="settings.remove.confirm_again" xml:space="preserve"><value>নিশ্চিত করতে বোতামটি আবার ক্লিক করুন।</value></data>
+  <data name="settings.remove.failed" xml:space="preserve"><value>লাইব্রেরি সরানো যায়নি: {error}</value></data>
+  <data name="menu.pin" xml:space="preserve"><value>অফলাইনের জন্য পিন করুন</value></data>
+  <data name="menu.play_count" xml:space="preserve"><value>{count, plural, one {#টি অ্যালবাম চালান} other {#টি অ্যালবাম চালান}}</value></data>
+  <data name="menu.play_next_count" xml:space="preserve"><value>{count, plural, one {#টি অ্যালবাম এরপর চালান} other {#টি অ্যালবাম এরপর চালান}}</value></data>
+  <data name="menu.add_to_queue_count" xml:space="preserve"><value>{count, plural, one {#টি অ্যালবাম সারিতে যোগ করুন} other {#টি অ্যালবাম সারিতে যোগ করুন}}</value></data>
+  <data name="menu.pin_count" xml:space="preserve"><value>{count, plural, one {#টি অ্যালবাম অফলাইনের জন্য পিন করুন} other {#টি অ্যালবাম অফলাইনের জন্য পিন করুন}}</value></data>
+  <data name="shell.open_with_folder" xml:space="preserve"><value>{name} দিয়ে খুলুন</value></data>
+  <data name="nowplaying.pause" xml:space="preserve"><value>বিরতি</value></data>
+  <data name="nowplaying.mute" xml:space="preserve"><value>মিউট</value></data>
+  <data name="nowplaying.unmute" xml:space="preserve"><value>মিউট খুলুন</value></data>
+  <data name="nowplaying.previous" xml:space="preserve"><value>আগের ট্র্যাক</value></data>
+  <data name="nowplaying.next" xml:space="preserve"><value>পরের ট্র্যাক</value></data>
+  <data name="nowplaying.repeat_off" xml:space="preserve"><value>রিপিট: বন্ধ</value></data>
+  <data name="nowplaying.repeat_context" xml:space="preserve"><value>রিপিট: প্রসঙ্গ</value></data>
+  <data name="nowplaying.repeat_track" xml:space="preserve"><value>রিপিট: ট্র্যাক</value></data>
+  <data name="queue.now_playing" xml:space="preserve"><value>এখন চলছে</value></data>
+  <data name="nowplaying.cast" xml:space="preserve"><value>কাস্ট</value></data>
+  <data name="nowplaying.casting_to" xml:space="preserve"><value>{device}-এ কাস্ট করা হচ্ছে</value></data>
+  <data name="nowplaying.cast_disconnect" xml:space="preserve"><value>সংযোগ বিচ্ছিন্ন করুন</value></data>
+  <data name="nowplaying.cast_no_devices" xml:space="preserve"><value>কোনো কাস্ট ডিভাইস পাওয়া যায়নি</value></data>
+  <data name="component_gallery.menu" xml:space="preserve"><value>কম্পোনেন্ট গ্যালারি</value></data>
+  <data name="component_gallery.title" xml:space="preserve"><value>কম্পোনেন্ট গ্যালারি</value></data>
+</root>

@@ -1,0 +1,442 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <data name="SearchBox.PlaceholderText" xml:space="preserve"><value>തിരയുക</value></data>
+  <data name="toolbar.libraries" xml:space="preserve"><value>ശേഖരങ്ങൾ</value></data>
+  <data name="ShuffleLibraryMenuItem.Text" xml:space="preserve"><value>ലൈബ്രറി ഷഫിൾ ചെയ്യുക</value></data>
+  <data name="toolbar.storage" xml:space="preserve"><value>സംഭരണം</value></data>
+  <data name="toolbar.settings" xml:space="preserve"><value>settings</value></data>
+  <data name="action.cancel" xml:space="preserve"><value>റദ്ദാക്കുക</value></data>
+  <data name="action.close" xml:space="preserve"><value>അടയ്ക്കുക</value></data>
+  <data name="action.delete" xml:space="preserve"><value>മായ്ക്കുക</value></data>
+  <data name="action.import" xml:space="preserve"><value>ഇറക്കുമതി</value></data>
+  <data name="action.ok" xml:space="preserve"><value>OK</value></data>
+  <data name="action.play" xml:space="preserve"><value>പ്ലേ</value></data>
+  <data name="action.save" xml:space="preserve"><value>സംരക്ഷിക്കുക</value></data>
+  <data name="action.search" xml:space="preserve"><value>തിരയൽ</value></data>
+  <data name="album.delete.body" xml:space="preserve"><value>ഇത് ലൈബ്രറിയിൽ നിന്ന് റിലീസ് നീക്കംചെയ്യുന്നു.</value></data>
+  <data name="album.delete.failed" xml:space="preserve"><value>ഇല്ലാതാക്കാനായില്ല</value></data>
+  <data name="album.delete.title" xml:space="preserve"><value>പതിപ്പ് ഇല്ലാതാക്കണോ?</value></data>
+  <data name="album.edit.label" xml:space="preserve"><value>തിരുത്തുക</value></data>
+  <data name="album.edit.load_failed" xml:space="preserve"><value>മെറ്റാഡാറ്റ എഡിറ്റർ ലോഡ് ചെയ്യാനായില്ല</value></data>
+  <data name="album.edit.reset" xml:space="preserve"><value>ഉറവിടത്തിലേക്ക് പുനഃസജ്ജമാക്കുക</value></data>
+  <data name="album.edit.reset_failed" xml:space="preserve"><value>ഉറവിടത്തിലേക്ക് പുനഃസജ്ജമാക്കാനായില്ല</value></data>
+  <data name="album.edit.title" xml:space="preserve"><value>മെറ്റാഡാറ്റ തിരുത്തുക</value></data>
+  <data name="album.open_failed" xml:space="preserve"><value>ഈ album തുറക്കാനായില്ല</value></data>
+  <data name="album.reidentify.label" xml:space="preserve"><value>വീണ്ടും തിരിച്ചറിയുക</value></data>
+  <data name="album.reidentify.confirm" xml:space="preserve"><value>വീണ്ടും തിരിച്ചറിയുക</value></data>
+  <data name="album.reidentify.title" xml:space="preserve"><value>വീണ്ടും തിരിച്ചറിയുക</value></data>
+  <data name="album.release_picker" xml:space="preserve"><value>പതിപ്പ്</value></data>
+  <data name="album.shuffle" xml:space="preserve"><value>ക്രമരഹിതമായി പ്ലേ ചെയ്യുക</value></data>
+  <data name="cloud.provider.dropbox" xml:space="preserve"><value>Dropbox</value></data>
+  <data name="cloud.provider.google_drive" xml:space="preserve"><value>Google Drive</value></data>
+  <data name="cloud.provider.onedrive" xml:space="preserve"><value>OneDrive</value></data>
+  <data name="cloud.provider.s3" xml:space="preserve"><value>S3</value></data>
+  <data name="cloud.signin.failed" xml:space="preserve"><value>ക്ലൗഡ് പ്രവേശനം പരാജയപ്പെട്ടു</value></data>
+  <data name="cloud.signin.in_progress" xml:space="preserve"><value>{provider}-ലേക്ക് പ്രവേശിക്കുന്നു…</value></data>
+  <data name="cloud.signin.not_configured" xml:space="preserve"><value>ഈ ബിൽഡിൽ ക്ലൗഡ് പ്രവേശനം ക്രമീകരിച്ചിട്ടില്ല (oauth-creds.json ഇല്ല)</value></data>
+  <data name="cloud.unsupported_provider" xml:space="preserve"><value>ഈ ബിൽഡ് {provider} സിങ്ക് പിന്തുണയ്ക്കുന്നില്ല</value></data>
+  <data name="cover.change_title" xml:space="preserve"><value>കവർ മാറ്റുക</value></data>
+  <data name="cover.fetch_failed" xml:space="preserve"><value>ദൂരസ്ഥ കവറുകൾ എടുക്കാനായില്ല</value></data>
+  <data name="cover.fetching" xml:space="preserve"><value>കവറുകൾ എടുക്കുന്നു…</value></data>
+  <data name="cover.images_load_failed" xml:space="preserve"><value>ഈ പതിപ്പിന്റെ ചിത്രങ്ങൾ ലോഡ് ചെയ്യാനായില്ല</value></data>
+  <data name="cover.none_available" xml:space="preserve"><value>കവർ ആർട്ട് ലഭ്യമല്ല — ഇറക്കുമതി അതിന്റെ സ്ഥിര കവർ ഉപയോഗിക്കുന്നു.</value></data>
+  <data name="cover.none_remote" xml:space="preserve"><value>ദൂരസ്ഥ കവറുകൾ കണ്ടെത്തിയില്ല</value></data>
+  <data name="cover.pick_hint" xml:space="preserve"><value>ഒരു കവർ തിരഞ്ഞെടുക്കുക, അല്ലെങ്കിൽ സ്ഥിരത് ഉപയോഗിക്കാൻ തിരഞ്ഞെടുക്കാതെ വിടുക.</value></data>
+  <data name="cover.release_files" xml:space="preserve"><value>പതിപ്പ് ഫയലുകൾ</value></data>
+  <data name="cover.remote_sources" xml:space="preserve"><value>ദൂരസ്ഥ ഉറവിടങ്ങൾ</value></data>
+  <data name="cover.section_title" xml:space="preserve"><value>കവർ</value></data>
+  <data name="cover.show_failed" xml:space="preserve"><value>ദൂരസ്ഥ കവറുകൾ കാണിക്കാനായില്ല: {detail}</value></data>
+  <data name="action.back" xml:space="preserve"><value>മടങ്ങുക</value></data>
+  <data name="action.copy" xml:space="preserve"><value>പകർത്തുക</value></data>
+  <data name="action.done" xml:space="preserve"><value>പൂർത്തിയായി</value></data>
+  <data name="action.scan" xml:space="preserve"><value>സ്കാൻ ചെയ്യുക…</value></data>
+  <data name="error.playback_title" xml:space="preserve"><value>പ്ലേബാക്ക് പിശക്</value></data>
+  <data name="error.title" xml:space="preserve"><value>പിശക്</value></data>
+  <data name="gallery.load_failed" xml:space="preserve"><value>ഗാലറി ലോഡ് ചെയ്യാനായില്ല</value></data>
+  <data name="identify.conflict" xml:space="preserve"><value>സംഘർഷം</value></data>
+  <data name="identify.found" xml:space="preserve"><value>{count, plural, one {കണ്ടെത്തി (#)} other {കണ്ടെത്തി (#)}}</value></data>
+  <data name="identify.identifying" xml:space="preserve"><value>തിരിച്ചറിയുന്നു…</value></data>
+  <data name="identify.manual" xml:space="preserve"><value>നേരിട്ടുള്ള തിരയൽ മാത്രം</value></data>
+  <data name="identify.not_found" xml:space="preserve"><value>കണ്ടെത്തിയില്ല</value></data>
+  <data name="import.already_in_library" xml:space="preserve"><value>ഈ റിലീസ് ഇതിനകം നിങ്ങളുടെ ലൈബ്രറിയിൽ ഉണ്ട്</value></data>
+  <data name="import.back_to_search" xml:space="preserve"><value>തിരയലിലേക്ക് മടങ്ങുക</value></data>
+  <data name="import.choose_folder" xml:space="preserve"><value>ഫോൾഡർ തിരഞ്ഞെടുത്ത് സ്കാൻ ചെയ്യുക</value></data>
+  <data name="import.complete" xml:space="preserve"><value>ഇറക്കുമതി ചെയ്തു</value></data>
+  <data name="import.candidate.tracks" xml:space="preserve"><value>{count, plural, one {# track} other {# tracks}}</value></data>
+  <data name="import.confirm_title" xml:space="preserve"><value>ഇറക്കുമതി സ്ഥിരീകരിക്കുക</value></data>
+  <data name="import.drop_caption" xml:space="preserve"><value>സ്കാൻ ചെയ്ത് ഇറക്കുമതി ചെയ്യുക</value></data>
+  <data name="import.drop_folder_only" xml:space="preserve"><value>ഇറക്കുമതി ചെയ്യാൻ ഫോൾഡർ വിടുക</value></data>
+  <data name="import.drop_read_failed" xml:space="preserve"><value>വിട്ട ഇനം വായിക്കാനായില്ല</value></data>
+  <data name="import.error_title" xml:space="preserve"><value>ഇറക്കുമതി പിശക്</value></data>
+  <data name="import.error.load_release" xml:space="preserve"><value>ഇറക്കുമതി ചെയ്യേണ്ട പതിപ്പ് ലോഡ് ചെയ്യാനായില്ല</value></data>
+  <data name="import.failed" xml:space="preserve"><value>ഇറക്കുമതി പരാജയപ്പെട്ടു</value></data>
+  <data name="import.field.artist_manual" xml:space="preserve"><value>കലാകാരൻ (നേരിട്ടുള്ള തിരയൽ)</value></data>
+  <data name="import.no_releases" xml:space="preserve"><value>പതിപ്പുകൾ കണ്ടെത്തിയില്ല</value></data>
+  <data name="import.preview" xml:space="preserve"><value>പ്രിവ്യൂ</value></data>
+  <data name="import.progress.percent" xml:space="preserve"><value>{percent}% ഇറക്കുമതി ചെയ്യുന്നു</value></data>
+  <data name="import.release_title" xml:space="preserve"><value>പതിപ്പ് ഇറക്കുമതി ചെയ്യുക</value></data>
+  <data name="import.rerun_identify" xml:space="preserve"><value>തിരിച്ചറിയൽ വീണ്ടും പ്രവർത്തിപ്പിക്കുക</value></data>
+  <data name="import.scanning" xml:space="preserve"><value>സ്കാൻ ചെയ്യുന്നു…</value></data>
+  <data name="import.storage.keep_local" xml:space="preserve"><value>പ്രാദേശിക പകർപ്പ് സൂക്ഷിക്കുക</value></data>
+  <data name="import.storage.managed" xml:space="preserve"><value>നിയന്ത്രിതം</value></data>
+  <data name="import.view_in_library" xml:space="preserve"><value>ലൈബ്രറിയിൽ കാണുക</value></data>
+  <data name="join.title" xml:space="preserve"><value>ശേഖരത്തിൽ ചേരുക</value></data>
+  <data name="join.intro" xml:space="preserve"><value>നിങ്ങളുടെ മറ്റൊരു ഉപകരണത്തിലുള്ള ശേഖരത്തിലേക്ക് ഈ ഉപകരണം ചേർക്കുക.</value></data>
+  <data name="join.this_device_code" xml:space="preserve"><value>ഈ ഉപകരണത്തിന്റെ കോഡ്</value></data>
+  <data name="join.show_to_member" xml:space="preserve"><value>നിങ്ങളുടെ ശേഖരത്തിൽ ഇതിനകം ഉള്ള ഉപകരണത്തിൽ ക്രമീകരണങ്ങൾ → ഉപകരണങ്ങൾ → ഉപകരണം ചേർക്കുക തുറന്ന് ഇത് സ്കാൻ ചെയ്യുക അല്ലെങ്കിൽ ഒട്ടിക്കുക.</value></data>
+  <data name="join.fingerprint" xml:space="preserve"><value>ഈ ഉപകരണം: {fingerprint}</value></data>
+  <data name="join.generate_failed" xml:space="preserve"><value>ഈ ഉപകരണത്തിന്റെ കോഡ് സൃഷ്ടിക്കാനായില്ല</value></data>
+  <data name="join.invite_label" xml:space="preserve"><value>ക്ഷണ കോഡ്</value></data>
+  <data name="join.invite_hint" xml:space="preserve"><value>ആ ഉപകരണം ഇതിനെ അംഗീകരിച്ചാൽ, അത് കാണിക്കുന്ന ക്ഷണ കോഡ് നൽകുക.</value></data>
+  <data name="join.invite_placeholder" xml:space="preserve"><value>ക്ഷണ കോഡ് ഒട്ടിക്കുക</value></data>
+  <data name="join.invalid_invite" xml:space="preserve"><value>അസാധുവായ ക്ഷണ കോഡ്</value></data>
+  <data name="join.invite_for" xml:space="preserve"><value>{name} · {provider} · ഉടമ {fingerprint}</value></data>
+  <data name="join.confirm" xml:space="preserve"><value>ചേരുക</value></data>
+  <data name="join.in_progress" xml:space="preserve"><value>{name}-ൽ ചേരുന്നു…</value></data>
+  <data name="join.failed" xml:space="preserve"><value>ശേഖരത്തിൽ ചേരാനായില്ല</value></data>
+  <data name="libraries.active" xml:space="preserve"><value>{name}  ·  സജീവം</value></data>
+  <data name="libraries.new" xml:space="preserve"><value>പുതിയ ലൈബ്രറി</value></data>
+  <data name="libraries.rename" xml:space="preserve"><value>പുനർനാമകരണം ചെയ്യുക</value></data>
+  <data name="libraries.title" xml:space="preserve"><value>ശേഖരങ്ങൾ</value></data>
+  <data name="library.empty" xml:space="preserve"><value>ലൈബ്രറി ശൂന്യമാണ്</value></data>
+  <data name="library.load_failed" xml:space="preserve"><value>ലൈബ്രറി ലോഡ് ചെയ്യാനായില്ല</value></data>
+  <data name="library.locked" xml:space="preserve"><value>ലൈബ്രറി ലോക്ക് ചെയ്തിരിക്കുന്നു</value></data>
+  <data name="library.open_failed" xml:space="preserve"><value>ലൈബ്രറി തുറക്കാനായില്ല</value></data>
+  <data name="library.unlock.body" xml:space="preserve"><value>ഈ ലൈബ്രറി എൻക്രിപ്റ്റ് ചെയ്തതാണ്, അതിന്റെ കീ ഈ ഉപകരണത്തിൽ ഇല്ല. അൺലോക്ക് ചെയ്യാൻ 64 അക്ഷരമുള്ള ഹെക്സ് കീ നൽകുക.</value></data>
+  <data name="library.unlock.confirm" xml:space="preserve"><value>അൺലോക്ക്</value></data>
+  <data name="library.unlock.key_placeholder" xml:space="preserve"><value>64 അക്ഷരങ്ങളുള്ള ഹെക്സാഡെസിമൽ കീ</value></data>
+  <data name="library.unlock.title" xml:space="preserve"><value>ലൈബ്രറി അൺലോക്ക് ചെയ്യുക</value></data>
+  <data name="menu.add_to_queue" xml:space="preserve"><value>നിരയിലേക്ക് ചേർക്കുക</value></data>
+  <data name="menu.change_cover" xml:space="preserve"><value>കവർ മാറ്റുക…</value></data>
+  <data name="menu.delete" xml:space="preserve"><value>ഇല്ലാതാക്കുക…</value></data>
+  <data name="menu.export" xml:space="preserve"><value>കയറ്റുമതി…</value></data>
+  <data name="menu.save_as" xml:space="preserve"><value>ഇങ്ങനെ സംരക്ഷിക്കുക…</value></data>
+  <data name="save.title" xml:space="preserve"><value>ഇങ്ങനെ സംരക്ഷിക്കുക</value></data>
+  <data name="menu.play" xml:space="preserve"><value>പ്ലേ</value></data>
+  <data name="menu.play_next" xml:space="preserve"><value>അടുത്തതായി പ്ലേ ചെയ്യുക</value></data>
+  <data name="menu.set_primary" xml:space="preserve"><value>പ്രധാന പതിപ്പായി സജ്ജമാക്കുക</value></data>
+  <data name="menu.set_primary_done" xml:space="preserve"><value>പ്രധാന പതിപ്പായി സജ്ജമാക്കുക</value></data>
+  <data name="members.title" xml:space="preserve"><value>ഉപകരണങ്ങൾ</value></data>
+  <data name="members.this_device" xml:space="preserve"><value>ഈ ഉപകരണം</value></data>
+  <data name="members.role.owner" xml:space="preserve"><value>ഉടമ</value></data>
+  <data name="members.role.member" xml:space="preserve"><value>അംഗം</value></data>
+  <data name="members.role.follower" xml:space="preserve"><value>അനുയായി</value></data>
+  <data name="members.load_failed" xml:space="preserve"><value>ഉപകരണങ്ങൾ ലോഡ് ചെയ്യാനായില്ല</value></data>
+  <data name="members.add" xml:space="preserve"><value>ഉപകരണം ചേർക്കുക…</value></data>
+  <data name="members.remove" xml:space="preserve"><value>നീക്കം ചെയ്യുക</value></data>
+  <data name="members.remove_confirm" xml:space="preserve"><value>ഈ ഉപകരണത്തിന് പ്രവേശനം നഷ്ടപ്പെടും, ശേഖര കീ മാറ്റപ്പെടും. സ്ഥിരീകരിക്കാൻ നീക്കം ചെയ്യുക വീണ്ടും ക്ലിക്ക് ചെയ്യുക.</value></data>
+  <data name="members.approve.title" xml:space="preserve"><value>ഉപകരണം ചേർക്കുക</value></data>
+  <data name="members.approve.capture_hint" xml:space="preserve"><value>പുതിയ ഉപകരണത്തിൽ ശേഖരത്തിൽ ചേരുക തുറന്ന് അതിന്റെ കോഡ് കാണിക്കുക. അത് ഇവിടെ സ്കാൻ ചെയ്യുക, അല്ലെങ്കിൽ താഴെ ഒട്ടിക്കുക.</value></data>
+  <data name="members.approve.paste_placeholder" xml:space="preserve"><value>ഉപകരണത്തിന്റെ കോഡ് ഒട്ടിക്കുക</value></data>
+  <data name="members.approve.decode" xml:space="preserve"><value>ഡീകോഡ് ചെയ്യുക</value></data>
+  <data name="members.approve.invalid_request" xml:space="preserve"><value>അസാധുവായ ഉപകരണ കോഡ്</value></data>
+  <data name="members.approve.confirm_title" xml:space="preserve"><value>ഈ ഉപകരണം അംഗീകരിക്കണോ?</value></data>
+  <data name="members.approve.confirm_hint" xml:space="preserve"><value>ഇത് നിങ്ങളുടെ ശേഖരത്തിലേക്ക് ചേർക്കപ്പെടുകയും സമന്വയിപ്പിക്കാൻ കഴിയുകയും ചെയ്യും. അതിൽ നൽകാനുള്ള കോഡ് നിങ്ങൾക്ക് ലഭിക്കും.</value></data>
+  <data name="members.approve.confirm" xml:space="preserve"><value>അംഗീകരിക്കുക</value></data>
+  <data name="members.approve.in_progress" xml:space="preserve"><value>ഉപകരണം അംഗീകരിക്കുന്നു…</value></data>
+  <data name="members.approve.failed" xml:space="preserve"><value>ഈ ഉപകരണം അംഗീകരിക്കാനായില്ല</value></data>
+  <data name="members.approve.invited_hint" xml:space="preserve"><value>ഈ കോഡ് പുതിയ ഉപകരണത്തിൽ നൽകുക.</value></data>
+  <data name="nowplaying.go_to_album" xml:space="preserve"><value>ആൽബത്തിലേക്ക് പോകുക</value></data>
+  <data name="outbox.delete.kind" xml:space="preserve"><value>ഇല്ലാതാക്കുക</value></data>
+  <data name="outbox.cancel_item" xml:space="preserve"><value>റദ്ദാക്കുക</value></data>
+  <data name="outbox.load_failed" xml:space="preserve"><value>ഔട്ട്‌ബോക്സ് ലോഡ് ചെയ്യാനായില്ല</value></data>
+  <data name="outbox.pause" xml:space="preserve"><value>താൽക്കാലികമായി നിർത്തുക</value></data>
+  <data name="outbox.read_failed" xml:space="preserve"><value>ഔട്ട്‌ബോക്സ് വായിക്കാനായില്ല</value></data>
+  <data name="outbox.resume" xml:space="preserve"><value>തുടരുക</value></data>
+  <data name="outbox.retry_now" xml:space="preserve"><value>ഇപ്പോൾ വീണ്ടും ശ്രമിക്കുക</value></data>
+  <data name="queue.clear" xml:space="preserve"><value>മായ്ക്കുക</value></data>
+  <data name="queue.clear_playing_from" xml:space="preserve"><value>പ്ലേബാക്ക് ഉറവിടം മായ്ക്കുക</value></data>
+  <data name="queue.clear_up_next" xml:space="preserve"><value>“അടുത്തത്” പട്ടിക മായ്ക്കുക</value></data>
+  <data name="queue.remove_item" xml:space="preserve"><value>ക്യൂയിൽ നിന്ന് നീക്കുക</value></data>
+  <data name="queue.section.playing_from" xml:space="preserve"><value>ഇതിൽ നിന്ന് പ്ലേ ചെയ്യുന്നു</value></data>
+  <data name="queue.section.your_library" xml:space="preserve"><value>നിങ്ങളുടെ ലൈബ്രറി</value></data>
+  <data name="queue.section.up_next" xml:space="preserve"><value>അടുത്തത്</value></data>
+  <data name="queue.shuffle.off" xml:space="preserve"><value>ക്രമരഹിത പ്ലേ ഓഫ് ചെയ്യുക</value></data>
+  <data name="queue.shuffle.on" xml:space="preserve"><value>ക്രമരഹിതമായി പ്ലേ ചെയ്യുക</value></data>
+  <data name="queue.title" xml:space="preserve"><value>നിര</value></data>
+  <data name="restore.confirm" xml:space="preserve"><value>പുനഃസ്ഥാപിക്കുക</value></data>
+  <data name="restore.failed" xml:space="preserve"><value>പുനഃസ്ഥാപനം പരാജയപ്പെട്ടു</value></data>
+  <data name="restore.field.cloud_storage" xml:space="preserve"><value>ക്ലൗഡ് സംഭരണം</value></data>
+  <data name="restore.field.encryption_key" xml:space="preserve"><value>എൻക്രിപ്ഷൻ കീ (ഹെക്സ്)</value></data>
+  <data name="restore.field.library_id" xml:space="preserve"><value>ലൈബ്രറി ID</value></data>
+  <data name="restore.field.library_name" xml:space="preserve"><value>ലൈബ്രറി പേര് (ഐച്ഛികം)</value></data>
+  <data name="restore.from_cloud" xml:space="preserve"><value>ക്ലൗഡിൽ നിന്ന് പുനഃസ്ഥാപിക്കുക</value></data>
+  <data name="restore.from_cloud_title" xml:space="preserve"><value>ക്ലൗഡിൽ നിന്ന് പുനഃസ്ഥാപിക്കുക</value></data>
+  <data name="restore.in_progress" xml:space="preserve"><value>പുനഃസ്ഥാപിക്കുന്നു…</value></data>
+  <data name="s3.field.access_key" xml:space="preserve"><value>പ്രവേശന കീ</value></data>
+  <data name="s3.field.bucket" xml:space="preserve"><value>S3 ബക്കറ്റ്</value></data>
+  <data name="s3.field.endpoint" xml:space="preserve"><value>എൻഡ്പോയിന്റ് (ഐച്ഛികം)</value></data>
+  <data name="s3.field.key_prefix" xml:space="preserve"><value>കീ പ്രിഫിക്സ് (ഐച്ഛികം)</value></data>
+  <data name="s3.field.region" xml:space="preserve"><value>പ്രദേശം</value></data>
+  <data name="s3.field.secret_key" xml:space="preserve"><value>രഹസ്യ കീ</value></data>
+  <data name="search.failed" xml:space="preserve"><value>തിരയൽ പരാജയപ്പെട്ടു</value></data>
+  <data name="search.field.album" xml:space="preserve"><value>album</value></data>
+  <data name="search.field.artist" xml:space="preserve"><value>artist</value></data>
+  <data name="search.field.source" xml:space="preserve"><value>ഉറവിടം</value></data>
+  <data name="search.no_matches" xml:space="preserve"><value>പൊരുത്തങ്ങളില്ല</value></data>
+  <data name="settings.discogs.label" xml:space="preserve"><value>Discogs ടോക്കൺ</value></data>
+  <data name="settings.discogs.recheck" xml:space="preserve"><value>വീണ്ടും പരിശോധിക്കുക</value></data>
+  <data name="settings.discogs.rejected" xml:space="preserve"><value>Discogs ഈ കീ നിരസിച്ചു — അത് പരിശോധിച്ച് വീണ്ടും സംരക്ഷിക്കുക.</value></data>
+  <data name="settings.discogs.remove" xml:space="preserve"><value>ടോക്കൺ നീക്കം ചെയ്യുക</value></data>
+  <data name="settings.discogs.save" xml:space="preserve"><value>ടോക്കൺ സംരക്ഷിക്കുക</value></data>
+  <data name="settings.discogs.save_failed" xml:space="preserve"><value>കീ സംരക്ഷിക്കാനായില്ല — എന്തോ പിശക് സംഭവിച്ചു.</value></data>
+  <data name="settings.discogs.token_placeholder" xml:space="preserve"><value>Discogs API ടോക്കൺ</value></data>
+  <data name="settings.discogs.validating" xml:space="preserve"><value>സാധൂകരിക്കുന്നു…</value></data>
+  <data name="settings.playback.pause_between_sides" xml:space="preserve"><value>വശങ്ങൾക്കിടയിൽ താൽക്കാലികമായി നിർത്തുക</value></data>
+  <data name="settings.library_label" xml:space="preserve"><value>ലൈബ്രറി: {name}</value></data>
+  <data name="settings.updates.title" xml:space="preserve"><value>അപ്‌ഡേറ്റുകൾ</value></data>
+  <data name="settings.updates.version" xml:space="preserve"><value>പതിപ്പ് {version}</value></data>
+  <data name="settings.updates.check" xml:space="preserve"><value>അപ്‌ഡേറ്റുകൾ പരിശോധിക്കുക</value></data>
+  <data name="settings.updates.checking" xml:space="preserve"><value>പരിശോധിക്കുന്നു…</value></data>
+  <data name="settings.updates.up_to_date" xml:space="preserve"><value>കാലികം</value></data>
+  <data name="settings.updates.downloading" xml:space="preserve"><value>ഡൗൺലോഡ് ചെയ്യുന്നു… {percent}%</value></data>
+  <data name="settings.updates.ready" xml:space="preserve"><value>പതിപ്പ് {version} തയ്യാറാണ് — അപ്‌ഡേറ്റ് ചെയ്യാൻ പുനരാരംഭിക്കുക</value></data>
+  <data name="settings.updates.restart" xml:space="preserve"><value>ഇപ്പോൾ പുനരാരംഭിക്കുക</value></data>
+  <data name="settings.updates.failed" xml:space="preserve"><value>അപ്‌ഡേറ്റുകൾ പരിശോധിക്കാനായില്ല</value></data>
+  <data name="settings.lock_library" xml:space="preserve"><value>ലൈബ്രറി ലോക്ക് ചെയ്യുക</value></data>
+  <data name="settings.recovery.title" xml:space="preserve"><value>വീണ്ടെടുപ്പ്</value></data>
+  <data name="settings.recovery.intro" xml:space="preserve"><value>അംഗീകരിക്കാൻ മറ്റൊരു ഉപകരണം ലഭ്യമല്ലാത്തപ്പോൾ നിങ്ങളുടെ വീണ്ടെടുപ്പ് കോഡ് ഈ ശേഖരം പുതിയ ഉപകരണത്തിൽ പുനഃസ്ഥാപിക്കുന്നു. അത് ഉള്ള ഏവർക്കും പൂർണ്ണ പ്രവേശനമുണ്ട് — രഹസ്യമായി സൂക്ഷിക്കുക.</value></data>
+  <data name="settings.recovery.label" xml:space="preserve"><value>വീണ്ടെടുപ്പ് കോഡ്</value></data>
+  <data name="settings.recovery.show" xml:space="preserve"><value>വീണ്ടെടുപ്പ് കോഡ് കാണിക്കുക…</value></data>
+  <data name="settings.recovery.unavailable" xml:space="preserve"><value>(ലഭ്യമല്ല — സിങ്ക് ബന്ധിപ്പിച്ചിട്ടുണ്ടോ?)</value></data>
+  <data name="settings.s3.connect" xml:space="preserve"><value>S3 ബന്ധിപ്പിക്കുക</value></data>
+  <data name="settings.s3.connecting" xml:space="preserve"><value>S3-ലേക്ക് ബന്ധിപ്പിക്കുന്നു…</value></data>
+  <data name="settings.storage.browsable" xml:space="preserve"><value>ബ്രൗസ് ചെയ്യാം — എൻക്രിപ്റ്റ് ചെയ്യാതെ സൂക്ഷിച്ചിരിക്കുന്നു</value></data>
+  <data name="settings.storage.mode" xml:space="preserve"><value>സംഭരണം</value></data>
+  <data name="settings.storage.opaque" xml:space="preserve"><value>അസ്പഷ്ടം — അറ്റം മുതൽ അറ്റം വരെ എൻക്രിപ്റ്റ് ചെയ്തത്</value></data>
+  <data name="settings.sync.disconnect" xml:space="preserve"><value>ബന്ധം വിച്ഛേദിക്കുക</value></data>
+  <data name="settings.sync.disconnect_confirm" xml:space="preserve"><value>{warning} സ്ഥിരീകരിക്കാൻ ബന്ധം വിച്ഛേദിക്കുക വീണ്ടും ക്ലിക്ക് ചെയ്യുക.</value></data>
+  <data name="settings.sync.now" xml:space="preserve"><value>ഇപ്പോൾ സിങ്ക് ചെയ്യുക</value></data>
+  <data name="settings.title" xml:space="preserve"><value>settings</value></data>
+  <data name="signal.exclude" xml:space="preserve"><value>സൂചന ഒഴിവാക്കുക</value></data>
+  <data name="signal.include" xml:space="preserve"><value>സൂചന ഉൾപ്പെടുത്തുക</value></data>
+  <data name="signal.kind.barcode" xml:space="preserve"><value>ബാർകോഡ്</value></data>
+  <data name="signal.kind.catalog" xml:space="preserve"><value>കാറ്റലോഗ്</value></data>
+  <data name="signal.kind.disc_id" xml:space="preserve"><value>ഡിസ്‌ക് ID</value></data>
+  <data name="sort.artist" xml:space="preserve"><value>artist</value></data>
+  <data name="sort.criterion.add" xml:space="preserve"><value>അടുക്കൽ ചേർക്കുക</value></data>
+  <data name="sort.criterion.remove" xml:space="preserve"><value>അടുക്കൽ നീക്കം ചെയ്യുക</value></data>
+  <data name="sort.dateAdded" xml:space="preserve"><value>date added</value></data>
+  <data name="sort.direction.ascending" xml:space="preserve"><value>ആരോഹണ ക്രമത്തിൽ അടുക്കുക</value></data>
+  <data name="sort.direction.descending" xml:space="preserve"><value>അവരോഹണ ക്രമത്തിൽ അടുക്കുക</value></data>
+  <data name="sort.name" xml:space="preserve"><value>പേര്</value></data>
+  <data name="sort.title" xml:space="preserve"><value>title</value></data>
+  <data name="sort.year" xml:space="preserve"><value>year</value></data>
+  <data name="storage.action.manage" xml:space="preserve"><value>ലൈബ്രറിയിലേക്ക് മാറ്റുക</value></data>
+  <data name="storage.action.pin" xml:space="preserve"><value>ഓഫ്‌ലൈൻ ഉപയോഗത്തിന് പിൻ ചെയ്യുക</value></data>
+  <data name="storage.action.unmanage" xml:space="preserve"><value>ലൈബ്രറിയിൽ നിന്ന് മാറ്റുക…</value></data>
+  <data name="storage.action.unpin" xml:space="preserve"><value>പ്രാദേശിക പകർപ്പ് നീക്കം ചെയ്യുക</value></data>
+  <data name="storage.files" xml:space="preserve"><value>{count, plural, one {# file} other {# files}}</value></data>
+  <data name="storage.load_failed" xml:space="preserve"><value>സംഭരണം ലോഡ് ചെയ്യാനായില്ല</value></data>
+  <data name="storage.pinned" xml:space="preserve"><value>പിൻ ചെയ്തു</value></data>
+  <data name="storage.read_failed" xml:space="preserve"><value>സംഭരണം വായിക്കാനായില്ല</value></data>
+  <data name="storage.state.managed" xml:space="preserve"><value>നിയന്ത്രിതം</value></data>
+  <data name="storage.state.unmanaged" xml:space="preserve"><value>നിയന്ത്രണമില്ലാത്തത്</value></data>
+  <data name="storage.title" xml:space="preserve"><value>സംഭരണം</value></data>
+  <data name="sync.error_title" xml:space="preserve"><value>സിങ്ക് പിശക്</value></data>
+  <data name="sync.reconnect" xml:space="preserve"><value>വീണ്ടും ബന്ധിപ്പിക്കുക</value></data>
+  <data name="sync.synced" xml:space="preserve"><value>{time} സിങ്ക് ചെയ്തു</value></data>
+  <data name="sync.syncing" xml:space="preserve"><value>സിങ്ക് ചെയ്യുന്നു…</value></data>
+  <data name="track.export.prepare_failed" xml:space="preserve"><value>കയറ്റുമതി തയ്യാറാക്കാനായില്ല.</value></data>
+  <data name="welcome.choose_library" xml:space="preserve"><value>ഒരു ലൈബ്രറി തിരഞ്ഞെടുക്കുക</value></data>
+  <data name="welcome.join_library" xml:space="preserve"><value>ശേഖരത്തിൽ ചേരുക</value></data>
+  <data name="welcome.create_library" xml:space="preserve"><value>ലൈബ്രറി സൃഷ്ടിക്കുക</value></data>
+  <data name="welcome.your_libraries" xml:space="preserve"><value>നിങ്ങളുടെ ശേഖരങ്ങൾ</value></data>
+  <data name="cloud.provider.icloud" xml:space="preserve"><value>iCloud</value></data>
+  <data name="settings.discogs.connected" xml:space="preserve"><value>ബന്ധിപ്പിച്ചു</value></data>
+  <data name="settings.discogs.unvalidated" xml:space="preserve"><value>സംരക്ഷിച്ചു — ഇതുവരെ സാധൂകരിക്കാനായില്ല (ഓഫ്‌ലൈൻ). വീണ്ടും ശ്രമിക്കും.</value></data>
+  <data name="settings.sync.initializing" xml:space="preserve"><value>ആരംഭിക്കുന്നു</value></data>
+  <data name="settings.sync.not_connected" xml:space="preserve"><value>സിങ്ക്: ബന്ധിപ്പിച്ചിട്ടില്ല</value></data>
+  <data name="settings.sync.ready" xml:space="preserve"><value>തയ്യാർ</value></data>
+  <data name="settings.sync.status" xml:space="preserve"><value>സിങ്ക്: {provider}{account} — {state}</value></data>
+  <data name="download.title" xml:space="preserve"><value>ഡൗൺലോഡുകൾ</value></data>
+  <data name="download.paused" xml:space="preserve"><value>താൽക്കാലികമായി നിർത്തി</value></data>
+  <data name="download.state.queued" xml:space="preserve"><value>നിരയിലാക്കി</value></data>
+  <data name="download.state.downloading" xml:space="preserve"><value>ഡൗൺലോഡ് ചെയ്യുന്നു</value></data>
+  <data name="download.state.failed" xml:space="preserve"><value>പരാജയപ്പെട്ടു</value></data>
+  <data name="settings.automation.label" xml:space="preserve"><value>സ്വയപ്രവർത്തനം</value></data>
+  <data name="settings.automation.enable_mcp" xml:space="preserve"><value>MCP സെർവർ പ്രവർത്തനക്ഷമമാക്കുക</value></data>
+  <data name="settings.automation.port" xml:space="preserve"><value>പോർട്ട്</value></data>
+  <data name="settings.automation.refresh" xml:space="preserve"><value>സ്ഥിതി പുതുക്കുക</value></data>
+  <data name="settings.automation.copy_token" xml:space="preserve"><value>ടോക്കൺ പകർത്തുക</value></data>
+  <data name="settings.automation.rotate_token" xml:space="preserve"><value>ടോക്കൺ മാറ്റുക</value></data>
+  <data name="settings.automation.status.running" xml:space="preserve"><value>MCP സർവർ: {url}</value></data>
+  <data name="settings.automation.status.disabled" xml:space="preserve"><value>MCP സർവർ പ്രവർത്തനരഹിതമാണ്</value></data>
+  <data name="settings.automation.status.invalid_config" xml:space="preserve"><value>അസാധുവായ MCP സെർവർ ക്രമീകരണം</value></data>
+  <data name="settings.automation.status.token_unavailable" xml:space="preserve"><value>MCP ടോക്കൺ ലഭ്യമല്ല</value></data>
+  <data name="settings.automation.status.bind_failed" xml:space="preserve"><value>MCP സെർവർ ആരംഭിക്കാനായില്ല</value></data>
+  <data name="settings.automation.status.server_failed" xml:space="preserve"><value>MCP സെർവർ നിർത്തി</value></data>
+  <data name="settings.automation.invalid_port" xml:space="preserve"><value>1 മുതൽ 65535 വരെ ഒരു പോർട്ട് നൽകുക</value></data>
+  <data name="settings.automation.status_unavailable" xml:space="preserve"><value>MCP നില ലഭ്യമല്ല</value></data>
+  <data name="settings.automation.token_unavailable" xml:space="preserve"><value>MCP ടോക്കൺ ലഭ്യമല്ല</value></data>
+  <data name="settings.automation.token_copied" xml:space="preserve"><value>ടോക്കൺ പകർത്തി</value></data>
+  <data name="settings.automation.token_rotated" xml:space="preserve"><value>ടോക്കൺ മാറ്റി പകർത്തി</value></data>
+  <data name="library.mode.albums" xml:space="preserve"><value>ആൽബങ്ങൾ</value></data>
+  <data name="library.mode.composers" xml:space="preserve"><value>സംഗീതരചയിതാക്കൾ</value></data>
+  <data name="library.mode.artists" xml:space="preserve"><value>കലാകാരന്മാർ</value></data>
+  <data name="library.no_composers" xml:space="preserve"><value>സംഗീതരചയിതാക്കളില്ല</value></data>
+  <data name="library.no_artists" xml:space="preserve"><value>കലാകാരന്മാരില്ല</value></data>
+  <data name="search.section.albums" xml:space="preserve"><value>ആൽബങ്ങൾ</value></data>
+  <data name="search.section.artists" xml:space="preserve"><value>കലാകാരന്മാർ</value></data>
+  <data name="search.section.tracks" xml:space="preserve"><value>ട്രാക്കുകൾ</value></data>
+  <data name="search.section.composers" xml:space="preserve"><value>സംഗീതരചയിതാക്കൾ</value></data>
+  <data name="search.section.works" xml:space="preserve"><value>കൃതികൾ</value></data>
+  <data name="search.section.releases" xml:space="preserve"><value>പതിപ്പുകൾ</value></data>
+  <data name="search.section.credits" xml:space="preserve"><value>ക്രെഡിറ്റുകൾ</value></data>
+  <data name="search.section.recordings" xml:space="preserve"><value>റെക്കോർഡിംഗുകൾ</value></data>
+  <data name="composer.open_failed" xml:space="preserve"><value>സംഗീതരചയിതാവിന്റെ വിശദാംശം തുറക്കാനായില്ല</value></data>
+  <data name="artist.open_failed" xml:space="preserve"><value>കലാകാരന്റെ വിശദാംശം തുറക്കാനായില്ല</value></data>
+  <data name="work.open_failed" xml:space="preserve"><value>കൃതിയുടെ വിശദാംശം തുറക്കാനായില്ല</value></data>
+  <data name="work.count" xml:space="preserve"><value>{count} കൃതികൾ</value></data>
+  <data name="album.count" xml:space="preserve"><value>{count} ആൽബങ്ങൾ</value></data>
+  <data name="settings.formats.default_track_format" xml:space="preserve"><value>ട്രാക്കുകൾ</value></data>
+  <data name="settings.formats.default_release_format" xml:space="preserve"><value>പതിപ്പ്</value></data>
+  <data name="settings.formats.formats" xml:space="preserve"><value>ഫോർമാറ്റുകൾ</value></data>
+  <data name="settings.formats.defaults" xml:space="preserve"><value>ഡിഫോൾട്ടുകൾ</value></data>
+  <data name="settings.formats.defaults_footer" xml:space="preserve"><value>"ഇങ്ങനെ സംരക്ഷിക്കുക…" തുടങ്ങുന്ന ഫോർമാറ്റ്.</value></data>
+  <data name="settings.formats.advanced" xml:space="preserve"><value>വിപുലം</value></data>
+  <data name="settings.formats.preset_name" xml:space="preserve"><value>പേര്</value></data>
+  <data name="settings.formats.preset_track" xml:space="preserve"><value>ട്രാക്ക്</value></data>
+  <data name="settings.formats.preset_release" xml:space="preserve"><value>പതിപ്പ്</value></data>
+  <data name="settings.formats.preset_pregap" xml:space="preserve"><value>പ്രീഗ്യാപ്</value></data>
+  <data name="settings.formats.pregap.append_except_htoa" xml:space="preserve"><value>HTOA ഒഴികെ ചേർക്കുക</value></data>
+  <data name="settings.formats.pregap.append_including_htoa" xml:space="preserve"><value>HTOA ഉൾപ്പെടെ ചേർക്കുക</value></data>
+  <data name="settings.formats.pregap.exclude" xml:space="preserve"><value>ഒഴിവാക്കുക</value></data>
+  <data name="settings.formats.pregap.single_file_with_cue" xml:space="preserve"><value>ഒറ്റ ഫയൽ + CUE</value></data>
+  <data name="settings.formats.filename_format" xml:space="preserve"><value>ഫയലിന്റെ പേരിടൽ</value></data>
+  <data name="settings.formats.add_token" xml:space="preserve"><value>ചേർക്കുക:</value></data>
+  <data name="settings.formats.remove_token" xml:space="preserve"><value>{token} നീക്കംചെയ്യുക</value></data>
+  <data name="settings.formats.token.title" xml:space="preserve"><value>ശീർഷകം</value></data>
+  <data name="settings.formats.token.artist" xml:space="preserve"><value>കലാകാരൻ</value></data>
+  <data name="settings.formats.token.album" xml:space="preserve"><value>ആൽബം</value></data>
+  <data name="settings.formats.token.year" xml:space="preserve"><value>റിലീസ് വർഷം</value></data>
+  <data name="settings.formats.token.track_number" xml:space="preserve"><value>ട്രാക്ക് നം.</value></data>
+  <data name="settings.formats.token.disc_number" xml:space="preserve"><value>ഡിസ്ക് നം.</value></data>
+  <data name="settings.formats.token.track_total" xml:space="preserve"><value>ആകെ ട്രാക്കുകൾ</value></data>
+  <data name="settings.formats.sample.title" xml:space="preserve"><value>ട്രാക്ക് ശീർഷകം</value></data>
+  <data name="settings.formats.sample.artist" xml:space="preserve"><value>ആർട്ടിസ്റ്റിന്റെ പേര്</value></data>
+  <data name="settings.formats.sample.album" xml:space="preserve"><value>ആൽബം ശീർഷകം</value></data>
+  <data name="settings.formats.preview" xml:space="preserve"><value>പ്രിവ്യൂ: {filename}</value></data>
+  <data name="settings.formats.presets_footer" xml:space="preserve"><value>ട്രാക്കുകളിലും പതിപ്പുകളിലും "ഇങ്ങനെ സംരക്ഷിക്കുക…" എന്നതിൽ ഫോർമാറ്റുകൾ കാണാം.</value></data>
+  <data name="settings.formats.preset_format" xml:space="preserve"><value>ഫോർമാറ്റ്</value></data>
+  <data name="settings.formats.add_preset" xml:space="preserve"><value>ഫോർമാറ്റ് ചേർക്കുക</value></data>
+  <data name="settings.formats.delete_preset" xml:space="preserve"><value>ഫോർമാറ്റ് ഇല്ലാതാക്കുക</value></data>
+  <data name="settings.formats.delete_confirm" xml:space="preserve"><value>“{name}” ഫോർമാറ്റ് ഇല്ലാതാക്കണോ?</value></data>
+  <data name="settings.formats.codec_mp3" xml:space="preserve"><value>MP3 {kbps} kbps</value></data>
+  <data name="settings.formats.codec_aac" xml:space="preserve"><value>AAC {kbps} kbps</value></data>
+  <data name="settings.formats.codec_opus" xml:space="preserve"><value>Opus {kbps} kbps</value></data>
+  <data name="settings.formats.show_in_menus" xml:space="preserve"><value>ഇതിന്റെ "ഇങ്ങനെ സംരക്ഷിക്കുക…" എന്നതിൽ കാണിക്കുക</value></data>
+  <data name="settings.formats.embed_cover" xml:space="preserve"><value>കവർ ആർട്ട് ഉൾപ്പെടുത്തുക</value></data>
+  <data name="settings.formats.bit_depth_label" xml:space="preserve"><value>ബിറ്റ് ആഴം</value></data>
+  <data name="settings.formats.bit_depth.source" xml:space="preserve"><value>ഉറവിടം</value></data>
+  <data name="settings.formats.bit_depth.bits16" xml:space="preserve"><value>16-ബിറ്റ്</value></data>
+  <data name="settings.formats.bit_depth.bits24" xml:space="preserve"><value>24-ബിറ്റ്</value></data>
+  <data name="settings.formats.bit_depth.bits32" xml:space="preserve"><value>32-ബിറ്റ്</value></data>
+  <data name="settings.formats.bitrate" xml:space="preserve"><value>ബിറ്റ് നിരക്ക്</value></data>
+  <data name="outbox.state.uploading" xml:space="preserve"><value>അപ്ലോഡ് ചെയ്യുന്നു</value></data>
+  <data name="outbox.state.queued" xml:space="preserve"><value>ക്യൂവിൽ</value></data>
+  <data name="outbox.state.retrying" xml:space="preserve"><value>വീണ്ടും ശ്രമിക്കുന്നു</value></data>
+  <data name="outbox.state.done" xml:space="preserve"><value>പൂർത്തിയായി</value></data>
+  <data name="outbox.badge.uploading" xml:space="preserve"><value>അപ്ലോഡ് ചെയ്യുന്നു ({count})</value></data>
+  <data name="outbox.badge.queued" xml:space="preserve"><value>ക്യൂവിൽ ({count})</value></data>
+  <data name="outbox.badge.retrying" xml:space="preserve"><value>വീണ്ടും ശ്രമിക്കുന്നു ({count})</value></data>
+  <data name="edit.field.album_title" xml:space="preserve"><value>ആൽബം ശീർഷകം</value></data>
+  <data name="edit.field.album_artists" xml:space="preserve"><value>ആൽബം ആർട്ടിസ്റ്റുകൾ (കോമകൊണ്ട് വേർതിരിച്ചത്)</value></data>
+  <data name="edit.field.year" xml:space="preserve"><value>വർഷം</value></data>
+  <data name="edit.field.format" xml:space="preserve"><value>ഫോർമാറ്റ്</value></data>
+  <data name="edit.field.label" xml:space="preserve"><value>ലേബൽ</value></data>
+  <data name="edit.field.catalog_number" xml:space="preserve"><value>കാറ്റലോഗ് നമ്പർ</value></data>
+  <data name="edit.field.country" xml:space="preserve"><value>രാജ്യം</value></data>
+  <data name="edit.field.barcode" xml:space="preserve"><value>ബാർകോഡ്</value></data>
+  <data name="edit.tracks.header" xml:space="preserve"><value>ട്രാക്കുകൾ</value></data>
+  <data name="edit.tracks.col_title" xml:space="preserve"><value>ശീർഷകം</value></data>
+  <data name="edit.tracks.col_artist" xml:space="preserve"><value>കലാകാരൻ</value></data>
+  <data name="edit.tracks.col_side" xml:space="preserve"><value>വശം</value></data>
+  <data name="edit.tracks.col_number" xml:space="preserve"><value>നം.</value></data>
+  <data name="edit.tracks.artist_placeholder" xml:space="preserve"><value>ആൽബം ആർട്ടിസ്റ്റ്</value></data>
+  <data name="identify.skip" xml:space="preserve"><value>തിരിച്ചറിയൽ ഒഴിവാക്കുക</value></data>
+  <data name="identify.import_as" xml:space="preserve"><value>ഇങ്ങനെ ഇറക്കുമതി ചെയ്യുക</value></data>
+  <data name="identify.exact_pressing" xml:space="preserve"><value>കൃത്യമായ പ്രസ്സിംഗ്</value></data>
+  <data name="identify.metadata_only" xml:space="preserve"><value>മെറ്റാഡാറ്റ മാത്രം</value></data>
+  <data name="identify.metadata_only_note" xml:space="preserve"><value>മെറ്റാഡാറ്റ മാത്രം — പ്രസ്സിംഗ് ഫീൽഡുകൾ ശൂന്യമായി തുടരും; ആൽബം ഗ്രൂപ്പ് മാത്രം രേഖപ്പെടുത്തും.</value></data>
+  <data name="album.reidentify.claim_header" xml:space="preserve"><value>തിരിച്ചറിയൽ ഈ പ്രസ്സിംഗായി സജ്ജമാക്കുക</value></data>
+  <data name="queue.drop_insert_caption" xml:space="preserve"><value>സ്ഥാനം {position}-ൽ ചേർക്കുക</value></data>
+  <data name="queue.empty.title" xml:space="preserve"><value>ക്യൂ ശൂന്യമാണ്</value></data>
+  <data name="queue.empty.hint" xml:space="preserve"><value>ആൽബങ്ങൾ ഇവിടേക്ക് വലിച്ചിടുക, അല്ലെങ്കിൽ ഒരു ആൽബം പ്ലേ ചെയ്യുക</value></data>
+  <data name="album.reidentify.updated" xml:space="preserve"><value>തിരിച്ചറിയൽ പുതുക്കി.</value></data>
+  <data name="album.reidentify.refresh_body" xml:space="preserve"><value>പുതുതായി തിരിച്ചറിഞ്ഞ ഉറവിടത്തിൽ നിന്ന് ആൽബം, ട്രാക്ക്, പ്രസ്സിംഗ് ഫീൽഡുകൾ എടുക്കണോ? നിങ്ങൾ ചെയ്ത തിരുത്തലുകൾ മായും.</value></data>
+  <data name="album.reidentify.refresh_confirm" xml:space="preserve"><value>പുതിയ ഉറവിടത്തിൽ നിന്ന് പുതുക്കുക</value></data>
+  <data name="album.reidentify.keep_current" xml:space="preserve"><value>നിലവിലെ മെറ്റാഡാറ്റ നിലനിർത്തുക</value></data>
+  <data name="import.tab.new" xml:space="preserve"><value>പുതിയത് ({count})</value></data>
+  <data name="import.tab.added" xml:space="preserve"><value>ചേർത്തു ({count})</value></data>
+  <data name="import.tab.skipped" xml:space="preserve"><value>ഒഴിവാക്കി ({count})</value></data>
+  <data name="import.candidate.skip" xml:space="preserve"><value>ഒഴിവാക്കുക</value></data>
+  <data name="import.candidate.unskip" xml:space="preserve"><value>പുതിയതിലേക്ക് നീക്കുക</value></data>
+  <data name="import.folder.remove" xml:space="preserve"><value>ഫോൾഡർ നീക്കം ചെയ്യുക</value></data>
+  <data name="import.sort_by" xml:space="preserve"><value>ക്രമപ്പെടുത്തുക</value></data>
+  <data name="import.sort.name_az" xml:space="preserve"><value>പേര് (A–Z)</value></data>
+  <data name="import.sort.name_za" xml:space="preserve"><value>പേര് (Z–A)</value></data>
+  <data name="import.sort.newest" xml:space="preserve"><value>ചേർത്ത തീയതി (പുതിയത്)</value></data>
+  <data name="import.sort.oldest" xml:space="preserve"><value>ചേർത്ത തീയതി (പഴയത്)</value></data>
+  <data name="nowplaying.show_remaining" xml:space="preserve"><value>ശേഷിക്കുന്ന സമയം കാണിക്കുക</value></data>
+  <data name="nowplaying.show_elapsed" xml:space="preserve"><value>കഴിഞ്ഞ സമയം കാണിക്കുക</value></data>
+  <data name="output.title" xml:space="preserve"><value>കയറ്റുമതിയും സംരക്ഷണവും</value></data>
+  <data name="export.state.exporting" xml:space="preserve"><value>{percent}% കയറ്റുമതി ചെയ്യുന്നു</value></data>
+  <data name="export.state.saving" xml:space="preserve"><value>{percent}% സംരക്ഷിക്കുന്നു</value></data>
+  <data name="import.documents" xml:space="preserve"><value>ഡോക്യുമെന്റുകൾ</value></data>
+  <data name="import.document.read_failed" xml:space="preserve"><value>{name} വായിക്കാനായില്ല: {error}</value></data>
+  <data name="libraries.reveal" xml:space="preserve"><value>ഫയൽ എക്സ്‌പ്ലോററിൽ കാണിക്കുക</value></data>
+  <data name="libraries.copy_id" xml:space="preserve"><value>ID പകർത്തുക</value></data>
+  <data name="libraries.id_copied" xml:space="preserve"><value>ലൈബ്രറി ID പകർത്തി</value></data>
+  <data name="libraries.reveal_failed" xml:space="preserve"><value>ലൈബ്രറി ഫോൾഡർ തുറക്കാനായില്ല</value></data>
+  <data name="settings.playback.restore_on_launch" xml:space="preserve"><value>ആരംഭിക്കുമ്പോൾ പുനഃസ്ഥാപിക്കുക</value></data>
+  <data name="settings.playback.restore_on_launch_help" xml:space="preserve"><value>പുറത്തുകടക്കുമ്പോൾ നിലവിലെ ട്രാക്ക്, സ്ഥാനം, നിര, ശബ്ദനില എന്നിവ സംരക്ഷിച്ച് അടുത്ത ആരംഭത്തിൽ പുനഃസ്ഥാപിക്കുന്നു.</value></data>
+  <data name="gallery.counter" xml:space="preserve"><value>{count} ൽ {index}</value></data>
+  <data name="gallery.image_load_failed" xml:space="preserve"><value>ചിത്രം ലോഡ് ചെയ്യാൻ കഴിഞ്ഞില്ല</value></data>
+  <data name="gallery.previous" xml:space="preserve"><value>മുൻഗാമി ചിത്രം</value></data>
+  <data name="gallery.next" xml:space="preserve"><value>അടുത്ത ചിത്രം</value></data>
+  <data name="storage.tab.all" xml:space="preserve"><value>എല്ലാം</value></data>
+  <data name="storage.tab.unmanaged" xml:space="preserve"><value>നിയന്ത്രണമില്ലാത്തത്</value></data>
+  <data name="storage.tab.managed" xml:space="preserve"><value>നിയന്ത്രിതം</value></data>
+  <data name="storage.tab.uploading" xml:space="preserve"><value>അപ്ലോഡ് ചെയ്യുന്നു</value></data>
+  <data name="storage.column.album" xml:space="preserve"><value>ആൽബം</value></data>
+  <data name="storage.column.artist" xml:space="preserve"><value>കലാകാരൻ</value></data>
+  <data name="storage.column.format" xml:space="preserve"><value>ഫോർമാറ്റ്</value></data>
+  <data name="storage.column.storage" xml:space="preserve"><value>സംഭരണം</value></data>
+  <data name="storage.column.files" xml:space="preserve"><value>ഫയലുകൾ</value></data>
+  <data name="storage.column.size" xml:space="preserve"><value>വലുപ്പം</value></data>
+  <data name="storage.footer.releases" xml:space="preserve"><value>{count, plural, one {# പതിപ്പ്} other {# പതിപ്പുകൾ}}</value></data>
+  <data name="storage.footer.total" xml:space="preserve"><value>ആകെ: {size}</value></data>
+  <data name="settings.remove.title" xml:space="preserve"><value>നീക്കം ചെയ്യുക</value></data>
+  <data name="settings.remove.footer_synced" xml:space="preserve"><value>ഈ ലൈബ്രറിയും അതിന്റെ ഡൗൺലോഡ് ചെയ്ത ഫയലുകളും ഈ പിസിയിൽ നിന്ന് നീക്കം ചെയ്യുന്നു. ക്ലൗഡിലെ നിങ്ങളുടെ ലൈബ്രറി കേടുകൂടാതെയിരിക്കും — പിന്നീട് ഇവിടെ നിന്ന് അത് പുനഃസ്ഥാപിക്കാം.</value></data>
+  <data name="settings.remove.footer_unsynced" xml:space="preserve"><value>ഈ ലൈബ്രറി സമന്വയിപ്പിച്ചിട്ടില്ല. ഇത് നീക്കം ചെയ്യുന്നത് അതിന്റെ കാറ്റലോഗ് — ആൽബങ്ങൾ, മെറ്റാഡാറ്റ എഡിറ്റുകൾ, പ്ലേ ചരിത്രം — ശാശ്വതമായി ഇല്ലാതാക്കും. നിങ്ങളുടെ ഫോൾഡറുകളിലെ ഓഡിയോ ഫയലുകൾ ഇല്ലാതാകില്ല.</value></data>
+  <data name="settings.remove.button" xml:space="preserve"><value>ഈ ലൈബ്രറി ഈ പിസിയിൽ നിന്ന് നീക്കം ചെയ്യുക</value></data>
+  <data name="settings.remove.confirm_synced" xml:space="preserve"><value>ക്ലൗഡിലെ നിങ്ങളുടെ ലൈബ്രറി കേടുകൂടാതെയിരിക്കും — പിന്നീട് സ്വാഗത സ്ക്രീനിൽ നിന്ന് അത് പുനഃസ്ഥാപിക്കാം.</value></data>
+  <data name="settings.remove.confirm_unsynced" xml:space="preserve"><value>ഈ ലൈബ്രറി ഒരിക്കലും സമന്വയിപ്പിച്ചിട്ടില്ല. അതിന്റെ കാറ്റലോഗ് ശാശ്വതമായി ഇല്ലാതാകും; നിങ്ങളുടെ ഫോൾഡറുകളിലെ ഓഡിയോ ഫയലുകൾ ഇല്ലാതാകില്ല.</value></data>
+  <data name="settings.remove.confirm_pending" xml:space="preserve"><value>ചില മാറ്റങ്ങൾ ഇതുവരെ അപ്‌ലോഡ് പൂർത്തിയായിട്ടില്ല, അവ നഷ്ടപ്പെടും.</value></data>
+  <data name="settings.remove.confirm_again" xml:space="preserve"><value>സ്ഥിരീകരിക്കാൻ ബട്ടൺ വീണ്ടും ക്ലിക്ക് ചെയ്യുക.</value></data>
+  <data name="settings.remove.failed" xml:space="preserve"><value>ലൈബ്രറി നീക്കം ചെയ്യാനായില്ല: {error}</value></data>
+  <data name="menu.pin" xml:space="preserve"><value>ഓഫ്‌ലൈൻ ഉപയോഗത്തിന് പിൻ ചെയ്യുക</value></data>
+  <data name="menu.play_count" xml:space="preserve"><value>{count, plural, one {# ആൽബം പ്ലേ ചെയ്യുക} other {# ആൽബങ്ങൾ പ്ലേ ചെയ്യുക}}</value></data>
+  <data name="menu.play_next_count" xml:space="preserve"><value>{count, plural, one {# ആൽബം അടുത്തതായി പ്ലേ ചെയ്യുക} other {# ആൽബങ്ങൾ അടുത്തതായി പ്ലേ ചെയ്യുക}}</value></data>
+  <data name="menu.add_to_queue_count" xml:space="preserve"><value>{count, plural, one {# ആൽബം നിരയിലേക്ക് ചേർക്കുക} other {# ആൽബങ്ങൾ നിരയിലേക്ക് ചേർക്കുക}}</value></data>
+  <data name="menu.pin_count" xml:space="preserve"><value>{count, plural, one {# ആൽബം ഓഫ്‌ലൈൻ ഉപയോഗത്തിന് പിൻ ചെയ്യുക} other {# ആൽബങ്ങൾ ഓഫ്‌ലൈൻ ഉപയോഗത്തിന് പിൻ ചെയ്യുക}}</value></data>
+  <data name="shell.open_with_folder" xml:space="preserve"><value>{name} ഉപയോഗിച്ച് തുറക്കുക</value></data>
+  <data name="nowplaying.pause" xml:space="preserve"><value>താൽക്കാലിക നിർത്തൽ</value></data>
+  <data name="nowplaying.mute" xml:space="preserve"><value>മ്യൂട്ട്</value></data>
+  <data name="nowplaying.unmute" xml:space="preserve"><value>മ്യൂട്ട് നീക്കുക</value></data>
+  <data name="nowplaying.previous" xml:space="preserve"><value>മുൻ ട്രാക്ക്</value></data>
+  <data name="nowplaying.next" xml:space="preserve"><value>അടുത്ത ട്രാക്ക്</value></data>
+  <data name="nowplaying.repeat_off" xml:space="preserve"><value>ആവർത്തനം: ഓഫ്</value></data>
+  <data name="nowplaying.repeat_context" xml:space="preserve"><value>ആവർത്തനം: സന്ദർഭം</value></data>
+  <data name="nowplaying.repeat_track" xml:space="preserve"><value>ആവർത്തനം: ട്രാക്ക്</value></data>
+  <data name="queue.now_playing" xml:space="preserve"><value>ഇപ്പോൾ പ്ലേ ചെയ്യുന്നു</value></data>
+  <data name="nowplaying.cast" xml:space="preserve"><value>കാസ്റ്റ്</value></data>
+  <data name="nowplaying.casting_to" xml:space="preserve"><value>{device}-ലേക്ക് കാസ്റ്റ് ചെയ്യുന്നു</value></data>
+  <data name="nowplaying.cast_disconnect" xml:space="preserve"><value>വിച്ഛേദിക്കുക</value></data>
+  <data name="nowplaying.cast_no_devices" xml:space="preserve"><value>കാസ്റ്റ് ഉപകരണങ്ങളൊന്നും കണ്ടെത്തിയില്ല</value></data>
+  <data name="component_gallery.menu" xml:space="preserve"><value>കമ്പോണന്റ് ഗാലറി</value></data>
+  <data name="component_gallery.title" xml:space="preserve"><value>കമ്പോണന്റ് ഗാലറി</value></data>
+</root>

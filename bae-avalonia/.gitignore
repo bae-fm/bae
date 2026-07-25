@@ -6,3 +6,9 @@ obj/
 .vs/
 .idea/
 *.user
+
+# Generated localization resx (loc-gen emits Core.resx / Core.<culture>.resx
+# from the master catalog on every build). The committed Resources*.resx chrome
+# stay tracked.
+Strings/Core.resx
+Strings/Core.*.resx

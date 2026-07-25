@@ -1,0 +1,17 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="Bae.Desktop.MainWindow"
+        Title="bae"
+        Width="900" Height="600"
+        Background="{DynamicResource BaeBackgroundBrush}">
+  <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="8">
+    <TextBlock Text="bae"
+               FontSize="48" FontWeight="Bold"
+               Foreground="{DynamicResource BaeTextPrimaryBrush}"
+               HorizontalAlignment="Center" />
+    <TextBlock Name="Subtitle"
+               FontSize="16"
+               Foreground="{DynamicResource BaeTextSecondaryBrush}"
+               HorizontalAlignment="Center" />
+  </StackPanel>
+</Window>

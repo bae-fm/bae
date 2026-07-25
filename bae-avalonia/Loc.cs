@@ -32,14 +32,15 @@ internal static class Loc
     // The Core table holds bridge-originated keys (core.*) and shared chrome
     // (ui.*), both generated from the master catalog; the Resources table holds
     // the bare app chrome. Both resolve through standard .NET satellite
-    // assemblies keyed off CurrentUICulture — the base name is
-    // "<RootNamespace>.<resx-file>", the invariant Core.resx / Resources.resx
-    // embedded in the main assembly and each Core.<culture>.resx /
-    // Resources.<culture>.resx in its culture's satellite assembly.
+    // assemblies keyed off CurrentUICulture — the base name is the resx's
+    // manifest name (RootNamespace + the Strings/ folder + the file), the
+    // invariant Core.resx / Resources.resx embedded in the main assembly and
+    // each Core.<culture>.resx / Resources.<culture>.resx in its culture's
+    // satellite assembly.
     private static readonly ResourceManager CoreManager =
-        new("Bae.Desktop.Core", typeof(Loc).Assembly);
+        new("Bae.Desktop.Strings.Core", typeof(Loc).Assembly);
     private static readonly ResourceManager ChromeManager =
-        new("Bae.Desktop.Resources", typeof(Loc).Assembly);
+        new("Bae.Desktop.Strings.Resources", typeof(Loc).Assembly);
 
     // One formatter per culture name. The MessageFormat instance compiles and
     // caches each pattern; its locale drives plural-category selection ("one" vs

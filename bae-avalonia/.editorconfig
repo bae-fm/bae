@@ -1,0 +1,27 @@
+root = true
+
+# UTF-8 with a BOM, matching the CHARSET convention the WinUI project used so a
+# file round-trips identically across the Windows and Linux toolchains. Newlines
+# are lf — this app ships on Linux too, unlike the Windows-only predecessor.
+[*.cs]
+indent_style = space
+indent_size = 4
+end_of_line = lf
+charset = utf-8-bom
+trim_trailing_whitespace = true
+insert_final_newline = true
+
+# Dead code: unused private members (enforced as errors when
+# EnforceCodeStyleInBuild=true is set at build time).
+dotnet_diagnostic.IDE0051.severity = error
+dotnet_diagnostic.IDE0052.severity = error
+
+[*.{csproj,props,targets}]
+indent_style = space
+indent_size = 2
+
+[*.axaml]
+indent_style = space
+indent_size = 2
+charset = utf-8-bom
+end_of_line = lf

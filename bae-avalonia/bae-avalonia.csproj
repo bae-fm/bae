@@ -1,0 +1,96 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Avalonia desktop app for Windows and Linux (x64/arm64), both editions. Binds
+    bae-core through the generated uniffi C# bindings. This project is C#, not a
+    cargo crate, so it is deliberately outside the Rust workspace.
+
+    Single net8.0 target: a Windows-only backend file (SMTC, registry) multi-
+    targets net8.0-windows only once such a file exists; phase 1 has none.
+  -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <RootNamespace>Bae.Desktop</RootNamespace>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
+    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
+    <!-- CS0168/CS0219: unused local variables promoted to errors, as the WinUI
+         project did. IDE0051/IDE0052 (unused private members) are enforced via
+         .editorconfig when EnforceCodeStyleInBuild=true is passed at build. -->
+    <WarningsAsErrors>CS0168;CS0219</WarningsAsErrors>
+    <!-- The tests live in a sibling SDK project; keep its sources out of the app
+         build. -->
+    <DefaultItemExcludes>$(DefaultItemExcludes);bae-avalonia.Tests/**</DefaultItemExcludes>
+    <!-- Localization resx are included explicitly below (the generated Core*
+         from the master catalog, the committed Resources* chrome), so turn off
+         the SDK's default resx auto-include to avoid double-adding them. -->
+    <EnableDefaultEmbeddedResourceItems>false</EnableDefaultEmbeddedResourceItems>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="11.3.18" />
+    <PackageReference Include="Avalonia.Desktop" Version="11.3.18" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="11.3.18" />
+    <PackageReference Include="Avalonia.Fonts.Inter" Version="11.3.18" />
+    <!-- Avalonia's XAML diagnostics attach only in DEBUG. -->
+    <PackageReference Include="Avalonia.Diagnostics" Version="11.3.18" Condition="'$(Configuration)' == 'Debug'" />
+    <!--
+      ICU MessageFormat 1 runtime. The localization catalog stores each message
+      as a verbatim MF1 string (plural / select / named args); this parses it at
+      runtime for the current locale — the analog of macOS's String Catalog
+      variations. Loc.cs wraps it.
+    -->
+    <PackageReference Include="MessageFormat" Version="7.0.0" />
+  </ItemGroup>
+
+  <!--
+    The generated uniffi C# bindings (per edition, gitignored). Built by
+    bae-bridge/build-linux.sh / build-windows.sh into csharp-bindings-<edition>;
+    BridgeBindingsDir selects which edition compiles in. Included only when the
+    directory exists so the scaffold builds before a bridge build.
+  -->
+  <PropertyGroup>
+    <BridgeBindingsDir Condition="'$(BridgeBindingsDir)' == ''">..\bae-bridge\csharp-bindings-full</BridgeBindingsDir>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="$([System.String]::Copy('$(BridgeBindingsDir)').Contains('csharp-bindings-full'))">
+    <DefineConstants>$(DefineConstants);BAE_FULL_BRIDGE</DefineConstants>
+  </PropertyGroup>
+
+  <ItemGroup Condition="Exists('$(MSBuildProjectDirectory)\$(BridgeBindingsDir)')">
+    <Compile Include="$(MSBuildProjectDirectory)\$(BridgeBindingsDir)\**\*.cs" Link="GeneratedBridge\%(RecursiveDir)%(Filename)%(Extension)" />
+  </ItemGroup>
+
+  <!--
+    Localization. The committed chrome tables (Strings/Resources.resx +
+    Resources.<culture>.resx) are the bare app chrome, hand-maintained. The
+    Core tables (Strings/Core.resx + Core.<culture>.resx) are generated from the
+    master catalog (bae-bridge/loc/catalog.toml) before the build, the way the
+    macOS build regenerates Core.xcstrings — added to EmbeddedResource inside
+    the generating target so a clean build embeds them.
+  -->
+  <ItemGroup>
+    <EmbeddedResource Include="Strings\Resources*.resx" />
+  </ItemGroup>
+
+  <Target Name="GenerateCoreResx" BeforeTargets="AssignTargetPaths;PrepareResourceNames">
+    <Exec
+      Command="cargo run -q -p bae-loc --bin loc-gen -- emit --target resx --out-dir &quot;$(MSBuildProjectDirectory)/Strings&quot;"
+      WorkingDirectory="$(MSBuildProjectDirectory)/.." />
+    <ItemGroup>
+      <EmbeddedResource Include="Strings/Core*.resx" />
+    </ItemGroup>
+  </Target>
+
+  <ItemGroup>
+    <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+      <_Parameter1>BaeGitCommit</_Parameter1>
+      <_Parameter2>$(BAE_GIT_COMMIT)</_Parameter2>
+    </AssemblyAttribute>
+  </ItemGroup>
+
+</Project>
