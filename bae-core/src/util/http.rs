@@ -65,7 +65,7 @@ pub(crate) async fn read_body_capped(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tokio::io::AsyncWriteExt;
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
     use tokio::sync::oneshot;
     use tokio::time::{timeout, Duration};
 
@@ -88,6 +88,14 @@ mod tests {
                 .write_all(&raw_response)
                 .await
                 .expect("test response should write");
+            // Half-close and then drain the client's side to EOF rather than
+            // dropping the stream outright. A bare drop with data still in flight
+            // makes Windows send an RST, which the client surfaces as a
+            // ConnectionAborted request error before it ever reads the response.
+            stream.flush().await.ok();
+            stream.shutdown().await.ok();
+            let mut discard = Vec::new();
+            stream.read_to_end(&mut discard).await.ok();
         });
         client_builder()
             .build()
