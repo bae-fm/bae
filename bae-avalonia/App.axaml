@@ -70,6 +70,16 @@
       <SolidColorBrush x:Key="BaeTextSecondaryBrush" Color="{DynamicResource BaeTextSecondaryColor}" />
       <SolidColorBrush x:Key="BaeDangerBrush" Color="{DynamicResource BaeDangerColor}" />
       <SolidColorBrush x:Key="BaeHairlineBrush" Color="{DynamicResource BaeHairlineColor}" />
+
+      <!-- FluentTheme's Slider paints its filled track and thumb from these
+           accent resources; overriding them keeps the scrubber and volume slider
+           terracotta instead of the stock blue, in both variants. -->
+      <SolidColorBrush x:Key="SliderTrackValueFill" Color="{DynamicResource BaeAccentColor}" />
+      <SolidColorBrush x:Key="SliderTrackValueFillPointerOver" Color="{DynamicResource BaeAccentHoverColor}" />
+      <SolidColorBrush x:Key="SliderTrackValueFillPressed" Color="{DynamicResource BaeAccentPressedColor}" />
+      <SolidColorBrush x:Key="SliderThumbBackground" Color="{DynamicResource BaeAccentColor}" />
+      <SolidColorBrush x:Key="SliderThumbBackgroundPointerOver" Color="{DynamicResource BaeAccentHoverColor}" />
+      <SolidColorBrush x:Key="SliderThumbBackgroundPressed" Color="{DynamicResource BaeAccentPressedColor}" />
     </ResourceDictionary>
   </Application.Resources>
 
