@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Templates;
+using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.Markup.Xaml.MarkupExtensions;
 using Avalonia.Media;
@@ -66,7 +67,62 @@ internal sealed class QueuePane
 
     public bool IsOpen => _host.IsVisible;
 
-    public void AttachToggle(Button button) => button.Click += (_, _) => Toggle();
+    public void AttachToggle(Button button)
+    {
+        button.Click += (_, _) => Toggle();
+        // A card dropped on the queue button appends the album's tracks to Up Next,
+        // whether or not the pane is open.
+        EnableQueueDrop(button);
+    }
+
+    // Accept album-card drops on a target: on drop, resolve the dropped album ids to
+    // tracks and append them to the manual "Up Next" lane. Drops are album-id text
+    // (the drag payload); a Files drag falls through to the window's folder import.
+    private void EnableQueueDrop(Control target)
+    {
+        DragDrop.SetAllowDrop(target, true);
+        target.AddHandler(DragDrop.DragOverEvent, (_, e) =>
+        {
+            e.DragEffects = e.Data.Contains(DataFormats.Text) ? DragDropEffects.Copy : DragDropEffects.None;
+            e.Handled = true;
+        });
+        target.AddHandler(DragDrop.DropEvent, (_, e) =>
+        {
+            if (!e.Data.Contains(DataFormats.Text))
+            {
+                return;
+            }
+            e.Handled = true;
+            HandleQueueDrop(e.Data.GetText());
+        });
+    }
+
+    private void HandleQueueDrop(string? payload)
+    {
+        if (_app.Session.CurrentHandleOrNull() is null || string.IsNullOrEmpty(payload))
+        {
+            return;
+        }
+        var albumIds = QueueDragPayload.Decode(payload);
+        var (current, resolved) = _app.Library.ResolveToTrackIds(albumIds);
+        if (!current)
+        {
+            return;
+        }
+        if (resolved.Value is not { } trackIds)
+        {
+            if (resolved.Error is not null)
+            {
+                _app.ShowError(Loc.Chrome("error.title"), resolved.Error);
+            }
+            return;
+        }
+        var (queueCurrent, error) = _app.Queue.AddToQueue(trackIds);
+        if (queueCurrent && error is not null)
+        {
+            _app.ShowError(Loc.Chrome("error.title"), error);
+        }
+    }
 
     public void Toggle()
     {
@@ -342,6 +398,9 @@ internal sealed class QueuePane
                 _ = LoadMoreContext(rows);
             }
         };
+        // A card dropped anywhere on the list appends to Up Next (a precise
+        // drop-at-index and in-list reorder land with the reorder change).
+        EnableQueueDrop(scroller);
         return scroller;
     }
 

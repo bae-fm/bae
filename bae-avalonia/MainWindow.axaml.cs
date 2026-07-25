@@ -1,7 +1,9 @@
 using System;
 using System.Threading.Tasks;
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Markup.Xaml.MarkupExtensions;
+using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 
 namespace Bae.Desktop;
@@ -40,8 +42,37 @@ internal sealed class MainWindow : Window
         root.Children.Add(lightbox);
         Content = root;
 
+        // A folder dropped on the window scans it into the import watched set — the
+        // same action a folder dropped on the exe or a bae://import intent runs.
+        DragDrop.SetAllowDrop(root, true);
+        root.AddHandler(DragDrop.DragOverEvent, (_, e) =>
+        {
+            e.DragEffects = e.Data.Contains(DataFormats.Files) ? DragDropEffects.Copy : e.DragEffects;
+        });
+        root.AddHandler(DragDrop.DropEvent, OnWindowDrop);
+
         // Subscribe to core's UI events once the window is up (the handle is
         // already open; the subscription fences stale deliveries by generation).
         Opened += (_, _) => _session.Subscribe();
+    }
+
+    private void OnWindowDrop(object? sender, DragEventArgs e)
+    {
+        if (_session.CurrentHandleOrNull() is null)
+        {
+            return;
+        }
+        var files = e.Data.GetFiles();
+        if (files is null)
+        {
+            return;
+        }
+        foreach (var item in files)
+        {
+            if (item is IStorageFolder && item.TryGetLocalPath() is { } path)
+            {
+                _ = _app.ImportStore.ScanFolder(path);
+            }
+        }
     }
 }

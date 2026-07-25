@@ -50,6 +50,7 @@ internal sealed class AlbumGridView : UserControl
             new AlbumGridLayout(),
             OnCardPressed,
             BuildExpansion);
+        _context.StartCardDrag = StartCardDrag;
 
         _facade = new RowSlotFacade(() => _list.RowCount(_columns));
         _rows = new ItemsControl
@@ -255,6 +256,22 @@ internal sealed class AlbumGridView : UserControl
     private Task<Control?> BuildExpansion(Album album) =>
         AlbumExpansionView.BuildAsync(_app, _dialogs, album, Collapse);
 
+    // Start a card drag carrying the ordered targets (the whole multi-selection in
+    // visible order when the card is part of it, else just this card) as the
+    // newline-joined album-id payload the queue drop decodes. Cancelled when no
+    // library is open. Never mutates the selection.
+    private async Task StartCardDrag(Album album, PointerEventArgs e)
+    {
+        if (_app.Session.CurrentHandleOrNull() is null)
+        {
+            return;
+        }
+        var ids = _context.Selection.OrderedTargets(album.Id, id => _list.PositionOf(id));
+        var data = new DataObject();
+        data.Set(DataFormats.Text, QueueDragPayload.Encode(ids));
+        await DragDrop.DoDragDrop(e, data, DragDropEffects.Copy);
+    }
+
     // ── Reveal / reset ────────────────────────────────────────────────────────
 
     // Bring an album into view and expand it: switch nothing here (the browser view
@@ -328,6 +345,10 @@ internal sealed class AlbumGridContext
 
     public string? SelectedAlbumId { get; set; }
     public int ExpansionEpoch { get; set; }
+
+    // Starts an album-card drag carrying the card's ordered targets (set by the
+    // grid, which owns the DragDrop session and the session guard).
+    public Func<Album, PointerEventArgs, Task>? StartCardDrag { get; set; }
 
     public event Action? ExpansionChanged;
 
@@ -557,13 +578,43 @@ internal sealed class AlbumRowControl : ContentControl
     private Control BuildCard(Album album)
     {
         var card = AlbumCardVisual.Build(album, _context.Layout);
+        // Click vs. drag: a press that releases in place is a click (expand /
+        // select); a press that moves past a threshold starts a card drag. The
+        // click fires on release so a drag doesn't also expand the album.
+        Point? pressAt = null;
+        var dragged = false;
         card.PointerPressed += (_, e) =>
         {
-            var point = e.GetCurrentPoint(card);
-            if (point.Properties.IsLeftButtonPressed)
+            if (e.GetCurrentPoint(card).Properties.IsLeftButtonPressed)
+            {
+                pressAt = e.GetPosition(card);
+                dragged = false;
+            }
+        };
+        card.PointerMoved += async (_, e) =>
+        {
+            if (pressAt is not { } start || dragged || !e.GetCurrentPoint(card).Properties.IsLeftButtonPressed)
+            {
+                return;
+            }
+            var now = e.GetPosition(card);
+            if (Math.Abs(now.X - start.X) < 6 && Math.Abs(now.Y - start.Y) < 6)
+            {
+                return;
+            }
+            dragged = true;
+            if (_context.StartCardDrag is { } start2)
+            {
+                await start2(album, e);
+            }
+        };
+        card.PointerReleased += (_, e) =>
+        {
+            if (pressAt is not null && !dragged && e.InitialPressMouseButton == MouseButton.Left)
             {
                 _context.OnCardPressed(album, e.KeyModifiers);
             }
+            pressAt = null;
         };
         return card;
     }
