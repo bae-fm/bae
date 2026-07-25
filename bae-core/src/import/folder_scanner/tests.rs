@@ -258,6 +258,12 @@ fn unreadable_child_directory_fails_scan() {
             assert_eq!(path, blocked);
             assert_eq!(source.kind(), std::io::ErrorKind::PermissionDenied);
         }
+        FolderScanError::NotADirectory { path } => {
+            panic!(
+                "expected IO error, got not-a-directory for {}",
+                path.display()
+            )
+        }
         FolderScanError::Other(message) => panic!("expected IO error, got {message}"),
     }
 }

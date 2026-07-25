@@ -288,6 +288,12 @@ pub enum FolderScanError {
         #[source]
         source: io::Error,
     },
+    /// The scan root exists but is a file, not a directory. A distinct variant
+    /// so the message is stable across platforms — `read_dir` on a file reports
+    /// "Not a directory" on Unix but "The directory name is invalid" on Windows,
+    /// and the import service surfaces this text straight to the user.
+    #[error("not a directory: {}", path.display())]
+    NotADirectory { path: PathBuf },
     #[error("{0}")]
     Other(String),
 }
@@ -320,6 +326,19 @@ impl FileTree {
     /// Build a FileTree by recursively walking the filesystem from `root`.
     /// Skips hidden files/directories (names starting with '.') and noise files.
     pub(crate) fn from_filesystem(root: &Path) -> Result<Self, FolderScanError> {
+        // A root that exists but isn't a directory can't be walked. Catch it here
+        // for a stable, typed error instead of letting `read_dir` leak its
+        // per-OS text. A missing root falls through so `walk_dir`'s `read_dir`
+        // yields the `NotFound` the caller relies on to drop the folder's
+        // candidates. `metadata` follows symlinks, so a link to a real directory
+        // still scans.
+        if let Ok(metadata) = fs::metadata(root) {
+            if !metadata.is_dir() {
+                return Err(FolderScanError::NotADirectory {
+                    path: root.to_path_buf(),
+                });
+            }
+        }
         let mut files = Vec::new();
         Self::walk_dir(root, root, &mut files)?;
         Ok(Self::new(files))
