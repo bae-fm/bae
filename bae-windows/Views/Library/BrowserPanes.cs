@@ -14,10 +14,10 @@ namespace Bae.Windows;
 
 // Renders the three library panes that aren't the album grid: the
 // search-results list and the composer/work and artist detail columns. Both
-// read the current handle for their fetches (composer/work/artist detail) and
-// covers; the window owns pane visibility and the status line, passed in as
-// callbacks. Opening an album is injected because the album-detail dialog
-// lives on the window.
+// fetch through the library and media-paths services (composer/work/artist
+// detail, covers); the window owns pane visibility and the status line, passed
+// in as callbacks. Opening an album is injected because the album-detail
+// dialog lives on the window.
 internal sealed partial class BrowserPanes
 {
     // One row of the search-results dropdown: a section header, a status message
@@ -39,7 +39,6 @@ internal sealed partial class BrowserPanes
         object CoverSource, string Title, string Subtitle, string? Trailing, Func<System.Threading.Tasks.Task> Action)
         : SearchResultRow;
 
-    private readonly SessionStore _session;
     private readonly LibraryService _library;
     private readonly MediaPathsService _mediaPaths;
     private readonly DispatcherQueue _dispatcher;
@@ -54,7 +53,6 @@ internal sealed partial class BrowserPanes
     private readonly Action _dismissSearch;
 
     public BrowserPanes(
-        SessionStore session,
         LibraryService library,
         MediaPathsService mediaPaths,
         DispatcherQueue dispatcher,
@@ -67,7 +65,6 @@ internal sealed partial class BrowserPanes
         Func<string, string?, string?, System.Threading.Tasks.Task> openAlbum,
         Action dismissSearch)
     {
-        _session = session;
         _library = library;
         _mediaPaths = mediaPaths;
         _dispatcher = dispatcher;

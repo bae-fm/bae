@@ -145,7 +145,6 @@ internal sealed partial class LibraryBrowser
         // The composer/search panes: rendered and driven here through BrowserPanes,
         // which calls back for the pane visibility and album reveal this view owns.
         _browserPanes = new BrowserPanes(
-            session,
             library,
             mediaPaths,
             dispatcher,
