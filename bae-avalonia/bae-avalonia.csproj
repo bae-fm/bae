@@ -48,6 +48,12 @@
       variations. Loc.cs wraps it.
     -->
     <PackageReference Include="MessageFormat" Version="7.0.0" />
+    <!--
+      Installer + auto-update (cross-platform). Drives the in-app
+      check/download/apply from the GitHub release assets; the vpk CLI that packs
+      the release must match this version exactly.
+    -->
+    <PackageReference Include="Velopack" Version="1.2.0" />
   </ItemGroup>
 
   <!--
