@@ -1293,9 +1293,13 @@ mod tests {
             "local read failure should report a fill error",
         )
         .await;
+        // The source is a directory, which the OS refuses to serve as a file: a
+        // POSIX open succeeds and the first read fails, while Windows refuses at
+        // open. Either way the reader must report a fill error and cancel — the
+        // phase the refusal lands in is the OS's, not the contract's.
         assert!(
-            error.contains("Failed to read"),
-            "expected read failure, got: {error}"
+            error.contains("Failed to read") || error.contains("Failed to open file"),
+            "expected a read or open failure, got: {error}"
         );
     }
 }
