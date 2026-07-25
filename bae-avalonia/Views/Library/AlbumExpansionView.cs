@@ -183,6 +183,8 @@ internal static class AlbumExpansionView
             Child = coverImage,
         };
         coverBorder[!Border.BackgroundProperty] = new DynamicResourceExtension("BaeElevatedBrush");
+        // A click on the cover opens the release's gallery in the lightbox.
+        coverBorder.PointerPressed += (_, _) => dialogs.ShowGallery(selectedRelease.ReleaseId, selectedRelease.GalleryItems);
 
         var contentGrid = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*"), ColumnSpacing = 28 };
         Grid.SetColumn(coverBorder, 0);

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Layout;
@@ -18,11 +19,27 @@ internal sealed class ReleaseActionDialogs
 {
     private readonly AppService _app;
     private readonly ModalHost _host;
+    private readonly LightboxOverlay _lightbox;
 
-    public ReleaseActionDialogs(AppService app, ModalHost host)
+    public ReleaseActionDialogs(AppService app, ModalHost host, LightboxOverlay lightbox)
     {
         _app = app;
         _host = host;
+        _lightbox = lightbox;
+    }
+
+    // Open the release's gallery in the lightbox. The items come from the loaded
+    // release detail (as on macOS); each entry reads its bytes on demand through
+    // MediaPaths, which fetches and decrypts from the cloud home when off-disk.
+    public void ShowGallery(string releaseId, IReadOnlyList<BridgeGalleryItem> items)
+    {
+        var entries = new List<LightboxEntry>();
+        foreach (var item in items)
+        {
+            var source = item.Source;
+            entries.Add(new LightboxEntry(item.Id, item.Label, () => _app.MediaPaths.FetchGalleryBytes(releaseId, source)));
+        }
+        _lightbox.Show(entries, 0);
     }
 
     // Pick a new cover for the release — the release's own image files plus remote

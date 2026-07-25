@@ -84,6 +84,13 @@ public sealed class Release : INotifyPropertyChanged
     /// Internal for the same reason as <see cref="StorageActions"/>.</summary>
     internal BridgeReleaseStorageAction? TransferAction => _release.TransferAction;
 
+    /// <summary>The release's gallery images (the cover slot plus its image files),
+    /// each carrying the byte source the lightbox fetches on demand. Internal — the
+    /// generated bridge item type is internal — and read straight off the loaded
+    /// detail, as macOS reads its gallery from the release detail rather than a
+    /// second call.</summary>
+    internal IReadOnlyList<BridgeGalleryItem> GalleryItems => _release.GalleryItems;
+
     /// <summary>The picker label.</summary>
     public override string ToString() => DisplayName;
 }

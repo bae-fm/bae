@@ -28,13 +28,16 @@ internal sealed class MainWindow : Window
         Height = 850;
         this[!BackgroundProperty] = new DynamicResourceExtension("BaeBackgroundBrush");
 
-        // The in-window modal host over the shell: the album-detail action dialogs
-        // (change cover, and the rest as the family grows) present here.
+        // The in-window overlays over the shell: the modal host for the album-detail
+        // action dialogs, and the lightbox for the gallery. Both present above the
+        // shell (the lightbox topmost).
         var modalHost = new ModalHost();
-        var dialogs = new ReleaseActionDialogs(_app, modalHost);
+        var lightbox = new LightboxOverlay();
+        var dialogs = new ReleaseActionDialogs(_app, modalHost, lightbox);
         var root = new Panel();
         root.Children.Add(new MainShellView(_app, dialogs));
         root.Children.Add(modalHost);
+        root.Children.Add(lightbox);
         Content = root;
 
         // Subscribe to core's UI events once the window is up (the handle is
