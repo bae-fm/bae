@@ -61,6 +61,7 @@
     <Compile Include="../Stores/AlbumGridSelectionModel.cs" Link="AlbumGridSelectionModel.cs" />
     <Compile Include="../Stores/HeaderCollapseModel.cs" Link="HeaderCollapseModel.cs" />
     <Compile Include="../Stores/AlbumGridMetrics.cs" Link="AlbumGridMetrics.cs" />
+    <Compile Include="../Stores/PaginatedList.cs" Link="PaginatedList.cs" />
     <Compile Include="../ActivationIntentModel.cs" Link="ActivationIntentModel.cs" />
   </ItemGroup>
 
