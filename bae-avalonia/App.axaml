@@ -31,6 +31,7 @@
           <Color x:Key="BaeTextSecondaryColor">#9A9AA5</Color>
           <Color x:Key="BaeDangerColor">#E8836F</Color>
           <Color x:Key="BaeHairlineColor">#22FFFFFF</Color>
+          <Color x:Key="BaeScrimColor">#73000000</Color>
           <!-- FluentTheme's focus ring reads SystemAccentColor; point it at the
                terracotta. The accent button background is driven by the Style
                overrides below (FluentTheme paints it on the template's content
@@ -51,6 +52,7 @@
           <Color x:Key="BaeTextSecondaryColor">#6B6B72</Color>
           <Color x:Key="BaeDangerColor">#C0392B</Color>
           <Color x:Key="BaeHairlineColor">#14000000</Color>
+          <Color x:Key="BaeScrimColor">#59000000</Color>
           <Color x:Key="SystemAccentColor">#C25B3A</Color>
         </ResourceDictionary>
 
@@ -70,6 +72,7 @@
       <SolidColorBrush x:Key="BaeTextSecondaryBrush" Color="{DynamicResource BaeTextSecondaryColor}" />
       <SolidColorBrush x:Key="BaeDangerBrush" Color="{DynamicResource BaeDangerColor}" />
       <SolidColorBrush x:Key="BaeHairlineBrush" Color="{DynamicResource BaeHairlineColor}" />
+      <SolidColorBrush x:Key="BaeScrimBrush" Color="{DynamicResource BaeScrimColor}" />
 
       <!-- FluentTheme's Slider paints its filled track and thumb from these
            accent resources; overriding them keeps the scrubber and volume slider

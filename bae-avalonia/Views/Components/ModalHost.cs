@@ -4,7 +4,6 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Markup.Xaml.MarkupExtensions;
-using Avalonia.Media;
 
 namespace Bae.Desktop;
 
@@ -24,7 +23,7 @@ internal sealed class ModalHost : Panel
         IsVisible = false;
 
         _scrim = new Border { HorizontalAlignment = HorizontalAlignment.Stretch, VerticalAlignment = VerticalAlignment.Stretch };
-        _scrim.Background = new SolidColorBrush(Colors.Black, 0.45);
+        _scrim[!Border.BackgroundProperty] = new DynamicResourceExtension("BaeScrimBrush");
 
         _card = new ContentControl
         {
