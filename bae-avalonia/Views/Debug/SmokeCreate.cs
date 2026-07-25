@@ -68,12 +68,16 @@ internal static class SmokeCreate
 
             var modalHost = new ModalHost();
             var lightbox = new LightboxOverlay();
+            System.Func<System.Threading.Tasks.Task> closeLibrary = () => System.Threading.Tasks.Task.CompletedTask;
+            System.Func<string, System.Threading.Tasks.Task> switchLibrary = _ => System.Threading.Tasks.Task.CompletedTask;
             var shell = new MainShellView(
                 app,
                 new ReleaseActionDialogs(app, modalHost, lightbox),
                 new ImportDialogs(app, modalHost, lightbox, _ => System.Threading.Tasks.Task.CompletedTask),
                 new StorageDialog(app, modalHost),
-                new SettingsWindow(app));
+                new SettingsWindow(app, closeLibrary, switchLibrary),
+                new LibrariesDialog(app, modalHost, switchLibrary),
+                closeLibrary);
             var root = new Border { Width = 1350, Height = 850, Child = shell };
             root[!Border.BackgroundProperty] = new DynamicResourceExtension("BaeBackgroundBrush");
             var window = new Window

@@ -215,12 +215,16 @@ internal static class ShotCapture
         var app = AppService.Stubbed(session, Dispatcher.UIThread, EmptyLibrary());
         var modalHost = new ModalHost();
         var lightbox = new LightboxOverlay();
+        Func<Task> closeLibrary = () => Task.CompletedTask;
+        Func<string, Task> switchLibrary = _ => Task.CompletedTask;
         return new MainShellView(
             app,
             new ReleaseActionDialogs(app, modalHost, lightbox),
             new ImportDialogs(app, modalHost, lightbox, _ => Task.CompletedTask),
             new StorageDialog(app, modalHost),
-            new SettingsWindow(app));
+            new SettingsWindow(app, closeLibrary, switchLibrary),
+            new LibrariesDialog(app, modalHost, switchLibrary),
+            closeLibrary);
     }
 
     // A LibraryService whose album/composer/artist counts are zero and whose pages

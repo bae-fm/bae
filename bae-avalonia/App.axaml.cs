@@ -104,10 +104,23 @@ public sealed partial class App : Application
                 return;
         }
 
-        var main = new MainWindow(Session, CloseLibrary);
+        var main = new MainWindow(Session, CloseLibrary, SwitchLibrary);
         _main = main;
         main.Show();
         CloseWelcome();
+    }
+
+    // Switch the open library for another on this device: free the current handle,
+    // open the target, then close the old window. Open brings up the target window
+    // (or, for a locked target, the welcome unlock prompt) before the old window
+    // closes, so the app keeps a live window across the swap.
+    private async Task SwitchLibrary(string libraryId)
+    {
+        var closing = _main;
+        await Session.ShutdownAndFreeCurrentHandle();
+        _main = null;
+        OpenLibrary(libraryId);
+        closing?.Close();
     }
 
     // Close the open library and return to a fresh welcome window. The welcome

@@ -20,6 +20,8 @@ internal sealed class MainShellView : UserControl
     private readonly AppService _app;
     private readonly StorageDialog _storageDialog;
     private readonly SettingsWindow _settingsWindow;
+    private readonly LibrariesDialog _librariesDialog;
+    private readonly System.Func<System.Threading.Tasks.Task> _closeLibrary;
     private readonly LibraryBrowserView _browser;
     private readonly ImportSectionView _importSection;
     private readonly QueuePane _queuePane;
@@ -31,11 +33,20 @@ internal sealed class MainShellView : UserControl
     private Border _importSegment = null!;
     private TextBlock _importLabel = null!;
 
-    public MainShellView(AppService app, ReleaseActionDialogs dialogs, ImportDialogs importDialogs, StorageDialog storageDialog, SettingsWindow settingsWindow)
+    public MainShellView(
+        AppService app,
+        ReleaseActionDialogs dialogs,
+        ImportDialogs importDialogs,
+        StorageDialog storageDialog,
+        SettingsWindow settingsWindow,
+        LibrariesDialog librariesDialog,
+        System.Func<System.Threading.Tasks.Task> closeLibrary)
     {
         _app = app;
         _storageDialog = storageDialog;
         _settingsWindow = settingsWindow;
+        _librariesDialog = librariesDialog;
+        _closeLibrary = closeLibrary;
 
         var root = new Grid { RowDefinitions = new RowDefinitions("Auto,*,Auto") };
         SetBg(root, "BaeBackgroundBrush");
@@ -166,9 +177,21 @@ internal sealed class MainShellView : UserControl
     private MenuFlyout BuildGearMenu()
     {
         var menu = new MenuFlyout();
+
+        var libraries = new MenuItem { Header = Loc.Chrome("toolbar.libraries") };
+        libraries.Click += (_, _) => _ = _librariesDialog.Show();
+        menu.Items.Add(libraries);
+
         var storage = new MenuItem { Header = Loc.Chrome("toolbar.storage") };
         storage.Click += (_, _) => _ = _storageDialog.Show();
         menu.Items.Add(storage);
+
+        menu.Items.Add(new Separator());
+
+        var close = new MenuItem { Header = Loc.Chrome("toolbar.close_library") };
+        close.Click += (_, _) => _ = _closeLibrary();
+        menu.Items.Add(close);
+
         return menu;
     }
 

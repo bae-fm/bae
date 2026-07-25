@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Layout;
@@ -22,6 +24,12 @@ internal sealed partial class SettingsWindow
 {
     private readonly AppService _app;
 
+    // The coordinator's window-swap callbacks: closeToWelcome returns to the welcome
+    // chooser (after forgetting the library); switchLibrary re-opens a library (used
+    // to land on the unlock prompt after locking the current one).
+    private readonly Func<Task> _closeToWelcome;
+    private readonly Func<string, Task> _switchLibrary;
+
     // The one open settings window; Show re-activates it instead of stacking a
     // second.
     private Window? _window;
@@ -34,9 +42,11 @@ internal sealed partial class SettingsWindow
     private bool _refreshingSettings;
     private bool _discogsBusy;
 
-    public SettingsWindow(AppService app)
+    public SettingsWindow(AppService app, Func<Task> closeToWelcome, Func<string, Task> switchLibrary)
     {
         _app = app;
+        _closeToWelcome = closeToWelcome;
+        _switchLibrary = switchLibrary;
     }
 
     public void Show()
@@ -87,6 +97,7 @@ internal sealed partial class SettingsWindow
         BuildCloud(content, renderers);
         BuildMembers(content);
         BuildRecovery(content);
+        BuildLibraryLifecycle(content, renderers);
 
         foreach (var render in renderers)
         {
@@ -245,6 +256,97 @@ internal sealed partial class SettingsWindow
         };
         content.Children.Add(show);
         content.Children.Add(recoveryCode);
+    }
+
+    // ── Lock / Remove ────────────────────────────────────────────────────────
+
+    // Lock the library — drop its key on this device so it reopens to the unlock
+    // prompt while local files stay — and remove it from this device — delete its
+    // local data directory and return to the welcome chooser, leaving any cloud copy
+    // untouched. Both drive the coordinator's window swap. Remove is a two-step armed
+    // confirm: the first click reads the outbox snapshot to decide whether to call
+    // out unlanded cloud work and arms; the second forgets and swaps.
+    private void BuildLibraryLifecycle(StackPanel content, List<Action<Settings>> renderers)
+    {
+        // Captured from the live settings so the handlers act on the current library.
+        var libraryId = string.Empty;
+        var hasCloudHome = false;
+
+        var lockButton = new Button { Content = Loc.Chrome("settings.lock_library") };
+        lockButton.Click += async (_, _) =>
+        {
+            var (current, error) = _app.Sync.LockActiveLibrary();
+            if (!current)
+            {
+                return;
+            }
+            if (error is not null)
+            {
+                ShowSettingsError(error);
+                return;
+            }
+            // The key is forgotten now, so re-opening lands on the unlock prompt.
+            _window?.Close();
+            await _switchLibrary(libraryId);
+        };
+        content.Children.Add(lockButton);
+
+        content.Children.Add(SectionLabel(Loc.Chrome("settings.remove.title")));
+        var removeFooter = SecondaryLabel(string.Empty);
+        content.Children.Add(removeFooter);
+        var removeButton = new Button { Content = Loc.Chrome("settings.remove.button") };
+        content.Children.Add(removeButton);
+        var removeConfirm = DialogUi.Danger();
+        content.Children.Add(removeConfirm);
+
+        var armed = false;
+        removeButton.Click += async (_, _) =>
+        {
+            if (!armed)
+            {
+                var (snapshotCurrent, snapshotResult) = await _app.Sync.OutboxSnapshot();
+                if (!snapshotCurrent)
+                {
+                    return;
+                }
+                if (snapshotResult.Error is not null)
+                {
+                    // The outbox read only informs the confirmation copy; a failure
+                    // here can't call out pending cloud work but doesn't block arming.
+                    BaeDiagnostics.Logger.Warning(
+                        $"Could not read the outbox snapshot for the remove confirmation: {snapshotResult.Error}");
+                }
+                var hasPendingCloudWork = snapshotResult.Snapshot is { } snapshot
+                    && ForgetLibraryModel.HasPendingCloudWork(snapshot.UploadGroups.Length, snapshot.PendingDeletes);
+                removeConfirm.Text = string.Join(
+                    " ",
+                    ForgetLibraryModel.ConfirmKeys(hasCloudHome, hasPendingCloudWork).Select(Loc.Chrome));
+                removeConfirm.IsVisible = true;
+                armed = true;
+                return;
+            }
+
+            var (forgetCurrent, error) = await _app.Sync.ForgetLibrary();
+            if (!forgetCurrent)
+            {
+                return;
+            }
+            if (error is not null)
+            {
+                ShowSettingsError(Loc.Chrome("settings.remove.failed", "error", error));
+                return;
+            }
+            // The local directory is gone; tear the handle down and return to welcome.
+            _window?.Close();
+            await _closeToWelcome();
+        };
+
+        renderers.Add(fresh =>
+        {
+            libraryId = fresh.LibraryId;
+            hasCloudHome = fresh.HasCloudHome;
+            removeFooter.Text = Loc.Chrome(ForgetLibraryModel.FooterKey(fresh.HasCloudHome));
+        });
     }
 
     // ── Shared chrome / helpers ──────────────────────────────────────────────
