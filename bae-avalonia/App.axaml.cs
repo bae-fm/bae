@@ -16,10 +16,12 @@ namespace Bae.Desktop;
 public sealed partial class App : Application
 {
     private SessionStore? _session;
+    private IMediaControl? _mediaControl;
     private MainWindow? _main;
     private WelcomeWindow? _welcome;
 
     private SessionStore Session => _session!;
+    private IMediaControl MediaControl => _mediaControl!;
 
     // The edition key for single-instancing and per-edition state. The full
     // (OAuth) edition compiles with BAE_FULL_BRIDGE; the baeium edition doesn't.
@@ -54,8 +56,12 @@ public sealed partial class App : Application
 
     public override void OnFrameworkInitializationCompleted()
     {
-        if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime)
+        if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
+            // The now-playing surface holds an OS-visible session (a bus name on
+            // Linux); releasing it on the way out is how clients learn the player
+            // is gone.
+            desktop.Exit += (_, _) => _mediaControl?.Dispose();
             StartSession();
         }
 
@@ -74,6 +80,19 @@ public sealed partial class App : Application
         OAuthCreds.Register();
 
         _session = new SessionStore(Dispatcher.UIThread);
+        // The OS now-playing surface is process-scoped, like the session it reads
+        // through: a library switch frees and reopens the handle underneath both,
+        // so the surface is built once here and stays up across the swap. Its
+        // service bundles are immutable delegate sets over that session, so a
+        // separate pair from the AppService's is equivalent.
+        _mediaControl = MediaControlService.ForCurrentPlatform(
+            Dispatcher.UIThread,
+            PlaybackService.FromSession(_session),
+            MediaPathsService.FromSession(_session),
+            Edition,
+            raise: () => Dispatcher.UIThread.Post(() => (_main as Window ?? _welcome)?.Activate()),
+            quit: () => Dispatcher.UIThread.Post(() =>
+                (ApplicationLifetime as IClassicDesktopStyleApplicationLifetime)?.Shutdown()));
 
         var libraries = LibraryDiscovery.Load(_ => { }).Where(library => library.Error is null).ToList();
         var openable = libraries.FirstOrDefault(library => library.IsActive)
@@ -104,9 +123,13 @@ public sealed partial class App : Application
                 return;
         }
 
-        var main = new MainWindow(Session, CloseLibrary, SwitchLibrary);
+        var main = new MainWindow(Session, MediaControl, CloseLibrary, SwitchLibrary);
         _main = main;
         main.Show();
+        // Attach from here rather than from the window's own Opened/Closed: a swap
+        // opens the new window before closing the old one, so the outgoing close
+        // would detach the incoming window's surface.
+        MediaControl.SetWindow(main);
         CloseWelcome();
     }
 
@@ -117,6 +140,8 @@ public sealed partial class App : Application
     private async Task SwitchLibrary(string libraryId)
     {
         var closing = _main;
+        // The library the surface is showing is going away.
+        MediaControl.Deactivate();
         await Session.ShutdownAndFreeCurrentHandle();
         _main = null;
         OpenLibrary(libraryId);
@@ -133,6 +158,7 @@ public sealed partial class App : Application
             return;
         }
 
+        MediaControl.Deactivate();
         await Session.ShutdownAndFreeCurrentHandle();
         _main = null;
         GoToWelcome(errorStatus: null);
@@ -172,6 +198,8 @@ public sealed partial class App : Application
     {
         var closing = _main;
         _main = null;
+        // No library window means no window for the OS surface to attach to.
+        MediaControl.SetWindow(null);
         closing?.Close();
     }
 }

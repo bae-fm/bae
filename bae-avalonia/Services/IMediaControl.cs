@@ -1,15 +1,24 @@
+using System;
+using Avalonia.Controls;
+
 namespace Bae.Desktop;
 
 /// <summary>
 /// The OS now-playing / media-key surface, consumed where the WinUI app consumed
 /// <c>MediaControlService</c>. The decision logic stays in the pure
 /// <see cref="MediaControlState"/>; an implementation only translates the pushes
-/// into the platform transport (SMTC on Windows, MPRIS on Linux). Those backends
-/// land with the parity port; until then <see cref="NoopMediaControl"/> stands in
-/// so the stores that push to this surface compose without one.
+/// into the platform transport (SMTC on Windows, MPRIS on Linux). A composition
+/// with no OS surface — a headless capture, a scene stub — takes
+/// <see cref="NoopMediaControl"/> instead.
 /// </summary>
-internal interface IMediaControl
+internal interface IMediaControl : IDisposable
 {
+    /// <summary>The window the surface attaches to, or null when no library
+    /// window is up. The window coordinator drives this, because it is what swaps
+    /// windows: a window driving its own attach on open and close would let the
+    /// outgoing window's close detach the incoming window's surface.</summary>
+    void SetWindow(Window? window);
+
     void UpdateNowPlayingPlaying(
         string trackTitle, string artistNames, string albumTitle, string? coverImageId, ulong durationMs);
 
@@ -21,9 +30,19 @@ internal interface IMediaControl
 
     void UpdateNowPlayingStopped();
 
+    /// <summary>A position that advanced with playback.</summary>
     void UpdatePosition(ulong positionMs, ulong durationMs);
 
+    /// <summary>A position that jumped, as opposed to advanced. The surfaces that
+    /// announce seeks separately report only this one.</summary>
+    void UpdateSeekedPosition(ulong positionMs, ulong durationMs);
+
     void UpdateCommandAvailability(bool hasNext, bool hasPrevious);
+
+    /// <summary>The current output volume in [0, 1] and whether output is muted.
+    /// The surfaces that expose a writable volume publish it; the rest ignore
+    /// it.</summary>
+    void UpdateVolume(float volume, bool isMuted);
 
     void UpdateNowPlayingForPreview(string path, ulong durationMs, bool isPlaying);
 
@@ -34,11 +53,15 @@ internal interface IMediaControl
     void Deactivate();
 }
 
-/// <summary>The stand-in transport: it drops every push. In place until the
-/// Windows (SMTC) and Linux (MPRIS) backends land in the parity port, so the app
-/// composes and runs with no OS now-playing surface rather than none at all.</summary>
+/// <summary>The stand-in transport: it drops every push. Composed where standing
+/// up a real OS session would be wrong — the headless shot capture and the scene
+/// stubs — so those compose and render with no OS now-playing surface.</summary>
 internal sealed class NoopMediaControl : IMediaControl
 {
+    public void SetWindow(Window? window)
+    {
+    }
+
     public void UpdateNowPlayingPlaying(
         string trackTitle, string artistNames, string albumTitle, string? coverImageId, ulong durationMs)
     {
@@ -62,7 +85,15 @@ internal sealed class NoopMediaControl : IMediaControl
     {
     }
 
+    public void UpdateSeekedPosition(ulong positionMs, ulong durationMs)
+    {
+    }
+
     public void UpdateCommandAvailability(bool hasNext, bool hasPrevious)
+    {
+    }
+
+    public void UpdateVolume(float volume, bool isMuted)
     {
     }
 
@@ -79,6 +110,10 @@ internal sealed class NoopMediaControl : IMediaControl
     }
 
     public void Deactivate()
+    {
+    }
+
+    public void Dispose()
     {
     }
 }

@@ -60,6 +60,11 @@ internal sealed class PlaybackStore
     // command target. Written by ApplyMute from the MuteChanged payload.
     public bool IsMuted { get; private set; }
 
+    // The current output volume in [0, 1]. Core reports volume and mute as
+    // separate events, so whichever arrives is paired with the other's last value
+    // here before it goes to the OS now-playing surface.
+    public float Volume { get; private set; } = 1.0f;
+
     // The current repeat mode, for the repeat button that must compute the next
     // mode as an absolute command target. Written by ApplyRepeat from the
     // RepeatModeChanged payload.
@@ -69,7 +74,7 @@ internal sealed class PlaybackStore
     public event Action? PlaybackStopped;
     public event Action? LoadingStarted;
     public event Action<PlaybackPositionRender>? PositionChanged;
-    public event Action<double>? VolumeChanged;
+    public event Action<float>? VolumeChanged;
     public event Action<bool>? MuteChanged;
     public event Action<BridgeRepeatMode>? RepeatChanged;
     public event Action<bool, bool>? TransportChanged;
@@ -152,7 +157,11 @@ internal sealed class PlaybackStore
         LoadingStarted?.Invoke();
     }
 
-    public void ApplyVolume(double volume) => VolumeChanged?.Invoke(volume);
+    public void ApplyVolume(float volume)
+    {
+        Volume = volume;
+        VolumeChanged?.Invoke(volume);
+    }
 
     public void ApplyMute(bool isMuted)
     {
@@ -216,6 +225,7 @@ internal sealed class PlaybackStore
         _queueContext = null;
         Revision = 0;
         IsMuted = false;
+        Volume = 1.0f;
         RepeatMode = BridgeRepeatMode.Off;
         PlayState = TransportPlayState.Stopped;
     }

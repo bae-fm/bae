@@ -61,7 +61,9 @@ internal sealed class UiEventRouter
                 break;
             case BridgeUiEvent.PlaybackSeeked seeked:
                 _playback.ApplySeeked(seeked.TrackId, seeked.PositionMs, seeked.DurationMs, seeked.Progress);
-                _mediaControls.UpdatePosition(seeked.PositionMs, seeked.DurationMs);
+                // A jump, not a tick: the surfaces that announce seeks separately
+                // report only this arm.
+                _mediaControls.UpdateSeekedPosition(seeked.PositionMs, seeked.DurationMs);
                 break;
             case BridgeUiEvent.PlaybackLoading loading:
                 // Both the in-app bar and the transport controls take the target
@@ -76,10 +78,14 @@ internal sealed class UiEventRouter
                 }
                 break;
             case BridgeUiEvent.VolumeChanged volume:
+                // Core reports volume and mute separately; the surface wants both
+                // at once, so each arm pairs its half with the store's other half.
                 _playback.ApplyVolume(volume.Volume);
+                _mediaControls.UpdateVolume(volume.Volume, _playback.IsMuted);
                 break;
             case BridgeUiEvent.MuteChanged mute:
                 _playback.ApplyMute(mute.IsMuted);
+                _mediaControls.UpdateVolume(_playback.Volume, mute.IsMuted);
                 break;
             case BridgeUiEvent.RepeatModeChanged repeat:
                 _playback.ApplyRepeat(repeat.Mode);

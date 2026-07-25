@@ -864,6 +864,10 @@ internal static class NativeBae
 
     internal static void Resume(AppHandle handle) => handle.Resume();
 
+    // End playback and empty the now-playing slot, as opposed to pausing it. The
+    // in-app transport has no stop button; the OS now-playing surfaces do.
+    internal static void Stop(AppHandle handle) => handle.Stop();
+
     internal static void SeekByRatio(AppHandle handle, double ratio) => handle.SeekByRatio(ratio);
 
     internal static void PreviewSeekByRatio(AppHandle handle, double ratio) => handle.PreviewSeekByRatio(ratio);

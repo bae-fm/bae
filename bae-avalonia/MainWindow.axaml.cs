@@ -22,12 +22,16 @@ internal sealed class MainWindow : Window
     private readonly Func<Task> _closeLibrary;
     private readonly Func<string, Task> _switchLibrary;
 
-    public MainWindow(SessionStore session, Func<Task> closeLibrary, Func<string, Task> switchLibrary)
+    public MainWindow(
+        SessionStore session,
+        IMediaControl mediaControl,
+        Func<Task> closeLibrary,
+        Func<string, Task> switchLibrary)
     {
         _closeLibrary = closeLibrary;
         _switchLibrary = switchLibrary;
         _session = session;
-        _app = new AppService(session, Dispatcher.UIThread);
+        _app = new AppService(session, Dispatcher.UIThread, mediaControl);
         _session.UiEvent += _app.UiEventRouter.Route;
 
         Title = "bae";

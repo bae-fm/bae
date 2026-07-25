@@ -22,6 +22,12 @@ internal sealed class PlaybackService
     public Func<bool> Resume { get; init; }
         = () => throw new InvalidOperationException("PlaybackService stub: Resume not wired");
 
+    /// <summary>End playback and empty the now-playing slot. Distinct from
+    /// <see cref="Pause"/>: the OS now-playing surfaces offer a stop the in-app
+    /// transport does not.</summary>
+    public Func<bool> Stop { get; init; }
+        = () => throw new InvalidOperationException("PlaybackService stub: Stop not wired");
+
     public Func<bool> NextTrack { get; init; }
         = () => throw new InvalidOperationException("PlaybackService stub: NextTrack not wired");
 
@@ -91,6 +97,7 @@ internal sealed class PlaybackService
     {
         Pause = () => session.WithCurrentHandle(NativeBae.Pause),
         Resume = () => session.WithCurrentHandle(NativeBae.Resume),
+        Stop = () => session.WithCurrentHandle(NativeBae.Stop),
         NextTrack = () => session.WithCurrentHandle(NativeBae.Next),
         PreviousTrack = () => session.WithCurrentHandle(NativeBae.Previous),
         SeekByRatio = ratio => session.WithCurrentHandle(handle => NativeBae.SeekByRatio(handle, ratio)),

@@ -5,12 +5,15 @@
     bae-core through the generated uniffi C# bindings. This project is C#, not a
     cargo crate, so it is deliberately outside the Rust workspace.
 
-    Single net8.0 target: a Windows-only backend file (SMTC, registry) multi-
-    targets net8.0-windows only once such a file exists; phase 1 has none.
+    Two targets: plain net8.0 is what ships on Linux, and the Windows target
+    framework adds the WinRT projection the Windows-only backend files (SMTC)
+    bind. EnableWindowsTargeting lets that second target compile on the macOS and
+    Linux dev hosts, which have no Windows SDK.
   -->
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFrameworks>net8.0;net8.0-windows10.0.19041.0</TargetFrameworks>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
     <RootNamespace>Bae.Desktop</RootNamespace>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
@@ -69,6 +72,25 @@
       the release must match this version exactly.
     -->
     <PackageReference Include="Velopack" Version="1.2.0" />
+    <!--
+      D-Bus for the Linux MPRIS now-playing surface (bus name, exported object,
+      property signals). Pinned to the version Avalonia.FreeDesktop resolves so
+      one copy loads: releases after this one rename the connection type and drop
+      the writer types Avalonia's own D-Bus integration is compiled against.
+    -->
+    <PackageReference Include="Tmds.DBus.Protocol" Version="0.21.3" />
+  </ItemGroup>
+
+  <!--
+    The SMTC now-playing surface binds WinRT types that exist only under the
+    Windows target framework. Everything else in the app compiles for both.
+  -->
+  <ItemGroup>
+    <Compile Remove="MediaControl\SmtcMediaSession.cs" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(TargetFramework)' == 'net8.0-windows10.0.19041.0'">
+    <Compile Include="MediaControl\SmtcMediaSession.cs" />
   </ItemGroup>
 
   <!--

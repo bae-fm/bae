@@ -62,7 +62,9 @@ internal static class SmokeCreate
                 return 1;
             }
 
-            var app = new AppService(session, Dispatcher.UIThread);
+            // No OS now-playing surface: the smoke run renders one frame and
+            // exits, and standing up a real session would outlive it.
+            var app = new AppService(session, Dispatcher.UIThread, new NoopMediaControl());
             var (current, albumCount) = app.Library.AlbumCount();
             L($"album count (current={current}) = {albumCount}");
 

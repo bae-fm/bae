@@ -34,10 +34,10 @@ internal sealed class AppService
     public AutomationService Automation { get; }
     public SubsonicService Subsonic { get; }
 
-    // The OS now-playing / media-key surface. One instance for the window's
-    // lifetime; a library switch deactivates it rather than recreating it. The
-    // real SMTC/MPRIS backends land with the parity port; until then this is the
-    // no-op stand-in.
+    // The OS now-playing / media-key surface. Process-scoped and handed in, not
+    // built here: it owns a bus name (MPRIS) or a system session (SMTC) that
+    // outlives any one open library, and a library switch deactivates it rather
+    // than recreating it.
     public IMediaControl MediaControl { get; }
 
     // The library browser's data layer over the incremental-loading core: the
@@ -58,10 +58,11 @@ internal sealed class AppService
     public ProjectionRegistry ProjectionRegistry { get; }
     public UiEventRouter UiEventRouter { get; }
 
-    public AppService(SessionStore session, Dispatcher dispatcher)
+    public AppService(SessionStore session, Dispatcher dispatcher, IMediaControl mediaControl)
         : this(
             session,
             dispatcher,
+            mediaControl,
             LibraryService.FromSession(session),
             MediaPathsService.FromSession(session),
             PlaybackService.FromSession(session),
@@ -78,12 +79,13 @@ internal sealed class AppService
     {
     }
 
-    // The domain services are injected so a scene can override them (see Stubbed);
-    // the stores, transport, and router are the same for every composition and are
-    // built here around the given session and services.
+    // The domain services and the now-playing surface are injected so a scene can
+    // override them (see Stubbed); the stores and the router are the same for
+    // every composition and are built here around the given session and services.
     private AppService(
         SessionStore session,
         Dispatcher dispatcher,
+        IMediaControl mediaControl,
         LibraryService library,
         MediaPathsService mediaPaths,
         PlaybackService playback,
@@ -99,6 +101,7 @@ internal sealed class AppService
         SubsonicService subsonic)
     {
         Session = session;
+        MediaControl = mediaControl;
         Library = library;
         MediaPaths = mediaPaths;
         Playback = playback;
@@ -121,7 +124,6 @@ internal sealed class AppService
         // remaining-time preference through the settings mirror, whose Current
         // stays null until a library seeds it.
         SettingsStore = new SettingsStore(Settings);
-        MediaControl = new NoopMediaControl();
         ImportStore = new ImportStore(Import, ShowError, MediaControl);
         ProjectionRegistry = new ProjectionRegistry();
         // In-flight release transfers (pin/unpin/manage/unmanage), driven by core's
@@ -168,7 +170,8 @@ internal sealed class AppService
     /// so a render that touches any unwired delegate crashes the capture loudly
     /// rather than drawing a lie. The stores are built around a handle-less
     /// <paramref name="session"/>; the shell renders its content off the stub
-    /// library alone and never reaches a live handle.</summary>
+    /// library alone and never reaches a live handle. The now-playing surface is
+    /// the no-op one: a headless capture must not stand up a real OS session.</summary>
     public static AppService Stubbed(
         SessionStore session,
         Dispatcher dispatcher,
@@ -176,6 +179,7 @@ internal sealed class AppService
         new(
             session,
             dispatcher,
+            new NoopMediaControl(),
             library,
             new MediaPathsService(),
             new PlaybackService(),
