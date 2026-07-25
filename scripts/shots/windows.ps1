@@ -105,7 +105,7 @@ $makepri = Get-ChildItem -Path @(
 if ($makepri) {
     $dump = Join-Path ([IO.Path]::GetTempPath()) 'bae-pri-dump.xml'
     & $makepri dump /if $exePri /of $dump /o | Out-Null
-    $coreCount = (Select-String -Path $dump -Pattern '/Core/' -SimpleMatch).Count
+    $coreCount = @(Select-String -Path $dump -Pattern '/Core/' -SimpleMatch).Count
     Write-Host "PRI dump: $coreCount Core-map entries in $priName"
     if ($coreCount -eq 0) {
         Write-Host '--- resource maps present in the PRI ---'
