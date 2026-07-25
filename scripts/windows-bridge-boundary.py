@@ -96,6 +96,9 @@ APPS = {
     "bae-avalonia": COMPOSITION_BOUNDARY
     + [
         "App.axaml.cs",
+        # The unlock dialog holds its own NativeBae.UnlockLibrary call, fenced
+        # under the join / restore / unlock flow (as in the WinUI app).
+        "Views/Library/UnlockDialog.cs",
     ],
 }
 
