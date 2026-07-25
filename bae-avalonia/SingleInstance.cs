@@ -17,8 +17,10 @@ namespace Bae.Desktop;
 // pipe on Windows, a Unix-domain-socket-backed pipe under the temp dir on Linux
 // (.NET's System.IO.Pipes). The second instance connects, writes its argv, and
 // exits; the primary's listener parses the argv into an ActivationIntent and
-// hands it to the coordinator. One key per edition (bae / baeium) so the two
-// never redirect into each other.
+// hands it to the coordinator. Both names carry an edition key (bae / baeium) so
+// the two never redirect into each other, and a per-user token (see UserScope)
+// so a shared multi-user host can't let one user squat or intercept another's
+// channel through the world-writable temp dir.
 internal sealed class SingleInstance : IDisposable
 {
     private readonly string _pipeName;
@@ -37,7 +39,7 @@ internal sealed class SingleInstance : IDisposable
     public static SingleInstance? Acquire(
         string edition, IReadOnlyList<string> args, Action<ActivationIntent?> onActivation)
     {
-        var name = $"bae-single-instance-{edition}";
+        var name = $"bae-single-instance-{edition}-{UserScope()}";
         var mutex = new Mutex(initiallyOwned: true, name, out var isPrimary);
         if (!isPrimary)
         {
@@ -82,6 +84,22 @@ internal sealed class SingleInstance : IDisposable
                 }
             }
         });
+
+    // A per-user token folded into the mutex and pipe names. The BCL named pipe
+    // backs onto a socket in the world-writable temp dir on Unix
+    // (/tmp/CoreFxPipe_<name>) under a predictable name; without a per-user
+    // component another local user could pre-create that name to block this
+    // user's primary election, or stand up a listener to receive a forwarded
+    // bae:// URL. Derived from the user's home directory — stable across launches
+    // and not spoofable through the USERNAME env var the way Environment.UserName
+    // is. (On Windows the mutex already lives in the per-session namespace; the
+    // scope is belt-and-suspenders there.)
+    private static string UserScope()
+    {
+        var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        var hash = System.Security.Cryptography.SHA256.HashData(Encoding.UTF8.GetBytes(home));
+        return Convert.ToHexString(hash, 0, 6).ToLowerInvariant();
+    }
 
     private static void Forward(string pipeName, IReadOnlyList<string> args)
     {
