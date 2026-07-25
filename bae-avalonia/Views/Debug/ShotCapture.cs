@@ -54,6 +54,7 @@ internal static class ShotCapture
     private static IReadOnlyList<Scene> Scenes { get; } = new[]
     {
         new Scene("story-1-first-run", 900, 600, BuildWelcome),
+        new Scene("story-3-empty-library", 1350, 850, BuildEmptyLibrary),
     };
 
     // True when args carry the capture flag; then outputDir is the directory that
@@ -202,5 +203,10 @@ internal static class ShotCapture
             openLibrary: _ => { },
             showJoinLibrary: () => Task.CompletedTask,
             showRestoreFromCloud: () => Task.CompletedTask);
+
+    // The empty-library shell (desktop story 3): the production shell chrome over
+    // an empty library — the switcher, search, gear, Albums heading dropdown with
+    // sort controls, the text-only empty state, and the idle now-playing bar.
+    private static Control BuildEmptyLibrary() => new MainShellView();
 }
 #endif
