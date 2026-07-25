@@ -11,6 +11,9 @@ ignore = [
     # rand: unsound only when a custom global logger races rand::rng(). We use no
     # custom global logger, so this unsoundness path is never reached.
     "RUSTSEC-2026-0097",
+    # fxhash: unmaintained hasher, pinned by hashers <- tracing-etw (the Windows
+    # ETW logging layer). No upgrade path until tracing-etw drops it.
+    "RUSTSEC-2025-0057",
 ]
 
 [licenses]
