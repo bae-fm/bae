@@ -2082,8 +2082,10 @@ fn scan_reference_tree_matches_human_intent() {
             c.path
                 .strip_prefix(root)
                 .unwrap()
-                .to_string_lossy()
-                .to_string()
+                .components()
+                .map(|component| component.as_os_str().to_string_lossy())
+                .collect::<Vec<_>>()
+                .join("/")
         })
         .collect();
 
@@ -2226,7 +2228,11 @@ struct ScenarioResult {
 }
 
 impl ScenarioResult {
-    /// Candidate rel paths, stripped of the tempdir prefix.
+    /// Candidate rel paths, stripped of the tempdir prefix. Rendered with `/`
+    /// separators from the path's components rather than `to_string_lossy`, so a
+    /// candidate under `A/B` reads `A/B` on Windows too — `candidate.path` is a
+    /// real, host-separated filesystem path (backslashes on Windows), and only
+    /// this test view flattens it to the OS-neutral form the expectations use.
     fn top_level_paths(&self) -> Vec<String> {
         self.candidates
             .iter()
@@ -2234,8 +2240,10 @@ impl ScenarioResult {
                 c.path
                     .strip_prefix(&self.root)
                     .unwrap()
-                    .to_string_lossy()
-                    .to_string()
+                    .components()
+                    .map(|component| component.as_os_str().to_string_lossy())
+                    .collect::<Vec<_>>()
+                    .join("/")
             })
             .collect()
     }
