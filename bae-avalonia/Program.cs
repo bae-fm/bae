@@ -15,12 +15,26 @@ internal static class Program
     public static int Main(string[] args)
     {
 #if DEBUG
+        // Capture mode serves a one-shot render, not a real session: no
+        // single-instance redirect (a running instance must not divert it), no
+        // window.
         if (ShotCapture.TryGetOutputDir(args, out var outputDir))
         {
             BuildHeadlessAvaloniaApp().SetupWithoutStarting();
             return ShotCapture.Run(args, outputDir);
         }
 #endif
+
+        // One instance per edition. A second launch forwards its argv (a bae://
+        // URL or file/folder args) to the running instance and exits.
+        var edition = App.Edition;
+        var single = SingleInstance.Acquire(edition, args, App.OnRedirectedActivation);
+        if (single is null)
+        {
+            return 0;
+        }
+
+        App.SingleInstance = single;
         return BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
     }
 

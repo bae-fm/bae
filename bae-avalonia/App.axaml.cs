@@ -1,6 +1,7 @@
 using System.Linq;
 using System.Threading.Tasks;
 using Avalonia;
+using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using Avalonia.Threading;
@@ -19,6 +20,35 @@ public sealed partial class App : Application
     private WelcomeWindow? _welcome;
 
     private SessionStore Session => _session!;
+
+    // The edition key for single-instancing and per-edition state. The full
+    // (OAuth) edition compiles with BAE_FULL_BRIDGE; the baeium edition doesn't.
+    internal static string Edition =>
+#if BAE_FULL_BRIDGE
+        "bae";
+#else
+        "baeium";
+#endif
+
+    // Held for the process lifetime so its listener keeps accepting forwarded
+    // launches; disposed implicitly on exit.
+    internal static SingleInstance? SingleInstance { get; set; }
+
+    // A redirected activation from a second launch, on the single-instance
+    // listener's background thread: marshal to the UI thread and bring whichever
+    // window is up to the front. Acting on an import / bae:// intent lands with
+    // the library grid in the parity port; for now the intent is logged.
+    internal static void OnRedirectedActivation(ActivationIntent? intent) =>
+        Dispatcher.UIThread.Post(() => (Current as App)?.HandleRedirectedActivation(intent));
+
+    private void HandleRedirectedActivation(ActivationIntent? intent)
+    {
+        if (intent is not null)
+        {
+            BaeDiagnostics.Logger.Info($"Redirected activation received: {intent.GetType().Name}.");
+        }
+        (_main as Window ?? _welcome)?.Activate();
+    }
 
     public override void Initialize() => AvaloniaXamlLoader.Load(this);
 
