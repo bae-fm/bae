@@ -89,6 +89,32 @@ if (Test-Path $exePri) {
     Copy-Item $pri $exeDir -Force
 }
 
+# The module PRI must carry the app's own Core resource map (Loc constructs
+# ResourceLoader(pri, "Core") and dies with ResourceMap Not Found otherwise).
+# Verify up front with a makepri dump so a bad PRI fails here, with the dump's
+# map inventory in the log, instead of inside the capture process.
+$makepri = Get-ChildItem -Path @(
+        'C:\Program Files (x86)\Windows Kits\10\bin',
+        "$env:USERPROFILE\.nuget\packages\microsoft.windows.sdk.buildtools"
+    ) -Recurse -Filter makepri.exe -ErrorAction SilentlyContinue |
+    Select-Object -First 1 -ExpandProperty FullName
+if ($makepri) {
+    $dump = Join-Path ([IO.Path]::GetTempPath()) 'bae-pri-dump.xml'
+    & $makepri dump /if $exePri /of $dump /o | Out-Null
+    $coreCount = (Select-String -Path $dump -Pattern '/Core/' -SimpleMatch).Count
+    Write-Host "PRI dump: $coreCount Core-map entries in $priName"
+    if ($coreCount -eq 0) {
+        Write-Host '--- resource maps present in the PRI ---'
+        Select-String -Path $dump -Pattern '<ResourceMap|<ResourceMapSubtree' | Select-Object -First 40 | ForEach-Object { $_.Line.Trim() }
+        Write-Host '--- pri.resfiles the build fed makepri ---'
+        Get-ChildItem -Path (Join-Path $repoRoot 'bae-windows\obj') -Recurse -Filter 'pri.resfiles' -ErrorAction SilentlyContinue |
+            ForEach-Object { Write-Host "== $($_.FullName)"; Get-Content $_.FullName | Select-Object -First 40 }
+        throw "module PRI has no Core resource map"
+    }
+} else {
+    Write-Host 'makepri not found; skipping PRI verification'
+}
+
 # 5. Capture one scene per process. A second RenderTargetBitmap in one process
 #    wedges headless (the first render always succeeds, the second always hangs),
 #    so each enabled scene gets its own exe run with its own bounded timeout. This
