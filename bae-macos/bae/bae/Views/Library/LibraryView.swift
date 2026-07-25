@@ -474,12 +474,13 @@ extension LibraryView {
             uiStore: uiStore,
             libraryStore: libraryStore
         )
+        let library: Library = backing.library
         let session: LibraryBrowseSession = backing.session
         return LibraryView()
             .environment(Playback.stub)
             .environment(Queue.stub)
             .environment(Downloads.stub)
-            .environment(backing.library)
+            .environment(library)
             .environment(libraryStore)
             .environment(uiStore)
             .environment(session)
@@ -496,12 +497,13 @@ extension LibraryView {
             uiStore: uiStore,
             libraryStore: libraryStore
         )
+        let library: Library = backing.library
         let session: LibraryBrowseSession = backing.session
         return LibraryView()
             .environment(Playback.stub)
             .environment(Queue.stub)
             .environment(Downloads.stub)
-            .environment(backing.library)
+            .environment(library)
             .environment(libraryStore)
             .environment(uiStore)
             .environment(session)
@@ -572,12 +574,13 @@ extension LibraryView {
             uiStore: uiStore,
             libraryStore: libraryStore
         )
+        let library: Library = backing.library
         let session: LibraryBrowseSession = backing.session
         return LibraryView()
             .environment(Playback.stub)
             .environment(Queue.stub)
             .environment(Downloads.stub)
-            .environment(backing.library)
+            .environment(library)
             .environment(libraryStore)
             .environment(uiStore)
             .environment(session)
