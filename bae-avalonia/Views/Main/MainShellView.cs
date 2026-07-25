@@ -18,6 +18,8 @@ namespace Bae.Desktop;
 internal sealed class MainShellView : UserControl
 {
     private readonly AppService _app;
+    private readonly QueuePane _queuePane;
+    private Button? _queueButton;
 
     public MainShellView(AppService app, ReleaseActionDialogs dialogs)
     {
@@ -30,15 +32,29 @@ internal sealed class MainShellView : UserControl
         Grid.SetRow(toolbar, 0);
         root.Children.Add(toolbar);
 
-        var content = new LibraryBrowserView(_app, dialogs);
-        Grid.SetRow(content, 1);
-        root.Children.Add(content);
+        // The content row docks the library beside the queue sidebar: the browser
+        // takes the remaining width and the queue host reflows content when open.
+        var contentRow = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") };
+        var browser = new LibraryBrowserView(_app, dialogs);
+        Grid.SetColumn(browser, 0);
+        var queueHost = new Border();
+        Grid.SetColumn(queueHost, 1);
+        contentRow.Children.Add(browser);
+        contentRow.Children.Add(queueHost);
+        Grid.SetRow(contentRow, 1);
+        root.Children.Add(contentRow);
 
         var bar = BuildNowPlayingBar();
         Grid.SetRow(bar, 2);
         root.Children.Add(bar);
 
         Content = root;
+
+        _queuePane = new QueuePane(_app, queueHost);
+        if (_queueButton is not null)
+        {
+            _queuePane.AttachToggle(_queueButton);
+        }
     }
 
     // ── Toolbar ──────────────────────────────────────────────────────────────
@@ -142,7 +158,7 @@ internal sealed class MainShellView : UserControl
     }
 
     // ── Idle now-playing bar ─────────────────────────────────────────────────
-    private static Control BuildNowPlayingBar()
+    private Control BuildNowPlayingBar()
     {
         var bar = new Border { BorderThickness = new Thickness(0, 1, 0, 0) };
         SetBg(bar, "BaeSurfaceBrush");
@@ -195,7 +211,8 @@ internal sealed class MainShellView : UserControl
             VerticalAlignment = VerticalAlignment.Center,
         };
         right.Children.Add(Icons.IconButton(Icons.Cast, 16, "BaeTextSecondaryBrush", 30));
-        right.Children.Add(Icons.IconButton(Icons.Queue, 17, "BaeTextSecondaryBrush", 32));
+        _queueButton = Icons.IconButton(Icons.Queue, 17, "BaeTextSecondaryBrush", 32);
+        right.Children.Add(_queueButton);
         right.Children.Add(Icons.IconButton(Icons.VolumeUp, 16, "BaeTextSecondaryBrush", 30));
         var volume = new Slider { Minimum = 0, Maximum = 1, Value = 0.7, Width = 96, VerticalAlignment = VerticalAlignment.Center };
         right.Children.Add(volume);
