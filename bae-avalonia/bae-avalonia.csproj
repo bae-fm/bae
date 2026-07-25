@@ -38,6 +38,9 @@
     <PackageReference Include="Avalonia.Fonts.Inter" Version="11.3.18" />
     <!-- Avalonia's XAML diagnostics attach only in DEBUG. -->
     <PackageReference Include="Avalonia.Diagnostics" Version="11.3.18" Condition="'$(Configuration)' == 'Debug'" />
+    <!-- Headless Skia rendering for DEBUG-only shot capture (RenderTargetBitmap
+         off-screen). Referenced everywhere the DEBUG capture path compiles. -->
+    <PackageReference Include="Avalonia.Headless" Version="11.3.18" Condition="'$(Configuration)' == 'Debug'" />
     <!--
       ICU MessageFormat 1 runtime. The localization catalog stores each message
       as a verbatim MF1 string (plural / select / named args); this parses it at

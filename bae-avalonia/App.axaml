@@ -24,12 +24,17 @@
           <Color x:Key="BaeElevatedColor">#1C1C28</Color>
           <Color x:Key="BaeFieldColor">#101019</Color>
           <Color x:Key="BaeAccentColor">#D97857</Color>
+          <Color x:Key="BaeAccentHoverColor">#E08A6A</Color>
+          <Color x:Key="BaeAccentPressedColor">#C1684A</Color>
+          <Color x:Key="BaeOnAccentColor">#FFFFFF</Color>
           <Color x:Key="BaeTextPrimaryColor">#F0F0F5</Color>
           <Color x:Key="BaeTextSecondaryColor">#9A9AA5</Color>
           <Color x:Key="BaeDangerColor">#E8836F</Color>
           <Color x:Key="BaeHairlineColor">#22FFFFFF</Color>
-          <!-- FluentTheme reads SystemAccentColor for AccentButton and focus
-               visuals; point it at the terracotta so accent chrome matches. -->
+          <!-- FluentTheme's focus ring reads SystemAccentColor; point it at the
+               terracotta. The accent button background is driven by the Style
+               overrides below (FluentTheme paints it on the template's content
+               presenter, so the color has to be set there). -->
           <Color x:Key="SystemAccentColor">#D97857</Color>
         </ResourceDictionary>
 
@@ -39,6 +44,9 @@
           <Color x:Key="BaeElevatedColor">#F1ECE5</Color>
           <Color x:Key="BaeFieldColor">#FFFFFF</Color>
           <Color x:Key="BaeAccentColor">#C25B3A</Color>
+          <Color x:Key="BaeAccentHoverColor">#CE6A48</Color>
+          <Color x:Key="BaeAccentPressedColor">#A94E31</Color>
+          <Color x:Key="BaeOnAccentColor">#FFFFFF</Color>
           <Color x:Key="BaeTextPrimaryColor">#1A1A22</Color>
           <Color x:Key="BaeTextSecondaryColor">#6B6B72</Color>
           <Color x:Key="BaeDangerColor">#C0392B</Color>
@@ -55,6 +63,9 @@
       <SolidColorBrush x:Key="BaeElevatedBrush" Color="{DynamicResource BaeElevatedColor}" />
       <SolidColorBrush x:Key="BaeFieldBrush" Color="{DynamicResource BaeFieldColor}" />
       <SolidColorBrush x:Key="BaeAccentBrush" Color="{DynamicResource BaeAccentColor}" />
+      <SolidColorBrush x:Key="BaeAccentHoverBrush" Color="{DynamicResource BaeAccentHoverColor}" />
+      <SolidColorBrush x:Key="BaeAccentPressedBrush" Color="{DynamicResource BaeAccentPressedColor}" />
+      <SolidColorBrush x:Key="BaeOnAccentBrush" Color="{DynamicResource BaeOnAccentColor}" />
       <SolidColorBrush x:Key="BaeTextPrimaryBrush" Color="{DynamicResource BaeTextPrimaryColor}" />
       <SolidColorBrush x:Key="BaeTextSecondaryBrush" Color="{DynamicResource BaeTextSecondaryColor}" />
       <SolidColorBrush x:Key="BaeDangerBrush" Color="{DynamicResource BaeDangerColor}" />
@@ -64,5 +75,22 @@
 
   <Application.Styles>
     <FluentTheme />
+
+    <!-- The prominent (accent) button in the bae terracotta, in both variants.
+         FluentTheme paints the accent background on the template's content
+         presenter, so the override targets it there; the base FluentTheme accent
+         would otherwise be its default blue. -->
+    <Style Selector="Button.accent">
+      <Setter Property="Foreground" Value="{DynamicResource BaeOnAccentBrush}" />
+    </Style>
+    <Style Selector="Button.accent /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource BaeAccentBrush}" />
+    </Style>
+    <Style Selector="Button.accent:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource BaeAccentHoverBrush}" />
+    </Style>
+    <Style Selector="Button.accent:pressed /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource BaeAccentPressedBrush}" />
+    </Style>
   </Application.Styles>
 </Application>
