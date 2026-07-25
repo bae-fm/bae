@@ -8,22 +8,22 @@ namespace Bae.Windows;
 // Reload while the dialog is open. Mirrors macOS's ConfigStore.
 internal sealed class SettingsStore
 {
-    private readonly SessionStore _session;
+    private readonly SettingsService _settings;
 
     public Settings? Current { get; private set; }
 
     public event Action? Changed;
 
-    public SettingsStore(SessionStore session)
+    public SettingsStore(SettingsService settings)
     {
-        _session = session;
+        _settings = settings;
     }
 
     // Re-read the settings from the current handle and notify subscribers. A gone
     // handle leaves the prior snapshot and skips the notification.
     public void Reload()
     {
-        var (current, fresh) = _session.WithCurrentHandle(NativeBae.GetSettings);
+        var (current, fresh) = _settings.GetSettings();
         if (!current)
         {
             return;

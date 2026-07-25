@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using uniffi.bae_bridge;
 
 namespace Bae.Windows;
 
@@ -59,6 +60,23 @@ internal sealed class DownloadsService
     public Func<bool> RetryOutputs { get; init; }
         = () => throw new InvalidOperationException("DownloadsService stub: RetryOutputs not wired");
 
+    /// <summary>Move a release to managed (cloud-owned) storage — "manage". With
+    /// <c>pin</c> it also keeps a local pinned copy. The macOS ReleaseEditor's
+    /// manageRelease analog; folded here beside pin/unpin since Windows has no
+    /// release-editor service yet.</summary>
+    public Func<string, bool, Task<(bool Current, string? Error)>> MakeReleaseRemote { get; init; }
+        = (_, _) => throw new InvalidOperationException("DownloadsService stub: MakeReleaseRemote not wired");
+
+    /// <summary>Move a release to unmanaged (user-file) storage at a destination
+    /// folder — "unmanage". The macOS ReleaseEditor's unmanageRelease analog.</summary>
+    public Func<string, string, Task<(bool Current, string? Error)>> MakeReleaseLocal { get; init; }
+        = (_, _) => throw new InvalidOperationException("DownloadsService stub: MakeReleaseLocal not wired");
+
+    /// <summary>The in-memory download (pin) queue snapshot — which releases are
+    /// queued or downloading — for the storage sheet's pin-cancel availability.</summary>
+    public Func<Task<(bool Current, (BridgeDownloadSnapshot? Snapshot, string? Error) Result)>> DownloadSnapshot { get; init; }
+        = () => throw new InvalidOperationException("DownloadsService stub: DownloadSnapshot not wired");
+
     /// <summary>Wire every control through the open session's current handle.</summary>
     public static DownloadsService FromSession(SessionStore session) => new()
     {
@@ -71,5 +89,10 @@ internal sealed class DownloadsService
         SetOutputsPaused = paused => session.WithCurrentHandle(handle => NativeBae.SetOutputsPaused(handle, paused)),
         CancelOutput = releaseId => session.WithCurrentHandle(handle => NativeBae.CancelOutput(handle, releaseId)),
         RetryOutputs = () => session.WithCurrentHandle(NativeBae.RetryOutputs),
+        MakeReleaseRemote = (releaseId, pin) =>
+            session.RunForCurrentHandle(handle => NativeBae.MakeReleaseRemote(handle, releaseId, pin)),
+        MakeReleaseLocal = (releaseId, newPath) =>
+            session.RunForCurrentHandle(handle => NativeBae.MakeReleaseLocal(handle, releaseId, newPath)),
+        DownloadSnapshot = () => session.RunForCurrentHandle(NativeBae.DownloadSnapshot),
     };
 }

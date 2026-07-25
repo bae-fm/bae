@@ -11,7 +11,7 @@ namespace Bae.Windows;
 // only while the picker is open.
 internal sealed class CastStore
 {
-    private readonly SessionStore _session;
+    private readonly CastService _cast;
 
     // The devices found on the network, refreshed by the castDevices projection.
     public IReadOnlyList<BridgeCastDevice> Devices { get; private set; } = Array.Empty<BridgeCastDevice>();
@@ -27,9 +27,9 @@ internal sealed class CastStore
     // Fires when the discovered device list changes.
     public event Action? DevicesChanged;
 
-    public CastStore(SessionStore session)
+    public CastStore(CastService cast)
     {
-        _session = session;
+        _cast = cast;
     }
 
     // Apply a castStatusChanged event: the device name while casting, null back on
@@ -43,7 +43,7 @@ internal sealed class CastStore
     // Reload the device list from the current handle (a castDevices invalidation).
     public void RefreshDevices()
     {
-        var (current, devices) = _session.WithCurrentHandle(NativeBae.GetCastDevices);
+        var (current, devices) = _cast.GetCastDevices();
         if (!current)
         {
             return;
@@ -53,18 +53,18 @@ internal sealed class CastStore
     }
 
     // Begin/stop browsing (the picker opened/closed).
-    public void StartDiscovery() => _session.WithCurrentHandle(NativeBae.StartCastDiscovery);
+    public void StartDiscovery() => _cast.StartDiscovery();
 
-    public void StopDiscovery() => _session.WithCurrentHandle(NativeBae.StopCastDiscovery);
+    public void StopDiscovery() => _cast.StopDiscovery();
 
     // Switch playback to a device. Returns a localized error string on failure,
     // or null on success (or when there is no open library).
     public string? CastTo(string deviceId)
     {
-        var (current, error) = _session.WithCurrentHandle(handle => NativeBae.CastTo(handle, deviceId));
+        var (current, error) = _cast.CastTo(deviceId);
         return current ? error : null;
     }
 
     // Stop casting and return playback to local output.
-    public void StopCasting() => _session.WithCurrentHandle(NativeBae.StopCasting);
+    public void StopCasting() => _cast.StopCasting();
 }

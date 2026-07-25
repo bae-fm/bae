@@ -71,7 +71,7 @@ public sealed class Settings
     {
         get
         {
-            var key = NativeBae.CloudProviderLabelKey(SyncProvider);
+            var key = BridgeDisplay.CloudProviderLabelKey(SyncProvider);
             if (key is not null)
             {
                 return Loc.Core(key);

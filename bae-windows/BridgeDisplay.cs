@@ -161,4 +161,22 @@ internal static class BridgeDisplay
             _ => provider.ToString(),
         };
     }
+
+    // The stable wire token for a release-storage transition (pin/unpin/manage/
+    // unmanage), core's mapping — the key the transfer-progress store files an
+    // in-flight transition under so its matching "ended" event clears the right
+    // one. Handle-less: it is a pure enum → token translation, not a session read.
+    internal static string TransferActionToken(BridgeReleaseStorageAction action) =>
+        NativeBae.TransferActionToken(action);
+
+    // The localization key for a cloud provider's label from its wire tag, or null
+    // when the tag isn't one core names (the caller falls back to chrome).
+    internal static string? CloudProviderLabelKey(string? provider) =>
+        NativeBae.CloudProviderLabelKey(provider);
+
+    // The localization key for an import candidate's preparing-step tag.
+    internal static string? PrepareStepKey(string step) => NativeBae.PrepareStepKey(step);
+
+    // The localization key for an import candidate's running-phase tag.
+    internal static string? ImportPhaseKey(string phase) => NativeBae.ImportPhaseKey(phase);
 }

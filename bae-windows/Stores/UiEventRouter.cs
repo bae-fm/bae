@@ -122,7 +122,7 @@ internal sealed class UiEventRouter
                 // A pin/unpin/manage/unmanage transition started: light the
                 // in-flight indicator on the storage row and album-detail band
                 // until the matching ended event lands.
-                _transfers.Apply(transfer.ReleaseId, NativeBae.TransferActionToken(transfer.Action));
+                _transfers.Apply(transfer.ReleaseId, BridgeDisplay.TransferActionToken(transfer.Action));
                 break;
             case BridgeUiEvent.ReleaseTransferEnded ended:
                 // The transition finished (success or failure) — clear the

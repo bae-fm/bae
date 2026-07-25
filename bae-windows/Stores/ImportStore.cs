@@ -15,7 +15,7 @@ namespace Bae.Windows;
 // nothing derived crosses into it.
 internal sealed class ImportStore
 {
-    private readonly SessionStore _session;
+    private readonly ImportService _import;
     private readonly Action<string, string> _showError;
     private readonly MediaControlService _mediaControls;
 
@@ -59,9 +59,9 @@ internal sealed class ImportStore
     // Shown after the elapsed position; null when nothing is previewing.
     private string? _previewDurationLabel;
 
-    public ImportStore(SessionStore session, Action<string, string> showError, MediaControlService mediaControls)
+    public ImportStore(ImportService import, Action<string, string> showError, MediaControlService mediaControls)
     {
-        _session = session;
+        _import = import;
         _showError = showError;
         _mediaControls = mediaControls;
         SortOrder = ImportSortStore.Load();
@@ -72,12 +72,7 @@ internal sealed class ImportStore
     // no-op.
     public async void RefreshCandidates()
     {
-        if (_session.CurrentHandleOrNull() == null)
-        {
-            return;
-        }
-
-        var (current, result) = await _session.RunForCurrentHandle(NativeBae.ImportCandidates);
+        var (current, result) = await _import.ImportCandidates();
         if (!current)
         {
             return;
@@ -198,8 +193,7 @@ internal sealed class ImportStore
     // import banner; success is silent (the invalidation drives the refresh).
     public async void RemoveWatchedFolder(string path)
     {
-        var (current, error) = await _session.RunForCurrentHandle(
-            handle => NativeBae.RemoveWatchedFolder(handle, path));
+        var (current, error) = await _import.RemoveWatchedFolder(path);
         if (current && error is not null)
         {
             _showError(Loc.Chrome("import.error_title"), error);
@@ -211,8 +205,7 @@ internal sealed class ImportStore
     // success is silent (the invalidation drives the refresh).
     public async void SetCandidateSkipped(string key, bool skipped)
     {
-        var (current, error) = await _session.RunForCurrentHandle(
-            handle => NativeBae.SetCandidateSkipped(handle, key, skipped));
+        var (current, error) = await _import.SetCandidateSkipped(key, skipped);
         if (current && error is not null)
         {
             _showError(Loc.Chrome("import.error_title"), error);
@@ -308,19 +301,19 @@ internal sealed class ImportStore
     // Scan a folder into the watched set (clearing the prior scan); candidates
     // stream in through invalidations. Returns the error line, or null on success.
     public System.Threading.Tasks.Task<(bool Current, string? Result)> ScanFolder(string path) =>
-        _session.RunForCurrentHandle(handle => NativeBae.ScanFolder(handle, path, true));
+        _import.ScanFolder(path);
 
     // Kick off auto-identification for an as-yet unidentified candidate.
     public System.Threading.Tasks.Task<bool> AutoIdentify(string candidateKey, string folderPath) =>
-        _session.RunForCurrentHandle(handle => NativeBae.AutoIdentifyFolder(handle, candidateKey, folderPath));
+        _import.AutoIdentifyFolder(candidateKey, folderPath);
 
     // Re-dispatch a candidate's lookups, keeping the user's signal exclusions.
     public System.Threading.Tasks.Task<bool> RerunIdentify(string candidateKey) =>
-        _session.RunForCurrentHandle(handle => NativeBae.RerunIdentifyForCandidate(handle, candidateKey));
+        _import.RerunIdentifyForCandidate(candidateKey);
 
     // Toggle a signal in or out of the candidate's triangulation.
     public System.Threading.Tasks.Task<bool> ToggleSignal(string candidateKey, string kind, string value) =>
-        _session.RunForCurrentHandle(handle => NativeBae.ToggleSignalForCandidate(handle, candidateKey, kind, value));
+        _import.ToggleSignalForCandidate(candidateKey, kind, value);
 
     // Scan candidates and watched folders are per-library in-memory state; clear
     // them on teardown so the next library doesn't inherit the previous one's list,

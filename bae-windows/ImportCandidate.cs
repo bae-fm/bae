@@ -144,8 +144,8 @@ public sealed class ImportStep
         {
             var key = Kind switch
             {
-                "preparing" when StepTag is not null => NativeBae.PrepareStepKey(StepTag),
-                "running" when Phase is not null => NativeBae.ImportPhaseKey(Phase),
+                "preparing" when StepTag is not null => BridgeDisplay.PrepareStepKey(StepTag),
+                "running" when Phase is not null => BridgeDisplay.ImportPhaseKey(Phase),
                 _ => null,
             };
             return key is null ? string.Empty : Loc.Core(key);

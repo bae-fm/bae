@@ -23,6 +23,9 @@ internal sealed class AppService
     public QueueService Queue { get; }
     public DownloadsService Downloads { get; }
     public SyncService Sync { get; }
+    public CastService Cast { get; }
+    public SettingsService Settings { get; }
+    public ImportService Import { get; }
 
     // The system media transport controls, bound to the window's HWND at
     // construction. One instance for the window's lifetime; a library switch
@@ -55,12 +58,15 @@ internal sealed class AppService
             PlaybackService.FromSession(session),
             QueueService.FromSession(session),
             DownloadsService.FromSession(session),
-            SyncService.FromSession(session))
+            SyncService.FromSession(session),
+            CastService.FromSession(session),
+            SettingsService.FromSession(session),
+            ImportService.FromSession(session))
     {
     }
 
-    // The six domain services are injected so a scene can override them (see
-    // Stubbed); the stores, transport controls, and router are the same for every
+    // The domain services are injected so a scene can override them (see Stubbed);
+    // the stores, transport controls, and router are the same for every
     // composition and are built here around the given session and services.
     private AppService(
         SessionStore session,
@@ -71,7 +77,10 @@ internal sealed class AppService
         PlaybackService playback,
         QueueService queue,
         DownloadsService downloads,
-        SyncService sync)
+        SyncService sync,
+        CastService cast,
+        SettingsService settings,
+        ImportService import)
     {
         Library = library;
         MediaPaths = mediaPaths;
@@ -79,21 +88,24 @@ internal sealed class AppService
         Queue = queue;
         Downloads = downloads;
         Sync = sync;
+        Cast = cast;
+        Settings = settings;
+        Import = import;
 
         ShellStore = new ShellStore();
         PlaybackStore = new PlaybackStore();
-        CastStore = new CastStore(session);
-        SyncStatusStore = new SyncStatusStore(session);
+        CastStore = new CastStore(Cast);
+        SyncStatusStore = new SyncStatusStore(Sync);
         // Built before the now-playing bar (in MainView): the bar reads the
         // remaining-time preference through the settings mirror, whose Current
         // stays null until a library seeds it.
-        SettingsStore = new SettingsStore(session);
+        SettingsStore = new SettingsStore(Settings);
         MediaControlService = new MediaControlService(
             windowHandle(),
             dispatcher,
             Playback,
             imageId => MediaPaths.FetchCoverImageBytes(imageId));
-        ImportStore = new ImportStore(session, ShowError, MediaControlService);
+        ImportStore = new ImportStore(Import, ShowError, MediaControlService);
         ProjectionRegistry = new ProjectionRegistry();
         // In-flight release transfers (pin/unpin/manage/unmanage), driven by
         // core's ReleaseTransferProgress/Ended events the router routes, read by
@@ -110,7 +122,7 @@ internal sealed class AppService
             CastStore);
         // The storage sheet's non-UI operations, shared by the storage dialog and
         // the album-detail storage band so both run transitions the same way.
-        StorageStore = new StorageStore(session, TransferProgressStore);
+        StorageStore = new StorageStore(Downloads, Sync, TransferProgressStore);
         LibraryBrowserStore = new LibraryBrowserStore(Library, MediaPaths, dispatcher);
     }
 
@@ -135,7 +147,10 @@ internal sealed class AppService
             new PlaybackService(),
             new QueueService(),
             new DownloadsService(),
-            new SyncService());
+            new SyncService(),
+            new CastService(),
+            new SettingsService(),
+            new ImportService());
 #endif
 
     /// <summary>Route a caught error to the shell's error banner — the macOS

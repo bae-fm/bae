@@ -85,6 +85,17 @@ internal sealed class SyncService
     public Func<uint, (bool Current, string? Error)> SetMaxConcurrentUploads { get; init; }
         = _ => throw new InvalidOperationException("SyncService stub: SetMaxConcurrentUploads not wired");
 
+    /// <summary>The current sync-status snapshot — the badge state core decides
+    /// (error > syncing > synced > idle) plus the error line — for the toolbar
+    /// indicator and the sync banner.</summary>
+    public Func<(bool Current, (BridgeSyncStatusSnapshot? Status, string? Error) Result)> SyncStatus { get; init; }
+        = () => throw new InvalidOperationException("SyncService stub: SyncStatus not wired");
+
+    /// <summary>The cloud-outbox snapshot — the queued/in-flight uploads — for the
+    /// storage sheet's per-release upload state and the Exporting band.</summary>
+    public Func<Task<(bool Current, (BridgeOutboxSnapshot? Snapshot, string? Error) Result)>> OutboxSnapshot { get; init; }
+        = () => throw new InvalidOperationException("SyncService stub: OutboxSnapshot not wired");
+
     /// <summary>Wire every operation through the open session's current handle.</summary>
     public static SyncService FromSession(SessionStore session) => new()
     {
@@ -109,5 +120,7 @@ internal sealed class SyncService
         TriggerSync = () => session.WithCurrentHandle(NativeBae.TriggerSync),
         LockActiveLibrary = () => session.WithCurrentHandle(NativeBae.LockActiveLibrary),
         SetMaxConcurrentUploads = n => session.WithCurrentHandle(handle => NativeBae.SetMaxConcurrentUploads(handle, n)),
+        SyncStatus = () => session.WithCurrentHandle(NativeBae.SyncStatus),
+        OutboxSnapshot = () => session.RunForCurrentHandle(NativeBae.OutboxSnapshot),
     };
 }

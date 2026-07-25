@@ -8,7 +8,7 @@ namespace Bae.Windows;
 // the indicator and banner from these fields on Changed.
 internal sealed class SyncStatusStore
 {
-    private readonly SessionStore _session;
+    private readonly SyncService _sync;
 
     // The localized sync-error line, or null when sync is healthy. Kept for the
     // reconnect banner; the toolbar badge is driven by Indicator.
@@ -24,14 +24,14 @@ internal sealed class SyncStatusStore
 
     public event Action? Changed;
 
-    public SyncStatusStore(SessionStore session)
+    public SyncStatusStore(SyncService sync)
     {
-        _session = session;
+        _sync = sync;
     }
 
     public void Refresh()
     {
-        var (current, result) = _session.WithCurrentHandle(NativeBae.SyncStatus);
+        var (current, result) = _sync.SyncStatus();
         if (!current)
         {
             return;

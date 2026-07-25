@@ -14,13 +14,15 @@ namespace Bae.Windows;
 // UI-thread only.
 internal sealed class StorageStore
 {
-    private readonly SessionStore _session;
+    private readonly DownloadsService _downloads;
+    private readonly SyncService _sync;
     private readonly TransferProgressStore _transfers;
     private readonly HashSet<string> _unmanagingReleases = new();
 
-    public StorageStore(SessionStore session, TransferProgressStore transfers)
+    public StorageStore(DownloadsService downloads, SyncService sync, TransferProgressStore transfers)
     {
-        _session = session;
+        _downloads = downloads;
+        _sync = sync;
         _transfers = transfers;
     }
 
@@ -64,7 +66,7 @@ internal sealed class StorageStore
     public async System.Threading.Tasks.Task<(List<string> Releases, string? Error)> UploadingReleases(
         List<string> releaseIds)
     {
-        var (current, result) = await _session.RunForCurrentHandle(NativeBae.OutboxSnapshot);
+        var (current, result) = await _sync.OutboxSnapshot();
         if (!current)
         {
             return (new List<string>(), null);
@@ -89,7 +91,7 @@ internal sealed class StorageStore
     // is an app-state fault — log it and offer no pin-cancel rather than a toast.
     public async System.Threading.Tasks.Task<List<string>> DownloadingReleases(List<string> releaseIds)
     {
-        var (current, result) = await _session.RunForCurrentHandle(NativeBae.DownloadSnapshot);
+        var (current, result) = await _downloads.DownloadSnapshot();
         if (!current)
         {
             return new List<string>();
@@ -136,20 +138,8 @@ internal sealed class StorageStore
             }
             try
             {
-                var (storageActionCurrent, error) = await _session.RunForCurrentHandle(handle =>
-                {
-                    foreach (var releaseId in releaseIds)
-                    {
-                        var error = NativeBae.MakeReleaseLocal(handle, releaseId, path);
-                        if (error is not null)
-                        {
-                            return error;
-                        }
-                    }
-
-                    return (string?)null;
-                });
-                return storageActionCurrent ? error : null;
+                return await FirstErrorAcross(
+                    releaseIds, releaseId => _downloads.MakeReleaseLocal(releaseId, path));
             }
             finally
             {
@@ -160,27 +150,44 @@ internal sealed class StorageStore
             }
         }
 
-        var (current, actionError) = await _session.RunForCurrentHandle(handle =>
+        switch (action)
         {
-            foreach (var releaseId in releaseIds)
-            {
-                var error = action switch
-                {
-                    BridgeReleaseStorageAction.Pin => NativeBae.PinRelease(handle, releaseId),
-                    BridgeReleaseStorageAction.Unpin => NativeBae.UnpinRelease(handle, releaseId),
-                    BridgeReleaseStorageAction.MakeRemote => NativeBae.MakeReleaseRemote(handle, releaseId, pin: false),
-                    BridgeReleaseStorageAction.MakeLocal => throw new InvalidOperationException(
-                        "make-local storage actions must choose a destination before running"),
-                    _ => throw new ArgumentOutOfRangeException(nameof(action), action, "Unknown storage action"),
-                };
-                if (error is not null)
-                {
-                    return error;
-                }
-            }
+            case BridgeReleaseStorageAction.Pin:
+                // Pin enqueues the whole selection in one call (the download queue
+                // takes a list); the rest apply per release.
+                var (pinCurrent, pinError) = await _downloads.QueuePins(releaseIds);
+                return pinCurrent ? pinError : null;
+            case BridgeReleaseStorageAction.Unpin:
+                return await FirstErrorAcross(releaseIds, _downloads.UnpinRelease);
+            case BridgeReleaseStorageAction.MakeRemote:
+                // Manage without a local pinned copy (false).
+                return await FirstErrorAcross(
+                    releaseIds, releaseId => _downloads.MakeReleaseRemote(releaseId, false));
+            case BridgeReleaseStorageAction.MakeLocal:
+                throw new InvalidOperationException(
+                    "make-local storage actions must choose a destination before running");
+            default:
+                throw new ArgumentOutOfRangeException(nameof(action), action, "Unknown storage action");
+        }
+    }
 
-            return (string?)null;
-        });
-        return current ? actionError : null;
+    // Run a per-release transition across the selection, stopping at the first
+    // error and returning its line (or null on success / no handle). Each release
+    // is applied under its own handle acquisition; on the UI thread they all see
+    // the same handle, so this matches the prior single-batch result.
+    private static async System.Threading.Tasks.Task<string?> FirstErrorAcross(
+        List<string> releaseIds,
+        Func<string, System.Threading.Tasks.Task<(bool Current, string? Error)>> apply)
+    {
+        foreach (var releaseId in releaseIds)
+        {
+            var (current, error) = await apply(releaseId);
+            if (current && error is not null)
+            {
+                return error;
+            }
+        }
+
+        return null;
     }
 }
