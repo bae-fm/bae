@@ -44,6 +44,7 @@
   <data name="cover.none_available" xml:space="preserve"><value>No cover art available — the import uses its default cover.</value></data>
   <data name="cover.none_remote" xml:space="preserve"><value>No remote covers found</value></data>
   <data name="cover.pick_hint" xml:space="preserve"><value>Pick a cover, or leave unselected to use the default.</value></data>
+  <data name="cover.refresh" xml:space="preserve"><value>Refresh</value></data>
   <data name="cover.release_files" xml:space="preserve"><value>Release files</value></data>
   <data name="cover.remote_sources" xml:space="preserve"><value>Remote sources</value></data>
   <data name="cover.section_title" xml:space="preserve"><value>Cover</value></data>

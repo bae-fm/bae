@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Avalonia;
@@ -24,7 +25,7 @@ internal static class AlbumExpansionView
 {
     // Fetch the album's detail and build the panel, or null when the session closed
     // mid-fetch or the album can't be opened (the caller leaves the row collapsed).
-    public static async Task<Control?> BuildAsync(AppService app, Album card, Action onClose)
+    public static async Task<Control?> BuildAsync(AppService app, ReleaseActionDialogs dialogs, Album card, Action onClose)
     {
         var (current, response) = await app.Library.AlbumDetail(card.Id);
         if (!current)
@@ -79,7 +80,26 @@ internal static class AlbumExpansionView
                 app.Queue.AddReleaseToQueue(selectedRelease.ReleaseId);
             }
         };
-        moreButton.Flyout = new MenuFlyout { ItemsSource = new[] { playNext, addQueue } };
+        var changeCover = new MenuItem { Header = Loc.Chrome("menu.change_cover") };
+        changeCover.Click += async (_, _) => await dialogs.ShowChangeCover(detail.Id, selectedRelease.ReleaseId);
+
+        var moreItems = new List<MenuItem> { playNext, addQueue };
+        // Set-primary only means something when the album has more than one pressing.
+        if (detail.Releases.Count > 1)
+        {
+            var setPrimary = new MenuItem { Header = Loc.Chrome("menu.set_primary") };
+            setPrimary.Click += async (_, _) =>
+            {
+                var (current, error) = await app.ReleaseEditor.SetPrimaryRelease(detail.Id, selectedRelease.ReleaseId);
+                if (current && error is not null)
+                {
+                    app.ShowError(Loc.Chrome("error.title"), error);
+                }
+            };
+            moreItems.Add(setPrimary);
+        }
+        moreItems.Add(changeCover);
+        moreButton.Flyout = new MenuFlyout { ItemsSource = moreItems };
 
         var actions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
         actions.Children.Add(playButton);

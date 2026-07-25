@@ -19,7 +19,7 @@ internal sealed class MainShellView : UserControl
 {
     private readonly AppService _app;
 
-    public MainShellView(AppService app)
+    public MainShellView(AppService app, ReleaseActionDialogs dialogs)
     {
         _app = app;
 
@@ -30,7 +30,7 @@ internal sealed class MainShellView : UserControl
         Grid.SetRow(toolbar, 0);
         root.Children.Add(toolbar);
 
-        var content = new LibraryBrowserView(_app);
+        var content = new LibraryBrowserView(_app, dialogs);
         Grid.SetRow(content, 1);
         root.Children.Add(content);
 

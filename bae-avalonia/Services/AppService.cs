@@ -29,6 +29,7 @@ internal sealed class AppService
     public CastService Cast { get; }
     public SettingsService Settings { get; }
     public ImportService Import { get; }
+    public ReleaseEditorService ReleaseEditor { get; }
 
     // The OS now-playing / media-key surface. One instance for the window's
     // lifetime; a library switch deactivates it rather than recreating it. The
@@ -66,7 +67,8 @@ internal sealed class AppService
             SyncService.FromSession(session),
             CastService.FromSession(session),
             SettingsService.FromSession(session),
-            ImportService.FromSession(session))
+            ImportService.FromSession(session),
+            ReleaseEditorService.FromSession(session))
     {
     }
 
@@ -84,7 +86,8 @@ internal sealed class AppService
         SyncService sync,
         CastService cast,
         SettingsService settings,
-        ImportService import)
+        ImportService import,
+        ReleaseEditorService releaseEditor)
     {
         Session = session;
         Library = library;
@@ -96,6 +99,7 @@ internal sealed class AppService
         Cast = cast;
         Settings = settings;
         Import = import;
+        ReleaseEditor = releaseEditor;
 
         ShellStore = new ShellStore();
         PlaybackStore = new PlaybackStore();
@@ -168,7 +172,8 @@ internal sealed class AppService
             new SyncService(),
             new CastService(),
             new SettingsService(),
-            new ImportService());
+            new ImportService(),
+            new ReleaseEditorService());
 #endif
 
     /// <summary>Route a caught error to the shell's error banner — the macOS

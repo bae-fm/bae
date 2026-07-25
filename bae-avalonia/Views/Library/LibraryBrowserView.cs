@@ -26,12 +26,12 @@ internal sealed class LibraryBrowserView : UserControl
     private readonly IncrementalListView<ComposerSummary> _composerPane;
     private readonly IncrementalListView<ArtistSummary> _artistPane;
 
-    public LibraryBrowserView(AppService app)
+    public LibraryBrowserView(AppService app, ReleaseActionDialogs dialogs)
     {
         _app = app;
         var store = app.LibraryBrowserStore;
 
-        _albumPane = new AlbumGridView(app);
+        _albumPane = new AlbumGridView(app, dialogs);
         _composerPane = new IncrementalListView<ComposerSummary>(
             () => store.Composers,
             store.ComposerById,

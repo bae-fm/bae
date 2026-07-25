@@ -1,3 +1,4 @@
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Markup.Xaml.MarkupExtensions;
@@ -53,6 +54,42 @@ internal static class DialogUi
 
     internal static StackPanel Column() =>
         new() { Spacing = 12, MinWidth = 360 };
+
+    // A section eyebrow over a group of dialog content.
+    internal static TextBlock SectionLabel(string text)
+    {
+        var t = new TextBlock { Text = text, FontSize = 13, FontWeight = FontWeight.SemiBold };
+        t[!TextBlock.ForegroundProperty] = new DynamicResourceExtension("BaeTextSecondaryBrush");
+        return t;
+    }
+
+    // A cover-art thumbnail tile: a 120×120 image over a one-line caption, the whole
+    // tile a borderless button. The caller sets the image source (sync for a local
+    // file, async for a remote candidate) and wires Click.
+    internal static Button CoverTile(Image image, string caption)
+    {
+        image.Width = 120;
+        image.Height = 120;
+        image.Stretch = Stretch.UniformToFill;
+        var thumb = new Border { CornerRadius = new CornerRadius(6), ClipToBounds = true, Child = image };
+        thumb[!Border.BackgroundProperty] = new DynamicResourceExtension("BaeElevatedBrush");
+        var label = new TextBlock
+        {
+            Text = caption,
+            FontSize = 12,
+            MaxWidth = 120,
+            TextTrimming = TextTrimming.CharacterEllipsis,
+            HorizontalAlignment = HorizontalAlignment.Center,
+        };
+        label[!TextBlock.ForegroundProperty] = new DynamicResourceExtension("BaeTextSecondaryBrush");
+        return new Button
+        {
+            Padding = new Thickness(4),
+            Background = Brushes.Transparent,
+            BorderThickness = new Thickness(0),
+            Content = new StackPanel { Spacing = 4, Children = { thumb, label } },
+        };
+    }
 
     internal static Control Actions(params Control[] buttons)
     {

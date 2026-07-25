@@ -31,8 +31,11 @@ internal sealed class Spinner : UserControl
         arc[!Shape.StrokeProperty] = new DynamicResourceExtension("BaeAccentBrush");
 
         // One continuous rotation; the arc reads as "busy" even in a static frame.
-        var rotate = new RotateTransform();
-        arc.RenderTransform = rotate;
+        // The animation targets the arc (a Visual) with setters on its render
+        // transform's angle — not the RotateTransform itself, which the animator
+        // can't apply to (it casts the target to Visual and the headless renderer
+        // then throws).
+        arc.RenderTransform = new RotateTransform();
         var spin = new Animation
         {
             Duration = TimeSpan.FromSeconds(1),
@@ -44,7 +47,7 @@ internal sealed class Spinner : UserControl
                 new KeyFrame { Cue = new Cue(1d), Setters = { new Setter(RotateTransform.AngleProperty, 360d) } },
             },
         };
-        _ = spin.RunAsync(rotate);
+        _ = spin.RunAsync(arc);
 
         Content = arc;
     }

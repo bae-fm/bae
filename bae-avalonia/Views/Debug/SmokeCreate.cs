@@ -66,7 +66,7 @@ internal static class SmokeCreate
             var (current, albumCount) = app.Library.AlbumCount();
             L($"album count (current={current}) = {albumCount}");
 
-            var root = new Border { Width = 1350, Height = 850, Child = new MainShellView(app) };
+            var root = new Border { Width = 1350, Height = 850, Child = new MainShellView(app, new ReleaseActionDialogs(app, new ModalHost())) };
             root[!Border.BackgroundProperty] = new DynamicResourceExtension("BaeBackgroundBrush");
             var window = new Window
             {

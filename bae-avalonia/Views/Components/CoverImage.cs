@@ -221,6 +221,29 @@ internal static class CoverImage
     public static Bitmap? LoadGalleryBytes(MediaPathsService mediaPaths, string releaseId, BridgeGallerySource source) =>
         Decode(mediaPaths.FetchGalleryBytes(releaseId, source));
 
+    private static readonly System.Net.Http.HttpClient Http = new();
+
+    /// <summary>
+    /// Download and decode a remote cover thumbnail (the change-cover picker's
+    /// remote candidates), whose bytes live behind an http(s) URL core built.
+    /// Avalonia's <see cref="Bitmap"/> — unlike WinUI's UriSource — doesn't fetch
+    /// over the network, so this reads the bytes itself. Null on a failed fetch or
+    /// undecodable bytes; the caller renders a blank tile.
+    /// </summary>
+    public static async Task<Bitmap?> LoadUrlAsync(string url)
+    {
+        try
+        {
+            var bytes = await Http.GetByteArrayAsync(url);
+            return Decode(bytes);
+        }
+        catch (Exception exception)
+        {
+            BaeDiagnostics.Logger.Warning("Failed to fetch a remote cover thumbnail.", exception);
+            return null;
+        }
+    }
+
     private static bool TryGetCached((string Id, string Version) key, out Bitmap bitmap)
     {
         lock (CacheGate)

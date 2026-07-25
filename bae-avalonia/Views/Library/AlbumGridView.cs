@@ -27,6 +27,7 @@ namespace Bae.Desktop;
 internal sealed class AlbumGridView : UserControl
 {
     private readonly AppService _app;
+    private readonly ReleaseActionDialogs _dialogs;
     private readonly AlbumGridContext _context;
     private readonly ItemsControl _rows;
     private readonly RowSlotFacade _facade;
@@ -36,9 +37,10 @@ internal sealed class AlbumGridView : UserControl
     private PaginatedList<Album, string> _list;
     private int _columns = 1;
 
-    public AlbumGridView(AppService app)
+    public AlbumGridView(AppService app, ReleaseActionDialogs dialogs)
     {
         _app = app;
+        _dialogs = dialogs;
         _list = app.LibraryBrowserStore.Albums;
 
         _context = new AlbumGridContext(
@@ -251,7 +253,7 @@ internal sealed class AlbumGridView : UserControl
     }
 
     private Task<Control?> BuildExpansion(Album album) =>
-        AlbumExpansionView.BuildAsync(_app, album, Collapse);
+        AlbumExpansionView.BuildAsync(_app, _dialogs, album, Collapse);
 
     // ── Reveal / reset ────────────────────────────────────────────────────────
 
