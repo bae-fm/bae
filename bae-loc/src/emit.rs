@@ -320,6 +320,27 @@ pub fn windows_resw_all(cat: &Catalog, src_lang: &str) -> Vec<(std::path::PathBu
         .collect()
 }
 
+/// Emit the .NET satellite-assembly ResX set: `Core.resx` (the source language,
+/// the invariant fallback the main assembly embeds) plus one `Core.<culture>.resx`
+/// per catalog target locale (each a satellite assembly). The ResX schema is
+/// identical to the Windows `.resw` — same writer, MF1 value stored verbatim,
+/// dotted id as the resource name — so `windows_resw` produces the body. Only the
+/// naming differs: .NET keys the fallback chain off the culture in the filename,
+/// not a per-language directory the way MRT does.
+pub fn resx_all(cat: &Catalog, src_lang: &str) -> Vec<(std::path::PathBuf, String)> {
+    let mut files = vec![(
+        std::path::PathBuf::from("Core.resx"),
+        windows_resw(cat, src_lang, src_lang),
+    )];
+    for loc in cat.target_locales(src_lang) {
+        files.push((
+            std::path::PathBuf::from(format!("Core.{loc}.resx")),
+            windows_resw(cat, loc, src_lang),
+        ));
+    }
+    files
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -419,6 +440,49 @@ value = "Looking up barcode {position} of {total}"
             resw.contains("Looking up barcode {position} of {total}"),
             "{resw}"
         );
+    }
+
+    #[test]
+    fn resx_names_source_flat_and_fans_out_per_culture() {
+        let c = cat(r#"
+[messages."core.error.not_found.release"]
+value = "that release couldn't be found"
+translations = { ar = "تعذر العثور على ذلك الإصدار", "zh-Hans" = "找不到该发行版" }
+"#);
+        let files = resx_all(&c, "en");
+        // Core.resx (invariant source) + one Core.<culture>.resx per target locale.
+        assert_eq!(files.len(), 3);
+        let paths: Vec<String> = files
+            .iter()
+            .map(|(p, _)| p.to_string_lossy().replace('\\', "/"))
+            .collect();
+        assert!(paths.contains(&"Core.resx".to_string()), "{paths:?}");
+        assert!(paths.contains(&"Core.ar.resx".to_string()), "{paths:?}");
+        assert!(
+            paths.contains(&"Core.zh-Hans.resx".to_string()),
+            "{paths:?}"
+        );
+        // The source file carries the English value; the culture file the
+        // translation, both under the dotted id kept verbatim.
+        let source = files
+            .iter()
+            .find(|(p, _)| p.to_string_lossy() == "Core.resx")
+            .unwrap();
+        assert!(
+            source.1.contains("that release couldn't be found"),
+            "{}",
+            source.1
+        );
+        assert!(
+            source.1.contains("name=\"core.error.not_found.release\""),
+            "{}",
+            source.1
+        );
+        let ar = files
+            .iter()
+            .find(|(p, _)| p.to_string_lossy() == "Core.ar.resx")
+            .unwrap();
+        assert!(ar.1.contains("تعذر العثور على ذلك الإصدار"), "{}", ar.1);
     }
 
     #[test]

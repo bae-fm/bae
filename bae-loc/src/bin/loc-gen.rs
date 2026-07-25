@@ -1,7 +1,7 @@
 //! `loc-gen` — validate the master catalog and emit native resource files.
 //!
 //!   loc-gen check  [--catalog &lt;path&gt;]
-//!   loc-gen emit   --target {apple|android|windows} --out-dir &lt;dir&gt; [--catalog &lt;path&gt;]
+//!   loc-gen emit   --target {apple|android|windows|resx} --out-dir &lt;dir&gt; [--catalog &lt;path&gt;]
 //!
 //! `--catalog` defaults to `bae-bridge/loc/catalog.toml` (relative to the
 //! working directory, i.e. the repo root the build scripts run from).
@@ -111,9 +111,10 @@ fn emit_target(args: &Args, catalog: &Catalog) -> Result<(), String> {
             .map(|(rel, contents)| (PathBuf::from(rel), contents))
             .collect(),
         "windows" => emit::windows_resw_all(catalog, SOURCE_LANGUAGE),
+        "resx" => emit::resx_all(catalog, SOURCE_LANGUAGE),
         other => {
             return Err(format!(
-                "unknown --target `{other}` (apple|android|windows)"
+                "unknown --target `{other}` (apple|android|windows|resx)"
             ))
         }
     };
