@@ -21,6 +21,12 @@ public sealed partial class App : Application
     private MainWindow? _main;
     private WelcomeWindow? _welcome;
 
+    // The intent this launch's own argv carried, held until a library opens and the
+    // main window can act on it. A launch that lands on the welcome window instead
+    // clears it — except a locked library, whose unlock opens the library and fires
+    // the intent then.
+    private ActivationIntent? _pendingLaunchIntent;
+
     // Set once the exit teardown has started, by whichever exit runs it — the
     // quit path or the update restart. The shutdown that follows the quit path is
     // forced and so never re-enters the handler, but a second quit request
@@ -46,19 +52,30 @@ public sealed partial class App : Application
     internal static SingleInstance? SingleInstance { get; set; }
 
     // A redirected activation from a second launch, on the single-instance
-    // listener's background thread: marshal to the UI thread and bring whichever
-    // window is up to the front. Acting on an import / bae:// intent lands with
-    // the library grid in the parity port; for now the intent is logged.
+    // listener's background thread: marshal to the UI thread and hand it to
+    // whichever window is up.
     internal static void OnRedirectedActivation(ActivationIntent? intent) =>
         Dispatcher.UIThread.Post(() => (Current as App)?.HandleRedirectedActivation(intent));
 
+    // The main window comes forward and runs the intent; the welcome window only
+    // comes forward, because an import intent has no open library to act on.
     private void HandleRedirectedActivation(ActivationIntent? intent)
     {
-        if (intent is not null)
+        if (_main is { } main)
         {
-            BaeDiagnostics.Logger.Info($"Redirected activation received: {intent.GetType().Name}.");
+            main.Activate();
+            if (intent is not null)
+            {
+                _ = main.HandleActivationIntent(intent);
+            }
+            return;
         }
-        (_main as Window ?? _welcome)?.Activate();
+
+        _welcome?.Activate();
+        if (intent is ActivationIntent.ImportFolder)
+        {
+            BaeDiagnostics.Logger.Info("Ignored a folder-import activation: no library is open.");
+        }
     }
 
     public override void Initialize() => AvaloniaXamlLoader.Load(this);
@@ -78,7 +95,12 @@ public sealed partial class App : Application
             // Linux); releasing it on the way out is how clients learn the player
             // is gone.
             desktop.Exit += (_, _) => _mediaControl?.Dispose();
-            StartSession();
+            // The same argv the single-instance election forwards when this launch
+            // is the second one: a folder handed to the executable, or a bae://
+            // link the OS resolved to it. The platform split it for us, unlike a
+            // forwarded launch's raw command line.
+            StartSession(ActivationIntentModel.Parse(
+                desktop.Args ?? Array.Empty<string>(), Directory.Exists));
         }
 
         base.OnFrameworkInitializationCompleted();
@@ -143,9 +165,13 @@ public sealed partial class App : Application
     // reports), then crash reporting, then the OS credential store before any
     // library key is read, then the OAuth client credentials. Decide the first
     // window: straight to the main window when an openable library exists, else
-    // the welcome window.
-    private void StartSession()
+    // the welcome window. This launch's own intent latches until that decision
+    // lands, so a folder handed to a cold start is acted on once the library it
+    // imports into is open.
+    private void StartSession(ActivationIntent? launchIntent)
     {
+        _pendingLaunchIntent = launchIntent;
+
         BaeDiagnostics.Configure();
         BaeCrashReporting.Configure();
         BaeDiagnostics.Logger.Info("application launched");
@@ -216,6 +242,15 @@ public sealed partial class App : Application
         // would detach the incoming window's surface.
         MediaControl.SetWindow(main);
         CloseWelcome();
+
+        // The window this launch was waiting for. Delivered once the swap has
+        // settled rather than inline, so the import section it lands on is showing
+        // over the window the user is looking at.
+        if (_pendingLaunchIntent is { } launchIntent)
+        {
+            _pendingLaunchIntent = null;
+            Dispatcher.UIThread.Post(() => _ = main.HandleActivationIntent(launchIntent));
+        }
     }
 
     // Switch the open library for another on this device: free the current handle,
@@ -254,8 +289,19 @@ public sealed partial class App : Application
         closing.Close();
     }
 
+    // Land on the welcome window, which is where a launch intent runs out of road:
+    // there is no library for an import to scan into, so it is logged and dropped
+    // the way the same intent is when it reaches a window with no open library. The
+    // unlock landing does not come through here — it keeps the intent, because its
+    // unlock opens the library.
     private void GoToWelcome(string? errorStatus)
     {
+        if (_pendingLaunchIntent is ActivationIntent.ImportFolder)
+        {
+            BaeDiagnostics.Logger.Info("Ignored a folder-import activation: no library is open.");
+        }
+        _pendingLaunchIntent = null;
+
         EnsureWelcome();
         if (errorStatus is not null)
         {

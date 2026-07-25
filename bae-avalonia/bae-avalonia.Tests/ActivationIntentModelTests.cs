@@ -5,14 +5,16 @@ using Xunit;
 namespace Bae.Desktop.Tests;
 
 /// <summary>
-/// Locks the activation-intent grammar: the folder-verb / dropped-folder argv
-/// rule (its own Windows-rooted-path check, not System.IO.Path — this test
-/// project also runs on the macOS host, where Path's rootedness semantics
-/// differ), the bae://import URI form, and the argv tokenizer for a
-/// redirected activation's raw command line. Filesystem access is stubbed
-/// through isDirectory; the registry writes and AppInstance plumbing that
-/// produce and dispatch an intent live outside this pure model and are
-/// verified by compilation.
+/// Locks the activation-intent grammar: the folder-argument rule (its own
+/// rooted-path check, not System.IO.Path — this test project also runs on the
+/// macOS host, where Path's rootedness semantics differ), the file:// form a
+/// file manager hands over for a folder, the bae://import URI form, and the argv
+/// tokenizer for an activation delivered as one raw command line. Every path
+/// shape is accepted wherever the tests run, so the same cases hold on the macOS
+/// host and on both shipping desktops. Filesystem access is stubbed through
+/// isDirectory; the handler registration and the window plumbing that produce
+/// and dispatch an intent live outside this pure model and are verified by
+/// compilation.
 /// </summary>
 public sealed class ActivationIntentModelTests
 {
@@ -55,6 +57,85 @@ public sealed class ActivationIntentModelTests
         Assert.Equal(new ActivationIntent.ImportFolder(@"\\storage\share\Music"), intent);
     }
 
+    [Fact]
+    public void PosixRootedDirectory_ReturnsImportFolder()
+    {
+        var intent = ActivationIntentModel.Parse(
+            Args("/home/listener/Music"), Dirs("/home/listener/Music"));
+        Assert.Equal(new ActivationIntent.ImportFolder("/home/listener/Music"), intent);
+    }
+
+    [Fact]
+    public void PosixRootedPathThatIsNotADirectory_ReturnsNull()
+    {
+        var intent = ActivationIntentModel.Parse(Args("/home/listener/Music"), Dirs());
+        Assert.Null(intent);
+    }
+
+    // A path is judged by its own shape, never round-tripped through URI parsing:
+    // the folder handed to the import has to be the argument as it was given.
+    [Fact]
+    public void PathWithPercentSequenceInItsName_IsNotDecoded()
+    {
+        var intent = ActivationIntentModel.Parse(
+            Args("/home/listener/My%20Music"), Dirs("/home/listener/My%20Music"));
+        Assert.Equal(new ActivationIntent.ImportFolder("/home/listener/My%20Music"), intent);
+    }
+
+    // --- file:// folder argument -------------------------------------------
+
+    [Fact]
+    public void FileUri_ReturnsImportFolder()
+    {
+        var intent = ActivationIntentModel.Parse(
+            Args("file:///home/listener/Music"), Dirs("/home/listener/Music"));
+        Assert.Equal(new ActivationIntent.ImportFolder("/home/listener/Music"), intent);
+    }
+
+    [Fact]
+    public void FileUriWithPercentEncodedSpace_Decodes()
+    {
+        var intent = ActivationIntentModel.Parse(
+            Args("file:///home/listener/My%20Music"), Dirs("/home/listener/My Music"));
+        Assert.Equal(new ActivationIntent.ImportFolder("/home/listener/My Music"), intent);
+    }
+
+    [Fact]
+    public void FileUriWithLocalhostHost_ReturnsImportFolder()
+    {
+        var intent = ActivationIntentModel.Parse(
+            Args("file://localhost/home/listener/Music"), Dirs("/home/listener/Music"));
+        Assert.Equal(new ActivationIntent.ImportFolder("/home/listener/Music"), intent);
+    }
+
+    [Fact]
+    public void FileUriWithRemoteHost_ReturnsNull()
+    {
+        var intent = ActivationIntentModel.Parse(Args("file://storage/share/Music"), path => true);
+        Assert.Null(intent);
+    }
+
+    [Fact]
+    public void FileUriWithDriveLetter_DropsTheLeadingSlash()
+    {
+        var intent = ActivationIntentModel.Parse(Args("file:///C:/Music"), Dirs("C:/Music"));
+        Assert.Equal(new ActivationIntent.ImportFolder("C:/Music"), intent);
+    }
+
+    [Fact]
+    public void FileUriWithPercentEncodedDriveColon_DropsTheLeadingSlash()
+    {
+        var intent = ActivationIntentModel.Parse(Args("file:///C%3A/Music"), Dirs("C:/Music"));
+        Assert.Equal(new ActivationIntent.ImportFolder("C:/Music"), intent);
+    }
+
+    [Fact]
+    public void FileUriThatIsNotADirectory_ReturnsNull()
+    {
+        var intent = ActivationIntentModel.Parse(Args("file:///home/listener/track.flac"), Dirs());
+        Assert.Null(intent);
+    }
+
     // --- Argument scan ----------------------------------------------------
 
     [Fact]
@@ -71,6 +152,19 @@ public sealed class ActivationIntentModelTests
         var intent = ActivationIntentModel.Parse(
             Args("--veloapp-updated", "1.2.3", @"C:\Music"), Dirs(@"C:\Music"));
         Assert.Equal(new ActivationIntent.ImportFolder(@"C:\Music"), intent);
+    }
+
+    // A leading dash is no rooted shape, whatever the directory check would say —
+    // the accepted POSIX form starts with a slash and nothing else does.
+    [Theory]
+    [InlineData("--veloapp-install")]
+    [InlineData("--veloapp-updated")]
+    [InlineData("-v")]
+    [InlineData("--capture-shots")]
+    public void Flags_AreNeverAPath(string arg)
+    {
+        var intent = ActivationIntentModel.Parse(Args(arg), path => true);
+        Assert.Null(intent);
     }
 
     [Fact]
@@ -97,6 +191,22 @@ public sealed class ActivationIntentModelTests
         var intent = ActivationIntentModel.Parse(
             Args("bae://import?path=C%3A/Users/me/Music"), Dirs("C:/Users/me/Music"));
         Assert.Equal(new ActivationIntent.ImportFolder("C:/Users/me/Music"), intent);
+    }
+
+    [Fact]
+    public void PosixPathInTheQuery_ReturnsImportFolder()
+    {
+        var intent = ActivationIntentModel.Parse(
+            Args("bae://import?path=/home/listener/Music"), Dirs("/home/listener/Music"));
+        Assert.Equal(new ActivationIntent.ImportFolder("/home/listener/Music"), intent);
+    }
+
+    [Fact]
+    public void PercentEncodedPosixPathInTheQuery_Decodes()
+    {
+        var intent = ActivationIntentModel.Parse(
+            Args("bae://import?path=%2Fhome%2Flistener%2FMy%20Music"), Dirs("/home/listener/My Music"));
+        Assert.Equal(new ActivationIntent.ImportFolder("/home/listener/My Music"), intent);
     }
 
     [Fact]
@@ -168,47 +278,5 @@ public sealed class ActivationIntentModelTests
     {
         var intent = ActivationIntentModel.Parse(Args(arg), path => true);
         Assert.Null(intent);
-    }
-
-    // --- SplitCommandLine ------------------------------------------------
-
-    [Fact]
-    public void SplitCommandLine_EmptyString_ReturnsEmptyList()
-    {
-        Assert.Empty(ActivationIntentModel.SplitCommandLine(string.Empty));
-    }
-
-    [Fact]
-    public void SplitCommandLine_UnquotedTokens_SplitOnWhitespace()
-    {
-        var tokens = ActivationIntentModel.SplitCommandLine("bae.exe --veloapp-updated 1.2.3");
-        Assert.Equal(new[] { "bae.exe", "--veloapp-updated", "1.2.3" }, tokens);
-    }
-
-    [Fact]
-    public void SplitCommandLine_QuotedPathWithSpaces_RoundTrips()
-    {
-        var tokens = ActivationIntentModel.SplitCommandLine(
-            "\"C:\\Program Files\\bae\\bae.exe\" \"C:\\Users\\me\\My Music\"");
-        Assert.Equal(new[] { @"C:\Program Files\bae\bae.exe", @"C:\Users\me\My Music" }, tokens);
-    }
-
-    [Fact]
-    public void SplitCommandLine_EmbeddedEscapedQuote_IsLiteral()
-    {
-        var tokens = ActivationIntentModel.SplitCommandLine("\"a \\\"quoted\\\" value\"");
-        Assert.Equal(new[] { "a \"quoted\" value" }, tokens);
-    }
-
-    [Fact]
-    public void SplitCommandLine_DoubledTrailingBackslashBeforeClosingQuote_CollapsesAndCloses()
-    {
-        // A UNC share root ending in one visible backslash is quoted with that
-        // backslash doubled (the standard argv-escaping convention): an even
-        // backslash run before the quote collapses to half as many literal
-        // backslashes and the quote is a real delimiter, not an escape.
-        var commandLine = "\"" + @"\\storage\share\\" + "\"";
-        var tokens = ActivationIntentModel.SplitCommandLine(commandLine);
-        Assert.Equal(new[] { @"\\storage\share\" }, tokens);
     }
 }

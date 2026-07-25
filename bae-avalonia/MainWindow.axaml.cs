@@ -134,31 +134,46 @@ internal sealed partial class MainWindow : Window
         _ => null,
     };
 
+    // Run what an activation asks for. ImportFolder is the whole intent set, so an
+    // intent arriving here unhandled is a defect in the parse, not something a
+    // user did — it throws rather than being absorbed.
+    internal Task HandleActivationIntent(ActivationIntent intent) => intent switch
+    {
+        ActivationIntent.ImportFolder importFolder => ImportFolder(importFolder.Path),
+        _ => throw new ArgumentOutOfRangeException(nameof(intent), intent, "Unknown activation intent"),
+    };
+
     private async void OnWindowDrop(object? sender, DragEventArgs e)
     {
-        if (_session.CurrentHandleOrNull() is null)
-        {
-            return;
-        }
         var files = e.Data.GetFiles();
         if (files is null)
         {
             return;
         }
         // Match macOS / the WinUI window drop: the first dropped item must be a
-        // folder. Scan it, then land on the import section showing its candidates —
-        // the same dispatch a folder-verb / bae://import activation runs.
+        // folder.
         foreach (var item in files)
         {
             if (item is IStorageFolder && item.TryGetLocalPath() is { } path)
             {
-                var (current, _) = await _app.ImportStore.ScanFolder(path);
-                if (current)
-                {
-                    _shell.ShowImport();
-                }
+                await ImportFolder(path);
                 return;
             }
+        }
+    }
+
+    // Scan a folder into the import watched set, then land on the import section
+    // showing its candidates. The one action behind every way a folder reaches the
+    // app: dropped on the window, dropped on the executable, opened through the
+    // folder verb, or named by a bae://import link. The section switch waits on the
+    // scan because the handle it ran against may have been swapped out underneath
+    // it — those candidates then belong to a library that is no longer open.
+    private async Task ImportFolder(string path)
+    {
+        var (current, _) = await _app.ImportStore.ScanFolder(path);
+        if (current)
+        {
+            _shell.ShowImport();
         }
     }
 }
