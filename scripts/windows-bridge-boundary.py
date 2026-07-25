@@ -62,25 +62,16 @@ ALLOWED = [
     "BridgeDisplay.cs",         # handle-less bridge value -> localization key
     "Views/Welcome/",           # first-run / join / restore-from-cloud flows
     "Views/Debug/",             # component gallery + shot capture
-    # --- Flows not yet migrated onto services. Each waits for the story named ---
-    # --- below; until then its NativeBae use is fenced here, not spread on.   ---
-    # future: settings / members / sync-status services
-    "Stores/SettingsStore.cs",
-    "Stores/SyncStatusStore.cs",
-    "Settings.cs",
+    # --- Dialogs not yet migrated onto services. The stores behind these flows ---
+    # --- read through services now; the standalone dialogs still hold direct    ---
+    # --- session/NativeBae calls of their own and migrate with their own story. ---
+    # future: settings dialogs (members, restore code, rename/lock, cloud
+    # sign-in/disconnect, discogs/mcp/subsonic config, save-preset writes)
     "Views/Settings/",
-    # future: storage service
-    "Stores/StorageStore.cs",
-    "Stores/StorageListModel.cs",
+    # future: storage dialog (per-tab paging, outbox/config reads, transfer keys)
     "Views/Storage/",
-    # future: import service
-    "Stores/ImportStore.cs",
-    "ImportCandidate.cs",
+    # future: import dialogs (search/prefetch/confirm, source-identity choice)
     "Views/Import/",
-    # future: cast service
-    "Stores/CastStore.cs",
-    # future: release-transfer service (the router maps a transfer-action token)
-    "Stores/UiEventRouter.cs",
     # future: album-detail service (inline album expansion + per-release actions)
     "Views/Library/AlbumExpansionPanel.cs",
     "Views/Library/AlbumExpansionPanel.TrackActions.cs",
