@@ -210,6 +210,21 @@ internal sealed class JoinLibraryDialog
         _joinRequestCode = request.Code;
         host.Children.Clear();
 
+        // The QR is a visual transport of the same code shown below it, scanned by
+        // the approving device's camera. It falls back to the copyable text when the
+        // encode fails.
+        if (QrCode.Image(request.Code) is { } qr)
+        {
+            host.Children.Add(new Image
+            {
+                Source = qr,
+                Width = 180,
+                Height = 180,
+                Stretch = Stretch.Uniform,
+                HorizontalAlignment = HorizontalAlignment.Center,
+            });
+        }
+
         var codeBox = new TextBox
         {
             Text = request.Code,

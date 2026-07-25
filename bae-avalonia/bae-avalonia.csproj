@@ -49,6 +49,12 @@
     -->
     <PackageReference Include="MessageFormat" Version="7.0.0" />
     <!--
+      QR generation for the join / restore / recovery codes (managed, no
+      System.Drawing): QRCoder's PngByteQRCode emits a PNG byte array decoded into
+      an Avalonia Bitmap, the same path CoverImage decodes an image stream.
+    -->
+    <PackageReference Include="QRCoder" Version="1.6.0" />
+    <!--
       Installer + auto-update (cross-platform). Drives the in-app
       check/download/apply from the GitHub release assets; the vpk CLI that packs
       the release must match this version exactly.
