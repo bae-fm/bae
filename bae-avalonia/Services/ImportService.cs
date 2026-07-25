@@ -51,6 +51,28 @@ internal sealed class ImportService
     public Func<string, string, string, Task<bool>> ToggleSignalForCandidate { get; init; }
         = (_, _, _) => throw new InvalidOperationException("ImportService stub: ToggleSignalForCandidate not wired");
 
+    /// <summary>Start the auto-identify pipeline for a release under a candidate key
+    /// (the re-identify dialog runs one against the release's own files).</summary>
+    public Func<string, string, bool> AutoIdentifyRelease { get; init; }
+        = (_, _) => throw new InvalidOperationException("ImportService stub: AutoIdentifyRelease not wired");
+
+    /// <summary>Stop the identify driver and any in-flight artwork OCR for a
+    /// candidate key, on dialog close.</summary>
+    public Func<string, bool> CancelAutoIdentify { get; init; }
+        = _ => throw new InvalidOperationException("ImportService stub: CancelAutoIdentify not wired");
+
+    /// <summary>Read the identify pipeline snapshot for a candidate key: the
+    /// localizable row status, the found pressings, and the signals-toolbar badges.
+    /// Null until the pipeline's first event lands. Synchronous — the dialog reads it
+    /// on each candidate invalidation.</summary>
+    public Func<string, (bool Current, (ImportCandidateRowStatus RowStatus, List<ReleaseCandidateChoice> Matches, List<SignalBadge> Signals)? Snapshot)> ReidentifyPipeline { get; init; }
+        = _ => throw new InvalidOperationException("ImportService stub: ReidentifyPipeline not wired");
+
+    /// <summary>Manual metadata search (the re-identify dialog's fallback and the
+    /// import confirm's search). Async — it blocks on network / DB.</summary>
+    public Func<string, string, string, Task<(bool Current, (List<ReleaseCandidateChoice>? Candidates, string? Error) Result)>> SearchReleases { get; init; }
+        = (_, _, _) => throw new InvalidOperationException("ImportService stub: SearchReleases not wired");
+
     /// <summary>Wire every operation through the open session's current handle.</summary>
     public static ImportService FromSession(SessionStore session) => new()
     {
@@ -66,5 +88,13 @@ internal sealed class ImportService
             session.RunForCurrentHandle(handle => NativeBae.RerunIdentifyForCandidate(handle, candidateKey)),
         ToggleSignalForCandidate = (candidateKey, kind, value) =>
             session.RunForCurrentHandle(handle => NativeBae.ToggleSignalForCandidate(handle, candidateKey, kind, value)),
+        AutoIdentifyRelease = (candidateKey, releaseId) =>
+            session.WithCurrentHandle(handle => NativeBae.AutoIdentifyRelease(handle, candidateKey, releaseId)),
+        CancelAutoIdentify = candidateKey =>
+            session.WithCurrentHandle(handle => NativeBae.CancelAutoIdentify(handle, candidateKey)),
+        ReidentifyPipeline = candidateKey =>
+            session.WithCurrentHandle(handle => NativeBae.ReidentifyPipeline(handle, candidateKey)),
+        SearchReleases = (source, artist, album) =>
+            session.RunForCurrentHandle(handle => NativeBae.SearchReleases(handle, source, artist, album)),
     };
 }

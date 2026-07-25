@@ -52,10 +52,26 @@ internal sealed class ReleaseEditorService
     public Func<string, Task<(bool Current, (BridgeRawReleaseEdit? Edit, string? Error) Result)>> ResetMetadataToSource { get; init; }
         = _ => throw new InvalidOperationException("ReleaseEditorService stub: ResetMetadataToSource not wired");
 
+    /// <summary>Commit a re-identify: point the release at a chosen source pressing
+    /// (exact or metadata-only) or clear its identity. On success the grid refreshes
+    /// via the invalidation.</summary>
+    public Func<string, BridgeIdentityChoice, Task<(bool Current, string? Error)>> ReidentifyRelease { get; init; }
+        = (_, _) => throw new InvalidOperationException("ReleaseEditorService stub: ReidentifyRelease not wired");
+
+    /// <summary>Reseed the release's metadata from its (just re-pointed) source,
+    /// overwriting prior edits by design. Offered after a source-backed re-identify.</summary>
+    public Func<string, Task<(bool Current, string? Error)>> RefreshMetadataFromSource { get; init; }
+        = _ => throw new InvalidOperationException("ReleaseEditorService stub: RefreshMetadataFromSource not wired");
+
     /// <summary>The thumbnail URL for a remote cover candidate — a pure transform of
     /// the bridge value, kept in-boundary so views never touch NativeBae.</summary>
     public static string RemoteCoverThumbnailUrl(BridgeRemoteCover cover) =>
         NativeBae.RemoteCoverThumbnailUrl(cover);
+
+    /// <summary>The identity choice for a chosen source pressing (exact or
+    /// metadata-only) — a pure transform of the picked candidate's fields.</summary>
+    internal static BridgeIdentityChoice SourceIdentityChoice(bool exact, string releaseId, BridgeMetadataSource source) =>
+        NativeBae.SourceIdentityChoice(exact, releaseId, source);
 
     /// <summary>The cover-selection payload for a remote candidate.</summary>
     public static BridgeCoverSelection RemoteCoverSelection(BridgeRemoteCover cover) =>
@@ -77,5 +93,9 @@ internal sealed class ReleaseEditorService
             session.WithCurrentHandle(handle => NativeBae.ApplyReleaseEdit(handle, releaseId, edit)),
         ResetMetadataToSource = releaseId =>
             session.RunForCurrentHandle(handle => NativeBae.ResetMetadataToSource(handle, releaseId)),
+        ReidentifyRelease = (releaseId, choice) =>
+            session.RunForCurrentHandle(handle => NativeBae.ReidentifyRelease(handle, releaseId, choice)),
+        RefreshMetadataFromSource = releaseId =>
+            session.RunForCurrentHandle(handle => NativeBae.RefreshMetadataFromSource(handle, releaseId)),
     };
 }

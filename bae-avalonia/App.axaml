@@ -36,6 +36,8 @@
                low alpha, so a selected card reads as accented without hiding the
                art. Toggled 0/1 by the card's opacity, never re-inserted. -->
           <Color x:Key="BaeSelectionTintColor">#3CD97857</Color>
+          <!-- Settled-positive state (a signal that found matches / confirms). -->
+          <Color x:Key="BaeSuccessColor">#6BCB77</Color>
           <!-- FluentTheme's focus ring reads SystemAccentColor; point it at the
                terracotta. The accent button background is driven by the Style
                overrides below (FluentTheme paints it on the template's content
@@ -58,6 +60,7 @@
           <Color x:Key="BaeHairlineColor">#14000000</Color>
           <Color x:Key="BaeScrimColor">#59000000</Color>
           <Color x:Key="BaeSelectionTintColor">#2EC25B3A</Color>
+          <Color x:Key="BaeSuccessColor">#2E8B45</Color>
           <Color x:Key="SystemAccentColor">#C25B3A</Color>
         </ResourceDictionary>
 
@@ -79,6 +82,7 @@
       <SolidColorBrush x:Key="BaeHairlineBrush" Color="{DynamicResource BaeHairlineColor}" />
       <SolidColorBrush x:Key="BaeScrimBrush" Color="{DynamicResource BaeScrimColor}" />
       <SolidColorBrush x:Key="BaeSelectionTintBrush" Color="{DynamicResource BaeSelectionTintColor}" />
+      <SolidColorBrush x:Key="BaeSuccessBrush" Color="{DynamicResource BaeSuccessColor}" />
 
       <!-- FluentTheme's Slider paints its filled track and thumb from these
            accent resources; overriding them keeps the scrubber and volume slider

@@ -1,8 +1,10 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Layout;
+using Avalonia.Markup.Xaml.MarkupExtensions;
 using Avalonia.Media;
 using uniffi.bae_bridge;
 
@@ -110,6 +112,228 @@ internal sealed class ReleaseActionDialogs
         column.Children.Add(DialogUi.Actions(cancel, reset, save));
         return column;
     }
+
+    // Re-identify the release: an auto-identify pipeline (its live status, signal
+    // badges, and match list) with a manual search fallback and an exact / metadata
+    // identity claim. Committing a source-backed choice offers to reseed the
+    // metadata from the newly-pointed source. Mirrors the WinUI flow, over the
+    // service layer and the modal host.
+    public async Task ShowReidentify(string releaseId, string seedArtist, string seedAlbum)
+    {
+        var key = "reidentify:" + releaseId;
+        IDisposable? registration = null;
+        var confirmed = false;
+
+        await _host.Show(close =>
+        {
+            var pipelineStatus = DialogUi.Body(Loc.Chrome("identify.identifying"));
+            var badgeHost = new StackPanel();
+            var resultsList = new ListBox { SelectionMode = SelectionMode.Single, MaxHeight = 260 };
+            var status = DialogUi.Danger();
+
+            var artistField = DialogUi.Field(Loc.Chrome("search.field.artist"), out var artistBox);
+            var albumField = DialogUi.Field(Loc.Chrome("search.field.album"), out var albumBox);
+            artistBox.Text = seedArtist;
+            albumBox.Text = seedAlbum;
+            var sourceBox = new ComboBox { ItemsSource = new[] { "discogs", "musicbrainz" }, SelectedIndex = 0, HorizontalAlignment = HorizontalAlignment.Stretch };
+            var sourceCaption = new TextBlock { Text = Loc.Chrome("search.field.source"), FontSize = 12.5 };
+            sourceCaption[!TextBlock.ForegroundProperty] = new DynamicResourceExtension("BaeTextSecondaryBrush");
+            var sourceField = new StackPanel { Spacing = 4, Children = { sourceCaption, sourceBox } };
+            var searchButton = new Button { Content = Loc.Chrome("action.search") };
+
+            // The identity claim for the picked pressing: exact by default, or
+            // metadata-only. Hidden until a result is picked; reset to exact on each
+            // new pick.
+            var identity = new ImportIdentityModel(hasSourceRelease: true);
+            var exact = new RadioButton { Content = Loc.Chrome("identify.exact_pressing"), GroupName = "reidentifyClaim", IsChecked = true };
+            var metadataOnly = new RadioButton { Content = Loc.Chrome("identify.metadata_only"), GroupName = "reidentifyClaim" };
+            exact.IsCheckedChanged += (_, _) => { if (exact.IsChecked == true) { identity.SetMetadataOnly(false); } };
+            metadataOnly.IsCheckedChanged += (_, _) => { if (metadataOnly.IsChecked == true) { identity.SetMetadataOnly(true); } };
+            var claimHeader = new TextBlock { Text = Loc.Chrome("album.reidentify.claim_header"), VerticalAlignment = VerticalAlignment.Center };
+            claimHeader[!TextBlock.ForegroundProperty] = new DynamicResourceExtension("BaeTextSecondaryBrush");
+            var claimRow = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                Spacing = 8,
+                VerticalAlignment = VerticalAlignment.Center,
+                IsVisible = false,
+                Children = { claimHeader, exact, metadataOnly },
+            };
+
+            var candidates = new List<ReleaseCandidateChoice>();
+            var results = new ReidentifyResultsModel();
+
+            var confirm = DialogUi.Primary(Loc.Chrome("album.reidentify.confirm"));
+            confirm.IsEnabled = false;
+
+            void ToggleSignal(string kind, string value)
+            {
+                results.ResumePipeline();
+                _ = _app.Import.ToggleSignalForCandidate(key, kind, value);
+            }
+
+            void Rerun()
+            {
+                results.ResumePipeline();
+                _ = _app.Import.RerunIdentifyForCandidate(key);
+            }
+
+            void RefreshFromPipeline()
+            {
+                var (current, snapshot) = _app.Import.ReidentifyPipeline(key);
+                if (!current || snapshot is not { } snap)
+                {
+                    return;
+                }
+                pipelineStatus.Text = snap.RowStatus.LocalizedLine;
+                pipelineStatus.IsVisible = !string.IsNullOrEmpty(snap.RowStatus.LocalizedLine);
+                badgeHost.Children.Clear();
+                if (snap.Signals.Count > 0)
+                {
+                    badgeHost.Children.Add(SignalBadgeRow.Build(snap.Signals, ToggleSignal, Rerun));
+                }
+                if (results.ApplyPipelineMatches(snap.Matches.Select(match => match.ReleaseId).ToList()))
+                {
+                    candidates = snap.Matches;
+                    resultsList.ItemsSource = candidates.Select(candidate => candidate.Summary).ToList();
+                }
+            }
+
+            searchButton.Click += async (_, _) =>
+            {
+                var source = (string)sourceBox.SelectedItem!;
+                searchButton.IsEnabled = false;
+                var (current, search) = await _app.Import.SearchReleases(source, artistBox.Text ?? string.Empty, albumBox.Text ?? string.Empty);
+                searchButton.IsEnabled = true;
+                if (!current)
+                {
+                    return;
+                }
+                if (search.Error is not null)
+                {
+                    status.Text = search.Error;
+                    status.IsVisible = true;
+                    return;
+                }
+                results.ApplyManualResults();
+                candidates = search.Candidates ?? new List<ReleaseCandidateChoice>();
+                resultsList.ItemsSource = candidates.Select(candidate => candidate.Summary).ToList();
+                status.Text = Loc.Chrome("search.no_matches");
+                status.IsVisible = candidates.Count == 0;
+                confirm.IsEnabled = false;
+            };
+
+            resultsList.SelectionChanged += (_, _) =>
+            {
+                var selected = resultsList.SelectedIndex >= 0;
+                confirm.IsEnabled = selected;
+                claimRow.IsVisible = selected;
+                identity = new ImportIdentityModel(hasSourceRelease: true);
+                exact.IsChecked = true;
+            };
+
+            confirm.Click += async (_, _) =>
+            {
+                var index = resultsList.SelectedIndex;
+                if (index < 0 || index >= candidates.Count)
+                {
+                    return;
+                }
+                var chosen = candidates[index];
+                var (current, error) = await _app.ReleaseEditor.ReidentifyRelease(
+                    releaseId, ReleaseEditorService.SourceIdentityChoice(!identity.MetadataOnly, chosen.ReleaseId, chosen.Source));
+                if (!current)
+                {
+                    return;
+                }
+                if (error is not null)
+                {
+                    status.Text = error;
+                    status.IsVisible = true;
+                    return;
+                }
+                confirmed = true;
+                close();
+            };
+
+            var skip = new Button { Content = Loc.Chrome("identify.skip") };
+            skip.Click += async (_, _) =>
+            {
+                var (current, error) = await _app.ReleaseEditor.ReidentifyRelease(releaseId, new BridgeIdentityChoice.Unknown());
+                if (!current)
+                {
+                    return;
+                }
+                if (error is not null)
+                {
+                    status.Text = error;
+                    status.IsVisible = true;
+                    return;
+                }
+                close();
+            };
+            var cancel = new Button { Content = Loc.Chrome("action.cancel") };
+            cancel.Click += (_, _) => close();
+
+            var column = DialogUi.Column();
+            column.MinWidth = 440;
+            column.Children.Add(DialogUi.Title(Loc.Chrome("album.reidentify.title")));
+            column.Children.Add(pipelineStatus);
+            column.Children.Add(badgeHost);
+            column.Children.Add(resultsList);
+            column.Children.Add(claimRow);
+            column.Children.Add(artistField);
+            column.Children.Add(albumField);
+            column.Children.Add(sourceField);
+            column.Children.Add(searchButton);
+            column.Children.Add(status);
+            column.Children.Add(DialogUi.Actions(cancel, skip, confirm));
+
+            // Start the pipeline against the release's own files; its events flow
+            // through the candidate invalidation the registration reads.
+            _app.Import.AutoIdentifyRelease(key, releaseId);
+            registration = _app.ProjectionRegistry.Register(typeof(BridgeInvalidation.ImportCandidate), RefreshFromPipeline);
+            return new ScrollViewer { Content = column, MaxHeight = 560 };
+        });
+
+        registration?.Dispose();
+        _app.Import.CancelAutoIdentify(key);
+        if (confirmed)
+        {
+            await ShowRefreshPrompt(releaseId);
+        }
+    }
+
+    // After a source-backed identity commit, offer to reseed the metadata from the
+    // newly-pointed source (overwriting prior edits by design); Keep leaves it.
+    private Task ShowRefreshPrompt(string releaseId) => _host.Show(close =>
+    {
+        var column = DialogUi.Column();
+        column.Children.Add(DialogUi.Title(Loc.Chrome("album.reidentify.updated")));
+        column.Children.Add(DialogUi.Body(Loc.Chrome("album.reidentify.refresh_body")));
+        var error = DialogUi.Danger();
+        column.Children.Add(error);
+        var refresh = DialogUi.Primary(Loc.Chrome("album.reidentify.refresh_confirm"));
+        refresh.Click += async (_, _) =>
+        {
+            var (current, refreshError) = await _app.ReleaseEditor.RefreshMetadataFromSource(releaseId);
+            if (!current)
+            {
+                return;
+            }
+            if (refreshError is not null)
+            {
+                error.Text = refreshError;
+                error.IsVisible = true;
+                return;
+            }
+            close();
+        };
+        var keep = new Button { Content = Loc.Chrome("album.reidentify.keep_current") };
+        keep.Click += (_, _) => close();
+        column.Children.Add(DialogUi.Actions(keep, refresh));
+        return column;
+    });
 
     // A dismiss-only message dialog: a title over an optional body, closed by OK.
     private Task ShowMessage(string title, string? body) => _host.Show(close =>
