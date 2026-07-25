@@ -73,6 +73,12 @@ internal sealed class MainShellView : UserControl
         {
             _queuePane.AttachToggle(_queueButton);
         }
+
+        // The cast picker requeries its device list on a castDevices invalidation
+        // (discovery only runs while the picker is open, but the projection stays
+        // registered for the window's life).
+        _app.ProjectionRegistry.Register(
+            typeof(uniffi.bae_bridge.BridgeInvalidation.CastDevices), _app.CastStore.RefreshDevices);
     }
 
     // Switch to the import section and land it on a fresh New tab — the switcher
@@ -287,7 +293,7 @@ internal sealed class MainShellView : UserControl
             HorizontalAlignment = HorizontalAlignment.Right,
             VerticalAlignment = VerticalAlignment.Center,
         };
-        right.Children.Add(Icons.IconButton(Icons.Cast, 16, "BaeTextSecondaryBrush", 30));
+        right.Children.Add(new CastButton(_app.CastStore));
         _queueButton = Icons.IconButton(Icons.Queue, 17, "BaeTextSecondaryBrush", 32);
         right.Children.Add(_queueButton);
         right.Children.Add(Icons.IconButton(Icons.VolumeUp, 16, "BaeTextSecondaryBrush", 30));
