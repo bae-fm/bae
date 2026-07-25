@@ -69,21 +69,23 @@ foreach ($dll in @('bae_bridge.dll', 'uniffi_bae_bridge.dll')) {
     Copy-Item $src $exeDir -Force
 }
 
-# 4b. Ensure the unpackaged resource index sits beside the exe. ResourceLoader
-#     (Loc.cs) loads resources.pri from the executable's directory; the
-#     self-contained build's makepri step can emit it to a different output
-#     folder than the one the launched exe lives in, which fails Loc with a
-#     FileNotFoundException. Diagnose (log the exe path and whether it is already
-#     there) and, if missing, copy the one built under bin next to the exe.
+# 4b. Ensure the module resource index sits beside the exe. ResourceLoader
+#     (Loc.cs) loads the exe-named module PRI ($(AssemblyName).pri) from the
+#     executable's directory — there is no separate resources.pri; one would
+#     shadow the module PRI and break WinUI theme-resource lookups. The publish
+#     layout can place the PRI in a different output folder than the launched
+#     exe, which fails Loc with a FileNotFoundException; if it is missing, copy
+#     the one built under bin next to the exe.
 Write-Host "exe: $exe"
-$exePri = Join-Path $exeDir 'resources.pri'
+$priName = [IO.Path]::GetFileNameWithoutExtension($exe) + '.pri'
+$exePri = Join-Path $exeDir $priName
 if (Test-Path $exePri) {
-    Write-Host 'resources.pri: already present beside exe'
+    Write-Host "$($priName): already present beside exe"
 } else {
-    $pri = Get-ChildItem -Path (Join-Path $repoRoot 'bae-windows\bin') -Recurse -Filter 'resources.pri' -ErrorAction SilentlyContinue |
+    $pri = Get-ChildItem -Path (Join-Path $repoRoot 'bae-windows\bin') -Recurse -Filter $priName -ErrorAction SilentlyContinue |
         Sort-Object LastWriteTime -Descending | Select-Object -First 1 -ExpandProperty FullName
-    if (-not $pri) { throw 'resources.pri not found in build output (makepri did not run?)' }
-    Write-Host "resources.pri: missing beside exe; copying from $pri"
+    if (-not $pri) { throw "$priName not found in build output" }
+    Write-Host "$($priName): missing beside exe; copying from $pri"
     Copy-Item $pri $exeDir -Force
 }
 
