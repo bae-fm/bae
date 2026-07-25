@@ -93,10 +93,14 @@ if (Test-Path $exePri) {
 # ResourceLoader(pri, "Core") and dies with ResourceMap Not Found otherwise).
 # Verify up front with a makepri dump so a bad PRI fails here, with the dump's
 # map inventory in the log, instead of inside the capture process.
+# Pick a makepri that runs on this host: the SDK ships one per architecture
+# and the first hit recursively can be the arm64 one on an x64 runner.
+$hostArch = if ([Runtime.InteropServices.RuntimeInformation]::OSArchitecture -eq 'Arm64') { 'arm64' } else { 'x86' }
 $makepri = Get-ChildItem -Path @(
         'C:\Program Files (x86)\Windows Kits\10\bin',
         "$env:USERPROFILE\.nuget\packages\microsoft.windows.sdk.buildtools"
     ) -Recurse -Filter makepri.exe -ErrorAction SilentlyContinue |
+    Where-Object { $_.FullName -match "\\$hostArch\\" } |
     Select-Object -First 1 -ExpandProperty FullName
 if ($makepri) {
     $dump = Join-Path ([IO.Path]::GetTempPath()) 'bae-pri-dump.xml'
