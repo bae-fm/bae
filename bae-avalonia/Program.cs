@@ -23,6 +23,14 @@ internal static class Program
             BuildHeadlessAvaloniaApp().SetupWithoutStarting();
             return ShotCapture.Run(args, outputDir);
         }
+
+        // Live-composition smoke: create a real library and render the shell over
+        // it (touches the credential store and ~/.bae — throwaway machines only).
+        if (SmokeCreate.TryGetOutputDir(args, out var smokeDir))
+        {
+            BuildHeadlessAvaloniaApp().SetupWithoutStarting();
+            return SmokeCreate.Run(smokeDir);
+        }
 #endif
 
         // One instance per edition. A second launch forwards its argv (a bae://
