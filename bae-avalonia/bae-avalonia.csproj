@@ -132,10 +132,32 @@
     </ItemGroup>
   </Target>
 
+  <!--
+    The diagnostics credentials, baked into the assembly at build from the
+    release environment and read back through AppMetadata. A build that supplies
+    none of them (every dev build) reads them all as absent, which is what turns
+    the telemetry sink and the crash reporter off.
+  -->
   <ItemGroup>
+    <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+      <_Parameter1>BaeDatadogSite</_Parameter1>
+      <_Parameter2>$(BAE_DATADOG_SITE)</_Parameter2>
+    </AssemblyAttribute>
+    <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+      <_Parameter1>BaeDatadogClientToken</_Parameter1>
+      <_Parameter2>$(BAE_DATADOG_CLIENT_TOKEN)</_Parameter2>
+    </AssemblyAttribute>
+    <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+      <_Parameter1>BaeEnvironment</_Parameter1>
+      <_Parameter2>$(BAE_ENVIRONMENT)</_Parameter2>
+    </AssemblyAttribute>
     <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
       <_Parameter1>BaeGitCommit</_Parameter1>
       <_Parameter2>$(BAE_GIT_COMMIT)</_Parameter2>
+    </AssemblyAttribute>
+    <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+      <_Parameter1>BaeSentryDsn</_Parameter1>
+      <_Parameter2>$(BAE_SENTRY_DSN)</_Parameter2>
     </AssemblyAttribute>
   </ItemGroup>
 

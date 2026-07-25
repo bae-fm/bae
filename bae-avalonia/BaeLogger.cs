@@ -6,10 +6,11 @@ using uniffi.bae_bridge;
 namespace Bae.Desktop;
 
 /// <summary>
-/// The app's ETW (TraceLogging) provider — Windows' unified-logging sink,
-/// sibling of the Rust core's "bae-core" provider. Capture both with
+/// The app's event provider, sibling of the Rust core's "bae-core" provider.
+/// The runtime maps it to the platform's tracing sink: ETW on Windows, where
 /// `logman start baeTrace -p "*bae-app" -p "*bae-core" -o trace.etl -ets`
-/// (see scripts/vm/guest/vmlog-start.cmd). The GUID derives from the name.
+/// captures both (see scripts/vm/guest/vmlog-start.cmd), and EventPipe on Linux,
+/// where `dotnet-trace` does. The GUID derives from the name.
 /// </summary>
 [EventSource(Name = "bae-app")]
 internal sealed class BaeEventSource : EventSource
@@ -33,7 +34,10 @@ internal static class BaeDiagnostics
 {
     private static readonly Assembly AppAssembly = Assembly.GetExecutingAssembly();
 
-    internal static BaeLogger Logger { get; } = new("bae.windows");
+    // The target every host-side line is tagged with, in telemetry and in the
+    // local trace. One desktop app serves both platforms, so the tag names the
+    // app, not an OS; the OS is its own field on every event.
+    internal static BaeLogger Logger { get; } = new("bae.desktop");
 
     /// <summary>
     /// The process-lifetime telemetry sink, built once at startup by
@@ -71,7 +75,10 @@ internal static class BaeDiagnostics
         return NativeBae.DiagnosticsConfig(
             AppMetadata.ConfiguredString("BaeDatadogSite"),
             AppMetadata.ConfiguredString("BaeDatadogClientToken"),
-            "windows",
+            // The source tag is what separates the platforms in the telemetry
+            // (macOS sends "macos", Android "android"). This app ships on
+            // Windows and Linux, so it sends whichever one is running.
+            OperatingSystem.IsWindows() ? "windows" : "linux",
             "bae",
             AppMetadata.ConfiguredString("BaeEnvironment"),
             appVersion.ToString(),
