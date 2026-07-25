@@ -6,13 +6,13 @@ namespace Bae.Desktop;
 
 /// <summary>
 /// The per-release actions reachable from album detail — set-primary, the cover
-/// picker's reads and write, and (as the dialog family grows) edit / re-identify /
-/// gallery / delete. The C# mirror of BaeKit's release-editor surface — BaeKit ReleaseEditor: one stored
-/// delegate per operation, each wired through the open session so it carries the
-/// session-swap currency contract. Delegates that carry the internal bridge cover
-/// types are themselves internal (a public member exposing an internal type is
-/// inconsistent accessibility). Every delegate defaults to a fail-loud stub;
-/// <see cref="FromSession"/> is the production wiring.
+/// picker's reads and write, the metadata edit round-trip, and (as the dialog
+/// family grows) re-identify. The C# mirror of BaeKit's <c>ReleaseEditor</c>
+/// closure-struct: one stored delegate per operation, each wired through the open
+/// session so it carries the session-swap currency contract. Delegates whose
+/// signatures carry an internal bridge type stay internal (a public member exposing
+/// an internal type is inconsistent accessibility). Every delegate defaults to a
+/// fail-loud stub; <see cref="FromSession"/> is the production wiring.
 /// </summary>
 internal sealed class ReleaseEditorService
 {
@@ -35,6 +35,23 @@ internal sealed class ReleaseEditorService
     public Func<string, string, BridgeCoverSelection, Task<(bool Current, string? Error)>> ChangeCover { get; init; }
         = (_, _, _) => throw new InvalidOperationException("ReleaseEditorService stub: ChangeCover not wired");
 
+    /// <summary>The editable metadata seed for a release — album/pressing fields and
+    /// the per-track table — the edit form populates from. Synchronous (a local
+    /// read) so the dialog opens at once.</summary>
+    public Func<string, (bool Current, (BridgeRawReleaseEdit? Edit, string? Error) Result)> ReleaseEditSeed { get; init; }
+        = _ => throw new InvalidOperationException("ReleaseEditorService stub: ReleaseEditSeed not wired");
+
+    /// <summary>Commit the edited metadata. Shaping and validation happen in core;
+    /// a validation error keeps the dialog open with the reason.</summary>
+    public Func<string, BridgeRawReleaseEdit, (bool Current, string? Error)> ApplyReleaseEdit { get; init; }
+        = (_, _) => throw new InvalidOperationException("ReleaseEditorService stub: ApplyReleaseEdit not wired");
+
+    /// <summary>Discard in-progress edits and re-seed the form from the release's
+    /// stored metadata source (its original identity), without writing. Async — it
+    /// re-projects from the source.</summary>
+    public Func<string, Task<(bool Current, (BridgeRawReleaseEdit? Edit, string? Error) Result)>> ResetMetadataToSource { get; init; }
+        = _ => throw new InvalidOperationException("ReleaseEditorService stub: ResetMetadataToSource not wired");
+
     /// <summary>The thumbnail URL for a remote cover candidate — a pure transform of
     /// the bridge value, kept in-boundary so views never touch NativeBae.</summary>
     public static string RemoteCoverThumbnailUrl(BridgeRemoteCover cover) =>
@@ -54,5 +71,11 @@ internal sealed class ReleaseEditorService
             session.RunForCurrentHandle(handle => NativeBae.FetchRemoteCovers(handle, releaseId)),
         ChangeCover = (albumId, releaseId, selection) =>
             session.RunForCurrentHandle(handle => NativeBae.ChangeCover(handle, albumId, releaseId, selection)),
+        ReleaseEditSeed = releaseId =>
+            session.WithCurrentHandle(handle => NativeBae.ReleaseEditSeed(handle, releaseId)),
+        ApplyReleaseEdit = (releaseId, edit) =>
+            session.WithCurrentHandle(handle => NativeBae.ApplyReleaseEdit(handle, releaseId, edit)),
+        ResetMetadataToSource = releaseId =>
+            session.RunForCurrentHandle(handle => NativeBae.ResetMetadataToSource(handle, releaseId)),
     };
 }

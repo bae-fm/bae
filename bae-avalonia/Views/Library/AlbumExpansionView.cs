@@ -62,6 +62,8 @@ internal static class AlbumExpansionView
         playButton.Click += (_, _) => PlayRelease(app, selectedRelease, shuffle: false);
         var shuffleButton = new Button { Content = Loc.Chrome("album.shuffle") };
         shuffleButton.Click += (_, _) => PlayRelease(app, selectedRelease, shuffle: true);
+        var editButton = new Button { Content = Loc.Chrome("album.edit.label") };
+        editButton.Click += async (_, _) => await dialogs.ShowEditMetadata(selectedRelease.ReleaseId);
 
         var moreButton = new Button { Content = "⋯" };
         var playNext = new MenuItem { Header = Loc.Chrome("menu.play_next") };
@@ -104,6 +106,7 @@ internal static class AlbumExpansionView
         var actions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
         actions.Children.Add(playButton);
         actions.Children.Add(shuffleButton);
+        actions.Children.Add(editButton);
         actions.Children.Add(moreButton);
 
         // ── Track list ────────────────────────────────────────────────────────

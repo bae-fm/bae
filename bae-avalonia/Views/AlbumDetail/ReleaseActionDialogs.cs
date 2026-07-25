@@ -42,6 +42,90 @@ internal sealed class ReleaseActionDialogs
         _lightbox.Show(entries, 0);
     }
 
+    // Edit the release's metadata — album / pressing fields and the per-track table.
+    // The seed is read before the dialog opens; Save commits (shaping and validation
+    // happen in core — a validation error keeps the dialog open with the reason),
+    // and Reset re-seeds from the release's stored source without writing.
+    public Task ShowEditMetadata(string releaseId)
+    {
+        var (current, result) = _app.ReleaseEditor.ReleaseEditSeed(releaseId);
+        if (!current)
+        {
+            return Task.CompletedTask;
+        }
+        if (result.Edit is not { } seed)
+        {
+            return ShowMessage(Loc.Chrome("album.edit.title"), Loc.Chrome("album.edit.load_failed"));
+        }
+        return _host.Show(close => BuildEditMetadata(releaseId, seed, close));
+    }
+
+    private Control BuildEditMetadata(string releaseId, BridgeRawReleaseEdit seed, Action close)
+    {
+        var form = new ReleaseEditForm(seed, 460);
+        var column = DialogUi.Column();
+        column.MinWidth = 460;
+        column.Children.Add(DialogUi.Title(Loc.Chrome("album.edit.title")));
+        column.Children.Add(new ScrollViewer { Content = form.Panel, MaxHeight = 460 });
+
+        var save = DialogUi.Primary(Loc.Chrome("action.save"));
+        save.Click += (_, _) =>
+        {
+            var (current, error) = _app.ReleaseEditor.ApplyReleaseEdit(releaseId, form.ReadBack());
+            if (!current)
+            {
+                return;
+            }
+            if (error is null)
+            {
+                close();
+            }
+            else
+            {
+                form.ErrorText.Text = error;
+                form.ErrorText.IsVisible = true;
+            }
+        };
+        var reset = new Button { Content = Loc.Chrome("album.edit.reset") };
+        reset.Click += async (_, _) =>
+        {
+            var (current, result) = await _app.ReleaseEditor.ResetMetadataToSource(releaseId);
+            if (!current)
+            {
+                return;
+            }
+            if (result.Edit is { } fresh)
+            {
+                form.ErrorText.IsVisible = false;
+                form.Seed(fresh);
+            }
+            else
+            {
+                form.ErrorText.Text = Loc.Chrome("album.edit.reset_failed");
+                form.ErrorText.IsVisible = true;
+            }
+        };
+        var cancel = new Button { Content = Loc.Chrome("action.cancel") };
+        cancel.Click += (_, _) => close();
+        column.Children.Add(DialogUi.Actions(cancel, reset, save));
+        return column;
+    }
+
+    // A dismiss-only message dialog: a title over an optional body, closed by OK.
+    private Task ShowMessage(string title, string? body) => _host.Show(close =>
+    {
+        var column = DialogUi.Column();
+        column.Children.Add(DialogUi.Title(title));
+        if (body is not null)
+        {
+            column.Children.Add(DialogUi.Body(body));
+        }
+        var ok = DialogUi.Primary(Loc.Chrome("action.ok"));
+        ok.Click += (_, _) => close();
+        column.Children.Add(DialogUi.Actions(ok));
+        return column;
+    });
+
     // Pick a new cover for the release — the release's own image files plus remote
     // candidates fetched from MusicBrainz / Discogs. Selecting one writes it; the
     // grid refreshes via the invalidation the change emits. Errors surface inside
