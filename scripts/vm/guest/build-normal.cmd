@@ -6,5 +6,8 @@ for /f "delims=" %%d in ('dir /b /ad "C:\Program Files (x86)\Microsoft Visual St
 set CARGO_TARGET_AARCH64_PC_WINDOWS_MSVC_LINKER=C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Tools\MSVC\%MSVC_VER%\bin\Hostarm64\arm64\link.exe
 call "C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Auxiliary\Build\vcvarsall.bat" arm64 || exit /b 1
 cd /d C:\bae
-msbuild bae-windows\bae-windows.csproj /restore /p:Configuration=Debug /p:Platform=ARM64 /p:BridgeBindingsDir=..\bae-bridge\csharp-bindings-baeium /v:m || exit /b 1
+rem EnforceCodeStyleInBuild matches CI (windows.yml and the shot capture):
+rem IDE0051/IDE0052 (unused private members) are errors there, so a build
+rem without the flag passes here and then fails on the runner.
+msbuild bae-windows\bae-windows.csproj /restore /p:Configuration=Debug /p:Platform=ARM64 /p:BridgeBindingsDir=..\bae-bridge\csharp-bindings-baeium /p:EnforceCodeStyleInBuild=true /v:m || exit /b 1
 copy /y C:\bae\target-windows\aarch64-pc-windows-msvc\debug\uniffi_bae_bridge.dll C:\bae\bae-windows\bin\ARM64\Debug\net8.0-windows10.0.19041.0\ >nul || exit /b 1
