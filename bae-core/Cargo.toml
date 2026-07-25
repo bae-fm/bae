@@ -128,6 +128,16 @@ ndk = { version = "0.9", features = ["audio"] }
 [target.'cfg(target_os = "windows")'.dependencies]
 windows-native-keyring-store = "0.5.1"
 
+# Secret Service (D-Bus) store for keyring-core on Linux, the store many Linux
+# password keepers implement. 0.3.x targets keyring-core ^0.7 to match the rest
+# of the workspace. Pure-Rust zbus + RustCrypto with the tokio runtime the bridge
+# already runs on — no OpenSSL or libdbus C linkage. Without this, `init_keyring`
+# registers no default store on Linux and every credential read fails.
+[target.'cfg(target_os = "linux")'.dependencies]
+zbus-secret-service-keyring-store = { version = "0.3", default-features = false, features = [
+    "rt-tokio-crypto-rust",
+] }
+
 # The import pipeline's dependencies. The predicate is the pipeline's own — a
 # mobile build is a sync/playback client and compiles none of this — and it is
 # spelled here exactly as the code that uses these crates spells it

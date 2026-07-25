@@ -29,18 +29,25 @@ pub fn init_keyring(diagnostics: &Diagnostics) {
     )))]
     compile_error!("init_keyring has no keyring-store branch for this target");
 
-    // Linux has no OS keyring, so no store installs and every credential read
-    // fails — the same outcome as a failed store creation elsewhere, reported
-    // the same way rather than passed over in silence. Tests never reach this;
-    // they install a mock store via `install_test_keyring`.
+    // Linux uses the Secret Service (D-Bus), the store many password keepers
+    // implement. Same fail-loud shape as the Windows branch. Tests never reach
+    // this; they install a mock store via `install_test_keyring`.
     #[cfg(target_os = "linux")]
     {
-        use tracing::error;
-        error!(
-            "Linux has no OS keyring store. No default store is installed, so every credential \
-             read will fail."
-        );
-        diagnostics.event(TelemetryEvent::KeyringInitFailed {});
+        use tracing::{error, info};
+        match zbus_secret_service_keyring_store::Store::new() {
+            Ok(store) => {
+                keyring_core::set_default_store(store);
+                info!("Keyring initialized (Secret Service)");
+            }
+            Err(e) => {
+                error!(
+                    "Failed to create Secret Service keyring store: {e}. No default store is \
+                     installed, so every credential read will fail."
+                );
+                diagnostics.event(TelemetryEvent::KeyringInitFailed {});
+            }
+        }
     }
 
     // iOS as well as macOS: apple-native-keyring-store is a dependency on both
