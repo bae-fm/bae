@@ -170,6 +170,15 @@
     <Exec
       Command="cargo run -q -p bae-loc --bin loc-gen -- emit --target windows --out-dir &quot;$(MSBuildProjectDirectory)\Strings&quot;"
       WorkingDirectory="$(MSBuildProjectDirectory)\.." />
+    <!-- The static PRIResource glob above is evaluated at project load, before
+         this target writes the gitignored Core.resw files — on a cold checkout
+         (CI) they don't exist yet, the glob misses them, and the module PRI
+         ships without the Core resource map (Loc then dies with ResourceMap
+         Not Found). Re-glob here so the freshly generated files are items. -->
+    <ItemGroup>
+      <PRIResource Remove="Strings\**\*.resw" />
+      <PRIResource Include="Strings\**\*.resw" />
+    </ItemGroup>
   </Target>
 
   <!--
