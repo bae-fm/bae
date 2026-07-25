@@ -130,6 +130,15 @@ internal sealed class LibraryBrowserView : UserControl
         SelectMode(BrowserMode.Albums);
     }
 
+    // Reveal an album in the grid (the import confirm's "view in library" jump, and
+    // any future navigate-to-album): switch to the album mode, then page its row in
+    // and expand it.
+    public System.Threading.Tasks.Task RevealAlbum(string albumId)
+    {
+        SelectMode(BrowserMode.Albums);
+        return _albumPane.RevealAlbum(albumId);
+    }
+
     private MenuFlyout BuildModeFlyout()
     {
         var flyout = new MenuFlyout();

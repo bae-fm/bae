@@ -73,6 +73,46 @@ internal sealed class ImportService
     public Func<string, string, string, Task<(bool Current, (List<ReleaseCandidateChoice>? Candidates, string? Error) Result)>> SearchReleases { get; init; }
         = (_, _, _) => throw new InvalidOperationException("ImportService stub: SearchReleases not wired");
 
+    /// <summary>Seed the import confirm form from a picked source release: the
+    /// editor edit, the kept editor seed (for the exactness flip), the source's
+    /// remote covers, and the folder's local artwork.</summary>
+    public Func<string, BridgeMetadataSource, string, Task<(bool Current, (PrefetchedEdit? Prefetched, string? Error) Result)>> PrefetchCandidateEdit { get; init; }
+        = (_, _, _) => throw new InvalidOperationException("ImportService stub: PrefetchCandidateEdit not wired");
+
+    /// <summary>Seed the import confirm form for a skip-identify import: the folder's
+    /// embedded file tags projected into the edit form, with only the folder's local
+    /// artwork offered (no source release).</summary>
+    public Func<string, Task<(bool Current, (PrefetchedEdit? Prefetched, string? Error) Result)>> PrefetchUnknownEdit { get; init; }
+        = _ => throw new InvalidOperationException("ImportService stub: PrefetchUnknownEdit not wired");
+
+    /// <summary>Whether a chosen release is already in the library, so the confirm
+    /// dialog can warn before importing a duplicate (advisory, not a gate).</summary>
+    public Func<string, Task<(bool Current, (BridgeLibraryStatus? Status, string? Error) Result)>> CheckReleaseInLibrary { get; init; }
+        = _ => throw new InvalidOperationException("ImportService stub: CheckReleaseInLibrary not wired");
+
+    /// <summary>Commit the import of a candidate with the confirm dialog's edits,
+    /// storage mode, pin, chosen identity, and cover overlaid. The import runs in the
+    /// background; its result updates the candidate row and grid through
+    /// invalidations. Returns the validation error line, or null on accept.</summary>
+    public Func<string, string, BridgeIdentityChoice, string, bool, BridgeRawReleaseEdit, BridgeCoverSelection?, Task<(bool Current, string? Error)>> CommitImport { get; init; }
+        = (_, _, _, _, _, _, _) => throw new InvalidOperationException("ImportService stub: CommitImport not wired");
+
+    /// <summary>Re-shape the confirm editor from the kept seed when the exactness
+    /// choice flips (exact ↔ metadata only), with no re-fetch. A pure bridge
+    /// transform, so no session.</summary>
+    public static BridgeRawReleaseEdit ShapeCandidateEdit(BridgeReleaseUserEdit seed, BridgeIdentityChoice choice) =>
+        NativeBae.ShapeCandidateEdit(seed, choice);
+
+    /// <summary>The identity claim for a picked pressing: exact by default, or
+    /// metadata only. A pure bridge transform, so no session.</summary>
+    public static BridgeIdentityChoice SourceIdentityChoice(bool exact, string releaseId, BridgeMetadataSource source) =>
+        NativeBae.SourceIdentityChoice(exact, releaseId, source);
+
+    /// <summary>Decode a candidate's evidence file (CUE sheet, rip log, info text) to
+    /// its text for the document viewer, or its read error. A handle-less file read.</summary>
+    public static (string? Text, string? Error) ReadDocumentText(string path) =>
+        NativeBae.ReadTextFile(path);
+
     /// <summary>Wire every operation through the open session's current handle.</summary>
     public static ImportService FromSession(SessionStore session) => new()
     {
@@ -96,5 +136,14 @@ internal sealed class ImportService
             session.WithCurrentHandle(handle => NativeBae.ReidentifyPipeline(handle, candidateKey)),
         SearchReleases = (source, artist, album) =>
             session.RunForCurrentHandle(handle => NativeBae.SearchReleases(handle, source, artist, album)),
+        PrefetchCandidateEdit = (releaseId, source, folderPath) =>
+            session.RunForCurrentHandle(handle => NativeBae.PrefetchCandidateEdit(handle, releaseId, source, folderPath)),
+        PrefetchUnknownEdit = folderPath =>
+            session.RunForCurrentHandle(handle => NativeBae.PrefetchUnknownEdit(handle, folderPath)),
+        CheckReleaseInLibrary = releaseId =>
+            session.RunForCurrentHandle(handle => NativeBae.CheckReleaseInLibrary(handle, releaseId)),
+        CommitImport = (candidateKey, folderPath, identity, storageMode, pin, userEdit, cover) =>
+            session.RunForCurrentHandle(handle => NativeBae.ImportCandidate(
+                handle, candidateKey, folderPath, identity, storageMode, pin, userEdit, cover)),
     };
 }

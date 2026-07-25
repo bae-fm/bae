@@ -17,6 +17,7 @@ internal sealed class MainWindow : Window
 {
     private readonly SessionStore _session;
     private readonly AppService _app;
+    private readonly MainShellView _shell;
 
     public MainWindow(SessionStore session, Func<Task> closeLibrary)
     {
@@ -31,13 +32,17 @@ internal sealed class MainWindow : Window
         this[!BackgroundProperty] = new DynamicResourceExtension("BaeBackgroundBrush");
 
         // The in-window overlays over the shell: the modal host for the album-detail
-        // action dialogs, and the lightbox for the gallery. Both present above the
-        // shell (the lightbox topmost).
+        // and import dialogs, and the lightbox for the galleries. Both present above
+        // the shell (the lightbox topmost).
         var modalHost = new ModalHost();
         var lightbox = new LightboxOverlay();
         var dialogs = new ReleaseActionDialogs(_app, modalHost, lightbox);
+        // The import dialog's "view in library" jump reveals an album in the shell;
+        // the shell is built just below, so the callback reads the field at call time.
+        var importDialogs = new ImportDialogs(_app, modalHost, lightbox, albumId => _shell.OpenAlbum(albumId));
+        _shell = new MainShellView(_app, dialogs, importDialogs);
         var root = new Panel();
-        root.Children.Add(new MainShellView(_app, dialogs));
+        root.Children.Add(_shell);
         root.Children.Add(modalHost);
         root.Children.Add(lightbox);
         Content = root;
@@ -56,7 +61,7 @@ internal sealed class MainWindow : Window
         Opened += (_, _) => _session.Subscribe();
     }
 
-    private void OnWindowDrop(object? sender, DragEventArgs e)
+    private async void OnWindowDrop(object? sender, DragEventArgs e)
     {
         if (_session.CurrentHandleOrNull() is null)
         {
@@ -67,11 +72,19 @@ internal sealed class MainWindow : Window
         {
             return;
         }
+        // Match macOS / the WinUI window drop: the first dropped item must be a
+        // folder. Scan it, then land on the import section showing its candidates —
+        // the same dispatch a folder-verb / bae://import activation runs.
         foreach (var item in files)
         {
             if (item is IStorageFolder && item.TryGetLocalPath() is { } path)
             {
-                _ = _app.ImportStore.ScanFolder(path);
+                var (current, _) = await _app.ImportStore.ScanFolder(path);
+                if (current)
+                {
+                    _shell.ShowImport();
+                }
+                return;
             }
         }
     }

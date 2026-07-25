@@ -7,21 +7,29 @@ using Avalonia.Media;
 
 namespace Bae.Desktop;
 
-// The empty-library shell (desktop story 3): the chrome around an empty library.
-// Across the top a Library/Import switcher, a search field, and a settings gear;
-// below, a large bold "Albums" heading that is itself a mode dropdown with sort
-// controls opposite; the content area's text-only empty state; and an idle
-// now-playing bar docked along the bottom. Every color reads a theme brush, so
-// the shell renders in either OS appearance. The library grid, the real switcher
-// wiring, and the live now-playing transport arrive with the parity port; this is
-// the shell the story checks.
+// The library shell (desktop story 3 in its empty state): the chrome around an
+// open library. Across the top a Library/Import switcher, a search field, and a
+// settings gear; below, either the library browser (a large bold mode heading
+// that is itself a mode dropdown with sort controls opposite, over the grid) or
+// the import section, swapped by the switcher; a docked queue sidebar; and a
+// now-playing bar along the bottom. Every color reads a theme brush, so the shell
+// renders in either OS appearance. The live now-playing transport arrives with a
+// later step; this is the shell the story checks.
 internal sealed class MainShellView : UserControl
 {
     private readonly AppService _app;
+    private readonly LibraryBrowserView _browser;
+    private readonly ImportSectionView _importSection;
     private readonly QueuePane _queuePane;
     private Button? _queueButton;
 
-    public MainShellView(AppService app, ReleaseActionDialogs dialogs)
+    // The two switcher segments, restyled as the active section changes.
+    private Border _librarySegment = null!;
+    private TextBlock _libraryLabel = null!;
+    private Border _importSegment = null!;
+    private TextBlock _importLabel = null!;
+
+    public MainShellView(AppService app, ReleaseActionDialogs dialogs, ImportDialogs importDialogs)
     {
         _app = app;
 
@@ -32,14 +40,20 @@ internal sealed class MainShellView : UserControl
         Grid.SetRow(toolbar, 0);
         root.Children.Add(toolbar);
 
-        // The content row docks the library beside the queue sidebar: the browser
-        // takes the remaining width and the queue host reflows content when open.
+        // The content row docks the active section beside the queue sidebar: the
+        // section takes the remaining width and the queue host reflows when open.
+        // The browser and import section both live here; the switcher toggles which
+        // is visible.
         var contentRow = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") };
-        var browser = new LibraryBrowserView(_app, dialogs);
-        Grid.SetColumn(browser, 0);
+        _browser = new LibraryBrowserView(_app, dialogs);
+        _importSection = new ImportSectionView(_app, importDialogs) { IsVisible = false };
+        var section = new Panel();
+        section.Children.Add(_browser);
+        section.Children.Add(_importSection);
+        Grid.SetColumn(section, 0);
         var queueHost = new Border();
         Grid.SetColumn(queueHost, 1);
-        contentRow.Children.Add(browser);
+        contentRow.Children.Add(section);
         contentRow.Children.Add(queueHost);
         Grid.SetRow(contentRow, 1);
         root.Children.Add(contentRow);
@@ -57,8 +71,33 @@ internal sealed class MainShellView : UserControl
         }
     }
 
+    // Switch to the import section and land it on a fresh New tab — the switcher
+    // click, and the folder-drop / activation flows that route here.
+    public void ShowImport()
+    {
+        _browser.IsVisible = false;
+        _importSection.IsVisible = true;
+        SetActiveSection(import: true);
+        _importSection.OnEntered();
+    }
+
+    public void ShowLibrary()
+    {
+        _importSection.IsVisible = false;
+        _browser.IsVisible = true;
+        SetActiveSection(import: false);
+    }
+
+    // Reveal an album in the library grid (the import confirm's "view in library"
+    // jump): switch to the library section, then page the album in and expand it.
+    public System.Threading.Tasks.Task OpenAlbum(string albumId)
+    {
+        ShowLibrary();
+        return _browser.RevealAlbum(albumId);
+    }
+
     // ── Toolbar ──────────────────────────────────────────────────────────────
-    private static Control BuildToolbar()
+    private Control BuildToolbar()
     {
         var strip = new Border
         {
@@ -82,10 +121,15 @@ internal sealed class MainShellView : UserControl
         SetBg(pill, "BaeFieldBrush");
         SetBorder(pill, "BaeHairlineBrush");
         var segments = new StackPanel { Orientation = Orientation.Horizontal };
-        segments.Children.Add(Segment(Loc.Chrome("section.library"), active: true));
-        segments.Children.Add(Segment(Loc.Chrome("section.import"), active: false));
+        (_librarySegment, _libraryLabel) = BuildSegment(Loc.Chrome("section.library"));
+        (_importSegment, _importLabel) = BuildSegment(Loc.Chrome("section.import"));
+        _librarySegment.PointerPressed += (_, _) => ShowLibrary();
+        _importSegment.PointerPressed += (_, _) => ShowImport();
+        segments.Children.Add(_librarySegment);
+        segments.Children.Add(_importSegment);
         pill.Child = segments;
         grid.Children.Add(pill);
+        SetActiveSection(import: false);
 
         // Right cluster: the search field and the settings gear.
         var right = new StackPanel
@@ -103,12 +147,13 @@ internal sealed class MainShellView : UserControl
         return strip;
     }
 
-    private static Control Segment(string text, bool active)
+    private static (Border Segment, TextBlock Label) BuildSegment(string text)
     {
         var segment = new Border
         {
             CornerRadius = new CornerRadius(8),
             Padding = new Thickness(20, 7),
+            Background = Brushes.Transparent,
         };
         var label = new TextBlock
         {
@@ -116,6 +161,20 @@ internal sealed class MainShellView : UserControl
             FontSize = 14.5,
             FontWeight = FontWeight.Bold,
         };
+        segment.Child = label;
+        return (segment, label);
+    }
+
+    // Fill the active segment with the accent and de-emphasize the other, matching
+    // the visible section.
+    private void SetActiveSection(bool import)
+    {
+        StyleSegment(_librarySegment, _libraryLabel, active: !import);
+        StyleSegment(_importSegment, _importLabel, active: import);
+    }
+
+    private static void StyleSegment(Border segment, TextBlock label, bool active)
+    {
         if (active)
         {
             SetBg(segment, "BaeAccentBrush");
@@ -123,10 +182,9 @@ internal sealed class MainShellView : UserControl
         }
         else
         {
+            segment.Background = Brushes.Transparent;
             label[!TextBlock.ForegroundProperty] = new DynamicResourceExtension("BaeTextSecondaryBrush");
         }
-        segment.Child = label;
-        return segment;
     }
 
     private static Control BuildSearchField()
