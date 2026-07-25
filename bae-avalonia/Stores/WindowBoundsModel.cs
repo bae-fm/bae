@@ -4,9 +4,9 @@ using System.Text.Json;
 
 namespace Bae.Desktop;
 
-// A rectangle in physical (raw) pixels, the coordinate space AppWindow and
-// DisplayArea.WorkArea report in. Origin can be negative (a display left of or
-// above the primary).
+// A rectangle in physical (raw) pixels, the coordinate space window positions and
+// display work areas are reported in. Origin can be negative (a display left of
+// or above the primary).
 public readonly record struct PixelRect(int X, int Y, int Width, int Height)
 {
     public int Right => X + Width;
@@ -21,9 +21,9 @@ public sealed record WindowRestorePlan(PixelRect Bounds, bool Maximized);
 
 // Owns the window-bounds on-disk shape, the validation of a saved blob, and the
 // clamping that keeps a restored window reachable on the current display
-// arrangement. Plain BCL types only, so it is unit-tested off the WinUI build;
-// the glue that reads real DisplayAreas and moves the AppWindow lives in
-// MainWindow and is verified by compilation.
+// arrangement. Plain BCL types only, so it is unit-tested with no windowing
+// platform up; the glue that reads the real displays and places the window lives
+// in MainWindow.
 public static class WindowBoundsModel
 {
     // The smallest saved size worth restoring: anything smaller is a degenerate

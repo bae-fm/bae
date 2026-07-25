@@ -20,6 +20,12 @@ public sealed partial class App : Application
     private MainWindow? _main;
     private WelcomeWindow? _welcome;
 
+    // Set once the quit teardown has started. The shutdown that follows it is
+    // forced and so never re-enters the handler, but a second quit request
+    // arriving while the teardown is still running would, and must not run it
+    // twice.
+    private bool _quitting;
+
     private SessionStore Session => _session!;
     private IMediaControl MediaControl => _mediaControl!;
 
@@ -58,6 +64,9 @@ public sealed partial class App : Application
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
+            // Every quit funnels through here: the last window closing, the OS
+            // asking the app to exit, and the now-playing surface's Quit command.
+            desktop.ShutdownRequested += (_, args) => QuitAfterTeardown(desktop, args);
             // The now-playing surface holds an OS-visible session (a bus name on
             // Linux); releasing it on the way out is how clients learn the player
             // is gone.
@@ -66,6 +75,33 @@ public sealed partial class App : Application
         }
 
         base.OnFrameworkInitializationCompleted();
+    }
+
+    // Tear the session down, then quit. The teardown is asynchronous and the
+    // process must not exit at the first await, so the shutdown that asked is
+    // cancelled, the teardown runs to completion, and only then does the app shut
+    // down for real — that second shutdown is forced, so nothing can cancel it and
+    // it does not come back through here.
+    private async void QuitAfterTeardown(
+        IClassicDesktopStyleApplicationLifetime desktop, ShutdownRequestedEventArgs args)
+    {
+        args.Cancel = true;
+        if (_quitting)
+        {
+            return;
+        }
+
+        _quitting = true;
+        // Clear the now-playing surface first, so no entry for a library that is
+        // going away lingers while the rest of the shutdown runs.
+        MediaControl.Deactivate();
+        // Flush buffered telemetry through the process-lifetime sink before the
+        // library handle it was carrying events for is freed below.
+        BaeDiagnostics.Flush();
+        // The handle's graceful shutdown is what persists playback state for the
+        // next launch. A no-op when no library is open.
+        await Session.ShutdownAndFreeCurrentHandle();
+        desktop.Shutdown();
     }
 
     // Telemetry first (so the sink exists for every later step and any failure it
@@ -91,8 +127,10 @@ public sealed partial class App : Application
             MediaPathsService.FromSession(_session),
             Edition,
             raise: () => Dispatcher.UIThread.Post(() => (_main as Window ?? _welcome)?.Activate()),
+            // TryShutdown, not Shutdown: a forced shutdown skips ShutdownRequested
+            // and with it the session teardown that persists playback state.
             quit: () => Dispatcher.UIThread.Post(() =>
-                (ApplicationLifetime as IClassicDesktopStyleApplicationLifetime)?.Shutdown()));
+                (ApplicationLifetime as IClassicDesktopStyleApplicationLifetime)?.TryShutdown()));
 
         var libraries = LibraryDiscovery.Load(_ => { }).Where(library => library.Error is null).ToList();
         var openable = libraries.FirstOrDefault(library => library.IsActive)
@@ -140,6 +178,10 @@ public sealed partial class App : Application
     private async Task SwitchLibrary(string libraryId)
     {
         var closing = _main;
+        // The window opened below restores its placement as it is built, so this
+        // window's placement has to be on disk first — its own close writes too
+        // late to be seen.
+        closing?.SaveWindowBoundsForSwap();
         // The library the surface is showing is going away.
         MediaControl.Deactivate();
         await Session.ShutdownAndFreeCurrentHandle();

@@ -14,7 +14,8 @@ namespace Bae.Desktop;
 // open session, routes core's UI events into it, and hosts the shell. Native
 // window chrome, sized to the story-3 shell. The library grid, queue, and live
 // transport arrive with the parity port; this is the empty-library shell.
-internal sealed class MainWindow : Window
+// Placement persistence lives in MainWindow.WindowBounds.cs.
+internal sealed partial class MainWindow : Window
 {
     private readonly SessionStore _session;
     private readonly AppService _app;
@@ -35,8 +36,12 @@ internal sealed class MainWindow : Window
         _session.UiEvent += _app.UiEventRouter.Route;
 
         Title = "bae";
+        // The placement for a first launch, before anything has been saved; a saved
+        // rect replaces it, and tracking then follows the window from here on.
         Width = 1350;
         Height = 850;
+        RestoreWindowBounds();
+        TrackWindowBounds();
         this[!BackgroundProperty] = new DynamicResourceExtension("BaeBackgroundBrush");
 
         // The in-window overlays over the shell: the modal host for the album-detail
