@@ -1,0 +1,73 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Unit tests for bae-avalonia's pure logic that compiles without Avalonia or
+    the generated uniffi bindings, so it runs on any host including the macOS
+    dev machine:
+
+    - The locale-aware value formatters (Loc.Bytes / Loc.Clock / Loc.Number) —
+      the reimplementation of macOS's ByteCountFormatter / DateComponentsFormatter,
+      where parity matters. Loc.cs is compiled with BAE_PURE_FORMATTERS defined,
+      which strips the catalog-resolution half of the file (ResourceManager + the
+      MessageFormat parser). The app build never defines that symbol, so its view
+      of Loc.cs is unchanged.
+    - The media-control state layer (MediaControlState) — the decision logic
+      behind the OS transport controls, over plain BCL types.
+    - The store models (the now-playing-bar seek/position math, lightbox logic,
+      sync-indicator precedence, import identity-claim state, re-identify
+      arbitration, import candidate-list tabs/counts/sort, the main-window bounds
+      clamp, the Ctrl+1..9 library-switch mapping, the restore-on-launch playback
+      preference, and the album-grid multi-selection) — plain BCL types; the
+      stores and views that render bridge snapshots are verified by compilation.
+    - The output-queue decision layer (OutputQueueModel), the update-flow layer
+      (UpdateFlow), the Remove-library decision layer (ForgetLibraryModel), and
+      the activation-intent model (ActivationIntentModel) — all over plain BCL
+      types; the shells that produce their states are verified by compilation.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <IsPackable>false</IsPackable>
+    <RootNamespace>Bae.Desktop.Tests</RootNamespace>
+    <!-- The app targets net8.0; run the tests on whatever shared runtime the host
+         has (macOS dev boxes may only carry a newer major). No-op on CI, which
+         installs the 8.0.x runtime. -->
+    <RollForward>Major</RollForward>
+    <DefineConstants>$(DefineConstants);BAE_PURE_FORMATTERS</DefineConstants>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="../Loc.cs" Link="Loc.cs" />
+    <Compile Include="../MediaControlState.cs" Link="MediaControlState.cs" />
+    <Compile Include="../Stores/PlaybackPositionModel.cs" Link="PlaybackPositionModel.cs" />
+    <Compile Include="../Stores/LightboxModel.cs" Link="LightboxModel.cs" />
+    <Compile Include="../Stores/SyncIndicatorModel.cs" Link="SyncIndicatorModel.cs" />
+    <Compile Include="../Stores/LibrarySwitchModel.cs" Link="LibrarySwitchModel.cs" />
+    <Compile Include="../UpdateFlow.cs" Link="UpdateFlow.cs" />
+    <Compile Include="../Stores/LibrarySort.cs" Link="LibrarySort.cs" />
+    <Compile Include="../TextTruncation.cs" Link="TextTruncation.cs" />
+    <Compile Include="../Stores/QueueReorderModel.cs" Link="QueueReorderModel.cs" />
+    <Compile Include="../Stores/QueueInsertModel.cs" Link="QueueInsertModel.cs" />
+    <Compile Include="../Stores/OrderedIntersection.cs" Link="OrderedIntersection.cs" />
+    <Compile Include="../Stores/ImportIdentityModel.cs" Link="ImportIdentityModel.cs" />
+    <Compile Include="../Stores/ReidentifyResultsModel.cs" Link="ReidentifyResultsModel.cs" />
+    <Compile Include="../Stores/ImportListModel.cs" Link="ImportListModel.cs" />
+    <Compile Include="../Stores/StorageListModel.cs" Link="StorageListModel.cs" />
+    <Compile Include="../Stores/OutputQueueModel.cs" Link="OutputQueueModel.cs" />
+    <Compile Include="../Stores/WindowBoundsModel.cs" Link="WindowBoundsModel.cs" />
+    <Compile Include="../Stores/PersistPlaybackModel.cs" Link="PersistPlaybackModel.cs" />
+    <Compile Include="../Stores/ForgetLibraryModel.cs" Link="ForgetLibraryModel.cs" />
+    <Compile Include="../Stores/AlbumGridSelectionModel.cs" Link="AlbumGridSelectionModel.cs" />
+    <Compile Include="../Stores/HeaderCollapseModel.cs" Link="HeaderCollapseModel.cs" />
+    <Compile Include="../Stores/AlbumGridMetrics.cs" Link="AlbumGridMetrics.cs" />
+    <Compile Include="../ActivationIntentModel.cs" Link="ActivationIntentModel.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
+    <PackageReference Include="xunit" Version="2.9.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
+  </ItemGroup>
+
+</Project>
