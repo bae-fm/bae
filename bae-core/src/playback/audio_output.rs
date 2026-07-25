@@ -597,12 +597,16 @@ impl AudioOutput for CaptureAudioOutput {
     capture_output_control_methods!();
 }
 
-/// A test audio output whose `create_stream` always fails, for exercising the
-/// stream-build failure path shared by both players.
-#[cfg(all(test, feature = "test-utils"))]
+/// A test audio output with no backing device: `create_stream` always fails.
+/// Two uses — exercising the stream-build failure path shared by both players,
+/// and standing in for a real (cpal) output in actor-level tests that drive the
+/// playback service for its queue/command behavior and never actually play, so
+/// they need no hardware. Gated on `test` alone (not `test-utils`) so the plain
+/// `cargo test --lib` build the latter tests run under still has it.
+#[cfg(test)]
 pub(crate) struct FailingAudioOutput;
 
-#[cfg(all(test, feature = "test-utils"))]
+#[cfg(test)]
 impl AudioOutput for FailingAudioOutput {
     fn create_stream(
         &mut self,

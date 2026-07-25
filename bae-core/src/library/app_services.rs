@@ -251,11 +251,20 @@ mod tests {
             tokio::runtime::Handle::current(),
         );
 
-        let playback = crate::playback::PlaybackService::start(
+        // A device-less output, not the real cpal sink: this test drives the
+        // playback actor for its queue behavior and never plays audio (track
+        // prep fails before any stream is built). Building a cpal output would
+        // reach for the system audio device, and on Windows a second such build
+        // on a fresh actor thread faults — cpal's process-global WASAPI device
+        // enumerator is left dangling once the first actor thread that made it
+        // exits (the enumerator dies with that thread's COM apartment), and the
+        // test builds one player per case.
+        let playback = crate::playback::PlaybackService::start_with_output(
             manager.clone(),
             tokio::runtime::Handle::current(),
             50,
             false,
+            Box::new(crate::playback::audio_output::FailingAudioOutput),
         );
 
         #[cfg(not(any(target_os = "ios", target_os = "android")))]
