@@ -205,8 +205,29 @@ internal static class ShotCapture
             showRestoreFromCloud: () => Task.CompletedTask);
 
     // The empty-library shell (desktop story 3): the production shell chrome over
-    // an empty library — the switcher, search, gear, Albums heading dropdown with
-    // sort controls, the text-only empty state, and the idle now-playing bar.
-    private static Control BuildEmptyLibrary() => new MainShellView();
+    // an AppService.Stubbed whose LibraryService reports zero counts. The shell
+    // reads that zero-count empty-state branch off the stub, so the shot exercises
+    // the shipped composition — the session has no handle and every other service
+    // is a fail-loud stub, so nothing on this path reaches a live library.
+    private static Control BuildEmptyLibrary()
+    {
+        var session = new SessionStore(Dispatcher.UIThread);
+        var app = AppService.Stubbed(session, Dispatcher.UIThread, EmptyLibrary());
+        return new MainShellView(app);
+    }
+
+    // A LibraryService whose album/composer/artist counts are zero and whose pages
+    // are empty — the reads the shell makes to render the empty state. The
+    // (true, ...) currency flag marks the library present-but-empty (not a gone
+    // handle). Every other read stays a fail-loud stub.
+    private static LibraryService EmptyLibrary() => new()
+    {
+        AlbumCount = () => (true, 0L),
+        AlbumPage = (_, _, _) => (true, (new List<Album>(), (string?)null)),
+        ComposerCount = () => (true, 0L),
+        ComposerPage = (_, _, _) => (true, (new List<ComposerSummary>(), (string?)null)),
+        ArtistCount = () => (true, 0L),
+        ArtistPage = (_, _, _) => (true, (new List<ArtistSummary>(), (string?)null)),
+    };
 }
 #endif

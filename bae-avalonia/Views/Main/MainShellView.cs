@@ -17,8 +17,12 @@ namespace Bae.Desktop;
 // the shell the story checks.
 internal sealed class MainShellView : UserControl
 {
-    public MainShellView()
+    private readonly AppService _app;
+
+    public MainShellView(AppService app)
     {
+        _app = app;
+
         var root = new Grid { RowDefinitions = new RowDefinitions("Auto,*,Auto") };
         SetBg(root, "BaeBackgroundBrush");
 
@@ -138,7 +142,7 @@ internal sealed class MainShellView : UserControl
     }
 
     // ── Content column: heading + sort + empty state ─────────────────────────
-    private static Control BuildContent()
+    private Control BuildContent()
     {
         var column = new Grid
         {
@@ -239,13 +243,20 @@ internal sealed class MainShellView : UserControl
         return controls;
     }
 
-    private static Control BuildEmptyState()
+    private Control BuildEmptyState()
     {
+        // The zero-count empty-state branch, read off the (stubbed or live)
+        // library exactly as the grid load will: the albums heading over an empty
+        // library shows "No albums". The library grid replaces this content once a
+        // count is non-zero, which lands with the incremental-loading redesign.
+        var (_, albumCount) = _app.Library.AlbumCount();
+
         var stack = new StackPanel
         {
             HorizontalAlignment = HorizontalAlignment.Center,
             VerticalAlignment = VerticalAlignment.Center,
             Spacing = 6,
+            IsVisible = albumCount == 0,
         };
         var title = new TextBlock
         {
