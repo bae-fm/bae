@@ -36,7 +36,7 @@ internal static class ShotCapture
     internal const string VariantFlag = "--capture-variant";
 
     // The platform suffix in the shared "<scene>@<platform>.png" gallery contract.
-    private static readonly string Platform =
+    internal static readonly string Platform =
         OperatingSystem.IsWindows() ? "windows"
         : OperatingSystem.IsLinux() ? "linux"
         : "macos";

@@ -80,7 +80,7 @@ internal static class SmokeCreate
 
             var frame = Avalonia.Headless.HeadlessWindowExtensions.CaptureRenderedFrame(window)
                 ?? throw new InvalidOperationException("headless frame capture returned null");
-            var path = Path.Combine(outputDir, "live-create-shell@windows.png");
+            var path = Path.Combine(outputDir, $"live-create-shell@{ShotCapture.Platform}.png");
             using (var stream = File.Create(path))
             {
                 frame.Save(stream);
