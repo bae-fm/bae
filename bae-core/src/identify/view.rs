@@ -162,14 +162,15 @@ impl From<IdentifyState> for IdentifyStateView {
                     track_count,
                     // The raw signal inputs (`disc_id`, `barcode_codes`,
                     // `catalogs`), the user's `excluded` toggles, and the settled
-                    // `barcode_failure` drive triangulation in the reducer. A
-                    // surface renders the two settled result sets and the matched
-                    // barcode; none of the rest reaches it.
+                    // `discid_failure`/`barcode_failure` drive triangulation in
+                    // the reducer. A surface renders the two settled result sets
+                    // and the matched barcode; none of the rest reaches it.
                     disc_id: _,
                     barcode_codes: _,
                     had_barcode_source: _,
                     catalogs: _,
                     excluded: _,
+                    discid_failure: _,
                     barcode_failure: _,
                 } = context;
                 IdentifyStateView::Conflict {

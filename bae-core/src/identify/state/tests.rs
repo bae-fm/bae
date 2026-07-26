@@ -1148,6 +1148,44 @@ fn toolbar_keeps_failed_barcode_lookup_after_settle() {
     assert_eq!(barcode.state, SignalState::Failed { failure });
 }
 
+/// Mirrors `toolbar_keeps_failed_barcode_lookup_after_settle` for the disc-ID
+/// side. Before `discid_failure` existed on `SignalsContext`, the settled badge
+/// read off `context.disc_id` (still `Computed` — that only reports whether a
+/// disc ID could be derived, not whether its lookup succeeded) and the empty
+/// `discid_results`, landing on `NoMatch` — indistinguishable from a lookup
+/// that ran cleanly and found nothing. This is the case `identify::verdict`
+/// depends on being distinguishable, since a `NotFoundAnywhere` masking a
+/// failure must not be persisted as a permanent verdict.
+#[test]
+fn toolbar_keeps_failed_disc_id_lookup_after_settle() {
+    let (state, _) = update(
+        started(),
+        signals(
+            DiscIdSignal::Computed {
+                disc_id: "disc-hash".to_string(),
+                track_count: 5,
+            },
+            BarcodeSignal::Absent,
+            &[],
+        ),
+    );
+    let failure = LookupFailure::Provider { status: Some(503) };
+    let (state, _) = step(
+        state,
+        IdentifyEvent::DiscidLookupFailed {
+            failure: failure.clone(),
+            track_count: 5,
+        },
+    );
+    assert!(matches!(state, IdentifyState::NotFoundAnywhere { .. }));
+    let disc = state
+        .toolbar()
+        .into_iter()
+        .find(|s| s.kind == SignalKind::DiscId)
+        .expect("disc badge");
+    assert_eq!(disc.state, SignalState::Failed { failure });
+}
+
 #[test]
 fn toolbar_skipped_disc_and_barcode_in_manual_only() {
     let (state, _) = update(

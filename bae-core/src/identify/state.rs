@@ -146,6 +146,19 @@ pub struct SignalsContext {
     pub discid_results: Vec<(MetadataResult, LibraryStatus)>,
     /// The barcode lookup's results, once settled.
     pub barcode_results: Vec<(MetadataResult, LibraryStatus)>,
+    /// Whatever failure settled the disc-ID pipe into `DiscidProgress::Failed`
+    /// (see `record_results`), if any. Two things can put it there:
+    /// `start_discid_progress` copies it straight from
+    /// [`crate::signals::DiscIdSignal::Failed`] when the disc ID itself
+    /// couldn't be computed (no readable TOC — reachable only on the
+    /// re-identify path today, `signals/service.rs`, not on the import-scan
+    /// path that feeds this pipeline), or a `DiscidLookupFailed` event closes
+    /// out a lookup that ran against a disc ID that computed fine. Either way
+    /// `discid_results` is left empty exactly as it would be for a clean
+    /// no-match, so this is what lets a caller lifting a settled state into a
+    /// stored verdict tell "nothing was learned" apart from "the lookup ran
+    /// and found nothing" (see [`super::verdict::TerminalVerdict`]).
+    pub discid_failure: Option<LookupFailure>,
     /// The barcode lookup failure, once settled by an error.
     pub barcode_failure: Option<LookupFailure>,
     /// Which barcode produced `barcode_results`. `None` until matched.
@@ -166,6 +179,7 @@ impl SignalsContext {
             excluded: HashSet::new(),
             discid_results: Vec::new(),
             barcode_results: Vec::new(),
+            discid_failure: None,
             barcode_failure: None,
             matched_barcode: None,
             track_count: 0,
@@ -186,11 +200,13 @@ impl SignalsContext {
         &mut self,
         discid_results: Vec<(MetadataResult, LibraryStatus)>,
         barcode_results: Vec<(MetadataResult, LibraryStatus)>,
+        discid_failure: Option<LookupFailure>,
         barcode_failure: Option<LookupFailure>,
         matched_barcode: Option<String>,
     ) {
         self.discid_results = discid_results;
         self.barcode_results = barcode_results;
+        self.discid_failure = discid_failure;
         self.barcode_failure = barcode_failure;
         self.matched_barcode = matched_barcode;
     }
@@ -347,7 +363,7 @@ impl IdentifyState {
     fn disc_badge(&self, context: &SignalsContext) -> ToolbarSignal {
         let state = match self {
             IdentifyState::Triangulating { discid, .. } => discid_progress_state(discid),
-            _ => settled_identity_state(&context.disc_id, &context.discid_results),
+            _ => settled_identity_state(context),
         };
         ToolbarSignal {
             kind: SignalKind::DiscId,
@@ -426,18 +442,24 @@ fn barcode_progress_state(progress: &BarcodeProgress) -> SignalState {
     }
 }
 
-/// The disc-ID badge once the pipeline has left `Triangulating`: read off the
-/// signal itself plus its recorded results.
-fn settled_identity_state(
-    disc_id: &DiscIdSignal,
-    results: &[(MetadataResult, LibraryStatus)],
-) -> SignalState {
-    match disc_id {
+/// The disc-ID badge once the pipeline has left `Triangulating`. The lookup
+/// failure is checked first: `disc_id` only ever reports whether a disc ID
+/// could be *computed* (a readable TOC), so a lookup that ran against a
+/// perfectly good disc ID and then hit a network/provider error would
+/// otherwise read as `Computed` with zero results — indistinguishable from a
+/// clean no-match. `context.discid_failure` is what tells the two apart.
+fn settled_identity_state(context: &SignalsContext) -> SignalState {
+    if let Some(failure) = &context.discid_failure {
+        return SignalState::Failed {
+            failure: failure.clone(),
+        };
+    }
+    match &context.disc_id {
         DiscIdSignal::Absent { .. } => SignalState::Skipped,
         DiscIdSignal::Failed { failure, .. } => SignalState::Failed {
             failure: failure.clone(),
         },
-        DiscIdSignal::Computed { .. } => found_or_no_match(results.len() as u32),
+        DiscIdSignal::Computed { .. } => found_or_no_match(context.discid_results.len() as u32),
     }
 }
 
@@ -839,6 +861,10 @@ fn settle_if_ready(state: IdentifyState) -> (IdentifyState, Vec<Effect>) {
 
     let track_count = settled_track_count(&discid);
     context.track_count = track_count;
+    let discid_failure = match &discid {
+        DiscidProgress::Failed { failure, .. } => Some(failure.clone()),
+        _ => None,
+    };
     let barcode_failure = match &barcode {
         BarcodeProgress::Failed { failure } => Some(failure.clone()),
         _ => None,
@@ -846,6 +872,7 @@ fn settle_if_ready(state: IdentifyState) -> (IdentifyState, Vec<Effect>) {
     context.record_results(
         discid.results(),
         barcode.results(),
+        discid_failure,
         barcode_failure,
         barcode.matched_barcode().map(str::to_string),
     );
@@ -905,6 +932,7 @@ fn rerun(mut context: SignalsContext) -> (IdentifyState, Vec<Effect>) {
     // The prior results go; the new lookups replace them as they land.
     context.discid_results = Vec::new();
     context.barcode_results = Vec::new();
+    context.discid_failure = None;
     context.barcode_failure = None;
     context.matched_barcode = None;
 
