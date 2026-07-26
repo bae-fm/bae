@@ -69,8 +69,8 @@ private func inviteBytes(pasted: String) throws -> Data {
 /// Wraps the bridge's free functions and `KeychainService` behind one
 /// injectable seam so previews never read or write real application data.
 /// The code decoders ride along because previews hand out fixture codes only
-/// this seam can "decode"; the pure validators (`validateRestoreConfig`,
-/// `availableCloudProviders`) stay free functions — they touch no state.
+/// this seam can "decode"; `availableCloudProviders` stays a free function — it
+/// touches no state.
 final class LibrarySetup: Sendable, Observable {
     let discoverLibraries: @Sendable () throws -> [BridgeLibrary]
     /// Create a library named by core's default generator.

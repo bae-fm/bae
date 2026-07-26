@@ -830,15 +830,6 @@ pub fn unlock_library(library_id: String, key_hex: String) -> Result<(), BridgeE
     bae_core::library::unlock_library(&library_id, &key_hex).map_err(BridgeError::config)
 }
 
-/// Whether a manual restore configuration is complete — every field the chosen
-/// provider needs is filled in, and an OAuth provider has been authorized. The
-/// restore form gates its button on this. Resolves to `RestoreConfig::validate`,
-/// the one definition of complete.
-#[uniffi::export]
-pub fn validate_restore_config(config: crate::types::BridgeRestoreConfig) -> bool {
-    config.into_core().validate().is_ok()
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

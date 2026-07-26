@@ -38,11 +38,6 @@ pub mod upload_observer;
 
 pub mod membership;
 
-// The restore form's model and its completeness rule. bae's own, converting into
-// coven's `RestoreSource` above.
-mod restore_config;
-pub use restore_config::{RestoreConfig, RestoreConfigError, RestoreHome};
-
 use coven::{BlobDecl, RowIdentity, SyncedTable};
 use coven::{CacheFill, Provenance};
 
