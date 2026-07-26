@@ -114,9 +114,9 @@ pub const ARTIST_IMAGES_CACHE_BUDGET: u64 = 256 * 1024 * 1024; // 256 MiB
 /// (upload/download, the make-Remote/make-Local transitions, the locality-aware
 /// read), so bae hand-maintains no blob source.
 ///
-/// Excluded: the device-local tables (`release_metadata`, `imports`,
-/// `playback_state`) have no `_updated_at`, and coven's own bookkeeping tables
-/// live outside bae's migration entirely — bae never names them.
+/// Excluded: the device-local tables (`release_metadata`, `playback_state`,
+/// `import_candidate_state`) have no `_updated_at`, and coven's own bookkeeping
+/// tables live outside bae's migration entirely — bae never names them.
 ///
 /// Passed to [`coven::Coven::builder`], which attaches the capture session to
 /// exactly these tables when the library is opened.
@@ -353,6 +353,25 @@ mod tests {
             .map(|t| t.name())
             .collect();
         assert_eq!(ancestors, BTreeSet::from(["albums", "artists", "works"]));
+    }
+
+    /// `import_candidate_state` holds per-device identify verdicts and retry
+    /// state; syncing it would leak one device's retry bookkeeping to every
+    /// other device on the account. A dedicated assertion, not just reliance on
+    /// `synced_tables_equal_the_lww_clock_set`: that test only catches the two
+    /// sides *disagreeing* — it stays green if someone gives this table an
+    /// `_updated_at` column and registers it in `synced_tables()` together,
+    /// since then both sides would agree it belongs in the synced set. This
+    /// test catches that case specifically, by naming the table regardless of
+    /// whether it ever grows a clock column.
+    #[test]
+    fn import_candidate_state_is_not_synced() {
+        let synced = synced_tables();
+        let registered: BTreeSet<&str> = synced.iter().map(|t| t.name()).collect();
+        assert!(
+            !registered.contains("import_candidate_state"),
+            "import_candidate_state is device-local and must never sync"
+        );
     }
 
     /// A blob declaration or asset flag silently dropped from one of these tables

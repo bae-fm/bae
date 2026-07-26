@@ -17,6 +17,10 @@
 //! for rendering — folding the matches into their group card, keying provenance by
 //! release id, dropping what must not cross — once, so every transport mirrors the
 //! same decisions instead of re-making them.
+//!
+//! [`verdict::TerminalVerdict`] is the third projection: what a *terminal*
+//! state (`Found`, `Conflict`, `NotFoundAnywhere`, `ManualOnly`) persists to
+//! `import_candidate_state` so it need not be re-fetched on the next launch.
 
 pub mod barcode;
 pub mod combine;
@@ -24,12 +28,14 @@ pub mod discid;
 pub mod service;
 pub mod state;
 pub mod toolbar;
+pub mod verdict;
 pub mod view;
 
 pub use combine::{GroupKey, ResultProvenance};
 pub use service::IdentifyServiceHandle;
 pub use state::{BarcodeProgress, DiscidProgress, ExcludedSignal, IdentifyEvent, IdentifyState};
 pub use toolbar::{SignalKind, SignalRole, SignalState, ToolbarSignal};
+pub use verdict::TerminalVerdict;
 pub use view::{BarcodeProgressView, DiscidProgressView, IdentifyStateView, ResultRow};
 
 use crate::db::{LibraryCheck, LibraryStatus};

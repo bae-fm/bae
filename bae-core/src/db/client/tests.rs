@@ -2321,6 +2321,278 @@ mod playback_state_load_tests {
     }
 }
 
+/// `import_candidate_state` — device-local identify verdicts keyed by
+/// `CategorizedFiles::content_hash`. The mechanism's own round-trip proves
+/// little on its own; these also nail down the two things that make the hash
+/// the row's whole identity (resizing invalidates, moving doesn't) and the
+/// asymmetry the design leans on: a terminal verdict is stored, a transport
+/// failure is not.
+#[cfg(test)]
+mod import_candidate_state_tests {
+    use super::super::*;
+    use crate::identify::{GroupKey, ResultProvenance, TerminalVerdict};
+    use crate::import::folder_scanner::{AudioContent, CategorizedFiles, ScannedFile};
+    use crate::import::search::MetadataResult;
+    use coven::FixedClock;
+    use std::path::PathBuf;
+
+    /// The instant `empty_db`'s injected clock always returns. Fixed rather
+    /// than `SystemClock` so `identified_at` can be asserted exactly — which is
+    /// why `save_import_candidate_state` stamps it from the injected clock
+    /// instead of taking it from the caller.
+    fn fixed_identified_at() -> DateTime<Utc> {
+        DateTime::parse_from_rfc3339("2026-01-15T12:00:00Z")
+            .unwrap()
+            .with_timezone(&Utc)
+    }
+
+    async fn empty_db() -> (Database, tempfile::TempDir) {
+        let tmp = tempfile::TempDir::new().unwrap();
+        let path = tmp.path().join("test.db");
+        let db = Database::new_test(
+            path.to_str().unwrap(),
+            Arc::new(FixedClock(fixed_identified_at())),
+            Arc::new(coven::UuidProvider),
+        )
+        .await
+        .unwrap();
+        (db, tmp)
+    }
+
+    /// A folder of plain track files (no CUE) named `(relative_path, size)`.
+    fn track_files_candidate(files: &[(&str, u64)]) -> CategorizedFiles {
+        let tracks = files
+            .iter()
+            .map(|(name, size)| ScannedFile::new(PathBuf::from(*name), name.to_string(), *size))
+            .collect();
+        CategorizedFiles {
+            audio: AudioContent::TrackFiles {
+                tracks,
+                format_label: "FLAC".to_string(),
+            },
+            artwork: vec![],
+            documents: vec![],
+            unpaired_cue_sheets: vec![],
+        }
+    }
+
+    fn sample_verdict() -> TerminalVerdict {
+        TerminalVerdict::Found {
+            matches: vec![MetadataResult {
+                source: MetadataSource::MusicBrainz,
+                release_id: "rel-1".to_string(),
+                title: "Album".to_string(),
+                artist: Some("Artist".to_string()),
+                year: Some(1999),
+                format: Some("CD".to_string()),
+                label: Some("Label".to_string()),
+                catalog_number: Some("CAT-1".to_string()),
+                country: Some("US".to_string()),
+                cover_art: None,
+                source_group_id: Some("group-1".to_string()),
+            }],
+            track_count: 11,
+            group: GroupKey {
+                source: MetadataSource::MusicBrainz,
+                source_group_id: "group-1".to_string(),
+            },
+            provenance: vec![ResultProvenance {
+                by_disc_id: true,
+                by_barcode: false,
+                matches_catalog: true,
+            }],
+        }
+    }
+
+    fn new_candidate_row(
+        content_hash: &str,
+        folder_path: &str,
+        verdict: &TerminalVerdict,
+        probed_total_duration_ms: i64,
+    ) -> NewImportCandidateState {
+        NewImportCandidateState {
+            content_hash: content_hash.to_string(),
+            folder_path: folder_path.to_string(),
+            verdict: serde_json::to_string(verdict).unwrap(),
+            probed_total_duration_ms,
+        }
+    }
+
+    /// Save a verdict, read it back, and check the provenance survived the JSON
+    /// round trip along with everything else — a stripped `by_disc_id` or a
+    /// dropped catalog number wouldn't show up in a looser comparison.
+    #[tokio::test]
+    async fn round_trip_preserves_the_verdict_including_provenance() {
+        let (db, _tmp) = empty_db().await;
+        let candidate =
+            track_files_candidate(&[("01 Track.flac", 123_456), ("02 Track.flac", 234_567)]);
+        let hash = candidate.content_hash();
+        let verdict = sample_verdict();
+        let row = new_candidate_row(&hash, "/music/Some Album", &verdict, 2_700_000);
+
+        db.save_import_candidate_state(&row).await.unwrap();
+
+        let loaded = db.load_import_candidate_states().await.unwrap();
+        let loaded_row = loaded
+            .get(&hash)
+            .expect("row present under its content hash");
+        assert_eq!(loaded_row.folder_path, "/music/Some Album");
+        assert_eq!(loaded_row.probed_total_duration_ms, 2_700_000);
+        // Stamped by the write path from the injected clock, not something
+        // `new_candidate_row` had any way to supply.
+        assert_eq!(loaded_row.identified_at, fixed_identified_at());
+        let loaded_verdict: TerminalVerdict = serde_json::from_str(&loaded_row.verdict).unwrap();
+        assert_eq!(
+            loaded_verdict, verdict,
+            "the verdict must round-trip exactly, provenance included"
+        );
+    }
+
+    /// Resizing one file changes `content_hash`, which is the whole
+    /// invalidation mechanism: the new hash finds nothing (so it gets
+    /// re-identified) while the old row is left behind, unreachable, under its
+    /// own key.
+    #[tokio::test]
+    async fn resizing_a_file_orphans_the_old_row_under_a_new_hash() {
+        let (db, _tmp) = empty_db().await;
+        let original =
+            track_files_candidate(&[("01 Track.flac", 123_456), ("02 Track.flac", 234_567)]);
+        let original_hash = original.content_hash();
+        let row = new_candidate_row(
+            &original_hash,
+            "/music/Some Album",
+            &sample_verdict(),
+            2_700_000,
+        );
+        db.save_import_candidate_state(&row).await.unwrap();
+
+        let resized =
+            track_files_candidate(&[("01 Track.flac", 999_999), ("02 Track.flac", 234_567)]);
+        let resized_hash = resized.content_hash();
+        assert_ne!(
+            original_hash, resized_hash,
+            "resizing a file must change the hash"
+        );
+
+        let loaded = db.load_import_candidate_states().await.unwrap();
+        assert!(
+            loaded.contains_key(&original_hash),
+            "the old row is still present under its own key"
+        );
+        assert!(
+            !loaded.contains_key(&resized_hash),
+            "the new hash must find no row -- the candidate needs re-identifying"
+        );
+    }
+
+    /// Same files, same relative paths and sizes, under a different parent
+    /// directory: `content_hash` never looks at the absolute path, so the row
+    /// saved for the folder at its old location is still the row found for it
+    /// at the new one.
+    #[tokio::test]
+    async fn a_moved_folder_hashes_identically_and_keeps_its_row() {
+        let (db, _tmp) = empty_db().await;
+        let at_old_location =
+            track_files_candidate(&[("01 Track.flac", 123_456), ("02 Track.flac", 234_567)]);
+        let hash = at_old_location.content_hash();
+        let row = new_candidate_row(
+            &hash,
+            "/music/Old Location/Some Album",
+            &sample_verdict(),
+            2_700_000,
+        );
+        db.save_import_candidate_state(&row).await.unwrap();
+
+        let at_new_location = CategorizedFiles {
+            audio: AudioContent::TrackFiles {
+                tracks: vec![
+                    ScannedFile::new(
+                        PathBuf::from("/music/New Location/Some Album/01 Track.flac"),
+                        "01 Track.flac".to_string(),
+                        123_456,
+                    ),
+                    ScannedFile::new(
+                        PathBuf::from("/music/New Location/Some Album/02 Track.flac"),
+                        "02 Track.flac".to_string(),
+                        234_567,
+                    ),
+                ],
+                format_label: "FLAC".to_string(),
+            },
+            artwork: vec![],
+            documents: vec![],
+            unpaired_cue_sheets: vec![],
+        };
+        assert_eq!(
+            hash,
+            at_new_location.content_hash(),
+            "a moved folder must hash identically to itself before the move"
+        );
+
+        let loaded = db.load_import_candidate_states().await.unwrap();
+        assert!(
+            loaded.contains_key(&at_new_location.content_hash()),
+            "the row saved before the move must still be reachable after it"
+        );
+    }
+
+    /// A transport failure writes no row. Driven through the real identify
+    /// reducer (a disc-ID lookup that fails over the network, no barcode
+    /// source to fall back on) rather than hand-built, so this actually
+    /// exercises the guard in `identify::verdict::TerminalVerdict::try_from` —
+    /// the one thing standing between "nothing was learned" and a permanent
+    /// `NotFoundAnywhere` row. If that guard is ever weakened or removed, this
+    /// starts writing a row and fails.
+    #[tokio::test]
+    async fn no_row_is_written_for_a_transport_failure() {
+        use crate::identify::state::step as identify_step;
+        use crate::identify::{IdentifyEvent, IdentifyState};
+        use crate::signals::{BarcodeSignal, DiscIdSignal, LookupFailure, Signals, TextSignal};
+
+        let (db, _tmp) = empty_db().await;
+        let candidate = track_files_candidate(&[("01 Track.flac", 123_456)]);
+        let hash = candidate.content_hash();
+
+        let (state, _) = identify_step(IdentifyState::Idle, IdentifyEvent::Started);
+        let (state, _) = identify_step(
+            state,
+            IdentifyEvent::SignalsUpdated {
+                signals: Signals {
+                    disc_id: DiscIdSignal::Computed {
+                        disc_id: "disc-hash".to_string(),
+                        track_count: 1,
+                    },
+                    barcode: BarcodeSignal::Absent,
+                    text: TextSignal::Settled {
+                        catalogs: vec![],
+                        free_text: vec![],
+                    },
+                },
+            },
+        );
+        let (state, _) = identify_step(
+            state,
+            IdentifyEvent::DiscidLookupFailed {
+                failure: LookupFailure::Provider { status: Some(503) },
+                track_count: 1,
+            },
+        );
+
+        // Exactly the shape a scheduler will use: only a successful conversion
+        // ever reaches `save_import_candidate_state`.
+        if let Ok(verdict) = TerminalVerdict::try_from(state) {
+            let row = new_candidate_row(&hash, "/music/Some Album", &verdict, 0);
+            db.save_import_candidate_state(&row).await.unwrap();
+        }
+
+        let loaded = db.load_import_candidate_states().await.unwrap();
+        assert!(
+            !loaded.contains_key(&hash),
+            "a transport failure teaches nothing -- absence is the retry signal"
+        );
+    }
+}
+
 /// The ids this layer mints itself — a release's `release_identities` rows, and
 /// the `album_artists` rows copied when a `set_identity` moves a release to a new
 /// album — come from the injected [`coven::IdProvider`], like every other id in

@@ -11,7 +11,10 @@ use tokio::sync::{OnceCell, Semaphore};
 use tracing::{debug, warn};
 
 /// A remote cover art option from an external source.
-#[derive(Debug, Clone, PartialEq)]
+///
+/// `Serialize`/`Deserialize`: reachable from `MetadataResult::cover_art`, which
+/// `identify::TerminalVerdict` persists.
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct RemoteCover {
     pub url: String,
     pub thumbnail_url: String,

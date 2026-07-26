@@ -15,7 +15,10 @@ use crate::util::rate_limiter::CallPriority;
 ///
 /// `source_group_id` carries the per-source group — MB release-group ID or
 /// Discogs master ID — and is `None` when the search result surfaced no group.
-#[derive(Debug, Clone)]
+///
+/// `Serialize`/`Deserialize`: this is what `identify::TerminalVerdict` stores
+/// "as fetched" in `import_candidate_state`, unchanged.
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct MetadataResult {
     pub source: MetadataSource,
     pub release_id: String,

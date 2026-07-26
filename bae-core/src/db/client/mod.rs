@@ -19,6 +19,7 @@ mod album;
 mod artist;
 mod blobs;
 mod identity;
+mod import_state;
 mod playback;
 mod release;
 mod track;

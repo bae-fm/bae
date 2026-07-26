@@ -17,7 +17,10 @@ use crate::signals::SourcedValue;
 /// Which signals produced or confirmed one result, for the UI's per-row badges.
 /// `by_disc_id` / `by_barcode`: the result came back from that signal's lookup.
 /// `matches_catalog`: its catalog number matches one harvested from the candidate.
-#[derive(Debug, Clone, PartialEq, Eq)]
+///
+/// `Serialize`/`Deserialize`: carried on `identify::TerminalVerdict::Found`,
+/// which `import_candidate_state` persists.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct ResultProvenance {
     pub by_disc_id: bool,
     pub by_barcode: bool,
@@ -49,7 +52,10 @@ pub enum CombineOutcome {
 /// Two results agree exactly when they share `(source, source_group_id)`. A result
 /// with no `source_group_id` can't share a group with anyone, so any set holding
 /// one plus anything else is a `Conflict`.
-#[derive(Debug, Clone, PartialEq, Eq)]
+///
+/// `Serialize`/`Deserialize`: carried on `identify::TerminalVerdict::Found`,
+/// which `import_candidate_state` persists.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct GroupKey {
     pub source: MetadataSource,
     pub source_group_id: String,

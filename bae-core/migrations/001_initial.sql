@@ -405,3 +405,30 @@ CREATE TABLE IF NOT EXISTS playback_state (
     volume           REAL NOT NULL,
     is_muted         INTEGER NOT NULL
 );
+
+-- Device-local import triage state, keyed by an import candidate's content
+-- hash (`CategorizedFiles::content_hash` — sorted (relative_path, size) over
+-- every audio, artwork, and document file). NOT synced: no `_updated_at` and
+-- absent from `synced_tables()`, the same device-local convention as
+-- `playback_state` above. A row exists only once identification of that
+-- candidate reached a terminal verdict; a transport failure (network down, a
+-- provider error, cancellation) writes no row, so the candidate is retried on
+-- the next sweep rather than remembered as failed. Adding, removing, or
+-- resizing a file changes the hash, which is the invalidation — nothing
+-- deletes the orphaned row under the old hash.
+CREATE TABLE IF NOT EXISTS import_candidate_state (
+    content_hash             TEXT PRIMARY KEY,
+    -- Where the candidate was last seen. Not identity (the hash is), and not
+    -- authoritative for anything — legible for debugging and a future
+    -- stale-row sweep, nothing more.
+    folder_path              TEXT NOT NULL,
+    -- `identify::TerminalVerdict`, JSON-encoded by the identify module that
+    -- owns the type. Not normalized into columns: the whole set is a few
+    -- hundred rows, read in full and classified in Rust.
+    verdict                  TEXT NOT NULL,
+    -- Sum of the probed durations of the candidate's audio files, in
+    -- milliseconds. Per-file durations are not kept here — the Ready gate
+    -- only ever compares totals.
+    probed_total_duration_ms INTEGER NOT NULL,
+    identified_at            TEXT NOT NULL
+);
