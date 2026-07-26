@@ -983,13 +983,10 @@ fn watched(path: &str) -> WatchedFolder {
 }
 
 #[test]
-fn replace_root_populates_snapshot_with_folder_and_invalid_candidates() {
+fn upserts_populate_snapshot_with_folder_and_invalid_candidates() {
     let mut state = ImportCandidateState::default();
-    state.replace_root(
-        Path::new("/watch/a"),
-        vec![folder_candidate("/watch/a/rel1", "/watch/a")],
-        vec![invalid_candidate("/watch/a/bad", "/watch/a")],
-    );
+    state.upsert_folder(folder_candidate("/watch/a/rel1", "/watch/a"));
+    state.upsert_invalid(invalid_candidate("/watch/a/bad", "/watch/a"));
 
     let snapshot = state.snapshot(vec![watched("/watch/a")]);
     assert_eq!(snapshot.folder_candidates.len(), 1);
@@ -1006,20 +1003,19 @@ fn replace_root_populates_snapshot_with_folder_and_invalid_candidates() {
 }
 
 #[test]
-fn replace_root_supersedes_and_remove_root_clears() {
+fn retain_root_drops_unreported_candidates_and_remove_root_clears() {
     let mut state = ImportCandidateState::default();
     let root = Path::new("/watch/a");
-    state.replace_root(
+    state.upsert_folder(folder_candidate("/watch/a/old", "/watch/a"));
+    state.upsert_folder(folder_candidate("/watch/a/new", "/watch/a"));
+
+    // A completed walk that reported only `new` drops `old` and names it.
+    let removed = state.retain_root(
         root,
-        vec![folder_candidate("/watch/a/old", "/watch/a")],
-        Vec::new(),
+        &std::collections::HashSet::from(["/watch/a/new".to_string()]),
     );
-    // A second replace_root for the same root drops the prior candidates.
-    state.replace_root(
-        root,
-        vec![folder_candidate("/watch/a/new", "/watch/a")],
-        Vec::new(),
-    );
+    assert_eq!(removed, vec!["/watch/a/old".to_string()]);
+
     let snapshot = state.snapshot(vec![watched("/watch/a")]);
     assert_eq!(snapshot.folder_candidates.len(), 1);
     assert_eq!(
@@ -1033,14 +1029,46 @@ fn replace_root_supersedes_and_remove_root_clears() {
     assert!(snapshot.invalid_candidates.is_empty());
 }
 
+/// A folder watch re-scans on every filesystem event under it, so an import or
+/// identify already running on a candidate must survive a walk that re-reports
+/// that candidate unchanged. Only a candidate the walk stopped reporting loses
+/// its runtime.
+#[test]
+fn rescan_re_reporting_a_candidate_keeps_its_runtime() {
+    let mut state = ImportCandidateState::default();
+    let root = Path::new("/watch/a");
+    state.upsert_folder(folder_candidate("/watch/a/rel1", "/watch/a"));
+    state.record_event(&ImportEvent::ImportProgress {
+        candidate_key: "/watch/a/rel1".to_string(),
+        progress: ImportProgress::Progress {
+            id: "rel1".to_string(),
+            percent: 42,
+            phase: ImportPhase::MeasuringLoudness,
+            import_id: "imp-1".to_string(),
+        },
+    });
+
+    // A second walk reports the same candidate and retains it.
+    state.upsert_folder(folder_candidate("/watch/a/rel1", "/watch/a"));
+    let removed = state.retain_root(
+        root,
+        &std::collections::HashSet::from(["/watch/a/rel1".to_string()]),
+    );
+
+    assert!(removed.is_empty());
+    assert!(
+        state.snapshot(vec![watched("/watch/a")]).folder_candidates[0]
+            .runtime
+            .import_status
+            .is_some(),
+        "the in-flight import was reset by a re-scan"
+    );
+}
+
 #[test]
 fn set_skipped_round_trips_on_folder_candidate() {
     let mut state = ImportCandidateState::default();
-    state.replace_root(
-        Path::new("/watch/a"),
-        vec![folder_candidate("/watch/a/rel1", "/watch/a")],
-        Vec::new(),
-    );
+    state.upsert_folder(folder_candidate("/watch/a/rel1", "/watch/a"));
 
     state.set_skipped("/watch/a/rel1", true);
     assert!(
@@ -1060,11 +1088,7 @@ fn set_skipped_round_trips_on_folder_candidate() {
 #[test]
 fn record_event_overlays_import_progress_onto_folder_runtime() {
     let mut state = ImportCandidateState::default();
-    state.replace_root(
-        Path::new("/watch/a"),
-        vec![folder_candidate("/watch/a/rel1", "/watch/a")],
-        Vec::new(),
-    );
+    state.upsert_folder(folder_candidate("/watch/a/rel1", "/watch/a"));
 
     state.record_event(&ImportEvent::ImportProgress {
         candidate_key: "/watch/a/rel1".to_string(),
@@ -1126,11 +1150,7 @@ fn record_event_overlays_import_progress_onto_folder_runtime() {
 #[test]
 fn record_event_overlays_identify_state() {
     let mut state = ImportCandidateState::default();
-    state.replace_root(
-        Path::new("/watch/a"),
-        vec![folder_candidate("/watch/a/rel1", "/watch/a")],
-        Vec::new(),
-    );
+    state.upsert_folder(folder_candidate("/watch/a/rel1", "/watch/a"));
 
     state.record_event(&ImportEvent::IdentifyStateChanged {
         candidate_key: "/watch/a/rel1".to_string(),
@@ -1148,19 +1168,9 @@ fn record_event_overlays_identify_state() {
 #[test]
 fn snapshot_orders_by_watched_folder_then_key() {
     let mut state = ImportCandidateState::default();
-    state.replace_root(
-        Path::new("/watch/b"),
-        vec![
-            folder_candidate("/watch/b/z", "/watch/b"),
-            folder_candidate("/watch/b/a", "/watch/b"),
-        ],
-        Vec::new(),
-    );
-    state.replace_root(
-        Path::new("/watch/a"),
-        vec![folder_candidate("/watch/a/m", "/watch/a")],
-        Vec::new(),
-    );
+    state.upsert_folder(folder_candidate("/watch/b/z", "/watch/b"));
+    state.upsert_folder(folder_candidate("/watch/b/a", "/watch/b"));
+    state.upsert_folder(folder_candidate("/watch/a/m", "/watch/a"));
 
     // Watched-folder order (a before b) is the primary sort; the candidate key
     // breaks ties within a folder (a before z).
@@ -1199,11 +1209,7 @@ fn get_resolves_reidentify_runtime_and_scanned_candidates() {
 
     // A scanned folder key resolves to its folder candidate; an unknown key is
     // None.
-    state.replace_root(
-        Path::new("/watch/a"),
-        vec![folder_candidate("/watch/a/rel1", "/watch/a")],
-        Vec::new(),
-    );
+    state.upsert_folder(folder_candidate("/watch/a/rel1", "/watch/a"));
     assert!(matches!(
         state.get("/watch/a/rel1"),
         Some(ImportCandidateSnapshot::Folder { .. })
@@ -1212,7 +1218,7 @@ fn get_resolves_reidentify_runtime_and_scanned_candidates() {
 }
 
 #[test]
-fn runtime_recorded_before_scan_survives_replace_root() {
+fn runtime_recorded_before_scan_survives_the_scan_recording_its_candidate() {
     let mut state = ImportCandidateState::default();
 
     // An event can arrive for a candidate key before the folder scan reports
@@ -1228,14 +1234,10 @@ fn runtime_recorded_before_scan_survives_replace_root() {
         },
     });
 
-    // The scan then reports the candidate. replace_root does not touch the
-    // pre-existing runtime entry (remove_root only clears runtime for keys that
-    // were already scanned candidates under the root).
-    state.replace_root(
-        Path::new("/watch/a"),
-        vec![folder_candidate("/watch/a/rel1", "/watch/a")],
-        Vec::new(),
-    );
+    // The scan then reports the candidate. Recording it leaves the pre-existing
+    // runtime entry alone; only `retain_root`/`remove_root` clear runtime, and
+    // only for keys they drop.
+    state.upsert_folder(folder_candidate("/watch/a/rel1", "/watch/a"));
 
     // The read-time join surfaces the recorded runtime on the scanned candidate.
     let status = state.snapshot(vec![watched("/watch/a")]).folder_candidates[0]
@@ -1261,16 +1263,9 @@ fn runtime_recorded_before_scan_survives_replace_root() {
 #[test]
 fn remove_root_returns_the_removed_candidate_keys() {
     let mut state = ImportCandidateState::default();
-    state.replace_root(
-        Path::new("/watch/a"),
-        vec![folder_candidate("/watch/a/rel1", "/watch/a")],
-        vec![invalid_candidate("/watch/a/bad", "/watch/a")],
-    );
-    state.replace_root(
-        Path::new("/watch/b"),
-        vec![folder_candidate("/watch/b/rel1", "/watch/b")],
-        Vec::new(),
-    );
+    state.upsert_folder(folder_candidate("/watch/a/rel1", "/watch/a"));
+    state.upsert_invalid(invalid_candidate("/watch/a/bad", "/watch/a"));
+    state.upsert_folder(folder_candidate("/watch/b/rel1", "/watch/b"));
 
     let mut removed = state.remove_root(Path::new("/watch/a"));
     removed.sort();

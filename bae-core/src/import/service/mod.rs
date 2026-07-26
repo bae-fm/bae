@@ -13,7 +13,7 @@ use {
     },
     crate::import::folder_registry::ImportFolderRegistry,
     crate::import::folder_scanner::{
-        scan_for_candidates_with_callback, FolderScanError, InvalidCandidate, ScanItem, ScannedFile,
+        scan_for_candidates_with_callback, FolderScanError, ScanItem, ScannedFile,
     },
     crate::import::track_to_file_mapper::map_tracks_to_files,
     crate::import::types::{CoverSelection, ImportPhase, PrepareStep, TrackFile},
@@ -105,14 +105,13 @@ fn affected_roots(changed: &[&Path], roots: &[PathBuf]) -> Vec<PathBuf> {
 }
 
 impl ImportService {
-    /// The folder-watch reconciliation task, which tracks the candidate keys it
-    /// last emitted per watched folder. A `Rescan` command re-scans a folder (the
-    /// handle sends one right after installing the folder's OS watch, and on
-    /// every `scan_watched_folders` call), a debounced filesystem change under a
-    /// watched folder re-scans it too, and `Forget` drops a folder's last-emitted
-    /// keys. Every re-scan reconciles against those keys — `FolderCandidate` for
-    /// what's on disk, `CandidateRemoved` for what's gone — so changes propagate
-    /// beyond the first scan.
+    /// The folder-watch reconciliation task. A `Rescan` command re-scans a folder
+    /// (the handle sends one right after installing the folder's OS watch, and on
+    /// every `scan_watched_folders` call), and a debounced filesystem change under
+    /// a watched folder re-scans it too. Every re-scan reconciles what it finds
+    /// against the candidates already recorded for that folder —
+    /// `FolderCandidate` for what's on disk, `CandidateRemoved` for what's gone —
+    /// so changes propagate beyond the first scan.
     ///
     /// OS watch installation lives in `FolderWatcher`, owned by the handle; this
     /// task only receives the `fs_rx` batches its callback forwards. The registry,
@@ -129,8 +128,6 @@ impl ImportService {
         candidate_state: Arc<Mutex<ImportCandidateState>>,
     ) {
         runtime_handle.spawn(async move {
-            let mut last_keys: HashMap<PathBuf, HashSet<String>> = HashMap::new();
-
             loop {
                 tokio::select! {
                     cmd = cmd_rx.recv() => {
@@ -139,16 +136,12 @@ impl ImportService {
                             WatcherCommand::Rescan(path) => {
                                 Self::rescan_and_reconcile(
                                     &path,
-                                    &mut last_keys,
                                     &event_tx,
                                     &library_manager,
                                     &folder_registry,
                                     &candidate_state,
                                 )
                                 .await;
-                            }
-                            WatcherCommand::Forget(path) => {
-                                last_keys.remove(&path);
                             }
                         }
                     }
@@ -176,7 +169,6 @@ impl ImportService {
                         for root in affected_roots(&changed, &roots) {
                             Self::rescan_and_reconcile(
                                 &root,
-                                &mut last_keys,
                                 &event_tx,
                                 &library_manager,
                                 &folder_registry,
@@ -196,25 +188,37 @@ impl ImportService {
     /// A missing root reconciles to empty, removing all the folder's candidates;
     /// any other scan error keeps the previous set, so a transient fault never
     /// reports the folder as deleted.
+    ///
+    /// Each candidate goes out the moment the walk finds it, over a channel from
+    /// the blocking walk to this task, rather than as one batch once the walk
+    /// ends. Walk duration scales with the tree and with how fast the volume
+    /// answers — a network share is orders of magnitude slower than a local disk
+    /// — and a batch at the end leaves the import list empty for that whole
+    /// span, which is indistinguishable from a scan that found nothing.
     async fn rescan_and_reconcile(
         root: &Path,
-        last_keys: &mut HashMap<PathBuf, HashSet<String>>,
         event_tx: &broadcast::Sender<crate::import::handle::ImportEvent>,
         library_manager: &LibraryManager,
         folder_registry: &Arc<Mutex<ImportFolderRegistry>>,
         candidate_state: &Arc<Mutex<ImportCandidateState>>,
     ) {
         let root_buf = root.to_path_buf();
-        let scanned = tokio::task::spawn_blocking(move || {
-            let mut valid = Vec::new();
-            let mut invalid = Vec::new();
-            scan_for_candidates_with_callback(root_buf, |item| match item {
-                ScanItem::Valid(c) => valid.push(c),
-                ScanItem::Invalid(c) => invalid.push(c),
+        let dropped_item_root = root.to_path_buf();
+        let (item_tx, mut item_rx) = mpsc::unbounded_channel();
+        let walk = tokio::task::spawn_blocking(move || {
+            scan_for_candidates_with_callback(root_buf, |item| {
+                // The receiver outlives the walk except when this scan has
+                // already bailed out (an added-state lookup failed) or the
+                // service is shutting down — in both cases there is nothing left
+                // to emit to, and the walk has no way to stop early.
+                if item_tx.send(item).is_err() {
+                    debug!(
+                        "scanned candidate dropped: no receiver for {}",
+                        dropped_item_root.display()
+                    );
+                }
             })
-            .map(|()| (valid, invalid))
-        })
-        .await;
+        });
 
         let emit_scan_failed = |message: String| {
             send_event(
@@ -223,8 +227,76 @@ impl ImportService {
             );
         };
 
-        let (mut candidates, invalid_candidates): (_, Vec<InvalidCandidate>) = match scanned {
-            Ok(Ok(split)) => split,
+        // Every candidate key this walk reported, valid or invalid: a folder
+        // that flipped valid → invalid (or back) keeps the same path key, so a
+        // removal is only due when a path drops out of the walk entirely.
+        let mut seen_keys: HashSet<String> = HashSet::new();
+        while let Some(item) = item_rx.recv().await {
+            match item {
+                ScanItem::Valid(mut candidate) => {
+                    // The blocking walk has neither the registry nor the DB, so
+                    // it left `skipped`/`is_added` at their defaults. Stamp the
+                    // real values before emitting, so every candidate carries
+                    // its tab state.
+                    let path = candidate.path.to_string_lossy();
+                    candidate.skipped = folder_registry.lock().unwrap().is_skipped(&path);
+                    candidate.is_added = match library_manager
+                        .is_content_hash_imported(&candidate.files.content_hash())
+                        .await
+                    {
+                        Ok(is_added) => is_added,
+                        Err(e) => {
+                            warn!(
+                                "added-state lookup failed for {}; scan failed: {e}",
+                                candidate.path.display()
+                            );
+                            emit_scan_failed(format!(
+                                "Added-state lookup failed for {}: {e}",
+                                candidate.path.display()
+                            ));
+                            return;
+                        }
+                    };
+                    // Record before announcing: the bus turns the event into an
+                    // `ImportCandidateList` invalidation and the UI answers it
+                    // by reading the snapshot, so a candidate announced before
+                    // it is recorded reads back as still missing.
+                    seen_keys.insert(candidate.path.to_string_lossy().into_owned());
+                    candidate_state
+                        .lock()
+                        .unwrap()
+                        .upsert_folder(candidate.clone());
+                    send_event(
+                        event_tx,
+                        crate::import::handle::ImportEvent::Scan(ScanEvent::FolderCandidate(
+                            candidate,
+                        )),
+                    );
+                }
+                // Invalid candidates have no tab state, so they need no stamping.
+                ScanItem::Invalid(candidate) => {
+                    seen_keys.insert(candidate.path.to_string_lossy().into_owned());
+                    candidate_state
+                        .lock()
+                        .unwrap()
+                        .upsert_invalid(candidate.clone());
+                    send_event(
+                        event_tx,
+                        crate::import::handle::ImportEvent::Scan(ScanEvent::InvalidCandidate(
+                            candidate,
+                        )),
+                    );
+                }
+            }
+        }
+
+        // The walk finished (or failed) once its sender dropped and closed the
+        // channel above. A root that can't be read fails before the tree is
+        // built, so the missing-root arm always lands here having emitted
+        // nothing, with `seen_keys` empty — which retains nothing under the
+        // root, exactly the "reconcile to empty" state that arm describes.
+        match walk.await {
+            Ok(Ok(())) => {}
             Ok(Err(e)) => match &e {
                 FolderScanError::Io { path, source }
                     if path == root && source.kind() == std::io::ErrorKind::NotFound =>
@@ -233,7 +305,6 @@ impl ImportService {
                         "re-scan of {} found the folder missing ({e}); removing its candidates",
                         root.display()
                     );
-                    (Vec::new(), Vec::new())
                 }
                 _ => {
                     warn!(
@@ -249,78 +320,21 @@ impl ImportService {
                 emit_scan_failed(format!("Folder scan task failed: {e}"));
                 return;
             }
-        };
-
-        // The blocking walk has neither the registry nor the DB, so it left
-        // `skipped`/`is_added` at their defaults. Stamp the real values before
-        // reconciling, so every emitted candidate carries its tab state. Invalid
-        // candidates have no tab state, so they need no stamping.
-        for candidate in &mut candidates {
-            let path = candidate.path.to_string_lossy();
-            candidate.skipped = folder_registry.lock().unwrap().is_skipped(&path);
-            candidate.is_added = match library_manager
-                .is_content_hash_imported(&candidate.files.content_hash())
-                .await
-            {
-                Ok(is_added) => is_added,
-                Err(e) => {
-                    warn!(
-                        "added-state lookup failed for {}; scan failed: {e}",
-                        candidate.path.display()
-                    );
-                    emit_scan_failed(format!(
-                        "Added-state lookup failed for {}: {e}",
-                        candidate.path.display()
-                    ));
-                    return;
-                }
-            };
         }
 
-        // Reconciliation keys span both lists: a folder that flipped valid →
-        // invalid (or vice versa) keeps the same path key, so a removal is only
-        // emitted when the path drops out of the scan entirely.
-        let new_keys: HashSet<String> = candidates
-            .iter()
-            .map(|c| c.path.to_string_lossy().into_owned())
-            .chain(
-                invalid_candidates
-                    .iter()
-                    .map(|c| c.path.to_string_lossy().into_owned()),
-            )
-            .collect();
-
-        candidate_state.lock().unwrap().replace_root(
-            root,
-            candidates.clone(),
-            invalid_candidates.clone(),
-        );
-
-        for candidate in candidates {
+        // The walk completed, so what it didn't report is genuinely gone.
+        let removed = candidate_state
+            .lock()
+            .unwrap()
+            .retain_root(root, &seen_keys);
+        for candidate_key in removed {
             send_event(
                 event_tx,
-                crate::import::handle::ImportEvent::Scan(ScanEvent::FolderCandidate(candidate)),
+                crate::import::handle::ImportEvent::Scan(ScanEvent::CandidateRemoved {
+                    candidate_key,
+                }),
             );
         }
-
-        for invalid in invalid_candidates {
-            send_event(
-                event_tx,
-                crate::import::handle::ImportEvent::Scan(ScanEvent::InvalidCandidate(invalid)),
-            );
-        }
-
-        if let Some(previous) = last_keys.get(root) {
-            for gone in previous.difference(&new_keys) {
-                send_event(
-                    event_tx,
-                    crate::import::handle::ImportEvent::Scan(ScanEvent::CandidateRemoved {
-                        candidate_key: gone.clone(),
-                    }),
-                );
-            }
-        }
-        last_keys.insert(root.to_path_buf(), new_keys);
 
         send_event(
             event_tx,

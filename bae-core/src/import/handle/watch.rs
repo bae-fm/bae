@@ -98,13 +98,7 @@ impl ImportServiceHandle {
                 &self.event_tx,
                 ImportEvent::Scan(ScanEvent::WatchedFoldersChanged { folders }),
             );
-            let path_buf = std::path::PathBuf::from(&path);
-            let uninstall_result = self.folder_watcher.uninstall(&path_buf);
-            self.send_watcher_command(
-                WatcherCommand::Forget(path_buf),
-                "Failed to stop watching folder",
-            )?;
-            uninstall_result?;
+            self.folder_watcher.uninstall(std::path::Path::new(&path))?;
         }
         Ok(())
     }

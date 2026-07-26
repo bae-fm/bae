@@ -7,8 +7,8 @@
 //! watcher task (`ImportService::start_watcher`) never touches the debouncer,
 //! only the `DebounceEventResult` batches its callback forwards.
 
-use notify::RecursiveMode;
-use notify_debouncer_full::{new_debouncer, DebounceEventResult, Debouncer, RecommendedCache};
+use notify::{RecommendedWatcher, RecursiveMode};
+use notify_debouncer_full::{new_debouncer_opt, DebounceEventResult, Debouncer, NoCache};
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
@@ -18,9 +18,23 @@ use tracing::{error, warn};
 
 use crate::import::ImportError;
 
-/// The concrete type `new_debouncer` returns: the platform's recommended
-/// watcher with its built-in file-id cache.
-type FsDebouncer = Debouncer<notify::RecommendedWatcher, RecommendedCache>;
+/// The platform's recommended watcher, with file-id tracking switched off.
+///
+/// The debouncer's file-id cache exists for exactly one thing: correlating a
+/// rename-from with its rename-to so the pair coalesces into a single `Rename`
+/// event. Building it walks the watched tree and `stat`s every file and
+/// directory in it, which on a network share is tens of seconds per folder and
+/// grows with the tree.
+///
+/// We never read an event's kind — [`ImportService::start_watcher`] takes the
+/// paths out of each batch and re-scans whichever watched roots they fall under.
+/// A rename arriving as a remove plus a create re-scans the same root as a
+/// coalesced rename would, so the cache buys nothing and costs the entire
+/// install. Linux and Android already run this way: `RecommendedCache` is
+/// `NoCache` there.
+///
+/// [`ImportService::start_watcher`]: crate::import::service::ImportService
+type FsDebouncer = Debouncer<RecommendedWatcher, NoCache>;
 
 /// A debouncer that started successfully, plus the set of paths it currently
 /// has an OS watch installed for.
@@ -45,14 +59,20 @@ impl FolderWatcher {
     /// Start the debouncer, forwarding every debounced batch (or error) to
     /// `fs_tx`. Never fails outwardly — see the type doc.
     pub(crate) fn new(fs_tx: mpsc::UnboundedSender<DebounceEventResult>) -> Self {
-        let result = new_debouncer(Duration::from_secs(1), None, move |result| {
-            // Runs on the debouncer's own thread. A send error means the watcher
-            // task's receiver is gone (the service is shutting down) — benign,
-            // but worth a line.
-            if fs_tx.send(result).is_err() {
-                warn!("folder watcher event dropped: task receiver gone");
-            }
-        })
+        let result = new_debouncer_opt::<_, RecommendedWatcher, NoCache>(
+            Duration::from_secs(1),
+            None,
+            move |result| {
+                // Runs on the debouncer's own thread. A send error means the
+                // watcher task's receiver is gone (the service is shutting
+                // down) — benign, but worth a line.
+                if fs_tx.send(result).is_err() {
+                    warn!("folder watcher event dropped: task receiver gone");
+                }
+            },
+            NoCache::new(),
+            notify::Config::default(),
+        )
         .map(|debouncer| ReadyWatcher {
             debouncer,
             installed: HashSet::new(),

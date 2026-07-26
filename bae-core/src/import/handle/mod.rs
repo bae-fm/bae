@@ -6,7 +6,7 @@ use crate::import::types::{
     ImportCommand, ImportProgress, ImportStep, MetadataSource, StorageMode,
 };
 use crate::library::LibraryManager;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::path::Path;
 use std::sync::{Arc, Mutex};
 use tokio::sync::{broadcast, mpsc};
@@ -133,24 +133,49 @@ impl ImportCandidateState {
             .unwrap_or_else(CandidateRuntimeSnapshot::idle)
     }
 
-    pub(super) fn replace_root(
-        &mut self,
-        root: &Path,
-        folder_candidates: Vec<FolderCandidate>,
-        invalid_candidates: Vec<InvalidCandidate>,
-    ) {
-        self.remove_root(root);
-        for candidate in folder_candidates {
-            let key = candidate.path.to_string_lossy().into_owned();
-            self.candidates
-                .insert(key, ScannedCandidate::Folder(candidate));
+    /// Record one candidate a scan just reported, replacing whatever was held
+    /// under its path. Its runtime (identify state, import progress) stays as
+    /// it was: a re-scan re-reporting an unchanged folder must not reset work
+    /// already under way on it.
+    pub(super) fn upsert_folder(&mut self, candidate: FolderCandidate) {
+        self.candidates.insert(
+            candidate.path.to_string_lossy().into_owned(),
+            ScannedCandidate::Folder(candidate),
+        );
+    }
+
+    /// [`Self::upsert_folder`] for a folder that failed validation.
+    pub(super) fn upsert_invalid(&mut self, candidate: InvalidCandidate) {
+        self.candidates.insert(
+            candidate.path.to_string_lossy().into_owned(),
+            ScannedCandidate::Invalid(candidate),
+        );
+    }
+
+    /// Drop every candidate under `root` whose key is not in `keep`, returning
+    /// the removed keys (and their runtime) so the caller can announce them.
+    ///
+    /// The completed-scan counterpart to the upserts above: a walk records each
+    /// candidate as it finds it, then calls this once with everything it saw, so
+    /// only paths that have genuinely dropped out of the tree are removed. Runs
+    /// only on a walk that finished — a failed one reports no keys and must not
+    /// be read as "these folders are gone".
+    pub(super) fn retain_root(&mut self, root: &Path, keep: &HashSet<String>) -> Vec<String> {
+        let root_key = root.to_string_lossy();
+        let removed: Vec<String> = self
+            .candidates
+            .iter()
+            .filter(|(key, candidate)| {
+                Self::candidate_watched_folder_path(candidate) == root_key.as_ref()
+                    && !keep.contains(key.as_str())
+            })
+            .map(|(key, _)| key.clone())
+            .collect();
+        for key in &removed {
+            self.candidates.remove(key);
+            self.runtime.remove(key);
         }
-        for candidate in invalid_candidates {
-            self.candidates.insert(
-                candidate.path.to_string_lossy().into_owned(),
-                ScannedCandidate::Invalid(candidate),
-            );
-        }
+        removed
     }
 
     /// Drop every candidate under `root` (and its runtime), returning the
@@ -506,12 +531,10 @@ pub enum ScanEvent {
 
 /// Commands to the folder-watch reconciliation task. OS watch installation
 /// itself happens synchronously in the handle (`FolderWatcher`, atomic with
-/// the registry mutation) before either of these is sent. `Rescan` re-scans a
-/// folder and reconciles its candidates; `Forget` drops the folder's
-/// last-emitted candidate keys.
+/// the registry mutation) before this is sent. `Rescan` re-scans a folder and
+/// reconciles its candidates against what the walk reports.
 pub(crate) enum WatcherCommand {
     Rescan(std::path::PathBuf),
-    Forget(std::path::PathBuf),
 }
 
 impl ImportServiceHandle {

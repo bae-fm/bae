@@ -285,12 +285,9 @@ async fn rescan_seeded_root(
     service: &ImportService,
     root: &Path,
 ) -> (
-    HashMap<PathBuf, HashSet<String>>,
     tokio::sync::broadcast::Receiver<crate::import::handle::ImportEvent>,
     Arc<Mutex<crate::import::handle::ImportCandidateState>>,
 ) {
-    let mut last_keys =
-        HashMap::from([(root.to_path_buf(), HashSet::from(["old-key".to_string()]))]);
     let (event_tx, events) = tokio::sync::broadcast::channel(16);
     let folder_registry = Arc::new(Mutex::new(
         crate::import::folder_registry::ImportFolderRegistry::load(
@@ -300,20 +297,18 @@ async fn rescan_seeded_root(
     let candidate_state = Arc::new(Mutex::new(
         crate::import::handle::ImportCandidateState::default(),
     ));
-    candidate_state.lock().unwrap().replace_root(
-        root,
-        Vec::new(),
-        vec![crate::import::InvalidCandidate {
+    candidate_state
+        .lock()
+        .unwrap()
+        .upsert_invalid(crate::import::InvalidCandidate {
             path: root.join("old-key"),
             name: "Old Candidate".to_string(),
             watched_folder_path: root.to_string_lossy().into_owned(),
             reason: crate::import::InvalidReason::NoValidAudio,
-        }],
-    );
+        });
 
     ImportService::rescan_and_reconcile(
         root,
-        &mut last_keys,
         &event_tx,
         &service.library_manager,
         &folder_registry,
@@ -321,18 +316,19 @@ async fn rescan_seeded_root(
     )
     .await;
 
-    (last_keys, events, candidate_state)
+    (events, candidate_state)
 }
 
 #[tokio::test]
 async fn rescan_missing_root_removes_previous_candidates() {
     let (service, tmp) = setup_import_service().await;
     let root = tmp.path().join("missing-root");
-    let (last_keys, mut events, candidate_state) = rescan_seeded_root(&service, &root).await;
+    let old_key = root.join("old-key").to_string_lossy().into_owned();
+    let (mut events, candidate_state) = rescan_seeded_root(&service, &root).await;
 
     match events.recv().await.unwrap() {
         crate::import::handle::ImportEvent::Scan(ScanEvent::CandidateRemoved { candidate_key }) => {
-            assert_eq!(candidate_key, "old-key");
+            assert_eq!(candidate_key, old_key);
         }
         event => panic!("expected candidate removal, got {event:?}"),
     }
@@ -340,7 +336,6 @@ async fn rescan_missing_root_removes_previous_candidates() {
         events.recv().await.unwrap(),
         crate::import::handle::ImportEvent::Scan(ScanEvent::Finished)
     ));
-    assert!(last_keys.get(&root).unwrap().is_empty());
     assert!(candidate_state
         .lock()
         .unwrap()
@@ -354,7 +349,7 @@ async fn rescan_non_directory_root_keeps_previous_candidates() {
     let (service, tmp) = setup_import_service().await;
     let root = tmp.path().join("not-a-directory");
     std::fs::write(&root, b"not a directory").unwrap();
-    let (last_keys, mut events, candidate_state) = rescan_seeded_root(&service, &root).await;
+    let (mut events, candidate_state) = rescan_seeded_root(&service, &root).await;
 
     match events.recv().await.unwrap() {
         crate::import::handle::ImportEvent::Scan(ScanEvent::Failed { error }) => {
@@ -365,8 +360,6 @@ async fn rescan_non_directory_root_keeps_previous_candidates() {
         }
         event => panic!("expected scan failure, got {event:?}"),
     }
-    assert_eq!(last_keys.get(&root).unwrap().len(), 1);
-    assert!(last_keys.get(&root).unwrap().contains("old-key"));
     assert_eq!(
         candidate_state
             .lock()
