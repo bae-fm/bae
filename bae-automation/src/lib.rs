@@ -1043,6 +1043,8 @@ impl AutomationState {
                 candidate_key,
                 state,
                 toolbar,
+                // The automation view mirrors every run, whoever started it.
+                priority: _,
             } => self.update_candidate(candidate_key, |candidate| {
                 let common = candidate.common_mut();
                 let runtime = common.runtime_mut();
@@ -1054,9 +1056,15 @@ impl AutomationState {
             ImportEvent::SignalsUpdated {
                 candidate_key,
                 signals,
+                priority: _,
             } => self.update_candidate(candidate_key, |candidate| {
                 candidate.common_mut().runtime_mut().signals = Some(automation_signals(signals));
             }),
+            // A queue-wide count with no candidate to attach it to. The
+            // automation surface is per-candidate, so there is nothing here to
+            // update.
+            #[cfg(not(any(target_os = "ios", target_os = "android")))]
+            ImportEvent::QueueIdentifyProgress { .. } => {}
         }
     }
 

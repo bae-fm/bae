@@ -315,6 +315,24 @@ impl IdentifyState {
         }
     }
 
+    /// Whether the machine has stopped moving on its own: nothing is in flight,
+    /// so only the user (a toggle, a re-run) can change it now.
+    ///
+    /// This is not "safe to persist". A terminal state can have been shaped by a
+    /// lookup that never answered, and
+    /// [`super::verdict::TerminalVerdict::try_from`] is what decides that — a
+    /// watcher uses this to know it has an answer to judge, and the conversion
+    /// to judge it.
+    pub fn is_terminal(&self) -> bool {
+        match self {
+            IdentifyState::Found { .. }
+            | IdentifyState::Conflict { .. }
+            | IdentifyState::NotFoundAnywhere { .. }
+            | IdentifyState::ManualOnly { .. } => true,
+            IdentifyState::Idle | IdentifyState::Triangulating { .. } => false,
+        }
+    }
+
     /// Apply a signal toggle. Mid-`Triangulating` it is only recorded — the
     /// in-flight lookups keep running, and `re_derive` applies the exclusion when
     /// they settle. From a settled state, re-combine in place.

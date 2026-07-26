@@ -93,6 +93,7 @@ mod tests {
             country: None,
             cover_art: None,
             source_group_id: None,
+            source_tracks: None,
         }
     }
 

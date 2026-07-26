@@ -204,6 +204,7 @@ mod tests {
             country: None,
             cover_art: None,
             source_group_id: Some("group-1".to_string()),
+            source_tracks: None,
         }
     }
 

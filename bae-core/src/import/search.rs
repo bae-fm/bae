@@ -31,6 +31,43 @@ pub struct MetadataResult {
     pub country: Option<String>,
     pub cover_art: Option<RemoteCover>,
     pub source_group_id: Option<String>,
+    /// What the source says about this release's own tracklist — the other half
+    /// of the Ready rule, which admits a single match only when the source's
+    /// count and total length agree with the candidate's.
+    ///
+    /// **`None` means nobody has asked yet** — not that the source has
+    /// nothing. Which responses answer for free is fixed and verified (see the
+    /// roadmap's Verified facts): the disc-ID lookup requests `inc=recordings`
+    /// and carries every track with its `length`, so a disc-ID match arrives
+    /// already filled; the search endpoint takes no `inc` and returns no
+    /// `tracks` array, so barcode and text matches arrive `None` until
+    /// something pays for [`fetch_source_tracks`].
+    ///
+    /// Keeping "unasked" distinct from "asked, and there is nothing" is what
+    /// lets a stored verdict say whether it is still waiting on that paid
+    /// lookup. Collapsing them would either strand a verdict at unverified
+    /// forever or re-buy the same empty answer on every launch.
+    pub source_tracks: Option<SourceTracks>,
+}
+
+/// What a source said about a release's tracklist, once something asked.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub enum SourceTracks {
+    /// It listed its tracks.
+    Listed {
+        count: u32,
+        /// Sum of the tracks' lengths in milliseconds. `None` when any of them
+        /// has no length: a partial sum understates the total and would read as
+        /// a duration disagreement, which is a wrong answer where the honest
+        /// one is "not known". A MusicBrainz release states lengths only when
+        /// asked with `inc=recordings`, and a Discogs tracklist can carry
+        /// untimed entries, so a count with no total is ordinary.
+        total_duration_ms: Option<u64>,
+    },
+    /// It answered and listed nothing — a release id it has since merged away,
+    /// or one with no media. There is nothing left to ask, so a verdict
+    /// carrying this is finished rather than waiting on a top-up.
+    Nothing,
 }
 
 impl From<&MetadataResult> for crate::db::LibraryCheck {
@@ -132,11 +169,32 @@ pub fn discogs_search_result_to_metadata(
         country: r.country,
         cover_art,
         source_group_id,
+        // The Discogs search response describes no tracklist; a Discogs result
+        // gets one only from a paid `get_release`.
+        source_tracks: None,
+    }
+}
+
+/// A MusicBrainz release's tracklist, as an `inc=recordings` response carries
+/// it.
+pub(crate) fn mb_source_tracks(r: &MbReleaseResponse) -> SourceTracks {
+    let tracks: Vec<&crate::musicbrainz::MbTrack> =
+        r.media.iter().flat_map(|medium| &medium.tracks).collect();
+    if tracks.is_empty() {
+        return SourceTracks::Nothing;
+    }
+    SourceTracks::Listed {
+        count: tracks.len() as u32,
+        total_duration_ms: tracks.iter().map(|t| t.length).sum::<Option<u64>>(),
     }
 }
 
 fn mb_release_to_metadata(r: MbReleaseResponse, cover_art: Option<RemoteCover>) -> MetadataResult {
     let pressing = crate::import::musicbrainz_mapper::pressing(&r);
+    // Free here: this response came from an `inc=recordings` endpoint, so the
+    // tracklist is already on the wire — a disc-ID match costs no second call to
+    // reach the Ready rule.
+    let source_tracks = Some(mb_source_tracks(&r));
     MetadataResult {
         source: MetadataSource::MusicBrainz,
         release_id: r.id,
@@ -149,6 +207,7 @@ fn mb_release_to_metadata(r: MbReleaseResponse, cover_art: Option<RemoteCover>) 
         country: pressing.country,
         cover_art,
         source_group_id: r.release_group.as_ref().map(|rg| rg.id.clone()),
+        source_tracks,
     }
 }
 
@@ -166,6 +225,9 @@ fn search_release_to_metadata(r: SearchRelease, cover_art: Option<RemoteCover>) 
         country: r.country,
         cover_art,
         source_group_id: r.release_group.as_ref().map(|rg| rg.id.clone()),
+        // `ws/2/release?query=…` takes no `inc`, so its response carries no
+        // `tracks` array to read a count or a length from.
+        source_tracks: None,
     }
 }
 
@@ -246,6 +308,89 @@ pub async fn lookup_by_discid(
         .zip(covers)
         .map(|(r, cover_art)| mb_release_to_metadata(r, cover_art))
         .collect())
+}
+
+/// One result's tracklist, fetched from its source.
+///
+/// This is the roadmap's one **paid** check, and it is background-only: it
+/// exists so a single unverified match can be admitted to Ready without a
+/// person looking at it, and nothing on the path of an opened candidate waits
+/// on it. A result that already carries `source_tracks` — every disc-ID match —
+/// must not be passed here at all; the caller checks first, which is what keeps
+/// the disc-ID path free.
+///
+/// Two outcomes, and the boundary between them is what a stored verdict
+/// records:
+///
+/// - `Ok(tracks)` — the source answered. `SourceTracks::Nothing` is an answer
+///   too, and a final one: nothing about it will be different next launch.
+/// - `Err(failure)` — no answer, or no way to ask (a Discogs result with the
+///   key since withdrawn). The caller writes no row and retries, exactly as for
+///   a failed identify lookup — the operation did not complete, so nothing is
+///   committed.
+///
+/// **Cost.** For MusicBrainz this is `lookup_release_by_id`, which spends a
+/// second limiter slot on `release-group/{id}` whenever the release carries no
+/// Discogs url-rel — so budget up to two slots, not one. On a 130-candidate
+/// queue that is mostly barcode and text matches, the sweep takes about
+/// 6.5 minutes rather than 4.3, and this paid half is two thirds of the wall
+/// clock rather than a half. It is kept for what the second request buys: the
+/// response lands in `RELEASE_CACHE`, so the commit that usually follows the
+/// candidate being imported costs nothing.
+pub async fn fetch_source_tracks(
+    result: &MetadataResult,
+    discogs_client: Option<&DiscogsClient>,
+    priority: CallPriority,
+) -> Result<SourceTracks, LookupFailure> {
+    match result.source {
+        MetadataSource::MusicBrainz => {
+            match musicbrainz::lookup_release_by_id(&result.release_id, priority).await {
+                Ok((response, _, _)) => Ok(mb_source_tracks(&response)),
+                // The id was merged away or deleted. That is permanent, so it
+                // is an answer rather than something to ask again.
+                Err(musicbrainz::MusicBrainzError::NotFound(_)) => Ok(SourceTracks::Nothing),
+                Err(e) => Err(mb_error_to_lookup_failure(e)),
+            }
+        }
+        MetadataSource::Discogs => {
+            let Some(client) = discogs_client else {
+                // A Discogs result can only exist because a Discogs search ran,
+                // so the key has been withdrawn since. We could not ask, which
+                // is not the source saying no.
+                return Err(LookupFailure::Diagnostic {
+                    detail: "no Discogs client to look the release up with".to_string(),
+                });
+            };
+            match client.get_release(&result.release_id, priority).await {
+                Ok((release, _)) => Ok(discogs_source_tracks(&release)),
+                Err(DiscogsError::NotFound) => Ok(SourceTracks::Nothing),
+                Err(e) => Err(LookupFailure::Diagnostic {
+                    detail: e.to_string(),
+                }),
+            }
+        }
+    }
+}
+
+/// A Discogs release's tracklist. Headings and index entries are not tracks and
+/// are skipped; a real track with no parseable duration leaves the total
+/// unknown while the count still stands.
+fn discogs_source_tracks(release: &crate::discogs::DiscogsRelease) -> SourceTracks {
+    let tracks: Vec<&crate::discogs::DiscogsTrack> = release
+        .tracklist
+        .iter()
+        .filter(|track| track.type_ == "track")
+        .collect();
+    if tracks.is_empty() {
+        return SourceTracks::Nothing;
+    }
+    SourceTracks::Listed {
+        count: tracks.len() as u32,
+        total_duration_ms: tracks
+            .iter()
+            .map(|t| t.duration.as_deref().and_then(parse_duration_to_ms))
+            .sum::<Option<u64>>(),
+    }
 }
 
 /// Parse a Discogs-style duration string ("3:45") to milliseconds.

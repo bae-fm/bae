@@ -7,8 +7,16 @@ use std::time::Duration;
 use tokio::sync::Notify;
 use tokio::time::Instant;
 
-/// Which stream a provider call belongs to. Interactive calls are admitted
-/// ahead of background ones; the interval still bounds the two together.
+/// Which stream a piece of import work belongs to — at bottom, whether a person
+/// is waiting on it.
+///
+/// One fact, two decisions. Provider admission: interactive calls are admitted
+/// ahead of background ones, and the interval still bounds the two together.
+/// And UI invalidation: a run a person started re-renders their candidate row
+/// as it progresses, while a background sweep's does not — the sidebar reads
+/// the sweep's own aggregate progress line instead, so per-candidate
+/// invalidations from it would be pure re-render cost for a queue nobody is
+/// looking at.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CallPriority {
     /// A person is waiting on this call — a typed search, an opened candidate.

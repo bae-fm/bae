@@ -138,6 +138,28 @@ pub struct CategorizedFiles {
 }
 
 impl CategorizedFiles {
+    /// This release's audio file paths, in the order the flattened pipeline
+    /// produces. A CUE-backed release yields only the audio files each pair
+    /// references (the CUE itself carries no embedded tags); a per-track release
+    /// yields each track in scan order. The Unknown import path reads embedded
+    /// cover art from these, and the signal fast pass probes their durations.
+    pub fn audio_paths(&self) -> Vec<PathBuf> {
+        let mut paths = Vec::new();
+        match &self.audio {
+            AudioContent::CueFlacPairs { pairs, .. } => {
+                for pair in pairs {
+                    paths.extend(pair.audio_files.iter().map(|file| file.path.clone()));
+                }
+            }
+            AudioContent::TrackFiles { tracks, .. } => {
+                for f in tracks {
+                    paths.push(f.path.clone());
+                }
+            }
+        }
+        paths
+    }
+
     /// Stable content fingerprint of this release's file structure: a SHA-256 over
     /// every audio, artwork, and document file's relative path + size, sorted so
     /// the digest is independent of discovery order. Relative (not absolute)

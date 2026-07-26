@@ -15,6 +15,7 @@ fn mk_result(release_id: &str, group_id: Option<&str>) -> MetadataResult {
         country: None,
         cover_art: None,
         source_group_id: group_id.map(str::to_string),
+        source_tracks: None,
     }
 }
 
@@ -76,6 +77,7 @@ fn signals_with_catalogs(
             catalogs,
             free_text: vec![],
         },
+        probed_total_duration_ms: 0,
     }
 }
 

@@ -1163,6 +1163,7 @@ fn record_event_overlays_identify_state() {
     state.upsert_folder(folder_candidate("/watch/a/rel1", "/watch/a"));
 
     state.record_event(&ImportEvent::IdentifyStateChanged {
+        priority: crate::util::rate_limiter::CallPriority::Interactive,
         candidate_key: "/watch/a/rel1".to_string(),
         state: crate::identify::IdentifyState::Idle,
         toolbar: Vec::new(),
@@ -1375,6 +1376,7 @@ async fn removing_a_watched_folder_cancels_in_flight_extraction() {
     extraction.start(
         key.clone(),
         ExtractionSource::Folder(candidate_path.clone()),
+        crate::util::rate_limiter::CallPriority::Interactive,
     );
     tokio::time::sleep(Duration::from_millis(100)).await;
     import_handle
@@ -1387,6 +1389,7 @@ async fn removing_a_watched_folder_cancels_in_flight_extraction() {
             Ok(Ok(ImportEvent::SignalsUpdated {
                 candidate_key,
                 signals,
+                ..
             })) if candidate_key == key => {
                 assert!(
                     !matches!(signals.text, TextSignal::Settled { .. }),

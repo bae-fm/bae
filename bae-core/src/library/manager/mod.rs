@@ -1145,6 +1145,13 @@ impl LibraryManager {
         &self.diagnostics
     }
 
+    /// The runtime the library's own services run on. Services built alongside
+    /// the manager take it from here rather than being handed a second one,
+    /// which could not be the same runtime.
+    pub(crate) fn runtime_handle(&self) -> &tokio::runtime::Handle {
+        &self.runtime_handle
+    }
+
     /// Ship one `audio_format_orphaned` anomaly per orphan the release-detail
     /// projection reported (a pure layer that can only detect and log them). A
     /// zero count ships nothing.

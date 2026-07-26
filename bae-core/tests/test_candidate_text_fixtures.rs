@@ -274,7 +274,11 @@ async fn drive_fixture(
     handle.register_analyzer(analyzer);
 
     let key = format!("fixture:{}", fixture.name);
-    handle.start(key, ExtractionSource::Folder(folder));
+    handle.start(
+        key,
+        ExtractionSource::Folder(folder),
+        bae_core::util::rate_limiter::CallPriority::Interactive,
+    );
 
     // Pull snapshots until the text signal settles. The fixture pipeline is
     // synchronous under the hood — everything finishes in well under a

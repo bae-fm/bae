@@ -2390,6 +2390,7 @@ mod import_candidate_state_tests {
                 country: Some("US".to_string()),
                 cover_art: None,
                 source_group_id: Some("group-1".to_string()),
+                source_tracks: None,
             }],
             track_count: 11,
             group: GroupKey {
@@ -2567,6 +2568,7 @@ mod import_candidate_state_tests {
                         catalogs: vec![],
                         free_text: vec![],
                     },
+                    probed_total_duration_ms: 0,
                 },
             },
         );

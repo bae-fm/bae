@@ -21,10 +21,13 @@
 //! [`verdict::TerminalVerdict`] is the third projection: what a *terminal*
 //! state (`Found`, `Conflict`, `NotFoundAnywhere`, `ManualOnly`) persists to
 //! `import_candidate_state` so it need not be re-fetched on the next launch.
+//! [`ready`] reads that stored verdict back and says what the queue needs from
+//! the user for that candidate — derived on every read, never stored.
 
 pub mod barcode;
 pub mod combine;
 pub mod discid;
+pub mod ready;
 pub mod service;
 pub mod state;
 pub mod toolbar;
@@ -32,6 +35,7 @@ pub mod verdict;
 pub mod view;
 
 pub use combine::{GroupKey, ResultProvenance};
+pub use ready::{classify, NeedsYou, QueueClassification};
 pub use service::IdentifyServiceHandle;
 pub use state::{BarcodeProgress, DiscidProgress, ExcludedSignal, IdentifyEvent, IdentifyState};
 pub use toolbar::{SignalKind, SignalRole, SignalState, ToolbarSignal};

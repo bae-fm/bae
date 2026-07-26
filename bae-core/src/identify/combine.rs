@@ -259,6 +259,7 @@ mod tests {
             country: None,
             cover_art: None,
             source_group_id: group_id.map(str::to_string),
+            source_tracks: None,
         }
     }
 

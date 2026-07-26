@@ -18,13 +18,19 @@ use tokio::runtime::Runtime;
 
 pub use cast::{CastController, CastError, CastStatus};
 
+/// Field order is drop order: the tokio runtime is declared **last** so
+/// everything that runs on it — `AppServices`' background tasks above all — is
+/// torn down while the runtime is still alive to run their shutdown. Declared
+/// first, as it was, the runtime is destroyed before `AppServicesInner::drop`
+/// gets to stop anything, and every task it would have cancelled is already
+/// gone.
 pub struct DesktopApp {
-    pub runtime: Runtime,
     pub services: AppServices,
     pub ui_event_bus: UiEventBus,
     mcp_controller: McpServerController,
     subsonic_controller: SubsonicServerController,
     cast_controller: CastController,
+    pub runtime: Runtime,
 }
 
 #[derive(Debug)]

@@ -33,6 +33,8 @@ pub mod search;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub(crate) mod service;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
+pub mod sweep;
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod track_to_file_mapper;
 mod types;
 
@@ -87,6 +89,8 @@ pub use handle::{
 };
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use service::ImportService;
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+pub use sweep::QueueSweepHandle;
 pub use types::{
     CoverSelection, EditValidationError, IdentityChoice, ImportCommand, ImportPhase,
     ImportProgress, ImportStep, MetadataPointer, MetadataRef, MetadataSource, PrepareStep,

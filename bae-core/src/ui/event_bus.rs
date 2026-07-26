@@ -346,18 +346,39 @@ impl UiEventBus {
                                     fraction,
                                 });
                             }
+                            // Only a run someone is watching re-renders their
+                            // row. The background sweep drives the whole queue
+                            // through these two events on every launch — a
+                            // thousand-plus invalidations, each making both UIs
+                            // re-query a candidate nobody has open — and the
+                            // sidebar reads its aggregate progress line
+                            // instead. `record_candidate_event` above still
+                            // records every one of them, so a later read of the
+                            // candidate is accurate; what is suppressed is the
+                            // push, not the state.
                             #[cfg(not(any(target_os = "ios", target_os = "android")))]
-                            ImportEvent::IdentifyStateChanged { candidate_key, .. } => {
-                                bus.invalidate(Invalidation::ImportCandidate {
-                                    key: candidate_key.clone(),
-                                });
+                            ImportEvent::IdentifyStateChanged {
+                                candidate_key,
+                                priority,
+                                ..
                             }
+                            | ImportEvent::SignalsUpdated {
+                                candidate_key,
+                                priority,
+                                ..
+                            } => {
+                                if priority == crate::util::rate_limiter::CallPriority::Interactive
+                                {
+                                    bus.invalidate(Invalidation::ImportCandidate {
+                                        key: candidate_key.clone(),
+                                    });
+                                }
+                            }
+                            // The sweep's progress line is the sidebar's, and
+                            // the sidebar is the next task's. Nothing renders it
+                            // yet, so nothing crosses yet.
                             #[cfg(not(any(target_os = "ios", target_os = "android")))]
-                            ImportEvent::SignalsUpdated { candidate_key, .. } => {
-                                bus.invalidate(Invalidation::ImportCandidate {
-                                    key: candidate_key.clone(),
-                                });
-                            }
+                            ImportEvent::QueueIdentifyProgress { .. } => {}
                         }
                     }
                     Err(tokio::sync::broadcast::error::RecvError::Lagged(n)) => {

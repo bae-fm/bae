@@ -120,6 +120,17 @@ impl IdentifyServiceHandle {
         });
     }
 
+    /// Whether a driver is registered for `key` — a run is in flight, or has
+    /// settled and is still alive to receive a toggle or a re-run.
+    ///
+    /// The queue sweep asks before starting one, because
+    /// [`IdentifyServiceHandle::start`] supersedes: sweeping a candidate the
+    /// user has open would cancel their interactive run and restart it at
+    /// background priority, which is the opposite of what the priority is for.
+    pub fn is_running(&self, key: &str) -> bool {
+        self.inner.drivers.lock().unwrap().contains_key(key)
+    }
+
     /// Cancel an in-flight identify. Drops the driver task on the next
     /// await point.
     pub fn cancel(&self, key: &str) {
@@ -207,6 +218,7 @@ async fn run_driver(
                     Ok(ImportEvent::SignalsUpdated {
                         candidate_key,
                         signals,
+                        priority: _,
                     }) if candidate_key == relay_key => {
                         if relay_event_tx
                             .send(IdentifyEvent::SignalsUpdated { signals })
@@ -252,6 +264,7 @@ async fn run_driver(
                 candidate_key: key.clone(),
                 toolbar: state.toolbar(),
                 state: state.clone(),
+                priority,
             },
         );
 
@@ -424,6 +437,7 @@ mod tests {
                 catalogs: vec![],
                 free_text: vec![],
             },
+            probed_total_duration_ms: 0,
         }
     }
 
@@ -471,6 +485,7 @@ mod tests {
             .send(ImportEvent::SignalsUpdated {
                 candidate_key: "k".to_string(),
                 signals: absent_signals(),
+                priority: CallPriority::Interactive,
             })
             .unwrap();
 

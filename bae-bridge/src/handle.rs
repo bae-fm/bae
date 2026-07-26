@@ -45,9 +45,11 @@ pub struct AppHandle {
 #[derive(uniffi::Object)]
 #[cfg(not(feature = "desktop"))]
 pub struct AppHandle {
-    pub(crate) runtime: tokio::runtime::Runtime,
     pub(crate) services: AppServices,
     pub(crate) ui_event_bus: bae_core::ui::UiEventBus,
+    /// Last, so it outlives the services that run on it — see
+    /// `bae_core::app::RunningApp`.
+    pub(crate) runtime: tokio::runtime::Runtime,
 }
 
 #[cfg(feature = "desktop")]
@@ -1315,15 +1317,12 @@ impl AppHandle {
     /// Start identifying a folder candidate. Identify subscribes first, then
     /// extraction streams the candidate's `Signals` (disc ID, barcodes,
     /// classified text) that identify looks up and the UI surfaces. Events
-    /// flow through the unified import event channel → bus → reducer → store.
+    /// flow through the unified import event channel → bus → reducer → store,
+    /// and the verdict this reaches is persisted like the background sweep's —
+    /// core decides all of that, so this stays one call.
     pub fn auto_identify_folder(&self, candidate_key: String, folder_path: String) {
-        let folder: std::path::PathBuf = folder_path.into();
         self.services
-            .identify()
-            .start(candidate_key.clone(), CallPriority::Interactive);
-        self.services
-            .extraction()
-            .start(candidate_key, ExtractionSource::Folder(folder));
+            .identify_folder_candidate(candidate_key, folder_path.into());
     }
 
     /// Start re-identifying an existing library release. Extraction resolves
@@ -1334,9 +1333,11 @@ impl AppHandle {
         self.services
             .identify()
             .start(candidate_key.clone(), CallPriority::Interactive);
-        self.services
-            .extraction()
-            .start(candidate_key, ExtractionSource::Release { release_id });
+        self.services.extraction().start(
+            candidate_key,
+            ExtractionSource::Release { release_id },
+            CallPriority::Interactive,
+        );
     }
 
     /// Stop a candidate's identify pipeline: cancels the identify driver and

@@ -3625,6 +3625,10 @@ impl BridgeMetadataResult {
             artist: _,
             cover_art: _,
             source_group_id: _,
+            // The source's own tracklist is Ready-rule evidence, not something
+            // a pressing row renders; the sidebar reads the classification the
+            // rule produced from it.
+            source_tracks: _,
         } = r;
         BridgeMetadataResult {
             source: BridgeMetadataSource::from_core(source),
@@ -3862,6 +3866,11 @@ impl BridgeSignals {
             disc_id,
             barcode,
             text,
+            // The probed total is a Ready-rule input, not a badge: the sidebar
+            // reads a candidate's classification, and the mapping pane will
+            // read per-file durations it probes for the one open candidate.
+            // Neither wants this number, so it does not cross.
+            probed_total_duration_ms: _,
         } = s;
 
         let disc_id = match disc_id {

@@ -249,6 +249,7 @@ impl ImportCandidateState {
                 candidate_key,
                 state,
                 toolbar,
+                priority: _,
             } => {
                 let runtime = self.runtime_entry(candidate_key);
                 runtime.identify_state = state.clone();
@@ -257,11 +258,17 @@ impl ImportCandidateState {
             ImportEvent::SignalsUpdated {
                 candidate_key,
                 signals,
+                priority: _,
             } => {
                 let runtime = self.runtime_entry(candidate_key);
                 runtime.signals = Some(signals.clone());
             }
-            ImportEvent::Scan(_) | ImportEvent::ImportLoudnessProgress { .. } => {}
+            // Queue progress is a queue-wide number with no candidate to record
+            // it against; it crosses as an event and is not part of any
+            // candidate's runtime.
+            ImportEvent::Scan(_)
+            | ImportEvent::ImportLoudnessProgress { .. }
+            | ImportEvent::QueueIdentifyProgress { .. } => {}
         }
     }
 
@@ -379,6 +386,10 @@ pub enum ImportEvent {
         candidate_key: String,
         state: crate::identify::IdentifyState,
         toolbar: Vec<crate::identify::ToolbarSignal>,
+        /// The run's own priority, carried so a consumer can tell a candidate
+        /// a person opened from one the background sweep picked up. The UI bus
+        /// re-renders for the first and not the second.
+        priority: crate::util::rate_limiter::CallPriority,
     },
     /// Full snapshot of a candidate's extracted signals (disc ID, barcodes,
     /// classified text), emitted on every transition — extraction start, each
@@ -387,6 +398,17 @@ pub enum ImportEvent {
     SignalsUpdated {
         candidate_key: String,
         signals: crate::signals::Signals,
+        /// The extraction's own priority — same meaning as
+        /// [`ImportEvent::IdentifyStateChanged`]'s.
+        priority: crate::util::rate_limiter::CallPriority,
+    },
+    /// How much of the import queue the background sweep has answered. Both
+    /// counts are the sweep's own: `total` is how many candidates it is
+    /// responsible for, which is a fact about the queue rather than something a
+    /// view can infer from the rows it happens to hold.
+    QueueIdentifyProgress {
+        identified: u32,
+        total: u32,
     },
 }
 
@@ -768,31 +790,6 @@ pub fn shape_user_edit_for_choice(
         }
     }
     edit
-}
-
-/// Audio file paths from a `CategorizedFiles`, in the order the flattened
-/// pipeline produces. A CUE-backed release yields only the audio files each pair
-/// references (the CUE itself carries no embedded tags); a per-track release
-/// yields each track in scan order. The Unknown import path reads embedded cover
-/// art from these.
-pub(crate) fn categorized_audio_paths(
-    categorized: &crate::import::folder_scanner::CategorizedFiles,
-) -> Vec<std::path::PathBuf> {
-    use crate::import::folder_scanner::AudioContent;
-    let mut paths = Vec::new();
-    match &categorized.audio {
-        AudioContent::CueFlacPairs { pairs, .. } => {
-            for pair in pairs {
-                paths.extend(pair.audio_files.iter().map(|file| file.path.clone()));
-            }
-        }
-        AudioContent::TrackFiles { tracks, .. } => {
-            for f in tracks {
-                paths.push(f.path.clone());
-            }
-        }
-    }
-    paths
 }
 
 /// Flatten a `CategorizedFiles` into the flat file list the downstream

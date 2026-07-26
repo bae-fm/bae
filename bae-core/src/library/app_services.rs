@@ -3,6 +3,8 @@ use super::manager::LibraryManager;
 use crate::identify::IdentifyServiceHandle;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 use crate::import::ImportServiceHandle;
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+use crate::import::QueueSweepHandle;
 use crate::playback::PlaybackHandle;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 use crate::signals::ExtractionServiceHandle;
@@ -17,6 +19,11 @@ struct AppServicesInner {
     identify: IdentifyServiceHandle,
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     extraction: ExtractionServiceHandle,
+    /// Queue-wide identification. Built here rather than handed in, so that a
+    /// library cannot exist without one: the sweep runs whether or not anyone
+    /// has the Import section open, and opening a view is not what starts it.
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    sweep: QueueSweepHandle,
 }
 
 impl Drop for AppServicesInner {
@@ -34,7 +41,12 @@ impl Drop for AppServicesInner {
     fn drop(&mut self) {
         self.playback.stop_and_join();
         #[cfg(not(any(target_os = "ios", target_os = "android")))]
-        self.import.stop_and_join();
+        {
+            // Before the import worker's join: the sweep's in-flight candidates
+            // are cancelled here, and a cancelled candidate writes no row.
+            self.sweep.stop();
+            self.import.stop_and_join();
+        }
     }
 }
 
@@ -61,6 +73,14 @@ impl AppServices {
         #[cfg(not(any(target_os = "ios", target_os = "android")))]
         extraction: ExtractionServiceHandle,
     ) -> Self {
+        #[cfg(not(any(target_os = "ios", target_os = "android")))]
+        let sweep = crate::import::sweep::start(
+            manager.runtime_handle(),
+            import.clone(),
+            identify.clone(),
+            extraction.clone(),
+            manager.clone(),
+        );
         AppServices {
             inner: Arc::new(AppServicesInner {
                 manager,
@@ -71,12 +91,28 @@ impl AppServices {
                 identify,
                 #[cfg(not(any(target_os = "ios", target_os = "android")))]
                 extraction,
+                #[cfg(not(any(target_os = "ios", target_os = "android")))]
+                sweep,
             }),
         }
     }
 
     pub fn library_manager(&self) -> &LibraryManager {
         &self.inner.manager
+    }
+
+    /// Identify a folder candidate for a person who is looking at it: the run
+    /// goes out at `Interactive`, and its verdict is persisted like the sweep's
+    /// own.
+    ///
+    /// Re-identifying a library release is deliberately *not* routed through
+    /// here: it has no candidate folder, so there is nothing to key a stored
+    /// verdict by.
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    pub fn identify_folder_candidate(&self, candidate_key: String, folder: std::path::PathBuf) {
+        self.inner
+            .sweep
+            .identify_for_selection(candidate_key, folder);
     }
 
     pub async fn get_queue_snapshot(

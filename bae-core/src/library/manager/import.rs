@@ -113,6 +113,26 @@ impl LibraryManager {
         Ok(self.database.is_source_folder_name_imported(name).await?)
     }
 
+    /// Persist one candidate's terminal identify verdict, keyed by its content
+    /// hash. Device-local and never synced; every device derives its own.
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    pub async fn save_import_candidate_state(
+        &self,
+        state: &crate::db::NewImportCandidateState,
+    ) -> Result<(), LibraryError> {
+        Ok(self.database.save_import_candidate_state(state).await?)
+    }
+
+    /// Every stored candidate verdict, keyed by content hash. The queue is a few
+    /// hundred rows at most, so the sweep reads it whole and decides in memory
+    /// which candidates still need identifying.
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    pub async fn load_import_candidate_states(
+        &self,
+    ) -> Result<HashMap<String, crate::db::DbImportCandidateState>, LibraryError> {
+        Ok(self.database.load_import_candidate_states().await?)
+    }
+
     /// Remove the release a failed import had already finalized, in one DB
     /// operation.
     pub async fn fail_import_and_delete_release(

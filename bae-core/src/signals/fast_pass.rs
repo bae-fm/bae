@@ -23,6 +23,10 @@ pub(super) struct FastPass {
     pub(super) artwork_paths: Vec<PathBuf>,
     pub(super) disc_id: DiscIdSignal,
     pub(super) cue_barcodes: Vec<SourcedValue>,
+    /// Total playing time of the folder's audio, summed over the same scan the
+    /// disc ID came from. `0` when nothing was probed — see
+    /// [`crate::signals::Signals::probed_total_duration_ms`].
+    pub(super) probed_total_duration_ms: u64,
 }
 
 impl FastPass {
@@ -34,8 +38,43 @@ impl FastPass {
             artwork_paths: Vec::new(),
             disc_id: DiscIdSignal::Absent { track_count: 0 },
             cue_barcodes: Vec::new(),
+            probed_total_duration_ms: 0,
         }
     }
+}
+
+/// Total playing time of a candidate's audio, probed file by file.
+///
+/// Rides the fast pass rather than becoming a second walk: the scan above has
+/// already resolved which files are the release's audio, and a CUE image's one
+/// file probes to the whole disc, so summing is the total either way.
+///
+/// `0` when any file fails to probe. A partial sum understates the total and
+/// would read downstream as "the durations disagree" — a wrong answer where the
+/// honest one is "we don't know", and the Ready rule refuses both, so the
+/// distinction costs nothing and the wrong reason is not offered to the user.
+fn probe_total_duration_ms(categorized: &CategorizedFiles) -> u64 {
+    let mut total_ms: u64 = 0;
+    for path in categorized.audio_paths() {
+        let Some(path_str) = path.to_str() else {
+            warn!(
+                "signals: audio path is not UTF-8, so it cannot be probed: {}",
+                path.display()
+            );
+            return 0;
+        };
+        match crate::audio_codec::probe_audio_from_path(path_str) {
+            Some(probe) => total_ms += probe.duration.as_millis() as u64,
+            None => {
+                debug!(
+                    "signals: could not probe {}; the candidate's total duration is unknown",
+                    path.display()
+                );
+                return 0;
+            }
+        }
+    }
+    total_ms
 }
 
 /// CUE `CATALOG` payloads (the disc's UPC/EAN) from the folder's parsed sheets,
@@ -110,8 +149,10 @@ pub(super) fn gather_non_ocr_sources(folder: &Path) -> FastPass {
         }
     };
 
-    // Disc ID and CUE-CATALOG barcodes come off the same parsed scan, no re-read.
+    // Disc ID, CUE-CATALOG barcodes, and the probed total all come off the same
+    // parsed scan, no re-read and no second walk over the audio.
     let track_count = categorized.audio.track_count();
+    pass.probed_total_duration_ms = probe_total_duration_ms(&categorized);
     pass.disc_id = match compute_discid_from_categorized(&categorized) {
         Some(disc_id) => DiscIdSignal::Computed {
             disc_id,

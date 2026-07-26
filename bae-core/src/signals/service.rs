@@ -29,6 +29,7 @@ use crate::library::LibraryManager;
 use crate::signals::{
     BarcodeSignal, DiscIdSignal, LookupFailure, SignalOrigin, Signals, SourcedValue, TextSignal,
 };
+use crate::util::rate_limiter::CallPriority;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use tokio::runtime::Handle;
@@ -143,12 +144,15 @@ impl ExtractionServiceHandle {
 
     /// Kick off extraction for candidate `key` from `source`. Cancels any prior
     /// in-flight extraction for the same key.
-    pub fn start(&self, key: String, source: ExtractionSource) {
+    /// `priority` is the run's, not a call's — extraction makes no provider
+    /// calls. It rides the `SignalsUpdated` snapshots so a consumer can tell a
+    /// candidate a person opened from one the background sweep picked up.
+    pub fn start(&self, key: String, source: ExtractionSource, priority: CallPriority) {
         let (token, generation) = self.inner.cancellation.register(key.clone());
 
         let inner = self.inner.clone();
         self.inner.runtime_handle.spawn(async move {
-            run_extraction(inner, key, source, token, generation).await;
+            run_extraction(inner, key, source, token, generation, priority).await;
         });
     }
 
@@ -168,6 +172,7 @@ async fn run_extraction(
     source: ExtractionSource,
     token: CancellationToken,
     generation: u64,
+    priority: CallPriority,
 ) {
     let _release = ExtractionRelease {
         inner: inner.clone(),
@@ -208,7 +213,9 @@ async fn run_extraction(
                     barcodes: fast.cue_barcodes,
                     pool,
                     artwork,
+                    probed_total_duration_ms: fast.probed_total_duration_ms,
                 },
+                priority,
             )
             .await;
         }
@@ -260,7 +267,11 @@ async fn run_extraction(
                     barcodes: Vec::new(),
                     pool: Pool::default(),
                     artwork,
+                    // A library release has no candidate folder to walk, so
+                    // nothing is probed on this path.
+                    probed_total_duration_ms: 0,
                 },
+                priority,
             )
             .await;
         }
@@ -310,6 +321,7 @@ struct ExtractionInputs {
     barcodes: Vec<SourcedValue>,
     pool: Pool,
     artwork: Option<ArtworkPass>,
+    probed_total_duration_ms: u64,
 }
 
 /// The artwork OCR pass: the images to decode, and the analyzer that decodes
@@ -338,12 +350,14 @@ async fn stream_extraction(
     key: String,
     token: CancellationToken,
     inputs: ExtractionInputs,
+    priority: CallPriority,
 ) {
     let ExtractionInputs {
         disc_id,
         mut barcodes,
         mut pool,
         artwork,
+        probed_total_duration_ms,
     } = inputs;
     let has_artwork = artwork.is_some();
 
@@ -363,7 +377,9 @@ async fn stream_extraction(
             has_artwork,
             classification.catalogs,
             classification.free_text,
+            probed_total_duration_ms,
         ),
+        priority,
     );
 
     // One OCR request at a time (Vision on the ANE is effectively serial).
@@ -379,7 +395,14 @@ async fn stream_extraction(
                     Ok(analysis) => analysis,
                     Err(failure) => {
                         emit_failed_ocr_signals(
-                            &inner, &key, disc_id, &barcodes, &mut pool, failure,
+                            &inner,
+                            &key,
+                            disc_id,
+                            &barcodes,
+                            &mut pool,
+                            failure,
+                            probed_total_duration_ms,
+                            priority,
                         );
                         return;
                     }
@@ -428,7 +451,9 @@ async fn stream_extraction(
                     has_artwork,
                     classification.catalogs,
                     classification.free_text,
+                    probed_total_duration_ms,
                 ),
+                priority,
             );
         }
     }
@@ -453,10 +478,13 @@ async fn stream_extraction(
                 catalogs: classification.catalogs,
                 free_text: classification.free_text,
             },
+            probed_total_duration_ms,
         },
+        priority,
     );
 }
 
+#[allow(clippy::too_many_arguments)]
 fn emit_failed_ocr_signals(
     inner: &ExtractionServiceInner,
     key: &str,
@@ -464,6 +492,8 @@ fn emit_failed_ocr_signals(
     barcodes: &[SourcedValue],
     pool: &mut Pool,
     failure: LookupFailure,
+    probed_total_duration_ms: u64,
+    priority: CallPriority,
 ) {
     let classification = pool.classify();
     let barcode = BarcodeSignal::Failed {
@@ -481,7 +511,9 @@ fn emit_failed_ocr_signals(
                 catalogs: classification.catalogs,
                 free_text: classification.free_text,
             },
+            probed_total_duration_ms,
         },
+        priority,
     );
 }
 
@@ -494,6 +526,7 @@ fn scanning_signals(
     has_artwork: bool,
     catalogs: Vec<SourcedValue>,
     free_text: Vec<String>,
+    probed_total_duration_ms: u64,
 ) -> Signals {
     let barcode = if has_artwork {
         BarcodeSignal::Scanning {
@@ -513,14 +546,21 @@ fn scanning_signals(
             catalogs,
             free_text,
         },
+        probed_total_duration_ms,
     }
 }
 
 /// Send a `Signals` snapshot on the import event bus.
-fn emit_signals(inner: &ExtractionServiceInner, key: &str, signals: Signals) {
+fn emit_signals(
+    inner: &ExtractionServiceInner,
+    key: &str,
+    signals: Signals,
+    priority: CallPriority,
+) {
     if let Err(err) = inner.event_tx.send(ImportEvent::SignalsUpdated {
         candidate_key: key.to_string(),
         signals,
+        priority,
     }) {
         warn!("signals: SignalsUpdated broadcast had no subscribers for {key}: {err}");
     }

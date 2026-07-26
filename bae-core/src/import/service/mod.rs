@@ -643,7 +643,7 @@ impl ImportService {
         let embedded_cover = if selected_cover.is_none()
             && matches!(identity_choice, crate::import::IdentityChoice::Unknown)
         {
-            let audio_paths = crate::import::handle::categorized_audio_paths(&categorized);
+            let audio_paths = categorized.audio_paths();
             tokio::task::spawn_blocking(move || {
                 crate::import::file_tag_mapper::read_embedded_cover(&audio_paths)
             })

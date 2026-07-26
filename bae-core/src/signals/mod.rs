@@ -70,4 +70,15 @@ pub struct Signals {
     pub disc_id: DiscIdSignal,
     pub barcode: BarcodeSignal,
     pub text: TextSignal,
+    /// Total playing time of the candidate's audio, in milliseconds, as probed
+    /// locally. Not a lookup input like the three above — it narrows, which is
+    /// the other half of what a signal is for: the Ready rule admits a single
+    /// match only when this total agrees with the source's own.
+    ///
+    /// `0` means "not probed" — a folder whose scan failed, a re-identified
+    /// library release (no folder to walk), or audio that would not probe. A
+    /// release of zero length does not exist, so the two are one fact to every
+    /// consumer: there is no total to compare, and the candidate is not Ready.
+    /// The stored column is `NOT NULL`, and carries the same `0`.
+    pub probed_total_duration_ms: u64,
 }

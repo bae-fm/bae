@@ -32,6 +32,50 @@ fn http_client() -> &'static reqwest::Client {
 /// Rate limiter ensuring at least 1 second between MusicBrainz API requests.
 static RATE_LIMITER: RateLimiter = RateLimiter::new(Duration::from_secs(1));
 
+/// Restore the shared limiter, so one test's requests don't delay the next's.
+/// Serialize the tests that call it — the limiter is process-wide.
+#[cfg(test)]
+pub(crate) fn reset_rate_limiter_for_test() {
+    RATE_LIMITER.reset();
+}
+
+/// Where every MusicBrainz web-service request goes.
+const BASE_URL: &str = "https://musicbrainz.org/ws/2";
+
+/// One web-service URL. `path` is everything after `ws/2/`, query string
+/// included.
+#[cfg(not(any(test, feature = "test-utils")))]
+fn ws2(path: &str) -> String {
+    format!("{BASE_URL}/{path}")
+}
+
+/// The redirectable form of [`ws2`], compiled only into test builds. The
+/// Discogs client carries the same seam as a per-client `base_url` field; this
+/// module cannot, because its entry points are free functions over one static
+/// client — so the override is a static, and production never pays for the lock
+/// or the branch.
+#[cfg(any(test, feature = "test-utils"))]
+fn ws2(path: &str) -> String {
+    let base = BASE_URL_OVERRIDE
+        .lock()
+        .expect("MusicBrainz base URL mutex poisoned");
+    let base = base.as_deref().unwrap_or(BASE_URL);
+    format!("{base}/{path}")
+}
+
+#[cfg(any(test, feature = "test-utils"))]
+static BASE_URL_OVERRIDE: std::sync::Mutex<Option<String>> = std::sync::Mutex::new(None);
+
+/// Point every MusicBrainz request at `url` (`None` restores the live service),
+/// so a test can answer them from a local server. Process-wide, like the
+/// limiter and the caches it sits next to: serialize the tests that set it.
+#[cfg(any(test, feature = "test-utils"))]
+pub fn set_base_url_for_test(url: Option<String>) {
+    *BASE_URL_OVERRIDE
+        .lock()
+        .expect("MusicBrainz base URL mutex poisoned") = url;
+}
+
 /// Retry only what a retry can fix. `NotFound` is MusicBrainz's answer, not a
 /// fault — and it's the ordinary answer for a disc it doesn't have, so retrying
 /// buys three round trips and three rate-limit waits to learn it again. `Other`
@@ -198,18 +242,12 @@ async fn lookup_by_discid_once(
     priority: CallPriority,
 ) -> Result<Vec<MbReleaseResponse>, MusicBrainzError> {
     debug!("MusicBrainz: Looking up DiscID '{}'", discid);
-    let base_url = reqwest::Url::parse("https://musicbrainz.org/ws/2/discid/")
-        .map_err(|e| MusicBrainzError::Other(format!("Failed to parse base URL: {}", e)))?;
-    let url = base_url
-        .join(discid)
-        .map_err(|e| MusicBrainzError::Other(format!("Failed to construct DiscID URL: {}", e)))?;
-    let mut url_with_params = url.clone();
-    url_with_params.set_query(Some(
-        "inc=recordings+artist-credits+release-groups+url-rels+labels",
+    let url = ws2(&format!(
+        "discid/{discid}?inc=recordings+artist-credits+release-groups+url-rels+labels"
     ));
-    debug!("MusicBrainz API request: {}", url_with_params);
+    debug!("MusicBrainz API request: {}", url);
 
-    let response = match mb_get(http_client().get(url_with_params.as_str()), priority).await {
+    let response = match mb_get(http_client().get(&url), priority).await {
         Ok(response) => response,
         Err(MusicBrainzError::Provider { status: Some(404) }) => {
             return Err(MusicBrainzError::NotFound(discid.to_string()));
@@ -263,10 +301,9 @@ async fn lookup_release_by_id_once(
     }
 
     debug!("MusicBrainz: Looking up release ID '{}'", release_id);
-    let url = format!(
-        "https://musicbrainz.org/ws/2/release/{}?inc=recordings+artist-credits+release-groups+release-group-rels+url-rels+labels+media+recording-level-rels+work-level-rels+work-rels+artist-rels",
-        release_id,
-    );
+    let url = ws2(&format!(
+        "release/{release_id}?inc=recordings+artist-credits+release-groups+release-group-rels+url-rels+labels+media+recording-level-rels+work-level-rels+work-rels+artist-rels"
+    ));
     debug!("MusicBrainz API request: {}", url);
 
     let response = match mb_get(http_client().get(&url), priority).await {
@@ -368,10 +405,9 @@ pub async fn fetch_release_group_json(
         return Ok(hit);
     }
 
-    let url = format!(
-        "https://musicbrainz.org/ws/2/release-group/{}?inc=url-rels&fmt=json",
-        release_group_id
-    );
+    let url = ws2(&format!(
+        "release-group/{release_group_id}?inc=url-rels&fmt=json"
+    ));
     debug!("Fetching release-group JSON: {}", url);
 
     let response = mb_get(http_client().get(&url), priority).await?;
@@ -438,10 +474,9 @@ pub async fn lookup_release_id_by_discogs_url(
     }
 
     let discogs_url = format!("https://www.discogs.com/release/{}", discogs_release_id);
-    let url = format!(
-        "https://musicbrainz.org/ws/2/url?resource={}&inc=release-rels&fmt=json",
-        discogs_url
-    );
+    let url = ws2(&format!(
+        "url?resource={discogs_url}&inc=release-rels&fmt=json"
+    ));
     debug!("MusicBrainz URL lookup: {}", url);
 
     let response = match mb_get(http_client().get(&url), priority).await {
@@ -605,11 +640,11 @@ async fn search_releases_with_params_once(
     let query = params.build_query();
     debug!("MusicBrainz: Searching with params: {:?}", params);
     debug!("   Query: {}", query);
-    let url = "https://musicbrainz.org/ws/2/release";
+    let url = ws2("release");
     debug!("MusicBrainz API request: {}?query={}&limit=25", url, query);
 
     let request = http_client()
-        .get(url)
+        .get(&url)
         .query(&[("query", query.as_str()), ("limit", "25")]);
     let response = match mb_get(request, priority).await {
         Ok(response) => response,

@@ -1,6 +1,7 @@
 use super::*;
 use crate::signals::{ArtworkAnalysis, ArtworkAnalyzer};
 use crate::test_logs::capture_warn_logs;
+use crate::util::rate_limiter::CallPriority;
 use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
@@ -219,6 +220,7 @@ async fn emits_fast_pass_then_ocr_then_settled() {
     handle.start(
         "cand-1".to_string(),
         ExtractionSource::Folder(folder.clone()),
+        CallPriority::Interactive,
     );
 
     // Fast-pass snapshot + 2 OCR snapshots + final settled = 4 snapshots.
@@ -291,7 +293,11 @@ async fn no_artwork_still_emits_fast_pass_and_settled() {
     let (handle, _tx, mut rx, _lib_tmp) = make_service().await;
     handle.register_analyzer(analyzer);
 
-    handle.start("cand-1".to_string(), ExtractionSource::Folder(folder));
+    handle.start(
+        "cand-1".to_string(),
+        ExtractionSource::Folder(folder),
+        CallPriority::Interactive,
+    );
 
     // Fast pass + final settled.
     let signals = collect_signals(&mut rx, 2).await;
@@ -322,6 +328,7 @@ async fn missing_folder_settles_gracefully() {
     handle.start(
         "cand-1".to_string(),
         ExtractionSource::Folder(PathBuf::from("/nonexistent-folder-path")),
+        CallPriority::Interactive,
     );
 
     // Fast pass (empty pool) + final settled.
@@ -360,7 +367,9 @@ async fn emit_signals_warns_when_broadcast_has_no_subscribers() {
                     catalogs: Vec::new(),
                     free_text: Vec::new(),
                 },
+                probed_total_duration_ms: 0,
             },
+            CallPriority::Interactive,
         );
     });
 
@@ -392,7 +401,11 @@ async fn ocr_join_error_aborts_without_settled_snapshot() {
     let (handle, _tx, mut rx, _lib_tmp) = make_service().await;
     handle.register_analyzer(analyzer);
 
-    handle.start("cand-1".to_string(), ExtractionSource::Folder(folder));
+    handle.start(
+        "cand-1".to_string(),
+        ExtractionSource::Folder(folder),
+        CallPriority::Interactive,
+    );
 
     let signals = collect_signals(&mut rx, 2).await;
     assert!(matches!(signals[0].text, TextSignal::Scanning { .. }));
@@ -437,7 +450,11 @@ FILE "audio.flac" WAVE
     let (handle, _tx, mut rx, _lib_tmp) = make_service().await;
     handle.register_analyzer(analyzer);
 
-    handle.start("cand-1".to_string(), ExtractionSource::Folder(folder));
+    handle.start(
+        "cand-1".to_string(),
+        ExtractionSource::Folder(folder),
+        CallPriority::Interactive,
+    );
 
     // Fast pass + final settled.
     let signals = collect_signals(&mut rx, 2).await;
@@ -477,7 +494,11 @@ FILE \"audio.flac\" WAVE\n  \
     let (handle, _tx, mut rx, _lib_tmp) = make_service().await;
     handle.register_analyzer(analyzer);
 
-    handle.start("cand-1".to_string(), ExtractionSource::Folder(folder));
+    handle.start(
+        "cand-1".to_string(),
+        ExtractionSource::Folder(folder),
+        CallPriority::Interactive,
+    );
 
     // Fast pass + final settled.
     let signals = collect_signals(&mut rx, 2).await;
@@ -549,7 +570,11 @@ async fn text_files_feed_free_text() {
     let (handle, _tx, mut rx, _lib_tmp) = make_service().await;
     handle.register_analyzer(analyzer);
 
-    handle.start("cand-1".to_string(), ExtractionSource::Folder(folder));
+    handle.start(
+        "cand-1".to_string(),
+        ExtractionSource::Folder(folder),
+        CallPriority::Interactive,
+    );
 
     // Fast pass + final settled. The cluster scores PathComponent(3) + TextFile(1).
     let signals = collect_signals(&mut rx, 2).await;
@@ -579,7 +604,11 @@ async fn cancelled_ocr_run_does_not_settle() {
     let (handle, _tx, mut rx, _lib_tmp) = make_service().await;
     handle.register_analyzer(analyzer);
 
-    handle.start("cand-1".to_string(), ExtractionSource::Folder(folder));
+    handle.start(
+        "cand-1".to_string(),
+        ExtractionSource::Folder(folder),
+        CallPriority::Interactive,
+    );
 
     tokio::time::sleep(Duration::from_millis(50)).await;
     handle.cancel("cand-1");
@@ -616,7 +645,11 @@ async fn candidate_removed_event_cancels_in_flight_extraction() {
     let (handle, tx, mut rx, _lib_tmp) = make_service().await;
     handle.register_analyzer(analyzer.clone());
 
-    handle.start("cand-1".to_string(), ExtractionSource::Folder(folder));
+    handle.start(
+        "cand-1".to_string(),
+        ExtractionSource::Folder(folder),
+        CallPriority::Interactive,
+    );
     tokio::time::sleep(Duration::from_millis(100)).await;
     tx.send(ImportEvent::Scan(ScanEvent::CandidateRemoved {
         candidate_key: "cand-1".to_string(),
@@ -659,8 +692,13 @@ async fn restart_for_same_key_cancels_prior_then_starts_fresh() {
     handle.start(
         "cand-1".to_string(),
         ExtractionSource::Folder(folder.clone()),
+        CallPriority::Interactive,
     );
-    handle.start("cand-1".to_string(), ExtractionSource::Folder(folder));
+    handle.start(
+        "cand-1".to_string(),
+        ExtractionSource::Folder(folder),
+        CallPriority::Interactive,
+    );
 
     let mut saw_settled = false;
     loop {
@@ -705,14 +743,20 @@ async fn three_starts_cancel_each_predecessor() {
     handle.start(
         "cand-1".to_string(),
         ExtractionSource::Folder(folder.clone()),
+        CallPriority::Interactive,
     );
     tokio::time::sleep(Duration::from_millis(40)).await;
     handle.start(
         "cand-1".to_string(),
         ExtractionSource::Folder(folder.clone()),
+        CallPriority::Interactive,
     );
     tokio::time::sleep(Duration::from_millis(40)).await;
-    handle.start("cand-1".to_string(), ExtractionSource::Folder(folder));
+    handle.start(
+        "cand-1".to_string(),
+        ExtractionSource::Folder(folder),
+        CallPriority::Interactive,
+    );
 
     let mut saw_settled = false;
     loop {
@@ -746,7 +790,11 @@ async fn no_analyzer_leaves_artwork_absent_rather_than_scanned() {
     // No `register_analyzer` — this is Windows and Linux today.
     let (handle, _tx, mut rx, _lib_tmp) = make_service().await;
 
-    handle.start("cand-1".to_string(), ExtractionSource::Folder(folder));
+    handle.start(
+        "cand-1".to_string(),
+        ExtractionSource::Folder(folder),
+        CallPriority::Interactive,
+    );
 
     // Fast pass + final settled. No OCR snapshots: there is nothing to decode with.
     let signals = collect_signals(&mut rx, 2).await;
@@ -779,7 +827,11 @@ FILE \"audio.flac\" WAVE\n  \
     fs::write(folder.join("Album.cue"), cue).unwrap();
 
     let (handle, _tx, mut rx, _lib_tmp) = make_service().await;
-    handle.start("cand-1".to_string(), ExtractionSource::Folder(folder));
+    handle.start(
+        "cand-1".to_string(),
+        ExtractionSource::Folder(folder),
+        CallPriority::Interactive,
+    );
 
     let signals = collect_signals(&mut rx, 2).await;
     let codes: Vec<&str> = signals[1]

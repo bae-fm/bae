@@ -22,10 +22,16 @@ use coven::{IdRef, UuidProvider};
 /// A fully constructed, running application: the tokio runtime that owns all
 /// background work, the composed service layer, and the UI event bus already
 /// wired to every service channel. Each frontend wraps this in its own handle.
+/// Field order is drop order: the tokio runtime is declared **last** so
+/// everything that runs on it — `AppServices`' background tasks above all — is
+/// torn down while the runtime is still alive to run their shutdown. Declared
+/// first, as it was, the runtime is destroyed before `AppServicesInner::drop`
+/// gets to stop anything, and every task it would have cancelled is already
+/// gone.
 pub struct RunningApp {
-    pub runtime: tokio::runtime::Runtime,
     pub services: AppServices,
     pub ui_event_bus: UiEventBus,
+    pub runtime: tokio::runtime::Runtime,
 }
 
 /// Why [`bootstrap`] could not bring the application up. Frontends map these
