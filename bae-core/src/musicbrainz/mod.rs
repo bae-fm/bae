@@ -11,7 +11,7 @@
 use std::sync::OnceLock;
 use std::time::Duration;
 
-use crate::util::rate_limiter::RateLimiter;
+use crate::util::rate_limiter::{CallPriority, RateLimiter};
 use crate::util::session_cache::SessionCache;
 use thiserror::Error;
 use tracing::{debug, warn};
@@ -58,8 +58,11 @@ where
         .await
 }
 
-async fn mb_get(request: reqwest::RequestBuilder) -> Result<reqwest::Response, MusicBrainzError> {
-    RATE_LIMITER.wait().await;
+async fn mb_get(
+    request: reqwest::RequestBuilder,
+    priority: CallPriority,
+) -> Result<reqwest::Response, MusicBrainzError> {
+    RATE_LIMITER.wait(priority).await;
     let response = request
         .header("Accept", "application/json")
         .timeout(crate::util::http::API_TIMEOUT)
@@ -180,14 +183,20 @@ impl MusicBrainzError {
 // ============================================================================
 
 /// Lookup releases by MusicBrainz DiscID.
-pub async fn lookup_by_discid(discid: &str) -> Result<Vec<MbReleaseResponse>, MusicBrainzError> {
+pub async fn lookup_by_discid(
+    discid: &str,
+    priority: CallPriority,
+) -> Result<Vec<MbReleaseResponse>, MusicBrainzError> {
     mb_retry("MusicBrainz DiscID lookup", || {
-        lookup_by_discid_once(discid)
+        lookup_by_discid_once(discid, priority)
     })
     .await
 }
 
-async fn lookup_by_discid_once(discid: &str) -> Result<Vec<MbReleaseResponse>, MusicBrainzError> {
+async fn lookup_by_discid_once(
+    discid: &str,
+    priority: CallPriority,
+) -> Result<Vec<MbReleaseResponse>, MusicBrainzError> {
     debug!("MusicBrainz: Looking up DiscID '{}'", discid);
     let base_url = reqwest::Url::parse("https://musicbrainz.org/ws/2/discid/")
         .map_err(|e| MusicBrainzError::Other(format!("Failed to parse base URL: {}", e)))?;
@@ -200,7 +209,7 @@ async fn lookup_by_discid_once(discid: &str) -> Result<Vec<MbReleaseResponse>, M
     ));
     debug!("MusicBrainz API request: {}", url_with_params);
 
-    let response = match mb_get(http_client().get(url_with_params.as_str())).await {
+    let response = match mb_get(http_client().get(url_with_params.as_str()), priority).await {
         Ok(response) => response,
         Err(MusicBrainzError::Provider { status: Some(404) }) => {
             return Err(MusicBrainzError::NotFound(discid.to_string()));
@@ -236,15 +245,17 @@ async fn lookup_by_discid_once(discid: &str) -> Result<Vec<MbReleaseResponse>, M
 /// no Discogs URL.
 pub async fn lookup_release_by_id(
     release_id: &str,
+    priority: CallPriority,
 ) -> Result<(MbReleaseResponse, Option<String>, String), MusicBrainzError> {
     mb_retry("MusicBrainz release fetch", || {
-        lookup_release_by_id_once(release_id)
+        lookup_release_by_id_once(release_id, priority)
     })
     .await
 }
 
 async fn lookup_release_by_id_once(
     release_id: &str,
+    priority: CallPriority,
 ) -> Result<(MbReleaseResponse, Option<String>, String), MusicBrainzError> {
     if let Some(hit) = RELEASE_CACHE.get_cloned(release_id) {
         debug!("MusicBrainz release cache hit for {}", release_id);
@@ -258,7 +269,7 @@ async fn lookup_release_by_id_once(
     );
     debug!("MusicBrainz API request: {}", url);
 
-    let response = match mb_get(http_client().get(&url)).await {
+    let response = match mb_get(http_client().get(&url), priority).await {
         Ok(response) => response,
         Err(MusicBrainzError::Provider { status: Some(404) }) => {
             return Err(MusicBrainzError::NotFound(release_id.to_string()));
@@ -300,7 +311,8 @@ async fn lookup_release_by_id_once(
                     rg_id
                 );
 
-                discogs_url = release_group_discogs_url(rg_id, fetch_release_group(rg_id).await);
+                discogs_url =
+                    release_group_discogs_url(rg_id, fetch_release_group(rg_id, priority).await);
             }
         }
     }
@@ -336,14 +348,18 @@ fn release_group_discogs_url(
 /// them rather than two.
 async fn fetch_release_group(
     release_group_id: &str,
+    priority: CallPriority,
 ) -> Result<ReleaseGroupResponse, MusicBrainzError> {
-    let json = fetch_release_group_json(release_group_id).await?;
+    let json = fetch_release_group_json(release_group_id, priority).await?;
     serde_json::from_str(&json)
         .map_err(|e| MusicBrainzError::Other(format!("Failed to parse JSON: {}", e)))
 }
 
 /// A release-group's raw JSON, for archival. Cached for the session.
-pub async fn fetch_release_group_json(release_group_id: &str) -> Result<String, MusicBrainzError> {
+pub async fn fetch_release_group_json(
+    release_group_id: &str,
+    priority: CallPriority,
+) -> Result<String, MusicBrainzError> {
     if let Some(hit) = RELEASE_GROUP_JSON_CACHE.get_cloned(release_group_id) {
         debug!(
             "MusicBrainz release-group JSON cache hit for {}",
@@ -358,7 +374,7 @@ pub async fn fetch_release_group_json(release_group_id: &str) -> Result<String, 
     );
     debug!("Fetching release-group JSON: {}", url);
 
-    let response = mb_get(http_client().get(&url)).await?;
+    let response = mb_get(http_client().get(&url), priority).await?;
 
     let raw_json = response
         .text()
@@ -382,8 +398,9 @@ pub async fn fetch_release_group_json(release_group_id: &str) -> Result<String, 
 /// they write cannot differ by which path ran.
 pub async fn fetch_release_with_metadata(
     release_id: &str,
+    priority: CallPriority,
 ) -> Result<(MbReleaseResponse, Option<String>, Vec<(String, String)>), MusicBrainzError> {
-    let (response, discogs_url, raw_json) = lookup_release_by_id(release_id).await?;
+    let (response, discogs_url, raw_json) = lookup_release_by_id(release_id, priority).await?;
 
     let mut pairs = vec![(
         crate::import::MetadataSource::MusicBrainz
@@ -393,7 +410,7 @@ pub async fn fetch_release_with_metadata(
     )];
 
     if let Some(rg_id) = response.release_group.as_ref().map(|rg| rg.id.as_str()) {
-        match fetch_release_group_json(rg_id).await {
+        match fetch_release_group_json(rg_id, priority).await {
             Ok(rg_json) => pairs.push((RELEASE_GROUP_METADATA_SOURCE.to_string(), rg_json)),
             Err(e) => warn!("Failed to fetch MB release-group: {e}"),
         }
@@ -410,6 +427,7 @@ const RELEASE_GROUP_METADATA_SOURCE: &str = "musicbrainz_release_group";
 /// `None` when no MB editor has linked one.
 pub async fn lookup_release_id_by_discogs_url(
     discogs_release_id: &str,
+    priority: CallPriority,
 ) -> Result<Option<String>, MusicBrainzError> {
     if let Some(hit) = DISCOGS_URL_LOOKUP_CACHE.get_cloned(discogs_release_id) {
         debug!(
@@ -426,7 +444,7 @@ pub async fn lookup_release_id_by_discogs_url(
     );
     debug!("MusicBrainz URL lookup: {}", url);
 
-    let response = match mb_get(http_client().get(&url)).await {
+    let response = match mb_get(http_client().get(&url), priority).await {
         Ok(response) => response,
         Err(MusicBrainzError::Provider { status: Some(404) }) => {
             DISCOGS_URL_LOOKUP_CACHE.put(discogs_release_id, None);
@@ -467,8 +485,9 @@ pub async fn lookup_release_id_by_discogs_url(
 /// direction does.
 pub async fn fetch_mb_xref(
     discogs_release_id: &str,
+    priority: CallPriority,
 ) -> Option<(MbReleaseResponse, Vec<(String, String)>)> {
-    let mb_release_id = match lookup_release_id_by_discogs_url(discogs_release_id).await {
+    let mb_release_id = match lookup_release_id_by_discogs_url(discogs_release_id, priority).await {
         Ok(Some(id)) => {
             debug!("Found linked MB release: {}", id);
             id
@@ -489,7 +508,7 @@ pub async fn fetch_mb_xref(
         }
     };
 
-    match fetch_release_with_metadata(&mb_release_id).await {
+    match fetch_release_with_metadata(&mb_release_id, priority).await {
         Ok((response, _discogs_url, pairs)) => Some((response, pairs)),
         Err(e) => {
             warn!("Failed to fetch linked MB release {}: {e}", mb_release_id);
@@ -565,6 +584,7 @@ impl QueryValueFormat {
 
 pub async fn search_releases_with_params(
     params: &ReleaseSearchParams,
+    priority: CallPriority,
 ) -> Result<Vec<SearchRelease>, MusicBrainzError> {
     // Outside the retry: no request is made, so repeating cannot help.
     if !params.has_any_field() {
@@ -573,13 +593,14 @@ pub async fn search_releases_with_params(
         ));
     }
     mb_retry("MusicBrainz search", || {
-        search_releases_with_params_once(params)
+        search_releases_with_params_once(params, priority)
     })
     .await
 }
 
 async fn search_releases_with_params_once(
     params: &ReleaseSearchParams,
+    priority: CallPriority,
 ) -> Result<Vec<SearchRelease>, MusicBrainzError> {
     let query = params.build_query();
     debug!("MusicBrainz: Searching with params: {:?}", params);
@@ -590,7 +611,7 @@ async fn search_releases_with_params_once(
     let request = http_client()
         .get(url)
         .query(&[("query", query.as_str()), ("limit", "25")]);
-    let response = match mb_get(request).await {
+    let response = match mb_get(request, priority).await {
         Ok(response) => response,
         Err(MusicBrainzError::Provider { status: Some(404) }) => return Ok(Vec::new()),
         Err(error) => return Err(error),

@@ -2,6 +2,7 @@ use crate::db::{DbLibraryImage, LibraryImageType};
 use crate::discogs::DiscogsClient;
 use crate::import::MetadataSource;
 use crate::library::LibraryManager;
+use crate::util::rate_limiter::CallPriority;
 use tracing::{debug, warn};
 
 /// Download an artist's primary image from Discogs and build the row describing
@@ -17,7 +18,10 @@ pub async fn fetch_artist_image(
     discogs_client: &DiscogsClient,
     library_manager: &LibraryManager,
 ) -> Option<(DbLibraryImage, Vec<u8>)> {
-    let image_url = match discogs_client.get_artist_image(discogs_artist_id).await {
+    let image_url = match discogs_client
+        .get_artist_image(discogs_artist_id, CallPriority::Interactive)
+        .await
+    {
         Ok(Some(url)) => url,
         Ok(None) => {
             debug!("No image found for Discogs artist {}", discogs_artist_id);

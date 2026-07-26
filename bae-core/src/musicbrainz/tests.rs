@@ -234,7 +234,7 @@ async fn test_fetch_mb_xref_with_backlink_returns_response_and_metadata() {
     );
     seed_release_group_json_cache(mb_group_id, r#"{"id":"mb-group-hit-1"}"#.to_string());
 
-    let result = fetch_mb_xref(discogs_id).await;
+    let result = fetch_mb_xref(discogs_id, CallPriority::Interactive).await;
 
     let (response, pairs) = result.expect("expected cross-link to be found");
     assert_eq!(response.id, mb_release_id);
@@ -253,7 +253,7 @@ async fn test_fetch_mb_xref_no_backlink_returns_none() {
     let discogs_id = "fetch-mb-xref-miss-1";
     seed_discogs_url_lookup(discogs_id, None);
 
-    let result = fetch_mb_xref(discogs_id).await;
+    let result = fetch_mb_xref(discogs_id, CallPriority::Interactive).await;
 
     assert!(
         result.is_none(),
@@ -279,7 +279,7 @@ async fn test_fetch_mb_xref_release_without_group_still_returns_response() {
         ),
     );
 
-    let result = fetch_mb_xref(discogs_id).await;
+    let result = fetch_mb_xref(discogs_id, CallPriority::Interactive).await;
 
     let (response, pairs) = result.expect("expected response even without release_group");
     assert_eq!(response.id, mb_release_id);
@@ -357,7 +357,10 @@ async fn fetch_release_with_metadata_archives_release_and_group() {
     );
     seed_release_group_json_cache(group_id, r#"{"id":"group"}"#.to_string());
 
-    let (response, discogs_url, pairs) = fetch_release_with_metadata(release_id).await.unwrap();
+    let (response, discogs_url, pairs) =
+        fetch_release_with_metadata(release_id, CallPriority::Interactive)
+            .await
+            .unwrap();
 
     assert_eq!(response.id, release_id);
     assert_eq!(
@@ -390,7 +393,10 @@ async fn fetch_release_with_metadata_without_group_archives_only_the_release() {
         ),
     );
 
-    let (_, discogs_url, pairs) = fetch_release_with_metadata(release_id).await.unwrap();
+    let (_, discogs_url, pairs) =
+        fetch_release_with_metadata(release_id, CallPriority::Interactive)
+            .await
+            .unwrap();
 
     assert_eq!(discogs_url, None);
     assert_eq!(

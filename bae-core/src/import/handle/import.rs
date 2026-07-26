@@ -1,4 +1,5 @@
 use super::*;
+use crate::util::rate_limiter::CallPriority;
 
 impl ImportServiceHandle {
     /// Project an Unknown import candidate into a `ReleaseUserEdit` so the
@@ -94,7 +95,9 @@ impl ImportServiceHandle {
         use crate::config::DiscogsValidation;
 
         let client = DiscogsClient::new(token.to_string());
-        match validation_from_validate_result(client.validate_token().await) {
+        match validation_from_validate_result(
+            client.validate_token(CallPriority::Interactive).await,
+        ) {
             DiscogsValidation::Valid => {
                 self.persist_discogs_key(token, DiscogsValidation::Valid)?;
                 Ok(DiscogsSaveOutcome::Valid)
@@ -143,7 +146,9 @@ impl ImportServiceHandle {
                 detail: "config says a Discogs key is stored but the keyring has none".to_string(),
             });
         };
-        match validation_from_validate_result(client.validate_token().await) {
+        match validation_from_validate_result(
+            client.validate_token(CallPriority::Interactive).await,
+        ) {
             settled @ (DiscogsValidation::Valid | DiscogsValidation::Rejected) => self
                 .library_manager
                 .set_discogs_validation(settled)

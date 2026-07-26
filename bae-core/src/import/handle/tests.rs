@@ -10,6 +10,7 @@ use super::*;
 use crate::db::{Database, DbArtist};
 use crate::test_logs::capture_warn_logs_async;
 use chrono::Utc;
+use serial_test::serial;
 use tempfile::TempDir;
 use uuid::Uuid;
 
@@ -117,6 +118,7 @@ async fn test_same_name_no_ids_reuses_existing() {
 }
 
 #[tokio::test]
+#[serial(discogs_rate_limiter)]
 async fn fetch_artist_images_warns_and_skips_when_existing_image_check_fails() {
     let (manager, _tmp) = setup_test_manager().await;
     let database = manager.database_for_test();

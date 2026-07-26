@@ -6,6 +6,8 @@ use bae_core::library::AppServices;
 use bae_core::playback::QueueEntryId;
 #[cfg(feature = "desktop")]
 use bae_core::signals::ExtractionSource;
+#[cfg(feature = "desktop")]
+use bae_core::util::rate_limiter::CallPriority;
 use tracing::info;
 
 #[cfg(feature = "oauth-providers")]
@@ -1316,7 +1318,9 @@ impl AppHandle {
     /// flow through the unified import event channel → bus → reducer → store.
     pub fn auto_identify_folder(&self, candidate_key: String, folder_path: String) {
         let folder: std::path::PathBuf = folder_path.into();
-        self.services.identify().start(candidate_key.clone());
+        self.services
+            .identify()
+            .start(candidate_key.clone(), CallPriority::Interactive);
         self.services
             .extraction()
             .start(candidate_key, ExtractionSource::Folder(folder));
@@ -1327,7 +1331,9 @@ impl AppHandle {
     /// through the same identify channel — the UI consumes them by candidate
     /// key the same way it does for folder imports.
     pub fn auto_identify_release(&self, candidate_key: String, release_id: String) {
-        self.services.identify().start(candidate_key.clone());
+        self.services
+            .identify()
+            .start(candidate_key.clone(), CallPriority::Interactive);
         self.services
             .extraction()
             .start(candidate_key, ExtractionSource::Release { release_id });

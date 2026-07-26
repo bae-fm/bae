@@ -1,4 +1,5 @@
 use super::*;
+use crate::util::rate_limiter::CallPriority;
 
 enum ProviderSearchParams {
     MusicBrainz(crate::musicbrainz::ReleaseSearchParams),
@@ -99,11 +100,17 @@ impl ImportServiceHandle {
 
         let results = match query.into_provider_params() {
             ProviderSearchParams::MusicBrainz(params) => {
-                crate::import::search::search_mb(&self.cover_art_archive, params).await?
+                crate::import::search::search_mb(
+                    &self.cover_art_archive,
+                    params,
+                    CallPriority::Interactive,
+                )
+                .await?
             }
             ProviderSearchParams::Discogs(params) => {
                 let client = self.discogs_client()?;
-                crate::import::search::search_discogs(&client, params).await?
+                crate::import::search::search_discogs(&client, params, CallPriority::Interactive)
+                    .await?
             }
         };
 
@@ -203,7 +210,7 @@ impl ImportServiceHandle {
                             continue;
                         }
                     };
-                    match client.get_release(rid).await {
+                    match client.get_release(rid, CallPriority::Interactive).await {
                         Ok((discogs_release, _raw_json)) => {
                             if let Some(cover) = discogs_release.remote_cover() {
                                 covers.push(cover);

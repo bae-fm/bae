@@ -9,6 +9,7 @@ use crate::import::types::MetadataSource;
 use crate::import::ImportError;
 use crate::musicbrainz::{self, MbReleaseResponse, ReleaseSearchParams, SearchRelease};
 use crate::signals::LookupFailure;
+use crate::util::rate_limiter::CallPriority;
 
 /// A metadata search result from either MusicBrainz or Discogs.
 ///
@@ -183,8 +184,9 @@ async fn musicbrainz_releases_to_metadata(
 pub async fn search_mb(
     cover_art_archive: &CoverArtArchiveClient,
     params: ReleaseSearchParams,
+    priority: CallPriority,
 ) -> Result<Vec<MetadataResult>, ImportError> {
-    let releases = musicbrainz::search_releases_with_params(&params).await?;
+    let releases = musicbrainz::search_releases_with_params(&params, priority).await?;
 
     Ok(musicbrainz_releases_to_metadata(cover_art_archive, releases).await)
 }
@@ -193,8 +195,9 @@ pub async fn search_mb(
 pub async fn search_discogs(
     client: &DiscogsClient,
     params: DiscogsSearchParams,
+    priority: CallPriority,
 ) -> Result<Vec<MetadataResult>, DiscogsError> {
-    let results = client.search_with_params(&params).await?;
+    let results = client.search_with_params(&params, priority).await?;
     Ok(results
         .into_iter()
         .map(discogs_search_result_to_metadata)
@@ -224,8 +227,9 @@ fn mb_error_to_lookup_failure(e: musicbrainz::MusicBrainzError) -> LookupFailure
 pub async fn lookup_by_discid(
     cover_art_archive: &CoverArtArchiveClient,
     discid: &str,
+    priority: CallPriority,
 ) -> Result<Vec<MetadataResult>, LookupFailure> {
-    let releases = match musicbrainz::lookup_by_discid(discid).await {
+    let releases = match musicbrainz::lookup_by_discid(discid, priority).await {
         Ok(releases) => releases,
         Err(musicbrainz::MusicBrainzError::NotFound(_)) => return Ok(Vec::new()),
         Err(e) => return Err(mb_error_to_lookup_failure(e)),
@@ -368,7 +372,9 @@ pub async fn commit_mb_release(
         crate::import::musicbrainz_mapper::fetch_mb_response(release_id).await?;
     let discogs_release = match (discogs_client, discogs_url.as_deref()) {
         (Some(client), Some(url)) => {
-            match crate::discogs::client::fetch_discogs_xref(client, url).await {
+            match crate::discogs::client::fetch_discogs_xref(client, url, CallPriority::Interactive)
+                .await
+            {
                 Some((release, pairs)) => {
                     metadata_pairs.extend(pairs);
                     Some(release)

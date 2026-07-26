@@ -5,6 +5,7 @@ use tracing::warn;
 
 use crate::discogs::DiscogsClient;
 use crate::musicbrainz;
+use crate::util::rate_limiter::CallPriority;
 use coven::Clock;
 use coven::IdProvider;
 
@@ -30,12 +31,17 @@ pub async fn fetch_discogs_release(
     ),
     ImportError,
 > {
-    let (discogs_release, raw_json) = client.get_release(release_id).await?;
+    let (discogs_release, raw_json) = client
+        .get_release(release_id, CallPriority::Interactive)
+        .await?;
 
     let mut metadata = vec![(MetadataSource::Discogs.as_str().to_string(), raw_json)];
 
     let master_year = if let Some(ref master_id) = discogs_release.master_id {
-        match client.get_master(master_id).await {
+        match client
+            .get_master(master_id, CallPriority::Interactive)
+            .await
+        {
             Ok((year, master_json)) => {
                 metadata.push(("discogs_master".to_string(), master_json));
                 year
@@ -63,7 +69,7 @@ pub async fn fetch_and_map_discogs(
 ) -> Result<(ParsedAlbum, Vec<(String, String)>), ImportError> {
     let (discogs_release, master_year, mut metadata) =
         fetch_discogs_release(client, release_id).await?;
-    let mb_xref = match musicbrainz::fetch_mb_xref(release_id).await {
+    let mb_xref = match musicbrainz::fetch_mb_xref(release_id, CallPriority::Interactive).await {
         Some((response, xref_pairs)) => {
             metadata.extend(xref_pairs);
             Some(response)

@@ -10,6 +10,7 @@ use crate::import::cover_art::CoverArtArchiveClient;
 use crate::import::ImportEvent;
 use crate::library::LibraryManager;
 use crate::signals::LookupFailure;
+use crate::util::rate_limiter::CallPriority;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use tokio::sync::broadcast;
@@ -85,10 +86,14 @@ impl IdentifyServiceHandle {
     /// Start identifying `key`. Fire-and-forget; states come back as
     /// `ImportEvent::IdentifyStateChanged`.
     ///
+    /// `priority` is the run's, not the call's: every provider lookup this run
+    /// dispatches is admitted under it, so a candidate a person opened outranks
+    /// one a sweep picked up.
+    ///
     /// Identify consumes the `Signals` extraction streams, so the caller must
     /// start identify *before* extraction for `key`: the bus subscription is
     /// taken synchronously here, so no early snapshot can be missed.
-    pub fn start(&self, key: String) {
+    pub fn start(&self, key: String, priority: CallPriority) {
         // A restart (the user re-selects after a scan refresh) supersedes the
         // prior run — a candidate is identified once at a time.
         self.cancel(&key);
@@ -111,7 +116,7 @@ impl IdentifyServiceHandle {
 
         let inner = self.inner.clone();
         self.inner.runtime_handle.spawn(async move {
-            run_driver(inner, key, token, event_tx, event_rx, bus_rx).await;
+            run_driver(inner, key, priority, token, event_tx, event_rx, bus_rx).await;
         });
     }
 
@@ -180,6 +185,7 @@ fn remove_driver_if_current(
 async fn run_driver(
     inner: Arc<IdentifyServiceInner>,
     key: String,
+    priority: CallPriority,
     token: CancellationToken,
     event_tx: mpsc::UnboundedSender<IdentifyEvent>,
     mut event_rx: mpsc::UnboundedReceiver<IdentifyEvent>,
@@ -259,7 +265,13 @@ async fn run_driver(
         }
 
         for effect in effects {
-            dispatch_effect(inner.clone(), effect, event_tx.clone(), token.clone());
+            dispatch_effect(
+                inner.clone(),
+                effect,
+                priority,
+                event_tx.clone(),
+                token.clone(),
+            );
         }
     }
 }
@@ -267,6 +279,7 @@ async fn run_driver(
 fn dispatch_effect(
     inner: Arc<IdentifyServiceInner>,
     effect: Effect,
+    priority: CallPriority,
     event_tx: mpsc::UnboundedSender<IdentifyEvent>,
     token: CancellationToken,
 ) {
@@ -280,7 +293,8 @@ fn dispatch_effect(
             let cover_art_archive = inner.cover_art_archive.clone();
             runtime.spawn(async move {
                 let outcome =
-                    lookup_and_resolve(&cover_art_archive, &disc_id, &library_manager).await;
+                    lookup_and_resolve(&cover_art_archive, &disc_id, &library_manager, priority)
+                        .await;
                 if token.is_cancelled() {
                     return;
                 }
@@ -324,7 +338,8 @@ fn dispatch_effect(
                         return;
                     }
                 };
-                let lookup = lookup_barcode(&cover_art_archive, &barcode, discogs.as_ref()).await;
+                let lookup =
+                    lookup_barcode(&cover_art_archive, &barcode, discogs.as_ref(), priority).await;
                 if token.is_cancelled() {
                     return;
                 }
@@ -448,7 +463,7 @@ mod tests {
         };
         let mut bus_rx = inner.event_tx.subscribe();
 
-        handle.start("k".to_string());
+        handle.start("k".to_string(), CallPriority::Interactive);
 
         // Feed the signals over the bus, as the extraction service would.
         inner

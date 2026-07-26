@@ -2,7 +2,7 @@ use crate::discogs::models::{DiscogsArtist, DiscogsRelease, DiscogsRoleArtist, D
 use crate::discogs::remote_cover_from_urls;
 use crate::import::cover_art::RemoteCover;
 use crate::retry::retry_with_backoff_if;
-use crate::util::rate_limiter::RateLimiter;
+use crate::util::rate_limiter::{CallPriority, RateLimiter};
 use crate::util::session_cache::SessionCache;
 use reqwest::{Client, Error as ReqwestError, Response, StatusCode};
 use serde::Deserialize;
@@ -402,14 +402,18 @@ impl DiscogsClient {
             .timeout(crate::util::http::API_TIMEOUT)
     }
 
-    async fn send(&self, request: reqwest::RequestBuilder) -> Result<Response, DiscogsError> {
-        RATE_LIMITER.wait().await;
+    async fn send(
+        &self,
+        request: reqwest::RequestBuilder,
+        priority: CallPriority,
+    ) -> Result<Response, DiscogsError> {
+        RATE_LIMITER.wait(priority).await;
         let response = request.send().await?;
         classify_discogs_response(response)
     }
 
     /// Check the API token with a request cheap enough to throw away.
-    pub async fn validate_token(&self) -> Result<(), DiscogsError> {
+    pub async fn validate_token(&self, priority: CallPriority) -> Result<(), DiscogsError> {
         let url = format!("{}/database/search", self.base_url);
         let query_params = [("per_page", "1")];
 
@@ -419,7 +423,7 @@ impl DiscogsClient {
             should_retry_discogs,
             crate::retry::linear_backoff,
             || async {
-                self.send(self.get(&url).query(&query_params))
+                self.send(self.get(&url).query(&query_params), priority)
                     .await
                     .map(|_| ())
             },
@@ -431,13 +435,16 @@ impl DiscogsClient {
     pub async fn search_with_params(
         &self,
         params: &DiscogsSearchParams,
+        priority: CallPriority,
     ) -> Result<Vec<DiscogsSearchResult>, DiscogsError> {
-        self.observed(self.search_with_params_inner(params)).await
+        self.observed(self.search_with_params_inner(params, priority))
+            .await
     }
 
     async fn search_with_params_inner(
         &self,
         params: &DiscogsSearchParams,
+        priority: CallPriority,
     ) -> Result<Vec<DiscogsSearchResult>, DiscogsError> {
         use tracing::{debug, warn};
         let url = format!("{}/database/search", self.base_url);
@@ -468,7 +475,7 @@ impl DiscogsClient {
             crate::retry::linear_backoff,
             || async {
                 let response = self
-                    .send(self.get(&url).query(&query_params))
+                    .send(self.get(&url).query(&query_params), priority)
                     .await
                     .inspect_err(|error| match error {
                         DiscogsError::RateLimit => warn!("Discogs rate limit exceeded"),
@@ -507,11 +514,19 @@ impl DiscogsClient {
         Ok(releases)
     }
     /// A release, parsed, plus the raw JSON the API returned.
-    pub async fn get_release(&self, id: &str) -> Result<(DiscogsRelease, String), DiscogsError> {
-        self.observed(self.get_release_inner(id)).await
+    pub async fn get_release(
+        &self,
+        id: &str,
+        priority: CallPriority,
+    ) -> Result<(DiscogsRelease, String), DiscogsError> {
+        self.observed(self.get_release_inner(id, priority)).await
     }
 
-    async fn get_release_inner(&self, id: &str) -> Result<(DiscogsRelease, String), DiscogsError> {
+    async fn get_release_inner(
+        &self,
+        id: &str,
+        priority: CallPriority,
+    ) -> Result<(DiscogsRelease, String), DiscogsError> {
         if let Some(hit) = RELEASE_CACHE.get_cloned(id) {
             debug!("Discogs release cache hit for {}", id);
             return Ok(hit);
@@ -524,7 +539,7 @@ impl DiscogsClient {
             should_retry_discogs,
             crate::retry::linear_backoff,
             || async {
-                let response = self.send(self.get(&url)).await?;
+                let response = self.send(self.get(&url), priority).await?;
                 let raw_json = response.text().await.map_err(DiscogsError::Transport)?;
                 let release = parse_discogs_release_json(&raw_json)?;
                 Ok((release, raw_json))
@@ -537,13 +552,19 @@ impl DiscogsClient {
 
     /// The master's year — the *original* release year, so 1967 for a 1985 reissue —
     /// plus the raw JSON.
-    pub async fn get_master(&self, master_id: &str) -> Result<(Option<u32>, String), DiscogsError> {
-        self.observed(self.get_master_inner(master_id)).await
+    pub async fn get_master(
+        &self,
+        master_id: &str,
+        priority: CallPriority,
+    ) -> Result<(Option<u32>, String), DiscogsError> {
+        self.observed(self.get_master_inner(master_id, priority))
+            .await
     }
 
     async fn get_master_inner(
         &self,
         master_id: &str,
+        priority: CallPriority,
     ) -> Result<(Option<u32>, String), DiscogsError> {
         if let Some(hit) = MASTER_CACHE.get_cloned(master_id) {
             debug!("Discogs master cache hit for {}", master_id);
@@ -557,7 +578,7 @@ impl DiscogsClient {
             should_retry_discogs,
             crate::retry::linear_backoff,
             || async {
-                let response = self.send(self.get(&url)).await?;
+                let response = self.send(self.get(&url), priority).await?;
                 let raw_json = response.text().await.map_err(DiscogsError::Transport)?;
                 let year = parse_discogs_master_year(&raw_json)?;
                 Ok((year, raw_json))
@@ -568,13 +589,19 @@ impl DiscogsClient {
         Ok(value)
     }
 
-    pub async fn get_artist_image(&self, artist_id: &str) -> Result<Option<String>, DiscogsError> {
-        self.observed(self.get_artist_image_inner(artist_id)).await
+    pub async fn get_artist_image(
+        &self,
+        artist_id: &str,
+        priority: CallPriority,
+    ) -> Result<Option<String>, DiscogsError> {
+        self.observed(self.get_artist_image_inner(artist_id, priority))
+            .await
     }
 
     async fn get_artist_image_inner(
         &self,
         artist_id: &str,
+        priority: CallPriority,
     ) -> Result<Option<String>, DiscogsError> {
         let url = format!("{}/artists/{}", self.base_url, artist_id);
         let Some(json) = retry_with_backoff_if(
@@ -583,7 +610,7 @@ impl DiscogsClient {
             should_retry_discogs,
             crate::retry::linear_backoff,
             || async {
-                let response = match self.send(self.get(&url)).await {
+                let response = match self.send(self.get(&url), priority).await {
                     Ok(response) => response,
                     Err(DiscogsError::NotFound) => {
                         warn!(
@@ -636,6 +663,7 @@ impl DiscogsClient {
 pub async fn fetch_discogs_xref(
     client: &DiscogsClient,
     discogs_url: &str,
+    priority: CallPriority,
 ) -> Option<(DiscogsRelease, Vec<(String, String)>)> {
     let id = match crate::import::musicbrainz_mapper::extract_discogs_release_id(discogs_url) {
         Some(id) => id,
@@ -654,7 +682,7 @@ pub async fn fetch_discogs_xref(
         id
     );
     let mut pairs: Vec<(String, String)> = Vec::new();
-    let discogs_release = match client.get_release(&id).await {
+    let discogs_release = match client.get_release(&id, priority).await {
         Ok((release, raw)) => {
             pairs.push((
                 crate::import::MetadataSource::Discogs.as_str().to_string(),
@@ -669,7 +697,7 @@ pub async fn fetch_discogs_xref(
     };
 
     if let Some(ref master_id) = discogs_release.master_id {
-        match client.get_master(master_id).await {
+        match client.get_master(master_id, priority).await {
             Ok((_year, master_json)) => {
                 pairs.push(("discogs_master".to_string(), master_json));
             }
@@ -686,6 +714,7 @@ pub async fn fetch_discogs_xref(
 mod tests {
     use super::*;
     use crate::import::MetadataSource;
+    use serial_test::serial;
     use std::io::{Read, Write};
     use std::net::TcpListener;
     use std::sync::atomic::{AtomicUsize, Ordering};
@@ -816,22 +845,27 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial(discogs_rate_limiter)]
     async fn transport_error_display_does_not_include_discogs_token() {
         let _guard = discogs_test_guard().lock().await;
-        RATE_LIMITER.reset().await;
+        RATE_LIMITER.reset();
         let token = "secret-discogs-token";
         let mut client = DiscogsClient::new(token.to_string());
         client.base_url = "http://127.0.0.1:1".to_string();
 
-        let error = client.validate_token().await.unwrap_err();
+        let error = client
+            .validate_token(CallPriority::Interactive)
+            .await
+            .unwrap_err();
 
         assert!(!error.to_string().contains(token));
     }
 
     #[tokio::test]
+    #[serial(discogs_rate_limiter)]
     async fn validate_token_sends_token_in_authorization_header() {
         let _guard = discogs_test_guard().lock().await;
-        RATE_LIMITER.reset().await;
+        RATE_LIMITER.reset();
         let token = "secret-discogs-token";
         let listener = TcpListener::bind("127.0.0.1:0").expect("test listener should bind");
         let url = format!(
@@ -855,7 +889,7 @@ mod tests {
         client.base_url = url;
 
         client
-            .validate_token()
+            .validate_token(CallPriority::Interactive)
             .await
             .expect("token validation should accept 200 response");
 
@@ -870,16 +904,17 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial(discogs_rate_limiter)]
     async fn search_retries_rate_limit_then_returns_success() {
         let _guard = discogs_test_guard().lock().await;
-        RATE_LIMITER.reset().await;
+        RATE_LIMITER.reset();
         let (url, request_count) =
             discogs_response_server(vec![RATE_LIMITED, SEARCH_OK_EMPTY]).await;
         let mut client = DiscogsClient::new("token".to_string());
         client.base_url = url;
 
         let releases = client
-            .search_with_params(&DiscogsSearchParams::default())
+            .search_with_params(&DiscogsSearchParams::default(), CallPriority::Interactive)
             .await
             .expect("retry should return the successful search response");
 
@@ -888,16 +923,17 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial(discogs_rate_limiter)]
     async fn search_returns_persistent_rate_limit_after_retry_attempts() {
         let _guard = discogs_test_guard().lock().await;
-        RATE_LIMITER.reset().await;
+        RATE_LIMITER.reset();
         let (url, request_count) =
             discogs_response_server(vec![RATE_LIMITED, RATE_LIMITED, RATE_LIMITED]).await;
         let mut client = DiscogsClient::new("token".to_string());
         client.base_url = url;
 
         let error = client
-            .search_with_params(&DiscogsSearchParams::default())
+            .search_with_params(&DiscogsSearchParams::default(), CallPriority::Interactive)
             .await
             .expect_err("persistent rate limit should fail after retry attempts");
 
@@ -906,15 +942,16 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial(discogs_rate_limiter)]
     async fn search_does_not_retry_invalid_api_key() {
         let _guard = discogs_test_guard().lock().await;
-        RATE_LIMITER.reset().await;
+        RATE_LIMITER.reset();
         let (url, request_count) = discogs_response_server(vec![UNAUTHORIZED]).await;
         let mut client = DiscogsClient::new("token".to_string());
         client.base_url = url;
 
         let error = client
-            .search_with_params(&DiscogsSearchParams::default())
+            .search_with_params(&DiscogsSearchParams::default(), CallPriority::Interactive)
             .await
             .expect_err("invalid API key should fail without retry");
 
@@ -926,15 +963,16 @@ mod tests {
     /// answer to this request — it must be tried once, not retried. Before the
     /// error split it landed in `Request` and was retried like a transport failure.
     #[tokio::test]
+    #[serial(discogs_rate_limiter)]
     async fn search_does_not_retry_client_error() {
         let _guard = discogs_test_guard().lock().await;
-        RATE_LIMITER.reset().await;
+        RATE_LIMITER.reset();
         let (url, request_count) = discogs_response_server(vec![BAD_REQUEST]).await;
         let mut client = DiscogsClient::new("token".to_string());
         client.base_url = url;
 
         let error = client
-            .search_with_params(&DiscogsSearchParams::default())
+            .search_with_params(&DiscogsSearchParams::default(), CallPriority::Interactive)
             .await
             .expect_err("a 400 should fail without retry");
 
@@ -968,15 +1006,16 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial(discogs_rate_limiter)]
     async fn search_does_not_retry_not_found() {
         let _guard = discogs_test_guard().lock().await;
-        RATE_LIMITER.reset().await;
+        RATE_LIMITER.reset();
         let (url, request_count) = discogs_response_server(vec![NOT_FOUND]).await;
         let mut client = DiscogsClient::new("token".to_string());
         client.base_url = url;
 
         let error = client
-            .search_with_params(&DiscogsSearchParams::default())
+            .search_with_params(&DiscogsSearchParams::default(), CallPriority::Interactive)
             .await
             .expect_err("not found should fail without retry");
 
@@ -985,9 +1024,10 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial(discogs_rate_limiter)]
     async fn search_observer_records_one_signal_after_internal_retry() {
         let _guard = discogs_test_guard().lock().await;
-        RATE_LIMITER.reset().await;
+        RATE_LIMITER.reset();
         let (url, request_count) =
             discogs_response_server(vec![RATE_LIMITED, SEARCH_OK_EMPTY]).await;
         let signals = Arc::new(Mutex::new(Vec::<&'static str>::new()));
@@ -1002,7 +1042,7 @@ mod tests {
         client.base_url = url;
 
         client
-            .search_with_params(&DiscogsSearchParams::default())
+            .search_with_params(&DiscogsSearchParams::default(), CallPriority::Interactive)
             .await
             .expect("retry should return the successful search response");
 

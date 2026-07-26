@@ -6,6 +6,7 @@ use crate::db::LibraryStatus;
 use crate::import::cover_art::CoverArtArchiveClient;
 use crate::import::search::{lookup_by_discid, MetadataResult};
 use crate::signals::LookupFailure;
+use crate::util::rate_limiter::CallPriority;
 
 /// Look up a disc ID on MusicBrainz and pair each match with its library status.
 /// Empty when MB has no hits — which the reducer treats as a settled signal with
@@ -14,9 +15,11 @@ pub async fn lookup_and_resolve(
     cover_art_archive: &CoverArtArchiveClient,
     disc_id: &str,
     library_manager: &crate::library::LibraryManager,
+    priority: CallPriority,
 ) -> Result<Vec<(MetadataResult, LibraryStatus)>, LookupFailure> {
     // The MB lookup's failure is already typed — pass it through structured.
-    let matches: Vec<MetadataResult> = lookup_by_discid(cover_art_archive, disc_id).await?;
+    let matches: Vec<MetadataResult> =
+        lookup_by_discid(cover_art_archive, disc_id, priority).await?;
 
     // The in-library check is a local DB read, so its failure is diagnostic
     // detail, never a provider verdict.

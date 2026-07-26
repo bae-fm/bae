@@ -19,6 +19,7 @@ use crate::import::{ImportError, MetadataSource};
 use crate::musicbrainz::{
     label_and_catno, MbArtistRef, MbMedium, MbRelation, MbReleaseResponse, MbTrack, MbWork,
 };
+use crate::util::rate_limiter::CallPriority;
 use coven::Clock;
 use coven::IdProvider;
 use std::collections::HashSet;
@@ -153,7 +154,10 @@ fn mb_work_ref(work: &MbWork, converted: &mut HashSet<String>) -> WorkGraphRef {
 pub async fn fetch_mb_response(
     release_id: &str,
 ) -> Result<(MbReleaseResponse, Option<String>, Vec<(String, String)>), ImportError> {
-    Ok(crate::musicbrainz::fetch_release_with_metadata(release_id).await?)
+    Ok(
+        crate::musicbrainz::fetch_release_with_metadata(release_id, CallPriority::Interactive)
+            .await?,
+    )
 }
 
 /// The pressing a MusicBrainz release describes: its own release date's year, its
