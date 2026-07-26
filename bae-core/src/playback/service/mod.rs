@@ -977,8 +977,6 @@ async fn prepare_track_for_playback(
             let reader = create_audio_reader(
                 library_manager,
                 &segment.file_id,
-                segment.cloud_path.as_deref(),
-                segment.file_size,
                 fetch_arbiter.clone(),
                 segment.span.start_byte,
                 resolved.content_type == crate::util::content_type::ContentType::Ape,

@@ -3013,15 +3013,7 @@ async fn playback_error_reason_for_file(
     use crate::playback::sparse_buffer::create_sparse_buffer;
 
     let buffer = create_sparse_buffer(file.file_size as u64);
-    let reader = create_audio_reader(
-        manager,
-        &file.id,
-        file.cloud_path.as_deref(),
-        file.file_size as u64,
-        FetchArbiter::new(),
-        None,
-        false,
-    );
+    let reader = create_audio_reader(manager, &file.id, FetchArbiter::new(), None, false);
     let (error_tx, mut error_rx) = tokio::sync::mpsc::unbounded_channel();
     reader.start_reading(
         buffer.clone(),

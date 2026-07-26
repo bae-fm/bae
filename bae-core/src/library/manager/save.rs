@@ -121,15 +121,7 @@ impl LibraryManager {
         let buffer = crate::playback::sparse_buffer::create_sparse_buffer(file.file_size as u64);
         // A fresh arbiter per file: save has no foreground track to prioritize,
         // so every fetch runs ungated.
-        let reader = create_audio_reader(
-            self,
-            &file.id,
-            file.cloud_path.as_deref(),
-            file.file_size as u64,
-            FetchArbiter::new(),
-            None,
-            false,
-        );
+        let reader = create_audio_reader(self, &file.id, FetchArbiter::new(), None, false);
         let file_id = file.id.clone();
         reader.start_reading(
             buffer.clone(),

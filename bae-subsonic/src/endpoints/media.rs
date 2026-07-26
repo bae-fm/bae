@@ -103,12 +103,7 @@ async fn stream_raw(
         .map_err(|_| SubError::generic(format!("file {} has a negative size", file.id)))?;
     let content_type = file.content_type.as_str().to_string();
 
-    let buffer = open_file_stream(
-        manager,
-        &segment.file_id,
-        segment.cloud_path.as_deref(),
-        total,
-    );
+    let buffer = open_file_stream(manager, &segment.file_id, total);
 
     match parse_range(headers, total) {
         Some((start, end_inclusive)) => {
@@ -140,23 +135,12 @@ async fn stream_raw(
 }
 
 /// Open a sparse buffer over one release file, filled on demand through coven's
-/// locality-aware read (the user's own file, the cache, or the cloud).
-fn open_file_stream(
-    manager: &LibraryManager,
-    file_id: &str,
-    cloud_path: Option<&str>,
-    size: u64,
-) -> SharedSparseBuffer {
+/// locality-aware read (the user's own file, the cache, or the cloud). `size` sizes
+/// the buffer; the reader takes no size of its own — the blob stream it opens
+/// reports the plaintext length coven proved.
+fn open_file_stream(manager: &LibraryManager, file_id: &str, size: u64) -> SharedSparseBuffer {
     let buffer = create_sparse_buffer(size);
-    let reader = create_audio_reader(
-        manager,
-        file_id,
-        cloud_path,
-        size,
-        FetchArbiter::new(),
-        None,
-        false,
-    );
+    let reader = create_audio_reader(manager, file_id, FetchArbiter::new(), None, false);
     let file_id = file_id.to_string();
     reader.start_reading(
         buffer.clone(),
@@ -239,7 +223,7 @@ async fn stream_transcode(
             .map_err(|_| SubError::generic(format!("file {} has a negative size", file.id)))?;
         buffers.push((
             segment.file_id.clone(),
-            open_file_stream(manager, &segment.file_id, file.cloud_path.as_deref(), size),
+            open_file_stream(manager, &segment.file_id, size),
         ));
     }
 

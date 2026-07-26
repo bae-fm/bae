@@ -111,8 +111,9 @@ pub trait AudioDataReader: Send + 'static {
     /// reader needs next (read-ahead), evicts what they have passed, and idles
     /// when every read-ahead window is full -- so playback starts after one
     /// window and memory stays bounded to a window around the playhead instead
-    /// of the whole file. On an opaque home the cloud reader decrypts each
-    /// window as it lands; on a browsable one it reads the bytes verbatim.
+    /// of the whole file. A cloud blob's bytes are decrypted once, when the
+    /// reader opens its stream (under the library key on an opaque home, verbatim
+    /// on a browsable one); the windows are then read from that plaintext.
     fn start_reading(self: Box<Self>, buffer: SharedSparseBuffer, on_error: FillErrorHandler);
 }
 
@@ -251,21 +252,21 @@ async fn playback_error_for_blob_read(
     }
 }
 
-/// Create the playback reader for a release file. coven owns locality: one reader
-/// streams every range through [`coven::CovenHandle::open_blob_stream`], which
-/// resolves *where the bytes are* per read — the user's own file (a Local
-/// user-provided blob's external ref), coven's local store (a Local host-provided
-/// blob), `storage/pinned`/`storage/cache` on a Remote hit, or the cloud on a
-/// Remote miss (decrypting under the home's at-rest cipher). A read failure (a
-/// vanished external file, or a Remote blob with no cloud home) surfaces through
-/// the fill, so this is infallible to build.
+/// Create the playback reader for a release file. coven owns locality: the reader
+/// opens one [`coven::BlobStream`] over the file, which resolves *where the bytes
+/// are* once — the user's own file (a Local user-provided blob's external ref),
+/// coven's local store (a Local host-provided blob), `storage/pinned`/`storage/cache`
+/// on a Remote hit, or the cloud on a Remote miss (decrypting under the home's
+/// at-rest cipher, and populating the cache) — and then serves every window off that
+/// one proven handle. A failure to open (a vanished external file, or a Remote blob
+/// with no cloud home) surfaces through the fill, so this is infallible to build.
+///
+/// Neither the blob's size nor its cloud path is passed in: coven derives both from
+/// the live `release_files` row, and the opened stream reports the plaintext length
+/// it actually proved.
 pub fn create_audio_reader(
     library_manager: &crate::library::LibraryManager,
     file_id: &str,
-    // coven now derives the cloud key from the live `release_files` row when it
-    // binds the row blob ref, so the reader no longer carries a cloud path.
-    _cloud_path: Option<&str>,
-    source_size: u64,
     arbiter: Arc<FetchArbiter>,
     prefetch_byte: Option<u64>,
     prefetch_file_end: bool,
@@ -274,23 +275,21 @@ pub fn create_audio_reader(
         handle: library_manager.handle().clone(),
         db: library_manager.database().clone(),
         file_id: file_id.to_string(),
-        source_size,
         arbiter,
         prefetch_byte,
         prefetch_file_end,
     })
 }
 
-/// Streams a release file's plaintext through coven's locality-aware ranged read.
-/// The single playback reader: coven resolves each window to the external file,
-/// the local store, the cache, or the cloud (decrypting as needed), so playback
-/// never branches on locality.
+/// Streams a release file's plaintext off one opened [`coven::BlobStream`]. The
+/// single playback reader: coven resolves locality and proves the blob's identity
+/// when the stream opens, so playback never branches on locality and every window
+/// after that costs only its own bytes.
 pub struct CovenBlobReader {
     handle: coven::CovenHandle,
-    /// For classifying a failed read — the pending-upload check.
+    /// For classifying a failed open or read — the pending-upload check.
     db: crate::db::Database,
     file_id: String,
-    source_size: u64,
     arbiter: Arc<FetchArbiter>,
     /// The byte the playing track's audio starts at, when it's past the header
     /// (a track that seeks into the file). The reader fetches this window up
@@ -311,7 +310,6 @@ impl AudioDataReader for CovenBlobReader {
             handle,
             db,
             file_id,
-            source_size,
             arbiter,
             prefetch_byte,
             prefetch_file_end,
@@ -320,9 +318,9 @@ impl AudioDataReader for CovenBlobReader {
 
         tokio::spawn(async move {
             // Bind the exact-row blob reference once for this reader, from the live
-            // `release_files` row; coven's ranged reads key on it so a later row
-            // replacement can't redirect a read. A missing row surfaces through the
-            // fill like any other read failure.
+            // `release_files` row; the stream opened from it is bound to that exact
+            // row version, so a later row replacement can't redirect a read. A missing
+            // row surfaces through the fill like any other read failure.
             let blob = match handle
                 .row_blob_ref(crate::sync::RELEASE_FILES_NAMESPACE, &file_id)
                 .await
@@ -338,18 +336,39 @@ impl AudioDataReader for CovenBlobReader {
                 }
             };
 
+            // Open the stream once for this reader. This is where coven resolves
+            // locality, reads the whole plaintext to prove its size and content hash
+            // against the row, and (on a Remote miss) downloads it and populates the
+            // cache. Every window below is then a positioned read of the handle proven
+            // here, costing only the bytes it returns -- so the whole blob is paid for
+            // once per track, not once per window. Opening is also where a missing
+            // external file or an unreachable cloud home surfaces, so its failure takes
+            // the same classification a failed read does: that is what carries
+            // "reconnect sync" and "still uploading" to the UI.
+            let stream = match handle.open_blob_stream(&blob).await {
+                Ok(stream) => Arc::new(stream),
+                Err(e) => {
+                    let error = playback_error_for_blob_read(&db, blob.row_id(), e).await;
+                    fail_audio_read(on_error, &buffer, error);
+                    return;
+                }
+            };
+            // The length coven proved when it opened the stream, not a number the
+            // caller tracked: it bounds the prefetch windows below.
+            let source_size = stream.plaintext_size();
+
             // Prefetch the track's start window in parallel with the demuxer's header
-            // probe. The decoder reads the header at byte 0, then seeks to the track;
-            // that seek is a second serial round-trip over a cloud home. Since the
-            // stored `start_byte` is the exact seektable landing (the playback seek
-            // lands there — a by-byte FLAC seek jumps straight to it, and APE
-            // sample-seeks its index to it), pull that window now, concurrent with the
-            // probe, so the seek lands on buffered bytes.
+            // probe. The decoder reads the header at byte 0, then seeks to the track,
+            // and the fill only fetches what a registered reader is already demanding —
+            // so without this the seek blocks while the fill notices the new demand and
+            // comes round to it. Since the stored `start_byte` is the exact seektable
+            // landing (the playback seek lands there — a by-byte FLAC seek jumps
+            // straight to it, and APE sample-seeks its index to it), pull that window
+            // now, concurrent with the probe, so the seek lands on buffered bytes.
             if let Some(start) = prefetch_byte {
                 if start < source_size {
                     spawn_window_prefetch(
-                        handle.clone(),
-                        blob.clone(),
+                        stream.clone(),
                         arbiter.clone(),
                         &buffer,
                         source_size,
@@ -360,13 +379,12 @@ impl AudioDataReader for CovenBlobReader {
             }
 
             // APE reads the file's end when its demuxer opens (its index lives in the
-            // tail), so prefetch that window too — otherwise the open stalls on a
-            // serial ranged fetch of the end. Skipped when the file is a single window
-            // (the fill covers it).
+            // tail), so prefetch that window too — otherwise the open stalls the same
+            // way, waiting for the fill to come round to a tail nobody had demanded
+            // yet. Skipped when the file is a single window (the fill covers it).
             if prefetch_file_end && source_size > CLOUD_STREAM_READ_SIZE {
                 spawn_window_prefetch(
-                    handle.clone(),
-                    blob.clone(),
+                    stream.clone(),
                     arbiter.clone(),
                     &buffer,
                     source_size,
@@ -377,16 +395,15 @@ impl AudioDataReader for CovenBlobReader {
 
             let (wake, buffer) = prepare_fill(buffer);
 
-            tokio::spawn(async move {
-                info!("CovenBlobReader: buffer={buffer_id} source_size={source_size}");
-                // This reader's running fetch total and the wall-clock origin, so
-                // each window's log shows how many bytes have been pulled from coven
-                // and how long into the stream -- the visibility into start-up
-                // bandwidth and into a preload competing with the playing track.
-                let fetched = AtomicU64::new(0);
-                let started = Instant::now();
-                let result = fill_buffer_on_demand(buffer.clone(), wake, |src_off, len| {
-                let fut = handle.open_blob_stream(&blob, src_off, len);
+            info!("CovenBlobReader: buffer={buffer_id} source_size={source_size}");
+            // This reader's running fetch total and the wall-clock origin, so each
+            // window's log shows how many bytes have been read off the stream and how
+            // long into it -- the visibility into start-up bandwidth and into a preload
+            // competing with the playing track.
+            let fetched = AtomicU64::new(0);
+            let started = Instant::now();
+            let result = fill_buffer_on_demand(buffer.clone(), wake, |src_off, len| {
+                let fut = stream.read_at(src_off, len);
                 let arbiter = &arbiter;
                 let fetched = &fetched;
                 let db = &db;
@@ -425,19 +442,18 @@ impl AudioDataReader for CovenBlobReader {
             })
             .await;
 
-                if let Err(e) = result {
-                    report_fill_failure(on_error, &buffer, e);
-                }
-            });
+            if let Err(e) = result {
+                report_fill_failure(on_error, &buffer, e);
+            }
         });
     }
 }
 
-// The fill fetches one window at a time through coven's `open_blob_stream`, which
-// resolves locality per call (an external-ref lookup + a file open, or a cloud
-// range read). A larger window means fewer such calls per second of playback, so
-// the per-call overhead stays well under the playback CPU budget; 4 MiB keeps the
-// readahead and per-track memory modest while cutting the call rate.
+// The fill fetches one window at a time off the reader's opened `BlobStream`, where
+// a read is a positioned read of an already-proven handle -- so a window costs its
+// own bytes and nothing more, and the window size is purely a
+// readahead-vs-memory choice rather than a way to amortize per-call overhead.
+// 4 MiB keeps both modest.
 const CLOUD_STREAM_READ_SIZE: u64 = coven::CHUNK_SIZE as u64 * 64;
 
 /// The minimum the fill keeps buffered ahead of a reader whose track ceiling
@@ -445,8 +461,8 @@ const CLOUD_STREAM_READ_SIZE: u64 = coven::CHUNK_SIZE as u64 * 64;
 /// and seeks to the track's start. One window: the demuxer reads only the front
 /// metadata (header + seektable, ~100 KB for a FLAC) before it seeks, so keeping
 /// more than a window ahead of byte 0 just speculatively fetches front bytes the
-/// decoder abandons the instant it seeks away -- a wasted ranged fetch (~1 s over
-/// a cloud home) on every track that doesn't start at byte 0. Once the decoder
+/// decoder abandons the instant it seeks away -- wasted reads and wasted buffer on
+/// every track that doesn't start at byte 0. Once the decoder
 /// seeks and sets its real ceiling (the track's end byte), read-ahead is bounded
 /// by that instead and reaches the rest of the track.
 const MIN_READAHEAD: u64 = CLOUD_STREAM_READ_SIZE;
@@ -458,15 +474,14 @@ const KEEP_BEHIND: u64 = CLOUD_STREAM_READ_SIZE;
 
 /// Fetch one window starting at `off` up front, in parallel with the demuxer's
 /// header probe, and append it to `buffer` so a later read finds it buffered
-/// instead of paying a serial round-trip over a cloud home. Arbiter-gated exactly
+/// instead of waiting for the fill to notice a demand there. Arbiter-gated exactly
 /// like the fill: the playing track fetches immediately; a preload yields while
 /// the playing track has a fetch in flight, so preloading the next track can't
 /// steal the current track's startup bandwidth. Best-effort — a failed prefetch
 /// just leaves the fill to fetch the window on demand. `what` labels the window
 /// (track-start / file-end) in the log.
 fn spawn_window_prefetch(
-    handle: coven::CovenHandle,
-    blob: coven::RowBlobRef,
+    stream: Arc<coven::BlobStream>,
     arbiter: Arc<FetchArbiter>,
     buffer: &SharedSparseBuffer,
     source_size: u64,
@@ -480,7 +495,7 @@ fn spawn_window_prefetch(
     tokio::spawn(async move {
         let foreground = arbiter.is_foreground(buffer_id);
         let result = arbiter
-            .run_gated(foreground, handle.open_blob_stream(&blob, off, window))
+            .run_gated(foreground, stream.read_at(off, window))
             .await;
         match result {
             Ok(data) => {
