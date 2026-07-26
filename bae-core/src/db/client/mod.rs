@@ -7,7 +7,10 @@ use chrono::{DateTime, Utc};
 use coven::rusqlite::{params, Connection, OptionalExtension, Params, Row};
 use coven::{ClockRef, Coven, CovenError, CovenHandle, DbError, IdRef, SqlContext};
 use std::collections::{BTreeSet, HashMap};
-use std::path::{Path, PathBuf};
+// Only the test-only external-ref helper names a path type here; production
+// paths live on the types that carry them.
+#[cfg(any(test, feature = "test-utils"))]
+use std::path::Path;
 use std::str::FromStr;
 use std::sync::{Arc, Mutex};
 use tracing::warn;
@@ -27,6 +30,41 @@ pub(crate) const SQL_MAX_IN_VARS: usize = 900;
 
 fn in_clause_placeholders(count: usize) -> String {
     (0..count).map(|_| "?").collect::<Vec<_>>().join(",")
+}
+
+/// One-row SELECT shared by coven's write [`SqlContext`] and a raw read
+/// [`Connection`]. The release-path resolvers run their lookup under a write
+/// transaction in production and against a bare connection in unit tests; both
+/// expose the same `query_row`, so the resolvers stay generic over this.
+trait QueryOne {
+    fn query_row<T, P: Params, F: FnOnce(&Row<'_>) -> coven::rusqlite::Result<T>>(
+        &self,
+        sql: &str,
+        params: P,
+        f: F,
+    ) -> coven::rusqlite::Result<T>;
+}
+
+impl QueryOne for Connection {
+    fn query_row<T, P: Params, F: FnOnce(&Row<'_>) -> coven::rusqlite::Result<T>>(
+        &self,
+        sql: &str,
+        params: P,
+        f: F,
+    ) -> coven::rusqlite::Result<T> {
+        Connection::query_row(self, sql, params, f)
+    }
+}
+
+impl QueryOne for SqlContext<'_, '_> {
+    fn query_row<T, P: Params, F: FnOnce(&Row<'_>) -> coven::rusqlite::Result<T>>(
+        &self,
+        sql: &str,
+        params: P,
+        f: F,
+    ) -> coven::rusqlite::Result<T> {
+        SqlContext::query_row(self, sql, params, f)
+    }
 }
 
 /// The table a host-provided image blob's row lives in. The image type IS the
@@ -50,62 +88,26 @@ fn artist_image_cloud_path_for_storage(
         .then(|| resolve_artist_cloud_path(artist_id, blob_id, content_type))
 }
 
-fn register_external_blob_on(
-    conn: &Connection,
-    blob_id: &str,
-    namespace: &str,
-    path: &Path,
-    size: u64,
-) -> Result<(), DbError> {
-    let path = path.to_str().ok_or_else(|| {
-        DbError(format!(
-            "external blob path for {blob_id} is not valid UTF-8: {path:?}"
-        ))
-    })?;
-    conn.execute(
-        "INSERT INTO local_blob_refs (blob_id, namespace, path, size) \
-         VALUES (?1, ?2, ?3, ?4) \
-         ON CONFLICT(blob_id) DO UPDATE SET \
-             namespace = excluded.namespace, \
-             path = excluded.path, \
-             size = excluded.size",
-        (blob_id, namespace, path, size as i64),
-    )
-    .map(|_| ())
-    .map_err(DbError::from)
-}
-
-fn clear_external_blob_on(conn: &Connection, blob_id: &str) -> Result<(), DbError> {
-    conn.execute("DELETE FROM local_blob_refs WHERE blob_id = ?1", [blob_id])
-        .map(|_| ())
-        .map_err(DbError::from)
-}
-
-#[derive(Clone, Debug)]
-pub struct InFlightMakeRemoteBlobCleanup {
-    pub blob_id: String,
-    pub cloud_key: String,
-}
-
-#[derive(Clone, Debug)]
+/// What a delete owes coven's blob engine once its rows are gone.
+///
+/// Both halves are captured *before* the delete runs, because both name rows
+/// that will not exist afterwards: a cloud tombstone is bound to the exact row
+/// blob it removes, and an external-file registration is keyed by its row. The
+/// transaction that drops the rows hands them over through
+/// [`apply_delete_cleanup_on`].
+///
+/// An in-flight make-remote is not represented here: cancelling one is
+/// [`CovenHandle::cancel_make_remote`](coven::CovenHandle::cancel_make_remote),
+/// which clears the intent, drops the pending uploads, and tombstones whatever
+/// already reached the cloud — all of it coven's bookkeeping, none of it bae's.
+#[derive(Clone, Debug, Default)]
 pub struct DeleteCleanupPlan {
-    pub cloud_delete_keys: Vec<String>,
-    pub in_flight_make_remote_blobs: Vec<InFlightMakeRemoteBlobCleanup>,
-    pub external_blob_ids_to_clear: Vec<String>,
-    pub make_remote_release_ids_to_clear: Vec<String>,
-}
-
-/// A host-provided image blob (a cover keyed by release id, or an artist image
-/// keyed by artist id) that a failed-import rollback orphaned by deleting its
-/// row. The DB transaction drops the row but cannot reach coven's on-device
-/// blob store; the manager evicts these after the transaction commits.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct OrphanedImageBlob {
-    pub namespace: &'static str,
-    /// The coven blob id from the image row's `blob_id`, which addresses the bytes
-    /// — not the row id (the release / artist).
-    pub blob_id: String,
-    pub cloud_path: Option<String>,
+    /// Remote blobs whose cloud objects this delete must tombstone, as the exact
+    /// row references captured while their rows still existed.
+    pub blobs_to_tombstone: Vec<coven::RowBlobRef>,
+    /// `(table, row_id)` pairs whose external-file registration this delete must
+    /// drop — the user's own in-place files, which are never themselves deleted.
+    pub external_refs_to_clear: Vec<(String, String)>,
 }
 
 #[derive(Clone, Debug)]
@@ -122,64 +124,17 @@ pub struct ImportReplacementOutcome {
     pub album_deleted: bool,
 }
 
-fn add_cloud_outbox_delete_on(
-    conn: &Connection,
-    cloud_key: &str,
-    created_at: &str,
-) -> Result<(), DbError> {
-    conn.execute(
-        "DELETE FROM cloud_outbox \
-         WHERE operation IN ('upload', 'cancel') AND cloud_key = ?1",
-        [cloud_key],
-    )
-    .map_err(DbError::from)?;
-    conn.execute(
-        "INSERT OR IGNORE INTO cloud_outbox \
-         (operation, cloud_key, scope, created_at) \
-         VALUES ('delete', ?1, NULL, ?2)",
-        (cloud_key, created_at),
-    )
-    .map(|_| ())
-    .map_err(DbError::from)
-}
-
+/// Hand a delete's captured blob cleanup to coven, inside the same transaction
+/// that removes the rows. See [`DeleteCleanupPlan`].
 fn apply_delete_cleanup_on(
-    conn: &Connection,
+    conn: &SqlContext<'_, '_>,
     cleanup: &DeleteCleanupPlan,
-    created_at: &str,
 ) -> Result<(), DbError> {
-    for cloud_key in &cleanup.cloud_delete_keys {
-        add_cloud_outbox_delete_on(conn, cloud_key, created_at)?;
+    for blob in &cleanup.blobs_to_tombstone {
+        conn.enqueue_blob_delete(blob)?;
     }
-    for blob in &cleanup.in_flight_make_remote_blobs {
-        let still_pending = conn
-            .query_row(
-                "SELECT 1 FROM cloud_outbox WHERE operation = 'upload' AND file_id = ?1",
-                [&blob.blob_id],
-                |_| Ok(()),
-            )
-            .optional()
-            .map_err(DbError::from)?
-            .is_some();
-        if still_pending {
-            conn.execute(
-                "DELETE FROM cloud_outbox WHERE operation = 'upload' AND file_id = ?1",
-                [&blob.blob_id],
-            )
-            .map_err(DbError::from)?;
-        } else {
-            add_cloud_outbox_delete_on(conn, &blob.cloud_key, created_at)?;
-        }
-    }
-    for blob_id in &cleanup.external_blob_ids_to_clear {
-        clear_external_blob_on(conn, blob_id)?;
-    }
-    for release_id in &cleanup.make_remote_release_ids_to_clear {
-        conn.execute(
-            "DELETE FROM blob_make_remote_intents WHERE root_table = 'releases' AND root_id = ?1",
-            [release_id],
-        )
-        .map_err(DbError::from)?;
+    for (table, row_id) in &cleanup.external_refs_to_clear {
+        conn.clear_external_blob(table, row_id)?;
     }
     Ok(())
 }
@@ -196,7 +151,7 @@ fn apply_delete_cleanup_on(
 /// `album_id`, since this counts what remains. Returns true if the album was
 /// deleted.
 fn cleanup_album_after_release_removal_on(
-    conn: &Connection,
+    conn: &SqlContext<'_, '_>,
     album_id: &str,
     removed_release_id: &str,
     reg: &str,
@@ -547,45 +502,6 @@ fn artist_order_by(sort: &[ArtistSortCriterion]) -> String {
     format!("{clause}, ar.name ASC, ar.id ASC")
 }
 
-#[cfg(any(test, feature = "test-utils"))]
-fn row_to_outbox_entry(row: &Row<'_>) -> coven::rusqlite::Result<coven::OutboxEntry> {
-    let op_tag: String = row.get(1)?;
-    let operation = match op_tag.as_str() {
-        "upload" => {
-            let scope_str: String = row.get(5)?;
-            let scope = coven::BlobScope::from_outbox_str(&scope_str).ok_or_else(|| {
-                coven::rusqlite::Error::FromSqlConversionFailure(
-                    5,
-                    coven::rusqlite::types::Type::Text,
-                    format!("invalid cloud_outbox.scope: {scope_str:?}").into(),
-                )
-            })?;
-            coven::OutboxOperation::Upload {
-                file_id: row.get(2)?,
-                source_path: row.get(4)?,
-                scope,
-                retain_pinned: row.get(6)?,
-            }
-        }
-        "delete" => coven::OutboxOperation::Delete,
-        "cancel" => coven::OutboxOperation::Cancel,
-        other => {
-            return Err(coven::rusqlite::Error::FromSqlConversionFailure(
-                1,
-                coven::rusqlite::types::Type::Text,
-                format!("invalid cloud_outbox.operation: {other:?}").into(),
-            ));
-        }
-    };
-    Ok(coven::OutboxEntry {
-        id: row.get(0)?,
-        cloud_key: row.get(3)?,
-        attempt_count: row.get(7)?,
-        last_attempt_at: row.get(8)?,
-        operation,
-    })
-}
-
 /// Build a `DbLibraryImage` from a `covers`/`artist_images` row. The table is the
 /// type, so `image_type` is supplied by the caller rather than read from a column.
 fn row_to_library_image(
@@ -697,17 +613,24 @@ fn storage_order_by(sort: &StorageSortCriterion) -> (String, bool) {
 
 /// Build a WHERE clause fragment for storage-page filtering. Returns the
 /// empty string for `StorageFilter::All`.
-fn storage_filter_where(filter: StorageFilter) -> &'static str {
+/// The WHERE clause for a storage-page filter.
+///
+/// `Uploading` is the odd one: which releases are mid-upload is coven's queue
+/// state, not a bae column, so the caller asks coven for those release ids first
+/// and this renders a bound `IN` list of `uploading_count` placeholders. An empty
+/// set is `WHERE 0` — nothing is uploading, so the page is empty — rather than an
+/// `IN ()`, which SQLite rejects.
+fn storage_filter_where(filter: StorageFilter, uploading_count: usize) -> String {
     match filter {
-        StorageFilter::All => "",
-        StorageFilter::Remote => "WHERE r.remote = 1",
-        StorageFilter::Local => "WHERE r.remote = 0",
+        StorageFilter::All => String::new(),
+        StorageFilter::Remote => "WHERE r.remote = 1".to_string(),
+        StorageFilter::Local => "WHERE r.remote = 0".to_string(),
+        StorageFilter::Uploading if uploading_count == 0 => "WHERE 0".to_string(),
         StorageFilter::Uploading => {
-            "WHERE EXISTS ( \
-            SELECT 1 FROM cloud_outbox co \
-            JOIN release_files rf ON rf.id = co.file_id \
-            WHERE rf.release_id = r.id AND co.operation = 'upload' \
-        )"
+            format!(
+                "WHERE r.id IN ({})",
+                in_clause_placeholders(uploading_count)
+            )
         }
     }
 }
@@ -777,7 +700,7 @@ fn album_summary_artist_join(needs_artist_join: bool) -> &'static str {
 fn parse_album_summary_row(row: &Row) -> Result<DbAlbumSummary, DbError> {
     let release_ids_json: String = row.get("release_ids_json")?;
     let release_ids: Vec<String> =
-        serde_json::from_str(&release_ids_json).map_err(|e| DbError(e.to_string()))?;
+        serde_json::from_str(&release_ids_json).map_err(|e| DbError::Message(e.to_string()))?;
 
     Ok(DbAlbumSummary {
         id: row.get("id")?,
@@ -803,13 +726,6 @@ struct DatabaseInner {
     /// by the caller from the same provider and passed in, so the DB holding one
     /// keeps every id in the process coming from the one injected source.
     ids: IdRef,
-}
-
-/// An external user-owned file a blob id resolves to.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ExternalBlob {
-    pub path: PathBuf,
-    pub size: u64,
 }
 
 /// Database client over coven's owned connection. Writes to synced tables are
@@ -862,7 +778,7 @@ impl Database {
     fn coven_error(error: CovenError) -> DbError {
         match error {
             CovenError::Database(error) => error,
-            other => DbError(other.to_string()),
+            other => DbError::Message(other.to_string()),
         }
     }
 
@@ -902,12 +818,12 @@ impl Database {
     /// above.
     async fn call<R>(
         &self,
-        f: impl FnOnce(&Connection) -> Result<R, DbError> + Send + 'static,
+        f: impl for<'ctx, 'conn> FnOnce(&SqlContext<'ctx, 'conn>) -> Result<R, DbError> + Send + 'static,
     ) -> Result<R, DbError>
     where
         R: Send + 'static,
     {
-        self.call_sql(move |sql| f(sql.tx())).await
+        self.call_sql(move |sql| f(&sql)).await
     }
 
     /// Run a write that stamps `_updated_at` from coven's SQL context. See the
@@ -923,6 +839,7 @@ impl Database {
             .handle
             .sql(move |sql| f(sql).map_err(CovenError::from))
             .await
+            .map(|receipt| receipt.value)
             .map_err(Self::coven_error)
     }
 
@@ -969,7 +886,9 @@ impl Database {
         let library_root = path
             .parent()
             .filter(|parent| !parent.as_os_str().is_empty())
-            .ok_or_else(|| DbError(format!("database path has no parent: {database_path}")))?;
+            .ok_or_else(|| {
+                DbError::Message(format!("database path has no parent: {database_path}"))
+            })?;
         let library_dir = coven::StoreDir::new(library_root);
         let config = coven::Config::with_defaults(
             "test-library".to_string(),
@@ -993,12 +912,12 @@ impl Database {
             coven::IdentityCustody::Keyring.resolve(&config.store_id, &config.store_dir);
         if identity_custody
             .unlock()
-            .map_err(|e| DbError(e.to_string()))?
+            .map_err(|e| DbError::Message(e.to_string()))?
             .is_none()
         {
             identity_custody
                 .persist(&coven::UserKeypair::generate())
-                .map_err(|e| DbError(e.to_string()))?;
+                .map_err(|e| DbError::Message(e.to_string()))?;
         }
 
         Self::open(
@@ -1440,7 +1359,11 @@ fn row_to_release_storage_summary(row: &Row) -> coven::rusqlite::Result<DbReleas
 // `_updated_at` stamp — against a `&Connection` or a `&Transaction`, both of
 // which deref to `&Connection`. ─────────────────────────────────────────────
 
-fn insert_artist_row(conn: &Connection, artist: &DbArtist, reg: &str) -> Result<(), DbError> {
+fn insert_artist_row(
+    conn: &SqlContext<'_, '_>,
+    artist: &DbArtist,
+    reg: &str,
+) -> Result<(), DbError> {
     conn.execute(
         r#"
         INSERT INTO artists (
@@ -1463,7 +1386,7 @@ fn insert_artist_row(conn: &Connection, artist: &DbArtist, reg: &str) -> Result<
 }
 
 fn upsert_library_image_row_with_cloud_path(
-    conn: &Connection,
+    conn: &SqlContext<'_, '_>,
     image: &DbLibraryImage,
     cloud_path: Option<String>,
     reg: &str,
@@ -1476,7 +1399,7 @@ fn upsert_library_image_row_with_cloud_path(
 }
 
 fn update_artist_external_ids_row(
-    conn: &Connection,
+    conn: &SqlContext<'_, '_>,
     id: &str,
     discogs_artist_id: Option<&str>,
     musicbrainz_artist_id: Option<&str>,
@@ -1498,7 +1421,7 @@ fn update_artist_external_ids_row(
     .map_err(DbError::from)
 }
 
-fn insert_album_row(conn: &Connection, album: &DbAlbum, reg: &str) -> Result<(), DbError> {
+fn insert_album_row(conn: &SqlContext<'_, '_>, album: &DbAlbum, reg: &str) -> Result<(), DbError> {
     conn.execute(
         r#"
         INSERT INTO albums (
@@ -1522,7 +1445,7 @@ fn insert_album_row(conn: &Connection, album: &DbAlbum, reg: &str) -> Result<(),
 }
 
 fn insert_album_artist_row(
-    conn: &Connection,
+    conn: &SqlContext<'_, '_>,
     aa: &DbAlbumArtist,
     reg: &str,
 ) -> Result<(), DbError> {
@@ -1547,14 +1470,18 @@ fn insert_album_artist_row(
 /// `source_folder_name` is the folder an export reconstructs under the user's
 /// target directory, so it is held to the same fragment policy as a file's name
 /// (see [`insert_file_row`]).
-fn insert_release_row(conn: &Connection, release: &DbRelease, reg: &str) -> Result<(), DbError> {
+fn insert_release_row(
+    conn: &SqlContext<'_, '_>,
+    release: &DbRelease,
+    reg: &str,
+) -> Result<(), DbError> {
     if let Some(folder) = &release.source_folder_name {
         crate::storage::path_fragment::validate_path_fragment(
             &release.id,
             "source_folder_name",
             folder,
         )
-        .map_err(|e| DbError(e.to_string()))?;
+        .map_err(|e| DbError::Message(e.to_string()))?;
     }
     conn.execute(
         r#"
@@ -1594,7 +1521,7 @@ fn insert_release_row(conn: &Connection, release: &DbRelease, reg: &str) -> Resu
     .map_err(DbError::from)
 }
 
-fn insert_track_row(conn: &Connection, track: &DbTrack, reg: &str) -> Result<(), DbError> {
+fn insert_track_row(conn: &SqlContext<'_, '_>, track: &DbTrack, reg: &str) -> Result<(), DbError> {
     conn.execute(
         r#"
         INSERT INTO tracks (
@@ -1619,7 +1546,7 @@ fn insert_track_row(conn: &Connection, track: &DbTrack, reg: &str) -> Result<(),
 }
 
 fn insert_track_artist_row(
-    conn: &Connection,
+    conn: &SqlContext<'_, '_>,
     ta: &DbTrackArtist,
     reg: &str,
 ) -> Result<(), DbError> {
@@ -1641,7 +1568,7 @@ fn insert_track_artist_row(
     .map_err(DbError::from)
 }
 
-fn insert_work_row(conn: &Connection, work: &DbWork, reg: &str) -> Result<(), DbError> {
+fn insert_work_row(conn: &SqlContext<'_, '_>, work: &DbWork, reg: &str) -> Result<(), DbError> {
     conn.execute(
         r#"
         INSERT OR IGNORE INTO works (
@@ -1662,7 +1589,7 @@ fn insert_work_row(conn: &Connection, work: &DbWork, reg: &str) -> Result<(), Db
 }
 
 fn insert_work_artist_row(
-    conn: &Connection,
+    conn: &SqlContext<'_, '_>,
     link: &DbWorkArtist,
     reg: &str,
 ) -> Result<(), DbError> {
@@ -1685,7 +1612,11 @@ fn insert_work_artist_row(
     .map_err(DbError::from)
 }
 
-fn insert_work_part_row(conn: &Connection, part: &DbWorkPart, reg: &str) -> Result<(), DbError> {
+fn insert_work_part_row(
+    conn: &SqlContext<'_, '_>,
+    part: &DbWorkPart,
+    reg: &str,
+) -> Result<(), DbError> {
     conn.execute(
         r#"
         INSERT OR IGNORE INTO work_parts (
@@ -1706,7 +1637,11 @@ fn insert_work_part_row(conn: &Connection, part: &DbWorkPart, reg: &str) -> Resu
     .map_err(DbError::from)
 }
 
-fn insert_track_work_row(conn: &Connection, link: &DbTrackWork, reg: &str) -> Result<(), DbError> {
+fn insert_track_work_row(
+    conn: &SqlContext<'_, '_>,
+    link: &DbTrackWork,
+    reg: &str,
+) -> Result<(), DbError> {
     conn.execute(
         r#"
         INSERT INTO track_works (id, track_id, work_id, position, source, _updated_at, created_at)
@@ -1727,7 +1662,7 @@ fn insert_track_work_row(conn: &Connection, link: &DbTrackWork, reg: &str) -> Re
 }
 
 fn insert_release_artist_role_row(
-    conn: &Connection,
+    conn: &SqlContext<'_, '_>,
     role: &DbReleaseArtistRole,
     reg: &str,
 ) -> Result<(), DbError> {
@@ -1749,7 +1684,7 @@ fn insert_release_artist_role_row(
 }
 
 fn insert_track_artist_role_row(
-    conn: &Connection,
+    conn: &SqlContext<'_, '_>,
     role: &DbTrackArtistRole,
     reg: &str,
 ) -> Result<(), DbError> {
@@ -1771,7 +1706,7 @@ fn insert_track_artist_role_row(
 }
 
 fn insert_artist_role_row(
-    conn: &Connection,
+    conn: &SqlContext<'_, '_>,
     table: &'static str,
     target_column: &'static str,
     values: impl Params,
@@ -1793,13 +1728,13 @@ fn insert_artist_role_row(
 /// the user chose, and it syncs to every other device, so a name that can't be
 /// materialized there is refused here — inside the caller's transaction, which
 /// rolls back whole rather than committing a release nobody can copy out.
-fn insert_file_row(conn: &Connection, file: &DbFile, reg: &str) -> Result<(), DbError> {
+fn insert_file_row(conn: &SqlContext<'_, '_>, file: &DbFile, reg: &str) -> Result<(), DbError> {
     crate::storage::path_fragment::validate_path_fragment(
         &file.release_id,
         &format!("original_filename for file {}", file.id),
         &file.original_filename,
     )
-    .map_err(|e| DbError(e.to_string()))?;
+    .map_err(|e| DbError::Message(e.to_string()))?;
     conn.execute(
         r#"
         INSERT INTO release_files (
@@ -1823,7 +1758,7 @@ fn insert_file_row(conn: &Connection, file: &DbFile, reg: &str) -> Result<(), Db
 }
 
 fn insert_audio_format_row(
-    conn: &Connection,
+    conn: &SqlContext<'_, '_>,
     af: &DbAudioFormat,
     reg: &str,
 ) -> Result<(), DbError> {
@@ -1855,7 +1790,7 @@ fn insert_audio_format_row(
 }
 
 fn insert_audio_segment_row(
-    conn: &Connection,
+    conn: &SqlContext<'_, '_>,
     segment: &DbAudioSegment,
     reg: &str,
 ) -> Result<(), DbError> {
@@ -1885,7 +1820,10 @@ fn insert_audio_segment_row(
 
 /// `INSERT OR REPLACE` a cached `release_metadata` row. Not a synced table —
 /// no `_updated_at` stamp.
-fn insert_release_metadata_row(conn: &Connection, meta: &DbReleaseMetadata) -> Result<(), DbError> {
+fn insert_release_metadata_row(
+    conn: &SqlContext<'_, '_>,
+    meta: &DbReleaseMetadata,
+) -> Result<(), DbError> {
     conn.execute(
         r#"
         INSERT OR REPLACE INTO release_metadata (
@@ -1905,7 +1843,7 @@ fn insert_release_metadata_row(conn: &Connection, meta: &DbReleaseMetadata) -> R
 }
 
 fn upsert_library_image_row(
-    conn: &Connection,
+    conn: &SqlContext<'_, '_>,
     image: &DbLibraryImage,
     reg: &str,
 ) -> Result<(), DbError> {
@@ -1950,8 +1888,8 @@ fn upsert_library_image_row(
 /// blobs is being keyed (it was just inserted), so a missing row is a broken
 /// invariant surfaced as an error, not masked. `source_folder_name` is `None`
 /// for a non-folder import.
-fn release_path_context(
-    conn: &Connection,
+fn release_path_context<C: QueryOne>(
+    conn: &C,
     release_id: &str,
 ) -> Result<(String, Option<String>), DbError> {
     conn.query_row(
@@ -1966,8 +1904,8 @@ fn release_path_context(
 /// source_folder)` context once, then let `make_key` shape the final path. Shared
 /// by the audio and cover resolvers; the artist-image resolver stands apart, keyed
 /// off the artist id alone.
-fn resolve_release_path(
-    conn: &Connection,
+fn resolve_release_path<C: QueryOne>(
+    conn: &C,
     release_id: &str,
     make_key: impl FnOnce(&str, &str, Option<&str>) -> String,
 ) -> Result<String, DbError> {
@@ -1980,8 +1918,8 @@ fn resolve_release_path(
 /// `release_files` namespace coven prepends), mirroring the imported folder. Ids
 /// are immutable and unique, so the key is stable and collision-free by
 /// construction — no disambiguation.
-fn resolve_audio_cloud_path(
-    conn: &Connection,
+fn resolve_audio_cloud_path<C: QueryOne>(
+    conn: &C,
     release_id: &str,
     original_filename: &str,
 ) -> Result<String, DbError> {
@@ -2000,8 +1938,8 @@ fn resolve_audio_cloud_path(
 /// namespace coven prepends). The cover row's id is its release id; the key carries
 /// the row's blob id so a replaced cover writes a new object. Covers are bae's own
 /// art, not part of the imported folder, so they carry no `{source_folder}` level.
-fn resolve_cover_cloud_path(
-    conn: &Connection,
+fn resolve_cover_cloud_path<C: QueryOne>(
+    conn: &C,
     release_id: &str,
     blob_id: &str,
     content_type: &ContentType,
@@ -2022,7 +1960,7 @@ fn resolve_artist_cloud_path(artist_id: &str, blob_id: &str, content_type: &Cont
 /// (`finalize_import_atomic` / `set_identity_atomic`, inside a transaction) and
 /// `insert_release_identities` (on the connection directly).
 fn insert_release_identity_row(
-    conn: &Connection,
+    conn: &SqlContext<'_, '_>,
     release_id: &str,
     identity: &crate::import::ReleaseIdentity,
     id: String,
@@ -2053,7 +1991,7 @@ fn insert_release_identity_row(
 /// Replace every `album_artists` row for `album_id` with `artists` (delete then
 /// insert), so the `album_artists` schema is written in one place.
 fn replace_album_artists(
-    conn: &Connection,
+    conn: &SqlContext<'_, '_>,
     album_id: &str,
     artists: &[DbAlbumArtist],
     reg: &str,
@@ -2078,7 +2016,7 @@ fn replace_album_artists(
 /// may not cover every track (a track legitimately has no per-track artists
 /// when it inherits from the album).
 fn replace_track_artists(
-    conn: &Connection,
+    conn: &SqlContext<'_, '_>,
     track_ids: &[&str],
     artists: &[DbTrackArtist],
     reg: &str,

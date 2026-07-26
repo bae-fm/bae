@@ -115,9 +115,11 @@ async fn create_local_release(
     files: &[(&str, &[u8])],
 ) -> (String, Vec<(String, Vec<u8>)>) {
     let now = Utc::now();
-    let artist_id = "test-storage-artist";
-    let _ = mgr
-        .insert_artist(&bae_core::db::DbArtist {
+    // Shared across every release this helper seeds, so only the first call
+    // inserts it.
+    let artist_id = bae_test_support::test_uuid("test-storage-artist");
+    if mgr.get_artist_by_id(&artist_id).await.unwrap().is_none() {
+        mgr.insert_artist(&bae_core::db::DbArtist {
             id: artist_id.to_string(),
             name: "Artist Name".to_string(),
             sort_name: None,
@@ -125,7 +127,9 @@ async fn create_local_release(
             musicbrainz_artist_id: None,
             created_at: now,
         })
-        .await;
+        .await
+        .unwrap();
+    }
     let album = DbAlbum {
         id: Uuid::new_v4().to_string(),
         title: "Album Title".to_string(),
@@ -166,7 +170,7 @@ async fn create_local_release(
             ContentType::Flac,
             uuid::Uuid::new_v4().to_string(),
             now,
-            Some(bae_core::util::fs::hash_bytes(data)),
+            bae_core::util::fs::hash_bytes(data),
         );
         mgr.add_file(&db_file).await.unwrap();
         result.push((name.to_string(), data.to_vec()));
@@ -290,7 +294,7 @@ async fn test_manage_refused_when_sync_not_running() {
         "make-Remote must fail when the upload pipeline isn't running, got {result:?}"
     );
     assert!(
-        db.get_pending_cloud_uploads().await.unwrap().is_empty(),
+        db.handle().queued_uploads().await.unwrap().is_empty(),
         "no upload may be enqueued when the pipeline can't drain it"
     );
     assert_eq!(
@@ -396,7 +400,7 @@ async fn test_manage_truncated_source_aborts_before_enqueue() {
     assert!(result.is_err(), "truncated source must abort make-Remote");
 
     assert!(
-        db.get_pending_cloud_uploads().await.unwrap().is_empty(),
+        db.handle().queued_uploads().await.unwrap().is_empty(),
         "no upload may be enqueued when a source is truncated"
     );
     for (name, _) in &files {
@@ -449,8 +453,36 @@ async fn make_local_updates_summary_external_refs_and_queues_deletes() {
             "external ref points at the new path"
         );
     }
-    let deletes = db.get_pending_cloud_deletes().await.unwrap();
+    let deletes = db.handle().queued_deletes().await.unwrap();
     assert_eq!(deletes.len(), files.len());
+}
+
+/// Remove one release file's cloud object from the mock home.
+///
+/// coven keys an exact object by its locator hash — `release_files/opaque/<hash>`
+/// — so a test cannot name the object from the blob id. Read the blob through
+/// coven once, which records the slot that read touched, remove exactly that
+/// slot, then drop the cache copy the read just populated so the next read has
+/// to go back to the (now empty) cloud.
+async fn remove_cloud_blob(mgr: &LibraryManager, cloud: &InMemoryCloudHome, file_id: &str) {
+    let db = mgr.database_for_test();
+    let blob = db
+        .handle()
+        .row_blob_ref("release_files", file_id)
+        .await
+        .expect("the release_files row");
+    cloud.clear_exact_reads();
+    db.handle()
+        .read_blob(&blob)
+        .await
+        .expect("the blob is readable before it is removed");
+    let slots = cloud.exact_reads();
+    assert_eq!(slots.len(), 1, "one exact read for one blob");
+    cloud.remove_exact_object(&slots[0]);
+    db.handle()
+        .evict_blob(&blob)
+        .await
+        .expect("drop the cache copy the probe read populated");
 }
 
 /// A failed make-Local (a missing cloud blob 404s on the cache-miss read) leaves
@@ -471,7 +503,8 @@ async fn make_local_missing_blob_fails_leaving_summary_remote_and_no_deletes() {
     .await;
 
     // Remove the SECOND file's blob from the cloud so its cache-miss read 404s.
-    cloud.remove(&mgr.resolve_track_cloud_key_for_test(&files[1].0).await);
+    // `files` carries `(file_id, original_filename, plaintext)`.
+    remove_cloud_blob(&mgr, &cloud, &files[1].0).await;
 
     let new_path = tmp.path().join("exported");
     let result = mgr
@@ -483,7 +516,7 @@ async fn make_local_missing_blob_fails_leaving_summary_remote_and_no_deletes() {
         .await;
     assert!(result.is_err(), "missing blob must be a hard error");
 
-    assert!(db.get_pending_cloud_deletes().await.unwrap().is_empty());
+    assert!(db.handle().queued_deletes().await.unwrap().is_empty());
     assert_eq!(
         storage(&mgr, &release_id).await,
         (ReleaseStorageState::Remote, false)

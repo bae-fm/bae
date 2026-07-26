@@ -14,12 +14,33 @@ struct JoinOperation: Sendable {
 private let bridgeDiscoverLibraries = discoverLibraries
 private let bridgeCreateLibrary = createLibrary(name:)
 private let bridgeDecodeRestoreCode = decodeRestoreCode(code:)
-private let bridgeDecodeInviteCode = decodeInviteCode(code:)
+private let bridgeDecodeScannedInvite = decodeScannedInvite(scanned:)
 private let bridgeRestoreFromCode = restoreFromCode(code:oauthTokenJson:)
-private let bridgeRestoreFromCloud = restoreFromCloud(libraryName:config:)
 private let bridgeGenerateJoinRequest = generateJoinRequest(email:)
-private let bridgeJoinFromCodeOperation =
-    joinFromCodeOperation(code:joinRequestCode:oauthTokenJson:)
+private let bridgeJoinFromScannedInviteOperation =
+    joinFromScannedInviteOperation(scanned:joinRequestCode:oauthTokenJson:)
+
+/// The invite bundle behind what the joiner pasted.
+///
+/// The invite is a byte payload — the owner's signed join offer, not a
+/// human-typed code — so it travels as base64 wherever it has to be text.
+private func inviteBytes(pasted: String) throws -> Data {
+    guard
+        let bytes = Data(
+            base64Encoded: pasted.trimmingCharacters(
+                in: .whitespacesAndNewlines
+            )
+        )
+    else {
+        throw BridgeError.Diagnostic(
+            category: .config,
+            detail:
+                "the pasted invite is not base64 an invite bundle could be read from"
+        )
+    }
+    return bytes
+}
+
 // The OAuth functions exist only in builds whose bridge compiles the OAuth
 // providers (the S3-only build omits them entirely); elsewhere the bindings
 // fall back to the same not-implemented stubs the initializer defaults to,
@@ -56,20 +77,19 @@ final class LibrarySetup: Sendable, Observable {
     let createLibrary: @Sendable () throws -> BridgeLibrary
     let decodeRestoreCode:
         @Sendable (_ code: String) throws -> BridgeRestoreCodeInfo
+    /// Preview a pasted invite. The payload is bytes carried as base64, so both
+    /// this and the join decode the same text the same way.
     let decodeInviteCode:
-        @Sendable (_ code: String) throws -> BridgeInviteCodeInfo
+        @Sendable (_ pasted: String) throws -> BridgeInviteCodeInfo
     let restoreFromCode:
         @Sendable (_ code: String, _ oauthTokenJson: String?) throws ->
             BridgeLibrary
-    let restoreFromCloud:
-        @Sendable (_ libraryName: String?, _ config: BridgeRestoreConfig)
-            throws -> BridgeLibrary
     let generateJoinRequest:
         @Sendable (_ email: String?) throws -> BridgeJoinRequest
-    /// Start a join for an invite code; the returned operation runs it.
+    /// Start a join for a pasted invite; the returned operation runs it.
     let joinFromCode:
         @Sendable (
-            _ code: String, _ joinRequestCode: String,
+            _ pasted: String, _ joinRequestCode: String,
             _ oauthTokenJson: String?
         ) throws -> JoinOperation
     /// Restore codes any of the user's devices stored in the iCloud keychain.
@@ -105,9 +125,6 @@ final class LibrarySetup: Sendable, Observable {
                 _,
                 _ in throw StubError.notImplemented
             },
-        restoreFromCloud:
-            @escaping @Sendable (String?, BridgeRestoreConfig) throws ->
-            BridgeLibrary = { _, _ in throw StubError.notImplemented },
         generateJoinRequest:
             @escaping @Sendable (String?) throws -> BridgeJoinRequest = { _ in
                 throw StubError.notImplemented
@@ -135,7 +152,6 @@ final class LibrarySetup: Sendable, Observable {
         self.decodeRestoreCode = decodeRestoreCode
         self.decodeInviteCode = decodeInviteCode
         self.restoreFromCode = restoreFromCode
-        self.restoreFromCloud = restoreFromCloud
         self.generateJoinRequest = generateJoinRequest
         self.joinFromCode = joinFromCode
         self.fetchRestoreCodes = fetchRestoreCodes
@@ -153,13 +169,14 @@ final class LibrarySetup: Sendable, Observable {
         discoverLibraries: bridgeDiscoverLibraries,
         createLibrary: { try bridgeCreateLibrary(nil) },
         decodeRestoreCode: bridgeDecodeRestoreCode,
-        decodeInviteCode: bridgeDecodeInviteCode,
+        decodeInviteCode: {
+            try bridgeDecodeScannedInvite(inviteBytes(pasted: $0))
+        },
         restoreFromCode: bridgeRestoreFromCode,
-        restoreFromCloud: bridgeRestoreFromCloud,
         generateJoinRequest: bridgeGenerateJoinRequest,
-        joinFromCode: { code, joinRequestCode, oauthTokenJson in
-            let operation = try bridgeJoinFromCodeOperation(
-                code,
+        joinFromCode: { pasted, joinRequestCode, oauthTokenJson in
+            let operation = try bridgeJoinFromScannedInviteOperation(
+                inviteBytes(pasted: pasted),
                 joinRequestCode,
                 oauthTokenJson
             )

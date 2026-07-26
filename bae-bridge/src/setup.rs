@@ -292,57 +292,6 @@ where
     }
 }
 
-/// Restore a library from cloud storage.
-///
-/// `config` carries the library id, its encryption key, and the cloud home to read
-/// from. It is checked against `RestoreConfig::validate` — the same rule
-/// `validate_restore_config` gates the form with — so a surface that never showed
-/// the form cannot restore from an incomplete configuration.
-#[uniffi::export]
-pub fn restore_from_cloud(
-    library_name: Option<String>,
-    config: crate::types::BridgeRestoreConfig,
-) -> Result<BridgeLibrary, BridgeError> {
-    use bae_core::sync::RestoreSource;
-    use coven::CloudHomeJoinInfo;
-    let library_name = library_name
-        .unwrap_or_else(|| bae_core::library_name::generate_library_name().into_string());
-    let config = config.into_core();
-    let library_id = config.library_id.clone();
-    let encryption_key_hex = config.encryption_key.clone();
-
-    on_worker(move || async move {
-        let (join_info, oauth_tokens) = config.into_home().map_err(BridgeError::config)?;
-
-        // CloudKit reaches its container through the platform driver this crate
-        // holds; every other home is fully described by its join info.
-        let cloudkit_ops = match &join_info {
-            CloudHomeJoinInfo::CloudKit => Some(
-                get_cloudkit_ops()
-                    .ok_or_else(|| BridgeError::internal("CloudKit driver not set".to_string()))?,
-            ),
-            _ => None,
-        };
-        let core_source = RestoreSource {
-            join_info,
-            oauth_tokens,
-            cloudkit_ops,
-        };
-
-        let config = bae_core::library::restore_from_cloud(
-            &library_id,
-            &encryption_key_hex,
-            &library_name,
-            core_source,
-            |status| info!("{}", status),
-        )
-        .await
-        .map_err(|e| BridgeError::internal(format!("Failed to restore library: {e}")))?;
-
-        BridgeLibrary::from_core(&config)
-    })
-}
-
 /// Decode a restore code string and return info for UI preview.
 ///
 /// coven's `RestoreCodeInfo` is not part of its curated public API, so the
@@ -511,6 +460,21 @@ pub fn decode_invite_code(code: String) -> Result<BridgeInviteCodeInfo, BridgeEr
     Ok(BridgeInviteCodeInfo::from_core(info))
 }
 
+/// Decode a scanned invite bundle for UI preview.
+///
+/// The scanned payload carries the invite code inside it alongside the owner's
+/// signed join offer, so the preview the joiner confirms — which library, which
+/// provider, whose fingerprint — comes from the same bytes the join will run on.
+/// Decoding the code separately would let the two disagree.
+#[uniffi::export]
+pub fn decode_scanned_invite(scanned: Vec<u8>) -> Result<BridgeInviteCodeInfo, BridgeError> {
+    let invite = coven::DeviceJoinInvite::from_bytes(&scanned)
+        .map_err(|error| BridgeError::config(error.to_string()))?;
+    let info = bae_core::sync::membership::decode_invite_code_info(&invite.invite_code)
+        .map_err(BridgeError::config)?;
+    Ok(BridgeInviteCodeInfo::from_core(info))
+}
+
 impl BridgeInviteCodeInfo {
     fn from_core(info: bae_core::sync::membership::InviteCodeInfo) -> Self {
         let bae_core::sync::membership::InviteCodeInfo {
@@ -533,24 +497,36 @@ impl BridgeInviteCodeInfo {
 }
 
 fn join_error_to_bridge(error: JoinFromCodeError) -> BridgeError {
+    use crate::types::BridgeErrorCategory;
     match error {
         JoinFromCodeError::Cancelled => BridgeError::Cancelled,
+        // Both devices must be running the join at once. These two are the
+        // "nothing is wrong with the code, the other side isn't there" ends, kept
+        // apart from a genuine failure so the UI can tell the user what to do.
+        JoinFromCodeError::OwnerOffline => BridgeError::diagnostic(
+            BridgeErrorCategory::Membership,
+            "the inviting device is not running the join — open bae on it and show the invite again",
+        ),
+        JoinFromCodeError::Abandoned => BridgeError::diagnostic(
+            BridgeErrorCategory::Membership,
+            "the inviting device ended this join",
+        ),
         JoinFromCodeError::Join(error) => {
             BridgeError::internal(format!("Failed to join library: {error}"))
         }
     }
 }
 
-async fn join_from_code_config(
-    invite_code: String,
+async fn join_from_scanned_invite_config(
+    scanned: Vec<u8>,
     join_request_code: String,
     oauth_tokens: Option<coven::OAuthTokens>,
     cloudkit_ops: Option<Arc<dyn coven::CloudKitOps>>,
     cancel: Option<CancellationToken>,
 ) -> Result<Config, BridgeError> {
     match cancel {
-        Some(cancel) => bae_core::library::join_from_code_cancellable(
-            &invite_code,
+        Some(cancel) => bae_core::library::join_from_scanned_bundle_cancellable(
+            &scanned,
             &join_request_code,
             oauth_tokens,
             cloudkit_ops,
@@ -559,32 +535,39 @@ async fn join_from_code_config(
         )
         .await
         .map_err(join_error_to_bridge),
-        None => bae_core::library::join_from_code(
-            &invite_code,
+        None => bae_core::library::join_from_scanned_bundle(
+            &scanned,
             &join_request_code,
             oauth_tokens,
             cloudkit_ops,
             |status| info!("{}", status),
         )
         .await
-        .map_err(|e| join_error_to_bridge(JoinFromCodeError::Join(e))),
+        .map_err(join_error_to_bridge),
     }
 }
 
-/// Join a shared library from an invite code string.
+/// Join a shared library from an invite scanned off the inviting device's QR
+/// code.
+///
+/// `scanned` is the raw payload bytes read from the QR — it carries both the
+/// invite code (this device's cloud-provider credentials) and the owner's signed
+/// join offer with the storage slots the handshake runs through.
 ///
 /// `join_request_code` is the code this device's own `generate_join_request`
-/// produced (`BridgeJoinRequest.code`) — coven minted a pending identity for
-/// it at that point, and a completed join promotes that same identity into
-/// this store's own identity custody, so the caller must keep and pass back
-/// the exact code it generated.
+/// produced (`BridgeJoinRequest.code`) and which the owner scanned first to mint
+/// the invite — coven minted a pending identity for it at that point, and a
+/// completed join promotes that same identity into this store's own identity
+/// custody, so the caller must keep and pass back the exact code it generated.
+///
+/// The inviting device has to be running its side of the join while this runs.
 ///
 /// For OAuth providers, the caller must first run the OAuth flow (`oauth_authorize`
 /// on desktop, or `oauth_begin`/`oauth_complete` on mobile) and pass the token
 /// JSON as `oauth_token_json`.
 #[uniffi::export]
-pub fn join_from_code(
-    code: String,
+pub fn join_from_scanned_invite(
+    scanned: Vec<u8>,
     join_request_code: String,
     oauth_token_json: Option<String>,
 ) -> Result<BridgeLibrary, BridgeError> {
@@ -593,8 +576,8 @@ pub fn join_from_code(
             .map(|json| parse_oauth_tokens(&json))
             .transpose()?;
 
-        let config = join_from_code_config(
-            code,
+        let config = join_from_scanned_invite_config(
+            scanned,
             join_request_code,
             oauth_tokens,
             get_cloudkit_ops(),
@@ -608,7 +591,7 @@ pub fn join_from_code(
 
 #[derive(uniffi::Object)]
 pub struct JoinFromCodeOperation {
-    code: String,
+    scanned: Vec<u8>,
     join_request_code: String,
     oauth_tokens: Option<coven::OAuthTokens>,
     cloudkit_ops: Option<Arc<dyn coven::CloudKitOps>>,
@@ -617,8 +600,8 @@ pub struct JoinFromCodeOperation {
 }
 
 #[uniffi::export]
-pub fn join_from_code_operation(
-    code: String,
+pub fn join_from_scanned_invite_operation(
+    scanned: Vec<u8>,
     join_request_code: String,
     oauth_token_json: Option<String>,
 ) -> Result<Arc<JoinFromCodeOperation>, BridgeError> {
@@ -626,7 +609,7 @@ pub fn join_from_code_operation(
         .map(|json| parse_oauth_tokens(&json))
         .transpose()?;
     Ok(Arc::new(JoinFromCodeOperation {
-        code,
+        scanned,
         join_request_code,
         oauth_tokens,
         cloudkit_ops: get_cloudkit_ops(),
@@ -647,14 +630,14 @@ impl JoinFromCodeOperation {
             }
             *started = true;
         }
-        let code = self.code.clone();
+        let scanned = self.scanned.clone();
         let join_request_code = self.join_request_code.clone();
         let oauth_tokens = self.oauth_tokens.clone();
         let cloudkit_ops = self.cloudkit_ops.clone();
         let cancel = self.cancel.clone();
         on_worker(move || async move {
-            let config = join_from_code_config(
-                code,
+            let config = join_from_scanned_invite_config(
+                scanned,
                 join_request_code,
                 oauth_tokens,
                 cloudkit_ops,

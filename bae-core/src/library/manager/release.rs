@@ -728,6 +728,13 @@ impl LibraryManager {
             .collect();
 
         let delete_plan = self.release_delete_plan(&release).await?;
+        // Unwind a make-remote caught mid-flight before the rows go: coven clears
+        // the intent, drops the queued uploads, and tombstones whatever already
+        // reached the cloud. Doing it first means the delete never races the
+        // drain for rows it is about to remove.
+        if delete_plan.cancel_make_remote {
+            self.cancel_release_make_remote(release_id).await;
+        }
         let album_deleted = self
             .database
             .delete_release_with_cleanup(release_id, &album_id, delete_plan.db_cleanup)
@@ -1029,14 +1036,4 @@ pub(crate) async fn find_release_detail_with(
     Ok(Some(detail))
 }
 
-impl LibraryManager {
-    /// The full cloud object key a release file's blob lives at, derived through
-    /// coven for the configured home's scheme (`Hashed` → `{ns}/{ab}/{cd}/{id}`,
-    /// `Plain` → `{ns}/{cloud_path}`). Used by the bae-side delete path, which
-    /// stays bae's responsibility (the transitions are coven's).
-    pub(super) fn release_file_cloud_key(&self, file: &DbFile) -> Result<String, LibraryError> {
-        self.handle
-            .blob_cloud_key(&Self::release_file_blob_ref(file))
-            .map_err(|e| LibraryError::Storage(format!("cloud key for file {}: {e}", file.id)))
-    }
-}
+impl LibraryManager {}

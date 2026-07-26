@@ -156,5 +156,5 @@ internal sealed partial class StorageDialog
     }
 
     private static string DeleteLabel(BridgeDeleteOp delete) =>
-        $"{delete.CloudKey} — {Loc.Chrome("outbox.delete.kind")}";
+        $"{delete.Namespace}/{delete.BlobId} — {Loc.Chrome("outbox.delete.kind")}";
 }

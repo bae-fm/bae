@@ -140,8 +140,8 @@ struct OutboxSection: View {
                     Divider()
                 }
                 // Deletes stay per-file — a delete is a single-file operation.
-                ForEach(snapshot.deletes, id: \.id) { op in
-                    OutboxDeleteRow(op: op) { cancel(op.id) }
+                ForEach(snapshot.deletes, id: \.blobId) { op in
+                    OutboxDeleteRow(op: op)
                     Divider()
                 }
             }
@@ -152,21 +152,6 @@ struct OutboxSection: View {
     private func cancelTransition(_ releaseId: String) {
         Task {
             do { try await sync.cancelReleaseTransition(releaseId) }
-            catch {
-                uiStore.showError(
-                    String(
-                        localized:
-                            "Failed to cancel: \(error.displayLine)"
-                    )
-                )
-            }
-        }
-    }
-
-    /// Remove a queued delete, surfacing any failure.
-    private func cancel(_ id: Int64) {
-        Task {
-            do { try await sync.cancelOutboxItem(id) }
             catch {
                 uiStore.showError(
                     String(

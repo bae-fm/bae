@@ -678,7 +678,7 @@ mod tests {
 
         library_tx
             .send(LibraryEvent::ReleaseRemoved {
-                album_id: "album-1".to_string(),
+                album_id: "9fd7bfa8-3c7c-4026-8559-da66af02f636".to_string(),
                 release_id: "release-1".to_string(),
                 album: None,
             })
@@ -689,7 +689,7 @@ mod tests {
             Invalidation::ComposerList,
             Invalidation::ArtistList,
             Invalidation::Album {
-                album_id: "album-1".to_string(),
+                album_id: "9fd7bfa8-3c7c-4026-8559-da66af02f636".to_string(),
             },
             Invalidation::Release {
                 release_id: "release-1".to_string(),

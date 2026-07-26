@@ -18,6 +18,21 @@
         )
         private let recordType = "BaeFile"
 
+        /// Which CloudKit deployment this build talks to. A debug build runs
+        /// against the development container; a release build against production.
+        private static var environment: BridgeCloudKitEnvironment {
+            #if DEBUG
+                .development
+            #else
+                .production
+            #endif
+        }
+
+        /// Records staged for an atomic create, keyed by batch id. Nothing here
+        /// has reached CloudKit — the commit sends the whole set at once.
+        private var staged: [String: [StagedRecord]] = [:]
+        private let stagingLock = NSLock()
+
         private var privateDatabase: CKDatabase {
             container.privateCloudDatabase
         }
@@ -74,6 +89,467 @@
                     "Unexpected iCloud account status (\(status.rawValue))."
             }
             throw CloudKitError.Storage(msg: unavailableReason)
+        }
+
+        // MARK: - Provider identity and accepted share
+
+        /// The CloudKit facts coven binds a store's principal to: which
+        /// container and environment this build talks to, which zone the scope
+        /// names, and which user record the signed-in iCloud account is. coven
+        /// checks the returned owner/zone against the scope it asked about, so a
+        /// mismatch is surfaced rather than silently accepted.
+        public func providerIdentity(
+            ownerName: String?,
+            zoneName: String?
+        ) throws -> BridgeCloudKitProviderIdentity {
+            let scope = try recordScope(
+                ownerName: ownerName,
+                zoneName: zoneName
+            )
+            let userRecordName = try fetchCurrentUserRecordName()
+            return BridgeCloudKitProviderIdentity(
+                containerId: CloudKitService.containerIdentifier,
+                environment: CloudKitService.environment,
+                ownerName: resolvedOwnerName(
+                    for: scope,
+                    userRecordName: userRecordName
+                ),
+                zoneName: scope.zoneID.zoneName,
+                currentUserRecordName: userRecordName
+            )
+        }
+
+        /// The accepted zone-wide CKShare behind a shared scope, with the exact
+        /// bytes CloudKit stores for the share record.
+        ///
+        /// `canonicalRecord` is `CKShare.encodeSystemFields`, which is CloudKit's
+        /// own stable encoding of the record's identity and metadata — the same
+        /// bytes on every device that fetches the same share version. coven
+        /// hashes them into its cross-principal evidence, so anything derived
+        /// locally (a re-serialized struct, a description string) would not do.
+        public func acceptedReadWriteShare(
+            ownerName: String?,
+            zoneName: String?
+        ) throws -> BridgeCloudKitAcceptedShare {
+            let scope = try recordScope(
+                ownerName: ownerName,
+                zoneName: zoneName
+            )
+            guard !scope.ownsZone else {
+                throw CloudKitError.Storage(
+                    msg:
+                        "CloudKit accepted-share lookup needs a shared scope, not the owner's own zone"
+                )
+            }
+            let share = try fetchAcceptedShare(in: scope)
+            let userRecordName = try fetchCurrentUserRecordName()
+            guard
+                let participant = share.participants.first(where: {
+                    $0.userIdentity.userRecordID?.recordName == userRecordName
+                })
+            else {
+                throw CloudKitError.Storage(
+                    msg:
+                        "this device's iCloud account is not a participant in the CloudKit share"
+                )
+            }
+            let archiver = NSKeyedArchiver(requiringSecureCoding: true)
+            share.encodeSystemFields(with: archiver)
+            archiver.finishEncoding()
+            return BridgeCloudKitAcceptedShare(
+                shareRecordName: share.recordID.recordName,
+                ownerName: scope.zoneID.ownerName,
+                zoneName: scope.zoneID.zoneName,
+                participantRecordName: userRecordName,
+                permission: participant.permission == .readWrite
+                    ? .readWrite : .readOnly,
+                acceptance: participant.acceptanceStatus == .accepted
+                    ? .accepted : .pending,
+                canonicalRecord: archiver.encodedData
+            )
+        }
+
+        /// The share record for an already-shared zone, or nil when the zone was
+        /// never shared. A zone-wide share is one URL-accept share for everyone,
+        /// so the member key selects nothing — it is the same share or none.
+        public func shareForMember(memberPubkey: String) throws
+            -> BridgeCloudKitShare?
+        {
+            guard let share = try fetchZoneWideShare(),
+                let url = share.url?.absoluteString
+            else {
+                return nil
+            }
+            return BridgeCloudKitShare(
+                shareUrl: url,
+                ownerName: share.recordID.zoneID.ownerName,
+                zoneName: share.recordID.zoneID.zoneName
+            )
+        }
+
+        private func resolvedOwnerName(
+            for scope: RecordScope,
+            userRecordName: String
+        ) -> String {
+            // A record in one's own private database carries the placeholder
+            // owner name; the store's principal is this account's user record.
+            scope.zoneID.ownerName == CKCurrentUserDefaultName
+                ? userRecordName : scope.zoneID.ownerName
+        }
+
+        private func fetchCurrentUserRecordName() throws -> String {
+            let sem = DispatchSemaphore(value: 0)
+            nonisolated(unsafe) var recordID: CKRecord.ID?
+            nonisolated(unsafe) var resultError: Error?
+            container.fetchUserRecordID { id, error in
+                if let error {
+                    resultError = error
+                }
+                else {
+                    recordID = id
+                }
+                sem.signal()
+            }
+            sem.wait()
+            if let error = resultError {
+                throw CloudKitError.Storage(
+                    msg: cloudKitErrorMessage(error, op: "User record lookup")
+                )
+            }
+            guard let recordID else {
+                throw CloudKitError.Storage(
+                    msg: "CloudKit returned no user record for this account"
+                )
+            }
+            return recordID.recordName
+        }
+
+        private func fetchAcceptedShare(in scope: RecordScope) throws -> CKShare
+        {
+            let shareID = CKRecord.ID(
+                recordName: CKRecordNameZoneWideShare,
+                zoneID: scope.zoneID
+            )
+            let sem = DispatchSemaphore(value: 0)
+            nonisolated(unsafe) var fetched: CKShare?
+            nonisolated(unsafe) var resultError: Error?
+            scope.database.fetch(withRecordID: shareID) { record, error in
+                if let error {
+                    resultError = error
+                }
+                else {
+                    fetched = record as? CKShare
+                }
+                sem.signal()
+            }
+            sem.wait()
+            if let error = resultError {
+                throw CloudKitError.Storage(
+                    msg: cloudKitErrorMessage(
+                        error,
+                        op: "Accepted share lookup"
+                    )
+                )
+            }
+            guard let fetched else {
+                throw CloudKitError.NotFound(msg: "accepted CloudKit share")
+            }
+            return fetched
+        }
+
+        // MARK: - Versioned reads and atomic record batches
+
+        /// Read a record and hand back CloudKit's own `recordChangeTag` with the
+        /// bytes. coven names the exact version it read when it later deletes,
+        /// so the tag has to come from the same fetch as the payload.
+        public func readVersionedRecord(
+            ownerName: String?,
+            zoneName: String?,
+            key: String
+        ) throws -> BridgeCloudVersionedObject {
+            let scope = try recordScope(
+                ownerName: ownerName,
+                zoneName: zoneName
+            )
+            let record = try fetchRecord(key: key, in: scope)
+            guard let asset = record["data"] as? CKAsset,
+                let url = asset.fileURL
+            else {
+                throw CloudKitError.NotFound(msg: key)
+            }
+            guard let tag = record.recordChangeTag else {
+                throw CloudKitError.Storage(
+                    msg:
+                        "CloudKit record \(key) has no change tag to version it by"
+                )
+            }
+            do {
+                return BridgeCloudVersionedObject(
+                    bytes: try Data(contentsOf: url),
+                    version: tag
+                )
+            }
+            catch {
+                throw CloudKitError.Storage(
+                    msg: "Read failed: \(error.localizedDescription)"
+                )
+            }
+        }
+
+        /// Open a staging batch. Nothing reaches CloudKit until the commit: the
+        /// payloads sit in host-owned temporary files so the whole set can be
+        /// created in one atomic zone modification.
+        public func beginAtomicCreate(ownerName: String?, zoneName: String?)
+            throws -> String
+        {
+            let scope = try recordScope(
+                ownerName: ownerName,
+                zoneName: zoneName
+            )
+            try ensureWritableZone(for: scope)
+            let batch = UUID().uuidString
+            let directory = stagingDirectory(batch: batch)
+            do {
+                try FileManager.default.createDirectory(
+                    at: directory,
+                    withIntermediateDirectories: true
+                )
+            }
+            catch {
+                throw CloudKitError.Storage(
+                    msg:
+                        "CloudKit staging setup failed: \(error.localizedDescription)"
+                )
+            }
+            stagingLock.lock()
+            staged[batch] = []
+            stagingLock.unlock()
+            return batch
+        }
+
+        public func stageAtomicCreateRecord(
+            ownerName: String?,
+            zoneName: String?,
+            batch: String,
+            record: BridgeCloudKitRecordCreate
+        ) throws {
+            let scope = try recordScope(
+                ownerName: ownerName,
+                zoneName: zoneName
+            )
+            let payloadURL = stagingDirectory(batch: batch)
+                .appendingPathComponent(UUID().uuidString)
+            do { try record.data.write(to: payloadURL) }
+            catch {
+                throw CloudKitError.Storage(
+                    msg:
+                        "CloudKit staging write failed: \(error.localizedDescription)"
+                )
+            }
+            let ckRecord = CKRecord(
+                recordType: recordType,
+                recordID: recordID(for: record.key, in: scope)
+            )
+            ckRecord["key"] = record.key as CKRecordValue
+            ckRecord["data"] = CKAsset(fileURL: payloadURL)
+
+            stagingLock.lock()
+            defer { stagingLock.unlock() }
+            guard staged[batch] != nil else {
+                throw CloudKitError.NotFound(
+                    msg: "CloudKit staging batch \(batch)"
+                )
+            }
+            staged[batch]?
+                .append(StagedRecord(key: record.key, record: ckRecord))
+        }
+
+        /// Create every staged record in one atomic zone modification, create-only.
+        ///
+        /// `.ifServerRecordUnchanged` on a record with no change tag is CloudKit's
+        /// create-only save: an existing record fails the save rather than being
+        /// overwritten, and `isAtomic` makes one such failure fail the whole set,
+        /// so a rejected batch leaves nothing behind. A lost response is a
+        /// different case — the records may well be there, so nothing is cleaned
+        /// up here; coven reads the keys back to settle it.
+        public func commitAtomicCreate(
+            ownerName: String?,
+            zoneName: String?,
+            batch: String
+        ) throws -> [BridgeCloudKitRecordVersion] {
+            let scope = try recordScope(
+                ownerName: ownerName,
+                zoneName: zoneName
+            )
+            stagingLock.lock()
+            let records = staged[batch]
+            stagingLock.unlock()
+            guard let records else {
+                throw CloudKitError.NotFound(
+                    msg: "CloudKit staging batch \(batch)"
+                )
+            }
+
+            let sem = DispatchSemaphore(value: 0)
+            nonisolated(unsafe) var savedByName: [String: CKRecord] = [:]
+            nonisolated(unsafe) var resultError: Error?
+            let op = CKModifyRecordsOperation(
+                recordsToSave: records.map(\.record),
+                recordIDsToDelete: nil
+            )
+            op.savePolicy = .ifServerRecordUnchanged
+            op.isAtomic = true
+            op.perRecordSaveBlock = { recordID, result in
+                if case .success(let record) = result {
+                    savedByName[recordID.recordName] = record
+                }
+            }
+            op.modifyRecordsResultBlock = { result in
+                if case .failure(let error) = result { resultError = error }
+                sem.signal()
+            }
+            scope.database.add(op)
+            sem.wait()
+
+            if let error = resultError {
+                throw CloudKitError.Storage(
+                    msg: cloudKitErrorMessage(error, op: "Atomic create")
+                )
+            }
+            // Staging order is the order coven expects its versions back in.
+            return try records.map { staged in
+                guard
+                    let saved = savedByName[
+                        recordID(for: staged.key, in: scope).recordName
+                    ],
+                    let tag = saved.recordChangeTag
+                else {
+                    throw CloudKitError.Storage(
+                        msg:
+                            "CloudKit did not return a change tag for created record \(staged.key)"
+                    )
+                }
+                return BridgeCloudKitRecordVersion(
+                    key: staged.key,
+                    version: tag
+                )
+            }
+        }
+
+        /// Drop host-local staging. Never touches records the batch may already
+        /// have created, and does nothing for a batch that is already gone.
+        public func discardAtomicCreate(
+            ownerName: String?,
+            zoneName: String?,
+            batch: String
+        ) throws {
+            stagingLock.lock()
+            staged.removeValue(forKey: batch)
+            stagingLock.unlock()
+            let directory = stagingDirectory(batch: batch)
+            guard FileManager.default.fileExists(atPath: directory.path) else {
+                return
+            }
+            do { try FileManager.default.removeItem(at: directory) }
+            catch {
+                throw CloudKitError.Storage(
+                    msg:
+                        "CloudKit staging batch \(batch) could not be discarded: "
+                        + error.localizedDescription
+                )
+            }
+        }
+
+        /// Delete exactly these versions, all or nothing.
+        ///
+        /// CloudKit has no per-delete change-tag precondition, so the versions
+        /// are checked first: every record is fetched and its tag compared, and
+        /// only then does the atomic zone modification run. A record that moved
+        /// or vanished in between fails the whole deletion, which is what the
+        /// caller relies on.
+        public func deleteRecordVersions(
+            ownerName: String?,
+            zoneName: String?,
+            records: [BridgeCloudKitRecordVersion]
+        ) throws {
+            guard !records.isEmpty else { return }
+            let scope = try recordScope(
+                ownerName: ownerName,
+                zoneName: zoneName
+            )
+            for record in records {
+                let current = try fetchRecord(key: record.key, in: scope)
+                guard current.recordChangeTag == record.version else {
+                    throw CloudKitError.Storage(
+                        msg:
+                            "CloudKit record \(record.key) changed before its exact deletion"
+                    )
+                }
+            }
+
+            let sem = DispatchSemaphore(value: 0)
+            nonisolated(unsafe) var resultError: Error?
+            let op = CKModifyRecordsOperation(
+                recordsToSave: nil,
+                recordIDsToDelete: records.map {
+                    recordID(for: $0.key, in: scope)
+                }
+            )
+            op.isAtomic = true
+            op.modifyRecordsResultBlock = { result in
+                if case .failure(let error) = result { resultError = error }
+                sem.signal()
+            }
+            scope.database.add(op)
+            sem.wait()
+
+            if let error = resultError {
+                throw CloudKitError.Storage(
+                    msg: cloudKitErrorMessage(error, op: "Exact delete")
+                )
+            }
+        }
+
+        private struct StagedRecord {
+            let key: String
+            let record: CKRecord
+        }
+
+        private func stagingDirectory(batch: String) -> URL {
+            FileManager.default.temporaryDirectory
+                .appendingPathComponent("bae-cloudkit-staging")
+                .appendingPathComponent(batch)
+        }
+
+        private func fetchRecord(key: String, in scope: RecordScope) throws
+            -> CKRecord
+        {
+            let sem = DispatchSemaphore(value: 0)
+            nonisolated(unsafe) var fetched: CKRecord?
+            nonisolated(unsafe) var resultError: Error?
+            scope.database.fetch(withRecordID: recordID(for: key, in: scope)) {
+                record,
+                error in
+                if let error {
+                    resultError = error
+                }
+                else {
+                    fetched = record
+                }
+                sem.signal()
+            }
+            sem.wait()
+            if let error = resultError {
+                if let ckError = error as? CKError, ckError.code == .unknownItem
+                {
+                    throw CloudKitError.NotFound(msg: key)
+                }
+                throw CloudKitError.Storage(
+                    msg: cloudKitErrorMessage(error, op: "Read")
+                )
+            }
+            guard let fetched else { throw CloudKitError.NotFound(msg: key) }
+            return fetched
         }
 
         // MARK: - Zone Management

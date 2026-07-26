@@ -206,7 +206,7 @@ mod tests {
         .unwrap();
 
         let artist = DbArtist {
-            id: "test-artist-id".to_string(),
+            id: bae_test_support::test_uuid("e36744a5-1a36-460f-891c-e7e558034edf"),
             name: "Test Artist".to_string(),
             sort_name: None,
             discogs_artist_id: None,
@@ -215,12 +215,12 @@ mod tests {
         };
         database.insert_artist(&artist).await.unwrap();
         let album = DbAlbum::new_test("Album Title", &artist.id);
-        let release = DbRelease::new_test(&album.id, "release-under-test");
+        let release = DbRelease::new_test(&album.id, "c61a9e19-f3ba-4728-842c-c59dbc82e238");
         database.insert_album(&album).await.unwrap();
         database.insert_release(&release).await.unwrap();
         let mut track_ids = Vec::with_capacity(track_count);
         for i in 0..track_count {
-            let track_id = format!("track-{i}");
+            let track_id = bae_test_support::test_uuid(&format!("track-{i}"));
             let track = DbTrack::new_test(
                 &release.id,
                 &track_id,

@@ -552,7 +552,7 @@ async fn reset_file_tags_unknown_returns_tags_from_disk() {
         file_size: std::fs::metadata(&f1).unwrap().len() as i64,
         content_type: ContentType::Flac,
         cloud_path: None,
-        content_hash: None,
+        content_hash: bae_core::util::fs::hash_bytes(b"fixture"),
         created_at: now,
     };
     let file2 = DbFile {
@@ -562,7 +562,7 @@ async fn reset_file_tags_unknown_returns_tags_from_disk() {
         file_size: std::fs::metadata(&f2).unwrap().len() as i64,
         content_type: ContentType::Flac,
         cloud_path: None,
-        content_hash: None,
+        content_hash: bae_core::util::fs::hash_bytes(b"fixture"),
         created_at: now,
     };
     db.insert_file(&file1).await.unwrap();

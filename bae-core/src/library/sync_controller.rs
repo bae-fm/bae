@@ -27,6 +27,53 @@ use coven::ClockRef;
 use coven::CloudHome;
 use coven::CovenHandle;
 
+/// How a device join this library invited ended. The payloads coven returns
+/// (the activation, the abandonment) are protocol records bae keeps nothing
+/// from — the UI only distinguishes "the device is in" from "the attempt ended
+/// without it".
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DeviceJoinOutcome {
+    Joined,
+    Abandoned,
+}
+
+use crate::sync::device_join_timing;
+
+/// Run one of coven's device-join futures to completion and hand back its
+/// `Send` result.
+///
+/// These futures are `!Send` (they hold coven's custody trait objects across
+/// awaits) and deeply nested (each transport step polls the step under it), so
+/// they get a dedicated thread with its own current-thread runtime and a large
+/// stack rather than a blocking-pool thread — the same shape coven's own tests
+/// use to drive them. `label` names the operation in a failure message.
+async fn run_device_join_future<T, F, Fut>(label: &'static str, build: F) -> Result<T, LibraryError>
+where
+    T: Send + 'static,
+    F: FnOnce() -> Fut + Send + 'static,
+    Fut: std::future::Future<Output = Result<T, LibraryError>>,
+{
+    let (tx, rx) = tokio::sync::oneshot::channel();
+    std::thread::Builder::new()
+        .name(format!("bae-{label}"))
+        .stack_size(64 * 1024 * 1024)
+        .spawn(move || {
+            let result = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .map_err(|e| {
+                    LibraryError::Internal(format!("failed to build {label} runtime: {e}"))
+                })
+                .and_then(|runtime| runtime.block_on(Box::pin(build())));
+            // The receiver is gone only if the caller was dropped mid-join;
+            // the work is already done, so there is nothing to report to.
+            let _ = tx.send(result);
+        })
+        .map_err(|e| LibraryError::Internal(format!("failed to spawn {label} thread: {e}")))?;
+    rx.await
+        .map_err(|_| LibraryError::Internal(format!("{label} task failed to complete")))?
+}
+
 /// Owns the sync/upload state and the cloud-connection lifecycle. Holds clones of
 /// the handles the sync paths need (coven handle, config, keys, clock, event bus,
 /// database) plus the transient upload-pipeline state. Cloned alongside the
@@ -182,16 +229,16 @@ impl SyncController {
     }
 
     async fn build_outbox_snapshot(&self) -> Result<OutboxSnapshot, coven::DbError> {
+        let queue = self.database.outbox_queue().await?;
         let in_flight = { self.outbox_in_flight.lock().unwrap().clone() };
         let paused = self.is_sync_paused();
-        crate::library::outbox_snapshot::build_outbox_snapshot(
-            &self.database,
+        Ok(crate::library::outbox_snapshot::build_outbox_snapshot(
+            queue,
             &in_flight,
             &self.upload_sessions,
             &self.upload_throughput,
             paused,
-        )
-        .await
+        ))
     }
 
     /// The library's membership: its devices (with this device flagged, each
@@ -221,6 +268,92 @@ impl SyncController {
                 crate::sync::membership::MemberRole::Member,
             )
             .await?)
+    }
+
+    /// Mint the scannable device-join invite for a device that has asked to join,
+    /// returning the payload bytes the UI renders as a QR code.
+    ///
+    /// `join_request_code` is the code the *joining* device produced with
+    /// [`crate::sync::membership::generate_join_request`] and handed over first:
+    /// the offer is signed for that device's key, so the owner cannot mint this
+    /// payload without it. The returned bytes carry both the invite code (the
+    /// joining device's provider credentials) and the join offer with its
+    /// transport slots, so scanning it is everything that device needs.
+    ///
+    /// Minting only publishes the offer. [`drive_device_join`](Self::drive_device_join)
+    /// must then run on this device to admit the joiner.
+    pub(crate) async fn begin_device_invite(
+        &self,
+        join_request_code: &str,
+    ) -> Result<Vec<u8>, LibraryError> {
+        let handle = self.handle.clone();
+        let join_request_code = join_request_code.to_string();
+        run_device_join_future("device-invite", move || async move {
+            Ok(handle
+                .begin_device_invite(
+                    &join_request_code,
+                    crate::sync::membership::MemberRole::Member,
+                )
+                .await?
+                .to_bytes())
+        })
+        .await
+    }
+
+    /// Drive this device's side of a join it invited, to the attempt's end.
+    ///
+    /// Runs the admitting half of the handshake — approving the joiner's provider
+    /// access, registering it, and finalizing its activation — publishing each
+    /// artifact through the transport and waiting for the joiner's next one. The
+    /// approval is [`AutoApproveSelfIssued`](coven::DeviceJoinApprovalPolicy::AutoApproveSelfIssued):
+    /// the attempt is one this device itself minted, and the user already approved
+    /// it by choosing to show the QR — coven still refuses any request that does
+    /// not match that attempt.
+    ///
+    /// Returns when the attempt reaches a terminal state this side owns; the
+    /// joining device completes its own last step. A joining device that never
+    /// scans the code leaves this waiting until the transport deadline, which
+    /// surfaces as [`LibraryError::Sync`].
+    pub(crate) async fn drive_device_join(
+        &self,
+        invite_bytes: Vec<u8>,
+    ) -> Result<DeviceJoinOutcome, LibraryError> {
+        let handle = self.handle.clone();
+        run_device_join_future("device-join drive", move || async move {
+            let invite = coven::DeviceJoinInvite::from_bytes(&invite_bytes)
+                .map_err(|e| LibraryError::Internal(format!("invalid device invite: {e}")))?;
+            let outcome = handle
+                .drive_device_join(
+                    &invite,
+                    coven::DeviceJoinApprovalPolicy::AutoApproveSelfIssued,
+                    None,
+                    device_join_timing(),
+                )
+                .await?;
+            Ok(match outcome {
+                coven::DeviceJoinDriveOutcome::Activated(_) => DeviceJoinOutcome::Joined,
+                coven::DeviceJoinDriveOutcome::Abandoned(_) => DeviceJoinOutcome::Abandoned,
+            })
+        })
+        .await
+    }
+
+    /// Withdraw an invite this device minted, unwinding the attempt through the
+    /// transport so a joining device that already scanned it is told to stop.
+    pub(crate) async fn cancel_device_invite(
+        &self,
+        invite_bytes: Vec<u8>,
+    ) -> Result<(), LibraryError> {
+        let handle = self.handle.clone();
+        run_device_join_future("device-invite cancel", move || async move {
+            let invite = coven::DeviceJoinInvite::from_bytes(&invite_bytes)
+                .map_err(|e| LibraryError::Internal(format!("invalid device invite: {e}")))?;
+            handle
+                .cancel_device_invite(&invite, device_join_timing())
+                .await?;
+            Ok(())
+        })
+        .await
     }
 
     /// Remove a device from the library and rotate the library key so the removed
@@ -276,6 +409,10 @@ impl SyncController {
             data.access_key.clone(),
             data.secret_key.clone(),
             data.key_prefix.clone(),
+            // bae exposes no operator toggle asserting a custom S3 endpoint
+            // supports conditional requests, so exact slots stay off for a custom
+            // endpoint (AWS-native, `endpoint` unset, has them regardless).
+            None,
         )
         .await?;
         probe_home.probe().await?;

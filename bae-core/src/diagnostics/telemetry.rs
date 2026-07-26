@@ -513,11 +513,14 @@ mod tests {
     #[test]
     fn track_completed_carries_decode_error_count_as_number() {
         let event = TelemetryEvent::TrackCompleted {
-            track_id: LocalId("track-9".to_string()),
+            track_id: LocalId("a29b9a29-8c0c-4aee-84c8-0af69eb9ea1e".to_string()),
             decode_errors: 3,
         };
         let fields = event.fields();
-        assert_eq!(fields["track_id"], serde_json::json!("track-9"));
+        assert_eq!(
+            fields["track_id"],
+            serde_json::json!("a29b9a29-8c0c-4aee-84c8-0af69eb9ea1e")
+        );
         assert_eq!(fields["decode_errors"], serde_json::json!(3));
         assert!(fields["decode_errors"].is_number());
     }
@@ -539,12 +542,15 @@ mod tests {
     fn storage_transfer_records_action_via_foreign_impl() {
         let event = TelemetryEvent::StorageTransferCompleted {
             action: ReleaseStorageAction::MakeRemote,
-            release_id: LocalId("rel-1".to_string()),
+            release_id: LocalId("e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e".to_string()),
             file_count: 12,
         };
         let fields = event.fields();
         assert_eq!(fields["action"], serde_json::json!("make_remote"));
-        assert_eq!(fields["release_id"], serde_json::json!("rel-1"));
+        assert_eq!(
+            fields["release_id"],
+            serde_json::json!("e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e")
+        );
         assert_eq!(fields["file_count"], serde_json::json!(12));
         assert!(fields["file_count"].is_number());
     }

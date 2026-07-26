@@ -1,3 +1,11 @@
+// Fixture row ids. coven validates every synced row's primary key as a
+// canonical v4 UUID (`RowIdentity::IndependentUuid`), which is what bae's
+// real ids are, so these fixtures carry UUIDs too. Each constant is named
+// for the moniker it replaced, so assertions still read by name.
+const ARTIST_ACTUAL_1: &str = "f83b9e90-bd64-470f-82e6-cf28db1996a3"; // was "artist-actual-1"
+const REL_1: &str = "cccb6034-5922-40d2-8d0b-d94619230882"; // was "e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e"
+const TRACK_1: &str = "f2f77437-aa03-4583-8b1c-d12bcf984967"; // was "track-1"
+
 use super::*;
 use crate::db::{Database, DbArtist};
 use crate::test_logs::capture_warn_logs_async;
@@ -115,14 +123,14 @@ async fn fetch_artist_images_warns_and_skips_when_existing_image_check_fails() {
     database
         .handle()
         .sql(|sql| {
-            sql.tx().execute("DROP TABLE artist_images", [])?;
+            sql.execute("DROP TABLE artist_images", [])?;
             Ok::<(), coven::CovenError>(())
         })
         .await
         .unwrap();
 
     let parsed_artist = make_artist("Artist Name", Some("discogs-artist-1"), None);
-    let actual_artist_id = "artist-actual-1".to_string();
+    let actual_artist_id = ARTIST_ACTUAL_1.to_string();
     let artist_id_map = HashMap::from([(parsed_artist.id.clone(), actual_artist_id.clone())]);
     let discogs_client = DiscogsClient::new("token".to_string());
 
@@ -252,7 +260,7 @@ use crate::import::ReleaseIdentity;
 async fn setup_test_db_with_artist() -> (LibraryManager, TempDir) {
     let (manager, tmp) = setup_test_manager().await;
     let artist = DbArtist {
-        id: "test-artist-id".to_string(),
+        id: "e36744a5-1a36-460f-891c-e7e558034edf".to_string(),
         name: "Artist Name".to_string(),
         sort_name: None,
         discogs_artist_id: None,
@@ -268,7 +276,7 @@ fn make_album(title: &str) -> DbAlbum {
     DbAlbum {
         id: Uuid::new_v4().to_string(),
         title: title.to_string(),
-        artist_id: "test-artist-id".to_string(),
+        artist_id: "e36744a5-1a36-460f-891c-e7e558034edf".to_string(),
         year: Some(2024),
         primary_release_id: None,
         is_compilation: false,
@@ -722,7 +730,7 @@ fn validation_folds_validate_token_outcomes() {
 fn track_artist(artist_id: &str) -> crate::db::DbTrackArtist {
     crate::db::DbTrackArtist {
         id: Uuid::new_v4().to_string(),
-        track_id: "track-1".to_string(),
+        track_id: TRACK_1.to_string(),
         artist_id: artist_id.to_string(),
         position: 3,
         created_at: Utc::now(),
@@ -746,7 +754,7 @@ fn remap_artist_links_rewrites_id_and_preserves_the_rest() {
     assert_eq!(remapped[0].artist_id, "db-1");
     // Everything other than the remapped artist id carries through.
     assert_eq!(remapped[0].id, ta.id);
-    assert_eq!(remapped[0].track_id, "track-1");
+    assert_eq!(remapped[0].track_id, TRACK_1);
     assert_eq!(remapped[0].position, 3);
 }
 
@@ -800,7 +808,7 @@ fn mb_track(number: &str, title: &str) -> crate::musicbrainz::MbTrack {
 /// side 2, pressed in 1969 on "Label" (CAT-1, US).
 fn vinyl_response() -> crate::musicbrainz::MbReleaseResponse {
     crate::musicbrainz::MbReleaseResponse {
-        id: "rel-1".to_string(),
+        id: REL_1.to_string(),
         title: "Album Title".to_string(),
         date: Some("1969".to_string()),
         country: Some("US".to_string()),
@@ -846,7 +854,7 @@ fn seed_for(response: &crate::musicbrainz::MbReleaseResponse) -> crate::import::
 fn exact_choice() -> crate::import::IdentityChoice {
     crate::import::IdentityChoice::Exact {
         release_ref: crate::import::MetadataRef {
-            id: "rel-1".to_string(),
+            id: REL_1.to_string(),
             source: MetadataSource::MusicBrainz,
         },
     }
@@ -884,7 +892,7 @@ fn shape_user_edit_for_choice_masks_pressing_only() {
     for choice in [
         crate::import::IdentityChoice::Approximate {
             release_ref: crate::import::MetadataRef {
-                id: "rel-1".to_string(),
+                id: REL_1.to_string(),
                 source: MetadataSource::MusicBrainz,
             },
         },
@@ -1127,7 +1135,7 @@ fn record_event_overlays_import_progress_onto_folder_runtime() {
         progress: ImportProgress::Complete {
             id: "rel1".to_string(),
             import_id: "imp-1".to_string(),
-            album_id: "alb-1".to_string(),
+            album_id: "1250a7bb-41ed-4500-8ab4-04f5d3461e30".to_string(),
         },
     });
     let complete = state.snapshot(vec![watched("/watch/a")]).folder_candidates[0]
@@ -1141,7 +1149,7 @@ fn record_event_overlays_import_progress_onto_folder_runtime() {
             album_id,
         } => {
             assert_eq!(release_id, "rel1");
-            assert_eq!(album_id, "alb-1");
+            assert_eq!(album_id, "1250a7bb-41ed-4500-8ab4-04f5d3461e30");
         }
         other => panic!("expected Complete, got {other:?}"),
     }
@@ -1192,7 +1200,7 @@ fn get_resolves_reidentify_runtime_and_scanned_candidates() {
     state.record_event(&ImportEvent::ImportProgress {
         candidate_key: "reidentify:rel-1".to_string(),
         progress: ImportProgress::Started {
-            id: "rel-1".to_string(),
+            id: REL_1.to_string(),
             import_id: "imp-1".to_string(),
         },
     });

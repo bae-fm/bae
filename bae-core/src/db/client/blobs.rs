@@ -5,7 +5,7 @@ impl Database {
         let image = image.clone();
         self.call_sql(move |sql| {
             let reg = sql.stamp();
-            upsert_library_image_row(sql.tx(), &image, &reg)
+            upsert_library_image_row(&sql, &image, &reg)
         })
         .await
     }
@@ -44,17 +44,20 @@ impl Database {
                 crate::sync::image_blob_ref(namespace, &existing.blob_id, existing.cloud_path)
             });
 
-        // The object the replaced blob occupies. Distinct from the one the new blob
-        // is about to write, since the key carries the blob id.
-        let stale_cloud_key = replaced
-            .as_ref()
-            .map(|old| {
-                self.inner
-                    .handle
-                    .blob_cloud_key(old)
-                    .map_err(|e| DbError(format!("cloud key for image blob: {e}")))
-            })
-            .transpose()?;
+        // The cloud object the replaced blob occupies, captured as an exact row
+        // reference while the row still points at it. Only a blob that actually
+        // reached the cloud has one to remove — a Local image carries no stored
+        // locator, and coven refuses a tombstone for it.
+        let stale_remote = if replaced.is_some() {
+            self.inner
+                .handle
+                .row_blob_ref(image_table(&image.image_type), &image.id)
+                .await
+                .ok()
+                .filter(|current| current.stored().is_some())
+        } else {
+            None
+        };
 
         let new_blob =
             crate::sync::image_blob_ref(namespace, &image.blob_id, image.cloud_path.clone());
@@ -71,15 +74,15 @@ impl Database {
                 },
                 move |sql| {
                     let reg = sql.stamp();
-                    upsert_library_image_row(sql.tx(), &image, &reg).map_err(CovenError::from)?;
-                    if let Some(cloud_key) = stale_cloud_key {
-                        add_cloud_outbox_delete_on(sql.tx(), &cloud_key, &reg)
-                            .map_err(CovenError::from)?;
+                    upsert_library_image_row(&sql, &image, &reg).map_err(CovenError::from)?;
+                    if let Some(stale) = &stale_remote {
+                        sql.enqueue_blob_delete(stale).map_err(CovenError::from)?;
                     }
                     Ok(())
                 },
             )
             .await
+            .map(|_| ())
             .map_err(Self::coven_error)
     }
 
@@ -200,269 +203,169 @@ impl Database {
         artist_image_cloud_path_for_storage(storage, artist_id, blob_id, content_type)
     }
 
-    /// Test-only: register a coven user-provided external ref directly. Production
-    /// registers refs inside the atomic import transaction
-    /// (`register_external_blob_on`).
+    /// Test-only: point a row's blob at a file the user owns, in a write of its
+    /// own. Production registers refs inside the atomic import transaction that
+    /// inserts the row, which is where the binding belongs; this exists for the
+    /// tests that repoint an already-inserted row at a file they just wrote.
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn register_external_blob(
         &self,
-        blob_id: &str,
-        namespace: &str,
+        table: &str,
+        row_id: &str,
         path: &Path,
-        size: u64,
     ) -> Result<(), DbError> {
-        let blob_id = blob_id.to_string();
-        let namespace = namespace.to_string();
+        let table = table.to_string();
+        let row_id = row_id.to_string();
         let path = path.to_path_buf();
-        self.call(move |conn| register_external_blob_on(conn, &blob_id, &namespace, &path, size))
+        self.call(move |conn| conn.register_external_blob(&table, &row_id, &path))
             .await
     }
 
-    pub async fn external_blob(&self, blob_id: &str) -> Result<Option<ExternalBlob>, DbError> {
-        let blob_id = blob_id.to_string();
-        self.read(move |conn| {
-            conn.query_row(
-                "SELECT path, size FROM local_blob_refs WHERE blob_id = ?1",
-                [blob_id],
-                |row| {
-                    Ok(ExternalBlob {
-                        path: PathBuf::from(row.get::<_, String>(0)?),
-                        size: row.get::<_, i64>(1)? as u64,
-                    })
-                },
-            )
-            .optional()
-            .map_err(DbError::from)
-        })
-        .await
-    }
-
-    /// Seed an upload entry in coven's cloud outbox. Production never enqueues
-    /// uploads this way — coven's `make_remote` owns that — so this exists only to
-    /// exercise the outbox-snapshot / drain machinery in tests.
-    #[cfg(any(test, feature = "test-utils"))]
-    pub async fn add_cloud_outbox_upload(
+    /// Where the user's own file for a release file lives on disk, or `None`
+    /// when the row carries no external registration.
+    ///
+    /// `release_files` is bae's only user-provided table — every other blob is
+    /// coven's own copy — so a file id is all this needs. Callers that want the
+    /// *bytes* read them through coven instead ([`LibraryManager::read_release_blob`]);
+    /// this is for the paths themselves: re-reading a file's tags, or telling a
+    /// user where their music actually is.
+    pub async fn external_blob(
         &self,
         file_id: &str,
-        cloud_key: &str,
-        source_path: Option<&str>,
-        retain_pinned: bool,
-    ) -> Result<(), DbError> {
-        let file_id = file_id.to_string();
-        let cloud_key = cloud_key.to_string();
-        let source_path = source_path.map(str::to_string);
-        self.call_sql(move |sql| {
-            let created_at = sql.stamp();
-            let conn = sql.tx();
-            conn.execute(
-                "DELETE FROM cloud_outbox WHERE operation = 'delete' AND cloud_key = ?1",
-                [&cloud_key],
-            )
-            .map_err(DbError::from)?;
-            conn.execute(
-                "INSERT OR IGNORE INTO cloud_outbox \
-                 (operation, file_id, cloud_key, source_path, scope, retain_pinned, created_at) \
-                 VALUES ('upload', ?1, ?2, ?3, ?4, ?5, ?6)",
-                (
-                    file_id,
-                    cloud_key,
-                    source_path,
-                    coven::BlobScope::Master.to_outbox_str(),
-                    retain_pinned,
-                    created_at,
-                ),
-            )
-            .map(|_| ())
-            .map_err(DbError::from)
-        })
-        .await
+    ) -> Result<Option<coven::ExternalBlob>, DbError> {
+        self.inner
+            .handle
+            .external_blob(crate::sync::RELEASE_FILES_NAMESPACE, file_id)
+            .await
     }
 
-    /// Seed a tombstone-cancel entry — the coven-internal row its upload drain
-    /// queues when an inline tombstone delete fails. Test-only: bae never
-    /// enqueues cancels itself, but the UI snapshot query must tolerate them.
-    #[cfg(any(test, feature = "test-utils"))]
-    pub async fn add_cloud_outbox_cancel(&self, cloud_key: &str) -> Result<(), DbError> {
-        let cloud_key = cloud_key.to_string();
-        self.call_sql(move |sql| {
-            let created_at = sql.stamp();
-            let conn = sql.tx();
-            conn.execute(
-                "INSERT OR IGNORE INTO cloud_outbox \
-                 (operation, cloud_key, scope, created_at) \
-                 VALUES ('cancel', ?1, NULL, ?2)",
-                (&cloud_key, &created_at),
-            )
-            .map(|_| ())
-            .map_err(DbError::from)
-        })
-        .await
-    }
-
-    pub async fn add_cloud_outbox_delete(&self, cloud_key: &str) -> Result<(), DbError> {
-        let cloud_key = cloud_key.to_string();
-        self.call_sql(move |sql| {
-            let created_at = sql.stamp();
-            add_cloud_outbox_delete_on(sql.tx(), &cloud_key, &created_at)
-        })
-        .await
-    }
-
-    pub async fn remove_cloud_outbox_entry(&self, id: i64) -> Result<(), DbError> {
-        self.call(move |conn| {
-            conn.execute("DELETE FROM cloud_outbox WHERE id = ?1", [id])
-                .map(|_| ())
-                .map_err(DbError::from)
-        })
-        .await
-    }
-
-    /// Clear the backoff timestamp on failed uploads so the next cycle retries.
-    pub async fn reset_cloud_outbox_backoff(&self) -> Result<(), DbError> {
-        self.call(move |conn| {
-            conn.execute(
-                "UPDATE cloud_outbox SET last_attempt_at = NULL \
-                 WHERE operation = 'upload' AND attempt_count > 0",
-                [],
-            )
-            .map(|_| ())
-            .map_err(DbError::from)
-        })
-        .await
-    }
-
-    /// Whether a queued cloud upload exists for `file_id` — an `upload` row in
-    /// coven's `cloud_outbox` (a failed attempt keeps its row for retry, so it
-    /// still counts). Playback's read-failure classification uses this to tell
-    /// "source file gone while its upload is queued" from "source file gone,
-    /// files moved or deleted".
+    /// Whether a queued cloud upload exists for `file_id` — a failed attempt
+    /// stays queued for retry, so it still counts. Playback's read-failure
+    /// classification uses this to tell "source file gone while its upload is
+    /// queued" from "source file gone, files moved or deleted".
     pub async fn has_pending_cloud_upload(&self, file_id: &str) -> Result<bool, DbError> {
-        let file_id = file_id.to_string();
-        self.read(move |conn| {
-            conn.query_row(
-                "SELECT EXISTS(SELECT 1 FROM cloud_outbox \
-                 WHERE operation = 'upload' AND file_id = ?1)",
-                [&file_id],
-                |row| row.get::<_, bool>(0),
-            )
-            .map_err(DbError::from)
-        })
-        .await
+        // coven owns the upload queue; a queued upload names the blob-bearing
+        // row it belongs to, which for audio is the `release_files` row itself.
+        Ok(self
+            .inner
+            .handle
+            .queued_uploads()
+            .await?
+            .iter()
+            .any(|upload| upload.table_name == "release_files" && upload.row_id == file_id))
     }
 
-    #[cfg(any(test, feature = "test-utils"))]
-    pub async fn record_cloud_upload_failure(
+    /// What coven's durable cloud queue is holding, joined to the bae context the
+    /// Storage Manager renders it with. Backs the processing snapshot.
+    ///
+    /// The two halves come from the two owners: coven reports every queued upload
+    /// and cloud tombstone (oldest first, surviving restarts), and bae looks up
+    /// the file name, size, and album title of each upload's `release_files` row.
+    /// An upload whose row has since gone keeps its place in the queue with no
+    /// context — it is still work owed to the cloud.
+    pub async fn outbox_queue(&self) -> Result<DbOutboxQueue, DbError> {
+        let uploads = self.inner.handle.queued_uploads().await?;
+        let deletes = self.inner.handle.queued_deletes().await?;
+
+        let file_ids: Vec<String> = uploads.iter().map(|u| u.row_id.clone()).collect();
+        let context = self.outbox_upload_context(&file_ids).await?;
+
+        let uploads = uploads
+            .into_iter()
+            .map(|upload| {
+                let context = context.get(&upload.row_id);
+                Ok(DbOutboxUpload {
+                    // `releases` is bae's only gated root, so every upload bae
+                    // enqueues names one. Anything else is a shape bae does not
+                    // produce; it renders in the ungrouped bucket rather than
+                    // being silently dropped from the queue.
+                    release_id: (upload.root_table == "releases").then_some(upload.root_id),
+                    file_id: upload.row_id,
+                    attempt_count: upload.attempt_count,
+                    last_error: upload.last_error,
+                    created_at: stamp_millis(&upload.created_at)?,
+                    file_name: context.map(|c| c.file_name.clone()),
+                    file_size: context.map(|c| c.file_size),
+                    album_title: context.and_then(|c| c.album_title.clone()),
+                })
+            })
+            .collect::<Result<Vec<_>, DbError>>()?;
+
+        let deletes = deletes
+            .into_iter()
+            .map(|delete| {
+                Ok(DbOutboxDelete {
+                    namespace: delete.namespace,
+                    blob_id: delete.blob_id,
+                    created_at: stamp_millis(&delete.created_at)?,
+                })
+            })
+            .collect::<Result<Vec<_>, DbError>>()?;
+
+        Ok(DbOutboxQueue { uploads, deletes })
+    }
+
+    /// The queue-pane context for a batch of `release_files` ids: the file's
+    /// name and stored size, plus its release's album title. Ids with no row are
+    /// absent from the map.
+    async fn outbox_upload_context(
         &self,
-        id: i64,
-        error: &str,
-        attempted_at: &str,
-    ) -> Result<(), DbError> {
-        let error = error.to_string();
-        let attempted_at = attempted_at.to_string();
-        self.call(move |conn| {
-            conn.execute(
-                "UPDATE cloud_outbox \
-                 SET attempt_count = attempt_count + 1, last_error = ?1, last_attempt_at = ?2 \
-                 WHERE id = ?3",
-                (error, attempted_at, id),
-            )
-            .map(|_| ())
-            .map_err(DbError::from)
-        })
-        .await
-    }
-
-    #[cfg(any(test, feature = "test-utils"))]
-    pub async fn get_pending_cloud_uploads(&self) -> Result<Vec<coven::OutboxEntry>, DbError> {
-        self.pending_outbox("upload").await
-    }
-
-    #[cfg(any(test, feature = "test-utils"))]
-    pub async fn get_pending_cloud_deletes(&self) -> Result<Vec<coven::OutboxEntry>, DbError> {
-        self.pending_outbox("delete").await
-    }
-
-    #[cfg(any(test, feature = "test-utils"))]
-    async fn pending_outbox(
-        &self,
-        operation: &'static str,
-    ) -> Result<Vec<coven::OutboxEntry>, DbError> {
+        file_ids: &[String],
+    ) -> Result<HashMap<String, OutboxUploadContext>, DbError> {
+        if file_ids.is_empty() {
+            return Ok(HashMap::new());
+        }
+        let file_ids = file_ids.to_vec();
         self.read(move |conn| {
-            let mut stmt = conn.prepare(
-                "SELECT id, operation, file_id, cloud_key, source_path, scope, \
-                        retain_pinned, attempt_count, last_attempt_at \
-                 FROM cloud_outbox WHERE operation = ?1 ORDER BY id",
-            )?;
-            let rows = stmt.query_map([operation], row_to_outbox_entry)?;
-            rows.collect::<coven::rusqlite::Result<Vec<_>>>()
-                .map_err(DbError::from)
-        })
-        .await
-    }
-
-    /// The user-facing outbox entries (uploads and deletes), oldest first, each
-    /// paired with the album title of the release its `file_id` belongs to —
-    /// uploads only, `None` for a delete or an orphaned file. Backs the processing
-    /// snapshot. coven's internal `cancel` rows (tombstone removals it retries
-    /// after an upload) are excluded: they render nothing.
-    pub async fn outbox_items(&self) -> Result<Vec<DbOutboxRow>, DbError> {
-        self.read(move |conn| {
-            let mut stmt = conn.prepare(
-                "SELECT co.id, co.operation, co.file_id, co.cloud_key, \
-                                co.created_at, co.attempt_count, co.last_error, \
-                                rf.release_id AS release_id, rf.file_size AS file_size, \
-                                rf.original_filename AS file_name, \
-                                a.title AS title \
-                         FROM cloud_outbox co \
-                         LEFT JOIN release_files rf ON rf.id = co.file_id \
-                         LEFT JOIN releases r ON r.id = rf.release_id \
-                         LEFT JOIN albums a ON a.id = r.album_id \
-                         WHERE co.operation != 'cancel' \
-                         ORDER BY co.id",
-            )?;
-            let rows = stmt.query_map([], row_to_db_outbox_row)?;
-            rows.collect::<coven::rusqlite::Result<Vec<_>>>()
-                .map_err(DbError::from)
+            let mut map = HashMap::new();
+            for chunk in file_ids.chunks(SQL_MAX_IN_VARS) {
+                let placeholders = in_clause_placeholders(chunk.len());
+                let sql = format!(
+                    "SELECT rf.id, rf.original_filename, rf.file_size, a.title \
+                     FROM release_files rf \
+                     LEFT JOIN releases r ON r.id = rf.release_id \
+                     LEFT JOIN albums a ON a.id = r.album_id \
+                     WHERE rf.id IN ({placeholders})"
+                );
+                let mut stmt = conn.prepare(&sql)?;
+                let rows =
+                    stmt.query_map(coven::rusqlite::params_from_iter(chunk.iter()), |row| {
+                        Ok((
+                            row.get::<_, String>(0)?,
+                            OutboxUploadContext {
+                                file_name: row.get(1)?,
+                                file_size: row.get(2)?,
+                                album_title: row.get(3)?,
+                            },
+                        ))
+                    })?;
+                for row in rows {
+                    let (file_id, context) = row?;
+                    map.insert(file_id, context);
+                }
+            }
+            Ok(map)
         })
         .await
     }
 }
 
-fn row_to_db_outbox_row(row: &Row<'_>) -> coven::rusqlite::Result<DbOutboxRow> {
-    // coven writes `created_at` as its HLC stamp (`millis-counter-device`); the UI
-    // needs an instant for the "queued N ago" label, so take the stamp's physical
-    // millis. A value that isn't a coven stamp is corrupt.
-    let created_at_raw = row.get::<_, String>("created_at")?;
-    let created_at = coven::Timestamp::parse(&created_at_raw)
+/// The bae half of a queued upload's rendering: what its `release_files` row
+/// and that row's album say about it.
+#[derive(Debug, Clone)]
+struct OutboxUploadContext {
+    file_name: String,
+    file_size: i64,
+    album_title: Option<String>,
+}
+
+/// coven stamps a queue entry's `created_at` with its HLC (`millis-counter-device`);
+/// the UI needs an instant for the "queued N ago" label, so take the stamp's
+/// physical millis. A value that isn't a coven stamp is corrupt, not a default.
+fn stamp_millis(raw: &str) -> Result<i64, DbError> {
+    coven::Timestamp::parse(raw)
         .map(|t| t.millis as i64)
-        .ok_or_else(|| {
-            column_conversion_error(
-                row,
-                "created_at",
-                format!("created_at {created_at_raw:?} is not a coven HLC stamp"),
-            )
-        })?;
-    let operation_raw = row.get::<_, String>("operation")?;
-    let operation = DbOutboxOperation::parse(&operation_raw).ok_or_else(|| {
-        column_conversion_error(
-            row,
-            "operation",
-            format!("invalid cloud_outbox.operation: {operation_raw:?}"),
-        )
-    })?;
-    Ok(DbOutboxRow {
-        id: row.get("id")?,
-        operation,
-        file_id: row.get("file_id")?,
-        cloud_key: row.get("cloud_key")?,
-        created_at,
-        attempt_count: row.get("attempt_count")?,
-        last_error: row.get("last_error")?,
-        release_id: row.get("release_id")?,
-        title: row.get("title")?,
-        file_name: row.get("file_name")?,
-        file_size: row.get("file_size")?,
-    })
+        .ok_or_else(|| DbError::Message(format!("queue created_at {raw:?} is not a coven stamp")))
 }
 
 /// `ids` is a whole page's worth of releases (or, for the storage page, each row's

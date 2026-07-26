@@ -107,25 +107,44 @@ mod tests {
 
     #[test]
     fn clamp_upcoming_page_slices_the_requested_range_in_order() {
-        let tail = entries(&["t0", "t1", "t2", "t3", "t4"]);
+        let tail = entries(&[
+            "08c80007-b56a-4fc9-8df6-af2967fa09b9",
+            "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
+            "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
+            "t3",
+            "t4",
+        ]);
         assert_eq!(
             track_ids(clamp_upcoming_page(&tail, 1, 2)),
-            vec!["t1", "t2"]
+            vec![
+                "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
+                "08c7fe07-b56a-4c63-8df6-ad2967fa0653"
+            ]
         );
     }
 
     #[test]
     fn clamp_upcoming_page_offset_past_end_is_empty() {
-        let tail = entries(&["t0", "t1"]);
+        let tail = entries(&[
+            "08c80007-b56a-4fc9-8df6-af2967fa09b9",
+            "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
+        ]);
         assert!(clamp_upcoming_page(&tail, 5, 10).is_empty());
     }
 
     #[test]
     fn clamp_upcoming_page_limit_past_end_clamps_to_what_remains() {
-        let tail = entries(&["t0", "t1", "t2"]);
+        let tail = entries(&[
+            "08c80007-b56a-4fc9-8df6-af2967fa09b9",
+            "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
+            "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
+        ]);
         assert_eq!(
             track_ids(clamp_upcoming_page(&tail, 1, 100)),
-            vec!["t1", "t2"]
+            vec![
+                "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
+                "08c7fe07-b56a-4c63-8df6-ad2967fa0653"
+            ]
         );
     }
 

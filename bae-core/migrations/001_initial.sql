@@ -228,9 +228,10 @@ CREATE TABLE IF NOT EXISTS release_files (
     created_at TEXT NOT NULL,
     -- Lowercase-hex SHA-256 of the blob's plaintext (coven's
     -- `BlobDecl::hash_column`), signed on the row alongside the declared size
-    -- and verified against the decrypted bytes on a Remote fetch. NULL = not
-    -- yet populated; surfaces only as a failed Remote fetch of that blob.
-    hash TEXT,
+    -- and verified against the decrypted bytes on a Remote fetch. NOT NULL:
+    -- coven reads it off every blob-bearing row and refuses a row without one,
+    -- so a hashless blob is not a state this schema can hold.
+    hash TEXT NOT NULL,
     FOREIGN KEY (release_id) REFERENCES releases (id) ON DELETE CASCADE
 ) STRICT;
 
@@ -306,7 +307,7 @@ CREATE TABLE IF NOT EXISTS covers (
     _updated_at TEXT NOT NULL,
     created_at TEXT NOT NULL,
     -- Content hash, as on release_files.hash.
-    hash TEXT,
+    hash TEXT NOT NULL,
     -- The id of the coven blob holding this cover's bytes. Distinct from the
     -- row id (which is the release id and cannot move): coven names one
     -- immutable byte-string per (namespace, blob id), so replacing a cover
@@ -334,7 +335,7 @@ CREATE TABLE IF NOT EXISTS artist_images (
     _updated_at TEXT NOT NULL,
     created_at TEXT NOT NULL,
     -- Content hash, as on release_files.hash.
-    hash TEXT,
+    hash TEXT NOT NULL,
     -- The id of the coven blob holding this image's bytes — a new one per
     -- stored image, as on covers.blob_id.
     blob_id TEXT NOT NULL,

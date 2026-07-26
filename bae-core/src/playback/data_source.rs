@@ -262,24 +262,18 @@ async fn playback_error_for_blob_read(
 pub fn create_audio_reader(
     library_manager: &crate::library::LibraryManager,
     file_id: &str,
-    cloud_path: Option<&str>,
+    // coven now derives the cloud key from the live `release_files` row when it
+    // binds the row blob ref, so the reader no longer carries a cloud path.
+    _cloud_path: Option<&str>,
     source_size: u64,
     arbiter: Arc<FetchArbiter>,
     prefetch_byte: Option<u64>,
     prefetch_file_end: bool,
 ) -> Box<dyn AudioDataReader> {
-    let blob = coven::BlobRef {
-        namespace: crate::sync::RELEASE_FILES_NAMESPACE.to_string(),
-        id: file_id.to_string(),
-        scope: coven::BlobScope::Master,
-        cloud_path: cloud_path.map(str::to_string),
-        provenance: coven::Provenance::UserProvided,
-        fill: coven::CacheFill::CacheLazy,
-    };
     Box::new(CovenBlobReader {
         handle: library_manager.handle().clone(),
         db: library_manager.database().clone(),
-        blob,
+        file_id: file_id.to_string(),
         source_size,
         arbiter,
         prefetch_byte,
@@ -295,7 +289,7 @@ pub struct CovenBlobReader {
     handle: coven::CovenHandle,
     /// For classifying a failed read — the pending-upload check.
     db: crate::db::Database,
-    blob: coven::BlobRef,
+    file_id: String,
     source_size: u64,
     arbiter: Arc<FetchArbiter>,
     /// The byte the playing track's audio starts at, when it's past the header
@@ -316,7 +310,7 @@ impl AudioDataReader for CovenBlobReader {
         let CovenBlobReader {
             handle,
             db,
-            blob,
+            file_id,
             source_size,
             arbiter,
             prefetch_byte,
@@ -324,55 +318,75 @@ impl AudioDataReader for CovenBlobReader {
         } = *self;
         let buffer_id = buffer.id();
 
-        // Prefetch the track's start window in parallel with the demuxer's header
-        // probe. The decoder reads the header at byte 0, then seeks to the track;
-        // that seek is a second serial round-trip over a cloud home. Since the
-        // stored `start_byte` is the exact seektable landing (the playback seek
-        // lands there — a by-byte FLAC seek jumps straight to it, and APE
-        // sample-seeks its index to it), pull that window now, concurrent with the
-        // probe, so the seek lands on buffered bytes.
-        if let Some(start) = prefetch_byte {
-            if start < source_size {
+        tokio::spawn(async move {
+            // Bind the exact-row blob reference once for this reader, from the live
+            // `release_files` row; coven's ranged reads key on it so a later row
+            // replacement can't redirect a read. A missing row surfaces through the
+            // fill like any other read failure.
+            let blob = match handle
+                .row_blob_ref(crate::sync::RELEASE_FILES_NAMESPACE, &file_id)
+                .await
+            {
+                Ok(blob) => blob,
+                Err(e) => {
+                    fail_audio_read(
+                        on_error,
+                        &buffer,
+                        PlaybackError::internal(format!("blob ref for {file_id}: {e}")),
+                    );
+                    return;
+                }
+            };
+
+            // Prefetch the track's start window in parallel with the demuxer's header
+            // probe. The decoder reads the header at byte 0, then seeks to the track;
+            // that seek is a second serial round-trip over a cloud home. Since the
+            // stored `start_byte` is the exact seektable landing (the playback seek
+            // lands there — a by-byte FLAC seek jumps straight to it, and APE
+            // sample-seeks its index to it), pull that window now, concurrent with the
+            // probe, so the seek lands on buffered bytes.
+            if let Some(start) = prefetch_byte {
+                if start < source_size {
+                    spawn_window_prefetch(
+                        handle.clone(),
+                        blob.clone(),
+                        arbiter.clone(),
+                        &buffer,
+                        source_size,
+                        start,
+                        "track-start",
+                    );
+                }
+            }
+
+            // APE reads the file's end when its demuxer opens (its index lives in the
+            // tail), so prefetch that window too — otherwise the open stalls on a
+            // serial ranged fetch of the end. Skipped when the file is a single window
+            // (the fill covers it).
+            if prefetch_file_end && source_size > CLOUD_STREAM_READ_SIZE {
                 spawn_window_prefetch(
                     handle.clone(),
                     blob.clone(),
                     arbiter.clone(),
                     &buffer,
                     source_size,
-                    start,
-                    "track-start",
+                    source_size - CLOUD_STREAM_READ_SIZE,
+                    "file-end",
                 );
             }
-        }
 
-        // APE reads the file's end when its demuxer opens (its index lives in the
-        // tail), so prefetch that window too — otherwise the open stalls on a
-        // serial ranged fetch of the end. Skipped when the file is a single window
-        // (the fill covers it).
-        if prefetch_file_end && source_size > CLOUD_STREAM_READ_SIZE {
-            spawn_window_prefetch(
-                handle.clone(),
-                blob.clone(),
-                arbiter.clone(),
-                &buffer,
-                source_size,
-                source_size - CLOUD_STREAM_READ_SIZE,
-                "file-end",
-            );
-        }
+            let (wake, buffer) = prepare_fill(buffer);
 
-        let (wake, buffer) = prepare_fill(buffer);
-
-        tokio::spawn(async move {
-            info!("CovenBlobReader: buffer={buffer_id} source_size={source_size}");
-            // This reader's running fetch total and the wall-clock origin, so
-            // each window's log shows how many bytes have been pulled from coven
-            // and how long into the stream -- the visibility into start-up
-            // bandwidth and into a preload competing with the playing track.
-            let fetched = AtomicU64::new(0);
-            let started = Instant::now();
-            let result = fill_buffer_on_demand(buffer.clone(), wake, |src_off, len| {
-                let fut = handle.open_blob_stream(&blob, source_size, src_off, len);
+            tokio::spawn(async move {
+                info!("CovenBlobReader: buffer={buffer_id} source_size={source_size}");
+                // This reader's running fetch total and the wall-clock origin, so
+                // each window's log shows how many bytes have been pulled from coven
+                // and how long into the stream -- the visibility into start-up
+                // bandwidth and into a preload competing with the playing track.
+                let fetched = AtomicU64::new(0);
+                let started = Instant::now();
+                let result = fill_buffer_on_demand(buffer.clone(), wake, |src_off, len| {
+                let fut = handle.open_blob_stream(&blob, src_off, len);
                 let arbiter = &arbiter;
                 let fetched = &fetched;
                 let db = &db;
@@ -396,7 +410,7 @@ impl AudioDataReader for CovenBlobReader {
                                 if foreground { "playing" } else { "preload" },
                                 fetch_started.elapsed().as_millis(),
                             );
-                            return Err(playback_error_for_blob_read(db, &blob.id, e).await);
+                            return Err(playback_error_for_blob_read(db, blob.row_id(), e).await);
                         }
                     };
                     let total =
@@ -411,9 +425,10 @@ impl AudioDataReader for CovenBlobReader {
             })
             .await;
 
-            if let Err(e) = result {
-                report_fill_failure(on_error, &buffer, e);
-            }
+                if let Err(e) = result {
+                    report_fill_failure(on_error, &buffer, e);
+                }
+            });
         });
     }
 }
@@ -451,7 +466,7 @@ const KEEP_BEHIND: u64 = CLOUD_STREAM_READ_SIZE;
 /// (track-start / file-end) in the log.
 fn spawn_window_prefetch(
     handle: coven::CovenHandle,
-    blob: coven::BlobRef,
+    blob: coven::RowBlobRef,
     arbiter: Arc<FetchArbiter>,
     buffer: &SharedSparseBuffer,
     source_size: u64,
@@ -465,10 +480,7 @@ fn spawn_window_prefetch(
     tokio::spawn(async move {
         let foreground = arbiter.is_foreground(buffer_id);
         let result = arbiter
-            .run_gated(
-                foreground,
-                handle.open_blob_stream(&blob, source_size, off, window),
-            )
+            .run_gated(foreground, handle.open_blob_stream(&blob, off, window))
             .await;
         match result {
             Ok(data) => {

@@ -968,13 +968,20 @@ mod tests {
         let mut q = queue();
         q.play_release(
             rel_src("r1"),
-            rel(&["t1", "t2", "t3"]),
+            rel(&[
+                "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
+                "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
+                "t3",
+            ]),
             ContextStart::Index(0),
         );
         q.add_to_queue(rel(&["m1", "m2"]));
         q.clear_up_next();
         // Manual gone; context tail (t2, t3) survives.
-        assert_eq!(upcoming_tracks(&q), vec!["t2", "t3"]);
+        assert_eq!(
+            upcoming_tracks(&q),
+            vec!["08c7fe07-b56a-4c63-8df6-ad2967fa0653", "t3"]
+        );
     }
 
     /// Clearing the context lane drops its rows, its history, and its label
@@ -985,7 +992,11 @@ mod tests {
         let mut q = queue();
         q.play_release(
             rel_src("r1"),
-            rel(&["t1", "t2", "t3"]),
+            rel(&[
+                "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
+                "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
+                "t3",
+            ]),
             ContextStart::Index(1),
         );
         assert!(q.has_previous(), "t1 sits behind the cursor");
@@ -994,7 +1005,7 @@ mod tests {
 
         assert_eq!(
             q.current_track_id(),
-            Some("t2"),
+            Some("08c7fe07-b56a-4c63-8df6-ad2967fa0653"),
             "the playing track keeps playing"
         );
         assert!(
@@ -1012,7 +1023,11 @@ mod tests {
         let mut q = queue();
         q.play_release(
             rel_src("r1"),
-            rel(&["t1", "t2", "t3"]),
+            rel(&[
+                "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
+                "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
+                "t3",
+            ]),
             ContextStart::Index(0),
         );
         q.add_to_queue(rel(&["m1"]));
@@ -1065,12 +1080,22 @@ mod tests {
         let mut q = queue();
         let first = q.play_release(
             rel_src("r1"),
-            rel(&["t1", "t2", "t3"]),
+            rel(&[
+                "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
+                "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
+                "t3",
+            ]),
             ContextStart::Index(0),
         );
-        assert_eq!(first, "t1");
-        assert_eq!(q.current_track_id(), Some("t1"));
-        assert_eq!(upcoming_tracks(&q), vec!["t2", "t3"]);
+        assert_eq!(first, "08c7ff07-b56a-4e16-8df6-ae2967fa0806");
+        assert_eq!(
+            q.current_track_id(),
+            Some("08c7ff07-b56a-4e16-8df6-ae2967fa0806")
+        );
+        assert_eq!(
+            upcoming_tracks(&q),
+            vec!["08c7fe07-b56a-4c63-8df6-ad2967fa0653", "t3"]
+        );
     }
 
     #[test]
@@ -1078,10 +1103,14 @@ mod tests {
         let mut q = queue();
         let first = q.play_release(
             rel_src("r1"),
-            rel(&["t1", "t2", "t3"]),
+            rel(&[
+                "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
+                "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
+                "t3",
+            ]),
             ContextStart::Index(1),
         );
-        assert_eq!(first, "t2");
+        assert_eq!(first, "08c7fe07-b56a-4c63-8df6-ad2967fa0653");
         assert_eq!(upcoming_tracks(&q), vec!["t3"]);
     }
 
@@ -1094,19 +1123,25 @@ mod tests {
 
         let first = q.play_release(
             rel_src("r1"),
-            rel(&["t1", "t2", "t3"]),
+            rel(&[
+                "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
+                "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
+                "t3",
+            ]),
             ContextStart::Index(0),
         );
 
-        assert_eq!(first, "t1");
+        assert_eq!(first, "08c7ff07-b56a-4e16-8df6-ae2967fa0806");
         assert_eq!(
             upcoming_tracks(&q),
-            vec!["m1", "m2", "t2", "t3"],
+            vec!["m1", "m2", "08c7fe07-b56a-4c63-8df6-ad2967fa0653", "t3"],
             "Up Next survives the fill and drains first"
         );
         assert!(matches!(q.next_entry(), NextEntry::Play(t) if t == "m1"));
         assert!(matches!(q.next_entry(), NextEntry::Play(t) if t == "m2"));
-        assert!(matches!(q.next_entry(), NextEntry::Play(t) if t == "t2"));
+        assert!(
+            matches!(q.next_entry(), NextEntry::Play(t) if t == "08c7fe07-b56a-4c63-8df6-ad2967fa0653")
+        );
     }
 
     #[test]
@@ -1126,12 +1161,26 @@ mod tests {
         let mut q = queue();
         q.play_release(
             rel_src("r1"),
-            rel(&["t1", "t2", "t3", "t4"]),
+            rel(&[
+                "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
+                "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
+                "t3",
+                "t4",
+            ]),
             ContextStart::Shuffled { seed: 7 },
         );
         let mut all = full_order(&q);
         all.sort();
-        assert_eq!(all, vec!["t1", "t2", "t3", "t4"]);
+        // Sorted, so the ids come out in lexical order.
+        assert_eq!(
+            all,
+            vec![
+                "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
+                "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
+                "t3",
+                "t4"
+            ]
+        );
     }
 
     /// A repeating shuffled lane loops a freshly permuted order each pass, not
@@ -1142,7 +1191,13 @@ mod tests {
         let mut q = queue();
         q.play_release(
             rel_src("r1"),
-            rel(&["t1", "t2", "t3", "t4", "t5"]),
+            rel(&[
+                "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
+                "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
+                "t3",
+                "t4",
+                "t5",
+            ]),
             ContextStart::Shuffled { seed: 1 },
         );
         q.set_repeat_mode(RepeatMode::Context);
@@ -1176,7 +1231,13 @@ mod tests {
         let mut q = queue();
         q.play_release(
             rel_src("r1"),
-            rel(&["t1", "t2", "t3", "t4", "t5"]),
+            rel(&[
+                "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
+                "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
+                "t3",
+                "t4",
+                "t5",
+            ]),
             ContextStart::Index(0),
         );
         // Shuffle on from the head, so the stamp is source order.
@@ -1191,10 +1252,16 @@ mod tests {
         q.set_shuffle(false, 0);
 
         let wrapped_current = q.current_track_id().unwrap().to_string();
-        let expected: Vec<&str> = ["t1", "t2", "t3", "t4", "t5"]
-            .into_iter()
-            .filter(|t| *t != wrapped_current)
-            .collect();
+        let expected: Vec<&str> = [
+            "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
+            "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
+            "t3",
+            "t4",
+            "t5",
+        ]
+        .into_iter()
+        .filter(|t| *t != wrapped_current)
+        .collect();
         assert_eq!(
             upcoming_tracks(&q),
             expected,
@@ -1209,7 +1276,12 @@ mod tests {
         let mut q = queue();
         q.play_release(
             rel_src("r1"),
-            rel(&["t1", "t2", "t3", "t4"]),
+            rel(&[
+                "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
+                "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
+                "t3",
+                "t4",
+            ]),
             ContextStart::Index(0),
         );
         // Remove t2 and move t4 ahead of t3: the lane becomes [t1, t4, t3].
@@ -1219,15 +1291,20 @@ mod tests {
         let t4_id = up[2].id.clone();
         q.remove(&t2_id);
         q.reorder(&t4_id, Some(&t3_id));
-        assert_eq!(q.context_order(), vec!["t1", "t4", "t3"]);
+        assert_eq!(
+            q.context_order(),
+            vec!["08c7ff07-b56a-4e16-8df6-ae2967fa0806", "t4", "t3"]
+        );
 
         q.set_repeat_mode(RepeatMode::Context);
         q.next_entry(); // t4
         q.next_entry(); // t3
-        assert!(matches!(q.next_entry(), NextEntry::Play(t) if t == "t1"));
+        assert!(
+            matches!(q.next_entry(), NextEntry::Play(t) if t == "08c7ff07-b56a-4e16-8df6-ae2967fa0806")
+        );
         assert_eq!(
             q.context_order(),
-            vec!["t1", "t4", "t3"],
+            vec!["08c7ff07-b56a-4e16-8df6-ae2967fa0806", "t4", "t3"],
             "the wrap replays the edited lane, not the source"
         );
     }
@@ -1240,12 +1317,28 @@ mod tests {
         let mut q = queue();
         q.play_release(
             ContextSource::Library,
-            rel(&["t1", "t2", "t3", "t4", "t5"]),
+            rel(&[
+                "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
+                "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
+                "t3",
+                "t4",
+                "t5",
+            ]),
             ContextStart::Shuffled { seed: 3 },
         );
         let mut all = full_order(&q);
         all.sort();
-        assert_eq!(all, vec!["t1", "t2", "t3", "t4", "t5"]);
+        // Sorted, so the ids come out in lexical order.
+        assert_eq!(
+            all,
+            vec![
+                "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
+                "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
+                "t3",
+                "t4",
+                "t5"
+            ]
+        );
         assert_eq!(q.snapshot().context.unwrap().source, ContextSource::Library);
     }
 
@@ -1256,7 +1349,13 @@ mod tests {
         let mut q = queue();
         q.play_release(
             rel_src("r1"),
-            rel(&["t1", "t2", "t3", "t4", "t5"]),
+            rel(&[
+                "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
+                "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
+                "t3",
+                "t4",
+                "t5",
+            ]),
             ContextStart::Index(2),
         );
         assert_eq!(q.current_track_id(), Some("t3"));
@@ -1274,7 +1373,18 @@ mod tests {
         // Every row is retained in the new order, just re-ordered.
         let mut all = q.context_order();
         all.sort();
-        assert_eq!(all, vec!["t1", "t2", "t3", "t4", "t5"], "no track is lost");
+        // Sorted, so the ids come out in lexical order.
+        assert_eq!(
+            all,
+            vec![
+                "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
+                "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
+                "t3",
+                "t4",
+                "t5"
+            ],
+            "no track is lost"
+        );
     }
 
     /// Turning shuffle on is surgery on the upcoming tail alone: the current row
@@ -1288,7 +1398,13 @@ mod tests {
             let mut q = queue();
             q.play_release(
                 rel_src("r1"),
-                rel(&["t1", "t2", "t3", "t4", "t5"]),
+                rel(&[
+                    "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
+                    "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
+                    "t3",
+                    "t4",
+                    "t5",
+                ]),
                 ContextStart::Index(2),
             );
             q.set_shuffle(true, seed);
@@ -1296,7 +1412,11 @@ mod tests {
             assert_eq!(q.current_track_id(), Some("t3"), "seed {seed}");
             assert_eq!(
                 q.context_order()[..3],
-                ["t1", "t2", "t3"],
+                [
+                    "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
+                    "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
+                    "t3"
+                ],
                 "seed {seed}: the history and the current row never move"
             );
             let mut rest = upcoming_tracks(&q);
@@ -1317,7 +1437,13 @@ mod tests {
         let mut q = queue();
         q.play_release(
             rel_src("r1"),
-            rel(&["t1", "t2", "t3", "t4", "t5"]),
+            rel(&[
+                "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
+                "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
+                "t3",
+                "t4",
+                "t5",
+            ]),
             ContextStart::Index(0),
         );
         // Move t5 to the front of the upcoming tail: [t2, t3, t4, t5] → [t5, t2, t3, t4].
@@ -1326,7 +1452,10 @@ mod tests {
         let t2_id = up[0].id.clone();
         q.reorder(&t5_id, Some(&t2_id));
         let reordered = upcoming_tracks(&q);
-        assert_eq!(reordered, vec!["t5", "t2", "t3", "t4"]);
+        assert_eq!(
+            reordered,
+            vec!["t5", "08c7fe07-b56a-4c63-8df6-ad2967fa0653", "t3", "t4"]
+        );
 
         q.set_shuffle(true, 7);
         q.set_shuffle(false, 0);
@@ -1345,7 +1474,14 @@ mod tests {
         let mut q = queue();
         q.play_release(
             rel_src("r1"),
-            rel(&["t1", "t2", "t3", "t4", "t5", "t6"]),
+            rel(&[
+                "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
+                "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
+                "t3",
+                "t4",
+                "t5",
+                "t6",
+            ]),
             ContextStart::Index(1),
         );
         let before = q.context_order();
@@ -1354,7 +1490,10 @@ mod tests {
         q.set_shuffle(false, 0);
 
         assert_eq!(q.context_order(), before);
-        assert_eq!(q.current_track_id(), Some("t2"));
+        assert_eq!(
+            q.current_track_id(),
+            Some("08c7fe07-b56a-4c63-8df6-ad2967fa0653")
+        );
     }
 
     /// A row removed while shuffled is gone for the rest of the session — no
@@ -1365,7 +1504,13 @@ mod tests {
         let mut q = queue();
         q.play_release(
             rel_src("r1"),
-            rel(&["t1", "t2", "t3", "t4", "t5"]),
+            rel(&[
+                "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
+                "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
+                "t3",
+                "t4",
+                "t5",
+            ]),
             ContextStart::Index(0),
         );
         q.set_shuffle(true, 7);
@@ -1375,8 +1520,11 @@ mod tests {
 
         q.set_shuffle(false, 0);
 
-        assert_eq!(q.current_track_id(), Some("t1"));
-        let expected: Vec<&str> = ["t2", "t3", "t4", "t5"]
+        assert_eq!(
+            q.current_track_id(),
+            Some("08c7ff07-b56a-4e16-8df6-ae2967fa0806")
+        );
+        let expected: Vec<&str> = ["08c7fe07-b56a-4c63-8df6-ad2967fa0653", "t3", "t4", "t5"]
             .into_iter()
             .filter(|t| *t != removed_track)
             .collect();
@@ -1394,7 +1542,13 @@ mod tests {
         let mut q = queue();
         q.play_release(
             rel_src("r1"),
-            rel(&["t1", "t2", "t3", "t4", "t5"]),
+            rel(&[
+                "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
+                "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
+                "t3",
+                "t4",
+                "t5",
+            ]),
             ContextStart::Index(0),
         );
         q.set_shuffle(true, 7);
@@ -1425,7 +1579,13 @@ mod tests {
         let mut q = queue();
         q.play_release(
             rel_src("r1"),
-            rel(&["t1", "t2", "t3", "t4", "t5"]),
+            rel(&[
+                "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
+                "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
+                "t3",
+                "t4",
+                "t5",
+            ]),
             ContextStart::Index(2),
         );
         assert_eq!(q.current_track_id(), Some("t3"));
@@ -1458,7 +1618,13 @@ mod tests {
         let mut q = queue();
         q.play_release(
             rel_src("r1"),
-            rel(&["t1", "t2", "t3", "t4", "t5"]),
+            rel(&[
+                "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
+                "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
+                "t3",
+                "t4",
+                "t5",
+            ]),
             ContextStart::Shuffled { seed: 7 },
         );
         let played_first = q.current_track_id().unwrap().to_string();
@@ -1470,10 +1636,16 @@ mod tests {
             played_first,
             "the playing track keeps playing"
         );
-        let expected: Vec<&str> = ["t1", "t2", "t3", "t4", "t5"]
-            .into_iter()
-            .filter(|t| *t != played_first)
-            .collect();
+        let expected: Vec<&str> = [
+            "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
+            "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
+            "t3",
+            "t4",
+            "t5",
+        ]
+        .into_iter()
+        .filter(|t| *t != played_first)
+        .collect();
         assert_eq!(upcoming_tracks(&q), expected, "source order resumes");
     }
 
@@ -1487,7 +1659,11 @@ mod tests {
         let mut q = queue();
         q.play_release(
             rel_src("rel-A"),
-            rel(&["t1", "t2", "t3"]),
+            rel(&[
+                "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
+                "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
+                "t3",
+            ]),
             ContextStart::Index(1),
         );
         let snap = q.snapshot();
@@ -1496,11 +1672,25 @@ mod tests {
             ContextSource::Release("rel-A".into())
         );
         assert!(!snap.context.as_ref().unwrap().shuffled);
-        assert_eq!(snap.current_track_id.as_deref(), Some("t2"));
+        assert_eq!(
+            snap.current_track_id.as_deref(),
+            Some("08c7fe07-b56a-4c63-8df6-ad2967fa0653")
+        );
 
         let mut restored = queue();
-        restored.restore(snap, rel(&["t1", "t2", "t3"]), 0);
-        assert_eq!(restored.current_track_id(), Some("t2"));
+        restored.restore(
+            snap,
+            rel(&[
+                "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
+                "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
+                "t3",
+            ]),
+            0,
+        );
+        assert_eq!(
+            restored.current_track_id(),
+            Some("08c7fe07-b56a-4c63-8df6-ad2967fa0653")
+        );
         assert_eq!(upcoming_tracks(&restored), vec!["t3"]);
         assert!(
             restored.has_previous(),
@@ -1516,7 +1706,13 @@ mod tests {
         let mut q = queue();
         q.play_release(
             rel_src("rel-A"),
-            rel(&["t1", "t2", "t3", "t4", "t5"]),
+            rel(&[
+                "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
+                "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
+                "t3",
+                "t4",
+                "t5",
+            ]),
             ContextStart::Shuffled { seed: 99 },
         );
         q.next_entry();
@@ -1524,7 +1720,17 @@ mod tests {
         let current_before = q.current_track_id().unwrap().to_string();
 
         let mut restored = queue();
-        restored.restore(q.snapshot(), rel(&["t1", "t2", "t3", "t4", "t5"]), 5);
+        restored.restore(
+            q.snapshot(),
+            rel(&[
+                "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
+                "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
+                "t3",
+                "t4",
+                "t5",
+            ]),
+            5,
+        );
 
         assert_eq!(restored.current_track_id().unwrap(), current_before);
         assert!(
@@ -1537,10 +1743,16 @@ mod tests {
         );
         let mut rest = upcoming_tracks(&restored);
         rest.sort();
-        let expected: Vec<&str> = ["t1", "t2", "t3", "t4", "t5"]
-            .into_iter()
-            .filter(|t| *t != current_before)
-            .collect();
+        let expected: Vec<&str> = [
+            "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
+            "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
+            "t3",
+            "t4",
+            "t5",
+        ]
+        .into_iter()
+        .filter(|t| *t != current_before)
+        .collect();
         assert_eq!(rest, expected, "the rest of the source is behind it");
 
         restored.set_shuffle(false, 0);
@@ -1565,7 +1777,14 @@ mod tests {
             repeat: RepeatMode::Off,
         };
         let mut q = queue();
-        q.restore(snapshot, rel(&["t1", "t2"]), 0);
+        q.restore(
+            snapshot,
+            rel(&[
+                "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
+                "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
+            ]),
+            0,
+        );
 
         assert_eq!(q.current_track_id(), Some("ghost"));
         assert!(
@@ -1592,11 +1811,20 @@ mod tests {
     #[test]
     fn test_manual_drains_before_context() {
         let mut q = queue();
-        q.play_release(rel_src("r1"), rel(&["t1", "t2"]), ContextStart::Index(0));
+        q.play_release(
+            rel_src("r1"),
+            rel(&[
+                "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
+                "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
+            ]),
+            ContextStart::Index(0),
+        );
         q.add_to_queue(rel(&["m1"]));
         // current = t1; next drains manual (m1) before advancing the context.
         assert!(matches!(q.next_entry(), NextEntry::Play(t) if t == "m1"));
-        assert!(matches!(q.next_entry(), NextEntry::Play(t) if t == "t2"));
+        assert!(
+            matches!(q.next_entry(), NextEntry::Play(t) if t == "08c7fe07-b56a-4c63-8df6-ad2967fa0653")
+        );
         assert!(matches!(q.next_entry(), NextEntry::Stop));
     }
 
@@ -1605,10 +1833,16 @@ mod tests {
         let mut q = queue();
         q.play_release(
             rel_src("r1"),
-            rel(&["t1", "t2", "t3"]),
+            rel(&[
+                "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
+                "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
+                "t3",
+            ]),
             ContextStart::Index(0),
         );
-        assert!(matches!(q.next_entry(), NextEntry::Play(t) if t == "t2"));
+        assert!(
+            matches!(q.next_entry(), NextEntry::Play(t) if t == "08c7fe07-b56a-4c63-8df6-ad2967fa0653")
+        );
         assert!(matches!(q.next_entry(), NextEntry::Play(t) if t == "t3"));
         assert!(matches!(q.next_entry(), NextEntry::Stop));
     }
@@ -1618,20 +1852,42 @@ mod tests {
         // The queue holds the context order, so looping reuses it: the queue has
         // no library access, so it structurally cannot re-fetch.
         let mut q = queue();
-        q.play_release(rel_src("r1"), rel(&["t1", "t2"]), ContextStart::Index(0));
+        q.play_release(
+            rel_src("r1"),
+            rel(&[
+                "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
+                "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
+            ]),
+            ContextStart::Index(0),
+        );
         q.set_repeat_mode(RepeatMode::Context);
-        assert!(matches!(q.next_entry(), NextEntry::Play(t) if t == "t2"));
+        assert!(
+            matches!(q.next_entry(), NextEntry::Play(t) if t == "08c7fe07-b56a-4c63-8df6-ad2967fa0653")
+        );
         // Exhausted under Context repeat → loop from the start of the same order.
-        assert!(matches!(q.next_entry(), NextEntry::Play(t) if t == "t1"));
-        assert!(matches!(q.next_entry(), NextEntry::Play(t) if t == "t2"));
+        assert!(
+            matches!(q.next_entry(), NextEntry::Play(t) if t == "08c7ff07-b56a-4e16-8df6-ae2967fa0806")
+        );
+        assert!(
+            matches!(q.next_entry(), NextEntry::Play(t) if t == "08c7fe07-b56a-4c63-8df6-ad2967fa0653")
+        );
     }
 
     #[test]
     fn test_repeat_track_pins_current() {
         let mut q = queue();
-        q.play_release(rel_src("r1"), rel(&["t1", "t2"]), ContextStart::Index(0));
+        q.play_release(
+            rel_src("r1"),
+            rel(&[
+                "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
+                "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
+            ]),
+            ContextStart::Index(0),
+        );
         q.set_repeat_mode(RepeatMode::Track);
-        assert!(matches!(q.next_entry(), NextEntry::RepeatCurrent(t) if t == "t1"));
+        assert!(
+            matches!(q.next_entry(), NextEntry::RepeatCurrent(t) if t == "08c7ff07-b56a-4e16-8df6-ae2967fa0806")
+        );
     }
 
     #[test]
@@ -1639,13 +1895,21 @@ mod tests {
         let mut q = queue();
         q.play_release(
             rel_src("r1"),
-            rel(&["t1", "t2", "t3"]),
+            rel(&[
+                "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
+                "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
+                "t3",
+            ]),
             ContextStart::Index(0),
         );
         q.next_entry(); // t2
         q.next_entry(); // t3
-        assert!(matches!(q.previous_action(1000), PreviousAction::PlayPrevious(t) if t == "t2"));
-        assert!(matches!(q.previous_action(1000), PreviousAction::PlayPrevious(t) if t == "t1"));
+        assert!(
+            matches!(q.previous_action(1000), PreviousAction::PlayPrevious(t) if t == "08c7fe07-b56a-4c63-8df6-ad2967fa0653")
+        );
+        assert!(
+            matches!(q.previous_action(1000), PreviousAction::PlayPrevious(t) if t == "08c7ff07-b56a-4e16-8df6-ae2967fa0806")
+        );
         // At the context start, Previous restarts.
         assert!(matches!(
             q.previous_action(1000),
@@ -1656,7 +1920,14 @@ mod tests {
     #[test]
     fn test_previous_past_3s_restarts() {
         let mut q = queue();
-        q.play_release(rel_src("r1"), rel(&["t1", "t2"]), ContextStart::Index(1));
+        q.play_release(
+            rel_src("r1"),
+            rel(&[
+                "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
+                "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
+            ]),
+            ContextStart::Index(1),
+        );
         assert!(matches!(
             q.previous_action(5000),
             PreviousAction::RestartCurrent
@@ -1668,7 +1939,12 @@ mod tests {
         let mut q = queue();
         q.play_release(
             rel_src("r1"),
-            rel(&["t1", "t2", "t3", "t4"]),
+            rel(&[
+                "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
+                "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
+                "t3",
+                "t4",
+            ]),
             ContextStart::Index(0),
         );
         let t3_id = q.upcoming()[1].id.clone(); // upcoming = [t2, t3, t4]
@@ -1683,12 +1959,19 @@ mod tests {
         let mut q = queue();
         q.play_release(
             rel_src("r1"),
-            rel(&["t1", "t2", "t3"]),
+            rel(&[
+                "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
+                "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
+                "t3",
+            ]),
             ContextStart::Index(0),
         );
         let t2_id = q.upcoming()[0].id.clone();
         let removed = q.remove(&t2_id);
-        assert_eq!(removed.map(|e| e.track_id), Some("t2".into()));
+        assert_eq!(
+            removed.map(|e| e.track_id),
+            Some("08c7fe07-b56a-4c63-8df6-ad2967fa0653".into())
+        );
         assert_eq!(upcoming_tracks(&q), vec!["t3"]);
     }
 
@@ -1697,7 +1980,12 @@ mod tests {
         let mut q = queue();
         q.play_release(
             rel_src("r1"),
-            rel(&["t1", "t2", "t3", "t4"]),
+            rel(&[
+                "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
+                "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
+                "t3",
+                "t4",
+            ]),
             ContextStart::Index(0),
         );
         let up = q.upcoming(); // [t2, t3, t4]
@@ -1705,10 +1993,13 @@ mod tests {
         let t3_id = up[1].id.clone();
         // Move t3 before t2 → upcoming becomes [t3, t2, t4].
         q.reorder(&t3_id, Some(&t2_id));
-        assert_eq!(upcoming_tracks(&q), vec!["t3", "t2", "t4"]);
+        assert_eq!(
+            upcoming_tracks(&q),
+            vec!["t3", "08c7fe07-b56a-4c63-8df6-ad2967fa0653", "t4"]
+        );
         assert_eq!(
             q.current_track_id(),
-            Some("t1"),
+            Some("08c7ff07-b56a-4e16-8df6-ae2967fa0806"),
             "the cursor stays on the playing track"
         );
     }
@@ -1716,18 +2007,28 @@ mod tests {
     #[test]
     fn test_reorder_cross_lane_is_noop() {
         let mut q = queue();
-        q.play_release(rel_src("r1"), rel(&["t1", "t2"]), ContextStart::Index(0));
+        q.play_release(
+            rel_src("r1"),
+            rel(&[
+                "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
+                "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
+            ]),
+            ContextStart::Index(0),
+        );
         q.add_to_queue(rel(&["m1"]));
         let manual_id = manual_ids(&q)[0].clone();
         let context_id = q
             .upcoming()
             .into_iter()
-            .find(|e| e.track_id == "t2")
+            .find(|e| e.track_id == "08c7fe07-b56a-4c63-8df6-ad2967fa0653")
             .unwrap()
             .id;
         // Manual source, context target → no-op (can't cross lanes).
         q.reorder(&manual_id, Some(&context_id));
-        assert_eq!(upcoming_tracks(&q), vec!["m1", "t2"]);
+        assert_eq!(
+            upcoming_tracks(&q),
+            vec!["m1", "08c7fe07-b56a-4c63-8df6-ad2967fa0653"]
+        );
     }
 
     #[test]
@@ -1753,7 +2054,7 @@ mod tests {
         let mut q = queue();
         q.play_release(
             rel_src("r1"),
-            rel(&["t1", "dup", "t3"]),
+            rel(&["08c7ff07-b56a-4e16-8df6-ae2967fa0806", "dup", "t3"]),
             ContextStart::Index(0),
         );
         q.add_to_queue(rel(&["dup", "m2"]));
@@ -1768,21 +2069,34 @@ mod tests {
         let mut q = queue();
         q.play_release(
             rel_src("r1"),
-            rel(&["gone", "t2", "t3"]),
+            rel(&["gone", "08c7fe07-b56a-4c63-8df6-ad2967fa0653", "t3"]),
             ContextStart::Index(1),
         );
         // current = t2 (cursor 1). Deleting t1 (before cursor) keeps current at t2.
         let ids: HashSet<String> = ["gone"].iter().map(|s| s.to_string()).collect();
         q.remove_by_ids(&ids);
-        assert_eq!(q.current_track_id(), Some("t2"));
+        assert_eq!(
+            q.current_track_id(),
+            Some("08c7fe07-b56a-4c63-8df6-ad2967fa0653")
+        );
         assert_eq!(upcoming_tracks(&q), vec!["t3"]);
     }
 
     #[test]
     fn test_remove_by_ids_clears_current_when_deleted() {
         let mut q = queue();
-        q.play_release(rel_src("r1"), rel(&["t1", "t2"]), ContextStart::Index(0));
-        let ids: HashSet<String> = ["t1"].iter().map(|s| s.to_string()).collect();
+        q.play_release(
+            rel_src("r1"),
+            rel(&[
+                "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
+                "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
+            ]),
+            ContextStart::Index(0),
+        );
+        let ids: HashSet<String> = ["08c7ff07-b56a-4e16-8df6-ae2967fa0806"]
+            .iter()
+            .map(|s| s.to_string())
+            .collect();
         q.remove_by_ids(&ids);
         assert_eq!(q.current_track_id(), None);
     }
@@ -1791,8 +2105,18 @@ mod tests {
     fn test_remove_by_ids_deleting_current_last_entry_keeps_cursor_valid() {
         let mut q = queue();
         // current = t2 at the last position (cursor == len-1).
-        q.play_release(rel_src("r1"), rel(&["t1", "t2"]), ContextStart::Index(1));
-        let ids: HashSet<String> = ["t2"].iter().map(|s| s.to_string()).collect();
+        q.play_release(
+            rel_src("r1"),
+            rel(&[
+                "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
+                "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
+            ]),
+            ContextStart::Index(1),
+        );
+        let ids: HashSet<String> = ["08c7fe07-b56a-4c63-8df6-ad2967fa0653"]
+            .iter()
+            .map(|s| s.to_string())
+            .collect();
         q.remove_by_ids(&ids);
         assert_eq!(
             q.current_track_id(),
@@ -1802,7 +2126,7 @@ mod tests {
         // The cursor must not be stranded at == len: Previous must not panic.
         assert!(matches!(
             q.previous_action(1000),
-            PreviousAction::PlayPrevious(t) if t == "t1"
+            PreviousAction::PlayPrevious(t) if t == "08c7ff07-b56a-4e16-8df6-ae2967fa0806"
         ));
     }
 
@@ -1828,7 +2152,11 @@ mod tests {
         let mut q = queue();
         q.play_release(
             rel_src("r1"),
-            rel(&["t1", "t2", "t3"]),
+            rel(&[
+                "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
+                "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
+                "t3",
+            ]),
             ContextStart::Index(0),
         );
         q.add_to_queue(rel(&["m1", "m2"]));
@@ -1840,7 +2168,7 @@ mod tests {
         let context_tracks: Vec<String> = ctx.upcoming.into_iter().map(|e| e.track_id).collect();
         assert_eq!(
             context_tracks,
-            vec!["t2", "t3"],
+            vec!["08c7fe07-b56a-4c63-8df6-ad2967fa0653", "t3"],
             "the context is only the not-yet-played tail"
         );
         assert!(!ctx.shuffled, "a sequential context is not shuffled");
@@ -1851,7 +2179,9 @@ mod tests {
             "manual entries are not mixed into the context list"
         );
         assert!(
-            !manual.iter().any(|t| t == "t2" || t == "t3"),
+            !manual
+                .iter()
+                .any(|t| t == "08c7fe07-b56a-4c63-8df6-ad2967fa0653" || t == "t3"),
             "context entries are not mixed into the manual list"
         );
     }
@@ -1862,7 +2192,12 @@ mod tests {
         let mut q = queue();
         q.play_release(
             rel_src("r1"),
-            rel(&["t1", "t2", "t3", "t4"]),
+            rel(&[
+                "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
+                "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
+                "t3",
+                "t4",
+            ]),
             ContextStart::Shuffled { seed: 7 },
         );
         let ctx = q.context_projection().expect("a release is playing");
@@ -1887,7 +2222,14 @@ mod tests {
         let mut q = queue();
         assert!(!q.has_upcoming());
         assert!(!q.has_previous());
-        q.play_release(rel_src("r1"), rel(&["t1", "t2"]), ContextStart::Index(0));
+        q.play_release(
+            rel_src("r1"),
+            rel(&[
+                "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
+                "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
+            ]),
+            ContextStart::Index(0),
+        );
         assert!(q.has_upcoming());
         assert!(!q.has_previous());
         q.next_entry(); // → t2
@@ -1910,10 +2252,17 @@ mod tests {
         // Sequential context with an upcoming track → that track.
         q.play_release(
             rel_src("r1"),
-            rel(&["t1", "t2", "t3"]),
+            rel(&[
+                "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
+                "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
+                "t3",
+            ]),
             ContextStart::Index(0),
         );
-        assert_eq!(q.next_sequential_context_track(), Some("t2"));
+        assert_eq!(
+            q.next_sequential_context_track(),
+            Some("08c7fe07-b56a-4c63-8df6-ad2967fa0653")
+        );
 
         // A pending manual entry is not physical-side playback → None.
         q.add_to_queue(rel(&["m1"]));
@@ -1923,14 +2272,25 @@ mod tests {
         let mut shuffled = queue();
         shuffled.play_release(
             rel_src("r1"),
-            rel(&["t1", "t2", "t3"]),
+            rel(&[
+                "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
+                "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
+                "t3",
+            ]),
             ContextStart::Shuffled { seed: 5 },
         );
         assert_eq!(shuffled.next_sequential_context_track(), None);
 
         // The last track of a sequential context has no upcoming track → None.
         let mut last = queue();
-        last.play_release(rel_src("r1"), rel(&["t1", "t2"]), ContextStart::Index(1));
+        last.play_release(
+            rel_src("r1"),
+            rel(&[
+                "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
+                "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
+            ]),
+            ContextStart::Index(1),
+        );
         assert_eq!(last.next_sequential_context_track(), None);
     }
 
@@ -1942,10 +2302,17 @@ mod tests {
         let mut q = queue();
         q.play_release(
             rel_src("r1"),
-            rel(&["t1", "t2", "t3"]),
+            rel(&[
+                "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
+                "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
+                "t3",
+            ]),
             ContextStart::Index(0),
         );
-        assert_eq!(q.next_sequential_context_track(), Some("t2"));
+        assert_eq!(
+            q.next_sequential_context_track(),
+            Some("08c7fe07-b56a-4c63-8df6-ad2967fa0653")
+        );
 
         q.set_shuffle(true, 7);
         assert_eq!(
@@ -1957,7 +2324,7 @@ mod tests {
         q.set_shuffle(false, 0);
         assert_eq!(
             q.next_sequential_context_track(),
-            Some("t2"),
+            Some("08c7fe07-b56a-4c63-8df6-ad2967fa0653"),
             "unshuffling reopens the gate on the restored order"
         );
     }
@@ -1984,7 +2351,11 @@ mod tests {
         let mut q = queue();
         q.play_release(
             rel_src("r1"),
-            rel(&["t1", "t2", "t3"]),
+            rel(&[
+                "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
+                "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
+                "t3",
+            ]),
             ContextStart::Index(0),
         );
         q.add_to_queue(rel(&["m1"]));
@@ -1995,7 +2366,7 @@ mod tests {
         // Current is a manual item, so Previous lands on the cursor entry t1.
         assert!(matches!(
             q.previous_action(1000),
-            PreviousAction::PlayPrevious(t) if t == "t1"
+            PreviousAction::PlayPrevious(t) if t == "08c7ff07-b56a-4e16-8df6-ae2967fa0806"
         ));
     }
 
@@ -2009,16 +2380,26 @@ mod tests {
         let mut q = queue();
         q.play_release(
             rel_src("r1"),
-            rel(&["t1", "t2", "t3"]),
+            rel(&[
+                "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
+                "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
+                "t3",
+            ]),
             ContextStart::Index(0),
         );
         // Skip to t2 so it is both the cursor entry and current.
         let t2_id = q.upcoming()[0].id.clone();
         q.skip_to(&t2_id);
-        assert_eq!(q.current_track_id(), Some("t2"));
+        assert_eq!(
+            q.current_track_id(),
+            Some("08c7fe07-b56a-4c63-8df6-ad2967fa0653")
+        );
 
         let removed = q.remove(&t2_id);
-        assert_eq!(removed.map(|e| e.track_id), Some("t2".into()));
+        assert_eq!(
+            removed.map(|e| e.track_id),
+            Some("08c7fe07-b56a-4c63-8df6-ad2967fa0653".into())
+        );
         assert_eq!(
             q.current_track_id(),
             None,
@@ -2054,7 +2435,11 @@ mod tests {
 
         q.play_release(
             rel_src("r1"),
-            rel(&["t1", "t2", "t3"]),
+            rel(&[
+                "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
+                "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
+                "t3",
+            ]),
             ContextStart::Index(0),
         );
         assert_eq!(q.revision(), 4, "play_release bumps");
@@ -2123,15 +2508,23 @@ mod tests {
         let mut q = queue();
         q.play_release(
             rel_src("r1"),
-            rel(&["t1", "t2", "t3", "t4"]),
+            rel(&[
+                "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
+                "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
+                "t3",
+                "t4",
+            ]),
             ContextStart::Index(0),
         );
         let t2_id = q.upcoming()[0].id.clone(); // upcoming = [t2, t3, t4]
         q.reorder(&t2_id, None);
-        assert_eq!(upcoming_tracks(&q), vec!["t3", "t4", "t2"]);
+        assert_eq!(
+            upcoming_tracks(&q),
+            vec!["t3", "t4", "08c7fe07-b56a-4c63-8df6-ad2967fa0653"]
+        );
         assert_eq!(
             q.current_track_id(),
-            Some("t1"),
+            Some("08c7ff07-b56a-4e16-8df6-ae2967fa0806"),
             "the cursor stays on the playing track"
         );
     }

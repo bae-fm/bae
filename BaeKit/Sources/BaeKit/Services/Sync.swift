@@ -44,8 +44,6 @@ public final class Sync: Sendable, Observable {
     /// can rename either the active row or any inactive local row.
     public let renameLibrary:
         @Sendable (_ libraryId: String, _ newName: String) throws -> Void
-    /// Cancel one queued outbox entry by id (dequeues it; the local file stays).
-    public let cancelOutboxItem: @Sendable (_ id: Int64) async throws -> Void
     /// Cancel whatever transition a release is mid-flight — pin, upload, or
     /// unmanage — leaving it in its prior state. A no-op if nothing's running.
     public let cancelReleaseTransition:
@@ -108,9 +106,6 @@ public final class Sync: Sendable, Observable {
             _ in
             throw StubError.notImplemented
         },
-        cancelOutboxItem: @escaping @Sendable (Int64) async throws -> Void = {
-            _ in
-        },
         cancelReleaseTransition:
             @escaping @Sendable (String) async throws -> Void = { _ in },
         setSyncPaused: @escaping @Sendable (Bool) async -> Void = { _ in },
@@ -134,7 +129,6 @@ public final class Sync: Sendable, Observable {
         self.retryOutbox = retryOutbox
         self.triggerSync = triggerSync
         self.renameLibrary = renameLibrary
-        self.cancelOutboxItem = cancelOutboxItem
         self.cancelReleaseTransition = cancelReleaseTransition
         self.setSyncPaused = setSyncPaused
         self.lockActiveLibrary = lockActiveLibrary
@@ -185,7 +179,6 @@ public final class Sync: Sendable, Observable {
             renameLibrary: {
                 try handle.renameLibrary(libraryId: $0, name: $1)
             },
-            cancelOutboxItem: { try await handle.cancelOutboxItem(id: $0) },
             cancelReleaseTransition: {
                 try await handle.cancelReleaseTransition(releaseId: $0)
             },

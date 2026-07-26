@@ -1821,11 +1821,17 @@ pub enum BridgeUploadFileState {
     Done,
 }
 
-/// One pending cloud delete.
+/// One cloud object still owed a removal.
+///
+/// The row that named the object is gone — that is what makes the removal
+/// outstanding — so there is no filename or album to show, and no cancel: the
+/// object exists in the cloud and abandoning the tombstone would strand it.
+/// `namespace` and `blob_id` together identify it and serve as the row's
+/// identity for list diffing.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeDeleteOp {
-    pub id: i64,
-    pub cloud_key: String,
+    pub namespace: String,
+    pub blob_id: String,
     /// Enqueue time as Unix epoch milliseconds, for the queued relative label.
     pub created_at: i64,
 }

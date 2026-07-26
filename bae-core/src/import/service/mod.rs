@@ -834,7 +834,7 @@ impl ImportService {
                 resolve_file_content_type(&file.path)?,
                 library_manager.ids().new_id(),
                 files_now,
-                Some(content_hash),
+                content_hash,
             );
             file_ids.insert(file.path.clone(), db_file.id.clone());
             db_files.push(db_file);

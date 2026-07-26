@@ -811,6 +811,51 @@ impl AppHandle {
             .await?)
     }
 
+    /// Mint the scannable invite for a device that asked to join, returning the
+    /// payload bytes to render as a QR code.
+    ///
+    /// `join_request_code` is the joining device's own `generate_join_request`
+    /// code, handed over first — the offer is signed for that device's key, so
+    /// this payload cannot be minted without it.
+    ///
+    /// Minting only publishes the offer: `drive_device_join` must then run on
+    /// this device, while the code is on screen, to admit the joiner.
+    pub async fn begin_device_invite(
+        &self,
+        join_request_code: String,
+    ) -> Result<Vec<u8>, BridgeError> {
+        Ok(self
+            .services
+            .library_manager()
+            .begin_device_invite(&join_request_code)
+            .await?)
+    }
+
+    /// Run this device's side of a join it invited, until the joining device is
+    /// in or the attempt ends. Call this while the invite is displayed; it
+    /// returns `true` when the device joined, `false` when the attempt ended
+    /// without it.
+    pub async fn drive_device_join(&self, invite: Vec<u8>) -> Result<bool, BridgeError> {
+        use bae_core::library::DeviceJoinOutcome;
+        Ok(matches!(
+            self.services
+                .library_manager()
+                .drive_device_join(invite)
+                .await?,
+            DeviceJoinOutcome::Joined
+        ))
+    }
+
+    /// Withdraw an invite this device minted, so a joining device that already
+    /// scanned it is told to stop.
+    pub async fn cancel_device_invite(&self, invite: Vec<u8>) -> Result<(), BridgeError> {
+        Ok(self
+            .services
+            .library_manager()
+            .cancel_device_invite(invite)
+            .await?)
+    }
+
     /// Remove a device from the library and rotate the library key.
     pub async fn remove_member(&self, public_key_hex: String) -> Result<(), BridgeError> {
         self.services
@@ -857,20 +902,12 @@ impl AppHandle {
         Ok(crate::types::BridgeOutboxSnapshot::from_core(snapshot))
     }
 
-    /// Retry failed uploads now (clears their backoff and kicks the sync loop).
+    /// Retry failed uploads now: drain coven's upload queue immediately instead
+    /// of waiting for the next sync cycle.
     pub async fn retry_outbox(&self) -> Result<(), BridgeError> {
         self.services
             .library_manager()
             .retry_outbox_now()
-            .await
-            .map_err(BridgeError::internal)
-    }
-
-    /// Cancel one queued outbox entry by id (dequeues it; the local file stays).
-    pub async fn cancel_outbox_item(&self, id: i64) -> Result<(), BridgeError> {
-        self.services
-            .library_manager()
-            .cancel_outbox_item(id)
             .await
             .map_err(BridgeError::internal)
     }
@@ -1860,13 +1897,13 @@ impl crate::types::BridgeUploadFileOp {
 impl crate::types::BridgeDeleteOp {
     fn from_core(op: bae_core::library::DeleteOp) -> Self {
         let bae_core::library::DeleteOp {
-            id,
-            cloud_key,
+            namespace,
+            blob_id,
             created_at,
         } = op;
         Self {
-            id,
-            cloud_key,
+            namespace,
+            blob_id,
             created_at,
         }
     }

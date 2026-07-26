@@ -225,7 +225,7 @@ fn disc_only_resolves_to_found_with_provenance() {
     let (state, _) = step(
         state,
         IdentifyEvent::DiscidLookupCompleted {
-            results: vec![pair("rel-1", Some("g-x"))],
+            results: vec![pair("e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e", Some("g-x"))],
             track_count: 5,
         },
     );
@@ -260,7 +260,10 @@ fn both_signals_intersect_to_found_combined() {
     let (state, _) = step(
         state,
         IdentifyEvent::DiscidLookupCompleted {
-            results: vec![pair("rel-1", Some("g-x")), pair("rel-2", Some("g-x"))],
+            results: vec![
+                pair("e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e", Some("g-x")),
+                pair("e6cdc0f3-3a7b-458b-86aa-fd093cc5e79b", Some("g-x")),
+            ],
             track_count: 10,
         },
     );
@@ -268,7 +271,7 @@ fn both_signals_intersect_to_found_combined() {
         state,
         IdentifyEvent::BarcodeLookupMatched {
             for_barcode: "BAR".to_string(),
-            results: vec![pair("rel-2", Some("g-x"))],
+            results: vec![pair("e6cdc0f3-3a7b-458b-86aa-fd093cc5e79b", Some("g-x"))],
         },
     );
     match state {
@@ -278,7 +281,10 @@ fn both_signals_intersect_to_found_combined() {
             ..
         } => {
             assert_eq!(matches.len(), 1);
-            assert_eq!(matches[0].release_id, "rel-2");
+            assert_eq!(
+                matches[0].release_id,
+                "e6cdc0f3-3a7b-458b-86aa-fd093cc5e79b"
+            );
             assert!(provenance[0].by_disc_id && provenance[0].by_barcode);
         }
         other => panic!("expected Found, got {other:?}"),
@@ -303,7 +309,7 @@ fn empty_intersection_is_conflict() {
     let (state, _) = step(
         state,
         IdentifyEvent::DiscidLookupCompleted {
-            results: vec![pair("rel-1", Some("g-x"))],
+            results: vec![pair("e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e", Some("g-x"))],
             track_count: 5,
         },
     );
@@ -311,7 +317,7 @@ fn empty_intersection_is_conflict() {
         state,
         IdentifyEvent::BarcodeLookupMatched {
             for_barcode: "BAR".to_string(),
-            results: vec![pair("rel-2", Some("g-y"))],
+            results: vec![pair("e6cdc0f3-3a7b-458b-86aa-fd093cc5e79b", Some("g-y"))],
         },
     );
     match state {
@@ -352,7 +358,7 @@ fn barcode_iteration_first_match_wins() {
         state,
         IdentifyEvent::BarcodeLookupMatched {
             for_barcode: "B".to_string(),
-            results: vec![pair("rel-1", Some("g-x"))],
+            results: vec![pair("e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e", Some("g-x"))],
         },
     );
     match state {
@@ -602,7 +608,7 @@ fn driven_conflict() -> IdentifyState {
     let (state, _) = step(
         state,
         IdentifyEvent::DiscidLookupCompleted {
-            results: vec![pair("rel-1", Some("g-x"))],
+            results: vec![pair("e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e", Some("g-x"))],
             track_count: 7,
         },
     );
@@ -610,7 +616,10 @@ fn driven_conflict() -> IdentifyState {
         state,
         IdentifyEvent::BarcodeLookupMatched {
             for_barcode: "BAR".to_string(),
-            results: vec![pair("rel-2", Some("g-y")), pair("rel-3", Some("g-y"))],
+            results: vec![
+                pair("e6cdc0f3-3a7b-458b-86aa-fd093cc5e79b", Some("g-y")),
+                pair("rel-3", Some("g-y")),
+            ],
         },
     );
     assert!(
@@ -715,7 +724,7 @@ fn toggle_during_triangulation_keeps_looking_up() {
     let (state, _) = step(
         state,
         IdentifyEvent::DiscidLookupCompleted {
-            results: vec![pair("rel-1", Some("g-x"))],
+            results: vec![pair("e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e", Some("g-x"))],
             track_count: 5,
         },
     );
@@ -723,7 +732,7 @@ fn toggle_during_triangulation_keeps_looking_up() {
         state,
         IdentifyEvent::BarcodeLookupMatched {
             for_barcode: "BAR".to_string(),
-            results: vec![pair("rel-2", Some("g-y"))],
+            results: vec![pair("e6cdc0f3-3a7b-458b-86aa-fd093cc5e79b", Some("g-y"))],
         },
     );
     match state {
@@ -734,7 +743,10 @@ fn toggle_during_triangulation_keeps_looking_up() {
         } => {
             assert!(provenance[0].by_barcode && !provenance[0].by_disc_id);
             assert_eq!(matches.len(), 1);
-            assert_eq!(matches[0].release_id, "rel-2");
+            assert_eq!(
+                matches[0].release_id,
+                "e6cdc0f3-3a7b-458b-86aa-fd093cc5e79b"
+            );
         }
         other => panic!("expected barcode-only Found, got {other:?}"),
     }
@@ -760,7 +772,7 @@ fn rerun_re_dispatches_lookups() {
     let (state, _) = step(
         state,
         IdentifyEvent::DiscidLookupCompleted {
-            results: vec![pair("rel-1", Some("g-x"))],
+            results: vec![pair("e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e", Some("g-x"))],
             track_count: 5,
         },
     );
@@ -768,7 +780,7 @@ fn rerun_re_dispatches_lookups() {
         state,
         IdentifyEvent::BarcodeLookupMatched {
             for_barcode: "BAR".to_string(),
-            results: vec![pair("rel-1", Some("g-x"))],
+            results: vec![pair("e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e", Some("g-x"))],
         },
     );
     assert!(matches!(state, IdentifyState::Found { .. }));
@@ -877,7 +889,7 @@ fn rerun_preserves_exclusions() {
     let (state, _) = step(
         state,
         IdentifyEvent::DiscidLookupCompleted {
-            results: vec![pair("rel-1", Some("g-x"))],
+            results: vec![pair("e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e", Some("g-x"))],
             track_count: 7,
         },
     );
@@ -885,7 +897,10 @@ fn rerun_preserves_exclusions() {
         state,
         IdentifyEvent::BarcodeLookupMatched {
             for_barcode: "BAR".to_string(),
-            results: vec![pair("rel-2", Some("g-y")), pair("rel-3", Some("g-y"))],
+            results: vec![
+                pair("e6cdc0f3-3a7b-458b-86aa-fd093cc5e79b", Some("g-y")),
+                pair("rel-3", Some("g-y")),
+            ],
         },
     );
     match state {
@@ -1167,7 +1182,7 @@ fn pair_in_library(release_id: &str, group_id: Option<&str>) -> (MetadataResult,
             release_in_library: true,
             album_in_library: true,
             album_title: Some("Album".to_string()),
-            album_id: Some("album-1".to_string()),
+            album_id: Some("9fd7bfa8-3c7c-4026-8559-da66af02f636".to_string()),
         },
     )
 }
@@ -1190,7 +1205,10 @@ fn found_carries_in_library_status_through() {
     let (state, _) = step(
         state,
         IdentifyEvent::DiscidLookupCompleted {
-            results: vec![pair_in_library("rel-1", Some("g-x"))],
+            results: vec![pair_in_library(
+                "e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e",
+                Some("g-x"),
+            )],
             track_count: 5,
         },
     );
@@ -1204,7 +1222,10 @@ fn found_carries_in_library_status_through() {
             assert_eq!(library_statuses.len(), 1);
             assert!(library_statuses[0].release_in_library);
             assert!(library_statuses[0].album_in_library);
-            assert_eq!(library_statuses[0].album_id.as_deref(), Some("album-1"));
+            assert_eq!(
+                library_statuses[0].album_id.as_deref(),
+                Some("9fd7bfa8-3c7c-4026-8559-da66af02f636")
+            );
         }
         other => panic!("expected Found, got {other:?}"),
     }
@@ -1229,7 +1250,7 @@ fn toggle_from_found_re_derives_terminal_state() {
     let (found, _) = step(
         state,
         IdentifyEvent::DiscidLookupCompleted {
-            results: vec![pair("rel-1", Some("g-x"))],
+            results: vec![pair("e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e", Some("g-x"))],
             track_count: 5,
         },
     );
@@ -1296,7 +1317,7 @@ fn barcode_failure_before_disc_settles_is_retained_through_combine() {
     let (state, _) = step(
         state,
         IdentifyEvent::DiscidLookupCompleted {
-            results: vec![pair("rel-1", Some("g-x"))],
+            results: vec![pair("e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e", Some("g-x"))],
             track_count: 5,
         },
     );

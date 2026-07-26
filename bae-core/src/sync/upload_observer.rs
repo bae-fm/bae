@@ -134,23 +134,24 @@ impl ReleaseUploadObserver {
 
     /// Rebuild the outbox snapshot and broadcast it.
     async fn emit_outbox_changed(&self) {
+        let queue = match self.db().outbox_queue().await {
+            Ok(queue) => queue,
+            Err(e) => {
+                warn!("Failed to read the upload queue for the outbox snapshot: {e}");
+                return;
+            }
+        };
         let in_flight = { self.in_flight.lock().unwrap().clone() };
         let paused = self.sync_paused.load(std::sync::atomic::Ordering::SeqCst);
-        match crate::library::outbox_snapshot::build_outbox_snapshot(
-            self.db(),
+        let snapshot = crate::library::outbox_snapshot::build_outbox_snapshot(
+            queue,
             &in_flight,
             &self.sessions,
             &self.throughput,
             paused,
-        )
-        .await
-        {
-            Ok(snapshot) => {
-                // A `send` error means no UI is subscribed right now — harmless.
-                let _ = self.events.send(LibraryEvent::OutboxChanged { snapshot });
-            }
-            Err(e) => warn!("Failed to build outbox snapshot: {e}"),
-        }
+        );
+        // A `send` error means no UI is subscribed right now — harmless.
+        let _ = self.events.send(LibraryEvent::OutboxChanged { snapshot });
     }
 }
 
@@ -259,9 +260,8 @@ impl coven::BlobTransitionObserver for ReleaseUploadObserver {
         {
             self.in_flight.lock().unwrap().remove(file_id);
         }
-        // The failure (attempt_count / last_error) is persisted by coven's
-        // drain_uploads via record_cloud_upload_failure; the snapshot we emit
-        // here reflects it.
+        // coven's drain records the attempt count and the error on its own
+        // queue entry; the snapshot we emit here reads them back.
         self.emit_outbox_changed().await;
     }
 

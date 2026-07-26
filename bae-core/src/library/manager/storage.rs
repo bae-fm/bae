@@ -48,37 +48,18 @@ impl LibraryManager {
             .await?)
     }
 
-    /// Seed an upload outbox row + refresh the snapshot. coven owns enqueueing in
-    /// `make_remote`, so this is only a test helper for exercising the
-    /// outbox-snapshot / drain machinery directly.
-    #[cfg(any(test, feature = "test-utils"))]
-    pub async fn add_cloud_outbox_upload(
-        &self,
-        file_id: &str,
-        cloud_key: &str,
-        source_path: Option<&str>,
-        retain_pinned: bool,
-    ) -> Result<(), LibraryError> {
-        self.database
-            .add_cloud_outbox_upload(file_id, cloud_key, source_path, retain_pinned)
-            .await?;
-        self.emit_outbox_changed().await;
-        Ok(())
-    }
-
-    /// Retry failed uploads now: clear their backoff so the next cycle picks
-    /// them up immediately, then kick the sync loop.
+    /// Retry failed uploads now: run coven's upload drain immediately rather
+    /// than waiting for the next sync cycle's own pass.
+    ///
+    /// The per-entry backoff is coven's bookkeeping — a drain it is asked for
+    /// explicitly is the retry, so bae no longer reaches into the queue to clear
+    /// timestamps. A drain with no provider connected is not an error the user
+    /// needs: there is simply nothing to send yet.
     pub async fn retry_outbox_now(&self) -> Result<(), LibraryError> {
-        self.database.reset_cloud_outbox_backoff().await?;
+        if let Err(e) = self.handle().drain_uploads().await {
+            warn!("retrying uploads now: {e}");
+        }
         self.trigger_sync();
-        self.emit_outbox_changed().await;
-        Ok(())
-    }
-
-    /// Cancel one queued outbox entry by id. Removes the queue row only; the
-    /// local file is untouched, so the release just stops syncing this entry.
-    pub async fn cancel_outbox_item(&self, id: i64) -> Result<(), LibraryError> {
-        self.database.remove_cloud_outbox_entry(id).await?;
         self.emit_outbox_changed().await;
         Ok(())
     }

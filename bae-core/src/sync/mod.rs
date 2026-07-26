@@ -10,9 +10,22 @@
 // unchanged. Blob-key derivation is coven's, reached through
 // `CovenHandle::blob_cloud_key`.
 pub use coven::{
-    decode_restore_code_info, join_from_invite_code, restore_from_cloud, restore_from_code,
-    RestoreSource,
+    decode_restore_code_info, join_with_scanned_invite, restore_from_code, RestoreSource,
 };
+
+/// How often a device-join transport wait looks for the counterpart's next
+/// artifact, and how long it keeps looking. Shared by both sides of the join —
+/// the owner's driver in `sync_controller` and the joining device's one-call
+/// entry point — so neither gives up while the other is still working.
+///
+/// Both sides are driven by a person at a device, so the deadline bounds a
+/// human-paced step (scan the code, tap approve), not a machine round-trip.
+pub(crate) fn device_join_timing() -> coven::DeviceJoinTransportTiming {
+    coven::DeviceJoinTransportTiming {
+        poll: std::time::Duration::from_secs(1),
+        deadline: std::time::Duration::from_secs(180),
+    }
+}
 
 // `CloudCipher` is what a test hands to `connect_sync_with_test_home`; coven
 // only compiles it under `test`/`test-utils`, so bae's re-export follows.
@@ -30,7 +43,7 @@ pub mod membership;
 mod restore_config;
 pub use restore_config::{RestoreConfig, RestoreConfigError, RestoreHome};
 
-use coven::{BlobDecl, SyncedTable};
+use coven::{BlobDecl, RowIdentity, SyncedTable};
 use coven::{CacheFill, Provenance};
 
 /// S3 configuration data for save_s3_config.
@@ -103,26 +116,25 @@ pub const ARTIST_IMAGES_CACHE_BUDGET: u64 = 256 * 1024 * 1024; // 256 MiB
 ///
 /// Excluded: the device-local tables (`release_metadata`, `imports`,
 /// `playback_state`) have no `_updated_at`, and coven's own bookkeeping tables
-/// (`sync_state`, `sync_cursors`, `cloud_outbox`) live outside bae's migration
-/// entirely.
+/// live outside bae's migration entirely — bae never names them.
 ///
 /// Passed to [`coven::Coven::builder`], which attaches the capture session to
 /// exactly these tables when the library is opened.
 pub fn synced_tables() -> Vec<SyncedTable> {
     vec![
-        SyncedTable::new("artists").gated_by_descendants(),
-        SyncedTable::new("albums").gated_by_descendants(),
-        SyncedTable::new("album_artists"),
-        SyncedTable::new("releases").gated_by("remote"),
-        SyncedTable::new("release_identities"),
-        SyncedTable::new("tracks"),
-        SyncedTable::new("track_artists"),
-        SyncedTable::new("works").gated_by_descendants(),
-        SyncedTable::new("work_artists"),
-        SyncedTable::new("work_parts"),
-        SyncedTable::new("track_works"),
-        SyncedTable::new("release_artist_roles"),
-        SyncedTable::new("track_artist_roles"),
+        SyncedTable::new("artists", RowIdentity::IndependentUuid).gated_by_descendants(),
+        SyncedTable::new("albums", RowIdentity::IndependentUuid).gated_by_descendants(),
+        SyncedTable::new("album_artists", RowIdentity::IndependentUuid),
+        SyncedTable::new("releases", RowIdentity::IndependentUuid).gated_by("remote"),
+        SyncedTable::new("release_identities", RowIdentity::IndependentUuid),
+        SyncedTable::new("tracks", RowIdentity::IndependentUuid),
+        SyncedTable::new("track_artists", RowIdentity::IndependentUuid),
+        SyncedTable::new("works", RowIdentity::IndependentUuid).gated_by_descendants(),
+        SyncedTable::new("work_artists", RowIdentity::IndependentUuid),
+        SyncedTable::new("work_parts", RowIdentity::IndependentUuid),
+        SyncedTable::new("track_works", RowIdentity::IndependentUuid),
+        SyncedTable::new("release_artist_roles", RowIdentity::IndependentUuid),
+        SyncedTable::new("track_artist_roles", RowIdentity::IndependentUuid),
         // The user's own imported files: user-provided (Local = the file at the
         // user's path, an external ref coven holds), CacheLazy (fetched on first
         // read when Remote). coven reads the blob id off the PK and the readable
@@ -131,7 +143,7 @@ pub fn synced_tables() -> Vec<SyncedTable> {
         // audio object at a key never changes content. That is what lets the
         // cloud key stay a readable name with no blob id in it; coven refuses a
         // repoint rather than silently rewriting an object a peer already holds.
-        SyncedTable::new("release_files").carries_blob(
+        SyncedTable::new("release_files", RowIdentity::IndependentUuid).carries_blob(
             BlobDecl::new(
                 RELEASE_FILES_NAMESPACE,
                 Provenance::UserProvided,
@@ -141,8 +153,8 @@ pub fn synced_tables() -> Vec<SyncedTable> {
             .with_cloud_path_column("cloud_path")
             .write_once(),
         ),
-        SyncedTable::new("audio_formats"),
-        SyncedTable::new("audio_format_segments"),
+        SyncedTable::new("audio_formats", RowIdentity::IndependentUuid),
+        SyncedTable::new("audio_format_segments", RowIdentity::IndependentUuid),
         // The bae-produced album cover: host-provided (coven owns the copy in
         // its local store while Local), CacheEager (pulled with the row when
         // Remote so the grid renders from local bytes). An asset — it rides its
@@ -151,7 +163,7 @@ pub fn synced_tables() -> Vec<SyncedTable> {
         // The blob id comes from `blob_id`, not the PK: the PK is the release id
         // and cannot move, while a coven blob id names one immutable byte-string.
         // Changing the cover mints a new `blob_id` and deletes the old blob.
-        SyncedTable::new("covers")
+        SyncedTable::new("covers", RowIdentity::IndependentUuid)
             .carries_blob(
                 BlobDecl::new(
                     COVERS_NAMESPACE,
@@ -164,7 +176,7 @@ pub fn synced_tables() -> Vec<SyncedTable> {
             )
             .asset(),
         // The bae-produced artist image, same shape, riding `artists`' gate.
-        SyncedTable::new("artist_images")
+        SyncedTable::new("artist_images", RowIdentity::IndependentUuid)
             .carries_blob(
                 BlobDecl::new(
                     ARTIST_IMAGES_NAMESPACE,

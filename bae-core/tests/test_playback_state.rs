@@ -31,10 +31,12 @@ async fn playback_state_saves_loads_replaces_and_clears() {
     // the source, and reads back as a bool.
     let row = DbPlaybackState {
         context: Some(DbPlaybackContext {
-            source: "rel-1".to_string(),
+            source: "e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e".to_string(),
             shuffled: true,
         }),
-        manual: r#"["t1","t2"]"#.to_string(),
+        manual:
+            r#"["08c7ff07-b56a-4e16-8df6-ae2967fa0806","08c7fe07-b56a-4c63-8df6-ad2967fa0653"]"#
+                .to_string(),
         repeat: "context".to_string(),
         current_track_id: Some("t5".to_string()),
         position_ms: Some(42_000),
@@ -47,9 +49,12 @@ async fn playback_state_saves_loads_replaces_and_clears() {
         panic!("a row");
     };
     let context = loaded.context.expect("a context");
-    assert_eq!(context.source, "rel-1");
+    assert_eq!(context.source, "e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e");
     assert!(context.shuffled);
-    assert_eq!(loaded.manual, r#"["t1","t2"]"#);
+    assert_eq!(
+        loaded.manual,
+        r#"["08c7ff07-b56a-4e16-8df6-ae2967fa0806","08c7fe07-b56a-4c63-8df6-ad2967fa0653"]"#
+    );
     assert_eq!(loaded.repeat, "context");
     assert_eq!(loaded.current_track_id.as_deref(), Some("t5"));
     assert_eq!(loaded.position_ms, Some(42_000));

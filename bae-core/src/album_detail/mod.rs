@@ -482,8 +482,11 @@ mod tests {
                     release_download_status(
                         pinned,
                         &[Unpin, MakeLocal],
-                        &[download("rel-1", state.clone())],
-                        "rel-1",
+                        &[download(
+                            "e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e",
+                            state.clone()
+                        )],
+                        "e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e",
                     ),
                     Some(expected.clone()),
                     "a {state:?} entry decides the control (pinned={pinned})"
@@ -496,7 +499,12 @@ mod tests {
     #[test]
     fn pinned_with_an_empty_queue_is_downloaded() {
         assert_eq!(
-            release_download_status(true, &[Unpin, MakeLocal], &[], "rel-1"),
+            release_download_status(
+                true,
+                &[Unpin, MakeLocal],
+                &[],
+                "e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e"
+            ),
             Some(ReleaseDownloadStatus::Downloaded),
         );
     }
@@ -505,7 +513,12 @@ mod tests {
     #[test]
     fn unpinned_with_pin_offered_is_available() {
         assert_eq!(
-            release_download_status(false, &[Pin, MakeLocal], &[], "rel-1"),
+            release_download_status(
+                false,
+                &[Pin, MakeLocal],
+                &[],
+                "e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e"
+            ),
             Some(ReleaseDownloadStatus::Available),
         );
     }
@@ -514,9 +527,17 @@ mod tests {
     /// release's audio is already local.
     #[test]
     fn no_pin_on_offer_means_no_control() {
-        assert_eq!(release_download_status(false, &[], &[], "rel-1"), None);
         assert_eq!(
-            release_download_status(false, &[MakeRemote], &[], "rel-1"),
+            release_download_status(false, &[], &[], "e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e"),
+            None
+        );
+        assert_eq!(
+            release_download_status(
+                false,
+                &[MakeRemote],
+                &[],
+                "e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e"
+            ),
             None,
         );
     }
@@ -528,8 +549,11 @@ mod tests {
             release_download_status(
                 false,
                 &[Pin, MakeLocal],
-                &[download("rel-2", crate::library::DownloadState::Queued)],
-                "rel-1",
+                &[download(
+                    "e6cdc0f3-3a7b-458b-86aa-fd093cc5e79b",
+                    crate::library::DownloadState::Queued
+                )],
+                "e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e",
             ),
             Some(ReleaseDownloadStatus::Available),
         );

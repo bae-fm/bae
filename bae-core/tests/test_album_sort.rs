@@ -39,7 +39,7 @@ fn make_album(
 
 async fn insert_default_artist(db: &Database) -> String {
     let artist = DbArtist {
-        id: "default-test-artist".to_string(),
+        id: bae_test_support::test_uuid("default-test-artist"),
         name: "Default Artist".to_string(),
         sort_name: None,
         discogs_artist_id: None,

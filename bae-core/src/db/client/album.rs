@@ -226,7 +226,7 @@ impl Database {
         let album = album.clone();
         self.call_sql(move |sql| {
             let reg = sql.stamp();
-            insert_album_row(sql.tx(), &album, &reg)
+            insert_album_row(&sql, &album, &reg)
         })
         .await
     }
@@ -435,10 +435,9 @@ impl Database {
     ) -> Result<(), DbError> {
         let album_id = album_id.to_string();
         self.call_sql(move |sql| {
-            let reg = sql.stamp();
-            let conn = sql.tx();
+            let conn = &sql;
             for cleanup in &cleanups {
-                apply_delete_cleanup_on(conn, cleanup, &reg)?;
+                apply_delete_cleanup_on(conn, cleanup)?;
             }
             conn.execute("DELETE FROM albums WHERE id = ?", params![album_id])?;
             Ok(())
@@ -454,7 +453,7 @@ impl Database {
         let (album_id, primary_release_id) = (album_id.to_string(), primary_release_id.to_string());
         self.call_sql(move |sql| {
             let reg = sql.stamp();
-            let conn = sql.tx();
+            let conn = &sql;
             conn.execute(
                 "UPDATE albums SET primary_release_id = ?, _updated_at = ? WHERE id = ?",
                 params![primary_release_id, reg, album_id],

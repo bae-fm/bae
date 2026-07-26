@@ -40,6 +40,76 @@ pub trait CloudKitDriver: Send + Sync {
         zone_name: Option<String>,
         key: String,
     ) -> Result<bool, CloudKitError>;
+    /// The CloudKit namespace and principal facts for this scope: which
+    /// container and environment the app is bound to, which zone it is reading,
+    /// and which user record the signed-in account is.
+    fn provider_identity(
+        &self,
+        owner_name: Option<String>,
+        zone_name: Option<String>,
+    ) -> Result<BridgeCloudKitProviderIdentity, CloudKitError>;
+    /// The accepted CKShare for a shared scope: the participant facts the host
+    /// verified, plus the share record's exact canonical bytes. Those bytes are
+    /// hashed into cross-device evidence, so they must be byte-stable across
+    /// devices and repeated calls.
+    fn accepted_read_write_share(
+        &self,
+        owner_name: Option<String>,
+        zone_name: Option<String>,
+    ) -> Result<BridgeCloudKitAcceptedShare, CloudKitError>;
+    /// Read a record and return its opaque `recordChangeTag` alongside the bytes.
+    fn read_versioned_record(
+        &self,
+        owner_name: Option<String>,
+        zone_name: Option<String>,
+        key: String,
+    ) -> Result<BridgeCloudVersionedObject, CloudKitError>;
+    /// Open a host-local staging batch, returning its id. Staging creates no
+    /// CloudKit records — the host holds the payloads until commit.
+    fn begin_atomic_create(
+        &self,
+        owner_name: Option<String>,
+        zone_name: Option<String>,
+    ) -> Result<String, CloudKitError>;
+    /// Stage one record payload in an open batch.
+    fn stage_atomic_create_record(
+        &self,
+        owner_name: Option<String>,
+        zone_name: Option<String>,
+        batch: String,
+        record: BridgeCloudKitRecordCreate,
+    ) -> Result<(), CloudKitError>;
+    /// Create every staged record as one atomic zone modification, create-only.
+    /// A known pre-commit failure must leave no record behind. If the commit
+    /// response is lost, keep whatever landed — the caller reads the keys back
+    /// to settle the outcome. Versions come back in staging order.
+    fn commit_atomic_create(
+        &self,
+        owner_name: Option<String>,
+        zone_name: Option<String>,
+        batch: String,
+    ) -> Result<Vec<BridgeCloudKitRecordVersion>, CloudKitError>;
+    /// Drop host-local staging. Never deletes records the batch may already have
+    /// committed, and is idempotent.
+    fn discard_atomic_create(
+        &self,
+        owner_name: Option<String>,
+        zone_name: Option<String>,
+        batch: String,
+    ) -> Result<(), CloudKitError>;
+    /// Delete exactly these record versions as one atomic zone modification. A
+    /// record that changed or vanished fails the whole deletion.
+    fn delete_record_versions(
+        &self,
+        owner_name: Option<String>,
+        zone_name: Option<String>,
+        records: Vec<BridgeCloudKitRecordVersion>,
+    ) -> Result<(), CloudKitError>;
+    /// The share a member already holds, or `None` if none was granted.
+    fn share_for_member(
+        &self,
+        member_pubkey: String,
+    ) -> Result<Option<BridgeCloudKitShare>, CloudKitError>;
     fn grant_share(&self, member_pubkey: String) -> Result<BridgeCloudKitShare, CloudKitError>;
     fn revoke_share(&self, member_pubkey: String) -> Result<(), CloudKitError>;
     fn accept_share(&self, share_url: String) -> Result<BridgeCloudKitShare, CloudKitError>;
@@ -52,12 +122,199 @@ pub struct BridgeCloudKitShare {
     pub zone_name: String,
 }
 
+/// Which CloudKit deployment the container is bound to.
+#[derive(Debug, Clone, Copy, uniffi::Enum)]
+pub enum BridgeCloudKitEnvironment {
+    Development,
+    Production,
+}
+
+/// The stable CloudKit facts behind a scope.
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeCloudKitProviderIdentity {
+    pub container_id: String,
+    pub environment: BridgeCloudKitEnvironment,
+    pub owner_name: String,
+    pub zone_name: String,
+    pub current_user_record_name: String,
+}
+
+#[derive(Debug, Clone, Copy, uniffi::Enum)]
+pub enum BridgeCloudKitSharePermission {
+    ReadOnly,
+    ReadWrite,
+}
+
+#[derive(Debug, Clone, Copy, uniffi::Enum)]
+pub enum BridgeCloudKitShareAcceptance {
+    Pending,
+    Accepted,
+}
+
+/// An accepted CKShare as the host read it back, with the exact canonical
+/// record bytes coven hashes into its cross-principal evidence.
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeCloudKitAcceptedShare {
+    pub share_record_name: String,
+    pub owner_name: String,
+    pub zone_name: String,
+    pub participant_record_name: String,
+    pub permission: BridgeCloudKitSharePermission,
+    pub acceptance: BridgeCloudKitShareAcceptance,
+    pub canonical_record: Vec<u8>,
+}
+
+/// A record's bytes with the opaque provider revision they were read at.
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeCloudVersionedObject {
+    pub bytes: Vec<u8>,
+    /// CloudKit's `recordChangeTag`, opaque to coven.
+    pub version: String,
+}
+
+/// One record named by the revision it was read at.
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeCloudKitRecordVersion {
+    pub key: String,
+    pub version: String,
+}
+
+/// One record payload staged for an atomic create.
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeCloudKitRecordCreate {
+    pub key: String,
+    pub data: Vec<u8>,
+}
+
 /// Adapts a UniFFI `CloudKitDriver` callback to `CloudKitOps` (bae-core).
 struct CloudKitDriverAdapter {
     driver: Arc<dyn CloudKitDriver>,
 }
 
 impl coven::CloudKitOps for CloudKitDriverAdapter {
+    fn provider_identity(
+        &self,
+        scope: &coven::CloudKitScope,
+    ) -> Result<coven::CloudKitProviderIdentity, coven::CloudHomeError> {
+        let (owner_name, zone_name) = scope_fields(scope);
+        self.driver
+            .provider_identity(owner_name, zone_name)
+            .map(BridgeCloudKitProviderIdentity::into_core)
+            .map_err(cloudkit_err_to_cloud_home_err)
+    }
+
+    fn accepted_read_write_share(
+        &self,
+        scope: &coven::CloudKitScope,
+    ) -> Result<coven::CloudKitAcceptedShareRecord, coven::CloudHomeError> {
+        let (owner_name, zone_name) = scope_fields(scope);
+        self.driver
+            .accepted_read_write_share(owner_name, zone_name)
+            .map(BridgeCloudKitAcceptedShare::into_core)
+            .map_err(cloudkit_err_to_cloud_home_err)
+    }
+
+    fn read_versioned_record(
+        &self,
+        scope: &coven::CloudKitScope,
+        key: &str,
+    ) -> Result<coven::CloudVersionedObject, coven::CloudHomeError> {
+        let (owner_name, zone_name) = scope_fields(scope);
+        let read = self
+            .driver
+            .read_versioned_record(owner_name, zone_name, key.to_string())
+            .map_err(cloudkit_err_to_cloud_home_err)?;
+        Ok(coven::CloudVersionedObject {
+            bytes: read.bytes,
+            version: coven::CloudObjectVersion::from_provider(read.version)?,
+        })
+    }
+
+    fn begin_atomic_create(
+        &self,
+        scope: &coven::CloudKitScope,
+    ) -> Result<coven::CloudKitAtomicCreateBatch, coven::CloudHomeError> {
+        let (owner_name, zone_name) = scope_fields(scope);
+        let batch = self
+            .driver
+            .begin_atomic_create(owner_name, zone_name)
+            .map_err(cloudkit_err_to_cloud_home_err)?;
+        coven::CloudKitAtomicCreateBatch::from_provider(batch)
+    }
+
+    fn stage_atomic_create_record(
+        &self,
+        scope: &coven::CloudKitScope,
+        batch: &coven::CloudKitAtomicCreateBatch,
+        record: coven::CloudKitRecordCreate,
+    ) -> Result<(), coven::CloudHomeError> {
+        let (owner_name, zone_name) = scope_fields(scope);
+        self.driver
+            .stage_atomic_create_record(
+                owner_name,
+                zone_name,
+                batch.as_provider().to_string(),
+                BridgeCloudKitRecordCreate {
+                    key: record.key,
+                    data: record.data,
+                },
+            )
+            .map_err(cloudkit_err_to_cloud_home_err)
+    }
+
+    fn commit_atomic_create(
+        &self,
+        scope: &coven::CloudKitScope,
+        batch: &coven::CloudKitAtomicCreateBatch,
+    ) -> Result<Vec<coven::CloudKitRecordVersion>, coven::CloudHomeError> {
+        let (owner_name, zone_name) = scope_fields(scope);
+        self.driver
+            .commit_atomic_create(owner_name, zone_name, batch.as_provider().to_string())
+            .map_err(cloudkit_err_to_cloud_home_err)?
+            .into_iter()
+            .map(BridgeCloudKitRecordVersion::into_core)
+            .collect()
+    }
+
+    fn discard_atomic_create(
+        &self,
+        scope: &coven::CloudKitScope,
+        batch: &coven::CloudKitAtomicCreateBatch,
+    ) -> Result<(), coven::CloudHomeError> {
+        let (owner_name, zone_name) = scope_fields(scope);
+        self.driver
+            .discard_atomic_create(owner_name, zone_name, batch.as_provider().to_string())
+            .map_err(cloudkit_err_to_cloud_home_err)
+    }
+
+    fn delete_record_versions(
+        &self,
+        scope: &coven::CloudKitScope,
+        records: &[coven::CloudKitRecordVersion],
+    ) -> Result<(), coven::CloudHomeError> {
+        let (owner_name, zone_name) = scope_fields(scope);
+        let records = records
+            .iter()
+            .map(|record| BridgeCloudKitRecordVersion {
+                key: record.key.clone(),
+                version: record.version.as_provider().to_string(),
+            })
+            .collect();
+        self.driver
+            .delete_record_versions(owner_name, zone_name, records)
+            .map_err(cloudkit_err_to_cloud_home_err)
+    }
+
+    fn share_for_member(
+        &self,
+        member_pubkey: &str,
+    ) -> Result<Option<coven::CloudKitShare>, coven::CloudHomeError> {
+        self.driver
+            .share_for_member(member_pubkey.to_string())
+            .map(|share| share.map(BridgeCloudKitShare::into_core))
+            .map_err(cloudkit_err_to_cloud_home_err)
+    }
+
     fn write_record(
         &self,
         scope: &coven::CloudKitScope,
@@ -160,6 +417,68 @@ impl BridgeCloudKitShare {
             owner_name,
             zone_name,
         }
+    }
+}
+
+impl BridgeCloudKitProviderIdentity {
+    fn into_core(self) -> coven::CloudKitProviderIdentity {
+        let BridgeCloudKitProviderIdentity {
+            container_id,
+            environment,
+            owner_name,
+            zone_name,
+            current_user_record_name,
+        } = self;
+        coven::CloudKitProviderIdentity {
+            container_id,
+            environment: match environment {
+                BridgeCloudKitEnvironment::Development => coven::CloudKitEnvironment::Development,
+                BridgeCloudKitEnvironment::Production => coven::CloudKitEnvironment::Production,
+            },
+            owner_name,
+            zone_name,
+            current_user_record_name,
+        }
+    }
+}
+
+impl BridgeCloudKitAcceptedShare {
+    fn into_core(self) -> coven::CloudKitAcceptedShareRecord {
+        let BridgeCloudKitAcceptedShare {
+            share_record_name,
+            owner_name,
+            zone_name,
+            participant_record_name,
+            permission,
+            acceptance,
+            canonical_record,
+        } = self;
+        coven::CloudKitAcceptedShareRecord {
+            share_record_name,
+            owner_name,
+            zone_name,
+            participant_record_name,
+            permission: match permission {
+                BridgeCloudKitSharePermission::ReadOnly => coven::CloudKitSharePermission::ReadOnly,
+                BridgeCloudKitSharePermission::ReadWrite => {
+                    coven::CloudKitSharePermission::ReadWrite
+                }
+            },
+            acceptance: match acceptance {
+                BridgeCloudKitShareAcceptance::Pending => coven::CloudKitShareAcceptance::Pending,
+                BridgeCloudKitShareAcceptance::Accepted => coven::CloudKitShareAcceptance::Accepted,
+            },
+            canonical_record,
+        }
+    }
+}
+
+impl BridgeCloudKitRecordVersion {
+    fn into_core(self) -> Result<coven::CloudKitRecordVersion, coven::CloudHomeError> {
+        Ok(coven::CloudKitRecordVersion {
+            key: self.key,
+            version: coven::CloudObjectVersion::from_provider(self.version)?,
+        })
     }
 }
 

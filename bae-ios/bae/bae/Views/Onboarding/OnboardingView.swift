@@ -245,8 +245,7 @@ extension OnboardingView {
                             )
                             decodedInvite =
                                 trimmed.isEmpty
-                                ? nil
-                                : Result { try decodeInviteCode(code: trimmed) }
+                                ? nil : Result { try decodeInvite(pasted: trimmed) }
                         }
                     )
                 }
@@ -472,14 +471,37 @@ extension OnboardingView {
         }
     }
 
+    /// The invite bundle behind what the joiner pasted or scanned.
+    ///
+    /// The invite is a byte payload — the owner's signed join offer, not a
+    /// human-typed code — so it travels as base64 wherever it has to be text.
+    /// A QR scan hands back that same text, so both entry paths decode here.
+    private func inviteBytes(pasted: String) throws -> Data {
+        guard
+            let bytes = Data(
+                base64Encoded: pasted.trimmingCharacters(in: .whitespacesAndNewlines)
+            )
+        else {
+            throw BridgeError.Diagnostic(
+            category: .config,
+            detail: "the pasted invite is not base64 an invite bundle could be read from"
+        )
+        }
+        return bytes
+    }
+
+    private func decodeInvite(pasted: String) throws -> BridgeInviteCodeInfo {
+        try decodeScannedInvite(scanned: try inviteBytes(pasted: pasted))
+    }
+
     private func runJoin(
         code: String,
         joinRequestCode: String,
         tokenJson: String?,
         flow: LinkFlow
     ) async throws {
-        let operation = try joinFromCodeOperation(
-            code: code,
+        let operation = try joinFromScannedInviteOperation(
+            scanned: try inviteBytes(pasted: code),
             joinRequestCode: joinRequestCode,
             oauthTokenJson: tokenJson
         )

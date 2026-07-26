@@ -28,7 +28,17 @@ impl LibraryManager {
             .await
             .map_err(|e| {
                 LibraryError::Storage(format!("cancel make release {release_id} remote: {e}"))
-            })
+            })?;
+        // `cancel_make_remote` records the intent to unwind; the drain carries it
+        // out — dropping the still-queued uploads and tombstoning whatever already
+        // landed. Run it here rather than waiting for the next cycle, so the user's
+        // cancel is done when it returns instead of leaving the release reading as
+        // still-uploading. A drain with no provider connected is not an error the
+        // user needs.
+        if let Err(e) = self.handle.drain_uploads().await {
+            warn!("finishing the cancelled make-remote for {release_id}: {e}");
+        }
+        Ok(())
     }
 
     /// Make a release Local (Remote → Local) through coven: coven materializes each
@@ -131,6 +141,32 @@ impl LibraryManager {
         self.sync
             .invite_member(public_key_hex, provider_account_email)
             .await
+    }
+
+    /// Mint the scannable device-join invite for a device that asked to join,
+    /// returning the payload the UI renders as a QR code. The joining device must
+    /// hand over its join-request code first — see
+    /// [`SyncController::begin_device_invite`](crate::library::sync_controller::SyncController::begin_device_invite).
+    pub async fn begin_device_invite(
+        &self,
+        join_request_code: &str,
+    ) -> Result<Vec<u8>, LibraryError> {
+        self.sync.begin_device_invite(join_request_code).await
+    }
+
+    /// Drive this device's side of an invited join to the attempt's end. Run this
+    /// while the invite is on screen; it returns once the joining device is in or
+    /// the attempt ended without it.
+    pub async fn drive_device_join(
+        &self,
+        invite_bytes: Vec<u8>,
+    ) -> Result<crate::library::sync_controller::DeviceJoinOutcome, LibraryError> {
+        self.sync.drive_device_join(invite_bytes).await
+    }
+
+    /// Withdraw an invite this device minted.
+    pub async fn cancel_device_invite(&self, invite_bytes: Vec<u8>) -> Result<(), LibraryError> {
+        self.sync.cancel_device_invite(invite_bytes).await
     }
 
     /// Remove a device from the library and rotate the library key so the removed

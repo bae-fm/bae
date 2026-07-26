@@ -72,8 +72,7 @@ async fn pure_reads_run_off_the_sync_journal() {
     // assertions below are not vacuous.
     db.handle()
         .sql(|sql| {
-            sql.tx()
-                .query_row("SELECT 1", [], |_row| Ok(()))
+            sql.query_row("SELECT 1", [], |_row| Ok(()))
                 .map_err(coven::CovenError::from)
         })
         .await
@@ -87,12 +86,21 @@ async fn pure_reads_run_off_the_sync_journal() {
     buf.lock().unwrap().clear();
 
     // A device-local write on the plain journaled path must NOT warn under the
-    // new semantics: `add_cloud_outbox_delete` changes rows, so coven's
+    // new semantics: saving `playback_state` changes rows, so coven's
     // zero-rows-changed check does not fire. This is why device-local writes
-    // (e.g. once-per-second playback_state) stay silent with no `sql_local`.
-    db.add_cloud_outbox_delete("tripwire/local-write")
-        .await
-        .unwrap();
+    // (e.g. the once-per-second playback_state save this is) stay silent with
+    // no `sql_local`.
+    db.save_playback_state(&bae_core::db::DbPlaybackState {
+        context: None,
+        manual: "off".to_string(),
+        repeat: "off".to_string(),
+        current_track_id: None,
+        position_ms: None,
+        volume: 1.0,
+        is_muted: false,
+    })
+    .await
+    .unwrap();
 
     // The migrated reads — at least one per db/client file. Each must resolve
     // on coven's read-only companion connection, journaling nothing. Empty
@@ -107,8 +115,10 @@ async fn pure_reads_run_off_the_sync_journal() {
     db.find_release_by_id("missing").await.unwrap(); // release.rs
     db.get_release_identities("missing").await.unwrap(); // identity.rs
     db.load_playback_state().await.unwrap(); // playback.rs
-    db.external_blob("missing").await.unwrap(); // blobs.rs
-    db.outbox_items().await.unwrap();
+                                             // `external_blob` needs a real row to bind (coven errors on a missing one),
+                                             // so the blobs.rs read here is the one that answers for any id.
+    db.has_pending_cloud_upload("missing").await.unwrap(); // blobs.rs
+    db.outbox_queue().await.unwrap();
 
     assert_eq!(
         tripwire_hits(),

@@ -4,11 +4,15 @@ import SwiftUI
 /// Row scaffolding shared by the download, export, and outbox-delete queue
 /// rows: leading icon, caller content, then the trailing state badge /
 /// queued-time / cancel cluster.
+///
+/// The cancel button is optional — a row for work that cannot be abandoned (a
+/// cloud tombstone, whose object would otherwise be stranded) passes neither
+/// `cancelHelp` nor `onCancel` and keeps the trailing space empty.
 struct QueueRow<Content: View, Badge: View>: View {
     let icon: String
     let createdAt: Int64
-    let cancelHelp: LocalizedStringKey
-    let onCancel: () -> Void
+    var cancelHelp: LocalizedStringKey? = nil
+    var onCancel: (() -> Void)? = nil
     @ViewBuilder
     let content: () -> Content
     @ViewBuilder
@@ -33,11 +37,13 @@ struct QueueRow<Content: View, Badge: View>: View {
                 .foregroundStyle(.secondary)
                 .frame(width: 90, alignment: .trailing)
 
-            Button(action: onCancel) {
-                Image(systemName: "xmark.circle")
+            if let onCancel {
+                Button(action: onCancel) {
+                    Image(systemName: "xmark.circle")
+                }
+                .buttonStyle(.plain)
+                .help(cancelHelp ?? "")
             }
-            .buttonStyle(.plain)
-            .help(cancelHelp)
         }
         .padding(.horizontal)
         .padding(.vertical, 6)

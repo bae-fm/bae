@@ -38,8 +38,7 @@ use crate::config::CloudProvider;
 use crate::config::ConfigHandle;
 use crate::db::{
     Database, DbAlbum, DbArtist, DbAudioFormat, DbAudioSegment, DbAudioSegmentRole, DbFile,
-    DbLibraryImage, DbRelease, DbTrack, DeleteCleanupPlan, InFlightMakeRemoteBlobCleanup,
-    LibraryImageType, Pressing,
+    DbLibraryImage, DbRelease, DbTrack, DeleteCleanupPlan, LibraryImageType, Pressing,
 };
 use crate::diagnostics::{Diagnostics, SyncOperation, TelemetryEvent};
 use crate::keys::BaeStoreKeysExt;
@@ -219,12 +218,22 @@ fn sync_category(error: &coven::SyncError) -> crate::ui::UiErrorCategory {
         SyncError::CloudHome(e) => cloud_home_category(e),
         SyncError::Setup(_) => C::Credentials,
         SyncError::Membership(_) => C::Membership,
+        SyncError::DeviceJoin(_) => C::Membership,
+        // Admitting a device: a malformed join-request code, or the handshake's
+        // storage transport failing (including the deadline that means the other
+        // device never took its step). Both are the membership operation failing,
+        // not the library or this device's credentials.
+        SyncError::InvalidJoinRequest(_) => C::Membership,
+        SyncError::DeviceJoinTransport(_) => C::Membership,
         SyncError::StorageSetup(_) => C::Network,
         SyncError::NotConfigured
         | SyncError::LoopNotRunning
         | SyncError::NotEncryptedHome
         | SyncError::MasterKeyNotEstablished
         | SyncError::Init(_)
+        | SyncError::Protocol(_)
+        | SyncError::Store(_)
+        | SyncError::Circle(_)
         | SyncError::Database(_)
         | SyncError::BlobUpload(_)
         | SyncError::Loop(_) => C::Internal,
@@ -387,13 +396,17 @@ impl SyncStatusState {
 
 struct ReleaseDeletePlan {
     db_cleanup: DeleteCleanupPlan,
-    evict_blobs: Vec<coven::BlobRef>,
+    evict_blobs: Vec<coven::RowBlobRef>,
+    /// The release was mid-make-remote, so coven must unwind that transition
+    /// (intent, queued uploads, and any cloud object already written) before the
+    /// rows go.
+    cancel_make_remote: bool,
 }
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub(crate) struct ImportReplacementPlan {
     pub(crate) db_delete: crate::db::ImportReplacementDelete,
-    pub(crate) evict_blobs: Vec<coven::BlobRef>,
+    pub(crate) evict_blobs: Vec<coven::RowBlobRef>,
     pub(crate) track_ids: Vec<String>,
 }
 
@@ -953,7 +966,7 @@ impl LibraryManager {
             .open()
             .map_err(|e| match e {
                 coven::CovenError::Database(error) => error,
-                other => coven::DbError(other.to_string()),
+                other => coven::DbError::Message(other.to_string()),
             })?;
         let database = Database::from_handle(handle.clone(), clock.clone(), ids.clone());
         observer.set_database(Arc::new(database.clone()));
@@ -1112,13 +1125,11 @@ impl LibraryManager {
     /// without setting up full playback.
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn resolve_track_cloud_key_for_test(&self, file_id: &str) -> String {
-        let file = self
-            .database
-            .find_file_by_id(file_id)
+        let blob = self
+            .release_file_row_blob_ref(file_id)
             .await
-            .expect("file lookup")
-            .expect("file exists");
-        self.release_file_cloud_key(&file).expect("cloud key")
+            .expect("blob ref");
+        self.handle.blob_cloud_key(blob.blob()).expect("cloud key")
     }
 
     /// The injected wall clock. The import layer and the mappers read "now"
@@ -1169,11 +1180,15 @@ impl LibraryManager {
         let mut rx = self.handle.subscribe_sync_status();
         let lm = self.clone();
         self.runtime_handle.spawn(async move {
-            while let Ok(status) = rx.recv().await {
-                // Row changes ride only on a successful cycle that changed
-                // data; they are a refresh hint, so the entity events they
-                // drive are re-reads by primary key, not a trusted stream.
-                if let SyncLoopStatus::Succeeded(success) = &status {
+            loop {
+                let status = rx.borrow_and_update().clone();
+                // Row changes ride on a cycle that reached storage and changed
+                // data (Synchronized, or Blocked with writes still applied); they
+                // are a refresh hint, so the entity events they drive are re-reads
+                // by primary key, not a trusted stream.
+                if let SyncLoopStatus::Synchronized(success)
+                | SyncLoopStatus::Blocked { success, .. } = &status
+                {
                     if let Some(row_changes) = &success.row_changes {
                         let (changes, missing_fk) =
                             crate::library::sync_events::changes_from_row_changes(row_changes);
@@ -1185,16 +1200,23 @@ impl LibraryManager {
                         lm.emit_sync_entity_changes(changes).await;
                     }
                 }
-                // Fold coven's sync-loop status onto bae's flat banner state:
-                // `Started` marks a cycle in progress; a terminal status ends it,
-                // clearing the banner and recording the sync time on success, or
-                // setting the banner on failure. `error_update` is `None` when the
-                // status has no verdict on the banner (a plain `Started`).
-                let syncing = matches!(status, SyncLoopStatus::Started);
+                // Fold coven's sync-loop status onto bae's flat banner state: a
+                // cycle in progress (CheckingStorage / Publishing) shows the
+                // spinner; a terminal status ends it, clearing the banner and
+                // recording the sync time on Synchronized/Blocked, or setting the
+                // banner on Failed. `error_update` is `None` when the status has no
+                // verdict on the banner (in progress, or Offline).
+                let syncing = matches!(
+                    status,
+                    SyncLoopStatus::CheckingStorage | SyncLoopStatus::Publishing
+                );
                 let (error_update, last_sync_update): (Option<Option<String>>, Option<String>) =
                     match &status {
-                        SyncLoopStatus::Started => (None, None),
-                        SyncLoopStatus::Succeeded(success) => {
+                        SyncLoopStatus::CheckingStorage
+                        | SyncLoopStatus::Publishing
+                        | SyncLoopStatus::Offline => (None, None),
+                        SyncLoopStatus::Synchronized(success)
+                        | SyncLoopStatus::Blocked { success, .. } => {
                             (Some(None), Some(success.last_sync_time.clone()))
                         }
                         SyncLoopStatus::Failed { error } => (Some(Some(error.clone())), None),
@@ -1261,6 +1283,9 @@ impl LibraryManager {
                 // coven gives no per-item drain signal in the status, so re-derive
                 // the outbox snapshot each cycle to catch what it uploaded or failed.
                 lm.emit_outbox_changed().await;
+                if rx.changed().await.is_err() {
+                    break;
+                }
             }
         });
     }
@@ -1572,27 +1597,11 @@ impl LibraryManager {
     }
 }
 
-/// The release-files [`BlobRef`](coven::BlobRef) addressing a representative
-/// file for a coven cache-state query (the pin check via
-/// [`CovenHandle::is_pinned`]), which keys only on namespace + id. The other
-/// fields carry the release-files constants (see
-/// [`LibraryManager::release_file_blob_ref`]); `cloud_path` is `None` because the
-/// pin check reads only `storage/pinned/<namespace>/<id>`, never the cloud layout.
-fn release_files_pin_ref(file_id: &str) -> coven::BlobRef {
-    coven::BlobRef {
-        namespace: crate::sync::RELEASE_FILES_NAMESPACE.to_string(),
-        id: file_id.to_string(),
-        scope: coven::BlobScope::Master,
-        cloud_path: None,
-        provenance: coven::Provenance::UserProvided,
-        fill: coven::CacheFill::CacheLazy,
-    }
-}
-
-/// The pin-state answer for a release file. A structurally invalid blob id (e.g.
-/// a path-traversal token forged by a peer) is `RejectedBadId` rather than
-/// silently folded into `NotPinned`, so the caller that holds the diagnostics
-/// sink can count it as an anomaly before treating it as not pinned.
+/// The pin-state answer for a release file. A file id that names no
+/// `release_files` row (e.g. a path-traversal token forged by a peer, or a since-
+/// deleted file) is `RejectedBadId` rather than silently folded into `NotPinned`,
+/// so the caller that holds the diagnostics sink can count it as an anomaly before
+/// treating it as not pinned.
 enum ReleasePinState {
     Pinned,
     NotPinned,
@@ -1600,19 +1609,36 @@ enum ReleasePinState {
 }
 
 /// Whether `file_id`'s release is pinned offline, answered through the handle's
-/// cache-state query. A structurally invalid blob id can't name a real cached
-/// blob, so it's rejected (never trusted); a real I/O failure still surfaces.
+/// cache-state query. coven binds the row blob reference from the live
+/// `release_files` row; a `file_id` that names no such row can't be pinned and is
+/// rejected (never trusted), while a real I/O failure on the pin check still
+/// surfaces.
 async fn release_file_pin_state(
     handle: &CovenHandle,
     file_id: &str,
 ) -> Result<ReleasePinState, LibraryError> {
-    match handle.is_pinned(&[release_files_pin_ref(file_id)]).await {
+    let blob = match handle
+        .row_blob_ref(crate::sync::RELEASE_FILES_NAMESPACE, file_id)
+        .await
+    {
+        Ok(blob) => blob,
+        Err(e) => {
+            warn!("pin-state check: no release_files row for {file_id}: {e}");
+            return Ok(ReleasePinState::RejectedBadId);
+        }
+    };
+    // Pinning is a property of a *cloud* object: the pinned folder holds kept
+    // copies of blobs that live remotely. A blob with no committed cloud object
+    // — a Local release's file, or one whose upload has not landed yet — has
+    // nothing to keep a copy of, so it is not pinned. Read that off coven's own
+    // reference rather than asking it to resolve a cache path for an object that
+    // does not exist.
+    if blob.stored().is_none() {
+        return Ok(ReleasePinState::NotPinned);
+    }
+    match handle.is_pinned(&[blob]).await {
         Ok(true) => Ok(ReleasePinState::Pinned),
         Ok(false) => Ok(ReleasePinState::NotPinned),
-        Err(coven::BlobCacheError::Path(e)) => {
-            warn!("pin-state check: rejecting bad blob id {file_id}: {e}");
-            Ok(ReleasePinState::RejectedBadId)
-        }
         Err(e) => Err(LibraryError::Storage(format!(
             "pin-state for {file_id}: {e}"
         ))),
@@ -1620,24 +1646,6 @@ async fn release_file_pin_state(
 }
 
 impl LibraryManager {
-    /// The full cloud object key a cover blob lives at (namespace `covers`),
-    /// derived through coven for the configured home's scheme. `blob_id` is the
-    /// `covers` row's `blob_id` — the blob holding the bytes. Used by the bae-side
-    /// cover delete path.
-    fn cover_cloud_key(
-        &self,
-        blob_id: &str,
-        cloud_path: Option<&str>,
-    ) -> Result<String, LibraryError> {
-        self.handle
-            .blob_cloud_key(&Self::image_blob_ref(
-                crate::sync::COVERS_NAMESPACE,
-                blob_id,
-                cloud_path.map(str::to_string),
-            ))
-            .map_err(|e| LibraryError::Storage(format!("cloud key for cover blob {blob_id}: {e}")))
-    }
-
     /// Build the database cleanup writes and cache blob refs for a release delete
     /// without mutating durable state. The caller commits `db_cleanup` in the same
     /// DB transaction as the row deletion, then asks coven to drop any leftover
@@ -1649,44 +1657,54 @@ impl LibraryManager {
         let release_id = &release.id;
         let files = self.get_files_for_release(release_id).await?;
         let mut evict_blobs = Vec::new();
-        let mut cloud_delete_keys = Vec::new();
-        let mut in_flight_make_remote_blobs = Vec::new();
-        let mut external_blob_ids_to_clear = Vec::new();
-        let mut make_remote_release_ids_to_clear = Vec::new();
+        let mut blobs_to_tombstone = Vec::new();
+        let mut external_refs_to_clear = Vec::new();
+        // The transition outlasts its uploads — the queue empties at
+        // publication-prepare while the intent lives until the Store write
+        // activates — so this asks coven how far the make-remote got rather than
+        // whether anything is still queued, which would read as done too early.
         let make_remote_in_flight = !release.remote
             && self
-                .database
-                .has_make_remote_intent_for_release(release_id)
-                .await?;
+                .handle
+                .make_remote_progress("releases", release_id)
+                .await
+                .map_err(|e| {
+                    LibraryError::Storage(format!("make-remote progress for {release_id}: {e}"))
+                })?
+                .is_some();
 
         if release.remote {
-            evict_blobs.extend(files.iter().map(Self::release_file_blob_ref));
-            cloud_delete_keys.extend(
-                files
-                    .iter()
-                    .map(|file| self.release_file_cloud_key(file))
-                    .collect::<Result<Vec<_>, _>>()?,
-            );
+            for file in &files {
+                let blob = self.release_file_row_blob_ref(&file.id).await?;
+                // Whether there is a cloud object to remove is coven's locator,
+                // not bae's gate column: a blob with no committed object has
+                // nothing to tombstone and `enqueue_blob_delete` refuses it.
+                if blob.stored().is_some() {
+                    blobs_to_tombstone.push(blob.clone());
+                }
+                evict_blobs.push(blob);
+            }
         } else if make_remote_in_flight {
-            evict_blobs.extend(files.iter().map(Self::release_file_blob_ref));
-            in_flight_make_remote_blobs.extend(
+            // A make-remote caught mid-flight is coven's to unwind: it clears the
+            // intent, drops the still-queued uploads, and tombstones whatever
+            // already landed. bae only evicts the on-device copies afterwards.
+            for file in &files {
+                evict_blobs.push(self.release_file_row_blob_ref(&file.id).await?);
+            }
+            external_refs_to_clear.extend(
                 files
                     .iter()
-                    .map(|file| {
-                        Ok(InFlightMakeRemoteBlobCleanup {
-                            blob_id: file.id.clone(),
-                            cloud_key: self.release_file_cloud_key(file)?,
-                        })
-                    })
-                    .collect::<Result<Vec<_>, LibraryError>>()?,
+                    .map(|f| ("release_files".to_string(), f.id.clone())),
             );
-            external_blob_ids_to_clear.extend(files.iter().map(|file| file.id.clone()));
-            make_remote_release_ids_to_clear.push(release_id.clone());
         } else {
             // Local: the files are the user's own files in place — never delete
-            // them. Just clear coven's external refs in the delete transaction so
-            // no orphan ref outlives the release row.
-            external_blob_ids_to_clear.extend(files.iter().map(|file| file.id.clone()));
+            // them. Just drop coven's external registrations in the delete
+            // transaction so no orphan ref outlives the release row.
+            external_refs_to_clear.extend(
+                files
+                    .iter()
+                    .map(|f| ("release_files".to_string(), f.id.clone())),
+            );
         }
 
         let cover = self
@@ -1694,36 +1712,51 @@ impl LibraryManager {
             .find_library_image(release_id, &LibraryImageType::Cover)
             .await?;
 
-        if let Some(cover) = cover.as_ref().filter(|_| release.remote) {
-            cloud_delete_keys
-                .push(self.cover_cloud_key(&cover.blob_id, cover.cloud_path.as_deref())?);
-        }
-
-        if let Some(cover) = cover {
-            evict_blobs.push(Self::image_blob_ref(
-                crate::sync::COVERS_NAMESPACE,
-                &cover.blob_id,
-                cover.cloud_path.clone(),
-            ));
+        if cover.is_some() {
+            let blob = self
+                .handle
+                .row_blob_ref(crate::sync::COVERS_NAMESPACE, release_id)
+                .await
+                .map_err(|e| {
+                    LibraryError::Storage(format!("blob ref for cover {release_id}: {e}"))
+                })?;
+            // Only a cover that reached the cloud has an object to remove; one
+            // with no stored locator would be refused by `enqueue_blob_delete`.
+            if blob.stored().is_some() {
+                blobs_to_tombstone.push(blob.clone());
+            }
+            evict_blobs.push(blob);
         }
 
         Ok(ReleaseDeletePlan {
             db_cleanup: DeleteCleanupPlan {
-                cloud_delete_keys,
-                in_flight_make_remote_blobs,
-                external_blob_ids_to_clear,
-                make_remote_release_ids_to_clear,
+                blobs_to_tombstone,
+                external_refs_to_clear,
             },
             evict_blobs,
+            cancel_make_remote: make_remote_in_flight,
         })
     }
 
-    async fn evict_delete_blobs(&self, blobs: Vec<coven::BlobRef>) {
+    /// Ask coven to unwind an in-flight make-remote for a release being deleted.
+    ///
+    /// Best-effort by design: the delete proceeds either way, and a failure here
+    /// leaves coven's own queue state to its next cycle rather than blocking the
+    /// user's delete. `SyncNotReady` is the ordinary case with no provider
+    /// connected — there is nothing in the cloud to unwind then.
+    async fn cancel_release_make_remote(&self, release_id: &str) {
+        if let Err(e) = self.coven_cancel_make_remote(release_id).await {
+            warn!("cancelling the in-flight make-remote for {release_id}: {e}");
+        }
+    }
+
+    async fn evict_delete_blobs(&self, blobs: Vec<coven::RowBlobRef>) {
         for blob in blobs {
             if let Err(e) = self.handle.evict_blob(&blob).await {
                 warn!(
-                    "Failed to drop on-device copies during deletion for {}/{} ({:?}): {e}",
-                    blob.namespace, blob.id, blob.cloud_path
+                    "Failed to drop on-device copies during deletion for {}/{}: {e}",
+                    blob.table(),
+                    blob.row_id()
                 );
             }
         }

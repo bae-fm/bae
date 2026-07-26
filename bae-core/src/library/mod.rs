@@ -25,6 +25,9 @@ pub use release_queue::{CountLabel, ReleaseQueue};
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use save::SaveService;
 pub use search::{LibrarySearchQuery, SEARCH_RESULT_LIMIT};
+/// How a device join this library invited ended. The controller itself stays
+/// crate-private; this outcome is part of the public sharing surface.
+pub use sync_controller::DeviceJoinOutcome;
 pub use upload_sessions::UploadSessions;
 pub use upload_throughput::UploadThroughput;
 
@@ -32,7 +35,6 @@ use crate::config::{Config, ConfigError};
 use crate::keys::StoreKeys;
 use coven::StoreDir;
 use coven::{EncryptionError, MasterKeyring};
-use coven::{IdentityCustody, KeyCustody, UserKeypair};
 use std::path::Path;
 use std::sync::Arc;
 use tokio::sync::watch;
@@ -172,76 +174,6 @@ fn finish_code_operation(
     }
 }
 
-/// Restore a library from cloud storage into bae's app dir. Wraps coven's
-/// `restore_from_cloud`, supplying bae's layout, clock, id source, and blob plan.
-pub async fn restore_from_cloud(
-    library_id: &str,
-    encryption_key_hex: &str,
-    library_name: &str,
-    source: crate::sync::RestoreSource,
-    on_status: impl Fn(&str),
-) -> Result<Config, String> {
-    let app_dir = crate::config::bae_dir().map_err(|e| e.to_string())?;
-    let layout = library_layout(app_dir);
-    let store_dir = layout.store_dir(library_id);
-
-    // The restoring device signs its control objects during restore with THIS
-    // store's signing identity (per (store, device), not device-global). Reuse
-    // it if already established for this library id (a retried restore after an
-    // earlier attempt failed past coven's own already-exists guard would find
-    // one; a fresh library id never does) — else mint one now, before the
-    // network call, so a bootstrap failure's own cleanup (which owns this
-    // `identity_custody`) forgets it too, leaving nothing for bae to roll back
-    // itself. (The restore-code path instead imports the code's own key, since
-    // it recovers a device that already held one; this is the
-    // caller-supplies-the-encryption-key path, which has no such key to
-    // recover.)
-    let identity_custody = IdentityCustody::Keyring.resolve(library_id, &store_dir);
-    let keypair = match identity_custody.unlock().map_err(|e| e.to_string())? {
-        Some(existing) => existing,
-        None => {
-            let fresh = UserKeypair::generate();
-            identity_custody
-                .persist(&fresh)
-                .map_err(|e| e.to_string())?;
-            fresh
-        }
-    };
-    let key_custody = KeyCustody::Keyring.resolve(library_id, &store_dir);
-
-    // This restore-with-a-key path is for an opaque home: the caller supplies the
-    // library key, so coven rebuilds the encrypted, obfuscated home from its
-    // presence (`Some`). A browsable home has no key and restores through the
-    // restore-code path instead, where the absent `ek` selects it. This path is
-    // not cancellable, so it passes a never-firing cancel receiver.
-    let (cancel, _bridge) = cancel_receiver(None);
-    let coven_config = crate::sync::restore_from_cloud(
-        library_id,
-        Some(encryption_key_hex),
-        library_name,
-        &crate::sync::synced_tables(),
-        &crate::migrations::all(),
-        key_custody,
-        identity_custody,
-        source,
-        // No restore code here (the caller supplies the encryption key
-        // directly), so there is no membership floor minted at code-generation
-        // time to seed from — this recovery path accepts whatever membership
-        // head the storage serves, the same trust-on-first-use restore already
-        // applies when adopting the store owner from the chain founder.
-        &[],
-        &keypair,
-        &layout,
-        std::sync::Arc::new(coven::SystemClock),
-        std::sync::Arc::new(coven::UuidProvider),
-        on_status,
-        &cancel,
-    )
-    .await
-    .map_err(|e| e.to_string())?;
-    save_coven_library(coven_config)
-}
-
 /// Restore a library from a restore code. Wraps coven's `restore_from_code`.
 pub async fn restore_from_code(
     code: &str,
@@ -270,6 +202,15 @@ pub async fn restore_from_code_cancellable(
 pub enum JoinFromCodeError {
     #[error("join cancelled")]
     Cancelled,
+    /// The owner's device never took its next step in the handshake before the
+    /// transport's deadline. Both devices have to be running the join at the same
+    /// time, so this is the "open bae on the other device and try again" state
+    /// rather than a fault in the scanned code.
+    #[error("the inviting device is not running the join")]
+    OwnerOffline,
+    /// The owner withdrew the attempt before it completed.
+    #[error("the inviting device ended the join")]
+    Abandoned,
     #[error("{0}")]
     Join(String),
 }
@@ -283,25 +224,35 @@ impl From<LibraryCodeOperationError> for JoinFromCodeError {
     }
 }
 
-/// Join a shared library from an invite code. Wraps coven's
-/// `join_from_invite_code`, supplying bae's app dir, clock, id source, and blob
-/// plan. For an OAuth provider the caller fetches `oauth_tokens` first (the
-/// joining device authorizes its own cloud account), exactly as restore does.
+/// Join a shared library from an invite the owner's device displayed as a QR
+/// code. Wraps coven's `join_with_scanned_invite`, supplying bae's app dir,
+/// clock, id source, and blob plan. For an OAuth provider the caller fetches
+/// `oauth_tokens` first (the joining device authorizes its own cloud account),
+/// exactly as restore does.
+///
+/// `scanned` is the payload bytes read off the QR: it carries both the invite
+/// code — which is where this device's provider credentials come from — and the
+/// owner's signed join offer with the storage slots the two devices exchange the
+/// rest of the handshake through.
 ///
 /// `join_request_code` is the code this device's own
 /// [`crate::sync::membership::generate_join_request`] produced when it asked to
-/// join — coven minted a pending identity for it at that point, and a
-/// completed join promotes that same identity into this store's own identity
-/// custody, so the caller must keep and pass back the exact code it generated.
-pub async fn join_from_code(
-    invite_code: &str,
+/// join, and which the owner scanned/received to mint the invite: coven minted a
+/// pending identity for it at that point, and a completed join promotes that same
+/// identity into this store's own identity custody, so the caller must keep and
+/// pass back the exact code it generated.
+///
+/// The owner's device must be running its side of the handshake while this runs.
+/// If it never appears, this fails with [`JoinFromCodeError::OwnerOffline`].
+pub async fn join_from_scanned_bundle(
+    scanned: &[u8],
     join_request_code: &str,
     oauth_tokens: Option<coven::OAuthTokens>,
     cloudkit_ops: Option<Arc<dyn coven::CloudKitOps>>,
     on_status: impl Fn(&str),
-) -> Result<Config, String> {
-    join_from_code_inner(
-        invite_code,
+) -> Result<Config, JoinFromCodeError> {
+    join_from_scanned_bundle_inner(
+        scanned,
         join_request_code,
         oauth_tokens,
         cloudkit_ops,
@@ -309,19 +260,18 @@ pub async fn join_from_code(
         on_status,
     )
     .await
-    .map_err(|e| e.to_string())
 }
 
-pub async fn join_from_code_cancellable(
-    invite_code: &str,
+pub async fn join_from_scanned_bundle_cancellable(
+    scanned: &[u8],
     join_request_code: &str,
     oauth_tokens: Option<coven::OAuthTokens>,
     cloudkit_ops: Option<Arc<dyn coven::CloudKitOps>>,
     cancel: CancellationToken,
     on_status: impl Fn(&str),
 ) -> Result<Config, JoinFromCodeError> {
-    join_from_code_inner(
-        invite_code,
+    join_from_scanned_bundle_inner(
+        scanned,
         join_request_code,
         oauth_tokens,
         cloudkit_ops,
@@ -329,7 +279,6 @@ pub async fn join_from_code_cancellable(
         on_status,
     )
     .await
-    .map_err(JoinFromCodeError::from)
 }
 
 async fn restore_from_code_inner(
@@ -349,6 +298,10 @@ async fn restore_from_code_inner(
         code,
         &crate::sync::synced_tables(),
         &crate::migrations::all(),
+        // No custom-S3 exact-slot assertion: the provider comes from the restore
+        // code, and bae exposes no operator toggle asserting a non-AWS endpoint
+        // supports conditional requests.
+        None,
         coven::KeyCustody::Keyring,
         coven::IdentityCustody::Keyring,
         oauth_tokens,
@@ -363,35 +316,62 @@ async fn restore_from_code_inner(
     finish_code_operation(result, bridge)
 }
 
-async fn join_from_code_inner(
-    invite_code: &str,
+async fn join_from_scanned_bundle_inner(
+    scanned: &[u8],
     join_request_code: &str,
     oauth_tokens: Option<coven::OAuthTokens>,
     cloudkit_ops: Option<Arc<dyn coven::CloudKitOps>>,
     cancel: Option<CancellationToken>,
     on_status: impl Fn(&str),
-) -> Result<Config, LibraryCodeOperationError> {
-    let app_dir =
-        crate::config::bae_dir().map_err(|e| LibraryCodeOperationError::Failed(e.to_string()))?;
+) -> Result<Config, JoinFromCodeError> {
+    let app_dir = crate::config::bae_dir().map_err(|e| JoinFromCodeError::Join(e.to_string()))?;
     let (rx, bridge) = cancel_receiver(cancel);
     // Same default custody choice as `restore_from_code_inner` above.
-    let result = crate::sync::join_from_invite_code(
-        invite_code,
+    let result = crate::sync::join_with_scanned_invite(
+        scanned,
         join_request_code,
-        &library_layout(app_dir),
-        &crate::sync::synced_tables(),
-        &crate::migrations::all(),
+        library_layout(app_dir),
+        crate::sync::synced_tables(),
+        crate::migrations::all(),
+        // No custom-S3 exact-slot assertion, as on the restore path: the provider
+        // comes from the scanned invite and bae exposes no operator toggle.
+        None,
         coven::KeyCustody::Keyring,
         coven::IdentityCustody::Keyring,
         oauth_tokens,
         cloudkit_ops,
         std::sync::Arc::new(coven::SystemClock),
-        std::sync::Arc::new(coven::UuidProvider),
+        crate::sync::device_join_timing(),
         on_status,
         &rx,
     )
     .await;
-    finish_code_operation(result, bridge)
+    if let Some(handle) = bridge {
+        handle.abort();
+    }
+    match result {
+        Ok(coven::DeviceJoinTransportOutcome::Joined(coven_config)) => {
+            save_coven_library(coven_config).map_err(JoinFromCodeError::Join)
+        }
+        // The owner gave up on this attempt before it completed. Not a failure of
+        // this device — a distinct end the UI reports as such.
+        Ok(coven::DeviceJoinTransportOutcome::Abandoned(_)) => Err(JoinFromCodeError::Abandoned),
+        Err(coven::BootstrapError::Cancelled) => Err(JoinFromCodeError::Cancelled),
+        Err(error) => Err(classify_join_error(error)),
+    }
+}
+
+/// Map coven's bootstrap failure onto bae's join outcome. A transport wait that
+/// ran out its deadline means the owner's device never took its next step, which
+/// the UI reports as "the other device has to be open", not as an internal error.
+fn classify_join_error(error: coven::BootstrapError) -> JoinFromCodeError {
+    if let coven::BootstrapError::DeviceJoinTransport(coven::DeviceJoinTransportError::Timeout {
+        ..
+    }) = &error
+    {
+        return JoinFromCodeError::OwnerOffline;
+    }
+    JoinFromCodeError::Join(error.to_string())
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -421,7 +401,7 @@ fn unlock_library_in_dir(
     key_hex: &str,
     ids: &dyn coven::IdProvider,
 ) -> Result<(), UnlockError> {
-    // `MasterKeyring::from_serialized` performs the hex+length validation and
+    // `MasterKeyring::from_serialized` parses coven's stored keyring format and
     // returns `EncryptionError::KeyManagement` with the specific cause, so a
     // malformed key surfaces as `UnlockError::Encryption` rather than
     // collapsing into "no fingerprint computed". `MasterKeyring` (not
@@ -465,7 +445,10 @@ mod tests {
         crate::config::install_test_keyring();
         let tmp = TempDir::new().unwrap();
         let library_id = "library-to-unlock";
-        let key_hex = "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f";
+        // The stored master key is coven's keyring format, not a bare hex key —
+        // a keyring carries every generation, so it is what both the unlock's
+        // validation and the keyring entry round-trip through.
+        let stored_key = MasterKeyring::generate().to_serialized();
         let bae_dir = tmp.path().join(".bae");
         let library_path = crate::config::registered_library_path(&bae_dir, library_id);
         let mut config = Config::with_defaults(
@@ -475,7 +458,7 @@ mod tests {
             "Library Name".to_string(),
         );
         config.encryption_key_fingerprint = Some(
-            MasterKeyring::from_serialized(key_hex)
+            MasterKeyring::from_serialized(&stored_key)
                 .unwrap()
                 .fingerprint(),
         );
@@ -485,7 +468,7 @@ mod tests {
         unlock_library_in_dir(
             &bae_dir,
             library_id,
-            key_hex,
+            &stored_key,
             &coven::SequentialIdProvider::new("generated-device"),
         )
         .unwrap();
@@ -493,6 +476,6 @@ mod tests {
         let stored = StoreKeys::new(library_id.to_string())
             .get_encryption_key()
             .unwrap();
-        assert_eq!(stored.as_deref(), Some(key_hex));
+        assert_eq!(stored.as_deref(), Some(stored_key.as_str()));
     }
 }

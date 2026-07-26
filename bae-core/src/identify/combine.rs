@@ -304,7 +304,11 @@ mod tests {
         let cases: Vec<(&str, Vec<_>, Vec<_>, usize)> = vec![
             (
                 "only disc-id",
-                vec![pair("rel-1", Some("group-1"), None)],
+                vec![pair(
+                    "e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e",
+                    Some("group-1"),
+                    None,
+                )],
                 vec![],
                 1,
             ),
@@ -312,16 +316,32 @@ mod tests {
                 "only barcode",
                 vec![],
                 vec![
-                    pair("rel-1", Some("group-1"), None),
-                    pair("rel-2", Some("group-1"), None),
+                    pair(
+                        "e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e",
+                        Some("group-1"),
+                        None,
+                    ),
+                    pair(
+                        "e6cdc0f3-3a7b-458b-86aa-fd093cc5e79b",
+                        Some("group-1"),
+                        None,
+                    ),
                 ],
                 2,
             ),
             (
                 "single group, multiple pressings",
                 vec![
-                    pair("rel-1", Some("group-1"), None),
-                    pair("rel-2", Some("group-1"), None),
+                    pair(
+                        "e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e",
+                        Some("group-1"),
+                        None,
+                    ),
+                    pair(
+                        "e6cdc0f3-3a7b-458b-86aa-fd093cc5e79b",
+                        Some("group-1"),
+                        None,
+                    ),
                     pair("rel-3", Some("group-1"), None),
                 ],
                 vec![],
@@ -359,15 +379,30 @@ mod tests {
     #[test]
     fn intersection_with_one_match_succeeds() {
         let discid = vec![
-            pair("rel-1", Some("group-1"), None),
-            pair("rel-2", Some("group-1"), None),
+            pair(
+                "e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e",
+                Some("group-1"),
+                None,
+            ),
+            pair(
+                "e6cdc0f3-3a7b-458b-86aa-fd093cc5e79b",
+                Some("group-1"),
+                None,
+            ),
         ];
-        let barcode = vec![pair("rel-2", Some("group-1"), None)];
+        let barcode = vec![pair(
+            "e6cdc0f3-3a7b-458b-86aa-fd093cc5e79b",
+            Some("group-1"),
+            None,
+        )];
         let outcome = combine_results(discid, barcode, &[]);
         match outcome {
             CombineOutcome::Found { matches, .. } => {
                 assert_eq!(matches.len(), 1);
-                assert_eq!(matches[0].release_id, "rel-2");
+                assert_eq!(
+                    matches[0].release_id,
+                    "e6cdc0f3-3a7b-458b-86aa-fd093cc5e79b"
+                );
             }
             other => panic!("expected Found, got {other:?}"),
         }
@@ -375,8 +410,16 @@ mod tests {
 
     #[test]
     fn empty_intersection_with_both_having_results_is_conflict() {
-        let discid = vec![pair("rel-1", Some("group-1"), None)];
-        let barcode = vec![pair("rel-2", Some("group-2"), None)];
+        let discid = vec![pair(
+            "e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e",
+            Some("group-1"),
+            None,
+        )];
+        let barcode = vec![pair(
+            "e6cdc0f3-3a7b-458b-86aa-fd093cc5e79b",
+            Some("group-2"),
+            None,
+        )];
         let outcome = combine_results(discid, barcode, &[]);
         match outcome {
             CombineOutcome::Conflict {
@@ -395,12 +438,28 @@ mod tests {
         // Both signals agree on two releases, but in two groups — no single
         // identity to commit.
         let discid = vec![
-            pair("rel-1", Some("group-1"), None),
-            pair("rel-2", Some("group-2"), None),
+            pair(
+                "e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e",
+                Some("group-1"),
+                None,
+            ),
+            pair(
+                "e6cdc0f3-3a7b-458b-86aa-fd093cc5e79b",
+                Some("group-2"),
+                None,
+            ),
         ];
         let barcode = vec![
-            pair("rel-1", Some("group-1"), None),
-            pair("rel-2", Some("group-2"), None),
+            pair(
+                "e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e",
+                Some("group-1"),
+                None,
+            ),
+            pair(
+                "e6cdc0f3-3a7b-458b-86aa-fd093cc5e79b",
+                Some("group-2"),
+                None,
+            ),
         ];
         let outcome = combine_results(discid, barcode, &[]);
         assert!(matches!(outcome, CombineOutcome::Conflict { .. }));

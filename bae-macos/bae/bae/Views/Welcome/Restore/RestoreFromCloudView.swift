@@ -4,9 +4,11 @@ import os.log
 
 private let logger = Logger.bae("RestoreFromCloudView")
 
-/// The restore-from-cloud screen: paste a restore code, or open the disclosure
-/// and enter the library's details by hand. Owns the code decode, the manual
-/// draft, the OAuth state, and the restore itself.
+/// The restore-from-cloud screen: paste a restore code. Owns the code decode,
+/// the OAuth state, and the restore itself.
+///
+/// The code carries everything the restore needs — which library, which cloud
+/// home, and the key to open it — so there is nothing left to enter by hand.
 struct RestoreFromCloudView: View {
     let onLibraryReady: (BridgeLibrary) -> Void
     let onBack: () -> Void
@@ -23,18 +25,14 @@ struct RestoreFromCloudView: View {
     private var decodedRestore: Result<BridgeRestoreCodeInfo, Error>?
     @State
     private var isRestoring = false
-    /// The in-flight restore (from code or manual), owned so a superseding
-    /// restore and the view's disappear can cancel it.
+    /// The in-flight restore, owned so a superseding restore and the view's
+    /// disappear can cancel it.
     @State
     private var restoreTask: Task<Void, Never>?
     @State
     private var oauthTokenJson: String?
     @State
     private var isAuthorizing = false
-    @State
-    private var showManualForm = false
-    @State
-    private var draft = ManualRestoreDraft()
     @State
     private var error: String?
 
@@ -44,7 +42,7 @@ struct RestoreFromCloudView: View {
                 .font(.title2.bold())
                 .padding(.top, 24)
                 .padding(.bottom, 4)
-            Text("Paste your restore code, or enter details manually.")
+            Text("Paste your restore code.")
                 .font(.callout)
                 .foregroundStyle(.secondary)
                 .padding(.bottom, 16)
@@ -90,22 +88,6 @@ struct RestoreFromCloudView: View {
                             .font(.callout)
                     }
                 }
-                DisclosureGroup(
-                    "Enter details manually",
-                    isExpanded: $showManualForm
-                ) {
-                    ManualRestoreForm(
-                        draft: $draft,
-                        oauthConnected: oauthTokenJson != nil,
-                        isAuthorizing: isAuthorizing,
-                        onConnect: { provider in
-                            #if BAE_OAUTH_PROVIDERS
-                                doOAuthAuthorize(provider: provider)
-                            #endif
-                        },
-                        onCancelAuth: { isAuthorizing = false },
-                    )
-                }
             }
             .formStyle(.grouped)
             .scrollDisabled(true)
@@ -133,12 +115,7 @@ struct RestoreFromCloudView: View {
                 .buttonStyle(.bordered)
                 .disabled(isRestoring)
                 Button("Restore") {
-                    if case .success = decodedRestore {
-                        doRestoreFromCode()
-                    }
-                    else {
-                        doRestoreManual()
-                    }
+                    doRestoreFromCode()
                 }
                 .buttonStyle(.borderedProminent)
                 .disabled(isRestoring || !restoreReady)
@@ -147,12 +124,6 @@ struct RestoreFromCloudView: View {
             .padding(.bottom, 24)
         }
         .padding(.horizontal)
-        // Switching the manual provider drops any token connected for the old
-        // one, so a stale token can't ride into a restore for a different
-        // provider.
-        .onChange(of: draft.provider) {
-            oauthTokenJson = nil
-        }
         .onDisappear { restoreTask?.cancel() }
     }
 
@@ -167,26 +138,11 @@ struct RestoreFromCloudView: View {
 
     // MARK: - Validation
 
-    /// Whether the restore button should be enabled.
+    /// Whether the restore button should be enabled: a code that decoded, with
+    /// its OAuth connection made if the provider needs one.
     private var restoreReady: Bool {
-        if case .success(let info) = decodedRestore {
-            // Restore code flow: valid code + OAuth done if needed
-            if info.needsOauth {
-                return oauthTokenJson != nil
-            }
-            return true
-        }
-        // Manual form flow
-        if showManualForm {
-            return manualFormValid
-        }
-        return false
-    }
-
-    private var manualFormValid: Bool {
-        validateRestoreConfig(
-            config: draft.buildRestoreConfig(oauthTokenJson: oauthTokenJson)
-        )
+        guard case .success(let info) = decodedRestore else { return false }
+        return info.needsOauth ? oauthTokenJson != nil : true
     }
 
     // MARK: - Actions
@@ -203,16 +159,7 @@ struct RestoreFromCloudView: View {
         }
     }
 
-    private func doRestoreManual() {
-        let config = draft.buildRestoreConfig(oauthTokenJson: oauthTokenJson)
-        let name: String? = draft.libraryName.isEmpty ? nil : draft.libraryName
-        let restore = setup.restoreFromCloud
-        runRestore {
-            try restore(name, config)
-        }
-    }
-
-    /// Run a restore (from code or manual) off the UI thread, cancelling any
+    /// Run a restore off the UI thread, cancelling any
     /// in-flight restore first. The heavy bridge call blocks its worker, so the
     /// owned task is checked for cancellation before it touches `screen`-driving
     /// state: a superseded restore neither opens its (now stale) library nor

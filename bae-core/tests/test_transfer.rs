@@ -83,17 +83,17 @@ async fn create_local_release(
     files: &[(&str, &[u8])],
 ) -> (String, String, Vec<(String, Vec<u8>)>) {
     let now = Utc::now();
-    let artist_id = "test-transfer-artist";
-    let _ = mgr
-        .insert_artist(&bae_core::db::DbArtist {
-            id: artist_id.to_string(),
-            name: "Artist Name".to_string(),
-            sort_name: None,
-            discogs_artist_id: None,
-            musicbrainz_artist_id: None,
-            created_at: now,
-        })
-        .await;
+    let artist_id = bae_test_support::test_uuid("test-transfer-artist");
+    mgr.insert_artist(&bae_core::db::DbArtist {
+        id: artist_id.to_string(),
+        name: "Artist Name".to_string(),
+        sort_name: None,
+        discogs_artist_id: None,
+        musicbrainz_artist_id: None,
+        created_at: now,
+    })
+    .await
+    .unwrap();
     let album = DbAlbum {
         id: Uuid::new_v4().to_string(),
         title: "Album Title".to_string(),
@@ -134,7 +134,7 @@ async fn create_local_release(
             ContentType::Flac,
             Uuid::new_v4().to_string(),
             now,
-            Some(bae_core::util::fs::hash_bytes(data)),
+            bae_core::util::fs::hash_bytes(data),
         );
         mgr.add_file(&file).await.unwrap();
         result.push((name.to_string(), data.to_vec()));
@@ -296,7 +296,7 @@ async fn test_cover_blob_stored_via_local_files_is_readable() {
             source: "local".to_string(),
             source_url: None,
             cloud_path: None,
-            content_hash: Some(bae_core::util::fs::hash_bytes(bytes)),
+            content_hash: bae_core::util::fs::hash_bytes(bytes),
             created_at: chrono::Utc::now(),
         },
         bytes,

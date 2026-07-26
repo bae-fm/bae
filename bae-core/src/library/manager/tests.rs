@@ -1,3 +1,21 @@
+// Fixture row ids. coven validates every synced row's primary key as a
+// canonical v4 UUID (`RowIdentity::IndependentUuid`), which is what bae's
+// real ids are, so these fixtures carry UUIDs too. Each constant is named
+// for the moniker it replaced, so assertions still read by name.
+const COVER_1: &str = "2bc5ed84-97ea-4463-83cb-c206a428c802"; // was "cover-1"
+const COVER_BLOB: &str = "4c98761d-e446-4871-8800-8ce69ac302ad"; // was "cover-blob"
+const REL_1: &str = "cccb6034-5922-40d2-8d0b-d94619230882"; // was "e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e"
+const REL_2: &str = "dcdebf05-2d41-4dfc-8823-024993c9d00f"; // was "e6cdc0f3-3a7b-458b-86aa-fd093cc5e79b"
+const REL_ABORT: &str = "59c56c5f-eee0-4a61-8ecc-fb828ab4c828"; // was "rel-abort"
+const REL_NONE: &str = "cdb5eed8-db50-45f6-814a-dc623215ae04"; // was "rel-none"
+const REL_X: &str = "e6b79143-6ab2-4358-8f53-460594936d69"; // was "rel-x"
+const TRACK_1: &str = "f2f77437-aa03-4583-8b1c-d12bcf984967"; // was "track-1"
+const TRACK_2: &str = "9ebc44e7-5513-4550-8d29-5d8919ec917b"; // was "track-2"
+const TRACK_A: &str = "0482872e-d4bf-4080-8426-441a0a3e71fc"; // was "track-a"
+const TRACK_BETA: &str = "094f4448-f13c-4284-83ea-e362fb2f38aa"; // was "track-beta"
+const TRACK_WORK_A: &str = "d410a973-6a19-4ad3-87d8-b0c8c13d6015"; // was "track-work-a"
+const WORK_A: &str = "432c8996-8af0-43dc-868a-822a256f65c4"; // was "work-a"
+
 use super::track::playback_info_from_track_release;
 use super::*;
 use crate::config::Config;
@@ -41,7 +59,7 @@ async fn setup_test_manager_with_library_id(library_id: &str) -> (LibraryManager
 
     // Insert the test artist that create_test_album() references
     let artist = DbArtist {
-        id: "test-artist-id".to_string(),
+        id: bae_test_support::test_uuid("e36744a5-1a36-460f-891c-e7e558034edf"),
         name: "Test Artist".to_string(),
         sort_name: None,
         discogs_artist_id: None,
@@ -202,13 +220,32 @@ async fn enqueue_release_save_captures_the_preset() {
     );
 }
 
+/// Whether coven's durable queue holds a cloud tombstone for this blob. A
+/// tombstone outlives the row that named it, so `(namespace, blob_id)` is all
+/// there is to identify it by.
+async fn has_queued_delete(manager: &LibraryManager, namespace: &str, blob_id: &str) -> bool {
+    manager
+        .database
+        .handle()
+        .queued_deletes()
+        .await
+        .unwrap()
+        .iter()
+        .any(|delete| delete.namespace == namespace && delete.blob_id == blob_id)
+}
+
+/// Break one of coven's bookkeeping tables so the next write against it fails
+/// mid-transaction. coven exposes no fault injection for its own SQL, and these
+/// tests need a cleanup step to fail *after* the row deletes have been staged —
+/// that is the whole point of asserting the delete rolls back — so the table
+/// name is the seam. bae reaches for a coven-internal name nowhere else.
 async fn rename_table_for_test(manager: &LibraryManager, from: &str, to: &str) {
     let statement = format!("ALTER TABLE {from} RENAME TO {to}");
     manager
         .database
         .handle()
         .sql(move |sql| {
-            sql.tx().execute(&statement, [])?;
+            sql.execute(&statement, [])?;
             Ok::<(), coven::CovenError>(())
         })
         .await
@@ -216,7 +253,7 @@ async fn rename_table_for_test(manager: &LibraryManager, from: &str, to: &str) {
 }
 
 async fn store_test_cover_image(manager: &LibraryManager, release_id: &str) {
-    store_test_cover_image_with_blob(manager, release_id, "cover-blob").await;
+    store_test_cover_image_with_blob(manager, release_id, COVER_BLOB).await;
 }
 
 /// Write a release's cover row and its blob. A coven blob id names one immutable
@@ -231,7 +268,7 @@ async fn store_test_cover_image_with_blob(
         .store_library_image_blob(
             &DbLibraryImage {
                 id: release_id.to_string(),
-                blob_id: format!("{release_id}-{blob_suffix}"),
+                blob_id: bae_test_support::test_uuid(&format!("{release_id}-{blob_suffix}")),
                 image_type: LibraryImageType::Cover,
                 content_type: crate::util::content_type::ContentType::Jpeg,
                 file_size: 5,
@@ -240,7 +277,9 @@ async fn store_test_cover_image_with_blob(
                 source: "local".to_string(),
                 source_url: None,
                 cloud_path: None,
-                content_hash: None,
+                // The hash must be of the bytes actually stored: coven verifies
+                // a blob against its row's signed hash.
+                content_hash: crate::util::fs::hash_bytes(b"image"),
                 created_at: manager.clock.now(),
             },
             b"image",
@@ -529,7 +568,7 @@ fn create_test_album() -> DbAlbum {
     DbAlbum {
         id: Uuid::new_v4().to_string(),
         title: "Test Album".to_string(),
-        artist_id: "test-artist-id".to_string(),
+        artist_id: bae_test_support::test_uuid("e36744a5-1a36-460f-891c-e7e558034edf"),
         year: Some(2024),
         primary_release_id: None,
         is_compilation: false,
@@ -568,15 +607,15 @@ async fn work_detail_release_rows_are_display_ready() {
     let album = create_test_album();
     let mut release = create_test_release(&album.id);
     release.pressing.format = Some("CD".to_string());
-    let track = crate::db::DbTrack::new_test(&release.id, "track-a", "Track Title", Some(1));
+    let track = crate::db::DbTrack::new_test(&release.id, TRACK_A, "Track Title", Some(1));
     let now = Utc::now();
-    let work = DbWork::new("work-a", "Work Title", None, Some("work".to_string()), now);
+    let work = DbWork::new(WORK_A, "Work Title", None, Some("work".to_string()), now);
     let track_work = DbTrackWork::new(
         &track.id,
         &work.id,
         0,
         MetadataSource::MusicBrainz,
-        "track-work-a".to_string(),
+        TRACK_WORK_A.to_string(),
         now,
     );
     let cover = DbLibraryImage {
@@ -590,7 +629,7 @@ async fn work_detail_release_rows_are_display_ready() {
         source: "local".to_string(),
         source_url: None,
         cloud_path: None,
-        content_hash: None,
+        content_hash: crate::util::fs::hash_bytes(b"fixture"),
         created_at: now,
     };
 
@@ -704,39 +743,42 @@ async fn delete_releases_with_content_hash_removes_only_matching() {
 /// cloud blobs — delete_release has to queue the cloud-outbox deletes like
 /// delete_album/unmanage, or the remote blobs leak in the cloud (nothing else
 /// processes the release once its rows are gone).
+#[cfg(feature = "test-utils")]
 #[tokio::test]
 async fn delete_release_tombstones_remote_cloud_blobs() {
-    let (manager, _temp_dir) = setup_test_manager().await;
+    let (manager, temp_dir) = setup_test_manager().await;
+    connect_test_cloud(&manager).await;
 
-    let album = create_test_album();
-    // Two releases so delete_release takes the album-survives branch.
-    let release1 = create_test_release(&album.id); // remote: true
-    let release2 = create_test_release(&album.id);
-    manager.database.insert_album(&album).await.unwrap();
-    manager.database.insert_release(&release1).await.unwrap();
+    // A release whose one file really did reach the cloud — the tombstone is
+    // owed to a cloud object that exists, which is the whole point.
+    let release1 =
+        make_remote_release(&manager, &temp_dir.path().join("r1"), "Album One", false).await;
+    let file_id = manager
+        .database
+        .get_files_for_release(&release1)
+        .await
+        .unwrap()[0]
+        .id
+        .clone();
+    // A sibling release in the same album, so delete_release takes the
+    // album-survives branch.
+    let album_id = manager
+        .database
+        .find_release_by_id(&release1)
+        .await
+        .unwrap()
+        .expect("the release exists")
+        .album_id;
+    let mut release2 = create_test_release(&album_id);
+    release2.remote = false;
     manager.database.insert_release(&release2).await.unwrap();
 
-    // release1 is remote with one cloud blob (the tombstone is enqueued for a
-    // remote release's blob regardless of whether it's cached on this device).
-    let file = DbFile::new(
-        &release1.id,
-        "track1.flac",
-        5,
-        crate::util::content_type::ContentType::Flac,
-        Uuid::new_v4().to_string(),
-        Utc::now(),
-        None,
-    );
-    manager.add_file(&file).await.unwrap();
+    manager.delete_release(&release1).await.unwrap();
 
-    manager.delete_release(&release1.id).await.unwrap();
-
-    // delete_release awaits the deletion queueing, so by now the remote
-    // blob's cloud-outbox tombstone is enqueued.
-    let deletes = manager.database.get_pending_cloud_deletes().await.unwrap();
-    assert_eq!(
-        deletes.len(),
-        1,
+    // delete_release awaits the deletion queueing, so by now the cloud object's
+    // tombstone is enqueued.
+    assert!(
+        has_queued_delete(&manager, crate::sync::RELEASE_FILES_NAMESPACE, &file_id).await,
         "deleting a remote release tombstones its cloud blob"
     );
 }
@@ -745,8 +787,9 @@ async fn delete_release_tombstones_remote_cloud_blobs() {
 #[tokio::test]
 async fn delete_release_cancels_in_flight_make_remote() {
     let (manager, temp_dir) = setup_test_manager().await;
-    connect_test_cloud(&manager).await;
+    let home = connect_test_cloud(&manager).await;
     let release = insert_partially_uploaded_make_remote_release(&manager, temp_dir.path()).await;
+    let deleted_before = home.exact_delete_count();
 
     manager.delete_release(&release.id).await.unwrap();
 
@@ -759,22 +802,35 @@ async fn delete_release_cancels_in_flight_make_remote() {
     assert!(
         manager
             .database
-            .get_pending_cloud_uploads()
+            .handle()
+            .queued_uploads()
             .await
             .unwrap()
             .is_empty(),
         "deleting the release cancels unresolved make-Remote uploads"
     );
-    assert!(!manager
+    assert!(manager
         .database
-        .has_make_remote_intent_for_release(&release.id)
+        .make_remote_progress_for_release(&release.id)
         .await
-        .unwrap());
-    let deletes = manager.database.get_pending_cloud_deletes().await.unwrap();
-    assert_eq!(
-        deletes.len(),
-        1,
-        "the blob that already reached cloud storage is tombstoned"
+        .unwrap()
+        .is_none());
+    // The object that already reached the cloud is removed outright, not left
+    // as a queued tombstone: the make-Remote never published, so nothing else
+    // can reference it and the cancel's own unwind deletes it.
+    assert!(
+        home.exact_delete_count() > deleted_before,
+        "the uploaded object is deleted from the cloud"
+    );
+    assert!(
+        manager
+            .database
+            .handle()
+            .queued_deletes()
+            .await
+            .unwrap()
+            .is_empty(),
+        "an unpublished object needs no tombstone"
     );
 }
 
@@ -782,8 +838,9 @@ async fn delete_release_cancels_in_flight_make_remote() {
 #[tokio::test]
 async fn delete_album_cancels_in_flight_make_remote() {
     let (manager, temp_dir) = setup_test_manager().await;
-    connect_test_cloud(&manager).await;
+    let home = connect_test_cloud(&manager).await;
     let release = insert_partially_uploaded_make_remote_release(&manager, temp_dir.path()).await;
+    let deleted_before = home.exact_delete_count();
 
     manager.delete_album(&release.album_id).await.unwrap();
 
@@ -796,22 +853,35 @@ async fn delete_album_cancels_in_flight_make_remote() {
     assert!(
         manager
             .database
-            .get_pending_cloud_uploads()
+            .handle()
+            .queued_uploads()
             .await
             .unwrap()
             .is_empty(),
         "deleting the album cancels unresolved make-Remote uploads"
     );
-    assert!(!manager
+    assert!(manager
         .database
-        .has_make_remote_intent_for_release(&release.id)
+        .make_remote_progress_for_release(&release.id)
         .await
-        .unwrap());
-    let deletes = manager.database.get_pending_cloud_deletes().await.unwrap();
-    assert_eq!(
-        deletes.len(),
-        1,
-        "the blob that already reached cloud storage is tombstoned"
+        .unwrap()
+        .is_none());
+    // The object that already reached the cloud is removed outright, not left
+    // as a queued tombstone: the make-Remote never published, so nothing else
+    // can reference it and the cancel's own unwind deletes it.
+    assert!(
+        home.exact_delete_count() > deleted_before,
+        "the uploaded object is deleted from the cloud"
+    );
+    assert!(
+        manager
+            .database
+            .handle()
+            .queued_deletes()
+            .await
+            .unwrap()
+            .is_empty(),
+        "an unpublished object needs no tombstone"
     );
 }
 
@@ -830,7 +900,7 @@ async fn delete_release_fails_before_rows_are_deleted_when_file_cleanup_lookup_f
         crate::util::content_type::ContentType::Flac,
         Uuid::new_v4().to_string(),
         Utc::now(),
-        None,
+        crate::util::fs::hash_bytes(b"fixture"),
     );
     manager.add_file(&file).await.unwrap();
 
@@ -846,32 +916,26 @@ async fn delete_release_fails_before_rows_are_deleted_when_file_cleanup_lookup_f
         .is_some());
 }
 
+/// The release must be genuinely Remote: only a blob with a committed cloud
+/// object gets a tombstone, so only then is there an enqueue to fail.
+#[cfg(feature = "test-utils")]
 #[tokio::test]
 async fn delete_release_fails_before_rows_are_deleted_when_file_tombstone_enqueue_fails() {
-    let (manager, _temp_dir) = setup_test_manager().await;
-    let album = create_test_album();
-    let release = create_test_release(&album.id);
-    manager.database.insert_album(&album).await.unwrap();
-    manager.database.insert_release(&release).await.unwrap();
-
-    let file = DbFile::new(
-        &release.id,
-        "track1.flac",
-        5,
-        crate::util::content_type::ContentType::Flac,
-        Uuid::new_v4().to_string(),
-        Utc::now(),
-        None,
-    );
-    manager.add_file(&file).await.unwrap();
+    let (manager, temp_dir) = setup_test_manager().await;
+    connect_test_cloud(&manager).await;
+    let release_id =
+        make_remote_release(&manager, &temp_dir.path().join("r1"), "Album One", false).await;
 
     rename_table_for_test(&manager, "cloud_outbox", "cloud_outbox_unavailable").await;
 
-    let error = manager.delete_release(&release.id).await.unwrap_err();
-    assert!(matches!(error, LibraryError::Database(_)));
+    // Any error will do — what the test is about is that the delete surfaces it
+    // instead of removing the rows. Which layer it comes from depends on where
+    // coven happens to touch its queue first, so pinning the variant would pin
+    // an implementation detail.
+    manager.delete_release(&release_id).await.unwrap_err();
     assert!(manager
         .database
-        .find_release_by_id(&release.id)
+        .find_release_by_id(&release_id)
         .await
         .unwrap()
         .is_some());
@@ -897,7 +961,7 @@ async fn delete_release_fails_before_rows_are_deleted_when_local_external_ref_cl
         crate::util::content_type::ContentType::Flac,
         Uuid::new_v4().to_string(),
         Utc::now(),
-        None,
+        crate::util::fs::hash_bytes(b"fixture"),
     );
     manager.add_file(&file).await.unwrap();
     manager
@@ -963,10 +1027,10 @@ async fn playback_info_from_track_release_rejects_missing_album() {
     let (manager, _temp_dir) = setup_test_manager().await;
     let album = create_test_album();
     let release = create_test_release(&album.id);
-    let track = crate::db::DbTrack::new_test(&release.id, "track-a", "Track Title", Some(1));
+    let track = crate::db::DbTrack::new_test(&release.id, TRACK_A, "Track Title", Some(1));
     let track_artist = crate::db::DbTrackArtist::new(
         &track.id,
-        "test-artist-id",
+        &bae_test_support::test_uuid("e36744a5-1a36-460f-891c-e7e558034edf"),
         0,
         Uuid::new_v4().to_string(),
         Utc::now(),
@@ -1012,22 +1076,25 @@ async fn delete_release_fails_before_rows_are_deleted_when_cover_lookup_fails() 
         .is_some());
 }
 
+/// As above for the cover: the cover's cloud object has to exist (its Store
+/// write published) before there is a tombstone whose enqueue can fail.
+#[cfg(feature = "test-utils")]
 #[tokio::test]
 async fn delete_release_fails_before_rows_are_deleted_when_cover_tombstone_enqueue_fails() {
-    let (manager, _temp_dir) = setup_test_manager().await;
-    let album = create_test_album();
-    let release = create_test_release(&album.id);
-    manager.database.insert_album(&album).await.unwrap();
-    manager.database.insert_release(&release).await.unwrap();
-    store_test_cover_image(&manager, &release.id).await;
+    let (manager, temp_dir) = setup_test_manager().await;
+    connect_test_cloud(&manager).await;
+    let release_id =
+        make_remote_release(&manager, &temp_dir.path().join("r1"), "Album One", false).await;
+    store_test_cover_image(&manager, &release_id).await;
+    wait_for_published_blob(&manager, crate::sync::COVERS_NAMESPACE, &release_id).await;
 
     rename_table_for_test(&manager, "cloud_outbox", "cloud_outbox_unavailable").await;
 
-    let error = manager.delete_release(&release.id).await.unwrap_err();
+    let error = manager.delete_release(&release_id).await.unwrap_err();
     assert!(matches!(error, LibraryError::Database(_)));
     assert!(manager
         .database
-        .find_release_by_id(&release.id)
+        .find_release_by_id(&release_id)
         .await
         .unwrap()
         .is_some());
@@ -1036,26 +1103,30 @@ async fn delete_release_fails_before_rows_are_deleted_when_cover_tombstone_enque
 /// Deleting a release cascade-deletes its `covers` row (the FK on `covers.id`
 /// to `releases`), and the delete path cleans up the cover blob: a Remote
 /// release's cover is tombstoned in the cloud and dropped from the cache.
+#[cfg(feature = "test-utils")]
 #[tokio::test]
 async fn delete_release_removes_its_cover_image() {
-    let (manager, _temp_dir) = setup_test_manager().await;
+    let (manager, temp_dir) = setup_test_manager().await;
+    connect_test_cloud(&manager).await;
 
-    let album = create_test_album();
-    // Two releases so the album survives the single-release delete.
-    let release1 = create_test_release(&album.id);
-    let release2 = create_test_release(&album.id);
-    manager.database.insert_album(&album).await.unwrap();
-    manager.database.insert_release(&release1).await.unwrap();
+    // A genuinely Remote release, so storing its cover publishes the blob and
+    // there is a real cloud object for the delete to tombstone.
+    let release1 = ReleaseRef::of(
+        &manager,
+        make_remote_release(&manager, &temp_dir.path().join("r1"), "Album One", false).await,
+    )
+    .await;
+    // A sibling release so the album survives the single-release delete.
+    let mut release2 = create_test_release(&release1.album_id);
+    release2.remote = false;
     manager.database.insert_release(&release2).await.unwrap();
 
     // Give release1 a cover: a `covers` row plus its blob in one coven batch.
-    // release1 is Remote (`create_test_release` defaults remote=true), so the
-    // cover blob is in the cloud + cache.
     manager
         .store_library_image_blob(
             &crate::db::DbLibraryImage {
                 id: release1.id.clone(),
-                blob_id: format!("{}-cover-blob", release1.id),
+                blob_id: bae_test_support::test_uuid(&format!("{}-cover-blob", release1.id)),
                 image_type: LibraryImageType::Cover,
                 content_type: crate::util::content_type::ContentType::Jpeg,
                 file_size: 5,
@@ -1064,13 +1135,15 @@ async fn delete_release_removes_its_cover_image() {
                 source: "local".to_string(),
                 source_url: None,
                 cloud_path: None,
-                content_hash: None,
+                content_hash: crate::util::fs::hash_bytes(b"image"),
                 created_at: manager.clock.now(),
             },
             b"image",
         )
         .await
         .unwrap();
+
+    wait_for_published_blob(&manager, crate::sync::COVERS_NAMESPACE, &release1.id).await;
 
     manager.delete_release(&release1.id).await.unwrap();
 
@@ -1081,37 +1154,36 @@ async fn delete_release_removes_its_cover_image() {
         .unwrap()
         .is_none());
 
-    // Cloud blob delete enqueued under the `covers` namespace — the same key
-    // the delete path derives, through the handle.
-    let cloud_key = manager
-        .handle()
-        .blob_cloud_key(&LibraryManager::image_blob_ref(
-            crate::sync::COVERS_NAMESPACE,
-            &format!("{}-cover-blob", release1.id),
-            None,
-        ))
-        .unwrap();
-    let deletes = manager.database.get_pending_cloud_deletes().await.unwrap();
+    // The cover blob's cloud object is tombstoned, named by the namespace and
+    // blob id coven queues it under.
     assert!(
-        deletes.iter().any(|d| d.cloud_key == cloud_key),
+        has_queued_delete(
+            &manager,
+            crate::sync::COVERS_NAMESPACE,
+            &bae_test_support::test_uuid(&format!("{}-cover-blob", release1.id)),
+        )
+        .await,
         "cover blob delete must be enqueued"
     );
 }
 
 /// delete_album removes each release's cover too (same helper, second wiring
 /// site): the cover row is gone and its blob delete is enqueued.
+#[cfg(feature = "test-utils")]
 #[tokio::test]
 async fn delete_album_removes_release_covers() {
-    let (manager, _temp_dir) = setup_test_manager().await;
-    let album = create_test_album();
-    let release = create_test_release(&album.id);
-    manager.database.insert_album(&album).await.unwrap();
-    manager.database.insert_release(&release).await.unwrap();
+    let (manager, temp_dir) = setup_test_manager().await;
+    connect_test_cloud(&manager).await;
+    let release = ReleaseRef::of(
+        &manager,
+        make_remote_release(&manager, &temp_dir.path().join("r1"), "Album One", false).await,
+    )
+    .await;
     manager
         .store_library_image_blob(
             &crate::db::DbLibraryImage {
                 id: release.id.clone(),
-                blob_id: format!("{}-cover-blob", release.id),
+                blob_id: bae_test_support::test_uuid(&format!("{}-cover-blob", release.id)),
                 image_type: LibraryImageType::Cover,
                 content_type: crate::util::content_type::ContentType::Jpeg,
                 file_size: 5,
@@ -1120,7 +1192,7 @@ async fn delete_album_removes_release_covers() {
                 source: "local".to_string(),
                 source_url: None,
                 cloud_path: None,
-                content_hash: None,
+                content_hash: crate::util::fs::hash_bytes(b"image"),
                 created_at: manager.clock.now(),
             },
             b"image",
@@ -1128,23 +1200,23 @@ async fn delete_album_removes_release_covers() {
         .await
         .unwrap();
 
-    manager.delete_album(&album.id).await.unwrap();
+    wait_for_published_blob(&manager, crate::sync::COVERS_NAMESPACE, &release.id).await;
+
+    manager.delete_album(&release.album_id).await.unwrap();
 
     assert!(manager
         .get_library_image(&release.id, &LibraryImageType::Cover)
         .await
         .unwrap()
         .is_none());
-    let cloud_key = manager
-        .handle()
-        .blob_cloud_key(&LibraryManager::image_blob_ref(
+    assert!(
+        has_queued_delete(
+            &manager,
             crate::sync::COVERS_NAMESPACE,
-            &format!("{}-cover-blob", release.id),
-            None,
-        ))
-        .unwrap();
-    let deletes = manager.database.get_pending_cloud_deletes().await.unwrap();
-    assert!(deletes.iter().any(|d| d.cloud_key == cloud_key));
+            &bae_test_support::test_uuid(&format!("{}-cover-blob", release.id)),
+        )
+        .await
+    );
 }
 
 /// Drain the manager's library event channel and return the first
@@ -1256,7 +1328,7 @@ async fn add_cover_row(manager: &LibraryManager, release_id: &str) {
             source: "local".to_string(),
             source_url: None,
             cloud_path: None,
-            content_hash: None,
+            content_hash: crate::util::fs::hash_bytes(b"fixture"),
             created_at: manager.clock.now(),
         })
         .await
@@ -1278,49 +1350,57 @@ async fn release_detail_has_no_cover_without_a_cover_row() {
     assert!(detail.summary.cover.is_none());
 }
 
-/// A peer can ship `releases`/`release_files` rows with any `id` — bae's apply path
-/// mints none and validates none. A path-traversal id (`../../etc/x`) is not a valid
-/// storage path token, so the display resolver that fires on every sync cycle must
-/// treat it as a missing asset rather than panic: a synced row makes such an id
-/// durable, so a panic here crash-loops every device, every cycle.
+/// A peer can ship a `release_files` row whose `original_filename` is a
+/// path-traversal token. Primary keys can no longer carry one — coven validates
+/// every synced-table id, on a local write and on an incoming changeset alike —
+/// but the path *fragments* on a row are ordinary text it never inspects, and a
+/// synced row makes such a value durable. So the display resolver that fires on
+/// every sync cycle must treat it as a missing asset rather than panic: a panic
+/// here crash-loops every device, every cycle.
+#[cfg(feature = "test-utils")]
 #[tokio::test]
-async fn find_release_detail_does_not_panic_on_traversal_ids_from_a_peer() {
+async fn find_release_detail_does_not_panic_on_traversal_filenames_from_a_peer() {
     let (manager, _temp_dir) = setup_test_manager().await;
 
     let album = create_test_album();
-    // A release whose id is a path-traversal token, as if synced from a peer.
-    let release = DbRelease {
-        id: "../../etc/x".to_string(),
-        ..create_test_release(&album.id)
-    };
+    let mut release = create_test_release(&album.id);
+    release.remote = false;
     manager.database.insert_album(&album).await.unwrap();
     manager.database.insert_release(&release).await.unwrap();
 
-    // An image file whose id is also a traversal token. It drives the gallery's
-    // blob resolution and, as the release's representative blob, the remote
-    // release's pinned-cache check; both must reject the bad id, not panic.
+    // An image file whose stored filename is a traversal token. bae's own write
+    // path validates the fragment and refuses it, which is why the value has to
+    // be written straight onto the row the way coven applies a peer's changeset
+    // — the seam `set_original_filename_for_test` exists for. It drives the
+    // gallery's blob resolution and, as the release's representative blob, the
+    // pinned-cache check; both must reject the bad fragment, not panic.
     let file = DbFile::new(
         &release.id,
         "cover.jpg",
         5,
         crate::util::content_type::ContentType::Jpeg,
-        "../../etc/y".to_string(),
+        Uuid::new_v4().to_string(),
         Utc::now(),
-        None,
+        crate::util::fs::hash_bytes(b"fixture"),
     );
     manager.add_file(&file).await.unwrap();
+    manager
+        .database
+        .set_original_filename_for_test(&file.id, "../../etc/y")
+        .await
+        .unwrap();
 
     // The resolver that fires when a synced release surfaces in the UI. The
-    // bad ids must resolve to "no cover" / "no local gallery path", not a
+    // bad fragment must resolve to "no cover" / "no local gallery path", not a
     // panic.
     let detail = manager
         .find_release_detail(&release.id)
         .await
-        .expect("resolving a release with a traversal id must not error")
+        .expect("resolving a release with a traversal filename must not error")
         .expect("the inserted release must resolve to a detail");
     assert!(
         detail.summary.cover.is_none(),
-        "a traversal release id has no cover row"
+        "there is no cover row, so no cover"
     );
     assert!(
         detail.gallery_items.iter().all(|item| matches!(
@@ -1539,8 +1619,8 @@ async fn find_release_detail_surfaces_seeded_tracks() {
 
     // Seed two tracks; the detail resolver must surface both with their
     // titles and track numbers (not just report emptiness).
-    let t1 = crate::db::DbTrack::new_test(&release.id, "track-1", "Opening", Some(1));
-    let t2 = crate::db::DbTrack::new_test(&release.id, "track-2", "Closing", Some(2));
+    let t1 = crate::db::DbTrack::new_test(&release.id, TRACK_1, "Opening", Some(1));
+    let t2 = crate::db::DbTrack::new_test(&release.id, TRACK_2, "Closing", Some(2));
     manager.database.insert_track(&t1).await.unwrap();
     manager.database.insert_track(&t2).await.unwrap();
 
@@ -1573,9 +1653,9 @@ async fn display_artist_is_set_only_for_a_compilation() {
         let mut album = create_test_album();
         album.is_compilation = is_compilation;
         let release = create_test_release(&album.id);
-        let track = crate::db::DbTrack::new_test(&release.id, "track-a", "Track Title", Some(1));
+        let track = crate::db::DbTrack::new_test(&release.id, TRACK_A, "Track Title", Some(1));
         let guest = DbArtist {
-            id: "guest-artist-id".to_string(),
+            id: "75c512c4-41b6-438d-89a6-d5929fa0697d".to_string(),
             name: "Guest Performer".to_string(),
             sort_name: None,
             discogs_artist_id: None,
@@ -1636,7 +1716,7 @@ async fn gallery_includes_cloud_only_image_files_with_no_local_path() {
         crate::util::content_type::ContentType::Jpeg,
         Uuid::new_v4().to_string(),
         Utc::now(),
-        None,
+        crate::util::fs::hash_bytes(b"fixture"),
     );
     manager.add_file(&image).await.unwrap();
 
@@ -1695,7 +1775,7 @@ async fn change_cover_stores_a_resized_jpeg_thumbnail() {
         ContentType::Png,
         Uuid::new_v4().to_string(),
         Utc::now(),
-        Some(crate::util::fs::hash_bytes(&cover_bytes)),
+        crate::util::fs::hash_bytes(&cover_bytes),
     );
     manager.add_file(&file).await.unwrap();
     manager
@@ -1771,7 +1851,7 @@ async fn change_cover_twice_replaces_the_cover_blob() {
             ContentType::Png,
             Uuid::new_v4().to_string(),
             Utc::now(),
-            Some(crate::util::fs::hash_bytes(bytes)),
+            crate::util::fs::hash_bytes(bytes),
         )
     };
     let green = add_source("green.png", &png([20, 160, 90]));
@@ -1822,8 +1902,8 @@ async fn change_cover_twice_replaces_the_cover_blob() {
         .unwrap()
         .expect("cover blob stored");
     assert_eq!(
-        second.content_hash.as_deref(),
-        Some(crate::util::fs::hash_bytes(&stored).as_str())
+        second.content_hash.as_str(),
+        crate::util::fs::hash_bytes(&stored).as_str()
     );
     assert_eq!(second.file_size, stored.len() as i64);
 
@@ -1835,22 +1915,18 @@ async fn change_cover_twice_replaces_the_cover_blob() {
         "the two source images must produce different thumbnails for this test to mean anything"
     );
 
-    // The replaced blob is gone from this device, and its cloud object is queued
-    // for deletion (its key is not the one the new blob just wrote).
-    let old_blob = LibraryManager::image_blob_ref(
-        crate::sync::COVERS_NAMESPACE,
-        &first.blob_id,
-        first.cloud_path.clone(),
-    );
+    // The row now points at the new blob, so the old one has no row reference to
+    // address it by; what must hold is that its bytes are gone from this device —
+    // the replace declared its deletion, so coven reclaimed them. This release is
+    // Local, so there is no cloud object behind the old blob and nothing to
+    // tombstone; the Remote case is `delete_release_removes_its_cover_image`.
     assert!(
-        manager.handle().read_blob(&old_blob).await.is_err(),
-        "the replaced cover blob must not still be readable"
-    );
-    let old_key = manager.handle().blob_cloud_key(&old_blob).unwrap();
-    let deletes = manager.database.get_pending_cloud_deletes().await.unwrap();
-    assert!(
-        deletes.iter().any(|d| d.cloud_key == old_key),
-        "the replaced cover's cloud object must be queued for deletion: {deletes:?}"
+        !manager
+            .library_dir()
+            .local_blob_path(crate::sync::COVERS_NAMESPACE, &first.blob_id)
+            .expect("a valid blob path")
+            .exists(),
+        "the replaced cover blob's bytes must be reclaimed"
     );
 }
 
@@ -1889,7 +1965,7 @@ async fn change_cover_twice_on_a_browsable_home_writes_two_distinct_cloud_keys()
             ContentType::Png,
             Uuid::new_v4().to_string(),
             Utc::now(),
-            Some(crate::util::fs::hash_bytes(bytes)),
+            crate::util::fs::hash_bytes(bytes),
         )
     };
     let green = add_source("green.png", &png([20, 160, 90]));
@@ -1933,13 +2009,14 @@ async fn change_cover_twice_on_a_browsable_home_writes_two_distinct_cloud_keys()
         "a replaced cover must not reuse the object its predecessor occupies"
     );
 
-    // The superseded object is the one tombstoned — not the one just written.
-    let old_blob = LibraryManager::image_blob_ref(
+    // The two keys really are distinct objects, so writing the second never
+    // overwrites the first.
+    let old_blob = crate::sync::image_blob_ref(
         crate::sync::COVERS_NAMESPACE,
         &first.blob_id,
         first.cloud_path.clone(),
     );
-    let new_blob = LibraryManager::image_blob_ref(
+    let new_blob = crate::sync::image_blob_ref(
         crate::sync::COVERS_NAMESPACE,
         &second.blob_id,
         second.cloud_path.clone(),
@@ -1947,15 +2024,6 @@ async fn change_cover_twice_on_a_browsable_home_writes_two_distinct_cloud_keys()
     let old_key = manager.handle().blob_cloud_key(&old_blob).unwrap();
     let new_key = manager.handle().blob_cloud_key(&new_blob).unwrap();
     assert_ne!(old_key, new_key);
-    let deletes = manager.database.get_pending_cloud_deletes().await.unwrap();
-    assert!(
-        deletes.iter().any(|d| d.cloud_key == old_key),
-        "the replaced cover's cloud object must be queued for deletion: {deletes:?}"
-    );
-    assert!(
-        !deletes.iter().any(|d| d.cloud_key == new_key),
-        "the cover just written must NOT be queued for deletion: {deletes:?}"
-    );
 }
 
 /// Queueing an album expands to its PRIMARY release's tracks, not the
@@ -1976,9 +2044,24 @@ async fn resolve_to_track_ids_expands_album_to_primary_release() {
     manager.database.insert_release(&release1).await.unwrap();
     manager.database.insert_release(&release2).await.unwrap();
 
-    let old = crate::db::DbTrack::new_test(&release1.id, "r1-t1", "Old A", Some(1));
-    let p1 = crate::db::DbTrack::new_test(&release2.id, "r2-t1", "New A", Some(1));
-    let p2 = crate::db::DbTrack::new_test(&release2.id, "r2-t2", "New B", Some(2));
+    let old = crate::db::DbTrack::new_test(
+        &release1.id,
+        "48ae00a1-d7a5-443c-8240-f999fc4ddfcc",
+        "Old A",
+        Some(1),
+    );
+    let p1 = crate::db::DbTrack::new_test(
+        &release2.id,
+        "cc4180bc-58f5-456f-8116-f9b2099f5b7f",
+        "New A",
+        Some(1),
+    );
+    let p2 = crate::db::DbTrack::new_test(
+        &release2.id,
+        "cc4181bc-58f5-4722-8116-fab2099f5d32",
+        "New B",
+        Some(2),
+    );
     manager.database.insert_track(&old).await.unwrap();
     manager.database.insert_track(&p1).await.unwrap();
     manager.database.insert_track(&p2).await.unwrap();
@@ -1992,10 +2075,10 @@ async fn resolve_to_track_ids_expands_album_to_primary_release() {
         .resolve_to_track_ids(std::slice::from_ref(&album.id))
         .await
         .unwrap();
-    assert!(resolved.contains(&"r2-t1".to_string()));
-    assert!(resolved.contains(&"r2-t2".to_string()));
+    assert!(resolved.contains(&"cc4180bc-58f5-456f-8116-f9b2099f5b7f".to_string()));
+    assert!(resolved.contains(&"cc4181bc-58f5-4722-8116-fab2099f5d32".to_string()));
     assert!(
-        !resolved.contains(&"r1-t1".to_string()),
+        !resolved.contains(&"48ae00a1-d7a5-443c-8240-f999fc4ddfcc".to_string()),
         "must not expand to the non-primary release's tracks"
     );
     assert_eq!(resolved.len(), 2);
@@ -2184,7 +2267,7 @@ async fn non_release_root_completion_emits_outbox_changed() {
     );
     observer.set_database(Arc::new(manager.database.clone()));
 
-    observer.on_root_made_remote("covers", "cover-1").await;
+    observer.on_root_made_remote("covers", COVER_1).await;
 
     let event = tokio::time::timeout(std::time::Duration::from_secs(2), events.recv())
         .await
@@ -2553,27 +2636,23 @@ async fn storage_count_matches_filtered_page_total() {
 /// `filter` — the same universe `get_storage_page` pages over — independent of
 /// how many pages have loaded. For each filter, the aggregate must equal the
 /// sum of `total_size` over that filter's full (unpaginated) storage page.
+#[cfg(feature = "test-utils")]
 #[tokio::test]
 async fn storage_total_size_matches_page_total_size_sum() {
-    let (manager, _temp_dir) = setup_test_manager().await;
+    let (manager, temp_dir) = setup_test_manager().await;
+    connect_test_cloud(&manager).await;
 
-    // Three releases: one local, one remote-and-quiet, one remote-and-uploading
-    // (an "uploading" release stays remote — the cloud copy is still landing).
+    // Three releases: one local, one remote-and-quiet, and one mid-make-Remote
+    // — its uploads are queued but undrained, so its gate has not flipped and it
+    // is still Local as well as Uploading.
     let album_local = create_test_album();
     let album_remote = create_test_album();
-    let album_uploading = create_test_album();
     let mut release_local = create_test_release(&album_local.id);
     release_local.remote = false;
     let release_remote = create_test_release(&album_remote.id);
-    let release_uploading = create_test_release(&album_uploading.id);
 
     manager.database.insert_album(&album_local).await.unwrap();
     manager.database.insert_album(&album_remote).await.unwrap();
-    manager
-        .database
-        .insert_album(&album_uploading)
-        .await
-        .unwrap();
     manager
         .database
         .insert_release(&release_local)
@@ -2584,39 +2663,30 @@ async fn storage_total_size_matches_page_total_size_sum() {
         .insert_release(&release_remote)
         .await
         .unwrap();
-    manager
-        .database
-        .insert_release(&release_uploading)
-        .await
-        .unwrap();
 
-    for (release_id, file_size) in [
-        (&release_local.id, 1_000i64),
-        (&release_remote.id, 100),
-        (&release_uploading.id, 10_000),
-    ] {
+    for (release_id, file_size) in [(&release_local.id, 1_000i64), (&release_remote.id, 100)] {
         let file = DbFile {
-            id: format!("{release_id}-file"),
+            id: bae_test_support::test_uuid(&format!("{release_id}-file")),
             release_id: release_id.clone(),
             original_filename: "a.flac".to_string(),
             file_size,
             content_type: crate::util::content_type::ContentType::Flac,
             cloud_path: None,
-            content_hash: None,
+            content_hash: crate::util::fs::hash_bytes(b"fixture"),
             created_at: Utc::now(),
         };
         manager.database.insert_file(&file).await.unwrap();
     }
-    manager
-        .database
-        .add_cloud_outbox_upload(
-            &format!("{}-file", release_uploading.id),
-            "cloud-key",
-            None,
-            false,
-        )
-        .await
-        .unwrap();
+
+    // The uploading release goes through the real transition, so its 10_000
+    // bytes are what coven actually has queued.
+    insert_release_with_queued_uploads(
+        &manager,
+        &temp_dir.path().join("uploading"),
+        "Uploading Album",
+        &[("a.flac", &vec![0u8; 10_000])],
+    )
+    .await;
 
     for filter in [
         crate::db::StorageFilter::All,
@@ -2638,7 +2708,8 @@ async fn storage_total_size_matches_page_total_size_sum() {
     }
 
     // Concrete expectations, so a bug that moves the *same* wrong figure on
-    // both sides doesn't slip through.
+    // both sides doesn't slip through. The uploading release counts as Local
+    // too — its gate flips only once every upload lands.
     assert_eq!(
         manager
             .get_storage_total_size(crate::db::StorageFilter::All)
@@ -2651,14 +2722,14 @@ async fn storage_total_size_matches_page_total_size_sum() {
             .get_storage_total_size(crate::db::StorageFilter::Local)
             .await
             .unwrap(),
-        1_000
+        11_000
     );
     assert_eq!(
         manager
             .get_storage_total_size(crate::db::StorageFilter::Remote)
             .await
             .unwrap(),
-        10_100
+        100
     );
     assert_eq!(
         manager
@@ -2674,14 +2745,98 @@ async fn storage_total_size_matches_page_total_size_sum() {
 /// it — the in-module counterpart of the integration tests' `setup_with_cloud`.
 /// After this, `has_cloud_home()` and `is_sync_ready()` both hold.
 #[cfg(feature = "test-utils")]
-async fn connect_test_cloud(manager: &LibraryManager) {
+async fn connect_test_cloud(manager: &LibraryManager) -> Arc<InMemoryCloudHome> {
+    let home = Arc::new(InMemoryCloudHome::new());
     manager
         .connect_test_cloud_home(
-            Arc::new(InMemoryCloudHome::new()),
+            home.clone(),
             CloudCipher::Encrypted(EncryptionService::from_key([7u8; 32])),
         )
         .await
         .expect("connect in-memory cloud home");
+    home
+}
+
+/// A release mid-make-Remote: its uploads are enqueued in coven's durable queue
+/// but not drained, so the gate has not flipped and the release still reads
+/// Local. This is the state the Uploading filter and the outbox snapshot render.
+/// The manager must already be connected via [`connect_test_cloud`].
+#[cfg(feature = "test-utils")]
+async fn insert_release_with_queued_uploads(
+    manager: &LibraryManager,
+    dir: &std::path::Path,
+    album_title: &str,
+    files: &[(&str, &[u8])],
+) -> DbRelease {
+    let release = insert_local_release_with_files(manager, dir, album_title, files).await;
+    manager.coven_make_remote(&release.id, false).await.unwrap();
+    assert_eq!(
+        manager
+            .database
+            .handle()
+            .queued_uploads_for_root("releases", &release.id)
+            .await
+            .unwrap()
+            .len(),
+        files.len(),
+        "every file must be queued before the drain runs"
+    );
+    release
+}
+
+/// A release id paired with its album id, for the fixtures that make a release
+/// Remote through the real transition (which mints its own album) and then need
+/// to name that album.
+#[cfg(feature = "test-utils")]
+struct ReleaseRef {
+    id: String,
+    album_id: String,
+}
+
+#[cfg(feature = "test-utils")]
+impl ReleaseRef {
+    async fn of(manager: &LibraryManager, id: String) -> Self {
+        let album_id = manager
+            .database
+            .find_release_by_id(&id)
+            .await
+            .unwrap()
+            .expect("the release exists")
+            .album_id;
+        Self { id, album_id }
+    }
+}
+
+/// Wait until a host-provided blob on a Remote release has a committed cloud
+/// object.
+///
+/// Publication is the sync loop's Store write, not the row write: storing a
+/// cover leaves its blob `PendingRemote` with no locator, and only the next
+/// cycle gives it one — which is what a cloud tombstone needs to name. A test
+/// that asserts on the tombstone has to be past that point.
+#[cfg(feature = "test-utils")]
+async fn wait_for_published_blob(manager: &LibraryManager, namespace: &str, row_id: &str) {
+    for tick in 0..2_000 {
+        // Re-kick periodically: a cycle already in flight ignores the nudge, and
+        // the write only activates on a cycle that starts after it was queued.
+        if tick % 50 == 0 {
+            manager.handle().sync_now();
+        }
+        let blob = manager
+            .handle()
+            .row_blob_ref(namespace, row_id)
+            .await
+            .expect("the blob-bearing row exists");
+        if blob.stored().is_some() {
+            return;
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+    }
+    panic!(
+        "blob {namespace}/{row_id} never reached the cloud; pending={:?} blocked={:?}",
+        manager.handle().pending_writes().await.unwrap(),
+        manager.handle().blocked_writes().await.unwrap(),
+    );
 }
 
 /// Create a Remote release the real way: a Local release with one source file
@@ -2737,13 +2892,15 @@ async fn insert_partially_uploaded_make_remote_release(
     manager.coven_make_remote(&release.id, true).await.unwrap();
     assert!(manager
         .database
-        .has_make_remote_intent_for_release(&release.id)
+        .make_remote_progress_for_release(&release.id)
         .await
-        .unwrap());
+        .unwrap()
+        .is_some());
     assert_eq!(
         manager
             .database
-            .get_pending_cloud_uploads()
+            .handle()
+            .queued_uploads()
             .await
             .unwrap()
             .len(),
@@ -2766,7 +2923,8 @@ async fn insert_partially_uploaded_make_remote_release(
     assert_eq!(
         manager
             .database
-            .get_pending_cloud_deletes()
+            .handle()
+            .queued_deletes()
             .await
             .unwrap()
             .len(),
@@ -2797,9 +2955,9 @@ async fn insert_local_release_with_files(
             name,
             bytes.len() as i64,
             crate::util::content_type::ContentType::Flac,
-            format!("{}-test-file-{index}", release.id),
+            bae_test_support::test_uuid(&format!("{}-test-file-{index}", release.id)),
             created_at,
-            Some(crate::util::fs::hash_bytes(bytes)),
+            crate::util::fs::hash_bytes(bytes),
         );
         manager.add_file(&file).await.unwrap();
     }
@@ -2839,7 +2997,7 @@ async fn insert_local_release_without_local_files(
         Utc::now(),
         // No real file backs this fixture (the whole point is "no local copy
         // resolves"), so there is no plaintext to hash.
-        None,
+        crate::util::fs::hash_bytes(b"fixture"),
     );
     manager.add_file(&file).await.unwrap();
     release
@@ -2926,7 +3084,7 @@ async fn remote_read_with_sync_disconnected_reports_sync_disconnected() {
 
 /// A Local track whose source file was removed while its cloud upload is still
 /// queued reports `UploadPending` — wait for the upload — because a
-/// `cloud_outbox` upload row for the file explains the missing source. coven
+/// queued upload for the file explains the missing source. coven
 /// raises `ExternalMissing`; the outbox check keys it.
 #[cfg(feature = "test-utils")]
 #[tokio::test]
@@ -3022,7 +3180,10 @@ async fn storage_page_sort_by_artist_names() {
 
     // Two artists with distinct sort-orderings; ArtistNames sort triggers
     // the `needs_artist_sort_join` branch.
-    for (artist_id, artist_name) in &[("a-zulu", "Zulu"), ("a-alpha", "Alpha")] {
+    for (artist_id, artist_name) in &[
+        ("ba5b6a6c-bc8c-4015-8b3c-03e78dfe28e5", "Zulu"),
+        ("f2ad46f1-3a5e-4bb5-807f-5a314ae94f25", "Alpha"),
+    ] {
         let artist = DbArtist {
             id: artist_id.to_string(),
             name: artist_name.to_string(),
@@ -3106,13 +3267,13 @@ async fn storage_page_sort_by_file_count() {
         manager.database.insert_release(&release).await.unwrap();
         for i in 0..*file_count {
             let file = DbFile {
-                id: format!("{}-file-{i}", release.id),
+                id: bae_test_support::test_uuid(&format!("{}-file-{i}", release.id)),
                 release_id: release.id.clone(),
                 original_filename: format!("{i}.flac"),
                 file_size: 1000,
                 content_type: crate::util::content_type::ContentType::Flac,
                 cloud_path: None,
-                content_hash: None,
+                content_hash: crate::util::fs::hash_bytes(b"fixture"),
                 created_at: Utc::now(),
             };
             manager.database.insert_file(&file).await.unwrap();
@@ -3142,13 +3303,13 @@ async fn storage_page_sort_by_total_size() {
         manager.database.insert_album(&album).await.unwrap();
         manager.database.insert_release(&release).await.unwrap();
         let file = DbFile {
-            id: format!("{}-file", release.id),
+            id: bae_test_support::test_uuid(&format!("{}-file", release.id)),
             release_id: release.id.clone(),
             original_filename: "a.flac".to_string(),
             file_size: *file_size,
             content_type: crate::util::content_type::ContentType::Flac,
             cloud_path: None,
-            content_hash: None,
+            content_hash: crate::util::fs::hash_bytes(b"fixture"),
             created_at: Utc::now(),
         };
         manager.database.insert_file(&file).await.unwrap();
@@ -3166,49 +3327,30 @@ async fn storage_page_sort_by_total_size() {
     assert_eq!(titles, vec!["Small", "Medium", "Big"]);
 }
 
+/// The Uploading filter is coven's upload queue, not a bae column: only the
+/// release whose make-Remote is still enqueued appears under it.
+#[cfg(feature = "test-utils")]
 #[tokio::test]
-async fn storage_page_uploading_filter_matches_cloud_outbox() {
-    let (manager, _temp_dir) = setup_test_manager().await;
+async fn storage_page_uploading_filter_matches_the_upload_queue() {
+    let (manager, temp_dir) = setup_test_manager().await;
+    connect_test_cloud(&manager).await;
 
-    let album_uploading = create_test_album();
     let album_quiet = create_test_album();
-    let release_uploading = create_test_release(&album_uploading.id);
     let release_quiet = create_test_release(&album_quiet.id);
-
-    manager
-        .database
-        .insert_album(&album_uploading)
-        .await
-        .unwrap();
     manager.database.insert_album(&album_quiet).await.unwrap();
-    manager
-        .database
-        .insert_release(&release_uploading)
-        .await
-        .unwrap();
     manager
         .database
         .insert_release(&release_quiet)
         .await
         .unwrap();
 
-    // Seed a file + outbox upload entry on one release only.
-    let uploading_file = DbFile {
-        id: format!("{}-file", release_uploading.id),
-        release_id: release_uploading.id.clone(),
-        original_filename: "a.flac".to_string(),
-        file_size: 1000,
-        content_type: crate::util::content_type::ContentType::Flac,
-        cloud_path: None,
-        content_hash: None,
-        created_at: Utc::now(),
-    };
-    manager.database.insert_file(&uploading_file).await.unwrap();
-    manager
-        .database
-        .add_cloud_outbox_upload(&uploading_file.id, "cloud-key", None, false)
-        .await
-        .unwrap();
+    let uploading = insert_release_with_queued_uploads(
+        &manager,
+        &temp_dir.path().join("uploading"),
+        "Uploading Album",
+        &[("a.flac", b"a-bytes")],
+    )
+    .await;
 
     let sort = crate::db::StorageSortCriterion {
         field: crate::db::StorageSortField::AlbumTitle,
@@ -3220,7 +3362,7 @@ async fn storage_page_uploading_filter_matches_cloud_outbox() {
         .unwrap();
     assert_eq!(page.total_count, 1);
     assert_eq!(page.rows.len(), 1);
-    assert_eq!(page.rows[0].release.id, release_uploading.id);
+    assert_eq!(page.rows[0].release.id, uploading.id);
     assert_eq!(
         manager
             .get_storage_count(crate::db::StorageFilter::Uploading)
@@ -3240,12 +3382,12 @@ async fn cancel_release_transition_fires_a_registered_transfer_token() {
         .transfer_cancels
         .lock()
         .unwrap()
-        .insert("rel-x".to_string(), token.clone());
-    manager.cancel_release_transition("rel-x").await.unwrap();
+        .insert(REL_X.to_string(), token.clone());
+    manager.cancel_release_transition(REL_X).await.unwrap();
     assert!(token.is_cancelled(), "transfer token fired");
 
     // Nothing in progress for an unknown release → no-op, no error.
-    manager.cancel_release_transition("rel-none").await.unwrap();
+    manager.cancel_release_transition(REL_NONE).await.unwrap();
 }
 
 // Needs the test-utils mock cloud home: a Remote release implies a connected
@@ -3256,24 +3398,11 @@ async fn cancel_release_transition_fires_a_registered_transfer_token() {
 async fn unmanage_cancelled_before_copy_leaves_release_remote() {
     let (manager, temp_dir) = setup_test_manager().await;
     connect_test_cloud(&manager).await;
-    let album = create_test_album();
-    let release = create_test_release(&album.id); // remote: true
-    manager.database.insert_album(&album).await.unwrap();
-    manager.database.insert_release(&release).await.unwrap();
-    manager
-        .database
-        .insert_file(&DbFile {
-            id: format!("{}-f", release.id),
-            release_id: release.id.clone(),
-            original_filename: "a.flac".to_string(),
-            file_size: 10,
-            content_type: crate::util::content_type::ContentType::Flac,
-            cloud_path: None,
-            content_hash: None,
-            created_at: Utc::now(),
-        })
-        .await
-        .unwrap();
+    // Really Remote, through the real transition: make-Local resolves the
+    // release's current locality from coven, which a fabricated `remote` column
+    // with no cloud objects behind it cannot answer.
+    let release_id =
+        make_remote_release(&manager, &temp_dir.path().join("r1"), "Album One", false).await;
 
     // A token cancelled before the materialize loop runs: coven aborts at the
     // first check, before reading/writing any blob, and never flips state. A
@@ -3282,12 +3411,12 @@ async fn unmanage_cancelled_before_copy_leaves_release_remote() {
     token.cancel();
     let dest = temp_dir.path().join("out");
     manager
-        .coven_make_local(&release.id, dest.to_str().unwrap(), &token)
+        .coven_make_local(&release_id, dest.to_str().unwrap(), &token)
         .await
         .expect("a cancelled make-Local ends cleanly");
 
     let after = manager
-        .get_release_by_id(&release.id)
+        .get_release_by_id(&release_id)
         .await
         .unwrap()
         .unwrap();
@@ -3297,28 +3426,28 @@ async fn unmanage_cancelled_before_copy_leaves_release_remote() {
     );
 }
 
+/// The snapshot over a real make-Remote: queued, in flight, mid-file progress,
+/// a genuine upload failure, and the cancel that empties the queue.
+#[cfg(feature = "test-utils")]
 #[tokio::test]
 async fn outbox_snapshot_tracks_queued_active_failed_and_cancel() {
-    let (manager, _temp_dir) = setup_test_manager().await;
-    let album = create_test_album();
-    let release = create_test_release(&album.id);
-    manager.database.insert_album(&album).await.unwrap();
-    manager.database.insert_release(&release).await.unwrap();
-    let file = DbFile {
-        id: format!("{}-file", release.id),
-        release_id: release.id.clone(),
-        original_filename: "a.flac".to_string(),
-        file_size: 1000,
-        content_type: crate::util::content_type::ContentType::Flac,
-        cloud_path: None,
-        content_hash: None,
-        created_at: Utc::now(),
-    };
-    manager.database.insert_file(&file).await.unwrap();
-    manager
-        .add_cloud_outbox_upload(&file.id, "cloud-key", None, false)
+    let (manager, temp_dir) = setup_test_manager().await;
+    connect_test_cloud(&manager).await;
+    let source_dir = temp_dir.path().join("queued");
+    let release = insert_release_with_queued_uploads(
+        &manager,
+        &source_dir,
+        "Test Album",
+        &[("a.flac", &vec![b'a'; 1000])],
+    )
+    .await;
+    let file_id = manager
+        .database
+        .get_files_for_release(&release.id)
         .await
-        .unwrap();
+        .unwrap()[0]
+        .id
+        .clone();
 
     // Freshly queued: per-release count is 1 queued, joined to the album title.
     let snap = manager.outbox_snapshot().await.unwrap();
@@ -3332,9 +3461,9 @@ async fn outbox_snapshot_tracks_queued_active_failed_and_cancel() {
     assert_eq!(group.display_title, "Test Album");
     assert_eq!(group.release_id.as_deref(), Some(release.id.as_str()));
     assert_eq!(group.files.len(), 1);
+    assert_eq!(group.files[0].display_name, "a.flac");
     assert_eq!(group.progress.queued, 1);
     assert_eq!(group.progress.bytes_total, 1000);
-    let item_id = manager.database.get_pending_cloud_uploads().await.unwrap()[0].id;
 
     // In flight now: the in-memory map flips it to active, starting at zero
     // bytes done.
@@ -3343,7 +3472,7 @@ async fn outbox_snapshot_tracks_queued_active_failed_and_cancel() {
         .outbox_in_flight()
         .lock()
         .unwrap()
-        .insert(file.id.clone(), 0);
+        .insert(file_id.clone(), 0);
     let snap = manager.outbox_snapshot().await.unwrap();
     assert_eq!(snap.total.active, 1);
     assert_eq!(snap.total.queued, 0);
@@ -3351,14 +3480,13 @@ async fn outbox_snapshot_tracks_queued_active_failed_and_cancel() {
     assert_eq!(snap.total.bytes_done, 0);
 
     // Mid-upload progress advances the live byte count: the snapshot's
-    // per-release and aggregate bytes_done climb without the file
-    // completing.
+    // per-release and aggregate bytes_done climb without the file completing.
     manager
         .sync
         .outbox_in_flight()
         .lock()
         .unwrap()
-        .insert(file.id.clone(), 400);
+        .insert(file_id.clone(), 400);
     let snap = manager.outbox_snapshot().await.unwrap();
     assert_eq!(snap.upload_groups[0].progress.active, 1);
     assert_eq!(snap.upload_groups[0].progress.bytes_done, 400);
@@ -3369,32 +3497,25 @@ async fn outbox_snapshot_tracks_queued_active_failed_and_cancel() {
         .outbox_in_flight()
         .lock()
         .unwrap()
-        .remove(&file.id);
+        .remove(&file_id);
 
-    // A recorded failure: failed with the stored error + attempt.
-    manager
-        .database
-        .record_cloud_upload_failure(item_id, "boom", "2024-06-01T00:00:00Z")
-        .await
-        .unwrap();
+    // A real failure: the user's file is gone, so the drain cannot seal it. The
+    // entry stays queued with coven's own attempt count and error on it.
+    std::fs::remove_file(source_dir.join("a.flac")).unwrap();
+    assert_eq!(manager.drain_uploads_for_test().await.unwrap(), 0);
     let snap = manager.outbox_snapshot().await.unwrap();
     assert_eq!(snap.total.failed, 1);
     assert_eq!(snap.total.queued, 0);
     assert_eq!(snap.upload_groups[0].progress.failed, 1);
-    let rows = manager.database.outbox_items().await.unwrap();
-    assert_eq!(rows[0].attempt_count, 1);
-    assert_eq!(rows[0].last_error.as_deref(), Some("boom"));
+    let queued = manager.database.handle().queued_uploads().await.unwrap();
+    assert_eq!(queued[0].attempt_count, 1);
+    assert!(
+        queued[0].last_error.is_some(),
+        "coven records why the attempt failed"
+    );
 
-    // Reset backoff clears the timestamp but keeps the failure record.
-    manager.database.reset_cloud_outbox_backoff().await.unwrap();
-    let uploads = manager.database.get_pending_cloud_uploads().await.unwrap();
-    assert_eq!(uploads[0].attempt_count, 1);
-    assert!(uploads[0].last_attempt_at.is_none());
-    let rows = manager.database.outbox_items().await.unwrap();
-    assert_eq!(rows[0].last_error.as_deref(), Some("boom"));
-
-    // Cancel dequeues the entry; the snapshot empties.
-    manager.cancel_outbox_item(item_id).await.unwrap();
+    // Cancelling the release's make-Remote clears the queue; the snapshot empties.
+    manager.cancel_release_upload(&release.id).await.unwrap();
     let snap = manager.outbox_snapshot().await.unwrap();
     assert!(snap.upload_groups.is_empty());
     assert_eq!(snap.total.failed, 0);
@@ -3403,30 +3524,27 @@ async fn outbox_snapshot_tracks_queued_active_failed_and_cancel() {
 /// The real `ReleaseUploadObserver` drives the snapshot's live byte count:
 /// `on_blob_upload_progress` advances an in-flight `Active` file's
 /// `bytes_done` so the aggregate and per-release bars move mid-file.
+#[cfg(feature = "test-utils")]
 #[tokio::test]
 async fn observer_progress_advances_snapshot_bytes_done() {
     use coven::BlobTransitionObserver;
 
-    let (manager, _temp_dir) = setup_test_manager().await;
-    let album = create_test_album();
-    let release = create_test_release(&album.id);
-    manager.database.insert_album(&album).await.unwrap();
-    manager.database.insert_release(&release).await.unwrap();
-    let file = DbFile {
-        id: format!("{}-file", release.id),
-        release_id: release.id.clone(),
-        original_filename: "a.flac".to_string(),
-        file_size: 1000,
-        content_type: crate::util::content_type::ContentType::Flac,
-        cloud_path: None,
-        content_hash: None,
-        created_at: Utc::now(),
-    };
-    manager.database.insert_file(&file).await.unwrap();
-    manager
-        .add_cloud_outbox_upload(&file.id, "cloud-key", None, false)
+    let (manager, temp_dir) = setup_test_manager().await;
+    connect_test_cloud(&manager).await;
+    let release = insert_release_with_queued_uploads(
+        &manager,
+        &temp_dir.path().join("queued"),
+        "Test Album",
+        &[("a.flac", &vec![b'a'; 1000])],
+    )
+    .await;
+    let file_id = manager
+        .database
+        .get_files_for_release(&release.id)
         .await
-        .unwrap();
+        .unwrap()[0]
+        .id
+        .clone();
 
     // The observer shares the manager's in-flight map and throughput tracker,
     // exactly as production wires it in `build_sync_manager`.
@@ -3439,7 +3557,7 @@ async fn observer_progress_advances_snapshot_bytes_done() {
     );
     observer.set_database(Arc::new(manager.database.clone()));
 
-    observer.on_blob_upload_started(&file.id).await;
+    observer.on_blob_upload_started(&file_id).await;
     let snap = manager.outbox_snapshot().await.unwrap();
     assert_eq!(snap.upload_groups[0].progress.active, 1);
     assert_eq!(snap.upload_groups[0].progress.bytes_done, 0);
@@ -3447,7 +3565,7 @@ async fn observer_progress_advances_snapshot_bytes_done() {
 
     // A mid-upload progress report advances the live count without the file
     // completing.
-    observer.on_blob_upload_progress(&file.id, 600, 1000).await;
+    observer.on_blob_upload_progress(&file_id, 600, 1000).await;
     let snap = manager.outbox_snapshot().await.unwrap();
     assert_eq!(snap.upload_groups[0].progress.active, 1);
     assert_eq!(snap.upload_groups[0].progress.bytes_done, 600);
@@ -3457,45 +3575,42 @@ async fn observer_progress_advances_snapshot_bytes_done() {
     assert!(manager.sync.upload_throughput().bytes_per_sec() > 0);
 
     // Completion clears the in-flight entry and tallies the file as done; the
-    // row's still in the DB (this test drives only the observer, not coven's
-    // removal), but with its only file shipped the release has nothing left
-    // to render — the group leaves the snapshot.
-    observer.on_blob_uploaded(&file.id).await;
+    // queue entry is still there (this test drives only the observer, not
+    // coven's drain), but with its only file shipped the release has nothing
+    // left to render — the group leaves the snapshot.
+    observer.on_blob_uploaded(&file_id).await;
     let snap = manager.outbox_snapshot().await.unwrap();
     assert_eq!(snap.total.active, 0);
     assert_eq!(snap.total.queued, 0);
     assert!(snap.upload_groups.is_empty());
 }
 
-/// A file that finished uploading but whose outbox row hasn't been removed yet
-/// (coven reports completion first, then deletes the row inside the post-upload
-/// commit) must read as done work — never as freshly queued. The Storage
-/// Manager renders whatever the last emitted snapshot says, so a completed
-/// upload re-deriving as "Queued" is a lie the UI can end up frozen on.
+/// A file that finished uploading but whose queue entry hasn't been consumed
+/// yet (coven reports completion first, then clears the entry inside the
+/// post-upload commit) must read as done work — never as freshly queued. The
+/// Storage Manager renders whatever the last emitted snapshot says, so a
+/// completed upload re-deriving as "Queued" is a lie the UI can freeze on.
+#[cfg(feature = "test-utils")]
 #[tokio::test]
-async fn completed_upload_with_lingering_row_is_not_queued() {
+async fn completed_upload_with_lingering_entry_is_not_queued() {
     use coven::BlobTransitionObserver;
 
-    let (manager, _temp_dir) = setup_test_manager().await;
-    let album = create_test_album();
-    let release = create_test_release(&album.id);
-    manager.database.insert_album(&album).await.unwrap();
-    manager.database.insert_release(&release).await.unwrap();
-    let file = DbFile {
-        id: format!("{}-file", release.id),
-        release_id: release.id.clone(),
-        original_filename: "a.flac".to_string(),
-        file_size: 1000,
-        content_type: crate::util::content_type::ContentType::Flac,
-        cloud_path: None,
-        content_hash: None,
-        created_at: Utc::now(),
-    };
-    manager.database.insert_file(&file).await.unwrap();
-    manager
-        .add_cloud_outbox_upload(&file.id, "cloud-key", None, false)
+    let (manager, temp_dir) = setup_test_manager().await;
+    connect_test_cloud(&manager).await;
+    let release = insert_release_with_queued_uploads(
+        &manager,
+        &temp_dir.path().join("queued"),
+        "Test Album",
+        &[("a.flac", &vec![b'a'; 1000])],
+    )
+    .await;
+    let file_id = manager
+        .database
+        .get_files_for_release(&release.id)
         .await
-        .unwrap();
+        .unwrap()[0]
+        .id
+        .clone();
 
     let observer = crate::sync::upload_observer::ReleaseUploadObserver::new(
         manager.sync.outbox_in_flight(),
@@ -3506,13 +3621,13 @@ async fn completed_upload_with_lingering_row_is_not_queued() {
     );
     observer.set_database(Arc::new(manager.database.clone()));
 
-    observer.on_blob_upload_started(&file.id).await;
-    observer.on_blob_upload_progress(&file.id, 1000, 1000).await;
-    observer.on_blob_uploaded(&file.id).await;
+    observer.on_blob_upload_started(&file_id).await;
+    observer.on_blob_upload_progress(&file_id, 1000, 1000).await;
+    observer.on_blob_uploaded(&file_id).await;
 
-    // The outbox row is still present — only coven's commit removes it — but
-    // the upload finished: nothing pending anywhere, and the release (its
-    // only file shipped) is no longer rendered at all.
+    // The queue entry is still present — only coven's commit consumes it — but
+    // the upload finished: nothing pending anywhere, and the release (its only
+    // file shipped) is no longer rendered at all.
     let snap = manager.outbox_snapshot().await.unwrap();
     assert_eq!(
         snap.total.queued, 0,
@@ -3531,13 +3646,13 @@ async fn insert_pinnable_release(manager: &LibraryManager) -> String {
     manager.database.insert_album(&album).await.unwrap();
     manager.database.insert_release(&release).await.unwrap();
     let file = DbFile {
-        id: format!("{}-file", release.id),
+        id: bae_test_support::test_uuid(&format!("{}-file", release.id)),
         release_id: release.id.clone(),
         original_filename: "a.flac".to_string(),
         file_size: 1000,
         content_type: crate::util::content_type::ContentType::Flac,
         cloud_path: None,
-        content_hash: None,
+        content_hash: crate::util::fs::hash_bytes(b"fixture"),
         created_at: Utc::now(),
     };
     manager.database.insert_file(&file).await.unwrap();
@@ -3769,7 +3884,33 @@ async fn make_exportable_release(
     manager.coven_make_remote(&release.id, true).await.unwrap();
     let n = manager.drain_uploads_for_test().await.unwrap();
     assert_eq!(n as usize, files.len(), "each release blob uploaded");
+    wait_for_settled_uploads(manager, &release.id).await;
     release.id
+}
+
+/// Wait until a release's make-Remote is fully finished — not just uploaded.
+///
+/// The drain flips the gate, but coven holds each queue entry until the Store
+/// write that publishes the transition activates, a cycle later. A test that
+/// asserts "no upload work outstanding" has to be past that, or it reads the
+/// transition's own leftovers as new work.
+#[cfg(feature = "test-utils")]
+async fn wait_for_settled_uploads(manager: &LibraryManager, release_id: &str) {
+    for tick in 0..2_000 {
+        if tick % 50 == 0 {
+            manager.handle().sync_now();
+        }
+        if !manager
+            .database
+            .has_pending_uploads_for_release(release_id)
+            .await
+            .unwrap()
+        {
+            return;
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+    }
+    panic!("release {release_id} never finished its make-Remote");
 }
 
 #[cfg(feature = "test-utils")]
@@ -3792,9 +3933,9 @@ async fn insert_export_release_rows(
             name,
             bytes.len() as i64,
             crate::util::content_type::ContentType::Flac,
-            format!("{}-export-file-{index}", release.id),
+            bae_test_support::test_uuid(&format!("{}-export-file-{index}", release.id)),
             created_at,
-            Some(crate::util::fs::hash_bytes(bytes)),
+            crate::util::fs::hash_bytes(bytes),
         );
         manager.add_file(&file).await.unwrap();
         inserted_files.push(file);
@@ -3835,10 +3976,9 @@ async fn insert_local_export_release_with_poisoned_fragment(
     manager
         .database
         .register_external_blob(
-            &db_files[0].id,
             crate::sync::RELEASE_FILES_NAMESPACE,
+            &db_files[0].id,
             &source_path,
-            bytes.len() as u64,
         )
         .await
         .unwrap();
@@ -4176,7 +4316,7 @@ async fn export_mid_failure_leaves_no_partial_output_at_final_path() {
             crate::util::content_type::ContentType::Flac,
             Uuid::new_v4().to_string(),
             Utc::now(),
-            Some(crate::util::fs::hash_bytes(bytes)),
+            crate::util::fs::hash_bytes(bytes),
         );
         manager.add_file(&file).await.unwrap();
     }
@@ -4235,21 +4375,26 @@ async fn wait_for(predicate: impl Fn() -> bool) -> bool {
     predicate()
 }
 
+/// Two release ids whose lexical order is fixed, for the `r.id` tiebreaker.
+const TIEBREAK_LO: &str = "066483e0-f9fc-4636-865d-08c069510b2e";
+const TIEBREAK_HI: &str = "2153cb27-8335-4523-ae52-be2d6f577ba3";
+
 #[tokio::test]
 async fn storage_page_id_tiebreaker_stable_across_pages() {
     let (manager, _temp_dir) = setup_test_manager().await;
 
     // Two releases sharing album title + created_at — the ORDER BY clause
-    // falls through to the `r.id` tiebreaker.
+    // falls through to the `r.id` tiebreaker. The ids are canonical UUIDs
+    // (coven takes no other shape on a synced row) chosen so LO sorts first.
     let now = Utc::now();
     let mut album = create_test_album();
     album.title = "Same Title".to_string();
     manager.database.insert_album(&album).await.unwrap();
     let mut release_a = create_test_release(&album.id);
-    release_a.id = "aaaa".to_string();
+    release_a.id = TIEBREAK_LO.to_string();
     release_a.created_at = now;
     let mut release_b = create_test_release(&album.id);
-    release_b.id = "bbbb".to_string();
+    release_b.id = TIEBREAK_HI.to_string();
     release_b.created_at = now;
     manager.database.insert_release(&release_a).await.unwrap();
     manager.database.insert_release(&release_b).await.unwrap();
@@ -4269,8 +4414,8 @@ async fn storage_page_id_tiebreaker_stable_across_pages() {
 
     assert_eq!(first_page.rows.len(), 1);
     assert_eq!(second_page.rows.len(), 1);
-    assert_eq!(first_page.rows[0].release.id, "aaaa");
-    assert_eq!(second_page.rows[0].release.id, "bbbb");
+    assert_eq!(first_page.rows[0].release.id, TIEBREAK_LO);
+    assert_eq!(second_page.rows[0].release.id, TIEBREAK_HI);
 }
 
 // ── set_identity ───────────────────────────────────────────────────
@@ -4747,7 +4892,7 @@ async fn set_identity_to_fresh_album_preserves_album_artists() {
     // Two extra artists so the album carries multiple album_artists
     // rows beyond the primary (which lives on `albums.artist_id`).
     let primary = DbArtist {
-        id: "primary-artist".to_string(),
+        id: "755ab566-9e71-4a7f-88df-fc5f573f882f".to_string(),
         name: "Primary".to_string(),
         sort_name: None,
         discogs_artist_id: None,
@@ -4755,7 +4900,7 @@ async fn set_identity_to_fresh_album_preserves_album_artists() {
         created_at: Utc::now(),
     };
     let secondary = DbArtist {
-        id: "secondary-artist".to_string(),
+        id: "1d4f0221-7e2b-4e87-8376-93eaf8998bd7".to_string(),
         name: "Secondary".to_string(),
         sort_name: None,
         discogs_artist_id: None,
@@ -4857,7 +5002,7 @@ async fn set_identity_to_fresh_album_preserves_album_artists() {
 async fn set_identity_clears_primary_when_it_pointed_at_moved_release() {
     let (manager, _temp_dir) = setup_test_manager().await;
     let now = Utc::now();
-    let beta_track_id = "track-beta".to_string();
+    let beta_track_id = TRACK_BETA.to_string();
 
     // album_a carries two releases on g1 and points
     // primary_release_id at release_alpha. Move release_alpha out.
@@ -5092,7 +5237,7 @@ async fn re_identify_to_unknown_clears_identities_and_moves_album() {
             crate::util::content_type::ContentType::Flac,
             Uuid::new_v4().to_string(),
             now,
-            None,
+            crate::util::fs::hash_bytes(b"fixture"),
         );
         manager.database.insert_file(&file).await.unwrap();
     }
@@ -5615,9 +5760,12 @@ async fn re_identify_to_unknown_reseeds_rows_from_file_tags() {
         .unwrap();
 
     // MB-shaped track rows — distinct from the embedded tags.
-    for (i, (id, title)) in [("t1", "MB Track One"), ("t2", "MB Track Two")]
-        .into_iter()
-        .enumerate()
+    for (i, (id, title)) in [
+        ("08c7ff07-b56a-4e16-8df6-ae2967fa0806", "MB Track One"),
+        ("08c7fe07-b56a-4c63-8df6-ad2967fa0653", "MB Track Two"),
+    ]
+    .into_iter()
+    .enumerate()
     {
         let track = crate::db::DbTrack {
             id: id.to_string(),
@@ -5640,7 +5788,7 @@ async fn re_identify_to_unknown_reseeds_rows_from_file_tags() {
             crate::util::content_type::ContentType::Flac,
             Uuid::new_v4().to_string(),
             now,
-            None,
+            crate::util::fs::hash_bytes(b"fixture"),
         );
         manager.database.insert_file(&file).await.unwrap();
     }
@@ -5704,7 +5852,10 @@ async fn discogs_client_withheld_when_rejected() {
     use crate::config::DiscogsValidation;
     let (manager, _temp_dir) = setup_test_manager_with_library_id("discogs-withheld-test").await;
     manager
-        .set_discogs_key("a-key", DiscogsValidation::Valid)
+        .set_discogs_key(
+            "f7228aaf-52b3-40ea-8526-a7e8aa0bf5da",
+            DiscogsValidation::Valid,
+        )
         .unwrap();
 
     assert!(
@@ -5849,7 +6000,7 @@ async fn aborted_transfer_still_emits_transfer_ended() {
     let driver = manager.clone();
     let handle = tokio::spawn(async move {
         let result = driver
-            .drive_transfer("rel-abort", ReleaseStorageAction::Pin, progress_rx)
+            .drive_transfer(REL_ABORT, ReleaseStorageAction::Pin, progress_rx)
             .await;
         panic!("the parked driver must only exit by abort, returned {result:?}");
     });
@@ -5872,7 +6023,7 @@ async fn aborted_transfer_still_emits_transfer_ended() {
     assert!(
         matches!(
             &event,
-            LibraryEvent::ReleaseTransferEnded { release_id } if release_id == "rel-abort"
+            LibraryEvent::ReleaseTransferEnded { release_id } if release_id == REL_ABORT
         ),
         "the drop guard must emit ReleaseTransferEnded for the aborted release, got {event:?}"
     );
@@ -5884,11 +6035,11 @@ async fn aborted_transfer_still_emits_transfer_ended() {
 async fn seed_two_release_library(manager: &LibraryManager) -> (String, String) {
     use crate::db::DbTrack;
     let mut album = create_test_album();
-    album.id = "alb-1".to_string();
+    album.id = "1250a7bb-41ed-4500-8ab4-04f5d3461e30".to_string();
     let mut rel1 = create_test_release(&album.id);
-    rel1.id = "rel-1".to_string();
+    rel1.id = REL_1.to_string();
     let mut rel2 = create_test_release(&album.id);
-    rel2.id = "rel-2".to_string();
+    rel2.id = REL_2.to_string();
     manager.database.insert_album(&album).await.unwrap();
     manager.database.insert_release(&rel1).await.unwrap();
     manager.database.insert_release(&rel2).await.unwrap();
@@ -5902,10 +6053,10 @@ async fn seed_two_release_library(manager: &LibraryManager) -> (String, String) 
         async move { database.insert_track(&t).await.unwrap() }
     };
     // rel-1: side 1 then side 2; rel-2: two side-1 tracks.
-    track("rel-1", "r1-t1", 1, 1).await;
-    track("rel-1", "r1-t2", 2, 1).await;
-    track("rel-2", "r2-t1", 1, 1).await;
-    track("rel-2", "r2-t2", 1, 2).await;
+    track(REL_1, "48ae00a1-d7a5-443c-8240-f999fc4ddfcc", 1, 1).await;
+    track(REL_1, "48ae03a1-d7a5-4955-8240-fc99fc4de4e5", 2, 1).await;
+    track(REL_2, "cc4180bc-58f5-456f-8116-f9b2099f5b7f", 1, 1).await;
+    track(REL_2, "cc4181bc-58f5-4722-8116-fab2099f5d32", 1, 2).await;
     (rel1.id, rel2.id)
 }
 
@@ -5917,7 +6068,15 @@ async fn test_get_all_track_ids_returns_library_in_base_order() {
     let (manager, _temp_dir) = setup_test_manager().await;
     seed_two_release_library(&manager).await;
     let all = manager.get_all_track_ids().await.unwrap();
-    assert_eq!(all, vec!["r1-t1", "r1-t2", "r2-t1", "r2-t2"]);
+    assert_eq!(
+        all,
+        vec![
+            "48ae00a1-d7a5-443c-8240-f999fc4ddfcc",
+            "48ae03a1-d7a5-4955-8240-fc99fc4de4e5",
+            "cc4180bc-58f5-456f-8116-f9b2099f5b7f",
+            "cc4181bc-58f5-4722-8116-fab2099f5d32"
+        ]
+    );
 }
 
 /// The two track-id queries the service's source dispatcher routes between:
@@ -5929,9 +6088,23 @@ async fn test_release_and_library_track_id_queries_return_their_sets() {
     let (manager, _temp_dir) = setup_test_manager().await;
     let (rel1, _rel2) = seed_two_release_library(&manager).await;
     let release_tracks = manager.get_track_ids(&rel1).await.unwrap();
-    assert_eq!(release_tracks, vec!["r1-t1", "r1-t2"]);
+    assert_eq!(
+        release_tracks,
+        vec![
+            "48ae00a1-d7a5-443c-8240-f999fc4ddfcc",
+            "48ae03a1-d7a5-4955-8240-fc99fc4de4e5"
+        ]
+    );
     let library_tracks = manager.get_all_track_ids().await.unwrap();
-    assert_eq!(library_tracks, vec!["r1-t1", "r1-t2", "r2-t1", "r2-t2"]);
+    assert_eq!(
+        library_tracks,
+        vec![
+            "48ae00a1-d7a5-443c-8240-f999fc4ddfcc",
+            "48ae03a1-d7a5-4955-8240-fc99fc4de4e5",
+            "cc4180bc-58f5-456f-8116-f9b2099f5b7f",
+            "cc4181bc-58f5-4722-8116-fab2099f5d32"
+        ]
+    );
     assert!(release_tracks.iter().all(|t| library_tracks.contains(t)));
 }
 
@@ -5948,7 +6121,7 @@ async fn test_playback_state_source_column_round_trips_both_kinds() {
 
     for source in [
         ContextSource::Library,
-        ContextSource::Release("rel-1".to_string()),
+        ContextSource::Release(REL_1.to_string()),
     ] {
         let row = DbPlaybackState {
             context: Some(DbPlaybackContext {
@@ -6064,7 +6237,7 @@ async fn seed_release_tracks(manager: &LibraryManager, count: usize) -> Vec<Stri
     manager.database.insert_release(&release).await.unwrap();
     let mut track_ids = Vec::with_capacity(count);
     for i in 0..count {
-        let track_id = format!("track-{i}");
+        let track_id = bae_test_support::test_uuid(&format!("track-{i}"));
         let track = crate::db::DbTrack::new_test(
             &release.id,
             &track_id,
@@ -6326,17 +6499,19 @@ async fn cancelling_an_upload_leaves_no_in_flight_import_behind() {
     manager.cancel_release_upload(&release.id).await.unwrap();
 
     assert!(
-        !manager
+        manager
             .database
-            .has_make_remote_intent_for_release(&release.id)
+            .make_remote_progress_for_release(&release.id)
             .await
-            .unwrap(),
+            .unwrap()
+            .is_none(),
         "the cancel clears coven's make-Remote intent"
     );
     assert!(
         manager
             .database
-            .get_pending_cloud_uploads()
+            .handle()
+            .queued_uploads()
             .await
             .unwrap()
             .is_empty(),

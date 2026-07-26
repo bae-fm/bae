@@ -28,12 +28,32 @@ struct ExportFixture {
     _temp: TempDir,
 }
 
-/// The cloud object key coven addresses a release file's blob by. The export
-/// fixture's cloud home is the default opaque home, so the blob is sharded by id
-/// under the `release_files` namespace (Hashed scheme, no readable cloud_path).
-/// Removing the mock cloud at this key matches what coven reads.
-async fn cloud_key(mgr: &LibraryManager, file: &bae_core::db::DbFile) -> String {
-    mgr.resolve_track_cloud_key_for_test(&file.id).await
+/// Remove one release file's cloud object from the mock home.
+///
+/// coven keys an exact object by its locator hash — `release_files/opaque/<hash>`
+/// — so a test cannot name the object from the blob id. Read the blob through
+/// coven once, which records the slot that read touched, remove exactly that
+/// slot, then drop the cache copy the read just populated so the next read has
+/// to go back to the (now empty) cloud.
+async fn remove_cloud_blob(mgr: &LibraryManager, cloud: &InMemoryCloudHome, file_id: &str) {
+    let db = mgr.database_for_test();
+    let blob = db
+        .handle()
+        .row_blob_ref("release_files", file_id)
+        .await
+        .expect("the release_files row");
+    cloud.clear_exact_reads();
+    db.handle()
+        .read_blob(&blob)
+        .await
+        .expect("the blob is readable before it is removed");
+    let slots = cloud.exact_reads();
+    assert_eq!(slots.len(), 1, "one exact read for one blob");
+    cloud.remove_exact_object(&slots[0]);
+    db.handle()
+        .evict_blob(&blob)
+        .await
+        .expect("drop the cache copy the probe read populated");
 }
 
 impl ExportFixture {
@@ -392,7 +412,7 @@ async fn export_release_missing_blob_is_hard_error() {
 
     // Blow away the seeded blob.
     let files = f.mgr.get_files_for_release(&release_id).await.unwrap();
-    f.cloud.remove(&cloud_key(&f.mgr, &files[0]).await);
+    remove_cloud_blob(&f.mgr, &f.cloud, &files[0].id).await;
 
     let target = f.temp_path().join("export-target");
     fs::create_dir_all(&target).unwrap();

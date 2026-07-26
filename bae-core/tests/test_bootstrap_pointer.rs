@@ -21,7 +21,15 @@ use uuid::Uuid;
 
 /// A valid 32-byte encryption key in hex, used to compute a fixture's stored
 /// fingerprint.
-const KEY_HEX: &str = "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f";
+/// The stored master key is coven's keyring format (every generation), not a
+/// bare hex key — that is what `unlock_library` validates and stores.
+fn stored_key() -> String {
+    coven::MasterKeyring::from(coven::EncryptionService::from_key([
+        0u8, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24,
+        25, 26, 27, 28, 29, 30, 31,
+    ]))
+    .to_serialized()
+}
 
 /// A `TempDir` standing in for the user's home directory, with the env isolated
 /// so no ambient dev secret un-locks a fixture. Bind it for the whole test — the
@@ -72,7 +80,7 @@ fn write_library(home: &Path, name: &str, configure: impl FnOnce(&mut Config)) -
 fn mark_encryption_locked(config: &mut Config) {
     config.encryption_key_stored = true;
     config.encryption_key_fingerprint =
-        Some(EncryptionService::new(KEY_HEX).unwrap().fingerprint());
+        Some(EncryptionService::new(&stored_key()).unwrap().fingerprint());
 }
 
 /// A fixture library that presents as locked on this device: the config records
@@ -288,11 +296,11 @@ fn unlock_then_reopen_advances_active_pointer() {
     assert_eq!(active_pointer().as_deref(), Some(a_id.as_str()));
     drop(locked);
 
-    // Phase 2: unlock B (validates KEY_HEX against the stored fingerprint and
+    // Phase 2: unlock B (validates the stored key against the fingerprint and
     // saves it to the keyring), then reopen the same store: the key is now
     // present, so the open fully realizes — encryption resolves and the pointer
     // advances from A to B.
-    unlock_library(&b_id, KEY_HEX).expect("unlock B");
+    unlock_library(&b_id, &stored_key()).expect("unlock B");
     let unlocked = bootstrap(
         b_id.clone(),
         200,

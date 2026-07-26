@@ -223,13 +223,13 @@
 
         static let deleteOps: [BridgeDeleteOp] = [
             BridgeDeleteOp(
-                id: 1,
-                cloudKey: "releases/rel-old-1/01 Track Title.flac",
+                namespace: "release_files",
+                blobId: "8b1f0f2e-2a52-45b2-9d19-3c0a1e6b4d77",
                 createdAt: queuedAt(minutesAgo: 2)
             ),
             BridgeDeleteOp(
-                id: 2,
-                cloudKey: "releases/rel-old-1/cover.jpg",
+                namespace: "covers",
+                blobId: "c4a7d3f1-6e88-4b90-8a02-5f1de9c3b210",
                 createdAt: queuedAt(minutesAgo: 6)
             ),
         ]

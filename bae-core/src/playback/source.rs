@@ -331,11 +331,14 @@ mod tests {
         sink2.mark_finished();
 
         let (mut audio_tx, mut audio_rx) = audio_event_channel();
-        let mut source = PlaybackSource::new(src1, fmt("t1"));
-        source.stage_next(src2, fmt("t2"));
+        let mut source = PlaybackSource::new(src1, fmt("08c7ff07-b56a-4e16-8df6-ae2967fa0806"));
+        source.stage_next(src2, fmt("08c7fe07-b56a-4c63-8df6-ad2967fa0653"));
         assert!(source.has_next());
         assert!(!source.is_finished());
-        assert_eq!(source.position_event().0.track_id, "t1");
+        assert_eq!(
+            source.position_event().0.track_id,
+            "08c7ff07-b56a-4e16-8df6-ae2967fa0806"
+        );
 
         // One pull spans the boundary: track 1 then track 2, contiguous.
         let mut out = [0.0f32; 8];
@@ -349,14 +352,23 @@ mod tests {
             AudioEvent::TrackCrossing(crossing) => crossing,
             event => panic!("expected crossing event, got {event:?}"),
         };
-        assert_eq!(crossing.finished_fmt.track_id, "t1");
-        assert_eq!(crossing.incoming_fmt.track_id, "t2");
+        assert_eq!(
+            crossing.finished_fmt.track_id,
+            "08c7ff07-b56a-4e16-8df6-ae2967fa0806"
+        );
+        assert_eq!(
+            crossing.incoming_fmt.track_id,
+            "08c7fe07-b56a-4c63-8df6-ad2967fa0653"
+        );
         assert_eq!(crossing.decode_error_count, 7);
         assert_eq!(crossing.samples_decoded, 3);
         assert!(audio_rx.pop().is_none());
 
         // After the crossing the fmt advanced to the new track.
-        assert_eq!(source.position_event().0.track_id, "t2");
+        assert_eq!(
+            source.position_event().0.track_id,
+            "08c7fe07-b56a-4c63-8df6-ad2967fa0653"
+        );
 
         // Successor consumed; with both tracks drained the source is finished.
         assert!(!source.has_next());
@@ -372,7 +384,7 @@ mod tests {
         sink.mark_finished();
 
         let (mut audio_tx, mut audio_rx) = audio_event_channel();
-        let mut source = PlaybackSource::new(src, fmt("t1"));
+        let mut source = PlaybackSource::new(src, fmt("08c7ff07-b56a-4e16-8df6-ae2967fa0806"));
 
         let mut out = [0.0f32; 8];
         assert_eq!(source.pull_samples(&mut out, &mut audio_tx), 2);
@@ -397,12 +409,12 @@ mod tests {
         sink2.mark_finished();
 
         let (mut audio_tx, mut audio_rx) = audio_event_channel();
-        let mut source = PlaybackSource::new(src1, fmt("t1"));
-        source.stage_next(src2, fmt("t2"));
+        let mut source = PlaybackSource::new(src1, fmt("08c7ff07-b56a-4e16-8df6-ae2967fa0806"));
+        source.stage_next(src2, fmt("08c7fe07-b56a-4c63-8df6-ad2967fa0653"));
         let taken = source.take_next();
         assert!(taken.is_some());
         let (_taken_src, taken_fmt) = taken.unwrap();
-        assert_eq!(taken_fmt.track_id, "t2");
+        assert_eq!(taken_fmt.track_id, "08c7fe07-b56a-4c63-8df6-ad2967fa0653");
         assert!(!source.has_next());
 
         let mut out = [0.0f32; 8];
@@ -425,8 +437,9 @@ mod tests {
         sink2.mark_finished();
 
         let (mut audio_tx, _audio_rx) = audio_event_channel();
-        let mut source = PlaybackSource::new(src1, fmt_gain("t1", 0.5));
-        source.stage_next(src2, fmt_gain("t2", 2.0));
+        let mut source =
+            PlaybackSource::new(src1, fmt_gain("08c7ff07-b56a-4e16-8df6-ae2967fa0806", 0.5));
+        source.stage_next(src2, fmt_gain("08c7fe07-b56a-4c63-8df6-ad2967fa0653", 2.0));
 
         // Before the crossing the callback reads the current track's gain.
         assert_eq!(source.current_replay_gain_linear(), 0.5);
@@ -448,8 +461,8 @@ mod tests {
         let (sink1, src1, _r1) = create_track_stream_pair(44100, 1);
         let (sink2, src2, _r2) = create_track_stream_pair(44100, 1);
 
-        let mut source = PlaybackSource::new(src1, fmt("t1"));
-        source.stage_next(src2, fmt("t2"));
+        let mut source = PlaybackSource::new(src1, fmt("08c7ff07-b56a-4e16-8df6-ae2967fa0806"));
+        source.stage_next(src2, fmt("08c7fe07-b56a-4c63-8df6-ad2967fa0653"));
 
         assert!(!sink1.is_cancelled());
         assert!(!sink2.is_cancelled());
@@ -475,10 +488,10 @@ mod tests {
         sink2.mark_finished();
 
         let (mut audio_tx, _audio_rx) = audio_event_channel();
-        let mut source = PlaybackSource::new(src1, fmt("t1"));
+        let mut source = PlaybackSource::new(src1, fmt("08c7ff07-b56a-4e16-8df6-ae2967fa0806"));
         source.stage_next(staged_src, fmt("staged"));
 
-        source.replace(src2, fmt("t2"));
+        source.replace(src2, fmt("08c7fe07-b56a-4c63-8df6-ad2967fa0653"));
 
         // The outgoing and staged decoders are cancelled; the replacement is not.
         assert!(sink1.is_cancelled(), "the outgoing track is cancelled");
@@ -487,7 +500,10 @@ mod tests {
         assert!(!source.has_next(), "the staged next is cleared");
 
         // The callback now reads the replacement track's samples and fmt.
-        assert_eq!(source.position_event().0.track_id, "t2");
+        assert_eq!(
+            source.position_event().0.track_id,
+            "08c7fe07-b56a-4c63-8df6-ad2967fa0653"
+        );
         let mut out = [0.0f32; 8];
         assert_eq!(source.pull_samples(&mut out, &mut audio_tx), 2);
         assert_eq!(&out[..2], &[9.0, 8.0]);
@@ -505,7 +521,7 @@ mod tests {
         sink1.mark_finished();
 
         let (mut audio_tx, _audio_rx) = audio_event_channel();
-        let mut source = PlaybackSource::new(src1, fmt("t1"));
+        let mut source = PlaybackSource::new(src1, fmt("08c7ff07-b56a-4e16-8df6-ae2967fa0806"));
 
         // Drain track 1.
         let mut out = [0.0f32; 8];
@@ -528,7 +544,7 @@ mod tests {
         let (mut sink2, src2, _r2) = create_track_stream_pair(44100, 1);
         assert_eq!(sink2.push_samples(&[2.0]), 1);
         sink2.mark_finished();
-        source.replace(src2, fmt("t2"));
+        source.replace(src2, fmt("08c7fe07-b56a-4c63-8df6-ad2967fa0653"));
 
         let mut out = [0.0f32; 8];
         assert_eq!(source.pull_samples(&mut out, &mut audio_tx), 1);
@@ -536,7 +552,7 @@ mod tests {
         let event = source
             .take_completion_event()
             .expect("track 2's completion is reported after replace");
-        assert_eq!(event.0.track_id, "t2");
+        assert_eq!(event.0.track_id, "08c7fe07-b56a-4c63-8df6-ad2967fa0653");
         assert!(
             source.take_completion_event().is_none(),
             "track 2's completion is not reported twice either"

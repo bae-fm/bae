@@ -1496,7 +1496,7 @@ async fn successful_reimport_replaces_prior_release_once() {
         "one release should carry the re-imported content hash"
     );
     assert_eq!(
-        f.db.get_pending_cloud_deletes().await.unwrap().len(),
+        f.db.handle().queued_deletes().await.unwrap().len(),
         1,
         "replacing the prior remote release should queue its cloud blob for deletion"
     );
@@ -1585,8 +1585,7 @@ async fn remote_transition_failure_rolls_back_finalized_release() {
     // import.
     let (release_count, album_count, artist_count): (i64, i64, i64) =
         f.db.handle()
-            .sql(|sql| {
-                let conn = sql.tx();
+            .sql_read(|conn| {
                 Ok::<_, coven::CovenError>((
                     conn.query_row("SELECT COUNT(*) FROM releases", [], |row| row.get(0))?,
                     conn.query_row("SELECT COUNT(*) FROM albums", [], |row| row.get(0))?,
@@ -1609,6 +1608,13 @@ async fn remote_transition_failure_rolls_back_finalized_release() {
         "the prior release is untouched by the failed remote import",
     );
 }
+
+/// The MusicBrainz work MBIDs the rollback test seeds. A real MBID is a UUID,
+/// and coven takes nothing else on a synced row, so these are the shape they
+/// would have in production.
+const MB_WORK_SHARED: &str = "8f0a1c2d-3e4b-4a5c-9d6e-7f8091a2b3c4";
+const MB_WORK_EXCLUSIVE: &str = "1b2c3d4e-5f60-4718-8293-a4b5c6d7e8f9";
+const MB_WORK_PART: &str = "2c3d4e5f-6071-4829-93a4-b5c6d7e8f901";
 
 /// An MbWork with a composer relation and, optionally, one child part.
 fn work_with_composer(id: &str, title: &str, composer_mb: &str, part: Option<MbWork>) -> MbWork {
@@ -1724,7 +1730,7 @@ async fn remote_transition_failure_rolls_back_finalized_works() {
         vec![mb_track_performing(
             1,
             "Prior Movement",
-            work_with_composer("mb-work-shared", "Shared Work", "composer-shared", None),
+            work_with_composer(MB_WORK_SHARED, "Shared Work", "composer-shared", None),
         )],
     );
     let prior_dir = f.temp_path().join("prior");
@@ -1753,17 +1759,17 @@ async fn remote_transition_failure_rolls_back_finalized_works() {
             mb_track_performing(
                 1,
                 "Remote Movement One",
-                work_with_composer("mb-work-shared", "Shared Work", "composer-shared", None),
+                work_with_composer(MB_WORK_SHARED, "Shared Work", "composer-shared", None),
             ),
             mb_track_performing(
                 2,
                 "Remote Movement Two",
                 work_with_composer(
-                    "mb-work-exclusive",
+                    MB_WORK_EXCLUSIVE,
                     "Exclusive Work",
                     "composer-exclusive",
                     Some(MbWork {
-                        id: "mb-work-part".to_string(),
+                        id: MB_WORK_PART.to_string(),
                         title: "Exclusive Part".to_string(),
                         disambiguation: None,
                         work_type: Some("part".to_string()),
@@ -1811,15 +1817,16 @@ async fn remote_transition_failure_rolls_back_finalized_works() {
         orphan_work_artists,
     ): (bool, bool, bool, i64, bool, bool, i64) =
         f.db.handle()
-            .sql(|sql| {
-                let conn = sql.tx();
+            .sql_read(|conn| {
                 let exists = |q: &str| -> coven::rusqlite::Result<bool> {
                     Ok(conn.query_row(q, [], |r| r.get::<_, i64>(0))? > 0)
                 };
                 Ok::<_, coven::CovenError>((
-                exists("SELECT COUNT(*) FROM works WHERE id = 'mb-work-shared'")?,
-                exists("SELECT COUNT(*) FROM works WHERE id = 'mb-work-exclusive'")?,
-                exists("SELECT COUNT(*) FROM works WHERE id = 'mb-work-part'")?,
+                exists(&format!("SELECT COUNT(*) FROM works WHERE id = '{MB_WORK_SHARED}'"))?,
+                exists(&format!(
+                    "SELECT COUNT(*) FROM works WHERE id = '{MB_WORK_EXCLUSIVE}'"
+                ))?,
+                exists(&format!("SELECT COUNT(*) FROM works WHERE id = '{MB_WORK_PART}'"))?,
                 conn.query_row("SELECT COUNT(*) FROM work_parts", [], |r| r.get(0))?,
                 exists(
                     "SELECT COUNT(*) FROM artists WHERE musicbrainz_artist_id = 'composer-shared'",
@@ -1885,8 +1892,8 @@ async fn assert_cover_row_describes_stored_bytes(f: &ImportFixture, release_id: 
         .await
         .expect("cover blob readable");
     assert_eq!(
-        cover.content_hash.as_deref(),
-        Some(bae_core::util::fs::hash_bytes(&bytes).as_str()),
+        cover.content_hash.as_str(),
+        bae_core::util::fs::hash_bytes(&bytes).as_str(),
         "the covers row's hash must be the hash of the stored blob",
     );
     assert_eq!(

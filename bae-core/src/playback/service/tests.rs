@@ -74,6 +74,15 @@ impl AudioOutput for TestAudioOutput {
     }
 }
 
+/// Track ids for the fixtures that insert real `tracks` rows. coven requires a
+/// canonical UUID on every synced-table row, so a seeded track cannot be named
+/// `"t"`; the short names elsewhere in this file are in-memory playback ids that
+/// never reach the database.
+const TRACK_T: &str = "3e747c7f-879c-44a2-ae1e-9767a8d76b15";
+const TRACK_A: &str = "bb035a79-2d3b-4ba0-ac99-121564ea97d2";
+const TRACK_B: &str = "36a9322d-0c07-4223-9c0b-2110a1fdc622";
+const TRACK_T2B: &str = "b98ba0de-5eb5-4c15-a20f-b5df519ed969";
+
 /// Insert each `(release_id, track_ids)` as album + release + track rows so
 /// `get_track_ids` returns each release's tracks in the given order. Tracks are
 /// numbered in slice order (the query orders by `side, track_number, id`).
@@ -83,7 +92,7 @@ async fn seed_test_releases(database: &crate::db::Database, releases: &[(&str, &
         return;
     }
     let artist = DbArtist {
-        id: "test-artist-id".to_string(),
+        id: bae_test_support::test_uuid("e36744a5-1a36-460f-891c-e7e558034edf"),
         name: "Artist Name".to_string(),
         sort_name: None,
         discogs_artist_id: None,
@@ -1179,34 +1188,84 @@ fn generated_pregap_samples_clamps_negative_millisecond_value() {
 /// releases were chosen, and reports the releases that contributed as the source.
 #[tokio::test]
 async fn play_releases_concatenates_tracks_in_input_order() {
-    let (_home, service, _rx) =
-        seeded_playback_service(&[("rel-1", &["t1a", "t1b"]), ("rel-2", &["t2a"])]).await;
+    let (_home, service, _rx) = seeded_playback_service(&[
+        (
+            "e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e",
+            &[
+                "5634d119-43be-4435-8432-575baddc4705",
+                "5634ce19-43be-4f1c-8432-545baddc41ec",
+            ],
+        ),
+        (
+            "e6cdc0f3-3a7b-458b-86aa-fd093cc5e79b",
+            &["5630a919-43ba-4766-842e-6f5badd886f6"],
+        ),
+    ])
+    .await;
 
     let (playable, tracks) = service
-        .load_release_set_tracks(vec!["rel-2".to_string(), "rel-1".to_string()])
+        .load_release_set_tracks(vec![
+            "e6cdc0f3-3a7b-458b-86aa-fd093cc5e79b".to_string(),
+            "e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e".to_string(),
+        ])
         .await;
 
-    assert_eq!(playable, vec!["rel-2", "rel-1"]);
-    assert_eq!(tracks, vec!["t2a", "t1a", "t1b"]);
+    assert_eq!(
+        playable,
+        vec![
+            "e6cdc0f3-3a7b-458b-86aa-fd093cc5e79b",
+            "e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e"
+        ]
+    );
+    assert_eq!(
+        tracks,
+        vec![
+            "5630a919-43ba-4766-842e-6f5badd886f6",
+            "5634d119-43be-4435-8432-575baddc4705",
+            "5634ce19-43be-4f1c-8432-545baddc41ec"
+        ]
+    );
 }
 
 /// A release with no tracks (deleted, or never existed) is skipped; the remaining
 /// releases still play in order.
 #[tokio::test]
 async fn play_releases_skips_a_release_without_tracks() {
-    let (_home, service, _rx) =
-        seeded_playback_service(&[("rel-1", &["t1a"]), ("rel-2", &["t2a", "t2b"])]).await;
+    let (_home, service, _rx) = seeded_playback_service(&[
+        (
+            "e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e",
+            &["5634d119-43be-4435-8432-575baddc4705"],
+        ),
+        (
+            "e6cdc0f3-3a7b-458b-86aa-fd093cc5e79b",
+            &["5630a919-43ba-4766-842e-6f5badd886f6", TRACK_T2B],
+        ),
+    ])
+    .await;
 
     let (playable, tracks) = service
         .load_release_set_tracks(vec![
-            "rel-1".to_string(),
+            "e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e".to_string(),
             "rel-gone".to_string(),
-            "rel-2".to_string(),
+            "e6cdc0f3-3a7b-458b-86aa-fd093cc5e79b".to_string(),
         ])
         .await;
 
-    assert_eq!(playable, vec!["rel-1", "rel-2"]);
-    assert_eq!(tracks, vec!["t1a", "t2a", "t2b"]);
+    assert_eq!(
+        playable,
+        vec![
+            "e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e",
+            "e6cdc0f3-3a7b-458b-86aa-fd093cc5e79b"
+        ]
+    );
+    assert_eq!(
+        tracks,
+        vec![
+            "5634d119-43be-4435-8432-575baddc4705",
+            "5630a919-43ba-4766-842e-6f5badd886f6",
+            TRACK_T2B
+        ]
+    );
 }
 
 /// The shuffle/restore re-fetch of a multi-release source concatenates each
@@ -1214,13 +1273,35 @@ async fn play_releases_skips_a_release_without_tracks() {
 /// built, so a shuffle toggle re-derives over the whole multi-album order.
 #[tokio::test]
 async fn fetch_source_tracks_concatenates_a_releases_source() {
-    let (_home, service, _rx) =
-        seeded_playback_service(&[("rel-1", &["t1a", "t1b"]), ("rel-2", &["t2a"])]).await;
+    let (_home, service, _rx) = seeded_playback_service(&[
+        (
+            "e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e",
+            &[
+                "5634d119-43be-4435-8432-575baddc4705",
+                "5634ce19-43be-4f1c-8432-545baddc41ec",
+            ],
+        ),
+        (
+            "e6cdc0f3-3a7b-458b-86aa-fd093cc5e79b",
+            &["5630a919-43ba-4766-842e-6f5badd886f6"],
+        ),
+    ])
+    .await;
 
-    let source = ContextSource::Releases(vec!["rel-1".to_string(), "rel-2".to_string()]);
+    let source = ContextSource::Releases(vec![
+        "e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e".to_string(),
+        "e6cdc0f3-3a7b-458b-86aa-fd093cc5e79b".to_string(),
+    ]);
     let tracks = service.fetch_source_tracks(&source).await.unwrap();
 
-    assert_eq!(tracks, vec!["t1a", "t1b", "t2a"]);
+    assert_eq!(
+        tracks,
+        vec![
+            "5634d119-43be-4435-8432-575baddc4705",
+            "5634ce19-43be-4f1c-8432-545baddc41ec",
+            "5630a919-43ba-4766-842e-6f5badd886f6"
+        ]
+    );
 }
 
 /// A `Play` whose context load fails (here: the track doesn't exist) must
@@ -1289,7 +1370,12 @@ async fn attach_track_reuses_stream_on_same_format_and_rebuilds_on_change() {
     // First attach: nothing is attached yet, so it builds the stream.
     let (_s1, ts1, _r1) = create_track_stream_pair(44_100, 2);
     service
-        .attach_track(ts1, test_track_fmt("t1"), 44_100, 2)
+        .attach_track(
+            ts1,
+            test_track_fmt("08c7ff07-b56a-4e16-8df6-ae2967fa0806"),
+            44_100,
+            2,
+        )
         .await
         .expect("the first attach builds a stream");
     assert_eq!(
@@ -1306,7 +1392,12 @@ async fn attach_track_reuses_stream_on_same_format_and_rebuilds_on_change() {
     // Same format: swap in place, no rebuild.
     let (_s2, ts2, _r2) = create_track_stream_pair(44_100, 2);
     service
-        .attach_track(ts2, test_track_fmt("t2"), 44_100, 2)
+        .attach_track(
+            ts2,
+            test_track_fmt("08c7fe07-b56a-4c63-8df6-ad2967fa0653"),
+            44_100,
+            2,
+        )
         .await
         .expect("a same-format attach replaces in place");
     assert_eq!(
@@ -1360,7 +1451,12 @@ async fn output_device_changed_rebuilds_over_the_same_source() {
     // Attach a track so there's a live output stream to move.
     let (_s1, ts1, _r1) = create_track_stream_pair(44_100, 2);
     service
-        .attach_track(ts1, test_track_fmt("t1"), 44_100, 2)
+        .attach_track(
+            ts1,
+            test_track_fmt("08c7ff07-b56a-4e16-8df6-ae2967fa0806"),
+            44_100,
+            2,
+        )
         .await
         .expect("the first attach builds a stream");
     assert_eq!(builds.load(Ordering::Relaxed), 1, "one build so far");
@@ -1502,7 +1598,12 @@ async fn format_change_rebuild_cancels_the_old_source_so_its_decoder_exits() {
     // output's source.
     let (_new_sink, new_stream, _new_ready) = create_track_stream_pair(96_000, 2);
     service
-        .attach_track(new_stream, test_track_fmt("t2"), 96_000, 2)
+        .attach_track(
+            new_stream,
+            test_track_fmt("08c7fe07-b56a-4c63-8df6-ad2967fa0653"),
+            96_000,
+            2,
+        )
         .await
         .expect("the format-change attach rebuilds the stream");
 
@@ -1654,7 +1755,13 @@ async fn auto_advance_ignores_a_matching_track_that_is_no_longer_completed() {
 async fn a_play_command_ships_playback_command_started_and_track_started() {
     let (diagnostics, transport) = recording_diagnostics();
     let (_home, manager) = seeded_library_manager_with_diagnostics(
-        &[("release-under-test", &["t0", "t1"])],
+        &[(
+            "c61a9e19-f3ba-4728-842c-c59dbc82e238",
+            &[
+                "08c80007-b56a-4fc9-8df6-af2967fa09b9",
+                "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
+            ],
+        )],
         diagnostics.clone(),
     )
     .await;
@@ -1663,7 +1770,10 @@ async fn a_play_command_ships_playback_command_started_and_track_started() {
     // Queue the play command and a shutdown, then let the real loop drain both:
     // it emits the command telemetry, runs the play, then breaks on shutdown.
     let commands = service.command_tx.clone();
-    dispatch_command(&commands, PlaybackCommand::Play("t0".to_string()));
+    dispatch_command(
+        &commands,
+        PlaybackCommand::Play("08c80007-b56a-4fc9-8df6-af2967fa09b9".to_string()),
+    );
     let (shutdown_tx, _shutdown_rx) = tokio::sync::oneshot::channel::<()>();
     dispatch_command(&commands, PlaybackCommand::Shutdown(shutdown_tx));
     service.run().await;
@@ -1693,7 +1803,13 @@ async fn a_play_command_ships_playback_command_started_and_track_started() {
 async fn previous_ships_track_started() {
     let (diagnostics, transport) = recording_diagnostics();
     let (_home, manager) = seeded_library_manager_with_diagnostics(
-        &[("release-under-test", &["t0", "t1"])],
+        &[(
+            "c61a9e19-f3ba-4728-842c-c59dbc82e238",
+            &[
+                "08c80007-b56a-4fc9-8df6-af2967fa09b9",
+                "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
+            ],
+        )],
         diagnostics.clone(),
     )
     .await;
@@ -1701,12 +1817,18 @@ async fn previous_ships_track_started() {
 
     // A two-track context playing from t1, so Previous steps back to t0.
     service.playback_queue.play_release(
-        ContextSource::Release("release-under-test".to_string()),
-        vec!["t0".to_string(), "t1".to_string()],
+        ContextSource::Release("c61a9e19-f3ba-4728-842c-c59dbc82e238".to_string()),
+        vec![
+            "08c80007-b56a-4fc9-8df6-af2967fa09b9".to_string(),
+            "08c7ff07-b56a-4e16-8df6-ae2967fa0806".to_string(),
+        ],
         ContextStart::Index(1),
     );
     let buffer = create_sparse_buffer(1_024);
-    service.slot = active_slot(test_prepared_track("t1", buffer), TrackPhase::Playing);
+    service.slot = active_slot(
+        test_prepared_track("08c7ff07-b56a-4e16-8df6-ae2967fa0806", buffer),
+        TrackPhase::Playing,
+    );
 
     service.handle_previous().await;
 
@@ -1724,7 +1846,9 @@ async fn previous_ships_track_started() {
 fn playback_command_kind_maps_user_intent_only() {
     use super::playback_command_kind;
     assert!(matches!(
-        playback_command_kind(&PlaybackCommand::Play("t0".to_string())),
+        playback_command_kind(&PlaybackCommand::Play(
+            "08c80007-b56a-4fc9-8df6-af2967fa09b9".to_string()
+        )),
         Some(PlaybackCommandKind::Play)
     ));
     assert!(matches!(
@@ -1734,7 +1858,7 @@ fn playback_command_kind_maps_user_intent_only() {
     // A continuous input and an internal command ship nothing.
     assert!(playback_command_kind(&PlaybackCommand::SetVolume(0.5)).is_none());
     assert!(playback_command_kind(&PlaybackCommand::AutoAdvance {
-        track_id: "t0".to_string()
+        track_id: "08c80007-b56a-4fc9-8df6-af2967fa09b9".to_string()
     })
     .is_none());
 }
@@ -1745,7 +1869,10 @@ fn playback_command_kind_maps_user_intent_only() {
 async fn track_completion_ships_track_completed_with_decode_error_count() {
     let (diagnostics, transport) = recording_diagnostics();
     let (_home, manager) = seeded_library_manager_with_diagnostics(
-        &[("release-under-test", &["t0"])],
+        &[(
+            "c61a9e19-f3ba-4728-842c-c59dbc82e238",
+            &["08c80007-b56a-4fc9-8df6-af2967fa09b9"],
+        )],
         diagnostics.clone(),
     )
     .await;
@@ -1753,9 +1880,16 @@ async fn track_completion_ships_track_completed_with_decode_error_count() {
 
     // A track must be active for the completion to mark its phase.
     let buffer = create_sparse_buffer(1_024);
-    service.slot = active_slot(test_prepared_track("t0", buffer), TrackPhase::Playing);
+    service.slot = active_slot(
+        test_prepared_track("08c80007-b56a-4fc9-8df6-af2967fa09b9", buffer),
+        TrackPhase::Playing,
+    );
 
-    service.handle_completion_event(Arc::new(test_track_fmt("t0")), 2, 44_100);
+    service.handle_completion_event(
+        Arc::new(test_track_fmt("08c80007-b56a-4fc9-8df6-af2967fa09b9")),
+        2,
+        44_100,
+    );
 
     diagnostics.flush().await.expect("flush succeeds");
     let bodies = transport.requests();
@@ -1770,7 +1904,10 @@ async fn track_completion_ships_track_completed_with_decode_error_count() {
         .find(|e| e.name == "track_completed")
         .expect("track completion ships track_completed");
     assert_eq!(completed.fields["decode_errors"], serde_json::json!(2));
-    assert_eq!(completed.fields["track_id"], serde_json::json!("t0"));
+    assert_eq!(
+        completed.fields["track_id"],
+        serde_json::json!("08c80007-b56a-4fc9-8df6-af2967fa09b9")
+    );
 }
 
 /// A corrupt resume row, driven through the real restore path, ships
@@ -1781,7 +1918,10 @@ async fn track_completion_ships_track_completed_with_decode_error_count() {
 async fn corrupt_resume_row_ships_resume_cache_corrupt_anomaly() {
     let (diagnostics, transport) = recording_diagnostics();
     let (_home, manager) = seeded_library_manager_with_diagnostics(
-        &[("release-under-test", &["t0"])],
+        &[(
+            "c61a9e19-f3ba-4728-842c-c59dbc82e238",
+            &["08c80007-b56a-4fc9-8df6-af2967fa09b9"],
+        )],
         diagnostics.clone(),
     )
     .await;
@@ -1792,7 +1932,7 @@ async fn corrupt_resume_row_ships_resume_cache_corrupt_anomaly() {
             context: None,
             manual: "[]".to_string(),
             repeat: "off".to_string(),
-            current_track_id: Some("t0".to_string()),
+            current_track_id: Some("08c80007-b56a-4fc9-8df6-af2967fa09b9".to_string()),
             position_ms: Some(-1),
             volume: 1.0,
             is_muted: false,
@@ -1909,7 +2049,7 @@ async fn seed_playable_track(database: &crate::db::Database, release_id: &str, t
     use crate::db::{DbAudioFormat, DbAudioSegment, DbAudioSegmentRole, DbFile};
     use crate::util::content_type::ContentType;
     let now = chrono::Utc::now();
-    let file_id = format!("{track_id}-file");
+    let file_id = bae_test_support::test_uuid(&format!("{track_id}-file"));
     let file = DbFile::new(
         release_id,
         "track.flac",
@@ -1917,10 +2057,10 @@ async fn seed_playable_track(database: &crate::db::Database, release_id: &str, t
         ContentType::Flac,
         file_id.clone(),
         now,
-        None,
+        crate::util::fs::hash_bytes(b"fixture"),
     );
     database.insert_file(&file).await.unwrap();
-    let audio_format_id = format!("{track_id}-af");
+    let audio_format_id = bae_test_support::test_uuid(&format!("{track_id}-af"));
     let audio_format = DbAudioFormat::new(
         track_id,
         ContentType::Flac,
@@ -1931,7 +2071,7 @@ async fn seed_playable_track(database: &crate::db::Database, release_id: &str, t
         now,
     );
     let segment = DbAudioSegment {
-        id: format!("{track_id}-seg"),
+        id: bae_test_support::test_uuid(&format!("{track_id}-seg")),
         audio_format_id,
         segment_index: 0,
         role: DbAudioSegmentRole::Main,
@@ -1986,14 +2126,27 @@ fn remote_connect(channel: FakeRendererChannel) -> RemoteConnect {
 /// current position (a LOAD plus a seek).
 #[tokio::test]
 async fn play_on_reissues_current_track_at_position() {
-    let (_home, mut service, _rx) = remote_service(&[("rel-1", &["t1", "t2"])]).await;
+    let (_home, mut service, _rx) = remote_service(&[(
+        "e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e",
+        &[
+            "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
+            "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
+        ],
+    )])
+    .await;
     service.playback_queue.play_release(
-        ContextSource::Release("rel-1".to_string()),
-        vec!["t1".to_string(), "t2".to_string()],
+        ContextSource::Release("e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e".to_string()),
+        vec![
+            "08c7ff07-b56a-4e16-8df6-ae2967fa0806".to_string(),
+            "08c7fe07-b56a-4c63-8df6-ad2967fa0653".to_string(),
+        ],
         ContextStart::Index(0),
     );
     let buffer = create_sparse_buffer(1_024);
-    service.slot = active_slot(test_prepared_track("t1", buffer), TrackPhase::Playing);
+    service.slot = active_slot(
+        test_prepared_track("08c7ff07-b56a-4e16-8df6-ae2967fa0806", buffer),
+        TrackPhase::Playing,
+    );
     *service.current_position_shared.lock().unwrap() = Some(std::time::Duration::from_secs(30));
 
     let channel = FakeRendererChannel::new();
@@ -2006,7 +2159,7 @@ async fn play_on_reissues_current_track_at_position() {
     );
     assert_eq!(
         service.slot.current_track_id(),
-        Some("t1"),
+        Some("08c7ff07-b56a-4e16-8df6-ae2967fa0806"),
         "the current track is unchanged"
     );
     assert!(
@@ -2018,7 +2171,7 @@ async fn play_on_reissues_current_track_at_position() {
     );
     assert_eq!(
         state.lock().unwrap().loads[0].url,
-        "http://renderer.local/stream?id=t1"
+        "http://renderer.local/stream?id=08c7ff07-b56a-4e16-8df6-ae2967fa0806"
     );
 }
 
@@ -2026,14 +2179,27 @@ async fn play_on_reissues_current_track_at_position() {
 /// loads it onto the device — the same advance path local end-of-track uses.
 #[tokio::test]
 async fn remote_finished_advances_queue_and_loads_next() {
-    let (_home, mut service, _rx) = remote_service(&[("rel-1", &["t1", "t2"])]).await;
+    let (_home, mut service, _rx) = remote_service(&[(
+        "e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e",
+        &[
+            "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
+            "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
+        ],
+    )])
+    .await;
     service.playback_queue.play_release(
-        ContextSource::Release("rel-1".to_string()),
-        vec!["t1".to_string(), "t2".to_string()],
+        ContextSource::Release("e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e".to_string()),
+        vec![
+            "08c7ff07-b56a-4e16-8df6-ae2967fa0806".to_string(),
+            "08c7fe07-b56a-4c63-8df6-ad2967fa0653".to_string(),
+        ],
         ContextStart::Index(0),
     );
     let buffer = create_sparse_buffer(1_024);
-    service.slot = active_slot(test_prepared_track("t1", buffer), TrackPhase::Playing);
+    service.slot = active_slot(
+        test_prepared_track("08c7ff07-b56a-4e16-8df6-ae2967fa0806", buffer),
+        TrackPhase::Playing,
+    );
     *service.current_position_shared.lock().unwrap() = Some(std::time::Duration::ZERO);
 
     let channel = FakeRendererChannel::new();
@@ -2053,16 +2219,13 @@ async fn remote_finished_advances_queue_and_loads_next() {
 
     assert_eq!(
         service.slot.current_track_id(),
-        Some("t2"),
+        Some("08c7fe07-b56a-4c63-8df6-ad2967fa0653"),
         "the queue advanced to the next track"
     );
     assert!(
-        wait_until(|| state
-            .lock()
-            .unwrap()
-            .loads
-            .iter()
-            .any(|m| m.url == "http://renderer.local/stream?id=t2")),
+        wait_until(|| state.lock().unwrap().loads.iter().any(
+            |m| m.url == "http://renderer.local/stream?id=08c7fe07-b56a-4c63-8df6-ad2967fa0653"
+        )),
         "the next track is loaded onto the device"
     );
 }
@@ -2071,14 +2234,21 @@ async fn remote_finished_advances_queue_and_loads_next() {
 /// and the position store update exactly as for local playback.
 #[tokio::test]
 async fn remote_status_feeds_progress() {
-    let (_home, mut service, mut rx) = remote_service(&[("rel-1", &["t1"])]).await;
+    let (_home, mut service, mut rx) = remote_service(&[(
+        "e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e",
+        &["08c7ff07-b56a-4e16-8df6-ae2967fa0806"],
+    )])
+    .await;
     service.playback_queue.play_release(
-        ContextSource::Release("rel-1".to_string()),
-        vec!["t1".to_string()],
+        ContextSource::Release("e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e".to_string()),
+        vec!["08c7ff07-b56a-4e16-8df6-ae2967fa0806".to_string()],
         ContextStart::Index(0),
     );
     let buffer = create_sparse_buffer(1_024);
-    service.slot = active_slot(test_prepared_track("t1", buffer), TrackPhase::Playing);
+    service.slot = active_slot(
+        test_prepared_track("08c7ff07-b56a-4e16-8df6-ae2967fa0806", buffer),
+        TrackPhase::Playing,
+    );
 
     let channel = FakeRendererChannel::new();
     service.handle_play_on(remote_connect(channel)).await;
@@ -2103,7 +2273,7 @@ async fn remote_status_feeds_progress() {
             ..
         } = progress
         {
-            if track_id == "t1" && position_ms == 30_000 {
+            if track_id == "08c7ff07-b56a-4e16-8df6-ae2967fa0806" && position_ms == 30_000 {
                 saw_position = true;
             }
         }
@@ -2118,14 +2288,21 @@ async fn remote_status_feeds_progress() {
 /// and announces `RemoteStatusChanged(None)` so the UI leaves the remote state.
 #[tokio::test]
 async fn stop_remote_stops_device_and_returns_to_local() {
-    let (_home, mut service, mut rx) = remote_service(&[("rel-1", &["t1"])]).await;
+    let (_home, mut service, mut rx) = remote_service(&[(
+        "e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e",
+        &["08c7ff07-b56a-4e16-8df6-ae2967fa0806"],
+    )])
+    .await;
     service.playback_queue.play_release(
-        ContextSource::Release("rel-1".to_string()),
-        vec!["t1".to_string()],
+        ContextSource::Release("e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e".to_string()),
+        vec!["08c7ff07-b56a-4e16-8df6-ae2967fa0806".to_string()],
         ContextStart::Index(0),
     );
     let buffer = create_sparse_buffer(1_024);
-    service.slot = active_slot(test_prepared_track("t1", buffer), TrackPhase::Playing);
+    service.slot = active_slot(
+        test_prepared_track("08c7ff07-b56a-4e16-8df6-ae2967fa0806", buffer),
+        TrackPhase::Playing,
+    );
 
     let channel = FakeRendererChannel::new();
     let state = channel.state.clone();
@@ -2162,14 +2339,21 @@ async fn stop_remote_stops_device_and_returns_to_local() {
 /// hit; the DLNA channel is held to the same contract in its own tests.
 #[tokio::test]
 async fn stop_while_remote_stops_device_and_returns_to_local() {
-    let (_home, mut service, mut rx) = remote_service(&[("rel-1", &["t1"])]).await;
+    let (_home, mut service, mut rx) = remote_service(&[(
+        "e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e",
+        &["08c7ff07-b56a-4e16-8df6-ae2967fa0806"],
+    )])
+    .await;
     service.playback_queue.play_release(
-        ContextSource::Release("rel-1".to_string()),
-        vec!["t1".to_string()],
+        ContextSource::Release("e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e".to_string()),
+        vec!["08c7ff07-b56a-4e16-8df6-ae2967fa0806".to_string()],
         ContextStart::Index(0),
     );
     let buffer = create_sparse_buffer(1_024);
-    service.slot = active_slot(test_prepared_track("t1", buffer), TrackPhase::Playing);
+    service.slot = active_slot(
+        test_prepared_track("08c7ff07-b56a-4e16-8df6-ae2967fa0806", buffer),
+        TrackPhase::Playing,
+    );
 
     let channel = FakeRendererChannel::new();
     let state = channel.state.clone();
@@ -2211,14 +2395,21 @@ async fn remote_over_fake() -> (
     Arc<Mutex<FakeRendererState>>,
     tokio_mpsc::UnboundedReceiver<PlaybackProgress>,
 ) {
-    let (home, mut service, rx) = remote_service(&[("rel-1", &["t1"])]).await;
+    let (home, mut service, rx) = remote_service(&[(
+        "e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e",
+        &["08c7ff07-b56a-4e16-8df6-ae2967fa0806"],
+    )])
+    .await;
     service.playback_queue.play_release(
-        ContextSource::Release("rel-1".to_string()),
-        vec!["t1".to_string()],
+        ContextSource::Release("e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e".to_string()),
+        vec!["08c7ff07-b56a-4e16-8df6-ae2967fa0806".to_string()],
         ContextStart::Index(0),
     );
     let buffer = create_sparse_buffer(1_024);
-    service.slot = active_slot(test_prepared_track("t1", buffer), TrackPhase::Playing);
+    service.slot = active_slot(
+        test_prepared_track("08c7ff07-b56a-4e16-8df6-ae2967fa0806", buffer),
+        TrackPhase::Playing,
+    );
     *service.current_position_shared.lock().unwrap() = Some(std::time::Duration::ZERO);
 
     let channel = FakeRendererChannel::new();
@@ -2416,9 +2607,10 @@ async fn airplay_stop_restores_the_local_output_and_returns_to_local() {
 /// the position source and the return-to-local are asserted.)
 #[tokio::test]
 async fn airplay_stop_reads_the_live_position_and_returns_to_local() {
-    let (_home, mut service, _progress_rx) = seeded_playback_service(&[("r", &["t"])]).await;
+    let (_home, mut service, _progress_rx) =
+        seeded_playback_service(&[("af63ef4c-8602-4cd5-82c0-3d334b916305", &[TRACK_T])]).await;
     service.slot = active_slot(
-        test_prepared_track("t", create_sparse_buffer(1_024)),
+        test_prepared_track(TRACK_T, create_sparse_buffer(1_024)),
         TrackPhase::Playing,
     );
     let saved_tag = 0.5;
@@ -2445,10 +2637,11 @@ async fn airplay_stop_reads_the_live_position_and_returns_to_local() {
 /// is local, so the rebuild re-fills the sink at the new position).
 #[tokio::test]
 async fn airplay_seek_flushes_and_reanchors() {
-    let (_home, mut service, _progress_rx) = seeded_playback_service(&[("r", &["t"])]).await;
+    let (_home, mut service, _progress_rx) =
+        seeded_playback_service(&[("af63ef4c-8602-4cd5-82c0-3d334b916305", &[TRACK_T])]).await;
     let buffer = create_sparse_buffer(64 * 1024);
     service.slot = active_slot(
-        test_prepared_track("t", buffer.clone()),
+        test_prepared_track(TRACK_T, buffer.clone()),
         TrackPhase::Playing,
     );
     let (_sink, source, _ready) = create_track_stream_pair(44_100, 2);
@@ -2456,7 +2649,7 @@ async fn airplay_seek_flushes_and_reanchors() {
     service.output = Some(test_output(
         Arc::new(Mutex::new(source::PlaybackSource::new(
             source,
-            test_track_fmt("t"),
+            test_track_fmt(TRACK_T),
         ))),
         audio_rx,
     ));
@@ -2480,19 +2673,21 @@ async fn airplay_seek_flushes_and_reanchors() {
 /// installed — playback moves to the next track on the same receiver.
 #[tokio::test]
 async fn airplay_advance_on_local_end_stays_on_airplay() {
-    let (_home, mut service, _progress_rx) = seeded_playback_service(&[("r", &["a", "b"])]).await;
+    let (_home, mut service, _progress_rx) =
+        seeded_playback_service(&[("af63ef4c-8602-4cd5-82c0-3d334b916305", &[TRACK_A, TRACK_B])])
+            .await;
     service.playback_queue.play_release(
-        ContextSource::Release("r".to_string()),
-        vec!["a".to_string(), "b".to_string()],
+        ContextSource::Release("af63ef4c-8602-4cd5-82c0-3d334b916305".to_string()),
+        vec![TRACK_A.to_string(), TRACK_B.to_string()],
         ContextStart::Index(0),
     );
     service.slot = active_slot(
-        test_prepared_track("a", create_sparse_buffer(1_024)),
+        test_prepared_track(TRACK_A, create_sparse_buffer(1_024)),
         TrackPhase::Playing,
     );
     install_airplay(&mut service, 88_200, 0.5);
 
-    service.handle_auto_advance("a".to_string()).await;
+    service.handle_auto_advance(TRACK_A.to_string()).await;
 
     assert!(
         service.renderer.is_airplay(),
@@ -2554,9 +2749,10 @@ async fn play_on_airplay_swaps_the_sink_and_keeps_decode_local() {
 /// erroring silently forever.
 #[tokio::test]
 async fn airplay_receiver_death_ends_airplay_and_returns_to_local() {
-    let (_home, mut service, _progress_rx) = seeded_playback_service(&[("r", &["t"])]).await;
+    let (_home, mut service, _progress_rx) =
+        seeded_playback_service(&[("af63ef4c-8602-4cd5-82c0-3d334b916305", &[TRACK_T])]).await;
     service.slot = active_slot(
-        test_prepared_track("t", create_sparse_buffer(1_024)),
+        test_prepared_track(TRACK_T, create_sparse_buffer(1_024)),
         TrackPhase::Playing,
     );
     let state = install_airplay(&mut service, 88_200, 0.5);
@@ -2569,7 +2765,7 @@ async fn airplay_receiver_death_ends_airplay_and_returns_to_local() {
     // A routine position tick catches it and ends AirPlay.
     service
         .handle_position_event(
-            Arc::new(test_track_fmt("t")),
+            Arc::new(test_track_fmt(TRACK_T)),
             std::time::Duration::from_secs(1),
         )
         .await;

@@ -5,7 +5,7 @@ impl Database {
         let release = release.clone();
         self.call_sql(move |sql| {
             let reg = sql.stamp();
-            insert_release_row(sql.tx(), &release, &reg)
+            insert_release_row(&sql, &release, &reg)
         })
         .await
     }
@@ -20,7 +20,7 @@ impl Database {
         let (works, track_works, images) = (works.to_vec(), track_works.to_vec(), images.to_vec());
         self.call_sql(move |sql| {
             let reg = sql.stamp();
-            let conn = sql.tx();
+            let conn = &sql;
             for work in &works {
                 insert_work_row(conn, work, &reg)?;
             }
@@ -54,7 +54,7 @@ impl Database {
             track_artists.to_vec(),
         );
         self.call_sql(move |sql| {
-            let tx = sql.tx();
+            let tx = &sql;
             // One HLC stamp for every synced row this transaction writes.
             let reg = sql.stamp();
             insert_album_row(tx, &album, &reg)?;
@@ -88,7 +88,7 @@ impl Database {
             track_artists.to_vec(),
         );
         self.call_sql(move |sql| {
-            let tx = sql.tx();
+            let tx = &sql;
             // One HLC stamp for every synced row this transaction writes.
             let reg = sql.stamp();
             insert_release_row(tx, &release, &reg)?;
@@ -151,7 +151,7 @@ impl Database {
         );
         let now = self.inner.clock.now().to_rfc3339();
         self.call_sql(move |sql| {
-            let tx = sql.tx();
+            let tx = &sql;
             // One HLC stamp for every synced row this edit touches.
             let reg = sql.stamp();
 
@@ -283,16 +283,46 @@ impl Database {
         .await
     }
 
+    /// The releases coven currently has blobs queued to upload for, or empty for
+    /// any filter that does not ask about uploading.
+    ///
+    /// Which releases are mid-upload is coven's queue state, so the storage page
+    /// reads it from there and binds the ids into its own query rather than
+    /// joining across into coven's tables. Every upload carries the gated root it
+    /// belongs to, which for bae is always the release.
+    async fn uploading_release_ids(&self, filter: StorageFilter) -> Result<Vec<String>, DbError> {
+        if filter != StorageFilter::Uploading {
+            return Ok(Vec::new());
+        }
+        let mut ids: Vec<String> = self
+            .inner
+            .handle
+            .queued_uploads()
+            .await?
+            .into_iter()
+            .filter(|upload| upload.root_table == "releases")
+            .map(|upload| upload.root_id)
+            .collect();
+        ids.sort();
+        ids.dedup();
+        Ok(ids)
+    }
+
     /// Count storage rows matching `filter`, using the same filter logic as
     /// `get_storage_page` so `total_count` describes the same set the page pages.
     pub async fn get_storage_count(&self, filter: StorageFilter) -> Result<u64, DbError> {
-        let where_clause = storage_filter_where(filter);
+        let uploading = self.uploading_release_ids(filter).await?;
+        let where_clause = storage_filter_where(filter, uploading.len());
         let query = format!("SELECT COUNT(*) FROM releases r {where_clause}");
 
         self.read(move |conn| {
-            conn.query_row(&query, [], |row| row.get::<_, i64>(0))
-                .map(|c| c as u64)
-                .map_err(DbError::from)
+            conn.query_row(
+                &query,
+                coven::rusqlite::params_from_iter(uploading.iter()),
+                |row| row.get::<_, i64>(0),
+            )
+            .map(|c| c as u64)
+            .map_err(DbError::from)
         })
         .await
     }
@@ -303,7 +333,8 @@ impl Database {
     /// release with no files contributes nothing through the inner join, matching a
     /// page row's own `COALESCE(SUM(...), 0)`.
     pub async fn get_storage_total_size(&self, filter: StorageFilter) -> Result<u64, DbError> {
-        let where_clause = storage_filter_where(filter);
+        let uploading = self.uploading_release_ids(filter).await?;
+        let where_clause = storage_filter_where(filter, uploading.len());
         let query = format!(
             "SELECT COALESCE(SUM(rf.file_size), 0) \
              FROM releases r JOIN release_files rf ON rf.release_id = r.id \
@@ -311,9 +342,13 @@ impl Database {
         );
 
         self.read(move |conn| {
-            conn.query_row(&query, [], |row| row.get::<_, i64>(0))
-                .map(|c| c as u64)
-                .map_err(DbError::from)
+            conn.query_row(
+                &query,
+                coven::rusqlite::params_from_iter(uploading.iter()),
+                |row| row.get::<_, i64>(0),
+            )
+            .map(|c| c as u64)
+            .map_err(DbError::from)
         })
         .await
     }
@@ -355,13 +390,22 @@ impl Database {
     ) -> Result<Vec<DbStorageRow>, DbError> {
         let (order_by, needs_artist_sort_join) = storage_order_by(sort);
         let artist_sort_join = album_summary_artist_join(needs_artist_sort_join);
-        let where_clause = storage_filter_where(filter);
+        let uploading = self.uploading_release_ids(filter).await?;
+        let where_clause = storage_filter_where(filter, uploading.len());
 
-        let query = Self::storage_page_query(&order_by, artist_sort_join, where_clause);
+        let query = Self::storage_page_query(&order_by, artist_sort_join, &where_clause);
 
         self.read(move |conn| {
             let mut stmt = conn.prepare(&query)?;
-            let mut rows = stmt.query(params![limit as i64, offset as i64])?;
+            // The uploading ids bind before the page's limit/offset, matching
+            // their order in the rendered clause.
+            let mut binds: Vec<Box<dyn coven::rusqlite::ToSql>> = uploading
+                .iter()
+                .map(|id| Box::new(id.clone()) as Box<dyn coven::rusqlite::ToSql>)
+                .collect();
+            binds.push(Box::new(limit as i64));
+            binds.push(Box::new(offset as i64));
+            let mut rows = stmt.query(coven::rusqlite::params_from_iter(binds.iter()))?;
             let mut storage_rows = Vec::new();
             while let Some(row) = rows.next()? {
                 let release = row_to_release_summary(row)?;
@@ -444,7 +488,7 @@ impl Database {
         let file = file.clone();
         self.call_sql(move |sql| {
             let reg = sql.stamp();
-            insert_file_row(sql.tx(), &file, &reg)
+            insert_file_row(&sql, &file, &reg)
         })
         .await
     }
@@ -467,9 +511,9 @@ impl Database {
         let (audio_format, segments) = (audio_format.clone(), segments.to_vec());
         self.call_sql(move |sql| {
             let reg = sql.stamp();
-            insert_audio_format_row(sql.tx(), &audio_format, &reg)?;
+            insert_audio_format_row(&sql, &audio_format, &reg)?;
             for segment in &segments {
-                insert_audio_segment_row(sql.tx(), segment, &reg)?;
+                insert_audio_segment_row(&sql, segment, &reg)?;
             }
             Ok(())
         })
@@ -586,13 +630,13 @@ impl Database {
                     Ok(())
                 },
                 move |sql| {
-                    let tx = sql.tx();
+                    let tx = &sql;
                     // Every synced row this transaction inserts shares one HLC stamp
                     // for `_updated_at`; wall-clock `now` stays for `created_at`.
                     let reg = sql.stamp();
 
                     for replacement in &replacement_deletes {
-                        apply_delete_cleanup_on(tx, &replacement.cleanup, &reg)?;
+                        apply_delete_cleanup_on(tx, &replacement.cleanup)?;
                         tx.execute(
                             "DELETE FROM releases WHERE id = ?",
                             params![replacement.release_id],
@@ -697,7 +741,7 @@ impl Database {
 
                     // Each file is also registered as a coven user-provided external
                     // ref. Every import lands Local — the files ARE the user's own
-                    // files at `local_path`, tracked in `local_blob_refs` so coven's
+                    // files at `local_path`, registered with coven so its
                     // locality-aware read serves them, and a later make-Remote uploads
                     // from them and drops the refs. On a browsable home the readable
                     // cloud_path is computed here (the album/release rows exist in
@@ -719,14 +763,15 @@ impl Database {
                             ..file.clone()
                         };
                         insert_file_row(tx, &file, &reg)?;
+                        // Register the user's own file as this row's external
+                        // blob, after the row exists: coven binds the exact row
+                        // reference (size and content hash included) and serves
+                        // the plaintext from this path while the release is
+                        // Local. `release_files` is the only user-provided table
+                        // — the image tables are host-provided, and coven refuses
+                        // an external registration on those.
                         let path = std::path::Path::new(&local_path).join(&file.original_filename);
-                        register_external_blob_on(
-                            tx,
-                            &file.id,
-                            crate::sync::RELEASE_FILES_NAMESPACE,
-                            &path,
-                            file.file_size as u64,
-                        )?;
+                        tx.register_external_blob("release_files", &file.id, &path)?;
                     }
 
                     for af in &audio_formats {
@@ -817,8 +862,8 @@ impl Database {
         let album_id = album_id.to_string();
         self.call_sql(move |sql| {
             let reg = sql.stamp();
-            let conn = sql.tx();
-            apply_delete_cleanup_on(conn, &cleanup, &reg)?;
+            let conn = &sql;
+            apply_delete_cleanup_on(conn, &cleanup)?;
             conn.execute("DELETE FROM releases WHERE id = ?", params![release_id])?;
 
             let album_deleted =
@@ -829,204 +874,100 @@ impl Database {
         .await
     }
 
-    /// Mark an import failed and remove the release it finalized, in one DB
-    /// operation. Used when remote-import upload setup fails after finalize: the
-    /// release was never announced to the library, and its audio files are the
-    /// user's in-place source files, so this clears coven's external refs without
-    /// queuing any file deletion.
+    /// Mark an import failed and remove the release it finalized. Used when
+    /// remote-import upload setup fails after finalize: the release was never
+    /// announced to the library, and its audio files are the user's in-place
+    /// source files, so this clears coven's external refs without queuing any file
+    /// deletion.
     ///
     /// That is also why this path MAY sweep the orphaned artists/works it finds
-    /// (below) where `delete_release_with_cleanup` must not: the rolled-back release
-    /// was never remote, so the swept rows had no kept descendants and coven's
-    /// outbound gate cuts their DELETEs from the changeset — the sweep never leaves
-    /// this device.
+    /// where `delete_release_with_cleanup` must not: the rolled-back release was
+    /// never remote, so the swept rows had no kept descendants and coven's outbound
+    /// gate cuts their DELETEs from the changeset — the sweep never leaves this
+    /// device.
     ///
-    /// Returns the cover and artist-image blobs this rollback orphaned; the
-    /// transaction drops their rows but cannot reach coven's on-device blob store,
-    /// so the caller evicts them.
-    pub async fn fail_import_and_delete_release(
-        &self,
-        release_id: &str,
-    ) -> Result<Vec<OrphanedImageBlob>, DbError> {
+    /// The rollback drops the cover/artist-image rows, and the host-provided image
+    /// blobs those rows carried must be reclaimed from coven's on-device store. A
+    /// bare row DELETE reclaims nothing — coven's local-blob cleanup is intent-
+    /// driven, and an intent is created only for a blob **declared** deleted in a
+    /// write batch. So this reads the exact delete set and its blobs first
+    /// ([`plan_fail_import_deletion`]), then in one atomic [`CovenHandle::write`]
+    /// declares those blob deletions and deletes the rows: the blobs are referenced
+    /// when the batch opens (so coven binds a row cleanup intent) and unreferenced
+    /// when it commits (so the intent records), reclaiming the local bytes.
+    ///
+    /// The plan is read on the same serialized writer path immediately before the
+    /// write, so the rows it names to delete are exactly the rows the write
+    /// deletes; a divergence surfaces as coven's `BlobStillReferenced` (a declared
+    /// blob whose row wasn't dropped) rather than a silent leak.
+    pub async fn fail_import_and_delete_release(&self, release_id: &str) -> Result<(), DbError> {
         let release_id = release_id.to_string();
-        self.call_sql(move |sql| {
-            let reg = sql.stamp();
-            let conn = sql.tx();
-            let album_id = conn
-                .query_row(
-                    "SELECT album_id FROM releases WHERE id = ?",
-                    params![release_id],
-                    |row| row.get::<_, String>(0),
-                )
-                .optional()?
-                .ok_or_else(|| DbError(format!("release not found: {release_id}")))?;
-
-            // Every artist this release/album references, captured before the
-            // cascade below removes those link rows. After the release (and its
-            // album) are gone, any of these left referenced by nothing is a row
-            // finalize inserted purely for this import; the reference check when
-            // deleting spares any artist another release/album still points at.
-            let mut candidate_artist_ids: Vec<String> = {
-                let mut stmt = conn.prepare(
-                    "SELECT artist_id FROM album_artists WHERE album_id = ?1
-                     UNION
-                     SELECT artist_id FROM track_artists
-                       WHERE track_id IN (SELECT id FROM tracks WHERE release_id = ?2)
-                     UNION
-                     SELECT artist_id FROM release_artist_roles WHERE release_id = ?2
-                     UNION
-                     SELECT artist_id FROM track_artist_roles
-                       WHERE track_id IN (SELECT id FROM tracks WHERE release_id = ?2)
-                     UNION
-                     SELECT artist_id FROM albums WHERE id = ?1 AND artist_id IS NOT NULL",
-                )?;
-                let ids = stmt
-                    .query_map(params![album_id, release_id], |row| row.get(0))?
-                    .collect::<coven::rusqlite::Result<Vec<String>>>()?;
-                ids
-            };
-
-            // The work-graph component this release touches: every work one of
-            // its tracks performs, plus every work joined to those through the
-            // work_parts hierarchy (a symphony and its movements are one
-            // component, reached in either direction). Captured before the
-            // cascade clears this release's track_works. Finalize inserts works
-            // globally (no release FK), so nothing else deletes them.
-            let candidate_work_ids: Vec<String> = {
-                let mut stmt = conn.prepare(
-                    "WITH RECURSIVE component(work_id) AS (
-                         SELECT tw.work_id FROM track_works tw
-                           JOIN tracks t ON t.id = tw.track_id
-                          WHERE t.release_id = ?1
-                         UNION
-                         SELECT wp.parent_work_id FROM work_parts wp
-                           JOIN component c ON wp.child_work_id = c.work_id
-                         UNION
-                         SELECT wp.child_work_id FROM work_parts wp
-                           JOIN component c ON wp.parent_work_id = c.work_id
-                     )
-                     SELECT work_id FROM component",
-                )?;
-                let ids = stmt
-                    .query_map(params![release_id], |row| row.get(0))?
-                    .collect::<coven::rusqlite::Result<Vec<String>>>()?;
-                ids
-            };
-
-            // Composers are linked only through work_artists, so they never
-            // appear in the artist query above. Add them as artist candidates:
-            // once the orphaned works below drop their work_artists rows, a
-            // composer referenced by nothing else falls to the artist cleanup.
-            {
-                let mut stmt =
-                    conn.prepare("SELECT artist_id FROM work_artists WHERE work_id = ?1")?;
-                for work_id in &candidate_work_ids {
-                    let composers = stmt
-                        .query_map(params![work_id], |row| row.get::<_, String>(0))?
-                        .collect::<coven::rusqlite::Result<Vec<String>>>()?;
-                    candidate_artist_ids.extend(composers);
-                }
-            }
-
-            // The cover blob finalize wrote for this release, captured before
-            // the release cascade drops its `covers` row. The failed release
-            // never went remote, so its blob lives only in coven's on-device
-            // store — the caller evicts it.
-            let mut orphaned_images: Vec<OrphanedImageBlob> = Vec::new();
-            if let Some((blob_id, cloud_path)) = conn
-                .query_row(
-                    "SELECT blob_id, cloud_path FROM covers WHERE id = ?",
-                    params![release_id],
-                    |row| Ok((row.get::<_, String>(0)?, row.get::<_, Option<String>>(1)?)),
-                )
-                .optional()?
-            {
-                orphaned_images.push(OrphanedImageBlob {
-                    namespace: crate::sync::COVERS_NAMESPACE,
-                    blob_id,
-                    cloud_path,
-                });
-            }
-
-            conn.execute(
-                "DELETE FROM local_blob_refs
-                 WHERE namespace = ?
-                   AND blob_id IN (SELECT id FROM release_files WHERE release_id = ?)",
-                params![crate::sync::RELEASE_FILES_NAMESPACE, release_id],
-            )?;
-            conn.execute("DELETE FROM releases WHERE id = ?", params![release_id])?;
-
-            cleanup_album_after_release_removal_on(conn, &album_id, &release_id, &reg)?;
-
-            // Delete the works this release owned, now that its track_works are
-            // gone. A work still reachable from a surviving track — directly, or
-            // as part of the same work_parts hierarchy — stays; the rest of this
-            // release's component is unreferenced and goes. Deleting a work
-            // cascades its work_artists and work_parts rows.
-            let live_work_ids: std::collections::HashSet<String> = {
-                let mut stmt = conn.prepare(
-                    "WITH RECURSIVE live(work_id) AS (
-                         SELECT DISTINCT work_id FROM track_works
-                         UNION
-                         SELECT wp.parent_work_id FROM work_parts wp
-                           JOIN live l ON wp.child_work_id = l.work_id
-                         UNION
-                         SELECT wp.child_work_id FROM work_parts wp
-                           JOIN live l ON wp.parent_work_id = l.work_id
-                     )
-                     SELECT work_id FROM live",
-                )?;
-                let ids = stmt
-                    .query_map([], |row| row.get(0))?
-                    .collect::<coven::rusqlite::Result<std::collections::HashSet<String>>>()?;
-                ids
-            };
-            for work_id in &candidate_work_ids {
-                if !live_work_ids.contains(work_id) {
-                    conn.execute("DELETE FROM works WHERE id = ?", params![work_id])?;
-                }
-            }
-
-            // Delete each candidate artist now that the release/album cascade
-            // has cleared this import's links, but only if no surviving
-            // album, album_artist, track_artist, work_artist, or artist role
-            // still points at it — a shared artist stays. `albums.artist_id`
-            // has no ON DELETE CASCADE, so this guard is also what keeps the
-            // delete from violating that foreign key.
-            for artist_id in &candidate_artist_ids {
-                // Read the artist's image row before the delete cascades it, so
-                // a deleted artist's orphaned image blob can be evicted.
-                let image_blob: Option<(String, Option<String>)> = conn
-                    .query_row(
-                        "SELECT blob_id, cloud_path FROM artist_images WHERE id = ?",
-                        params![artist_id],
-                        |row| Ok((row.get::<_, String>(0)?, row.get::<_, Option<String>>(1)?)),
-                    )
-                    .optional()?;
-                let deleted = conn.execute(
-                    "DELETE FROM artists WHERE id = ?1
-                       AND NOT EXISTS (SELECT 1 FROM albums WHERE artist_id = ?1)
-                       AND NOT EXISTS (SELECT 1 FROM album_artists WHERE artist_id = ?1)
-                       AND NOT EXISTS (SELECT 1 FROM track_artists WHERE artist_id = ?1)
-                       AND NOT EXISTS (SELECT 1 FROM work_artists WHERE artist_id = ?1)
-                       AND NOT EXISTS (SELECT 1 FROM release_artist_roles WHERE artist_id = ?1)
-                       AND NOT EXISTS (SELECT 1 FROM track_artist_roles WHERE artist_id = ?1)",
-                    params![artist_id],
-                )?;
-                if deleted == 1 {
-                    if let Some((blob_id, cloud_path)) = image_blob {
-                        orphaned_images.push(OrphanedImageBlob {
-                            namespace: crate::sync::ARTIST_IMAGES_NAMESPACE,
-                            blob_id,
-                            cloud_path,
-                        });
+        let plan = self
+            .read(move |conn| plan_fail_import_deletion(conn, &release_id))
+            .await?;
+        let FailImportDeletion {
+            release_id,
+            album_id,
+            delete_album,
+            orphaned_work_ids,
+            orphaned_artist_ids,
+            image_blobs,
+            file_ids,
+        } = plan;
+        let declared = image_blobs.clone();
+        self.inner
+            .handle
+            .write(
+                move |w| {
+                    for (namespace, blob_id, cloud_path) in declared {
+                        w.delete_blob(crate::sync::image_blob_ref(namespace, &blob_id, cloud_path));
                     }
-                }
-            }
-
-            Ok(orphaned_images)
-        })
-        .await
+                    Ok(())
+                },
+                move |sql| {
+                    let reg = sql.stamp();
+                    // Drop each file's external-file registration while its row is
+                    // still there to bind: the rollback leaves the user's own
+                    // source files alone, it only stops coven pointing at them.
+                    for file_id in &file_ids {
+                        sql.clear_external_blob("release_files", file_id)
+                            .map_err(CovenError::from)?;
+                    }
+                    // Dropping the release cascades its tracks, links, and `covers`
+                    // row; the declared cover blob is unreferenced once it commits.
+                    sql.execute("DELETE FROM releases WHERE id = ?", params![release_id])
+                        .map_err(CovenError::from)?;
+                    if delete_album {
+                        sql.execute("DELETE FROM albums WHERE id = ?", params![album_id])
+                            .map_err(CovenError::from)?;
+                    } else {
+                        // The album keeps other releases; only clear a
+                        // `primary_release_id` that pointed at the removed release.
+                        sql.execute(
+                            "UPDATE albums SET primary_release_id = NULL, _updated_at = ? \
+                             WHERE id = ? AND primary_release_id = ?",
+                            params![reg, album_id, release_id],
+                        )
+                        .map_err(CovenError::from)?;
+                    }
+                    // Delete the planned orphaned works and artists by id: the plan
+                    // determined each is referenced only within this deleted
+                    // subtree, so removing them strands nothing. Each artist delete
+                    // cascades its `artist_images` row, freeing the declared blob.
+                    for work_id in &orphaned_work_ids {
+                        sql.execute("DELETE FROM works WHERE id = ?", params![work_id])
+                            .map_err(CovenError::from)?;
+                    }
+                    for artist_id in &orphaned_artist_ids {
+                        sql.execute("DELETE FROM artists WHERE id = ?", params![artist_id])
+                            .map_err(CovenError::from)?;
+                    }
+                    Ok(())
+                },
+            )
+            .await
+            .map(|_| ())
+            .map_err(Self::coven_error)
     }
 
     /// Cached `release_metadata` rows for a release, keyed by `source` — which
@@ -1077,7 +1018,7 @@ impl Database {
         let release_id = release_id.to_string();
         self.call_sql(move |sql| {
             let reg = sql.stamp();
-            let conn = sql.tx();
+            let conn = &sql;
             conn.execute(
                 "UPDATE releases SET remote = ?, _updated_at = ? WHERE id = ?",
                 params![remote, reg, release_id],
@@ -1100,13 +1041,8 @@ impl Database {
         let files = self.get_files_for_release(release_id).await?;
         for file in &files {
             let path = std::path::Path::new(folder).join(&file.original_filename);
-            self.register_external_blob(
-                &file.id,
-                crate::sync::RELEASE_FILES_NAMESPACE,
-                &path,
-                file.file_size as u64,
-            )
-            .await?;
+            self.register_external_blob(crate::sync::RELEASE_FILES_NAMESPACE, &file.id, &path)
+                .await?;
         }
         Ok(())
     }
@@ -1155,60 +1091,48 @@ impl Database {
         .await
     }
 
+    /// How many of this release's blobs are still queued to upload.
+    ///
+    /// The release is the gated root every one of its uploads is enqueued under,
+    /// so coven filters them in SQL rather than bae joining its own tables to
+    /// coven's queue. Note this reaches zero before the make-remote transition
+    /// finishes — see [`CovenHandle::make_remote_progress`] for that.
     pub async fn count_pending_uploads_for_release(
         &self,
         release_id: &str,
     ) -> Result<i64, DbError> {
-        let release_id = release_id.to_string();
-        self.read(move |conn| {
-            conn.query_row(
-                "SELECT COUNT(*) FROM cloud_outbox co \
-                     JOIN release_files rf ON rf.id = co.file_id \
-                     WHERE rf.release_id = ? AND co.operation = 'upload'",
-                params![release_id],
-                |row| row.get::<_, i64>(0),
-            )
-            .map_err(DbError::from)
-        })
-        .await
+        Ok(self
+            .inner
+            .handle
+            .queued_uploads_for_root("releases", release_id)
+            .await?
+            .len() as i64)
     }
 
+    /// Whether any of this release's blobs are still queued to upload. See
+    /// [`count_pending_uploads_for_release`](Self::count_pending_uploads_for_release).
     pub async fn has_pending_uploads_for_release(&self, release_id: &str) -> Result<bool, DbError> {
-        let release_id = release_id.to_string();
-        self.read(move |conn| {
-            conn.query_row(
-                "SELECT 1 FROM cloud_outbox co \
-                     JOIN release_files rf ON rf.id = co.file_id \
-                     WHERE rf.release_id = ? AND co.operation = 'upload' \
-                     LIMIT 1",
-                params![release_id],
-                |_| Ok(()),
-            )
-            .optional()
-            .map(|o| o.is_some())
-            .map_err(DbError::from)
-        })
-        .await
+        Ok(!self
+            .inner
+            .handle
+            .queued_uploads_for_root("releases", release_id)
+            .await?
+            .is_empty())
     }
 
-    pub async fn has_make_remote_intent_for_release(
+    /// How far this release's make-Remote has got, or `None` when it has none
+    /// running. The transition outlasts its queued uploads — a release with an
+    /// empty upload queue can still be `Publishing` — so this, not
+    /// [`has_pending_uploads_for_release`](Self::has_pending_uploads_for_release),
+    /// answers "is this release still becoming Remote?".
+    pub async fn make_remote_progress_for_release(
         &self,
         release_id: &str,
-    ) -> Result<bool, DbError> {
-        let release_id = release_id.to_string();
-        self.read(move |conn| {
-            conn.query_row(
-                "SELECT 1 FROM blob_make_remote_intents \
-                 WHERE root_table = 'releases' AND root_id = ? \
-                 LIMIT 1",
-                params![release_id],
-                |_| Ok(()),
-            )
-            .optional()
-            .map(|o| o.is_some())
-            .map_err(DbError::from)
-        })
-        .await
+    ) -> Result<Option<coven::MakeRemoteProgress>, DbError> {
+        self.inner
+            .handle
+            .make_remote_progress("releases", release_id)
+            .await
     }
 
     /// Whether some release was imported from a folder of this name — the weaker
@@ -1260,4 +1184,212 @@ impl Database {
         })
         .await
     }
+}
+
+/// The exact rows [`Database::fail_import_and_delete_release`] deletes for a
+/// rolled-back release, plus the host-provided image blobs those rows carry, so
+/// the atomic write that deletes them can declare the blob deletions coven turns
+/// into durable local-cleanup intents.
+struct FailImportDeletion {
+    release_id: String,
+    album_id: String,
+    /// The album is removed with the release iff it holds no other release.
+    delete_album: bool,
+    /// Works whose only tracks were this release's — unreferenced once it is gone.
+    orphaned_work_ids: Vec<String>,
+    /// Artists referenced only within this release's deleted subtree.
+    orphaned_artist_ids: Vec<String>,
+    /// `(namespace, blob_id, cloud_path)` for the release's cover and each swept
+    /// artist's image — the host-provided blobs the delete orphans.
+    image_blobs: Vec<(&'static str, String, Option<String>)>,
+    /// The release's `release_files` rows, whose external-file registrations the
+    /// delete must drop. Captured here because the registration is keyed by the
+    /// row, and the rows are gone by the time the write commits.
+    file_ids: Vec<String>,
+}
+
+/// Determine, without mutating, exactly what a failed-import rollback of
+/// `release_id` deletes and which host-provided image blobs it orphans. Mirrors
+/// the delete's reachability: a work orphans when this release held its only
+/// tracks; an artist orphans when every album, link, or role that names it lies
+/// inside the deleted subtree — this release, its album if the album holds no
+/// other release, and the orphaned works.
+fn plan_fail_import_deletion(
+    conn: &Connection,
+    release_id: &str,
+) -> Result<FailImportDeletion, DbError> {
+    let album_id: String = conn
+        .query_row(
+            "SELECT album_id FROM releases WHERE id = ?",
+            params![release_id],
+            |row| row.get(0),
+        )
+        .optional()?
+        .ok_or_else(|| DbError::Message(format!("release not found: {release_id}")))?;
+
+    let delete_album: bool = conn.query_row(
+        "SELECT NOT EXISTS(SELECT 1 FROM releases WHERE album_id = ?1 AND id != ?2)",
+        params![album_id, release_id],
+        |row| row.get(0),
+    )?;
+
+    // Every artist this release/album references — the candidates the sweep
+    // considers.
+    let mut candidate_artist_ids: Vec<String> = {
+        let mut stmt = conn.prepare(
+            "SELECT artist_id FROM album_artists WHERE album_id = ?1
+             UNION
+             SELECT artist_id FROM track_artists
+               WHERE track_id IN (SELECT id FROM tracks WHERE release_id = ?2)
+             UNION
+             SELECT artist_id FROM release_artist_roles WHERE release_id = ?2
+             UNION
+             SELECT artist_id FROM track_artist_roles
+               WHERE track_id IN (SELECT id FROM tracks WHERE release_id = ?2)
+             UNION
+             SELECT artist_id FROM albums WHERE id = ?1 AND artist_id IS NOT NULL",
+        )?;
+        let ids = stmt
+            .query_map(params![album_id, release_id], |row| row.get(0))?
+            .collect::<coven::rusqlite::Result<Vec<String>>>()?;
+        ids
+    };
+
+    // The work-graph component this release's tracks touch.
+    let candidate_work_ids: Vec<String> = {
+        let mut stmt = conn.prepare(
+            "WITH RECURSIVE component(work_id) AS (
+                 SELECT tw.work_id FROM track_works tw
+                   JOIN tracks t ON t.id = tw.track_id
+                  WHERE t.release_id = ?1
+                 UNION
+                 SELECT wp.parent_work_id FROM work_parts wp
+                   JOIN component c ON wp.child_work_id = c.work_id
+                 UNION
+                 SELECT wp.child_work_id FROM work_parts wp
+                   JOIN component c ON wp.parent_work_id = c.work_id
+             )
+             SELECT work_id FROM component",
+        )?;
+        let ids = stmt
+            .query_map(params![release_id], |row| row.get(0))?
+            .collect::<coven::rusqlite::Result<Vec<String>>>()?;
+        ids
+    };
+
+    // Composers link only through work_artists, so add them as candidates.
+    {
+        let mut stmt = conn.prepare("SELECT artist_id FROM work_artists WHERE work_id = ?1")?;
+        for work_id in &candidate_work_ids {
+            let composers = stmt
+                .query_map(params![work_id], |row| row.get::<_, String>(0))?
+                .collect::<coven::rusqlite::Result<Vec<String>>>()?;
+            candidate_artist_ids.extend(composers);
+        }
+    }
+
+    // Works that survive once this release's track_works are gone — reachable from
+    // a track on another release, directly or through the work_parts hierarchy.
+    let live_work_ids: std::collections::HashSet<String> = {
+        let mut stmt = conn.prepare(
+            "WITH RECURSIVE live(work_id) AS (
+                 SELECT DISTINCT work_id FROM track_works
+                   WHERE track_id NOT IN (SELECT id FROM tracks WHERE release_id = ?1)
+                 UNION
+                 SELECT wp.parent_work_id FROM work_parts wp
+                   JOIN live l ON wp.child_work_id = l.work_id
+                 UNION
+                 SELECT wp.child_work_id FROM work_parts wp
+                   JOIN live l ON wp.parent_work_id = l.work_id
+             )
+             SELECT work_id FROM live",
+        )?;
+        let ids = stmt
+            .query_map(params![release_id], |row| row.get(0))?
+            .collect::<coven::rusqlite::Result<std::collections::HashSet<String>>>()?;
+        ids
+    };
+    let orphaned_work_ids: Vec<String> = candidate_work_ids
+        .into_iter()
+        .filter(|work_id| !live_work_ids.contains(work_id))
+        .collect();
+
+    let mut image_blobs: Vec<(&'static str, String, Option<String>)> = Vec::new();
+    // The cover is 1:1 with the release, so it always orphans.
+    if let Some((blob_id, cloud_path)) = conn
+        .query_row(
+            "SELECT blob_id, cloud_path FROM covers WHERE id = ?",
+            params![release_id],
+            |row| Ok((row.get::<_, String>(0)?, row.get::<_, Option<String>>(1)?)),
+        )
+        .optional()?
+    {
+        image_blobs.push((crate::sync::COVERS_NAMESPACE, blob_id, cloud_path));
+    }
+
+    // An artist orphans when nothing outside the deleted subtree names it. The
+    // work_artists clause excludes the orphaned works (their rows cascade away);
+    // an empty orphaned-work set drops the exclusion so every work_artists row
+    // counts as surviving.
+    let work_exclusion = if orphaned_work_ids.is_empty() {
+        String::new()
+    } else {
+        let placeholders: Vec<String> = (0..orphaned_work_ids.len())
+            .map(|i| format!("?{}", i + 5))
+            .collect();
+        format!("AND work_id NOT IN ({})", placeholders.join(", "))
+    };
+    let orphan_check = format!(
+        "SELECT NOT (
+             EXISTS(SELECT 1 FROM albums WHERE artist_id = ?1 AND NOT (id = ?2 AND ?3))
+             OR EXISTS(SELECT 1 FROM album_artists WHERE artist_id = ?1 AND NOT (album_id = ?2 AND ?3))
+             OR EXISTS(SELECT 1 FROM track_artists WHERE artist_id = ?1
+                        AND track_id NOT IN (SELECT id FROM tracks WHERE release_id = ?4))
+             OR EXISTS(SELECT 1 FROM work_artists WHERE artist_id = ?1 {work_exclusion})
+             OR EXISTS(SELECT 1 FROM release_artist_roles WHERE artist_id = ?1 AND release_id != ?4)
+             OR EXISTS(SELECT 1 FROM track_artist_roles WHERE artist_id = ?1
+                        AND track_id NOT IN (SELECT id FROM tracks WHERE release_id = ?4))
+         )"
+    );
+
+    let mut orphaned_artist_ids: Vec<String> = Vec::new();
+    for artist_id in &candidate_artist_ids {
+        let mut binds: Vec<&dyn coven::rusqlite::ToSql> =
+            vec![artist_id, &album_id, &delete_album, &release_id];
+        for work_id in &orphaned_work_ids {
+            binds.push(work_id);
+        }
+        let orphaned: bool = conn.query_row(&orphan_check, binds.as_slice(), |row| row.get(0))?;
+        if orphaned {
+            orphaned_artist_ids.push(artist_id.clone());
+            if let Some((blob_id, cloud_path)) = conn
+                .query_row(
+                    "SELECT blob_id, cloud_path FROM artist_images WHERE id = ?",
+                    params![artist_id],
+                    |row| Ok((row.get::<_, String>(0)?, row.get::<_, Option<String>>(1)?)),
+                )
+                .optional()?
+            {
+                image_blobs.push((crate::sync::ARTIST_IMAGES_NAMESPACE, blob_id, cloud_path));
+            }
+        }
+    }
+
+    let file_ids: Vec<String> = {
+        let mut stmt = conn.prepare("SELECT id FROM release_files WHERE release_id = ?")?;
+        let ids = stmt
+            .query_map(params![release_id], |row| row.get(0))?
+            .collect::<coven::rusqlite::Result<Vec<String>>>()?;
+        ids
+    };
+
+    Ok(FailImportDeletion {
+        release_id: release_id.to_string(),
+        album_id,
+        delete_album,
+        orphaned_work_ids,
+        orphaned_artist_ids,
+        image_blobs,
+        file_ids,
+    })
 }

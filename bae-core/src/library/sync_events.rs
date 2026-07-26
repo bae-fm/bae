@@ -311,10 +311,16 @@ mod tests {
         // event subsumes the release and track changes: one album event, no release
         // events.
         let (changes, _missing_fk) = changes_from_row_changes(&[
-            insert("albums", &["alb-1"]),
-            insert("releases", &["rel-1", "alb-1"]),
-            insert("tracks", &["trk-1", "rel-1"]),
-            insert("tracks", &["trk-2", "rel-1"]),
+            insert("albums", &["1250a7bb-41ed-4500-8ab4-04f5d3461e30"]),
+            insert(
+                "releases",
+                &[
+                    "e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e",
+                    "1250a7bb-41ed-4500-8ab4-04f5d3461e30",
+                ],
+            ),
+            insert("tracks", &["trk-1", "e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e"]),
+            insert("tracks", &["trk-2", "e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e"]),
         ]);
 
         assert_eq!(
@@ -341,10 +347,16 @@ mod tests {
 
         // The cover's PK is its release id, and the release row isn't in the
         // changeset — the caller resolves it to an album with a DB query.
-        let (changes, _missing_fk) = changes_from_row_changes(&[update("covers", &["rel-1"])]);
+        let (changes, _missing_fk) = changes_from_row_changes(&[update(
+            "covers",
+            &["e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e"],
+        )]);
         assert!(changes.album_events.is_empty());
         assert!(changes.release_events.is_empty());
-        assert_eq!(changes.unresolved_release_ids, vec!["rel-1".to_string()]);
+        assert_eq!(
+            changes.unresolved_release_ids,
+            vec!["e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e".to_string()]
+        );
     }
 
     /// When the changeset carries the release too, the cover resolves to its album
@@ -363,10 +375,22 @@ mod tests {
         }
 
         let (changes, _missing_fk) = changes_from_row_changes(&[
-            update("releases", &["rel-1", "alb-1"]),
-            update("releases", &["rel-2", "alb-1"]),
-            update("covers", &["rel-1"]),
-            update("covers", &["rel-2"]),
+            update(
+                "releases",
+                &[
+                    "e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e",
+                    "1250a7bb-41ed-4500-8ab4-04f5d3461e30",
+                ],
+            ),
+            update(
+                "releases",
+                &[
+                    "e6cdc0f3-3a7b-458b-86aa-fd093cc5e79b",
+                    "1250a7bb-41ed-4500-8ab4-04f5d3461e30",
+                ],
+            ),
+            update("covers", &["e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e"]),
+            update("covers", &["e6cdc0f3-3a7b-458b-86aa-fd093cc5e79b"]),
         ]);
 
         assert!(changes.unresolved_release_ids.is_empty());
@@ -378,7 +402,7 @@ mod tests {
         );
         assert!(matches!(
             &changes.album_events[0],
-            AlbumChangeEvent::Updated(album_id) if album_id == "alb-1"
+            AlbumChangeEvent::Updated(album_id) if album_id == "1250a7bb-41ed-4500-8ab4-04f5d3461e30"
         ));
     }
 
@@ -397,9 +421,21 @@ mod tests {
         // along on the album removal so consumers can drop the children without
         // re-deriving the set from their own state.
         let (changes, _missing_fk) = changes_from_row_changes(&[
-            delete("albums", &["alb-1"]),
-            delete("releases", &["rel-1", "alb-1"]),
-            delete("releases", &["rel-2", "alb-1"]),
+            delete("albums", &["1250a7bb-41ed-4500-8ab4-04f5d3461e30"]),
+            delete(
+                "releases",
+                &[
+                    "e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e",
+                    "1250a7bb-41ed-4500-8ab4-04f5d3461e30",
+                ],
+            ),
+            delete(
+                "releases",
+                &[
+                    "e6cdc0f3-3a7b-458b-86aa-fd093cc5e79b",
+                    "1250a7bb-41ed-4500-8ab4-04f5d3461e30",
+                ],
+            ),
         ]);
 
         assert_eq!(changes.album_events.len(), 1);
@@ -409,10 +445,17 @@ mod tests {
                 album_id,
                 release_ids,
             } => {
-                assert_eq!(album_id, "alb-1");
+                assert_eq!(album_id, "1250a7bb-41ed-4500-8ab4-04f5d3461e30");
                 let mut got = release_ids.clone();
                 got.sort();
-                assert_eq!(got, vec!["rel-1".to_string(), "rel-2".to_string()]);
+                // Sorted, so the ids come out in lexical order.
+                assert_eq!(
+                    got,
+                    vec![
+                        "e6cdc0f3-3a7b-458b-86aa-fd093cc5e79b".to_string(),
+                        "e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e".to_string()
+                    ]
+                );
             }
             other => panic!("expected AlbumChangeEvent::Removed, got {other:?}"),
         }

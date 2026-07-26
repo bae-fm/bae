@@ -5,7 +5,8 @@
 //!
 //! Three inputs derive it:
 //!
-//! - The `cloud_outbox` rows: what remains.
+//! - coven's durable cloud queue, read through
+//!   [`Database::outbox_queue`](crate::db::Database::outbox_queue): what remains.
 //! - An in-memory map of the uploads in flight right now — an upload is "active"
 //!   only between coven's `on_blob_upload_started` and its terminal callback, and
 //!   the map is never persisted, since nothing is in flight after a restart. Its
@@ -21,11 +22,9 @@ use std::collections::{HashMap, HashSet};
 
 use tracing::debug;
 
-use crate::db::Database;
+use crate::db::DbOutboxQueue;
 use crate::library::upload_sessions::UploadSessions;
 use crate::library::upload_throughput::UploadThroughput;
-
-use crate::db::DbOutboxOperation;
 
 /// What an upload is doing right now — derived from the row, the in-flight map,
 /// and the completed tally; never stored. `Active`'s `bytes_done` is the live count
@@ -44,12 +43,16 @@ pub enum UploadState {
     Done,
 }
 
-/// One pending cloud delete. Deletes have no progress concept — they're a
-/// single DELETE call per entry.
+/// One cloud object still owed a removal. Deletes have no progress concept —
+/// they're a single DELETE call per entry.
+///
+/// The row that named the object is already gone, so the blob's namespace and
+/// id are all there is to identify it by; there is no filename or album to
+/// show. Together they are the entry's identity for the UI's list diffing.
 #[derive(Debug, Clone)]
 pub struct DeleteOp {
-    pub id: i64,
-    pub cloud_key: String,
+    pub namespace: String,
+    pub blob_id: String,
     /// Enqueue time as Unix epoch milliseconds, for the queued relative label.
     pub created_at: i64,
 }
@@ -247,31 +250,40 @@ impl GroupBuilder {
     }
 }
 
-/// Build the snapshot from the outbox rows, the in-flight upload map (file_id
-/// → live `bytes_done`), the completed-upload tallies for this burst, the
+/// Build the snapshot from coven's queue, the in-flight upload map (file_id →
+/// live `bytes_done`), the completed-upload tallies for this burst, the
 /// rolling-window throughput tracker, and the user-driven pause flag.
 ///
-/// When the queue is observed fully idle — no rows, nothing in flight — the
-/// burst is over: the tallies are cleared here, in the one derivation every
+/// A pure derivation over already-read state: everything it needs about what is
+/// queued arrives in `queue`, so it neither reads the database nor fails.
+///
+/// When the queue is observed fully idle — nothing queued, nothing in flight —
+/// the burst is over: the tallies are cleared here, in the one derivation every
 /// mutation path funnels through, so stale done-rows cannot survive it.
-pub(crate) async fn build_outbox_snapshot(
-    db: &Database,
+pub(crate) fn build_outbox_snapshot(
+    queue: DbOutboxQueue,
     in_flight: &HashMap<String, u64>,
     sessions: &UploadSessions,
     throughput: &UploadThroughput,
     paused: bool,
-) -> Result<OutboxSnapshot, coven::DbError> {
-    let rows = db.outbox_items().await?;
-
-    if rows.is_empty() && in_flight.is_empty() {
+) -> OutboxSnapshot {
+    if queue.uploads.is_empty() && queue.deletes.is_empty() && in_flight.is_empty() {
         sessions.clear_all();
-        return Ok(OutboxSnapshot {
+        return OutboxSnapshot {
             paused,
             ..Default::default()
-        });
+        };
     }
 
-    let mut deletes = Vec::new();
+    let deletes: Vec<DeleteOp> = queue
+        .deletes
+        .into_iter()
+        .map(|delete| DeleteOp {
+            namespace: delete.namespace,
+            blob_id: delete.blob_id,
+            created_at: delete.created_at,
+        })
+        .collect();
     let mut groups: Vec<GroupBuilder> = Vec::new();
     let mut group_index: HashMap<Option<String>, usize> = HashMap::new();
     let mut done_ids: HashSet<String> = HashSet::new();
@@ -293,71 +305,54 @@ pub(crate) async fn build_outbox_snapshot(
         groups.push(group);
     }
 
-    for row in rows {
-        match row.operation {
-            DbOutboxOperation::Upload => {
-                // An upload row always carries the file id it reports progress
-                // under; only a delete has none.
-                let file_id = row
-                    .file_id
-                    .expect("an upload outbox row always carries a file_id");
-                // Already tallied as done — the row just lingers until coven's
-                // post-upload commit removes it. Deriving it too would double-count
-                // the file, and deriving it as queued would announce a completed
-                // upload as fresh work.
-                if done_ids.contains(&file_id) {
-                    continue;
-                }
-                let bytes_total = row.file_size.unwrap_or(0) as u64;
-                let state = if let Some(&live) = in_flight.get(&file_id) {
-                    // The reported count is of the encrypted payload, which can edge
-                    // just past the stored plaintext size; clamp it so the bar never
-                    // exceeds 100% or skews the ETA math.
-                    UploadState::Active {
-                        bytes_done: live.min(bytes_total),
-                    }
-                } else if let Some(last_error) = row.last_error.clone() {
-                    UploadState::Failed { last_error }
-                } else {
-                    UploadState::Queued
-                };
-                let cloud_key = row.cloud_key;
-                let display_name = match row.file_name {
-                    Some(name) => name,
-                    None => {
-                        debug!(
-                            outbox_id = row.id,
-                            "orphaned outbox upload (no backing file row); \
-                             showing cloud key as the label"
-                        );
-                        cloud_key.clone()
-                    }
-                };
-                let idx = *group_index
-                    .entry(row.release_id.clone())
-                    .or_insert_with(|| {
-                        groups.push(GroupBuilder::new(row.release_id.clone()));
-                        groups.len() - 1
-                    });
-                let group = &mut groups[idx];
-                if group.display_title.is_none() {
-                    group.display_title = row.title;
-                }
-                group.push(UploadFileOp {
-                    file_id,
-                    display_name,
-                    bytes_total,
-                    state,
-                });
-            }
-            DbOutboxOperation::Delete => {
-                deletes.push(DeleteOp {
-                    id: row.id,
-                    cloud_key: row.cloud_key,
-                    created_at: row.created_at,
-                });
-            }
+    for upload in queue.uploads {
+        // Already tallied as done — the entry just lingers until coven's
+        // post-upload commit consumes it. Deriving it too would double-count the
+        // file, and deriving it as queued would announce a completed upload as
+        // fresh work.
+        if done_ids.contains(&upload.file_id) {
+            continue;
         }
+        let bytes_total = upload.file_size.unwrap_or(0) as u64;
+        let state = if let Some(&live) = in_flight.get(&upload.file_id) {
+            // The reported count is of the encrypted payload, which can edge
+            // just past the stored plaintext size; clamp it so the bar never
+            // exceeds 100% or skews the ETA math.
+            UploadState::Active {
+                bytes_done: live.min(bytes_total),
+            }
+        } else if let Some(last_error) = upload.last_error {
+            UploadState::Failed { last_error }
+        } else {
+            UploadState::Queued
+        };
+        let display_name = match upload.file_name {
+            Some(name) => name,
+            None => {
+                debug!(
+                    file_id = upload.file_id,
+                    "queued upload has no backing release_files row; \
+                     showing its file id as the label"
+                );
+                upload.file_id.clone()
+            }
+        };
+        let idx = *group_index
+            .entry(upload.release_id.clone())
+            .or_insert_with(|| {
+                groups.push(GroupBuilder::new(upload.release_id.clone()));
+                groups.len() - 1
+            });
+        let group = &mut groups[idx];
+        if group.display_title.is_none() {
+            group.display_title = upload.album_title;
+        }
+        group.push(UploadFileOp {
+            file_id: upload.file_id,
+            display_name,
+            bytes_total,
+            state,
+        });
     }
 
     let upload_groups: Vec<UploadReleaseGroup> = groups
@@ -413,28 +408,27 @@ pub(crate) async fn build_outbox_snapshot(
         Some(bytes_remaining / throughput_bps)
     };
 
-    Ok(OutboxSnapshot {
+    OutboxSnapshot {
         upload_groups,
         deletes,
         total,
         paused,
         throughput_bps,
         eta_seconds,
-    })
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::db::{
-        Database, DbAlbum, DbArtist, DbFile, DbRelease, Pressing, ReleaseMetadataSource,
-    };
+    use crate::db::{DbOutboxDelete, DbOutboxUpload};
     use crate::library::upload_sessions::DoneFile;
-    use crate::util::content_type::ContentType;
-    use chrono::Utc;
-    use coven::SystemClock;
-    use std::sync::Arc;
-    use tempfile::TempDir;
+
+    const RELEASE: &str = "e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e";
+    const SMALL_FILE: &str = "00415c7f-b363-4ed9-8aad-422b93e974e9";
+    const LARGE_FILE: &str = "357d9eb4-a021-4555-8713-0bc652d83c65";
+    const OTHER_RELEASE: &str = "e6cdc0f3-3a7b-458b-86aa-fd093cc5e79b";
+    const OTHER_FILE: &str = "36ebe9b3-749f-4638-82b2-57cba256ff68";
 
     fn progress(queued: u32, active: u32, failed: u32, done: u32) -> UploadProgress {
         UploadProgress {
@@ -477,114 +471,51 @@ mod tests {
         );
     }
 
-    fn test_release(id: &str) -> DbRelease {
-        DbRelease {
-            id: id.into(),
-            album_id: "album-1".into(),
-            release_name: None,
-            pressing: Pressing {
-                year: None,
-                format: None,
-                label: None,
-                catalog_number: None,
-                country: None,
-                barcode: None,
-            },
-            disc_id: None,
-            metadata_source: ReleaseMetadataSource::FileTags,
-            metadata_source_release_id: None,
-            remote: true,
-            source_folder_name: None,
-            content_hash: None,
-            album_loudness_lufs: None,
-            album_peak_linear: None,
-            created_at: Utc::now(),
+    /// One release with two queued uploads (100 and 1000 bytes), as coven's
+    /// queue plus bae's context report them.
+    fn two_queued_uploads() -> DbOutboxQueue {
+        DbOutboxQueue {
+            uploads: vec![
+                queued_upload(SMALL_FILE, "01 Track Title.flac", 100),
+                queued_upload(LARGE_FILE, "02 Track Title.flac", 1000),
+            ],
+            deletes: Vec::new(),
         }
     }
 
-    fn test_file(id: &str, release_id: &str, name: &str, size: i64) -> DbFile {
-        DbFile {
-            id: id.into(),
-            release_id: release_id.into(),
-            original_filename: name.into(),
-            file_size: size,
-            content_type: ContentType::Flac,
-            cloud_path: None,
-            content_hash: None,
-            created_at: Utc::now(),
+    fn queued_upload(file_id: &str, file_name: &str, file_size: i64) -> DbOutboxUpload {
+        DbOutboxUpload {
+            release_id: Some(RELEASE.to_string()),
+            file_id: file_id.to_string(),
+            attempt_count: 0,
+            last_error: None,
+            created_at: 1_700_000_000_000,
+            file_name: Some(file_name.to_string()),
+            file_size: Some(file_size),
+            album_title: Some("Album Title".to_string()),
         }
     }
 
-    /// Seed a release with two files (sizes 100 and 1000) and queue both for
-    /// upload. Returns the db, the small file id, the large file id, and the
-    /// temp-dir guard (drop ends the test db).
-    async fn seed_two_queued_uploads() -> (Database, String, String, TempDir) {
-        let tmp = TempDir::new().unwrap();
-        let db = Database::new_test(
-            tmp.path().join("test.db").to_str().unwrap(),
-            Arc::new(SystemClock),
-            std::sync::Arc::new(coven::UuidProvider),
-        )
-        .await
-        .unwrap();
-
-        db.insert_artist(&DbArtist {
-            id: "artist-1".into(),
-            name: "Artist Name".into(),
-            sort_name: None,
-            discogs_artist_id: None,
-            musicbrainz_artist_id: None,
-            created_at: Utc::now(),
-        })
-        .await
-        .unwrap();
-        db.insert_album(&DbAlbum {
-            id: "album-1".into(),
-            title: "Album Title".into(),
-            artist_id: "artist-1".into(),
-            year: None,
-            primary_release_id: None,
-            is_compilation: false,
-            created_at: Utc::now(),
-        })
-        .await
-        .unwrap();
-        db.insert_release(&test_release("rel-1")).await.unwrap();
-
-        for (id, name, size) in [
-            ("file-small", "01 Track Title.flac", 100i64),
-            ("file-large", "02 Track Title.flac", 1000i64),
-        ] {
-            db.insert_file(&test_file(id, "rel-1", name, size))
-                .await
-                .unwrap();
-            db.add_cloud_outbox_upload(id, &format!("storage/{id}"), None, false)
-                .await
-                .unwrap();
-        }
-
-        (db, "file-small".into(), "file-large".into(), tmp)
-    }
-
-    async fn build(
-        db: &Database,
+    fn build(
+        queue: DbOutboxQueue,
         in_flight: &HashMap<String, u64>,
         sessions: &UploadSessions,
     ) -> OutboxSnapshot {
-        build_outbox_snapshot(db, in_flight, sessions, &UploadThroughput::new(), false)
-            .await
-            .unwrap()
+        build_outbox_snapshot(queue, in_flight, sessions, &UploadThroughput::new(), false)
     }
 
-    #[tokio::test]
-    async fn upload_groups_group_a_releases_files_with_aggregate_progress() {
-        let (db, _small, _large, _tmp) = seed_two_queued_uploads().await;
-        let snapshot = build(&db, &HashMap::new(), &UploadSessions::new()).await;
+    #[test]
+    fn upload_groups_group_a_releases_files_with_aggregate_progress() {
+        let snapshot = build(
+            two_queued_uploads(),
+            &HashMap::new(),
+            &UploadSessions::new(),
+        );
 
         // The release's two files collapse to one group carrying both.
         assert_eq!(snapshot.upload_groups.len(), 1);
         let group = &snapshot.upload_groups[0];
-        assert_eq!(group.release_id.as_deref(), Some("rel-1"));
+        assert_eq!(group.release_id.as_deref(), Some(RELEASE));
         assert_eq!(group.display_title, "Album Title");
         assert_eq!(group.files.len(), 2);
         assert_eq!(group.files[0].display_name, "01 Track Title.flac");
@@ -595,14 +526,12 @@ mod tests {
         assert_eq!(group.progress.bytes_total, 1100);
     }
 
-    #[tokio::test]
-    async fn live_bytes_ride_the_active_file_and_the_totals() {
-        let (db, _small, large, _tmp) = seed_two_queued_uploads().await;
-
+    #[test]
+    fn live_bytes_ride_the_active_file_and_the_totals() {
         // The large file is uploading right now (250 of 1000 bytes done); the
         // small file is still queued.
-        let in_flight = HashMap::from([(large.clone(), 250u64)]);
-        let snapshot = build(&db, &in_flight, &UploadSessions::new()).await;
+        let in_flight = HashMap::from([(LARGE_FILE.to_string(), 250u64)]);
+        let snapshot = build(two_queued_uploads(), &in_flight, &UploadSessions::new());
 
         assert_eq!(snapshot.total.bytes_total, 1100);
         // bytes_done is the in-flight file's live progress.
@@ -613,36 +542,118 @@ mod tests {
         let active = group
             .files
             .iter()
-            .find(|f| f.file_id == large)
+            .find(|f| f.file_id == LARGE_FILE)
             .expect("active file listed");
         assert_eq!(active.state, UploadState::Active { bytes_done: 250 });
     }
 
+    /// A queue entry coven has recorded a failed attempt on derives as `Failed`,
+    /// so the release badge reads "Retrying" rather than "Queued".
+    #[test]
+    fn a_recorded_failure_derives_failed_with_its_error() {
+        let mut queue = two_queued_uploads();
+        queue.uploads[1].attempt_count = 1;
+        queue.uploads[1].last_error = Some("boom".to_string());
+
+        let snapshot = build(queue, &HashMap::new(), &UploadSessions::new());
+
+        assert_eq!(snapshot.total.failed, 1);
+        assert_eq!(snapshot.total.queued, 1);
+        assert_eq!(
+            snapshot.total.activity(),
+            Some(UploadActivity::Retrying),
+            "a failure awaiting retry outranks the file still only queued"
+        );
+        let failed = snapshot.upload_groups[0]
+            .files
+            .iter()
+            .find(|f| f.file_id == LARGE_FILE)
+            .expect("failed file listed");
+        assert_eq!(
+            failed.state,
+            UploadState::Failed {
+                last_error: "boom".to_string()
+            }
+        );
+    }
+
+    /// An upload whose `release_files` row is gone still holds its place in the
+    /// queue — labelled by its file id, since there is no filename left.
+    #[test]
+    fn an_upload_with_no_backing_row_is_labelled_by_its_file_id() {
+        let queue = DbOutboxQueue {
+            uploads: vec![DbOutboxUpload {
+                file_name: None,
+                file_size: None,
+                album_title: None,
+                ..queued_upload(SMALL_FILE, "unused", 0)
+            }],
+            deletes: Vec::new(),
+        };
+
+        let snapshot = build(queue, &HashMap::new(), &UploadSessions::new());
+
+        let group = &snapshot.upload_groups[0];
+        assert_eq!(group.files[0].display_name, SMALL_FILE);
+        assert_eq!(group.files[0].bytes_total, 0);
+        assert_eq!(
+            group.display_title, SMALL_FILE,
+            "with no album title the group falls back to its first file's label"
+        );
+    }
+
+    /// Pending tombstones carry into the snapshot and into the summary line even
+    /// when nothing is uploading — the queue pane still has work to show.
+    #[test]
+    fn pending_deletes_survive_an_otherwise_empty_queue() {
+        let queue = DbOutboxQueue {
+            uploads: Vec::new(),
+            deletes: vec![DbOutboxDelete {
+                namespace: "release_files".to_string(),
+                blob_id: SMALL_FILE.to_string(),
+                created_at: 1_700_000_000_000,
+            }],
+        };
+
+        let snapshot = build(queue, &HashMap::new(), &UploadSessions::new());
+
+        assert_eq!(snapshot.pending_delete_count(), 1);
+        assert_eq!(snapshot.deletes[0].namespace, "release_files");
+        assert_eq!(snapshot.deletes[0].blob_id, SMALL_FILE);
+        assert!(snapshot.upload_groups.is_empty());
+        assert_eq!(
+            snapshot
+                .summary_parts()
+                .iter()
+                .map(|part| part.key.as_str())
+                .collect::<Vec<_>>(),
+            vec!["core.outbox.pending_deletes"]
+        );
+    }
+
     /// The frozen-"Queued (1)" regression at the derivation level: a file the
-    /// tally records as done while its outbox row still lingers must derive as
+    /// tally records as done while its queue entry still lingers must derive as
     /// `Done` — kept in the cumulative bytes, absent from the queued count,
     /// represented exactly once.
-    #[tokio::test]
-    async fn tallied_file_with_lingering_row_derives_done() {
-        let (db, small, _large, _tmp) = seed_two_queued_uploads().await;
-
+    #[test]
+    fn tallied_file_with_lingering_entry_derives_done() {
         let sessions = UploadSessions::new();
         sessions.record_done(
-            Some("rel-1".into()),
+            Some(RELEASE.to_string()),
             DoneFile {
-                file_id: small.clone(),
+                file_id: SMALL_FILE.to_string(),
                 display_name: "01 Track Title.flac".into(),
                 bytes: 100,
             },
         );
-        let snapshot = build(&db, &HashMap::new(), &sessions).await;
+        let snapshot = build(two_queued_uploads(), &HashMap::new(), &sessions);
 
         let group = &snapshot.upload_groups[0];
         assert_eq!(group.files.len(), 2, "done file represented exactly once");
         let done = group
             .files
             .iter()
-            .find(|f| f.file_id == small)
+            .find(|f| f.file_id == SMALL_FILE)
             .expect("done file listed");
         assert_eq!(done.state, UploadState::Done);
         assert_eq!(group.progress.done, 1);
@@ -655,73 +666,57 @@ mod tests {
     /// A release with nothing left to ship stops being rendered: its group
     /// leaves the snapshot while other releases keep uploading, and the totals
     /// cover only the work still on screen.
-    #[tokio::test]
-    async fn fully_done_group_is_dropped_while_queue_busy() {
-        let (db, small, large, _tmp) = seed_two_queued_uploads().await;
-
-        // Both of rel-1's files completed and their rows are gone; a second
-        // release still has a queued row keeping the queue busy.
-        let pending = db.get_pending_cloud_uploads().await.unwrap();
-        for entry in &pending {
-            db.remove_cloud_outbox_entry(entry.id).await.unwrap();
-        }
-        db.insert_release(&test_release("rel-2")).await.unwrap();
-        db.insert_file(&test_file(
-            "file-other",
-            "rel-2",
-            "03 Track Title.flac",
-            500,
-        ))
-        .await
-        .unwrap();
-        db.add_cloud_outbox_upload("file-other", "storage/file-other", None, false)
-            .await
-            .unwrap();
+    #[test]
+    fn fully_done_group_is_dropped_while_queue_busy() {
+        // Both of this release's files completed and their queue entries are
+        // consumed; a second release still has a queued upload keeping the queue
+        // busy.
+        let queue = DbOutboxQueue {
+            uploads: vec![DbOutboxUpload {
+                release_id: Some(OTHER_RELEASE.to_string()),
+                ..queued_upload(OTHER_FILE, "03 Track Title.flac", 500)
+            }],
+            deletes: Vec::new(),
+        };
 
         let sessions = UploadSessions::new();
-        for (id, bytes) in [(small.clone(), 100u64), (large.clone(), 1000u64)] {
+        for (id, bytes) in [(SMALL_FILE, 100u64), (LARGE_FILE, 1000u64)] {
             sessions.record_done(
-                Some("rel-1".into()),
+                Some(RELEASE.to_string()),
                 DoneFile {
-                    file_id: id.clone(),
-                    display_name: id,
+                    file_id: id.to_string(),
+                    display_name: id.to_string(),
                     bytes,
                 },
             );
         }
-        let snapshot = build(&db, &HashMap::new(), &sessions).await;
+        let snapshot = build(queue, &HashMap::new(), &sessions);
 
         assert_eq!(snapshot.upload_groups.len(), 1);
         let group = &snapshot.upload_groups[0];
-        assert_eq!(group.release_id.as_deref(), Some("rel-2"));
+        assert_eq!(group.release_id.as_deref(), Some(OTHER_RELEASE));
         assert_eq!(snapshot.total.bytes_total, 500);
         assert_eq!(snapshot.total.queued, 1);
         assert!(
-            !snapshot.per_release_progress().contains_key("rel-1"),
+            !snapshot.per_release_progress().contains_key(RELEASE),
             "a finished release must fall back to its resting storage badge"
         );
     }
 
     /// An idle queue ends the burst: the tallies clear and the snapshot is
     /// empty, so no stale done-rows can outlive it.
-    #[tokio::test]
-    async fn idle_queue_clears_the_tallies() {
-        let (db, small, _large, _tmp) = seed_two_queued_uploads().await;
-        let pending = db.get_pending_cloud_uploads().await.unwrap();
-        for entry in &pending {
-            db.remove_cloud_outbox_entry(entry.id).await.unwrap();
-        }
-
+    #[test]
+    fn idle_queue_clears_the_tallies() {
         let sessions = UploadSessions::new();
         sessions.record_done(
-            Some("rel-1".into()),
+            Some(RELEASE.to_string()),
             DoneFile {
-                file_id: small,
+                file_id: SMALL_FILE.to_string(),
                 display_name: "01 Track Title.flac".into(),
                 bytes: 100,
             },
         );
-        let snapshot = build(&db, &HashMap::new(), &sessions).await;
+        let snapshot = build(DbOutboxQueue::default(), &HashMap::new(), &sessions);
 
         assert!(snapshot.upload_groups.is_empty());
         assert!(sessions.tallies().is_empty());

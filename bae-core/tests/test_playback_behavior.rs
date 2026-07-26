@@ -1,4 +1,10 @@
 #![cfg(feature = "test-utils")]
+// Fixture row ids. coven validates every synced row's primary key as a
+// canonical v4 UUID (`RowIdentity::IndependentUuid`), which is what bae's
+// real ids are, so these fixtures carry UUIDs too. Each constant is named
+// for the moniker it replaced, so assertions still read by name.
+const RELEASE_THAT_WAS_DELETED: &str = "763072b0-643f-4469-8ac7-799c4550a769"; // was "release-that-was-deleted"
+
 use bae_core::db::Database;
 use bae_core::discogs::models::{DiscogsArtist, DiscogsRelease, DiscogsTrack};
 use bae_core::import::{IdentityChoice, ImportCommand, MetadataRef, MetadataSource, StorageMode};
@@ -4365,7 +4371,7 @@ async fn test_restore_drops_deleted_context_keeps_manual() {
     // and current track are a real, surviving track.
     let state = bae_core::db::DbPlaybackState {
         context: Some(bae_core::db::DbPlaybackContext {
-            source: "release-that-was-deleted".to_string(),
+            source: RELEASE_THAT_WAS_DELETED.to_string(),
             shuffled: false,
         }),
         manual: format!("[{:?}]", track_id),
@@ -4663,9 +4669,23 @@ async fn mid_flight_cloud_read_failure_ends_in_stopped() {
         "fixture must import at least one playable track"
     );
 
-    // Every cloud range read for this track fails (the nonce header read is the
-    // first), so the background reader cancels the buffer and emits PlaybackError.
-    fixture.cloud.fail_next_range_reads(usize::MAX);
+    // Every release-file object leaves the cloud, so the background reader's
+    // fetch 404s and it cancels the buffer and emits PlaybackError. Arming the
+    // legacy range-read failure no longer covers this: coven reads an exact
+    // object by its locator, on a path that hook does not sit on.
+    let objects: Vec<String> = fixture
+        .cloud
+        .keys()
+        .into_iter()
+        .filter(|key| key.starts_with("release_files/"))
+        .collect();
+    assert!(
+        !objects.is_empty(),
+        "the fixture uploaded its release files"
+    );
+    for key in objects {
+        fixture.cloud.remove(&key);
+    }
 
     let track_id = fixture.track_ids[0].clone();
     fixture.playback_handle.play(track_id);

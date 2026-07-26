@@ -926,8 +926,11 @@ async fn musicbrainz_id_surfaces_when_present() {
     // artist with a MusicBrainz id and a minimal album/release, then assert both
     // getArtists and getArtist emit it.
     let (manager, _t) = new_manager().await;
+    // coven takes only canonical UUIDs on a synced row, so the fixture ids are
+    // UUIDs derived from readable monikers.
+    let artist_id = bae_test_support::test_uuid("mb-artist-1");
     let artist = DbArtist {
-        id: "mb-artist-1".to_string(),
+        id: artist_id.clone(),
         name: "MB Artist".to_string(),
         sort_name: None,
         discogs_artist_id: None,
@@ -937,7 +940,7 @@ async fn musicbrainz_id_surfaces_when_present() {
     manager.insert_artist(&artist).await.unwrap();
     let now = chrono::Utc::now();
     let album = DbAlbum {
-        id: "mb-album-1".to_string(),
+        id: bae_test_support::test_uuid("mb-album-1"),
         title: "MB Album".to_string(),
         artist_id: artist.id.clone(),
         year: Some(2010),
@@ -946,7 +949,7 @@ async fn musicbrainz_id_surfaces_when_present() {
         created_at: now,
     };
     let release = DbRelease {
-        id: "mb-release-1".to_string(),
+        id: bae_test_support::test_uuid("mb-release-1"),
         album_id: album.id.clone(),
         release_name: None,
         pressing: bae_core::db::Pressing::blank(),
@@ -961,7 +964,7 @@ async fn musicbrainz_id_surfaces_when_present() {
         created_at: now,
     };
     let track = DbTrack {
-        id: "mb-track-1".to_string(),
+        id: bae_test_support::test_uuid("mb-track-1"),
         release_id: release.id.clone(),
         title: "MB Track".to_string(),
         side: 1,
@@ -983,7 +986,12 @@ async fn musicbrainz_id_surfaces_when_present() {
     let mb = find_artist(indexes, "MB Artist");
     assert_eq!(mb["musicBrainzId"], "mbid-abc-123", "getArtists emits mbid");
 
-    let one = call(&router, "getArtist", &authed("f=json&id=ar-mb-artist-1")).await;
+    let one = call(
+        &router,
+        "getArtist",
+        &authed(&format!("f=json&id=ar-{artist_id}")),
+    )
+    .await;
     assert_eq!(
         one.sub()["artist"]["musicBrainzId"],
         "mbid-abc-123",

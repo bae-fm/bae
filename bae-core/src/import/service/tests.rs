@@ -242,8 +242,7 @@ async fn failed_import_before_finalize_leaves_only_import_audit_row() {
     let database = service.library_manager.database_for_test();
     let (artist_count, artist_image_count) = database
         .handle()
-        .sql(move |sql| {
-            let conn = sql.tx();
+        .sql_read(move |conn| {
             let artist_count = conn.query_row("SELECT COUNT(*) FROM artists", [], |row| {
                 row.get::<_, i64>(0)
             })?;
@@ -539,7 +538,7 @@ fn make_seed_album_release_track() -> (
         created_at: now,
     };
     let album = crate::db::DbAlbum {
-        id: "album-1".to_string(),
+        id: "9fd7bfa8-3c7c-4026-8559-da66af02f636".to_string(),
         title: "Album Title".to_string(),
         artist_id: artist.id.clone(),
         year: Some(2020),
@@ -754,7 +753,7 @@ fn user_edit_preserves_source_id_artist_rows_when_names_unchanged() {
         created_at: now,
     };
     let album = crate::db::DbAlbum {
-        id: "album-1".to_string(),
+        id: "9fd7bfa8-3c7c-4026-8559-da66af02f636".to_string(),
         title: "Album Title".to_string(),
         artist_id: seed_artist.id.clone(),
         year: Some(2020),

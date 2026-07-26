@@ -212,7 +212,7 @@ mod tests {
         .await
         .unwrap();
         let artist = DbArtist {
-            id: "artist-1".to_string(),
+            id: bae_test_support::test_uuid("artist-1"),
             name: "Artist Name".to_string(),
             sort_name: None,
             discogs_artist_id: None,
@@ -245,7 +245,7 @@ mod tests {
         let album = DbAlbum {
             id: Uuid::new_v4().to_string(),
             title: "Album Title".to_string(),
-            artist_id: "artist-1".to_string(),
+            artist_id: bae_test_support::test_uuid("artist-1"),
             year: None,
             primary_release_id: None,
             is_compilation: false,
@@ -271,13 +271,13 @@ mod tests {
         database.insert_release(&release).await.unwrap();
 
         let file = DbFile {
-            id: "image-file-1".to_string(),
+            id: "4c3b28d5-7315-48f1-8352-500492675441".to_string(),
             release_id: release.id.clone(),
             original_filename: "cover.jpg".to_string(),
             file_size: 5,
             content_type: ContentType::Jpeg,
             cloud_path: None,
-            content_hash: None,
+            content_hash: crate::util::fs::hash_bytes(b"fixture"),
             created_at: Utc::now(),
         };
         database.insert_file(&file).await.unwrap();
@@ -297,7 +297,7 @@ mod tests {
         .await;
 
         assert!(
-            logs.contains("artwork OCR: registered image file image-file-1"),
+            logs.contains(&format!("artwork OCR: registered image file {}", file.id)),
             "expected missing image-file warning, got {logs:?}",
         );
         assert!(
@@ -353,7 +353,7 @@ mod tests {
         .await
         .unwrap();
         let artist = DbArtist {
-            id: "artist-1".to_string(),
+            id: bae_test_support::test_uuid("artist-1"),
             name: "Test Artist".to_string(),
             sort_name: None,
             discogs_artist_id: None,
@@ -388,7 +388,7 @@ mod tests {
         let album = DbAlbum {
             id: Uuid::new_v4().to_string(),
             title: "Test Album".to_string(),
-            artist_id: "artist-1".to_string(),
+            artist_id: bae_test_support::test_uuid("artist-1"),
             year: None,
             primary_release_id: None,
             is_compilation: false,
@@ -427,7 +427,7 @@ mod tests {
                 file_size: size,
                 content_type,
                 cloud_path: None,
-                content_hash: None,
+                content_hash: crate::util::fs::hash_bytes(b"fixture"),
                 created_at: Utc::now(),
             };
             database.insert_file(&file).await.unwrap();

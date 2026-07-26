@@ -157,8 +157,16 @@ mod tests {
     #[test]
     fn same_group_collapses_into_one_card() {
         let groups = group_results(vec![
-            result("rel-1", Some("group-x"), Some(1992)),
-            result("rel-2", Some("group-x"), Some(2012)),
+            result(
+                "e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e",
+                Some("group-x"),
+                Some(1992),
+            ),
+            result(
+                "e6cdc0f3-3a7b-458b-86aa-fd093cc5e79b",
+                Some("group-x"),
+                Some(2012),
+            ),
         ]);
         assert_eq!(groups.len(), 1);
         assert_eq!(groups[0].id, "group-x");
@@ -172,8 +180,16 @@ mod tests {
     #[test]
     fn distinct_groups_keep_first_seen_order() {
         let groups = group_results(vec![
-            result("rel-1", Some("group-b"), None),
-            result("rel-2", Some("group-a"), None),
+            result(
+                "e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e",
+                Some("group-b"),
+                None,
+            ),
+            result(
+                "e6cdc0f3-3a7b-458b-86aa-fd093cc5e79b",
+                Some("group-a"),
+                None,
+            ),
             result("rel-3", Some("group-b"), None),
         ]);
         assert_eq!(
@@ -186,9 +202,13 @@ mod tests {
 
     #[test]
     fn ungrouped_result_is_its_own_single_pressing_card() {
-        let groups = group_results(vec![result("rel-1", None, Some(1999))]);
+        let groups = group_results(vec![result(
+            "e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e",
+            None,
+            Some(1999),
+        )]);
         assert_eq!(groups.len(), 1);
-        assert_eq!(groups[0].id, "rel-1");
+        assert_eq!(groups[0].id, "e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e");
         assert_eq!(groups[0].group_url, None);
         assert_eq!(groups[0].year_min, Some(1999));
         assert_eq!(groups[0].year_max, Some(1999));
@@ -197,8 +217,8 @@ mod tests {
     #[test]
     fn two_ungrouped_results_do_not_merge() {
         let groups = group_results(vec![
-            result("rel-1", None, None),
-            result("rel-2", None, None),
+            result("e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e", None, None),
+            result("e6cdc0f3-3a7b-458b-86aa-fd093cc5e79b", None, None),
         ]);
         assert_eq!(groups.len(), 2);
     }
@@ -206,8 +226,16 @@ mod tests {
     #[test]
     fn year_span_uses_min_and_max() {
         let groups = group_results(vec![
-            result("rel-1", Some("g"), Some(1992)),
-            result("rel-2", Some("g"), Some(2006)),
+            result(
+                "e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e",
+                Some("g"),
+                Some(1992),
+            ),
+            result(
+                "e6cdc0f3-3a7b-458b-86aa-fd093cc5e79b",
+                Some("g"),
+                Some(2006),
+            ),
             result("rel-3", Some("g"), Some(2012)),
         ]);
         assert_eq!(groups[0].year_min, Some(1992));
@@ -242,7 +270,11 @@ mod tests {
 
     #[test]
     fn year_span_is_none_when_no_year() {
-        let groups = group_results(vec![result("rel-1", Some("g"), None)]);
+        let groups = group_results(vec![result(
+            "e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e",
+            Some("g"),
+            None,
+        )]);
         assert_eq!(groups[0].year_min, None);
         assert_eq!(groups[0].year_max, None);
     }
@@ -253,8 +285,14 @@ mod tests {
             source: MetadataSource::Discogs,
             source_group_id: "master-7".to_string(),
         };
-        let rg =
-            ReleaseGroup::from_group(group, vec![result("rel-1", Some("master-7"), Some(2001))]);
+        let rg = ReleaseGroup::from_group(
+            group,
+            vec![result(
+                "e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e",
+                Some("master-7"),
+                Some(2001),
+            )],
+        );
         assert_eq!(rg.id, "master-7");
         assert_eq!(rg.source_label, "Discogs");
         assert_eq!(
@@ -268,10 +306,21 @@ mod tests {
     #[test]
     fn representative_cover_preserves_remote_cover_pair() {
         let cover = cover();
-        let mut first = result("rel-1", Some("g"), Some(1992));
+        let mut first = result(
+            "e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e",
+            Some("g"),
+            Some(1992),
+        );
         first.cover_art = Some(cover.clone());
 
-        let groups = group_results(vec![first, result("rel-2", Some("g"), Some(1994))]);
+        let groups = group_results(vec![
+            first,
+            result(
+                "e6cdc0f3-3a7b-458b-86aa-fd093cc5e79b",
+                Some("g"),
+                Some(1994),
+            ),
+        ]);
 
         assert_eq!(groups[0].cover_art, Some(cover));
     }

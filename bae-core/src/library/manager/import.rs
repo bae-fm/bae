@@ -119,17 +119,13 @@ impl LibraryManager {
         &self,
         release_id: &str,
     ) -> Result<(), LibraryError> {
-        let orphaned_images = self
-            .database
+        // The DB layer deletes the release subtree and declares the cover/artist-
+        // image blobs it orphans as deletions in the same coven write batch, so
+        // coven records the durable local-cleanup intents that reclaim their
+        // on-device bytes. Nothing to evict here.
+        self.database
             .fail_import_and_delete_release(release_id)
             .await?;
-        // The rollback dropped the cover/artist-image rows; evict their blobs
-        // from coven's on-device store so the failed import leaves nothing.
-        let evict_blobs = orphaned_images
-            .into_iter()
-            .map(|image| Self::image_blob_ref(image.namespace, &image.blob_id, image.cloud_path))
-            .collect();
-        self.evict_delete_blobs(evict_blobs).await;
         Ok(())
     }
 }

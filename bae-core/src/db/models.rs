@@ -278,8 +278,8 @@ pub struct DbRelease {
     pub metadata_source_release_id: Option<String>,
     /// Shared, synced fact (the coven gate column): is this release's audio in
     /// the cloud home (remote) or local to one device (local). A local release's
-    /// in-place files are coven user-provided external refs (`local_blob_refs`);
-    /// a remote release's bytes live in coven's blob cache.
+    /// in-place files are registered with coven as the user's own external
+    /// files; a remote release's bytes live in coven's blob cache.
     pub remote: bool,
     /// Name of the source folder this release was imported from (just the final
     /// path component, not the full path). Used to detect likely duplicates when
@@ -406,8 +406,8 @@ pub struct DbTrack {
 /// structure on export.
 ///
 /// Where the bytes live follows the release's storage state, resolved by coven:
-/// a local release keeps the user's own file in place as a coven user-provided
-/// external ref (`local_blob_refs`), read straight from the user's path; a remote
+/// a local release keeps the user's own file in place, registered with coven as
+/// an external file and read straight from the user's path; a remote
 /// release's bytes sit in coven's blob cache (`storage/pinned/` or
 /// `storage/cache/`), read by file id through coven's locality-aware read — never
 /// a bae path.
@@ -426,11 +426,10 @@ pub struct DbFile {
     pub cloud_path: Option<String>,
     /// SHA-256 (lowercase hex) of this file's plaintext bytes — coven's
     /// author-signed content hash, verified against the decrypted bytes on
-    /// every cloud fetch (see [`crate::util::fs::hash_file`]). `None` only for
-    /// a row that predates the column (coven refuses to verify — and so
-    /// refuses to fetch — an unhashed blob); every row this app writes now
-    /// carries one.
-    pub content_hash: Option<String>,
+    /// every cloud fetch (see [`crate::util::fs::hash_file`]). Not optional:
+    /// coven reads it off every blob-bearing row and refuses one without it, so
+    /// a file row and its hash are written together or not at all.
+    pub content_hash: String,
     pub created_at: DateTime<Utc>,
 }
 
@@ -740,6 +739,12 @@ pub(crate) fn is_various_artists(name: &str) -> bool {
 
 impl DbRelease {
     #[cfg(test)]
+    /// A minimal release fixture. It lands **Local**, the way every import does:
+    /// a Remote release is one whose every blob reached the cloud, which no bare
+    /// row insert can make true — coven refuses to register an external file
+    /// against a Remote-gated row, and refuses to tombstone a blob that has no
+    /// cloud object. A test that wants Remote takes a release through the real
+    /// transition.
     pub fn new_test(album_id: &str, release_id: &str) -> Self {
         let now = chrono::Utc::now();
         DbRelease {
@@ -750,7 +755,7 @@ impl DbRelease {
             disc_id: None,
             metadata_source: ReleaseMetadataSource::FileTags,
             metadata_source_release_id: None,
-            remote: true,
+            remote: false,
             source_folder_name: None,
             content_hash: None,
             album_loudness_lufs: None,
@@ -793,9 +798,7 @@ impl DbFile {
     ///
     /// Files are linked to releases. Used for reconstructing original file structure
     /// during export. `content_hash` is coven's required blob content hash
-    /// (see [`crate::util::fs::hash_file`]) — `None` only when the caller has
-    /// no real plaintext to hash against (a metadata-only test fixture that
-    /// never exercises a real cloud fetch of this file's blob).
+    /// (see [`crate::util::fs::hash_file`]).
     pub fn new(
         release_id: &str,
         original_filename: &str,
@@ -803,7 +806,7 @@ impl DbFile {
         content_type: ContentType,
         id: String,
         now: DateTime<Utc>,
-        content_hash: Option<String>,
+        content_hash: String,
     ) -> Self {
         DbFile {
             id,
@@ -959,9 +962,9 @@ pub struct DbLibraryImage {
     /// local cache layout is unaffected.
     pub cloud_path: Option<String>,
     /// SHA-256 (lowercase hex) of this image's plaintext bytes — coven's
-    /// author-signed content hash (see [`crate::util::fs::hash_bytes`]).
-    /// `None` only for a row that predates the column.
-    pub content_hash: Option<String>,
+    /// author-signed content hash (see [`crate::util::fs::hash_bytes`]). Not
+    /// optional, for the same reason as [`DbFile::content_hash`].
+    pub content_hash: String,
     pub created_at: DateTime<Utc>,
 }
 
@@ -1002,7 +1005,7 @@ impl DbLibraryImage {
             source: source.to_string(),
             source_url,
             cloud_path: None,
-            content_hash: Some(crate::util::fs::hash_bytes(bytes)),
+            content_hash: crate::util::fs::hash_bytes(bytes),
             created_at: now,
         }
     }
@@ -1306,65 +1309,55 @@ pub enum StorageFilter {
     Uploading,
 }
 
-/// The operations `Database::outbox_items` exposes from `cloud_outbox`.
-/// coven's internal `cancel` rows are filtered out by that query.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum DbOutboxOperation {
-    Upload,
-    Delete,
-}
-
-impl DbOutboxOperation {
-    /// Parse the visible `cloud_outbox.operation` text column values.
-    pub fn parse(s: &str) -> Option<Self> {
-        match s {
-            "upload" => Some(Self::Upload),
-            "delete" => Some(Self::Delete),
-            _ => None,
-        }
-    }
-}
-
-/// One row from the `cloud_outbox` join: the queue entry's own columns plus the
-/// joined release id, album title, and file size, from which the snapshot builder
-/// constructs grouped uploads and deletes.
+/// What coven's durable cloud queue is holding, as the Storage Manager renders
+/// it: pending uploads and pending cloud tombstones, each oldest first.
 ///
-/// Only an upload has a `file_id`; a delete names its blob by `cloud_key` alone.
-/// `release_id`, `title`, `file_name`, and `file_size` are `Option` because the
-/// `release_files` join finds nothing for a delete, or misses an orphaned
-/// `file_id` (the row's file was deleted before the outbox drained).
+/// coven owns the queue itself — which blob, under which gated root, how many
+/// attempts and why the last one failed. bae owns only the context a person
+/// reads: the file's name and size, its release, and that release's album
+/// title. [`Database::outbox_queue`](crate::db::Database::outbox_queue) reads
+/// the first from coven and joins the second from bae's own tables.
+#[derive(Debug, Clone, Default)]
+pub struct DbOutboxQueue {
+    pub uploads: Vec<DbOutboxUpload>,
+    pub deletes: Vec<DbOutboxDelete>,
+}
+
+/// One queued upload plus its bae context.
+///
+/// The context fields are `None` when the `release_files` row the blob hangs
+/// off is gone — the upload is still queued and still rendered, just labelled
+/// by its file id instead of a filename.
 #[derive(Debug, Clone)]
-pub struct DbOutboxRow {
-    pub id: i64,
-    pub operation: DbOutboxOperation,
-    pub file_id: Option<String>,
-    pub cloud_key: String,
-    /// Enqueue time as Unix epoch milliseconds, parsed from the queue row's
-    /// RFC 3339 `created_at` column at read time so consumers carry an instant.
-    pub created_at: i64,
-    pub attempt_count: i64,
-    pub last_error: Option<String>,
+pub struct DbOutboxUpload {
+    /// The release whose make-Remote enqueued this upload — the gated root
+    /// every one of a release's uploads shares, and what the queue pane groups
+    /// by. `None` when coven reports a root outside `releases`, which is not a
+    /// shape bae enqueues.
     pub release_id: Option<String>,
-    pub title: Option<String>,
+    /// The `release_files` row carrying the blob. Progress is reported under
+    /// this id, and it is the blob's id too — the table declares no separate
+    /// id column, so coven reads the blob id off the primary key.
+    pub file_id: String,
+    /// Failed transfer attempts so far; 0 for one never yet tried.
+    pub attempt_count: u64,
+    /// Why the last attempt failed, if one has.
+    pub last_error: Option<String>,
+    /// Enqueue time as Unix epoch milliseconds, taken from coven's HLC stamp.
+    pub created_at: i64,
     pub file_name: Option<String>,
     pub file_size: Option<i64>,
+    /// The album title of `release_id`, for the group heading.
+    pub album_title: Option<String>,
 }
 
-#[cfg(test)]
-mod tests {
-    use super::DbOutboxOperation;
-
-    #[test]
-    fn db_outbox_operation_parse_is_the_visible_domain() {
-        assert_eq!(
-            DbOutboxOperation::parse("upload"),
-            Some(DbOutboxOperation::Upload)
-        );
-        assert_eq!(
-            DbOutboxOperation::parse("delete"),
-            Some(DbOutboxOperation::Delete)
-        );
-        assert_eq!(DbOutboxOperation::parse("cancel"), None);
-        assert_eq!(DbOutboxOperation::parse("bogus"), None);
-    }
+/// One cloud object still owed a removal. A tombstone outlives the row that
+/// named it, so there is no bae context to join — the blob's namespace and id
+/// are all that is left of it.
+#[derive(Debug, Clone)]
+pub struct DbOutboxDelete {
+    pub namespace: String,
+    pub blob_id: String,
+    /// Enqueue time as Unix epoch milliseconds, taken from coven's HLC stamp.
+    pub created_at: i64,
 }

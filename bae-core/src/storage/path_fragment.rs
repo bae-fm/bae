@@ -75,7 +75,8 @@ mod tests {
     #[test]
     fn accepts_normal_relative_fragments() {
         for ok in ["track.flac", "CD1/track.flac", "Disc 1/01 - Song.flac"] {
-            validate_path_fragment("r", "l", ok).unwrap_or_else(|e| panic!("{ok:?}: {e}"));
+            validate_path_fragment("af63ef4c-8602-4cd5-82c0-3d334b916305", "l", ok)
+                .unwrap_or_else(|e| panic!("{ok:?}: {e}"));
         }
     }
 
@@ -84,7 +85,8 @@ mod tests {
         // `C:\evil` and any other backslash fragment is refused on every
         // platform — a separator on Windows, a stray literal elsewhere.
         for bad in ["", "a\0b", "CD1\\track.flac", r"C:\evil", r"..\evil"] {
-            validate_path_fragment("r", "l", bad).expect_err(bad);
+            validate_path_fragment("af63ef4c-8602-4cd5-82c0-3d334b916305", "l", bad)
+                .expect_err(bad);
         }
     }
 
@@ -93,7 +95,8 @@ mod tests {
         // Non-`Normal` components: an absolute `RootDir`, a `..` `ParentDir`
         // (leading or interior), and a leading `.` `CurDir`.
         for bad in ["/etc/passwd", "..", "../evil", "a/../etc/passwd", "./evil"] {
-            validate_path_fragment("r", "l", bad).expect_err(bad);
+            validate_path_fragment("af63ef4c-8602-4cd5-82c0-3d334b916305", "l", bad)
+                .expect_err(bad);
         }
     }
 
@@ -106,7 +109,8 @@ mod tests {
     #[test]
     fn rejects_windows_drive_and_unc() {
         for bad in ["C:/evil", r"C:\evil", r"\\server\share\evil"] {
-            validate_path_fragment("r", "l", bad).expect_err(bad);
+            validate_path_fragment("af63ef4c-8602-4cd5-82c0-3d334b916305", "l", bad)
+                .expect_err(bad);
         }
     }
 }

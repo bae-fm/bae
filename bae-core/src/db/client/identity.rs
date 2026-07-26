@@ -16,7 +16,7 @@ impl Database {
         let ids = Arc::clone(&self.inner.ids);
         self.call_sql(move |sql| {
             let reg = sql.stamp();
-            let conn = sql.tx();
+            let conn = &sql;
             for identity in &identities {
                 insert_release_identity_row(conn, &release_id, identity, ids.new_id(), &reg, &now)?;
             }
@@ -242,7 +242,7 @@ impl Database {
         let ids = Arc::clone(&self.inner.ids);
 
         self.call_sql(move |sql| {
-            let tx = sql.tx();
+            let tx = &sql;
             // One HLC stamp for every synced row this transaction touches.
             let reg = sql.stamp();
 
@@ -260,19 +260,17 @@ impl Database {
                 // deleted (sole release moved), the SELECT still sees the
                 // source rows because the DELETE happens later in the same
                 // transaction.
-                let source_artists: Vec<(String, i32)> = {
-                    let mut stmt = tx.prepare(
-                        "SELECT artist_id, position FROM album_artists \
-                                 WHERE album_id = ? ORDER BY position",
-                    )?;
-                    let rows = stmt.query_map(params![current_album_id], |row| {
+                let source_artists: Vec<(String, i32)> = tx.query(
+                    "SELECT artist_id, position FROM album_artists \
+                             WHERE album_id = ? ORDER BY position",
+                    params![current_album_id],
+                    |row| {
                         Ok((
                             row.get::<_, String>("artist_id")?,
                             row.get::<_, i32>("position")?,
                         ))
-                    })?;
-                    rows.collect::<coven::rusqlite::Result<Vec<_>>>()?
-                };
+                    },
+                )?;
                 for (artist_id, position) in source_artists {
                     let album_artist =
                         DbAlbumArtist::new(&album.id, &artist_id, position, ids.new_id(), now_dt);
