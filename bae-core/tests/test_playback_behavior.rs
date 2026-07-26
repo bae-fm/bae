@@ -6117,6 +6117,35 @@ fn clone_remote_multi_window_library() -> (TempDir, coven::InMemoryCloudHome, Ve
     (fresh, template.cloud.clone(), template.track_ids.clone())
 }
 
+/// Import and upload a remote multi-window library into a bucket nothing else
+/// touches, then clone it the way `clone_remote_multi_window_library` clones the
+/// shared one. Blocking (an import plus file I/O), so callers run it on a
+/// blocking thread.
+///
+/// Its own bucket, rather than a clone of the shared template's, because that one
+/// serves every remote test at once: read counters taken against it would include
+/// whatever the others happened to be fetching.
+///
+/// The import runs on its own runtime, which is dropped before the directory is
+/// read — the same teardown `REMOTE_MULTI_WINDOW_TEMPLATE` performs. The result
+/// is still a *clone* rather than the template directory itself: coven's
+/// store-open guard is process-wide and keyed by directory, and the template's
+/// own handle still holds its entry, so opening that same path again is refused
+/// ("store is already open"). A clone is a different path, which is exactly why
+/// every other fixture here opens one.
+fn build_private_remote_multi_window_library() -> (TempDir, coven::InMemoryCloudHome, Vec<String>) {
+    let rt = tokio::runtime::Runtime::new()
+        .expect("build the private remote multi-window import's runtime");
+    let template = rt.block_on(async {
+        build_remote_multi_window_template()
+            .await
+            .expect("import and upload a private remote multi-window release")
+    });
+    drop(rt);
+    let fresh = clone_template_library(template.dir.path());
+    (fresh, template.cloud.clone(), template.track_ids.clone())
+}
+
 /// The multi-window CUE album imported remote-unpinned against a
 /// `InMemoryCloudHome`, with the local originals deleted so every read resolves
 /// through an actual ranged cloud fetch.
@@ -6124,6 +6153,11 @@ struct RemoteMultiWindowPlayback {
     playback_handle: bae_core::playback::PlaybackHandle,
     progress_rx: tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
     track_ids: Vec<String>,
+    /// The bucket this library reads through, for a test that counts what a read
+    /// actually cost. Shared with every other clone of the same template, so a
+    /// test asserting on its counters needs a template of its own — see
+    /// `seek_over_remote_cloud_costs_chunks_not_the_whole_blob`.
+    cloud: coven::InMemoryCloudHome,
     _capture_stream_rx: CaptureStreamRx,
     _temp_dir: TempDir,
 }
@@ -6136,7 +6170,18 @@ impl RemoteMultiWindowPlayback {
         let (temp_dir, cloud, track_ids) =
             tokio::task::spawn_blocking(clone_remote_multi_window_library).await?;
         tracing::debug!("remote multi-window clone ready for {name}");
+        Self::over(temp_dir, cloud, track_ids).await
+    }
 
+    /// Build a playback service over an already-cloned remote library and the
+    /// bucket its blob lives in. Split out so a test that counts cloud reads can
+    /// supply a template it owns alone, instead of the process-wide one every
+    /// other remote test is reading concurrently.
+    async fn over(
+        temp_dir: TempDir,
+        cloud: coven::InMemoryCloudHome,
+        track_ids: Vec<String>,
+    ) -> Result<Self, Box<dyn std::error::Error>> {
         let db_path = temp_dir.path().join("test.db");
         let database = Database::new_test(
             db_path.to_str().expect("db path is valid UTF-8"),
@@ -6160,7 +6205,7 @@ impl RemoteMultiWindowPlayback {
         // Reconnect the template's bucket: the cloned rows name the blob, but the
         // live cloud home is an in-process object no directory copy can carry.
         library_manager
-            .connect_test_cloud_home(Arc::new(cloud), remote_fixture_cipher())
+            .connect_test_cloud_home(Arc::new(cloud.clone()), remote_fixture_cipher())
             .await?;
 
         let (playback_handle, capture_stream_rx) =
@@ -6170,6 +6215,7 @@ impl RemoteMultiWindowPlayback {
             playback_handle,
             progress_rx,
             track_ids,
+            cloud,
             _capture_stream_rx: capture_stream_rx,
             _temp_dir: temp_dir,
         })
@@ -6314,6 +6360,115 @@ async fn seek_within_the_last_track_over_remote_cloud() {
     wait_for_position_advance(&mut playback.progress_rx)
         .await
         .expect("audio must keep flowing after the seek over a real ranged cloud read");
+}
+
+/// No single ranged read may exceed this. The fill asks for one 4 MiB window at a
+/// time and coven serves the chunks covering it, so the largest read is a window
+/// plus chunk alignment; the slack here is for that alignment, not for a second
+/// window. This is the assertion that states the property — *a range costs its own
+/// bytes* — and it holds however many windows the fill happens to pull.
+const SEEK_LARGEST_RANGE_BOUND: u64 = 5 * 1024 * 1024;
+
+/// Everything the seek's ranged reads move, together, must stay under this — half
+/// the fixture's 31,922,637-byte blob. Loose on purpose: the fill keeps reading
+/// ahead while the seek settles, so the total lands on a whole number of 4 MiB
+/// windows (measured at one or two, 4,195,328 or 8,521,760 bytes, depending on
+/// how far read-ahead got before the counter was read). The point it pins is only
+/// that a seek never drags the file across, so it is bounded well above that
+/// race and well below the blob.
+const SEEK_RANGE_BYTES_BOUND: u64 = 16 * 1024 * 1024;
+
+/// Coarse backstop on the seek itself. Serving a range used to mean downloading,
+/// decrypting and hashing the whole blob — seconds per read, several reads to a
+/// seek — so this is far above a chunked seek and far below the old cost.
+const SEEK_COST_BACKSTOP: Duration = Duration::from_secs(15);
+
+/// A seek over a remote cloud home costs the chunks its range touches, not the
+/// whole blob. coven seals a blob per chunk and authenticates each chunk on its
+/// own, so a ranged read fetches only the chunks covering it: seeking near the end
+/// of the last track moves 4,195,328 bytes — the fill's one 4 MiB window and a
+/// kilobyte of probe — out of a 31,922,637-byte blob.
+///
+/// Before chunked ranges, opening a remote stream downloaded, decrypted and hashed
+/// the entire blob before it could serve a byte. The byte count is what pins the
+/// shape here, because it is exact where a stopwatch is load-dependent, and it is
+/// two-sided: see the assertions. The elapsed bound is only a coarse backstop.
+///
+/// This test owns its bucket. Every other remote test clones the shared template
+/// and reads one `InMemoryCloudHome` between them, so counters taken there would
+/// include their traffic.
+#[tokio::test(flavor = "multi_thread")]
+async fn seek_over_remote_cloud_costs_chunks_not_the_whole_blob() {
+    let (dir, cloud, track_ids) =
+        tokio::task::spawn_blocking(build_private_remote_multi_window_library)
+            .await
+            .expect("build a private remote multi-window library");
+    let mut playback = RemoteMultiWindowPlayback::over(dir, cloud, track_ids)
+        .await
+        .expect("set up playback over the private remote fixture");
+
+    let last_track = playback.track_ids[2].clone();
+    playback.play_and_wait(&last_track).await;
+
+    // Whatever starting the track cost is already paid; measure the seek alone.
+    playback.cloud.clear_exact_range_reads();
+
+    // Near the end of the last track (it runs 2:00–3:00 of the file, so this
+    // lands ~10 s from the end). Deliberately not mid-track: with a track ceiling
+    // set the fill reads ahead to the end of the *current track*, which for a
+    // seek to 0:20 would pull the remaining ~40 s — read-ahead the seek did not
+    // need, swamping the thing being measured. Landing near the end leaves only a
+    // short tail to read ahead into, so what the counter sees is the seek's own
+    // window.
+    let target = Duration::from_secs(50);
+    let started = Instant::now();
+    playback.playback_handle.seek(target);
+    let landed = wait_for_seeked_on(&mut playback.progress_rx, SEEK_COST_BACKSTOP)
+        .await
+        .expect("the seek must land within the backstop over a chunked ranged read");
+    let elapsed = started.elapsed();
+    assert!(
+        Duration::from_millis(landed).abs_diff(target) < Duration::from_secs(2),
+        "the seek should land near {target:?}, got {landed}ms"
+    );
+
+    // Ranged reads are the measurement, not `exact_full_read_count`: that counter
+    // is bucket-wide and the sync loop reads whole objects (commits, snapshots)
+    // throughout, so it climbs by the hundreds here for reasons that have nothing
+    // to do with playback.
+    //
+    // Three checks, catching different regressions. That any ranged read happened
+    // at all is what says the blob was served by range: were the whole-object
+    // download back, the audio would arrive as one full read and this list would
+    // be empty. The largest single read is the property itself — a range costs its
+    // own bytes — and is independent of how many windows read-ahead pulled. The
+    // total is the coarse backstop that no seek drags the file across.
+    let reads = playback.cloud.exact_range_reads();
+    let range_bytes = playback.cloud.exact_range_read_bytes();
+    let largest = reads.iter().map(|(start, end)| end - start).max();
+    let largest = largest.expect(
+        "the seek served no ranged read at all -- the blob was fetched whole, not by range",
+    );
+    assert!(
+        largest <= SEEK_LARGEST_RANGE_BOUND,
+        "the seek's largest single ranged read was {largest} bytes (bound \
+         {SEEK_LARGEST_RANGE_BOUND}); a chunked range must cost the chunks it covers, not the \
+         31,922,637-byte blob. All reads: {reads:?}",
+    );
+    assert!(
+        range_bytes < SEEK_RANGE_BYTES_BOUND,
+        "the seek fetched {range_bytes} bytes from the cloud across {} reads (bound \
+         {SEEK_RANGE_BYTES_BOUND}); a seek must not drag the whole blob across",
+        reads.len(),
+    );
+    assert!(
+        elapsed < SEEK_COST_BACKSTOP,
+        "the seek took {elapsed:?}, past the {SEEK_COST_BACKSTOP:?} backstop"
+    );
+
+    wait_for_position_advance(&mut playback.progress_rx)
+        .await
+        .expect("audio must keep flowing after a chunked-range seek");
 }
 
 /// A sparse buffer pre-filled with the whole byte slice, so a decode exercises

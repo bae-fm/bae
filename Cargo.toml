@@ -37,7 +37,7 @@ large_enum_variant = "allow"
 # every crate that touches it (bae-core, and bae-bridge's CloudKit adapter, which
 # implements coven's CloudKitOps) resolves the same instance. bae reaches coven
 # only through this facade — in tests too, via its InMemoryCloudHome double.
-coven = { git = "https://github.com/bae-fm/coven", rev = "f4fb48a6881860d25d78220b51d65e72307a1398" }
+coven = { git = "https://github.com/bae-fm/coven", rev = "ce8c8db22d1358519466bf99b30af6532efcf840" }
 # HTTP
 reqwest = { version = "0.13", default-features = false }
 # Logging
