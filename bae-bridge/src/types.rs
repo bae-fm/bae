@@ -2907,10 +2907,12 @@ pub enum BridgeStorageMode {
     Remote,
 }
 
-/// A manual restore configuration. Mirrors `bae_core::sync::RestoreConfig` — the
-/// one value that both gates the restore form (`validate_restore_config`) and
-/// performs the restore (`restore_from_cloud`), so the two cannot disagree about
-/// what a provider requires.
+/// A manual restore form's configuration. Mirrors `bae_core::sync::RestoreConfig`,
+/// whose `validate` is the one rule for "every field this provider needs is filled
+/// in" — reached from here through `validate_restore_config`, which the form gates
+/// its button on. Performing a restore is not this type's job: a restore runs from
+/// a restore code (`restore_from_code`), which already carries the library, the
+/// home, and the key.
 #[derive(Debug, uniffi::Record)]
 pub struct BridgeRestoreConfig {
     pub library_id: String,
