@@ -140,7 +140,6 @@
   <data name="members.approve.invited_hint" xml:space="preserve"><value>nhập mã này trên thiết bị mới.</value></data>
   <data name="nowplaying.go_to_album" xml:space="preserve"><value>đi tới album</value></data>
   <data name="outbox.delete.kind" xml:space="preserve"><value>xóa</value></data>
-  <data name="outbox.cancel_item" xml:space="preserve"><value>hủy</value></data>
   <data name="outbox.load_failed" xml:space="preserve"><value>không thể tải hộp gửi</value></data>
   <data name="outbox.pause" xml:space="preserve"><value>tạm dừng</value></data>
   <data name="outbox.read_failed" xml:space="preserve"><value>không thể đọc hộp gửi</value></data>
@@ -156,14 +155,13 @@
   <data name="queue.shuffle.off" xml:space="preserve"><value>tắt trộn bài</value></data>
   <data name="queue.shuffle.on" xml:space="preserve"><value>trộn bài</value></data>
   <data name="queue.title" xml:space="preserve"><value>hàng đợi</value></data>
+  <data name="restore.code_label" xml:space="preserve"><value>mã khôi phục</value></data>
+  <data name="restore.code_placeholder" xml:space="preserve"><value>dán mã khôi phục</value></data>
   <data name="restore.confirm" xml:space="preserve"><value>khôi phục</value></data>
   <data name="restore.failed" xml:space="preserve"><value>khôi phục thất bại</value></data>
-  <data name="restore.field.cloud_storage" xml:space="preserve"><value>lưu trữ đám mây</value></data>
-  <data name="restore.field.encryption_key" xml:space="preserve"><value>khóa mã hóa (thập lục phân)</value></data>
-  <data name="restore.field.library_id" xml:space="preserve"><value>ID thư viện</value></data>
-  <data name="restore.field.library_name" xml:space="preserve"><value>tên thư viện (tùy chọn)</value></data>
   <data name="restore.from_cloud" xml:space="preserve"><value>khôi phục từ đám mây</value></data>
   <data name="restore.from_cloud_title" xml:space="preserve"><value>khôi phục từ đám mây</value></data>
+  <data name="restore.invalid_code" xml:space="preserve"><value>mã khôi phục không hợp lệ</value></data>
   <data name="restore.in_progress" xml:space="preserve"><value>đang khôi phục…</value></data>
   <data name="s3.field.access_key" xml:space="preserve"><value>khóa truy cập</value></data>
   <data name="s3.field.bucket" xml:space="preserve"><value>Bucket S3</value></data>

@@ -140,7 +140,6 @@
   <data name="members.approve.invited_hint" xml:space="preserve"><value>নতুন ডিভাইসে এই কোড লিখুন।</value></data>
   <data name="nowplaying.go_to_album" xml:space="preserve"><value>অ্যালবামে যান</value></data>
   <data name="outbox.delete.kind" xml:space="preserve"><value>মুছুন</value></data>
-  <data name="outbox.cancel_item" xml:space="preserve"><value>বাতিল করুন</value></data>
   <data name="outbox.load_failed" xml:space="preserve"><value>আউটবক্স লোড করা যায়নি</value></data>
   <data name="outbox.pause" xml:space="preserve"><value>বিরতি</value></data>
   <data name="outbox.read_failed" xml:space="preserve"><value>আউটবক্স পড়া যায়নি</value></data>
@@ -156,14 +155,13 @@
   <data name="queue.shuffle.off" xml:space="preserve"><value>শাফল বন্ধ করুন</value></data>
   <data name="queue.shuffle.on" xml:space="preserve"><value>শাফল</value></data>
   <data name="queue.title" xml:space="preserve"><value>সারি</value></data>
+  <data name="restore.code_label" xml:space="preserve"><value>রিস্টোর কোড</value></data>
+  <data name="restore.code_placeholder" xml:space="preserve"><value>রিস্টোর কোড পেস্ট করুন</value></data>
   <data name="restore.confirm" xml:space="preserve"><value>রিস্টোর</value></data>
   <data name="restore.failed" xml:space="preserve"><value>রিস্টোর ব্যর্থ</value></data>
-  <data name="restore.field.cloud_storage" xml:space="preserve"><value>ক্লাউড স্টোরেজ</value></data>
-  <data name="restore.field.encryption_key" xml:space="preserve"><value>এনক্রিপশন কী (হেক্স)</value></data>
-  <data name="restore.field.library_id" xml:space="preserve"><value>লাইব্রেরি ID</value></data>
-  <data name="restore.field.library_name" xml:space="preserve"><value>লাইব্রেরির নাম (ঐচ্ছিক)</value></data>
   <data name="restore.from_cloud" xml:space="preserve"><value>ক্লাউড থেকে রিস্টোর করুন</value></data>
   <data name="restore.from_cloud_title" xml:space="preserve"><value>ক্লাউড থেকে রিস্টোর করুন</value></data>
+  <data name="restore.invalid_code" xml:space="preserve"><value>অবৈধ রিস্টোর কোড</value></data>
   <data name="restore.in_progress" xml:space="preserve"><value>রিস্টোর হচ্ছে…</value></data>
   <data name="s3.field.access_key" xml:space="preserve"><value>অ্যাক্সেস কী</value></data>
   <data name="s3.field.bucket" xml:space="preserve"><value>S3 বাকেট</value></data>

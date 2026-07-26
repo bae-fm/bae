@@ -140,7 +140,6 @@
   <data name="members.approve.invited_hint" xml:space="preserve"><value>voer deze code in op het nieuwe apparaat.</value></data>
   <data name="nowplaying.go_to_album" xml:space="preserve"><value>ga naar album</value></data>
   <data name="outbox.delete.kind" xml:space="preserve"><value>verwijderen</value></data>
-  <data name="outbox.cancel_item" xml:space="preserve"><value>annuleren</value></data>
   <data name="outbox.load_failed" xml:space="preserve"><value>kan de outbox niet laden</value></data>
   <data name="outbox.pause" xml:space="preserve"><value>pauzeren</value></data>
   <data name="outbox.read_failed" xml:space="preserve"><value>kan de outbox niet lezen</value></data>
@@ -156,14 +155,13 @@
   <data name="queue.shuffle.off" xml:space="preserve"><value>shuffle uitschakelen</value></data>
   <data name="queue.shuffle.on" xml:space="preserve"><value>shuffle</value></data>
   <data name="queue.title" xml:space="preserve"><value>wachtrij</value></data>
+  <data name="restore.code_label" xml:space="preserve"><value>herstelcode</value></data>
+  <data name="restore.code_placeholder" xml:space="preserve"><value>herstelcode plakken</value></data>
   <data name="restore.confirm" xml:space="preserve"><value>herstellen</value></data>
   <data name="restore.failed" xml:space="preserve"><value>herstellen mislukt</value></data>
-  <data name="restore.field.cloud_storage" xml:space="preserve"><value>cloudopslag</value></data>
-  <data name="restore.field.encryption_key" xml:space="preserve"><value>versleutelingssleutel (hexadecimaal)</value></data>
-  <data name="restore.field.library_id" xml:space="preserve"><value>bibliotheek-ID</value></data>
-  <data name="restore.field.library_name" xml:space="preserve"><value>bibliotheeknaam (optioneel)</value></data>
   <data name="restore.from_cloud" xml:space="preserve"><value>herstellen vanuit cloud</value></data>
   <data name="restore.from_cloud_title" xml:space="preserve"><value>herstellen vanuit cloud</value></data>
+  <data name="restore.invalid_code" xml:space="preserve"><value>ongeldige herstelcode</value></data>
   <data name="restore.in_progress" xml:space="preserve"><value>herstellen…</value></data>
   <data name="s3.field.access_key" xml:space="preserve"><value>toegangssleutel</value></data>
   <data name="s3.field.bucket" xml:space="preserve"><value>S3 bucket</value></data>

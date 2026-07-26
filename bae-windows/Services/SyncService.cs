@@ -58,9 +58,6 @@ internal sealed class SyncService
     public Func<string, string, (bool Current, string? Error)> RenameLibrary { get; init; }
         = (_, _) => throw new InvalidOperationException("SyncService stub: RenameLibrary not wired");
 
-    /// <summary>Cancel one queued outbox entry by id (the local file stays).</summary>
-    public Func<long, Task<(bool Current, string? Error)>> CancelOutboxItem { get; init; }
-        = _ => throw new InvalidOperationException("SyncService stub: CancelOutboxItem not wired");
 
     /// <summary>Cancel whatever transition a release is mid-flight (pin, upload, or
     /// unmanage), leaving it in its prior state.</summary>
@@ -113,7 +110,6 @@ internal sealed class SyncService
         RetryOutbox = () => session.RunForCurrentHandle(NativeBae.RetryOutbox),
         RenameLibrary = (libraryId, newName) =>
             session.WithCurrentHandle(handle => NativeBae.RenameLibrary(handle, libraryId, newName)),
-        CancelOutboxItem = id => session.RunForCurrentHandle(handle => NativeBae.CancelOutboxItem(handle, id)),
         CancelReleaseTransition = releaseId =>
             session.RunForCurrentHandle(handle => NativeBae.CancelReleaseTransition(handle, releaseId)),
         SetSyncPaused = paused => session.RunForCurrentHandle(handle => NativeBae.SetSyncPaused(handle, paused)),

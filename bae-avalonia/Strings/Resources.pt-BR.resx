@@ -140,7 +140,6 @@
   <data name="members.approve.invited_hint" xml:space="preserve"><value>insira este código no novo dispositivo.</value></data>
   <data name="nowplaying.go_to_album" xml:space="preserve"><value>ir para o álbum</value></data>
   <data name="outbox.delete.kind" xml:space="preserve"><value>excluir</value></data>
-  <data name="outbox.cancel_item" xml:space="preserve"><value>cancelar</value></data>
   <data name="outbox.load_failed" xml:space="preserve"><value>não foi possível carregar a caixa de saída</value></data>
   <data name="outbox.pause" xml:space="preserve"><value>pausar</value></data>
   <data name="outbox.read_failed" xml:space="preserve"><value>não foi possível ler a caixa de saída</value></data>
@@ -156,14 +155,13 @@
   <data name="queue.shuffle.off" xml:space="preserve"><value>desativar aleatório</value></data>
   <data name="queue.shuffle.on" xml:space="preserve"><value>aleatório</value></data>
   <data name="queue.title" xml:space="preserve"><value>fila</value></data>
+  <data name="restore.code_label" xml:space="preserve"><value>código de restauração</value></data>
+  <data name="restore.code_placeholder" xml:space="preserve"><value>colar código de restauração</value></data>
   <data name="restore.confirm" xml:space="preserve"><value>restaurar</value></data>
   <data name="restore.failed" xml:space="preserve"><value>falha na restauração</value></data>
-  <data name="restore.field.cloud_storage" xml:space="preserve"><value>armazenamento na nuvem</value></data>
-  <data name="restore.field.encryption_key" xml:space="preserve"><value>chave de criptografia (hex)</value></data>
-  <data name="restore.field.library_id" xml:space="preserve"><value>id da biblioteca</value></data>
-  <data name="restore.field.library_name" xml:space="preserve"><value>nome da biblioteca (opcional)</value></data>
   <data name="restore.from_cloud" xml:space="preserve"><value>restaurar da nuvem</value></data>
   <data name="restore.from_cloud_title" xml:space="preserve"><value>restaurar da nuvem</value></data>
+  <data name="restore.invalid_code" xml:space="preserve"><value>código de restauração inválido</value></data>
   <data name="restore.in_progress" xml:space="preserve"><value>restaurando…</value></data>
   <data name="s3.field.access_key" xml:space="preserve"><value>chave de acesso</value></data>
   <data name="s3.field.bucket" xml:space="preserve"><value>bucket S3</value></data>

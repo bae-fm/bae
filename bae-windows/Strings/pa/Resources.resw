@@ -140,7 +140,6 @@
   <data name="members.approve.invited_hint" xml:space="preserve"><value>ਨਵੇਂ ਡਿਵਾਈਸ ਉੱਤੇ ਇਹ ਕੋਡ ਦਾਖਲ ਕਰੋ।</value></data>
   <data name="nowplaying.go_to_album" xml:space="preserve"><value>ਐਲਬਮ 'ਤੇ ਜਾਓ</value></data>
   <data name="outbox.delete.kind" xml:space="preserve"><value>ਮਿਟਾਓ</value></data>
-  <data name="outbox.cancel_item" xml:space="preserve"><value>ਰੱਦ ਕਰੋ</value></data>
   <data name="outbox.load_failed" xml:space="preserve"><value>ਆਉਟਬਾਕਸ ਲੋਡ ਨਹੀਂ ਹੋ ਸਕਿਆ</value></data>
   <data name="outbox.pause" xml:space="preserve"><value>ਰੋਕੋ</value></data>
   <data name="outbox.read_failed" xml:space="preserve"><value>ਆਉਟਬਾਕਸ ਪੜ੍ਹਿਆ ਨਹੀਂ ਜਾ ਸਕਿਆ</value></data>
@@ -156,14 +155,13 @@
   <data name="queue.shuffle.off" xml:space="preserve"><value>ਰਲਵਾਂ ਚਲਾਉਣਾ ਬੰਦ ਕਰੋ</value></data>
   <data name="queue.shuffle.on" xml:space="preserve"><value>ਰਲਵਾਂ ਚਲਾਓ</value></data>
   <data name="queue.title" xml:space="preserve"><value>ਕਤਾਰ</value></data>
+  <data name="restore.code_label" xml:space="preserve"><value>ਮੁੜ-ਬਹਾਲੀ ਕੋਡ</value></data>
+  <data name="restore.code_placeholder" xml:space="preserve"><value>ਮੁੜ-ਬਹਾਲੀ ਕੋਡ ਪੇਸਟ ਕਰੋ</value></data>
   <data name="restore.confirm" xml:space="preserve"><value>ਮੁੜ-ਬਹਾਲ ਕਰੋ</value></data>
   <data name="restore.failed" xml:space="preserve"><value>ਮੁੜ-ਬਹਾਲੀ ਅਸਫਲ</value></data>
-  <data name="restore.field.cloud_storage" xml:space="preserve"><value>ਕਲਾਊਡ ਸਟੋਰੇਜ</value></data>
-  <data name="restore.field.encryption_key" xml:space="preserve"><value>ਇਨਕ੍ਰਿਪਸ਼ਨ ਕੁੰਜੀ (ਹੈਕਸ)</value></data>
-  <data name="restore.field.library_id" xml:space="preserve"><value>ਲਾਇਬ੍ਰੇਰੀ ID</value></data>
-  <data name="restore.field.library_name" xml:space="preserve"><value>ਲਾਇਬ੍ਰੇਰੀ ਨਾਮ (ਵਿਕਲਪਿਕ)</value></data>
   <data name="restore.from_cloud" xml:space="preserve"><value>ਕਲਾਊਡ ਤੋਂ ਮੁੜ-ਬਹਾਲ ਕਰੋ</value></data>
   <data name="restore.from_cloud_title" xml:space="preserve"><value>ਕਲਾਊਡ ਤੋਂ ਮੁੜ-ਬਹਾਲ ਕਰੋ</value></data>
+  <data name="restore.invalid_code" xml:space="preserve"><value>ਅਵੈਧ ਮੁੜ-ਬਹਾਲੀ ਕੋਡ</value></data>
   <data name="restore.in_progress" xml:space="preserve"><value>ਮੁੜ-ਬਹਾਲ ਹੋ ਰਿਹਾ ਹੈ…</value></data>
   <data name="s3.field.access_key" xml:space="preserve"><value>ਐਕਸੈੱਸ ਕੁੰਜੀ</value></data>
   <data name="s3.field.bucket" xml:space="preserve"><value>S3 ਬਕਿਟ</value></data>

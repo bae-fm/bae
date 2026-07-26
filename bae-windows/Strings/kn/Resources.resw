@@ -140,7 +140,6 @@
   <data name="members.approve.invited_hint" xml:space="preserve"><value>ಈ ಕೋಡ್ ಅನ್ನು ಹೊಸ ಸಾಧನದಲ್ಲಿ ನಮೂದಿಸಿ.</value></data>
   <data name="nowplaying.go_to_album" xml:space="preserve"><value>ಆಲ್ಬಂಗೆ ಹೋಗಿ</value></data>
   <data name="outbox.delete.kind" xml:space="preserve"><value>ಅಳಿಸಿ</value></data>
-  <data name="outbox.cancel_item" xml:space="preserve"><value>ರದ್ದುಮಾಡಿ</value></data>
   <data name="outbox.load_failed" xml:space="preserve"><value>ಹೊರಪೆಟ್ಟಿಗೆ ಲೋಡ್ ಆಗಲಿಲ್ಲ</value></data>
   <data name="outbox.pause" xml:space="preserve"><value>ವಿರಾಮ</value></data>
   <data name="outbox.read_failed" xml:space="preserve"><value>ಹೊರಪೆಟ್ಟಿಗೆ ಓದಲಾಗಲಿಲ್ಲ</value></data>
@@ -156,14 +155,13 @@
   <data name="queue.shuffle.off" xml:space="preserve"><value>ಕಲಸುವಿಕೆಯನ್ನು ಆಫ್ ಮಾಡಿ</value></data>
   <data name="queue.shuffle.on" xml:space="preserve"><value>ಕಲಸು</value></data>
   <data name="queue.title" xml:space="preserve"><value>ಸಾಲು</value></data>
+  <data name="restore.code_label" xml:space="preserve"><value>ಮರುಸ್ಥಾಪನೆ ಕೋಡ್</value></data>
+  <data name="restore.code_placeholder" xml:space="preserve"><value>ಮರುಸ್ಥಾಪನೆ ಕೋಡ್ ಅಂಟಿಸಿ</value></data>
   <data name="restore.confirm" xml:space="preserve"><value>ಮರುಸ್ಥಾಪಿಸಿ</value></data>
   <data name="restore.failed" xml:space="preserve"><value>ಮರುಸ್ಥಾಪನೆ ವಿಫಲವಾಯಿತು</value></data>
-  <data name="restore.field.cloud_storage" xml:space="preserve"><value>ಕ್ಲೌಡ್ ಸಂಗ್ರಹಣೆ</value></data>
-  <data name="restore.field.encryption_key" xml:space="preserve"><value>ಎನ್‌ಕ್ರಿಪ್ಷನ್ ಕೀಲಿ (ಹೆಕ್ಸ್)</value></data>
-  <data name="restore.field.library_id" xml:space="preserve"><value>ಗ್ರಂಥಾಲಯ id</value></data>
-  <data name="restore.field.library_name" xml:space="preserve"><value>ಗ್ರಂಥಾಲಯದ ಹೆಸರು (ಐಚ್ಛಿಕ)</value></data>
   <data name="restore.from_cloud" xml:space="preserve"><value>ಕ್ಲೌಡ್‌ನಿಂದ ಮರುಸ್ಥಾಪಿಸಿ</value></data>
   <data name="restore.from_cloud_title" xml:space="preserve"><value>ಕ್ಲೌಡ್‌ನಿಂದ ಮರುಸ್ಥಾಪಿಸಿ</value></data>
+  <data name="restore.invalid_code" xml:space="preserve"><value>ಅಮಾನ್ಯ ಮರುಸ್ಥಾಪನೆ ಕೋಡ್</value></data>
   <data name="restore.in_progress" xml:space="preserve"><value>ಮರುಸ್ಥಾಪಿಸಲಾಗುತ್ತಿದೆ…</value></data>
   <data name="s3.field.access_key" xml:space="preserve"><value>ಪ್ರವೇಶ ಕೀಲಿ</value></data>
   <data name="s3.field.bucket" xml:space="preserve"><value>S3 ಬಕೆಟ್</value></data>

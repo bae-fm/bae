@@ -140,7 +140,6 @@
   <data name="members.approve.invited_hint" xml:space="preserve"><value>یہ رمز نئے آلے پر درج کریں۔</value></data>
   <data name="nowplaying.go_to_album" xml:space="preserve"><value>البم پر جائیں</value></data>
   <data name="outbox.delete.kind" xml:space="preserve"><value>حذف کریں</value></data>
-  <data name="outbox.cancel_item" xml:space="preserve"><value>منسوخ کریں</value></data>
   <data name="outbox.load_failed" xml:space="preserve"><value>آؤٹ باکس لوڈ نہیں ہو سکا</value></data>
   <data name="outbox.pause" xml:space="preserve"><value>روکیں</value></data>
   <data name="outbox.read_failed" xml:space="preserve"><value>آؤٹ باکس پڑھا نہیں جا سکا</value></data>
@@ -156,14 +155,13 @@
   <data name="queue.shuffle.off" xml:space="preserve"><value>شفل بند کریں</value></data>
   <data name="queue.shuffle.on" xml:space="preserve"><value>شفل</value></data>
   <data name="queue.title" xml:space="preserve"><value>قطار</value></data>
+  <data name="restore.code_label" xml:space="preserve"><value>بحالی رمز</value></data>
+  <data name="restore.code_placeholder" xml:space="preserve"><value>بحالی رمز پیسٹ کریں</value></data>
   <data name="restore.confirm" xml:space="preserve"><value>بحال کریں</value></data>
   <data name="restore.failed" xml:space="preserve"><value>بحالی ناکام</value></data>
-  <data name="restore.field.cloud_storage" xml:space="preserve"><value>کلاؤڈ اسٹوریج</value></data>
-  <data name="restore.field.encryption_key" xml:space="preserve"><value>خفیہ کاری کلید (hex)</value></data>
-  <data name="restore.field.library_id" xml:space="preserve"><value>لائبریری ID</value></data>
-  <data name="restore.field.library_name" xml:space="preserve"><value>لائبریری کا نام (اختیاری)</value></data>
   <data name="restore.from_cloud" xml:space="preserve"><value>کلاؤڈ سے بحال کریں</value></data>
   <data name="restore.from_cloud_title" xml:space="preserve"><value>کلاؤڈ سے بحال کریں</value></data>
+  <data name="restore.invalid_code" xml:space="preserve"><value>غلط بحالی رمز</value></data>
   <data name="restore.in_progress" xml:space="preserve"><value>بحال ہو رہا ہے…</value></data>
   <data name="s3.field.access_key" xml:space="preserve"><value>رسائی کلید</value></data>
   <data name="s3.field.bucket" xml:space="preserve"><value>S3 بکٹ</value></data>

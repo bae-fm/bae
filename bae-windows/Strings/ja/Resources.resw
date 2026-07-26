@@ -140,7 +140,6 @@
   <data name="members.approve.invited_hint" xml:space="preserve"><value>このコードを新しいデバイスに入力してください。</value></data>
   <data name="nowplaying.go_to_album" xml:space="preserve"><value>アルバムへ移動</value></data>
   <data name="outbox.delete.kind" xml:space="preserve"><value>削除</value></data>
-  <data name="outbox.cancel_item" xml:space="preserve"><value>キャンセル</value></data>
   <data name="outbox.load_failed" xml:space="preserve"><value>送信箱を読み込めませんでした</value></data>
   <data name="outbox.pause" xml:space="preserve"><value>一時停止</value></data>
   <data name="outbox.read_failed" xml:space="preserve"><value>送信箱を読み込めませんでした</value></data>
@@ -156,14 +155,13 @@
   <data name="queue.shuffle.off" xml:space="preserve"><value>シャッフルをオフにする</value></data>
   <data name="queue.shuffle.on" xml:space="preserve"><value>シャッフル</value></data>
   <data name="queue.title" xml:space="preserve"><value>キュー</value></data>
+  <data name="restore.code_label" xml:space="preserve"><value>復元コード</value></data>
+  <data name="restore.code_placeholder" xml:space="preserve"><value>復元コードを貼り付け</value></data>
   <data name="restore.confirm" xml:space="preserve"><value>復元</value></data>
   <data name="restore.failed" xml:space="preserve"><value>復元に失敗しました</value></data>
-  <data name="restore.field.cloud_storage" xml:space="preserve"><value>クラウドストレージ</value></data>
-  <data name="restore.field.encryption_key" xml:space="preserve"><value>暗号化キー（16進数）</value></data>
-  <data name="restore.field.library_id" xml:space="preserve"><value>ライブラリID</value></data>
-  <data name="restore.field.library_name" xml:space="preserve"><value>ライブラリ名（任意）</value></data>
   <data name="restore.from_cloud" xml:space="preserve"><value>クラウドから復元</value></data>
   <data name="restore.from_cloud_title" xml:space="preserve"><value>クラウドから復元</value></data>
+  <data name="restore.invalid_code" xml:space="preserve"><value>復元コードが無効です</value></data>
   <data name="restore.in_progress" xml:space="preserve"><value>復元中…</value></data>
   <data name="s3.field.access_key" xml:space="preserve"><value>アクセスキー</value></data>
   <data name="s3.field.bucket" xml:space="preserve"><value>S3バケット</value></data>

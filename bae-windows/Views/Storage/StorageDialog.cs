@@ -957,15 +957,12 @@ internal sealed partial class StorageDialog
                 }
                 outboxPanel.Children.Add(expander);
             }
-            // A pending delete is genuinely a single-file operation, so it keeps
-            // its own per-file cancel button.
+            // A pending delete carries no cancel: the object is already in the
+            // cloud and the row that named it is gone, so abandoning the removal
+            // would strand the object with nothing left to address it by.
             foreach (var delete in snapshot.Deletes)
             {
-                var cancel = new Button { Content = Loc.Chrome("outbox.cancel_item") };
-                var id = delete.Id;
-                cancel.Click += async (_, _) => await RunCancel(
-                    handle => NativeBae.CancelOutboxItem(handle, id));
-                AddOutboxRow(DeleteLabel(delete), null, trailing: cancel, contextMenu: null);
+                AddOutboxRow(DeleteLabel(delete), null, trailing: null, contextMenu: null);
             }
         }
 

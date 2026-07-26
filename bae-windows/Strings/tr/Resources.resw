@@ -140,7 +140,6 @@
   <data name="members.approve.invited_hint" xml:space="preserve"><value>bu kodu yeni cihazda girin.</value></data>
   <data name="nowplaying.go_to_album" xml:space="preserve"><value>albüme git</value></data>
   <data name="outbox.delete.kind" xml:space="preserve"><value>sil</value></data>
-  <data name="outbox.cancel_item" xml:space="preserve"><value>iptal</value></data>
   <data name="outbox.load_failed" xml:space="preserve"><value>giden kutusu yüklenemedi</value></data>
   <data name="outbox.pause" xml:space="preserve"><value>duraklat</value></data>
   <data name="outbox.read_failed" xml:space="preserve"><value>giden kutusu okunamadı</value></data>
@@ -156,14 +155,13 @@
   <data name="queue.shuffle.off" xml:space="preserve"><value>karıştırmayı kapat</value></data>
   <data name="queue.shuffle.on" xml:space="preserve"><value>karıştır</value></data>
   <data name="queue.title" xml:space="preserve"><value>sıra</value></data>
+  <data name="restore.code_label" xml:space="preserve"><value>geri yükleme kodu</value></data>
+  <data name="restore.code_placeholder" xml:space="preserve"><value>geri yükleme kodunu yapıştır</value></data>
   <data name="restore.confirm" xml:space="preserve"><value>geri yükle</value></data>
   <data name="restore.failed" xml:space="preserve"><value>geri yükleme başarısız</value></data>
-  <data name="restore.field.cloud_storage" xml:space="preserve"><value>bulut depolama</value></data>
-  <data name="restore.field.encryption_key" xml:space="preserve"><value>şifreleme anahtarı (onaltılık)</value></data>
-  <data name="restore.field.library_id" xml:space="preserve"><value>kitaplık kimliği</value></data>
-  <data name="restore.field.library_name" xml:space="preserve"><value>kitaplık adı (isteğe bağlı)</value></data>
   <data name="restore.from_cloud" xml:space="preserve"><value>buluttan geri yükle</value></data>
   <data name="restore.from_cloud_title" xml:space="preserve"><value>buluttan geri yükle</value></data>
+  <data name="restore.invalid_code" xml:space="preserve"><value>geçersiz geri yükleme kodu</value></data>
   <data name="restore.in_progress" xml:space="preserve"><value>geri yükleniyor…</value></data>
   <data name="s3.field.access_key" xml:space="preserve"><value>erişim anahtarı</value></data>
   <data name="s3.field.bucket" xml:space="preserve"><value>S3 bucket</value></data>

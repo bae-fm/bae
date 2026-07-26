@@ -236,47 +236,61 @@ internal static class NativeBae
         BaeBridgeMethods.DecodeJoinRequest(code);
 
     /// <summary>
-    /// Decode an invite code for UI preview.
+    /// The invite bundle behind what the joiner pasted or scanned. The invite is
+    /// the owner's signed join offer — a byte payload, not a human-typed code —
+    /// so it travels as base64 wherever it has to be text.
     /// </summary>
-    internal static BridgeInviteCodeInfo DecodeInviteCode(string code) =>
-        BaeBridgeMethods.DecodeInviteCode(code);
+    internal static byte[] InviteBytes(string pasted)
+    {
+        try
+        {
+            return Convert.FromBase64String(pasted.Trim());
+        }
+        catch (FormatException)
+        {
+            throw new BridgeException.Diagnostic(
+                BridgeErrorCategory.Config,
+                "the pasted invite is not base64 an invite bundle could be read from");
+        }
+    }
 
     /// <summary>
-    /// Join a shared library from an invite code and return its id.
+    /// Decode a pasted invite for UI preview. Reads the same bytes the join runs
+    /// on, so the preview and the join cannot disagree about the library.
+    /// </summary>
+    internal static BridgeInviteCodeInfo DecodeInviteCode(string pasted) =>
+        BaeBridgeMethods.DecodeScannedInvite(InviteBytes(pasted));
+
+    /// <summary>
+    /// Join a shared library from a pasted invite and return its id.
     /// <paramref name="joinRequestCode"/> is the code this device's own
     /// <see cref="GenerateJoinRequest"/> minted — coven needs it back to promote
     /// that pending identity into the store's custody. For OAuth providers pass
     /// the token JSON from <see cref="OAuthAuthorize"/>; for credential providers
     /// pass null. Blocks on a cloud pull — call off the UI thread.
     /// </summary>
-    internal static string JoinFromCode(string code, string joinRequestCode, string? oauthTokenJson) =>
-        BaeBridgeMethods.JoinFromCode(code, joinRequestCode, oauthTokenJson).Id;
+    internal static string JoinFromCode(string pasted, string joinRequestCode, string? oauthTokenJson) =>
+        BaeBridgeMethods.JoinFromScannedInvite(InviteBytes(pasted), joinRequestCode, oauthTokenJson).Id;
 
     /// <summary>
-    /// Restore an S3-backed library by entering its cloud location and credentials
-    /// directly, returning the restored library id. An empty
-    /// <paramref name="libraryName"/> generates one. Blocks on a cloud pull — call
-    /// off the UI thread.
+    /// Decode a restore code for UI preview — which library it names, whose cloud
+    /// home it points at, and whether that provider still needs an OAuth sign-in.
     /// </summary>
-    internal static string RestoreFromS3(
-        string libraryId,
-        string encryptionKeyHex,
-        string? libraryName,
-        string bucket,
-        string region,
-        string? endpoint,
-        string accessKey,
-        string secretKey)
-    {
-        var home = new BridgeRestoreHome.S3(
-            bucket,
-            region,
-            string.IsNullOrWhiteSpace(endpoint) ? null : endpoint.Trim(),
-            accessKey,
-            secretKey);
-        var config = new BridgeRestoreConfig(libraryId, encryptionKeyHex, home);
-        return BaeBridgeMethods.RestoreFromCloud(libraryName, config).Id;
-    }
+    internal static BridgeRestoreCodeInfo DecodeRestoreCode(string code) =>
+        BaeBridgeMethods.DecodeRestoreCode(code);
+
+    /// <summary>
+    /// Restore a library from its restore code, returning the restored library id.
+    ///
+    /// The code carries everything the restore needs — the library, its cloud home,
+    /// that home's credentials, and the encryption key — so there is nothing to
+    /// enter by hand. OAuth tokens are the one exception: they expire, so an
+    /// OAuth-backed provider re-authenticates and passes the token JSON here; a
+    /// credential provider passes null. Blocks on a cloud pull — call off the UI
+    /// thread.
+    /// </summary>
+    internal static string RestoreFromCode(string code, string? oauthTokenJson) =>
+        BaeBridgeMethods.RestoreFromCode(code, oauthTokenJson).Id;
 
     internal sealed class UiEventSink(Action<BridgeUiEvent> onEvent) : UiEventCallback
     {
@@ -517,9 +531,6 @@ internal static class NativeBae
 
     internal static string? SetSyncPaused(AppHandle handle, bool paused) =>
         CaptureError(() => Await(() => handle.SetSyncPaused(paused)));
-
-    internal static string? CancelOutboxItem(AppHandle handle, long id) =>
-        CaptureError(() => Await(() => handle.CancelOutboxItem(id)));
 
     internal static string? CancelReleaseTransition(AppHandle handle, string releaseId) =>
         CaptureError(() => Await(() => handle.CancelReleaseTransition(releaseId)));

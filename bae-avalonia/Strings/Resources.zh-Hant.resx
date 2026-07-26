@@ -140,7 +140,6 @@
   <data name="members.approve.invited_hint" xml:space="preserve"><value>在新裝置輸入此代碼。</value></data>
   <data name="nowplaying.go_to_album" xml:space="preserve"><value>前往專輯</value></data>
   <data name="outbox.delete.kind" xml:space="preserve"><value>刪除</value></data>
-  <data name="outbox.cancel_item" xml:space="preserve"><value>取消</value></data>
   <data name="outbox.load_failed" xml:space="preserve"><value>無法載入寄件匣</value></data>
   <data name="outbox.pause" xml:space="preserve"><value>暫停</value></data>
   <data name="outbox.read_failed" xml:space="preserve"><value>無法讀取寄件匣</value></data>
@@ -156,14 +155,13 @@
   <data name="queue.shuffle.off" xml:space="preserve"><value>關閉隨機播放</value></data>
   <data name="queue.shuffle.on" xml:space="preserve"><value>隨機播放</value></data>
   <data name="queue.title" xml:space="preserve"><value>佇列</value></data>
+  <data name="restore.code_label" xml:space="preserve"><value>還原碼</value></data>
+  <data name="restore.code_placeholder" xml:space="preserve"><value>貼上還原碼</value></data>
   <data name="restore.confirm" xml:space="preserve"><value>還原</value></data>
   <data name="restore.failed" xml:space="preserve"><value>還原失敗</value></data>
-  <data name="restore.field.cloud_storage" xml:space="preserve"><value>雲端儲存空間</value></data>
-  <data name="restore.field.encryption_key" xml:space="preserve"><value>加密金鑰 (十六進位)</value></data>
-  <data name="restore.field.library_id" xml:space="preserve"><value>資料庫 ID</value></data>
-  <data name="restore.field.library_name" xml:space="preserve"><value>資料庫名稱 (選填)</value></data>
   <data name="restore.from_cloud" xml:space="preserve"><value>從雲端還原</value></data>
   <data name="restore.from_cloud_title" xml:space="preserve"><value>從雲端還原</value></data>
+  <data name="restore.invalid_code" xml:space="preserve"><value>還原碼無效</value></data>
   <data name="restore.in_progress" xml:space="preserve"><value>正在還原…</value></data>
   <data name="s3.field.access_key" xml:space="preserve"><value>存取金鑰</value></data>
   <data name="s3.field.bucket" xml:space="preserve"><value>S3 儲存桶</value></data>

@@ -140,7 +140,6 @@
   <data name="members.approve.invited_hint" xml:space="preserve"><value>ఈ కోడ్‌ను కొత్త పరికరంలో నమోదు చేయండి.</value></data>
   <data name="nowplaying.go_to_album" xml:space="preserve"><value>ఆల్బమ్‌కు వెళ్లండి</value></data>
   <data name="outbox.delete.kind" xml:space="preserve"><value>తొలగించు</value></data>
-  <data name="outbox.cancel_item" xml:space="preserve"><value>రద్దు చేయి</value></data>
   <data name="outbox.load_failed" xml:space="preserve"><value>బయటికి పంపే పెట్టెను లోడ్ చేయలేకపోయింది</value></data>
   <data name="outbox.pause" xml:space="preserve"><value>పాజ్</value></data>
   <data name="outbox.read_failed" xml:space="preserve"><value>బయటికి పంపే పెట్టెను చదవలేకపోయింది</value></data>
@@ -156,14 +155,13 @@
   <data name="queue.shuffle.off" xml:space="preserve"><value>షఫుల్ ఆఫ్ చేయి</value></data>
   <data name="queue.shuffle.on" xml:space="preserve"><value>షఫుల్</value></data>
   <data name="queue.title" xml:space="preserve"><value>క్యూ</value></data>
+  <data name="restore.code_label" xml:space="preserve"><value>పునరుద్ధరణ కోడ్</value></data>
+  <data name="restore.code_placeholder" xml:space="preserve"><value>పునరుద్ధరణ కోడ్‌ను అతికించు</value></data>
   <data name="restore.confirm" xml:space="preserve"><value>పునరుద్ధరించు</value></data>
   <data name="restore.failed" xml:space="preserve"><value>పునరుద్ధరణ విఫలమైంది</value></data>
-  <data name="restore.field.cloud_storage" xml:space="preserve"><value>క్లౌడ్ నిల్వ</value></data>
-  <data name="restore.field.encryption_key" xml:space="preserve"><value>గుప్తీకరణ కీ (హెక్స్)</value></data>
-  <data name="restore.field.library_id" xml:space="preserve"><value>లైబ్రరీ ID</value></data>
-  <data name="restore.field.library_name" xml:space="preserve"><value>లైబ్రరీ పేరు (ఐచ్చికం)</value></data>
   <data name="restore.from_cloud" xml:space="preserve"><value>క్లౌడ్ నుంచి పునరుద్ధరించు</value></data>
   <data name="restore.from_cloud_title" xml:space="preserve"><value>క్లౌడ్ నుంచి పునరుద్ధరించు</value></data>
+  <data name="restore.invalid_code" xml:space="preserve"><value>చెల్లని పునరుద్ధరణ కోడ్</value></data>
   <data name="restore.in_progress" xml:space="preserve"><value>పునరుద్ధరిస్తోంది…</value></data>
   <data name="s3.field.access_key" xml:space="preserve"><value>ప్రవేశ కీ</value></data>
   <data name="s3.field.bucket" xml:space="preserve"><value>S3 బకెట్</value></data>

@@ -140,7 +140,6 @@
   <data name="members.approve.invited_hint" xml:space="preserve"><value>inserisci questo codice sul nuovo dispositivo.</value></data>
   <data name="nowplaying.go_to_album" xml:space="preserve"><value>vai all'album</value></data>
   <data name="outbox.delete.kind" xml:space="preserve"><value>elimina</value></data>
-  <data name="outbox.cancel_item" xml:space="preserve"><value>annulla</value></data>
   <data name="outbox.load_failed" xml:space="preserve"><value>impossibile caricare la posta in uscita</value></data>
   <data name="outbox.pause" xml:space="preserve"><value>pausa</value></data>
   <data name="outbox.read_failed" xml:space="preserve"><value>impossibile leggere la posta in uscita</value></data>
@@ -156,14 +155,13 @@
   <data name="queue.shuffle.off" xml:space="preserve"><value>disattiva riproduzione casuale</value></data>
   <data name="queue.shuffle.on" xml:space="preserve"><value>riproduzione casuale</value></data>
   <data name="queue.title" xml:space="preserve"><value>coda</value></data>
+  <data name="restore.code_label" xml:space="preserve"><value>codice ripristino</value></data>
+  <data name="restore.code_placeholder" xml:space="preserve"><value>incolla codice ripristino</value></data>
   <data name="restore.confirm" xml:space="preserve"><value>ripristina</value></data>
   <data name="restore.failed" xml:space="preserve"><value>ripristino non riuscito</value></data>
-  <data name="restore.field.cloud_storage" xml:space="preserve"><value>archiviazione cloud</value></data>
-  <data name="restore.field.encryption_key" xml:space="preserve"><value>chiave di crittografia (esadecimale)</value></data>
-  <data name="restore.field.library_id" xml:space="preserve"><value>ID libreria</value></data>
-  <data name="restore.field.library_name" xml:space="preserve"><value>nome libreria (facoltativo)</value></data>
   <data name="restore.from_cloud" xml:space="preserve"><value>ripristina dal cloud</value></data>
   <data name="restore.from_cloud_title" xml:space="preserve"><value>ripristina dal cloud</value></data>
+  <data name="restore.invalid_code" xml:space="preserve"><value>codice ripristino non valido</value></data>
   <data name="restore.in_progress" xml:space="preserve"><value>ripristino…</value></data>
   <data name="s3.field.access_key" xml:space="preserve"><value>chiave di accesso</value></data>
   <data name="s3.field.bucket" xml:space="preserve"><value>Bucket S3</value></data>

@@ -140,7 +140,6 @@
   <data name="members.approve.invited_hint" xml:space="preserve"><value>हा संकेत नवीन डिव्हाइसवर प्रविष्ट करा.</value></data>
   <data name="nowplaying.go_to_album" xml:space="preserve"><value>अल्बमवर जा</value></data>
   <data name="outbox.delete.kind" xml:space="preserve"><value>हटवा</value></data>
-  <data name="outbox.cancel_item" xml:space="preserve"><value>रद्द करा</value></data>
   <data name="outbox.load_failed" xml:space="preserve"><value>आउटबॉक्स लोड करता आला नाही</value></data>
   <data name="outbox.pause" xml:space="preserve"><value>विराम</value></data>
   <data name="outbox.read_failed" xml:space="preserve"><value>आउटबॉक्स वाचता आला नाही</value></data>
@@ -156,14 +155,13 @@
   <data name="queue.shuffle.off" xml:space="preserve"><value>मिसळणे बंद करा</value></data>
   <data name="queue.shuffle.on" xml:space="preserve"><value>मिसळा</value></data>
   <data name="queue.title" xml:space="preserve"><value>रांग</value></data>
+  <data name="restore.code_label" xml:space="preserve"><value>पुनर्संचयन संकेत</value></data>
+  <data name="restore.code_placeholder" xml:space="preserve"><value>पुनर्संचयन संकेत पेस्ट करा</value></data>
   <data name="restore.confirm" xml:space="preserve"><value>पुनर्संचयित करा</value></data>
   <data name="restore.failed" xml:space="preserve"><value>पुनर्संचयित करणे अयशस्वी</value></data>
-  <data name="restore.field.cloud_storage" xml:space="preserve"><value>क्लाउड संचयन</value></data>
-  <data name="restore.field.encryption_key" xml:space="preserve"><value>कूटबद्धीकरण कळ (hex)</value></data>
-  <data name="restore.field.library_id" xml:space="preserve"><value>लायब्ररी ID</value></data>
-  <data name="restore.field.library_name" xml:space="preserve"><value>लायब्ररीचे नाव (ऐच्छिक)</value></data>
   <data name="restore.from_cloud" xml:space="preserve"><value>क्लाउडमधून पुनर्संचयित करा</value></data>
   <data name="restore.from_cloud_title" xml:space="preserve"><value>क्लाउडमधून पुनर्संचयित करा</value></data>
+  <data name="restore.invalid_code" xml:space="preserve"><value>अवैध पुनर्संचयन संकेत</value></data>
   <data name="restore.in_progress" xml:space="preserve"><value>पुनर्संचयित करत आहे…</value></data>
   <data name="s3.field.access_key" xml:space="preserve"><value>प्रवेश कळ</value></data>
   <data name="s3.field.bucket" xml:space="preserve"><value>S3 बकेट</value></data>

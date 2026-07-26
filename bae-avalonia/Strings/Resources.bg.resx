@@ -140,7 +140,6 @@
   <data name="members.approve.invited_hint" xml:space="preserve"><value>въведете този код на новото устройство.</value></data>
   <data name="nowplaying.go_to_album" xml:space="preserve"><value>отиди към албума</value></data>
   <data name="outbox.delete.kind" xml:space="preserve"><value>изтриване</value></data>
-  <data name="outbox.cancel_item" xml:space="preserve"><value>отказ</value></data>
   <data name="outbox.load_failed" xml:space="preserve"><value>изходящата опашка не може да бъде заредена</value></data>
   <data name="outbox.pause" xml:space="preserve"><value>пауза</value></data>
   <data name="outbox.read_failed" xml:space="preserve"><value>изходящата опашка не може да бъде прочетена</value></data>
@@ -156,14 +155,13 @@
   <data name="queue.shuffle.off" xml:space="preserve"><value>изключване на разбъркването</value></data>
   <data name="queue.shuffle.on" xml:space="preserve"><value>разбъркване</value></data>
   <data name="queue.title" xml:space="preserve"><value>опашка</value></data>
+  <data name="restore.code_label" xml:space="preserve"><value>код за възстановяване</value></data>
+  <data name="restore.code_placeholder" xml:space="preserve"><value>поставяне на код за възстановяване</value></data>
   <data name="restore.confirm" xml:space="preserve"><value>възстановяване</value></data>
   <data name="restore.failed" xml:space="preserve"><value>възстановяването не бе успешно</value></data>
-  <data name="restore.field.cloud_storage" xml:space="preserve"><value>облачно хранилище</value></data>
-  <data name="restore.field.encryption_key" xml:space="preserve"><value>ключ за шифроване (шестн.)</value></data>
-  <data name="restore.field.library_id" xml:space="preserve"><value>ID на библиотеката</value></data>
-  <data name="restore.field.library_name" xml:space="preserve"><value>име на библиотеката (по избор)</value></data>
   <data name="restore.from_cloud" xml:space="preserve"><value>възстановяване от облака</value></data>
   <data name="restore.from_cloud_title" xml:space="preserve"><value>възстановяване от облака</value></data>
+  <data name="restore.invalid_code" xml:space="preserve"><value>невалиден код за възстановяване</value></data>
   <data name="restore.in_progress" xml:space="preserve"><value>възстановяване…</value></data>
   <data name="s3.field.access_key" xml:space="preserve"><value>ключ за достъп</value></data>
   <data name="s3.field.bucket" xml:space="preserve"><value>S3 кофа</value></data>

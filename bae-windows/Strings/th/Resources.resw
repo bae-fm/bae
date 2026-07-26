@@ -140,7 +140,6 @@
   <data name="members.approve.invited_hint" xml:space="preserve"><value>ป้อนรหัสนี้บนอุปกรณ์ใหม่</value></data>
   <data name="nowplaying.go_to_album" xml:space="preserve"><value>ไปที่อัลบั้ม</value></data>
   <data name="outbox.delete.kind" xml:space="preserve"><value>ลบ</value></data>
-  <data name="outbox.cancel_item" xml:space="preserve"><value>ยกเลิก</value></data>
   <data name="outbox.load_failed" xml:space="preserve"><value>โหลดกล่องขาออกไม่ได้</value></data>
   <data name="outbox.pause" xml:space="preserve"><value>หยุดพัก</value></data>
   <data name="outbox.read_failed" xml:space="preserve"><value>อ่านกล่องขาออกไม่ได้</value></data>
@@ -156,14 +155,13 @@
   <data name="queue.shuffle.off" xml:space="preserve"><value>ปิดสุ่มเล่น</value></data>
   <data name="queue.shuffle.on" xml:space="preserve"><value>สุ่มเล่น</value></data>
   <data name="queue.title" xml:space="preserve"><value>คิว</value></data>
+  <data name="restore.code_label" xml:space="preserve"><value>รหัสคืนค่า</value></data>
+  <data name="restore.code_placeholder" xml:space="preserve"><value>วางรหัสคืนค่า</value></data>
   <data name="restore.confirm" xml:space="preserve"><value>คืนค่า</value></data>
   <data name="restore.failed" xml:space="preserve"><value>คืนค่าไม่สำเร็จ</value></data>
-  <data name="restore.field.cloud_storage" xml:space="preserve"><value>พื้นที่จัดเก็บคลาวด์</value></data>
-  <data name="restore.field.encryption_key" xml:space="preserve"><value>คีย์เข้ารหัส (เลขฐานสิบหก)</value></data>
-  <data name="restore.field.library_id" xml:space="preserve"><value>ID คลัง</value></data>
-  <data name="restore.field.library_name" xml:space="preserve"><value>ชื่อคลัง (ไม่บังคับ)</value></data>
   <data name="restore.from_cloud" xml:space="preserve"><value>คืนค่าจากคลาวด์</value></data>
   <data name="restore.from_cloud_title" xml:space="preserve"><value>คืนค่าจากคลาวด์</value></data>
+  <data name="restore.invalid_code" xml:space="preserve"><value>รหัสคืนค่าไม่ถูกต้อง</value></data>
   <data name="restore.in_progress" xml:space="preserve"><value>กำลังคืนค่า…</value></data>
   <data name="s3.field.access_key" xml:space="preserve"><value>กุญแจเข้าถึง</value></data>
   <data name="s3.field.bucket" xml:space="preserve"><value>บัคเก็ต S3</value></data>

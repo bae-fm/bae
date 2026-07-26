@@ -140,7 +140,6 @@
   <data name="members.approve.invited_hint" xml:space="preserve"><value>unesite ovaj kod na novom uređaju.</value></data>
   <data name="nowplaying.go_to_album" xml:space="preserve"><value>idi na album</value></data>
   <data name="outbox.delete.kind" xml:space="preserve"><value>izbriši</value></data>
-  <data name="outbox.cancel_item" xml:space="preserve"><value>odustani</value></data>
   <data name="outbox.load_failed" xml:space="preserve"><value>nije moguće učitati izlazni red</value></data>
   <data name="outbox.pause" xml:space="preserve"><value>pauziraj</value></data>
   <data name="outbox.read_failed" xml:space="preserve"><value>nije moguće pročitati izlazni red</value></data>
@@ -156,14 +155,13 @@
   <data name="queue.shuffle.off" xml:space="preserve"><value>isključi naizmjenično</value></data>
   <data name="queue.shuffle.on" xml:space="preserve"><value>naizmjenično</value></data>
   <data name="queue.title" xml:space="preserve"><value>red</value></data>
+  <data name="restore.code_label" xml:space="preserve"><value>kod za vraćanje</value></data>
+  <data name="restore.code_placeholder" xml:space="preserve"><value>zalijepi kod za vraćanje</value></data>
   <data name="restore.confirm" xml:space="preserve"><value>vrati</value></data>
   <data name="restore.failed" xml:space="preserve"><value>vraćanje nije uspjelo</value></data>
-  <data name="restore.field.cloud_storage" xml:space="preserve"><value>pohrana u oblaku</value></data>
-  <data name="restore.field.encryption_key" xml:space="preserve"><value>ključ za šifriranje (heksadecimalni)</value></data>
-  <data name="restore.field.library_id" xml:space="preserve"><value>ID fonoteke</value></data>
-  <data name="restore.field.library_name" xml:space="preserve"><value>naziv fonoteke (neobavezno)</value></data>
   <data name="restore.from_cloud" xml:space="preserve"><value>vrati iz oblaka</value></data>
   <data name="restore.from_cloud_title" xml:space="preserve"><value>vrati iz oblaka</value></data>
+  <data name="restore.invalid_code" xml:space="preserve"><value>neispravan kod za vraćanje</value></data>
   <data name="restore.in_progress" xml:space="preserve"><value>vraćanje…</value></data>
   <data name="s3.field.access_key" xml:space="preserve"><value>pristupni ključ</value></data>
   <data name="s3.field.bucket" xml:space="preserve"><value>S3 spremnik</value></data>

@@ -140,7 +140,6 @@
   <data name="members.approve.invited_hint" xml:space="preserve"><value>הזינו את הקוד הזה במכשיר החדש.</value></data>
   <data name="nowplaying.go_to_album" xml:space="preserve"><value>מעבר לאלבום</value></data>
   <data name="outbox.delete.kind" xml:space="preserve"><value>מחק</value></data>
-  <data name="outbox.cancel_item" xml:space="preserve"><value>ביטול</value></data>
   <data name="outbox.load_failed" xml:space="preserve"><value>לא ניתן לטעון את תיבת היוצא</value></data>
   <data name="outbox.pause" xml:space="preserve"><value>השהה</value></data>
   <data name="outbox.read_failed" xml:space="preserve"><value>לא ניתן לקרוא את תיבת היוצא</value></data>
@@ -156,14 +155,13 @@
   <data name="queue.shuffle.off" xml:space="preserve"><value>כבה ערבוב</value></data>
   <data name="queue.shuffle.on" xml:space="preserve"><value>ערבב</value></data>
   <data name="queue.title" xml:space="preserve"><value>תור</value></data>
+  <data name="restore.code_label" xml:space="preserve"><value>קוד שחזור</value></data>
+  <data name="restore.code_placeholder" xml:space="preserve"><value>הדבק קוד שחזור</value></data>
   <data name="restore.confirm" xml:space="preserve"><value>שחזר</value></data>
   <data name="restore.failed" xml:space="preserve"><value>השחזור נכשל</value></data>
-  <data name="restore.field.cloud_storage" xml:space="preserve"><value>אחסון ענן</value></data>
-  <data name="restore.field.encryption_key" xml:space="preserve"><value>מפתח הצפנה (הקסדצימלי)</value></data>
-  <data name="restore.field.library_id" xml:space="preserve"><value>מזהה ספרייה</value></data>
-  <data name="restore.field.library_name" xml:space="preserve"><value>שם ספרייה (אופציונלי)</value></data>
   <data name="restore.from_cloud" xml:space="preserve"><value>שחזר מהענן</value></data>
   <data name="restore.from_cloud_title" xml:space="preserve"><value>שחזר מהענן</value></data>
+  <data name="restore.invalid_code" xml:space="preserve"><value>קוד שחזור לא תקין</value></data>
   <data name="restore.in_progress" xml:space="preserve"><value>משחזר…</value></data>
   <data name="s3.field.access_key" xml:space="preserve"><value>מפתח גישה</value></data>
   <data name="s3.field.bucket" xml:space="preserve"><value>דלי S3</value></data>

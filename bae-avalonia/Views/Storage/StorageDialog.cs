@@ -639,20 +639,14 @@ internal sealed partial class StorageDialog
                 outboxPanel.Children.Add(expander);
             }
 
-            // A pending delete is a single-file operation, so it keeps its own cancel.
+            // A pending delete carries no cancel: the object is already in the
+            // cloud and the row that named it is gone, so abandoning the removal
+            // would strand the object with nothing left to address it by.
             foreach (var delete in snapshot.Deletes)
             {
-                var id = delete.Id;
-                var itemGrid = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto"), ColumnSpacing = 8 };
                 var label = Primary(DeleteLabel(delete));
                 label.VerticalAlignment = VerticalAlignment.Center;
-                Grid.SetColumn(label, 0);
-                itemGrid.Children.Add(label);
-                var cancel = new Button { Content = Loc.Chrome("outbox.cancel_item") };
-                cancel.Click += async (_, _) => await RunCancel(() => _app.Sync.CancelOutboxItem(id));
-                Grid.SetColumn(cancel, 1);
-                itemGrid.Children.Add(cancel);
-                outboxPanel.Children.Add(itemGrid);
+                outboxPanel.Children.Add(label);
             }
         }
 

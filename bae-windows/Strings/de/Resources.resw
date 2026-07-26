@@ -140,7 +140,6 @@
   <data name="members.approve.invited_hint" xml:space="preserve"><value>gib diesen Code auf dem neuen Gerät ein.</value></data>
   <data name="nowplaying.go_to_album" xml:space="preserve"><value>zum Album wechseln</value></data>
   <data name="outbox.delete.kind" xml:space="preserve"><value>löschen</value></data>
-  <data name="outbox.cancel_item" xml:space="preserve"><value>abbrechen</value></data>
   <data name="outbox.load_failed" xml:space="preserve"><value>Postausgang konnte nicht geladen werden</value></data>
   <data name="outbox.pause" xml:space="preserve"><value>Pause</value></data>
   <data name="outbox.read_failed" xml:space="preserve"><value>Postausgang konnte nicht gelesen werden</value></data>
@@ -156,14 +155,13 @@
   <data name="queue.shuffle.off" xml:space="preserve"><value>Zufallswiedergabe ausschalten</value></data>
   <data name="queue.shuffle.on" xml:space="preserve"><value>Zufallswiedergabe</value></data>
   <data name="queue.title" xml:space="preserve"><value>Warteschlange</value></data>
+  <data name="restore.code_label" xml:space="preserve"><value>Wiederherstellungscode</value></data>
+  <data name="restore.code_placeholder" xml:space="preserve"><value>Wiederherstellungscode einfügen</value></data>
   <data name="restore.confirm" xml:space="preserve"><value>wiederherstellen</value></data>
   <data name="restore.failed" xml:space="preserve"><value>Wiederherstellung fehlgeschlagen</value></data>
-  <data name="restore.field.cloud_storage" xml:space="preserve"><value>Cloud-Speicher</value></data>
-  <data name="restore.field.encryption_key" xml:space="preserve"><value>Verschlüsselungsschlüssel (Hex)</value></data>
-  <data name="restore.field.library_id" xml:space="preserve"><value>Bibliotheks-ID</value></data>
-  <data name="restore.field.library_name" xml:space="preserve"><value>Bibliotheksname (optional)</value></data>
   <data name="restore.from_cloud" xml:space="preserve"><value>aus der Cloud wiederherstellen</value></data>
   <data name="restore.from_cloud_title" xml:space="preserve"><value>aus der Cloud wiederherstellen</value></data>
+  <data name="restore.invalid_code" xml:space="preserve"><value>ungültiger Wiederherstellungscode</value></data>
   <data name="restore.in_progress" xml:space="preserve"><value>wird wiederhergestellt …</value></data>
   <data name="s3.field.access_key" xml:space="preserve"><value>Access Key</value></data>
   <data name="s3.field.bucket" xml:space="preserve"><value>S3-Bucket</value></data>

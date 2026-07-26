@@ -140,7 +140,6 @@
   <data name="members.approve.invited_hint" xml:space="preserve"><value>ഈ കോഡ് പുതിയ ഉപകരണത്തിൽ നൽകുക.</value></data>
   <data name="nowplaying.go_to_album" xml:space="preserve"><value>ആൽബത്തിലേക്ക് പോകുക</value></data>
   <data name="outbox.delete.kind" xml:space="preserve"><value>ഇല്ലാതാക്കുക</value></data>
-  <data name="outbox.cancel_item" xml:space="preserve"><value>റദ്ദാക്കുക</value></data>
   <data name="outbox.load_failed" xml:space="preserve"><value>ഔട്ട്‌ബോക്സ് ലോഡ് ചെയ്യാനായില്ല</value></data>
   <data name="outbox.pause" xml:space="preserve"><value>താൽക്കാലികമായി നിർത്തുക</value></data>
   <data name="outbox.read_failed" xml:space="preserve"><value>ഔട്ട്‌ബോക്സ് വായിക്കാനായില്ല</value></data>
@@ -156,14 +155,13 @@
   <data name="queue.shuffle.off" xml:space="preserve"><value>ക്രമരഹിത പ്ലേ ഓഫ് ചെയ്യുക</value></data>
   <data name="queue.shuffle.on" xml:space="preserve"><value>ക്രമരഹിതമായി പ്ലേ ചെയ്യുക</value></data>
   <data name="queue.title" xml:space="preserve"><value>നിര</value></data>
+  <data name="restore.code_label" xml:space="preserve"><value>പുനഃസ്ഥാപന കോഡ്</value></data>
+  <data name="restore.code_placeholder" xml:space="preserve"><value>പുനഃസ്ഥാപന കോഡ് ഒട്ടിക്കുക</value></data>
   <data name="restore.confirm" xml:space="preserve"><value>പുനഃസ്ഥാപിക്കുക</value></data>
   <data name="restore.failed" xml:space="preserve"><value>പുനഃസ്ഥാപനം പരാജയപ്പെട്ടു</value></data>
-  <data name="restore.field.cloud_storage" xml:space="preserve"><value>ക്ലൗഡ് സംഭരണം</value></data>
-  <data name="restore.field.encryption_key" xml:space="preserve"><value>എൻക്രിപ്ഷൻ കീ (ഹെക്സ്)</value></data>
-  <data name="restore.field.library_id" xml:space="preserve"><value>ലൈബ്രറി ID</value></data>
-  <data name="restore.field.library_name" xml:space="preserve"><value>ലൈബ്രറി പേര് (ഐച്ഛികം)</value></data>
   <data name="restore.from_cloud" xml:space="preserve"><value>ക്ലൗഡിൽ നിന്ന് പുനഃസ്ഥാപിക്കുക</value></data>
   <data name="restore.from_cloud_title" xml:space="preserve"><value>ക്ലൗഡിൽ നിന്ന് പുനഃസ്ഥാപിക്കുക</value></data>
+  <data name="restore.invalid_code" xml:space="preserve"><value>അസാധുവായ പുനഃസ്ഥാപന കോഡ്</value></data>
   <data name="restore.in_progress" xml:space="preserve"><value>പുനഃസ്ഥാപിക്കുന്നു…</value></data>
   <data name="s3.field.access_key" xml:space="preserve"><value>പ്രവേശന കീ</value></data>
   <data name="s3.field.bucket" xml:space="preserve"><value>S3 ബക്കറ്റ്</value></data>

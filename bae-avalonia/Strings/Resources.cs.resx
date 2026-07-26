@@ -140,7 +140,6 @@
   <data name="members.approve.invited_hint" xml:space="preserve"><value>zadejte tento kód na novém zařízení.</value></data>
   <data name="nowplaying.go_to_album" xml:space="preserve"><value>přejít na album</value></data>
   <data name="outbox.delete.kind" xml:space="preserve"><value>smazat</value></data>
-  <data name="outbox.cancel_item" xml:space="preserve"><value>zrušit</value></data>
   <data name="outbox.load_failed" xml:space="preserve"><value>nelze načíst odchozí frontu</value></data>
   <data name="outbox.pause" xml:space="preserve"><value>pozastavit</value></data>
   <data name="outbox.read_failed" xml:space="preserve"><value>nelze přečíst odchozí frontu</value></data>
@@ -156,14 +155,13 @@
   <data name="queue.shuffle.off" xml:space="preserve"><value>vypnout náhodné přehrávání</value></data>
   <data name="queue.shuffle.on" xml:space="preserve"><value>náhodně</value></data>
   <data name="queue.title" xml:space="preserve"><value>fronta</value></data>
+  <data name="restore.code_label" xml:space="preserve"><value>obnovovací kód</value></data>
+  <data name="restore.code_placeholder" xml:space="preserve"><value>vložit obnovovací kód</value></data>
   <data name="restore.confirm" xml:space="preserve"><value>obnovit</value></data>
   <data name="restore.failed" xml:space="preserve"><value>obnovení selhalo</value></data>
-  <data name="restore.field.cloud_storage" xml:space="preserve"><value>cloudové úložiště</value></data>
-  <data name="restore.field.encryption_key" xml:space="preserve"><value>šifrovací klíč (hex)</value></data>
-  <data name="restore.field.library_id" xml:space="preserve"><value>id knihovny</value></data>
-  <data name="restore.field.library_name" xml:space="preserve"><value>název knihovny (volitelné)</value></data>
   <data name="restore.from_cloud" xml:space="preserve"><value>obnovit z cloudu</value></data>
   <data name="restore.from_cloud_title" xml:space="preserve"><value>obnovit z cloudu</value></data>
+  <data name="restore.invalid_code" xml:space="preserve"><value>neplatný obnovovací kód</value></data>
   <data name="restore.in_progress" xml:space="preserve"><value>obnovování…</value></data>
   <data name="s3.field.access_key" xml:space="preserve"><value>přístupový klíč</value></data>
   <data name="s3.field.bucket" xml:space="preserve"><value>S3 bucket</value></data>
