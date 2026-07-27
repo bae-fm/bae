@@ -268,7 +268,7 @@ pub struct MatchedRelease {
     pub release_id: String,
     /// The lead match's title. Titles vary between the editions of a release
     /// group, so with several matches this is one pressing's title standing in
-    /// for the album — see [`MatchedRelease::of`].
+    /// for the album — see `MatchedRelease::of`.
     pub title: String,
     /// The lead match's artist, with the same caveat as `title`.
     pub artist: Option<String>,

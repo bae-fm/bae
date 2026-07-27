@@ -95,7 +95,7 @@ fn artist_image_cloud_path_for_storage(
 /// that will not exist afterwards: a cloud tombstone is bound to the exact row
 /// blob it removes, and an external-file registration is keyed by its row. The
 /// transaction that drops the rows hands them over through
-/// [`apply_delete_cleanup_on`].
+/// `apply_delete_cleanup_on`.
 ///
 /// An in-flight make-remote is not represented here: cancelling one is
 /// [`CovenHandle::cancel_make_remote`](coven::CovenHandle::cancel_make_remote),

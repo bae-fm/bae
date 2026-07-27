@@ -226,7 +226,7 @@ impl Database {
     ///
     /// `release_files` is bae's only user-provided table — every other blob is
     /// coven's own copy — so a file id is all this needs. Callers that want the
-    /// *bytes* read them through coven instead ([`LibraryManager::read_release_blob`]);
+    /// *bytes* read them through coven instead (`LibraryManager::read_release_blob`);
     /// this is for the paths themselves: re-reading a file's tags, or telling a
     /// user where their music actually is.
     pub async fn external_blob(

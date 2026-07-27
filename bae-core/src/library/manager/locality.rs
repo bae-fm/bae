@@ -146,7 +146,7 @@ impl LibraryManager {
     /// Mint the scannable device-join invite for a device that asked to join,
     /// returning the payload the UI renders as a QR code. The joining device must
     /// hand over its join-request code first — see
-    /// [`SyncController::begin_device_invite`](crate::library::sync_controller::SyncController::begin_device_invite).
+    /// `SyncController::begin_device_invite`.
     pub async fn begin_device_invite(
         &self,
         join_request_code: &str,

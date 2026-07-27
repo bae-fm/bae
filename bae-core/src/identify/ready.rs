@@ -65,7 +65,7 @@ pub enum NeedsYou {
     /// The source's track count differs from the folder's.
     TrackCountDisagrees { local: u32, source: u32 },
     /// Both counts agree but the totals do not, beyond
-    /// [`duration_tolerance_ms`].
+    /// `duration_tolerance_ms`.
     DurationsDisagree {
         probed_ms: u64,
         source_ms: u64,
@@ -84,7 +84,7 @@ pub enum NeedsYou {
 /// `probed_total_duration_ms` is [`crate::signals::Signals`]' probed total, as
 /// stored alongside the verdict; `0` means nothing was probed.
 /// `library_statuses` is a **live** check of the verdict's matches, matched
-/// back to them by release id (see [`in_library`]) — never a copy stored with
+/// back to them by release id (see `in_library`) — never a copy stored with
 /// the verdict, which is the whole reason this is computed on read. Order and
 /// completeness are not part of the contract: a caller batching one check
 /// across a whole queue hands over what it resolved.

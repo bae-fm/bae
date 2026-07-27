@@ -891,7 +891,7 @@ impl Database {
     /// bare row DELETE reclaims nothing — coven's local-blob cleanup is intent-
     /// driven, and an intent is created only for a blob **declared** deleted in a
     /// write batch. So this reads the exact delete set and its blobs first
-    /// ([`plan_fail_import_deletion`]), then in one atomic [`CovenHandle::write`]
+    /// (`plan_fail_import_deletion`), then in one atomic [`CovenHandle::write`]
     /// declares those blob deletions and deletes the rows: the blobs are referenced
     /// when the batch opens (so coven binds a row cleanup intent) and unreferenced
     /// when it commits (so the intent records), reclaiming the local bytes.
