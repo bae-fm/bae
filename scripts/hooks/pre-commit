@@ -105,18 +105,20 @@ if has_changes_in "bae-core" || has_changes_in "bae-test-support"; then
     }
 fi
 
-# bae-subsonic and bae-desktop checks (depend on bae-core). A bae-core type
-# change can break them silently otherwise: nothing else in this hook compiles
-# either crate, which is how a SaveCodec variant addition once broke
-# bae-subsonic on main without any gate noticing.
-if has_changes_in "bae-subsonic" || has_changes_in "bae-desktop" \
-    || has_changes_in "bae-core"; then
-    run_check "clippy (bae-subsonic)" cargo clippy -p bae-subsonic --all-targets -- -D warnings || {
-        echo "Fix the warnings above and try again"
-        exit 1
-    }
-
-    run_check "clippy (bae-desktop)" cargo clippy -p bae-desktop --all-targets -- -D warnings || {
+# Every other Rust crate that depends on bae-core, in one sweep rather than a
+# list. A bae-core type change breaks its dependents silently otherwise, and
+# naming them individually only moves the problem to whichever crate is missing
+# from the list: that is how a SaveCodec variant once broke bae-subsonic on
+# main, and later how a renamed automation input broke bae-cli and a widened
+# struct broke bae-automation's fixtures — three times, three different crates,
+# the same gap. `--all-targets` matters as much as the breadth: two of those
+# three compiled fine as libraries and only their test targets failed.
+if has_changes_in "bae-core" || has_changes_in "bae-subsonic" \
+    || has_changes_in "bae-desktop" || has_changes_in "bae-automation" \
+    || has_changes_in "bae-cli" || has_changes_in "bae-mcp" \
+    || has_changes_in "bae-loc" || has_changes_in "bae-test-support" \
+    || has_changes_in "bae-bridge"; then
+    run_check "clippy (workspace)" cargo clippy --workspace --all-targets -- -D warnings || {
         echo "Fix the warnings above and try again"
         exit 1
     }
