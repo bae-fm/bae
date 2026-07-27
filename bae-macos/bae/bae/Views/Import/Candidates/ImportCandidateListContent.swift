@@ -206,7 +206,11 @@ struct ImportCandidateListContent: View {
         case .skipped: skippedList
         }
     }
+}
 
+// The per-tab lists. In an extension so the view's body and the chrome it
+// builds — tabs, filter, progress — read as one piece above them.
+extension ImportCandidateListContent {
     // MARK: - Ready
 
     private var selectedReadyKeys: Set<String> {

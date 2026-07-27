@@ -250,7 +250,11 @@ struct TriageRowView: View {
             return error.displayLine
         }
     }
+}
 
+// The row's actions and its trailing column. In an extension so the view's
+// body and the layout it composes stay readable as one piece.
+extension TriageRowView {
     // MARK: - Row actions
 
     private struct RowAction {
