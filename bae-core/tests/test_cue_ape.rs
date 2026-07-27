@@ -1195,7 +1195,10 @@ async fn wait_for_multi_disc_cue_ape_import_ready(
         StorageMode::Local => wait_for_import_complete(progress_rx).await,
         StorageMode::Remote => {
             let (release_id, album_id) = wait_for_remote_upload_queued(progress_rx).await;
-            timeout(Duration::from_secs(10), async {
+            // The connected store may still be completing its initial snapshot.
+            // Bound a stuck transition without imposing a latency guarantee on
+            // that cycle plus the import's publication.
+            timeout(Duration::from_secs(60), async {
                 loop {
                     library_manager
                         .drain_uploads_for_test()
