@@ -1148,6 +1148,10 @@ impl LibraryManager {
     /// The runtime the library's own services run on. Services built alongside
     /// the manager take it from here rather than being handed a second one,
     /// which could not be the same runtime.
+    ///
+    /// Desktop-only because its callers are: the import queue's sweep and the
+    /// services built around it, neither of which exists on a phone.
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub(crate) fn runtime_handle(&self) -> &tokio::runtime::Handle {
         &self.runtime_handle
     }
