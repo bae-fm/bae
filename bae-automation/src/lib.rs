@@ -2917,6 +2917,9 @@ mod tests {
                 country: Some("US".to_string()),
                 cover_art: None,
                 source_group_id: Some(group_id.to_string()),
+                // Nobody asked the source for its tracklist: these fixtures
+                // exercise provenance and pressing alignment, not the Ready rule.
+                source_tracks: None,
             }
         }
 
@@ -2939,6 +2942,7 @@ mod tests {
                 excluded: HashSet::new(),
                 discid_results: Vec::new(),
                 barcode_results: Vec::new(),
+                discid_failure: None,
                 barcode_failure: None,
                 matched_barcode: None,
                 track_count: 0,
@@ -3078,6 +3082,9 @@ mod tests {
                     )],
                     free_text: vec!["Album Title".to_string()],
                 },
+                // A plausible total for the ten tracks above. Not zero, which
+                // would claim the audio could not be probed.
+                probed_total_duration_ms: 2_400_000,
             };
 
             let json = serde_json::to_value(automation_signals(signals)).unwrap();
