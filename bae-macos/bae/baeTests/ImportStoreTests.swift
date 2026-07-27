@@ -7,8 +7,7 @@ private func makeCandidate(_ key: String) -> Candidate {
     Candidate(
         reIdentifyKey: key,
         releaseId: "existing-release",
-        displayName: "Candidate \(key)",
-        trackCount: 10
+        displayName: "Candidate \(key)"
     )
 }
 

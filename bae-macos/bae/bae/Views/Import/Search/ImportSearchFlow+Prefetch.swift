@@ -75,13 +75,11 @@ extension ImportSearchFlow {
 
     // MARK: - Prefetch and confirm
 
-    /// The pressing the user picked to prefetch: the search `result` and the
-    /// local track count to reconcile the fetched detail against. What the pick
-    /// claims is not here — bae-core derives it from the candidate's identify
-    /// evidence and returns it with the prefetch.
+    /// The pressing the user picked to prefetch. What the pick claims is not
+    /// here, and neither is how it lines up with the folder's audio — bae-core
+    /// derives both from the candidate and returns them with the prefetch.
     struct PrefetchSelection {
         let result: BridgeMetadataResult
-        let localTrackCount: UInt32?
     }
 
     @MainActor
@@ -106,12 +104,10 @@ extension ImportSearchFlow {
                 let prefetch = try await library.prefetchRelease(
                     key,
                     releaseId,
-                    bridgeSource,
-                    selection.localTrackCount
+                    bridgeSource
                 )
                 importStore.mutateCandidate(forKey: key) { candidate in
-                    // The display detail: cover options, track-count mismatch,
-                    // library status.
+                    // The display detail: cover options, library status.
                     candidate.releaseDetailBridge = prefetch.detail
                     // What the pick claims, derived in bae-core from the
                     // evidence that identified this candidate. The header

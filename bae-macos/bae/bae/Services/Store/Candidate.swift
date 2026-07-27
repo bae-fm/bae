@@ -83,8 +83,6 @@ struct Candidate: Equatable, Identifiable {
     /// Stable key — the folder path. Used as the dictionary key.
     let key: String
     let displayName: String
-    /// Track count for the candidate. Folder candidates always have a value.
-    let trackCount: UInt32?
 
     /// Dynamic — mutated by the import-candidate projection or by views.
     var files: BridgeCandidateFiles
@@ -150,7 +148,6 @@ struct Candidate: Equatable, Identifiable {
         )
         key = bridge.folderPath
         displayName = bridge.sourceFolderName
-        trackCount = bridge.trackCount
         files = bridge.files
     }
 
@@ -178,19 +175,15 @@ struct Candidate: Equatable, Identifiable {
     /// Construct a re-identify candidate. The release already lives in
     /// the library; identify-pipeline events stream into this candidate the
     /// same way folder events do, so the existing `ImportSearchPane` UI renders
-    /// unchanged. `trackCount` is the number of tracks on the release — used by
-    /// the barcode lookup phase to match expected track counts in candidate
-    /// releases.
+    /// unchanged.
     init(
         reIdentifyKey: String,
         releaseId: String,
-        displayName: String,
-        trackCount: UInt32
+        displayName: String
     ) {
         source = .releaseReIdentify(releaseId: releaseId)
         key = reIdentifyKey
         self.displayName = displayName
-        self.trackCount = trackCount
         // Re-identify candidates read their files from the DB, not the
         // scanner's scan-event channel, so they start with an empty set.
         files = BridgeCandidateFiles(files: [], formatLabel: "")

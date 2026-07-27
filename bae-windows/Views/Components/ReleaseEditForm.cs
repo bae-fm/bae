@@ -172,12 +172,16 @@ internal sealed class ReleaseEditForm
             {
                 sideValue = side;
             }
+            // The row's audio binding is carried through untouched: it is not
+            // a form field, and dropping it here would unpair a track the user
+            // had already paired.
             tracks.Add(new BridgeRawTrackEdit(
                 track.Id,
                 titleCell.Text,
                 artistCell.Text,
                 sideValue,
-                int.TryParse(numberCell.Text, out var number) ? number : null));
+                int.TryParse(numberCell.Text, out var number) ? number : null,
+                track.File));
         }
 
         _edit = new BridgeRawReleaseEdit(

@@ -393,12 +393,10 @@ extension AlbumDetailView {
     private func presentReIdentifySheet(release: ReleaseDetail) {
         let releaseId = release.id
         let displayName = release.displayName
-        let trackCount = UInt32(release.tracks.count)
         uiStore.presentModal {
             ReIdentifySheet(
                 releaseId: releaseId,
                 displayName: displayName,
-                trackCount: trackCount,
                 onClose: { uiStore.dismissModal() },
             )
         }

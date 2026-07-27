@@ -38,7 +38,7 @@ pub(crate) mod service;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub mod sweep;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
-mod track_to_file_mapper;
+mod track_slots;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub mod triage;
 mod types;
@@ -99,13 +99,15 @@ pub use service::ImportService;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use sweep::QueueSweepHandle;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
+pub use track_slots::TrackSlot;
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use triage::{
     Answered, CandidateAnswer, IdentifyPhase, MatchEvidence, MatchedPressing, MatchedRelease,
     MatchedSignal, NeedsYouGroup, NeedsYouReason, TriagePlacement, TriageQueue, TriageRow,
     TriageTab, TriageTabCounts,
 };
 pub use types::{
-    CoverSelection, EditValidationError, IdentityChoice, ImportCommand, ImportPhase,
+    AudioFile, CoverSelection, EditValidationError, IdentityChoice, ImportCommand, ImportPhase,
     ImportProgress, ImportStep, MetadataPointer, MetadataRef, MetadataSource, PrepareStep,
     PressingEdit, RawPressingEdit, RawReleaseEdit, RawTrackEdit, ReleaseIdentity, ReleaseUserEdit,
     StorageMode, TrackFile, TrackUserEdit,

@@ -1264,7 +1264,14 @@ fn categorize_files_from_tree(
     }
 
     // One order for everything downstream: the release's own file order.
-    proposed.sort_by(|a, b| a.0.relative_path.cmp(&b.0.relative_path));
+    //
+    // Natural, not byte-wise, so `CD10` follows `CD9` and `10.flac` follows
+    // `9.flac` — the order a person reading the folder expects. It has to be
+    // one order because separate consumers zip against each other: the track
+    // slots lay the audio down in this order, and the Unknown import reads
+    // embedded tags in it, so a second ordering rule anywhere would pair a
+    // file's tags with a different file's samples.
+    proposed.sort_by(|a, b| natord::compare(&a.0.relative_path, &b.0.relative_path));
 
     // Parse every CUE exactly once. A sheet that will not parse is not a sheet;
     // it stays a document, and the folder imports without it.

@@ -50,7 +50,6 @@ extension ImportView {
             input: ImportSearchFlow.SearchPaneInput(
                 candidate: candidate,
                 key: candidate.key,
-                localTrackCount: candidate.trackCount,
                 selectedReleaseId: selectedReleaseId
             ),
             openSettings: { openSettings() },
@@ -71,33 +70,19 @@ extension ImportView {
     func confirmationView(for candidate: Candidate) -> some View {
         let key = candidate.key
         let detail = candidate.releaseDetailBridge
-        // For Unknown imports there's no source release detail —
-        // remote cover art and library status are absent, the track
-        // count comes from the editor (one entry per audio file), and
-        // there's nothing to mismatch against.
+        // For Unknown imports there's no source release detail, so
+        // remote cover art and library status are absent.
         let remoteCoverArts = detail?.coverArt ?? []
         let hasCoverOptions =
             !remoteCoverArts.isEmpty
             || (candidate.files.images.isEmpty == false)
         let libraryStatus =
             detail.flatMap { candidate.libraryStatuses[$0.releaseId] }
-        let trackCountMismatch = detail?.trackCountMismatch ?? false
-        let expectedTrackCount: UInt32 = {
-            if let detailCount = detail?.trackCount {
-                return detailCount
-            }
-            if let editTracks = candidate.editValues?.tracks {
-                return UInt32(editTracks.count)
-            }
-            return 0
-        }()
         return ImportSearchFlow.buildConfirmationView(
             inputs: ImportSearchFlow.ConfirmationInputs(
                 importStore: importStore,
                 key: key,
                 uiStore: uiStore,
-                trackCountMismatch: trackCountMismatch,
-                expectedTrackCount: expectedTrackCount,
                 libraryStatus: libraryStatus,
                 remoteCoverArts: remoteCoverArts,
                 hasCoverOptions: hasCoverOptions,

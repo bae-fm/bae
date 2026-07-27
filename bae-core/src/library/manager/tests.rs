@@ -5574,10 +5574,11 @@ async fn re_identify_release_approximate_writes_cache() {
 
 #[tokio::test]
 async fn re_identify_release_rejects_track_count_mismatch() {
-    // Folder import enforces this through prefetch's `track_count_mismatch` flag,
-    // which disables its commit button. Re-identify has no prefetch (the user picks
-    // a row directly), so the check belongs in the bae-core commit: a 12-track
-    // release can't replace a 10-track rip.
+    // Re-identify re-points the identity without re-binding any audio, so a
+    // source naming a different number of tracks leaves rows with nothing to
+    // point at: a 12-track release can't replace a 10-track rip. A folder
+    // import maps its own audio into track slots instead, where a count
+    // disagreement is a row to look at rather than a refusal.
     use crate::import::{IdentityChoice, MetadataRef, MetadataSource};
     use crate::musicbrainz::{seed_release_cache, seed_release_group_json_cache};
 

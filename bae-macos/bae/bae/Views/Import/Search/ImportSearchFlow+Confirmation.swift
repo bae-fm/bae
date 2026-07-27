@@ -45,8 +45,6 @@ extension ImportSearchFlow {
         let importStore: ImportStore
         let key: String
         let uiStore: UiStore
-        let trackCountMismatch: Bool
-        let expectedTrackCount: UInt32
         let libraryStatus: BridgeLibraryStatus?
         let remoteCoverArts: [BridgeRemoteCover]
         let hasCoverOptions: Bool
@@ -86,8 +84,6 @@ extension ImportSearchFlow {
                 ),
                 storageManaged: inputs.storageManaged,
                 storagePinned: inputs.storagePinned,
-                trackCountMismatch: inputs.trackCountMismatch,
-                expectedTrackCount: inputs.expectedTrackCount,
                 libraryStatus: inputs.libraryStatus,
                 candidateKey: key,
                 importStatus: candidate.importStatus,

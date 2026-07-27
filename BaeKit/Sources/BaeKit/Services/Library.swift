@@ -52,13 +52,14 @@ public final class Library: Sendable, Observable {
     public let findReleaseDetail:
         @Sendable (_ releaseId: String) async throws -> BridgeRelease?
     /// Pick a release for an import candidate: the confirm pane's display
-    /// detail, the editor seed masked for the claim, and the claim itself.
-    /// `candidateKey` is what lets bae-core read the evidence that identified
-    /// the candidate, which is what the claim defaults from.
+    /// detail, the editor seed masked for the claim, the claim itself, and the
+    /// track slots the pick produces. `candidateKey` is what lets bae-core read
+    /// the evidence that identified the candidate — which is what the claim
+    /// defaults from — and find the folder whose audio the slots map.
     public let prefetchRelease:
         @Sendable (
             _ candidateKey: String, _ releaseId: String,
-            _ source: BridgeMetadataSource, _ localTrackCount: UInt32?
+            _ source: BridgeMetadataSource
         ) async throws -> BridgeReleasePrefetch
     public let resolveToTrackIds:
         @Sendable (_ ids: [String]) async throws -> [String]
@@ -139,8 +140,8 @@ public final class Library: Sendable, Observable {
                 throw StubError.notImplemented
             },
         prefetchRelease:
-            @escaping @Sendable (String, String, BridgeMetadataSource, UInt32?)
-            async throws -> BridgeReleasePrefetch = { _, _, _, _ in
+            @escaping @Sendable (String, String, BridgeMetadataSource)
+            async throws -> BridgeReleasePrefetch = { _, _, _ in
                 throw StubError.notImplemented
             },
         resolveToTrackIds:
@@ -240,8 +241,7 @@ public final class Library: Sendable, Observable {
                     try await handle.prefetchRelease(
                         candidateKey: $0,
                         releaseId: $1,
-                        source: $2,
-                        localTrackCount: $3
+                        source: $2
                     )
                 },
                 resolveToTrackIds: {

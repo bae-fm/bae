@@ -107,6 +107,7 @@ fn wire_edit(album_title: &str, album_artist_names: &[&str]) -> ReleaseUserEdit 
             side: 1,
             track_number: Some(1),
             artist_names: Vec::new(),
+            file: None,
         }],
     }
 }

@@ -53,11 +53,15 @@ pub enum ImportError {
     #[error("file tags cannot be read: {detail}")]
     FileTags { detail: String },
 
-    /// The release's tracks don't map onto the folder's audio files
-    /// (track count mismatch, no audio files found, CUE analysis/probe
-    /// failures, incompatible CUE segment formats, unusable audio format).
+    /// A file the import must read cannot be used: audio that will not decode,
+    /// a codec bae can't play, bytes that could not be hashed, or audio a track
+    /// slot named that is no longer in the folder.
+    ///
+    /// The import's only remaining refusal. A disagreement between the source's
+    /// tracklist and the folder's audio is a track slot to look at, not a
+    /// failure — see [`TrackSlot`](crate::import::TrackSlot).
     #[error("{detail}")]
-    TrackMapping { detail: String },
+    UnusableFile { detail: String },
 
     /// Cover art selection/fetch/decode failed (download after retries,
     /// unrecognized image bytes, selected local cover missing, read/resize

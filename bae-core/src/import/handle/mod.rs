@@ -772,6 +772,10 @@ pub fn parsed_album_to_user_edit(parsed: &super::ParsedAlbum) -> crate::import::
                 side: t.side,
                 track_number: t.track_number,
                 artist_names,
+                // A seed says what the release is, not which of the folder's
+                // audio backs each track; the track slots settle that, and
+                // stamp the binding onto the rows they hand to the editor.
+                file: None,
             }
         })
         .collect();

@@ -144,12 +144,16 @@ internal sealed class ReleaseEditForm
             // Keep the seeded side if the field was cleared/garbled (side is
             // required); a blank track number means "no number".
             var side = int.TryParse(sideCell.Text, out var parsedSide) ? parsedSide : track.Side;
+            // The row's audio binding is carried through untouched: it is not
+            // a form field, and dropping it here would unpair a track the user
+            // had already paired.
             tracks.Add(new BridgeRawTrackEdit(
                 track.Id,
                 titleCell.Text ?? string.Empty,
                 artistCell.Text ?? string.Empty,
                 side,
-                int.TryParse(numberCell.Text, out var number) ? number : null));
+                int.TryParse(numberCell.Text, out var number) ? number : null,
+                track.File));
         }
 
         _edit = new BridgeRawReleaseEdit(

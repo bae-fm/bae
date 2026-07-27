@@ -241,7 +241,10 @@ pub fn map_unknown_candidate_to_db(
         let audio_files = categorized.audio_paths();
         return map_file_tags_to_db(&audio_files, folder_name, clock, ids);
     }
-    bound.sort_by(|a, b| natord::compare(&a.file.relative_path, &b.file.relative_path));
+    // Sorted by the audio each sheet describes, not by the sheet's own name, so
+    // this tracklist comes out in the same order `track_slots::audio_units`
+    // lays the folder's audio down — the two are zipped into track slots.
+    bound.sort_by(|a, b| natord::compare(&a.audio.relative_path, &b.audio.relative_path));
     let sheets = bound.iter().map(|b| b.sheet).collect::<Vec<_>>();
     let audio = bound
         .iter()
@@ -256,8 +259,8 @@ pub fn map_unknown_candidate_to_db(
 /// `TITLE`, per-track artist from each `PERFORMER`. Album-level fields come from
 /// the sheet header (`TITLE` / `PERFORMER` / `REM DATE`), the title falling back
 /// to the folder name. `sheets` and `audio_files` are one-per-pair in disc order
-/// — the same order `track_to_file_mapper` slices pairs — so side is the 1-based
-/// disc index and track numbers run per sheet.
+/// — the same order `track_slots` lays the folder's audio down — so side is the
+/// 1-based disc index and track numbers run per sheet.
 pub fn map_cue_sheets_to_db(
     sheets: &[&CueSheet],
     audio_files: &[&Path],

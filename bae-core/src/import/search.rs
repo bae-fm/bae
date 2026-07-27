@@ -105,13 +105,6 @@ pub struct ImportSearchReleaseDetail {
 }
 
 impl ImportSearchReleaseDetail {
-    /// Does the source's `track_count` disagree with the user's local
-    /// track count? `None` (count not known yet) returns `false`: can't
-    /// mismatch against an unknown.
-    pub fn track_count_mismatch(&self, local_track_count: Option<u32>) -> bool {
-        local_track_count.is_some_and(|local| self.track_count != local)
-    }
-
     pub fn default_cover(&self) -> Option<&RemoteCover> {
         self.cover_art.first()
     }
@@ -481,11 +474,20 @@ fn build_mb_detail(
 /// showing the editor masks it for `claim.choice` with
 /// [`crate::import::shape_user_edit_for_choice`], which is what the bridge does
 /// before the record crosses.
+///
+/// `slots` is the file↔release mapping this pick produces: one row per track the
+/// import will write, each naming the audio bound to it and saying whether the
+/// two sides agree. It is computed here so a disagreement is something to look
+/// at and correct rather than something the commit discovers, and so the commit
+/// consumes the mapping the user saw. Empty when `candidate_key` names no
+/// scanned folder — re-identify picks a release for a release already in the
+/// library, whose files are bound already.
 #[derive(Debug, Clone)]
 pub struct ImportReleasePrefetch {
     pub detail: ImportSearchReleaseDetail,
     pub seed: crate::import::ReleaseUserEdit,
     pub claim: crate::import::ClaimLine,
+    pub slots: Vec<crate::import::TrackSlot>,
 }
 
 /// Prefetch path for MusicBrainz: pure MB fetch + picker/confirm detail. No

@@ -15,12 +15,11 @@ extension ImportSearchFlow {
     }
 
     /// Which candidate a search pane renders, and the selection state it shows:
-    /// `selectedReleaseId` is the pressing whose confirm pane is open (so its row
-    /// renders selected); `localTrackCount` reconciles a picked release's detail.
+    /// `selectedReleaseId` is the pressing whose confirm pane is open, so its
+    /// row renders selected.
     struct SearchPaneInput {
         let candidate: Candidate
         let key: String
-        let localTrackCount: UInt32?
         let selectedReleaseId: String?
     }
 
@@ -182,10 +181,7 @@ extension ImportSearchFlow {
                 library: services.library,
                 importStore: services.importStore,
                 key: input.key,
-                selection: PrefetchSelection(
-                    result: result,
-                    localTrackCount: input.localTrackCount
-                )
+                selection: PrefetchSelection(result: result)
             )
         }
     }

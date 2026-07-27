@@ -1709,15 +1709,15 @@ impl AppHandle {
     }
 
     /// Pick a release for a candidate: the confirmation pane's display detail,
-    /// the editor seed masked for the resulting claim, and the claim line
-    /// itself. `candidate_key` is what lets core read the evidence that
-    /// identified the candidate, which is what the claim defaults from.
+    /// the editor seed masked for the resulting claim, the claim line itself,
+    /// and the track slots this pick produces. `candidate_key` is what lets core
+    /// read the evidence that identified the candidate — which is what the claim
+    /// defaults from — and find the folder whose audio the slots map.
     pub async fn prefetch_release(
         &self,
         candidate_key: String,
         release_id: String,
         source: BridgeMetadataSource,
-        local_track_count: Option<u32>,
     ) -> Result<crate::types::BridgeReleasePrefetch, BridgeError> {
         let prefetch = self
             .services
@@ -1725,10 +1725,7 @@ impl AppHandle {
             .prefetch_release(&candidate_key, &release_id, source.into_core())
             .await
             .map_err(BridgeError::import)?;
-        Ok(crate::types::BridgeReleasePrefetch::from_core(
-            prefetch,
-            local_track_count,
-        ))
+        Ok(crate::types::BridgeReleasePrefetch::from_core(prefetch))
     }
 
     pub async fn fetch_remote_covers(

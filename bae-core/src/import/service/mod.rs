@@ -15,8 +15,8 @@ use {
     crate::import::folder_scanner::{
         scan_for_candidates_with_callback, FolderScanError, ScanItem, ScannedFile,
     },
-    crate::import::track_to_file_mapper::map_tracks_to_files,
-    crate::import::types::{CoverSelection, ImportPhase, PrepareStep, TrackFile},
+    crate::import::track_slots::{compute_track_slots, resolve_track_files},
+    crate::import::types::{AudioFile, CoverSelection, ImportPhase, PrepareStep, TrackFile},
     crate::import::ParsedWorkGraph,
     notify_debouncer_full::DebounceEventResult,
     std::collections::{HashMap, HashSet},
@@ -567,6 +567,19 @@ impl ImportService {
             }
         };
 
+        // The release's track rows and the folder's audio are reconciled before
+        // any metadata is applied, so everything downstream works on the track
+        // list the import will actually write.
+        let mut parsed = parsed;
+        let mut user_edit = user_edit;
+        let track_bindings = settle_track_rows(
+            &mut parsed,
+            &mut user_edit,
+            &categorized,
+            library_manager.ids().as_ref(),
+            library_manager.clock().now(),
+        );
+
         let mut prepared = self
             .reconcile_prepared_release(
                 parsed,
@@ -649,12 +662,17 @@ impl ImportService {
         step_times.push(("discover_files", last_step_start.elapsed()));
         last_step_start = std::time::Instant::now();
 
-        // The mapper consumes `db_tracks`, moving each DbTrack into its
-        // TrackFile variant and populating `duration_ms` from the CUE sheet or a
-        // standalone-file probe. Past here the DbTracks live in `tracks_to_files`.
+        // Each DbTrack moves into its TrackFile variant, bound to the audio its
+        // slot named and carrying the `duration_ms` that audio yields. Past here
+        // the DbTracks live in `tracks_to_files`.
         emit_preparing(PrepareStep::ValidatingTracks);
-        let tracks_to_files =
-            map_tracks_to_files(std::mem::take(&mut prepared.db_tracks), &categorized)?;
+        let tracks_to_files = resolve_track_files(
+            std::mem::take(&mut prepared.db_tracks)
+                .into_iter()
+                .zip(track_bindings)
+                .collect(),
+            &categorized,
+        )?;
 
         let selected_cover_path = match &selected_cover {
             Some(CoverSelection::Local(path)) => Some(path.as_str()),
@@ -848,7 +866,7 @@ impl ImportService {
             // (or another device's download) can ever read it back. See
             // `crate::util::fs::hash_file`.
             let content_hash = crate::util::fs::hash_file(&file.path).map_err(|e| {
-                crate::import::ImportError::TrackMapping {
+                crate::import::ImportError::UnusableFile {
                     detail: format!("failed to hash {}: {e}", file.path.display()),
                 }
             })?;
@@ -1146,6 +1164,125 @@ fn import_trace_line(
     .to_string();
     line.push('\n');
     line
+}
+
+/// Reconcile the release's track rows with the folder's audio, and report which
+/// audio each surviving track is bound to.
+///
+/// The command's edit carries the track slots the user saw, each row naming the
+/// audio bound to it — that is the mapping, and it wins. A command whose edit
+/// names no audio at all changed metadata without opening the slot table (the
+/// CLI, an automation script, a surface with no mapping pane), so the slots are
+/// computed here from this folder and this tracklist, exactly as picking the
+/// release computes them; whatever metadata that edit does carry still applies,
+/// row for row.
+///
+/// Rows the user left with no audio have no samples to write, so they do not
+/// become tracks, and the seeded track each stood for takes its artist, role and
+/// work rows with it. Rows past the end of the source's tracklist are audio the
+/// source does not account for and get a fresh track row.
+///
+/// The returned bindings are positionally aligned with `parsed.tracks` and with
+/// the edit's `tracks`, all three the same length.
+fn settle_track_rows(
+    parsed: &mut crate::import::ParsedAlbum,
+    user_edit: &mut Option<crate::import::ReleaseUserEdit>,
+    files: &crate::import::folder_scanner::CategorizedFiles,
+    ids: &dyn coven::IdProvider,
+    now: chrono::DateTime<chrono::Utc>,
+) -> Vec<AudioFile> {
+    use crate::import::TrackUserEdit;
+
+    let carries_mapping = user_edit
+        .as_ref()
+        .is_some_and(|edit| edit.tracks.iter().any(|track| track.file.is_some()));
+
+    let rows: Vec<TrackUserEdit> = if carries_mapping {
+        user_edit
+            .as_ref()
+            .expect("an edit that carries a mapping is present")
+            .tracks
+            .clone()
+    } else {
+        let source_rows: Vec<TrackUserEdit> = parsed
+            .tracks
+            .iter()
+            .map(|track| TrackUserEdit {
+                title: track.title.clone(),
+                side: track.side,
+                track_number: track.track_number,
+                artist_names: Vec::new(),
+                file: None,
+            })
+            .collect();
+        compute_track_slots(&source_rows, files)
+            .into_iter()
+            .enumerate()
+            .map(|(index, slot)| {
+                let mut row = slot.into_track();
+                // A metadata-only edit still speaks for the rows it has.
+                if let Some(edited) = user_edit.as_ref().and_then(|e| e.tracks.get(index)) {
+                    row.title = edited.title.clone();
+                    row.side = edited.side;
+                    row.track_number = edited.track_number;
+                    row.artist_names = edited.artist_names.clone();
+                }
+                row
+            })
+            .collect()
+    };
+
+    let mut seeded: Vec<Option<crate::db::DbTrack>> = std::mem::take(&mut parsed.tracks)
+        .into_iter()
+        .map(Some)
+        .collect();
+    let mut tracks = Vec::with_capacity(rows.len());
+    let mut bindings = Vec::with_capacity(rows.len());
+    let mut kept_rows = Vec::with_capacity(rows.len());
+
+    for (index, row) in rows.into_iter().enumerate() {
+        let Some(file) = row.file.clone() else {
+            continue;
+        };
+        let track = match seeded.get_mut(index).and_then(Option::take) {
+            Some(track) => track,
+            None => crate::db::DbTrack {
+                id: ids.new_id(),
+                release_id: parsed.release.id.clone(),
+                title: row.title.clone(),
+                side: row.side,
+                track_number: row.track_number,
+                duration_ms: None,
+                // The source knows nothing about this track, so it has no
+                // position in the source's tracklist to record.
+                discogs_position: None,
+                created_at: now,
+            },
+        };
+        tracks.push(track);
+        bindings.push(file);
+        kept_rows.push(row);
+    }
+
+    let dropped: HashSet<String> = seeded.into_iter().flatten().map(|track| track.id).collect();
+    if !dropped.is_empty() {
+        parsed
+            .track_artists
+            .retain(|link| !dropped.contains(&link.track_id));
+        parsed
+            .track_artist_roles
+            .retain(|role| !dropped.contains(&role.track_id));
+        parsed
+            .work_graph
+            .track_works
+            .retain(|link| !dropped.contains(&link.track_id));
+    }
+
+    parsed.tracks = tracks;
+    if let Some(edit) = user_edit.as_mut() {
+        edit.tracks = kept_rows;
+    }
+    bindings
 }
 
 /// Project the user's identity choice onto the mapper's identity vec.

@@ -25,7 +25,6 @@ enum ReIdentifyKey {
 struct ReIdentifySheet: View {
     let releaseId: String
     let displayName: String
-    let trackCount: UInt32
     let onClose: () -> Void
 
     @Environment(Importer.self)
@@ -129,7 +128,6 @@ struct ReIdentifySheet: View {
                         input: ImportSearchFlow.SearchPaneInput(
                             candidate: candidate,
                             key: key,
-                            localTrackCount: trackCount,
                             selectedReleaseId: selectedResult?.releaseId
                         ),
                         openSettings: { openSettings() },
@@ -279,8 +277,7 @@ extension ReIdentifySheet {
             importStore.reIdentifyCandidates[key] = Candidate(
                 reIdentifyKey: key,
                 releaseId: releaseId,
-                displayName: displayName,
-                trackCount: trackCount
+                displayName: displayName
             )
         }
         // Identify subscribes, then extraction streams the release's signals
@@ -379,7 +376,6 @@ extension ReIdentifySheet {
         ReIdentifySheet(
             releaseId: "rel-a-01",
             displayName: "Album Title \u{00B7} 2019 \u{00B7} CD",
-            trackCount: 8,
             onClose: {},
         )
         .albumDetailPreviewEnvironment(store: PreviewData.seededLibraryStore())

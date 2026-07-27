@@ -2559,7 +2559,6 @@ pub struct BridgeReleaseDetail {
     pub country: Option<String>,
     pub barcode: Option<String>,
     pub track_count: u32,
-    pub track_count_mismatch: bool,
     pub tracks: Vec<BridgeReleaseTrack>,
     pub cover_art: Vec<BridgeRemoteCover>,
     pub default_cover: Option<BridgeCoverChoice>,
@@ -2593,6 +2592,11 @@ pub struct BridgeReleasePrefetch {
     pub detail: BridgeReleaseDetail,
     pub seed: BridgeReleaseUserEdit,
     pub claim: BridgeClaimLine,
+    /// The file↔release mapping this pick produces: one row per track the
+    /// import will write, each naming the audio bound to it and saying whether
+    /// the source's tracklist and the folder's audio agree about it. Empty for
+    /// a key that names no scanned folder.
+    pub slots: Vec<BridgeTrackSlot>,
 }
 
 /// What identified the picked release. Mirrors
@@ -2670,6 +2674,45 @@ pub struct BridgeTrackUserEdit {
     pub side: i32,
     pub track_number: Option<i32>,
     pub artist_names: Vec<String>,
+    /// Which of the folder's audio holds this track's samples. An import's rows
+    /// are its track slots, so this is the pairing the user left and the one the
+    /// commit writes; a row with no audio is a slot nobody answered and does not
+    /// become a track. The library's metadata editor never re-binds files, so
+    /// its rows carry `None`.
+    pub file: Option<BridgeAudioFile>,
+}
+
+/// The audio a track's samples come from. Mirrors
+/// `bae_core::import::AudioFile`. `file_id` is the file's identity within the
+/// release (its relative path), the same id the file-roles table and the sheet
+/// bindings use.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeAudioFile {
+    /// The whole file holds this one track.
+    Standalone { file_id: String },
+    /// One of several tracks the track sheet `sheet_id` carves out of
+    /// `file_id`. `index` counts that sheet's playable tracks from zero.
+    SheetSlice {
+        file_id: String,
+        sheet_id: String,
+        index: u32,
+    },
+}
+
+/// One row of the file↔release mapping, as picking a release computes it.
+/// Mirrors `bae_core::import::TrackSlot`. The variant says whether the source's
+/// tracklist and the folder's audio agree about this row; the row itself
+/// carries the audio bound to it and the fields the user edits. A disagreement
+/// is stated on the row and never blocks the commit.
+#[derive(Debug, Clone, uniffi::Enum)]
+pub enum BridgeTrackSlot {
+    /// The source names this track and audio on disk backs it.
+    Paired { track: BridgeTrackUserEdit },
+    /// Audio on disk the source's tracklist does not account for. Its title is
+    /// blank until someone names it.
+    FileOnly { track: BridgeTrackUserEdit },
+    /// A track the source names with no audio bound to it.
+    TrackOnly { track: BridgeTrackUserEdit },
 }
 
 /// Raw edit-metadata form values, exactly as the editor holds them — text
@@ -2708,6 +2751,10 @@ pub struct BridgeRawTrackEdit {
     pub artist_text: String,
     pub side: i32,
     pub track_number: Option<i32>,
+    /// The audio bound to this row. An editor must carry it through untouched:
+    /// dropping it when rebuilding a row from its text fields is what unpairs a
+    /// track the user had already paired.
+    pub file: Option<BridgeAudioFile>,
 }
 
 /// Why a release edit can't be saved. An FFI mirror of bae-core's
@@ -3988,12 +4035,8 @@ fn remote_cover_choice_to_bridge(
 
 #[cfg(feature = "desktop")]
 impl BridgeReleaseDetail {
-    pub(crate) fn from_core(
-        d: bae_core::import::search::ImportSearchReleaseDetail,
-        local_track_count: Option<u32>,
-    ) -> Self {
+    pub(crate) fn from_core(d: bae_core::import::search::ImportSearchReleaseDetail) -> Self {
         // Derived values borrow `&d`; compute them before destructuring `d`.
-        let track_count_mismatch = d.track_count_mismatch(local_track_count);
         let default_cover = d
             .default_cover()
             .cloned()
@@ -4028,7 +4071,6 @@ impl BridgeReleaseDetail {
             country,
             barcode,
             track_count,
-            track_count_mismatch,
             tracks: tracks
                 .into_iter()
                 .map(BridgeReleaseTrack::from_core)
@@ -4064,14 +4106,12 @@ impl BridgeReleaseTrack {
 
 #[cfg(feature = "desktop")]
 impl BridgeReleasePrefetch {
-    pub(crate) fn from_core(
-        p: bae_core::import::search::ImportReleasePrefetch,
-        local_track_count: Option<u32>,
-    ) -> Self {
+    pub(crate) fn from_core(p: bae_core::import::search::ImportReleasePrefetch) -> Self {
         let bae_core::import::search::ImportReleasePrefetch {
             detail,
             seed,
             claim,
+            slots,
         } = p;
         // The seed crosses masked for the claim the pick settled, so the editor
         // binds it directly. Doing it here rather than in the UI is what keeps
@@ -4079,9 +4119,10 @@ impl BridgeReleasePrefetch {
         // shows.
         let seed = bae_core::import::shape_user_edit_for_choice(&seed, &claim.choice);
         BridgeReleasePrefetch {
-            detail: BridgeReleaseDetail::from_core(detail, local_track_count),
+            detail: BridgeReleaseDetail::from_core(detail),
             seed: BridgeReleaseUserEdit::from_core(seed),
             claim: BridgeClaimLine::from_core(claim),
+            slots: slots.into_iter().map(BridgeTrackSlot::from_core).collect(),
         }
     }
 }
@@ -4542,6 +4583,56 @@ impl BridgePressingEdit {
 }
 
 #[cfg(feature = "desktop")]
+impl BridgeAudioFile {
+    fn from_core(file: bae_core::import::AudioFile) -> Self {
+        match file {
+            bae_core::import::AudioFile::Standalone { file_id } => Self::Standalone { file_id },
+            bae_core::import::AudioFile::SheetSlice {
+                file_id,
+                sheet_id,
+                index,
+            } => Self::SheetSlice {
+                file_id,
+                sheet_id,
+                index,
+            },
+        }
+    }
+
+    fn into_core(self) -> bae_core::import::AudioFile {
+        match self {
+            Self::Standalone { file_id } => bae_core::import::AudioFile::Standalone { file_id },
+            Self::SheetSlice {
+                file_id,
+                sheet_id,
+                index,
+            } => bae_core::import::AudioFile::SheetSlice {
+                file_id,
+                sheet_id,
+                index,
+            },
+        }
+    }
+}
+
+#[cfg(feature = "desktop")]
+impl BridgeTrackSlot {
+    fn from_core(slot: bae_core::import::TrackSlot) -> Self {
+        match slot {
+            bae_core::import::TrackSlot::Paired(track) => Self::Paired {
+                track: BridgeTrackUserEdit::from_core(track),
+            },
+            bae_core::import::TrackSlot::FileOnly(track) => Self::FileOnly {
+                track: BridgeTrackUserEdit::from_core(track),
+            },
+            bae_core::import::TrackSlot::TrackOnly(track) => Self::TrackOnly {
+                track: BridgeTrackUserEdit::from_core(track),
+            },
+        }
+    }
+}
+
+#[cfg(feature = "desktop")]
 impl BridgeTrackUserEdit {
     fn from_core(t: bae_core::import::TrackUserEdit) -> Self {
         let bae_core::import::TrackUserEdit {
@@ -4549,12 +4640,14 @@ impl BridgeTrackUserEdit {
             side,
             track_number,
             artist_names,
+            file,
         } = t;
         Self {
             title,
             side,
             track_number,
             artist_names,
+            file: file.map(BridgeAudioFile::from_core),
         }
     }
 
@@ -4564,12 +4657,14 @@ impl BridgeTrackUserEdit {
             side,
             track_number,
             artist_names,
+            file,
         } = self;
         bae_core::import::TrackUserEdit {
             title,
             side,
             track_number,
             artist_names,
+            file: file.map(BridgeAudioFile::into_core),
         }
     }
 }
@@ -4663,6 +4758,7 @@ impl BridgeRawTrackEdit {
             artist_text,
             side,
             track_number,
+            file,
         } = t;
         Self {
             id,
@@ -4670,6 +4766,7 @@ impl BridgeRawTrackEdit {
             artist_text,
             side,
             track_number,
+            file: file.map(BridgeAudioFile::from_core),
         }
     }
 
@@ -4680,6 +4777,7 @@ impl BridgeRawTrackEdit {
             artist_text,
             side,
             track_number,
+            file,
         } = self;
         bae_core::import::RawTrackEdit {
             id,
@@ -4687,6 +4785,7 @@ impl BridgeRawTrackEdit {
             artist_text,
             side,
             track_number,
+            file: file.map(BridgeAudioFile::into_core),
         }
     }
 }
@@ -5293,6 +5392,11 @@ mod conversion_roundtrip {
                 side: 1,
                 track_number: Some(1),
                 artist_names: vec!["Track Artist".to_string()],
+                file: Some(bae_core::import::AudioFile::SheetSlice {
+                    file_id: "CDImage.flac".to_string(),
+                    sheet_id: "CDImage.cue".to_string(),
+                    index: 0,
+                }),
             }],
         };
         assert_eq!(
@@ -5321,6 +5425,12 @@ mod conversion_roundtrip {
                 artist_text: "Track Artist".to_string(),
                 side: 1,
                 track_number: Some(1),
+                // The audio binding is not a form field, so it has to survive
+                // the editor's round trip untouched or a corrected pairing is
+                // lost between the slot table and the commit.
+                file: Some(bae_core::import::AudioFile::Standalone {
+                    file_id: "01.flac".to_string(),
+                }),
             }],
         };
         assert_eq!(
@@ -5334,7 +5444,7 @@ mod conversion_roundtrip {
     /// not a round trip.
     #[cfg(feature = "desktop")]
     #[test]
-    fn release_detail_derives_mismatch_and_default_cover() {
+    fn release_detail_derives_default_cover() {
         let core = bae_core::import::search::ImportSearchReleaseDetail {
             release_id: "rel-123".to_string(),
             source: bae_core::import::MetadataSource::MusicBrainz,
@@ -5362,10 +5472,8 @@ mod conversion_roundtrip {
                 source: bae_core::import::MetadataSource::MusicBrainz,
             }],
         };
-        // 11 local tracks vs 10 on the source is a mismatch; `default_cover` is
-        // derived from the first cover.
-        let bridge = BridgeReleaseDetail::from_core(core.clone(), Some(11));
-        assert!(bridge.track_count_mismatch);
+        // `default_cover` is derived from the first cover.
+        let bridge = BridgeReleaseDetail::from_core(core.clone());
         assert!(bridge.default_cover.is_some());
         assert_eq!(bridge.release_id, core.release_id);
         assert_eq!(bridge.track_count, core.track_count);
@@ -5374,8 +5482,5 @@ mod conversion_roundtrip {
         assert_eq!(bridge.tracks[0].position, core.tracks[0].position);
         assert_eq!(bridge.cover_art.len(), core.cover_art.len());
         assert_eq!(bridge.barcode, core.barcode);
-
-        // The same local count as the source is no mismatch.
-        assert!(!BridgeReleaseDetail::from_core(core, Some(10)).track_count_mismatch);
     }
 }

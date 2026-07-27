@@ -12,12 +12,6 @@ import SwiftUI
 ///
 /// On commit the caller passes the editor's current values to the
 /// import command as the metadata overlay.
-///
-/// `trackCountMismatch` is the source-vs-local-files discrepancy
-/// banner from the picked release detail. Always `false` for Unknown
-/// imports — there's no source release to disagree with.
-/// `expectedTrackCount` is shown alongside that banner; passed
-/// regardless of the flag's value because the banner reads it.
 struct ImportConfirmationView<CoverContent: View>: View {
     @Binding
     var values: BridgeRawReleaseEdit
@@ -25,8 +19,6 @@ struct ImportConfirmationView<CoverContent: View>: View {
     var storageManaged: Bool
     @Binding
     var storagePinned: Bool
-    let trackCountMismatch: Bool
-    let expectedTrackCount: UInt32
     let libraryStatus: BridgeLibraryStatus?
     /// The candidate this pane confirms — routes the high-frequency loudness
     /// ticks to the leaf bar during the measuring-loudness phase.
@@ -200,8 +192,6 @@ extension ImportConfirmationView {
     fileprivate var statusBanners: some View {
         ImportConfirmationBanners(
             libraryStatus: libraryStatus,
-            trackCountMismatch: trackCountMismatch,
-            expectedTrackCount: expectedTrackCount,
             importStatus: importStatus,
             error: error,
             onViewInLibrary: onViewInLibrary,
@@ -229,9 +219,6 @@ extension ImportConfirmationView {
             values: $values,
             storageManaged: $storageManaged,
             storagePinned: $storagePinned,
-            trackCountMismatch: PreviewData.releaseDetailBridge
-                .trackCountMismatch,
-            expectedTrackCount: PreviewData.releaseDetailBridge.trackCount,
             libraryStatus: nil,
             candidateKey: "preview-candidate",
             importStatus: nil,

@@ -425,12 +425,14 @@ async fn test_user_edit_overwrites_album_release_track_metadata() {
                 side: 1,
                 track_number: Some(1),
                 artist_names: vec![],
+                file: None,
             },
             TrackUserEdit {
                 title: "Edited Track 2".to_string(),
                 side: 2,
                 track_number: Some(2),
                 artist_names: vec!["Guest Artist".to_string()],
+                file: None,
             },
         ],
     };
@@ -530,12 +532,14 @@ async fn test_user_edit_multi_artist_round_trip() {
                 side: 1,
                 track_number: Some(1),
                 artist_names: vec![],
+                file: None,
             },
             TrackUserEdit {
                 title: "T2".to_string(),
                 side: 1,
                 track_number: Some(2),
                 artist_names: vec!["Guest X".to_string(), "Guest Y".to_string()],
+                file: None,
             },
         ],
     };

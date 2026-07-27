@@ -1157,8 +1157,7 @@ internal static class NativeBae
         BridgeMetadataSource source,
         string folderPath)
     {
-        var localTrackCount = LocalTrackCount(handle.GetCandidate(folderPath));
-        var prefetch = Await(() => handle.PrefetchRelease(candidateKey, releaseId, source, localTrackCount));
+        var prefetch = Await(() => handle.PrefetchRelease(candidateKey, releaseId, source));
         return new PrefetchedEdit
         {
             // The seed arrives masked for the claim the pick settled, so the
@@ -1170,10 +1169,6 @@ internal static class NativeBae
         };
     }
 
-    private static uint? LocalTrackCount(BridgeImportCandidateSnapshot? snapshot) =>
-        snapshot is BridgeImportCandidateSnapshot.Folder folder
-            ? folder.Candidate.TrackCount
-            : null;
 
     private static List<LocalArtwork> LocalArtwork(BridgeImportCandidateSnapshot? snapshot) =>
         snapshot is BridgeImportCandidateSnapshot.Folder folder

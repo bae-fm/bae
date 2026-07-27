@@ -164,8 +164,11 @@ pub enum IdentityChoice {
 /// `metadata_source_release_id` are untouched. So are `release_metadata` rows,
 /// so a later re-projection can still re-seed from the original source payload.
 ///
-/// `tracks` MUST have the same length as the release's existing tracks; edits
-/// cannot add or remove tracks (that's a re-import, not an edit).
+/// For a release already in the library, `tracks` MUST have the same length as
+/// the release's existing tracks; that editor cannot add or remove tracks
+/// (that's a re-import, not an edit). An import's `tracks` are its track slots
+/// instead, so they may outnumber the source's tracklist (audio it does not
+/// account for) or fall short of it (a track no audio backs).
 ///
 /// `album_artist_names` is positional — element 0 is the primary album artist,
 /// later elements get progressively higher `album_artists.position`. Empty is a
@@ -209,6 +212,36 @@ impl PressingEdit {
     }
 }
 
+/// The audio a track's samples come from.
+///
+/// The audio is named by its identity within the release
+/// ([`ScannedFile::relative_path`](crate::import::folder_scanner::ScannedFile::relative_path)),
+/// never by absolute path. A binding is decided when a release is picked and
+/// read again when the commit re-walks the folder; only the relative path
+/// survives the folder being moved or renamed in between.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum AudioFile {
+    /// The whole file holds this one track.
+    Standalone { file_id: String },
+    /// One of several tracks a bound track sheet carves out of one container.
+    /// `index` counts that sheet's playable tracks from zero.
+    SheetSlice {
+        file_id: String,
+        sheet_id: String,
+        index: u32,
+    },
+}
+
+impl AudioFile {
+    /// The audio file holding this track's samples.
+    pub fn file_id(&self) -> &str {
+        match self {
+            Self::Standalone { file_id } | Self::SheetSlice { file_id, .. } => file_id,
+        }
+    }
+}
+
 /// Per-track user edits. Aligned positionally with the release's existing
 /// tracks — element N edits track N (ordered as
 /// `Database::get_tracks_for_release` returns them).
@@ -222,6 +255,15 @@ pub struct TrackUserEdit {
     pub side: i32,
     pub track_number: Option<i32>,
     pub artist_names: Vec<String>,
+    /// Which audio holds this track's samples, when a slot bound one to it.
+    ///
+    /// An import's rows are the track slots the user saw, so a pairing they
+    /// corrected commits as they left it instead of being re-derived by
+    /// position; a row left with no audio has nothing to write and does not
+    /// become a track. The library's metadata editor never re-binds files, so
+    /// every row it produces carries `None` and the release's existing
+    /// bindings stand.
+    pub file: Option<AudioFile>,
 }
 
 /// Edit-metadata form values exactly as the editor holds them — text the user
@@ -269,6 +311,10 @@ pub struct RawTrackEdit {
     pub artist_text: String,
     pub side: i32,
     pub track_number: Option<i32>,
+    /// The audio bound to this row, carried through editing untouched. This is
+    /// what makes a pairing correctable: `shape` keeps it, so what the user
+    /// left in the slot table is what the commit writes.
+    pub file: Option<AudioFile>,
 }
 
 /// Why a [`RawReleaseEdit`] can't be shaped into a savable
@@ -386,6 +432,7 @@ impl RawReleaseEdit {
                     side: t.side,
                     track_number: t.track_number,
                     artist_names: split_artists(&t.artist_text),
+                    file: t.file.clone(),
                 })
                 .collect(),
         }
@@ -410,6 +457,7 @@ impl RawReleaseEdit {
                 artist_text: join_artists(&t.artist_names),
                 side: t.side,
                 track_number: t.track_number,
+                file: t.file,
             })
             .collect();
 
@@ -663,6 +711,9 @@ mod edit_shaping_tests {
                 artist_text: "Artist Two".to_string(),
                 side: 1,
                 track_number: Some(1),
+                file: Some(AudioFile::Standalone {
+                    file_id: "01.flac".to_string(),
+                }),
             }],
         }
     }
@@ -779,12 +830,16 @@ mod edit_shaping_tests {
                     side: 1,
                     track_number: Some(1),
                     artist_names: vec!["Track Artist".to_string()],
+                    file: Some(AudioFile::Standalone {
+                        file_id: "01.flac".to_string(),
+                    }),
                 },
                 TrackUserEdit {
                     title: "Track Two".to_string(),
                     side: 2,
                     track_number: Some(1),
                     artist_names: vec![],
+                    file: None,
                 },
             ],
         };

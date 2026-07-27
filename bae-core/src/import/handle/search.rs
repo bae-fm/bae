@@ -277,10 +277,19 @@ impl ImportServiceHandle {
             &crate::import::ClaimRelease::from_detail(&detail),
         );
 
+        let seed = crate::import::parsed_album_to_user_edit(&prepared.parsed);
+        let slots = match self.get_candidate(candidate_key) {
+            Some(super::ImportCandidateSnapshot::Folder { candidate, .. }) => {
+                crate::import::track_slots::compute_track_slots(&seed.tracks, &candidate.files)
+            }
+            _ => Vec::new(),
+        };
+
         Ok(crate::import::search::ImportReleasePrefetch {
             detail,
-            seed: crate::import::parsed_album_to_user_edit(&prepared.parsed),
+            seed,
             claim,
+            slots,
         })
     }
 

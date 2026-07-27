@@ -2218,6 +2218,7 @@ async fn approximate_import_with_user_edit_overlay() {
             side: 1,
             track_number: Some(1),
             artist_names: vec![],
+            file: None,
         }],
     };
 
@@ -3009,6 +3010,7 @@ async fn unknown_import_with_user_edit_overlay() {
             side: 1,
             track_number: Some(1),
             artist_names: vec![],
+            file: None,
         }],
     };
 
@@ -3340,5 +3342,309 @@ async fn two_credit_mb_release_keeps_both_album_artists() {
     assert_eq!(
         artists[1].musicbrainz_artist_id.as_deref(),
         Some("mb-artist-b")
+    );
+}
+
+/// Seed a plain MusicBrainz release of `track_count` tracks on one CD, credited
+/// to one artist. The tracklist a folder's audio gets mapped against.
+fn seed_mb_release_with_track_count(
+    mb_release_id: &str,
+    mb_group_id: &str,
+    track_count: usize,
+) -> String {
+    let response = MbReleaseResponse {
+        id: mb_release_id.to_string(),
+        title: "Album Title".to_string(),
+        date: Some("2004".to_string()),
+        country: Some("GB".to_string()),
+        barcode: None,
+        artist_credit: vec![MbArtistCredit {
+            name: "Artist Name".to_string(),
+            artist: Some(MbArtistRef {
+                id: Some("mb-artist-slots".to_string()),
+                name: Some("Artist Name".to_string()),
+                sort_name: Some("Artist Name".to_string()),
+            }),
+        }],
+        release_group: Some(MbReleaseGroupRef {
+            id: mb_group_id.to_string(),
+            first_release_date: None,
+            relations: None,
+        }),
+        label_info: vec![],
+        media: vec![MbMedium {
+            format: Some("CD".to_string()),
+            tracks: (1..=track_count)
+                .map(|position| MbTrack {
+                    position: Some(position as i64),
+                    number: Some(position.to_string()),
+                    title: None,
+                    length: None,
+                    recording: Some(MbRecording {
+                        id: Some(format!("rec-slots-{position}")),
+                        title: Some(format!("Source Track {position}")),
+                        artist_credit: vec![],
+                        relations: vec![],
+                    }),
+                    artist_credit: vec![],
+                })
+                .collect(),
+        }],
+        relations: vec![],
+    };
+    bae_core::musicbrainz::seed_release_cache(mb_release_id, (response, None, "{}".to_string()));
+    bae_core::musicbrainz::seed_release_group_json_cache(mb_group_id, "{}".to_string());
+    mb_release_id.to_string()
+}
+
+/// A release's tracks in track order, each with the file its samples come from.
+async fn committed_track_files(f: &ImportFixture, release_id: &str) -> Vec<(String, String)> {
+    let release_id = release_id.to_string();
+    f.db.handle()
+        .sql_read(move |conn| {
+            let mut stmt = conn.prepare(
+                "SELECT t.title, rf.original_filename \
+                 FROM tracks t \
+                 JOIN audio_formats af ON af.track_id = t.id \
+                 JOIN audio_format_segments seg \
+                   ON seg.audio_format_id = af.id AND seg.role = 'main' \
+                 JOIN release_files rf ON rf.id = seg.file_id \
+                 WHERE t.release_id = ?1 \
+                 ORDER BY t.side, t.track_number",
+            )?;
+            let rows = stmt
+                .query_map([&release_id], |row| {
+                    Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+                })?
+                .collect::<coven::rusqlite::Result<Vec<_>>>()?;
+            Ok::<_, coven::CovenError>(rows)
+        })
+        .await
+        .expect("read committed track files")
+}
+
+/// Scan `album_dir` in and pick `mb_id` for it, returning the candidate key and
+/// the track slots the pick produced. The path both desktop surfaces take.
+async fn pick_release_for_folder(
+    f: &ImportFixture,
+    collection: &Path,
+    album_dir: &Path,
+    mb_id: &str,
+) -> (String, bae_core::import::search::ImportReleasePrefetch) {
+    let candidate_key = album_dir.to_string_lossy().into_owned();
+    let mut scan_rx = f.handle.subscribe_folder_scan_events();
+    f.handle
+        .add_watched_folder(collection.to_string_lossy().into_owned())
+        .unwrap();
+    let expected = album_dir.to_path_buf();
+    wait_for_scan_event(
+        &mut scan_rx,
+        "the slot candidate",
+        move |event| matches!(event, ScanEvent::FolderCandidate(c) if c.path == expected),
+    )
+    .await;
+
+    let prefetch = f
+        .handle
+        .prefetch_release(&candidate_key, mb_id, MetadataSource::MusicBrainz)
+        .await
+        .unwrap();
+    (candidate_key, prefetch)
+}
+
+/// The edit a surface sends back when the user changes nothing in the slot
+/// table: the slots' own rows, bindings and all.
+fn edit_from_slots(prefetch: &bae_core::import::search::ImportReleasePrefetch) -> ReleaseUserEdit {
+    ReleaseUserEdit {
+        album_title: prefetch.seed.album_title.clone(),
+        album_artist_names: prefetch.seed.album_artist_names.clone(),
+        pressing: prefetch.seed.pressing.clone(),
+        tracks: prefetch
+            .slots
+            .iter()
+            .map(|slot| slot.track().clone())
+            .collect(),
+    }
+}
+
+/// Thirteen files against a twelve-track source. The pick produces twelve
+/// paired slots and one `FileOnly`, and committing writes thirteen tracks — the
+/// thirteenth named after its file. This folder used to fail the commit
+/// outright.
+#[tokio::test]
+async fn thirteen_files_against_a_twelve_track_source_commits_thirteen_tracks() {
+    support::tracing_init();
+    let f = ImportFixture::new().await;
+    let mb_id = seed_mb_release_with_track_count("mb-rel-13v12", "mb-group-13v12", 12);
+    f.cover_art
+        .seed_lookup(Some(&mb_id), Some("mb-group-13v12"), None);
+
+    let collection = f.temp_path().join("collection-13v12");
+    let album_dir = collection.join("album");
+    fs::create_dir_all(&album_dir).unwrap();
+    let names: Vec<String> = (1..=13).map(|n| format!("{n:02} Track.flac")).collect();
+    generate_album_files(
+        &album_dir,
+        &names.iter().map(String::as_str).collect::<Vec<_>>(),
+    );
+
+    let (candidate_key, prefetch) =
+        pick_release_for_folder(&f, &collection, &album_dir, &mb_id).await;
+
+    assert_eq!(prefetch.slots.len(), 13);
+    assert_eq!(
+        prefetch
+            .slots
+            .iter()
+            .filter(|slot| matches!(slot, bae_core::import::TrackSlot::Paired(_)))
+            .count(),
+        12,
+    );
+    assert!(matches!(
+        prefetch.slots[12],
+        bae_core::import::TrackSlot::FileOnly(_)
+    ));
+
+    let import_id = f.ids.new_id();
+    f.handle
+        .send_command(ImportCommand {
+            import_id: import_id.clone(),
+            candidate_key,
+            folder: album_dir,
+            selected_cover: None,
+            storage_mode: StorageMode::Local,
+            pin: false,
+            identity_choice: IdentityChoice::Exact {
+                release_ref: MetadataRef::new(mb_id, MetadataSource::MusicBrainz),
+            },
+            user_edit: Some(edit_from_slots(&prefetch)),
+        })
+        .unwrap();
+    let mut rx = f.handle.subscribe_import(import_id);
+    let (release_id, _album_id) = support::wait_for_import_complete(&mut rx).await;
+
+    let committed = committed_track_files(&f, &release_id).await;
+    assert_eq!(committed.len(), 13);
+    assert_eq!(
+        committed[0],
+        ("Source Track 1".to_string(), names[0].clone())
+    );
+    assert_eq!(
+        committed[11],
+        ("Source Track 12".to_string(), names[11].clone())
+    );
+    // Nobody named the thirteenth slot, so it commits under its file's name.
+    assert_eq!(committed[12], ("13 Track".to_string(), names[12].clone()));
+}
+
+/// Fourteen source tracks against thirteen files. The pick produces one
+/// `TrackOnly` slot; leaving it unanswered commits the thirteen tracks that
+/// have audio and nothing else.
+#[tokio::test]
+async fn a_track_with_no_audio_commits_as_the_user_left_it() {
+    support::tracing_init();
+    let f = ImportFixture::new().await;
+    let mb_id = seed_mb_release_with_track_count("mb-rel-14v13", "mb-group-14v13", 14);
+    f.cover_art
+        .seed_lookup(Some(&mb_id), Some("mb-group-14v13"), None);
+
+    let collection = f.temp_path().join("collection-14v13");
+    let album_dir = collection.join("album");
+    fs::create_dir_all(&album_dir).unwrap();
+    let names: Vec<String> = (1..=13).map(|n| format!("{n:02} Track.flac")).collect();
+    generate_album_files(
+        &album_dir,
+        &names.iter().map(String::as_str).collect::<Vec<_>>(),
+    );
+
+    let (candidate_key, prefetch) =
+        pick_release_for_folder(&f, &collection, &album_dir, &mb_id).await;
+
+    assert_eq!(prefetch.slots.len(), 14);
+    assert!(matches!(
+        prefetch.slots[13],
+        bae_core::import::TrackSlot::TrackOnly(_)
+    ));
+
+    let import_id = f.ids.new_id();
+    f.handle
+        .send_command(ImportCommand {
+            import_id: import_id.clone(),
+            candidate_key,
+            folder: album_dir,
+            selected_cover: None,
+            storage_mode: StorageMode::Local,
+            pin: false,
+            identity_choice: IdentityChoice::Exact {
+                release_ref: MetadataRef::new(mb_id, MetadataSource::MusicBrainz),
+            },
+            user_edit: Some(edit_from_slots(&prefetch)),
+        })
+        .unwrap();
+    let mut rx = f.handle.subscribe_import(import_id);
+    let (release_id, _album_id) = support::wait_for_import_complete(&mut rx).await;
+
+    let committed = committed_track_files(&f, &release_id).await;
+    assert_eq!(committed.len(), 13);
+    let titles: Vec<&str> = committed.iter().map(|(title, _)| title.as_str()).collect();
+    assert!(
+        !titles.contains(&"Source Track 14"),
+        "the slot nobody gave audio to has nothing to write: {titles:?}",
+    );
+}
+
+/// A rip whose files are named in the wrong order. The user re-pairs two slots
+/// in the mapping, and the commit binds the files they chose — not the ones
+/// their positions would have given them.
+#[tokio::test]
+async fn a_corrected_pairing_survives_the_commit() {
+    support::tracing_init();
+    let f = ImportFixture::new().await;
+    let mb_id = seed_mb_release_with_track_count("mb-rel-repair", "mb-group-repair", 3);
+    f.cover_art
+        .seed_lookup(Some(&mb_id), Some("mb-group-repair"), None);
+
+    let collection = f.temp_path().join("collection-repair");
+    let album_dir = collection.join("album");
+    fs::create_dir_all(&album_dir).unwrap();
+    let names = ["01 Track.flac", "02 Track.flac", "03 Track.flac"];
+    generate_album_files(&album_dir, &names);
+
+    let (candidate_key, prefetch) =
+        pick_release_for_folder(&f, &collection, &album_dir, &mb_id).await;
+
+    let mut edit = edit_from_slots(&prefetch);
+    assert_eq!(edit.tracks.len(), 3);
+    // Re-pairing moves the bindings, not the tracks: the first two source
+    // tracks keep their titles and numbers and swap the audio behind them.
+    let first = edit.tracks[0].file.clone();
+    edit.tracks[0].file = edit.tracks[1].file.clone();
+    edit.tracks[1].file = first;
+
+    let import_id = f.ids.new_id();
+    f.handle
+        .send_command(ImportCommand {
+            import_id: import_id.clone(),
+            candidate_key,
+            folder: album_dir,
+            selected_cover: None,
+            storage_mode: StorageMode::Local,
+            pin: false,
+            identity_choice: IdentityChoice::Exact {
+                release_ref: MetadataRef::new(mb_id, MetadataSource::MusicBrainz),
+            },
+            user_edit: Some(edit),
+        })
+        .unwrap();
+    let mut rx = f.handle.subscribe_import(import_id);
+    let (release_id, _album_id) = support::wait_for_import_complete(&mut rx).await;
+
+    assert_eq!(
+        committed_track_files(&f, &release_id).await,
+        vec![
+            ("Source Track 1".to_string(), "02 Track.flac".to_string()),
+            ("Source Track 2".to_string(), "01 Track.flac".to_string()),
+            ("Source Track 3".to_string(), "03 Track.flac".to_string()),
+        ],
     );
 }

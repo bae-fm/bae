@@ -39,7 +39,7 @@ fn ensure_probe_audio_format(
     probe: &crate::audio_codec::ProbeResult,
 ) -> Result<(), ImportError> {
     if probe.sample_rate == 0 || probe.channels == 0 {
-        return Err(ImportError::TrackMapping {
+        return Err(ImportError::UnusableFile {
             detail: format!(
                 "unusable audio format in {}: sample_rate={}, channels={}",
                 path.display(),
@@ -49,7 +49,7 @@ fn ensure_probe_audio_format(
         });
     }
     if !admitted_audio_content_type(&probe.content_type) {
-        return Err(ImportError::TrackMapping {
+        return Err(ImportError::UnusableFile {
             detail: format!(
                 "Unsupported audio codec {} in {}",
                 probe.content_type.display_name(),
@@ -61,14 +61,14 @@ fn ensure_probe_audio_format(
 }
 
 /// Probe a file's audio format and validate it's admissible, returning the
-/// probe. The typed `TrackMapping` failure names a non-UTF-8 path, an
+/// probe. The typed `UnusableFile` failure names a non-UTF-8 path, an
 /// unprobeable file, or an unusable/unsupported codec.
 fn probe_and_validate_audio(path: &Path) -> Result<crate::audio_codec::ProbeResult, ImportError> {
-    let path_str = path.to_str().ok_or_else(|| ImportError::TrackMapping {
+    let path_str = path.to_str().ok_or_else(|| ImportError::UnusableFile {
         detail: format!("Invalid path: {}", path.display()),
     })?;
     let probe = crate::audio_codec::probe_audio_from_path(path_str).ok_or_else(|| {
-        ImportError::TrackMapping {
+        ImportError::UnusableFile {
             detail: format!("Failed to probe audio file: {}", path.display()),
         }
     })?;
@@ -123,7 +123,7 @@ fn cue_track_by_playable_index(
         .cue_sheet
         .playable_tracks()
         .nth(cue_index)
-        .ok_or_else(|| ImportError::TrackMapping {
+        .ok_or_else(|| ImportError::Internal {
             detail: format!("CUE playable track index {cue_index} out of bounds"),
         })
 }
@@ -603,8 +603,8 @@ FILE "Test Album.ape" WAVE
         .expect("write cue");
 
         let cue_sheet = crate::cue_flac::parse_cue_sheet(&cue_path).expect("parse cue");
-        let probe = crate::import::track_to_file_mapper::analyze_cue_audio(&audio_path)
-            .expect("analyze ape");
+        let probe =
+            crate::import::track_slots::analyze_cue_audio(&audio_path).expect("analyze ape");
         let cue_pair = Arc::new(CueFlacAnalysis {
             cue_sheet,
             audio_files: vec![CueAnalyzedAudioFile {
@@ -758,7 +758,7 @@ FILE "Test Album.ape" WAVE
 
         assert!(matches!(
             &error,
-            ImportError::TrackMapping { detail } if detail.contains("unusable audio format")
+            ImportError::UnusableFile { detail } if detail.contains("unusable audio format")
         ));
     }
 
@@ -771,7 +771,7 @@ FILE "Test Album.ape" WAVE
 
         assert!(matches!(
             &error,
-            ImportError::TrackMapping { detail } if detail.contains("unusable audio format")
+            ImportError::UnusableFile { detail } if detail.contains("unusable audio format")
         ));
     }
 
@@ -810,7 +810,7 @@ FILE "test.flac" WAVE
 
         assert!(matches!(
             &error,
-            ImportError::TrackMapping { detail } if detail.contains("unusable audio format")
+            ImportError::UnusableFile { detail } if detail.contains("unusable audio format")
         ));
     }
 

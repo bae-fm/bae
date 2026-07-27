@@ -72,31 +72,6 @@ struct ImportResultPane<Top: View, Pane: View>: View {
         .importPreviewEnvironment()
     }
 
-    #Preview("Confirming — track-count warning") {
-        @Previewable
-        @State
-        var values = PreviewData.confirmEditValues
-        @Previewable
-        @State
-        var storageManaged = true
-        @Previewable
-        @State
-        var storagePinned = true
-        ImportResultPane(open: true, onClose: {}) {
-            ImportSearchPane.preview(state: PreviewData.searchStateFoundExact)
-        } pane: {
-            ImportConfirmationPreview.make(
-                values: $values,
-                storageManaged: $storageManaged,
-                storagePinned: $storagePinned,
-                trackCountMismatch: true,
-                expectedTrackCount: 11
-            )
-        }
-        .frame(width: 1212, height: 982)
-        .importPreviewEnvironment()
-    }
-
     #Preview("Confirming — album-level claim") {
         @Previewable
         @State

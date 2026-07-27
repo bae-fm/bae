@@ -523,7 +523,6 @@
                 country: "US",
                 barcode: nil,
                 trackCount: 9,
-                trackCountMismatch: false,
                 tracks: tracks,
                 coverArt: [],
                 defaultCover: nil,
@@ -541,6 +540,7 @@
                         side: 1,
                         trackNumber: Int32(i),
                         artistNames: i == 5 ? ["Featured Artist"] : [],
+                        file: .standalone(fileId: "\(i).flac"),
                     )
                 }
             return BridgeReleaseUserEdit(

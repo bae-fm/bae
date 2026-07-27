@@ -613,6 +613,7 @@ fn user_edit_overrides_seeded_pressing_fields() {
             side: 1,
             track_number: Some(1),
             artist_names: vec![],
+            file: None,
         }],
     };
 
@@ -675,6 +676,7 @@ fn user_edit_can_fill_country_for_approximate_seed() {
             side: tracks[0].side,
             track_number: tracks[0].track_number,
             artist_names: vec![],
+            file: None,
         }],
     };
 
@@ -715,12 +717,14 @@ fn user_edit_track_count_mismatch_is_an_error() {
                 side: 1,
                 track_number: Some(1),
                 artist_names: vec![],
+                file: None,
             },
             crate::import::TrackUserEdit {
                 title: "Y".to_string(),
                 side: 1,
                 track_number: Some(2),
                 artist_names: vec![],
+                file: None,
             },
         ],
     };
@@ -833,6 +837,7 @@ fn user_edit_preserves_source_id_artist_rows_when_names_unchanged() {
             side: tracks[0].side,
             track_number: tracks[0].track_number,
             artist_names: vec![],
+            file: None,
         }],
     };
 
@@ -887,6 +892,7 @@ fn user_edit_renaming_album_artist_rebuilds_credits() {
             side: tracks[0].side,
             track_number: tracks[0].track_number,
             artist_names: vec![],
+            file: None,
         }],
     };
 
@@ -921,8 +927,7 @@ fn cue_backed_tracks(dir: &str) -> Vec<TrackFile> {
     let audio_path = PathBuf::from(format!("{dir}/Test Album.ape"));
     let cue_path = PathBuf::from(format!("{dir}/Test Album.cue"));
     let cue_sheet = crate::cue_flac::parse_cue_sheet(&cue_path).expect("parse cue");
-    let probe =
-        crate::import::track_to_file_mapper::analyze_cue_audio(&audio_path).expect("analyze ape");
+    let probe = crate::import::track_slots::analyze_cue_audio(&audio_path).expect("analyze ape");
     let cue_pair = Arc::new(crate::import::types::CueFlacAnalysis {
         cue_sheet,
         audio_files: vec![crate::import::types::CueAnalyzedAudioFile {

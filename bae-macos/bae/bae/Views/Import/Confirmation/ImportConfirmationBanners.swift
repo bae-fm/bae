@@ -2,13 +2,14 @@ import BaeKit
 import SwiftUI
 
 /// The stacked status banners above the confirm form: an already-in-library
-/// warning (release or album), a track-count-mismatch warning, the import
-/// pipeline's error disclosure, and the commit-time error line. Each is
-/// conditional on its input, so an all-clear candidate renders nothing.
+/// warning (release or album), the import pipeline's error disclosure, and the
+/// commit-time error line. Each is conditional on its input, so an all-clear
+/// candidate renders nothing.
+///
+/// A source tracklist that disagrees with the folder's audio is not one of
+/// these: it is stated on the track slot it belongs to.
 struct ImportConfirmationBanners: View {
     let libraryStatus: BridgeLibraryStatus?
-    let trackCountMismatch: Bool
-    let expectedTrackCount: UInt32
     let importStatus: BridgeCandidateImportStatus?
     /// Commit-time error written to the candidate (invalid edit shape, a failed
     /// `start_import` dispatch). Distinct from the `importStatus`-derived error,
@@ -59,21 +60,6 @@ struct ImportConfirmationBanners: View {
             }
         }
 
-        if trackCountMismatch {
-            HStack(spacing: 8) {
-                Image(systemName: "exclamationmark.triangle.fill")
-                    .foregroundStyle(.orange)
-                Text(
-                    "Track count mismatch: release has \(Int(expectedTrackCount)) tracks but local files don't match"
-                )
-                .font(.callout)
-                .foregroundStyle(.orange)
-            }
-            .padding(10)
-            .background(Color.orange.opacity(0.1))
-            .clipShape(RoundedRectangle(cornerRadius: 6))
-        }
-
         if case .error(let bridgeError) = importStatus,
             let displayed = DisplayError(bridgeError)
         {
@@ -109,8 +95,6 @@ struct ImportConfirmationBanners: View {
                     albumTitle: "Album Title",
                     albumId: "preview-album"
                 ),
-                trackCountMismatch: true,
-                expectedTrackCount: 9,
                 importStatus: nil,
                 error: "Couldn't shape the edit: missing album title",
                 onViewInLibrary: { _ in },

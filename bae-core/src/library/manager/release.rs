@@ -219,11 +219,13 @@ impl LibraryManager {
             IdentityChoice::Exact { release_ref } | IdentityChoice::Approximate { release_ref } => {
                 let prepared = crate::import::service::prepare_release(self, release_ref).await?;
 
-                // The source pressing's track count must match the local release's
-                // row count. Folder import enforces the same invariant through
-                // prefetch's `track_count_mismatch` flag, which disables its commit
-                // button; re-identify has no prefetch (the user picks a row
-                // directly), so the check belongs here at commit time.
+                // The source pressing's track count must match the local
+                // release's row count. Re-identify only re-points the identity;
+                // it never re-binds audio, so a source with a different number
+                // of tracks has nothing to re-point half the rows at. A folder
+                // import has no such constraint — it maps its own audio into
+                // track slots and a count disagreement is a slot, not a
+                // refusal — so this check is re-identify's alone.
                 let existing_track_count = self
                     .database
                     .get_tracks_for_release(release_id)
@@ -370,6 +372,9 @@ impl LibraryManager {
                 side: track.side,
                 track_number: track.track_number,
                 artist_names,
+                // Re-projecting a release's metadata never re-binds its files;
+                // the audio each track already points at stays as it is.
+                file: None,
             });
         }
 

@@ -1085,7 +1085,8 @@
                             artistText: blankTrackArtists
                                 ? "" : "Track Artist \(n)",
                             side: 1,
-                            trackNumber: Int32(n)
+                            trackNumber: Int32(n),
+                            file: .standalone(fileId: "\(n).flac")
                         )
                     }
             )

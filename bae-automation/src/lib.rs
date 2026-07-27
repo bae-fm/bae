@@ -2263,6 +2263,10 @@ fn release_user_edit(edit: AutomationReleaseUserEdit) -> bae_core::import::Relea
                 side: track.side,
                 track_number: track.track_number,
                 artist_names: track.artist_names,
+                // Automation edits a release's metadata, never which of the
+                // folder's audio backs each track; an import it starts gets the
+                // track slots the folder and the tracklist produce.
+                file: None,
             })
             .collect(),
     }
