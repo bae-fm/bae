@@ -3,7 +3,7 @@
 use bae_automation::{
     Automation, AutomationSearchQuery, AutomationTool, CandidateKeyInput, CandidateSkipSetInput,
     FolderInput, LibrarySearchInput, PathInput, ReleaseExportInput, ReleaseIdInput,
-    ReleaseSourceInput, ScanWait,
+    ReleasePrefetchInput, ScanWait,
 };
 use bae_core::app::{bootstrap, bootstrap_library_path, BootstrapError, RunningApp};
 use bae_core::config::{init_keyring, Config};
@@ -116,6 +116,10 @@ enum ImportCommand {
         command: ImportSearchCommand,
     },
     Prefetch {
+        /// The candidate this release is being prefetched for. The claim the
+        /// header states is read off that candidate's identify evidence, so
+        /// the prefetch is about a specific folder, not a release in isolation.
+        candidate_key: String,
         source: MetadataSource,
         release_id: String,
     },
@@ -404,9 +408,14 @@ fn tool_call_for_command(command: &Command) -> Result<(AutomationTool, Value), C
                 };
                 Ok((AutomationTool::ImportSearch, serde_json::to_value(query)?))
             }
-            ImportCommand::Prefetch { source, release_id } => Ok((
+            ImportCommand::Prefetch {
+                candidate_key,
+                source,
+                release_id,
+            } => Ok((
                 AutomationTool::ImportReleasePrefetch,
-                serde_json::to_value(ReleaseSourceInput {
+                serde_json::to_value(ReleasePrefetchInput {
+                    candidate_key: candidate_key.clone(),
                     source: (*source).into(),
                     release_id: release_id.clone(),
                 })?,
