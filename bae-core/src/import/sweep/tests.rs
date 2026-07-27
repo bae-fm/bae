@@ -1507,22 +1507,20 @@ fn only_an_unasked_single_match_owes_the_paid_lookup() {
 // ── Synthetic candidates, for the pure planning tests ───────────────────────
 
 fn synthetic_candidate(path: &str, size: u64) -> FolderCandidate {
-    use crate::import::folder_scanner::{AudioContent, CategorizedFiles, ScannedFile};
+    use crate::import::folder_scanner::{CandidateFile, CategorizedFiles, FileRole, ScannedFile};
     FolderCandidate {
         path: PathBuf::from(path),
         name: path.trim_start_matches('/').to_string(),
         files: CategorizedFiles {
-            audio: AudioContent::TrackFiles {
-                tracks: vec![ScannedFile::new(
+            files: vec![CandidateFile {
+                file: ScannedFile::new(
                     PathBuf::from(format!("{path}/01.flac")),
                     "01.flac".to_string(),
                     size,
-                )],
-                format_label: "FLAC".to_string(),
-            },
-            artwork: Vec::new(),
-            documents: Vec::new(),
-            unpaired_cue_sheets: Vec::new(),
+                ),
+                role: FileRole::Audio,
+            }],
+            format_label: "FLAC".to_string(),
         },
         watched_folder_path: "/".to_string(),
         skipped: false,

@@ -1924,8 +1924,8 @@ fn automation_output_snapshot(
 }
 
 fn automation_candidate_from_folder(candidate: FolderCandidate) -> AutomationCandidate {
-    let track_count = candidate.files.audio.track_count();
-    let format_label = candidate.files.audio.format_label().to_string();
+    let track_count = candidate.files.track_count();
+    let format_label = candidate.files.format_label.clone();
     AutomationCandidate::Valid {
         common: automation_candidate_common(
             candidate.path,

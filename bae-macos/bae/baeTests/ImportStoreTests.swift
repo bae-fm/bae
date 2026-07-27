@@ -28,11 +28,7 @@ private func makeStatus(albumId: String) -> BridgeLibraryStatus {
 /// these hand-build the minimal shapes the snapshot reducers consume.
 
 private func emptyBridgeFiles() -> BridgeCandidateFiles {
-    BridgeCandidateFiles(
-        audio: .trackFiles(files: []),
-        artwork: [],
-        documents: []
-    )
+    BridgeCandidateFiles(files: [], formatLabel: "")
 }
 
 private func idleRuntime(

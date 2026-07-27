@@ -10,6 +10,15 @@ fn fake_flac() -> Vec<u8> {
     .expect("read FLAC fixture")
 }
 
+/// One audio-role entry, for the hand-built `CategorizedFiles` in the
+/// content-hash tests.
+fn audio_entry(path: &str, relative_path: &str, size: u64) -> CandidateFile {
+    CandidateFile {
+        file: ScannedFile::new(PathBuf::from(path), relative_path.to_string(), size),
+        role: FileRole::Audio,
+    }
+}
+
 /// Every scan item (valid + invalid) for `root`.
 fn scan_items(root: impl Into<PathBuf>) -> Vec<ScanItem> {
     let mut items = Vec::new();
@@ -193,23 +202,14 @@ fn test_collect_release_candidate_files_skips_hidden_and_bae() {
 
     let files = collect_release_candidate_files(root).unwrap();
 
-    let audio_paths: Vec<_> = match &files.audio {
-        AudioContent::TrackFiles { tracks, .. } => {
-            tracks.iter().map(|f| f.relative_path.as_str()).collect()
-        }
-        AudioContent::CueFlacPairs { .. } => vec![],
-    };
+    let audio_paths: Vec<_> = files.audio().map(|f| f.relative_path.as_str()).collect();
     assert_eq!(audio_paths, vec!["track.flac"]);
 
     // Only release artwork, not .bae/ files
-    let artwork_paths: Vec<_> = files
-        .artwork
-        .iter()
-        .map(|f| f.relative_path.as_str())
-        .collect();
+    let artwork_paths: Vec<_> = files.artwork().map(|f| f.relative_path.as_str()).collect();
     assert_eq!(artwork_paths, vec!["back.bmp", "cover.jpg"]);
 
-    assert!(files.documents.is_empty());
+    assert_eq!(files.documents().count(), 0);
 }
 
 /// A folder whose only audio is a zero-byte file can't be imported:
@@ -271,24 +271,11 @@ fn unreadable_child_directory_fails_scan() {
 #[test]
 fn content_hash_is_location_independent_and_size_sensitive() {
     let make = |root: &str, second_size: u64| CategorizedFiles {
-        audio: AudioContent::TrackFiles {
-            tracks: vec![
-                ScannedFile::new(
-                    PathBuf::from(format!("{root}/01.flac")),
-                    "01.flac".to_string(),
-                    1000,
-                ),
-                ScannedFile::new(
-                    PathBuf::from(format!("{root}/02.flac")),
-                    "02.flac".to_string(),
-                    second_size,
-                ),
-            ],
-            format_label: "FLAC".to_string(),
-        },
-        artwork: vec![],
-        documents: vec![],
-        unpaired_cue_sheets: vec![],
+        files: vec![
+            audio_entry(&format!("{root}/01.flac"), "01.flac", 1000),
+            audio_entry(&format!("{root}/02.flac"), "02.flac", second_size),
+        ],
+        format_label: "FLAC".to_string(),
     };
 
     // The same relative structure under two different parent folders hashes
@@ -304,25 +291,27 @@ fn content_hash_is_location_independent_and_size_sensitive() {
 
 #[test]
 fn content_hash_is_independent_of_discovery_order() {
-    let file =
-        |name: &str, size: u64| ScannedFile::new(PathBuf::from(name), name.to_string(), size);
+    let entry = |name: &str, size: u64, role: FileRole| CandidateFile {
+        file: ScannedFile::new(PathBuf::from(name), name.to_string(), size),
+        role,
+    };
     let forward = CategorizedFiles {
-        audio: AudioContent::TrackFiles {
-            tracks: vec![file("01.flac", 1), file("02.flac", 2)],
-            format_label: "FLAC".to_string(),
-        },
-        artwork: vec![file("cover.jpg", 3)],
-        documents: vec![file("notes.txt", 4)],
-        unpaired_cue_sheets: vec![],
+        files: vec![
+            entry("01.flac", 1, FileRole::Audio),
+            entry("02.flac", 2, FileRole::Audio),
+            entry("cover.jpg", 3, FileRole::Cover),
+            entry("notes.txt", 4, FileRole::Document),
+        ],
+        format_label: "FLAC".to_string(),
     };
     let shuffled = CategorizedFiles {
-        audio: AudioContent::TrackFiles {
-            tracks: vec![file("02.flac", 2), file("01.flac", 1)],
-            format_label: "FLAC".to_string(),
-        },
-        artwork: vec![file("cover.jpg", 3)],
-        documents: vec![file("notes.txt", 4)],
-        unpaired_cue_sheets: vec![],
+        files: vec![
+            entry("notes.txt", 4, FileRole::Document),
+            entry("02.flac", 2, FileRole::Audio),
+            entry("cover.jpg", 3, FileRole::Cover),
+            entry("01.flac", 1, FileRole::Audio),
+        ],
+        format_label: "FLAC".to_string(),
     };
     assert_eq!(forward.content_hash(), shuffled.content_hash());
 }
@@ -372,18 +361,11 @@ fn test_multi_disc_release_detected_as_single_candidate() {
     // cover both discs.
     assert_eq!(candidates.len(), 1, "Expected 1 multi-disc candidate");
 
-    match &candidates[0].files.audio {
-        AudioContent::CueFlacPairs { pairs, .. } => {
-            assert_eq!(
-                pairs.len(),
-                2,
-                "Multi-disc release should have 2 CUE/FLAC pairs"
-            );
-        }
-        AudioContent::TrackFiles { .. } => {
-            panic!("Expected CUE/FLAC pairs for multi-disc release");
-        }
-    }
+    assert_eq!(
+        candidates[0].files.bound_sheets().len(),
+        2,
+        "Multi-disc release should have one bound sheet per disc",
+    );
 }
 
 /// Helper for collection shapes: a folder whose audio-bearing subdirs do
@@ -542,55 +524,69 @@ fn cue_with_unprobeable_audio_is_invalid_and_siblings_still_scan() {
 }
 
 /// A CUE paired with an audio file whose codec can't back single-file CUE
-/// playback (MP3, Vorbis) surfaces as an invalid candidate carrying the codec
-/// name. Crucially it must NOT abort the whole watched-root walk — a sibling
-/// FLAC release under the same root still scans.
+/// playback (MP3, Vorbis) costs the sheet its binding — bae can't carve tracks
+/// out of that container — but the folder still imports: the audio keeps its
+/// role and becomes one track, labelled by its own format.
 #[test]
-fn cue_with_unsupported_codec_is_invalid_and_siblings_still_scan() {
-    for (folder, audio_name, fixture, codec) in [
-        ("MP3 Album", "album.mp3", "placeholder-mp3.mp3", "MP3"),
-        ("Ogg Album", "album.ogg", "placeholder-vorbis.ogg", "Vorbis"),
+fn cue_with_unsupported_codec_leaves_the_sheet_unbound() {
+    for (folder, audio_name, fixture, codec, label) in [
+        (
+            "MP3 Album",
+            "album.mp3",
+            "placeholder-mp3.mp3",
+            "MP3",
+            "MP3",
+        ),
+        (
+            "Ogg Album",
+            "album.ogg",
+            "placeholder-vorbis.ogg",
+            "Vorbis",
+            "OGG",
+        ),
     ] {
         let temp_dir = tempfile::tempdir().unwrap();
         let root = temp_dir.path();
 
-        let bad = root.join(folder);
-        std::fs::create_dir(&bad).unwrap();
+        let album = root.join(folder);
+        std::fs::create_dir(&album).unwrap();
         std::fs::write(
-            bad.join("album.cue"),
+            album.join("album.cue"),
             make_cue_content(audio_name, "Test Album"),
         )
         .unwrap();
-        std::fs::write(bad.join(audio_name), audio_format_fixture(fixture)).unwrap();
+        std::fs::write(album.join(audio_name), audio_format_fixture(fixture)).unwrap();
 
-        let good = root.join("FLAC Album");
-        std::fs::create_dir(&good).unwrap();
-        std::fs::write(good.join("01 Track.flac"), fake_flac()).unwrap();
-
-        let items = scan_items(root.to_path_buf());
-        assert_eq!(items.len(), 2, "{folder}: both leaves surface");
-
-        let invalid = items
-            .iter()
-            .find_map(|i| match i {
-                ScanItem::Invalid(inv) if inv.name == folder => Some(inv),
-                _ => None,
-            })
-            .unwrap_or_else(|| panic!("{folder}: expected an invalid candidate"));
+        let candidates = scan_valid(root.to_path_buf());
+        assert_eq!(candidates.len(), 1, "{folder}: one valid candidate");
+        let files = &candidates[0].files;
+        assert!(
+            files.bound_sheets().is_empty(),
+            "{folder}: the sheet must not bind to a codec bae can't carve",
+        );
+        // The refusal keeps the file it named and the codec, so the pane can
+        // say which file and why instead of leaving the row reading as a bug —
+        // and so the editor that makes this binding a user decision can refuse
+        // the same pairing up front rather than at commit.
+        let sheets: Vec<_> = files.track_sheets().collect();
+        assert_eq!(sheets.len(), 1);
         assert_eq!(
-            invalid.reason,
-            InvalidReason::CueUnsupportedCodec {
+            sheets[0].binding,
+            &SheetBinding::RefusedCodec {
+                file_id: audio_name.to_string(),
                 codec: codec.to_string(),
             },
-            "{folder}: reason names the probed codec",
+            "{folder}: the refusal names the file and the probed codec",
         );
-
-        let sibling_scanned = items
-            .iter()
-            .any(|i| matches!(i, ScanItem::Valid(c) if c.name == "FLAC Album"));
-        assert!(
-            sibling_scanned,
-            "{folder}: sibling FLAC release still scans"
+        assert_eq!(
+            files.audio().count(),
+            1,
+            "{folder}: the audio keeps its role",
+        );
+        assert_eq!(files.track_count(), 1, "{folder}: it imports as one track");
+        assert_eq!(
+            files.format_label, label,
+            "{folder}: labelled by the file's own format",
         );
     }
 }
@@ -623,8 +619,7 @@ fn cue_with_supported_codec_yields_valid_candidate_labeled() {
         let candidates = scan_valid(root);
         assert_eq!(candidates.len(), 1, "{folder}: one valid candidate");
         assert_eq!(
-            candidates[0].files.audio.format_label(),
-            label,
+            candidates[0].files.format_label, label,
             "{folder}: CUE+<codec> label",
         );
     }
@@ -911,10 +906,10 @@ fn test_file_tree_all_files_under() {
     assert_eq!(root_all.len(), 3);
 }
 
-/// Per-track FLACs plus a CUE naming absent audio are not a partial success:
-/// the CUE is the layout, so the release is invalid.
+/// Per-track FLACs plus a sheet naming absent audio: the sheet is a proposal,
+/// not the layout, so it stays unbound and the twelve tracks import.
 #[test]
-fn per_track_flacs_with_missing_cue_audio_are_invalid() {
+fn per_track_flacs_with_missing_cue_audio_still_import() {
     let tmp = tempfile::TempDir::new().unwrap();
     let album = tmp
         .path()
@@ -959,11 +954,25 @@ fn per_track_flacs_with_missing_cue_audio_are_invalid() {
 
     assert_eq!(items.len(), 1);
     match &items[0] {
-        ScanItem::Invalid(invalid) => {
-            assert!(invalid.name.contains("Artist - Album Title"));
-            assert!(matches!(invalid.reason, InvalidReason::CueMissingAudio));
+        ScanItem::Valid(candidate) => {
+            assert!(candidate.name.contains("Artist - Album Title"));
+            assert_eq!(candidate.files.audio().count(), 12);
+            assert!(candidate.files.bound_sheets().is_empty());
+            let sheets: Vec<_> = candidate.files.track_sheets().collect();
+            assert_eq!(sheets.len(), 1);
+            assert_eq!(
+                sheets[0].binding,
+                &SheetBinding::Unresolved,
+                "the sheet names absent audio",
+            );
+            assert_eq!(candidate.files.track_count(), 12);
         }
-        ScanItem::Valid(_) => panic!("missing CUE audio must not be a valid candidate"),
+        ScanItem::Invalid(invalid) => {
+            panic!(
+                "a sheet naming absent audio must not invalidate: {}",
+                invalid.reason
+            )
+        }
     }
 }
 
@@ -987,19 +996,10 @@ fn test_collect_release_candidate_files_cue_alac_format_label() {
 
     let files = collect_release_candidate_files(root).expect("scan should succeed");
 
-    match &files.audio {
-        AudioContent::CueFlacPairs {
-            pairs,
-            format_label,
-        } => {
-            assert_eq!(format_label, "CUE+ALAC");
-            assert_eq!(pairs.len(), 1);
-            assert_eq!(pairs[0].cue_sheet.tracks.len(), 8);
-        }
-        AudioContent::TrackFiles { .. } => {
-            panic!("Expected CueFlacPairs for CUE+ALAC, got TrackFiles");
-        }
-    }
+    assert_eq!(files.format_label, "CUE+ALAC");
+    let bound = files.bound_sheets();
+    assert_eq!(bound.len(), 1);
+    assert_eq!(bound[0].sheet.tracks.len(), 8);
 }
 
 /// Multi-FILE CUEs resolve as CUE-backed releases, with every referenced audio
@@ -1028,24 +1028,20 @@ FILE "02 - Track Two.flac" WAVE
 
     let files = collect_release_candidate_files(root).expect("scan should succeed");
 
-    match &files.audio {
-        AudioContent::CueFlacPairs { pairs, .. } => {
-            assert_eq!(pairs.len(), 1);
-            assert_eq!(pairs[0].audio_files.len(), 2);
-            assert_eq!(
-                pairs[0]
-                    .audio_files
-                    .iter()
-                    .map(|file| file.file_name.as_str())
-                    .collect::<Vec<_>>(),
-                vec!["01 - Track One.flac", "02 - Track Two.flac"],
-            );
-            assert_eq!(pairs[0].cue_sheet.catalog.as_deref(), Some("0123456789012"));
-            assert_eq!(pairs[0].cue_sheet.tracks.len(), 2);
-        }
-        other => panic!("expected CueFlacPairs, got {other:?}"),
-    }
-    assert!(files.unpaired_cue_sheets.is_empty());
+    let bound = files.bound_sheets();
+    assert_eq!(bound.len(), 1);
+    // The sheet leads with its first FILE directive; both referenced files keep
+    // the audio role.
+    assert_eq!(bound[0].audio.file_name, "01 - Track One.flac");
+    assert_eq!(
+        files
+            .audio()
+            .map(|file| file.file_name.as_str())
+            .collect::<Vec<_>>(),
+        vec!["01 - Track One.flac", "02 - Track Two.flac"],
+    );
+    assert_eq!(bound[0].sheet.catalog.as_deref(), Some("0123456789012"));
+    assert_eq!(bound[0].sheet.tracks.len(), 2);
 }
 
 #[test]
@@ -1082,25 +1078,16 @@ fn test_collect_release_candidate_files_cue_ape_track_count() {
 
     let files = collect_release_candidate_files(root).expect("scan should succeed");
 
-    match &files.audio {
-        AudioContent::CueFlacPairs {
-            pairs,
-            format_label,
-        } => {
-            assert_eq!(format_label, "CUE+APE");
-            assert_eq!(pairs.len(), 1);
-            let track_count = pairs[0].cue_sheet.tracks.len();
-            assert_eq!(
-                track_count, 15,
-                "CUE with 15 TRACK entries should parse to 15 tracks, got {track_count}",
-            );
-        }
-        AudioContent::TrackFiles { .. } => {
-            panic!("Expected CueFlacPairs for CUE+APE, got TrackFiles");
-        }
-    }
+    assert_eq!(files.format_label, "CUE+APE");
+    let bound = files.bound_sheets();
+    assert_eq!(bound.len(), 1);
+    let track_count = bound[0].sheet.tracks.len();
+    assert_eq!(
+        track_count, 15,
+        "CUE with 15 TRACK entries should parse to 15 tracks, got {track_count}",
+    );
 
-    assert_eq!(files.audio.track_count(), 15);
+    assert_eq!(files.track_count(), 15);
 }
 
 // ── Folder-scanner shape fixture ────────────────────────────────────────
@@ -1820,10 +1807,12 @@ fn reference_fixture() -> Vec<FixtureEntry> {
         top_level_candidate: false,
     });
 
-    // --- Missing CUE audio — flat FLAC + cover + log + unresolved CUE. ---
+    // --- Unresolved CUE — flat FLAC + cover + log + a sheet naming audio that
+    //     is not here. A candidate: the sheet is a proposal, and the log can
+    //     still identify the folder. ---
     entries.push(FixtureEntry::Expect {
         rel_path: "Artist B/1986 - Album B1".into(),
-        top_level_candidate: false,
+        top_level_candidate: true,
     });
     entries.extend(flat_audio("Artist B/1986 - Album B1", 5, FileKind::Flac));
     entries.push(FixtureEntry::File {
@@ -2018,10 +2007,11 @@ fn reference_fixture() -> Vec<FixtureEntry> {
         kind: FileKind::PartialMarker("partial"),
     });
 
-    // --- CUE-Mismatch — 10 real FLACs + CUE claiming 15. SKIP. ---
+    // --- CUE-Mismatch — 10 real FLACs + a sheet claiming 15 tracks of audio
+    //     that is not here. A candidate: the ten files import as themselves. ---
     entries.push(FixtureEntry::Expect {
         rel_path: "CUE-Mismatch".into(),
-        top_level_candidate: false,
+        top_level_candidate: true,
     });
     entries.extend(flat_audio("CUE-Mismatch", 10, FileKind::Flac));
     entries.push(FixtureEntry::File {
@@ -2146,41 +2136,25 @@ fn scan_reference_tree_matches_human_intent() {
             })
     };
 
-    // 3a. 1991 - Album A2 [Original Release] → CueFlacPairs / "CUE+FLAC".
+    // 3a. 1991 - Album A2 [Original Release] → a bound sheet, "CUE+FLAC".
     let a2_original = find("1991 - Album A2 [Original Release]");
-    match &a2_original.files.audio {
-        AudioContent::CueFlacPairs { format_label, .. } => {
-            assert_eq!(format_label, "CUE+FLAC");
-        }
-        other => panic!(
-            "Album A2 [Original Release] should be CueFlacPairs / CUE+FLAC, got {:?}",
-            other,
-        ),
-    }
+    assert_eq!(a2_original.files.format_label, "CUE+FLAC");
+    assert_eq!(a2_original.files.bound_sheets().len(), 1);
 
-    // 3b. 1997 - Album A2 [Japan Reissue] → CueFlacPairs / "CUE+APE",
+    // 3b. 1997 - Album A2 [Japan Reissue] → a bound sheet, "CUE+APE",
     //     with Info/Tracklist.txt as a document.
     let a2_japan = find("1997 - Album A2 [Japan Reissue]");
-    match &a2_japan.files.audio {
-        AudioContent::CueFlacPairs { format_label, .. } => {
-            assert_eq!(format_label, "CUE+APE");
-        }
-        other => panic!(
-            "Album A2 [Japan Reissue] should be CueFlacPairs / CUE+APE, got {:?}",
-            other,
-        ),
-    }
+    assert_eq!(a2_japan.files.format_label, "CUE+APE");
+    assert_eq!(a2_japan.files.bound_sheets().len(), 1);
     assert!(
         a2_japan
             .files
-            .documents
-            .iter()
+            .documents()
             .any(|d| d.relative_path.ends_with("Tracklist.txt")),
         "Album A2 [Japan Reissue] documents should include Info/Tracklist.txt, got {:?}",
         a2_japan
             .files
-            .documents
-            .iter()
+            .documents()
             .map(|d| d.relative_path.as_str())
             .collect::<Vec<_>>(),
     );
@@ -2190,26 +2164,20 @@ fn scan_reference_tree_matches_human_intent() {
     assert!(
         a2_reissue
             .files
-            .artwork
-            .iter()
+            .artwork()
             .any(|a| a.relative_path.contains("booklet/")),
         "Album A2 [Reissue] artwork should include booklet/*.png, got {:?}",
         a2_reissue
             .files
-            .artwork
-            .iter()
+            .artwork()
             .map(|a| a.relative_path.as_str())
             .collect::<Vec<_>>(),
     );
 
-    // 3d. 1974 - Album C1 [320] → TrackFiles / "MP3".
+    // 3d. 1974 - Album C1 [320] → no sheet, "MP3".
     let c1 = find("1974 - Album C1 [320]");
-    match &c1.files.audio {
-        AudioContent::TrackFiles { format_label, .. } => {
-            assert_eq!(format_label, "MP3");
-        }
-        other => panic!("Album C1 [320] should be TrackFiles / MP3, got {:?}", other,),
-    }
+    assert_eq!(c1.files.format_label, "MP3");
+    assert!(c1.files.bound_sheets().is_empty());
 }
 
 // ── Scenario test library ──────────────────────────────────────────────
@@ -2583,21 +2551,15 @@ fn loose_junk_at_scan_root_ignored() {
 fn flat_flac_release_surfaces_as_trackfiles() {
     let result = run_scenario(flat_audio("Album", 3, FileKind::Flac));
     let c = result.candidate("Album");
-    match &c.files.audio {
-        AudioContent::TrackFiles {
-            tracks,
-            format_label,
-        } => {
-            assert_eq!(format_label, "FLAC");
-            assert_eq!(tracks.len(), 3);
-        }
-        other => panic!("expected TrackFiles / FLAC, got {other:?}"),
-    }
+    assert_eq!(c.files.format_label, "FLAC");
+    assert_eq!(c.files.audio().count(), 3);
+    assert!(c.files.track_sheets().next().is_none());
 }
 
-/// L1.28 — CUE+FLAC pair surfaces as CueFlacPairs / "CUE+FLAC".
+/// L1.28 — a CUE next to the FLAC it names binds, and the folder is labelled
+/// "CUE+FLAC".
 #[test]
-fn cue_flac_pair_surfaces_as_cue_pairs() {
+fn cue_flac_pair_binds_and_is_labelled() {
     let result = run_scenario(vec![
         FixtureEntry::File {
             rel_path: "Album/Album.flac".into(),
@@ -2612,16 +2574,8 @@ fn cue_flac_pair_surfaces_as_cue_pairs() {
         },
     ]);
     let c = result.candidate("Album");
-    match &c.files.audio {
-        AudioContent::CueFlacPairs {
-            pairs,
-            format_label,
-        } => {
-            assert_eq!(format_label, "CUE+FLAC");
-            assert_eq!(pairs.len(), 1);
-        }
-        other => panic!("expected CueFlacPairs / CUE+FLAC, got {other:?}"),
-    }
+    assert_eq!(c.files.format_label, "CUE+FLAC");
+    assert_eq!(c.files.bound_sheets().len(), 1);
 }
 
 // L1.29 (cue_ape pair) — covered by
@@ -2633,10 +2587,7 @@ fn cue_flac_pair_surfaces_as_cue_pairs() {
 fn mp3_release_surfaces_as_mp3_trackfiles() {
     let result = run_scenario(flat_audio("Album", 3, FileKind::Mp3));
     let c = result.candidate("Album");
-    match &c.files.audio {
-        AudioContent::TrackFiles { format_label, .. } => assert_eq!(format_label, "MP3"),
-        other => panic!("expected TrackFiles / MP3, got {other:?}"),
-    }
+    assert_eq!(c.files.format_label, "MP3");
 }
 
 /// L1.30b — M4A tracks surface as TrackFiles / "M4A".
@@ -2644,16 +2595,8 @@ fn mp3_release_surfaces_as_mp3_trackfiles() {
 fn m4a_release_surfaces_as_trackfiles() {
     let result = run_scenario(flat_audio("Album", 3, FileKind::M4a));
     let c = result.candidate("Album");
-    match &c.files.audio {
-        AudioContent::TrackFiles {
-            tracks,
-            format_label,
-        } => {
-            assert_eq!(format_label, "M4A");
-            assert_eq!(tracks.len(), 3);
-        }
-        other => panic!("expected TrackFiles / M4A, got {other:?}"),
-    }
+    assert_eq!(c.files.format_label, "M4A");
+    assert_eq!(c.files.audio().count(), 3);
 }
 
 /// A multi-FILE CUE resolves as a CUE-backed release; each referenced track
@@ -2677,26 +2620,17 @@ fn multi_file_cue_surfaces_as_cue_backed_release() {
     let candidates = scan_valid(tmp.path().to_path_buf());
     assert_eq!(candidates.len(), 1);
     let c = &candidates[0];
-    match &c.files.audio {
-        AudioContent::CueFlacPairs {
-            pairs,
-            format_label,
-        } => {
-            assert_eq!(format_label, "CUE+ALAC");
-            assert_eq!(pairs.len(), 1);
-            assert_eq!(pairs[0].audio_files.len(), 3);
-            assert_eq!(
-                pairs[0]
-                    .audio_files
-                    .iter()
-                    .map(|file| file.file_name.as_str())
-                    .collect::<Vec<_>>(),
-                vec!["01.m4a", "02.m4a", "03.m4a"],
-            );
-        }
-        other => panic!("expected CueFlacPairs, got {other:?}"),
-    }
-    assert!(!c.files.documents.iter().any(|d| d.file_name == "Album.cue"));
+    assert_eq!(c.files.format_label, "CUE+ALAC");
+    assert_eq!(c.files.bound_sheets().len(), 1);
+    assert_eq!(
+        c.files
+            .audio()
+            .map(|file| file.file_name.as_str())
+            .collect::<Vec<_>>(),
+        vec!["01.m4a", "02.m4a", "03.m4a"],
+    );
+    // A sheet is a sheet, never a document.
+    assert!(!c.files.documents().any(|d| d.file_name == "Album.cue"));
 }
 
 /// Single-FILE CUE whose own stem differs from the audio file it names —
@@ -2717,66 +2651,37 @@ fn single_file_cue_pairs_by_file_directive_not_stem() {
     .unwrap();
     let candidates = scan_valid(tmp.path().to_path_buf());
     assert_eq!(candidates.len(), 1);
-    match &candidates[0].files.audio {
-        AudioContent::CueFlacPairs { pairs, .. } => {
-            assert_eq!(pairs.len(), 1);
-            assert_eq!(pairs[0].audio_file.file_name, "Audio.flac");
-            assert_eq!(pairs[0].cue_file.file_name, "Sheet.cue");
+    let bound = candidates[0].files.bound_sheets();
+    assert_eq!(bound.len(), 1);
+    assert_eq!(bound[0].audio.file_name, "Audio.flac");
+    assert_eq!(bound[0].file.file_name, "Sheet.cue");
+}
+
+/// L1.31 — A sheet whose `FILE` directive names missing audio leaves the sheet
+/// unbound. The folder still imports: the sheet proposes a layout, it does not
+/// dictate one.
+#[test]
+fn cue_referencing_missing_audio_leaves_the_sheet_unbound() {
+    let mut entries = flat_audio("Album", 5, FileKind::Flac);
+    entries.push(FixtureEntry::File {
+        rel_path: "Album/Album.cue".into(),
+        kind: FileKind::NonPairingCue {
+            n_tracks: 5,
+            file_reference: "Album.flac",
+        },
+    });
+    let tmp = tempfile::tempdir().unwrap();
+    let root = tmp.path().to_path_buf();
+    build_fixture(&root, &entries);
+    let items = scan_items(root);
+    assert_eq!(items.len(), 1);
+    match &items[0] {
+        ScanItem::Valid(candidate) => {
+            assert!(candidate.files.bound_sheets().is_empty());
+            assert_eq!(candidate.files.audio().count(), 5);
         }
-        other => panic!("expected CueFlacPairs, got {other:?}"),
+        ScanItem::Invalid(invalid) => panic!("must stay importable: {}", invalid.reason),
     }
-}
-
-/// L1.31 — A CUE whose FILE directive names missing audio invalidates the
-/// release; the CUE is the disc layout, not a document hint.
-#[test]
-fn cue_referencing_missing_audio_is_invalid() {
-    let mut entries = flat_audio("Album", 5, FileKind::Flac);
-    entries.push(FixtureEntry::File {
-        rel_path: "Album/Album.cue".into(),
-        kind: FileKind::NonPairingCue {
-            n_tracks: 5,
-            file_reference: "Album.flac",
-        },
-    });
-    let tmp = tempfile::tempdir().unwrap();
-    let root = tmp.path().to_path_buf();
-    build_fixture(&root, &entries);
-    let items = scan_items(root);
-    assert_eq!(items.len(), 1);
-    assert!(matches!(
-        &items[0],
-        ScanItem::Invalid(InvalidCandidate {
-            reason: InvalidReason::CueMissingAudio,
-            ..
-        })
-    ));
-}
-
-/// L1.32 — Matching track counts do not make a missing CUE FILE reference
-/// valid. The CUE still names absent audio.
-#[test]
-fn cue_referencing_missing_audio_is_invalid_even_when_track_count_matches() {
-    let mut entries = flat_audio("Album", 5, FileKind::Flac);
-    entries.push(FixtureEntry::File {
-        rel_path: "Album/Album.cue".into(),
-        kind: FileKind::NonPairingCue {
-            n_tracks: 5,
-            file_reference: "Album.flac",
-        },
-    });
-    let tmp = tempfile::tempdir().unwrap();
-    let root = tmp.path().to_path_buf();
-    build_fixture(&root, &entries);
-    let items = scan_items(root);
-    assert_eq!(items.len(), 1);
-    assert!(matches!(
-        &items[0],
-        ScanItem::Invalid(InvalidCandidate {
-            reason: InvalidReason::CueMissingAudio,
-            ..
-        })
-    ));
 }
 
 /// A release's sidecar subfolders attach to the candidate by category:
@@ -2804,8 +2709,7 @@ fn subfolder_sidecars_attach_by_category() {
 
     let booklet_paths: Vec<_> = c
         .files
-        .artwork
-        .iter()
+        .artwork()
         .filter(|a| a.relative_path.starts_with("booklet/"))
         .map(|a| a.relative_path.as_str())
         .collect();
@@ -2813,13 +2717,11 @@ fn subfolder_sidecars_attach_by_category() {
 
     assert!(
         c.files
-            .documents
-            .iter()
+            .documents()
             .any(|d| d.relative_path.ends_with("Tracklist.txt")),
         "Info/Tracklist.txt should be a document, got {:?}",
         c.files
-            .documents
-            .iter()
+            .documents()
             .map(|d| d.relative_path.as_str())
             .collect::<Vec<_>>(),
     );
@@ -2844,13 +2746,11 @@ fn md5_ffp_sidecars_silently_ignored() {
     let c = result.candidate("Album");
     assert!(c
         .files
-        .documents
-        .iter()
+        .documents()
         .all(|d| { !d.file_name.ends_with(".md5") && !d.file_name.ends_with(".ffp") }));
     assert!(c
         .files
-        .artwork
-        .iter()
+        .artwork()
         .all(|a| { !a.file_name.ends_with(".md5") && !a.file_name.ends_with(".ffp") }));
 }
 
@@ -2872,8 +2772,7 @@ fn log_m3u_attach_as_documents() {
     let docs: Vec<_> = result
         .candidate("Album")
         .files
-        .documents
-        .iter()
+        .documents()
         .map(|d| d.file_name.as_str())
         .collect();
     for expected in ["rip.log", "playlist.m3u"] {
@@ -2895,13 +2794,11 @@ fn bae_sidecar_hidden_from_scanner() {
     // Nothing under .bae/ should leak into artwork or documents.
     assert!(c
         .files
-        .artwork
-        .iter()
+        .artwork()
         .all(|a| !a.relative_path.contains(".bae/")));
     assert!(c
         .files
-        .documents
-        .iter()
+        .documents()
         .all(|d| !d.relative_path.contains(".bae/")));
 }
 
@@ -3005,16 +2902,12 @@ fn reissue_container_with_mixed_cue_and_track_rips() {
     let result = run_scenario(entries);
     let top = result.top_level_paths();
     assert_eq!(top.len(), 2);
-    match &result.candidate("Album/1991 - Original").files.audio {
-        AudioContent::TrackFiles { format_label, .. } => assert_eq!(format_label, "FLAC"),
-        other => panic!("1991 should be TrackFiles, got {other:?}"),
-    }
-    match &result.candidate("Album/1997 - Reissue").files.audio {
-        AudioContent::CueFlacPairs { format_label, .. } => {
-            assert_eq!(format_label, "CUE+FLAC")
-        }
-        other => panic!("1997 should be CueFlacPairs, got {other:?}"),
-    }
+    let original = &result.candidate("Album/1991 - Original").files;
+    assert_eq!(original.format_label, "FLAC");
+    assert!(original.bound_sheets().is_empty());
+    let reissue = &result.candidate("Album/1997 - Reissue").files;
+    assert_eq!(reissue.format_label, "CUE+FLAC");
+    assert_eq!(reissue.bound_sheets().len(), 1);
 }
 
 /// L2.6 — Multi-disc release with a booklet under one disc still emits
@@ -3039,8 +2932,7 @@ fn multi_disc_with_booklet_in_one_disc_still_emits_parent() {
     assert!(
         parent
             .files
-            .artwork
-            .iter()
+            .artwork()
             .any(|a| a.relative_path.contains("CD2/booklet/")),
         "parent artwork should include CD2 booklet pages",
     );
@@ -3073,8 +2965,7 @@ fn multi_disc_with_parent_level_artwork_attaches_to_release() {
     let parent = result.candidate("Album");
     let art_names: Vec<_> = parent
         .files
-        .artwork
-        .iter()
+        .artwork()
         .map(|a| a.file_name.as_str())
         .collect();
     for expected in ["cover.jpg", "back.jpg", "inlay.jpg"] {
@@ -3127,12 +3018,12 @@ fn single_weird_sibling_prevents_multidisc_classification() {
     assert!(top.iter().any(|p| p == "Album/Bonus Tracks"));
 }
 
-/// L2.11 — a CUE lacking PERFORMER/TITLE still parses; the scanner
-/// extracts the declared track count. When that count exceeds on-disk
-/// audio and the CUE stem doesn't pair with any FLAC, the mismatch
-/// guard rejects the candidate.
+/// L2.11 — a CUE lacking PERFORMER/TITLE still parses. Its `FILE` directive
+/// names audio that isn't here, so it stays unbound and the three FLACs import
+/// as themselves — the sheet's declared 15 tracks are a claim about audio the
+/// folder doesn't have.
 #[test]
-fn cue_no_header_track_count_mismatch_rejects_release() {
+fn cue_no_header_naming_absent_audio_stays_unbound() {
     let mut entries = flat_audio("Album", 3, FileKind::Flac);
     entries.push(FixtureEntry::File {
         rel_path: "Album/Album.cue".into(),
@@ -3142,7 +3033,10 @@ fn cue_no_header_track_count_mismatch_rejects_release() {
         },
     });
     let result = run_scenario(entries);
-    assert!(result.top_level_paths().is_empty());
+    assert_eq!(result.top_level_paths(), vec!["Album"]);
+    let c = result.candidate("Album");
+    assert!(c.files.bound_sheets().is_empty());
+    assert_eq!(c.files.track_count(), 3);
 }
 
 /// L2.12 — CUE with an unquoted FILE directive still pairs when it
@@ -3164,12 +3058,10 @@ fn cue_file_reference_with_unquoted_filename_still_parses() {
             },
         },
     ]);
-    match &result.candidate("Paired").files.audio {
-        AudioContent::CueFlacPairs { pairs, .. } => assert_eq!(pairs.len(), 1),
-        other => panic!("expected CueFlacPairs, got {other:?}"),
-    }
+    assert_eq!(result.candidate("Paired").files.bound_sheets().len(), 1);
 
-    // Non-pairing / over-declared variant: guard fires.
+    // Non-pairing variant: the directive names audio that isn't here, so the
+    // sheet stays unbound and the folder still imports.
     let mut entries = flat_audio("Mismatch", 3, FileKind::Flac);
     entries.push(FixtureEntry::File {
         rel_path: "Mismatch/Album.cue".into(),
@@ -3179,7 +3071,8 @@ fn cue_file_reference_with_unquoted_filename_still_parses() {
         },
     });
     let result = run_scenario(entries);
-    assert!(result.top_level_paths().is_empty());
+    assert_eq!(result.top_level_paths(), vec!["Mismatch"]);
+    assert!(result.candidate("Mismatch").files.bound_sheets().is_empty());
 }
 
 // ── Layer 3: edge / adversarial cases ─────────────────────────────────
@@ -3195,19 +3088,18 @@ fn five_disc_boxset_emits_single_candidate_covering_all_discs() {
     let result = run_scenario(entries);
     assert_eq!(result.top_level_paths(), vec!["Boxset"]);
     let c = result.candidate("Boxset");
-    match &c.files.audio {
-        AudioContent::TrackFiles { tracks, .. } => {
-            assert_eq!(tracks.len(), 15, "5 discs × 3 tracks = 15 audio entries");
-            let prefixes: BTreeSet<Option<&str>> =
-                tracks.iter().map(|t| t.dir_prefix.as_deref()).collect();
-            assert_eq!(
-                prefixes.len(),
-                5,
-                "5 distinct disc prefixes, got {prefixes:?}"
-            );
-        }
-        other => panic!("expected TrackFiles, got {other:?}"),
-    }
+    assert_eq!(
+        c.files.audio().count(),
+        15,
+        "5 discs × 3 tracks = 15 audio entries"
+    );
+    let prefixes: BTreeSet<Option<&str>> =
+        c.files.audio().map(|t| t.dir_prefix.as_deref()).collect();
+    assert_eq!(
+        prefixes.len(),
+        5,
+        "5 distinct disc prefixes, got {prefixes:?}"
+    );
 }
 
 /// L3.4 — Descriptive text after the disc number (`Disc 1 (CAT-001)`)
@@ -3221,15 +3113,8 @@ fn multi_disc_with_descriptive_disc_names_emits_parent() {
     let result = run_scenario(entries);
     assert_eq!(result.top_level_paths(), vec!["Box"]);
     let c = result.candidate("Box");
-    let prefixes: BTreeSet<Option<&str>> = match &c.files.audio {
-        AudioContent::TrackFiles { tracks, .. } => {
-            tracks.iter().map(|t| t.dir_prefix.as_deref()).collect()
-        }
-        AudioContent::CueFlacPairs { pairs, .. } => pairs
-            .iter()
-            .map(|p| p.audio_file.dir_prefix.as_deref())
-            .collect(),
-    };
+    let prefixes: BTreeSet<Option<&str>> =
+        c.files.audio().map(|t| t.dir_prefix.as_deref()).collect();
     assert_eq!(
         prefixes.len(),
         2,
@@ -3237,12 +3122,12 @@ fn multi_disc_with_descriptive_disc_names_emits_parent() {
     );
 }
 
-/// L3.5 — A multi-FILE CUE referencing a missing audio file is an
-/// incomplete rip and yields an invalid candidate. The CUE's per-track FILEs
-/// describe where audio lives; a missing FILE means the audio for
-/// those tracks is unreachable.
+/// L3.5 — A multi-FILE CUE referencing a missing audio file describes a layout
+/// the folder can't supply, so it doesn't bind at all: a partial binding would
+/// carve tracks out of audio that isn't there. The folder still imports, with
+/// the present audio as one track.
 #[test]
-fn multi_file_cue_with_missing_secondary_file_is_invalid() {
+fn multi_file_cue_with_missing_secondary_file_stays_unbound() {
     let tmp = tempfile::tempdir().unwrap();
     let album = tmp.path().join("Album");
     std::fs::create_dir_all(&album).unwrap();
@@ -3256,15 +3141,22 @@ fn multi_file_cue_with_missing_secondary_file_is_invalid() {
     let items = scan_items(tmp.path().to_path_buf());
     assert_eq!(items.len(), 1);
     match &items[0] {
-        ScanItem::Invalid(invalid) => {
-            assert!(matches!(invalid.reason, InvalidReason::CueMissingAudio));
+        ScanItem::Valid(candidate) => {
+            assert!(
+                candidate.files.bound_sheets().is_empty(),
+                "a sheet binds only when every FILE reference resolves",
+            );
+            assert_eq!(candidate.files.audio().count(), 1);
+            assert_eq!(candidate.files.track_count(), 1);
         }
-        ScanItem::Valid(_) => panic!("missing CUE audio must not be a valid candidate"),
+        ScanItem::Invalid(invalid) => panic!("must stay importable: {}", invalid.reason),
     }
 }
 
+/// A sheet that will not parse is a document, not a verdict: its folder still
+/// imports, and so does its sibling.
 #[test]
-fn invalid_cue_candidate_does_not_stop_sibling_discovery() {
+fn unparseable_cue_lands_as_a_document_and_siblings_still_scan() {
     let tmp = tempfile::tempdir().unwrap();
     let bad = tmp.path().join("Bad Album");
     let good = tmp.path().join("Good Album");
@@ -3280,13 +3172,19 @@ fn invalid_cue_candidate_does_not_stop_sibling_discovery() {
 
     let items = scan_items(tmp.path().to_path_buf());
     assert_eq!(items.len(), 2);
-    assert!(items.iter().any(|item| matches!(
-        item,
-        ScanItem::Invalid(InvalidCandidate {
-            reason: InvalidReason::CueParseFailed { .. },
-            ..
+    let bad = items
+        .iter()
+        .find_map(|item| match item {
+            ScanItem::Valid(candidate) if candidate.name == "Bad Album" => Some(candidate),
+            _ => None,
         })
-    )));
+        .expect("the folder with the unparseable sheet still imports");
+    assert!(
+        bad.files.documents().any(|d| d.file_name == "Album.cue"),
+        "an unparseable sheet stays a document",
+    );
+    assert!(bad.files.track_sheets().next().is_none());
+    assert_eq!(bad.files.audio().count(), 1);
     assert!(items.iter().any(|item| matches!(
         item,
         ScanItem::Valid(candidate) if candidate.name == "Good Album"
@@ -3324,16 +3222,8 @@ fn folder_with_audio_and_video_mixed() {
     let result = run_scenario(entries);
     assert_eq!(result.top_level_paths(), vec!["Album"]);
     let c = result.candidate("Album");
-    assert!(c
-        .files
-        .documents
-        .iter()
-        .all(|d| !d.file_name.ends_with(".avi")));
-    assert!(c
-        .files
-        .artwork
-        .iter()
-        .all(|a| !a.file_name.ends_with(".avi")));
+    assert!(c.files.documents().all(|d| !d.file_name.ends_with(".avi")));
+    assert!(c.files.artwork().all(|a| !a.file_name.ends_with(".avi")));
 }
 
 /// L3.8 — Deeply nested release under a chain of single-child wrappers
@@ -3366,9 +3256,22 @@ fn unexpected_file_types_silently_ignored() {
     let c = result.candidate("Album");
     assert!(c
         .files
-        .documents
-        .iter()
+        .documents()
         .all(|d| !d.file_name.ends_with(".xyz") && !d.file_name.ends_with(".sh")));
+    // They are still listed, under the role for what the scan doesn't
+    // recognize — and the release carries them like everything else.
+    let other: Vec<_> = c
+        .files
+        .files
+        .iter()
+        .filter(|entry| matches!(entry.role, FileRole::Other))
+        .map(|entry| entry.file.file_name.as_str())
+        .collect();
+    assert_eq!(other, vec!["script.sh", "weird.xyz"]);
+    assert!(
+        c.files.release_files().any(|f| f.file_name == "weird.xyz"),
+        "the folder is the release: an unrecognized file is carried, not dropped",
+    );
 }
 
 /// Zero-byte cover art is an incompleteness signal — the release is
@@ -3402,4 +3305,383 @@ fn zero_byte_cover_at_multi_disc_parent_suppresses_release() {
     });
     let result = run_scenario(entries);
     assert!(result.top_level_paths().is_empty());
+}
+
+// ── Files carry roles ───────────────────────────────────────────────────
+//
+// Rooted in the folders that were broken, not in the model's own shape.
+
+/// The walkthrough's folder: the sheet was written against a WAV that was later
+/// encoded to FLAC. The directive names a file that is not here — a question,
+/// not a verdict — so the folder imports, the sheet stays unbound, and the FLAC
+/// keeps the audio role.
+#[test]
+fn sheet_naming_absent_audio_does_not_invalidate_the_folder() {
+    let tmp = tempfile::tempdir().unwrap();
+    let album = tmp.path().join("Album");
+    std::fs::create_dir_all(&album).unwrap();
+    std::fs::write(album.join("Album.flac"), fake_flac()).unwrap();
+    std::fs::write(
+        album.join("Album.cue"),
+        make_cue_content("Album.wav", "Album Title"),
+    )
+    .unwrap();
+
+    let items = scan_items(tmp.path().to_path_buf());
+    assert_eq!(items.len(), 1);
+    let candidate = match &items[0] {
+        ScanItem::Valid(candidate) => candidate,
+        ScanItem::Invalid(invalid) => {
+            panic!(
+                "folder must stay importable, got invalid: {}",
+                invalid.reason
+            )
+        }
+    };
+
+    let sheets: Vec<_> = candidate.files.track_sheets().collect();
+    assert_eq!(sheets.len(), 1);
+    assert_eq!(sheets[0].file.file_name, "Album.cue");
+    assert_eq!(
+        sheets[0].binding,
+        &SheetBinding::Unresolved,
+        "the directive names audio that is not here",
+    );
+    assert_eq!(
+        candidate
+            .files
+            .audio()
+            .map(|f| f.file_name.as_str())
+            .collect::<Vec<_>>(),
+        vec!["Album.flac"],
+    );
+    assert_eq!(
+        candidate.files.track_count(),
+        1,
+        "with no sheet bound, the image is one track",
+    );
+}
+
+/// Audio no sheet references is kept, not dropped: a bound sheet plus two
+/// standalone files leaves all three files on the candidate, hashed and listed.
+#[test]
+fn audio_no_sheet_references_survives() {
+    let tmp = tempfile::tempdir().unwrap();
+    let album = tmp.path().join("Album");
+    std::fs::create_dir_all(&album).unwrap();
+    std::fs::write(album.join("Album.flac"), fake_flac()).unwrap();
+    std::fs::write(
+        album.join("Album.cue"),
+        make_cue_content("Album.flac", "Album Title"),
+    )
+    .unwrap();
+    std::fs::write(album.join("bonus 1.flac"), fake_flac()).unwrap();
+    std::fs::write(album.join("bonus 2.flac"), fake_flac()).unwrap();
+
+    let files = collect_release_candidate_files(&album).expect("scan should succeed");
+    assert_eq!(
+        files
+            .audio()
+            .map(|f| f.relative_path.as_str())
+            .collect::<Vec<_>>(),
+        vec!["Album.flac", "bonus 1.flac", "bonus 2.flac"],
+    );
+    let bound = files.bound_sheets();
+    assert_eq!(bound.len(), 1);
+    assert_eq!(bound[0].audio.file_name, "Album.flac");
+
+    let carried: Vec<_> = files
+        .release_files()
+        .map(|f| f.relative_path.as_str())
+        .collect();
+    for expected in ["Album.cue", "Album.flac", "bonus 1.flac", "bonus 2.flac"] {
+        assert!(
+            carried.contains(&expected),
+            "{expected} must survive the scan, got {carried:?}",
+        );
+    }
+}
+
+/// A folder whose only disc-ID source is its rip log becomes a candidate, and
+/// the log's TOC still yields the disc ID with the sheet unbound. Before roles
+/// the scan refused the folder first, so the log never got the chance.
+#[test]
+fn folder_identifies_from_its_rip_log_with_the_sheet_unbound() {
+    let tmp = tempfile::tempdir().unwrap();
+    let album = tmp.path().join("Album");
+    std::fs::create_dir_all(&album).unwrap();
+    let fixtures = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures");
+    std::fs::copy(fixtures.join("test_album.log"), album.join("rip.log")).unwrap();
+    std::fs::copy(
+        fixtures.join("flac/01 Test Track 1.flac"),
+        album.join("01 Test Track 1.flac"),
+    )
+    .unwrap();
+    std::fs::copy(
+        fixtures.join("flac/02 Test Track 2.flac"),
+        album.join("02 Test Track 2.flac"),
+    )
+    .unwrap();
+    std::fs::write(
+        album.join("Album.cue"),
+        make_cue_content("Album.wav", "Album Title"),
+    )
+    .unwrap();
+
+    let items = scan_items(tmp.path().to_path_buf());
+    assert_eq!(items.len(), 1);
+    assert!(
+        matches!(&items[0], ScanItem::Valid(_)),
+        "folder must be a candidate so its log can identify it",
+    );
+
+    let files = collect_release_candidate_files(&album).expect("scan should succeed");
+    assert!(files.bound_sheets().is_empty());
+    assert!(
+        crate::import::discid::compute_discid_from_categorized(&files).is_some(),
+        "the rip log's TOC still yields a disc ID with the sheet unbound",
+    );
+}
+
+/// A sheet that will not parse is not a sheet: it lands as a document, and its
+/// audio keeps its role.
+#[test]
+fn unparseable_sheet_lands_as_a_document() {
+    let tmp = tempfile::tempdir().unwrap();
+    let album = tmp.path().join("Album");
+    std::fs::create_dir_all(&album).unwrap();
+    std::fs::write(album.join("Album.flac"), fake_flac()).unwrap();
+    // No INDEX: the sheet does not parse.
+    std::fs::write(
+        album.join("Album.cue"),
+        "FILE \"Album.flac\" WAVE\n  TRACK 01 AUDIO\n    TITLE \"Missing Index\"\n",
+    )
+    .unwrap();
+
+    let items = scan_items(tmp.path().to_path_buf());
+    assert_eq!(items.len(), 1);
+    match &items[0] {
+        ScanItem::Valid(candidate) => {
+            assert!(
+                candidate
+                    .files
+                    .documents()
+                    .any(|d| d.file_name == "Album.cue"),
+                "an unparseable sheet stays a document",
+            );
+            assert!(candidate.files.track_sheets().next().is_none());
+            assert_eq!(candidate.files.audio().count(), 1);
+        }
+        ScanItem::Invalid(invalid) => {
+            panic!(
+                "an unparseable sheet must not invalidate: {}",
+                invalid.reason
+            )
+        }
+    }
+}
+
+/// The hash covers every file the release uploads, including audio no sheet
+/// references — which the either/or silently dropped from both. This is the
+/// test that fails if that omission is ever reintroduced.
+#[test]
+fn content_hash_covers_audio_no_sheet_references() {
+    let build = |dir: &Path, with_bonus: bool| {
+        std::fs::create_dir_all(dir).unwrap();
+        std::fs::write(dir.join("Album.flac"), fake_flac()).unwrap();
+        std::fs::write(
+            dir.join("Album.cue"),
+            make_cue_content("Album.flac", "Album Title"),
+        )
+        .unwrap();
+        if with_bonus {
+            std::fs::write(dir.join("bonus.flac"), fake_flac()).unwrap();
+        }
+        collect_release_candidate_files(dir)
+            .expect("scan should succeed")
+            .content_hash()
+    };
+    let tmp = tempfile::tempdir().unwrap();
+    let plain = build(&tmp.path().join("Plain"), false);
+    let with_bonus = build(&tmp.path().join("Bonus"), true);
+    assert_ne!(
+        plain, with_bonus,
+        "audio no sheet references must count toward the hash",
+    );
+}
+
+/// The folder is the release, so an unrecognized sidecar is carried like every
+/// other file: it becomes a row the import writes, and it counts toward the
+/// hash. The pair that fails if someone narrows either set back — and they must
+/// stay one set, or the fingerprint stops describing the payload it identifies.
+#[test]
+fn an_unrecognized_sidecar_is_carried_and_hashed() {
+    const SIDECARS: [&str; 5] = ["rip.accurip", "rip.ffp", "rip.md5", "rip.nfo", "rip.sfv"];
+
+    let tmp = tempfile::tempdir().unwrap();
+    let bare = tmp.path().join("Bare");
+    let with_sidecars = tmp.path().join("Sidecars");
+    for dir in [&bare, &with_sidecars] {
+        std::fs::create_dir_all(dir).unwrap();
+        std::fs::write(dir.join("01.flac"), fake_flac()).unwrap();
+    }
+    for sidecar in SIDECARS {
+        std::fs::write(with_sidecars.join(sidecar), b"scene notes").unwrap();
+    }
+
+    let bare_files = collect_release_candidate_files(&bare).unwrap();
+    let sidecar_files = collect_release_candidate_files(&with_sidecars).unwrap();
+    assert_eq!(
+        sidecar_files
+            .files
+            .iter()
+            .filter(|entry| matches!(entry.role, FileRole::Other))
+            .map(|entry| entry.file.file_name.as_str())
+            .collect::<Vec<_>>(),
+        SIDECARS.to_vec(),
+        "each sidecar is listed under the role for what the scan doesn't recognize",
+    );
+
+    // The rows the import writes come from the same iterator the hash covers.
+    let carried: Vec<_> = crate::import::handle::flatten_categorized_files(&sidecar_files)
+        .into_iter()
+        .map(|file| file.file_name)
+        .collect();
+    for sidecar in SIDECARS {
+        assert!(
+            carried.contains(&sidecar.to_string()),
+            "{sidecar} must become a file row, got {carried:?}",
+        );
+    }
+
+    assert_ne!(
+        bare_files.content_hash(),
+        sidecar_files.content_hash(),
+        "a file the release carries must count toward the hash",
+    );
+}
+
+/// The directive binds, not the filename: a sheet and the audio it names pair
+/// even when their names have nothing in common.
+#[test]
+fn a_binding_survives_a_rename_of_the_sheet() {
+    let tmp = tempfile::tempdir().unwrap();
+    let album = tmp.path().join("Album");
+    std::fs::create_dir_all(&album).unwrap();
+    std::fs::write(album.join("Audio.flac"), fake_flac()).unwrap();
+    std::fs::write(
+        album.join("Completely Unrelated.cue"),
+        make_cue_content("Audio.flac", "Album Title"),
+    )
+    .unwrap();
+
+    let files = collect_release_candidate_files(&album).expect("scan should succeed");
+    let bound = files.bound_sheets();
+    assert_eq!(bound.len(), 1);
+    assert_eq!(bound[0].file.file_name, "Completely Unrelated.cue");
+    assert_eq!(bound[0].audio.file_name, "Audio.flac");
+    assert_eq!(
+        bound[0].audio.relative_path, "Audio.flac",
+        "`describes` names the audio by its file id",
+    );
+}
+
+/// Widening the model must not swallow real defects: audio that will not decode
+/// and a folder with no audio at all still invalidate.
+#[test]
+fn corrupt_audio_and_empty_folders_still_invalidate() {
+    let tmp = tempfile::tempdir().unwrap();
+    let corrupt = tmp.path().join("Corrupt");
+    std::fs::create_dir_all(&corrupt).unwrap();
+    // Non-empty so the folder is still detected as a leaf, but the bytes are
+    // not FLAC — the file will not decode.
+    std::fs::write(corrupt.join("01.flac"), b"not a flac at all").unwrap();
+    let items = scan_items(corrupt);
+    assert_eq!(items.len(), 1);
+    assert!(
+        matches!(
+            &items[0],
+            ScanItem::Invalid(InvalidCandidate {
+                reason: InvalidReason::CorruptAudioFile { .. },
+                ..
+            })
+        ),
+        "corrupt audio is still a real defect",
+    );
+
+    let empty = tmp.path().join("Empty");
+    std::fs::create_dir_all(&empty).unwrap();
+    std::fs::write(empty.join("cover.jpg"), [0xFF, 0xD8, 0xFF, 0xE0]).unwrap();
+    assert!(
+        scan_items(empty.clone()).is_empty(),
+        "a folder with no audio has nothing to import",
+    );
+    assert!(
+        matches!(
+            collect_release_candidate_files(&empty),
+            Err(crate::import::ImportError::InvalidFolder(
+                InvalidReason::NoValidAudio
+            ))
+        ),
+        "categorizing an audio-less folder names NoValidAudio",
+    );
+}
+
+/// The scan proposes one cover from the conventional filenames; every other
+/// image is artwork, and both are the release's images.
+#[test]
+fn the_scan_proposes_one_cover_from_the_conventional_names() {
+    let tmp = tempfile::tempdir().unwrap();
+    let album = tmp.path().join("Album");
+    std::fs::create_dir_all(&album).unwrap();
+    std::fs::write(album.join("01.flac"), fake_flac()).unwrap();
+    for image in ["back.jpg", "cover.jpg", "folder.jpg"] {
+        std::fs::write(album.join(image), [0xFF, 0xD8, 0xFF, 0xE0]).unwrap();
+    }
+
+    let files = collect_release_candidate_files(&album).expect("scan should succeed");
+    assert_eq!(
+        cover_names(&files),
+        vec!["cover.jpg"],
+        "one image leads the release — the first conventional name in file order",
+    );
+    assert_eq!(files.artwork().count(), 3, "all three are still images");
+}
+
+/// A release-root image outranks a nested one. Sorting by relative path puts
+/// `Artwork/front.jpg` ahead of `cover.jpg`, so taking the first conventional
+/// name outright would propose the file inside the subfolder.
+#[test]
+fn a_root_level_cover_outranks_one_in_a_subfolder() {
+    let tmp = tempfile::tempdir().unwrap();
+    let album = tmp.path().join("Album");
+    std::fs::create_dir_all(album.join("Artwork")).unwrap();
+    std::fs::write(album.join("01.flac"), fake_flac()).unwrap();
+    std::fs::write(album.join("Artwork/front.jpg"), [0xFF, 0xD8, 0xFF, 0xE0]).unwrap();
+    std::fs::write(album.join("cover.jpg"), [0xFF, 0xD8, 0xFF, 0xE0]).unwrap();
+
+    let files = collect_release_candidate_files(&album).expect("scan should succeed");
+    assert_eq!(cover_names(&files), vec!["cover.jpg"]);
+
+    // With nothing at the root, the nested one leads.
+    let nested_only = tmp.path().join("Nested");
+    std::fs::create_dir_all(nested_only.join("Artwork")).unwrap();
+    std::fs::write(nested_only.join("01.flac"), fake_flac()).unwrap();
+    std::fs::write(
+        nested_only.join("Artwork/front.jpg"),
+        [0xFF, 0xD8, 0xFF, 0xE0],
+    )
+    .unwrap();
+    let files = collect_release_candidate_files(&nested_only).expect("scan should succeed");
+    assert_eq!(cover_names(&files), vec!["front.jpg"]);
+}
+
+/// File names of every image the scan proposed as the release's cover.
+fn cover_names(files: &CategorizedFiles) -> Vec<&str> {
+    files
+        .files
+        .iter()
+        .filter(|entry| matches!(entry.role, FileRole::Cover))
+        .map(|entry| entry.file.file_name.as_str())
+        .collect()
 }

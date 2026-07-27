@@ -101,65 +101,83 @@
             )
         ]
 
-        private static func previewArtworkFile(
+        private static func previewFile(
             name: String,
             size: UInt64,
-            localPath: String
-        ) -> BridgeArtworkFile {
-            BridgeArtworkFile(
+            role: BridgeFileRole
+        ) -> BridgeCandidateFile {
+            BridgeCandidateFile(
                 file: BridgeFileInfo(
                     name: name,
                     size: size,
                     dirPrefix: nil,
                     fileName: name,
-                    localPath: localPath
+                    localPath: "/tmp/fake/\(name)"
                 ),
-                coverChoice: BridgeCoverChoice(
-                    selection: .releaseImage(fileId: name),
-                    previewSource: .local(path: localPath),
-                    thumbnailSource: .local(path: localPath)
-                )
+                role: role
             )
         }
 
+        private static func previewImage(
+            name: String,
+            size: UInt64,
+            isCover: Bool = false
+        ) -> BridgeCandidateFile {
+            let choice = BridgeCoverChoice(
+                selection: .releaseImage(fileId: name),
+                previewSource: .local(path: "/tmp/fake/\(name)"),
+                thumbnailSource: .local(path: "/tmp/fake/\(name)")
+            )
+            return previewFile(
+                name: name,
+                size: size,
+                role: isCover
+                    ? .cover(choice: choice) : .artwork(choice: choice)
+            )
+        }
+
+        /// A sheet bound to `Album Title.flac`.
+        static let boundTrackSheet = previewFile(
+            name: "Album Title.cue",
+            size: 1200,
+            role: .trackSheet(
+                binding: .describes(fileId: "Album Title.flac"),
+                trackCount: 9
+            )
+        )
+
+        /// A sheet whose `FILE` directive names audio that isn't in the folder.
+        static let unboundTrackSheet = previewFile(
+            name: "Album Title.cue",
+            size: 1200,
+            role: .trackSheet(binding: .unresolved, trackCount: 9)
+        )
+
+        /// A sheet bound to audio bae can't carve tracks out of.
+        static let refusedTrackSheet = previewFile(
+            name: "Album Title.cue",
+            size: 1200,
+            role: .trackSheet(
+                binding: .refusedCodec(fileId: "Album Title.mp3", codec: "MP3"),
+                trackCount: 9
+            )
+        )
+
         static let bridgeCandidateFiles = BridgeCandidateFiles(
-            audio: .cueFlacPairs(pairs: [
-                BridgeCueFlacPair(
-                    cueName: "Album Title.cue",
-                    cueSize: 1200,
-                    cueLocalPath: "/tmp/fake/Album Title.cue",
-                    flacName: "Album Title.flac",
-                    flacLocalPath: "/tmp/fake/Album Title.flac",
-                    totalSize: 340_000_000,
-                    trackCount: 9,
-                )
-            ]),
-            artwork: [
-                previewArtworkFile(
-                    name: "Front.png",
-                    size: 2_500_000,
-                    localPath: "/tmp/fake/Front.png"
+            files: [
+                previewImage(name: "Back.png", size: 1_800_000),
+                boundTrackSheet,
+                previewFile(
+                    name: "Album Title.flac",
+                    size: 340_000_000,
+                    role: .audio
                 ),
-                previewArtworkFile(
-                    name: "Back.png",
-                    size: 1_800_000,
-                    localPath: "/tmp/fake/Back.png"
-                ),
-                previewArtworkFile(
-                    name: "Matrix.png",
-                    size: 900_000,
-                    localPath: "/tmp/fake/Matrix.png"
-                ),
+                previewImage(name: "Front.png", size: 2_500_000, isCover: true),
+                previewImage(name: "Matrix.png", size: 900_000),
+                previewFile(name: "info.log", size: 6000, role: .document),
+                previewFile(name: "rip.nfo", size: 400, role: .other),
             ],
-            documents: [
-                BridgeFileInfo(
-                    name: "info.log",
-                    size: 6000,
-                    dirPrefix: nil,
-                    fileName: "info.log",
-                    localPath: "/tmp/fake/info.log"
-                )
-            ],
+            formatLabel: "CUE+FLAC"
         )
 
         static let releaseDetailBridge: BridgeReleaseDetail = {
@@ -236,44 +254,33 @@
                 trackIdPrefix: "import-track"
             )
 
-        /// Per-track audio candidate (nine FLAC files) plus one cover image and two
-        /// documents — the track-files counterpart to `bridgeCandidateFiles` (CUE+FLAC).
+        /// Per-track audio candidate (nine FLAC files) plus one cover image, two
+        /// documents, and a sheet describing nothing yet — the file-per-track
+        /// counterpart to `bridgeCandidateFiles`.
         static let candidateFilesTracks = BridgeCandidateFiles(
-            audio: .trackFiles(
-                files: (1...9)
-                    .map { i in
-                        BridgeFileInfo(
-                            name: "Track \(i).flac",
-                            size: UInt64(35_000_000 + i * 2_000_000),
-                            dirPrefix: nil,
-                            fileName: "Track \(i).flac",
-                            localPath: "/tmp/fake/Track \(i).flac",
-                        )
-                    }
-            ),
-            artwork: [
-                previewArtworkFile(
-                    name: "Front.png",
-                    size: 2_500_000,
-                    localPath: "/tmp/fake/Front.png"
-                )
-            ],
-            documents: [
-                BridgeFileInfo(
-                    name: "info.log",
-                    size: 6000,
-                    dirPrefix: nil,
-                    fileName: "info.log",
-                    localPath: "/tmp/fake/info.log"
-                ),
-                BridgeFileInfo(
-                    name: "notes.txt",
-                    size: 1200,
-                    dirPrefix: nil,
-                    fileName: "notes.txt",
-                    localPath: "/tmp/fake/notes.txt"
-                ),
-            ],
+            files: (1...9)
+                .map { i in
+                    previewFile(
+                        name: "Track \(i).flac",
+                        size: UInt64(35_000_000 + i * 2_000_000),
+                        role: .audio
+                    )
+                }
+                + [
+                    previewImage(
+                        name: "Front.png",
+                        size: 2_500_000,
+                        isCover: true
+                    ),
+                    previewFile(name: "info.log", size: 6000, role: .document),
+                    previewFile(name: "notes.txt", size: 1200, role: .document),
+                    previewFile(
+                        name: "Album.cue",
+                        size: 1100,
+                        role: .trackSheet(binding: .unresolved, trackCount: 9)
+                    ),
+                ],
+            formatLabel: "FLAC"
         )
 
         // MARK: - Import search

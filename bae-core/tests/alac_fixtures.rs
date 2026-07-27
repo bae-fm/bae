@@ -14,7 +14,7 @@ use bae_core::db::Database;
 use bae_core::discogs::models::{DiscogsArtist, DiscogsRelease, DiscogsTrack};
 use bae_core::import::discid::compute_discid_from_categorized;
 use bae_core::import::folder_scanner::{
-    collect_release_candidate_files, scan_for_candidates_with_callback, AudioContent, ScanItem,
+    collect_release_candidate_files, scan_for_candidates_with_callback, ScanItem,
 };
 use bae_core::import::{IdentityChoice, ImportCommand, MetadataRef, MetadataSource, StorageMode};
 use bae_core::library::LibraryManager;
@@ -277,23 +277,14 @@ fn scanner_recognizes_cue_alac_pair() {
     assert_eq!(candidates.len(), 1, "one release in the folder");
     let candidate = &candidates[0];
 
-    match &candidate.files.audio {
-        AudioContent::CueFlacPairs {
-            pairs,
-            format_label,
-        } => {
-            assert_eq!(pairs.len(), 1, "one CUE pair");
-            assert_eq!(
-                pairs[0].cue_sheet.tracks.len(),
-                3,
-                "three tracks in the CUE sheet"
-            );
-            assert_eq!(format_label, "CUE+ALAC");
-        }
-        AudioContent::TrackFiles { .. } => {
-            panic!("CUE + .m4a pair must be detected as a CUE pair, not TrackFiles")
-        }
-    }
+    let bound = candidate.files.bound_sheets();
+    assert_eq!(bound.len(), 1, "the sheet binds to the .m4a it names");
+    assert_eq!(
+        bound[0].sheet.tracks.len(),
+        3,
+        "three tracks in the CUE sheet"
+    );
+    assert_eq!(candidate.files.format_label, "CUE+ALAC");
 }
 
 // ─────────────────────────────── Import CUE+ALAC ────────────────────────────
@@ -431,7 +422,7 @@ fn cue_alac_disc_id_is_stable() {
     std::fs::copy(fix.join("cue-alac.cue"), album_dir.join("cue-alac.cue")).expect("copy cue");
 
     let categorized = collect_release_candidate_files(&album_dir).expect("scan album dir");
-    let track_count = categorized.audio.track_count();
+    let track_count = categorized.track_count();
     let disc_id = compute_discid_from_categorized(&categorized);
 
     assert_eq!(track_count, 3, "three tracks in the CUE sheet");

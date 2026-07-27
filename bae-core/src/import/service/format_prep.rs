@@ -83,14 +83,13 @@ fn probe_and_validate_audio(path: &Path) -> Result<crate::audio_codec::ProbeResu
 /// files take their `ContentType` from the extension hint, an honest mapping for
 /// images (an extension on image bytes does predict the codec), text, and PDF.
 /// Anything the hint can't classify becomes `OctetStream` and flows through the
-/// DB as-is.
+/// DB as-is — including a file with no extension at all, which a rip folder can
+/// legitimately hold (a `README`, a `.`-less checksum file) and which the
+/// release carries like any other file.
 pub(super) fn resolve_file_content_type(path: &Path) -> Result<ContentType, ImportError> {
-    let ext =
-        path.extension()
-            .and_then(|e| e.to_str())
-            .ok_or_else(|| ImportError::TrackMapping {
-                detail: format!("File has no extension: {:?}", path),
-            })?;
+    let Some(ext) = path.extension().and_then(|e| e.to_str()) else {
+        return Ok(ContentType::OctetStream);
+    };
     let hint = ContentTypeHint::from_extension(ext);
 
     if hint.is_audio() {
@@ -540,12 +539,14 @@ mod tests {
         );
     }
 
+    /// A rip folder can hold an extensionless file — a `README`, a bare
+    /// checksum — and the release carries it like any other. It is opaque
+    /// binary, not a reason to fail the import.
     #[test]
-    fn resolve_file_content_type_errors_without_extension() {
-        let error = resolve_file_content_type(Path::new("/x/README")).unwrap_err();
-        assert!(
-            matches!(&error, ImportError::TrackMapping { detail } if detail.contains("no extension")),
-            "got: {error}"
+    fn resolve_file_content_type_without_an_extension_is_opaque_binary() {
+        assert_eq!(
+            resolve_file_content_type(Path::new("/x/README")).unwrap(),
+            ContentType::OctetStream
         );
     }
 

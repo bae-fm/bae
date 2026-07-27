@@ -384,15 +384,14 @@ fn discid_from_cue_audio(sheet: &CueSheet, audio_path: &Path) -> Option<String> 
     }
 }
 
-/// A MusicBrainz DiscID from already-categorized files, reusing the CUE sheets
+/// A MusicBrainz DiscID from already-categorized files, reusing the track sheets
 /// the folder scan parsed — no re-read, no re-parse. LOG first (most accurate),
-/// then CUE+audio pairs.
+/// then the sheets that are bound to their audio. A folder whose sheet is
+/// unbound can still identify itself from its log.
 pub fn compute_discid_from_categorized(
     categorized: &crate::import::folder_scanner::CategorizedFiles,
 ) -> Option<String> {
-    use crate::import::folder_scanner::AudioContent;
-
-    for doc in &categorized.documents {
+    for doc in categorized.documents() {
         let is_log = doc
             .path
             .extension()
@@ -408,11 +407,9 @@ pub fn compute_discid_from_categorized(
         }
     }
 
-    if let AudioContent::CueFlacPairs { pairs, .. } = &categorized.audio {
-        for pair in pairs {
-            if let Some(id) = discid_from_cue_audio(&pair.cue_sheet, &pair.audio_file.path) {
-                return Some(id);
-            }
+    for bound in categorized.bound_sheets() {
+        if let Some(id) = discid_from_cue_audio(bound.sheet, &bound.audio.path) {
+            return Some(id);
         }
     }
 

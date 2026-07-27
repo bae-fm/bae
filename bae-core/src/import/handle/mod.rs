@@ -792,27 +792,14 @@ pub fn shape_user_edit_for_choice(
     edit
 }
 
-/// Flatten a `CategorizedFiles` into the flat file list the downstream
-/// import pipeline consumes for progress tracking and byte accounting.
-/// Ordering mirrors the scan's structured output: audio first (pairs before
-/// per-track, in natural sort within each), then artwork, then documents.
+/// The files the import pipeline writes rows for and accounts bytes against, in
+/// the release's own `relative_path` order.
+///
+/// Reads [`CategorizedFiles::release_files`], the same iterator
+/// [`CategorizedFiles::content_hash`] covers — the payload and the fingerprint
+/// that identifies it are one set by construction.
 pub(crate) fn flatten_categorized_files(
     categorized: &crate::import::folder_scanner::CategorizedFiles,
 ) -> Vec<crate::import::folder_scanner::ScannedFile> {
-    use crate::import::folder_scanner::AudioContent;
-    let mut files = Vec::new();
-    match &categorized.audio {
-        AudioContent::CueFlacPairs { pairs, .. } => {
-            for pair in pairs {
-                files.push(pair.cue_file.clone());
-                files.extend(pair.audio_files.iter().cloned());
-            }
-        }
-        AudioContent::TrackFiles { tracks, .. } => {
-            files.extend(tracks.iter().cloned());
-        }
-    }
-    files.extend(categorized.artwork.iter().cloned());
-    files.extend(categorized.documents.iter().cloned());
-    files
+    categorized.release_files().cloned().collect()
 }

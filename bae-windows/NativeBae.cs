@@ -1147,17 +1147,29 @@ internal static class NativeBae
 
     private static List<LocalArtwork> LocalArtwork(BridgeImportCandidateSnapshot? snapshot) =>
         snapshot is BridgeImportCandidateSnapshot.Folder folder
-            ? folder.Candidate.Files.Artwork.Select(LocalArtwork).ToList()
+            ? folder.Candidate.Files.Files.Select(LocalArtwork).OfType<LocalArtwork>().ToList()
             : [];
 
-    private static LocalArtwork LocalArtwork(BridgeArtworkFile artwork)
+    // The candidate's images, as cover choices. A file that is not an image has
+    // no choice to offer, so it drops out.
+    private static LocalArtwork? LocalArtwork(BridgeCandidateFile file)
     {
-        var releaseImage = artwork.CoverChoice.Selection as BridgeCoverSelection.ReleaseImage
+        var choice = file.Role switch
+        {
+            BridgeFileRole.Cover cover => cover.Choice,
+            BridgeFileRole.Artwork artwork => artwork.Choice,
+            _ => null,
+        };
+        if (choice is null)
+        {
+            return null;
+        }
+        var releaseImage = choice.Selection as BridgeCoverSelection.ReleaseImage
             ?? throw new JsonException("local artwork did not carry a release-image selection");
         return new LocalArtwork
         {
             FileId = releaseImage.FileId,
-            Path = artwork.File.LocalPath,
+            Path = file.File.LocalPath,
         };
     }
 
@@ -1177,11 +1189,11 @@ internal static class NativeBae
             Key = candidate.FolderPath,
             Name = candidate.SourceFolderName,
             TrackCount = checked((int)candidate.TrackCount),
-            Format = ImportFormat(candidate.Files.Audio),
+            Format = candidate.Files.FormatLabel,
             RowStatus = ImportRowStatus(runtime),
             Matches = ImportMatches(runtime.IdentifyState),
             Signals = runtime.SignalsToolbar.Signals.Select(SignalBadge).ToList(),
-            AudioPaths = AudioPaths(candidate.Files.Audio).ToList(),
+            AudioPaths = AudioPaths(candidate.Files).ToList(),
             Documents = ImportDocuments(candidate.Files),
             FolderPath = candidate.FolderPath,
             Skipped = candidate.Skipped,
@@ -1278,42 +1290,30 @@ internal static class NativeBae
             _ => throw new ArgumentOutOfRangeException(nameof(step), step, "Unknown import step"),
         };
 
-    private static string[] AudioPaths(BridgeAudioContent audio) =>
-        audio switch
-        {
-            BridgeAudioContent.CueFlacPairs cue => cue.Pairs.Select(pair => pair.FlacLocalPath).ToArray(),
-            BridgeAudioContent.TrackFiles tracks => tracks.Files.Select(file => file.LocalPath).ToArray(),
-            _ => throw new ArgumentOutOfRangeException(nameof(audio), audio, "Unknown audio content"),
-        };
+    private static string[] AudioPaths(BridgeCandidateFiles files) =>
+        files.Files
+            .Where(file => file.Role is BridgeFileRole.Audio)
+            .Select(file => file.File.LocalPath)
+            .ToArray();
 
-    // A candidate's readable evidence files: paired CUE sheets first (they live
-    // on the audio content as CUE/FLAC pairs), then core's path-sorted document
-    // files (logs, unpaired CUEs, text). The same visual order as the file pane
-    // on other platforms, where the CUE rows sit above the documents section.
+    // A candidate's readable evidence files: the track sheets first, then core's
+    // path-sorted documents (logs, sheets that would not parse, text). The same
+    // visual order as the file pane on other platforms, where the sheet rows sit
+    // above the documents section.
     private static List<ImportDocument> ImportDocuments(BridgeCandidateFiles files)
     {
-        var cues = files.Audio switch
-        {
-            BridgeAudioContent.CueFlacPairs cue => cue.Pairs.Select(pair => new ImportDocument
-            {
-                Name = pair.CueName,
-                Path = pair.CueLocalPath,
-                SizeBytes = checked((long)pair.CueSize),
-            }),
-            BridgeAudioContent.TrackFiles => Enumerable.Empty<ImportDocument>(),
-            _ => throw new ArgumentOutOfRangeException(nameof(files), files.Audio, "Unknown audio content"),
-        };
-        var documents = files.Documents.Select(file => new ImportDocument
-        {
-            Name = file.Name,
-            Path = file.LocalPath,
-            SizeBytes = checked((long)file.Size),
-        });
-        return cues.Concat(documents).ToList();
+        var sheets = files.Files.Where(file => file.Role is BridgeFileRole.TrackSheet);
+        var documents = files.Files.Where(file => file.Role is BridgeFileRole.Document);
+        return sheets.Concat(documents).Select(ImportDocument).ToList();
     }
 
-    private static string ImportFormat(BridgeAudioContent audio) =>
-        audio is BridgeAudioContent.CueFlacPairs ? "CUE/FLAC" : string.Empty;
+    private static ImportDocument ImportDocument(BridgeCandidateFile file) =>
+        new()
+        {
+            Name = file.File.Name,
+            Path = file.File.LocalPath,
+            SizeBytes = checked((long)file.File.Size),
+        };
 
     private static string CoverImageSourceUrl(BridgeCoverImageSource source) =>
         source switch

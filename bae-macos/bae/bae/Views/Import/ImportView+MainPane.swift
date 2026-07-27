@@ -21,12 +21,12 @@ extension ImportView {
         ImportMainPane(
             files: candidate.files,
             onOpenGallery: { index in
-                let files = candidate.files
-                guard files.artwork.indices.contains(index) else {
+                let images = candidate.files.images
+                guard images.indices.contains(index) else {
                     return
                 }
-                let tappedPath = files.artwork[index].file.localPath
-                let items = files.artwork.map { file in
+                let tappedPath = images[index].file.localPath
+                let items = images.map { file in
                     LightboxItem(
                         id: file.file.localPath,
                         label: file.file.name,

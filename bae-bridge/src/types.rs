@@ -840,10 +840,6 @@ pub struct BridgeFolderCandidate {
 pub enum BridgeInvalidReason {
     CorruptAudioFile { path: String },
     CorruptImage { path: String },
-    CueMissingAudio,
-    CueParseFailed { path: String },
-    CueUnsupportedLayout,
-    CueUnsupportedCodec { codec: String },
     NoValidAudio,
 }
 
@@ -852,10 +848,6 @@ impl BridgeInvalidReason {
         match self {
             Self::CorruptAudioFile { .. } => "core.import.invalid.corrupt_audio",
             Self::CorruptImage { .. } => "core.import.invalid.corrupt_image",
-            Self::CueMissingAudio => "core.import.invalid.cue_missing_audio",
-            Self::CueParseFailed { .. } => "core.import.invalid.cue_parse_failed",
-            Self::CueUnsupportedLayout => "core.import.invalid.cue_unsupported_layout",
-            Self::CueUnsupportedCodec { .. } => "core.import.invalid.cue_unsupported_codec",
             Self::NoValidAudio => "core.import.invalid.no_valid_audio",
         }
     }
@@ -868,10 +860,6 @@ impl BridgeInvalidReason {
         match r {
             R::CorruptAudioFile { path } => BridgeInvalidReason::CorruptAudioFile { path },
             R::CorruptImage { path } => BridgeInvalidReason::CorruptImage { path },
-            R::CueMissingAudio => BridgeInvalidReason::CueMissingAudio,
-            R::CueParseFailed { path } => BridgeInvalidReason::CueParseFailed { path },
-            R::CueUnsupportedLayout => BridgeInvalidReason::CueUnsupportedLayout,
-            R::CueUnsupportedCodec { codec } => BridgeInvalidReason::CueUnsupportedCodec { codec },
             R::NoValidAudio => BridgeInvalidReason::NoValidAudio,
         }
     }
@@ -981,36 +969,69 @@ pub struct BridgeFileInfo {
     pub local_path: String,
 }
 
-#[derive(Debug, Clone, uniffi::Record)]
-pub struct BridgeArtworkFile {
-    pub file: BridgeFileInfo,
-    pub cover_choice: BridgeCoverChoice,
+/// What a track sheet's `FILE` directive resolved to. Mirror of bae-core's
+/// `SheetBinding`; `file_id` is a file's `name` (its release-relative path).
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeSheetBinding {
+    /// Bound to the audio named by `file_id`.
+    Describes { file_id: String },
+    /// The directive names audio that is not in the folder, or names several
+    /// and only some are here.
+    Unresolved,
+    /// The directive resolved, but bae can't carve tracks out of that codec.
+    /// The audio imports as one track. The UI localizes `codec` through
+    /// [`bridge_sheet_refused_codec_key`].
+    RefusedCodec { file_id: String, codec: String },
 }
 
-#[derive(Debug, Clone, uniffi::Record)]
-pub struct BridgeCueFlacPair {
-    pub cue_name: String,
-    pub cue_size: u64,
-    /// Absolute filesystem path of the CUE file on disk.
-    pub cue_local_path: String,
-    pub flac_name: String,
-    /// Absolute filesystem path of the audio file on disk.
-    pub flac_local_path: String,
-    pub total_size: u64,
-    pub track_count: u32,
+/// Localization key for a refused sheet binding — resolved by the UI against the
+/// `Core` string table, with the codec interpolated. One key, so the reason a
+/// binding was refused reads the same on every surface.
+#[uniffi::export]
+pub fn bridge_sheet_refused_codec_key() -> String {
+    SHEET_REFUSED_CODEC_KEY.to_string()
 }
 
+pub(crate) const SHEET_REFUSED_CODEC_KEY: &str = "core.import.sheet.refused_codec";
+
+/// The job the scan proposed for one file. Mirror of bae-core's `FileRole`. No
+/// UI decides a file's role, and no UI infers a pairing from a filename.
 #[derive(Debug, Clone, uniffi::Enum)]
-pub enum BridgeAudioContent {
-    CueFlacPairs { pairs: Vec<BridgeCueFlacPair> },
-    TrackFiles { files: Vec<BridgeFileInfo> },
+pub enum BridgeFileRole {
+    Audio,
+    /// A parsed track sheet, with what its `FILE` directive resolved to.
+    TrackSheet {
+        binding: BridgeSheetBinding,
+        /// Playable tracks the sheet carves.
+        track_count: u32,
+    },
+    /// The image that leads the release.
+    Cover {
+        choice: BridgeCoverChoice,
+    },
+    Artwork {
+        choice: BridgeCoverChoice,
+    },
+    Document,
+    /// In the folder and carried with the release, unrecognized — a scene
+    /// sidecar, a stray video, a file with no extension.
+    Other,
+}
+
+/// One file of a candidate, with the role the scan proposed for it.
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeCandidateFile {
+    pub file: BridgeFileInfo,
+    pub role: BridgeFileRole,
 }
 
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeCandidateFiles {
-    pub audio: BridgeAudioContent,
-    pub artwork: Vec<BridgeArtworkFile>,
-    pub documents: Vec<BridgeFileInfo>,
+    /// Every file in the folder, each exactly once, in release-relative path
+    /// order.
+    pub files: Vec<BridgeCandidateFile>,
+    /// e.g. "CUE+FLAC", "FLAC", "MP3" — computed by core from the probed codec.
+    pub format_label: String,
 }
 
 /// Phase-0 preparation step, mirroring bae-core's `PrepareStep`. The UI
@@ -3967,107 +3988,67 @@ impl BridgeFileInfo {
 }
 
 #[cfg(feature = "desktop")]
-impl BridgeArtworkFile {
-    fn from_core(f: bae_core::import::folder_scanner::ScannedFile) -> Self {
+impl BridgeCandidateFile {
+    fn from_core(entry: bae_core::import::folder_scanner::CandidateFile) -> Self {
+        use bae_core::import::folder_scanner::{CandidateFile, FileRole, SheetBinding};
+
+        let CandidateFile { file, role } = entry;
         // Read the file id (relative path) and disk path back off `BridgeFileInfo`
         // so the exhaustive `ScannedFile` destructure lives only in its `from_core`.
-        let file = BridgeFileInfo::from_core(f);
-        let file_id = file.name.clone();
-        let path = file.local_path.clone();
-        BridgeArtworkFile {
-            file,
-            cover_choice: BridgeCoverChoice {
-                selection: BridgeCoverSelection::ReleaseImage { file_id },
-                preview_source: BridgeCoverImageSource::Local { path: path.clone() },
-                thumbnail_source: BridgeCoverImageSource::Local { path },
+        let file = BridgeFileInfo::from_core(file);
+        let image_choice = || BridgeCoverChoice {
+            selection: BridgeCoverSelection::ReleaseImage {
+                file_id: file.name.clone(),
             },
-        }
-    }
-}
-
-#[cfg(feature = "desktop")]
-impl BridgeCueFlacPair {
-    fn from_core(p: bae_core::import::folder_scanner::ScannedCueFlacPair) -> Self {
-        let bae_core::import::folder_scanner::ScannedCueFlacPair {
-            cue_file,
-            audio_file,
-            cue_sheet,
-            total_size,
-            // The bridge lists only the first audio file (`audio_file`); the full
-            // referenced set drives export/import, not this preview row.
-            audio_files: _,
-        } = p;
-        // A derived count, not a carried field — `CueSheet` is a large parse
-        // product the bridge doesn't mirror.
-        let track_count = cue_sheet.tracks.len() as u32;
-        let BridgeFileInfo {
-            name: cue_name,
-            size: cue_size,
-            local_path: cue_local_path,
-            dir_prefix: _,
-            file_name: _,
-        } = BridgeFileInfo::from_core(cue_file);
-        let BridgeFileInfo {
-            name: flac_name,
-            local_path: flac_local_path,
-            size: _,
-            dir_prefix: _,
-            file_name: _,
-        } = BridgeFileInfo::from_core(audio_file);
-        BridgeCueFlacPair {
-            cue_name,
-            cue_size,
-            cue_local_path,
-            flac_name,
-            flac_local_path,
-            total_size,
-            track_count,
-        }
+            preview_source: BridgeCoverImageSource::Local {
+                path: file.local_path.clone(),
+            },
+            thumbnail_source: BridgeCoverImageSource::Local {
+                path: file.local_path.clone(),
+            },
+        };
+        let role = match role {
+            FileRole::Audio => BridgeFileRole::Audio,
+            FileRole::TrackSheet { sheet, binding } => BridgeFileRole::TrackSheet {
+                binding: match binding {
+                    SheetBinding::Describes { file_id } => {
+                        BridgeSheetBinding::Describes { file_id }
+                    }
+                    SheetBinding::Unresolved => BridgeSheetBinding::Unresolved,
+                    SheetBinding::RefusedCodec { file_id, codec } => {
+                        BridgeSheetBinding::RefusedCodec { file_id, codec }
+                    }
+                },
+                // A derived count, not a carried field — `CueSheet` is a large
+                // parse product the bridge doesn't mirror.
+                track_count: sheet.playable_track_count() as u32,
+            },
+            FileRole::Cover => BridgeFileRole::Cover {
+                choice: image_choice(),
+            },
+            FileRole::Artwork => BridgeFileRole::Artwork {
+                choice: image_choice(),
+            },
+            FileRole::Document => BridgeFileRole::Document,
+            FileRole::Other => BridgeFileRole::Other,
+        };
+        BridgeCandidateFile { file, role }
     }
 }
 
 #[cfg(feature = "desktop")]
 impl BridgeCandidateFiles {
     pub(crate) fn from_core(files: bae_core::import::folder_scanner::CategorizedFiles) -> Self {
-        use bae_core::import::folder_scanner::{AudioContent, CategorizedFiles};
-
-        let CategorizedFiles {
-            audio,
-            artwork,
-            documents,
-            // Parsed-signal data, not a file the preview lists; the CUE it came
-            // from is already carried under `documents`.
-            unpaired_cue_sheets: _,
+        let bae_core::import::folder_scanner::CategorizedFiles {
+            files,
+            format_label,
         } = files;
-
-        let audio = match audio {
-            AudioContent::CueFlacPairs {
-                pairs,
-                format_label: _,
-            } => BridgeAudioContent::CueFlacPairs {
-                pairs: pairs
-                    .into_iter()
-                    .map(BridgeCueFlacPair::from_core)
-                    .collect(),
-            },
-            AudioContent::TrackFiles {
-                tracks,
-                format_label: _,
-            } => BridgeAudioContent::TrackFiles {
-                files: tracks.into_iter().map(BridgeFileInfo::from_core).collect(),
-            },
-        };
-
         BridgeCandidateFiles {
-            audio,
-            artwork: artwork
+            files: files
                 .into_iter()
-                .map(BridgeArtworkFile::from_core)
+                .map(BridgeCandidateFile::from_core)
                 .collect(),
-            documents: documents
-                .into_iter()
-                .map(BridgeFileInfo::from_core)
-                .collect(),
+            format_label,
         }
     }
 }
@@ -4374,6 +4355,9 @@ mod loc_key_coverage {
             keys.push(expected.to_string());
         }
 
+        // bridge_sheet_refused_codec_key — one key, no variants to walk.
+        keys.push(bridge_sheet_refused_codec_key());
+
         // BridgeTrackSide::header_key — Flat carries no key (None). This is what
         // BridgeTrackGroup::header_key is built from at conversion.
         for s in [
@@ -4439,29 +4423,11 @@ mod loc_key_coverage {
             BridgeInvalidReason::CorruptImage {
                 path: String::new(),
             },
-            BridgeInvalidReason::CueMissingAudio,
-            BridgeInvalidReason::CueParseFailed {
-                path: String::new(),
-            },
-            BridgeInvalidReason::CueUnsupportedLayout,
-            BridgeInvalidReason::CueUnsupportedCodec {
-                codec: String::new(),
-            },
             BridgeInvalidReason::NoValidAudio,
         ] {
             let expected = match r {
                 BridgeInvalidReason::CorruptAudioFile { .. } => "core.import.invalid.corrupt_audio",
                 BridgeInvalidReason::CorruptImage { .. } => "core.import.invalid.corrupt_image",
-                BridgeInvalidReason::CueMissingAudio => "core.import.invalid.cue_missing_audio",
-                BridgeInvalidReason::CueParseFailed { .. } => {
-                    "core.import.invalid.cue_parse_failed"
-                }
-                BridgeInvalidReason::CueUnsupportedLayout => {
-                    "core.import.invalid.cue_unsupported_layout"
-                }
-                BridgeInvalidReason::CueUnsupportedCodec { .. } => {
-                    "core.import.invalid.cue_unsupported_codec"
-                }
                 BridgeInvalidReason::NoValidAudio => "core.import.invalid.no_valid_audio",
             };
             assert_eq!(bridge_invalid_reason_key(r.clone()), expected);

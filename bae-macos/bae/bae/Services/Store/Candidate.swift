@@ -198,11 +198,7 @@ struct Candidate: Equatable, Identifiable {
         self.trackCount = trackCount
         // Re-identify candidates read their files from the DB, not the
         // scanner's scan-event channel, so they start with an empty set.
-        files = BridgeCandidateFiles(
-            audio: .trackFiles(files: []),
-            artwork: [],
-            documents: []
-        )
+        files = BridgeCandidateFiles(files: [], formatLabel: "")
     }
 
     /// Folder path if this is a folder candidate; nil otherwise.

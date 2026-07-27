@@ -89,7 +89,7 @@ extension ImportSearchFlow {
         let hasCoverOptions: Bool
         let storageManaged: Binding<Bool>
         let storagePinned: Binding<Bool>
-        let localArtwork: [BridgeArtworkFile]
+        let localArtwork: [BridgeCandidateFile]
     }
 
     /// The confirmation view's action callbacks: commit the import, and open the

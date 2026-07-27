@@ -21,7 +21,7 @@ use super::assemble::{
 use super::ParsedAlbum;
 use crate::cue_flac::CueSheet;
 use crate::db::{Pressing, ReleaseMetadataSource};
-use crate::import::folder_scanner::{AudioContent, CategorizedFiles};
+use crate::import::folder_scanner::CategorizedFiles;
 use crate::import::ImportError;
 use crate::util::content_type::ContentType;
 use coven::Clock;
@@ -228,32 +228,26 @@ fn file_tag_release_ir(
 }
 
 /// Map an Unknown import candidate to the metadata seed used by preview and
-/// commit. CUE-backed candidates take track layout and names from the parsed
-/// CUE; per-track-file candidates take them from embedded file tags.
+/// commit. A candidate with a bound track sheet takes track layout and names
+/// from the parsed sheet; otherwise they come from the files' embedded tags.
 pub fn map_unknown_candidate_to_db(
     categorized: &CategorizedFiles,
     folder_name: Option<&str>,
     clock: &dyn Clock,
     ids: &dyn IdProvider,
 ) -> Result<ParsedAlbum, ImportError> {
-    match &categorized.audio {
-        AudioContent::CueFlacPairs { pairs, .. } => {
-            let mut sorted = pairs.iter().collect::<Vec<_>>();
-            sorted.sort_by(|a, b| {
-                natord::compare(&a.cue_file.relative_path, &b.cue_file.relative_path)
-            });
-            let sheets = sorted.iter().map(|p| &p.cue_sheet).collect::<Vec<_>>();
-            let audio = sorted
-                .iter()
-                .map(|p| p.audio_file.path.as_path())
-                .collect::<Vec<_>>();
-            map_cue_sheets_to_db(&sheets, &audio, folder_name, clock, ids)
-        }
-        AudioContent::TrackFiles { tracks, .. } => {
-            let audio_files = tracks.iter().map(|f| f.path.clone()).collect::<Vec<_>>();
-            map_file_tags_to_db(&audio_files, folder_name, clock, ids)
-        }
+    let mut bound = categorized.bound_sheets();
+    if bound.is_empty() {
+        let audio_files = categorized.audio_paths();
+        return map_file_tags_to_db(&audio_files, folder_name, clock, ids);
     }
+    bound.sort_by(|a, b| natord::compare(&a.file.relative_path, &b.file.relative_path));
+    let sheets = bound.iter().map(|b| b.sheet).collect::<Vec<_>>();
+    let audio = bound
+        .iter()
+        .map(|b| b.audio.path.as_path())
+        .collect::<Vec<_>>();
+    map_cue_sheets_to_db(&sheets, &audio, folder_name, clock, ids)
 }
 
 /// Map a CUE-backed rip's parsed sheets to a [`ParsedAlbum`] for the Unknown

@@ -1,51 +1,44 @@
 use crate::audio_codec::ProbeResult;
 use crate::cue_flac::CueSheet;
 use crate::db::DbTrack;
-use crate::import::folder_scanner::{
-    AudioContent, CategorizedFiles, ScannedCueFlacPair, ScannedFile,
-};
+use crate::import::folder_scanner::{BoundTrackSheet, CategorizedFiles, ScannedFile};
 use crate::import::types::{CueAnalyzedAudioFile, CueFlacAnalysis, TrackFile};
 use crate::import::ImportError;
 use std::sync::Arc;
 use tracing::{debug, warn};
 
 /// Map tracks to their source audio files from the scan's categorized output.
-/// The scan already detected CUE/FLAC pairs, parsed their sheets, and classified
-/// the files, so nothing here re-parses or re-detects.
+/// The scan already parsed the track sheets, bound them to their audio, and
+/// gave every file a role, so nothing here re-parses or re-detects.
 ///
-/// A CUE-backed import consumes `tracks` in order, slicing per pair by that
-/// pair's parsed CUE track count; a per-track import maps each track 1:1 to a
-/// file. Either way, each DbTrack moves into a TrackFile variant with its
-/// `duration_ms` populated from the CUE sheet or a standalone-file probe.
+/// A sheet-backed import consumes `tracks` in order, slicing per bound sheet by
+/// that sheet's parsed track count; a per-file import maps each track 1:1 to an
+/// audio file. Either way, each DbTrack moves into a TrackFile variant with its
+/// `duration_ms` populated from the sheet or a standalone-file probe.
 pub(crate) fn map_tracks_to_files(
     tracks: Vec<DbTrack>,
     files: &CategorizedFiles,
 ) -> Result<Vec<TrackFile>, ImportError> {
     debug!("Mapping {} tracks using scan output", tracks.len());
-    match &files.audio {
-        AudioContent::CueFlacPairs { pairs, .. } => map_tracks_to_cue_flacs(tracks, pairs),
-        AudioContent::TrackFiles { tracks: files, .. } => {
-            map_tracks_to_individual_files(tracks, files)
-        }
+    let bound = files.bound_sheets();
+    if bound.is_empty() {
+        let audio: Vec<&ScannedFile> = files.audio().collect();
+        map_tracks_to_individual_files(tracks, &audio)
+    } else {
+        map_tracks_to_cue_flacs(tracks, &bound)
     }
 }
 
 fn map_tracks_to_cue_flacs(
     tracks: Vec<DbTrack>,
-    pairs: &[ScannedCueFlacPair],
+    bound: &[BoundTrackSheet<'_>],
 ) -> Result<Vec<TrackFile>, ImportError> {
-    if pairs.is_empty() {
-        return Err(ImportError::TrackMapping {
-            detail: "CUE/FLAC import has no pairs".to_string(),
-        });
-    }
-
     // Natural-sort by relative path, so CD1, CD2, ... CD10 (and Side A, Side B)
     // read in the order they ship on disk, not lexicographically.
-    let mut sorted: Vec<&ScannedCueFlacPair> = pairs.iter().collect();
-    sorted.sort_by(|a, b| natord::compare(&a.cue_file.relative_path, &b.cue_file.relative_path));
+    let mut sorted: Vec<&BoundTrackSheet<'_>> = bound.iter().collect();
+    sorted.sort_by(|a, b| natord::compare(&a.file.relative_path, &b.file.relative_path));
 
-    let sheets: Vec<&CueSheet> = sorted.iter().map(|p| &p.cue_sheet).collect();
+    let sheets: Vec<&CueSheet> = sorted.iter().map(|bound| bound.sheet).collect();
 
     let per_pair_counts: Vec<usize> = sheets.iter().map(|s| s.playable_track_count()).collect();
     let total_cue_tracks: usize = per_pair_counts.iter().sum();
@@ -61,9 +54,9 @@ fn map_tracks_to_cue_flacs(
 
     let mut track_files = Vec::with_capacity(tracks.len());
     let mut remaining: std::collections::VecDeque<DbTrack> = tracks.into();
-    for (pair, count) in sorted.iter().zip(per_pair_counts.iter()) {
+    for (bound, count) in sorted.iter().zip(per_pair_counts.iter()) {
         let slice: Vec<DbTrack> = remaining.drain(..*count).collect();
-        track_files.extend(map_tracks_to_cue_flac(pair, slice)?);
+        track_files.extend(map_tracks_to_cue_flac(bound, slice)?);
     }
     debug!(
         "Created {} CUE/FLAC mappings with validated metadata",
@@ -72,26 +65,26 @@ fn map_tracks_to_cue_flacs(
     Ok(track_files)
 }
 
-/// Process one CUE/FLAC pair: take the scan's already-parsed CUE sheet, probe the
-/// audio container, and emit one `TrackFile::CueBacked` per track, all sharing a
-/// single `Arc<CueFlacAnalysis>`. Each DbTrack gets its `duration_ms` before it
-/// moves into its variant.
+/// Process one bound track sheet: take the scan's already-parsed sheet, probe
+/// the audio container, and emit one `TrackFile::CueBacked` per track, all
+/// sharing a single `Arc<CueFlacAnalysis>`. Each DbTrack gets its `duration_ms`
+/// before it moves into its variant.
 fn map_tracks_to_cue_flac(
-    pair: &ScannedCueFlacPair,
+    pair: &BoundTrackSheet<'_>,
     tracks: Vec<DbTrack>,
 ) -> Result<Vec<TrackFile>, ImportError> {
-    let cue_sheet = pair.cue_sheet.clone();
+    let cue_sheet = pair.sheet.clone();
     debug!(
-        "Processing CUE/FLAC pair: {} + {} ({} tracks)",
-        pair.audio_file.path.display(),
-        pair.cue_file.path.display(),
+        "Processing bound track sheet: {} + {} ({} tracks)",
+        pair.audio.path.display(),
+        pair.file.path.display(),
         cue_sheet.playable_track_count()
     );
     if cue_sheet.playable_track_count() == 0 {
         return Err(ImportError::TrackMapping {
             detail: format!(
                 "CUE sheet '{}' contains no playable audio tracks. Check CUE file format.",
-                pair.cue_file.path.display(),
+                pair.file.path.display(),
             ),
         });
     }
@@ -104,11 +97,11 @@ fn map_tracks_to_cue_flac(
     );
 
     let cue_dir = pair
-        .cue_file
+        .file
         .path
         .parent()
         .ok_or_else(|| ImportError::TrackMapping {
-            detail: format!("CUE file has no parent: {:?}", pair.cue_file.path),
+            detail: format!("CUE file has no parent: {:?}", pair.file.path),
         })?;
     let mut analyzed_files = Vec::new();
     for file_reference in cue_sheet.audio_file_references() {
@@ -144,7 +137,7 @@ fn map_tracks_to_cue_flac(
         );
         mappings.push(TrackFile::CueBacked {
             db_track,
-            file_path: pair.audio_file.path.clone(),
+            file_path: pair.audio.path.clone(),
             cue_pair: Arc::clone(&pair_analysis),
             cue_index: index,
         });
@@ -233,7 +226,7 @@ pub(crate) fn analyze_cue_audio(audio_path: &std::path::Path) -> Result<ProbeRes
 
 fn map_tracks_to_individual_files(
     tracks: Vec<DbTrack>,
-    audio_files: &[ScannedFile],
+    audio_files: &[&ScannedFile],
 ) -> Result<Vec<TrackFile>, ImportError> {
     if audio_files.is_empty() {
         return Err(ImportError::TrackMapping {
@@ -369,7 +362,7 @@ mod tests {
         s
     }
     use crate::import::folder_scanner::{
-        collect_release_candidate_files, AudioContent, CategorizedFiles, ScannedFile,
+        collect_release_candidate_files, CandidateFile, CategorizedFiles, FileRole, ScannedFile,
     };
     use std::path::PathBuf;
 
@@ -381,18 +374,19 @@ mod tests {
         )
     }
 
-    /// Build a `CategorizedFiles` carrying per-track audio and no CUE/FLAC
-    /// pair — i.e. the `AudioContent::TrackFiles` branch. Used by tests that
-    /// don't touch the filesystem.
+    /// Build a `CategorizedFiles` of audio files with no track sheet, so the
+    /// mapper takes its file-per-track path. Used by tests that don't touch the
+    /// filesystem.
     fn categorized_track_files(paths: Vec<&str>, format_label: &str) -> CategorizedFiles {
         CategorizedFiles {
-            audio: AudioContent::TrackFiles {
-                tracks: paths.into_iter().map(scanned).collect(),
-                format_label: format_label.to_string(),
-            },
-            artwork: Vec::new(),
-            documents: Vec::new(),
-            unpaired_cue_sheets: Vec::new(),
+            files: paths
+                .into_iter()
+                .map(|path| CandidateFile {
+                    file: scanned(path),
+                    role: FileRole::Audio,
+                })
+                .collect(),
+            format_label: format_label.to_string(),
         }
     }
     #[test]

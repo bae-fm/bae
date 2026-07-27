@@ -78,7 +78,7 @@ extension ImportView {
         let remoteCoverArts = detail?.coverArt ?? []
         let hasCoverOptions =
             !remoteCoverArts.isEmpty
-            || (candidate.files.artwork.isEmpty == false)
+            || (candidate.files.images.isEmpty == false)
         let libraryStatus =
             detail.flatMap { candidate.libraryStatuses[$0.releaseId] }
         let trackCountMismatch = detail?.trackCountMismatch ?? false
@@ -103,7 +103,7 @@ extension ImportView {
                 hasCoverOptions: hasCoverOptions,
                 storageManaged: $storageManaged,
                 storagePinned: $storagePinned,
-                localArtwork: candidate.files.artwork
+                localArtwork: candidate.files.images
             ),
             callbacks: ImportSearchFlow.ConfirmationCallbacks(
                 onConfirmImport: {

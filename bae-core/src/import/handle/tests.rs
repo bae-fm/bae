@@ -947,21 +947,16 @@ fn seed_per_track_artist_override() {
 
 // ── ImportCandidateState reducer ────────────────────────────────────
 
-use crate::import::folder_scanner::{AudioContent, CategorizedFiles, InvalidReason};
+use crate::import::folder_scanner::{CategorizedFiles, InvalidReason};
 use crate::import::types::{ImportPhase, ImportProgress};
 use std::path::{Path, PathBuf};
 
 /// An empty file set — the reducer only reads a candidate's identity and
-/// grouping fields, never its files, so the audio content can be blank.
+/// grouping fields, never its files.
 fn empty_categorized() -> CategorizedFiles {
     CategorizedFiles {
-        audio: AudioContent::TrackFiles {
-            tracks: Vec::new(),
-            format_label: "FLAC".to_string(),
-        },
-        artwork: Vec::new(),
-        documents: Vec::new(),
-        unpaired_cue_sheets: Vec::new(),
+        files: Vec::new(),
+        format_label: "FLAC".to_string(),
     }
 }
 

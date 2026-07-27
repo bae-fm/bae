@@ -128,7 +128,6 @@ internal static class BridgeDisplay
         {
             BridgeInvalidReason.CorruptAudioFile file => Loc.Core(key, "path", file.Path),
             BridgeInvalidReason.CorruptImage image => Loc.Core(key, "path", image.Path),
-            BridgeInvalidReason.CueParseFailed cue => Loc.Core(key, "path", cue.Path),
             _ => Loc.Core(key),
         };
     }

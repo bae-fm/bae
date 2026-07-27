@@ -26,6 +26,7 @@ struct ImportFilePane: View {
                 audioSection
                 imagesSection
                 documentsSection
+                otherSection
             }
             .padding(.horizontal, 16)
             .padding(.top, 14)
@@ -36,32 +37,35 @@ struct ImportFilePane: View {
 
     // MARK: - Sections (V4 — accent rules)
 
+    /// Every audio file, each carrying the sheets that describe it. Sheets whose
+    /// `FILE` directive named audio that isn't here follow, on their own — the
+    /// folder still imports, and the binding is the open question.
     @ViewBuilder
     private var audioSection: some View {
         accentSection("Audio") {
-            switch files.audio {
-            case .cueFlacPairs(let pairs):
-                VStack(spacing: 8) {
-                    ForEach(Array(pairs.enumerated()), id: \.offset) {
-                        _,
-                        pair in
-                        CueFlacPairRow(
-                            pair: pair,
-                            previewingPath: previewingPath,
-                            onPreviewAudio: onPreviewAudio,
-                            onOpenDocument: onOpenDocument,
-                            onError: onError,
-                        )
-                        .accentRail(isActive: true)
-                    }
+            VStack(spacing: 8) {
+                ForEach(files.audioFiles, id: \.file.name) { audio in
+                    let sheets = files.sheets(describing: audio.file.name)
+                    AudioFileRow(
+                        file: audio.file,
+                        sheets: sheets,
+                        previewingPath: previewingPath,
+                        onPreviewAudio: onPreviewAudio,
+                        onOpenDocument: onOpenDocument,
+                        onError: onError,
+                    )
+                    .accentRail(
+                        isActive: !sheets.isEmpty
+                            || previewingPath == audio.file.localPath
+                    )
                 }
-            case .trackFiles(let files):
-                VStack(spacing: 4) {
-                    ForEach(Array(files.enumerated()), id: \.offset) {
-                        _,
-                        file in
-                        trackRow(file)
-                    }
+                ForEach(files.unboundTrackSheets, id: \.file.name) { sheet in
+                    TrackSheetRow(
+                        sheet: sheet,
+                        onOpenDocument: onOpenDocument,
+                        onError: onError,
+                    )
+                    .accentRail(isActive: false)
                 }
             }
         }
@@ -69,14 +73,15 @@ struct ImportFilePane: View {
 
     @ViewBuilder
     private var imagesSection: some View {
-        if !files.artwork.isEmpty {
+        let images = files.images
+        if !images.isEmpty {
             accentSection("Images") {
                 LazyVGrid(
                     columns: [GridItem(.adaptive(minimum: 100), spacing: 8)],
                     spacing: 8
                 ) {
                     ForEach(
-                        Array(files.artwork.enumerated()),
+                        Array(images.enumerated()),
                         id: \.offset
                     ) { index, file in
                         artworkCell(file, index: index)
@@ -88,14 +93,30 @@ struct ImportFilePane: View {
 
     @ViewBuilder
     private var documentsSection: some View {
-        if !files.documents.isEmpty {
+        let documents = files.documents
+        if !documents.isEmpty {
             accentSection("Documents") {
                 VStack(spacing: 4) {
-                    ForEach(
-                        Array(files.documents.enumerated()),
-                        id: \.offset
-                    ) { _, file in
-                        documentRow(file)
+                    ForEach(documents, id: \.file.name) { file in
+                        documentRow(file.file)
+                    }
+                }
+            }
+        }
+    }
+
+    /// Files the scan doesn't recognize. The folder is the release, so these
+    /// import and upload with the rest — listed here so a folder's contents are
+    /// never silently partial.
+    @ViewBuilder
+    private var otherSection: some View {
+        let other = files.other
+        if !other.isEmpty {
+            accentSection("Other files") {
+                VStack(spacing: 4) {
+                    ForEach(other, id: \.file.name) { file in
+                        fileRow(icon: "doc", file: file.file)
+                            .foregroundStyle(.secondary)
                     }
                 }
             }
@@ -130,7 +151,7 @@ struct ImportFilePane: View {
 
 extension ImportFilePane {
     /// 1:1 thumbnail. Tap opens the gallery at this index.
-    fileprivate func artworkCell(_ file: BridgeArtworkFile, index: Int)
+    fileprivate func artworkCell(_ file: BridgeCandidateFile, index: Int)
         -> some View
     {
         Color.clear
@@ -154,25 +175,9 @@ extension ImportFilePane {
             )
     }
 
-    fileprivate func trackRow(_ file: BridgeFileInfo) -> some View {
-        let isPreviewing = previewingPath == file.localPath
-        return Button {
-            handleTap(file: file, kind: .audio)
-        } label: {
-            fileRow(
-                icon: isPreviewing ? "speaker.wave.2.fill" : "waveform",
-                file: file,
-                highlighted: isPreviewing,
-            )
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accentRail(isActive: isPreviewing)
-    }
-
     fileprivate func documentRow(_ file: BridgeFileInfo) -> some View {
         Button {
-            handleTap(file: file, kind: .document)
+            openDocument(file)
         } label: {
             fileRow(
                 icon: "doc.text",
@@ -232,24 +237,18 @@ extension ImportFilePane {
         }
     }
 
-    fileprivate enum FileKind { case audio, document }
-
-    fileprivate func handleTap(file: BridgeFileInfo, kind: FileKind) {
-        switch kind {
-        case .audio: onPreviewAudio(file.localPath)
-        case .document:
-            do {
-                let text = try readTextFile(path: file.localPath)
-                onOpenDocument(file.name, text)
-            }
-            catch {
-                onError(
-                    String(
-                        localized:
-                            "Could not read \(file.name): \(error.displayLine)"
-                    )
+    fileprivate func openDocument(_ file: BridgeFileInfo) {
+        do {
+            let text = try readTextFile(path: file.localPath)
+            onOpenDocument(file.name, text)
+        }
+        catch {
+            onError(
+                String(
+                    localized:
+                        "Could not read \(file.name): \(error.displayLine)"
                 )
-            }
+            )
         }
     }
 }

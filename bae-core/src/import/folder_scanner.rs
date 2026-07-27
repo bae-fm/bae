@@ -8,7 +8,7 @@ use super::file_validation;
 use crate::cue_flac::parse_cue_sheet;
 use crate::util::content_type_hint::ContentTypeHint;
 use sha2::{Digest, Sha256};
-use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
@@ -66,131 +66,210 @@ impl ScannedFile {
     }
 }
 
-/// A CUE/audio pair detected during folder scanning.
-///
-/// The CUE is on disk and parsed during the scan.
+/// The job the scan proposes for a file. Every file the scan finds carries
+/// exactly one: the scan *proposes*, so nothing is discarded and no folder is
+/// refused because a filename disagrees with a sheet.
 #[derive(Debug, Clone)]
-pub struct ScannedCueFlacPair {
-    /// The CUE sheet file
-    pub cue_file: ScannedFile,
-    /// The first audio file referenced by the CUE sheet.
-    pub audio_file: ScannedFile,
-    /// Every audio file referenced by the CUE sheet, in CUE reference order.
-    pub audio_files: Vec<ScannedFile>,
-    /// Parsed CUE sheet.
-    pub cue_sheet: crate::cue_flac::CueSheet,
-    /// Combined size of CUE + referenced audio files.
-    pub total_size: u64,
+pub enum FileRole {
+    /// Playable audio.
+    Audio,
+    /// A track sheet (CUE) that parsed, carrying its parsed sheet and what its
+    /// `FILE` directive resolved to.
+    TrackSheet {
+        sheet: crate::cue_flac::CueSheet,
+        binding: SheetBinding,
+    },
+    /// The image that leads the release, proposed from the conventional cover
+    /// filenames. At most one per folder.
+    Cover,
+    /// Any other image.
+    Artwork,
+    /// Readable evidence: a rip log, a tracklist, a playlist, or a CUE that
+    /// could not be parsed as a sheet.
+    Document,
+    /// In the folder and carried with the release, unrecognized: a scene
+    /// sidecar (`.nfo`, `.sfv`, `.md5`), a stray video, a file with no
+    /// extension. The folder is the release, so it imports, uploads, and comes
+    /// back on export like everything else.
+    Other,
 }
 
-/// The audio content type of a release - mutually exclusive
-#[derive(Debug, Clone)]
-pub enum AudioContent {
-    /// One or more CUE+audio pairs (multi-disc releases can have multiple).
-    /// `format_label` is e.g. "CUE+FLAC", "CUE+APE".
-    CueFlacPairs {
-        pairs: Vec<ScannedCueFlacPair>,
-        format_label: String,
-    },
-    /// Individual track files (file-per-track releases).
-    /// `format_label` is e.g. "FLAC", "MP3", "APE".
-    TrackFiles {
-        tracks: Vec<ScannedFile>,
-        format_label: String,
-    },
+/// What a track sheet's `FILE` directive resolved to. The scan proposes it; a
+/// sheet that describes nothing is a question for the user, never a verdict on
+/// the folder.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum SheetBinding {
+    /// Bound to the audio named by this [`ScannedFile::relative_path`].
+    Describes { file_id: String },
+    /// The directive named audio that is not in this folder, named several and
+    /// only some resolved, or the sheet names none at all.
+    Unresolved,
+    /// The directive resolved, but bae can't carve tracks out of that
+    /// container: the codec doesn't back single-file CUE playback. The audio
+    /// still imports, as one track. Carries the file it named and the probed
+    /// codec, so the pane can say which file and why, and so the editor that
+    /// makes this binding a user decision can refuse the same pairing up front
+    /// instead of failing at commit.
+    RefusedCodec { file_id: String, codec: String },
 }
 
-impl AudioContent {
-    /// Total track count across the release.
-    pub fn track_count(&self) -> u32 {
+impl SheetBinding {
+    /// The audio this sheet describes — only a resolved, playable binding.
+    pub fn describes(&self) -> Option<&str> {
         match self {
-            Self::CueFlacPairs { pairs, .. } => pairs
-                .iter()
-                .map(|p| p.cue_sheet.playable_track_count() as u32)
-                .sum::<u32>(),
-            Self::TrackFiles { tracks, .. } => tracks.len() as u32,
+            Self::Describes { file_id } => Some(file_id),
+            Self::Unresolved | Self::RefusedCodec { .. } => None,
         }
     }
-
-    pub fn format_label(&self) -> &str {
-        match self {
-            Self::CueFlacPairs { format_label, .. } => format_label,
-            Self::TrackFiles { format_label, .. } => format_label,
-        }
-    }
 }
 
-/// Files from a release, pre-categorized by type
+/// A file the scan found, and the role it proposed for it.
+#[derive(Debug, Clone)]
+pub struct CandidateFile {
+    pub file: ScannedFile,
+    pub role: FileRole,
+}
+
+/// A track sheet the scan parsed, with whatever its `FILE` directive resolved to.
+#[derive(Debug, Clone, Copy)]
+pub struct TrackSheetFile<'a> {
+    pub file: &'a ScannedFile,
+    pub sheet: &'a crate::cue_flac::CueSheet,
+    pub binding: &'a SheetBinding,
+}
+
+/// A track sheet whose `FILE` directive resolved, paired with the audio it
+/// describes — the unit the track mapper and the disc-ID computer consume.
+#[derive(Debug, Clone, Copy)]
+pub struct BoundTrackSheet<'a> {
+    pub file: &'a ScannedFile,
+    pub sheet: &'a crate::cue_flac::CueSheet,
+    pub audio: &'a ScannedFile,
+}
+
+/// A release's files, each carrying the role the scan proposed for it.
 #[derive(Debug, Clone)]
 pub struct CategorizedFiles {
-    /// Audio content - either CUE/FLAC pairs or individual track files
-    pub audio: AudioContent,
-    /// Artwork/image files (.jpg, .png, etc.)
-    pub artwork: Vec<ScannedFile>,
-    /// Document files (.log, .txt, .m3u) - CUE files in pairs are NOT included here
-    pub documents: Vec<ScannedFile>,
-    /// Parsed sheets for CUEs that aren't part of a CUE+audio pair. Paired CUEs
-    /// carry their sheet on the pair itself. The CUE is still listed in
-    /// `documents`; this is the parsed-signal channel so
-    /// catalog/performer/title harvesting reads parsed data instead of
-    /// re-reading the file.
-    pub unpaired_cue_sheets: Vec<(PathBuf, crate::cue_flac::CueSheet)>,
+    /// Every file under the release root, in `relative_path` order, each with
+    /// the role the scan proposed. All of them are the release's — see
+    /// [`Self::release_files`].
+    pub files: Vec<CandidateFile>,
+    /// e.g. "CUE+FLAC", "CUE+APE", "FLAC", "MP3". Computed during the scan
+    /// because a bound sheet's codec comes from an FFmpeg probe, never from the
+    /// extension.
+    pub format_label: String,
 }
 
 impl CategorizedFiles {
-    /// This release's audio file paths, in the order the flattened pipeline
-    /// produces. A CUE-backed release yields only the audio files each pair
-    /// references (the CUE itself carries no embedded tags); a per-track release
-    /// yields each track in scan order. The Unknown import path reads embedded
-    /// cover art from these, and the signal fast pass probes their durations.
-    pub fn audio_paths(&self) -> Vec<PathBuf> {
-        let mut paths = Vec::new();
-        match &self.audio {
-            AudioContent::CueFlacPairs { pairs, .. } => {
-                for pair in pairs {
-                    paths.extend(pair.audio_files.iter().map(|file| file.path.clone()));
-                }
-            }
-            AudioContent::TrackFiles { tracks, .. } => {
-                for f in tracks {
-                    paths.push(f.path.clone());
-                }
-            }
-        }
-        paths
+    /// The release's audio files, in `relative_path` order.
+    pub fn audio(&self) -> impl Iterator<Item = &ScannedFile> {
+        self.files
+            .iter()
+            .filter(|entry| matches!(entry.role, FileRole::Audio))
+            .map(|entry| &entry.file)
     }
 
-    /// Stable content fingerprint of this release's file structure: a SHA-256 over
-    /// every audio, artwork, and document file's relative path + size, sorted so
-    /// the digest is independent of discovery order. Relative (not absolute)
-    /// paths make it location-independent — the same rip hashes identically under
-    /// any parent folder. Drives "already imported?" detection and selects the
-    /// overwrite target on re-import.
+    /// The release's images — the proposed cover and everything else.
+    pub fn artwork(&self) -> impl Iterator<Item = &ScannedFile> {
+        self.files
+            .iter()
+            .filter(|entry| matches!(entry.role, FileRole::Cover | FileRole::Artwork))
+            .map(|entry| &entry.file)
+    }
+
+    /// The release's readable evidence files.
+    pub fn documents(&self) -> impl Iterator<Item = &ScannedFile> {
+        self.files
+            .iter()
+            .filter(|entry| matches!(entry.role, FileRole::Document))
+            .map(|entry| &entry.file)
+    }
+
+    /// Every file the release carries, in `relative_path` order — the rows the
+    /// import writes, the blobs coven uploads, and the set
+    /// [`Self::content_hash`] covers. The folder is the release: what you
+    /// import is what is stored and what comes back on export, so nothing the
+    /// walk keeps is left behind.
     ///
-    /// Paired CUE files live on `audio`, unpaired ones in `documents`; together
-    /// with `artwork` that's every on-disk file, each counted once.
-    /// `unpaired_cue_sheets` is parsed-signal data, not a file — its CUE is
-    /// already covered as a document — so it's excluded.
+    /// One definition, read by both the payload and the hash. Computing them
+    /// from parallel lists would let them drift, and a hash that stopped
+    /// describing the payload is the bug that duplicates a release instead of
+    /// replacing it.
+    pub fn release_files(&self) -> impl Iterator<Item = &ScannedFile> {
+        self.files.iter().map(|entry| &entry.file)
+    }
+
+    /// Every parsed track sheet, bound or not.
+    pub fn track_sheets(&self) -> impl Iterator<Item = TrackSheetFile<'_>> {
+        self.files.iter().filter_map(|entry| match &entry.role {
+            FileRole::TrackSheet { sheet, binding } => Some(TrackSheetFile {
+                file: &entry.file,
+                sheet,
+                binding,
+            }),
+            _ => None,
+        })
+    }
+
+    /// The track sheets whose `FILE` directive resolved, each with the audio it
+    /// describes, in the sheets' `relative_path` order.
+    pub fn bound_sheets(&self) -> Vec<BoundTrackSheet<'_>> {
+        self.track_sheets()
+            .filter_map(|sheet| {
+                let describes = sheet.binding.describes()?;
+                let audio = self.audio().find(|file| file.relative_path == describes)?;
+                Some(BoundTrackSheet {
+                    file: sheet.file,
+                    sheet: sheet.sheet,
+                    audio,
+                })
+            })
+            .collect()
+    }
+
+    /// Total track count across the release: the tracks the bound sheets carve,
+    /// or — with no sheet bound — one per audio file.
+    pub fn track_count(&self) -> u32 {
+        let bound = self.bound_sheets();
+        if bound.is_empty() {
+            self.audio().count() as u32
+        } else {
+            bound
+                .iter()
+                .map(|bound| bound.sheet.playable_track_count() as u32)
+                .sum()
+        }
+    }
+
+    /// This release's audio file paths, in `relative_path` order. The Unknown
+    /// import path reads embedded cover art from these, and the signal fast pass
+    /// probes their durations.
+    pub fn audio_paths(&self) -> Vec<PathBuf> {
+        self.audio().map(|file| file.path.clone()).collect()
+    }
+
+    /// Stable content fingerprint of this release's file structure: a SHA-256
+    /// over the relative path + size of every file in [`Self::release_files`],
+    /// sorted so the digest is independent of discovery order. Relative (not
+    /// absolute) paths make it location-independent — the same rip hashes
+    /// identically under any parent folder. Drives "already imported?"
+    /// detection and selects the overwrite target on re-import.
+    ///
+    /// It hashes exactly what the release carries: same iterator as the
+    /// payload, so the fingerprint cannot describe a different set of files
+    /// than the one that gets stored.
+    ///
+    /// It hashes **files**, never roles. Roles become user decisions, so a
+    /// hash that moved when a role changed would orphan the derived state keyed
+    /// by it on every edit. **For whoever makes roles editable:** if a role can
+    /// exclude a file from the release, this stops holding — decide
+    /// deliberately whether an excluded file leaves the payload, and therefore
+    /// whether this hash moves for it. It cannot be both.
     pub fn content_hash(&self) -> String {
-        let mut entries: Vec<(&str, u64)> = Vec::new();
-        match &self.audio {
-            AudioContent::CueFlacPairs { pairs, .. } => {
-                for pair in pairs {
-                    entries.push((&pair.cue_file.relative_path, pair.cue_file.size));
-                    for audio_file in &pair.audio_files {
-                        entries.push((&audio_file.relative_path, audio_file.size));
-                    }
-                }
-            }
-            AudioContent::TrackFiles { tracks, .. } => {
-                for track in tracks {
-                    entries.push((&track.relative_path, track.size));
-                }
-            }
-        }
-        for file in self.artwork.iter().chain(&self.documents) {
-            entries.push((&file.relative_path, file.size));
-        }
+        let mut entries: Vec<(&str, u64)> = self
+            .release_files()
+            .map(|file| (file.relative_path.as_str(), file.size))
+            .collect();
         entries.sort_unstable();
 
         let mut hasher = Sha256::new();
@@ -207,20 +286,16 @@ impl CategorizedFiles {
 /// Why a candidate folder failed validation. The `Display` text is the terse
 /// internal form (used by the import-commit error channel); the UI localizes the
 /// typed variant for the Skipped tab.
+///
+/// Only real defects invalidate. A sheet that disagrees with what is on disk —
+/// naming absent audio, failing to parse, or naming a codec bae can't play from
+/// a single-file CUE — leaves the sheet unbound and the folder importable.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 pub enum InvalidReason {
     #[error("corrupt or zero-byte audio file: {path}")]
     CorruptAudioFile { path: String },
     #[error("corrupt or zero-byte image: {path}")]
     CorruptImage { path: String },
-    #[error("CUE references a missing audio file")]
-    CueMissingAudio,
-    #[error("CUE could not be parsed: {path}")]
-    CueParseFailed { path: String },
-    #[error("CUE layout is not supported")]
-    CueUnsupportedLayout,
-    #[error("CUE audio codec {codec} is not supported for single-file CUE playback")]
-    CueUnsupportedCodec { codec: String },
     #[error("no valid audio files")]
     NoValidAudio,
 }
@@ -279,7 +354,7 @@ pub struct FolderCandidate {
 
 impl FolderCandidate {
     pub fn track_count(&self) -> u32 {
-        self.files.audio.track_count()
+        self.files.track_count()
     }
 }
 
@@ -499,14 +574,14 @@ pub fn is_audio_file(path: &Path) -> bool {
         .unwrap_or(false)
 }
 
-/// A CUE-paired audio file's probed codec identity.
+/// A track sheet's audio file, as FFmpeg probes it.
 enum CueCodecLabel {
     /// A codec bae can play back from a single-file CUE. Carries the
     /// `CUE+<codec>` label component (e.g. "FLAC", "APE").
     Supported(String),
     /// A readable codec that can't back single-file CUE playback (e.g. MP3,
-    /// Vorbis). Carries the codec's display name for the invalid-candidate
-    /// reason so the folder surfaces as skipped instead of aborting the scan.
+    /// Vorbis). Carries the codec's display name for the log line: the binding
+    /// is refused with the codec named, and the audio imports as one track.
     Unsupported(String),
     /// The file cleared the header-only magic check but FFmpeg can't identify a
     /// playable stream in it — a download truncated after the header, or
@@ -515,14 +590,14 @@ enum CueCodecLabel {
     Unprobeable,
 }
 
-/// Codec identity for a CUE-paired audio file, for the `CUE+<codec>` format
+/// Codec identity for a track sheet's audio file, for the `CUE+<codec>` format
 /// label. The label comes from FFmpeg's probe, never from the extension, because
 /// containers such as MP4, Ogg, WAV, and AIFF don't prove the codec by filename.
 ///
 /// `Err` is reserved for a non-UTF-8 path (which FFmpeg can't open at all). A
-/// readable file whose codec bae can't play (`Ok(Unsupported)`) or that FFmpeg
-/// can't probe (`Ok(Unprobeable)`) is not an error — each surfaces its folder as
-/// an invalid candidate without aborting the whole watched-root walk.
+/// readable file whose codec bae can't play (`Ok(Unsupported)`) costs the sheet
+/// its binding; one FFmpeg can't probe (`Ok(Unprobeable)`) is corrupt audio and
+/// surfaces its folder as invalid, without aborting the watched-root walk.
 fn cue_pair_codec_label(path: &Path) -> Result<CueCodecLabel, FolderScanError> {
     let path_str = path.to_str().ok_or_else(|| {
         FolderScanError::Other(format!("CUE audio path is not UTF-8: {}", path.display()))
@@ -749,18 +824,45 @@ fn tree_is_leaf_directory(tree: &FileTree, dir: &Path) -> bool {
 
 /// The result of categorizing a leaf folder's files: a valid release, or an
 /// invalid one carrying the reason it failed validation (corrupt/zero-byte
-/// audio, corrupt image, CUE referencing missing audio). `Err` is reserved for
-/// genuine I/O faults, which are not the same as a failed-validation leaf.
+/// audio, corrupt image, no audio at all). `Err` is reserved for genuine I/O
+/// faults, which are not the same as a failed-validation leaf.
 #[derive(Debug)]
 enum CategorizeOutcome {
     Valid(CategorizedFiles),
     Invalid(InvalidReason),
 }
 
-#[derive(Debug, Clone, Copy)]
-struct DetectedCueAudioPair {
-    cue_index: usize,
-    audio_index: usize,
+/// What the extension says a file is, before the CUE parse and the
+/// `FILE`-directive resolution settle the roles.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ProposedRole {
+    Audio,
+    Cue,
+    Image,
+    Document,
+    Other,
+}
+
+/// Filename stems that conventionally name a release's front cover. The scan
+/// proposes the first image matching one of these as the cover; every other
+/// image is artwork.
+const COVER_STEMS: &[&str] = &[
+    "cover",
+    "front",
+    "folder",
+    "frontcover",
+    "front cover",
+    "albumart",
+    "album art",
+];
+
+/// Whether an image's filename stem conventionally names a front cover.
+fn is_cover_name(path: &Path) -> bool {
+    let Some(stem) = path.file_stem().and_then(|s| s.to_str()) else {
+        return false;
+    };
+    let stem = stem.trim().to_lowercase();
+    COVER_STEMS.iter().any(|candidate| *candidate == stem)
 }
 
 /// Shorthand for a failed-validation leaf carrying `reason`.
@@ -778,18 +880,18 @@ fn cue_parent_dir(cue_path: &Path) -> Result<&Path, FolderScanError> {
 }
 
 /// Categorize a release root's files from a `FileTree`. `fs_root` is the folder
-/// being imported — validation reads its actual bytes from disk. Returns
-/// `Invalid(reason)` when the folder has audio but fails validation, so the
-/// caller can surface why it can't be imported.
+/// being imported — validation reads its actual bytes from disk.
+///
+/// Every file gets exactly one role, and the roles are *proposals*: a sheet
+/// whose `FILE` directive names audio that is not here simply stays unbound,
+/// and a `.cue` that will not parse is a document. Only a real defect —
+/// unreadable audio or an unreadable image — returns `Invalid(reason)`.
 fn categorize_files_from_tree(
     tree: &FileTree,
     release_root: &Path,
     fs_root: &Path,
 ) -> Result<CategorizeOutcome, FolderScanError> {
-    let mut all_audio: Vec<ScannedFile> = Vec::new();
-    let mut all_cue: Vec<ScannedFile> = Vec::new();
-    let mut artwork: Vec<ScannedFile> = Vec::new();
-    let mut documents: Vec<ScannedFile> = Vec::new();
+    let mut proposed: Vec<(ScannedFile, ProposedRole)> = Vec::new();
 
     for entry in tree.all_files_under(release_root) {
         let relative_from_release = if release_root.as_os_str().is_empty() {
@@ -815,7 +917,7 @@ fn categorize_files_from_tree(
         // The absolute path is fs_root + entry.path.
         let absolute_path = fs_root.join(&entry.path);
 
-        if is_audio_file(&entry.path) {
+        let role = if is_audio_file(&entry.path) {
             // Ok(false) is corruption (the candidate becomes Invalid); Err is a
             // genuine I/O fault (file vanished, permissions, flaky network
             // mount) — surface it rather than mis-label a system error as
@@ -831,18 +933,9 @@ fn categorize_files_from_tree(
                     path: relative_path.to_string(),
                 });
             }
-
-            all_audio.push(ScannedFile::new(
-                absolute_path.clone(),
-                relative_path,
-                entry.size,
-            ));
+            ProposedRole::Audio
         } else if is_cue_file(&entry.path) {
-            all_cue.push(ScannedFile::new(
-                absolute_path.clone(),
-                relative_path,
-                entry.size,
-            ));
+            ProposedRole::Cue
         } else if is_image_file(&entry.path) {
             // As with audio: Ok(false) is corruption, Err is a real I/O fault.
             let valid = file_validation::is_valid_image(&absolute_path).map_err(|e| {
@@ -856,206 +949,189 @@ fn categorize_files_from_tree(
                     path: relative_path.to_string(),
                 });
             }
-
-            artwork.push(ScannedFile::new(
-                absolute_path.clone(),
-                relative_path,
-                entry.size,
-            ));
+            ProposedRole::Image
         } else if is_document_file(&entry.path) {
-            documents.push(ScannedFile::new(absolute_path, relative_path, entry.size));
-        }
-        // Other file types are ignored
+            ProposedRole::Document
+        } else {
+            // Unrecognized, and carried anyway — the folder is the release.
+            ProposedRole::Other
+        };
+
+        proposed.push((
+            ScannedFile::new(absolute_path, relative_path, entry.size),
+            role,
+        ));
     }
 
-    // Parse every CUE exactly once. A malformed sheet invalidates only this
-    // candidate leaf; the watched root scan keeps walking siblings.
-    let mut parsed_cues: HashMap<PathBuf, crate::cue_flac::CueSheet> = HashMap::new();
-    for cue in &all_cue {
-        match parse_cue_sheet(&cue.path) {
+    // One order for everything downstream: the release's own file order.
+    proposed.sort_by(|a, b| a.0.relative_path.cmp(&b.0.relative_path));
+
+    // Parse every CUE exactly once. A sheet that will not parse is not a sheet;
+    // it stays a document, and the folder imports without it.
+    let mut sheets: HashMap<usize, crate::cue_flac::CueSheet> = HashMap::new();
+    for (index, (file, role)) in proposed.iter_mut().enumerate() {
+        if *role != ProposedRole::Cue {
+            continue;
+        }
+        match parse_cue_sheet(&file.path) {
             Ok(sheet) => {
-                parsed_cues.insert(cue.path.clone(), sheet);
+                sheets.insert(index, sheet);
             }
             Err(error) => {
                 info!(
-                    "Invalid candidate: failed to parse CUE {:?}: {error}",
-                    cue.path
+                    "CUE {:?} did not parse ({error}); it stays a document",
+                    file.path
                 );
-                return invalid(InvalidReason::CueParseFailed {
-                    path: cue.relative_path.clone(),
-                });
+                *role = ProposedRole::Document;
             }
         }
     }
 
-    // Detect CUE-backed releases by the CUE's own FILE directives. Every
-    // referenced audio file must exist in the CUE's directory.
-    let audio_by_path: HashMap<PathBuf, usize> = all_audio
+    // Resolve each sheet's `FILE` directives literally inside the sheet's own
+    // directory. A sheet binds only when every reference resolves — a partial
+    // layout describes audio that isn't reachable, so it is no better than none
+    // — and `describes` names the first reference, the audio the sheet leads
+    // with. A miss is a question for the user, not a verdict on the folder.
+    let audio_by_path: HashMap<&Path, &str> = proposed
         .iter()
-        .enumerate()
-        .map(|(index, audio)| (audio.path.clone(), index))
+        .filter(|(_, role)| *role == ProposedRole::Audio)
+        .map(|(file, _)| (file.path.as_path(), file.relative_path.as_str()))
         .collect();
-    let detected_pairs: Vec<DetectedCueAudioPair> = all_cue
-        .iter()
-        .enumerate()
-        .map(|(cue_index, cue)| {
-            let sheet = parsed_cues
-                .get(&cue.path)
-                .expect("parsed_cues is populated for every CUE");
-            let file_references = sheet.audio_file_references();
-            if file_references.is_empty() {
-                return Ok(None);
+    let mut bindings: BTreeMap<usize, SheetBinding> = BTreeMap::new();
+    for (index, sheet) in &sheets {
+        let cue_file = &proposed[*index].0;
+        let cue_dir = cue_parent_dir(&cue_file.path)?;
+        let references = sheet.audio_file_references();
+        if references.is_empty() {
+            info!(
+                "CUE {:?} names no audio file; it stays unbound",
+                cue_file.path
+            );
+            bindings.insert(*index, SheetBinding::Unresolved);
+            continue;
+        }
+        let resolved: Option<Vec<&str>> = references
+            .iter()
+            .map(|reference| {
+                audio_by_path
+                    .get(cue_dir.join(reference).as_path())
+                    .copied()
+            })
+            .collect();
+        let binding = match resolved {
+            Some(resolved) => SheetBinding::Describes {
+                file_id: resolved[0].to_string(),
+            },
+            None => {
+                info!(
+                    "CUE {:?} names audio that is not here; it stays unbound",
+                    cue_file.path
+                );
+                SheetBinding::Unresolved
             }
-            let cue_dir = cue_parent_dir(&cue.path)?;
-            let first_audio_path = cue_dir.join(file_references[0]);
-            Ok(audio_by_path
-                .get(&first_audio_path)
-                .map(|audio_index| DetectedCueAudioPair {
-                    cue_index,
-                    audio_index: *audio_index,
-                }))
-        })
-        .collect::<Result<Vec<_>, FolderScanError>>()?
-        .into_iter()
-        .flatten()
-        .collect();
-    let paired_cue_indices: HashSet<usize> =
-        detected_pairs.iter().map(|pair| pair.cue_index).collect();
+        };
+        bindings.insert(*index, binding);
+    }
 
-    // Every CUE FILE reference is part of the disc layout. If any referenced
-    // audio is missing, refuse the candidate rather than import a release whose
-    // layout points at absent audio.
-    for (cue_index, cue) in all_cue.iter().enumerate() {
-        let Some(cue_dir) = cue.path.parent() else {
+    // What a resolved sheet's audio actually is, probed. A codec bae can't play
+    // from a single-file CUE costs the sheet its binding — the audio still
+    // imports, as one track — and the refusal keeps the codec so the pane can
+    // say why. Audio FFmpeg can't read at all is a real defect.
+    let mut codec_label: Option<String> = None;
+    for (index, binding) in bindings.iter_mut() {
+        let SheetBinding::Describes { file_id } = binding else {
             continue;
         };
-
-        let cue_sheet = parsed_cues
-            .get(&cue.path)
-            .expect("parsed_cues is populated for every CUE");
-        let unique_refs: HashSet<&str> = cue_sheet.audio_file_references().into_iter().collect();
-        let references_missing = unique_refs.iter().any(|name| !cue_dir.join(name).exists());
-        if references_missing {
-            info!(
-                "Invalid candidate: CUE {:?} references missing audio",
-                cue.path
-            );
-            return invalid(InvalidReason::CueMissingAudio);
-        }
-
-        if paired_cue_indices.contains(&cue_index) {
-            continue;
-        }
-    }
-
-    let (audio, unpaired_cue_sheets) = if !detected_pairs.is_empty() {
-        let mut pairs = Vec::new();
-        let mut parsed_cues = parsed_cues;
-
-        for pair in detected_pairs {
-            let cue_file = all_cue[pair.cue_index].clone();
-            let audio_file = all_audio[pair.audio_index].clone();
-
-            let cue_sheet = parsed_cues
-                .remove(&cue_file.path)
-                .expect("detected CUE pair has a parsed CUE sheet");
-
-            let cue_dir = cue_parent_dir(&cue_file.path)?;
-            let mut audio_files = Vec::new();
-            let mut seen = HashSet::new();
-            for reference in cue_sheet.audio_file_references() {
-                let audio_path = cue_dir.join(reference);
-                let audio_index = audio_by_path.get(&audio_path).ok_or_else(|| {
-                    FolderScanError::Other(format!(
-                        "CUE reference missing after validation: {reference}"
-                    ))
-                })?;
-                if seen.insert(*audio_index) {
-                    audio_files.push(all_audio[*audio_index].clone());
-                }
+        let audio = proposed
+            .iter()
+            .find(|(file, _)| &file.relative_path == file_id)
+            .map(|(file, _)| file)
+            .expect("a binding names a file the scan found");
+        match cue_pair_codec_label(&audio.path)? {
+            CueCodecLabel::Supported(label) => {
+                codec_label.get_or_insert(label);
             }
-            if audio_files.is_empty() {
-                return invalid(InvalidReason::CueUnsupportedLayout);
-            }
-
-            let total_size = cue_file.size + audio_files.iter().map(|file| file.size).sum::<u64>();
-            pairs.push(ScannedCueFlacPair {
-                cue_file,
-                audio_file,
-                audio_files,
-                cue_sheet,
-                total_size,
-            });
-        }
-
-        // CUE files with no playable audio references stay as documents.
-        for (cue_index, cue) in all_cue.into_iter().enumerate() {
-            if !paired_cue_indices.contains(&cue_index) {
-                documents.push(cue);
-            }
-        }
-
-        pairs.sort_by(|a, b| a.cue_file.relative_path.cmp(&b.cue_file.relative_path));
-        let codec_label = match cue_pair_codec_label(&pairs[0].audio_file.path)? {
-            CueCodecLabel::Supported(label) => label,
             CueCodecLabel::Unsupported(codec) => {
                 info!(
-                    "Invalid candidate: CUE audio codec {codec} not supported for single-file CUE playback"
+                    "CUE {:?} names {codec} audio, which bae can't play from a single-file CUE; \
+                     the binding is refused and the audio imports as one track",
+                    proposed[*index].0.path
                 );
-                return invalid(InvalidReason::CueUnsupportedCodec { codec });
+                *binding = SheetBinding::RefusedCodec {
+                    file_id: std::mem::take(file_id),
+                    codec,
+                };
             }
             CueCodecLabel::Unprobeable => {
-                let path = pairs[0].audio_file.relative_path.clone();
+                let path = audio.relative_path.clone();
                 info!("Invalid candidate: CUE audio file could not be probed: {path}");
                 return invalid(InvalidReason::CorruptAudioFile { path });
             }
+        }
+    }
+
+    // One image leads the release: the first conventionally-named image at the
+    // release root, or — when the folder keeps its images in a subfolder — the
+    // first conventionally-named one anywhere. Sorting by relative path puts
+    // `Artwork/front.jpg` before `cover.jpg`, so taking the first match outright
+    // would let a nested image outrank the one sitting at the root.
+    let cover_index = proposed
+        .iter()
+        .position(|(file, role)| {
+            *role == ProposedRole::Image && is_cover_name(&file.path) && file.dir_prefix.is_none()
+        })
+        .or_else(|| {
+            proposed
+                .iter()
+                .position(|(file, role)| *role == ProposedRole::Image && is_cover_name(&file.path))
+        });
+
+    let mut files: Vec<CandidateFile> = Vec::with_capacity(proposed.len());
+    for (index, (file, proposed_role)) in proposed.into_iter().enumerate() {
+        let role = match proposed_role {
+            ProposedRole::Audio => FileRole::Audio,
+            ProposedRole::Cue => FileRole::TrackSheet {
+                sheet: sheets
+                    .remove(&index)
+                    .expect("a file keeps the CUE role only when its sheet parsed"),
+                binding: bindings
+                    .remove(&index)
+                    .expect("every parsed sheet got a binding above"),
+            },
+            ProposedRole::Image if Some(index) == cover_index => FileRole::Cover,
+            ProposedRole::Image => FileRole::Artwork,
+            ProposedRole::Document => FileRole::Document,
+            ProposedRole::Other => FileRole::Other,
         };
-        let audio = AudioContent::CueFlacPairs {
-            pairs,
-            format_label: format!("CUE+{codec_label}"),
-        };
-        // Whatever's left in the map after pairs drained their entries are the
-        // unpaired CUEs (multi-FILE, aggregates) — keep their parsed sheets.
-        let mut unpaired: Vec<(PathBuf, crate::cue_flac::CueSheet)> =
-            parsed_cues.into_iter().collect();
-        unpaired.sort_by(|a, b| a.0.cmp(&b.0));
-        (audio, unpaired)
-    } else {
-        documents.extend(all_cue);
-        let mut tracks = all_audio;
-        tracks.sort_by(|a, b| a.relative_path.cmp(&b.relative_path));
-        let format_label = match tracks.first() {
-            Some(t) => t
+        files.push(CandidateFile { file, role });
+    }
+
+    // `CUE+<codec>` when a sheet is bound — the probed codec, never the
+    // extension. Otherwise the audio's own extension, which is what a
+    // file-per-track release is called.
+    let format_label = match codec_label {
+        Some(codec) => format!("CUE+{codec}"),
+        None => {
+            let Some(first_audio) = files
+                .iter()
+                .find(|entry| matches!(entry.role, FileRole::Audio))
+            else {
+                info!("Invalid candidate: no valid audio files after categorization");
+                return invalid(InvalidReason::NoValidAudio);
+            };
+            first_audio
+                .file
                 .path
                 .extension()
                 .and_then(|e| e.to_str())
                 .expect("Audio file must have an extension")
-                .to_uppercase(),
-            None => {
-                info!("Invalid candidate: no valid audio files after categorization");
-                return invalid(InvalidReason::NoValidAudio);
-            }
-        };
-        let audio = AudioContent::TrackFiles {
-            tracks,
-            format_label,
-        };
-        // No pairs detected, so every parsed CUE is unpaired (e.g. a multi-FILE
-        // CUE sitting alongside its per-track audio).
-        let mut unpaired: Vec<(PathBuf, crate::cue_flac::CueSheet)> =
-            parsed_cues.into_iter().collect();
-        unpaired.sort_by(|a, b| a.0.cmp(&b.0));
-        (audio, unpaired)
+                .to_uppercase()
+        }
     };
 
-    artwork.sort_by(|a, b| a.relative_path.cmp(&b.relative_path));
-    documents.sort_by(|a, b| a.relative_path.cmp(&b.relative_path));
-
     Ok(CategorizeOutcome::Valid(CategorizedFiles {
-        audio,
-        artwork,
-        documents,
-        unpaired_cue_sheets,
+        files,
+        format_label,
     }))
 }
 

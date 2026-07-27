@@ -13,12 +13,9 @@ extension BridgeInvalidReason {
             comment: ""
         )
         switch self {
-        case .corruptAudioFile(let path), .corruptImage(let path),
-            .cueParseFailed(let path):
+        case .corruptAudioFile(let path), .corruptImage(let path):
             return String(format: format, path)
-        case .cueUnsupportedCodec(let codec):
-            return String(format: format, codec)
-        case .cueMissingAudio, .cueUnsupportedLayout, .noValidAudio:
+        case .noValidAudio:
             return format
         }
     }

@@ -2331,7 +2331,7 @@ mod playback_state_load_tests {
 mod import_candidate_state_tests {
     use super::super::*;
     use crate::identify::{GroupKey, ResultProvenance, TerminalVerdict};
-    use crate::import::folder_scanner::{AudioContent, CategorizedFiles, ScannedFile};
+    use crate::import::folder_scanner::{CandidateFile, CategorizedFiles, FileRole, ScannedFile};
     use crate::import::search::MetadataResult;
     use coven::FixedClock;
     use std::path::PathBuf;
@@ -2359,20 +2359,18 @@ mod import_candidate_state_tests {
         (db, tmp)
     }
 
-    /// A folder of plain track files (no CUE) named `(relative_path, size)`.
+    /// A folder of plain track files (no track sheet) named
+    /// `(relative_path, size)`.
     fn track_files_candidate(files: &[(&str, u64)]) -> CategorizedFiles {
-        let tracks = files
-            .iter()
-            .map(|(name, size)| ScannedFile::new(PathBuf::from(*name), name.to_string(), *size))
-            .collect();
         CategorizedFiles {
-            audio: AudioContent::TrackFiles {
-                tracks,
-                format_label: "FLAC".to_string(),
-            },
-            artwork: vec![],
-            documents: vec![],
-            unpaired_cue_sheets: vec![],
+            files: files
+                .iter()
+                .map(|(name, size)| CandidateFile {
+                    file: ScannedFile::new(PathBuf::from(*name), name.to_string(), *size),
+                    role: FileRole::Audio,
+                })
+                .collect(),
+            format_label: "FLAC".to_string(),
         }
     }
 
@@ -2505,24 +2503,25 @@ mod import_candidate_state_tests {
         db.save_import_candidate_state(&row).await.unwrap();
 
         let at_new_location = CategorizedFiles {
-            audio: AudioContent::TrackFiles {
-                tracks: vec![
-                    ScannedFile::new(
+            files: vec![
+                CandidateFile {
+                    file: ScannedFile::new(
                         PathBuf::from("/music/New Location/Some Album/01 Track.flac"),
                         "01 Track.flac".to_string(),
                         123_456,
                     ),
-                    ScannedFile::new(
+                    role: FileRole::Audio,
+                },
+                CandidateFile {
+                    file: ScannedFile::new(
                         PathBuf::from("/music/New Location/Some Album/02 Track.flac"),
                         "02 Track.flac".to_string(),
                         234_567,
                     ),
-                ],
-                format_label: "FLAC".to_string(),
-            },
-            artwork: vec![],
-            documents: vec![],
-            unpaired_cue_sheets: vec![],
+                    role: FileRole::Audio,
+                },
+            ],
+            format_label: "FLAC".to_string(),
         };
         assert_eq!(
             hash,

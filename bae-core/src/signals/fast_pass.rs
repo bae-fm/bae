@@ -7,7 +7,7 @@ use super::candidate_text::{
     extract_folder_brackets, parse_filename_stem, strip_path_component, Source, SourcedLine,
 };
 use crate::import::discid::compute_discid_from_categorized;
-use crate::import::folder_scanner::{self, AudioContent, CategorizedFiles};
+use crate::import::folder_scanner::{self, CategorizedFiles};
 use crate::signals::{DiscIdSignal, SignalOrigin, SourcedValue};
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
@@ -78,26 +78,18 @@ fn probe_total_duration_ms(categorized: &CategorizedFiles) -> u64 {
 }
 
 /// CUE `CATALOG` payloads (the disc's UPC/EAN) from the folder's parsed sheets,
-/// paired and unpaired, deduped. These are barcode-lookup inputs, not
+/// bound and unbound, deduped. These are barcode-lookup inputs, not
 /// catalog-number filter values.
 fn cue_barcodes(categorized: &CategorizedFiles) -> Vec<SourcedValue> {
     let mut out: Vec<SourcedValue> = Vec::new();
     let mut seen: HashSet<String> = HashSet::new();
-    let mut consider = |catalog: &Option<String>| {
-        if let Some(value) = catalog {
+    for sheet in categorized.track_sheets() {
+        if let Some(value) = &sheet.sheet.catalog {
             let value = value.trim();
             if !value.is_empty() && seen.insert(value.to_string()) {
                 out.push(SourcedValue::new(value.to_string(), SignalOrigin::CueSheet));
             }
         }
-    };
-    if let AudioContent::CueFlacPairs { pairs, .. } = &categorized.audio {
-        for pair in pairs {
-            consider(&pair.cue_sheet.catalog);
-        }
-    }
-    for (_, sheet) in &categorized.unpaired_cue_sheets {
-        consider(&sheet.catalog);
     }
     out
 }
@@ -151,7 +143,7 @@ pub(super) fn gather_non_ocr_sources(folder: &Path) -> FastPass {
 
     // Disc ID, CUE-CATALOG barcodes, and the probed total all come off the same
     // parsed scan, no re-read and no second walk over the audio.
-    let track_count = categorized.audio.track_count();
+    let track_count = categorized.track_count();
     pass.probed_total_duration_ms = probe_total_duration_ms(&categorized);
     pass.disc_id = match compute_discid_from_categorized(&categorized) {
         Some(disc_id) => DiscIdSignal::Computed {
@@ -172,21 +164,10 @@ pub(super) fn gather_non_ocr_sources(folder: &Path) -> FastPass {
         }
     }
 
-    // PERFORMER / TITLE from the sheets the scan already parsed: a paired CUE
-    // carries its sheet; multi-FILE and aggregate CUEs land in
-    // `unpaired_cue_sheets`. No re-read, no second parser.
-    if let AudioContent::CueFlacPairs { pairs, .. } = &categorized.audio {
-        for pair in pairs {
-            for name in cue_sheet_names(&pair.cue_sheet) {
-                pass.lines.push(SourcedLine {
-                    source: Source::CueField,
-                    text: name,
-                });
-            }
-        }
-    }
-    for (_, sheet) in &categorized.unpaired_cue_sheets {
-        for name in cue_sheet_names(sheet) {
+    // PERFORMER / TITLE from every sheet the scan already parsed, bound or not.
+    // No re-read, no second parser.
+    for sheet in categorized.track_sheets() {
+        for name in cue_sheet_names(sheet.sheet) {
             pass.lines.push(SourcedLine {
                 source: Source::CueField,
                 text: name,
@@ -209,7 +190,7 @@ pub(super) fn gather_non_ocr_sources(folder: &Path) -> FastPass {
         }
     }
 
-    pass.artwork_paths = categorized.artwork.into_iter().map(|f| f.path).collect();
+    pass.artwork_paths = categorized.artwork().map(|f| f.path.clone()).collect();
 
     pass
 }
@@ -218,18 +199,16 @@ pub(super) fn gather_non_ocr_sources(folder: &Path) -> FastPass {
 ///
 /// Audio filenames are excluded — their stems are almost always track titles,
 /// which belong in a track-title pool, not the Artist / Album autocomplete one.
-/// CUE filenames are excluded because the sheet's `PERFORMER` / `TITLE` are
-/// already harvested as `CueField` lines, so the stem (`Album.cue` → `Album`)
-/// would only duplicate path-component signal at lower weight.
+/// Track-sheet filenames are excluded because the sheet's `PERFORMER` / `TITLE`
+/// are already harvested as `CueField` lines, so the stem (`Album.cue` →
+/// `Album`) would only duplicate path-component signal at lower weight. Ignored
+/// files carry no release signal at all.
 fn enumerate_filename_inputs(categorized: &CategorizedFiles) -> Vec<PathBuf> {
-    let mut out: Vec<PathBuf> = Vec::new();
-    for f in &categorized.artwork {
-        out.push(f.path.clone());
-    }
-    for f in &categorized.documents {
-        out.push(f.path.clone());
-    }
-    out
+    categorized
+        .artwork()
+        .chain(categorized.documents())
+        .map(|f| f.path.clone())
+        .collect()
 }
 
 /// Album- and track-level PERFORMER / TITLE values from an already-parsed CUE
@@ -258,8 +237,7 @@ fn cue_sheet_names(sheet: &crate::cue_flac::CueSheet) -> Vec<String> {
 /// content; `.cue` is harvested through its parsed sheet.
 fn text_file_paths(categorized: &CategorizedFiles) -> Vec<PathBuf> {
     categorized
-        .documents
-        .iter()
+        .documents()
         .filter(|f| has_ext(&f.path, "txt"))
         .map(|f| f.path.clone())
         .collect()
@@ -306,7 +284,7 @@ mod tests {
 
     #[test]
     fn enumerate_filename_inputs_skips_all_audio_and_cue() {
-        use crate::import::folder_scanner::{AudioContent, ScannedCueFlacPair, ScannedFile};
+        use crate::import::folder_scanner::{CandidateFile, FileRole, ScannedFile};
 
         let cue = ScannedFile::new(
             PathBuf::from("/rel/Album.cue"),
@@ -323,27 +301,33 @@ mod tests {
             "Artist Name - Album.png".to_string(),
             10_000,
         );
-        let pair = ScannedCueFlacPair {
-            cue_file: cue.clone(),
-            audio_file: flac.clone(),
-            audio_files: vec![flac.clone()],
-            cue_sheet: crate::cue_flac::CueSheet {
-                title: None,
-                performer: None,
-                catalog: None,
-                date: None,
-                tracks: Vec::new(),
-            },
-            total_size: 5_000_100,
-        };
         let categorized = CategorizedFiles {
-            audio: AudioContent::CueFlacPairs {
-                pairs: vec![pair],
-                format_label: "CUE+FLAC".to_string(),
-            },
-            artwork: vec![cover.clone()],
-            documents: Vec::new(),
-            unpaired_cue_sheets: Vec::new(),
+            files: vec![
+                CandidateFile {
+                    file: cue.clone(),
+                    role: FileRole::TrackSheet {
+                        sheet: crate::cue_flac::CueSheet {
+                            title: None,
+                            performer: None,
+                            catalog: None,
+                            date: None,
+                            tracks: Vec::new(),
+                        },
+                        binding: crate::import::folder_scanner::SheetBinding::Describes {
+                            file_id: "Album.flac".to_string(),
+                        },
+                    },
+                },
+                CandidateFile {
+                    file: flac.clone(),
+                    role: FileRole::Audio,
+                },
+                CandidateFile {
+                    file: cover.clone(),
+                    role: FileRole::Artwork,
+                },
+            ],
+            format_label: "CUE+FLAC".to_string(),
         };
 
         let inputs = enumerate_filename_inputs(&categorized);
@@ -390,7 +374,7 @@ mod tests {
         let categorized =
             crate::import::folder_scanner::collect_release_candidate_files(dir).unwrap();
         let disc_id = crate::import::discid::compute_discid_from_categorized(&categorized);
-        let track_count = categorized.audio.track_count();
+        let track_count = categorized.track_count();
 
         assert!(disc_id.is_some(), "LOG fixture should produce a disc ID");
         assert_eq!(

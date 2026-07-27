@@ -5,7 +5,7 @@ import SwiftUI
 /// Presented as a sheet from the import confirmation view.
 struct CoverPickerView: View {
     let remoteCoverArts: [BridgeRemoteCover]
-    let localArtwork: [BridgeArtworkFile]
+    let localArtwork: [BridgeCandidateFile]
     let selectedCover: BridgeCoverChoice?
     let onSelect: (BridgeCoverChoice) -> Void
     let onDone: () -> Void
@@ -25,10 +25,12 @@ struct CoverPickerView: View {
         }
         for file in localArtwork {
             // Local artwork is collected from the candidate's scanned folder,
-            // so it's always present on disk.
+            // so it's always present on disk. Only an image role carries a
+            // cover choice; anything else can't be a cover.
+            guard let coverChoice = file.coverChoice else { continue }
             result.append(
                 CoverItem(
-                    coverChoice: file.coverChoice,
+                    coverChoice: coverChoice,
                     label: file.file.name
                 )
             )
@@ -157,7 +159,7 @@ struct CoverPickerView: View {
     #Preview("With covers") {
         CoverPickerView(
             remoteCoverArts: PreviewData.remoteCovers,
-            localArtwork: PreviewData.bridgeCandidateFiles.artwork,
+            localArtwork: PreviewData.bridgeCandidateFiles.images,
             selectedCover: PreviewData.remoteCovers.first?.coverChoice,
             onSelect: { _ in },
             onDone: {},
