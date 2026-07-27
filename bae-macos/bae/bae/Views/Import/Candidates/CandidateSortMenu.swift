@@ -11,8 +11,6 @@ struct CandidateSortMenu: View {
             Section("Sort") {
                 sortButton(.nameAZ, "Name (A\u{2013}Z)")
                 sortButton(.nameZA, "Name (Z\u{2013}A)")
-                sortButton(.dateAddedNewest, "Date Added (Newest)")
-                sortButton(.dateAddedOldest, "Date Added (Oldest)")
             }
         } label: {
             Image(systemName: "ellipsis.circle")
@@ -43,7 +41,7 @@ struct CandidateSortMenu: View {
     #Preview("Candidate sort menu") {
         @Previewable
         @State
-        var order: CandidateSortOrder = .dateAddedNewest
+        var order: CandidateSortOrder = .nameAZ
         CandidateSortMenu(sortOrder: $order)
             .padding()
             .windowBackground()

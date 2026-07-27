@@ -8,7 +8,7 @@ extension ImportView {
     var splitContent: some View {
         HSplitView {
             candidateList
-                .frame(minWidth: 200, idealWidth: 250, maxWidth: 350)
+                .frame(minWidth: 280, idealWidth: 392, maxWidth: 460)
             if let candidate = selectedCandidate {
                 mainPane(for: candidate)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)

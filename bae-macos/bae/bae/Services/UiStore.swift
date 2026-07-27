@@ -105,13 +105,20 @@ class UiStore: @unchecked Sendable {
     /// remount instead of resetting to "Select a folder".
     var selectedFolderCandidate: String?
 
-    /// The candidate list sidebar's active tab, filter text, and collapsed
-    /// folders. UI-originated session state, alongside
-    /// `selectedFolderCandidate` — surviving a remount so the sidebar doesn't
-    /// reset to its defaults on every import-tab switch.
-    var importCandidateTab: CandidateTab = .new
+    /// The candidate list sidebar's active tab and filter text. UI-originated
+    /// session state, alongside `selectedFolderCandidate` — surviving a
+    /// remount so the sidebar doesn't reset to its defaults on every
+    /// import-tab switch.
+    var importCandidateTab: BridgeTriageTab = .ready
     var importCandidateFilterText: String = ""
-    var collapsedImportFolders: Set<String> = []
+
+    /// Checked candidate keys in the Ready tab's bulk-select — UI state, never
+    /// persisted, and never crossing the bridge. A key surviving here after
+    /// its row leaves Ready (imported, or reclassified) is harmless: every
+    /// reader intersects this against the tab's *current* Ready keys rather
+    /// than trusting the set on its own, so there is nothing to prune
+    /// proactively.
+    var selectedReadyCandidates: Set<String> = []
 
     // ── Overlays ────────────────────────────────────────────────────────
 
@@ -255,7 +262,7 @@ class UiStore: @unchecked Sendable {
         selectedFolderCandidate = key
     }
 
-    func setImportCandidateTab(_ tab: CandidateTab) {
+    func setImportCandidateTab(_ tab: BridgeTriageTab) {
         importCandidateTab = tab
     }
 
@@ -263,13 +270,26 @@ class UiStore: @unchecked Sendable {
         importCandidateFilterText = text
     }
 
-    func toggleImportFolderCollapsed(_ path: String) {
-        if collapsedImportFolders.contains(path) {
-            collapsedImportFolders.remove(path)
+    // MARK: - Ready-tab bulk selection
+
+    func toggleReadySelection(_ key: String) {
+        if selectedReadyCandidates.contains(key) {
+            selectedReadyCandidates.remove(key)
         }
         else {
-            collapsedImportFolders.insert(path)
+            selectedReadyCandidates.insert(key)
         }
+    }
+
+    /// Select every key in `keys` (the tab's current Ready rows) — "Select
+    /// all" reads as "select what's visible now," not "remember these keys
+    /// forever," so it replaces rather than unions.
+    func selectAllReady(_ keys: [String]) {
+        selectedReadyCandidates = Set(keys)
+    }
+
+    func clearReadySelection() {
+        selectedReadyCandidates.removeAll()
     }
 
     // MARK: - Error methods

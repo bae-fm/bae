@@ -1135,23 +1135,6 @@ impl Database {
             .await
     }
 
-    /// Whether some release was imported from a folder of this name — the weaker
-    /// duplicate check a folder scan does before it has a content hash.
-    pub async fn is_source_folder_name_imported(&self, name: &str) -> Result<bool, DbError> {
-        let name = name.to_string();
-        self.read(move |conn| {
-            conn.query_row(
-                "SELECT 1 FROM releases WHERE source_folder_name = ? LIMIT 1",
-                params![name],
-                |_| Ok(()),
-            )
-            .optional()
-            .map(|o| o.is_some())
-            .map_err(DbError::from)
-        })
-        .await
-    }
-
     /// Release ids whose stored `content_hash` equals `hash`. Normally zero or
     /// one (the import overwrite path keeps the hash unique), but returns all
     /// matches so a re-import sweeps any pre-existing duplicates.

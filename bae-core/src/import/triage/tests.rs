@@ -9,7 +9,9 @@
 use super::*;
 use crate::identify::{GroupKey, ResultProvenance};
 use crate::import::cover_art::RemoteCover;
-use crate::import::folder_scanner::{AudioContent, CategorizedFiles, InvalidReason, ScannedFile};
+use crate::import::folder_scanner::{
+    CandidateFile, CategorizedFiles, FileRole, InvalidReason, ScannedFile,
+};
 use crate::import::handle::CandidateRuntimeSnapshot;
 use crate::import::WatchedFolder;
 use std::path::PathBuf;
@@ -152,17 +154,15 @@ fn candidate(folder: &str, skipped: bool, is_added: bool) -> FolderCandidate {
         files: CategorizedFiles {
             // One file, named after the folder, so every fixture candidate has
             // its own content hash — the key the stored verdicts are under.
-            audio: AudioContent::TrackFiles {
-                tracks: vec![ScannedFile::new(
+            files: vec![CandidateFile {
+                file: ScannedFile::new(
                     PathBuf::from(format!("/music/{folder}/01.flac")),
                     format!("{folder}-01.flac"),
                     1_000,
-                )],
-                format_label: "FLAC".to_string(),
-            },
-            artwork: vec![],
-            documents: vec![],
-            unpaired_cue_sheets: vec![],
+                ),
+                role: FileRole::Audio,
+            }],
+            format_label: "FLAC".to_string(),
         },
         watched_folder_path: "/music".to_string(),
         skipped,
@@ -534,6 +534,7 @@ fn a_row_with_no_match_carries_no_release_fields() {
         .matched
         .as_ref()
         .expect("a Found row leads with its release");
+    assert_eq!(matched.release_id, "rel-3");
     assert_eq!(matched.title, "Album Title");
     assert_eq!(matched.artist.as_deref(), Some("Artist Name"));
     assert_eq!(

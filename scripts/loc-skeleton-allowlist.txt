@@ -246,6 +246,7 @@ it	settings.formats.codec_mp3
 it	settings.formats.codec_opus
 it	settings.formats.token.album
 nl	AAC %lld kbps
+nl	Conflict
 nl	MP3 %lld kbps
 nl	Opus %lld kbps
 nl	Pregap

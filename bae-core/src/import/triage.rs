@@ -17,13 +17,14 @@
 //! answers what the queue needs from the user; this module decides where that
 //! answer puts the row and what the row shows.
 
+use super::claim::ClaimEvidence;
 use super::folder_scanner::{FolderCandidate, InvalidCandidate};
 use super::handle::{
     CandidateImportStatusSnapshot, FolderImportCandidateSnapshot, ImportCandidatesSnapshot,
     ImportServiceHandle,
 };
 use super::search::{MetadataResult, SourceTracks};
-use super::types::MetadataSource;
+use super::types::{IdentityChoice, MetadataRef, MetadataSource};
 use crate::db::{DbImportCandidateState, LibraryCheck, LibraryStatus};
 use crate::identify::verdict::decode_stored;
 use crate::identify::{
@@ -261,6 +262,10 @@ pub struct MatchedPressing {
 /// been imported or set aside still shows what it was matched to.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MatchedRelease {
+    /// The lead match's release id. A Ready row commits on exactly this
+    /// release — a bulk import has no mapping pane to pick one in, so the row
+    /// has to carry the id it will import against.
+    pub release_id: String,
     /// The lead match's title. Titles vary between the editions of a release
     /// group, so with several matches this is one pressing's title standing in
     /// for the album — see [`MatchedRelease::of`].
@@ -275,6 +280,14 @@ pub struct MatchedRelease {
     /// pressing's sleeve, not the group's.
     pub cover_thumbnail_url: Option<String>,
     pub evidence: MatchEvidence,
+    /// What a bulk import of this row commits as its identity claim, derived
+    /// here from the same evidence rule the confirm pane's claim line uses.
+    ///
+    /// It crosses rather than being worked out per surface: a bulk import has
+    /// no claim line to read, and a disc ID that matched one release claims the
+    /// pressing while a barcode claims only the album — which is a rule about
+    /// what evidence proves, not something a list should be deciding.
+    pub claim: IdentityChoice,
 }
 
 impl MatchedRelease {
@@ -302,7 +315,22 @@ impl MatchedRelease {
         };
         let lead = matches.first()?;
         let settled = matches.len() == 1;
+        let signal = provenance.first().and_then(MatchedSignal::of);
+        // The same reading the claim line makes: only a disc ID that matched
+        // one release names the pressing. A shared disc ID, a barcode, or a
+        // text hit names the album and leaves the pressing open.
+        let claim_evidence = match (signal, settled) {
+            (Some(MatchedSignal::DiscId), true) => ClaimEvidence::DiscIdAlone,
+            (Some(MatchedSignal::DiscId), false) => ClaimEvidence::DiscIdShared {
+                match_count: matches.len() as u32,
+            },
+            (Some(MatchedSignal::Barcode), _) => ClaimEvidence::Barcode,
+            (None, _) => ClaimEvidence::Search,
+        };
         Some(Self {
+            claim: claim_evidence
+                .default_choice(MetadataRef::new(lead.release_id.clone(), lead.source)),
+            release_id: lead.release_id.clone(),
             title: lead.title.clone(),
             artist: lead.artist.clone(),
             pressing: settled.then(|| MatchedPressing {
@@ -315,7 +343,7 @@ impl MatchedRelease {
                 source: lead.source,
                 // Index-aligned with `matches`, so the lead's provenance is the
                 // first one.
-                signal: provenance.first().and_then(MatchedSignal::of),
+                signal,
             },
         })
     }

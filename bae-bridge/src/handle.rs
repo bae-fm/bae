@@ -1559,14 +1559,6 @@ impl AppHandle {
         )
     }
 
-    pub async fn is_source_folder_name_imported(&self, name: String) -> Result<bool, BridgeError> {
-        self.services
-            .library_manager()
-            .is_source_folder_name_imported(&name)
-            .await
-            .map_err(|e| BridgeError::database(format!("{e}")))
-    }
-
     // The bridge boundary surface is wide on purpose — uniffi flattens
     // primitives across the FFI per Swift idiom, not per Rust idiom.
     #[allow(clippy::too_many_arguments)]
@@ -2646,14 +2638,17 @@ impl crate::types::BridgeNeedsYou {
 impl crate::types::BridgeMatchedRelease {
     pub(crate) fn from_core(matched: bae_core::import::MatchedRelease) -> Self {
         let bae_core::import::MatchedRelease {
+            release_id,
             title,
             artist,
             pressing,
             cover_thumbnail_url,
             evidence,
+            claim,
         } = matched;
         let bae_core::import::MatchEvidence { source, signal } = evidence;
         crate::types::BridgeMatchedRelease {
+            release_id,
             title,
             artist,
             pressing: pressing.map(|pressing| {
@@ -2669,6 +2664,7 @@ impl crate::types::BridgeMatchedRelease {
                 }
             }),
             cover_thumbnail_url,
+            claim: crate::types::BridgeIdentityChoice::from_core(claim),
             evidence: crate::types::BridgeMatchEvidence {
                 source: crate::types::BridgeMetadataSource::from_core(source),
                 signal: signal.map(crate::types::BridgeMatchedSignal::from_core),

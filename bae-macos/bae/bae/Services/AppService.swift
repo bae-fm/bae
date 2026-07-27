@@ -109,6 +109,7 @@ final class AppService: BaeKit.AppService {
         registerProjection(makeExportProjection())
         registerProjection(makeImportCandidatesProjection())
         registerProjection(makeImportCandidateProjection())
+        registerProjection(makeImportTriageQueueProjection())
         registerProjection(makeImportLibraryStatusProjection())
         registerProjection(makeCastDevicesProjection())
         appHandle.subscribeUiEvents(
@@ -191,6 +192,35 @@ extension AppService {
             },
             apply: { [importStore] snapshot in
                 importStore.applyImportCandidatesSnapshot(snapshot)
+            },
+            onError: { [uiStore] error in uiStore.showError(error) }
+        )
+    }
+
+    /// The sidebar's rows, tab counts, and invalid folders. `getImportTriageQueue`
+    /// is itself async (it reads stored verdicts and does a live library
+    /// check), so unlike the plain candidate snapshot there is no synchronous
+    /// value to seed `ImportStore.triageQueue` with at init — it starts empty
+    /// and this projection fills it in once the launch scan's `Finished`
+    /// invalidates `.importCandidateList`.
+    ///
+    /// `.release` rides along: another import elsewhere landing a release a
+    /// Ready row matches has to flip that row to "already in library" without
+    /// its own verdict changing, and this is the only projection that re-runs
+    /// the live library check.
+    private func makeImportTriageQueueProjection() -> Projection<
+        BridgeTriageQueue
+    > {
+        Projection(
+            domains: [
+                .importCandidateList, .importCandidate, .watchedFolders,
+                .release,
+            ],
+            query: { [appHandle] _ in
+                try await appHandle.getImportTriageQueue()
+            },
+            apply: { [importStore] queue in
+                importStore.triageQueue = queue
             },
             onError: { [uiStore] error in uiStore.showError(error) }
         )

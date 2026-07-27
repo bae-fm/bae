@@ -109,10 +109,6 @@ impl LibraryManager {
         Ok(())
     }
 
-    pub async fn is_source_folder_name_imported(&self, name: &str) -> Result<bool, LibraryError> {
-        Ok(self.database.is_source_folder_name_imported(name).await?)
-    }
-
     /// Persist one candidate's terminal identify verdict, keyed by its content
     /// hash. Device-local and never synced; every device derives its own.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]

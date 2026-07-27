@@ -1140,6 +1140,9 @@ pub struct BridgeMatchedPressing {
 /// too: a candidate already imported or set aside still shows what it matched.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeMatchedRelease {
+    /// The lead match's release id — what a bulk import commits a Ready row
+    /// against, with no mapping pane to pick one in.
+    pub release_id: String,
     /// The lead match's title, which with several matches stands in for the
     /// album — titles vary between the editions of one release group.
     pub title: String,
@@ -1150,6 +1153,11 @@ pub struct BridgeMatchedRelease {
     /// sleeve, since cover art is fetched per release id.
     pub cover_thumbnail_url: Option<String>,
     pub evidence: BridgeMatchEvidence,
+    /// The identity claim a bulk import of this row commits. Derived in core
+    /// from the same evidence rule the confirm pane's claim line uses, because
+    /// a bulk import has no claim line to read and what a disc ID proves is not
+    /// a decision a list should be making.
+    pub claim: BridgeIdentityChoice,
 }
 
 /// One candidate's sidebar row.

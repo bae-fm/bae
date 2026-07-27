@@ -90,15 +90,6 @@ struct Candidate: Equatable, Identifiable {
     var files: BridgeCandidateFiles
     var identifyState: IdentifyState = .idle
     var importStatus: BridgeCandidateImportStatus?
-    /// Whether the user manually skipped this candidate. Drives the import
-    /// view's Skipped tab; flipped by the import-candidate projection once the
-    /// skip toggle round-trips through core.
-    var skipped: Bool = false
-    /// Whether this candidate's file structure was already imported (matched by
-    /// content hash). Set from the scan; drives the Added tab so an
-    /// already-imported folder surfaces as added even without a fresh import in
-    /// the session.
-    var isAdded: Bool = false
     /// The picked release's display detail. The confirm pane reads its cover
     /// art, track counts, and library status from it. It never seeds the editor:
     /// it is the picker's shape, and it collapses the release's artists and
@@ -161,8 +152,6 @@ struct Candidate: Equatable, Identifiable {
         displayName = bridge.sourceFolderName
         trackCount = bridge.trackCount
         files = bridge.files
-        skipped = bridge.skipped
-        isAdded = bridge.isAdded
     }
 
     func withSessionState(from existing: Candidate) -> Candidate {
@@ -205,15 +194,6 @@ struct Candidate: Equatable, Identifiable {
         // Re-identify candidates read their files from the DB, not the
         // scanner's scan-event channel, so they start with an empty set.
         files = BridgeCandidateFiles(files: [], formatLabel: "")
-    }
-
-    /// Folder path if this is a folder candidate; nil otherwise.
-    /// Used for "Reveal in Finder" affordances.
-    var folderPathIfReal: String? {
-        if case .folder(let path, _) = source {
-            return path
-        }
-        return nil
     }
 
     /// The watched folder this candidate was scanned from — the candidate-list

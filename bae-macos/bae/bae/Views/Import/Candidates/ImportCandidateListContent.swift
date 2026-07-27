@@ -3,25 +3,31 @@ import SwiftUI
 
 // MARK: - ImportCandidateListContent
 
-/// The import candidate list, grouped by the watched folder each candidate was
-/// scanned from. One collapsible section per folder, in the order the folders
-/// were added.
+/// The import sidebar: four tabs over one triage queue. Every row, its tab,
+/// its Needs-you group, and the tab counts come from
+/// `ImportStore.triageQueue` — core's projection — read through
+/// `ImportStore`'s filtering/sorting helpers. This view iterates and renders;
+/// it decides nothing about where a row belongs.
 struct ImportCandidateListContent: View {
-    /// Read at the leaf: the watched folders and candidates, and the grouping /
-    /// filtering / sorting, all come from the store.
+    /// Read at the leaf: the triage queue and its grouping/filtering/sorting
+    /// come from the store.
     let importStore: ImportStore
     @Binding
     var selectedKey: String?
-    let isLikelyDupe: (String) -> Bool
     let onAddFolder: () -> Void
+    /// Stop watching `path`. Reached from the watched-folders menu next to
+    /// Add — there is no more per-folder section header to hang it off, now
+    /// that a row's folder is a subtitle rather than a grouping.
     let onRemoveFolder: (_ path: String) -> Void
     /// Skip (or unskip) the candidate at `key`. Wired to the row context menu.
     let onSkip: (_ key: String, _ skipped: Bool) -> Void
+    /// Import every candidate in `keys` — the Ready foot bar's bulk action.
+    let onImportSelected: (_ keys: [String]) -> Void
 
     @Environment(UiStore.self)
     private var uiStore
     @AppStorage("importCandidateSort")
-    private var sortOrder: CandidateSortOrder = .dateAddedNewest
+    private var sortOrder: CandidateSortOrder = .nameAZ
 
     private var filterTextBinding: Binding<String> {
         Binding(
@@ -30,34 +36,40 @@ struct ImportCandidateListContent: View {
         )
     }
 
-    private var activeTabBinding: Binding<CandidateTab> {
+    private var activeTabBinding: Binding<BridgeTriageTab> {
         Binding(
             get: { uiStore.importCandidateTab },
             set: { uiStore.setImportCandidateTab($0) }
         )
     }
 
-    /// One section per watched folder, candidates in the active tab, filtered and
-    /// sorted — built by the store. The active tab and filter text are
-    /// UI-originated session state on `UiStore`; `sortOrder` is
-    /// `AppStorage`-backed. Used for the New and Added tabs; the Skipped tab
-    /// uses `displayedSkippedGroups` (it also holds invalid rows).
-    private var displayedGroups:
-        [(folder: BridgeWatchedFolder, candidates: [Candidate])]
-    {
-        importStore.candidateGroups(
-            tab: uiStore.importCandidateTab,
+    private var readyRows: [BridgeTriageRow] {
+        importStore.rows(
+            tab: .ready,
             filterText: uiStore.importCandidateFilterText,
             sortOrder: sortOrder
         )
     }
 
-    /// One section per watched folder for the Skipped tab: manually-skipped
-    /// candidates plus invalid folders, built by the store.
-    private var displayedSkippedGroups:
-        [(folder: BridgeWatchedFolder, rows: [SkippedRow])]
+    private var needsYouGroups:
+        [(group: BridgeNeedsYouGroup, rows: [BridgeTriageRow])]
     {
-        importStore.skippedGroups(
+        importStore.needsYouGroups(
+            filterText: uiStore.importCandidateFilterText,
+            sortOrder: sortOrder
+        )
+    }
+
+    private var doneRows: [BridgeTriageRow] {
+        importStore.rows(
+            tab: .done,
+            filterText: uiStore.importCandidateFilterText,
+            sortOrder: sortOrder
+        )
+    }
+
+    private var skippedRows: [SkippedRow] {
+        importStore.skippedRows(
             filterText: uiStore.importCandidateFilterText,
             sortOrder: sortOrder
         )
@@ -65,24 +77,32 @@ struct ImportCandidateListContent: View {
 
     /// True when the active tab has nothing to show — drives the empty state.
     private var activeTabIsEmpty: Bool {
-        uiStore.importCandidateTab == .skipped
-            ? displayedSkippedGroups.isEmpty : displayedGroups.isEmpty
+        switch uiStore.importCandidateTab {
+        case .ready: readyRows.isEmpty
+        case .needsYou: needsYouGroups.isEmpty
+        case .done: doneRows.isEmpty
+        case .skipped: skippedRows.isEmpty
+        }
     }
 
     var body: some View {
         ImportSidebarList {
-            VStack(spacing: 8) {
-                CandidateTabBar(
+            VStack(spacing: 0) {
+                TriageTabBar(
                     activeTab: activeTabBinding,
-                    importStore: importStore
+                    counts: importStore.triageQueue.counts
                 )
-                HStack(spacing: 6) {
+                .padding(.horizontal, 10)
+                .padding(.top, 10)
+                .padding(.bottom, 8)
+
+                HStack(spacing: 8) {
                     Image(systemName: "magnifyingglass")
+                        .font(.system(size: 13))
                         .foregroundStyle(.tertiary)
-                        .font(.callout)
                     TextField("Filter...", text: filterTextBinding)
                         .textFieldStyle(.plain)
-                        .font(.callout)
+                        .font(.system(size: 12.5))
                     if !uiStore.importCandidateFilterText.isEmpty {
                         Button {
                             uiStore.setImportCandidateFilterText("")
@@ -93,26 +113,66 @@ struct ImportCandidateListContent: View {
                         .buttonStyle(.plain)
                     }
                     CandidateSortMenu(sortOrder: $sortOrder)
-                    Button(action: onAddFolder) {
-                        Image(systemName: "plus")
-                    }
-                    .buttonStyle(.plain)
-                    .foregroundStyle(.secondary)
-                    .help("Add a folder to watch for imports")
+                    watchedFoldersMenu
+                }
+                .padding(.horizontal, 14)
+                .padding(.bottom, 10)
+
+                if let progress = importStore.queueIdentifyProgress,
+                    progress.total > 0
+                {
+                    QueueProgressView(
+                        identified: progress.identified,
+                        total: progress.total
+                    )
+                    .padding(.horizontal, 14)
+                    .padding(.bottom, 12)
                 }
             }
-            .frame(maxWidth: .infinity)
         } content: {
             if activeTabIsEmpty {
                 emptyState
             }
-            else if uiStore.importCandidateTab == .skipped {
-                skippedList
-            }
             else {
-                candidateList
+                tabList
             }
         }
+    }
+
+    /// The `+` control: add a folder, and — once at least one is watched —
+    /// stop watching one. There is no more per-folder section header to hang
+    /// "Remove Folder" off, now that a row's folder is a subtitle rather than
+    /// a grouping.
+    private var watchedFoldersMenu: some View {
+        Menu {
+            Button {
+                onAddFolder()
+            } label: {
+                Label("Add a Folder\u{2026}", systemImage: "plus")
+            }
+            if !importStore.watchedFolders.isEmpty {
+                Divider()
+                ForEach(importStore.watchedFolders, id: \.path) { folder in
+                    Menu(folder.name) {
+                        Button("Reveal in Finder") {
+                            SystemActions.revealInFinder(path: folder.path)
+                        }
+                        Divider()
+                        Button("Remove Folder", role: .destructive) {
+                            onRemoveFolder(folder.path)
+                        }
+                    }
+                }
+            }
+        } label: {
+            Image(systemName: "plus")
+                .font(.system(size: 13))
+        }
+        .menuIndicator(.hidden)
+        .buttonStyle(.plain)
+        .foregroundStyle(.secondary)
+        .fixedSize()
+        .help("Add a folder to watch for imports")
     }
 
     /// Per-tab empty state: distinguishes "no matches" while filtering from
@@ -130,49 +190,84 @@ struct ImportCandidateListContent: View {
 
     private var emptyTabSymbol: String {
         switch uiStore.importCandidateTab {
-        case .new: "folder"
-        case .added: "checkmark.circle"
+        case .ready: "checkmark.circle"
+        case .needsYou: "questionmark.circle"
+        case .done: "tray.full"
         case .skipped: "minus.circle"
         }
     }
 
-    private var candidateList: some View {
+    @ViewBuilder
+    private var tabList: some View {
+        switch uiStore.importCandidateTab {
+        case .ready: readyList
+        case .needsYou: needsYouList
+        case .done: doneList
+        case .skipped: skippedList
+        }
+    }
+
+    // MARK: - Ready
+
+    private var selectedReadyKeys: Set<String> {
+        let currentReady = Set(readyRows.map(\.candidateKey))
+        return uiStore.selectedReadyCandidates.intersection(currentReady)
+    }
+
+    private var readyList: some View {
+        VStack(spacing: 0) {
+            List(selection: $selectedKey) {
+                ForEach(readyRows, id: \.candidateKey) { row in
+                    TriageRowView(
+                        row: row,
+                        isFocused: selectedKey == row.candidateKey,
+                        selection: (
+                            isSelected: uiStore.selectedReadyCandidates
+                                .contains(row.candidateKey),
+                            toggle: {
+                                uiStore.toggleReadySelection(row.candidateKey)
+                            }
+                        ),
+                        onSelect: { selectedKey = row.candidateKey },
+                        onSkip: { onSkip(row.candidateKey, $0) }
+                    )
+                    .tag(row.candidateKey)
+                }
+            }
+            .scrollContentBackground(.hidden)
+            .background(Theme.surface)
+            Divider()
+            TriageFootBar(
+                selectedCount: selectedReadyKeys.count,
+                readyCount: readyRows.count,
+                onSelectAll: {
+                    uiStore.selectAllReady(readyRows.map(\.candidateKey))
+                },
+                onImport: { onImportSelected(Array(selectedReadyKeys)) }
+            )
+        }
+    }
+
+    // MARK: - Needs you
+
+    private var needsYouList: some View {
         List(selection: $selectedKey) {
-            ForEach(displayedGroups, id: \.folder.path) { group in
+            ForEach(needsYouGroups, id: \.group) { entry in
                 Section {
-                    if !uiStore.collapsedImportFolders.contains(
-                        group.folder.path
-                    ) {
-                        ForEach(group.candidates, id: \.key) { candidate in
-                            CandidateRow(
-                                displayName: candidate.displayName,
-                                revealPath: candidate.folderPathIfReal,
-                                status: candidate.importStatus,
-                                isAdded: candidate.isAdded,
-                                skipped: candidate.skipped,
-                                isLikelyDupe: isLikelyDupe(
-                                    candidate.displayName
-                                ),
-                                onSkip: { skipped in
-                                    onSkip(candidate.key, skipped)
-                                },
-                            )
-                            .tag(candidate.key)
-                        }
+                    ForEach(entry.rows, id: \.candidateKey) { row in
+                        TriageRowView(
+                            row: row,
+                            isFocused: selectedKey == row.candidateKey,
+                            selection: nil,
+                            onSelect: { selectedKey = row.candidateKey },
+                            onSkip: { onSkip(row.candidateKey, $0) }
+                        )
+                        .tag(row.candidateKey)
                     }
                 } header: {
-                    FolderSectionHeader(
-                        folder: group.folder,
-                        count: group.candidates.count,
-                        isCollapsed: uiStore.collapsedImportFolders.contains(
-                            group.folder.path
-                        ),
-                        onToggle: {
-                            uiStore.toggleImportFolderCollapsed(
-                                group.folder.path
-                            )
-                        },
-                        onRemove: { onRemoveFolder(group.folder.path) },
+                    NeedsYouGroupHeader(
+                        group: entry.group,
+                        count: entry.rows.count
                     )
                 }
             }
@@ -181,36 +276,36 @@ struct ImportCandidateListContent: View {
         .background(Theme.surface)
     }
 
-    /// The Skipped tab: manually-skipped candidates and invalid folders, grouped
-    /// by watched folder. Invalid rows aren't selectable — selecting their key is
-    /// a no-op upstream (they aren't in `folderCandidates`, so no detail pane
-    /// opens).
+    // MARK: - Done
+
+    private var doneList: some View {
+        List(selection: $selectedKey) {
+            ForEach(doneRows, id: \.candidateKey) { row in
+                TriageRowView(
+                    row: row,
+                    isFocused: selectedKey == row.candidateKey,
+                    selection: nil,
+                    onSelect: { selectedKey = row.candidateKey },
+                    onSkip: { onSkip(row.candidateKey, $0) }
+                )
+                .tag(row.candidateKey)
+            }
+        }
+        .scrollContentBackground(.hidden)
+        .background(Theme.surface)
+    }
+
+    // MARK: - Skipped
+
+    /// Manually-skipped candidates and invalid folders together — core hands
+    /// both across in `triageQueue` and both share this one tab, so there is
+    /// nothing to group them by. Invalid rows aren't selectable — selecting
+    /// their key is a no-op upstream (they aren't a real candidate), so they
+    /// carry no `.tag()`.
     private var skippedList: some View {
         List(selection: $selectedKey) {
-            ForEach(displayedSkippedGroups, id: \.folder.path) { group in
-                Section {
-                    if !uiStore.collapsedImportFolders.contains(
-                        group.folder.path
-                    ) {
-                        ForEach(group.rows) { row in
-                            skippedRow(row)
-                        }
-                    }
-                } header: {
-                    FolderSectionHeader(
-                        folder: group.folder,
-                        count: group.rows.count,
-                        isCollapsed: uiStore.collapsedImportFolders.contains(
-                            group.folder.path
-                        ),
-                        onToggle: {
-                            uiStore.toggleImportFolderCollapsed(
-                                group.folder.path
-                            )
-                        },
-                        onRemove: { onRemoveFolder(group.folder.path) },
-                    )
-                }
+            ForEach(skippedRows) { row in
+                skippedRowView(row)
             }
         }
         .scrollContentBackground(.hidden)
@@ -218,58 +313,43 @@ struct ImportCandidateListContent: View {
     }
 
     @ViewBuilder
-    private func skippedRow(_ row: SkippedRow) -> some View {
+    private func skippedRowView(_ row: SkippedRow) -> some View {
         switch row {
-        case .candidate(let candidate):
-            CandidateRow(
-                displayName: candidate.displayName,
-                revealPath: candidate.folderPathIfReal,
-                status: candidate.importStatus,
-                isAdded: candidate.isAdded,
-                skipped: candidate.skipped,
-                isLikelyDupe: isLikelyDupe(candidate.displayName),
-                onSkip: { skipped in onSkip(candidate.key, skipped) },
+        case .candidate(let triageRow):
+            TriageRowView(
+                row: triageRow,
+                isFocused: selectedKey == triageRow.candidateKey,
+                selection: nil,
+                onSelect: { selectedKey = triageRow.candidateKey },
+                onSkip: { onSkip(triageRow.candidateKey, $0) }
             )
-            .tag(candidate.key)
+            .tag(triageRow.candidateKey)
         case .invalid(let invalid):
             InvalidCandidateRow(
                 displayName: invalid.sourceFolderName,
                 reason: invalid.reason,
-                revealPath: invalid.folderPath,
+                revealPath: invalid.folderPath
             )
         }
     }
-
 }
 
 #if DEBUG
     // MARK: - Previews
 
     #Preview("Candidate List") {
-        let store = ImportStore()
-        store.watchedFolders = [
-            BridgeWatchedFolder(path: "/Music/Downloads", name: "Downloads"),
-            BridgeWatchedFolder(path: "/Volumes/Rips", name: "Rips"),
-        ]
-        for candidate in PreviewData.folderCandidates {
-            var copy = candidate
-            copy.importStatus = PreviewData.importStatuses[candidate.key]
-            store.folderCandidates[copy.key] = copy
-        }
-        for invalid in PreviewData.invalidCandidates {
-            store.invalidCandidates[invalid.folderPath] = invalid
-        }
+        let store = PreviewData.triageImportStore
         return ImportCandidateListContent(
             importStore: store,
-            selectedKey: .constant(store.folderCandidates.keys.first),
-            isLikelyDupe: { $0 == "Album Title One" },
+            selectedKey: .constant(store.triageQueue.rows.first?.candidateKey),
             onAddFolder: {},
             onRemoveFolder: { _ in },
             onSkip: { _, _ in },
+            onImportSelected: { _ in }
         )
         .environment(OutboxStore(snapshot: OutboxStore.emptySnapshot))
         .environment(UiStore())
-        .frame(width: 280, height: 500)
+        .frame(width: 340, height: 560)
         .windowBackground()
     }
 #endif

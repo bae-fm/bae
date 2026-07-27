@@ -2,8 +2,7 @@ import BaeKit
 import Foundation
 
 /// Import-flow operations: watched-folder management, scan, identify,
-/// candidate search, signal dismissal, file-tag preview, commit, and the
-/// duplicate-name check.
+/// candidate search, signal dismissal, file-tag preview, and commit.
 final class Importer: Sendable, Observable {
     /// Add a folder to watch for imports: persist it and scan it. Already-watched
     /// folders are left as-is.
@@ -47,9 +46,6 @@ final class Importer: Sendable, Observable {
             _ identityChoice: BridgeIdentityChoice,
             _ userEdit: BridgeReleaseUserEdit?
         ) throws -> Void
-    let isSourceFolderNameImported:
-        @Sendable (_ name: String) async throws
-            -> Bool
 
     init(
         addWatchedFolder: @escaping @Sendable (String) throws -> Void = { _ in
@@ -90,9 +86,7 @@ final class Importer: Sendable, Observable {
             @escaping @Sendable (
                 String, String, BridgeCoverSelection?, BridgeStorageMode, Bool,
                 BridgeIdentityChoice, BridgeReleaseUserEdit?
-            ) throws -> Void = { _, _, _, _, _, _, _ in },
-        isSourceFolderNameImported:
-            @escaping @Sendable (String) async throws -> Bool = { _ in false }
+            ) throws -> Void = { _, _, _, _, _, _, _ in }
     ) {
         self.addWatchedFolder = addWatchedFolder
         self.removeWatchedFolder = removeWatchedFolder
@@ -107,7 +101,6 @@ final class Importer: Sendable, Observable {
         self.previewFileTagsForFolder = previewFileTagsForFolder
         self.claimForPick = claimForPick
         self.startImport = startImport
-        self.isSourceFolderNameImported = isSourceFolderNameImported
     }
 
     convenience init(handle: any AppHandleProtocol) {
@@ -152,9 +145,6 @@ final class Importer: Sendable, Observable {
                     identityChoice: $5,
                     userEdit: $6
                 )
-            },
-            isSourceFolderNameImported: {
-                try await handle.isSourceFolderNameImported(name: $0)
             }
         )
     }

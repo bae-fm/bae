@@ -8,10 +8,10 @@ extension ImportView {
         ImportCandidateListContent(
             importStore: importStore,
             selectedKey: candidateSelectionBinding,
-            isLikelyDupe: importStore.importedSourceFolderNames.contains,
             onAddFolder: { pickFolderAndAdd() },
             onRemoveFolder: { path in removeWatchedFolder(path) },
             onSkip: { key, skipped in setCandidateSkipped(key, skipped) },
+            onImportSelected: { keys in importReadyCandidates(keys) },
         )
     }
 

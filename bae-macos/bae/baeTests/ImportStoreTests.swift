@@ -62,7 +62,7 @@ private func bridgeFolder(
 }
 
 /// A folder-source `Candidate` with the given scan flags and (optional) session
-/// import status, for the tab-assignment and grouping suites.
+/// import status, for the batch/single-snapshot suites.
 private func folderCandidate(
     folderPath: String,
     watchedFolderPath: String,
@@ -94,6 +94,95 @@ private func bridgeInvalid(
         sourceFolderName: name,
         watchedFolderPath: watchedFolderPath,
         reason: .noValidAudio
+    )
+}
+
+// MARK: - Triage row builders
+
+private func matchedRelease(
+    releaseId: String,
+    title: String,
+    trackCount: UInt32? = 10
+) -> BridgeMatchedRelease {
+    BridgeMatchedRelease(
+        releaseId: releaseId,
+        title: title,
+        artist: "Artist",
+        pressing: trackCount.map {
+            BridgeMatchedPressing(year: 2000, format: "CD", trackCount: $0)
+        },
+        coverThumbnailUrl: nil,
+        evidence: BridgeMatchEvidence(source: .musicBrainz, signal: .discId),
+        // A lone disc-ID match, so core's rule claims the pressing.
+        claim: .exact(releaseId: releaseId, source: .musicBrainz)
+    )
+}
+
+/// A Ready row: matched, selectable, no import status.
+private func readyRow(_ key: String, title: String) -> BridgeTriageRow {
+    BridgeTriageRow(
+        candidateKey: key,
+        folderName: title,
+        watchedFolderPath: "/w",
+        placement: .ready,
+        matched: matchedRelease(releaseId: "rel-\(key)", title: title),
+        selectable: true,
+        importStatus: nil
+    )
+}
+
+/// A Needs-you row in `group`, never selectable.
+private func needsYouRow(
+    _ key: String,
+    title: String,
+    group: BridgeNeedsYouGroup,
+    reason: BridgeNeedsYouReason
+) -> BridgeTriageRow {
+    BridgeTriageRow(
+        candidateKey: key,
+        folderName: title,
+        watchedFolderPath: "/w",
+        placement: .needsYou(group: group, reason: reason),
+        matched: nil,
+        selectable: false,
+        importStatus: nil
+    )
+}
+
+private func doneRow(_ key: String, title: String) -> BridgeTriageRow {
+    BridgeTriageRow(
+        candidateKey: key,
+        folderName: title,
+        watchedFolderPath: "/w",
+        placement: .done,
+        matched: matchedRelease(releaseId: "rel-\(key)", title: title),
+        selectable: false,
+        importStatus: .complete(releaseId: "rel-\(key)", albumId: "al-\(key)")
+    )
+}
+
+private func skippedRow(_ key: String, title: String) -> BridgeTriageRow {
+    BridgeTriageRow(
+        candidateKey: key,
+        folderName: title,
+        watchedFolderPath: "/w",
+        placement: .skipped,
+        matched: nil,
+        selectable: false,
+        importStatus: nil
+    )
+}
+
+private func emptyTriageQueue() -> BridgeTriageQueue {
+    BridgeTriageQueue(
+        rows: [],
+        invalid: [],
+        counts: BridgeTriageTabCounts(
+            ready: 0,
+            needsYou: 0,
+            done: 0,
+            skipped: 0
+        )
     )
 }
 
@@ -245,7 +334,7 @@ struct ImportStoreRemovalTests {
 @Suite("ImportStore.applyImportCandidatesSnapshot")
 struct ImportStoreBatchSnapshotTests {
     @MainActor
-    @Test("inserts fresh candidates, watched folders, and invalids")
+    @Test("inserts fresh candidates and watched folders")
     func insertsFresh() throws {
         let store = ImportStore()
 
@@ -285,7 +374,6 @@ struct ImportStoreBatchSnapshotTests {
         #expect(
             fresh.importStatus == .complete(releaseId: "rel-1", albumId: "al-1")
         )
-        #expect(store.invalidCandidates["/w1/bad"] != nil)
     }
 
     @MainActor
@@ -331,7 +419,6 @@ struct ImportStoreBatchSnapshotTests {
         )
         #expect(merged.libraryStatuses["rel-1"] != nil)
         // Scan fields come from the incoming snapshot.
-        #expect(merged.skipped)
         #expect(merged.displayName == "A-renamed")
     }
 
@@ -375,7 +462,7 @@ struct ImportStoreBatchSnapshotTests {
 @Suite("ImportStore.applyImportCandidateSnapshot")
 struct ImportStoreSingleSnapshotTests {
     @MainActor
-    @Test("a nil snapshot removes the key from both dicts")
+    @Test("a nil snapshot removes the key")
     func nilRemoves() {
         let store = ImportStore()
         store.folderCandidates["/w1/a"] = folderCandidate(
@@ -383,21 +470,14 @@ struct ImportStoreSingleSnapshotTests {
             watchedFolderPath: "/w1",
             name: "A"
         )
-        store.invalidCandidates["/w1/bad"] = bridgeInvalid(
-            folderPath: "/w1/bad",
-            watchedFolderPath: "/w1",
-            name: "Bad"
-        )
 
         store.applyImportCandidateSnapshot(key: "/w1/a", snapshot: nil)
-        store.applyImportCandidateSnapshot(key: "/w1/bad", snapshot: nil)
 
         #expect(store.folderCandidates["/w1/a"] == nil)
-        #expect(store.invalidCandidates["/w1/bad"] == nil)
     }
 
     @MainActor
-    @Test(".folder merges session state, applies the runtime, clears invalid")
+    @Test(".folder merges session state and applies the runtime")
     func folderMergesAndAppliesRuntime() throws {
         let store = ImportStore()
         var existing = folderCandidate(
@@ -411,11 +491,6 @@ struct ImportStoreSingleSnapshotTests {
             albumId: "al-old"
         )
         store.folderCandidates["/w1/a"] = existing
-        store.invalidCandidates["/w1/a"] = bridgeInvalid(
-            folderPath: "/w1/a",
-            watchedFolderPath: "/w1",
-            name: "A"
-        )
 
         store.applyImportCandidateSnapshot(
             key: "/w1/a",
@@ -443,12 +518,11 @@ struct ImportStoreSingleSnapshotTests {
             merged.importStatus
                 == .complete(releaseId: "rel-new", albumId: "al-new")
         )
-        #expect(store.invalidCandidates["/w1/a"] == nil)
     }
 
     @MainActor
-    @Test(".invalid moves the folder candidate into invalid")
-    func invalidMoves() {
+    @Test(".invalid drops the key from folderCandidates")
+    func invalidDropsFolderCandidate() {
         let store = ImportStore()
         store.folderCandidates["/w1/a"] = folderCandidate(
             folderPath: "/w1/a",
@@ -467,8 +541,10 @@ struct ImportStoreSingleSnapshotTests {
             )
         )
 
+        // The sidebar now reads invalid folders from `triageQueue.invalid`,
+        // read separately through the triage projection — this path only has
+        // to stop treating the key as an addressable candidate.
         #expect(store.folderCandidates["/w1/a"] == nil)
-        #expect(store.invalidCandidates["/w1/a"] != nil)
     }
 
     @MainActor
@@ -533,199 +609,256 @@ struct ImportStoreSingleSnapshotTests {
     }
 }
 
-@Suite("ImportStore.tab")
-struct ImportStoreTabTests {
-    @MainActor
-    @Test("skipped wins over a completed import")
-    func skippedWins() {
-        let store = ImportStore()
-        let candidate = folderCandidate(
-            folderPath: "/w/a",
-            watchedFolderPath: "/w",
-            name: "A",
-            skipped: true,
-            importStatus: .complete(releaseId: "rel", albumId: "al")
-        )
-        #expect(store.tab(for: candidate) == .skipped)
-    }
+// MARK: - Triage rendering
 
-    @MainActor
-    @Test("a completed import is Added")
-    func completeIsAdded() {
-        let store = ImportStore()
-        let candidate = folderCandidate(
-            folderPath: "/w/a",
-            watchedFolderPath: "/w",
-            name: "A",
-            importStatus: .complete(releaseId: "rel", albumId: "al")
-        )
-        #expect(store.tab(for: candidate) == .added)
-    }
-
-    @MainActor
-    @Test("an already-imported folder is Added without a fresh import")
-    func alreadyImportedIsAdded() {
-        let store = ImportStore()
-        let candidate = folderCandidate(
-            folderPath: "/w/a",
-            watchedFolderPath: "/w",
-            name: "A",
-            isAdded: true
-        )
-        #expect(store.tab(for: candidate) == .added)
-    }
-
-    @MainActor
-    @Test("a plain candidate is New")
-    func plainIsNew() {
-        let store = ImportStore()
-        let candidate = folderCandidate(
-            folderPath: "/w/a",
-            watchedFolderPath: "/w",
-            name: "A"
-        )
-        #expect(store.tab(for: candidate) == .new)
-    }
-}
-
-@Suite("ImportStore grouping")
-struct ImportStoreGroupingTests {
-    /// Two watched folders. `/w1` holds two New candidates (inserted Beta then
-    /// Alpha, so date order is observable) plus one Added; `/w2` holds one
-    /// skipped candidate and one invalid folder.
-    @MainActor
+@Suite("ImportStore triage rendering")
+struct ImportStoreTriageRenderingTests {
+    /// One row in each tab, and every Needs-you group represented at least
+    /// once (two in "pick a pressing" so sort order is observable).
     private func seededStore() -> ImportStore {
         let store = ImportStore()
-        store.watchedFolders = [
-            BridgeWatchedFolder(path: "/w1", name: "w1"),
-            BridgeWatchedFolder(path: "/w2", name: "w2"),
-        ]
-        store.folderCandidates["/w1/beta"] = folderCandidate(
-            folderPath: "/w1/beta",
-            watchedFolderPath: "/w1",
-            name: "Beta"
-        )
-        store.folderCandidates["/w1/alpha"] = folderCandidate(
-            folderPath: "/w1/alpha",
-            watchedFolderPath: "/w1",
-            name: "Alpha"
-        )
-        store.folderCandidates["/w1/done"] = folderCandidate(
-            folderPath: "/w1/done",
-            watchedFolderPath: "/w1",
-            name: "Done",
-            importStatus: .complete(releaseId: "rel", albumId: "al")
-        )
-        store.folderCandidates["/w2/gamma"] = folderCandidate(
-            folderPath: "/w2/gamma",
-            watchedFolderPath: "/w2",
-            name: "Gamma",
-            skipped: true
-        )
-        store.invalidCandidates["/w2/bad"] = bridgeInvalid(
-            folderPath: "/w2/bad",
-            watchedFolderPath: "/w2",
-            name: "BadFolder"
+        store.triageQueue = BridgeTriageQueue(
+            rows: [
+                readyRow("/w/ready-b", title: "Beta"),
+                readyRow("/w/ready-a", title: "Alpha"),
+                needsYouRow(
+                    "/w/pick-1",
+                    title: "Pick One",
+                    group: .pickAPressing,
+                    reason: .disagreement(
+                        disagreement: .severalMatches(count: 3)
+                    )
+                ),
+                needsYouRow(
+                    "/w/pick-2",
+                    title: "Pick Two",
+                    group: .pickAPressing,
+                    reason: .disagreement(
+                        disagreement: .severalMatches(count: 2)
+                    )
+                ),
+                needsYouRow(
+                    "/w/conflict",
+                    title: "Conflicted",
+                    group: .signalsDisagree,
+                    reason: .disagreement(disagreement: .signalsConflict)
+                ),
+                needsYouRow(
+                    "/w/pending",
+                    title: "Pending",
+                    group: .stillIdentifying,
+                    reason: .stillIdentifying(phase: .running)
+                ),
+                doneRow("/w/done", title: "Finished"),
+                skippedRow("/w/skipped", title: "Set Aside"),
+            ],
+            invalid: [
+                bridgeInvalid(
+                    folderPath: "/w/bad",
+                    watchedFolderPath: "/w",
+                    name: "Bad Folder"
+                )
+            ],
+            counts: BridgeTriageTabCounts(
+                ready: 2,
+                needsYou: 4,
+                done: 1,
+                skipped: 2
+            )
         )
         return store
     }
 
     @MainActor
-    @Test("candidateGroups keeps every watched folder and sorts A–Z")
-    func groupsSortAscending() {
-        let groups = seededStore()
-            .candidateGroups(
-                tab: .new,
+    @Test("rows(tab:) scopes to the tab and sorts A-Z")
+    func rowsScopesAndSorts() {
+        let rows = seededStore()
+            .rows(
+                tab: .ready,
                 filterText: "",
                 sortOrder: .nameAZ
             )
-        #expect(groups.map(\.folder.path) == ["/w1", "/w2"])
-        #expect(groups[0].candidates.map(\.displayName) == ["Alpha", "Beta"])
-        // The other folder has no New candidates but still appears when unfiltered.
-        #expect(groups[1].candidates.isEmpty)
+        #expect(rows.map(\.folderName) == ["Alpha", "Beta"])
     }
 
     @MainActor
-    @Test("candidateGroups sorts Z–A")
-    func groupsSortDescending() {
-        let groups = seededStore()
-            .candidateGroups(
-                tab: .new,
+    @Test("rows(tab:) sorts Z-A")
+    func rowsSortsDescending() {
+        let rows = seededStore()
+            .rows(
+                tab: .ready,
                 filterText: "",
                 sortOrder: .nameZA
             )
-        #expect(groups[0].candidates.map(\.displayName) == ["Beta", "Alpha"])
+        #expect(rows.map(\.folderName) == ["Beta", "Alpha"])
     }
 
     @MainActor
-    @Test("candidateGroups date order is insertion order, oldest reverses it")
-    func groupsSortByDate() {
+    @Test("rows(tab:) filters by display title and folder name")
+    func rowsFilters() {
+        let rows = seededStore()
+            .rows(
+                tab: .ready,
+                filterText: "alpha",
+                sortOrder: .nameAZ
+            )
+        #expect(rows.map(\.folderName) == ["Alpha"])
+    }
+
+    @MainActor
+    @Test(
+        "checkboxes exist only where selectable — every Ready row, no other tab's"
+    )
+    func selectableIsReadyOnly() {
         let store = seededStore()
-        // Inserted Beta before Alpha.
+        let ready = store.rows(tab: .ready, filterText: "", sortOrder: .nameAZ)
+        #expect(!ready.isEmpty)
+        #expect(ready.allSatisfy { $0.selectable })
+
+        let done = store.rows(tab: .done, filterText: "", sortOrder: .nameAZ)
+        let skipped = store.skippedRows(filterText: "", sortOrder: .nameAZ)
+        let needsYou = store.needsYouGroups(filterText: "", sortOrder: .nameAZ)
+            .flatMap(\.rows)
+        #expect(!(done + needsYou).contains { $0.selectable })
         #expect(
-            store.candidateGroups(
-                tab: .new,
-                filterText: "",
-                sortOrder: .dateAddedNewest
-            )[0]
-            .candidates.map(\.displayName) == ["Beta", "Alpha"]
-        )
-        #expect(
-            store.candidateGroups(
-                tab: .new,
-                filterText: "",
-                sortOrder: .dateAddedOldest
-            )[0]
-            .candidates.map(\.displayName) == ["Alpha", "Beta"]
+            !skipped.contains {
+                if case .candidate(let row) = $0 { return row.selectable }
+                return false
+            }
         )
     }
 
     @MainActor
-    @Test("candidateGroups filter drops folders with no match")
-    func groupsFilterDropsEmptyFolders() {
+    @Test("needsYouGroups orders groups per core and drops empty ones")
+    func needsYouGroupsOrdered() {
         let groups = seededStore()
-            .candidateGroups(
-                tab: .new,
-                filterText: "alph",
-                sortOrder: .nameAZ
-            )
-        #expect(groups.map(\.folder.path) == ["/w1"])
-        #expect(groups[0].candidates.map(\.displayName) == ["Alpha"])
-    }
-
-    @MainActor
-    @Test("candidateTabCounts counts every tab, invalids under Skipped")
-    func tabCounts() {
-        let counts = seededStore().candidateTabCounts()
-        #expect(counts.new == 2)
-        #expect(counts.added == 1)
-        // One skipped candidate plus one invalid folder.
-        #expect(counts.skipped == 2)
-    }
-
-    @MainActor
-    @Test("skippedGroups merges skipped candidates and invalid folders")
-    func skippedGroupsMergeRows() {
-        let groups = seededStore()
-            .skippedGroups(
+            .needsYouGroups(
                 filterText: "",
                 sortOrder: .nameAZ
             )
-        // /w1 has no skipped rows and drops out.
-        #expect(groups.map(\.folder.path) == ["/w2"])
-        #expect(groups[0].rows.map(\.id) == ["/w2/gamma", "/w2/bad"])
+        // Core declares PickAPressing, SignalsDisagree, ..., StillIdentifying
+        // in that order; only the three represented in the fixture appear.
+        #expect(
+            groups.map(\.group) == [
+                .pickAPressing, .signalsDisagree, .stillIdentifying,
+            ]
+        )
+        #expect(
+            groups.first { $0.group == .pickAPressing }?.rows.map(\.folderName)
+                == ["Pick One", "Pick Two"]
+        )
     }
 
     @MainActor
-    @Test("skippedGroups filters candidate and invalid rows by text")
-    func skippedGroupsFilter() {
+    @Test("needsYouGroups filter can empty a group out entirely")
+    func needsYouGroupsFilterDropsEmptyGroup() {
         let groups = seededStore()
-            .skippedGroups(
+            .needsYouGroups(
+                filterText: "conflicted",
+                sortOrder: .nameAZ
+            )
+        #expect(groups.map(\.group) == [.signalsDisagree])
+    }
+
+    @MainActor
+    @Test("skippedRows merges skipped candidates and invalid folders")
+    func skippedRowsMerge() {
+        let rows = seededStore()
+            .skippedRows(
+                filterText: "",
+                sortOrder: .nameAZ
+            )
+        #expect(rows.map(\.id) == ["/w/bad", "/w/skipped"])
+    }
+
+    @MainActor
+    @Test("skippedRows filters candidate and invalid rows by the same text")
+    func skippedRowsFilter() {
+        let rows = seededStore()
+            .skippedRows(
                 filterText: "bad",
                 sortOrder: .nameAZ
             )
-        // Only the invalid folder matches "bad"; the skipped candidate drops.
-        #expect(groups.map(\.folder.path) == ["/w2"])
-        #expect(groups[0].rows.map(\.id) == ["/w2/bad"])
+        #expect(rows.map(\.id) == ["/w/bad"])
+    }
+
+    /// Plan test 7: answering a Needs-you row moves it out of that tab. The
+    /// store has no reducer of its own for this — a fresh `triageQueue`
+    /// (what the projection assigns after core reclassifies the row) is the
+    /// whole mechanism, so the test drives exactly that.
+    @MainActor
+    @Test(
+        "answering a Needs-you row moves it into Ready and out of every group"
+    )
+    func answeringMovesTheRowOut() {
+        let store = ImportStore()
+        store.triageQueue = BridgeTriageQueue(
+            rows: [
+                needsYouRow(
+                    "/w/subject",
+                    title: "Subject",
+                    group: .pickAPressing,
+                    reason: .disagreement(
+                        disagreement: .severalMatches(count: 2)
+                    )
+                )
+            ],
+            invalid: [],
+            counts: BridgeTriageTabCounts(
+                ready: 0,
+                needsYou: 1,
+                done: 0,
+                skipped: 0
+            )
+        )
+
+        #expect(
+            store.needsYouGroups(filterText: "", sortOrder: .nameAZ)
+                .flatMap(\.rows).map(\.candidateKey) == ["/w/subject"]
+        )
+        #expect(
+            store.rows(tab: .ready, filterText: "", sortOrder: .nameAZ)
+                .isEmpty
+        )
+
+        // The user picked a pressing; the next triage-queue read (what the
+        // projection would apply) reclassifies the row to Ready.
+        store.triageQueue = BridgeTriageQueue(
+            rows: [readyRow("/w/subject", title: "Subject")],
+            invalid: [],
+            counts: BridgeTriageTabCounts(
+                ready: 1,
+                needsYou: 0,
+                done: 0,
+                skipped: 0
+            )
+        )
+
+        #expect(
+            store.needsYouGroups(filterText: "", sortOrder: .nameAZ).isEmpty
+        )
+        #expect(
+            store.rows(tab: .ready, filterText: "", sortOrder: .nameAZ)
+                .map(\.candidateKey) == ["/w/subject"]
+        )
+    }
+
+    @MainActor
+    @Test("an empty triage queue renders no rows in any tab")
+    func emptyQueueIsEmptyEverywhere() {
+        let store = ImportStore()
+        store.triageQueue = emptyTriageQueue()
+        #expect(
+            store.rows(tab: .ready, filterText: "", sortOrder: .nameAZ)
+                .isEmpty
+        )
+        #expect(
+            store.needsYouGroups(filterText: "", sortOrder: .nameAZ).isEmpty
+        )
+        #expect(
+            store.rows(tab: .done, filterText: "", sortOrder: .nameAZ)
+                .isEmpty
+        )
+        #expect(store.skippedRows(filterText: "", sortOrder: .nameAZ).isEmpty)
     }
 }

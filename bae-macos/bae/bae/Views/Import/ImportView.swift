@@ -53,13 +53,6 @@ struct ImportView: View {
             .onChange(of: uiStore.selectedFolderCandidate) { _, _ in
                 uiStore.lightbox = nil
             }
-            .task(id: sourceFolderNames) {
-                await importStore.refreshImportedSourceFolderNames(
-                    sourceFolderNames,
-                    isImported: importer.isSourceFolderNameImported,
-                    onError: { uiStore.showError($0) }
-                )
-            }
         }
     }
 
@@ -137,11 +130,6 @@ struct ImportView: View {
         if case .idle = candidate.identifyState {
             importer.autoIdentifyFolder(folderPath, folderPath)
         }
-    }
-
-    private var sourceFolderNames: [String] {
-        Array(Set(importStore.folderCandidates.values.map(\.displayName)))
-            .sorted()
     }
 
     /// Mark the candidate at `key` skipped or unskipped. The import-candidate
