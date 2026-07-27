@@ -1513,6 +1513,38 @@ impl AppHandle {
         ))
     }
 
+    /// The claim line for picking `result` under `candidate_key`, without a
+    /// prefetch. Re-identify's path: it commits straight from the picked row,
+    /// so the header states the claim from that row plus the candidate's own
+    /// identify evidence. The import confirm pane gets the same line back from
+    /// `prefetch_release` instead, since it is fetching the release anyway.
+    pub fn claim_for_pick(
+        &self,
+        candidate_key: String,
+        result: crate::types::BridgeMetadataResult,
+    ) -> crate::types::BridgeClaimLine {
+        let release = bae_core::import::ClaimRelease {
+            release_ref: bae_core::import::MetadataRef::new(
+                result.release_id,
+                result.source.into_core(),
+            ),
+            year: result.year,
+            format: result.format,
+            country: result.country,
+            catalog_number: result.catalog_number,
+            // A picked row carries no tracklist: the search endpoint returns
+            // none, and re-identify already refuses a release whose track count
+            // differs from the library release's, so there is nothing the
+            // metadata-from line could tell the user by repeating it.
+            track_count: None,
+        };
+        crate::types::BridgeClaimLine::from_core(
+            self.services
+                .import()
+                .claim_for_pick(&candidate_key, &release),
+        )
+    }
+
     pub async fn is_source_folder_name_imported(&self, name: String) -> Result<bool, BridgeError> {
         self.services
             .library_manager()
@@ -1622,8 +1654,13 @@ impl AppHandle {
         Ok(crate::types::BridgeReleaseUserEdit::from_core(edit))
     }
 
+    /// Pick a release for a candidate: the confirmation pane's display detail,
+    /// the editor seed masked for the resulting claim, and the claim line
+    /// itself. `candidate_key` is what lets core read the evidence that
+    /// identified the candidate, which is what the claim defaults from.
     pub async fn prefetch_release(
         &self,
+        candidate_key: String,
         release_id: String,
         source: BridgeMetadataSource,
         local_track_count: Option<u32>,
@@ -1631,7 +1668,7 @@ impl AppHandle {
         let prefetch = self
             .services
             .import()
-            .prefetch_release(&release_id, source.into_core())
+            .prefetch_release(&candidate_key, &release_id, source.into_core())
             .await
             .map_err(BridgeError::import)?;
         Ok(crate::types::BridgeReleasePrefetch::from_core(
@@ -3268,25 +3305,6 @@ impl BridgeWorkDetail {
                 .collect(),
         }
     }
-}
-
-/// Shape a prefetched editor seed ([`crate::types::BridgeReleasePrefetch::seed`])
-/// for the user's identity claim: Exact keeps the pressing fields, Approximate /
-/// Unknown nil them. Nothing else about the seed depends on the claim, so the
-/// exactness toggle re-shapes the kept seed instead of re-fetching. Stateless
-/// type-translation wrapper around
-/// [`bae_core::import::shape_user_edit_for_choice`]: the caller (Swift, C#) must
-/// not branch on `IdentityChoice` itself.
-#[cfg(feature = "desktop")]
-#[uniffi::export]
-pub fn shape_user_edit_for_choice(
-    seed: crate::types::BridgeReleaseUserEdit,
-    choice: crate::types::BridgeIdentityChoice,
-) -> crate::types::BridgeReleaseUserEdit {
-    let core_seed = seed.into_core();
-    let core_choice = choice.into_core();
-    let edit = bae_core::import::shape_user_edit_for_choice(&core_seed, &core_choice);
-    crate::types::BridgeReleaseUserEdit::from_core(edit)
 }
 
 /// Normalize + validate the editor's raw form into a wire edit. `Valid`

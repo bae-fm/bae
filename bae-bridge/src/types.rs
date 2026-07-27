@@ -351,6 +351,23 @@ impl BridgeIdentityChoice {
             Self::Unknown => bae_core::import::IdentityChoice::Unknown,
         }
     }
+
+    /// The claim core derived from the evidence that identified a candidate —
+    /// the direction `into_core` doesn't cover, since the default is decided in
+    /// core and travels outward.
+    pub fn from_core(choice: bae_core::import::IdentityChoice) -> Self {
+        match choice {
+            bae_core::import::IdentityChoice::Exact { release_ref } => Self::Exact {
+                release_id: release_ref.id,
+                source: BridgeMetadataSource::from_core(release_ref.source),
+            },
+            bae_core::import::IdentityChoice::Approximate { release_ref } => Self::Approximate {
+                release_id: release_ref.id,
+                source: BridgeMetadataSource::from_core(release_ref.source),
+            },
+            bae_core::import::IdentityChoice::Unknown => Self::Unknown,
+        }
+    }
 }
 
 /// A track group's side discriminant — the header the UI renders ("Side A" /
@@ -2251,14 +2268,54 @@ pub struct BridgeReleaseTrack {
 /// the editor from `seed`, never from `detail`, or an untouched artist list reads
 /// as an edit at commit and the release loses its secondary album artists.
 ///
-/// Keep `seed` for the exactness toggle: `shape_user_edit_for_choice` re-shapes
-/// it for a changed identity claim without re-fetching. (Not linked: that export
-/// only exists under the `desktop` feature, and this record is documented
-/// without it.)
+/// `seed` arrives already masked for `claim.choice` (an album-level claim blanks
+/// the pressing block), so the UI binds it straight to the editor. The claim
+/// itself is settled by the pick — there is no second question to ask and no
+/// re-shaping to do.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeReleasePrefetch {
     pub detail: BridgeReleaseDetail,
     pub seed: BridgeReleaseUserEdit,
+    pub claim: BridgeClaimLine,
+}
+
+/// What identified the picked release. Mirrors
+/// `bae_core::import::ClaimEvidence`. Only `DiscIdAlone` is sharp enough to
+/// claim a pressing — the rest name the album — and the UI renders this as the
+/// claim sentence's trailing clause rather than re-deciding anything from it.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeClaimEvidence {
+    /// The disc's table of contents matched this release and no other.
+    DiscIdAlone,
+    /// The disc's table of contents matched, and `match_count` releases came
+    /// back for it.
+    DiscIdShared { match_count: u32 },
+    /// A barcode read off the packaging matched.
+    Barcode,
+    /// A catalog number, or a search the user typed, found it.
+    Search,
+}
+
+/// The release header's claim line. Mirrors `bae_core::import::ClaimLine`.
+///
+/// Two facts: `choice` is what the import claims you physically hold, and
+/// `release` is the release the metadata was read from. They coincide only for
+/// a pressing claim; `shows_metadata_source` says when the header must render
+/// the second line naming it, so neither desktop UI re-derives the rule.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeClaimLine {
+    /// The claim this import will record, and what commit writes.
+    pub choice: BridgeIdentityChoice,
+    pub evidence: BridgeClaimEvidence,
+    /// The picked release by its pressing facts — format, year, country and
+    /// catalog number, `·`-joined. `None` when the source states none of them,
+    /// and the sentence then reads without a description.
+    pub release: Option<String>,
+    /// The picked release's track count, where the source stated one. Rendered
+    /// on the metadata-from line.
+    pub track_count: Option<u32>,
+    /// Whether to render the second line naming where the metadata came from.
+    pub shows_metadata_source: bool,
 }
 
 /// Mirror of `bae_core::import::ReleaseUserEdit` — a normalized, validated
@@ -3695,10 +3752,55 @@ impl BridgeReleasePrefetch {
         p: bae_core::import::search::ImportReleasePrefetch,
         local_track_count: Option<u32>,
     ) -> Self {
-        let bae_core::import::search::ImportReleasePrefetch { detail, seed } = p;
+        let bae_core::import::search::ImportReleasePrefetch {
+            detail,
+            seed,
+            claim,
+        } = p;
+        // The seed crosses masked for the claim the pick settled, so the editor
+        // binds it directly. Doing it here rather than in the UI is what keeps
+        // the two desktop surfaces from each deciding what an album-level claim
+        // shows.
+        let seed = bae_core::import::shape_user_edit_for_choice(&seed, &claim.choice);
         BridgeReleasePrefetch {
             detail: BridgeReleaseDetail::from_core(detail, local_track_count),
             seed: BridgeReleaseUserEdit::from_core(seed),
+            claim: BridgeClaimLine::from_core(claim),
+        }
+    }
+}
+
+#[cfg(feature = "desktop")]
+impl BridgeClaimLine {
+    pub(crate) fn from_core(claim: bae_core::import::ClaimLine) -> Self {
+        let shows_metadata_source = claim.shows_metadata_source();
+        let bae_core::import::ClaimLine {
+            choice,
+            evidence,
+            release,
+            track_count,
+        } = claim;
+        BridgeClaimLine {
+            choice: BridgeIdentityChoice::from_core(choice),
+            evidence: BridgeClaimEvidence::from_core(evidence),
+            release,
+            track_count,
+            shows_metadata_source,
+        }
+    }
+}
+
+#[cfg(feature = "desktop")]
+impl BridgeClaimEvidence {
+    fn from_core(evidence: bae_core::import::ClaimEvidence) -> Self {
+        use bae_core::import::ClaimEvidence;
+        match evidence {
+            ClaimEvidence::DiscIdAlone => BridgeClaimEvidence::DiscIdAlone,
+            ClaimEvidence::DiscIdShared { match_count } => {
+                BridgeClaimEvidence::DiscIdShared { match_count }
+            }
+            ClaimEvidence::Barcode => BridgeClaimEvidence::Barcode,
+            ClaimEvidence::Search => BridgeClaimEvidence::Search,
         }
     }
 }

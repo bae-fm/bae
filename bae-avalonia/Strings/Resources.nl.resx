@@ -355,11 +355,6 @@
   <data name="edit.tracks.col_number" xml:space="preserve"><value>nr.</value></data>
   <data name="edit.tracks.artist_placeholder" xml:space="preserve"><value>albumartiest</value></data>
   <data name="identify.skip" xml:space="preserve"><value>Identificeren overslaan</value></data>
-  <data name="identify.import_as" xml:space="preserve"><value>Importeren als</value></data>
-  <data name="identify.exact_pressing" xml:space="preserve"><value>Exacte persing</value></data>
-  <data name="identify.metadata_only" xml:space="preserve"><value>Alleen metadata</value></data>
-  <data name="identify.metadata_only_note" xml:space="preserve"><value>Alleen metadata — persingsvelden blijven leeg; alleen de albumgroep wordt vastgelegd.</value></data>
-  <data name="album.reidentify.claim_header" xml:space="preserve"><value>Identiteit instellen op deze persing</value></data>
   <data name="queue.drop_insert_caption" xml:space="preserve"><value>invoegen op positie {position}</value></data>
   <data name="queue.empty.title" xml:space="preserve"><value>wachtrij is leeg</value></data>
   <data name="queue.empty.hint" xml:space="preserve"><value>sleep albums hierheen of speel een album af</value></data>

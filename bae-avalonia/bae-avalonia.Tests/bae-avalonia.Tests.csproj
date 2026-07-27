@@ -51,7 +51,6 @@
     <Compile Include="../Stores/QueueReorderModel.cs" Link="QueueReorderModel.cs" />
     <Compile Include="../Stores/QueueInsertModel.cs" Link="QueueInsertModel.cs" />
     <Compile Include="../Stores/OrderedIntersection.cs" Link="OrderedIntersection.cs" />
-    <Compile Include="../Stores/ImportIdentityModel.cs" Link="ImportIdentityModel.cs" />
     <Compile Include="../Stores/ReidentifyResultsModel.cs" Link="ReidentifyResultsModel.cs" />
     <Compile Include="../Stores/ImportListModel.cs" Link="ImportListModel.cs" />
     <Compile Include="../Stores/StorageListModel.cs" Link="StorageListModel.cs" />

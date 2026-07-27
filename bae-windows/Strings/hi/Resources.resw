@@ -355,11 +355,6 @@
   <data name="edit.tracks.col_number" xml:space="preserve"><value>क्र.</value></data>
   <data name="edit.tracks.artist_placeholder" xml:space="preserve"><value>एल्बम कलाकार</value></data>
   <data name="identify.skip" xml:space="preserve"><value>पहचान छोड़ें</value></data>
-  <data name="identify.import_as" xml:space="preserve"><value>इस रूप में आयात करें</value></data>
-  <data name="identify.exact_pressing" xml:space="preserve"><value>सटीक प्रेसिंग</value></data>
-  <data name="identify.metadata_only" xml:space="preserve"><value>केवल मेटाडेटा</value></data>
-  <data name="identify.metadata_only_note" xml:space="preserve"><value>केवल मेटाडेटा — प्रेसिंग फ़ील्ड खाली रहते हैं; केवल एल्बम समूह रिकॉर्ड किया जाता है।</value></data>
-  <data name="album.reidentify.claim_header" xml:space="preserve"><value>पहचान को इस प्रेसिंग पर सेट करें</value></data>
   <data name="queue.drop_insert_caption" xml:space="preserve"><value>स्थान {position} पर जोड़ें</value></data>
   <data name="queue.empty.title" xml:space="preserve"><value>कतार खाली है</value></data>
   <data name="queue.empty.hint" xml:space="preserve"><value>एल्बम यहाँ खींचें या कोई एल्बम चलाएँ</value></data>

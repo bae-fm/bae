@@ -51,10 +51,14 @@ public final class Library: Sendable, Observable {
         ) async throws -> BridgeStoragePage
     public let findReleaseDetail:
         @Sendable (_ releaseId: String) async throws -> BridgeRelease?
+    /// Pick a release for an import candidate: the confirm pane's display
+    /// detail, the editor seed masked for the claim, and the claim itself.
+    /// `candidateKey` is what lets bae-core read the evidence that identified
+    /// the candidate, which is what the claim defaults from.
     public let prefetchRelease:
         @Sendable (
-            _ releaseId: String, _ source: BridgeMetadataSource,
-            _ localTrackCount: UInt32?
+            _ candidateKey: String, _ releaseId: String,
+            _ source: BridgeMetadataSource, _ localTrackCount: UInt32?
         ) async throws -> BridgeReleasePrefetch
     public let resolveToTrackIds:
         @Sendable (_ ids: [String]) async throws -> [String]
@@ -135,8 +139,8 @@ public final class Library: Sendable, Observable {
                 throw StubError.notImplemented
             },
         prefetchRelease:
-            @escaping @Sendable (String, BridgeMetadataSource, UInt32?)
-            async throws -> BridgeReleasePrefetch = { _, _, _ in
+            @escaping @Sendable (String, String, BridgeMetadataSource, UInt32?)
+            async throws -> BridgeReleasePrefetch = { _, _, _, _ in
                 throw StubError.notImplemented
             },
         resolveToTrackIds:
@@ -234,9 +238,10 @@ public final class Library: Sendable, Observable {
                 },
                 prefetchRelease: {
                     try await handle.prefetchRelease(
-                        releaseId: $0,
-                        source: $1,
-                        localTrackCount: $2
+                        candidateKey: $0,
+                        releaseId: $1,
+                        source: $2,
+                        localTrackCount: $3
                     )
                 },
                 resolveToTrackIds: {

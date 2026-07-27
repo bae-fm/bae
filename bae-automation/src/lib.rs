@@ -454,14 +454,52 @@ pub struct AutomationRemoteCover {
     pub source: AutomationMetadataSource,
 }
 
-/// What picking a release gives the confirmation step: the display `detail` and
-/// the metadata editor's `seed`. The seed is projected from the release exactly
-/// as the commit worker maps it, so it — never the detail — is what an import's
-/// `user_edit` overlay is built from.
+/// What picking a release gives the confirmation step: the display `detail`,
+/// the metadata editor's seed, and the identity `claim` the pick implies. The
+/// seed is projected from the release exactly as the commit worker maps it, so
+/// it — never the detail — is what an import's `user_edit` overlay is built
+/// from.
+///
+/// The field is `unmasked_seed`, not `seed`, because it is the projection
+/// *before* a claim is applied to it — an album-level claim blanks the pressing
+/// block, and this still carries it. The desktop surfaces receive the masked
+/// form under `seed` and bind it directly; an automation caller has to decide,
+/// because it is the one caller that can commit a claim other than `claim`.
+/// Pass this through `import_release_edit_shape` with whichever claim is being
+/// committed, and use its output as the overlay. Binding this value directly
+/// writes pressing fields the claim says are not known.
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct AutomationReleasePrefetch {
     pub detail: AutomationReleaseDetail,
-    pub seed: AutomationReleaseUserEdit,
+    pub unmasked_seed: AutomationReleaseUserEdit,
+    pub claim: AutomationClaimLine,
+}
+
+/// What identified the picked release. Only `disc_id_alone` is sharp enough to
+/// claim a pressing; the rest name the album.
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case", tag = "kind")]
+pub enum AutomationClaimEvidence {
+    DiscIdAlone,
+    DiscIdShared { match_count: u32 },
+    Barcode,
+    Search,
+}
+
+/// The claim the pick implies, and the release the metadata came from. `choice`
+/// is what `import_start` should carry to commit the default claim; a caller
+/// wanting a different one passes a different `identity_choice`.
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct AutomationClaimLine {
+    pub choice: AutomationIdentityChoice,
+    pub evidence: AutomationClaimEvidence,
+    /// The picked release's pressing facts, `·`-joined, or absent when it
+    /// states none.
+    pub release: Option<String>,
+    pub track_count: Option<u32>,
+    /// Whether the two facts differ, so a surface names the metadata source
+    /// separately.
+    pub shows_metadata_source: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
@@ -807,15 +845,19 @@ pub struct CandidateSkipSetInput {
     pub skipped: bool,
 }
 
+/// Picking a release for a candidate. The candidate is part of the input
+/// because the claim the pick implies is derived from that candidate's identify
+/// evidence — a key with no evidence yields the album-level claim.
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
-pub struct ReleaseSourceInput {
+pub struct ReleasePrefetchInput {
+    pub candidate_key: String,
     pub source: AutomationMetadataSource,
     pub release_id: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct ShapeReleaseEditInput {
-    /// The editor seed from `import_release_prefetch`.
+    /// The editor seed from `import_release_prefetch`'s `unmasked_seed`.
     pub seed: AutomationReleaseUserEdit,
     pub choice: AutomationIdentityChoice,
 }
@@ -1166,6 +1208,21 @@ impl AutomationState {
             .len()
     }
 
+    /// One candidate by key, or `NotFound`. A key the index has never seen
+    /// names nothing — distinct from a candidate that exists but whose identify
+    /// pipeline hasn't run, which is a real candidate with no evidence yet.
+    fn get_candidate(&self, candidate_key: &str) -> Result<AutomationCandidate, AutomationError> {
+        self.ensure_event_index_ready()?;
+        self.candidates
+            .read()
+            .expect("candidate index poisoned")
+            .get(candidate_key)
+            .cloned()
+            .ok_or_else(|| {
+                AutomationError::not_found(format!("candidate '{candidate_key}' not found"))
+            })
+    }
+
     fn list_candidates(&self) -> Result<Vec<AutomationCandidate>, AutomationError> {
         self.ensure_event_index_ready()?;
         let mut candidates = self
@@ -1318,16 +1375,7 @@ impl Automation {
         &self,
         candidate_key: String,
     ) -> Result<AutomationCandidate, AutomationError> {
-        self.state.ensure_event_index_ready()?;
-        self.state
-            .candidates
-            .read()
-            .expect("candidate index poisoned")
-            .get(&candidate_key)
-            .cloned()
-            .ok_or_else(|| {
-                AutomationError::not_found(format!("candidate '{candidate_key}' not found"))
-            })
+        self.state.get_candidate(&candidate_key)
     }
 
     pub fn set_candidate_skipped(
@@ -1355,17 +1403,30 @@ impl Automation {
 
     pub async fn prefetch_release(
         &self,
+        candidate_key: String,
         source: AutomationMetadataSource,
         release_id: String,
     ) -> Result<AutomationReleasePrefetch, AutomationError> {
+        // Resolve the candidate before fetching anything, and hand core the key
+        // the index resolved rather than the caller's string, so the lookup is
+        // load-bearing: deleting it on its own stops compiling.
+        //
+        // Core reads a key it has recorded nothing against as "the pipeline
+        // hasn't run": the right answer for a scanned candidate awaiting
+        // identification, and indistinguishable from a typo. Answered rather
+        // than refused, a typo comes back as a confident album-level claim over
+        // a seed whose pressing block was blanked to match it.
+        let candidate = self.state.get_candidate(&candidate_key)?;
+
         let prefetch = self
             .services
             .import()
-            .prefetch_release(&release_id, source.into())
+            .prefetch_release(candidate.key(), &release_id, source.into())
             .await?;
         Ok(AutomationReleasePrefetch {
             detail: automation_release_detail(prefetch.detail),
-            seed: automation_release_user_edit(prefetch.seed),
+            unmasked_seed: automation_release_user_edit(prefetch.seed),
+            claim: automation_claim_line(prefetch.claim),
         })
     }
 
@@ -1538,9 +1599,9 @@ impl Automation {
                 to_value(self.search_imports(query).await?)
             }
             AutomationTool::ImportReleasePrefetch => {
-                let input: ReleaseSourceInput = from_value(args)?;
+                let input: ReleasePrefetchInput = from_value(args)?;
                 to_value(
-                    self.prefetch_release(input.source, input.release_id)
+                    self.prefetch_release(input.candidate_key, input.source, input.release_id)
                         .await?,
                 )
             }
@@ -1678,8 +1739,8 @@ impl AutomationTool {
         AutomationToolDescriptor {
             tool: AutomationTool::ImportReleasePrefetch,
             name: "import_release_prefetch",
-            description: "Prefetch a release: display detail plus the metadata editor's seed",
-            input: AutomationToolInput::ReleaseSource,
+            description: "Prefetch a release for a candidate: display detail, the identity claim the pick implies, and the editor seed before that claim masks it",
+            input: AutomationToolInput::ReleasePrefetch,
         },
         AutomationToolDescriptor {
             tool: AutomationTool::ImportFileTagsPreview,
@@ -1794,7 +1855,7 @@ enum AutomationToolInput {
     CandidateKey,
     CandidateSkipSet,
     SearchQuery,
-    ReleaseSource,
+    ReleasePrefetch,
     Folder,
     ShapeReleaseEdit,
     StartImport,
@@ -1814,7 +1875,7 @@ impl AutomationToolInput {
             Self::CandidateKey => schema_object::<CandidateKeyInput>(),
             Self::CandidateSkipSet => schema_object::<CandidateSkipSetInput>(),
             Self::SearchQuery => schema_object::<AutomationSearchQuery>(),
-            Self::ReleaseSource => schema_object::<ReleaseSourceInput>(),
+            Self::ReleasePrefetch => schema_object::<ReleasePrefetchInput>(),
             Self::Folder => schema_object::<FolderInput>(),
             Self::ShapeReleaseEdit => schema_object::<ShapeReleaseEditInput>(),
             Self::StartImport => schema_object::<AutomationStartImport>(),
@@ -2015,6 +2076,38 @@ fn identity_choice(choice: AutomationIdentityChoice) -> IdentityChoice {
             }
         }
         AutomationIdentityChoice::Unknown => IdentityChoice::Unknown,
+    }
+}
+
+fn automation_claim_line(claim: bae_core::import::ClaimLine) -> AutomationClaimLine {
+    let shows_metadata_source = claim.shows_metadata_source();
+    AutomationClaimLine {
+        choice: automation_identity_choice(claim.choice),
+        evidence: match claim.evidence {
+            bae_core::import::ClaimEvidence::DiscIdAlone => AutomationClaimEvidence::DiscIdAlone,
+            bae_core::import::ClaimEvidence::DiscIdShared { match_count } => {
+                AutomationClaimEvidence::DiscIdShared { match_count }
+            }
+            bae_core::import::ClaimEvidence::Barcode => AutomationClaimEvidence::Barcode,
+            bae_core::import::ClaimEvidence::Search => AutomationClaimEvidence::Search,
+        },
+        release: claim.release,
+        track_count: claim.track_count,
+        shows_metadata_source,
+    }
+}
+
+fn automation_identity_choice(choice: IdentityChoice) -> AutomationIdentityChoice {
+    match choice {
+        IdentityChoice::Exact { release_ref } => AutomationIdentityChoice::Exact {
+            source: release_ref.source.into(),
+            release_id: release_ref.id,
+        },
+        IdentityChoice::Approximate { release_ref } => AutomationIdentityChoice::Approximate {
+            source: release_ref.source.into(),
+            release_id: release_ref.id,
+        },
+        IdentityChoice::Unknown => AutomationIdentityChoice::Unknown,
     }
 }
 
@@ -2746,6 +2839,84 @@ mod tests {
                 "tool {} inputSchema must have root type object",
                 tool.name(),
             );
+        }
+    }
+
+    /// A candidate key is resolved before anything is fetched for it, so a key
+    /// that names nothing fails as `not_found` instead of being answered.
+    ///
+    /// This matters most on `import_release_prefetch`, which reads the identity
+    /// claim off the named candidate's identify evidence. Core reads a key it
+    /// has recorded nothing against as "the pipeline hasn't run" — correct for
+    /// a scanned candidate awaiting identification, and indistinguishable from
+    /// a typo. Answered rather than refused, a typo returns a confident
+    /// album-level claim over a seed whose pressing block was blanked to match
+    /// it: a wrong answer that looks like a right one.
+    mod candidate_lookup {
+        use super::*;
+
+        fn candidate(key: &str) -> AutomationCandidate {
+            AutomationCandidate::Valid {
+                common: AutomationCandidateCommon {
+                    key: key.to_string(),
+                    path: key.to_string(),
+                    name: "Album".to_string(),
+                    watched_folder_path: "/music".to_string(),
+                    skipped: false,
+                    is_added: false,
+                    runtime: None,
+                },
+                track_count: 11,
+                format_label: "FLAC".to_string(),
+                content_hash: "hash".to_string(),
+            }
+        }
+
+        fn state_holding(key: &str) -> AutomationState {
+            let state = AutomationState::new();
+            state
+                .candidates
+                .write()
+                .expect("candidate index poisoned")
+                .insert(key.to_string(), candidate(key));
+            state
+        }
+
+        #[test]
+        fn a_known_key_resolves() {
+            let state = state_holding("/music/Album");
+            let found = state
+                .get_candidate("/music/Album")
+                .expect("a scanned candidate resolves");
+            assert_eq!(found.path(), "/music/Album");
+        }
+
+        /// Absence is not "no evidence yet" — it is a key that names nothing.
+        #[test]
+        fn an_unknown_key_is_not_found_rather_than_empty_evidence() {
+            let state = state_holding("/music/Album");
+            let error = state
+                .get_candidate("/music/Albmu")
+                .expect_err("a key naming nothing must not be answered");
+            assert_eq!(error.kind(), "not_found");
+            assert!(
+                error.message().contains("/music/Albmu"),
+                "the error names the key that missed: {}",
+                error.message()
+            );
+        }
+
+        /// A candidate with no runtime at all still resolves: its identify
+        /// pipeline simply hasn't run, which is a state a caller may legitimately
+        /// prefetch against.
+        #[test]
+        fn a_candidate_with_no_identify_evidence_still_resolves() {
+            let state = state_holding("/music/Album");
+            let found = state.get_candidate("/music/Album").expect("resolves");
+            assert!(matches!(
+                found,
+                AutomationCandidate::Valid { ref common, .. } if common.runtime.is_none()
+            ));
         }
     }
 

@@ -788,20 +788,19 @@ internal static class NativeBae
 
     internal static void PreviewTogglePause(AppHandle handle) => handle.PreviewTogglePause();
 
-    /// <summary>Prefetch a release's metadata from a source for the import
-    /// edit-form seed — the raw projection, before the confirm dialog composes it
-    /// with local artwork. <paramref name="localTrackCount"/> lets core align the
-    /// remote track list to the rip.</summary>
-    internal static (BridgeReleasePrefetch? Prefetch, string? Error) PrefetchRelease(
-        AppHandle handle, string releaseId, BridgeMetadataSource source, uint? localTrackCount) =>
-        CaptureBridgeValue(() => Await(() => handle.PrefetchRelease(releaseId, source, localTrackCount)));
-
     internal static (PrefetchedEdit? Prefetched, string? Error) PrefetchCandidateEdit(
         AppHandle handle,
+        string candidateKey,
         string releaseId,
         BridgeMetadataSource source,
         string folderPath) =>
-        CaptureBridgeValue(() => PrefetchedEdit(handle, releaseId, source, folderPath));
+        CaptureBridgeValue(() => PrefetchedEdit(handle, candidateKey, releaseId, source, folderPath));
+
+    /// <summary>What picking a release under a candidate claims, and where its
+    /// metadata comes from. The re-identify dialog's path: it commits straight
+    /// from the picked row, so it never prefetches.</summary>
+    internal static BridgeClaimLine ClaimForPick(AppHandle handle, string candidateKey, BridgeMetadataResult result) =>
+        handle.ClaimForPick(candidateKey, result);
 
     /// <summary>
     /// The skip-identify confirm seed: project the folder's embedded file tags
@@ -1122,21 +1121,21 @@ internal static class NativeBae
 
     private static PrefetchedEdit PrefetchedEdit(
         AppHandle handle,
+        string candidateKey,
         string releaseId,
         BridgeMetadataSource source,
         string folderPath)
     {
         var localTrackCount = LocalTrackCount(handle.GetCandidate(folderPath));
-        var prefetch = Await(() => handle.PrefetchRelease(releaseId, source, localTrackCount));
-        // A picked release claims the exact pressing by default; the confirm
-        // dialog re-shapes this seed if the user switches to metadata only.
-        var edit = ShapeCandidateEdit(prefetch.Seed, new BridgeIdentityChoice.Exact(releaseId, source));
+        var prefetch = Await(() => handle.PrefetchRelease(candidateKey, releaseId, source, localTrackCount));
         return new PrefetchedEdit
         {
-            Edit = edit,
+            // The seed arrives masked for the claim the pick settled, so the
+            // form binds it directly.
+            Edit = BaeBridgeMethods.RawReleaseEditFromUserEdit(prefetch.Seed, "prefetch-track"),
             RemoteCovers = prefetch.Detail.CoverArt.ToList(),
             LocalArtwork = LocalArtwork(handle.GetCandidate(folderPath)),
-            Seed = prefetch.Seed,
+            Claim = prefetch.Claim,
         };
     }
 
@@ -1425,26 +1424,6 @@ internal static class NativeBae
             "barcode" => new BridgeExcludedSignal.Barcode(),
             _ => new BridgeExcludedSignal.Catalog(value),
         };
-
-    /// <summary>
-    /// The identity claim for a source-backed pick: <c>Exact</c> keeps the picked
-    /// pressing's fields, <c>Approximate</c> claims only the album group (core
-    /// blanks the pressing fields). The only place these two variants are built.
-    /// </summary>
-    internal static BridgeIdentityChoice SourceIdentityChoice(bool exact, string releaseId, BridgeMetadataSource source) =>
-        exact
-            ? new BridgeIdentityChoice.Exact(releaseId, source)
-            : new BridgeIdentityChoice.Approximate(releaseId, source);
-
-    /// <summary>
-    /// Re-shape the confirm-form seed from the kept editor seed under a new
-    /// identity claim — used when the user flips exact ↔ metadata only, with no
-    /// re-fetch. Approximate nils the pressing fields; Exact keeps them.
-    /// </summary>
-    internal static BridgeRawReleaseEdit ShapeCandidateEdit(BridgeReleaseUserEdit seed, BridgeIdentityChoice choice) =>
-        BaeBridgeMethods.RawReleaseEditFromUserEdit(
-            BaeBridgeMethods.ShapeUserEditForChoice(seed, choice),
-            "prefetch-track");
 
     private static BridgeReleaseUserEdit ReleaseUserEdit(BridgeRawReleaseEdit edit) =>
         BaeBridgeMethods.ShapeReleaseEdit(edit) switch

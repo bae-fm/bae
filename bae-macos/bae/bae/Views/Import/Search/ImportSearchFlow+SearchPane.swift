@@ -40,8 +40,6 @@ extension ImportSearchFlow {
     ) -> some View {
         let key = input.key
         let importStore = services.importStore
-        // Picking a pressing row defaults to claiming it as the exact pressing;
-        // the pane's Import-as toggle flips it to Metadata-only afterward.
         let resolvedOnSelect =
             onSelect ?? defaultOnSelect(services: services, input: input)
         let fields = searchFieldBindings(importStore: importStore, input: input)
@@ -171,8 +169,9 @@ extension ImportSearchFlow {
         )
     }
 
-    /// The default row-pick handler: claim the picked pressing as Exact and run
-    /// `prefetchAndConfirm`. Re-identify overrides this with its own `onSelect`.
+    /// The default row-pick handler: run `prefetchAndConfirm`, which comes back
+    /// with what the pick claims. Re-identify overrides this with its own
+    /// `onSelect`.
     @MainActor
     private static func defaultOnSelect(
         services: ImportServices,
@@ -185,10 +184,6 @@ extension ImportSearchFlow {
                 key: input.key,
                 selection: PrefetchSelection(
                     result: result,
-                    identityChoice: .exact(
-                        releaseId: result.releaseId,
-                        source: result.source
-                    ),
                     localTrackCount: input.localTrackCount
                 )
             )

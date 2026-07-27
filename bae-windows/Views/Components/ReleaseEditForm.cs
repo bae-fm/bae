@@ -156,21 +156,6 @@ internal sealed class ReleaseEditForm
     }
 
     /// <summary>
-    /// Enable or disable the six pressing fields (year … barcode). A metadata-only
-    /// import claim blanks these core-side, so the form disables them to make the
-    /// blanking visible; the album title/artists and track table stay editable.
-    /// </summary>
-    internal void SetPressingFieldsEnabled(bool enabled)
-    {
-        _yearBox.IsEnabled = enabled;
-        _formatBox.IsEnabled = enabled;
-        _labelBox.IsEnabled = enabled;
-        _catalogBox.IsEnabled = enabled;
-        _countryBox.IsEnabled = enabled;
-        _barcodeBox.IsEnabled = enabled;
-    }
-
-    /// <summary>
     /// Flush the typed values into the generated edit shape.
     /// Shaping/validation happens in Rust (apply-edit or import-candidate); this
     /// only moves the form's strings onto the model.

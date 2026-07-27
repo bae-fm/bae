@@ -272,7 +272,7 @@ internal sealed class ImportDialogs
     {
         var (current, seed) = chosen is null
             ? await _app.Import.PrefetchUnknownEdit(candidate.FolderPath)
-            : await _app.Import.PrefetchCandidateEdit(chosen.ReleaseId, chosen.Source, candidate.FolderPath);
+            : await _app.Import.PrefetchCandidateEdit(candidate.Key, chosen.ReleaseId, chosen.Source, candidate.FolderPath);
         if (!current)
         {
             return false;
@@ -351,39 +351,14 @@ internal sealed class ImportDialogs
             BridgeCoverSelection? selectedCover = null;
             column.Children.Add(BuildCoverPicker(prefetched.RemoteCovers, prefetched.LocalArtwork, picked => selectedCover = picked));
 
-            // A source-backed pick claims the exact pressing by default, or metadata
-            // only. Flipping re-shapes the form from the kept seed with no re-fetch,
-            // and disables the pressing fields when metadata-only. A skip-identify
-            // import has no source release and no choice.
-            var identity = new ImportIdentityModel(chosen is not null);
-            if (identity.ShowsExactnessChoice)
+            // What the pick claims, and where its metadata came from. Stated,
+            // never asked: bae-core derived it from the evidence that identified
+            // the candidate, and going back to search to pick a different
+            // pressing is what moves it. A skip-identify import claims nothing
+            // and has no source release to name.
+            if (prefetched.Claim is { } claim)
             {
-                var note = DialogUi.Body(Loc.Chrome("identify.metadata_only_note"));
-                note.IsVisible = identity.ShowsMetadataOnlyNote;
-
-                void ApplyClaim(bool metadataOnly)
-                {
-                    identity.SetMetadataOnly(metadataOnly);
-                    note.IsVisible = identity.ShowsMetadataOnlyNote;
-                    form.Seed(ImportService.ShapeCandidateEdit(
-                        prefetched.Seed!,
-                        ImportService.SourceIdentityChoice(!identity.MetadataOnly, chosen!.ReleaseId, chosen.Source)));
-                    form.SetPressingFieldsEnabled(identity.PressingFieldsEnabled);
-                }
-
-                var exact = new RadioButton { Content = Loc.Chrome("identify.exact_pressing"), GroupName = "importIdentityClaim", IsChecked = true };
-                var metadataOnly = new RadioButton { Content = Loc.Chrome("identify.metadata_only"), GroupName = "importIdentityClaim" };
-                exact.IsCheckedChanged += (_, _) => { if (exact.IsChecked == true) { ApplyClaim(false); } };
-                metadataOnly.IsCheckedChanged += (_, _) => { if (metadataOnly.IsChecked == true) { ApplyClaim(true); } };
-
-                var claimHeader = new TextBlock { Text = Loc.Chrome("identify.import_as"), VerticalAlignment = VerticalAlignment.Center };
-                claimHeader[!TextBlock.ForegroundProperty] = new Avalonia.Markup.Xaml.MarkupExtensions.DynamicResourceExtension("BaeTextSecondaryBrush");
-                var claimRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, VerticalAlignment = VerticalAlignment.Center };
-                claimRow.Children.Add(claimHeader);
-                claimRow.Children.Add(exact);
-                claimRow.Children.Add(metadataOnly);
-                column.Children.Add(claimRow);
-                column.Children.Add(note);
+                column.Children.Add(ClaimLineView.Build(claim));
             }
 
             column.Children.Add(new ScrollViewer { Content = form.Panel, MaxHeight = 360 });
@@ -392,11 +367,9 @@ internal sealed class ImportDialogs
             import.Click += async (_, _) =>
             {
                 var payload = form.ReadBack();
-                BridgeIdentityChoice claim = chosen is null
-                    ? new BridgeIdentityChoice.Unknown()
-                    : ImportService.SourceIdentityChoice(!identity.MetadataOnly, chosen.ReleaseId, chosen.Source);
+                var identityChoice = prefetched.Claim?.Choice ?? new BridgeIdentityChoice.Unknown();
                 var (importCurrent, error) = await _app.Import.CommitImport(
-                    candidate.Key, candidate.FolderPath, claim, StorageModeTag(), StoragePinSelected(), payload, selectedCover);
+                    candidate.Key, candidate.FolderPath, identityChoice, StorageModeTag(), StoragePinSelected(), payload, selectedCover);
                 if (!importCurrent)
                 {
                     return;

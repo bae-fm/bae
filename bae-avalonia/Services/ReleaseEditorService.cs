@@ -68,11 +68,6 @@ internal sealed class ReleaseEditorService
     public static string RemoteCoverThumbnailUrl(BridgeRemoteCover cover) =>
         NativeBae.RemoteCoverThumbnailUrl(cover);
 
-    /// <summary>The identity choice for a chosen source pressing (exact or
-    /// metadata-only) — a pure transform of the picked candidate's fields.</summary>
-    internal static BridgeIdentityChoice SourceIdentityChoice(bool exact, string releaseId, BridgeMetadataSource source) =>
-        NativeBae.SourceIdentityChoice(exact, releaseId, source);
-
     /// <summary>The cover-selection payload for a remote candidate.</summary>
     public static BridgeCoverSelection RemoteCoverSelection(BridgeRemoteCover cover) =>
         NativeBae.RemoteCoverSelection(cover);

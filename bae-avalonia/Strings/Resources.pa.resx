@@ -355,11 +355,6 @@
   <data name="edit.tracks.col_number" xml:space="preserve"><value>ਨੰ.</value></data>
   <data name="edit.tracks.artist_placeholder" xml:space="preserve"><value>ਐਲਬਮ ਕਲਾਕਾਰ</value></data>
   <data name="identify.skip" xml:space="preserve"><value>ਪਛਾਣ ਛੱਡੋ</value></data>
-  <data name="identify.import_as" xml:space="preserve"><value>ਇਸ ਵਜੋਂ ਆਯਾਤ ਕਰੋ</value></data>
-  <data name="identify.exact_pressing" xml:space="preserve"><value>ਬਿਲਕੁਲ ਉਹੀ ਛਪਾਈ</value></data>
-  <data name="identify.metadata_only" xml:space="preserve"><value>ਸਿਰਫ਼ ਮੈਟਾਡਾਟਾ</value></data>
-  <data name="identify.metadata_only_note" xml:space="preserve"><value>ਸਿਰਫ਼ ਮੈਟਾਡਾਟਾ — ਪ੍ਰੈਸਿੰਗ ਖੇਤਰ ਖਾਲੀ ਰਹਿੰਦੇ ਹਨ; ਸਿਰਫ਼ ਐਲਬਮ ਸਮੂਹ ਦਰਜ ਹੁੰਦਾ ਹੈ।</value></data>
-  <data name="album.reidentify.claim_header" xml:space="preserve"><value>ਪਛਾਣ ਇਸ ਛਪਾਈ ਤੇ ਸੈੱਟ ਕਰੋ</value></data>
   <data name="queue.drop_insert_caption" xml:space="preserve"><value>ਸਥਿਤੀ {position} 'ਤੇ ਜੋੜੋ</value></data>
   <data name="queue.empty.title" xml:space="preserve"><value>ਕਤਾਰ ਖਾਲੀ ਹੈ</value></data>
   <data name="queue.empty.hint" xml:space="preserve"><value>ਐਲਬਮਾਂ ਇੱਥੇ ਖਿੱਚੋ ਜਾਂ ਕੋਈ ਐਲਬਮ ਚਲਾਓ</value></data>

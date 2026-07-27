@@ -135,19 +135,6 @@ internal sealed class ReleaseEditForm
         }
     }
 
-    // Enable or disable the six pressing fields (year … barcode). A metadata-only
-    // import claim blanks these core-side; disabling makes that visible while the
-    // album title / artists and the track table stay editable.
-    internal void SetPressingFieldsEnabled(bool enabled)
-    {
-        _yearBox.IsEnabled = enabled;
-        _formatBox.IsEnabled = enabled;
-        _labelBox.IsEnabled = enabled;
-        _catalogBox.IsEnabled = enabled;
-        _countryBox.IsEnabled = enabled;
-        _barcodeBox.IsEnabled = enabled;
-    }
-
     // Flush the typed values into the raw edit shape for the caller to commit.
     internal BridgeRawReleaseEdit ReadBack()
     {

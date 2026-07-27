@@ -97,7 +97,7 @@ struct ImportResultPane<Top: View, Pane: View>: View {
         .importPreviewEnvironment()
     }
 
-    #Preview("Confirming — metadata only") {
+    #Preview("Confirming — album-level claim") {
         @Previewable
         @State
         var values = PreviewData.confirmEditValues
@@ -114,7 +114,16 @@ struct ImportResultPane<Top: View, Pane: View>: View {
                 values: $values,
                 storageManaged: $storageManaged,
                 storagePinned: $storagePinned,
-                metadataOnly: true
+                claim: BridgeClaimLine(
+                    choice: .approximate(
+                        releaseId: PreviewData.releaseDetailBridge.releaseId,
+                        source: PreviewData.releaseDetailBridge.source
+                    ),
+                    evidence: .discIdShared(matchCount: 2),
+                    release: "CD \u{00b7} 1996 \u{00b7} US",
+                    trackCount: PreviewData.releaseDetailBridge.trackCount,
+                    showsMetadataSource: true
+                )
             )
         }
         .frame(width: 1212, height: 982)

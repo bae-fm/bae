@@ -19,7 +19,7 @@
             error: String? = nil,
             hasCoverOptions: Bool = false,
             importing: Bool = false,
-            metadataOnly: Bool = false,
+            claim: BridgeClaimLine? = PreviewData.claimBridge,
         ) -> some View {
             ImportConfirmationView(
                 values: values,
@@ -33,10 +33,7 @@
                 error: error,
                 hasCoverOptions: hasCoverOptions,
                 importing: importing,
-                exactness: ImportExactnessChoice(
-                    isMetadataOnly: metadataOnly,
-                    onSelect: { _ in }
-                ),
+                claim: claim,
                 onConfirmImport: {},
                 onViewInLibrary: { _ in },
                 onEditCover: {},

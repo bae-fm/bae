@@ -57,39 +57,13 @@ internal sealed partial class ReleaseActionDialogs
             Visibility = Visibility.Collapsed,
         };
 
-        // The identity claim for the selected pressing: exact by default, or
-        // metadata only. Hidden until a result is picked, and reset to exact on
-        // every new pick. A skip-identify re-identify (the Secondary button) claims
-        // nothing here — core reseeds the rows from the rip's file tags.
-        var exactRadio = new RadioButton
-        {
-            Content = Loc.Chrome("identify.exact_pressing"),
-            GroupName = "reidentifyIdentityClaim",
-            IsChecked = true,
-        };
-        var metadataRadio = new RadioButton
-        {
-            Content = Loc.Chrome("identify.metadata_only"),
-            GroupName = "reidentifyIdentityClaim",
-        };
-        var claimRow = new StackPanel
-        {
-            Orientation = Orientation.Horizontal,
-            Spacing = 8,
-            VerticalAlignment = VerticalAlignment.Center,
-            Visibility = Visibility.Collapsed,
-        };
-        claimRow.Children.Add(new TextBlock
-        {
-            Text = Loc.Chrome("album.reidentify.claim_header"),
-            VerticalAlignment = VerticalAlignment.Center,
-        });
-        claimRow.Children.Add(exactRadio);
-        claimRow.Children.Add(metadataRadio);
-
-        var identity = new ImportIdentityModel(hasSourceRelease: true);
-        exactRadio.Checked += (_, _) => identity.SetMetadataOnly(false);
-        metadataRadio.Checked += (_, _) => identity.SetMetadataOnly(true);
+        // What the picked pressing claims, stated the way the import confirm
+        // dialog states it — re-identify writes the same IdentityChoice. Hidden
+        // until a result is picked; re-derived on each pick, which is the only
+        // thing that moves it. A skip-identify re-identify (the Secondary
+        // button) claims nothing — core reseeds the rows from the rip's tags.
+        BridgeClaimLine? claim = null;
+        var claimRow = new StackPanel { Visibility = Visibility.Collapsed };
 
         // Auto-first, like the import picker: the pipeline status, its signal
         // badges, and the live match list sit above the manual-search fallback.
@@ -209,28 +183,31 @@ internal sealed partial class ReleaseActionDialogs
 
         resultsList.SelectionChanged += (_, _) =>
         {
-            var selected = resultsList.SelectedIndex >= 0;
-            dialog.IsPrimaryButtonEnabled = selected;
-            claimRow.Visibility = selected ? Visibility.Visible : Visibility.Collapsed;
-            // Each new pick resets the claim to exact.
-            identity = new ImportIdentityModel(hasSourceRelease: true);
-            exactRadio.IsChecked = true;
+            var index = resultsList.SelectedIndex;
+            claim = index >= 0 && index < candidates.Count
+                ? _session.WithCurrentHandle(
+                    handle => NativeBae.ClaimForPick(handle, key, candidates[index].Pressing)).Result
+                : null;
+            dialog.IsPrimaryButtonEnabled = claim is not null;
+            claimRow.Children.Clear();
+            if (claim is { } picked)
+            {
+                claimRow.Children.Add(ClaimLineView.Build(picked));
+            }
+            claimRow.Visibility = claim is not null ? Visibility.Visible : Visibility.Collapsed;
         };
 
         dialog.PrimaryButtonClick += async (_, args) =>
         {
-            var index = resultsList.SelectedIndex;
-            if (index < 0 || index >= candidates.Count)
+            if (claim is not { } picked)
             {
                 args.Cancel = true;
                 return;
             }
 
-            var chosen = candidates[index];
             var deferral = args.GetDeferral();
             var (current, error) = await _session.RunForCurrentHandle(
-                handle => NativeBae.ReidentifyRelease(handle, releaseId,
-                    NativeBae.SourceIdentityChoice(!identity.MetadataOnly, chosen.ReleaseId, chosen.Source)));
+                handle => NativeBae.ReidentifyRelease(handle, releaseId, picked.Choice));
             if (!current)
             {
                 args.Cancel = true;

@@ -355,11 +355,6 @@
   <data name="edit.tracks.col_number" xml:space="preserve"><value>№</value></data>
   <data name="edit.tracks.artist_placeholder" xml:space="preserve"><value>виконавець альбому</value></data>
   <data name="identify.skip" xml:space="preserve"><value>Пропустити ідентифікацію</value></data>
-  <data name="identify.import_as" xml:space="preserve"><value>Імпортувати як</value></data>
-  <data name="identify.exact_pressing" xml:space="preserve"><value>Точне видання</value></data>
-  <data name="identify.metadata_only" xml:space="preserve"><value>Лише метадані</value></data>
-  <data name="identify.metadata_only_note" xml:space="preserve"><value>Лише метадані — поля видання залишаються порожніми; записується лише група альбому.</value></data>
-  <data name="album.reidentify.claim_header" xml:space="preserve"><value>Встановити ідентифікацію на це видання</value></data>
   <data name="queue.drop_insert_caption" xml:space="preserve"><value>вставити на позицію {position}</value></data>
   <data name="queue.empty.title" xml:space="preserve"><value>черга порожня</value></data>
   <data name="queue.empty.hint" xml:space="preserve"><value>перетягніть альбоми сюди або відтворіть альбом</value></data>

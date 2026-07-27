@@ -49,14 +49,14 @@ struct ReIdentifySheet: View {
     private var commitTask: Task<Void, Never>?
     @State
     private var landingAlbumId: String?
-    /// The pressing the user clicked, pending the Exact / Metadata-only choice
-    /// in the footer. `nil` until a row is picked.
+    /// The pressing the user clicked, pending the Set-identity commit in the
+    /// footer. `nil` until a row is picked.
     @State
     private var selectedResult: BridgeMetadataResult?
-    /// Footer choice for the selected pressing: claim the album group only
-    /// rather than the exact pressing.
+    /// What that pick claims, as bae-core derives it from the evidence that
+    /// identified this release. `nil` until a row is picked.
     @State
-    private var metadataOnly = false
+    private var claim: BridgeClaimLine?
 
     private enum Phase: Equatable {
         case identifying
@@ -144,17 +144,17 @@ struct ReIdentifySheet: View {
                         onAddAsUnknown: { commit(.unknown) },
                         // Re-identify has no editable confirm page (the release
                         // already has metadata; "Edit metadata..." covers
-                        // post-commit edits). Picking a pressing selects it;
-                        // the footer carries the Exact / Metadata-only choice
-                        // and commits directly via `re_identify_release`.
+                        // post-commit edits). Picking a pressing selects it and
+                        // settles what it claims; the footer states that and
+                        // commits directly via `re_identify_release`.
                         onSelect: { result in
                             selectedResult = result
-                            metadataOnly = false
+                            claim = importer.claimForPick(key, result)
                         },
                     )
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    if let result = selectedResult {
-                        selectionFooter(for: result)
+                    if let claim {
+                        selectionFooter(for: claim)
                     }
                 }
             }
@@ -177,30 +177,15 @@ struct ReIdentifySheet: View {
 
     // MARK: - Selection footer
 
-    /// Footer shown once a pressing is picked: the Exact / Metadata-only
-    /// choice plus a Set-identity commit. Re-identify has no editable confirm
-    /// page, so the choice lives here instead of on the rows.
-    private func selectionFooter(for result: BridgeMetadataResult) -> some View
-    {
-        HStack(spacing: 12) {
-            Text("Set identity to this pressing")
-                .font(.callout)
-                .foregroundStyle(.secondary)
-            Spacer()
-            ImportAsToggle(
-                isMetadataOnly: metadataOnly,
-                onSelectExactness: { wantExact in metadataOnly = !wantExact },
-            )
-            Button("Set identity") {
-                commit(
-                    .make(
-                        exact: !metadataOnly,
-                        releaseId: result.releaseId,
-                        source: result.source
-                    )
-                )
-            }
-            .buttonStyle(.borderedProminent)
+    /// Footer shown once a pressing is picked: what that pick claims, and the
+    /// commit. Re-identify takes the same `IdentityChoice` an import does, so
+    /// it states the claim the same way — picking a different row is what
+    /// moves it.
+    private func selectionFooter(for claim: BridgeClaimLine) -> some View {
+        HStack(alignment: .center, spacing: 12) {
+            ImportClaimLine(claim: claim)
+            Button("Set identity") { commit(claim.choice) }
+                .buttonStyle(.borderedProminent)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)

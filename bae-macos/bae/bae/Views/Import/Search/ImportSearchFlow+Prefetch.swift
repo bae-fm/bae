@@ -22,13 +22,14 @@ extension ImportSearchFlow {
             candidate.mode = .loadingDetail
             candidate.error = nil
             candidate.identityChoice = .unknown
-            // Unknown imports never carry a source release — clear any
-            // prior detail and seed so the confirmation page falls back to its
-            // detail-less rendering (no remote cover picker, no
-            // library-status banner, no track-count mismatch, no
-            // Exact/Metadata choice).
+            // Unknown imports never carry a source release — clear any prior
+            // detail and claim so the confirmation page falls back to its
+            // detail-less rendering (no remote cover picker, no library-status
+            // banner, no track-count mismatch, no claim line: there is no
+            // release to claim and none the metadata came from).
             candidate.releaseDetailBridge = nil
-            candidate.releaseSeed = nil
+            candidate.claim = nil
+            candidate.pickedReleaseId = nil
             // No source cover exists for Unknown; leave the local
             // artwork picker as the only cover affordance.
             candidate.selectedCover = nil
@@ -74,13 +75,12 @@ extension ImportSearchFlow {
 
     // MARK: - Prefetch and confirm
 
-    /// The pressing the user picked to prefetch: the search `result`, the
-    /// `identityChoice` made at row-time (carried through to the confirmation
-    /// page so commit applies it), and the local track count to reconcile the
-    /// fetched detail against.
+    /// The pressing the user picked to prefetch: the search `result` and the
+    /// local track count to reconcile the fetched detail against. What the pick
+    /// claims is not here — bae-core derives it from the candidate's identify
+    /// evidence and returns it with the prefetch.
     struct PrefetchSelection {
         let result: BridgeMetadataResult
-        let identityChoice: BridgeIdentityChoice
         let localTrackCount: UInt32?
     }
 
@@ -94,9 +94,9 @@ extension ImportSearchFlow {
         importStore.mutateCandidate(forKey: key) { candidate in
             candidate.mode = .loadingDetail
             candidate.error = nil
-            // The choice was made at row-time. Carry it through
-            // prefetch into the confirmation page so commit can apply it.
-            candidate.identityChoice = selection.identityChoice
+            // Hold the clicked release so its row stays selected while the
+            // prefetch runs; the claim it implies arrives with the prefetch.
+            candidate.pickedReleaseId = selection.result.releaseId
         }
 
         let releaseId = selection.result.releaseId
@@ -104,33 +104,31 @@ extension ImportSearchFlow {
         let task = Task { @MainActor in
             do {
                 let prefetch = try await library.prefetchRelease(
+                    key,
                     releaseId,
                     bridgeSource,
                     selection.localTrackCount
-                )
-                let preview = shapeUserEditForChoice(
-                    seed: prefetch.seed,
-                    choice: selection.identityChoice
                 )
                 importStore.mutateCandidate(forKey: key) { candidate in
                     // The display detail: cover options, track-count mismatch,
                     // library status.
                     candidate.releaseDetailBridge = prefetch.detail
-                    // The editor's seed. Kept so flipping the Exact /
-                    // Metadata-only choice in the pane re-shapes it without a
-                    // re-fetch.
-                    candidate.releaseSeed = prefetch.seed
+                    // What the pick claims, derived in bae-core from the
+                    // evidence that identified this candidate. The header
+                    // states it; the command carries it.
+                    candidate.claim = prefetch.claim
+                    candidate.identityChoice = prefetch.claim.choice
                     // Manual prefetch: the user just picked a different
                     // release, so any prior pick was for a now-stale cover
                     // set — replace it with the new release's default.
                     candidate.selectedCover = prefetch.detail.defaultCover
-                    // The seed arrives pre-shaped from bae-core, which projects
-                    // it from the release the way the commit worker maps it;
-                    // `shapeUserEditForChoice` masks the pressing fields per the
-                    // identity claim. `rawReleaseEditFromUserEdit` projects that
-                    // wire edit into the raw form the editor binds.
+                    // The seed arrives from bae-core projected the way the
+                    // commit worker maps the release, and already masked for
+                    // the claim (an album-level claim blanks the pressing
+                    // block). `rawReleaseEditFromUserEdit` projects that wire
+                    // edit into the raw form the editor binds.
                     candidate.editValues = rawReleaseEditFromUserEdit(
-                        edit: preview,
+                        edit: prefetch.seed,
                         trackIdPrefix: "import-track"
                     )
                     candidate.mode = .confirming
@@ -150,6 +148,13 @@ extension ImportSearchFlow {
                     candidate.mode = .identifying
                     candidate.error =
                         "Failed to load release details: \(error.displayLine)"
+                    // The pick never resolved, so nothing is claimed and no row
+                    // is selected. All three drop together: leaving the
+                    // previous pick's claim behind would state a claim for a
+                    // release the pane is no longer showing.
+                    candidate.pickedReleaseId = nil
+                    candidate.claim = nil
+                    candidate.identityChoice = nil
                     candidate.prefetchTask = nil
                 }
             }

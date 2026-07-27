@@ -355,11 +355,6 @@
   <data name="edit.tracks.col_number" xml:space="preserve"><value>序號</value></data>
   <data name="edit.tracks.artist_placeholder" xml:space="preserve"><value>專輯演出者</value></data>
   <data name="identify.skip" xml:space="preserve"><value>略過識別</value></data>
-  <data name="identify.import_as" xml:space="preserve"><value>匯入為</value></data>
-  <data name="identify.exact_pressing" xml:space="preserve"><value>精確版本</value></data>
-  <data name="identify.metadata_only" xml:space="preserve"><value>僅中繼資料</value></data>
-  <data name="identify.metadata_only_note" xml:space="preserve"><value>僅中繼資料 — 壓片欄位會保持空白；只會記錄專輯群組。</value></data>
-  <data name="album.reidentify.claim_header" xml:space="preserve"><value>將身分設定為此版本</value></data>
   <data name="queue.drop_insert_caption" xml:space="preserve"><value>插入到第 {position} 位</value></data>
   <data name="queue.empty.title" xml:space="preserve"><value>佇列是空的</value></data>
   <data name="queue.empty.hint" xml:space="preserve"><value>將專輯拖曳到這裡，或播放一張專輯</value></data>

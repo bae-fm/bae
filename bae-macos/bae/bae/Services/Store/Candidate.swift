@@ -104,10 +104,15 @@ struct Candidate: Equatable, Identifiable {
     /// it is the picker's shape, and it collapses the release's artists and
     /// positions for display.
     var releaseDetailBridge: BridgeReleaseDetail?
-    /// The picked release's editor seed, projected by bae-core from the release
-    /// as the commit worker maps it. Kept so flipping the Exact / Metadata-only
-    /// choice re-shapes the editor from it without a re-fetch.
-    var releaseSeed: BridgeReleaseUserEdit?
+    /// What the pick claims and where its metadata came from, as bae-core
+    /// derived it from the evidence that identified this candidate. Rendered by
+    /// the confirm header; `nil` while identifying and for an Unknown import,
+    /// which claims nothing.
+    var claim: BridgeClaimLine?
+    /// The release the user clicked, held from the click itself so the results
+    /// row stays selected while the prefetch is in flight. The claim arrives
+    /// with the prefetch and names the same release.
+    var pickedReleaseId: String?
     var libraryStatuses: [String: BridgeLibraryStatus] = [:]
     var mode: CandidateMode = .identifying
     var error: String?
@@ -121,16 +126,16 @@ struct Candidate: Equatable, Identifiable {
     /// broadcasts alongside each identify-state transition. Empty until the
     /// first transition. The toolbar view iterates and renders it.
     var signalsToolbar: BridgeSignalsToolbar = BridgeSignalsToolbar(signals: [])
-    /// User's identity claim picked at result-row time. Carried
-    /// forward through the prefetch + confirmation flow into the import
-    /// command so the commit pipeline can post-process the seeded
-    /// identity (Exact preserves `source_release_id`, Approximate NULLs
-    /// it). `nil` while the user is still in the identify phase.
+    /// The identity claim the import command carries: `claim.choice` for a
+    /// source-backed pick, `.unknown` for an "Add as Unknown" import. The
+    /// commit pipeline post-processes the seeded identity from it (Exact
+    /// preserves `source_release_id`, Approximate NULLs it). `nil` while the
+    /// user is still in the identify phase.
     var identityChoice: BridgeIdentityChoice?
-    /// Raw editable metadata form shown on the confirmation page. Seeded
-    /// from `releaseSeed` after prefetch and the user's identity choice;
-    /// bae-core shapes the raw form into the wire edit committed as the
-    /// metadata overlay alongside the import command.
+    /// Raw editable metadata form shown on the confirmation page. Seeded from
+    /// the prefetch's editor seed, which bae-core has already masked for the
+    /// claim; bae-core shapes the raw form back into the wire edit committed as
+    /// the metadata overlay alongside the import command.
     var editValues: BridgeRawReleaseEdit?
 
     // periphery:ignore
@@ -165,7 +170,8 @@ struct Candidate: Equatable, Identifiable {
         copy.identifyState = existing.identifyState
         copy.importStatus = existing.importStatus
         copy.releaseDetailBridge = existing.releaseDetailBridge
-        copy.releaseSeed = existing.releaseSeed
+        copy.claim = existing.claim
+        copy.pickedReleaseId = existing.pickedReleaseId
         copy.libraryStatuses = existing.libraryStatuses
         copy.mode = existing.mode
         copy.error = existing.error

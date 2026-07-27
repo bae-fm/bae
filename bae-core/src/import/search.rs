@@ -467,17 +467,25 @@ fn build_mb_detail(
 }
 
 /// What the confirmation step gets from picking a release: the picker's display
-/// shape and the metadata editor's seed.
+/// shape, the metadata editor's seed, and the identity claim the pick implies.
 ///
 /// `seed` is projected from the very `ParsedAlbum` the commit worker builds — so
 /// the artists, titles and pressing the editor shows are the ones commit compares
 /// the returned overlay against. `detail` is display only: covers, the raw source
 /// position strings, the track count to reconcile against the folder. Nothing is
 /// seeded from it.
+///
+/// `claim` is derived from the evidence that identified the candidate, so the
+/// pick alone settles what the import claims to hold — there is no separate
+/// question to answer. `seed` here is the *unshaped* projection; a surface
+/// showing the editor masks it for `claim.choice` with
+/// [`crate::import::shape_user_edit_for_choice`], which is what the bridge does
+/// before the record crosses.
 #[derive(Debug, Clone)]
 pub struct ImportReleasePrefetch {
     pub detail: ImportSearchReleaseDetail,
     pub seed: crate::import::ReleaseUserEdit,
+    pub claim: crate::import::ClaimLine,
 }
 
 /// Prefetch path for MusicBrainz: pure MB fetch + picker/confirm detail. No

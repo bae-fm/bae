@@ -31,6 +31,13 @@ final class Importer: Sendable, Observable {
     let rerunIdentifyForCandidate: @Sendable (_ candidateKey: String) -> Void
     let previewFileTagsForFolder:
         @Sendable (_ folderPath: String) async throws -> BridgeReleaseUserEdit
+    /// What picking `result` under a candidate claims, and where its metadata
+    /// comes from. The re-identify sheet's path: it commits straight from the
+    /// picked row, so it never prefetches. The import confirm pane gets the
+    /// same claim back from `Library.prefetchRelease` instead.
+    let claimForPick:
+        @Sendable (_ candidateKey: String, _ result: BridgeMetadataResult) ->
+            BridgeClaimLine?
     let startImport:
         @Sendable (
             _ candidateKey: String, _ folderPath: String,
@@ -76,6 +83,9 @@ final class Importer: Sendable, Observable {
         previewFileTagsForFolder:
             @escaping @Sendable (String) async throws -> BridgeReleaseUserEdit =
             { _ in throw StubError.notImplemented },
+        claimForPick:
+            @escaping @Sendable (String, BridgeMetadataResult) ->
+            BridgeClaimLine? = { _, _ in nil },
         startImport:
             @escaping @Sendable (
                 String, String, BridgeCoverSelection?, BridgeStorageMode, Bool,
@@ -95,6 +105,7 @@ final class Importer: Sendable, Observable {
         self.toggleSignalForCandidate = toggleSignalForCandidate
         self.rerunIdentifyForCandidate = rerunIdentifyForCandidate
         self.previewFileTagsForFolder = previewFileTagsForFolder
+        self.claimForPick = claimForPick
         self.startImport = startImport
         self.isSourceFolderNameImported = isSourceFolderNameImported
     }
@@ -127,6 +138,9 @@ final class Importer: Sendable, Observable {
             },
             previewFileTagsForFolder: {
                 try await handle.previewFileTagsForFolder(folderPath: $0)
+            },
+            claimForPick: {
+                handle.claimForPick(candidateKey: $0, result: $1)
             },
             startImport: {
                 try handle.startImport(

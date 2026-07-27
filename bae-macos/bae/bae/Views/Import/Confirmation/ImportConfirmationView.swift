@@ -39,9 +39,10 @@ struct ImportConfirmationView<CoverContent: View>: View {
     let error: String?
     let hasCoverOptions: Bool
     let importing: Bool
-    /// Exact / Metadata-only choice. `nil` for Unknown imports (no source
-    /// pressing to claim exactly), which hides the toggle.
-    let exactness: ImportExactnessChoice?
+    /// What this import claims to hold and where its metadata came from, as
+    /// bae-core derived it from the evidence. `nil` for an Unknown import,
+    /// which claims nothing and has no source release to name.
+    let claim: BridgeClaimLine?
     let onConfirmImport: () -> Void
     let onViewInLibrary: (String) -> Void
     let onEditCover: () -> Void
@@ -74,22 +75,19 @@ struct ImportConfirmationView<CoverContent: View>: View {
                 headerCard
                 statusBanners
 
-                if let exactness {
-                    ImportAsToggle(
-                        isMetadataOnly: exactness.isMetadataOnly,
-                        onSelectExactness: exactness.onSelect,
-                    )
-                    if exactness.isMetadataOnly {
-                        MetadataOnlyNote()
-                    }
-                }
-
-                EditMetadataForm(
-                    form: $values,
-                    pressingFieldsDisabled: exactness?.isMetadataOnly == true,
-                )
+                EditMetadataForm(form: $values)
             }
             .padding(20)
+        }
+    }
+
+    /// The claim, stated under the album summary it qualifies. A pick from the
+    /// results above it is what moves the claim, so the two read together —
+    /// this is a statement of what the pick means, never a control.
+    @ViewBuilder
+    fileprivate var claimLine: some View {
+        if let claim {
+            ImportClaimLine(claim: claim)
         }
     }
 
@@ -133,6 +131,20 @@ struct ImportConfirmationView<CoverContent: View>: View {
 extension ImportConfirmationView {
     @ViewBuilder
     fileprivate var headerCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            headerRow
+            claimLine
+        }
+        .padding(14)
+        .background(Theme.surface)
+        .clipShape(RoundedRectangle(cornerRadius: 10))
+        .overlay {
+            RoundedRectangle(cornerRadius: 10)
+                .strokeBorder(.white.opacity(0.07), lineWidth: 1)
+        }
+    }
+
+    fileprivate var headerRow: some View {
         HStack(alignment: .top, spacing: 16) {
             coverContent()
                 .overlay(alignment: .topTrailing) {
@@ -183,13 +195,6 @@ extension ImportConfirmationView {
                 }
             }
         }
-        .padding(14)
-        .background(Theme.surface)
-        .clipShape(RoundedRectangle(cornerRadius: 10))
-        .overlay {
-            RoundedRectangle(cornerRadius: 10)
-                .strokeBorder(.white.opacity(0.07), lineWidth: 1)
-        }
     }
 
     fileprivate var statusBanners: some View {
@@ -211,13 +216,7 @@ extension ImportConfirmationView {
         @Previewable
         @State
         var values = rawReleaseEditFromUserEdit(
-            edit: shapeUserEditForChoice(
-                seed: PreviewData.releaseSeedBridge,
-                choice: .exact(
-                    releaseId: PreviewData.releaseDetailBridge.releaseId,
-                    source: PreviewData.releaseDetailBridge.source,
-                )
-            ),
+            edit: PreviewData.releaseSeedBridge,
             trackIdPrefix: "import-track"
         )
         @Previewable
@@ -239,9 +238,15 @@ extension ImportConfirmationView {
             error: nil,
             hasCoverOptions: false,
             importing: false,
-            exactness: ImportExactnessChoice(
-                isMetadataOnly: false,
-                onSelect: { _ in }
+            claim: BridgeClaimLine(
+                choice: .exact(
+                    releaseId: PreviewData.releaseDetailBridge.releaseId,
+                    source: PreviewData.releaseDetailBridge.source
+                ),
+                evidence: .discIdAlone,
+                release: "CD \u{00b7} 2004 \u{00b7} UK \u{00b7} CAT-1234",
+                trackCount: PreviewData.releaseDetailBridge.trackCount,
+                showsMetadataSource: false
             ),
             onConfirmImport: {},
             onViewInLibrary: { _ in },

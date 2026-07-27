@@ -355,11 +355,6 @@
   <data name="edit.tracks.col_number" xml:space="preserve"><value>n.º</value></data>
   <data name="edit.tracks.artist_placeholder" xml:space="preserve"><value>artista do álbum</value></data>
   <data name="identify.skip" xml:space="preserve"><value>Pular identificação</value></data>
-  <data name="identify.import_as" xml:space="preserve"><value>Importar como</value></data>
-  <data name="identify.exact_pressing" xml:space="preserve"><value>Prensagem exata</value></data>
-  <data name="identify.metadata_only" xml:space="preserve"><value>Somente metadados</value></data>
-  <data name="identify.metadata_only_note" xml:space="preserve"><value>Somente metadados — os campos de prensagem ficam em branco; apenas o grupo do álbum é registrado.</value></data>
-  <data name="album.reidentify.claim_header" xml:space="preserve"><value>Definir identidade para esta prensagem</value></data>
   <data name="queue.drop_insert_caption" xml:space="preserve"><value>inserir na posição {position}</value></data>
   <data name="queue.empty.title" xml:space="preserve"><value>a fila está vazia</value></data>
   <data name="queue.empty.hint" xml:space="preserve"><value>arraste álbuns para cá ou toque um álbum</value></data>

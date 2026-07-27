@@ -20,12 +20,11 @@ internal sealed class PrefetchedEdit
     public List<LocalArtwork> LocalArtwork { get; set; } = new();
 
     /// <summary>
-    /// The picked release's editor seed, as bae-core projects it from the release
-    /// (the same projection the commit worker maps), kept so the exactness flip
-    /// (exact ↔ metadata only) can re-shape the editor without another fetch. Null
-    /// for a skip-identify import, which has no source release.
+    /// What the pick claims and where its metadata came from, as bae-core
+    /// derived it from the evidence that identified the candidate. Null for a
+    /// skip-identify import, which claims nothing and has no source release.
     /// </summary>
-    public BridgeReleaseUserEdit? Seed { get; set; }
+    public BridgeClaimLine? Claim { get; set; }
 }
 
 /// <summary>

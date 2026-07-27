@@ -141,24 +141,12 @@ internal sealed class ReleaseActionDialogs
             var sourceField = new StackPanel { Spacing = 4, Children = { sourceCaption, sourceBox } };
             var searchButton = new Button { Content = Loc.Chrome("action.search") };
 
-            // The identity claim for the picked pressing: exact by default, or
-            // metadata-only. Hidden until a result is picked; reset to exact on each
-            // new pick.
-            var identity = new ImportIdentityModel(hasSourceRelease: true);
-            var exact = new RadioButton { Content = Loc.Chrome("identify.exact_pressing"), GroupName = "reidentifyClaim", IsChecked = true };
-            var metadataOnly = new RadioButton { Content = Loc.Chrome("identify.metadata_only"), GroupName = "reidentifyClaim" };
-            exact.IsCheckedChanged += (_, _) => { if (exact.IsChecked == true) { identity.SetMetadataOnly(false); } };
-            metadataOnly.IsCheckedChanged += (_, _) => { if (metadataOnly.IsChecked == true) { identity.SetMetadataOnly(true); } };
-            var claimHeader = new TextBlock { Text = Loc.Chrome("album.reidentify.claim_header"), VerticalAlignment = VerticalAlignment.Center };
-            claimHeader[!TextBlock.ForegroundProperty] = new DynamicResourceExtension("BaeTextSecondaryBrush");
-            var claimRow = new StackPanel
-            {
-                Orientation = Orientation.Horizontal,
-                Spacing = 8,
-                VerticalAlignment = VerticalAlignment.Center,
-                IsVisible = false,
-                Children = { claimHeader, exact, metadataOnly },
-            };
+            // What the picked pressing claims, stated the way the import
+            // confirm pane states it — re-identify writes the same
+            // IdentityChoice. Hidden until a result is picked; re-derived on
+            // each pick, which is the only thing that moves it.
+            BridgeClaimLine? claim = null;
+            var claimRow = new StackPanel { IsVisible = false };
 
             var candidates = new List<ReleaseCandidateChoice>();
             var results = new ReidentifyResultsModel();
@@ -225,23 +213,26 @@ internal sealed class ReleaseActionDialogs
 
             resultsList.SelectionChanged += (_, _) =>
             {
-                var selected = resultsList.SelectedIndex >= 0;
-                confirm.IsEnabled = selected;
-                claimRow.IsVisible = selected;
-                identity = new ImportIdentityModel(hasSourceRelease: true);
-                exact.IsChecked = true;
+                var index = resultsList.SelectedIndex;
+                claim = index >= 0 && index < candidates.Count
+                    ? _app.Import.ClaimForPick(key, candidates[index].Pressing).Claim
+                    : null;
+                confirm.IsEnabled = claim is not null;
+                claimRow.Children.Clear();
+                if (claim is { } picked)
+                {
+                    claimRow.Children.Add(ClaimLineView.Build(picked));
+                }
+                claimRow.IsVisible = claim is not null;
             };
 
             confirm.Click += async (_, _) =>
             {
-                var index = resultsList.SelectedIndex;
-                if (index < 0 || index >= candidates.Count)
+                if (claim is not { } picked)
                 {
                     return;
                 }
-                var chosen = candidates[index];
-                var (current, error) = await _app.ReleaseEditor.ReidentifyRelease(
-                    releaseId, ReleaseEditorService.SourceIdentityChoice(!identity.MetadataOnly, chosen.ReleaseId, chosen.Source));
+                var (current, error) = await _app.ReleaseEditor.ReidentifyRelease(releaseId, picked.Choice);
                 if (!current)
                 {
                     return;

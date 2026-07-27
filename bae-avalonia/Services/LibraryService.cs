@@ -84,11 +84,6 @@ internal sealed class LibraryService
     public Func<string, Task<(bool Current, (Release? Release, string? Error) Result)>> ReleaseStorage { get; init; }
         = _ => throw new InvalidOperationException("LibraryService stub: ReleaseStorage not wired");
 
-    /// <summary>Prefetch a release's metadata from a source for the import edit-form
-    /// seed — the raw projection before the confirm dialog composes it.</summary>
-    public Func<string, BridgeMetadataSource, uint?, Task<(bool Current, (BridgeReleasePrefetch? Prefetch, string? Error) Result)>> PrefetchRelease { get; init; }
-        = (_, _, _) => throw new InvalidOperationException("LibraryService stub: PrefetchRelease not wired");
-
     /// <summary>Expand album/track ids to flat track-id lists (album ids resolve to
     /// their primary release's tracks), for a queue insert carrying a drag
     /// payload.</summary>
@@ -129,8 +124,6 @@ internal sealed class LibraryService
             session.WithCurrentHandle(handle => NativeBae.StoragePage(handle, tab, field, direction, offset, limit)),
         ReleaseStorage = releaseId =>
             session.RunForCurrentHandle(handle => NativeBae.ReleaseStorage(handle, releaseId)),
-        PrefetchRelease = (releaseId, source, localTrackCount) =>
-            session.RunForCurrentHandle(handle => NativeBae.PrefetchRelease(handle, releaseId, source, localTrackCount)),
         ResolveToTrackIds = ids =>
             session.WithCurrentHandle(handle => NativeBae.ResolveToTrackIds(handle, ids)),
         SetLibraryFullWidth = enabled =>

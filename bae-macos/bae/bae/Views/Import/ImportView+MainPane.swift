@@ -67,7 +67,7 @@ extension ImportView {
                 searchAndResultsPane(
                     for: candidate,
                     selectedReleaseId: open
-                        ? candidate.identityChoice?.releaseRef?.releaseId : nil
+                        ? candidate.pickedReleaseId : nil
                 )
             },
             pane: { paneContent(for: candidate) }
@@ -90,13 +90,14 @@ extension ImportView {
         }
     }
 
-    /// Close the pane and drop the seed cluster so reopening the identify
-    /// surface leaves no stale identity claim or file-tag edit behind.
+    /// Close the pane and drop the pick cluster so reopening the identify
+    /// surface leaves no stale claim or file-tag edit behind.
     private func closePane(_ candidate: Candidate) {
         importStore.mutateCandidate(forKey: candidate.key) { c in
             c.mode = .identifying
             c.releaseDetailBridge = nil
-            c.releaseSeed = nil
+            c.claim = nil
+            c.pickedReleaseId = nil
             c.identityChoice = nil
             c.editValues = nil
         }

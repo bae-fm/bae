@@ -240,19 +240,26 @@
             )
         }()
 
-        /// Editor seed for the confirming previews — the raw release edit produced
-        /// from the exact-pressing choice over `releaseSeedBridge`.
+        /// Editor seed for the confirming previews — the raw release edit the
+        /// prefetch's seed projects into.
         static let confirmEditValues: BridgeRawReleaseEdit =
             rawReleaseEditFromUserEdit(
-                edit: shapeUserEditForChoice(
-                    seed: releaseSeedBridge,
-                    choice: .exact(
-                        releaseId: releaseDetailBridge.releaseId,
-                        source: releaseDetailBridge.source,
-                    )
-                ),
+                edit: releaseSeedBridge,
                 trackIdPrefix: "import-track"
             )
+
+        /// The claim a disc-ID match on `releaseDetailBridge` produces: the
+        /// pressing itself, so the header states no separate metadata source.
+        static let claimBridge = BridgeClaimLine(
+            choice: .exact(
+                releaseId: releaseDetailBridge.releaseId,
+                source: releaseDetailBridge.source
+            ),
+            evidence: .discIdAlone,
+            release: "CD \u{00b7} 1996 \u{00b7} US \u{00b7} 6006-2",
+            trackCount: releaseDetailBridge.trackCount,
+            showsMetadataSource: false
+        )
 
         /// Per-track audio candidate (nine FLAC files) plus one cover image, two
         /// documents, and a sheet describing nothing yet — the file-per-track

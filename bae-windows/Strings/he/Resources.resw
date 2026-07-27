@@ -355,11 +355,6 @@
   <data name="edit.tracks.col_number" xml:space="preserve"><value>מס׳</value></data>
   <data name="edit.tracks.artist_placeholder" xml:space="preserve"><value>אמן האלבום</value></data>
   <data name="identify.skip" xml:space="preserve"><value>דלג על הזיהוי</value></data>
-  <data name="identify.import_as" xml:space="preserve"><value>ייבא כ</value></data>
-  <data name="identify.exact_pressing" xml:space="preserve"><value>תקליט מדויק</value></data>
-  <data name="identify.metadata_only" xml:space="preserve"><value>מטא-נתונים בלבד</value></data>
-  <data name="identify.metadata_only_note" xml:space="preserve"><value>מטא-נתונים בלבד — שדות התקליט נשארים ריקים; נרשמת רק קבוצת האלבום.</value></data>
-  <data name="album.reidentify.claim_header" xml:space="preserve"><value>הגדר זהות לתקליט זה</value></data>
   <data name="queue.drop_insert_caption" xml:space="preserve"><value>הוספה במיקום {position}</value></data>
   <data name="queue.empty.title" xml:space="preserve"><value>התור ריק</value></data>
   <data name="queue.empty.hint" xml:space="preserve"><value>גררו אלבומים לכאן או נגנו אלבום</value></data>

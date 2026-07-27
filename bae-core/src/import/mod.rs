@@ -4,6 +4,9 @@ pub mod artist_image;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod artist_names;
 mod assemble;
+// Reads the identify state and the picked release's detail, both desktop-only.
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+pub mod claim;
 pub mod commit;
 pub mod cover_art;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
@@ -76,6 +79,8 @@ pub struct ParsedAlbum {
     pub identities: Vec<crate::import::types::ReleaseIdentity>,
 }
 
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+pub use claim::{claim_line, ClaimEvidence, ClaimLine, ClaimRelease};
 pub use error::ImportError;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use folder_registry::{ImportFolderRegistry, WatchedFolder};

@@ -2,43 +2,6 @@ import BaeKit
 import SwiftUI
 
 extension ImportSearchFlow {
-    // MARK: - Import-as choice (in the pane)
-
-    /// Flip the open pane's Exact / Metadata-only choice and re-seed the
-    /// editor from the stored seed. Exact keeps the picked release's pressing
-    /// fields; Metadata-only blanks them. Re-shaping is bae-core's job —
-    /// `shape_user_edit_for_choice` masks the pressing fields per the choice —
-    /// so this re-runs it rather than mutating fields in Swift.
-    ///
-    /// `seed` and `ref` come from the call site (the toggle only renders for
-    /// a source-backed pick, so both are in hand there) — no in-closure lookup
-    /// or guard.
-    @MainActor
-    static func changeChoice(
-        importStore: ImportStore,
-        key: String,
-        seed: BridgeReleaseUserEdit,
-        ref: (releaseId: String, source: BridgeMetadataSource),
-        wantExact: Bool
-    ) {
-        let choice = BridgeIdentityChoice.make(
-            exact: wantExact,
-            releaseId: ref.releaseId,
-            source: ref.source
-        )
-        importStore.mutateCandidate(forKey: key) { candidate in
-            candidate.identityChoice = choice
-            let preview = shapeUserEditForChoice(
-                seed: seed,
-                choice: choice
-            )
-            candidate.editValues = rawReleaseEditFromUserEdit(
-                edit: preview,
-                trackIdPrefix: "import-track"
-            )
-        }
-    }
-
     // MARK: - Shared confirmation view builder
 
     /// Two-way binding into the candidate's `editValues` field. Edits
@@ -131,11 +94,7 @@ extension ImportSearchFlow {
                 error: candidate.error,
                 hasCoverOptions: inputs.hasCoverOptions,
                 importing: importing,
-                exactness: exactnessChoice(
-                    for: candidate,
-                    importStore: importStore,
-                    key: key
-                ),
+                claim: candidate.claim,
                 onConfirmImport: callbacks.onConfirmImport,
                 onViewInLibrary: callbacks.onViewInLibrary,
                 onEditCover: {
@@ -158,36 +117,5 @@ extension ImportSearchFlow {
                 coverContent: coverContent,
             )
         }
-    }
-
-    /// The Exact / Metadata-only toggle, or `nil` when it doesn't apply. The
-    /// toggle renders only for a source-backed pick (one with a stored seed and
-    /// a release ref); Unknown imports have neither and get no toggle.
-    /// Unwrapping the seed/ref here means `changeChoice` needs no in-closure
-    /// guard.
-    @MainActor
-    private static func exactnessChoice(
-        for candidate: Candidate,
-        importStore: ImportStore,
-        key: String
-    ) -> ImportExactnessChoice? {
-        guard let seed = candidate.releaseSeed,
-            let choice = candidate.identityChoice,
-            let ref = choice.releaseRef
-        else {
-            return nil
-        }
-        return ImportExactnessChoice(
-            isMetadataOnly: choice.isApproximate,
-            onSelect: { wantExact in
-                changeChoice(
-                    importStore: importStore,
-                    key: key,
-                    seed: seed,
-                    ref: ref,
-                    wantExact: wantExact
-                )
-            }
-        )
     }
 }

@@ -3284,9 +3284,26 @@ async fn two_credit_mb_release_keeps_both_album_artists() {
     f.cover_art
         .seed_lookup(Some(&mb_id), Some("two-credit-mb-group"), None);
 
-    let album_dir = f.temp_path().join("two-credit");
+    // Scan the album in so the prefetch runs against a candidate key the
+    // service actually knows — the key is what core reads the identify evidence
+    // behind the claim from, so a made-up one would exercise a path no surface
+    // takes.
+    let collection = f.temp_path().join("two-credit-collection");
+    let album_dir = collection.join("two-credit");
     fs::create_dir_all(&album_dir).unwrap();
     generate_album_files(&album_dir, &["01 Track One.flac"]);
+    let candidate_key = album_dir.to_string_lossy().into_owned();
+
+    let mut scan_rx = f.handle.subscribe_folder_scan_events();
+    f.handle
+        .add_watched_folder(collection.to_string_lossy().into_owned())
+        .unwrap();
+    wait_for_scan_event(
+        &mut scan_rx,
+        "the two-credit candidate",
+        |event| matches!(event, ScanEvent::FolderCandidate(c) if c.path == album_dir),
+    )
+    .await;
 
     let choice = IdentityChoice::Exact {
         release_ref: MetadataRef::new(mb_id.clone(), MetadataSource::MusicBrainz),
@@ -3296,7 +3313,7 @@ async fn two_credit_mb_release_keeps_both_album_artists() {
     // command's overlay when the user touches nothing.
     let prefetch = f
         .handle
-        .prefetch_release(&mb_id, MetadataSource::MusicBrainz)
+        .prefetch_release(&candidate_key, &mb_id, MetadataSource::MusicBrainz)
         .await
         .unwrap();
     let user_edit = bae_core::import::shape_user_edit_for_choice(&prefetch.seed, &choice);
@@ -3305,7 +3322,7 @@ async fn two_credit_mb_release_keeps_both_album_artists() {
     f.handle
         .send_command(ImportCommand {
             import_id: import_id.clone(),
-            candidate_key: "test".to_string(),
+            candidate_key: candidate_key.clone(),
             folder: album_dir,
             selected_cover: None,
             storage_mode: StorageMode::Local,

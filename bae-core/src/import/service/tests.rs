@@ -467,57 +467,65 @@ fn mb_release_ref() -> crate::import::MetadataRef {
     crate::import::MetadataRef::new("rel-mb", crate::import::MetadataSource::MusicBrainz)
 }
 
+/// What each of the three claims writes to `release_identities`, pinned in one
+/// place. The header above this projection has been rewritten from a two-state
+/// toggle into a claim line; what the three claims mean to the database has
+/// not, and this is what stops a later interface change from silently moving it.
+///
+/// - **Exact** keeps the mapper's rows as they are: `source_release_id` stays
+///   `Some`, on the primary row AND on any cross-source row MB↔Discogs url-rels
+///   produced.
+/// - **Approximate** NULLs `source_release_id` on every one of those rows while
+///   keeping their group ids — the claim is at the group level across the board.
+/// - **Unknown** passes its input through untouched, which is how it writes no
+///   rows: the file-tag mapper it always pairs with emits an empty identity
+///   vec. The emptiness lives in the mapper, not in this projection, and the
+///   assertion below says so by handing Unknown a *non-empty* vec — asserting
+///   only that `[]` stays `[]` would be true of any implementation. Pinning the
+///   passthrough is what makes this the test that fires the day the file-tag
+///   mapper starts producing identities: an Unknown import would then silently
+///   write them, and that has to be a deliberate decision, not a surprise.
 #[test]
-fn exact_choice_passes_mapper_output_through() {
+fn the_three_claims_write_what_they_always_wrote() {
     let mapper_output = vec![
         mb_id_exact("rg-mb", "rel-mb"),
         discogs_id_exact("master-d", "rel-d"),
     ];
-    let result = apply_identity_choice(
+
+    let exact = apply_identity_choice(
         &mapper_output,
         &crate::import::IdentityChoice::Exact {
             release_ref: mb_release_ref(),
         },
     );
-    assert_eq!(result, mapper_output);
-}
+    assert_eq!(exact, mapper_output, "Exact keeps every mapper row as-is");
 
-#[test]
-fn approximate_choice_nulls_release_ids_on_every_row() {
-    // Both the primary identity row AND any cross-source row from
-    // url-rels mirror the user's choice — Approximate means a
-    // group-level claim across the board.
-    let mapper_output = vec![
-        mb_id_exact("rg-mb", "rel-mb"),
-        discogs_id_exact("master-d", "rel-d"),
-    ];
-    let result = apply_identity_choice(
+    let approximate = apply_identity_choice(
         &mapper_output,
         &crate::import::IdentityChoice::Approximate {
             release_ref: mb_release_ref(),
         },
     );
-    assert_eq!(result.len(), 2);
-    for id in &result {
+    assert_eq!(approximate.len(), 2);
+    for id in &approximate {
         assert!(
             id.source_release_id.is_none(),
             "Approximate must NULL source_release_id, got {id:?}"
         );
     }
-    // Group IDs survive — the claim is at the group level.
-    assert_eq!(result[0].source_group_id, "rg-mb");
-    assert_eq!(result[1].source_group_id, "master-d");
-}
+    assert_eq!(approximate[0].source_group_id, "rg-mb");
+    assert_eq!(approximate[1].source_group_id, "master-d");
 
-#[test]
-fn unknown_choice_passes_empty_mapper_output_through() {
-    // The file-tag mapper emits an empty identity vec; the choice
-    // post-process is a no-op. Confirms Unknown writes zero
-    // `release_identities` rows even when paired with a mapper
-    // that somehow surfaces rows (defensive — file_tag_mapper
-    // never does, but the projection is the algebraic identity).
-    let result = apply_identity_choice(&[], &crate::import::IdentityChoice::Unknown);
-    assert!(result.is_empty());
+    assert!(
+        apply_identity_choice(&[], &crate::import::IdentityChoice::Unknown).is_empty(),
+        "Unknown paired with the file-tag mapper's empty vec writes no rows"
+    );
+    assert_eq!(
+        apply_identity_choice(&mapper_output, &crate::import::IdentityChoice::Unknown),
+        mapper_output,
+        "Unknown passes its input through — it does not itself enforce emptiness, \
+         so a mapper that starts emitting identities would start writing them"
+    );
 }
 
 // ── apply_user_edit_to_seed ────────────────────────────────────────

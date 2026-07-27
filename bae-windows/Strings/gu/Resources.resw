@@ -355,11 +355,6 @@
   <data name="edit.tracks.col_number" xml:space="preserve"><value>નં.</value></data>
   <data name="edit.tracks.artist_placeholder" xml:space="preserve"><value>આલ્બમ કલાકાર</value></data>
   <data name="identify.skip" xml:space="preserve"><value>ઓળખવાનું છોડો</value></data>
-  <data name="identify.import_as" xml:space="preserve"><value>આ રીતે આયાત કરો</value></data>
-  <data name="identify.exact_pressing" xml:space="preserve"><value>ચોક્કસ પ્રેસિંગ</value></data>
-  <data name="identify.metadata_only" xml:space="preserve"><value>માત્ર મેટાડેટા</value></data>
-  <data name="identify.metadata_only_note" xml:space="preserve"><value>માત્ર મેટાડેટા — પ્રેસિંગ ફીલ્ડ્સ ખાલી રહેશે; ફક્ત આલ્બમ જૂથ નોંધાય છે.</value></data>
-  <data name="album.reidentify.claim_header" xml:space="preserve"><value>ઓળખ આ પ્રેસિંગ પર સેટ કરો</value></data>
   <data name="queue.drop_insert_caption" xml:space="preserve"><value>સ્થાન {position} પર ઉમેરો</value></data>
   <data name="queue.empty.title" xml:space="preserve"><value>કતાર ખાલી છે</value></data>
   <data name="queue.empty.hint" xml:space="preserve"><value>આલ્બમ અહીં ખેંચો અથવા કોઈ આલ્બમ વગાડો</value></data>

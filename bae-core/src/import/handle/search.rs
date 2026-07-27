@@ -232,8 +232,8 @@ impl ImportServiceHandle {
         Ok(covers)
     }
 
-    /// Prefetch for the confirmation pane: the picker's display detail plus the
-    /// metadata editor's seed.
+    /// Prefetch for the confirmation pane: the picker's display detail, the
+    /// metadata editor's seed, and the identity claim the pick implies.
     ///
     /// The seed is the commit worker's own projection — `prepare_release`, the
     /// function the worker calls, mapped into the editor's shape. So the editor
@@ -241,10 +241,17 @@ impl ImportServiceHandle {
     /// compares equal at commit instead of reading as a user edit that clears the
     /// junction rows.
     ///
+    /// The claim comes from `candidate_key`'s identify state: which signal
+    /// turned this release up decides whether the import claims the pressing or
+    /// the album. A key with no identify state — a manual search, a candidate
+    /// whose pipeline never ran — yields the album-level claim, which is the
+    /// honest reading of "the user found this themselves".
+    ///
     /// Both fetches go through the network LRU caches, so the worker's later
     /// commit-time fetch of the same release is a cache hit.
     pub async fn prefetch_release(
         &self,
+        candidate_key: &str,
         release_id: &str,
         source: MetadataSource,
     ) -> Result<crate::import::search::ImportReleasePrefetch, crate::import::ImportError> {
@@ -265,9 +272,46 @@ impl ImportServiceHandle {
         )
         .await?;
 
+        let claim = self.claim_for_pick(
+            candidate_key,
+            &crate::import::ClaimRelease::from_detail(&detail),
+        );
+
         Ok(crate::import::search::ImportReleasePrefetch {
             detail,
             seed: crate::import::parsed_album_to_user_edit(&prepared.parsed),
+            claim,
         })
+    }
+
+    /// What picking `release` under `candidate_key` claims, and where its
+    /// metadata comes from.
+    ///
+    /// Both surfaces that pick a release land here — the import confirm pane
+    /// through [`Self::prefetch_release`], and re-identify directly, since it
+    /// commits from the pick and never prefetches. The evidence is the
+    /// candidate's own identify state, so no caller supplies or interprets it.
+    pub fn claim_for_pick(
+        &self,
+        candidate_key: &str,
+        release: &crate::import::ClaimRelease,
+    ) -> crate::import::ClaimLine {
+        crate::import::claim_line(&self.identify_state(candidate_key), release)
+    }
+
+    /// A candidate's identify state, or `Idle` for a key the service has
+    /// recorded nothing against. Absence is the designed initial state, not an
+    /// error: a folder whose pipeline hasn't run and a re-identify key opened
+    /// this instant both read as "nothing matched yet".
+    fn identify_state(&self, candidate_key: &str) -> crate::identify::IdentifyState {
+        match self.get_candidate(candidate_key) {
+            Some(
+                super::ImportCandidateSnapshot::Folder { runtime, .. }
+                | super::ImportCandidateSnapshot::Runtime { runtime, .. },
+            ) => runtime.identify_state,
+            Some(super::ImportCandidateSnapshot::Invalid(_)) | None => {
+                crate::identify::IdentifyState::Idle
+            }
+        }
     }
 }
