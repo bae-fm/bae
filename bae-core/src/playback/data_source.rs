@@ -336,15 +336,13 @@ impl AudioDataReader for CovenBlobReader {
                 }
             };
 
-            // Open the stream once for this reader. This is where coven resolves
-            // locality, reads the whole plaintext to prove its size and content hash
-            // against the row, and (on a Remote miss) downloads it and populates the
-            // cache. Every window below is then a positioned read of the handle proven
-            // here, costing only the bytes it returns -- so the whole blob is paid for
-            // once per track, not once per window. Opening is also where a missing
-            // external file or an unreachable cloud home surfaces, so its failure takes
-            // the same classification a failed read does: that is what carries
-            // "reconnect sync" and "still uploading" to the UI.
+            // Open the stream once for this reader. coven binds the row's exact blob
+            // reference and resolves its locality here; each positioned read then
+            // verifies and returns only the requested local bytes or authenticated
+            // remote chunks. Opening is also where a missing external file or
+            // unavailable cloud home surfaces, so its failure takes the same
+            // classification as a failed range read: that is what carries "reconnect
+            // sync" and "still uploading" to the UI.
             let stream = match handle.open_blob_stream(&blob).await {
                 Ok(stream) => Arc::new(stream),
                 Err(e) => {

@@ -6426,11 +6426,14 @@ async fn seek_over_remote_cloud_costs_chunks_not_the_whole_blob() {
     let landed = wait_for_seeked_on(&mut playback.progress_rx, SEEK_COST_BACKSTOP)
         .await
         .expect("the seek must land within the backstop over a chunked ranged read");
-    let elapsed = started.elapsed();
     assert!(
         Duration::from_millis(landed).abs_diff(target) < Duration::from_secs(2),
         "the seek should land near {target:?}, got {landed}ms"
     );
+    wait_for_position_advance(&mut playback.progress_rx)
+        .await
+        .expect("audio must flow from the completed chunked-range seek");
+    let elapsed = started.elapsed();
 
     // Ranged reads are the measurement, not `exact_full_read_count`: that counter
     // is bucket-wide and the sync loop reads whole objects (commits, snapshots)
@@ -6465,10 +6468,6 @@ async fn seek_over_remote_cloud_costs_chunks_not_the_whole_blob() {
         elapsed < SEEK_COST_BACKSTOP,
         "the seek took {elapsed:?}, past the {SEEK_COST_BACKSTOP:?} backstop"
     );
-
-    wait_for_position_advance(&mut playback.progress_rx)
-        .await
-        .expect("audio must keep flowing after a chunked-range seek");
 }
 
 /// A sparse buffer pre-filled with the whole byte slice, so a decode exercises
