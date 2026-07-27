@@ -163,6 +163,18 @@ if has_changes_in "bae-macos" || has_changes_in "bae-bridge" \
             echo "swift-format lint failed — fix the violations above and commit again"
             exit 1
         }
+
+        # swift-format owns layout; SwiftLint owns code quality, and the two
+        # split cleanly (see .swiftlint.yml). Running only the formatter here
+        # let two oversized view bodies reach main and fail CI, so the same
+        # roots CI lints are linted here — the point of a pre-commit gate is
+        # that it is the same gate.
+        run_check "swiftlint (bae-macos + BaeKit + bae-ios)" \
+            swiftlint lint --quiet --strict --config .swiftlint.yml \
+            bae-macos/bae/bae BaeKit/Sources/BaeKit bae-ios/bae/bae || {
+            echo "swiftlint failed — fix the violations above and commit again"
+            exit 1
+        }
     fi
 
     run_check "build bridge (bae-macos)" ./bae-bridge/build-macos.sh || {
