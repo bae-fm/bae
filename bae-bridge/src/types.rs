@@ -956,6 +956,244 @@ pub struct BridgeImportCandidatesSnapshot {
     pub invalid_candidates: Vec<BridgeInvalidCandidate>,
 }
 
+// ── Sidebar triage ─────────────────────────────────────────────────────────
+//
+// Mirrors `bae_core::import::triage` field for field and decides nothing. Every
+// rule the sidebar renders — which tab, which group, which checkbox, which
+// counts — is core's; a UI iterates these and formats them for its locale.
+
+/// The sidebar's four tabs.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeTriageTab {
+    Ready,
+    NeedsYou,
+    Done,
+    Skipped,
+}
+
+/// Where a row sits, and — under Needs you — why. One value rather than a tab
+/// plus an optional group, so a surface cannot read half of it.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeTriagePlacement {
+    Ready,
+    NeedsYou {
+        /// The header this row stacks under.
+        group: BridgeNeedsYouGroup,
+        /// The question itself, with its operands, so the row's line can be
+        /// precise where its group header cannot.
+        reason: BridgeNeedsYouReason,
+    },
+    Done,
+    Skipped,
+}
+
+/// The Needs-you group headers. Each UI localizes the variant from its own
+/// catalog; the stacking order comes from
+/// [`bridge_needs_you_groups_in_order`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeNeedsYouGroup {
+    PickAPressing,
+    SignalsDisagree,
+    CountsOrLengthsDisagree,
+    AlreadyInLibrary,
+    NoMatch,
+    StillIdentifying,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeNeedsYouReason {
+    Disagreement {
+        disagreement: BridgeNeedsYou,
+    },
+    /// No verdict yet — the row is dimmed and leaves this group on its own.
+    /// `phase` says which of three unlike states it is in, so the row can say
+    /// so rather than showing all three identically.
+    StillIdentifying {
+        phase: BridgeIdentifyPhase,
+    },
+}
+
+/// How far identification has got for a candidate with no stored verdict.
+/// Mirror of `bae_core::import::IdentifyPhase`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeIdentifyPhase {
+    /// Nothing has run yet: the sweep has not reached this candidate.
+    Queued,
+    /// A run is in flight.
+    Running,
+    /// A run settled without an answer worth keeping — a lookup that never
+    /// responded. It is retried on a later pass; nobody is waiting on it.
+    NoAnswer,
+}
+
+/// Mirror of bae-core's `identify::NeedsYou`: one variant per question the user
+/// is being asked, carrying the operands the row's line is built from. Every
+/// number crosses raw — the UI formats it for its own locale and interpolates
+/// it into the variant's `core.*` message (`bridge_needs_you_key`).
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeNeedsYou {
+    AlreadyInLibrary,
+    SeveralMatches {
+        count: u32,
+    },
+    SignalsConflict,
+    NoMatch,
+    NothingToLookUp,
+    TrackCountDisagrees {
+        local: u32,
+        source: u32,
+    },
+    /// All three numbers cross even though the line names two: the tolerance is
+    /// what makes the other two a disagreement rather than a rounding, and a
+    /// surface that wants to show it should not have to re-derive it.
+    DurationsDisagree {
+        probed_ms: u64,
+        source_ms: u64,
+        tolerance_ms: u64,
+    },
+    SourceLengthsUnknown,
+    LocalDurationUnknown,
+}
+
+impl BridgeNeedsYou {
+    pub(crate) fn loc_key(&self) -> &'static str {
+        match self {
+            Self::AlreadyInLibrary => "core.import.triage.already_in_library",
+            Self::SeveralMatches { .. } => "core.import.triage.several_matches",
+            Self::SignalsConflict => "core.import.triage.signals_conflict",
+            Self::NoMatch => "core.import.triage.no_match",
+            Self::NothingToLookUp => "core.import.triage.nothing_to_look_up",
+            Self::TrackCountDisagrees { .. } => "core.import.triage.track_count_disagrees",
+            Self::DurationsDisagree { .. } => "core.import.triage.durations_disagree",
+            Self::SourceLengthsUnknown => "core.import.triage.source_lengths_unknown",
+            Self::LocalDurationUnknown => "core.import.triage.local_duration_unknown",
+        }
+    }
+}
+
+/// Localization key for the line a Needs-you row states its disagreement with —
+/// resolved by the UI against the `Core` string table, which interpolates the
+/// variant's own operands (durations formatted by the platform first).
+#[uniffi::export]
+pub fn bridge_needs_you_key(needs_you: &BridgeNeedsYou) -> String {
+    needs_you.loc_key().to_string()
+}
+
+/// The Needs-you groups in the order the sidebar stacks them. Ordering is a
+/// domain decision, so it is stated once rather than in each UI. Mirrors
+/// `bae_core::import::NeedsYouGroup::IN_ORDER`, which `triage_group_order`
+/// pins it against.
+#[uniffi::export]
+pub fn bridge_needs_you_groups_in_order() -> Vec<BridgeNeedsYouGroup> {
+    vec![
+        BridgeNeedsYouGroup::PickAPressing,
+        BridgeNeedsYouGroup::SignalsDisagree,
+        BridgeNeedsYouGroup::CountsOrLengthsDisagree,
+        BridgeNeedsYouGroup::AlreadyInLibrary,
+        BridgeNeedsYouGroup::NoMatch,
+        BridgeNeedsYouGroup::StillIdentifying,
+    ]
+}
+
+/// Which tab a placement puts the row in — the filter a tab bar applies.
+#[uniffi::export]
+pub fn bridge_triage_tab(placement: &BridgeTriagePlacement) -> BridgeTriageTab {
+    match placement {
+        BridgeTriagePlacement::Ready => BridgeTriageTab::Ready,
+        BridgeTriagePlacement::NeedsYou { .. } => BridgeTriageTab::NeedsYou,
+        BridgeTriagePlacement::Done => BridgeTriageTab::Done,
+        BridgeTriagePlacement::Skipped => BridgeTriageTab::Skipped,
+    }
+}
+
+/// Which signal produced a match.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeMatchedSignal {
+    DiscId,
+    Barcode,
+}
+
+/// Which provider answered and what matched — the row's trailing evidence.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeMatchEvidence {
+    pub source: BridgeMetadataSource,
+    /// `None` when nothing in the provenance names a signal; the row then shows
+    /// the provider alone.
+    pub signal: Option<BridgeMatchedSignal>,
+}
+
+/// The pressing-level facts about a match, present as a whole exactly when the
+/// pressing is settled — absent while several are in play, because that is the
+/// question the row is asking. The inner fields stay optional: a settled
+/// pressing may state a year and no format.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeMatchedPressing {
+    pub year: Option<i32>,
+    pub format: Option<String>,
+    /// What the source says the release holds, when it has said.
+    pub track_count: Option<u32>,
+}
+
+/// The release a row leads with. Absent as a whole when nothing matched, in
+/// which case the row's title is `folder_name` and it has no metadata line —
+/// there is no half-populated match to render. Present on Done and Skipped rows
+/// too: a candidate already imported or set aside still shows what it matched.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeMatchedRelease {
+    /// The lead match's title, which with several matches stands in for the
+    /// album — titles vary between the editions of one release group.
+    pub title: String,
+    /// The lead match's artist, with the same caveat as `title`.
+    pub artist: Option<String>,
+    pub pressing: Option<BridgeMatchedPressing>,
+    /// Thumbnail-sized cover URL for the row's 40px art — the lead match's own
+    /// sleeve, since cover art is fetched per release id.
+    pub cover_thumbnail_url: Option<String>,
+    pub evidence: BridgeMatchEvidence,
+}
+
+/// One candidate's sidebar row.
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeTriageRow {
+    /// The candidate's folder path — the key every other import call takes.
+    pub candidate_key: String,
+    /// The folder on disk: the mono subtitle, and the title when `matched` is
+    /// absent.
+    pub folder_name: String,
+    /// Match against `BridgeWatchedFolder.path` for the section header.
+    pub watched_folder_path: String,
+    pub placement: BridgeTriagePlacement,
+    pub matched: Option<BridgeMatchedRelease>,
+    /// Whether this row takes a bulk-import checkbox.
+    pub selectable: bool,
+    pub import_status: Option<BridgeCandidateImportStatus>,
+}
+
+/// How many rows each tab holds. Computed in core in the same pass that places
+/// them — a UI never counts an array length, which would be wrong the moment a
+/// filter is applied.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeTriageTabCounts {
+    pub ready: u32,
+    pub needs_you: u32,
+    pub done: u32,
+    pub skipped: u32,
+}
+
+/// The whole sidebar.
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeTriageQueue {
+    /// Ordered by watched folder — in the watched-folder list's own order —
+    /// then by candidate key. Grouping is `placement`'s.
+    pub rows: Vec<BridgeTriageRow>,
+    /// Folders that failed validation. Not rows — nothing to triage — but they
+    /// share the Skipped tab with the skipped rows, so they arrive in the same
+    /// read as the count that includes them.
+    pub invalid: Vec<BridgeInvalidCandidate>,
+    /// `skipped` counts the Skipped rows **plus** `invalid`.
+    pub counts: BridgeTriageTabCounts,
+}
+
 /// A folder the user watches for imports — one candidate-list group.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeWatchedFolder {
@@ -1807,6 +2045,13 @@ pub enum BridgeUiEvent {
         tracks_done: u32,
         tracks_total: u32,
         fraction: f32,
+    },
+    /// How much of the import queue the background sweep has answered — the
+    /// sidebar header's line and bar. Both numbers are the queue's; a view
+    /// must not derive `total` from the rows it holds, which are filtered.
+    ImportQueueIdentifyProgress {
+        identified: u32,
+        total: u32,
     },
 
     // ── Release transfer ───────────────────────────────────────────
@@ -4536,6 +4781,42 @@ mod loc_key_coverage {
             keys.push(expected.to_string());
         }
 
+        // bridge_needs_you_key — every variant carries a key.
+        for needs_you in [
+            BridgeNeedsYou::AlreadyInLibrary,
+            BridgeNeedsYou::SeveralMatches { count: 0 },
+            BridgeNeedsYou::SignalsConflict,
+            BridgeNeedsYou::NoMatch,
+            BridgeNeedsYou::NothingToLookUp,
+            BridgeNeedsYou::TrackCountDisagrees {
+                local: 0,
+                source: 0,
+            },
+            BridgeNeedsYou::DurationsDisagree {
+                probed_ms: 0,
+                source_ms: 0,
+                tolerance_ms: 0,
+            },
+            BridgeNeedsYou::SourceLengthsUnknown,
+            BridgeNeedsYou::LocalDurationUnknown,
+        ] {
+            let expected = match needs_you {
+                BridgeNeedsYou::AlreadyInLibrary => "core.import.triage.already_in_library",
+                BridgeNeedsYou::SeveralMatches { .. } => "core.import.triage.several_matches",
+                BridgeNeedsYou::SignalsConflict => "core.import.triage.signals_conflict",
+                BridgeNeedsYou::NoMatch => "core.import.triage.no_match",
+                BridgeNeedsYou::NothingToLookUp => "core.import.triage.nothing_to_look_up",
+                BridgeNeedsYou::TrackCountDisagrees { .. } => {
+                    "core.import.triage.track_count_disagrees"
+                }
+                BridgeNeedsYou::DurationsDisagree { .. } => "core.import.triage.durations_disagree",
+                BridgeNeedsYou::SourceLengthsUnknown => "core.import.triage.source_lengths_unknown",
+                BridgeNeedsYou::LocalDurationUnknown => "core.import.triage.local_duration_unknown",
+            };
+            assert_eq!(bridge_needs_you_key(&needs_you), expected);
+            keys.push(expected.to_string());
+        }
+
         // bridge_prepare_step_key — every variant carries a key.
         for step in [
             BridgePrepareStep::ParsingMetadata,
@@ -4756,6 +5037,50 @@ mod loc_key_coverage {
                 "catalog key `{key}` has no producer — delete it or add a producer \
                  (a bridge_*_key fn) or list it in DIRECT_KEYS"
             );
+        }
+    }
+}
+
+#[cfg(all(test, feature = "desktop"))]
+mod triage_tests {
+    use super::*;
+
+    /// The stacking order the UIs iterate is core's, spelled once on this side
+    /// so mobile builds carry it too. This is what keeps the two spellings from
+    /// drifting — reorder either and it fails.
+    #[test]
+    fn group_order_mirrors_core() {
+        let core: Vec<BridgeNeedsYouGroup> = bae_core::import::NeedsYouGroup::IN_ORDER
+            .iter()
+            .map(|group| BridgeNeedsYouGroup::from_core(*group))
+            .collect();
+        assert_eq!(bridge_needs_you_groups_in_order(), core);
+    }
+
+    /// A placement's tab is the one core's own projection gives it, for all
+    /// four — so `bridge_triage_tab` cannot become a second, divergent rule.
+    #[test]
+    fn tab_of_placement_mirrors_core() {
+        use bae_core::import::{NeedsYouGroup, NeedsYouReason, TriagePlacement, TriageTab};
+        for core in [
+            TriagePlacement::Ready,
+            TriagePlacement::NeedsYou {
+                group: NeedsYouGroup::StillIdentifying,
+                reason: NeedsYouReason::StillIdentifying {
+                    phase: bae_core::import::IdentifyPhase::Queued,
+                },
+            },
+            TriagePlacement::Done,
+            TriagePlacement::Skipped,
+        ] {
+            let expected = match core.tab() {
+                TriageTab::Ready => BridgeTriageTab::Ready,
+                TriageTab::NeedsYou => BridgeTriageTab::NeedsYou,
+                TriageTab::Done => BridgeTriageTab::Done,
+                TriageTab::Skipped => BridgeTriageTab::Skipped,
+            };
+            let bridge = BridgeTriagePlacement::from_core(core);
+            assert_eq!(bridge_triage_tab(&bridge), expected);
         }
     }
 }

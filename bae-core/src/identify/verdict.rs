@@ -31,7 +31,9 @@
 
 use super::combine::{GroupKey, ResultProvenance};
 use super::state::{IdentifyState, SignalsContext};
+use crate::db::DbImportCandidateState;
 use crate::import::search::MetadataResult;
+use tracing::debug;
 
 /// The identify pipeline's outcome once it can no longer change without new
 /// input from the user or a re-run. Built from [`IdentifyState`]'s four
@@ -159,6 +161,33 @@ impl TryFrom<IdentifyState> for TerminalVerdict {
             } => Ok(Self::ManualOnly { track_count }),
 
             other @ (IdentifyState::Idle | IdentifyState::Triangulating { .. }) => Err(other),
+        }
+    }
+}
+
+/// The verdict a stored `import_candidate_state` row holds, or `None` when this
+/// build can no longer read it.
+///
+/// **An undecodable row is absent, not an error.** The shape of a stored verdict
+/// changes with the code that writes it, and this is pre-1.0, so the honest
+/// response to a row this build cannot parse is to treat the candidate as
+/// unanswered: the sweep identifies it again and overwrites the row, and a
+/// reader shows it as still identifying meanwhile. No fallback decoder, no
+/// migration.
+///
+/// One implementation because there is one rule — the sweep decides what to
+/// re-identify by it and the sidebar decides what to render by it, and the two
+/// disagreeing would leave a candidate the sweep considers answered rendering
+/// as unanswered forever.
+pub fn decode_stored(row: &DbImportCandidateState) -> Option<TerminalVerdict> {
+    match serde_json::from_str::<TerminalVerdict>(&row.verdict) {
+        Ok(verdict) => Some(verdict),
+        Err(e) => {
+            debug!(
+                "stored verdict for {} no longer decodes ({e}); treating it as absent",
+                row.content_hash
+            );
+            None
         }
     }
 }

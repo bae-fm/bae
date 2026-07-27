@@ -176,6 +176,16 @@ impl AppServices {
         self.inner.import.get_candidate(key)
     }
 
+    /// The import sidebar's rows and tab counts. Reads the stored verdicts and
+    /// one live library check, so it is a query the surfaces re-run on an
+    /// import invalidation rather than something pushed at them.
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    pub async fn import_triage_queue(
+        &self,
+    ) -> Result<crate::import::TriageQueue, crate::library::LibraryError> {
+        crate::import::triage::load(&self.inner.import, &self.inner.manager).await
+    }
+
     pub fn playback(&self) -> &PlaybackHandle {
         &self.inner.playback
     }

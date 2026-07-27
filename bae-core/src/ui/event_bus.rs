@@ -374,11 +374,18 @@ impl UiEventBus {
                                     });
                                 }
                             }
-                            // The sweep's progress line is the sidebar's, and
-                            // the sidebar is the next task's. Nothing renders it
-                            // yet, so nothing crosses yet.
+                            // The sidebar header's line and bar. It crosses as
+                            // its own event rather than as an invalidation:
+                            // it is two numbers, it changes once per candidate
+                            // answered, and nothing about the row list changes
+                            // with it.
                             #[cfg(not(any(target_os = "ios", target_os = "android")))]
-                            ImportEvent::QueueIdentifyProgress { .. } => {}
+                            ImportEvent::QueueIdentifyProgress { identified, total } => {
+                                bus.emit(UiBusEvent::ImportQueueIdentifyProgress {
+                                    identified,
+                                    total,
+                                });
+                            }
                         }
                     }
                     Err(tokio::sync::broadcast::error::RecvError::Lagged(n)) => {

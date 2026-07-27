@@ -236,6 +236,14 @@ pub enum UiBusEvent {
         tracks_total: u32,
         fraction: f32,
     },
+    /// How much of the import queue the background sweep has answered. The
+    /// sidebar header renders it as a line and a bar. Both numbers are the
+    /// queue's, not the list's — the sidebar is filtered, so a view counting
+    /// the rows it holds would report a different, wrong total.
+    ImportQueueIdentifyProgress {
+        identified: u32,
+        total: u32,
+    },
 
     // ── Release transfer ───────────────────────────────────────────
     /// A pin/unpin/manage/unmanage transition started. The UI shows an

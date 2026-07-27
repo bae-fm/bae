@@ -39,6 +39,8 @@ pub(crate) mod service;
 pub mod sweep;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod track_to_file_mapper;
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+pub mod triage;
 mod types;
 
 use crate::db::{
@@ -96,6 +98,12 @@ pub use handle::{
 pub use service::ImportService;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use sweep::QueueSweepHandle;
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+pub use triage::{
+    Answered, CandidateAnswer, IdentifyPhase, MatchEvidence, MatchedPressing, MatchedRelease,
+    MatchedSignal, NeedsYouGroup, NeedsYouReason, TriagePlacement, TriageQueue, TriageRow,
+    TriageTab, TriageTabCounts,
+};
 pub use types::{
     CoverSelection, EditValidationError, IdentityChoice, ImportCommand, ImportPhase,
     ImportProgress, ImportStep, MetadataPointer, MetadataRef, MetadataSource, PrepareStep,

@@ -1416,6 +1416,20 @@ impl AppHandle {
         )
     }
 
+    /// The import sidebar: one pre-shaped row per candidate and the four tab
+    /// counts. Read it again on an `ImportCandidateList` invalidation — it
+    /// consults the stored verdicts and the live library, so it is a query
+    /// rather than something pushed a row at a time.
+    pub async fn get_import_triage_queue(
+        &self,
+    ) -> Result<crate::types::BridgeTriageQueue, BridgeError> {
+        self.services
+            .import_triage_queue()
+            .await
+            .map(crate::types::BridgeTriageQueue::from_core)
+            .map_err(BridgeError::database)
+    }
+
     pub fn get_candidate(&self, key: String) -> Option<BridgeImportCandidateSnapshot> {
         self.services
             .get_candidate(&key)
@@ -2482,6 +2496,198 @@ impl crate::types::BridgeImportCandidatesSnapshot {
     }
 }
 
+// ── Sidebar triage ─────────────────────────────────────────────────────────
+//
+// A mirror, variant for variant. Every decision behind these values was made in
+// `bae_core::import::triage`.
+
+#[cfg(feature = "desktop")]
+impl crate::types::BridgeTriageQueue {
+    pub(crate) fn from_core(queue: bae_core::import::TriageQueue) -> Self {
+        let bae_core::import::TriageQueue {
+            rows,
+            invalid,
+            counts,
+        } = queue;
+        let bae_core::import::TriageTabCounts {
+            ready,
+            needs_you,
+            done,
+            skipped,
+        } = counts;
+        crate::types::BridgeTriageQueue {
+            rows: rows
+                .into_iter()
+                .map(crate::types::BridgeTriageRow::from_core)
+                .collect(),
+            invalid: invalid
+                .into_iter()
+                .map(crate::types::BridgeInvalidCandidate::from_core)
+                .collect(),
+            counts: crate::types::BridgeTriageTabCounts {
+                ready,
+                needs_you,
+                done,
+                skipped,
+            },
+        }
+    }
+}
+
+#[cfg(feature = "desktop")]
+impl crate::types::BridgeTriageRow {
+    pub(crate) fn from_core(row: bae_core::import::TriageRow) -> Self {
+        let bae_core::import::TriageRow {
+            candidate_key,
+            folder_name,
+            watched_folder_path,
+            placement,
+            matched,
+            selectable,
+            import_status,
+        } = row;
+        crate::types::BridgeTriageRow {
+            candidate_key,
+            folder_name,
+            watched_folder_path,
+            placement: crate::types::BridgeTriagePlacement::from_core(placement),
+            matched: matched.map(crate::types::BridgeMatchedRelease::from_core),
+            selectable,
+            import_status: import_status.map(crate::types::BridgeCandidateImportStatus::from_core),
+        }
+    }
+}
+
+#[cfg(feature = "desktop")]
+impl crate::types::BridgeTriagePlacement {
+    pub(crate) fn from_core(placement: bae_core::import::TriagePlacement) -> Self {
+        use bae_core::import::TriagePlacement as P;
+        match placement {
+            P::Ready => Self::Ready,
+            P::NeedsYou { group, reason } => Self::NeedsYou {
+                group: crate::types::BridgeNeedsYouGroup::from_core(group),
+                reason: crate::types::BridgeNeedsYouReason::from_core(reason),
+            },
+            P::Done => Self::Done,
+            P::Skipped => Self::Skipped,
+        }
+    }
+}
+
+#[cfg(feature = "desktop")]
+impl crate::types::BridgeNeedsYouGroup {
+    pub(crate) fn from_core(group: bae_core::import::NeedsYouGroup) -> Self {
+        use bae_core::import::NeedsYouGroup as G;
+        match group {
+            G::PickAPressing => Self::PickAPressing,
+            G::SignalsDisagree => Self::SignalsDisagree,
+            G::CountsOrLengthsDisagree => Self::CountsOrLengthsDisagree,
+            G::AlreadyInLibrary => Self::AlreadyInLibrary,
+            G::NoMatch => Self::NoMatch,
+            G::StillIdentifying => Self::StillIdentifying,
+        }
+    }
+}
+
+#[cfg(feature = "desktop")]
+impl crate::types::BridgeNeedsYouReason {
+    pub(crate) fn from_core(reason: bae_core::import::NeedsYouReason) -> Self {
+        use bae_core::import::NeedsYouReason as R;
+        match reason {
+            R::Disagreement(needs_you) => Self::Disagreement {
+                disagreement: crate::types::BridgeNeedsYou::from_core(needs_you),
+            },
+            R::StillIdentifying { phase } => Self::StillIdentifying {
+                phase: crate::types::BridgeIdentifyPhase::from_core(phase),
+            },
+        }
+    }
+}
+
+#[cfg(feature = "desktop")]
+impl crate::types::BridgeIdentifyPhase {
+    pub(crate) fn from_core(phase: bae_core::import::IdentifyPhase) -> Self {
+        use bae_core::import::IdentifyPhase as P;
+        match phase {
+            P::Queued => Self::Queued,
+            P::Running => Self::Running,
+            P::NoAnswer => Self::NoAnswer,
+        }
+    }
+}
+
+#[cfg(feature = "desktop")]
+impl crate::types::BridgeNeedsYou {
+    pub(crate) fn from_core(needs_you: bae_core::identify::NeedsYou) -> Self {
+        use bae_core::identify::NeedsYou as N;
+        match needs_you {
+            N::AlreadyInLibrary => Self::AlreadyInLibrary,
+            N::SeveralMatches { count } => Self::SeveralMatches { count },
+            N::SignalsConflict => Self::SignalsConflict,
+            N::NoMatch => Self::NoMatch,
+            N::NothingToLookUp => Self::NothingToLookUp,
+            N::TrackCountDisagrees { local, source } => Self::TrackCountDisagrees { local, source },
+            N::DurationsDisagree {
+                probed_ms,
+                source_ms,
+                tolerance_ms,
+            } => Self::DurationsDisagree {
+                probed_ms,
+                source_ms,
+                tolerance_ms,
+            },
+            N::SourceLengthsUnknown => Self::SourceLengthsUnknown,
+            N::LocalDurationUnknown => Self::LocalDurationUnknown,
+        }
+    }
+}
+
+#[cfg(feature = "desktop")]
+impl crate::types::BridgeMatchedRelease {
+    pub(crate) fn from_core(matched: bae_core::import::MatchedRelease) -> Self {
+        let bae_core::import::MatchedRelease {
+            title,
+            artist,
+            pressing,
+            cover_thumbnail_url,
+            evidence,
+        } = matched;
+        let bae_core::import::MatchEvidence { source, signal } = evidence;
+        crate::types::BridgeMatchedRelease {
+            title,
+            artist,
+            pressing: pressing.map(|pressing| {
+                let bae_core::import::MatchedPressing {
+                    year,
+                    format,
+                    track_count,
+                } = pressing;
+                crate::types::BridgeMatchedPressing {
+                    year,
+                    format,
+                    track_count,
+                }
+            }),
+            cover_thumbnail_url,
+            evidence: crate::types::BridgeMatchEvidence {
+                source: crate::types::BridgeMetadataSource::from_core(source),
+                signal: signal.map(crate::types::BridgeMatchedSignal::from_core),
+            },
+        }
+    }
+}
+
+#[cfg(feature = "desktop")]
+impl crate::types::BridgeMatchedSignal {
+    pub(crate) fn from_core(signal: bae_core::import::MatchedSignal) -> Self {
+        use bae_core::import::MatchedSignal as S;
+        match signal {
+            S::DiscId => Self::DiscId,
+            S::Barcode => Self::Barcode,
+        }
+    }
+}
+
 impl crate::types::BridgeLoadingTrackInfo {
     fn from_core(t: bae_core::playback::LoadingTrack) -> Self {
         let bae_core::playback::LoadingTrack {
@@ -2631,6 +2837,9 @@ fn convert_ui_event(event: bae_core::ui::UiBusEvent) -> Option<crate::types::Bri
             tracks_total,
             fraction,
         }),
+        UiBusEvent::ImportQueueIdentifyProgress { identified, total } => {
+            Some(BridgeUiEvent::ImportQueueIdentifyProgress { identified, total })
+        }
 
         // ── Release transfer ───────────────────────────────────────
         UiBusEvent::ReleaseTransferProgress { release_id, action } => {

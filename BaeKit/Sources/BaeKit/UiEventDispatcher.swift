@@ -53,10 +53,11 @@ public enum UiEventDispatcher {
             break
 
         case .previewPlaying, .previewPaused, .previewIdle, .previewProgress,
-            .candidateImportLoudnessProgress, .castStatusChanged:
-            // Cast is desktop-only, as are preview and import-loudness: the
-            // platform sink owns them. iOS ignores them; macOS updates its
-            // cast store.
+            .candidateImportLoudnessProgress, .castStatusChanged,
+            .importQueueIdentifyProgress:
+            // Cast is desktop-only, as are preview, import-loudness, and the
+            // import queue's identify progress: the platform sink owns them.
+            // iOS ignores them; macOS updates its cast store.
             return .unhandled
         }
         return .handled

@@ -34,6 +34,7 @@
 use super::folder_scanner::FolderCandidate;
 use super::handle::{ImportCandidateSnapshot, ImportEvent, ImportServiceHandle, ScanEvent};
 use crate::db::{DbImportCandidateState, NewImportCandidateState};
+use crate::identify::verdict::decode_stored as decode;
 use crate::identify::{IdentifyServiceHandle, IdentifyState, TerminalVerdict};
 use crate::import::search::{fetch_source_tracks, MetadataResult};
 use crate::library::LibraryManager;
@@ -426,11 +427,9 @@ fn plan(
     let mut top_up = Vec::new();
     let mut identified = 0;
     for candidate in candidates {
-        // A row this build can no longer decode is treated as **absent**, not as
-        // an error: the shape of a stored verdict changes with the code that
-        // writes it, and this is pre-1.0 — so the honest response to a row this
-        // build cannot read is to identify the candidate again and overwrite it.
-        // No fallback decoder, no migration.
+        // An undecodable row is absent, so the candidate is identified again and
+        // the row overwritten — see `identify::verdict::decode_stored`, which is
+        // the one place that rule lives.
         let row = stored
             .get(&candidate.files.content_hash())
             .filter(|row| decode(row).is_some());
@@ -452,19 +451,6 @@ fn plan(
         top_up,
         identified,
         total,
-    }
-}
-
-fn decode(row: &DbImportCandidateState) -> Option<TerminalVerdict> {
-    match serde_json::from_str::<TerminalVerdict>(&row.verdict) {
-        Ok(verdict) => Some(verdict),
-        Err(e) => {
-            debug!(
-                "sweep: stored verdict for {} no longer decodes ({e}); re-identifying",
-                row.content_hash
-            );
-            None
-        }
     }
 }
 
