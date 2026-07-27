@@ -18,6 +18,11 @@
         )
         private let recordType = "BaeFile"
 
+        /// Set once `ensureZone` has created (or confirmed) the library zone,
+        /// so later writes skip the round trip. Stored here rather than beside
+        /// `ensureZone` because an extension cannot hold stored properties.
+        private var zoneEnsured = false
+
         /// Which CloudKit deployment this build talks to. A debug build runs
         /// against the development container; a release build against production.
         private static var environment: BridgeCloudKitEnvironment {
@@ -257,8 +262,119 @@
             return fetched
         }
 
-        // MARK: - Versioned reads and atomic record batches
+    }
 
+    // MARK: - Zones, record ids, and error classification
+
+    extension CloudKitService {
+        private func ensureZone() throws {
+            guard !zoneEnsured else {
+                return
+            }
+            let sem = DispatchSemaphore(value: 0)
+            nonisolated(unsafe) var resultError: Error?
+            let zone = CKRecordZone(zoneID: privateZoneID)
+            privateDatabase.save(zone) { _, error in
+                resultError = error
+                sem.signal()
+            }
+            sem.wait()
+            if let error = resultError {
+                throw CloudKitError.Storage(
+                    msg: cloudKitErrorMessage(error, op: "Zone setup")
+                )
+            }
+            zoneEnsured = true
+        }
+
+        // MARK: - Record ID from key
+
+        private struct RecordScope {
+            let database: CKDatabase
+            let zoneID: CKRecordZone.ID
+            let ownsZone: Bool
+        }
+
+        private func recordScope(ownerName: String?, zoneName: String?) throws
+            -> RecordScope
+        {
+            switch (ownerName, zoneName) {
+            case (nil, nil):
+                return RecordScope(
+                    database: privateDatabase,
+                    zoneID: privateZoneID,
+                    ownsZone: true
+                )
+            case (.some(let ownerName), .some(let zoneName)):
+                guard !ownerName.isEmpty, !zoneName.isEmpty else {
+                    throw CloudKitError.Storage(
+                        msg:
+                            "CloudKit shared scope requires non-empty owner and zone names"
+                    )
+                }
+                return RecordScope(
+                    database: sharedDatabase,
+                    zoneID: CKRecordZone.ID(
+                        zoneName: zoneName,
+                        ownerName: ownerName
+                    ),
+                    ownsZone: false
+                )
+            case (nil, .some(_)), (.some(_), nil):
+                throw CloudKitError.Storage(
+                    msg:
+                        "CloudKit shared scope requires both owner and zone names"
+                )
+            }
+        }
+
+        private func recordID(for key: String, in scope: RecordScope)
+            -> CKRecord.ID
+        {
+            CKRecord.ID(recordName: key, zoneID: scope.zoneID)
+        }
+
+        private func ensureWritableZone(for scope: RecordScope) throws {
+            if scope.ownsZone {
+                try ensureZone()
+            }
+        }
+
+        // MARK: - Error classification
+
+        /// Translate a CloudKit operation failure into a user-facing message that
+        /// names the account/storage condition and the recovery step. The common
+        /// `CKError` codes get specific copy; everything else falls back to the
+        /// operation label + `localizedDescription` so transient or unclassified
+        /// failures stay debuggable in logs.
+        private func cloudKitErrorMessage(_ error: Error, op: String) -> String
+        {
+            guard let ckError = error as? CKError else {
+                return "\(op) failed: \(error.displayLine)"
+            }
+            switch ckError.code {
+            case .notAuthenticated:
+                return
+                    "You're not signed into iCloud. Open System Settings → Apple ID to sign in, then try again."
+            case .quotaExceeded:
+                return
+                    "Your iCloud storage is full. Free up space in System Settings → Apple ID → iCloud to keep syncing."
+            case .permissionFailure:
+                return
+                    "bae doesn't have permission to use iCloud. Open System Settings → Apple ID → iCloud → Apps Using iCloud and turn bae on."
+            case .zoneNotFound, .userDeletedZone:
+                return
+                    "The iCloud sync zone is gone. Reconnect in sync settings to recreate it."
+            default:
+                return "\(op) failed: \(ckError.displayLine)"
+            }
+        }
+
+    }
+
+    // MARK: - Versioned reads and atomic record batches
+
+    extension CloudKitService {
         /// Read a record and hand back CloudKit's own `recordChangeTag` with the
         /// bytes. coven names the exact version it read when it later deletes,
         /// so the tag has to come from the same fetch as the payload.
@@ -551,114 +667,6 @@
             guard let fetched else { throw CloudKitError.NotFound(msg: key) }
             return fetched
         }
-
-        // MARK: - Zone Management
-
-        private var zoneEnsured = false
-
-        private func ensureZone() throws {
-            guard !zoneEnsured else {
-                return
-            }
-            let sem = DispatchSemaphore(value: 0)
-            nonisolated(unsafe) var resultError: Error?
-            let zone = CKRecordZone(zoneID: privateZoneID)
-            privateDatabase.save(zone) { _, error in
-                resultError = error
-                sem.signal()
-            }
-            sem.wait()
-            if let error = resultError {
-                throw CloudKitError.Storage(
-                    msg: cloudKitErrorMessage(error, op: "Zone setup")
-                )
-            }
-            zoneEnsured = true
-        }
-
-        // MARK: - Record ID from key
-
-        private struct RecordScope {
-            let database: CKDatabase
-            let zoneID: CKRecordZone.ID
-            let ownsZone: Bool
-        }
-
-        private func recordScope(ownerName: String?, zoneName: String?) throws
-            -> RecordScope
-        {
-            switch (ownerName, zoneName) {
-            case (nil, nil):
-                return RecordScope(
-                    database: privateDatabase,
-                    zoneID: privateZoneID,
-                    ownsZone: true
-                )
-            case (.some(let ownerName), .some(let zoneName)):
-                guard !ownerName.isEmpty, !zoneName.isEmpty else {
-                    throw CloudKitError.Storage(
-                        msg:
-                            "CloudKit shared scope requires non-empty owner and zone names"
-                    )
-                }
-                return RecordScope(
-                    database: sharedDatabase,
-                    zoneID: CKRecordZone.ID(
-                        zoneName: zoneName,
-                        ownerName: ownerName
-                    ),
-                    ownsZone: false
-                )
-            case (nil, .some(_)), (.some(_), nil):
-                throw CloudKitError.Storage(
-                    msg:
-                        "CloudKit shared scope requires both owner and zone names"
-                )
-            }
-        }
-
-        private func recordID(for key: String, in scope: RecordScope)
-            -> CKRecord.ID
-        {
-            CKRecord.ID(recordName: key, zoneID: scope.zoneID)
-        }
-
-        private func ensureWritableZone(for scope: RecordScope) throws {
-            if scope.ownsZone {
-                try ensureZone()
-            }
-        }
-
-        // MARK: - Error classification
-
-        /// Translate a CloudKit operation failure into a user-facing message that
-        /// names the account/storage condition and the recovery step. The common
-        /// `CKError` codes get specific copy; everything else falls back to the
-        /// operation label + `localizedDescription` so transient or unclassified
-        /// failures stay debuggable in logs.
-        private func cloudKitErrorMessage(_ error: Error, op: String) -> String
-        {
-            guard let ckError = error as? CKError else {
-                return "\(op) failed: \(error.displayLine)"
-            }
-            switch ckError.code {
-            case .notAuthenticated:
-                return
-                    "You're not signed into iCloud. Open System Settings → Apple ID to sign in, then try again."
-            case .quotaExceeded:
-                return
-                    "Your iCloud storage is full. Free up space in System Settings → Apple ID → iCloud to keep syncing."
-            case .permissionFailure:
-                return
-                    "bae doesn't have permission to use iCloud. Open System Settings → Apple ID → iCloud → Apps Using iCloud and turn bae on."
-            case .zoneNotFound, .userDeletedZone:
-                return
-                    "The iCloud sync zone is gone. Reconnect in sync settings to recreate it."
-            default:
-                return "\(op) failed: \(ckError.displayLine)"
-            }
-        }
-
     }
 
     // MARK: - CloudKitDriver Protocol

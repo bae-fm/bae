@@ -11,8 +11,8 @@ import SwiftUI
 struct QueueRow<Content: View, Badge: View>: View {
     let icon: String
     let createdAt: Int64
-    var cancelHelp: LocalizedStringKey? = nil
-    var onCancel: (() -> Void)? = nil
+    var cancelHelp: LocalizedStringKey?
+    var onCancel: (() -> Void)?
     @ViewBuilder
     let content: () -> Content
     @ViewBuilder

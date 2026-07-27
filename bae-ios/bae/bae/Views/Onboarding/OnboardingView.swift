@@ -483,9 +483,9 @@ extension OnboardingView {
             )
         else {
             throw BridgeError.Diagnostic(
-            category: .config,
-            detail: "the pasted invite is not base64 an invite bundle could be read from"
-        )
+                category: .config,
+                detail: "the pasted invite is not base64 an invite bundle could be read from"
+            )
         }
         return bytes
     }
