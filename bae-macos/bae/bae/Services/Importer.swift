@@ -12,6 +12,21 @@ final class Importer: Sendable, Observable {
     /// Mark a candidate skipped (or unskipped); the import view re-tabs the row.
     let setCandidateSkipped:
         @Sendable (_ path: String, _ skipped: Bool) throws -> Void
+    /// What a candidate's track sheet may be bound to: the folder's audio, each
+    /// already offered or refused with a reason. Core probes to decide, so ask
+    /// when the pane opens rather than holding it with the candidate.
+    let sheetBindingOptions:
+        @Sendable (_ candidateKey: String, _ sheetFileId: String) async throws
+            -> [BridgeSheetBindingOption]
+    /// Name the audio a track sheet describes, or clear the binding with `nil`.
+    /// Core persists the decision and drops the candidate's stored identify
+    /// verdict, so the candidate invalidation brings back both the new roles and
+    /// a fresh identification.
+    let setSheetBinding:
+        @Sendable (
+            _ candidateKey: String, _ sheetFileId: String,
+            _ audioFileId: String?
+        ) async throws -> Void
     /// Scan every watched folder, streaming candidates back as events. Called
     /// when the import view appears to populate the list.
     let scanWatchedFolders: @Sendable () throws -> Void
@@ -55,6 +70,12 @@ final class Importer: Sendable, Observable {
         },
         setCandidateSkipped:
             @escaping @Sendable (String, Bool) throws -> Void = { _, _ in },
+        sheetBindingOptions:
+            @escaping @Sendable (String, String) async throws ->
+            [BridgeSheetBindingOption] = { _, _ in [] },
+        setSheetBinding:
+            @escaping @Sendable (String, String, String?) async throws -> Void =
+            { _, _, _ in },
         scanWatchedFolders: @escaping @Sendable () throws -> Void = {},
         autoIdentifyFolder: @escaping @Sendable (String, String) -> Void = {
             _,
@@ -91,6 +112,8 @@ final class Importer: Sendable, Observable {
         self.addWatchedFolder = addWatchedFolder
         self.removeWatchedFolder = removeWatchedFolder
         self.setCandidateSkipped = setCandidateSkipped
+        self.sheetBindingOptions = sheetBindingOptions
+        self.setSheetBinding = setSheetBinding
         self.scanWatchedFolders = scanWatchedFolders
         self.autoIdentifyFolder = autoIdentifyFolder
         self.autoIdentifyRelease = autoIdentifyRelease
@@ -109,6 +132,19 @@ final class Importer: Sendable, Observable {
             removeWatchedFolder: { try handle.removeWatchedFolder(path: $0) },
             setCandidateSkipped: {
                 try handle.setCandidateSkipped(path: $0, skipped: $1)
+            },
+            sheetBindingOptions: {
+                try await handle.sheetBindingOptions(
+                    candidateKey: $0,
+                    sheetFileId: $1
+                )
+            },
+            setSheetBinding: {
+                try await handle.setSheetBinding(
+                    candidateKey: $0,
+                    sheetFileId: $1,
+                    audioFileId: $2
+                )
             },
             scanWatchedFolders: { try handle.scanWatchedFolders() },
             autoIdentifyFolder: {

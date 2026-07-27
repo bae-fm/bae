@@ -22,7 +22,10 @@ fn audio_entry(path: &str, relative_path: &str, size: u64) -> CandidateFile {
 /// Every scan item (valid + invalid) for `root`.
 fn scan_items(root: impl Into<PathBuf>) -> Vec<ScanItem> {
     let mut items = Vec::new();
-    scan_for_candidates_with_callback(root.into(), |item| items.push(item)).unwrap();
+    scan_for_candidates_with_callback(root.into(), &StoredSheetBindings::none(), |item| {
+        items.push(item)
+    })
+    .unwrap();
     items
 }
 
@@ -200,7 +203,7 @@ fn test_collect_release_candidate_files_skips_hidden_and_bae() {
     std::fs::write(bae_dir.join("cover-mb.jpg"), [0xFF, 0xD8, 0xFF, 0xE0]).unwrap();
     std::fs::write(bae_dir.join("cover-discogs.jpeg"), [0xFF, 0xD8, 0xFF, 0xE0]).unwrap();
 
-    let files = collect_release_candidate_files(root).unwrap();
+    let files = collect_release_candidate_files(root, &StoredSheetBindings::none()).unwrap();
 
     let audio_paths: Vec<_> = files.audio().map(|f| f.relative_path.as_str()).collect();
     assert_eq!(audio_paths, vec!["track.flac"]);
@@ -224,7 +227,7 @@ fn collect_release_candidate_files_on_invalid_folder_yields_invalid_folder() {
     // Zero-byte audio is corruption, not an I/O fault.
     std::fs::write(root.join("track.flac"), []).unwrap();
 
-    let err = collect_release_candidate_files(root)
+    let err = collect_release_candidate_files(root, &StoredSheetBindings::none())
         .expect_err("zero-byte audio makes the folder unimportable");
     assert!(
         matches!(
@@ -994,7 +997,8 @@ fn test_collect_release_candidate_files_cue_alac_format_label() {
     )
     .unwrap();
 
-    let files = collect_release_candidate_files(root).expect("scan should succeed");
+    let files = collect_release_candidate_files(root, &StoredSheetBindings::none())
+        .expect("scan should succeed");
 
     assert_eq!(files.format_label, "CUE+ALAC");
     let bound = files.bound_sheets();
@@ -1026,7 +1030,8 @@ FILE "02 - Track Two.flac" WAVE
 "#;
     std::fs::write(root.join("Album.cue"), cue).unwrap();
 
-    let files = collect_release_candidate_files(root).expect("scan should succeed");
+    let files = collect_release_candidate_files(root, &StoredSheetBindings::none())
+        .expect("scan should succeed");
 
     let bound = files.bound_sheets();
     assert_eq!(bound.len(), 1);
@@ -1076,7 +1081,8 @@ fn test_collect_release_candidate_files_cue_ape_track_count() {
     )
     .unwrap();
 
-    let files = collect_release_candidate_files(root).expect("scan should succeed");
+    let files = collect_release_candidate_files(root, &StoredSheetBindings::none())
+        .expect("scan should succeed");
 
     assert_eq!(files.format_label, "CUE+APE");
     let bound = files.bound_sheets();
@@ -2319,7 +2325,12 @@ fn io_error_validating_audio_surfaces_not_swallowed() {
     // fs_root is an empty dir, so Album/01.flac does not exist on disk:
     // is_valid_audio's open fails with a genuine I/O error.
     let temp = tempfile::TempDir::new().unwrap();
-    let result = categorize_files_from_tree(&tree, &PathBuf::from("Album"), temp.path());
+    let result = categorize_files_from_tree(
+        &tree,
+        &PathBuf::from("Album"),
+        temp.path(),
+        &StoredSheetBindings::none(),
+    );
     assert!(
         result.is_err(),
         "an I/O fault during validation must surface as an error"
@@ -3378,7 +3389,8 @@ fn audio_no_sheet_references_survives() {
     std::fs::write(album.join("bonus 1.flac"), fake_flac()).unwrap();
     std::fs::write(album.join("bonus 2.flac"), fake_flac()).unwrap();
 
-    let files = collect_release_candidate_files(&album).expect("scan should succeed");
+    let files = collect_release_candidate_files(&album, &StoredSheetBindings::none())
+        .expect("scan should succeed");
     assert_eq!(
         files
             .audio()
@@ -3435,7 +3447,8 @@ fn folder_identifies_from_its_rip_log_with_the_sheet_unbound() {
         "folder must be a candidate so its log can identify it",
     );
 
-    let files = collect_release_candidate_files(&album).expect("scan should succeed");
+    let files = collect_release_candidate_files(&album, &StoredSheetBindings::none())
+        .expect("scan should succeed");
     assert!(files.bound_sheets().is_empty());
     assert!(
         crate::import::discid::compute_discid_from_categorized(&files).is_some(),
@@ -3497,7 +3510,7 @@ fn content_hash_covers_audio_no_sheet_references() {
         if with_bonus {
             std::fs::write(dir.join("bonus.flac"), fake_flac()).unwrap();
         }
-        collect_release_candidate_files(dir)
+        collect_release_candidate_files(dir, &StoredSheetBindings::none())
             .expect("scan should succeed")
             .content_hash()
     };
@@ -3529,8 +3542,9 @@ fn an_unrecognized_sidecar_is_carried_and_hashed() {
         std::fs::write(with_sidecars.join(sidecar), b"scene notes").unwrap();
     }
 
-    let bare_files = collect_release_candidate_files(&bare).unwrap();
-    let sidecar_files = collect_release_candidate_files(&with_sidecars).unwrap();
+    let bare_files = collect_release_candidate_files(&bare, &StoredSheetBindings::none()).unwrap();
+    let sidecar_files =
+        collect_release_candidate_files(&with_sidecars, &StoredSheetBindings::none()).unwrap();
     assert_eq!(
         sidecar_files
             .files
@@ -3575,7 +3589,8 @@ fn a_binding_survives_a_rename_of_the_sheet() {
     )
     .unwrap();
 
-    let files = collect_release_candidate_files(&album).expect("scan should succeed");
+    let files = collect_release_candidate_files(&album, &StoredSheetBindings::none())
+        .expect("scan should succeed");
     let bound = files.bound_sheets();
     assert_eq!(bound.len(), 1);
     assert_eq!(bound[0].file.file_name, "Completely Unrelated.cue");
@@ -3618,7 +3633,7 @@ fn corrupt_audio_and_empty_folders_still_invalidate() {
     );
     assert!(
         matches!(
-            collect_release_candidate_files(&empty),
+            collect_release_candidate_files(&empty, &StoredSheetBindings::none()),
             Err(crate::import::ImportError::InvalidFolder(
                 InvalidReason::NoValidAudio
             ))
@@ -3639,7 +3654,8 @@ fn the_scan_proposes_one_cover_from_the_conventional_names() {
         std::fs::write(album.join(image), [0xFF, 0xD8, 0xFF, 0xE0]).unwrap();
     }
 
-    let files = collect_release_candidate_files(&album).expect("scan should succeed");
+    let files = collect_release_candidate_files(&album, &StoredSheetBindings::none())
+        .expect("scan should succeed");
     assert_eq!(
         cover_names(&files),
         vec!["cover.jpg"],
@@ -3660,7 +3676,8 @@ fn a_root_level_cover_outranks_one_in_a_subfolder() {
     std::fs::write(album.join("Artwork/front.jpg"), [0xFF, 0xD8, 0xFF, 0xE0]).unwrap();
     std::fs::write(album.join("cover.jpg"), [0xFF, 0xD8, 0xFF, 0xE0]).unwrap();
 
-    let files = collect_release_candidate_files(&album).expect("scan should succeed");
+    let files = collect_release_candidate_files(&album, &StoredSheetBindings::none())
+        .expect("scan should succeed");
     assert_eq!(cover_names(&files), vec!["cover.jpg"]);
 
     // With nothing at the root, the nested one leads.
@@ -3672,7 +3689,8 @@ fn a_root_level_cover_outranks_one_in_a_subfolder() {
         [0xFF, 0xD8, 0xFF, 0xE0],
     )
     .unwrap();
-    let files = collect_release_candidate_files(&nested_only).expect("scan should succeed");
+    let files = collect_release_candidate_files(&nested_only, &StoredSheetBindings::none())
+        .expect("scan should succeed");
     assert_eq!(cover_names(&files), vec!["front.jpg"]);
 }
 
@@ -3684,4 +3702,240 @@ fn cover_names(files: &CategorizedFiles) -> Vec<&str> {
         .filter(|entry| matches!(entry.role, FileRole::Cover))
         .map(|entry| entry.file.file_name.as_str())
         .collect()
+}
+
+// ── The sheet↔audio binding is a user decision ──────────────────────────
+//
+// The scan proposes; these pin what happens when the user overrules it.
+
+/// The walkthrough folder, one step on from the roles task: a twelve-track
+/// sheet written against a WAV, the FLAC it was actually encoded to, and the
+/// rip log. Unbound it imports as one track; bound, the slot count comes from
+/// the sheet and the disc ID becomes computable from sheet plus audio.
+///
+/// This is the task's whole point — the information needed to fix the folder
+/// was on screen all along and the app had no way to accept it.
+#[test]
+fn binding_a_sheet_whose_directive_missed_makes_the_folder_a_twelve_track_disc() {
+    let tmp = tempfile::tempdir().unwrap();
+    let album = tmp.path().join("Album");
+    std::fs::create_dir_all(&album).unwrap();
+    std::fs::copy(
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/cue_flac/Test Album.flac"),
+        album.join("cd.flac"),
+    )
+    .unwrap();
+    std::fs::copy(
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/test_album.log"),
+        album.join("rip.log"),
+    )
+    .unwrap();
+    std::fs::write(
+        album.join("cd.cue"),
+        make_cue_content_n_tracks("cd.wav", "Album Title", 12),
+    )
+    .unwrap();
+
+    let unbound =
+        collect_release_candidate_files(&album, &StoredSheetBindings::none()).expect("scan");
+    assert_eq!(
+        unbound.track_count(),
+        1,
+        "the directive names a file that is not here, so the image is one track",
+    );
+    assert_eq!(unbound.format_label, "FLAC");
+
+    let bound = scan_with_binding(&album, &unbound, "cd.cue", Some("cd.flac"));
+
+    assert_eq!(
+        bound.track_count(),
+        12,
+        "bound, the slot count comes from the sheet rather than the file",
+    );
+    assert_eq!(
+        bound.format_label, "CUE+FLAC",
+        "the label follows the probed codec of the audio the user named",
+    );
+    let sheets: Vec<_> = bound.track_sheets().collect();
+    assert_eq!(
+        sheets[0].binding,
+        &SheetBinding::Describes {
+            file_id: "cd.flac".to_string()
+        },
+    );
+    assert_eq!(bound.bound_sheets()[0].audio.file_name, "cd.flac");
+    assert!(
+        crate::import::discid::compute_discid_from_categorized(&bound).is_some(),
+        "a bound sheet plus its audio yields a disc ID",
+    );
+}
+
+/// A codec the CUE path cannot seek inside is refused where the choice is
+/// offered, with the codec named — never handed to the user as a choice that
+/// fails at commit. The FLAC beside it stays offerable, so this is the refusal
+/// and not an empty picker.
+#[test]
+fn audio_a_sheet_cannot_use_is_refused_at_offer_time_with_the_codec_named() {
+    let tmp = tempfile::tempdir().unwrap();
+    let album = tmp.path().join("Album");
+    std::fs::create_dir_all(&album).unwrap();
+    let fixtures = Path::new(env!("CARGO_MANIFEST_DIR"));
+    std::fs::copy(
+        fixtures.join("tests/fixtures/cue_flac/Test Album.flac"),
+        album.join("cd.flac"),
+    )
+    .unwrap();
+    std::fs::copy(
+        fixtures.join("test-fixtures/audio-format/placeholder-mp3.mp3"),
+        album.join("cd.mp3"),
+    )
+    .unwrap();
+    std::fs::write(
+        album.join("cd.cue"),
+        make_cue_content_n_tracks("cd.wav", "Album Title", 12),
+    )
+    .unwrap();
+
+    let files =
+        collect_release_candidate_files(&album, &StoredSheetBindings::none()).expect("scan");
+    let options = files.sheet_binding_options("cd.cue");
+
+    assert_eq!(
+        options,
+        vec![
+            SheetBindingOption {
+                file_id: "cd.flac".to_string(),
+                offer: SheetBindingOffer::Offered,
+            },
+            SheetBindingOption {
+                file_id: "cd.mp3".to_string(),
+                offer: SheetBindingOffer::RefusedCodec {
+                    codec: "MP3".to_string()
+                },
+            },
+        ],
+        "the MP3 is refused with its codec named, not offered and rejected later",
+    );
+}
+
+/// Clearing a binding leaves the sheet describing nothing. It does **not**
+/// restore the scan's proposal: someone who cleared a binding is saying the
+/// guess was wrong, and re-guessing it is the one answer that is certainly not
+/// what they asked for.
+#[test]
+fn clearing_a_binding_leaves_it_unbound_rather_than_re_guessed() {
+    let tmp = tempfile::tempdir().unwrap();
+    let album = tmp.path().join("Album");
+    std::fs::create_dir_all(&album).unwrap();
+    std::fs::copy(
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/cue_flac/Test Album.flac"),
+        album.join("cd.flac"),
+    )
+    .unwrap();
+    std::fs::write(
+        album.join("cd.cue"),
+        make_cue_content_n_tracks("cd.flac", "Album Title", 12),
+    )
+    .unwrap();
+
+    let proposed =
+        collect_release_candidate_files(&album, &StoredSheetBindings::none()).expect("scan");
+    assert_eq!(
+        proposed.track_count(),
+        12,
+        "the directive resolves, so the scan proposes the binding on its own",
+    );
+
+    let cleared = scan_with_binding(&album, &proposed, "cd.cue", None);
+
+    assert_eq!(
+        cleared.track_sheets().next().unwrap().binding,
+        &SheetBinding::Unresolved,
+        "the sheet the user cleared describes nothing, proposal or not",
+    );
+    assert_eq!(cleared.track_count(), 1);
+    assert_eq!(cleared.format_label, "FLAC");
+    assert!(cleared.bound_sheets().is_empty());
+}
+
+/// A binding whose audio leaves the folder is not silently kept. Removing the
+/// file changes the file set, so it changes the hash the decision is stored
+/// under, so the decision is unreachable and the candidate derives from what is
+/// actually there. The behaviour is what matters; the hash is only how.
+#[test]
+fn a_binding_whose_audio_disappears_is_not_kept() {
+    let tmp = tempfile::tempdir().unwrap();
+    let album = tmp.path().join("Album");
+    std::fs::create_dir_all(&album).unwrap();
+    std::fs::copy(
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/cue_flac/Test Album.flac"),
+        album.join("cd.flac"),
+    )
+    .unwrap();
+    std::fs::copy(
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/flac/01 Test Track 1.flac"),
+        album.join("bonus.flac"),
+    )
+    .unwrap();
+    std::fs::write(
+        album.join("cd.cue"),
+        make_cue_content_n_tracks("cd.wav", "Album Title", 12),
+    )
+    .unwrap();
+
+    let scanned =
+        collect_release_candidate_files(&album, &StoredSheetBindings::none()).expect("scan");
+    let stored = stored_binding(&scanned, "cd.cue", Some("cd.flac"));
+    assert_eq!(
+        collect_release_candidate_files(&album, &stored)
+            .expect("scan")
+            .track_count(),
+        12,
+        "the binding applies while the audio it names is here",
+    );
+
+    std::fs::remove_file(album.join("cd.flac")).unwrap();
+
+    let after = collect_release_candidate_files(&album, &stored).expect("scan");
+    assert_eq!(
+        after.track_sheets().next().unwrap().binding,
+        &SheetBinding::Unresolved,
+        "the folder derives from what is on disk, with no memory of the removed pairing",
+    );
+    assert_eq!(
+        after.track_count(),
+        1,
+        "one standalone track is all that is left"
+    );
+}
+
+/// The stored bindings a fresh scan of `folder` would apply, if the user had
+/// made this one decision about `files`.
+fn stored_binding(
+    files: &CategorizedFiles,
+    sheet_file_id: &str,
+    audio_file_id: Option<&str>,
+) -> StoredSheetBindings {
+    let mut edits = SheetBindingEdits::default();
+    edits.set(
+        sheet_file_id.to_string(),
+        match audio_file_id {
+            Some(file_id) => UserSheetBinding::Describes {
+                file_id: file_id.to_string(),
+            },
+            None => UserSheetBinding::Cleared,
+        },
+    );
+    StoredSheetBindings::new(HashMap::from([(files.content_hash(), edits)]))
+}
+
+/// Re-scan `folder` as it reads once the user has made one binding decision.
+fn scan_with_binding(
+    folder: &Path,
+    files: &CategorizedFiles,
+    sheet_file_id: &str,
+    audio_file_id: Option<&str>,
+) -> CategorizedFiles {
+    collect_release_candidate_files(folder, &stored_binding(files, sheet_file_id, audio_file_id))
+        .expect("scan")
 }

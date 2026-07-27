@@ -347,16 +347,19 @@ pub enum LoadedPlaybackState {
 }
 
 /// What a caller supplies to record one candidate's identify verdict via
-/// [`crate::db::Database::save_import_candidate_state`] — every
-/// `import_candidate_state` column except `identified_at`. That column is
+/// [`crate::db::Database::save_import_candidate_verdict`] — the identify
+/// columns of `import_candidate_state` except `identified_at`. That column is
 /// stamped by the write path from the injected clock, the same convention as
 /// `created_at` in `db/client/identity.rs`/`release.rs`: a timestamp that
 /// records "when this write happened" is the DB layer's to assign, not data a
 /// caller hands in — carrying it here would let a caller lie about it, and
-/// would mean task 3's scheduler reaching for the ambient wall clock instead
-/// of the fake-able one already threaded through `Database`.
+/// would mean the sweep reaching for the ambient wall clock instead of the
+/// fake-able one already threaded through `Database`.
+///
+/// It carries no sheet bindings: those are the user's half of the row and the
+/// verdict write leaves them alone.
 #[derive(Debug, Clone)]
-pub struct NewImportCandidateState {
+pub struct NewImportCandidateVerdict {
     /// `CategorizedFiles::content_hash` — the row's identity. Adding,
     /// removing, or resizing a file changes this, which orphans the old row
     /// rather than updating it.
@@ -371,20 +374,33 @@ pub struct NewImportCandidateState {
     pub probed_total_duration_ms: i64,
 }
 
-/// One loaded `import_candidate_state` row, as
-/// [`crate::db::Database::load_import_candidate_states`] returns it. Mirrors
-/// the table exactly — [`NewImportCandidateState`] plus `identified_at`, the
-/// column only the write path ever sets.
+/// What identification concluded about one candidate. Present as a whole or
+/// absent as a whole: the three columns are written together and cleared
+/// together, so no reader has to reason about a half-filled result.
 #[derive(Debug, Clone)]
-pub struct DbImportCandidateState {
-    pub content_hash: String,
-    pub folder_path: String,
+pub struct DbCandidateIdentifyResult {
     /// `identify::TerminalVerdict`, JSON-encoded. This layer stores and
     /// returns opaque bytes; the identify module that owns the type decodes
     /// it.
     pub verdict: String,
     pub probed_total_duration_ms: i64,
     pub identified_at: DateTime<Utc>,
+}
+
+/// One loaded `import_candidate_state` row, as
+/// [`crate::db::Database::load_import_candidate_states`] returns it. Mirrors
+/// the table: one key, and the two independent things derived under it.
+#[derive(Debug, Clone)]
+pub struct DbImportCandidateState {
+    pub content_hash: String,
+    pub folder_path: String,
+    /// What identification concluded, or `None` when nothing has identified
+    /// this candidate yet — including when a sheet-binding change cleared what
+    /// had, because that verdict described a folder shape that no longer
+    /// applies.
+    pub identify: Option<DbCandidateIdentifyResult>,
+    /// The user's sheet↔audio decisions for this candidate.
+    pub sheet_bindings: crate::import::folder_scanner::SheetBindingEdits,
 }
 
 /// Where `releases.metadata_source` came from.

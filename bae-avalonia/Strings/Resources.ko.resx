@@ -378,6 +378,8 @@
   <data name="output.title" xml:space="preserve"><value>내보내기 및 저장</value></data>
   <data name="export.state.exporting" xml:space="preserve"><value>내보내는 중 {percent}%</value></data>
   <data name="export.state.saving" xml:space="preserve"><value>저장 중 {percent}%</value></data>
+  <data name="import.track_sheets" xml:space="preserve"><value>트랙 시트</value></data>
+  <data name="import.sheet.describes_nothing_yet" xml:space="preserve"><value>아직 아무것도 나타내지 않음</value></data>
   <data name="import.documents" xml:space="preserve"><value>문서</value></data>
   <data name="import.document.read_failed" xml:space="preserve"><value>{name}을(를) 읽을 수 없음: {error}</value></data>
   <data name="libraries.reveal" xml:space="preserve"><value>파일 탐색기에서 보기</value></data>

@@ -378,6 +378,8 @@
   <data name="output.title" xml:space="preserve"><value>ರಫ್ತು ಮತ್ತು ಉಳಿಸು</value></data>
   <data name="export.state.exporting" xml:space="preserve"><value>{percent}% ರಫ್ತು ಮಾಡಲಾಗುತ್ತಿದೆ</value></data>
   <data name="export.state.saving" xml:space="preserve"><value>{percent}% ಉಳಿಸಲಾಗುತ್ತಿದೆ</value></data>
+  <data name="import.track_sheets" xml:space="preserve"><value>ಟ್ರ್ಯಾಕ್ ಶೀಟ್‌ಗಳು</value></data>
+  <data name="import.sheet.describes_nothing_yet" xml:space="preserve"><value>ಇನ್ನೂ ಯಾವುದನ್ನೂ ಸೂಚಿಸುತ್ತಿಲ್ಲ</value></data>
   <data name="import.documents" xml:space="preserve"><value>ದಾಖಲೆಗಳು</value></data>
   <data name="import.document.read_failed" xml:space="preserve"><value>{name} ಓದಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ: {error}</value></data>
   <data name="libraries.reveal" xml:space="preserve"><value>ಫೈಲ್ ಎಕ್ಸ್‌ಪ್ಲೋರರ್‌ನಲ್ಲಿ ತೋರಿಸಿ</value></data>

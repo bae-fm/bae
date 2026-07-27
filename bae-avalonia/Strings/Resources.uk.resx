@@ -378,6 +378,8 @@
   <data name="output.title" xml:space="preserve"><value>експорт і збереження</value></data>
   <data name="export.state.exporting" xml:space="preserve"><value>експорт {percent}%</value></data>
   <data name="export.state.saving" xml:space="preserve"><value>збереження {percent}%</value></data>
+  <data name="import.track_sheets" xml:space="preserve"><value>Аркуші треків</value></data>
+  <data name="import.sheet.describes_nothing_yet" xml:space="preserve"><value>Ще нічого не описує</value></data>
   <data name="import.documents" xml:space="preserve"><value>Документи</value></data>
   <data name="import.document.read_failed" xml:space="preserve"><value>Не вдалося прочитати {name}: {error}</value></data>
   <data name="libraries.reveal" xml:space="preserve"><value>показати в Провіднику</value></data>

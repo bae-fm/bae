@@ -378,6 +378,8 @@
   <data name="output.title" xml:space="preserve"><value>експорт и запазване</value></data>
   <data name="export.state.exporting" xml:space="preserve"><value>експортиране {percent}%</value></data>
   <data name="export.state.saving" xml:space="preserve"><value>запазване {percent}%</value></data>
+  <data name="import.track_sheets" xml:space="preserve"><value>Листове с песни</value></data>
+  <data name="import.sheet.describes_nothing_yet" xml:space="preserve"><value>Все още не описва нищо</value></data>
   <data name="import.documents" xml:space="preserve"><value>Документи</value></data>
   <data name="import.document.read_failed" xml:space="preserve"><value>Не можа да се прочете {name}: {error}</value></data>
   <data name="libraries.reveal" xml:space="preserve"><value>показване във Файлов мениджър</value></data>

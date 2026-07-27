@@ -661,15 +661,21 @@ fn stored_verdicts(
         let Some(verdict) = decode_stored(row) else {
             continue;
         };
+        // `decode_stored` returning a verdict means the row carries an identify
+        // result, so this is present for the same reason.
+        let identify = row
+            .identify
+            .as_ref()
+            .expect("a decoded verdict came from an identify result");
         // Nothing that writes this column can produce a negative total.
         // Clamping one to zero would classify the candidate
         // `LocalDurationUnknown` — a plausible-looking answer standing in for a
         // corrupt row — so it is refused instead.
         let probed_total_duration_ms =
-            u64::try_from(row.probed_total_duration_ms).map_err(|_| {
+            u64::try_from(identify.probed_total_duration_ms).map_err(|_| {
                 LibraryError::Internal(format!(
                 "import_candidate_state row {content_hash} holds a negative probed total ({}ms)",
-                row.probed_total_duration_ms
+                identify.probed_total_duration_ms
             ))
             })?;
         out.insert(content_hash, (verdict, probed_total_duration_ms));

@@ -11,6 +11,9 @@ struct ImportMainPane<RightPane: View>: View {
     /// Surface errors from file operations (e.g. readTextFile).
     let onError: (String) -> Void
     let previewState: PreviewState
+    /// What each track sheet may be bound to — see `ImportFilePane`.
+    let bindingOptions: [String: [BridgeSheetBindingOption]]
+    let onBind: (String, String?) -> Void
     @ViewBuilder
     let rightPane: () -> RightPane
 
@@ -23,6 +26,8 @@ struct ImportMainPane<RightPane: View>: View {
                 onPreviewAudio: onPreviewAudio,
                 onError: onError,
                 previewState: previewState,
+                bindingOptions: bindingOptions,
+                onBind: onBind,
             )
             .frame(minWidth: 200, idealWidth: 280, maxWidth: 400)
             rightPane()
@@ -42,6 +47,8 @@ struct ImportMainPane<RightPane: View>: View {
             onPreviewAudio: { _ in },
             onError: { _ in },
             previewState: .idle,
+            bindingOptions: PreviewData.sheetBindingOptions,
+            onBind: { _, _ in },
         ) {
             ImportResultPane(open: false, onClose: {}) {
                 ImportSearchPane.preview(
@@ -63,6 +70,8 @@ struct ImportMainPane<RightPane: View>: View {
             onPreviewAudio: { _ in },
             onError: { _ in },
             previewState: .idle,
+            bindingOptions: PreviewData.sheetBindingOptions,
+            onBind: { _, _ in },
         ) {
             ImportResultPane(open: false, onClose: {}) {
                 ImportSearchPane.preview(state: PreviewData.searchStateNotFound)
@@ -82,6 +91,8 @@ struct ImportMainPane<RightPane: View>: View {
             onPreviewAudio: { _ in },
             onError: { _ in },
             previewState: .idle,
+            bindingOptions: PreviewData.sheetBindingOptions,
+            onBind: { _, _ in },
         ) {
             ImportResultPane(open: false, onClose: {}) {
                 ImportSearchPane.preview(state: PreviewData.searchStateNotFound)
@@ -110,6 +121,8 @@ struct ImportMainPane<RightPane: View>: View {
             onPreviewAudio: { _ in },
             onError: { _ in },
             previewState: .idle,
+            bindingOptions: PreviewData.sheetBindingOptions,
+            onBind: { _, _ in },
         ) {
             ImportResultPane(open: true, onClose: {}) {
                 ImportSearchPane.preview(

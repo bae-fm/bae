@@ -180,7 +180,11 @@ impl TryFrom<IdentifyState> for TerminalVerdict {
 /// disagreeing would leave a candidate the sweep considers answered rendering
 /// as unanswered forever.
 pub fn decode_stored(row: &DbImportCandidateState) -> Option<TerminalVerdict> {
-    match serde_json::from_str::<TerminalVerdict>(&row.verdict) {
+    // No identify result at all: a candidate nobody has answered, either never
+    // or not since a sheet binding changed what the folder is and cleared the
+    // answer it had.
+    let identify = row.identify.as_ref()?;
+    match serde_json::from_str::<TerminalVerdict>(&identify.verdict) {
         Ok(verdict) => Some(verdict),
         Err(e) => {
             debug!(

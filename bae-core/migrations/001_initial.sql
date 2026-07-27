@@ -408,27 +408,47 @@ CREATE TABLE IF NOT EXISTS playback_state (
 
 -- Device-local import triage state, keyed by an import candidate's content
 -- hash (`CategorizedFiles::content_hash` — sorted (relative_path, size) over
--- every audio, artwork, and document file). NOT synced: no `_updated_at` and
--- absent from `synced_tables()`, the same device-local convention as
--- `playback_state` above. A row exists only once identification of that
--- candidate reached a terminal verdict; a transport failure (network down, a
--- provider error, cancellation) writes no row, so the candidate is retried on
--- the next sweep rather than remembered as failed. Adding, removing, or
--- resizing a file changes the hash, which is the invalidation — nothing
--- deletes the orphaned row under the old hash.
+-- every file the release carries). NOT synced: no `_updated_at` and absent from
+-- `synced_tables()`, the same device-local convention as `playback_state`
+-- above. Adding, removing, or resizing a file changes the hash, which is the
+-- invalidation — nothing deletes the orphaned row under the old hash.
+--
+-- Two independent things share the row, because both are derived state about
+-- one set of bytes: what identification concluded, and what the user decided.
+-- Either can be present without the other — a binding can be set before
+-- anything has identified the candidate, and identification writes rows for
+-- candidates nobody has touched.
 CREATE TABLE IF NOT EXISTS import_candidate_state (
     content_hash             TEXT PRIMARY KEY,
     -- Where the candidate was last seen. Not identity (the hash is), and not
     -- authoritative for anything — legible for debugging and a future
     -- stale-row sweep, nothing more.
     folder_path              TEXT NOT NULL,
-    -- `identify::TerminalVerdict`, JSON-encoded by the identify module that
-    -- owns the type. Not normalized into columns: the whole set is a few
-    -- hundred rows, read in full and classified in Rust.
-    verdict                  TEXT NOT NULL,
+    -- The identify result: `verdict` / `probed_total_duration_ms` /
+    -- `identified_at` are written and cleared as one group, so they are all
+    -- NULL together or all set together.
+    --
+    -- They are set only once identification reached a terminal verdict; a
+    -- transport failure (network down, a provider error, cancellation) writes
+    -- nothing, so the candidate is retried on the next sweep rather than
+    -- remembered as failed. They are cleared when the user changes a sheet
+    -- binding: that changes what the folder is — a one-track image becomes a
+    -- twelve-track disc, and its disc ID becomes computable — so the stored
+    -- verdict describes a shape that no longer applies, and clearing it is what
+    -- makes the queue identify the candidate again.
+    --
+    -- `verdict` is `identify::TerminalVerdict`, JSON-encoded by the identify
+    -- module that owns the type. Not normalized into columns: the whole set is
+    -- a few hundred rows, read in full and classified in Rust.
+    verdict                  TEXT,
     -- Sum of the probed durations of the candidate's audio files, in
     -- milliseconds. Per-file durations are not kept here — the Ready gate
     -- only ever compares totals.
-    probed_total_duration_ms INTEGER NOT NULL,
-    identified_at            TEXT NOT NULL
+    probed_total_duration_ms INTEGER,
+    identified_at            TEXT,
+    -- `folder_scanner::SheetBindingEdits`, JSON-encoded: which audio file the
+    -- user bound each track sheet to, and which sheets they cleared. `{}` when
+    -- they have decided nothing, which is not the same as clearing — a sheet
+    -- absent from the map keeps the scan's proposal.
+    sheet_bindings           TEXT NOT NULL DEFAULT '{}'
 );

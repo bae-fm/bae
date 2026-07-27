@@ -378,6 +378,8 @@
   <data name="output.title" xml:space="preserve"><value>eksport i zapis</value></data>
   <data name="export.state.exporting" xml:space="preserve"><value>eksportowanie {percent}%</value></data>
   <data name="export.state.saving" xml:space="preserve"><value>zapisywanie {percent}%</value></data>
+  <data name="import.track_sheets" xml:space="preserve"><value>Arkusze ścieżek</value></data>
+  <data name="import.sheet.describes_nothing_yet" xml:space="preserve"><value>Jeszcze nic nie opisuje</value></data>
   <data name="import.documents" xml:space="preserve"><value>Dokumenty</value></data>
   <data name="import.document.read_failed" xml:space="preserve"><value>Nie można odczytać {name}: {error}</value></data>
   <data name="libraries.reveal" xml:space="preserve"><value>pokaż w Eksploratorze plików</value></data>

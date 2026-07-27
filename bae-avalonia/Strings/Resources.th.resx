@@ -378,6 +378,8 @@
   <data name="output.title" xml:space="preserve"><value>ส่งออกและบันทึก</value></data>
   <data name="export.state.exporting" xml:space="preserve"><value>กำลังส่งออก {percent}%</value></data>
   <data name="export.state.saving" xml:space="preserve"><value>กำลังบันทึก {percent}%</value></data>
+  <data name="import.track_sheets" xml:space="preserve"><value>ตารางแทร็ก</value></data>
+  <data name="import.sheet.describes_nothing_yet" xml:space="preserve"><value>ยังไม่ระบุไฟล์ใด</value></data>
   <data name="import.documents" xml:space="preserve"><value>เอกสาร</value></data>
   <data name="import.document.read_failed" xml:space="preserve"><value>ไม่สามารถอ่าน {name}: {error}</value></data>
   <data name="libraries.reveal" xml:space="preserve"><value>แสดงใน File Explorer</value></data>

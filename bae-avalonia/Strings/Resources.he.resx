@@ -378,6 +378,8 @@
   <data name="output.title" xml:space="preserve"><value>ייצוא ושמירה</value></data>
   <data name="export.state.exporting" xml:space="preserve"><value>מייצא {percent}%</value></data>
   <data name="export.state.saving" xml:space="preserve"><value>שומר {percent}%</value></data>
+  <data name="import.track_sheets" xml:space="preserve"><value>גיליונות רצועות</value></data>
+  <data name="import.sheet.describes_nothing_yet" xml:space="preserve"><value>עדיין לא מתאר דבר</value></data>
   <data name="import.documents" xml:space="preserve"><value>מסמכים</value></data>
   <data name="import.document.read_failed" xml:space="preserve"><value>לא ניתן לקרוא את {name}: {error}</value></data>
   <data name="libraries.reveal" xml:space="preserve"><value>הצג בסייר הקבצים</value></data>

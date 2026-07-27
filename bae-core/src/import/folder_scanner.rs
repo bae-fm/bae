@@ -123,6 +123,105 @@ impl SheetBinding {
     }
 }
 
+/// One track sheet's binding as the *user* set it — the second writer of
+/// [`SheetBinding`], alongside the scan.
+///
+/// Stored per candidate and applied over whatever the scan proposed, so the
+/// two never fight: the scan proposes on every walk, and this overrides.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum UserSheetBinding {
+    /// Bound to the audio at this [`ScannedFile::relative_path`].
+    Describes { file_id: String },
+    /// The user cleared the binding: the sheet is unbound, and the scan's
+    /// proposal is *not* restored. Someone who cleared a binding is saying the
+    /// guess was wrong, so re-guessing it is the one answer that is certainly
+    /// not what they asked for.
+    Cleared,
+}
+
+/// Every sheet binding the user has decided for one candidate, keyed by the
+/// sheet's [`ScannedFile::relative_path`].
+///
+/// A sheet *absent* from this is not a decision — it means nobody has touched
+/// that sheet and the scan's proposal stands. That is why clearing stores
+/// [`UserSheetBinding::Cleared`] rather than removing the entry.
+#[derive(Debug, Clone, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(transparent)]
+pub struct SheetBindingEdits(BTreeMap<String, UserSheetBinding>);
+
+impl SheetBindingEdits {
+    /// The user's decision for one sheet, or `None` when they have made none.
+    pub fn get(&self, sheet_file_id: &str) -> Option<&UserSheetBinding> {
+        self.0.get(sheet_file_id)
+    }
+
+    /// Record one sheet's decision, replacing any previous one.
+    pub fn set(&mut self, sheet_file_id: String, binding: UserSheetBinding) {
+        self.0.insert(sheet_file_id, binding);
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+}
+
+/// The sheet bindings every candidate has stored, keyed by content hash.
+///
+/// A scan is what computes a candidate's content hash, so the lookup has to
+/// happen *inside* the scan: a caller hands in the whole stored set rather than
+/// trying to pick one candidate's row without the key that addresses it.
+#[derive(Debug, Clone, Default)]
+pub struct StoredSheetBindings(HashMap<String, SheetBindingEdits>);
+
+impl StoredSheetBindings {
+    pub fn new(by_content_hash: HashMap<String, SheetBindingEdits>) -> Self {
+        Self(by_content_hash)
+    }
+
+    /// Nothing stored: every sheet keeps the scan's proposal.
+    pub fn none() -> Self {
+        Self::default()
+    }
+
+    fn for_hash(&self, content_hash: &str) -> Option<&SheetBindingEdits> {
+        self.0.get(content_hash)
+    }
+
+    /// One candidate's decisions, to be added to and written back. Empty when
+    /// it has none yet.
+    pub fn take(mut self, content_hash: &str) -> SheetBindingEdits {
+        self.0.remove(content_hash).unwrap_or_default()
+    }
+}
+
+/// Whether one of the folder's audio files can back a sheet's binding, decided
+/// at offer time by probing it. Offering a file the commit would then reject is
+/// the failure the editable binding exists to remove, so the refusal and its
+/// reason are settled here rather than left for the commit to discover.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum SheetBindingOffer {
+    /// The sheet can be bound to this audio.
+    Offered,
+    /// bae can't carve tracks out of this container: the codec doesn't back
+    /// single-file CUE playback. Carries the probed codec so the picker says
+    /// which file and why.
+    RefusedCodec { codec: String },
+    /// FFmpeg can't identify a playable stream in the file at all — a download
+    /// truncated after its header, or otherwise broken audio. Nothing can be
+    /// carved out of it either.
+    RefusedUnreadable,
+}
+
+/// One of the folder's audio files, as a choice for a sheet's binding.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SheetBindingOption {
+    /// The audio's [`ScannedFile::relative_path`] — the id the binding is set
+    /// by (`ImportServiceHandle::set_sheet_binding`).
+    pub file_id: String,
+    pub offer: SheetBindingOffer,
+}
+
 /// A file the scan found, and the role it proposed for it.
 #[derive(Debug, Clone)]
 pub struct CandidateFile {
@@ -259,28 +358,101 @@ impl CategorizedFiles {
     /// payload, so the fingerprint cannot describe a different set of files
     /// than the one that gets stored.
     ///
-    /// It hashes **files**, never roles. Roles become user decisions, so a
-    /// hash that moved when a role changed would orphan the derived state keyed
-    /// by it on every edit. **For whoever makes roles editable:** if a role can
-    /// exclude a file from the release, this stops holding — decide
-    /// deliberately whether an excluded file leaves the payload, and therefore
-    /// whether this hash moves for it. It cannot be both.
+    /// It hashes **files**, never roles. A sheet's binding is a user decision
+    /// stored under this hash, so a hash that moved when the binding changed
+    /// would orphan the very row it addresses on every edit. **For whoever
+    /// makes more of a role editable:** if a role can exclude a file from the
+    /// release, this stops holding — decide deliberately whether an excluded
+    /// file leaves the payload, and therefore whether this hash moves for it.
+    /// It cannot be both. A binding excludes nothing, which is why it is safe
+    /// here.
     pub fn content_hash(&self) -> String {
-        let mut entries: Vec<(&str, u64)> = self
-            .release_files()
-            .map(|file| (file.relative_path.as_str(), file.size))
-            .collect();
-        entries.sort_unstable();
-
-        let mut hasher = Sha256::new();
-        for (path, size) in entries {
-            hasher.update(path.as_bytes());
-            hasher.update([0u8]);
-            hasher.update(size.to_le_bytes());
-            hasher.update([b'\n']);
-        }
-        format!("{:x}", hasher.finalize())
+        content_hash_of(self.release_files())
     }
+
+    /// What the sheet at `sheet_file_id` can be bound to: the folder's audio,
+    /// each file either offered or refused with the reason.
+    ///
+    /// The refusal is decided *here*, by probing, because offering a file the
+    /// commit would then reject is exactly the failure an editable binding
+    /// exists to remove. Probing is also why this is asked for when a picker
+    /// opens rather than carried on every candidate.
+    ///
+    /// Empty when the sheet names one audio file per track rather than one for
+    /// the whole disc: naming a single file cannot express that layout, so
+    /// there is nothing to offer. Empty too when the folder holds no audio, and
+    /// when `sheet_file_id` names no parsed sheet.
+    pub fn sheet_binding_options(&self, sheet_file_id: &str) -> Vec<SheetBindingOption> {
+        let Some(sheet) = self
+            .track_sheets()
+            .find(|sheet| sheet.file.relative_path == sheet_file_id)
+        else {
+            return Vec::new();
+        };
+        if sheet.sheet.single_file().is_none() {
+            return Vec::new();
+        }
+        self.audio()
+            .map(|audio| SheetBindingOption {
+                file_id: audio.relative_path.clone(),
+                offer: match cue_pair_codec_label(&audio.path) {
+                    Ok(CueCodecLabel::Supported(_)) => SheetBindingOffer::Offered,
+                    Ok(CueCodecLabel::Unsupported(codec)) => {
+                        SheetBindingOffer::RefusedCodec { codec }
+                    }
+                    Ok(CueCodecLabel::Unprobeable) => SheetBindingOffer::RefusedUnreadable,
+                    // A path FFmpeg cannot even open is unreadable by the only
+                    // measure that matters here.
+                    Err(e) => {
+                        debug!("{} cannot back a sheet binding: {e}", audio.relative_path);
+                        SheetBindingOffer::RefusedUnreadable
+                    }
+                },
+            })
+            .collect()
+    }
+
+    /// Apply the user's binding decisions over what the scan proposed, and
+    /// re-derive everything a binding decides: the codec probe that can refuse
+    /// it, and the release's format label.
+    ///
+    /// Idempotent, and it only ever *overrides*: a sheet with no decision keeps
+    /// the binding it already has, which is what makes a cleared binding stay
+    /// cleared instead of springing back to the scan's guess.
+    pub fn apply_sheet_binding_edits(
+        &mut self,
+        edits: &SheetBindingEdits,
+    ) -> Result<(), InvalidReason> {
+        match settle_sheet_bindings(&mut self.files, edits) {
+            SettledBindings::Settled { cue_codec } => {
+                if let Some(label) = derive_format_label(&self.files, cue_codec) {
+                    self.format_label = label;
+                }
+                Ok(())
+            }
+            SettledBindings::CorruptAudio { path } => Err(InvalidReason::CorruptAudioFile { path }),
+        }
+    }
+}
+
+/// SHA-256 over the sorted `(relative_path, size)` of every file — the free
+/// function [`CategorizedFiles::content_hash`] is the method form of. Separate
+/// because the scan needs a candidate's hash while it is still assembling the
+/// candidate, to look up the bindings stored under it.
+fn content_hash_of<'a>(files: impl Iterator<Item = &'a ScannedFile>) -> String {
+    let mut entries: Vec<(&str, u64)> = files
+        .map(|file| (file.relative_path.as_str(), file.size))
+        .collect();
+    entries.sort_unstable();
+
+    let mut hasher = Sha256::new();
+    for (path, size) in entries {
+        hasher.update(path.as_bytes());
+        hasher.update([0u8]);
+        hasher.update(size.to_le_bytes());
+        hasher.update([b'\n']);
+    }
+    format!("{:x}", hasher.finalize())
 }
 
 /// Why a candidate folder failed validation. The `Display` text is the terse
@@ -870,6 +1042,128 @@ fn invalid(reason: InvalidReason) -> Result<CategorizeOutcome, FolderScanError> 
     Ok(CategorizeOutcome::Invalid(reason))
 }
 
+/// What settling a folder's sheet bindings produced.
+enum SettledBindings {
+    /// Every sheet settled. `cue_codec` is the probed codec of the first sheet
+    /// that stayed bound — the `CUE+<codec>` label's source, and `None` when no
+    /// sheet is bound.
+    Settled { cue_codec: Option<String> },
+    /// A bound sheet names audio FFmpeg cannot read at all. That is a real
+    /// defect, not a disagreement about which file the sheet meant, so the
+    /// folder is an invalid candidate rather than one with an unbound sheet.
+    CorruptAudio { path: String },
+}
+
+/// Settle every parsed sheet's binding, and report what the format label needs.
+///
+/// The user's decision wins where they made one; whatever the sheet already
+/// carries — the `FILE` directive's resolution on a fresh scan — stands where
+/// they did not. Either way the audio a sheet ends up naming is probed, because
+/// bae can only carve tracks out of some containers, and a refusal keeps the
+/// codec so both the pane and the picker can say why.
+fn settle_sheet_bindings(
+    files: &mut [CandidateFile],
+    edits: &SheetBindingEdits,
+) -> SettledBindings {
+    // Which relative paths are this folder's audio. A binding naming anything
+    // else describes nothing, whether it came from a directive or from a stored
+    // decision this build can no longer place.
+    let audio: HashMap<&str, PathBuf> = files
+        .iter()
+        .filter(|entry| matches!(entry.role, FileRole::Audio))
+        .map(|entry| (entry.file.relative_path.as_str(), entry.file.path.clone()))
+        .collect();
+
+    let mut settled: Vec<(usize, SheetBinding)> = Vec::new();
+    let mut cue_codec: Option<String> = None;
+    for (index, entry) in files.iter().enumerate() {
+        let FileRole::TrackSheet { binding, .. } = &entry.role else {
+            continue;
+        };
+        let binding = match edits.get(&entry.file.relative_path) {
+            Some(UserSheetBinding::Describes { file_id }) => SheetBinding::Describes {
+                file_id: file_id.clone(),
+            },
+            Some(UserSheetBinding::Cleared) => SheetBinding::Unresolved,
+            None => binding.clone(),
+        };
+        let SheetBinding::Describes { file_id } = &binding else {
+            settled.push((index, binding));
+            continue;
+        };
+        let Some(audio_path) = audio.get(file_id.as_str()) else {
+            info!(
+                "sheet {} names {file_id}, which is not this folder's audio; it stays unbound",
+                entry.file.relative_path,
+            );
+            settled.push((index, SheetBinding::Unresolved));
+            continue;
+        };
+        let binding = match cue_pair_codec_label(audio_path) {
+            Ok(CueCodecLabel::Supported(label)) => {
+                cue_codec.get_or_insert(label);
+                binding
+            }
+            Ok(CueCodecLabel::Unsupported(codec)) => {
+                info!(
+                    "sheet {} names {codec} audio, which bae can't play from a single-file CUE; \
+                     the binding is refused and the audio imports as one track",
+                    entry.file.relative_path,
+                );
+                SheetBinding::RefusedCodec {
+                    file_id: file_id.clone(),
+                    codec,
+                }
+            }
+            Ok(CueCodecLabel::Unprobeable) => {
+                info!("Invalid candidate: sheet audio file could not be probed: {file_id}");
+                return SettledBindings::CorruptAudio {
+                    path: file_id.clone(),
+                };
+            }
+            // FFmpeg cannot open a non-UTF-8 path, so the audio is unreadable
+            // by the only measure that decides a binding.
+            Err(e) => {
+                info!("Invalid candidate: sheet audio file could not be probed ({e})");
+                return SettledBindings::CorruptAudio {
+                    path: file_id.clone(),
+                };
+            }
+        };
+        settled.push((index, binding));
+    }
+
+    for (index, binding) in settled {
+        let FileRole::TrackSheet { binding: slot, .. } = &mut files[index].role else {
+            unreachable!("only track-sheet roles were collected above");
+        };
+        *slot = binding;
+    }
+    SettledBindings::Settled { cue_codec }
+}
+
+/// The release's format label: `CUE+<codec>` when a sheet stayed bound — the
+/// probed codec, never the extension — and otherwise the audio's own extension,
+/// which is what a file-per-track release is called. `None` only when the folder
+/// holds no audio at all.
+fn derive_format_label(files: &[CandidateFile], cue_codec: Option<String>) -> Option<String> {
+    if let Some(codec) = cue_codec {
+        return Some(format!("CUE+{codec}"));
+    }
+    let first_audio = files
+        .iter()
+        .find(|entry| matches!(entry.role, FileRole::Audio))?;
+    Some(
+        first_audio
+            .file
+            .path
+            .extension()
+            .and_then(|e| e.to_str())
+            .expect("Audio file must have an extension")
+            .to_uppercase(),
+    )
+}
+
 /// The directory holding a CUE sheet, where its `FILE` references resolve. A
 /// CUE path with no parent is a filesystem impossibility for a scanned file,
 /// so it's a hard scan error, not an invalid-candidate reason.
@@ -886,10 +1180,16 @@ fn cue_parent_dir(cue_path: &Path) -> Result<&Path, FolderScanError> {
 /// whose `FILE` directive names audio that is not here simply stays unbound,
 /// and a `.cue` that will not parse is a document. Only a real defect —
 /// unreadable audio or an unreadable image — returns `Invalid(reason)`.
+///
+/// A sheet's binding is the one role detail the user also writes, so `stored`
+/// is applied over the proposals before anything downstream reads them: the
+/// candidate this returns is the folder as the *user* has settled it, not only
+/// as its filenames read.
 fn categorize_files_from_tree(
     tree: &FileTree,
     release_root: &Path,
     fs_root: &Path,
+    stored: &StoredSheetBindings,
 ) -> Result<CategorizeOutcome, FolderScanError> {
     let mut proposed: Vec<(ScannedFile, ProposedRole)> = Vec::new();
 
@@ -1033,43 +1333,6 @@ fn categorize_files_from_tree(
         bindings.insert(*index, binding);
     }
 
-    // What a resolved sheet's audio actually is, probed. A codec bae can't play
-    // from a single-file CUE costs the sheet its binding — the audio still
-    // imports, as one track — and the refusal keeps the codec so the pane can
-    // say why. Audio FFmpeg can't read at all is a real defect.
-    let mut codec_label: Option<String> = None;
-    for (index, binding) in bindings.iter_mut() {
-        let SheetBinding::Describes { file_id } = binding else {
-            continue;
-        };
-        let audio = proposed
-            .iter()
-            .find(|(file, _)| &file.relative_path == file_id)
-            .map(|(file, _)| file)
-            .expect("a binding names a file the scan found");
-        match cue_pair_codec_label(&audio.path)? {
-            CueCodecLabel::Supported(label) => {
-                codec_label.get_or_insert(label);
-            }
-            CueCodecLabel::Unsupported(codec) => {
-                info!(
-                    "CUE {:?} names {codec} audio, which bae can't play from a single-file CUE; \
-                     the binding is refused and the audio imports as one track",
-                    proposed[*index].0.path
-                );
-                *binding = SheetBinding::RefusedCodec {
-                    file_id: std::mem::take(file_id),
-                    codec,
-                };
-            }
-            CueCodecLabel::Unprobeable => {
-                let path = audio.relative_path.clone();
-                info!("Invalid candidate: CUE audio file could not be probed: {path}");
-                return invalid(InvalidReason::CorruptAudioFile { path });
-            }
-        }
-    }
-
     // One image leads the release: the first conventionally-named image at the
     // release root, or — when the folder keeps its images in a subfolder — the
     // first conventionally-named one anywhere. Sorting by relative path puts
@@ -1106,27 +1369,25 @@ fn categorize_files_from_tree(
         files.push(CandidateFile { file, role });
     }
 
-    // `CUE+<codec>` when a sheet is bound — the probed codec, never the
-    // extension. Otherwise the audio's own extension, which is what a
-    // file-per-track release is called.
-    let format_label = match codec_label {
-        Some(codec) => format!("CUE+{codec}"),
-        None => {
-            let Some(first_audio) = files
-                .iter()
-                .find(|entry| matches!(entry.role, FileRole::Audio))
-            else {
-                info!("Invalid candidate: no valid audio files after categorization");
-                return invalid(InvalidReason::NoValidAudio);
-            };
-            first_audio
-                .file
-                .path
-                .extension()
-                .and_then(|e| e.to_str())
-                .expect("Audio file must have an extension")
-                .to_uppercase()
+    // The user's decisions land over the proposals, and the audio each sheet
+    // ends up naming is probed. The hash is what those decisions are stored
+    // under, and it covers files only — so computing it here, before any
+    // binding is applied, is not an ordering trick: applying one cannot change
+    // it.
+    let stored = stored
+        .for_hash(&content_hash_of(files.iter().map(|entry| &entry.file)))
+        .cloned()
+        .unwrap_or_default();
+    let cue_codec = match settle_sheet_bindings(&mut files, &stored) {
+        SettledBindings::Settled { cue_codec } => cue_codec,
+        SettledBindings::CorruptAudio { path } => {
+            return invalid(InvalidReason::CorruptAudioFile { path })
         }
+    };
+
+    let Some(format_label) = derive_format_label(&files, cue_codec) else {
+        info!("Invalid candidate: no valid audio files after categorization");
+        return invalid(InvalidReason::NoValidAudio);
     };
 
     Ok(CategorizeOutcome::Valid(CategorizedFiles {
@@ -1156,6 +1417,7 @@ fn scan_tree_recursive<F>(
     tree: &FileTree,
     dir: &Path,
     fs_root: &Path,
+    stored: &StoredSheetBindings,
     on_item: &mut F,
 ) -> Result<(), FolderScanError>
 where
@@ -1189,7 +1451,7 @@ where
         debug!("Found candidate leaf: {:?}", dir);
 
         let candidate_path = fs_root.join(dir);
-        match categorize_files_from_tree(tree, dir, fs_root)? {
+        match categorize_files_from_tree(tree, dir, fs_root, stored)? {
             CategorizeOutcome::Valid(files) => {
                 on_item(RawScanItem::Valid {
                     path: candidate_path,
@@ -1214,7 +1476,7 @@ where
     }
 
     for subdir in tree.immediate_subdirs(dir) {
-        scan_tree_recursive(tree, &subdir, fs_root, on_item)?;
+        scan_tree_recursive(tree, &subdir, fs_root, stored, on_item)?;
     }
 
     Ok(())
@@ -1225,8 +1487,12 @@ where
 /// Scan a folder and invoke `on_item` for each leaf: a valid release candidate,
 /// or an invalid one (looked like a release but failed validation). Both carry
 /// `watched_folder_path` stamped from the scan root.
+///
+/// `stored` carries every candidate's user-set sheet bindings, keyed by content
+/// hash — the scan is what computes that key, so the lookup happens inside.
 pub fn scan_for_candidates_with_callback<F>(
     root: PathBuf,
+    stored: &StoredSheetBindings,
     mut on_item: F,
 ) -> Result<(), FolderScanError>
 where
@@ -1237,40 +1503,51 @@ where
     // root) — the group it renders under in the candidate list.
     let watched_folder_path = root.to_string_lossy().into_owned();
     let tree = FileTree::from_filesystem(&root)?;
-    scan_tree_recursive(&tree, &PathBuf::new(), &root, &mut |raw| match raw {
-        RawScanItem::Valid { path, name, files } => {
-            on_item(ScanItem::Valid(FolderCandidate {
-                path,
-                name,
-                files,
-                watched_folder_path: watched_folder_path.clone(),
-                // The blocking walk has neither the registry nor the DB; the
-                // watcher stamps the real per-candidate facts after this scan.
-                skipped: false,
-                is_added: false,
-            }));
-        }
-        RawScanItem::Invalid { path, name, reason } => {
-            on_item(ScanItem::Invalid(InvalidCandidate {
-                path,
-                name,
-                watched_folder_path: watched_folder_path.clone(),
-                reason,
-            }));
-        }
-    })
+    scan_tree_recursive(
+        &tree,
+        &PathBuf::new(),
+        &root,
+        stored,
+        &mut |raw| match raw {
+            RawScanItem::Valid { path, name, files } => {
+                on_item(ScanItem::Valid(FolderCandidate {
+                    path,
+                    name,
+                    files,
+                    watched_folder_path: watched_folder_path.clone(),
+                    // The blocking walk has neither the registry nor the DB; the
+                    // watcher stamps the real per-candidate facts after this scan.
+                    skipped: false,
+                    is_added: false,
+                }));
+            }
+            RawScanItem::Invalid { path, name, reason } => {
+                on_item(ScanItem::Invalid(InvalidCandidate {
+                    path,
+                    name,
+                    watched_folder_path: watched_folder_path.clone(),
+                    reason,
+                }));
+            }
+        },
+    )
 }
 
-/// Walk one release directory recursively and categorize its files, preserving
-/// relative paths, into audio (CUE/FLAC pairs or track files), artwork, and
-/// documents. Unrecognized file types are ignored.
+/// Walk one release directory recursively and give every file its role,
+/// preserving relative paths, with the user's stored sheet bindings applied
+/// over what the filenames propose.
+///
+/// Every caller that re-derives a folder — the commit, the Unknown-import seed,
+/// the signal fast pass — goes through here, so none of them can see a shape
+/// the user has already corrected.
 pub fn collect_release_candidate_files(
     release_root: &Path,
+    stored: &StoredSheetBindings,
 ) -> Result<CategorizedFiles, crate::import::ImportError> {
     let tree = FileTree::from_filesystem(release_root)?;
     // An invalid folder can't be imported: surface its typed reason so the
     // import-commit caller fails with why the folder is unusable.
-    match categorize_files_from_tree(&tree, &PathBuf::new(), release_root)? {
+    match categorize_files_from_tree(&tree, &PathBuf::new(), release_root, stored)? {
         CategorizeOutcome::Valid(files) => Ok(files),
         CategorizeOutcome::Invalid(reason) => Err(reason.into()),
     }

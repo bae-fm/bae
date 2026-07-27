@@ -189,8 +189,21 @@ async fn run_extraction(
         // the artwork OCR streams.
         ExtractionSource::Folder(folder) => {
             let fast_folder = folder.clone();
+            // Without the user's bindings this pass would read the folder as
+            // its filenames propose it, and derive a disc ID — or fail to — for
+            // a shape they already corrected.
+            let stored = match inner.library_manager.load_stored_sheet_bindings().await {
+                Ok(stored) => stored,
+                Err(e) => {
+                    tracing::warn!(
+                        "signals: stored sheet bindings could not be read ({e}); \
+                         extracting {key} from the scan's own proposals"
+                    );
+                    crate::import::folder_scanner::StoredSheetBindings::none()
+                }
+            };
             let Some(fast) = run_fast_pass_blocking(&inner.runtime_handle, move || {
-                gather_non_ocr_sources(&fast_folder)
+                gather_non_ocr_sources(&fast_folder, &stored)
             })
             .await
             else {

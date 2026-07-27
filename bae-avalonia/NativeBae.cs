@@ -715,6 +715,28 @@ internal static class NativeBae
     internal static string? ReidentifyRelease(AppHandle handle, string releaseId, BridgeIdentityChoice choice) =>
         CaptureError(() => Await(() => handle.ReIdentifyRelease(releaseId, choice)));
 
+    // What a candidate's track sheet may be bound to: the folder's audio, each
+    // already offered or refused with core's own reason. Core probes to decide,
+    // so this is asked for when the picker opens rather than carried on the row.
+    internal static (List<ImportSheetBindingOption>? Options, string? Error) SheetBindingOptions(
+        AppHandle handle,
+        string candidateKey,
+        string sheetFileId) =>
+        CaptureBridgeValue(() => Await(() => handle.SheetBindingOptions(candidateKey, sheetFileId))
+            .Select(option => new ImportSheetBindingOption
+            {
+                FileId = option.FileId,
+                RefusalReason = BridgeDisplay.RefusalLine(option.Offer),
+            })
+            .ToList());
+
+    internal static string? SetSheetBinding(
+        AppHandle handle,
+        string candidateKey,
+        string sheetFileId,
+        string? audioFileId) =>
+        CaptureError(() => Await(() => handle.SetSheetBinding(candidateKey, sheetFileId, audioFileId)));
+
     internal static string? ScanFolder(AppHandle handle, string path, bool clearFirst) =>
         CaptureError(() => handle.AddWatchedFolder(path));
 
@@ -1188,6 +1210,7 @@ internal static class NativeBae
             Signals = runtime.SignalsToolbar.Signals.Select(SignalBadge).ToList(),
             AudioPaths = AudioPaths(candidate.Files).ToList(),
             Documents = ImportDocuments(candidate.Files),
+            TrackSheets = ImportTrackSheets(candidate.Files),
             FolderPath = candidate.FolderPath,
             Skipped = candidate.Skipped,
             IsAdded = candidate.IsAdded,
@@ -1299,6 +1322,26 @@ internal static class NativeBae
         var documents = files.Files.Where(file => file.Role is BridgeFileRole.Document);
         return sheets.Concat(documents).Select(ImportDocument).ToList();
     }
+
+    // The candidate's track sheets, each with what it describes. The binding is
+    // core's typed value, not something inferred from a filename here.
+    private static List<ImportTrackSheet> ImportTrackSheets(BridgeCandidateFiles files) =>
+        files.Files
+            .Select(file => (file, role: file.Role as BridgeFileRole.TrackSheet))
+            .Where(entry => entry.role is not null)
+            .Select(entry => new ImportTrackSheet
+            {
+                FileId = entry.file.File.Name,
+                TrackCount = checked((int)entry.role!.TrackCount),
+                Describes = entry.role.Binding is BridgeSheetBinding.Describes describes
+                    ? describes.FileId
+                    : null,
+                UnboundReason = BridgeDisplay.UnboundSheetLine(entry.role.Binding),
+                Requested = entry.role.Binding is BridgeSheetBinding.Unresolved unresolved
+                    ? unresolved.Requested.ToList()
+                    : new List<string>(),
+            })
+            .ToList();
 
     private static ImportDocument ImportDocument(BridgeCandidateFile file) =>
         new()

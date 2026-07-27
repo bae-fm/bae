@@ -202,11 +202,29 @@ impl ImportService {
         folder_registry: &Arc<Mutex<ImportFolderRegistry>>,
         candidate_state: &Arc<Mutex<ImportCandidateState>>,
     ) {
+        // What the user has decided about each candidate's sheets, read once
+        // for the whole walk. A folder's roles are only what its filenames
+        // propose until these land on top, so the walk takes them with it
+        // rather than having every candidate corrected afterwards.
+        let stored_bindings = match library_manager.load_stored_sheet_bindings().await {
+            Ok(stored) => stored,
+            Err(e) => {
+                warn!("stored sheet bindings could not be read; scan failed: {e}");
+                send_event(
+                    event_tx,
+                    crate::import::handle::ImportEvent::Scan(ScanEvent::Failed {
+                        error: format!("Stored sheet bindings could not be read: {e}"),
+                    }),
+                );
+                return;
+            }
+        };
+
         let root_buf = root.to_path_buf();
         let dropped_item_root = root.to_path_buf();
         let (item_tx, mut item_rx) = mpsc::unbounded_channel();
         let walk = tokio::task::spawn_blocking(move || {
-            scan_for_candidates_with_callback(root_buf, |item| {
+            scan_for_candidates_with_callback(root_buf, &stored_bindings, |item| {
                 // The receiver outlives the walk except when this scan has
                 // already bailed out (an added-state lookup failed) or the
                 // service is shutting down — in both cases there is nothing left
@@ -478,10 +496,17 @@ impl ImportService {
 
         // Re-walk the folder. Scan and commit are separated by user interaction,
         // and the user can move, rename, or reorganize in that window — so the
-        // worker treats the disk at commit time as the source of truth.
+        // worker treats the disk at commit time as the source of truth. Their
+        // sheet bindings come with it: what the folder is includes what they
+        // said it is, and a commit that re-derived without them would import
+        // the shape they corrected.
         let folder_buf = folder.clone();
+        let stored_bindings = library_manager.load_stored_sheet_bindings().await?;
         let categorized = tokio::task::spawn_blocking(move || {
-            crate::import::folder_scanner::collect_release_candidate_files(&folder_buf)
+            crate::import::folder_scanner::collect_release_candidate_files(
+                &folder_buf,
+                &stored_bindings,
+            )
         })
         .await
         .map_err(|e| crate::import::ImportError::Internal {

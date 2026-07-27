@@ -83,6 +83,14 @@ pub enum ImportError {
     #[error(transparent)]
     Db(#[from] crate::library::LibraryError),
 
+    /// A sheet-binding change could not be applied: the candidate, the sheet,
+    /// or the audio named is not what it was when the picker offered it. Every
+    /// offerable set that crosses to a UI is already filtered to what the sheet
+    /// can use, so this is a folder that changed under the choice rather than a
+    /// UI that offered something it should not have.
+    #[error("that audio can no longer back this sheet: {detail}")]
+    SheetBinding { detail: String },
+
     /// The watched-folder registry could not persist (YAML serialize / fs write).
     #[error("watched-folder registry: {detail}")]
     Registry { detail: String },

@@ -98,17 +98,6 @@ struct ImportClaimLine: View {
 /// Resolve a `ui.*` catalog key out of the generated `Core` table. The claim
 /// sentences live in the shared catalog because all three desktop surfaces
 /// render the same words from the same `BridgeClaimLine`.
-private func coreString(_ key: String) -> String {
-    NSLocalizedString(key, tableName: "Core", bundle: .main, comment: "")
-}
-
-/// Same, for a message that takes one argument.
-/// `localizedStringWithFormat` rather than `String(format:)` so a pluralized
-/// message picks its category from the locale's rules.
-private func coreString(_ key: String, _ argument: CVarArg) -> String {
-    String.localizedStringWithFormat(coreString(key), argument)
-}
-
 #if DEBUG
     // MARK: - Previews
 

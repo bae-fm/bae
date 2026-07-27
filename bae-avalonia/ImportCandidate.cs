@@ -47,6 +47,12 @@ public sealed class ImportCandidate
     /// order.</summary>
     public List<ImportDocument> Documents { get; set; } = new();
 
+    /// <summary>The candidate's track sheets and what each one describes. The
+    /// binding is editable: the scan proposes it from the sheet's FILE
+    /// directive, and a directive naming a file that was later re-encoded under
+    /// another name leaves it for the user to answer.</summary>
+    public List<ImportTrackSheet> TrackSheets { get; set; } = new();
+
     /// <summary>The on-disk folder to identify/import.</summary>
     public string FolderPath { get; set; } = string.Empty;
 
@@ -83,6 +89,44 @@ public sealed class ImportDocument
     public string Name { get; set; } = string.Empty;
     public string Path { get; set; } = string.Empty;
     public long SizeBytes { get; set; }
+}
+
+/// <summary>One of a candidate's track sheets: what it carves, and what it
+/// currently describes.</summary>
+public sealed class ImportTrackSheet
+{
+    /// <summary>The sheet's release-relative path — the id the binding is set
+    /// by.</summary>
+    public string FileId { get; set; } = string.Empty;
+
+    /// <summary>Playable tracks the sheet carves.</summary>
+    public int TrackCount { get; set; }
+
+    /// <summary>The audio it describes, by that file's release-relative path.
+    /// Null when it describes nothing — the directive named a file that is not
+    /// here, or the user cleared the binding.</summary>
+    public string? Describes { get; set; }
+
+    /// <summary>Why it describes nothing, in the user's language. Null once it
+    /// describes something. Core owns the wording.</summary>
+    public string? UnboundReason { get; set; }
+
+    /// <summary>What the sheet's FILE directive named, when that is not here.
+    /// Empty once the sheet describes something.</summary>
+    public List<string> Requested { get; set; } = new();
+}
+
+/// <summary>One of a candidate's audio files, as a choice for a track sheet's
+/// binding. Core decides which are usable, so the picker never reads a codec to
+/// work out what it may offer.</summary>
+public sealed class ImportSheetBindingOption
+{
+    /// <summary>The audio file's release-relative path.</summary>
+    public string FileId { get; set; } = string.Empty;
+
+    /// <summary>Why the sheet cannot use it, in the user's language. Null when
+    /// it can.</summary>
+    public string? RefusalReason { get; set; }
 }
 
 public sealed class ImportCandidateRowStatus

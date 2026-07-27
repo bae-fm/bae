@@ -685,8 +685,11 @@ mod tests {
         )
         .unwrap();
 
-        let categorized =
-            crate::import::folder_scanner::collect_release_candidate_files(folder).unwrap();
+        let categorized = crate::import::folder_scanner::collect_release_candidate_files(
+            folder,
+            &crate::import::folder_scanner::StoredSheetBindings::none(),
+        )
+        .unwrap();
         let disc_id = compute_discid_from_categorized(&categorized)
             .expect("CUE+APE pair must compute a disc ID");
         assert_eq!(disc_id.len(), 28, "MusicBrainz disc IDs are 28 chars");

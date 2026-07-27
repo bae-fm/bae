@@ -403,6 +403,8 @@
   <data name="output.title" xml:space="preserve"><value>export &amp; save</value></data>
   <data name="export.state.exporting" xml:space="preserve"><value>exporting {percent}%</value></data>
   <data name="export.state.saving" xml:space="preserve"><value>saving {percent}%</value></data>
+  <data name="import.track_sheets" xml:space="preserve"><value>Track sheets</value></data>
+  <data name="import.sheet.describes_nothing_yet" xml:space="preserve"><value>Describes nothing yet</value></data>
   <data name="import.documents" xml:space="preserve"><value>Documents</value></data>
   <data name="import.document.read_failed" xml:space="preserve"><value>Could not read {name}: {error}</value></data>
   <data name="libraries.reveal" xml:space="preserve"><value>show in Explorer</value></data>

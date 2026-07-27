@@ -2321,12 +2321,14 @@ mod playback_state_load_tests {
     }
 }
 
-/// `import_candidate_state` — device-local identify verdicts keyed by
-/// `CategorizedFiles::content_hash`. The mechanism's own round-trip proves
-/// little on its own; these also nail down the two things that make the hash
-/// the row's whole identity (resizing invalidates, moving doesn't) and the
-/// asymmetry the design leans on: a terminal verdict is stored, a transport
-/// failure is not.
+/// `import_candidate_state` — device-local derived state keyed by
+/// `CategorizedFiles::content_hash`: what identification concluded, and what the
+/// user decided about the folder's track sheets. The mechanism's own round-trip
+/// proves little on its own; these also nail down the two things that make the
+/// hash the row's whole identity (resizing invalidates, moving doesn't), the
+/// asymmetry the design leans on (a terminal verdict is stored, a transport
+/// failure is not), and the pair that makes a re-bound candidate re-identify
+/// rather than trust a verdict about a shape it no longer has.
 #[cfg(test)]
 mod import_candidate_state_tests {
     use super::super::*;
@@ -2338,7 +2340,7 @@ mod import_candidate_state_tests {
 
     /// The instant `empty_db`'s injected clock always returns. Fixed rather
     /// than `SystemClock` so `identified_at` can be asserted exactly — which is
-    /// why `save_import_candidate_state` stamps it from the injected clock
+    /// why `save_import_candidate_verdict` stamps it from the injected clock
     /// instead of taking it from the caller.
     fn fixed_identified_at() -> DateTime<Utc> {
         DateTime::parse_from_rfc3339("2026-01-15T12:00:00Z")
@@ -2408,8 +2410,8 @@ mod import_candidate_state_tests {
         folder_path: &str,
         verdict: &TerminalVerdict,
         probed_total_duration_ms: i64,
-    ) -> NewImportCandidateState {
-        NewImportCandidateState {
+    ) -> NewImportCandidateVerdict {
+        NewImportCandidateVerdict {
             content_hash: content_hash.to_string(),
             folder_path: folder_path.to_string(),
             verdict: serde_json::to_string(verdict).unwrap(),
@@ -2429,18 +2431,22 @@ mod import_candidate_state_tests {
         let verdict = sample_verdict();
         let row = new_candidate_row(&hash, "/music/Some Album", &verdict, 2_700_000);
 
-        db.save_import_candidate_state(&row).await.unwrap();
+        db.save_import_candidate_verdict(&row).await.unwrap();
 
         let loaded = db.load_import_candidate_states().await.unwrap();
         let loaded_row = loaded
             .get(&hash)
             .expect("row present under its content hash");
         assert_eq!(loaded_row.folder_path, "/music/Some Album");
-        assert_eq!(loaded_row.probed_total_duration_ms, 2_700_000);
+        let identify = loaded_row
+            .identify
+            .as_ref()
+            .expect("a stored verdict reads back as an identify result");
+        assert_eq!(identify.probed_total_duration_ms, 2_700_000);
         // Stamped by the write path from the injected clock, not something
         // `new_candidate_row` had any way to supply.
-        assert_eq!(loaded_row.identified_at, fixed_identified_at());
-        let loaded_verdict: TerminalVerdict = serde_json::from_str(&loaded_row.verdict).unwrap();
+        assert_eq!(identify.identified_at, fixed_identified_at());
+        let loaded_verdict: TerminalVerdict = serde_json::from_str(&identify.verdict).unwrap();
         assert_eq!(
             loaded_verdict, verdict,
             "the verdict must round-trip exactly, provenance included"
@@ -2463,7 +2469,7 @@ mod import_candidate_state_tests {
             &sample_verdict(),
             2_700_000,
         );
-        db.save_import_candidate_state(&row).await.unwrap();
+        db.save_import_candidate_verdict(&row).await.unwrap();
 
         let resized =
             track_files_candidate(&[("01 Track.flac", 999_999), ("02 Track.flac", 234_567)]);
@@ -2500,7 +2506,7 @@ mod import_candidate_state_tests {
             &sample_verdict(),
             2_700_000,
         );
-        db.save_import_candidate_state(&row).await.unwrap();
+        db.save_import_candidate_verdict(&row).await.unwrap();
 
         let at_new_location = CategorizedFiles {
             files: vec![
@@ -2580,10 +2586,10 @@ mod import_candidate_state_tests {
         );
 
         // Exactly the shape a scheduler will use: only a successful conversion
-        // ever reaches `save_import_candidate_state`.
+        // ever reaches `save_import_candidate_verdict`.
         if let Ok(verdict) = TerminalVerdict::try_from(state) {
             let row = new_candidate_row(&hash, "/music/Some Album", &verdict, 0);
-            db.save_import_candidate_state(&row).await.unwrap();
+            db.save_import_candidate_verdict(&row).await.unwrap();
         }
 
         let loaded = db.load_import_candidate_states().await.unwrap();
@@ -2591,6 +2597,168 @@ mod import_candidate_state_tests {
             !loaded.contains_key(&hash),
             "a transport failure teaches nothing -- absence is the retry signal"
         );
+    }
+
+    /// A binding the user set survives a relaunch: it is stored under the
+    /// candidate's content hash, read back from a cold database, and the scan
+    /// that follows reports the folder as they settled it rather than as its
+    /// filenames read.
+    ///
+    /// The scan is the point — a binding that round-tripped through SQLite but
+    /// never reached a folder's roles would be a stored value nothing consumes.
+    #[tokio::test]
+    async fn a_binding_survives_a_relaunch() {
+        use crate::import::folder_scanner::{
+            collect_release_candidate_files, SheetBindingEdits, StoredSheetBindings,
+            UserSheetBinding,
+        };
+
+        let (db, _tmp) = empty_db().await;
+        let folder = walkthrough_folder();
+        let scanned =
+            collect_release_candidate_files(folder.path(), &StoredSheetBindings::none()).unwrap();
+        assert_eq!(scanned.track_count(), 1, "unbound, the image is one track");
+
+        let mut edits = SheetBindingEdits::default();
+        edits.set(
+            "cd.cue".to_string(),
+            UserSheetBinding::Describes {
+                file_id: "cd.flac".to_string(),
+            },
+        );
+        db.save_import_candidate_sheet_bindings(
+            &scanned.content_hash(),
+            &folder.path().to_string_lossy(),
+            &edits,
+        )
+        .await
+        .unwrap();
+
+        // Everything after this is what a relaunch does: read the stored
+        // decisions back, then walk the folder with them.
+        let stored = db.load_stored_sheet_bindings().await.unwrap();
+        let reopened = collect_release_candidate_files(folder.path(), &stored).unwrap();
+
+        assert_eq!(
+            reopened.track_count(),
+            12,
+            "the binding read back from disk is the one the scan applies"
+        );
+        assert_eq!(reopened.bound_sheets()[0].audio.file_name, "cd.flac");
+    }
+
+    /// The pair that makes re-identification correct rather than incidental:
+    /// changing a binding leaves the row's key alone, **and** clears the
+    /// verdict stored under it.
+    ///
+    /// The hash covers files and never role decisions, so the edit addresses
+    /// the same row rather than orphaning it — and that row's verdict was
+    /// derived from the shape the folder no longer has, so the queue must
+    /// answer the candidate again instead of trusting it.
+    #[tokio::test]
+    async fn changing_a_binding_keeps_the_hash_and_clears_the_verdict() {
+        use crate::import::folder_scanner::{
+            collect_release_candidate_files, SheetBindingEdits, StoredSheetBindings,
+            UserSheetBinding,
+        };
+
+        let (db, _tmp) = empty_db().await;
+        let folder = walkthrough_folder();
+        let unbound =
+            collect_release_candidate_files(folder.path(), &StoredSheetBindings::none()).unwrap();
+        let hash = unbound.content_hash();
+
+        db.save_import_candidate_verdict(&new_candidate_row(
+            &hash,
+            &folder.path().to_string_lossy(),
+            &sample_verdict(),
+            2_700_000,
+        ))
+        .await
+        .unwrap();
+        assert!(
+            db.load_import_candidate_states()
+                .await
+                .unwrap()
+                .get(&hash)
+                .expect("the verdict is stored")
+                .identify
+                .is_some(),
+            "the candidate starts out identified"
+        );
+
+        let mut edits = SheetBindingEdits::default();
+        edits.set(
+            "cd.cue".to_string(),
+            UserSheetBinding::Describes {
+                file_id: "cd.flac".to_string(),
+            },
+        );
+        db.save_import_candidate_sheet_bindings(&hash, &folder.path().to_string_lossy(), &edits)
+            .await
+            .unwrap();
+
+        let bound = collect_release_candidate_files(
+            folder.path(),
+            &db.load_stored_sheet_bindings().await.unwrap(),
+        )
+        .unwrap();
+        assert_eq!(
+            bound.track_count(),
+            12,
+            "the folder really did change shape -- otherwise this proves nothing"
+        );
+        assert_eq!(
+            bound.content_hash(),
+            hash,
+            "the hash covers files, never role decisions, so the row stays addressable"
+        );
+
+        let row = db
+            .load_import_candidate_states()
+            .await
+            .unwrap()
+            .remove(&hash)
+            .expect("the row is still found under the unchanged hash");
+        assert!(
+            row.identify.is_none(),
+            "the stored verdict described the folder before the binding; it must be cleared \
+             so the queue identifies the candidate again"
+        );
+        assert_eq!(
+            row.sheet_bindings.get("cd.cue"),
+            Some(&UserSheetBinding::Describes {
+                file_id: "cd.flac".to_string()
+            }),
+            "the decision that cleared the verdict is what the row now holds"
+        );
+    }
+
+    /// The walkthrough folder on disk: a twelve-track sheet written against a
+    /// WAV, the FLAC it was actually encoded to, and the rip log.
+    fn walkthrough_folder() -> tempfile::TempDir {
+        let tmp = tempfile::TempDir::new().unwrap();
+        let fixtures = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
+        std::fs::copy(
+            fixtures.join("tests/fixtures/cue_flac/Test Album.flac"),
+            tmp.path().join("cd.flac"),
+        )
+        .unwrap();
+        std::fs::copy(
+            fixtures.join("tests/fixtures/test_album.log"),
+            tmp.path().join("rip.log"),
+        )
+        .unwrap();
+        let mut cue =
+            String::from("PERFORMER \"Test Artist\"\nTITLE \"Album\"\nFILE \"cd.wav\" WAVE\n");
+        for track in 1..=12 {
+            cue.push_str(&format!(
+                "  TRACK {track:02} AUDIO\n    TITLE \"Track {track:02}\"\n    INDEX 01 {:02}:00:00\n",
+                (track - 1) * 5,
+            ));
+        }
+        std::fs::write(tmp.path().join("cd.cue"), cue).unwrap();
+        tmp
     }
 }
 

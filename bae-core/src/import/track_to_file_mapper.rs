@@ -103,9 +103,21 @@ fn map_tracks_to_cue_flac(
         .ok_or_else(|| ImportError::TrackMapping {
             detail: format!("CUE file has no parent: {:?}", pair.file.path),
         })?;
+    // A sheet that names one file for the whole disc is analyzed against the
+    // audio it is *bound* to, not against what its `FILE` directive spells. The
+    // two differ exactly when the binding is the user's: a sheet written for a
+    // WAV that was later encoded to FLAC still says `WAV`, and re-resolving the
+    // directive here would fail the commit on the very pairing they corrected.
+    // A sheet that names one file per track has no single binding to stand in,
+    // so its references resolve as they always have.
+    let single_file = cue_sheet.single_file().is_some();
     let mut analyzed_files = Vec::new();
     for file_reference in cue_sheet.audio_file_references() {
-        let path = cue_dir.join(file_reference);
+        let path = if single_file {
+            pair.audio.path.clone()
+        } else {
+            cue_dir.join(file_reference)
+        };
         let probe = analyze_cue_audio(&path)?;
         analyzed_files.push(CueAnalyzedAudioFile {
             file_reference: file_reference.to_string(),
@@ -363,6 +375,7 @@ mod tests {
     }
     use crate::import::folder_scanner::{
         collect_release_candidate_files, CandidateFile, CategorizedFiles, FileRole, ScannedFile,
+        StoredSheetBindings,
     };
     use std::path::PathBuf;
 
@@ -477,7 +490,8 @@ mod tests {
         fs::write(&cd2_flac, synthetic_flac_bytes()).expect("write cd2 flac");
         let mut tracks = create_test_tracks_for_disc(1, 8);
         tracks.extend(create_test_tracks_for_disc(2, 8));
-        let files = collect_release_candidate_files(tmp.path()).expect("scan should succeed");
+        let files = collect_release_candidate_files(tmp.path(), &StoredSheetBindings::none())
+            .expect("scan should succeed");
         let track_files = map_tracks_to_files(tracks, &files)
             .expect("multi-disc CUE/FLAC mapping should succeed");
         assert_eq!(track_files.len(), 16);
@@ -549,7 +563,8 @@ mod tests {
             disc_flacs.push(flac);
         }
         let total_tracks: usize = (1..=10).sum();
-        let files = collect_release_candidate_files(tmp.path()).expect("scan should succeed");
+        let files = collect_release_candidate_files(tmp.path(), &StoredSheetBindings::none())
+            .expect("scan should succeed");
         let track_files = map_tracks_to_files(tracks, &files)
             .expect("10-disc CUE/FLAC mapping should succeed with natural sort");
         assert_eq!(track_files.len(), total_tracks);
@@ -672,7 +687,8 @@ mod tests {
             })
             .collect();
 
-        let files = collect_release_candidate_files(tmp.path()).expect("scan should succeed");
+        let files = collect_release_candidate_files(tmp.path(), &StoredSheetBindings::none())
+            .expect("scan should succeed");
 
         let track_files = map_tracks_to_files(tracks, &files)
             .expect("single-pair rip of a multi-side vinyl should map successfully");

@@ -451,9 +451,12 @@ impl Fixture {
     /// A candidate folder's content hash, read off disk. Take it before a test
     /// removes the folder — there is nothing to hash afterwards.
     fn content_hash(&self, dir: &Path) -> String {
-        crate::import::folder_scanner::collect_release_candidate_files(dir)
-            .expect("the candidate folder is readable")
-            .content_hash()
+        crate::import::folder_scanner::collect_release_candidate_files(
+            dir,
+            &crate::import::folder_scanner::StoredSheetBindings::none(),
+        )
+        .expect("the candidate folder is readable")
+        .content_hash()
     }
 
     async fn stored_for(&self, dir: &Path) -> Option<DbImportCandidateState> {
@@ -465,7 +468,9 @@ impl Fixture {
     /// verdict plus a live library check, never a stored classification.
     async fn classification_for(&self, dir: &Path) -> QueueClassification {
         let row = self.stored_for(dir).await.expect("a row was stored");
-        let verdict: TerminalVerdict = serde_json::from_str(&row.verdict).expect("verdict decodes");
+        let identify = identify_result(&row);
+        let verdict: TerminalVerdict =
+            serde_json::from_str(&identify.verdict).expect("verdict decodes");
         let matches: Vec<MetadataResult> = match &verdict {
             TerminalVerdict::Found { matches, .. } => matches.clone(),
             _ => Vec::new(),
@@ -477,8 +482,21 @@ impl Fixture {
             .check_releases_in_library(&checks)
             .await
             .unwrap();
-        classify(&verdict, row.probed_total_duration_ms as u64, &statuses)
+        classify(
+            &verdict,
+            identify.probed_total_duration_ms as u64,
+            &statuses,
+        )
     }
+}
+
+/// The identify half of a stored row, which every sweep assertion is about. A
+/// row the sweep wrote always has one; a row with none was written by the
+/// binding editor, which these tests never invoke.
+fn identify_result(row: &DbImportCandidateState) -> &crate::db::DbCandidateIdentifyResult {
+    row.identify
+        .as_ref()
+        .expect("a row the sweep wrote carries its identify result")
 }
 
 impl Drop for Fixture {
@@ -528,12 +546,13 @@ async fn a_candidate_nobody_selected_acquires_a_verdict() {
         dir.to_string_lossy(),
         "the row names where the candidate was last seen"
     );
+    let identify = identify_result(&row);
     assert_eq!(
-        row.probed_total_duration_ms as u64, probed,
+        identify.probed_total_duration_ms as u64, probed,
         "the probed total rode the fast pass into the row"
     );
     assert_eq!(
-        row.identified_at,
+        identify.identified_at,
         fixed_now(),
         "the row is stamped from the injected clock"
     );
@@ -962,7 +981,7 @@ async fn an_interactively_opened_candidate_never_pays_for_the_lookup() {
     let row = tokio::time::timeout(Duration::from_secs(5), fixture.await_row(&dir))
         .await
         .expect("the selection recorder stores the verdict");
-    let verdict: TerminalVerdict = serde_json::from_str(&row.verdict).unwrap();
+    let verdict: TerminalVerdict = serde_json::from_str(&identify_result(&row).verdict).unwrap();
     let TerminalVerdict::Found { matches, .. } = &verdict else {
         panic!("expected a single-match Found, got {verdict:?}");
     };
@@ -1532,8 +1551,11 @@ fn row_with_verdict(candidate: &FolderCandidate, verdict: String) -> DbImportCan
     DbImportCandidateState {
         content_hash: candidate.files.content_hash(),
         folder_path: candidate.path.to_string_lossy().into_owned(),
-        verdict,
-        probed_total_duration_ms: 0,
-        identified_at: fixed_now(),
+        identify: Some(crate::db::DbCandidateIdentifyResult {
+            verdict,
+            probed_total_duration_ms: 0,
+            identified_at: fixed_now(),
+        }),
+        sheet_bindings: Default::default(),
     }
 }

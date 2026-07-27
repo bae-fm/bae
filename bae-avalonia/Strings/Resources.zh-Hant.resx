@@ -378,6 +378,8 @@
   <data name="output.title" xml:space="preserve"><value>匯出與儲存</value></data>
   <data name="export.state.exporting" xml:space="preserve"><value>正在匯出 {percent}%</value></data>
   <data name="export.state.saving" xml:space="preserve"><value>正在儲存 {percent}%</value></data>
+  <data name="import.track_sheets" xml:space="preserve"><value>音軌表</value></data>
+  <data name="import.sheet.describes_nothing_yet" xml:space="preserve"><value>尚未對應任何檔案</value></data>
   <data name="import.documents" xml:space="preserve"><value>文件</value></data>
   <data name="import.document.read_failed" xml:space="preserve"><value>無法讀取{name}: {error}</value></data>
   <data name="libraries.reveal" xml:space="preserve"><value>在檔案總管中顯示</value></data>

@@ -450,7 +450,10 @@
         static let unboundTrackSheet = previewFile(
             name: "Album Title.cue",
             size: 1200,
-            role: .trackSheet(binding: .unresolved, trackCount: 9)
+            role: .trackSheet(
+                binding: .unresolved(requested: ["Album Title.wav"]),
+                trackCount: 9
+            )
         )
 
         /// A sheet bound to audio bae can't carve tracks out of.
@@ -462,6 +465,21 @@
                 trackCount: 9
             )
         )
+
+        /// What core offers a sheet in this folder: the FLAC it can use, and
+        /// the MP3 it can't, refused with its codec named.
+        static let sheetBindingOptions: [String: [BridgeSheetBindingOption]] = [
+            "Album Title.cue": [
+                BridgeSheetBindingOption(
+                    fileId: "Album Title.flac",
+                    offer: .offered
+                ),
+                BridgeSheetBindingOption(
+                    fileId: "Album Title.mp3",
+                    offer: .refusedCodec(codec: "MP3")
+                ),
+            ]
+        ]
 
         static let bridgeCandidateFiles = BridgeCandidateFiles(
             files: [
@@ -584,7 +602,11 @@
                     previewFile(
                         name: "Album.cue",
                         size: 1100,
-                        role: .trackSheet(binding: .unresolved, trackCount: 9)
+                        role: .trackSheet(
+                            binding: .unresolved(requested: ["Album Title.wav"]
+                            ),
+                            trackCount: 9
+                        )
                     ),
                 ],
             formatLabel: "FLAC"

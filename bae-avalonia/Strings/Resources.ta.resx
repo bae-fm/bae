@@ -378,6 +378,8 @@
   <data name="output.title" xml:space="preserve"><value>ஏற்றுமதி மற்றும் சேமிப்பு</value></data>
   <data name="export.state.exporting" xml:space="preserve"><value>{percent}% ஏற்றுமதி செய்யப்படுகிறது</value></data>
   <data name="export.state.saving" xml:space="preserve"><value>{percent}% சேமிக்கப்படுகிறது</value></data>
+  <data name="import.track_sheets" xml:space="preserve"><value>டிராக் தாள்கள்</value></data>
+  <data name="import.sheet.describes_nothing_yet" xml:space="preserve"><value>இன்னும் எதையும் குறிக்கவில்லை</value></data>
   <data name="import.documents" xml:space="preserve"><value>ஆவணங்கள்</value></data>
   <data name="import.document.read_failed" xml:space="preserve"><value>{name} ஐப் படிக்க முடியவில்லை: {error}</value></data>
   <data name="libraries.reveal" xml:space="preserve"><value>கோப்பு எக்ஸ்ப்ளோரரில் காட்டு</value></data>

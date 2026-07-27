@@ -25,6 +25,12 @@ struct ImportView: View {
 
     @State
     var documentContent: (name: String, text: String)?
+    /// What each of the selected candidate's track sheets may be bound to,
+    /// keyed by the sheet's file id. Read from core when the selection's files
+    /// change: core probes every audio file to answer, so this is not something
+    /// a candidate can carry through the list.
+    @State
+    var sheetBindingOptions: [String: [BridgeSheetBindingOption]] = [:]
     @Environment(\.openSettings)
     var openSettings
     @Environment(UiStore.self)
@@ -129,6 +135,61 @@ struct ImportView: View {
         // candidate's signals (disc ID, barcodes, classified text).
         if case .idle = candidate.identifyState {
             importer.autoIdentifyFolder(folderPath, folderPath)
+        }
+    }
+
+    /// Read what each of `candidate`'s track sheets may be bound to. One call
+    /// per sheet, and each probes the folder's audio, so this runs when the
+    /// selection's files change rather than on every render.
+    func loadSheetBindingOptions(for candidate: Candidate) async {
+        var options: [String: [BridgeSheetBindingOption]] = [:]
+        for sheet in candidate.files.trackSheets {
+            do {
+                options[sheet.file.name] =
+                    try await importer.sheetBindingOptions(
+                        candidate.key,
+                        sheet.file.name
+                    )
+            }
+            catch is CancellationError {
+                return
+            }
+            catch {
+                uiStore.showError(
+                    String(
+                        localized:
+                            "Couldn't read what \(sheet.file.name) can describe: \(error.displayLine)"
+                    )
+                )
+            }
+        }
+        sheetBindingOptions = options
+    }
+
+    /// Name the audio `sheetFileId` describes, or clear it with `nil`. Nothing
+    /// is updated here: core persists the decision, drops the candidate's
+    /// stored identify verdict, and the candidate invalidation brings the new
+    /// roles back.
+    func bindSheet(
+        _ candidateKey: String,
+        _ sheetFileId: String,
+        to audioFileId: String?
+    ) async {
+        do {
+            try await importer.setSheetBinding(
+                candidateKey,
+                sheetFileId,
+                audioFileId
+            )
+        }
+        catch is CancellationError {}
+        catch {
+            uiStore.showError(
+                String(
+                    localized:
+                        "Couldn't change what \(sheetFileId) describes: \(error.displayLine)"
+                )
+            )
         }
     }
 

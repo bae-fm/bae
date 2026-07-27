@@ -378,6 +378,8 @@
   <data name="output.title" xml:space="preserve"><value>التصدير والحفظ</value></data>
   <data name="export.state.exporting" xml:space="preserve"><value>جارٍ التصدير {percent}%</value></data>
   <data name="export.state.saving" xml:space="preserve"><value>جارٍ الحفظ {percent}%</value></data>
+  <data name="import.track_sheets" xml:space="preserve"><value>أوراق المسارات</value></data>
+  <data name="import.sheet.describes_nothing_yet" xml:space="preserve"><value>لا يصف شيئًا بعد</value></data>
   <data name="import.documents" xml:space="preserve"><value>المستندات</value></data>
   <data name="import.document.read_failed" xml:space="preserve"><value>تعذرت قراءة {name}: {error}</value></data>
   <data name="libraries.reveal" xml:space="preserve"><value>الإظهار في مستكشف الملفات</value></data>

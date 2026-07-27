@@ -535,7 +535,10 @@ fn non_utf8_cue_is_decoded_not_dropped() {
     cue.extend_from_slice(b"    INDEX 01 00:00:00\n");
     fs::write(folder.join("Album.cue"), &cue).unwrap();
 
-    let pass = gather_non_ocr_sources(&folder);
+    let pass = gather_non_ocr_sources(
+        &folder,
+        &crate::import::folder_scanner::StoredSheetBindings::none(),
+    );
     let texts: Vec<&str> = pass.lines.iter().map(|l| l.text.as_str()).collect();
 
     assert!(

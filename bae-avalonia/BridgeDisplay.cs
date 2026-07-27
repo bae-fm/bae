@@ -121,6 +121,39 @@ internal static class BridgeDisplay
             : null;
     }
 
+    /// <summary>
+    /// Why a track sheet describes nothing, in the user's language; null when it
+    /// describes something. Core owns both the reason and its wording.
+    /// </summary>
+    internal static string? UnboundSheetLine(BridgeSheetBinding binding) =>
+        binding switch
+        {
+            BridgeSheetBinding.Describes => null,
+            BridgeSheetBinding.Unresolved => Loc.Chrome("import.sheet.describes_nothing_yet"),
+            BridgeSheetBinding.RefusedCodec refused => Loc.Core(
+                BaeBridgeMethods.BridgeSheetRefusedCodecKey(), "codec", refused.Codec),
+            _ => throw new ArgumentOutOfRangeException(
+                nameof(binding), binding, "Unknown sheet binding"),
+        };
+
+    /// <summary>
+    /// Why an audio file cannot back a sheet's binding; null when it can. Core
+    /// decides the refusal by probing, so no UI reads a codec to work out what
+    /// it may offer.
+    /// </summary>
+    internal static string? RefusalLine(BridgeSheetBindingOffer offer)
+    {
+        var key = BaeBridgeMethods.BridgeSheetBindingOfferKey(offer);
+        if (key is null)
+        {
+            return null;
+        }
+
+        return offer is BridgeSheetBindingOffer.RefusedCodec refused
+            ? Loc.Core(key, "codec", refused.Codec)
+            : Loc.Core(key);
+    }
+
     internal static string LocalizedLine(BridgeInvalidReason reason)
     {
         var key = BaeBridgeMethods.BridgeInvalidReasonKey(reason);

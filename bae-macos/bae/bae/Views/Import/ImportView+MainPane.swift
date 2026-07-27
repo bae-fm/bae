@@ -43,10 +43,32 @@ extension ImportView {
             },
             onError: { uiStore.showError($0) },
             previewState: importStore.previewState,
+            bindingOptions: sheetBindingOptions,
+            onBind: { sheetFileId, audioFileId in
+                Task { @MainActor in
+                    await bindSheet(
+                        candidate.key,
+                        sheetFileId,
+                        to: audioFileId
+                    )
+                }
+            },
         ) {
             resultPane(for: candidate)
         }
         .animation(nil, value: uiStore.selectedFolderCandidate)
+        // Keyed on the folder's files, not on the candidate: what a sheet may
+        // be bound to changes when the folder's audio does, and not when a
+        // binding does.
+        .task(id: candidate.key + fileNames(candidate)) {
+            await loadSheetBindingOptions(for: candidate)
+        }
+    }
+
+    /// Every file the candidate holds, in one string — the identity the
+    /// binding-offer read is refreshed on.
+    private func fileNames(_ candidate: Candidate) -> String {
+        candidate.files.files.map(\.file.name).joined(separator: "\u{0}")
     }
 
     /// True while the confirm pane is docked — during detail load and while

@@ -282,7 +282,8 @@ impl UiEventBus {
                                 ScanEvent::WatchedFoldersChanged { .. } => {
                                     bus.invalidate(Invalidation::WatchedFolders);
                                 }
-                                ScanEvent::FolderCandidate(c) => {
+                                ScanEvent::FolderCandidate(c)
+                                | ScanEvent::CandidateBindingChanged { candidate: c } => {
                                     bus.invalidate(Invalidation::ImportCandidate {
                                         key: c.path.to_string_lossy().to_string(),
                                     });

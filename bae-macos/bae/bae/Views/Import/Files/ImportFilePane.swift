@@ -11,6 +11,13 @@ struct ImportFilePane: View {
     /// Surface errors from file operations (e.g. readTextFile).
     let onError: (String) -> Void
     let previewState: PreviewState
+    /// What each track sheet may be bound to, by the sheet's file id. Core
+    /// probes to decide, so the pane is handed the answer rather than working
+    /// it out: a sheet with no entry yet shows no picker.
+    let bindingOptions: [String: [BridgeSheetBindingOption]]
+    /// Name the audio a sheet describes: the sheet's file id, then the audio's,
+    /// or `nil` to leave the sheet describing nothing.
+    let onBind: (String, String?) -> Void
 
     private var previewingPath: String? {
         switch previewState {
@@ -53,6 +60,8 @@ struct ImportFilePane: View {
                         onPreviewAudio: onPreviewAudio,
                         onOpenDocument: onOpenDocument,
                         onError: onError,
+                        bindingOptions: bindingOptions,
+                        onBind: onBind,
                     )
                     .accentRail(
                         isActive: !sheets.isEmpty
@@ -64,6 +73,8 @@ struct ImportFilePane: View {
                         sheet: sheet,
                         onOpenDocument: onOpenDocument,
                         onError: onError,
+                        bindingOptions: bindingOptions[sheet.file.name],
+                        onBind: { onBind(sheet.file.name, $0) },
                     )
                     .accentRail(isActive: false)
                 }
@@ -281,6 +292,8 @@ extension View {
             onPreviewAudio: { _ in },
             onError: { _ in },
             previewState: .idle,
+            bindingOptions: PreviewData.sheetBindingOptions,
+            onBind: { _, _ in },
         )
         .frame(width: 300, height: 500)
         .windowBackground()
@@ -298,6 +311,8 @@ extension View {
                 path: "/tmp/fake/Track 3.flac",
                 durationMs: 195_000
             ),
+            bindingOptions: [:],
+            onBind: { _, _ in },
         )
         .frame(width: 300, height: 500)
         .windowBackground()

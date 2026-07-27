@@ -205,6 +205,23 @@ impl ImportCandidateState {
         }
     }
 
+    /// Replace a candidate's files with a re-derived set — the roles after a
+    /// sheet binding changed — and hand back the candidate that results, which
+    /// is what the change is announced with. The candidate's runtime is
+    /// untouched, like an upsert's: the change is to what the folder *is*, not
+    /// to what is being done about it.
+    pub(super) fn set_files(
+        &mut self,
+        key: &str,
+        files: crate::import::folder_scanner::CategorizedFiles,
+    ) -> Option<FolderCandidate> {
+        let Some(ScannedCandidate::Folder(candidate)) = self.candidates.get_mut(key) else {
+            return None;
+        };
+        candidate.files = files;
+        Some(candidate.clone())
+    }
+
     pub(super) fn record_event(&mut self, event: &ImportEvent) {
         match event {
             ImportEvent::ImportProgress {
@@ -542,6 +559,17 @@ pub enum ScanEvent {
     CandidateSkipChanged {
         candidate_key: String,
         skipped: bool,
+    },
+    /// The user bound one of a candidate's track sheets to an audio file, or
+    /// cleared the binding. Carries the re-derived candidate, like
+    /// [`Self::FolderCandidate`] — a bound sheet is a different disc, with a
+    /// different track count and format label, so every index holding those
+    /// replaces its copy from this rather than keeping stale ones.
+    ///
+    /// It also says the candidate's stored identify verdict was cleared, which
+    /// is what brings it back to the queue sweep.
+    CandidateBindingChanged {
+        candidate: FolderCandidate,
     },
     /// A folder scan could not read the watched root. Previous candidates are
     /// left in place because the scan did not produce a replacement snapshot.

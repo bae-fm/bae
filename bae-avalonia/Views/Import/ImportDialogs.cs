@@ -124,6 +124,121 @@ internal sealed class ImportDialogs
         }
     }
 
+    // One track sheet: what it carves, what it describes, and the picker that
+    // names the audio. The choices come from core already filtered to what the
+    // sheet can use, each refusal carrying its reason — offering a file that
+    // would fail at commit is the failure the editable binding removes.
+    private Control TrackSheetBindingRow(string candidateKey, ImportTrackSheet sheet, TextBlock status)
+    {
+        var row = new StackPanel { Spacing = 4 };
+        var line = DialogUi.Body(TrackSheetLine(sheet));
+        row.Children.Add(line);
+
+        var combo = new ComboBox
+        {
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            PlaceholderText = Loc.Core("ui.import.sheet.choose_audio"),
+        };
+        // Repopulating sets SelectedItem, which raises SelectionChanged; without
+        // this the initial fill would read as the user picking what is already
+        // bound and write it back.
+        var filling = false;
+        combo.SelectionChanged += async (_, _) =>
+        {
+            if (filling || combo.SelectedItem is not ComboBoxItem { Tag: string[] tag })
+            {
+                return;
+            }
+            var audioFileId = tag.Length == 0 ? null : tag[0];
+            if (audioFileId == sheet.Describes)
+            {
+                return;
+            }
+            if (!await _app.ImportStore.SetSheetBinding(candidateKey, sheet.FileId, audioFileId))
+            {
+                status.IsVisible = true;
+                return;
+            }
+            // Re-read what the folder now is rather than assuming: a binding
+            // core refused, or a sheet whose audio has since gone, would leave
+            // an optimistic line saying something untrue.
+            var reread = _app.ImportStore.Candidate(candidateKey)?.TrackSheets
+                .FirstOrDefault(entry => entry.FileId == sheet.FileId);
+            if (reread is not null)
+            {
+                sheet = reread;
+                line.Text = TrackSheetLine(sheet);
+            }
+        };
+        row.Children.Add(combo);
+
+        // Core probes every audio file to answer, so the choices are read once,
+        // when the picker opens.
+        _ = FillSheetBindingOptions(combo, candidateKey, sheet, () => filling = false, () => filling = true);
+        return row;
+    }
+
+    // A sheet's own line: what it carves once it describes something, and why it
+    // describes nothing plus what its directive asked for while it does not.
+    private static string TrackSheetLine(ImportTrackSheet sheet) =>
+        sheet.Describes is null
+            ? string.Join("  ·  ", new[]
+            {
+                sheet.FileId,
+                sheet.UnboundReason,
+                sheet.Requested.Count > 0
+                    ? Loc.Core("ui.import.sheet.asked_for", "names", string.Join(", ", sheet.Requested))
+                    : null,
+            }.Where(part => !string.IsNullOrEmpty(part)))
+            : $"{sheet.FileId}  ·  {Loc.Chrome("import.candidate.tracks", "count", sheet.TrackCount)}";
+
+    private async Task FillSheetBindingOptions(
+        ComboBox combo,
+        string candidateKey,
+        ImportTrackSheet sheet,
+        Action doneFilling,
+        Action startFilling)
+    {
+        var options = await _app.ImportStore.SheetBindingOptions(candidateKey, sheet.FileId);
+        startFilling();
+        combo.Items.Clear();
+        ComboBoxItem? selected = null;
+        foreach (var option in options)
+        {
+            var item = new ComboBoxItem
+            {
+                Content = option.RefusalReason is null
+                    ? option.FileId
+                    : $"{option.FileId}  ·  {option.RefusalReason}",
+                // A file the sheet cannot use is shown, disabled, with core's
+                // reason — a folder whose only audio is unusable reads as "here
+                // is why" rather than as an empty list.
+                IsEnabled = option.RefusalReason is null,
+                Tag = new[] { option.FileId },
+            };
+            combo.Items.Add(item);
+            if (option.FileId == sheet.Describes)
+            {
+                selected = item;
+            }
+        }
+        if (options.Count > 0)
+        {
+            var nothing = new ComboBoxItem
+            {
+                Content = Loc.Core("ui.import.sheet.describes_nothing"),
+                Tag = Array.Empty<string>(),
+            };
+            combo.Items.Add(nothing);
+            selected ??= sheet.Describes is null ? nothing : null;
+        }
+        // Nothing to offer: a sheet naming one file per track, or a folder with
+        // no audio. There is no choice to present, so there is no control.
+        combo.IsVisible = options.Count > 0;
+        combo.SelectedItem = selected;
+        doneFilling();
+    }
+
     private Control BuildPicker(
         ImportCandidate candidate,
         List<ReleaseCandidateChoice> results,
@@ -193,6 +308,18 @@ internal sealed class ImportDialogs
                     onDocument((document.Name, text));
                 };
                 column.Children.Add(docButton);
+            }
+        }
+
+        // The sheet↔audio binding, the one file role a user can edit. Avalonia has
+        // no per-file pane yet — that is the mapping-pane task's work — so the
+        // control lives beside the documents the picker already lists.
+        if (candidate.TrackSheets.Count > 0)
+        {
+            column.Children.Add(DialogUi.SectionLabel(Loc.Chrome("import.track_sheets")));
+            foreach (var sheet in candidate.TrackSheets)
+            {
+                column.Children.Add(TrackSheetBindingRow(candidate.Key, sheet, status));
             }
         }
 

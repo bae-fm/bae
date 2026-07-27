@@ -1232,19 +1232,74 @@ pub struct BridgeFileInfo {
     pub local_path: String,
 }
 
-/// What a track sheet's `FILE` directive resolved to. Mirror of bae-core's
-/// `SheetBinding`; `file_id` is a file's `name` (its release-relative path).
+/// What a track sheet describes. Mirror of bae-core's `SheetBinding`; `file_id`
+/// is a file's `name` (its release-relative path).
+///
+/// The scan proposes it from the sheet's `FILE` directive and the user can
+/// overrule it — see `AppHandle::set_sheet_binding`.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeSheetBinding {
     /// Bound to the audio named by `file_id`.
     Describes { file_id: String },
-    /// The directive names audio that is not in the folder, or names several
-    /// and only some are here.
-    Unresolved,
+    /// The sheet describes nothing: the directive names audio that is not in
+    /// the folder, names several and only some are here, or the user cleared
+    /// the binding. `requested` is what the directive asked for, so the pane
+    /// can say what the sheet was looking for while it offers the folder's own
+    /// audio instead.
+    Unresolved { requested: Vec<String> },
     /// The directive resolved, but bae can't carve tracks out of that codec.
     /// The audio imports as one track. The UI localizes `codec` through
     /// [`bridge_sheet_refused_codec_key`].
     RefusedCodec { file_id: String, codec: String },
+}
+
+/// Whether one of a candidate's audio files can back a sheet's binding. Mirror
+/// of bae-core's `SheetBindingOffer`. Core decides this by probing, so no UI
+/// reads a codec to work out what it may offer.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeSheetBindingOffer {
+    /// The sheet can be bound to this audio.
+    Offered,
+    /// bae can't carve tracks out of that codec. The UI localizes `codec`
+    /// through [`bridge_sheet_refused_codec_key`] — the same wording a sheet
+    /// the scan already refused carries.
+    RefusedCodec { codec: String },
+    /// bae can't read the file at all. Localized through
+    /// [`bridge_sheet_refused_unreadable_key`].
+    RefusedUnreadable,
+}
+
+impl BridgeSheetBindingOffer {
+    pub(crate) fn loc_key(&self) -> Option<&'static str> {
+        match self {
+            Self::Offered => None,
+            Self::RefusedCodec { .. } => Some(SHEET_REFUSED_CODEC_KEY),
+            Self::RefusedUnreadable => Some(SHEET_REFUSED_UNREADABLE_KEY),
+        }
+    }
+}
+
+/// Localization key for why a file cannot back a sheet's binding — resolved by
+/// the UI against the `Core` string table, interpolating `codec` where the
+/// variant carries one. `None` for a file that *is* offerable: it needs no
+/// reason, which is what makes an offer and a refusal distinguishable without a
+/// UI reading the variant.
+#[uniffi::export]
+pub fn bridge_sheet_binding_offer_key(offer: BridgeSheetBindingOffer) -> Option<String> {
+    offer.loc_key().map(str::to_string)
+}
+
+/// One of a candidate's audio files, as a choice for a sheet's binding. The set
+/// crosses already filtered to what the sheet can use, each refusal carrying
+/// its reason: offering a file the commit would reject is the failure the
+/// editable binding exists to remove.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeSheetBindingOption {
+    /// The audio file's `name` (its release-relative path) — the id
+    /// `AppHandle::set_sheet_binding` takes, and the one to match against
+    /// `BridgeFileInfo.name` for anything else the row shows.
+    pub file_id: String,
+    pub offer: BridgeSheetBindingOffer,
 }
 
 /// Localization key for a refused sheet binding — resolved by the UI against the
@@ -1255,7 +1310,15 @@ pub fn bridge_sheet_refused_codec_key() -> String {
     SHEET_REFUSED_CODEC_KEY.to_string()
 }
 
+/// Localization key for audio bae cannot read, refused as a binding for that
+/// reason rather than for its codec.
+#[uniffi::export]
+pub fn bridge_sheet_refused_unreadable_key() -> String {
+    SHEET_REFUSED_UNREADABLE_KEY.to_string()
+}
+
 pub(crate) const SHEET_REFUSED_CODEC_KEY: &str = "core.import.sheet.refused_codec";
+pub(crate) const SHEET_REFUSED_UNREADABLE_KEY: &str = "core.import.sheet.refused_unreadable";
 
 /// The job the scan proposed for one file. Mirror of bae-core's `FileRole`. No
 /// UI decides a file's role, and no UI infers a pairing from a filename.
@@ -4369,7 +4432,17 @@ impl BridgeCandidateFile {
                     SheetBinding::Describes { file_id } => {
                         BridgeSheetBinding::Describes { file_id }
                     }
-                    SheetBinding::Unresolved => BridgeSheetBinding::Unresolved,
+                    // Derived from the parsed sheet, like `track_count` below:
+                    // the directive's text is what the pane shows a user whose
+                    // sheet found nothing, and the bridge doesn't mirror the
+                    // whole parse to carry it.
+                    SheetBinding::Unresolved => BridgeSheetBinding::Unresolved {
+                        requested: sheet
+                            .audio_file_references()
+                            .into_iter()
+                            .map(str::to_string)
+                            .collect(),
+                    },
                     SheetBinding::RefusedCodec { file_id, codec } => {
                         BridgeSheetBinding::RefusedCodec { file_id, codec }
                     }
@@ -4388,6 +4461,25 @@ impl BridgeCandidateFile {
             FileRole::Other => BridgeFileRole::Other,
         };
         BridgeCandidateFile { file, role }
+    }
+}
+
+#[cfg(feature = "desktop")]
+impl BridgeSheetBindingOption {
+    pub(crate) fn from_core(option: bae_core::import::folder_scanner::SheetBindingOption) -> Self {
+        use bae_core::import::folder_scanner::{SheetBindingOffer, SheetBindingOption};
+
+        let SheetBindingOption { file_id, offer } = option;
+        BridgeSheetBindingOption {
+            file_id,
+            offer: match offer {
+                SheetBindingOffer::Offered => BridgeSheetBindingOffer::Offered,
+                SheetBindingOffer::RefusedCodec { codec } => {
+                    BridgeSheetBindingOffer::RefusedCodec { codec }
+                }
+                SheetBindingOffer::RefusedUnreadable => BridgeSheetBindingOffer::RefusedUnreadable,
+            },
+        }
     }
 }
 
@@ -4712,6 +4804,30 @@ mod loc_key_coverage {
 
         // bridge_sheet_refused_codec_key — one key, no variants to walk.
         keys.push(bridge_sheet_refused_codec_key());
+        keys.push(bridge_sheet_refused_unreadable_key());
+
+        // bridge_sheet_binding_offer_key — an offered file needs no reason.
+        for o in [
+            BridgeSheetBindingOffer::Offered,
+            BridgeSheetBindingOffer::RefusedCodec {
+                codec: String::new(),
+            },
+            BridgeSheetBindingOffer::RefusedUnreadable,
+        ] {
+            let expected: Option<&str> = match o {
+                BridgeSheetBindingOffer::Offered => None,
+                BridgeSheetBindingOffer::RefusedCodec { .. } => {
+                    Some("core.import.sheet.refused_codec")
+                }
+                BridgeSheetBindingOffer::RefusedUnreadable => {
+                    Some("core.import.sheet.refused_unreadable")
+                }
+            };
+            assert_eq!(bridge_sheet_binding_offer_key(o).as_deref(), expected);
+            if let Some(k) = expected {
+                keys.push(k.to_string());
+            }
+        }
 
         // BridgeTrackSide::header_key — Flat carries no key (None). This is what
         // BridgeTrackGroup::header_key is built from at conversion.

@@ -1459,6 +1459,54 @@ impl AppHandle {
             .map_err(BridgeError::import)
     }
 
+    /// What the track sheet `sheet_file_id` on candidate `candidate_key` can be
+    /// bound to: the folder's audio, each file offered or refused with the
+    /// reason. Empty when the sheet names one file per track rather than one
+    /// for the disc — a single choice cannot express that layout — and when the
+    /// folder holds no audio.
+    ///
+    /// Core probes each file to decide, so ask for this when a picker opens
+    /// rather than holding it alongside the candidate.
+    pub async fn sheet_binding_options(
+        &self,
+        candidate_key: String,
+        sheet_file_id: String,
+    ) -> Result<Vec<crate::types::BridgeSheetBindingOption>, BridgeError> {
+        Ok(self
+            .services
+            .import()
+            .sheet_binding_options(candidate_key, sheet_file_id)
+            .await
+            .map_err(BridgeError::import)?
+            .into_iter()
+            .map(crate::types::BridgeSheetBindingOption::from_core)
+            .collect())
+    }
+
+    /// Bind a candidate's track sheet to one of its audio files, or clear the
+    /// binding with `audio_file_id: None`.
+    ///
+    /// Clearing leaves the sheet describing nothing; it does not restore what
+    /// the scan proposed. `audio_file_id` must be one the matching
+    /// [`Self::sheet_binding_options`] call offered — a refused one is rejected
+    /// here rather than at commit.
+    ///
+    /// Persists the decision and clears the candidate's stored identify
+    /// verdict, because a bound sheet is a different disc. The candidate
+    /// invalidation makes the import view read the new roles.
+    pub async fn set_sheet_binding(
+        &self,
+        candidate_key: String,
+        sheet_file_id: String,
+        audio_file_id: Option<String>,
+    ) -> Result<(), BridgeError> {
+        self.services
+            .import()
+            .set_sheet_binding(candidate_key, sheet_file_id, audio_file_id)
+            .await
+            .map_err(BridgeError::import)
+    }
+
     /// Scan every watched folder. Import invalidations tell the UI to read the
     /// current candidate list.
     pub fn scan_watched_folders(&self) -> Result<(), BridgeError> {

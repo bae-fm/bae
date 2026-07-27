@@ -378,6 +378,8 @@
   <data name="output.title" xml:space="preserve"><value>エクスポートと保存</value></data>
   <data name="export.state.exporting" xml:space="preserve"><value>{percent}%エクスポート中</value></data>
   <data name="export.state.saving" xml:space="preserve"><value>{percent}%保存中</value></data>
+  <data name="import.track_sheets" xml:space="preserve"><value>トラックシート</value></data>
+  <data name="import.sheet.describes_nothing_yet" xml:space="preserve"><value>まだ何も指定していません</value></data>
   <data name="import.documents" xml:space="preserve"><value>ドキュメント</value></data>
   <data name="import.document.read_failed" xml:space="preserve"><value>{name}を読み取れませんでした: {error}</value></data>
   <data name="libraries.reveal" xml:space="preserve"><value>エクスプローラーで表示</value></data>

@@ -19,6 +19,12 @@ struct AudioFileRow: View {
     let onOpenDocument: (String, String) -> Void
     /// Surface errors from reading a sheet.
     let onError: (String) -> Void
+    /// What each nested sheet may be bound to, by the sheet's file id — see
+    /// `TrackSheetRow.bindingOptions`.
+    let bindingOptions: [String: [BridgeSheetBindingOption]]
+    /// Name the audio a sheet describes: sheet file id, then the audio's, or
+    /// `nil` to leave it describing nothing.
+    let onBind: (String, String?) -> Void
 
     private var isPreviewing: Bool { previewingPath == file.localPath }
 
@@ -60,6 +66,8 @@ struct AudioFileRow: View {
                         sheet: sheet,
                         onOpenDocument: onOpenDocument,
                         onError: onError,
+                        bindingOptions: bindingOptions[sheet.file.name],
+                        onBind: { onBind(sheet.file.name, $0) },
                     )
                 }
             }
@@ -76,13 +84,25 @@ struct AudioFileRow: View {
     }
 }
 
-/// A track sheet: its name, the tracks it carves, and — when its `FILE`
-/// directive named audio that isn't in the folder — the line saying so. Tapping
-/// opens the sheet in the document viewer.
+/// A track sheet: its name, the tracks it carves, what its `FILE` directive
+/// named when that isn't in the folder, and the control that names the audio it
+/// describes. Tapping the name opens the sheet in the document viewer.
+///
+/// The binding control is the point of this row. The scan proposes a pairing
+/// from the sheet's directive; when the directive names a file that was later
+/// re-encoded under another name, the user is the only one who knows the answer,
+/// and this is where they give it.
 struct TrackSheetRow: View {
     let sheet: BridgeCandidateFile
     let onOpenDocument: (String, String) -> Void
     let onError: (String) -> Void
+    /// The audio this sheet may be bound to, each already offered or refused by
+    /// core. Nil until it has been asked for; empty means there is nothing to
+    /// offer, so no control appears.
+    let bindingOptions: [BridgeSheetBindingOption]?
+    /// Name the audio this sheet describes, or `nil` to leave it describing
+    /// nothing.
+    let onBind: (String?) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
@@ -116,8 +136,85 @@ struct TrackSheetRow: View {
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                 }
+                if let requested = sheet.sheetRequestedLine {
+                    Text(requested)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                }
             }
             .padding(.top, 4)
+            bindingMenu
+        }
+    }
+
+    /// The audio picker. Absent while the offers are still being read, and
+    /// absent when core has nothing to offer — a sheet naming one file per
+    /// track, or a folder with no audio.
+    @ViewBuilder
+    private var bindingMenu: some View {
+        if let options = bindingOptions, !options.isEmpty {
+            Menu {
+                ForEach(options, id: \.fileId) { option in
+                    bindButton(option)
+                }
+                Divider()
+                Button {
+                    onBind(nil)
+                } label: {
+                    checkable(
+                        coreString("ui.import.sheet.describes_nothing"),
+                        selected: sheet.describes == nil
+                    )
+                }
+            } label: {
+                Label(
+                    sheet.describes
+                        ?? coreString("ui.import.sheet.choose_audio"),
+                    systemImage: "link"
+                )
+                .font(.caption2)
+                .lineLimit(1)
+                .truncationMode(.middle)
+            }
+            .menuStyle(.borderlessButton)
+            .fixedSize()
+            .foregroundStyle(.secondary)
+        }
+    }
+
+    /// One offered file, or a refused one shown disabled with core's reason —
+    /// visible rather than hidden, so a folder whose only audio the sheet can't
+    /// use reads as "here is why" instead of an empty menu.
+    @ViewBuilder
+    private func bindButton(_ option: BridgeSheetBindingOption) -> some View {
+        if let refusal = option.refusalLine {
+            Button {
+            } label: {
+                Text("\(option.fileId) — \(refusal)")
+            }
+            .disabled(true)
+        }
+        else {
+            Button {
+                onBind(option.fileId)
+            } label: {
+                checkable(
+                    option.fileId,
+                    selected: sheet.describes == option.fileId
+                )
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func checkable(_ label: String, selected: Bool) -> some View {
+        if selected {
+            Label(label, systemImage: "checkmark")
+        }
+        else {
+            Text(label)
         }
     }
 
@@ -152,6 +249,8 @@ struct TrackSheetRow: View {
             onPreviewAudio: { _ in },
             onOpenDocument: { _, _ in },
             onError: { _ in },
+            bindingOptions: PreviewData.sheetBindingOptions,
+            onBind: { _, _ in },
         )
         .padding()
         .frame(width: 300)
@@ -164,11 +263,19 @@ struct TrackSheetRow: View {
                 sheet: PreviewData.unboundTrackSheet,
                 onOpenDocument: { _, _ in },
                 onError: { _ in },
+                bindingOptions: PreviewData.sheetBindingOptions[
+                    PreviewData.unboundTrackSheet.file.name
+                ],
+                onBind: { _ in },
             )
             TrackSheetRow(
                 sheet: PreviewData.refusedTrackSheet,
                 onOpenDocument: { _, _ in },
                 onError: { _ in },
+                bindingOptions: PreviewData.sheetBindingOptions[
+                    PreviewData.unboundTrackSheet.file.name
+                ],
+                onBind: { _ in },
             )
         }
         .padding()

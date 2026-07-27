@@ -38,6 +38,18 @@ internal sealed class ImportService
     public Func<string, bool, Task<(bool Current, string? Error)>> SetCandidateSkipped { get; init; }
         = (_, _) => throw new InvalidOperationException("ImportService stub: SetCandidateSkipped not wired");
 
+    /// <summary>What a candidate's track sheet may be bound to: the folder's
+    /// audio, each already offered or refused with core's reason.</summary>
+    public Func<string, string, Task<(bool Current, (List<ImportSheetBindingOption>? Options, string? Error) Result)>> SheetBindingOptions { get; init; }
+        = (_, _) => throw new InvalidOperationException("ImportService stub: SheetBindingOptions not wired");
+
+    /// <summary>Name the audio a track sheet describes, or clear it with null.
+    /// Core persists the decision and drops the candidate's stored identify
+    /// verdict, so the candidate invalidation brings back both the new roles and
+    /// a fresh identification.</summary>
+    public Func<string, string, string?, Task<(bool Current, string? Error)>> SetSheetBinding { get; init; }
+        = (_, _, _) => throw new InvalidOperationException("ImportService stub: SetSheetBinding not wired");
+
     /// <summary>Kick off auto-identification for an as-yet unidentified candidate.</summary>
     public Func<string, string, Task<bool>> AutoIdentifyFolder { get; init; }
         = (_, _) => throw new InvalidOperationException("ImportService stub: AutoIdentifyFolder not wired");
@@ -120,6 +132,10 @@ internal sealed class ImportService
             session.RunForCurrentHandle(handle => NativeBae.RemoveWatchedFolder(handle, path)),
         SetCandidateSkipped = (path, skipped) =>
             session.RunForCurrentHandle(handle => NativeBae.SetCandidateSkipped(handle, path, skipped)),
+        SheetBindingOptions = (candidateKey, sheetFileId) =>
+            session.RunForCurrentHandle(handle => NativeBae.SheetBindingOptions(handle, candidateKey, sheetFileId)),
+        SetSheetBinding = (candidateKey, sheetFileId, audioFileId) =>
+            session.RunForCurrentHandle(handle => NativeBae.SetSheetBinding(handle, candidateKey, sheetFileId, audioFileId)),
         AutoIdentifyFolder = (candidateKey, folderPath) =>
             session.RunForCurrentHandle(handle => NativeBae.AutoIdentifyFolder(handle, candidateKey, folderPath)),
         RerunIdentifyForCandidate = candidateKey =>

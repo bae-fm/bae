@@ -378,6 +378,8 @@
   <data name="output.title" xml:space="preserve"><value>ఎగుమతి &amp; సేవ్</value></data>
   <data name="export.state.exporting" xml:space="preserve"><value>ఎగుమతి చేస్తోంది {percent}%</value></data>
   <data name="export.state.saving" xml:space="preserve"><value>సేవ్ చేస్తోంది {percent}%</value></data>
+  <data name="import.track_sheets" xml:space="preserve"><value>ట్రాక్ షీట్లు</value></data>
+  <data name="import.sheet.describes_nothing_yet" xml:space="preserve"><value>ఇంకా దేన్నీ సూచించడం లేదు</value></data>
   <data name="import.documents" xml:space="preserve"><value>పత్రాలు</value></data>
   <data name="import.document.read_failed" xml:space="preserve"><value>{name} చదవలేకపోయింది: {error}</value></data>
   <data name="libraries.reveal" xml:space="preserve"><value>ఫైల్ ఎక్స్‌ప్లోరర్‌లో చూపించు</value></data>

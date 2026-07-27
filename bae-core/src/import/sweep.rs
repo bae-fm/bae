@@ -13,11 +13,13 @@
 //! the queue is identified whether or not anyone has the Import section open.
 //! Opening a view triggers nothing.
 //!
-//! **It is also the one writer of `import_candidate_state`**, including for
-//! runs it did not start: [`QueueSweepHandle::record_selection`] hangs a
+//! **It is the one writer of `import_candidate_state`'s verdict**, including
+//! for runs it did not start: [`QueueSweepHandle::record_selection`] hangs a
 //! recorder off a candidate a person opened, so their answer persists too.
 //! Everything that decides what to store lives here rather than being spread
-//! across the two producers.
+//! across the two producers. The row's other half — the user's sheet bindings —
+//! is written by the import handle, and writing it *clears* the verdict, which
+//! is what brings a re-bound candidate back to this sweep.
 //!
 //! **A candidate whose content hash already holds a finished verdict is
 //! skipped**, which is what makes every launch after the first instant. A row
@@ -33,7 +35,7 @@
 
 use super::folder_scanner::FolderCandidate;
 use super::handle::{ImportCandidateSnapshot, ImportEvent, ImportServiceHandle, ScanEvent};
-use crate::db::{DbImportCandidateState, NewImportCandidateState};
+use crate::db::{DbImportCandidateState, NewImportCandidateVerdict};
 use crate::identify::verdict::decode_stored as decode;
 use crate::identify::{IdentifyServiceHandle, IdentifyState, TerminalVerdict};
 use crate::import::search::{fetch_source_tracks, MetadataResult};
@@ -206,7 +208,12 @@ pub fn start(
             // up behind it and produce another pass, which is what makes a
             // folder added mid-sweep get picked up.
             match event {
-                Ok(ImportEvent::Scan(ScanEvent::Finished)) => {
+                // A binding change plans a pass for the same reason a finished
+                // scan does: a candidate that has no stored answer, because the
+                // change cleared it.
+                Ok(ImportEvent::Scan(
+                    ScanEvent::Finished | ScanEvent::CandidateBindingChanged { .. },
+                )) => {
                     run_pass(&loop_context, &loop_token).await;
                 }
                 Ok(_) => {}
@@ -392,6 +399,21 @@ async fn run_pass(context: &SweepContext, token: &CancellationToken) {
                         candidate.path.to_string_lossy() != candidate_key.as_str()
                     });
                 }
+                // The folder is a different shape now. A run already under way
+                // is answering the shape it had, and letting it settle would
+                // write that answer straight back over the one the binding
+                // change just cleared — so drop it. The pass this event also
+                // plans identifies the candidate again, against what it now is.
+                Ok(ImportEvent::Scan(ScanEvent::CandidateBindingChanged { candidate })) => {
+                    let candidate_key = candidate.path.to_string_lossy().into_owned();
+                    if in_flight.remove(&candidate_key).is_some() {
+                        debug!(
+                            "sweep: {candidate_key}'s sheet binding changed mid-identification; \
+                             dropping the run that was answering its old shape"
+                        );
+                        context.release(&candidate_key);
+                    }
+                }
                 Ok(_) => {}
                 Err(broadcast::error::RecvError::Lagged(n)) => {
                     // A dropped `IdentifyStateChanged` would leave its candidate
@@ -427,9 +449,15 @@ fn plan(
     let mut top_up = Vec::new();
     let mut identified = 0;
     for candidate in candidates {
-        // An undecodable row is absent, so the candidate is identified again and
-        // the row overwritten — see `identify::verdict::decode_stored`, which is
-        // the one place that rule lives.
+        // A row with no identify result is a candidate nobody has answered —
+        // either never, or not since a sheet binding changed what the folder is
+        // and cleared the answer it had.
+        //
+        // A row this build can no longer decode is treated the same way, not as
+        // an error: the shape of a stored verdict changes with the code that
+        // writes it, and this is pre-1.0 — so the honest response to a row this
+        // build cannot read is to identify the candidate again and overwrite it.
+        // No fallback decoder, no migration.
         let row = stored
             .get(&candidate.files.content_hash())
             .filter(|row| decode(row).is_some());
@@ -484,7 +512,7 @@ async fn top_up_row(
     row: DbImportCandidateState,
     token: &CancellationToken,
 ) {
-    let Some(mut verdict) = decode(&row) else {
+    let (Some(mut verdict), Some(identify)) = (decode(&row), row.identify.as_ref()) else {
         return;
     };
     if !fill_source_tracks(context, &mut verdict, token).await {
@@ -496,7 +524,7 @@ async fn top_up_row(
         &row.content_hash,
         &row.folder_path,
         &verdict,
-        row.probed_total_duration_ms,
+        identify.probed_total_duration_ms,
     )
     .await;
 }
@@ -556,7 +584,7 @@ async fn save(
             return false;
         }
     };
-    let row = NewImportCandidateState {
+    let row = NewImportCandidateVerdict {
         content_hash: content_hash.to_string(),
         folder_path: folder_path.to_string(),
         verdict,
@@ -564,7 +592,7 @@ async fn save(
     };
     if let Err(e) = context
         .library_manager
-        .save_import_candidate_state(&row)
+        .save_import_candidate_verdict(&row)
         .await
     {
         warn!(
@@ -708,8 +736,18 @@ async fn record_selection_verdict(
                     return;
                 }
             }
+            // The candidate is gone, or is a different shape than the run was
+            // answering. Either way this watch has nothing left to store: a
+            // verdict written now would describe the folder as it was before
+            // the binding changed, which is exactly the stale answer the change
+            // cleared.
             Ok(ImportEvent::Scan(ScanEvent::CandidateRemoved { candidate_key: key }))
                 if key == candidate_key =>
+            {
+                return;
+            }
+            Ok(ImportEvent::Scan(ScanEvent::CandidateBindingChanged { candidate }))
+                if candidate.path.to_string_lossy() == candidate_key.as_str() =>
             {
                 return;
             }

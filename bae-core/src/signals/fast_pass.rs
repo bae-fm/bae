@@ -97,7 +97,14 @@ fn cue_barcodes(categorized: &CategorizedFiles) -> Vec<SourcedValue> {
 /// Enumerate and read every non-OCR source. Blocking; the service runs it via
 /// `spawn_blocking`. A failure surfaces as missing data for that one source and
 /// never aborts extraction.
-pub(super) fn gather_non_ocr_sources(folder: &Path) -> FastPass {
+///
+/// `stored` is the user's sheet bindings. They belong here rather than only at
+/// commit: binding a sheet is what makes a disc ID computable from sheet plus
+/// audio, and this pass is where that disc ID is derived.
+pub(super) fn gather_non_ocr_sources(
+    folder: &Path,
+    stored: &folder_scanner::StoredSheetBindings,
+) -> FastPass {
     let mut pass = FastPass::empty();
 
     // Path components: the candidate folder's own name and its parent's.
@@ -130,7 +137,7 @@ pub(super) fn gather_non_ocr_sources(folder: &Path) -> FastPass {
 
     // A scan failure means no audio was detected. The folder-name signals above
     // still stand, so return them rather than nothing.
-    let categorized = match folder_scanner::collect_release_candidate_files(folder) {
+    let categorized = match folder_scanner::collect_release_candidate_files(folder, stored) {
         Ok(c) => c,
         Err(e) => {
             debug!(
@@ -371,8 +378,11 @@ mod tests {
         )
         .unwrap();
 
-        let categorized =
-            crate::import::folder_scanner::collect_release_candidate_files(dir).unwrap();
+        let categorized = crate::import::folder_scanner::collect_release_candidate_files(
+            dir,
+            &crate::import::folder_scanner::StoredSheetBindings::none(),
+        )
+        .unwrap();
         let disc_id = crate::import::discid::compute_discid_from_categorized(&categorized);
         let track_count = categorized.track_count();
 

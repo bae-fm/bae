@@ -70,14 +70,21 @@ extension BridgeCandidateFile {
         case .unresolved:
             return String(localized: "Describes nothing yet")
         case .refusedCodec(_, let codec):
-            let format = NSLocalizedString(
-                bridgeSheetRefusedCodecKey(),
-                tableName: "Core",
-                bundle: .main,
-                comment: ""
-            )
-            return String(format: format, codec)
+            return coreString(bridgeSheetRefusedCodecKey(), codec)
         }
+    }
+
+    /// What this sheet's `FILE` directive named, when what it named is not
+    /// here. Shown beside `unboundSheetLine` so someone choosing the audio can
+    /// see what the sheet was looking for; nil once it describes something.
+    var sheetRequestedLine: String? {
+        guard case .unresolved(let requested)? = sheetBinding,
+            !requested.isEmpty
+        else { return nil }
+        return coreString(
+            "ui.import.sheet.asked_for",
+            ListFormatter.localizedString(byJoining: requested)
+        )
     }
 
     /// Playable tracks the sheet carves; 0 when the file isn't a sheet.
@@ -104,5 +111,20 @@ extension BridgeCandidateFiles {
     /// Sheets whose `FILE` directive named audio that isn't in the folder.
     var unboundTrackSheets: [BridgeCandidateFile] {
         trackSheets.filter { $0.describes == nil }
+    }
+}
+
+extension BridgeSheetBindingOption {
+    /// Why this file can't back the sheet, in the user's language; nil when it
+    /// can. Core decides both the refusal and its wording — the picker only
+    /// places the line and dims the row.
+    var refusalLine: String? {
+        guard let key = bridgeSheetBindingOfferKey(offer: offer) else {
+            return nil
+        }
+        guard case .refusedCodec(let codec) = offer else {
+            return coreString(key)
+        }
+        return coreString(key, codec)
     }
 }

@@ -69,7 +69,12 @@ internal sealed class ImportStore
     // Re-read the scan from core into _all and the watched folders, then project
     // onto the active tab. A failed read surfaces the import banner; no handle is a
     // no-op.
-    public async void RefreshCandidates()
+    public async void RefreshCandidates() => await ReadCandidates();
+
+    // The read itself, awaitable — a caller that must see the new rows before it
+    // reads them (the sheet-binding editor) waits on this rather than on an
+    // `async void` it cannot observe.
+    private async Task ReadCandidates()
     {
         var (current, result) = await _import.ImportCandidates();
         if (!current)
@@ -209,6 +214,53 @@ internal sealed class ImportStore
         {
             _showError(Loc.Chrome("import.error_title"), error);
         }
+    }
+
+    // What a track sheet may be bound to. Empty when core has nothing to offer —
+    // a sheet naming one file per track, or a folder with no audio — and empty
+    // on failure, with the reason on the import banner.
+    public async Task<List<ImportSheetBindingOption>> SheetBindingOptions(string key, string sheetFileId)
+    {
+        var (current, result) = await _import.SheetBindingOptions(key, sheetFileId);
+        if (!current)
+        {
+            return new List<ImportSheetBindingOption>();
+        }
+        var (options, error) = result;
+        if (error is not null || options is null)
+        {
+            _showError(Loc.Chrome("import.error_title"), error ?? Loc.Chrome("import.failed"));
+            return new List<ImportSheetBindingOption>();
+        }
+        return options;
+    }
+
+    // Name the audio a track sheet describes, or clear it with null. Core
+    // persists the decision, clears the candidate's stored identify verdict, and
+    // the list is re-read so the row's track count and format follow the shape
+    // the folder now has. Returns whether the change landed.
+    public async Task<bool> SetSheetBinding(string key, string sheetFileId, string? audioFileId)
+    {
+        var (current, error) = await _import.SetSheetBinding(key, sheetFileId, audioFileId);
+        if (!current)
+        {
+            return false;
+        }
+        if (error is not null)
+        {
+            _showError(Loc.Chrome("import.error_title"), error);
+            return false;
+        }
+        await ReadCandidates();
+        return true;
+    }
+
+    /// <summary>The candidate under `key` as the last refresh read it, or null
+    /// when it is gone.</summary>
+    public ImportCandidate? Candidate(string key)
+    {
+        var index = IndexInAll(key);
+        return index < 0 ? null : _all[index];
     }
 
     private int IndexInAll(string? key)

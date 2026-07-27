@@ -4,11 +4,6 @@ import os.log
 
 private let logger = Logger.bae("BridgeLookupFailure")
 
-/// Resolve a `core.*` catalog key through the app's String Catalog.
-private func localizedCore(_ key: String) -> String {
-    NSLocalizedString(key, tableName: "Core", bundle: .main, comment: "")
-}
-
 extension BridgeLookupFailure {
     /// The localized one-line reason. `provider` formats the HTTP status into
     /// the message (or a no-status fallback when absent); `diagnostic` has no
@@ -18,7 +13,7 @@ extension BridgeLookupFailure {
         switch self {
         case .diagnostic:
             // No translated copy — the opaque detail is shown separately.
-            return localizedCore("core.lookup.failure.diagnostic")
+            return coreString("core.lookup.failure.diagnostic")
         case .network, .timeout, .provider, .artworkAnalysis:
             // Core owns the key for every typed variant (including the
             // status-vs-no-status split for `provider`); the UI never picks it.
@@ -26,9 +21,9 @@ extension BridgeLookupFailure {
                 logger.warning(
                     "no catalog key for lookup failure \(String(reflecting: self))"
                 )
-                return localizedCore("core.lookup.failure.diagnostic")
+                return coreString("core.lookup.failure.diagnostic")
             }
-            let format = localizedCore(key)
+            let format = coreString(key)
             if case .provider(let status) = self, let status {
                 return String(format: format, NSNumber(value: status).intValue)
             }

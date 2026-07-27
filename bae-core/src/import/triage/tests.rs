@@ -730,7 +730,7 @@ fn the_group_order_is_stated_once_and_holds_every_group() {
 
 mod load {
     use super::*;
-    use crate::db::{Database, DbAlbum, DbArtist, DbRelease, DbTrack, NewImportCandidateState};
+    use crate::db::{Database, DbAlbum, DbArtist, DbRelease, DbTrack, NewImportCandidateVerdict};
     use crate::import::{ImportService, ReleaseIdentity};
     use std::path::Path;
     use std::sync::Arc;
@@ -837,15 +837,20 @@ mod load {
         }
 
         fn content_hash(&self, dir: &Path) -> String {
-            crate::import::folder_scanner::collect_release_candidate_files(dir)
-                .expect("the candidate folder is readable")
-                .content_hash()
+            // No stored bindings: these fixtures never edit one, so every
+            // sheet keeps the scan's own reading.
+            crate::import::folder_scanner::collect_release_candidate_files(
+                dir,
+                &crate::import::folder_scanner::StoredSheetBindings::none(),
+            )
+            .expect("the candidate folder is readable")
+            .content_hash()
         }
 
         /// Seed the row a sweep would have written for this folder.
         async fn store(&self, dir: &Path, verdict: &str, probed_total_duration_ms: i64) {
             self.manager
-                .save_import_candidate_state(&NewImportCandidateState {
+                .save_import_candidate_verdict(&NewImportCandidateVerdict {
                     content_hash: self.content_hash(dir),
                     folder_path: dir.to_string_lossy().into_owned(),
                     verdict: verdict.to_string(),

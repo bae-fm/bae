@@ -1113,7 +1113,11 @@ impl AutomationState {
     fn apply_scan_event(&self, event: ScanEvent) {
         match event {
             ScanEvent::WatchedFoldersChanged { .. } => {}
-            ScanEvent::FolderCandidate(candidate) => {
+            // A binding change re-derives the candidate's track count and
+            // format label, so it replaces the indexed row exactly as a fresh
+            // scan of the folder would.
+            ScanEvent::FolderCandidate(candidate)
+            | ScanEvent::CandidateBindingChanged { candidate } => {
                 self.insert_candidate(automation_candidate_from_folder(candidate));
             }
             ScanEvent::InvalidCandidate(candidate) => {

@@ -378,6 +378,8 @@
   <data name="output.title" xml:space="preserve"><value>برآمد اور محفوظ</value></data>
   <data name="export.state.exporting" xml:space="preserve"><value>{percent}% برآمد ہو رہا ہے</value></data>
   <data name="export.state.saving" xml:space="preserve"><value>{percent}% محفوظ ہو رہا ہے</value></data>
+  <data name="import.track_sheets" xml:space="preserve"><value>ٹریک شیٹس</value></data>
+  <data name="import.sheet.describes_nothing_yet" xml:space="preserve"><value>ابھی کچھ ظاہر نہیں کرتا</value></data>
   <data name="import.documents" xml:space="preserve"><value>دستاویزات</value></data>
   <data name="import.document.read_failed" xml:space="preserve"><value>{name} پڑھا نہیں جا سکا: {error}</value></data>
   <data name="libraries.reveal" xml:space="preserve"><value>فائل ایکسپلورر میں دکھائیں</value></data>

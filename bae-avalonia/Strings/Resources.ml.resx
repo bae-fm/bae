@@ -378,6 +378,8 @@
   <data name="output.title" xml:space="preserve"><value>കയറ്റുമതിയും സംരക്ഷണവും</value></data>
   <data name="export.state.exporting" xml:space="preserve"><value>{percent}% കയറ്റുമതി ചെയ്യുന്നു</value></data>
   <data name="export.state.saving" xml:space="preserve"><value>{percent}% സംരക്ഷിക്കുന്നു</value></data>
+  <data name="import.track_sheets" xml:space="preserve"><value>ട്രാക്ക് ഷീറ്റുകൾ</value></data>
+  <data name="import.sheet.describes_nothing_yet" xml:space="preserve"><value>ഇതുവരെ ഒന്നും സൂചിപ്പിക്കുന്നില്ല</value></data>
   <data name="import.documents" xml:space="preserve"><value>ഡോക്യുമെന്റുകൾ</value></data>
   <data name="import.document.read_failed" xml:space="preserve"><value>{name} വായിക്കാനായില്ല: {error}</value></data>
   <data name="libraries.reveal" xml:space="preserve"><value>ഫയൽ എക്സ്‌പ്ലോററിൽ കാണിക്കുക</value></data>

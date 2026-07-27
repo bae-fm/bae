@@ -378,6 +378,8 @@
   <data name="output.title" xml:space="preserve"><value>dışa aktar ve kaydet</value></data>
   <data name="export.state.exporting" xml:space="preserve"><value>dışa aktarılıyor {percent}%</value></data>
   <data name="export.state.saving" xml:space="preserve"><value>kaydediliyor {percent}%</value></data>
+  <data name="import.track_sheets" xml:space="preserve"><value>Parça listeleri</value></data>
+  <data name="import.sheet.describes_nothing_yet" xml:space="preserve"><value>Henüz hiçbir şeyi tanımlamıyor</value></data>
   <data name="import.documents" xml:space="preserve"><value>Belgeler</value></data>
   <data name="import.document.read_failed" xml:space="preserve"><value>{name} okunamadı: {error}</value></data>
   <data name="libraries.reveal" xml:space="preserve"><value>Dosya Gezgini'nde göster</value></data>
