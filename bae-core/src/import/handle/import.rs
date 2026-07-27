@@ -22,12 +22,9 @@ impl ImportServiceHandle {
             .and_then(|n| n.to_str())
             .map(|s| s.to_string());
 
-        let stored_bindings = self.library_manager.load_stored_sheet_bindings().await?;
+        let stored_edits = self.library_manager.load_stored_candidate_edits().await?;
         let categorized = tokio::task::spawn_blocking(move || {
-            crate::import::folder_scanner::collect_release_candidate_files(
-                &folder,
-                &stored_bindings,
-            )
+            crate::import::folder_scanner::collect_release_candidate_files(&folder, &stored_edits)
         })
         .await
         .map_err(|e| crate::import::ImportError::Internal {

@@ -356,7 +356,7 @@ pub enum LoadedPlaybackState {
 /// would mean the sweep reaching for the ambient wall clock instead of the
 /// fake-able one already threaded through `Database`.
 ///
-/// It carries no sheet bindings: those are the user's half of the row and the
+/// It carries no file decisions: those are the user's half of the row and the
 /// verdict write leaves them alone.
 #[derive(Debug, Clone)]
 pub struct NewImportCandidateVerdict {
@@ -395,12 +395,12 @@ pub struct DbImportCandidateState {
     pub content_hash: String,
     pub folder_path: String,
     /// What identification concluded, or `None` when nothing has identified
-    /// this candidate yet — including when a sheet-binding change cleared what
-    /// had, because that verdict described a folder shape that no longer
-    /// applies.
+    /// this candidate yet — including when a file decision cleared what had,
+    /// because that verdict described a folder shape that no longer applies.
     pub identify: Option<DbCandidateIdentifyResult>,
-    /// The user's sheet↔audio decisions for this candidate.
-    pub sheet_bindings: crate::import::folder_scanner::SheetBindingEdits,
+    /// The user's decisions about this candidate's files: which audio each
+    /// track sheet describes, and which files are the release's tracks.
+    pub file_edits: crate::import::folder_scanner::CandidateFileEdits,
 }
 
 /// Where `releases.metadata_source` came from.

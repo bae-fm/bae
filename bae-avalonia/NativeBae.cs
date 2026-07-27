@@ -737,6 +737,17 @@ internal static class NativeBae
         string? audioFileId) =>
         CaptureError(() => Await(() => handle.SetSheetBinding(candidateKey, sheetFileId, audioFileId)));
 
+    /// <summary>Put one of a candidate's files in a role, or put it back in the
+    /// one the scan proposed. Core persists it — taking a file out of the
+    /// tracklist is a fact about the folder, not an edit to whichever pane is
+    /// open — and clears the candidate's stored identify verdict.</summary>
+    internal static string? SetFileRole(
+        AppHandle handle,
+        string candidateKey,
+        string fileId,
+        BridgeFileRoleChoice choice) =>
+        CaptureError(() => Await(() => handle.SetFileRole(candidateKey, fileId, choice)));
+
     internal static string? ScanFolder(AppHandle handle, string path, bool clearFirst) =>
         CaptureError(() => handle.AddWatchedFolder(path));
 
@@ -1166,6 +1177,7 @@ internal static class NativeBae
             RemoteCovers = prefetch.Detail.CoverArt.ToList(),
             LocalArtwork = LocalArtwork(handle.GetCandidate(folderPath)),
             Claim = prefetch.Claim,
+            Slots = prefetch.Slots,
         };
     }
 
@@ -1210,9 +1222,7 @@ internal static class NativeBae
             RowStatus = ImportRowStatus(runtime),
             Matches = ImportMatches(runtime.IdentifyState),
             Signals = runtime.SignalsToolbar.Signals.Select(SignalBadge).ToList(),
-            AudioPaths = AudioPaths(candidate.Files).ToList(),
-            Documents = ImportDocuments(candidate.Files),
-            TrackSheets = ImportTrackSheets(candidate.Files),
+            Files = candidate.Files,
             FolderPath = candidate.FolderPath,
             Skipped = candidate.Skipped,
             IsAdded = candidate.IsAdded,
@@ -1286,51 +1296,6 @@ internal static class NativeBae
             BridgeImportStep.Preparing preparing => new() { Kind = "preparing", StepTag = PrepareStepTag(preparing.Step) },
             BridgeImportStep.Running running => new() { Kind = "running", Phase = ImportPhaseTag(running.Phase) },
             _ => throw new ArgumentOutOfRangeException(nameof(step), step, "Unknown import step"),
-        };
-
-    private static string[] AudioPaths(BridgeCandidateFiles files) =>
-        files.Files
-            .Where(file => file.Role is BridgeFileRole.Audio)
-            .Select(file => file.File.LocalPath)
-            .ToArray();
-
-    // A candidate's readable evidence files: the track sheets first, then core's
-    // path-sorted documents (logs, sheets that would not parse, text). The same
-    // visual order as the file pane on other platforms, where the sheet rows sit
-    // above the documents section.
-    private static List<ImportDocument> ImportDocuments(BridgeCandidateFiles files)
-    {
-        var sheets = files.Files.Where(file => file.Role is BridgeFileRole.TrackSheet);
-        var documents = files.Files.Where(file => file.Role is BridgeFileRole.Document);
-        return sheets.Concat(documents).Select(ImportDocument).ToList();
-    }
-
-    // The candidate's track sheets, each with what it describes. The binding is
-    // core's typed value, not something inferred from a filename here.
-    private static List<ImportTrackSheet> ImportTrackSheets(BridgeCandidateFiles files) =>
-        files.Files
-            .Select(file => (file, role: file.Role as BridgeFileRole.TrackSheet))
-            .Where(entry => entry.role is not null)
-            .Select(entry => new ImportTrackSheet
-            {
-                FileId = entry.file.File.Name,
-                TrackCount = checked((int)entry.role!.TrackCount),
-                Describes = entry.role.Binding is BridgeSheetBinding.Describes describes
-                    ? describes.FileId
-                    : null,
-                UnboundReason = BridgeDisplay.UnboundSheetLine(entry.role.Binding),
-                Requested = entry.role.Binding is BridgeSheetBinding.Unresolved unresolved
-                    ? unresolved.Requested.ToList()
-                    : new List<string>(),
-            })
-            .ToList();
-
-    private static ImportDocument ImportDocument(BridgeCandidateFile file) =>
-        new()
-        {
-            Name = file.File.Name,
-            Path = file.File.LocalPath,
-            SizeBytes = checked((long)file.File.Size),
         };
 
     private static string CoverImageSourceUrl(BridgeCoverImageSource source) =>

@@ -476,18 +476,18 @@ fn build_mb_detail(
 /// before the record crosses.
 ///
 /// `slots` is the file↔release mapping this pick produces: one row per track the
-/// import will write, each naming the audio bound to it and saying whether the
-/// two sides agree. It is computed here so a disagreement is something to look
-/// at and correct rather than something the commit discovers, and so the commit
-/// consumes the mapping the user saw. Empty when `candidate_key` names no
-/// scanned folder — re-identify picks a release for a release already in the
-/// library, whose files are bound already.
+/// import will write, each naming the audio bound to it, carrying both
+/// durations, and saying whether the two sides agree. It is computed here so a
+/// disagreement is something to look at and correct rather than something the
+/// commit discovers, and so the commit consumes the mapping the user saw. Empty
+/// when `candidate_key` names no scanned folder — re-identify picks a release
+/// for a release already in the library, whose files are bound already.
 #[derive(Debug, Clone)]
 pub struct ImportReleasePrefetch {
     pub detail: ImportSearchReleaseDetail,
     pub seed: crate::import::ReleaseUserEdit,
     pub claim: crate::import::ClaimLine,
-    pub slots: Vec<crate::import::TrackSlot>,
+    pub slots: crate::import::track_slots::SlotTable,
 }
 
 /// Prefetch path for MusicBrainz: pure MB fetch + picker/confirm detail. No

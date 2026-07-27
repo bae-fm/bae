@@ -25,6 +25,15 @@ internal sealed class PrefetchedEdit
     /// skip-identify import, which claims nothing and has no source release.
     /// </summary>
     public BridgeClaimLine? Claim { get; set; }
+
+    /// <summary>
+    /// The file↔release mapping this pick produces — one row per track the
+    /// import will write, positionally aligned with <see cref="Edit"/>'s track
+    /// rows, plus the tally above them and the folder's audio a row with no
+    /// file may choose from. Null for a skip-identify import: bae-core computes
+    /// a slot table against a picked release, and that import has none.
+    /// </summary>
+    internal BridgeSlotTable? Slots { get; set; }
 }
 
 /// <summary>

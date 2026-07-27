@@ -61,11 +61,9 @@
   <data name="identify.manual" xml:space="preserve"><value>ಕೈಯಾರೆ ಹುಡುಕಾಟ ಮಾತ್ರ</value></data>
   <data name="identify.not_found" xml:space="preserve"><value>ಸಿಕ್ಕಿಲ್ಲ</value></data>
   <data name="import.already_in_library" xml:space="preserve"><value>ಈ ಬಿಡುಗಡೆ ಈಗಾಗಲೇ ನಿಮ್ಮ ಗ್ರಂಥಾಲಯದಲ್ಲಿದೆ</value></data>
-  <data name="import.back_to_search" xml:space="preserve"><value>ಹುಡುಕಾಟಕ್ಕೆ ಹಿಂದಿರುಗಿ</value></data>
   <data name="import.choose_folder" xml:space="preserve"><value>ಫೋಲ್ಡರ್ ಆಯ್ಕೆಮಾಡಿ ಮತ್ತು ಸ್ಕ್ಯಾನ್ ಮಾಡಿ</value></data>
   <data name="import.complete" xml:space="preserve"><value>ಆಮದು ಮಾಡಲಾಗಿದೆ</value></data>
   <data name="import.candidate.tracks" xml:space="preserve"><value>{count, plural, one {# ಟ್ರ್ಯಾಕ್} other {# ಟ್ರ್ಯಾಕ್‌ಗಳು}}</value></data>
-  <data name="import.confirm_title" xml:space="preserve"><value>ಆಮದು ದೃಢೀಕರಿಸಿ</value></data>
   <data name="import.drop_caption" xml:space="preserve"><value>ಸ್ಕ್ಯಾನ್ ಮಾಡಿ ಮತ್ತು ಆಮದುಮಾಡಿ</value></data>
   <data name="import.drop_folder_only" xml:space="preserve"><value>ಆಮದು ಮಾಡಲು ಫೋಲ್ಡರ್ ಬಿಡಿ</value></data>
   <data name="import.drop_read_failed" xml:space="preserve"><value>ಬಿಟ್ಟ ಐಟಂ ಓದಲಾಗಲಿಲ್ಲ</value></data>
@@ -74,9 +72,11 @@
   <data name="import.failed" xml:space="preserve"><value>ಆಮದು ವಿಫಲವಾಯಿತು</value></data>
   <data name="import.field.artist_manual" xml:space="preserve"><value>ಕಲಾವಿದ (ಕೈಯಾರೆ ಹುಡುಕಾಟ)</value></data>
   <data name="import.no_releases" xml:space="preserve"><value>ಬಿಡುಗಡೆಗಳು ಸಿಕ್ಕಿಲ್ಲ</value></data>
-  <data name="import.preview" xml:space="preserve"><value>ಪೂರ್ವವೀಕ್ಷಣೆ</value></data>
+  <data name="import.pane.lengths_differ" xml:space="preserve"><value>ಕಡತದ ಅವಧಿ ಬಿಡುಗಡೆಯ ಅವಧಿಗೆ ಹೊಂದುತ್ತಿಲ್ಲ.</value></data>
+  <data name="import.pane.no_release" xml:space="preserve"><value>ಬಿಡುಗಡೆ ಇಲ್ಲ — ಕಡತಗಳು ಹೇಳುವುದನ್ನೇ ಆಮದು ಮಾಡಲಾಗುತ್ತಿದೆ</value></data>
+  <data name="import.pane.pick_a_candidate" xml:space="preserve"><value>ಬಿಡುಗಡೆಗೆ ಹೊಂದಿಸಲು ಪಟ್ಟಿಯಿಂದ ಫೋಲ್ಡರ್ ಆಯ್ಕೆಮಾಡಿ.</value></data>
+  <data name="import.pane.pressing_details" xml:space="preserve"><value>ಮುದ್ರಣ ವಿವರಗಳು</value></data>
   <data name="import.progress.percent" xml:space="preserve"><value>{percent}% ಆಮದು ಮಾಡಲಾಗುತ್ತಿದೆ</value></data>
-  <data name="import.release_title" xml:space="preserve"><value>ಬಿಡುಗಡೆ ಆಮದು ಮಾಡಿ</value></data>
   <data name="import.rerun_identify" xml:space="preserve"><value>ಗುರುತಿಸುವಿಕೆಯನ್ನು ಮತ್ತೆ ನಡೆಸಿ</value></data>
   <data name="import.scanning" xml:space="preserve"><value>ಸ್ಕ್ಯಾನ್ ಮಾಡಲಾಗುತ್ತಿದೆ…</value></data>
   <data name="import.storage.keep_local" xml:space="preserve"><value>ಸ್ಥಳೀಯ ಪ್ರತಿಯನ್ನು ಇಟ್ಟುಕೊಳ್ಳಿ</value></data>
@@ -403,9 +403,7 @@
   <data name="output.title" xml:space="preserve"><value>ರಫ್ತು ಮತ್ತು ಉಳಿಸು</value></data>
   <data name="export.state.exporting" xml:space="preserve"><value>{percent}% ರಫ್ತು ಮಾಡಲಾಗುತ್ತಿದೆ</value></data>
   <data name="export.state.saving" xml:space="preserve"><value>{percent}% ಉಳಿಸಲಾಗುತ್ತಿದೆ</value></data>
-  <data name="import.track_sheets" xml:space="preserve"><value>ಟ್ರ್ಯಾಕ್ ಶೀಟ್‌ಗಳು</value></data>
   <data name="import.sheet.describes_nothing_yet" xml:space="preserve"><value>ಇನ್ನೂ ಯಾವುದನ್ನೂ ಸೂಚಿಸುತ್ತಿಲ್ಲ</value></data>
-  <data name="import.documents" xml:space="preserve"><value>ದಾಖಲೆಗಳು</value></data>
   <data name="import.document.read_failed" xml:space="preserve"><value>{name} ಓದಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ: {error}</value></data>
   <data name="libraries.reveal" xml:space="preserve"><value>ಫೈಲ್ ಎಕ್ಸ್‌ಪ್ಲೋರರ್‌ನಲ್ಲಿ ತೋರಿಸಿ</value></data>
   <data name="libraries.copy_id" xml:space="preserve"><value>ID ನಕಲಿಸಿ</value></data>

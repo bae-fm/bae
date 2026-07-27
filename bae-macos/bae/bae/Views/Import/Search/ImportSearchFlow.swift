@@ -56,6 +56,36 @@ enum ImportSearchFlow {
         )
     }
 
+    /// Two-way binding into the candidate's `editValues`. The mapping pane's
+    /// release fields and slot rows route through here into the import store;
+    /// commit reads the live value to build the import command's `user_edit`
+    /// overlay.
+    @MainActor
+    static func makeEditValuesBinding(
+        importStore: ImportStore,
+        key: String,
+        candidate: Candidate
+    ) -> Binding<BridgeRawReleaseEdit> {
+        // A pick, or "Add as Unknown", seeds `editValues` before anything binds
+        // it, so the optional is populated by the time this is read. The
+        // precondition keeps the binding non-optional for the fields.
+        Binding(
+            get: {
+                guard let values = candidate.editValues else {
+                    preconditionFailure(
+                        "editValues must be seeded before the editor binding is read"
+                    )
+                }
+                return values
+            },
+            set: { newValue in
+                importStore.mutateCandidate(forKey: key) {
+                    $0.editValues = newValue
+                }
+            },
+        )
+    }
+
     // MARK: - Search dispatch
 
     @MainActor

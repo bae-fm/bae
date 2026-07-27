@@ -30,6 +30,10 @@ extension ImportSearchFlow {
             candidate.releaseDetailBridge = nil
             candidate.claim = nil
             candidate.pickedReleaseId = nil
+            // No picked release, so no mapping: the tracklist comes from the
+            // files' own tags and the commit reads the folder rather than a
+            // binding left on the rows.
+            candidate.slots = nil
             // No source cover exists for Unknown; leave the local
             // artwork picker as the only cover affordance.
             candidate.selectedCover = nil
@@ -75,30 +79,30 @@ extension ImportSearchFlow {
 
     // MARK: - Prefetch and confirm
 
-    /// The pressing the user picked to prefetch. What the pick claims is not
-    /// here, and neither is how it lines up with the folder's audio — bae-core
-    /// derives both from the candidate and returns them with the prefetch.
-    struct PrefetchSelection {
-        let result: BridgeMetadataResult
-    }
-
+    /// Pick a release for a candidate: bae-core comes back with what the pick
+    /// claims, the editor seed masked for that claim, and the file↔release
+    /// mapping the pick produces.
+    ///
+    /// Re-run when the folder's audio changes shape under a pick that is
+    /// already in — binding a track sheet turns one container into a dozen
+    /// slots, and the mapping the pane shows has to be the mapping the commit
+    /// will use.
     @MainActor
     static func prefetchAndConfirm(
         library: Library,
         importStore: ImportStore,
         key: String,
-        selection: PrefetchSelection
+        releaseId: String,
+        source bridgeSource: BridgeMetadataSource
     ) {
         importStore.mutateCandidate(forKey: key) { candidate in
             candidate.mode = .loadingDetail
             candidate.error = nil
             // Hold the clicked release so its row stays selected while the
             // prefetch runs; the claim it implies arrives with the prefetch.
-            candidate.pickedReleaseId = selection.result.releaseId
+            candidate.pickedReleaseId = releaseId
         }
 
-        let releaseId = selection.result.releaseId
-        let bridgeSource = selection.result.source
         let task = Task { @MainActor in
             do {
                 let prefetch = try await library.prefetchRelease(
@@ -127,6 +131,10 @@ extension ImportSearchFlow {
                         edit: prefetch.seed,
                         trackIdPrefix: "import-track"
                     )
+                    // The mapping this pick produces, positionally aligned with
+                    // the seed's tracks — the slot table renders it and the
+                    // commit bar counts it.
+                    candidate.slots = prefetch.slots
                     candidate.mode = .confirming
                     candidate.prefetchTask = nil
                 }
@@ -151,6 +159,7 @@ extension ImportSearchFlow {
                     candidate.pickedReleaseId = nil
                     candidate.claim = nil
                     candidate.identityChoice = nil
+                    candidate.slots = nil
                     candidate.prefetchTask = nil
                 }
             }

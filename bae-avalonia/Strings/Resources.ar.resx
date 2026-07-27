@@ -61,11 +61,9 @@
   <data name="identify.manual" xml:space="preserve"><value>البحث اليدوي فقط</value></data>
   <data name="identify.not_found" xml:space="preserve"><value>لم يُعثَر عليه</value></data>
   <data name="import.already_in_library" xml:space="preserve"><value>هذا الإصدار موجود بالفعل في مكتبتك</value></data>
-  <data name="import.back_to_search" xml:space="preserve"><value>العودة إلى البحث</value></data>
   <data name="import.choose_folder" xml:space="preserve"><value>اختر المجلد وافحص</value></data>
   <data name="import.complete" xml:space="preserve"><value>تم الاستيراد</value></data>
   <data name="import.candidate.tracks" xml:space="preserve"><value>{count, plural, one {# مقطع} other {# مقاطع}}</value></data>
-  <data name="import.confirm_title" xml:space="preserve"><value>تأكيد الاستيراد</value></data>
   <data name="import.drop_caption" xml:space="preserve"><value>افحص واستورد</value></data>
   <data name="import.drop_folder_only" xml:space="preserve"><value>أسقِط مجلدًا للاستيراد</value></data>
   <data name="import.drop_read_failed" xml:space="preserve"><value>تعذّرت قراءة العنصر المُسقَط</value></data>
@@ -74,9 +72,11 @@
   <data name="import.failed" xml:space="preserve"><value>فشل الاستيراد</value></data>
   <data name="import.field.artist_manual" xml:space="preserve"><value>الفنان (البحث اليدوي)</value></data>
   <data name="import.no_releases" xml:space="preserve"><value>لم يُعثَر على إصدارات</value></data>
-  <data name="import.preview" xml:space="preserve"><value>معاينة</value></data>
+  <data name="import.pane.lengths_differ" xml:space="preserve"><value>طول الملف لا يطابق طول الإصدار.</value></data>
+  <data name="import.pane.no_release" xml:space="preserve"><value>بلا إصدار — يُستورد ما تقوله الملفات</value></data>
+  <data name="import.pane.pick_a_candidate" xml:space="preserve"><value>اختر مجلدًا من القائمة لمطابقته بإصدار.</value></data>
+  <data name="import.pane.pressing_details" xml:space="preserve"><value>تفاصيل الطبعة</value></data>
   <data name="import.progress.percent" xml:space="preserve"><value>جارٍ الاستيراد {percent}%</value></data>
-  <data name="import.release_title" xml:space="preserve"><value>استيراد الإصدار</value></data>
   <data name="import.rerun_identify" xml:space="preserve"><value>إعادة تشغيل التحديد</value></data>
   <data name="import.scanning" xml:space="preserve"><value>جارٍ الفحص…</value></data>
   <data name="import.storage.keep_local" xml:space="preserve"><value>الاحتفاظ بنسخة محلية</value></data>
@@ -403,9 +403,7 @@
   <data name="output.title" xml:space="preserve"><value>التصدير والحفظ</value></data>
   <data name="export.state.exporting" xml:space="preserve"><value>جارٍ التصدير {percent}%</value></data>
   <data name="export.state.saving" xml:space="preserve"><value>جارٍ الحفظ {percent}%</value></data>
-  <data name="import.track_sheets" xml:space="preserve"><value>أوراق المسارات</value></data>
   <data name="import.sheet.describes_nothing_yet" xml:space="preserve"><value>لا يصف شيئًا بعد</value></data>
-  <data name="import.documents" xml:space="preserve"><value>المستندات</value></data>
   <data name="import.document.read_failed" xml:space="preserve"><value>تعذرت قراءة {name}: {error}</value></data>
   <data name="libraries.reveal" xml:space="preserve"><value>الإظهار في مستكشف الملفات</value></data>
   <data name="libraries.copy_id" xml:space="preserve"><value>نسخ المعرّف</value></data>

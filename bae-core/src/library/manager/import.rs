@@ -119,20 +119,20 @@ impl LibraryManager {
         Ok(self.database.save_import_candidate_verdict(verdict).await?)
     }
 
-    /// Persist one candidate's user-set sheet bindings and clear whatever
+    /// Persist one candidate's user-set file decisions and clear whatever
     /// identification had concluded about it — see
-    /// [`crate::db::Database::save_import_candidate_sheet_bindings`] for why
-    /// those are one operation.
+    /// [`crate::db::Database::save_import_candidate_file_edits`] for why those
+    /// are one operation.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    pub async fn save_import_candidate_sheet_bindings(
+    pub async fn save_import_candidate_file_edits(
         &self,
         content_hash: &str,
         folder_path: &str,
-        bindings: &crate::import::folder_scanner::SheetBindingEdits,
+        edits: &crate::import::folder_scanner::CandidateFileEdits,
     ) -> Result<(), LibraryError> {
         Ok(self
             .database
-            .save_import_candidate_sheet_bindings(content_hash, folder_path, bindings)
+            .save_import_candidate_file_edits(content_hash, folder_path, edits)
             .await?)
     }
 
@@ -146,14 +146,14 @@ impl LibraryManager {
         Ok(self.database.load_import_candidate_states().await?)
     }
 
-    /// Every candidate's user-set sheet bindings, keyed by content hash — what
+    /// Every candidate's user-set file decisions, keyed by content hash — what
     /// a folder scan needs so the roles it reports are the ones the user
     /// settled, not only the ones its filenames propose.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    pub async fn load_stored_sheet_bindings(
+    pub async fn load_stored_candidate_edits(
         &self,
-    ) -> Result<crate::import::folder_scanner::StoredSheetBindings, LibraryError> {
-        Ok(self.database.load_stored_sheet_bindings().await?)
+    ) -> Result<crate::import::folder_scanner::StoredCandidateEdits, LibraryError> {
+        Ok(self.database.load_stored_candidate_edits().await?)
     }
 
     /// Remove the release a failed import had already finalized, in one DB

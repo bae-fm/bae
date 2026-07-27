@@ -181,7 +181,8 @@ extension ImportSearchFlow {
                 library: services.library,
                 importStore: services.importStore,
                 key: input.key,
-                selection: PrefetchSelection(result: result)
+                releaseId: result.releaseId,
+                source: result.source
             )
         }
     }

@@ -95,6 +95,14 @@ pub enum ImportError {
     #[error("that audio can no longer back this sheet: {detail}")]
     SheetBinding { detail: String },
 
+    /// A file-role change could not be applied: the candidate or the file named
+    /// is not what it was when the roles table offered it, or the change would
+    /// leave the release with no tracks at all. Taking out the last of a
+    /// folder's audio is the one role change that is refused — the folder would
+    /// stop being a release, and there would be nothing left to import.
+    #[error("that file's role can't be changed: {detail}")]
+    FileRole { detail: String },
+
     /// The watched-folder registry could not persist (YAML serialize / fs write).
     #[error("watched-folder registry: {detail}")]
     Registry { detail: String },

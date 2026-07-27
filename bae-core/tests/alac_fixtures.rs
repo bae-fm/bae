@@ -15,7 +15,7 @@ use bae_core::discogs::models::{DiscogsArtist, DiscogsRelease, DiscogsTrack};
 use bae_core::import::discid::compute_discid_from_categorized;
 use bae_core::import::folder_scanner::{
     collect_release_candidate_files, scan_for_candidates_with_callback, ScanItem,
-    StoredSheetBindings,
+    StoredCandidateEdits,
 };
 use bae_core::import::{IdentityChoice, ImportCommand, MetadataRef, MetadataSource, StorageMode};
 use bae_core::library::LibraryManager;
@@ -264,7 +264,7 @@ fn scanner_recognizes_cue_alac_pair() {
     std::fs::copy(fix.join("cue-alac.cue"), album_dir.join("cue-alac.cue")).expect("copy cue");
 
     let mut candidates = Vec::new();
-    scan_for_candidates_with_callback(album_dir.clone(), &StoredSheetBindings::none(), |item| {
+    scan_for_candidates_with_callback(album_dir.clone(), &StoredCandidateEdits::none(), |item| {
         match item {
             ScanItem::Valid(c) => candidates.push(c),
             ScanItem::Invalid(c) => {
@@ -424,7 +424,7 @@ fn cue_alac_disc_id_is_stable() {
     std::fs::copy(fix.join("cue-alac.m4a"), album_dir.join("cue-alac.m4a")).expect("copy m4a");
     std::fs::copy(fix.join("cue-alac.cue"), album_dir.join("cue-alac.cue")).expect("copy cue");
 
-    let categorized = collect_release_candidate_files(&album_dir, &StoredSheetBindings::none())
+    let categorized = collect_release_candidate_files(&album_dir, &StoredCandidateEdits::none())
         .expect("scan album dir");
     let track_count = categorized.track_count();
     let disc_id = compute_discid_from_categorized(&categorized);

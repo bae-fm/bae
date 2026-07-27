@@ -63,6 +63,14 @@ internal sealed class ImportService
     public Func<string, string, string?, Task<(bool Current, string? Error)>> SetSheetBinding { get; init; }
         = (_, _, _) => throw new InvalidOperationException("ImportService stub: SetSheetBinding not wired");
 
+    /// <summary>Put one of a candidate's files in a role, or put it back in the
+    /// one the scan proposed — what the roles table's control and a slot's
+    /// Exclude action both call. Core persists it and clears the candidate's
+    /// stored identify verdict, so the candidate invalidation brings back both
+    /// the new roles and a fresh identification.</summary>
+    public Func<string, string, BridgeFileRoleChoice, Task<(bool Current, string? Error)>> SetFileRole { get; init; }
+        = (_, _, _) => throw new InvalidOperationException("ImportService stub: SetFileRole not wired");
+
     /// <summary>Kick off auto-identification for an as-yet unidentified candidate.</summary>
     public Func<string, string, Task<bool>> AutoIdentifyFolder { get; init; }
         = (_, _) => throw new InvalidOperationException("ImportService stub: AutoIdentifyFolder not wired");
@@ -151,6 +159,8 @@ internal sealed class ImportService
             session.RunForCurrentHandle(handle => NativeBae.SheetBindingOptions(handle, candidateKey, sheetFileId)),
         SetSheetBinding = (candidateKey, sheetFileId, audioFileId) =>
             session.RunForCurrentHandle(handle => NativeBae.SetSheetBinding(handle, candidateKey, sheetFileId, audioFileId)),
+        SetFileRole = (candidateKey, fileId, choice) =>
+            session.RunForCurrentHandle(handle => NativeBae.SetFileRole(handle, candidateKey, fileId, choice)),
         AutoIdentifyFolder = (candidateKey, folderPath) =>
             session.RunForCurrentHandle(handle => NativeBae.AutoIdentifyFolder(handle, candidateKey, folderPath)),
         RerunIdentifyForCandidate = candidateKey =>

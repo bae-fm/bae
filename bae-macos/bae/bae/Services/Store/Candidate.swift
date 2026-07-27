@@ -126,6 +126,12 @@ struct Candidate: Equatable, Identifiable {
     /// claim; bae-core shapes the raw form back into the wire edit committed as
     /// the metadata overlay alongside the import command.
     var editValues: BridgeRawReleaseEdit?
+    /// The file↔release mapping the pick produced: one row per track the import
+    /// will write, positionally aligned with `editValues.tracks`. `nil` while
+    /// identifying and for an Unknown import, which has no picked release to
+    /// map the folder's audio onto. Excluding a file trims it in place —
+    /// re-prefetching to get a fresh one would throw away the user's edits.
+    var slots: BridgeSlotTable?
 
     // periphery:ignore
     /// In-flight search task. Replacing it cancels the old one via the
@@ -167,6 +173,7 @@ struct Candidate: Equatable, Identifiable {
         copy.signalsToolbar = existing.signalsToolbar
         copy.identityChoice = existing.identityChoice
         copy.editValues = existing.editValues
+        copy.slots = existing.slots
         copy.searchTask = existing.searchTask
         copy.prefetchTask = existing.prefetchTask
         return copy
@@ -186,7 +193,11 @@ struct Candidate: Equatable, Identifiable {
         self.displayName = displayName
         // Re-identify candidates read their files from the DB, not the
         // scanner's scan-event channel, so they start with an empty set.
-        files = BridgeCandidateFiles(files: [], formatLabel: "")
+        files = BridgeCandidateFiles(
+            files: [],
+            formatLabel: "",
+            collapsedDirectories: []
+        )
     }
 
     /// The watched folder this candidate was scanned from — the candidate-list

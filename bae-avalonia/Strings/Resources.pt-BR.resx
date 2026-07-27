@@ -61,11 +61,9 @@
   <data name="identify.manual" xml:space="preserve"><value>somente busca manual</value></data>
   <data name="identify.not_found" xml:space="preserve"><value>não encontrado</value></data>
   <data name="import.already_in_library" xml:space="preserve"><value>este lançamento já está na sua biblioteca</value></data>
-  <data name="import.back_to_search" xml:space="preserve"><value>Voltar à busca</value></data>
   <data name="import.choose_folder" xml:space="preserve"><value>escolher pasta e verificar</value></data>
   <data name="import.complete" xml:space="preserve"><value>importado</value></data>
   <data name="import.candidate.tracks" xml:space="preserve"><value>{count, plural, one {# faixa} other {# faixas}}</value></data>
-  <data name="import.confirm_title" xml:space="preserve"><value>confirmar importação</value></data>
   <data name="import.drop_caption" xml:space="preserve"><value>verificar e importar</value></data>
   <data name="import.drop_folder_only" xml:space="preserve"><value>solte uma pasta para importar</value></data>
   <data name="import.drop_read_failed" xml:space="preserve"><value>não foi possível ler o item solto</value></data>
@@ -74,9 +72,11 @@
   <data name="import.failed" xml:space="preserve"><value>falha na importação</value></data>
   <data name="import.field.artist_manual" xml:space="preserve"><value>artista (busca manual)</value></data>
   <data name="import.no_releases" xml:space="preserve"><value>nenhum lançamento encontrado</value></data>
-  <data name="import.preview" xml:space="preserve"><value>prévia</value></data>
+  <data name="import.pane.lengths_differ" xml:space="preserve"><value>A duração do arquivo não corresponde à da edição.</value></data>
+  <data name="import.pane.no_release" xml:space="preserve"><value>Sem edição — importando o que os arquivos dizem</value></data>
+  <data name="import.pane.pick_a_candidate" xml:space="preserve"><value>Escolha uma pasta na lista para mapeá-la para uma edição.</value></data>
+  <data name="import.pane.pressing_details" xml:space="preserve"><value>detalhes da prensagem</value></data>
   <data name="import.progress.percent" xml:space="preserve"><value>importando {percent}%</value></data>
-  <data name="import.release_title" xml:space="preserve"><value>importar lançamento</value></data>
   <data name="import.rerun_identify" xml:space="preserve"><value>executar identificação novamente</value></data>
   <data name="import.scanning" xml:space="preserve"><value>verificando…</value></data>
   <data name="import.storage.keep_local" xml:space="preserve"><value>Manter cópia local</value></data>
@@ -403,9 +403,7 @@
   <data name="output.title" xml:space="preserve"><value>exportar e salvar</value></data>
   <data name="export.state.exporting" xml:space="preserve"><value>exportando {percent}%</value></data>
   <data name="export.state.saving" xml:space="preserve"><value>salvando {percent}%</value></data>
-  <data name="import.track_sheets" xml:space="preserve"><value>Folhas de faixas</value></data>
   <data name="import.sheet.describes_nothing_yet" xml:space="preserve"><value>Ainda não descreve nada</value></data>
-  <data name="import.documents" xml:space="preserve"><value>Documentos</value></data>
   <data name="import.document.read_failed" xml:space="preserve"><value>Não foi possível ler {name}: {error}</value></data>
   <data name="libraries.reveal" xml:space="preserve"><value>mostrar no Explorador de Arquivos</value></data>
   <data name="libraries.copy_id" xml:space="preserve"><value>copiar ID</value></data>

@@ -23,12 +23,11 @@ namespace Bae.Desktop;
 // filter/group/sort; this view iterates and renders — it decides nothing about
 // where a row belongs.
 //
-// Avalonia has no split-view detail pane (that lands with the mapping-pane
-// task), so a row click preserves this app's existing dialog-based flow:
-// kick off auto-identify for a still-queued candidate, otherwise open the
-// existing picker/confirm dialog fetched fresh for that key. The folder-name
-// mono subtitle macOS reserves for a focused row / detail pane has nowhere to
-// live here without one, so it rides the row's tooltip instead.
+// A row click kicks off auto-identify for a still-queued candidate (there is
+// nothing to map until it has been looked at) and otherwise puts the row under
+// the mapping pane to the right — the release header, the file roles, the track
+// slots, and the commit bar for that one folder. The folder-name mono subtitle
+// macOS reserves for a focused row rides this row's tooltip instead.
 //
 // Built once and kept for the window's lifetime (the store subscription lives
 // that long); entering the section resets to Ready and refreshes.
@@ -38,7 +37,11 @@ internal sealed class ImportSectionView : UserControl
 
     private readonly AppService _app;
     private readonly ImportStore _import;
-    private readonly ImportDialogs _dialogs;
+    private readonly ImportMappingPane _pane;
+
+    // The candidate the pane is holding, so a re-render of the list can accent
+    // its row without asking the pane.
+    private string? _selectedKey;
 
     // Header controls, built once and mutated in place on Render() so the
     // filter TextBox never loses focus or caret position while the user types.
@@ -58,7 +61,8 @@ internal sealed class ImportSectionView : UserControl
     {
         _app = app;
         _import = app.ImportStore;
-        _dialogs = dialogs;
+        _pane = new ImportMappingPane(app, dialogs);
+        _pane.Cleared += () => { _selectedKey = null; Render(); };
 
         _filterBox.Watermark = Loc.Chrome("import.filter.placeholder");
         _filterBox.FontSize = 12.5;
@@ -130,17 +134,24 @@ internal sealed class ImportSectionView : UserControl
         column.Children.Add(divider);
         column.Children.Add(_contentSlot);
 
-        var pane = new Border
+        var sidebar = new Border
         {
             Width = PaneWidth,
-            HorizontalAlignment = HorizontalAlignment.Left,
             VerticalAlignment = VerticalAlignment.Stretch,
             BorderThickness = new Thickness(0, 0, 1, 0),
             Child = column,
         };
-        pane[!Border.BackgroundProperty] = new DynamicResourceExtension("BaeSurfaceBrush");
-        pane[!Border.BorderBrushProperty] = new DynamicResourceExtension("BaeHairlineBrush");
-        return pane;
+        sidebar[!Border.BackgroundProperty] = new DynamicResourceExtension("BaeSurfaceBrush");
+        sidebar[!Border.BorderBrushProperty] = new DynamicResourceExtension("BaeHairlineBrush");
+
+        // The sidebar triages, the mapping pane maps: the two sit side by side,
+        // and neither ever covers the other.
+        var split = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*") };
+        Grid.SetColumn(sidebar, 0);
+        Grid.SetColumn(_pane, 1);
+        split.Children.Add(sidebar);
+        split.Children.Add(_pane);
+        return split;
     }
 
     private Control BuildTabBarRow()
@@ -673,6 +684,10 @@ internal sealed class ImportSectionView : UserControl
 
         var isPending = row.Placement is BridgeTriagePlacement.NeedsYou { Reason: BridgeNeedsYouReason.StillIdentifying };
         var host = new Border { Child = grid, Opacity = isPending ? 0.6 : 1, Background = Brushes.Transparent };
+        if (row.CandidateKey == _selectedKey)
+        {
+            host[!Border.BackgroundProperty] = new DynamicResourceExtension("BaeSelectionTintBrush");
+        }
         ToolTip.SetTip(host, row.FolderName);
         host.Tapped += (_, _) => OnRowActivated(row);
         host.ContextMenu = BuildRowContextMenu(row);
@@ -1086,10 +1101,8 @@ internal sealed class ImportSectionView : UserControl
     // ── Row-click activation ────────────────────────────────────────────────
 
     // Activate a row: kick off auto-identify for a candidate that hasn't been
-    // looked at yet (no dialog — there is nothing to show), otherwise open the
-    // existing picker/confirm dialog, fetched fresh for this key. This is
-    // exactly what a click on any candidate did before this pane existed;
-    // "opens what exists today" per the roadmap's Needs-you scope.
+    // looked at yet (there is nothing to map until it has been looked at),
+    // otherwise put it under the mapping pane, read fresh for this key.
     private void OnRowActivated(BridgeTriageRow row)
     {
         if (row.Placement is BridgeTriagePlacement.NeedsYou
@@ -1100,10 +1113,9 @@ internal sealed class ImportSectionView : UserControl
             _ = _import.AutoIdentify(row.CandidateKey, row.CandidateKey);
             return;
         }
-        if (_import.CandidateForKey(row.CandidateKey) is { } candidate)
-        {
-            _ = _dialogs.ShowPicker(candidate);
-        }
+        _selectedKey = row.CandidateKey;
+        Render();
+        _ = _pane.ShowCandidate(row);
     }
 
     // ── Evidence labels ──────────────────────────────────────────────────────

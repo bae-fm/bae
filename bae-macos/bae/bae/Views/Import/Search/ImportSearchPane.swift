@@ -352,4 +352,16 @@ struct ImportSearchPane: View {
             .frame(width: 1212, height: 982)
             .importPreviewEnvironment()
     }
+
+    #Preview("Main Pane - Auto-lookup in progress") {
+        ImportSearchPane.preview(state: PreviewData.searchStateTriangulating)
+            .frame(width: 1212, height: 982)
+            .importPreviewEnvironment()
+    }
+
+    #Preview("Main Pane - Nothing found") {
+        ImportSearchPane.preview(state: PreviewData.searchStateNotFound)
+            .frame(width: 1212, height: 982)
+            .importPreviewEnvironment()
+    }
 #endif

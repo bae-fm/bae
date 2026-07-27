@@ -27,6 +27,16 @@ final class Importer: Sendable, Observable {
             _ candidateKey: String, _ sheetFileId: String,
             _ audioFileId: String?
         ) async throws -> Void
+    /// Put one of a candidate's files in a role, or put it back in the one the
+    /// scan proposed. `choice` must be one of that file's `alternatives`. Core
+    /// persists the decision — taking a file out of the tracklist is a fact
+    /// about the folder, not a list edit — drops the stored identify verdict,
+    /// and emits a candidate invalidation carrying the new roles.
+    let setFileRole:
+        @Sendable (
+            _ candidateKey: String, _ fileId: String,
+            _ choice: BridgeFileRoleChoice
+        ) async throws -> Void
     /// Scan every watched folder, streaming candidates back as events. Called
     /// when the import view appears to populate the list.
     let scanWatchedFolders: @Sendable () throws -> Void
@@ -76,6 +86,9 @@ final class Importer: Sendable, Observable {
         setSheetBinding:
             @escaping @Sendable (String, String, String?) async throws -> Void =
             { _, _, _ in },
+        setFileRole:
+            @escaping @Sendable (String, String, BridgeFileRoleChoice)
+            async throws -> Void = { _, _, _ in },
         scanWatchedFolders: @escaping @Sendable () throws -> Void = {},
         autoIdentifyFolder: @escaping @Sendable (String, String) -> Void = {
             _,
@@ -114,6 +127,7 @@ final class Importer: Sendable, Observable {
         self.setCandidateSkipped = setCandidateSkipped
         self.sheetBindingOptions = sheetBindingOptions
         self.setSheetBinding = setSheetBinding
+        self.setFileRole = setFileRole
         self.scanWatchedFolders = scanWatchedFolders
         self.autoIdentifyFolder = autoIdentifyFolder
         self.autoIdentifyRelease = autoIdentifyRelease
@@ -126,6 +140,10 @@ final class Importer: Sendable, Observable {
         self.startImport = startImport
     }
 
+    // Flat 1:1 argument forwarding from `AppHandleProtocol` to this type's
+    // closures; its length tracks the number of import-flow calls, not logical
+    // complexity.
+    // swiftlint:disable:next function_body_length
     convenience init(handle: any AppHandleProtocol) {
         self.init(
             addWatchedFolder: { try handle.addWatchedFolder(path: $0) },
@@ -144,6 +162,13 @@ final class Importer: Sendable, Observable {
                     candidateKey: $0,
                     sheetFileId: $1,
                     audioFileId: $2
+                )
+            },
+            setFileRole: {
+                try await handle.setFileRole(
+                    candidateKey: $0,
+                    fileId: $1,
+                    choice: $2
                 )
             },
             scanWatchedFolders: { try handle.scanWatchedFolders() },

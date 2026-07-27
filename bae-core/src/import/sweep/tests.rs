@@ -453,7 +453,7 @@ impl Fixture {
     fn content_hash(&self, dir: &Path) -> String {
         crate::import::folder_scanner::collect_release_candidate_files(
             dir,
-            &crate::import::folder_scanner::StoredSheetBindings::none(),
+            &crate::import::folder_scanner::StoredCandidateEdits::none(),
         )
         .expect("the candidate folder is readable")
         .content_hash()
@@ -1532,6 +1532,7 @@ fn synthetic_candidate(path: &str, size: u64) -> FolderCandidate {
         name: path.trim_start_matches('/').to_string(),
         files: CategorizedFiles {
             files: vec![CandidateFile {
+                proposed_audio: true,
                 file: ScannedFile::new(
                     PathBuf::from(format!("{path}/01.flac")),
                     "01.flac".to_string(),
@@ -1556,6 +1557,6 @@ fn row_with_verdict(candidate: &FolderCandidate, verdict: String) -> DbImportCan
             probed_total_duration_ms: 0,
             identified_at: fixed_now(),
         }),
-        sheet_bindings: Default::default(),
+        file_edits: Default::default(),
     }
 }

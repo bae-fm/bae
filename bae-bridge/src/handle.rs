@@ -1507,6 +1507,31 @@ impl AppHandle {
             .map_err(BridgeError::import)
     }
 
+    /// Put one of a candidate's files in a role, or put it back in the one the
+    /// scan proposed. `choice` must be one of that file's
+    /// `BridgeCandidateFile::alternatives`.
+    ///
+    /// This is what a slot's Exclude action calls: taking a file out of the
+    /// tracklist is a fact about the folder, so it is stored rather than kept
+    /// in whichever pane happens to be open — a pane that dropped the row
+    /// locally would have it back the next time a release was picked.
+    ///
+    /// Persists the decision and clears the candidate's stored identify
+    /// verdict, because a folder with one fewer track is a different disc. The
+    /// candidate invalidation makes the import view read the new roles.
+    pub async fn set_file_role(
+        &self,
+        candidate_key: String,
+        file_id: String,
+        choice: crate::types::BridgeFileRoleChoice,
+    ) -> Result<(), BridgeError> {
+        self.services
+            .import()
+            .set_file_role(candidate_key, file_id, choice.into_core())
+            .await
+            .map_err(BridgeError::import)
+    }
+
     /// Scan every watched folder. Import invalidations tell the UI to read the
     /// current candidate list.
     pub fn scan_watched_folders(&self) -> Result<(), BridgeError> {

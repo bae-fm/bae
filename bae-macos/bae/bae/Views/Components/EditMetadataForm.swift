@@ -7,181 +7,25 @@ import SwiftUI
 /// form does no shaping or validation: it collects raw values and bae-core
 /// turns them into a wire edit via `shapeReleaseEdit`.
 ///
-/// Used by:
+/// Used by `EditMetadataSheet` — the post-commit "Edit metadata..." sheet,
+/// which wraps it with a header (Cancel) and footer (Reset, Save). The import's
+/// mapping pane edits the release fields alone (`ReleaseFieldsForm`): its
+/// tracks are the slot table, where each row also carries the audio behind it.
 ///
-/// - `EditMetadataSheet` — wraps with a header (Cancel) and footer
-///   (Reset, Save) for the post-commit "Edit metadata..." sheet.
-/// - `ImportConfirmationView` — embeds inline above the import-specific
-///   chrome (Import button, library banner). The user's edits are
-///   committed alongside the import command as the metadata overlay.
-///
-/// Layout: Album and Release-pressing fields are label-left / value-right
-/// rows inside grouped inset cards; tracks are one table with a single
-/// header row and compact editable cells, so the per-track labels and the
-/// "blank = album artist" hint appear once instead of repeating down every
-/// row. The view does not scroll — the surrounding surface owns scrolling.
+/// Layout: the release fields are label-left / value-right rows inside grouped
+/// inset cards; tracks are one table with a single header row and compact
+/// editable cells, so the per-track labels and the "blank = album artist" hint
+/// appear once instead of repeating down every row. The view does not scroll —
+/// the surrounding surface owns scrolling.
 struct EditMetadataForm: View {
     @Binding
     var form: BridgeRawReleaseEdit
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
-            albumGroup
-            pressingGroup
+            ReleaseFieldsForm(form: $form)
             tracksGroup
         }
-    }
-
-    // MARK: - Album
-
-    private var albumGroup: some View {
-        groupCard(
-            title: String(localized: "Album"),
-            rows: [
-                FieldRow(
-                    label: String(localized: "Title"),
-                    placeholder: String(localized: "Album title"),
-                    text: $form.albumTitle,
-                    width: .long,
-                ),
-                FieldRow(
-                    label: String(localized: "Artist"),
-                    hint: String(localized: "comma-separated"),
-                    placeholder: String(localized: "Album artist"),
-                    text: $form.albumArtistText,
-                    width: .long,
-                ),
-            ],
-        )
-    }
-
-    // MARK: - Release pressing
-
-    private var pressingGroup: some View {
-        groupCard(
-            title: String(localized: "Release pressing"),
-            rows: [
-                FieldRow(
-                    label: String(localized: "Year"),
-                    placeholder: String(localized: "Year"),
-                    text: $form.pressing.year,
-                    width: .short,
-                    monospaced: true,
-                ),
-                FieldRow(
-                    label: String(localized: "Format"),
-                    placeholder: String(localized: "Format"),
-                    text: $form.pressing.format,
-                    width: .short,
-                ),
-                FieldRow(
-                    label: String(localized: "Label"),
-                    placeholder: String(localized: "Label"),
-                    text: $form.pressing.label,
-                    width: .long,
-                ),
-                FieldRow(
-                    label: String(localized: "Catalog number"),
-                    placeholder: String(localized: "Catalog number"),
-                    text: $form.pressing.catalogNumber,
-                    width: .medium,
-                ),
-                FieldRow(
-                    label: String(localized: "Country"),
-                    placeholder: String(localized: "Country"),
-                    text: $form.pressing.country,
-                    width: .short,
-                ),
-                FieldRow(
-                    label: String(localized: "Barcode"),
-                    placeholder: String(localized: "Barcode"),
-                    text: $form.pressing.barcode,
-                    width: .medium,
-                    monospaced: true,
-                ),
-            ],
-        )
-    }
-
-    // MARK: - Grouped card
-
-    /// A titled inset card of label-left / value-right rows separated by
-    /// hairlines — the macOS System-Settings group idiom.
-    private func groupCard(title: String, rows: [FieldRow]) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            sectionHeader(title: title, trailing: nil)
-            VStack(spacing: 0) {
-                ForEach(Array(rows.enumerated()), id: \.element.label) {
-                    index,
-                    row in
-                    fieldRow(row)
-                    if index < rows.count - 1 {
-                        Rectangle()
-                            .fill(.white.opacity(0.07))
-                            .frame(height: 1)
-                    }
-                }
-            }
-            .background(Theme.surface)
-            .clipShape(RoundedRectangle(cornerRadius: 10))
-            .overlay {
-                RoundedRectangle(cornerRadius: 10)
-                    .strokeBorder(.white.opacity(0.07), lineWidth: 1)
-            }
-        }
-    }
-
-    private func fieldRow(_ row: FieldRow) -> some View {
-        HStack(spacing: 16) {
-            VStack(alignment: .leading, spacing: 1) {
-                Text(row.label)
-                    .font(.system(size: 13))
-                if let hint = row.hint {
-                    Text(hint)
-                        .font(.system(size: 10.5))
-                        .foregroundStyle(.quaternary)
-                }
-            }
-            .frame(width: 150, alignment: .leading)
-            MetadataField(
-                placeholder: row.placeholder,
-                text: row.text,
-                monospaced: row.monospaced,
-            )
-            .frame(maxWidth: row.width.maxWidth)
-            Spacer(minLength: 0)
-        }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 9)
-    }
-
-    // MARK: - Section header
-
-    private func sectionHeader(
-        title: String,
-        trailing: String?
-    ) -> some View {
-        HStack(alignment: .firstTextBaseline) {
-            eyebrow(Text(verbatim: title), size: 11)
-            Spacer()
-            if let trailing {
-                Text(trailing)
-                    .font(.system(size: 11.5))
-                    .monospacedDigit()
-                    .foregroundStyle(.tertiary)
-            }
-        }
-        .padding(.horizontal, 2)
-    }
-
-    /// Section headers render at 11pt; the denser track-table column
-    /// headers pass `size: 10`.
-    private func eyebrow(_ text: Text, size: CGFloat = 10) -> some View {
-        text
-            .font(.system(size: size, weight: .bold))
-            .textCase(.uppercase)
-            .tracking(1)
-            .foregroundStyle(.tertiary)
     }
 }
 
@@ -190,7 +34,7 @@ struct EditMetadataForm: View {
 extension EditMetadataForm {
     fileprivate var tracksGroup: some View {
         VStack(alignment: .leading, spacing: 8) {
-            sectionHeader(
+            FormSectionHeader(
                 title: String(localized: "Tracks"),
                 trailing: trackCountLabel
             )
@@ -216,12 +60,7 @@ extension EditMetadataForm {
                     }
                 }
             }
-            .background(Theme.surface)
-            .clipShape(RoundedRectangle(cornerRadius: 10))
-            .overlay {
-                RoundedRectangle(cornerRadius: 10)
-                    .strokeBorder(.white.opacity(0.07), lineWidth: 1)
-            }
+            .formGroupCard()
         }
     }
 
@@ -231,20 +70,20 @@ extension EditMetadataForm {
 
     private var trackHeaderRow: some View {
         HStack(spacing: 10) {
-            eyebrow(Text(verbatim: "#"))
+            FormEyebrow(text: Text(verbatim: "#"))
                 .frame(width: trackOrdinalWidth)
-            eyebrow(Text("Title"))
+            FormEyebrow(text: Text("Title"))
                 .frame(maxWidth: .infinity, alignment: .leading)
             HStack(spacing: 4) {
-                eyebrow(Text("Artist"))
+                FormEyebrow(text: Text("Artist"))
                 Text("· blank = album artist")
                     .font(.system(size: 10))
                     .foregroundStyle(.quaternary)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            eyebrow(Text("Disc"))
+            FormEyebrow(text: Text("Disc"))
                 .frame(width: trackNumberWidth)
-            eyebrow(Text("Track"))
+            FormEyebrow(text: Text("Track"))
                 .frame(width: trackNumberWidth)
         }
         .padding(.horizontal, 14)

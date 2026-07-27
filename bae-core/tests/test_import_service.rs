@@ -3461,6 +3461,7 @@ fn edit_from_slots(prefetch: &bae_core::import::search::ImportReleasePrefetch) -
         pressing: prefetch.seed.pressing.clone(),
         tracks: prefetch
             .slots
+            .rows
             .iter()
             .map(|slot| slot.track().clone())
             .collect(),
@@ -3491,18 +3492,19 @@ async fn thirteen_files_against_a_twelve_track_source_commits_thirteen_tracks() 
     let (candidate_key, prefetch) =
         pick_release_for_folder(&f, &collection, &album_dir, &mb_id).await;
 
-    assert_eq!(prefetch.slots.len(), 13);
+    assert_eq!(prefetch.slots.rows.len(), 13);
     assert_eq!(
         prefetch
             .slots
+            .rows
             .iter()
-            .filter(|slot| matches!(slot, bae_core::import::TrackSlot::Paired(_)))
+            .filter(|slot| matches!(slot, bae_core::import::TrackSlot::Paired { .. }))
             .count(),
         12,
     );
     assert!(matches!(
-        prefetch.slots[12],
-        bae_core::import::TrackSlot::FileOnly(_)
+        prefetch.slots.rows[12],
+        bae_core::import::TrackSlot::FileOnly { .. }
     ));
 
     let import_id = f.ids.new_id();
@@ -3560,10 +3562,10 @@ async fn a_track_with_no_audio_commits_as_the_user_left_it() {
     let (candidate_key, prefetch) =
         pick_release_for_folder(&f, &collection, &album_dir, &mb_id).await;
 
-    assert_eq!(prefetch.slots.len(), 14);
+    assert_eq!(prefetch.slots.rows.len(), 14);
     assert!(matches!(
-        prefetch.slots[13],
-        bae_core::import::TrackSlot::TrackOnly(_)
+        prefetch.slots.rows[13],
+        bae_core::import::TrackSlot::TrackOnly { .. }
     ));
 
     let import_id = f.ids.new_id();

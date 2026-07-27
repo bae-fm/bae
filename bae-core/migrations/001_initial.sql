@@ -432,10 +432,11 @@ CREATE TABLE IF NOT EXISTS import_candidate_state (
     -- transport failure (network down, a provider error, cancellation) writes
     -- nothing, so the candidate is retried on the next sweep rather than
     -- remembered as failed. They are cleared when the user changes a sheet
-    -- binding: that changes what the folder is — a one-track image becomes a
-    -- twelve-track disc, and its disc ID becomes computable — so the stored
-    -- verdict describes a shape that no longer applies, and clearing it is what
-    -- makes the queue identify the candidate again.
+    -- binding or takes a file out of the tracklist: either changes what the
+    -- folder is — a one-track image becomes a twelve-track disc, and its disc
+    -- ID becomes computable — so the stored verdict describes a shape that no
+    -- longer applies, and clearing it is what makes the queue identify the
+    -- candidate again.
     --
     -- `verdict` is `identify::TerminalVerdict`, JSON-encoded by the identify
     -- module that owns the type. Not normalized into columns: the whole set is
@@ -450,5 +451,11 @@ CREATE TABLE IF NOT EXISTS import_candidate_state (
     -- user bound each track sheet to, and which sheets they cleared. `{}` when
     -- they have decided nothing, which is not the same as clearing — a sheet
     -- absent from the map keeps the scan's proposal.
-    sheet_bindings           TEXT NOT NULL DEFAULT '{}'
+    sheet_bindings           TEXT NOT NULL DEFAULT '{}',
+    -- `folder_scanner::FileRoleEdits`, JSON-encoded: which of the candidate's
+    -- audio files the user took out of the tracklist, and which they put back.
+    -- `{}` when they have decided nothing — a file absent from the map keeps
+    -- the scan's proposal. Only files the scan read as audio can appear, so a
+    -- decision never survives the file it names ceasing to be audio.
+    file_roles               TEXT NOT NULL DEFAULT '{}'
 );

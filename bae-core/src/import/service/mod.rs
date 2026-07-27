@@ -15,7 +15,7 @@ use {
     crate::import::folder_scanner::{
         scan_for_candidates_with_callback, FolderScanError, ScanItem, ScannedFile,
     },
-    crate::import::track_slots::{compute_track_slots, resolve_track_files},
+    crate::import::track_slots::{audio_units, map_source_rows, resolve_track_files},
     crate::import::types::{AudioFile, CoverSelection, ImportPhase, PrepareStep, TrackFile},
     crate::import::ParsedWorkGraph,
     notify_debouncer_full::DebounceEventResult,
@@ -202,14 +202,15 @@ impl ImportService {
         folder_registry: &Arc<Mutex<ImportFolderRegistry>>,
         candidate_state: &Arc<Mutex<ImportCandidateState>>,
     ) {
-        // What the user has decided about each candidate's sheets, read once
-        // for the whole walk. A folder's roles are only what its filenames
+        // What the user has decided about each candidate's files — which audio
+        // each sheet describes, and which files are the release's tracks — read
+        // once for the whole walk. A folder's roles are only what its filenames
         // propose until these land on top, so the walk takes them with it
         // rather than having every candidate corrected afterwards.
-        let stored_bindings = match library_manager.load_stored_sheet_bindings().await {
+        let stored_edits = match library_manager.load_stored_candidate_edits().await {
             Ok(stored) => stored,
             Err(e) => {
-                warn!("stored sheet bindings could not be read; scan failed: {e}");
+                warn!("stored file decisions could not be read; scan failed: {e}");
                 send_event(
                     event_tx,
                     crate::import::handle::ImportEvent::Scan(ScanEvent::Failed {
@@ -224,7 +225,7 @@ impl ImportService {
         let dropped_item_root = root.to_path_buf();
         let (item_tx, mut item_rx) = mpsc::unbounded_channel();
         let walk = tokio::task::spawn_blocking(move || {
-            scan_for_candidates_with_callback(root_buf, &stored_bindings, |item| {
+            scan_for_candidates_with_callback(root_buf, &stored_edits, |item| {
                 // The receiver outlives the walk except when this scan has
                 // already bailed out (an added-state lookup failed) or the
                 // service is shutting down — in both cases there is nothing left
@@ -501,11 +502,11 @@ impl ImportService {
         // said it is, and a commit that re-derived without them would import
         // the shape they corrected.
         let folder_buf = folder.clone();
-        let stored_bindings = library_manager.load_stored_sheet_bindings().await?;
+        let stored_edits = library_manager.load_stored_candidate_edits().await?;
         let categorized = tokio::task::spawn_blocking(move || {
             crate::import::folder_scanner::collect_release_candidate_files(
                 &folder_buf,
-                &stored_bindings,
+                &stored_edits,
             )
         })
         .await
@@ -1215,11 +1216,10 @@ fn settle_track_rows(
                 file: None,
             })
             .collect();
-        compute_track_slots(&source_rows, files)
+        map_source_rows(&source_rows, &audio_units(files))
             .into_iter()
             .enumerate()
-            .map(|(index, slot)| {
-                let mut row = slot.into_track();
+            .map(|(index, mut row)| {
                 // A metadata-only edit still speaks for the rows it has.
                 if let Some(edited) = user_edit.as_ref().and_then(|e| e.tracks.get(index)) {
                     row.title = edited.title.clone();

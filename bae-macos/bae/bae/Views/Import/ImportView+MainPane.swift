@@ -17,45 +17,39 @@ extension ImportView {
 
     // MARK: - Main pane
 
+    /// The mapping pane for the selected candidate: release header, file roles,
+    /// track slots, commit bar.
     func mainPane(for candidate: Candidate) -> some View {
-        ImportMainPane(
-            files: candidate.files,
-            onOpenGallery: { index in
-                let images = candidate.files.images
-                guard images.indices.contains(index) else {
-                    return
-                }
-                let tappedPath = images[index].file.localPath
-                let items = images.map { file in
-                    LightboxItem(
-                        id: file.file.localPath,
-                        label: file.file.name,
-                        source: .local(path: file.file.localPath)
-                    )
-                }
-                uiStore.presentLightbox(items: items, preferring: tappedPath)
-            },
-            onOpenDocument: { name, text in
-                documentContent = (name: name, text: text)
-            },
-            onPreviewAudio: { path in
-                previewAudio.previewPlay(path)
-            },
-            onError: { uiStore.showError($0) },
-            previewState: importStore.previewState,
+        ImportMappingPane(
+            candidate: candidate,
+            model: ImportMappingModel(
+                files: candidate.files,
+                slots: candidate.slots,
+                edit: candidate.editValues
+            ),
             bindingOptions: sheetBindingOptions,
-            onBind: { sheetFileId, audioFileId in
-                Task { @MainActor in
-                    await bindSheet(
-                        candidate.key,
-                        sheetFileId,
-                        to: audioFileId
-                    )
+            previewingPath: importStore.previewState.active?.path,
+            libraryStatus: libraryStatus(for: candidate),
+            hasCoverOptions: hasCoverOptions(candidate),
+            coverSource: candidate.selectedCover.map {
+                ImageLoader.Source(bridge: $0.thumbnailSource)
+            },
+            editor: editorBinding(for: candidate),
+            storageManaged: $storageManaged,
+            storagePinned: $storagePinned,
+            roleActions: roleActions(for: candidate),
+            slotActions: slotActions(for: candidate),
+            commitActions: ImportCommitActions(
+                confirmImport: { commitConfirmedImport(candidate: candidate) },
+                viewInLibrary: { uiStore.navigateToAlbum($0) },
+            ),
+            onFindRelease: {
+                uiStore.presentModal {
+                    ImportSearchSheet(candidateKey: candidate.key)
                 }
             },
-        ) {
-            resultPane(for: candidate)
-        }
+            onEditCover: { presentCoverPicker(for: candidate) },
+        )
         .animation(nil, value: uiStore.selectedFolderCandidate)
         // Keyed on the folder's files, not on the candidate: what a sheet may
         // be bound to changes when the folder's audio does, and not when a
@@ -65,63 +59,55 @@ extension ImportView {
         }
     }
 
+    /// The live editor, or `nil` while nothing has seeded one — the pane leaves
+    /// the slot table and the commit bar off until then.
+    private func editorBinding(
+        for candidate: Candidate
+    ) -> Binding<BridgeRawReleaseEdit>? {
+        guard candidate.editValues != nil else { return nil }
+        return ImportSearchFlow.makeEditValuesBinding(
+            importStore: importStore,
+            key: candidate.key,
+            candidate: candidate
+        )
+    }
+
+    private func libraryStatus(
+        for candidate: Candidate
+    ) -> BridgeLibraryStatus? {
+        candidate.releaseDetailBridge
+            .flatMap { candidate.libraryStatuses[$0.releaseId] }
+    }
+
+    /// Whether the cover is worth opening a picker for: the picked release's
+    /// remote art, or artwork found in the folder.
+    private func hasCoverOptions(_ candidate: Candidate) -> Bool {
+        !(candidate.releaseDetailBridge?.coverArt ?? []).isEmpty
+            || !candidate.files.images.isEmpty
+    }
+
     /// Every file the candidate holds, in one string — the identity the
     /// binding-offer read is refreshed on.
     private func fileNames(_ candidate: Candidate) -> String {
         candidate.files.files.map(\.file.name).joined(separator: "\u{0}")
     }
 
-    /// True while the confirm pane is docked — during detail load and while
-    /// confirming.
-    private func paneOpen(_ candidate: Candidate) -> Bool {
-        candidate.mode == .loadingDetail || candidate.mode == .confirming
-    }
-
-    /// Search/results above, the confirm pane docked at the bottom. The results
-    /// stay visible and scrollable; the pane slides up when a pressing is
-    /// picked and is drag-resizable.
-    private func resultPane(for candidate: Candidate) -> some View {
-        let open = paneOpen(candidate)
-        return ImportResultPane(
-            open: open,
-            onClose: { closePane(candidate) },
-            top: {
-                searchAndResultsPane(
-                    for: candidate,
-                    selectedReleaseId: open
-                        ? candidate.pickedReleaseId : nil
-                )
-            },
-            pane: { paneContent(for: candidate) }
-        )
-    }
-
-    /// Pane body: a loading spinner while the source detail loads, the
-    /// editable confirm form once it's in, and nothing when the pane is closed
-    /// (it's clipped to zero height then).
-    @ViewBuilder
-    private func paneContent(for candidate: Candidate) -> some View {
-        switch candidate.mode {
-        case .loadingDetail:
-            ProgressView("Loading release details...")
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-        case .confirming:
-            confirmationView(for: candidate)
-        case .identifying:
-            Color.clear
-        }
-    }
-
-    /// Close the pane and drop the pick cluster so reopening the identify
-    /// surface leaves no stale claim or file-tag edit behind.
-    private func closePane(_ candidate: Candidate) {
-        importStore.mutateCandidate(forKey: candidate.key) { c in
-            c.mode = .identifying
-            c.releaseDetailBridge = nil
-            c.claim = nil
-            c.pickedReleaseId = nil
-            c.identityChoice = nil
-            c.editValues = nil
+    private func presentCoverPicker(for candidate: Candidate) {
+        let key = candidate.key
+        uiStore.presentModal {
+            CoverPickerView(
+                remoteCoverArts: candidate.releaseDetailBridge?.coverArt ?? [],
+                localArtwork: candidate.files.images,
+                selectedCover: candidate.selectedCover,
+                onSelect: { selection in
+                    importStore.mutateCandidate(forKey: key) {
+                        $0.selectedCover = selection
+                    }
+                    uiStore.dismissModal()
+                },
+                onDone: { uiStore.dismissModal() },
+            )
+            .frame(width: 600, height: 500)
         }
     }
 }

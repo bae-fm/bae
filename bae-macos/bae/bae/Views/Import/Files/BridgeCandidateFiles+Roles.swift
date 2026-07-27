@@ -28,12 +28,6 @@ extension BridgeFileRole {
         if case .document = self { return true }
         return false
     }
-
-    /// Unrecognized, and carried with the release anyway.
-    var isOther: Bool {
-        if case .other = self { return true }
-        return false
-    }
 }
 
 extension BridgeCandidateFile {
@@ -87,31 +81,17 @@ extension BridgeCandidateFile {
         )
     }
 
-    /// Playable tracks the sheet carves; 0 when the file isn't a sheet.
-    var sheetTrackCount: UInt32 {
-        if case .trackSheet(_, let trackCount) = role { return trackCount }
-        return 0
-    }
 }
 
 extension BridgeCandidateFiles {
-    var audioFiles: [BridgeCandidateFile] { files.filter { $0.role.isAudio } }
+    /// The sheets whose bindings the roles table offers a control for — one
+    /// read of core's offers per sheet.
     var trackSheets: [BridgeCandidateFile] {
         files.filter { $0.role.isTrackSheet }
     }
+
+    /// Cover and artwork — what the cover picker and the lightbox show.
     var images: [BridgeCandidateFile] { files.filter { $0.role.isImage } }
-    var documents: [BridgeCandidateFile] { files.filter { $0.role.isDocument } }
-    var other: [BridgeCandidateFile] { files.filter { $0.role.isOther } }
-
-    /// The track sheets bound to `fileId`, in the folder's own file order.
-    func sheets(describing fileId: String) -> [BridgeCandidateFile] {
-        trackSheets.filter { $0.describes == fileId }
-    }
-
-    /// Sheets whose `FILE` directive named audio that isn't in the folder.
-    var unboundTrackSheets: [BridgeCandidateFile] {
-        trackSheets.filter { $0.describes == nil }
-    }
 }
 
 extension BridgeSheetBindingOption {

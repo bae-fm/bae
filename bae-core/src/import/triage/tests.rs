@@ -155,6 +155,7 @@ fn candidate(folder: &str, skipped: bool, is_added: bool) -> FolderCandidate {
             // One file, named after the folder, so every fixture candidate has
             // its own content hash — the key the stored verdicts are under.
             files: vec![CandidateFile {
+                proposed_audio: true,
                 file: ScannedFile::new(
                     PathBuf::from(format!("/music/{folder}/01.flac")),
                     format!("{folder}-01.flac"),
@@ -841,7 +842,7 @@ mod load {
             // sheet keeps the scan's own reading.
             crate::import::folder_scanner::collect_release_candidate_files(
                 dir,
-                &crate::import::folder_scanner::StoredSheetBindings::none(),
+                &crate::import::folder_scanner::StoredCandidateEdits::none(),
             )
             .expect("the candidate folder is readable")
             .content_hash()

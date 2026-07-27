@@ -61,11 +61,9 @@
   <data name="identify.manual" xml:space="preserve"><value>recherche manuelle uniquement</value></data>
   <data name="identify.not_found" xml:space="preserve"><value>introuvable</value></data>
   <data name="import.already_in_library" xml:space="preserve"><value>cette édition est déjà dans votre bibliothèque</value></data>
-  <data name="import.back_to_search" xml:space="preserve"><value>Retour à la recherche</value></data>
   <data name="import.choose_folder" xml:space="preserve"><value>choisir un dossier et analyser</value></data>
   <data name="import.complete" xml:space="preserve"><value>importé</value></data>
   <data name="import.candidate.tracks" xml:space="preserve"><value>{count, plural, one {# piste} other {# pistes}}</value></data>
-  <data name="import.confirm_title" xml:space="preserve"><value>confirmer l'import</value></data>
   <data name="import.drop_caption" xml:space="preserve"><value>analyser et importer</value></data>
   <data name="import.drop_folder_only" xml:space="preserve"><value>déposez un dossier à importer</value></data>
   <data name="import.drop_read_failed" xml:space="preserve"><value>impossible de lire l'élément déposé</value></data>
@@ -74,9 +72,11 @@
   <data name="import.failed" xml:space="preserve"><value>échec de l'import</value></data>
   <data name="import.field.artist_manual" xml:space="preserve"><value>artiste (recherche manuelle)</value></data>
   <data name="import.no_releases" xml:space="preserve"><value>aucune édition trouvée</value></data>
-  <data name="import.preview" xml:space="preserve"><value>aperçu</value></data>
+  <data name="import.pane.lengths_differ" xml:space="preserve"><value>La durée du fichier ne correspond pas à celle de l’édition.</value></data>
+  <data name="import.pane.no_release" xml:space="preserve"><value>Aucune édition — on importe ce que disent les fichiers</value></data>
+  <data name="import.pane.pick_a_candidate" xml:space="preserve"><value>Choisis un dossier dans la liste pour l’associer à une édition.</value></data>
+  <data name="import.pane.pressing_details" xml:space="preserve"><value>détails du pressage</value></data>
   <data name="import.progress.percent" xml:space="preserve"><value>import {percent}%</value></data>
-  <data name="import.release_title" xml:space="preserve"><value>importer l'édition</value></data>
   <data name="import.rerun_identify" xml:space="preserve"><value>relancer l'identification</value></data>
   <data name="import.scanning" xml:space="preserve"><value>analyse…</value></data>
   <data name="import.storage.keep_local" xml:space="preserve"><value>Conserver une copie locale</value></data>
@@ -403,9 +403,7 @@
   <data name="output.title" xml:space="preserve"><value>exporter et enregistrer</value></data>
   <data name="export.state.exporting" xml:space="preserve"><value>exportation {percent}%</value></data>
   <data name="export.state.saving" xml:space="preserve"><value>enregistrement {percent}%</value></data>
-  <data name="import.track_sheets" xml:space="preserve"><value>Feuilles de pistes</value></data>
   <data name="import.sheet.describes_nothing_yet" xml:space="preserve"><value>Ne décrit encore rien</value></data>
-  <data name="import.documents" xml:space="preserve"><value>Documents</value></data>
   <data name="import.document.read_failed" xml:space="preserve"><value>Impossible de lire {name}: {error}</value></data>
   <data name="libraries.reveal" xml:space="preserve"><value>afficher dans l'Explorateur de fichiers</value></data>
   <data name="libraries.copy_id" xml:space="preserve"><value>copier l'ID</value></data>

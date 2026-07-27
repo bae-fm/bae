@@ -3,8 +3,8 @@ import SwiftUI
 
 /// Commit tail for a confirmed import. Shapes the candidate's raw editor
 /// form into the wire edit — writing bae-core's `.invalid` reason onto the
-/// candidate and bailing if it doesn't validate (the Import button is
-/// disabled while invalid, so that path is defensive) — then runs `start`,
+/// candidate and bailing if it doesn't validate, which the commit bar states as
+/// a banner rather than pre-empting with a disabled button — then runs `start`,
 /// writing any thrown error onto the candidate.
 @MainActor
 private func commitImport(
@@ -33,102 +33,10 @@ private func commitImport(
     }
 }
 
-// MARK: - Search, results, and confirm
+// MARK: - Commit
 
 extension ImportView {
-    func searchAndResultsPane(
-        for candidate: Candidate,
-        selectedReleaseId: String?
-    ) -> some View {
-        ImportSearchFlow.buildSearchPane(
-            services: ImportSearchFlow.ImportServices(
-                importer: importer,
-                library: library,
-                importStore: importStore,
-                configStore: configStore
-            ),
-            input: ImportSearchFlow.SearchPaneInput(
-                candidate: candidate,
-                key: candidate.key,
-                selectedReleaseId: selectedReleaseId
-            ),
-            openSettings: { openSettings() },
-            onAddAsUnknown: {
-                guard case .folder(let folderPath, _) = candidate.source else {
-                    return
-                }
-                ImportSearchFlow.addAsUnknown(
-                    importer: importer,
-                    importStore: importStore,
-                    key: candidate.key,
-                    folderPath: folderPath
-                )
-            },
-        )
-    }
-
-    func confirmationView(for candidate: Candidate) -> some View {
-        let key = candidate.key
-        let detail = candidate.releaseDetailBridge
-        // For Unknown imports there's no source release detail, so
-        // remote cover art and library status are absent.
-        let remoteCoverArts = detail?.coverArt ?? []
-        let hasCoverOptions =
-            !remoteCoverArts.isEmpty
-            || (candidate.files.images.isEmpty == false)
-        let libraryStatus =
-            detail.flatMap { candidate.libraryStatuses[$0.releaseId] }
-        return ImportSearchFlow.buildConfirmationView(
-            inputs: ImportSearchFlow.ConfirmationInputs(
-                importStore: importStore,
-                key: key,
-                uiStore: uiStore,
-                libraryStatus: libraryStatus,
-                remoteCoverArts: remoteCoverArts,
-                hasCoverOptions: hasCoverOptions,
-                storageManaged: $storageManaged,
-                storagePinned: $storagePinned,
-                localArtwork: candidate.files.images
-            ),
-            callbacks: ImportSearchFlow.ConfirmationCallbacks(
-                onConfirmImport: {
-                    commitConfirmedImport(candidate: candidate)
-                },
-                onViewInLibrary: { albumId in
-                    uiStore.navigateToAlbum(albumId)
-                }
-            ),
-            coverContent: {
-                folderCoverThumb(
-                    source: candidate.selectedCover.map {
-                        ImageLoader.Source(bridge: $0.thumbnailSource)
-                    },
-                )
-            },
-        )
-    }
-
-    // MARK: - Folder-specific cover thumbnail (supports local artwork)
-
-    private func folderCoverThumb(source: ImageLoader.Source?)
-        -> some View
-    {
-        Group {
-            if let source {
-                ImageView(
-                    source: source,
-                    pointSize: 80
-                )
-            }
-            else {
-                Theme.placeholder
-            }
-        }
-        .frame(width: 80, height: 80)
-        .clipShape(RoundedRectangle(cornerRadius: 6))
-    }
-
-    private func commitConfirmedImport(candidate: Candidate) {
+    func commitConfirmedImport(candidate: Candidate) {
         guard case .folder(let folderPath, _) = candidate.source else {
             return
         }
@@ -144,11 +52,10 @@ extension ImportView {
         // The identity choice was picked at row-time (or set to
         // `.unknown` by the "Add as Unknown" link) and stashed on the
         // candidate; the editor overlay is the candidate's current
-        // `editValues` (seeded from the detail or file-tag projection,
-        // possibly mutated by the user on this confirmation page).
-        // Both fields are written before the candidate transitions to
-        // `.confirming` mode, which is the only mode that surfaces
-        // this commit button — absence here is a structural bug.
+        // `editValues` (seeded from the prefetch or the file-tag projection,
+        // possibly mutated by the user on the mapping pane). Both fields are
+        // written before the commit bar appears, which is the only surface
+        // carrying this button — absence here is a structural bug.
         guard let identityChoice = candidate.identityChoice,
             let editValues = candidate.editValues
         else {

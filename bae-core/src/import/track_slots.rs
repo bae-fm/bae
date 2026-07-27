@@ -25,33 +25,136 @@ use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use tracing::{debug, warn};
 
+/// Where one row sits in the run of rows a single container is carved into.
+///
+/// The mapping pane renders this as the link glyph's shape, which is the only
+/// place a reader can see that eleven rows come out of one file rather than
+/// eleven. Every row a whole file of its own backs is [`Whole`](Self::Whole).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SlotSpan {
+    /// One file, one row.
+    Whole,
+    /// The first of several rows carved out of one container.
+    ContainerStart,
+    /// Neither the first nor the last of them.
+    ContainerMiddle,
+    /// The last of them.
+    ContainerEnd,
+}
+
+/// The audio behind one slot row, as the row displays it.
+///
+/// Everything here is a fact about the file rather than about the release, so
+/// it is the same whichever release is picked — which is why picking a
+/// different pressing replaces only the source's half of the table.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SlotFile {
+    /// Which of the folder's audio this row's samples come from. Equal to the
+    /// row's [`TrackUserEdit::file`], and it is the value a "choose file" pick
+    /// writes there.
+    pub audio: AudioFile,
+    /// The file's own name, without its directory prefix.
+    pub name: String,
+    /// The whole container's size in bytes, even where the row is one slice of
+    /// it: a slice has no size of its own on disk.
+    pub size: u64,
+    /// Absolute path — what auditioning this row plays.
+    pub path: std::path::PathBuf,
+    /// This row's own playing time, probed from disk. `None` when the file
+    /// could not be probed at all, or when a sheet gives the row no timing —
+    /// a missing number is what it is, and inventing one here is what would
+    /// make a wrong pairing look right.
+    pub probed_duration_ms: Option<u64>,
+    pub span: SlotSpan,
+}
+
+/// How far a row's two lengths may differ before the row says so.
+///
+/// A source that rounds its track lengths to whole seconds is out by up to one;
+/// lossy encoder delay and padding add a fraction more; a pregap counted on one
+/// side and not the other is up to two on a Red Book disc. Three seconds
+/// absorbs all of that.
+///
+/// What it deliberately does not absorb is a wrong pairing. Two different
+/// tracks off one album differ by tens of seconds far more often than by three,
+/// and the row shows both numbers regardless — this only decides whether to
+/// point at them. The same reasoning as `identify::ready`'s tolerance, one
+/// track wide instead of a whole release, and with no consequence beyond a
+/// mark: nothing here disables the commit.
+pub const LENGTH_DISAGREEMENT_MS: u64 = 3_000;
+
+/// Whether a row's two lengths are far enough apart to be worth pointing at.
+///
+/// Asked per row as it renders rather than settled when the mapping is
+/// computed: re-pointing a row at a different file gives it two new lengths,
+/// and an answer stored at selection would still be describing the pairing it
+/// replaced.
+pub fn lengths_disagree(probed_ms: Option<u64>, source_ms: Option<u64>) -> bool {
+    let (Some(probed), Some(source)) = (probed_ms, source_ms) else {
+        return false;
+    };
+    probed.abs_diff(source) > LENGTH_DISAGREEMENT_MS
+}
+
+/// One track as the source names it: the editable row projected from it, plus
+/// the two facts only the source knows.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SourceTrack {
+    pub edit: TrackUserEdit,
+    /// The source's own position string — `A1`, `1`, `1-2`, or arbitrary prose.
+    pub position: String,
+    /// How long the source says this track runs.
+    pub duration_ms: Option<u64>,
+}
+
 /// One row of the file↔release mapping.
 ///
 /// Every variant carries the editable track row, whose
 /// [`file`](TrackUserEdit::file) names the audio bound to it. That binding is
 /// the part that survives: it rides the edit to the commit, so a pairing the
 /// user corrected is the one that gets written.
+///
+/// The rest is what the row shows. A paired row carries **both** durations —
+/// the file's own and the source's — because that pair is the only thing that
+/// catches a pairing which is complete but wrong, and counting cannot see it.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TrackSlot {
     /// The source names this track and audio on disk backs it.
-    Paired(TrackUserEdit),
+    Paired {
+        track: TrackUserEdit,
+        position: String,
+        source_duration_ms: Option<u64>,
+        file: SlotFile,
+    },
     /// Audio on disk the source's tracklist does not account for. Its title is
-    /// blank until someone names it.
-    FileOnly(TrackUserEdit),
+    /// blank until someone names it, and it has no position and no length in
+    /// the source because the source says nothing about it.
+    FileOnly {
+        track: TrackUserEdit,
+        file: SlotFile,
+    },
     /// A track the source names with no audio bound to it.
-    TrackOnly(TrackUserEdit),
+    TrackOnly {
+        track: TrackUserEdit,
+        position: String,
+        source_duration_ms: Option<u64>,
+    },
 }
 
 impl TrackSlot {
     pub fn track(&self) -> &TrackUserEdit {
         match self {
-            Self::Paired(track) | Self::FileOnly(track) | Self::TrackOnly(track) => track,
+            Self::Paired { track, .. }
+            | Self::FileOnly { track, .. }
+            | Self::TrackOnly { track, .. } => track,
         }
     }
 
     pub fn into_track(self) -> TrackUserEdit {
         match self {
-            Self::Paired(track) | Self::FileOnly(track) | Self::TrackOnly(track) => track,
+            Self::Paired { track, .. }
+            | Self::FileOnly { track, .. }
+            | Self::TrackOnly { track, .. } => track,
         }
     }
 
@@ -59,6 +162,45 @@ impl TrackSlot {
     /// [`TrackOnly`](Self::TrackOnly).
     pub fn file(&self) -> Option<&AudioFile> {
         self.track().file.as_ref()
+    }
+}
+
+/// The tally above the slot table: how many files the folder offers against how
+/// many tracks the source names, and which way they disagree.
+///
+/// Computed rather than left to each UI to subtract, and stated rather than
+/// enforced — a disagreement is something to read, never something that
+/// disables the commit.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SlotReconciliation {
+    /// Both sides account for every row.
+    Agrees { count: u32 },
+    /// Audio the source's tracklist does not reach.
+    MoreFiles { files: u32, tracks: u32 },
+    /// Tracks the source names with nothing on disk behind them.
+    MoreTracks { files: u32, tracks: u32 },
+}
+
+/// The whole slot table for one folder and one picked release.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SlotTable {
+    pub rows: Vec<TrackSlot>,
+    pub reconciliation: SlotReconciliation,
+    /// Every audio unit the folder offers, in disk order — what a row with no
+    /// file is offered to choose from, and what re-pairing two rows swaps
+    /// between them.
+    pub audio: Vec<SlotFile>,
+}
+
+impl SlotTable {
+    /// No folder behind the pick, so no mapping: re-identify chooses a release
+    /// for a release already in the library, whose files are bound already.
+    pub fn empty() -> Self {
+        Self {
+            rows: Vec::new(),
+            reconciliation: SlotReconciliation::Agrees { count: 0 },
+            audio: Vec::new(),
+        }
     }
 }
 
@@ -148,47 +290,50 @@ fn sheet_audio_ids<'a>(files: &'a CategorizedFiles, bound: &BoundTrackSheet<'a>)
         .collect()
 }
 
-/// The file↔release mapping for one folder and one tracklist.
+/// The file↔release mapping's rows, as editable tracks.
 ///
 /// The folder's audio (in disk order) and `source_tracks` (in the source's own
-/// order) are laid alongside each other. Where both sides have a row the slot
-/// is [`Paired`](TrackSlot::Paired); audio the tracklist runs out for is
-/// [`FileOnly`](TrackSlot::FileOnly); tracklist the audio runs out for is
-/// [`TrackOnly`](TrackSlot::TrackOnly).
+/// order) are laid alongside each other: row `i` binds source track `i` to
+/// audio unit `i`, and whichever side runs out first leaves its leftovers at
+/// the tail — audio with no track carries a blank title and a file, tracks with
+/// no audio carry a title and no file.
 ///
-/// Two consequences the callers rely on. Slot `i` stands for source track `i`
+/// Two consequences the callers rely on. Row `i` stands for source track `i`
 /// for every `i` the source names, so the row the commit writes and the track
 /// the source described stay together without either side carrying an index.
-/// And the side that runs out first puts its leftover rows at the tail, next to
-/// the rows they follow on disk rather than in a footer of their own.
-pub(crate) fn compute_track_slots(
+/// And the leftovers sit next to the rows they follow on disk rather than in a
+/// footer of their own.
+///
+/// This is the whole mapping, and it costs nothing: no file is opened. The
+/// display facts a slot row shows — sizes, spans, probed lengths — are hung on
+/// these rows by [`slot_table`], which is the one that pays for them.
+pub(crate) fn map_source_rows(
     source_tracks: &[TrackUserEdit],
-    files: &CategorizedFiles,
-) -> Vec<TrackSlot> {
-    let units = audio_units(files);
-    let mut slots = Vec::with_capacity(units.len().max(source_tracks.len()));
+    units: &[AudioFile],
+) -> Vec<TrackUserEdit> {
+    let mut rows: Vec<TrackUserEdit> = Vec::with_capacity(units.len().max(source_tracks.len()));
 
     for (index, unit) in units.iter().enumerate() {
         match source_tracks.get(index) {
             Some(track) => {
                 let mut track = track.clone();
                 track.file = Some(unit.clone());
-                slots.push(TrackSlot::Paired(track));
+                rows.push(track);
             }
             None => {
                 // The source says nothing about this audio, so the row starts
                 // blank and continues the numbering of the row above it.
-                let (side, track_number) = match slots.last().map(TrackSlot::track) {
+                let (side, track_number) = match rows.last() {
                     Some(previous) => (previous.side, previous.track_number.map(|n| n + 1)),
                     None => (1, Some(1)),
                 };
-                slots.push(TrackSlot::FileOnly(TrackUserEdit {
+                rows.push(TrackUserEdit {
                     title: String::new(),
                     side,
                     track_number,
                     artist_names: Vec::new(),
                     file: Some(unit.clone()),
-                }));
+                });
             }
         }
     }
@@ -196,10 +341,167 @@ pub(crate) fn compute_track_slots(
     for track in source_tracks.iter().skip(units.len()) {
         let mut track = track.clone();
         track.file = None;
-        slots.push(TrackSlot::TrackOnly(track));
+        rows.push(track);
     }
 
-    slots
+    rows
+}
+
+/// The file↔release mapping the pane renders: every row with the two sides it
+/// pairs, the tally above them, and the audio a row with no file can be
+/// pointed at.
+///
+/// This is where the folder's audio is opened. One probe per container, shared
+/// by every row carved out of it, so a twelve-track disc image costs one open
+/// and not twelve. That is why this runs when a release is picked, on a
+/// blocking thread, rather than riding every candidate.
+pub(crate) fn slot_table(source_tracks: &[SourceTrack], files: &CategorizedFiles) -> SlotTable {
+    let audio = slot_files(files);
+    let units: Vec<AudioFile> = audio.iter().map(|file| file.audio.clone()).collect();
+    let source_edits: Vec<TrackUserEdit> = source_tracks
+        .iter()
+        .map(|track| track.edit.clone())
+        .collect();
+
+    let rows = map_source_rows(&source_edits, &units)
+        .into_iter()
+        .enumerate()
+        .map(|(index, track)| {
+            match (source_tracks.get(index), audio.get(index)) {
+                (Some(source), Some(file)) => TrackSlot::Paired {
+                    track,
+                    position: source.position.clone(),
+                    source_duration_ms: source.duration_ms,
+                    file: file.clone(),
+                },
+                (None, Some(file)) => TrackSlot::FileOnly {
+                    track,
+                    file: file.clone(),
+                },
+                (Some(source), None) => TrackSlot::TrackOnly {
+                    track,
+                    position: source.position.clone(),
+                    source_duration_ms: source.duration_ms,
+                },
+                // `map_source_rows` yields exactly `max(len, len)` rows, so an
+                // index past both sides cannot be produced.
+                (None, None) => unreachable!("a row belongs to at least one side"),
+            }
+        })
+        .collect();
+
+    let files_count = audio.len() as u32;
+    let tracks_count = source_tracks.len() as u32;
+    let reconciliation = match files_count.cmp(&tracks_count) {
+        std::cmp::Ordering::Equal => SlotReconciliation::Agrees { count: files_count },
+        std::cmp::Ordering::Greater => SlotReconciliation::MoreFiles {
+            files: files_count,
+            tracks: tracks_count,
+        },
+        std::cmp::Ordering::Less => SlotReconciliation::MoreTracks {
+            files: files_count,
+            tracks: tracks_count,
+        },
+    };
+
+    SlotTable {
+        rows,
+        reconciliation,
+        audio,
+    }
+}
+
+/// Every audio unit the folder offers, with the facts a slot row shows about
+/// it: name, size, where to play it from, its span in a container's run, and
+/// its own probed playing time.
+///
+/// Same order and same entries as [`audio_units`] — this is that list with the
+/// disk reads done.
+pub(crate) fn slot_files(files: &CategorizedFiles) -> Vec<SlotFile> {
+    let units = audio_units(files);
+    let by_path: HashMap<&str, &ScannedFile> = files
+        .audio()
+        .map(|file| (file.relative_path.as_str(), file))
+        .collect();
+
+    // One analysis per bound sheet, shared by every slice carved out of it.
+    let mut sheets: HashMap<&str, Option<CueFlacAnalysis>> = HashMap::new();
+    let mut standalone: HashMap<&str, Option<u64>> = HashMap::new();
+
+    let mut out = Vec::with_capacity(units.len());
+    for (index, unit) in units.iter().enumerate() {
+        let Some(file) = by_path.get(unit.file_id()) else {
+            // `audio_units` reads the same list, so a unit naming audio that is
+            // not there cannot happen. Skipping keeps this total rather than
+            // panicking on a state the type does not forbid.
+            warn!("{} is not this folder's audio", unit.file_id());
+            continue;
+        };
+        let probed_duration_ms = match unit {
+            AudioFile::Standalone { file_id } => *standalone
+                .entry(file_id.as_str())
+                .or_insert_with(|| probe_duration_ms(&file.path).map(|ms| ms.max(0) as u64)),
+            AudioFile::SheetSlice {
+                sheet_id, index, ..
+            } => {
+                let analysis = sheets
+                    .entry(sheet_id.as_str())
+                    .or_insert_with(|| sheet_analysis(files, sheet_id).ok());
+                analysis
+                    .as_ref()
+                    .and_then(|analysis| slice_duration_ms(analysis, *index as usize))
+            }
+        };
+        out.push(SlotFile {
+            audio: unit.clone(),
+            name: file.file_name.clone(),
+            size: file.size,
+            path: file.path.clone(),
+            probed_duration_ms,
+            span: span_at(&units, index),
+        });
+    }
+    out
+}
+
+/// Where the unit at `index` sits in the run of units one container is carved
+/// into. A run is the contiguous stretch of slices naming the same sheet —
+/// contiguous by construction, since [`audio_units`] emits a sheet's slices
+/// together at its container's position.
+fn span_at(units: &[AudioFile], index: usize) -> SlotSpan {
+    let AudioFile::SheetSlice { sheet_id, .. } = &units[index] else {
+        return SlotSpan::Whole;
+    };
+    let same = |unit: Option<&AudioFile>| matches!(unit, Some(AudioFile::SheetSlice { sheet_id: other, .. }) if other == sheet_id);
+    let leads = !same(index.checked_sub(1).map(|before| &units[before]));
+    let trails = !same(units.get(index + 1));
+    match (leads, trails) {
+        (true, true) => SlotSpan::Whole,
+        (true, false) => SlotSpan::ContainerStart,
+        (false, false) => SlotSpan::ContainerMiddle,
+        (false, true) => SlotSpan::ContainerEnd,
+    }
+}
+
+/// One slice's own playing time: the sheet's exact timing, or — for the last
+/// track, which has no next-track boundary in the sheet — the container's total
+/// minus the slice's start. The same reading the commit writes, so what the
+/// pane showed is what lands on the track.
+fn slice_duration_ms(analysis: &CueFlacAnalysis, index: usize) -> Option<u64> {
+    let cue_track = analysis.cue_sheet.playable_tracks().nth(index)?;
+    let duration = cue_track
+        .track_duration_ms()
+        .map(|d| d as i64)
+        .or_else(|| {
+            analysis
+                .audio_files
+                .iter()
+                .find(|file| file.file_reference == cue_track.file_reference)
+                .map(|file| {
+                    file.probe.duration.as_millis() as i64 - cue_track.start_time_ms() as i64
+                })
+        })?;
+    (duration >= 0).then_some(duration as u64)
 }
 
 /// Bind each track to the audio holding its samples and yield the
@@ -390,7 +692,7 @@ pub(crate) fn analyze_cue_audio(audio_path: &std::path::Path) -> Result<ProbeRes
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::import::folder_scanner::{collect_release_candidate_files, StoredSheetBindings};
+    use crate::import::folder_scanner::{collect_release_candidate_files, StoredCandidateEdits};
     use std::fs;
     use std::path::Path;
 
@@ -459,20 +761,31 @@ mod tests {
         fs::write(path, synthetic_flac_bytes()).expect("write flac");
     }
 
-    fn source_tracks(count: usize) -> Vec<TrackUserEdit> {
+    fn source_tracks(count: usize) -> Vec<SourceTrack> {
         (0..count)
-            .map(|index| TrackUserEdit {
-                title: format!("Track Title {}", index + 1),
-                side: 1,
-                track_number: Some(index as i32 + 1),
-                artist_names: Vec::new(),
-                file: None,
+            .map(|index| SourceTrack {
+                edit: TrackUserEdit {
+                    title: format!("Track Title {}", index + 1),
+                    side: 1,
+                    track_number: Some(index as i32 + 1),
+                    artist_names: Vec::new(),
+                    file: None,
+                },
+                position: (index + 1).to_string(),
+                // Three minutes each, which is what the synthetic sheets lay
+                // their tracks out at.
+                duration_ms: Some(180_000),
             })
             .collect()
     }
 
+    /// The table's rows for `source` against the folder at `root`.
+    fn slots(source: &[SourceTrack], files: &CategorizedFiles) -> Vec<TrackSlot> {
+        slot_table(source, files).rows
+    }
+
     fn scan(root: &Path) -> CategorizedFiles {
-        collect_release_candidate_files(root, &StoredSheetBindings::none()).expect("scan succeeds")
+        collect_release_candidate_files(root, &StoredCandidateEdits::none()).expect("scan succeeds")
     }
 
     fn file_ids(slots: &[TrackSlot]) -> Vec<Option<&str>> {
@@ -492,17 +805,17 @@ mod tests {
             write_flac(&tmp.path().join(format!("{index:02}.flac")));
         }
 
-        let slots = compute_track_slots(&source_tracks(12), &scan(tmp.path()));
+        let slots = slots(&source_tracks(12), &scan(tmp.path()));
 
         assert_eq!(slots.len(), 13);
         assert_eq!(
             slots
                 .iter()
-                .filter(|slot| matches!(slot, TrackSlot::Paired(_)))
+                .filter(|slot| matches!(slot, TrackSlot::Paired { .. }))
                 .count(),
             12,
         );
-        assert!(matches!(slots[12], TrackSlot::FileOnly(_)));
+        assert!(matches!(slots[12], TrackSlot::FileOnly { .. }));
         assert_eq!(
             file_ids(&slots),
             (1..=13)
@@ -529,18 +842,18 @@ mod tests {
             write_flac(&tmp.path().join(format!("{index:02}.flac")));
         }
 
-        let slots = compute_track_slots(&source_tracks(14), &scan(tmp.path()));
+        let slots = slots(&source_tracks(14), &scan(tmp.path()));
 
         assert_eq!(slots.len(), 14);
         assert_eq!(
             slots
                 .iter()
-                .filter(|slot| matches!(slot, TrackSlot::Paired(_)))
+                .filter(|slot| matches!(slot, TrackSlot::Paired { .. }))
                 .count(),
             13,
         );
         match &slots[13] {
-            TrackSlot::TrackOnly(track) => {
+            TrackSlot::TrackOnly { track, .. } => {
                 assert_eq!(track.title, "Track Title 14");
                 assert!(track.file.is_none());
             }
@@ -564,7 +877,7 @@ mod tests {
         write_flac(&tmp.path().join("bonus-2.flac"));
 
         let files = scan(tmp.path());
-        let slots = compute_track_slots(&source_tracks(13), &files);
+        let slots = slots(&source_tracks(13), &files);
 
         assert_eq!(slots.len(), 13);
         // Disk order: the bonus files sort before the disc image, so their
@@ -597,7 +910,7 @@ mod tests {
         assert_eq!(slice_indices, (0..11).collect::<Vec<_>>());
         assert!(slots
             .iter()
-            .all(|slot| matches!(slot, TrackSlot::Paired(_))));
+            .all(|slot| matches!(slot, TrackSlot::Paired { .. })));
         // The loose files are standalone slots, not slices of the image.
         assert!(matches!(
             slots[11].file(),
@@ -620,22 +933,22 @@ mod tests {
 
         let files = scan(tmp.path());
 
-        let more_slices_than_tracks = compute_track_slots(&source_tracks(10), &files);
+        let more_slices_than_tracks = slots(&source_tracks(10), &files);
         assert_eq!(more_slices_than_tracks.len(), 12);
         assert_eq!(
             more_slices_than_tracks
                 .iter()
-                .filter(|slot| matches!(slot, TrackSlot::FileOnly(_)))
+                .filter(|slot| matches!(slot, TrackSlot::FileOnly { .. }))
                 .count(),
             2,
         );
 
-        let fewer_slices_than_tracks = compute_track_slots(&source_tracks(14), &files);
+        let fewer_slices_than_tracks = slots(&source_tracks(14), &files);
         assert_eq!(fewer_slices_than_tracks.len(), 14);
         assert_eq!(
             fewer_slices_than_tracks
                 .iter()
-                .filter(|slot| matches!(slot, TrackSlot::TrackOnly(_)))
+                .filter(|slot| matches!(slot, TrackSlot::TrackOnly { .. }))
                 .count(),
             2,
         );
@@ -658,7 +971,7 @@ mod tests {
         }
 
         let total: usize = (1..=10).sum();
-        let slots = compute_track_slots(&source_tracks(total), &scan(tmp.path()));
+        let slots = slots(&source_tracks(total), &scan(tmp.path()));
 
         assert_eq!(slots.len(), total);
         let mut expected = Vec::new();
@@ -683,18 +996,18 @@ mod tests {
             write_flac(&tmp.path().join(format!("{index:02}.flac")));
         }
         let files = scan(tmp.path());
-        let mut slots = compute_track_slots(&source_tracks(3), &files);
+        let mut slots = slots(&source_tracks(3), &files);
 
         // The rip named its files in the wrong order: track 1 is really 02.flac
         // and track 2 is really 01.flac.
         let first = slots[0].track().file.clone();
         let second = slots[1].track().file.clone();
         match &mut slots[0] {
-            TrackSlot::Paired(track) => track.file = second,
+            TrackSlot::Paired { track, .. } => track.file = second,
             other => panic!("expected a Paired slot, got {other:?}"),
         }
         match &mut slots[1] {
-            TrackSlot::Paired(track) => track.file = first,
+            TrackSlot::Paired { track, .. } => track.file = first,
             other => panic!("expected a Paired slot, got {other:?}"),
         }
 
@@ -789,7 +1102,7 @@ mod tests {
         )
         .expect("write cue");
         let files = scan(tmp.path());
-        let slots = compute_track_slots(&source_tracks(4), &files);
+        let slots = slots(&source_tracks(4), &files);
 
         let now = chrono::Utc::now();
         let rows: Vec<(DbTrack, AudioFile)> = slots
@@ -839,6 +1152,152 @@ mod tests {
         assert!(
             analyses.windows(2).all(|pair| pair[0] == pair[1]),
             "one sheet is parsed and probed once for all its slices",
+        );
+    }
+
+    /// Every paired row carries both lengths — the file's own, probed off disk,
+    /// and the one the source states. That pair is what catches a pairing which
+    /// is complete but wrong; counting cannot see it, and neither number is
+    /// derivable from the other side.
+    #[test]
+    fn a_paired_row_carries_the_probed_length_and_the_source_s() {
+        let tmp = tempfile::TempDir::new().expect("tempdir");
+        for index in 1..=3 {
+            write_flac(&tmp.path().join(format!("{index:02}.flac")));
+        }
+
+        let rows = slots(&source_tracks(3), &scan(tmp.path()));
+
+        for row in &rows {
+            match row {
+                TrackSlot::Paired {
+                    source_duration_ms,
+                    file,
+                    ..
+                } => {
+                    // The synthetic FLAC declares one second of audio; the
+                    // source says three minutes. The row shows both, and says
+                    // they disagree — which is the whole point of showing two.
+                    assert_eq!(file.probed_duration_ms, Some(1_000));
+                    assert_eq!(*source_duration_ms, Some(180_000));
+                    assert!(lengths_disagree(
+                        file.probed_duration_ms,
+                        *source_duration_ms
+                    ));
+                }
+                other => panic!("expected a Paired row, got {other:?}"),
+            }
+        }
+    }
+
+    /// The row decides one way for both surfaces. A rip that differs by a
+    /// pregap and a rounded second reads as agreement; one that differs by a
+    /// whole different take does not; and a length nobody could read is not a
+    /// disagreement, because there is nothing to compare.
+    #[test]
+    fn a_length_nobody_can_read_is_not_a_disagreement() {
+        assert!(!lengths_disagree(Some(180_000), Some(180_000)));
+        assert!(!lengths_disagree(
+            Some(180_000),
+            Some(180_000 + LENGTH_DISAGREEMENT_MS)
+        ));
+        assert!(lengths_disagree(
+            Some(180_000),
+            Some(180_001 + LENGTH_DISAGREEMENT_MS)
+        ));
+        assert!(lengths_disagree(Some(180_000), Some(120_000)));
+        assert!(!lengths_disagree(None, Some(180_000)));
+        assert!(!lengths_disagree(Some(180_000), None));
+        assert!(!lengths_disagree(None, None));
+    }
+
+    /// A slice's length comes from the sheet's own timing, and the last slice —
+    /// which has no next-track boundary in the sheet — from the container's
+    /// total minus its start. The same reading the commit writes.
+    #[test]
+    fn a_sheet_s_slices_each_carry_their_own_length() {
+        let tmp = tempfile::TempDir::new().expect("tempdir");
+        write_flac(&tmp.path().join("CDImage.flac"));
+        fs::write(
+            tmp.path().join("CDImage.cue"),
+            // Two tracks, the second starting half a second in, out of one
+            // second of audio.
+            "PERFORMER \"Artist Name\"\nTITLE \"Album Title\"\nFILE \"CDImage.flac\" WAVE\n  \
+             TRACK 01 AUDIO\n    INDEX 01 00:00:00\n  TRACK 02 AUDIO\n    INDEX 01 00:00:38\n",
+        )
+        .expect("write cue");
+
+        let table = slot_table(&source_tracks(2), &scan(tmp.path()));
+
+        let lengths: Vec<Option<u64>> = table
+            .audio
+            .iter()
+            .map(|file| file.probed_duration_ms)
+            .collect();
+        // 38 frames of 1/75s is ~506ms; the tail is what is left of the second.
+        assert_eq!(lengths.len(), 2);
+        assert_eq!(lengths[0], Some(506));
+        assert_eq!(lengths[1], Some(494));
+    }
+
+    /// One container carved into several rows reads as one run down the link
+    /// column: first, middle, last. A file backing a row on its own is whole.
+    #[test]
+    fn a_container_s_rows_read_as_one_run() {
+        let tmp = tempfile::TempDir::new().expect("tempdir");
+        write_flac(&tmp.path().join("CDImage.flac"));
+        fs::write(
+            tmp.path().join("CDImage.cue"),
+            cue_sheet_text("CDImage.flac", 3),
+        )
+        .expect("write cue");
+        write_flac(&tmp.path().join("bonus.flac"));
+
+        let table = slot_table(&source_tracks(4), &scan(tmp.path()));
+
+        assert_eq!(
+            table.audio.iter().map(|file| file.span).collect::<Vec<_>>(),
+            vec![
+                SlotSpan::ContainerStart,
+                SlotSpan::ContainerMiddle,
+                SlotSpan::ContainerEnd,
+                SlotSpan::Whole,
+            ],
+        );
+        // Every slice names the container, which is what a reader is being told
+        // by the run: three rows, one file.
+        assert!(table.audio[..3]
+            .iter()
+            .all(|file| file.name == "CDImage.flac"));
+    }
+
+    /// The tally names which way the two sides disagree, and says so without
+    /// refusing anything.
+    #[test]
+    fn the_tally_names_the_disagreement() {
+        let tmp = tempfile::TempDir::new().expect("tempdir");
+        for index in 1..=13 {
+            write_flac(&tmp.path().join(format!("{index:02}.flac")));
+        }
+        let files = scan(tmp.path());
+
+        assert_eq!(
+            slot_table(&source_tracks(13), &files).reconciliation,
+            SlotReconciliation::Agrees { count: 13 },
+        );
+        assert_eq!(
+            slot_table(&source_tracks(12), &files).reconciliation,
+            SlotReconciliation::MoreFiles {
+                files: 13,
+                tracks: 12,
+            },
+        );
+        assert_eq!(
+            slot_table(&source_tracks(14), &files).reconciliation,
+            SlotReconciliation::MoreTracks {
+                files: 13,
+                tracks: 14,
+            },
         );
     }
 

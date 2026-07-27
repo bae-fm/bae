@@ -61,11 +61,9 @@
   <data name="identify.manual" xml:space="preserve"><value>ਕੇਵਲ ਹੱਥੋਂ ਖੋਜ</value></data>
   <data name="identify.not_found" xml:space="preserve"><value>ਨਹੀਂ ਮਿਲਿਆ</value></data>
   <data name="import.already_in_library" xml:space="preserve"><value>ਇਹ ਰਿਲੀਜ਼ ਪਹਿਲਾਂ ਹੀ ਤੁਹਾਡੀ ਲਾਇਬ੍ਰੇਰੀ ਵਿੱਚ ਹੈ</value></data>
-  <data name="import.back_to_search" xml:space="preserve"><value>ਖੋਜ ਵੱਲ ਵਾਪਸ</value></data>
   <data name="import.choose_folder" xml:space="preserve"><value>ਫੋਲਡਰ ਚੁਣੋ ਅਤੇ ਸਕੈਨ ਕਰੋ</value></data>
   <data name="import.complete" xml:space="preserve"><value>ਆਯਾਤ ਕੀਤਾ</value></data>
   <data name="import.candidate.tracks" xml:space="preserve"><value>{count, plural, one {# ਟ੍ਰੈਕ} other {# ਟ੍ਰੈਕ}}</value></data>
-  <data name="import.confirm_title" xml:space="preserve"><value>ਆਯਾਤ ਦੀ ਪੁਸ਼ਟੀ ਕਰੋ</value></data>
   <data name="import.drop_caption" xml:space="preserve"><value>ਸਕੈਨ ਕਰੋ ਅਤੇ ਆਯਾਤ ਕਰੋ</value></data>
   <data name="import.drop_folder_only" xml:space="preserve"><value>ਆਯਾਤ ਲਈ ਫੋਲਡਰ ਛੱਡੋ</value></data>
   <data name="import.drop_read_failed" xml:space="preserve"><value>ਛੱਡੀ ਆਈਟਮ ਪੜ੍ਹੀ ਨਹੀਂ ਜਾ ਸਕੀ</value></data>
@@ -74,9 +72,11 @@
   <data name="import.failed" xml:space="preserve"><value>ਆਯਾਤ ਅਸਫਲ</value></data>
   <data name="import.field.artist_manual" xml:space="preserve"><value>ਕਲਾਕਾਰ (ਹੱਥੋਂ ਖੋਜ)</value></data>
   <data name="import.no_releases" xml:space="preserve"><value>ਕੋਈ ਰਿਲੀਜ਼ ਨਹੀਂ ਮਿਲੀ</value></data>
-  <data name="import.preview" xml:space="preserve"><value>ਝਲਕ</value></data>
+  <data name="import.pane.lengths_differ" xml:space="preserve"><value>ਫਾਈਲ ਦੀ ਲੰਬਾਈ ਰਿਲੀਜ਼ ਦੀ ਲੰਬਾਈ ਨਾਲ ਮੇਲ ਨਹੀਂ ਖਾਂਦੀ।</value></data>
+  <data name="import.pane.no_release" xml:space="preserve"><value>ਕੋਈ ਰਿਲੀਜ਼ ਨਹੀਂ — ਫਾਈਲਾਂ ਜੋ ਕਹਿੰਦੀਆਂ ਹਨ ਉਹੀ ਆਯਾਤ ਹੋ ਰਿਹਾ ਹੈ</value></data>
+  <data name="import.pane.pick_a_candidate" xml:space="preserve"><value>ਕਿਸੇ ਰਿਲੀਜ਼ ਨਾਲ ਜੋੜਨ ਲਈ ਸੂਚੀ ਵਿੱਚੋਂ ਫੋਲਡਰ ਚੁਣੋ।</value></data>
+  <data name="import.pane.pressing_details" xml:space="preserve"><value>ਪ੍ਰੈਸਿੰਗ ਵੇਰਵੇ</value></data>
   <data name="import.progress.percent" xml:space="preserve"><value>{percent}% ਆਯਾਤ ਹੋ ਰਿਹਾ ਹੈ</value></data>
-  <data name="import.release_title" xml:space="preserve"><value>ਰਿਲੀਜ਼ ਆਯਾਤ ਕਰੋ</value></data>
   <data name="import.rerun_identify" xml:space="preserve"><value>ਪਛਾਣ ਮੁੜ ਚਲਾਓ</value></data>
   <data name="import.scanning" xml:space="preserve"><value>ਸਕੈਨ ਕੀਤਾ ਜਾ ਰਿਹਾ ਹੈ…</value></data>
   <data name="import.storage.keep_local" xml:space="preserve"><value>ਲੋਕਲ ਕਾਪੀ ਰੱਖੋ</value></data>
@@ -403,9 +403,7 @@
   <data name="output.title" xml:space="preserve"><value>ਨਿਰਯਾਤ ਅਤੇ ਸੰਭਾਲ</value></data>
   <data name="export.state.exporting" xml:space="preserve"><value>{percent}% ਨਿਰਯਾਤ ਕੀਤਾ ਜਾ ਰਿਹਾ ਹੈ</value></data>
   <data name="export.state.saving" xml:space="preserve"><value>{percent}% ਸੰਭਾਲਿਆ ਜਾ ਰਿਹਾ ਹੈ</value></data>
-  <data name="import.track_sheets" xml:space="preserve"><value>ਟ੍ਰੈਕ ਸ਼ੀਟਾਂ</value></data>
   <data name="import.sheet.describes_nothing_yet" xml:space="preserve"><value>ਅਜੇ ਕੁਝ ਨਹੀਂ ਦਰਸਾਉਂਦਾ</value></data>
-  <data name="import.documents" xml:space="preserve"><value>ਦਸਤਾਵੇਜ਼</value></data>
   <data name="import.document.read_failed" xml:space="preserve"><value>{name} ਪੜ੍ਹਿਆ ਨਹੀਂ ਜਾ ਸਕਿਆ: {error}</value></data>
   <data name="libraries.reveal" xml:space="preserve"><value>ਫਾਈਲ ਐਕਸਪਲੋਰਰ ਵਿੱਚ ਦਿਖਾਓ</value></data>
   <data name="libraries.copy_id" xml:space="preserve"><value>ID ਕਾਪੀ ਕਰੋ</value></data>

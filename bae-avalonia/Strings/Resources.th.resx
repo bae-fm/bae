@@ -61,11 +61,9 @@
   <data name="identify.manual" xml:space="preserve"><value>ค้นหาด้วยตนเองเท่านั้น</value></data>
   <data name="identify.not_found" xml:space="preserve"><value>ไม่พบ</value></data>
   <data name="import.already_in_library" xml:space="preserve"><value>รุ่นวางจำหน่ายนี้อยู่ในคลังของคุณแล้ว</value></data>
-  <data name="import.back_to_search" xml:space="preserve"><value>กลับไปค้นหา</value></data>
   <data name="import.choose_folder" xml:space="preserve"><value>เลือกโฟลเดอร์และสแกน</value></data>
   <data name="import.complete" xml:space="preserve"><value>นำเข้าแล้ว</value></data>
   <data name="import.candidate.tracks" xml:space="preserve"><value>{count, plural, one {# แทร็ก} other {# แทร็ก}}</value></data>
-  <data name="import.confirm_title" xml:space="preserve"><value>ยืนยันการนำเข้า</value></data>
   <data name="import.drop_caption" xml:space="preserve"><value>สแกนและนำเข้า</value></data>
   <data name="import.drop_folder_only" xml:space="preserve"><value>วางโฟลเดอร์เพื่อนำเข้า</value></data>
   <data name="import.drop_read_failed" xml:space="preserve"><value>ไม่สามารถอ่านรายการที่วางได้</value></data>
@@ -74,9 +72,11 @@
   <data name="import.failed" xml:space="preserve"><value>นำเข้าไม่สำเร็จ</value></data>
   <data name="import.field.artist_manual" xml:space="preserve"><value>ศิลปิน (ค้นหาด้วยตนเอง)</value></data>
   <data name="import.no_releases" xml:space="preserve"><value>ไม่พบรีลีส</value></data>
-  <data name="import.preview" xml:space="preserve"><value>ดูตัวอย่าง</value></data>
+  <data name="import.pane.lengths_differ" xml:space="preserve"><value>ความยาวของไฟล์ไม่ตรงกับของรีลีส</value></data>
+  <data name="import.pane.no_release" xml:space="preserve"><value>ไม่มีรีลีส — นำเข้าตามที่ไฟล์ระบุ</value></data>
+  <data name="import.pane.pick_a_candidate" xml:space="preserve"><value>เลือกโฟลเดอร์จากรายการเพื่อจับคู่กับรีลีส</value></data>
+  <data name="import.pane.pressing_details" xml:space="preserve"><value>รายละเอียดการผลิต</value></data>
   <data name="import.progress.percent" xml:space="preserve"><value>กำลังนำเข้า {percent}%</value></data>
-  <data name="import.release_title" xml:space="preserve"><value>นำเข้ารีลีส</value></data>
   <data name="import.rerun_identify" xml:space="preserve"><value>เรียกใช้การระบุใหม่</value></data>
   <data name="import.scanning" xml:space="preserve"><value>กำลังสแกน…</value></data>
   <data name="import.storage.keep_local" xml:space="preserve"><value>เก็บสำเนาในเครื่อง</value></data>
@@ -403,9 +403,7 @@
   <data name="output.title" xml:space="preserve"><value>ส่งออกและบันทึก</value></data>
   <data name="export.state.exporting" xml:space="preserve"><value>กำลังส่งออก {percent}%</value></data>
   <data name="export.state.saving" xml:space="preserve"><value>กำลังบันทึก {percent}%</value></data>
-  <data name="import.track_sheets" xml:space="preserve"><value>ตารางแทร็ก</value></data>
   <data name="import.sheet.describes_nothing_yet" xml:space="preserve"><value>ยังไม่ระบุไฟล์ใด</value></data>
-  <data name="import.documents" xml:space="preserve"><value>เอกสาร</value></data>
   <data name="import.document.read_failed" xml:space="preserve"><value>ไม่สามารถอ่าน {name}: {error}</value></data>
   <data name="libraries.reveal" xml:space="preserve"><value>แสดงใน File Explorer</value></data>
   <data name="libraries.copy_id" xml:space="preserve"><value>คัดลอก ID</value></data>

@@ -220,7 +220,7 @@ internal static class ShotCapture
         return new MainShellView(
             app,
             new ReleaseActionDialogs(app, modalHost, lightbox),
-            new ImportDialogs(app, modalHost, lightbox, _ => Task.CompletedTask),
+            new ImportDialogs(modalHost, lightbox, _ => Task.CompletedTask),
             new StorageDialog(app, modalHost),
             new SettingsWindow(app, new UpdateService(), closeLibrary, switchLibrary, () => Task.CompletedTask),
             new LibrariesDialog(app, modalHost, switchLibrary),

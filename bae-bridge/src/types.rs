@@ -1344,11 +1344,122 @@ pub enum BridgeFileRole {
     Other,
 }
 
-/// One file of a candidate, with the role the scan proposed for it.
+/// The catalog key naming the role in force for a file — the roles table's
+/// Role column. Core's concept, so core's wording: two UIs naming these
+/// differently is two answers about what the release holds.
+#[cfg_attr(feature = "desktop", uniffi::export)]
+pub fn bridge_file_role_key(role: &BridgeFileRole) -> String {
+    match role {
+        BridgeFileRole::Audio => "core.import.role.audio",
+        BridgeFileRole::TrackSheet { .. } => "core.import.role.track_sheet",
+        BridgeFileRole::Cover { .. } => "core.import.role.cover",
+        BridgeFileRole::Artwork { .. } => "core.import.role.artwork",
+        BridgeFileRole::Document => "core.import.role.document",
+        BridgeFileRole::Other => "core.import.role.other",
+    }
+    .to_string()
+}
+
+/// A role a person can put a file in, as opposed to the whole
+/// [`BridgeFileRole`] the scan proposes. Mirror of bae-core's
+/// `FileRoleChoice`. Only audio is a decision: an image is an image, and a
+/// track sheet's job is decided by what it is bound to.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeFileRoleChoice {
+    /// One of the release's tracks.
+    Audio,
+    /// Carried with the release — the folder is the release — but not one of
+    /// its tracks. What a slot's Exclude action writes.
+    NotATrack,
+}
+
+/// The catalog key naming one file-role choice.
+#[cfg_attr(feature = "desktop", uniffi::export)]
+pub fn bridge_file_role_choice_key(choice: BridgeFileRoleChoice) -> String {
+    match choice {
+        BridgeFileRoleChoice::Audio => "core.import.role.audio",
+        BridgeFileRoleChoice::NotATrack => "core.import.role.not_a_track",
+    }
+    .to_string()
+}
+
+/// What a file's role makes of it in the release being imported — the roles
+/// table's "Becomes" column, as a consequence rather than as prose. Mirror of
+/// bae-core's `FileBecomes`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeFileBecomes {
+    /// Track slots `first`..=`last`, counting the release's slots from one.
+    /// `first == last` is the single-slot case a loose audio file produces.
+    Slots { first: u32, last: u32 },
+    /// Nothing in the tracklist. Still carried with the release.
+    NoSlots,
+}
+
+/// The catalog key naming what a file becomes. The single-slot case has its own
+/// key because "slot 12" and "slots 1–11" are different sentences in most
+/// languages, not one sentence with a range in it.
+#[cfg_attr(feature = "desktop", uniffi::export)]
+pub fn bridge_file_becomes_key(becomes: BridgeFileBecomes) -> String {
+    match becomes {
+        BridgeFileBecomes::Slots { first, last } if first == last => "core.import.becomes.slot",
+        BridgeFileBecomes::Slots { .. } => "core.import.becomes.slots",
+        BridgeFileBecomes::NoSlots => "core.import.becomes.not_a_track",
+    }
+    .to_string()
+}
+
+/// The job a collapsed directory's files share. Mirror of bae-core's
+/// `FileRowKind`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeFileRowKind {
+    Image,
+    Document,
+    Other,
+}
+
+/// The catalog key naming a collapsed directory's contents. Takes a `count`
+/// argument in every language.
+#[cfg_attr(feature = "desktop", uniffi::export)]
+pub fn bridge_file_row_kind_key(kind: BridgeFileRowKind) -> String {
+    match kind {
+        BridgeFileRowKind::Image => "core.import.files.images",
+        BridgeFileRowKind::Document => "core.import.files.documents",
+        BridgeFileRowKind::Other => "core.import.files.other",
+    }
+    .to_string()
+}
+
+/// A directory whose files all do the same job, which the roles table shows as
+/// one row instead of one row each. Mirror of bae-core's `CollapsedDirectory`.
+///
+/// Core decides which directories these are; a UI renders the group row in
+/// place of the files whose `dir_prefix` equals this one, and lists nothing
+/// else for them.
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeCollapsedDirectory {
+    pub dir_prefix: String,
+    pub kind: BridgeFileRowKind,
+    pub count: u32,
+    pub total_size: u64,
+}
+
+/// One file of a candidate, with the role in force for it and what that role
+/// makes of it.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeCandidateFile {
     pub file: BridgeFileInfo,
     pub role: BridgeFileRole,
+    /// Which of the release's track slots this file backs. The one fact the
+    /// role does not already say, and what makes the effect of a binding or an
+    /// exclusion legible without reading the slot table below.
+    pub becomes: BridgeFileBecomes,
+    /// The roles this file can be put in, the one in force first. Empty when
+    /// its role is nobody's decision to make, which is every file the scan did
+    /// not read as audio.
+    pub alternatives: Vec<BridgeFileRoleChoice>,
+    /// The role in force as a choice — what a picker shows selected. `None`
+    /// exactly when `alternatives` is empty.
+    pub role_choice: Option<BridgeFileRoleChoice>,
 }
 
 #[derive(Debug, Clone, uniffi::Record)]
@@ -1358,6 +1469,9 @@ pub struct BridgeCandidateFiles {
     pub files: Vec<BridgeCandidateFile>,
     /// e.g. "CUE+FLAC", "FLAC", "MP3" — computed by core from the probed codec.
     pub format_label: String,
+    /// The directories the roles table shows as one row. Every file whose
+    /// `dir_prefix` matches one of these is stood for by its group row.
+    pub collapsed_directories: Vec<BridgeCollapsedDirectory>,
 }
 
 /// Phase-0 preparation step, mirroring bae-core's `PrepareStep`. The UI
@@ -2596,7 +2710,7 @@ pub struct BridgeReleasePrefetch {
     /// import will write, each naming the audio bound to it and saying whether
     /// the source's tracklist and the folder's audio agree about it. Empty for
     /// a key that names no scanned folder.
-    pub slots: Vec<BridgeTrackSlot>,
+    pub slots: BridgeSlotTable,
 }
 
 /// What identified the picked release. Mirrors
@@ -2699,20 +2813,128 @@ pub enum BridgeAudioFile {
     },
 }
 
+/// Where one slot row sits in the run of rows a single container is carved
+/// into. Mirror of bae-core's `SlotSpan`.
+///
+/// A typed value, not a glyph: which character draws a run is the UI's choice,
+/// and the two desktop UIs do not have to agree on it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeSlotSpan {
+    /// One file, one row.
+    Whole,
+    ContainerStart,
+    ContainerMiddle,
+    ContainerEnd,
+}
+
+/// The audio behind one slot row, as the row displays it. Mirror of bae-core's
+/// `SlotFile`. Nothing here is derived by a UI: the name, the size, the path to
+/// audition and the probed length all arrive computed.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeSlotFile {
+    /// Which of the folder's audio this row's samples come from — equal to the
+    /// row's `BridgeTrackUserEdit::file`, and the value a "choose file" pick
+    /// writes there.
+    pub audio: BridgeAudioFile,
+    /// The file's own name, without its directory prefix.
+    pub name: String,
+    /// The whole container's size in bytes, even where the row is one slice of
+    /// it: a slice has no size of its own on disk.
+    pub size: u64,
+    /// Absolute path — what auditioning this row plays.
+    pub local_path: String,
+    /// This row's own playing time in milliseconds, probed from disk. `None`
+    /// when nothing could be read; the platform formats the number.
+    pub probed_duration_ms: Option<u64>,
+    pub span: BridgeSlotSpan,
+}
+
 /// One row of the file↔release mapping, as picking a release computes it.
 /// Mirrors `bae_core::import::TrackSlot`. The variant says whether the source's
 /// tracklist and the folder's audio agree about this row; the row itself
 /// carries the audio bound to it and the fields the user edits. A disagreement
 /// is stated on the row and never blocks the commit.
+///
+/// A paired row carries **both** durations — the file's own and the source's —
+/// because that pair is the only thing that catches a pairing which is complete
+/// but wrong, and counting cannot see it.
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeTrackSlot {
     /// The source names this track and audio on disk backs it.
-    Paired { track: BridgeTrackUserEdit },
+    Paired {
+        track: BridgeTrackUserEdit,
+        /// The source's own position string — `A1`, `1`, `1-2`, or prose.
+        position: String,
+        source_duration_ms: Option<u64>,
+        file: BridgeSlotFile,
+    },
     /// Audio on disk the source's tracklist does not account for. Its title is
-    /// blank until someone names it.
-    FileOnly { track: BridgeTrackUserEdit },
+    /// blank until someone names it, and it has no position and no length in
+    /// the source because the source says nothing about it.
+    FileOnly {
+        track: BridgeTrackUserEdit,
+        file: BridgeSlotFile,
+    },
     /// A track the source names with no audio bound to it.
-    TrackOnly { track: BridgeTrackUserEdit },
+    TrackOnly {
+        track: BridgeTrackUserEdit,
+        position: String,
+        source_duration_ms: Option<u64>,
+    },
+}
+
+/// The tally above the slot table: how many files the folder offers against how
+/// many tracks the source names, and which way they disagree. Mirror of
+/// bae-core's `SlotReconciliation`.
+///
+/// Arrives computed rather than left to each UI to subtract, and it is stated
+/// rather than enforced — a disagreement is something to read, never something
+/// that disables the commit.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeSlotReconciliation {
+    Agrees { count: u32 },
+    MoreFiles { files: u32, tracks: u32 },
+    MoreTracks { files: u32, tracks: u32 },
+}
+
+/// Whether a slot row's two lengths — the file's own, probed off disk, and the
+/// one the source states — are far enough apart that the row should say so.
+///
+/// Core's judgement, not each surface's: how much two rips of one track may
+/// legitimately differ is one question, and two UIs each picking a number is
+/// two answers to it. `false` when either side has no number, because there is
+/// nothing to compare, which is not the same as agreeing.
+///
+/// Asked per row as it renders rather than carried on the slot, so a row the
+/// user re-points at a different file is answered about the pairing it has now.
+/// It marks a row; it disables nothing.
+#[cfg(feature = "desktop")]
+#[uniffi::export]
+pub fn bridge_lengths_disagree(probed_ms: Option<u64>, source_ms: Option<u64>) -> bool {
+    bae_core::import::lengths_disagree(probed_ms, source_ms)
+}
+
+/// The catalog key naming the reconciliation line.
+#[cfg_attr(feature = "desktop", uniffi::export)]
+pub fn bridge_slot_reconciliation_key(reconciliation: BridgeSlotReconciliation) -> String {
+    match reconciliation {
+        BridgeSlotReconciliation::Agrees { .. } => "core.import.reconciliation.agrees",
+        BridgeSlotReconciliation::MoreFiles { .. } => "core.import.reconciliation.more_files",
+        BridgeSlotReconciliation::MoreTracks { .. } => "core.import.reconciliation.more_tracks",
+    }
+    .to_string()
+}
+
+/// The whole slot table for one folder and one picked release. Mirror of
+/// bae-core's `SlotTable`.
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeSlotTable {
+    pub rows: Vec<BridgeTrackSlot>,
+    pub reconciliation: BridgeSlotReconciliation,
+    /// Every audio unit the folder offers, in disk order — what a row with no
+    /// file is offered to choose from, and what re-pairing two rows swaps
+    /// between them.
+    pub audio: Vec<BridgeSlotFile>,
 }
 
 /// Raw edit-metadata form values, exactly as the editor holds them — text
@@ -4122,7 +4344,7 @@ impl BridgeReleasePrefetch {
             detail: BridgeReleaseDetail::from_core(detail),
             seed: BridgeReleaseUserEdit::from_core(seed),
             claim: BridgeClaimLine::from_core(claim),
-            slots: slots.into_iter().map(BridgeTrackSlot::from_core).collect(),
+            slots: BridgeSlotTable::from_core(slots),
         }
     }
 }
@@ -4448,10 +4670,24 @@ impl BridgeFileInfo {
 
 #[cfg(feature = "desktop")]
 impl BridgeCandidateFile {
-    fn from_core(entry: bae_core::import::folder_scanner::CandidateFile) -> Self {
+    fn from_core(
+        entry: bae_core::import::folder_scanner::CandidateFile,
+        becomes: bae_core::import::folder_scanner::FileBecomes,
+    ) -> Self {
         use bae_core::import::folder_scanner::{CandidateFile, FileRole, SheetBinding};
 
-        let CandidateFile { file, role } = entry;
+        let alternatives = entry
+            .role_alternatives()
+            .iter()
+            .copied()
+            .map(BridgeFileRoleChoice::from_core)
+            .collect();
+        let role_choice = entry.role_choice().map(BridgeFileRoleChoice::from_core);
+        let CandidateFile {
+            file,
+            role,
+            proposed_audio: _,
+        } = entry;
         // Read the file id (relative path) and disk path back off `BridgeFileInfo`
         // so the exhaustive `ScannedFile` destructure lives only in its `from_core`.
         let file = BridgeFileInfo::from_core(file);
@@ -4501,7 +4737,66 @@ impl BridgeCandidateFile {
             FileRole::Document => BridgeFileRole::Document,
             FileRole::Other => BridgeFileRole::Other,
         };
-        BridgeCandidateFile { file, role }
+        BridgeCandidateFile {
+            file,
+            role,
+            becomes: BridgeFileBecomes::from_core(becomes),
+            alternatives,
+            role_choice,
+        }
+    }
+}
+
+#[cfg(feature = "desktop")]
+impl BridgeFileRoleChoice {
+    pub(crate) fn from_core(choice: bae_core::import::folder_scanner::FileRoleChoice) -> Self {
+        use bae_core::import::folder_scanner::FileRoleChoice;
+        match choice {
+            FileRoleChoice::Audio => Self::Audio,
+            FileRoleChoice::NotATrack => Self::NotATrack,
+        }
+    }
+
+    pub(crate) fn into_core(self) -> bae_core::import::folder_scanner::FileRoleChoice {
+        use bae_core::import::folder_scanner::FileRoleChoice;
+        match self {
+            Self::Audio => FileRoleChoice::Audio,
+            Self::NotATrack => FileRoleChoice::NotATrack,
+        }
+    }
+}
+
+#[cfg(feature = "desktop")]
+impl BridgeFileBecomes {
+    fn from_core(becomes: bae_core::import::folder_scanner::FileBecomes) -> Self {
+        use bae_core::import::folder_scanner::FileBecomes;
+        match becomes {
+            FileBecomes::Slots { first, last } => Self::Slots { first, last },
+            FileBecomes::NoSlots => Self::NoSlots,
+        }
+    }
+}
+
+#[cfg(feature = "desktop")]
+impl BridgeCollapsedDirectory {
+    fn from_core(directory: bae_core::import::folder_scanner::CollapsedDirectory) -> Self {
+        use bae_core::import::folder_scanner::{CollapsedDirectory, FileRowKind};
+        let CollapsedDirectory {
+            dir_prefix,
+            kind,
+            count,
+            total_size,
+        } = directory;
+        BridgeCollapsedDirectory {
+            dir_prefix,
+            kind: match kind {
+                FileRowKind::Image => BridgeFileRowKind::Image,
+                FileRowKind::Document => BridgeFileRowKind::Document,
+                FileRowKind::Other => BridgeFileRowKind::Other,
+            },
+            count,
+            total_size,
+        }
     }
 }
 
@@ -4527,6 +4822,15 @@ impl BridgeSheetBindingOption {
 #[cfg(feature = "desktop")]
 impl BridgeCandidateFiles {
     pub(crate) fn from_core(files: bae_core::import::folder_scanner::CategorizedFiles) -> Self {
+        // Both derived from the whole set before it is taken apart: which slots
+        // a file backs and which directories collapse are facts about the
+        // folder, not about any one file.
+        let becomes = files.becomes();
+        let collapsed_directories = files
+            .collapsed_directories()
+            .into_iter()
+            .map(BridgeCollapsedDirectory::from_core)
+            .collect();
         let bae_core::import::folder_scanner::CategorizedFiles {
             files,
             format_label,
@@ -4534,9 +4838,11 @@ impl BridgeCandidateFiles {
         BridgeCandidateFiles {
             files: files
                 .into_iter()
-                .map(BridgeCandidateFile::from_core)
+                .zip(becomes)
+                .map(|(entry, becomes)| BridgeCandidateFile::from_core(entry, becomes))
                 .collect(),
             format_label,
+            collapsed_directories,
         }
     }
 }
@@ -4618,16 +4924,85 @@ impl BridgeAudioFile {
 #[cfg(feature = "desktop")]
 impl BridgeTrackSlot {
     fn from_core(slot: bae_core::import::TrackSlot) -> Self {
+        use bae_core::import::TrackSlot;
         match slot {
-            bae_core::import::TrackSlot::Paired(track) => Self::Paired {
+            TrackSlot::Paired {
+                track,
+                position,
+                source_duration_ms,
+                file,
+            } => Self::Paired {
                 track: BridgeTrackUserEdit::from_core(track),
+                position,
+                source_duration_ms,
+                file: BridgeSlotFile::from_core(file),
             },
-            bae_core::import::TrackSlot::FileOnly(track) => Self::FileOnly {
+            TrackSlot::FileOnly { track, file } => Self::FileOnly {
                 track: BridgeTrackUserEdit::from_core(track),
+                file: BridgeSlotFile::from_core(file),
             },
-            bae_core::import::TrackSlot::TrackOnly(track) => Self::TrackOnly {
+            TrackSlot::TrackOnly {
+                track,
+                position,
+                source_duration_ms,
+            } => Self::TrackOnly {
                 track: BridgeTrackUserEdit::from_core(track),
+                position,
+                source_duration_ms,
             },
+        }
+    }
+}
+
+#[cfg(feature = "desktop")]
+impl BridgeSlotFile {
+    fn from_core(file: bae_core::import::SlotFile) -> Self {
+        use bae_core::import::{SlotFile, SlotSpan};
+        let SlotFile {
+            audio,
+            name,
+            size,
+            path,
+            probed_duration_ms,
+            span,
+        } = file;
+        BridgeSlotFile {
+            audio: BridgeAudioFile::from_core(audio),
+            name,
+            size,
+            local_path: path.to_string_lossy().to_string(),
+            probed_duration_ms,
+            span: match span {
+                SlotSpan::Whole => BridgeSlotSpan::Whole,
+                SlotSpan::ContainerStart => BridgeSlotSpan::ContainerStart,
+                SlotSpan::ContainerMiddle => BridgeSlotSpan::ContainerMiddle,
+                SlotSpan::ContainerEnd => BridgeSlotSpan::ContainerEnd,
+            },
+        }
+    }
+}
+
+#[cfg(feature = "desktop")]
+impl BridgeSlotTable {
+    fn from_core(table: bae_core::import::SlotTable) -> Self {
+        use bae_core::import::{SlotReconciliation, SlotTable};
+        let SlotTable {
+            rows,
+            reconciliation,
+            audio,
+        } = table;
+        BridgeSlotTable {
+            rows: rows.into_iter().map(BridgeTrackSlot::from_core).collect(),
+            reconciliation: match reconciliation {
+                SlotReconciliation::Agrees { count } => BridgeSlotReconciliation::Agrees { count },
+                SlotReconciliation::MoreFiles { files, tracks } => {
+                    BridgeSlotReconciliation::MoreFiles { files, tracks }
+                }
+                SlotReconciliation::MoreTracks { files, tracks } => {
+                    BridgeSlotReconciliation::MoreTracks { files, tracks }
+                }
+            },
+            audio: audio.into_iter().map(BridgeSlotFile::from_core).collect(),
         }
     }
 }
@@ -4877,6 +5252,22 @@ mod loc_key_coverage {
         "core.lookup.failure.diagnostic",
     ];
 
+    /// A stand-in cover choice for walking the file roles that carry one. The
+    /// key a role reads under never looks at it.
+    fn loc_cover_choice() -> BridgeCoverChoice {
+        BridgeCoverChoice {
+            selection: BridgeCoverSelection::ReleaseImage {
+                file_id: String::new(),
+            },
+            preview_source: BridgeCoverImageSource::Local {
+                path: String::new(),
+            },
+            thumbnail_source: BridgeCoverImageSource::Local {
+                path: String::new(),
+            },
+        }
+    }
+
     /// Every key the `bridge_*_key` fns can emit. For each keyed enum an
     /// explicit array of all variants feeds an inline exhaustive `match` that
     /// re-derives the key, asserted equal to the production fn's output — so a
@@ -4904,6 +5295,107 @@ mod loc_key_coverage {
         // bridge_sheet_refused_codec_key — one key, no variants to walk.
         keys.push(bridge_sheet_refused_codec_key());
         keys.push(bridge_sheet_refused_unreadable_key());
+
+        // bridge_file_role_key — every role the scan can propose has a name.
+        for role in [
+            BridgeFileRole::Audio,
+            BridgeFileRole::TrackSheet {
+                binding: BridgeSheetBinding::Unresolved {
+                    requested: Vec::new(),
+                },
+                track_count: 0,
+            },
+            BridgeFileRole::Cover {
+                choice: loc_cover_choice(),
+            },
+            BridgeFileRole::Artwork {
+                choice: loc_cover_choice(),
+            },
+            BridgeFileRole::Document,
+            BridgeFileRole::Other,
+        ] {
+            let expected = match role {
+                BridgeFileRole::Audio => "core.import.role.audio",
+                BridgeFileRole::TrackSheet { .. } => "core.import.role.track_sheet",
+                BridgeFileRole::Cover { .. } => "core.import.role.cover",
+                BridgeFileRole::Artwork { .. } => "core.import.role.artwork",
+                BridgeFileRole::Document => "core.import.role.document",
+                BridgeFileRole::Other => "core.import.role.other",
+            };
+            assert_eq!(bridge_file_role_key(&role), expected);
+            keys.push(expected.to_string());
+        }
+
+        // bridge_file_role_choice_key — the roles a person can pick between.
+        for choice in [BridgeFileRoleChoice::Audio, BridgeFileRoleChoice::NotATrack] {
+            let expected = match choice {
+                // Deliberately the same key the Audio role reads under: the
+                // picker's option and the column's label name one thing.
+                BridgeFileRoleChoice::Audio => "core.import.role.audio",
+                BridgeFileRoleChoice::NotATrack => "core.import.role.not_a_track",
+            };
+            assert_eq!(bridge_file_role_choice_key(choice), expected);
+            keys.push(expected.to_string());
+        }
+
+        // bridge_file_becomes_key — one slot, a run of slots, or none. The
+        // single-slot case has its own key because "slot 12" and "slots 1-11"
+        // are different sentences, not one sentence with a range in it.
+        for becomes in [
+            BridgeFileBecomes::Slots { first: 3, last: 3 },
+            BridgeFileBecomes::Slots { first: 1, last: 11 },
+            BridgeFileBecomes::NoSlots,
+        ] {
+            let expected = match becomes {
+                BridgeFileBecomes::Slots { first, last } if first == last => {
+                    "core.import.becomes.slot"
+                }
+                BridgeFileBecomes::Slots { .. } => "core.import.becomes.slots",
+                BridgeFileBecomes::NoSlots => "core.import.becomes.not_a_track",
+            };
+            assert_eq!(bridge_file_becomes_key(becomes), expected);
+            keys.push(expected.to_string());
+        }
+
+        // bridge_file_row_kind_key — what a collapsed directory holds.
+        for kind in [
+            BridgeFileRowKind::Image,
+            BridgeFileRowKind::Document,
+            BridgeFileRowKind::Other,
+        ] {
+            let expected = match kind {
+                BridgeFileRowKind::Image => "core.import.files.images",
+                BridgeFileRowKind::Document => "core.import.files.documents",
+                BridgeFileRowKind::Other => "core.import.files.other",
+            };
+            assert_eq!(bridge_file_row_kind_key(kind), expected);
+            keys.push(expected.to_string());
+        }
+
+        // bridge_slot_reconciliation_key — the tally above the slot table.
+        for reconciliation in [
+            BridgeSlotReconciliation::Agrees { count: 12 },
+            BridgeSlotReconciliation::MoreFiles {
+                files: 13,
+                tracks: 12,
+            },
+            BridgeSlotReconciliation::MoreTracks {
+                files: 11,
+                tracks: 12,
+            },
+        ] {
+            let expected = match reconciliation {
+                BridgeSlotReconciliation::Agrees { .. } => "core.import.reconciliation.agrees",
+                BridgeSlotReconciliation::MoreFiles { .. } => {
+                    "core.import.reconciliation.more_files"
+                }
+                BridgeSlotReconciliation::MoreTracks { .. } => {
+                    "core.import.reconciliation.more_tracks"
+                }
+            };
+            assert_eq!(bridge_slot_reconciliation_key(reconciliation), expected);
+            keys.push(expected.to_string());
+        }
 
         // bridge_sheet_binding_offer_key — an offered file needs no reason.
         for o in [

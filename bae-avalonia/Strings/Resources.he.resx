@@ -61,11 +61,9 @@
   <data name="identify.manual" xml:space="preserve"><value>חיפוש ידני בלבד</value></data>
   <data name="identify.not_found" xml:space="preserve"><value>לא נמצא</value></data>
   <data name="import.already_in_library" xml:space="preserve"><value>מהדורה זו כבר נמצאת בספרייה שלכם</value></data>
-  <data name="import.back_to_search" xml:space="preserve"><value>חזרה לחיפוש</value></data>
   <data name="import.choose_folder" xml:space="preserve"><value>בחרו תיקייה וסרקו</value></data>
   <data name="import.complete" xml:space="preserve"><value>יובא</value></data>
   <data name="import.candidate.tracks" xml:space="preserve"><value>{count, plural, one {# רצועה} other {# רצועות}}</value></data>
-  <data name="import.confirm_title" xml:space="preserve"><value>אישור ייבוא</value></data>
   <data name="import.drop_caption" xml:space="preserve"><value>סרוק וייבא</value></data>
   <data name="import.drop_folder_only" xml:space="preserve"><value>גררו תיקייה לייבוא</value></data>
   <data name="import.drop_read_failed" xml:space="preserve"><value>לא ניתן לקרוא את הפריט שנגרר</value></data>
@@ -74,9 +72,11 @@
   <data name="import.failed" xml:space="preserve"><value>הייבוא נכשל</value></data>
   <data name="import.field.artist_manual" xml:space="preserve"><value>אמן (חיפוש ידני)</value></data>
   <data name="import.no_releases" xml:space="preserve"><value>לא נמצאו מהדורות</value></data>
-  <data name="import.preview" xml:space="preserve"><value>תצוגה מקדימה</value></data>
+  <data name="import.pane.lengths_differ" xml:space="preserve"><value>אורך הקובץ אינו תואם לאורך שבגרסה.</value></data>
+  <data name="import.pane.no_release" xml:space="preserve"><value>בלי גרסה — מייבאים את מה שהקבצים אומרים</value></data>
+  <data name="import.pane.pick_a_candidate" xml:space="preserve"><value>בחר תיקייה מהרשימה כדי למפות אותה לגרסה.</value></data>
+  <data name="import.pane.pressing_details" xml:space="preserve"><value>פרטי ההוצאה</value></data>
   <data name="import.progress.percent" xml:space="preserve"><value>מייבא {percent}%</value></data>
-  <data name="import.release_title" xml:space="preserve"><value>ייבא מהדורה</value></data>
   <data name="import.rerun_identify" xml:space="preserve"><value>הרץ זיהוי מחדש</value></data>
   <data name="import.scanning" xml:space="preserve"><value>סורק…</value></data>
   <data name="import.storage.keep_local" xml:space="preserve"><value>שמור עותק מקומי</value></data>
@@ -403,9 +403,7 @@
   <data name="output.title" xml:space="preserve"><value>ייצוא ושמירה</value></data>
   <data name="export.state.exporting" xml:space="preserve"><value>מייצא {percent}%</value></data>
   <data name="export.state.saving" xml:space="preserve"><value>שומר {percent}%</value></data>
-  <data name="import.track_sheets" xml:space="preserve"><value>גיליונות רצועות</value></data>
   <data name="import.sheet.describes_nothing_yet" xml:space="preserve"><value>עדיין לא מתאר דבר</value></data>
-  <data name="import.documents" xml:space="preserve"><value>מסמכים</value></data>
   <data name="import.document.read_failed" xml:space="preserve"><value>לא ניתן לקרוא את {name}: {error}</value></data>
   <data name="libraries.reveal" xml:space="preserve"><value>הצג בסייר הקבצים</value></data>
   <data name="libraries.copy_id" xml:space="preserve"><value>העתק מזהה</value></data>

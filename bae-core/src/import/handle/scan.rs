@@ -44,7 +44,7 @@ impl ImportServiceHandle {
         sheet_file_id: String,
     ) -> Result<Vec<crate::import::folder_scanner::SheetBindingOption>, crate::import::ImportError>
     {
-        let files = self.candidate_files(&candidate_key)?;
+        let files = self.folder_files_for_binding(&candidate_key)?;
         tokio::task::spawn_blocking(move || files.sheet_binding_options(&sheet_file_id))
             .await
             .map_err(|e| crate::import::ImportError::Internal {
@@ -77,7 +77,7 @@ impl ImportServiceHandle {
     ) -> Result<(), crate::import::ImportError> {
         use crate::import::folder_scanner::{SheetBindingOffer, UserSheetBinding};
 
-        let files = self.candidate_files(&candidate_key)?;
+        let files = self.folder_files_for_binding(&candidate_key)?;
         if files
             .track_sheets()
             .all(|sheet| sheet.file.relative_path != sheet_file_id)
@@ -128,45 +128,111 @@ impl ImportServiceHandle {
             }
         };
 
-        // Applied to a copy first: an audio file that has gone unreadable since
-        // the offer leaves the candidate exactly as it was, with nothing
-        // written.
+        self.write_file_edits(&candidate_key, files, |edits| {
+            edits.sheet_bindings.set(sheet_file_id, decision);
+        })
+        .await
+    }
+
+    /// Put one of a candidate's files in a role, or put it back in the one the
+    /// scan proposed.
+    ///
+    /// Only a file the scan read as playable audio can move, and only between
+    /// being one of the release's tracks and not being one. That is the whole
+    /// set of role changes with a consequence: an image is an image, and a
+    /// track sheet's job is decided by what it is bound to, which
+    /// [`Self::set_sheet_binding`] already owns.
+    ///
+    /// Taking a file out does **not** take it out of the release. The folder is
+    /// the release, so the file still imports, uploads, and comes back on
+    /// export — it just stops being one of the tracks, which is also why the
+    /// content hash this decision is stored under does not move for it.
+    ///
+    /// Taking out the last audio the folder has is refused: there would be
+    /// nothing left to import, and a release with no tracks is not a state the
+    /// rest of the import can describe.
+    pub async fn set_file_role(
+        &self,
+        candidate_key: String,
+        file_id: String,
+        choice: crate::import::folder_scanner::FileRoleChoice,
+    ) -> Result<(), crate::import::ImportError> {
+        let Some(files) = self.candidate_files(&candidate_key) else {
+            return Err(crate::import::ImportError::FileRole {
+                detail: format!("{candidate_key} is not a folder candidate"),
+            });
+        };
+        let Some(entry) = files
+            .files
+            .iter()
+            .find(|entry| entry.file.relative_path == file_id)
+        else {
+            return Err(crate::import::ImportError::FileRole {
+                detail: format!("{candidate_key} has no file {file_id}"),
+            });
+        };
+        if !entry.role_alternatives().contains(&choice) {
+            return Err(crate::import::ImportError::FileRole {
+                detail: format!("{file_id} is not the folder's audio"),
+            });
+        }
+
+        self.write_file_edits(&candidate_key, files, |edits| {
+            edits.file_roles.set(file_id, choice);
+        })
+        .await
+    }
+
+    /// Add one decision to what the user has settled about a candidate's files,
+    /// apply the result, and publish it.
+    ///
+    /// Applied to a **copy** first: a decision that turns out not to survive
+    /// contact with the folder — audio that has gone unreadable since the offer,
+    /// or a change that would leave the release with no tracks — leaves the
+    /// candidate exactly as it was, with nothing written.
+    async fn write_file_edits(
+        &self,
+        candidate_key: &str,
+        files: crate::import::folder_scanner::CategorizedFiles,
+        decide: impl FnOnce(&mut crate::import::folder_scanner::CandidateFileEdits),
+    ) -> Result<(), crate::import::ImportError> {
         let content_hash = files.content_hash();
         let mut edits = self
             .library_manager
-            .load_stored_sheet_bindings()
+            .load_stored_candidate_edits()
             .await?
             .take(&content_hash);
-        edits.set(sheet_file_id, decision);
-        let (bound, edits) = tokio::task::spawn_blocking(move || {
-            let mut bound = files;
-            bound.apply_sheet_binding_edits(&edits)?;
-            Ok::<_, crate::import::folder_scanner::InvalidReason>((bound, edits))
+        decide(&mut edits);
+
+        let (settled, edits) = tokio::task::spawn_blocking(move || {
+            let mut settled = files;
+            settled.apply_candidate_file_edits(&edits)?;
+            Ok::<_, crate::import::folder_scanner::InvalidReason>((settled, edits))
         })
         .await
         .map_err(|e| crate::import::ImportError::Internal {
-            detail: format!("sheet binding task failed: {e}"),
+            detail: format!("candidate file edit task failed: {e}"),
         })??;
 
-        // Durable first, and atomically: the binding and the verdict it
+        // Durable first, and atomically: the decision and the verdict it
         // invalidates move together, so nothing can observe a folder whose
         // stored answer describes the shape it just stopped having.
         self.library_manager
-            .save_import_candidate_sheet_bindings(&content_hash, &candidate_key, &edits)
+            .save_import_candidate_file_edits(&content_hash, candidate_key, &edits)
             .await?;
 
         let Some(candidate) = self
             .candidate_state
             .lock()
             .unwrap()
-            .set_files(&candidate_key, bound)
+            .set_files(candidate_key, settled)
         else {
             // The candidate dropped out of the scan while the decision was
             // being written. The decision itself stands — it is keyed by the
             // folder's bytes, not by its presence in this session's list — and
             // the next scan that finds the folder applies it.
             tracing::info!(
-                "{candidate_key} left the candidate list while its sheet binding was written; \
+                "{candidate_key} left the candidate list while a file decision was written; \
                  the decision stands and the next scan applies it"
             );
             return Ok(());
@@ -178,18 +244,31 @@ impl ImportServiceHandle {
         Ok(())
     }
 
-    /// A scanned folder candidate's files, or an error naming what is not
-    /// there. A key that resolves to an invalid candidate has no roles to edit.
+    /// A scanned folder candidate's files, or `None` for a key that names no
+    /// folder — an invalid candidate has no roles or bindings to edit. Each
+    /// caller names the refusal in its own terms rather than borrowing the
+    /// other's.
     fn candidate_files(
         &self,
         candidate_key: &str,
-    ) -> Result<crate::import::folder_scanner::CategorizedFiles, crate::import::ImportError> {
+    ) -> Option<crate::import::folder_scanner::CategorizedFiles> {
         match self.candidate_state.lock().unwrap().get(candidate_key) {
-            Some(ImportCandidateSnapshot::Folder { candidate, .. }) => Ok(candidate.files),
-            _ => Err(crate::import::ImportError::SheetBinding {
-                detail: format!("{candidate_key} is not a folder candidate"),
-            }),
+            Some(ImportCandidateSnapshot::Folder { candidate, .. }) => Some(candidate.files),
+            _ => None,
         }
+    }
+
+    /// A folder candidate's files for a binding operation, or the refusal that
+    /// names what the key resolved to instead.
+    fn folder_files_for_binding(
+        &self,
+        candidate_key: &str,
+    ) -> Result<crate::import::folder_scanner::CategorizedFiles, crate::import::ImportError> {
+        self.candidate_files(candidate_key).ok_or_else(|| {
+            crate::import::ImportError::SheetBinding {
+                detail: format!("{candidate_key} is not a folder candidate"),
+            }
+        })
     }
 
     /// Subscribe to the unified event channel, filtered to only `ScanEvent`s.

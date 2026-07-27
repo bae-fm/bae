@@ -1,5 +1,7 @@
 use super::*;
-use crate::import::folder_scanner::{SheetBindingEdits, StoredSheetBindings};
+use crate::import::folder_scanner::{
+    CandidateFileEdits, FileRoleEdits, SheetBindingEdits, StoredCandidateEdits,
+};
 
 impl Database {
     /// Record one candidate's terminal identify verdict, keyed by
@@ -7,8 +9,8 @@ impl Database {
     /// injected clock, not taken from `verdict` — see
     /// [`NewImportCandidateVerdict`]'s doc.
     ///
-    /// The row's other half — the user's sheet bindings — is left untouched: an
-    /// upsert rather than a replace, because a candidate can hold a binding
+    /// The row's other half — the user's file decisions — is left untouched: an
+    /// upsert rather than a replace, because a candidate can hold a decision
     /// before anything has identified it, and a verdict must not erase the
     /// decision that produced the shape it was derived from.
     pub async fn save_import_candidate_verdict(
@@ -20,8 +22,8 @@ impl Database {
         self.call(move |conn| {
             conn.execute(
                 "INSERT INTO import_candidate_state \
-                     (content_hash, folder_path, verdict, probed_total_duration_ms, identified_at, sheet_bindings) \
-                     VALUES (?, ?, ?, ?, ?, '{}') \
+                     (content_hash, folder_path, verdict, probed_total_duration_ms, identified_at, sheet_bindings, file_roles) \
+                     VALUES (?, ?, ?, ?, ?, '{}', '{}') \
                  ON CONFLICT(content_hash) DO UPDATE SET \
                      folder_path = excluded.folder_path, \
                      verdict = excluded.verdict, \
@@ -41,39 +43,43 @@ impl Database {
         .await
     }
 
-    /// Record one candidate's user-set sheet bindings, **and clear whatever
+    /// Record one candidate's user-set file decisions, **and clear whatever
     /// identification had concluded about it**, in one statement.
     ///
-    /// The two are one operation, not two: binding a sheet changes what the
-    /// folder is — a one-track image becomes a twelve-track disc, and its disc
-    /// ID becomes computable — so the stored verdict was derived from a shape
-    /// that no longer exists. Writing the binding without clearing it would
-    /// leave the queue believing an answer to a question that changed.
+    /// The two are one operation, not two: binding a sheet or taking a file out
+    /// of the tracklist changes what the folder is — a one-track image becomes
+    /// a twelve-track disc, and its disc ID becomes computable — so the stored
+    /// verdict was derived from a shape that no longer exists. Writing the
+    /// decision without clearing it would leave the queue believing an answer
+    /// to a question that changed.
     ///
     /// The content hash covers files, never role decisions, so this addresses
     /// the same row the verdict lived in rather than orphaning it.
-    pub async fn save_import_candidate_sheet_bindings(
+    pub async fn save_import_candidate_file_edits(
         &self,
         content_hash: &str,
         folder_path: &str,
-        bindings: &SheetBindingEdits,
+        edits: &CandidateFileEdits,
     ) -> Result<(), DbError> {
         let content_hash = content_hash.to_string();
         let folder_path = folder_path.to_string();
-        let bindings = serde_json::to_string(bindings)
+        let bindings = serde_json::to_string(&edits.sheet_bindings)
             .map_err(|e| DbError::Message(format!("encoding candidate sheet bindings: {e}")))?;
+        let roles = serde_json::to_string(&edits.file_roles)
+            .map_err(|e| DbError::Message(format!("encoding candidate file roles: {e}")))?;
         self.call(move |conn| {
             conn.execute(
                 "INSERT INTO import_candidate_state \
-                     (content_hash, folder_path, verdict, probed_total_duration_ms, identified_at, sheet_bindings) \
-                     VALUES (?, ?, NULL, NULL, NULL, ?) \
+                     (content_hash, folder_path, verdict, probed_total_duration_ms, identified_at, sheet_bindings, file_roles) \
+                     VALUES (?, ?, NULL, NULL, NULL, ?, ?) \
                  ON CONFLICT(content_hash) DO UPDATE SET \
                      folder_path = excluded.folder_path, \
                      sheet_bindings = excluded.sheet_bindings, \
+                     file_roles = excluded.file_roles, \
                      verdict = NULL, \
                      probed_total_duration_ms = NULL, \
                      identified_at = NULL",
-                params![content_hash, folder_path, bindings],
+                params![content_hash, folder_path, bindings, roles],
             )
             .map(|_| ())
             .map_err(DbError::from)
@@ -81,20 +87,20 @@ impl Database {
         .await
     }
 
-    /// Every candidate's user-set sheet bindings, keyed by `content_hash` — the
+    /// Every candidate's user-set file decisions, keyed by `content_hash` — the
     /// shape a folder scan takes so the roles it reports are the ones the user
     /// settled, not only the ones its filenames propose.
     ///
     /// Projected from the one stored-row read rather than a query of its own:
     /// the sweep and the scan want different halves of the same few hundred
     /// rows, and two queries over one table is two things to keep in step.
-    pub async fn load_stored_sheet_bindings(&self) -> Result<StoredSheetBindings, DbError> {
-        Ok(StoredSheetBindings::new(
+    pub async fn load_stored_candidate_edits(&self) -> Result<StoredCandidateEdits, DbError> {
+        Ok(StoredCandidateEdits::new(
             self.load_import_candidate_states()
                 .await?
                 .into_iter()
-                .filter(|(_, state)| !state.sheet_bindings.is_empty())
-                .map(|(hash, state)| (hash, state.sheet_bindings))
+                .filter(|(_, state)| !state.file_edits.is_empty())
+                .map(|(hash, state)| (hash, state.file_edits))
                 .collect(),
         ))
     }
@@ -108,14 +114,15 @@ impl Database {
     /// and the candidate is answered again, which is what a row this build
     /// cannot make sense of already does.
     ///
-    /// Bindings that no longer decode read as none — same reasoning, and the
-    /// scan then falls back to what the `FILE` directives propose.
+    /// Decisions that no longer decode read as none — same reasoning, and the
+    /// scan then falls back to what the `FILE` directives and the extensions
+    /// propose.
     pub async fn load_import_candidate_states(
         &self,
     ) -> Result<HashMap<String, DbImportCandidateState>, DbError> {
         self.read(move |conn| {
             let mut stmt = conn.prepare(
-                "SELECT content_hash, folder_path, verdict, probed_total_duration_ms, identified_at, sheet_bindings \
+                "SELECT content_hash, folder_path, verdict, probed_total_duration_ms, identified_at, sheet_bindings, file_roles \
                      FROM import_candidate_state",
             )?;
             let mut rows = stmt.query([])?;
@@ -150,13 +157,24 @@ impl Database {
                     );
                     SheetBindingEdits::default()
                 });
+                let stored: String = row.get("file_roles")?;
+                let file_roles = serde_json::from_str(&stored).unwrap_or_else(|e| {
+                    tracing::warn!(
+                        "import_candidate_state row {content_hash} holds file roles this \
+                         build cannot read ({e}); the scan's own proposals stand"
+                    );
+                    FileRoleEdits::default()
+                });
                 out.insert(
                     content_hash.clone(),
                     DbImportCandidateState {
                         content_hash,
                         folder_path: row.get("folder_path")?,
                         identify,
-                        sheet_bindings,
+                        file_edits: CandidateFileEdits {
+                            sheet_bindings,
+                            file_roles,
+                        },
                     },
                 );
             }

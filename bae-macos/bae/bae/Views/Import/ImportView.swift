@@ -166,10 +166,15 @@ struct ImportView: View {
         sheetBindingOptions = options
     }
 
-    /// Name the audio `sheetFileId` describes, or clear it with `nil`. Nothing
-    /// is updated here: core persists the decision, drops the candidate's
-    /// stored identify verdict, and the candidate invalidation brings the new
-    /// roles back.
+    /// Name the audio `sheetFileId` describes, or clear it with `nil`. Core
+    /// persists the decision, drops the candidate's stored identify verdict,
+    /// and the candidate invalidation brings the new roles back.
+    ///
+    /// The slot table is re-read here, because a binding changes what the
+    /// folder's audio *is*: one container becomes a dozen tracks, so the
+    /// mapping the pane shows has to be recomputed against the release already
+    /// picked. The seed it comes back with is for a different set of rows than
+    /// the one the user was editing, which is exactly why it replaces them.
     func bindSheet(
         _ candidateKey: String,
         _ sheetFileId: String,
@@ -181,6 +186,7 @@ struct ImportView: View {
                 sheetFileId,
                 audioFileId
             )
+            remapPickedRelease(candidateKey)
         }
         catch is CancellationError {}
         catch {
@@ -191,6 +197,25 @@ struct ImportView: View {
                 )
             )
         }
+    }
+
+    /// Re-run the prefetch for whatever release is already picked, so the slot
+    /// table matches the folder's new shape. A candidate with nothing picked
+    /// has no mapping to refresh.
+    private func remapPickedRelease(_ candidateKey: String) {
+        guard let candidate = importStore.candidate(forKey: candidateKey),
+            let releaseId = candidate.pickedReleaseId,
+            let detail = candidate.releaseDetailBridge
+        else {
+            return
+        }
+        ImportSearchFlow.prefetchAndConfirm(
+            library: library,
+            importStore: importStore,
+            key: candidateKey,
+            releaseId: releaseId,
+            source: detail.source
+        )
     }
 
     /// Mark the candidate at `key` skipped or unskipped. The import-candidate

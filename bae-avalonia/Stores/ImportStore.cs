@@ -59,11 +59,17 @@ internal sealed class ImportStore
     // selection. The sidebar rebuilds its content on every tick.
     public event Action? Changed;
 
-    // The import picker's live preview-position label ("0:23 / 3:45"), driven by
-    // preview events while a candidate previews. The picker renders it on
-    // PreviewElapsedChanged; ClearPreview resets it when the picker closes.
+    // The live preview-position label ("0:23 / 3:45"), driven by preview events
+    // while a slot row auditions. The mapping pane renders it on
+    // PreviewElapsedChanged; ClearPreview resets it when the pane moves to
+    // another folder.
     public string PreviewElapsedText { get; private set; } = string.Empty;
     public event Action? PreviewElapsedChanged;
+
+    // The file the preview transport is playing, by its absolute path — the
+    // only identity the preview events carry. The mapping pane accents the slot
+    // row whose audio this is; null when nothing is previewing.
+    public string? PreviewingPath { get; private set; }
 
     // The previewing track's total-duration label, from PreviewPlaying/Paused.
     // Shown after the elapsed position; null when nothing is previewing.
@@ -251,6 +257,28 @@ internal sealed class ImportStore
         return true;
     }
 
+    // Put one of a candidate's files in a role, or put it back. Core persists
+    // the decision and clears the stored identify verdict; the triage queue is
+    // re-read so the row's counts follow the shape the folder now has. Returns
+    // whether the change landed — the mapping pane drops the excluded file's
+    // slot rows itself rather than re-prefetching over the user's edits, so it
+    // has to know the write succeeded before it does.
+    public async Task<bool> SetFileRole(string key, string fileId, BridgeFileRoleChoice choice)
+    {
+        var (current, error) = await _import.SetFileRole(key, fileId, choice);
+        if (!current)
+        {
+            return false;
+        }
+        if (error is not null)
+        {
+            _showError(Loc.Chrome("import.error_title"), error);
+            return false;
+        }
+        await ReadCandidates();
+        return true;
+    }
+
     // Import-preview and candidate-loudness events, which drive the import
     // picker's live position label (and the system transport controls for the
     // preview session), plus the queue sweep's progress. Routed here by the
@@ -271,14 +299,19 @@ internal sealed class ImportStore
                 // Total duration arrives once when preview starts; the next
                 // PreviewProgress tick renders it alongside the elapsed position.
                 _previewDurationLabel = BridgeDisplay.Clock(preview.DurationMs);
+                PreviewingPath = preview.Path;
+                PreviewElapsedChanged?.Invoke();
                 _mediaControls.UpdateNowPlayingForPreview(preview.Path, preview.DurationMs, isPlaying: true);
                 break;
             case BridgeUiEvent.PreviewPaused preview:
                 _previewDurationLabel = BridgeDisplay.Clock(preview.DurationMs);
+                PreviewingPath = preview.Path;
+                PreviewElapsedChanged?.Invoke();
                 _mediaControls.UpdateNowPlayingForPreview(preview.Path, preview.DurationMs, isPlaying: false);
                 break;
             case BridgeUiEvent.PreviewIdle:
                 _previewDurationLabel = null;
+                PreviewingPath = null;
                 PreviewElapsedText = string.Empty;
                 PreviewElapsedChanged?.Invoke();
                 _mediaControls.UpdatePreviewIdle();
@@ -302,11 +335,13 @@ internal sealed class ImportStore
         }
     }
 
-    // Reset the preview label when the picker closes so a reopened picker starts
-    // blank rather than showing the last position.
+    // Reset the preview label when the pane leaves the folder whose audio was
+    // playing, so the next folder starts blank rather than showing the last
+    // position.
     public void ClearPreview()
     {
         _previewDurationLabel = null;
+        PreviewingPath = null;
         PreviewElapsedText = string.Empty;
         PreviewElapsedChanged?.Invoke();
     }
@@ -320,10 +355,6 @@ internal sealed class ImportStore
     // click gate for a row whose phase is still Queued.
     public System.Threading.Tasks.Task<bool> AutoIdentify(string candidateKey, string folderPath) =>
         _import.AutoIdentifyFolder(candidateKey, folderPath);
-
-    // The full candidate for a triage row's key, fetched fresh for the picker
-    // dialog rather than held for the whole list.
-    public ImportCandidate? CandidateForKey(string key) => _import.CandidateForKey(key).Candidate;
 
     // Scan candidates, watched folders, and selection are per-library in-memory
     // state; clear them on teardown so the next library doesn't inherit the

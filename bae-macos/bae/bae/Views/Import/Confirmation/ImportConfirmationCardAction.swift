@@ -1,19 +1,20 @@
 import BaeKit
 import SwiftUI
 
-/// The trailing action cell of the confirm header card: the `Import` button
-/// before commit, live progress (a determinate loudness bar during the loudness
-/// pass, an indeterminate spinner + step label otherwise) while importing, a
-/// `Retry Import` button on error, and the `Imported` / cloud-upload state once
+/// The trailing action cell of the commit bar: the `Import` button before
+/// commit, live progress (a determinate loudness bar during the loudness pass,
+/// an indeterminate spinner + step label otherwise) while importing, a `Retry
+/// Import` button on error, and the `Imported` / cloud-upload state once
 /// complete.
+///
+/// The button is never disabled. An edit bae-core cannot shape into a savable
+/// release is refused at commit and the reason is stated on the pane — a
+/// disabled button that says nothing is the thing that redesign removed.
 struct ImportConfirmationCardAction: View {
     let importStatus: BridgeCandidateImportStatus?
     /// Routes the high-frequency loudness ticks to the leaf bar during the
     /// measuring-loudness phase.
     let candidateKey: String
-    /// `Import` stays disabled when the editor is in an invalid state (bae-core
-    /// can't shape the raw form into a savable edit).
-    let actionDisabled: Bool
     let onConfirmImport: () -> Void
     let onViewInLibrary: (String) -> Void
 
@@ -119,7 +120,6 @@ struct ImportConfirmationCardAction: View {
         else {
             Button("Import") { onConfirmImport() }
                 .buttonStyle(.borderedProminent)
-                .disabled(actionDisabled)
         }
     }
 }
@@ -129,7 +129,6 @@ struct ImportConfirmationCardAction: View {
         ImportConfirmationCardAction(
             importStatus: nil,
             candidateKey: "preview-candidate",
-            actionDisabled: false,
             onConfirmImport: {},
             onViewInLibrary: { _ in },
         )

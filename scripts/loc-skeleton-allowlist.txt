@@ -21,6 +21,7 @@ it	Cloud
 it	Disc ID
 it	DiscID
 it	Endpoint
+it	File
 it	OK
 it	Provider
 it	S3-compatible

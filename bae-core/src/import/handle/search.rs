@@ -278,11 +278,42 @@ impl ImportServiceHandle {
         );
 
         let seed = crate::import::parsed_album_to_user_edit(&prepared.parsed);
+
+        // The seed is what the commit compares against; the detail is what the
+        // source said. The two describe the same release and come out the same
+        // length, so the position and length the source printed ride each
+        // seeded row by position. A row the detail runs out for falls back to
+        // its own track number, which is the only position anyone could read.
+        let source_tracks: Vec<crate::import::track_slots::SourceTrack> = seed
+            .tracks
+            .iter()
+            .enumerate()
+            .map(|(index, edit)| {
+                let source = detail.tracks.get(index);
+                crate::import::track_slots::SourceTrack {
+                    edit: edit.clone(),
+                    position: match source {
+                        Some(track) => track.position.clone(),
+                        None => edit.track_number.map(|n| n.to_string()).unwrap_or_default(),
+                    },
+                    duration_ms: source.and_then(|track| track.duration_ms),
+                }
+            })
+            .collect();
+
         let slots = match self.get_candidate(candidate_key) {
             Some(super::ImportCandidateSnapshot::Folder { candidate, .. }) => {
-                crate::import::track_slots::compute_track_slots(&seed.tracks, &candidate.files)
+                // One FFmpeg open per container, so it goes off the async
+                // executor rather than holding it for the length of a folder.
+                tokio::task::spawn_blocking(move || {
+                    crate::import::track_slots::slot_table(&source_tracks, &candidate.files)
+                })
+                .await
+                .map_err(|e| crate::import::ImportError::Internal {
+                    detail: format!("slot table task failed: {e}"),
+                })?
             }
-            _ => Vec::new(),
+            _ => crate::import::track_slots::SlotTable::empty(),
         };
 
         Ok(crate::import::search::ImportReleasePrefetch {

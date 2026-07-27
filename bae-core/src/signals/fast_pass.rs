@@ -103,7 +103,7 @@ fn cue_barcodes(categorized: &CategorizedFiles) -> Vec<SourcedValue> {
 /// audio, and this pass is where that disc ID is derived.
 pub(super) fn gather_non_ocr_sources(
     folder: &Path,
-    stored: &folder_scanner::StoredSheetBindings,
+    stored: &folder_scanner::StoredCandidateEdits,
 ) -> FastPass {
     let mut pass = FastPass::empty();
 
@@ -311,6 +311,7 @@ mod tests {
         let categorized = CategorizedFiles {
             files: vec![
                 CandidateFile {
+                    proposed_audio: false,
                     file: cue.clone(),
                     role: FileRole::TrackSheet {
                         sheet: crate::cue_flac::CueSheet {
@@ -326,10 +327,12 @@ mod tests {
                     },
                 },
                 CandidateFile {
+                    proposed_audio: true,
                     file: flac.clone(),
                     role: FileRole::Audio,
                 },
                 CandidateFile {
+                    proposed_audio: false,
                     file: cover.clone(),
                     role: FileRole::Artwork,
                 },
@@ -380,7 +383,7 @@ mod tests {
 
         let categorized = crate::import::folder_scanner::collect_release_candidate_files(
             dir,
-            &crate::import::folder_scanner::StoredSheetBindings::none(),
+            &crate::import::folder_scanner::StoredCandidateEdits::none(),
         )
         .unwrap();
         let disc_id = crate::import::discid::compute_discid_from_categorized(&categorized);

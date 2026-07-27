@@ -61,11 +61,9 @@
   <data name="identify.manual" xml:space="preserve"><value>nur manuelle Suche</value></data>
   <data name="identify.not_found" xml:space="preserve"><value>nicht gefunden</value></data>
   <data name="import.already_in_library" xml:space="preserve"><value>diese Veröffentlichung ist bereits in deiner Bibliothek</value></data>
-  <data name="import.back_to_search" xml:space="preserve"><value>Zurück zur Suche</value></data>
   <data name="import.choose_folder" xml:space="preserve"><value>Ordner wählen &amp; scannen</value></data>
   <data name="import.complete" xml:space="preserve"><value>importiert</value></data>
   <data name="import.candidate.tracks" xml:space="preserve"><value>{count, plural, one {# Track} other {# Tracks}}</value></data>
-  <data name="import.confirm_title" xml:space="preserve"><value>Import bestätigen</value></data>
   <data name="import.drop_caption" xml:space="preserve"><value>scannen &amp; importieren</value></data>
   <data name="import.drop_folder_only" xml:space="preserve"><value>Ordner zum Importieren ablegen</value></data>
   <data name="import.drop_read_failed" xml:space="preserve"><value>abgelegtes Element konnte nicht gelesen werden</value></data>
@@ -74,9 +72,11 @@
   <data name="import.failed" xml:space="preserve"><value>Import fehlgeschlagen</value></data>
   <data name="import.field.artist_manual" xml:space="preserve"><value>Interpret (manuelle Suche)</value></data>
   <data name="import.no_releases" xml:space="preserve"><value>keine Veröffentlichungen gefunden</value></data>
-  <data name="import.preview" xml:space="preserve"><value>Vorschau</value></data>
+  <data name="import.pane.lengths_differ" xml:space="preserve"><value>Die Länge der Datei stimmt nicht mit der der Veröffentlichung überein.</value></data>
+  <data name="import.pane.no_release" xml:space="preserve"><value>Keine Veröffentlichung — importiert wird, was die Dateien sagen</value></data>
+  <data name="import.pane.pick_a_candidate" xml:space="preserve"><value>Wähle einen Ordner aus der Liste, um ihn einer Veröffentlichung zuzuordnen.</value></data>
+  <data name="import.pane.pressing_details" xml:space="preserve"><value>Pressungsdetails</value></data>
   <data name="import.progress.percent" xml:space="preserve"><value>wird importiert {percent}%</value></data>
-  <data name="import.release_title" xml:space="preserve"><value>Veröffentlichung importieren</value></data>
   <data name="import.rerun_identify" xml:space="preserve"><value>Identifizierung erneut ausführen</value></data>
   <data name="import.scanning" xml:space="preserve"><value>wird gescannt …</value></data>
   <data name="import.storage.keep_local" xml:space="preserve"><value>Lokale Kopie behalten</value></data>
@@ -403,9 +403,7 @@
   <data name="output.title" xml:space="preserve"><value>exportieren &amp; speichern</value></data>
   <data name="export.state.exporting" xml:space="preserve"><value>wird exportiert… {percent}%</value></data>
   <data name="export.state.saving" xml:space="preserve"><value>wird gespeichert… {percent}%</value></data>
-  <data name="import.track_sheets" xml:space="preserve"><value>Track-Sheets</value></data>
   <data name="import.sheet.describes_nothing_yet" xml:space="preserve"><value>Beschreibt noch nichts</value></data>
-  <data name="import.documents" xml:space="preserve"><value>Dokumente</value></data>
   <data name="import.document.read_failed" xml:space="preserve"><value>{name} konnte nicht gelesen werden: {error}</value></data>
   <data name="libraries.reveal" xml:space="preserve"><value>im Explorer anzeigen</value></data>
   <data name="libraries.copy_id" xml:space="preserve"><value>ID kopieren</value></data>

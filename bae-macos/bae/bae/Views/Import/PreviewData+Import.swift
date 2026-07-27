@@ -404,24 +404,32 @@
         private static func previewFile(
             name: String,
             size: UInt64,
-            role: BridgeFileRole
+            role: BridgeFileRole,
+            becomes: BridgeFileBecomes = .noSlots,
+            dirPrefix: String? = nil
         ) -> BridgeCandidateFile {
+            // Only audio is a decision, so only audio carries alternatives —
+            // the same rule core applies.
             BridgeCandidateFile(
                 file: BridgeFileInfo(
-                    name: name,
+                    name: dirPrefix.map { $0 + name } ?? name,
                     size: size,
-                    dirPrefix: nil,
+                    dirPrefix: dirPrefix,
                     fileName: name,
                     localPath: "/tmp/fake/\(name)"
                 ),
-                role: role
+                role: role,
+                becomes: becomes,
+                alternatives: role.isAudio ? [.audio, .notATrack] : [],
+                roleChoice: role.isAudio ? .audio : nil
             )
         }
 
         private static func previewImage(
             name: String,
             size: UInt64,
-            isCover: Bool = false
+            isCover: Bool = false,
+            dirPrefix: String? = nil
         ) -> BridgeCandidateFile {
             let choice = BridgeCoverChoice(
                 selection: .releaseImage(fileId: name),
@@ -432,18 +440,21 @@
                 name: name,
                 size: size,
                 role: isCover
-                    ? .cover(choice: choice) : .artwork(choice: choice)
+                    ? .cover(choice: choice) : .artwork(choice: choice),
+                dirPrefix: dirPrefix
             )
         }
 
-        /// A sheet bound to `Album Title.flac`.
+        /// A sheet bound to `Album Title.flac`, carving the release's nine
+        /// slots out of it.
         static let boundTrackSheet = previewFile(
             name: "Album Title.cue",
             size: 1200,
             role: .trackSheet(
                 binding: .describes(fileId: "Album Title.flac"),
                 trackCount: 9
-            )
+            ),
+            becomes: .slots(first: 1, last: 9)
         )
 
         /// A sheet whose `FILE` directive names audio that isn't in the folder.
@@ -488,14 +499,33 @@
                 previewFile(
                     name: "Album Title.flac",
                     size: 340_000_000,
-                    role: .audio
+                    role: .audio,
+                    becomes: .slots(first: 1, last: 9)
                 ),
                 previewImage(name: "Front.png", size: 2_500_000, isCover: true),
                 previewImage(name: "Matrix.png", size: 900_000),
                 previewFile(name: "info.log", size: 6000, role: .document),
                 previewFile(name: "rip.nfo", size: 400, role: .other),
-            ],
-            formatLabel: "CUE+FLAC"
+            ]
+                + (1...14)
+                .map { i in
+                    previewImage(
+                        name: "scan-\(i).jpg",
+                        size: 1_400_000,
+                        dirPrefix: "scans/"
+                    )
+                },
+            formatLabel: "CUE+FLAC",
+            // The scans directory is one fact, not fourteen: core collapses it
+            // and the roles table shows the group row in its place.
+            collapsedDirectories: [
+                BridgeCollapsedDirectory(
+                    dirPrefix: "scans/",
+                    kind: .image,
+                    count: 14,
+                    totalSize: 14 * 1_400_000
+                )
+            ]
         )
 
         static let releaseDetailBridge: BridgeReleaseDetail = {
@@ -540,7 +570,7 @@
                         side: 1,
                         trackNumber: Int32(i),
                         artistNames: i == 5 ? ["Featured Artist"] : [],
-                        file: .standalone(fileId: "\(i).flac"),
+                        file: .standalone(fileId: "Track \(i).flac"),
                     )
                 }
             return BridgeReleaseUserEdit(
@@ -582,15 +612,19 @@
         /// Per-track audio candidate (nine FLAC files) plus one cover image, two
         /// documents, and a sheet describing nothing yet — the file-per-track
         /// counterpart to `bridgeCandidateFiles`.
+        private static let trackAudioFiles: [BridgeCandidateFile] = (1...9)
+            .map { (i: Int) -> BridgeCandidateFile in
+                let slot = UInt32(i)
+                return previewFile(
+                    name: "Track \(i).flac",
+                    size: UInt64(35_000_000 + i * 2_000_000),
+                    role: .audio,
+                    becomes: .slots(first: slot, last: slot)
+                )
+            }
+
         static let candidateFilesTracks = BridgeCandidateFiles(
-            files: (1...9)
-                .map { i in
-                    previewFile(
-                        name: "Track \(i).flac",
-                        size: UInt64(35_000_000 + i * 2_000_000),
-                        role: .audio
-                    )
-                }
+            files: trackAudioFiles
                 + [
                     previewImage(
                         name: "Front.png",
@@ -609,8 +643,136 @@
                         )
                     ),
                 ],
-            formatLabel: "FLAC"
+            formatLabel: "FLAC",
+            collapsedDirectories: []
         )
+
+        // MARK: - Track slots
+
+        /// One audio unit per track file, in disk order — what a row with no
+        /// file is offered to choose from.
+        static let slotAudio: [BridgeSlotFile] = (1...9)
+            .map { (i: Int) -> BridgeSlotFile in
+                // Track 4's file runs long against the source, which is what
+                // the row's two lengths are there to show.
+                let drift: Int = i == 4 ? 21000 : 0
+                let probed: Int = 180_000 + i * 15000 + drift
+                return BridgeSlotFile(
+                    audio: .standalone(fileId: "Track \(i).flac"),
+                    name: "Track \(i).flac",
+                    size: UInt64(35_000_000 + i * 2_000_000),
+                    localPath: "/tmp/fake/Track \(i).flac",
+                    probedDurationMs: UInt64(probed),
+                    span: .whole
+                )
+            }
+
+        /// The mapping the picked release produces: nine files against nine
+        /// tracks, every row paired.
+        static let slotTable = BridgeSlotTable(
+            rows: releaseSeedBridge.tracks.indices.map { index in
+                .paired(
+                    track: releaseSeedBridge.tracks[index],
+                    position: "\(index + 1)",
+                    sourceDurationMs: UInt64(180_000 + (index + 1) * 15000),
+                    file: slotAudio[index]
+                )
+            },
+            reconciliation: .agrees(count: 9),
+            audio: slotAudio
+        )
+
+        // MARK: - Mapping pane candidates
+
+        private static func mappingFolder(
+            name: String,
+            files: BridgeCandidateFiles
+        ) -> Candidate {
+            Candidate(
+                bridge: BridgeFolderCandidate(
+                    folderPath: "/Music/Downloads/\(name)",
+                    sourceFolderName: name,
+                    watchedFolderPath: importWatchedFolder.path,
+                    files: files,
+                    trackCount: 9,
+                    skipped: false,
+                    isAdded: false,
+                )
+            )
+        }
+
+        /// A candidate with a release picked: the header states the claim, the
+        /// slot table maps nine files onto nine tracks, the commit bar counts
+        /// them.
+        static let mappingCandidate: Candidate = {
+            var candidate = mappingFolder(
+                name: "Album Title One",
+                files: candidateFilesTracks
+            )
+            candidate.mode = .confirming
+            candidate.claim = claimBridge
+            candidate.identityChoice = claimBridge.choice
+            candidate.pickedReleaseId = releaseDetailBridge.releaseId
+            candidate.releaseDetailBridge = releaseDetailBridge
+            candidate.editValues = confirmEditValues
+            candidate.slots = slotTable
+            return candidate
+        }()
+
+        /// Nothing picked yet: the header offers to find the release, the roles
+        /// table stands on its own, and there is nothing to commit.
+        static let unidentifiedMappingCandidate = mappingFolder(
+            name: "Album Title One",
+            files: bridgeCandidateFiles
+        )
+
+        /// A tenth file the source's tracklist does not account for — the row
+        /// starts blank, and the commit bar says one row still has no name.
+        static let unmatchedSlotFile = BridgeSlotFile(
+            audio: .standalone(fileId: "Track 10.flac"),
+            name: "Track 10.flac",
+            size: 41_000_000,
+            localPath: "/tmp/fake/Track 10.flac",
+            probedDurationMs: 214_000,
+            span: .whole
+        )
+
+        static let unmatchedEditValues: BridgeRawReleaseEdit = {
+            var values = confirmEditValues
+            values.tracks.append(
+                BridgeRawTrackEdit(
+                    id: "import-track-10",
+                    title: "",
+                    artistText: "",
+                    side: 1,
+                    trackNumber: nil,
+                    file: unmatchedSlotFile.audio,
+                )
+            )
+            return values
+        }()
+
+        static let unmatchedMappingCandidate: Candidate = {
+            var candidate = mappingCandidate
+            candidate.editValues = unmatchedEditValues
+            candidate.slots = BridgeSlotTable(
+                rows: slotTable.rows + [
+                    .fileOnly(
+                        track: BridgeTrackUserEdit(
+                            title: "",
+                            side: 1,
+                            trackNumber: nil,
+                            artistNames: [],
+                            file: unmatchedSlotFile.audio,
+                        ),
+                        file: unmatchedSlotFile
+                    )
+                ],
+                reconciliation: .moreFiles(files: 10, tracks: 9),
+                audio: slotAudio + [unmatchedSlotFile]
+            )
+            return candidate
+        }()
 
         // MARK: - Import search
 

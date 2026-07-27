@@ -537,7 +537,7 @@ fn non_utf8_cue_is_decoded_not_dropped() {
 
     let pass = gather_non_ocr_sources(
         &folder,
-        &crate::import::folder_scanner::StoredSheetBindings::none(),
+        &crate::import::folder_scanner::StoredCandidateEdits::none(),
     );
     let texts: Vec<&str> = pass.lines.iter().map(|l| l.text.as_str()).collect();
 

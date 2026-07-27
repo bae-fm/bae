@@ -2370,6 +2370,7 @@ mod import_candidate_state_tests {
                 .map(|(name, size)| CandidateFile {
                     file: ScannedFile::new(PathBuf::from(*name), name.to_string(), *size),
                     role: FileRole::Audio,
+                    proposed_audio: true,
                 })
                 .collect(),
             format_label: "FLAC".to_string(),
@@ -2517,6 +2518,7 @@ mod import_candidate_state_tests {
                         123_456,
                     ),
                     role: FileRole::Audio,
+                    proposed_audio: true,
                 },
                 CandidateFile {
                     file: ScannedFile::new(
@@ -2525,6 +2527,7 @@ mod import_candidate_state_tests {
                         234_567,
                     ),
                     role: FileRole::Audio,
+                    proposed_audio: true,
                 },
             ],
             format_label: "FLAC".to_string(),
@@ -2609,14 +2612,14 @@ mod import_candidate_state_tests {
     #[tokio::test]
     async fn a_binding_survives_a_relaunch() {
         use crate::import::folder_scanner::{
-            collect_release_candidate_files, SheetBindingEdits, StoredSheetBindings,
-            UserSheetBinding,
+            collect_release_candidate_files, CandidateFileEdits, SheetBindingEdits,
+            StoredCandidateEdits, UserSheetBinding,
         };
 
         let (db, _tmp) = empty_db().await;
         let folder = walkthrough_folder();
         let scanned =
-            collect_release_candidate_files(folder.path(), &StoredSheetBindings::none()).unwrap();
+            collect_release_candidate_files(folder.path(), &StoredCandidateEdits::none()).unwrap();
         assert_eq!(scanned.track_count(), 1, "unbound, the image is one track");
 
         let mut edits = SheetBindingEdits::default();
@@ -2626,17 +2629,20 @@ mod import_candidate_state_tests {
                 file_id: "cd.flac".to_string(),
             },
         );
-        db.save_import_candidate_sheet_bindings(
+        db.save_import_candidate_file_edits(
             &scanned.content_hash(),
             &folder.path().to_string_lossy(),
-            &edits,
+            &CandidateFileEdits {
+                sheet_bindings: edits,
+                ..Default::default()
+            },
         )
         .await
         .unwrap();
 
         // Everything after this is what a relaunch does: read the stored
         // decisions back, then walk the folder with them.
-        let stored = db.load_stored_sheet_bindings().await.unwrap();
+        let stored = db.load_stored_candidate_edits().await.unwrap();
         let reopened = collect_release_candidate_files(folder.path(), &stored).unwrap();
 
         assert_eq!(
@@ -2658,14 +2664,14 @@ mod import_candidate_state_tests {
     #[tokio::test]
     async fn changing_a_binding_keeps_the_hash_and_clears_the_verdict() {
         use crate::import::folder_scanner::{
-            collect_release_candidate_files, SheetBindingEdits, StoredSheetBindings,
-            UserSheetBinding,
+            collect_release_candidate_files, CandidateFileEdits, SheetBindingEdits,
+            StoredCandidateEdits, UserSheetBinding,
         };
 
         let (db, _tmp) = empty_db().await;
         let folder = walkthrough_folder();
         let unbound =
-            collect_release_candidate_files(folder.path(), &StoredSheetBindings::none()).unwrap();
+            collect_release_candidate_files(folder.path(), &StoredCandidateEdits::none()).unwrap();
         let hash = unbound.content_hash();
 
         db.save_import_candidate_verdict(&new_candidate_row(
@@ -2694,13 +2700,20 @@ mod import_candidate_state_tests {
                 file_id: "cd.flac".to_string(),
             },
         );
-        db.save_import_candidate_sheet_bindings(&hash, &folder.path().to_string_lossy(), &edits)
-            .await
-            .unwrap();
+        db.save_import_candidate_file_edits(
+            &hash,
+            &folder.path().to_string_lossy(),
+            &CandidateFileEdits {
+                sheet_bindings: edits,
+                ..Default::default()
+            },
+        )
+        .await
+        .unwrap();
 
         let bound = collect_release_candidate_files(
             folder.path(),
-            &db.load_stored_sheet_bindings().await.unwrap(),
+            &db.load_stored_candidate_edits().await.unwrap(),
         )
         .unwrap();
         assert_eq!(
@@ -2726,7 +2739,7 @@ mod import_candidate_state_tests {
              so the queue identifies the candidate again"
         );
         assert_eq!(
-            row.sheet_bindings.get("cd.cue"),
+            row.file_edits.sheet_bindings.get("cd.cue"),
             Some(&UserSheetBinding::Describes {
                 file_id: "cd.flac".to_string()
             }),

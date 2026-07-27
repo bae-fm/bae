@@ -16,13 +16,14 @@ fn audio_entry(path: &str, relative_path: &str, size: u64) -> CandidateFile {
     CandidateFile {
         file: ScannedFile::new(PathBuf::from(path), relative_path.to_string(), size),
         role: FileRole::Audio,
+        proposed_audio: true,
     }
 }
 
 /// Every scan item (valid + invalid) for `root`.
 fn scan_items(root: impl Into<PathBuf>) -> Vec<ScanItem> {
     let mut items = Vec::new();
-    scan_for_candidates_with_callback(root.into(), &StoredSheetBindings::none(), |item| {
+    scan_for_candidates_with_callback(root.into(), &StoredCandidateEdits::none(), |item| {
         items.push(item)
     })
     .unwrap();
@@ -203,7 +204,7 @@ fn test_collect_release_candidate_files_skips_hidden_and_bae() {
     std::fs::write(bae_dir.join("cover-mb.jpg"), [0xFF, 0xD8, 0xFF, 0xE0]).unwrap();
     std::fs::write(bae_dir.join("cover-discogs.jpeg"), [0xFF, 0xD8, 0xFF, 0xE0]).unwrap();
 
-    let files = collect_release_candidate_files(root, &StoredSheetBindings::none()).unwrap();
+    let files = collect_release_candidate_files(root, &StoredCandidateEdits::none()).unwrap();
 
     let audio_paths: Vec<_> = files.audio().map(|f| f.relative_path.as_str()).collect();
     assert_eq!(audio_paths, vec!["track.flac"]);
@@ -227,7 +228,7 @@ fn collect_release_candidate_files_on_invalid_folder_yields_invalid_folder() {
     // Zero-byte audio is corruption, not an I/O fault.
     std::fs::write(root.join("track.flac"), []).unwrap();
 
-    let err = collect_release_candidate_files(root, &StoredSheetBindings::none())
+    let err = collect_release_candidate_files(root, &StoredCandidateEdits::none())
         .expect_err("zero-byte audio makes the folder unimportable");
     assert!(
         matches!(
@@ -295,6 +296,7 @@ fn content_hash_is_location_independent_and_size_sensitive() {
 #[test]
 fn content_hash_is_independent_of_discovery_order() {
     let entry = |name: &str, size: u64, role: FileRole| CandidateFile {
+        proposed_audio: matches!(role, FileRole::Audio),
         file: ScannedFile::new(PathBuf::from(name), name.to_string(), size),
         role,
     };
@@ -997,7 +999,7 @@ fn test_collect_release_candidate_files_cue_alac_format_label() {
     )
     .unwrap();
 
-    let files = collect_release_candidate_files(root, &StoredSheetBindings::none())
+    let files = collect_release_candidate_files(root, &StoredCandidateEdits::none())
         .expect("scan should succeed");
 
     assert_eq!(files.format_label, "CUE+ALAC");
@@ -1030,7 +1032,7 @@ FILE "02 - Track Two.flac" WAVE
 "#;
     std::fs::write(root.join("Album.cue"), cue).unwrap();
 
-    let files = collect_release_candidate_files(root, &StoredSheetBindings::none())
+    let files = collect_release_candidate_files(root, &StoredCandidateEdits::none())
         .expect("scan should succeed");
 
     let bound = files.bound_sheets();
@@ -1081,7 +1083,7 @@ fn test_collect_release_candidate_files_cue_ape_track_count() {
     )
     .unwrap();
 
-    let files = collect_release_candidate_files(root, &StoredSheetBindings::none())
+    let files = collect_release_candidate_files(root, &StoredCandidateEdits::none())
         .expect("scan should succeed");
 
     assert_eq!(files.format_label, "CUE+APE");
@@ -2329,7 +2331,7 @@ fn io_error_validating_audio_surfaces_not_swallowed() {
         &tree,
         &PathBuf::from("Album"),
         temp.path(),
-        &StoredSheetBindings::none(),
+        &StoredCandidateEdits::none(),
     );
     assert!(
         result.is_err(),
@@ -3389,7 +3391,7 @@ fn audio_no_sheet_references_survives() {
     std::fs::write(album.join("bonus 1.flac"), fake_flac()).unwrap();
     std::fs::write(album.join("bonus 2.flac"), fake_flac()).unwrap();
 
-    let files = collect_release_candidate_files(&album, &StoredSheetBindings::none())
+    let files = collect_release_candidate_files(&album, &StoredCandidateEdits::none())
         .expect("scan should succeed");
     assert_eq!(
         files
@@ -3447,7 +3449,7 @@ fn folder_identifies_from_its_rip_log_with_the_sheet_unbound() {
         "folder must be a candidate so its log can identify it",
     );
 
-    let files = collect_release_candidate_files(&album, &StoredSheetBindings::none())
+    let files = collect_release_candidate_files(&album, &StoredCandidateEdits::none())
         .expect("scan should succeed");
     assert!(files.bound_sheets().is_empty());
     assert!(
@@ -3510,7 +3512,7 @@ fn content_hash_covers_audio_no_sheet_references() {
         if with_bonus {
             std::fs::write(dir.join("bonus.flac"), fake_flac()).unwrap();
         }
-        collect_release_candidate_files(dir, &StoredSheetBindings::none())
+        collect_release_candidate_files(dir, &StoredCandidateEdits::none())
             .expect("scan should succeed")
             .content_hash()
     };
@@ -3542,9 +3544,9 @@ fn an_unrecognized_sidecar_is_carried_and_hashed() {
         std::fs::write(with_sidecars.join(sidecar), b"scene notes").unwrap();
     }
 
-    let bare_files = collect_release_candidate_files(&bare, &StoredSheetBindings::none()).unwrap();
+    let bare_files = collect_release_candidate_files(&bare, &StoredCandidateEdits::none()).unwrap();
     let sidecar_files =
-        collect_release_candidate_files(&with_sidecars, &StoredSheetBindings::none()).unwrap();
+        collect_release_candidate_files(&with_sidecars, &StoredCandidateEdits::none()).unwrap();
     assert_eq!(
         sidecar_files
             .files
@@ -3589,7 +3591,7 @@ fn a_binding_survives_a_rename_of_the_sheet() {
     )
     .unwrap();
 
-    let files = collect_release_candidate_files(&album, &StoredSheetBindings::none())
+    let files = collect_release_candidate_files(&album, &StoredCandidateEdits::none())
         .expect("scan should succeed");
     let bound = files.bound_sheets();
     assert_eq!(bound.len(), 1);
@@ -3633,7 +3635,7 @@ fn corrupt_audio_and_empty_folders_still_invalidate() {
     );
     assert!(
         matches!(
-            collect_release_candidate_files(&empty, &StoredSheetBindings::none()),
+            collect_release_candidate_files(&empty, &StoredCandidateEdits::none()),
             Err(crate::import::ImportError::InvalidFolder(
                 InvalidReason::NoValidAudio
             ))
@@ -3654,7 +3656,7 @@ fn the_scan_proposes_one_cover_from_the_conventional_names() {
         std::fs::write(album.join(image), [0xFF, 0xD8, 0xFF, 0xE0]).unwrap();
     }
 
-    let files = collect_release_candidate_files(&album, &StoredSheetBindings::none())
+    let files = collect_release_candidate_files(&album, &StoredCandidateEdits::none())
         .expect("scan should succeed");
     assert_eq!(
         cover_names(&files),
@@ -3676,7 +3678,7 @@ fn a_root_level_cover_outranks_one_in_a_subfolder() {
     std::fs::write(album.join("Artwork/front.jpg"), [0xFF, 0xD8, 0xFF, 0xE0]).unwrap();
     std::fs::write(album.join("cover.jpg"), [0xFF, 0xD8, 0xFF, 0xE0]).unwrap();
 
-    let files = collect_release_candidate_files(&album, &StoredSheetBindings::none())
+    let files = collect_release_candidate_files(&album, &StoredCandidateEdits::none())
         .expect("scan should succeed");
     assert_eq!(cover_names(&files), vec!["cover.jpg"]);
 
@@ -3689,7 +3691,7 @@ fn a_root_level_cover_outranks_one_in_a_subfolder() {
         [0xFF, 0xD8, 0xFF, 0xE0],
     )
     .unwrap();
-    let files = collect_release_candidate_files(&nested_only, &StoredSheetBindings::none())
+    let files = collect_release_candidate_files(&nested_only, &StoredCandidateEdits::none())
         .expect("scan should succeed");
     assert_eq!(cover_names(&files), vec!["front.jpg"]);
 }
@@ -3737,7 +3739,7 @@ fn binding_a_sheet_whose_directive_missed_makes_the_folder_a_twelve_track_disc()
     .unwrap();
 
     let unbound =
-        collect_release_candidate_files(&album, &StoredSheetBindings::none()).expect("scan");
+        collect_release_candidate_files(&album, &StoredCandidateEdits::none()).expect("scan");
     assert_eq!(
         unbound.track_count(),
         1,
@@ -3797,7 +3799,7 @@ fn audio_a_sheet_cannot_use_is_refused_at_offer_time_with_the_codec_named() {
     .unwrap();
 
     let files =
-        collect_release_candidate_files(&album, &StoredSheetBindings::none()).expect("scan");
+        collect_release_candidate_files(&album, &StoredCandidateEdits::none()).expect("scan");
     let options = files.sheet_binding_options("cd.cue");
 
     assert_eq!(
@@ -3839,7 +3841,7 @@ fn clearing_a_binding_leaves_it_unbound_rather_than_re_guessed() {
     .unwrap();
 
     let proposed =
-        collect_release_candidate_files(&album, &StoredSheetBindings::none()).expect("scan");
+        collect_release_candidate_files(&album, &StoredCandidateEdits::none()).expect("scan");
     assert_eq!(
         proposed.track_count(),
         12,
@@ -3884,7 +3886,7 @@ fn a_binding_whose_audio_disappears_is_not_kept() {
     .unwrap();
 
     let scanned =
-        collect_release_candidate_files(&album, &StoredSheetBindings::none()).expect("scan");
+        collect_release_candidate_files(&album, &StoredCandidateEdits::none()).expect("scan");
     let stored = stored_binding(&scanned, "cd.cue", Some("cd.flac"));
     assert_eq!(
         collect_release_candidate_files(&album, &stored)
@@ -3915,7 +3917,7 @@ fn stored_binding(
     files: &CategorizedFiles,
     sheet_file_id: &str,
     audio_file_id: Option<&str>,
-) -> StoredSheetBindings {
+) -> StoredCandidateEdits {
     let mut edits = SheetBindingEdits::default();
     edits.set(
         sheet_file_id.to_string(),
@@ -3926,7 +3928,13 @@ fn stored_binding(
             None => UserSheetBinding::Cleared,
         },
     );
-    StoredSheetBindings::new(HashMap::from([(files.content_hash(), edits)]))
+    StoredCandidateEdits::new(HashMap::from([(
+        files.content_hash(),
+        CandidateFileEdits {
+            sheet_bindings: edits,
+            ..Default::default()
+        },
+    )]))
 }
 
 /// Re-scan `folder` as it reads once the user has made one binding decision.
@@ -3938,4 +3946,220 @@ fn scan_with_binding(
 ) -> CategorizedFiles {
     collect_release_candidate_files(folder, &stored_binding(files, sheet_file_id, audio_file_id))
         .expect("scan")
+}
+
+// ── What a role makes of a file, and which files are the release's tracks ────
+
+/// A folder holding a disc image, its sheet, and two loose bonus tracks. The
+/// "Becomes" column reads off the folder alone — no release has been picked —
+/// and it says which slots each file backs: the sheet carves the first eleven,
+/// the bonus files take one each, and the container the sheet speaks for backs
+/// none of its own.
+#[test]
+fn becomes_names_the_slots_each_file_backs() {
+    let tmp = tempfile::tempdir().unwrap();
+    let album = tmp.path().join("Album");
+    std::fs::create_dir_all(&album).unwrap();
+    std::fs::copy(
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/cue_flac/Test Album.flac"),
+        album.join("CDImage.flac"),
+    )
+    .unwrap();
+    std::fs::write(
+        album.join("CDImage.cue"),
+        make_cue_content_n_tracks("CDImage.flac", "Album Title", 11),
+    )
+    .unwrap();
+    std::fs::write(album.join("bonus-1.flac"), fake_flac()).unwrap();
+    std::fs::write(album.join("bonus-2.flac"), fake_flac()).unwrap();
+    std::fs::write(album.join("cover.jpg"), fake_jpeg()).unwrap();
+
+    let files =
+        collect_release_candidate_files(&album, &StoredCandidateEdits::none()).expect("scan");
+    let becomes: Vec<(&str, FileBecomes)> = files
+        .files
+        .iter()
+        .map(|entry| entry.file.relative_path.as_str())
+        .zip(files.becomes())
+        .collect();
+
+    assert_eq!(
+        becomes,
+        vec![
+            ("CDImage.cue", FileBecomes::Slots { first: 1, last: 11 }),
+            ("CDImage.flac", FileBecomes::NoSlots),
+            (
+                "bonus-1.flac",
+                FileBecomes::Slots {
+                    first: 12,
+                    last: 12
+                }
+            ),
+            (
+                "bonus-2.flac",
+                FileBecomes::Slots {
+                    first: 13,
+                    last: 13
+                }
+            ),
+            ("cover.jpg", FileBecomes::NoSlots),
+        ],
+    );
+}
+
+/// A directory of nothing but artwork collapses to one row. A directory that
+/// also holds the release's cover does not — the cover has to stay visible on
+/// a row of its own — and neither does one holding two different jobs.
+#[test]
+fn a_homogeneous_directory_collapses_to_one_row() {
+    let tmp = tempfile::tempdir().unwrap();
+    let album = tmp.path().join("Album");
+    std::fs::create_dir_all(album.join("scans")).unwrap();
+    std::fs::create_dir_all(album.join("logs")).unwrap();
+    std::fs::write(album.join("01.flac"), fake_flac()).unwrap();
+    std::fs::write(album.join("cover.jpg"), fake_jpeg()).unwrap();
+    for index in 1..=4 {
+        std::fs::write(album.join(format!("scans/page-{index}.jpg")), fake_jpeg()).unwrap();
+    }
+    std::fs::write(album.join("logs/rip.log"), b"log").unwrap();
+    std::fs::write(album.join("logs/notes.txt"), b"notes").unwrap();
+    // A directory holding two different jobs stays expanded.
+    std::fs::create_dir_all(album.join("extras")).unwrap();
+    std::fs::write(album.join("extras/back.jpg"), fake_jpeg()).unwrap();
+    std::fs::write(album.join("extras/info.txt"), b"info").unwrap();
+
+    let files =
+        collect_release_candidate_files(&album, &StoredCandidateEdits::none()).expect("scan");
+    let collapsed: Vec<(String, FileRowKind, u32)> = files
+        .collapsed_directories()
+        .into_iter()
+        .map(|dir| (dir.dir_prefix, dir.kind, dir.count))
+        .collect();
+
+    assert_eq!(
+        collapsed,
+        vec![
+            ("logs/".to_string(), FileRowKind::Document, 2),
+            ("scans/".to_string(), FileRowKind::Image, 4),
+        ],
+    );
+}
+
+/// Taking a file out of the tracklist stops it producing a slot, and the file
+/// stays in the release: the folder is the release, so it still imports. The
+/// content hash is what the decision is stored under, so it must not move.
+#[test]
+fn a_file_taken_out_of_the_tracklist_stops_being_a_slot_and_stays_in_the_release() {
+    let tmp = tempfile::tempdir().unwrap();
+    let album = tmp.path().join("Album");
+    std::fs::create_dir_all(&album).unwrap();
+    for index in 1..=3 {
+        std::fs::write(album.join(format!("{index:02}.flac")), fake_flac()).unwrap();
+    }
+
+    let mut files =
+        collect_release_candidate_files(&album, &StoredCandidateEdits::none()).expect("scan");
+    let hash = files.content_hash();
+    assert_eq!(files.track_count(), 3);
+
+    let mut roles = FileRoleEdits::default();
+    roles.set("03.flac".to_string(), FileRoleChoice::NotATrack);
+    files
+        .apply_candidate_file_edits(&CandidateFileEdits {
+            file_roles: roles.clone(),
+            ..Default::default()
+        })
+        .expect("taking one of three out is fine");
+
+    assert_eq!(files.track_count(), 2, "it stops being one of the tracks");
+    assert_eq!(
+        files.becomes().last(),
+        Some(&FileBecomes::NoSlots),
+        "and it backs no slot",
+    );
+    assert_eq!(
+        files.release_files().count(),
+        3,
+        "the folder is the release: the file is still carried, uploaded and exported",
+    );
+    assert_eq!(
+        files.content_hash(),
+        hash,
+        "the hash covers files, never role decisions, so the row stays addressable",
+    );
+
+    // And a fresh walk with the decision stored reads the same way, which is
+    // what makes an exclusion survive re-picking a release and relaunching.
+    let stored = StoredCandidateEdits::new(HashMap::from([(
+        hash,
+        CandidateFileEdits {
+            file_roles: roles,
+            ..Default::default()
+        },
+    )]));
+    let reopened = collect_release_candidate_files(&album, &stored).expect("scan");
+    assert_eq!(reopened.track_count(), 2);
+    assert_eq!(reopened.release_files().count(), 3);
+}
+
+/// Taking out the last audio a folder has is refused, and refused on a copy, so
+/// nothing is written and the candidate is left exactly as it was. A release
+/// with no tracks is not a state the rest of the import can describe.
+#[test]
+fn taking_out_the_last_audio_is_refused() {
+    let tmp = tempfile::tempdir().unwrap();
+    let album = tmp.path().join("Album");
+    std::fs::create_dir_all(&album).unwrap();
+    std::fs::write(album.join("01.flac"), fake_flac()).unwrap();
+
+    let mut files =
+        collect_release_candidate_files(&album, &StoredCandidateEdits::none()).expect("scan");
+    let mut roles = FileRoleEdits::default();
+    roles.set("01.flac".to_string(), FileRoleChoice::NotATrack);
+
+    let err = files
+        .apply_candidate_file_edits(&CandidateFileEdits {
+            file_roles: roles,
+            ..Default::default()
+        })
+        .expect_err("there would be nothing left to import");
+    assert_eq!(err, InvalidReason::NoValidAudio);
+}
+
+/// A decision only ever moves a file the scan read as audio. A stored decision
+/// naming an image is ignored rather than applied to whatever now sits at that
+/// path, and an image is never offered the choice in the first place.
+#[test]
+fn only_audio_carries_a_role_decision() {
+    let tmp = tempfile::tempdir().unwrap();
+    let album = tmp.path().join("Album");
+    std::fs::create_dir_all(&album).unwrap();
+    std::fs::write(album.join("01.flac"), fake_flac()).unwrap();
+    std::fs::write(album.join("cover.jpg"), fake_jpeg()).unwrap();
+
+    let mut files =
+        collect_release_candidate_files(&album, &StoredCandidateEdits::none()).expect("scan");
+    let alternatives: Vec<(&str, usize)> = files
+        .files
+        .iter()
+        .map(|entry| {
+            (
+                entry.file.relative_path.as_str(),
+                entry.role_alternatives().len(),
+            )
+        })
+        .collect();
+    assert_eq!(alternatives, vec![("01.flac", 2), ("cover.jpg", 0)]);
+
+    let mut roles = FileRoleEdits::default();
+    roles.set("cover.jpg".to_string(), FileRoleChoice::NotATrack);
+    files
+        .apply_candidate_file_edits(&CandidateFileEdits {
+            file_roles: roles,
+            ..Default::default()
+        })
+        .expect("a decision about a non-audio file changes nothing");
+
+    assert!(matches!(files.files[1].role, FileRole::Cover));
+    assert_eq!(files.track_count(), 1);
 }

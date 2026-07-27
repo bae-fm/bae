@@ -61,11 +61,9 @@
   <data name="identify.manual" xml:space="preserve"><value>pouze ruční vyhledávání</value></data>
   <data name="identify.not_found" xml:space="preserve"><value>nenalezeno</value></data>
   <data name="import.already_in_library" xml:space="preserve"><value>toto vydání už ve své knihovně máte</value></data>
-  <data name="import.back_to_search" xml:space="preserve"><value>Zpět na vyhledávání</value></data>
   <data name="import.choose_folder" xml:space="preserve"><value>vybrat složku a skenovat</value></data>
   <data name="import.complete" xml:space="preserve"><value>importováno</value></data>
   <data name="import.candidate.tracks" xml:space="preserve"><value>{count, plural, one {# stopa} few {# stopy} other {# stop}}</value></data>
-  <data name="import.confirm_title" xml:space="preserve"><value>potvrdit import</value></data>
   <data name="import.drop_caption" xml:space="preserve"><value>skenovat a importovat</value></data>
   <data name="import.drop_folder_only" xml:space="preserve"><value>přetáhněte složku k importu</value></data>
   <data name="import.drop_read_failed" xml:space="preserve"><value>nelze přečíst přetaženou položku</value></data>
@@ -74,9 +72,11 @@
   <data name="import.failed" xml:space="preserve"><value>import selhal</value></data>
   <data name="import.field.artist_manual" xml:space="preserve"><value>interpret (ruční vyhledávání)</value></data>
   <data name="import.no_releases" xml:space="preserve"><value>nenalezena žádná vydání</value></data>
-  <data name="import.preview" xml:space="preserve"><value>náhled</value></data>
+  <data name="import.pane.lengths_differ" xml:space="preserve"><value>Délka souboru neodpovídá délce ve vydání.</value></data>
+  <data name="import.pane.no_release" xml:space="preserve"><value>Bez vydání — importuje se to, co říkají soubory</value></data>
+  <data name="import.pane.pick_a_candidate" xml:space="preserve"><value>Vyberte složku ze seznamu a přiřaďte ji k vydání.</value></data>
+  <data name="import.pane.pressing_details" xml:space="preserve"><value>podrobnosti vydání</value></data>
   <data name="import.progress.percent" xml:space="preserve"><value>import {percent}%</value></data>
-  <data name="import.release_title" xml:space="preserve"><value>importovat vydání</value></data>
   <data name="import.rerun_identify" xml:space="preserve"><value>znovu spustit identifikaci</value></data>
   <data name="import.scanning" xml:space="preserve"><value>skenování…</value></data>
   <data name="import.storage.keep_local" xml:space="preserve"><value>Zachovat místní kopii</value></data>
@@ -403,9 +403,7 @@
   <data name="output.title" xml:space="preserve"><value>export a uložení</value></data>
   <data name="export.state.exporting" xml:space="preserve"><value>exportuje se {percent}%</value></data>
   <data name="export.state.saving" xml:space="preserve"><value>ukládá se {percent}%</value></data>
-  <data name="import.track_sheets" xml:space="preserve"><value>Seznamy stop</value></data>
   <data name="import.sheet.describes_nothing_yet" xml:space="preserve"><value>Zatím nic nepopisuje</value></data>
-  <data name="import.documents" xml:space="preserve"><value>Dokumenty</value></data>
   <data name="import.document.read_failed" xml:space="preserve"><value>Nelze přečíst {name}: {error}</value></data>
   <data name="libraries.reveal" xml:space="preserve"><value>zobrazit v Průzkumníku souborů</value></data>
   <data name="libraries.copy_id" xml:space="preserve"><value>kopírovat ID</value></data>

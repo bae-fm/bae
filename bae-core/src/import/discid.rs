@@ -687,7 +687,7 @@ mod tests {
 
         let categorized = crate::import::folder_scanner::collect_release_candidate_files(
             folder,
-            &crate::import::folder_scanner::StoredSheetBindings::none(),
+            &crate::import::folder_scanner::StoredCandidateEdits::none(),
         )
         .unwrap();
         let disc_id = compute_discid_from_categorized(&categorized)

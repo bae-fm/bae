@@ -39,19 +39,14 @@ public sealed class ImportCandidate
     /// renders it.</summary>
     public List<SignalBadge> Signals { get; set; } = new();
 
-    /// <summary>The candidate's playable audio files, for pre-import preview.</summary>
-    public List<string> AudioPaths { get; set; } = new();
-
-    /// <summary>The candidate's readable evidence files — paired CUE sheets
-    /// first, then core's document files (logs, unpaired CUEs, text) in scan
-    /// order.</summary>
-    public List<ImportDocument> Documents { get; set; } = new();
-
-    /// <summary>The candidate's track sheets and what each one describes. The
-    /// binding is editable: the scan proposes it from the sheet's FILE
-    /// directive, and a directive naming a file that was later re-encoded under
-    /// another name leaves it for the user to answer.</summary>
-    public List<ImportTrackSheet> TrackSheets { get; set; } = new();
+    /// <summary>Every file in the folder exactly once, with the role in force
+    /// for it, what that role makes of it, the roles it can be put in, and —
+    /// for a track sheet — what it describes. The mapping pane's roles table
+    /// reads this whole: audio to audition, documents to open, and sheets to
+    /// bind are all rows of the same table now, so there is nothing left to
+    /// project them into separately. Null before a candidate has been read.
+    /// </summary>
+    internal BridgeCandidateFiles? Files { get; set; }
 
     /// <summary>The on-disk folder to identify/import.</summary>
     public string FolderPath { get; set; } = string.Empty;
@@ -87,34 +82,9 @@ public sealed class ImportDocument
     public long SizeBytes { get; set; }
 }
 
-/// <summary>One of a candidate's track sheets: what it carves, and what it
-/// currently describes.</summary>
-public sealed class ImportTrackSheet
-{
-    /// <summary>The sheet's release-relative path — the id the binding is set
-    /// by.</summary>
-    public string FileId { get; set; } = string.Empty;
-
-    /// <summary>Playable tracks the sheet carves.</summary>
-    public int TrackCount { get; set; }
-
-    /// <summary>The audio it describes, by that file's release-relative path.
-    /// Null when it describes nothing — the directive named a file that is not
-    /// here, or the user cleared the binding.</summary>
-    public string? Describes { get; set; }
-
-    /// <summary>Why it describes nothing, in the user's language. Null once it
-    /// describes something. Core owns the wording.</summary>
-    public string? UnboundReason { get; set; }
-
-    /// <summary>What the sheet's FILE directive named, when that is not here.
-    /// Empty once the sheet describes something.</summary>
-    public List<string> Requested { get; set; } = new();
-}
-
 /// <summary>One of a candidate's audio files, as a choice for a track sheet's
-/// binding. Core decides which are usable, so the picker never reads a codec to
-/// work out what it may offer.</summary>
+/// binding. Core decides which are usable, so no UI reads a codec to work out
+/// what it may offer.</summary>
 public sealed class ImportSheetBindingOption
 {
     /// <summary>The audio file's release-relative path.</summary>
