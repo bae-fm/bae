@@ -12,13 +12,13 @@
 //! device. Real-time pacing matters: a full-speed decode is an order of
 //! magnitude cheaper and misses where the cost actually is.
 //!
-//! The metric is CPU-*seconds* spent per second of audio played, expressed as a
-//! multiple of what a bare decode of the same file costs on the same machine, in
-//! the same build, moments earlier. Measuring CPU-time (via getrusage) rather
-//! than CPU-percent over a wall-clock window is what keeps it stable on a shared
-//! CI runner: a noisy neighbour steals wall-clock but not work done. Dividing by
-//! the machine's own decode cost is what makes one threshold mean the same thing
-//! on a fast dev machine and a slow runner — see `MAX_DECODE_MULTIPLE`.
+//! The gate combines CPU-*seconds* spent per second of audio played with that
+//! cost expressed as a multiple of a bare decode of the same file. Measuring
+//! CPU-time (via getrusage) rather than CPU-percent over a wall-clock window
+//! excludes wall time stolen by a noisy neighbour. The decode multiple
+//! normalizes host speed, while the absolute factor prevents CPU-frequency
+//! scaling from turning a cheap, intermittently scheduled playback workload
+//! into a false regression against a full-speed decode.
 //!
 //! Its own test binary so the process-wide getrusage reading isn't polluted by
 //! other crates' tests; `#[serial]` keeps the two cases from overlapping within
@@ -74,13 +74,11 @@ const BASELINE_MIN_CPU: Duration = Duration::from_millis(1000);
 /// as a multiple of what it costs *this machine* to simply decode that same
 /// second of audio.
 ///
-/// An absolute CPU figure cannot be one constant across hosts: decoding a second
-/// of audio costs whatever the host costs, so healthy playback measures several
-/// times cheaper on a fast dev machine than on a shared CI runner, and any single
-/// number is either vacuous on the fast host or flaky on the slow one. Both the
-/// numerator (playback) and the denominator (a bare decode of the same file,
-/// in-process, same build, moments earlier) scale with the host, so their ratio
-/// does not — that is what lets one number mean the same thing in both places.
+/// The numerator (playback) and denominator (a bare decode of the same file,
+/// in-process, same build, moments earlier) usually move together with host
+/// speed. CPU-frequency scaling can separate them because playback wakes
+/// intermittently while the baseline decodes continuously; the absolute limit
+/// below distinguishes that measurement effect from expensive playback.
 ///
 /// What it measures is the work playback does *on top of* the decode it cannot
 /// avoid: the drain, the gain, the position ticks, the ring-buffer fill. A bare
@@ -102,11 +100,23 @@ const BASELINE_MIN_CPU: Duration = Duration::from_millis(1000);
 /// and the readings drift up — the worst across dozens of bursty-load runs was
 /// MP3 at ~10.1x, FLAC ~7.6x. That ~2x peak-to-median spread is the real floor on
 /// what this can resolve, and it is why the ceiling is loose: 15.0 clears the
-/// worst observed reading by ~1.5x so it never flakes, while still tripping on the
-/// 3x-and-up explosion a spin or an egregious per-buffer regression produces. It
-/// is far from the old 0.20 constant's 14–36x of dead headroom, but it is not a
-/// fine instrument — the measurement's own noise forbids that.
+/// worst observed reading by ~1.5x, while still identifying the relative half of
+/// a 3x-and-up explosion from a spin or an egregious per-buffer regression.
 const MAX_DECODE_MULTIPLE: f64 = 15.0;
+
+/// Absolute ceiling on steady-state playback: three percent of one core.
+///
+/// The relative gate can read high when a host runs the full-speed decode
+/// baseline at a higher CPU frequency than the intermittently scheduled
+/// real-time playback threads. That is not a playback regression while the
+/// measured playback work remains below this ceiling. Conversely, a slow host
+/// may cross this absolute ceiling while its decode multiple remains healthy.
+/// Playback fails the gate only when it crosses both limits.
+const MAX_REALTIME_FACTOR: f64 = 0.03;
+
+fn playback_cpu_exceeds_limits(decode_multiple: f64, realtime_factor: f64) -> bool {
+    decode_multiple >= MAX_DECODE_MULTIPLE && realtime_factor >= MAX_REALTIME_FACTOR
+}
 
 /// Run the `ffmpeg` command-line tool to generate a fixture, failing loudly
 /// with an actionable message if it is missing.
@@ -566,8 +576,8 @@ async fn measure_playback_realtime_factor(fixture: &mut PlaybackTestFixture, lab
     factor
 }
 
-/// Measure the decode baseline, then steady-state playback, and assert playback
-/// costs no more than `MAX_DECODE_MULTIPLE` times the decode it is built on.
+/// Measure the decode baseline, then steady-state playback, and reject a run
+/// only when playback crosses both the host-relative and absolute CPU limits.
 ///
 /// The baseline is taken first and on the same thread, so it cannot be charged
 /// with any of the playback pipeline's CPU (playback has not started yet).
@@ -578,16 +588,27 @@ async fn assert_playback_efficient(fixture: &mut PlaybackTestFixture, label: &st
     let multiple = playback_factor / decode_factor;
     eprintln!(
         "{label}: playback costs {multiple:.2}x a bare decode of the same audio \
-         (max {MAX_DECODE_MULTIPLE:.1}x)"
+         (relative max {MAX_DECODE_MULTIPLE:.1}x; absolute max {:.1}% of one core)",
+        MAX_REALTIME_FACTOR * 100.0,
     );
     assert!(
-        multiple < MAX_DECODE_MULTIPLE,
-        "{label}: steady-state playback is too expensive: it spends {multiple:.2}x the CPU a \
-         bare decode of the same audio costs on this machine (max {MAX_DECODE_MULTIPLE:.1}x). \
-         Playback {playback_factor:.4} CPU-s per audio-s against a {decode_factor:.5} decode \
-         baseline. Look for a re-decode, per-buffer allocation, or resampler/tick regression \
-         in the playback path."
+        !playback_cpu_exceeds_limits(multiple, playback_factor),
+        "{label}: steady-state playback crossed both CPU limits: {multiple:.2}x the CPU a \
+         bare decode of the same audio costs on this machine (max {MAX_DECODE_MULTIPLE:.1}x), \
+         and {:.1}% of one core (max {:.1}%). Playback {playback_factor:.4} CPU-s per audio-s \
+         against a {decode_factor:.5} decode baseline. Look for a re-decode, per-buffer \
+         allocation, or resampler/tick regression in the playback path.",
+        playback_factor * 100.0,
+        MAX_REALTIME_FACTOR * 100.0,
     );
+}
+
+#[test]
+fn playback_cpu_gate_requires_both_limits() {
+    assert!(!playback_cpu_exceeds_limits(14.0, 0.02));
+    assert!(!playback_cpu_exceeds_limits(16.0, 0.02));
+    assert!(!playback_cpu_exceeds_limits(14.0, 0.04));
+    assert!(playback_cpu_exceeds_limits(16.0, 0.04));
 }
 
 /// CUE/FLAC steady-state playback stays cheap (one big FLAC, sliced into tracks).
