@@ -18,10 +18,23 @@ namespace Bae.Desktop;
 /// </summary>
 internal sealed class ImportService
 {
-    /// <summary>The scanned candidates in core snapshot order plus the watched
-    /// folders behind them — the baseline the import mirror tabs and sorts.</summary>
-    public Func<Task<(bool Current, (List<ImportCandidate> Rows, BridgeWatchedFolder[] Folders) Result)>> ImportCandidates { get; init; }
-        = () => throw new InvalidOperationException("ImportService stub: ImportCandidates not wired");
+    /// <summary>The sidebar's pre-shaped triage rows, tab counts, and invalid
+    /// folders — core's projection. Read again on an import-domain invalidation;
+    /// the UI iterates and renders it without computing tab or group membership
+    /// itself.</summary>
+    public Func<Task<(bool Current, (BridgeTriageQueue? Queue, string? Error) Result)>> TriageQueue { get; init; }
+        = () => throw new InvalidOperationException("ImportService stub: TriageQueue not wired");
+
+    /// <summary>The folders currently watched for imports, for the sidebar's "+"
+    /// menu.</summary>
+    public Func<(bool Current, List<BridgeWatchedFolder> Folders)> WatchedFolders { get; init; }
+        = () => throw new InvalidOperationException("ImportService stub: WatchedFolders not wired");
+
+    /// <summary>The full candidate for one triage row's key — signals, matches,
+    /// audio paths, and documents the row itself doesn't carry — fetched fresh
+    /// when a row's picker opens.</summary>
+    public Func<string, (bool Current, ImportCandidate? Candidate)> CandidateForKey { get; init; }
+        = _ => throw new InvalidOperationException("ImportService stub: CandidateForKey not wired");
 
     /// <summary>Scan a folder into the watched set (clearing the prior scan);
     /// candidates stream in through invalidations. Returns the error line, or null
@@ -126,7 +139,9 @@ internal sealed class ImportService
     /// <summary>Wire every operation through the open session's current handle.</summary>
     public static ImportService FromSession(SessionStore session) => new()
     {
-        ImportCandidates = () => session.RunForCurrentHandle(NativeBae.ImportCandidates),
+        TriageQueue = () => session.RunForCurrentHandle(NativeBae.ImportTriageQueue),
+        WatchedFolders = () => session.WithCurrentHandle(NativeBae.WatchedFolders),
+        CandidateForKey = key => session.WithCurrentHandle(handle => NativeBae.Candidate(handle, key)),
         ScanFolder = path => session.RunForCurrentHandle(handle => NativeBae.ScanFolder(handle, path, true)),
         RemoveWatchedFolder = path =>
             session.RunForCurrentHandle(handle => NativeBae.RemoveWatchedFolder(handle, path)),

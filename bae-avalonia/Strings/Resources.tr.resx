@@ -362,17 +362,42 @@
   <data name="album.reidentify.refresh_body" xml:space="preserve"><value>Albüm, parça ve baskı alanları yeni tanımlanan kaynaktan alınsın mı? Yaptığınız düzenlemelerin üzerine yazılır.</value></data>
   <data name="album.reidentify.refresh_confirm" xml:space="preserve"><value>Yeni kaynaktan yenile</value></data>
   <data name="album.reidentify.keep_current" xml:space="preserve"><value>Mevcut üst veriyi koru</value></data>
-  <data name="import.tab.new" xml:space="preserve"><value>Yeni ({count})</value></data>
-  <data name="import.tab.added" xml:space="preserve"><value>Eklendi ({count})</value></data>
-  <data name="import.tab.skipped" xml:space="preserve"><value>Atlandı ({count})</value></data>
+  <data name="import.tab.skipped" xml:space="preserve"><value>Atlandı</value></data>
   <data name="import.candidate.skip" xml:space="preserve"><value>Atla</value></data>
-  <data name="import.candidate.unskip" xml:space="preserve"><value>Yeniye Taşı</value></data>
+  <data name="import.candidate.unskip" xml:space="preserve"><value>Atlamayı Geri Al</value></data>
   <data name="import.folder.remove" xml:space="preserve"><value>Klasörü Kaldır</value></data>
   <data name="import.sort_by" xml:space="preserve"><value>Sırala</value></data>
   <data name="import.sort.name_az" xml:space="preserve"><value>Ad (A–Z)</value></data>
   <data name="import.sort.name_za" xml:space="preserve"><value>Ad (Z–A)</value></data>
-  <data name="import.sort.newest" xml:space="preserve"><value>Eklenme Tarihi (En Yeni)</value></data>
-  <data name="import.sort.oldest" xml:space="preserve"><value>Eklenme Tarihi (En Eski)</value></data>
+  <data name="import.tab.ready" xml:space="preserve"><value>Hazır</value></data>
+  <data name="import.tab.needs_you" xml:space="preserve"><value>İlgi Bekliyor</value></data>
+  <data name="import.tab.done" xml:space="preserve"><value>Tamamlandı</value></data>
+  <data name="import.needs_you.pick_a_pressing" xml:space="preserve"><value>Baskı Seçin</value></data>
+  <data name="import.needs_you.signals_disagree" xml:space="preserve"><value>Sinyaller Uyuşmuyor</value></data>
+  <data name="import.needs_you.counts_or_lengths_disagree" xml:space="preserve"><value>Sayılar veya Süreler Uyuşmuyor</value></data>
+  <data name="import.needs_you.already_in_library" xml:space="preserve"><value>Kitaplıkta Zaten Var</value></data>
+  <data name="import.needs_you.no_match" xml:space="preserve"><value>Eşleşme Yok</value></data>
+  <data name="import.needs_you.still_identifying" xml:space="preserve"><value>Hâlâ Tanımlanıyor</value></data>
+  <data name="import.progress.identifying" xml:space="preserve"><value>Tanımlanıyor</value></data>
+  <data name="import.footbar.selected" xml:space="preserve"><value>{count} seçildi</value></data>
+  <data name="import.footbar.select_all" xml:space="preserve"><value>Tümünü Seç</value></data>
+  <data name="import.footbar.import_count" xml:space="preserve"><value>{count} Öğeyi İçe Aktar</value></data>
+  <data name="import.row.choose" xml:space="preserve"><value>Seç</value></data>
+  <data name="import.row.import_anyway" xml:space="preserve"><value>Yine de İçe Aktar</value></data>
+  <data name="import.row.retry" xml:space="preserve"><value>Yeniden Dene</value></data>
+  <data name="import.row.conflict" xml:space="preserve"><value>Çakışma</value></data>
+  <data name="import.row.search_manually" xml:space="preserve"><value>elle ara</value></data>
+  <data name="import.row.failed" xml:space="preserve"><value>Başarısız</value></data>
+  <data name="import.row.disc_id" xml:space="preserve"><value>Disc ID</value></data>
+  <data name="import.row.barcode" xml:space="preserve"><value>Barkod</value></data>
+  <data name="import.phase.queued" xml:space="preserve"><value>Tanımlanmayı bekliyor</value></data>
+  <data name="import.phase.running" xml:space="preserve"><value>Tanımlanıyor…</value></data>
+  <data name="import.phase.no_answer" xml:space="preserve"><value>Tamamlanamadı — yeniden denenecek</value></data>
+  <data name="import.filter.placeholder" xml:space="preserve"><value>Filtrele…</value></data>
+  <data name="import.folder.add" xml:space="preserve"><value>Klasör Ekle…</value></data>
+  <data name="import.empty.nothing_here" xml:space="preserve"><value>Burada henüz bir şey yok</value></data>
+  <data name="import.empty.no_matches" xml:space="preserve"><value>Eşleşme yok</value></data>
+  <data name="import.bulk_import_failed" xml:space="preserve"><value>{count, plural, other {# içe aktarma başlatılamadı}}</value></data>
   <data name="nowplaying.show_remaining" xml:space="preserve"><value>kalan süreyi göster</value></data>
   <data name="nowplaying.show_elapsed" xml:space="preserve"><value>geçen süreyi göster</value></data>
   <data name="output.title" xml:space="preserve"><value>dışa aktar ve kaydet</value></data>

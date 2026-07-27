@@ -8,11 +8,11 @@ using Avalonia.Media;
 
 namespace Bae.Desktop;
 
-// The signals-toolbar badge row shared by the import candidate list and the
-// re-identify dialog: one badge per signal (kind label, truncated value,
-// lookup-state visual) and a trailing re-run control. Clicking a badge toggles its
-// signal in or out of triangulation; the re-derived state arrives through candidate
-// invalidation. Every color reads a theme brush.
+// The signals-toolbar badge row used by the release re-identify dialog: one
+// badge per signal (kind label, truncated value, lookup-state visual) and a
+// trailing re-run control. Clicking a badge toggles its signal in or out of
+// triangulation; the re-derived state arrives through candidate invalidation.
+// Every color reads a theme brush.
 internal static class SignalBadgeRow
 {
     public static Control Build(

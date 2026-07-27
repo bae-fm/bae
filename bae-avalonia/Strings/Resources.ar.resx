@@ -362,17 +362,42 @@
   <data name="album.reidentify.refresh_body" xml:space="preserve"><value>هل تريد سحب حقول الألبوم والمقطوعة والطبعة من المصدر المحدَّد حديثًا؟ ستُستبدل التعديلات التي أجريتها.</value></data>
   <data name="album.reidentify.refresh_confirm" xml:space="preserve"><value>تحديث من مصدر جديد</value></data>
   <data name="album.reidentify.keep_current" xml:space="preserve"><value>الإبقاء على البيانات الوصفية الحالية</value></data>
-  <data name="import.tab.new" xml:space="preserve"><value>جديد ({count})</value></data>
-  <data name="import.tab.added" xml:space="preserve"><value>مُستورد ({count})</value></data>
-  <data name="import.tab.skipped" xml:space="preserve"><value>تم التخطّي ({count})</value></data>
+  <data name="import.tab.skipped" xml:space="preserve"><value>تم التخطّي</value></data>
   <data name="import.candidate.skip" xml:space="preserve"><value>تخطّي</value></data>
-  <data name="import.candidate.unskip" xml:space="preserve"><value>نقل إلى الجديد</value></data>
+  <data name="import.candidate.unskip" xml:space="preserve"><value>إلغاء التخطّي</value></data>
   <data name="import.folder.remove" xml:space="preserve"><value>إزالة المجلد</value></data>
   <data name="import.sort_by" xml:space="preserve"><value>فرز</value></data>
   <data name="import.sort.name_az" xml:space="preserve"><value>الاسم (أ–ي)</value></data>
   <data name="import.sort.name_za" xml:space="preserve"><value>الاسم (ي–أ)</value></data>
-  <data name="import.sort.newest" xml:space="preserve"><value>تاريخ الإضافة (الأحدث)</value></data>
-  <data name="import.sort.oldest" xml:space="preserve"><value>تاريخ الإضافة (الأقدم)</value></data>
+  <data name="import.tab.ready" xml:space="preserve"><value>جاهز</value></data>
+  <data name="import.tab.needs_you" xml:space="preserve"><value>يحتاج إلى إجراء</value></data>
+  <data name="import.tab.done" xml:space="preserve"><value>تم</value></data>
+  <data name="import.needs_you.pick_a_pressing" xml:space="preserve"><value>اختر طبعة</value></data>
+  <data name="import.needs_you.signals_disagree" xml:space="preserve"><value>تعارض الإشارات</value></data>
+  <data name="import.needs_you.counts_or_lengths_disagree" xml:space="preserve"><value>اختلاف الأعداد أو المدد</value></data>
+  <data name="import.needs_you.already_in_library" xml:space="preserve"><value>موجود بالفعل في المكتبة</value></data>
+  <data name="import.needs_you.no_match" xml:space="preserve"><value>لا يوجد تطابق</value></data>
+  <data name="import.needs_you.still_identifying" xml:space="preserve"><value>لا يزال قيد التحديد</value></data>
+  <data name="import.progress.identifying" xml:space="preserve"><value>جارٍ التحديد</value></data>
+  <data name="import.footbar.selected" xml:space="preserve"><value>{count} محدد</value></data>
+  <data name="import.footbar.select_all" xml:space="preserve"><value>تحديد الكل</value></data>
+  <data name="import.footbar.import_count" xml:space="preserve"><value>استيراد {count}</value></data>
+  <data name="import.row.choose" xml:space="preserve"><value>اختيار</value></data>
+  <data name="import.row.import_anyway" xml:space="preserve"><value>استيراد على أي حال</value></data>
+  <data name="import.row.retry" xml:space="preserve"><value>إعادة المحاولة</value></data>
+  <data name="import.row.conflict" xml:space="preserve"><value>تعارض</value></data>
+  <data name="import.row.search_manually" xml:space="preserve"><value>البحث يدويًا</value></data>
+  <data name="import.row.failed" xml:space="preserve"><value>فشل</value></data>
+  <data name="import.row.disc_id" xml:space="preserve"><value>معرّف القرص</value></data>
+  <data name="import.row.barcode" xml:space="preserve"><value>الرمز الشريطي</value></data>
+  <data name="import.phase.queued" xml:space="preserve"><value>في انتظار التحديد</value></data>
+  <data name="import.phase.running" xml:space="preserve"><value>جارٍ التحديد…</value></data>
+  <data name="import.phase.no_answer" xml:space="preserve"><value>تعذّر الإكمال — ستُعاد المحاولة</value></data>
+  <data name="import.filter.placeholder" xml:space="preserve"><value>تصفية…</value></data>
+  <data name="import.folder.add" xml:space="preserve"><value>إضافة مجلد…</value></data>
+  <data name="import.empty.nothing_here" xml:space="preserve"><value>لا شيء هنا بعد</value></data>
+  <data name="import.empty.no_matches" xml:space="preserve"><value>لا توجد تطابقات</value></data>
+  <data name="import.bulk_import_failed" xml:space="preserve"><value>{count, plural, zero {تعذّر بدء الاستيراد} one {تعذّر بدء استيراد واحد} two {تعذّر بدء استيرادين} few {تعذّر بدء # استيرادات} many {تعذّر بدء # استيرادًا} other {تعذّر بدء # استيراد}}</value></data>
   <data name="nowplaying.show_remaining" xml:space="preserve"><value>عرض الوقت المتبقي</value></data>
   <data name="nowplaying.show_elapsed" xml:space="preserve"><value>عرض الوقت المنقضي</value></data>
   <data name="output.title" xml:space="preserve"><value>التصدير والحفظ</value></data>

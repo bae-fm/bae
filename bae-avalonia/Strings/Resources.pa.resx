@@ -362,17 +362,42 @@
   <data name="album.reidentify.refresh_body" xml:space="preserve"><value>ਨਵੇਂ ਪਛਾਣੇ ਸਰੋਤ ਤੋਂ ਐਲਬਮ, ਟ੍ਰੈਕ ਅਤੇ ਛਪਾਈ ਖੇਤਰ ਲੈਣੇ ਹਨ? ਤੁਹਾਡੀਆਂ ਕੀਤੀਆਂ ਸੋਧਾਂ ਉੱਤੇ ਲਿਖ ਦਿੱਤਾ ਜਾਵੇਗਾ।</value></data>
   <data name="album.reidentify.refresh_confirm" xml:space="preserve"><value>ਨਵੇਂ ਸਰੋਤ ਤੋਂ ਤਾਜ਼ਾ ਕਰੋ</value></data>
   <data name="album.reidentify.keep_current" xml:space="preserve"><value>ਮੌਜੂਦਾ ਮੈਟਾਡਾਟਾ ਰੱਖੋ</value></data>
-  <data name="import.tab.new" xml:space="preserve"><value>ਨਵਾਂ ({count})</value></data>
-  <data name="import.tab.added" xml:space="preserve"><value>ਸ਼ਾਮਲ ਕੀਤਾ ਗਿਆ ({count})</value></data>
-  <data name="import.tab.skipped" xml:space="preserve"><value>ਛੱਡਿਆ ਗਿਆ ({count})</value></data>
+  <data name="import.tab.skipped" xml:space="preserve"><value>ਛੱਡਿਆ ਗਿਆ</value></data>
   <data name="import.candidate.skip" xml:space="preserve"><value>ਛੱਡੋ</value></data>
-  <data name="import.candidate.unskip" xml:space="preserve"><value>ਨਵੇਂ ਵਿੱਚ ਹਿਲਾਓ</value></data>
+  <data name="import.candidate.unskip" xml:space="preserve"><value>ਛੱਡਣਾ ਰੱਦ ਕਰੋ</value></data>
   <data name="import.folder.remove" xml:space="preserve"><value>ਫੋਲਡਰ ਹਟਾਓ</value></data>
   <data name="import.sort_by" xml:space="preserve"><value>ਕ੍ਰਮਬੱਧ ਕਰੋ</value></data>
   <data name="import.sort.name_az" xml:space="preserve"><value>ਨਾਂ (A–Z)</value></data>
   <data name="import.sort.name_za" xml:space="preserve"><value>ਨਾਂ (Z–A)</value></data>
-  <data name="import.sort.newest" xml:space="preserve"><value>ਸ਼ਾਮਲ ਮਿਤੀ (ਸਭ ਤੋਂ ਨਵੀਂ)</value></data>
-  <data name="import.sort.oldest" xml:space="preserve"><value>ਸ਼ਾਮਲ ਮਿਤੀ (ਸਭ ਤੋਂ ਪੁਰਾਣੀ)</value></data>
+  <data name="import.tab.ready" xml:space="preserve"><value>ਤਿਆਰ</value></data>
+  <data name="import.tab.needs_you" xml:space="preserve"><value>ਧਿਆਨ ਚਾਹੀਦਾ ਹੈ</value></data>
+  <data name="import.tab.done" xml:space="preserve"><value>ਮੁਕੰਮਲ</value></data>
+  <data name="import.needs_you.pick_a_pressing" xml:space="preserve"><value>ਛਪਾਈ ਚੁਣੋ</value></data>
+  <data name="import.needs_you.signals_disagree" xml:space="preserve"><value>ਸੰਕੇਤ ਮੇਲ ਨਹੀਂ ਖਾਂਦੇ</value></data>
+  <data name="import.needs_you.counts_or_lengths_disagree" xml:space="preserve"><value>ਗਿਣਤੀ ਜਾਂ ਲੰਬਾਈ ਮੇਲ ਨਹੀਂ ਖਾਂਦੀ</value></data>
+  <data name="import.needs_you.already_in_library" xml:space="preserve"><value>ਪਹਿਲਾਂ ਹੀ ਲਾਇਬ੍ਰੇਰੀ ਵਿੱਚ</value></data>
+  <data name="import.needs_you.no_match" xml:space="preserve"><value>ਕੋਈ ਮੇਲ ਨਹੀਂ ਮਿਲਿਆ</value></data>
+  <data name="import.needs_you.still_identifying" xml:space="preserve"><value>ਹਾਲੇ ਵੀ ਪਛਾਣ ਹੋ ਰਹੀ ਹੈ</value></data>
+  <data name="import.progress.identifying" xml:space="preserve"><value>ਪਛਾਣ ਹੋ ਰਹੀ ਹੈ</value></data>
+  <data name="import.footbar.selected" xml:space="preserve"><value>{count} ਚੁਣੇ ਗਏ</value></data>
+  <data name="import.footbar.select_all" xml:space="preserve"><value>ਸਭ ਚੁਣੋ</value></data>
+  <data name="import.footbar.import_count" xml:space="preserve"><value>{count} ਆਯਾਤ ਕਰੋ</value></data>
+  <data name="import.row.choose" xml:space="preserve"><value>ਚੁਣੋ</value></data>
+  <data name="import.row.import_anyway" xml:space="preserve"><value>ਫਿਰ ਵੀ ਆਯਾਤ ਕਰੋ</value></data>
+  <data name="import.row.retry" xml:space="preserve"><value>ਮੁੜ ਕੋਸ਼ਿਸ਼ ਕਰੋ</value></data>
+  <data name="import.row.conflict" xml:space="preserve"><value>ਟਕਰਾਅ</value></data>
+  <data name="import.row.search_manually" xml:space="preserve"><value>ਹੱਥੀਂ ਖੋਜੋ</value></data>
+  <data name="import.row.failed" xml:space="preserve"><value>ਅਸਫਲ</value></data>
+  <data name="import.row.disc_id" xml:space="preserve"><value>ਡਿਸਕ ID</value></data>
+  <data name="import.row.barcode" xml:space="preserve"><value>ਬਾਰਕੋਡ</value></data>
+  <data name="import.phase.queued" xml:space="preserve"><value>ਪਛਾਣ ਦੀ ਉਡੀਕ ਵਿੱਚ</value></data>
+  <data name="import.phase.running" xml:space="preserve"><value>ਪਛਾਣ ਹੋ ਰਹੀ ਹੈ…</value></data>
+  <data name="import.phase.no_answer" xml:space="preserve"><value>ਪੂਰਾ ਨਹੀਂ ਹੋ ਸਕਿਆ — ਮੁੜ ਕੋਸ਼ਿਸ਼ ਹੋਵੇਗੀ</value></data>
+  <data name="import.filter.placeholder" xml:space="preserve"><value>ਫਿਲਟਰ…</value></data>
+  <data name="import.folder.add" xml:space="preserve"><value>ਫੋਲਡਰ ਜੋੜੋ…</value></data>
+  <data name="import.empty.nothing_here" xml:space="preserve"><value>ਇੱਥੇ ਹਾਲੇ ਕੁਝ ਨਹੀਂ ਹੈ</value></data>
+  <data name="import.empty.no_matches" xml:space="preserve"><value>ਕੋਈ ਮੇਲ ਨਹੀਂ</value></data>
+  <data name="import.bulk_import_failed" xml:space="preserve"><value>{count, plural, one {# ਆਯਾਤ ਸ਼ੁਰੂ ਨਹੀਂ ਹੋ ਸਕੀ} other {# ਆਯਾਤ ਸ਼ੁਰੂ ਨਹੀਂ ਹੋ ਸਕੀਆਂ}}</value></data>
   <data name="nowplaying.show_remaining" xml:space="preserve"><value>ਬਾਕੀ ਸਮਾਂ ਦਿਖਾਓ</value></data>
   <data name="nowplaying.show_elapsed" xml:space="preserve"><value>ਬੀਤਿਆ ਸਮਾਂ ਦਿਖਾਓ</value></data>
   <data name="output.title" xml:space="preserve"><value>ਨਿਰਯਾਤ ਅਤੇ ਸੰਭਾਲ</value></data>

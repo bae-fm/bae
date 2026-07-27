@@ -1,52 +1,63 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.Linq;
 using uniffi.bae_bridge;
 
 namespace Bae.Desktop;
 
-// Mirror of the import scan state: the candidate releases found under the watched
-// folders, plus the picker's live preview-position label. Refreshed from core
-// when import invalidations arrive (registered for the window's lifetime) and
-// bound to the import dialog's list; the picker subscribes to the preview label.
-// The store holds session-local view state and drives core through the session;
-// nothing derived crosses into it.
+// Session state for the import flow: the sidebar's triage queue (core's
+// projection — rows, tab counts, invalid folders), the watched folders behind
+// it, the sweep's identify progress, and the picker's live preview-position
+// label. TriageQueue/WatchedFolders/QueueIdentifyProgress are core-driven
+// (refreshed from an invalidation or a progress event); ActiveTab/FilterText/
+// SortOrder/SelectedReady are view state the sidebar itself sets. Unlike
+// macOS's per-field bindings, this store fires one coarse Changed event and the
+// sidebar rebuilds its content wholesale — the established pattern for this
+// app's imperative views (see QueuePane).
 internal sealed class ImportStore
 {
     private readonly ImportService _import;
     private readonly Action<string, string> _showError;
     private readonly IMediaControl _mediaControls;
 
-    // The active tab's candidates in sort order, bound to the import dialog's list.
-    // Repopulated in place on every projection so the bound list re-renders; it is
-    // the displayed tab, not the whole scan.
-    public ObservableCollection<ImportCandidate> Candidates { get; } = new();
+    // The sidebar's pre-shaped rows, tab counts, and invalid folders — core's
+    // triage projection, read whole and re-read on the import-domain
+    // invalidations RefreshTriageQueue registers for. Defaults to an empty
+    // queue rather than null: "not loaded yet" and "the queue is genuinely
+    // empty" render identically (the tab's empty state), so no surface needs to
+    // tell them apart.
+    public BridgeTriageQueue TriageQueue { get; private set; } = new(
+        Rows: Array.Empty<BridgeTriageRow>(),
+        Invalid: Array.Empty<BridgeInvalidCandidate>(),
+        Counts: new BridgeTriageTabCounts(Ready: 0, NeedsYou: 0, Done: 0, Skipped: 0));
 
-    // Every scanned candidate in core snapshot order (watched-folder add order,
-    // then path) — the "date added" baseline the projection tabs and sorts.
-    private readonly List<ImportCandidate> _all = new();
+    // The folders being watched for imports, in add order — the sidebar's "+"
+    // menu.
+    public List<BridgeWatchedFolder> WatchedFolders { get; private set; } = new();
 
-    // The watched folders behind the current scan, bound to the dialog's folders
-    // section. Repopulated in place on each refresh.
-    public ObservableCollection<BridgeWatchedFolder> WatchedFolders { get; } = new();
+    // The queue sweep's identified-count over total, for the header's progress
+    // line and bar. Null before the first tick of a session — the header hides
+    // rather than opening on a bar frozen at zero.
+    public (uint Identified, uint Total)? QueueIdentifyProgress { get; private set; }
 
-    // The tab the dialog currently shows; the projection filters Candidates to it.
-    // Resets to New on each dialog open and on teardown.
-    public CandidateTab ActiveTab { get; private set; } = CandidateTab.New;
+    // The active tab; resets to Ready on each dialog open and on teardown.
+    public BridgeTriageTab ActiveTab { get; private set; } = BridgeTriageTab.Ready;
+
+    // The live filter query over the candidate list.
+    public string FilterText { get; private set; } = string.Empty;
 
     // The persisted candidate-list sort order, loaded once at construction and
-    // saved whenever the dialog changes it.
+    // saved whenever the sidebar changes it.
     public CandidateSortOrder SortOrder { get; private set; }
 
-    // The per-tab candidate counts from the last projection, for the tab labels.
-    public (int New, int Added, int Skipped) TabCounts { get; private set; }
+    // Bulk-select state for the Ready tab's foot bar. Selection is view state —
+    // it is not persisted and does not cross the bridge.
+    public HashSet<string> SelectedReady { get; } = new();
 
-    // The import dialog's status line after a candidate refresh: the no-releases
-    // line when the scan turned up nothing, else blank. The dialog renders it on
-    // CandidatesRefreshed.
-    public string CandidatesStatusText { get; private set; } = string.Empty;
-    public event Action? CandidatesRefreshed;
+    // Fired whenever anything the sidebar renders changes: the triage queue,
+    // watched folders, progress, active tab, filter text, sort order, or
+    // selection. The sidebar rebuilds its content on every tick.
+    public event Action? Changed;
 
     // The import picker's live preview-position label ("0:23 / 3:45"), driven by
     // preview events while a candidate previews. The picker renders it on
@@ -66,135 +77,120 @@ internal sealed class ImportStore
         SortOrder = ImportSortStore.Load();
     }
 
-    // Re-read the scan from core into _all and the watched folders, then project
-    // onto the active tab. A failed read surfaces the import banner; no handle is a
-    // no-op.
-    public async void RefreshCandidates() => await ReadCandidates();
+    // Re-read the triage queue and the watched folders from core. A failed read
+    // surfaces the import banner; no handle is a no-op. Called on the
+    // import-domain invalidations (ImportCandidateList, ImportCandidate,
+    // WatchedFolders, Release) and on the queue sweep's progress ticks, whose
+    // comment on why explains the coalescing: a burst of ticks collapses into
+    // the one query that finishes after the burst settles.
+    public async void RefreshTriageQueue() => await ReadCandidates();
 
-    // The read itself, awaitable — a caller that must see the new rows before it
-    // reads them (the sheet-binding editor) waits on this rather than on an
+    // The read itself, awaitable — a caller that must see the new rows before
+    // it reads them (the sheet-binding editor) waits on this rather than on an
     // `async void` it cannot observe.
     private async Task ReadCandidates()
     {
-        var (current, result) = await _import.ImportCandidates();
-        if (!current)
+        var (queueCurrent, queueResult) = await _import.TriageQueue();
+        if (!queueCurrent)
         {
             return;
         }
-        var (rows, folders) = result;
-        if (rows is null || folders is null)
+        if (queueResult.Queue is not { } queue)
         {
-            _showError(Loc.Chrome("import.error_title"), Loc.Chrome("import.failed"));
+            _showError(Loc.Chrome("import.error_title"), queueResult.Error ?? Loc.Chrome("import.failed"));
             return;
+        }
+        TriageQueue = queue;
+
+        var (foldersCurrent, folders) = _import.WatchedFolders();
+        if (foldersCurrent)
+        {
+            WatchedFolders = folders;
         }
 
-        _all.Clear();
-        _all.AddRange(rows);
-        WatchedFolders.Clear();
-        foreach (var folder in folders)
-        {
-            WatchedFolders.Add(folder);
-        }
-        // The no-releases line reflects the whole scan, not the active tab: an empty
-        // tab under a non-empty scan shows a blank status and lets the tab counts
-        // explain it.
-        CandidatesStatusText = _all.Count == 0 ? Loc.Chrome("import.no_releases") : string.Empty;
-        Reproject();
+        // Selection can outlive the rows that earned it (a row imported by a
+        // faster sibling call, or reclassified out of Ready) — drop keys no
+        // longer in Ready rather than let a bulk import act on a stale one.
+        var currentReady = TriageQueue.Rows
+            .Where(row => BaeBridgeMethods.BridgeTriageTab(row.Placement) == BridgeTriageTab.Ready)
+            .Select(row => row.CandidateKey)
+            .ToHashSet();
+        SelectedReady.RemoveWhere(key => !currentReady.Contains(key));
+
+        Changed?.Invoke();
     }
 
     // Show a different tab (absolute set — the caller passes the tab its button
-    // represents). Re-projects Candidates onto the new tab.
-    public void SetActiveTab(CandidateTab tab)
+    // represents).
+    /// <summary>The candidate under `key`, read from core rather than from a
+    /// cached list — the triage store holds rows, not whole candidates, and a
+    /// caller wanting the files needs what the folder is now.</summary>
+    public ImportCandidate? Candidate(string key)
     {
-        ActiveTab = tab;
-        Reproject();
+        var (current, candidate) = _import.CandidateForKey(key);
+        return current ? candidate : null;
     }
 
-    // Change and persist the candidate-list sort order (absolute set — the caller
-    // passes the order its control represents). Re-projects Candidates.
+    public void SetActiveTab(BridgeTriageTab tab)
+    {
+        ActiveTab = tab;
+        Changed?.Invoke();
+    }
+
+    public void SetFilterText(string text)
+    {
+        FilterText = text;
+        Changed?.Invoke();
+    }
+
+    // Change and persist the candidate-list sort order (absolute set — the
+    // caller passes the order its control represents).
     public void SetSortOrder(CandidateSortOrder order)
     {
         SortOrder = order;
         ImportSortStore.Save(order);
-        Reproject();
+        Changed?.Invoke();
     }
 
-    // Rebuild the tab counts and the displayed Candidates from _all for the active
-    // tab and sort order, then announce the refresh. Candidates becomes exactly the
-    // active tab's rows in sort order, so the bound list is the tab.
-    private void Reproject()
+    public void ToggleReadySelection(string key)
     {
-        var listRows = _all.Select(ToListRow).ToList();
-        TabCounts = ImportListModel.Counts(listRows);
-        var displayed = ImportListModel.DisplayedKeys(listRows, ActiveTab, SortOrder);
-
-        var byKey = new Dictionary<string, ImportCandidate>(_all.Count);
-        foreach (var candidate in _all)
+        if (!SelectedReady.Remove(key))
         {
-            byKey[candidate.Key] = candidate;
+            SelectedReady.Add(key);
         }
-
-        Candidates.Clear();
-        foreach (var key in displayed)
-        {
-            Candidates.Add(byKey[key]);
-        }
-        CandidatesRefreshed?.Invoke();
+        Changed?.Invoke();
     }
 
-    private static ImportListRow ToListRow(ImportCandidate candidate) =>
-        new(
-            candidate.Key,
-            candidate.Name,
-            candidate.Skipped,
-            candidate.IsAdded,
-            candidate.RowStatus.Kind == "complete",
-            candidate.Invalid);
-
-    // Replace a candidate row in place, applying an optional mutation and a live
-    // status. Updates the snapshot baseline and, when the row is on the active tab,
-    // mirrors the replacement into Candidates (ObservableCollection raises Replace
-    // so the bound list re-renders). Tab membership is unchanged here — import-state
-    // changes that would re-tab a row arrive through an invalidation-driven refresh.
-    public void UpdateCandidate(string? key, Action<ImportCandidate>? mutate, string status)
+    public void SelectAllReady(IEnumerable<string> keys)
     {
-        var index = IndexInAll(key);
-        if (index < 0)
+        foreach (var key in keys)
         {
-            return;
+            SelectedReady.Add(key);
         }
-
-        var existing = _all[index];
-        var updated = new ImportCandidate
-        {
-            Key = existing.Key,
-            Name = existing.Name,
-            TrackCount = existing.TrackCount,
-            Format = existing.Format,
-            Matches = existing.Matches,
-            Signals = existing.Signals,
-            AudioPaths = existing.AudioPaths,
-            Documents = existing.Documents,
-            FolderPath = existing.FolderPath,
-            RowStatus = existing.RowStatus,
-            StatusOverride = status,
-            Skipped = existing.Skipped,
-            IsAdded = existing.IsAdded,
-            Invalid = existing.Invalid,
-        };
-        mutate?.Invoke(updated);
-        _all[index] = updated;
-
-        var displayedIndex = IndexOfCandidate(key);
-        if (displayedIndex >= 0)
-        {
-            Candidates[displayedIndex] = updated;
-        }
+        Changed?.Invoke();
     }
 
-    // Un-watch a folder: core drops it and its candidates, and the WatchedFolders /
-    // candidate invalidations re-render the dialog. A failed call surfaces the
-    // import banner; success is silent (the invalidation drives the refresh).
+    public void ClearReadySelection()
+    {
+        SelectedReady.Clear();
+        Changed?.Invoke();
+    }
+
+    // Apply the queue sweep's identified-count over total, then re-read the
+    // triage queue: the sweep answers hundreds of candidates in the background
+    // without invalidating each one individually, so this tick is the signal
+    // that the row list may have moved, not just the header line.
+    public void ApplyQueueIdentifyProgress(uint identified, uint total)
+    {
+        QueueIdentifyProgress = (identified, total);
+        Changed?.Invoke();
+        RefreshTriageQueue();
+    }
+
+    // Un-watch a folder: core drops it and its candidates, and the
+    // ImportCandidateList/WatchedFolders invalidations re-render the sidebar. A
+    // failed call surfaces the import banner; success is silent (the
+    // invalidation drives the refresh).
     public async void RemoveWatchedFolder(string path)
     {
         var (current, error) = await _import.RemoveWatchedFolder(path);
@@ -255,43 +251,10 @@ internal sealed class ImportStore
         return true;
     }
 
-    /// <summary>The candidate under `key` as the last refresh read it, or null
-    /// when it is gone.</summary>
-    public ImportCandidate? Candidate(string key)
-    {
-        var index = IndexInAll(key);
-        return index < 0 ? null : _all[index];
-    }
-
-    private int IndexInAll(string? key)
-    {
-        for (var i = 0; i < _all.Count; i++)
-        {
-            if (_all[i].Key == key)
-            {
-                return i;
-            }
-        }
-
-        return -1;
-    }
-
-    private int IndexOfCandidate(string? key)
-    {
-        for (var i = 0; i < Candidates.Count; i++)
-        {
-            if (Candidates[i].Key == key)
-            {
-                return i;
-            }
-        }
-
-        return -1;
-    }
-
-    // Import-preview and candidate-loudness events, which drive the import picker's
-    // live position label (and the system transport controls for the preview
-    // session). Routed here by the event router.
+    // Import-preview and candidate-loudness events, which drive the import
+    // picker's live position label (and the system transport controls for the
+    // preview session), plus the queue sweep's progress. Routed here by the
+    // event router.
     public void HandlePreviewEvent(BridgeUiEvent evt)
     {
         switch (evt)
@@ -320,20 +283,19 @@ internal sealed class ImportStore
                 PreviewElapsedChanged?.Invoke();
                 _mediaControls.UpdatePreviewIdle();
                 break;
-            case BridgeUiEvent.CandidateImportLoudnessProgress loudness:
-                // Replace the candidate status with a live per-track loudness line.
-                UpdateCandidate(loudness.Key, null, Loc.Core(
-                    "ui.import.loudness_progress",
-                    new Dictionary<string, object?>
-                    {
-                        ["done"] = loudness.TracksDone,
-                        ["total"] = loudness.TracksTotal,
-                    }));
+            case BridgeUiEvent.CandidateImportLoudnessProgress:
+                // The sidebar shows import progress as a percent + step off the
+                // row's own BridgeCandidateImportStatus (re-read on the next
+                // candidate invalidation); a per-track loudness fraction has no
+                // leaf in this UI to drive.
+                break;
+            case BridgeUiEvent.ImportQueueIdentifyProgress progress:
+                ApplyQueueIdentifyProgress(progress.Identified, progress.Total);
                 break;
             default:
-                // The router forwards only the preview and candidate-loudness
-                // variants here; any other variant reaching this handler is a
-                // routing drift, so log it rather than dropping it silently.
+                // The router forwards only these variants here; any other one
+                // reaching this handler is a routing drift, so log it rather
+                // than dropping it silently.
                 BaeDiagnostics.Logger.Warning(
                     $"Unexpected BridgeUiEvent variant {evt.GetType().Name} reached the import preview handler.");
                 break;
@@ -349,33 +311,35 @@ internal sealed class ImportStore
         PreviewElapsedChanged?.Invoke();
     }
 
-    // Scan a folder into the watched set (clearing the prior scan); candidates
-    // stream in through invalidations. Returns the error line, or null on success.
+    // Scan a folder into the watched set; candidates stream in through
+    // invalidations. Returns the error line, or null on success.
     public System.Threading.Tasks.Task<(bool Current, string? Result)> ScanFolder(string path) =>
         _import.ScanFolder(path);
 
-    // Kick off auto-identification for an as-yet unidentified candidate.
+    // Kick off auto-identification for an as-yet unidentified candidate — the
+    // click gate for a row whose phase is still Queued.
     public System.Threading.Tasks.Task<bool> AutoIdentify(string candidateKey, string folderPath) =>
         _import.AutoIdentifyFolder(candidateKey, folderPath);
 
-    // Re-dispatch a candidate's lookups, keeping the user's signal exclusions.
-    public System.Threading.Tasks.Task<bool> RerunIdentify(string candidateKey) =>
-        _import.RerunIdentifyForCandidate(candidateKey);
+    // The full candidate for a triage row's key, fetched fresh for the picker
+    // dialog rather than held for the whole list.
+    public ImportCandidate? CandidateForKey(string key) => _import.CandidateForKey(key).Candidate;
 
-    // Toggle a signal in or out of the candidate's triangulation.
-    public System.Threading.Tasks.Task<bool> ToggleSignal(string candidateKey, string kind, string value) =>
-        _import.ToggleSignalForCandidate(candidateKey, kind, value);
-
-    // Scan candidates and watched folders are per-library in-memory state; clear
-    // them on teardown so the next library doesn't inherit the previous one's list,
-    // and reset the tab to New. The sort order persists — it's a preference, not
-    // library state.
+    // Scan candidates, watched folders, and selection are per-library in-memory
+    // state; clear them on teardown so the next library doesn't inherit the
+    // previous one's list, and reset the tab to Ready. The sort order persists
+    // — it's a preference, not library state.
     public void Reset()
     {
-        Candidates.Clear();
-        _all.Clear();
-        WatchedFolders.Clear();
-        TabCounts = default;
-        ActiveTab = CandidateTab.New;
+        TriageQueue = new BridgeTriageQueue(
+            Rows: Array.Empty<BridgeTriageRow>(),
+            Invalid: Array.Empty<BridgeInvalidCandidate>(),
+            Counts: new BridgeTriageTabCounts(Ready: 0, NeedsYou: 0, Done: 0, Skipped: 0));
+        WatchedFolders = new List<BridgeWatchedFolder>();
+        QueueIdentifyProgress = null;
+        ActiveTab = BridgeTriageTab.Ready;
+        FilterText = string.Empty;
+        SelectedReady.Clear();
+        Changed?.Invoke();
     }
 }

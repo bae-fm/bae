@@ -56,15 +56,11 @@ public sealed class ImportCandidate
     /// <summary>The on-disk folder to identify/import.</summary>
     public string FolderPath { get; set; } = string.Empty;
 
-    /// <summary>The user manually skipped this candidate; it lists under Skipped.</summary>
+    /// <summary>The user manually skipped this candidate.</summary>
     public bool Skipped { get; set; }
 
-    /// <summary>Already imported (content-hash match); it lists under Added.</summary>
+    /// <summary>Already imported (content-hash match).</summary>
     public bool IsAdded { get; set; }
-
-    /// <summary>A folder that failed validation: not importable, always under
-    /// Skipped, and it has no skip/unskip action.</summary>
-    public bool Invalid { get; set; }
 
     /// <summary>The list row, omitting absent fields. Used as the default item text.</summary>
     public override string ToString()
@@ -136,7 +132,6 @@ public sealed class ImportCandidateRowStatus
     public int ProgressPercent { get; set; }
     public ImportStep? Step { get; set; }
     internal BridgeException? Error { get; set; }
-    internal BridgeInvalidReason? InvalidReason { get; set; }
 
     public string LocalizedLine
     {
@@ -159,11 +154,7 @@ public sealed class ImportCandidateRowStatus
         }
     }
 
-    private string? ErrorLine => InvalidReason is { } reason
-        ? BridgeDisplay.LocalizedLine(reason)
-        : Error is { } error
-            ? BridgeDisplay.LocalizedLine(error)
-            : null;
+    private string? ErrorLine => Error is { } error ? BridgeDisplay.LocalizedLine(error) : null;
 
     private string ImportingLine
     {

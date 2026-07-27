@@ -103,12 +103,12 @@ internal sealed class MainShellView : UserControl
             typeof(uniffi.bae_bridge.BridgeInvalidation.WatchedFolders),
         })
         {
-            _app.ProjectionRegistry.Register(domain, _app.ImportStore.RefreshCandidates);
+            _app.ProjectionRegistry.Register(domain, _app.ImportStore.RefreshTriageQueue);
         }
     }
 
-    // Switch to the import section and land it on a fresh New tab — the switcher
-    // click, and the folder-drop / activation flows that route here.
+    // Switch to the import section and land it on a fresh Ready tab — the
+    // switcher click, and the folder-drop / activation flows that route here.
     public void ShowImport()
     {
         _browser.IsVisible = false;

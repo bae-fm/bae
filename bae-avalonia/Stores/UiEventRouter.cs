@@ -6,9 +6,10 @@ namespace Bae.Desktop;
 // Routes each BridgeUiEvent to the store that owns its field: playback events to
 // the playback store, error banners to the shell store, invalidations to the
 // projection registry. Playback events also push metadata, status, and timeline
-// to the system media transport controls. Import-preview and candidate-loudness
-// events are handed to the window, which owns the import picker's live labels
-// (and drives the transport controls for the preview session).
+// to the system media transport controls. Import-preview, candidate-loudness,
+// and the import queue's identify-progress events are handed to the import
+// store, which owns the picker's live labels (and drives the transport
+// controls for the preview session) and the sidebar's progress line.
 internal sealed class UiEventRouter
 {
     private readonly PlaybackStore _playback;
@@ -121,6 +122,7 @@ internal sealed class UiEventRouter
             case BridgeUiEvent.PreviewPaused:
             case BridgeUiEvent.PreviewIdle:
             case BridgeUiEvent.CandidateImportLoudnessProgress:
+            case BridgeUiEvent.ImportQueueIdentifyProgress:
                 _importEvents(evt);
                 break;
             case BridgeUiEvent.ReleaseTransferProgress transfer:

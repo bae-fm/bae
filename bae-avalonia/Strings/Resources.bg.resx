@@ -362,17 +362,42 @@
   <data name="album.reidentify.refresh_body" xml:space="preserve"><value>Да се извлекат полетата за албум, песни и издание от новоидентифицирания източник? Направените от вас редакции ще бъдат презаписани.</value></data>
   <data name="album.reidentify.refresh_confirm" xml:space="preserve"><value>Обновяване от нов източник</value></data>
   <data name="album.reidentify.keep_current" xml:space="preserve"><value>Запазване на текущите метаданни</value></data>
-  <data name="import.tab.new" xml:space="preserve"><value>Нови ({count})</value></data>
-  <data name="import.tab.added" xml:space="preserve"><value>Добавени ({count})</value></data>
-  <data name="import.tab.skipped" xml:space="preserve"><value>Пропуснати ({count})</value></data>
+  <data name="import.tab.skipped" xml:space="preserve"><value>Пропуснати</value></data>
   <data name="import.candidate.skip" xml:space="preserve"><value>Пропускане</value></data>
-  <data name="import.candidate.unskip" xml:space="preserve"><value>Преместване в Нови</value></data>
+  <data name="import.candidate.unskip" xml:space="preserve"><value>Отмяна на пропускането</value></data>
   <data name="import.folder.remove" xml:space="preserve"><value>Премахване на папката</value></data>
   <data name="import.sort_by" xml:space="preserve"><value>Подреждане</value></data>
   <data name="import.sort.name_az" xml:space="preserve"><value>Име (А–Я)</value></data>
   <data name="import.sort.name_za" xml:space="preserve"><value>Име (Я–А)</value></data>
-  <data name="import.sort.newest" xml:space="preserve"><value>Дата на добавяне (най-нови)</value></data>
-  <data name="import.sort.oldest" xml:space="preserve"><value>Дата на добавяне (най-стари)</value></data>
+  <data name="import.tab.ready" xml:space="preserve"><value>Готови</value></data>
+  <data name="import.tab.needs_you" xml:space="preserve"><value>Изискват внимание</value></data>
+  <data name="import.tab.done" xml:space="preserve"><value>Завършени</value></data>
+  <data name="import.needs_you.pick_a_pressing" xml:space="preserve"><value>Изберете издание</value></data>
+  <data name="import.needs_you.signals_disagree" xml:space="preserve"><value>Сигналите се разминават</value></data>
+  <data name="import.needs_you.counts_or_lengths_disagree" xml:space="preserve"><value>Броят или дължините се разминават</value></data>
+  <data name="import.needs_you.already_in_library" xml:space="preserve"><value>Вече в библиотеката</value></data>
+  <data name="import.needs_you.no_match" xml:space="preserve"><value>Няма съвпадение</value></data>
+  <data name="import.needs_you.still_identifying" xml:space="preserve"><value>Все още се идентифицира</value></data>
+  <data name="import.progress.identifying" xml:space="preserve"><value>Идентифициране</value></data>
+  <data name="import.footbar.selected" xml:space="preserve"><value>{count} избрани</value></data>
+  <data name="import.footbar.select_all" xml:space="preserve"><value>Избиране на всички</value></data>
+  <data name="import.footbar.import_count" xml:space="preserve"><value>Внасяне на {count}</value></data>
+  <data name="import.row.choose" xml:space="preserve"><value>Избиране</value></data>
+  <data name="import.row.import_anyway" xml:space="preserve"><value>Внасяне въпреки това</value></data>
+  <data name="import.row.retry" xml:space="preserve"><value>Повторен опит</value></data>
+  <data name="import.row.conflict" xml:space="preserve"><value>Конфликт</value></data>
+  <data name="import.row.search_manually" xml:space="preserve"><value>ръчно търсене</value></data>
+  <data name="import.row.failed" xml:space="preserve"><value>Неуспешно</value></data>
+  <data name="import.row.disc_id" xml:space="preserve"><value>ID на диска</value></data>
+  <data name="import.row.barcode" xml:space="preserve"><value>Баркод</value></data>
+  <data name="import.phase.queued" xml:space="preserve"><value>Чака идентифициране</value></data>
+  <data name="import.phase.running" xml:space="preserve"><value>Идентифициране…</value></data>
+  <data name="import.phase.no_answer" xml:space="preserve"><value>Не успя да завърши — ще опита отново</value></data>
+  <data name="import.filter.placeholder" xml:space="preserve"><value>Филтриране…</value></data>
+  <data name="import.folder.add" xml:space="preserve"><value>Добавяне на папка…</value></data>
+  <data name="import.empty.nothing_here" xml:space="preserve"><value>Още няма нищо</value></data>
+  <data name="import.empty.no_matches" xml:space="preserve"><value>Няма съвпадения</value></data>
+  <data name="import.bulk_import_failed" xml:space="preserve"><value>{count, plural, one {# импорт не можа да започне} other {# импорта не могат да започнат}}</value></data>
   <data name="nowplaying.show_remaining" xml:space="preserve"><value>показване на оставащото време</value></data>
   <data name="nowplaying.show_elapsed" xml:space="preserve"><value>показване на изминалото време</value></data>
   <data name="output.title" xml:space="preserve"><value>експорт и запазване</value></data>

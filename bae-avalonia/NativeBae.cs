@@ -746,11 +746,26 @@ internal static class NativeBae
     internal static string? SetCandidateSkipped(AppHandle handle, string path, bool skipped) =>
         CaptureError(() => handle.SetCandidateSkipped(path, skipped));
 
-    internal static (List<ImportCandidate> Rows, BridgeWatchedFolder[] Folders) ImportCandidates(AppHandle handle)
-    {
-        var snapshot = handle.GetImportCandidates();
-        return (ImportCandidateRows(snapshot), snapshot.WatchedFolders);
-    }
+    /// <summary>The sidebar's pre-shaped rows, tab counts, and invalid folders —
+    /// core's triage projection. A UI iterates and renders it; it computes nothing
+    /// about which tab or group a row belongs to.</summary>
+    internal static (BridgeTriageQueue? Queue, string? Error) ImportTriageQueue(AppHandle handle) =>
+        CaptureBridgeValue(() => Await(() => handle.GetImportTriageQueue()));
+
+    /// <summary>The watched folders behind the current scan, for the sidebar's
+    /// "+" menu (add / reveal / remove).</summary>
+    internal static List<BridgeWatchedFolder> WatchedFolders(AppHandle handle) =>
+        handle.WatchedFolders().ToList();
+
+    /// <summary>The full candidate for one triage row's key — signals, matches,
+    /// audio paths, and documents the sidebar row itself doesn't carry — fetched
+    /// fresh when the row's picker opens rather than held for the whole list.
+    /// Null for an invalid folder (not a real candidate) or a key core no longer
+    /// has.</summary>
+    internal static ImportCandidate? Candidate(AppHandle handle, string key) =>
+        handle.GetCandidate(key) is BridgeImportCandidateSnapshot.Folder folder
+            ? ImportCandidateRow(folder.Candidate, folder.RuntimeSnapshot)
+            : null;
 
     /// <summary>A text file's decoded contents (bridge-side encoding detection),
     /// or the error line. No session handle: the read is a free bridge call.</summary>
@@ -1188,14 +1203,6 @@ internal static class NativeBae
         };
     }
 
-    private static List<ImportCandidate> ImportCandidateRows(BridgeImportCandidatesSnapshot snapshot)
-    {
-        var folderRows = snapshot.FolderCandidates
-            .Select(candidate => ImportCandidateRow(candidate.Candidate, candidate.Runtime));
-        var invalidRows = snapshot.InvalidCandidates.Select(InvalidImportCandidateRow);
-        return folderRows.Concat(invalidRows).ToList();
-    }
-
     private static ImportCandidate ImportCandidateRow(
         BridgeFolderCandidate candidate,
         BridgeCandidateRuntimeSnapshot runtime) =>
@@ -1214,26 +1221,6 @@ internal static class NativeBae
             FolderPath = candidate.FolderPath,
             Skipped = candidate.Skipped,
             IsAdded = candidate.IsAdded,
-        };
-
-    private static ImportCandidate InvalidImportCandidateRow(BridgeInvalidCandidate candidate) =>
-        new()
-        {
-            Key = candidate.FolderPath,
-            Name = candidate.SourceFolderName,
-            TrackCount = 0,
-            Format = string.Empty,
-            RowStatus = new ImportCandidateRowStatus
-            {
-                Kind = "error",
-                InvalidReason = candidate.Reason,
-            },
-            Matches = [],
-            Signals = [],
-            AudioPaths = [],
-            Documents = [],
-            FolderPath = candidate.FolderPath,
-            Invalid = true,
         };
 
     private static ImportCandidateRowStatus ImportRowStatus(BridgeCandidateRuntimeSnapshot runtime)

@@ -38,6 +38,12 @@
           <Color x:Key="BaeSelectionTintColor">#3CD97857</Color>
           <!-- Settled-positive state (a signal that found matches / confirms). -->
           <Color x:Key="BaeSuccessColor">#6BCB77</Color>
+          <!-- Needs-a-decision state (the triage sidebar's "pick a pressing" /
+               "counts or lengths disagree" stripe and chip). -->
+          <Color x:Key="BaeWarningColor">#E0A458</Color>
+          <!-- Settled-but-worth-noting state (the triage sidebar's
+               "already in library" stripe and chip). -->
+          <Color x:Key="BaeInfoColor">#6FA8DC</Color>
           <!-- FluentTheme's focus ring reads SystemAccentColor; point it at the
                terracotta. The accent button background is driven by the Style
                overrides below (FluentTheme paints it on the template's content
@@ -61,6 +67,8 @@
           <Color x:Key="BaeScrimColor">#59000000</Color>
           <Color x:Key="BaeSelectionTintColor">#2EC25B3A</Color>
           <Color x:Key="BaeSuccessColor">#2E8B45</Color>
+          <Color x:Key="BaeWarningColor">#B8791F</Color>
+          <Color x:Key="BaeInfoColor">#2E6DA4</Color>
           <Color x:Key="SystemAccentColor">#C25B3A</Color>
         </ResourceDictionary>
 
@@ -83,6 +91,8 @@
       <SolidColorBrush x:Key="BaeScrimBrush" Color="{DynamicResource BaeScrimColor}" />
       <SolidColorBrush x:Key="BaeSelectionTintBrush" Color="{DynamicResource BaeSelectionTintColor}" />
       <SolidColorBrush x:Key="BaeSuccessBrush" Color="{DynamicResource BaeSuccessColor}" />
+      <SolidColorBrush x:Key="BaeWarningBrush" Color="{DynamicResource BaeWarningColor}" />
+      <SolidColorBrush x:Key="BaeInfoBrush" Color="{DynamicResource BaeInfoColor}" />
 
       <!-- FluentTheme's Slider paints its filled track and thumb from these
            accent resources; overriding them keeps the scrubber and volume slider

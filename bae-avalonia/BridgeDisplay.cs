@@ -165,6 +165,63 @@ internal static class BridgeDisplay
         };
     }
 
+    /// <summary>
+    /// A triage row's disagreement sentence, resolved from the <c>Core</c>
+    /// catalog via the key bae-core owns for this variant. Every number crosses
+    /// raw — the enum's own operands — so this is the one place they're
+    /// interpolated for the current locale. Durations go through
+    /// <see cref="Clock(ulong)"/> first, matching every other duration in the
+    /// app; <c>ToleranceMs</c> never appears in the sentence even though
+    /// <c>DurationsDisagree</c> carries it — bae-core's own doc on the variant
+    /// explains why.
+    /// </summary>
+    internal static string LocalizedLine(BridgeNeedsYou needsYou)
+    {
+        var key = BaeBridgeMethods.BridgeNeedsYouKey(needsYou);
+        return needsYou switch
+        {
+            BridgeNeedsYou.SeveralMatches several => Loc.Core(key, "count", (long)several.Count),
+            BridgeNeedsYou.TrackCountDisagrees counts => Loc.Core(
+                key,
+                new Dictionary<string, object?> { ["local"] = (long)counts.Local, ["source"] = (long)counts.Source }),
+            BridgeNeedsYou.DurationsDisagree durations => Loc.Core(
+                key,
+                new Dictionary<string, object?>
+                {
+                    ["probed"] = Clock(durations.ProbedMs),
+                    ["source"] = Clock(durations.SourceMs),
+                }),
+            _ => Loc.Core(key),
+        };
+    }
+
+    /// <summary>
+    /// The still-identifying row's sub-line. UI-owned chrome, not a
+    /// <c>Core</c> catalog key: the phase names three different kinds of "no
+    /// verdict yet," and none of them is a sentence bae-core authored — it only
+    /// hands over which of the three this candidate is in.
+    /// </summary>
+    /// <summary>The localized label for a Done row's in-progress import step —
+    /// a raw <c>BridgeImportStep</c> off <c>BridgeTriageRow.ImportStatus</c>,
+    /// not the string-tag round trip <see cref="PrepareStepKey"/>/
+    /// <see cref="ImportPhaseKey"/> exist for (those serve the older
+    /// string-keyed <c>ImportCandidateRowStatus</c> the picker dialog still
+    /// uses).</summary>
+    internal static string LocalizedLine(BridgeImportStep step) => step switch
+    {
+        BridgeImportStep.Preparing preparing => Loc.Core(BaeBridgeMethods.BridgePrepareStepKey(preparing.Step)),
+        BridgeImportStep.Running running => Loc.Core(BaeBridgeMethods.BridgeImportPhaseKey(running.Phase)),
+        _ => string.Empty,
+    };
+
+    internal static string LocalizedLine(BridgeIdentifyPhase phase) => phase switch
+    {
+        BridgeIdentifyPhase.Queued => Loc.Chrome("import.phase.queued"),
+        BridgeIdentifyPhase.Running => Loc.Chrome("import.phase.running"),
+        BridgeIdentifyPhase.NoAnswer => Loc.Chrome("import.phase.no_answer"),
+        _ => string.Empty,
+    };
+
     // The wire provider tag (google_drive / dropbox / onedrive / s3) as a name to
     // show the user. Unknown tags pass through unchanged.
     internal static string ProviderDisplayName(string provider) => provider switch

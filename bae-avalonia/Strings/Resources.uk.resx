@@ -362,17 +362,42 @@
   <data name="album.reidentify.refresh_body" xml:space="preserve"><value>Підтягнути поля альбому, треків і видання з нового ідентифікованого джерела? Внесені вами зміни буде перезаписано.</value></data>
   <data name="album.reidentify.refresh_confirm" xml:space="preserve"><value>Оновити з нового джерела</value></data>
   <data name="album.reidentify.keep_current" xml:space="preserve"><value>Зберегти поточні метадані</value></data>
-  <data name="import.tab.new" xml:space="preserve"><value>Нові ({count})</value></data>
-  <data name="import.tab.added" xml:space="preserve"><value>Додані ({count})</value></data>
-  <data name="import.tab.skipped" xml:space="preserve"><value>Пропущені ({count})</value></data>
+  <data name="import.tab.skipped" xml:space="preserve"><value>Пропущені</value></data>
   <data name="import.candidate.skip" xml:space="preserve"><value>Пропустити</value></data>
-  <data name="import.candidate.unskip" xml:space="preserve"><value>Перемістити в нові</value></data>
+  <data name="import.candidate.unskip" xml:space="preserve"><value>Скасувати пропуск</value></data>
   <data name="import.folder.remove" xml:space="preserve"><value>Вилучити теку</value></data>
   <data name="import.sort_by" xml:space="preserve"><value>Сортування</value></data>
   <data name="import.sort.name_az" xml:space="preserve"><value>За назвою (А–Я)</value></data>
   <data name="import.sort.name_za" xml:space="preserve"><value>За назвою (Я–А)</value></data>
-  <data name="import.sort.newest" xml:space="preserve"><value>За датою додавання (спочатку нові)</value></data>
-  <data name="import.sort.oldest" xml:space="preserve"><value>За датою додавання (спочатку старі)</value></data>
+  <data name="import.tab.ready" xml:space="preserve"><value>Готові</value></data>
+  <data name="import.tab.needs_you" xml:space="preserve"><value>Потребують уваги</value></data>
+  <data name="import.tab.done" xml:space="preserve"><value>Завершені</value></data>
+  <data name="import.needs_you.pick_a_pressing" xml:space="preserve"><value>Виберіть видання</value></data>
+  <data name="import.needs_you.signals_disagree" xml:space="preserve"><value>Сигнали не збігаються</value></data>
+  <data name="import.needs_you.counts_or_lengths_disagree" xml:space="preserve"><value>Кількість або тривалість не збігаються</value></data>
+  <data name="import.needs_you.already_in_library" xml:space="preserve"><value>Уже в бібліотеці</value></data>
+  <data name="import.needs_you.no_match" xml:space="preserve"><value>Немає збігу</value></data>
+  <data name="import.needs_you.still_identifying" xml:space="preserve"><value>Ще ідентифікується</value></data>
+  <data name="import.progress.identifying" xml:space="preserve"><value>Ідентифікація</value></data>
+  <data name="import.footbar.selected" xml:space="preserve"><value>Вибрано: {count}</value></data>
+  <data name="import.footbar.select_all" xml:space="preserve"><value>Вибрати все</value></data>
+  <data name="import.footbar.import_count" xml:space="preserve"><value>Імпортувати {count}</value></data>
+  <data name="import.row.choose" xml:space="preserve"><value>Вибрати</value></data>
+  <data name="import.row.import_anyway" xml:space="preserve"><value>Усе одно імпортувати</value></data>
+  <data name="import.row.retry" xml:space="preserve"><value>Повторити</value></data>
+  <data name="import.row.conflict" xml:space="preserve"><value>Конфлікт</value></data>
+  <data name="import.row.search_manually" xml:space="preserve"><value>шукати вручну</value></data>
+  <data name="import.row.failed" xml:space="preserve"><value>Помилка</value></data>
+  <data name="import.row.disc_id" xml:space="preserve"><value>ID диска</value></data>
+  <data name="import.row.barcode" xml:space="preserve"><value>Штрихкод</value></data>
+  <data name="import.phase.queued" xml:space="preserve"><value>Очікує ідентифікації</value></data>
+  <data name="import.phase.running" xml:space="preserve"><value>Ідентифікація…</value></data>
+  <data name="import.phase.no_answer" xml:space="preserve"><value>Не вдалося завершити — спробуємо ще раз</value></data>
+  <data name="import.filter.placeholder" xml:space="preserve"><value>Фільтрувати…</value></data>
+  <data name="import.folder.add" xml:space="preserve"><value>Додати теку…</value></data>
+  <data name="import.empty.nothing_here" xml:space="preserve"><value>Тут поки нічого немає</value></data>
+  <data name="import.empty.no_matches" xml:space="preserve"><value>Немає збігів</value></data>
+  <data name="import.bulk_import_failed" xml:space="preserve"><value>{count, plural, one {# імпорт не вдалося розпочати} few {# імпорти не вдалося розпочати} many {# імпортів не вдалося розпочати} other {# імпорту не вдалося розпочати}}</value></data>
   <data name="nowplaying.show_remaining" xml:space="preserve"><value>показати час, що залишився</value></data>
   <data name="nowplaying.show_elapsed" xml:space="preserve"><value>показати час, що минув</value></data>
   <data name="output.title" xml:space="preserve"><value>експорт і збереження</value></data>

@@ -362,17 +362,42 @@
   <data name="album.reidentify.refresh_body" xml:space="preserve"><value>Lấy các trường album, bản nhạc và bản ép từ nguồn vừa nhận dạng? Các chỉnh sửa bạn đã thực hiện sẽ bị ghi đè.</value></data>
   <data name="album.reidentify.refresh_confirm" xml:space="preserve"><value>Làm mới từ nguồn mới</value></data>
   <data name="album.reidentify.keep_current" xml:space="preserve"><value>Giữ siêu dữ liệu hiện tại</value></data>
-  <data name="import.tab.new" xml:space="preserve"><value>Mới ({count})</value></data>
-  <data name="import.tab.added" xml:space="preserve"><value>Đã thêm ({count})</value></data>
-  <data name="import.tab.skipped" xml:space="preserve"><value>Đã bỏ qua ({count})</value></data>
+  <data name="import.tab.skipped" xml:space="preserve"><value>Đã bỏ qua</value></data>
   <data name="import.candidate.skip" xml:space="preserve"><value>Bỏ qua</value></data>
-  <data name="import.candidate.unskip" xml:space="preserve"><value>Di chuyển sang mới</value></data>
+  <data name="import.candidate.unskip" xml:space="preserve"><value>Hủy bỏ qua</value></data>
   <data name="import.folder.remove" xml:space="preserve"><value>Xóa thư mục</value></data>
   <data name="import.sort_by" xml:space="preserve"><value>Sắp xếp</value></data>
   <data name="import.sort.name_az" xml:space="preserve"><value>Tên (A–Z)</value></data>
   <data name="import.sort.name_za" xml:space="preserve"><value>Tên (Z–A)</value></data>
-  <data name="import.sort.newest" xml:space="preserve"><value>Ngày thêm (mới nhất)</value></data>
-  <data name="import.sort.oldest" xml:space="preserve"><value>Ngày thêm (cũ nhất)</value></data>
+  <data name="import.tab.ready" xml:space="preserve"><value>Sẵn sàng</value></data>
+  <data name="import.tab.needs_you" xml:space="preserve"><value>Cần xem lại</value></data>
+  <data name="import.tab.done" xml:space="preserve"><value>Hoàn tất</value></data>
+  <data name="import.needs_you.pick_a_pressing" xml:space="preserve"><value>Chọn bản ép</value></data>
+  <data name="import.needs_you.signals_disagree" xml:space="preserve"><value>Tín hiệu không khớp</value></data>
+  <data name="import.needs_you.counts_or_lengths_disagree" xml:space="preserve"><value>Số lượng hoặc thời lượng không khớp</value></data>
+  <data name="import.needs_you.already_in_library" xml:space="preserve"><value>Đã có trong thư viện</value></data>
+  <data name="import.needs_you.no_match" xml:space="preserve"><value>Không khớp</value></data>
+  <data name="import.needs_you.still_identifying" xml:space="preserve"><value>Vẫn đang nhận dạng</value></data>
+  <data name="import.progress.identifying" xml:space="preserve"><value>Đang nhận dạng</value></data>
+  <data name="import.footbar.selected" xml:space="preserve"><value>Đã chọn {count}</value></data>
+  <data name="import.footbar.select_all" xml:space="preserve"><value>Chọn tất cả</value></data>
+  <data name="import.footbar.import_count" xml:space="preserve"><value>Nhập {count}</value></data>
+  <data name="import.row.choose" xml:space="preserve"><value>Chọn</value></data>
+  <data name="import.row.import_anyway" xml:space="preserve"><value>Vẫn nhập</value></data>
+  <data name="import.row.retry" xml:space="preserve"><value>Thử lại</value></data>
+  <data name="import.row.conflict" xml:space="preserve"><value>Xung đột</value></data>
+  <data name="import.row.search_manually" xml:space="preserve"><value>tìm thủ công</value></data>
+  <data name="import.row.failed" xml:space="preserve"><value>Thất bại</value></data>
+  <data name="import.row.disc_id" xml:space="preserve"><value>Disc ID</value></data>
+  <data name="import.row.barcode" xml:space="preserve"><value>Mã vạch</value></data>
+  <data name="import.phase.queued" xml:space="preserve"><value>Đang chờ nhận dạng</value></data>
+  <data name="import.phase.running" xml:space="preserve"><value>Đang nhận dạng…</value></data>
+  <data name="import.phase.no_answer" xml:space="preserve"><value>Không hoàn tất được — sẽ thử lại</value></data>
+  <data name="import.filter.placeholder" xml:space="preserve"><value>Lọc…</value></data>
+  <data name="import.folder.add" xml:space="preserve"><value>Thêm thư mục…</value></data>
+  <data name="import.empty.nothing_here" xml:space="preserve"><value>Chưa có gì ở đây</value></data>
+  <data name="import.empty.no_matches" xml:space="preserve"><value>Không có kết quả khớp</value></data>
+  <data name="import.bulk_import_failed" xml:space="preserve"><value>{count, plural, other {# lượt nhập không thể bắt đầu}}</value></data>
   <data name="nowplaying.show_remaining" xml:space="preserve"><value>hiện thời gian còn lại</value></data>
   <data name="nowplaying.show_elapsed" xml:space="preserve"><value>hiện thời gian đã phát</value></data>
   <data name="output.title" xml:space="preserve"><value>xuất và lưu</value></data>

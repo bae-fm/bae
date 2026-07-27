@@ -50,7 +50,7 @@
   <data name="cover.show_failed" xml:space="preserve"><value>دور دراز سرورق دکھائے نہیں جا سکے: {detail}</value></data>
   <data name="action.back" xml:space="preserve"><value>واپس</value></data>
   <data name="action.copy" xml:space="preserve"><value>نقل کریں</value></data>
-  <data name="action.done" xml:space="preserve"><value>done</value></data>
+  <data name="action.done" xml:space="preserve"><value>مکمل</value></data>
   <data name="action.scan" xml:space="preserve"><value>اسکین کریں…</value></data>
   <data name="error.playback_title" xml:space="preserve"><value>چلانے کی خرابی</value></data>
   <data name="error.title" xml:space="preserve"><value>خرابی</value></data>
@@ -362,17 +362,42 @@
   <data name="album.reidentify.refresh_body" xml:space="preserve"><value>نئے شناخت شدہ ماخذ سے البم، نغمہ، اور پریسنگ خانے لیں؟ آپ کی کی گئی تبدیلیاں مٹ جائیں گی۔</value></data>
   <data name="album.reidentify.refresh_confirm" xml:space="preserve"><value>نئے ماخذ سے تازہ کریں</value></data>
   <data name="album.reidentify.keep_current" xml:space="preserve"><value>موجودہ میٹا ڈیٹا رکھیں</value></data>
-  <data name="import.tab.new" xml:space="preserve"><value>نیا ({count})</value></data>
-  <data name="import.tab.added" xml:space="preserve"><value>شامل ہو گیا ({count})</value></data>
-  <data name="import.tab.skipped" xml:space="preserve"><value>چھوڑا گیا ({count})</value></data>
+  <data name="import.tab.skipped" xml:space="preserve"><value>چھوڑا گیا</value></data>
   <data name="import.candidate.skip" xml:space="preserve"><value>چھوڑیں</value></data>
-  <data name="import.candidate.unskip" xml:space="preserve"><value>نئے میں منتقل کریں</value></data>
+  <data name="import.candidate.unskip" xml:space="preserve"><value>چھوڑنا واپس لیں</value></data>
   <data name="import.folder.remove" xml:space="preserve"><value>پوشہ ہٹائیں</value></data>
   <data name="import.sort_by" xml:space="preserve"><value>ترتیب دیں</value></data>
   <data name="import.sort.name_az" xml:space="preserve"><value>نام (A–Z)</value></data>
   <data name="import.sort.name_za" xml:space="preserve"><value>نام (Z–A)</value></data>
-  <data name="import.sort.newest" xml:space="preserve"><value>شامل ہونے کی تاریخ (نیا پہلے)</value></data>
-  <data name="import.sort.oldest" xml:space="preserve"><value>شامل ہونے کی تاریخ (پرانا پہلے)</value></data>
+  <data name="import.tab.ready" xml:space="preserve"><value>تیار</value></data>
+  <data name="import.tab.needs_you" xml:space="preserve"><value>توجہ درکار</value></data>
+  <data name="import.tab.done" xml:space="preserve"><value>مکمل</value></data>
+  <data name="import.needs_you.pick_a_pressing" xml:space="preserve"><value>پریسنگ منتخب کریں</value></data>
+  <data name="import.needs_you.signals_disagree" xml:space="preserve"><value>اشارے مطابقت نہیں رکھتے</value></data>
+  <data name="import.needs_you.counts_or_lengths_disagree" xml:space="preserve"><value>تعداد یا دورانیہ مطابقت نہیں رکھتے</value></data>
+  <data name="import.needs_you.already_in_library" xml:space="preserve"><value>پہلے ہی لائبریری میں</value></data>
+  <data name="import.needs_you.no_match" xml:space="preserve"><value>کوئی میل نہیں ملا</value></data>
+  <data name="import.needs_you.still_identifying" xml:space="preserve"><value>ابھی بھی شناخت ہو رہی ہے</value></data>
+  <data name="import.progress.identifying" xml:space="preserve"><value>شناخت ہو رہی ہے</value></data>
+  <data name="import.footbar.selected" xml:space="preserve"><value>{count} منتخب</value></data>
+  <data name="import.footbar.select_all" xml:space="preserve"><value>سب منتخب کریں</value></data>
+  <data name="import.footbar.import_count" xml:space="preserve"><value>{count} درآمد کریں</value></data>
+  <data name="import.row.choose" xml:space="preserve"><value>منتخب کریں</value></data>
+  <data name="import.row.import_anyway" xml:space="preserve"><value>پھر بھی درآمد کریں</value></data>
+  <data name="import.row.retry" xml:space="preserve"><value>دوبارہ کوشش کریں</value></data>
+  <data name="import.row.conflict" xml:space="preserve"><value>ٹکراؤ</value></data>
+  <data name="import.row.search_manually" xml:space="preserve"><value>ہاتھ سے تلاش کریں</value></data>
+  <data name="import.row.failed" xml:space="preserve"><value>ناکام</value></data>
+  <data name="import.row.disc_id" xml:space="preserve"><value>ڈسک ID</value></data>
+  <data name="import.row.barcode" xml:space="preserve"><value>بارکوڈ</value></data>
+  <data name="import.phase.queued" xml:space="preserve"><value>شناخت کے انتظار میں</value></data>
+  <data name="import.phase.running" xml:space="preserve"><value>شناخت ہو رہی ہے…</value></data>
+  <data name="import.phase.no_answer" xml:space="preserve"><value>مکمل نہیں ہو سکا — دوبارہ کوشش ہوگی</value></data>
+  <data name="import.filter.placeholder" xml:space="preserve"><value>فلٹر…</value></data>
+  <data name="import.folder.add" xml:space="preserve"><value>فولڈر شامل کریں…</value></data>
+  <data name="import.empty.nothing_here" xml:space="preserve"><value>یہاں ابھی کچھ نہیں ہے</value></data>
+  <data name="import.empty.no_matches" xml:space="preserve"><value>کوئی میل نہیں</value></data>
+  <data name="import.bulk_import_failed" xml:space="preserve"><value>{count, plural, one {# درآمد شروع نہیں ہو سکی} other {# درآمدات شروع نہیں ہو سکیں}}</value></data>
   <data name="nowplaying.show_remaining" xml:space="preserve"><value>باقی وقت دکھائیں</value></data>
   <data name="nowplaying.show_elapsed" xml:space="preserve"><value>گزرا ہوا وقت دکھائیں</value></data>
   <data name="output.title" xml:space="preserve"><value>برآمد اور محفوظ</value></data>

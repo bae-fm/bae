@@ -387,17 +387,42 @@
   <data name="album.reidentify.refresh_body" xml:space="preserve"><value>Pull the album, track, and pressing fields from the newly-identified source? Edits you've made are overwritten.</value></data>
   <data name="album.reidentify.refresh_confirm" xml:space="preserve"><value>Refresh from new source</value></data>
   <data name="album.reidentify.keep_current" xml:space="preserve"><value>Keep current metadata</value></data>
-  <data name="import.tab.new" xml:space="preserve"><value>New ({count})</value></data>
-  <data name="import.tab.added" xml:space="preserve"><value>Added ({count})</value></data>
-  <data name="import.tab.skipped" xml:space="preserve"><value>Skipped ({count})</value></data>
+  <data name="import.tab.skipped" xml:space="preserve"><value>Skipped</value></data>
   <data name="import.candidate.skip" xml:space="preserve"><value>Skip</value></data>
-  <data name="import.candidate.unskip" xml:space="preserve"><value>Move to New</value></data>
+  <data name="import.candidate.unskip" xml:space="preserve"><value>Unskip</value></data>
   <data name="import.folder.remove" xml:space="preserve"><value>Remove folder</value></data>
   <data name="import.sort_by" xml:space="preserve"><value>Sort</value></data>
   <data name="import.sort.name_az" xml:space="preserve"><value>Name (A–Z)</value></data>
   <data name="import.sort.name_za" xml:space="preserve"><value>Name (Z–A)</value></data>
-  <data name="import.sort.newest" xml:space="preserve"><value>Date Added (Newest)</value></data>
-  <data name="import.sort.oldest" xml:space="preserve"><value>Date Added (Oldest)</value></data>
+  <data name="import.tab.ready" xml:space="preserve"><value>Ready</value></data>
+  <data name="import.tab.needs_you" xml:space="preserve"><value>Needs You</value></data>
+  <data name="import.tab.done" xml:space="preserve"><value>Done</value></data>
+  <data name="import.needs_you.pick_a_pressing" xml:space="preserve"><value>Pick a Pressing</value></data>
+  <data name="import.needs_you.signals_disagree" xml:space="preserve"><value>Signals Disagree</value></data>
+  <data name="import.needs_you.counts_or_lengths_disagree" xml:space="preserve"><value>Counts or Lengths Disagree</value></data>
+  <data name="import.needs_you.already_in_library" xml:space="preserve"><value>Already in Library</value></data>
+  <data name="import.needs_you.no_match" xml:space="preserve"><value>No Match</value></data>
+  <data name="import.needs_you.still_identifying" xml:space="preserve"><value>Still Identifying</value></data>
+  <data name="import.progress.identifying" xml:space="preserve"><value>Identifying</value></data>
+  <data name="import.footbar.selected" xml:space="preserve"><value>{count} selected</value></data>
+  <data name="import.footbar.select_all" xml:space="preserve"><value>Select All</value></data>
+  <data name="import.footbar.import_count" xml:space="preserve"><value>Import {count}</value></data>
+  <data name="import.row.choose" xml:space="preserve"><value>Choose</value></data>
+  <data name="import.row.import_anyway" xml:space="preserve"><value>Import Anyway</value></data>
+  <data name="import.row.retry" xml:space="preserve"><value>Retry</value></data>
+  <data name="import.row.conflict" xml:space="preserve"><value>Conflict</value></data>
+  <data name="import.row.search_manually" xml:space="preserve"><value>Search manually</value></data>
+  <data name="import.row.failed" xml:space="preserve"><value>Failed</value></data>
+  <data name="import.row.disc_id" xml:space="preserve"><value>Disc ID</value></data>
+  <data name="import.row.barcode" xml:space="preserve"><value>Barcode</value></data>
+  <data name="import.phase.queued" xml:space="preserve"><value>Waiting to be identified</value></data>
+  <data name="import.phase.running" xml:space="preserve"><value>Identifying…</value></data>
+  <data name="import.phase.no_answer" xml:space="preserve"><value>Couldn’t complete — will retry</value></data>
+  <data name="import.filter.placeholder" xml:space="preserve"><value>Filter…</value></data>
+  <data name="import.folder.add" xml:space="preserve"><value>Add a Folder…</value></data>
+  <data name="import.empty.nothing_here" xml:space="preserve"><value>Nothing here yet</value></data>
+  <data name="import.empty.no_matches" xml:space="preserve"><value>No matches</value></data>
+  <data name="import.bulk_import_failed" xml:space="preserve"><value>{count, plural, one {# import couldn't start} other {# imports couldn't start}}</value></data>
   <data name="nowplaying.show_remaining" xml:space="preserve"><value>show remaining time</value></data>
   <data name="nowplaying.show_elapsed" xml:space="preserve"><value>show elapsed time</value></data>
   <data name="output.title" xml:space="preserve"><value>export &amp; save</value></data>

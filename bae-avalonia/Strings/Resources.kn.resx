@@ -362,17 +362,42 @@
   <data name="album.reidentify.refresh_body" xml:space="preserve"><value>ಹೊಸದಾಗಿ ಗುರುತಿಸಿದ ಮೂಲದಿಂದ ಆಲ್ಬಮ್, ಹಾಡು ಮತ್ತು ಒತ್ತುವಿಕೆ ಕ್ಷೇತ್ರಗಳನ್ನು ತೆಗೆದುಕೊಳ್ಳಬೇಕೇ? ನೀವು ಮಾಡಿದ ತಿದ್ದುಪಡಿಗಳು ಮೇಲೆಯಾಗಿ ಬರೆಯಲ್ಪಡುತ್ತವೆ.</value></data>
   <data name="album.reidentify.refresh_confirm" xml:space="preserve"><value>ಹೊಸ ಮೂಲದಿಂದ ತಾಜಾಗೊಳಿಸಿ</value></data>
   <data name="album.reidentify.keep_current" xml:space="preserve"><value>ಪ್ರಸ್ತುತ ಮೆಟಾಡೇಟಾವನ್ನು ಉಳಿಸಿ</value></data>
-  <data name="import.tab.new" xml:space="preserve"><value>ಹೊಸ ({count})</value></data>
-  <data name="import.tab.added" xml:space="preserve"><value>ಸೇರಿಸಲಾಗಿದೆ ({count})</value></data>
-  <data name="import.tab.skipped" xml:space="preserve"><value>ಬಿಡಲಾಗಿದೆ ({count})</value></data>
+  <data name="import.tab.skipped" xml:space="preserve"><value>ಬಿಡಲಾಗಿದೆ</value></data>
   <data name="import.candidate.skip" xml:space="preserve"><value>ಬಿಟ್ಟುಬಿಡಿ</value></data>
-  <data name="import.candidate.unskip" xml:space="preserve"><value>ಹೊಸದಕ್ಕೆ ಸರಿಸಿ</value></data>
+  <data name="import.candidate.unskip" xml:space="preserve"><value>ಬಿಡುವುದನ್ನು ರದ್ದುಮಾಡಿ</value></data>
   <data name="import.folder.remove" xml:space="preserve"><value>ಫೋಲ್ಡರ್ ತೆಗೆದುಹಾಕಿ</value></data>
   <data name="import.sort_by" xml:space="preserve"><value>ಕ್ರಮಗೊಳಿಸಿ</value></data>
   <data name="import.sort.name_az" xml:space="preserve"><value>ಹೆಸರು (A–Z)</value></data>
   <data name="import.sort.name_za" xml:space="preserve"><value>ಹೆಸರು (Z–A)</value></data>
-  <data name="import.sort.newest" xml:space="preserve"><value>ಸೇರಿಸಿದ ದಿನಾಂಕ (ಹೊಸದು)</value></data>
-  <data name="import.sort.oldest" xml:space="preserve"><value>ಸೇರಿಸಿದ ದಿನಾಂಕ (ಹಳೆಯದು)</value></data>
+  <data name="import.tab.ready" xml:space="preserve"><value>ಸಿದ್ಧ</value></data>
+  <data name="import.tab.needs_you" xml:space="preserve"><value>ಗಮನ ಬೇಕು</value></data>
+  <data name="import.tab.done" xml:space="preserve"><value>ಮುಗಿದಿದೆ</value></data>
+  <data name="import.needs_you.pick_a_pressing" xml:space="preserve"><value>ಪ್ರೆಸಿಂಗ್ ಆಯ್ಕೆಮಾಡಿ</value></data>
+  <data name="import.needs_you.signals_disagree" xml:space="preserve"><value>ಸಂಕೇತಗಳು ಹೊಂದಿಕೆಯಾಗುತ್ತಿಲ್ಲ</value></data>
+  <data name="import.needs_you.counts_or_lengths_disagree" xml:space="preserve"><value>ಸಂಖ್ಯೆ ಅಥವಾ ಅವಧಿ ಹೊಂದಿಕೆಯಾಗುತ್ತಿಲ್ಲ</value></data>
+  <data name="import.needs_you.already_in_library" xml:space="preserve"><value>ಈಗಾಗಲೇ ಗ್ರಂಥಾಲಯದಲ್ಲಿ</value></data>
+  <data name="import.needs_you.no_match" xml:space="preserve"><value>ಹೊಂದಾಣಿಕೆ ಸಿಕ್ಕಿಲ್ಲ</value></data>
+  <data name="import.needs_you.still_identifying" xml:space="preserve"><value>ಇನ್ನೂ ಗುರುತಿಸಲಾಗುತ್ತಿದೆ</value></data>
+  <data name="import.progress.identifying" xml:space="preserve"><value>ಗುರುತಿಸಲಾಗುತ್ತಿದೆ</value></data>
+  <data name="import.footbar.selected" xml:space="preserve"><value>{count} ಆಯ್ಕೆಯಾಗಿವೆ</value></data>
+  <data name="import.footbar.select_all" xml:space="preserve"><value>ಎಲ್ಲವನ್ನೂ ಆಯ್ಕೆಮಾಡಿ</value></data>
+  <data name="import.footbar.import_count" xml:space="preserve"><value>{count} ಆಮದು ಮಾಡಿ</value></data>
+  <data name="import.row.choose" xml:space="preserve"><value>ಆಯ್ಕೆಮಾಡಿ</value></data>
+  <data name="import.row.import_anyway" xml:space="preserve"><value>ಹಾಗಿದ್ದರೂ ಆಮದು ಮಾಡಿ</value></data>
+  <data name="import.row.retry" xml:space="preserve"><value>ಮರುಪ್ರಯತ್ನಿಸಿ</value></data>
+  <data name="import.row.conflict" xml:space="preserve"><value>ಘರ್ಷಣೆ</value></data>
+  <data name="import.row.search_manually" xml:space="preserve"><value>ಕೈಯಾರೆ ಹುಡುಕಿ</value></data>
+  <data name="import.row.failed" xml:space="preserve"><value>ವಿಫಲವಾಯಿತು</value></data>
+  <data name="import.row.disc_id" xml:space="preserve"><value>ಡಿಸ್ಕ್ ID</value></data>
+  <data name="import.row.barcode" xml:space="preserve"><value>ಬಾರ್‌ಕೋಡ್</value></data>
+  <data name="import.phase.queued" xml:space="preserve"><value>ಗುರುತಿಸುವಿಕೆಗೆ ಕಾಯುತ್ತಿದೆ</value></data>
+  <data name="import.phase.running" xml:space="preserve"><value>ಗುರುತಿಸಲಾಗುತ್ತಿದೆ…</value></data>
+  <data name="import.phase.no_answer" xml:space="preserve"><value>ಪೂರ್ಣಗೊಳಿಸಲಾಗಲಿಲ್ಲ — ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಲಾಗುವುದು</value></data>
+  <data name="import.filter.placeholder" xml:space="preserve"><value>ಫಿಲ್ಟರ್…</value></data>
+  <data name="import.folder.add" xml:space="preserve"><value>ಫೋಲ್ಡರ್ ಸೇರಿಸಿ…</value></data>
+  <data name="import.empty.nothing_here" xml:space="preserve"><value>ಇಲ್ಲಿ ಇನ್ನೂ ಏನೂ ಇಲ್ಲ</value></data>
+  <data name="import.empty.no_matches" xml:space="preserve"><value>ಹೊಂದಾಣಿಕೆಗಳಿಲ್ಲ</value></data>
+  <data name="import.bulk_import_failed" xml:space="preserve"><value>{count, plural, one {# ಆಮದು ಪ್ರಾರಂಭಿಸಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ} other {# ಆಮದುಗಳು ಪ್ರಾರಂಭಿಸಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ}}</value></data>
   <data name="nowplaying.show_remaining" xml:space="preserve"><value>ಉಳಿದಿರುವ ಸಮಯವನ್ನು ತೋರಿಸಿ</value></data>
   <data name="nowplaying.show_elapsed" xml:space="preserve"><value>ಕಳೆದ ಸಮಯವನ್ನು ತೋರಿಸಿ</value></data>
   <data name="output.title" xml:space="preserve"><value>ರಫ್ತು ಮತ್ತು ಉಳಿಸು</value></data>

@@ -362,17 +362,42 @@
   <data name="album.reidentify.refresh_body" xml:space="preserve"><value>Récupérer les champs de l'album, des pistes et du pressage depuis la nouvelle source identifiée ? Vos modifications seront écrasées.</value></data>
   <data name="album.reidentify.refresh_confirm" xml:space="preserve"><value>Actualiser depuis la nouvelle source</value></data>
   <data name="album.reidentify.keep_current" xml:space="preserve"><value>Conserver les métadonnées actuelles</value></data>
-  <data name="import.tab.new" xml:space="preserve"><value>Nouveaux ({count})</value></data>
-  <data name="import.tab.added" xml:space="preserve"><value>Ajoutés ({count})</value></data>
-  <data name="import.tab.skipped" xml:space="preserve"><value>Ignorés ({count})</value></data>
+  <data name="import.tab.skipped" xml:space="preserve"><value>Ignorés</value></data>
   <data name="import.candidate.skip" xml:space="preserve"><value>Ignorer</value></data>
-  <data name="import.candidate.unskip" xml:space="preserve"><value>Déplacer vers Nouveaux</value></data>
+  <data name="import.candidate.unskip" xml:space="preserve"><value>Ne plus ignorer</value></data>
   <data name="import.folder.remove" xml:space="preserve"><value>Supprimer le dossier</value></data>
   <data name="import.sort_by" xml:space="preserve"><value>Trier</value></data>
   <data name="import.sort.name_az" xml:space="preserve"><value>Nom (A–Z)</value></data>
   <data name="import.sort.name_za" xml:space="preserve"><value>Nom (Z–A)</value></data>
-  <data name="import.sort.newest" xml:space="preserve"><value>Date d'ajout (plus récent)</value></data>
-  <data name="import.sort.oldest" xml:space="preserve"><value>Date d'ajout (plus ancien)</value></data>
+  <data name="import.tab.ready" xml:space="preserve"><value>Prêts</value></data>
+  <data name="import.tab.needs_you" xml:space="preserve"><value>À vérifier</value></data>
+  <data name="import.tab.done" xml:space="preserve"><value>Terminés</value></data>
+  <data name="import.needs_you.pick_a_pressing" xml:space="preserve"><value>Choisir un pressage</value></data>
+  <data name="import.needs_you.signals_disagree" xml:space="preserve"><value>Signaux divergents</value></data>
+  <data name="import.needs_you.counts_or_lengths_disagree" xml:space="preserve"><value>Nombre ou durées divergents</value></data>
+  <data name="import.needs_you.already_in_library" xml:space="preserve"><value>Déjà dans la bibliothèque</value></data>
+  <data name="import.needs_you.no_match" xml:space="preserve"><value>Sans correspondance</value></data>
+  <data name="import.needs_you.still_identifying" xml:space="preserve"><value>Identification en cours</value></data>
+  <data name="import.progress.identifying" xml:space="preserve"><value>Identification</value></data>
+  <data name="import.footbar.selected" xml:space="preserve"><value>{count} sélectionnés</value></data>
+  <data name="import.footbar.select_all" xml:space="preserve"><value>Tout sélectionner</value></data>
+  <data name="import.footbar.import_count" xml:space="preserve"><value>Importer {count}</value></data>
+  <data name="import.row.choose" xml:space="preserve"><value>Choisir</value></data>
+  <data name="import.row.import_anyway" xml:space="preserve"><value>Importer quand même</value></data>
+  <data name="import.row.retry" xml:space="preserve"><value>Réessayer</value></data>
+  <data name="import.row.conflict" xml:space="preserve"><value>Conflit</value></data>
+  <data name="import.row.search_manually" xml:space="preserve"><value>rechercher manuellement</value></data>
+  <data name="import.row.failed" xml:space="preserve"><value>Échec</value></data>
+  <data name="import.row.disc_id" xml:space="preserve"><value>ID de disque</value></data>
+  <data name="import.row.barcode" xml:space="preserve"><value>Code-barres</value></data>
+  <data name="import.phase.queued" xml:space="preserve"><value>En attente d'identification</value></data>
+  <data name="import.phase.running" xml:space="preserve"><value>Identification…</value></data>
+  <data name="import.phase.no_answer" xml:space="preserve"><value>Impossible de terminer — nouvelle tentative prévue</value></data>
+  <data name="import.filter.placeholder" xml:space="preserve"><value>Filtrer…</value></data>
+  <data name="import.folder.add" xml:space="preserve"><value>Ajouter un dossier…</value></data>
+  <data name="import.empty.nothing_here" xml:space="preserve"><value>Rien ici pour l'instant</value></data>
+  <data name="import.empty.no_matches" xml:space="preserve"><value>Aucune correspondance</value></data>
+  <data name="import.bulk_import_failed" xml:space="preserve"><value>{count, plural, one {# importation n'a pas pu démarrer} other {# importations n'ont pas pu démarrer}}</value></data>
   <data name="nowplaying.show_remaining" xml:space="preserve"><value>afficher le temps restant</value></data>
   <data name="nowplaying.show_elapsed" xml:space="preserve"><value>afficher le temps écoulé</value></data>
   <data name="output.title" xml:space="preserve"><value>exporter et enregistrer</value></data>

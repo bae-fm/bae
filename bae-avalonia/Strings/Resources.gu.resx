@@ -50,7 +50,7 @@
   <data name="cover.show_failed" xml:space="preserve"><value>દૂરસ્થ આવરણો બતાવી શકાયા નહીં: {detail}</value></data>
   <data name="action.back" xml:space="preserve"><value>પાછા</value></data>
   <data name="action.copy" xml:space="preserve"><value>નકલ કરો</value></data>
-  <data name="action.done" xml:space="preserve"><value>done</value></data>
+  <data name="action.done" xml:space="preserve"><value>પૂર્ણ</value></data>
   <data name="action.scan" xml:space="preserve"><value>સ્કેન…</value></data>
   <data name="error.playback_title" xml:space="preserve"><value>વગાડવાની ભૂલ</value></data>
   <data name="error.title" xml:space="preserve"><value>ભૂલ</value></data>
@@ -362,17 +362,42 @@
   <data name="album.reidentify.refresh_body" xml:space="preserve"><value>નવા ઓળખાયેલા સ્રોતમાંથી આલ્બમ, ટ્રૅક અને પ્રેસિંગ ક્ષેત્રો ખેંચવા? તમે કરેલા ફેરફારો પર લખાઈ જશે.</value></data>
   <data name="album.reidentify.refresh_confirm" xml:space="preserve"><value>નવા સ્રોત પરથી તાજું કરો</value></data>
   <data name="album.reidentify.keep_current" xml:space="preserve"><value>વર્તમાન મેટાડેટા રાખો</value></data>
-  <data name="import.tab.new" xml:space="preserve"><value>નવું ({count})</value></data>
-  <data name="import.tab.added" xml:space="preserve"><value>ઉમેરાયું ({count})</value></data>
-  <data name="import.tab.skipped" xml:space="preserve"><value>છોડેલું ({count})</value></data>
+  <data name="import.tab.skipped" xml:space="preserve"><value>છોડેલું</value></data>
   <data name="import.candidate.skip" xml:space="preserve"><value>છોડો</value></data>
-  <data name="import.candidate.unskip" xml:space="preserve"><value>નવામાં ખસેડો</value></data>
+  <data name="import.candidate.unskip" xml:space="preserve"><value>છોડવાનું રદ કરો</value></data>
   <data name="import.folder.remove" xml:space="preserve"><value>ફોલ્ડર દૂર કરો</value></data>
   <data name="import.sort_by" xml:space="preserve"><value>ક્રમમાં ગોઠવો</value></data>
   <data name="import.sort.name_az" xml:space="preserve"><value>નામ (A–Z)</value></data>
   <data name="import.sort.name_za" xml:space="preserve"><value>નામ (Z–A)</value></data>
-  <data name="import.sort.newest" xml:space="preserve"><value>ઉમેરેલી તારીખ (નવાં પહેલાં)</value></data>
-  <data name="import.sort.oldest" xml:space="preserve"><value>ઉમેરેલી તારીખ (જૂનાં પહેલાં)</value></data>
+  <data name="import.tab.ready" xml:space="preserve"><value>તૈયાર</value></data>
+  <data name="import.tab.needs_you" xml:space="preserve"><value>ધ્યાન જરૂરી</value></data>
+  <data name="import.tab.done" xml:space="preserve"><value>પૂર્ણ</value></data>
+  <data name="import.needs_you.pick_a_pressing" xml:space="preserve"><value>પ્રેસિંગ પસંદ કરો</value></data>
+  <data name="import.needs_you.signals_disagree" xml:space="preserve"><value>સંકેતો મેળ ખાતા નથી</value></data>
+  <data name="import.needs_you.counts_or_lengths_disagree" xml:space="preserve"><value>સંખ્યા કે લંબાઈ મેળ ખાતી નથી</value></data>
+  <data name="import.needs_you.already_in_library" xml:space="preserve"><value>પહેલેથી લાઇબ્રેરીમાં</value></data>
+  <data name="import.needs_you.no_match" xml:space="preserve"><value>કોઈ મેળ મળ્યો નથી</value></data>
+  <data name="import.needs_you.still_identifying" xml:space="preserve"><value>હજી ઓળખાઈ રહ્યું છે</value></data>
+  <data name="import.progress.identifying" xml:space="preserve"><value>ઓળખાઈ રહ્યું છે</value></data>
+  <data name="import.footbar.selected" xml:space="preserve"><value>{count} પસંદ કરેલા</value></data>
+  <data name="import.footbar.select_all" xml:space="preserve"><value>બધા પસંદ કરો</value></data>
+  <data name="import.footbar.import_count" xml:space="preserve"><value>{count} આયાત કરો</value></data>
+  <data name="import.row.choose" xml:space="preserve"><value>પસંદ કરો</value></data>
+  <data name="import.row.import_anyway" xml:space="preserve"><value>તો પણ આયાત કરો</value></data>
+  <data name="import.row.retry" xml:space="preserve"><value>ફરી પ્રયાસ કરો</value></data>
+  <data name="import.row.conflict" xml:space="preserve"><value>વિરોધ</value></data>
+  <data name="import.row.search_manually" xml:space="preserve"><value>હાથેથી શોધો</value></data>
+  <data name="import.row.failed" xml:space="preserve"><value>નિષ્ફળ</value></data>
+  <data name="import.row.disc_id" xml:space="preserve"><value>ડિસ્ક ID</value></data>
+  <data name="import.row.barcode" xml:space="preserve"><value>બારકોડ</value></data>
+  <data name="import.phase.queued" xml:space="preserve"><value>ઓળખની રાહમાં</value></data>
+  <data name="import.phase.running" xml:space="preserve"><value>ઓળખાઈ રહ્યું છે…</value></data>
+  <data name="import.phase.no_answer" xml:space="preserve"><value>પૂર્ણ થઈ શક્યું નથી — ફરી પ્રયાસ થશે</value></data>
+  <data name="import.filter.placeholder" xml:space="preserve"><value>ફિલ્ટર…</value></data>
+  <data name="import.folder.add" xml:space="preserve"><value>ફોલ્ડર ઉમેરો…</value></data>
+  <data name="import.empty.nothing_here" xml:space="preserve"><value>અહીં હજી કંઈ નથી</value></data>
+  <data name="import.empty.no_matches" xml:space="preserve"><value>મેળો નથી</value></data>
+  <data name="import.bulk_import_failed" xml:space="preserve"><value>{count, plural, one {# આયાત શરૂ થઈ શકી નહીં} other {# આયાત શરૂ થઈ શકી નહીં}}</value></data>
   <data name="nowplaying.show_remaining" xml:space="preserve"><value>બાકી રહેલો સમય બતાવો</value></data>
   <data name="nowplaying.show_elapsed" xml:space="preserve"><value>વીતેલો સમય બતાવો</value></data>
   <data name="output.title" xml:space="preserve"><value>નિકાસ અને સાચવો</value></data>

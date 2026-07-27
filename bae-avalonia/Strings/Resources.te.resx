@@ -362,17 +362,42 @@
   <data name="album.reidentify.refresh_body" xml:space="preserve"><value>కొత్తగా గుర్తించిన మూలం నుంచి ఆల్బమ్, ట్రాక్, ముద్రణ ఫీల్డ్‌లను తీసుకురావాలా? మీరు చేసిన మార్పులు భర్తీ చేయబడతాయి.</value></data>
   <data name="album.reidentify.refresh_confirm" xml:space="preserve"><value>కొత్త మూలం నుంచి రిఫ్రెష్ చేయి</value></data>
   <data name="album.reidentify.keep_current" xml:space="preserve"><value>ప్రస్తుత మెటాడేటాను ఉంచండి</value></data>
-  <data name="import.tab.new" xml:space="preserve"><value>కొత్తది ({count})</value></data>
-  <data name="import.tab.added" xml:space="preserve"><value>జోడించబడింది ({count})</value></data>
-  <data name="import.tab.skipped" xml:space="preserve"><value>దాటవేయబడింది ({count})</value></data>
+  <data name="import.tab.skipped" xml:space="preserve"><value>దాటవేయబడింది</value></data>
   <data name="import.candidate.skip" xml:space="preserve"><value>దాటవేయి</value></data>
-  <data name="import.candidate.unskip" xml:space="preserve"><value>కొత్తదానికి తరలించు</value></data>
+  <data name="import.candidate.unskip" xml:space="preserve"><value>దాటవేతను రద్దు చేయి</value></data>
   <data name="import.folder.remove" xml:space="preserve"><value>ఫోల్డర్‌ను తీసివేయి</value></data>
   <data name="import.sort_by" xml:space="preserve"><value>క్రమపరచు</value></data>
   <data name="import.sort.name_az" xml:space="preserve"><value>పేరు (A–Z)</value></data>
   <data name="import.sort.name_za" xml:space="preserve"><value>పేరు (Z–A)</value></data>
-  <data name="import.sort.newest" xml:space="preserve"><value>జోడించిన తేదీ (కొత్తవి)</value></data>
-  <data name="import.sort.oldest" xml:space="preserve"><value>జోడించిన తేదీ (పాతవి)</value></data>
+  <data name="import.tab.ready" xml:space="preserve"><value>సిద్ధం</value></data>
+  <data name="import.tab.needs_you" xml:space="preserve"><value>శ్రద్ధ అవసరం</value></data>
+  <data name="import.tab.done" xml:space="preserve"><value>పూర్తయింది</value></data>
+  <data name="import.needs_you.pick_a_pressing" xml:space="preserve"><value>ఒక ముద్రణను ఎంచుకో</value></data>
+  <data name="import.needs_you.signals_disagree" xml:space="preserve"><value>సంకేతాలు సరిపోలడం లేదు</value></data>
+  <data name="import.needs_you.counts_or_lengths_disagree" xml:space="preserve"><value>సంఖ్య లేదా నిడివి సరిపోలడం లేదు</value></data>
+  <data name="import.needs_you.already_in_library" xml:space="preserve"><value>ఇప్పటికే లైబ్రరీలో</value></data>
+  <data name="import.needs_you.no_match" xml:space="preserve"><value>సరిపోలిక దొరకలేదు</value></data>
+  <data name="import.needs_you.still_identifying" xml:space="preserve"><value>ఇంకా గుర్తిస్తోంది</value></data>
+  <data name="import.progress.identifying" xml:space="preserve"><value>గుర్తిస్తోంది</value></data>
+  <data name="import.footbar.selected" xml:space="preserve"><value>{count} ఎంపికయ్యాయి</value></data>
+  <data name="import.footbar.select_all" xml:space="preserve"><value>అన్నీ ఎంచుకో</value></data>
+  <data name="import.footbar.import_count" xml:space="preserve"><value>{count} దిగుమతి చేయి</value></data>
+  <data name="import.row.choose" xml:space="preserve"><value>ఎంచుకో</value></data>
+  <data name="import.row.import_anyway" xml:space="preserve"><value>అయినా దిగుమతి చేయి</value></data>
+  <data name="import.row.retry" xml:space="preserve"><value>మళ్లీ ప్రయత్నించు</value></data>
+  <data name="import.row.conflict" xml:space="preserve"><value>ఘర్షణ</value></data>
+  <data name="import.row.search_manually" xml:space="preserve"><value>చేతితో శోధించు</value></data>
+  <data name="import.row.failed" xml:space="preserve"><value>విఫలమైంది</value></data>
+  <data name="import.row.disc_id" xml:space="preserve"><value>డిస్క్ ID</value></data>
+  <data name="import.row.barcode" xml:space="preserve"><value>బార్‌కోడ్</value></data>
+  <data name="import.phase.queued" xml:space="preserve"><value>గుర్తింపు కోసం వేచి ఉంది</value></data>
+  <data name="import.phase.running" xml:space="preserve"><value>గుర్తిస్తోంది…</value></data>
+  <data name="import.phase.no_answer" xml:space="preserve"><value>పూర్తి చేయలేకపోయాం — మళ్లీ ప్రయత్నిస్తాం</value></data>
+  <data name="import.filter.placeholder" xml:space="preserve"><value>వడపోత…</value></data>
+  <data name="import.folder.add" xml:space="preserve"><value>ఫోల్డర్‌ను జోడించు…</value></data>
+  <data name="import.empty.nothing_here" xml:space="preserve"><value>ఇక్కడ ఇంకా ఏమీ లేదు</value></data>
+  <data name="import.empty.no_matches" xml:space="preserve"><value>సరిపోలికలు లేవు</value></data>
+  <data name="import.bulk_import_failed" xml:space="preserve"><value>{count, plural, one {# దిగుమతి ప్రారంభం కాలేదు} other {# దిగుమతులు ప్రారంభం కాలేదు}}</value></data>
   <data name="nowplaying.show_remaining" xml:space="preserve"><value>మిగిలిన సమయాన్ని చూపించు</value></data>
   <data name="nowplaying.show_elapsed" xml:space="preserve"><value>గడిచిన సమయాన్ని చూపించు</value></data>
   <data name="output.title" xml:space="preserve"><value>ఎగుమతి &amp; సేవ్</value></data>

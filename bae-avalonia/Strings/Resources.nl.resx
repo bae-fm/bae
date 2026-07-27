@@ -362,17 +362,42 @@
   <data name="album.reidentify.refresh_body" xml:space="preserve"><value>Album-, nummer- en persingsvelden uit de nieuw geïdentificeerde bron halen? Je bewerkingen worden overschreven.</value></data>
   <data name="album.reidentify.refresh_confirm" xml:space="preserve"><value>Vernieuwen vanuit nieuwe bron</value></data>
   <data name="album.reidentify.keep_current" xml:space="preserve"><value>Huidige metadata behouden</value></data>
-  <data name="import.tab.new" xml:space="preserve"><value>Nieuw ({count})</value></data>
-  <data name="import.tab.added" xml:space="preserve"><value>Toegevoegd ({count})</value></data>
-  <data name="import.tab.skipped" xml:space="preserve"><value>Overgeslagen ({count})</value></data>
+  <data name="import.tab.skipped" xml:space="preserve"><value>Overgeslagen</value></data>
   <data name="import.candidate.skip" xml:space="preserve"><value>Overslaan</value></data>
-  <data name="import.candidate.unskip" xml:space="preserve"><value>Naar nieuw verplaatsen</value></data>
+  <data name="import.candidate.unskip" xml:space="preserve"><value>Niet meer overslaan</value></data>
   <data name="import.folder.remove" xml:space="preserve"><value>Map verwijderen</value></data>
   <data name="import.sort_by" xml:space="preserve"><value>Sorteren</value></data>
   <data name="import.sort.name_az" xml:space="preserve"><value>Naam (A–Z)</value></data>
   <data name="import.sort.name_za" xml:space="preserve"><value>Naam (Z–A)</value></data>
-  <data name="import.sort.newest" xml:space="preserve"><value>Toegevoegd op (nieuwste)</value></data>
-  <data name="import.sort.oldest" xml:space="preserve"><value>Toegevoegd op (oudste)</value></data>
+  <data name="import.tab.ready" xml:space="preserve"><value>Gereed</value></data>
+  <data name="import.tab.needs_you" xml:space="preserve"><value>Aandacht nodig</value></data>
+  <data name="import.tab.done" xml:space="preserve"><value>Voltooid</value></data>
+  <data name="import.needs_you.pick_a_pressing" xml:space="preserve"><value>Kies een persing</value></data>
+  <data name="import.needs_you.signals_disagree" xml:space="preserve"><value>Signalen komen niet overeen</value></data>
+  <data name="import.needs_you.counts_or_lengths_disagree" xml:space="preserve"><value>Aantallen of lengtes komen niet overeen</value></data>
+  <data name="import.needs_you.already_in_library" xml:space="preserve"><value>Al in de bibliotheek</value></data>
+  <data name="import.needs_you.no_match" xml:space="preserve"><value>Geen match gevonden</value></data>
+  <data name="import.needs_you.still_identifying" xml:space="preserve"><value>Nog aan het identificeren</value></data>
+  <data name="import.progress.identifying" xml:space="preserve"><value>Identificeren</value></data>
+  <data name="import.footbar.selected" xml:space="preserve"><value>{count} geselecteerd</value></data>
+  <data name="import.footbar.select_all" xml:space="preserve"><value>Alles selecteren</value></data>
+  <data name="import.footbar.import_count" xml:space="preserve"><value>{count} importeren</value></data>
+  <data name="import.row.choose" xml:space="preserve"><value>Kiezen</value></data>
+  <data name="import.row.import_anyway" xml:space="preserve"><value>Toch importeren</value></data>
+  <data name="import.row.retry" xml:space="preserve"><value>Opnieuw proberen</value></data>
+  <data name="import.row.conflict" xml:space="preserve"><value>Conflict</value></data>
+  <data name="import.row.search_manually" xml:space="preserve"><value>handmatig zoeken</value></data>
+  <data name="import.row.failed" xml:space="preserve"><value>Mislukt</value></data>
+  <data name="import.row.disc_id" xml:space="preserve"><value>Disc ID</value></data>
+  <data name="import.row.barcode" xml:space="preserve"><value>Barcode</value></data>
+  <data name="import.phase.queued" xml:space="preserve"><value>Wacht op identificatie</value></data>
+  <data name="import.phase.running" xml:space="preserve"><value>Identificeren…</value></data>
+  <data name="import.phase.no_answer" xml:space="preserve"><value>Kon niet worden voltooid — wordt opnieuw geprobeerd</value></data>
+  <data name="import.filter.placeholder" xml:space="preserve"><value>Filteren…</value></data>
+  <data name="import.folder.add" xml:space="preserve"><value>Map toevoegen…</value></data>
+  <data name="import.empty.nothing_here" xml:space="preserve"><value>Hier is nog niets</value></data>
+  <data name="import.empty.no_matches" xml:space="preserve"><value>Geen matches</value></data>
+  <data name="import.bulk_import_failed" xml:space="preserve"><value>{count, plural, one {# import kon niet starten} other {# imports konden niet starten}}</value></data>
   <data name="nowplaying.show_remaining" xml:space="preserve"><value>resterende tijd tonen</value></data>
   <data name="nowplaying.show_elapsed" xml:space="preserve"><value>verstreken tijd tonen</value></data>
   <data name="output.title" xml:space="preserve"><value>exporteren en opslaan</value></data>

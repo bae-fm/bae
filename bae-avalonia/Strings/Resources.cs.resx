@@ -362,17 +362,42 @@
   <data name="album.reidentify.refresh_body" xml:space="preserve"><value>Načíst pole alba, skladby a lisu z nově identifikovaného zdroje? Vaše úpravy budou přepsány.</value></data>
   <data name="album.reidentify.refresh_confirm" xml:space="preserve"><value>Obnovit z nového zdroje</value></data>
   <data name="album.reidentify.keep_current" xml:space="preserve"><value>Zachovat stávající metadata</value></data>
-  <data name="import.tab.new" xml:space="preserve"><value>Nové ({count})</value></data>
-  <data name="import.tab.added" xml:space="preserve"><value>Přidané ({count})</value></data>
-  <data name="import.tab.skipped" xml:space="preserve"><value>Přeskočené ({count})</value></data>
+  <data name="import.tab.skipped" xml:space="preserve"><value>Přeskočené</value></data>
   <data name="import.candidate.skip" xml:space="preserve"><value>Přeskočit</value></data>
-  <data name="import.candidate.unskip" xml:space="preserve"><value>Přesunout do Nových</value></data>
+  <data name="import.candidate.unskip" xml:space="preserve"><value>Zrušit přeskočení</value></data>
   <data name="import.folder.remove" xml:space="preserve"><value>Odebrat složku</value></data>
   <data name="import.sort_by" xml:space="preserve"><value>Řazení</value></data>
   <data name="import.sort.name_az" xml:space="preserve"><value>Název (A–Z)</value></data>
   <data name="import.sort.name_za" xml:space="preserve"><value>Název (Z–A)</value></data>
-  <data name="import.sort.newest" xml:space="preserve"><value>Datum přidání (nejnovější)</value></data>
-  <data name="import.sort.oldest" xml:space="preserve"><value>Datum přidání (nejstarší)</value></data>
+  <data name="import.tab.ready" xml:space="preserve"><value>Připravené</value></data>
+  <data name="import.tab.needs_you" xml:space="preserve"><value>Vyžadují pozornost</value></data>
+  <data name="import.tab.done" xml:space="preserve"><value>Hotové</value></data>
+  <data name="import.needs_you.pick_a_pressing" xml:space="preserve"><value>Vyberte lis</value></data>
+  <data name="import.needs_you.signals_disagree" xml:space="preserve"><value>Signály se neshodují</value></data>
+  <data name="import.needs_you.counts_or_lengths_disagree" xml:space="preserve"><value>Počty nebo délky se neshodují</value></data>
+  <data name="import.needs_you.already_in_library" xml:space="preserve"><value>Už v knihovně</value></data>
+  <data name="import.needs_you.no_match" xml:space="preserve"><value>Bez shody</value></data>
+  <data name="import.needs_you.still_identifying" xml:space="preserve"><value>Stále se identifikuje</value></data>
+  <data name="import.progress.identifying" xml:space="preserve"><value>Identifikace</value></data>
+  <data name="import.footbar.selected" xml:space="preserve"><value>Vybráno: {count}</value></data>
+  <data name="import.footbar.select_all" xml:space="preserve"><value>Vybrat vše</value></data>
+  <data name="import.footbar.import_count" xml:space="preserve"><value>Importovat {count}</value></data>
+  <data name="import.row.choose" xml:space="preserve"><value>Vybrat</value></data>
+  <data name="import.row.import_anyway" xml:space="preserve"><value>Přesto importovat</value></data>
+  <data name="import.row.retry" xml:space="preserve"><value>Zkusit znovu</value></data>
+  <data name="import.row.conflict" xml:space="preserve"><value>Konflikt</value></data>
+  <data name="import.row.search_manually" xml:space="preserve"><value>hledat ručně</value></data>
+  <data name="import.row.failed" xml:space="preserve"><value>Selhalo</value></data>
+  <data name="import.row.disc_id" xml:space="preserve"><value>ID disku</value></data>
+  <data name="import.row.barcode" xml:space="preserve"><value>Čárový kód</value></data>
+  <data name="import.phase.queued" xml:space="preserve"><value>Čeká na identifikaci</value></data>
+  <data name="import.phase.running" xml:space="preserve"><value>Identifikace…</value></data>
+  <data name="import.phase.no_answer" xml:space="preserve"><value>Nepodařilo se dokončit — zkusíme to znovu</value></data>
+  <data name="import.filter.placeholder" xml:space="preserve"><value>Filtrovat…</value></data>
+  <data name="import.folder.add" xml:space="preserve"><value>Přidat složku…</value></data>
+  <data name="import.empty.nothing_here" xml:space="preserve"><value>Zatím tu nic není</value></data>
+  <data name="import.empty.no_matches" xml:space="preserve"><value>Žádné shody</value></data>
+  <data name="import.bulk_import_failed" xml:space="preserve"><value>{count, plural, one {# import se nepodařilo spustit} few {# importy se nepodařilo spustit} other {# importů se nepodařilo spustit}}</value></data>
   <data name="nowplaying.show_remaining" xml:space="preserve"><value>zobrazit zbývající čas</value></data>
   <data name="nowplaying.show_elapsed" xml:space="preserve"><value>zobrazit uplynulý čas</value></data>
   <data name="output.title" xml:space="preserve"><value>export a uložení</value></data>

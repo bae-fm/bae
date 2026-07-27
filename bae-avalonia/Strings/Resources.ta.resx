@@ -362,17 +362,42 @@
   <data name="album.reidentify.refresh_body" xml:space="preserve"><value>புதிதாக அடையாளம் காணப்பட்ட மூலத்திலிருந்து ஆல்பம், பாடல், அச்சு பதிப்பு புலங்களை எடுக்கவா? நீங்கள் செய்த திருத்தங்கள் மேலெழுதப்படும்.</value></data>
   <data name="album.reidentify.refresh_confirm" xml:space="preserve"><value>புதிய மூலத்திலிருந்து புதுப்பி</value></data>
   <data name="album.reidentify.keep_current" xml:space="preserve"><value>தற்போதைய மெட்டாடேட்டாவை வைத்திரு</value></data>
-  <data name="import.tab.new" xml:space="preserve"><value>புதியது ({count})</value></data>
-  <data name="import.tab.added" xml:space="preserve"><value>சேர்க்கப்பட்டது ({count})</value></data>
-  <data name="import.tab.skipped" xml:space="preserve"><value>தவிர்க்கப்பட்டது ({count})</value></data>
+  <data name="import.tab.skipped" xml:space="preserve"><value>தவிர்க்கப்பட்டது</value></data>
   <data name="import.candidate.skip" xml:space="preserve"><value>தவிர்</value></data>
-  <data name="import.candidate.unskip" xml:space="preserve"><value>புதியதற்கு நகர்த்து</value></data>
+  <data name="import.candidate.unskip" xml:space="preserve"><value>தவிர்ப்பை நீக்கு</value></data>
   <data name="import.folder.remove" xml:space="preserve"><value>கோப்புறையை நீக்கு</value></data>
   <data name="import.sort_by" xml:space="preserve"><value>வரிசைப்படுத்து</value></data>
   <data name="import.sort.name_az" xml:space="preserve"><value>பெயர் (A–Z)</value></data>
   <data name="import.sort.name_za" xml:space="preserve"><value>பெயர் (Z–A)</value></data>
-  <data name="import.sort.newest" xml:space="preserve"><value>சேர்த்த தேதி (புதியது)</value></data>
-  <data name="import.sort.oldest" xml:space="preserve"><value>சேர்த்த தேதி (பழையது)</value></data>
+  <data name="import.tab.ready" xml:space="preserve"><value>தயார்</value></data>
+  <data name="import.tab.needs_you" xml:space="preserve"><value>கவனம் தேவை</value></data>
+  <data name="import.tab.done" xml:space="preserve"><value>முடிந்தது</value></data>
+  <data name="import.needs_you.pick_a_pressing" xml:space="preserve"><value>ஒரு அச்சுப் பதிப்பைத் தேர்வு செய்</value></data>
+  <data name="import.needs_you.signals_disagree" xml:space="preserve"><value>சைகைகள் ஒத்துப்போகவில்லை</value></data>
+  <data name="import.needs_you.counts_or_lengths_disagree" xml:space="preserve"><value>எண்ணிக்கை அல்லது நீளம் ஒத்துப்போகவில்லை</value></data>
+  <data name="import.needs_you.already_in_library" xml:space="preserve"><value>ஏற்கனவே நூலகத்தில்</value></data>
+  <data name="import.needs_you.no_match" xml:space="preserve"><value>பொருத்தம் கிடைக்கவில்லை</value></data>
+  <data name="import.needs_you.still_identifying" xml:space="preserve"><value>இன்னும் அடையாளம் காணப்படுகிறது</value></data>
+  <data name="import.progress.identifying" xml:space="preserve"><value>அடையாளம் காணப்படுகிறது</value></data>
+  <data name="import.footbar.selected" xml:space="preserve"><value>{count} தேர்ந்தெடுக்கப்பட்டன</value></data>
+  <data name="import.footbar.select_all" xml:space="preserve"><value>அனைத்தையும் தேர்ந்தெடு</value></data>
+  <data name="import.footbar.import_count" xml:space="preserve"><value>{count} இறக்குமதி செய்</value></data>
+  <data name="import.row.choose" xml:space="preserve"><value>தேர்வு செய்</value></data>
+  <data name="import.row.import_anyway" xml:space="preserve"><value>எப்படியும் இறக்குமதி செய்</value></data>
+  <data name="import.row.retry" xml:space="preserve"><value>மீண்டும் முயற்சி செய்</value></data>
+  <data name="import.row.conflict" xml:space="preserve"><value>முரண்பாடு</value></data>
+  <data name="import.row.search_manually" xml:space="preserve"><value>கைமுறையாகத் தேடு</value></data>
+  <data name="import.row.failed" xml:space="preserve"><value>தோல்வியடைந்தது</value></data>
+  <data name="import.row.disc_id" xml:space="preserve"><value>Disc ID</value></data>
+  <data name="import.row.barcode" xml:space="preserve"><value>பட்டைக் குறியீடு</value></data>
+  <data name="import.phase.queued" xml:space="preserve"><value>அடையாளம் காண காத்திருக்கிறது</value></data>
+  <data name="import.phase.running" xml:space="preserve"><value>அடையாளம் காணப்படுகிறது…</value></data>
+  <data name="import.phase.no_answer" xml:space="preserve"><value>முடிக்க முடியவில்லை — மீண்டும் முயற்சிக்கப்படும்</value></data>
+  <data name="import.filter.placeholder" xml:space="preserve"><value>வடிகட்டு…</value></data>
+  <data name="import.folder.add" xml:space="preserve"><value>கோப்புறையைச் சேர்…</value></data>
+  <data name="import.empty.nothing_here" xml:space="preserve"><value>இங்கு இன்னும் எதுவும் இல்லை</value></data>
+  <data name="import.empty.no_matches" xml:space="preserve"><value>பொருத்தங்கள் இல்லை</value></data>
+  <data name="import.bulk_import_failed" xml:space="preserve"><value>{count, plural, one {# இறக்குமதி தொடங்க முடியவில்லை} other {# இறக்குமதிகள் தொடங்க முடியவில்லை}}</value></data>
   <data name="nowplaying.show_remaining" xml:space="preserve"><value>மீதமுள்ள நேரத்தைக் காட்டு</value></data>
   <data name="nowplaying.show_elapsed" xml:space="preserve"><value>கடந்த நேரத்தைக் காட்டு</value></data>
   <data name="output.title" xml:space="preserve"><value>ஏற்றுமதி மற்றும் சேமிப்பு</value></data>

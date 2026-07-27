@@ -15,10 +15,14 @@
       behind the OS transport controls, over plain BCL types.
     - The store models (the now-playing-bar seek/position math, lightbox logic,
       sync-indicator precedence, import identity-claim state, re-identify
-      arbitration, import candidate-list tabs/counts/sort, the main-window bounds
-      clamp, the Ctrl+1..9 library-switch mapping, the restore-on-launch playback
-      preference, and the album-grid multi-selection) — plain BCL types; the
-      stores and views that render bridge snapshots are verified by compilation.
+      arbitration, the main-window bounds clamp, the Ctrl+1..9 library-switch
+      mapping, the restore-on-launch playback preference, and the album-grid
+      multi-selection) — plain BCL types; the stores and views that render
+      bridge snapshots are verified by compilation. TriageListModel (the import
+      sidebar's filter/group/sort) reads BridgeTriagePlacement straight off
+      core's BridgeTriageTab/BridgeNeedsYouGroupsInOrder FFI calls rather than
+      re-deriving tab membership itself, so it falls in the "verified by
+      compilation" half too — it cannot run without the native bridge loaded.
     - The output-queue decision layer (OutputQueueModel), the update-flow layer
       (UpdateFlow), the Remove-library decision layer (ForgetLibraryModel), the
       activation-intent model (ActivationIntentModel), and the desktop-entry text
@@ -52,7 +56,6 @@
     <Compile Include="../Stores/QueueInsertModel.cs" Link="QueueInsertModel.cs" />
     <Compile Include="../Stores/OrderedIntersection.cs" Link="OrderedIntersection.cs" />
     <Compile Include="../Stores/ReidentifyResultsModel.cs" Link="ReidentifyResultsModel.cs" />
-    <Compile Include="../Stores/ImportListModel.cs" Link="ImportListModel.cs" />
     <Compile Include="../Stores/StorageListModel.cs" Link="StorageListModel.cs" />
     <Compile Include="../Stores/OutputQueueModel.cs" Link="OutputQueueModel.cs" />
     <Compile Include="../Stores/WindowBoundsModel.cs" Link="WindowBoundsModel.cs" />

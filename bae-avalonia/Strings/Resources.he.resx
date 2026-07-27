@@ -362,17 +362,42 @@
   <data name="album.reidentify.refresh_body" xml:space="preserve"><value>למשוך את שדות האלבום, הרצועה והתקליט מהמקור שזוהה מחדש? עריכות שביצעתם יידרסו.</value></data>
   <data name="album.reidentify.refresh_confirm" xml:space="preserve"><value>רענן מהמקור החדש</value></data>
   <data name="album.reidentify.keep_current" xml:space="preserve"><value>שמור על המטא-נתונים הנוכחיים</value></data>
-  <data name="import.tab.new" xml:space="preserve"><value>חדש ({count})</value></data>
-  <data name="import.tab.added" xml:space="preserve"><value>נוסף ({count})</value></data>
-  <data name="import.tab.skipped" xml:space="preserve"><value>דולגו ({count})</value></data>
+  <data name="import.tab.skipped" xml:space="preserve"><value>דולגו</value></data>
   <data name="import.candidate.skip" xml:space="preserve"><value>דלג</value></data>
-  <data name="import.candidate.unskip" xml:space="preserve"><value>העבר לחדשים</value></data>
+  <data name="import.candidate.unskip" xml:space="preserve"><value>בטל דילוג</value></data>
   <data name="import.folder.remove" xml:space="preserve"><value>הסר תיקייה</value></data>
   <data name="import.sort_by" xml:space="preserve"><value>מיון</value></data>
   <data name="import.sort.name_az" xml:space="preserve"><value>שם (א׳–ת׳)</value></data>
   <data name="import.sort.name_za" xml:space="preserve"><value>שם (ת׳–א׳)</value></data>
-  <data name="import.sort.newest" xml:space="preserve"><value>תאריך הוספה (החדש ביותר)</value></data>
-  <data name="import.sort.oldest" xml:space="preserve"><value>תאריך הוספה (הישן ביותר)</value></data>
+  <data name="import.tab.ready" xml:space="preserve"><value>מוכנים</value></data>
+  <data name="import.tab.needs_you" xml:space="preserve"><value>דורשים טיפול</value></data>
+  <data name="import.tab.done" xml:space="preserve"><value>הושלמו</value></data>
+  <data name="import.needs_you.pick_a_pressing" xml:space="preserve"><value>בחרו תקליט</value></data>
+  <data name="import.needs_you.signals_disagree" xml:space="preserve"><value>האותות סותרים</value></data>
+  <data name="import.needs_you.counts_or_lengths_disagree" xml:space="preserve"><value>הכמות או האורכים אינם תואמים</value></data>
+  <data name="import.needs_you.already_in_library" xml:space="preserve"><value>כבר בספרייה</value></data>
+  <data name="import.needs_you.no_match" xml:space="preserve"><value>אין התאמה</value></data>
+  <data name="import.needs_you.still_identifying" xml:space="preserve"><value>עדיין בזיהוי</value></data>
+  <data name="import.progress.identifying" xml:space="preserve"><value>מזהה</value></data>
+  <data name="import.footbar.selected" xml:space="preserve"><value>{count} נבחרו</value></data>
+  <data name="import.footbar.select_all" xml:space="preserve"><value>בחר הכול</value></data>
+  <data name="import.footbar.import_count" xml:space="preserve"><value>ייבא {count}</value></data>
+  <data name="import.row.choose" xml:space="preserve"><value>בחר</value></data>
+  <data name="import.row.import_anyway" xml:space="preserve"><value>ייבא בכל זאת</value></data>
+  <data name="import.row.retry" xml:space="preserve"><value>נסה שוב</value></data>
+  <data name="import.row.conflict" xml:space="preserve"><value>התנגשות</value></data>
+  <data name="import.row.search_manually" xml:space="preserve"><value>חפש ידנית</value></data>
+  <data name="import.row.failed" xml:space="preserve"><value>נכשל</value></data>
+  <data name="import.row.disc_id" xml:space="preserve"><value>מזהה תקליטור</value></data>
+  <data name="import.row.barcode" xml:space="preserve"><value>ברקוד</value></data>
+  <data name="import.phase.queued" xml:space="preserve"><value>ממתין לזיהוי</value></data>
+  <data name="import.phase.running" xml:space="preserve"><value>מזהה…</value></data>
+  <data name="import.phase.no_answer" xml:space="preserve"><value>לא הצליח להשלים — ננסה שוב</value></data>
+  <data name="import.filter.placeholder" xml:space="preserve"><value>סינון…</value></data>
+  <data name="import.folder.add" xml:space="preserve"><value>הוספת תיקייה…</value></data>
+  <data name="import.empty.nothing_here" xml:space="preserve"><value>אין כאן עדיין כלום</value></data>
+  <data name="import.empty.no_matches" xml:space="preserve"><value>אין התאמות</value></data>
+  <data name="import.bulk_import_failed" xml:space="preserve"><value>{count, plural, one {ייבוא אחד לא הצליח להתחיל} two {שני ייבואים לא הצליחו להתחיל} many {# ייבואים לא הצליחו להתחיל} other {# ייבואים לא הצליחו להתחיל}}</value></data>
   <data name="nowplaying.show_remaining" xml:space="preserve"><value>הצגת הזמן שנותר</value></data>
   <data name="nowplaying.show_elapsed" xml:space="preserve"><value>הצגת הזמן שחלף</value></data>
   <data name="output.title" xml:space="preserve"><value>ייצוא ושמירה</value></data>

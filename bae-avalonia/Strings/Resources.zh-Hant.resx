@@ -362,17 +362,42 @@
   <data name="album.reidentify.refresh_body" xml:space="preserve"><value>要從新識別的來源取得專輯、曲目與版本欄位嗎？你所做的編輯會被覆寫。</value></data>
   <data name="album.reidentify.refresh_confirm" xml:space="preserve"><value>從新來源重新整理</value></data>
   <data name="album.reidentify.keep_current" xml:space="preserve"><value>保留目前中繼資料</value></data>
-  <data name="import.tab.new" xml:space="preserve"><value>新 ({count})</value></data>
-  <data name="import.tab.added" xml:space="preserve"><value>已加入 ({count})</value></data>
-  <data name="import.tab.skipped" xml:space="preserve"><value>已略過 ({count})</value></data>
+  <data name="import.tab.skipped" xml:space="preserve"><value>已略過</value></data>
   <data name="import.candidate.skip" xml:space="preserve"><value>略過</value></data>
-  <data name="import.candidate.unskip" xml:space="preserve"><value>移至「新」</value></data>
+  <data name="import.candidate.unskip" xml:space="preserve"><value>取消略過</value></data>
   <data name="import.folder.remove" xml:space="preserve"><value>移除資料夾</value></data>
   <data name="import.sort_by" xml:space="preserve"><value>排序</value></data>
   <data name="import.sort.name_az" xml:space="preserve"><value>名稱（A–Z）</value></data>
   <data name="import.sort.name_za" xml:space="preserve"><value>名稱（Z–A）</value></data>
-  <data name="import.sort.newest" xml:space="preserve"><value>加入日期（最新）</value></data>
-  <data name="import.sort.oldest" xml:space="preserve"><value>加入日期（最舊）</value></data>
+  <data name="import.tab.ready" xml:space="preserve"><value>就緒</value></data>
+  <data name="import.tab.needs_you" xml:space="preserve"><value>待處理</value></data>
+  <data name="import.tab.done" xml:space="preserve"><value>已完成</value></data>
+  <data name="import.needs_you.pick_a_pressing" xml:space="preserve"><value>選擇壓片版本</value></data>
+  <data name="import.needs_you.signals_disagree" xml:space="preserve"><value>訊號不一致</value></data>
+  <data name="import.needs_you.counts_or_lengths_disagree" xml:space="preserve"><value>曲目數或長度不一致</value></data>
+  <data name="import.needs_you.already_in_library" xml:space="preserve"><value>已在資料庫中</value></data>
+  <data name="import.needs_you.no_match" xml:space="preserve"><value>找不到符合項目</value></data>
+  <data name="import.needs_you.still_identifying" xml:space="preserve"><value>仍在識別</value></data>
+  <data name="import.progress.identifying" xml:space="preserve"><value>識別中</value></data>
+  <data name="import.footbar.selected" xml:space="preserve"><value>已選取 {count} 項</value></data>
+  <data name="import.footbar.select_all" xml:space="preserve"><value>全選</value></data>
+  <data name="import.footbar.import_count" xml:space="preserve"><value>匯入 {count} 項</value></data>
+  <data name="import.row.choose" xml:space="preserve"><value>選擇</value></data>
+  <data name="import.row.import_anyway" xml:space="preserve"><value>仍然匯入</value></data>
+  <data name="import.row.retry" xml:space="preserve"><value>重試</value></data>
+  <data name="import.row.conflict" xml:space="preserve"><value>衝突</value></data>
+  <data name="import.row.search_manually" xml:space="preserve"><value>手動搜尋</value></data>
+  <data name="import.row.failed" xml:space="preserve"><value>失敗</value></data>
+  <data name="import.row.disc_id" xml:space="preserve"><value>光碟 ID</value></data>
+  <data name="import.row.barcode" xml:space="preserve"><value>條碼</value></data>
+  <data name="import.phase.queued" xml:space="preserve"><value>等待識別</value></data>
+  <data name="import.phase.running" xml:space="preserve"><value>識別中…</value></data>
+  <data name="import.phase.no_answer" xml:space="preserve"><value>無法完成 — 將重試</value></data>
+  <data name="import.filter.placeholder" xml:space="preserve"><value>篩選…</value></data>
+  <data name="import.folder.add" xml:space="preserve"><value>加入資料夾…</value></data>
+  <data name="import.empty.nothing_here" xml:space="preserve"><value>這裡還沒有內容</value></data>
+  <data name="import.empty.no_matches" xml:space="preserve"><value>沒有符合項目</value></data>
+  <data name="import.bulk_import_failed" xml:space="preserve"><value>{count, plural, other {# 個匯入無法開始}}</value></data>
   <data name="nowplaying.show_remaining" xml:space="preserve"><value>顯示剩餘時間</value></data>
   <data name="nowplaying.show_elapsed" xml:space="preserve"><value>顯示已播放時間</value></data>
   <data name="output.title" xml:space="preserve"><value>匯出與儲存</value></data>
