@@ -2,7 +2,14 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-export CARGO_TARGET_DIR="${CARGO_TARGET_DIR:-target-android}"
+# This script compiles the bridge and then reads the resulting staticlib back
+# out of the target dir to generate bindings from it, so it has to own the
+# directory it reads from. An inherited CARGO_TARGET_DIR can be shared with
+# other checkouts, and a concurrent build there rewrites the same artifact from
+# different sources between the build and the read — the generators then emit
+# bindings for a bridge nobody asked for, and it surfaces later as a Swift or
+# C# compile error nowhere near its cause. Local and unconditional on purpose.
+export CARGO_TARGET_DIR="target-android"
 
 usage() {
     echo "Usage: $0 [--release] [--abi <arm64-v8a|x86_64>]..."
