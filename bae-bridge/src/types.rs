@@ -851,6 +851,57 @@ pub struct BridgeFolderCandidate {
     pub is_added: bool,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeFolderReleaseDecisionKey {
+    pub watched_folder_path: String,
+    pub relative_folder_path: String,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeFolderReleaseDecision {
+    CombineAsOneRelease,
+    KeepAsSeparateReleases,
+}
+
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeResolvedFolderReleaseBoundary {
+    pub key: BridgeFolderReleaseDecisionKey,
+    pub decision: BridgeFolderReleaseDecision,
+    pub name: String,
+    pub display_path: String,
+}
+
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeFolderReleaseTreeRow {
+    pub name: String,
+    pub display_path: String,
+    pub depth: u32,
+    pub kind: BridgeFolderReleaseTreeRowKind,
+    pub decision_key: BridgeFolderReleaseDecisionKey,
+    pub ancestor_decision_keys: Vec<BridgeFolderReleaseDecisionKey>,
+}
+
+#[derive(Debug, Clone, uniffi::Enum)]
+pub enum BridgeFolderReleaseTreeRowKind {
+    Folder,
+    Candidate {
+        track_count: u32,
+        format_label: String,
+    },
+    Invalid {
+        reason: BridgeInvalidReason,
+    },
+}
+
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeFolderReleaseBoundary {
+    pub key: BridgeFolderReleaseDecisionKey,
+    pub name: String,
+    pub display_path: String,
+    pub shared_file_count: u32,
+    pub tree_rows: Vec<BridgeFolderReleaseTreeRow>,
+}
+
 /// Mirror of bae-core's `InvalidReason`. The UI localizes each variant via its
 /// catalog key (`bridge_invalid_reason_key`), interpolating the path where set.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
@@ -901,6 +952,8 @@ pub struct BridgeInvalidCandidate {
     /// key for the candidate-list section. Match it against
     /// `BridgeWatchedFolder.path` for the section's display name.
     pub watched_folder_path: String,
+    pub display_path: String,
+    pub resolved_boundaries: Vec<BridgeResolvedFolderReleaseBoundary>,
     /// Why the folder failed validation — the UI localizes this typed reason.
     pub reason: BridgeInvalidReason,
 }
@@ -910,6 +963,7 @@ pub enum BridgeImportCandidateSnapshot {
     Folder {
         candidate: BridgeFolderCandidate,
         runtime_snapshot: BridgeCandidateRuntimeSnapshot,
+        actionable: bool,
     },
     Invalid {
         candidate: BridgeInvalidCandidate,
@@ -924,6 +978,7 @@ pub enum BridgeImportCandidateSnapshot {
 pub struct BridgeFolderImportCandidateSnapshot {
     pub candidate: BridgeFolderCandidate,
     pub runtime: BridgeCandidateRuntimeSnapshot,
+    pub actionable: bool,
 }
 
 #[derive(Debug, Clone, uniffi::Record)]
@@ -954,6 +1009,22 @@ pub struct BridgeImportCandidatesSnapshot {
     pub watched_folders: Vec<BridgeWatchedFolder>,
     pub folder_candidates: Vec<BridgeFolderImportCandidateSnapshot>,
     pub invalid_candidates: Vec<BridgeInvalidCandidate>,
+    pub boundaries: Vec<BridgeFolderReleaseBoundary>,
+    pub folder_scan_statuses: Vec<BridgeWatchedFolderScanStatus>,
+}
+
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeWatchedFolderScanStatus {
+    pub watched_folder_path: String,
+    pub watched_folder_name: String,
+    pub status: BridgeFolderScanStatus,
+}
+
+#[derive(Debug, Clone, uniffi::Enum)]
+pub enum BridgeFolderScanStatus {
+    Scanning,
+    Complete,
+    Failed { error: String },
 }
 
 // ── Sidebar triage ─────────────────────────────────────────────────────────
@@ -1170,11 +1241,45 @@ pub struct BridgeTriageRow {
     pub folder_name: String,
     /// Match against `BridgeWatchedFolder.path` for the section header.
     pub watched_folder_path: String,
+    pub display_path: String,
+    pub resolved_boundaries: Vec<BridgeResolvedFolderReleaseBoundary>,
+    pub combine_ancestor_key: Option<BridgeFolderReleaseDecisionKey>,
+    pub actionable: bool,
     pub placement: BridgeTriagePlacement,
     pub matched: Option<BridgeMatchedRelease>,
     /// Whether this row takes a bulk-import checkbox.
     pub selectable: bool,
     pub import_status: Option<BridgeCandidateImportStatus>,
+}
+
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeTriageGroup {
+    pub key: BridgeFolderReleaseDecisionKey,
+    pub name: String,
+}
+
+#[derive(Debug, Clone, uniffi::Enum)]
+pub enum BridgeTriageEntry {
+    Candidate {
+        stable_key: String,
+        row: BridgeTriageRow,
+    },
+    Boundary {
+        stable_key: String,
+        boundary: BridgeFolderReleaseBoundary,
+    },
+    Invalid {
+        stable_key: String,
+        invalid_candidate: BridgeInvalidCandidate,
+    },
+}
+
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeTriageSection {
+    pub tab: BridgeTriageTab,
+    pub watched_folder_path: String,
+    pub group: Option<BridgeTriageGroup>,
+    pub entries: Vec<BridgeTriageEntry>,
 }
 
 /// How many rows each tab holds. Computed in core in the same pass that places
@@ -1191,15 +1296,10 @@ pub struct BridgeTriageTabCounts {
 /// The whole sidebar.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeTriageQueue {
-    /// Ordered by watched folder — in the watched-folder list's own order —
-    /// then by candidate key. Grouping is `placement`'s.
-    pub rows: Vec<BridgeTriageRow>,
-    /// Folders that failed validation. Not rows — nothing to triage — but they
-    /// share the Skipped tab with the skipped rows, so they arrive in the same
-    /// read as the count that includes them.
-    pub invalid: Vec<BridgeInvalidCandidate>,
+    pub sections: Vec<BridgeTriageSection>,
     /// `skipped` counts the Skipped rows **plus** `invalid`.
     pub counts: BridgeTriageTabCounts,
+    pub folder_scan_statuses: Vec<BridgeWatchedFolderScanStatus>,
 }
 
 /// A folder the user watches for imports — one candidate-list group.

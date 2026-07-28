@@ -94,15 +94,14 @@ struct ImportSearchSheet: View {
     /// header's question, so it closes the editor the same way a pick does. A
     /// re-identify candidate has no folder to read, so it is not offered.
     private func addAsUnknown(_ candidate: Candidate) -> (() -> Void)? {
-        guard case .folder(let folderPath, _) = candidate.source else {
+        guard case .folder = candidate.source else {
             return nil
         }
         return {
             ImportSearchFlow.addAsUnknown(
                 importer: importer,
                 importStore: importStore,
-                key: candidateKey,
-                folderPath: folderPath
+                key: candidateKey
             )
             uiStore.dismissModal()
         }

@@ -457,4 +457,8 @@
   <data name="nowplaying.cast_no_devices" xml:space="preserve"><value>কোনো কাস্ট ডিভাইস পাওয়া যায়নি</value></data>
   <data name="component_gallery.menu" xml:space="preserve"><value>কম্পোনেন্ট গ্যালারি</value></data>
   <data name="component_gallery.title" xml:space="preserve"><value>কম্পোনেন্ট গ্যালারি</value></data>
+  <data name="import.folder.refresh" xml:space="preserve"><value>রিফ্রেশ</value></data>
+  <data name="import.folder.refreshing" xml:space="preserve"><value>রিফ্রেশ করা হচ্ছে…</value></data>
+  <data name="import.release.one" xml:space="preserve"><value>একটি রিলিজ হিসেবে একত্র করুন</value></data>
+  <data name="import.release.separate" xml:space="preserve"><value>আলাদা রিলিজ হিসেবে রাখুন</value></data>
 </root>

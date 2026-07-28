@@ -37,7 +37,7 @@ pub struct MetadataResult {
     ///
     /// **`None` means nobody has asked yet** — not that the source has
     /// nothing. Which responses answer for free is fixed and verified (see the
-    /// roadmap's Verified facts): the disc-ID lookup requests `inc=recordings`
+    /// verified source facts: the disc-ID lookup requests `inc=recordings`
     /// and carries every track with its `length`, so a disc-ID match arrives
     /// already filled; the search endpoint takes no `inc` and returns no
     /// `tracks` array, so barcode and text matches arrive `None` until
@@ -305,7 +305,7 @@ pub async fn lookup_by_discid(
 
 /// One result's tracklist, fetched from its source.
 ///
-/// This is the roadmap's one **paid** check, and it is background-only: it
+/// This is the one paid check, and it is background-only: it
 /// exists so a single unverified match can be admitted to Ready without a
 /// person looking at it, and nothing on the path of an opened candidate waits
 /// on it. A result that already carries `source_tracks` — every disc-ID match —

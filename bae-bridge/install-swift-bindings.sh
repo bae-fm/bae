@@ -32,6 +32,9 @@ if [ ! -f "$SRC" ]; then
 fi
 
 mkdir -p "$(dirname "$DEST")"
+TMP="${DEST}.tmp.$$"
+trap 'rm -f "$TMP"' EXIT
+
 # The generated bindings file ends without a trailing newline, so emit an
 # explicit blank line before #endif — otherwise it lands inside the final `//`
 # comment and never closes the #if.
@@ -40,4 +43,6 @@ mkdir -p "$(dirname "$DEST")"
     cat "$SRC"
     echo ""
     echo "#endif"
-} > "$DEST"
+} > "$TMP"
+mv "$TMP" "$DEST"
+trap - EXIT

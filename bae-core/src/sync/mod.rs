@@ -369,6 +369,24 @@ mod tests {
         );
     }
 
+    #[test]
+    fn device_local_import_folder_tables_are_not_synced() {
+        let tables = synced_tables();
+        let registered: BTreeSet<&str> = tables.iter().map(|table| table.name()).collect();
+        for table in [
+            "watched_import_folders",
+            "skipped_import_candidates",
+            "folder_release_decisions",
+            "folder_scan_roots",
+            "folder_scan_entries",
+        ] {
+            assert!(
+                !registered.contains(table),
+                "{table} describes device-local mounted paths"
+            );
+        }
+    }
+
     /// A blob declaration or asset flag silently dropped from one of these tables
     /// would break the whole coven-owned blob lifecycle.
     #[test]

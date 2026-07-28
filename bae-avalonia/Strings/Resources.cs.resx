@@ -457,4 +457,8 @@
   <data name="nowplaying.cast_no_devices" xml:space="preserve"><value>Nenalezena žádná zařízení pro odesílání</value></data>
   <data name="component_gallery.menu" xml:space="preserve"><value>galerie komponent</value></data>
   <data name="component_gallery.title" xml:space="preserve"><value>galerie komponent</value></data>
+  <data name="import.folder.refresh" xml:space="preserve"><value>Obnovit</value></data>
+  <data name="import.folder.refreshing" xml:space="preserve"><value>Obnovování…</value></data>
+  <data name="import.release.one" xml:space="preserve"><value>Sloučit jako jedno vydání</value></data>
+  <data name="import.release.separate" xml:space="preserve"><value>Ponechat jako samostatná vydání</value></data>
 </root>

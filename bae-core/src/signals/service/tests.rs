@@ -196,6 +196,19 @@ fn build_release(
     folder
 }
 
+fn folder_source(folder: PathBuf) -> ExtractionSource {
+    let files = crate::import::folder_scanner::collect_release_candidate_files_with_scope(
+        &folder,
+        crate::import::ReleaseFileScope::Recursive,
+        &crate::import::folder_scanner::StoredCandidateEdits::none(),
+    )
+    .expect("test candidate scan");
+    ExtractionSource::Folder {
+        path: folder,
+        files,
+    }
+}
+
 #[tokio::test(flavor = "multi_thread")]
 async fn emits_fast_pass_then_ocr_then_settled() {
     // Folder name carries a catalog-shaped bracket (XX34b), parent
@@ -219,7 +232,7 @@ async fn emits_fast_pass_then_ocr_then_settled() {
 
     handle.start(
         "cand-1".to_string(),
-        ExtractionSource::Folder(folder.clone()),
+        folder_source(folder.clone()),
         CallPriority::Interactive,
     );
 
@@ -295,7 +308,7 @@ async fn no_artwork_still_emits_fast_pass_and_settled() {
 
     handle.start(
         "cand-1".to_string(),
-        ExtractionSource::Folder(folder),
+        folder_source(folder),
         CallPriority::Interactive,
     );
 
@@ -315,29 +328,6 @@ async fn no_artwork_still_emits_fast_pass_and_settled() {
         .free_text()
         .iter()
         .any(|s| s.contains("Artist Name") || s.contains("Album Title")));
-}
-
-#[tokio::test(flavor = "multi_thread")]
-async fn missing_folder_settles_gracefully() {
-    // The scanner errors on a nonexistent folder and the service falls back to
-    // folder-name signals — of which there are none here. It must still settle.
-    let analyzer: Arc<dyn ArtworkAnalyzer> = Arc::new(StubAnalyzer::new());
-    let (handle, _tx, mut rx, _lib_tmp) = make_service().await;
-    handle.register_analyzer(analyzer);
-
-    handle.start(
-        "cand-1".to_string(),
-        ExtractionSource::Folder(PathBuf::from("/nonexistent-folder-path")),
-        CallPriority::Interactive,
-    );
-
-    // Fast pass (empty pool) + final settled.
-    let signals = collect_signals(&mut rx, 2).await;
-    assert!(matches!(signals[0].text, TextSignal::Scanning { .. }));
-    assert!(matches!(
-        signals[signals.len() - 1].text,
-        TextSignal::Settled { .. }
-    ));
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -403,7 +393,7 @@ async fn ocr_join_error_aborts_without_settled_snapshot() {
 
     handle.start(
         "cand-1".to_string(),
-        ExtractionSource::Folder(folder),
+        folder_source(folder),
         CallPriority::Interactive,
     );
 
@@ -452,7 +442,7 @@ FILE "audio.flac" WAVE
 
     handle.start(
         "cand-1".to_string(),
-        ExtractionSource::Folder(folder),
+        folder_source(folder),
         CallPriority::Interactive,
     );
 
@@ -496,7 +486,7 @@ FILE \"audio.flac\" WAVE\n  \
 
     handle.start(
         "cand-1".to_string(),
-        ExtractionSource::Folder(folder),
+        folder_source(folder),
         CallPriority::Interactive,
     );
 
@@ -535,10 +525,13 @@ fn non_utf8_cue_is_decoded_not_dropped() {
     cue.extend_from_slice(b"    INDEX 01 00:00:00\n");
     fs::write(folder.join("Album.cue"), &cue).unwrap();
 
-    let pass = gather_non_ocr_sources(
+    let files = crate::import::folder_scanner::collect_release_candidate_files_with_scope(
         &folder,
+        crate::import::ReleaseFileScope::Recursive,
         &crate::import::folder_scanner::StoredCandidateEdits::none(),
-    );
+    )
+    .expect("candidate scan");
+    let pass = gather_non_ocr_sources(&folder, &files);
     let texts: Vec<&str> = pass.lines.iter().map(|l| l.text.as_str()).collect();
 
     assert!(
@@ -575,7 +568,7 @@ async fn text_files_feed_free_text() {
 
     handle.start(
         "cand-1".to_string(),
-        ExtractionSource::Folder(folder),
+        folder_source(folder),
         CallPriority::Interactive,
     );
 
@@ -609,7 +602,7 @@ async fn cancelled_ocr_run_does_not_settle() {
 
     handle.start(
         "cand-1".to_string(),
-        ExtractionSource::Folder(folder),
+        folder_source(folder),
         CallPriority::Interactive,
     );
 
@@ -650,7 +643,7 @@ async fn candidate_removed_event_cancels_in_flight_extraction() {
 
     handle.start(
         "cand-1".to_string(),
-        ExtractionSource::Folder(folder),
+        folder_source(folder),
         CallPriority::Interactive,
     );
     tokio::time::sleep(Duration::from_millis(100)).await;
@@ -694,12 +687,12 @@ async fn restart_for_same_key_cancels_prior_then_starts_fresh() {
 
     handle.start(
         "cand-1".to_string(),
-        ExtractionSource::Folder(folder.clone()),
+        folder_source(folder.clone()),
         CallPriority::Interactive,
     );
     handle.start(
         "cand-1".to_string(),
-        ExtractionSource::Folder(folder),
+        folder_source(folder),
         CallPriority::Interactive,
     );
 
@@ -745,19 +738,19 @@ async fn three_starts_cancel_each_predecessor() {
 
     handle.start(
         "cand-1".to_string(),
-        ExtractionSource::Folder(folder.clone()),
+        folder_source(folder.clone()),
         CallPriority::Interactive,
     );
     tokio::time::sleep(Duration::from_millis(40)).await;
     handle.start(
         "cand-1".to_string(),
-        ExtractionSource::Folder(folder.clone()),
+        folder_source(folder.clone()),
         CallPriority::Interactive,
     );
     tokio::time::sleep(Duration::from_millis(40)).await;
     handle.start(
         "cand-1".to_string(),
-        ExtractionSource::Folder(folder),
+        folder_source(folder),
         CallPriority::Interactive,
     );
 
@@ -795,7 +788,7 @@ async fn no_analyzer_leaves_artwork_absent_rather_than_scanned() {
 
     handle.start(
         "cand-1".to_string(),
-        ExtractionSource::Folder(folder),
+        folder_source(folder),
         CallPriority::Interactive,
     );
 
@@ -832,7 +825,7 @@ FILE \"audio.flac\" WAVE\n  \
     let (handle, _tx, mut rx, _lib_tmp) = make_service().await;
     handle.start(
         "cand-1".to_string(),
-        ExtractionSource::Folder(folder),
+        folder_source(folder),
         CallPriority::Interactive,
     );
 

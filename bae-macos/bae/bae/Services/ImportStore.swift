@@ -10,8 +10,7 @@ import SwiftUI
 /// name), so the sort matches what a person reads.
 ///
 /// Only name order survives this redesign: `TriageRow` carries no discovery
-/// timestamp (`TriageQueue.rows` is ordered by watched folder then candidate
-/// key, not by when a candidate was found), so a "date added" option would
+/// timestamp, so a "date added" option would
 /// silently degrade into an alias for name order. Better to drop it than keep
 /// a control that lies about what it does.
 enum CandidateSortOrder: String, CaseIterable {
@@ -19,37 +18,52 @@ enum CandidateSortOrder: String, CaseIterable {
     case nameZA
 }
 
-/// One row under the Skipped tab: a manually-skipped candidate, or an invalid
-/// folder (looked like a release but failed validation). Both come off
-/// `triageQueue` — core already decided both belong here — this only pairs
-/// them into one list a view can iterate.
-enum SkippedRow: Identifiable {
-    case candidate(BridgeTriageRow)
-    case invalid(BridgeInvalidCandidate)
+struct ReleaseQueueEntry: Identifiable {
+    let id: String
+    let bridge: BridgeTriageEntry
 
-    var id: String {
-        switch self {
-        case .candidate(let row): row.candidateKey
-        case .invalid(let c): c.folderPath
-        }
+    init(_ bridge: BridgeTriageEntry) {
+        self.bridge = bridge
+        id =
+            switch bridge {
+            case .candidate(let stableKey, _),
+                .boundary(let stableKey, _),
+                .invalid(let stableKey, _):
+                stableKey
+            }
+    }
+}
+
+struct ReleaseQueueSectionID: Hashable {
+    let tab: BridgeTriageTab
+    let watchedFolderPath: String
+    let groupRelativeFolderPath: String?
+
+    static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.tab == rhs.tab
+            && lhs.watchedFolderPath == rhs.watchedFolderPath
+            && lhs.groupRelativeFolderPath == rhs.groupRelativeFolderPath
     }
 
-    /// What the row sorts and filters by: the candidate's display title, or
-    /// the invalid folder's source name.
-    var sortTitle: String {
-        switch self {
-        case .candidate(let row): ImportStore.displayTitle(row)
-        case .invalid(let c): c.sourceFolderName
-        }
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(tab)
+        hasher.combine(watchedFolderPath)
+        hasher.combine(groupRelativeFolderPath)
     }
+}
 
-    /// Extra filter text beyond `sortTitle`: the folder path, for a query
-    /// that names disk structure rather than a title.
-    var filterPath: String {
-        switch self {
-        case .candidate(let row): row.candidateKey
-        case .invalid(let c): c.folderPath
-        }
+struct ReleaseQueueSection: Identifiable {
+    let tab: BridgeTriageTab
+    let watchedFolderPath: String
+    let group: BridgeTriageGroup?
+    let entries: [ReleaseQueueEntry]
+
+    var id: ReleaseQueueSectionID {
+        ReleaseQueueSectionID(
+            tab: tab,
+            watchedFolderPath: watchedFolderPath,
+            groupRelativeFolderPath: group?.key.relativeFolderPath
+        )
     }
 }
 
@@ -75,21 +89,21 @@ class ImportStore {
     /// way folder events do. The sheet inserts on open and removes on dismiss.
     var reIdentifyCandidates: OrderedDictionary<String, Candidate> = [:]
 
-    /// The sidebar's pre-shaped rows, tab counts, and invalid folders — core's
-    /// projection, read whole and re-read on the domains
+    /// The sidebar's pre-shaped sections and tab counts — core's projection,
+    /// read whole and re-read on the domains
     /// `AppService.makeImportTriageQueueProjection` registers for. Defaults to
     /// an empty queue rather than `nil`: "not loaded yet" and "the queue is
     /// genuinely empty" render identically (the tab's empty state), so no
     /// surface needs to tell them apart.
     var triageQueue: BridgeTriageQueue = BridgeTriageQueue(
-        rows: [],
-        invalid: [],
+        sections: [],
         counts: BridgeTriageTabCounts(
             ready: 0,
             needsYou: 0,
             done: 0,
             skipped: 0
-        )
+        ),
+        folderScanStatuses: []
     )
 
     /// The queue sweep's identified-count over total, for the header's
@@ -158,7 +172,7 @@ class ImportStore {
         }
 
         switch snapshot {
-        case .folder(let bridge, let runtime):
+        case .folder(let bridge, let runtime, _):
             let incoming = Candidate(bridge: bridge)
             let existing = folderCandidates[incoming.key]
             folderCandidates[incoming.key] =
@@ -167,9 +181,9 @@ class ImportStore {
             applyRuntime(runtime, to: incoming.key)
 
         case .invalid(let candidate):
-            // The sidebar reads invalid folders from `triageQueue.invalid`
-            // now (one source of truth for the Skipped tab); this path only
-            // still has to stop treating the key as an addressable candidate.
+            // Invalid folders are entries in the queue's Skipped sections.
+            // This path only has to stop treating the key as an addressable
+            // candidate.
             folderCandidates.removeValue(forKey: candidate.folderPath)
 
         case .runtime(let key, let runtime):
@@ -268,6 +282,69 @@ class ImportStore {
 // MARK: - Triage rendering
 
 extension ImportStore {
+    func releaseSections(
+        tab: BridgeTriageTab,
+        filterText: String,
+        sortOrder: CandidateSortOrder
+    ) -> [ReleaseQueueSection] {
+        triageQueue.sections
+            .filter { $0.tab == tab }
+            .compactMap { section in
+                let entries = filteredEntries(
+                    section.entries,
+                    filterText: filterText,
+                    sortOrder: sortOrder
+                )
+                guard !entries.isEmpty else { return nil }
+                return ReleaseQueueSection(
+                    tab: section.tab,
+                    watchedFolderPath: section.watchedFolderPath,
+                    group: section.group,
+                    entries: entries.map(ReleaseQueueEntry.init)
+                )
+            }
+    }
+
+    private func filteredEntries(
+        _ entries: [BridgeTriageEntry],
+        filterText: String,
+        sortOrder: CandidateSortOrder
+    ) -> [BridgeTriageEntry] {
+        let query = filterText.lowercased()
+        let matching = entries.filter { entry in
+            guard !query.isEmpty else { return true }
+            switch entry {
+            case .candidate(_, let row):
+                return Self.displayTitle(row).lowercased().contains(query)
+                    || row.displayPath.lowercased().contains(query)
+            case .boundary(_, let boundary):
+                return boundary.name.lowercased().contains(query)
+                    || boundary.displayPath.lowercased().contains(query)
+                    || boundary.treeRows.contains {
+                        $0.displayPath.lowercased().contains(query)
+                    }
+            case .invalid(_, let candidate):
+                return candidate.sourceFolderName.lowercased().contains(query)
+                    || candidate.displayPath.lowercased().contains(query)
+            }
+        }
+        return matching.sorted { left, right in
+            let leftTitle = entryTitle(left)
+            let rightTitle = entryTitle(right)
+            let order = leftTitle.localizedCaseInsensitiveCompare(rightTitle)
+            return sortOrder == .nameAZ
+                ? order == .orderedAscending : order == .orderedDescending
+        }
+    }
+
+    private func entryTitle(_ entry: BridgeTriageEntry) -> String {
+        switch entry {
+        case .candidate(_, let row): Self.displayTitle(row)
+        case .boundary(_, let boundary): boundary.name
+        case .invalid(_, let candidate): candidate.sourceFolderName
+        }
+    }
+
     /// The title a row leads with — the matched release's, or the folder name
     /// when nothing matched. What the sort order and the filter match
     /// against, because it's what the row actually shows.
@@ -275,120 +352,34 @@ extension ImportStore {
         row.matched?.title ?? row.folderName
     }
 
-    /// The rows in `tab`, filtered by `filterText` and ordered by
-    /// `sortOrder`. Tab membership is `placement`'s, computed once in core —
-    /// this only filters and orders what core already placed. Used for Ready,
-    /// Done, and Skipped's candidate half; Needs you uses
-    /// `needsYouGroups(filterText:sortOrder:)` instead, since it groups by
-    /// question rather than rendering one flat list.
-    func rows(
-        tab: BridgeTriageTab,
+    func triageRow(forKey key: String) -> BridgeTriageRow? {
+        triageQueue.sections.lazy
+            .flatMap(\.entries)
+            .compactMap { entry in
+                guard case .candidate(_, let row) = entry else { return nil }
+                return row
+            }
+            .first { $0.candidateKey == key }
+    }
+
+    func selectableReadyRows(
         filterText: String,
         sortOrder: CandidateSortOrder
     ) -> [BridgeTriageRow] {
-        let scoped = triageQueue.rows.filter {
-            bridgeTriageTab(placement: $0.placement) == tab
-        }
-        return Self.ordered(
-            filtered(scoped, filterText: filterText),
-            by: sortOrder,
-            title: Self.displayTitle
+        releaseSections(
+            tab: .ready,
+            filterText: filterText,
+            sortOrder: sortOrder
         )
-    }
-
-    /// Needs-you rows grouped by the question they ask, in the order core
-    /// declares (`bridgeNeedsYouGroupsInOrder`) — the one place that ordering
-    /// is stated. A group with nothing left in it (everything filtered out, or
-    /// everything answered) drops out rather than rendering an empty header.
-    func needsYouGroups(
-        filterText: String,
-        sortOrder: CandidateSortOrder
-    ) -> [(group: BridgeNeedsYouGroup, rows: [BridgeTriageRow])] {
-        let needsYou = filtered(
-            triageQueue.rows.filter {
-                bridgeTriageTab(placement: $0.placement) == .needsYou
-            },
-            filterText: filterText
-        )
-        return bridgeNeedsYouGroupsInOrder()
-            .compactMap { group in
-                let rows = Self.ordered(
-                    needsYou.filter { row in
-                        guard case .needsYou(let rowGroup, _) = row.placement
-                        else {
-                            return false
-                        }
-                        return rowGroup == group
-                    },
-                    by: sortOrder,
-                    title: Self.displayTitle
-                )
-                return rows.isEmpty ? nil : (group, rows)
+        .flatMap(\.entries)
+        .compactMap { entry in
+            guard
+                case .candidate(_, let row) = entry.bridge,
+                row.selectable
+            else {
+                return nil
             }
-    }
-
-    /// The Skipped tab: manually-skipped candidates and invalid folders as one
-    /// filtered, ordered list — the tab shows both under a single header, so
-    /// there is nothing to group by within it.
-    func skippedRows(
-        filterText: String,
-        sortOrder: CandidateSortOrder
-    ) -> [SkippedRow] {
-        let candidateRows = triageQueue.rows
-            .filter { bridgeTriageTab(placement: $0.placement) == .skipped }
-            .map(SkippedRow.candidate)
-        let invalidRows = triageQueue.invalid.map(SkippedRow.invalid)
-        let all = candidateRows + invalidRows
-
-        let query = filterText.lowercased()
-        let matching =
-            query.isEmpty
-            ? all
-            : all.filter {
-                $0.sortTitle.lowercased().contains(query)
-                    || $0.filterPath.lowercased().contains(query)
-            }
-        return Self.ordered(matching, by: sortOrder, title: \.sortTitle)
-    }
-
-    /// Order `rows` by `sortOrder`, keying the name comparison off `title`.
-    /// One dispatch for triage rows (by display title) and skipped rows (by
-    /// title or invalid-folder name), so a new `CandidateSortOrder` case is
-    /// handled in one place.
-    private static func ordered<T>(
-        _ rows: [T],
-        by sortOrder: CandidateSortOrder,
-        title: (T) -> String
-    ) -> [T] {
-        switch sortOrder {
-        case .nameAZ:
-            return rows.sorted {
-                title($0).localizedCaseInsensitiveCompare(title($1))
-                    == .orderedAscending
-            }
-        case .nameZA:
-            return rows.sorted {
-                title($0).localizedCaseInsensitiveCompare(title($1))
-                    == .orderedDescending
-            }
-        }
-    }
-
-    /// Filter `rows` by `filterText` against the display title, the folder
-    /// name, and the candidate key (folder path) — a query can name either
-    /// what matched or the folder on disk.
-    private func filtered(
-        _ rows: [BridgeTriageRow],
-        filterText: String
-    ) -> [BridgeTriageRow] {
-        let query = filterText.lowercased()
-        guard !query.isEmpty else {
-            return rows
-        }
-        return rows.filter {
-            Self.displayTitle($0).lowercased().contains(query)
-                || $0.folderName.lowercased().contains(query)
-                || $0.candidateKey.lowercased().contains(query)
+            return row
         }
     }
 }

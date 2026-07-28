@@ -207,7 +207,7 @@ fn import_terminal_ids(progress: &bae_core::import::ImportProgress) -> Option<(S
 /// copy that can drift from the others.
 ///
 /// [`ImportService`]: bae_core::import::ImportService
-pub fn start_test_import(
+pub async fn start_test_import(
     runtime_handle: tokio::runtime::Handle,
     library_manager: bae_core::library::LibraryManager,
 ) -> bae_core::import::ImportServiceHandle {
@@ -216,6 +216,8 @@ pub fn start_test_import(
         library_manager,
         bae_core::import::cover_art::CoverArtArchiveClient::hermetic(),
     )
+    .await
+    .expect("test import service starts")
 }
 
 /// confirmation.

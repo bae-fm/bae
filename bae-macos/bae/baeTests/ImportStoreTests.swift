@@ -92,7 +92,22 @@ private func bridgeInvalid(
         folderPath: folderPath,
         sourceFolderName: name,
         watchedFolderPath: watchedFolderPath,
+        displayPath: name,
+        resolvedBoundaries: [],
         reason: .noValidAudio
+    )
+}
+
+private func candidateEntry(_ row: BridgeTriageRow) -> BridgeTriageEntry {
+    .candidate(stableKey: "candidate:\(row.candidateKey)", row: row)
+}
+
+private func invalidEntry(
+    _ candidate: BridgeInvalidCandidate
+) -> BridgeTriageEntry {
+    .invalid(
+        stableKey: "invalid:\(candidate.folderPath)",
+        invalidCandidate: candidate
     )
 }
 
@@ -123,6 +138,10 @@ private func readyRow(_ key: String, title: String) -> BridgeTriageRow {
         candidateKey: key,
         folderName: title,
         watchedFolderPath: "/w",
+        displayPath: title,
+        resolvedBoundaries: [],
+        combineAncestorKey: nil,
+        actionable: true,
         placement: .ready,
         matched: matchedRelease(releaseId: "rel-\(key)", title: title),
         selectable: true,
@@ -141,6 +160,10 @@ private func needsYouRow(
         candidateKey: key,
         folderName: title,
         watchedFolderPath: "/w",
+        displayPath: title,
+        resolvedBoundaries: [],
+        combineAncestorKey: nil,
+        actionable: true,
         placement: .needsYou(group: group, reason: reason),
         matched: nil,
         selectable: false,
@@ -153,6 +176,10 @@ private func doneRow(_ key: String, title: String) -> BridgeTriageRow {
         candidateKey: key,
         folderName: title,
         watchedFolderPath: "/w",
+        displayPath: title,
+        resolvedBoundaries: [],
+        combineAncestorKey: nil,
+        actionable: true,
         placement: .done,
         matched: matchedRelease(releaseId: "rel-\(key)", title: title),
         selectable: false,
@@ -165,23 +192,14 @@ private func skippedRow(_ key: String, title: String) -> BridgeTriageRow {
         candidateKey: key,
         folderName: title,
         watchedFolderPath: "/w",
+        displayPath: title,
+        resolvedBoundaries: [],
+        combineAncestorKey: nil,
+        actionable: true,
         placement: .skipped,
         matched: nil,
         selectable: false,
         importStatus: nil
-    )
-}
-
-private func emptyTriageQueue() -> BridgeTriageQueue {
-    BridgeTriageQueue(
-        rows: [],
-        invalid: [],
-        counts: BridgeTriageTabCounts(
-            ready: 0,
-            needsYou: 0,
-            done: 0,
-            skipped: 0
-        )
     )
 }
 
@@ -352,7 +370,8 @@ struct ImportStoreBatchSnapshotTests {
                                 releaseId: "rel-1",
                                 albumId: "al-1"
                             )
-                        )
+                        ),
+                        actionable: true
                     )
                 ],
                 invalidCandidates: [
@@ -361,7 +380,9 @@ struct ImportStoreBatchSnapshotTests {
                         watchedFolderPath: "/w1",
                         name: "Bad"
                     )
-                ]
+                ],
+                boundaries: [],
+                folderScanStatuses: []
             )
         )
 
@@ -401,10 +422,13 @@ struct ImportStoreBatchSnapshotTests {
                             name: "A-renamed",
                             skipped: true
                         ),
-                        runtime: idleRuntime()
+                        runtime: idleRuntime(),
+                        actionable: true
                     )
                 ],
-                invalidCandidates: []
+                invalidCandidates: [],
+                boundaries: [],
+                folderScanStatuses: []
             )
         )
 
@@ -446,10 +470,13 @@ struct ImportStoreBatchSnapshotTests {
                             watchedFolderPath: "/w1",
                             name: "A"
                         ),
-                        runtime: idleRuntime()
+                        runtime: idleRuntime(),
+                        actionable: true
                     )
                 ],
-                invalidCandidates: []
+                invalidCandidates: [],
+                boundaries: [],
+                folderScanStatuses: []
             )
         )
 
@@ -504,7 +531,8 @@ struct ImportStoreSingleSnapshotTests {
                         releaseId: "rel-new",
                         albumId: "al-new"
                     )
-                )
+                ),
+                actionable: true
             )
         )
 
@@ -540,9 +568,8 @@ struct ImportStoreSingleSnapshotTests {
             )
         )
 
-        // The sidebar now reads invalid folders from `triageQueue.invalid`,
-        // read separately through the triage projection — this path only has
-        // to stop treating the key as an addressable candidate.
+        // The sidebar reads invalid folders from Skipped queue sections; this
+        // path only has to stop treating the key as an addressable candidate.
         #expect(store.folderCandidates["/w1/a"] == nil)
     }
 
@@ -612,252 +639,263 @@ struct ImportStoreSingleSnapshotTests {
 
 @Suite("ImportStore triage rendering")
 struct ImportStoreTriageRenderingTests {
-    /// One row in each tab, and every Needs-you group represented at least
-    /// once (two in "pick a pressing" so sort order is observable).
     private func seededStore() -> ImportStore {
         let store = ImportStore()
         store.triageQueue = BridgeTriageQueue(
-            rows: [
-                readyRow("/w/ready-b", title: "Beta"),
-                readyRow("/w/ready-a", title: "Alpha"),
-                needsYouRow(
-                    "/w/pick-1",
-                    title: "Pick One",
-                    group: .pickAPressing,
-                    reason: .disagreement(
-                        disagreement: .severalMatches(count: 3)
-                    )
-                ),
-                needsYouRow(
-                    "/w/pick-2",
-                    title: "Pick Two",
-                    group: .pickAPressing,
-                    reason: .disagreement(
-                        disagreement: .severalMatches(count: 2)
-                    )
-                ),
-                needsYouRow(
-                    "/w/conflict",
-                    title: "Conflicted",
-                    group: .signalsDisagree,
-                    reason: .disagreement(disagreement: .signalsConflict)
-                ),
-                needsYouRow(
-                    "/w/pending",
-                    title: "Pending",
-                    group: .stillIdentifying,
-                    reason: .stillIdentifying(phase: .running)
-                ),
-                doneRow("/w/done", title: "Finished"),
-                skippedRow("/w/skipped", title: "Set Aside"),
-            ],
-            invalid: [
-                bridgeInvalid(
-                    folderPath: "/w/bad",
+            sections: [
+                BridgeTriageSection(
+                    tab: .ready,
                     watchedFolderPath: "/w",
-                    name: "Bad Folder"
-                )
+                    group: nil,
+                    entries: [
+                        candidateEntry(readyRow("/w/ready-b", title: "Beta")),
+                        candidateEntry(readyRow("/w/ready-a", title: "Alpha")),
+                    ]
+                ),
+                BridgeTriageSection(
+                    tab: .needsYou,
+                    watchedFolderPath: "/w",
+                    group: BridgeTriageGroup(
+                        key: BridgeFolderReleaseDecisionKey(
+                            watchedFolderPath: "/w",
+                            relativeFolderPath: "collection"
+                        ),
+                        name: "Collection"
+                    ),
+                    entries: [
+                        candidateEntry(
+                            needsYouRow(
+                                "/w/collection/first",
+                                title: "First",
+                                group: .pickAPressing,
+                                reason: .disagreement(
+                                    disagreement: .severalMatches(count: 2)
+                                )
+                            )
+                        ),
+                        candidateEntry(
+                            needsYouRow(
+                                "/w/collection/second",
+                                title: "Second",
+                                group: .signalsDisagree,
+                                reason: .disagreement(
+                                    disagreement: .signalsConflict
+                                )
+                            )
+                        ),
+                    ]
+                ),
+                BridgeTriageSection(
+                    tab: .done,
+                    watchedFolderPath: "/w",
+                    group: nil,
+                    entries: [
+                        candidateEntry(doneRow("/w/done", title: "Finished"))
+                    ]
+                ),
+                BridgeTriageSection(
+                    tab: .skipped,
+                    watchedFolderPath: "/w",
+                    group: nil,
+                    entries: [
+                        candidateEntry(
+                            skippedRow(
+                                "/w/skipped",
+                                title: "Set Aside"
+                            )
+                        ),
+                        invalidEntry(
+                            bridgeInvalid(
+                                folderPath: "/w/bad",
+                                watchedFolderPath: "/w",
+                                name: "Bad Folder"
+                            )
+                        ),
+                    ]
+                ),
             ],
             counts: BridgeTriageTabCounts(
                 ready: 2,
-                needsYou: 4,
+                needsYou: 2,
                 done: 1,
                 skipped: 2
-            )
+            ),
+            folderScanStatuses: []
         )
         return store
     }
 
     @MainActor
-    @Test("rows(tab:) scopes to the tab and sorts A-Z")
-    func rowsScopesAndSorts() {
-        let rows = seededStore()
-            .rows(
+    @Test("sections preserve grouping while sorting entries")
+    func sectionsPreserveGrouping() throws {
+        let store = seededStore()
+        let ready = try #require(
+            store.releaseSections(
                 tab: .ready,
                 filterText: "",
                 sortOrder: .nameAZ
-            )
-        #expect(rows.map(\.folderName) == ["Alpha", "Beta"])
-    }
+            ).first
+        )
+        #expect(
+            ready.entries.compactMap { entry in
+                guard
+                    case .candidate(_, let row) = entry.bridge
+                else { return nil }
+                return row.folderName
+            }
+                == ["Alpha", "Beta"]
+        )
+        #expect(
+            ready.entries.map(\.id)
+                == [
+                    "candidate:/w/ready-a",
+                    "candidate:/w/ready-b",
+                ]
+        )
 
-    @MainActor
-    @Test("rows(tab:) sorts Z-A")
-    func rowsSortsDescending() {
-        let rows = seededStore()
-            .rows(
+        let grouped = try #require(
+            store.releaseSections(
+                tab: .needsYou,
+                filterText: "",
+                sortOrder: .nameAZ
+            ).first
+        )
+        #expect(grouped.group?.name == "Collection")
+        #expect(
+            grouped.group?.key.relativeFolderPath == "collection"
+        )
+
+        let descending = try #require(
+            store.releaseSections(
                 tab: .ready,
                 filterText: "",
                 sortOrder: .nameZA
-            )
-        #expect(rows.map(\.folderName) == ["Beta", "Alpha"])
-    }
-
-    @MainActor
-    @Test("rows(tab:) filters by display title and folder name")
-    func rowsFilters() {
-        let rows = seededStore()
-            .rows(
-                tab: .ready,
-                filterText: "alpha",
-                sortOrder: .nameAZ
-            )
-        #expect(rows.map(\.folderName) == ["Alpha"])
-    }
-
-    @MainActor
-    @Test(
-        "checkboxes exist only where selectable — every Ready row, no other tab's"
-    )
-    func selectableIsReadyOnly() {
-        let store = seededStore()
-        let ready = store.rows(tab: .ready, filterText: "", sortOrder: .nameAZ)
-        #expect(!ready.isEmpty)
-        #expect(ready.allSatisfy { $0.selectable })
-
-        let done = store.rows(tab: .done, filterText: "", sortOrder: .nameAZ)
-        let skipped = store.skippedRows(filterText: "", sortOrder: .nameAZ)
-        let needsYou = store.needsYouGroups(filterText: "", sortOrder: .nameAZ)
-            .flatMap(\.rows)
-        #expect(!(done + needsYou).contains { $0.selectable })
+            ).first
+        )
         #expect(
-            !skipped.contains {
-                if case .candidate(let row) = $0 { return row.selectable }
-                return false
-            }
+            descending.entries.map(\.id)
+                == ready.entries.reversed().map(\.id)
         )
     }
 
     @MainActor
-    @Test("needsYouGroups orders groups per core and drops empty ones")
-    func needsYouGroupsOrdered() {
-        let groups = seededStore()
-            .needsYouGroups(
-                filterText: "",
-                sortOrder: .nameAZ
-            )
-        // Core declares PickAPressing, SignalsDisagree, ..., StillIdentifying
-        // in that order; only the three represented in the fixture appear.
-        #expect(
-            groups.map(\.group) == [
-                .pickAPressing, .signalsDisagree, .stillIdentifying,
-            ]
-        )
-        #expect(
-            groups.first { $0.group == .pickAPressing }?.rows.map(\.folderName)
-                == ["Pick One", "Pick Two"]
-        )
-    }
-
-    @MainActor
-    @Test("needsYouGroups filter can empty a group out entirely")
-    func needsYouGroupsFilterDropsEmptyGroup() {
-        let groups = seededStore()
-            .needsYouGroups(
-                filterText: "conflicted",
-                sortOrder: .nameAZ
-            )
-        #expect(groups.map(\.group) == [.signalsDisagree])
-    }
-
-    @MainActor
-    @Test("skippedRows merges skipped candidates and invalid folders")
-    func skippedRowsMerge() {
-        let rows = seededStore()
-            .skippedRows(
-                filterText: "",
-                sortOrder: .nameAZ
-            )
-        #expect(rows.map(\.id) == ["/w/bad", "/w/skipped"])
-    }
-
-    @MainActor
-    @Test("skippedRows filters candidate and invalid rows by the same text")
-    func skippedRowsFilter() {
-        let rows = seededStore()
-            .skippedRows(
+    @Test("filter keeps matching entries inside their section")
+    func filterKeepsMatchingSectionEntries() throws {
+        let section = try #require(
+            seededStore().releaseSections(
+                tab: .skipped,
                 filterText: "bad",
                 sortOrder: .nameAZ
-            )
-        #expect(rows.map(\.id) == ["/w/bad"])
+            ).first
+        )
+        #expect(section.entries.count == 1)
+        guard
+            case .invalid(_, let invalid) = section.entries[0].bridge
+        else {
+            Issue.record("expected invalid entry")
+            return
+        }
+        #expect(invalid.folderPath == "/w/bad")
     }
 
-    /// Plan test 7: answering a Needs-you row moves it out of that tab. The
-    /// store has no reducer of its own for this — a fresh `triageQueue`
-    /// (what the projection assigns after core reclassifies the row) is the
-    /// whole mechanism, so the test drives exactly that.
     @MainActor
-    @Test(
-        "answering a Needs-you row moves it into Ready and out of every group"
-    )
+    @Test("a new queue projection moves an answered row into Ready")
     func answeringMovesTheRowOut() {
         let store = ImportStore()
         store.triageQueue = BridgeTriageQueue(
-            rows: [
-                needsYouRow(
-                    "/w/subject",
-                    title: "Subject",
-                    group: .pickAPressing,
-                    reason: .disagreement(
-                        disagreement: .severalMatches(count: 2)
-                    )
+            sections: [
+                BridgeTriageSection(
+                    tab: .needsYou,
+                    watchedFolderPath: "/w",
+                    group: nil,
+                    entries: [
+                        candidateEntry(
+                            needsYouRow(
+                                "/w/subject",
+                                title: "Subject",
+                                group: .pickAPressing,
+                                reason: .disagreement(
+                                    disagreement: .severalMatches(count: 2)
+                                )
+                            )
+                        )
+                    ]
                 )
             ],
-            invalid: [],
             counts: BridgeTriageTabCounts(
                 ready: 0,
                 needsYou: 1,
                 done: 0,
                 skipped: 0
-            )
+            ),
+            folderScanStatuses: []
         )
 
         #expect(
-            store.needsYouGroups(filterText: "", sortOrder: .nameAZ)
-                .flatMap(\.rows).map(\.candidateKey) == ["/w/subject"]
-        )
-        #expect(
-            store.rows(tab: .ready, filterText: "", sortOrder: .nameAZ)
-                .isEmpty
+            store.releaseSections(
+                tab: .needsYou,
+                filterText: "",
+                sortOrder: .nameAZ
+            ).count == 1
         )
 
-        // The user picked a pressing; the next triage-queue read (what the
-        // projection would apply) reclassifies the row to Ready.
         store.triageQueue = BridgeTriageQueue(
-            rows: [readyRow("/w/subject", title: "Subject")],
-            invalid: [],
+            sections: [
+                BridgeTriageSection(
+                    tab: .ready,
+                    watchedFolderPath: "/w",
+                    group: nil,
+                    entries: [
+                        candidateEntry(
+                            readyRow("/w/subject", title: "Subject")
+                        )
+                    ]
+                )
+            ],
             counts: BridgeTriageTabCounts(
                 ready: 1,
                 needsYou: 0,
                 done: 0,
                 skipped: 0
-            )
+            ),
+            folderScanStatuses: []
         )
 
         #expect(
-            store.needsYouGroups(filterText: "", sortOrder: .nameAZ).isEmpty
+            store.releaseSections(
+                tab: .needsYou,
+                filterText: "",
+                sortOrder: .nameAZ
+            ).isEmpty
         )
         #expect(
-            store.rows(tab: .ready, filterText: "", sortOrder: .nameAZ)
+            store.selectableReadyRows(filterText: "", sortOrder: .nameAZ)
                 .map(\.candidateKey) == ["/w/subject"]
         )
     }
 
     @MainActor
-    @Test("an empty triage queue renders no rows in any tab")
-    func emptyQueueIsEmptyEverywhere() {
-        let store = ImportStore()
-        store.triageQueue = emptyTriageQueue()
+    @Test("row lookup addresses candidates inside grouped sections")
+    func rowLookupUsesSections() {
         #expect(
-            store.rows(tab: .ready, filterText: "", sortOrder: .nameAZ)
-                .isEmpty
+            seededStore().triageRow(forKey: "/w/collection/second")?
+                .folderName == "Second"
         )
-        #expect(
-            store.needsYouGroups(filterText: "", sortOrder: .nameAZ).isEmpty
+        #expect(seededStore().triageRow(forKey: "/w/missing") == nil)
+    }
+
+    @Test("section identity keeps path components distinct")
+    func sectionIdentityDoesNotConcatenatePaths() {
+        let first = ReleaseQueueSectionID(
+            tab: .ready,
+            watchedFolderPath: "/a|b",
+            groupRelativeFolderPath: "c"
         )
-        #expect(
-            store.rows(tab: .done, filterText: "", sortOrder: .nameAZ)
-                .isEmpty
+        let second = ReleaseQueueSectionID(
+            tab: .ready,
+            watchedFolderPath: "/a",
+            groupRelativeFolderPath: "b|c"
         )
-        #expect(store.skippedRows(filterText: "", sortOrder: .nameAZ).isEmpty)
+        #expect(first != second)
     }
 }

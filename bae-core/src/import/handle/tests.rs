@@ -60,6 +60,20 @@ async fn setup_test_manager() -> (LibraryManager, TempDir) {
     (manager, temp_dir)
 }
 
+fn unresolved_boundary(root: &Path, relative_path: &str) -> FolderReleaseBoundary {
+    FolderReleaseBoundary {
+        key: FolderReleaseDecisionKey {
+            watched_folder_path: root.to_string_lossy().into_owned(),
+            relative_folder_path: relative_path.to_string(),
+        },
+        name: "Collection".to_string(),
+        display_path: relative_path.to_string(),
+        shared_file_count: 0,
+        tree_rows: Vec::new(),
+        candidate_keys: Vec::new(),
+    }
+}
+
 fn make_artist(name: &str, discogs_id: Option<&str>, mb_id: Option<&str>) -> DbArtist {
     let now = Utc::now();
     DbArtist {
@@ -963,11 +977,15 @@ fn empty_categorized() -> CategorizedFiles {
 fn folder_candidate(path: &str, watched: &str) -> FolderCandidate {
     FolderCandidate {
         path: PathBuf::from(path),
+        file_root: PathBuf::from(path),
         name: format!("Candidate {path}"),
         files: empty_categorized(),
         watched_folder_path: watched.to_string(),
-        skipped: false,
-        is_added: false,
+        scope: crate::import::folder_scanner::ReleaseFileScope::Recursive,
+        file_edit_revision: 0,
+        display_path: path.trim_start_matches('/').to_string(),
+        resolved_boundaries: Vec::new(),
+        combine_ancestor_key: None,
     }
 }
 
@@ -976,6 +994,8 @@ fn invalid_candidate(path: &str, watched: &str) -> InvalidCandidate {
         path: PathBuf::from(path),
         name: format!("Invalid {path}"),
         watched_folder_path: watched.to_string(),
+        display_path: path.trim_start_matches('/').to_string(),
+        resolved_boundaries: Vec::new(),
         reason: InvalidReason::NoValidAudio,
     }
 }
@@ -990,7 +1010,7 @@ fn watched(path: &str) -> WatchedFolder {
 #[test]
 fn upserts_populate_snapshot_with_folder_and_invalid_candidates() {
     let mut state = ImportCandidateState::default();
-    state.upsert_folder(folder_candidate("/watch/a/rel1", "/watch/a"));
+    state.upsert_folder(folder_candidate("/watch/a/rel1", "/watch/a"), false, false);
     state.upsert_invalid(invalid_candidate("/watch/a/bad", "/watch/a"));
 
     let snapshot = state.snapshot(vec![watched("/watch/a")]);
@@ -999,7 +1019,7 @@ fn upserts_populate_snapshot_with_folder_and_invalid_candidates() {
         snapshot.folder_candidates[0].candidate.path,
         PathBuf::from("/watch/a/rel1")
     );
-    assert!(!snapshot.folder_candidates[0].candidate.skipped);
+    assert!(!snapshot.folder_candidates[0].skipped);
     assert_eq!(snapshot.invalid_candidates.len(), 1);
     assert_eq!(
         snapshot.invalid_candidates[0].path,
@@ -1008,11 +1028,65 @@ fn upserts_populate_snapshot_with_folder_and_invalid_candidates() {
 }
 
 #[test]
+fn file_decision_revision_advances_every_path_with_the_same_identity() {
+    let mut state = ImportCandidateState::default();
+    let first = folder_candidate("/watch/a/first", "/watch/a");
+    let second = folder_candidate("/watch/a/second", "/watch/a");
+    let content_hash = first.files.content_hash();
+    state.upsert_folder(first, false, false);
+    state.upsert_folder(second, false, false);
+    let settled = state
+        .files_for_identity(&content_hash, 0)
+        .into_iter()
+        .map(|(key, mut files)| {
+            files.format_label = "Settled".to_string();
+            (key, files)
+        })
+        .collect();
+
+    let changed = state
+        .set_files_for_identity(&content_hash, 0, settled, 1)
+        .expect("both matching candidates advance together");
+
+    assert_eq!(changed.len(), 2);
+    assert!(changed
+        .iter()
+        .all(|candidate| candidate.file_edit_revision == 1));
+    assert!(changed
+        .iter()
+        .all(|candidate| candidate.files.format_label == "Settled"));
+}
+
+#[test]
+fn grouping_folder_is_a_current_release_decision_target() {
+    let mut state = ImportCandidateState::default();
+    let mut candidate = folder_candidate("/watch/a/Group/Release", "/watch/a");
+    candidate.display_path = "Group/Release".to_string();
+    state.upsert_folder(candidate, false, false);
+    let mut candidate = folder_candidate("/watch/a/Group/Release2", "/watch/a");
+    candidate.display_path = "Group/Release2".to_string();
+    state.upsert_folder(candidate, false, false);
+
+    assert!(state
+        .release_boundary_ancestor_keys(&FolderReleaseDecisionKey {
+            watched_folder_path: "/watch/a".to_string(),
+            relative_folder_path: "Group".to_string(),
+        })
+        .is_some());
+    assert!(state
+        .release_boundary_ancestor_keys(&FolderReleaseDecisionKey {
+            watched_folder_path: "/watch/a".to_string(),
+            relative_folder_path: "Other".to_string(),
+        })
+        .is_none());
+}
+
+#[test]
 fn retain_root_drops_unreported_candidates_and_remove_root_clears() {
     let mut state = ImportCandidateState::default();
     let root = Path::new("/watch/a");
-    state.upsert_folder(folder_candidate("/watch/a/old", "/watch/a"));
-    state.upsert_folder(folder_candidate("/watch/a/new", "/watch/a"));
+    state.upsert_folder(folder_candidate("/watch/a/old", "/watch/a"), false, false);
+    state.upsert_folder(folder_candidate("/watch/a/new", "/watch/a"), false, false);
 
     // A completed walk that reported only `new` drops `old` and names it.
     let removed = state.retain_root(
@@ -1034,6 +1108,39 @@ fn retain_root_drops_unreported_candidates_and_remove_root_clears() {
     assert!(snapshot.invalid_candidates.is_empty());
 }
 
+#[test]
+fn stale_scan_finish_and_failure_cannot_change_a_new_generation() {
+    let mut state = ImportCandidateState::default();
+    let root = Path::new("/watch/a");
+    state.begin_root_scan(root, 1);
+    state.upsert_folder(folder_candidate("/watch/a/old", "/watch/a"), false, false);
+
+    // A decision or replacement scan invalidates generation 1 after its DB
+    // completion write but before its in-memory completion is applied.
+    state.begin_root_scan(root, 2);
+    state.upsert_folder(folder_candidate("/watch/a/new", "/watch/a"), false, false);
+
+    assert!(state
+        .finish_root_scan(
+            root,
+            1,
+            &std::collections::HashSet::from(["/watch/a/old".to_string()]),
+            &std::collections::HashSet::new(),
+        )
+        .is_none());
+    assert!(!state.fail_root_scan(root, 1, "obsolete failure".to_string()));
+
+    let snapshot = state.snapshot(vec![watched("/watch/a")]);
+    assert_eq!(snapshot.folder_candidates.len(), 2);
+    assert!(matches!(
+        snapshot.folder_scan_statuses.as_slice(),
+        [WatchedFolderScanStatus {
+            status: FolderScanStatus::Scanning,
+            ..
+        }]
+    ));
+}
+
 /// A folder watch re-scans on every filesystem event under it, so an import or
 /// identify already running on a candidate must survive a walk that re-reports
 /// that candidate unchanged. Only a candidate the walk stopped reporting loses
@@ -1042,7 +1149,7 @@ fn retain_root_drops_unreported_candidates_and_remove_root_clears() {
 fn rescan_re_reporting_a_candidate_keeps_its_runtime() {
     let mut state = ImportCandidateState::default();
     let root = Path::new("/watch/a");
-    state.upsert_folder(folder_candidate("/watch/a/rel1", "/watch/a"));
+    state.upsert_folder(folder_candidate("/watch/a/rel1", "/watch/a"), false, false);
     state.record_event(&ImportEvent::ImportProgress {
         candidate_key: "/watch/a/rel1".to_string(),
         progress: ImportProgress::Progress {
@@ -1054,7 +1161,7 @@ fn rescan_re_reporting_a_candidate_keeps_its_runtime() {
     });
 
     // A second walk reports the same candidate and retains it.
-    state.upsert_folder(folder_candidate("/watch/a/rel1", "/watch/a"));
+    state.upsert_folder(folder_candidate("/watch/a/rel1", "/watch/a"), false, false);
     let removed = state.retain_root(
         root,
         &std::collections::HashSet::from(["/watch/a/rel1".to_string()]),
@@ -1073,27 +1180,19 @@ fn rescan_re_reporting_a_candidate_keeps_its_runtime() {
 #[test]
 fn set_skipped_round_trips_on_folder_candidate() {
     let mut state = ImportCandidateState::default();
-    state.upsert_folder(folder_candidate("/watch/a/rel1", "/watch/a"));
+    state.upsert_folder(folder_candidate("/watch/a/rel1", "/watch/a"), false, false);
 
     state.set_skipped("/watch/a/rel1", true);
-    assert!(
-        state.snapshot(vec![watched("/watch/a")]).folder_candidates[0]
-            .candidate
-            .skipped
-    );
+    assert!(state.snapshot(vec![watched("/watch/a")]).folder_candidates[0].skipped);
 
     state.set_skipped("/watch/a/rel1", false);
-    assert!(
-        !state.snapshot(vec![watched("/watch/a")]).folder_candidates[0]
-            .candidate
-            .skipped
-    );
+    assert!(!state.snapshot(vec![watched("/watch/a")]).folder_candidates[0].skipped);
 }
 
 #[test]
 fn record_event_overlays_import_progress_onto_folder_runtime() {
     let mut state = ImportCandidateState::default();
-    state.upsert_folder(folder_candidate("/watch/a/rel1", "/watch/a"));
+    state.upsert_folder(folder_candidate("/watch/a/rel1", "/watch/a"), false, false);
 
     state.record_event(&ImportEvent::ImportProgress {
         candidate_key: "/watch/a/rel1".to_string(),
@@ -1155,7 +1254,7 @@ fn record_event_overlays_import_progress_onto_folder_runtime() {
 #[test]
 fn record_event_overlays_identify_state() {
     let mut state = ImportCandidateState::default();
-    state.upsert_folder(folder_candidate("/watch/a/rel1", "/watch/a"));
+    state.upsert_folder(folder_candidate("/watch/a/rel1", "/watch/a"), false, false);
 
     state.record_event(&ImportEvent::IdentifyStateChanged {
         priority: crate::util::rate_limiter::CallPriority::Interactive,
@@ -1174,9 +1273,9 @@ fn record_event_overlays_identify_state() {
 #[test]
 fn snapshot_orders_by_watched_folder_then_key() {
     let mut state = ImportCandidateState::default();
-    state.upsert_folder(folder_candidate("/watch/b/z", "/watch/b"));
-    state.upsert_folder(folder_candidate("/watch/b/a", "/watch/b"));
-    state.upsert_folder(folder_candidate("/watch/a/m", "/watch/a"));
+    state.upsert_folder(folder_candidate("/watch/b/z", "/watch/b"), false, false);
+    state.upsert_folder(folder_candidate("/watch/b/a", "/watch/b"), false, false);
+    state.upsert_folder(folder_candidate("/watch/a/m", "/watch/a"), false, false);
 
     // Watched-folder order (a before b) is the primary sort; the candidate key
     // breaks ties within a folder (a before z).
@@ -1215,7 +1314,7 @@ fn get_resolves_reidentify_runtime_and_scanned_candidates() {
 
     // A scanned folder key resolves to its folder candidate; an unknown key is
     // None.
-    state.upsert_folder(folder_candidate("/watch/a/rel1", "/watch/a"));
+    state.upsert_folder(folder_candidate("/watch/a/rel1", "/watch/a"), false, false);
     assert!(matches!(
         state.get("/watch/a/rel1"),
         Some(ImportCandidateSnapshot::Folder { .. })
@@ -1243,7 +1342,7 @@ fn runtime_recorded_before_scan_survives_the_scan_recording_its_candidate() {
     // The scan then reports the candidate. Recording it leaves the pre-existing
     // runtime entry alone; only `retain_root`/`remove_root` clear runtime, and
     // only for keys they drop.
-    state.upsert_folder(folder_candidate("/watch/a/rel1", "/watch/a"));
+    state.upsert_folder(folder_candidate("/watch/a/rel1", "/watch/a"), false, false);
 
     // The read-time join surfaces the recorded runtime on the scanned candidate.
     let status = state.snapshot(vec![watched("/watch/a")]).folder_candidates[0]
@@ -1269,9 +1368,9 @@ fn runtime_recorded_before_scan_survives_the_scan_recording_its_candidate() {
 #[test]
 fn remove_root_returns_the_removed_candidate_keys() {
     let mut state = ImportCandidateState::default();
-    state.upsert_folder(folder_candidate("/watch/a/rel1", "/watch/a"));
+    state.upsert_folder(folder_candidate("/watch/a/rel1", "/watch/a"), false, false);
     state.upsert_invalid(invalid_candidate("/watch/a/bad", "/watch/a"));
-    state.upsert_folder(folder_candidate("/watch/b/rel1", "/watch/b"));
+    state.upsert_folder(folder_candidate("/watch/b/rel1", "/watch/b"), false, false);
 
     let mut removed = state.remove_root(Path::new("/watch/a"));
     removed.sort();
@@ -1335,7 +1434,9 @@ async fn removing_a_watched_folder_cancels_in_flight_extraction() {
         tokio::runtime::Handle::current(),
         manager.clone(),
         crate::import::cover_art::CoverArtArchiveClient::hermetic(),
-    );
+    )
+    .await
+    .unwrap();
     let extraction = ExtractionService::start(
         tokio::runtime::Handle::current(),
         import_handle.event_sender_for_test(),
@@ -1350,6 +1451,7 @@ async fn removing_a_watched_folder_cancels_in_flight_extraction() {
     let mut events = import_handle.subscribe_events();
     import_handle
         .add_watched_folder(root.to_string_lossy().to_string())
+        .await
         .unwrap();
 
     // Wait for the scan to surface the release as a candidate. Take the key
@@ -1361,21 +1463,29 @@ async fn removing_a_watched_folder_cancels_in_flight_extraction() {
             .await
             .expect("timed out waiting for the folder candidate")
             .expect("event channel closed");
-        if let ImportEvent::Scan(ScanEvent::FolderCandidate(candidate)) = event {
+        if let ImportEvent::Scan(ScanEvent::FolderCandidate { candidate, .. }) = event {
             break candidate.path;
         }
     };
     let key = candidate_path.to_string_lossy().to_string();
+    let files = match import_handle.get_candidate(&key) {
+        Some(crate::import::ImportCandidateSnapshot::Folder { candidate, .. }) => candidate.files,
+        other => panic!("expected folder candidate, got {other:?}"),
+    };
 
     // Start extraction the way the bridge does, then remove the folder mid-OCR.
     extraction.start(
         key.clone(),
-        ExtractionSource::Folder(candidate_path.clone()),
+        ExtractionSource::Folder {
+            path: candidate_path.clone(),
+            files,
+        },
         crate::util::rate_limiter::CallPriority::Interactive,
     );
     tokio::time::sleep(Duration::from_millis(100)).await;
     import_handle
         .remove_watched_folder(root.to_string_lossy().to_string())
+        .await
         .unwrap();
 
     // Drain this key's SignalsUpdated until quiet: the cancelled run never settles.
@@ -1400,4 +1510,57 @@ async fn removing_a_watched_folder_cancels_in_flight_extraction() {
         analyzer.calls.load(Ordering::SeqCst) < 3,
         "removing the folder must stop the OCR pass early",
     );
+}
+
+#[tokio::test]
+async fn removing_a_root_queued_behind_a_decision_does_not_deadlock() {
+    let (manager, _temp) = setup_test_manager().await;
+    let root = PathBuf::from("/music");
+    manager
+        .add_watched_import_folder(&root.to_string_lossy())
+        .await
+        .unwrap();
+    let handle = crate::import::ImportService::start(
+        tokio::runtime::Handle::current(),
+        manager,
+        crate::import::cover_art::CoverArtArchiveClient::hermetic(),
+    )
+    .await
+    .unwrap();
+    handle
+        .folder_registry
+        .lock()
+        .unwrap()
+        .apply_added(root.to_string_lossy().into_owned());
+    let boundary = unresolved_boundary(&root, "Collection");
+    handle
+        .candidate_state
+        .lock()
+        .unwrap()
+        .upsert_boundary(boundary.clone());
+
+    let (decision_completion, decision_result) = tokio::sync::oneshot::channel();
+    handle
+        .watcher_tx
+        .send(WatcherCommand::SetFolderReleaseDecision {
+            target: (boundary.key, FolderReleaseDecision::CombineAsOneRelease),
+            completion: decision_completion,
+        })
+        .unwrap();
+
+    let removal = handle.remove_watched_folder(root.to_string_lossy().into_owned());
+    let (decision, removal) = tokio::time::timeout(std::time::Duration::from_secs(2), async {
+        tokio::join!(decision_result, removal)
+    })
+    .await
+    .expect("queued decision and removal deadlocked");
+
+    assert_eq!(
+        decision.unwrap(),
+        Err("/music is no longer watched".to_string())
+    );
+    removal.unwrap();
+    tokio::task::spawn_blocking(move || handle.stop_and_join())
+        .await
+        .unwrap();
 }

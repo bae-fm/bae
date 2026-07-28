@@ -749,17 +749,26 @@ internal static class NativeBae
         CaptureError(() => Await(() => handle.SetFileRole(candidateKey, fileId, choice)));
 
     internal static string? ScanFolder(AppHandle handle, string path, bool clearFirst) =>
-        CaptureError(() => handle.AddWatchedFolder(path));
+        CaptureError(() => Await(() => handle.AddWatchedFolder(path)));
 
     internal static string? RemoveWatchedFolder(AppHandle handle, string path) =>
-        CaptureError(() => handle.RemoveWatchedFolder(path));
+        CaptureError(() => Await(() => handle.RemoveWatchedFolder(path)));
+
+    internal static string? RefreshWatchedFolder(AppHandle handle, string path) =>
+        CaptureError(() => Await(() => handle.RefreshWatchedFolder(path)));
+
+    internal static string? SetFolderReleaseDecision(
+        AppHandle handle,
+        BridgeFolderReleaseDecisionKey key,
+        BridgeFolderReleaseDecision decision) =>
+        CaptureError(() => Await(() => handle.SetFolderReleaseDecision(key, decision)));
 
     internal static string? SetCandidateSkipped(AppHandle handle, string path, bool skipped) =>
-        CaptureError(() => handle.SetCandidateSkipped(path, skipped));
+        CaptureError(() => Await(() => handle.SetCandidateSkipped(path, skipped)));
 
-    /// <summary>The sidebar's pre-shaped rows, tab counts, and invalid folders —
-    /// core's triage projection. A UI iterates and renders it; it computes nothing
-    /// about which tab or group a row belongs to.</summary>
+    /// <summary>The sidebar's pre-shaped sections and tab counts — core's triage
+    /// projection. A UI iterates and renders it; it computes nothing about which
+    /// tab or group an entry belongs to.</summary>
     internal static (BridgeTriageQueue? Queue, string? Error) ImportTriageQueue(AppHandle handle) =>
         CaptureBridgeValue(() => Await(() => handle.GetImportTriageQueue()));
 
@@ -783,8 +792,8 @@ internal static class NativeBae
     internal static (string? Text, string? Error) ReadTextFile(string path) =>
         CaptureBridgeValue(() => BaeBridgeMethods.ReadTextFile(path));
 
-    internal static void AutoIdentifyFolder(AppHandle handle, string candidateKey, string folderPath) =>
-        handle.AutoIdentifyFolder(candidateKey, folderPath);
+    internal static void AutoIdentifyFolder(AppHandle handle, string candidateKey) =>
+        handle.AutoIdentifyFolder(candidateKey);
 
     internal static void AutoIdentifyRelease(AppHandle handle, string candidateKey, string releaseId) =>
         handle.AutoIdentifyRelease(candidateKey, releaseId);
@@ -846,12 +855,21 @@ internal static class NativeBae
     /// detail — only the folder's local artwork is offered.
     /// </summary>
     internal static (PrefetchedEdit? Prefetched, string? Error) PrefetchUnknownEdit(
-        AppHandle handle, string folderPath) =>
-        CaptureBridgeValue(() => new PrefetchedEdit
+        AppHandle handle, string candidateKey) =>
+        CaptureBridgeValue(() =>
         {
-            Edit = BaeBridgeMethods.RawReleaseEditFromUserEdit(
-                Await(() => handle.PreviewFileTagsForFolder(folderPath)), "unknown-track"),
-            LocalArtwork = LocalArtwork(handle.GetCandidate(folderPath)),
+            var snapshot = handle.GetCandidate(candidateKey);
+            if (snapshot is not BridgeImportCandidateSnapshot.Folder)
+            {
+                throw new InvalidOperationException($"Folder candidate '{candidateKey}' is unavailable");
+            }
+            return new PrefetchedEdit
+            {
+                Edit = BaeBridgeMethods.RawReleaseEditFromUserEdit(
+                    Await(() => handle.PreviewFileTagsForFolder(candidateKey)),
+                    "unknown-track"),
+                LocalArtwork = LocalArtwork(snapshot),
+            };
         });
 
     internal static (BridgeLibraryStatus? Status, string? Error) CheckReleaseInLibrary(AppHandle handle, string releaseId) =>
@@ -864,10 +882,9 @@ internal static class NativeBae
         });
 
     internal static string? ImportCandidate(
-        AppHandle handle, string candidateKey, string folderPath, BridgeIdentityChoice identity, string storageMode, bool pin, BridgeRawReleaseEdit userEdit, BridgeCoverSelection? selectedCover) =>
+        AppHandle handle, string candidateKey, BridgeIdentityChoice identity, string storageMode, bool pin, BridgeRawReleaseEdit userEdit, BridgeCoverSelection? selectedCover) =>
         CaptureError(() => handle.StartImport(
             candidateKey,
-            folderPath,
             selectedCover,
             StorageMode(storageMode),
             pin,

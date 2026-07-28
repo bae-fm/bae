@@ -377,7 +377,8 @@ impl PlaybackTestFixture {
         generate_files(&album_dir);
 
         let release_id_key = seed_discogs_test_release(discogs_release);
-        let import_handle = start_test_import(runtime_handle.clone(), library_manager.clone());
+        let import_handle =
+            start_test_import(runtime_handle.clone(), library_manager.clone()).await;
 
         let import_id = uuid::Uuid::new_v4().to_string();
 
@@ -386,6 +387,7 @@ impl PlaybackTestFixture {
                 import_id: import_id.clone(),
                 candidate_key: "test".to_string(),
                 folder: album_dir.clone(),
+                scope: bae_core::import::ReleaseFileScope::Recursive,
                 selected_cover: None,
                 storage_mode: StorageMode::Local,
                 pin: false,

@@ -75,7 +75,6 @@ impl AppServices {
     ) -> Self {
         #[cfg(not(any(target_os = "ios", target_os = "android")))]
         let sweep = crate::import::sweep::start(
-            manager.runtime_handle(),
             import.clone(),
             identify.clone(),
             extraction.clone(),
@@ -109,10 +108,8 @@ impl AppServices {
     /// here: it has no candidate folder, so there is nothing to key a stored
     /// verdict by.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    pub fn identify_folder_candidate(&self, candidate_key: String, folder: std::path::PathBuf) {
-        self.inner
-            .sweep
-            .identify_for_selection(candidate_key, folder);
+    pub fn identify_folder_candidate(&self, candidate_key: String) {
+        self.inner.sweep.identify_for_selection(candidate_key);
     }
 
     pub async fn get_queue_snapshot(
@@ -320,7 +317,9 @@ mod tests {
                 tokio::runtime::Handle::current(),
                 manager.clone(),
                 cover_art.clone(),
-            );
+            )
+            .await
+            .unwrap();
             let identify = crate::identify::IdentifyServiceHandle::new(
                 manager.clone(),
                 tokio::runtime::Handle::current(),

@@ -12,7 +12,7 @@
 
 use super::*;
 use crate::config::{Config, ConfigHandle};
-use crate::db::{Database, DbImportCandidateState};
+use crate::db::{Database, DbImportCandidateState, NewImportCandidateVerdict};
 use crate::identify::ready::{classify, NeedsYou, QueueClassification};
 use crate::import::cover_art::CoverArtArchiveClient;
 use crate::import::search::{MetadataResult, SourceTracks};
@@ -101,6 +101,16 @@ impl FakeProvider {
             .filter(|target| target.contains(needle))
             .count()
     }
+}
+
+async fn wait_for_request(provider: &FakeProvider, needle: &str, count: usize) {
+    tokio::time::timeout(Duration::from_secs(10), async {
+        while provider.count_containing(needle) < count {
+            tokio::time::sleep(Duration::from_millis(10)).await;
+        }
+    })
+    .await
+    .expect("provider received the expected request");
 }
 
 async fn serve_one(mut stream: tokio::net::TcpStream, state: Arc<Mutex<FakeState>>) {
@@ -291,7 +301,9 @@ impl Fixture {
             tokio::runtime::Handle::current(),
             manager.clone(),
             cover_art.clone(),
-        );
+        )
+        .await
+        .unwrap();
         let identify = IdentifyServiceHandle::new(
             manager.clone(),
             tokio::runtime::Handle::current(),
@@ -318,9 +330,22 @@ impl Fixture {
             library_manager: manager.clone(),
             ours: Arc::new(Mutex::new(HashSet::new())),
         };
+        let tasks = tokio_util::task::TaskTracker::new();
+        let runtime = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap();
+        let runtime_handle = runtime.handle().clone();
+        let completion_tasks = tasks.clone();
+        let executor_thread = std::thread::spawn(move || {
+            runtime.block_on(completion_tasks.wait());
+        });
         let sweep = QueueSweepHandle {
             context: context.clone(),
             token: CancellationToken::new(),
+            tasks,
+            runtime_handle,
+            executor_thread: Arc::new(Mutex::new(Some(executor_thread))),
         };
         Fixture {
             manager,
@@ -386,6 +411,7 @@ impl Fixture {
         let mut events = self.import.subscribe_events();
         self.import
             .add_watched_folder(self.root.to_string_lossy().into_owned())
+            .await
             .unwrap();
         let deadline = tokio::time::Instant::now() + Duration::from_secs(10);
         loop {
@@ -406,7 +432,7 @@ impl Fixture {
     /// exposes for it.
     fn select(&self, dir: &Path) {
         self.sweep
-            .identify_for_selection(dir.to_string_lossy().into_owned(), dir.to_path_buf());
+            .identify_for_selection(dir.to_string_lossy().into_owned());
     }
 
     /// Wait for a row to exist for `dir`, polling because the writer is a
@@ -434,9 +460,12 @@ impl Fixture {
     /// pass rather than after a sleep.
     async fn sweep_once(&self) {
         let token = CancellationToken::new();
-        tokio::time::timeout(Duration::from_secs(30), run_pass(&self.context(), &token))
-            .await
-            .expect("a sweep pass finishes");
+        tokio::time::timeout(
+            Duration::from_secs(30),
+            run_pass_for_test(&self.context(), &token),
+        )
+        .await
+        .expect("a sweep pass finishes");
     }
 
     async fn stored(&self) -> BTreeMap<String, DbImportCandidateState> {
@@ -451,8 +480,9 @@ impl Fixture {
     /// A candidate folder's content hash, read off disk. Take it before a test
     /// removes the folder — there is nothing to hash afterwards.
     fn content_hash(&self, dir: &Path) -> String {
-        crate::import::folder_scanner::collect_release_candidate_files(
+        crate::import::folder_scanner::collect_release_candidate_files_with_scope(
             dir,
+            crate::import::ReleaseFileScope::Recursive,
             &crate::import::folder_scanner::StoredCandidateEdits::none(),
         )
         .expect("the candidate folder is readable")
@@ -504,6 +534,7 @@ impl Drop for Fixture {
         // The base URL is process-wide; leaving it pointed at a dead port would
         // make the next test's live-service assumption silently wrong.
         crate::musicbrainz::set_base_url_for_test(None);
+        self.sweep.stop();
         self.import.stop_and_join();
     }
 }
@@ -667,7 +698,13 @@ async fn the_interactive_path_is_not_delayed_by_the_sweep() {
     let fixture = Fixture::new("interactive-not-delayed").await;
     let mut dirs = Vec::new();
     for i in 0..8 {
-        dirs.push(fixture.disc_id_candidate(&format!("Album {i}")));
+        let dir = fixture.disc_id_candidate(&format!("Album {i}"));
+        std::fs::write(
+            dir.join(format!("playlist-{i}.m3u")),
+            format!("candidate {i}"),
+        )
+        .unwrap();
+        dirs.push(dir);
     }
     let probed = fixture.probed_total_ms(&dirs[0]);
     for i in 0..8 {
@@ -689,7 +726,7 @@ async fn the_interactive_path_is_not_delayed_by_the_sweep() {
     let context = fixture.context();
     let token = CancellationToken::new();
     let sweep_token = token.clone();
-    let sweep = tokio::spawn(async move { run_pass(&context, &sweep_token).await });
+    let sweep = tokio::spawn(async move { run_pass_for_test(&context, &sweep_token).await });
 
     // Let the sweep take the first slot and stack the rest behind it.
     tokio::time::sleep(Duration::from_millis(1_200)).await;
@@ -1069,10 +1106,115 @@ async fn the_sweep_tops_up_a_verdict_an_interactive_run_left_unverified() {
     );
 }
 
-/// Skipped is a decision the user already made, so the sweep spends no rate
-/// limit re-asking about it. Whether it should eventually be swept is an open
-/// question in the roadmap; this pins the conservative half until it is
-/// answered.
+#[tokio::test(flavor = "multi_thread")]
+#[serial(musicbrainz)]
+async fn skipping_during_a_paid_top_up_cannot_replace_the_stored_verdict() {
+    let fixture = Fixture::new("skip-paid-top-up").await;
+    fixture
+        .extraction
+        .register_analyzer(Arc::new(BarcodeAnalyzer {
+            barcode: "0123456789012".to_string(),
+        }));
+    let dir = fixture.barcode_candidate("Candidate");
+    let probed = fixture.probed_total_ms(&dir);
+    fixture
+        .cover_art
+        .seed_lookup(Some("mb-skip-topup"), None, None);
+    fixture.provider.route(
+        "/release?",
+        200,
+        search_json("mb-skip-topup", "rg-skip-topup"),
+    );
+    fixture.provider.route(
+        "/release/mb-skip-topup?",
+        200,
+        release_json("mb-skip-topup", "rg-skip-topup", &[probed, 0]),
+    );
+    fixture.scan(1).await;
+    fixture.select(&dir);
+    let before = fixture.await_row(&dir).await;
+    let before_verdict = identify_result(&before).verdict.clone();
+
+    fixture.provider.set_delay(Duration::from_secs(2));
+    let context = fixture.context();
+    let token = CancellationToken::new();
+    let pass = tokio::spawn(async move { run_pass_for_test(&context, &token).await });
+    wait_for_request(&fixture.provider, "/release/mb-skip-topup?", 1).await;
+    fixture
+        .import
+        .set_candidate_skipped(dir.to_string_lossy().into_owned(), true)
+        .await
+        .unwrap();
+    tokio::time::timeout(Duration::from_secs(10), pass)
+        .await
+        .expect("pass finishes after the skipped top-up")
+        .unwrap();
+
+    let after = fixture
+        .stored_for(&dir)
+        .await
+        .expect("prior verdict remains");
+    assert_eq!(identify_result(&after).verdict, before_verdict);
+}
+
+#[tokio::test(flavor = "multi_thread")]
+#[serial(musicbrainz)]
+async fn a_paid_top_up_uses_an_eligible_duplicate_if_its_first_path_is_skipped() {
+    let fixture = Fixture::new("top-up-duplicate-rehome").await;
+    fixture
+        .extraction
+        .register_analyzer(Arc::new(BarcodeAnalyzer {
+            barcode: "0123456789012".to_string(),
+        }));
+    let first = fixture.barcode_candidate("First");
+    let second = fixture.barcode_candidate("Second");
+    assert_eq!(fixture.content_hash(&first), fixture.content_hash(&second));
+    let probed = fixture.probed_total_ms(&first);
+    fixture
+        .cover_art
+        .seed_lookup(Some("mb-duplicate-topup"), None, None);
+    fixture.provider.route(
+        "/release?",
+        200,
+        search_json("mb-duplicate-topup", "rg-duplicate-topup"),
+    );
+    fixture.provider.route(
+        "/release/mb-duplicate-topup?",
+        200,
+        release_json("mb-duplicate-topup", "rg-duplicate-topup", &[probed, 0]),
+    );
+    fixture.scan(2).await;
+    fixture.select(&first);
+    fixture.await_row(&first).await;
+
+    fixture.provider.set_delay(Duration::from_secs(2));
+    let context = fixture.context();
+    let token = CancellationToken::new();
+    let pass = tokio::spawn(async move { run_pass_for_test(&context, &token).await });
+    wait_for_request(&fixture.provider, "/release/mb-duplicate-topup?", 1).await;
+    fixture
+        .import
+        .set_candidate_skipped(first.to_string_lossy().into_owned(), true)
+        .await
+        .unwrap();
+    tokio::time::timeout(Duration::from_secs(10), pass)
+        .await
+        .expect("duplicate top-up pass finishes")
+        .unwrap();
+
+    let row = fixture
+        .stored_for(&second)
+        .await
+        .expect("shared row remains");
+    let verdict: TerminalVerdict = serde_json::from_str(&identify_result(&row).verdict).unwrap();
+    assert!(
+        !owes_source_tracks(&verdict),
+        "the eligible duplicate commits the paid answer"
+    );
+}
+
+/// Skipped is a decision the user already made, so automatic identification
+/// excludes it until the user explicitly unskips it.
 #[tokio::test(flavor = "multi_thread")]
 #[serial(musicbrainz)]
 async fn a_skipped_candidate_is_not_swept() {
@@ -1091,6 +1233,7 @@ async fn a_skipped_candidate_is_not_swept() {
     fixture
         .import
         .set_candidate_skipped(dir.to_string_lossy().into_owned(), true)
+        .await
         .unwrap();
 
     fixture.sweep_once().await;
@@ -1104,6 +1247,137 @@ async fn a_skipped_candidate_is_not_swept() {
         fixture.stored_for(&dir).await.is_none(),
         "and leaves no row"
     );
+}
+
+#[tokio::test(flavor = "multi_thread")]
+#[serial(musicbrainz)]
+async fn unskipping_a_stored_candidate_mid_pass_updates_progress_and_tops_it_up() {
+    let fixture = Fixture::new("unskip-mid-pass").await;
+    fixture
+        .extraction
+        .register_analyzer(Arc::new(BarcodeAnalyzer {
+            barcode: "0123456789012".to_string(),
+        }));
+    let stored = fixture.barcode_candidate("Stored");
+    let running = fixture.disc_id_candidate("Running");
+    std::fs::write(running.join("notes.txt"), "distinct candidate").unwrap();
+    let probed = fixture.probed_total_ms(&running);
+    fixture
+        .cover_art
+        .seed_lookup(Some("mb-unskip-stored"), None, None);
+    fixture
+        .cover_art
+        .seed_lookup(Some("mb-unskip-running"), None, None);
+    fixture.provider.route(
+        "/release?",
+        200,
+        search_json("mb-unskip-stored", "rg-unskip-stored"),
+    );
+    fixture.provider.route(
+        "/release/mb-unskip-stored?",
+        200,
+        release_json("mb-unskip-stored", "rg-unskip-stored", &[probed, 0]),
+    );
+    fixture.provider.route(
+        "/discid/",
+        200,
+        discid_json("mb-unskip-running", "rg-unskip-running", &[probed, 0]),
+    );
+    fixture.scan(2).await;
+    fixture.select(&stored);
+    fixture.await_row(&stored).await;
+    fixture
+        .import
+        .set_candidate_skipped(stored.to_string_lossy().into_owned(), true)
+        .await
+        .unwrap();
+
+    fixture.provider.set_delay(Duration::from_secs(2));
+    let mut events = fixture.import.subscribe_events();
+    let context = fixture.context();
+    let token = CancellationToken::new();
+    let pass = tokio::spawn(async move { run_pass_for_test(&context, &token).await });
+    wait_for_request(&fixture.provider, "/discid/", 1).await;
+    fixture
+        .import
+        .set_candidate_skipped(stored.to_string_lossy().into_owned(), false)
+        .await
+        .unwrap();
+    tokio::time::timeout(Duration::from_secs(15), pass)
+        .await
+        .expect("pass finishes after unskip")
+        .unwrap();
+
+    let row = fixture
+        .stored_for(&stored)
+        .await
+        .expect("stored row remains");
+    let verdict: TerminalVerdict = serde_json::from_str(&identify_result(&row).verdict).unwrap();
+    assert!(!owes_source_tracks(&verdict));
+    let progress: Vec<_> = drain_events(&mut events)
+        .into_iter()
+        .filter_map(|event| match event {
+            ImportEvent::QueueIdentifyProgress { identified, total } => Some((identified, total)),
+            _ => None,
+        })
+        .collect();
+    assert!(
+        progress.contains(&(1, 2)),
+        "the stored unskipped candidate is counted immediately: {progress:?}"
+    );
+    assert_eq!(progress.last(), Some(&(2, 2)), "{progress:?}");
+}
+
+#[tokio::test(flavor = "multi_thread")]
+#[serial(musicbrainz)]
+async fn an_import_start_mid_pass_removes_the_candidate_from_work_and_progress() {
+    let fixture = Fixture::new("import-mid-pass").await;
+    let remaining = fixture.disc_id_candidate("Remaining");
+    let importing = fixture.disc_id_candidate("Importing");
+    std::fs::write(importing.join("notes.txt"), "distinct candidate").unwrap();
+    let importing_hash = fixture.content_hash(&importing);
+    let probed = fixture.probed_total_ms(&remaining);
+    fixture
+        .cover_art
+        .seed_lookup(Some("mb-import-progress"), None, None);
+    fixture.provider.route(
+        "/discid/",
+        200,
+        discid_json("mb-import-progress", "rg-import-progress", &[probed, 0]),
+    );
+    fixture.scan(2).await;
+    fixture.provider.set_delay(Duration::from_secs(2));
+
+    let mut events = fixture.import.subscribe_events();
+    let context = fixture.context();
+    let token = CancellationToken::new();
+    let pass = tokio::spawn(async move { run_pass_for_test(&context, &token).await });
+    wait_for_request(&fixture.provider, "/discid/", 1).await;
+    crate::import::handle::send_event(
+        &fixture.context.import.event_tx,
+        ImportEvent::ImportProgress {
+            candidate_key: importing.to_string_lossy().into_owned(),
+            progress: crate::import::ImportProgress::Started {
+                id: "release-importing".to_string(),
+                import_id: "import-running".to_string(),
+            },
+        },
+    );
+    tokio::time::timeout(Duration::from_secs(15), pass)
+        .await
+        .expect("pass finishes after import ownership changes")
+        .unwrap();
+
+    assert!(!fixture.stored().await.contains_key(&importing_hash));
+    assert!(fixture.stored_for(&remaining).await.is_some());
+    let progress: Vec<_> = drain_events(&mut events)
+        .into_iter()
+        .filter_map(|event| match event {
+            ImportEvent::QueueIdentifyProgress { identified, total } => Some((identified, total)),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(progress.last(), Some(&(1, 1)), "{progress:?}");
 }
 
 /// Progress crosses as an event carrying both numbers. The total is the sweep's
@@ -1131,7 +1405,7 @@ async fn progress_carries_both_counts() {
     let mut events = fixture.import.subscribe_events();
     fixture.sweep_once().await;
     let mut progress = Vec::new();
-    while let Ok(event) = events.try_recv() {
+    for event in drain_events(&mut events) {
         if let ImportEvent::QueueIdentifyProgress { identified, total } = event {
             progress.push((identified, total));
         }
@@ -1163,6 +1437,50 @@ async fn progress_carries_both_counts() {
         (2, 2),
         "a pass over an answered queue opens at the full count"
     );
+}
+
+#[tokio::test(flavor = "multi_thread")]
+#[serial(musicbrainz)]
+async fn identified_progress_is_emitted_after_the_verdict_is_committed() {
+    let fixture = Fixture::new("progress-after-commit").await;
+    let dir = fixture.disc_id_candidate("Album");
+    let probed = fixture.probed_total_ms(&dir);
+    fixture
+        .cover_art
+        .seed_lookup(Some("mb-progress-commit"), None, None);
+    fixture.provider.route(
+        "/discid/",
+        200,
+        discid_json("mb-progress-commit", "rg-progress-commit", &[probed, 0]),
+    );
+    fixture.scan(1).await;
+
+    let mut events = fixture.import.subscribe_events();
+    let context = fixture.context();
+    let token = CancellationToken::new();
+    let pass = tokio::spawn(async move { run_pass_for_test(&context, &token).await });
+
+    loop {
+        let event = tokio::time::timeout(Duration::from_secs(10), events.recv())
+            .await
+            .expect("identified progress arrives")
+            .expect("event bus remains open");
+        if matches!(
+            event,
+            ImportEvent::QueueIdentifyProgress {
+                identified: 1,
+                total: 1
+            }
+        ) {
+            assert!(
+                fixture.stored_for(&dir).await.is_some(),
+                "the DB row must be readable before progress exposes the verdict"
+            );
+            break;
+        }
+    }
+
+    pass.await.expect("sweep pass joins");
 }
 
 /// The sweep drives the whole queue through `IdentifyStateChanged` and
@@ -1211,7 +1529,7 @@ fn count_candidate_events(
 ) -> (usize, usize) {
     let mut total = 0;
     let mut watched = 0;
-    while let Ok(event) = events.try_recv() {
+    for event in drain_events(events) {
         let priority = match event {
             ImportEvent::IdentifyStateChanged { priority, .. }
             | ImportEvent::SignalsUpdated { priority, .. } => priority,
@@ -1223,6 +1541,17 @@ fn count_candidate_events(
         }
     }
     (total, watched)
+}
+
+fn drain_events(events: &mut tokio::sync::broadcast::Receiver<ImportEvent>) -> Vec<ImportEvent> {
+    let mut drained = Vec::new();
+    loop {
+        match events.try_recv() {
+            Ok(event) => drained.push(event),
+            Err(tokio::sync::broadcast::error::TryRecvError::Empty) => return drained,
+            Err(error) => panic!("import event bus failed while draining ready events: {error}"),
+        }
+    }
 }
 
 /// A candidate that vanishes while it is being identified must not wedge the
@@ -1246,7 +1575,7 @@ async fn a_candidate_removed_mid_flight_does_not_wedge_the_sweep() {
     // the candidate is genuinely mid-flight when the folder goes.
     let context = fixture.context();
     let token = CancellationToken::new();
-    let pass = tokio::spawn(async move { run_pass(&context, &token).await });
+    let pass = tokio::spawn(async move { run_pass_for_test(&context, &token).await });
     tokio::time::sleep(Duration::from_millis(150)).await;
     std::fs::remove_dir_all(&dir).unwrap();
     // What the folder watcher does when a candidate's directory goes: re-scan
@@ -1432,7 +1761,7 @@ async fn a_cancelled_candidate_writes_no_row() {
     let context = fixture.context();
     let token = CancellationToken::new();
     let pass_token = token.clone();
-    let pass = tokio::spawn(async move { run_pass(&context, &pass_token).await });
+    let pass = tokio::spawn(async move { run_pass_for_test(&context, &pass_token).await });
     tokio::time::sleep(Duration::from_millis(300)).await;
     assert_eq!(
         fixture.provider.count_containing("/discid/"),
@@ -1456,49 +1785,124 @@ async fn a_cancelled_candidate_writes_no_row() {
     let cancelled = CancellationToken::new();
     cancelled.cancel();
     assert!(
-        !save(&fixture.context(), &cancelled, "hash-x", "/x", &verdict, 0).await,
+        !save(
+            &fixture.context(),
+            &cancelled,
+            "/x",
+            "hash-x",
+            "/x",
+            &verdict,
+            0,
+            0,
+        )
+        .await,
         "the write is gated on the token, not only the lookup before it"
     );
     assert!(fixture.stored().await.is_empty());
 }
 
-/// A row this build can no longer decode is absent, not broken: the candidate is
-/// identified again and the row overwritten. Greenfield — there is no fallback
-/// decoder to reach for, and treating it as an error would strand the candidate
-/// with no way back.
 #[test]
-fn a_verdict_that_no_longer_decodes_reads_as_absent() {
-    let good = synthetic_candidate("/a", 111);
+fn a_verdict_that_no_longer_decodes_is_rejected() {
     let stale = synthetic_candidate("/b", 222);
-    let mut stored = HashMap::new();
-    stored.insert(
-        good.files.content_hash(),
+    let row = row_with_verdict(
+        &stale,
+        r#"{"ShapeFromAnOlderBuild":{"whatever":1}}"#.to_string(),
+    );
+    assert!(decode(&row).is_err());
+}
+
+#[tokio::test(flavor = "multi_thread")]
+#[serial(musicbrainz)]
+async fn a_malformed_verdict_on_a_late_candidate_aborts_without_panicking() {
+    let fixture = Fixture::new("malformed-late-row").await;
+    let running = fixture.disc_id_candidate("Running");
+    let probed = fixture.probed_total_ms(&running);
+    fixture
+        .cover_art
+        .seed_lookup(Some("mb-malformed-running"), None, None);
+    fixture.provider.route(
+        "/discid/",
+        200,
+        discid_json("mb-malformed-running", "rg-malformed-running", &[probed, 0]),
+    );
+    fixture.scan(1).await;
+
+    fixture.provider.set_delay(Duration::from_secs(2));
+
+    let context = fixture.context();
+    let token = CancellationToken::new();
+    let pass = tokio::spawn(async move { run_pass_for_test(&context, &token).await });
+    wait_for_request(&fixture.provider, "/discid/", 1).await;
+    let late = fixture.disc_id_candidate("Late");
+    std::fs::write(late.join("late-playlist.m3u"), "late identity").unwrap();
+    fixture
+        .manager
+        .save_import_candidate_verdict(&NewImportCandidateVerdict {
+            content_hash: fixture.content_hash(&late),
+            folder_path: late.to_string_lossy().into_owned(),
+            verdict: r#"{"ShapeFromAnOlderBuild":{"whatever":1}}"#.to_string(),
+            probed_total_duration_ms: 0,
+            expected_edit_revision: 0,
+        })
+        .await
+        .unwrap();
+    fixture
+        .import
+        .refresh_watched_folder(fixture.root.to_string_lossy().into_owned())
+        .await
+        .unwrap();
+    tokio::time::timeout(Duration::from_secs(10), pass)
+        .await
+        .expect("malformed late row aborts the pass")
+        .expect("malformed late row is handled without panic");
+    assert!(!fixture
+        .identify
+        .is_running(running.to_string_lossy().as_ref()));
+}
+
+#[test]
+fn duplicate_content_hashes_share_one_identify_job() {
+    let first = synthetic_candidate("/first", 321);
+    let second = synthetic_candidate("/second", 321);
+    assert_eq!(first.files.content_hash(), second.files.content_hash());
+
+    let planned = plan(vec![first.clone(), second.clone()], &HashMap::new(), 2);
+    assert_eq!(planned.identify.len(), 1);
+    assert_eq!(planned.identify[0].candidates.len(), 2);
+    assert_eq!(planned.identified, 0);
+
+    let stored = HashMap::from([(
+        first.files.content_hash(),
         row_with_verdict(
-            &good,
+            &first,
             serde_json::to_string(&TerminalVerdict::NotFoundAnywhere).unwrap(),
         ),
-    );
-    stored.insert(
-        stale.files.content_hash(),
-        row_with_verdict(
-            &stale,
-            r#"{"ShapeFromAnOlderBuild":{"whatever":1}}"#.to_string(),
-        ),
-    );
+    )]);
+    let planned = plan(vec![first, second], &stored, 2);
+    assert!(planned.identify.is_empty());
+    assert_eq!(planned.identified, 2);
+}
 
-    let planned = plan(vec![good, stale], &stored, 2);
-    assert_eq!(planned.identified, 1, "only the decodable row counts");
-    let re_identified: Vec<String> = planned
-        .identify
-        .iter()
-        .map(|c| c.path.to_string_lossy().into_owned())
-        .collect();
-    assert_eq!(
-        re_identified,
-        vec!["/b".to_string()],
-        "an undecodable row is absent, so its candidate is identified again"
+#[test]
+fn equivalent_late_candidates_share_one_top_up_job() {
+    let first = synthetic_candidate("/first", 321);
+    let second = synthetic_candidate("/second", 321);
+    let row = row_with_verdict(
+        &first,
+        serde_json::to_string(&found_verdict(2, None)).unwrap(),
     );
-    assert!(planned.top_up.is_empty());
+    let mut pending = VecDeque::new();
+    let mut queued = HashSet::new();
+
+    enqueue_top_up(
+        &mut pending,
+        &mut queued,
+        row.clone(),
+        candidate_identity(&first),
+    );
+    enqueue_top_up(&mut pending, &mut queued, row, candidate_identity(&second));
+
+    assert_eq!(pending.len(), 1);
 }
 
 /// The top-up predicate, at the level where it is decided. "Nobody asked"
@@ -1529,6 +1933,7 @@ fn synthetic_candidate(path: &str, size: u64) -> FolderCandidate {
     use crate::import::folder_scanner::{CandidateFile, CategorizedFiles, FileRole, ScannedFile};
     FolderCandidate {
         path: PathBuf::from(path),
+        file_root: PathBuf::from(path),
         name: path.trim_start_matches('/').to_string(),
         files: CategorizedFiles {
             files: vec![CandidateFile {
@@ -1543,8 +1948,11 @@ fn synthetic_candidate(path: &str, size: u64) -> FolderCandidate {
             format_label: "FLAC".to_string(),
         },
         watched_folder_path: "/".to_string(),
-        skipped: false,
-        is_added: false,
+        scope: crate::import::folder_scanner::ReleaseFileScope::Recursive,
+        file_edit_revision: 0,
+        display_path: path.trim_start_matches('/').to_string(),
+        resolved_boundaries: Vec::new(),
+        combine_ancestor_key: None,
     }
 }
 

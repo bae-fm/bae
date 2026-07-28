@@ -20,14 +20,39 @@ fn audio_entry(path: &str, relative_path: &str, size: u64) -> CandidateFile {
     }
 }
 
-/// Every scan item (valid + invalid) for `root`.
+/// The final projected scan items for `root`. The callback is an update stream:
+/// a later item with the same key can add a proven combine action or replace
+/// provisional candidates with an unresolved boundary.
 fn scan_items(root: impl Into<PathBuf>) -> Vec<ScanItem> {
-    let mut items = Vec::new();
-    scan_for_candidates_with_callback(root.into(), &StoredCandidateEdits::none(), |item| {
-        items.push(item)
+    scan_projected_items_with_decisions(root.into(), FolderReleaseDecisions::default())
+}
+
+fn scan_projected_items_with_decisions(
+    root: PathBuf,
+    decisions: FolderReleaseDecisions,
+) -> Vec<ScanItem> {
+    let watched_folder =
+        crate::import::WatchedFolder::from_path(root.to_string_lossy().into_owned());
+    let mut state = crate::import::handle::ImportCandidateState::default();
+    scan_for_candidates_with_decisions(root, &StoredCandidateEdits::none(), &decisions, |item| {
+        if !matches!(item, ScanItem::Discovered(_)) {
+            state.apply_scan_item(item, false, false);
+        }
     })
     .unwrap();
-    items
+    let snapshot = state.snapshot(vec![watched_folder]);
+    snapshot
+        .folder_candidates
+        .into_iter()
+        .map(|candidate| ScanItem::Valid(candidate.candidate))
+        .chain(
+            snapshot
+                .invalid_candidates
+                .into_iter()
+                .map(ScanItem::Invalid),
+        )
+        .chain(snapshot.boundaries.into_iter().map(ScanItem::Boundary))
+        .collect()
 }
 
 /// Only the valid `FolderCandidate`s for `root` — the shape most scanner
@@ -38,8 +63,699 @@ fn scan_valid(root: impl Into<PathBuf>) -> Vec<FolderCandidate> {
         .filter_map(|item| match item {
             ScanItem::Valid(c) => Some(c),
             ScanItem::Invalid(_) => None,
+            ScanItem::Discovered(_) | ScanItem::Boundary(_) => None,
         })
         .collect()
+}
+
+fn scan_for_candidates_with_decisions_collect(
+    root: PathBuf,
+    decisions: FolderReleaseDecisions,
+) -> Vec<ScanItem> {
+    let mut items = Vec::new();
+    scan_for_candidates_with_decisions(root, &StoredCandidateEdits::none(), &decisions, |item| {
+        if !matches!(item, ScanItem::Discovered(_)) {
+            items.push(item);
+        }
+    })
+    .unwrap();
+    items
+}
+
+#[test]
+fn names_do_not_combine_audio_bearing_children() {
+    let temp_dir = tempfile::tempdir().unwrap();
+    let root = temp_dir.path().join("Wrapped Release");
+    for child in ["CD1", "CD2"] {
+        let child = root.join(child);
+        std::fs::create_dir_all(&child).unwrap();
+        std::fs::write(child.join("track.flac"), fake_flac()).unwrap();
+    }
+
+    let candidates = scan_valid(&root);
+
+    assert_eq!(candidates.len(), 2);
+    assert!(candidates
+        .iter()
+        .all(|candidate| candidate.scope == ReleaseFileScope::Direct));
+}
+
+#[test]
+fn direct_audio_and_audio_bearing_child_are_distinct_approximations() {
+    let temp_dir = tempfile::tempdir().unwrap();
+    let root = temp_dir.path().join("Collection");
+    let child = root.join("Nested Release");
+    std::fs::create_dir_all(&child).unwrap();
+    std::fs::write(root.join("loose.flac"), fake_flac()).unwrap();
+    std::fs::write(child.join("track.flac"), fake_flac()).unwrap();
+
+    let candidates = scan_valid(&root);
+
+    assert_eq!(candidates.len(), 2);
+    let root_candidate = candidates
+        .iter()
+        .find(|candidate| candidate.path == root)
+        .expect("direct files produce their own release approximation");
+    assert_eq!(
+        root_candidate.path.to_string_lossy(),
+        root.to_string_lossy(),
+        "the watched-root candidate key preserves the registered root path"
+    );
+    assert_eq!(
+        root_candidate
+            .files
+            .release_files()
+            .map(|file| file.relative_path.as_str())
+            .collect::<Vec<_>>(),
+        vec!["loose.flac"],
+    );
+}
+
+#[test]
+fn file_free_group_emits_an_actionable_release_before_later_child_finishes() {
+    struct BlockingReader {
+        blocked: PathBuf,
+        entered: std::sync::mpsc::Sender<()>,
+        gate: std::sync::Arc<(std::sync::Mutex<bool>, std::sync::Condvar)>,
+    }
+
+    impl DirectoryReader for BlockingReader {
+        fn read(
+            &self,
+            root: &Path,
+            directory: &Path,
+            cancellation: &ScanCancellation,
+        ) -> Result<DirectoryListing, FolderScanError> {
+            if directory == self.blocked {
+                self.entered.send(()).expect("announce blocked directory");
+                let (lock, condition) = &*self.gate;
+                let mut open = lock.lock().unwrap();
+                while !*open {
+                    open = condition.wait(open).unwrap();
+                }
+            }
+            OsDirectoryReader.read(root, directory, cancellation)
+        }
+    }
+
+    let temp_dir = tempfile::tempdir().unwrap();
+    let root = temp_dir.path().join("Queue");
+    let group = root.join("Collection");
+    let first = group.join("Release 01");
+    let later = group.join("Release 99");
+    std::fs::create_dir_all(&first).unwrap();
+    std::fs::create_dir_all(&later).unwrap();
+    std::fs::write(first.join("track.flac"), fake_flac()).unwrap();
+    std::fs::write(later.join("track.flac"), fake_flac()).unwrap();
+
+    let (entered_tx, entered_rx) = std::sync::mpsc::channel();
+    let (item_tx, item_rx) = std::sync::mpsc::channel();
+    let gate = std::sync::Arc::new((std::sync::Mutex::new(false), std::sync::Condvar::new()));
+    let thread_gate = gate.clone();
+    let scan_root = root.clone();
+    let scan = std::thread::spawn(move || {
+        let reader = BlockingReader {
+            blocked: PathBuf::from("Collection/Release 99"),
+            entered: entered_tx,
+            gate: thread_gate,
+        };
+        scan_for_candidates_with_reader(
+            &reader,
+            scan_root,
+            &StoredCandidateEdits::none(),
+            &FolderReleaseDecisions::default(),
+            |item| item_tx.send(item).expect("receive scan item"),
+        )
+    });
+
+    let first_item = item_rx
+        .recv_timeout(std::time::Duration::from_secs(2))
+        .expect("first release emits");
+    assert!(matches!(
+        first_item,
+        ScanItem::Discovered(candidate) if candidate.path == first
+    ));
+    entered_rx
+        .recv_timeout(std::time::Duration::from_secs(2))
+        .expect("later directory is suspended");
+    assert!(
+        item_rx
+            .try_iter()
+            .any(|item| matches!(item, ScanItem::Valid(candidate) if candidate.path == first)),
+        "the immediate listing proves the file-free group cannot own shared release files"
+    );
+
+    let (lock, condition) = &*gate;
+    *lock.lock().unwrap() = true;
+    condition.notify_all();
+    scan.join().unwrap().unwrap();
+}
+
+#[test]
+fn shared_group_files_keep_descendants_non_actionable_until_boundary_is_complete() {
+    struct BlockingReader {
+        entered: std::sync::mpsc::Sender<()>,
+        gate: std::sync::Arc<(std::sync::Mutex<bool>, std::sync::Condvar)>,
+    }
+
+    impl DirectoryReader for BlockingReader {
+        fn read(
+            &self,
+            root: &Path,
+            directory: &Path,
+            cancellation: &ScanCancellation,
+        ) -> Result<DirectoryListing, FolderScanError> {
+            if directory == Path::new("Group/Release 99") {
+                self.entered.send(()).expect("announce blocked directory");
+                let (lock, condition) = &*self.gate;
+                let mut open = lock.lock().unwrap();
+                while !*open {
+                    open = condition.wait(open).unwrap();
+                }
+            }
+            OsDirectoryReader.read(root, directory, cancellation)
+        }
+    }
+
+    let temp_dir = tempfile::tempdir().unwrap();
+    let root = temp_dir.path().join("Queue");
+    let group = root.join("Group");
+    std::fs::create_dir_all(&group).unwrap();
+    std::fs::write(group.join("cover.jpg"), [0xFF, 0xD8, 0xFF, 0xE0]).unwrap();
+    for release in ["Release 01", "Release 02", "Release 99"] {
+        let release = group.join(release);
+        std::fs::create_dir_all(&release).unwrap();
+        std::fs::write(release.join("track.flac"), fake_flac()).unwrap();
+    }
+
+    let (entered_tx, entered_rx) = std::sync::mpsc::channel();
+    let (item_tx, item_rx) = std::sync::mpsc::channel();
+    let gate = std::sync::Arc::new((std::sync::Mutex::new(false), std::sync::Condvar::new()));
+    let scan_gate = gate.clone();
+    let scan_root = root.clone();
+    let scan = std::thread::spawn(move || {
+        scan_for_candidates_with_reader(
+            &BlockingReader {
+                entered: entered_tx,
+                gate: scan_gate,
+            },
+            scan_root,
+            &StoredCandidateEdits::none(),
+            &FolderReleaseDecisions::default(),
+            |item| item_tx.send(item).expect("receive scan item"),
+        )
+    });
+
+    entered_rx
+        .recv_timeout(std::time::Duration::from_secs(2))
+        .expect("final sibling is suspended");
+    let available: Vec<_> = item_rx.try_iter().collect();
+    assert!(
+        !available
+            .iter()
+            .any(|item| matches!(item, ScanItem::Valid(_))),
+        "an unresolved wrapper must not start identification for provisional descendants"
+    );
+
+    let (lock, condition) = &*gate;
+    *lock.lock().unwrap() = true;
+    condition.notify_all();
+    scan.join().unwrap().unwrap();
+    assert!(item_rx
+        .try_iter()
+        .any(|item| matches!(item, ScanItem::Boundary(boundary) if boundary.name == "Group")));
+}
+
+#[test]
+fn direct_audio_parent_keeps_descendant_non_actionable_until_boundary_is_complete() {
+    struct BlockingReader {
+        entered: std::sync::mpsc::Sender<()>,
+        gate: std::sync::Arc<(std::sync::Mutex<bool>, std::sync::Condvar)>,
+    }
+
+    impl DirectoryReader for BlockingReader {
+        fn read(
+            &self,
+            root: &Path,
+            directory: &Path,
+            cancellation: &ScanCancellation,
+        ) -> Result<DirectoryListing, FolderScanError> {
+            if directory == Path::new("Group/Release 99") {
+                self.entered.send(()).expect("announce blocked directory");
+                let (lock, condition) = &*self.gate;
+                let mut open = lock.lock().unwrap();
+                while !*open {
+                    open = condition.wait(open).unwrap();
+                }
+            }
+            OsDirectoryReader.read(root, directory, cancellation)
+        }
+    }
+
+    let temp_dir = tempfile::tempdir().unwrap();
+    let root = temp_dir.path().join("Queue");
+    let group = root.join("Group");
+    std::fs::create_dir_all(group.join("Release 01")).unwrap();
+    std::fs::create_dir_all(group.join("Release 99")).unwrap();
+    for path in [
+        group.join("loose.flac"),
+        group.join("Release 01/track.flac"),
+        group.join("Release 99/track.flac"),
+    ] {
+        std::fs::write(path, fake_flac()).unwrap();
+    }
+
+    let (entered_tx, entered_rx) = std::sync::mpsc::channel();
+    let (item_tx, item_rx) = std::sync::mpsc::channel();
+    let gate = std::sync::Arc::new((std::sync::Mutex::new(false), std::sync::Condvar::new()));
+    let scan_gate = gate.clone();
+    let scan_root = root.clone();
+    let scan = std::thread::spawn(move || {
+        scan_for_candidates_with_reader(
+            &BlockingReader {
+                entered: entered_tx,
+                gate: scan_gate,
+            },
+            scan_root,
+            &StoredCandidateEdits::none(),
+            &FolderReleaseDecisions::default(),
+            |item| item_tx.send(item).expect("receive scan item"),
+        )
+    });
+
+    entered_rx
+        .recv_timeout(std::time::Duration::from_secs(2))
+        .expect("final sibling is suspended");
+    assert!(!item_rx
+        .try_iter()
+        .any(|item| matches!(item, ScanItem::Valid(_))));
+
+    let (lock, condition) = &*gate;
+    *lock.lock().unwrap() = true;
+    condition.notify_all();
+    scan.join().unwrap().unwrap();
+    assert!(item_rx
+        .try_iter()
+        .any(|item| matches!(item, ScanItem::Boundary(boundary) if boundary.name == "Group")));
+}
+
+#[test]
+fn discography_and_multidisc_shapes_follow_folder_structure_only() {
+    let temp_dir = tempfile::tempdir().unwrap();
+    let root = temp_dir.path().join("Media");
+    for release in [
+        "Collective/Studio Albums/1990 - First",
+        "Collective/Studio Albums/1992 - Second",
+        "Solo Artist/1971 - Ordinary",
+        "Solo Artist/1973 - Box/CD1",
+        "Solo Artist/1973 - Box/CD2",
+    ] {
+        let release = root.join(release);
+        std::fs::create_dir_all(&release).unwrap();
+        std::fs::write(release.join("track.flac"), fake_flac()).unwrap();
+    }
+
+    let items = scan_items(&root);
+    let mut candidates = HashMap::new();
+    for item in &items {
+        if let ScanItem::Valid(candidate) = item {
+            candidates.insert(candidate.display_path.as_str(), candidate);
+        }
+    }
+    assert!(candidates.contains_key("Solo Artist/1971 - Ordinary"));
+    assert!(candidates.contains_key("Collective/Studio Albums/1990 - First"));
+    assert!(candidates.contains_key("Collective/Studio Albums/1992 - Second"));
+    assert!(candidates.contains_key("Solo Artist/1973 - Box/CD1"));
+    assert!(candidates.contains_key("Solo Artist/1973 - Box/CD2"));
+    assert!(!candidates.contains_key("Collective"));
+    assert!(!candidates.contains_key("Collective/Studio Albums"));
+
+    assert!(!items
+        .iter()
+        .any(|item| matches!(item, ScanItem::Boundary(_))));
+    for candidate in candidates.values() {
+        let expected = if candidate.display_path.starts_with("Collective/") {
+            "Collective/Studio Albums"
+        } else if candidate.display_path.contains("1973 - Box/") {
+            "Solo Artist/1973 - Box"
+        } else {
+            assert_eq!(candidate.display_path, "Solo Artist/1971 - Ordinary");
+            "Solo Artist"
+        };
+        assert_eq!(
+            candidate
+                .combine_ancestor_key
+                .as_ref()
+                .map(|key| key.relative_folder_path.as_str()),
+            Some(expected)
+        );
+    }
+
+    let combined = scan_for_candidates_with_decisions_collect(
+        root,
+        FolderReleaseDecisions::new(HashMap::from([(
+            "Solo Artist/1973 - Box".to_string(),
+            FolderReleaseDecision::CombineAsOneRelease,
+        )])),
+    );
+    assert!(combined.iter().any(
+        |item| matches!(item, ScanItem::Valid(candidate) if candidate.display_path == "Solo Artist/1973 - Box")
+    ));
+}
+
+#[test]
+fn cancelled_scan_stops_before_the_next_directory_read() {
+    #[derive(Default)]
+    struct RecordingReader {
+        reads: std::sync::Mutex<Vec<PathBuf>>,
+    }
+
+    impl DirectoryReader for RecordingReader {
+        fn read(
+            &self,
+            root: &Path,
+            directory: &Path,
+            cancellation: &ScanCancellation,
+        ) -> Result<DirectoryListing, FolderScanError> {
+            self.reads.lock().unwrap().push(directory.to_path_buf());
+            OsDirectoryReader.read(root, directory, cancellation)
+        }
+    }
+
+    let temp_dir = tempfile::tempdir().unwrap();
+    let root = temp_dir.path().join("Queue");
+    for child in ["Release 01", "Release 02"] {
+        let child = root.join(child);
+        std::fs::create_dir_all(&child).unwrap();
+        std::fs::write(child.join("track.flac"), fake_flac()).unwrap();
+    }
+    let reader = RecordingReader::default();
+    let cancellation = ScanCancellation::new();
+
+    let result = scan_for_candidates_with_reader_cancellable(
+        &reader,
+        root,
+        &StoredCandidateEdits::none(),
+        &FolderReleaseDecisions::default(),
+        &cancellation,
+        |item| {
+            if matches!(item, ScanItem::Discovered(_)) {
+                cancellation.cancel();
+            }
+        },
+    );
+
+    assert!(matches!(result, Err(FolderScanError::Cancelled)));
+    assert_eq!(
+        reader.reads.lock().unwrap().as_slice(),
+        [PathBuf::new(), PathBuf::from("Release 01")]
+    );
+}
+
+#[test]
+fn cancellation_reaches_an_in_progress_directory_read() {
+    struct CancellableReader {
+        entered: std::sync::mpsc::Sender<()>,
+    }
+
+    impl DirectoryReader for CancellableReader {
+        fn read(
+            &self,
+            _root: &Path,
+            _directory: &Path,
+            cancellation: &ScanCancellation,
+        ) -> Result<DirectoryListing, FolderScanError> {
+            self.entered.send(()).expect("announce directory read");
+            loop {
+                cancellation.check()?;
+                std::thread::yield_now();
+            }
+        }
+    }
+
+    let (entered_tx, entered_rx) = std::sync::mpsc::channel();
+    let cancellation = ScanCancellation::new();
+    let thread_cancellation = cancellation.clone();
+    let scan = std::thread::spawn(move || {
+        scan_for_candidates_with_reader_cancellable(
+            &CancellableReader {
+                entered: entered_tx,
+            },
+            PathBuf::from("/network"),
+            &StoredCandidateEdits::none(),
+            &FolderReleaseDecisions::default(),
+            &thread_cancellation,
+            |_| {},
+        )
+    });
+    entered_rx
+        .recv_timeout(std::time::Duration::from_secs(2))
+        .expect("reader did not start");
+    cancellation.cancel();
+    assert!(matches!(
+        scan.join().unwrap(),
+        Err(FolderScanError::Cancelled)
+    ));
+}
+
+#[test]
+fn unresolved_boundary_combines_or_exposes_descendants_by_persisted_decision() {
+    let temp_dir = tempfile::tempdir().unwrap();
+    let root = temp_dir.path().join("Queue");
+    let wrapper = root.join("Collection").join("Release Wrapper");
+    for child in ["Part 01", "Part 02"] {
+        let child = wrapper.join(child);
+        std::fs::create_dir_all(&child).unwrap();
+        std::fs::write(child.join("track.flac"), fake_flac()).unwrap();
+    }
+    std::fs::write(wrapper.join("booklet.txt"), "notes").unwrap();
+
+    let scan = |decisions: FolderReleaseDecisions| {
+        scan_projected_items_with_decisions(root.clone(), decisions)
+    };
+
+    let unresolved = scan(FolderReleaseDecisions::default());
+    let boundary = unresolved
+        .iter()
+        .find_map(|item| match item {
+            ScanItem::Boundary(boundary) => Some(boundary),
+            ScanItem::Discovered(_) | ScanItem::Valid(_) | ScanItem::Invalid(_) => None,
+        })
+        .expect("structure remains unresolved");
+    assert_eq!(
+        boundary.key.relative_folder_path,
+        "Collection/Release Wrapper"
+    );
+    assert_eq!(boundary.shared_file_count, 1);
+
+    let combined = scan(FolderReleaseDecisions::new(HashMap::from([(
+        "Collection/Release Wrapper".to_string(),
+        FolderReleaseDecision::CombineAsOneRelease,
+    )])));
+    let combined = combined
+        .iter()
+        .find_map(|item| match item {
+            ScanItem::Valid(candidate) => Some(candidate),
+            ScanItem::Discovered(_) | ScanItem::Invalid(_) | ScanItem::Boundary(_) => None,
+        })
+        .expect("combined wrapper is actionable");
+    assert_eq!(combined.path, wrapper);
+    assert_eq!(combined.scope, ReleaseFileScope::Recursive);
+    assert_eq!(combined.files.release_files().count(), 3);
+
+    let separate = scan(FolderReleaseDecisions::new(HashMap::from([(
+        "Collection/Release Wrapper".to_string(),
+        FolderReleaseDecision::KeepAsSeparateReleases,
+    )])));
+    let separate: Vec<_> = separate
+        .iter()
+        .filter_map(|item| match item {
+            ScanItem::Valid(candidate) => Some(candidate),
+            ScanItem::Discovered(_) | ScanItem::Invalid(_) | ScanItem::Boundary(_) => None,
+        })
+        .collect();
+    assert_eq!(separate.len(), 2);
+    assert!(separate.iter().all(|candidate| {
+        candidate.scope == ReleaseFileScope::Direct
+            && matches!(
+                candidate.resolved_boundaries.as_slice(),
+                [ResolvedFolderReleaseBoundary {
+                    decision: FolderReleaseDecision::KeepAsSeparateReleases,
+                    ..
+                }]
+            )
+    }));
+}
+
+#[test]
+fn ambiguity_tree_keeps_a_direct_parent_release_and_its_child() {
+    let temp_dir = tempfile::tempdir().unwrap();
+    let root = temp_dir.path().join("Queue");
+    let parent = root.join("Group").join("Artist");
+    let child = parent.join("Album");
+    std::fs::create_dir_all(&child).unwrap();
+    std::fs::write(parent.join("parent.flac"), fake_flac()).unwrap();
+    std::fs::write(child.join("child.flac"), fake_flac()).unwrap();
+
+    let boundary = scan_items(&root)
+        .into_iter()
+        .find_map(|item| match item {
+            ScanItem::Boundary(boundary) if boundary.key.relative_folder_path == "Group/Artist" => {
+                Some(boundary)
+            }
+            _ => None,
+        })
+        .expect("the parent and child are ambiguous");
+
+    assert!(matches!(
+        boundary.tree_rows[0].kind,
+        FolderReleaseTreeRowKind::Candidate { .. }
+    ));
+    assert_eq!(boundary.tree_rows[0].name, "Artist");
+    assert_eq!(boundary.tree_rows[0].decision_key, boundary.key);
+    assert!(boundary.tree_rows.iter().any(|row| {
+        row.name == "Album"
+            && matches!(row.kind, FolderReleaseTreeRowKind::Candidate { .. })
+            && row.depth == 1
+    }));
+}
+
+#[test]
+fn ambiguity_tree_keeps_an_invalid_direct_parent_and_valid_child() {
+    let temp_dir = tempfile::tempdir().unwrap();
+    let root = temp_dir.path().join("Queue");
+    let parent = root.join("Group").join("Artist");
+    let child = parent.join("Album");
+    std::fs::create_dir_all(&child).unwrap();
+    std::fs::write(parent.join("parent.flac"), fake_flac()).unwrap();
+    std::fs::write(parent.join("broken.jpg"), b"not an image").unwrap();
+    std::fs::write(child.join("child.flac"), fake_flac()).unwrap();
+
+    let boundary = scan_items(&root)
+        .into_iter()
+        .find_map(|item| match item {
+            ScanItem::Boundary(boundary) if boundary.key.relative_folder_path == "Group/Artist" => {
+                Some(boundary)
+            }
+            _ => None,
+        })
+        .expect("the invalid parent and valid child are ambiguous");
+
+    assert!(matches!(
+        boundary.tree_rows[0].kind,
+        FolderReleaseTreeRowKind::Invalid { .. }
+    ));
+    assert_eq!(boundary.tree_rows[0].name, "Artist");
+    assert!(boundary.tree_rows.iter().any(|row| {
+        row.name == "Album" && matches!(row.kind, FolderReleaseTreeRowKind::Candidate { .. })
+    }));
+}
+
+#[test]
+fn keep_separate_context_survives_when_every_descendant_is_invalid() {
+    let temp_dir = tempfile::tempdir().unwrap();
+    let root = temp_dir.path().join("Queue");
+    for child in ["Group/Release 1", "Group/Release 2"] {
+        let child = root.join(child);
+        std::fs::create_dir_all(&child).unwrap();
+        std::fs::write(child.join("track.flac"), b"not a flac").unwrap();
+    }
+    let mut items = Vec::new();
+    scan_for_candidates_with_decisions(
+        root,
+        &StoredCandidateEdits::none(),
+        &FolderReleaseDecisions::new(HashMap::from([(
+            "Group".to_string(),
+            FolderReleaseDecision::KeepAsSeparateReleases,
+        )])),
+        |item| {
+            if !matches!(item, ScanItem::Discovered(_)) {
+                items.push(item);
+            }
+        },
+    )
+    .unwrap();
+
+    let invalid: Vec<_> = items
+        .iter()
+        .filter_map(|item| match item {
+            ScanItem::Invalid(candidate) => Some(candidate),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(invalid.len(), 2);
+    assert!(invalid.iter().all(|candidate| {
+        matches!(
+            candidate.resolved_boundaries.as_slice(),
+            [ResolvedFolderReleaseBoundary {
+                decision: FolderReleaseDecision::KeepAsSeparateReleases,
+                ..
+            }]
+        )
+    }));
+}
+
+#[test]
+fn unresolved_boundary_counts_shared_files_in_audio_free_subtrees() {
+    let temp_dir = tempfile::tempdir().unwrap();
+    let root = temp_dir.path().join("Queue");
+    let wrapper = root.join("Collection").join("Release Wrapper");
+    for child in ["Release 01", "Release 02"] {
+        let child = wrapper.join(child);
+        std::fs::create_dir_all(&child).unwrap();
+        std::fs::write(child.join("track.flac"), fake_flac()).unwrap();
+    }
+    let scans = wrapper.join("Scans");
+    std::fs::create_dir_all(scans.join("Booklet")).unwrap();
+    std::fs::write(scans.join("front.jpg"), [0xFF, 0xD8, 0xFF, 0xE0]).unwrap();
+    std::fs::write(scans.join("Booklet").join("notes.txt"), "notes").unwrap();
+
+    let boundary = scan_items(root)
+        .into_iter()
+        .find_map(|item| match item {
+            ScanItem::Boundary(boundary) => Some(boundary),
+            ScanItem::Discovered(_) | ScanItem::Valid(_) | ScanItem::Invalid(_) => None,
+        })
+        .expect("collection remains unresolved");
+
+    assert_eq!(boundary.shared_file_count, 2);
+}
+
+#[test]
+fn nested_collection_candidates_carry_core_issued_combine_keys() {
+    let temp_dir = tempfile::tempdir().unwrap();
+    let root = temp_dir.path().join("Queue");
+    for release in [
+        "Collection/Box/Release 01",
+        "Collection/Box/Release 02",
+        "Collection/Release 03",
+    ] {
+        let release = root.join(release);
+        std::fs::create_dir_all(&release).unwrap();
+        std::fs::write(release.join("track.flac"), fake_flac()).unwrap();
+    }
+
+    let items = scan_items(&root);
+    assert!(!items
+        .iter()
+        .any(|item| matches!(item, ScanItem::Boundary(_))));
+    let box_candidates: Vec<_> = items
+        .into_iter()
+        .filter_map(|item| match item {
+            ScanItem::Valid(candidate) if candidate.display_path.starts_with("Collection/Box/") => {
+                Some(candidate)
+            }
+            _ => None,
+        })
+        .collect();
+    assert_eq!(box_candidates.len(), 2);
+    assert!(box_candidates.iter().all(|candidate| candidate
+        .combine_ancestor_key
+        .as_ref()
+        .is_some_and(|key| {
+            key.watched_folder_path == root.to_string_lossy()
+                && key.relative_folder_path == "Collection/Box"
+        })));
 }
 
 #[test]
@@ -74,71 +790,6 @@ fn test_is_cue_file() {
     assert!(is_cue_file(Path::new("album.cue")));
     assert!(is_cue_file(Path::new("album.CUE")));
     assert!(!is_cue_file(Path::new("album.flac")));
-}
-
-#[test]
-fn test_is_disc_indicator_name_basics() {
-    // Bare numeric.
-    assert!(is_disc_indicator_name("1"));
-    assert!(is_disc_indicator_name("02"));
-    assert!(is_disc_indicator_name("003"));
-    assert!(!is_disc_indicator_name(""));
-
-    // Space / no-separator forms.
-    assert!(is_disc_indicator_name("Disc 1"));
-    assert!(is_disc_indicator_name("DISC 1"));
-    assert!(is_disc_indicator_name("CD2"));
-    assert!(is_disc_indicator_name("disk 03"));
-    assert!(is_disc_indicator_name("Part 2"));
-
-    // Side with separator (single alpha char).
-    assert!(is_disc_indicator_name("Side A"));
-    assert!(is_disc_indicator_name("side b"));
-}
-
-#[test]
-fn test_is_disc_indicator_name_alt_separators() {
-    // -, _, . must all work as separators (N1).
-    assert!(is_disc_indicator_name("Disc-1"));
-    assert!(is_disc_indicator_name("Disk_2"));
-    assert!(is_disc_indicator_name("CD.3"));
-    assert!(is_disc_indicator_name("Part-04"));
-    assert!(is_disc_indicator_name("Side-A"));
-    assert!(is_disc_indicator_name("Side_B"));
-    assert!(is_disc_indicator_name("Side.C"));
-}
-
-#[test]
-fn test_is_disc_indicator_name_rejects_sider_family() {
-    // Must require a separator between `Side` and the alpha char so
-    // `Sider`, `Sideshow`, etc. do NOT match (N2).
-    assert!(!is_disc_indicator_name("Sider"));
-    assert!(!is_disc_indicator_name("Sideshow"));
-    assert!(!is_disc_indicator_name("SideProject"));
-}
-
-#[test]
-fn test_is_disc_indicator_name_rejects_descriptive_names() {
-    // Album names, year-prefixed folders, etc. must NOT match.
-    assert!(!is_disc_indicator_name("1991 - Album A2"));
-    assert!(!is_disc_indicator_name("Vol. 01 (catalog)"));
-    assert!(!is_disc_indicator_name("Artist - Album"));
-    assert!(!is_disc_indicator_name("Disc One"));
-    assert!(!is_disc_indicator_name("Side Alpha"));
-}
-
-#[test]
-fn test_is_disc_indicator_name_accepts_descriptive_suffix() {
-    // Prefix + digits terminated by any non-alphanumeric char: match.
-    assert!(is_disc_indicator_name("Disc 1 - suffix text"));
-    assert!(is_disc_indicator_name("CD1 (suffix)"));
-    assert!(is_disc_indicator_name("CD 4 - suffix • more"));
-    assert!(is_disc_indicator_name("Part 2: suffix"));
-    // Prefix + digits followed by alphanumeric: no match — the digit
-    // run is not terminated.
-    assert!(!is_disc_indicator_name("Discography"));
-    assert!(!is_disc_indicator_name("Disc 1A"));
-    assert!(!is_disc_indicator_name("CD1Remaster"));
 }
 
 #[test]
@@ -204,7 +855,12 @@ fn test_collect_release_candidate_files_skips_hidden_and_bae() {
     std::fs::write(bae_dir.join("cover-mb.jpg"), [0xFF, 0xD8, 0xFF, 0xE0]).unwrap();
     std::fs::write(bae_dir.join("cover-discogs.jpeg"), [0xFF, 0xD8, 0xFF, 0xE0]).unwrap();
 
-    let files = collect_release_candidate_files(root, &StoredCandidateEdits::none()).unwrap();
+    let files = collect_release_candidate_files_with_scope(
+        root,
+        crate::import::ReleaseFileScope::Recursive,
+        &StoredCandidateEdits::none(),
+    )
+    .unwrap();
 
     let audio_paths: Vec<_> = files.audio().map(|f| f.relative_path.as_str()).collect();
     assert_eq!(audio_paths, vec!["track.flac"]);
@@ -228,8 +884,12 @@ fn collect_release_candidate_files_on_invalid_folder_yields_invalid_folder() {
     // Zero-byte audio is corruption, not an I/O fault.
     std::fs::write(root.join("track.flac"), []).unwrap();
 
-    let err = collect_release_candidate_files(root, &StoredCandidateEdits::none())
-        .expect_err("zero-byte audio makes the folder unimportable");
+    let err = collect_release_candidate_files_with_scope(
+        root,
+        crate::import::ReleaseFileScope::Recursive,
+        &StoredCandidateEdits::none(),
+    )
+    .expect_err("zero-byte audio makes the folder unimportable");
     assert!(
         matches!(
             err,
@@ -250,10 +910,12 @@ fn unreadable_child_directory_fails_scan() {
     std::fs::create_dir(&blocked).unwrap();
     std::fs::set_permissions(&blocked, std::fs::Permissions::from_mode(0o000)).unwrap();
 
-    let err = match FileTree::from_filesystem(root) {
-        Ok(_) => panic!("unreadable directory should fail the scan"),
-        Err(err) => err,
-    };
+    let err = scan_for_candidates_with_callback(
+        root.to_path_buf(),
+        &StoredCandidateEdits::none(),
+        |_| {},
+    )
+    .expect_err("unreadable directory should fail the scan");
 
     std::fs::set_permissions(&blocked, std::fs::Permissions::from_mode(0o700)).unwrap();
 
@@ -269,6 +931,7 @@ fn unreadable_child_directory_fails_scan() {
             )
         }
         FolderScanError::Other(message) => panic!("expected IO error, got {message}"),
+        FolderScanError::Cancelled => panic!("expected IO error, got cancellation"),
     }
 }
 
@@ -338,83 +1001,6 @@ FILE "{flac_filename}" WAVE
 }
 
 #[test]
-fn test_multi_disc_release_detected_as_single_candidate() {
-    let temp_dir = tempfile::tempdir().unwrap();
-    let root = temp_dir.path().join("Multi Disc Album");
-    std::fs::create_dir(&root).unwrap();
-
-    let discs = [("CD1", "Artist - Album CD1"), ("CD2", "Artist - Album CD2")];
-
-    for (folder_name, file_base) in &discs {
-        let disc_dir = root.join(folder_name);
-        std::fs::create_dir(&disc_dir).unwrap();
-
-        let flac_name = format!("{}.flac", file_base);
-        let cue_name = format!("{}.cue", file_base);
-
-        std::fs::write(disc_dir.join(&flac_name), fake_flac()).unwrap();
-        std::fs::write(
-            disc_dir.join(&cue_name),
-            make_cue_content(&flac_name, file_base),
-        )
-        .unwrap();
-    }
-
-    let candidates = scan_valid(root);
-
-    // The multi-disc album is the sole candidate. Its CUE/FLAC pairs
-    // cover both discs.
-    assert_eq!(candidates.len(), 1, "Expected 1 multi-disc candidate");
-
-    assert_eq!(
-        candidates[0].files.bound_sheets().len(),
-        2,
-        "Multi-disc release should have one bound sheet per disc",
-    );
-}
-
-/// Helper for collection shapes: a folder whose audio-bearing subdirs do
-/// NOT match disc-indicator patterns is a navigation container, not a
-/// candidate. Each child surfaces as its own top-level candidate.
-fn assert_collection_detected(folder_names: &[&str]) {
-    let temp_dir = tempfile::tempdir().unwrap();
-    let root = temp_dir.path().join("Collection");
-    std::fs::create_dir(&root).unwrap();
-
-    for folder_name in folder_names {
-        let album_dir = root.join(folder_name);
-        std::fs::create_dir(&album_dir).unwrap();
-        std::fs::write(album_dir.join("track.flac"), fake_flac()).unwrap();
-    }
-
-    let candidates = scan_valid(root);
-
-    assert_eq!(
-        candidates.len(),
-        folder_names.len(),
-        "Folders {:?} should each be a candidate (got {})",
-        folder_names,
-        candidates.len(),
-    );
-    for c in &candidates {
-        assert!(
-            c.path
-                .file_name()
-                .and_then(|n| n.to_str())
-                .map(|n| folder_names.contains(&n))
-                .unwrap_or(false),
-            "unexpected candidate path {:?}",
-            c.path,
-        );
-    }
-}
-
-#[test]
-fn test_collection_year_prefixed() {
-    assert_collection_detected(&["2020 - Album One", "2021 - Album Two", "2022 - Album Three"]);
-}
-
-#[test]
 fn test_cue_with_corrupt_ape_surfaces_as_invalid_candidate() {
     let temp_dir = tempfile::tempdir().unwrap();
     let root = temp_dir.path().join("APE Album");
@@ -445,6 +1031,9 @@ FILE "album.ape" WAVE
             );
         }
         ScanItem::Valid(_) => panic!("corrupt-audio folder must not be a valid candidate"),
+        ScanItem::Discovered(_) | ScanItem::Boundary(_) => {
+            panic!("terminal scan helper returned a progress item")
+        }
     }
 }
 
@@ -699,9 +1288,8 @@ fn test_volume_folders_with_long_names_are_separate() {
 
     let candidates = scan_valid(root);
 
-    // `Vol. NN (...)` names carry descriptive text — they do NOT match
-    // the disc-indicator pattern, so the parent is a navigation container
-    // and each volume is its own candidate.
+    // Names do not affect folder grouping. Each audio-bearing child is its own
+    // approximation.
     assert_eq!(candidates.len(), 2, "each volume should be a candidate");
     for c in &candidates {
         let name = c.path.file_name().and_then(|n| n.to_str()).unwrap();
@@ -771,146 +1359,6 @@ fn test_corrupt_image_skips_entire_candidate() {
     );
 }
 
-/// Partial markers anywhere under a release (e.g. `Disc 2/*.flac.part`
-/// under a multi-disc album) must stop the candidate from surfacing.
-/// The walker-level direct check wouldn't catch this because markers
-/// live one level below the leaf directory; the leaf-emission-time deep
-/// check does.
-#[test]
-fn test_partial_markers_in_sub_subfolder_stops_multi_disc_candidate() {
-    let tmp = tempfile::tempdir().unwrap();
-    let root = tmp.path().join("Album - Multi Disc With Marker");
-    let disc1 = root.join("Disc 1");
-    let disc2 = root.join("Disc 2");
-    std::fs::create_dir_all(&disc1).unwrap();
-    std::fs::create_dir_all(&disc2).unwrap();
-    std::fs::write(disc1.join("01.flac"), fake_flac()).unwrap();
-    std::fs::write(disc2.join("01.flac"), fake_flac()).unwrap();
-    // Marker one level below the multi-disc leaf.
-    std::fs::write(disc2.join("02.flac.part"), b"in progress").unwrap();
-
-    let candidates = scan_valid(root);
-
-    assert_eq!(
-        candidates.len(),
-        0,
-        "markers anywhere under the release must suppress it, got {:?}",
-        candidates.iter().map(|c| &c.name).collect::<Vec<_>>(),
-    );
-}
-
-/// A multi-disc release with one disc containing a zero-byte file is an
-/// incomplete release. The whole album is suppressed — the clean sibling
-/// disc is NOT surfaced as a standalone candidate, because a disc is a
-/// slice of a release, not a release on its own. Symmetric with how
-/// partial-marker sidecars are handled (see
-/// `multi_disc_with_partial_marker_in_one_disc_suppresses_whole_album`).
-#[test]
-fn multi_disc_with_partial_disc_suppresses_whole_album() {
-    let tmp = tempfile::tempdir().unwrap();
-    let root = tmp.path().join("Album X - Multi Disc");
-    let disc1 = root.join("Disc 1");
-    let disc2 = root.join("Disc 2");
-    std::fs::create_dir_all(&disc1).unwrap();
-    std::fs::create_dir_all(&disc2).unwrap();
-    std::fs::write(disc1.join("01.flac"), fake_flac()).unwrap();
-    std::fs::write(disc2.join("01.flac"), fake_flac()).unwrap();
-    // Zero-byte file marks this disc as in-progress / abandoned.
-    std::fs::write(disc2.join("02.flac"), b"").unwrap();
-
-    let candidates = scan_valid(root);
-
-    assert!(
-        candidates.is_empty(),
-        "incomplete multi-disc release must be suppressed; got {:?}",
-        candidates.iter().map(|c| &c.name).collect::<Vec<_>>(),
-    );
-}
-
-// ── FileTree unit tests ─────────────────────────────────────────────────
-
-#[test]
-fn test_file_tree_files_in_dir() {
-    let tree = FileTree::new(vec![
-        FileEntry {
-            path: PathBuf::from("a/1.flac"),
-            size: 100,
-        },
-        FileEntry {
-            path: PathBuf::from("a/2.flac"),
-            size: 200,
-        },
-        FileEntry {
-            path: PathBuf::from("b/3.flac"),
-            size: 300,
-        },
-        FileEntry {
-            path: PathBuf::from("root.txt"),
-            size: 10,
-        },
-    ]);
-
-    let a_files: Vec<_> = tree
-        .files_in_dir(Path::new("a"))
-        .map(|f| f.path.to_string_lossy().to_string())
-        .collect();
-    assert_eq!(a_files.len(), 2);
-
-    let root_files: Vec<_> = tree
-        .files_in_dir(Path::new(""))
-        .map(|f| f.path.to_string_lossy().to_string())
-        .collect();
-    assert_eq!(root_files.len(), 1);
-    assert_eq!(root_files[0], "root.txt");
-}
-
-#[test]
-fn test_file_tree_immediate_subdirs() {
-    let tree = FileTree::new(vec![
-        FileEntry {
-            path: PathBuf::from("a/1.flac"),
-            size: 100,
-        },
-        FileEntry {
-            path: PathBuf::from("b/2.flac"),
-            size: 200,
-        },
-        FileEntry {
-            path: PathBuf::from("root.txt"),
-            size: 10,
-        },
-    ]);
-
-    let subdirs = tree.immediate_subdirs(Path::new(""));
-    assert_eq!(subdirs.len(), 2);
-    assert!(subdirs.contains(&PathBuf::from("a")));
-    assert!(subdirs.contains(&PathBuf::from("b")));
-}
-
-#[test]
-fn test_file_tree_all_files_under() {
-    let tree = FileTree::new(vec![
-        FileEntry {
-            path: PathBuf::from("a/1.flac"),
-            size: 100,
-        },
-        FileEntry {
-            path: PathBuf::from("a/sub/2.flac"),
-            size: 200,
-        },
-        FileEntry {
-            path: PathBuf::from("b/3.flac"),
-            size: 300,
-        },
-    ]);
-
-    let a_all: Vec<_> = tree.all_files_under(Path::new("a")).collect();
-    assert_eq!(a_all.len(), 2);
-
-    let root_all: Vec<_> = tree.all_files_under(Path::new("")).collect();
-    assert_eq!(root_all.len(), 3);
-}
-
 /// Per-track FLACs plus a sheet naming absent audio: the sheet is a proposal,
 /// not the layout, so it stays unbound and the twelve tracks import.
 #[test]
@@ -978,6 +1426,9 @@ fn per_track_flacs_with_missing_cue_audio_still_import() {
                 invalid.reason
             )
         }
+        ScanItem::Discovered(_) | ScanItem::Boundary(_) => {
+            panic!("terminal scan helper returned a progress item")
+        }
     }
 }
 
@@ -999,8 +1450,12 @@ fn test_collect_release_candidate_files_cue_alac_format_label() {
     )
     .unwrap();
 
-    let files = collect_release_candidate_files(root, &StoredCandidateEdits::none())
-        .expect("scan should succeed");
+    let files = collect_release_candidate_files_with_scope(
+        root,
+        crate::import::ReleaseFileScope::Recursive,
+        &StoredCandidateEdits::none(),
+    )
+    .expect("scan should succeed");
 
     assert_eq!(files.format_label, "CUE+ALAC");
     let bound = files.bound_sheets();
@@ -1032,8 +1487,12 @@ FILE "02 - Track Two.flac" WAVE
 "#;
     std::fs::write(root.join("Album.cue"), cue).unwrap();
 
-    let files = collect_release_candidate_files(root, &StoredCandidateEdits::none())
-        .expect("scan should succeed");
+    let files = collect_release_candidate_files_with_scope(
+        root,
+        crate::import::ReleaseFileScope::Recursive,
+        &StoredCandidateEdits::none(),
+    )
+    .expect("scan should succeed");
 
     let bound = files.bound_sheets();
     assert_eq!(bound.len(), 1);
@@ -1083,8 +1542,12 @@ fn test_collect_release_candidate_files_cue_ape_track_count() {
     )
     .unwrap();
 
-    let files = collect_release_candidate_files(root, &StoredCandidateEdits::none())
-        .expect("scan should succeed");
+    let files = collect_release_candidate_files_with_scope(
+        root,
+        crate::import::ReleaseFileScope::Recursive,
+        &StoredCandidateEdits::none(),
+    )
+    .expect("scan should succeed");
 
     assert_eq!(files.format_label, "CUE+APE");
     let bound = files.bound_sheets();
@@ -1214,24 +1677,11 @@ fn make_cue_content_no_header(audio_filename: &str, n_tracks: usize) -> String {
 
 // --- Spec types ---
 
-/// Top-level spec entry. Either writes a file at `rel_path` (all folder
-/// creation is implicit via `create_dir_all` on the parent), or pins the
-/// scanner's top-level-candidate behavior on a folder.
-///
-/// Folders that aren't explicitly pinned still exist on disk via the
-/// parent-creation path — they just don't participate in the candidate
-/// set-equality check. That's the right default for the dozens of
-/// container folders the fixture creates implicitly.
+/// A file the scenario builder writes at `rel_path`. Folder creation is
+/// implicit via `create_dir_all` on the parent.
 #[derive(Debug)]
 enum FixtureEntry {
-    File {
-        rel_path: String,
-        kind: FileKind,
-    },
-    Expect {
-        rel_path: String,
-        top_level_candidate: bool,
-    },
+    File { rel_path: String, kind: FileKind },
 }
 
 /// Every file the fixture writes. One variant per distinct byte pattern
@@ -1246,7 +1696,6 @@ enum FileKind {
     // Audio formats recognised by the scanner.
     Flac,
     Mp3,
-    Ape,
     M4a,
     /// Empty FLAC file (size 0). The scanner must reject the candidate.
     ZeroByteFlac,
@@ -1326,7 +1775,6 @@ fn bytes_for(kind: FileKind) -> Vec<u8> {
     match kind {
         FileKind::Flac => fake_flac(),
         FileKind::Mp3 => fake_mp3(),
-        FileKind::Ape => fake_ape(),
         FileKind::M4a => fake_m4a(),
         FileKind::ZeroByteFlac => Vec::new(),
         FileKind::MalformedFlacStreaminfo => malformed_flac_streaminfo(),
@@ -1382,13 +1830,6 @@ fn assert_kind_invariant(path: &Path, kind: FileKind) {
             assert!(
                 file_validation::is_valid_mp3(path).unwrap_or(false),
                 "fixture builder bug: MP3 at {:?} fails validator",
-                path,
-            );
-        }
-        FileKind::Ape => {
-            assert!(
-                file_validation::is_valid_ape(path).unwrap_or(false),
-                "fixture builder bug: APE at {:?} fails validator",
                 path,
             );
         }
@@ -1546,14 +1987,13 @@ fn assert_kind_invariant(path: &Path, kind: FileKind) {
 
 /// Produce `n` `File` entries at `{dir}/{i:02}.<ext>`, one per track,
 /// with the given audio `kind`. The extension is derived from the kind
-/// (Flac / ZeroByteFlac → `flac`, Mp3 → `mp3`, Ape → `ape`). Panics on
+/// (Flac / ZeroByteFlac → `flac`, Mp3 → `mp3`). Panics on
 /// non-audio kinds — the helper is named for the "per-track audio
 /// release" shape and refuses to be repurposed.
 fn flat_audio(dir: &str, n: usize, kind: FileKind) -> Vec<FixtureEntry> {
     let ext = match kind {
         FileKind::Flac | FileKind::ZeroByteFlac => "flac",
         FileKind::Mp3 => "mp3",
-        FileKind::Ape => "ape",
         FileKind::M4a => "m4a",
         other => panic!(
             "flat_audio: unsupported kind {:?} — this helper only produces audio tracks",
@@ -1570,10 +2010,8 @@ fn flat_audio(dir: &str, n: usize, kind: FileKind) -> Vec<FixtureEntry> {
 
 // --- Walker: pure dispatch over the spec ---
 
-/// Build a fixture on disk at `root` from a spec. Parent directories for
-/// any file path are created implicitly — so container folders don't need
-/// their own entries. `Expect` entries create the folder they reference so
-/// assertions can run against empty-but-expected containers.
+/// Build a fixture on disk at `root` from a spec. Parent directories for any
+/// file path are created implicitly, so container folders need no entries.
 fn build_fixture(root: &Path, spec: &[FixtureEntry]) {
     for entry in spec {
         match entry {
@@ -1583,10 +2021,6 @@ fn build_fixture(root: &Path, spec: &[FixtureEntry]) {
                     std::fs::create_dir_all(parent).unwrap();
                 }
                 std::fs::write(&path, bytes_for(*kind)).unwrap();
-            }
-            FixtureEntry::Expect { rel_path, .. } => {
-                let dir = root.join(rel_path);
-                std::fs::create_dir_all(&dir).unwrap();
             }
         }
     }
@@ -1600,592 +2034,8 @@ fn assert_fixture_invariants(root: &Path, spec: &[FixtureEntry]) {
             FixtureEntry::File { rel_path, kind } => {
                 assert_kind_invariant(&root.join(rel_path), *kind);
             }
-            FixtureEntry::Expect { rel_path, .. } => {
-                let dir = root.join(rel_path);
-                assert!(
-                    dir.is_dir(),
-                    "fixture builder bug, not scanner bug: expected folder {:?} missing",
-                    dir,
-                );
-            }
         }
     }
-}
-
-// --- Integration smoke test ---
-//
-// Builds the full reference tree and asserts what
-// `scan_for_candidates_with_callback` produces against the 13-candidate set a
-// human would name. Any regression — bogus parents, sibling taint,
-// partial-marker leaks, CUE-mismatch surfacing — fails as a set-diff naming the
-// exact offending paths.
-
-/// The full reference fixture spec, in minimal vocabulary. Each release
-/// is a sequence of `File` entries plus one `Expect`. Navigation folders
-/// (artist, discography, reissue containers) get an `Expect { top_level_candidate:
-/// false }` so the scanner is pinned against surfacing them. Folders with
-/// no pinning exist implicitly via `create_dir_all` on child paths.
-fn reference_fixture() -> Vec<FixtureEntry> {
-    const ARTIST_A: &str = "Artist A - Discography [FLAC]";
-    const STUDIO: &str = "Artist A - Discography [FLAC]/Studio \u{0410}lbums";
-    const A1: &str = "Artist A - Discography [FLAC]/Studio \u{0410}lbums/1990 - Album A1";
-    const A1_ORIG: &str =
-            "Artist A - Discography [FLAC]/Studio \u{0410}lbums/1990 - Album A1/1990 - Album A1 [Original Release]";
-    const A2: &str = "Artist A - Discography [FLAC]/Studio \u{0410}lbums/1991 - Album A2";
-    const A2_ORIG: &str =
-            "Artist A - Discography [FLAC]/Studio \u{0410}lbums/1991 - Album A2/1991 - Album A2 [Original Release]";
-    const A2_JAPAN: &str =
-            "Artist A - Discography [FLAC]/Studio \u{0410}lbums/1991 - Album A2/1997 - Album A2 [Japan Reissue]";
-    const A2_REISSUE: &str =
-            "Artist A - Discography [FLAC]/Studio \u{0410}lbums/1991 - Album A2/2003 - Album A2 [Reissue]";
-    const A3: &str = "Artist A - Discography [FLAC]/Studio \u{0410}lbums/1993 - Album A3";
-    const A3_ORIG: &str =
-            "Artist A - Discography [FLAC]/Studio \u{0410}lbums/1993 - Album A3/1993 - Album A3 [Original Release]";
-    const A3_ABANDONED: &str =
-            "Artist A - Discography [FLAC]/Studio \u{0410}lbums/1993 - Album A3/2006 - Album A3 [Abandoned Download]";
-
-    let mut entries: Vec<FixtureEntry> = Vec::new();
-
-    // --- Root-level loose junk (B9). ---
-    entries.extend([
-        FixtureEntry::File {
-            rel_path: "loose.pdf".into(),
-            kind: FileKind::Pdf,
-        },
-        FixtureEntry::File {
-            rel_path: "loose.zip".into(),
-            kind: FileKind::Zip,
-        },
-        FixtureEntry::File {
-            rel_path: "loose.dmg".into(),
-            kind: FileKind::Dmg,
-        },
-        FixtureEntry::File {
-            rel_path: "loose.jpg".into(),
-            kind: FileKind::Jpeg,
-        },
-    ]);
-
-    // --- Artist A discography wrappers (B1, B2, B3, B4 + C11). ---
-    // The wrappers must not surface as candidates. They exist on disk
-    // because children live under them — we just pin the behavior.
-    entries.push(FixtureEntry::Expect {
-        rel_path: ARTIST_A.into(),
-        top_level_candidate: false,
-    });
-    entries.push(FixtureEntry::Expect {
-        rel_path: STUDIO.into(),
-        top_level_candidate: false,
-    });
-    entries.push(FixtureEntry::Expect {
-        rel_path: A1.into(),
-        top_level_candidate: false,
-    });
-    entries.push(FixtureEntry::Expect {
-        rel_path: A2.into(),
-        top_level_candidate: false,
-    });
-    entries.push(FixtureEntry::Expect {
-        rel_path: A3.into(),
-        top_level_candidate: false,
-    });
-
-    // --- CANDIDATE 1 — flat FLAC + log + cover (C1, C9). ---
-    entries.push(FixtureEntry::Expect {
-        rel_path: A1_ORIG.into(),
-        top_level_candidate: true,
-    });
-    entries.extend(flat_audio(A1_ORIG, 3, FileKind::Flac));
-    entries.push(FixtureEntry::File {
-        rel_path: format!("{A1_ORIG}/cover.jpg"),
-        kind: FileKind::Jpeg,
-    });
-    entries.push(FixtureEntry::File {
-        rel_path: format!("{A1_ORIG}/rip.log"),
-        kind: FileKind::Log,
-    });
-
-    // --- CANDIDATE 2 — CUE+FLAC pair (C2). ---
-    entries.push(FixtureEntry::Expect {
-        rel_path: A2_ORIG.into(),
-        top_level_candidate: true,
-    });
-    entries.push(FixtureEntry::File {
-        rel_path: format!("{A2_ORIG}/Album.flac"),
-        kind: FileKind::Flac,
-    });
-    entries.push(FixtureEntry::File {
-        rel_path: format!("{A2_ORIG}/Album.cue"),
-        kind: FileKind::CueFor {
-            stem: "Album.flac",
-            n_tracks: 8,
-        },
-    });
-    entries.push(FixtureEntry::File {
-        rel_path: format!("{A2_ORIG}/rip.log"),
-        kind: FileKind::Log,
-    });
-
-    // --- CANDIDATE 3 — CUE+APE pair with Info/Tracklist.txt (C3, C7). ---
-    entries.push(FixtureEntry::Expect {
-        rel_path: A2_JAPAN.into(),
-        top_level_candidate: true,
-    });
-    entries.push(FixtureEntry::File {
-        rel_path: format!("{A2_JAPAN}/Album.ape"),
-        kind: FileKind::Ape,
-    });
-    entries.push(FixtureEntry::File {
-        rel_path: format!("{A2_JAPAN}/Album.cue"),
-        kind: FileKind::CueFor {
-            stem: "Album.ape",
-            n_tracks: 11,
-        },
-    });
-    entries.push(FixtureEntry::File {
-        rel_path: format!("{A2_JAPAN}/rip.log"),
-        kind: FileKind::Log,
-    });
-    entries.push(FixtureEntry::File {
-        rel_path: format!("{A2_JAPAN}/cover.jpg"),
-        kind: FileKind::Jpeg,
-    });
-    entries.push(FixtureEntry::File {
-        rel_path: format!("{A2_JAPAN}/Info/Tracklist.txt"),
-        kind: FileKind::TracklistTxt,
-    });
-
-    // --- CANDIDATE 4 — flat FLAC + booklet/ subfolder (C1, C6). ---
-    entries.push(FixtureEntry::Expect {
-        rel_path: A2_REISSUE.into(),
-        top_level_candidate: true,
-    });
-    entries.extend(flat_audio(A2_REISSUE, 4, FileKind::Flac));
-    entries.push(FixtureEntry::File {
-        rel_path: format!("{A2_REISSUE}/rip.log"),
-        kind: FileKind::Log,
-    });
-    entries.push(FixtureEntry::File {
-        rel_path: format!("{A2_REISSUE}/booklet/page1.png"),
-        kind: FileKind::Png,
-    });
-    entries.push(FixtureEntry::File {
-        rel_path: format!("{A2_REISSUE}/booklet/page2.png"),
-        kind: FileKind::Png,
-    });
-
-    // --- CANDIDATE 5 — complete, today lost to sibling taint. ---
-    entries.push(FixtureEntry::Expect {
-        rel_path: A3_ORIG.into(),
-        top_level_candidate: true,
-    });
-    entries.extend(flat_audio(A3_ORIG, 3, FileKind::Flac));
-    entries.push(FixtureEntry::File {
-        rel_path: format!("{A3_ORIG}/rip.log"),
-        kind: FileKind::Log,
-    });
-    entries.push(FixtureEntry::File {
-        rel_path: format!("{A3_ORIG}/cover.jpg"),
-        kind: FileKind::Jpeg,
-    });
-
-    // --- Abandoned download sibling — 1 real + 2 zero-byte (A1 + A5). ---
-    // A real track makes the subdir "look like audio" at the container
-    // level; the zero-byte tracks poison the container's categorize pass.
-    entries.push(FixtureEntry::Expect {
-        rel_path: A3_ABANDONED.into(),
-        top_level_candidate: false,
-    });
-    entries.push(FixtureEntry::File {
-        rel_path: format!("{A3_ABANDONED}/01.flac"),
-        kind: FileKind::Flac,
-    });
-    entries.push(FixtureEntry::File {
-        rel_path: format!("{A3_ABANDONED}/02.flac"),
-        kind: FileKind::ZeroByteFlac,
-    });
-    entries.push(FixtureEntry::File {
-        rel_path: format!("{A3_ABANDONED}/03.flac"),
-        kind: FileKind::ZeroByteFlac,
-    });
-
-    // --- Artist B (B5) — navigation container. ---
-    entries.push(FixtureEntry::Expect {
-        rel_path: "Artist B".into(),
-        top_level_candidate: false,
-    });
-
-    // --- Unresolved CUE — flat FLAC + cover + log + a sheet naming audio that
-    //     is not here. A candidate: the sheet is a proposal, and the log can
-    //     still identify the folder. ---
-    entries.push(FixtureEntry::Expect {
-        rel_path: "Artist B/1986 - Album B1".into(),
-        top_level_candidate: true,
-    });
-    entries.extend(flat_audio("Artist B/1986 - Album B1", 5, FileKind::Flac));
-    entries.push(FixtureEntry::File {
-        rel_path: "Artist B/1986 - Album B1/cover.jpg".into(),
-        kind: FileKind::Jpeg,
-    });
-    entries.push(FixtureEntry::File {
-        rel_path: "Artist B/1986 - Album B1/rip.log".into(),
-        kind: FileKind::Log,
-    });
-    entries.push(FixtureEntry::File {
-        rel_path: "Artist B/1986 - Album B1/Album.cue".into(),
-        kind: FileKind::NonPairingCue {
-            n_tracks: 5,
-            file_reference: "Album.flac",
-        },
-    });
-
-    // --- CANDIDATE 7 — plain. ---
-    entries.push(FixtureEntry::Expect {
-        rel_path: "Artist B/1989 - Album B2".into(),
-        top_level_candidate: true,
-    });
-    entries.extend(flat_audio("Artist B/1989 - Album B2", 6, FileKind::Flac));
-    entries.push(FixtureEntry::File {
-        rel_path: "Artist B/1989 - Album B2/cover.jpg".into(),
-        kind: FileKind::Jpeg,
-    });
-
-    // --- CANDIDATE 8 — with .bae/ sidecar (C10). ---
-    entries.push(FixtureEntry::Expect {
-        rel_path: "Artist B/1992 - Album B3".into(),
-        top_level_candidate: true,
-    });
-    entries.extend(flat_audio("Artist B/1992 - Album B3", 7, FileKind::Flac));
-    entries.push(FixtureEntry::File {
-        rel_path: "Artist B/1992 - Album B3/cover.jpg".into(),
-        kind: FileKind::Jpeg,
-    });
-    // `.bae/` sidecar — scanner must ignore the hidden dir entirely.
-    entries.push(FixtureEntry::File {
-        rel_path: "Artist B/1992 - Album B3/.bae/cover-mb.jpg".into(),
-        kind: FileKind::Jpeg,
-    });
-
-    // --- CANDIDATE 9 — .md5, .ffp (C8). ---
-    entries.push(FixtureEntry::Expect {
-        rel_path: "Artist B/1994 - Album B4".into(),
-        top_level_candidate: true,
-    });
-    entries.extend(flat_audio("Artist B/1994 - Album B4", 4, FileKind::Flac));
-    entries.push(FixtureEntry::File {
-        rel_path: "Artist B/1994 - Album B4/checksums.md5".into(),
-        kind: FileKind::Md5,
-    });
-    entries.push(FixtureEntry::File {
-        rel_path: "Artist B/1994 - Album B4/checksums.ffp".into(),
-        kind: FileKind::Ffp,
-    });
-
-    // --- CANDIDATE 10 — .log, .m3u (C9). ---
-    entries.push(FixtureEntry::Expect {
-        rel_path: "Artist B/1998 - Album B5".into(),
-        top_level_candidate: true,
-    });
-    entries.extend(flat_audio("Artist B/1998 - Album B5", 8, FileKind::Flac));
-    entries.push(FixtureEntry::File {
-        rel_path: "Artist B/1998 - Album B5/rip.log".into(),
-        kind: FileKind::Log,
-    });
-    entries.push(FixtureEntry::File {
-        rel_path: "Artist B/1998 - Album B5/playlist.m3u".into(),
-        kind: FileKind::M3u,
-    });
-    // --- Compilation folder (B6) — navigation container. ---
-    entries.push(FixtureEntry::Expect {
-        rel_path: "Artist C - Albums & Singles [mp3]".into(),
-        top_level_candidate: false,
-    });
-
-    // --- CANDIDATE 11 — MP3 flat + multi-cover (C5). ---
-    let c1 = "Artist C - Albums & Singles [mp3]/1974 - Album C1 [320]";
-    entries.push(FixtureEntry::Expect {
-        rel_path: c1.into(),
-        top_level_candidate: true,
-    });
-    entries.extend(flat_audio(c1, 10, FileKind::Mp3));
-    for name in ["front.jpg", "back.jpg", "inlay.jpg"] {
-        entries.push(FixtureEntry::File {
-            rel_path: format!("{c1}/{name}"),
-            kind: FileKind::Jpeg,
-        });
-    }
-
-    // --- CANDIDATE 12 — MP3 flat + multi-cover (C5). ---
-    let c2 = "Artist C - Albums & Singles [mp3]/1982 - Album C2 [320]";
-    entries.push(FixtureEntry::Expect {
-        rel_path: c2.into(),
-        top_level_candidate: true,
-    });
-    entries.extend(flat_audio(c2, 9, FileKind::Mp3));
-    for name in ["front.jpg", "back.jpg", "inlay.jpg"] {
-        entries.push(FixtureEntry::File {
-            rel_path: format!("{c2}/{name}"),
-            kind: FileKind::Jpeg,
-        });
-    }
-
-    // --- CANDIDATE 13 — true multi-disc release (B7). ---
-    entries.push(FixtureEntry::Expect {
-        rel_path: "Album D - Multi-Disc".into(),
-        top_level_candidate: true,
-    });
-    entries.push(FixtureEntry::File {
-        rel_path: "Album D - Multi-Disc/cover.jpg".into(),
-        kind: FileKind::Jpeg,
-    });
-    entries.push(FixtureEntry::Expect {
-        rel_path: "Album D - Multi-Disc/Disc 1".into(),
-        top_level_candidate: false,
-    });
-    entries.extend(flat_audio("Album D - Multi-Disc/Disc 1", 5, FileKind::Flac));
-    entries.push(FixtureEntry::Expect {
-        rel_path: "Album D - Multi-Disc/Disc 2".into(),
-        top_level_candidate: false,
-    });
-    entries.extend(flat_audio("Album D - Multi-Disc/Disc 2", 6, FileKind::Flac));
-
-    // --- In-progress — zero-byte audio (A1). SKIP. ---
-    entries.push(FixtureEntry::Expect {
-        rel_path: "In-Progress - Zero Byte".into(),
-        top_level_candidate: false,
-    });
-    entries.push(FixtureEntry::File {
-        rel_path: "In-Progress - Zero Byte/01.flac".into(),
-        kind: FileKind::Flac,
-    });
-    entries.push(FixtureEntry::File {
-        rel_path: "In-Progress - Zero Byte/02.flac".into(),
-        kind: FileKind::ZeroByteFlac,
-    });
-    entries.push(FixtureEntry::File {
-        rel_path: "In-Progress - Zero Byte/03.flac".into(),
-        kind: FileKind::ZeroByteFlac,
-    });
-
-    // --- In-progress — browser markers only, no real audio (A3). SKIP. ---
-    entries.push(FixtureEntry::Expect {
-        rel_path: "In-Progress - Browser".into(),
-        top_level_candidate: false,
-    });
-    entries.push(FixtureEntry::File {
-        rel_path: "In-Progress - Browser/01.flac.part".into(),
-        kind: FileKind::PartialMarker("part"),
-    });
-    entries.push(FixtureEntry::File {
-        rel_path: "In-Progress - Browser/02.flac.crdownload".into(),
-        kind: FileKind::PartialMarker("crdownload"),
-    });
-    entries.push(FixtureEntry::File {
-        rel_path: "In-Progress - Browser/cover.jpg".into(),
-        kind: FileKind::Jpeg,
-    });
-
-    // --- In-progress — aria2 marker only. SKIP. ---
-    entries.push(FixtureEntry::Expect {
-        rel_path: "In-Progress - aria2".into(),
-        top_level_candidate: false,
-    });
-    entries.push(FixtureEntry::File {
-        rel_path: "In-Progress - aria2/01.flac.aria2".into(),
-        kind: FileKind::PartialMarker("aria2"),
-    });
-
-    // --- In-progress — generic ".download" marker only. SKIP. ---
-    entries.push(FixtureEntry::Expect {
-        rel_path: "In-Progress - Safari".into(),
-        top_level_candidate: false,
-    });
-    entries.push(FixtureEntry::File {
-        rel_path: "In-Progress - Safari/01.flac.download".into(),
-        kind: FileKind::PartialMarker("download"),
-    });
-
-    // --- In-progress — generic ".partial" marker only. SKIP. ---
-    entries.push(FixtureEntry::Expect {
-        rel_path: "In-Progress - Generic".into(),
-        top_level_candidate: false,
-    });
-    entries.push(FixtureEntry::File {
-        rel_path: "In-Progress - Generic/01.flac.partial".into(),
-        kind: FileKind::PartialMarker("partial"),
-    });
-
-    // --- CUE-Mismatch — 10 real FLACs + a sheet claiming 15 tracks of audio
-    //     that is not here. A candidate: the ten files import as themselves. ---
-    entries.push(FixtureEntry::Expect {
-        rel_path: "CUE-Mismatch".into(),
-        top_level_candidate: true,
-    });
-    entries.extend(flat_audio("CUE-Mismatch", 10, FileKind::Flac));
-    entries.push(FixtureEntry::File {
-        rel_path: "CUE-Mismatch/Album.cue".into(),
-        kind: FileKind::NonPairingCue {
-            n_tracks: 15,
-            file_reference: "Album.flac",
-        },
-    });
-
-    // --- Non-music video folders (B8). ---
-    entries.push(FixtureEntry::Expect {
-        rel_path: "Video Series".into(),
-        top_level_candidate: false,
-    });
-    entries.push(FixtureEntry::Expect {
-        rel_path: "Video Series/Season 1".into(),
-        top_level_candidate: false,
-    });
-    for i in 1..=3 {
-        entries.push(FixtureEntry::File {
-            rel_path: format!("Video Series/Season 1/S01E{:02}.avi", i),
-            kind: FileKind::Avi,
-        });
-    }
-    entries.push(FixtureEntry::Expect {
-        rel_path: "Video Series/Season 2".into(),
-        top_level_candidate: false,
-    });
-    for i in 1..=2 {
-        entries.push(FixtureEntry::File {
-            rel_path: format!("Video Series/Season 2/S02E{:02}.avi", i),
-            kind: FileKind::Avi,
-        });
-    }
-
-    entries
-}
-
-/// Integration smoke test: the full reference fixture vs the real scanner.
-///
-/// Encodes the human-intent contract as a set-equality check against the
-/// top-level candidates the scanner produces, plus per-release content
-/// sanity assertions. Any regression — bogus parents, sibling taint,
-/// partial-marker leaks, CUE-mismatch surfacing — produces a set-diff
-/// failure with the exact offending paths.
-#[test]
-fn scan_reference_tree_matches_human_intent() {
-    let tmp = tempfile::tempdir().unwrap();
-    let root = tmp.path();
-
-    let spec = reference_fixture();
-    build_fixture(root, &spec);
-    assert_fixture_invariants(root, &spec);
-
-    // Run the real scanner.
-    let candidates = scan_valid(root.to_path_buf());
-
-    // --- Assertion 1: exact top-level candidate set ---
-
-    let top_level: std::collections::BTreeSet<String> = candidates
-        .iter()
-        .map(|c| {
-            c.path
-                .strip_prefix(root)
-                .unwrap()
-                .components()
-                .map(|component| component.as_os_str().to_string_lossy())
-                .collect::<Vec<_>>()
-                .join("/")
-        })
-        .collect();
-
-    let expected: std::collections::BTreeSet<String> = spec
-        .iter()
-        .filter_map(|e| match e {
-            FixtureEntry::Expect {
-                rel_path,
-                top_level_candidate: true,
-            } => Some(rel_path.to_string()),
-            _ => None,
-        })
-        .collect();
-
-    let unexpected: Vec<_> = top_level.difference(&expected).collect();
-    let missing: Vec<_> = expected.difference(&top_level).collect();
-    assert!(
-            unexpected.is_empty() && missing.is_empty(),
-            "top-level candidate set mismatch: {} unexpected, {} missing\n  unexpected (bogus): {:#?}\n  missing: {:#?}",
-            unexpected.len(),
-            missing.len(),
-            unexpected,
-            missing,
-        );
-
-    // --- Assertion 2: multi-disc parent shape ---
-
-    assert!(
-        top_level.iter().any(|p| p == "Album D - Multi-Disc"),
-        "Album D - Multi-Disc should be a top-level candidate",
-    );
-    assert!(
-        !top_level.iter().any(|p| p == "Album D - Multi-Disc/Disc 1"),
-        "Disc 1 should not be a top-level candidate",
-    );
-    assert!(
-        !top_level.iter().any(|p| p == "Album D - Multi-Disc/Disc 2"),
-        "Disc 2 should not be a top-level candidate",
-    );
-
-    // --- Assertion 3: per-release content sanity ---
-
-    let find = |suffix: &str| -> &FolderCandidate {
-        candidates
-            .iter()
-            .find(|c| c.path.to_string_lossy().ends_with(suffix))
-            .unwrap_or_else(|| {
-                panic!(
-                    "expected candidate ending in {:?}, got candidate set {:#?}",
-                    suffix, top_level,
-                )
-            })
-    };
-
-    // 3a. 1991 - Album A2 [Original Release] → a bound sheet, "CUE+FLAC".
-    let a2_original = find("1991 - Album A2 [Original Release]");
-    assert_eq!(a2_original.files.format_label, "CUE+FLAC");
-    assert_eq!(a2_original.files.bound_sheets().len(), 1);
-
-    // 3b. 1997 - Album A2 [Japan Reissue] → a bound sheet, "CUE+APE",
-    //     with Info/Tracklist.txt as a document.
-    let a2_japan = find("1997 - Album A2 [Japan Reissue]");
-    assert_eq!(a2_japan.files.format_label, "CUE+APE");
-    assert_eq!(a2_japan.files.bound_sheets().len(), 1);
-    assert!(
-        a2_japan
-            .files
-            .documents()
-            .any(|d| d.relative_path.ends_with("Tracklist.txt")),
-        "Album A2 [Japan Reissue] documents should include Info/Tracklist.txt, got {:?}",
-        a2_japan
-            .files
-            .documents()
-            .map(|d| d.relative_path.as_str())
-            .collect::<Vec<_>>(),
-    );
-
-    // 3c. 2003 - Album A2 [Reissue] → artwork pulled from booklet/.
-    let a2_reissue = find("2003 - Album A2 [Reissue]");
-    assert!(
-        a2_reissue
-            .files
-            .artwork()
-            .any(|a| a.relative_path.contains("booklet/")),
-        "Album A2 [Reissue] artwork should include booklet/*.png, got {:?}",
-        a2_reissue
-            .files
-            .artwork()
-            .map(|a| a.relative_path.as_str())
-            .collect::<Vec<_>>(),
-    );
-
-    // 3d. 1974 - Album C1 [320] → no sheet, "MP3".
-    let c1 = find("1974 - Album C1 [320]");
-    assert_eq!(c1.files.format_label, "MP3");
-    assert!(c1.files.bound_sheets().is_empty());
 }
 
 // ── Scenario test library ──────────────────────────────────────────────
@@ -2195,8 +2045,7 @@ fn scan_reference_tree_matches_human_intent() {
 // `run_scenario` helper, which handles tempdir creation, fixture
 // invariant checking, and top-level path extraction.
 //
-// Test names name the scenario, not the implementation. The taxonomy
-// in `plans/folder-scanner-scenario-tests.md` is the map.
+// Test names name the scenario, not the implementation.
 
 /// Wraps the common "build tempdir, scan, filter top-level" shape. Keeps
 /// `_tmp` alive for the lifetime of the result so the tempdir isn't
@@ -2267,7 +2116,7 @@ fn run_scenario(entries: Vec<FixtureEntry>) -> ScenarioResult {
 
 // --- Completeness signals (A-series) ---
 
-/// L1.1 — Release folder with a real FLAC and a zero-byte FLAC must be
+/// A release folder with a real FLAC and a zero-byte FLAC must be
 /// rejected. Mixing valid and zero-byte audio poisons the candidate.
 #[test]
 fn zero_byte_audio_in_release_skips_candidate() {
@@ -2284,7 +2133,7 @@ fn zero_byte_audio_in_release_skips_candidate() {
     assert!(result.top_level_paths().is_empty());
 }
 
-/// L1.2 — `.flac.part` sidecar next to a real FLAC suppresses the release.
+/// A `.flac.part` sidecar next to a real FLAC suppresses the release.
 #[test]
 fn partial_marker_sidecar_skips_release() {
     let result = run_scenario(vec![
@@ -2300,7 +2149,7 @@ fn partial_marker_sidecar_skips_release() {
     assert!(result.top_level_paths().is_empty());
 }
 
-/// L1.3 — A folder holding only partial markers (no real audio) must
+/// A folder holding only partial markers (no real audio) must
 /// also yield no candidates. Today this passes because no audio is
 /// detected at all; the test pins the intent so if marker-only becomes
 /// "looks like audio" we notice.
@@ -2320,7 +2169,7 @@ fn partial_marker_only_no_real_audio_skips() {
 /// corruption path (covered elsewhere) still skips the candidate.
 #[test]
 fn io_error_validating_audio_surfaces_not_swallowed() {
-    let tree = FileTree::new(vec![FileEntry {
+    let tree = CandidateFileIndex::new(vec![FileEntry {
         path: PathBuf::from("Album/01.flac"),
         size: 1024,
     }]);
@@ -2332,6 +2181,7 @@ fn io_error_validating_audio_surfaces_not_swallowed() {
         &PathBuf::from("Album"),
         temp.path(),
         &StoredCandidateEdits::none(),
+        &ScanCancellation::new(),
     );
     assert!(
         result.is_err(),
@@ -2366,7 +2216,7 @@ fn loose_marker_at_scan_root_does_not_suppress_sibling_albums() {
     assert_eq!(paths, vec!["AlbumA".to_string(), "AlbumB".to_string()]);
 }
 
-/// L1.4 — Every supported partial-marker extension suppresses the release.
+/// Every supported partial-marker extension suppresses the release.
 /// Table-driven: one subtest per extension.
 #[test]
 fn each_partial_marker_extension_skips_release() {
@@ -2388,7 +2238,7 @@ fn each_partial_marker_extension_skips_release() {
     }
 }
 
-/// L1.5 — Partial-marker extension matching is case-insensitive.
+/// Partial-marker extension matching is case-insensitive.
 #[test]
 fn partial_marker_extension_case_insensitive() {
     for name in ["02.FLAC.PART", "03.FLAC.CRDownload"] {
@@ -2426,99 +2276,19 @@ fn invalid_flac_audio_yields_no_candidate() {
     }
 }
 
-// --- Container shape signals (B-series) ---
-//
-// Single-child wrapper flattening (discography / grouping chains recursing
-// down to the leaf) is covered end-to-end by scan_reference_tree; these pin
-// the multi-child container shapes. A year-prefixed reissue container emits
-// each child, not the parent.
+/// An audio-free parent emits each audio-bearing child, not the parent.
 #[test]
-fn multi_child_reissue_container_emits_children_not_parent() {
-    let mut entries = flat_audio("Album/1991 - Original", 3, FileKind::Flac);
-    entries.extend(flat_audio("Album/1997 - Japan Reissue", 3, FileKind::Flac));
-    entries.extend(flat_audio("Album/2003 - Reissue", 3, FileKind::Flac));
-    let result = run_scenario(entries);
-    let top = result.top_level_paths();
-    let expected = vec![
-        "Album/1991 - Original",
-        "Album/1997 - Japan Reissue",
-        "Album/2003 - Reissue",
-    ];
-    for e in &expected {
-        assert!(top.iter().any(|p| p == e), "missing {e} in {top:?}");
-    }
-    assert!(!top.iter().any(|p| p == "Album"), "parent leaked: {top:?}");
-}
-
-/// L1.12 — Artist folder emits per-album candidates, not the artist folder.
-#[test]
-fn artist_folder_emits_per_album_candidates() {
-    let mut entries = flat_audio("Artist/Album A", 3, FileKind::Flac);
-    entries.extend(flat_audio("Artist/Album B", 3, FileKind::Flac));
+fn sibling_audio_folders_emit_separate_candidates() {
+    let mut entries = flat_audio("Collection/First", 3, FileKind::Flac);
+    entries.extend(flat_audio("Collection/Second", 3, FileKind::Flac));
     let result = run_scenario(entries);
     let top = result.top_level_paths();
     assert_eq!(top.len(), 2);
-    assert!(top.iter().any(|p| p == "Artist/Album A"));
-    assert!(top.iter().any(|p| p == "Artist/Album B"));
+    assert!(top.iter().any(|p| p == "Collection/First"));
+    assert!(top.iter().any(|p| p == "Collection/Second"));
 }
 
-/// Every disc-indicator prefix, separator, and zero-padding variant the
-/// scanner accepts makes the parent the single candidate rather than its
-/// discs. The `is_disc_indicator_name` predicate is unit-tested directly
-/// above; this pins the scan-level outcome across the shape variants (the
-/// per-shape scenario tests collapsed into these rows). `dir_prefix`
-/// aggregation across discs is asserted by the five-disc box-set test below.
-#[test]
-fn disc_indicator_subdirs_emit_single_parent_candidate() {
-    let cases: &[(&str, &str, &[&str])] = &[
-        ("disc prefix, space", "Album", &["Disc 1", "Disc 2"]),
-        ("cd prefix, no separator", "Box", &["CD1", "CD2"]),
-        ("disk prefix, space", "Album", &["Disk 1", "Disk 2"]),
-        ("part prefix, space", "Suite", &["Part 1", "Part 2"]),
-        ("side prefix, space", "LP", &["Side A", "Side B"]),
-        ("bare numeric", "Album", &["1", "2", "3"]),
-        ("zero-padded numeric", "Album", &["01", "02"]),
-        ("zero-padded cd", "Album", &["CD01", "CD02"]),
-        ("hyphen separator", "Album", &["Disc-1", "Disc-2"]),
-        ("underscore separator", "Album", &["CD_1", "CD_2"]),
-        ("dot separator", "LP", &["Side.A", "Side.B"]),
-        ("mixed prefixes", "Album", &["Disc 1", "CD 2"]),
-        (
-            "descriptive suffix after digit",
-            "Box Set",
-            &["CD 1 - part one", "CD 2 (part two)"],
-        ),
-    ];
-    for (label, parent, discs) in cases {
-        let mut entries = Vec::new();
-        for disc in *discs {
-            entries.extend(flat_audio(&format!("{parent}/{disc}"), 3, FileKind::Flac));
-        }
-        let result = run_scenario(entries);
-        assert_eq!(
-            result.top_level_paths(),
-            vec![parent.to_string()],
-            "{label}: {discs:?} should emit {parent:?} as the sole candidate",
-        );
-    }
-}
-
-/// L1.23 — `Side A` matches; `Side AB` does not (single-alpha rule).
-#[test]
-fn side_indicator_accepts_single_alpha_only() {
-    assert!(is_disc_indicator_name("Side A"));
-    assert!(!is_disc_indicator_name("Side AB"));
-}
-
-/// L1.24 — `Sider` (no separator, more than single alpha) must not match,
-/// guarding against the false-positive class.
-#[test]
-fn sider_not_matched_as_side_indicator() {
-    assert!(!is_disc_indicator_name("Sider"));
-    assert!(!is_disc_indicator_name("Sideshow"));
-}
-
-/// L1.25 — Folder with only `.avi` yields no candidates, no diagnostic.
+/// A folder with only `.avi` yields no candidates and no diagnostic.
 #[test]
 fn non_audio_folder_emits_no_candidates() {
     let result = run_scenario(vec![
@@ -2534,7 +2304,7 @@ fn non_audio_folder_emits_no_candidates() {
     assert!(result.top_level_paths().is_empty());
 }
 
-/// L1.26 — Loose junk at the scan root (.pdf, .zip, .dmg, .jpg) is
+/// Loose junk at the scan root (.pdf, .zip, .dmg, .jpg) is
 /// ignored; a release subfolder still surfaces.
 #[test]
 fn loose_junk_at_scan_root_ignored() {
@@ -2559,7 +2329,7 @@ fn loose_junk_at_scan_root_ignored() {
 
 // --- Within-release intricacies (C-series) ---
 
-/// L1.27 — Per-track FLACs surface as TrackFiles / "FLAC".
+/// Per-track FLACs surface as TrackFiles / "FLAC".
 #[test]
 fn flat_flac_release_surfaces_as_trackfiles() {
     let result = run_scenario(flat_audio("Album", 3, FileKind::Flac));
@@ -2569,7 +2339,7 @@ fn flat_flac_release_surfaces_as_trackfiles() {
     assert!(c.files.track_sheets().next().is_none());
 }
 
-/// L1.28 — a CUE next to the FLAC it names binds, and the folder is labelled
+/// A CUE next to the FLAC it names binds, and the folder is labelled
 /// "CUE+FLAC".
 #[test]
 fn cue_flac_pair_binds_and_is_labelled() {
@@ -2591,11 +2361,11 @@ fn cue_flac_pair_binds_and_is_labelled() {
     assert_eq!(c.files.bound_sheets().len(), 1);
 }
 
-// L1.29 (cue_ape pair) — covered by
+// The CUE/APE pair is covered by
 // `test_collect_release_candidate_files_cue_ape_track_count` above; not
 // duplicated here.
 
-/// L1.30 — MP3 tracks surface as TrackFiles / "MP3".
+/// MP3 tracks surface as TrackFiles / "MP3".
 #[test]
 fn mp3_release_surfaces_as_mp3_trackfiles() {
     let result = run_scenario(flat_audio("Album", 3, FileKind::Mp3));
@@ -2603,7 +2373,7 @@ fn mp3_release_surfaces_as_mp3_trackfiles() {
     assert_eq!(c.files.format_label, "MP3");
 }
 
-/// L1.30b — M4A tracks surface as TrackFiles / "M4A".
+/// M4A tracks surface as TrackFiles / "M4A".
 #[test]
 fn m4a_release_surfaces_as_trackfiles() {
     let result = run_scenario(flat_audio("Album", 3, FileKind::M4a));
@@ -2670,7 +2440,7 @@ fn single_file_cue_pairs_by_file_directive_not_stem() {
     assert_eq!(bound[0].file.file_name, "Sheet.cue");
 }
 
-/// L1.31 — A sheet whose `FILE` directive names missing audio leaves the sheet
+/// A sheet whose `FILE` directive names missing audio leaves the sheet
 /// unbound. The folder still imports: the sheet proposes a layout, it does not
 /// dictate one.
 #[test]
@@ -2694,6 +2464,9 @@ fn cue_referencing_missing_audio_leaves_the_sheet_unbound() {
             assert_eq!(candidate.files.audio().count(), 5);
         }
         ScanItem::Invalid(invalid) => panic!("must stay importable: {}", invalid.reason),
+        ScanItem::Discovered(_) | ScanItem::Boundary(_) => {
+            panic!("terminal scan helper returned a progress item")
+        }
     }
 }
 
@@ -2740,7 +2513,7 @@ fn subfolder_sidecars_attach_by_category() {
     );
 }
 
-/// L1.35 — `.md5` / `.ffp` sidecars are neither audio nor artwork nor
+/// `.md5` / `.ffp` sidecars are neither audio nor artwork nor
 /// documents; they are omitted from categorization.
 #[test]
 fn md5_ffp_sidecars_silently_ignored() {
@@ -2767,7 +2540,7 @@ fn md5_ffp_sidecars_silently_ignored() {
         .all(|a| { !a.file_name.ends_with(".md5") && !a.file_name.ends_with(".ffp") }));
 }
 
-/// L1.36 — `.log` and `.m3u` surface as documents.
+/// `.log` and `.m3u` surface as documents.
 #[test]
 fn log_m3u_attach_as_documents() {
     let mut entries = flat_audio("Album", 3, FileKind::Flac);
@@ -2793,7 +2566,7 @@ fn log_m3u_attach_as_documents() {
     }
 }
 
-/// L1.37 — `.bae/` subdir is entirely hidden from the scanner.
+/// The `.bae/` subdirectory is entirely hidden from the scanner.
 #[test]
 fn bae_sidecar_hidden_from_scanner() {
     let mut entries = flat_audio("Album", 3, FileKind::Flac);
@@ -2815,7 +2588,7 @@ fn bae_sidecar_hidden_from_scanner() {
         .all(|d| !d.relative_path.contains(".bae/")));
 }
 
-/// L1.38 — Cyrillic path components scan cleanly and the name is
+/// Cyrillic path components scan cleanly and the name is
 /// preserved verbatim.
 #[test]
 fn cyrillic_path_component_scans_cleanly() {
@@ -2823,191 +2596,40 @@ fn cyrillic_path_component_scans_cleanly() {
     assert_eq!(result.top_level_paths(), vec!["Studio \u{0410}lbums/Album"],);
 }
 
-/// L1.39 — Audio files at the root of a container alongside release
-/// subdirectories are ignored. We don't model a release that contains
-/// other releases, so if the subdirs are already releases the root audio
-/// is treated as noise: the subdirs surface as top-level candidates and
-/// the container itself does not.
-#[test]
-fn loose_audio_beside_release_subdirs_is_ignored() {
-    let mut entries = flat_audio("Mixed", 2, FileKind::Flac);
-    entries.extend(flat_audio("Mixed/Album A", 5, FileKind::Flac));
-    entries.extend(flat_audio("Mixed/Album B", 5, FileKind::Flac));
-    let result = run_scenario(entries);
-    let top = result.top_level_paths();
-    for expected in &["Mixed/Album A", "Mixed/Album B"] {
-        assert!(
-            top.iter().any(|p| p == expected),
-            "missing {expected} in {top:?}"
-        );
-    }
-    assert!(
-        !top.iter().any(|p| p == "Mixed"),
-        "Mixed leaked as top-level: {top:?}"
-    );
-}
-
-/// L1.40 — Same rule as L1.39 but the release is nested under a chain
-/// of non-audio wrapper dirs instead of sitting one level below the
-/// container. The container has direct audio and no immediate subdir
-/// with direct audio; the release must still surface and the container
-/// must not leak. Depth 3 rules out any fix that only peeks a bounded
-/// number of levels into `tree_has_subdirs_with_audio`.
-#[test]
-fn loose_audio_beside_deeply_nested_release_is_ignored() {
-    let mut entries = flat_audio("Mixed", 2, FileKind::Flac);
-    entries.extend(flat_audio("Mixed/Wrapper/Sub/Album", 5, FileKind::Flac));
-    let result = run_scenario(entries);
-    let top = result.top_level_paths();
-    assert_eq!(
-        top,
-        vec!["Mixed/Wrapper/Sub/Album"],
-        "only the nested release should surface"
-    );
-}
-
 // ── Layer 2: combination tests ────────────────────────────────────────
 
-// L2.1 is covered by `multi_disc_with_partial_disc_suppresses_whole_album`
-// above. L2.3 and L2.4 are dropped (aggregate-CUE case dropped with G1).
-
-/// L2.2 — A partial marker anywhere under a multi-disc album suppresses
-/// the whole album. Parallel to
-/// `multi_disc_with_partial_disc_suppresses_whole_album` above — both
-/// incompleteness signals (zero-byte audio, partial-marker sidecar)
-/// produce the same outcome: the whole release is suppressed, individual
-/// discs do not surface on their own.
+/// Sibling folders with different audio layouts surface independently with
+/// their own formats.
 #[test]
-fn multi_disc_with_partial_marker_in_one_disc_suppresses_whole_album() {
-    let mut entries = flat_audio("Album/Disc 1", 3, FileKind::Flac);
+fn sibling_folders_keep_their_own_audio_layouts() {
+    let mut entries = flat_audio("Collection/Track Files", 3, FileKind::Flac);
     entries.push(FixtureEntry::File {
-        rel_path: "Album/Disc 2/01.flac".into(),
+        rel_path: "Collection/Cue Image/Audio.flac".into(),
         kind: FileKind::Flac,
     });
     entries.push(FixtureEntry::File {
-        rel_path: "Album/Disc 2/02.flac.part".into(),
-        kind: FileKind::PartialMarker("part"),
-    });
-    let result = run_scenario(entries);
-    assert!(
-        result.top_level_paths().is_empty(),
-        "current scanner suppresses the whole album; got {:?}",
-        result.top_level_paths(),
-    );
-}
-
-/// L2.5 — Reissue container with mixed CUE+FLAC and per-track rips:
-/// each child surfaces as its own top-level with its own format.
-#[test]
-fn reissue_container_with_mixed_cue_and_track_rips() {
-    let mut entries = flat_audio("Album/1991 - Original", 3, FileKind::Flac);
-    entries.push(FixtureEntry::File {
-        rel_path: "Album/1997 - Reissue/Album.flac".into(),
-        kind: FileKind::Flac,
-    });
-    entries.push(FixtureEntry::File {
-        rel_path: "Album/1997 - Reissue/Album.cue".into(),
+        rel_path: "Collection/Cue Image/Audio.cue".into(),
         kind: FileKind::CueFor {
-            stem: "Album.flac",
+            stem: "Audio.flac",
             n_tracks: 10,
         },
     });
     let result = run_scenario(entries);
     let top = result.top_level_paths();
     assert_eq!(top.len(), 2);
-    let original = &result.candidate("Album/1991 - Original").files;
-    assert_eq!(original.format_label, "FLAC");
-    assert!(original.bound_sheets().is_empty());
-    let reissue = &result.candidate("Album/1997 - Reissue").files;
-    assert_eq!(reissue.format_label, "CUE+FLAC");
-    assert_eq!(reissue.bound_sheets().len(), 1);
+    let track_files = &result.candidate("Collection/Track Files").files;
+    assert_eq!(track_files.format_label, "FLAC");
+    assert!(track_files.bound_sheets().is_empty());
+    let cue_image = &result.candidate("Collection/Cue Image").files;
+    assert_eq!(cue_image.format_label, "CUE+FLAC");
+    assert_eq!(cue_image.bound_sheets().len(), 1);
 }
 
-/// L2.6 — Multi-disc release with a booklet under one disc still emits
-/// the parent; booklet attaches to that disc's artwork.
-#[test]
-fn multi_disc_with_booklet_in_one_disc_still_emits_parent() {
-    let mut entries = flat_audio("Box/CD1", 3, FileKind::Flac);
-    entries.extend(flat_audio("Box/CD2", 3, FileKind::Flac));
-    entries.extend([
-        FixtureEntry::File {
-            rel_path: "Box/CD2/booklet/page1.png".into(),
-            kind: FileKind::Png,
-        },
-        FixtureEntry::File {
-            rel_path: "Box/CD2/booklet/page2.png".into(),
-            kind: FileKind::Png,
-        },
-    ]);
-    let result = run_scenario(entries);
-    assert_eq!(result.top_level_paths(), vec!["Box"]);
-    let parent = result.candidate("Box");
-    assert!(
-        parent
-            .files
-            .artwork()
-            .any(|a| a.relative_path.contains("CD2/booklet/")),
-        "parent artwork should include CD2 booklet pages",
-    );
-}
-
-/// Multi-disc release with artwork files directly at the parent level
-/// (cover/back/inlay JPEGs next to the disc subdirs, not inside them).
-/// Common real-world shape — parent JPEGs should attach as artwork on
-/// the multi-disc candidate.
-#[test]
-fn multi_disc_with_parent_level_artwork_attaches_to_release() {
-    let mut entries = flat_audio("Album/Disc 1", 3, FileKind::Flac);
-    entries.extend(flat_audio("Album/Disc 2", 3, FileKind::Flac));
-    entries.extend([
-        FixtureEntry::File {
-            rel_path: "Album/cover.jpg".into(),
-            kind: FileKind::Jpeg,
-        },
-        FixtureEntry::File {
-            rel_path: "Album/back.jpg".into(),
-            kind: FileKind::Jpeg,
-        },
-        FixtureEntry::File {
-            rel_path: "Album/inlay.jpg".into(),
-            kind: FileKind::Jpeg,
-        },
-    ]);
-    let result = run_scenario(entries);
-    assert_eq!(result.top_level_paths(), vec!["Album"]);
-    let parent = result.candidate("Album");
-    let art_names: Vec<_> = parent
-        .files
-        .artwork()
-        .map(|a| a.file_name.as_str())
-        .collect();
-    for expected in ["cover.jpg", "back.jpg", "inlay.jpg"] {
-        assert!(
-            art_names.contains(&expected),
-            "missing parent-level {expected} in artwork {art_names:?}",
-        );
-    }
-}
-
-/// L2.7 — Multi-disc with an Info/ subdir under one disc still emits
-/// the parent and doesn't break disc-indicator matching.
-#[test]
-fn multi_disc_with_info_in_one_disc_still_emits_parent() {
-    let mut entries = flat_audio("Album/Disc 1", 3, FileKind::Flac);
-    entries.extend(flat_audio("Album/Disc 2", 3, FileKind::Flac));
-    entries.push(FixtureEntry::File {
-        rel_path: "Album/Disc 1/Info/notes.txt".into(),
-        kind: FileKind::TracklistTxt,
-    });
-    let result = run_scenario(entries);
-    assert_eq!(result.top_level_paths(), vec!["Album"]);
-}
-
-/// L2.8 — Partial marker nested under a release subdir (e.g. in
+/// A partial marker nested under a release subdirectory (e.g. in
 /// `booklet/`) still suppresses the whole release. This exercises the
 /// deep walker check.
 #[test]
-fn partial_marker_in_nested_subdir_stops_multi_disc_candidate() {
+fn partial_marker_in_nested_subdir_stops_release_candidate() {
     let mut entries = flat_audio("Album", 3, FileKind::Flac);
     entries.push(FixtureEntry::File {
         rel_path: "Album/booklet/02.flac.part".into(),
@@ -3017,21 +2639,7 @@ fn partial_marker_in_nested_subdir_stops_multi_disc_candidate() {
     assert!(result.top_level_paths().is_empty());
 }
 
-/// L2.9 — One disc-indicator sibling plus one descriptive-name sibling
-/// (no `Disc`/`CD`/`Part`/`Side` prefix) disqualifies the multi-disc
-/// shape; both children surface.
-#[test]
-fn single_weird_sibling_prevents_multidisc_classification() {
-    let mut entries = flat_audio("Album/Disc 1", 3, FileKind::Flac);
-    entries.extend(flat_audio("Album/Bonus Tracks", 3, FileKind::Flac));
-    let result = run_scenario(entries);
-    let top = result.top_level_paths();
-    assert_eq!(top.len(), 2);
-    assert!(top.iter().any(|p| p == "Album/Disc 1"));
-    assert!(top.iter().any(|p| p == "Album/Bonus Tracks"));
-}
-
-/// L2.11 — a CUE lacking PERFORMER/TITLE still parses. Its `FILE` directive
+/// A CUE lacking PERFORMER/TITLE still parses. Its `FILE` directive
 /// names audio that isn't here, so it stays unbound and the three FLACs import
 /// as themselves — the sheet's declared 15 tracks are a claim about audio the
 /// folder doesn't have.
@@ -3052,7 +2660,7 @@ fn cue_no_header_naming_absent_audio_stays_unbound() {
     assert_eq!(c.files.track_count(), 3);
 }
 
-/// L2.12 — CUE with an unquoted FILE directive still pairs when it
+/// A CUE with an unquoted FILE directive still pairs when it
 /// shares a stem; when the track count exceeds on-disk audio, the
 /// mismatch guard fires.
 #[test]
@@ -3090,52 +2698,7 @@ fn cue_file_reference_with_unquoted_filename_still_parses() {
 
 // ── Layer 3: edge / adversarial cases ─────────────────────────────────
 
-/// L3.3 — Five-disc box set surfaces as one candidate whose audio list
-/// covers all five discs (one `dir_prefix` per disc, 15 tracks total).
-#[test]
-fn five_disc_boxset_emits_single_candidate_covering_all_discs() {
-    let mut entries = Vec::new();
-    for i in 1..=5 {
-        entries.extend(flat_audio(&format!("Boxset/Disc {i}"), 3, FileKind::Flac));
-    }
-    let result = run_scenario(entries);
-    assert_eq!(result.top_level_paths(), vec!["Boxset"]);
-    let c = result.candidate("Boxset");
-    assert_eq!(
-        c.files.audio().count(),
-        15,
-        "5 discs × 3 tracks = 15 audio entries"
-    );
-    let prefixes: BTreeSet<Option<&str>> =
-        c.files.audio().map(|t| t.dir_prefix.as_deref()).collect();
-    assert_eq!(
-        prefixes.len(),
-        5,
-        "5 distinct disc prefixes, got {prefixes:?}"
-    );
-}
-
-/// L3.4 — Descriptive text after the disc number (`Disc 1 (CAT-001)`)
-/// still matches the disc-indicator pattern — the digit run is
-/// terminated by a non-alphanumeric character. One candidate whose
-/// audio entries carry both disc prefixes.
-#[test]
-fn multi_disc_with_descriptive_disc_names_emits_parent() {
-    let mut entries = flat_audio("Box/Disc 1 (CAT-001)", 3, FileKind::Flac);
-    entries.extend(flat_audio("Box/Disc 2 (CAT-002)", 3, FileKind::Flac));
-    let result = run_scenario(entries);
-    assert_eq!(result.top_level_paths(), vec!["Box"]);
-    let c = result.candidate("Box");
-    let prefixes: BTreeSet<Option<&str>> =
-        c.files.audio().map(|t| t.dir_prefix.as_deref()).collect();
-    assert_eq!(
-        prefixes.len(),
-        2,
-        "2 distinct disc prefixes, got {prefixes:?}"
-    );
-}
-
-/// L3.5 — A multi-FILE CUE referencing a missing audio file describes a layout
+/// A multi-FILE CUE referencing a missing audio file describes a layout
 /// the folder can't supply, so it doesn't bind at all: a partial binding would
 /// carve tracks out of audio that isn't there. The folder still imports, with
 /// the present audio as one track.
@@ -3163,6 +2726,9 @@ fn multi_file_cue_with_missing_secondary_file_stays_unbound() {
             assert_eq!(candidate.files.track_count(), 1);
         }
         ScanItem::Invalid(invalid) => panic!("must stay importable: {}", invalid.reason),
+        ScanItem::Discovered(_) | ScanItem::Boundary(_) => {
+            panic!("terminal scan helper returned a progress item")
+        }
     }
 }
 
@@ -3204,7 +2770,7 @@ fn unparseable_cue_lands_as_a_document_and_siblings_still_scan() {
     )));
 }
 
-/// L3.6 — Folder with only a CUE and cover, no audio, yields nothing.
+/// A folder with only a CUE and cover, no audio, yields nothing.
 #[test]
 fn folder_with_only_cue_and_no_audio() {
     let result = run_scenario(vec![
@@ -3223,7 +2789,7 @@ fn folder_with_only_cue_and_no_audio() {
     assert!(result.top_level_paths().is_empty());
 }
 
-/// L3.7 — A folder with audio plus `.avi` extras: audio candidate still
+/// A folder with audio plus `.avi` extras still produces an audio candidate.
 /// surfaces, `.avi` is ignored.
 #[test]
 fn folder_with_audio_and_video_mixed() {
@@ -3239,7 +2805,7 @@ fn folder_with_audio_and_video_mixed() {
     assert!(c.files.artwork().all(|a| !a.file_name.ends_with(".avi")));
 }
 
-/// L3.8 — Deeply nested release under a chain of single-child wrappers
+/// A deeply nested release under a chain of single-child wrappers
 /// collapses to the leaf.
 #[test]
 fn deeply_nested_release_scan_root_two_levels_up() {
@@ -3249,7 +2815,7 @@ fn deeply_nested_release_scan_root_two_levels_up() {
     assert_eq!(result.candidate(&top[0]).name, "Release");
 }
 
-/// L3.9 — Folder with unexpected file types (`.xyz`, `.sh`) alongside
+/// A folder with unexpected file types (`.xyz`, `.sh`) alongside
 /// audio: candidate surfaces, extras omitted from categorization.
 #[test]
 fn unexpected_file_types_silently_ignored() {
@@ -3287,31 +2853,11 @@ fn unexpected_file_types_silently_ignored() {
     );
 }
 
-/// Zero-byte cover art is an incompleteness signal — the release is
-/// suppressed for the same reason a multi-disc album with a zero-byte
-/// FLAC is suppressed (any incompleteness signal drops the whole
-/// release). Parallel to
-/// `multi_disc_with_partial_disc_suppresses_whole_album` and
-/// `zero_byte_cover_at_multi_disc_parent_suppresses_release`.
+/// Zero-byte cover art is an incompleteness signal, so the release is
+/// suppressed.
 #[test]
 fn zero_byte_cover_art_does_not_surface() {
     let mut entries = flat_audio("Album", 3, FileKind::Flac);
-    entries.push(FixtureEntry::File {
-        rel_path: "Album/cover.jpg".into(),
-        kind: FileKind::ZeroByteJpeg,
-    });
-    let result = run_scenario(entries);
-    assert!(result.top_level_paths().is_empty());
-}
-
-/// L3.11 — Zero-byte cover at the parent of a multi-disc release poisons
-/// the merged categorize pass that scans the whole release tree. The
-/// multi-disc parent therefore fails to surface even though both discs
-/// contain valid audio. Symmetric with L3.10 for the flat shape.
-#[test]
-fn zero_byte_cover_at_multi_disc_parent_suppresses_release() {
-    let mut entries = flat_audio("Album/Disc 1", 1, FileKind::Flac);
-    entries.extend(flat_audio("Album/Disc 2", 1, FileKind::Flac));
     entries.push(FixtureEntry::File {
         rel_path: "Album/cover.jpg".into(),
         kind: FileKind::ZeroByteJpeg,
@@ -3349,6 +2895,9 @@ fn sheet_naming_absent_audio_does_not_invalidate_the_folder() {
                 "folder must stay importable, got invalid: {}",
                 invalid.reason
             )
+        }
+        ScanItem::Discovered(_) | ScanItem::Boundary(_) => {
+            panic!("terminal scan helper returned a progress item")
         }
     };
 
@@ -3391,8 +2940,12 @@ fn audio_no_sheet_references_survives() {
     std::fs::write(album.join("bonus 1.flac"), fake_flac()).unwrap();
     std::fs::write(album.join("bonus 2.flac"), fake_flac()).unwrap();
 
-    let files = collect_release_candidate_files(&album, &StoredCandidateEdits::none())
-        .expect("scan should succeed");
+    let files = collect_release_candidate_files_with_scope(
+        &album,
+        crate::import::ReleaseFileScope::Recursive,
+        &StoredCandidateEdits::none(),
+    )
+    .expect("scan should succeed");
     assert_eq!(
         files
             .audio()
@@ -3449,8 +3002,12 @@ fn folder_identifies_from_its_rip_log_with_the_sheet_unbound() {
         "folder must be a candidate so its log can identify it",
     );
 
-    let files = collect_release_candidate_files(&album, &StoredCandidateEdits::none())
-        .expect("scan should succeed");
+    let files = collect_release_candidate_files_with_scope(
+        &album,
+        crate::import::ReleaseFileScope::Recursive,
+        &StoredCandidateEdits::none(),
+    )
+    .expect("scan should succeed");
     assert!(files.bound_sheets().is_empty());
     assert!(
         crate::import::discid::compute_discid_from_categorized(&files).is_some(),
@@ -3493,6 +3050,9 @@ fn unparseable_sheet_lands_as_a_document() {
                 invalid.reason
             )
         }
+        ScanItem::Discovered(_) | ScanItem::Boundary(_) => {
+            panic!("terminal scan helper returned a progress item")
+        }
     }
 }
 
@@ -3512,9 +3072,13 @@ fn content_hash_covers_audio_no_sheet_references() {
         if with_bonus {
             std::fs::write(dir.join("bonus.flac"), fake_flac()).unwrap();
         }
-        collect_release_candidate_files(dir, &StoredCandidateEdits::none())
-            .expect("scan should succeed")
-            .content_hash()
+        collect_release_candidate_files_with_scope(
+            dir,
+            crate::import::ReleaseFileScope::Recursive,
+            &StoredCandidateEdits::none(),
+        )
+        .expect("scan should succeed")
+        .content_hash()
     };
     let tmp = tempfile::tempdir().unwrap();
     let plain = build(&tmp.path().join("Plain"), false);
@@ -3544,9 +3108,18 @@ fn an_unrecognized_sidecar_is_carried_and_hashed() {
         std::fs::write(with_sidecars.join(sidecar), b"scene notes").unwrap();
     }
 
-    let bare_files = collect_release_candidate_files(&bare, &StoredCandidateEdits::none()).unwrap();
-    let sidecar_files =
-        collect_release_candidate_files(&with_sidecars, &StoredCandidateEdits::none()).unwrap();
+    let bare_files = collect_release_candidate_files_with_scope(
+        &bare,
+        crate::import::ReleaseFileScope::Recursive,
+        &StoredCandidateEdits::none(),
+    )
+    .unwrap();
+    let sidecar_files = collect_release_candidate_files_with_scope(
+        &with_sidecars,
+        crate::import::ReleaseFileScope::Recursive,
+        &StoredCandidateEdits::none(),
+    )
+    .unwrap();
     assert_eq!(
         sidecar_files
             .files
@@ -3591,8 +3164,12 @@ fn a_binding_survives_a_rename_of_the_sheet() {
     )
     .unwrap();
 
-    let files = collect_release_candidate_files(&album, &StoredCandidateEdits::none())
-        .expect("scan should succeed");
+    let files = collect_release_candidate_files_with_scope(
+        &album,
+        crate::import::ReleaseFileScope::Recursive,
+        &StoredCandidateEdits::none(),
+    )
+    .expect("scan should succeed");
     let bound = files.bound_sheets();
     assert_eq!(bound.len(), 1);
     assert_eq!(bound[0].file.file_name, "Completely Unrelated.cue");
@@ -3635,7 +3212,11 @@ fn corrupt_audio_and_empty_folders_still_invalidate() {
     );
     assert!(
         matches!(
-            collect_release_candidate_files(&empty, &StoredCandidateEdits::none()),
+            collect_release_candidate_files_with_scope(
+                &empty,
+                crate::import::ReleaseFileScope::Recursive,
+                &StoredCandidateEdits::none()
+            ),
             Err(crate::import::ImportError::InvalidFolder(
                 InvalidReason::NoValidAudio
             ))
@@ -3656,8 +3237,12 @@ fn the_scan_proposes_one_cover_from_the_conventional_names() {
         std::fs::write(album.join(image), [0xFF, 0xD8, 0xFF, 0xE0]).unwrap();
     }
 
-    let files = collect_release_candidate_files(&album, &StoredCandidateEdits::none())
-        .expect("scan should succeed");
+    let files = collect_release_candidate_files_with_scope(
+        &album,
+        crate::import::ReleaseFileScope::Recursive,
+        &StoredCandidateEdits::none(),
+    )
+    .expect("scan should succeed");
     assert_eq!(
         cover_names(&files),
         vec!["cover.jpg"],
@@ -3678,8 +3263,12 @@ fn a_root_level_cover_outranks_one_in_a_subfolder() {
     std::fs::write(album.join("Artwork/front.jpg"), [0xFF, 0xD8, 0xFF, 0xE0]).unwrap();
     std::fs::write(album.join("cover.jpg"), [0xFF, 0xD8, 0xFF, 0xE0]).unwrap();
 
-    let files = collect_release_candidate_files(&album, &StoredCandidateEdits::none())
-        .expect("scan should succeed");
+    let files = collect_release_candidate_files_with_scope(
+        &album,
+        crate::import::ReleaseFileScope::Recursive,
+        &StoredCandidateEdits::none(),
+    )
+    .expect("scan should succeed");
     assert_eq!(cover_names(&files), vec!["cover.jpg"]);
 
     // With nothing at the root, the nested one leads.
@@ -3691,8 +3280,12 @@ fn a_root_level_cover_outranks_one_in_a_subfolder() {
         [0xFF, 0xD8, 0xFF, 0xE0],
     )
     .unwrap();
-    let files = collect_release_candidate_files(&nested_only, &StoredCandidateEdits::none())
-        .expect("scan should succeed");
+    let files = collect_release_candidate_files_with_scope(
+        &nested_only,
+        crate::import::ReleaseFileScope::Recursive,
+        &StoredCandidateEdits::none(),
+    )
+    .expect("scan should succeed");
     assert_eq!(cover_names(&files), vec!["front.jpg"]);
 }
 
@@ -3738,8 +3331,12 @@ fn binding_a_sheet_whose_directive_missed_makes_the_folder_a_twelve_track_disc()
     )
     .unwrap();
 
-    let unbound =
-        collect_release_candidate_files(&album, &StoredCandidateEdits::none()).expect("scan");
+    let unbound = collect_release_candidate_files_with_scope(
+        &album,
+        crate::import::ReleaseFileScope::Recursive,
+        &StoredCandidateEdits::none(),
+    )
+    .expect("scan");
     assert_eq!(
         unbound.track_count(),
         1,
@@ -3798,8 +3395,12 @@ fn audio_a_sheet_cannot_use_is_refused_at_offer_time_with_the_codec_named() {
     )
     .unwrap();
 
-    let files =
-        collect_release_candidate_files(&album, &StoredCandidateEdits::none()).expect("scan");
+    let files = collect_release_candidate_files_with_scope(
+        &album,
+        crate::import::ReleaseFileScope::Recursive,
+        &StoredCandidateEdits::none(),
+    )
+    .expect("scan");
     let options = files.sheet_binding_options("cd.cue");
 
     assert_eq!(
@@ -3840,8 +3441,12 @@ fn clearing_a_binding_leaves_it_unbound_rather_than_re_guessed() {
     )
     .unwrap();
 
-    let proposed =
-        collect_release_candidate_files(&album, &StoredCandidateEdits::none()).expect("scan");
+    let proposed = collect_release_candidate_files_with_scope(
+        &album,
+        crate::import::ReleaseFileScope::Recursive,
+        &StoredCandidateEdits::none(),
+    )
+    .expect("scan");
     assert_eq!(
         proposed.track_count(),
         12,
@@ -3885,20 +3490,33 @@ fn a_binding_whose_audio_disappears_is_not_kept() {
     )
     .unwrap();
 
-    let scanned =
-        collect_release_candidate_files(&album, &StoredCandidateEdits::none()).expect("scan");
+    let scanned = collect_release_candidate_files_with_scope(
+        &album,
+        crate::import::ReleaseFileScope::Recursive,
+        &StoredCandidateEdits::none(),
+    )
+    .expect("scan");
     let stored = stored_binding(&scanned, "cd.cue", Some("cd.flac"));
     assert_eq!(
-        collect_release_candidate_files(&album, &stored)
-            .expect("scan")
-            .track_count(),
+        collect_release_candidate_files_with_scope(
+            &album,
+            crate::import::ReleaseFileScope::Recursive,
+            &stored
+        )
+        .expect("scan")
+        .track_count(),
         12,
         "the binding applies while the audio it names is here",
     );
 
     std::fs::remove_file(album.join("cd.flac")).unwrap();
 
-    let after = collect_release_candidate_files(&album, &stored).expect("scan");
+    let after = collect_release_candidate_files_with_scope(
+        &album,
+        crate::import::ReleaseFileScope::Recursive,
+        &stored,
+    )
+    .expect("scan");
     assert_eq!(
         after.track_sheets().next().unwrap().binding,
         &SheetBinding::Unresolved,
@@ -3944,8 +3562,12 @@ fn scan_with_binding(
     sheet_file_id: &str,
     audio_file_id: Option<&str>,
 ) -> CategorizedFiles {
-    collect_release_candidate_files(folder, &stored_binding(files, sheet_file_id, audio_file_id))
-        .expect("scan")
+    collect_release_candidate_files_with_scope(
+        folder,
+        crate::import::ReleaseFileScope::Recursive,
+        &stored_binding(files, sheet_file_id, audio_file_id),
+    )
+    .expect("scan")
 }
 
 // ── What a role makes of a file, and which files are the release's tracks ────
@@ -3974,8 +3596,12 @@ fn becomes_names_the_slots_each_file_backs() {
     std::fs::write(album.join("bonus-2.flac"), fake_flac()).unwrap();
     std::fs::write(album.join("cover.jpg"), fake_jpeg()).unwrap();
 
-    let files =
-        collect_release_candidate_files(&album, &StoredCandidateEdits::none()).expect("scan");
+    let files = collect_release_candidate_files_with_scope(
+        &album,
+        crate::import::ReleaseFileScope::Recursive,
+        &StoredCandidateEdits::none(),
+    )
+    .expect("scan");
     let becomes: Vec<(&str, FileBecomes)> = files
         .files
         .iter()
@@ -4028,8 +3654,12 @@ fn a_homogeneous_directory_collapses_to_one_row() {
     std::fs::write(album.join("extras/back.jpg"), fake_jpeg()).unwrap();
     std::fs::write(album.join("extras/info.txt"), b"info").unwrap();
 
-    let files =
-        collect_release_candidate_files(&album, &StoredCandidateEdits::none()).expect("scan");
+    let files = collect_release_candidate_files_with_scope(
+        &album,
+        crate::import::ReleaseFileScope::Recursive,
+        &StoredCandidateEdits::none(),
+    )
+    .expect("scan");
     let collapsed: Vec<(String, FileRowKind, u32)> = files
         .collapsed_directories()
         .into_iter()
@@ -4057,8 +3687,12 @@ fn a_file_taken_out_of_the_tracklist_stops_being_a_slot_and_stays_in_the_release
         std::fs::write(album.join(format!("{index:02}.flac")), fake_flac()).unwrap();
     }
 
-    let mut files =
-        collect_release_candidate_files(&album, &StoredCandidateEdits::none()).expect("scan");
+    let mut files = collect_release_candidate_files_with_scope(
+        &album,
+        crate::import::ReleaseFileScope::Recursive,
+        &StoredCandidateEdits::none(),
+    )
+    .expect("scan");
     let hash = files.content_hash();
     assert_eq!(files.track_count(), 3);
 
@@ -4097,7 +3731,12 @@ fn a_file_taken_out_of_the_tracklist_stops_being_a_slot_and_stays_in_the_release
             ..Default::default()
         },
     )]));
-    let reopened = collect_release_candidate_files(&album, &stored).expect("scan");
+    let reopened = collect_release_candidate_files_with_scope(
+        &album,
+        crate::import::ReleaseFileScope::Recursive,
+        &stored,
+    )
+    .expect("scan");
     assert_eq!(reopened.track_count(), 2);
     assert_eq!(reopened.release_files().count(), 3);
 }
@@ -4112,8 +3751,12 @@ fn taking_out_the_last_audio_is_refused() {
     std::fs::create_dir_all(&album).unwrap();
     std::fs::write(album.join("01.flac"), fake_flac()).unwrap();
 
-    let mut files =
-        collect_release_candidate_files(&album, &StoredCandidateEdits::none()).expect("scan");
+    let mut files = collect_release_candidate_files_with_scope(
+        &album,
+        crate::import::ReleaseFileScope::Recursive,
+        &StoredCandidateEdits::none(),
+    )
+    .expect("scan");
     let mut roles = FileRoleEdits::default();
     roles.set("01.flac".to_string(), FileRoleChoice::NotATrack);
 
@@ -4137,8 +3780,12 @@ fn only_audio_carries_a_role_decision() {
     std::fs::write(album.join("01.flac"), fake_flac()).unwrap();
     std::fs::write(album.join("cover.jpg"), fake_jpeg()).unwrap();
 
-    let mut files =
-        collect_release_candidate_files(&album, &StoredCandidateEdits::none()).expect("scan");
+    let mut files = collect_release_candidate_files_with_scope(
+        &album,
+        crate::import::ReleaseFileScope::Recursive,
+        &StoredCandidateEdits::none(),
+    )
+    .expect("scan");
     let alternatives: Vec<(&str, usize)> = files
         .files
         .iter()

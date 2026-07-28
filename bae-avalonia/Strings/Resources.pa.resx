@@ -457,4 +457,8 @@
   <data name="nowplaying.cast_no_devices" xml:space="preserve"><value>ਕੋਈ ਕਾਸਟ ਡਿਵਾਈਸ ਨਹੀਂ ਮਿਲਿਆ</value></data>
   <data name="component_gallery.menu" xml:space="preserve"><value>ਕੰਪੋਨੈਂਟ ਗੈਲਰੀ</value></data>
   <data name="component_gallery.title" xml:space="preserve"><value>ਕੰਪੋਨੈਂਟ ਗੈਲਰੀ</value></data>
+  <data name="import.folder.refresh" xml:space="preserve"><value>ਤਾਜ਼ਾ ਕਰੋ</value></data>
+  <data name="import.folder.refreshing" xml:space="preserve"><value>ਤਾਜ਼ਾ ਕੀਤਾ ਜਾ ਰਿਹਾ ਹੈ…</value></data>
+  <data name="import.release.one" xml:space="preserve"><value>ਇੱਕ ਰਿਲੀਜ਼ ਵਜੋਂ ਜੋੜੋ</value></data>
+  <data name="import.release.separate" xml:space="preserve"><value>ਵੱਖਰੀਆਂ ਰਿਲੀਜ਼ਾਂ ਵਜੋਂ ਰੱਖੋ</value></data>
 </root>

@@ -8,8 +8,8 @@ import SwiftUI
 /// `BridgeTriageRow`; this only renders it.
 ///
 /// Two-line density: the folder-name mono subtitle, the one line this pane
-/// can drop, shows only on the focused row (`isFocused`) — see the roadmap's
-/// row-density study. There is no density switch; this is the only density.
+/// can drop, shows only on the focused row (`isFocused`). There is no density
+/// switch.
 struct TriageRowView: View {
     let row: BridgeTriageRow
     let isFocused: Bool
@@ -19,13 +19,37 @@ struct TriageRowView: View {
     let selection: (isSelected: Bool, toggle: () -> Void)?
     /// Select this row — what a click does, and what "Choose", "Import
     /// Anyway" and "Retry" alias: each opens the main pane exactly as
-    /// selecting the row would, per the plan's "a Needs-you row's action
-    /// opens what exists today."
+    /// selecting the row would.
     let onSelect: () -> Void
     let onSkip: (_ skipped: Bool) -> Void
+    let onReleaseDecision:
+        (
+            _ key: BridgeFolderReleaseDecisionKey,
+            _ decision: BridgeFolderReleaseDecision
+        ) -> Void
 
     @Environment(OutboxStore.self)
     private var outboxStore
+
+    init(
+        row: BridgeTriageRow,
+        isFocused: Bool,
+        selection: (isSelected: Bool, toggle: () -> Void)?,
+        onSelect: @escaping () -> Void,
+        onSkip: @escaping (_ skipped: Bool) -> Void,
+        onReleaseDecision:
+            @escaping (
+                _ key: BridgeFolderReleaseDecisionKey,
+                _ decision: BridgeFolderReleaseDecision
+            ) -> Void = { _, _ in }
+    ) {
+        self.row = row
+        self.isFocused = isFocused
+        self.selection = selection
+        self.onSelect = onSelect
+        self.onSkip = onSkip
+        self.onReleaseDecision = onReleaseDecision
+    }
 
     var body: some View {
         HStack(alignment: .top, spacing: 10) {
@@ -63,6 +87,34 @@ struct TriageRowView: View {
             }
             Button("Reveal in Finder") {
                 SystemActions.revealInFinder(path: row.candidateKey)
+            }
+            if let combineKey = row.combineAncestorKey {
+                Divider()
+                Button("Combine as One Release") {
+                    onReleaseDecision(combineKey, .combineAsOneRelease)
+                }
+            }
+            ForEach(
+                row.resolvedBoundaries,
+                id: \.key
+            ) { boundary in
+                Divider()
+                switch boundary.decision {
+                case .combineAsOneRelease:
+                    Button("Keep as Separate Releases") {
+                        onReleaseDecision(
+                            boundary.key,
+                            .keepAsSeparateReleases
+                        )
+                    }
+                case .keepAsSeparateReleases:
+                    Button("Combine as One Release") {
+                        onReleaseDecision(
+                            boundary.key,
+                            .combineAsOneRelease
+                        )
+                    }
+                }
             }
         }
     }
@@ -162,7 +214,7 @@ struct TriageRowView: View {
                     .padding(.top, 1)
             }
             if isFocused {
-                Text(row.folderName)
+                Text(row.displayPath)
                     .font(.system(size: 11.5, design: .monospaced))
                     .foregroundStyle(.tertiary)
                     .lineLimit(1)
@@ -179,6 +231,11 @@ struct TriageRowView: View {
         }
     }
 
+}
+
+/// The row's actions and its trailing column. In an extension so the view's
+/// body and the layout it composes stay readable as one piece.
+extension TriageRowView {
     /// The second line: the matched release's metadata, a disagreement
     /// sentence, the still-identifying phase, or an import failure —
     /// whichever `row` is actually saying.
@@ -250,11 +307,7 @@ struct TriageRowView: View {
             return error.displayLine
         }
     }
-}
 
-// The row's actions and its trailing column. In an extension so the view's
-// body and the layout it composes stay readable as one piece.
-extension TriageRowView {
     // MARK: - Row actions
 
     private struct RowAction {
@@ -263,19 +316,18 @@ extension TriageRowView {
         let action: () -> Void
     }
 
-    /// The pill row under the meta column — only the placements the design
-    /// gives one: pick-a-pressing, already-in-library, and a failed import.
-    /// Every other row's action is "select it," which the whole row already
-    /// does.
+    /// The pill row under the meta column. Placement-specific commands and
+    /// persisted folder-boundary reversal commands share the same renderer.
     private var rowActions: [RowAction] {
+        var actions: [RowAction] = []
         switch row.placement {
         case .needsYou(.pickAPressing, .disagreement):
-            return [
+            actions = [
                 RowAction(label: "Choose", isKey: true, action: onSelect),
                 RowAction(label: "Skip", isKey: false) { onSkip(true) },
             ]
         case .needsYou(.alreadyInLibrary, .disagreement):
-            return [
+            actions = [
                 RowAction(label: "Skip", isKey: false) { onSkip(true) },
                 RowAction(
                     label: "Import Anyway",
@@ -285,17 +337,42 @@ extension TriageRowView {
             ]
         case .done:
             if case .error = row.importStatus {
-                return [
+                actions = [
                     RowAction(label: "Retry", isKey: true, action: onSelect),
                     RowAction(label: "Reveal in Finder", isKey: false) {
                         SystemActions.revealInFinder(path: row.candidateKey)
                     },
                 ]
             }
-            return []
         default:
-            return []
+            break
         }
+        for boundary in row.resolvedBoundaries {
+            switch boundary.decision {
+            case .combineAsOneRelease:
+                actions.append(
+                    RowAction(
+                        label: "Keep as Separate Releases",
+                        isKey: false
+                    ) {
+                        onReleaseDecision(
+                            boundary.key,
+                            .keepAsSeparateReleases
+                        )
+                    }
+                )
+            case .keepAsSeparateReleases:
+                actions.append(
+                    RowAction(label: "Combine as One Release", isKey: false) {
+                        onReleaseDecision(
+                            boundary.key,
+                            .combineAsOneRelease
+                        )
+                    }
+                )
+            }
+        }
+        return actions
     }
 
     // MARK: - Trailing
@@ -478,6 +555,7 @@ extension BridgeMatchedSignal {
 }
 
 #if DEBUG
+
     // MARK: - Previews
 
     #Preview("Triage rows") {

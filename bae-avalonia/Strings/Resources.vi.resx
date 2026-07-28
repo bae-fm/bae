@@ -457,4 +457,8 @@
   <data name="nowplaying.cast_no_devices" xml:space="preserve"><value>Không tìm thấy thiết bị truyền</value></data>
   <data name="component_gallery.menu" xml:space="preserve"><value>thư viện thành phần</value></data>
   <data name="component_gallery.title" xml:space="preserve"><value>thư viện thành phần</value></data>
+  <data name="import.folder.refresh" xml:space="preserve"><value>Làm mới</value></data>
+  <data name="import.folder.refreshing" xml:space="preserve"><value>Đang làm mới…</value></data>
+  <data name="import.release.one" xml:space="preserve"><value>Kết hợp thành một bản phát hành</value></data>
+  <data name="import.release.separate" xml:space="preserve"><value>Giữ thành các bản phát hành riêng</value></data>
 </root>

@@ -101,8 +101,8 @@ final class AppService: BaeKit.AppService {
 
     /// Wire the live `AppHandle` into the stores: register the common and
     /// desktop projections, subscribe to Rust UI events, register the artwork
-    /// analyzer, set up macOS media remote-control bindings, start watching
-    /// every persisted watched folder, and re-check a deferred Discogs token.
+    /// analyzer, set up macOS media remote-control bindings, and re-check a
+    /// deferred Discogs token.
     /// Called once after construction; previews skip it.
     func wireUp() {
         registerCommonProjections()
@@ -126,27 +126,7 @@ final class AppService: BaeKit.AppService {
             previewAudio: previewAudio,
             playbackStore: playbackStore
         )
-        startWatchingImportFolders()
         revalidateDiscogsToken()
-    }
-
-    /// Start the core filesystem watcher on every folder persisted from a
-    /// previous session. Core's watcher stays live and self-updating from here
-    /// on (a debounced `notify` watch re-scans on every on-disk change), so
-    /// this only needs to run once per library open — not on every import-tab
-    /// visit, which is what re-running it would amount to if it lived behind a
-    /// view's `.task`.
-    private func startWatchingImportFolders() {
-        do {
-            try importer.scanWatchedFolders()
-        }
-        catch {
-            uiStore.showError(
-                String(
-                    localized: "Scan failed: \(error.displayLine)"
-                )
-            )
-        }
     }
 
     /// Re-check a Discogs key that was saved while offline. App-launch half of
@@ -190,19 +170,22 @@ extension AppService {
                     appHandle.getImportCandidates()
                 }
             },
-            apply: { [importStore] snapshot in
+            apply: { [importStore, uiStore] snapshot in
                 importStore.applyImportCandidatesSnapshot(snapshot)
+                uiStore.retainFolderCandidateSelection(
+                    in: Set(importStore.folderCandidates.keys)
+                )
             },
             onError: { [uiStore] error in uiStore.showError(error) }
         )
     }
 
-    /// The sidebar's rows, tab counts, and invalid folders. `getImportTriageQueue`
-    /// is itself async (it reads stored verdicts and does a live library
-    /// check), so unlike the plain candidate snapshot there is no synchronous
-    /// value to seed `ImportStore.triageQueue` with at init — it starts empty
-    /// and this projection fills it in once the launch scan's `Finished`
-    /// invalidates `.importCandidateList`.
+    /// The sidebar's sections and tab counts. `getImportTriageQueue` is itself
+    /// async (it reads stored verdicts and does a live library check), so unlike
+    /// the plain candidate snapshot there is no synchronous value to seed
+    /// `ImportStore.triageQueue` with at init — it starts empty and this
+    /// projection replaces it on each progressive `.importCandidateList`
+    /// invalidation.
     ///
     /// `.release` rides along: another import elsewhere landing a release a
     /// Ready row matches has to flip that row to "already in library" without
@@ -250,10 +233,13 @@ extension AppService {
                     snapshot: snapshot
                 )
             },
-            apply: { [importStore] value in
+            apply: { [importStore, uiStore] value in
                 importStore.applyImportCandidateSnapshot(
                     key: value.key,
                     snapshot: value.snapshot
+                )
+                uiStore.retainFolderCandidateSelection(
+                    in: Set(importStore.folderCandidates.keys)
                 )
             },
             onError: { [uiStore] error in uiStore.showError(error) }

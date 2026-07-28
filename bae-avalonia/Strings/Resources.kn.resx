@@ -457,4 +457,8 @@
   <data name="nowplaying.cast_no_devices" xml:space="preserve"><value>ಯಾವುದೇ ಕ್ಯಾಸ್ಟ್ ಸಾಧನಗಳು ಸಿಗಲಿಲ್ಲ</value></data>
   <data name="component_gallery.menu" xml:space="preserve"><value>ಕಾಂಪೊನೆಂಟ್ ಗ್ಯಾಲರಿ</value></data>
   <data name="component_gallery.title" xml:space="preserve"><value>ಕಾಂಪೊನೆಂಟ್ ಗ್ಯಾಲರಿ</value></data>
+  <data name="import.folder.refresh" xml:space="preserve"><value>ರಿಫ್ರೆಶ್</value></data>
+  <data name="import.folder.refreshing" xml:space="preserve"><value>ರಿಫ್ರೆಶ್ ಆಗುತ್ತಿದೆ…</value></data>
+  <data name="import.release.one" xml:space="preserve"><value>ಒಂದು ಬಿಡುಗಡೆಯಾಗಿ ಸಂಯೋಜಿಸಿ</value></data>
+  <data name="import.release.separate" xml:space="preserve"><value>ಪ್ರತ್ಯೇಕ ಬಿಡುಗಡೆಗಳಾಗಿ ಇರಿಸಿ</value></data>
 </root>

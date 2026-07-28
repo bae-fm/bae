@@ -86,13 +86,17 @@ pub use claim::{claim_line, ClaimEvidence, ClaimLine, ClaimRelease};
 pub use error::ImportError;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use folder_registry::{ImportFolderRegistry, WatchedFolder};
-pub use folder_scanner::{FolderCandidate, InvalidCandidate, InvalidReason};
+pub use folder_scanner::{
+    FolderCandidate, FolderReleaseBoundary, FolderReleaseDecision, FolderReleaseDecisionKey,
+    FolderReleaseTreeRow, FolderReleaseTreeRowKind, InvalidCandidate, InvalidReason,
+    ReleaseFileScope, ResolvedFolderReleaseBoundary,
+};
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use handle::{
     parsed_album_to_user_edit, shape_user_edit_for_choice, CandidateImportStatusSnapshot,
-    CandidateRuntimeSnapshot, DiscogsSaveOutcome, FolderImportCandidateSnapshot,
+    CandidateRuntimeSnapshot, DiscogsSaveOutcome, FolderImportCandidateSnapshot, FolderScanStatus,
     GroupedSearchResults, ImportCandidateSnapshot, ImportCandidatesSnapshot, ImportEvent,
-    ImportServiceHandle, ScanEvent, SearchQuery,
+    ImportServiceHandle, ScanEvent, SearchQuery, WatchedFolderScanStatus,
 };
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use service::ImportService;
@@ -105,8 +109,8 @@ pub use track_slots::{
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use triage::{
     Answered, CandidateAnswer, IdentifyPhase, MatchEvidence, MatchedPressing, MatchedRelease,
-    MatchedSignal, NeedsYouGroup, NeedsYouReason, TriagePlacement, TriageQueue, TriageRow,
-    TriageTab, TriageTabCounts,
+    MatchedSignal, NeedsYouGroup, NeedsYouReason, TriageEntry, TriageGroup, TriagePlacement,
+    TriageQueue, TriageRow, TriageSection, TriageTab, TriageTabCounts,
 };
 pub use types::{
     AudioFile, CoverSelection, EditValidationError, IdentityChoice, ImportCommand, ImportPhase,

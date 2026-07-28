@@ -2,17 +2,46 @@
     import BaeKit
     import Foundation
 
-    // Preview fixtures for the Import flow: watched folders and folder
-    // candidates, the seeded import store, candidate file listings (CUE+FLAC
-    // and per-track), the picked-release detail/seed and its confirm edit, and
-    // the identify/search states (exact, manual, conflict, triangulating,
-    // not-found) with their signal toolbars. Generic placeholder names
-    // throughout.
+    /// Preview fixtures for the Import flow: watched folders and folder
+    /// candidates, the seeded import store, candidate file listings (CUE+FLAC
+    /// and per-track), the picked-release detail/seed and its confirm edit, and
+    /// the identify/search states (exact, manual, conflict, triangulating,
+    /// not-found) with their signal toolbars. Generic placeholder names
+    /// throughout.
     extension PreviewData {
         static let importWatchedFolder = BridgeWatchedFolder(
             path: "/Music/Downloads",
             name: "Downloads"
         )
+
+        private static func candidateEntry(
+            _ row: BridgeTriageRow
+        ) -> BridgeTriageEntry {
+            .candidate(
+                stableKey: "candidate:\(row.candidateKey)",
+                row: row
+            )
+        }
+
+        private static func boundaryEntry(
+            _ boundary: BridgeFolderReleaseBoundary
+        ) -> BridgeTriageEntry {
+            .boundary(
+                stableKey:
+                    "boundary:\(boundary.key.watchedFolderPath):"
+                    + boundary.key.relativeFolderPath,
+                boundary: boundary
+            )
+        }
+
+        private static func invalidEntry(
+            _ candidate: BridgeInvalidCandidate
+        ) -> BridgeTriageEntry {
+            .invalid(
+                stableKey: "invalid:\(candidate.folderPath)",
+                invalidCandidate: candidate
+            )
+        }
 
         /// Seeded ImportStore for the ImportView whole-view preview — the
         /// watched folder, every folder candidate, and a triage queue keyed to
@@ -26,63 +55,92 @@
             for candidate in folderCandidates {
                 s.folderCandidates[candidate.key] = candidate
             }
+            let rows = [
+                triageRow(
+                    for: folderCandidates[0],
+                    placement: .ready,
+                    matched: triageMatch(
+                        releaseId: "rel-preview-one",
+                        title: "Album Title One"
+                    ),
+                    selectable: true
+                ),
+                triageRow(
+                    for: folderCandidates[1],
+                    placement: .skipped,
+                    matched: nil,
+                    selectable: false
+                ),
+                triageRow(
+                    for: folderCandidates[2],
+                    placement: .done,
+                    matched: triageMatch(
+                        releaseId: "rel-preview-three",
+                        title: "Compilation Vol. 3",
+                        trackCount: 15
+                    ),
+                    selectable: false,
+                    importStatus: importStatuses[folderCandidates[2].key]
+                ),
+                triageRow(
+                    for: folderCandidates[3],
+                    placement: .done,
+                    matched: triageMatch(
+                        releaseId: "rel-preview-four",
+                        title: "EP Release",
+                        trackCount: 5
+                    ),
+                    selectable: false,
+                    importStatus: importStatuses[folderCandidates[3].key]
+                ),
+                triageRow(
+                    for: folderCandidates[4],
+                    placement: .done,
+                    matched: triageMatch(
+                        releaseId: "rel-preview-five",
+                        title: "Live Recording 2023",
+                        trackCount: 18
+                    ),
+                    selectable: false
+                ),
+            ]
             s.triageQueue = BridgeTriageQueue(
-                rows: [
-                    triageRow(
-                        for: folderCandidates[0],
-                        placement: .ready,
-                        matched: triageMatch(
-                            releaseId: "rel-preview-one",
-                            title: "Album Title One"
+                sections: [
+                    BridgeTriageSection(
+                        tab: .ready,
+                        watchedFolderPath: importWatchedFolder.path,
+                        group: BridgeTriageGroup(
+                            key: BridgeFolderReleaseDecisionKey(
+                                watchedFolderPath: importWatchedFolder.path,
+                                relativeFolderPath: "Collection"
+                            ),
+                            name: "Collection"
                         ),
-                        selectable: true
+                        entries: [candidateEntry(rows[0])]
                     ),
-                    triageRow(
-                        for: folderCandidates[1],
-                        placement: .skipped,
-                        matched: nil,
-                        selectable: false
+                    BridgeTriageSection(
+                        tab: .done,
+                        watchedFolderPath: importWatchedFolder.path,
+                        group: nil,
+                        entries: rows[2...4].map(candidateEntry)
                     ),
-                    triageRow(
-                        for: folderCandidates[2],
-                        placement: .done,
-                        matched: triageMatch(
-                            releaseId: "rel-preview-three",
-                            title: "Compilation Vol. 3",
-                            trackCount: 15
-                        ),
-                        selectable: false,
-                        importStatus: importStatuses[folderCandidates[2].key]
-                    ),
-                    triageRow(
-                        for: folderCandidates[3],
-                        placement: .done,
-                        matched: triageMatch(
-                            releaseId: "rel-preview-four",
-                            title: "EP Release",
-                            trackCount: 5
-                        ),
-                        selectable: false,
-                        importStatus: importStatuses[folderCandidates[3].key]
-                    ),
-                    triageRow(
-                        for: folderCandidates[4],
-                        placement: .done,
-                        matched: triageMatch(
-                            releaseId: "rel-preview-five",
-                            title: "Live Recording 2023",
-                            trackCount: 18
-                        ),
-                        selectable: false
+                    BridgeTriageSection(
+                        tab: .skipped,
+                        watchedFolderPath: importWatchedFolder.path,
+                        group: nil,
+                        entries: [
+                            candidateEntry(rows[1]),
+                            invalidEntry(invalidCandidates[0]),
+                        ]
                     ),
                 ],
-                invalid: invalidCandidates,
                 counts: BridgeTriageTabCounts(
                     ready: 1,
                     needsYou: 0,
                     done: 3,
                     skipped: 1 + UInt32(invalidCandidates.count)
-                )
+                ),
+                folderScanStatuses: []
             )
             s.queueIdentifyProgress = (identified: 5, total: 5)
             return s
@@ -96,7 +154,7 @@
                 files: bridgeCandidateFiles,
                 trackCount: 9,
                 skipped: false,
-                isAdded: false,
+                isAdded: false
             ),
             BridgeFolderCandidate(
                 folderPath: "/Music/Downloads/Album Title Two [Label CAT-002]",
@@ -106,7 +164,7 @@
                 trackCount: 12,
                 // Skipped example — renders under the Skipped tab.
                 skipped: true,
-                isAdded: false,
+                isAdded: false
             ),
             BridgeFolderCandidate(
                 folderPath: "/Music/Downloads/Compilation Vol. 3",
@@ -115,7 +173,7 @@
                 files: bridgeCandidateFiles,
                 trackCount: 15,
                 skipped: false,
-                isAdded: false,
+                isAdded: false
             ),
             BridgeFolderCandidate(
                 folderPath: "/Music/Downloads/EP Release",
@@ -124,7 +182,7 @@
                 files: bridgeCandidateFiles,
                 trackCount: 5,
                 skipped: false,
-                isAdded: false,
+                isAdded: false
             ),
             BridgeFolderCandidate(
                 folderPath: "/Music/Downloads/Live Recording 2023",
@@ -134,7 +192,7 @@
                 trackCount: 18,
                 // Added example (content-hash match) — renders under the Added tab.
                 skipped: false,
-                isAdded: true,
+                isAdded: true
             ),
         ]
         .map(Candidate.init(bridge:))
@@ -158,9 +216,301 @@
                 folderPath: "/Music/Downloads/Broken Rip",
                 sourceFolderName: "Broken Rip",
                 watchedFolderPath: "/Music/Downloads",
+                displayPath: "Broken Rip",
+                resolvedBoundaries: [],
                 reason: .corruptAudioFile(path: "03.flac")
             )
         ]
+
+        static let folderReleaseBoundaryKey = BridgeFolderReleaseDecisionKey(
+            watchedFolderPath: "/Music/Downloads",
+            relativeFolderPath: "Collection"
+        )
+
+        static let folderReleaseBoundary = BridgeFolderReleaseBoundary(
+            key: folderReleaseBoundaryKey,
+            name: "Collection",
+            displayPath: "Collection",
+            sharedFileCount: 2,
+            treeRows: [
+                BridgeFolderReleaseTreeRow(
+                    name: "Release One",
+                    displayPath: "Release One",
+                    depth: 0,
+                    kind: .candidate(
+                        trackCount: 9,
+                        formatLabel: "FLAC"
+                    ),
+                    decisionKey: BridgeFolderReleaseDecisionKey(
+                        watchedFolderPath: "/Music/Downloads",
+                        relativeFolderPath: "Collection/Release One"
+                    ),
+                    ancestorDecisionKeys: [folderReleaseBoundaryKey]
+                ),
+                BridgeFolderReleaseTreeRow(
+                    name: "Wrapper",
+                    displayPath: "Wrapper",
+                    depth: 0,
+                    kind: .folder,
+                    decisionKey: BridgeFolderReleaseDecisionKey(
+                        watchedFolderPath: "/Music/Downloads",
+                        relativeFolderPath: "Collection/Wrapper"
+                    ),
+                    ancestorDecisionKeys: [folderReleaseBoundaryKey]
+                ),
+                BridgeFolderReleaseTreeRow(
+                    name: "Release Two",
+                    displayPath: "Wrapper/Release Two",
+                    depth: 1,
+                    kind: .candidate(
+                        trackCount: 12,
+                        formatLabel: "FLAC"
+                    ),
+                    decisionKey: BridgeFolderReleaseDecisionKey(
+                        watchedFolderPath: "/Music/Downloads",
+                        relativeFolderPath: "Collection/Wrapper/Release Two"
+                    ),
+                    ancestorDecisionKeys: [
+                        folderReleaseBoundaryKey,
+                        BridgeFolderReleaseDecisionKey(
+                            watchedFolderPath: "/Music/Downloads",
+                            relativeFolderPath: "Collection/Wrapper"
+                        ),
+                    ]
+                ),
+            ]
+        )
+
+        private static let releaseQueueRoot = "/Music/Incoming"
+
+        static let releaseQueueWatchedFolder = BridgeWatchedFolder(
+            path: releaseQueueRoot,
+            name: "Incoming"
+        )
+
+        static let releaseQueueGroupKey = BridgeFolderReleaseDecisionKey(
+            watchedFolderPath: releaseQueueRoot,
+            relativeFolderPath: "Collection"
+        )
+
+        private static let releaseQueueBoundary = BridgeFolderReleaseBoundary(
+            key: BridgeFolderReleaseDecisionKey(
+                watchedFolderPath: releaseQueueRoot,
+                relativeFolderPath: "Archive/Box"
+            ),
+            name: "Box",
+            displayPath: "Archive/Box",
+            sharedFileCount: 2,
+            treeRows: [
+                BridgeFolderReleaseTreeRow(
+                    name: "Part 01",
+                    displayPath: "Part 01",
+                    depth: 0,
+                    kind: .candidate(trackCount: 9, formatLabel: "FLAC"),
+                    decisionKey: BridgeFolderReleaseDecisionKey(
+                        watchedFolderPath: releaseQueueRoot,
+                        relativeFolderPath: "Archive/Box/Part 01"
+                    ),
+                    ancestorDecisionKeys: [
+                        BridgeFolderReleaseDecisionKey(
+                            watchedFolderPath: releaseQueueRoot,
+                            relativeFolderPath: "Archive/Box"
+                        )
+                    ]
+                ),
+                BridgeFolderReleaseTreeRow(
+                    name: "Part 02",
+                    displayPath: "Part 02",
+                    depth: 0,
+                    kind: .candidate(trackCount: 11, formatLabel: "FLAC"),
+                    decisionKey: BridgeFolderReleaseDecisionKey(
+                        watchedFolderPath: releaseQueueRoot,
+                        relativeFolderPath: "Archive/Box/Part 02"
+                    ),
+                    ancestorDecisionKeys: [
+                        BridgeFolderReleaseDecisionKey(
+                            watchedFolderPath: releaseQueueRoot,
+                            relativeFolderPath: "Archive/Box"
+                        )
+                    ]
+                ),
+                BridgeFolderReleaseTreeRow(
+                    name: "Scans",
+                    displayPath: "Scans",
+                    depth: 0,
+                    kind: .folder,
+                    decisionKey: BridgeFolderReleaseDecisionKey(
+                        watchedFolderPath: releaseQueueRoot,
+                        relativeFolderPath: "Archive/Box/Scans"
+                    ),
+                    ancestorDecisionKeys: [
+                        BridgeFolderReleaseDecisionKey(
+                            watchedFolderPath: releaseQueueRoot,
+                            relativeFolderPath: "Archive/Box"
+                        )
+                    ]
+                ),
+                BridgeFolderReleaseTreeRow(
+                    name: "Booklet",
+                    displayPath: "Scans/Booklet",
+                    depth: 1,
+                    kind: .folder,
+                    decisionKey: BridgeFolderReleaseDecisionKey(
+                        watchedFolderPath: releaseQueueRoot,
+                        relativeFolderPath: "Archive/Box/Scans/Booklet"
+                    ),
+                    ancestorDecisionKeys: [
+                        BridgeFolderReleaseDecisionKey(
+                            watchedFolderPath: releaseQueueRoot,
+                            relativeFolderPath: "Archive/Box"
+                        ),
+                        BridgeFolderReleaseDecisionKey(
+                            watchedFolderPath: releaseQueueRoot,
+                            relativeFolderPath: "Archive/Box/Scans"
+                        ),
+                    ]
+                ),
+            ]
+        )
+
+        private static func releaseQueueRow(
+            name: String,
+            displayPath: String,
+            resolvedBoundaries: [BridgeResolvedFolderReleaseBoundary]
+        ) -> BridgeTriageRow {
+            BridgeTriageRow(
+                candidateKey: "\(releaseQueueRoot)/\(displayPath)",
+                folderName: name,
+                watchedFolderPath: releaseQueueRoot,
+                displayPath: displayPath,
+                resolvedBoundaries: resolvedBoundaries,
+                combineAncestorKey: nil,
+                actionable: true,
+                placement: .ready,
+                matched: nil,
+                selectable: true,
+                importStatus: nil
+            )
+        }
+
+        private static let releaseQueueRows = [
+            releaseQueueRow(
+                name: "Release 01",
+                displayPath: "Collection/Release 01",
+                resolvedBoundaries: []
+            ),
+            releaseQueueRow(
+                name: "Release 02",
+                displayPath: "Collection/Release 02",
+                resolvedBoundaries: []
+            ),
+            releaseQueueRow(
+                name: "Release 03",
+                displayPath: "Release 03",
+                resolvedBoundaries: []
+            ),
+        ]
+
+        private static let releaseQueue = BridgeTriageQueue(
+            sections: [
+                BridgeTriageSection(
+                    tab: .ready,
+                    watchedFolderPath: releaseQueueRoot,
+                    group: BridgeTriageGroup(
+                        key: releaseQueueGroupKey,
+                        name: "Collection"
+                    ),
+                    entries: releaseQueueRows[0...1].map(candidateEntry)
+                ),
+                BridgeTriageSection(
+                    tab: .ready,
+                    watchedFolderPath: releaseQueueRoot,
+                    group: nil,
+                    entries: [candidateEntry(releaseQueueRows[2])]
+                ),
+                BridgeTriageSection(
+                    tab: .needsYou,
+                    watchedFolderPath: releaseQueueRoot,
+                    group: nil,
+                    entries: [boundaryEntry(releaseQueueBoundary)]
+                ),
+            ],
+            counts: BridgeTriageTabCounts(
+                ready: 3,
+                needsYou: 1,
+                done: 0,
+                skipped: 0
+            ),
+            folderScanStatuses: []
+        )
+
+        private static let releaseQueueScanning = BridgeTriageQueue(
+            sections: releaseQueue.sections,
+            counts: releaseQueue.counts,
+            folderScanStatuses: [
+                BridgeWatchedFolderScanStatus(
+                    watchedFolderPath: releaseQueueRoot,
+                    watchedFolderName: releaseQueueWatchedFolder.name,
+                    status: .scanning
+                )
+            ]
+        )
+
+        private static let releaseQueueResolved = BridgeTriageQueue(
+            sections: [
+                BridgeTriageSection(
+                    tab: .ready,
+                    watchedFolderPath: releaseQueueRoot,
+                    group: nil,
+                    entries: [
+                        candidateEntry(
+                            releaseQueueRow(
+                                name: "Release 01",
+                                displayPath: "Collection/Release 01",
+                                resolvedBoundaries: [
+                                    BridgeResolvedFolderReleaseBoundary(
+                                        key: releaseQueueGroupKey,
+                                        decision: .keepAsSeparateReleases,
+                                        name: "Collection",
+                                        displayPath: "Collection"
+                                    )
+                                ]
+                            )
+                        )
+                    ]
+                )
+            ],
+            counts: BridgeTriageTabCounts(
+                ready: 1,
+                needsYou: 0,
+                done: 0,
+                skipped: 0
+            ),
+            folderScanStatuses: []
+        )
+
+        @MainActor
+        private static func releaseQueueStore(
+            _ queue: BridgeTriageQueue
+        ) -> ImportStore {
+            let store = ImportStore()
+            store.watchedFolders = [releaseQueueWatchedFolder]
+            store.triageQueue = queue
+            return store
+        }
+
+        @MainActor
+        static let releaseQueueImportStore = releaseQueueStore(releaseQueue)
+
+        @MainActor
+        static let releaseQueueScanningImportStore = releaseQueueStore(
+            releaseQueueScanning
+        )
+
+        @MainActor
+        static let releaseQueueResolvedImportStore = releaseQueueStore(
+            releaseQueueResolved
+        )
 
         // MARK: - Triage sidebar
 
@@ -209,6 +559,10 @@
                 candidateKey: candidate.key,
                 folderName: candidate.displayName,
                 watchedFolderPath: importWatchedFolder.path,
+                displayPath: candidate.displayName,
+                resolvedBoundaries: [],
+                combineAncestorKey: nil,
+                actionable: true,
                 placement: placement,
                 matched: matched,
                 selectable: selectable,
@@ -220,6 +574,10 @@
             candidateKey: "/Music/Downloads/1997 - album title (192 kbps)",
             folderName: "1997 - album title (192 kbps)",
             watchedFolderPath: "/Music/Downloads",
+            displayPath: "1997 - album title (192 kbps)",
+            resolvedBoundaries: [],
+            combineAncestorKey: nil,
+            actionable: true,
             placement: .ready,
             matched: triageMatch(releaseId: "rel-ready", title: "Album Title"),
             selectable: true,
@@ -230,6 +588,10 @@
             candidateKey: "/Music/Downloads/1966 - album title five",
             folderName: "1966 - album title five",
             watchedFolderPath: "/Music/Downloads",
+            displayPath: "1966 - album title five",
+            resolvedBoundaries: [],
+            combineAncestorKey: nil,
+            actionable: true,
             placement: .needsYou(
                 group: .pickAPressing,
                 reason: .disagreement(
@@ -261,6 +623,10 @@
             candidateKey: "/Music/Downloads/album title six - remaster",
             folderName: "album title six - remaster",
             watchedFolderPath: "/Music/Downloads",
+            displayPath: "album title six - remaster",
+            resolvedBoundaries: [],
+            combineAncestorKey: nil,
+            actionable: true,
             placement: .needsYou(
                 group: .signalsDisagree,
                 reason: .disagreement(disagreement: .signalsConflict)
@@ -276,6 +642,11 @@
             folderName:
                 "artist name - album ti\u{2026}INT 846.104 germany",
             watchedFolderPath: "/Music/Downloads",
+            displayPath:
+                "artist name - album ti\u{2026}INT 846.104 germany",
+            resolvedBoundaries: [],
+            combineAncestorKey: nil,
+            actionable: true,
             placement: .needsYou(
                 group: .alreadyInLibrary,
                 reason: .disagreement(disagreement: .alreadyInLibrary)
@@ -295,6 +666,10 @@
             candidateKey: "/Media/rips/album title seven (bootleg)",
             folderName: "album title seven (bootleg)",
             watchedFolderPath: "/Music/Downloads",
+            displayPath: "album title seven (bootleg)",
+            resolvedBoundaries: [],
+            combineAncestorKey: nil,
+            actionable: true,
             placement: .needsYou(
                 group: .noMatch,
                 reason: .disagreement(disagreement: .noMatch)
@@ -308,6 +683,10 @@
             candidateKey: "/Music/Downloads/1972 - album title (192 kbps)",
             folderName: "1972 - album title (192 kbps)",
             watchedFolderPath: "/Music/Downloads",
+            displayPath: "1972 - album title (192 kbps)",
+            resolvedBoundaries: [],
+            combineAncestorKey: nil,
+            actionable: true,
             placement: .needsYou(
                 group: .stillIdentifying,
                 reason: .stillIdentifying(phase: .running)
@@ -321,6 +700,10 @@
             candidateKey: "/Music/Downloads/Album Title Two",
             folderName: "Album Title Two",
             watchedFolderPath: "/Music/Downloads",
+            displayPath: "Album Title Two",
+            resolvedBoundaries: [],
+            combineAncestorKey: nil,
+            actionable: true,
             placement: .skipped,
             matched: nil,
             selectable: false,
@@ -331,6 +714,10 @@
             candidateKey: "/Music/Downloads/Album Title Ten",
             folderName: "Album Title Ten",
             watchedFolderPath: "/Music/Downloads",
+            displayPath: "Album Title Ten",
+            resolvedBoundaries: [],
+            combineAncestorKey: nil,
+            actionable: true,
             placement: .done,
             matched: triageMatch(
                 releaseId: "rel-ten",
@@ -349,6 +736,10 @@
             candidateKey: "/Music/Downloads/Album Title Twelve",
             folderName: "Album Title Twelve",
             watchedFolderPath: "/Music/Downloads",
+            displayPath: "Album Title Twelve",
+            resolvedBoundaries: [],
+            combineAncestorKey: nil,
+            actionable: true,
             placement: .done,
             matched: triageMatch(
                 releaseId: "rel-twelve",
@@ -361,7 +752,7 @@
             selectable: false,
             importStatus: .error(
                 error: .Diagnostic(
-                    category: .`import`,
+                    category: .import,
                     detail: "track 7 is truncated"
                 )
             )
@@ -378,24 +769,64 @@
             let s = ImportStore()
             s.watchedFolders = [importWatchedFolder]
             s.triageQueue = BridgeTriageQueue(
-                rows: [
-                    triageRowReady,
-                    triageRowPickAPressing,
-                    triageRowSignalsConflict,
-                    triageRowAlreadyInLibrary,
-                    triageRowNoMatch,
-                    triageRowStillIdentifying,
-                    triageRowSkipped,
-                    triageRowDoneImported,
-                    triageRowDoneFailed,
+                sections: [
+                    BridgeTriageSection(
+                        tab: .ready,
+                        watchedFolderPath: importWatchedFolder.path,
+                        group: nil,
+                        entries: [candidateEntry(triageRowReady)]
+                    ),
+                    BridgeTriageSection(
+                        tab: .needsYou,
+                        watchedFolderPath: importWatchedFolder.path,
+                        group: nil,
+                        entries: [
+                            triageRowPickAPressing,
+                            triageRowSignalsConflict,
+                            triageRowAlreadyInLibrary,
+                            triageRowNoMatch,
+                            triageRowStillIdentifying,
+                        ]
+                        .map(candidateEntry)
+                    ),
+                    BridgeTriageSection(
+                        tab: .needsYou,
+                        watchedFolderPath: importWatchedFolder.path,
+                        group: BridgeTriageGroup(
+                            key: folderReleaseBoundary.key,
+                            name: folderReleaseBoundary.name
+                        ),
+                        entries: [
+                            boundaryEntry(folderReleaseBoundary)
+                        ]
+                    ),
+                    BridgeTriageSection(
+                        tab: .done,
+                        watchedFolderPath: importWatchedFolder.path,
+                        group: nil,
+                        entries: [
+                            triageRowDoneImported,
+                            triageRowDoneFailed,
+                        ]
+                        .map(candidateEntry)
+                    ),
+                    BridgeTriageSection(
+                        tab: .skipped,
+                        watchedFolderPath: importWatchedFolder.path,
+                        group: nil,
+                        entries: [
+                            candidateEntry(triageRowSkipped),
+                            invalidEntry(invalidCandidates[0]),
+                        ]
+                    ),
                 ],
-                invalid: invalidCandidates,
                 counts: BridgeTriageTabCounts(
                     ready: 1,
-                    needsYou: 5,
+                    needsYou: 6,
                     done: 2,
                     skipped: 1 + UInt32(invalidCandidates.count)
-                )
+                ),
+                folderScanStatuses: []
             )
             s.queueIdentifyProgress = (identified: 112, total: 130)
             return s
@@ -537,7 +968,7 @@
                         artist: i == 5 ? "Featured Artist" : nil,
                         durationMs: ms,
                         position: "\(i)",
-                        side: 1,
+                        side: 1
                     )
                 }
             return BridgeReleaseDetail(
@@ -555,7 +986,7 @@
                 trackCount: 9,
                 tracks: tracks,
                 coverArt: [],
-                defaultCover: nil,
+                defaultCover: nil
             )
         }()
 
@@ -570,7 +1001,7 @@
                         side: 1,
                         trackNumber: Int32(i),
                         artistNames: i == 5 ? ["Featured Artist"] : [],
-                        file: .standalone(fileId: "Track \(i).flac"),
+                        file: .standalone(fileId: "Track \(i).flac")
                     )
                 }
             return BridgeReleaseUserEdit(
@@ -582,9 +1013,9 @@
                     label: "Label Name",
                     catalogNumber: "6006-2",
                     country: "US",
-                    barcode: nil,
+                    barcode: nil
                 ),
-                tracks: tracks,
+                tracks: tracks
             )
         }()
 
@@ -656,7 +1087,7 @@
                 // Track 4's file runs long against the source, which is what
                 // the row's two lengths are there to show.
                 let drift: Int = i == 4 ? 21000 : 0
-                let probed: Int = 180_000 + i * 15000 + drift
+                let probed = 180_000 + i * 15000 + drift
                 return BridgeSlotFile(
                     audio: .standalone(fileId: "Track \(i).flac"),
                     name: "Track \(i).flac",
@@ -696,7 +1127,7 @@
                     files: files,
                     trackCount: 9,
                     skipped: false,
-                    isAdded: false,
+                    isAdded: false
                 )
             )
         }
@@ -746,7 +1177,7 @@
                     artistText: "",
                     side: 1,
                     trackNumber: nil,
-                    file: unmatchedSlotFile.audio,
+                    file: unmatchedSlotFile.audio
                 )
             )
             return values
@@ -763,7 +1194,7 @@
                             side: 1,
                             trackNumber: nil,
                             artistNames: [],
-                            file: unmatchedSlotFile.audio,
+                            file: unmatchedSlotFile.audio
                         ),
                         file: unmatchedSlotFile
                     )
@@ -785,7 +1216,7 @@
                 format: "CD",
                 label: "Label Name",
                 catalogNumber: "6006-2",
-                country: "US",
+                country: "US"
             ),
             BridgeMetadataResult(
                 source: .musicBrainz,
@@ -794,7 +1225,7 @@
                 format: "CD",
                 label: "Label Name",
                 catalogNumber: "1871-2",
-                country: "US",
+                country: "US"
             ),
         ]
 
@@ -808,7 +1239,7 @@
                 groupUrl: "https://musicbrainz.org/release-group/group-preview",
                 yearMin: 1988,
                 yearMax: 1996,
-                pressings: exactPressings,
+                pressings: exactPressings
             )
         )
 
@@ -846,7 +1277,7 @@
                             format: "CD",
                             label: "Label Name",
                             catalogNumber: "6006-2",
-                            country: "US",
+                            country: "US"
                         ),
                         BridgeMetadataResult(
                             source: .musicBrainz,
@@ -855,9 +1286,9 @@
                             format: "CD",
                             label: "Another Label",
                             catalogNumber: "AL-1234",
-                            country: "JP",
+                            country: "JP"
                         ),
-                    ],
+                    ]
                 )
             ),
             ReleaseGroup(
@@ -878,9 +1309,9 @@
                             format: "CD",
                             label: "Reissue Records",
                             catalogNumber: "RR-500",
-                            country: "EU",
+                            country: "EU"
                         )
-                    ],
+                    ]
                 )
             ),
         ]
@@ -894,7 +1325,7 @@
                 format: "CD",
                 label: "Label A",
                 catalogNumber: "AAA-001",
-                country: "US",
+                country: "US"
             )
         ]
 
@@ -906,7 +1337,7 @@
                 format: "CD",
                 label: "Label B",
                 catalogNumber: "BBB-002",
-                country: "JP",
+                country: "JP"
             )
         ]
 
@@ -1065,7 +1496,7 @@
                 group: searchGroupExact,
                 libraryStatuses: [:],
                 trackCount: 0,
-                provenance: searchProvenanceExact,
+                provenance: searchProvenanceExact
             ),
             showManualSearch: false,
             error: nil,
@@ -1094,7 +1525,7 @@
                     state: .confirms(count: 1),
                     excluded: false
                 ),
-            ]),
+            ])
         )
 
         /// Manual-search display state: results listed, the form open.
@@ -1103,7 +1534,7 @@
                 group: searchGroupsManual[0],
                 libraryStatuses: [:],
                 trackCount: 0,
-                provenance: [:],
+                provenance: [:]
             ),
             showManualSearch: true,
             error: nil,
@@ -1132,7 +1563,7 @@
                     state: .confirms(count: 0),
                     excluded: false
                 ),
-            ]),
+            ])
         )
 
         /// Conflict display state: disc-id and barcode disagree on identity.
@@ -1143,7 +1574,7 @@
                 barcodeResults: conflictBarcodeResults,
                 barcodeLibraryStatuses: [:],
                 matchedBarcode: "5051961234567",
-                trackCount: 11,
+                trackCount: 11
             ),
             showManualSearch: false,
             error: nil,
@@ -1172,14 +1603,14 @@
                     state: .found(count: 3),
                     excluded: false
                 ),
-            ]),
+            ])
         )
 
         /// Auto-lookup in progress: disc-id looking up, barcode skipped.
         static let searchStateTriangulating = ImportSearchState(
             identifyState: .triangulating(
                 discid: .lookingUp,
-                barcode: .skipped,
+                barcode: .skipped
             ),
             showManualSearch: false,
             error: nil,
@@ -1208,7 +1639,7 @@
                     state: .skipped,
                     excluded: false
                 ),
-            ]),
+            ])
         )
 
         /// Manual search after both signals came up empty.
@@ -1241,7 +1672,7 @@
                     state: .noMatch,
                     excluded: false
                 ),
-            ]),
+            ])
         )
     }
 #endif

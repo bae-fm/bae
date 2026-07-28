@@ -78,5 +78,73 @@
                 isPlaying: true
             )
         }
+
+        static func importReleaseQueue(
+            store: ImportStore,
+            tab: BridgeTriageTab,
+            collapseReadyGroup: Bool,
+            refreshingWatchedFolderPath: String?
+        ) -> some View {
+            let uiStore = UiStore()
+            uiStore.setImportCandidateTab(tab)
+            if let refreshingWatchedFolderPath {
+                uiStore.setWatchedFolderRefreshing(
+                    refreshingWatchedFolderPath,
+                    true
+                )
+            }
+            if collapseReadyGroup,
+                let group = store.triageQueue.sections
+                    .first(where: { $0.tab == .ready })?
+                    .group
+            {
+                uiStore.setReleaseGroupExpanded(
+                    releaseGroupDisclosureID(group.key),
+                    false
+                )
+            }
+            return ImportCandidateListContent(
+                importStore: store,
+                selectedKey: .constant(nil),
+                onAddFolder: {},
+                onRemoveFolder: { _ in },
+                onRefreshFolder: { _ in },
+                onReleaseDecision: { _, _ in },
+                onSkip: { _, _ in },
+                onImportSelected: { _ in }
+            )
+            .environment(OutboxStore(snapshot: OutboxStore.emptySnapshot))
+            .environment(MediaPaths.stub)
+            .environment(uiStore)
+            .windowBackground()
+        }
+    }
+
+    #Preview("Import Release Queue") {
+        PreviewScenes.importReleaseQueue(
+            store: PreviewData.releaseQueueImportStore,
+            tab: .ready,
+            collapseReadyGroup: false,
+            refreshingWatchedFolderPath: nil
+        )
+    }
+
+    #Preview("Import Release Queue Scanning") {
+        PreviewScenes.importReleaseQueue(
+            store: PreviewData.releaseQueueScanningImportStore,
+            tab: .ready,
+            collapseReadyGroup: false,
+            refreshingWatchedFolderPath:
+                PreviewData.releaseQueueWatchedFolder.path
+        )
+    }
+
+    #Preview("Import Release Queue Resolved") {
+        PreviewScenes.importReleaseQueue(
+            store: PreviewData.releaseQueueResolvedImportStore,
+            tab: .ready,
+            collapseReadyGroup: false,
+            refreshingWatchedFolderPath: nil
+        )
     }
 #endif

@@ -268,11 +268,13 @@ fn bootstrap_inner(
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     let app_services = {
         let cover_art_archive = crate::import::cover_art::CoverArtArchiveClient::new();
-        let import_handle = crate::import::ImportService::start(
-            runtime.handle().clone(),
-            library_manager.clone(),
-            cover_art_archive.clone(),
-        );
+        let import_handle = runtime
+            .block_on(crate::import::ImportService::start(
+                runtime.handle().clone(),
+                library_manager.clone(),
+                cover_art_archive.clone(),
+            ))
+            .map_err(|error| BootstrapError::Database(error.to_string()))?;
 
         let identify_handle = crate::identify::IdentifyServiceHandle::new(
             library_manager.clone(),
@@ -304,6 +306,11 @@ fn bootstrap_inner(
 
     let ui_event_bus = UiEventBus::new();
     ui_event_bus.wire(&app_services, runtime.handle());
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    app_services
+        .import()
+        .scan_watched_folders()
+        .map_err(|error| BootstrapError::Database(error.to_string()))?;
 
     // The durable active-library pointer names the library the user last actually
     // landed in, so launch ordering (discovery sorts active-first), the CLI's

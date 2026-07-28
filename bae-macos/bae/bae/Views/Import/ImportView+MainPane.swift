@@ -10,6 +10,10 @@ extension ImportView {
             selectedKey: candidateSelectionBinding,
             onAddFolder: { pickFolderAndAdd() },
             onRemoveFolder: { path in removeWatchedFolder(path) },
+            onRefreshFolder: { folder in refreshWatchedFolder(folder) },
+            onReleaseDecision: { key, decision in
+                setFolderReleaseDecision(key, decision)
+            },
             onSkip: { key, skipped in setCandidateSkipped(key, skipped) },
             onImportSelected: { keys in importReadyCandidates(keys) },
         )

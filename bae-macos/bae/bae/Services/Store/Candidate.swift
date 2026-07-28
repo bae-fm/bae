@@ -3,14 +3,13 @@ import Foundation
 
 // MARK: - CandidateSource
 
-/// Source-specific data for a candidate. Folder candidates carry their release
-/// folder path plus the watched folder they were scanned from (the candidate
-/// list groups by it); re-identify candidates carry the existing library
-/// release id — the identify pipeline reads its files from the DB rather than
-/// scanning a folder. Created by the import-candidate projection (folder) or
-/// by `AlbumDetailView`'s "Re-identify..." action.
+/// Source-specific data for a candidate. Folder candidates carry the watched
+/// folder they were scanned from; re-identify candidates carry the existing
+/// library release id.
 enum CandidateSource: Equatable {
-    case folder(folderPath: String, watchedFolderPath: String)
+    case folder(
+        watchedFolderPath: String
+    )
     case releaseReIdentify(releaseId: String)
 }
 
@@ -149,7 +148,6 @@ struct Candidate: Equatable, Identifiable {
 
     init(bridge: BridgeFolderCandidate) {
         source = .folder(
-            folderPath: bridge.folderPath,
             watchedFolderPath: bridge.watchedFolderPath
         )
         key = bridge.folderPath
@@ -203,7 +201,7 @@ struct Candidate: Equatable, Identifiable {
     /// The watched folder this candidate was scanned from — the candidate-list
     /// group it belongs to. `nil` for re-identify candidates (not grouped).
     var watchedFolderPath: String? {
-        if case .folder(_, let watchedFolderPath) = source {
+        if case .folder(let watchedFolderPath) = source {
             return watchedFolderPath
         }
         return nil

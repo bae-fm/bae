@@ -12,6 +12,7 @@ using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Styling;
 using Avalonia.Threading;
+using uniffi.bae_bridge;
 
 namespace Bae.Desktop;
 
@@ -55,6 +56,51 @@ internal static class ShotCapture
     {
         new Scene("story-1-first-run", 900, 600, BuildWelcome),
         new Scene("story-3-empty-library", 1350, 850, BuildEmptyLibrary),
+        new Scene(
+            "import-release-queue",
+            900,
+            700,
+            () => BuildImportQueue(
+                PreviewData.ImportQueue,
+                BridgeTriageTab.Ready,
+                collapseGroup: false,
+                refreshingRoot: null)),
+        new Scene(
+            "import-release-ambiguity-narrow",
+            520,
+            700,
+            () => BuildImportQueue(
+                PreviewData.ImportQueue,
+                BridgeTriageTab.NeedsYou,
+                collapseGroup: false,
+                refreshingRoot: null)),
+        new Scene(
+            "import-release-queue-collapsed",
+            900,
+            700,
+            () => BuildImportQueue(
+                PreviewData.ImportQueue,
+                BridgeTriageTab.Ready,
+                collapseGroup: true,
+                refreshingRoot: null)),
+        new Scene(
+            "import-release-scanning-refresh",
+            900,
+            700,
+            () => BuildImportQueue(
+                PreviewData.ImportScanningQueue,
+                BridgeTriageTab.Ready,
+                collapseGroup: false,
+                refreshingRoot: PreviewData.ImportRoot)),
+        new Scene(
+            "import-release-resolved-reversal",
+            900,
+            700,
+            () => BuildImportQueue(
+                PreviewData.ImportResolvedQueue,
+                BridgeTriageTab.Ready,
+                collapseGroup: false,
+                refreshingRoot: null)),
     };
 
     // True when args carry the capture flag; then outputDir is the directory that
@@ -225,6 +271,37 @@ internal static class ShotCapture
             new SettingsWindow(app, new UpdateService(), closeLibrary, switchLibrary, () => Task.CompletedTask),
             new LibrariesDialog(app, modalHost, switchLibrary),
             closeLibrary);
+    }
+
+    private static Control BuildImportQueue(
+        BridgeTriageQueue queue,
+        BridgeTriageTab tab,
+        bool collapseGroup,
+        string? refreshingRoot)
+    {
+        var session = new SessionStore(Dispatcher.UIThread);
+        var app = AppService.Stubbed(session, Dispatcher.UIThread, EmptyLibrary());
+        var modalHost = new ModalHost();
+        var lightbox = new LightboxOverlay();
+        var view = new ImportSectionView(
+            app,
+            new ImportDialogs(modalHost, lightbox, _ => Task.CompletedTask));
+        if (collapseGroup)
+        {
+            app.ImportStore.Interaction.SetGroupExpanded(
+                ImportStore.GroupDisclosureKey(
+                    PreviewData.ImportGroupKey),
+                false);
+        }
+        if (refreshingRoot is not null)
+        {
+            app.ImportStore.Interaction.SetRefreshing(refreshingRoot, true);
+        }
+        app.ImportStore.SeedPreview(
+            queue,
+            PreviewData.ImportWatchedFolders,
+            tab);
+        return view;
     }
 
     // A LibraryService whose album/composer/artist counts are zero and whose pages

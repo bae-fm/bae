@@ -15,8 +15,7 @@ extension ImportSearchFlow {
     static func addAsUnknown(
         importer: Importer,
         importStore: ImportStore,
-        key: String,
-        folderPath: String
+        key: String
     ) {
         importStore.mutateCandidate(forKey: key) { candidate in
             candidate.mode = .loadingDetail
@@ -42,7 +41,7 @@ extension ImportSearchFlow {
         let task = Task { @MainActor in
             do {
                 let preview = try await importer.previewFileTagsForFolder(
-                    folderPath
+                    key
                 )
                 importStore.mutateCandidate(forKey: key) { candidate in
                     candidate.editValues = rawReleaseEditFromUserEdit(

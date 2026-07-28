@@ -372,6 +372,8 @@ pub struct NewImportCandidateVerdict {
     /// Sum of the probed durations of the candidate's audio files, in
     /// milliseconds.
     pub probed_total_duration_ms: i64,
+    /// File-decision revision used to derive this verdict.
+    pub expected_edit_revision: u64,
 }
 
 /// What identification concluded about one candidate. Present as a whole or
@@ -401,6 +403,14 @@ pub struct DbImportCandidateState {
     /// The user's decisions about this candidate's files: which audio each
     /// track sheet describes, and which files are the release's tracks.
     pub file_edits: crate::import::folder_scanner::CandidateFileEdits,
+}
+
+#[derive(Debug, Clone)]
+pub struct DbFolderScanSnapshot {
+    pub watched_folder_path: String,
+    pub generation: u64,
+    pub status: crate::import::FolderScanStatus,
+    pub items: Vec<crate::import::folder_scanner::ScanItem>,
 }
 
 /// Where `releases.metadata_source` came from.

@@ -558,7 +558,6 @@ pub struct AutomationTrackUserEdit {
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct AutomationStartImport {
     pub candidate_key: String,
-    pub folder: String,
     pub selected_cover: Option<AutomationCoverSelection>,
     pub storage_mode: AutomationStorageMode,
     pub pin: bool,
@@ -1116,10 +1115,37 @@ impl AutomationState {
             // A binding change re-derives the candidate's track count and
             // format label, so it replaces the indexed row exactly as a fresh
             // scan of the folder would.
-            ScanEvent::FolderCandidate(candidate)
-            | ScanEvent::CandidateBindingChanged { candidate } => {
-                self.insert_candidate(automation_candidate_from_folder(candidate));
+            ScanEvent::CandidateDiscovered {
+                candidate,
+                skipped,
+                is_added,
             }
+            | ScanEvent::FolderCandidate {
+                candidate,
+                skipped,
+                is_added,
+            } => {
+                self.insert_candidate(automation_candidate_from_folder(
+                    candidate, skipped, is_added,
+                ));
+            }
+            ScanEvent::CandidateBindingChanged { candidate } => {
+                let key = candidate.path.to_string_lossy().into_owned();
+                let status = self
+                    .candidates
+                    .read()
+                    .expect("candidate index poisoned")
+                    .get(&key)
+                    .map(|candidate| (candidate.common().skipped, candidate.common().is_added));
+                if let Some((skipped, is_added)) = status {
+                    self.insert_candidate(automation_candidate_from_folder(
+                        candidate, skipped, is_added,
+                    ));
+                } else {
+                    self.fail_missing_candidate("binding change", &key);
+                }
+            }
+            ScanEvent::FolderReleaseBoundary(_) => {}
             ScanEvent::InvalidCandidate(candidate) => {
                 self.insert_candidate(automation_candidate_from_invalid(candidate));
             }
@@ -1139,8 +1165,12 @@ impl AutomationState {
             } => self.update_candidate(candidate_key, |candidate| {
                 candidate.common_mut().skipped = skipped;
             }),
-            ScanEvent::Failed { error } => self.fail_event_indexing(error),
-            ScanEvent::Finished => {}
+            ScanEvent::FolderScanStatusChanged { status } => {
+                if let bae_core::import::FolderScanStatus::Failed { error } = status.status {
+                    self.fail_event_indexing(error);
+                }
+            }
+            ScanEvent::CandidateVerdictStored { .. } | ScanEvent::Finished => {}
         }
     }
 
@@ -1315,19 +1345,19 @@ impl Automation {
             .collect()
     }
 
-    pub fn add_watched_folder(
+    pub async fn add_watched_folder(
         &self,
         path: String,
     ) -> Result<Vec<AutomationWatchedFolder>, AutomationError> {
-        self.services.import().add_watched_folder(path)?;
+        self.services.import().add_watched_folder(path).await?;
         Ok(self.watched_folders())
     }
 
-    pub fn remove_watched_folder(
+    pub async fn remove_watched_folder(
         &self,
         path: String,
     ) -> Result<Vec<AutomationWatchedFolder>, AutomationError> {
-        self.services.import().remove_watched_folder(path)?;
+        self.services.import().remove_watched_folder(path).await?;
         Ok(self.watched_folders())
     }
 
@@ -1341,20 +1371,37 @@ impl Automation {
             }
             ScanWait::UntilFinished { timeout_ms } => {
                 let mut rx = self.services.import().subscribe_folder_scan_events();
+                let mut pending: std::collections::HashSet<_> = self
+                    .services
+                    .import()
+                    .watched_folders()
+                    .into_iter()
+                    .map(|folder| folder.path)
+                    .collect();
                 self.services.import().scan_watched_folders()?;
                 let wait_for_finish = async {
-                    while let Some(event) = rx.recv().await {
-                        match event {
-                            ScanEvent::Finished => return Ok::<(), AutomationError>(()),
-                            ScanEvent::Failed { error } => {
-                                return Err(AutomationError::import(error));
+                    while !pending.is_empty() {
+                        let Some(event) = rx.recv().await else {
+                            return Err(AutomationError::Unavailable(
+                                "scan event channel closed before finish".to_string(),
+                            ));
+                        };
+                        if let ScanEvent::FolderScanStatusChanged { status } = event {
+                            match status.status {
+                                bae_core::import::FolderScanStatus::Complete => {
+                                    pending.remove(&status.watched_folder_path);
+                                }
+                                bae_core::import::FolderScanStatus::Failed { error } => {
+                                    return Err(AutomationError::import(format!(
+                                        "{}: {error}",
+                                        status.watched_folder_path
+                                    )));
+                                }
+                                bae_core::import::FolderScanStatus::Scanning => {}
                             }
-                            _ => {}
                         }
                     }
-                    Err(AutomationError::Unavailable(
-                        "scan event channel closed before finish".to_string(),
-                    ))
+                    Ok::<(), AutomationError>(())
                 };
                 tokio::time::timeout(Duration::from_millis(timeout_ms), wait_for_finish)
                     .await
@@ -1382,14 +1429,15 @@ impl Automation {
         self.state.get_candidate(&candidate_key)
     }
 
-    pub fn set_candidate_skipped(
+    pub async fn set_candidate_skipped(
         &self,
         candidate_key: String,
         skipped: bool,
     ) -> Result<(), AutomationError> {
         self.services
             .import()
-            .set_candidate_skipped(candidate_key, skipped)?;
+            .set_candidate_skipped(candidate_key, skipped)
+            .await?;
         Ok(())
     }
 
@@ -1436,12 +1484,13 @@ impl Automation {
 
     pub async fn preview_file_tags(
         &self,
-        folder: String,
+        candidate_key: String,
     ) -> Result<AutomationReleaseUserEdit, AutomationError> {
+        self.state.get_candidate(&candidate_key)?;
         let edit = self
             .services
             .import()
-            .preview_file_tags_for_folder(PathBuf::from(folder))
+            .preview_file_tags_for_folder(candidate_key)
             .await?;
         Ok(automation_release_user_edit(edit))
     }
@@ -1464,7 +1513,6 @@ impl Automation {
     ) -> Result<AutomationImportStarted, AutomationError> {
         let import_id = self.services.import().start_import(
             &request.candidate_key,
-            PathBuf::from(request.folder),
             request.selected_cover.map(cover_selection),
             storage_mode(request.storage_mode),
             request.pin,
@@ -1575,11 +1623,17 @@ impl Automation {
             }
             AutomationTool::WatchedFolderAdd => {
                 let input: PathInput = from_value(args)?;
-                to_list_value("watched_folders", self.add_watched_folder(input.path)?)
+                to_list_value(
+                    "watched_folders",
+                    self.add_watched_folder(input.path).await?,
+                )
             }
             AutomationTool::WatchedFolderRemove => {
                 let input: PathInput = from_value(args)?;
-                to_list_value("watched_folders", self.remove_watched_folder(input.path)?)
+                to_list_value(
+                    "watched_folders",
+                    self.remove_watched_folder(input.path).await?,
+                )
             }
             AutomationTool::WatchedFoldersScan => {
                 let wait: ScanWait = from_value(args)?;
@@ -1595,7 +1649,8 @@ impl Automation {
             }
             AutomationTool::ImportCandidateSkipSet => {
                 let input: CandidateSkipSetInput = from_value(args)?;
-                self.set_candidate_skipped(input.candidate_key, input.skipped)?;
+                self.set_candidate_skipped(input.candidate_key, input.skipped)
+                    .await?;
                 to_value(EmptyResponse {})
             }
             AutomationTool::ImportSearch => {
@@ -1610,8 +1665,8 @@ impl Automation {
                 )
             }
             AutomationTool::ImportFileTagsPreview => {
-                let input: FolderInput = from_value(args)?;
-                to_value(self.preview_file_tags(input.folder).await?)
+                let input: CandidateKeyInput = from_value(args)?;
+                to_value(self.preview_file_tags(input.candidate_key).await?)
             }
             AutomationTool::ImportReleaseEditShape => {
                 let input: ShapeReleaseEditInput = from_value(args)?;
@@ -1988,7 +2043,11 @@ fn automation_output_snapshot(
     }
 }
 
-fn automation_candidate_from_folder(candidate: FolderCandidate) -> AutomationCandidate {
+fn automation_candidate_from_folder(
+    candidate: FolderCandidate,
+    skipped: bool,
+    is_added: bool,
+) -> AutomationCandidate {
     let track_count = candidate.files.track_count();
     let format_label = candidate.files.format_label.clone();
     AutomationCandidate::Valid {
@@ -1996,8 +2055,8 @@ fn automation_candidate_from_folder(candidate: FolderCandidate) -> AutomationCan
             candidate.path,
             candidate.name,
             candidate.watched_folder_path,
-            candidate.skipped,
-            candidate.is_added,
+            skipped,
+            is_added,
         ),
         track_count,
         format_label,

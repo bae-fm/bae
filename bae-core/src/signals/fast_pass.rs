@@ -7,7 +7,7 @@ use super::candidate_text::{
     extract_folder_brackets, parse_filename_stem, strip_path_component, Source, SourcedLine,
 };
 use crate::import::discid::compute_discid_from_categorized;
-use crate::import::folder_scanner::{self, CategorizedFiles};
+use crate::import::folder_scanner::CategorizedFiles;
 use crate::signals::{DiscIdSignal, SignalOrigin, SourcedValue};
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
@@ -98,13 +98,7 @@ fn cue_barcodes(categorized: &CategorizedFiles) -> Vec<SourcedValue> {
 /// `spawn_blocking`. A failure surfaces as missing data for that one source and
 /// never aborts extraction.
 ///
-/// `stored` is the user's sheet bindings. They belong here rather than only at
-/// commit: binding a sheet is what makes a disc ID computable from sheet plus
-/// audio, and this pass is where that disc ID is derived.
-pub(super) fn gather_non_ocr_sources(
-    folder: &Path,
-    stored: &folder_scanner::StoredCandidateEdits,
-) -> FastPass {
+pub(super) fn gather_non_ocr_sources(folder: &Path, categorized: &CategorizedFiles) -> FastPass {
     let mut pass = FastPass::empty();
 
     // Path components: the candidate folder's own name and its parent's.
@@ -135,34 +129,21 @@ pub(super) fn gather_non_ocr_sources(
         }
     }
 
-    // A scan failure means no audio was detected. The folder-name signals above
-    // still stand, so return them rather than nothing.
-    let categorized = match folder_scanner::collect_release_candidate_files(folder, stored) {
-        Ok(c) => c,
-        Err(e) => {
-            debug!(
-                "signals: folder scan failed for {:?}: {e}; using folder-name signals only",
-                folder,
-            );
-            return pass;
-        }
-    };
-
     // Disc ID, CUE-CATALOG barcodes, and the probed total all come off the same
     // parsed scan, no re-read and no second walk over the audio.
     let track_count = categorized.track_count();
-    pass.probed_total_duration_ms = probe_total_duration_ms(&categorized);
-    pass.disc_id = match compute_discid_from_categorized(&categorized) {
+    pass.probed_total_duration_ms = probe_total_duration_ms(categorized);
+    pass.disc_id = match compute_discid_from_categorized(categorized) {
         Some(disc_id) => DiscIdSignal::Computed {
             disc_id,
             track_count,
         },
         None => DiscIdSignal::Absent { track_count },
     };
-    pass.cue_barcodes = cue_barcodes(&categorized);
+    pass.cue_barcodes = cue_barcodes(categorized);
 
     // Image + document filenames only; `enumerate_filename_inputs` explains why.
-    for p in enumerate_filename_inputs(&categorized) {
+    for p in enumerate_filename_inputs(categorized) {
         for part in parse_filename_stem(&p) {
             pass.lines.push(SourcedLine {
                 source: Source::FilenameGeneric(p.clone()),
@@ -183,7 +164,7 @@ pub(super) fn gather_non_ocr_sources(
     }
 
     // Text files feed the pool one line at a time, like OCR output.
-    for doc in text_file_paths(&categorized) {
+    for doc in text_file_paths(categorized) {
         if let Some(text) = read_capped_text(&doc) {
             for line in text.lines() {
                 let trimmed = line.trim();
@@ -381,11 +362,13 @@ mod tests {
         )
         .unwrap();
 
-        let categorized = crate::import::folder_scanner::collect_release_candidate_files(
-            dir,
-            &crate::import::folder_scanner::StoredCandidateEdits::none(),
-        )
-        .unwrap();
+        let categorized =
+            crate::import::folder_scanner::collect_release_candidate_files_with_scope(
+                dir,
+                crate::import::ReleaseFileScope::Recursive,
+                &crate::import::folder_scanner::StoredCandidateEdits::none(),
+            )
+            .unwrap();
         let disc_id = crate::import::discid::compute_discid_from_categorized(&categorized);
         let track_count = categorized.track_count();
 

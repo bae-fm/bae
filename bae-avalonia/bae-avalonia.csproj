@@ -27,7 +27,7 @@
     <WarningsAsErrors>CS0168;CS0219</WarningsAsErrors>
     <!-- The tests live in a sibling SDK project; keep its sources out of the app
          build. -->
-    <DefaultItemExcludes>$(DefaultItemExcludes);bae-avalonia.Tests/**</DefaultItemExcludes>
+    <DefaultItemExcludes>$(DefaultItemExcludes);bae-avalonia.Tests/**;bae-avalonia.ViewTests/**</DefaultItemExcludes>
     <!-- Localization resx are included explicitly below (the generated Core*
          from the master catalog, the committed Resources* chrome), so turn off
          the SDK's default resx auto-include to avoid double-adding them. -->
@@ -146,6 +146,9 @@
     the telemetry sink and the crash reporter off.
   -->
   <ItemGroup>
+    <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleToAttribute">
+      <_Parameter1>bae-avalonia.ViewTests</_Parameter1>
+    </AssemblyAttribute>
     <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
       <_Parameter1>BaeDatadogSite</_Parameter1>
       <_Parameter2>$(BAE_DATADOG_SITE)</_Parameter2>

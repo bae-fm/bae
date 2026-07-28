@@ -457,4 +457,8 @@
   <data name="nowplaying.cast_no_devices" xml:space="preserve"><value>കാസ്റ്റ് ഉപകരണങ്ങളൊന്നും കണ്ടെത്തിയില്ല</value></data>
   <data name="component_gallery.menu" xml:space="preserve"><value>കമ്പോണന്റ് ഗാലറി</value></data>
   <data name="component_gallery.title" xml:space="preserve"><value>കമ്പോണന്റ് ഗാലറി</value></data>
+  <data name="import.folder.refresh" xml:space="preserve"><value>പുതുക്കുക</value></data>
+  <data name="import.folder.refreshing" xml:space="preserve"><value>പുതുക്കുന്നു…</value></data>
+  <data name="import.release.one" xml:space="preserve"><value>ഒരു റിലീസായി സംയോജിപ്പിക്കുക</value></data>
+  <data name="import.release.separate" xml:space="preserve"><value>വെവ്വേറെ റിലീസുകളായി സൂക്ഷിക്കുക</value></data>
 </root>

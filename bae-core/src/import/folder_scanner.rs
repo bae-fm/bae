@@ -1,17 +1,22 @@
-//! Recursive folder scanner with leaf detection for imports.
+//! Folder scanner for import release candidates.
 //!
-//! Handles three folder structures: a flat single release (audio in the root),
-//! a multi-disc single release (disc subfolders with audio), and a collection (a
-//! tree whose leaves are single releases). Detection runs over a `FileTree`
-//! built once from the filesystem.
+//! Each directory with direct audio approximates one release. When a directory
+//! also contains audio-bearing descendants, the scanner reports an unresolved
+//! boundary instead of guessing whether the parent or descendants are releases.
+//! The walk lists one directory at a time and reports candidates as they become
+//! available.
 use super::file_validation;
 use crate::cue_flac::parse_cue_sheet;
 use crate::util::content_type_hint::ContentTypeHint;
 use sha2::{Digest, Sha256};
-use std::collections::{BTreeMap, BTreeSet, HashMap};
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
+use std::sync::{
+    atomic::{AtomicBool, Ordering},
+    Arc,
+};
 use tracing::{debug, info};
 
 const DOCUMENT_EXTENSIONS: &[&str] = &["cue", "log", "txt", "m3u", "m3u8"];
@@ -24,7 +29,7 @@ const PARTIAL_MARKER_EXTENSIONS: &[&str] = &["part", "crdownload", "download", "
 // ── Public types ────────────────────────────────────────────────────────────
 
 /// A file discovered during folder scanning
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct ScannedFile {
     /// Absolute filesystem path. A scanned file is always on disk.
     pub path: PathBuf,
@@ -69,7 +74,7 @@ impl ScannedFile {
 /// The job the scan proposes for a file. Every file the scan finds carries
 /// exactly one: the scan *proposes*, so nothing is discarded and no folder is
 /// refused because a filename disagrees with a sheet.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub enum FileRole {
     /// Playable audio.
     Audio,
@@ -97,7 +102,7 @@ pub enum FileRole {
 /// What a track sheet's `FILE` directive resolved to. The scan proposes it; a
 /// sheet that describes nothing is a question for the user, never a verdict on
 /// the folder.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum SheetBinding {
     /// Bound to the audio named by this [`ScannedFile::relative_path`].
     Describes { file_id: String },
@@ -222,6 +227,7 @@ impl SheetBindingEdits {
 pub struct CandidateFileEdits {
     pub sheet_bindings: SheetBindingEdits,
     pub file_roles: FileRoleEdits,
+    pub revision: u64,
 }
 
 impl CandidateFileEdits {
@@ -250,6 +256,11 @@ impl StoredCandidateEdits {
 
     fn for_hash(&self, content_hash: &str) -> Option<&CandidateFileEdits> {
         self.0.get(content_hash)
+    }
+
+    pub(crate) fn revision_for_hash(&self, content_hash: &str) -> u64 {
+        self.for_hash(content_hash)
+            .map_or(0, |edits| edits.revision)
     }
 
     /// One candidate's decisions, to be added to and written back. Empty when
@@ -288,7 +299,7 @@ pub struct SheetBindingOption {
 
 /// A file the scan found, and the role in force for it — the scan's proposal,
 /// or the user's decision over it.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct CandidateFile {
     pub file: ScannedFile,
     pub role: FileRole,
@@ -386,7 +397,7 @@ pub struct BoundTrackSheet<'a> {
 }
 
 /// A release's files, each carrying the role the scan proposed for it.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct CategorizedFiles {
     /// Every file under the release root, in `relative_path` order, each with
     /// the role the scan proposed. All of them are the release's — see
@@ -572,7 +583,13 @@ impl CategorizedFiles {
         edits: &CandidateFileEdits,
     ) -> Result<(), InvalidReason> {
         settle_file_roles(&mut self.files, &edits.file_roles);
-        match settle_sheet_bindings(&mut self.files, &edits.sheet_bindings) {
+        match settle_sheet_bindings(
+            &mut self.files,
+            &edits.sheet_bindings,
+            &ScanCancellation::new(),
+        )
+        .expect("a fresh cancellation token cannot be cancelled")
+        {
             SettledBindings::Settled { cue_codec } => {
                 self.format_label = derive_format_label(&self.files, cue_codec)
                     .ok_or(InvalidReason::NoValidAudio)?;
@@ -720,7 +737,7 @@ fn content_hash_of<'a>(files: impl Iterator<Item = &'a ScannedFile>) -> String {
 /// Only real defects invalidate. A sheet that disagrees with what is on disk —
 /// naming absent audio, failing to parse, or naming a codec bae can't play from
 /// a single-file CUE — leaves the sheet unbound and the folder importable.
-#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error, serde::Serialize, serde::Deserialize)]
 pub enum InvalidReason {
     #[error("corrupt or zero-byte audio file: {path}")]
     CorruptAudioFile { path: String },
@@ -733,7 +750,7 @@ pub enum InvalidReason {
 /// A leaf folder that looks like a release (it has audio) but failed validation.
 /// It can't be imported, so it carries no files and no identify state — only
 /// enough to surface it under the Skipped tab with its reason.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct InvalidCandidate {
     /// Root path of the folder that failed validation.
     pub path: PathBuf,
@@ -742,25 +759,166 @@ pub struct InvalidCandidate {
     /// Absolute path of the watched folder this was scanned from — the
     /// candidate-list group it belongs to. Equal to the scan root.
     pub watched_folder_path: String,
+    pub display_path: String,
+    /// Explicit release-structure decisions that exposed this invalid row.
+    pub resolved_boundaries: Vec<ResolvedFolderReleaseBoundary>,
     /// Why the folder failed validation — the UI localizes this typed reason.
     pub reason: InvalidReason,
 }
 
 /// One item the scan callback yields per leaf folder: a valid release
 /// candidate, or an invalid one (looked like a release but failed validation).
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub enum ScanItem {
+    /// A release approximation completed before its enclosing folder boundary
+    /// was known. It is visible scan progress, but identification must wait for
+    /// a later [`Self::Valid`] or [`Self::Boundary`] update.
+    Discovered(FolderCandidate),
     Valid(FolderCandidate),
     Invalid(InvalidCandidate),
+    Boundary(FolderReleaseBoundary),
 }
 
-/// A folder candidate (leaf directory) detected during filesystem scanning.
-/// Called "candidate" because it hasn't been identified yet. One candidate
-/// per release; per-disc breakdown lives on `ScannedFile.dir_prefix`.
-#[derive(Debug, Clone)]
+impl ScanItem {
+    pub(crate) fn persisted_key(&self) -> String {
+        match self {
+            Self::Discovered(candidate) | Self::Valid(candidate) => {
+                candidate.path.to_string_lossy().into_owned()
+            }
+            Self::Invalid(candidate) => candidate.path.to_string_lossy().into_owned(),
+            Self::Boundary(boundary) => Path::new(&boundary.key.watched_folder_path)
+                .join(&boundary.key.relative_folder_path)
+                .to_string_lossy()
+                .into_owned(),
+        }
+    }
+}
+
+/// Which files a folder boundary owns.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub enum ReleaseFileScope {
+    /// Files directly in the folder plus descendants below children with no
+    /// audio of their own.
+    Direct,
+    /// Every file below the folder.
+    Recursive,
+}
+
+/// The stable address of one folder-boundary decision.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+pub struct FolderReleaseDecisionKey {
+    pub watched_folder_path: String,
+    /// `/`-separated path below the watched root. Empty names the root.
+    pub relative_folder_path: String,
+}
+
+/// The user's explicit interpretation of an ambiguous folder boundary.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub enum FolderReleaseDecision {
+    CombineAsOneRelease,
+    KeepAsSeparateReleases,
+}
+
+pub(crate) fn release_decision_removed_keys(
+    persisted_keys: &HashSet<String>,
+    decisions: &[(FolderReleaseDecisionKey, FolderReleaseDecision)],
+) -> Vec<String> {
+    let mut removed = Vec::new();
+    for (key, decision) in decisions {
+        let boundary_path = Path::new(&key.watched_folder_path).join(&key.relative_folder_path);
+        let boundary_key = boundary_path.to_string_lossy();
+        removed.extend(persisted_keys.iter().filter_map(|candidate_key| {
+            let path = Path::new(candidate_key);
+            let superseded = match decision {
+                FolderReleaseDecision::CombineAsOneRelease => path.starts_with(&boundary_path),
+                FolderReleaseDecision::KeepAsSeparateReleases => {
+                    candidate_key == boundary_key.as_ref()
+                }
+            };
+            superseded.then(|| candidate_key.clone())
+        }));
+    }
+    removed.sort();
+    removed.dedup();
+    removed
+}
+
+/// Decisions loaded for one watched root before its scan begins.
+#[derive(Debug, Clone, Default)]
+pub struct FolderReleaseDecisions(HashMap<String, FolderReleaseDecision>);
+
+impl FolderReleaseDecisions {
+    pub fn new(decisions: HashMap<String, FolderReleaseDecision>) -> Self {
+        Self(decisions)
+    }
+
+    pub(crate) fn get(&self, relative_folder_path: &str) -> Option<FolderReleaseDecision> {
+        self.0.get(relative_folder_path).copied()
+    }
+}
+
+/// A folder row in an unresolved boundary's compact tree.
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct FolderReleaseTreeRow {
+    pub name: String,
+    pub display_path: String,
+    pub depth: u32,
+    pub kind: FolderReleaseTreeRowKind,
+    pub decision_key: FolderReleaseDecisionKey,
+    /// Enclosing unresolved boundaries that become separate when this row is
+    /// resolved. The UI submits only `decision_key`; core persists these with
+    /// it in one transaction.
+    pub ancestor_decision_keys: Vec<FolderReleaseDecisionKey>,
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub enum FolderReleaseTreeRowKind {
+    Folder,
+    Candidate {
+        summary: FolderReleaseCandidateSummary,
+    },
+    Invalid {
+        reason: InvalidReason,
+    },
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct FolderReleaseCandidateSummary {
+    pub track_count: u32,
+    pub format_label: String,
+}
+
+/// A folder whose structure admits both one recursive release and several
+/// direct release approximations.
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct FolderReleaseBoundary {
+    pub key: FolderReleaseDecisionKey,
+    pub name: String,
+    pub display_path: String,
+    pub shared_file_count: u32,
+    pub tree_rows: Vec<FolderReleaseTreeRow>,
+    /// Tentative candidate paths hidden by this boundary.
+    pub candidate_keys: Vec<String>,
+}
+
+/// A resolved boundary retained on a row so its context menu can set the
+/// opposite interpretation without reconstructing a path.
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct ResolvedFolderReleaseBoundary {
+    pub key: FolderReleaseDecisionKey,
+    pub decision: FolderReleaseDecision,
+    pub name: String,
+    pub display_path: String,
+}
+
+/// A folder candidate detected during filesystem scanning.
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct FolderCandidate {
     /// Root path of this release
     pub path: PathBuf,
+    /// Root passed to the import revalidation walk. It differs from `path`
+    /// when audio-free single-child wrappers were collapsed into this row.
+    pub file_root: PathBuf,
     /// Display name (derived from folder name)
     pub name: String,
     /// Pre-categorized files for this release
@@ -769,17 +927,17 @@ pub struct FolderCandidate {
     /// the candidate-list group it belongs to. Equal to the scan root. The
     /// group's display name comes from the watched-folder list, not here.
     pub watched_folder_path: String,
-    /// Whether the user manually marked this candidate as skipped. The scanner's
-    /// blocking walk has no registry access, so it leaves this `false`; the
-    /// watcher stamps the real value from the folder registry after the scan.
-    pub skipped: bool,
-    /// Whether this folder's file structure was already imported (its
-    /// `CategorizedFiles::content_hash` matches a release in the library). Like
-    /// `skipped`, the scanner can't query the DB, so it leaves this `false`; the
-    /// watcher stamps it after the scan. Drives the import view's "Added" tab so
-    /// a re-scanned, already-imported folder still surfaces as added across
-    /// restarts.
-    pub is_added: bool,
+    /// The exact file ownership rule used to build `files`.
+    pub scope: ReleaseFileScope,
+    /// Revision of the stored file decisions applied to `files`.
+    pub file_edit_revision: u64,
+    /// Root-relative path for the queue subtitle, with `/` separators.
+    pub display_path: String,
+    /// Present when an explicit decision exposed this candidate.
+    pub resolved_boundaries: Vec<ResolvedFolderReleaseBoundary>,
+    /// Nearest default-separate ancestor that contains multiple release rows.
+    /// The UI uses this core-issued key for "Combine as One Release".
+    pub combine_ancestor_key: Option<FolderReleaseDecisionKey>,
 }
 
 impl FolderCandidate {
@@ -788,9 +946,9 @@ impl FolderCandidate {
     }
 }
 
-// ── FileTree: indexed file source ───────────────────────────────────────────
+// ── Candidate file index ────────────────────────────────────────────────────
 
-/// A single file entry in a `FileTree`.
+/// A single file entry in a candidate's selected file set.
 #[derive(Debug, Clone)]
 pub struct FileEntry {
     /// Path relative to the scan root
@@ -802,7 +960,7 @@ pub struct FileEntry {
 /// A pre-collected list of files for release candidate detection.
 ///
 /// Built by walking the filesystem once.
-pub struct FileTree {
+pub struct CandidateFileIndex {
     files: Vec<FileEntry>,
     dirs: BTreeMap<PathBuf, DirEntry>,
 }
@@ -821,6 +979,8 @@ pub enum FolderScanError {
     /// and the import service surfaces this text straight to the user.
     #[error("not a directory: {}", path.display())]
     NotADirectory { path: PathBuf },
+    #[error("folder scan cancelled")]
+    Cancelled,
     #[error("{0}")]
     Other(String),
 }
@@ -840,7 +1000,7 @@ struct DirEntry {
     subdirs: BTreeSet<PathBuf>,
 }
 
-impl FileTree {
+impl CandidateFileIndex {
     pub fn new(files: Vec<FileEntry>) -> Self {
         let mut tree = Self {
             files,
@@ -848,93 +1008,6 @@ impl FileTree {
         };
         tree.rebuild_index();
         tree
-    }
-
-    /// Build a FileTree by recursively walking the filesystem from `root`.
-    /// Skips hidden files/directories (names starting with '.') and noise files.
-    pub(crate) fn from_filesystem(root: &Path) -> Result<Self, FolderScanError> {
-        // A root that exists but isn't a directory can't be walked. Catch it here
-        // for a stable, typed error instead of letting `read_dir` leak its
-        // per-OS text. A missing root falls through so `walk_dir`'s `read_dir`
-        // yields the `NotFound` the caller relies on to drop the folder's
-        // candidates. `metadata` follows symlinks, so a link to a real directory
-        // still scans.
-        if let Ok(metadata) = fs::metadata(root) {
-            if !metadata.is_dir() {
-                return Err(FolderScanError::NotADirectory {
-                    path: root.to_path_buf(),
-                });
-            }
-        }
-        let mut files = Vec::new();
-        Self::walk_dir(root, root, &mut files)?;
-        Ok(Self::new(files))
-    }
-
-    fn walk_dir(
-        current: &Path,
-        root: &Path,
-        files: &mut Vec<FileEntry>,
-    ) -> Result<(), FolderScanError> {
-        let entries =
-            fs::read_dir(current).map_err(|source| FolderScanError::io(current, source))?;
-
-        for entry in entries {
-            let entry = entry.map_err(|source| FolderScanError::io(current, source))?;
-            let path = entry.path();
-
-            // Skip hidden files and directories (including .bae/)
-            if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
-                if name.starts_with('.') {
-                    continue;
-                }
-            }
-
-            let metadata = entry
-                .metadata()
-                .map_err(|source| FolderScanError::io(path.clone(), source))?;
-
-            if metadata.is_file() {
-                if is_noise_file(&path) {
-                    continue;
-                }
-
-                let size = metadata.len();
-
-                let relative = path
-                    .strip_prefix(root)
-                    .map_err(|e| FolderScanError::Other(format!("Failed to strip prefix: {e}")))?
-                    .to_path_buf();
-
-                files.push(FileEntry {
-                    path: relative,
-                    size,
-                });
-            } else if metadata.is_dir() {
-                Self::walk_dir(&path, root, files)?;
-            }
-        }
-
-        Ok(())
-    }
-
-    /// Files whose parent directory is exactly `dir` (not recursive).
-    fn files_in_dir<'a>(&'a self, dir: &Path) -> impl Iterator<Item = &'a FileEntry> {
-        let indices = self
-            .dirs
-            .get(&Self::normalize_dir(dir))
-            .map(|entry| entry.files.clone())
-            .unwrap_or_default();
-
-        indices.into_iter().map(|idx| &self.files[idx])
-    }
-
-    /// Distinct immediate child directories of `dir`.
-    fn immediate_subdirs(&self, dir: &Path) -> Vec<PathBuf> {
-        self.dirs
-            .get(&Self::normalize_dir(dir))
-            .map(|entry| entry.subdirs.iter().cloned().collect())
-            .unwrap_or_default()
     }
 
     /// All files recursively under `dir` (inclusive).
@@ -1086,170 +1159,6 @@ fn is_partial_marker_file(path: &Path) -> bool {
         .unwrap_or(false)
 }
 
-// ── Tree-based detection heuristics (no I/O) ───────────────────────────────
-
-/// Whether `dir` holds audio files directly, by extension.
-///
-/// This drives tree-structure detection (leaf vs collection), not validation: a
-/// directory of corrupt FLACs must still be detected as a candidate, so that
-/// categorization can surface it as an *invalid* candidate with its reason
-/// rather than have the folder vanish. Only 0-byte files are skipped — those are
-/// empty placeholders, not audio.
-fn tree_has_audio_files(tree: &FileTree, dir: &Path) -> bool {
-    tree.files_in_dir(dir)
-        .any(|f| is_audio_file(&f.path) && f.size > 0)
-}
-
-/// True when any immediate subdirectory of `dir` contains audio anywhere in its
-/// subtree. The recursion matters: a shallow check would miss any collection
-/// that wraps its releases under artist/label/discography dirs, making it look
-/// audio-less to a caller asking "is this a container?".
-fn tree_has_subdirs_with_audio(tree: &FileTree, dir: &Path) -> bool {
-    tree.immediate_subdirs(dir).iter().any(|subdir| {
-        tree.all_files_under(subdir)
-            .any(|f| is_audio_file(&f.path) && f.size > 0)
-    })
-}
-
-/// Check if any subdirectory has its own subdirectories with audio files.
-fn tree_has_nested_audio_dirs(tree: &FileTree, dir: &Path) -> bool {
-    tree.immediate_subdirs(dir)
-        .iter()
-        .any(|subdir| tree_has_subdirs_with_audio(tree, subdir))
-}
-
-/// True when `dir` or any descendant holds a partial-download marker. Checked
-/// once a directory is identified as a leaf, so an in-progress release whose
-/// markers live levels down (`Album/Disc 2/01.flac.part`) is still refused.
-fn tree_has_partial_markers_deep(tree: &FileTree, dir: &Path) -> bool {
-    tree.all_files_under(dir)
-        .any(|f| is_partial_marker_file(&f.path))
-}
-
-/// True when EVERY audio-bearing immediate subdirectory of `dir` has a
-/// disc-indicator name (`Disc N`, `CD N`, `Disk N`, `Side A/B`, `Part N`) — not
-/// a majority, so one "Disc 1" next to a "Bonus Tracks" does not qualify. This
-/// is what separates a true multi-disc release from an artist/discography/reissue
-/// folder that merely has ≥2 audio-bearing children.
-fn looks_like_multi_disc_siblings(tree: &FileTree, dir: &Path) -> bool {
-    let audio_subdirs: Vec<_> = tree
-        .immediate_subdirs(dir)
-        .into_iter()
-        .filter(|s| tree_has_audio_files(tree, s) || tree_has_subdirs_with_audio(tree, s))
-        .collect();
-
-    if audio_subdirs.len() < 2 {
-        return false;
-    }
-
-    audio_subdirs.iter().all(|subdir| {
-        subdir
-            .file_name()
-            .and_then(|n| n.to_str())
-            .map(is_disc_indicator_name)
-            .unwrap_or(false)
-    })
-}
-
-/// Match names that uniquely identify one slice of a multi-disc release —
-/// `Disc 1`, `CD2`, `Disk-03`, `Side A`, `Part_2` (case-insensitive, with
-/// optional `[ \t\-_.]` between keyword and suffix), or a bare numeric name
-/// (`1`, `02`). Anything with additional descriptive text (`1991 - Album A2`,
-/// `Vol. 01 (catalog)`, `Artist - Album`) deliberately does NOT match —
-/// that's the signal we use to distinguish true multi-disc releases from
-/// artist / discography / reissue folders.
-fn is_disc_indicator_name(name: &str) -> bool {
-    const SEPARATORS: [char; 4] = [' ', '\t', '-', '_'];
-    let lower = name.to_lowercase();
-
-    // Bare numeric: `1`, `02`, `003`.
-    if !lower.is_empty() && lower.chars().all(|c| c.is_ascii_digit()) {
-        return true;
-    }
-
-    // Numeric-suffix prefixes: Disc/CD/Disk/Part. Accept descriptive trailing
-    // text (e.g. `CD 4 - 1937-40 • NYC` or `Disc 1 (Bonus)`) as long as the
-    // digit run after the prefix is terminated by end-of-string or any
-    // non-alphanumeric character. `Discography`/`Disc1A` still fail because
-    // their prefix is followed directly by alpha / alphanumeric.
-    for prefix in ["disc", "cd", "disk", "part"] {
-        if let Some(rest) = lower.strip_prefix(prefix) {
-            // Allow `.` as a separator too (e.g. `CD.3`). `.` can't be in the
-            // SEPARATORS const used later for `Side`, since a single-char
-            // alpha suffix would collide with trimming multiple dots.
-            let rest = rest.trim_start_matches(SEPARATORS).trim_start_matches('.');
-            let digit_run: String = rest.chars().take_while(|c| c.is_ascii_digit()).collect();
-            if digit_run.is_empty() {
-                continue;
-            }
-            let after_digits = &rest[digit_run.len()..];
-            match after_digits.chars().next() {
-                None => return true,
-                Some(c) if !c.is_ascii_alphanumeric() => return true,
-                Some(_) => {}
-            }
-        }
-    }
-
-    // Alpha-suffix prefix: Side (e.g. "Side A", "Side-A"). Require at least
-    // one separator between `Side` and the alpha char so `Sider`, `Sideshow`
-    // etc. do not match.
-    if let Some(rest) = lower.strip_prefix("side") {
-        let trimmed = rest.trim_start_matches(SEPARATORS).trim_start_matches('.');
-        // Separator must have consumed at least one character (or `rest` was
-        // empty, which we'd reject as no alpha suffix to test).
-        let consumed_separator = trimmed.len() < rest.len();
-        if consumed_separator {
-            let mut chars = trimmed.chars();
-            if let (Some(c), None) = (chars.next(), chars.next()) {
-                if c.is_ascii_alphabetic() {
-                    return true;
-                }
-            }
-        }
-    }
-
-    false
-}
-
-/// Whether `dir` is a candidate — one release. Prefers "zoomed out", stopping at
-/// the shallowest directory that groups audio. A directory qualifies if it holds
-/// audio files directly, or if it's a multi-disc release (every audio-bearing
-/// subdir has a disc-indicator name). An artist / discography / reissue folder
-/// with ≥2 audio-bearing children does NOT qualify — its children are
-/// independent candidates, not parts of one release.
-fn tree_is_leaf_directory(tree: &FileTree, dir: &Path) -> bool {
-    let has_direct_audio = tree_has_audio_files(tree, dir);
-    let has_subdirs_with_audio = tree_has_subdirs_with_audio(tree, dir);
-
-    if has_direct_audio && has_subdirs_with_audio {
-        debug!(
-            "Directory {:?} has direct audio and audio-bearing subdirs; treating as container, descending into subdirs",
-            dir
-        );
-        return false;
-    }
-
-    if has_direct_audio {
-        debug!("Directory {:?} is a candidate (has audio files)", dir);
-        return true;
-    }
-
-    if has_subdirs_with_audio
-        && !tree_has_nested_audio_dirs(tree, dir)
-        && looks_like_multi_disc_siblings(tree, dir)
-    {
-        debug!(
-            "Directory {:?} is a candidate (disc-indicator subdirs)",
-            dir
-        );
-        return true;
-    }
-
-    debug!("Directory {:?} is not a candidate", dir);
-    false
-}
-
 // ── File categorization ─────────────────────────────────────────────────────
 
 /// The result of categorizing a leaf folder's files: a valid release, or an
@@ -1342,7 +1251,8 @@ fn settle_file_roles(files: &mut [CandidateFile], edits: &FileRoleEdits) {
 fn settle_sheet_bindings(
     files: &mut [CandidateFile],
     edits: &SheetBindingEdits,
-) -> SettledBindings {
+    cancellation: &ScanCancellation,
+) -> Result<SettledBindings, FolderScanError> {
     // Which relative paths are this folder's audio. A binding naming anything
     // else describes nothing, whether it came from a directive or from a stored
     // decision this build can no longer place.
@@ -1355,6 +1265,7 @@ fn settle_sheet_bindings(
     let mut settled: Vec<(usize, SheetBinding)> = Vec::new();
     let mut cue_codec: Option<String> = None;
     for (index, entry) in files.iter().enumerate() {
+        cancellation.check()?;
         let FileRole::TrackSheet { binding, .. } = &entry.role else {
             continue;
         };
@@ -1395,17 +1306,17 @@ fn settle_sheet_bindings(
             }
             Ok(CueCodecLabel::Unprobeable) => {
                 info!("Invalid candidate: sheet audio file could not be probed: {file_id}");
-                return SettledBindings::CorruptAudio {
+                return Ok(SettledBindings::CorruptAudio {
                     path: file_id.clone(),
-                };
+                });
             }
             // FFmpeg cannot open a non-UTF-8 path, so the audio is unreadable
             // by the only measure that decides a binding.
             Err(e) => {
                 info!("Invalid candidate: sheet audio file could not be probed ({e})");
-                return SettledBindings::CorruptAudio {
+                return Ok(SettledBindings::CorruptAudio {
                     path: file_id.clone(),
-                };
+                });
             }
         };
         settled.push((index, binding));
@@ -1417,7 +1328,7 @@ fn settle_sheet_bindings(
         };
         *slot = binding;
     }
-    SettledBindings::Settled { cue_codec }
+    Ok(SettledBindings::Settled { cue_codec })
 }
 
 /// The release's format label: `CUE+<codec>` when a sheet stayed bound — the
@@ -1451,7 +1362,7 @@ fn cue_parent_dir(cue_path: &Path) -> Result<&Path, FolderScanError> {
         .ok_or_else(|| FolderScanError::Other(format!("CUE file has no parent: {:?}", cue_path)))
 }
 
-/// Categorize a release root's files from a `FileTree`. `fs_root` is the folder
+/// Categorize a release root's selected files. `fs_root` is the folder
 /// being imported — validation reads its actual bytes from disk.
 ///
 /// Every file gets exactly one role, and the roles are *proposals*: a sheet
@@ -1464,14 +1375,16 @@ fn cue_parent_dir(cue_path: &Path) -> Result<&Path, FolderScanError> {
 /// candidate this returns is the folder as the *user* has settled it, not only
 /// as its filenames read.
 fn categorize_files_from_tree(
-    tree: &FileTree,
+    tree: &CandidateFileIndex,
     release_root: &Path,
     fs_root: &Path,
     stored: &StoredCandidateEdits,
+    cancellation: &ScanCancellation,
 ) -> Result<CategorizeOutcome, FolderScanError> {
     let mut proposed: Vec<(ScannedFile, ProposedRole)> = Vec::new();
 
     for entry in tree.all_files_under(release_root) {
+        cancellation.check()?;
         let relative_from_release = if release_root.as_os_str().is_empty() {
             entry.path.clone()
         } else {
@@ -1668,7 +1581,7 @@ fn categorize_files_from_tree(
         .cloned()
         .unwrap_or_default();
     settle_file_roles(&mut files, &stored.file_roles);
-    let cue_codec = match settle_sheet_bindings(&mut files, &stored.sheet_bindings) {
+    let cue_codec = match settle_sheet_bindings(&mut files, &stored.sheet_bindings, cancellation)? {
         SettledBindings::Settled { cue_codec } => cue_codec,
         SettledBindings::CorruptAudio { path } => {
             return invalid(InvalidReason::CorruptAudioFile { path })
@@ -1686,100 +1599,799 @@ fn categorize_files_from_tree(
     }))
 }
 
-// ── Tree walker ─────────────────────────────────────────────────────────────
+// ── Progressive directory walker ───────────────────────────────────────────
 
-/// Internal leaf data emitted by the tree walker. The public API stamps
-/// `watched_folder_path` to turn this into a `ScanItem`.
-pub(crate) enum RawScanItem {
-    Valid {
-        path: PathBuf,
-        name: String,
-        files: CategorizedFiles,
-    },
-    Invalid {
-        path: PathBuf,
-        name: String,
-        reason: InvalidReason,
-    },
+#[derive(Debug)]
+pub(crate) struct DirectoryListing {
+    files: Vec<FileEntry>,
+    directories: Vec<PathBuf>,
 }
 
-fn scan_tree_recursive<F>(
-    tree: &FileTree,
-    dir: &Path,
-    fs_root: &Path,
+pub(crate) trait DirectoryReader {
+    fn read(
+        &self,
+        root: &Path,
+        directory: &Path,
+        cancellation: &ScanCancellation,
+    ) -> Result<DirectoryListing, FolderScanError>;
+}
+
+struct OsDirectoryReader;
+
+impl DirectoryReader for OsDirectoryReader {
+    fn read(
+        &self,
+        root: &Path,
+        directory: &Path,
+        cancellation: &ScanCancellation,
+    ) -> Result<DirectoryListing, FolderScanError> {
+        let absolute = root.join(directory);
+        let entries =
+            fs::read_dir(&absolute).map_err(|source| FolderScanError::io(&absolute, source))?;
+        let mut files = Vec::new();
+        let mut directories = Vec::new();
+        for entry in entries {
+            cancellation.check()?;
+            let entry = entry.map_err(|source| FolderScanError::io(&absolute, source))?;
+            let path = entry.path();
+            let Some(name) = path.file_name().and_then(|name| name.to_str()) else {
+                return Err(FolderScanError::Other(format!(
+                    "directory entry is not UTF-8: {}",
+                    path.display()
+                )));
+            };
+            if name.starts_with('.') {
+                debug!("ignoring hidden folder-scan entry {}", path.display());
+                continue;
+            }
+            let relative = path
+                .strip_prefix(root)
+                .map_err(|error| FolderScanError::Other(error.to_string()))?
+                .to_path_buf();
+            let file_type = entry
+                .file_type()
+                .map_err(|source| FolderScanError::io(&path, source))?;
+            if file_type.is_dir() {
+                directories.push(relative);
+                continue;
+            }
+            let metadata = entry
+                .metadata()
+                .map_err(|source| FolderScanError::io(&path, source))?;
+            if metadata.is_dir() && !file_type.is_symlink() {
+                directories.push(relative);
+            } else if metadata.is_file() && !is_noise_file(&path) {
+                files.push(FileEntry {
+                    path: relative,
+                    size: metadata.len(),
+                });
+            }
+        }
+        let compare = |left: &PathBuf, right: &PathBuf| {
+            natord::compare(
+                &left
+                    .file_name()
+                    .expect("a directory entry path has a file name")
+                    .to_string_lossy(),
+                &right
+                    .file_name()
+                    .expect("a directory entry path has a file name")
+                    .to_string_lossy(),
+            )
+        };
+        files.sort_by(|left, right| compare(&left.path, &right.path));
+        directories.sort_by(compare);
+        Ok(DirectoryListing { files, directories })
+    }
+}
+
+#[derive(Debug, Clone, Default)]
+pub(crate) struct ScanCancellation(Arc<AtomicBool>);
+
+impl ScanCancellation {
+    pub(crate) fn new() -> Self {
+        Self::default()
+    }
+
+    pub(crate) fn cancel(&self) {
+        self.0.store(true, Ordering::Release);
+    }
+
+    pub(crate) fn is_cancelled(&self) -> bool {
+        self.0.load(Ordering::Acquire)
+    }
+
+    fn check(&self) -> Result<(), FolderScanError> {
+        if self.is_cancelled() {
+            Err(FolderScanError::Cancelled)
+        } else {
+            Ok(())
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+enum ProjectedScanNode {
+    Candidate(FolderCandidate),
+    Invalid(InvalidCandidate),
+    Boundary(FolderReleaseBoundary),
+}
+
+#[derive(Debug)]
+struct ScannedDirectory {
+    all_files: Vec<FileEntry>,
+    contains_audio: bool,
+    nodes: Vec<ProjectedScanNode>,
+    nodes_emitted: bool,
+}
+
+fn relative_path_string(path: &Path) -> String {
+    path.components()
+        .map(|component| component.as_os_str().to_string_lossy())
+        .collect::<Vec<_>>()
+        .join("/")
+}
+
+fn directory_name(root: &Path, relative: &Path) -> String {
+    let path = if relative.as_os_str().is_empty() {
+        root
+    } else {
+        relative
+    };
+    path.file_name().map_or_else(
+        || path.to_string_lossy().into_owned(),
+        |name| name.to_string_lossy().into_owned(),
+    )
+}
+
+fn categorize_selected_files(
+    files: Vec<FileEntry>,
+    relative: &Path,
+    root: &Path,
     stored: &StoredCandidateEdits,
+    cancellation: &ScanCancellation,
+) -> Result<CategorizeOutcome, FolderScanError> {
+    let tree = CandidateFileIndex::new(files);
+    categorize_files_from_tree(&tree, relative, root, stored, cancellation)
+}
+
+fn candidate_from_files(
+    files: Vec<FileEntry>,
+    relative: &Path,
+    candidate_relative: &Path,
+    root: &Path,
+    watched_folder_path: &str,
+    scope: ReleaseFileScope,
+    resolved_boundaries: Vec<ResolvedFolderReleaseBoundary>,
+    stored: &StoredCandidateEdits,
+    cancellation: &ScanCancellation,
+) -> Result<Option<ProjectedScanNode>, FolderScanError> {
+    if files.iter().any(|file| is_partial_marker_file(&file.path)) {
+        info!(
+            "Skipping release approximation {:?}: partial-download marker present",
+            relative
+        );
+        return Ok(None);
+    }
+    let path = if candidate_relative.as_os_str().is_empty() {
+        root.to_path_buf()
+    } else {
+        root.join(candidate_relative)
+    };
+    let file_root = if relative.as_os_str().is_empty() {
+        root.to_path_buf()
+    } else {
+        root.join(relative)
+    };
+    let name = directory_name(root, candidate_relative);
+    let display_path = relative_path_string(candidate_relative);
+    match categorize_selected_files(files, relative, root, stored, cancellation)? {
+        CategorizeOutcome::Valid(files) => {
+            let file_edit_revision = stored.revision_for_hash(&files.content_hash());
+            Ok(Some(ProjectedScanNode::Candidate(FolderCandidate {
+                path,
+                file_root,
+                name,
+                files,
+                watched_folder_path: watched_folder_path.to_string(),
+                scope,
+                file_edit_revision,
+                display_path,
+                resolved_boundaries,
+                combine_ancestor_key: None,
+            })))
+        }
+        CategorizeOutcome::Invalid(reason) => {
+            Ok(Some(ProjectedScanNode::Invalid(InvalidCandidate {
+                path,
+                name,
+                watched_folder_path: watched_folder_path.to_string(),
+                display_path,
+                resolved_boundaries,
+                reason,
+            })))
+        }
+    }
+}
+
+fn candidate_keys(nodes: &[ProjectedScanNode]) -> Vec<String> {
+    let mut keys = Vec::new();
+    for node in nodes {
+        match node {
+            ProjectedScanNode::Candidate(candidate) => {
+                keys.push(candidate.path.to_string_lossy().into_owned())
+            }
+            ProjectedScanNode::Invalid(candidate) => {
+                keys.push(candidate.path.to_string_lossy().into_owned())
+            }
+            ProjectedScanNode::Boundary(boundary) => {
+                keys.extend(boundary.candidate_keys.iter().cloned())
+            }
+        }
+    }
+    keys
+}
+
+fn boundary_tree_rows(
+    root: &Path,
+    boundary: &Path,
+    watched_folder_path: &str,
+    nodes: &[ProjectedScanNode],
+) -> Vec<FolderReleaseTreeRow> {
+    let boundary_relative = boundary
+        .strip_prefix(root)
+        .expect("a release boundary is below its watched root");
+    let mut candidate_summaries = HashMap::new();
+    let mut invalid_reasons = HashMap::new();
+    for node in nodes {
+        match node {
+            ProjectedScanNode::Candidate(candidate) => {
+                candidate_summaries.insert(
+                    candidate.path.clone(),
+                    FolderReleaseCandidateSummary {
+                        track_count: candidate.track_count(),
+                        format_label: candidate.files.format_label.clone(),
+                    },
+                );
+            }
+            ProjectedScanNode::Invalid(candidate) => {
+                invalid_reasons.insert(candidate.path.clone(), candidate.reason.clone());
+            }
+            ProjectedScanNode::Boundary(nested) => {
+                let nested_root = PathBuf::from(&nested.key.watched_folder_path)
+                    .join(&nested.key.relative_folder_path);
+                for row in &nested.tree_rows {
+                    let absolute = nested_root.join(&row.display_path);
+                    match &row.kind {
+                        FolderReleaseTreeRowKind::Candidate { summary } => {
+                            candidate_summaries.insert(absolute, summary.clone());
+                        }
+                        FolderReleaseTreeRowKind::Invalid { reason } => {
+                            invalid_reasons.insert(absolute, reason.clone());
+                        }
+                        FolderReleaseTreeRowKind::Folder => {}
+                    }
+                }
+            }
+        }
+    }
+    let mut releases = BTreeSet::new();
+    for key in candidate_keys(nodes) {
+        releases.insert(PathBuf::from(key));
+    }
+    let mut descendant_counts: BTreeMap<PathBuf, u32> = BTreeMap::new();
+    for absolute in &releases {
+        let relative = absolute
+            .strip_prefix(boundary)
+            .expect("a boundary candidate is below its release boundary");
+        let components: Vec<_> = relative.components().collect();
+        for end in 0..components.len() {
+            let path: PathBuf = components[..=end]
+                .iter()
+                .map(|component| component.as_os_str())
+                .collect();
+            *descendant_counts.entry(path).or_default() += 1;
+        }
+    }
+    let mut rows: BTreeMap<String, FolderReleaseTreeRow> = BTreeMap::new();
+    let boundary_kind = candidate_summaries
+        .get(boundary)
+        .cloned()
+        .map(|summary| FolderReleaseTreeRowKind::Candidate { summary })
+        .or_else(|| {
+            invalid_reasons
+                .get(boundary)
+                .cloned()
+                .map(|reason| FolderReleaseTreeRowKind::Invalid { reason })
+        });
+    if let Some(kind) = boundary_kind {
+        let decision_key = FolderReleaseDecisionKey {
+            watched_folder_path: watched_folder_path.to_string(),
+            relative_folder_path: relative_path_string(boundary_relative),
+        };
+        rows.insert(
+            String::new(),
+            FolderReleaseTreeRow {
+                name: directory_name(root, boundary),
+                display_path: String::new(),
+                depth: 0,
+                kind,
+                decision_key,
+                ancestor_decision_keys: Vec::new(),
+            },
+        );
+    }
+    let descendant_depth_offset = u32::from(rows.contains_key(""));
+    for absolute in releases {
+        let relative = absolute
+            .strip_prefix(boundary)
+            .expect("a boundary candidate is below its release boundary");
+        let components: Vec<_> = relative.components().collect();
+        for end in 0..components.len() {
+            let path: PathBuf = components[..=end]
+                .iter()
+                .map(|component| component.as_os_str())
+                .collect();
+            let display_path = relative_path_string(&path);
+            let decision_key = FolderReleaseDecisionKey {
+                watched_folder_path: watched_folder_path.to_string(),
+                relative_folder_path: relative_path_string(&boundary_relative.join(&path)),
+            };
+            let mut ancestor_decision_keys = vec![FolderReleaseDecisionKey {
+                watched_folder_path: watched_folder_path.to_string(),
+                relative_folder_path: relative_path_string(boundary_relative),
+            }];
+            for prefix_end in 0..end {
+                let prefix: PathBuf = components[..=prefix_end]
+                    .iter()
+                    .map(|component| component.as_os_str())
+                    .collect();
+                if descendant_counts
+                    .get(&prefix)
+                    .is_some_and(|count| *count > 1)
+                {
+                    ancestor_decision_keys.push(FolderReleaseDecisionKey {
+                        watched_folder_path: watched_folder_path.to_string(),
+                        relative_folder_path: relative_path_string(&boundary_relative.join(prefix)),
+                    });
+                }
+            }
+            let is_release = end + 1 == components.len();
+            let kind = if is_release {
+                if let Some(summary) = candidate_summaries.get(&absolute) {
+                    FolderReleaseTreeRowKind::Candidate {
+                        summary: summary.clone(),
+                    }
+                } else if let Some(reason) = invalid_reasons.get(&absolute) {
+                    FolderReleaseTreeRowKind::Invalid {
+                        reason: reason.clone(),
+                    }
+                } else {
+                    FolderReleaseTreeRowKind::Folder
+                }
+            } else {
+                FolderReleaseTreeRowKind::Folder
+            };
+            let row = FolderReleaseTreeRow {
+                name: components[end].as_os_str().to_string_lossy().into_owned(),
+                display_path: display_path.clone(),
+                depth: end as u32 + descendant_depth_offset,
+                kind,
+                decision_key,
+                ancestor_decision_keys,
+            };
+            rows.entry(display_path)
+                .and_modify(|existing| {
+                    if is_release {
+                        existing.kind = row.kind.clone();
+                    }
+                })
+                .or_insert(row);
+        }
+    }
+    let mut rows: Vec<_> = rows.into_values().collect();
+    rows.sort_by(|left, right| natord::compare(&left.display_path, &right.display_path));
+    rows
+}
+
+fn apply_resolved_boundary(
+    nodes: &mut [ProjectedScanNode],
+    resolved: &ResolvedFolderReleaseBoundary,
+) {
+    for node in nodes {
+        let resolved_boundaries = match node {
+            ProjectedScanNode::Candidate(candidate) => &mut candidate.resolved_boundaries,
+            ProjectedScanNode::Invalid(candidate) => &mut candidate.resolved_boundaries,
+            ProjectedScanNode::Boundary(_) => continue,
+        };
+        if !resolved_boundaries
+            .iter()
+            .any(|existing| existing.key == resolved.key)
+        {
+            resolved_boundaries.push(resolved.clone());
+        }
+    }
+}
+
+fn scan_directory<R, F, D>(
+    reader: &R,
+    root: &Path,
+    relative: &Path,
+    watched_folder_path: &str,
+    allow_unresolved_boundary: bool,
+    ancestors_allow_actionable: bool,
+    decisions: &FolderReleaseDecisions,
+    stored: &StoredCandidateEdits,
+    cancellation: &ScanCancellation,
+    on_directory: &mut D,
     on_item: &mut F,
+) -> Result<ScannedDirectory, FolderScanError>
+where
+    R: DirectoryReader,
+    F: FnMut(ScanItem),
+    D: FnMut(PathBuf),
+{
+    cancellation.check()?;
+    on_directory(root.join(relative));
+    let listing = reader.read(root, relative, cancellation)?;
+    let direct_audio = listing
+        .files
+        .iter()
+        .any(|file| file.size > 0 && is_audio_file(&file.path));
+    let has_direct_files = !listing.files.is_empty();
+    let wrapper_has_files = !direct_audio && !listing.files.is_empty();
+    let mut all_files = listing.files.clone();
+    let mut direct_scope_files = listing.files;
+    let mut child_nodes = Vec::new();
+    let mut child_nodes_emitted = false;
+    let mut contains_audio = direct_audio;
+    let relative_string = relative_path_string(relative);
+    let decision = decisions.get(&relative_string);
+    let combine = matches!(decision, Some(FolderReleaseDecision::CombineAsOneRelease));
+    let keep_separate = matches!(
+        decision,
+        Some(FolderReleaseDecision::KeepAsSeparateReleases)
+    );
+    let can_stream_collection = ancestors_allow_actionable
+        && !combine
+        && (!allow_unresolved_boundary || !has_direct_files || keep_separate);
+    let mut collection_proven = !wrapper_has_files;
+    let resolved_separate = keep_separate.then(|| ResolvedFolderReleaseBoundary {
+        key: FolderReleaseDecisionKey {
+            watched_folder_path: watched_folder_path.to_string(),
+            relative_folder_path: relative_string.clone(),
+        },
+        decision: FolderReleaseDecision::KeepAsSeparateReleases,
+        name: directory_name(root, relative),
+        display_path: relative_string.clone(),
+    });
+
+    for child in listing.directories {
+        let child_can_be_actionable = can_stream_collection && collection_proven;
+        let child_scan = scan_directory(
+            reader,
+            root,
+            &child,
+            watched_folder_path,
+            true,
+            child_can_be_actionable,
+            decisions,
+            stored,
+            cancellation,
+            on_directory,
+            on_item,
+        )?;
+        contains_audio |= child_scan.contains_audio;
+        if !child_scan.contains_audio {
+            direct_scope_files.extend(child_scan.all_files.iter().cloned());
+        }
+        all_files.extend(child_scan.all_files);
+        if !wrapper_has_files && can_stream_collection {
+            let mut nodes = child_scan.nodes;
+            if let Some(resolved) = &resolved_separate {
+                apply_resolved_boundary(&mut nodes, resolved);
+            }
+            if !child_scan.nodes_emitted {
+                emit_projected_nodes(nodes.clone(), on_item);
+            }
+            child_nodes_emitted |= child_scan.nodes_emitted || !nodes.is_empty();
+            child_nodes.extend(nodes);
+        } else {
+            let child_start = child_nodes.len();
+            let child_was_emitted = child_scan.nodes_emitted;
+            child_nodes.extend(child_scan.nodes);
+            if wrapper_has_files && !collection_proven && child_nodes.len() > 1 {
+                collection_proven = true;
+                if can_stream_collection {
+                    let mut discovered_collection = child_nodes.clone();
+                    if let Some(resolved) = &resolved_separate {
+                        apply_resolved_boundary(&mut discovered_collection, resolved);
+                    }
+                    emit_projected_nodes(discovered_collection, on_item);
+                    child_nodes_emitted = true;
+                }
+            } else if wrapper_has_files && collection_proven && can_stream_collection {
+                if !child_was_emitted {
+                    let mut discovered_child = child_nodes[child_start..].to_vec();
+                    if let Some(resolved) = &resolved_separate {
+                        apply_resolved_boundary(&mut discovered_child, resolved);
+                    }
+                    emit_projected_nodes(discovered_child, on_item);
+                }
+                child_nodes_emitted = true;
+            }
+        }
+    }
+    let shared_file_count = if direct_audio {
+        0
+    } else {
+        direct_scope_files.len() as u32
+    };
+    let owns_wrapper_files = !direct_audio && !direct_scope_files.is_empty();
+
+    if combine && contains_audio {
+        let resolved = ResolvedFolderReleaseBoundary {
+            key: FolderReleaseDecisionKey {
+                watched_folder_path: watched_folder_path.to_string(),
+                relative_folder_path: relative_string.clone(),
+            },
+            decision: FolderReleaseDecision::CombineAsOneRelease,
+            name: directory_name(root, relative),
+            display_path: relative_string.clone(),
+        };
+        let node = candidate_from_files(
+            all_files.clone(),
+            relative,
+            relative,
+            root,
+            watched_folder_path,
+            ReleaseFileScope::Recursive,
+            vec![resolved],
+            stored,
+            cancellation,
+        )?;
+        let nodes = node.into_iter().collect();
+        return Ok(ScannedDirectory {
+            all_files,
+            contains_audio,
+            nodes,
+            nodes_emitted: false,
+        });
+    }
+
+    let mut nodes = Vec::new();
+    if direct_audio {
+        if let Some(node) = candidate_from_files(
+            direct_scope_files,
+            relative,
+            relative,
+            root,
+            watched_folder_path,
+            ReleaseFileScope::Direct,
+            Vec::new(),
+            stored,
+            cancellation,
+        )? {
+            if let ProjectedScanNode::Candidate(candidate) = &node {
+                on_item(ScanItem::Discovered(candidate.clone()));
+            }
+            nodes.push(node);
+        }
+    }
+    nodes.extend(child_nodes);
+
+    // A collapsed wrapper's files still have one owner when there is exactly
+    // one release below it. Keep the leaf as the candidate key/display row,
+    // but root its reproducible file scope at the wrapper so sidecars and
+    // audio-free siblings survive scan, import, and re-scan.
+    if owns_wrapper_files && nodes.len() == 1 {
+        if let ProjectedScanNode::Candidate(existing) = &nodes[0] {
+            let candidate_relative = existing
+                .path
+                .strip_prefix(root)
+                .map_err(|error| FolderScanError::Other(error.to_string()))?
+                .to_path_buf();
+            let resolved_boundaries = existing.resolved_boundaries.clone();
+            if let Some(candidate) = candidate_from_files(
+                all_files.clone(),
+                relative,
+                &candidate_relative,
+                root,
+                watched_folder_path,
+                ReleaseFileScope::Recursive,
+                resolved_boundaries,
+                stored,
+                cancellation,
+            )? {
+                nodes = vec![candidate];
+            }
+        }
+    }
+
+    if keep_separate {
+        apply_resolved_boundary(
+            &mut nodes,
+            resolved_separate
+                .as_ref()
+                .expect("keep-separate decision constructs its boundary"),
+        );
+    } else if allow_unresolved_boundary && nodes.len() > 1 && (direct_audio || owns_wrapper_files) {
+        let absolute = root.join(relative);
+        let candidate_keys = candidate_keys(&nodes);
+        let key = FolderReleaseDecisionKey {
+            watched_folder_path: watched_folder_path.to_string(),
+            relative_folder_path: relative_string.clone(),
+        };
+        let tree_rows = boundary_tree_rows(root, &absolute, watched_folder_path, &nodes);
+        let boundary = FolderReleaseBoundary {
+            key,
+            name: directory_name(root, relative),
+            display_path: relative_string,
+            shared_file_count,
+            tree_rows,
+            candidate_keys,
+        };
+        if child_nodes_emitted {
+            on_item(ScanItem::Boundary(boundary.clone()));
+        }
+        nodes = vec![ProjectedScanNode::Boundary(boundary)];
+    } else if allow_unresolved_boundary && nodes.len() > 1 {
+        let key = FolderReleaseDecisionKey {
+            watched_folder_path: watched_folder_path.to_string(),
+            relative_folder_path: relative_string,
+        };
+        for node in &mut nodes {
+            if let ProjectedScanNode::Candidate(candidate) = node {
+                candidate.combine_ancestor_key.get_or_insert(key.clone());
+            }
+        }
+        if child_nodes_emitted {
+            for node in &nodes {
+                if let ProjectedScanNode::Candidate(candidate) = node {
+                    on_item(ScanItem::Valid(candidate.clone()));
+                }
+            }
+        }
+    }
+
+    Ok(ScannedDirectory {
+        all_files,
+        contains_audio,
+        nodes,
+        nodes_emitted: child_nodes_emitted,
+    })
+}
+
+fn emit_projected_nodes<F>(nodes: Vec<ProjectedScanNode>, on_item: &mut F)
+where
+    F: FnMut(ScanItem),
+{
+    for node in nodes {
+        match node {
+            ProjectedScanNode::Candidate(candidate) => on_item(ScanItem::Valid(candidate)),
+            ProjectedScanNode::Invalid(candidate) => on_item(ScanItem::Invalid(candidate)),
+            ProjectedScanNode::Boundary(boundary) => on_item(ScanItem::Boundary(boundary)),
+        }
+    }
+}
+
+pub(crate) fn scan_for_candidates_with_reader_cancellable<R, F>(
+    reader: &R,
+    root: PathBuf,
+    stored: &StoredCandidateEdits,
+    decisions: &FolderReleaseDecisions,
+    cancellation: &ScanCancellation,
+    on_item: F,
 ) -> Result<(), FolderScanError>
 where
-    F: FnMut(RawScanItem),
+    R: DirectoryReader,
+    F: FnMut(ScanItem),
 {
-    if tree_is_leaf_directory(tree, dir) {
-        // A leaf is a release, so markers anywhere under it mean the release
-        // itself is incomplete. Don't emit and don't recurse — any disc-level
-        // child would inherit the same problem.
-        if tree_has_partial_markers_deep(tree, dir) {
-            info!(
-                "Skipping leaf {:?}: partial-download markers present under it",
-                dir
-            );
-            return Ok(());
+    scan_for_candidates_with_reader_cancellable_and_directories(
+        reader,
+        root,
+        stored,
+        decisions,
+        cancellation,
+        |_| {},
+        on_item,
+    )
+}
+
+pub(crate) fn scan_for_candidates_with_reader_cancellable_and_directories<R, F, D>(
+    reader: &R,
+    root: PathBuf,
+    stored: &StoredCandidateEdits,
+    decisions: &FolderReleaseDecisions,
+    cancellation: &ScanCancellation,
+    mut on_directory: D,
+    mut on_item: F,
+) -> Result<(), FolderScanError>
+where
+    R: DirectoryReader,
+    F: FnMut(ScanItem),
+    D: FnMut(PathBuf),
+{
+    cancellation.check()?;
+    debug!("Scanning for candidates in: {:?}", root);
+    if let Ok(metadata) = fs::metadata(&root) {
+        if !metadata.is_dir() {
+            return Err(FolderScanError::NotADirectory { path: root });
         }
+    }
+    let watched_folder_path = root.to_string_lossy().into_owned();
+    on_directory(root.clone());
+    let root_listing = reader.read(&root, Path::new(""), cancellation)?;
+    let direct_audio = root_listing
+        .files
+        .iter()
+        .any(|file| file.size > 0 && is_audio_file(&file.path));
+    let mut direct_scope_files = root_listing.files;
 
-        let name = if dir.as_os_str().is_empty() {
-            fs_root
-                .file_name()
-                .and_then(|n| n.to_str())
-                .unwrap_or("Unknown")
-                .to_string()
-        } else {
-            dir.file_name()
-                .and_then(|n| n.to_str())
-                .unwrap_or("Unknown")
-                .to_string()
-        };
-
-        debug!("Found candidate leaf: {:?}", dir);
-
-        let candidate_path = fs_root.join(dir);
-        match categorize_files_from_tree(tree, dir, fs_root, stored)? {
-            CategorizeOutcome::Valid(files) => {
-                on_item(RawScanItem::Valid {
-                    path: candidate_path,
-                    name,
-                    files,
-                });
-            }
-            CategorizeOutcome::Invalid(reason) => {
-                // It looked like a release but failed validation. Surface it with
-                // its reason so the user sees why the folder didn't import —
-                // unlike the partial-markers check above, which truly suppresses.
-                info!("Invalid leaf {:?}: {reason}", dir);
-                on_item(RawScanItem::Invalid {
-                    path: candidate_path,
-                    name,
-                    reason,
-                });
-            }
+    for child in root_listing.directories {
+        let child_scan = scan_directory(
+            reader,
+            &root,
+            &child,
+            &watched_folder_path,
+            true,
+            true,
+            decisions,
+            stored,
+            cancellation,
+            &mut on_directory,
+            &mut on_item,
+        )?;
+        if !child_scan.contains_audio {
+            direct_scope_files.extend(child_scan.all_files.iter().cloned());
         }
-
-        return Ok(());
+        if !child_scan.nodes_emitted {
+            emit_projected_nodes(child_scan.nodes, &mut on_item);
+        }
     }
 
-    for subdir in tree.immediate_subdirs(dir) {
-        scan_tree_recursive(tree, &subdir, fs_root, stored, on_item)?;
+    if direct_audio {
+        if let Some(node) = candidate_from_files(
+            direct_scope_files,
+            Path::new(""),
+            Path::new(""),
+            &root,
+            &watched_folder_path,
+            ReleaseFileScope::Direct,
+            Vec::new(),
+            stored,
+            cancellation,
+        )? {
+            emit_projected_nodes(vec![node], &mut on_item);
+        }
     }
-
     Ok(())
 }
 
-// ── Public API: folder scanning (filesystem) ────────────────────────────────
+pub(crate) fn scan_for_candidates_with_reader<R, F>(
+    reader: &R,
+    root: PathBuf,
+    stored: &StoredCandidateEdits,
+    decisions: &FolderReleaseDecisions,
+    on_item: F,
+) -> Result<(), FolderScanError>
+where
+    R: DirectoryReader,
+    F: FnMut(ScanItem),
+{
+    scan_for_candidates_with_reader_cancellable(
+        reader,
+        root,
+        stored,
+        decisions,
+        &ScanCancellation::new(),
+        on_item,
+    )
+}
 
-/// Scan a folder and invoke `on_item` for each leaf: a valid release candidate,
-/// or an invalid one (looked like a release but failed validation). Both carry
-/// `watched_folder_path` stamped from the scan root.
-///
-/// `stored` carries every candidate's user-set sheet bindings, keyed by content
-/// hash — the scan is what computes that key, so the lookup happens inside.
+/// Scan one watched root a directory at a time. Completed release
+/// approximations and unresolved boundaries are emitted before unrelated
+/// sibling directories are read.
 pub fn scan_for_candidates_with_callback<F>(
     root: PathBuf,
     stored: &StoredCandidateEdits,
@@ -1788,56 +2400,121 @@ pub fn scan_for_candidates_with_callback<F>(
 where
     F: FnMut(ScanItem),
 {
-    debug!("Scanning for candidates in: {:?}", root);
-    // Every item from this scan belongs to the same watched folder (the scan
-    // root) — the group it renders under in the candidate list.
-    let watched_folder_path = root.to_string_lossy().into_owned();
-    let tree = FileTree::from_filesystem(&root)?;
-    scan_tree_recursive(
-        &tree,
-        &PathBuf::new(),
-        &root,
+    scan_for_candidates_with_reader(
+        &OsDirectoryReader,
+        root,
         stored,
-        &mut |raw| match raw {
-            RawScanItem::Valid { path, name, files } => {
-                on_item(ScanItem::Valid(FolderCandidate {
-                    path,
-                    name,
-                    files,
-                    watched_folder_path: watched_folder_path.clone(),
-                    // The blocking walk has neither the registry nor the DB; the
-                    // watcher stamps the real per-candidate facts after this scan.
-                    skipped: false,
-                    is_added: false,
-                }));
-            }
-            RawScanItem::Invalid { path, name, reason } => {
-                on_item(ScanItem::Invalid(InvalidCandidate {
-                    path,
-                    name,
-                    watched_folder_path: watched_folder_path.clone(),
-                    reason,
-                }));
+        &FolderReleaseDecisions::default(),
+        |item| {
+            if !matches!(item, ScanItem::Discovered(_)) {
+                on_item(item);
             }
         },
     )
 }
 
-/// Walk one release directory recursively and give every file its role,
-/// preserving relative paths, with the user's stored sheet bindings applied
-/// over what the filenames propose.
+pub fn scan_for_candidates_with_decisions<F>(
+    root: PathBuf,
+    stored: &StoredCandidateEdits,
+    decisions: &FolderReleaseDecisions,
+    on_item: F,
+) -> Result<(), FolderScanError>
+where
+    F: FnMut(ScanItem),
+{
+    scan_for_candidates_with_reader(&OsDirectoryReader, root, stored, decisions, on_item)
+}
+
+pub(crate) fn scan_for_candidates_with_decisions_cancellable_and_directories<F, D>(
+    root: PathBuf,
+    stored: &StoredCandidateEdits,
+    decisions: &FolderReleaseDecisions,
+    cancellation: &ScanCancellation,
+    on_directory: D,
+    on_item: F,
+) -> Result<(), FolderScanError>
+where
+    F: FnMut(ScanItem),
+    D: FnMut(PathBuf),
+{
+    scan_for_candidates_with_reader_cancellable_and_directories(
+        &OsDirectoryReader,
+        root,
+        stored,
+        decisions,
+        cancellation,
+        on_directory,
+        on_item,
+    )
+}
+
+fn read_file_subtree<R: DirectoryReader>(
+    reader: &R,
+    root: &Path,
+    relative: &Path,
+    cancellation: &ScanCancellation,
+) -> Result<(Vec<FileEntry>, bool), FolderScanError> {
+    let listing = reader.read(root, relative, cancellation)?;
+    let mut contains_audio = listing
+        .files
+        .iter()
+        .any(|file| file.size > 0 && is_audio_file(&file.path));
+    let mut files = listing.files;
+    for child in listing.directories {
+        let (child_files, child_contains_audio) =
+            read_file_subtree(reader, root, &child, cancellation)?;
+        files.extend(child_files);
+        contains_audio |= child_contains_audio;
+    }
+    Ok((files, contains_audio))
+}
+
+fn collect_scoped_entries(
+    root: &Path,
+    scope: ReleaseFileScope,
+) -> Result<Vec<FileEntry>, FolderScanError> {
+    let reader = OsDirectoryReader;
+    let cancellation = ScanCancellation::new();
+    match scope {
+        ReleaseFileScope::Recursive => {
+            read_file_subtree(&reader, root, Path::new(""), &cancellation).map(|(files, _)| files)
+        }
+        ReleaseFileScope::Direct => {
+            let listing = reader.read(root, Path::new(""), &cancellation)?;
+            let mut files = listing.files;
+            for child in listing.directories {
+                let (child_files, contains_audio) =
+                    read_file_subtree(&reader, root, &child, &cancellation)?;
+                if !contains_audio {
+                    files.extend(child_files);
+                }
+            }
+            Ok(files)
+        }
+    }
+}
+
+/// Collect one explicit release boundary and give every owned file its role,
+/// preserving relative paths, with stored file decisions applied.
 ///
 /// Every caller that re-derives a folder — the commit, the Unknown-import seed,
 /// the signal fast pass — goes through here, so none of them can see a shape
 /// the user has already corrected.
-pub fn collect_release_candidate_files(
+pub fn collect_release_candidate_files_with_scope(
     release_root: &Path,
+    scope: ReleaseFileScope,
     stored: &StoredCandidateEdits,
 ) -> Result<CategorizedFiles, crate::import::ImportError> {
-    let tree = FileTree::from_filesystem(release_root)?;
+    let tree = CandidateFileIndex::new(collect_scoped_entries(release_root, scope)?);
     // An invalid folder can't be imported: surface its typed reason so the
     // import-commit caller fails with why the folder is unusable.
-    match categorize_files_from_tree(&tree, &PathBuf::new(), release_root, stored)? {
+    match categorize_files_from_tree(
+        &tree,
+        &PathBuf::new(),
+        release_root,
+        stored,
+        &ScanCancellation::new(),
+    )? {
         CategorizeOutcome::Valid(files) => Ok(files),
         CategorizeOutcome::Invalid(reason) => Err(reason.into()),
     }

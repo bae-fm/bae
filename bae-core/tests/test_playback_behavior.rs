@@ -488,12 +488,13 @@ where
     let release_id_key = seed_discogs_test_release(release);
     generate_files(&album_dir);
 
-    let import_handle = start_test_import(runtime_handle.clone(), library_manager.clone());
+    let import_handle = start_test_import(runtime_handle.clone(), library_manager.clone()).await;
     import_handle
         .send_command(ImportCommand {
             import_id: import_id.clone(),
             candidate_key: candidate_key.to_string(),
             folder: album_dir.clone(),
+            scope: bae_core::import::ReleaseFileScope::Recursive,
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
@@ -1124,7 +1125,8 @@ impl CueFlacTestFixture {
         let release_id_key = seed_discogs_test_release(discogs_release);
         generate_cue_flac_files(&album_dir);
 
-        let import_handle = start_test_import(runtime_handle.clone(), library_manager.clone());
+        let import_handle =
+            start_test_import(runtime_handle.clone(), library_manager.clone()).await;
 
         let import_id = uuid::Uuid::new_v4().to_string();
 
@@ -1134,6 +1136,7 @@ impl CueFlacTestFixture {
                 import_id: import_id.clone(),
                 candidate_key: "test".to_string(),
                 folder: album_dir.clone(),
+                scope: bae_core::import::ReleaseFileScope::Recursive,
                 selected_cover: None,
                 storage_mode: StorageMode::Local,
                 pin: false,
@@ -3578,7 +3581,8 @@ impl HighSampleRateTestFixture {
         };
         let release_id_key = seed_discogs_test_release(discogs_release);
 
-        let import_handle = start_test_import(runtime_handle.clone(), library_manager.clone());
+        let import_handle =
+            start_test_import(runtime_handle.clone(), library_manager.clone()).await;
 
         let import_id = uuid::Uuid::new_v4().to_string();
         import_handle
@@ -3586,6 +3590,7 @@ impl HighSampleRateTestFixture {
                 import_id: import_id.clone(),
                 candidate_key: "test".to_string(),
                 folder: album_dir.clone(),
+                scope: bae_core::import::ReleaseFileScope::Recursive,
                 selected_cover: None,
                 storage_mode: StorageMode::Local,
                 pin: false,
@@ -3988,13 +3993,14 @@ async fn test_restore_emits_seeked_at_saved_position() {
     let _ = generate_test_flac_files(&album_dir);
     let discogs_release = create_test_album();
     let release_id_key = seed_discogs_test_release(discogs_release);
-    let import_handle = start_test_import(runtime_handle.clone(), library_manager.clone());
+    let import_handle = start_test_import(runtime_handle.clone(), library_manager.clone()).await;
     let import_id = uuid::Uuid::new_v4().to_string();
     import_handle
         .send_command(ImportCommand {
             import_id: import_id.clone(),
             candidate_key: "test".to_string(),
             folder: album_dir,
+            scope: bae_core::import::ReleaseFileScope::Recursive,
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
@@ -4080,13 +4086,14 @@ async fn test_play_persists_then_stop_clears_playback_state() {
     let _ = generate_test_flac_files(&album_dir);
     let discogs_release = create_test_album();
     let release_id_key = seed_discogs_test_release(discogs_release);
-    let import_handle = start_test_import(runtime_handle.clone(), library_manager.clone());
+    let import_handle = start_test_import(runtime_handle.clone(), library_manager.clone()).await;
     let import_id = uuid::Uuid::new_v4().to_string();
     import_handle
         .send_command(ImportCommand {
             import_id: import_id.clone(),
             candidate_key: "test".to_string(),
             folder: album_dir,
+            scope: bae_core::import::ReleaseFileScope::Recursive,
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
@@ -4256,13 +4263,14 @@ async fn restore_test_library() -> RestoreTestLibrary {
     let _ = generate_test_flac_files(&album_dir);
     let discogs_release = create_test_album();
     let release_id_key = seed_discogs_test_release(discogs_release);
-    let import_handle = start_test_import(runtime_handle.clone(), library_manager.clone());
+    let import_handle = start_test_import(runtime_handle.clone(), library_manager.clone()).await;
     let import_id = uuid::Uuid::new_v4().to_string();
     import_handle
         .send_command(ImportCommand {
             import_id: import_id.clone(),
             candidate_key: "test".to_string(),
             folder: album_dir,
+            scope: bae_core::import::ReleaseFileScope::Recursive,
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
@@ -4328,13 +4336,15 @@ async fn import_second_release(lib: &RestoreTestLibrary) -> (String, Vec<String>
     let source = TempDir::new().unwrap();
     generate_cue_flac_files(source.path());
     let release_key = seed_discogs_test_release(create_cue_flac_test_album());
-    let import_handle = start_test_import(lib.runtime_handle.clone(), lib.library_manager.clone());
+    let import_handle =
+        start_test_import(lib.runtime_handle.clone(), lib.library_manager.clone()).await;
     let import_id = uuid::Uuid::new_v4().to_string();
     import_handle
         .send_command(ImportCommand {
             import_id: import_id.clone(),
             candidate_key: "second".to_string(),
             folder: source.path().to_path_buf(),
+            scope: bae_core::import::ReleaseFileScope::Recursive,
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
@@ -4608,13 +4618,15 @@ impl CloudOnlyPlaybackFixture {
         let release_id_key = seed_discogs_test_release(discogs_release);
         generate_test_flac_files(&album_dir);
 
-        let import_handle = start_test_import(runtime_handle.clone(), library_manager.clone());
+        let import_handle =
+            start_test_import(runtime_handle.clone(), library_manager.clone()).await;
         let import_id = uuid::Uuid::new_v4().to_string();
         import_handle
             .send_command(ImportCommand {
                 import_id: import_id.clone(),
                 candidate_key: "test".to_string(),
                 folder: album_dir.clone(),
+                scope: bae_core::import::ReleaseFileScope::Recursive,
                 selected_cover: None,
                 storage_mode: StorageMode::Remote,
                 pin: false,
@@ -6062,13 +6074,14 @@ async fn build_remote_multi_window_template(
     generate_multi_window_cue_flac_files(&album_dir);
 
     let import_ids = SequentialIdProvider::new("multi-window-remote-template");
-    let import_handle = start_test_import(runtime_handle.clone(), library_manager.clone());
+    let import_handle = start_test_import(runtime_handle.clone(), library_manager.clone()).await;
     let import_id = import_ids.new_id();
     import_handle
         .send_command(ImportCommand {
             import_id: import_id.clone(),
             candidate_key: "multi-window-remote-template".to_string(),
             folder: album_dir.clone(),
+            scope: bae_core::import::ReleaseFileScope::Recursive,
             selected_cover: None,
             storage_mode: StorageMode::Remote,
             pin: false,

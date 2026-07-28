@@ -457,4 +457,8 @@
   <data name="nowplaying.cast_no_devices" xml:space="preserve"><value>未找到投放设备</value></data>
   <data name="component_gallery.menu" xml:space="preserve"><value>组件库</value></data>
   <data name="component_gallery.title" xml:space="preserve"><value>组件库</value></data>
+  <data name="import.folder.refresh" xml:space="preserve"><value>刷新</value></data>
+  <data name="import.folder.refreshing" xml:space="preserve"><value>正在刷新…</value></data>
+  <data name="import.release.one" xml:space="preserve"><value>合并为一个发行版</value></data>
+  <data name="import.release.separate" xml:space="preserve"><value>保留为单独的发行版</value></data>
 </root>

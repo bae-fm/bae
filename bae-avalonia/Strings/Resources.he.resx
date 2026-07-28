@@ -457,4 +457,8 @@
   <data name="nowplaying.cast_no_devices" xml:space="preserve"><value>לא נמצאו מכשירי Cast</value></data>
   <data name="component_gallery.menu" xml:space="preserve"><value>גלריית רכיבים</value></data>
   <data name="component_gallery.title" xml:space="preserve"><value>גלריית רכיבים</value></data>
+  <data name="import.folder.refresh" xml:space="preserve"><value>רענן</value></data>
+  <data name="import.folder.refreshing" xml:space="preserve"><value>מתבצע רענון…</value></data>
+  <data name="import.release.one" xml:space="preserve"><value>שלב כמהדורה אחת</value></data>
+  <data name="import.release.separate" xml:space="preserve"><value>השאר כמהדורות נפרדות</value></data>
 </root>

@@ -92,7 +92,9 @@ impl ExportFixture {
             tokio::runtime::Handle::current(),
             mgr.clone(),
             bae_core::import::cover_art::CoverArtArchiveClient::hermetic(),
-        );
+        )
+        .await
+        .expect("import service starts");
 
         Self {
             mgr,
@@ -119,6 +121,7 @@ async fn import_then_strand_in_cloud(f: &ExportFixture, album_dir: &Path) -> (St
             import_id: import_id.clone(),
             candidate_key: "test".to_string(),
             folder: album_dir.to_path_buf(),
+            scope: bae_core::import::ReleaseFileScope::Recursive,
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
@@ -147,6 +150,7 @@ async fn import_unknown_local(f: &ExportFixture, album_dir: &Path) -> String {
             import_id: import_id.clone(),
             candidate_key: "test".to_string(),
             folder: album_dir.to_path_buf(),
+            scope: bae_core::import::ReleaseFileScope::Recursive,
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,

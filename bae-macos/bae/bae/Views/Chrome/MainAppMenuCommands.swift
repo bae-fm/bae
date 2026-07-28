@@ -20,17 +20,19 @@ struct ImportFolderButton: View {
             guard panel.runModal() == .OK, let url = panel.url else {
                 return
             }
-            do {
-                try importer.addWatchedFolder(url.path)
-                uiStore.navigateToImport()
-            }
-            catch {
-                uiStore.showError(
-                    String(
-                        localized:
-                            "Couldn't add folder: \(error.displayLine)"
+            Task {
+                do {
+                    try await importer.addWatchedFolder(url.path)
+                    uiStore.navigateToImport()
+                }
+                catch {
+                    uiStore.showError(
+                        String(
+                            localized:
+                                "Couldn't add folder: \(error.displayLine)"
+                        )
                     )
-                )
+                }
             }
         }
         .keyboardShortcut("i", modifiers: .command)

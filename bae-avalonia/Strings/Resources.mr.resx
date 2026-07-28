@@ -457,4 +457,8 @@
   <data name="nowplaying.cast_no_devices" xml:space="preserve"><value>कोणतेही कास्ट डिव्हाइस आढळले नाही</value></data>
   <data name="component_gallery.menu" xml:space="preserve"><value>कंपोनंट गॅलरी</value></data>
   <data name="component_gallery.title" xml:space="preserve"><value>कंपोनंट गॅलरी</value></data>
+  <data name="import.folder.refresh" xml:space="preserve"><value>रीफ्रेश</value></data>
+  <data name="import.folder.refreshing" xml:space="preserve"><value>रीफ्रेश होत आहे…</value></data>
+  <data name="import.release.one" xml:space="preserve"><value>एक रिलीज म्हणून एकत्र करा</value></data>
+  <data name="import.release.separate" xml:space="preserve"><value>स्वतंत्र रिलीज म्हणून ठेवा</value></data>
 </root>

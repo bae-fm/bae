@@ -1,6 +1,12 @@
 import BaeKit
 import SwiftUI
 
+func releaseGroupDisclosureID(
+    _ key: BridgeFolderReleaseDecisionKey
+) -> ReleaseGroupDisclosureID {
+    ReleaseGroupDisclosureID(key: key)
+}
+
 // MARK: - ImportCandidateListContent
 
 /// The import sidebar: four tabs over one triage queue. Every row, its tab,
@@ -15,10 +21,15 @@ struct ImportCandidateListContent: View {
     @Binding
     var selectedKey: String?
     let onAddFolder: () -> Void
-    /// Stop watching `path`. Reached from the watched-folders menu next to
-    /// Add — there is no more per-folder section header to hang it off, now
-    /// that a row's folder is a subtitle rather than a grouping.
+    /// Stop watching `path`. Reached from the watched-folders menu; release
+    /// groups inside each root are rendered by the queue sections below.
     let onRemoveFolder: (_ path: String) -> Void
+    let onRefreshFolder: (_ folder: BridgeWatchedFolder) -> Void
+    let onReleaseDecision:
+        (
+            _ key: BridgeFolderReleaseDecisionKey,
+            _ decision: BridgeFolderReleaseDecision
+        ) -> Void
     /// Skip (or unskip) the candidate at `key`. Wired to the row context menu.
     let onSkip: (_ key: String, _ skipped: Bool) -> Void
     /// Import every candidate in `keys` — the Ready foot bar's bulk action.
@@ -44,44 +55,35 @@ struct ImportCandidateListContent: View {
     }
 
     private var readyRows: [BridgeTriageRow] {
-        importStore.rows(
-            tab: .ready,
+        importStore.selectableReadyRows(
             filterText: uiStore.importCandidateFilterText,
             sortOrder: sortOrder
         )
     }
 
-    private var needsYouGroups:
-        [(group: BridgeNeedsYouGroup, rows: [BridgeTriageRow])]
-    {
-        importStore.needsYouGroups(
+    private func sections(_ tab: BridgeTriageTab) -> [ReleaseQueueSection] {
+        importStore.releaseSections(
+            tab: tab,
             filterText: uiStore.importCandidateFilterText,
             sortOrder: sortOrder
         )
     }
 
-    private var doneRows: [BridgeTriageRow] {
-        importStore.rows(
-            tab: .done,
-            filterText: uiStore.importCandidateFilterText,
-            sortOrder: sortOrder
-        )
-    }
-
-    private var skippedRows: [SkippedRow] {
-        importStore.skippedRows(
-            filterText: uiStore.importCandidateFilterText,
-            sortOrder: sortOrder
+    private var releaseGroupDisclosureIDs: Set<ReleaseGroupDisclosureID> {
+        Set(
+            importStore.triageQueue.sections.compactMap { section in
+                section.group.map {
+                    releaseGroupDisclosureID($0.key)
+                }
+            }
         )
     }
 
     /// True when the active tab has nothing to show — drives the empty state.
     private var activeTabIsEmpty: Bool {
         switch uiStore.importCandidateTab {
-        case .ready: readyRows.isEmpty
-        case .needsYou: needsYouGroups.isEmpty
-        case .done: doneRows.isEmpty
-        case .skipped: skippedRows.isEmpty
+        case .ready, .needsYou, .done, .skipped:
+            sections(uiStore.importCandidateTab).isEmpty
         }
     }
 
@@ -128,6 +130,8 @@ struct ImportCandidateListContent: View {
                     .padding(.horizontal, 14)
                     .padding(.bottom, 12)
                 }
+
+                folderScanStatuses
             }
         } content: {
             if activeTabIsEmpty {
@@ -137,12 +141,15 @@ struct ImportCandidateListContent: View {
                 tabList
             }
         }
+        .task(id: releaseGroupDisclosureIDs) {
+            uiStore.retainReleaseGroupDisclosureIDs(
+                releaseGroupDisclosureIDs
+            )
+        }
     }
 
-    /// The `+` control: add a folder, and — once at least one is watched —
-    /// stop watching one. There is no more per-folder section header to hang
-    /// "Remove Folder" off, now that a row's folder is a subtitle rather than
-    /// a grouping.
+    /// The `+` control manages watched roots. Release grouping belongs to the
+    /// queue below, while removing a root remains an action in this menu.
     private var watchedFoldersMenu: some View {
         Menu {
             Button {
@@ -154,6 +161,17 @@ struct ImportCandidateListContent: View {
                 Divider()
                 ForEach(importStore.watchedFolders, id: \.path) { folder in
                     Menu(folder.name) {
+                        let refreshing = uiStore.refreshingWatchedFolders
+                            .contains(folder.path)
+                        Button {
+                            onRefreshFolder(folder)
+                        } label: {
+                            Label(
+                                refreshing ? "Refreshing\u{2026}" : "Refresh",
+                                systemImage: "arrow.clockwise"
+                            )
+                        }
+                        .disabled(refreshing)
                         Button("Reveal in Finder") {
                             SystemActions.revealInFinder(path: folder.path)
                         }
@@ -173,6 +191,66 @@ struct ImportCandidateListContent: View {
         .foregroundStyle(.secondary)
         .fixedSize()
         .help("Add a folder to watch for imports")
+    }
+
+    private var folderScanStatuses: some View {
+        ForEach(
+            importStore.triageQueue.folderScanStatuses,
+            id: \.watchedFolderPath
+        ) { scan in
+            switch scan.status {
+            case .scanning:
+                folderScanStatus(
+                    scan,
+                    icon: "arrow.clockwise",
+                    text: String(localized: "Scanning\u{2026}"),
+                    tint: .secondary
+                )
+            case .failed(let error):
+                folderScanStatus(
+                    scan,
+                    icon: "exclamationmark.triangle.fill",
+                    text: error,
+                    tint: .red
+                )
+            case .complete:
+                EmptyView()
+            }
+        }
+    }
+
+    private func folderScanStatus(
+        _ scan: BridgeWatchedFolderScanStatus,
+        icon: String,
+        text: String,
+        tint: Color
+    ) -> some View {
+        let refreshing = uiStore.refreshingWatchedFolders
+            .contains(scan.watchedFolderPath)
+        return HStack(alignment: .firstTextBaseline, spacing: 7) {
+            Image(systemName: icon)
+            Text(
+                "\(scan.watchedFolderName) (\(scan.watchedFolderPath)): \(text)"
+            )
+            .lineLimit(2)
+            .truncationMode(.middle)
+            Spacer(minLength: 4)
+            Button(refreshing ? "Refreshing\u{2026}" : "Refresh") {
+                onRefreshFolder(
+                    BridgeWatchedFolder(
+                        path: scan.watchedFolderPath,
+                        name: scan.watchedFolderName
+                    )
+                )
+            }
+            .disabled(refreshing)
+            .controlSize(.small)
+        }
+        .font(.system(size: 11.5))
+        .foregroundStyle(tint)
+        .padding(.horizontal, 14)
+        .padding(.bottom, 10)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     /// Per-tab empty state: distinguishes "no matches" while filtering from
@@ -208,8 +286,104 @@ struct ImportCandidateListContent: View {
     }
 }
 
-// The per-tab lists. In an extension so the view's body and the chrome it
-// builds — tabs, filter, progress — read as one piece above them.
+struct FolderReleaseBoundaryRow: View {
+    let boundary: BridgeFolderReleaseBoundary
+    let onDecision:
+        (
+            _ key: BridgeFolderReleaseDecisionKey,
+            _ decision: BridgeFolderReleaseDecision
+        ) -> Void
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Label(
+                boundary.name,
+                systemImage: "folder.badge.questionmark"
+            )
+            .font(.system(size: 14, weight: .semibold))
+            VStack(alignment: .leading, spacing: 3) {
+                Text(boundary.displayPath)
+                    .font(.system(size: 11.5, design: .monospaced))
+                    .foregroundStyle(.secondary)
+                if boundary.sharedFileCount > 0 {
+                    Label(
+                        "\(Int64(boundary.sharedFileCount)) files",
+                        systemImage: "doc.on.doc"
+                    )
+                    .foregroundStyle(.secondary)
+                }
+                ForEach(boundary.treeRows, id: \.displayPath) { row in
+                    folderReleaseTreeRow(row)
+                        .padding(.leading, CGFloat(row.depth) * 12)
+                        .contextMenu {
+                            releaseDecisionMenu(row.decisionKey)
+                        }
+                }
+            }
+            .font(.system(size: 11.5))
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 8) {
+                    decisionButtons
+                }
+                VStack(alignment: .leading, spacing: 6) {
+                    decisionButtons
+                }
+            }
+            .controlSize(.small)
+        }
+        .padding(.vertical, 8)
+        .accessibilityElement(children: .contain)
+    }
+
+    @ViewBuilder
+    private var decisionButtons: some View {
+        Button("Combine as One Release") {
+            onDecision(boundary.key, .combineAsOneRelease)
+        }
+        Button("Keep as Separate Releases") {
+            onDecision(boundary.key, .keepAsSeparateReleases)
+        }
+    }
+
+    private func folderReleaseTreeRow(
+        _ row: BridgeFolderReleaseTreeRow
+    ) -> some View {
+        HStack(spacing: 5) {
+            switch row.kind {
+            case .folder:
+                Image(systemName: "folder")
+                Text(row.name)
+            case .candidate(let trackCount, let formatLabel):
+                Image(systemName: "opticaldisc")
+                Text(row.name)
+                Spacer(minLength: 4)
+                Text("\(Int(trackCount)) \u{b7} \(formatLabel)")
+                    .foregroundStyle(.secondary)
+            case .invalid(let reason):
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .foregroundStyle(.red)
+                Text(row.name)
+                Spacer(minLength: 4)
+                Text(reason.localizedText)
+                    .foregroundStyle(.red)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func releaseDecisionMenu(
+        _ key: BridgeFolderReleaseDecisionKey
+    ) -> some View {
+        Button("Combine as One Release") {
+            onDecision(key, .combineAsOneRelease)
+        }
+        Button("Keep as Separate Releases") {
+            onDecision(key, .keepAsSeparateReleases)
+        }
+    }
+}
+
+/// The per-tab lists. In an extension so the view's body and the chrome it
+/// builds — tabs, filter, progress — read as one piece above them.
 extension ImportCandidateListContent {
     // MARK: - Ready
 
@@ -221,21 +395,8 @@ extension ImportCandidateListContent {
     private var readyList: some View {
         VStack(spacing: 0) {
             List(selection: $selectedKey) {
-                ForEach(readyRows, id: \.candidateKey) { row in
-                    TriageRowView(
-                        row: row,
-                        isFocused: selectedKey == row.candidateKey,
-                        selection: (
-                            isSelected: uiStore.selectedReadyCandidates
-                                .contains(row.candidateKey),
-                            toggle: {
-                                uiStore.toggleReadySelection(row.candidateKey)
-                            }
-                        ),
-                        onSelect: { selectedKey = row.candidateKey },
-                        onSkip: { onSkip(row.candidateKey, $0) }
-                    )
-                    .tag(row.candidateKey)
+                ForEach(sections(.ready)) { section in
+                    releaseSection(section)
                 }
             }
             .scrollContentBackground(.hidden)
@@ -256,24 +417,8 @@ extension ImportCandidateListContent {
 
     private var needsYouList: some View {
         List(selection: $selectedKey) {
-            ForEach(needsYouGroups, id: \.group) { entry in
-                Section {
-                    ForEach(entry.rows, id: \.candidateKey) { row in
-                        TriageRowView(
-                            row: row,
-                            isFocused: selectedKey == row.candidateKey,
-                            selection: nil,
-                            onSelect: { selectedKey = row.candidateKey },
-                            onSkip: { onSkip(row.candidateKey, $0) }
-                        )
-                        .tag(row.candidateKey)
-                    }
-                } header: {
-                    NeedsYouGroupHeader(
-                        group: entry.group,
-                        count: entry.rows.count
-                    )
-                }
+            ForEach(sections(.needsYou)) { section in
+                releaseSection(section)
             }
         }
         .scrollContentBackground(.hidden)
@@ -284,15 +429,8 @@ extension ImportCandidateListContent {
 
     private var doneList: some View {
         List(selection: $selectedKey) {
-            ForEach(doneRows, id: \.candidateKey) { row in
-                TriageRowView(
-                    row: row,
-                    isFocused: selectedKey == row.candidateKey,
-                    selection: nil,
-                    onSelect: { selectedKey = row.candidateKey },
-                    onSkip: { onSkip(row.candidateKey, $0) }
-                )
-                .tag(row.candidateKey)
+            ForEach(sections(.done)) { section in
+                releaseSection(section)
             }
         }
         .scrollContentBackground(.hidden)
@@ -308,8 +446,8 @@ extension ImportCandidateListContent {
     /// carry no `.tag()`.
     private var skippedList: some View {
         List(selection: $selectedKey) {
-            ForEach(skippedRows) { row in
-                skippedRowView(row)
+            ForEach(sections(.skipped)) { section in
+                releaseSection(section)
             }
         }
         .scrollContentBackground(.hidden)
@@ -317,43 +455,170 @@ extension ImportCandidateListContent {
     }
 
     @ViewBuilder
-    private func skippedRowView(_ row: SkippedRow) -> some View {
-        switch row {
-        case .candidate(let triageRow):
+    private func releaseSection(_ section: ReleaseQueueSection) -> some View {
+        if let group = section.group {
+            DisclosureGroup(
+                isExpanded: Binding(
+                    get: {
+                        uiStore.releaseGroupExpanded(
+                            releaseGroupDisclosureID(group.key)
+                        )
+                    },
+                    set: {
+                        uiStore.setReleaseGroupExpanded(
+                            releaseGroupDisclosureID(group.key),
+                            $0
+                        )
+                    }
+                )
+            ) {
+                ForEach(section.entries) { entry in
+                    releaseEntry(entry.bridge)
+                }
+            } label: {
+                Label(group.name, systemImage: "folder")
+                    .font(.system(size: 12.5, weight: .semibold))
+            }
+            .contextMenu {
+                Button("Combine as One Release") {
+                    onReleaseDecision(group.key, .combineAsOneRelease)
+                }
+                Button("Keep as Separate Releases") {
+                    onReleaseDecision(group.key, .keepAsSeparateReleases)
+                }
+            }
+        }
+        else {
+            ForEach(section.entries) { entry in
+                releaseEntry(entry.bridge)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func releaseEntry(_ entry: BridgeTriageEntry) -> some View {
+        switch entry {
+        case .candidate(_, let row):
             TriageRowView(
-                row: triageRow,
-                isFocused: selectedKey == triageRow.candidateKey,
-                selection: nil,
-                onSelect: { selectedKey = triageRow.candidateKey },
-                onSkip: { onSkip(triageRow.candidateKey, $0) }
+                row: row,
+                isFocused: selectedKey == row.candidateKey,
+                selection: row.selectable
+                    ? (
+                        isSelected: uiStore.selectedReadyCandidates
+                            .contains(row.candidateKey),
+                        toggle: {
+                            uiStore.toggleReadySelection(row.candidateKey)
+                        }
+                    ) : nil,
+                onSelect: { selectedKey = row.candidateKey },
+                onSkip: { onSkip(row.candidateKey, $0) },
+                onReleaseDecision: onReleaseDecision
             )
-            .tag(triageRow.candidateKey)
-        case .invalid(let invalid):
+            .tag(row.candidateKey)
+            .disabled(!row.actionable)
+        case .boundary(_, let boundary):
+            FolderReleaseBoundaryRow(
+                boundary: boundary,
+                onDecision: onReleaseDecision
+            )
+        case .invalid(_, let invalid):
             InvalidCandidateRow(
                 displayName: invalid.sourceFolderName,
                 reason: invalid.reason,
                 revealPath: invalid.folderPath
             )
+            .contextMenu {
+                ForEach(
+                    invalid.resolvedBoundaries,
+                    id: \.key
+                ) { boundary in
+                    switch boundary.decision {
+                    case .combineAsOneRelease:
+                        Button("Keep as Separate Releases") {
+                            onReleaseDecision(
+                                boundary.key,
+                                .keepAsSeparateReleases
+                            )
+                        }
+                    case .keepAsSeparateReleases:
+                        Button("Combine as One Release") {
+                            onReleaseDecision(
+                                boundary.key,
+                                .combineAsOneRelease
+                            )
+                        }
+                    }
+                }
+            }
         }
     }
 }
 
 #if DEBUG
+
     // MARK: - Previews
 
     #Preview("Candidate List") {
         let store = PreviewData.triageImportStore
         return ImportCandidateListContent(
             importStore: store,
-            selectedKey: .constant(store.triageQueue.rows.first?.candidateKey),
+            selectedKey: .constant(
+                store.selectableReadyRows(
+                    filterText: "",
+                    sortOrder: .nameAZ
+                )
+                .first?
+                .candidateKey
+            ),
             onAddFolder: {},
             onRemoveFolder: { _ in },
+            onRefreshFolder: { _ in },
+            onReleaseDecision: { _, _ in },
             onSkip: { _, _ in },
             onImportSelected: { _ in }
         )
         .environment(OutboxStore(snapshot: OutboxStore.emptySnapshot))
         .environment(UiStore())
         .frame(width: 340, height: 560)
+        .windowBackground()
+    }
+
+    #Preview("Candidate List Narrow") {
+        let store = PreviewData.triageImportStore
+        let uiStore = UiStore()
+        uiStore.setReleaseGroupExpanded(
+            releaseGroupDisclosureID(
+                PreviewData.folderReleaseBoundary.key
+            ),
+            false
+        )
+        uiStore.setWatchedFolderRefreshing(
+            PreviewData.importWatchedFolder.path,
+            true
+        )
+        return ImportCandidateListContent(
+            importStore: store,
+            selectedKey: .constant(nil),
+            onAddFolder: {},
+            onRemoveFolder: { _ in },
+            onRefreshFolder: { _ in },
+            onReleaseDecision: { _, _ in },
+            onSkip: { _, _ in },
+            onImportSelected: { _ in }
+        )
+        .environment(OutboxStore(snapshot: OutboxStore.emptySnapshot))
+        .environment(uiStore)
+        .frame(width: 280, height: 560)
+        .windowBackground()
+    }
+
+    #Preview("Release Boundary") {
+        FolderReleaseBoundaryRow(
+            boundary: PreviewData.folderReleaseBoundary,
+            onDecision: { _, _ in }
+        )
+        .frame(width: 320)
+        .padding()
         .windowBackground()
     }
 #endif

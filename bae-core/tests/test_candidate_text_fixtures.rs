@@ -274,9 +274,18 @@ async fn drive_fixture(
     handle.register_analyzer(analyzer);
 
     let key = format!("fixture:{}", fixture.name);
+    let files = bae_core::import::folder_scanner::collect_release_candidate_files_with_scope(
+        &folder,
+        bae_core::import::ReleaseFileScope::Recursive,
+        &bae_core::import::folder_scanner::StoredCandidateEdits::none(),
+    )
+    .expect("fixture scan");
     handle.start(
         key,
-        ExtractionSource::Folder(folder),
+        ExtractionSource::Folder {
+            path: folder,
+            files,
+        },
         bae_core::util::rate_limiter::CallPriority::Interactive,
     );
 

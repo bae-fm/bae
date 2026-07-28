@@ -91,20 +91,6 @@ internal sealed class MainShellView : UserControl
         _app.ProjectionRegistry.Register(
             typeof(uniffi.bae_bridge.BridgeInvalidation.CastDevices), _app.CastStore.RefreshDevices);
 
-        // The import list re-reads whenever core says a candidate, the list, or
-        // the watched folders changed. Editing a sheet's binding is the first
-        // thing here that changes a candidate without a rescan — a bound sheet
-        // is a different track count and a different format — so the list has to
-        // follow core rather than only re-reading on section entry.
-        foreach (var domain in new[]
-        {
-            typeof(uniffi.bae_bridge.BridgeInvalidation.ImportCandidateList),
-            typeof(uniffi.bae_bridge.BridgeInvalidation.ImportCandidate),
-            typeof(uniffi.bae_bridge.BridgeInvalidation.WatchedFolders),
-        })
-        {
-            _app.ProjectionRegistry.Register(domain, _app.ImportStore.RefreshTriageQueue);
-        }
     }
 
     // Switch to the import section and land it on a fresh Ready tab — the

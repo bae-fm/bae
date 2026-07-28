@@ -14,7 +14,7 @@ use bae_core::db::Database;
 use bae_core::discogs::models::{DiscogsArtist, DiscogsRelease, DiscogsTrack};
 use bae_core::import::discid::compute_discid_from_categorized;
 use bae_core::import::folder_scanner::{
-    collect_release_candidate_files, scan_for_candidates_with_callback, ScanItem,
+    collect_release_candidate_files_with_scope, scan_for_candidates_with_callback, ScanItem,
     StoredCandidateEdits,
 };
 use bae_core::import::{IdentityChoice, ImportCommand, MetadataRef, MetadataSource, StorageMode};
@@ -103,13 +103,14 @@ async fn import_single_m4a_fixture(
     let release_id_key = seed_discogs_test_release(discogs_release);
 
     let import_handle =
-        start_test_import(tokio::runtime::Handle::current(), library_manager.clone());
+        start_test_import(tokio::runtime::Handle::current(), library_manager.clone()).await;
     let import_id = uuid::Uuid::new_v4().to_string();
     import_handle
         .send_command(ImportCommand {
             import_id: import_id.clone(),
             candidate_key: "test".to_string(),
             folder: album_dir,
+            scope: bae_core::import::ReleaseFileScope::Recursive,
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
@@ -273,6 +274,7 @@ fn scanner_recognizes_cue_alac_pair() {
                     c.reason
                 )
             }
+            ScanItem::Discovered(_) | ScanItem::Boundary(_) => {}
         }
     })
     .expect("scan folder");
@@ -336,13 +338,14 @@ async fn import_cue_alac_pair() {
     let release_id_key = seed_discogs_test_release(discogs_release);
 
     let import_handle =
-        start_test_import(tokio::runtime::Handle::current(), library_manager.clone());
+        start_test_import(tokio::runtime::Handle::current(), library_manager.clone()).await;
     let import_id = uuid::Uuid::new_v4().to_string();
     import_handle
         .send_command(ImportCommand {
             import_id: import_id.clone(),
             candidate_key: "test".to_string(),
             folder: album_dir,
+            scope: bae_core::import::ReleaseFileScope::Recursive,
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
@@ -424,8 +427,12 @@ fn cue_alac_disc_id_is_stable() {
     std::fs::copy(fix.join("cue-alac.m4a"), album_dir.join("cue-alac.m4a")).expect("copy m4a");
     std::fs::copy(fix.join("cue-alac.cue"), album_dir.join("cue-alac.cue")).expect("copy cue");
 
-    let categorized = collect_release_candidate_files(&album_dir, &StoredCandidateEdits::none())
-        .expect("scan album dir");
+    let categorized = collect_release_candidate_files_with_scope(
+        &album_dir,
+        bae_core::import::ReleaseFileScope::Recursive,
+        &StoredCandidateEdits::none(),
+    )
+    .expect("scan album dir");
     let track_count = categorized.track_count();
     let disc_id = compute_discid_from_categorized(&categorized);
 

@@ -18,10 +18,9 @@ namespace Bae.Desktop;
 /// </summary>
 internal sealed class ImportService
 {
-    /// <summary>The sidebar's pre-shaped triage rows, tab counts, and invalid
-    /// folders — core's projection. Read again on an import-domain invalidation;
-    /// the UI iterates and renders it without computing tab or group membership
-    /// itself.</summary>
+    /// <summary>The sidebar's pre-shaped triage sections and tab counts — core's
+    /// projection. Read again on an import-domain invalidation; the UI iterates
+    /// and renders it without computing tab or group membership itself.</summary>
     public Func<Task<(bool Current, (BridgeTriageQueue? Queue, string? Error) Result)>> TriageQueue { get; init; }
         = () => throw new InvalidOperationException("ImportService stub: TriageQueue not wired");
 
@@ -45,6 +44,11 @@ internal sealed class ImportService
     /// <summary>Drop a folder from the watched set.</summary>
     public Func<string, Task<(bool Current, string? Error)>> RemoveWatchedFolder { get; init; }
         = _ => throw new InvalidOperationException("ImportService stub: RemoveWatchedFolder not wired");
+    public Func<string, Task<(bool Current, string? Error)>> RefreshWatchedFolder { get; init; }
+        = _ => throw new InvalidOperationException("ImportService stub: RefreshWatchedFolder not wired");
+    public Func<BridgeFolderReleaseDecisionKey, BridgeFolderReleaseDecision,
+        Task<(bool Current, string? Error)>> SetFolderReleaseDecision { get; init; }
+        = (_, _) => throw new InvalidOperationException("ImportService stub: SetFolderReleaseDecision not wired");
 
     /// <summary>Skip or un-skip a candidate; the candidate invalidation re-tabs the
     /// row.</summary>
@@ -72,8 +76,8 @@ internal sealed class ImportService
         = (_, _, _) => throw new InvalidOperationException("ImportService stub: SetFileRole not wired");
 
     /// <summary>Kick off auto-identification for an as-yet unidentified candidate.</summary>
-    public Func<string, string, Task<bool>> AutoIdentifyFolder { get; init; }
-        = (_, _) => throw new InvalidOperationException("ImportService stub: AutoIdentifyFolder not wired");
+    public Func<string, Task<bool>> AutoIdentifyFolder { get; init; }
+        = _ => throw new InvalidOperationException("ImportService stub: AutoIdentifyFolder not wired");
 
     /// <summary>Re-dispatch a candidate's lookups, keeping the user's signal
     /// exclusions.</summary>
@@ -153,6 +157,11 @@ internal sealed class ImportService
         ScanFolder = path => session.RunForCurrentHandle(handle => NativeBae.ScanFolder(handle, path, true)),
         RemoveWatchedFolder = path =>
             session.RunForCurrentHandle(handle => NativeBae.RemoveWatchedFolder(handle, path)),
+        RefreshWatchedFolder = path =>
+            session.RunForCurrentHandle(handle => NativeBae.RefreshWatchedFolder(handle, path)),
+        SetFolderReleaseDecision = (key, decision) =>
+            session.RunForCurrentHandle(handle =>
+                NativeBae.SetFolderReleaseDecision(handle, key, decision)),
         SetCandidateSkipped = (path, skipped) =>
             session.RunForCurrentHandle(handle => NativeBae.SetCandidateSkipped(handle, path, skipped)),
         SheetBindingOptions = (candidateKey, sheetFileId) =>
@@ -161,8 +170,8 @@ internal sealed class ImportService
             session.RunForCurrentHandle(handle => NativeBae.SetSheetBinding(handle, candidateKey, sheetFileId, audioFileId)),
         SetFileRole = (candidateKey, fileId, choice) =>
             session.RunForCurrentHandle(handle => NativeBae.SetFileRole(handle, candidateKey, fileId, choice)),
-        AutoIdentifyFolder = (candidateKey, folderPath) =>
-            session.RunForCurrentHandle(handle => NativeBae.AutoIdentifyFolder(handle, candidateKey, folderPath)),
+        AutoIdentifyFolder = candidateKey =>
+            session.RunForCurrentHandle(handle => NativeBae.AutoIdentifyFolder(handle, candidateKey)),
         RerunIdentifyForCandidate = candidateKey =>
             session.RunForCurrentHandle(handle => NativeBae.RerunIdentifyForCandidate(handle, candidateKey)),
         ToggleSignalForCandidate = (candidateKey, kind, value) =>
@@ -179,12 +188,12 @@ internal sealed class ImportService
             session.WithCurrentHandle(handle => NativeBae.ClaimForPick(handle, candidateKey, result)),
         PrefetchCandidateEdit = (candidateKey, releaseId, source, folderPath) =>
             session.RunForCurrentHandle(handle => NativeBae.PrefetchCandidateEdit(handle, candidateKey, releaseId, source, folderPath)),
-        PrefetchUnknownEdit = folderPath =>
-            session.RunForCurrentHandle(handle => NativeBae.PrefetchUnknownEdit(handle, folderPath)),
+        PrefetchUnknownEdit = candidateKey =>
+            session.RunForCurrentHandle(handle => NativeBae.PrefetchUnknownEdit(handle, candidateKey)),
         CheckReleaseInLibrary = releaseId =>
             session.RunForCurrentHandle(handle => NativeBae.CheckReleaseInLibrary(handle, releaseId)),
         CommitImport = (candidateKey, folderPath, identity, storageMode, pin, userEdit, cover) =>
             session.RunForCurrentHandle(handle => NativeBae.ImportCandidate(
-                handle, candidateKey, folderPath, identity, storageMode, pin, userEdit, cover)),
+                handle, candidateKey, identity, storageMode, pin, userEdit, cover)),
     };
 }

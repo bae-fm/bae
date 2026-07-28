@@ -80,7 +80,7 @@ async fn test_local_import() {
 
     let discogs_release = create_test_discogs_release();
     let release_id_key = seed_discogs_test_release(discogs_release);
-    let import_handle = start_test_import(runtime_handle, library_manager.clone());
+    let import_handle = start_test_import(runtime_handle, library_manager.clone()).await;
 
     let import_id = uuid::Uuid::new_v4().to_string();
     import_handle
@@ -88,6 +88,7 @@ async fn test_local_import() {
             import_id: import_id.clone(),
             candidate_key: "test".to_string(),
             folder: album_dir.clone(),
+            scope: bae_core::import::ReleaseFileScope::Recursive,
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
@@ -228,7 +229,7 @@ async fn test_local_delete_preserves_files() {
 
     let discogs_release = create_test_discogs_release();
     let release_id_key = seed_discogs_test_release(discogs_release);
-    let import_handle = start_test_import(runtime_handle, library_manager.clone());
+    let import_handle = start_test_import(runtime_handle, library_manager.clone()).await;
 
     let import_id = uuid::Uuid::new_v4().to_string();
     import_handle
@@ -236,6 +237,7 @@ async fn test_local_delete_preserves_files() {
             import_id: import_id.clone(),
             candidate_key: "test".to_string(),
             folder: album_dir.clone(),
+            scope: bae_core::import::ReleaseFileScope::Recursive,
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
@@ -326,7 +328,7 @@ async fn run_import_with_cover_test() {
 
     let discogs_release = create_test_discogs_release();
     let release_id_key = seed_discogs_test_release(discogs_release);
-    let import_handle = start_test_import(runtime_handle, library_manager.clone());
+    let import_handle = start_test_import(runtime_handle, library_manager.clone()).await;
     let selected_cover = "scans/back.jpg".to_string();
     let import_id = uuid::Uuid::new_v4().to_string();
     import_handle
@@ -334,6 +336,7 @@ async fn run_import_with_cover_test() {
             import_id: import_id.clone(),
             candidate_key: "test".to_string(),
             folder: album_dir.clone(),
+            scope: bae_core::import::ReleaseFileScope::Recursive,
             selected_cover: Some(CoverSelection::Local(selected_cover.clone())),
             storage_mode: StorageMode::Local,
             pin: false,

@@ -72,4 +72,25 @@ struct DisplayErrorTests {
         #expect(line == DisplayError(error)?.line)
         #expect(!line.contains("BridgeError"))
     }
+
+    @Test("context preserves the typed error line and diagnostic detail")
+    func contextPreservesTypedError() throws {
+        let displayed = try #require(
+            DisplayError(
+                BridgeError.Diagnostic(
+                    category: .network,
+                    detail: "connection reset"
+                ) as any Error
+            )
+        )
+
+        #expect(
+            displayed.addingContext("Downloads (/Volumes/Music)").line
+                == "Downloads (/Volumes/Music): \(displayed.line)"
+        )
+        #expect(
+            displayed.addingContext("Downloads (/Volumes/Music)").detail
+                == "connection reset"
+        )
+    }
 }

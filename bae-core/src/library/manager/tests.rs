@@ -5932,7 +5932,9 @@ async fn revalidate_errors_when_config_claims_a_key_the_keyring_lacks() {
         tokio::runtime::Handle::current(),
         manager.clone(),
         crate::import::cover_art::CoverArtArchiveClient::hermetic(),
-    );
+    )
+    .await
+    .unwrap();
 
     assert!(
         handle.revalidate_discogs_token().await.is_err(),

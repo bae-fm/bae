@@ -33,7 +33,6 @@ use super::combine::{GroupKey, ResultProvenance};
 use super::state::{IdentifyState, SignalsContext};
 use crate::db::DbImportCandidateState;
 use crate::import::search::MetadataResult;
-use tracing::debug;
 
 /// The identify pipeline's outcome once it can no longer change without new
 /// input from the user or a re-run. Built from [`IdentifyState`]'s four
@@ -89,7 +88,7 @@ impl TryFrom<IdentifyState> for TerminalVerdict {
         //   takes whichever side is non-empty when the other is — and a
         //   `Failed` lookup contributes zero results exactly like a clean
         //   `Skipped` does. A single result reached this way passes the
-        //   roadmap's Ready rule ("exactly one result") on evidence where half
+        //   queue's Ready rule ("exactly one result") on evidence where half
         //   the cross-check never ran.
         // - `Conflict` from a missing intersection partner. Two disc-ID
         //   results and one barcode result that would have intersected to one
@@ -168,32 +167,25 @@ impl TryFrom<IdentifyState> for TerminalVerdict {
 /// The verdict a stored `import_candidate_state` row holds, or `None` when this
 /// build can no longer read it.
 ///
-/// **An undecodable row is absent, not an error.** The shape of a stored verdict
-/// changes with the code that writes it, and this is pre-1.0, so the honest
-/// response to a row this build cannot parse is to treat the candidate as
-/// unanswered: the sweep identifies it again and overwrites the row, and a
-/// reader shows it as still identifying meanwhile. No fallback decoder, no
-/// migration.
-///
 /// One implementation because there is one rule — the sweep decides what to
 /// re-identify by it and the sidebar decides what to render by it, and the two
 /// disagreeing would leave a candidate the sweep considers answered rendering
 /// as unanswered forever.
-pub fn decode_stored(row: &DbImportCandidateState) -> Option<TerminalVerdict> {
+pub fn decode_stored(row: &DbImportCandidateState) -> Result<Option<TerminalVerdict>, String> {
     // No identify result at all: a candidate nobody has answered, either never
     // or not since a sheet binding changed what the folder is and cleared the
     // answer it had.
-    let identify = row.identify.as_ref()?;
-    match serde_json::from_str::<TerminalVerdict>(&identify.verdict) {
-        Ok(verdict) => Some(verdict),
-        Err(e) => {
-            debug!(
-                "stored verdict for {} no longer decodes ({e}); treating it as absent",
+    let Some(identify) = row.identify.as_ref() else {
+        return Ok(None);
+    };
+    serde_json::from_str::<TerminalVerdict>(&identify.verdict)
+        .map(Some)
+        .map_err(|error| {
+            format!(
+                "stored verdict for {} does not decode: {error}",
                 row.content_hash
-            );
-            None
-        }
-    }
+            )
+        })
 }
 
 fn drop_library_status(
@@ -333,7 +325,7 @@ mod tests {
     /// disc-ID lookup died — `combine::combine_results` takes the non-empty
     /// side whenever the other is empty, and a `Failed` lookup contributes
     /// zero results exactly like a clean `Skipped` one. This single result
-    /// would satisfy the roadmap's Ready rule ("exactly one result") on
+    /// would satisfy the queue's Ready rule ("exactly one result") on
     /// evidence where the disc-ID cross-check never ran, so it must not
     /// convert. This is the regression a `Found`-is-always-safe assumption
     /// would slip past if the failure gate were narrowed back to

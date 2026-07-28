@@ -224,7 +224,7 @@ internal sealed class ImportMappingPane : UserControl
         {
             return;
         }
-        var (current, result) = await _app.Import.PrefetchUnknownEdit(candidate.FolderPath);
+        var (current, result) = await _app.Import.PrefetchUnknownEdit(candidate.Key);
         if (!current)
         {
             return;

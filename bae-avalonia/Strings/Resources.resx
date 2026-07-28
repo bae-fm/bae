@@ -484,4 +484,8 @@
   <data name="nowplaying.cast_no_devices" xml:space="preserve"><value>No Cast devices found</value></data>
   <data name="component_gallery.menu" xml:space="preserve"><value>component gallery</value></data>
   <data name="component_gallery.title" xml:space="preserve"><value>component gallery</value></data>
+  <data name="import.folder.refresh" xml:space="preserve"><value>Refresh</value></data>
+  <data name="import.folder.refreshing" xml:space="preserve"><value>Refreshing…</value></data>
+  <data name="import.release.one" xml:space="preserve"><value>Combine as One Release</value></data>
+  <data name="import.release.separate" xml:space="preserve"><value>Keep as Separate Releases</value></data>
 </root>

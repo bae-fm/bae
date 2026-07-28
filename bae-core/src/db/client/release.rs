@@ -1167,6 +1167,21 @@ impl Database {
         })
         .await
     }
+
+    pub async fn imported_content_hashes(
+        &self,
+    ) -> Result<std::collections::HashSet<String>, DbError> {
+        self.read(move |conn| {
+            let mut statement = conn.prepare(
+                "SELECT DISTINCT content_hash FROM releases WHERE content_hash IS NOT NULL",
+            )?;
+            let hashes = statement
+                .query_map([], |row| row.get::<_, String>(0))?
+                .collect::<Result<std::collections::HashSet<_>, _>>()?;
+            Ok(hashes)
+        })
+        .await
+    }
 }
 
 /// The exact rows [`Database::fail_import_and_delete_release`] deletes for a

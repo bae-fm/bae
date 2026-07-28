@@ -244,18 +244,20 @@ struct MainAppView: View {
                 return
             }
             DispatchQueue.main.async {
-                do {
-                    try importer.addWatchedFolder(url.path)
-                }
-                catch {
-                    uiStore.showError(
-                        String(
-                            localized:
-                                "Couldn't add folder: \(error.displayLine)"
+                Task {
+                    do {
+                        try await importer.addWatchedFolder(url.path)
+                    }
+                    catch {
+                        uiStore.showError(
+                            String(
+                                localized:
+                                    "Couldn't add folder: \(error.displayLine)"
+                            )
                         )
-                    )
+                    }
+                    uiStore.navigateToImport()
                 }
-                uiStore.navigateToImport()
             }
         }
         return true

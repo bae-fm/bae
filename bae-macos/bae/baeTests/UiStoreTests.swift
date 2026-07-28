@@ -1,10 +1,34 @@
+@testable import bae
+import BaeKit
 import Testing
 
-@testable import bae
+@Suite("UiStore import candidate selection")
+struct UiStoreImportCandidateSelectionTests {
+    @Test("a folder decision preserves a candidate retained by its snapshot")
+    func retainedCandidatePreservesSelection() {
+        let store = UiStore()
+        store.selectFolderCandidate("/music/group/release")
+
+        store.retainFolderCandidateSelection(
+            in: ["/music/group/release", "/music/other"]
+        )
+
+        #expect(store.selectedFolderCandidate == "/music/group/release")
+    }
+
+    @Test("a folder decision clears a candidate replaced by its snapshot")
+    func replacedCandidateClearsSelection() {
+        let store = UiStore()
+        store.selectFolderCandidate("/music/group/disc-1")
+
+        store.retainFolderCandidateSelection(in: ["/music/group"])
+
+        #expect(store.selectedFolderCandidate == nil)
+    }
+}
 
 @Suite("UiStore.libraryBrowserMode")
 struct UiStoreLibraryBrowserModeTests {
-
     @Test("setLibraryBrowserMode sets the given value (absolute, idempotent)")
     func setModeIsAbsoluteAndIdempotent() {
         let store = UiStore()
@@ -38,7 +62,7 @@ struct UiStoreLibraryBrowserModeTests {
 
         guard
             case .composer("artist-1") = store.pendingLibraryNavigation?
-                .target
+            .target
         else {
             Issue.record("expected composer navigation target")
             return
@@ -82,10 +106,10 @@ struct UiStoreLibraryBrowserModeTests {
     }
 
     @Test("consumeLibraryNavigation clears the pending request it names")
-    func consumeLibraryNavigationClearsMatchingRequest() {
+    func consumeLibraryNavigationClearsMatchingRequest() throws {
         let store = UiStore()
         store.navigateToComposer("artist-1")
-        let seq = store.pendingLibraryNavigation!.seq
+        let seq = try #require(store.pendingLibraryNavigation?.seq)
 
         store.consumeLibraryNavigation(seq: seq)
 
@@ -95,10 +119,10 @@ struct UiStoreLibraryBrowserModeTests {
     @Test(
         "consumeLibraryNavigation is a no-op against a superseded request"
     )
-    func consumeLibraryNavigationIgnoresStaleSeq() {
+    func consumeLibraryNavigationIgnoresStaleSeq() throws {
         let store = UiStore()
         store.navigateToComposer("artist-1")
-        let staleSeq = store.pendingLibraryNavigation!.seq
+        let staleSeq = try #require(store.pendingLibraryNavigation?.seq)
         store.navigateToWork("work-1")
 
         store.consumeLibraryNavigation(seq: staleSeq)
@@ -164,7 +188,7 @@ struct UiStoreLibraryBrowserModeTests {
     }
 
     @Test("navigateToAlbum bumps the reveal seq (strictly increasing)")
-    func navigateToAlbumBumpsSeq() {
+    func navigateToAlbumBumpsSeq() throws {
         let store = UiStore()
         store.navigateToAlbum("album-1")
         let first = store.pendingAlbumReveal?.seq
@@ -172,7 +196,7 @@ struct UiStoreLibraryBrowserModeTests {
         let second = store.pendingAlbumReveal?.seq
         #expect(first != nil)
         #expect(second != nil)
-        #expect(second! > first!)
+        #expect(try #require(second) > first!)
     }
 
     @Test(
@@ -188,10 +212,10 @@ struct UiStoreLibraryBrowserModeTests {
     }
 
     @Test("consumeAlbumReveal clears the pending reveal it names")
-    func consumeAlbumRevealClearsMatchingReveal() {
+    func consumeAlbumRevealClearsMatchingReveal() throws {
         let store = UiStore()
         store.navigateToAlbum("album-1")
-        let seq = store.pendingAlbumReveal!.seq
+        let seq = try #require(store.pendingAlbumReveal?.seq)
 
         store.consumeAlbumReveal(seq: seq)
 
@@ -199,10 +223,10 @@ struct UiStoreLibraryBrowserModeTests {
     }
 
     @Test("consumeAlbumReveal is a no-op against a superseded reveal")
-    func consumeAlbumRevealIgnoresStaleSeq() {
+    func consumeAlbumRevealIgnoresStaleSeq() throws {
         let store = UiStore()
         store.navigateToAlbum("album-1")
-        let staleSeq = store.pendingAlbumReveal!.seq
+        let staleSeq = try #require(store.pendingAlbumReveal?.seq)
         store.navigateToAlbum("album-2")
 
         store.consumeAlbumReveal(seq: staleSeq)
@@ -213,10 +237,10 @@ struct UiStoreLibraryBrowserModeTests {
     @Test(
         "consumeTrackFlash clears only the track flash, leaving the grid reveal pending"
     )
-    func consumeTrackFlashDoesNotStarveGridReveal() {
+    func consumeTrackFlashDoesNotStarveGridReveal() throws {
         let store = UiStore()
         store.navigateToAlbum("album-1", trackId: "track-7")
-        let seq = store.pendingTrackFlash!.seq
+        let seq = try #require(store.pendingTrackFlash?.seq)
 
         store.consumeTrackFlash(seq: seq)
 
@@ -227,14 +251,80 @@ struct UiStoreLibraryBrowserModeTests {
     @Test(
         "consumeAlbumReveal clears only the grid reveal, leaving the track flash pending"
     )
-    func consumeAlbumRevealDoesNotStarveTrackFlash() {
+    func consumeAlbumRevealDoesNotStarveTrackFlash() throws {
         let store = UiStore()
         store.navigateToAlbum("album-1", trackId: "track-7")
-        let seq = store.pendingAlbumReveal!.seq
+        let seq = try #require(store.pendingAlbumReveal?.seq)
 
         store.consumeAlbumReveal(seq: seq)
 
         #expect(store.pendingAlbumReveal == nil)
         #expect(store.pendingTrackFlash?.trackId == "track-7")
+    }
+}
+
+@Suite("UiStore import queue interactions")
+struct UiStoreImportQueueInteractionTests {
+    private func groupDisclosureID(
+        root: String = "/music",
+        relativePath: String
+    ) -> ReleaseGroupDisclosureID {
+        ReleaseGroupDisclosureID(
+            key: BridgeFolderReleaseDecisionKey(
+                watchedFolderPath: root,
+                relativeFolderPath: relativePath
+            )
+        )
+    }
+
+    @Test("new disclosure keys start expanded and retain an absolute choice")
+    func disclosureStateIsAbsolute() {
+        let store = UiStore()
+        let key = groupDisclosureID(relativePath: "first")
+
+        #expect(store.releaseGroupExpanded(key))
+        store.setReleaseGroupExpanded(key, false)
+        store.setReleaseGroupExpanded(key, false)
+        #expect(!store.releaseGroupExpanded(key))
+        store.setReleaseGroupExpanded(key, true)
+        #expect(store.releaseGroupExpanded(key))
+    }
+
+    @Test("projection refresh drops disclosure state for absent keys")
+    func disclosureStatePrunesStaleKeys() {
+        let store = UiStore()
+        let stale = groupDisclosureID(relativePath: "stale")
+        store.setReleaseGroupExpanded(stale, false)
+
+        store.retainReleaseGroupDisclosureIDs([
+            groupDisclosureID(relativePath: "current"),
+        ])
+
+        #expect(store.releaseGroupExpanded(stale))
+    }
+
+    @Test("path component boundaries do not collide")
+    func disclosureIdentityKeepsPathComponentsDistinct() {
+        let first = groupDisclosureID(
+            root: "/music\nnested",
+            relativePath: "release"
+        )
+        let second = groupDisclosureID(
+            root: "/music",
+            relativePath: "nested\nrelease"
+        )
+
+        #expect(first != second)
+    }
+
+    @Test("refresh state is set and cleared by root")
+    func refreshStateIsPerRoot() {
+        let store = UiStore()
+        store.setWatchedFolderRefreshing("/music/first", true)
+        store.setWatchedFolderRefreshing("/music/second", true)
+        store.setWatchedFolderRefreshing("/music/first", false)
+
+        #expect(!store.refreshingWatchedFolders.contains("/music/first"))
+        #expect(store.refreshingWatchedFolders.contains("/music/second"))
     }
 }

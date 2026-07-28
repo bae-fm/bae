@@ -54,7 +54,15 @@ xcodebuild -project bae.xcodeproj -scheme baeShots -configuration Debug \
 # produced a non-trivial file so a silently empty capture fails the script.
 cd "$ROOT"
 missing=0
-for scene in story-1-first-run story-3-empty-library; do
+for scene in \
+    story-1-first-run \
+    story-3-empty-library \
+    import-release-queue \
+    import-release-ambiguity-narrow \
+    import-release-queue-collapsed \
+    import-release-scanning-refresh \
+    import-release-resolved-reversal
+do
     png="$OUT_DIR/${scene}@macos.png"
     if [[ ! -s "$png" ]]; then
         echo "Missing capture: $png" >&2

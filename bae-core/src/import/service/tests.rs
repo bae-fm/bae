@@ -50,6 +50,846 @@ async fn setup_import_service() -> (ImportService, TempDir) {
     )
 }
 
+#[derive(Clone)]
+struct FakeScanStarter {
+    scans: Arc<Mutex<Vec<FakeStartedScan>>>,
+    started: Arc<tokio::sync::Notify>,
+}
+
+struct FakeStartedScan {
+    cancellation: crate::import::folder_scanner::ScanCancellation,
+    completion: Option<tokio::sync::oneshot::Sender<Result<(), String>>>,
+    abort: tokio::task::AbortHandle,
+}
+
+impl FakeScanStarter {
+    fn new() -> (Self, RootScanStarter) {
+        let fake = Self {
+            scans: Arc::new(Mutex::new(Vec::new())),
+            started: Arc::new(tokio::sync::Notify::new()),
+        };
+        let captured = fake.clone();
+        let starter: RootScanStarter = Arc::new(move |id, path, completion| {
+            let cancellation = crate::import::folder_scanner::ScanCancellation::new();
+            let (finish, finished) = tokio::sync::oneshot::channel();
+            let task = tokio::spawn(async move {
+                let result = finished
+                    .await
+                    .expect("fake scan completion sender was retained");
+                completion
+                    .send(RootScanCompletion { id, path, result })
+                    .expect("coordinator still receives completions");
+            });
+            captured.scans.lock().unwrap().push(FakeStartedScan {
+                cancellation: cancellation.clone(),
+                completion: Some(finish),
+                abort: task.abort_handle(),
+            });
+            captured.started.notify_one();
+            RootScanTask { cancellation, task }
+        });
+        (fake, starter)
+    }
+
+    async fn wait_for_count(&self, count: usize) {
+        while self.scans.lock().unwrap().len() < count {
+            tokio::time::timeout(Duration::from_secs(2), self.started.notified())
+                .await
+                .expect("scan coordinator did not start the expected scan");
+        }
+    }
+
+    fn complete(&self, index: usize, result: Result<(), String>) {
+        self.scans.lock().unwrap()[index]
+            .completion
+            .take()
+            .expect("fake scan has not completed")
+            .send(result)
+            .expect("coordinator still waits for the fake scan");
+    }
+
+    fn cancellation(&self, index: usize) -> crate::import::folder_scanner::ScanCancellation {
+        self.scans.lock().unwrap()[index].cancellation.clone()
+    }
+
+    fn abort(&self, index: usize) {
+        self.scans.lock().unwrap()[index].abort.abort();
+    }
+
+    async fn wait_for_cancellation(&self, index: usize) {
+        tokio::time::timeout(Duration::from_secs(2), async {
+            while !self.cancellation(index).is_cancelled() {
+                tokio::task::yield_now().await;
+            }
+        })
+        .await
+        .expect("scan coordinator did not cancel the active scan");
+    }
+}
+
+#[derive(Default)]
+struct FakeRemovalBackend {
+    uninstall_error: Mutex<Option<String>>,
+    remove_error: Mutex<Option<String>>,
+    reinstall_error: Mutex<Option<String>>,
+    block_reinstall: std::sync::atomic::AtomicBool,
+    reinstall_started: tokio::sync::Notify,
+    release_reinstall: tokio::sync::Notify,
+    calls: Mutex<Vec<&'static str>>,
+}
+
+#[async_trait::async_trait]
+impl RootRemovalBackend for FakeRemovalBackend {
+    async fn uninstall(&self, _path: &Path) -> Result<FolderWatchSnapshot, String> {
+        self.calls.lock().unwrap().push("uninstall");
+        match self.uninstall_error.lock().unwrap().clone() {
+            Some(error) => Err(error),
+            None => Ok(FolderWatchSnapshot::default()),
+        }
+    }
+
+    async fn reinstall(&self, _path: &Path, _snapshot: &FolderWatchSnapshot) -> Result<(), String> {
+        self.calls.lock().unwrap().push("reinstall");
+        if self
+            .block_reinstall
+            .load(std::sync::atomic::Ordering::SeqCst)
+        {
+            self.reinstall_started.notify_one();
+            self.release_reinstall.notified().await;
+        }
+        match self.reinstall_error.lock().unwrap().clone() {
+            Some(error) => Err(error),
+            None => Ok(()),
+        }
+    }
+
+    async fn remove_durable_root(&self, _path: &Path) -> Result<(), String> {
+        self.calls.lock().unwrap().push("remove");
+        match self.remove_error.lock().unwrap().clone() {
+            Some(error) => Err(error),
+            None => Ok(()),
+        }
+    }
+}
+
+struct CoordinatorHarness {
+    commands: tokio::sync::mpsc::UnboundedSender<WatcherCommand>,
+    fs_events: tokio::sync::mpsc::UnboundedSender<DebounceEventResult>,
+    scans: FakeScanStarter,
+    folder_registry: Arc<Mutex<ImportFolderRegistry>>,
+    candidate_state: Arc<Mutex<ImportCandidateState>>,
+    folder_state_commit: Arc<tokio::sync::Mutex<()>>,
+    removal_backend: Arc<FakeRemovalBackend>,
+    coordinator_thread: Mutex<Option<std::thread::JoinHandle<()>>>,
+    _temp: TempDir,
+}
+
+impl CoordinatorHarness {
+    async fn new() -> Self {
+        Self::with_roots(&["/music"]).await
+    }
+
+    async fn with_roots(roots: &[&str]) -> Self {
+        let (service, temp) = setup_import_service().await;
+        for root in roots {
+            service
+                .library_manager
+                .add_watched_import_folder(root)
+                .await
+                .unwrap();
+        }
+        let (commands, command_rx) = tokio::sync::mpsc::unbounded_channel();
+        let (fs_events, fs_rx) = tokio::sync::mpsc::unbounded_channel();
+        let registry = Arc::new(Mutex::new(
+            ImportFolderRegistry::from_stored(
+                roots.iter().map(|root| (*root).to_string()).collect(),
+                Vec::new(),
+            )
+            .unwrap(),
+        ));
+        let state = Arc::new(Mutex::new(ImportCandidateState::default()));
+        if let Some(root) = roots.first() {
+            state
+                .lock()
+                .unwrap()
+                .upsert_invalid(crate::import::InvalidCandidate {
+                    path: PathBuf::from(root).join("Group/Release"),
+                    name: "Release".to_string(),
+                    watched_folder_path: (*root).to_string(),
+                    display_path: "Group/Release".to_string(),
+                    resolved_boundaries: Vec::new(),
+                    reason: crate::import::InvalidReason::NoValidAudio,
+                });
+        }
+        let folder_state_commit = Arc::new(tokio::sync::Mutex::new(()));
+        let (scans, starter) = FakeScanStarter::new();
+        let removal_backend = Arc::new(FakeRemovalBackend::default());
+        let coordinator_thread = ImportService::start_watcher_with_starter(
+            command_rx,
+            fs_rx,
+            service.event_tx,
+            service.library_manager,
+            registry.clone(),
+            state.clone(),
+            folder_state_commit.clone(),
+            starter,
+            removal_backend.clone(),
+        );
+        Self {
+            commands,
+            fs_events,
+            scans,
+            folder_registry: registry,
+            candidate_state: state,
+            folder_state_commit,
+            removal_backend,
+            coordinator_thread: Mutex::new(Some(coordinator_thread)),
+            _temp: temp,
+        }
+    }
+
+    async fn shutdown(&self) {
+        let (completion, done) = std::sync::mpsc::channel();
+        self.commands
+            .send(WatcherCommand::Shutdown { completion })
+            .unwrap();
+        tokio::task::spawn_blocking(move || done.recv())
+            .await
+            .unwrap()
+            .unwrap();
+        let thread = self
+            .coordinator_thread
+            .lock()
+            .unwrap()
+            .take()
+            .expect("coordinator has not already shut down");
+        tokio::task::spawn_blocking(move || thread.join())
+            .await
+            .unwrap()
+            .unwrap();
+    }
+}
+
+#[tokio::test]
+async fn coordinator_coalesces_same_root_to_one_followup_scan() {
+    let harness = CoordinatorHarness::new().await;
+    let root = PathBuf::from("/music");
+    harness
+        .commands
+        .send(WatcherCommand::Rescan(root.clone()))
+        .unwrap();
+    harness.scans.wait_for_count(1).await;
+    harness
+        .commands
+        .send(WatcherCommand::Rescan(root.clone()))
+        .unwrap();
+    harness.commands.send(WatcherCommand::Rescan(root)).unwrap();
+    harness.scans.complete(0, Ok(()));
+    harness.scans.wait_for_count(2).await;
+    harness.scans.complete(1, Ok(()));
+    tokio::task::yield_now().await;
+    assert_eq!(harness.scans.scans.lock().unwrap().len(), 2);
+    harness.shutdown().await;
+}
+
+#[tokio::test]
+async fn coordinator_removal_waits_for_the_active_scan_to_finish() {
+    let harness = CoordinatorHarness::new().await;
+    let root = PathBuf::from("/music");
+    harness
+        .commands
+        .send(WatcherCommand::Rescan(root.clone()))
+        .unwrap();
+    harness.scans.wait_for_count(1).await;
+
+    let (completion, result) = tokio::sync::oneshot::channel();
+    harness
+        .commands
+        .send(WatcherCommand::Remove {
+            path: root,
+            completion,
+        })
+        .unwrap();
+    harness.scans.wait_for_cancellation(0).await;
+
+    let mut result = Box::pin(result);
+    assert!(
+        tokio::time::timeout(Duration::from_millis(50), result.as_mut())
+            .await
+            .is_err(),
+        "removal completed while the scan could still install a late watch"
+    );
+
+    harness.scans.complete(0, Ok(()));
+    assert_eq!(result.await.unwrap(), Ok(()));
+    harness.shutdown().await;
+}
+
+#[tokio::test]
+async fn coordinator_coalesces_duplicate_removals_for_one_root() {
+    let harness = CoordinatorHarness::new().await;
+    let root = PathBuf::from("/music");
+    harness
+        .commands
+        .send(WatcherCommand::Rescan(root.clone()))
+        .unwrap();
+    harness.scans.wait_for_count(1).await;
+
+    let (first_completion, first_result) = tokio::sync::oneshot::channel();
+    harness
+        .commands
+        .send(WatcherCommand::Remove {
+            path: root.clone(),
+            completion: first_completion,
+        })
+        .unwrap();
+    harness.scans.wait_for_cancellation(0).await;
+    let (second_completion, second_result) = tokio::sync::oneshot::channel();
+    harness
+        .commands
+        .send(WatcherCommand::Remove {
+            path: root,
+            completion: second_completion,
+        })
+        .unwrap();
+
+    harness.scans.complete(0, Ok(()));
+    assert_eq!(first_result.await.unwrap(), Ok(()));
+    assert_eq!(second_result.await.unwrap(), Ok(()));
+    assert_eq!(
+        harness.removal_backend.calls.lock().unwrap().as_slice(),
+        ["uninstall", "remove"]
+    );
+    harness.shutdown().await;
+}
+
+#[tokio::test]
+async fn coordinator_blocked_root_removal_does_not_block_another_roots_refresh() {
+    let harness = CoordinatorHarness::with_roots(&["/music/one", "/music/two"]).await;
+    harness
+        .commands
+        .send(WatcherCommand::Rescan(PathBuf::from("/music/one")))
+        .unwrap();
+    harness.scans.wait_for_count(1).await;
+
+    let (remove_completion, remove_result) = tokio::sync::oneshot::channel();
+    harness
+        .commands
+        .send(WatcherCommand::Remove {
+            path: PathBuf::from("/music/one"),
+            completion: remove_completion,
+        })
+        .unwrap();
+    harness.scans.wait_for_cancellation(0).await;
+
+    let (refresh_completion, refresh_result) = tokio::sync::oneshot::channel();
+    harness
+        .commands
+        .send(WatcherCommand::Refresh {
+            path: PathBuf::from("/music/two"),
+            completion: refresh_completion,
+        })
+        .unwrap();
+    harness.scans.wait_for_count(2).await;
+    harness.scans.complete(1, Ok(()));
+    assert_eq!(
+        tokio::time::timeout(Duration::from_secs(2), refresh_result)
+            .await
+            .expect("another root's refresh was blocked by removal")
+            .unwrap(),
+        Ok(())
+    );
+
+    assert!(
+        tokio::time::timeout(Duration::from_millis(50), remove_result)
+            .await
+            .is_err(),
+        "removal completed before its blocked scan"
+    );
+    harness.scans.complete(0, Ok(()));
+    harness.shutdown().await;
+}
+
+#[tokio::test]
+async fn coordinator_removal_join_failure_restores_a_runnable_root_schedule() {
+    let harness = CoordinatorHarness::new().await;
+    let root = PathBuf::from("/music");
+    harness
+        .commands
+        .send(WatcherCommand::Rescan(root.clone()))
+        .unwrap();
+    harness.scans.wait_for_count(1).await;
+
+    let (completion, result) = tokio::sync::oneshot::channel();
+    harness
+        .commands
+        .send(WatcherCommand::Remove {
+            path: root,
+            completion,
+        })
+        .unwrap();
+    harness.scans.wait_for_cancellation(0).await;
+    harness.scans.abort(0);
+
+    let error = result.await.unwrap().unwrap_err();
+    assert!(error.contains("folder scan task failed while removing"));
+    harness.scans.wait_for_count(2).await;
+    harness.scans.complete(1, Ok(()));
+    harness.shutdown().await;
+}
+
+#[tokio::test]
+async fn coordinator_removal_uninstall_failure_restores_a_runnable_root_schedule() {
+    let harness = CoordinatorHarness::new().await;
+    *harness.removal_backend.uninstall_error.lock().unwrap() =
+        Some("injected uninstall failure".to_string());
+    let root = PathBuf::from("/music");
+    harness
+        .commands
+        .send(WatcherCommand::Rescan(root.clone()))
+        .unwrap();
+    harness.scans.wait_for_count(1).await;
+
+    let (completion, result) = tokio::sync::oneshot::channel();
+    harness
+        .commands
+        .send(WatcherCommand::Remove {
+            path: root,
+            completion,
+        })
+        .unwrap();
+    harness.scans.wait_for_cancellation(0).await;
+    harness.scans.complete(0, Ok(()));
+
+    let error = result.await.unwrap().unwrap_err();
+    assert!(error.contains("injected uninstall failure"));
+    assert_eq!(
+        harness.removal_backend.calls.lock().unwrap().as_slice(),
+        ["uninstall"]
+    );
+    harness.scans.wait_for_count(2).await;
+    harness.scans.complete(1, Ok(()));
+    harness.shutdown().await;
+}
+
+#[tokio::test]
+async fn coordinator_removal_database_failure_reinstalls_and_rescans_before_returning() {
+    let harness = CoordinatorHarness::new().await;
+    *harness.removal_backend.remove_error.lock().unwrap() =
+        Some("injected database failure".to_string());
+    let root = PathBuf::from("/music");
+    harness
+        .commands
+        .send(WatcherCommand::Rescan(root.clone()))
+        .unwrap();
+    harness.scans.wait_for_count(1).await;
+
+    let (completion, result) = tokio::sync::oneshot::channel();
+    harness
+        .commands
+        .send(WatcherCommand::Remove {
+            path: root,
+            completion,
+        })
+        .unwrap();
+    harness.scans.wait_for_cancellation(0).await;
+    harness.scans.complete(0, Ok(()));
+
+    let error = result.await.unwrap().unwrap_err();
+    assert!(error.contains("injected database failure"));
+    assert_eq!(
+        harness.removal_backend.calls.lock().unwrap().as_slice(),
+        ["uninstall", "remove", "reinstall"]
+    );
+    assert_eq!(
+        harness.folder_registry.lock().unwrap().watched_folders(),
+        vec![crate::import::WatchedFolder::from_path(
+            "/music".to_string()
+        )]
+    );
+    harness.scans.wait_for_count(2).await;
+    harness.scans.complete(1, Ok(()));
+    harness.shutdown().await;
+}
+
+#[tokio::test]
+async fn coordinator_blocked_reinstall_does_not_block_another_roots_persistence() {
+    let harness = CoordinatorHarness::with_roots(&["/music/one", "/music/two"]).await;
+    *harness.removal_backend.remove_error.lock().unwrap() =
+        Some("injected database failure".to_string());
+    harness
+        .removal_backend
+        .block_reinstall
+        .store(true, std::sync::atomic::Ordering::SeqCst);
+    harness
+        .commands
+        .send(WatcherCommand::Rescan(PathBuf::from("/music/one")))
+        .unwrap();
+    harness.scans.wait_for_count(1).await;
+
+    let (remove_completion, remove_result) = tokio::sync::oneshot::channel();
+    harness
+        .commands
+        .send(WatcherCommand::Remove {
+            path: PathBuf::from("/music/one"),
+            completion: remove_completion,
+        })
+        .unwrap();
+    harness.scans.wait_for_cancellation(0).await;
+    harness.scans.complete(0, Ok(()));
+    tokio::time::timeout(
+        Duration::from_secs(2),
+        harness.removal_backend.reinstall_started.notified(),
+    )
+    .await
+    .expect("failed durable removal did not start watch restoration");
+
+    let (refresh_completion, refresh_result) = tokio::sync::oneshot::channel();
+    harness
+        .commands
+        .send(WatcherCommand::Refresh {
+            path: PathBuf::from("/music/two"),
+            completion: refresh_completion,
+        })
+        .unwrap();
+    harness.scans.wait_for_count(2).await;
+    let other_root_commit = tokio::time::timeout(
+        Duration::from_millis(50),
+        harness.folder_state_commit.lock(),
+    )
+    .await;
+    let other_root_was_blocked = other_root_commit.is_err();
+    drop(other_root_commit);
+
+    harness.removal_backend.release_reinstall.notify_one();
+    harness.scans.complete(1, Ok(()));
+    assert_eq!(
+        tokio::time::timeout(Duration::from_secs(2), refresh_result)
+            .await
+            .expect("another root's refresh did not complete")
+            .unwrap(),
+        Ok(())
+    );
+    assert!(
+        remove_result.await.unwrap().is_err(),
+        "injected durable removal failure was not returned"
+    );
+    harness.scans.wait_for_count(3).await;
+    harness.scans.complete(2, Ok(()));
+    harness.shutdown().await;
+
+    assert!(
+        !other_root_was_blocked,
+        "watch restoration held the persistence guard needed by another root"
+    );
+}
+
+#[tokio::test]
+async fn coordinator_removal_database_and_restore_failures_return_both_errors() {
+    let harness = CoordinatorHarness::new().await;
+    *harness.removal_backend.remove_error.lock().unwrap() =
+        Some("injected database failure".to_string());
+    *harness.removal_backend.reinstall_error.lock().unwrap() =
+        Some("injected restore failure".to_string());
+    let root = PathBuf::from("/music");
+    harness
+        .commands
+        .send(WatcherCommand::Rescan(root.clone()))
+        .unwrap();
+    harness.scans.wait_for_count(1).await;
+
+    let (completion, result) = tokio::sync::oneshot::channel();
+    harness
+        .commands
+        .send(WatcherCommand::Remove {
+            path: root,
+            completion,
+        })
+        .unwrap();
+    harness.scans.wait_for_cancellation(0).await;
+    harness.scans.complete(0, Ok(()));
+
+    let error = result.await.unwrap().unwrap_err();
+    assert!(error.contains("injected database failure"));
+    assert!(error.contains("injected restore failure"));
+    harness.scans.wait_for_count(2).await;
+    harness.scans.complete(1, Ok(()));
+    harness.shutdown().await;
+}
+
+#[tokio::test]
+async fn coordinator_runs_different_roots_concurrently() {
+    let harness = CoordinatorHarness::with_roots(&["/music/one", "/music/two"]).await;
+    for root in ["/music/one", "/music/two"] {
+        harness
+            .commands
+            .send(WatcherCommand::Rescan(PathBuf::from(root)))
+            .unwrap();
+    }
+    harness.scans.wait_for_count(2).await;
+    assert!(!harness.scans.cancellation(0).is_cancelled());
+    assert!(!harness.scans.cancellation(1).is_cancelled());
+    harness.scans.complete(0, Ok(()));
+    harness.scans.complete(1, Ok(()));
+    harness.shutdown().await;
+}
+
+#[tokio::test]
+async fn coordinator_completes_refresh_waiter_with_its_scan_result() {
+    let harness = CoordinatorHarness::new().await;
+    let (completion, result) = tokio::sync::oneshot::channel();
+    harness
+        .commands
+        .send(WatcherCommand::Refresh {
+            path: PathBuf::from("/music"),
+            completion,
+        })
+        .unwrap();
+    harness.scans.wait_for_count(1).await;
+    harness.scans.complete(0, Err("offline".to_string()));
+    assert_eq!(result.await.unwrap(), Err("offline".to_string()));
+    harness.shutdown().await;
+}
+
+#[tokio::test]
+async fn coordinator_completes_scan_while_filesystem_batches_remain_ready() {
+    let harness = CoordinatorHarness::new().await;
+    let (completion, result) = tokio::sync::oneshot::channel();
+    harness
+        .commands
+        .send(WatcherCommand::Refresh {
+            path: PathBuf::from("/music"),
+            completion,
+        })
+        .unwrap();
+    harness.scans.wait_for_count(1).await;
+    for _ in 0..10_000 {
+        harness.fs_events.send(Ok(Vec::new())).unwrap();
+    }
+    harness.scans.complete(0, Ok(()));
+    assert_eq!(
+        tokio::time::timeout(Duration::from_secs(2), result)
+            .await
+            .expect("ready filesystem batches starved scan completion")
+            .unwrap(),
+        Ok(())
+    );
+    harness.shutdown().await;
+}
+
+#[tokio::test]
+async fn cancelled_scan_task_does_not_begin_a_durable_generation() {
+    let (service, tmp) = setup_import_service().await;
+    let root = tmp.path().join("watched");
+    std::fs::create_dir(&root).unwrap();
+    service
+        .library_manager
+        .add_watched_import_folder(&root.to_string_lossy())
+        .await
+        .unwrap();
+    let registry = Arc::new(Mutex::new(
+        ImportFolderRegistry::from_stored(vec![root.to_string_lossy().into_owned()], Vec::new())
+            .unwrap(),
+    ));
+    let state = Arc::new(Mutex::new(ImportCandidateState::default()));
+    let (watch_tx, _watch_rx) = tokio::sync::mpsc::unbounded_channel();
+    let watcher = Arc::new(FolderWatcher::new(watch_tx));
+    let (completion_tx, mut completion_rx) = tokio::sync::mpsc::unbounded_channel();
+    let mut events = service.event_tx.subscribe();
+
+    let scan = spawn_root_scan(
+        1,
+        root,
+        service.event_tx.clone(),
+        service.library_manager.clone(),
+        registry,
+        state.clone(),
+        Arc::new(tokio::sync::Mutex::new(())),
+        watcher,
+        completion_tx,
+    );
+    scan.cancellation.cancel();
+    tokio::time::timeout(Duration::from_secs(2), completion_rx.recv())
+        .await
+        .expect("cancelled scan did not report task completion")
+        .expect("scan task completion channel closed");
+    scan.task.await.unwrap();
+
+    assert!(state
+        .lock()
+        .unwrap()
+        .snapshot(Vec::new())
+        .folder_scan_statuses
+        .is_empty());
+    assert!(service
+        .library_manager
+        .database_for_test()
+        .load_folder_scan_snapshots()
+        .await
+        .unwrap()
+        .is_empty());
+    assert!(matches!(
+        events.try_recv(),
+        Err(tokio::sync::broadcast::error::TryRecvError::Empty)
+    ));
+}
+
+#[tokio::test]
+async fn coordinator_decision_waits_for_cancelled_scan_before_starting_replacement() {
+    let harness = CoordinatorHarness::new().await;
+    let root = PathBuf::from("/music");
+    harness
+        .commands
+        .send(WatcherCommand::Rescan(root.clone()))
+        .unwrap();
+    harness.scans.wait_for_count(1).await;
+    let (decision_completion, decision_result) = tokio::sync::oneshot::channel();
+    harness
+        .commands
+        .send(WatcherCommand::SetFolderReleaseDecision {
+            target: (
+                crate::import::FolderReleaseDecisionKey {
+                    watched_folder_path: root.to_string_lossy().into_owned(),
+                    relative_folder_path: "Group".to_string(),
+                },
+                crate::import::FolderReleaseDecision::CombineAsOneRelease,
+            ),
+            completion: decision_completion,
+        })
+        .unwrap();
+    harness.scans.wait_for_cancellation(0).await;
+    assert_eq!(harness.scans.scans.lock().unwrap().len(), 1);
+    harness.scans.complete(0, Ok(()));
+    harness.scans.wait_for_count(2).await;
+    assert!(!harness.scans.cancellation(1).is_cancelled());
+    harness.scans.complete(1, Ok(()));
+    assert_eq!(decision_result.await.unwrap(), Ok(()));
+    harness.shutdown().await;
+}
+
+#[tokio::test]
+async fn coordinator_decision_validates_after_the_cancelled_scan_releases_its_commit() {
+    let harness = CoordinatorHarness::new().await;
+    let root = PathBuf::from("/music");
+    harness
+        .commands
+        .send(WatcherCommand::Rescan(root.clone()))
+        .unwrap();
+    harness.scans.wait_for_count(1).await;
+
+    let commit = harness.folder_state_commit.clone().lock_owned().await;
+    let (decision_completion, decision_result) = tokio::sync::oneshot::channel();
+    harness
+        .commands
+        .send(WatcherCommand::SetFolderReleaseDecision {
+            target: (
+                crate::import::FolderReleaseDecisionKey {
+                    watched_folder_path: root.to_string_lossy().into_owned(),
+                    relative_folder_path: "Group".to_string(),
+                },
+                crate::import::FolderReleaseDecision::CombineAsOneRelease,
+            ),
+            completion: decision_completion,
+        })
+        .unwrap();
+    harness.scans.wait_for_cancellation(0).await;
+    harness.candidate_state.lock().unwrap().remove_root(&root);
+    drop(commit);
+
+    assert_eq!(
+        decision_result.await.unwrap(),
+        Err("Group is not a current release boundary".to_string())
+    );
+    harness.scans.complete(0, Ok(()));
+    harness.scans.wait_for_count(2).await;
+    harness.scans.complete(1, Ok(()));
+    harness.shutdown().await;
+}
+
+#[tokio::test]
+async fn coordinator_shutdown_waits_for_active_scan() {
+    let harness = CoordinatorHarness::new().await;
+    harness
+        .commands
+        .send(WatcherCommand::Rescan(PathBuf::from("/music")))
+        .unwrap();
+    harness.scans.wait_for_count(1).await;
+    let (shutdown_completion, shutdown_done) = std::sync::mpsc::channel();
+    harness
+        .commands
+        .send(WatcherCommand::Shutdown {
+            completion: shutdown_completion,
+        })
+        .unwrap();
+    tokio::task::yield_now().await;
+    assert!(matches!(
+        shutdown_done.try_recv(),
+        Err(std::sync::mpsc::TryRecvError::Empty)
+    ));
+    harness.scans.complete(0, Ok(()));
+    tokio::task::spawn_blocking(move || shutdown_done.recv())
+        .await
+        .unwrap()
+        .unwrap();
+}
+
+#[tokio::test]
+async fn cancelling_a_panicked_folder_walk_surfaces_the_join_failure() {
+    async fn panic_during_walk() -> (
+        Result<(), crate::import::folder_scanner::FolderScanError>,
+        HashSet<PathBuf>,
+    ) {
+        panic!("folder walk panic");
+    }
+
+    let cancellation = crate::import::folder_scanner::ScanCancellation::new();
+    let (item_tx, mut item_rx) = tokio::sync::mpsc::channel(1);
+    drop(item_tx);
+    let error = ImportService::cancel_and_join_folder_walk(
+        Path::new("/music"),
+        &cancellation,
+        &mut item_rx,
+        tokio::spawn(panic_during_walk()),
+    )
+    .await
+    .expect_err("a panicked traversal task cannot report a successful cancellation");
+
+    assert!(cancellation.is_cancelled());
+    assert!(error.to_string().contains("folder scan task failed"));
+}
+
+#[tokio::test]
+async fn a_db_accepted_failure_that_memory_rejects_is_an_internal_error() {
+    let (service, _temp) = setup_import_service().await;
+    let root = Path::new("/music");
+    service
+        .library_manager
+        .add_watched_import_folder(root.to_str().unwrap())
+        .await
+        .unwrap();
+    let generation = service
+        .library_manager
+        .begin_folder_scan(root.to_str().unwrap())
+        .await
+        .unwrap();
+    let candidate_state = Arc::new(Mutex::new(ImportCandidateState::default()));
+    let folder_state_commit = Arc::new(tokio::sync::Mutex::new(()));
+
+    let error = ImportService::record_scan_failure(
+        root,
+        generation,
+        "share unavailable".to_string(),
+        &service.event_tx,
+        &service.library_manager,
+        &candidate_state,
+        &folder_state_commit,
+    )
+    .await
+    .expect_err("DB and memory generation disagreement must fail");
+
+    assert!(error.to_string().contains("was not current in memory"));
+}
+
 fn write_test_jpeg(path: &Path) {
     let image = ::image::RgbImage::from_pixel(1, 1, ::image::Rgb([0, 0, 0]));
     image.save(path).unwrap();
@@ -76,6 +916,20 @@ fn affected_roots_maps_changed_paths_to_their_watched_roots() {
     // A change outside every watched root flags nothing.
     let changed = [Path::new("/elsewhere/file")];
     assert!(affected_roots(&changed, &roots).is_empty());
+}
+
+#[test]
+fn watcher_error_without_a_mapped_path_rescans_every_root() {
+    let roots = vec![PathBuf::from("/music/a"), PathBuf::from("/music/b")];
+    assert_eq!(roots_for_watch_error(&[], &roots), roots);
+    assert_eq!(
+        roots_for_watch_error(&[PathBuf::from("/outside")], &roots),
+        roots
+    );
+    assert_eq!(
+        roots_for_watch_error(&[PathBuf::from("/music/b/release")], &roots),
+        vec![PathBuf::from("/music/b")]
+    );
 }
 
 /// `common_ancestor` derives the local-path root by folding over the
@@ -190,12 +1044,23 @@ async fn selected_local_cover_path_must_match_discovered_file() {
         folder.join("01.flac"),
     )
     .unwrap();
+    let expected_content_hash =
+        crate::import::folder_scanner::collect_release_candidate_files_with_scope(
+            &folder,
+            crate::import::ReleaseFileScope::Recursive,
+            &crate::import::folder_scanner::StoredCandidateEdits::none(),
+        )
+        .unwrap()
+        .content_hash();
 
     let result = service
         .prepare_and_run_folder_import(
             "import-1".to_string(),
             folder.to_string_lossy().into_owned(),
             folder,
+            crate::import::folder_scanner::ReleaseFileScope::Recursive,
+            expected_content_hash,
+            0,
             Some(CoverSelection::Local("cover.bmp".to_string())),
             StorageMode::Local,
             false,
@@ -223,20 +1088,34 @@ async fn failed_import_before_finalize_leaves_only_import_audit_row() {
     .unwrap();
 
     let import_id = "import-1".to_string();
+    let expectation = super::ImportExpectation {
+        content_hash: crate::import::folder_scanner::collect_release_candidate_files_with_scope(
+            &folder,
+            crate::import::ReleaseFileScope::Recursive,
+            &crate::import::folder_scanner::StoredCandidateEdits::none(),
+        )
+        .unwrap()
+        .content_hash(),
+        edit_revision: 0,
+    };
     service
-        .do_import(ImportCommand {
-            import_id: import_id.clone(),
-            candidate_key: folder.to_string_lossy().into_owned(),
-            folder,
-            selected_cover: Some(CoverSelection::Remote(
-                "http://127.0.0.1:9/missing.jpg".to_string(),
-                MetadataSource::MusicBrainz,
-            )),
-            storage_mode: StorageMode::Local,
-            pin: false,
-            identity_choice: crate::import::IdentityChoice::Unknown,
-            user_edit: None,
-        })
+        .do_import(
+            ImportCommand {
+                import_id: import_id.clone(),
+                candidate_key: folder.to_string_lossy().into_owned(),
+                folder,
+                scope: crate::import::folder_scanner::ReleaseFileScope::Recursive,
+                selected_cover: Some(CoverSelection::Remote(
+                    "http://127.0.0.1:9/missing.jpg".to_string(),
+                    MetadataSource::MusicBrainz,
+                )),
+                storage_mode: StorageMode::Local,
+                pin: false,
+                identity_choice: crate::import::IdentityChoice::Unknown,
+                user_edit: None,
+            },
+            expectation,
+        )
         .await;
 
     let database = service.library_manager.database_for_test();
@@ -286,16 +1165,27 @@ async fn rescan_seeded_root(
 ) -> (
     tokio::sync::broadcast::Receiver<crate::import::handle::ImportEvent>,
     Arc<Mutex<crate::import::handle::ImportCandidateState>>,
+    Result<(), crate::import::ImportError>,
 ) {
     let (event_tx, events) = tokio::sync::broadcast::channel(16);
     let folder_registry = Arc::new(Mutex::new(
-        crate::import::folder_registry::ImportFolderRegistry::load(
-            &service.library_manager.library_dir(),
-        ),
+        crate::import::folder_registry::ImportFolderRegistry::default(),
     ));
     let candidate_state = Arc::new(Mutex::new(
         crate::import::handle::ImportCandidateState::default(),
     ));
+    let (fs_tx, _fs_rx) = tokio::sync::mpsc::unbounded_channel();
+    let folder_watcher = Arc::new(super::FolderWatcher::new(fs_tx));
+    let cancellation = crate::import::folder_scanner::ScanCancellation::new();
+    service
+        .library_manager
+        .add_watched_import_folder(&root.to_string_lossy())
+        .await
+        .unwrap();
+    folder_registry
+        .lock()
+        .unwrap()
+        .apply_added(root.to_string_lossy().into_owned());
     candidate_state
         .lock()
         .unwrap()
@@ -303,44 +1193,60 @@ async fn rescan_seeded_root(
             path: root.join("old-key"),
             name: "Old Candidate".to_string(),
             watched_folder_path: root.to_string_lossy().into_owned(),
+            display_path: "old-key".to_string(),
+            resolved_boundaries: Vec::new(),
             reason: crate::import::InvalidReason::NoValidAudio,
         });
 
-    ImportService::rescan_and_reconcile(
+    let result = ImportService::rescan_and_reconcile(
         root,
         &event_tx,
         &service.library_manager,
         &folder_registry,
         &candidate_state,
+        &Arc::new(tokio::sync::Mutex::new(())),
+        &folder_watcher,
+        &cancellation,
     )
     .await;
 
-    (events, candidate_state)
+    (events, candidate_state, result)
 }
 
 #[tokio::test]
-async fn rescan_missing_root_removes_previous_candidates() {
+async fn rescan_missing_root_fails_and_preserves_previous_candidates() {
     let (service, tmp) = setup_import_service().await;
     let root = tmp.path().join("missing-root");
-    let old_key = root.join("old-key").to_string_lossy().into_owned();
-    let (mut events, candidate_state) = rescan_seeded_root(&service, &root).await;
+    let (mut events, candidate_state, result) = rescan_seeded_root(&service, &root).await;
+    assert!(result.is_err());
 
-    match events.recv().await.unwrap() {
-        crate::import::handle::ImportEvent::Scan(ScanEvent::CandidateRemoved { candidate_key }) => {
-            assert_eq!(candidate_key, old_key);
+    let failed = loop {
+        match events.recv().await.unwrap() {
+            crate::import::handle::ImportEvent::Scan(ScanEvent::FolderScanStatusChanged {
+                status:
+                    crate::import::handle::WatchedFolderScanStatus {
+                        status: crate::import::handle::FolderScanStatus::Failed { error },
+                        ..
+                    },
+            }) => break error,
+            crate::import::handle::ImportEvent::Scan(ScanEvent::CandidateRemoved {
+                candidate_key,
+            }) => panic!("missing root removed {candidate_key}"),
+            _ => {}
         }
-        event => panic!("expected candidate removal, got {event:?}"),
-    }
-    assert!(matches!(
-        events.recv().await.unwrap(),
-        crate::import::handle::ImportEvent::Scan(ScanEvent::Finished)
-    ));
-    assert!(candidate_state
-        .lock()
-        .unwrap()
-        .snapshot(Vec::new())
-        .invalid_candidates
-        .is_empty());
+    };
+    assert!(failed.to_lowercase().contains("no such file"));
+    assert_eq!(
+        candidate_state
+            .lock()
+            .unwrap()
+            .snapshot(vec![crate::import::WatchedFolder::from_path(
+                root.to_string_lossy().into_owned(),
+            )])
+            .invalid_candidates
+            .len(),
+        1
+    );
 }
 
 #[tokio::test]
@@ -348,22 +1254,37 @@ async fn rescan_non_directory_root_keeps_previous_candidates() {
     let (service, tmp) = setup_import_service().await;
     let root = tmp.path().join("not-a-directory");
     std::fs::write(&root, b"not a directory").unwrap();
-    let (mut events, candidate_state) = rescan_seeded_root(&service, &root).await;
+    let (mut events, candidate_state, result) = rescan_seeded_root(&service, &root).await;
+    assert!(result.is_err(), "a non-directory root must fail its scan");
 
-    match events.recv().await.unwrap() {
-        crate::import::handle::ImportEvent::Scan(ScanEvent::Failed { error }) => {
-            assert!(
-                error.to_lowercase().contains("not a directory"),
-                "got: {error}"
-            );
+    loop {
+        match events.recv().await.unwrap() {
+            crate::import::handle::ImportEvent::Scan(ScanEvent::FolderScanStatusChanged {
+                status:
+                    crate::import::handle::WatchedFolderScanStatus {
+                        status: crate::import::handle::FolderScanStatus::Failed { error },
+                        ..
+                    },
+            }) => {
+                assert!(
+                    error.to_lowercase().contains("not a directory"),
+                    "got: {error}"
+                );
+                break;
+            }
+            crate::import::handle::ImportEvent::Scan(ScanEvent::FolderScanStatusChanged {
+                ..
+            }) => {}
+            event => panic!("expected scan status, got {event:?}"),
         }
-        event => panic!("expected scan failure, got {event:?}"),
     }
     assert_eq!(
         candidate_state
             .lock()
             .unwrap()
-            .snapshot(Vec::new())
+            .snapshot(vec![crate::import::WatchedFolder::from_path(
+                root.to_string_lossy().into_owned(),
+            )])
             .invalid_candidates
             .len(),
         1

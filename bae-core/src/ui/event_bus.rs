@@ -281,8 +281,10 @@ impl UiEventBus {
                             ImportEvent::Scan(scan_event) => match scan_event {
                                 ScanEvent::WatchedFoldersChanged { .. } => {
                                     bus.invalidate(Invalidation::WatchedFolders);
+                                    bus.invalidate(Invalidation::ImportCandidateList);
                                 }
-                                ScanEvent::FolderCandidate(c)
+                                ScanEvent::FolderCandidate { candidate: c, .. }
+                                | ScanEvent::CandidateDiscovered { candidate: c, .. }
                                 | ScanEvent::CandidateBindingChanged { candidate: c } => {
                                     bus.invalidate(Invalidation::ImportCandidate {
                                         key: c.path.to_string_lossy().to_string(),
@@ -295,19 +297,21 @@ impl UiEventBus {
                                     });
                                     bus.invalidate(Invalidation::ImportCandidateList);
                                 }
+                                ScanEvent::FolderReleaseBoundary(_) => {
+                                    bus.invalidate(Invalidation::ImportCandidateList);
+                                }
                                 ScanEvent::CandidateRemoved { candidate_key }
-                                | ScanEvent::CandidateSkipChanged { candidate_key, .. } => {
+                                | ScanEvent::CandidateSkipChanged { candidate_key, .. }
+                                | ScanEvent::CandidateVerdictStored { candidate_key } => {
                                     bus.invalidate(Invalidation::ImportCandidate {
                                         key: candidate_key.clone(),
                                     });
                                     bus.invalidate(Invalidation::ImportCandidateList);
                                 }
-                                ScanEvent::Failed { error } => {
-                                    bus.emit(UiBusEvent::Error {
-                                        error: crate::ui::UiError::import(error),
-                                    });
-                                }
                                 ScanEvent::Finished => {
+                                    bus.invalidate(Invalidation::ImportCandidateList);
+                                }
+                                ScanEvent::FolderScanStatusChanged { .. } => {
                                     bus.invalidate(Invalidation::ImportCandidateList);
                                 }
                             },
@@ -740,11 +744,13 @@ mod tests {
         let bus = UiEventBus::new();
         let mut ui_rx = bus.subscribe();
         let (library_manager, _tmp) = make_test_library_manager(&runtime);
-        let import = crate::import::ImportService::start(
-            runtime.handle().clone(),
-            library_manager,
-            crate::import::cover_art::CoverArtArchiveClient::hermetic(),
-        );
+        let import = runtime
+            .block_on(crate::import::ImportService::start(
+                runtime.handle().clone(),
+                library_manager,
+                crate::import::cover_art::CoverArtArchiveClient::hermetic(),
+            ))
+            .unwrap();
         let (import_tx, import_rx) = broadcast::channel(1);
 
         import_tx

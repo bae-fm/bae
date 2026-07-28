@@ -41,8 +41,13 @@ use tracing::{error, warn};
 /// library release being re-identified.
 #[derive(Debug, Clone)]
 pub enum ExtractionSource {
-    Folder(PathBuf),
-    Release { release_id: String },
+    Folder {
+        path: PathBuf,
+        files: crate::import::folder_scanner::CategorizedFiles,
+    },
+    Release {
+        release_id: String,
+    },
 }
 
 /// Thread-safe handle to the running signal-extraction service.
@@ -110,6 +115,11 @@ impl ExtractionService {
                 match removal_rx.recv().await {
                     Ok(ImportEvent::Scan(ScanEvent::CandidateRemoved { candidate_key })) => {
                         removal_inner.cancellation.cancel(&candidate_key);
+                    }
+                    Ok(ImportEvent::Scan(ScanEvent::CandidateBindingChanged { candidate })) => {
+                        removal_inner
+                            .cancellation
+                            .cancel(candidate.path.to_string_lossy().as_ref());
                     }
                     Ok(_) => {}
                     Err(broadcast::error::RecvError::Lagged(n)) => {
@@ -187,23 +197,13 @@ async fn run_extraction(
     match source {
         // One scan derives every non-OCR signal in a single blocking hop, then
         // the artwork OCR streams.
-        ExtractionSource::Folder(folder) => {
+        ExtractionSource::Folder {
+            path: folder,
+            files,
+        } => {
             let fast_folder = folder.clone();
-            // Without the user's bindings this pass would read the folder as
-            // its filenames propose it, and derive a disc ID — or fail to — for
-            // a shape they already corrected.
-            let stored = match inner.library_manager.load_stored_candidate_edits().await {
-                Ok(stored) => stored,
-                Err(e) => {
-                    tracing::warn!(
-                        "signals: stored file decisions could not be read ({e}); \
-                         extracting {key} from the scan's own proposals"
-                    );
-                    crate::import::folder_scanner::StoredCandidateEdits::none()
-                }
-            };
             let Some(fast) = run_fast_pass_blocking(&inner.runtime_handle, move || {
-                gather_non_ocr_sources(&fast_folder, &stored)
+                gather_non_ocr_sources(&fast_folder, &files)
             })
             .await
             else {

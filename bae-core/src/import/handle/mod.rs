@@ -1,7 +1,10 @@
 use crate::discogs::DiscogsClient;
 use crate::import::cover_art::CoverArtArchiveClient;
 use crate::import::folder_registry::{ImportFolderRegistry, WatchedFolder};
-use crate::import::folder_scanner::{FolderCandidate, InvalidCandidate};
+use crate::import::folder_scanner::{
+    FolderCandidate, FolderReleaseBoundary, FolderReleaseDecision, FolderReleaseDecisionKey,
+    InvalidCandidate,
+};
 use crate::import::types::{
     ImportCommand, ImportProgress, ImportStep, MetadataSource, StorageMode,
 };
@@ -35,12 +38,31 @@ pub struct ImportCandidatesSnapshot {
     pub watched_folders: Vec<WatchedFolder>,
     pub folder_candidates: Vec<FolderImportCandidateSnapshot>,
     pub invalid_candidates: Vec<InvalidCandidate>,
+    pub boundaries: Vec<FolderReleaseBoundary>,
+    pub folder_scan_statuses: Vec<WatchedFolderScanStatus>,
+}
+
+#[derive(Debug, Clone)]
+pub struct WatchedFolderScanStatus {
+    pub watched_folder_path: String,
+    pub watched_folder_name: String,
+    pub status: FolderScanStatus,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum FolderScanStatus {
+    Scanning,
+    Complete,
+    Failed { error: String },
 }
 
 #[derive(Debug, Clone)]
 pub struct FolderImportCandidateSnapshot {
     pub candidate: FolderCandidate,
     pub runtime: CandidateRuntimeSnapshot,
+    pub actionable: bool,
+    pub skipped: bool,
+    pub is_added: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -48,6 +70,9 @@ pub enum ImportCandidateSnapshot {
     Folder {
         candidate: FolderCandidate,
         runtime: CandidateRuntimeSnapshot,
+        actionable: bool,
+        skipped: bool,
+        is_added: bool,
     },
     Invalid(InvalidCandidate),
     Runtime {
@@ -58,7 +83,12 @@ pub enum ImportCandidateSnapshot {
 
 #[derive(Debug, Clone)]
 enum ScannedCandidate {
-    Folder(FolderCandidate),
+    Folder {
+        candidate: FolderCandidate,
+        actionable: bool,
+        skipped: bool,
+        is_added: bool,
+    },
     Invalid(InvalidCandidate),
 }
 
@@ -96,7 +126,7 @@ pub enum CandidateImportStatusSnapshot {
     },
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Clone, Default)]
 pub(crate) struct ImportCandidateState {
     /// What the folder scanner last reported per candidate path.
     candidates: HashMap<String, ScannedCandidate>,
@@ -105,6 +135,9 @@ pub(crate) struct ImportCandidateState {
     /// events; reads treat absence as the idle runtime. Also holds
     /// `reidentify:`-prefixed keys, which have no scanned candidate.
     runtime: HashMap<String, CandidateRuntimeSnapshot>,
+    boundaries: HashMap<FolderReleaseDecisionKey, FolderReleaseBoundary>,
+    folder_scan_statuses: HashMap<String, FolderScanStatus>,
+    root_generations: HashMap<String, u64>,
 }
 
 impl ImportCandidateState {
@@ -112,7 +145,7 @@ impl ImportCandidateState {
 
     fn candidate_watched_folder_path(candidate: &ScannedCandidate) -> &str {
         match candidate {
-            ScannedCandidate::Folder(candidate) => &candidate.watched_folder_path,
+            ScannedCandidate::Folder { candidate, .. } => &candidate.watched_folder_path,
             ScannedCandidate::Invalid(candidate) => &candidate.watched_folder_path,
         }
     }
@@ -121,6 +154,13 @@ impl ImportCandidateState {
         self.runtime
             .entry(candidate_key.to_string())
             .or_insert_with(CandidateRuntimeSnapshot::idle)
+    }
+
+    fn same_folder_shape(left: &FolderCandidate, right: &FolderCandidate) -> bool {
+        left.files.content_hash() == right.files.content_hash()
+            && left.file_edit_revision == right.file_edit_revision
+            && left.scope == right.scope
+            && left.file_root == right.file_root
     }
 
     /// Runtime for a candidate key at read time. Absence from the runtime map
@@ -133,23 +173,295 @@ impl ImportCandidateState {
             .unwrap_or_else(CandidateRuntimeSnapshot::idle)
     }
 
-    /// Record one candidate a scan just reported, replacing whatever was held
-    /// under its path. Its runtime (identify state, import progress) stays as
-    /// it was: a re-scan re-reporting an unchanged folder must not reset work
-    /// already under way on it.
-    pub(super) fn upsert_folder(&mut self, candidate: FolderCandidate) {
+    /// Record one actionable candidate and return every candidate key whose
+    /// prior shape this result superseded. An unchanged re-scan preserves its
+    /// runtime; a changed file set or release boundary clears it before the new
+    /// shape becomes visible.
+    pub(super) fn upsert_folder(
+        &mut self,
+        candidate: FolderCandidate,
+        skipped: bool,
+        is_added: bool,
+    ) -> Vec<String> {
+        let key = candidate.path.to_string_lossy().into_owned();
+        let mut superseded = Vec::new();
+        if let Some(ScannedCandidate::Folder {
+            candidate: existing,
+            ..
+        }) = self.candidates.get(&key)
+        {
+            let same_shape = Self::same_folder_shape(existing, &candidate);
+            if !same_shape {
+                superseded.push(key.clone());
+                self.runtime.remove(&key);
+            }
+        }
+
+        for resolved in &candidate.resolved_boundaries {
+            self.boundaries.remove(&resolved.key);
+            let boundary_path = Path::new(&resolved.key.watched_folder_path)
+                .join(&resolved.key.relative_folder_path);
+            let boundary_key = boundary_path.to_string_lossy();
+            let replaced: Vec<_> = self
+                .candidates
+                .iter()
+                .filter_map(|(existing_key, existing)| {
+                    if existing_key == &key
+                        || Self::candidate_watched_folder_path(existing)
+                            != resolved.key.watched_folder_path
+                    {
+                        return None;
+                    }
+                    let existing_path = Path::new(existing_key);
+                    let is_replaced = match resolved.decision {
+                        FolderReleaseDecision::CombineAsOneRelease => {
+                            existing_path.starts_with(&boundary_path)
+                        }
+                        FolderReleaseDecision::KeepAsSeparateReleases => {
+                            existing_key == boundary_key.as_ref()
+                        }
+                    };
+                    is_replaced.then(|| existing_key.clone())
+                })
+                .collect();
+            for replaced_key in replaced {
+                self.candidates.remove(&replaced_key);
+                self.runtime.remove(&replaced_key);
+                superseded.push(replaced_key);
+            }
+        }
         self.candidates.insert(
-            candidate.path.to_string_lossy().into_owned(),
-            ScannedCandidate::Folder(candidate),
+            key,
+            ScannedCandidate::Folder {
+                candidate,
+                actionable: true,
+                skipped,
+                is_added,
+            },
         );
+        superseded.sort();
+        superseded.dedup();
+        superseded
+    }
+
+    pub(super) fn upsert_discovered(
+        &mut self,
+        candidate: FolderCandidate,
+        skipped: bool,
+        is_added: bool,
+    ) -> bool {
+        let key = candidate.path.to_string_lossy().into_owned();
+        let contradicted_actionable = matches!(
+            self.candidates.get(&key),
+            Some(ScannedCandidate::Folder {
+                candidate: existing,
+                actionable: true,
+                ..
+            }) if !Self::same_folder_shape(existing, &candidate)
+        );
+        if matches!(
+            self.candidates.get(&key),
+            Some(ScannedCandidate::Folder {
+                candidate: existing,
+                actionable: true,
+                ..
+            }) if Self::same_folder_shape(existing, &candidate)
+        ) {
+            return false;
+        }
+        if contradicted_actionable {
+            self.runtime.remove(&key);
+        }
+        self.candidates.insert(
+            key,
+            ScannedCandidate::Folder {
+                candidate,
+                actionable: false,
+                skipped,
+                is_added,
+            },
+        );
+        contradicted_actionable
     }
 
     /// [`Self::upsert_folder`] for a folder that failed validation.
-    pub(super) fn upsert_invalid(&mut self, candidate: InvalidCandidate) {
-        self.candidates.insert(
-            candidate.path.to_string_lossy().into_owned(),
-            ScannedCandidate::Invalid(candidate),
+    pub(super) fn upsert_invalid(&mut self, candidate: InvalidCandidate) -> bool {
+        let key = candidate.path.to_string_lossy().into_owned();
+        for resolved in &candidate.resolved_boundaries {
+            self.boundaries.remove(&resolved.key);
+        }
+        let replaced_folder = matches!(
+            self.candidates.get(&key),
+            Some(ScannedCandidate::Folder { .. })
         );
+        if replaced_folder {
+            self.runtime.remove(&key);
+        }
+        self.candidates
+            .insert(key, ScannedCandidate::Invalid(candidate));
+        replaced_folder
+    }
+
+    pub(super) fn upsert_boundary(&mut self, boundary: FolderReleaseBoundary) -> Vec<String> {
+        let removed = boundary.candidate_keys.clone();
+        for key in &removed {
+            self.candidates.remove(key);
+            self.runtime.remove(key);
+        }
+        self.boundaries.insert(boundary.key.clone(), boundary);
+        removed
+    }
+
+    pub(super) fn apply_release_decisions(
+        &mut self,
+        decisions: &[(FolderReleaseDecisionKey, FolderReleaseDecision)],
+    ) -> Vec<String> {
+        let persisted_keys: HashSet<String> = decisions
+            .iter()
+            .flat_map(|(key, _)| self.persisted_keys_for_root(Path::new(&key.watched_folder_path)))
+            .collect();
+        let removed = crate::import::folder_scanner::release_decision_removed_keys(
+            &persisted_keys,
+            decisions,
+        );
+        for (key, _) in decisions {
+            self.boundaries.remove(key);
+        }
+        for candidate_key in &removed {
+            self.candidates.remove(candidate_key);
+            self.runtime.remove(candidate_key);
+        }
+        removed
+    }
+
+    pub(super) fn begin_root_scan(&mut self, root: &Path, generation: u64) {
+        let root = root.to_string_lossy().into_owned();
+        self.root_generations.insert(root.clone(), generation);
+        self.folder_scan_statuses
+            .insert(root, FolderScanStatus::Scanning);
+    }
+
+    fn persisted_keys_for_root(&self, root: &Path) -> HashSet<String> {
+        let root = root.to_string_lossy();
+        self.candidates
+            .iter()
+            .filter(|(_, candidate)| {
+                Self::candidate_watched_folder_path(candidate) == root.as_ref()
+            })
+            .map(|(key, _)| key.clone())
+            .chain(
+                self.boundaries
+                    .keys()
+                    .filter(|key| key.watched_folder_path == root.as_ref())
+                    .map(|key| {
+                        Path::new(&key.watched_folder_path)
+                            .join(&key.relative_folder_path)
+                            .to_string_lossy()
+                            .into_owned()
+                    }),
+            )
+            .collect()
+    }
+
+    pub(super) fn persisted_removals_for_item(
+        &self,
+        root: &Path,
+        item: &crate::import::folder_scanner::ScanItem,
+    ) -> Vec<String> {
+        let before = self.persisted_keys_for_root(root);
+        let mut after = self.clone();
+        after.apply_scan_item(item.clone(), false, false);
+        let after = after.persisted_keys_for_root(root);
+        before.difference(&after).cloned().collect()
+    }
+
+    pub(super) fn apply_scan_item(
+        &mut self,
+        item: crate::import::folder_scanner::ScanItem,
+        skipped: bool,
+        is_added: bool,
+    ) -> Vec<String> {
+        match item {
+            crate::import::folder_scanner::ScanItem::Discovered(candidate) => {
+                let key = candidate.path.to_string_lossy().into_owned();
+                self.upsert_discovered(candidate, skipped, is_added)
+                    .then_some(key)
+                    .into_iter()
+                    .collect()
+            }
+            crate::import::folder_scanner::ScanItem::Valid(candidate) => {
+                self.upsert_folder(candidate, skipped, is_added)
+            }
+            crate::import::folder_scanner::ScanItem::Invalid(candidate) => {
+                let key = candidate.path.to_string_lossy().into_owned();
+                self.upsert_invalid(candidate)
+                    .then_some(key)
+                    .into_iter()
+                    .collect()
+            }
+            crate::import::folder_scanner::ScanItem::Boundary(boundary) => {
+                self.upsert_boundary(boundary)
+            }
+        }
+    }
+
+    pub(super) fn apply_scan_item_if_current(
+        &mut self,
+        root: &Path,
+        generation: u64,
+        item: crate::import::folder_scanner::ScanItem,
+        skipped: bool,
+        is_added: bool,
+    ) -> Option<Vec<String>> {
+        self.generation_is_current(root, generation)
+            .then(|| self.apply_scan_item(item, skipped, is_added))
+    }
+
+    pub(super) fn restore_folder_scans(
+        &mut self,
+        snapshots: Vec<crate::db::DbFolderScanSnapshot>,
+        watched_roots: &HashSet<String>,
+        folder_registry: &ImportFolderRegistry,
+        imported_content_hashes: &HashSet<String>,
+    ) -> Result<(), crate::import::ImportError> {
+        for snapshot in snapshots {
+            if !watched_roots.contains(&snapshot.watched_folder_path) {
+                continue;
+            }
+            self.root_generations
+                .insert(snapshot.watched_folder_path.clone(), snapshot.generation);
+            self.folder_scan_statuses
+                .insert(snapshot.watched_folder_path, snapshot.status);
+            for item in snapshot.items {
+                let (skipped, is_added) = match &item {
+                    crate::import::folder_scanner::ScanItem::Discovered(candidate)
+                    | crate::import::folder_scanner::ScanItem::Valid(candidate) => (
+                        folder_registry
+                            .is_skipped(&candidate.watched_folder_path, &candidate.path)?,
+                        imported_content_hashes.contains(&candidate.files.content_hash()),
+                    ),
+                    crate::import::folder_scanner::ScanItem::Invalid(_)
+                    | crate::import::folder_scanner::ScanItem::Boundary(_) => (false, false),
+                };
+                self.apply_scan_item(item, skipped, is_added);
+            }
+        }
+        Ok(())
+    }
+
+    pub(super) fn generation_is_current(&self, root: &Path, generation: u64) -> bool {
+        self.root_generations.get(root.to_string_lossy().as_ref()) == Some(&generation)
+    }
+
+    pub(super) fn fail_root_scan(&mut self, root: &Path, generation: u64, error: String) -> bool {
+        if !self.generation_is_current(root, generation) {
+            return false;
+        }
+        self.folder_scan_statuses.insert(
+            root.to_string_lossy().into_owned(),
+            FolderScanStatus::Failed { error },
+        );
+        true
     }
 
     /// Drop every candidate under `root` whose key is not in `keep`, returning
@@ -178,6 +490,35 @@ impl ImportCandidateState {
         removed
     }
 
+    pub(super) fn retain_root_boundaries(
+        &mut self,
+        root: &Path,
+        keep: &HashSet<FolderReleaseDecisionKey>,
+    ) {
+        let root = root.to_string_lossy();
+        self.boundaries
+            .retain(|key, _| key.watched_folder_path != root.as_ref() || keep.contains(key));
+    }
+
+    pub(super) fn finish_root_scan(
+        &mut self,
+        root: &Path,
+        generation: u64,
+        candidate_keys: &HashSet<String>,
+        boundary_keys: &HashSet<FolderReleaseDecisionKey>,
+    ) -> Option<Vec<String>> {
+        if !self.generation_is_current(root, generation) {
+            return None;
+        }
+        let removed = self.retain_root(root, candidate_keys);
+        self.retain_root_boundaries(root, boundary_keys);
+        self.folder_scan_statuses.insert(
+            root.to_string_lossy().into_owned(),
+            FolderScanStatus::Complete,
+        );
+        Some(removed)
+    }
+
     /// Drop every candidate under `root` (and its runtime), returning the
     /// removed candidate keys so the caller can announce them on the bus.
     pub(super) fn remove_root(&mut self, root: &Path) -> Vec<String> {
@@ -196,30 +537,135 @@ impl ImportCandidateState {
         for key in &removed {
             self.runtime.remove(key);
         }
+        self.boundaries
+            .retain(|key, _| key.watched_folder_path != root_key.as_ref());
+        self.folder_scan_statuses.remove(root_key.as_ref());
+        self.root_generations.remove(root_key.as_ref());
         removed
     }
 
     pub(super) fn set_skipped(&mut self, key: &str, skipped: bool) {
-        if let Some(ScannedCandidate::Folder(candidate)) = self.candidates.get_mut(key) {
-            candidate.skipped = skipped;
+        if let Some(ScannedCandidate::Folder {
+            skipped: candidate_skipped,
+            ..
+        }) = self.candidates.get_mut(key)
+        {
+            *candidate_skipped = skipped;
         }
     }
 
-    /// Replace a candidate's files with a re-derived set — the roles after a
-    /// sheet binding changed — and hand back the candidate that results, which
-    /// is what the change is announced with. The candidate's runtime is
-    /// untouched, like an upsert's: the change is to what the folder *is*, not
-    /// to what is being done about it.
-    pub(super) fn set_files(
+    pub(super) fn release_boundary_ancestor_keys(
+        &self,
+        key: &FolderReleaseDecisionKey,
+    ) -> Option<Vec<FolderReleaseDecisionKey>> {
+        if self.boundaries.contains_key(key)
+            || self.candidates.values().any(|candidate| {
+                matches!(
+                    candidate,
+                    ScannedCandidate::Folder { candidate, .. }
+                        if candidate.resolved_boundaries.iter().any(|resolved| resolved.key == *key)
+                ) || matches!(
+                    candidate,
+                    ScannedCandidate::Invalid(candidate)
+                        if candidate.resolved_boundaries.iter().any(|resolved| resolved.key == *key)
+                )
+            })
+        {
+            return Some(Vec::new());
+        }
+        let grouped_candidates = self
+            .candidates
+            .values()
+            .filter(|candidate| {
+                let (watched_folder_path, display_path) = match candidate {
+                    ScannedCandidate::Folder { candidate, .. } => (
+                        candidate.watched_folder_path.as_str(),
+                        candidate.display_path.as_str(),
+                    ),
+                    ScannedCandidate::Invalid(candidate) => (
+                        candidate.watched_folder_path.as_str(),
+                        candidate.display_path.as_str(),
+                    ),
+                };
+                watched_folder_path == key.watched_folder_path
+                    && display_path
+                        .split('/')
+                        .next()
+                        .is_some_and(|first| first == key.relative_folder_path)
+            })
+            .count();
+        let grouped_boundaries = self.boundaries.values().any(|boundary| {
+            boundary.key.watched_folder_path == key.watched_folder_path
+                && boundary
+                    .display_path
+                    .split('/')
+                    .next()
+                    .is_some_and(|first| first == key.relative_folder_path)
+        });
+        if !key.relative_folder_path.contains('/')
+            && (grouped_candidates >= 1 || grouped_boundaries)
+        {
+            return Some(Vec::new());
+        }
+        let row = self
+            .boundaries
+            .values()
+            .flat_map(|boundary| &boundary.tree_rows)
+            .find(|row| row.decision_key == *key)?;
+        Some(row.ancestor_decision_keys.clone())
+    }
+
+    pub(super) fn files_for_identity(
+        &self,
+        content_hash: &str,
+        edit_revision: u64,
+    ) -> Vec<(String, crate::import::folder_scanner::CategorizedFiles)> {
+        self.candidates
+            .iter()
+            .filter_map(|(key, scanned)| match scanned {
+                ScannedCandidate::Folder { candidate, .. }
+                    if candidate.files.content_hash() == content_hash
+                        && candidate.file_edit_revision == edit_revision =>
+                {
+                    Some((key.clone(), candidate.files.clone()))
+                }
+                _ => None,
+            })
+            .collect()
+    }
+
+    /// Advance every path that shares one stored file-decision identity. The
+    /// caller derives all replacement file sets before the database write and
+    /// holds the folder-state commit lock, so this either applies the exact
+    /// matching set or reports an invariant break.
+    pub(super) fn set_files_for_identity(
         &mut self,
-        key: &str,
-        files: crate::import::folder_scanner::CategorizedFiles,
-    ) -> Option<FolderCandidate> {
-        let Some(ScannedCandidate::Folder(candidate)) = self.candidates.get_mut(key) else {
+        expected_content_hash: &str,
+        expected_edit_revision: u64,
+        settled: Vec<(String, crate::import::folder_scanner::CategorizedFiles)>,
+        next_edit_revision: u64,
+    ) -> Option<Vec<FolderCandidate>> {
+        let expected_keys: HashSet<_> = self
+            .files_for_identity(expected_content_hash, expected_edit_revision)
+            .into_iter()
+            .map(|(key, _)| key)
+            .collect();
+        let settled_keys: HashSet<_> = settled.iter().map(|(key, _)| key.clone()).collect();
+        if expected_keys.is_empty() || expected_keys != settled_keys {
             return None;
-        };
-        candidate.files = files;
-        Some(candidate.clone())
+        }
+        let mut updated = Vec::with_capacity(settled.len());
+        for (key, files) in settled {
+            let Some(ScannedCandidate::Folder { candidate, .. }) = self.candidates.get_mut(&key)
+            else {
+                return None;
+            };
+            candidate.files = files;
+            candidate.file_edit_revision = next_edit_revision;
+            self.runtime.remove(&key);
+            updated.push(candidate.clone());
+        }
+        Some(updated)
     }
 
     pub(super) fn record_event(&mut self, event: &ImportEvent) {
@@ -303,11 +749,19 @@ impl ImportCandidateState {
         let mut invalid_candidates = Vec::new();
         for (key, candidate) in &self.candidates {
             match candidate {
-                ScannedCandidate::Folder(candidate) => folder_candidates.push((
+                ScannedCandidate::Folder {
+                    candidate,
+                    actionable,
+                    skipped,
+                    is_added,
+                } => folder_candidates.push((
                     key.as_str(),
                     FolderImportCandidateSnapshot {
                         candidate: candidate.clone(),
                         runtime: self.runtime_for(key),
+                        actionable: *actionable,
+                        skipped: *skipped,
+                        is_added: *is_added,
                     },
                 )),
                 ScannedCandidate::Invalid(candidate) => {
@@ -315,30 +769,49 @@ impl ImportCandidateState {
                 }
             }
         }
-        fn sort_by_watched_folder<T, F, G>(
-            candidates: &mut [(&str, T)],
-            order_for: &F,
-            watched_folder_path: G,
-        ) where
-            F: Fn(&str) -> usize,
-            G: Fn(&T) -> &str,
-        {
-            candidates.sort_by(|(left_key, left), (right_key, right)| {
-                order_for(watched_folder_path(left))
-                    .cmp(&order_for(watched_folder_path(right)))
-                    .then_with(|| left_key.cmp(right_key))
-            });
-        }
-        sort_by_watched_folder(
-            &mut folder_candidates,
-            &order_for,
-            |candidate: &FolderImportCandidateSnapshot| &candidate.candidate.watched_folder_path,
-        );
-        sort_by_watched_folder(
-            &mut invalid_candidates,
-            &order_for,
-            |candidate: &InvalidCandidate| &candidate.watched_folder_path,
-        );
+        folder_candidates.sort_by(|(_, left), (_, right)| {
+            order_for(&left.candidate.watched_folder_path)
+                .cmp(&order_for(&right.candidate.watched_folder_path))
+                .then_with(|| {
+                    natord::compare(&left.candidate.display_path, &right.candidate.display_path)
+                })
+        });
+        invalid_candidates.sort_by(|(_, left), (_, right)| {
+            order_for(&left.watched_folder_path)
+                .cmp(&order_for(&right.watched_folder_path))
+                .then_with(|| natord::compare(&left.display_path, &right.display_path))
+        });
+
+        let mut boundaries: Vec<_> = self.boundaries.values().cloned().collect();
+        boundaries.sort_by(|left, right| {
+            order_for(&left.key.watched_folder_path)
+                .cmp(&order_for(&right.key.watched_folder_path))
+                .then_with(|| {
+                    left.key
+                        .relative_folder_path
+                        .cmp(&right.key.relative_folder_path)
+                })
+        });
+        let mut folder_scan_statuses: Vec<_> = self
+            .folder_scan_statuses
+            .iter()
+            .map(|(watched_folder_path, status)| {
+                let watched_folder = watched_folders
+                    .iter()
+                    .find(|folder| folder.path == *watched_folder_path)
+                    .expect("a scan status belongs to a watched folder");
+                WatchedFolderScanStatus {
+                    watched_folder_path: watched_folder_path.clone(),
+                    watched_folder_name: watched_folder.name.clone(),
+                    status: status.clone(),
+                }
+            })
+            .collect();
+        folder_scan_statuses.sort_by(|left, right| {
+            order_for(&left.watched_folder_path)
+                .cmp(&order_for(&right.watched_folder_path))
+                .then_with(|| left.watched_folder_path.cmp(&right.watched_folder_path))
+        });
 
         ImportCandidatesSnapshot {
             watched_folders,
@@ -350,6 +823,8 @@ impl ImportCandidateState {
                 .into_iter()
                 .map(|(_, candidate)| candidate)
                 .collect(),
+            boundaries,
+            folder_scan_statuses,
         }
     }
 
@@ -363,14 +838,48 @@ impl ImportCandidateState {
             });
         }
         self.candidates.get(key).map(|candidate| match candidate {
-            ScannedCandidate::Folder(candidate) => ImportCandidateSnapshot::Folder {
+            ScannedCandidate::Folder {
+                candidate,
+                actionable,
+                skipped,
+                is_added,
+            } => ImportCandidateSnapshot::Folder {
                 candidate: candidate.clone(),
                 runtime: self.runtime_for(key),
+                actionable: *actionable,
+                skipped: *skipped,
+                is_added: *is_added,
             },
             ScannedCandidate::Invalid(candidate) => {
                 ImportCandidateSnapshot::Invalid(candidate.clone())
             }
         })
+    }
+
+    fn sweepable_candidate_for_identity(
+        &self,
+        content_hash: &str,
+        edit_revision: u64,
+    ) -> Option<FolderCandidate> {
+        self.candidates
+            .iter()
+            .find_map(|(key, scanned)| match scanned {
+                ScannedCandidate::Folder {
+                    candidate,
+                    actionable: true,
+                    skipped: false,
+                    is_added: false,
+                } if candidate.files.content_hash() == content_hash
+                    && candidate.file_edit_revision == edit_revision
+                    && self
+                        .runtime
+                        .get(key)
+                        .is_none_or(|runtime| runtime.import_status.is_none()) =>
+                {
+                    Some(candidate.clone())
+                }
+                _ => None,
+            })
     }
 }
 
@@ -524,10 +1033,9 @@ pub struct ImportServiceHandle {
     pub(crate) event_tx: broadcast::Sender<ImportEvent>,
     folder_registry: Arc<Mutex<ImportFolderRegistry>>,
     candidate_state: Arc<Mutex<ImportCandidateState>>,
+    folder_state_commit: Arc<tokio::sync::Mutex<()>>,
     watcher_tx: mpsc::UnboundedSender<WatcherCommand>,
-    /// Installs/uninstalls OS-level folder watches, atomic with the registry
-    /// mutation in `add_watched_folder`/`remove_watched_folder`.
-    folder_watcher: Arc<crate::import::service::FolderWatcher>,
+    watcher_thread: Arc<Mutex<Option<std::thread::JoinHandle<()>>>>,
     runtime_handle: tokio::runtime::Handle,
     cover_art_archive: CoverArtArchiveClient,
 }
@@ -539,12 +1047,22 @@ pub enum ScanEvent {
     WatchedFoldersChanged {
         folders: Vec<WatchedFolder>,
     },
-    FolderCandidate(FolderCandidate),
+    FolderCandidate {
+        candidate: FolderCandidate,
+        skipped: bool,
+        is_added: bool,
+    },
+    CandidateDiscovered {
+        candidate: FolderCandidate,
+        skipped: bool,
+        is_added: bool,
+    },
     /// A leaf folder that looks like a release but failed validation
     /// (corrupt/zero-byte audio, corrupt image, CUE referencing missing audio).
     /// The reducer surfaces it under the Skipped tab with its reason. The key is
     /// the folder path, shared with `CandidateRemoved` for reconciliation.
     InvalidCandidate(InvalidCandidate),
+    FolderReleaseBoundary(FolderReleaseBoundary),
     /// A candidate is gone: the watcher re-scanned its folder and the release
     /// no longer resolves on disk, or the folder it belonged to stopped being
     /// watched (one event per candidate the folder held). The reducer removes
@@ -571,33 +1089,49 @@ pub enum ScanEvent {
     CandidateBindingChanged {
         candidate: FolderCandidate,
     },
-    /// A folder scan could not read the watched root. Previous candidates are
-    /// left in place because the scan did not produce a replacement snapshot.
-    Failed {
-        error: String,
+    CandidateVerdictStored {
+        candidate_key: String,
+    },
+    FolderScanStatusChanged {
+        status: WatchedFolderScanStatus,
     },
     Finished,
 }
 
-/// Commands to the folder-watch reconciliation task. OS watch installation
-/// itself happens synchronously in the handle (`FolderWatcher`, atomic with
-/// the registry mutation) before this is sent. `Rescan` re-scans a folder and
-/// reconciles its candidates against what the walk reports.
+/// Commands to the folder-watch reconciliation task. The scan installs OS
+/// watches from blocking work as directories are reached; synchronous callers
+/// only persist intent and enqueue commands.
 pub(crate) enum WatcherCommand {
     Rescan(std::path::PathBuf),
+    Refresh {
+        path: std::path::PathBuf,
+        completion: tokio::sync::oneshot::Sender<Result<(), String>>,
+    },
+    SetFolderReleaseDecision {
+        target: (FolderReleaseDecisionKey, FolderReleaseDecision),
+        completion: tokio::sync::oneshot::Sender<Result<(), String>>,
+    },
+    Remove {
+        path: std::path::PathBuf,
+        completion: tokio::sync::oneshot::Sender<Result<(), String>>,
+    },
+    Shutdown {
+        completion: std::sync::mpsc::Sender<()>,
+    },
 }
 
 impl ImportServiceHandle {
     pub(crate) fn new(
         requests_tx: mpsc::UnboundedSender<crate::import::service::ImportWorkerMessage>,
         worker_thread: std::thread::JoinHandle<()>,
+        watcher_thread: std::thread::JoinHandle<()>,
         library_manager: LibraryManager,
         runtime_handle: tokio::runtime::Handle,
         watcher_tx: mpsc::UnboundedSender<WatcherCommand>,
         event_tx: broadcast::Sender<ImportEvent>,
         folder_registry: Arc<Mutex<ImportFolderRegistry>>,
         candidate_state: Arc<Mutex<ImportCandidateState>>,
-        folder_watcher: Arc<crate::import::service::FolderWatcher>,
+        folder_state_commit: Arc<tokio::sync::Mutex<()>>,
         cover_art_archive: CoverArtArchiveClient,
     ) -> Self {
         Self {
@@ -607,8 +1141,9 @@ impl ImportServiceHandle {
             event_tx,
             folder_registry,
             candidate_state,
+            folder_state_commit,
             watcher_tx,
-            folder_watcher,
+            watcher_thread: Arc::new(Mutex::new(Some(watcher_thread))),
             runtime_handle,
             cover_art_archive,
         }
@@ -621,6 +1156,20 @@ impl ImportServiceHandle {
     /// channel closure: `self` holds a live sender, so the channel can't close
     /// before the join.
     pub fn stop_and_join(&self) {
+        if let Some(watcher_thread) = self.watcher_thread.lock().unwrap().take() {
+            let (completion, receiver) = std::sync::mpsc::channel();
+            if self
+                .watcher_tx
+                .send(WatcherCommand::Shutdown { completion })
+                .is_ok()
+                && receiver.recv().is_err()
+            {
+                tracing::warn!("folder scan coordinator ended without acknowledging shutdown");
+            }
+            if let Err(panic) = watcher_thread.join() {
+                tracing::warn!("folder scan coordinator panicked before join: {panic:?}");
+            }
+        }
         let Some(join_handle) = self.worker_thread.lock().unwrap().take() else {
             return;
         };
@@ -655,6 +1204,43 @@ impl ImportServiceHandle {
 
     pub fn get_candidate(&self, key: &str) -> Option<ImportCandidateSnapshot> {
         self.candidate_state.lock().unwrap().get(key)
+    }
+
+    pub(crate) fn sweepable_candidate_for_identity(
+        &self,
+        content_hash: &str,
+        edit_revision: u64,
+    ) -> Option<FolderCandidate> {
+        self.candidate_state
+            .lock()
+            .unwrap()
+            .sweepable_candidate_for_identity(content_hash, edit_revision)
+    }
+
+    pub(crate) async fn save_candidate_verdict_if_current(
+        &self,
+        candidate_key: &str,
+        row: &crate::db::NewImportCandidateVerdict,
+    ) -> Result<bool, crate::library::LibraryError> {
+        let _commit = self.folder_state_commit.lock().await;
+        let current = matches!(
+            self.candidate_state.lock().unwrap().get(candidate_key),
+            Some(ImportCandidateSnapshot::Folder {
+                candidate,
+                runtime,
+                actionable: true,
+                skipped: false,
+                is_added: false,
+            }) if candidate.files.content_hash() == row.content_hash
+                && candidate.file_edit_revision == row.expected_edit_revision
+                && runtime.import_status.is_none()
+        );
+        if !current {
+            return Ok(false);
+        }
+        self.library_manager
+            .save_import_candidate_verdict(row)
+            .await
     }
 }
 

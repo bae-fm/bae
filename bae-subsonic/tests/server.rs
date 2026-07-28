@@ -12,7 +12,9 @@ use axum::Router;
 use bae_core::config::SubsonicCredential;
 use bae_core::db::{Database, DbAlbum, DbArtist, DbRelease, DbTrack};
 use bae_core::discogs::models::{DiscogsArtist, DiscogsRelease, DiscogsTrack};
-use bae_core::import::{IdentityChoice, ImportCommand, MetadataRef, MetadataSource, StorageMode};
+use bae_core::import::{
+    IdentityChoice, ImportCommand, MetadataRef, MetadataSource, ReleaseFileScope, StorageMode,
+};
 use bae_core::library::LibraryManager;
 use bae_test_support as support;
 use coven::StoreDir;
@@ -188,13 +190,15 @@ async fn seed_library() -> Library {
     );
     support::write_cover_png(&pt_dir.join("cover.png"));
 
-    let import = support::start_test_import(tokio::runtime::Handle::current(), manager.clone());
+    let import =
+        support::start_test_import(tokio::runtime::Handle::current(), manager.clone()).await;
     let import_id = "pt".to_string();
     import
         .send_command(ImportCommand {
             import_id: import_id.clone(),
             candidate_key: "pt".to_string(),
             folder: pt_dir,
+            scope: ReleaseFileScope::Recursive,
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
@@ -221,13 +225,15 @@ async fn seed_library() -> Library {
     )
     .unwrap();
     let discogs_key = support::seed_discogs_test_release(cue_discogs_release());
-    let cue_import = support::start_test_import(tokio::runtime::Handle::current(), manager.clone());
+    let cue_import =
+        support::start_test_import(tokio::runtime::Handle::current(), manager.clone()).await;
     let cue_id = "cue".to_string();
     cue_import
         .send_command(ImportCommand {
             import_id: cue_id.clone(),
             candidate_key: "cue".to_string(),
             folder: cue_dir,
+            scope: ReleaseFileScope::Recursive,
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
@@ -1059,13 +1065,15 @@ async fn seed_lossy_release() -> (LibraryManager, String, Vec<TempDir>) {
         tracklist: vec![cue_track("1", "Only Track")],
         master_id: None,
     });
-    let import = support::start_test_import(tokio::runtime::Handle::current(), manager.clone());
+    let import =
+        support::start_test_import(tokio::runtime::Handle::current(), manager.clone()).await;
     let import_id = "lossy".to_string();
     import
         .send_command(ImportCommand {
             import_id: import_id.clone(),
             candidate_key: "lossy".to_string(),
             folder: dir,
+            scope: ReleaseFileScope::Recursive,
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,

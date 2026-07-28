@@ -43,17 +43,6 @@ struct ImportFixture {
 
 impl ImportFixture {
     async fn new() -> Self {
-        Self::new_with_seed(|_library_dir| {}).await
-    }
-
-    /// Build the fixture, running `seed` against the library dir after the DB
-    /// and config exist but before `ImportService::start` loads the
-    /// watched-folder registry from disk. Lets a test seed
-    /// `import_folders.yaml` with a folder the service has never itself
-    /// installed a watch for — e.g. one that existed when added but is gone
-    /// by the time the service starts, as when an external drive is
-    /// unplugged across an app restart.
-    async fn new_with_seed(seed: impl FnOnce(&StoreDir)) -> Self {
         let temp = TempDir::new().unwrap();
         let db_dir = temp.path().join("db");
         fs::create_dir_all(&db_dir).unwrap();
@@ -78,14 +67,14 @@ impl ImportFixture {
             tokio::runtime::Handle::current(),
         );
 
-        seed(&library_dir);
-
         let cover_art = bae_core::import::cover_art::CoverArtArchiveClient::hermetic();
         let handle = ImportService::start(
             tokio::runtime::Handle::current(),
             library_manager.clone(),
             cover_art.clone(),
-        );
+        )
+        .await
+        .expect("import service starts");
 
         Self {
             db,
@@ -132,6 +121,7 @@ async fn import_folder(
             import_id: import_id.clone(),
             candidate_key: "test".to_string(),
             folder: album_dir.to_path_buf(),
+            scope: bae_core::import::ReleaseFileScope::Recursive,
             selected_cover,
             storage_mode,
             pin: false,
@@ -371,13 +361,14 @@ async fn folder_scan_produces_candidates() {
     let mut scan_rx = f.handle.subscribe_folder_scan_events();
     f.handle
         .add_watched_folder(collection.to_string_lossy().into_owned())
+        .await
         .unwrap();
 
     let mut candidates = vec![];
     let deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(5);
     loop {
         match tokio::time::timeout(std::time::Duration::from_millis(100), scan_rx.recv()).await {
-            Ok(Some(ScanEvent::FolderCandidate(c))) => {
+            Ok(Some(ScanEvent::FolderCandidate { candidate: c, .. })) => {
                 candidates.push(c);
             }
             Ok(Some(ScanEvent::Finished)) => break,
@@ -419,10 +410,11 @@ async fn watcher_reconciles_added_and_removed_candidates() {
     let mut scan_rx = f.handle.subscribe_folder_scan_events();
     f.handle
         .add_watched_folder(collection.to_string_lossy().into_owned())
+        .await
         .unwrap();
 
     let first = scan_batch_until(&mut scan_rx, "the first album's candidate", |e| {
-        matches!(e, ScanEvent::FolderCandidate(c) if c.path.to_str() == Some(album1_key.as_str()))
+        matches!(e, ScanEvent::FolderCandidate { candidate: c, .. } if c.path.to_str() == Some(album1_key.as_str()))
     })
     .await;
     assert!(
@@ -442,7 +434,7 @@ async fn watcher_reconciles_added_and_removed_candidates() {
     f.handle.scan_watched_folders().unwrap();
 
     let second = scan_batch_until(&mut scan_rx, "the newly-added folder's candidate", |e| {
-        matches!(e, ScanEvent::FolderCandidate(c) if c.path.to_str() == Some(album2_key.as_str()))
+        matches!(e, ScanEvent::FolderCandidate { candidate: c, .. } if c.path.to_str() == Some(album2_key.as_str()))
     })
     .await;
     assert!(
@@ -491,7 +483,7 @@ async fn scan_batch_until(
             Ok(Some(event)) => {
                 let finished = done(&event);
                 match &event {
-                    ScanEvent::FolderCandidate(c) => {
+                    ScanEvent::FolderCandidate { candidate: c, .. } => {
                         added.push(c.path.to_string_lossy().into_owned())
                     }
                     ScanEvent::CandidateRemoved { candidate_key } => {
@@ -567,10 +559,13 @@ async fn remove_watched_folder_drops_folder_and_candidates() {
     let collection_key = collection.to_string_lossy().into_owned();
 
     let mut scan_rx = f.handle.subscribe_folder_scan_events();
-    f.handle.add_watched_folder(collection_key.clone()).unwrap();
+    f.handle
+        .add_watched_folder(collection_key.clone())
+        .await
+        .unwrap();
 
     let batch = scan_batch_until(&mut scan_rx, "the album candidate", |e| {
-        matches!(e, ScanEvent::FolderCandidate(c) if c.path.to_str() == Some(album_key.as_str()))
+        matches!(e, ScanEvent::FolderCandidate { candidate: c, .. } if c.path.to_str() == Some(album_key.as_str()))
     })
     .await;
     assert!(
@@ -595,6 +590,7 @@ async fn remove_watched_folder_drops_folder_and_candidates() {
 
     f.handle
         .remove_watched_folder(collection_key.clone())
+        .await
         .unwrap();
 
     // The list accessor and the reducer both reflect the removal synchronously.
@@ -628,58 +624,83 @@ async fn remove_watched_folder_drops_folder_and_candidates() {
     assert!(
         !after_unwatch
             .iter()
-            .any(|event| matches!(event, ScanEvent::FolderCandidate(_))),
+            .any(|event| matches!(event, ScanEvent::FolderCandidate { candidate: _, .. })),
         "an unwatched folder must not surface new candidates, got {after_unwatch:?}",
     );
 }
 
-/// Watch installation is atomic with the registry mutation: a path that can't
-/// actually be watched (here, one that never existed) must not end up
-/// persisted as watched. Persisting an unwatchable folder while reporting
-/// success would strand it: install attempts are keyed on success, so nothing
-/// ever retries, and filesystem changes under it never propagate.
 #[tokio::test]
-async fn add_watched_folder_fails_loud_on_nonexistent_path() {
+async fn unavailable_watched_folder_remains_durable_and_reports_scan_failure() {
     support::tracing_init();
     let f = ImportFixture::new().await;
 
     let missing = f.temp_path().join("does-not-exist");
     let missing_key = missing.to_string_lossy().into_owned();
 
-    let result = f.handle.add_watched_folder(missing_key);
-    assert!(
-        result.is_err(),
-        "watching a nonexistent path must fail, not silently succeed"
-    );
-    assert!(
-        f.handle.watched_folders().is_empty(),
-        "a failed watch must not leave the folder in the persisted registry"
-    );
+    f.handle
+        .add_watched_folder(missing_key.clone())
+        .await
+        .unwrap();
+    let deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(5);
+    loop {
+        let snapshot = f.handle.get_import_candidates();
+        if snapshot.folder_scan_statuses.iter().any(|status| {
+            status.watched_folder_path == missing_key
+                && matches!(
+                    status.status,
+                    bae_core::import::FolderScanStatus::Failed { .. }
+                )
+        }) {
+            break;
+        }
+        assert!(
+            tokio::time::Instant::now() < deadline,
+            "unavailable watched root did not report a failed scan"
+        );
+        tokio::task::yield_now().await;
+    }
+    assert_eq!(f.handle.watched_folders().len(), 1);
 }
 
-/// The registry can carry a folder the running service has never itself
-/// installed a watch for — e.g. an external drive that was watched, then
-/// unplugged, and the app restarted while it was still absent. Re-scanning on
-/// app start must fail loud instead of reporting success for a folder it
-/// couldn't actually watch.
+/// A refresh is the awaited scan operation. If a watched root disappears, it
+/// reports the failure, records the failed status, and preserves the last
+/// candidate snapshot rather than turning an unavailable filesystem into
+/// removals.
 #[tokio::test]
-async fn scan_watched_folders_fails_loud_on_missing_folder() {
+async fn refresh_missing_watched_folder_fails_and_preserves_candidates() {
     support::tracing_init();
-    let f = ImportFixture::new_with_seed(|library_dir| {
-        let mut registry = bae_core::import::ImportFolderRegistry::load(library_dir);
-        let key = library_dir
-            .join("unplugged-drive")
-            .to_string_lossy()
-            .into_owned();
-        registry.add(library_dir, key).unwrap();
-    })
-    .await;
+    let f = ImportFixture::new().await;
+    let root = f.temp_path().join("unplugged-drive");
+    let album = root.join("Artist - Album");
+    fs::create_dir_all(&album).unwrap();
+    generate_album_files(&album, &["01 Track.flac"]);
+    let root_key = root.to_string_lossy().into_owned();
+    let album_key = album.to_string_lossy().into_owned();
+    f.handle.add_watched_folder(root_key.clone()).await.unwrap();
+    f.handle
+        .refresh_watched_folder(root_key.clone())
+        .await
+        .unwrap();
 
-    let result = f.handle.scan_watched_folders();
+    fs::remove_dir_all(&root).unwrap();
+    let result = f.handle.refresh_watched_folder(root_key.clone()).await;
     assert!(
         result.is_err(),
-        "scanning a registry entry whose folder is missing must fail loud, not report success"
+        "refreshing a missing watched folder must fail"
     );
+    let snapshot = f.handle.get_import_candidates();
+    assert!(snapshot.folder_candidates.iter().any(|candidate| candidate
+        .candidate
+        .path
+        .to_string_lossy()
+        == album_key));
+    assert!(snapshot.folder_scan_statuses.iter().any(|status| {
+        status.watched_folder_path == root_key
+            && matches!(
+                status.status,
+                bae_core::import::FolderScanStatus::Failed { .. }
+            )
+    }));
 }
 
 /// `set_candidate_skipped` flips the reducer's skip flag and broadcasts
@@ -699,9 +720,10 @@ async fn set_candidate_skipped_flips_flag_and_is_idempotent() {
     let mut scan_rx = f.handle.subscribe_folder_scan_events();
     f.handle
         .add_watched_folder(collection.to_string_lossy().into_owned())
+        .await
         .unwrap();
     let batch = scan_batch_until(&mut scan_rx, "the album candidate", |e| {
-        matches!(e, ScanEvent::FolderCandidate(c) if c.path.to_str() == Some(album_key.as_str()))
+        matches!(e, ScanEvent::FolderCandidate { candidate: c, .. } if c.path.to_str() == Some(album_key.as_str()))
     })
     .await;
     assert!(batch.added.contains(&album_key));
@@ -713,13 +735,13 @@ async fn set_candidate_skipped_flips_flag_and_is_idempotent() {
             .iter()
             .find(|c| c.candidate.path == album)
             .expect("candidate present")
-            .candidate
             .skipped
     };
     assert!(!skipped_of(&f), "candidate starts unskipped");
 
     f.handle
         .set_candidate_skipped(album_key.clone(), true)
+        .await
         .unwrap();
     assert!(skipped_of(&f), "skip flag flips in the reducer");
     wait_for_scan_event(
@@ -738,6 +760,7 @@ async fn set_candidate_skipped_flips_flag_and_is_idempotent() {
     // A redundant skip=true request is a no-op: no event, flag unchanged.
     f.handle
         .set_candidate_skipped(album_key.clone(), true)
+        .await
         .unwrap();
     assert!(skipped_of(&f));
     let events = drain_scan_events(&mut scan_rx, std::time::Duration::from_millis(300)).await;
@@ -750,6 +773,7 @@ async fn set_candidate_skipped_flips_flag_and_is_idempotent() {
 
     f.handle
         .set_candidate_skipped(album_key.clone(), false)
+        .await
         .unwrap();
     assert!(!skipped_of(&f), "unskip flips the flag back");
 }
@@ -783,6 +807,7 @@ async fn local_folder_import() {
             import_id: import_id.clone(),
             candidate_key: "test".to_string(),
             folder: album_dir.clone(),
+            scope: bae_core::import::ReleaseFileScope::Recursive,
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
@@ -859,6 +884,7 @@ async fn import_produces_audio_format_records() {
             import_id: import_id.clone(),
             candidate_key: "test".to_string(),
             folder: album_dir,
+            scope: bae_core::import::ReleaseFileScope::Recursive,
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
@@ -914,6 +940,7 @@ async fn exact_metadata_import_stores_dsd_audio_format() {
                 import_id: import_id.clone(),
                 candidate_key: "test".to_string(),
                 folder: album_dir,
+                scope: bae_core::import::ReleaseFileScope::Recursive,
                 selected_cover: None,
                 storage_mode: StorageMode::Local,
                 pin: false,
@@ -984,6 +1011,7 @@ async fn loudness_pass_emits_within_track_progress() {
             import_id: import_id.clone(),
             candidate_key: "test".to_string(),
             folder: album_dir,
+            scope: bae_core::import::ReleaseFileScope::Recursive,
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
@@ -1135,6 +1163,7 @@ async fn loudness_measured_at_import_drives_playback_gain() {
             import_id: import_id.clone(),
             candidate_key: "test".to_string(),
             folder: album_dir,
+            scope: bae_core::import::ReleaseFileScope::Recursive,
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
@@ -1287,6 +1316,7 @@ async fn two_sequential_imports() {
                 import_id: import_id.clone(),
                 candidate_key: "test".to_string(),
                 folder: album_dir,
+                scope: bae_core::import::ReleaseFileScope::Recursive,
                 selected_cover: None,
                 storage_mode: StorageMode::Local,
                 pin: false,
@@ -1565,6 +1595,7 @@ async fn remote_transition_failure_rolls_back_finalized_release() {
             import_id: import_id.clone(),
             candidate_key: "test".to_string(),
             folder: album_dir,
+            scope: bae_core::import::ReleaseFileScope::Recursive,
             selected_cover: None,
             storage_mode: StorageMode::Remote,
             pin: false,
@@ -1792,6 +1823,7 @@ async fn remote_transition_failure_rolls_back_finalized_works() {
             import_id: import_id.clone(),
             candidate_key: "test".to_string(),
             folder: album_dir,
+            scope: bae_core::import::ReleaseFileScope::Recursive,
             selected_cover: None,
             storage_mode: StorageMode::Remote,
             pin: false,
@@ -1922,6 +1954,7 @@ async fn import_with_cover_art() {
             import_id: import_id.clone(),
             candidate_key: "test".to_string(),
             folder: album_dir,
+            scope: bae_core::import::ReleaseFileScope::Recursive,
             selected_cover: Some(CoverSelection::Local("scans/back.jpg".to_string())),
             storage_mode: StorageMode::Local,
             pin: false,
@@ -1974,6 +2007,7 @@ async fn import_resizes_oversized_cover_to_jpeg_thumbnail() {
             import_id: import_id.clone(),
             candidate_key: "test".to_string(),
             folder: album_dir,
+            scope: bae_core::import::ReleaseFileScope::Recursive,
             selected_cover: Some(CoverSelection::Local(cover_path)),
             storage_mode: StorageMode::Local,
             pin: false,
@@ -2037,6 +2071,7 @@ async fn import_on_browsable_home_writes_readable_cloud_paths_at_import() {
             import_id: import_id.clone(),
             candidate_key: "test".to_string(),
             folder: album_dir,
+            scope: bae_core::import::ReleaseFileScope::Recursive,
             selected_cover: Some(CoverSelection::Local("scans/back.jpg".to_string())),
             storage_mode: StorageMode::Local,
             pin: false,
@@ -2154,6 +2189,7 @@ async fn exact_import_writes_release_id_and_pressing_fields() {
             import_id: import_id.clone(),
             candidate_key: "test".to_string(),
             folder: album_dir,
+            scope: bae_core::import::ReleaseFileScope::Recursive,
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
@@ -2228,6 +2264,7 @@ async fn approximate_import_with_user_edit_overlay() {
             import_id: import_id.clone(),
             candidate_key: "test".to_string(),
             folder: album_dir,
+            scope: bae_core::import::ReleaseFileScope::Recursive,
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
@@ -2393,6 +2430,7 @@ async fn cross_source_exact_writes_both_release_ids() {
             import_id: import_id.clone(),
             candidate_key: "test".to_string(),
             folder: album_dir,
+            scope: bae_core::import::ReleaseFileScope::Recursive,
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
@@ -2454,6 +2492,7 @@ async fn cross_source_approximate_nulls_both_release_ids() {
             import_id: import_id.clone(),
             candidate_key: "test".to_string(),
             folder: album_dir,
+            scope: bae_core::import::ReleaseFileScope::Recursive,
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
@@ -2544,6 +2583,7 @@ async fn cross_source_discogs_rooted_approximate_nulls_both_release_ids() {
             import_id: import_id.clone(),
             candidate_key: "test".to_string(),
             folder: album_dir,
+            scope: bae_core::import::ReleaseFileScope::Recursive,
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
@@ -2648,6 +2688,7 @@ async fn unknown_import_seeds_from_file_tags_and_writes_no_identity() {
             import_id: import_id.clone(),
             candidate_key: "test".to_string(),
             folder: album_dir,
+            scope: bae_core::import::ReleaseFileScope::Recursive,
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
@@ -2696,9 +2737,18 @@ async fn unknown_preview_for_cue_matches_unknown_commit_layout() {
     fs::create_dir_all(&album_dir).unwrap();
     copy_cue_flac_fixture(&album_dir);
 
+    let candidate_key = album_dir.to_string_lossy().into_owned();
+    f.handle
+        .add_watched_folder(candidate_key.clone())
+        .await
+        .unwrap();
+    f.handle
+        .refresh_watched_folder(candidate_key.clone())
+        .await
+        .unwrap();
     let preview = f
         .handle
-        .preview_file_tags_for_folder(album_dir.clone())
+        .preview_file_tags_for_folder(candidate_key)
         .await
         .unwrap();
 
@@ -2736,6 +2786,7 @@ async fn unknown_preview_for_cue_matches_unknown_commit_layout() {
             import_id: import_id.clone(),
             candidate_key: "cue".to_string(),
             folder: album_dir,
+            scope: bae_core::import::ReleaseFileScope::Recursive,
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
@@ -2809,6 +2860,7 @@ async fn unknown_import_seeds_embedded_cover_when_no_folder_image() {
             import_id: import_id.clone(),
             candidate_key: "test".to_string(),
             folder: album_dir,
+            scope: bae_core::import::ReleaseFileScope::Recursive,
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
@@ -2876,6 +2928,7 @@ async fn unknown_import_folder_image_wins_over_embedded_cover() {
             import_id: import_id.clone(),
             candidate_key: "test".to_string(),
             folder: album_dir,
+            scope: bae_core::import::ReleaseFileScope::Recursive,
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
@@ -2921,6 +2974,7 @@ async fn unknown_import_always_creates_a_fresh_album() {
             import_id: import_id.clone(),
             candidate_key: "identified".to_string(),
             folder: identified_dir,
+            scope: bae_core::import::ReleaseFileScope::Recursive,
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
@@ -2955,6 +3009,7 @@ async fn unknown_import_always_creates_a_fresh_album() {
             import_id: import_id2.clone(),
             candidate_key: "unknown".to_string(),
             folder: unknown_dir,
+            scope: bae_core::import::ReleaseFileScope::Recursive,
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
@@ -3020,6 +3075,7 @@ async fn unknown_import_with_user_edit_overlay() {
             import_id: import_id.clone(),
             candidate_key: "test".to_string(),
             folder: album_dir,
+            scope: bae_core::import::ReleaseFileScope::Recursive,
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
@@ -3080,6 +3136,7 @@ async fn unknown_import_with_no_tags_seeds_title_from_folder_name() {
             import_id: import_id.clone(),
             candidate_key: "test".to_string(),
             folder: album_dir,
+            scope: bae_core::import::ReleaseFileScope::Recursive,
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
@@ -3156,7 +3213,9 @@ async fn import_truncated_album(verify: bool) -> Result<(String, String), String
         tokio::runtime::Handle::current(),
         library_manager,
         bae_core::import::cover_art::CoverArtArchiveClient::hermetic(),
-    );
+    )
+    .await
+    .expect("import service starts");
 
     let album_dir = temp.path().join("album");
     fs::create_dir_all(&album_dir).unwrap();
@@ -3179,6 +3238,7 @@ async fn import_truncated_album(verify: bool) -> Result<(String, String), String
             import_id: import_id.clone(),
             candidate_key: "test".to_string(),
             folder: album_dir,
+            scope: bae_core::import::ReleaseFileScope::Recursive,
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
@@ -3299,11 +3359,12 @@ async fn two_credit_mb_release_keeps_both_album_artists() {
     let mut scan_rx = f.handle.subscribe_folder_scan_events();
     f.handle
         .add_watched_folder(collection.to_string_lossy().into_owned())
+        .await
         .unwrap();
     wait_for_scan_event(
         &mut scan_rx,
         "the two-credit candidate",
-        |event| matches!(event, ScanEvent::FolderCandidate(c) if c.path == album_dir),
+        |event| matches!(event, ScanEvent::FolderCandidate { candidate: c, .. } if c.path == album_dir),
     )
     .await;
 
@@ -3326,6 +3387,7 @@ async fn two_credit_mb_release_keeps_both_album_artists() {
             import_id: import_id.clone(),
             candidate_key: candidate_key.clone(),
             folder: album_dir,
+            scope: bae_core::import::ReleaseFileScope::Recursive,
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
@@ -3435,12 +3497,13 @@ async fn pick_release_for_folder(
     let mut scan_rx = f.handle.subscribe_folder_scan_events();
     f.handle
         .add_watched_folder(collection.to_string_lossy().into_owned())
+        .await
         .unwrap();
     let expected = album_dir.to_path_buf();
     wait_for_scan_event(
         &mut scan_rx,
         "the slot candidate",
-        move |event| matches!(event, ScanEvent::FolderCandidate(c) if c.path == expected),
+        move |event| matches!(event, ScanEvent::FolderCandidate { candidate: c, .. } if c.path == expected),
     )
     .await;
 
@@ -3513,6 +3576,7 @@ async fn thirteen_files_against_a_twelve_track_source_commits_thirteen_tracks() 
             import_id: import_id.clone(),
             candidate_key,
             folder: album_dir,
+            scope: bae_core::import::ReleaseFileScope::Recursive,
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
@@ -3574,6 +3638,7 @@ async fn a_track_with_no_audio_commits_as_the_user_left_it() {
             import_id: import_id.clone(),
             candidate_key,
             folder: album_dir,
+            scope: bae_core::import::ReleaseFileScope::Recursive,
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
@@ -3629,6 +3694,7 @@ async fn a_corrected_pairing_survives_the_commit() {
             import_id: import_id.clone(),
             candidate_key,
             folder: album_dir,
+            scope: bae_core::import::ReleaseFileScope::Recursive,
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,

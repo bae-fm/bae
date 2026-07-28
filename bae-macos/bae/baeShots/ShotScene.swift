@@ -1,7 +1,6 @@
+@testable import bae
 import BaeKit
 import SwiftUI
-
-@testable import bae
 
 /// One named UI scene to capture for the screenshot gallery: a stable id
 /// shared across platforms by convention, the point size to render at, and a
@@ -24,6 +23,69 @@ struct ShotScene {
         },
         ShotScene(id: "story-3-empty-library", size: MainWindow.defaultSize) {
             AnyView(PreviewScenes.libraryEmpty())
+        },
+        ShotScene(id: "import-release-queue", size: CGSize(width: 900, height: 700)) {
+            AnyView(
+                PreviewScenes.importReleaseQueue(
+                    store: PreviewData.releaseQueueImportStore,
+                    tab: .ready,
+                    collapseReadyGroup: false,
+                    refreshingWatchedFolderPath: nil
+                )
+            )
+        },
+        ShotScene(
+            id: "import-release-ambiguity-narrow",
+            size: CGSize(width: 520, height: 700)
+        ) {
+            AnyView(
+                PreviewScenes.importReleaseQueue(
+                    store: PreviewData.releaseQueueImportStore,
+                    tab: .needsYou,
+                    collapseReadyGroup: false,
+                    refreshingWatchedFolderPath: nil
+                )
+            )
+        },
+        ShotScene(
+            id: "import-release-queue-collapsed",
+            size: CGSize(width: 900, height: 700)
+        ) {
+            AnyView(
+                PreviewScenes.importReleaseQueue(
+                    store: PreviewData.releaseQueueImportStore,
+                    tab: .ready,
+                    collapseReadyGroup: true,
+                    refreshingWatchedFolderPath: nil
+                )
+            )
+        },
+        ShotScene(
+            id: "import-release-scanning-refresh",
+            size: CGSize(width: 900, height: 700)
+        ) {
+            AnyView(
+                PreviewScenes.importReleaseQueue(
+                    store: PreviewData.releaseQueueScanningImportStore,
+                    tab: .ready,
+                    collapseReadyGroup: false,
+                    refreshingWatchedFolderPath:
+                    PreviewData.releaseQueueWatchedFolder.path
+                )
+            )
+        },
+        ShotScene(
+            id: "import-release-resolved-reversal",
+            size: CGSize(width: 900, height: 700)
+        ) {
+            AnyView(
+                PreviewScenes.importReleaseQueue(
+                    store: PreviewData.releaseQueueResolvedImportStore,
+                    tab: .ready,
+                    collapseReadyGroup: false,
+                    refreshingWatchedFolderPath: nil
+                )
+            )
         },
     ]
 }

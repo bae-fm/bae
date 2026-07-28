@@ -21,9 +21,7 @@ extension ImportView {
         var failureCount = 0
         for key in keys {
             guard
-                let row = importStore.triageQueue.rows.first(where: {
-                    $0.candidateKey == key
-                }),
+                let row = importStore.triageRow(forKey: key),
                 let matched = row.matched
             else {
                 // Selection can outlive the row that earned it (imported by a
@@ -34,7 +32,6 @@ extension ImportView {
             }
             do {
                 try importer.startImport(
-                    key,
                     key,
                     nil,
                     storageMode,

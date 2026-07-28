@@ -37,7 +37,7 @@ private func commitImport(
 
 extension ImportView {
     func commitConfirmedImport(candidate: Candidate) {
-        guard case .folder(let folderPath, _) = candidate.source else {
+        guard case .folder = candidate.source else {
             return
         }
         // Start each attempt from a clean error state so a prior failed
@@ -69,7 +69,6 @@ extension ImportView {
         ) {
             try importer.startImport(
                 candidate.key,
-                folderPath,
                 coverSelection,
                 storageMode,
                 storagePinned,

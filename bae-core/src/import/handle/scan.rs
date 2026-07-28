@@ -5,16 +5,38 @@ impl ImportServiceHandle {
     /// and broadcasting it so the import view re-tabs the row (New ↔ Skipped).
     /// A no-op request (already in the requested state) persists nothing and
     /// emits no event.
-    pub fn set_candidate_skipped(
+    pub async fn set_candidate_skipped(
         &self,
         path: String,
         skipped: bool,
     ) -> Result<(), crate::import::ImportError> {
-        let library_dir = self.library_manager.library_dir();
-        let mut registry = self.folder_registry.lock().unwrap();
-        let changed = registry.set_skipped(&library_dir, path.clone(), skipped)?;
-        drop(registry);
+        let _commit = self.folder_state_commit.lock().await;
+        let watched_folder_path = match self.candidate_state.lock().unwrap().get(&path) {
+            Some(ImportCandidateSnapshot::Folder {
+                candidate,
+                actionable: true,
+                ..
+            }) => candidate.watched_folder_path,
+            _ => {
+                return Err(crate::import::ImportError::Internal {
+                    detail: format!("{path} is not an actionable folder candidate"),
+                })
+            }
+        };
+        let relative_candidate_path = crate::import::folder_registry::candidate_relative_path(
+            &watched_folder_path,
+            std::path::Path::new(&path),
+        )?;
+        let changed = self
+            .library_manager
+            .set_import_candidate_skipped(&watched_folder_path, &relative_candidate_path, skipped)
+            .await?;
         if changed {
+            self.folder_registry.lock().unwrap().apply_skipped(
+                watched_folder_path,
+                relative_candidate_path,
+                skipped,
+            );
             self.candidate_state
                 .lock()
                 .unwrap()
@@ -44,7 +66,7 @@ impl ImportServiceHandle {
         sheet_file_id: String,
     ) -> Result<Vec<crate::import::folder_scanner::SheetBindingOption>, crate::import::ImportError>
     {
-        let files = self.folder_files_for_binding(&candidate_key)?;
+        let (files, _) = self.folder_files_for_binding(&candidate_key)?;
         tokio::task::spawn_blocking(move || files.sheet_binding_options(&sheet_file_id))
             .await
             .map_err(|e| crate::import::ImportError::Internal {
@@ -77,7 +99,7 @@ impl ImportServiceHandle {
     ) -> Result<(), crate::import::ImportError> {
         use crate::import::folder_scanner::{SheetBindingOffer, UserSheetBinding};
 
-        let files = self.folder_files_for_binding(&candidate_key)?;
+        let (files, offered_revision) = self.folder_files_for_binding(&candidate_key)?;
         if files
             .track_sheets()
             .all(|sheet| sheet.file.relative_path != sheet_file_id)
@@ -128,7 +150,7 @@ impl ImportServiceHandle {
             }
         };
 
-        self.write_file_edits(&candidate_key, files, |edits| {
+        self.write_file_edits(&candidate_key, files, offered_revision, |edits| {
             edits.sheet_bindings.set(sheet_file_id, decision);
         })
         .await
@@ -157,7 +179,8 @@ impl ImportServiceHandle {
         file_id: String,
         choice: crate::import::folder_scanner::FileRoleChoice,
     ) -> Result<(), crate::import::ImportError> {
-        let Some(files) = self.candidate_files(&candidate_key) else {
+        let Some((files, offered_revision)) = self.actionable_candidate_files(&candidate_key)
+        else {
             return Err(crate::import::ImportError::FileRole {
                 detail: format!("{candidate_key} is not a folder candidate"),
             });
@@ -177,7 +200,7 @@ impl ImportServiceHandle {
             });
         }
 
-        self.write_file_edits(&candidate_key, files, |edits| {
+        self.write_file_edits(&candidate_key, files, offered_revision, |edits| {
             edits.file_roles.set(file_id, choice);
         })
         .await
@@ -194,19 +217,50 @@ impl ImportServiceHandle {
         &self,
         candidate_key: &str,
         files: crate::import::folder_scanner::CategorizedFiles,
+        offered_revision: u64,
         decide: impl FnOnce(&mut crate::import::folder_scanner::CandidateFileEdits),
     ) -> Result<(), crate::import::ImportError> {
+        let _commit = self.folder_state_commit.lock().await;
         let content_hash = files.content_hash();
+        let (current_files, expected_revision) = self
+            .actionable_candidate_files(candidate_key)
+            .ok_or_else(|| crate::import::ImportError::FileRole {
+                detail: format!("{candidate_key} is not an actionable folder candidate"),
+            })?;
+        if current_files.content_hash() != content_hash {
+            return Err(crate::import::ImportError::FileRole {
+                detail: format!("{candidate_key} changed before its file decision was written"),
+            });
+        }
+        if expected_revision != offered_revision {
+            return Err(crate::import::ImportError::FileRole {
+                detail: format!("{candidate_key} file decisions changed before the write"),
+            });
+        }
         let mut edits = self
             .library_manager
-            .load_stored_candidate_edits()
-            .await?
-            .take(&content_hash);
+            .load_candidate_file_edits(&content_hash)
+            .await?;
+        if edits.revision != expected_revision {
+            return Err(crate::import::ImportError::Internal {
+                detail: format!(
+                    "{candidate_key} file decisions changed from revision {expected_revision}"
+                ),
+            });
+        }
         decide(&mut edits);
 
+        let matching_files = self
+            .candidate_state
+            .lock()
+            .unwrap()
+            .files_for_identity(&content_hash, expected_revision);
         let (settled, edits) = tokio::task::spawn_blocking(move || {
-            let mut settled = files;
-            settled.apply_candidate_file_edits(&edits)?;
+            let mut settled = Vec::with_capacity(matching_files.len());
+            for (key, mut files) in matching_files {
+                files.apply_candidate_file_edits(&edits)?;
+                settled.push((key, files));
+            }
             Ok::<_, crate::import::folder_scanner::InvalidReason>((settled, edits))
         })
         .await
@@ -217,30 +271,35 @@ impl ImportServiceHandle {
         // Durable first, and atomically: the decision and the verdict it
         // invalidates move together, so nothing can observe a folder whose
         // stored answer describes the shape it just stopped having.
-        self.library_manager
-            .save_import_candidate_file_edits(&content_hash, candidate_key, &edits)
+        let next_revision = self
+            .library_manager
+            .save_import_candidate_file_edits(
+                &content_hash,
+                candidate_key,
+                expected_revision,
+                &edits,
+                &settled,
+            )
             .await?;
 
-        let Some(candidate) = self
-            .candidate_state
-            .lock()
-            .unwrap()
-            .set_files(candidate_key, settled)
-        else {
-            // The candidate dropped out of the scan while the decision was
-            // being written. The decision itself stands — it is keyed by the
-            // folder's bytes, not by its presence in this session's list — and
-            // the next scan that finds the folder applies it.
-            tracing::info!(
-                "{candidate_key} left the candidate list while a file decision was written; \
-                 the decision stands and the next scan applies it"
-            );
-            return Ok(());
+        let Some(candidates) = self.candidate_state.lock().unwrap().set_files_for_identity(
+            &content_hash,
+            expected_revision,
+            settled,
+            next_revision,
+        ) else {
+            return Err(crate::import::ImportError::Internal {
+                detail: format!(
+                    "{candidate_key} identity changed while its file decision was being written"
+                ),
+            });
         };
-        send_event(
-            &self.event_tx,
-            ImportEvent::Scan(ScanEvent::CandidateBindingChanged { candidate }),
-        );
+        for candidate in candidates {
+            send_event(
+                &self.event_tx,
+                ImportEvent::Scan(ScanEvent::CandidateBindingChanged { candidate }),
+            );
+        }
         Ok(())
     }
 
@@ -248,12 +307,16 @@ impl ImportServiceHandle {
     /// folder — an invalid candidate has no roles or bindings to edit. Each
     /// caller names the refusal in its own terms rather than borrowing the
     /// other's.
-    fn candidate_files(
+    fn actionable_candidate_files(
         &self,
         candidate_key: &str,
-    ) -> Option<crate::import::folder_scanner::CategorizedFiles> {
+    ) -> Option<(crate::import::folder_scanner::CategorizedFiles, u64)> {
         match self.candidate_state.lock().unwrap().get(candidate_key) {
-            Some(ImportCandidateSnapshot::Folder { candidate, .. }) => Some(candidate.files),
+            Some(ImportCandidateSnapshot::Folder {
+                candidate,
+                actionable: true,
+                ..
+            }) => Some((candidate.files, candidate.file_edit_revision)),
             _ => None,
         }
     }
@@ -263,12 +326,12 @@ impl ImportServiceHandle {
     fn folder_files_for_binding(
         &self,
         candidate_key: &str,
-    ) -> Result<crate::import::folder_scanner::CategorizedFiles, crate::import::ImportError> {
-        self.candidate_files(candidate_key).ok_or_else(|| {
-            crate::import::ImportError::SheetBinding {
+    ) -> Result<(crate::import::folder_scanner::CategorizedFiles, u64), crate::import::ImportError>
+    {
+        self.actionable_candidate_files(candidate_key)
+            .ok_or_else(|| crate::import::ImportError::SheetBinding {
                 detail: format!("{candidate_key} is not a folder candidate"),
-            }
-        })
+            })
     }
 
     /// Subscribe to the unified event channel, filtered to only `ScanEvent`s.

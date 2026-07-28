@@ -3,6 +3,75 @@
 use super::*;
 
 impl LibraryManager {
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    pub async fn load_import_folder_registry(
+        &self,
+    ) -> Result<crate::import::ImportFolderRegistry, LibraryError> {
+        Ok(self.database.load_import_folder_registry().await?)
+    }
+
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    pub async fn add_watched_import_folder(&self, path: &str) -> Result<bool, LibraryError> {
+        Ok(self.database.add_watched_import_folder(path).await?)
+    }
+
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    pub async fn remove_watched_import_folder(&self, path: &str) -> Result<bool, LibraryError> {
+        Ok(self.database.remove_watched_import_folder(path).await?)
+    }
+
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    pub async fn set_import_candidate_skipped(
+        &self,
+        watched_folder_path: &str,
+        relative_candidate_path: &str,
+        skipped: bool,
+    ) -> Result<bool, LibraryError> {
+        Ok(self
+            .database
+            .set_import_candidate_skipped(watched_folder_path, relative_candidate_path, skipped)
+            .await?)
+    }
+
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    pub async fn begin_folder_scan(&self, watched_folder_path: &str) -> Result<u64, LibraryError> {
+        Ok(self.database.begin_folder_scan(watched_folder_path).await?)
+    }
+
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    pub async fn save_folder_scan_item(
+        &self,
+        watched_folder_path: &str,
+        generation: u64,
+        item: &crate::import::folder_scanner::ScanItem,
+        removed_keys: &[String],
+    ) -> Result<bool, LibraryError> {
+        Ok(self
+            .database
+            .save_folder_scan_item(watched_folder_path, generation, item, removed_keys)
+            .await?)
+    }
+
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    pub async fn finish_folder_scan(
+        &self,
+        watched_folder_path: &str,
+        generation: u64,
+        error: Option<&str>,
+    ) -> Result<bool, LibraryError> {
+        Ok(self
+            .database
+            .finish_folder_scan(watched_folder_path, generation, error)
+            .await?)
+    }
+
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    pub async fn load_folder_scan_snapshots(
+        &self,
+    ) -> Result<Vec<crate::db::DbFolderScanSnapshot>, LibraryError> {
+        Ok(self.database.load_folder_scan_snapshots().await?)
+    }
+
     /// Test-only: seed a single file row. Production inserts files only as part of
     /// an import or edit transaction.
     #[cfg(any(test, feature = "test-utils"))]
@@ -115,7 +184,7 @@ impl LibraryManager {
     pub async fn save_import_candidate_verdict(
         &self,
         verdict: &crate::db::NewImportCandidateVerdict,
-    ) -> Result<(), LibraryError> {
+    ) -> Result<bool, LibraryError> {
         Ok(self.database.save_import_candidate_verdict(verdict).await?)
     }
 
@@ -128,11 +197,19 @@ impl LibraryManager {
         &self,
         content_hash: &str,
         folder_path: &str,
+        expected_revision: u64,
         edits: &crate::import::folder_scanner::CandidateFileEdits,
-    ) -> Result<(), LibraryError> {
+        settled_candidates: &[(String, crate::import::folder_scanner::CategorizedFiles)],
+    ) -> Result<u64, LibraryError> {
         Ok(self
             .database
-            .save_import_candidate_file_edits(content_hash, folder_path, edits)
+            .save_import_candidate_file_edits(
+                content_hash,
+                folder_path,
+                expected_revision,
+                edits,
+                settled_candidates,
+            )
             .await?)
     }
 
@@ -146,6 +223,17 @@ impl LibraryManager {
         Ok(self.database.load_import_candidate_states().await?)
     }
 
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    pub async fn load_import_candidate_state(
+        &self,
+        content_hash: &str,
+    ) -> Result<Option<crate::db::DbImportCandidateState>, LibraryError> {
+        Ok(self
+            .database
+            .load_import_candidate_state(content_hash)
+            .await?)
+    }
+
     /// Every candidate's user-set file decisions, keyed by content hash — what
     /// a folder scan needs so the roles it reports are the ones the user
     /// settled, not only the ones its filenames propose.
@@ -154,6 +242,54 @@ impl LibraryManager {
         &self,
     ) -> Result<crate::import::folder_scanner::StoredCandidateEdits, LibraryError> {
         Ok(self.database.load_stored_candidate_edits().await?)
+    }
+
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    pub async fn load_candidate_file_edits(
+        &self,
+        content_hash: &str,
+    ) -> Result<crate::import::folder_scanner::CandidateFileEdits, LibraryError> {
+        Ok(self
+            .database
+            .load_candidate_file_edits(content_hash)
+            .await?)
+    }
+
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    pub async fn set_folder_release_decision(
+        &self,
+        key: &crate::import::folder_scanner::FolderReleaseDecisionKey,
+        decision: crate::import::folder_scanner::FolderReleaseDecision,
+    ) -> Result<u64, LibraryError> {
+        Ok(self
+            .database
+            .set_folder_release_decision(key, decision)
+            .await?)
+    }
+
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    pub async fn set_folder_release_decisions(
+        &self,
+        decisions: &[(
+            crate::import::folder_scanner::FolderReleaseDecisionKey,
+            crate::import::folder_scanner::FolderReleaseDecision,
+        )],
+    ) -> Result<(u64, Vec<String>), LibraryError> {
+        Ok(self
+            .database
+            .set_folder_release_decisions(decisions)
+            .await?)
+    }
+
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    pub async fn load_folder_release_decisions(
+        &self,
+        watched_folder_path: &str,
+    ) -> Result<crate::import::folder_scanner::FolderReleaseDecisions, LibraryError> {
+        Ok(self
+            .database
+            .load_folder_release_decisions(watched_folder_path)
+            .await?)
     }
 
     /// Remove the release a failed import had already finalized, in one DB

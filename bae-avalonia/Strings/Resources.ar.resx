@@ -457,4 +457,8 @@
   <data name="nowplaying.cast_no_devices" xml:space="preserve"><value>لم يتم العثور على أجهزة إرسال</value></data>
   <data name="component_gallery.menu" xml:space="preserve"><value>معرض المكوّنات</value></data>
   <data name="component_gallery.title" xml:space="preserve"><value>معرض المكوّنات</value></data>
+  <data name="import.folder.refresh" xml:space="preserve"><value>تحديث</value></data>
+  <data name="import.folder.refreshing" xml:space="preserve"><value>جارٍ التحديث…</value></data>
+  <data name="import.release.one" xml:space="preserve"><value>دمج كإصدار واحد</value></data>
+  <data name="import.release.separate" xml:space="preserve"><value>الاحتفاظ بها كإصدارات منفصلة</value></data>
 </root>

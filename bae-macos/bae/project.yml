@@ -64,36 +64,6 @@ targets:
           - CFBundleURLName: fm.bae.url
             CFBundleURLSchemes:
               - bae
-    preBuildScripts:
-      - name: Build Rust Bridge
-        basedOnDependencyAnalysis: false
-        script: |
-          # Xcode launched via the Dock/`open` doesn't source ~/.zprofile, so
-          # cargo (installed by rustup into ~/.cargo/bin) is missing from this
-          # script's PATH even though it's on every interactive shell's PATH.
-          [ -f "$HOME/.cargo/env" ] && . "$HOME/.cargo/env"
-          cd "$SRCROOT/../.."
-          MARKER="BaeKit/Frameworks/BaeBridgeFFI.xcframework/Info.plist"
-          BINDINGS_SOURCE="bae-bridge/swift-bindings-macos/bae_bridge.swift"
-          BINDINGS="BaeKit/Sources/BaeBridge/bae_bridge_macos.swift"
-          NEEDS_BUILD=0
-          if [ ! -f "$MARKER" ] || [ ! -f "$BINDINGS_SOURCE" ]; then
-            NEEDS_BUILD=1
-          elif [ -n "$(find bae-bridge/src bae-core/src bae-automation/src bae-mcp/src -name '*.rs' -newer "$MARKER" 2>/dev/null | head -1)" ]; then
-            NEEDS_BUILD=1
-          fi
-          if [ "$NEEDS_BUILD" -eq 1 ]; then
-            echo "Bridge sources changed, rebuilding..."
-            ./bae-bridge/build-macos.sh
-          fi
-          # Always ensure the macOS-flavored bindings are installed into the
-          # BaeBridge target. Without this, a fresh worktree (xcframework cached,
-          # bindings file absent) skips the install and the build fails to find
-          # generated types.
-          if [ ! -f "$BINDINGS" ] || [ "$BINDINGS_SOURCE" -nt "$BINDINGS" ]; then
-            ./bae-bridge/install-swift-bindings.sh macos
-          fi
-          cargo run -q -p bae-loc --bin loc-gen -- emit --target apple --out-dir bae-macos/bae/bae
     dependencies:
       - package: BaeKit
       - package: Sparkle
@@ -178,6 +148,10 @@ targets:
 schemes:
   bae:
     build:
+      preActions:
+        - name: Prepare Rust Bridge
+          settingsTarget: bae
+          script: '"$SRCROOT/../prepare-build.sh"'
       targets:
         bae: all
     run:
@@ -196,6 +170,10 @@ schemes:
   # `xcodebuild -scheme baeShots test`; the test writes one PNG per scene.
   baeShots:
     build:
+      preActions:
+        - name: Prepare Rust Bridge
+          settingsTarget: bae
+          script: '"$SRCROOT/../prepare-build.sh"'
       targets:
         bae: all
         baeShots: [test]

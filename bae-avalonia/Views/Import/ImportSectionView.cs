@@ -229,10 +229,21 @@ internal sealed class ImportSectionView : UserControl
             {
                 var path = folder.Path;
                 var folderItem = new MenuItem { Header = folder.Name };
+                var refreshing = _import.Interaction.IsRefreshing(path);
+                var refresh = new MenuItem
+                {
+                    Header = Loc.Chrome(
+                        refreshing
+                            ? "import.folder.refreshing"
+                            : "import.folder.refresh"),
+                    IsEnabled = !refreshing,
+                };
+                refresh.Click += (_, _) => _import.RefreshWatchedFolder(path);
                 var reveal = new MenuItem { Header = Loc.Chrome("libraries.reveal") };
                 reveal.Click += (_, _) => RevealInFileManager.Reveal(path);
                 var remove = new MenuItem { Header = Loc.Chrome("import.folder.remove") };
                 remove.Click += (_, _) => _import.RemoveWatchedFolder(path);
+                folderItem.Items.Add(refresh);
                 folderItem.Items.Add(reveal);
                 folderItem.Items.Add(new Separator());
                 folderItem.Items.Add(remove);
@@ -269,6 +280,14 @@ internal sealed class ImportSectionView : UserControl
     // — it is the source of truth for what the user typed, not a mirror of it.
     private void Render()
     {
+        var retainedSelection = CandidateSelectionModel.Retain(
+            _selectedKey,
+            TriageListModel.CandidateKeys(_import.TriageQueue));
+        if (retainedSelection != _selectedKey)
+        {
+            _selectedKey = retainedSelection;
+            _pane.Clear();
+        }
         RenderTabBar();
         _clearFilterButton.IsVisible = _import.FilterText.Length > 0;
         RenderProgress();
@@ -336,31 +355,83 @@ internal sealed class ImportSectionView : UserControl
     private void RenderProgress()
     {
         _progressHost.Children.Clear();
-        if (_import.QueueIdentifyProgress is not { } progress || progress.Total == 0)
+        var column = new StackPanel
         {
-            return;
-        }
-        var label = new TextBlock { Text = Loc.Chrome("import.progress.identifying"), FontSize = 12 };
-        label[!TextBlock.ForegroundProperty] = new DynamicResourceExtension("BaeTextSecondaryBrush");
-        var count = new TextBlock
-        {
-            Text = $"{progress.Identified.ToString(CultureInfo.CurrentCulture)} / {progress.Total.ToString(CultureInfo.CurrentCulture)}",
-            FontSize = 12,
+            Spacing = 7,
+            Margin = new Thickness(14, 0, 14, 12),
         };
-        count[!TextBlock.ForegroundProperty] = new DynamicResourceExtension("BaeTextSecondaryBrush");
-        var labelRow = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") };
-        Grid.SetColumn(label, 0);
-        Grid.SetColumn(count, 1);
-        labelRow.Children.Add(label);
-        labelRow.Children.Add(count);
-
-        var fraction = progress.Total == 0 ? 1.0 : (double)progress.Identified / progress.Total;
-        var bar = ThinProgressBar(fraction);
-
-        var column = new StackPanel { Spacing = 5, Margin = new Thickness(14, 0, 14, 12) };
-        column.Children.Add(labelRow);
-        column.Children.Add(bar);
-        _progressHost.Children.Add(column);
+        foreach (var scan in _import.TriageQueue.FolderScanStatuses)
+        {
+            var prefix = $"{scan.WatchedFolderName} ({scan.WatchedFolderPath})";
+            var text = scan.Status switch
+            {
+                BridgeFolderScanStatus.Scanning =>
+                    $"{prefix}: {Loc.Chrome("import.scanning")}",
+                BridgeFolderScanStatus.Failed failed =>
+                    $"{prefix}: {failed.Error}",
+                _ => null,
+            };
+            if (text is null)
+            {
+                continue;
+            }
+            var status = new TextBlock
+            {
+                Text = text,
+                FontSize = 11.5,
+                MaxLines = 2,
+                TextTrimming = TextTrimming.CharacterEllipsis,
+            };
+            status[!TextBlock.ForegroundProperty] = new DynamicResourceExtension(
+                scan.Status is BridgeFolderScanStatus.Failed
+                    ? "BaeDangerBrush"
+                    : "BaeTextSecondaryBrush");
+            var refreshing = _import.Interaction.IsRefreshing(scan.WatchedFolderPath);
+            var refresh = new Button
+            {
+                Content = Loc.Chrome(
+                    refreshing
+                        ? "import.folder.refreshing"
+                        : "import.folder.refresh"),
+                IsEnabled = !refreshing,
+                Padding = new Thickness(8, 3),
+            };
+            refresh.Click += (_, _) =>
+                _import.RefreshWatchedFolder(scan.WatchedFolderPath);
+            var statusRow = new Grid
+            {
+                ColumnDefinitions = new ColumnDefinitions("*,Auto"),
+                ColumnSpacing = 8,
+            };
+            Grid.SetColumn(status, 0);
+            Grid.SetColumn(refresh, 1);
+            statusRow.Children.Add(status);
+            statusRow.Children.Add(refresh);
+            column.Children.Add(statusRow);
+        }
+        if (_import.QueueIdentifyProgress is { } progress && progress.Total > 0)
+        {
+            var label = new TextBlock { Text = Loc.Chrome("import.progress.identifying"), FontSize = 12 };
+            label[!TextBlock.ForegroundProperty] = new DynamicResourceExtension("BaeTextSecondaryBrush");
+            var count = new TextBlock
+            {
+                Text = $"{progress.Identified.ToString(CultureInfo.CurrentCulture)} / {progress.Total.ToString(CultureInfo.CurrentCulture)}",
+                FontSize = 12,
+            };
+            count[!TextBlock.ForegroundProperty] = new DynamicResourceExtension("BaeTextSecondaryBrush");
+            var labelRow = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") };
+            Grid.SetColumn(label, 0);
+            Grid.SetColumn(count, 1);
+            labelRow.Children.Add(label);
+            labelRow.Children.Add(count);
+            column.Children.Add(labelRow);
+            column.Children.Add(ThinProgressBar(
+                (double)progress.Identified / progress.Total));
+        }
+        if (column.Children.Count > 0)
+        {
+            _progressHost.Children.Add(column);
+        }
     }
 
     private static Control ThinProgressBar(double fraction)
@@ -406,18 +477,16 @@ internal sealed class ImportSectionView : UserControl
 
     private Control RenderReady()
     {
-        var rows = TriageListModel.Rows(_import.TriageQueue, BridgeTriageTab.Ready, _import.FilterText, _import.SortOrder);
+        var rows = TriageListModel.SelectableReadyRows(
+            _import.TriageQueue,
+            _import.FilterText,
+            _import.SortOrder);
         if (rows.Count == 0)
         {
             return EmptyState(_import.FilterText.Length > 0);
         }
 
-        var list = new StackPanel { Spacing = 0 };
-        foreach (var row in rows)
-        {
-            list.Children.Add(BuildRow(row));
-        }
-        var scroller = new ScrollViewer { Content = list };
+        var scroller = RenderReleaseSections(BridgeTriageTab.Ready);
 
         var readyKeys = rows.Select(row => row.CandidateKey).ToList();
         var selectedCount = _import.SelectedReady.Count(readyKeys.Contains);
@@ -507,7 +576,7 @@ internal sealed class ImportSectionView : UserControl
             // faster sibling call, or reclassified) — the list content already
             // intersects the selection against the tab's current Ready keys,
             // so a miss here is defensive, not expected.
-            var row = _import.TriageQueue.Rows.FirstOrDefault(r => r.CandidateKey == key);
+            var row = TriageListModel.Row(_import.TriageQueue, key);
             if (row?.Matched is not { } matched)
             {
                 continue;
@@ -548,22 +617,16 @@ internal sealed class ImportSectionView : UserControl
 
     private Control RenderNeedsYou()
     {
-        var groups = TriageListModel.NeedsYouGroups(_import.TriageQueue, _import.FilterText, _import.SortOrder);
-        if (groups.Count == 0)
+        var sections = TriageListModel.Sections(
+            _import.TriageQueue,
+            BridgeTriageTab.NeedsYou,
+            _import.FilterText,
+            _import.SortOrder);
+        if (sections.Count == 0)
         {
             return EmptyState(_import.FilterText.Length > 0);
         }
-
-        var list = new StackPanel { Spacing = 0 };
-        foreach (var (group, rows) in groups)
-        {
-            list.Children.Add(BuildNeedsYouGroupHeader(group, rows.Count));
-            foreach (var row in rows)
-            {
-                list.Children.Add(BuildRow(row));
-            }
-        }
-        return new ScrollViewer { Content = list };
+        return RenderReleaseSections(BridgeTriageTab.NeedsYou);
     }
 
     private Control BuildNeedsYouGroupHeader(BridgeNeedsYouGroup group, int count)
@@ -606,37 +669,203 @@ internal sealed class ImportSectionView : UserControl
 
     private Control RenderDone()
     {
-        var rows = TriageListModel.Rows(_import.TriageQueue, BridgeTriageTab.Done, _import.FilterText, _import.SortOrder);
-        if (rows.Count == 0)
+        var sections = TriageListModel.Sections(
+            _import.TriageQueue,
+            BridgeTriageTab.Done,
+            _import.FilterText,
+            _import.SortOrder);
+        if (sections.Count == 0)
         {
             return EmptyState(_import.FilterText.Length > 0);
         }
-        var list = new StackPanel { Spacing = 0 };
-        foreach (var row in rows)
-        {
-            list.Children.Add(BuildRow(row));
-        }
-        return new ScrollViewer { Content = list };
+        return RenderReleaseSections(BridgeTriageTab.Done);
     }
 
     private Control RenderSkipped()
     {
-        var rows = TriageListModel.SkippedRows(_import.TriageQueue, _import.FilterText, _import.SortOrder);
-        if (rows.Count == 0)
+        var sections = TriageListModel.Sections(
+            _import.TriageQueue,
+            BridgeTriageTab.Skipped,
+            _import.FilterText,
+            _import.SortOrder);
+        if (sections.Count == 0)
         {
             return EmptyState(_import.FilterText.Length > 0);
         }
+        return RenderReleaseSections(BridgeTriageTab.Skipped);
+    }
+
+    private ScrollViewer RenderReleaseSections(BridgeTriageTab tab)
+    {
         var list = new StackPanel { Spacing = 0 };
-        foreach (var row in rows)
+        foreach (var section in TriageListModel.Sections(
+            _import.TriageQueue,
+            tab,
+            _import.FilterText,
+            _import.SortOrder))
         {
-            list.Children.Add(row switch
+            var content = new StackPanel { Spacing = 0 };
+            foreach (var entry in section.Entries)
             {
-                SkippedRow.Candidate candidate => BuildRow(candidate.Row),
-                SkippedRow.Invalid invalid => BuildInvalidRow(invalid.InvalidCandidate),
-                _ => new Panel(),
-            });
+                var control = entry.Bridge switch
+                {
+                    BridgeTriageEntry.Candidate candidate => BuildRow(candidate.Row),
+                    BridgeTriageEntry.Boundary boundary => BuildBoundaryRow(boundary.BoundaryValue),
+                    BridgeTriageEntry.Invalid invalid => BuildInvalidRow(invalid.InvalidCandidate),
+                    _ => new Panel(),
+                };
+                control.Tag = entry.StableKey;
+                content.Children.Add(control);
+            }
+            if (section.Group is { } group)
+            {
+                var expander = new Expander
+                {
+                    Header = group.Name,
+                    Content = content,
+                    HorizontalAlignment = HorizontalAlignment.Stretch,
+                    IsExpanded = _import.Interaction.IsGroupExpanded(
+                        ImportStore.GroupDisclosureKey(group.Key)),
+                    Padding = new Thickness(10, 4),
+                };
+                expander.PropertyChanged += (_, change) =>
+                {
+                    if (change.Property == Expander.IsExpandedProperty)
+                    {
+                        _import.Interaction.SetGroupExpanded(
+                            ImportStore.GroupDisclosureKey(group.Key),
+                            expander.IsExpanded);
+                    }
+                };
+                var combine = new MenuItem
+                {
+                    Header = Loc.Chrome("import.release.one"),
+                };
+                combine.Click += (_, _) => ApplyFolderReleaseDecision(
+                    group.Key,
+                    BridgeFolderReleaseDecision.CombineAsOneRelease);
+                var separate = new MenuItem
+                {
+                    Header = Loc.Chrome("import.release.separate"),
+                };
+                separate.Click += (_, _) => ApplyFolderReleaseDecision(
+                    group.Key,
+                    BridgeFolderReleaseDecision.KeepAsSeparateReleases);
+                expander.ContextFlyout = new MenuFlyout
+                {
+                    ItemsSource = new[] { combine, separate },
+                };
+                list.Children.Add(expander);
+            }
+            else
+            {
+                list.Children.Add(content);
+            }
         }
         return new ScrollViewer { Content = list };
+    }
+
+    private Control BuildBoundaryRow(BridgeFolderReleaseBoundary boundary)
+    {
+        var content = new StackPanel { Spacing = 5, Margin = new Thickness(14, 9) };
+        var title = new TextBlock
+        {
+            Text = boundary.Name,
+            FontSize = 14,
+            FontWeight = FontWeight.SemiBold,
+        };
+        var tree = new StackPanel { Spacing = 3 };
+        var displayPath = new TextBlock
+        {
+            Text = boundary.DisplayPath,
+            FontFamily = new FontFamily("monospace"),
+            FontSize = 11.5,
+        };
+        displayPath[!TextBlock.ForegroundProperty] =
+            new DynamicResourceExtension("BaeTextSecondaryBrush");
+        tree.Children.Add(displayPath);
+        if (boundary.SharedFileCount > 0)
+        {
+            var sharedFiles = new TextBlock
+            {
+                Text = Loc.Chrome("storage.files", "count", (long)boundary.SharedFileCount),
+                FontSize = 11.5,
+            };
+            sharedFiles[!TextBlock.ForegroundProperty] =
+                new DynamicResourceExtension("BaeTextSecondaryBrush");
+            tree.Children.Add(sharedFiles);
+        }
+        foreach (var row in boundary.TreeRows)
+        {
+            var detail = row.Kind switch
+            {
+                BridgeFolderReleaseTreeRowKind.Candidate candidate =>
+                    $"{candidate.TrackCount.ToString(CultureInfo.CurrentCulture)} · {candidate.FormatLabel}",
+                BridgeFolderReleaseTreeRowKind.Invalid invalid =>
+                    BridgeDisplay.LocalizedLine(invalid.Reason),
+                _ => null,
+            };
+            var text = new TextBlock
+            {
+                Text = detail is null ? row.Name : $"{row.Name}  {detail}",
+                FontSize = 11.5,
+                Margin = new Thickness(row.Depth * 12, 0, 0, 0),
+            };
+            text[!TextBlock.ForegroundProperty] =
+                new DynamicResourceExtension(
+                    row.Kind is BridgeFolderReleaseTreeRowKind.Invalid
+                        ? "BaeDangerBrush"
+                        : "BaeTextSecondaryBrush");
+            text.ContextMenu = BuildDecisionMenu(row.DecisionKey);
+            tree.Children.Add(text);
+        }
+        content.Children.Insert(0, title);
+        content.Children.Insert(1, tree);
+        var one = new Button
+        {
+            Content = Loc.Chrome("import.release.one"),
+            Padding = new Thickness(10, 4),
+        };
+        one.Click += (_, _) => ApplyFolderReleaseDecision(
+            boundary.Key,
+            BridgeFolderReleaseDecision.CombineAsOneRelease);
+        var separate = new Button
+        {
+            Content = Loc.Chrome("import.release.separate"),
+            Padding = new Thickness(10, 4),
+        };
+        separate.Click += (_, _) => ApplyFolderReleaseDecision(
+            boundary.Key,
+            BridgeFolderReleaseDecision.KeepAsSeparateReleases);
+        var actions = new StackPanel
+        {
+            Orientation = Orientation.Vertical,
+            Spacing = 6,
+            Children = { one, separate },
+        };
+        one.HorizontalAlignment = HorizontalAlignment.Stretch;
+        separate.HorizontalAlignment = HorizontalAlignment.Stretch;
+        content.Children.Add(actions);
+        return new Border { Child = content };
+    }
+
+    private ContextMenu BuildDecisionMenu(BridgeFolderReleaseDecisionKey key)
+    {
+        var combine = new MenuItem
+        {
+            Header = Loc.Chrome("import.release.one"),
+        };
+        combine.Click += (_, _) => ApplyFolderReleaseDecision(
+            key,
+            BridgeFolderReleaseDecision.CombineAsOneRelease);
+        var separate = new MenuItem
+        {
+            Header = Loc.Chrome("import.release.separate"),
+        };
+        separate.Click += (_, _) => ApplyFolderReleaseDecision(
+            key,
+            BridgeFolderReleaseDecision.KeepAsSeparateReleases);
+        return new ContextMenu { ItemsSource = new[] { combine, separate } };
     }
 
     // ── Rows ──────────────────────────────────────────────────────────────────
@@ -683,12 +912,18 @@ internal sealed class ImportSectionView : UserControl
         grid.Children.Add(trailing);
 
         var isPending = row.Placement is BridgeTriagePlacement.NeedsYou { Reason: BridgeNeedsYouReason.StillIdentifying };
-        var host = new Border { Child = grid, Opacity = isPending ? 0.6 : 1, Background = Brushes.Transparent };
+        var host = new Border
+        {
+            Child = grid,
+            Opacity = isPending || !row.Actionable ? 0.6 : 1,
+            Background = Brushes.Transparent,
+            IsEnabled = row.Actionable,
+        };
         if (row.CandidateKey == _selectedKey)
         {
             host[!Border.BackgroundProperty] = new DynamicResourceExtension("BaeSelectionTintBrush");
         }
-        ToolTip.SetTip(host, row.FolderName);
+        ToolTip.SetTip(host, row.DisplayPath);
         host.Tapped += (_, _) => OnRowActivated(row);
         host.ContextMenu = BuildRowContextMenu(row);
         return host;
@@ -738,6 +973,7 @@ internal sealed class ImportSectionView : UserControl
             VerticalAlignment = VerticalAlignment.Center,
         };
         button.Click += (_, _) => _import.ToggleReadySelection(key);
+        button.Tapped += (_, eventArgs) => eventArgs.Handled = true;
         return button;
     }
 
@@ -781,6 +1017,22 @@ internal sealed class ImportSectionView : UserControl
             };
             sub[!TextBlock.ForegroundProperty] = new DynamicResourceExtension("BaeTextSecondaryBrush");
             column.Children.Add(sub);
+        }
+
+        if (row.CandidateKey == _selectedKey)
+        {
+            var path = new TextBlock
+            {
+                Text = row.DisplayPath,
+                FontFamily = new FontFamily("monospace"),
+                FontSize = 11.5,
+                MaxLines = 1,
+                TextTrimming = TextTrimming.CharacterEllipsis,
+                Margin = new Thickness(0, 4, 0, 0),
+            };
+            path[!TextBlock.ForegroundProperty] =
+                new DynamicResourceExtension("BaeTextSecondaryBrush");
+            column.Children.Add(path);
         }
 
         if (row.ImportStatus is BridgeCandidateImportStatus.Importing importing)
@@ -867,7 +1119,8 @@ internal sealed class ImportSectionView : UserControl
     // does.
     private Control? BuildRowActions(BridgeTriageRow row)
     {
-        var pills = row.Placement switch
+        var pills = new List<(string Label, bool IsKey, Action Action)>();
+        pills.AddRange(row.Placement switch
         {
             BridgeTriagePlacement.NeedsYou(BridgeNeedsYouGroup.PickAPressing, BridgeNeedsYouReason.Disagreement) =>
                 new[]
@@ -887,9 +1140,22 @@ internal sealed class ImportSectionView : UserControl
                     (Loc.Chrome("import.row.retry"), true, (Action)(() => OnRowActivated(row))),
                     (Loc.Chrome("libraries.reveal"), false, (Action)(() => RevealInFileManager.Reveal(row.CandidateKey))),
                 },
-            _ => null,
-        };
-        if (pills is null)
+            _ => Array.Empty<(string, bool, Action)>(),
+        });
+        foreach (var boundary in row.ResolvedBoundaries)
+        {
+            var decision = boundary.Decision is BridgeFolderReleaseDecision.CombineAsOneRelease
+                ? BridgeFolderReleaseDecision.KeepAsSeparateReleases
+                : BridgeFolderReleaseDecision.CombineAsOneRelease;
+            pills.Add((
+                Loc.Chrome(
+                    decision is BridgeFolderReleaseDecision.CombineAsOneRelease
+                        ? "import.release.one"
+                        : "import.release.separate"),
+                false,
+                () => ApplyFolderReleaseDecision(boundary.Key, decision)));
+        }
+        if (pills.Count == 0)
         {
             return null;
         }
@@ -923,6 +1189,7 @@ internal sealed class ImportSectionView : UserControl
         button[!Button.BorderBrushProperty] = new DynamicResourceExtension("BaeTextSecondaryBrush");
         button[!Button.ForegroundProperty] = new DynamicResourceExtension(isKey ? "BaeOnAccentBrush" : "BaeTextSecondaryBrush");
         button.Click += (_, _) => onClick();
+        button.Tapped += (_, eventArgs) => eventArgs.Handled = true;
         return button;
     }
 
@@ -1046,6 +1313,32 @@ internal sealed class ImportSectionView : UserControl
         var reveal = new MenuItem { Header = Loc.Chrome("libraries.reveal") };
         reveal.Click += (_, _) => RevealInFileManager.Reveal(row.CandidateKey);
         items.Add(reveal);
+        if (row.CombineAncestorKey is { } combineKey)
+        {
+            items.Add(new Separator());
+            var combine = new MenuItem { Header = Loc.Chrome("import.release.one") };
+            combine.Click += (_, _) => ApplyFolderReleaseDecision(
+                combineKey,
+                BridgeFolderReleaseDecision.CombineAsOneRelease);
+            items.Add(combine);
+        }
+        foreach (var boundary in row.ResolvedBoundaries)
+        {
+            items.Add(new Separator());
+            var decision = boundary.Decision is BridgeFolderReleaseDecision.CombineAsOneRelease
+                ? BridgeFolderReleaseDecision.KeepAsSeparateReleases
+                : BridgeFolderReleaseDecision.CombineAsOneRelease;
+            var regroup = new MenuItem
+            {
+                Header = Loc.Chrome(
+                    decision is BridgeFolderReleaseDecision.CombineAsOneRelease
+                        ? "import.release.one"
+                        : "import.release.separate"),
+            };
+            regroup.Click += (_, _) =>
+                ApplyFolderReleaseDecision(boundary.Key, decision);
+            items.Add(regroup);
+        }
         return new ContextMenu { ItemsSource = items };
     }
 
@@ -1094,8 +1387,35 @@ internal sealed class ImportSectionView : UserControl
 
         var host = new Border { Child = grid };
         ToolTip.SetTip(host, reasonLine);
-        host.ContextMenu = new ContextMenu { ItemsSource = new[] { reveal } };
+        var items = new List<Control> { reveal };
+        foreach (var boundary in invalid.ResolvedBoundaries)
+        {
+            items.Add(new Separator());
+            var decision = boundary.Decision is BridgeFolderReleaseDecision.CombineAsOneRelease
+                ? BridgeFolderReleaseDecision.KeepAsSeparateReleases
+                : BridgeFolderReleaseDecision.CombineAsOneRelease;
+            var regroup = new MenuItem
+            {
+                Header = Loc.Chrome(
+                    decision is BridgeFolderReleaseDecision.CombineAsOneRelease
+                        ? "import.release.one"
+                        : "import.release.separate"),
+            };
+            regroup.Click += (_, _) =>
+                ApplyFolderReleaseDecision(boundary.Key, decision);
+            items.Add(regroup);
+        }
+        host.ContextMenu = new ContextMenu { ItemsSource = items };
         return host;
+    }
+
+    private void ApplyFolderReleaseDecision(
+        BridgeFolderReleaseDecisionKey key,
+        BridgeFolderReleaseDecision decision)
+    {
+        _selectedKey = null;
+        _pane.Clear();
+        _import.SetFolderReleaseDecision(key, decision);
     }
 
     // ── Row-click activation ────────────────────────────────────────────────
@@ -1105,12 +1425,16 @@ internal sealed class ImportSectionView : UserControl
     // otherwise put it under the mapping pane, read fresh for this key.
     private void OnRowActivated(BridgeTriageRow row)
     {
+        if (!row.Actionable)
+        {
+            return;
+        }
         if (row.Placement is BridgeTriagePlacement.NeedsYou
             {
                 Reason: BridgeNeedsYouReason.StillIdentifying { Phase: BridgeIdentifyPhase.Queued },
             })
         {
-            _ = _import.AutoIdentify(row.CandidateKey, row.CandidateKey);
+            _ = _import.AutoIdentify(row.CandidateKey);
             return;
         }
         _selectedKey = row.CandidateKey;

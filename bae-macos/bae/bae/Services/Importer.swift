@@ -6,12 +6,18 @@ import Foundation
 final class Importer: Sendable, Observable {
     /// Add a folder to watch for imports: persist it and scan it. Already-watched
     /// folders are left as-is.
-    let addWatchedFolder: @Sendable (_ path: String) throws -> Void
+    let addWatchedFolder: @Sendable (_ path: String) async throws -> Void
     /// Stop watching a folder; its candidates drop out of the list.
-    let removeWatchedFolder: @Sendable (_ path: String) throws -> Void
+    let removeWatchedFolder: @Sendable (_ path: String) async throws -> Void
+    let refreshWatchedFolder: @Sendable (_ path: String) async throws -> Void
+    let setFolderReleaseDecision:
+        @Sendable (
+            _ key: BridgeFolderReleaseDecisionKey,
+            _ decision: BridgeFolderReleaseDecision
+        ) async throws -> Void
     /// Mark a candidate skipped (or unskipped); the import view re-tabs the row.
     let setCandidateSkipped:
-        @Sendable (_ path: String, _ skipped: Bool) throws -> Void
+        @Sendable (_ path: String, _ skipped: Bool) async throws -> Void
     /// What a candidate's track sheet may be bound to: the folder's audio, each
     /// already offered or refused with a reason. Core probes to decide, so ask
     /// when the pane opens rather than holding it with the candidate.
@@ -37,11 +43,7 @@ final class Importer: Sendable, Observable {
             _ candidateKey: String, _ fileId: String,
             _ choice: BridgeFileRoleChoice
         ) async throws -> Void
-    /// Scan every watched folder, streaming candidates back as events. Called
-    /// when the import view appears to populate the list.
-    let scanWatchedFolders: @Sendable () throws -> Void
-    let autoIdentifyFolder:
-        @Sendable (_ candidateKey: String, _ folderPath: String) -> Void
+    let autoIdentifyFolder: @Sendable (_ candidateKey: String) -> Void
     let autoIdentifyRelease:
         @Sendable (_ candidateKey: String, _ releaseId: String) -> Void
     /// Stop a candidate's identify pipeline (driver + in-flight artwork OCR).
@@ -54,7 +56,8 @@ final class Importer: Sendable, Observable {
             Void
     let rerunIdentifyForCandidate: @Sendable (_ candidateKey: String) -> Void
     let previewFileTagsForFolder:
-        @Sendable (_ folderPath: String) async throws -> BridgeReleaseUserEdit
+        @Sendable (_ candidateKey: String) async throws ->
+            BridgeReleaseUserEdit
     /// What picking `result` under a candidate claims, and where its metadata
     /// comes from. The re-identify sheet's path: it commits straight from the
     /// picked row, so it never prefetches. The import confirm pane gets the
@@ -64,7 +67,7 @@ final class Importer: Sendable, Observable {
             BridgeClaimLine?
     let startImport:
         @Sendable (
-            _ candidateKey: String, _ folderPath: String,
+            _ candidateKey: String,
             _ selectedCover: BridgeCoverSelection?,
             _ storageMode: BridgeStorageMode,
             _ pin: Bool,
@@ -73,13 +76,22 @@ final class Importer: Sendable, Observable {
         ) throws -> Void
 
     init(
-        addWatchedFolder: @escaping @Sendable (String) throws -> Void = { _ in
-        },
-        removeWatchedFolder: @escaping @Sendable (String) throws -> Void = {
+        addWatchedFolder: @escaping @Sendable (String) async throws -> Void = {
             _ in
         },
+        removeWatchedFolder: @escaping @Sendable (String) async throws -> Void =
+            {
+                _ in
+            },
+        refreshWatchedFolder:
+            @escaping @Sendable (String) async throws -> Void = { _ in },
+        setFolderReleaseDecision:
+            @escaping @Sendable (
+                BridgeFolderReleaseDecisionKey, BridgeFolderReleaseDecision
+            ) async throws -> Void = { _, _ in },
         setCandidateSkipped:
-            @escaping @Sendable (String, Bool) throws -> Void = { _, _ in },
+            @escaping @Sendable (String, Bool) async throws -> Void = { _, _ in
+            },
         sheetBindingOptions:
             @escaping @Sendable (String, String) async throws ->
             [BridgeSheetBindingOption] = { _, _ in [] },
@@ -89,11 +101,7 @@ final class Importer: Sendable, Observable {
         setFileRole:
             @escaping @Sendable (String, String, BridgeFileRoleChoice)
             async throws -> Void = { _, _, _ in },
-        scanWatchedFolders: @escaping @Sendable () throws -> Void = {},
-        autoIdentifyFolder: @escaping @Sendable (String, String) -> Void = {
-            _,
-            _ in
-        },
+        autoIdentifyFolder: @escaping @Sendable (String) -> Void = { _ in },
         autoIdentifyRelease: @escaping @Sendable (String, String) -> Void = {
             _,
             _ in
@@ -111,24 +119,26 @@ final class Importer: Sendable, Observable {
         rerunIdentifyForCandidate:
             @escaping @Sendable (String) -> Void = { _ in },
         previewFileTagsForFolder:
-            @escaping @Sendable (String) async throws -> BridgeReleaseUserEdit =
+            @escaping @Sendable (String) async throws ->
+            BridgeReleaseUserEdit =
             { _ in throw StubError.notImplemented },
         claimForPick:
             @escaping @Sendable (String, BridgeMetadataResult) ->
             BridgeClaimLine? = { _, _ in nil },
         startImport:
             @escaping @Sendable (
-                String, String, BridgeCoverSelection?, BridgeStorageMode, Bool,
+                String, BridgeCoverSelection?, BridgeStorageMode, Bool,
                 BridgeIdentityChoice, BridgeReleaseUserEdit?
-            ) throws -> Void = { _, _, _, _, _, _, _ in }
+            ) throws -> Void = { _, _, _, _, _, _ in }
     ) {
         self.addWatchedFolder = addWatchedFolder
         self.removeWatchedFolder = removeWatchedFolder
+        self.refreshWatchedFolder = refreshWatchedFolder
+        self.setFolderReleaseDecision = setFolderReleaseDecision
         self.setCandidateSkipped = setCandidateSkipped
         self.sheetBindingOptions = sheetBindingOptions
         self.setSheetBinding = setSheetBinding
         self.setFileRole = setFileRole
-        self.scanWatchedFolders = scanWatchedFolders
         self.autoIdentifyFolder = autoIdentifyFolder
         self.autoIdentifyRelease = autoIdentifyRelease
         self.cancelAutoIdentify = cancelAutoIdentify
@@ -146,10 +156,21 @@ final class Importer: Sendable, Observable {
     // swiftlint:disable:next function_body_length
     convenience init(handle: any AppHandleProtocol) {
         self.init(
-            addWatchedFolder: { try handle.addWatchedFolder(path: $0) },
-            removeWatchedFolder: { try handle.removeWatchedFolder(path: $0) },
+            addWatchedFolder: { try await handle.addWatchedFolder(path: $0) },
+            removeWatchedFolder: {
+                try await handle.removeWatchedFolder(path: $0)
+            },
+            refreshWatchedFolder: {
+                try await handle.refreshWatchedFolder(path: $0)
+            },
+            setFolderReleaseDecision: {
+                try await handle.setFolderReleaseDecision(
+                    key: $0,
+                    decision: $1
+                )
+            },
             setCandidateSkipped: {
-                try handle.setCandidateSkipped(path: $0, skipped: $1)
+                try await handle.setCandidateSkipped(path: $0, skipped: $1)
             },
             sheetBindingOptions: {
                 try await handle.sheetBindingOptions(
@@ -171,9 +192,8 @@ final class Importer: Sendable, Observable {
                     choice: $2
                 )
             },
-            scanWatchedFolders: { try handle.scanWatchedFolders() },
             autoIdentifyFolder: {
-                handle.autoIdentifyFolder(candidateKey: $0, folderPath: $1)
+                handle.autoIdentifyFolder(candidateKey: $0)
             },
             autoIdentifyRelease: {
                 handle.autoIdentifyRelease(candidateKey: $0, releaseId: $1)
@@ -191,7 +211,9 @@ final class Importer: Sendable, Observable {
                 handle.rerunIdentifyForCandidate(candidateKey: $0)
             },
             previewFileTagsForFolder: {
-                try await handle.previewFileTagsForFolder(folderPath: $0)
+                try await handle.previewFileTagsForFolder(
+                    candidateKey: $0
+                )
             },
             claimForPick: {
                 handle.claimForPick(candidateKey: $0, result: $1)
@@ -199,12 +221,11 @@ final class Importer: Sendable, Observable {
             startImport: {
                 try handle.startImport(
                     candidateKey: $0,
-                    folderPath: $1,
-                    selectedCover: $2,
-                    storageMode: $3,
-                    pin: $4,
-                    identityChoice: $5,
-                    userEdit: $6
+                    selectedCover: $1,
+                    storageMode: $2,
+                    pin: $3,
+                    identityChoice: $4,
+                    userEdit: $5
                 )
             }
         )

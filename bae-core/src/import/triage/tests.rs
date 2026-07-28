@@ -18,6 +18,30 @@ use std::path::PathBuf;
 
 // ── Fixtures ────────────────────────────────────────────────────────────────
 
+fn candidate_rows(queue: &TriageQueue) -> Vec<&TriageRow> {
+    queue
+        .sections
+        .iter()
+        .flat_map(|section| &section.entries)
+        .filter_map(|entry| match entry {
+            TriageEntry::Candidate(row) => Some(row),
+            TriageEntry::Boundary(_) | TriageEntry::Invalid(_) => None,
+        })
+        .collect()
+}
+
+fn invalid_candidates(queue: &TriageQueue) -> Vec<&InvalidCandidate> {
+    queue
+        .sections
+        .iter()
+        .flat_map(|section| &section.entries)
+        .filter_map(|entry| match entry {
+            TriageEntry::Invalid(candidate) => Some(candidate),
+            TriageEntry::Candidate(_) | TriageEntry::Boundary(_) => None,
+        })
+        .collect()
+}
+
 fn result(release_id: &str) -> MetadataResult {
     MetadataResult {
         source: MetadataSource::MusicBrainz,
@@ -147,31 +171,39 @@ fn every_import_status() -> Vec<Option<CandidateImportStatusSnapshot>> {
     ]
 }
 
-fn candidate(folder: &str, skipped: bool, is_added: bool) -> FolderCandidate {
-    FolderCandidate {
-        path: PathBuf::from(format!("/music/{folder}")),
-        name: folder.to_string(),
-        files: CategorizedFiles {
-            // One file, named after the folder, so every fixture candidate has
-            // its own content hash — the key the stored verdicts are under.
-            files: vec![CandidateFile {
-                proposed_audio: true,
-                file: ScannedFile::new(
-                    PathBuf::from(format!("/music/{folder}/01.flac")),
-                    format!("{folder}-01.flac"),
-                    1_000,
-                ),
-                role: FileRole::Audio,
-            }],
-            format_label: "FLAC".to_string(),
+fn candidate(folder: &str, skipped: bool, is_added: bool) -> (FolderCandidate, bool, bool) {
+    (
+        FolderCandidate {
+            path: PathBuf::from(format!("/music/{folder}")),
+            file_root: PathBuf::from(format!("/music/{folder}")),
+            name: folder.to_string(),
+            files: CategorizedFiles {
+                // One file, named after the folder, so every fixture candidate has
+                // its own content hash — the key the stored verdicts are under.
+                files: vec![CandidateFile {
+                    proposed_audio: true,
+                    file: ScannedFile::new(
+                        PathBuf::from(format!("/music/{folder}/01.flac")),
+                        format!("{folder}-01.flac"),
+                        1_000,
+                    ),
+                    role: FileRole::Audio,
+                }],
+                format_label: "FLAC".to_string(),
+            },
+            watched_folder_path: "/music".to_string(),
+            scope: crate::import::folder_scanner::ReleaseFileScope::Recursive,
+            file_edit_revision: 0,
+            display_path: folder.to_string(),
+            resolved_boundaries: Vec::new(),
+            combine_ancestor_key: None,
         },
-        watched_folder_path: "/music".to_string(),
         skipped,
         is_added,
-    }
+    )
 }
 
-fn snapshot_of(candidates: Vec<FolderCandidate>) -> ImportCandidatesSnapshot {
+fn snapshot_of(candidates: Vec<(FolderCandidate, bool, bool)>) -> ImportCandidatesSnapshot {
     ImportCandidatesSnapshot {
         watched_folders: vec![WatchedFolder {
             path: "/music".to_string(),
@@ -179,17 +211,24 @@ fn snapshot_of(candidates: Vec<FolderCandidate>) -> ImportCandidatesSnapshot {
         }],
         folder_candidates: candidates
             .into_iter()
-            .map(|candidate| FolderImportCandidateSnapshot {
-                candidate,
-                runtime: CandidateRuntimeSnapshot {
-                    identify_state: IdentifyState::Idle,
-                    toolbar: vec![],
-                    signals: None,
-                    import_status: None,
+            .map(
+                |(candidate, skipped, is_added)| FolderImportCandidateSnapshot {
+                    candidate,
+                    actionable: true,
+                    skipped,
+                    is_added,
+                    runtime: CandidateRuntimeSnapshot {
+                        identify_state: IdentifyState::Idle,
+                        toolbar: vec![],
+                        signals: None,
+                        import_status: None,
+                    },
                 },
-            })
+            )
             .collect(),
         invalid_candidates: vec![],
+        boundaries: vec![],
+        folder_scan_statuses: vec![],
     }
 }
 
@@ -203,15 +242,34 @@ fn answer(verdict: TerminalVerdict, classification: QueueClassification) -> Answ
 fn answers_for(
     snapshot: &ImportCandidatesSnapshot,
     per_candidate: Vec<Option<Answered>>,
-) -> HashMap<String, Answered> {
+) -> HashMap<(String, u64), Answered> {
     snapshot
         .folder_candidates
         .iter()
         .zip(per_candidate)
         .filter_map(|(candidate, answer)| {
-            answer.map(|answer| (candidate.candidate.files.content_hash(), answer))
+            answer.map(|answer| {
+                (
+                    (
+                        candidate.candidate.files.content_hash(),
+                        candidate.candidate.file_edit_revision,
+                    ),
+                    answer,
+                )
+            })
         })
         .collect()
+}
+
+#[test]
+fn a_tentative_candidate_hidden_by_a_boundary_is_not_a_row_or_count() {
+    let mut snapshot = snapshot_of(vec![candidate("Release 01", false, false)]);
+    snapshot.folder_candidates[0].actionable = false;
+
+    let queue = project(snapshot, &HashMap::new());
+
+    assert_eq!(queue.counts, TriageTabCounts::default());
+    assert!(queue.sections.is_empty());
 }
 
 fn signals_context() -> crate::identify::state::SignalsContext {
@@ -414,6 +472,8 @@ fn tab_counts_equal_the_rows_in_each_tab() {
         path: PathBuf::from("/music/broken"),
         name: "broken".to_string(),
         watched_folder_path: "/music".to_string(),
+        display_path: "broken".to_string(),
+        resolved_boundaries: Vec::new(),
         reason: InvalidReason::NoValidAudio,
     }];
 
@@ -447,9 +507,8 @@ fn tab_counts_equal_the_rows_in_each_tab() {
     let queue = project(snapshot, &answers);
 
     let tally = |tab: TriageTab| {
-        queue
-            .rows
-            .iter()
+        candidate_rows(&queue)
+            .into_iter()
             .filter(|row| row.placement.tab() == tab)
             .count() as u32
     };
@@ -458,7 +517,7 @@ fn tab_counts_equal_the_rows_in_each_tab() {
     assert_eq!(queue.counts.done, tally(TriageTab::Done));
     assert_eq!(
         queue.counts.skipped,
-        tally(TriageTab::Skipped) + queue.invalid.len() as u32
+        tally(TriageTab::Skipped) + invalid_candidates(&queue).len() as u32
     );
 
     // Pinned, so a projection that put everything in one tab and still agreed
@@ -472,11 +531,14 @@ fn tab_counts_equal_the_rows_in_each_tab() {
             skipped: 2,
         }
     );
-    assert_eq!(queue.rows.len(), 6);
-    assert_eq!(queue.invalid.len(), 1);
+    assert_eq!(candidate_rows(&queue).len(), 6);
+    assert_eq!(invalid_candidates(&queue).len(), 1);
     // Only the Ready rows take a checkbox.
     assert_eq!(
-        queue.rows.iter().filter(|row| row.selectable).count() as u32,
+        candidate_rows(&queue)
+            .into_iter()
+            .filter(|row| row.selectable)
+            .count() as u32,
         queue.counts.ready
     );
 }
@@ -518,20 +580,26 @@ fn a_row_with_no_match_carries_no_release_fields() {
 
     let queue = project(snapshot.clone(), &answers);
 
-    assert!(queue.rows[0].matched.is_none());
-    assert_eq!(queue.rows[0].folder_name, "nothing-matched");
+    let row_named = |name: &str| {
+        candidate_rows(&queue)
+            .into_iter()
+            .find(|row| row.folder_name == name)
+            .expect("named candidate row")
+    };
+    assert!(row_named("nothing-matched").matched.is_none());
     // A conflict has results on both sides but no agreement on which is the
     // match, so it leads with nothing either.
-    assert!(queue.rows[1].matched.is_none());
-    assert_eq!(queue.rows[1].folder_name, "signals-disagreed");
+    assert!(row_named("signals-disagreed").matched.is_none());
 
     // A candidate with no verdict at all is the third shape of "no match".
     let unanswered = project(snapshot, &HashMap::new());
-    assert!(unanswered.rows.iter().all(|row| row.matched.is_none()));
+    assert!(candidate_rows(&unanswered)
+        .into_iter()
+        .all(|row| row.matched.is_none()));
 
     // The matched row does carry them, so the assertions above are not passing
     // on a projection that never populates a release.
-    let matched = queue.rows[2]
+    let matched = row_named("matched")
         .matched
         .as_ref()
         .expect("a Found row leads with its release");
@@ -575,7 +643,7 @@ fn several_matches_state_the_lead_but_not_the_pressing() {
     );
 
     let queue = project(snapshot, &answers);
-    let matched = queue.rows[0]
+    let matched = candidate_rows(&queue)[0]
         .matched
         .as_ref()
         .expect("the lead pressing still stands in for the album");
@@ -607,9 +675,12 @@ fn done_and_skipped_rows_still_lead_with_their_release() {
     );
 
     let queue = project(snapshot, &answers);
-    assert_eq!(queue.rows[0].placement, TriagePlacement::Done);
-    assert_eq!(queue.rows[1].placement, TriagePlacement::Skipped);
-    for row in &queue.rows {
+    assert_eq!(candidate_rows(&queue)[0].placement, TriagePlacement::Done);
+    assert_eq!(
+        candidate_rows(&queue)[1].placement,
+        TriagePlacement::Skipped
+    );
+    for row in candidate_rows(&queue) {
         assert!(
             row.matched.is_some(),
             "{} lost its release",
@@ -657,14 +728,14 @@ fn group_three_shares_a_header_and_keeps_its_variants() {
     let queue = project(snapshot, &answers);
 
     assert_eq!(
-        queue.rows[0].placement,
+        candidate_rows(&queue)[0].placement,
         TriagePlacement::NeedsYou {
             group: NeedsYouGroup::CountsOrLengthsDisagree,
             reason: NeedsYouReason::Disagreement(count_disagrees),
         }
     );
     assert_eq!(
-        queue.rows[1].placement,
+        candidate_rows(&queue)[1].placement,
         TriagePlacement::NeedsYou {
             group: NeedsYouGroup::CountsOrLengthsDisagree,
             reason: NeedsYouReason::Disagreement(durations_disagree),
@@ -727,6 +798,102 @@ fn the_group_order_is_stated_once_and_holds_every_group() {
     }
 }
 
+#[test]
+fn nested_candidates_form_a_collapsible_group_with_a_combine_target() {
+    let snapshot = snapshot_of(vec![
+        candidate("Group/Release One", false, false),
+        candidate("Group/Wrapper/Release Two", false, false),
+    ]);
+    let queue = project(snapshot, &HashMap::new());
+
+    assert_eq!(queue.sections.len(), 1);
+    let group = queue.sections[0].group.as_ref().expect("grouped section");
+    assert_eq!(group.name, "Group");
+    assert_eq!(
+        group.key,
+        FolderReleaseDecisionKey {
+            watched_folder_path: "/music".to_string(),
+            relative_folder_path: "Group".to_string(),
+        }
+    );
+    assert_eq!(queue.sections[0].entries.len(), 2);
+}
+
+#[test]
+fn direct_release_joins_its_top_level_descendant_group() {
+    let snapshot = snapshot_of(vec![
+        candidate("Artist", false, false),
+        candidate("Artist/Album", false, false),
+    ]);
+    let queue = project(snapshot, &HashMap::new());
+
+    assert_eq!(queue.sections.len(), 1);
+    let section = &queue.sections[0];
+    assert_eq!(
+        section.group.as_ref().map(|group| group.name.as_str()),
+        Some("Artist")
+    );
+    assert_eq!(section.entries.len(), 2);
+}
+
+#[test]
+fn candidate_and_boundary_entries_share_natural_path_order() {
+    let mut snapshot = snapshot_of(vec![candidate("Group/Release 10", false, false)]);
+    snapshot.boundaries.push(FolderReleaseBoundary {
+        key: FolderReleaseDecisionKey {
+            watched_folder_path: "/music".to_string(),
+            relative_folder_path: "Group/Release 2".to_string(),
+        },
+        name: "Release 2".to_string(),
+        display_path: "Group/Release 2".to_string(),
+        shared_file_count: 0,
+        tree_rows: Vec::new(),
+        candidate_keys: Vec::new(),
+    });
+
+    let queue = project(snapshot, &HashMap::new());
+    assert_eq!(queue.sections.len(), 1);
+    assert!(matches!(
+        &queue.sections[0].entries[..],
+        [TriageEntry::Boundary(boundary), TriageEntry::Candidate(row)]
+            if boundary.display_path == "Group/Release 2"
+                && row.display_path == "Group/Release 10"
+    ));
+}
+
+#[test]
+fn projected_entry_keys_are_stable_and_variant_distinct() {
+    let mut snapshot = snapshot_of(vec![candidate("Group/Release", false, false)]);
+    snapshot.boundaries.push(FolderReleaseBoundary {
+        key: FolderReleaseDecisionKey {
+            watched_folder_path: "/music".to_string(),
+            relative_folder_path: "Group/Release".to_string(),
+        },
+        name: "Release".to_string(),
+        display_path: "Group/Release".to_string(),
+        shared_file_count: 0,
+        tree_rows: Vec::new(),
+        candidate_keys: Vec::new(),
+    });
+
+    let first = project(snapshot.clone(), &HashMap::new());
+    let second = project(snapshot, &HashMap::new());
+    let first_keys: Vec<_> = first.sections[0]
+        .entries
+        .iter()
+        .map(TriageEntry::stable_key)
+        .collect();
+    let second_keys: Vec<_> = second.sections[0]
+        .entries
+        .iter()
+        .map(TriageEntry::stable_key)
+        .collect();
+
+    assert_eq!(first_keys, second_keys);
+    assert_eq!(first_keys.len(), 2);
+    assert_ne!(first_keys[0], first_keys[1]);
+}
+
 // ── `load`: the real read ───────────────────────────────────────────────────
 
 mod load {
@@ -785,7 +952,9 @@ mod load {
                 tokio::runtime::Handle::current(),
                 manager.clone(),
                 crate::import::cover_art::CoverArtArchiveClient::hermetic(),
-            );
+            )
+            .await
+            .unwrap();
             let root = temp.path().join("watched");
             std::fs::create_dir_all(&root).unwrap();
             Fixture {
@@ -819,6 +988,7 @@ mod load {
             let mut events = self.import.subscribe_events();
             self.import
                 .add_watched_folder(self.root.to_string_lossy().into_owned())
+                .await
                 .unwrap();
             let deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(10);
             loop {
@@ -840,8 +1010,9 @@ mod load {
         fn content_hash(&self, dir: &Path) -> String {
             // No stored bindings: these fixtures never edit one, so every
             // sheet keeps the scan's own reading.
-            crate::import::folder_scanner::collect_release_candidate_files(
+            crate::import::folder_scanner::collect_release_candidate_files_with_scope(
                 dir,
+                crate::import::ReleaseFileScope::Recursive,
                 &crate::import::folder_scanner::StoredCandidateEdits::none(),
             )
             .expect("the candidate folder is readable")
@@ -856,6 +1027,7 @@ mod load {
                     folder_path: dir.to_string_lossy().into_owned(),
                     verdict: verdict.to_string(),
                     probed_total_duration_ms,
+                    expected_edit_revision: 0,
                 })
                 .await
                 .unwrap();
@@ -996,10 +1168,10 @@ mod load {
             .await;
 
         let queue = fixture.load().await.unwrap();
-        assert_eq!(queue.rows.len(), 1);
-        assert_eq!(queue.rows[0].placement, TriagePlacement::Ready);
+        assert_eq!(candidate_rows(&queue).len(), 1);
+        assert_eq!(candidate_rows(&queue)[0].placement, TriagePlacement::Ready);
         assert_eq!(queue.counts.ready, 1);
-        assert!(queue.rows[0].selectable);
+        assert!(candidate_rows(&queue)[0].selectable);
     }
 
     /// The same candidate with the release now in the library must not be
@@ -1022,7 +1194,7 @@ mod load {
 
         let queue = fixture.load().await.unwrap();
         assert_eq!(
-            queue.rows[0].placement,
+            candidate_rows(&queue)[0].placement,
             TriagePlacement::NeedsYou {
                 group: NeedsYouGroup::AlreadyInLibrary,
                 reason: NeedsYouReason::Disagreement(NeedsYou::AlreadyInLibrary),
@@ -1031,14 +1203,13 @@ mod load {
         );
         assert_eq!(queue.counts.ready, 0);
         assert_eq!(queue.counts.needs_you, 1);
-        assert!(!queue.rows[0].selectable);
+        assert!(!candidate_rows(&queue)[0].selectable);
     }
 
-    /// A stored row this build can no longer parse reads as absent: the row is
-    /// still identifying, waiting for the sweep to overwrite it — not an error,
-    /// and not a verdict invented out of the unreadable bytes.
+    /// A stored row this build can no longer parse is corruption, not an absent
+    /// answer. The queue read must fail instead of inventing a usable state.
     #[tokio::test]
-    async fn an_undecodable_row_reads_as_absent() {
+    async fn an_undecodable_row_fails_the_read() {
         let fixture = Fixture::new().await;
         let dir = fixture.candidate_dir("album");
         fixture.scan(1).await;
@@ -1046,18 +1217,11 @@ mod load {
             .store(&dir, r#"{"Found":{"shape":"from a future build"}}"#, 0)
             .await;
 
-        let queue = fixture.load().await.unwrap();
-        assert_eq!(
-            queue.rows[0].placement,
-            TriagePlacement::NeedsYou {
-                group: NeedsYouGroup::StillIdentifying,
-                // Nothing has run in this process, so the runtime reads idle.
-                reason: NeedsYouReason::StillIdentifying {
-                    phase: IdentifyPhase::Queued
-                },
-            }
-        );
-        assert!(queue.rows[0].matched.is_none());
+        let error = fixture
+            .load()
+            .await
+            .expect_err("an undecodable verdict cannot be treated as absent");
+        assert!(error.to_string().contains("does not decode"));
     }
 
     /// A negative probed total cannot come from anything that writes the
@@ -1065,24 +1229,24 @@ mod load {
     /// `LocalDurationUnknown` — a believable answer standing in for a corrupt
     /// row — so the read fails instead.
     #[tokio::test]
-    async fn a_negative_probed_total_fails_the_read() {
+    async fn a_negative_probed_total_is_rejected_by_the_write() {
         let fixture = Fixture::new().await;
         let dir = fixture.candidate_dir("album");
         fixture.scan(1).await;
-        fixture
-            .store_verdict(
-                &dir,
-                &agreeing_verdict(2_400_000, "mb-rel-1", "group-1"),
-                -1,
-            )
-            .await;
-
+        let verdict = agreeing_verdict(2_400_000, "mb-rel-1", "group-1");
         let error = fixture
-            .load()
+            .manager
+            .save_import_candidate_verdict(&NewImportCandidateVerdict {
+                content_hash: fixture.content_hash(&dir),
+                folder_path: dir.to_string_lossy().into_owned(),
+                verdict: serde_json::to_string(&verdict).unwrap(),
+                probed_total_duration_ms: -1,
+                expected_edit_revision: 0,
+            })
             .await
-            .expect_err("a corrupt probed total is not an answer");
+            .expect_err("a negative probed total cannot enter durable state");
         assert!(
-            error.to_string().contains("negative probed total"),
+            error.to_string().contains("CHECK constraint failed"),
             "unexpected error: {error}"
         );
     }
@@ -1117,9 +1281,8 @@ mod load {
 
         let queue = fixture.load().await.unwrap();
         let placement_of = |name: &str| {
-            queue
-                .rows
-                .iter()
+            candidate_rows(&queue)
+                .into_iter()
                 .find(|row| row.folder_name == name)
                 .unwrap_or_else(|| panic!("no row for {name}"))
                 .placement

@@ -18,7 +18,10 @@
 //! answer puts the row and what the row shows.
 
 use super::claim::ClaimEvidence;
-use super::folder_scanner::{FolderCandidate, InvalidCandidate};
+use super::folder_scanner::{
+    FolderCandidate, FolderReleaseBoundary, FolderReleaseDecisionKey, InvalidCandidate,
+    ResolvedFolderReleaseBoundary,
+};
 use super::handle::{
     CandidateImportStatusSnapshot, FolderImportCandidateSnapshot, ImportCandidatesSnapshot,
     ImportServiceHandle,
@@ -31,7 +34,7 @@ use crate::identify::{
     classify, IdentifyState, NeedsYou, QueueClassification, ResultProvenance, TerminalVerdict,
 };
 use crate::library::{LibraryError, LibraryManager};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 /// The sidebar's four tabs, split by what the queue needs from the user rather
 /// than by lifecycle.
@@ -367,6 +370,10 @@ pub struct TriageRow {
     /// The watched folder this candidate was scanned from — the sidebar's
     /// existing section key. Match it against `WatchedFolder::path`.
     pub watched_folder_path: String,
+    pub display_path: String,
+    pub resolved_boundaries: Vec<ResolvedFolderReleaseBoundary>,
+    pub combine_ancestor_key: Option<FolderReleaseDecisionKey>,
+    pub actionable: bool,
     pub placement: TriagePlacement,
     /// The release the row leads with. `None` and the folder name is the title.
     pub matched: Option<MatchedRelease>,
@@ -375,6 +382,45 @@ pub struct TriageRow {
     /// each UI so the rule is stated once.
     pub selectable: bool,
     pub import_status: Option<CandidateImportStatusSnapshot>,
+}
+
+#[derive(Debug, Clone)]
+pub struct TriageGroup {
+    pub key: FolderReleaseDecisionKey,
+    pub name: String,
+}
+
+#[derive(Debug, Clone)]
+pub enum TriageEntry {
+    Candidate(TriageRow),
+    Boundary(FolderReleaseBoundary),
+    Invalid(InvalidCandidate),
+}
+
+impl TriageEntry {
+    /// Stable identity for a projected sidebar entry. Variant prefixes keep a
+    /// candidate and a boundary at the same folder from sharing view state;
+    /// the boundary length prefix makes its two path components unambiguous.
+    pub fn stable_key(&self) -> String {
+        match self {
+            Self::Candidate(row) => format!("candidate:{}", row.candidate_key),
+            Self::Boundary(boundary) => format!(
+                "boundary:{}:{}{}",
+                boundary.key.watched_folder_path.len(),
+                boundary.key.watched_folder_path,
+                boundary.key.relative_folder_path
+            ),
+            Self::Invalid(candidate) => format!("invalid:{}", candidate.path.display()),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct TriageSection {
+    pub tab: TriageTab,
+    pub watched_folder_path: String,
+    pub group: Option<TriageGroup>,
+    pub entries: Vec<TriageEntry>,
 }
 
 /// How many rows each tab holds. Computed in the same pass that places them, so
@@ -399,22 +445,15 @@ impl TriageTabCounts {
     }
 }
 
-/// The whole sidebar: every candidate's row, the invalid folders that share the
-/// Skipped tab with them, and what each tab reads.
+/// The whole sidebar, grouped into the hierarchy both UIs render.
 #[derive(Debug, Clone)]
 pub struct TriageQueue {
-    /// Ordered by watched folder — in the watched-folder list's own order —
-    /// then by candidate key. That is the scan snapshot's order, kept: sorting
-    /// is the store's and grouping is `placement`'s.
-    pub rows: Vec<TriageRow>,
-    /// Folders that looked like releases and failed validation. They are not
-    /// rows — no verdict, no import, nothing to triage — but they live in the
-    /// Skipped tab, so they travel with the counts rather than being fetched
-    /// separately: two reads at two instants can disagree about how many there
-    /// are, and then the tab's number contradicts its own list.
-    pub invalid: Vec<InvalidCandidate>,
+    /// Tab-specific, core-shaped hierarchy. A section without `group` contains
+    /// linear rows directly below the watched root.
+    pub sections: Vec<TriageSection>,
     /// `skipped` counts the Skipped rows **plus** `invalid`.
     pub counts: TriageTabCounts,
+    pub folder_scan_statuses: Vec<super::handle::WatchedFolderScanStatus>,
 }
 
 /// What a candidate's stored row says, read back.
@@ -512,22 +551,35 @@ fn row(snapshot: &FolderImportCandidateSnapshot, answer: Option<&Answered>) -> T
         path,
         name,
         watched_folder_path,
-        skipped,
-        is_added,
         files: _,
+        display_path,
+        resolved_boundaries,
+        combine_ancestor_key,
+        scope: _,
+        ..
     } = &snapshot.candidate;
     let import_status = snapshot.runtime.import_status.clone();
-    let known = match answer {
+    let actionable_answer = answer.filter(|_| snapshot.actionable);
+    let known = match actionable_answer {
         Some(answer) => CandidateAnswer::Classified(answer.classification.clone()),
         None => CandidateAnswer::Unanswered(IdentifyPhase::of(&snapshot.runtime.identify_state)),
     };
-    let placement = place(*skipped, *is_added, import_status.as_ref(), &known);
+    let placement = place(
+        snapshot.skipped,
+        snapshot.is_added,
+        import_status.as_ref(),
+        &known,
+    );
     TriageRow {
         candidate_key: path.to_string_lossy().into_owned(),
         folder_name: name.clone(),
         watched_folder_path: watched_folder_path.clone(),
-        selectable: matches!(placement, TriagePlacement::Ready),
-        matched: answer.and_then(|answer| MatchedRelease::of(&answer.verdict)),
+        display_path: display_path.clone(),
+        resolved_boundaries: resolved_boundaries.clone(),
+        combine_ancestor_key: combine_ancestor_key.clone(),
+        actionable: snapshot.actionable,
+        selectable: snapshot.actionable && matches!(placement, TriagePlacement::Ready),
+        matched: actionable_answer.and_then(|answer| MatchedRelease::of(&answer.verdict)),
         placement,
         import_status,
     }
@@ -539,34 +591,201 @@ fn row(snapshot: &FolderImportCandidateSnapshot, answer: Option<&Answered>) -> T
 /// by; a candidate with no entry has no verdict yet.
 pub fn project(
     snapshot: ImportCandidatesSnapshot,
-    answers: &HashMap<String, Answered>,
+    answers: &HashMap<(String, u64), Answered>,
 ) -> TriageQueue {
     let ImportCandidatesSnapshot {
         folder_candidates,
         invalid_candidates,
-        // The section headers are the sidebar's own query; a row names its
-        // watched folder by path.
-        watched_folders: _,
+        watched_folders,
+        boundaries,
+        folder_scan_statuses,
     } = snapshot;
 
-    let mut rows = Vec::with_capacity(folder_candidates.len());
+    let actionable_candidates: Vec<_> = folder_candidates
+        .iter()
+        .filter(|candidate| candidate.actionable)
+        .collect();
+    let mut rows = Vec::with_capacity(actionable_candidates.len());
     let mut counts = TriageTabCounts {
         skipped: invalid_candidates.len() as u32,
         ..TriageTabCounts::default()
     };
-    for candidate in &folder_candidates {
+    for candidate in actionable_candidates {
         let row = row(
             candidate,
-            answers.get(&candidate.candidate.files.content_hash()),
+            answers.get(&(
+                candidate.candidate.files.content_hash(),
+                candidate.candidate.file_edit_revision,
+            )),
         );
         counts.bump(row.placement.tab());
         rows.push(row);
     }
+    counts.needs_you += boundaries.len() as u32;
+    let sections = project_sections(&watched_folders, &rows, &invalid_candidates, &boundaries);
     TriageQueue {
-        rows,
-        invalid: invalid_candidates,
+        sections,
         counts,
+        folder_scan_statuses,
     }
+}
+
+fn group_for(
+    watched_folder_path: &str,
+    display_path: &str,
+    grouped_roots: &HashSet<(String, String)>,
+) -> Option<TriageGroup> {
+    let mut components = display_path
+        .split('/')
+        .filter(|component| !component.is_empty());
+    let first = components.next()?;
+    if components.next().is_none()
+        && !grouped_roots.contains(&(watched_folder_path.to_string(), first.to_string()))
+    {
+        return None;
+    }
+    let key = FolderReleaseDecisionKey {
+        watched_folder_path: watched_folder_path.to_string(),
+        relative_folder_path: first.to_string(),
+    };
+    Some(TriageGroup {
+        key,
+        name: first.to_string(),
+    })
+}
+
+fn push_section_entry(
+    sections: &mut Vec<TriageSection>,
+    tab: TriageTab,
+    watched_folder_path: &str,
+    group: Option<TriageGroup>,
+    entry: TriageEntry,
+) {
+    let group_path = group
+        .as_ref()
+        .map(|group| group.key.relative_folder_path.as_str());
+    if let Some(section) = sections.iter_mut().find(|section| {
+        section.tab == tab
+            && section.watched_folder_path == watched_folder_path
+            && section
+                .group
+                .as_ref()
+                .map(|group| group.key.relative_folder_path.as_str())
+                == group_path
+    }) {
+        section.entries.push(entry);
+        return;
+    }
+    sections.push(TriageSection {
+        tab,
+        watched_folder_path: watched_folder_path.to_string(),
+        group,
+        entries: vec![entry],
+    });
+}
+
+fn project_sections(
+    watched_folders: &[super::folder_registry::WatchedFolder],
+    rows: &[TriageRow],
+    invalid: &[InvalidCandidate],
+    boundaries: &[FolderReleaseBoundary],
+) -> Vec<TriageSection> {
+    struct OrderedEntry {
+        watched_folder_path: String,
+        display_path: String,
+        tab: TriageTab,
+        group: Option<TriageGroup>,
+        entry: TriageEntry,
+    }
+
+    let mut grouped_roots = HashSet::new();
+    let mut note_descendant = |watched_folder_path: &str, display_path: &str, hidden: bool| {
+        let mut components = display_path
+            .split('/')
+            .filter(|component| !component.is_empty());
+        if let Some(first) = components.next() {
+            if hidden || components.next().is_some() {
+                grouped_roots.insert((watched_folder_path.to_string(), first.to_string()));
+            }
+        }
+    };
+    for row in rows {
+        note_descendant(&row.watched_folder_path, &row.display_path, false);
+    }
+    for candidate in invalid {
+        note_descendant(
+            &candidate.watched_folder_path,
+            &candidate.display_path,
+            false,
+        );
+    }
+    for boundary in boundaries {
+        note_descendant(
+            &boundary.key.watched_folder_path,
+            &boundary.display_path,
+            !boundary.tree_rows.is_empty(),
+        );
+    }
+
+    let mut ordered = Vec::with_capacity(rows.len() + invalid.len() + boundaries.len());
+    for row in rows {
+        ordered.push(OrderedEntry {
+            watched_folder_path: row.watched_folder_path.clone(),
+            display_path: row.display_path.clone(),
+            tab: row.placement.tab(),
+            group: group_for(&row.watched_folder_path, &row.display_path, &grouped_roots),
+            entry: TriageEntry::Candidate(row.clone()),
+        });
+    }
+    for boundary in boundaries {
+        ordered.push(OrderedEntry {
+            watched_folder_path: boundary.key.watched_folder_path.clone(),
+            display_path: boundary.display_path.clone(),
+            tab: TriageTab::NeedsYou,
+            group: group_for(
+                &boundary.key.watched_folder_path,
+                &boundary.display_path,
+                &grouped_roots,
+            ),
+            entry: TriageEntry::Boundary(boundary.clone()),
+        });
+    }
+    for candidate in invalid {
+        ordered.push(OrderedEntry {
+            watched_folder_path: candidate.watched_folder_path.clone(),
+            display_path: candidate.display_path.clone(),
+            tab: TriageTab::Skipped,
+            group: group_for(
+                &candidate.watched_folder_path,
+                &candidate.display_path,
+                &grouped_roots,
+            ),
+            entry: TriageEntry::Invalid(candidate.clone()),
+        });
+    }
+    let root_order: HashMap<_, _> = watched_folders
+        .iter()
+        .enumerate()
+        .map(|(index, folder)| (folder.path.as_str(), index))
+        .collect();
+    ordered.sort_by(|left, right| {
+        root_order
+            .get(left.watched_folder_path.as_str())
+            .cmp(&root_order.get(right.watched_folder_path.as_str()))
+            .then_with(|| natord::compare(&left.display_path, &right.display_path))
+    });
+
+    let mut sections = Vec::new();
+    for ordered in ordered {
+        push_section_entry(
+            &mut sections,
+            ordered.tab,
+            &ordered.watched_folder_path,
+            ordered.group,
+            ordered.entry,
+        );
+    }
+    sections
 }
 
 /// Read the queue: the scanned candidates, their stored verdicts, and one live
@@ -589,7 +808,7 @@ pub async fn load(
         let mut seen = std::collections::HashSet::new();
         verdicts
             .values()
-            .flat_map(|(verdict, _)| named_matches(verdict))
+            .flat_map(|stored| named_matches(&stored.verdict))
             .filter(|result| seen.insert(result.release_id.clone()))
             .map(LibraryCheck::from)
             .collect()
@@ -601,9 +820,9 @@ pub async fn load(
         .collect();
 
     let mut answers = HashMap::with_capacity(verdicts.len());
-    for (content_hash, (verdict, probed_total_duration_ms)) in verdicts {
+    for (candidate_identity, stored) in verdicts {
         let mut library_statuses = Vec::new();
-        for result in named_matches(&verdict) {
+        for result in named_matches(&stored.verdict) {
             // A release the check did not answer for is the one failure that
             // must not be absorbed. `ready::in_library` reads a missing status
             // as "not in the library", which is the difference between Needs
@@ -621,8 +840,12 @@ pub async fn load(
             library_statuses.push((*status).clone());
         }
         answers.insert(
-            content_hash,
-            Answered::new(verdict, probed_total_duration_ms, &library_statuses),
+            candidate_identity,
+            Answered::new(
+                stored.verdict,
+                stored.probed_total_duration_ms,
+                &library_statuses,
+            ),
         );
     }
 
@@ -643,22 +866,31 @@ fn named_matches(verdict: &TerminalVerdict) -> impl Iterator<Item = &MetadataRes
 }
 
 /// The stored verdict and probed total for every scanned candidate that has
-/// one, keyed by content hash. A row this build cannot decode is absent — see
-/// [`decode_stored`], which is where that rule lives for the sweep too.
+/// one, keyed by content hash. A row this build cannot decode fails the read
+/// through [`decode_stored`]; persisted state is never silently omitted.
+struct StoredCandidateVerdict {
+    verdict: TerminalVerdict,
+    probed_total_duration_ms: u64,
+}
+
 fn stored_verdicts(
     snapshot: &ImportCandidatesSnapshot,
     stored: &HashMap<String, DbImportCandidateState>,
-) -> Result<HashMap<String, (TerminalVerdict, u64)>, LibraryError> {
+) -> Result<HashMap<(String, u64), StoredCandidateVerdict>, LibraryError> {
     let mut out = HashMap::new();
     for candidate in &snapshot.folder_candidates {
         let content_hash = candidate.candidate.files.content_hash();
-        if out.contains_key(&content_hash) {
+        let candidate_identity = (content_hash.clone(), candidate.candidate.file_edit_revision);
+        if out.contains_key(&candidate_identity) {
             continue;
         }
         let Some(row) = stored.get(&content_hash) else {
             continue;
         };
-        let Some(verdict) = decode_stored(row) else {
+        if row.file_edits.revision != candidate.candidate.file_edit_revision {
+            continue;
+        }
+        let Some(verdict) = decode_stored(row).map_err(LibraryError::Internal)? else {
             continue;
         };
         // `decode_stored` returning a verdict means the row carries an identify
@@ -678,7 +910,13 @@ fn stored_verdicts(
                 identify.probed_total_duration_ms
             ))
             })?;
-        out.insert(content_hash, (verdict, probed_total_duration_ms));
+        out.insert(
+            candidate_identity,
+            StoredCandidateVerdict {
+                verdict,
+                probed_total_duration_ms,
+            },
+        );
     }
     Ok(out)
 }

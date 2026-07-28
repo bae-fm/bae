@@ -1320,9 +1320,8 @@ impl AppHandle {
     /// flow through the unified import event channel → bus → reducer → store,
     /// and the verdict this reaches is persisted like the background sweep's —
     /// core decides all of that, so this stays one call.
-    pub fn auto_identify_folder(&self, candidate_key: String, folder_path: String) {
-        self.services
-            .identify_folder_candidate(candidate_key, folder_path.into());
+    pub fn auto_identify_folder(&self, candidate_key: String) {
+        self.services.identify_folder_candidate(candidate_key);
     }
 
     /// Start re-identifying an existing library release. Extraction resolves
@@ -1436,26 +1435,53 @@ impl AppHandle {
             .map(crate::types::BridgeImportCandidateSnapshot::from_core)
     }
 
-    pub fn add_watched_folder(&self, path: String) -> Result<(), BridgeError> {
+    pub async fn add_watched_folder(&self, path: String) -> Result<(), BridgeError> {
         self.services
             .import()
             .add_watched_folder(path)
+            .await
             .map_err(BridgeError::import)
     }
 
-    pub fn remove_watched_folder(&self, path: String) -> Result<(), BridgeError> {
+    pub async fn remove_watched_folder(&self, path: String) -> Result<(), BridgeError> {
         self.services
             .import()
             .remove_watched_folder(path)
+            .await
+            .map_err(BridgeError::import)
+    }
+
+    pub async fn refresh_watched_folder(&self, path: String) -> Result<(), BridgeError> {
+        self.services
+            .import()
+            .refresh_watched_folder(path)
+            .await
+            .map_err(BridgeError::import)
+    }
+
+    pub async fn set_folder_release_decision(
+        &self,
+        key: crate::types::BridgeFolderReleaseDecisionKey,
+        decision: crate::types::BridgeFolderReleaseDecision,
+    ) -> Result<(), BridgeError> {
+        self.services
+            .import()
+            .set_folder_release_decision(key.into_core(), decision.into_core())
+            .await
             .map_err(BridgeError::import)
     }
 
     /// Mark the candidate at `path` skipped or unskipped. Persists the change;
     /// the candidate invalidation makes the import view read the new row.
-    pub fn set_candidate_skipped(&self, path: String, skipped: bool) -> Result<(), BridgeError> {
+    pub async fn set_candidate_skipped(
+        &self,
+        path: String,
+        skipped: bool,
+    ) -> Result<(), BridgeError> {
         self.services
             .import()
             .set_candidate_skipped(path, skipped)
+            .await
             .map_err(BridgeError::import)
     }
 
@@ -1638,7 +1664,6 @@ impl AppHandle {
     pub fn start_import(
         &self,
         candidate_key: String,
-        folder_path: String,
         selected_cover: Option<BridgeCoverSelection>,
         storage_mode: BridgeStorageMode,
         pin: bool,
@@ -1653,7 +1678,6 @@ impl AppHandle {
             .import()
             .start_import(
                 &candidate_key,
-                std::path::PathBuf::from(&folder_path),
                 cover,
                 storage_mode.into_core(),
                 pin,
@@ -1671,12 +1695,12 @@ impl AppHandle {
     /// `BridgeIdentityChoice::Unknown`.
     pub async fn preview_file_tags_for_folder(
         &self,
-        folder_path: String,
+        candidate_key: String,
     ) -> Result<crate::types::BridgeReleaseUserEdit, BridgeError> {
         let edit = self
             .services
             .import()
-            .preview_file_tags_for_folder(std::path::PathBuf::from(&folder_path))
+            .preview_file_tags_for_folder(candidate_key)
             .await
             .map_err(BridgeError::import)?;
         Ok(crate::types::BridgeReleaseUserEdit::from_core(edit))
@@ -2404,8 +2428,132 @@ impl crate::types::BridgeSyncStatusSnapshot {
 }
 
 #[cfg(feature = "desktop")]
+impl crate::types::BridgeFolderReleaseDecisionKey {
+    fn from_core(key: bae_core::import::FolderReleaseDecisionKey) -> Self {
+        Self {
+            watched_folder_path: key.watched_folder_path,
+            relative_folder_path: key.relative_folder_path,
+        }
+    }
+
+    fn into_core(self) -> bae_core::import::FolderReleaseDecisionKey {
+        bae_core::import::FolderReleaseDecisionKey {
+            watched_folder_path: self.watched_folder_path,
+            relative_folder_path: self.relative_folder_path,
+        }
+    }
+}
+
+#[cfg(feature = "desktop")]
+impl crate::types::BridgeFolderReleaseDecision {
+    fn from_core(decision: bae_core::import::FolderReleaseDecision) -> Self {
+        match decision {
+            bae_core::import::FolderReleaseDecision::CombineAsOneRelease => {
+                Self::CombineAsOneRelease
+            }
+            bae_core::import::FolderReleaseDecision::KeepAsSeparateReleases => {
+                Self::KeepAsSeparateReleases
+            }
+        }
+    }
+
+    fn into_core(self) -> bae_core::import::FolderReleaseDecision {
+        match self {
+            Self::CombineAsOneRelease => {
+                bae_core::import::FolderReleaseDecision::CombineAsOneRelease
+            }
+            Self::KeepAsSeparateReleases => {
+                bae_core::import::FolderReleaseDecision::KeepAsSeparateReleases
+            }
+        }
+    }
+}
+
+#[cfg(feature = "desktop")]
+impl crate::types::BridgeResolvedFolderReleaseBoundary {
+    fn from_core(boundary: bae_core::import::ResolvedFolderReleaseBoundary) -> Self {
+        Self {
+            key: crate::types::BridgeFolderReleaseDecisionKey::from_core(boundary.key),
+            decision: crate::types::BridgeFolderReleaseDecision::from_core(boundary.decision),
+            name: boundary.name,
+            display_path: boundary.display_path,
+        }
+    }
+}
+
+#[cfg(feature = "desktop")]
+impl crate::types::BridgeFolderReleaseBoundary {
+    fn from_core(boundary: bae_core::import::FolderReleaseBoundary) -> Self {
+        Self {
+            key: crate::types::BridgeFolderReleaseDecisionKey::from_core(boundary.key),
+            name: boundary.name,
+            display_path: boundary.display_path,
+            shared_file_count: boundary.shared_file_count,
+            tree_rows: boundary
+                .tree_rows
+                .into_iter()
+                .map(|row| crate::types::BridgeFolderReleaseTreeRow {
+                    name: row.name,
+                    display_path: row.display_path,
+                    depth: row.depth,
+                    kind: match row.kind {
+                        bae_core::import::FolderReleaseTreeRowKind::Folder => {
+                            crate::types::BridgeFolderReleaseTreeRowKind::Folder
+                        }
+                        bae_core::import::FolderReleaseTreeRowKind::Candidate { summary } => {
+                            crate::types::BridgeFolderReleaseTreeRowKind::Candidate {
+                                track_count: summary.track_count,
+                                format_label: summary.format_label,
+                            }
+                        }
+                        bae_core::import::FolderReleaseTreeRowKind::Invalid { reason } => {
+                            crate::types::BridgeFolderReleaseTreeRowKind::Invalid {
+                                reason: crate::types::BridgeInvalidReason::from_core(reason),
+                            }
+                        }
+                    },
+                    decision_key: crate::types::BridgeFolderReleaseDecisionKey::from_core(
+                        row.decision_key,
+                    ),
+                    ancestor_decision_keys: row
+                        .ancestor_decision_keys
+                        .into_iter()
+                        .map(crate::types::BridgeFolderReleaseDecisionKey::from_core)
+                        .collect(),
+                })
+                .collect(),
+        }
+    }
+}
+
+#[cfg(feature = "desktop")]
+impl crate::types::BridgeWatchedFolderScanStatus {
+    fn from_core(status: bae_core::import::WatchedFolderScanStatus) -> Self {
+        Self {
+            watched_folder_path: status.watched_folder_path,
+            watched_folder_name: status.watched_folder_name,
+            status: match status.status {
+                bae_core::import::FolderScanStatus::Scanning => {
+                    crate::types::BridgeFolderScanStatus::Scanning
+                }
+                bae_core::import::FolderScanStatus::Complete => {
+                    crate::types::BridgeFolderScanStatus::Complete
+                }
+                bae_core::import::FolderScanStatus::Failed { error } => {
+                    crate::types::BridgeFolderScanStatus::Failed { error }
+                }
+            },
+        }
+    }
+}
+
+#[cfg(feature = "desktop")]
 impl crate::types::BridgeFolderCandidate {
-    fn from_core(candidate: bae_core::import::FolderCandidate) -> Self {
+    fn from_core(
+        candidate: bae_core::import::FolderCandidate,
+        skipped: bool,
+        is_added: bool,
+    ) -> Self {
         // `track_count()` borrows `&candidate`; compute it before the move.
         let track_count = candidate.track_count();
         let bae_core::import::FolderCandidate {
@@ -2413,8 +2561,7 @@ impl crate::types::BridgeFolderCandidate {
             name,
             files,
             watched_folder_path,
-            skipped,
-            is_added,
+            ..
         } = candidate;
         crate::types::BridgeFolderCandidate {
             folder_path: path.to_string_lossy().to_string(),
@@ -2435,12 +2582,19 @@ impl crate::types::BridgeInvalidCandidate {
             path,
             name,
             watched_folder_path,
+            display_path,
+            resolved_boundaries,
             reason,
         } = candidate;
         crate::types::BridgeInvalidCandidate {
             folder_path: path.to_string_lossy().to_string(),
             source_folder_name: name,
             watched_folder_path,
+            display_path,
+            resolved_boundaries: resolved_boundaries
+                .into_iter()
+                .map(crate::types::BridgeResolvedFolderReleaseBoundary::from_core)
+                .collect(),
             reason: crate::types::BridgeInvalidReason::from_core(reason),
         }
     }
@@ -2450,14 +2604,19 @@ impl crate::types::BridgeInvalidCandidate {
 impl crate::types::BridgeImportCandidateSnapshot {
     fn from_core(candidate: bae_core::import::ImportCandidateSnapshot) -> Self {
         match candidate {
-            bae_core::import::ImportCandidateSnapshot::Folder { candidate, runtime } => {
-                crate::types::BridgeImportCandidateSnapshot::Folder {
-                    candidate: crate::types::BridgeFolderCandidate::from_core(candidate),
-                    runtime_snapshot: crate::types::BridgeCandidateRuntimeSnapshot::from_core(
-                        runtime,
-                    ),
-                }
-            }
+            bae_core::import::ImportCandidateSnapshot::Folder {
+                candidate,
+                runtime,
+                actionable,
+                skipped,
+                is_added,
+            } => crate::types::BridgeImportCandidateSnapshot::Folder {
+                candidate: crate::types::BridgeFolderCandidate::from_core(
+                    candidate, skipped, is_added,
+                ),
+                runtime_snapshot: crate::types::BridgeCandidateRuntimeSnapshot::from_core(runtime),
+                actionable,
+            },
             bae_core::import::ImportCandidateSnapshot::Invalid(candidate) => {
                 crate::types::BridgeImportCandidateSnapshot::Invalid {
                     candidate: crate::types::BridgeInvalidCandidate::from_core(candidate),
@@ -2525,10 +2684,17 @@ impl crate::types::BridgeCandidateImportStatus {
 #[cfg(feature = "desktop")]
 impl crate::types::BridgeFolderImportCandidateSnapshot {
     fn from_core(snapshot: bae_core::import::FolderImportCandidateSnapshot) -> Self {
-        let bae_core::import::FolderImportCandidateSnapshot { candidate, runtime } = snapshot;
+        let bae_core::import::FolderImportCandidateSnapshot {
+            candidate,
+            runtime,
+            actionable,
+            skipped,
+            is_added,
+        } = snapshot;
         crate::types::BridgeFolderImportCandidateSnapshot {
-            candidate: crate::types::BridgeFolderCandidate::from_core(candidate),
+            candidate: crate::types::BridgeFolderCandidate::from_core(candidate, skipped, is_added),
             runtime: crate::types::BridgeCandidateRuntimeSnapshot::from_core(runtime),
+            actionable,
         }
     }
 }
@@ -2540,6 +2706,8 @@ impl crate::types::BridgeImportCandidatesSnapshot {
             watched_folders,
             folder_candidates,
             invalid_candidates,
+            boundaries,
+            folder_scan_statuses,
         } = snapshot;
         crate::types::BridgeImportCandidatesSnapshot {
             watched_folders: watched_folders
@@ -2554,6 +2722,14 @@ impl crate::types::BridgeImportCandidatesSnapshot {
                 .into_iter()
                 .map(crate::types::BridgeInvalidCandidate::from_core)
                 .collect(),
+            boundaries: boundaries
+                .into_iter()
+                .map(crate::types::BridgeFolderReleaseBoundary::from_core)
+                .collect(),
+            folder_scan_statuses: folder_scan_statuses
+                .into_iter()
+                .map(crate::types::BridgeWatchedFolderScanStatus::from_core)
+                .collect(),
         }
     }
 }
@@ -2567,9 +2743,9 @@ impl crate::types::BridgeImportCandidatesSnapshot {
 impl crate::types::BridgeTriageQueue {
     pub(crate) fn from_core(queue: bae_core::import::TriageQueue) -> Self {
         let bae_core::import::TriageQueue {
-            rows,
-            invalid,
+            sections,
             counts,
+            folder_scan_statuses,
         } = queue;
         let bae_core::import::TriageTabCounts {
             ready,
@@ -2578,13 +2754,9 @@ impl crate::types::BridgeTriageQueue {
             skipped,
         } = counts;
         crate::types::BridgeTriageQueue {
-            rows: rows
+            sections: sections
                 .into_iter()
-                .map(crate::types::BridgeTriageRow::from_core)
-                .collect(),
-            invalid: invalid
-                .into_iter()
-                .map(crate::types::BridgeInvalidCandidate::from_core)
+                .map(crate::types::BridgeTriageSection::from_core)
                 .collect(),
             counts: crate::types::BridgeTriageTabCounts {
                 ready,
@@ -2592,6 +2764,10 @@ impl crate::types::BridgeTriageQueue {
                 done,
                 skipped,
             },
+            folder_scan_statuses: folder_scan_statuses
+                .into_iter()
+                .map(crate::types::BridgeWatchedFolderScanStatus::from_core)
+                .collect(),
         }
     }
 }
@@ -2603,6 +2779,10 @@ impl crate::types::BridgeTriageRow {
             candidate_key,
             folder_name,
             watched_folder_path,
+            display_path,
+            resolved_boundaries,
+            combine_ancestor_key,
+            actionable,
             placement,
             matched,
             selectable,
@@ -2612,10 +2792,75 @@ impl crate::types::BridgeTriageRow {
             candidate_key,
             folder_name,
             watched_folder_path,
+            display_path,
+            resolved_boundaries: resolved_boundaries
+                .into_iter()
+                .map(crate::types::BridgeResolvedFolderReleaseBoundary::from_core)
+                .collect(),
+            combine_ancestor_key: combine_ancestor_key
+                .map(crate::types::BridgeFolderReleaseDecisionKey::from_core),
+            actionable,
             placement: crate::types::BridgeTriagePlacement::from_core(placement),
             matched: matched.map(crate::types::BridgeMatchedRelease::from_core),
             selectable,
             import_status: import_status.map(crate::types::BridgeCandidateImportStatus::from_core),
+        }
+    }
+}
+
+#[cfg(feature = "desktop")]
+impl crate::types::BridgeTriageSection {
+    fn from_core(section: bae_core::import::TriageSection) -> Self {
+        Self {
+            tab: crate::types::BridgeTriageTab::from_core(section.tab),
+            watched_folder_path: section.watched_folder_path,
+            group: section.group.map(|group| crate::types::BridgeTriageGroup {
+                key: crate::types::BridgeFolderReleaseDecisionKey::from_core(group.key),
+                name: group.name,
+            }),
+            entries: section
+                .entries
+                .into_iter()
+                .map(|entry| {
+                    let stable_key = entry.stable_key();
+                    match entry {
+                        bae_core::import::TriageEntry::Candidate(row) => {
+                            crate::types::BridgeTriageEntry::Candidate {
+                                stable_key,
+                                row: crate::types::BridgeTriageRow::from_core(row),
+                            }
+                        }
+                        bae_core::import::TriageEntry::Boundary(boundary) => {
+                            crate::types::BridgeTriageEntry::Boundary {
+                                stable_key,
+                                boundary: crate::types::BridgeFolderReleaseBoundary::from_core(
+                                    boundary,
+                                ),
+                            }
+                        }
+                        bae_core::import::TriageEntry::Invalid(candidate) => {
+                            crate::types::BridgeTriageEntry::Invalid {
+                                stable_key,
+                                invalid_candidate: crate::types::BridgeInvalidCandidate::from_core(
+                                    candidate,
+                                ),
+                            }
+                        }
+                    }
+                })
+                .collect(),
+        }
+    }
+}
+
+#[cfg(feature = "desktop")]
+impl crate::types::BridgeTriageTab {
+    fn from_core(tab: bae_core::import::TriageTab) -> Self {
+        match tab {
+            bae_core::import::TriageTab::Ready => Self::Ready,
+            bae_core::import::TriageTab::NeedsYou => Self::NeedsYou,
+            bae_core::import::TriageTab::Done => Self::Done,
+            bae_core::import::TriageTab::Skipped => Self::Skipped,
         }
     }
 }
@@ -3853,11 +4098,13 @@ mod tests {
         #[cfg(not(any(target_os = "ios", target_os = "android")))]
         let services = {
             let cover_art = bae_core::import::cover_art::CoverArtArchiveClient::new();
-            let import = bae_core::import::ImportService::start(
-                runtime.handle().clone(),
-                manager.clone(),
-                cover_art.clone(),
-            );
+            let import = runtime
+                .block_on(bae_core::import::ImportService::start(
+                    runtime.handle().clone(),
+                    manager.clone(),
+                    cover_art.clone(),
+                ))
+                .expect("start import service");
             let identify = bae_core::identify::IdentifyServiceHandle::new(
                 manager.clone(),
                 runtime.handle().clone(),

@@ -1145,17 +1145,6 @@ impl LibraryManager {
         &self.diagnostics
     }
 
-    /// The runtime the library's own services run on. Services built alongside
-    /// the manager take it from here rather than being handed a second one,
-    /// which could not be the same runtime.
-    ///
-    /// Desktop-only because its callers are: the import queue's sweep and the
-    /// services built around it, neither of which exists on a phone.
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    pub(crate) fn runtime_handle(&self) -> &tokio::runtime::Handle {
-        &self.runtime_handle
-    }
-
     /// Ship one `audio_format_orphaned` anomaly per orphan the release-detail
     /// projection reported (a pure layer that can only detect and log them). A
     /// zero count ships nothing.
@@ -1180,6 +1169,7 @@ impl LibraryManager {
     /// Desktop-only: the import module that uses it is gated off iOS/Android,
     /// and playback reads blobs through coven's handle rather than this path.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(test)]
     pub(crate) fn library_dir(&self) -> coven::StoreDir {
         self.config_handle.config().store_dir.clone()
     }

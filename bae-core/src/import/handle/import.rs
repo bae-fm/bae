@@ -13,23 +13,20 @@ impl ImportServiceHandle {
     /// edits (carried by the command's `user_edit` overlay) are what wins.
     pub async fn preview_file_tags_for_folder(
         &self,
-        folder: std::path::PathBuf,
+        candidate_key: String,
     ) -> Result<crate::import::ReleaseUserEdit, crate::import::ImportError> {
-        // Captured before `folder` moves into the scan — the album-title
-        // fallback when no file carries an ALBUM tag.
-        let folder_name = folder
-            .file_name()
-            .and_then(|n| n.to_str())
-            .map(|s| s.to_string());
-
-        let stored_edits = self.library_manager.load_stored_candidate_edits().await?;
-        let categorized = tokio::task::spawn_blocking(move || {
-            crate::import::folder_scanner::collect_release_candidate_files(&folder, &stored_edits)
-        })
-        .await
-        .map_err(|e| crate::import::ImportError::Internal {
-            detail: format!("folder scan task failed: {e}"),
-        })??;
+        let Some(ImportCandidateSnapshot::Folder {
+            candidate,
+            actionable: true,
+            ..
+        }) = self.get_candidate(&candidate_key)
+        else {
+            return Err(crate::import::ImportError::Internal {
+                detail: format!("{candidate_key} is not an actionable folder candidate"),
+            });
+        };
+        let folder_name = Some(candidate.name);
+        let categorized = candidate.files;
 
         let clock = self.library_manager.clock().clone();
         let ids = self.library_manager.ids().clone();
@@ -62,18 +59,28 @@ impl ImportServiceHandle {
     pub fn start_import(
         &self,
         candidate_key: &str,
-        folder: std::path::PathBuf,
         selected_cover: Option<crate::import::types::CoverSelection>,
         storage_mode: StorageMode,
         pin: bool,
         identity_choice: crate::import::types::IdentityChoice,
         user_edit: Option<crate::import::types::ReleaseUserEdit>,
     ) -> Result<String, crate::import::ImportError> {
+        let Some(ImportCandidateSnapshot::Folder {
+            candidate,
+            actionable: true,
+            ..
+        }) = self.get_candidate(candidate_key)
+        else {
+            return Err(crate::import::ImportError::Internal {
+                detail: format!("{candidate_key} is not a scanned folder candidate"),
+            });
+        };
         let import_id = self.library_manager.ids().new_id();
         let command = ImportCommand {
             import_id: import_id.clone(),
             candidate_key: candidate_key.to_string(),
-            folder,
+            folder: candidate.file_root,
+            scope: candidate.scope,
             selected_cover,
             storage_mode,
             pin,
@@ -81,7 +88,13 @@ impl ImportServiceHandle {
             user_edit,
         };
 
-        self.send_command(command)?;
+        self.send_command_with_expectation(
+            command,
+            crate::import::service::ImportExpectation {
+                content_hash: candidate.files.content_hash(),
+                edit_revision: candidate.file_edit_revision,
+            },
+        )?;
         Ok(import_id)
     }
 
@@ -177,9 +190,32 @@ impl ImportServiceHandle {
         &self,
         command: ImportCommand,
     ) -> Result<String, crate::import::ImportError> {
+        let categorized =
+            crate::import::folder_scanner::collect_release_candidate_files_with_scope(
+                &command.folder,
+                command.scope,
+                &crate::import::folder_scanner::StoredCandidateEdits::none(),
+            )?;
+        self.send_command_with_expectation(
+            command,
+            crate::import::service::ImportExpectation {
+                content_hash: categorized.content_hash(),
+                edit_revision: 0,
+            },
+        )
+    }
+
+    fn send_command_with_expectation(
+        &self,
+        command: ImportCommand,
+        expectation: crate::import::service::ImportExpectation,
+    ) -> Result<String, crate::import::ImportError> {
         let import_id = command.import_id.clone();
         self.requests_tx
-            .send(crate::import::service::ImportWorkerMessage::Import(command))
+            .send(crate::import::service::ImportWorkerMessage::Import {
+                command,
+                expectation,
+            })
             .map_err(|_| crate::import::ImportError::Internal {
                 detail: "Failed to queue import command".to_string(),
             })?;

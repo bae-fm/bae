@@ -361,6 +361,9 @@ CREATE INDEX IF NOT EXISTS idx_album_artists_artist_id ON album_artists (artist_
 CREATE INDEX IF NOT EXISTS idx_track_artists_track_id ON track_artists (track_id);
 CREATE INDEX IF NOT EXISTS idx_track_artists_artist_id ON track_artists (artist_id);
 CREATE INDEX IF NOT EXISTS idx_releases_album_id ON releases (album_id);
+CREATE INDEX IF NOT EXISTS idx_releases_content_hash
+    ON releases (content_hash)
+    WHERE content_hash IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_release_identities_group
     ON release_identities (source, source_group_id);
 CREATE INDEX IF NOT EXISTS idx_release_identities_release
@@ -421,8 +424,8 @@ CREATE TABLE IF NOT EXISTS playback_state (
 CREATE TABLE IF NOT EXISTS import_candidate_state (
     content_hash             TEXT PRIMARY KEY,
     -- Where the candidate was last seen. Not identity (the hash is), and not
-    -- authoritative for anything — legible for debugging and a future
-    -- stale-row sweep, nothing more.
+    -- authoritative for anything; retained so diagnostics can name the folder
+    -- whose derived state failed to decode or match its revision.
     folder_path              TEXT NOT NULL,
     -- The identify result: `verdict` / `probed_total_duration_ms` /
     -- `identified_at` are written and cleared as one group, so they are all
@@ -441,7 +444,7 @@ CREATE TABLE IF NOT EXISTS import_candidate_state (
     -- `verdict` is `identify::TerminalVerdict`, JSON-encoded by the identify
     -- module that owns the type. Not normalized into columns: the whole set is
     -- a few hundred rows, read in full and classified in Rust.
-    verdict                  TEXT,
+    verdict                  TEXT CHECK (verdict IS NULL OR json_valid(verdict)),
     -- Sum of the probed durations of the candidate's audio files, in
     -- milliseconds. Per-file durations are not kept here — the Ready gate
     -- only ever compares totals.
@@ -451,11 +454,98 @@ CREATE TABLE IF NOT EXISTS import_candidate_state (
     -- user bound each track sheet to, and which sheets they cleared. `{}` when
     -- they have decided nothing, which is not the same as clearing — a sheet
     -- absent from the map keeps the scan's proposal.
-    sheet_bindings           TEXT NOT NULL DEFAULT '{}',
+    sheet_bindings           TEXT NOT NULL DEFAULT '{}' CHECK (json_valid(sheet_bindings)),
     -- `folder_scanner::FileRoleEdits`, JSON-encoded: which of the candidate's
     -- audio files the user took out of the tracklist, and which they put back.
     -- `{}` when they have decided nothing — a file absent from the map keeps
     -- the scan's proposal. Only files the scan read as audio can appear, so a
     -- decision never survives the file it names ceasing to be audio.
-    file_roles               TEXT NOT NULL DEFAULT '{}'
+    file_roles               TEXT NOT NULL DEFAULT '{}' CHECK (json_valid(file_roles)),
+    -- Monotonic compare-and-set revision for file decisions. Identification
+    -- writes carry the revision they observed and cannot overwrite a verdict
+    -- cleared by a later edit.
+    edit_revision            INTEGER NOT NULL DEFAULT 0 CHECK (edit_revision >= 0),
+    CHECK (
+        (
+            verdict IS NULL
+            AND probed_total_duration_ms IS NULL
+            AND identified_at IS NULL
+        )
+        OR
+        (
+            verdict IS NOT NULL
+            AND probed_total_duration_ms IS NOT NULL
+            AND probed_total_duration_ms >= 0
+            AND identified_at IS NOT NULL
+        )
+    )
 );
+
+-- Device-local watched-root intent. These tables deliberately have no
+-- `_updated_at` and are absent from `synced_tables()`.
+CREATE TABLE IF NOT EXISTS watched_import_folders (
+    path      TEXT PRIMARY KEY,
+    position  INTEGER NOT NULL UNIQUE CHECK (position >= 0)
+) STRICT;
+
+CREATE TABLE IF NOT EXISTS skipped_import_candidates (
+    watched_folder_path    TEXT NOT NULL,
+    relative_candidate_path TEXT NOT NULL,
+    PRIMARY KEY (watched_folder_path, relative_candidate_path),
+    FOREIGN KEY (watched_folder_path)
+        REFERENCES watched_import_folders (path)
+        ON DELETE CASCADE
+) STRICT;
+
+-- Device-local folder interpretation. Paths identify filesystem locations on
+-- this device and never enter the synced membership graph.
+CREATE TABLE IF NOT EXISTS folder_release_decisions (
+    watched_folder_path  TEXT NOT NULL,
+    relative_folder_path TEXT NOT NULL,
+    decision             TEXT NOT NULL CHECK (
+        decision IN ('combine_as_one_release', 'keep_as_separate_releases')
+    ),
+    PRIMARY KEY (watched_folder_path, relative_folder_path),
+    FOREIGN KEY (watched_folder_path)
+        REFERENCES watched_import_folders (path)
+        ON DELETE CASCADE
+) STRICT;
+
+-- Device-local cache of the last observed folder scan. A scan generation is
+-- durable before traversal begins. Entries are written as they are discovered;
+-- successful completion removes entries not seen in that generation in the
+-- same transaction that marks the root complete. A failed or interrupted scan
+-- keeps both previously known entries and newly discovered entries.
+CREATE TABLE IF NOT EXISTS folder_scan_generation_sequence (
+    singleton       INTEGER PRIMARY KEY CHECK (singleton = 1),
+    last_generation INTEGER NOT NULL CHECK (last_generation >= 0)
+) STRICT;
+
+INSERT OR IGNORE INTO folder_scan_generation_sequence (singleton, last_generation)
+VALUES (1, 0);
+
+CREATE TABLE IF NOT EXISTS folder_scan_roots (
+    watched_folder_path TEXT PRIMARY KEY,
+    generation          INTEGER NOT NULL CHECK (generation >= 0),
+    status              TEXT NOT NULL CHECK (status IN ('scanning', 'complete', 'failed')),
+    error               TEXT,
+    CHECK (
+        (status = 'failed' AND error IS NOT NULL)
+        OR
+        (status != 'failed' AND error IS NULL)
+    ),
+    FOREIGN KEY (watched_folder_path)
+        REFERENCES watched_import_folders (path)
+        ON DELETE CASCADE
+) STRICT;
+
+CREATE TABLE IF NOT EXISTS folder_scan_entries (
+    watched_folder_path TEXT NOT NULL,
+    entry_key           TEXT NOT NULL,
+    generation          INTEGER NOT NULL CHECK (generation >= 0),
+    item                TEXT NOT NULL CHECK (json_valid(item)),
+    PRIMARY KEY (watched_folder_path, entry_key),
+    FOREIGN KEY (watched_folder_path)
+        REFERENCES folder_scan_roots (watched_folder_path)
+        ON DELETE CASCADE
+) STRICT;

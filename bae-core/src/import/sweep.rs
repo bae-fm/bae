@@ -45,7 +45,9 @@ use crate::util::rate_limiter::CallPriority;
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::{Arc, Mutex};
 use tokio::sync::{broadcast, mpsc};
+use tokio::task::JoinSet;
 use tokio_util::sync::CancellationToken;
+use tokio_util::task::TaskTracker;
 use tracing::{debug, warn};
 
 /// How many candidates are identified at once.
@@ -63,6 +65,9 @@ const MAX_IN_FLIGHT: usize = 4;
 pub struct QueueSweepHandle {
     context: SweepContext,
     token: CancellationToken,
+    tasks: TaskTracker,
+    runtime_handle: tokio::runtime::Handle,
+    executor_thread: Arc<Mutex<Option<std::thread::JoinHandle<()>>>>,
 }
 
 impl QueueSweepHandle {
@@ -75,6 +80,13 @@ impl QueueSweepHandle {
     /// [`crate::app::RunningApp`].
     pub fn stop(&self) {
         self.token.cancel();
+        self.tasks.close();
+        let Some(executor_thread) = self.executor_thread.lock().unwrap().take() else {
+            return;
+        };
+        if executor_thread.join().is_err() {
+            warn!("queue sweep executor thread panicked during shutdown");
+        }
     }
 
     /// Persist the verdict of a run a person started, so opening a candidate
@@ -98,14 +110,26 @@ impl QueueSweepHandle {
     /// first step, and identify takes its bus subscription synchronously so
     /// extraction cannot start ahead of it. Composed here rather than at each
     /// surface so there is one ordering to get right.
-    pub fn identify_for_selection(&self, candidate_key: String, folder: std::path::PathBuf) {
+    pub fn identify_for_selection(&self, candidate_key: String) {
+        let Some(ImportCandidateSnapshot::Folder {
+            candidate,
+            actionable: true,
+            ..
+        }) = self.context.import.get_candidate(&candidate_key)
+        else {
+            warn!("cannot identify selection {candidate_key}: it is not a folder candidate");
+            return;
+        };
         self.record_selection(candidate_key.clone());
         self.context
             .identify
             .start(candidate_key.clone(), CallPriority::Interactive);
         self.context.extraction.start(
             candidate_key,
-            ExtractionSource::Folder(folder),
+            ExtractionSource::Folder {
+                path: candidate.path,
+                files: candidate.files,
+            },
             CallPriority::Interactive,
         );
     }
@@ -113,16 +137,15 @@ impl QueueSweepHandle {
     pub fn record_selection(&self, candidate_key: String) {
         let context = self.context.clone();
         let token = self.token.child_token();
-        // The library's own runtime, not an ambient one: the bridge calls this
-        // from a plain synchronous method, exactly as `identify.start` is
-        // called.
-        context
-            .library_manager
-            .runtime_handle()
-            .clone()
-            .spawn(async move {
+        if self.token.is_cancelled() {
+            return;
+        }
+        self.tasks.spawn_on(
+            async move {
                 record_selection_verdict(&context, candidate_key, &token).await;
-            });
+            },
+            &self.runtime_handle,
+        );
     }
 }
 
@@ -170,17 +193,16 @@ impl SweepContext {
     }
 }
 
-/// Start the queue sweep. It plans a pass whenever a folder scan finishes —
-/// which includes the scan the app runs at launch — and does nothing in
-/// between.
+/// Start the queue sweep. A candidate becoming actionable, a binding change,
+/// or a completed folder scan plans a pass.
 pub fn start(
-    runtime_handle: &tokio::runtime::Handle,
     import: ImportServiceHandle,
     identify: IdentifyServiceHandle,
     extraction: ExtractionServiceHandle,
     library_manager: LibraryManager,
 ) -> QueueSweepHandle {
     let token = CancellationToken::new();
+    let tasks = TaskTracker::new();
     let context = SweepContext {
         import,
         identify,
@@ -193,66 +215,147 @@ pub fn start(
     // cannot land in the gap between `start` returning and the loop's first
     // `recv`.
     let mut bus = context.import.subscribe_events();
+    let (event_tx, mut event_rx) = mpsc::unbounded_channel();
+    let runtime = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .expect("queue sweep runtime");
+    let runtime_handle = runtime.handle().clone();
+    let relay_token = token.clone();
+    tasks.spawn_on(
+        async move {
+            loop {
+                let event = tokio::select! {
+                    biased;
+                    _ = relay_token.cancelled() => return,
+                    event = bus.recv() => event,
+                };
+                if event_tx.send(event).is_err() {
+                    return;
+                }
+            }
+        },
+        &runtime_handle,
+    );
     let loop_token = token.clone();
     let loop_context = context.clone();
-    runtime_handle.spawn(async move {
-        loop {
-            let event = tokio::select! {
-                biased;
-                _ = loop_token.cancelled() => return,
-                event = bus.recv() => event,
-            };
-            // A pass over an already-answered queue is one DB read and one
-            // event, so a scan that changed nothing costs nothing and there is
-            // no debounce to get wrong. Scans finishing while a pass runs queue
-            // up behind it and produce another pass, which is what makes a
-            // folder added mid-sweep get picked up.
-            match event {
-                // A binding change plans a pass for the same reason a finished
-                // scan does: a candidate that has no stored answer, because the
-                // change cleared it.
-                Ok(ImportEvent::Scan(
-                    ScanEvent::Finished | ScanEvent::CandidateBindingChanged { .. },
-                )) => {
-                    run_pass(&loop_context, &loop_token).await;
+    tasks.spawn_on(
+        async move {
+            loop {
+                let event = tokio::select! {
+                    biased;
+                    _ = loop_token.cancelled() => return,
+                    event = event_rx.recv() => event,
+                };
+                // A pass over an already-answered queue is one DB read and one
+                // event, so a scan that changed nothing costs nothing and there is
+                // no debounce to get wrong. Scans finishing while a pass runs queue
+                // up behind it and produce another pass, which is what makes a
+                // folder added mid-sweep get picked up.
+                match event {
+                    // A binding change plans a pass for the same reason a finished
+                    // scan does: a candidate that has no stored answer, because the
+                    // change cleared it.
+                    Some(Ok(ImportEvent::Scan(
+                        ScanEvent::FolderCandidate { .. }
+                        | ScanEvent::Finished
+                        | ScanEvent::CandidateBindingChanged { .. }
+                        | ScanEvent::CandidateSkipChanged { .. },
+                    ))) => {
+                        run_pass(&loop_context, &loop_token, &mut event_rx).await;
+                    }
+                    Some(Ok(_)) => {}
+                    Some(Err(broadcast::error::RecvError::Lagged(n))) => {
+                        warn!("sweep: import bus lagged by {n} events; planning a pass in case a scan finished inside the gap");
+                        run_pass(&loop_context, &loop_token, &mut event_rx).await;
+                    }
+                    Some(Err(broadcast::error::RecvError::Closed)) | None => return,
                 }
-                Ok(_) => {}
-                Err(broadcast::error::RecvError::Lagged(n)) => {
-                    warn!("sweep: import bus lagged by {n} events; planning a pass in case a scan finished inside the gap");
-                    run_pass(&loop_context, &loop_token).await;
-                }
-                Err(broadcast::error::RecvError::Closed) => return,
             }
-        }
-    });
+        },
+        &runtime_handle,
+    );
 
-    QueueSweepHandle { context, token }
+    let completion_tasks = tasks.clone();
+    let executor_thread = std::thread::Builder::new()
+        .name("bae-import-sweep".to_string())
+        .spawn(move || runtime.block_on(completion_tasks.wait()))
+        .expect("queue sweep executor thread");
+
+    QueueSweepHandle {
+        context,
+        token,
+        tasks,
+        runtime_handle,
+        executor_thread: Arc::new(Mutex::new(Some(executor_thread))),
+    }
 }
 
 /// One candidate the pass is driving: what it will need once a verdict lands.
 struct InFlight {
-    candidate: FolderCandidate,
+    job: IdentifyJob,
     /// The probed total from the candidate's latest `SignalsUpdated`. `0` until
     /// the fast pass reports one, and `0` forever for audio that would not
     /// probe — see [`crate::signals::Signals::probed_total_duration_ms`].
     probed_total_duration_ms: u64,
 }
 
+struct SelectionInFlight {
+    candidate: FolderCandidate,
+    probed_total_duration_ms: u64,
+}
+
 /// What a finished candidate reports back to the pass loop.
 struct Finished {
-    key: String,
+    representative_key: String,
+    identity: CandidateIdentity,
+    rehome: Vec<FolderCandidate>,
     stored: bool,
+}
+
+enum SweepTaskResult {
+    Identify(Finished),
+    TopUp {
+        identity: CandidateIdentity,
+        stored: bool,
+    },
+}
+
+type CandidateIdentity = (String, u64);
+
+struct IdentifyJob {
+    identity: CandidateIdentity,
+    candidates: Vec<FolderCandidate>,
+}
+
+struct TopUpJob {
+    row: DbImportCandidateState,
+    identity: CandidateIdentity,
+}
+
+impl TopUpJob {
+    fn identity(&self) -> CandidateIdentity {
+        self.identity.clone()
+    }
+}
+
+impl IdentifyJob {
+    fn representative(&self) -> &FolderCandidate {
+        self.candidates
+            .first()
+            .expect("an identify job always has a candidate")
+    }
 }
 
 /// What a pass has to do, decided against the stored rows before any of it
 /// starts.
 struct Plan {
     /// Candidates with no usable stored verdict: identify them.
-    identify: VecDeque<FolderCandidate>,
+    identify: VecDeque<IdentifyJob>,
     /// Rows that are already a verdict but still owe the paid tracklist lookup.
     /// Topping one up is one provider call over a stored row — no folder walk,
     /// no OCR, no identify run.
-    top_up: Vec<DbImportCandidateState>,
+    top_up: VecDeque<TopUpJob>,
     /// How many of `total` already hold a verdict, top-up owing or not.
     identified: u32,
     total: u32,
@@ -260,9 +363,22 @@ struct Plan {
 
 /// Walk the queue once: plan what still needs answering, drive it under the
 /// concurrency cap, and report progress as verdicts land.
-async fn run_pass(context: &SweepContext, token: &CancellationToken) {
+async fn run_pass(
+    context: &SweepContext,
+    token: &CancellationToken,
+    bus: &mut mpsc::UnboundedReceiver<Result<ImportEvent, broadcast::error::RecvError>>,
+) {
     let candidates = new_candidates(context);
     let total = candidates.len() as u32;
+    let mut known_identities: HashMap<String, CandidateIdentity> = candidates
+        .iter()
+        .map(|candidate| {
+            (
+                candidate.path.to_string_lossy().into_owned(),
+                candidate_identity(candidate),
+            )
+        })
+        .collect();
 
     let stored = match context.library_manager.load_import_candidate_states().await {
         Ok(stored) => stored,
@@ -275,44 +391,71 @@ async fn run_pass(context: &SweepContext, token: &CancellationToken) {
             return;
         }
     };
+    for row in stored.values() {
+        if let Err(error) = decode(row) {
+            warn!("sweep: {error}; skipping this pass");
+            return;
+        }
+    }
+
+    let mut answered_keys: HashSet<String> = candidates
+        .iter()
+        .filter(|candidate| usable_stored_row(&stored, candidate).is_some())
+        .map(|candidate| candidate.path.to_string_lossy().into_owned())
+        .collect();
+    let mut answered_identities: HashSet<CandidateIdentity> = candidates
+        .iter()
+        .filter(|candidate| usable_stored_row(&stored, candidate).is_some())
+        .map(candidate_identity)
+        .collect();
 
     let Plan {
         identify: mut pending,
-        top_up,
+        top_up: mut pending_top_ups,
         mut identified,
-        total,
+        mut total,
     } = plan(candidates, &stored, total);
     emit_progress(context, identified, total);
 
-    // The top-ups are provider calls over rows that already exist, so they
-    // neither occupy an identify slot nor change the identified count. They run
-    // first: they are the cheapest thing that can promote a candidate to Ready.
-    for row in top_up {
-        if token.is_cancelled() {
-            return;
-        }
-        top_up_row(context, row, token).await;
-    }
-
-    if pending.is_empty() {
+    if pending.is_empty() && pending_top_ups.is_empty() {
         return;
     }
 
     let mut in_flight: HashMap<String, InFlight> = HashMap::new();
-    let mut outstanding: usize = 0;
-    let (finished_tx, mut finished_rx) = mpsc::unbounded_channel::<Finished>();
-    let mut bus = context.import.subscribe_events();
+    let mut finishing_members: HashMap<CandidateIdentity, Vec<FolderCandidate>> = HashMap::new();
+    let mut finishing = JoinSet::<SweepTaskResult>::new();
+    let mut queued_top_ups: HashSet<CandidateIdentity> =
+        pending_top_ups.iter().map(TopUpJob::identity).collect();
 
     loop {
-        while in_flight.len() < MAX_IN_FLIGHT {
-            let Some(candidate) = pending.pop_front() else {
+        while in_flight.len() + finishing.len() < MAX_IN_FLIGHT {
+            let Some(job) = pending_top_ups.pop_front() else {
                 break;
             };
-            let key = candidate.path.to_string_lossy().into_owned();
-            if context.owned_elsewhere(&key) {
-                debug!("sweep: {key} is already being identified elsewhere; leaving it");
+            let context = context.clone();
+            let child = token.child_token();
+            let identity = job.identity();
+            finishing.spawn(async move {
+                let stored = top_up_row(&context, job, &child).await;
+                SweepTaskResult::TopUp { identity, stored }
+            });
+        }
+        while in_flight.len() + finishing.len() < MAX_IN_FLIGHT {
+            let Some(mut job) = pending.pop_front() else {
+                break;
+            };
+            let Some(representative_index) = job.candidates.iter().position(|candidate| {
+                !context.owned_elsewhere(candidate.path.to_string_lossy().as_ref())
+            }) else {
+                debug!(
+                    "sweep: every member of {:?} is identified elsewhere",
+                    job.identity
+                );
                 continue;
-            }
+            };
+            job.candidates.swap(0, representative_index);
+            let candidate = job.representative().clone();
+            let key = candidate.path.to_string_lossy().into_owned();
             context.ours.lock().unwrap().insert(key.clone());
             // Identify first: it takes its bus subscription synchronously, so
             // extraction's first snapshot cannot be emitted into a void.
@@ -321,19 +464,26 @@ async fn run_pass(context: &SweepContext, token: &CancellationToken) {
                 .start(key.clone(), CallPriority::Background);
             context.extraction.start(
                 key.clone(),
-                ExtractionSource::Folder(candidate.path.clone()),
+                ExtractionSource::Folder {
+                    path: candidate.path.clone(),
+                    files: candidate.files.clone(),
+                },
                 CallPriority::Background,
             );
             in_flight.insert(
                 key,
                 InFlight {
-                    candidate,
+                    job,
                     probed_total_duration_ms: 0,
                 },
             );
         }
 
-        if in_flight.is_empty() && pending.is_empty() && outstanding == 0 {
+        if in_flight.is_empty()
+            && pending.is_empty()
+            && pending_top_ups.is_empty()
+            && finishing.is_empty()
+        {
             return;
         }
 
@@ -343,25 +493,59 @@ async fn run_pass(context: &SweepContext, token: &CancellationToken) {
                 for key in in_flight.keys() {
                     context.release(key);
                 }
+                finishing.shutdown().await;
                 return;
             }
-            Some(done) = finished_rx.recv() => {
-                outstanding -= 1;
-                context.release(&done.key);
-                if done.stored {
-                    identified += 1;
-                    emit_progress(context, identified, total);
-                } else {
-                    debug!("sweep: {} learned nothing; it is retried next pass", done.key);
+            Some(result) = finishing.join_next() => {
+                match result {
+                    Ok(SweepTaskResult::TopUp { identity, stored }) => {
+                        if !stored {
+                            queued_top_ups.remove(&identity);
+                        }
+                    }
+                    Ok(SweepTaskResult::Identify(done)) => {
+                        context.release(&done.representative_key);
+                        let deferred = finishing_members
+                            .remove(&done.identity)
+                            .expect("finishing identity is registered before its task starts");
+                        if done.stored {
+                            answered_identities.insert(done.identity.clone());
+                            pending.retain(|job| job.identity != done.identity);
+                        } else {
+                            for candidate in done.rehome {
+                                enqueue_candidate(&mut pending, candidate);
+                            }
+                            for candidate in deferred {
+                                enqueue_candidate(&mut pending, candidate);
+                            }
+                        }
+                        let newly_answered = known_identities
+                            .iter()
+                            .filter(|(_, identity)| *identity == &done.identity)
+                            .map(|(key, _)| key)
+                            .filter(|key| done.stored && answered_keys.insert((*key).clone()))
+                            .count() as u32;
+                        if newly_answered > 0 {
+                            identified = identified.saturating_add(newly_answered).min(total);
+                            emit_progress(context, identified, total);
+                        } else {
+                            debug!(
+                                "sweep: {} learned nothing; it is retried next pass",
+                                done.representative_key
+                            );
+                        }
+                    }
+                    Err(error) if error.is_cancelled() && token.is_cancelled() => return,
+                    Err(error) => warn!("sweep finishing task failed: {error}"),
                 }
             }
             event = bus.recv() => match event {
-                Ok(ImportEvent::SignalsUpdated { candidate_key, signals, .. }) => {
+                Some(Ok(ImportEvent::SignalsUpdated { candidate_key, signals, .. })) => {
                     if let Some(entry) = in_flight.get_mut(&candidate_key) {
                         entry.probed_total_duration_ms = signals.probed_total_duration_ms;
                     }
                 }
-                Ok(ImportEvent::IdentifyStateChanged { candidate_key, state, .. }) => {
+                Some(Ok(ImportEvent::IdentifyStateChanged { candidate_key, state, .. })) => {
                     // Terminal only means the machine stopped moving; whether
                     // what it stopped on is storable is `finish_candidate`'s
                     // question. Either way the candidate's slot is free now.
@@ -370,16 +554,43 @@ async fn run_pass(context: &SweepContext, token: &CancellationToken) {
                         .then(|| in_flight.remove(&candidate_key))
                         .flatten();
                     if let Some(entry) = settled {
-                        outstanding += 1;
+                        let identity = entry.job.identity.clone();
+                        finishing_members.insert(identity.clone(), Vec::new());
+                        let representative_key = candidate_key.clone();
                         let context = context.clone();
-                        let finished_tx = finished_tx.clone();
                         let child = token.child_token();
-                        tokio::spawn(async move {
+                        finishing.spawn(async move {
                             let stored = finish_candidate(&context, &entry, state, &child).await;
-                            let _ = finished_tx.send(Finished {
-                                key: candidate_key,
+                            let rehome = if stored
+                                || usable_current_candidate(
+                                    &context,
+                                    &representative_key,
+                                    &identity,
+                                )
+                            {
+                                Vec::new()
+                            } else {
+                                entry
+                                    .job
+                                    .candidates
+                                    .iter()
+                                    .filter(|candidate| {
+                                        candidate.path.to_string_lossy() != representative_key
+                                            && usable_current_candidate(
+                                                &context,
+                                                candidate.path.to_string_lossy().as_ref(),
+                                                &identity,
+                                            )
+                                    })
+                                    .cloned()
+                                    .collect()
+                            };
+                            SweepTaskResult::Identify(Finished {
+                                representative_key,
+                                identity,
+                                rehome,
                                 stored,
-                            });
+                            })
                         });
                     }
                 }
@@ -390,32 +601,248 @@ async fn run_pass(context: &SweepContext, token: &CancellationToken) {
                 // holding a slot that never frees and stalling the pass, and
                 // with it every later scan. The removal is an event, so react to
                 // it rather than waiting out a clock.
-                Ok(ImportEvent::Scan(ScanEvent::CandidateRemoved { candidate_key })) => {
-                    if in_flight.remove(&candidate_key).is_some() {
-                        debug!("sweep: {candidate_key} was removed mid-identification; dropping it");
-                        context.release(&candidate_key);
-                    }
-                    pending.retain(|candidate| {
-                        candidate.path.to_string_lossy() != candidate_key.as_str()
+                Some(Ok(ImportEvent::Scan(ScanEvent::CandidateRemoved { candidate_key }))) => {
+                    remove_finishing_member(&mut finishing_members, &candidate_key);
+                    let running_representative = in_flight.iter().find_map(|(representative, entry)| {
+                        entry
+                            .job
+                            .candidates
+                            .iter()
+                            .any(|candidate| candidate.path.to_string_lossy() == candidate_key)
+                            .then(|| representative.clone())
                     });
+                    if let Some(representative) = running_representative {
+                        let mut entry = in_flight
+                            .remove(&representative)
+                            .expect("located in-flight job still exists");
+                        entry.job.candidates.retain(|candidate| {
+                            candidate.path.to_string_lossy() != candidate_key
+                        });
+                        if representative == candidate_key {
+                            context.release(&representative);
+                            if !entry.job.candidates.is_empty() {
+                                pending.push_front(entry.job);
+                            }
+                        } else if !entry.job.candidates.is_empty() {
+                            in_flight.insert(representative, entry);
+                        }
+                    }
+                    pending.retain_mut(|job| {
+                        job.candidates.retain(|candidate| {
+                            candidate.path.to_string_lossy() != candidate_key
+                        });
+                        !job.candidates.is_empty()
+                    });
+                    if forget_candidate(
+                        &candidate_key,
+                        &mut known_identities,
+                        &mut answered_keys,
+                        &mut answered_identities,
+                        &mut identified,
+                        &mut total,
+                    ) {
+                        emit_progress(context, identified.min(total), total);
+                    }
+                }
+                Some(Ok(ImportEvent::Scan(ScanEvent::FolderCandidate {
+                    candidate,
+                    skipped,
+                    is_added,
+                }))) => {
+                    let candidate_key = candidate.path.to_string_lossy().into_owned();
+                    if skipped || is_added {
+                        detach_candidate(
+                            context,
+                            &candidate_key,
+                            &mut in_flight,
+                            &mut pending,
+                        );
+                        remove_finishing_member(&mut finishing_members, &candidate_key);
+                        if forget_candidate(
+                            &candidate_key,
+                            &mut known_identities,
+                            &mut answered_keys,
+                            &mut answered_identities,
+                            &mut identified,
+                            &mut total,
+                        ) {
+                            emit_progress(context, identified.min(total), total);
+                        }
+                        continue;
+                    }
+                    let identity = candidate_identity(&candidate);
+                    if known_identities.get(&candidate_key) == Some(&identity) {
+                        continue;
+                    }
+                    forget_candidate(
+                        &candidate_key,
+                        &mut known_identities,
+                        &mut answered_keys,
+                        &mut answered_identities,
+                        &mut identified,
+                        &mut total,
+                    );
+                    known_identities.insert(candidate_key.clone(), identity.clone());
+                    total = total.saturating_add(1);
+                    detach_candidate(
+                        context,
+                        &candidate_key,
+                        &mut in_flight,
+                        &mut pending,
+                    );
+                    remove_finishing_member(&mut finishing_members, &candidate_key);
+                    let stored_now = match current_stored_verdict(context, &candidate).await {
+                        Ok(stored) => stored,
+                        Err(error) => {
+                            warn!(
+                                "sweep: could not check current verdict for {candidate_key} ({error}); aborting pass"
+                            );
+                            for key in in_flight.keys() {
+                                context.release(key);
+                            }
+                            finishing.shutdown().await;
+                            return;
+                        }
+                    };
+                    if let Some((row, verdict)) = stored_now {
+                        if owes_source_tracks(&verdict) {
+                            enqueue_top_up(
+                                &mut pending_top_ups,
+                                &mut queued_top_ups,
+                                row,
+                                identity.clone(),
+                            );
+                        }
+                        answered_identities.insert(identity.clone());
+                        answered_keys.insert(candidate_key);
+                        identified = identified.saturating_add(1).min(total);
+                    } else if answered_identities.contains(&identity) {
+                        answered_identities.insert(identity.clone());
+                        answered_keys.insert(candidate_key);
+                        identified = identified.saturating_add(1).min(total);
+                    } else if let Some(members) = finishing_members.get_mut(&identity) {
+                        members.push(candidate);
+                    } else {
+                        enqueue_candidate(&mut pending, candidate);
+                    }
+                    emit_progress(context, identified.min(total), total);
+                }
+                Some(Ok(ImportEvent::Scan(ScanEvent::CandidateSkipChanged {
+                    candidate_key,
+                    skipped,
+                }))) => {
+                    detach_candidate(
+                        context,
+                        &candidate_key,
+                        &mut in_flight,
+                        &mut pending,
+                    );
+                    remove_finishing_member(&mut finishing_members, &candidate_key);
+                    if skipped {
+                        if forget_candidate(
+                            &candidate_key,
+                            &mut known_identities,
+                            &mut answered_keys,
+                            &mut answered_identities,
+                            &mut identified,
+                            &mut total,
+                        ) {
+                            emit_progress(context, identified.min(total), total);
+                        }
+                    } else if let Some(candidate) = sweepable_candidate(context, &candidate_key) {
+                        let identity = candidate_identity(&candidate);
+                        if known_identities
+                            .insert(candidate_key.clone(), identity.clone())
+                            .is_none()
+                        {
+                            total = total.saturating_add(1);
+                        }
+                        let stored_now =
+                            match current_stored_verdict(context, &candidate).await {
+                                Ok(stored) => stored,
+                                Err(error) => {
+                                    warn!(
+                                        "sweep: could not check current verdict for {candidate_key} ({error}); aborting pass"
+                                    );
+                                    for key in in_flight.keys() {
+                                        context.release(key);
+                                    }
+                                    finishing.shutdown().await;
+                                    return;
+                                }
+                            };
+                        if let Some((row, verdict)) = stored_now {
+                            if owes_source_tracks(&verdict) {
+                                enqueue_top_up(
+                                    &mut pending_top_ups,
+                                    &mut queued_top_ups,
+                                    row,
+                                    identity.clone(),
+                                );
+                            }
+                            answered_identities.insert(identity);
+                            if answered_keys.insert(candidate_key.clone()) {
+                                identified = identified.saturating_add(1).min(total);
+                            }
+                        } else {
+                            enqueue_candidate(&mut pending, candidate);
+                        }
+                        emit_progress(context, identified.min(total), total);
+                    }
                 }
                 // The folder is a different shape now. A run already under way
                 // is answering the shape it had, and letting it settle would
                 // write that answer straight back over the one the binding
                 // change just cleared — so drop it. The pass this event also
                 // plans identifies the candidate again, against what it now is.
-                Ok(ImportEvent::Scan(ScanEvent::CandidateBindingChanged { candidate })) => {
+                Some(Ok(ImportEvent::Scan(ScanEvent::CandidateBindingChanged { candidate }))) => {
                     let candidate_key = candidate.path.to_string_lossy().into_owned();
-                    if in_flight.remove(&candidate_key).is_some() {
-                        debug!(
-                            "sweep: {candidate_key}'s sheet binding changed mid-identification; \
-                             dropping the run that was answering its old shape"
-                        );
-                        context.release(&candidate_key);
+                    detach_candidate(
+                        context,
+                        &candidate_key,
+                        &mut in_flight,
+                        &mut pending,
+                    );
+                    remove_finishing_member(&mut finishing_members, &candidate_key);
+                    forget_candidate(
+                        &candidate_key,
+                        &mut known_identities,
+                        &mut answered_keys,
+                        &mut answered_identities,
+                        &mut identified,
+                        &mut total,
+                    );
+                    let identity = candidate_identity(&candidate);
+                    known_identities.insert(candidate_key.clone(), identity.clone());
+                    total = total.saturating_add(1);
+                    if let Some(members) = finishing_members.get_mut(&identity) {
+                        members.push(candidate);
+                    } else {
+                        enqueue_candidate(&mut pending, candidate);
+                    }
+                    emit_progress(context, identified.min(total), total);
+                }
+                Some(Ok(ImportEvent::ImportProgress { candidate_key, .. })) => {
+                    detach_candidate(
+                        context,
+                        &candidate_key,
+                        &mut in_flight,
+                        &mut pending,
+                    );
+                    remove_finishing_member(&mut finishing_members, &candidate_key);
+                    if forget_candidate(
+                        &candidate_key,
+                        &mut known_identities,
+                        &mut answered_keys,
+                        &mut answered_identities,
+                        &mut identified,
+                        &mut total,
+                    ) {
+                        emit_progress(context, identified.min(total), total);
                     }
                 }
-                Ok(_) => {}
-                Err(broadcast::error::RecvError::Lagged(n)) => {
+                Some(Ok(_)) => {}
+                Some(Err(broadcast::error::RecvError::Lagged(n))) => {
                     // A dropped `IdentifyStateChanged` would leave its candidate
                     // in flight with nothing left to wake it, so the pass would
                     // stall on a slot that never frees. Give the affected
@@ -430,13 +857,169 @@ async fn run_pass(context: &SweepContext, token: &CancellationToken) {
                     );
                     for (key, entry) in in_flight.drain() {
                         context.release(&key);
-                        pending.push_back(entry.candidate);
+                        pending.push_back(entry.job);
                     }
                 }
-                Err(broadcast::error::RecvError::Closed) => return,
+                Some(Err(broadcast::error::RecvError::Closed)) | None => return,
             },
         }
     }
+}
+
+#[cfg(test)]
+async fn run_pass_for_test(context: &SweepContext, token: &CancellationToken) {
+    let mut bus = context.import.subscribe_events();
+    let (event_tx, mut event_rx) = mpsc::unbounded_channel();
+    let relay_token = token.child_token();
+    let relay = tokio::spawn(async move {
+        loop {
+            let event = tokio::select! {
+                _ = relay_token.cancelled() => return,
+                event = bus.recv() => event,
+            };
+            if event_tx.send(event).is_err() {
+                return;
+            }
+        }
+    });
+    run_pass(context, token, &mut event_rx).await;
+    relay.abort();
+}
+
+fn enqueue_candidate(pending: &mut VecDeque<IdentifyJob>, candidate: FolderCandidate) {
+    let identity = candidate_identity(&candidate);
+    if let Some(job) = pending.iter_mut().find(|job| job.identity == identity) {
+        job.candidates.push(candidate);
+    } else {
+        pending.push_back(IdentifyJob {
+            identity,
+            candidates: vec![candidate],
+        });
+    }
+}
+
+fn enqueue_top_up(
+    pending: &mut VecDeque<TopUpJob>,
+    queued: &mut HashSet<CandidateIdentity>,
+    row: DbImportCandidateState,
+    identity: CandidateIdentity,
+) {
+    if queued.insert(identity.clone()) {
+        pending.push_back(TopUpJob { row, identity });
+    }
+}
+
+fn detach_candidate(
+    context: &SweepContext,
+    candidate_key: &str,
+    in_flight: &mut HashMap<String, InFlight>,
+    pending: &mut VecDeque<IdentifyJob>,
+) {
+    let representative = in_flight.iter().find_map(|(representative, entry)| {
+        entry
+            .job
+            .candidates
+            .iter()
+            .any(|member| member.path.to_string_lossy() == candidate_key)
+            .then(|| representative.clone())
+    });
+    if let Some(representative) = representative {
+        let mut entry = in_flight
+            .remove(&representative)
+            .expect("located in-flight job still exists");
+        entry
+            .job
+            .candidates
+            .retain(|member| member.path.to_string_lossy() != candidate_key);
+        if representative == candidate_key {
+            context.release(&representative);
+            if !entry.job.candidates.is_empty() {
+                pending.push_front(entry.job);
+            }
+        } else if !entry.job.candidates.is_empty() {
+            in_flight.insert(representative, entry);
+        }
+    }
+    pending.retain_mut(|job| {
+        job.candidates
+            .retain(|candidate| candidate.path.to_string_lossy() != candidate_key);
+        !job.candidates.is_empty()
+    });
+}
+
+fn remove_finishing_member(
+    finishing_members: &mut HashMap<CandidateIdentity, Vec<FolderCandidate>>,
+    candidate_key: &str,
+) {
+    for members in finishing_members.values_mut() {
+        members.retain(|candidate| candidate.path.to_string_lossy() != candidate_key);
+    }
+}
+
+fn forget_candidate(
+    candidate_key: &str,
+    known_identities: &mut HashMap<String, CandidateIdentity>,
+    answered_keys: &mut HashSet<String>,
+    answered_identities: &mut HashSet<CandidateIdentity>,
+    identified: &mut u32,
+    total: &mut u32,
+) -> bool {
+    let Some(identity) = known_identities.remove(candidate_key) else {
+        return false;
+    };
+    *total = total.saturating_sub(1);
+    if answered_keys.remove(candidate_key) {
+        *identified = identified.saturating_sub(1);
+    }
+    if !known_identities
+        .values()
+        .any(|known_identity| known_identity == &identity)
+    {
+        answered_identities.remove(&identity);
+    }
+    true
+}
+
+fn candidate_identity(candidate: &FolderCandidate) -> CandidateIdentity {
+    (candidate.files.content_hash(), candidate.file_edit_revision)
+}
+
+fn usable_stored_row<'a>(
+    stored: &'a HashMap<String, DbImportCandidateState>,
+    candidate: &FolderCandidate,
+) -> Option<&'a DbImportCandidateState> {
+    stored
+        .get(&candidate.files.content_hash())
+        .filter(|row| row.file_edits.revision == candidate.file_edit_revision)
+        .filter(|row| decoded(row).is_some())
+}
+
+fn usable_current_candidate(
+    context: &SweepContext,
+    key: &str,
+    identity: &CandidateIdentity,
+) -> bool {
+    sweepable_candidate(context, key)
+        .is_some_and(|candidate| candidate_identity(&candidate) == *identity)
+}
+
+async fn current_stored_verdict(
+    context: &SweepContext,
+    candidate: &FolderCandidate,
+) -> Result<Option<(DbImportCandidateState, TerminalVerdict)>, String> {
+    let Some(row) = context
+        .library_manager
+        .load_import_candidate_state(&candidate.files.content_hash())
+        .await
+        .map_err(|error| error.to_string())?
+    else {
+        return Ok(None);
+    };
+    if row.file_edits.revision != candidate.file_edit_revision {
+        return Ok(None);
+    }
+    let verdict = decode(&row).map_err(|error| error.to_string())?;
+    Ok(verdict.map(|verdict| (row, verdict)))
 }
 
 /// Split the queue against what is already stored.
@@ -446,32 +1029,46 @@ fn plan(
     total: u32,
 ) -> Plan {
     let mut identify = VecDeque::new();
-    let mut top_up = Vec::new();
+    let mut top_up = VecDeque::new();
     let mut identified = 0;
+    let mut grouped = Vec::<IdentifyJob>::new();
     for candidate in candidates {
+        let identity = candidate_identity(&candidate);
+        if let Some(job) = grouped.iter_mut().find(|job| job.identity == identity) {
+            job.candidates.push(candidate);
+        } else {
+            grouped.push(IdentifyJob {
+                identity,
+                candidates: vec![candidate],
+            });
+        }
+    }
+    let mut topped_up = HashSet::new();
+    for job in grouped {
+        let candidate = job.representative();
         // A row with no identify result is a candidate nobody has answered —
         // either never, or not since a sheet binding changed what the folder is
         // and cleared the answer it had.
         //
-        // A row this build can no longer decode is treated the same way, not as
-        // an error: the shape of a stored verdict changes with the code that
-        // writes it, and this is pre-1.0 — so the honest response to a row this
-        // build cannot read is to identify the candidate again and overwrite it.
-        // No fallback decoder, no migration.
-        let row = stored
-            .get(&candidate.files.content_hash())
-            .filter(|row| decode(row).is_some());
+        // Stored rows are decoded and validated before planning. A malformed
+        // row fails the pass rather than being treated as no answer.
+        let row = usable_stored_row(stored, candidate);
         let Some(row) = row else {
-            identify.push_back(candidate);
+            identify.push_back(job);
             continue;
         };
-        identified += 1;
+        identified += job.candidates.len() as u32;
         // A verdict a person's own run wrote never paid for the tracklist, so
         // without this it would sit at "cannot verify" forever — skipped as
         // answered, and never promoted to Ready by the one lookup that would do
         // it.
-        if decode(row).is_some_and(|verdict| owes_source_tracks(&verdict)) {
-            top_up.push(row.clone());
+        if topped_up.insert(row.content_hash.clone())
+            && decoded(row).is_some_and(|verdict| owes_source_tracks(&verdict))
+        {
+            top_up.push_back(TopUpJob {
+                row: row.clone(),
+                identity: job.identity.clone(),
+            });
         }
     }
     Plan {
@@ -507,26 +1104,35 @@ fn single_match(verdict: &TerminalVerdict) -> Option<&MetadataResult> {
 /// the row — the verdict's identity, the probed total, the folder path — is
 /// unchanged, so a failure leaves the row exactly as it was and the next pass
 /// tries again.
-async fn top_up_row(
-    context: &SweepContext,
-    row: DbImportCandidateState,
-    token: &CancellationToken,
-) {
-    let (Some(mut verdict), Some(identify)) = (decode(&row), row.identify.as_ref()) else {
-        return;
+async fn top_up_row(context: &SweepContext, job: TopUpJob, token: &CancellationToken) -> bool {
+    let row = job.row;
+    let (Some(mut verdict), Some(identify)) = (decoded(&row), row.identify.as_ref()) else {
+        return false;
     };
     if !fill_source_tracks(context, &mut verdict, token).await {
-        return;
+        return false;
     }
+    let Some(candidate) = context
+        .import
+        .sweepable_candidate_for_identity(&job.identity.0, job.identity.1)
+    else {
+        return false;
+    };
     save(
         context,
         token,
+        &candidate.path.to_string_lossy(),
         &row.content_hash,
-        &row.folder_path,
+        &candidate.path.to_string_lossy(),
         &verdict,
         identify.probed_total_duration_ms,
+        candidate.file_edit_revision,
     )
-    .await;
+    .await
+}
+
+fn decoded(row: &DbImportCandidateState) -> Option<TerminalVerdict> {
+    decode(row).expect("stored verdicts are validated before sweep planning")
 }
 
 /// Turn one candidate's terminal state into a stored row, or into nothing.
@@ -550,13 +1156,16 @@ async fn finish_candidate(
         return false;
     }
 
+    let candidate = entry.job.representative();
     save(
         context,
         token,
-        &entry.candidate.files.content_hash(),
-        &entry.candidate.path.to_string_lossy(),
+        &candidate.path.to_string_lossy(),
+        &candidate.files.content_hash(),
+        &candidate.path.to_string_lossy(),
         &verdict,
         entry.probed_total_duration_ms as i64,
+        candidate.file_edit_revision,
     )
     .await
 }
@@ -569,10 +1178,12 @@ async fn finish_candidate(
 async fn save(
     context: &SweepContext,
     token: &CancellationToken,
+    candidate_key: &str,
     content_hash: &str,
     folder_path: &str,
     verdict: &TerminalVerdict,
     probed_total_duration_ms: i64,
+    expected_edit_revision: u64,
 ) -> bool {
     if token.is_cancelled() {
         return false;
@@ -589,23 +1200,40 @@ async fn save(
         folder_path: folder_path.to_string(),
         verdict,
         probed_total_duration_ms,
+        expected_edit_revision,
     };
-    if let Err(e) = context
-        .library_manager
-        .save_import_candidate_verdict(&row)
+    let wrote = match context
+        .import
+        .save_candidate_verdict_if_current(candidate_key, &row)
         .await
     {
-        warn!(
-            "sweep: could not store the verdict for {} ({e}); it is retried next pass",
-            row.folder_path
+        Ok(wrote) => wrote,
+        Err(e) => {
+            warn!(
+                "sweep: could not store the verdict for {} ({e}); it is retried next pass",
+                row.folder_path
+            );
+            return false;
+        }
+    };
+    if !wrote {
+        debug!(
+            "sweep: discarded stale verdict for {} at file-edit revision {}",
+            row.folder_path, expected_edit_revision
         );
         return false;
     }
+    super::handle::send_event(
+        &context.import.event_tx,
+        ImportEvent::Scan(ScanEvent::CandidateVerdictStored {
+            candidate_key: candidate_key.to_string(),
+        }),
+    );
     true
 }
 
 /// Fill in the source's tracklist for a single match that arrived without one —
-/// the roadmap's one paid lookup. Returns whether the verdict is still storable.
+/// the one paid lookup. Returns whether the verdict is still storable.
 ///
 /// A disc-ID match already carries its tracklist and costs nothing here.
 ///
@@ -683,7 +1311,7 @@ async fn record_selection_verdict(
         // re-identified. It has no content hash to key a row by.
         return;
     };
-    let mut entry = InFlight {
+    let mut entry = SelectionInFlight {
         candidate,
         probed_total_duration_ms: 0,
     };
@@ -726,10 +1354,12 @@ async fn record_selection_verdict(
                 if save(
                     context,
                     token,
+                    &candidate_key,
                     &entry.candidate.files.content_hash(),
                     &entry.candidate.path.to_string_lossy(),
                     &verdict,
                     entry.probed_total_duration_ms as i64,
+                    entry.candidate.file_edit_revision,
                 )
                 .await
                 {
@@ -753,7 +1383,10 @@ async fn record_selection_verdict(
             }
             Ok(_) => {}
             Err(broadcast::error::RecvError::Lagged(n)) => {
-                warn!("sweep: selection recorder for {candidate_key} lagged by {n} events");
+                warn!(
+                    "sweep: selection recorder for {candidate_key} lagged by {n} events; writing no verdict"
+                );
+                return;
             }
             Err(broadcast::error::RecvError::Closed) => return,
         }
@@ -764,26 +1397,49 @@ async fn record_selection_verdict(
 /// something else (a library release being re-identified) or nothing.
 fn folder_candidate(context: &SweepContext, key: &str) -> Option<FolderCandidate> {
     match context.import.get_candidate(key)? {
-        ImportCandidateSnapshot::Folder { candidate, .. } => Some(candidate),
+        ImportCandidateSnapshot::Folder {
+            candidate,
+            actionable: true,
+            ..
+        } => Some(candidate),
+        ImportCandidateSnapshot::Folder {
+            actionable: false, ..
+        } => None,
         ImportCandidateSnapshot::Invalid(_) | ImportCandidateSnapshot::Runtime { .. } => None,
     }
 }
 
 /// The candidates the sweep is responsible for: New ones only.
 ///
-/// Added candidates are already in the library and Skipped ones are a decision
-/// the user has made, so identifying either spends the rate limit on work
-/// nobody asked for. Whether Skipped should eventually be swept is an open
-/// question in the roadmap; until it is answered this is the conservative half.
+/// Added candidates are already in the library and skipped candidates reflect
+/// an explicit user decision, so neither belongs in automatic identification.
 fn new_candidates(context: &SweepContext) -> Vec<FolderCandidate> {
     context
         .import
         .get_import_candidates()
         .folder_candidates
         .into_iter()
+        .filter(|snapshot| {
+            snapshot.actionable
+                && !snapshot.skipped
+                && !snapshot.is_added
+                && snapshot.runtime.import_status.is_none()
+        })
         .map(|snapshot| snapshot.candidate)
-        .filter(|candidate| !candidate.skipped && !candidate.is_added)
         .collect()
+}
+
+fn sweepable_candidate(context: &SweepContext, key: &str) -> Option<FolderCandidate> {
+    match context.import.get_candidate(key) {
+        Some(ImportCandidateSnapshot::Folder {
+            candidate,
+            runtime,
+            actionable: true,
+            skipped: false,
+            is_added: false,
+        }) if runtime.import_status.is_none() => Some(candidate),
+        _ => None,
+    }
 }
 
 /// Announce how much of the queue has been answered.

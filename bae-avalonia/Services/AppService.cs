@@ -176,19 +176,32 @@ internal sealed class AppService
         SessionStore session,
         Dispatcher dispatcher,
         LibraryService library) =>
+        Stubbed(
+            session,
+            dispatcher,
+            library,
+            new ImportService(),
+            new PlaybackService());
+
+    public static AppService Stubbed(
+        SessionStore session,
+        Dispatcher dispatcher,
+        LibraryService library,
+        ImportService import,
+        PlaybackService playback) =>
         new(
             session,
             dispatcher,
             new NoopMediaControl(),
             library,
             new MediaPathsService(),
-            new PlaybackService(),
+            playback,
             new QueueService(),
             new DownloadsService(),
             new SyncService(),
             new CastService(),
             new SettingsService(),
-            new ImportService(),
+            import,
             new ReleaseEditorService(),
             new DiscogsService(),
             new AutomationService(),

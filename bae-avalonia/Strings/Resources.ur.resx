@@ -457,4 +457,8 @@
   <data name="nowplaying.cast_no_devices" xml:space="preserve"><value>کوئی کاسٹ ڈیوائس نہیں ملی</value></data>
   <data name="component_gallery.menu" xml:space="preserve"><value>اجزاء کی گیلری</value></data>
   <data name="component_gallery.title" xml:space="preserve"><value>اجزاء کی گیلری</value></data>
+  <data name="import.folder.refresh" xml:space="preserve"><value>تازہ کریں</value></data>
+  <data name="import.folder.refreshing" xml:space="preserve"><value>تازہ کیا جا رہا ہے…</value></data>
+  <data name="import.release.one" xml:space="preserve"><value>ایک ریلیز کے طور پر یکجا کریں</value></data>
+  <data name="import.release.separate" xml:space="preserve"><value>الگ ریلیزز کے طور پر رکھیں</value></data>
 </root>

@@ -72,15 +72,37 @@ impl IdentifyServiceHandle {
         event_tx: broadcast::Sender<ImportEvent>,
         cover_art_archive: CoverArtArchiveClient,
     ) -> IdentifyServiceHandle {
-        IdentifyServiceHandle {
-            inner: Arc::new(IdentifyServiceInner {
-                library_manager,
-                runtime_handle,
-                event_tx,
-                cover_art_archive,
-                drivers: Mutex::new(HashMap::new()),
-            }),
-        }
+        let inner = Arc::new(IdentifyServiceInner {
+            library_manager,
+            runtime_handle,
+            event_tx,
+            cover_art_archive,
+            drivers: Mutex::new(HashMap::new()),
+        });
+        let mut removal_rx = inner.event_tx.subscribe();
+        let removal_inner = inner.clone();
+        inner.runtime_handle.spawn(async move {
+            loop {
+                let key = match removal_rx.recv().await {
+                    Ok(ImportEvent::Scan(crate::import::ScanEvent::CandidateRemoved {
+                        candidate_key,
+                    })) => candidate_key,
+                    Ok(ImportEvent::Scan(crate::import::ScanEvent::CandidateBindingChanged {
+                        candidate,
+                    })) => candidate.path.to_string_lossy().into_owned(),
+                    Ok(_) => continue,
+                    Err(broadcast::error::RecvError::Lagged(n)) => {
+                        warn!("identify: candidate-removal listener lagged by {n} import events");
+                        continue;
+                    }
+                    Err(broadcast::error::RecvError::Closed) => return,
+                };
+                if let Some(driver) = removal_inner.drivers.lock().unwrap().remove(&key) {
+                    driver.token.cancel();
+                }
+            }
+        });
+        IdentifyServiceHandle { inner }
     }
 
     /// Start identifying `key`. Fire-and-forget; states come back as

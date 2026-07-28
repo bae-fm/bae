@@ -64,6 +64,20 @@ struct LibraryNavigationRequest {
     let seq: Int
 }
 
+struct ReleaseGroupDisclosureID: Hashable {
+    let key: BridgeFolderReleaseDecisionKey
+
+    static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.key.watchedFolderPath == rhs.key.watchedFolderPath
+            && lhs.key.relativeFolderPath == rhs.key.relativeFolderPath
+    }
+
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(key.watchedFolderPath)
+        hasher.combine(key.relativeFolderPath)
+    }
+}
+
 // MARK: - UiStore
 
 /// Shared UI-originated state. Views read properties, call methods to mutate.
@@ -119,6 +133,9 @@ class UiStore: @unchecked Sendable {
     /// than trusting the set on its own, so there is nothing to prune
     /// proactively.
     var selectedReadyCandidates: Set<String> = []
+    private var releaseGroupDisclosureState: [ReleaseGroupDisclosureID: Bool] =
+        [:]
+    private(set) var refreshingWatchedFolders: Set<String> = []
 
     // ── Overlays ────────────────────────────────────────────────────────
 
@@ -262,6 +279,15 @@ class UiStore: @unchecked Sendable {
         selectedFolderCandidate = key
     }
 
+    func retainFolderCandidateSelection(in candidateKeys: Set<String>) {
+        guard let selectedFolderCandidate,
+            !candidateKeys.contains(selectedFolderCandidate)
+        else {
+            return
+        }
+        self.selectedFolderCandidate = nil
+    }
+
     func setImportCandidateTab(_ tab: BridgeTriageTab) {
         importCandidateTab = tab
     }
@@ -290,6 +316,34 @@ class UiStore: @unchecked Sendable {
 
     func clearReadySelection() {
         selectedReadyCandidates.removeAll()
+    }
+
+    func releaseGroupExpanded(_ id: ReleaseGroupDisclosureID) -> Bool {
+        releaseGroupDisclosureState[id] ?? true
+    }
+
+    func setReleaseGroupExpanded(
+        _ id: ReleaseGroupDisclosureID,
+        _ expanded: Bool
+    ) {
+        releaseGroupDisclosureState[id] = expanded
+    }
+
+    func retainReleaseGroupDisclosureIDs(
+        _ ids: Set<ReleaseGroupDisclosureID>
+    ) {
+        releaseGroupDisclosureState = releaseGroupDisclosureState.filter {
+            ids.contains($0.key)
+        }
+    }
+
+    func setWatchedFolderRefreshing(_ path: String, _ refreshing: Bool) {
+        if refreshing {
+            refreshingWatchedFolders.insert(path)
+        }
+        else {
+            refreshingWatchedFolders.remove(path)
+        }
     }
 
     // MARK: - Error methods

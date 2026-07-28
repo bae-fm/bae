@@ -457,4 +457,8 @@
   <data name="nowplaying.cast_no_devices" xml:space="preserve"><value>ไม่พบอุปกรณ์แคสต์</value></data>
   <data name="component_gallery.menu" xml:space="preserve"><value>แกลเลอรีคอมโพเนนต์</value></data>
   <data name="component_gallery.title" xml:space="preserve"><value>แกลเลอรีคอมโพเนนต์</value></data>
+  <data name="import.folder.refresh" xml:space="preserve"><value>รีเฟรช</value></data>
+  <data name="import.folder.refreshing" xml:space="preserve"><value>กำลังรีเฟรช…</value></data>
+  <data name="import.release.one" xml:space="preserve"><value>รวมเป็นรีลีสเดียว</value></data>
+  <data name="import.release.separate" xml:space="preserve"><value>เก็บเป็นรีลีสแยกกัน</value></data>
 </root>

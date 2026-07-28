@@ -141,13 +141,14 @@ async fn test_cue_ape_records_correct_durations() {
     let runtime_handle = tokio::runtime::Handle::current();
     let discogs_release = create_test_discogs_release();
     let release_id_key = seed_discogs_test_release(discogs_release);
-    let import_handle = start_test_import(runtime_handle, library_manager.clone());
+    let import_handle = start_test_import(runtime_handle, library_manager.clone()).await;
     let import_id = uuid::Uuid::new_v4().to_string();
     import_handle
         .send_command(ImportCommand {
             import_id: import_id.clone(),
             candidate_key: "test".to_string(),
             folder: album_dir,
+            scope: bae_core::import::ReleaseFileScope::Recursive,
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
@@ -328,13 +329,14 @@ async fn test_cue_ape_records_track_timing() {
     let runtime_handle = tokio::runtime::Handle::current();
     let discogs_release = create_test_discogs_release();
     let release_id_key = seed_discogs_test_release(discogs_release);
-    let import_handle = start_test_import(runtime_handle, library_manager.clone());
+    let import_handle = start_test_import(runtime_handle, library_manager.clone()).await;
     let import_id = uuid::Uuid::new_v4().to_string();
     import_handle
         .send_command(ImportCommand {
             import_id: import_id.clone(),
             candidate_key: "test".to_string(),
             folder: album_dir,
+            scope: bae_core::import::ReleaseFileScope::Recursive,
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
@@ -458,13 +460,15 @@ impl CueApeTestFixture {
 
         let discogs_release = create_test_discogs_release();
         let release_id_key = seed_discogs_test_release(discogs_release);
-        let import_handle = start_test_import(runtime_handle.clone(), library_manager.clone());
+        let import_handle =
+            start_test_import(runtime_handle.clone(), library_manager.clone()).await;
         let import_id = uuid::Uuid::new_v4().to_string();
         import_handle
             .send_command(ImportCommand {
                 import_id: import_id.clone(),
                 candidate_key: "test".to_string(),
                 folder: album_dir.clone(),
+                scope: bae_core::import::ReleaseFileScope::Recursive,
                 selected_cover: None,
                 storage_mode: StorageMode::Local,
                 pin: false,
@@ -1105,7 +1109,7 @@ async fn assert_multi_disc_cue_ape_per_disc_mapping(storage_mode: StorageMode, p
     };
     let release_id_key = seed_discogs_test_release(discogs_release);
     let import_handle =
-        start_test_import(tokio::runtime::Handle::current(), library_manager.clone());
+        start_test_import(tokio::runtime::Handle::current(), library_manager.clone()).await;
 
     let import_id = uuid::Uuid::new_v4().to_string();
     import_handle
@@ -1113,6 +1117,7 @@ async fn assert_multi_disc_cue_ape_per_disc_mapping(storage_mode: StorageMode, p
             import_id: import_id.clone(),
             candidate_key: "test".to_string(),
             folder: album_dir,
+            scope: bae_core::import::ReleaseFileScope::Recursive,
             selected_cover: None,
             storage_mode,
             pin,

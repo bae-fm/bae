@@ -528,7 +528,9 @@ private final class FakeAppHandle: AppHandle, @unchecked Sendable {
         BridgeImportCandidatesSnapshot(
             watchedFolders: [],
             folderCandidates: [],
-            invalidCandidates: []
+            invalidCandidates: [],
+            boundaries: [],
+            folderScanStatuses: []
         )
     }
 

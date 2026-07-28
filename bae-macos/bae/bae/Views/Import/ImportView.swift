@@ -93,16 +93,18 @@ struct ImportView: View {
         guard panel.runModal() == .OK, let url = panel.url else {
             return
         }
-        do {
-            try importer.addWatchedFolder(url.path)
-        }
-        catch {
-            uiStore.showError(
-                String(
-                    localized:
-                        "Couldn't add folder: \(error.displayLine)"
+        Task {
+            do {
+                try await importer.addWatchedFolder(url.path)
+            }
+            catch {
+                uiStore.showError(
+                    String(
+                        localized:
+                            "Couldn't add folder: \(error.displayLine)"
+                    )
                 )
-            )
+            }
         }
     }
 
@@ -123,7 +125,7 @@ struct ImportView: View {
     }
 
     private func selectCandidate(_ candidate: Candidate) {
-        guard case .folder(let folderPath, _) = candidate.source else {
+        guard case .folder = candidate.source else {
             return
         }
 
@@ -134,7 +136,7 @@ struct ImportView: View {
         // last state. Identify also starts extraction, which streams the
         // candidate's signals (disc ID, barcodes, classified text).
         if case .idle = candidate.identifyState {
-            importer.autoIdentifyFolder(folderPath, folderPath)
+            importer.autoIdentifyFolder(candidate.key)
         }
     }
 
@@ -222,16 +224,18 @@ struct ImportView: View {
     /// projection re-tabs the row once the skip toggle round-trips through
     /// core.
     func setCandidateSkipped(_ key: String, _ skipped: Bool) {
-        do {
-            try importer.setCandidateSkipped(key, skipped)
-        }
-        catch {
-            uiStore.showError(
-                String(
-                    localized:
-                        "Couldn't update skip state: \(error.displayLine)"
+        Task {
+            do {
+                try await importer.setCandidateSkipped(key, skipped)
+            }
+            catch {
+                uiStore.showError(
+                    String(
+                        localized:
+                            "Couldn't update skip state: \(error.displayLine)"
+                    )
                 )
-            )
+            }
         }
     }
 
@@ -239,21 +243,60 @@ struct ImportView: View {
     /// clear the selection — the import-candidate projection drops the
     /// folder's candidates when the new watched-folder list arrives.
     func removeWatchedFolder(_ path: String) {
-        if let key = uiStore.selectedFolderCandidate,
-            importStore.folderCandidates[key]?.watchedFolderPath == path
-        {
-            uiStore.selectFolderCandidate(nil)
-        }
-        do {
-            try importer.removeWatchedFolder(path)
-        }
-        catch {
-            uiStore.showError(
-                String(
-                    localized:
-                        "Couldn't remove folder: \(error.displayLine)"
+        Task {
+            do {
+                try await importer.removeWatchedFolder(path)
+                if let key = uiStore.selectedFolderCandidate,
+                    importStore.folderCandidates[key]?.watchedFolderPath == path
+                {
+                    uiStore.selectFolderCandidate(nil)
+                }
+            }
+            catch {
+                uiStore.showError(
+                    String(
+                        localized:
+                            "Couldn't remove folder: \(error.displayLine)"
+                    )
                 )
-            )
+            }
+        }
+    }
+
+    func refreshWatchedFolder(_ folder: BridgeWatchedFolder) {
+        uiStore.setWatchedFolderRefreshing(folder.path, true)
+        Task {
+            defer {
+                uiStore.setWatchedFolderRefreshing(folder.path, false)
+            }
+            do {
+                try await importer.refreshWatchedFolder(folder.path)
+            }
+            catch {
+                guard let displayed = DisplayError(error) else {
+                    return
+                }
+                uiStore.showError(
+                    displayed.addingContext(
+                        "\(folder.name) (\(folder.path))"
+                    )
+                )
+            }
+        }
+    }
+
+    func setFolderReleaseDecision(
+        _ key: BridgeFolderReleaseDecisionKey,
+        _ decision: BridgeFolderReleaseDecision
+    ) {
+        uiStore.selectFolderCandidate(nil)
+        Task {
+            do {
+                try await importer.setFolderReleaseDecision(key, decision)
+            }
+            catch {
+                uiStore.showError(error)
+            }
         }
     }
 }

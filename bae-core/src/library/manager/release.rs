@@ -18,6 +18,12 @@ impl LibraryManager {
         Ok(self.database.is_content_hash_imported(hash).await?)
     }
 
+    pub async fn imported_content_hashes(
+        &self,
+    ) -> Result<std::collections::HashSet<String>, LibraryError> {
+        Ok(self.database.imported_content_hashes().await?)
+    }
+
     pub async fn get_tracks_for_release(
         &self,
         release_id: &str,

@@ -927,16 +927,18 @@ extension AppDelegate {
         else {
             return
         }
-        do {
-            try appService?.appHandle.addWatchedFolder(path: url.path)
-        }
-        catch {
-            uiStore.showError(
-                String(
-                    localized:
-                        "Couldn't add folder: \(error.displayLine)"
+        Task {
+            do {
+                try await appService?.appHandle.addWatchedFolder(path: url.path)
+            }
+            catch {
+                uiStore.showError(
+                    String(
+                        localized:
+                            "Couldn't add folder: \(error.displayLine)"
+                    )
                 )
-            )
+            }
         }
         uiStore.navigateToImport()
     }

@@ -457,4 +457,8 @@
   <data name="nowplaying.cast_no_devices" xml:space="preserve"><value>Aucun appareil Cast trouvé</value></data>
   <data name="component_gallery.menu" xml:space="preserve"><value>galerie de composants</value></data>
   <data name="component_gallery.title" xml:space="preserve"><value>galerie de composants</value></data>
+  <data name="import.folder.refresh" xml:space="preserve"><value>Actualiser</value></data>
+  <data name="import.folder.refreshing" xml:space="preserve"><value>Actualisation…</value></data>
+  <data name="import.release.one" xml:space="preserve"><value>Combiner en une seule sortie</value></data>
+  <data name="import.release.separate" xml:space="preserve"><value>Conserver comme sorties séparées</value></data>
 </root>

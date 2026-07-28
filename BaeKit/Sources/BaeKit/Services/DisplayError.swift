@@ -31,6 +31,17 @@ public struct DisplayError: Equatable {
         self.detail = nil
     }
 
+    private init(line: String, detail: String?) {
+        self.line = line
+        self.detail = detail
+    }
+
+    /// Put the operation or object that failed before the existing localized
+    /// line without discarding the opaque diagnostic offered by "Copy Details".
+    public func addingContext(_ context: String) -> DisplayError {
+        DisplayError(line: "\(context): \(line)", detail: detail)
+    }
+
     /// A playback failure — the one typed core failure that is not a Swift
     /// `Error`, so it cannot reach `init(_ error:)`. Everything else that crosses
     /// the bridge is an `Error` and goes through there, finding this same mapping.

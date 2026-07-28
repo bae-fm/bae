@@ -692,7 +692,9 @@ pub(crate) fn analyze_cue_audio(audio_path: &std::path::Path) -> Result<ProbeRes
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::import::folder_scanner::{collect_release_candidate_files, StoredCandidateEdits};
+    use crate::import::folder_scanner::{
+        collect_release_candidate_files_with_scope, StoredCandidateEdits,
+    };
     use std::fs;
     use std::path::Path;
 
@@ -785,7 +787,12 @@ mod tests {
     }
 
     fn scan(root: &Path) -> CategorizedFiles {
-        collect_release_candidate_files(root, &StoredCandidateEdits::none()).expect("scan succeeds")
+        collect_release_candidate_files_with_scope(
+            root,
+            crate::import::ReleaseFileScope::Recursive,
+            &StoredCandidateEdits::none(),
+        )
+        .expect("scan succeeds")
     }
 
     fn file_ids(slots: &[TrackSlot]) -> Vec<Option<&str>> {
