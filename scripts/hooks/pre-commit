@@ -193,6 +193,18 @@ if has_changes_in "bae-macos" || has_changes_in "bae-bridge" \
     if ! command -v xcodegen &> /dev/null; then
         echo "⚠️  xcodegen not installed, skipping macOS build check"
     else
+        # The build below disables automatic package resolution, which needs a
+        # Package.resolved inside the gitignored generated xcodeproj. The
+        # post-checkout prime seeds it on worktree creation, but worktrees
+        # created with hooks disabled (lean agent worktrees) never ran it —
+        # seed here from the main checkout, same as the prime does.
+        resolved="bae-macos/bae/bae.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved"
+        main_checkout="$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")"
+        if [ ! -f "$resolved" ] && [ -f "$main_checkout/$resolved" ]; then
+            mkdir -p "$(dirname "$resolved")"
+            cp "$main_checkout/$resolved" "$resolved"
+            echo "Seeded Package.resolved from $main_checkout"
+        fi
         cd bae-macos/bae
         MACOS_DERIVED_DATA_PATH="${BAE_MACOS_DERIVED_DATA_PATH:-.build/derivedData}"
         run_check "xcodegen (bae-macos)" xcodegen || {
