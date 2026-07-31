@@ -12,7 +12,7 @@ public sealed class Album : INotifyPropertyChanged
     private readonly string _id;
     private readonly string _title;
     private readonly string _artist;
-    private readonly CoverImage.Binding _cover;
+    private readonly ImageBinding _cover;
     private bool _isSelected;
     private bool _isExpanded;
 
@@ -31,7 +31,7 @@ public sealed class Album : INotifyPropertyChanged
         _title = title;
         _artist = artist;
         Year = year;
-        _cover = new CoverImage.Binding(cover);
+        _cover = new ImageBinding(ImageContent.ForLibraryImage(cover), ImageWidths.GridTile);
         _cover.SourceChanged += () => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Cover)));
     }
 
@@ -51,8 +51,8 @@ public sealed class Album : INotifyPropertyChanged
     /// Null for search-result albums, whose bridge type doesn't carry it.</summary>
     internal string? PrimaryReleaseId { get; }
 
-    internal void AttachCover(MediaPathsService mediaPaths, Dispatcher dispatcherQueue) =>
-        _cover.Attach(mediaPaths, dispatcherQueue);
+    internal void AttachCover(ImageStore imageStore, Dispatcher dispatcherQueue) =>
+        _cover.Attach(imageStore, dispatcherQueue);
 
     public Bitmap? Cover => _cover.Source;
 

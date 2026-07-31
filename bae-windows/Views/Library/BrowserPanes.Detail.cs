@@ -30,16 +30,16 @@ internal sealed partial class BrowserPanes
         }
 
         var detail = response.Detail;
-        detail.Composer.AttachCover(_mediaPaths, _dispatcher);
+        detail.Composer.AttachCover(_images, _dispatcher);
         foreach (var group in detail.WorkGroups)
         {
             if (group.Parent is not null)
             {
-                group.Parent.AttachCover(_mediaPaths, _dispatcher);
+                group.Parent.AttachCover(_images, _dispatcher);
             }
             foreach (var work in group.Works)
             {
-                work.AttachCover(_mediaPaths, _dispatcher);
+                work.AttachCover(_images, _dispatcher);
             }
         }
 
@@ -101,10 +101,10 @@ internal sealed partial class BrowserPanes
         }
 
         var detail = response.Detail;
-        detail.Artist.AttachCover(_mediaPaths, _dispatcher);
+        detail.Artist.AttachCover(_images, _dispatcher);
         foreach (var album in detail.Albums)
         {
-            album.AttachCover(_mediaPaths, _dispatcher);
+            album.AttachCover(_images, _dispatcher);
         }
 
         _showArtistBrowser();
@@ -307,14 +307,14 @@ internal sealed partial class BrowserPanes
         }
 
         var detail = response.Detail;
-        detail.Work.AttachCover(_mediaPaths, _dispatcher);
+        detail.Work.AttachCover(_images, _dispatcher);
         foreach (var work in detail.ChildWorks)
         {
-            work.AttachCover(_mediaPaths, _dispatcher);
+            work.AttachCover(_images, _dispatcher);
         }
         foreach (var release in detail.Releases)
         {
-            release.AttachCover(_mediaPaths, _dispatcher);
+            release.AttachCover(_images, _dispatcher);
         }
 
         _showComposerBrowser();

@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <!--
     Avalonia desktop app for Windows and Linux (x64/arm64), both editions. Binds
@@ -54,7 +54,7 @@
     <!--
       QR generation for the join / restore / recovery codes (managed, no
       System.Drawing): QRCoder's PngByteQRCode emits a PNG byte array decoded into
-      an Avalonia Bitmap, the same path CoverImage decodes an image stream.
+      an Avalonia Bitmap, the same path ImageStore decodes an image stream.
     -->
     <PackageReference Include="QRCoder" Version="1.6.0" />
     <!--

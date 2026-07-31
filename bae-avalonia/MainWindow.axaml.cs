@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Linq;
 using System.Threading.Tasks;
 using Avalonia.Controls;
@@ -54,7 +54,7 @@ internal sealed partial class MainWindow : Window
         var dialogs = new ReleaseActionDialogs(_app, modalHost, lightbox);
         // The import dialog's "view in library" jump reveals an album in the shell;
         // the shell is built just below, so the callback reads the field at call time.
-        var importDialogs = new ImportDialogs(modalHost, lightbox, albumId => _shell.OpenAlbum(albumId));
+        var importDialogs = new ImportDialogs(modalHost, lightbox, app.Images, albumId => _shell.OpenAlbum(albumId));
         var storageDialog = new StorageDialog(_app, modalHost);
         // The library manager (switch / rename / add) and the settings window's
         // Lock + Remove sections both drive the coordinator's window swap, so the

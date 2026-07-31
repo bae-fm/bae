@@ -1,4 +1,4 @@
-using Avalonia.Threading;
+﻿using Avalonia.Threading;
 using uniffi.bae_bridge;
 
 namespace Bae.Desktop;
@@ -21,7 +21,7 @@ internal sealed class AppService
     // Domain services: narrow, per-domain projections of the open handle that
     // views and stores read instead of the session + NativeBae directly.
     public LibraryService Library { get; }
-    public MediaPathsService MediaPaths { get; }
+    public ImageStore Images { get; }
     public PlaybackService Playback { get; }
     public QueueService Queue { get; }
     public DownloadsService Downloads { get; }
@@ -64,7 +64,7 @@ internal sealed class AppService
             dispatcher,
             mediaControl,
             LibraryService.FromSession(session),
-            MediaPathsService.FromSession(session),
+            ImageStore.FromSession(session),
             PlaybackService.FromSession(session),
             QueueService.FromSession(session),
             DownloadsService.FromSession(session),
@@ -87,7 +87,7 @@ internal sealed class AppService
         Dispatcher dispatcher,
         IMediaControl mediaControl,
         LibraryService library,
-        MediaPathsService mediaPaths,
+        ImageStore images,
         PlaybackService playback,
         QueueService queue,
         DownloadsService downloads,
@@ -103,7 +103,7 @@ internal sealed class AppService
         Session = session;
         MediaControl = mediaControl;
         Library = library;
-        MediaPaths = mediaPaths;
+        Images = images;
         Playback = playback;
         Queue = queue;
         Downloads = downloads;
@@ -145,7 +145,7 @@ internal sealed class AppService
         // The library browser's paginated lists. A page / invalidate failure routes
         // to the shell banner; a session-swap mid-fetch (an OperationCanceled) is
         // the list being replaced and is dropped.
-        LibraryBrowserStore = new LibraryBrowserStore(Library, MediaPaths, dispatcher, HandleBrowseError);
+        LibraryBrowserStore = new LibraryBrowserStore(Library, Images, dispatcher, HandleBrowseError);
     }
 
     private void HandleBrowseError(Exception exception)
@@ -194,7 +194,7 @@ internal sealed class AppService
             dispatcher,
             new NoopMediaControl(),
             library,
-            new MediaPathsService(),
+            new ImageStore(),
             playback,
             new QueueService(),
             new DownloadsService(),

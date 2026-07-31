@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Avalonia.Threading;
@@ -31,7 +31,7 @@ internal sealed class LibraryBrowserStore
     private const int PageSize = 200;
 
     private readonly LibraryService _library;
-    private readonly MediaPathsService _mediaPaths;
+    private readonly ImageStore _images;
     private readonly Dispatcher _dispatcher;
     private readonly Action<Exception> _onError;
 
@@ -55,12 +55,12 @@ internal sealed class LibraryBrowserStore
 
     public LibraryBrowserStore(
         LibraryService library,
-        MediaPathsService mediaPaths,
+        ImageStore images,
         Dispatcher dispatcher,
         Action<Exception> onError)
     {
         _library = library;
-        _mediaPaths = mediaPaths;
+        _images = images;
         _dispatcher = dispatcher;
         _onError = onError;
 
@@ -204,7 +204,7 @@ internal sealed class LibraryBrowserStore
     {
         foreach (var album in rows)
         {
-            album.AttachCover(_mediaPaths, _dispatcher);
+            album.AttachCover(_images, _dispatcher);
             _albumsById[album.Id] = album;
         }
     }
@@ -213,7 +213,7 @@ internal sealed class LibraryBrowserStore
     {
         foreach (var composer in rows)
         {
-            composer.AttachCover(_mediaPaths, _dispatcher);
+            composer.AttachCover(_images, _dispatcher);
             _composersById[composer.ArtistId] = composer;
         }
     }
@@ -222,7 +222,7 @@ internal sealed class LibraryBrowserStore
     {
         foreach (var artist in rows)
         {
-            artist.AttachCover(_mediaPaths, _dispatcher);
+            artist.AttachCover(_images, _dispatcher);
             _artistsById[artist.ArtistId] = artist;
         }
     }

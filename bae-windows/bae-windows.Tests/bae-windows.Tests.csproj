@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <!--
     Unit tests for bae-windows' pure logic that compiles without the Windows SDK
@@ -78,6 +78,8 @@
   <ItemGroup>
     <Compile Include="../Loc.cs" Link="Loc.cs" />
     <Compile Include="../MediaControlState.cs" Link="MediaControlState.cs" />
+    <Compile Include="../Services/ImageCache.cs" Link="ImageCache.cs" />
+    <Compile Include="../Services/ImageTokens.cs" Link="ImageTokens.cs" />
     <Compile Include="../Stores/PlaybackPositionModel.cs" Link="PlaybackPositionModel.cs" />
     <Compile Include="../Stores/LightboxModel.cs" Link="LightboxModel.cs" />
     <Compile Include="../Stores/SyncIndicatorModel.cs" Link="SyncIndicatorModel.cs" />

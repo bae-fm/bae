@@ -13,7 +13,7 @@ namespace Bae.Windows;
 ///
 /// QRCoder's <see cref="PngByteQRCode"/> produces a PNG byte array directly, so
 /// there's no System.Drawing dependency; the bytes are decoded into a
-/// <c>BitmapImage</c> from an in-memory stream the same way <see cref="CoverImage"/>
+/// <c>BitmapImage</c> from an in-memory stream the same way <see cref="ImageStore"/>
 /// decodes a file stream.
 /// </summary>
 public static class QrCode

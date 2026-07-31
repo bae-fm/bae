@@ -334,7 +334,10 @@ internal sealed partial class QueuePane
     private Border BuildEntryRow(EntryRow row, QueuePaneRowCollection rows)
     {
         var cover = new Image { Stretch = Stretch.UniformToFill };
-        CoverImage.BindById(cover, _mediaPaths, row.Entry.CoverImage);
+        _images.Bind(
+            cover,
+            ImageContent.ForLibraryImage(row.Entry.CoverImage),
+            ImageWidths.Row);
         var art = new Border
         {
             Width = 44,

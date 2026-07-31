@@ -26,7 +26,7 @@ internal sealed partial class LibraryBrowser
 {
     private readonly SessionStore _session;
     private readonly LibraryService _library;
-    private readonly MediaPathsService _mediaPaths;
+    private readonly ImageStore _images;
     private readonly PlaybackService _playbackService;
     private readonly QueueService _queueService;
     private readonly DownloadsService _downloads;
@@ -73,7 +73,7 @@ internal sealed partial class LibraryBrowser
     public LibraryBrowser(
         SessionStore session,
         LibraryService library,
-        MediaPathsService mediaPaths,
+        ImageStore images,
         PlaybackService playbackService,
         QueueService queueService,
         DownloadsService downloads,
@@ -109,7 +109,7 @@ internal sealed partial class LibraryBrowser
     {
         _session = session;
         _library = library;
-        _mediaPaths = mediaPaths;
+        _images = images;
         _playbackService = playbackService;
         _queueService = queueService;
         _downloads = downloads;

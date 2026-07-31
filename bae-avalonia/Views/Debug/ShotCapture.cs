@@ -1,4 +1,4 @@
-#if DEBUG
+﻿#if DEBUG
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -266,7 +266,7 @@ internal static class ShotCapture
         return new MainShellView(
             app,
             new ReleaseActionDialogs(app, modalHost, lightbox),
-            new ImportDialogs(modalHost, lightbox, _ => Task.CompletedTask),
+            new ImportDialogs(modalHost, lightbox, app.Images, _ => Task.CompletedTask),
             new StorageDialog(app, modalHost),
             new SettingsWindow(app, new UpdateService(), closeLibrary, switchLibrary, () => Task.CompletedTask),
             new LibrariesDialog(app, modalHost, switchLibrary),
@@ -285,7 +285,7 @@ internal static class ShotCapture
         var lightbox = new LightboxOverlay();
         var view = new ImportSectionView(
             app,
-            new ImportDialogs(modalHost, lightbox, _ => Task.CompletedTask));
+            new ImportDialogs(modalHost, lightbox, app.Images, _ => Task.CompletedTask));
         if (collapseGroup)
         {
             app.ImportStore.Interaction.SetGroupExpanded(

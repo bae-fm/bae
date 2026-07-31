@@ -380,7 +380,7 @@ internal sealed partial class LibraryBrowser
 
         var panel = new AlbumExpansionPanel(
             _session,
-            _mediaPaths,
+            _images,
             _playbackService,
             _queueService,
             _dispatcher,

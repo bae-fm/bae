@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -49,7 +49,7 @@ internal static class AlbumExpansionView
         // thread through the same (id, version) cache the grid tiles use.
         foreach (var release in detail.Releases)
         {
-            release.AttachCover(app.MediaPaths, Dispatcher.UIThread);
+            release.AttachCover(app.Images, Dispatcher.UIThread);
         }
 
         // The release the panel acts on: an explicitly-primary release, else the

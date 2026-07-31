@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Threading;
@@ -33,14 +33,14 @@ internal sealed class MediaControlService : IMediaControl
     internal static IMediaControl ForCurrentPlatform(
         Dispatcher dispatcher,
         PlaybackService playback,
-        MediaPathsService mediaPaths,
+        ImageStore images,
         string edition,
         Action raise,
         Action quit)
     {
 #if WINDOWS10_0_19041_0_OR_GREATER
         return new MediaControlService(
-            new SmtcMediaSession(), dispatcher, playback, mediaPaths.FetchLibraryImageBytes);
+            new SmtcMediaSession(), dispatcher, playback, ArtworkReader(images));
 #else
         if (!OperatingSystem.IsLinux())
         {
@@ -48,7 +48,7 @@ internal sealed class MediaControlService : IMediaControl
         }
 
         var mpris = new MprisMediaSession(edition, raise, quit);
-        var control = new MediaControlService(mpris, dispatcher, playback, mediaPaths.FetchLibraryImageBytes);
+        var control = new MediaControlService(mpris, dispatcher, playback, ArtworkReader(images));
         // The bus name goes up only after the service is listening, so a client
         // command cannot land while there is nothing to route it to.
         mpris.Serve();
@@ -265,6 +265,13 @@ internal sealed class MediaControlService : IMediaControl
 
     // The state layer names artwork by token (it compiles without the generated
     // bridge bindings), so the reference the fetch needs travels alongside it.
+    /// <summary>The system now-playing thumbnail's byte read. The store owns
+    /// every image fetch; the decode is the platform surface's, at whatever size
+    /// it wants, so this takes bytes rather than one of the store's sized
+    /// decodes.</summary>
+    private static Func<BridgeImageRef, byte[]?> ArtworkReader(ImageStore images) =>
+        image => images.ReadBytes(new ImageContent.LibraryImage(image));
+
     private static string? ArtworkToken(BridgeImageRef? image) =>
         image is null ? null : $"{image.ImageType}:{image.Id}:{image.Version}";
 

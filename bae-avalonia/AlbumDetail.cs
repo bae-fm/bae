@@ -29,13 +29,13 @@ public sealed class AlbumDetail
 public sealed class Release : INotifyPropertyChanged
 {
     private readonly BridgeRelease _release;
-    private readonly CoverImage.Binding _cover;
+    private readonly ImageBinding _cover;
 
     internal Release(BridgeRelease release)
     {
         _release = release;
         Tracks = release.Tracks.Select(track => new Track(track)).ToList();
-        _cover = new CoverImage.Binding(release.Cover);
+        _cover = new ImageBinding(ImageContent.ForLibraryImage(release.Cover), ImageWidths.DetailCover);
         _cover.SourceChanged += () => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Cover)));
     }
 
@@ -48,8 +48,8 @@ public sealed class Release : INotifyPropertyChanged
     /// <summary>Attach the current handle so the release's own cover loads off the
     /// UI thread and applies when it lands — the same (id, version) cache path the
     /// grid tiles use.</summary>
-    internal void AttachCover(MediaPathsService mediaPaths, Dispatcher dispatcherQueue) =>
-        _cover.Attach(mediaPaths, dispatcherQueue);
+    internal void AttachCover(ImageStore imageStore, Dispatcher dispatcherQueue) =>
+        _cover.Attach(imageStore, dispatcherQueue);
 
     /// <summary>The release's own cover, or null while it loads / when the release
     /// has none. The album expansion's large art binds here per selected release.</summary>

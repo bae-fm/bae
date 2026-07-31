@@ -891,35 +891,17 @@ internal static class NativeBae
             identity,
             ReleaseUserEdit(userEdit)));
 
-    /// <summary>Filesystem path for the user's own external file behind a library
-    /// file (the DiscID re-read of a rip's LOG/CUE/audio), or null when there is
-    /// none. NOT for images — those go through the byte reads below.</summary>
-    internal static (string? Path, string? Error) FilePath(AppHandle handle, string fileId)
-    {
-        try
-        {
-            return (Await(() => handle.FilePath(fileId)), null);
-        }
-        catch (BridgeException.Cancelled)
-        {
-            return (null, null);
-        }
-        catch (BridgeException exception)
-        {
-            return (null, exception.Message);
-        }
-    }
-
-    /// <summary>Bytes of provider art at a URL for the import flow's cover
-    /// search, or null on a failed fetch (logged).</summary>
-    internal static byte[]? RemoteImageBytes(AppHandle handle, string url) =>
-        CaptureBytes(() => Await(() => handle.FetchRemoteImageBytes(url)).Bytes);
+    /// <summary>Provider art at a URL for the import flow's cover search — its
+    /// bytes and the validator identifying them — or null on a failed fetch
+    /// (logged). Core owns the socket; the UI never opens one.</summary>
+    internal static BridgeRemoteImage? RemoteImage(AppHandle? handle, string url) =>
+        handle is null ? null : Capture(() => Await(() => handle.FetchRemoteImageBytes(url)));
 
     internal static byte[]? LibraryImageBytes(AppHandle? handle, BridgeImageRef image) =>
-        handle is null ? null : CaptureBytes(() => Await(() => handle.FetchLibraryImageBytes(image)));
+        handle is null ? null : Capture(() => Await(() => handle.FetchLibraryImageBytes(image)));
 
     internal static byte[]? ReleaseImageBytes(AppHandle? handle, string releaseId, BridgeGallerySource source) =>
-        handle is null ? null : CaptureBytes(() => Await(() => handle.FetchReleaseImageBytes(releaseId, source)));
+        handle is null ? null : Capture(() => Await(() => handle.FetchReleaseImageBytes(releaseId, source)));
 
     internal static void PlayRelease(AppHandle handle, string releaseId, long startTrackIndex, bool shuffle) =>
         handle.PlayRelease(releaseId, startTrackIndex < 0 ? null : checked((uint)startTrackIndex), shuffle);
@@ -1084,7 +1066,8 @@ internal static class NativeBae
         }
     }
 
-    private static byte[]? CaptureBytes(Func<byte[]?> action)
+    private static T? Capture<T>(Func<T?> action)
+        where T : class
     {
         try
         {

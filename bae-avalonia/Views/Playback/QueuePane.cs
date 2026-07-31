@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Globalization;
@@ -301,7 +301,10 @@ internal sealed class QueuePane
             _card.IsVisible = true;
             _cardTitle!.Text = track.Title;
             _cardArtist!.Text = track.Artist;
-            _cardCover!.Source = CoverImage.LoadImage(_app.MediaPaths, track.CoverImage);
+            _app.Images.Bind(
+                _cardCover!,
+                ImageContent.ForLibraryImage(track.CoverImage),
+                ImageWidths.Row);
             _renderedSecond = -1;
             RenderCardPosition(force: true);
         }
@@ -515,7 +518,10 @@ internal sealed class QueuePane
     private Control BuildEntryRow(EntryRow row)
     {
         var cover = new Image { Stretch = Stretch.UniformToFill };
-        CoverImage.BindById(cover, _app.MediaPaths, row.Entry.CoverImage);
+        _app.Images.Bind(
+            cover,
+            ImageContent.ForLibraryImage(row.Entry.CoverImage),
+            ImageWidths.Row);
         var art = new Border { Width = 44, Height = 44, CornerRadius = new CornerRadius(8), ClipToBounds = true, Child = cover };
         art[!Border.BackgroundProperty] = new DynamicResourceExtension("BaeElevatedBrush");
 

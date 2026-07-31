@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -367,9 +367,10 @@ internal sealed class ImportMappingPane : UserControl
         {
             return;
         }
-        _ = ImportDialogs.LoadCoverBitmap(face.IsLocal, face.Source).ContinueWith(
-            task => { if (task.Result is { } bitmap) { image.Source = bitmap; } },
-            TaskScheduler.FromCurrentSynchronizationContext());
+        _app.Images.Bind(
+            image,
+            ImportDialogs.CoverFaceContent(face.IsLocal, face.Source),
+            ImageWidths.PickerTile);
     }
 
     private async Task ChooseCover()

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.IO;
 using Avalonia.Media.Imaging;
 using QRCoder;
@@ -13,7 +13,7 @@ namespace Bae.Desktop;
 ///
 /// QRCoder's <see cref="PngByteQRCode"/> produces a PNG byte array directly (no
 /// System.Drawing), decoded into a <see cref="Bitmap"/> from an in-memory stream
-/// the same way <see cref="CoverImage"/> decodes an image stream.
+/// the same way <see cref="ImageStore"/> decodes an image stream.
 /// </summary>
 public static class QrCode
 {

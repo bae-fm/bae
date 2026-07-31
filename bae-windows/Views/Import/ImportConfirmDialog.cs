@@ -18,17 +18,20 @@ internal sealed class ImportConfirmDialog
     private readonly Func<XamlRoot?> _xamlRoot;
     private readonly Func<string, System.Threading.Tasks.Task> _openAlbum;
     private readonly LightboxOverlay _lightbox;
+    private readonly ImageStore _images;
 
     public ImportConfirmDialog(
         SessionStore session,
         Func<XamlRoot?> xamlRoot,
         Func<string, System.Threading.Tasks.Task> openAlbum,
-        LightboxOverlay lightbox)
+        LightboxOverlay lightbox,
+        ImageStore images)
     {
         _session = session;
         _xamlRoot = xamlRoot;
         _openAlbum = openAlbum;
         _lightbox = lightbox;
+        _images = images;
     }
 
     // Returns true when the user chose "Back to Search" — the caller re-opens the
@@ -282,9 +285,11 @@ internal sealed class ImportConfirmDialog
             onPick(selection);
         }
 
-        void AddTile(ImageSource? source, string caption, BridgeCoverSelection selection, bool isLocal = false, int localIndex = 0)
+        void AddTile(ImageContent content, string caption, BridgeCoverSelection selection, bool isLocal = false, int localIndex = 0)
         {
-            var tile = DialogPrimitives.CoverTile(source, caption);
+            var thumb = new Image();
+            _images.Bind(thumb, content, ImageWidths.PickerTile);
+            var tile = DialogPrimitives.CoverTile(thumb, caption);
             tile.Click += (_, _) => Select(tile, selection);
             if (isLocal)
             {
@@ -294,41 +299,27 @@ internal sealed class ImportConfirmDialog
             grid.Children.Add(tile);
         }
 
-        // A malformed cover URL or artwork path would throw synchronously out of
-        // this static builder (and the async-void caller) — skip that tile instead
-        // of crashing the picker, matching the change-cover gallery's guard.
         foreach (var cover in remoteCovers)
         {
-            BitmapImage source;
-            try
-            {
-                source = new BitmapImage(new Uri(NativeBae.RemoteCoverThumbnailUrl(cover)));
-            }
-            catch (UriFormatException)
-            {
-                continue;
-            }
-
             var selection = NativeBae.RemoteCoverSelection(cover);
-            AddTile(source, cover.Label, selection, isLocal: false);
+            AddTile(
+                new ImageContent.Remote(NativeBae.RemoteCoverThumbnailUrl(cover)),
+                cover.Label,
+                selection,
+                isLocal: false);
         }
 
         var localArtworkCount = 0;
         foreach (var art in localArtwork)
         {
-            BitmapImage source;
-            try
-            {
-                source = new BitmapImage(new Uri(art.Path));
-            }
-            catch (UriFormatException)
-            {
-                continue;
-            }
-
             var selection = new BridgeCoverSelection.ReleaseImage(art.FileId);
             var currentIndex = localArtworkCount;
-            AddTile(source, System.IO.Path.GetFileName(art.FileId), selection, isLocal: true, localIndex: currentIndex);
+            AddTile(
+                new ImageContent.LocalFile(art.Path),
+                System.IO.Path.GetFileName(art.FileId),
+                selection,
+                isLocal: true,
+                localIndex: currentIndex);
             localArtworkCount++;
         }
 

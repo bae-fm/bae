@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -32,14 +32,19 @@ internal sealed class ReleaseActionDialogs
 
     // Open the release's gallery in the lightbox. The items come from the loaded
     // release detail (as on macOS); each entry reads its bytes on demand through
-    // MediaPaths, which fetches and decrypts from the cloud home when off-disk.
+    // the image store, which fetches and decrypts from the cloud home when
+    // off-disk. The lightbox decodes at native resolution itself, so these are raw
+    // bytes rather than one of the store's sized decodes.
     public void ShowGallery(string releaseId, IReadOnlyList<BridgeGalleryItem> items)
     {
         var entries = new List<LightboxEntry>();
         foreach (var item in items)
         {
             var source = item.Source;
-            entries.Add(new LightboxEntry(item.Id, item.Label, () => _app.MediaPaths.FetchReleaseImageBytes(releaseId, source)));
+            entries.Add(new LightboxEntry(
+                item.Id,
+                item.Label,
+                () => _app.Images.ReadBytes(new ImageContent.ReleaseImage(releaseId, source))));
         }
         _lightbox.Show(entries, 0);
     }
@@ -430,15 +435,7 @@ internal sealed class ReleaseActionDialogs
                 var image = new Image();
                 var url = ReleaseEditorService.RemoteCoverThumbnailUrl(cover);
                 remoteGrid.Children.Add(Tile(image, cover.Label, ReleaseEditorService.RemoteCoverSelection(cover)));
-                _ = CoverImage.LoadUrlAsync(url).ContinueWith(
-                    task =>
-                    {
-                        if (task.Result is { } bitmap)
-                        {
-                            image.Source = bitmap;
-                        }
-                    },
-                    TaskScheduler.FromCurrentSynchronizationContext());
+                _app.Images.Bind(image, new ImageContent.Remote(url), ImageWidths.PickerTile);
             }
         }
 
@@ -452,11 +449,12 @@ internal sealed class ReleaseActionDialogs
             var fileGrid = new WrapPanel { Orientation = Orientation.Horizontal };
             foreach (var file in releaseImages)
             {
-                var image = new Image
-                {
-                    Source = CoverImage.LoadGalleryBytes(
-                        _app.MediaPaths, releaseId, new BridgeGallerySource.ReleaseFile(file.Id)),
-                };
+                var image = new Image();
+                _app.Images.Bind(
+                    image,
+                    new ImageContent.ReleaseImage(
+                        releaseId, new BridgeGallerySource.ReleaseFile(file.Id)),
+                    ImageWidths.PickerTile);
                 fileGrid.Children.Add(Tile(image, file.OriginalFilename, new BridgeCoverSelection.ReleaseImage(file.Id)));
             }
             column.Children.Add(fileGrid);

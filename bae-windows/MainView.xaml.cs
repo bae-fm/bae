@@ -106,7 +106,7 @@ public sealed partial class MainView : UserControl
 
         _nowPlayingBar = new NowPlayingBarController(
             _session,
-            _appService.MediaPaths,
+            _appService.Images,
             _appService.Playback,
             _appService.Queue,
             _appService.PlaybackStore,
@@ -167,7 +167,7 @@ public sealed partial class MainView : UserControl
         // now-playing jump, and the import "view in library" banner.
         _releaseActions = new ReleaseActionDialogs(
             _session,
-            _appService.MediaPaths,
+            _appService.Images,
             () => XamlRoot,
             _windowHandle,
             text => StatusText.Text = text,
@@ -175,7 +175,7 @@ public sealed partial class MainView : UserControl
             _lightbox);
         _queuePane = new QueuePane(
             _session,
-            _appService.MediaPaths,
+            _appService.Images,
             _appService.Library,
             _appService.Queue,
             _appService.PlaybackStore,
@@ -203,7 +203,7 @@ public sealed partial class MainView : UserControl
         _libraryBrowser = new LibraryBrowser(
             _session,
             _appService.Library,
-            _appService.MediaPaths,
+            _appService.Images,
             _appService.Playback,
             _appService.Queue,
             _appService.Downloads,
@@ -251,7 +251,11 @@ public sealed partial class MainView : UserControl
         // The import flow: the confirm step (which can open an album), the picker
         // that leads to it, and the folder-scan dialog that opens the picker.
         _importConfirm = new ImportConfirmDialog(
-            _session, () => XamlRoot, albumId => _libraryBrowser.RevealAlbum(albumId), _lightbox);
+            _session,
+            () => XamlRoot,
+            albumId => _libraryBrowser.RevealAlbum(albumId),
+            _lightbox,
+            _appService.Images);
         _importPicker = new ImportPickerDialog(
             _session, () => XamlRoot, _appService.ImportStore, _appService.Playback, _importConfirm);
         _importSection = new ImportSection(

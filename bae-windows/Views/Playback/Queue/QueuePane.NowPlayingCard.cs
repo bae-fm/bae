@@ -178,7 +178,10 @@ internal sealed partial class QueuePane
             _card.Visibility = Visibility.Visible;
             _cardTitle!.Text = track.Title;
             _cardArtist!.Text = track.Artist;
-            _cardCover!.Source = CoverImage.LoadImage(_mediaPaths, track.CoverImage);
+            _images.Bind(
+                _cardCover!,
+                ImageContent.ForLibraryImage(track.CoverImage),
+                ImageWidths.Row);
             _renderedSecond = -1;
             RenderCardPosition(force: true);
         }

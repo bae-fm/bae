@@ -18,7 +18,7 @@ internal sealed class AppService
     // Domain services: narrow, per-domain projections of the open handle that
     // views and stores read instead of the session + NativeBae directly.
     public LibraryService Library { get; }
-    public MediaPathsService MediaPaths { get; }
+    public ImageStore Images { get; }
     public PlaybackService Playback { get; }
     public QueueService Queue { get; }
     public DownloadsService Downloads { get; }
@@ -54,7 +54,7 @@ internal sealed class AppService
             dispatcher,
             windowHandle,
             LibraryService.FromSession(session),
-            MediaPathsService.FromSession(session),
+            ImageStore.FromSession(session),
             PlaybackService.FromSession(session),
             QueueService.FromSession(session),
             DownloadsService.FromSession(session),
@@ -73,7 +73,7 @@ internal sealed class AppService
         DispatcherQueue dispatcher,
         Func<IntPtr> windowHandle,
         LibraryService library,
-        MediaPathsService mediaPaths,
+        ImageStore images,
         PlaybackService playback,
         QueueService queue,
         DownloadsService downloads,
@@ -83,7 +83,7 @@ internal sealed class AppService
         ImportService import)
     {
         Library = library;
-        MediaPaths = mediaPaths;
+        Images = images;
         Playback = playback;
         Queue = queue;
         Downloads = downloads;
@@ -104,7 +104,7 @@ internal sealed class AppService
             windowHandle(),
             dispatcher,
             Playback,
-            image => MediaPaths.FetchLibraryImageBytes(image));
+            image => Images.ReadBytes(new ImageContent.LibraryImage(image)));
         ImportStore = new ImportStore(Import, ShowError, MediaControlService);
         ProjectionRegistry = new ProjectionRegistry();
         // In-flight release transfers (pin/unpin/manage/unmanage), driven by
@@ -123,7 +123,7 @@ internal sealed class AppService
         // The storage sheet's non-UI operations, shared by the storage dialog and
         // the album-detail storage band so both run transitions the same way.
         StorageStore = new StorageStore(Downloads, Sync, TransferProgressStore);
-        LibraryBrowserStore = new LibraryBrowserStore(Library, MediaPaths, dispatcher);
+        LibraryBrowserStore = new LibraryBrowserStore(Library, Images, dispatcher);
     }
 
 #if DEBUG
@@ -143,7 +143,7 @@ internal sealed class AppService
             dispatcher,
             windowHandle,
             library,
-            new MediaPathsService(),
+            new ImageStore(),
             new PlaybackService(),
             new QueueService(),
             new DownloadsService(),

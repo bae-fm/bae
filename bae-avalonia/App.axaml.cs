@@ -1,4 +1,4 @@
-using System.Linq;
+﻿using System.Linq;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
@@ -197,7 +197,7 @@ public sealed partial class App : Application
         _mediaControl = MediaControlService.ForCurrentPlatform(
             Dispatcher.UIThread,
             PlaybackService.FromSession(_session),
-            MediaPathsService.FromSession(_session),
+            ImageStore.FromSession(_session),
             Edition,
             raise: () => Dispatcher.UIThread.Post(() => (_main as Window ?? _welcome)?.Activate()),
             // TryShutdown, not Shutdown: a forced shutdown skips ShutdownRequested

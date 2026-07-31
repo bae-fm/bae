@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Avalonia;
@@ -22,12 +22,18 @@ internal sealed class ImportDialogs
 {
     private readonly ModalHost _host;
     private readonly LightboxOverlay _lightbox;
+    private readonly ImageStore _images;
     private readonly Func<string, Task> _openAlbum;
 
-    public ImportDialogs(ModalHost host, LightboxOverlay lightbox, Func<string, Task> openAlbum)
+    public ImportDialogs(
+        ModalHost host,
+        LightboxOverlay lightbox,
+        ImageStore images,
+        Func<string, Task> openAlbum)
     {
         _host = host;
         _lightbox = lightbox;
+        _images = images;
         _openAlbum = openAlbum;
     }
 
@@ -120,9 +126,7 @@ internal sealed class ImportDialogs
             var image = new Image();
             var url = ReleaseEditorService.RemoteCoverThumbnailUrl(cover);
             AddTile(image, cover.Label, new PickedCover(ReleaseEditorService.RemoteCoverSelection(cover), false, url));
-            _ = CoverImage.LoadUrlAsync(url).ContinueWith(
-                task => { if (task.Result is { } bitmap) { image.Source = bitmap; } },
-                TaskScheduler.FromCurrentSynchronizationContext());
+            _images.Bind(image, new ImageContent.Remote(url), ImageWidths.PickerTile);
         }
 
         for (var i = 0; i < localArtwork.Count; i++)
@@ -135,10 +139,7 @@ internal sealed class ImportDialogs
                 new PickedCover(new BridgeCoverSelection.ReleaseImage(art.FileId), true, art.Path));
             var startIndex = i;
             tile.DoubleTapped += (_, _) => OpenLocalArtworkLightbox(localArtwork, startIndex);
-            var path = art.Path;
-            _ = Task.Run(() => TryLoadFileBitmap(path)).ContinueWith(
-                task => { if (task.Result is { } bitmap) { image.Source = bitmap; } },
-                TaskScheduler.FromCurrentSynchronizationContext());
+            _images.Bind(image, new ImageContent.LocalFile(art.Path), ImageWidths.PickerTile);
         }
 
         section.Children.Add(grid);
@@ -166,22 +167,11 @@ internal sealed class ImportDialogs
         _lightbox.Show(entries, startIndex);
     }
 
-    /// <summary>Load whichever face a picked cover has — a remote thumbnail by
-    /// URL or one of the folder's own images off disk.</summary>
-    internal static Task<Bitmap?> LoadCoverBitmap(bool isLocal, string source) =>
-        isLocal ? Task.Run(() => TryLoadFileBitmap(source)) : CoverImage.LoadUrlAsync(source);
+    /// <summary>The content for whichever face a picked cover has — one of the
+    /// folder's own images off disk, or a remote thumbnail by URL.</summary>
+    internal static ImageContent CoverFaceContent(bool isLocal, string source) =>
+        isLocal ? new ImageContent.LocalFile(source) : new ImageContent.Remote(source);
 
-    internal static Bitmap? TryLoadFileBitmap(string path)
-    {
-        try
-        {
-            return new Bitmap(path);
-        }
-        catch (Exception)
-        {
-            return null;
-        }
-    }
 
     // The document viewer: the file's decoded text, monospace and selectable, in a
     // scrollable modal.

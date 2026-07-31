@@ -27,7 +27,7 @@ namespace Bae.Windows;
 internal sealed partial class AlbumExpansionPanel : IDisposable
 {
     private readonly SessionStore _session;
-    private readonly MediaPathsService _mediaPaths;
+    private readonly ImageStore _images;
     private readonly PlaybackService _playbackService;
     private readonly QueueService _queueService;
     private readonly Microsoft.UI.Dispatching.DispatcherQueue _dispatcher;
@@ -49,7 +49,7 @@ internal sealed partial class AlbumExpansionPanel : IDisposable
 
     public AlbumExpansionPanel(
         SessionStore session,
-        MediaPathsService mediaPaths,
+        ImageStore images,
         PlaybackService playbackService,
         QueueService queueService,
         Microsoft.UI.Dispatching.DispatcherQueue dispatcher,
@@ -63,7 +63,7 @@ internal sealed partial class AlbumExpansionPanel : IDisposable
         Action onClose)
     {
         _session = session;
-        _mediaPaths = mediaPaths;
+        _images = images;
         _playbackService = playbackService;
         _queueService = queueService;
         _dispatcher = dispatcher;
@@ -112,7 +112,7 @@ internal sealed partial class AlbumExpansionPanel : IDisposable
         // cover binds to the selected release's.
         foreach (var release in detail.Releases)
         {
-            release.AttachCover(_mediaPaths, _dispatcher);
+            release.AttachCover(_images, _dispatcher);
         }
 
         // The release the panel acts on: when revealing a now-playing track, the

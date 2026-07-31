@@ -69,15 +69,13 @@ internal static class DialogPrimitives
     // a borderless button. The caller wires Click — the change-cover gallery
     // applies the selection immediately, the import-confirm gallery carries it and
     // highlights the picked tile via the button's border.
-    internal static Button CoverTile(ImageSource? source, string caption)
+    // The caller supplies the image control so the image store can bind to it
+    // and apply the decode when it lands.
+    internal static Button CoverTile(Image thumb, string caption)
     {
-        var thumb = new Image
-        {
-            Source = source,
-            Stretch = Stretch.UniformToFill,
-            Width = 120,
-            Height = 120,
-        };
+        thumb.Stretch = Stretch.UniformToFill;
+        thumb.Width = 120;
+        thumb.Height = 120;
         var label = new TextBlock
         {
             Text = caption,

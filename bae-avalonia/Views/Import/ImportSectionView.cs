@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -977,16 +977,14 @@ internal sealed class ImportSectionView : UserControl
         return button;
     }
 
-    private static Control BuildCover(string? coverThumbnailUrl)
+    private Control BuildCover(string? coverThumbnailUrl)
     {
         var image = new Image { Width = 44, Height = 44, Stretch = Stretch.UniformToFill };
         var host = new Border { Width = 44, Height = 44, CornerRadius = new CornerRadius(8), ClipToBounds = true, Child = image };
         host[!Border.BackgroundProperty] = new DynamicResourceExtension("BaeElevatedBrush");
         if (!string.IsNullOrEmpty(coverThumbnailUrl))
         {
-            _ = CoverImage.LoadUrlAsync(coverThumbnailUrl).ContinueWith(
-                task => { if (task.Result is { } bitmap) { image.Source = bitmap; } },
-                TaskScheduler.FromCurrentSynchronizationContext());
+            _app.Images.Bind(image, new ImageContent.Remote(coverThumbnailUrl), ImageWidths.Row);
         }
         return host;
     }

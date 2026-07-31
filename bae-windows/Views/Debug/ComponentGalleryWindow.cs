@@ -145,8 +145,8 @@ internal sealed class ComponentGalleryWindow : Window
         var panel = Section();
         panel.Children.Add(Header("DialogPrimitives.CoverTile (placeholder art)"));
         var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 12 };
-        row.Children.Add(DialogPrimitives.CoverTile(null, "Cover A"));
-        row.Children.Add(DialogPrimitives.CoverTile(null, "Cover B"));
+        row.Children.Add(DialogPrimitives.CoverTile(new Image(), "Cover A"));
+        row.Children.Add(DialogPrimitives.CoverTile(new Image(), "Cover B"));
         panel.Children.Add(row);
         return panel;
     }

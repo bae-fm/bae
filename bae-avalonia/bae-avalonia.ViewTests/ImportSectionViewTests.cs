@@ -1,4 +1,4 @@
-using System.Reflection;
+﻿using System.Reflection;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Headless;
@@ -89,6 +89,7 @@ public sealed class ImportSectionViewTests
             new ImportDialogs(
                 new ModalHost(),
                 new LightboxOverlay(),
+                app.Images,
                 _ => Task.CompletedTask));
         app.ImportStore.SeedPreview(
             queue,

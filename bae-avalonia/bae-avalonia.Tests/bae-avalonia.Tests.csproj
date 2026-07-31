@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <!--
     Unit tests for bae-avalonia's pure logic that compiles without Avalonia or
@@ -13,6 +13,10 @@
       of Loc.cs is unchanged.
     - The media-control state layer (MediaControlState) — the decision logic
       behind the OS transport controls, over plain BCL types.
+    - The image cache and its tokens (ImageCache, ImageTokens) — the bucketed
+      eviction and the identity a decode is pinned to, over plain BCL types and
+      generic over the platform bitmap. ImageStore itself, which names bridge and
+      Avalonia types, is verified by compilation.
     - The store models (the now-playing-bar seek/position math, lightbox logic,
       sync-indicator precedence, import identity-claim state, re-identify
       arbitration, the main-window bounds clamp, the Ctrl+1..9 library-switch
@@ -50,6 +54,8 @@
   <ItemGroup>
     <Compile Include="../Loc.cs" Link="Loc.cs" />
     <Compile Include="../MediaControlState.cs" Link="MediaControlState.cs" />
+    <Compile Include="../Services/ImageCache.cs" Link="ImageCache.cs" />
+    <Compile Include="../Services/ImageTokens.cs" Link="ImageTokens.cs" />
     <Compile Include="../Stores/PlaybackPositionModel.cs" Link="PlaybackPositionModel.cs" />
     <Compile Include="../Stores/LightboxModel.cs" Link="LightboxModel.cs" />
     <Compile Include="../Stores/SyncIndicatorModel.cs" Link="SyncIndicatorModel.cs" />

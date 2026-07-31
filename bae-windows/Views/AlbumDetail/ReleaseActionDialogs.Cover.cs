@@ -42,7 +42,7 @@ internal sealed partial class ReleaseActionDialogs
             entries.Add(new LightboxEntry(
                 item.Id,
                 capturedLabel,
-                () => _mediaPaths.FetchReleaseImageBytes(capturedReleaseId, capturedSource)));
+                () => _images.ReadBytes(new ImageContent.ReleaseImage(capturedReleaseId, capturedSource))));
         }
 
         _lightbox.Show(entries, 0);
@@ -115,9 +115,9 @@ internal sealed partial class ReleaseActionDialogs
         }
 
         // A thumbnail tile that applies the selection when clicked.
-        Button Tile(ImageSource? source, string caption, BridgeCoverSelection selection)
+        Button Tile(Image thumb, string caption, BridgeCoverSelection selection)
         {
-            var button = DialogPrimitives.CoverTile(source, caption);
+            var button = DialogPrimitives.CoverTile(thumb, caption);
             button.Click += async (_, _) => await Apply(selection);
             return button;
         }
@@ -133,10 +133,14 @@ internal sealed partial class ReleaseActionDialogs
             };
             foreach (var file in releaseImages)
             {
-                var source = CoverImage.LoadGalleryBytes(
-                    _mediaPaths, releaseId, new BridgeGallerySource.ReleaseFile(file.Id));
+                var image = new Image();
+                _images.Bind(
+                    image,
+                    new ImageContent.ReleaseImage(
+                        releaseId, new BridgeGallerySource.ReleaseFile(file.Id)),
+                    ImageWidths.PickerTile);
                 var selection = new BridgeCoverSelection.ReleaseImage(file.Id);
-                fileGrid.Children.Add(Tile(source, file.OriginalFilename, selection));
+                fileGrid.Children.Add(Tile(image, file.OriginalFilename, selection));
             }
 
             content.Children.Add(fileGrid);
@@ -189,9 +193,13 @@ internal sealed partial class ReleaseActionDialogs
 
                 foreach (var cover in covers)
                 {
-                    var source = new BitmapImage(new Uri(NativeBae.RemoteCoverThumbnailUrl(cover)));
+                    var image = new Image();
+                    _images.Bind(
+                        image,
+                        new ImageContent.Remote(NativeBae.RemoteCoverThumbnailUrl(cover)),
+                        ImageWidths.PickerTile);
                     var selection = NativeBae.RemoteCoverSelection(cover);
-                    remoteGrid.Children.Add(Tile(source, cover.Label, selection));
+                    remoteGrid.Children.Add(Tile(image, cover.Label, selection));
                 }
             }
             catch (Exception ex)

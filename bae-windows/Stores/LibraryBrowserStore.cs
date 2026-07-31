@@ -35,7 +35,7 @@ internal sealed class LibraryBrowserStore
     private const ulong PageSize = 200;
 
     private readonly LibraryService _library;
-    private readonly MediaPathsService _mediaPaths;
+    private readonly ImageStore _images;
     private readonly DispatcherQueue _dispatcher;
 
     public LibrarySort Sort { get; }
@@ -44,10 +44,10 @@ internal sealed class LibraryBrowserStore
     public IncrementalBrowserCollection<ComposerSummary> Composers { get; }
     public IncrementalBrowserCollection<ArtistSummary> Artists { get; }
 
-    public LibraryBrowserStore(LibraryService library, MediaPathsService mediaPaths, DispatcherQueue dispatcher)
+    public LibraryBrowserStore(LibraryService library, ImageStore images, DispatcherQueue dispatcher)
     {
         _library = library;
-        _mediaPaths = mediaPaths;
+        _images = images;
         _dispatcher = dispatcher;
         Albums = new IncrementalBrowserCollection<Album>(FetchAlbumPage, LogPageError("albums"));
         Composers = new IncrementalBrowserCollection<ComposerSummary>(FetchComposerPage, LogPageError("composers"));
@@ -82,7 +82,7 @@ internal sealed class LibraryBrowserStore
 
         foreach (var album in page.Albums)
         {
-            album.AttachCover(_mediaPaths, _dispatcher);
+            album.AttachCover(_images, _dispatcher);
             Albums.Add(album);
         }
         var (countCurrent, total) = _library.AlbumCount();
@@ -109,7 +109,7 @@ internal sealed class LibraryBrowserStore
 
         foreach (var composer in page.Composers)
         {
-            composer.AttachCover(_mediaPaths, _dispatcher);
+            composer.AttachCover(_images, _dispatcher);
             Composers.Add(composer);
         }
         var (countCurrent, total) = _library.ComposerCount();
@@ -136,7 +136,7 @@ internal sealed class LibraryBrowserStore
 
         foreach (var artist in page.Artists)
         {
-            artist.AttachCover(_mediaPaths, _dispatcher);
+            artist.AttachCover(_images, _dispatcher);
             Artists.Add(artist);
         }
         var (countCurrent, total) = _library.ArtistCount();
@@ -161,7 +161,7 @@ internal sealed class LibraryBrowserStore
         }
         foreach (var album in page.Albums)
         {
-            album.AttachCover(_mediaPaths, _dispatcher);
+            album.AttachCover(_images, _dispatcher);
         }
         return (true, page.Albums, null);
     }
@@ -180,7 +180,7 @@ internal sealed class LibraryBrowserStore
         }
         foreach (var composer in page.Composers)
         {
-            composer.AttachCover(_mediaPaths, _dispatcher);
+            composer.AttachCover(_images, _dispatcher);
         }
         return (true, page.Composers, null);
     }
@@ -199,7 +199,7 @@ internal sealed class LibraryBrowserStore
         }
         foreach (var artist in page.Artists)
         {
-            artist.AttachCover(_mediaPaths, _dispatcher);
+            artist.AttachCover(_images, _dispatcher);
         }
         return (true, page.Artists, null);
     }
@@ -220,23 +220,23 @@ internal sealed class LibraryBrowserStore
         {
             foreach (var album in results.Albums)
             {
-                album.AttachCover(_mediaPaths, _dispatcher);
+                album.AttachCover(_images, _dispatcher);
             }
             foreach (var artist in results.Artists)
             {
-                artist.AttachCover(_mediaPaths, _dispatcher);
+                artist.AttachCover(_images, _dispatcher);
             }
             foreach (var track in results.Tracks)
             {
-                track.AttachCover(_mediaPaths, _dispatcher);
+                track.AttachCover(_images, _dispatcher);
             }
             foreach (var composer in results.Composers)
             {
-                composer.AttachCover(_mediaPaths, _dispatcher);
+                composer.AttachCover(_images, _dispatcher);
             }
             foreach (var work in results.Works)
             {
-                work.AttachCover(_mediaPaths, _dispatcher);
+                work.AttachCover(_images, _dispatcher);
             }
         }
 

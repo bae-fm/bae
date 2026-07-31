@@ -28,12 +28,12 @@ public sealed class LibrarySearchResults
 public sealed class TrackSearchResult : INotifyPropertyChanged
 {
     private readonly BridgeTrackSearchResult _track;
-    private readonly CoverImage.Binding _cover;
+    private readonly ImageBinding _cover;
 
     internal TrackSearchResult(BridgeTrackSearchResult track)
     {
         _track = track;
-        _cover = new CoverImage.Binding(track.Cover);
+        _cover = new ImageBinding(ImageContent.ForLibraryImage(track.Cover), ImageWidths.Row);
         _cover.SourceChanged += () => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Cover)));
     }
 
@@ -46,8 +46,8 @@ public sealed class TrackSearchResult : INotifyPropertyChanged
     public string ArtistName => _track.ArtistName;
     public string DurationLabel => BridgeDisplay.Clock(_track.DurationClock);
 
-    internal void AttachCover(MediaPathsService mediaPaths, DispatcherQueue dispatcherQueue) =>
-        _cover.Attach(mediaPaths, dispatcherQueue);
+    internal void AttachCover(ImageStore imageStore, DispatcherQueue dispatcherQueue) =>
+        _cover.Attach(imageStore, dispatcherQueue);
 
     public ImageSource? Cover => _cover.Source;
 }
@@ -55,12 +55,12 @@ public sealed class TrackSearchResult : INotifyPropertyChanged
 public sealed class ComposerSummary : INotifyPropertyChanged
 {
     private readonly BridgeComposerSummary _composer;
-    private readonly CoverImage.Binding _cover;
+    private readonly ImageBinding _cover;
 
     internal ComposerSummary(BridgeComposerSummary composer)
     {
         _composer = composer;
-        _cover = new CoverImage.Binding(composer.Image);
+        _cover = new ImageBinding(ImageContent.ForLibraryImage(composer.Image), ImageWidths.Row);
         _cover.SourceChanged += () => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Cover)));
     }
 
@@ -73,8 +73,8 @@ public sealed class ComposerSummary : INotifyPropertyChanged
     public long LinkedReleaseCount => _composer.LinkedReleaseCount;
     public long UnlinkedCreditCount => _composer.UnlinkedCreditCount;
 
-    internal void AttachCover(MediaPathsService mediaPaths, DispatcherQueue dispatcherQueue) =>
-        _cover.Attach(mediaPaths, dispatcherQueue);
+    internal void AttachCover(ImageStore imageStore, DispatcherQueue dispatcherQueue) =>
+        _cover.Attach(imageStore, dispatcherQueue);
 
     public ImageSource? Cover => _cover.Source;
     public string WorkCountText => Loc.Chrome("work.count", "count", Loc.Number(WorkCount));
@@ -83,12 +83,12 @@ public sealed class ComposerSummary : INotifyPropertyChanged
 public sealed class WorkSummary : INotifyPropertyChanged
 {
     private readonly BridgeWorkSummary _work;
-    private readonly CoverImage.Binding _cover;
+    private readonly ImageBinding _cover;
 
     internal WorkSummary(BridgeWorkSummary work)
     {
         _work = work;
-        _cover = new CoverImage.Binding(work.RepresentativeCover);
+        _cover = new ImageBinding(ImageContent.ForLibraryImage(work.RepresentativeCover), ImageWidths.Row);
         _cover.SourceChanged += () => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Cover)));
     }
 
@@ -103,8 +103,8 @@ public sealed class WorkSummary : INotifyPropertyChanged
     public long LinkedReleaseCount => _work.LinkedReleaseCount;
     public string? RepresentativeReleaseId => _work.RepresentativeReleaseId;
 
-    internal void AttachCover(MediaPathsService mediaPaths, DispatcherQueue dispatcherQueue) =>
-        _cover.Attach(mediaPaths, dispatcherQueue);
+    internal void AttachCover(ImageStore imageStore, DispatcherQueue dispatcherQueue) =>
+        _cover.Attach(imageStore, dispatcherQueue);
 
     public ImageSource? Cover => _cover.Source;
 }
@@ -178,12 +178,12 @@ public sealed class TrackRoleSummary
 public sealed class WorkReleaseSummary : INotifyPropertyChanged
 {
     private readonly BridgeWorkReleaseSummary _release;
-    private readonly CoverImage.Binding _cover;
+    private readonly ImageBinding _cover;
 
     internal WorkReleaseSummary(BridgeWorkReleaseSummary release)
     {
         _release = release;
-        _cover = new CoverImage.Binding(release.Cover);
+        _cover = new ImageBinding(ImageContent.ForLibraryImage(release.Cover), ImageWidths.Row);
         _cover.SourceChanged += () => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(CoverImage)));
     }
 
@@ -195,8 +195,8 @@ public sealed class WorkReleaseSummary : INotifyPropertyChanged
     public string DisplayName => _release.DisplayName;
     public string? Format => _release.Format;
 
-    internal void AttachCover(MediaPathsService mediaPaths, DispatcherQueue dispatcherQueue) =>
-        _cover.Attach(mediaPaths, dispatcherQueue);
+    internal void AttachCover(ImageStore imageStore, DispatcherQueue dispatcherQueue) =>
+        _cover.Attach(imageStore, dispatcherQueue);
 
     public ImageSource? CoverImage => _cover.Source;
     public string DisplaySubtitle =>
