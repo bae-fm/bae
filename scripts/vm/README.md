@@ -38,11 +38,17 @@ by scheduled tasks otherwise pile terminal windows onto the desktop).
 Build + run after provisioning:
 
 ```sh
-ssh tom@<ip> 'C:\Users\tom\bridge-build.cmd'   # Rust bridge + C# bindings
-ssh tom@<ip> 'C:\Users\tom\build-normal.cmd'   # WinUI app (framework-dependent)
-ssh tom@<ip> 'schtasks /run /tn baeRun'        # launch on the VM desktop
-ssh tom@<ip> 'schtasks /run /tn vmShot'        # screenshot → C:\Users\tom\vmshot.png
+ssh tom@<ip> 'C:\Users\tom\bridge-build.cmd'    # bridge + baeium C# bindings
+ssh tom@<ip> 'C:\Users\tom\build-normal.cmd'    # WinUI app (framework-dependent)
+ssh tom@<ip> 'C:\Users\tom\avalonia-build.cmd'  # full-edition bindings + Avalonia app
+ssh tom@<ip> 'schtasks /run /tn baeRun'         # launch on the VM desktop
+ssh tom@<ip> 'schtasks /run /tn vmShot'         # screenshot → C:\Users\tom\vmshot.png
 ```
+
+`bridge-build.cmd` takes an optional edition arg (`full` for bae-avalonia's
+`csharp-bindings-full`; default `baeium` for bae-windows) and leaves the
+vcvars + pinned-linker environment in the calling cmd process — wrappers
+`call` it and run further cargo/dotnet steps in that environment.
 
 That's the iterate loop. Separately, `build-release.cmd` runs the release
 lane locally — release bridge, self-contained publish, `vpk pack` — and drops
