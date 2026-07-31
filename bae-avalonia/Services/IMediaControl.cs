@@ -1,5 +1,6 @@
 using System;
 using Avalonia.Controls;
+using uniffi.bae_bridge;
 
 namespace Bae.Desktop;
 
@@ -20,13 +21,13 @@ internal interface IMediaControl : IDisposable
     void SetWindow(Window? window);
 
     void UpdateNowPlayingPlaying(
-        string trackTitle, string artistNames, string albumTitle, string? coverImageId, ulong durationMs);
+        string trackTitle, string artistNames, string albumTitle, BridgeImageRef? coverImage, ulong durationMs);
 
     void UpdateNowPlayingPaused(
-        string trackTitle, string artistNames, string albumTitle, string? coverImageId, ulong durationMs);
+        string trackTitle, string artistNames, string albumTitle, BridgeImageRef? coverImage, ulong durationMs);
 
     void UpdateNowPlayingLoading(
-        string trackTitle, string artistNames, string albumTitle, string? coverImageId, ulong durationMs);
+        string trackTitle, string artistNames, string albumTitle, BridgeImageRef? coverImage, ulong durationMs);
 
     void UpdateNowPlayingStopped();
 
@@ -63,17 +64,17 @@ internal sealed class NoopMediaControl : IMediaControl
     }
 
     public void UpdateNowPlayingPlaying(
-        string trackTitle, string artistNames, string albumTitle, string? coverImageId, ulong durationMs)
+        string trackTitle, string artistNames, string albumTitle, BridgeImageRef? coverImage, ulong durationMs)
     {
     }
 
     public void UpdateNowPlayingPaused(
-        string trackTitle, string artistNames, string albumTitle, string? coverImageId, ulong durationMs)
+        string trackTitle, string artistNames, string albumTitle, BridgeImageRef? coverImage, ulong durationMs)
     {
     }
 
     public void UpdateNowPlayingLoading(
-        string trackTitle, string artistNames, string albumTitle, string? coverImageId, ulong durationMs)
+        string trackTitle, string artistNames, string albumTitle, BridgeImageRef? coverImage, ulong durationMs)
     {
     }
 

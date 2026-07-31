@@ -366,7 +366,7 @@ public struct NowPlayingTrack {
     public let trackTitle: String
     public let artistNames: String
     public let albumId: String
-    public let coverImageId: String?
+    public let coverImage: BridgeImageRef?
     public let durationMs: UInt64
 
     public init(
@@ -374,14 +374,14 @@ public struct NowPlayingTrack {
         trackTitle: String,
         artistNames: String,
         albumId: String,
-        coverImageId: String?,
+        coverImage: BridgeImageRef?,
         durationMs: UInt64
     ) {
         self.trackId = trackId
         self.trackTitle = trackTitle
         self.artistNames = artistNames
         self.albumId = albumId
-        self.coverImageId = coverImageId
+        self.coverImage = coverImage
         self.durationMs = durationMs
     }
 }

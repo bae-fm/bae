@@ -2,6 +2,7 @@ package fm.bae.app.playback
 
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Timeline
+import fm.bae.app.testCoverRef
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -31,7 +32,7 @@ class NowPlayingProjectionTest {
             artist = "Artist Name",
             albumTitle = "Album Title",
             durationClock = null,
-            coverImageId = null,
+            coverImage = null,
         )
 
     @Test
@@ -80,7 +81,7 @@ class NowPlayingProjectionTest {
                 artistId = "artist-1",
                 albumId = "album-1",
                 albumTitle = "Album Title",
-                coverImageId = "cover-1",
+                coverImage = testCoverRef("cover-1"),
                 durationMs = 185_000uL,
             ),
         )

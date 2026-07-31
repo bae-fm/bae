@@ -3,11 +3,13 @@ package fm.bae.app.widget
 import android.content.Context
 import fm.bae.app.BaeLogger
 import fm.bae.app.playback.NowPlaying
+import java.io.File
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
-import java.io.File
+import uniffi.bae_bridge.BridgeImageRef
+import uniffi.bae_bridge.BridgeLibraryImageType
 
 private const val TAG = "bae.WidgetSnapshot"
 private val logger = BaeLogger(TAG)
@@ -36,28 +38,31 @@ data class WidgetSnapshot(
             isPlaying: Boolean,
         ): WidgetSnapshot =
             WidgetSnapshot(
-                track = nowPlaying?.let { WidgetTrack(it.title, it.artist, it.coverImageId) },
+                track = nowPlaying?.let { WidgetTrack(it.title, it.artist, it.coverImage) },
                 isPlaying = isPlaying,
             )
     }
 }
 
 /**
- * The track fields the widget shows. [coverImageId] is the release id the widget
+ * The track fields the widget shows. [coverImage] is the reference the widget
  * resolves to cover bytes through the same `content://` artwork path the media
  * browse clients use ([fm.bae.app.playback.ArtworkContentProvider]).
  */
 data class WidgetTrack(
     val title: String,
     val artist: String,
-    val coverImageId: String?,
+    val coverImage: BridgeImageRef?,
 )
 
 private const val KEY_IS_PLAYING = "isPlaying"
 private const val KEY_TRACK = "track"
 private const val KEY_TITLE = "title"
 private const val KEY_ARTIST = "artist"
-private const val KEY_COVER_IMAGE_ID = "coverImageId"
+private const val KEY_COVER = "cover"
+private const val KEY_COVER_TYPE = "type"
+private const val KEY_COVER_ID = "id"
+private const val KEY_COVER_VERSION = "version"
 
 internal fun WidgetSnapshot.toJson(): String {
     val obj = JSONObject()
@@ -66,7 +71,15 @@ internal fun WidgetSnapshot.toJson(): String {
         val t = JSONObject()
         t.put(KEY_TITLE, it.title)
         t.put(KEY_ARTIST, it.artist)
-        it.coverImageId?.let { cover -> t.put(KEY_COVER_IMAGE_ID, cover) }
+        it.coverImage?.let { cover ->
+            t.put(
+                KEY_COVER,
+                JSONObject()
+                    .put(KEY_COVER_TYPE, cover.imageType.name)
+                    .put(KEY_COVER_ID, cover.id)
+                    .put(KEY_COVER_VERSION, cover.version),
+            )
+        }
         obj.put(KEY_TRACK, t)
     }
     return obj.toString()
@@ -79,10 +92,26 @@ internal fun parseWidgetSnapshot(json: String): WidgetSnapshot {
             WidgetTrack(
                 title = it.getString(KEY_TITLE),
                 artist = it.getString(KEY_ARTIST),
-                coverImageId = if (it.has(KEY_COVER_IMAGE_ID)) it.getString(KEY_COVER_IMAGE_ID) else null,
+                coverImage = it.optJSONObject(KEY_COVER)?.let(::parseCover),
             )
         }
     return WidgetSnapshot(track = track, isPlaying = obj.getBoolean(KEY_IS_PLAYING))
+}
+
+/** The image reference a snapshot's cover object names, or null when its kind
+ *  isn't one the bridge declares (a snapshot written by an older build). */
+private fun parseCover(cover: JSONObject): BridgeImageRef? {
+    val name = cover.getString(KEY_COVER_TYPE)
+    val imageType = BridgeLibraryImageType.entries.firstOrNull { it.name == name }
+    if (imageType == null) {
+        logger.warning("widget snapshot names an unknown image kind $name; rendering without art")
+        return null
+    }
+    return BridgeImageRef(
+        id = cover.getString(KEY_COVER_ID),
+        version = cover.getString(KEY_COVER_VERSION),
+        imageType = imageType,
+    )
 }
 
 private const val SNAPSHOT_FILE_NAME = "now_playing_widget.json"

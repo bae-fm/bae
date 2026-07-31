@@ -663,7 +663,7 @@ pub struct CueAnalyzedAudioFile {
 /// `Approximate`, the worker calls `prepare_release` at commit time, reading
 /// through the session-wide MB/Discogs LRU caches — normally a hit, since the
 /// UI's prefetch warmed them; a miss costs one round-trip. Cover bytes come
-/// through the same caching in `download_cover_art_bytes`. For Unknown, the
+/// through the same caching in the remote-image cache. For Unknown, the
 /// worker sources the release shape from the scanned candidate: CUE sheets for
 /// CUE-backed candidates, embedded tags for per-track-file candidates.
 ///

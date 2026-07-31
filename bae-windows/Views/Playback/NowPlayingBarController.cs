@@ -375,7 +375,7 @@ internal sealed class NowPlayingBarController
         var playPauseName = Loc.Chrome(track.IsPlaying ? "nowplaying.pause" : "action.play");
         AutomationProperties.SetName(_playPause, playPauseName);
         ToolTipService.SetToolTip(_playPause, playPauseName);
-        _cover.Source = CoverImage.LoadImage(_mediaPaths, track.CoverImageId);
+        _cover.Source = CoverImage.LoadImage(_mediaPaths, track.CoverImage);
         // Audio is flowing: drop the buffering spinner, restore the play/pause
         // glyph. The circle itself stays put through the swap.
         _loading.IsActive = false;

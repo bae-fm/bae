@@ -63,7 +63,7 @@ class PlaybackService : MediaLibraryService() {
                         composers = getString(fm.bae.app.R.string.library_mode_composers),
                     )
                 },
-                artworkUri = { coverId -> ArtworkContentProvider.uriFor(this, coverId) },
+                artworkUri = { image -> ArtworkContentProvider.uriFor(this, image) },
             )
         val session =
             MediaLibrarySession

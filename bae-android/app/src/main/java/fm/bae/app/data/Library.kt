@@ -59,9 +59,10 @@ class Library(
 
     suspend fun workDetail(workId: String): BridgeWorkDetail? = handle.getWorkDetail(workId)
 
-    /** Bytes of a release cover by release id, read through coven's
-     *  locality-aware store, or null when no such cover exists. */
-    suspend fun imageBytes(imageId: String): ByteArray? = handle.fetchCoverImageBytes(imageId)
+    /** Bytes of a curated library image (a release cover or an artist portrait),
+     *  read through coven's locality-aware store, or null when no such image
+     *  exists. */
+    suspend fun imageBytes(image: BridgeImageRef): ByteArray? = handle.fetchLibraryImageBytes(image)
 
     /**
      * Search albums and tracks by free-text query. Suspends: the bridge call is

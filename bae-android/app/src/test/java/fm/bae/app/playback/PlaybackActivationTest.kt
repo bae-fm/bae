@@ -49,7 +49,7 @@ class PlaybackActivationTest {
             artistNames = "Artist Name",
             albumId = "alb-1",
             albumTitle = "Album Title",
-            coverImageId = null,
+            coverImage = null,
             durationMs = 210_000uL,
         )
 

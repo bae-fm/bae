@@ -132,7 +132,7 @@ struct PlaybackAudioSessionTests {
                     artistNames: "Artist Name",
                     albumId: "album-1",
                     albumTitle: "Album Title",
-                    coverImageId: nil,
+                    coverImage: nil,
                     durationMs: 180_000
                 )
             ),
@@ -199,7 +199,7 @@ private func playingState(trackId: String = "t1") -> BridgePlaybackState {
         artistId: "artist-1",
         albumId: "album-1",
         albumTitle: "Album Title",
-        coverImageId: nil,
+        coverImage: nil,
         durationMs: 200_000
     )
 }
@@ -212,7 +212,7 @@ private func pausedState(trackId: String = "t1") -> BridgePlaybackState {
         artistId: "artist-1",
         albumId: "album-1",
         albumTitle: "Album Title",
-        coverImageId: nil,
+        coverImage: nil,
         durationMs: 200_000
     )
 }

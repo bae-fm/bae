@@ -18,10 +18,10 @@ public sealed class MediaControlStateTests
 
     private static MediaControlDisplay? Track(
         MediaControlState state,
-        string? coverImageId = "img-1",
+        string? coverToken = "img-1",
         ulong durationMs = DurationMs,
         MediaControlPlaybackStatus status = MediaControlPlaybackStatus.Playing) =>
-        state.UpdateForTrack(TrackTitle, ArtistName, AlbumTitle, coverImageId, durationMs, status);
+        state.UpdateForTrack(TrackTitle, ArtistName, AlbumTitle, coverToken, durationMs, status);
 
     // ── Track metadata and status ──────────────────────────────────────────────
 
@@ -55,9 +55,9 @@ public sealed class MediaControlStateTests
     {
         var state = new MediaControlState();
 
-        Assert.Equal("img-1", Assert.IsType<MediaControlArtwork.Load>(Track(state, "img-1")!.Artwork).ImageId);
+        Assert.Equal("img-1", Assert.IsType<MediaControlArtwork.Load>(Track(state, "img-1")!.Artwork).Token);
         Assert.IsType<MediaControlArtwork.Keep>(Track(state, "img-1")!.Artwork);
-        Assert.Equal("img-2", Assert.IsType<MediaControlArtwork.Load>(Track(state, "img-2")!.Artwork).ImageId);
+        Assert.Equal("img-2", Assert.IsType<MediaControlArtwork.Load>(Track(state, "img-2")!.Artwork).Token);
         Assert.IsType<MediaControlArtwork.Clear>(Track(state, null)!.Artwork);
     }
 

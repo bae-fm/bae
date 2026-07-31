@@ -118,9 +118,10 @@ impl BridgeLibraryImageType {
     }
 }
 
-/// A reference to a host-provided library image (a cover or an artist image):
-/// the image kind, subject id, and content version. The UI passes the whole ref
-/// to `fetch_image_bytes`, so core dispatches to the known image namespace.
+/// A reference to a curated library image (a release cover or an artist
+/// portrait): the image kind, subject id, and content version. The UI passes the
+/// whole ref to `fetch_library_image_bytes`, so core dispatches to the known
+/// image namespace.
 /// `version` is the image row's `_updated_at`, which moves when the bytes
 /// change. Mirrors `bae_core::album_detail::ImageRef`.
 #[derive(Debug, Clone, uniffi::Record)]
@@ -301,9 +302,9 @@ pub struct BridgeRelease {
     pub files: Vec<BridgeFile>,
     pub image_files: Vec<BridgeFile>,
     /// Cover slot first (if the release has one), then every image file the
-    /// release has. Each item's bytes are read through `fetch_gallery_bytes`,
-    /// which takes the item's `source` and dispatches the read. Consumers render
-    /// this as-is.
+    /// release has. Each item's bytes are read through
+    /// `fetch_release_image_bytes`, which takes the item's `source` and
+    /// dispatches the read. Consumers render this as-is.
     pub gallery_items: Vec<BridgeGalleryItem>,
     /// Total playing time across all tracks, as the words it reads in, or `None`
     /// when no track reports a length. The raw sum does not cross: with the
@@ -630,8 +631,8 @@ pub fn bridge_cloud_provider_label_key(provider: Option<BridgeCloudProvider>) ->
 
 /// Which byte source a gallery slot is read from — each variant self-contained.
 /// `Cover` carries the cover's `BridgeImageRef` (id + version); `ReleaseFile`
-/// carries its file id. The UI passes the whole value to `fetch_gallery_bytes`
-/// and never inspects it to pick a fetch.
+/// carries its file id. The UI passes the whole value to
+/// `fetch_release_image_bytes` and never inspects it to pick a fetch.
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeGallerySource {
     Cover { image: BridgeImageRef },
@@ -710,7 +711,9 @@ pub struct BridgeLoadingTrackInfo {
     pub artist_names: String,
     pub album_id: String,
     pub album_title: String,
-    pub cover_image_id: Option<String>,
+    /// The track's own release's cover, or `None` when it has none. Versioned,
+    /// so the UI's art cache key moves when the cover bytes change.
+    pub cover_image: Option<BridgeImageRef>,
     pub duration_ms: u64,
 }
 
@@ -730,7 +733,7 @@ pub enum BridgePlaybackState {
         artist_id: String,
         album_id: String,
         album_title: String,
-        cover_image_id: Option<String>,
+        cover_image: Option<BridgeImageRef>,
         duration_ms: u64,
     },
     Paused {
@@ -740,7 +743,7 @@ pub enum BridgePlaybackState {
         artist_id: String,
         album_id: String,
         album_title: String,
-        cover_image_id: Option<String>,
+        cover_image: Option<BridgeImageRef>,
         duration_ms: u64,
     },
 }
@@ -798,6 +801,30 @@ pub enum BridgePreviewState {
 pub struct BridgeRemoteCover {
     pub cover_choice: BridgeCoverChoice,
     pub label: String,
+}
+
+/// Bytes of provider art fetched from a URL, plus the token that identifies this
+/// exact content: the response's `ETag`, or a hash of the bytes when it carries
+/// none. A UI stores the validator alongside its decoded copy and replaces that
+/// copy when a later fetch answers with a different one.
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeRemoteImage {
+    pub bytes: Vec<u8>,
+    pub validator: String,
+}
+
+impl BridgeRemoteImage {
+    #[cfg(feature = "desktop")]
+    pub(crate) fn from_core(image: bae_core::import::cover_art::RemoteImage) -> Self {
+        let bae_core::import::cover_art::RemoteImage {
+            bytes,
+            validator,
+            // Describes the download, not what the UI renders: every platform
+            // decoder sniffs the bytes themselves.
+            content_type: _,
+        } = image;
+        Self { bytes, validator }
+    }
 }
 
 #[derive(Debug, Clone, uniffi::Record)]
@@ -2255,7 +2282,7 @@ pub enum BridgeUiEvent {
         artist_id: String,
         album_id: String,
         album_title: String,
-        cover_image_id: Option<String>,
+        cover_image: Option<BridgeImageRef>,
         duration_ms: u64,
     },
     PlaybackPaused {
@@ -2265,7 +2292,7 @@ pub enum BridgeUiEvent {
         artist_id: String,
         album_id: String,
         album_title: String,
-        cover_image_id: Option<String>,
+        cover_image: Option<BridgeImageRef>,
         duration_ms: u64,
         reason: BridgePlaybackPauseReason,
     },
@@ -3525,7 +3552,9 @@ pub struct BridgeQueueEntry {
     /// ever shows the clock, never the number.
     pub duration_clock: Option<BridgeDurationClock>,
     pub album_title: String,
-    pub cover_image_id: Option<String>,
+    /// The track's own release's cover, or `None` when it has none. Versioned,
+    /// so the UI's art cache key moves when the cover bytes change.
+    pub cover_image: Option<BridgeImageRef>,
 }
 
 #[derive(Debug, Clone, uniffi::Record)]

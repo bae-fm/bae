@@ -9,9 +9,11 @@ import android.os.ParcelFileDescriptor
 import fm.bae.app.AppSessionHolder
 import fm.bae.app.BaeLogger
 import fm.bae.app.OpenLibrary
+import kotlin.concurrent.thread
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.runBlocking
-import kotlin.concurrent.thread
+import uniffi.bae_bridge.BridgeImageRef
+import uniffi.bae_bridge.BridgeLibraryImageType
 
 private const val TAG = "bae.ArtworkContentProvider"
 private val logger = BaeLogger(TAG)
@@ -27,7 +29,7 @@ private const val COVER_PATH = "cover"
  * a page of covers would blow the transaction size limit).
  *
  * The bytes come from the same open library the rest of the app reads — the
- * bridge's `fetchCoverImageBytes`, through [fm.bae.app.data.Library.imageBytes]
+ * bridge's `fetchLibraryImageBytes`, through [fm.bae.app.data.Library.imageBytes]
  * — so there is one cover-loading path, not a parallel one.
  */
 class ArtworkContentProvider : ContentProvider() {
@@ -39,51 +41,51 @@ class ArtworkContentProvider : ContentProvider() {
         uri: Uri,
         mode: String,
     ): ParcelFileDescriptor? {
-        val coverId = uri.lastPathSegment
+        val image = imageFrom(uri)
         val session = AppSessionHolder.currentSession()
         return when {
-            coverId == null -> {
-                logger.warning("artwork request with no cover id: $uri")
+            image == null -> {
+                logger.warning("artwork request with no image reference: $uri")
                 null
             }
 
             session == null -> {
-                logger.debug("artwork request $coverId with no open library; no bytes")
+                logger.debug("artwork request ${image.id} with no open library; no bytes")
                 null
             }
 
             else -> {
-                pipeFor(coverId, session)
+                pipeFor(image, session)
             }
         }
     }
 
-    /** The pipe a browse client reads [coverId]'s bytes from, or null when the
+    /** The pipe a browse client reads [image]'s bytes from, or null when the
      *  open library has no bytes for it. */
     private fun pipeFor(
-        coverId: String,
+        image: BridgeImageRef,
         session: OpenLibrary,
     ): ParcelFileDescriptor? {
-        val bytes = readCoverBytes(coverId, session)
+        val bytes = readCoverBytes(image, session)
         if (bytes == null) {
-            logger.debug("no artwork bytes for cover $coverId")
+            logger.debug("no artwork bytes for cover ${image.id}")
             return null
         }
-        return pipeOf(bytes, coverId)
+        return pipeOf(bytes, image.id)
     }
 
-    /** Read [coverId]'s bytes from the open library, or null on failure (a
+    /** Read [image]'s bytes from the open library, or null on failure (a
      *  cancellation propagates so the caller's read is cancelled, not swallowed). */
     private fun readCoverBytes(
-        coverId: String,
+        image: BridgeImageRef,
         session: OpenLibrary,
     ): ByteArray? =
         try {
-            runBlocking { session.library.imageBytes(coverId) }
+            runBlocking { session.library.imageBytes(image) }
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            logger.error("failed to load artwork bytes for $coverId", e)
+            logger.error("failed to load artwork bytes for ${image.id}", e)
             null
         }
 
@@ -132,19 +134,37 @@ class ArtworkContentProvider : ContentProvider() {
     ): Int = 0
 
     companion object {
-        /** The `content://` URI a browse client reads [coverId]'s bytes from.
-         *  The authority carries the app's own package (distinct across the full
-         *  and baeium editions), matching the manifest's `${applicationId}`. */
+        /** The `content://` URI a browse client reads [image]'s bytes from. The
+         *  whole reference rides in the path — kind, subject id, and content
+         *  version — so a replaced cover yields a different URI and the client
+         *  re-reads instead of showing its cached art. The authority carries the
+         *  app's own package (distinct across the full and baeium editions),
+         *  matching the manifest's `${applicationId}`. */
         fun uriFor(
             context: Context,
-            coverId: String,
+            image: BridgeImageRef,
         ): Uri =
             Uri
                 .Builder()
                 .scheme("content")
                 .authority(context.packageName + AUTHORITY_SUFFIX)
                 .appendPath(COVER_PATH)
-                .appendPath(coverId)
+                .appendPath(image.imageType.name)
+                .appendPath(image.id)
+                .appendPath(image.version)
                 .build()
+
+        /** The image reference a [uriFor] URI names, or null when the path isn't
+         *  one this provider minted. */
+        private fun imageFrom(uri: Uri): BridgeImageRef? {
+            val segments = uri.pathSegments
+            if (segments.size != 4 || segments[0] != COVER_PATH) {
+                return null
+            }
+            val imageType =
+                BridgeLibraryImageType.entries.firstOrNull { it.name == segments[1] }
+                    ?: return null
+            return BridgeImageRef(id = segments[2], version = segments[3], imageType = imageType)
+        }
     }
 }

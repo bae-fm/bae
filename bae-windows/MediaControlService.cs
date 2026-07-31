@@ -3,6 +3,7 @@ using System.Threading.Tasks;
 using Microsoft.UI.Dispatching;
 using Windows.Media;
 using Windows.Storage.Streams;
+using uniffi.bae_bridge;
 
 namespace Bae.Windows;
 
@@ -18,7 +19,7 @@ internal sealed class MediaControlService
     private readonly SystemMediaTransportControls _smtc;
     private readonly DispatcherQueue _dispatcherQueue;
     private readonly PlaybackService _playback;
-    private readonly Func<string, byte[]?> _fetchCoverBytes;
+    private readonly Func<BridgeImageRef, byte[]?> _fetchLibraryImageBytes;
     private readonly MediaControlState _state = new();
 
     // Kept alive while the display updater references it as the current thumbnail.
@@ -28,11 +29,11 @@ internal sealed class MediaControlService
         IntPtr windowHandle,
         DispatcherQueue dispatcherQueue,
         PlaybackService playback,
-        Func<string, byte[]?> fetchCoverBytes)
+        Func<BridgeImageRef, byte[]?> fetchLibraryImageBytes)
     {
         _dispatcherQueue = dispatcherQueue;
         _playback = playback;
-        _fetchCoverBytes = fetchCoverBytes;
+        _fetchLibraryImageBytes = fetchLibraryImageBytes;
 
         _smtc = SystemMediaTransportControlsInterop.GetForWindow(windowHandle);
         // Play/pause stay armed for the whole session; next/previous track the
@@ -50,19 +51,28 @@ internal sealed class MediaControlService
     }
 
     internal void UpdateNowPlayingPlaying(
-        string trackTitle, string artistNames, string albumTitle, string? coverImageId, ulong durationMs) =>
-        Apply(_state.UpdateForTrack(
-            trackTitle, artistNames, albumTitle, coverImageId, durationMs, MediaControlPlaybackStatus.Playing));
+        string trackTitle, string artistNames, string albumTitle, BridgeImageRef? coverImage, ulong durationMs) =>
+        Apply(
+            _state.UpdateForTrack(
+                trackTitle, artistNames, albumTitle, ArtworkToken(coverImage), durationMs,
+                MediaControlPlaybackStatus.Playing),
+            coverImage);
 
     internal void UpdateNowPlayingPaused(
-        string trackTitle, string artistNames, string albumTitle, string? coverImageId, ulong durationMs) =>
-        Apply(_state.UpdateForTrack(
-            trackTitle, artistNames, albumTitle, coverImageId, durationMs, MediaControlPlaybackStatus.Paused));
+        string trackTitle, string artistNames, string albumTitle, BridgeImageRef? coverImage, ulong durationMs) =>
+        Apply(
+            _state.UpdateForTrack(
+                trackTitle, artistNames, albumTitle, ArtworkToken(coverImage), durationMs,
+                MediaControlPlaybackStatus.Paused),
+            coverImage);
 
     internal void UpdateNowPlayingLoading(
-        string trackTitle, string artistNames, string albumTitle, string? coverImageId, ulong durationMs) =>
-        Apply(_state.UpdateForTrack(
-            trackTitle, artistNames, albumTitle, coverImageId, durationMs, MediaControlPlaybackStatus.Changing));
+        string trackTitle, string artistNames, string albumTitle, BridgeImageRef? coverImage, ulong durationMs) =>
+        Apply(
+            _state.UpdateForTrack(
+                trackTitle, artistNames, albumTitle, ArtworkToken(coverImage), durationMs,
+                MediaControlPlaybackStatus.Changing),
+            coverImage);
 
     internal void UpdateNowPlayingStopped()
     {
@@ -113,7 +123,7 @@ internal sealed class MediaControlService
 
     // Pushes a display's metadata, artwork action, and status to the system, and
     // marks the session live. Null while a preview suppresses library updates.
-    private void Apply(MediaControlDisplay? display)
+    private void Apply(MediaControlDisplay? display, BridgeImageRef? coverImage = null)
     {
         if (display is null)
         {
@@ -136,7 +146,9 @@ internal sealed class MediaControlService
                 break;
             case MediaControlArtwork.Load load:
                 updater.Thumbnail = null;
-                StartArtworkLoad(load.ImageId);
+                // A Load is only produced for a cover that is present, so the
+                // reference behind the token is in hand.
+                StartArtworkLoad(coverImage!, load.Token);
                 break;
         }
         updater.Update();
@@ -249,25 +261,30 @@ internal sealed class MediaControlService
         }
     }
 
-    private void StartArtworkLoad(string imageId)
+    // The state layer names artwork by token (it compiles without the generated
+    // bridge bindings), so the reference the fetch needs travels alongside it.
+    private static string? ArtworkToken(BridgeImageRef? image) =>
+        image is null ? null : $"{image.ImageType}:{image.Id}:{image.Version}";
+
+    private void StartArtworkLoad(BridgeImageRef image, string token)
     {
-        _ = Task.Run(() => _fetchCoverBytes(imageId)).ContinueWith(task =>
+        _ = Task.Run(() => _fetchLibraryImageBytes(image)).ContinueWith(task =>
         {
             var bytes = task.Status == TaskStatus.RanToCompletion ? task.Result : null;
             if (task.Exception is not null)
             {
                 BaeDiagnostics.Logger.Warning("Failed to read system media thumbnail.", task.Exception);
             }
-            _dispatcherQueue.TryEnqueue(() => ApplyArtwork(imageId, bytes));
+            _dispatcherQueue.TryEnqueue(() => ApplyArtwork(token, bytes));
         }, TaskScheduler.Default);
     }
 
     // Writes the fetched cover into the display's thumbnail, unless the track
     // changed while the fetch was in flight (stale load) or the fetch produced
     // nothing.
-    private async void ApplyArtwork(string imageId, byte[]? bytes)
+    private async void ApplyArtwork(string token, byte[]? bytes)
     {
-        if (!_state.ArtworkLoadIsCurrent(imageId))
+        if (!_state.ArtworkLoadIsCurrent(token))
         {
             // A newer track's load owns the thumbnail slot now.
             BaeDiagnostics.Logger.Debug("Skipping stale system media thumbnail load.");
@@ -279,7 +296,7 @@ internal sealed class MediaControlService
             // closed mid-fetch. Forget the id so the next update for this cover
             // retries the load instead of keeping a thumbnail that never arrived.
             BaeDiagnostics.Logger.Debug("System media thumbnail fetch produced no bytes; will retry on the next update.");
-            _state.ArtworkLoadFailed(imageId);
+            _state.ArtworkLoadFailed(token);
             return;
         }
 
@@ -294,7 +311,7 @@ internal sealed class MediaControlService
 
         // The write yielded the UI thread; re-check the load is still current so a
         // track change during it doesn't leave a stale thumbnail.
-        if (!_state.ArtworkLoadIsCurrent(imageId))
+        if (!_state.ArtworkLoadIsCurrent(token))
         {
             BaeDiagnostics.Logger.Debug("Skipping stale system media thumbnail load.");
             stream.Dispose();

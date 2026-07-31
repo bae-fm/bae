@@ -75,7 +75,7 @@ public enum ImageLoader {
     /// Loads an image for `source` at the given `size`. Local sources read
     /// directly from disk; `.data` sources decode bytes already in memory;
     /// remote sources call `fetchRemoteBytes` to pull the raw bytes
-    /// (production: `MediaPaths.fetchCoverBytes`; previews: the stub closure).
+    /// (production: `MediaPaths.fetchRemoteImageBytes`; previews: the stub closure).
     /// The decode runs on a background task and produces an image backed by an
     /// already-decoded CGImage. Throws `CancellationError` if the surrounding
     /// task is cancelled, or `DecodeError` if the source can't be opened or

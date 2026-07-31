@@ -64,7 +64,7 @@ struct ExpandedNowPlayingView: View {
                 Spacer(minLength: 0)
             }
 
-            ImageView(coverImageId: track.coverImageId, pointSize: 320)
+            ImageView(imageRef: track.coverImage, pointSize: 320)
                 .aspectRatio(1, contentMode: .fit)
                 .frame(maxWidth: .infinity)
                 .clipShape(RoundedRectangle(cornerRadius: 8))

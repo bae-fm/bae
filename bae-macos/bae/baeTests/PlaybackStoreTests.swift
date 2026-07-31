@@ -9,7 +9,7 @@ private func makeTrack(_ id: String) -> NowPlayingTrack {
         trackTitle: "Title \(id)",
         artistNames: "Artist Name",
         albumId: "album-1",
-        coverImageId: nil,
+        coverImage: nil,
         durationMs: 0
     )
 }

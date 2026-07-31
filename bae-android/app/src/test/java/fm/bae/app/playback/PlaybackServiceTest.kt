@@ -30,6 +30,7 @@ import uniffi.bae_bridge.BridgeComposerDetail
 import uniffi.bae_bridge.BridgeComposerSortCriterion
 import uniffi.bae_bridge.BridgeComposerSummary
 import uniffi.bae_bridge.BridgeDiagnostics
+import uniffi.bae_bridge.BridgeImageRef
 import uniffi.bae_bridge.BridgeRelease
 import uniffi.bae_bridge.BridgeSearchResults
 import uniffi.bae_bridge.BridgeSortCriterion
@@ -174,7 +175,7 @@ internal class FakeAppHandle(
 
     override fun triggerSync() {}
 
-    override suspend fun fetchCoverImageBytes(releaseId: String): ByteArray? = imageBytes[releaseId]
+    override suspend fun fetchLibraryImageBytes(image: BridgeImageRef): ByteArray? = imageBytes[image.id]
 
     override suspend fun getAlbumCount(): ULong = albumCount
 

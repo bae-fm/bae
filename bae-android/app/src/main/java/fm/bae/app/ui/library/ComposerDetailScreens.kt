@@ -258,8 +258,7 @@ private fun WorkDetailContent(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     CoverImage(
-                        coverId = release.cover?.id,
-                        coverVersion = release.cover?.version,
+                        cover = release.cover,
                         loadImage = loadImage,
                         cornerRadius = 6.dp,
                         iconPadding = 12.dp,
@@ -305,8 +304,7 @@ private fun WorkSummaryRow(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         CoverImage(
-            coverId = work.representativeCover?.id,
-            coverVersion = work.representativeCover?.version,
+            cover = work.representativeCover,
             loadImage = loadImage,
             cornerRadius = 6.dp,
             iconPadding = 12.dp,

@@ -68,7 +68,7 @@ struct AlbumDetailView: View {
                         summary: summary,
                         selectedRelease: selectedDetail,
                         // Every gallery item carries the whole `BridgeGallery-
-                        // Source`; the lightbox passes it to `fetchGalleryBytes`,
+                        // Source`; the lightbox passes it to `fetchReleaseImageBytes`,
                         // which dispatches the read in core. The UI never inspects
                         // the source to pick a fetch.
                         lightboxItems: selectedDetail.galleryItems.map { item in

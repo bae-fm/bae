@@ -77,19 +77,6 @@ extension ImageView {
         )
     }
 
-    /// A now-playing/queue cover, which carries only an image id (no content
-    /// version). Cached by id alone — accepted on these single/small surfaces.
-    init(
-        coverImageId: String?,
-        contentMode: ContentMode = .fill,
-        pointSize: CGFloat
-    ) {
-        self.init(
-            source: coverImageId.map { .cover(id: $0, version: nil) },
-            pointSize: pointSize,
-            contentMode: contentMode
-        )
-    }
 }
 
 #if DEBUG

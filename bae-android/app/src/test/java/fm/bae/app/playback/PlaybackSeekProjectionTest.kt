@@ -123,7 +123,7 @@ class PlaybackSeekProjectionTest {
                     artistNames = "Artist Name",
                     albumId = "album-1",
                     albumTitle = "Album Title",
-                    coverImageId = null,
+                    coverImage = null,
                     durationMs = 100_000uL,
                 ),
         )
@@ -273,7 +273,7 @@ class PlaybackSeekProjectionTest {
                 artistId = "artist-1",
                 albumId = "album-1",
                 albumTitle = "Album Title",
-                coverImageId = null,
+                coverImage = null,
                 durationMs = durationMs,
             ),
         )

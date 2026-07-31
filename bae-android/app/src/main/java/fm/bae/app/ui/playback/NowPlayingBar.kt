@@ -132,8 +132,7 @@ private fun RowScope.NowPlayingTrackInfo(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         CoverImage(
-            coverId = track.coverImageId,
-            coverVersion = null,
+            cover = track.coverImage,
             loadImage = loadImage,
             cornerRadius = 4.dp,
             iconPadding = 12.dp,
@@ -238,7 +237,7 @@ private fun NowPlayingTrackInfoPreview() {
                             trackId = "trk-1",
                             title = "Track Title",
                             artist = "Artist Name",
-                            coverImageId = "rel-1",
+                            coverImage = PreviewData.imageRef("rel-1"),
                             sidePausePrompt = null,
                         ),
                     loadImage = { _ -> null },
@@ -259,7 +258,7 @@ private fun SidePauseAlertPreview() {
                     trackId = "trk-1",
                     title = "Track Title",
                     artist = "Artist Name",
-                    coverImageId = "rel-1",
+                    coverImage = PreviewData.imageRef("rel-1"),
                     sidePausePrompt = PreviewData.sidePausePrompt(),
                 ),
         )

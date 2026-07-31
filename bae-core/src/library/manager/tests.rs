@@ -1022,6 +1022,55 @@ async fn delete_album_fails_before_rows_are_deleted_when_file_cleanup_lookup_fai
         .is_some());
 }
 
+/// The playing track's cover reference is what the UI caches its art under, so
+/// it has to carry the `covers` row's version, not just the release id — and it
+/// has to be absent when the release has no cover at all, rather than naming a
+/// row that isn't there.
+#[cfg(feature = "test-utils")]
+#[tokio::test]
+async fn playback_track_info_carries_the_cover_version() {
+    let (manager, _temp_dir) = setup_test_manager().await;
+    let album = create_test_album();
+    let release = create_test_release(&album.id);
+    let track = crate::db::DbTrack::new_test(&release.id, TRACK_A, "Track Title", Some(1));
+    let track_artist = crate::db::DbTrackArtist::new(
+        &track.id,
+        &bae_test_support::test_uuid("e36744a5-1a36-460f-891c-e7e558034edf"),
+        0,
+        Uuid::new_v4().to_string(),
+        Utc::now(),
+    );
+    manager.database.insert_album(&album).await.unwrap();
+    manager.database.insert_release(&release).await.unwrap();
+    manager.database.insert_track(&track).await.unwrap();
+    manager
+        .database
+        .insert_track_artist(&track_artist)
+        .await
+        .unwrap();
+
+    // No cover row yet: nothing to reference.
+    let info = manager.get_playback_track_info(&track.id).await.unwrap();
+    assert_eq!(info.cover_image, None);
+
+    store_test_cover_image(&manager, &release.id).await;
+    let version = manager
+        .database
+        .cover_version(&release.id)
+        .await
+        .unwrap()
+        .expect("the stored cover has a version");
+    let info = manager.get_playback_track_info(&track.id).await.unwrap();
+    assert_eq!(
+        info.cover_image,
+        Some(crate::album_detail::ImageRef {
+            id: release.id.clone(),
+            version,
+            image_type: LibraryImageType::Cover,
+        })
+    );
+}
+
 #[tokio::test]
 async fn playback_info_from_track_release_rejects_missing_album() {
     let (manager, _temp_dir) = setup_test_manager().await;

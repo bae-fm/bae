@@ -31,6 +31,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.AppHandle
 import uniffi.bae_bridge.BridgeDurationClock
+import uniffi.bae_bridge.BridgeImageRef
 import uniffi.bae_bridge.BridgeLoadingTrackInfo
 import uniffi.bae_bridge.BridgePlaybackContext
 import uniffi.bae_bridge.BridgePlaybackPauseReason
@@ -45,8 +46,8 @@ data class NowPlaying(
     val trackId: String,
     val title: String,
     val artist: String,
-    /** The cover image id (a release id) the bar fetches bytes for, or null. */
-    val coverImageId: String?,
+    /** The cover the bar fetches bytes for, or null when there is none. */
+    val coverImage: BridgeImageRef?,
     val sidePausePrompt: BridgeSidePausePrompt?,
 )
 
@@ -65,8 +66,7 @@ data class PlaybackPosition(
 /** One queue entry the [fm.bae.app.ui.playback.QueueScreen] renders. The UI projection
  *  of the player's internal queue metadata: [durationClock] is the track length
  *  as a clock label's fields (null when core reports none), which the row renders
- *  directly; [coverImageId] is the cover image id (a release id) the row fetches
- *  bytes for. [entryId] is the per-instance id the row keys on and that
+ *  directly; [coverImage] is the cover the row fetches bytes for. [entryId] is the per-instance id the row keys on and that
  *  remove/reorder/skip target — unique even when the same track is queued
  *  twice. */
 data class QueueItem(
@@ -76,7 +76,7 @@ data class QueueItem(
     val artist: String,
     val albumTitle: String,
     val durationClock: BridgeDurationClock?,
-    val coverImageId: String?,
+    val coverImage: BridgeImageRef?,
 )
 
 /** The context lane (the release being played from): the first page of its
@@ -433,9 +433,9 @@ class BaeCorePlayer(
          *  projection reads the duration off the queue entry, not this
          *  override). */
         val durationClock: BridgeDurationClock?,
-        /** The cover image id (a release id) whose bytes the now-playing artwork
-         *  and the in-app rows fetch, or null when the track has no cover. */
-        val coverImageId: String?,
+        /** The cover whose bytes the now-playing artwork and the in-app rows
+         *  fetch, or null when the track has no cover. */
+        val coverImage: BridgeImageRef?,
     )
 
     /** The context lane (what the queue plays from): the [kind] it plays from
@@ -603,7 +603,7 @@ class BaeCorePlayer(
      *  the current track's bytes are loaded, since that's the only art the system
      *  shows. Fetching is async, so getState renders without art until the bytes
      *  land and [refreshArtwork] republishes. */
-    private var currentArtworkCoverId: String? = null
+    private var currentArtworkCover: BridgeImageRef? = null
     private var currentArtwork: ByteArray? = null
 
     private var sidePausePrompt: BridgeSidePausePrompt? = null
@@ -705,7 +705,7 @@ class BaeCorePlayer(
         val current =
             track?.let {
                 Current(
-                    meta(trackId, it.trackTitle, it.artistNames, it.albumTitle, it.coverImageId),
+                    meta(trackId, it.trackTitle, it.artistNames, it.albumTitle, it.coverImage),
                     it.durationMs.toLong(),
                 )
             }
@@ -716,7 +716,7 @@ class BaeCorePlayer(
         activate(
             Transport.READY,
             Current(
-                meta(event.trackId, event.trackTitle, event.artistNames, event.albumTitle, event.coverImageId),
+                meta(event.trackId, event.trackTitle, event.artistNames, event.albumTitle, event.coverImage),
                 event.durationMs.toLong(),
             ),
         )
@@ -752,42 +752,43 @@ class BaeCorePlayer(
             )
             playingTrackId = current.meta.trackId
             currentMeta = current.meta
-            refreshArtwork(current.meta.coverImageId)
+            refreshArtwork(current.meta.coverImage)
         }
         publish()
         systemHooks.onPlaybackActivated()
     }
 
     /**
-     * Load the now-playing artwork bytes for [coverImageId] (a release id) and
-     * republish once they land, so the session embeds them in the notification /
-     * lock-screen art. A no-op when the cover hasn't changed (a pause on the same
-     * track keeps the loaded bytes). A null id, an absent image, or a fetch
+     * Load the now-playing artwork bytes for [coverImage] and republish once they
+     * land, so the session embeds them in the notification / lock-screen art. A
+     * no-op when the cover hasn't changed (a pause on the same track keeps the
+     * loaded bytes) — the reference pins the content version, so replacing a
+     * release's cover does reload. A null reference, an absent image, or a fetch
      * failure clears the art (the loss is logged, not masked).
      */
-    private fun refreshArtwork(coverImageId: String?) {
-        if (coverImageId == currentArtworkCoverId) return
-        currentArtworkCoverId = coverImageId
+    private fun refreshArtwork(coverImage: BridgeImageRef?) {
+        if (coverImage == currentArtworkCover) return
+        currentArtworkCover = coverImage
         currentArtwork = null
-        if (coverImageId == null) {
+        if (coverImage == null) {
             invalidateState()
             return
         }
         scope.launch {
             val bytes =
                 try {
-                    appHandle.fetchCoverImageBytes(coverImageId)
+                    appHandle.fetchLibraryImageBytes(coverImage)
                 } catch (e: CancellationException) {
                     throw e
                 } catch (e: Exception) {
-                    logger.error("Failed to load now-playing artwork $coverImageId", e)
+                    logger.error("Failed to load now-playing artwork ${coverImage.id}", e)
                     null
                 }
             // A later track change supersedes this fetch; only apply if the cover
             // is still current.
-            if (currentArtworkCoverId == coverImageId) {
+            if (currentArtworkCover == coverImage) {
                 if (bytes == null) {
-                    logger.warning("now-playing artwork bytes absent for $coverImageId")
+                    logger.warning("now-playing artwork bytes absent for ${coverImage.id}")
                 }
                 currentArtwork = bytes
                 invalidateState()
@@ -803,8 +804,8 @@ class BaeCorePlayer(
         transport = Transport.READY
         playWhenReady = false
         playingTrackId = event.trackId
-        currentMeta = meta(event.trackId, event.trackTitle, event.artistNames, event.albumTitle, event.coverImageId)
-        refreshArtwork(event.coverImageId)
+        currentMeta = meta(event.trackId, event.trackTitle, event.artistNames, event.albumTitle, event.coverImage)
+        refreshArtwork(event.coverImage)
         sidePausePrompt =
             when (val reason = event.reason) {
                 BridgePlaybackPauseReason.Manual -> null
@@ -830,7 +831,7 @@ class BaeCorePlayer(
         title: String,
         artist: String,
         albumTitle: String,
-        coverImageId: String?,
+        coverImage: BridgeImageRef?,
     ): Meta =
         Meta(
             // The current-track override is not a queue entry, so it has no id.
@@ -840,7 +841,7 @@ class BaeCorePlayer(
             artist = artist,
             albumTitle = albumTitle,
             durationClock = null,
-            coverImageId = coverImageId,
+            coverImage = coverImage,
         )
 
     override fun onProgress(
@@ -1024,7 +1025,7 @@ class BaeCorePlayer(
         val meta = currentMeta
         _nowPlaying.value =
             meta?.let {
-                NowPlaying(it.trackId, it.title, it.artist, it.coverImageId, sidePausePrompt)
+                NowPlaying(it.trackId, it.title, it.artist, it.coverImage, sidePausePrompt)
             }
         _isPlaying.value = transport == Transport.READY && playWhenReady
         _isLoading.value = transport == Transport.BUFFERING
@@ -1062,7 +1063,7 @@ class BaeCorePlayer(
             artist = artist,
             albumTitle = albumTitle,
             durationClock = durationClock,
-            coverImageId = coverImageId,
+            coverImage = coverImage,
         )
     }
 
@@ -1074,7 +1075,7 @@ class BaeCorePlayer(
             artist = artistNames,
             albumTitle = albumTitle,
             durationClock = durationClock,
-            coverImageId = coverImageId,
+            coverImage = coverImage,
         )
 
     // ── State projection ─────────────────────────────────────────────────

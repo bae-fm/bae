@@ -200,7 +200,7 @@ private struct NowPlayingRow: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            ImageView(coverImageId: track.coverImageId, pointSize: 44)
+            ImageView(imageRef: track.coverImage, pointSize: 44)
                 .frame(width: 44, height: 44)
                 .clipShape(RoundedRectangle(cornerRadius: 4))
             VStack(alignment: .leading, spacing: 2) {

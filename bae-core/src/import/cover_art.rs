@@ -2,7 +2,12 @@ use crate::import::{ImportError, MetadataSource};
 use crate::network::upgrade_to_https;
 use crate::retry::{exponential_backoff, is_transient_status, retry_classified, ClassifiedAttempt};
 use crate::util::content_type::ContentType;
+use chrono::{DateTime, Utc};
+use coven::ClockRef;
 use lru::LruCache;
+use reqwest::header::{
+    HeaderMap, CACHE_CONTROL, ETAG, IF_MODIFIED_SINCE, IF_NONE_MATCH, LAST_MODIFIED,
+};
 use std::collections::HashMap;
 use std::num::NonZeroUsize;
 use std::sync::{Arc, Mutex, OnceLock};
@@ -31,29 +36,24 @@ const RETRY_BASE_DELAY: Duration = Duration::from_secs(1);
 const CAA_LOOKUP_CACHE_CAPACITY: usize = 128;
 const CAA_MAX_CONCURRENT_LOOKUPS: usize = 4;
 
-/// Capacity for the cover-bytes LRU cache. Sized for a typical session;
-/// a miss costs one HTTP fetch.
-const COVER_CACHE_CAPACITY: usize = 25;
+/// Capacity for the remote-image byte LRU. Sized for a typical session; a miss
+/// costs one HTTP fetch.
+const REMOTE_IMAGE_CACHE_CAPACITY: usize = 25;
 
-/// In-memory cache for downloaded cover bytes, keyed by URL — covers are direct
-/// HTTP fetches against arbitrary hosts (CAA, Discogs CDN), not part of either
-/// metadata API client. Both callers of `download_cover_art_bytes` — the UI at
-/// cover-pick time and the commit worker at import time — read through it, so a
-/// URL hits the wire at most once per session.
-type CoverCacheValue = (Vec<u8>, ContentType);
+/// How long a remote image stays fresh when its response states no
+/// `Cache-Control: max-age`. Provider art at a fixed URL rarely changes, so a
+/// day between revalidations costs at most one conditional GET.
+const DEFAULT_REMOTE_IMAGE_TTL: Duration = Duration::from_secs(24 * 60 * 60);
+
+/// Upper bound on a response's declared `max-age`. A host that claims decades
+/// still gets revalidated within a year, and the clamp keeps the freshness
+/// arithmetic inside `chrono::Duration`'s range.
+const MAX_REMOTE_IMAGE_TTL: Duration = Duration::from_secs(365 * 24 * 60 * 60);
+
 /// Outer `None` means the lookup failed and must not be cached; inner `None`
 /// means CAA returned a cacheable no-cover result.
 type CaaLookup = Option<Option<RemoteCover>>;
 type CaaLookupCell = Arc<OnceCell<CaaLookup>>;
-
-fn cover_bytes_cache() -> &'static Mutex<LruCache<String, CoverCacheValue>> {
-    static CACHE: OnceLock<Mutex<LruCache<String, CoverCacheValue>>> = OnceLock::new();
-    CACHE.get_or_init(|| {
-        Mutex::new(LruCache::new(
-            NonZeroUsize::new(COVER_CACHE_CAPACITY).expect("COVER_CACHE_CAPACITY > 0"),
-        ))
-    })
-}
 
 fn image_download_client() -> Result<reqwest::Client, ImportError> {
     // The build error is stored as a String because `reqwest::Client`'s builder
@@ -459,60 +459,280 @@ fn find_url_in<'a>(value: &serde_json::Value, keys: &'a [&'a str]) -> Option<(&'
     None
 }
 
-/// Download cover art from a URL, returning the raw bytes and content type.
-/// Retries transient failures (network errors, 5xx) up to `MAX_RETRIES` times.
-/// Reads through the session-wide LRU cache, so a URL downloads at most once.
-pub async fn download_cover_art_bytes(
-    cover_art_url: &str,
-) -> Result<(Vec<u8>, ContentType), ImportError> {
-    download_cover_art_bytes_with_backoff(cover_art_url, RETRY_BASE_DELAY).await
+/// One remote image's bytes and the token identifying this exact content: the
+/// response's `ETag`, or a hash of the bytes when it carries none. A UI keys its
+/// decoded copy on the validator, so it re-decodes only when the bytes moved.
+#[derive(Debug, Clone)]
+pub struct RemoteImage {
+    pub bytes: Vec<u8>,
+    pub content_type: ContentType,
+    pub validator: String,
 }
 
-pub(crate) async fn download_cover_art_bytes_with_backoff(
-    cover_art_url: &str,
-    base_delay: Duration,
-) -> Result<(Vec<u8>, ContentType), ImportError> {
-    if let Some(hit) = cover_bytes_cache()
-        .lock()
-        .expect("cover bytes cache mutex poisoned")
-        .get(cover_art_url)
-        .cloned()
-    {
-        debug!("Cover bytes cache hit for {}", cover_art_url);
-        return Ok(hit);
+/// The freshness terms of one image response: how long it may be served without
+/// asking again, and the validators a conditional GET revalidates it with.
+/// `max_age` is `None` when the response declared no lifetime — the caller
+/// resolves that to [`DEFAULT_REMOTE_IMAGE_TTL`] rather than storing the default
+/// as if the host had stated it.
+#[derive(Debug, Clone)]
+struct Freshness {
+    max_age: Option<Duration>,
+    etag: Option<String>,
+    last_modified: Option<String>,
+}
+
+impl Freshness {
+    fn from_headers(headers: &HeaderMap) -> Self {
+        Self {
+            max_age: max_age_from_cache_control(headers),
+            etag: header_string(headers, &ETAG),
+            last_modified: header_string(headers, &LAST_MODIFIED),
+        }
     }
 
-    debug!("Downloading cover art from {}", cover_art_url);
+    /// How long a response with these terms stays fresh.
+    fn lifetime(&self) -> chrono::Duration {
+        chrono::Duration::from_std(self.max_age.unwrap_or(DEFAULT_REMOTE_IMAGE_TTL))
+            .expect("remote image TTLs are clamped to a year")
+    }
 
-    let value =
-        download_image_bytes_with_backoff(cover_art_url, "Cover art download", base_delay).await?;
-
-    cover_bytes_cache()
-        .lock()
-        .expect("cover bytes cache mutex poisoned")
-        .put(cover_art_url.to_string(), value.clone());
-    Ok(value)
+    /// Apply a 304's headers over the stored entry's: RFC 9111 §4.3.4 says the
+    /// stored response takes the headers the 304 carries and keeps the rest.
+    fn updated_by(self, revalidated: Freshness) -> Freshness {
+        Freshness {
+            max_age: revalidated.max_age.or(self.max_age),
+            etag: revalidated.etag.or(self.etag),
+            last_modified: revalidated.last_modified.or(self.last_modified),
+        }
+    }
 }
 
+fn header_string(headers: &HeaderMap, name: &reqwest::header::HeaderName) -> Option<String> {
+    headers
+        .get(name)
+        .and_then(|v| v.to_str().ok())
+        .map(|v| v.to_string())
+}
+
+/// `max-age` from a `Cache-Control` response header. `None` when the header is
+/// absent, carries no `max-age`, or states one that doesn't parse — all of which
+/// mean the response declared no lifetime of its own.
+fn max_age_from_cache_control(headers: &HeaderMap) -> Option<Duration> {
+    let directives = header_string(headers, &CACHE_CONTROL)?;
+    let seconds: u64 = directives
+        .split(',')
+        .find_map(|directive| {
+            let (name, value) = directive.trim().split_once('=')?;
+            // Directive names are case-insensitive (RFC 9111 §5.2).
+            name.eq_ignore_ascii_case("max-age").then_some(value)
+        })?
+        .trim()
+        .parse()
+        .ok()?;
+    Some(Duration::from_secs(seconds).min(MAX_REMOTE_IMAGE_TTL))
+}
+
+/// One cached remote image: the bytes, when they were fetched, and the terms
+/// that decide when they must be revalidated.
+#[derive(Debug, Clone)]
+struct CachedImage {
+    bytes: Vec<u8>,
+    content_type: ContentType,
+    /// SHA-256 of `bytes`, the validator when the response carries no `ETag`.
+    content_hash: String,
+    fetched_at: DateTime<Utc>,
+    freshness: Freshness,
+}
+
+impl CachedImage {
+    fn store(
+        bytes: Vec<u8>,
+        content_type: ContentType,
+        fetched_at: DateTime<Utc>,
+        freshness: Freshness,
+    ) -> Self {
+        Self {
+            content_hash: crate::util::fs::hash_bytes(&bytes),
+            bytes,
+            content_type,
+            fetched_at,
+            freshness,
+        }
+    }
+
+    fn is_fresh(&self, now: DateTime<Utc>) -> bool {
+        now < self.fetched_at + self.freshness.lifetime()
+    }
+
+    fn to_remote_image(&self) -> RemoteImage {
+        RemoteImage {
+            bytes: self.bytes.clone(),
+            content_type: self.content_type.clone(),
+            validator: match &self.freshness.etag {
+                Some(etag) => etag.clone(),
+                None => self.content_hash.clone(),
+            },
+        }
+    }
+}
+
+/// What one image request returned: a body, or a 304 saying the bytes already
+/// held are still current.
+enum ImageResponse {
+    Body {
+        bytes: Vec<u8>,
+        content_type: ContentType,
+        freshness: Freshness,
+    },
+    NotModified {
+        freshness: Freshness,
+    },
+}
+
+/// The session cache of remote image bytes, keyed by URL, with HTTP freshness:
+/// a fresh entry serves without a request, a stale one revalidates with a
+/// conditional GET — a 304 refreshes its clock, a 200 replaces its bytes.
+///
+/// Provider art is a direct HTTP fetch against arbitrary hosts (CAA, Discogs
+/// CDN), not part of either metadata API client, so it caches here. All three
+/// readers — the cover picker in the UI, the commit worker, and `change_cover`
+/// — share one instance off the library manager, so picking a cover and then
+/// importing it hits the wire once.
+#[derive(Clone)]
+pub struct RemoteImageCache {
+    clock: ClockRef,
+    entries: Arc<Mutex<LruCache<String, CachedImage>>>,
+}
+
+impl RemoteImageCache {
+    pub fn new(clock: ClockRef) -> Self {
+        Self {
+            clock,
+            entries: Arc::new(Mutex::new(LruCache::new(
+                NonZeroUsize::new(REMOTE_IMAGE_CACHE_CAPACITY)
+                    .expect("REMOTE_IMAGE_CACHE_CAPACITY > 0"),
+            ))),
+        }
+    }
+
+    /// Bytes for a remote image URL, served from the cache while fresh and
+    /// revalidated once stale. Retries transient failures (network errors, 5xx)
+    /// up to `MAX_RETRIES` times.
+    pub async fn fetch(&self, url: &str) -> Result<RemoteImage, ImportError> {
+        self.fetch_with_backoff(url, RETRY_BASE_DELAY).await
+    }
+
+    pub(crate) async fn fetch_with_backoff(
+        &self,
+        url: &str,
+        base_delay: Duration,
+    ) -> Result<RemoteImage, ImportError> {
+        let now = self.clock.now();
+        let cached = self
+            .entries
+            .lock()
+            .expect("remote image cache mutex poisoned")
+            .get(url)
+            .cloned();
+
+        let stale = match cached {
+            Some(entry) if entry.is_fresh(now) => {
+                debug!("Remote image cache hit for {url}");
+                return Ok(entry.to_remote_image());
+            }
+            Some(entry) => {
+                debug!("Revalidating stale remote image {url}");
+                Some(entry)
+            }
+            None => {
+                debug!("Downloading remote image from {url}");
+                None
+            }
+        };
+
+        let response = send_image_request(
+            url,
+            stale.as_ref().map(|entry| &entry.freshness),
+            "Cover art download",
+            base_delay,
+        )
+        .await?;
+
+        let entry = match (response, stale) {
+            (
+                ImageResponse::Body {
+                    bytes,
+                    content_type,
+                    freshness,
+                },
+                _,
+            ) => CachedImage::store(bytes, content_type, now, freshness),
+            (ImageResponse::NotModified { freshness }, Some(entry)) => CachedImage {
+                fetched_at: now,
+                freshness: entry.freshness.updated_by(freshness),
+                ..entry
+            },
+            // `send_image_request` only reports a 304 when it sent validators,
+            // which only a stored entry supplies.
+            (ImageResponse::NotModified { .. }, None) => {
+                return Err(ImportError::CoverArt {
+                    detail: format!("{url} answered 304 to an unconditional request"),
+                })
+            }
+        };
+
+        let image = entry.to_remote_image();
+        self.entries
+            .lock()
+            .expect("remote image cache mutex poisoned")
+            .put(url.to_string(), entry);
+        Ok(image)
+    }
+}
+
+/// Download an image with no caching in front — the artist-image path, whose
+/// bytes are stored in the library on first fetch and never re-read from the URL.
 pub(crate) async fn download_image_bytes(
     image_url: &str,
     operation: &str,
 ) -> Result<(Vec<u8>, ContentType), ImportError> {
-    download_image_bytes_with_backoff(image_url, operation, RETRY_BASE_DELAY).await
+    match send_image_request(image_url, None, operation, RETRY_BASE_DELAY).await? {
+        ImageResponse::Body {
+            bytes,
+            content_type,
+            freshness: _,
+        } => Ok((bytes, content_type)),
+        ImageResponse::NotModified { .. } => Err(ImportError::CoverArt {
+            detail: format!("{image_url} answered 304 to an unconditional request"),
+        }),
+    }
 }
 
-async fn download_image_bytes_with_backoff(
+/// GET an image URL, conditionally when `revalidate` supplies validators.
+/// Retries transient failures (network errors, 5xx) up to `MAX_RETRIES` times.
+async fn send_image_request(
     image_url: &str,
+    revalidate: Option<&Freshness>,
     operation: &str,
     base_delay: Duration,
-) -> Result<(Vec<u8>, ContentType), ImportError> {
+) -> Result<ImageResponse, ImportError> {
     let client = image_download_client()?;
     retry_classified(
         MAX_RETRIES + 1,
         operation,
         |attempt| exponential_backoff(base_delay, attempt),
         || async {
-            let response = match client.get(image_url).send().await {
+            let mut request = client.get(image_url);
+            if let Some(freshness) = revalidate {
+                if let Some(etag) = &freshness.etag {
+                    request = request.header(IF_NONE_MATCH, etag);
+                }
+                if let Some(last_modified) = &freshness.last_modified {
+                    request = request.header(IF_MODIFIED_SINCE, last_modified);
+                }
+            }
+
+            let response = match request.send().await {
                 Ok(r) => r,
                 Err(e) if is_permanent_request_error(&e) => {
                     return ClassifiedAttempt::Permanent(ImportError::CoverArt {
@@ -526,9 +746,14 @@ async fn download_image_bytes_with_backoff(
                 }
             };
 
+            if response.status() == reqwest::StatusCode::NOT_MODIFIED && revalidate.is_some() {
+                return ClassifiedAttempt::Done(ImageResponse::NotModified {
+                    freshness: Freshness::from_headers(response.headers()),
+                });
+            }
             if response.status().is_success() {
                 match read_image_response(response, image_url).await {
-                    Ok(value) => ClassifiedAttempt::Done(value),
+                    Ok(body) => ClassifiedAttempt::Done(body),
                     Err(e) => ClassifiedAttempt::Permanent(e),
                 }
             } else if is_transient_status(response.status()) {
@@ -552,13 +777,14 @@ fn is_permanent_request_error(e: &reqwest::Error) -> bool {
     e.is_builder() || e.is_redirect()
 }
 
-/// Read bytes and content type from a successful image response.
+/// Read bytes, content type, and freshness terms from a successful image response.
 async fn read_image_response(
     response: reqwest::Response,
     image_url: &str,
-) -> Result<(Vec<u8>, ContentType), ImportError> {
+) -> Result<ImageResponse, ImportError> {
     let content_type =
         super::image_response::image_content_type_from_response(response.headers(), image_url);
+    let freshness = Freshness::from_headers(response.headers());
 
     let bytes = crate::util::http::read_body_capped(response, crate::util::http::MAX_IMAGE_BYTES)
         .await
@@ -572,7 +798,11 @@ async fn read_image_response(
     }
 
     debug!("Downloaded cover art ({} bytes)", bytes.len());
-    Ok((bytes, content_type))
+    Ok(ImageResponse::Body {
+        bytes,
+        content_type,
+        freshness,
+    })
 }
 
 #[cfg(test)]
@@ -945,24 +1175,294 @@ mod tests {
         );
     }
 
+    /// A clock the test moves by hand, so each fetch sees exactly the instant
+    /// the test chooses — coven's `SteppingClock` advances per `now()` call,
+    /// which would tie the test to how often the cache reads the clock.
+    struct TestClock(Mutex<DateTime<Utc>>);
+
+    impl TestClock {
+        fn at(seconds: i64) -> Arc<Self> {
+            Arc::new(Self(Mutex::new(
+                DateTime::from_timestamp(seconds, 0).expect("a valid test instant"),
+            )))
+        }
+
+        fn advance(&self, seconds: i64) {
+            let mut now = self.0.lock().expect("test clock mutex poisoned");
+            *now += chrono::Duration::seconds(seconds);
+        }
+    }
+
+    impl coven::Clock for TestClock {
+        fn now(&self) -> DateTime<Utc> {
+            *self.0.lock().expect("test clock mutex poisoned")
+        }
+    }
+
+    /// One version of the image an [`ImageHost`] serves.
+    struct ImageVersion {
+        body: Vec<u8>,
+        etag: Option<String>,
+        cache_control: Option<String>,
+    }
+
+    #[derive(Clone)]
+    struct ImageHost {
+        versions: Arc<Vec<ImageVersion>>,
+        current: Arc<std::sync::atomic::AtomicUsize>,
+        hits: Arc<std::sync::atomic::AtomicUsize>,
+        conditional_hits: Arc<std::sync::atomic::AtomicUsize>,
+    }
+
+    impl ImageHost {
+        fn hits(&self) -> usize {
+            self.hits.load(std::sync::atomic::Ordering::SeqCst)
+        }
+
+        fn conditional_hits(&self) -> usize {
+            self.conditional_hits
+                .load(std::sync::atomic::Ordering::SeqCst)
+        }
+
+        fn serve_version(&self, index: usize) {
+            self.current
+                .store(index, std::sync::atomic::Ordering::SeqCst);
+        }
+    }
+
+    /// Spawn a localhost image host serving `versions` (the first until the test
+    /// switches), answering 304 when the request's `If-None-Match` matches the
+    /// served version's ETag, and counting every request that reached it.
+    async fn start_image_host(versions: Vec<ImageVersion>) -> (ImageHost, String) {
+        use axum::body::Body;
+        use axum::extract::State;
+        use axum::http::{HeaderMap, Response, StatusCode};
+        use std::sync::atomic::{AtomicUsize, Ordering};
+
+        async fn handler(State(host): State<ImageHost>, headers: HeaderMap) -> Response<Body> {
+            host.hits.fetch_add(1, Ordering::SeqCst);
+            let version = &host.versions[host.current.load(Ordering::SeqCst)];
+            let mut builder = Response::builder();
+            if let Some(etag) = &version.etag {
+                builder = builder.header("etag", etag);
+            }
+            if let Some(cache_control) = &version.cache_control {
+                builder = builder.header("cache-control", cache_control);
+            }
+            let sent = headers
+                .get("if-none-match")
+                .and_then(|value| value.to_str().ok());
+            if sent.is_some() {
+                host.conditional_hits.fetch_add(1, Ordering::SeqCst);
+            }
+            if sent.is_some() && sent == version.etag.as_deref() {
+                return builder
+                    .status(StatusCode::NOT_MODIFIED)
+                    .body(Body::empty())
+                    .expect("test 304 response");
+            }
+            builder
+                .status(StatusCode::OK)
+                .body(Body::from(version.body.clone()))
+                .expect("test 200 response")
+        }
+
+        let host = ImageHost {
+            versions: Arc::new(versions),
+            current: Arc::new(AtomicUsize::new(0)),
+            hits: Arc::new(AtomicUsize::new(0)),
+            conditional_hits: Arc::new(AtomicUsize::new(0)),
+        };
+        let app = axum::Router::new()
+            .fallback(handler)
+            .with_state(host.clone());
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        tokio::spawn(async move {
+            let _ = axum::serve(listener, app).await;
+        });
+        (host, format!("http://{addr}/cover.jpg"))
+    }
+
+    fn cache_with(clock: Arc<TestClock>) -> RemoteImageCache {
+        RemoteImageCache::new(clock as ClockRef)
+    }
+
+    #[test]
+    fn max_age_parses_from_cache_control_and_clamps() {
+        let with = |value: &str| {
+            let mut headers = HeaderMap::new();
+            headers.insert(CACHE_CONTROL, value.parse().unwrap());
+            max_age_from_cache_control(&headers)
+        };
+        assert_eq!(with("max-age=600"), Some(Duration::from_secs(600)));
+        assert_eq!(
+            with("public, max-age=120, immutable"),
+            Some(Duration::from_secs(120))
+        );
+        // Directive names are case-insensitive.
+        assert_eq!(with("Max-Age=90"), Some(Duration::from_secs(90)));
+        // No max-age directive, and an unparsable one, both mean the response
+        // stated no lifetime of its own.
+        assert_eq!(with("no-transform"), None);
+        assert_eq!(with("max-age=soon"), None);
+        assert_eq!(max_age_from_cache_control(&HeaderMap::new()), None);
+        // An absurd lifetime still revalidates within the clamp.
+        assert_eq!(with("max-age=99999999999"), Some(MAX_REMOTE_IMAGE_TTL));
+    }
+
+    #[tokio::test]
+    async fn fresh_entry_serves_without_a_request() {
+        let body = vec![0xABu8; 256];
+        let (host, url) = start_image_host(vec![ImageVersion {
+            body: body.clone(),
+            etag: Some("\"v1\"".to_string()),
+            cache_control: Some("max-age=600".to_string()),
+        }])
+        .await;
+        let clock = TestClock::at(1_700_000_000);
+        let cache = cache_with(clock.clone());
+
+        let first = cache.fetch(&url).await.unwrap();
+        assert_eq!(first.bytes, body);
+        assert_eq!(first.validator, "\"v1\"");
+
+        // Still inside the declared 600s lifetime: served from memory.
+        clock.advance(599);
+        let second = cache.fetch(&url).await.unwrap();
+        assert_eq!(second.bytes, body);
+        assert_eq!(host.hits(), 1, "a fresh entry must not reach the wire");
+    }
+
+    #[tokio::test]
+    async fn absent_cache_control_falls_back_to_the_default_ttl() {
+        let body = vec![0x5Au8; 256];
+        let (host, url) = start_image_host(vec![ImageVersion {
+            body: body.clone(),
+            etag: None,
+            cache_control: None,
+        }])
+        .await;
+        let clock = TestClock::at(1_700_000_000);
+        let cache = cache_with(clock.clone());
+
+        cache.fetch(&url).await.unwrap();
+        clock.advance(DEFAULT_REMOTE_IMAGE_TTL.as_secs() as i64 - 1);
+        cache.fetch(&url).await.unwrap();
+        assert_eq!(host.hits(), 1, "still fresh under the default TTL");
+
+        // Past the default TTL there is no ETag to revalidate with, so the
+        // fetch is an unconditional re-download.
+        clock.advance(2);
+        let refetched = cache.fetch(&url).await.unwrap();
+        assert_eq!(refetched.bytes, body);
+        assert_eq!(host.hits(), 2);
+        assert_eq!(host.conditional_hits(), 0);
+    }
+
+    #[tokio::test]
+    async fn stale_entry_revalidates_and_not_modified_refreshes_the_clock() {
+        let body = vec![0xCDu8; 256];
+        let (host, url) = start_image_host(vec![ImageVersion {
+            body: body.clone(),
+            etag: Some("\"v1\"".to_string()),
+            cache_control: Some("max-age=10".to_string()),
+        }])
+        .await;
+        let clock = TestClock::at(1_700_000_000);
+        let cache = cache_with(clock.clone());
+
+        cache.fetch(&url).await.unwrap();
+
+        // Stale: revalidated with If-None-Match, answered 304, bytes kept.
+        clock.advance(11);
+        let revalidated = cache.fetch(&url).await.unwrap();
+        assert_eq!(revalidated.bytes, body);
+        assert_eq!(revalidated.validator, "\"v1\"");
+        assert_eq!(host.hits(), 2);
+        assert_eq!(host.conditional_hits(), 1);
+
+        // The 304 restarted the entry's lifetime, so the next read inside it
+        // serves from memory instead of revalidating again.
+        clock.advance(5);
+        cache.fetch(&url).await.unwrap();
+        assert_eq!(host.hits(), 2, "a 304 must refresh the entry's clock");
+    }
+
+    #[tokio::test]
+    async fn revalidation_with_new_bytes_replaces_the_entry() {
+        let first_body = vec![0x11u8; 256];
+        let second_body = vec![0x22u8; 300];
+        let (host, url) = start_image_host(vec![
+            ImageVersion {
+                body: first_body.clone(),
+                etag: Some("\"v1\"".to_string()),
+                cache_control: Some("max-age=10".to_string()),
+            },
+            ImageVersion {
+                body: second_body.clone(),
+                etag: Some("\"v2\"".to_string()),
+                cache_control: Some("max-age=10".to_string()),
+            },
+        ])
+        .await;
+        let clock = TestClock::at(1_700_000_000);
+        let cache = cache_with(clock.clone());
+
+        let first = cache.fetch(&url).await.unwrap();
+        assert_eq!(first.validator, "\"v1\"");
+
+        host.serve_version(1);
+        clock.advance(11);
+        let second = cache.fetch(&url).await.unwrap();
+        assert_eq!(second.bytes, second_body);
+        assert_eq!(
+            second.validator, "\"v2\"",
+            "a 200 replaces the stored bytes and their validator"
+        );
+
+        // The replacement is what the next fresh read serves.
+        clock.advance(1);
+        let third = cache.fetch(&url).await.unwrap();
+        assert_eq!(third.bytes, second_body);
+        assert_eq!(host.hits(), 2);
+    }
+
+    #[tokio::test]
+    async fn validator_is_the_content_hash_when_no_etag() {
+        let body = vec![0x7Eu8; 256];
+        let (_host, url) = start_image_host(vec![ImageVersion {
+            body: body.clone(),
+            etag: None,
+            cache_control: Some("max-age=10".to_string()),
+        }])
+        .await;
+        let cache = cache_with(TestClock::at(1_700_000_000));
+
+        let image = cache.fetch(&url).await.unwrap();
+        assert_eq!(image.validator, crate::util::fs::hash_bytes(&body));
+    }
+
     #[tokio::test]
     async fn download_succeeds_and_then_serves_from_cache() {
         let body = vec![0xABu8; 256];
         let other = vec![0x11u8; 256];
         let url = start_mock(vec![(200, body.clone()), (200, other)]).await;
+        let cache = cache_with(TestClock::at(1_700_000_000));
 
-        let (first, _) = download_cover_art_bytes(&url).await.unwrap();
-        assert_eq!(first, body);
+        let first = cache.fetch(&url).await.unwrap();
+        assert_eq!(first.bytes, body);
         // The second call is served from the session cache: it returns the
         // first body, not the mock's second (different) response.
-        let (second, _) = download_cover_art_bytes(&url).await.unwrap();
-        assert_eq!(second, body, "second call should be a cache hit");
+        let second = cache.fetch(&url).await.unwrap();
+        assert_eq!(second.bytes, body, "second call should be a cache hit");
     }
 
     #[tokio::test]
     async fn download_rejects_too_small_response() {
         let url = start_mock(vec![(200, vec![0u8; 50])]).await; // under the 100-byte floor
-        let err = download_cover_art_bytes(&url).await.unwrap_err();
+        let cache = cache_with(TestClock::at(1_700_000_000));
+        let err = cache.fetch(&url).await.unwrap_err();
         assert!(
             matches!(&err, ImportError::CoverArt { detail } if detail.contains("too small")),
             "got: {err}"
@@ -972,12 +1472,10 @@ mod tests {
     #[tokio::test]
     async fn download_rejects_declared_over_cap_response() {
         let url = start_declared_length_response(crate::util::http::MAX_IMAGE_BYTES + 1).await;
-        let result = tokio::time::timeout(
-            std::time::Duration::from_secs(1),
-            download_cover_art_bytes(&url),
-        )
-        .await
-        .expect("oversized response should fail before reading the body");
+        let cache = cache_with(TestClock::at(1_700_000_000));
+        let result = tokio::time::timeout(std::time::Duration::from_secs(1), cache.fetch(&url))
+            .await
+            .expect("oversized response should fail before reading the body");
         let err = result.unwrap_err();
         assert!(
             matches!(&err, ImportError::CoverArt { detail } if detail.contains("too large")),
@@ -991,16 +1489,19 @@ mod tests {
         // A 503 is transient: retried after backoff, then the 200 succeeds.
         // A near-zero backoff keeps the retry from sleeping the real second.
         let url = start_mock(vec![(503, vec![]), (200, body.clone())]).await;
-        let (bytes, _) = download_cover_art_bytes_with_backoff(&url, Duration::from_millis(1))
+        let cache = cache_with(TestClock::at(1_700_000_000));
+        let image = cache
+            .fetch_with_backoff(&url, Duration::from_millis(1))
             .await
             .unwrap();
-        assert_eq!(bytes, body);
+        assert_eq!(image.bytes, body);
     }
 
     #[tokio::test]
     async fn download_does_not_retry_client_error() {
         // 404 is non-transient: fail without burning the retry budget.
         let url = start_mock(vec![(404, vec![])]).await;
-        assert!(download_cover_art_bytes(&url).await.is_err());
+        let cache = cache_with(TestClock::at(1_700_000_000));
+        assert!(cache.fetch(&url).await.is_err());
     }
 }

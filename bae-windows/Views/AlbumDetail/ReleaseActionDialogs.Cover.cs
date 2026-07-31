@@ -42,7 +42,7 @@ internal sealed partial class ReleaseActionDialogs
             entries.Add(new LightboxEntry(
                 item.Id,
                 capturedLabel,
-                () => _mediaPaths.FetchGalleryBytes(capturedReleaseId, capturedSource)));
+                () => _mediaPaths.FetchReleaseImageBytes(capturedReleaseId, capturedSource)));
         }
 
         _lightbox.Show(entries, 0);

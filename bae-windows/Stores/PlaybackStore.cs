@@ -11,7 +11,7 @@ namespace Bae.Windows;
 internal sealed record NowPlayingBarTrack(
     string Title,
     string Artist,
-    string? CoverImageId,
+    BridgeImageRef? CoverImage,
     bool IsPlaying,
     BridgePlaybackPauseReason? PauseReason);
 
@@ -79,18 +79,18 @@ internal sealed class PlaybackStore
     // re-renders on this while visible; the now-playing bar reads only transport.
     public event Action? QueueChanged;
 
-    public void ApplyPlaying(string albumId, string trackId, string trackTitle, string artistNames, string? coverImageId)
+    public void ApplyPlaying(string albumId, string trackId, string trackTitle, string artistNames, BridgeImageRef? coverImage)
     {
         _nowPlaying = new NowPlayingState(albumId, trackId, KeptPositionFor(trackId));
         PlayState = TransportPlayState.Playing;
-        NowPlayingChanged?.Invoke(new NowPlayingBarTrack(trackTitle, artistNames, coverImageId, true, null));
+        NowPlayingChanged?.Invoke(new NowPlayingBarTrack(trackTitle, artistNames, coverImage, true, null));
     }
 
-    public void ApplyPaused(string albumId, string trackId, string trackTitle, string artistNames, string? coverImageId, BridgePlaybackPauseReason reason)
+    public void ApplyPaused(string albumId, string trackId, string trackTitle, string artistNames, BridgeImageRef? coverImage, BridgePlaybackPauseReason reason)
     {
         _nowPlaying = new NowPlayingState(albumId, trackId, KeptPositionFor(trackId));
         PlayState = TransportPlayState.Paused;
-        NowPlayingChanged?.Invoke(new NowPlayingBarTrack(trackTitle, artistNames, coverImageId, false, reason));
+        NowPlayingChanged?.Invoke(new NowPlayingBarTrack(trackTitle, artistNames, coverImage, false, reason));
     }
 
     public void ApplyStopped()
@@ -142,7 +142,7 @@ internal sealed class PlaybackStore
         {
             _nowPlaying = new NowPlayingState(target.AlbumId, trackId, KeptPositionFor(trackId));
             NowPlayingChanged?.Invoke(
-                new NowPlayingBarTrack(target.TrackTitle, target.ArtistNames, target.CoverImageId, true, null));
+                new NowPlayingBarTrack(target.TrackTitle, target.ArtistNames, target.CoverImage, true, null));
         }
         else
         {

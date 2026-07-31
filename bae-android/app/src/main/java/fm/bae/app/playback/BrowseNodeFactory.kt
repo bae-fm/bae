@@ -4,6 +4,7 @@ import android.net.Uri
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import uniffi.bae_bridge.BridgeComposerSummary
+import uniffi.bae_bridge.BridgeImageRef
 import uniffi.bae_bridge.BridgeRelease
 import uniffi.bae_bridge.BridgeTrack
 import uniffi.bae_bridge.BridgeWorkSummary
@@ -16,22 +17,22 @@ import uniffi.bae_bridge.BridgeWorkSummary
  * bytes are fetched from lazily.
  */
 internal class BrowseNodeFactory(
-    /** Maps a cover-image id (a release/composer/work cover) to the content URI
-     *  the browse client fetches its bytes from — the same bytes the bridge's
-     *  `fetchCoverImageBytes` serves. */
-    private val artworkUri: (coverId: String) -> Uri,
+    /** Maps a library image reference (a release/composer/work cover) to the
+     *  content URI the browse client fetches its bytes from — the same bytes the
+     *  bridge's `fetchLibraryImageBytes` serves. */
+    private val artworkUri: (image: BridgeImageRef) -> Uri,
 ) {
     /** A browsable (non-playable) node: a category, album, composer, or work the
      *  client drills into. */
     fun browsable(
         id: BrowseId,
         title: String,
-        coverId: String?,
+        cover: BridgeImageRef?,
         mediaType: Int,
         subtitle: String? = null,
     ): MediaItem {
         val metadata =
-            baseMetadata(title, coverId)
+            baseMetadata(title, cover)
                 .setSubtitle(subtitle)
                 .setIsBrowsable(true)
                 .setIsPlayable(false)
@@ -47,14 +48,14 @@ internal class BrowseNodeFactory(
     fun album(
         albumId: String,
         title: String,
-        coverId: String?,
-    ): MediaItem = browsable(BrowseId.Album(albumId), title, coverId, MediaMetadata.MEDIA_TYPE_ALBUM)
+        cover: BridgeImageRef?,
+    ): MediaItem = browsable(BrowseId.Album(albumId), title, cover, MediaMetadata.MEDIA_TYPE_ALBUM)
 
     fun composer(composer: BridgeComposerSummary): MediaItem =
         browsable(
             id = BrowseId.Composer(composer.artistId),
             title = composer.name,
-            coverId = composer.image?.id,
+            cover = composer.image,
             mediaType = MediaMetadata.MEDIA_TYPE_ARTIST,
         )
 
@@ -62,7 +63,7 @@ internal class BrowseNodeFactory(
         browsable(
             id = BrowseId.Work(work.workId),
             title = work.title,
-            coverId = work.representativeCover?.id,
+            cover = work.representativeCover,
             mediaType = MediaMetadata.MEDIA_TYPE_FOLDER_MIXED,
             subtitle = work.composerNames,
         )
@@ -75,7 +76,7 @@ internal class BrowseNodeFactory(
         index: Int,
     ): MediaItem {
         val metadata =
-            baseMetadata(track.title, release.cover?.id)
+            baseMetadata(track.title, release.cover)
                 .setArtist(track.artistNames)
                 .setDurationMs(track.durationMs)
                 .setIsBrowsable(false)
@@ -91,10 +92,10 @@ internal class BrowseNodeFactory(
 
     private fun baseMetadata(
         title: String,
-        coverId: String?,
+        cover: BridgeImageRef?,
     ): MediaMetadata.Builder {
         val builder = MediaMetadata.Builder().setTitle(title)
-        coverId?.let { builder.setArtworkUri(artworkUri(it)) }
+        cover?.let { builder.setArtworkUri(artworkUri(it)) }
         return builder
     }
 }

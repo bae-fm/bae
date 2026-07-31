@@ -150,7 +150,7 @@ enum PreviewData {
                 artistNames: "Artist Name 1",
                 durationClock: bridgeClock(ms: Int64(180_000 + index * 15_000)),
                 albumTitle: "Album Title 1",
-                coverImageId: nil
+                coverImage: nil
             )
         }
 
@@ -164,7 +164,7 @@ enum PreviewData {
         trackTitle: "Track Title 1",
         artistNames: "Artist Name 1",
         albumId: "a-1",
-        coverImageId: nil,
+        coverImage: nil,
         durationMs: 195_000
     )
 

@@ -1071,12 +1071,12 @@ impl crate::types::BridgeSubsonicServerError {
 
 #[uniffi::export(async_runtime = "tokio")]
 impl AppHandle {
-    /// Bytes of a host-provided library image (a cover or an artist image), read
-    /// through coven's locality-aware read (local store while Local, cache/cloud
-    /// while Remote). `None` when no such image exists. The `BridgeImageRef`
-    /// carries the image kind, so core reads the known image namespace directly.
-    /// A read error surfaces, not masked.
-    pub async fn fetch_image_bytes(
+    /// Bytes of a curated library image (a release cover or an artist portrait),
+    /// read through coven's locality-aware read (local store while Local,
+    /// cache/cloud while Remote). `None` when no such image exists. The
+    /// `BridgeImageRef` carries the image kind, so core reads the known image
+    /// namespace directly. A read error surfaces, not masked.
+    pub async fn fetch_library_image_bytes(
         &self,
         image: crate::types::BridgeImageRef,
     ) -> Result<Option<Vec<u8>>, BridgeError> {
@@ -1087,25 +1087,12 @@ impl AppHandle {
             .map_err(|e| BridgeError::database(format!("{e}")))
     }
 
-    /// Bytes of a release cover image, read through coven's locality-aware
-    /// store. Use this for cover-only UI payloads that carry a release id rather
-    /// than a full `BridgeImageRef`.
-    pub async fn fetch_cover_image_bytes(
-        &self,
-        release_id: String,
-    ) -> Result<Option<Vec<u8>>, BridgeError> {
-        self.services
-            .library_manager()
-            .read_cover_image_blob(&release_id)
-            .await
-            .map_err(|e| BridgeError::database(format!("{e}")))
-    }
-
-    /// Bytes of one gallery slot. The lightbox calls this for EVERY gallery item,
-    /// passing the `source` it received; core dispatches the read on the variant
-    /// (a `Cover` by image id, a `ReleaseFile` by file id), so the UI never picks
-    /// the byte source itself. A read error surfaces, not masked.
-    pub async fn fetch_gallery_bytes(
+    /// Bytes of one slot in a release's image strip. The lightbox calls this for
+    /// EVERY item, passing the `source` it received; core dispatches the read on
+    /// the variant (the cover by its image ref, a release's own image file by
+    /// file id), so the UI never picks the byte source itself. A read error
+    /// surfaces, not masked.
+    pub async fn fetch_release_image_bytes(
         &self,
         release_id: String,
         source: BridgeGallerySource,
@@ -1793,15 +1780,21 @@ impl AppHandle {
             .collect())
     }
 
-    /// Fetch raw bytes for a remote cover-art URL. The UI caches the
-    /// decoded `NSImage` in front of this; when the user confirms a
-    /// remote cover, the bytes are passed back via `start_import`. The
-    /// commit worker never fetches on its own.
-    pub async fn fetch_cover_bytes(&self, url: String) -> Result<Vec<u8>, BridgeError> {
+    /// Bytes of provider art at `url` — art from Cover Art Archive or Discogs
+    /// that isn't in the library yet, so there is no image ref to read it by.
+    /// Core owns the network: this is the only image fetch that leaves the
+    /// device, and its byte cache is core's. The returned validator identifies
+    /// the content, so a UI holding a decoded copy replaces it only when the
+    /// bytes at the URL actually change.
+    pub async fn fetch_remote_image_bytes(
+        &self,
+        url: String,
+    ) -> Result<crate::types::BridgeRemoteImage, BridgeError> {
         self.services
             .import()
-            .fetch_cover_bytes(url)
+            .fetch_remote_image_bytes(url)
             .await
+            .map(crate::types::BridgeRemoteImage::from_core)
             .map_err(BridgeError::import)
     }
 }
@@ -2339,7 +2332,7 @@ impl crate::types::BridgeQueueEntry {
             artist_names,
             duration_ms,
             album_title,
-            cover_image_id,
+            cover_image,
         } = i;
         crate::types::BridgeQueueEntry {
             entry_id,
@@ -2348,7 +2341,7 @@ impl crate::types::BridgeQueueEntry {
             artist_names,
             duration_clock: crate::types::BridgeDurationClock::from_millis(duration_ms),
             album_title,
-            cover_image_id,
+            cover_image: cover_image.map(crate::types::BridgeImageRef::from_core),
         }
     }
 }
@@ -3010,7 +3003,7 @@ impl crate::types::BridgeLoadingTrackInfo {
             artist_names,
             album_id,
             album_title,
-            cover_image_id,
+            cover_image,
             // The now-playing bar's loading state renders only the fields above;
             // identity/side detail belongs to the full Playing/Paused events.
             track_id: _,
@@ -3023,7 +3016,7 @@ impl crate::types::BridgeLoadingTrackInfo {
             artist_names,
             album_id,
             album_title,
-            cover_image_id,
+            cover_image: cover_image.map(crate::types::BridgeImageRef::from_core),
             duration_ms,
         }
     }
@@ -3055,7 +3048,7 @@ fn convert_ui_event(event: bae_core::ui::UiBusEvent) -> Option<crate::types::Bri
             artist_id,
             album_id,
             album_title,
-            cover_image_id,
+            cover_image,
             duration_ms,
         } => Some(BridgeUiEvent::PlaybackPlaying {
             track_id,
@@ -3064,7 +3057,7 @@ fn convert_ui_event(event: bae_core::ui::UiBusEvent) -> Option<crate::types::Bri
             artist_id,
             album_id,
             album_title,
-            cover_image_id,
+            cover_image: cover_image.map(BridgeImageRef::from_core),
             duration_ms,
         }),
         UiBusEvent::PlaybackPaused {
@@ -3074,7 +3067,7 @@ fn convert_ui_event(event: bae_core::ui::UiBusEvent) -> Option<crate::types::Bri
             artist_id,
             album_id,
             album_title,
-            cover_image_id,
+            cover_image,
             duration_ms,
             reason,
         } => Some(BridgeUiEvent::PlaybackPaused {
@@ -3084,7 +3077,7 @@ fn convert_ui_event(event: bae_core::ui::UiBusEvent) -> Option<crate::types::Bri
             artist_id,
             album_id,
             album_title,
-            cover_image_id,
+            cover_image: cover_image.map(BridgeImageRef::from_core),
             duration_ms,
             reason: BridgePlaybackPauseReason::from_core(reason),
         }),
@@ -4021,7 +4014,7 @@ mod tests {
             artist_names: "Artist".to_string(),
             duration_ms,
             album_title: "Album".to_string(),
-            cover_image_id: None,
+            cover_image: None,
         }
     }
 

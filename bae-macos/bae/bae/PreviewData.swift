@@ -133,7 +133,7 @@
                     trackTitle: entry.title,
                     artistNames: entry.artistNames,
                     albumId: "a-01",
-                    coverImageId: entry.coverImageId,
+                    coverImage: entry.coverImage,
                     // The queue entry carries only a clock label, not raw ms;
                     // the preview now-playing bar just needs a plausible total.
                     durationMs: 200_000
@@ -174,7 +174,7 @@
                     durationClock: source?.durationClock
                         ?? bridgeClock(ms: 200_000),
                     albumTitle: source?.albumTitle ?? "Album Title",
-                    coverImageId: source?.coverImageId
+                    coverImage: source?.coverImage
                 )
             }
             let at = min(max(index, 0), manual.count)
@@ -203,7 +203,7 @@
                 artistNames: "Artist Name A",
                 durationClock: bridgeClock(ms: 210_000),
                 albumTitle: "Album Title A",
-                coverImageId: nil
+                coverImage: nil
             ),
             BridgeQueueEntry(
                 entryId: "e-02",
@@ -212,7 +212,7 @@
                 artistNames: "Artist Name A",
                 durationClock: bridgeClock(ms: 240_000),
                 albumTitle: "Album Title A",
-                coverImageId: nil
+                coverImage: nil
             ),
             BridgeQueueEntry(
                 entryId: "e-03",
@@ -221,7 +221,7 @@
                 artistNames: "Artist Name B",
                 durationClock: bridgeClock(ms: 198_000),
                 albumTitle: "Album Title B",
-                coverImageId: nil
+                coverImage: nil
             ),
             BridgeQueueEntry(
                 entryId: "e-04",
@@ -230,7 +230,7 @@
                 artistNames: "Artist Name B",
                 durationClock: bridgeClock(ms: 225_000),
                 albumTitle: "Album Title B",
-                coverImageId: nil
+                coverImage: nil
             ),
             BridgeQueueEntry(
                 entryId: "e-05",
@@ -239,7 +239,7 @@
                 artistNames: "Artist Name C",
                 durationClock: bridgeClock(ms: 187_000),
                 albumTitle: "Album Title C",
-                coverImageId: nil
+                coverImage: nil
             ),
         ]
 

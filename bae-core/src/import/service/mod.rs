@@ -1806,11 +1806,14 @@ impl ImportService {
             selected_cover
         {
             emit_preparing(PrepareStep::WritingCoverArt);
-            let (bytes, content_type) =
-                crate::import::cover_art::download_cover_art_bytes_with_backoff(
-                    url,
-                    self.cover_retry_base_delay,
-                )
+            let crate::import::cover_art::RemoteImage {
+                bytes,
+                content_type,
+                validator: _,
+            } = self
+                .library_manager
+                .remote_images()
+                .fetch_with_backoff(url, self.cover_retry_base_delay)
                 .await?;
             if matches!(
                 content_type,

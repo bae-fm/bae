@@ -15,7 +15,7 @@ internal abstract record MediaControlArtwork
 {
     internal sealed record Keep : MediaControlArtwork;
     internal sealed record Clear : MediaControlArtwork;
-    internal sealed record Load(string ImageId) : MediaControlArtwork;
+    internal sealed record Load(string Token) : MediaControlArtwork;
 }
 
 /// <summary>One push to the system display: status, the metadata fields, and
@@ -39,7 +39,10 @@ internal sealed class MediaControlState
     private bool _isShowingPreview;
     private bool _hasDisplay;          // something has been pushed since the last Clear
     private ulong? _currentDurationMs;
-    private string? _artworkImageId;   // image id currently loaded/loading into the thumbnail
+    // Identity of the artwork currently loaded/loading into the thumbnail. A
+    // token rather than the image reference itself: this layer is unit-tested
+    // without the generated bridge bindings, so it never names a bridge type.
+    private string? _artworkToken;
 
     /// <summary>Whether a preview clip is showing, so button/seek commands route
     /// to the preview instead of the library queue.</summary>
@@ -58,7 +61,7 @@ internal sealed class MediaControlState
         string trackTitle,
         string artistNames,
         string albumTitle,
-        string? coverImageId,
+        string? coverToken,
         ulong durationMs,
         MediaControlPlaybackStatus status)
     {
@@ -69,7 +72,7 @@ internal sealed class MediaControlState
 
         _currentDurationMs = durationMs;
         _hasDisplay = true;
-        return new MediaControlDisplay(status, trackTitle, artistNames, albumTitle, ArtworkFor(coverImageId));
+        return new MediaControlDisplay(status, trackTitle, artistNames, albumTitle, ArtworkFor(coverToken));
     }
 
     /// <summary>Resets every tracked field. The shell clears the system display
@@ -78,7 +81,7 @@ internal sealed class MediaControlState
     {
         _hasDisplay = false;
         _currentDurationMs = null;
-        _artworkImageId = null;
+        _artworkToken = null;
     }
 
     /// <summary>A timeline push for the current library track, or null while a
@@ -104,7 +107,7 @@ internal sealed class MediaControlState
         _isShowingPreview = true;
         _hasDisplay = true;
         _currentDurationMs = durationMs;
-        _artworkImageId = null;
+        _artworkToken = null;
         var status = isPlaying ? MediaControlPlaybackStatus.Playing : MediaControlPlaybackStatus.Paused;
         return new MediaControlDisplay(status, FileName(path), string.Empty, string.Empty, new MediaControlArtwork.Clear());
     }
@@ -142,42 +145,43 @@ internal sealed class MediaControlState
         return Math.Clamp(ratio, 0.0, 1.0);
     }
 
-    /// <summary>Whether a completed artwork load for <paramref name="imageId"/> is
+    /// <summary>Whether a completed artwork load for <paramref name="token"/> is
     /// still the current image — false once the track changed mid-load. Guards the
     /// async fetch from writing a stale thumbnail.</summary>
-    internal bool ArtworkLoadIsCurrent(string imageId) => imageId == _artworkImageId;
+    internal bool ArtworkLoadIsCurrent(string token) => token == _artworkToken;
 
-    /// <summary>Records that the load for <paramref name="imageId"/> produced no
-    /// thumbnail. Forgetting the id means the next update for the same cover
-    /// issues a fresh <see cref="MediaControlArtwork.Load"/> instead of keeping a
-    /// thumbnail that never arrived. A stale failure (the track already moved on)
-    /// leaves the current load's tracking untouched.</summary>
-    internal void ArtworkLoadFailed(string imageId)
+    /// <summary>Records that the load for <paramref name="token"/> produced no
+    /// thumbnail. Forgetting it means the next update for the same cover issues a
+    /// fresh <see cref="MediaControlArtwork.Load"/> instead of keeping a thumbnail
+    /// that never arrived. A stale failure (the track already moved on) leaves the
+    /// current load's tracking untouched.</summary>
+    internal void ArtworkLoadFailed(string token)
     {
-        if (imageId == _artworkImageId)
+        if (token == _artworkToken)
         {
-            _artworkImageId = null;
+            _artworkToken = null;
         }
     }
 
     /// <summary>The artwork action for a track's cover: clear when it has none,
-    /// keep when the id is unchanged (the thumbnail is already loaded), otherwise
-    /// load the new id.</summary>
-    private MediaControlArtwork ArtworkFor(string? coverImageId)
+    /// keep when the token is unchanged (the thumbnail is already loaded),
+    /// otherwise load the new one. The token pins the cover's content version, so
+    /// replacing a release's cover reloads the thumbnail.</summary>
+    private MediaControlArtwork ArtworkFor(string? coverToken)
     {
-        if (coverImageId is null)
+        if (coverToken is null)
         {
-            _artworkImageId = null;
+            _artworkToken = null;
             return new MediaControlArtwork.Clear();
         }
 
-        if (coverImageId == _artworkImageId)
+        if (coverToken == _artworkToken)
         {
             return new MediaControlArtwork.Keep();
         }
 
-        _artworkImageId = coverImageId;
-        return new MediaControlArtwork.Load(coverImageId);
+        _artworkToken = coverToken;
+        return new MediaControlArtwork.Load(coverToken);
     }
 
     /// <summary>The last path segment, splitting on both separators so a Windows

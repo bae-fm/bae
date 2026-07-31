@@ -21,7 +21,7 @@ struct NowPlayingMetadata {
     let artistNames: String
     let albumTitle: String
     let durationMs: UInt64
-    let coverImageId: String?
+    let coverImage: BridgeImageRef?
     let playbackRate: Double
 }
 
@@ -48,7 +48,7 @@ public final class MediaControlService: @unchecked Sendable {
     /// toggled (and its disable logged) only on a real change — the duration
     /// path runs on every progress tick, so writing each time would spam.
     private var scrubbingEnabled = false
-    private var cachedArtworkImageId: String?
+    private var cachedArtworkImage: BridgeImageRef?
     private var cachedArtwork: MPMediaItemArtwork?
     private var artworkTask: Task<Void, Never>?
     /// Whether a preview clip currently owns Now Playing. Only macOS writes it
@@ -122,7 +122,7 @@ public final class MediaControlService: @unchecked Sendable {
             _,
             _,
             let albumTitle,
-            let coverImageId,
+            let coverImage,
             let durationMs
         ),
             .paused(
@@ -132,7 +132,7 @@ public final class MediaControlService: @unchecked Sendable {
                 _,
                 _,
                 let albumTitle,
-                let coverImageId,
+                let coverImage,
                 let durationMs
             ):
             let playbackRate: Double =
@@ -147,7 +147,7 @@ public final class MediaControlService: @unchecked Sendable {
                 artistNames: artistNames,
                 albumTitle: albumTitle,
                 durationMs: durationMs,
-                coverImageId: coverImageId,
+                coverImage: coverImage,
                 playbackRate: playbackRate
             )
 
@@ -158,7 +158,7 @@ public final class MediaControlService: @unchecked Sendable {
                     artistNames: track.artistNames,
                     albumTitle: track.albumTitle,
                     durationMs: track.durationMs,
-                    coverImageId: track.coverImageId,
+                    coverImage: track.coverImage,
                     playbackRate: 0.0
                 )
             }
@@ -183,7 +183,7 @@ public final class MediaControlService: @unchecked Sendable {
         trackDuration(metadata.durationMs, into: &info)
         info[MPNowPlayingInfoPropertyPlaybackRate] = metadata.playbackRate
         applyArtwork(
-            imageId: metadata.coverImageId,
+            image: metadata.coverImage,
             appHandle: appHandle,
             into: &info
         )
@@ -335,45 +335,47 @@ extension MediaControlService {
 
     // MARK: - Artwork
 
-    /// Apply cached artwork synchronously if `imageId` is unchanged, else clear
-    /// the slot and load the on-disk cover in the background, writing it into
-    /// the Now Playing info when ready.
+    /// Apply cached artwork synchronously if the image reference is unchanged,
+    /// else clear the slot and load the cover in the background, writing it into
+    /// the Now Playing info when ready. The reference pins the content version,
+    /// so replacing a release's cover reloads the artwork.
     private func applyArtwork(
-        imageId: String?,
+        image: BridgeImageRef?,
         appHandle: AppHandle,
         into info: inout [String: Any]
     ) {
-        guard let imageId else {
+        guard let image else {
             clearArtworkLoad()
             info.removeValue(forKey: MPMediaItemPropertyArtwork)
             return
         }
-        if imageId == cachedArtworkImageId, let artwork = cachedArtwork {
+        if image == cachedArtworkImage, let artwork = cachedArtwork {
             info[MPMediaItemPropertyArtwork] = artwork
             return
         }
         info.removeValue(forKey: MPMediaItemPropertyArtwork)
         artworkTask?.cancel()
         artworkTask = Task { [weak self] in
-            await self?.loadArtwork(imageId: imageId, appHandle: appHandle)
+            await self?.loadArtwork(image: image, appHandle: appHandle)
         }
     }
 
-    private func loadArtwork(imageId: String, appHandle: AppHandle) async {
+    private func loadArtwork(image: BridgeImageRef, appHandle: AppHandle) async
+    {
         guard
             let bytes = await fetchArtworkBytes(
-                imageId: imageId,
+                image: image,
                 appHandle: appHandle
             ),
-            let image = await decodeArtwork(bytes: bytes, imageId: imageId)
+            let decoded = await decodeArtwork(bytes: bytes, imageId: image.id)
         else {
             return
         }
         guard !Task.isCancelled else {
             return
         }
-        let box = SendablePlatformImage(image)
-        let artwork = MPMediaItemArtwork(boundsSize: image.size) { _ in
+        let box = SendablePlatformImage(decoded)
+        let artwork = MPMediaItemArtwork(boundsSize: decoded.size) { _ in
             box.value
         }
         await MainActor.run {
@@ -387,7 +389,7 @@ extension MediaControlService {
             guard var info = infoCenter.nowPlayingInfo else {
                 return
             }
-            cachedArtworkImageId = imageId
+            cachedArtworkImage = image
             cachedArtwork = artwork
             info[MPMediaItemPropertyArtwork] = artwork
             infoCenter.nowPlayingInfo = info
@@ -395,16 +397,16 @@ extension MediaControlService {
     }
 
     private func fetchArtworkBytes(
-        imageId: String,
+        image: BridgeImageRef,
         appHandle: AppHandle
     ) async -> Data? {
         do {
             guard
-                let data = try await appHandle.fetchCoverImageBytes(
-                    releaseId: imageId
+                let data = try await appHandle.fetchLibraryImageBytes(
+                    image: image
                 )
             else {
-                logger.debug("No Now Playing artwork for \(imageId)")
+                logger.debug("No Now Playing artwork for \(image.id)")
                 return nil
             }
             return data
@@ -414,7 +416,7 @@ extension MediaControlService {
         }
         catch {
             logger.warning(
-                "Failed to fetch Now Playing artwork \(imageId): \(error)"
+                "Failed to fetch Now Playing artwork \(image.id): \(error)"
             )
             return nil
         }
@@ -456,7 +458,7 @@ extension MediaControlService {
     private func clearArtworkLoad() {
         artworkTask?.cancel()
         artworkTask = nil
-        cachedArtworkImageId = nil
+        cachedArtworkImage = nil
         cachedArtwork = nil
     }
 }

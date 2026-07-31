@@ -234,8 +234,7 @@ private fun AlbumResultRow(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         CoverImage(
-            coverId = album.cover?.id,
-            coverVersion = album.cover?.version,
+            cover = album.cover,
             loadImage = loadImage,
             cornerRadius = 4.dp,
             iconPadding = 12.dp,
@@ -313,8 +312,7 @@ private fun ComposerResultRow(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         CoverImage(
-            coverId = composer.image?.id,
-            coverVersion = composer.image?.version,
+            cover = composer.image,
             loadImage = loadImage,
             cornerRadius = 4.dp,
             iconPadding = 12.dp,
@@ -354,8 +352,7 @@ private fun WorkResultRow(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         CoverImage(
-            coverId = work.representativeCover?.id,
-            coverVersion = work.representativeCover?.version,
+            cover = work.representativeCover,
             loadImage = loadImage,
             cornerRadius = 4.dp,
             iconPadding = 12.dp,

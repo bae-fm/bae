@@ -32,7 +32,7 @@ struct PlaybackPlayPauseTests {
             trackTitle: "Track Title",
             artistNames: "Artist Name",
             albumId: "album-1",
-            coverImageId: nil,
+            coverImage: nil,
             durationMs: 180_000
         )
     }

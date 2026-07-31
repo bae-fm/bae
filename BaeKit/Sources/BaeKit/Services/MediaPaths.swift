@@ -10,15 +10,13 @@ import os.log
 
 private let logger = Logger.bae("MediaPaths")
 
-/// Which library image to fetch and how. A `cover` is a release cover addressed
-/// by release id; an `image` is a release cover or artist image with a full
-/// `BridgeImageRef`. A `gallery` slot is read via `fetchGalleryBytes`, which
-/// takes the whole
-/// `BridgeGallerySource` and dispatches the read in core — the UI never picks
-/// the byte source. `cacheId` is the gallery item's stable list identity, the
-/// decode-cache key, not a fetch decision.
+/// Which library image to fetch and how. An `image` is a curated library image —
+/// a release cover or an artist portrait — addressed by its full
+/// `BridgeImageRef`. A `gallery` slot is read via `fetchReleaseImageBytes`,
+/// which takes the whole `BridgeGallerySource` and dispatches the read in core —
+/// the UI never picks the byte source. `cacheId` is the gallery item's stable
+/// list identity, the decode-cache key, not a fetch decision.
 public enum LibraryImageSource: Equatable, Hashable, Sendable {
-    case cover(id: String, version: String?)
     case image(BridgeImageRef)
     case gallery(
         releaseId: String,
@@ -26,14 +24,13 @@ public enum LibraryImageSource: Equatable, Hashable, Sendable {
         cacheId: String
     )
 
-    /// Stable identity for the decode cache: a cover keys on its id + content
-    /// version (so replacing a cover reloads), a gallery slot on its release +
-    /// item id (the cover slot's item id is the constant `"cover"`, so the
-    /// release scope keeps two releases' covers distinct in the shared cache).
+    /// Stable identity for the decode cache: a curated image keys on its kind +
+    /// subject id + content version (so replacing a cover reloads), a gallery
+    /// slot on its release + item id (the cover slot's item id is the constant
+    /// `"cover"`, so the release scope keeps two releases' covers distinct in
+    /// the shared cache).
     public var cacheToken: String {
         switch self {
-        case .cover(let id, let version):
-            "cover:\(id):\(version ?? id)"
         case .image(let image):
             "image:\(image.imageType):\(image.id):\(image.version)"
         case .gallery(let releaseId, _, let cacheId):
@@ -49,24 +46,24 @@ public enum LibraryImageSource: Equatable, Hashable, Sendable {
 public final class MediaPaths: Sendable, Observable {
     /// Filesystem path for the user's own external file behind a library file
     /// (the DiscID re-read of a rip's LOG/CUE/audio). NOT for images — library
-    /// images are read through `fetchImageBytes` and `fetchGalleryBytes`.
+    /// images are read through `fetchLibraryImageBytes` and
+    /// `fetchReleaseImageBytes`.
     public let filePath: @Sendable (_ fileId: String) async throws -> String?
-    /// Bytes of a release cover by release id, or nil when no such cover exists.
-    public let fetchCoverImageBytes:
-        @Sendable (_ releaseId: String) async throws -> Data?
-    /// Bytes of a host-provided library image (a cover or an artist image) by
-    /// full image ref, or nil when no such image exists.
-    public let fetchImageBytes:
+    /// Bytes of a curated library image (a release cover or an artist portrait)
+    /// by full image ref, or nil when no such image exists.
+    public let fetchLibraryImageBytes:
         @Sendable (_ image: BridgeImageRef) async throws -> Data?
-    /// Bytes of one of a release's gallery slots (its cover or an image file),
-    /// dispatched in core on the `BridgeGallerySource` and downloaded from the
-    /// release's cloud home (and decrypted) when it isn't on disk here.
-    public let fetchGalleryBytes:
+    /// Bytes of one of a release's image-strip slots (its cover or an image
+    /// file), dispatched in core on the `BridgeGallerySource` and downloaded
+    /// from the release's cloud home (and decrypted) when it isn't on disk here.
+    public let fetchReleaseImageBytes:
         @Sendable (_ releaseId: String, _ source: BridgeGallerySource)
             async throws -> Data
-    /// Remote cover-art bytes for the desktop import flow's cover-art search.
-    /// Desktop-only; iOS has no import flow and stubs it.
-    public let fetchCoverBytes: @Sendable (_ url: String) async throws -> Data
+    /// Bytes of provider art at a URL, for the desktop import flow's cover
+    /// search. Desktop-only; iOS has no import flow and stubs it.
+    public let fetchRemoteImageBytes:
+        @Sendable (_ url: String) async throws ->
+            Data
 
     /// Decoded library images, keyed by source + content version + pixel size,
     /// so a grid of covers keeps decode and bridge marshalling off the scroll
@@ -78,58 +75,54 @@ public final class MediaPaths: Sendable, Observable {
         filePath: @escaping @Sendable (String) async throws -> String? = {
             _ in throw MediaPathsUnavailable()
         },
-        fetchCoverImageBytes:
-            @escaping @Sendable (String) async throws -> Data? = { _ in nil },
-        fetchImageBytes:
+        fetchLibraryImageBytes:
             @escaping @Sendable (BridgeImageRef) async throws -> Data? = {
                 _ in nil
             },
-        fetchGalleryBytes:
+        fetchReleaseImageBytes:
             @escaping @Sendable (String, BridgeGallerySource) async throws ->
             Data = { _, _ in throw MediaPathsUnavailable() },
-        fetchCoverBytes: @escaping @Sendable (String) async throws -> Data = {
-            _ in throw MediaPathsUnavailable()
-        }
+        fetchRemoteImageBytes:
+            @escaping @Sendable (String) async throws -> Data = {
+                _ in throw MediaPathsUnavailable()
+            }
     ) {
         self.filePath = filePath
-        self.fetchCoverImageBytes = fetchCoverImageBytes
-        self.fetchImageBytes = fetchImageBytes
-        self.fetchGalleryBytes = fetchGalleryBytes
-        self.fetchCoverBytes = fetchCoverBytes
+        self.fetchLibraryImageBytes = fetchLibraryImageBytes
+        self.fetchReleaseImageBytes = fetchReleaseImageBytes
+        self.fetchRemoteImageBytes = fetchRemoteImageBytes
     }
 
     #if !os(iOS)
         public convenience init(handle: any AppHandleProtocol) {
             self.init(
                 filePath: { try await handle.filePath(fileId: $0) },
-                fetchCoverImageBytes: {
-                    try await handle.fetchCoverImageBytes(releaseId: $0)
+                fetchLibraryImageBytes: {
+                    try await handle.fetchLibraryImageBytes(image: $0)
                 },
-                fetchImageBytes: {
-                    try await handle.fetchImageBytes(image: $0)
-                },
-                fetchGalleryBytes: {
-                    try await handle.fetchGalleryBytes(
+                fetchReleaseImageBytes: {
+                    try await handle.fetchReleaseImageBytes(
                         releaseId: $0,
                         source: $1
                     )
                 },
-                fetchCoverBytes: { try await handle.fetchCoverBytes(url: $0) }
+                fetchRemoteImageBytes: {
+                    try await handle.fetchRemoteImageBytes(url: $0).bytes
+                }
             )
         }
     #else
-        // `fetchCoverBytes` (remote cover-art search) backs the desktop import
-        // flow and is absent from the iOS bindings; iOS also never reads
-        // arbitrary library images by ref (`fetchImageBytes`). This wires the
-        // path/cover/gallery reads iOS makes; the rest keep their defaults.
+        // `fetchRemoteImageBytes` (the provider-art search) backs the desktop
+        // import flow and is absent from the iOS bindings. This wires the
+        // path/library/release reads iOS makes; the rest keeps its default.
         public convenience init(handle: any AppHandleProtocol) {
             self.init(
                 filePath: { try await handle.filePath(fileId: $0) },
-                fetchCoverImageBytes: {
-                    try await handle.fetchCoverImageBytes(releaseId: $0)
+                fetchLibraryImageBytes: {
+                    try await handle.fetchLibraryImageBytes(image: $0)
                 },
-                fetchGalleryBytes: {
-                    try await handle.fetchGalleryBytes(
+                fetchReleaseImageBytes: {
+                    try await handle.fetchReleaseImageBytes(
                         releaseId: $0,
                         source: $1
                     )
@@ -179,8 +172,7 @@ public final class MediaPaths: Sendable, Observable {
     /// Decoded library image for `source` at `pointSize`, reading from the cache
     /// when present and otherwise fetching the bytes (an image ref or a gallery
     /// slot via the bridge), decoding off the main thread, and caching the
-    /// result. Returns nil when no
-    /// such image exists (a `cover` with no bytes); a fetch/decode error
+    /// result. Returns nil when no such image exists; a fetch/decode error
     /// surfaces, not masked.
     public func libraryImage(
         _ source: LibraryImageSource,
@@ -197,14 +189,8 @@ public final class MediaPaths: Sendable, Observable {
         }
         let bytes: Data
         switch source {
-        case .cover(let id, _):
-            guard let data = try await fetchCoverImageBytes(id) else {
-                logger.warning("Missing cover image bytes for \(id)")
-                return nil
-            }
-            bytes = data
         case .image(let image):
-            guard let data = try await fetchImageBytes(image) else {
+            guard let data = try await fetchLibraryImageBytes(image) else {
                 logger.warning(
                     "Missing library image bytes for \(image.imageType) \(image.id)"
                 )
@@ -212,7 +198,7 @@ public final class MediaPaths: Sendable, Observable {
             }
             bytes = data
         case .gallery(let releaseId, let gallerySource, _):
-            bytes = try await fetchGalleryBytes(releaseId, gallerySource)
+            bytes = try await fetchReleaseImageBytes(releaseId, gallerySource)
         }
         let image = try await ImageLoader.load(
             source: .data(bytes),
@@ -225,7 +211,7 @@ public final class MediaPaths: Sendable, Observable {
 }
 
 /// A `MediaPaths` capability that isn't wired in this context — the preview
-/// stub, or a desktop-only closure (`fetchCoverBytes`) that iOS never calls.
+/// stub, or a desktop-only closure (`fetchRemoteImageBytes`) iOS never calls.
 /// Throwing surfaces misuse instead of masking it with empty bytes.
 public struct MediaPathsUnavailable: Error {
     public init() {}

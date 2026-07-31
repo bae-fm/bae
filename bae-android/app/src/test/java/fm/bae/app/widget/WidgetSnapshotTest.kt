@@ -3,6 +3,8 @@ package fm.bae.app.widget
 import fm.bae.app.playback.BaeCorePlayer
 import fm.bae.app.playback.FakeAppHandle
 import fm.bae.app.playback.NowPlaying
+import fm.bae.app.testCoverRef
+import java.io.File
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -17,7 +19,6 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
 import uniffi.bae_bridge.BridgeUiEvent
-import java.io.File
 
 /**
  * The widget renders from a file-backed snapshot the launcher process reads, so
@@ -37,14 +38,14 @@ class WidgetSnapshotTest {
                         trackId = "t1",
                         title = "Track Title",
                         artist = "Artist Name",
-                        coverImageId = "rel-1",
+                        coverImage = testCoverRef("rel-1"),
                         sidePausePrompt = null,
                     ),
                 isPlaying = true,
             )
         assertEquals("Track Title", snapshot.track?.title)
         assertEquals("Artist Name", snapshot.track?.artist)
-        assertEquals("rel-1", snapshot.track?.coverImageId)
+        assertEquals(testCoverRef("rel-1"), snapshot.track?.coverImage)
         assertTrue(snapshot.isPlaying)
     }
 
@@ -66,7 +67,7 @@ class WidgetSnapshotTest {
                 artistId = "artist-1",
                 albumId = "album-1",
                 albumTitle = "Album Title",
-                coverImageId = "rel-1",
+                coverImage = testCoverRef("rel-1"),
                 durationMs = 185_000uL,
             ),
         )
@@ -75,7 +76,7 @@ class WidgetSnapshotTest {
 
         assertEquals("Track Title", snapshot.track?.title)
         assertEquals("Artist Name", snapshot.track?.artist)
-        assertEquals("rel-1", snapshot.track?.coverImageId)
+        assertEquals(testCoverRef("rel-1"), snapshot.track?.coverImage)
         assertTrue(snapshot.isPlaying)
     }
 
@@ -95,7 +96,7 @@ class WidgetSnapshotTest {
         withStore { store ->
             val snapshot =
                 WidgetSnapshot(
-                    track = WidgetTrack(title = "Track Title", artist = "Artist Name", coverImageId = "rel-1"),
+                    track = WidgetTrack(title = "Track Title", artist = "Artist Name", coverImage = testCoverRef("rel-1")),
                     isPlaying = true,
                 )
             store.write(snapshot)
@@ -107,7 +108,7 @@ class WidgetSnapshotTest {
         withStore { store ->
             val snapshot =
                 WidgetSnapshot(
-                    track = WidgetTrack(title = "Track Title", artist = "Artist Name", coverImageId = null),
+                    track = WidgetTrack(title = "Track Title", artist = "Artist Name", coverImage = null),
                     isPlaying = false,
                 )
             store.write(snapshot)

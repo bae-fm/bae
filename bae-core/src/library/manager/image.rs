@@ -89,30 +89,27 @@ impl LibraryManager {
     ) -> Result<(), LibraryError> {
         // The source content type is discarded: every stored cover is resized to
         // JPEG below, so only the bytes, provenance, and URL carry through.
-        let (bytes, source, source_url) = match selection {
-            CoverSelection::ReleaseImage { file_id } => {
-                let file = self
-                    .get_file_by_id(&file_id)
-                    .await?
-                    .ok_or_else(|| LibraryError::Import(format!("File '{file_id}' not found")))?;
+        let (bytes, source, source_url) =
+            match selection {
+                CoverSelection::ReleaseImage { file_id } => {
+                    let file = self.get_file_by_id(&file_id).await?.ok_or_else(|| {
+                        LibraryError::Import(format!("File '{file_id}' not found"))
+                    })?;
 
-                // Read the chosen release image file through coven's locality-aware
-                // read (the user's own file when Local, the cache/cloud when Remote).
-                let bytes = self.read_release_blob(&file).await?;
-                let source_url = format!("release://{}", file.original_filename);
-                (bytes, "local".to_string(), Some(source_url))
-            }
-            CoverSelection::RemoteCover { url, source } => {
-                let (bytes, _content_type) =
-                    crate::import::cover_art::download_cover_art_bytes(&url)
-                        .await
-                        .map_err(|e| {
-                            LibraryError::Import(format!("Failed to download cover: {e}"))
-                        })?;
+                    // Read the chosen release image file through coven's locality-aware
+                    // read (the user's own file when Local, the cache/cloud when Remote).
+                    let bytes = self.read_release_blob(&file).await?;
+                    let source_url = format!("release://{}", file.original_filename);
+                    (bytes, "local".to_string(), Some(source_url))
+                }
+                CoverSelection::RemoteCover { url, source } => {
+                    let image = self.remote_images().fetch(&url).await.map_err(|e| {
+                        LibraryError::Import(format!("Failed to download cover: {e}"))
+                    })?;
 
-                (bytes, source.as_str().to_string(), Some(url))
-            }
-        };
+                    (image.bytes, source.as_str().to_string(), Some(url))
+                }
+            };
 
         // Resize to a ≤600px JPEG thumbnail, then build the row from that output:
         // the stored bytes, their format, size and hash all describe the thumbnail,

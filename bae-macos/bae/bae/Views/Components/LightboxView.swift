@@ -154,7 +154,10 @@ struct LightboxView: View {
             return .local(path: path)
         case .gallery(let releaseId, let gallerySource):
             return .data(
-                try await mediaPaths.fetchGalleryBytes(releaseId, gallerySource)
+                try await mediaPaths.fetchReleaseImageBytes(
+                    releaseId,
+                    gallerySource
+                )
             )
         }
     }
@@ -190,7 +193,7 @@ struct LightboxView: View {
                     points: max(containerSize.width, containerSize.height)
                 ),
                 displayScale: displayScale,
-                fetchRemoteBytes: mediaPaths.fetchCoverBytes
+                fetchRemoteBytes: mediaPaths.fetchRemoteImageBytes
             )
         }
         catch is CancellationError {
@@ -236,7 +239,7 @@ struct LightboxView: View {
                 source: source,
                 size: .native,
                 displayScale: displayScale,
-                fetchRemoteBytes: mediaPaths.fetchCoverBytes
+                fetchRemoteBytes: mediaPaths.fetchRemoteImageBytes
             )
         }
         catch is CancellationError {

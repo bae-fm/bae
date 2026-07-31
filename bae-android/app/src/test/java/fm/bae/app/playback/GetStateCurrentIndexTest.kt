@@ -33,7 +33,7 @@ class GetStateCurrentIndexTest {
             artistNames = "Artist Name",
             durationClock = null,
             albumTitle = "Album Title",
-            coverImageId = null,
+            coverImage = null,
         )
 
     @Test
@@ -71,7 +71,7 @@ class GetStateCurrentIndexTest {
                 artistId = "artist-1",
                 albumId = "album-1",
                 albumTitle = "Album Title",
-                coverImageId = null,
+                coverImage = null,
                 durationMs = 180_000uL,
             ),
         )

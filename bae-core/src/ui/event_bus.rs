@@ -120,7 +120,7 @@ impl UiEventBus {
                                 artist_id: track_info.artist_id.clone(),
                                 album_id: track_info.album_id.clone(),
                                 album_title: track_info.album_title.clone(),
-                                cover_image_id: track_info.cover_image_id.clone(),
+                                cover_image: track_info.cover_image.clone(),
                                 duration_ms: *duration_ms,
                             },
                             crate::playback::PlaybackState::Paused {
@@ -134,7 +134,7 @@ impl UiEventBus {
                                 artist_id: track_info.artist_id.clone(),
                                 album_id: track_info.album_id.clone(),
                                 album_title: track_info.album_title.clone(),
-                                cover_image_id: track_info.cover_image_id.clone(),
+                                cover_image: track_info.cover_image.clone(),
                                 duration_ms: *duration_ms,
                                 reason: reason.clone(),
                             },

@@ -35,6 +35,7 @@ import fm.bae.app.durationClockLabel
 import fm.bae.app.playback.NowPlaying
 import fm.bae.app.playback.QueueItem
 import fm.bae.app.ui.BaeTheme
+import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.components.CoverBytesCache
 import fm.bae.app.ui.components.CoverImage
 import fm.bae.app.ui.components.LocalCoverBytesCache
@@ -57,8 +58,7 @@ internal fun NowPlayingRow(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         CoverImage(
-            coverId = np.coverImageId,
-            coverVersion = null,
+            cover = np.coverImage,
             loadImage = loadImage,
             cornerRadius = 4.dp,
             iconPadding = 12.dp,
@@ -100,8 +100,7 @@ internal fun QueueRow(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         CoverImage(
-            coverId = item.coverImageId,
-            coverVersion = null,
+            cover = item.coverImage,
             loadImage = loadImage,
             cornerRadius = 4.dp,
             iconPadding = 12.dp,
@@ -205,7 +204,7 @@ private val previewNowPlaying =
         trackId = "trk-1",
         title = "Track Title",
         artist = "Artist Name",
-        coverImageId = "rel-1",
+        coverImage = PreviewData.imageRef("rel-1"),
         sidePausePrompt = null,
     )
 
@@ -219,7 +218,7 @@ private val previewQueueItem =
         // Built in-process (never the `bridgeClock` FFI) so the @Preview renders
         // under layoutlib, which can't call into the native bridge.
         durationClock = BridgeDurationClock(negative = false, hours = null, minutes = 3u, seconds = 34u),
-        coverImageId = "rel-1",
+        coverImage = PreviewData.imageRef("rel-1"),
     )
 
 @Preview(showBackground = true)

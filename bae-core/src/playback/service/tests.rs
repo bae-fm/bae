@@ -296,7 +296,7 @@ fn test_track_info(track_id: &str) -> PlaybackTrackInfo {
         artist_id: "artist-id".to_string(),
         album_id: "album-id".to_string(),
         album_title: "Album Title".to_string(),
-        cover_image_id: None,
+        cover_image: None,
         release_id: "release-id".to_string(),
         side: None,
     }

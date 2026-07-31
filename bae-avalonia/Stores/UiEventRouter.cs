@@ -43,14 +43,14 @@ internal sealed class UiEventRouter
         switch (evt)
         {
             case BridgeUiEvent.PlaybackPlaying playing:
-                _playback.ApplyPlaying(playing.AlbumId, playing.TrackId, playing.TrackTitle, playing.ArtistNames, playing.CoverImageId);
+                _playback.ApplyPlaying(playing.AlbumId, playing.TrackId, playing.TrackTitle, playing.ArtistNames, playing.CoverImage);
                 _mediaControls.UpdateNowPlayingPlaying(
-                    playing.TrackTitle, playing.ArtistNames, playing.AlbumTitle, playing.CoverImageId, playing.DurationMs);
+                    playing.TrackTitle, playing.ArtistNames, playing.AlbumTitle, playing.CoverImage, playing.DurationMs);
                 break;
             case BridgeUiEvent.PlaybackPaused paused:
-                _playback.ApplyPaused(paused.AlbumId, paused.TrackId, paused.TrackTitle, paused.ArtistNames, paused.CoverImageId, paused.Reason);
+                _playback.ApplyPaused(paused.AlbumId, paused.TrackId, paused.TrackTitle, paused.ArtistNames, paused.CoverImage, paused.Reason);
                 _mediaControls.UpdateNowPlayingPaused(
-                    paused.TrackTitle, paused.ArtistNames, paused.AlbumTitle, paused.CoverImageId, paused.DurationMs);
+                    paused.TrackTitle, paused.ArtistNames, paused.AlbumTitle, paused.CoverImage, paused.DurationMs);
                 break;
             case BridgeUiEvent.PlaybackStopped:
                 _playback.ApplyStopped();
@@ -75,7 +75,7 @@ internal sealed class UiEventRouter
                 {
                     _mediaControls.UpdateNowPlayingLoading(
                         loadingTrack.TrackTitle, loadingTrack.ArtistNames, loadingTrack.AlbumTitle,
-                        loadingTrack.CoverImageId, loadingTrack.DurationMs);
+                        loadingTrack.CoverImage, loadingTrack.DurationMs);
                 }
                 break;
             case BridgeUiEvent.VolumeChanged volume:

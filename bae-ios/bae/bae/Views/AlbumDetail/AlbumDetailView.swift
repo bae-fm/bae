@@ -170,7 +170,7 @@ struct AlbumDetailView: View {
                 loadImage: { item in
                     // The lightbox passes the whole source to the bridge, which
                     // dispatches the read in core. The UI never inspects it.
-                    try await mediaPaths.fetchGalleryBytes(
+                    try await mediaPaths.fetchReleaseImageBytes(
                         releaseId,
                         item.source
                     )

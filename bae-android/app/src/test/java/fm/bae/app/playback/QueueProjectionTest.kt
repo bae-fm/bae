@@ -1,6 +1,7 @@
 package fm.bae.app.playback
 
 import android.os.Looper
+import fm.bae.app.testCoverRef
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -12,6 +13,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
 import uniffi.bae_bridge.BridgeDurationClock
+import uniffi.bae_bridge.BridgeImageRef
 import uniffi.bae_bridge.BridgePlaybackContext
 import uniffi.bae_bridge.BridgePlaybackSourceKind
 import uniffi.bae_bridge.BridgeQueueEntry
@@ -35,7 +37,7 @@ class QueueProjectionTest {
     private fun entry(
         id: String,
         durationClock: BridgeDurationClock? = sampleClock,
-        coverImageId: String? = "cover-$id",
+        coverImage: BridgeImageRef? = testCoverRef("cover-$id"),
     ) = BridgeQueueEntry(
         entryId = "entry-$id",
         trackId = "track-$id",
@@ -43,13 +45,13 @@ class QueueProjectionTest {
         artistNames = "Artist Name",
         durationClock = durationClock,
         albumTitle = "Album Title",
-        coverImageId = coverImageId,
+        coverImage = coverImage,
     )
 
     private fun item(
         id: String,
         durationClock: BridgeDurationClock? = sampleClock,
-        coverImageId: String? = "cover-$id",
+        coverImage: BridgeImageRef? = testCoverRef("cover-$id"),
     ) = QueueItem(
         entryId = "entry-$id",
         trackId = "track-$id",
@@ -57,7 +59,7 @@ class QueueProjectionTest {
         artist = "Artist Name",
         albumTitle = "Album Title",
         durationClock = durationClock,
-        coverImageId = coverImageId,
+        coverImage = coverImage,
     )
 
     @Test
@@ -153,7 +155,7 @@ class QueueProjectionTest {
         val player = player()
 
         player.onQueueUpdated(
-            manual = listOf(entry("a", durationClock = null, coverImageId = null)),
+            manual = listOf(entry("a", durationClock = null, coverImage = null)),
             context = null,
             hasNext = false,
             hasPrevious = false,
@@ -163,7 +165,7 @@ class QueueProjectionTest {
         val manual = player.queue.value.manual
         val projected = manual.single()
         assertNull(projected.durationClock)
-        assertNull(projected.coverImageId)
+        assertNull(projected.coverImage)
     }
 
     @Test

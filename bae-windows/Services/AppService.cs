@@ -104,7 +104,7 @@ internal sealed class AppService
             windowHandle(),
             dispatcher,
             Playback,
-            imageId => MediaPaths.FetchCoverImageBytes(imageId));
+            image => MediaPaths.FetchLibraryImageBytes(image));
         ImportStore = new ImportStore(Import, ShowError, MediaControlService);
         ProjectionRegistry = new ProjectionRegistry();
         // In-flight release transfers (pin/unpin/manage/unmanage), driven by

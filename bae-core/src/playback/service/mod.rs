@@ -119,7 +119,10 @@ pub struct PlaybackTrackInfo {
     pub artist_id: String,
     pub album_id: String,
     pub album_title: String,
-    pub cover_image_id: Option<String>,
+    /// The track's own release's cover, versioned — `None` when that release has
+    /// no cover row. The UI keys its decoded copy on the whole reference, so new
+    /// bytes for the same release replace it.
+    pub cover_image: Option<crate::album_detail::ImageRef>,
     pub release_id: String,
     pub side: Option<PlaybackTrackSide>,
 }

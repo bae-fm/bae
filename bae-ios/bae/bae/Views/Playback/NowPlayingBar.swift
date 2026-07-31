@@ -79,7 +79,7 @@ struct NowPlayingBar: View {
             showExpanded = true
         } label: {
             HStack(spacing: 12) {
-                ImageView(coverImageId: track.coverImageId, pointSize: 48)
+                ImageView(imageRef: track.coverImage, pointSize: 48)
                     .frame(width: 48, height: 48)
                     .clipShape(RoundedRectangle(cornerRadius: 4))
                 VStack(alignment: .leading, spacing: 2) {

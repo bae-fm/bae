@@ -35,6 +35,7 @@ import androidx.glance.text.TextStyle
 import fm.bae.app.R
 import fm.bae.app.mainActivityIntent
 import fm.bae.app.playback.ArtworkContentProvider
+import uniffi.bae_bridge.BridgeImageRef
 
 /**
  * Home-screen widget showing the last now-playing state with play/pause and next
@@ -72,7 +73,7 @@ private fun NowPlayingWidgetContent(snapshot: WidgetSnapshot) {
                 .clickable(actionStartActivity(mainActivityIntent(context))),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Cover(track?.coverImageId)
+        Cover(track?.coverImage)
         Spacer(GlanceModifier.width(12.dp))
         Column(modifier = GlanceModifier.defaultWeight()) {
             Text(
@@ -111,10 +112,10 @@ private fun NowPlayingWidgetContent(snapshot: WidgetSnapshot) {
 }
 
 @Composable
-private fun Cover(coverImageId: String?) {
+private fun Cover(coverImage: BridgeImageRef?) {
     val context = LocalContext.current
     val coverSize = 56.dp
-    if (coverImageId == null) {
+    if (coverImage == null) {
         Box(
             modifier =
                 GlanceModifier
@@ -134,7 +135,7 @@ private fun Cover(coverImageId: String?) {
         // Glance has no Uri ImageProvider; wrap the artwork content:// URI in an
         // Icon so the launcher resolves the bytes from ArtworkContentProvider
         // (the same path the media browse clients read covers through).
-        val coverIcon = Icon.createWithContentUri(ArtworkContentProvider.uriFor(context, coverImageId))
+        val coverIcon = Icon.createWithContentUri(ArtworkContentProvider.uriFor(context, coverImage))
         Image(
             provider = ImageProvider(coverIcon),
             contentDescription = null,

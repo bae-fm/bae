@@ -108,7 +108,7 @@ struct UiEventDispatcherTransportTests {
                     artistNames: "Artist Name",
                     albumId: "album-1",
                     albumTitle: "Album Title",
-                    coverImageId: nil,
+                    coverImage: nil,
                     durationMs: 180_000
                 )
             )
@@ -265,7 +265,7 @@ struct UiEventDispatcherQueueTests {
             artistNames: "Artist Name",
             durationClock: bridgeClock(ms: 180_000),
             albumTitle: "Album Title",
-            coverImageId: nil
+            coverImage: nil
         )
     }
 }
@@ -367,7 +367,7 @@ private func playingEvent(trackId: String) -> BridgeUiEvent {
         artistId: "artist-1",
         albumId: "album-1",
         albumTitle: "Album Title",
-        coverImageId: nil,
+        coverImage: nil,
         durationMs: 200_000
     )
 }
@@ -380,7 +380,7 @@ private func pausedEvent(trackId: String) -> BridgeUiEvent {
         artistId: "artist-1",
         albumId: "album-1",
         albumTitle: "Album Title",
-        coverImageId: nil,
+        coverImage: nil,
         durationMs: 200_000,
         reason: .manual
     )

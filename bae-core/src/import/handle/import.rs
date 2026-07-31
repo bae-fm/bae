@@ -49,8 +49,8 @@ impl ImportServiceHandle {
     /// itself: `prepare_release` for Exact / Approximate (reading the same LRU
     /// caches the UI's prefetch warmed), the candidate's local evidence for
     /// Unknown. Remote cover bytes don't ride the command either —
-    /// `download_cover_art_bytes` consults the URL cache when the worker writes
-    /// the cover.
+    /// the remote-image cache answers the worker's download when it writes the
+    /// cover.
     ///
     /// `identity_choice` carries the user's claim: Exact preserves the mapper's
     /// `source_release_id`, Approximate NULLs it, Unknown writes zero

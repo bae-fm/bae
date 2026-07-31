@@ -19,7 +19,9 @@ pub struct QueueItem {
     pub artist_names: String,
     pub duration_ms: Option<i64>,
     pub album_title: String,
-    pub cover_image_id: Option<String>,
+    /// The track's own release's cover, versioned — `None` when that release has
+    /// no cover row.
+    pub cover_image: Option<crate::album_detail::ImageRef>,
 }
 
 /// The context lane resolved for display: what it plays from (so the UI labels

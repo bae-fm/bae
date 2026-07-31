@@ -2,6 +2,7 @@ using System;
 using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Threading;
+using uniffi.bae_bridge;
 
 namespace Bae.Desktop;
 
@@ -18,7 +19,7 @@ internal sealed class MediaControlService : IMediaControl
     private readonly IMediaSession _session;
     private readonly Dispatcher _dispatcher;
     private readonly PlaybackService _playback;
-    private readonly Func<string, byte[]?> _fetchCoverBytes;
+    private readonly Func<BridgeImageRef, byte[]?> _fetchLibraryImageBytes;
     private readonly MediaControlState _state = new();
 
     // The last mute state core reported, so a volume written by an OS client knows
@@ -39,7 +40,7 @@ internal sealed class MediaControlService : IMediaControl
     {
 #if WINDOWS10_0_19041_0_OR_GREATER
         return new MediaControlService(
-            new SmtcMediaSession(), dispatcher, playback, mediaPaths.FetchCoverImageBytes);
+            new SmtcMediaSession(), dispatcher, playback, mediaPaths.FetchLibraryImageBytes);
 #else
         if (!OperatingSystem.IsLinux())
         {
@@ -47,7 +48,7 @@ internal sealed class MediaControlService : IMediaControl
         }
 
         var mpris = new MprisMediaSession(edition, raise, quit);
-        var control = new MediaControlService(mpris, dispatcher, playback, mediaPaths.FetchCoverImageBytes);
+        var control = new MediaControlService(mpris, dispatcher, playback, mediaPaths.FetchLibraryImageBytes);
         // The bus name goes up only after the service is listening, so a client
         // command cannot land while there is nothing to route it to.
         mpris.Serve();
@@ -59,12 +60,12 @@ internal sealed class MediaControlService : IMediaControl
         IMediaSession session,
         Dispatcher dispatcher,
         PlaybackService playback,
-        Func<string, byte[]?> fetchCoverBytes)
+        Func<BridgeImageRef, byte[]?> fetchLibraryImageBytes)
     {
         _session = session;
         _dispatcher = dispatcher;
         _playback = playback;
-        _fetchCoverBytes = fetchCoverBytes;
+        _fetchLibraryImageBytes = fetchLibraryImageBytes;
 
         _session.CommandRequested += OnCommandRequested;
         _session.SeekRequestedMs += OnSeekRequested;
@@ -74,19 +75,28 @@ internal sealed class MediaControlService : IMediaControl
     public void SetWindow(Window? window) => _session.SetWindow(window);
 
     public void UpdateNowPlayingPlaying(
-        string trackTitle, string artistNames, string albumTitle, string? coverImageId, ulong durationMs) =>
-        Apply(_state.UpdateForTrack(
-            trackTitle, artistNames, albumTitle, coverImageId, durationMs, MediaControlPlaybackStatus.Playing));
+        string trackTitle, string artistNames, string albumTitle, BridgeImageRef? coverImage, ulong durationMs) =>
+        Apply(
+            _state.UpdateForTrack(
+                trackTitle, artistNames, albumTitle, ArtworkToken(coverImage), durationMs,
+                MediaControlPlaybackStatus.Playing),
+            coverImage);
 
     public void UpdateNowPlayingPaused(
-        string trackTitle, string artistNames, string albumTitle, string? coverImageId, ulong durationMs) =>
-        Apply(_state.UpdateForTrack(
-            trackTitle, artistNames, albumTitle, coverImageId, durationMs, MediaControlPlaybackStatus.Paused));
+        string trackTitle, string artistNames, string albumTitle, BridgeImageRef? coverImage, ulong durationMs) =>
+        Apply(
+            _state.UpdateForTrack(
+                trackTitle, artistNames, albumTitle, ArtworkToken(coverImage), durationMs,
+                MediaControlPlaybackStatus.Paused),
+            coverImage);
 
     public void UpdateNowPlayingLoading(
-        string trackTitle, string artistNames, string albumTitle, string? coverImageId, ulong durationMs) =>
-        Apply(_state.UpdateForTrack(
-            trackTitle, artistNames, albumTitle, coverImageId, durationMs, MediaControlPlaybackStatus.Changing));
+        string trackTitle, string artistNames, string albumTitle, BridgeImageRef? coverImage, ulong durationMs) =>
+        Apply(
+            _state.UpdateForTrack(
+                trackTitle, artistNames, albumTitle, ArtworkToken(coverImage), durationMs,
+                MediaControlPlaybackStatus.Changing),
+            coverImage);
 
     public void UpdateNowPlayingStopped()
     {
@@ -146,7 +156,7 @@ internal sealed class MediaControlService : IMediaControl
 
     // Pushes a display's metadata, artwork action, and status to the surface, and
     // marks the session live. Null while a preview suppresses library updates.
-    private void Apply(MediaControlDisplay? display)
+    private void Apply(MediaControlDisplay? display, BridgeImageRef? coverImage = null)
     {
         if (display is null)
         {
@@ -156,7 +166,9 @@ internal sealed class MediaControlService : IMediaControl
         _session.Apply(display);
         if (display.Artwork is MediaControlArtwork.Load load)
         {
-            StartArtworkLoad(load.ImageId);
+            // A Load is only produced for a cover that is present, so the
+            // reference behind the token is in hand.
+            StartArtworkLoad(coverImage!, load.Token);
         }
     }
 
@@ -251,24 +263,29 @@ internal sealed class MediaControlService : IMediaControl
         }
     }
 
-    private void StartArtworkLoad(string imageId)
+    // The state layer names artwork by token (it compiles without the generated
+    // bridge bindings), so the reference the fetch needs travels alongside it.
+    private static string? ArtworkToken(BridgeImageRef? image) =>
+        image is null ? null : $"{image.ImageType}:{image.Id}:{image.Version}";
+
+    private void StartArtworkLoad(BridgeImageRef image, string token)
     {
-        _ = Task.Run(() => _fetchCoverBytes(imageId)).ContinueWith(task =>
+        _ = Task.Run(() => _fetchLibraryImageBytes(image)).ContinueWith(task =>
         {
             var bytes = task.Status == TaskStatus.RanToCompletion ? task.Result : null;
             if (task.Exception is not null)
             {
                 BaeDiagnostics.Logger.Warning("Failed to read the system now-playing cover.", task.Exception);
             }
-            _dispatcher.Post(() => ApplyArtwork(imageId, bytes));
+            _dispatcher.Post(() => ApplyArtwork(token, bytes));
         }, TaskScheduler.Default);
     }
 
     // Hands the fetched cover to the surface, unless the track changed while the
     // fetch was in flight (stale load) or the fetch produced nothing.
-    private void ApplyArtwork(string imageId, byte[]? bytes)
+    private void ApplyArtwork(string token, byte[]? bytes)
     {
-        if (!_state.ArtworkLoadIsCurrent(imageId))
+        if (!_state.ArtworkLoadIsCurrent(token))
         {
             // A newer track's load owns the artwork slot now.
             BaeDiagnostics.Logger.Debug("Skipping stale system now-playing cover load.");
@@ -280,7 +297,7 @@ internal sealed class MediaControlService : IMediaControl
             // closed mid-fetch. Forget the id so the next update for this cover
             // retries the load instead of keeping an image that never arrived.
             BaeDiagnostics.Logger.Debug("System now-playing cover fetch produced no bytes; will retry on the next update.");
-            _state.ArtworkLoadFailed(imageId);
+            _state.ArtworkLoadFailed(token);
             return;
         }
 

@@ -13,6 +13,7 @@ import org.robolectric.RuntimeEnvironment
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import uniffi.bae_bridge.AppHandle
+import uniffi.bae_bridge.BridgeImageRef
 import uniffi.bae_bridge.BridgePlaybackPauseReason
 import uniffi.bae_bridge.BridgeUiEvent
 import uniffi.bae_bridge.NoHandle
@@ -91,7 +92,7 @@ class PlaybackControlsTest {
             artistId = "artist-1",
             albumId = "album-1",
             albumTitle = "Album Title",
-            coverImageId = null,
+            coverImage = null,
             durationMs = 180_000uL,
         )
 
@@ -103,7 +104,7 @@ class PlaybackControlsTest {
             artistId = "artist-1",
             albumId = "album-1",
             albumTitle = "Album Title",
-            coverImageId = null,
+            coverImage = null,
             durationMs = 180_000uL,
             reason = BridgePlaybackPauseReason.Manual,
         )
@@ -142,6 +143,6 @@ class PlaybackControlsTest {
 
         override fun subscribeUiEvents(callback: UiEventCallback) {}
 
-        override suspend fun fetchCoverImageBytes(releaseId: String): ByteArray? = null
+        override suspend fun fetchLibraryImageBytes(image: BridgeImageRef): ByteArray? = null
     }
 }

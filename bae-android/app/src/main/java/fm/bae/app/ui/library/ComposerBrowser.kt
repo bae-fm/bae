@@ -277,8 +277,7 @@ internal fun ComposerSummaryRow(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         CoverImage(
-            coverId = composer.image?.id,
-            coverVersion = composer.image?.version,
+            cover = composer.image,
             loadImage = loadImage,
             cornerRadius = 6.dp,
             iconPadding = 12.dp,

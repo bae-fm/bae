@@ -35,6 +35,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import uniffi.bae_bridge.BridgeImageRef
 
 private const val TAG = "bae.CoverImage"
 private val logger = BaeLogger(TAG)
@@ -88,14 +89,10 @@ val LocalImageDispatcher =
     staticCompositionLocalOf<CoroutineDispatcher> { Dispatchers.IO }
 
 /**
- * A cover's cache identity. A version (the image row's `_updated_at`) busts the
- * cache when the cover is replaced in place; now-playing/queue covers carry only
- * an id (no version), so they key on the id alone.
+ * A cover's cache identity: the image kind, its subject id, and the image row's
+ * `_updated_at`, so replacing a cover in place busts the entry.
  */
-private fun cacheKey(
-    id: String,
-    version: String?,
-): String = if (version != null) "$id#$version" else id
+private fun cacheKey(image: BridgeImageRef): String = "${image.imageType}:${image.id}#${image.version}"
 
 private sealed interface CoverState {
     object Loading : CoverState
@@ -109,20 +106,19 @@ private sealed interface CoverState {
 }
 
 /**
- * Resolve a cover reference (image id + optional version) to its bytes: a cache
- * hit renders immediately and never re-crosses the bridge; a miss fetches via
- * [loadImage] and caches the result. A null id, an absent cover, or a failed
- * fetch resolves to [CoverState.Absent] (the loss is logged, never silent).
+ * Resolve a cover reference to its bytes: a cache hit renders immediately and
+ * never re-crosses the bridge; a miss fetches via [loadImage] and caches the
+ * result. A null reference, an absent cover, or a failed fetch resolves to
+ * [CoverState.Absent] (the loss is logged, never silent).
  */
 @Composable
 private fun rememberCoverState(
-    coverId: String?,
-    coverVersion: String?,
-    loadImage: suspend (imageId: String) -> ByteArray?,
+    cover: BridgeImageRef?,
+    loadImage: suspend (image: BridgeImageRef) -> ByteArray?,
 ): CoverState {
     val coverCache = LocalCoverBytesCache.current
     val dispatcher = LocalImageDispatcher.current
-    val key = coverId?.let { cacheKey(it, coverVersion) }
+    val key = cover?.let { cacheKey(it) }
     var state by remember(key) {
         mutableStateOf(
             when {
@@ -132,14 +128,14 @@ private fun rememberCoverState(
         )
     }
     LaunchedEffect(key) {
-        if (key == null || state is CoverState.Loaded) return@LaunchedEffect
+        if (cover == null || key == null || state is CoverState.Loaded) return@LaunchedEffect
         state =
             try {
-                val bytes = withContext(dispatcher) { loadImage(coverId) }
+                val bytes = withContext(dispatcher) { loadImage(cover) }
                 if (bytes == null) {
                     // Core handed us a cover reference but its blob read returned
                     // nothing — unexpected, so note it rather than blanking silently.
-                    logger.warning("cover image bytes absent for $coverId")
+                    logger.warning("cover image bytes absent for ${cover.id}")
                     CoverState.Absent
                 } else {
                     coverCache.put(key, bytes)
@@ -148,7 +144,7 @@ private fun rememberCoverState(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                logger.error("Failed to load cover image $coverId", e)
+                logger.error("Failed to load cover image ${cover.id}", e)
                 CoverState.Absent
             }
     }
@@ -156,17 +152,16 @@ private fun rememberCoverState(
 }
 
 /**
- * Album-cover thumbnail: the cover for [coverId] (fetched by id and cached by
- * `(id, version)`) clipped to a rounded square, or a MusicNote placeholder when
+ * Album-cover thumbnail: the image [cover] names (cached under its kind, id, and
+ * content version) clipped to a rounded square, or a MusicNote placeholder when
  * there is no cover. The caller's [modifier] carries the sizing —
  * `Modifier.size(48.dp)` for list rows, `Modifier.fillMaxWidth().aspectRatio(1f)`
- * for full-width art. [loadImage] reads cover bytes off the bridge by release id.
+ * for full-width art. [loadImage] reads the bytes off the bridge.
  */
 @Composable
 fun CoverImage(
-    coverId: String?,
-    coverVersion: String?,
-    loadImage: suspend (imageId: String) -> ByteArray?,
+    cover: BridgeImageRef?,
+    loadImage: suspend (image: BridgeImageRef) -> ByteArray?,
     cornerRadius: Dp,
     iconPadding: Dp,
     modifier: Modifier = Modifier,
@@ -176,7 +171,7 @@ fun CoverImage(
         modifier = modifier.clip(RoundedCornerShape(cornerRadius)),
         contentAlignment = Alignment.Center,
     ) {
-        when (val state = rememberCoverState(coverId, coverVersion, loadImage)) {
+        when (val state = rememberCoverState(cover, loadImage)) {
             is CoverState.Loaded -> {
                 AsyncImage(
                     model = coverModel(state.bytes, state.cacheKey),
@@ -248,8 +243,7 @@ private fun CoverImagePreview() {
     BaeTheme {
         CompositionLocalProvider(LocalCoverBytesCache provides CoverBytesCache()) {
             CoverImage(
-                coverId = null,
-                coverVersion = null,
+                cover = null,
                 loadImage = { _ -> null },
                 cornerRadius = 6.dp,
                 iconPadding = 24.dp,

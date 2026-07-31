@@ -9,6 +9,9 @@ impl Database {
     /// The cover is the track's own release's, not the album's primary release's,
     /// so a queued track from a non-primary release shows that release's art — the
     /// same rule `playback_info_from_track_release` applies to the playing track.
+    /// Its `covers` row joins in here rather than in a second query, giving each
+    /// entry the versioned reference the UI caches art under; a release with no
+    /// cover row yields `None`.
     pub async fn get_queue_items(&self, entries: &[QueueEntry]) -> Result<Vec<QueueItem>, DbError> {
         if entries.is_empty() {
             return Ok(Vec::new());
@@ -29,6 +32,7 @@ impl Database {
                             t.duration_ms, \
                             a.title AS album_title, \
                             r.id AS cover_image_id, \
+                            c._updated_at AS cover_version, \
                             COALESCE( \
                                 NULLIF(( \
                                     SELECT GROUP_CONCAT(art.name, ', ' ORDER BY ta.position) \
@@ -41,6 +45,7 @@ impl Database {
                         FROM tracks t \
                         JOIN releases r ON r.id = t.release_id \
                         JOIN albums a ON a.id = r.album_id \
+                        LEFT JOIN covers c ON c.id = r.id \
                         WHERE t.id IN ({placeholders})"
                     );
 
@@ -48,6 +53,8 @@ impl Database {
                     let mut rows = stmt.query(coven::rusqlite::params_from_iter(chunk.iter()))?;
                     while let Some(row) = rows.next()? {
                         let track_id: String = row.get("track_id")?;
+                        let cover_image_id: String = row.get("cover_image_id")?;
+                        let cover_version: Option<String> = row.get("cover_version")?;
                         meta_by_track.insert(
                             track_id,
                             TrackQueueMeta {
@@ -55,7 +62,13 @@ impl Database {
                                 artist_names: row.get("artist_names")?,
                                 duration_ms: row.get("duration_ms")?,
                                 album_title: row.get("album_title")?,
-                                cover_image_id: row.get("cover_image_id")?,
+                                cover_image: cover_version.map(|version| {
+                                    crate::album_detail::ImageRef {
+                                        id: cover_image_id,
+                                        version,
+                                        image_type: LibraryImageType::Cover,
+                                    }
+                                }),
                             },
                         );
                     }

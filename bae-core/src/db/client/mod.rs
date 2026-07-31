@@ -2048,7 +2048,7 @@ struct TrackQueueMeta {
     artist_names: String,
     duration_ms: Option<i64>,
     album_title: String,
-    cover_image_id: Option<String>,
+    cover_image: Option<crate::album_detail::ImageRef>,
 }
 
 /// Join per-track metadata onto each queue entry, preserving order and duplicates.
@@ -2082,7 +2082,7 @@ fn resolve_queue_entries(
                 artist_names: meta.artist_names.clone(),
                 duration_ms: meta.duration_ms,
                 album_title: meta.album_title.clone(),
-                cover_image_id: meta.cover_image_id.clone(),
+                cover_image: meta.cover_image.clone(),
             })
         })
         .collect()

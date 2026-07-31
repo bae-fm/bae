@@ -24,9 +24,9 @@ struct NowPlayingBarContainer: View {
         let np = playbackStore.nowPlaying
         let track = np.track
         let cover: ImageContent? =
-            track?.coverImageId
+            track?.coverImage
             .map {
-                .library(.cover(id: $0, version: nil))
+                .library(.image($0))
             }
         NowPlayingBar(
             trackTitle: track?.trackTitle,
@@ -92,7 +92,7 @@ struct NowPlayingBarContainer: View {
                 trackTitle: PreviewData.nowPlayingTitle,
                 artistNames: PreviewData.nowPlayingArtist,
                 albumId: "a-01",
-                coverImageId: nil,
+                coverImage: nil,
                 durationMs: 222_000,
             )
         )

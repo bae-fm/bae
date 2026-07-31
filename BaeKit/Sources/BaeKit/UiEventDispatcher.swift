@@ -259,7 +259,7 @@ extension UiEventDispatcher {
                     trackTitle: track.trackTitle,
                     artistNames: track.artistNames,
                     albumId: track.albumId,
-                    coverImageId: track.coverImageId,
+                    coverImage: track.coverImage,
                     durationMs: track.durationMs
                 )
             )
@@ -297,7 +297,7 @@ struct NowPlayingFields {
     let artistId: String
     let albumId: String
     let albumTitle: String
-    let coverImageId: String?
+    let coverImage: BridgeImageRef?
     let durationMs: UInt64
 
     /// Unpacks the track fields from a `playbackPlaying` or `playbackPaused`
@@ -311,7 +311,7 @@ struct NowPlayingFields {
             let artistId,
             let albumId,
             let albumTitle,
-            let coverImageId,
+            let coverImage,
             let durationMs
         ),
             .playbackPaused(
@@ -321,7 +321,7 @@ struct NowPlayingFields {
                 let artistId,
                 let albumId,
                 let albumTitle,
-                let coverImageId,
+                let coverImage,
                 let durationMs,
                 _
             ):
@@ -331,7 +331,7 @@ struct NowPlayingFields {
             self.artistId = artistId
             self.albumId = albumId
             self.albumTitle = albumTitle
-            self.coverImageId = coverImageId
+            self.coverImage = coverImage
             self.durationMs = durationMs
 
         default:
@@ -350,7 +350,7 @@ struct NowPlayingFields {
                 artistId: artistId,
                 albumId: albumId,
                 albumTitle: albumTitle,
-                coverImageId: coverImageId,
+                coverImage: coverImage,
                 durationMs: durationMs
             )
             : .paused(
@@ -360,7 +360,7 @@ struct NowPlayingFields {
                 artistId: artistId,
                 albumId: albumId,
                 albumTitle: albumTitle,
-                coverImageId: coverImageId,
+                coverImage: coverImage,
                 durationMs: durationMs
             )
     }
@@ -371,7 +371,7 @@ struct NowPlayingFields {
             trackTitle: trackTitle,
             artistNames: artistNames,
             albumId: albumId,
-            coverImageId: coverImageId,
+            coverImage: coverImage,
             durationMs: durationMs
         )
     }

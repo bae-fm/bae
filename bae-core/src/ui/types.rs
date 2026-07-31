@@ -154,7 +154,7 @@ pub enum UiBusEvent {
         artist_id: String,
         album_id: String,
         album_title: String,
-        cover_image_id: Option<String>,
+        cover_image: Option<crate::album_detail::ImageRef>,
         duration_ms: u64,
     },
     PlaybackPaused {
@@ -164,7 +164,7 @@ pub enum UiBusEvent {
         artist_id: String,
         album_id: String,
         album_title: String,
-        cover_image_id: Option<String>,
+        cover_image: Option<crate::album_detail::ImageRef>,
         duration_ms: u64,
         reason: crate::playback::PlaybackPauseReason,
     },

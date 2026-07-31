@@ -301,7 +301,7 @@ internal sealed class QueuePane
             _card.IsVisible = true;
             _cardTitle!.Text = track.Title;
             _cardArtist!.Text = track.Artist;
-            _cardCover!.Source = CoverImage.LoadImage(_app.MediaPaths, track.CoverImageId);
+            _cardCover!.Source = CoverImage.LoadImage(_app.MediaPaths, track.CoverImage);
             _renderedSecond = -1;
             RenderCardPosition(force: true);
         }
@@ -515,7 +515,7 @@ internal sealed class QueuePane
     private Control BuildEntryRow(EntryRow row)
     {
         var cover = new Image { Stretch = Stretch.UniformToFill };
-        CoverImage.BindById(cover, _app.MediaPaths, row.Entry.CoverImageId);
+        CoverImage.BindById(cover, _app.MediaPaths, row.Entry.CoverImage);
         var art = new Border { Width = 44, Height = 44, CornerRadius = new CornerRadius(8), ClipToBounds = true, Child = cover };
         art[!Border.BackgroundProperty] = new DynamicResourceExtension("BaeElevatedBrush");
 

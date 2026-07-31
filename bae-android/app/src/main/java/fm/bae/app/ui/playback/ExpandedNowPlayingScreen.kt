@@ -134,8 +134,7 @@ private fun ExpandedPlayer(
         Spacer(modifier = Modifier.height(8.dp))
 
         CoverImage(
-            coverId = track.coverImageId,
-            coverVersion = null,
+            cover = track.coverImage,
             loadImage = session.library::imageBytes,
             cornerRadius = 8.dp,
             iconPadding = 64.dp,

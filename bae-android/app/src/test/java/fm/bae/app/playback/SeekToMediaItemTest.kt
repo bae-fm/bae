@@ -13,6 +13,7 @@ import org.robolectric.RuntimeEnvironment
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import uniffi.bae_bridge.AppHandle
+import uniffi.bae_bridge.BridgeImageRef
 import uniffi.bae_bridge.BridgePlaybackContext
 import uniffi.bae_bridge.BridgePlaybackSourceKind
 import uniffi.bae_bridge.BridgeQueueEntry
@@ -38,7 +39,7 @@ class SeekToMediaItemTest {
             artistNames = "Artist Name",
             durationClock = null,
             albumTitle = "Album Title",
-            coverImageId = null,
+            coverImage = null,
         )
 
     @Test
@@ -101,7 +102,7 @@ class SeekToMediaItemTest {
                 artistId = "artist-1",
                 albumId = "album-1",
                 albumTitle = "Album Title",
-                coverImageId = null,
+                coverImage = null,
                 durationMs = 180_000uL,
             ),
         )
@@ -133,6 +134,6 @@ class SeekToMediaItemTest {
 
         override fun subscribeUiEvents(callback: UiEventCallback) {}
 
-        override suspend fun fetchCoverImageBytes(releaseId: String): ByteArray? = null
+        override suspend fun fetchLibraryImageBytes(image: BridgeImageRef): ByteArray? = null
     }
 }

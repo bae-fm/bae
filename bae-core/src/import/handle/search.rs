@@ -71,17 +71,17 @@ fn discogs_general_params(
 }
 
 impl ImportServiceHandle {
-    /// Fetch raw cover-art bytes for `url`, for the UI to render a remote cover.
-    /// The bytes aren't threaded back through the import command, but the
-    /// session-wide LRU cache in `cover_art` keeps them warm, so the commit
-    /// worker's later download is a cache hit rather than a re-fetch.
-    pub async fn fetch_cover_bytes(
+    /// Bytes of provider art at `url` — art that isn't in the library, so the UI
+    /// renders it straight from the remote source. The bytes aren't threaded back
+    /// through the import command, but the session cache keeps them warm, so the
+    /// commit worker's later download is a cache hit rather than a re-fetch. The
+    /// returned validator identifies this exact content, so a UI keyed on it
+    /// re-decodes only when the bytes at the URL actually change.
+    pub async fn fetch_remote_image_bytes(
         &self,
         url: String,
-    ) -> Result<Vec<u8>, crate::import::ImportError> {
-        let (bytes, _content_type) =
-            crate::import::cover_art::download_cover_art_bytes(&url).await?;
-        Ok(bytes)
+    ) -> Result<crate::import::cover_art::RemoteImage, crate::import::ImportError> {
+        self.library_manager.remote_images().fetch(&url).await
     }
 
     fn discogs_client(&self) -> Result<DiscogsClient, crate::import::ImportError> {

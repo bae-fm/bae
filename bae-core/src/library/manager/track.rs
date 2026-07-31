@@ -247,8 +247,9 @@ pub(crate) async fn playback_info_from_track_release(
     release: &DbRelease,
 ) -> Result<crate::playback::PlaybackTrackInfo, LibraryError> {
     // Cover comes from the track's own release so playing a non-primary
-    // release shows that release's art, not the album-level primary.
-    let cover_image_id = Some(track.release_id.clone());
+    // release shows that release's art, not the album-level primary. The version
+    // rides along, so the UI's art cache invalidates when the cover changes.
+    let cover_image = super::release::cover_ref_for(database, &track.release_id).await?;
     let album_id = release.album_id.clone();
     let album_title = match database.find_album_by_id(&album_id).await? {
         Some(album) => album.title,
@@ -292,7 +293,7 @@ pub(crate) async fn playback_info_from_track_release(
         artist_id,
         album_id,
         album_title,
-        cover_image_id,
+        cover_image,
         release_id: release.id.clone(),
         side,
     })

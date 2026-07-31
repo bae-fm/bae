@@ -39,7 +39,7 @@ internal sealed class ReleaseActionDialogs
         foreach (var item in items)
         {
             var source = item.Source;
-            entries.Add(new LightboxEntry(item.Id, item.Label, () => _app.MediaPaths.FetchGalleryBytes(releaseId, source)));
+            entries.Add(new LightboxEntry(item.Id, item.Label, () => _app.MediaPaths.FetchReleaseImageBytes(releaseId, source)));
         }
         _lightbox.Show(entries, 0);
     }

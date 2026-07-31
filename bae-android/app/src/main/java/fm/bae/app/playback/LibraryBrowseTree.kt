@@ -9,6 +9,7 @@ import fm.bae.app.data.Library
 import uniffi.bae_bridge.BridgeAlbumDetail
 import uniffi.bae_bridge.BridgeComposerSortCriterion
 import uniffi.bae_bridge.BridgeComposerSortField
+import uniffi.bae_bridge.BridgeImageRef
 import uniffi.bae_bridge.BridgeRelease
 import uniffi.bae_bridge.BridgeSortCriterion
 import uniffi.bae_bridge.BridgeSortDirection
@@ -50,8 +51,8 @@ internal class LibraryBrowseTree(
     private val labels: () -> BrowseLabels,
     /** Maps a cover-image id (a release/composer/work cover) to the content URI
      *  the browse client fetches its bytes from — the same bytes the bridge's
-     *  `fetchCoverImageBytes` serves. */
-    artworkUri: (coverId: String) -> Uri,
+     *  `fetchLibraryImageBytes` serves. */
+    artworkUri: (image: BridgeImageRef) -> Uri,
 ) {
     private val nodes = BrowseNodeFactory(artworkUri)
 
@@ -60,7 +61,7 @@ internal class LibraryBrowseTree(
         nodes.browsable(
             id = BrowseId.Root,
             title = ROOT_TITLE,
-            coverId = null,
+            cover = null,
             mediaType = MediaMetadata.MEDIA_TYPE_FOLDER_MIXED,
         )
 
@@ -150,7 +151,7 @@ internal class LibraryBrowseTree(
 
             is BrowseId.Album -> {
                 val detail = library.albumDetail(id.albumId)
-                nodes.album(detail.album.id, detail.album.title, detail.album.cover?.id)
+                nodes.album(detail.album.id, detail.album.title, detail.album.cover)
             }
 
             is BrowseId.Composer -> {
@@ -180,7 +181,7 @@ internal class LibraryBrowseTree(
         page: Int,
         pageSize: Int,
     ): List<MediaItem> {
-        val albums = library.search(query).albums.map { nodes.album(it.id, it.title, it.cover?.id) }
+        val albums = library.search(query).albums.map { nodes.album(it.id, it.title, it.cover) }
         return paginate(albums, page, pageSize)
     }
 
@@ -224,7 +225,7 @@ internal class LibraryBrowseTree(
         pageSize: Int,
     ): List<MediaItem> {
         val albums = library.albumPage(listOf(ALBUM_SORT), offsetOf(page, pageSize), limitOf(pageSize))
-        return albums.map { nodes.album(it.id, it.title, it.cover?.id) }
+        return albums.map { nodes.album(it.id, it.title, it.cover) }
     }
 
     private suspend fun composerListChildren(
@@ -273,7 +274,7 @@ internal class LibraryBrowseTree(
             return emptyList()
         }
         val childWorkItems = detail.childWorks.map { nodes.work(it) }
-        val releaseAlbums = detail.releases.map { nodes.album(it.albumId, it.albumTitle, it.cover?.id) }
+        val releaseAlbums = detail.releases.map { nodes.album(it.albumId, it.albumTitle, it.cover) }
         return paginate(childWorkItems + releaseAlbums, page, pageSize)
     }
 

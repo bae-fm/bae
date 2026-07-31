@@ -94,7 +94,7 @@ internal static class CoverImage
             var mediaPaths = _mediaPaths;
             var dispatcherQueue = _dispatcherQueue;
             var cover = _cover;
-            _ = Task.Run(() => mediaPaths.FetchImageBytes(cover)).ContinueWith(task =>
+            _ = Task.Run(() => mediaPaths.FetchLibraryImageBytes(cover)).ContinueWith(task =>
             {
                 byte[]? bytes = null;
                 if (task.Status == TaskStatus.RanToCompletion)
@@ -129,27 +129,24 @@ internal static class CoverImage
     }
 
     /// <summary>
-    /// The decoded cover for an image id alone — the now-playing cover, which the
-    /// event carries without a version. Decoded fresh each call (no version to
-    /// cache under); null when <paramref name="imageId"/> is empty or the bytes
+    /// The decoded cover for a library image ref — the now-playing cover. Decoded
+    /// fresh each call; null when <paramref name="image"/> is absent or the bytes
     /// can't be read or decoded.
     /// </summary>
-    public static Bitmap? LoadImage(MediaPathsService mediaPaths, string? imageId)
+    public static Bitmap? LoadImage(MediaPathsService mediaPaths, BridgeImageRef? image)
     {
-        if (string.IsNullOrEmpty(imageId))
+        if (image is null)
         {
             return null;
         }
 
-        return Decode(mediaPaths.FetchCoverImageBytes(imageId));
+        return Decode(mediaPaths.FetchLibraryImageBytes(image));
     }
 
     /// <summary>
-    /// Decoded covers keyed by image id alone — queue entries, whose bridge shape
-    /// carries a bare id with no content version. A changed cover isn't observed
-    /// mid-session (queue art is stable while a track sits in the lane), so the id
-    /// is a sufficient key; the cache spares the re-read/re-decode as recycled
-    /// rows rebind on scroll.
+    /// Decoded covers keyed by image ref — queue entries. The key pins the
+    /// content version, so replacing a cover reloads; the cache spares the
+    /// re-read/re-decode as recycled rows rebind on scroll.
     /// </summary>
     private static readonly Dictionary<string, Bitmap> IdCache = new();
 
@@ -165,13 +162,14 @@ internal static class CoverImage
     /// (it is correct for its id); only the application to a since-recycled control
     /// is guarded.
     /// </summary>
-    public static void BindById(Image image, MediaPathsService mediaPaths, string? imageId)
+    public static void BindById(Image image, MediaPathsService mediaPaths, BridgeImageRef? cover)
     {
-        // Stamp the id this control now wants (or null when absent), so a slow
+        // Stamp the image this control now wants (or null when absent), so a slow
         // reply for a since-recycled row can tell it is stale.
+        var imageId = cover is null ? null : $"{cover.Id}:{cover.Version}";
         image.Tag = imageId;
         image.Source = null;
-        if (string.IsNullOrEmpty(imageId))
+        if (cover is null || imageId is null)
         {
             return;
         }
@@ -186,7 +184,7 @@ internal static class CoverImage
         }
 
         var dispatcher = Dispatcher.UIThread;
-        _ = Task.Run(() => mediaPaths.FetchCoverImageBytes(imageId))
+        _ = Task.Run(() => mediaPaths.FetchLibraryImageBytes(cover))
             .ContinueWith(
                 task =>
                 {
@@ -202,9 +200,9 @@ internal static class CoverImage
                         {
                             IdCache[imageId] = bitmap;
                         }
-                        // The row may have been recycled to another id (or cleared)
-                        // while this loaded; apply only if the control still wants
-                        // this id.
+                        // The row may have been recycled to another image (or
+                        // cleared) while this loaded; apply only if the control
+                        // still wants this one.
                         if ((image.Tag as string) == imageId)
                         {
                             image.Source = bitmap;
@@ -219,7 +217,7 @@ internal static class CoverImage
     /// Decoded fresh each call; null when the bytes can't be read or decoded.
     /// </summary>
     public static Bitmap? LoadGalleryBytes(MediaPathsService mediaPaths, string releaseId, BridgeGallerySource source) =>
-        Decode(mediaPaths.FetchGalleryBytes(releaseId, source));
+        Decode(mediaPaths.FetchReleaseImageBytes(releaseId, source));
 
     private static readonly System.Net.Http.HttpClient Http = new();
 

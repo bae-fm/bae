@@ -96,7 +96,7 @@ struct QueueItemRow: View {
     // so revealing it on hover doesn't resize the row and re-lay-out the lane.
     private var artWithHoverOverlay: some View {
         ZStack {
-            ImageView(coverImageId: item.coverImageId, pointSize: 44)
+            ImageView(imageRef: item.coverImage, pointSize: 44)
                 .frame(width: 44, height: 44)
                 .clipShape(RoundedRectangle(cornerRadius: 8))
 

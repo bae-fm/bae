@@ -77,7 +77,7 @@ internal data class AlbumPlaybackState(
 )
 
 internal data class AlbumDetailCallbacks(
-    val fetchGalleryBytes: suspend (releaseId: String, source: BridgeGallerySource) -> ByteArray,
+    val fetchReleaseImageBytes: suspend (releaseId: String, source: BridgeGallerySource) -> ByteArray,
     val loadCoverImage: suspend (imageId: String) -> ByteArray?,
     val onSelectRelease: (String) -> Unit,
     val onTogglePlayPause: () -> Unit,
@@ -233,7 +233,7 @@ private fun buildAlbumDetailCallbacks(
     }
 
     return AlbumDetailCallbacks(
-        fetchGalleryBytes = { releaseId, source -> session.appHandle.fetchGalleryBytes(releaseId, source) },
+        fetchReleaseImageBytes = { releaseId, source -> session.appHandle.fetchReleaseImageBytes(releaseId, source) },
         loadCoverImage = session.library::imageBytes,
         onSelectRelease = onSelectRelease,
         onTogglePlayPause = { session.playback.togglePlayPause() },
@@ -293,7 +293,7 @@ internal fun AlbumDetailContent(
         GalleryDialog(
             releaseId = galleryRelease.id,
             items = galleryItems,
-            loadImage = { source -> callbacks.fetchGalleryBytes(galleryRelease.id, source) },
+            loadImage = { source -> callbacks.fetchReleaseImageBytes(galleryRelease.id, source) },
             onDismiss = { showGallery = false },
         )
     }
@@ -361,8 +361,7 @@ private fun AlbumDetailHeader(
     }
     Row(verticalAlignment = Alignment.Top) {
         CoverImage(
-            coverId = cover?.id,
-            coverVersion = cover?.version,
+            cover = cover,
             loadImage = loadImage,
             cornerRadius = 6.dp,
             iconPadding = 32.dp,
@@ -529,7 +528,7 @@ private fun AlbumActionButtonsPreview() {
 /** Inert callbacks for rendering the album detail body without a live session. */
 internal fun inertAlbumDetailCallbacks(): AlbumDetailCallbacks =
     AlbumDetailCallbacks(
-        fetchGalleryBytes = { _, _ -> ByteArray(0) },
+        fetchReleaseImageBytes = { _, _ -> ByteArray(0) },
         loadCoverImage = { _ -> null },
         onSelectRelease = {},
         onTogglePlayPause = {},

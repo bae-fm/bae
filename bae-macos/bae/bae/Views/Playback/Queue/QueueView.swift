@@ -308,7 +308,7 @@ struct QueueView: View {
                 trackTitle: PreviewData.nowPlayingTitle,
                 artistNames: PreviewData.nowPlayingArtist,
                 albumId: "a-01",
-                coverImageId: nil,
+                coverImage: nil,
                 durationMs: 214_000,
             )
         )

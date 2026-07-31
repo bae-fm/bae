@@ -32,8 +32,10 @@ struct MediaPathsTests {
     )
     func cachedLibraryImageRoundTrip() async throws {
         let bytes = try makePngBytes(width: 8, height: 8)
-        let paths = MediaPaths(fetchCoverImageBytes: { _ in bytes })
-        let source = LibraryImageSource.cover(id: "rel-1", version: nil)
+        let paths = MediaPaths(fetchLibraryImageBytes: { _ in bytes })
+        let source = LibraryImageSource.image(
+            BridgeImageRef(id: "rel-1", version: "1", imageType: .cover)
+        )
 
         #expect(
             paths.cachedLibraryImage(source, pointSize: 56, displayScale: 2)
@@ -57,8 +59,10 @@ struct MediaPathsTests {
     @Test("cachedLibraryImage misses on a different pixel size")
     func cachedLibraryImageKeysOnPixelSize() async throws {
         let bytes = try makePngBytes(width: 8, height: 8)
-        let paths = MediaPaths(fetchCoverImageBytes: { _ in bytes })
-        let source = LibraryImageSource.cover(id: "rel-1", version: nil)
+        let paths = MediaPaths(fetchLibraryImageBytes: { _ in bytes })
+        let source = LibraryImageSource.image(
+            BridgeImageRef(id: "rel-1", version: "1", imageType: .cover)
+        )
 
         _ = try await paths.libraryImage(
             source,

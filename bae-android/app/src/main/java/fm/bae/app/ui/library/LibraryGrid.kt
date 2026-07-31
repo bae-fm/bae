@@ -170,8 +170,7 @@ private fun AlbumGridCard(
 ) {
     Column(modifier = Modifier.clickable(onClick = onClick)) {
         CoverImage(
-            coverId = album.cover?.id,
-            coverVersion = album.cover?.version,
+            cover = album.cover,
             loadImage = loadImage,
             cornerRadius = 6.dp,
             iconPadding = 40.dp,

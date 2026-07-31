@@ -11,7 +11,7 @@ public struct QueueItem: Identifiable, Equatable, Sendable {
     public let title: String
     public let durationClock: BridgeDurationClock?
     public let albumTitle: String
-    public let coverImageId: String?
+    public let coverImage: BridgeImageRef?
 
     public var id: String {
         entryId
@@ -25,7 +25,7 @@ public struct QueueItem: Identifiable, Equatable, Sendable {
         title = bridge.title
         durationClock = bridge.durationClock
         albumTitle = bridge.albumTitle
-        coverImageId = bridge.coverImageId
+        coverImage = bridge.coverImage
     }
 }
 

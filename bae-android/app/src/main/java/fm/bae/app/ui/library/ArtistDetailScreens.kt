@@ -125,8 +125,7 @@ private fun ArtistDetailContent(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     CoverImage(
-                        coverId = album.cover?.id,
-                        coverVersion = album.cover?.version,
+                        cover = album.cover,
                         loadImage = loadImage,
                         cornerRadius = 6.dp,
                         iconPadding = 12.dp,

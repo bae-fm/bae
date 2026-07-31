@@ -275,8 +275,7 @@ internal fun ArtistSummaryRow(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         CoverImage(
-            coverId = artist.image?.id,
-            coverVersion = artist.image?.version,
+            cover = artist.image,
             loadImage = loadImage,
             cornerRadius = 6.dp,
             iconPadding = 12.dp,

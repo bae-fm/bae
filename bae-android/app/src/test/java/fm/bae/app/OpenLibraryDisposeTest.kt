@@ -19,6 +19,7 @@ import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
 import uniffi.bae_bridge.AppHandle
 import uniffi.bae_bridge.BridgeDiagnostics
+import uniffi.bae_bridge.BridgeImageRef
 import uniffi.bae_bridge.NoHandle
 import uniffi.bae_bridge.UiEventCallback
 
@@ -94,6 +95,6 @@ class OpenLibraryDisposeTest {
 
         override suspend fun savePlaybackState() {}
 
-        override suspend fun fetchCoverImageBytes(releaseId: String): ByteArray? = null
+        override suspend fun fetchLibraryImageBytes(image: BridgeImageRef): ByteArray? = null
     }
 }

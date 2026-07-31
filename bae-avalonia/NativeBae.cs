@@ -910,19 +910,16 @@ internal static class NativeBae
         }
     }
 
-    /// <summary>Remote cover-art bytes for the import flow's cover-art search, or
-    /// null on a failed fetch (logged).</summary>
-    internal static byte[]? FetchCoverBytes(AppHandle handle, string url) =>
-        CaptureBytes(() => Await(() => handle.FetchCoverBytes(url)));
+    /// <summary>Bytes of provider art at a URL for the import flow's cover
+    /// search, or null on a failed fetch (logged).</summary>
+    internal static byte[]? RemoteImageBytes(AppHandle handle, string url) =>
+        CaptureBytes(() => Await(() => handle.FetchRemoteImageBytes(url)).Bytes);
 
-    internal static byte[]? ImageBytes(AppHandle? handle, BridgeImageRef image) =>
-        handle is null ? null : CaptureBytes(() => Await(() => handle.FetchImageBytes(image)));
+    internal static byte[]? LibraryImageBytes(AppHandle? handle, BridgeImageRef image) =>
+        handle is null ? null : CaptureBytes(() => Await(() => handle.FetchLibraryImageBytes(image)));
 
-    internal static byte[]? CoverImageBytes(AppHandle? handle, string imageId) =>
-        handle is null ? null : CaptureBytes(() => Await(() => handle.FetchCoverImageBytes(imageId)));
-
-    internal static byte[]? GalleryBytes(AppHandle? handle, string releaseId, BridgeGallerySource source) =>
-        handle is null ? null : CaptureBytes(() => Await(() => handle.FetchGalleryBytes(releaseId, source)));
+    internal static byte[]? ReleaseImageBytes(AppHandle? handle, string releaseId, BridgeGallerySource source) =>
+        handle is null ? null : CaptureBytes(() => Await(() => handle.FetchReleaseImageBytes(releaseId, source)));
 
     internal static void PlayRelease(AppHandle handle, string releaseId, long startTrackIndex, bool shuffle) =>
         handle.PlayRelease(releaseId, startTrackIndex < 0 ? null : checked((uint)startTrackIndex), shuffle);

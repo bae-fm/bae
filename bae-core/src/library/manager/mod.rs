@@ -894,6 +894,12 @@ pub struct LibraryManager {
     /// constructor, which installs no observer. Held for its lifetime, never read
     /// (coven reaches it through the `Weak`), so it carries the leading underscore.
     _upload_observer: Option<Arc<crate::sync::upload_observer::ReleaseUploadObserver>>,
+    /// Bytes of provider art (Cover Art Archive, Discogs) that isn't in the
+    /// library, cached under HTTP freshness rules. It lives here because all
+    /// three readers — the cover picker, the import commit worker, and
+    /// `change_cover` — reach it through a manager clone, so picking a remote
+    /// cover and then importing it downloads once.
+    remote_images: crate::import::cover_art::RemoteImageCache,
 }
 
 pub fn generate_mcp_token() -> String {
@@ -991,6 +997,7 @@ impl LibraryManager {
             database,
             config_handle,
             key_service,
+            remote_images: crate::import::cover_art::RemoteImageCache::new(clock.clone()),
             clock,
             ids,
             diagnostics,
@@ -1046,6 +1053,7 @@ impl LibraryManager {
             database,
             config_handle,
             key_service,
+            remote_images: crate::import::cover_art::RemoteImageCache::new(clock.clone()),
             clock,
             ids,
             diagnostics,
@@ -1136,6 +1144,12 @@ impl LibraryManager {
     /// through this so the whole import shares one clock under test.
     pub(crate) fn clock(&self) -> &ClockRef {
         &self.clock
+    }
+
+    /// The session cache of remote image bytes. Every provider-art download in
+    /// the app reads through this one instance.
+    pub(crate) fn remote_images(&self) -> &crate::import::cover_art::RemoteImageCache {
+        &self.remote_images
     }
 
     /// The injected telemetry sink. The playback and import services read it
