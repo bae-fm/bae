@@ -171,6 +171,9 @@ if [[ "$NEEDS_GENERATION" -eq 1 ]]; then
     ./bae-bridge/install-swift-bindings.sh macos
 
     rm -rf "$XCFRAMEWORK"
+    # Nothing under BaeKit/Frameworks/ is tracked, so a fresh checkout (a new
+    # worktree, CI) has no parent dir for the mv.
+    mkdir -p "$(dirname "$XCFRAMEWORK")"
     mv "$GENERATED_XCFRAMEWORK" "$XCFRAMEWORK"
 
     STAMP_TMP="$SWIFT_BINDINGS_DIR/.generation-complete.tmp.$$"

@@ -60,16 +60,17 @@ BAE_BRIDGE_TARGET="${BAE_BRIDGE_TARGET:-x86_64-unknown-linux-gnu}"
 rustup target add "$BAE_BRIDGE_TARGET"
 
 echo "Building bae-bridge for $BAE_BRIDGE_TARGET ($CARGO_PROFILE, features: ${BAE_BRIDGE_FEATURES:-(none)})..."
-RUSTC_WRAPPER="" cargo build $CARGO_FLAGS \
+# `cargo rustc --crate-type cdylib` builds only the shared library. The crate
+# also lists `staticlib` for Apple, whose builds link the .a into the framework
+# — but the C# apps only load the cdylib, and a debug archive carries the whole
+# dependency graph's debug info, so the .a is pure build-time waste here.
+# Bindgen reads the same uniffi metadata from the cdylib.
+RUSTC_WRAPPER="" cargo rustc $CARGO_FLAGS \
     --target "$BAE_BRIDGE_TARGET" \
     -p bae-bridge \
-    --features "$BAE_BRIDGE_FEATURES"
-
-STATIC_LIB="$CARGO_TARGET_DIR/$BAE_BRIDGE_TARGET/$CARGO_PROFILE/libbae_bridge.a"
-if [[ ! -f "$STATIC_LIB" ]]; then
-    echo "Expected staticlib not found: $STATIC_LIB" >&2
-    exit 1
-fi
+    --lib \
+    --features "$BAE_BRIDGE_FEATURES" \
+    --crate-type cdylib
 
 # The uniffi C# bindings DllImport("uniffi_bae_bridge"); .NET's native probing
 # resolves that to libuniffi_bae_bridge.so on Linux, so the cdylib is copied to
@@ -86,7 +87,7 @@ echo "Generating C# bindings into $BAE_BRIDGE_CSHARP_BINDINGS_DIR ..."
 rm -rf "$BAE_BRIDGE_CSHARP_BINDINGS_DIR"
 mkdir -p "$BAE_BRIDGE_CSHARP_BINDINGS_DIR"
 uniffi-bindgen-cs \
-    --library "$STATIC_LIB" \
+    --library "$BRIDGE_SO" \
     --crate bae_bridge \
     --out-dir "$BAE_BRIDGE_CSHARP_BINDINGS_DIR/" \
     --no-format

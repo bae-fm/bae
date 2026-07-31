@@ -55,16 +55,18 @@ BAE_BRIDGE_TARGET="${BAE_BRIDGE_TARGET:-x86_64-pc-windows-msvc}"
 rustup target add "$BAE_BRIDGE_TARGET"
 
 echo "Building bae-bridge for $BAE_BRIDGE_TARGET ($CARGO_PROFILE, features: ${BAE_BRIDGE_FEATURES:-(none)})..."
-RUSTC_WRAPPER="" cargo build $CARGO_FLAGS \
+# `cargo rustc --crate-type cdylib` builds only the DLL. The crate also lists
+# `staticlib` for Apple, whose builds link the .a into the framework — but on
+# Windows nothing consumes the .lib, and a debug archive carries embedded
+# CodeView for the whole dependency graph (5.8 GB at last measure), which
+# uniffi-bindgen-cs cannot even read. The DLL keeps its debug info in the
+# adjacent PDB, so bindgen reads it and WinDbg still symbolizes.
+RUSTC_WRAPPER="" cargo rustc $CARGO_FLAGS \
     --target "$BAE_BRIDGE_TARGET" \
     -p bae-bridge \
-    --features "$BAE_BRIDGE_FEATURES"
-
-STATIC_LIB="$CARGO_TARGET_DIR/$BAE_BRIDGE_TARGET/$CARGO_PROFILE/bae_bridge.lib"
-if [[ ! -f "$STATIC_LIB" ]]; then
-    echo "Expected staticlib not found: $STATIC_LIB" >&2
-    exit 1
-fi
+    --lib \
+    --features "$BAE_BRIDGE_FEATURES" \
+    --crate-type cdylib
 
 BRIDGE_DLL="$CARGO_TARGET_DIR/$BAE_BRIDGE_TARGET/$CARGO_PROFILE/bae_bridge.dll"
 UNIFFI_BRIDGE_DLL="$CARGO_TARGET_DIR/$BAE_BRIDGE_TARGET/$CARGO_PROFILE/uniffi_bae_bridge.dll"
@@ -78,7 +80,7 @@ echo "Generating C# bindings into $BAE_BRIDGE_CSHARP_BINDINGS_DIR ..."
 rm -rf "$BAE_BRIDGE_CSHARP_BINDINGS_DIR"
 mkdir -p "$BAE_BRIDGE_CSHARP_BINDINGS_DIR"
 uniffi-bindgen-cs \
-    --library "$STATIC_LIB" \
+    --library "$BRIDGE_DLL" \
     --crate bae_bridge \
     --out-dir "$BAE_BRIDGE_CSHARP_BINDINGS_DIR/" \
     --no-format
