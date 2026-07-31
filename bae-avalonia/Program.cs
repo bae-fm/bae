@@ -1,4 +1,4 @@
-using Avalonia;
+﻿using Avalonia;
 using Velopack;
 #if DEBUG
 using Avalonia.Headless;

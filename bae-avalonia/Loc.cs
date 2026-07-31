@@ -1,4 +1,4 @@
-using System.Globalization;
+﻿using System.Globalization;
 #if !BAE_PURE_FORMATTERS
 using System.Resources;
 using Jeffijoe.MessageFormat;
