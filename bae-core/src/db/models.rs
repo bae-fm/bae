@@ -358,6 +358,7 @@ pub enum LoadedPlaybackState {
 ///
 /// It carries no file decisions: those are the user's half of the row and the
 /// verdict write leaves them alone.
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[derive(Debug, Clone)]
 pub struct NewImportCandidateVerdict {
     /// `CategorizedFiles::content_hash` — the row's identity. Adding,
@@ -379,6 +380,7 @@ pub struct NewImportCandidateVerdict {
 /// What identification concluded about one candidate. Present as a whole or
 /// absent as a whole: the three columns are written together and cleared
 /// together, so no reader has to reason about a half-filled result.
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[derive(Debug, Clone)]
 pub struct DbCandidateIdentifyResult {
     /// `identify::TerminalVerdict`, JSON-encoded. This layer stores and
@@ -392,6 +394,7 @@ pub struct DbCandidateIdentifyResult {
 /// One loaded `import_candidate_state` row, as
 /// [`crate::db::Database::load_import_candidate_states`] returns it. Mirrors
 /// the table: one key, and the two independent things derived under it.
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[derive(Debug, Clone)]
 pub struct DbImportCandidateState {
     pub content_hash: String,
@@ -405,6 +408,7 @@ pub struct DbImportCandidateState {
     pub file_edits: crate::import::folder_scanner::CandidateFileEdits,
 }
 
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[derive(Debug, Clone)]
 pub struct DbFolderScanSnapshot {
     pub watched_folder_path: String,

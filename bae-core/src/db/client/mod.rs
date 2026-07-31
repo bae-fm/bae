@@ -19,6 +19,11 @@ mod album;
 mod artist;
 mod blobs;
 mod identity;
+// Watched folders, folder scans and the import candidate queue. Reads
+// `import::folder_registry` and `import::FolderScanStatus`, both desktop-only,
+// and every caller is a gated import module — the mobile builds are sync and
+// playback clients with no import pipeline.
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod import_state;
 mod playback;
 mod release;

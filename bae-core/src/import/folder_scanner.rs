@@ -9,7 +9,10 @@ use super::file_validation;
 use crate::cue_flac::parse_cue_sheet;
 use crate::util::content_type_hint::ContentTypeHint;
 use sha2::{Digest, Sha256};
-use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
+// Only `release_decision_removed_keys` names this, and it is desktop-only.
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+use std::collections::HashSet;
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
@@ -779,6 +782,9 @@ pub enum ScanItem {
     Boundary(FolderReleaseBoundary),
 }
 
+/// Only the durable folder-scan tables key items this way, and those are
+/// desktop-only.
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 impl ScanItem {
     pub(crate) fn persisted_key(&self) -> String {
         match self {
@@ -819,6 +825,9 @@ pub enum FolderReleaseDecision {
     KeepAsSeparateReleases,
 }
 
+/// Which persisted scan entries a set of boundary decisions supersedes. Reads
+/// the durable scan entries, so it exists only where scans persist — desktop.
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub(crate) fn release_decision_removed_keys(
     persisted_keys: &HashSet<String>,
     decisions: &[(FolderReleaseDecisionKey, FolderReleaseDecision)],
@@ -1693,6 +1702,8 @@ impl ScanCancellation {
         Self::default()
     }
 
+    /// Only the import service cancels a scan in flight, and it is desktop-only.
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub(crate) fn cancel(&self) {
         self.0.store(true, Ordering::Release);
     }
@@ -2425,6 +2436,8 @@ where
     scan_for_candidates_with_reader(&OsDirectoryReader, root, stored, decisions, on_item)
 }
 
+/// The progressive, cancellable scan the desktop import service drives.
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub(crate) fn scan_for_candidates_with_decisions_cancellable_and_directories<F, D>(
     root: PathBuf,
     stored: &StoredCandidateEdits,
