@@ -205,6 +205,7 @@ async fn seed_library() -> Library {
             identity_choice: IdentityChoice::Unknown,
             user_edit: None,
         })
+        .await
         .unwrap();
     let mut rx = import.subscribe_import(import_id);
     let (per_track_release, _album) = support::wait_for_import_complete(&mut rx).await;
@@ -242,6 +243,7 @@ async fn seed_library() -> Library {
             },
             user_edit: None,
         })
+        .await
         .unwrap();
     let mut cue_rx = cue_import.subscribe_import(cue_id);
     let (cue_release, _cue_album) = support::wait_for_import_complete(&mut cue_rx).await;
@@ -1082,6 +1084,7 @@ async fn seed_lossy_release() -> (LibraryManager, String, Vec<TempDir>) {
             },
             user_edit: None,
         })
+        .await
         .unwrap();
     let mut rx = import.subscribe_import(import_id);
     let (release_id, _album) = support::wait_for_import_complete(&mut rx).await;

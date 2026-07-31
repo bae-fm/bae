@@ -119,6 +119,7 @@ async fn import_single_m4a_fixture(
             },
             user_edit: None,
         })
+        .await
         .expect("send command");
 
     let mut progress_rx = import_handle.subscribe_import(import_id);
@@ -354,6 +355,7 @@ async fn import_cue_alac_pair() {
             },
             user_edit: None,
         })
+        .await
         .expect("send command");
     let mut progress_rx = import_handle.subscribe_import(import_id);
     let (release_id, _) = wait_for_import_complete(&mut progress_rx).await;

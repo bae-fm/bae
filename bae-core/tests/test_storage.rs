@@ -97,6 +97,7 @@ async fn test_local_import() {
             },
             user_edit: None,
         })
+        .await
         .expect("send command");
     let mut progress_rx = import_handle.subscribe_import(import_id);
     let (release_id, _album_id) = wait_for_import_complete(&mut progress_rx).await;
@@ -246,6 +247,7 @@ async fn test_local_delete_preserves_files() {
             },
             user_edit: None,
         })
+        .await
         .expect("send command");
     let mut progress_rx = import_handle.subscribe_import(import_id);
     let (release_id, album_id) = wait_for_import_complete(&mut progress_rx).await;
@@ -345,6 +347,7 @@ async fn run_import_with_cover_test() {
             },
             user_edit: None,
         })
+        .await
         .expect("send command");
     let mut progress_rx = import_handle.subscribe_import(import_id);
     let mut release_id = String::new();

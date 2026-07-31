@@ -883,13 +883,13 @@ internal static class NativeBae
 
     internal static string? ImportCandidate(
         AppHandle handle, string candidateKey, BridgeIdentityChoice identity, string storageMode, bool pin, BridgeRawReleaseEdit userEdit, BridgeCoverSelection? selectedCover) =>
-        CaptureError(() => handle.StartImport(
+        CaptureError(() => Await(() => handle.StartImport(
             candidateKey,
             selectedCover,
             StorageMode(storageMode),
             pin,
             identity,
-            ReleaseUserEdit(userEdit)));
+            ReleaseUserEdit(userEdit))));
 
     /// <summary>Provider art at a URL for the import flow's cover search — its
     /// bytes and the validator identifying them — or null on a failed fetch

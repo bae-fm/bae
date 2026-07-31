@@ -1648,7 +1648,7 @@ impl AppHandle {
     // The bridge boundary surface is wide on purpose — uniffi flattens
     // primitives across the FFI per Swift idiom, not per Rust idiom.
     #[allow(clippy::too_many_arguments)]
-    pub fn start_import(
+    pub async fn start_import(
         &self,
         candidate_key: String,
         selected_cover: Option<BridgeCoverSelection>,
@@ -1671,6 +1671,7 @@ impl AppHandle {
                 identity_choice.into_core(),
                 user_edit,
             )
+            .await
             .map(|_| ())
             .map_err(BridgeError::import)
     }

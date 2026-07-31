@@ -157,6 +157,7 @@ async fn test_cue_ape_records_correct_durations() {
             },
             user_edit: None,
         })
+        .await
         .expect("send command");
     let mut progress_rx = import_handle.subscribe_import(import_id);
     let (release_id, _album_id) = wait_for_import_complete(&mut progress_rx).await;
@@ -345,6 +346,7 @@ async fn test_cue_ape_records_track_timing() {
             },
             user_edit: None,
         })
+        .await
         .expect("send command");
     let mut progress_rx = import_handle.subscribe_import(import_id);
     let (release_id, _album_id) = wait_for_import_complete(&mut progress_rx).await;
@@ -477,6 +479,7 @@ impl CueApeTestFixture {
                 },
                 user_edit: None,
             })
+            .await
             .map_err(|e| -> Box<dyn std::error::Error> { e.into() })?;
         let mut progress_rx = import_handle.subscribe_import(import_id);
         let (_release_id, _album_id) = wait_for_import_complete(&mut progress_rx).await;
@@ -1126,6 +1129,7 @@ async fn assert_multi_disc_cue_ape_per_disc_mapping(storage_mode: StorageMode, p
             },
             user_edit: None,
         })
+        .await
         .expect("send command");
 
     let mut progress_rx = import_handle.subscribe_import(import_id);

@@ -544,6 +544,31 @@ impl ImportCandidateState {
         removed
     }
 
+    /// Record that an import owns this candidate.
+    ///
+    /// Written when the import command is queued, not when the worker's first
+    /// `ImportProgress` comes back through [`Self::record_event`]. That event
+    /// records the same fact, but far too late to gate anything on: it is
+    /// emitted after the worker has dequeued the command and re-walked the
+    /// folder — behind however many imports are already queued ahead of it —
+    /// and it only reaches this state when the UI event bus drains it. The
+    /// queue sweep reads this field to decide whether a candidate still wants
+    /// a verdict, and "the user has committed to importing it" has to be true
+    /// here from the moment they commit.
+    pub(super) fn claim_for_import(&mut self, candidate_key: &str) {
+        self.runtime_entry(candidate_key).import_status =
+            Some(CandidateImportStatusSnapshot::Importing {
+                progress_percent: 0,
+                step: None,
+            });
+    }
+
+    /// Undo [`Self::claim_for_import`] for a command that never made it onto
+    /// the worker's queue.
+    pub(super) fn release_import_claim(&mut self, candidate_key: &str) {
+        self.runtime_entry(candidate_key).import_status = None;
+    }
+
     pub(super) fn set_skipped(&mut self, key: &str, skipped: bool) {
         if let Some(ScannedCandidate::Folder {
             skipped: candidate_skipped,
@@ -1217,6 +1242,40 @@ impl ImportServiceHandle {
             .sweepable_candidate_for_identity(content_hash, edit_revision)
     }
 
+    /// Claim `candidate_key` for an import that is about to be queued.
+    ///
+    /// Takes the folder-state commit lock, which
+    /// [`Self::save_candidate_verdict_if_current`] holds across *both* its
+    /// check and its write. So by the time this returns, either that write has
+    /// already landed or it has yet to read the candidate and will find it
+    /// claimed — there is no interval in which a verdict is stored for a
+    /// candidate whose import has been committed to.
+    pub(crate) async fn claim_candidate_for_import(&self, candidate_key: &str) {
+        let _commit = self.folder_state_commit.lock().await;
+        self.candidate_state
+            .lock()
+            .unwrap()
+            .claim_for_import(candidate_key);
+    }
+
+    async fn release_import_claim(&self, candidate_key: &str) {
+        let _commit = self.folder_state_commit.lock().await;
+        self.candidate_state
+            .lock()
+            .unwrap()
+            .release_import_claim(candidate_key);
+    }
+
+    /// Store one candidate's verdict, unless the candidate has moved on from
+    /// the shape the verdict describes — its files were re-decided, it was
+    /// skipped, it is already in the library, or an import has claimed it.
+    ///
+    /// The commit lock spans the check and the write, and everything that can
+    /// invalidate a verdict — a scan, a file re-decision, a skip, an import
+    /// claim — is written under the same lock, so a `true` return means the row
+    /// describes the candidate as it was at the moment it landed. (The UI event
+    /// bus also records import progress into this state without the lock, but
+    /// only ever onto a candidate an import already claimed.)
     pub(crate) async fn save_candidate_verdict_if_current(
         &self,
         candidate_key: &str,

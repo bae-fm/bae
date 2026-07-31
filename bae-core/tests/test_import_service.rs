@@ -128,6 +128,7 @@ async fn import_folder(
             identity_choice,
             user_edit: None,
         })
+        .await
         .unwrap();
     let mut progress_rx = f.handle.subscribe_import(import_id);
     support::try_wait_for_import_complete(&mut progress_rx).await
@@ -816,6 +817,7 @@ async fn local_folder_import() {
             },
             user_edit: None,
         })
+        .await
         .unwrap();
 
     let mut progress_rx = f.handle.subscribe_import(import_id);
@@ -893,6 +895,7 @@ async fn import_produces_audio_format_records() {
             },
             user_edit: None,
         })
+        .await
         .unwrap();
 
     let mut progress_rx = f.handle.subscribe_import(import_id);
@@ -949,6 +952,7 @@ async fn exact_metadata_import_stores_dsd_audio_format() {
                 },
                 user_edit: None,
             })
+            .await
             .unwrap();
 
         let mut progress_rx = f.handle.subscribe_import(import_id);
@@ -1020,6 +1024,7 @@ async fn loudness_pass_emits_within_track_progress() {
             },
             user_edit: None,
         })
+        .await
         .unwrap();
 
     let mut progress_rx = f.handle.subscribe_import(import_id);
@@ -1172,6 +1177,7 @@ async fn loudness_measured_at_import_drives_playback_gain() {
             },
             user_edit: None,
         })
+        .await
         .unwrap();
 
     let mut progress_rx = f.handle.subscribe_import(import_id);
@@ -1325,6 +1331,7 @@ async fn two_sequential_imports() {
                 },
                 user_edit: None,
             })
+            .await
             .unwrap();
 
         let mut progress_rx = f.handle.subscribe_import(import_id);
@@ -1602,6 +1609,7 @@ async fn remote_transition_failure_rolls_back_finalized_release() {
             identity_choice: IdentityChoice::Unknown,
             user_edit: None,
         })
+        .await
         .unwrap();
     let mut progress_rx = f.handle.subscribe_import(import_id.clone());
     let error = support::try_wait_for_import_complete(&mut progress_rx)
@@ -1832,6 +1840,7 @@ async fn remote_transition_failure_rolls_back_finalized_works() {
             },
             user_edit: None,
         })
+        .await
         .unwrap();
     let mut progress_rx = f.handle.subscribe_import(import_id);
     let error = support::try_wait_for_import_complete(&mut progress_rx)
@@ -1963,6 +1972,7 @@ async fn import_with_cover_art() {
             },
             user_edit: None,
         })
+        .await
         .unwrap();
 
     let mut progress_rx = f.handle.subscribe_import(import_id);
@@ -2016,6 +2026,7 @@ async fn import_resizes_oversized_cover_to_jpeg_thumbnail() {
             },
             user_edit: None,
         })
+        .await
         .unwrap();
 
     let mut progress_rx = f.handle.subscribe_import(import_id);
@@ -2080,6 +2091,7 @@ async fn import_on_browsable_home_writes_readable_cloud_paths_at_import() {
             },
             user_edit: None,
         })
+        .await
         .unwrap();
     let mut progress_rx = f.handle.subscribe_import(import_id);
     let (release_id, _) = support::wait_for_import_complete(&mut progress_rx).await;
@@ -2198,6 +2210,7 @@ async fn exact_import_writes_release_id_and_pressing_fields() {
             },
             user_edit: None,
         })
+        .await
         .unwrap();
 
     let mut progress_rx = f.handle.subscribe_import(import_id);
@@ -2273,6 +2286,7 @@ async fn approximate_import_with_user_edit_overlay() {
             },
             user_edit: Some(edit),
         })
+        .await
         .unwrap();
 
     let mut progress_rx = f.handle.subscribe_import(import_id);
@@ -2439,6 +2453,7 @@ async fn cross_source_exact_writes_both_release_ids() {
             },
             user_edit: None,
         })
+        .await
         .unwrap();
 
     let mut progress_rx = f.handle.subscribe_import(import_id);
@@ -2501,6 +2516,7 @@ async fn cross_source_approximate_nulls_both_release_ids() {
             },
             user_edit: None,
         })
+        .await
         .unwrap();
 
     let mut progress_rx = f.handle.subscribe_import(import_id);
@@ -2592,6 +2608,7 @@ async fn cross_source_discogs_rooted_approximate_nulls_both_release_ids() {
             },
             user_edit: None,
         })
+        .await
         .unwrap();
 
     let mut progress_rx = f.handle.subscribe_import(import_id);
@@ -2695,6 +2712,7 @@ async fn unknown_import_seeds_from_file_tags_and_writes_no_identity() {
             identity_choice: IdentityChoice::Unknown,
             user_edit: None,
         })
+        .await
         .unwrap();
 
     let mut progress_rx = f.handle.subscribe_import(import_id);
@@ -2793,6 +2811,7 @@ async fn unknown_preview_for_cue_matches_unknown_commit_layout() {
             identity_choice: IdentityChoice::Unknown,
             user_edit: None,
         })
+        .await
         .unwrap();
 
     let mut progress_rx = f.handle.subscribe_import(import_id);
@@ -2867,6 +2886,7 @@ async fn unknown_import_seeds_embedded_cover_when_no_folder_image() {
             identity_choice: IdentityChoice::Unknown,
             user_edit: None,
         })
+        .await
         .unwrap();
 
     let mut progress_rx = f.handle.subscribe_import(import_id);
@@ -2935,6 +2955,7 @@ async fn unknown_import_folder_image_wins_over_embedded_cover() {
             identity_choice: IdentityChoice::Unknown,
             user_edit: None,
         })
+        .await
         .unwrap();
 
     let mut progress_rx = f.handle.subscribe_import(import_id);
@@ -2983,6 +3004,7 @@ async fn unknown_import_always_creates_a_fresh_album() {
             },
             user_edit: None,
         })
+        .await
         .unwrap();
     let mut rx = f.handle.subscribe_import(import_id);
     let (_, identified_album_id) = support::wait_for_import_complete(&mut rx).await;
@@ -3016,6 +3038,7 @@ async fn unknown_import_always_creates_a_fresh_album() {
             identity_choice: IdentityChoice::Unknown,
             user_edit: None,
         })
+        .await
         .unwrap();
     let mut rx2 = f.handle.subscribe_import(import_id2);
     let (_, unknown_album_id) = support::wait_for_import_complete(&mut rx2).await;
@@ -3082,6 +3105,7 @@ async fn unknown_import_with_user_edit_overlay() {
             identity_choice: IdentityChoice::Unknown,
             user_edit: Some(edit),
         })
+        .await
         .unwrap();
 
     let mut progress_rx = f.handle.subscribe_import(import_id);
@@ -3143,6 +3167,7 @@ async fn unknown_import_with_no_tags_seeds_title_from_folder_name() {
             identity_choice: IdentityChoice::Unknown,
             user_edit: None,
         })
+        .await
         .unwrap();
 
     let mut progress_rx = f.handle.subscribe_import(import_id);
@@ -3245,6 +3270,7 @@ async fn import_truncated_album(verify: bool) -> Result<(String, String), String
             identity_choice: IdentityChoice::Unknown,
             user_edit: None,
         })
+        .await
         .unwrap();
     let mut progress_rx = handle.subscribe_import(import_id);
     let result = support::try_wait_for_import_complete(&mut progress_rx).await;
@@ -3394,6 +3420,7 @@ async fn two_credit_mb_release_keeps_both_album_artists() {
             identity_choice: choice,
             user_edit: Some(user_edit),
         })
+        .await
         .unwrap();
     let mut rx = f.handle.subscribe_import(import_id);
     let (_release_id, album_id) = support::wait_for_import_complete(&mut rx).await;
@@ -3585,6 +3612,7 @@ async fn thirteen_files_against_a_twelve_track_source_commits_thirteen_tracks() 
             },
             user_edit: Some(edit_from_slots(&prefetch)),
         })
+        .await
         .unwrap();
     let mut rx = f.handle.subscribe_import(import_id);
     let (release_id, _album_id) = support::wait_for_import_complete(&mut rx).await;
@@ -3647,6 +3675,7 @@ async fn a_track_with_no_audio_commits_as_the_user_left_it() {
             },
             user_edit: Some(edit_from_slots(&prefetch)),
         })
+        .await
         .unwrap();
     let mut rx = f.handle.subscribe_import(import_id);
     let (release_id, _album_id) = support::wait_for_import_complete(&mut rx).await;
@@ -3703,6 +3732,7 @@ async fn a_corrected_pairing_survives_the_commit() {
             },
             user_edit: Some(edit),
         })
+        .await
         .unwrap();
     let mut rx = f.handle.subscribe_import(import_id);
     let (release_id, _album_id) = support::wait_for_import_complete(&mut rx).await;

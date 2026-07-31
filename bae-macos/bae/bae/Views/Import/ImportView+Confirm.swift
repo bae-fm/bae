@@ -11,8 +11,8 @@ private func commitImport(
     store: ImportStore,
     key: String,
     rawEdit: BridgeRawReleaseEdit,
-    start: (BridgeReleaseUserEdit) throws -> Void
-) {
+    start: (BridgeReleaseUserEdit) async throws -> Void
+) async {
     let userEdit: BridgeReleaseUserEdit
     switch shapeReleaseEdit(raw: rawEdit) {
     case .valid(let edit):
@@ -24,7 +24,7 @@ private func commitImport(
         return
     }
     do {
-        try start(userEdit)
+        try await start(userEdit)
     }
     catch {
         store.mutateCandidate(forKey: key) {
@@ -62,19 +62,21 @@ extension ImportView {
             fatalError("commit reached without identity choice or edit values")
         }
 
-        commitImport(
-            store: importStore,
-            key: candidate.key,
-            rawEdit: editValues
-        ) {
-            try importer.startImport(
-                candidate.key,
-                coverSelection,
-                storageMode,
-                storagePinned,
-                identityChoice,
-                $0
-            )
+        Task {
+            await commitImport(
+                store: importStore,
+                key: candidate.key,
+                rawEdit: editValues
+            ) {
+                try await importer.startImport(
+                    candidate.key,
+                    coverSelection,
+                    storageMode,
+                    storagePinned,
+                    identityChoice,
+                    $0
+                )
+            }
         }
     }
 }

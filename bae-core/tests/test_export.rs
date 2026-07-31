@@ -128,6 +128,7 @@ async fn import_then_strand_in_cloud(f: &ExportFixture, album_dir: &Path) -> (St
             identity_choice: IdentityChoice::Unknown,
             user_edit: None,
         })
+        .await
         .unwrap();
     let mut progress_rx = f.handle.subscribe_import(import_id);
     let (release_id, _album_id) = support::wait_for_import_complete(&mut progress_rx).await;
@@ -157,6 +158,7 @@ async fn import_unknown_local(f: &ExportFixture, album_dir: &Path) -> String {
             identity_choice: IdentityChoice::Unknown,
             user_edit: None,
         })
+        .await
         .unwrap();
     let mut progress_rx = f.handle.subscribe_import(import_id);
     let (release_id, _album_id) = support::wait_for_import_complete(&mut progress_rx).await;

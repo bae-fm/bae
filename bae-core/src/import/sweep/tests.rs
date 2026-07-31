@@ -41,8 +41,10 @@ struct FakeProvider {
 struct FakeState {
     routes: Vec<(String, u16, String)>,
     requests: Vec<String>,
-    /// Held before answering, so a test can act while a request is in flight.
-    delay: Duration,
+    /// While set, a request whose target contains the needle records itself
+    /// and then waits here, so a test acts on a lookup that is genuinely in
+    /// flight.
+    gate: Option<(String, Arc<tokio::sync::Semaphore>)>,
 }
 
 impl FakeProvider {
@@ -86,9 +88,20 @@ impl FakeProvider {
             .collect();
     }
 
-    /// Make every later response take `delay` to arrive.
-    fn set_delay(&self, delay: Duration) {
-        self.state.lock().unwrap().delay = delay;
+    /// Leave every request matching `needle` unanswered until
+    /// [`Self::release`], so a test can act on a lookup that is in flight. A
+    /// rendezvous rather than a delay: what the test does next never has to
+    /// beat a clock, which is the whole class of flake a loaded machine finds.
+    fn hold(&self, needle: &str) {
+        self.state.lock().unwrap().gate =
+            Some((needle.to_string(), Arc::new(tokio::sync::Semaphore::new(0))));
+    }
+
+    /// Answer everything held, and let later requests through.
+    fn release(&self) {
+        if let Some((_, gate)) = self.state.lock().unwrap().gate.take() {
+            gate.close();
+        }
     }
 
     fn requests(&self) -> Vec<String> {
@@ -134,7 +147,7 @@ async fn serve_one(mut stream: tokio::net::TcpStream, state: Arc<Mutex<FakeState
         .unwrap_or_default()
         .to_string();
 
-    let (status, body, delay) = {
+    let (status, body, gate) = {
         let mut state = state.lock().unwrap();
         state.requests.push(target.clone());
         let (status, body) = state
@@ -143,10 +156,17 @@ async fn serve_one(mut stream: tokio::net::TcpStream, state: Arc<Mutex<FakeState
             .find(|(needle, _, _)| target.contains(needle.as_str()))
             .map(|(_, status, body)| (*status, body.clone()))
             .unwrap_or((404, "{}".to_string()));
-        (status, body, state.delay)
+        let gate = state
+            .gate
+            .as_ref()
+            .filter(|(needle, _)| target.contains(needle.as_str()))
+            .map(|(_, gate)| gate.clone());
+        (status, body, gate)
     };
-    if !delay.is_zero() {
-        tokio::time::sleep(delay).await;
+    if let Some(gate) = gate {
+        // The hold ends by closing the semaphore, so this wait only ever ends
+        // — it never takes a permit, and no release can be missed.
+        let _ = gate.acquire().await;
     }
 
     let response = format!(
@@ -1135,7 +1155,7 @@ async fn skipping_during_a_paid_top_up_cannot_replace_the_stored_verdict() {
     let before = fixture.await_row(&dir).await;
     let before_verdict = identify_result(&before).verdict.clone();
 
-    fixture.provider.set_delay(Duration::from_secs(2));
+    fixture.provider.hold("/release/mb-skip-topup?");
     let context = fixture.context();
     let token = CancellationToken::new();
     let pass = tokio::spawn(async move { run_pass_for_test(&context, &token).await });
@@ -1145,6 +1165,7 @@ async fn skipping_during_a_paid_top_up_cannot_replace_the_stored_verdict() {
         .set_candidate_skipped(dir.to_string_lossy().into_owned(), true)
         .await
         .unwrap();
+    fixture.provider.release();
     tokio::time::timeout(Duration::from_secs(10), pass)
         .await
         .expect("pass finishes after the skipped top-up")
@@ -1187,7 +1208,7 @@ async fn a_paid_top_up_uses_an_eligible_duplicate_if_its_first_path_is_skipped()
     fixture.select(&first);
     fixture.await_row(&first).await;
 
-    fixture.provider.set_delay(Duration::from_secs(2));
+    fixture.provider.hold("/release/mb-duplicate-topup?");
     let context = fixture.context();
     let token = CancellationToken::new();
     let pass = tokio::spawn(async move { run_pass_for_test(&context, &token).await });
@@ -1197,6 +1218,7 @@ async fn a_paid_top_up_uses_an_eligible_duplicate_if_its_first_path_is_skipped()
         .set_candidate_skipped(first.to_string_lossy().into_owned(), true)
         .await
         .unwrap();
+    fixture.provider.release();
     tokio::time::timeout(Duration::from_secs(10), pass)
         .await
         .expect("duplicate top-up pass finishes")
@@ -1292,7 +1314,7 @@ async fn unskipping_a_stored_candidate_mid_pass_updates_progress_and_tops_it_up(
         .await
         .unwrap();
 
-    fixture.provider.set_delay(Duration::from_secs(2));
+    fixture.provider.hold("/discid/");
     let mut events = fixture.import.subscribe_events();
     let context = fixture.context();
     let token = CancellationToken::new();
@@ -1303,6 +1325,7 @@ async fn unskipping_a_stored_candidate_mid_pass_updates_progress_and_tops_it_up(
         .set_candidate_skipped(stored.to_string_lossy().into_owned(), false)
         .await
         .unwrap();
+    fixture.provider.release();
     tokio::time::timeout(Duration::from_secs(15), pass)
         .await
         .expect("pass finishes after unskip")
@@ -1328,6 +1351,32 @@ async fn unskipping_a_stored_candidate_mid_pass_updates_progress_and_tops_it_up(
     assert_eq!(progress.last(), Some(&(2, 2)), "{progress:?}");
 }
 
+/// What starting an import does to a candidate, in the order the import
+/// service does it: [`ImportServiceHandle::claim_candidate_for_import`] before
+/// the command is queued, and the worker's first `ImportProgress` some time
+/// after that — after the folder re-walk, and behind every import already
+/// queued ahead of it. Tests that model the start as the event alone are
+/// modelling the second half of it only.
+async fn start_import_for(fixture: &Fixture, candidate: &Path) {
+    let candidate_key = candidate.to_string_lossy().into_owned();
+    fixture
+        .import
+        .claim_candidate_for_import(&candidate_key)
+        .await;
+    crate::import::handle::send_event(
+        &fixture.import.event_tx,
+        ImportEvent::ImportProgress {
+            candidate_key,
+            progress: crate::import::ImportProgress::Started {
+                id: "release-importing".to_string(),
+                import_id: "import-running".to_string(),
+            },
+        },
+    );
+}
+
+/// An import started mid-pass takes its candidate away from the sweep: no
+/// verdict is stored for it, and it stops counting towards the queue's total.
 #[tokio::test(flavor = "multi_thread")]
 #[serial(musicbrainz)]
 async fn an_import_start_mid_pass_removes_the_candidate_from_work_and_progress() {
@@ -1346,23 +1395,18 @@ async fn an_import_start_mid_pass_removes_the_candidate_from_work_and_progress()
         discid_json("mb-import-progress", "rg-import-progress", &[probed, 0]),
     );
     fixture.scan(2).await;
-    fixture.provider.set_delay(Duration::from_secs(2));
+    fixture.provider.hold("/discid/");
 
     let mut events = fixture.import.subscribe_events();
     let context = fixture.context();
     let token = CancellationToken::new();
     let pass = tokio::spawn(async move { run_pass_for_test(&context, &token).await });
     wait_for_request(&fixture.provider, "/discid/", 1).await;
-    crate::import::handle::send_event(
-        &fixture.context.import.event_tx,
-        ImportEvent::ImportProgress {
-            candidate_key: importing.to_string_lossy().into_owned(),
-            progress: crate::import::ImportProgress::Started {
-                id: "release-importing".to_string(),
-                import_id: "import-running".to_string(),
-            },
-        },
-    );
+    // Starting an import, in the order the import service really does it: the
+    // candidate is claimed before the command is queued, and the worker's
+    // first progress event comes back some time after that.
+    start_import_for(&fixture, &importing).await;
+    fixture.provider.release();
     tokio::time::timeout(Duration::from_secs(15), pass)
         .await
         .expect("pass finishes after import ownership changes")
@@ -1378,6 +1422,63 @@ async fn an_import_start_mid_pass_removes_the_candidate_from_work_and_progress()
         })
         .collect();
     assert_eq!(progress.last(), Some(&(1, 1)), "{progress:?}");
+}
+
+/// The same import start, one step later in the candidate's life — and the
+/// step where the pass's own bookkeeping can no longer help.
+///
+/// The verdict has settled and the pass is buying its tracklist, so the
+/// candidate is in neither `in_flight` nor `pending`: the `ImportProgress` the
+/// worker sends finds nothing to detach and cancels nothing, and the write is
+/// already on its way. What stops the row is the claim — the write takes the
+/// folder-state commit lock the claim was taken under, re-reads the candidate,
+/// and finds an import owns it.
+#[tokio::test(flavor = "multi_thread")]
+#[serial(musicbrainz)]
+async fn an_import_started_while_a_verdict_is_in_flight_stores_nothing() {
+    let fixture = Fixture::new("import-mid-write").await;
+    fixture
+        .extraction
+        .register_analyzer(Arc::new(BarcodeAnalyzer {
+            barcode: "0123456789012".to_string(),
+        }));
+    let dir = fixture.barcode_candidate("From Barcode");
+    let hash = fixture.content_hash(&dir);
+    fixture
+        .cover_art
+        .seed_lookup(Some("mb-mid-write"), None, None);
+    fixture.provider.route(
+        "/release?",
+        200,
+        search_json("mb-mid-write", "rg-mid-write"),
+    );
+    fixture.provider.route(
+        "/release/mb-mid-write?",
+        200,
+        release_json("mb-mid-write", "rg-mid-write", &[1, 1]),
+    );
+    fixture.scan(1).await;
+    // A search result carries no tracklist, so the pass buys one before it can
+    // store anything. Holding that lookup puts the import start exactly inside
+    // the window between a settled verdict and its row.
+    fixture.provider.hold("/release/mb-mid-write?");
+
+    let context = fixture.context();
+    let token = CancellationToken::new();
+    let pass = tokio::spawn(async move { run_pass_for_test(&context, &token).await });
+    wait_for_request(&fixture.provider, "/release/mb-mid-write?", 1).await;
+    start_import_for(&fixture, &dir).await;
+    fixture.provider.release();
+    tokio::time::timeout(Duration::from_secs(20), pass)
+        .await
+        .expect("pass finishes after the import claims the candidate")
+        .unwrap();
+
+    assert!(
+        !fixture.stored().await.contains_key(&hash),
+        "the verdict was already bought and paid for, and is still not stored: {:?}",
+        fixture.stored().await.keys().collect::<Vec<_>>()
+    );
 }
 
 /// Progress crosses as an event carrying both numbers. The total is the sweep's
@@ -1756,19 +1857,15 @@ async fn a_cancelled_candidate_writes_no_row() {
     // Hold the disc-ID response, so the cancel lands while the candidate is
     // genuinely mid-identification rather than racing a pass that already
     // finished.
-    fixture.provider.set_delay(Duration::from_millis(2_000));
+    fixture.provider.hold("/discid/");
 
     let context = fixture.context();
     let token = CancellationToken::new();
     let pass_token = token.clone();
     let pass = tokio::spawn(async move { run_pass_for_test(&context, &pass_token).await });
-    tokio::time::sleep(Duration::from_millis(300)).await;
-    assert_eq!(
-        fixture.provider.count_containing("/discid/"),
-        1,
-        "the lookup is in flight when the cancel lands"
-    );
+    wait_for_request(&fixture.provider, "/discid/", 1).await;
     token.cancel();
+    fixture.provider.release();
     tokio::time::timeout(Duration::from_secs(10), pass)
         .await
         .expect("a cancelled pass returns")
@@ -1827,7 +1924,7 @@ async fn a_malformed_verdict_on_a_late_candidate_aborts_without_panicking() {
     );
     fixture.scan(1).await;
 
-    fixture.provider.set_delay(Duration::from_secs(2));
+    fixture.provider.hold("/discid/");
 
     let context = fixture.context();
     let token = CancellationToken::new();
@@ -1851,6 +1948,7 @@ async fn a_malformed_verdict_on_a_late_candidate_aborts_without_panicking() {
         .refresh_watched_folder(fixture.root.to_string_lossy().into_owned())
         .await
         .unwrap();
+    fixture.provider.release();
     tokio::time::timeout(Duration::from_secs(10), pass)
         .await
         .expect("malformed late row aborts the pass")

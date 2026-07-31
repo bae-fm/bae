@@ -1507,18 +1507,22 @@ impl Automation {
         )))
     }
 
-    pub fn start_import(
+    pub async fn start_import(
         &self,
         request: AutomationStartImport,
     ) -> Result<AutomationImportStarted, AutomationError> {
-        let import_id = self.services.import().start_import(
-            &request.candidate_key,
-            request.selected_cover.map(cover_selection),
-            storage_mode(request.storage_mode),
-            request.pin,
-            identity_choice(request.identity_choice),
-            request.user_edit.map(release_user_edit),
-        )?;
+        let import_id = self
+            .services
+            .import()
+            .start_import(
+                &request.candidate_key,
+                request.selected_cover.map(cover_selection),
+                storage_mode(request.storage_mode),
+                request.pin,
+                identity_choice(request.identity_choice),
+                request.user_edit.map(release_user_edit),
+            )
+            .await?;
         Ok(AutomationImportStarted { import_id })
     }
 
@@ -1674,7 +1678,7 @@ impl Automation {
             }
             AutomationTool::ImportStart => {
                 let input: AutomationStartImport = from_value(args)?;
-                to_value(self.start_import(input)?)
+                to_value(self.start_import(input).await?)
             }
             AutomationTool::ReleaseDetailGet => {
                 let input: ReleaseIdInput = from_value(args)?;

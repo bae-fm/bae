@@ -503,6 +503,7 @@ where
             },
             user_edit: None,
         })
+        .await
         .map_err(|e| -> Box<dyn std::error::Error> { e.into() })?;
     let mut progress_rx = import_handle.subscribe_import(import_id);
     let (release_id, _album_id) = wait_for_import_complete(&mut progress_rx).await;
@@ -1145,6 +1146,7 @@ impl CueFlacTestFixture {
                 },
                 user_edit: None,
             })
+            .await
             .map_err(|e| -> Box<dyn std::error::Error> { e.into() })?;
         let mut progress_rx = import_handle.subscribe_import(import_id);
         let (_release_id, _album_id) = wait_for_import_complete(&mut progress_rx).await;
@@ -3599,6 +3601,7 @@ impl HighSampleRateTestFixture {
                 },
                 user_edit: None,
             })
+            .await
             .map_err(|e| -> Box<dyn std::error::Error> { e.into() })?;
         let mut progress_rx = import_handle.subscribe_import(import_id);
         try_wait_for_import_complete(&mut progress_rx)
@@ -4009,6 +4012,7 @@ async fn test_restore_emits_seeked_at_saved_position() {
             },
             user_edit: None,
         })
+        .await
         .unwrap();
     let mut progress_rx = import_handle.subscribe_import(import_id);
     let _ = wait_for_import_complete(&mut progress_rx).await;
@@ -4102,6 +4106,7 @@ async fn test_play_persists_then_stop_clears_playback_state() {
             },
             user_edit: None,
         })
+        .await
         .unwrap();
     let mut progress_rx = import_handle.subscribe_import(import_id);
     let _ = wait_for_import_complete(&mut progress_rx).await;
@@ -4279,6 +4284,7 @@ async fn restore_test_library() -> RestoreTestLibrary {
             },
             user_edit: None,
         })
+        .await
         .unwrap();
     let mut progress_rx = import_handle.subscribe_import(import_id);
     let _ = wait_for_import_complete(&mut progress_rx).await;
@@ -4353,6 +4359,7 @@ async fn import_second_release(lib: &RestoreTestLibrary) -> (String, Vec<String>
             },
             user_edit: None,
         })
+        .await
         .unwrap();
     let mut progress_rx = import_handle.subscribe_import(import_id);
     let (release_id, _album_id) = wait_for_import_complete(&mut progress_rx).await;
@@ -4635,6 +4642,7 @@ impl CloudOnlyPlaybackFixture {
                 },
                 user_edit: None,
             })
+            .await
             .map_err(|e| -> Box<dyn std::error::Error> { e.into() })?;
         let mut import_rx = import_handle.subscribe_import(import_id);
         let (release_id, _album_id) = wait_for_import_complete(&mut import_rx).await;
@@ -6090,6 +6098,7 @@ async fn build_remote_multi_window_template(
             },
             user_edit: None,
         })
+        .await
         .map_err(|e| -> Box<dyn std::error::Error> { e.into() })?;
     let mut import_rx = import_handle.subscribe_import(import_id);
     let (release_id, _album_id) = wait_for_import_complete(&mut import_rx).await;

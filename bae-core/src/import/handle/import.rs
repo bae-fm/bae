@@ -56,7 +56,7 @@ impl ImportServiceHandle {
     /// `source_release_id`, Approximate NULLs it, Unknown writes zero
     /// `release_identities` rows. `user_edit` is the confirmation page's optional
     /// overlay, whose fields override the seeded metadata.
-    pub fn start_import(
+    pub async fn start_import(
         &self,
         candidate_key: &str,
         selected_cover: Option<crate::import::types::CoverSelection>,
@@ -94,7 +94,8 @@ impl ImportServiceHandle {
                 content_hash: candidate.files.content_hash(),
                 edit_revision: candidate.file_edit_revision,
             },
-        )?;
+        )
+        .await?;
         Ok(import_id)
     }
 
@@ -186,7 +187,7 @@ impl ImportServiceHandle {
     /// Queue an import command and return its import_id for progress tracking.
     /// Returns immediately — all the work (metadata resolution, file discovery,
     /// track mapping, DB insertion) happens in the service worker.
-    pub fn send_command(
+    pub async fn send_command(
         &self,
         command: ImportCommand,
     ) -> Result<String, crate::import::ImportError> {
@@ -203,22 +204,39 @@ impl ImportServiceHandle {
                 edit_revision: 0,
             },
         )
+        .await
     }
 
-    fn send_command_with_expectation(
+    /// The one way an import command reaches the worker, and so the one place
+    /// the candidate is claimed for it.
+    ///
+    /// The claim goes first and is the reason this is async: it is taken under
+    /// the folder-state commit lock, so a queue-sweep verdict for this
+    /// candidate either landed before the user committed to importing it or is
+    /// refused. A command that never reaches the worker releases the claim
+    /// again rather than leaving a candidate owned by an import that does not
+    /// exist.
+    async fn send_command_with_expectation(
         &self,
         command: ImportCommand,
         expectation: crate::import::service::ImportExpectation,
     ) -> Result<String, crate::import::ImportError> {
         let import_id = command.import_id.clone();
-        self.requests_tx
+        let candidate_key = command.candidate_key.clone();
+        self.claim_candidate_for_import(&candidate_key).await;
+        if self
+            .requests_tx
             .send(crate::import::service::ImportWorkerMessage::Import {
                 command,
                 expectation,
             })
-            .map_err(|_| crate::import::ImportError::Internal {
+            .is_err()
+        {
+            self.release_import_claim(&candidate_key).await;
+            return Err(crate::import::ImportError::Internal {
                 detail: "Failed to queue import command".to_string(),
-            })?;
+            });
+        }
         Ok(import_id)
     }
 

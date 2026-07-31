@@ -396,6 +396,7 @@ impl PlaybackTestFixture {
                 },
                 user_edit: None,
             })
+            .await
             .map_err(|e| -> Box<dyn std::error::Error> { e.into() })?;
         let mut progress_rx = import_handle.subscribe_import(import_id);
         let (_release_id, _album_id) = wait_for_import_complete(&mut progress_rx).await;

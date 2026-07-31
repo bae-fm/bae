@@ -65,6 +65,10 @@ final class Importer: Sendable, Observable {
     let claimForPick:
         @Sendable (_ candidateKey: String, _ result: BridgeMetadataResult) ->
             BridgeClaimLine?
+    /// Async because core claims the candidate for the import before the
+    /// command is queued, and that claim is taken under the same lock a
+    /// background verdict write holds — which is what keeps the queue sweep
+    /// from answering a candidate you have just committed to importing.
     let startImport:
         @Sendable (
             _ candidateKey: String,
@@ -73,7 +77,7 @@ final class Importer: Sendable, Observable {
             _ pin: Bool,
             _ identityChoice: BridgeIdentityChoice,
             _ userEdit: BridgeReleaseUserEdit?
-        ) throws -> Void
+        ) async throws -> Void
 
     init(
         addWatchedFolder: @escaping @Sendable (String) async throws -> Void = {
@@ -129,7 +133,7 @@ final class Importer: Sendable, Observable {
             @escaping @Sendable (
                 String, BridgeCoverSelection?, BridgeStorageMode, Bool,
                 BridgeIdentityChoice, BridgeReleaseUserEdit?
-            ) throws -> Void = { _, _, _, _, _, _ in }
+            ) async throws -> Void = { _, _, _, _, _, _ in }
     ) {
         self.addWatchedFolder = addWatchedFolder
         self.removeWatchedFolder = removeWatchedFolder
@@ -219,7 +223,7 @@ final class Importer: Sendable, Observable {
                 handle.claimForPick(candidateKey: $0, result: $1)
             },
             startImport: {
-                try handle.startImport(
+                try await handle.startImport(
                     candidateKey: $0,
                     selectedCover: $1,
                     storageMode: $2,
