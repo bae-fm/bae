@@ -49,10 +49,6 @@ def android_keys(path):
     txt = (ROOT / path).read_text()
     return re.findall(r'<string name="([^"]+)"', txt) + re.findall(r'<plurals name="([^"]+)"', txt)
 
-def resw_keys(path):
-    txt = (ROOT / path).read_text()
-    return re.findall(r'<data name="([^"]+)"', txt)
-
 def swift_escaped(s):
     # Swift source writes non-ASCII as `\u{XXXX}` (e.g. `…` -> `\u{2026}`,
     # `–` -> `\u{2013}`), so the literal key won't grep-match; check that form too.
@@ -65,16 +61,6 @@ def apple_ref(k, src):
     if re.search(r"%(\d+\$)?[@a-zA-Z]|%lld", k):
         return True
     return (k in src) or (swift_escaped(k) in src)
-
-# XAML x:Uid keys are "<Uid>.<Property>" (Content/Text/PlaceholderText/Header/
-# ToolTip) or "<Uid>.[using:...]Prop" — the source carries x:Uid="<Uid>".
-XAML_PROP = re.compile(r"^(.+?)\.(\[using:|Content$|Text$|PlaceholderText$|Header$|ToolTip$)")
-
-def windows_ref(k, src):
-    m = XAML_PROP.match(k)
-    if m:
-        return f'x:Uid="{m.group(1)}"' in src
-    return (f'"{k}"' in src) or (f'"{k.replace(".", "/")}"' in src)
 
 PLATFORMS = [
     # (label, keys, is-referenced predicate, source dirs, source extensions)
@@ -99,8 +85,6 @@ PLATFORMS = [
      lambda k, src: (f"R.string.{k}" in src) or (f"@string/{k}" in src)
      or (f"R.plurals.{k}" in src) or (f"@plurals/{k}" in src),
      ["bae-android/app/src/main"], {".kt", ".xml"}),
-    ("Windows", resw_keys("bae-windows/Strings/en-US/Resources.resw"),
-     windows_ref, ["bae-windows"], {".cs", ".xaml"}),
 ]
 
 def main():

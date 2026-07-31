@@ -6,8 +6,8 @@ non-English stem, e.g. "Sincronizzazioneing", "Eşzamanlamaed", "Đồng bộed"
 "Importerened").
 
 Reads both xcstrings catalogs, the Android values-{it,tr,vi,nl}/strings.xml
-catalog, and the Windows Strings/{it,tr,vi,nl}/Resources.resw catalog — all
-four gate CI.
+catalog, and the Avalonia app's Strings/Resources.{it,tr,vi,nl}.resx catalog —
+all four gate CI.
 
 Detectors:
   - glued morphology: an English suffix (ing/ed/s) glued onto a non-English
@@ -35,8 +35,8 @@ translation defect regardless of what the other detectors say, so it is not
 allowlist-suppressible.
 
 Gates CI: exits non-zero if any strict-detector or placeholder-multiset hit in
-the two xcstrings catalogs, the Android catalog, or the Windows resw catalog is
-not allowlisted (placeholder mismatches are never allowlist-suppressible).
+the two xcstrings catalogs, the Android catalog, or the ResX catalog is not
+allowlisted (placeholder mismatches are never allowlist-suppressible).
 """
 import json
 import pathlib
@@ -54,9 +54,10 @@ IOS_XCSTRINGS = "bae-ios/bae/bae/Localizable.xcstrings"
 ANDROID_STRINGS = {
     loc: f"bae-android/app/src/main/res/values-{loc}/strings.xml" for loc in TARGET_LOCALES
 }
-WINDOWS_RESW = {
-    loc: f"bae-windows/Strings/{loc}/Resources.resw" for loc in TARGET_LOCALES
+RESX_CHROME = {
+    loc: f"bae-avalonia/Strings/Resources.{loc}.resx" for loc in TARGET_LOCALES
 }
+RESX_CHROME_EN = "bae-avalonia/Strings/Resources.resx"
 
 # ── Placeholder / token stripping ───────────────────────────────────────────
 
@@ -81,7 +82,7 @@ def placeholder_multiset(s):
     return sorted(PLACEHOLDER_RE.findall(s))
 
 
-# resw embeds an entire ICU plural expression as one string value
+# The ResX catalogs embed an entire ICU plural expression as one string value
 # (`{count, plural, one {# item} other {# items}}`); xcstrings and Android
 # instead split each plural form into its own leaf before it ever reaches
 # placeholder_multiset, so their values never contain a nested `{...}`. The
@@ -111,7 +112,7 @@ def _find_balanced_close(s, open_idx):
     raise ValueError(f"unbalanced braces in {s!r}")
 
 
-def _extract_resw_placeholders(s):
+def _extract_mf1_placeholders(s):
     tokens = []
     i, n = 0, len(s)
     while i < n:
@@ -130,7 +131,7 @@ def _extract_resw_placeholders(s):
             inner = s[i + 1:close]
             pm = _RESW_PLURAL_HEADER_RE.match(inner)
             if pm:
-                tokens.extend(_extract_resw_plural_branches(inner[pm.end():]))
+                tokens.extend(_extract_mf1_plural_branches(inner[pm.end():]))
             else:
                 tokens.append("{" + inner + "}")
             i = close + 1
@@ -139,7 +140,7 @@ def _extract_resw_placeholders(s):
     return tokens
 
 
-def _parse_resw_plural_branches(s):
+def _parse_mf1_plural_branches(s):
     """s is the branch-list portion of a plural construct, after the
     argument name and "plural," keyword: a sequence of `label {branch}`
     pairs (one/other/few/many/zero/=N). Returns {label: sorted placeholder
@@ -160,16 +161,16 @@ def _parse_resw_plural_branches(s):
             k += 1
         if k < n and s[k] == "{":
             close = _find_balanced_close(s, k)
-            branches[label] = sorted(_extract_resw_placeholders(s[k + 1:close]))
+            branches[label] = sorted(_extract_mf1_placeholders(s[k + 1:close]))
             i = close + 1
         else:
             i = j + 1 if j > i else i + 1
     return branches
 
 
-def _extract_resw_plural_branches(s):
+def _extract_mf1_plural_branches(s):
     tokens = []
-    for branch_tokens in _parse_resw_plural_branches(s).values():
+    for branch_tokens in _parse_mf1_plural_branches(s).values():
         tokens.extend(branch_tokens)
     return tokens
 
@@ -190,15 +191,15 @@ def _parse_top_level_plural(value):
     pm = _RESW_PLURAL_HEADER_RE.match(inner)
     if not pm:
         return None
-    return _parse_resw_plural_branches(inner[pm.end():])
+    return _parse_mf1_plural_branches(inner[pm.end():])
 
 
-def resw_placeholder_multiset(s):
-    return sorted(_extract_resw_placeholders(s))
+def mf1_placeholder_multiset(s):
+    return sorted(_extract_mf1_placeholders(s))
 
 
-def resw_placeholders_match(en_value, target_value):
-    """Placeholder equality for a resw value, aware that CLDR plural-category
+def mf1_placeholders_match(en_value, target_value):
+    """Placeholder equality for an MF1 value, aware that CLDR plural-category
     counts vary by locale (e.g. Vietnamese has only "other", no "one" —
     dropping a category English uses is a correct translation, not a defect).
     For a value that is a single top-level plural construct in both en and
@@ -212,7 +213,7 @@ def resw_placeholders_match(en_value, target_value):
         if not set(target_branches) <= set(en_branches):
             return False
         return all(target_branches[label] == en_branches[label] for label in target_branches)
-    return resw_placeholder_multiset(en_value) == resw_placeholder_multiset(target_value)
+    return mf1_placeholder_multiset(en_value) == mf1_placeholder_multiset(target_value)
 
 
 def tokenize(s):
@@ -378,10 +379,10 @@ def android_leaves(en_path, target_path, locale):
                 yield name, quantity, en_value, {locale: target_items[quantity]}
 
 
-# ── Windows .resw ────────────────────────────────────────────────────────────
+# ── .NET ResX ────────────────────────────────────────────────────────────────
 
 
-def resw_leaves(en_path, target_path, locale):
+def resx_leaves(en_path, target_path, locale):
     if not (ROOT / en_path).exists() or not (ROOT / target_path).exists():
         return
     ns = {}
@@ -405,8 +406,8 @@ def resw_leaves(en_path, target_path, locale):
 def strip_icu(s):
     # ICU plural syntax ("{count, plural, one {# item} other {# items}}") and
     # the `#` runtime substitution read as English-skeleton/overlap noise;
-    # strip the keywords before scanning resw values (a measured
-    # false-positive source in the Windows catalogs).
+    # strip the keywords before scanning ResX values (a measured
+    # false-positive source in the C# catalogs).
     words = WORD_RE.findall(s)
     for w in words:
         if w.lower() in ICU_PLURAL_WORDS:
@@ -426,7 +427,7 @@ def scan_leaves(leaves):
     everywhere — real breakage lives there too, but so do enough legitimate
     loanword-heavy translations that it can't gate CI). Each is a list of
     dicts. Callers decide whether detector_hits gates (xcstrings) or only
-    reports (Android/Windows), and whether to print band_hits at all (only
+    reports (Android/ResX), and whether to print band_hits at all (only
     under --verbose).
     """
     detector_hits = []
@@ -537,18 +538,17 @@ def main():
         if verbose:
             print_hits("Android strings.xml (report-only band)", band_hits, allowed)
 
-    windows_leaves_all = []
-    for loc, target_path in WINDOWS_RESW.items():
-        en_path = "bae-windows/Strings/en-US/Resources.resw"
-        windows_leaves_all.extend(resw_leaves(en_path, target_path, loc))
-    if windows_leaves_all:
-        detector_hits, band_hits = scan_leaves(windows_leaves_all)
-        unallowed = print_hits("Windows resw (strict)", detector_hits, allowed)
+    resx_leaves_all = []
+    for loc, target_path in RESX_CHROME.items():
+        resx_leaves_all.extend(resx_leaves(RESX_CHROME_EN, target_path, loc))
+    if resx_leaves_all:
+        detector_hits, band_hits = scan_leaves(resx_leaves_all)
+        unallowed = print_hits("ResX chrome (strict)", detector_hits, allowed)
         total_gating_failures += len(unallowed)
 
-        mismatches = placeholder_mismatches(windows_leaves_all, resw_placeholder_multiset, resw_placeholders_match)
+        mismatches = placeholder_mismatches(resx_leaves_all, mf1_placeholder_multiset, mf1_placeholders_match)
         if mismatches:
-            print(f"=== Windows resw: {len(mismatches)} placeholder-multiset mismatch(es) ===")
+            print(f"=== ResX chrome: {len(mismatches)} placeholder-multiset mismatch(es) ===")
             for m in mismatches:
                 loc_label = m["key"] if not m["form"] else f"{m['key']} [{m['form']}]"
                 print(f"  [{m['locale']}] {loc_label!r}")
@@ -557,7 +557,7 @@ def main():
             total_gating_failures += len(mismatches)
 
         if verbose:
-            print_hits("Windows resw (report-only band)", band_hits, allowed)
+            print_hits("ResX chrome (report-only band)", band_hits, allowed)
 
     print(f"\nTOTAL gating failures: {total_gating_failures} (allowlist: {len(allowed)})")
     if total_gating_failures:

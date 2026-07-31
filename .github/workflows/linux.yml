@@ -101,7 +101,7 @@ jobs:
         # English-skeleton gate: an it/tr/vi/nl value still carrying the English
         # sentence, glued morphology ("Sincronizzazioneing"), or a placeholder
         # multiset that doesn't match its source. Covers all four catalogs
-        # (macOS/iOS xcstrings, Android strings.xml, Windows resw).
+        # (macOS/iOS xcstrings, Android strings.xml, bae-avalonia resx).
         python3 scripts/loc-english-skeleton.py
 
     - name: Check Rust documentation

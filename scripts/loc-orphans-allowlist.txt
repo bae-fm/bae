@@ -1,12 +1,3 @@
 # Chrome localization keys referenced dynamically (built at runtime), so the
 # static orphan detector (scripts/loc-chrome-orphans.py) can't see the reference.
 # Format: one key per line. Keep this minimal — only genuinely-dynamic keys.
-
-# Windows: Loc.Chrome($"storage.state.{State}") in StorageRow.cs
-# The FFI maps the two-state model to wire tags: Local -> "unmanaged", Remote -> "managed".
-storage.state.managed
-storage.state.unmanaged
-# Windows: Loc.Chrome($"outbox.upload.state.{State}") in OutboxSnapshot.cs
-outbox.upload.state.active
-outbox.upload.state.failed
-outbox.upload.state.queued

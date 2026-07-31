@@ -1,8 +1,7 @@
 root = true
 
-# UTF-8 with a BOM, matching the CHARSET convention the WinUI project used so a
-# file round-trips identically across the Windows and Linux toolchains. Newlines
-# are lf — this app ships on Linux too, unlike the Windows-only predecessor.
+# UTF-8 with a BOM so a file round-trips identically across the Windows and
+# Linux toolchains. Newlines are lf — this app ships on both.
 [*.cs]
 indent_style = space
 indent_size = 4

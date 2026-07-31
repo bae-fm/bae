@@ -1,8 +1,8 @@
 # Windows dev VM (UTM on Apple Silicon)
 
 A Windows 11 ARM VM that builds and runs the full bae Windows stack — the
-compile-run-debug loop CI can't provide (CI only compiles bae-windows; it
-never launches the app, which is how a launch-blocking bug once shipped).
+compile-run-debug loop CI can't provide (CI only compiles the app; it never
+launches it, which is how a launch-blocking bug once shipped).
 
 ## One-time manual steps (~15 min of clicks)
 
@@ -38,17 +38,15 @@ by scheduled tasks otherwise pile terminal windows onto the desktop).
 Build + run after provisioning:
 
 ```sh
-ssh tom@<ip> 'C:\Users\tom\bridge-build.cmd'    # bridge + baeium C# bindings
-ssh tom@<ip> 'C:\Users\tom\build-normal.cmd'    # WinUI app (framework-dependent)
-ssh tom@<ip> 'C:\Users\tom\avalonia-build.cmd'  # full-edition bindings + Avalonia app
+ssh tom@<ip> 'C:\Users\tom\bridge-build.cmd'    # bridge + C# bindings
+ssh tom@<ip> 'C:\Users\tom\avalonia-build.cmd'  # bindings + the Avalonia app
 ssh tom@<ip> 'schtasks /run /tn baeRun'         # launch on the VM desktop
 ssh tom@<ip> 'schtasks /run /tn vmShot'         # screenshot → C:\Users\tom\vmshot.png
 ```
 
-`bridge-build.cmd` takes an optional edition arg (`full` for bae-avalonia's
-`csharp-bindings-full`; default `baeium` for bae-windows) and leaves the
-vcvars + pinned-linker environment in the calling cmd process — wrappers
-`call` it and run further cargo/dotnet steps in that environment.
+`bridge-build.cmd` leaves the vcvars + pinned-linker environment in the calling
+cmd process — wrappers `call` it and run further cargo/dotnet steps in that
+environment.
 
 That's the iterate loop. Separately, `build-release.cmd` runs the release
 lane locally — release bridge, self-contained publish, `vpk pack` — and drops
@@ -66,10 +64,10 @@ OS caches, keeping every build cache, and ReTrims so the host qcow2 shrinks.
 - **Native aarch64, no emulation in the loop**: every build targets
   `aarch64-pc-windows-msvc` (bae-ffmpeg ships an aarch64 dist; the CI arm lane
   covers the same target). `cargo test` needs no `--target` — aarch64 is the
-  host. The public release lane (release-windows.yml) still ships x64 only, so
-  a CI-built installer runs on this VM under emulation.
+  host. The public release lane (release-windows.yml) ships an arm64 installer
+  too, so a CI-built installer runs natively here.
 - **Scheduled tasks with `/it` need a logged-in desktop** — hence auto-logon.
-  `/rl highest` (elevation) breaks WinUI file pickers and creates
+  `/rl highest` (elevation) breaks the shell file pickers and creates
   Administrators-owned state files a normal run then can't touch. Don't elevate
   the app task.
 - **SSH sessions can't show windows**; anything windowed goes through the

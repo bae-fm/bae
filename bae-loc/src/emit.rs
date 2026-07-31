@@ -264,11 +264,11 @@ fn xml_escape(s: &str) -> String {
     out
 }
 
-/// Emit `Core.resw` for one `locale`. The dotted id is the resource name; the
+/// Emit one ResX table for `locale`. The dotted id is the resource name; the
 /// MF1 value for that locale — its translation, or the English source where
 /// untranslated — is stored verbatim (XML-escaped) for the `MessageFormat` NuGet
 /// at runtime.
-pub fn windows_resw(cat: &Catalog, locale: &str, src_lang: &str) -> String {
+fn resx_table(cat: &Catalog, locale: &str, src_lang: &str) -> String {
     let mut out = String::from(
         "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<root>\n  \
          <resheader name=\"resmimetype\"><value>text/microsoft-resx</value></resheader>\n  \
@@ -286,56 +286,21 @@ pub fn windows_resw(cat: &Catalog, locale: &str, src_lang: &str) -> String {
     out
 }
 
-/// The generated Windows locales in build/BCP-47 form: the source language plus
-/// every catalog target locale. Windows resources are per-language directories
-/// (unlike Apple's single multi-locale `.xcstrings`), so the catalog fans out to
-/// one `Core.resw` per locale.
-fn windows_locales(cat: &Catalog, src_lang: &str) -> Vec<String> {
-    let mut locales = vec![format!("{src_lang}-US")];
-    locales.extend(cat.target_locales(src_lang).into_iter().map(str::to_string));
-    locales
-}
-
-/// Emit one `<locale>/Core.resw` per shipping locale: `(relative path, contents)`
-/// pairs the caller writes under the project's `Strings` directory. Each locale's
-/// file carries that locale's translations, falling back to the English source
-/// for any message not yet translated. The per-language directories are what make
-/// the app multilingual. Mirrors the Apple emitter, which carries the same
-/// per-locale values inside one file.
-pub fn windows_resw_all(cat: &Catalog, src_lang: &str) -> Vec<(std::path::PathBuf, String)> {
-    let src_dir = format!("{src_lang}-US");
-    windows_locales(cat, src_lang)
-        .into_iter()
-        .map(|dir| {
-            // The source directory ("en-US") looks up the source language; every
-            // other directory's name is the catalog locale code itself.
-            let lookup = if dir == src_dir {
-                src_lang
-            } else {
-                dir.as_str()
-            };
-            let contents = windows_resw(cat, lookup, src_lang);
-            (std::path::PathBuf::from(&dir).join("Core.resw"), contents)
-        })
-        .collect()
-}
-
 /// Emit the .NET satellite-assembly ResX set: `Core.resx` (the source language,
 /// the invariant fallback the main assembly embeds) plus one `Core.<culture>.resx`
-/// per catalog target locale (each a satellite assembly). The ResX schema is
-/// identical to the Windows `.resw` — same writer, MF1 value stored verbatim,
-/// dotted id as the resource name — so `windows_resw` produces the body. Only the
-/// naming differs: .NET keys the fallback chain off the culture in the filename,
-/// not a per-language directory the way MRT does.
+/// per catalog target locale (each a satellite assembly). .NET keys the fallback
+/// chain off the culture in the filename, so one flat directory carries every
+/// language. Mirrors the Apple emitter, which carries the same per-locale values
+/// inside one file.
 pub fn resx_all(cat: &Catalog, src_lang: &str) -> Vec<(std::path::PathBuf, String)> {
     let mut files = vec![(
         std::path::PathBuf::from("Core.resx"),
-        windows_resw(cat, src_lang, src_lang),
+        resx_table(cat, src_lang, src_lang),
     )];
     for loc in cat.target_locales(src_lang) {
         files.push((
             std::path::PathBuf::from(format!("Core.{loc}.resx")),
-            windows_resw(cat, loc, src_lang),
+            resx_table(cat, loc, src_lang),
         ));
     }
     files
@@ -425,20 +390,20 @@ value = "that release couldn't be found"
     }
 
     #[test]
-    fn windows_keeps_dotted_id_and_mf_verbatim() {
+    fn resx_keeps_dotted_id_and_mf_verbatim() {
         let c = cat(r#"
 [messages."core.identify.barcode.looking_up"]
 args = { position = "Int", total = "Int" }
 value = "Looking up barcode {position} of {total}"
 "#);
-        let resw = windows_resw(&c, "en", "en");
+        let resx = resx_table(&c, "en", "en");
         assert!(
-            resw.contains("name=\"core.identify.barcode.looking_up\""),
-            "{resw}"
+            resx.contains("name=\"core.identify.barcode.looking_up\""),
+            "{resx}"
         );
         assert!(
-            resw.contains("Looking up barcode {position} of {total}"),
-            "{resw}"
+            resx.contains("Looking up barcode {position} of {total}"),
+            "{resx}"
         );
     }
 
@@ -483,37 +448,6 @@ translations = { ar = "تعذر العثور على ذلك الإصدار", "zh-
             .find(|(p, _)| p.to_string_lossy() == "Core.ar.resx")
             .unwrap();
         assert!(ar.1.contains("تعذر العثور على ذلك الإصدار"), "{}", ar.1);
-    }
-
-    #[test]
-    fn windows_fans_out_to_every_shipping_locale() {
-        let c = cat(r#"
-[messages."core.error.not_found.release"]
-value = "that release couldn't be found"
-translations = { ar = "تعذر العثور على ذلك الإصدار", "zh-Hans" = "找不到该发行版" }
-"#);
-        let files = windows_resw_all(&c, "en");
-        // One Core.resw per generated locale: en-US source + catalog targets.
-        assert_eq!(files.len(), 3);
-        let paths: Vec<String> = files
-            .iter()
-            .map(|(p, _)| p.to_string_lossy().replace('\\', "/"))
-            .collect();
-        assert!(paths.contains(&"en-US/Core.resw".to_string()), "{paths:?}");
-        assert!(paths.contains(&"ar/Core.resw".to_string()), "{paths:?}");
-        assert!(
-            paths.contains(&"zh-Hans/Core.resw".to_string()),
-            "{paths:?}"
-        );
-        let source = files
-            .iter()
-            .find(|(p, _)| p.to_string_lossy().replace('\\', "/") == "en-US/Core.resw")
-            .unwrap();
-        assert!(
-            source.1.contains("that release couldn't be found"),
-            "{}",
-            source.1
-        );
     }
 
     #[test]
@@ -586,11 +520,11 @@ translations = { pl = "{count, plural, one {# usunięcie oczekuje} few {# usuni�
             .unwrap();
         assert!(pl.1.contains("that release couldn"), "{}", pl.1);
 
-        // Windows: the Polish Core.resw carries the four-category MF1 verbatim.
-        let resw = windows_resw_all(&c, "en");
-        let pl = resw
+        // ResX: the Polish Core.pl.resx carries the four-category MF1 verbatim.
+        let files = resx_all(&c, "en");
+        let pl = files
             .iter()
-            .find(|(p, _)| p.to_string_lossy().replace('\\', "/") == "pl/Core.resw")
+            .find(|(p, _)| p.to_string_lossy() == "Core.pl.resx")
             .unwrap();
         assert!(pl.1.contains("many {# usunięć oczekuje}"), "{}", pl.1);
     }

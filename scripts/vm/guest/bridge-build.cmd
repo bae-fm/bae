@@ -1,6 +1,5 @@
-rem Build the Rust bridge and generate C# bindings for one Windows edition:
-rem   bridge-build.cmd            -> baeium (bae-windows: features "desktop")
-rem   bridge-build.cmd full       -> full (bae-avalonia: "oauth-providers,desktop")
+rem Build the Rust bridge and generate the full-edition C# bindings
+rem (features "oauth-providers,desktop") the Avalonia app compiles against.
 rem Leaves the MSVC/vcvars environment set in the calling cmd process, so a
 rem wrapper that `call`s this can run further cargo/dotnet steps in it.
 set FFMPEG_DIR=C:\bae\bae-ffmpeg\dist
@@ -8,13 +7,8 @@ set BINDGEN_EXTRA_CLANG_ARGS=-IC:\bae\bae-ffmpeg\dist\include
 set LIBCLANG_PATH=C:\Program Files\LLVM\bin
 set PATH=C:\bae\bae-ffmpeg\dist\bin;C:\Program Files\LLVM\bin;%USERPROFILE%\.cargo\bin;%PATH%
 set BAE_BRIDGE_TARGET=aarch64-pc-windows-msvc
-if "%~1"=="full" (
-    set BAE_BRIDGE_FEATURES=oauth-providers,desktop
-    set BAE_BRIDGE_CSHARP_BINDINGS_DIR=bae-bridge/csharp-bindings-full
-) else (
-    set BAE_BRIDGE_FEATURES=desktop
-    set BAE_BRIDGE_CSHARP_BINDINGS_DIR=bae-bridge/csharp-bindings-baeium
-)
+set BAE_BRIDGE_FEATURES=oauth-providers,desktop
+set BAE_BRIDGE_CSHARP_BINDINGS_DIR=bae-bridge/csharp-bindings-full
 rem Pin the MSVC linker explicitly: the build runs under Git bash, whose
 rem /usr/bin precedes the inherited PATH, so a bare "link.exe" can resolve to
 rem GNU coreutils' link and fail host proc-macro links.

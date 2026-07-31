@@ -97,6 +97,9 @@ jobs:
 
   windows:
     name: Capture Windows
+    # The Avalonia app's headless Skia capture, run on Windows so the scenes
+    # render through the platform the Windows build ships on. Same script the
+    # other Avalonia hosts run; ShotCapture names the PNGs @windows there.
     runs-on: windows-latest
     env:
       FFMPEG_VERSION: v8.1.2-bae7
@@ -134,18 +137,19 @@ jobs:
           dotnet-version: "8.0.x"
       - name: Install uniffi-bindgen-cs
         run: cargo install --git https://github.com/NordSecurity/uniffi-bindgen-cs.git --tag 'v0.11.0+v0.31.0' uniffi-bindgen-cs --locked
-      - name: Set up MSBuild
-        uses: microsoft/setup-msbuild@v2
-      - name: Add Windows SDK bin to PATH (makepri for resources.pri)
+      - name: Build the Windows bridge (full edition, OAuth + desktop)
+        shell: bash
+        run: BAE_BRIDGE_TARGET=x86_64-pc-windows-msvc BAE_BRIDGE_FEATURES=oauth-providers,desktop BAE_BRIDGE_CSHARP_BINDINGS_DIR=bae-bridge/csharp-bindings-full ./bae-bridge/build-windows.sh
+      - name: Put the bridge DLL on PATH for the capture run
+        # The capture runs the app straight out of `dotnet run`'s output dir; the
+        # bindings' DllImport("uniffi_bae_bridge") resolves through PATH, which is
+        # also how the FFmpeg step above supplies the DLLs the bridge links.
         shell: pwsh
         run: |
-          $makepri = Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\bin\*\x64\makepri.exe" -ErrorAction SilentlyContinue |
-            Sort-Object FullName -Descending | Select-Object -First 1
-          if (-not $makepri) { throw "makepri.exe not found in the Windows SDK" }
-          Add-Content -Path $env:GITHUB_PATH -Value $makepri.Directory.FullName
+          Add-Content -Path $env:GITHUB_PATH -Value "$PWD\target-windows\x86_64-pc-windows-msvc\debug"
       - name: Capture
-        shell: pwsh
-        run: ./scripts/shots/windows.ps1 shots-out
+        shell: bash
+        run: ./scripts/shots/avalonia.sh shots-out
       - uses: actions/upload-artifact@v4
         with:
           name: shots-windows

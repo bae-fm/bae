@@ -1,20 +1,16 @@
 name: Release Windows
 
-# Cuts a Windows release of both editions × both architectures (x64 + arm64):
-# an independent 0.N version line (windows-v* tags). Each versioned release
-# carries a Velopack build per edition/arch: a Setup.exe that installs per-user
+# Cuts a Windows release of the Avalonia app for both architectures (x64 +
+# arm64): an independent 0.N version line (windows-v* tags). Each versioned
+# release carries a Velopack build per arch: a Setup.exe that installs per-user
 # and auto-updates, a Portable.zip that runs in place, and the update feed
-# (releases.<channel>.json + the .nupkg) the in-app updater reads. Each
-# edition/arch pair uses a distinct channel (win, win-arm64, baeium-win,
-# baeium-win-arm64) so the feeds don't collide in the one shared windows-v*
-# release; the installed package's baked channel selects its own feed, so an
-# arm64 install never updates onto an x64 build. Each arch builds natively on
-# its own runner — no cross-compiling. Signing engages when the
-# WINDOWS_CODESIGN_PFX_BASE64 secret is set; a build without it is unsigned
+# (releases.<channel>.json + the .nupkg) the in-app updater reads. Each arch
+# uses a distinct channel (win, win-arm64) so the feeds don't collide in the one
+# shared windows-v* release; the installed package's baked channel selects its
+# own feed, so an arm64 install never updates onto an x64 build. Each arch
+# builds natively on its own runner — no cross-compiling. Signing engages when
+# the WINDOWS_CODESIGN_PFX_BASE64 secret is set; a build without it is unsigned
 # and SmartScreen warns on first launch.
-# Edition differs only by exe/packId/channel; the baeium dll omits the
-# OAuth entry points, which the C# app detects at runtime via
-# NativeBae.SupportsOAuthProviders().
 
 on:
   workflow_dispatch:
@@ -68,7 +64,7 @@ jobs:
         echo "::notice::Windows release version $VERSION (pack $PACK_VERSION, build ${{ github.run_number }})"
 
   build:
-    name: Build ${{ matrix.edition }} ${{ matrix.arch.name }} package
+    name: Build ${{ matrix.arch.name }} package
     runs-on: ${{ matrix.arch.runner }}
     needs: calculate-version
     env:
@@ -80,7 +76,6 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        edition: [full, baeium]
         # Each arch builds natively on its own runner (the target is the
         # runner's host arch), mirroring windows.yml's verification matrix.
         arch:
@@ -88,51 +83,32 @@ jobs:
             runner: windows-latest
             target: x86_64-pc-windows-msvc
             rid: win-x64
-            msbuild_platform: x64
+            cmake_platform: x64
             ffmpeg_arch: x86_64
           - name: arm64
             runner: windows-11-arm
             target: aarch64-pc-windows-msvc
             rid: win-arm64
-            msbuild_platform: ARM64
+            cmake_platform: ARM64
             ffmpeg_arch: aarch64
     steps:
       - uses: actions/checkout@v6
 
-      - name: Resolve edition + arch (cargo features, exe + packaging names)
+      - name: Resolve the packaging identity for this arch
         shell: pwsh
         run: |
-          # full = OAuth providers on (bae.exe); baeium = no features (baeium.exe).
-          # The C# app is identical for both; only the dll's exported symbols differ.
-          # PACK_ID/CHANNEL are baked into the Velopack package so each installed
-          # edition/arch reads only its own feed; SETUP_NAME/PORTABLE_NAME give the
-          # website stable asset URLs. The x64 channels keep their pre-arm names
-          # (win, baeium-win); arm64 appends -arm64.
+          # CHANNEL is baked into the Velopack package so each installed arch
+          # reads only its own feed; SETUP_NAME/PORTABLE_NAME give the website
+          # stable asset URLs. The x64 channel keeps its pre-arm name (win);
+          # arm64 appends -arm64. PACK_ID and the published AssemblyName are
+          # `bae` on every arch — that pair is the updater identity every
+          # installed build already carries, so changing either would strand
+          # existing installs on their current version.
           $arch = "${{ matrix.arch.name }}"
           $channelArch = if ($arch -eq "x64") { "" } else { "-$arch" }
-          if ("${{ matrix.edition }}" -eq "baeium") {
-            "BAE_BRIDGE_FEATURES=desktop" | Out-File $env:GITHUB_ENV -Append
-            "BAE_BRIDGE_CSHARP_BINDINGS_DIR=bae-bridge/csharp-bindings-baeium" | Out-File $env:GITHUB_ENV -Append
-            "MSBUILD_BRIDGE_BINDINGS_DIR=..\bae-bridge\csharp-bindings-baeium" | Out-File $env:GITHUB_ENV -Append
-            "EXE_NAME=baeium.exe" | Out-File $env:GITHUB_ENV -Append
-            "ASSEMBLY_NAME=baeium" | Out-File $env:GITHUB_ENV -Append
-            "STAGE_DIR=baeium" | Out-File $env:GITHUB_ENV -Append
-            "PACK_ID=baeium" | Out-File $env:GITHUB_ENV -Append
-            "CHANNEL=baeium-win$channelArch" | Out-File $env:GITHUB_ENV -Append
-            "SETUP_NAME=baeium-windows-$arch-setup.exe" | Out-File $env:GITHUB_ENV -Append
-            "PORTABLE_NAME=baeium-windows-$arch-portable.zip" | Out-File $env:GITHUB_ENV -Append
-          } else {
-            "BAE_BRIDGE_FEATURES=oauth-providers,desktop" | Out-File $env:GITHUB_ENV -Append
-            "BAE_BRIDGE_CSHARP_BINDINGS_DIR=bae-bridge/csharp-bindings-full" | Out-File $env:GITHUB_ENV -Append
-            "MSBUILD_BRIDGE_BINDINGS_DIR=..\bae-bridge\csharp-bindings-full" | Out-File $env:GITHUB_ENV -Append
-            "EXE_NAME=bae.exe" | Out-File $env:GITHUB_ENV -Append
-            "ASSEMBLY_NAME=bae" | Out-File $env:GITHUB_ENV -Append
-            "STAGE_DIR=bae" | Out-File $env:GITHUB_ENV -Append
-            "PACK_ID=bae" | Out-File $env:GITHUB_ENV -Append
-            "CHANNEL=win$channelArch" | Out-File $env:GITHUB_ENV -Append
-            "SETUP_NAME=bae-windows-$arch-setup.exe" | Out-File $env:GITHUB_ENV -Append
-            "PORTABLE_NAME=bae-windows-$arch-portable.zip" | Out-File $env:GITHUB_ENV -Append
-          }
+          "CHANNEL=win$channelArch" | Out-File $env:GITHUB_ENV -Append
+          "SETUP_NAME=bae-windows-$arch-setup.exe" | Out-File $env:GITHUB_ENV -Append
+          "PORTABLE_NAME=bae-windows-$arch-portable.zip" | Out-File $env:GITHUB_ENV -Append
 
       - name: Install Rust (pinned toolchain)
         uses: dtolnay/rust-toolchain@master
@@ -169,52 +145,50 @@ jobs:
       - name: Install uniffi-bindgen-cs
         run: cargo install --git https://github.com/NordSecurity/uniffi-bindgen-cs.git --tag 'v0.11.0+v0.31.0' uniffi-bindgen-cs --locked
 
-      - name: Build the Windows bridge (release, per edition/arch)
+      - name: Build the Windows bridge (release, full edition)
+        # Windows has no cloudkit (Apple-only); full here is OAuth plus desktop.
         shell: bash
-        run: BAE_BRIDGE_TARGET=${{ matrix.arch.target }} ./bae-bridge/build-windows.sh --release
+        run: BAE_BRIDGE_TARGET=${{ matrix.arch.target }} BAE_BRIDGE_FEATURES=oauth-providers,desktop BAE_BRIDGE_CSHARP_BINDINGS_DIR=bae-bridge/csharp-bindings-full ./bae-bridge/build-windows.sh --release
 
       - name: Install .NET 8 SDK
         uses: actions/setup-dotnet@v5
         with:
           dotnet-version: "8.0.x"
 
-      - name: Set up MSBuild
-        uses: microsoft/setup-msbuild@v2
-
-      - name: Build the WinUI app (Release, self-contained)
-        # Self-contained twice over: SelfContained bundles the .NET runtime,
-        # WindowsAppSDKSelfContained bundles the Windows App SDK runtime — the
-        # installed app must not depend on a machine-wide WindowsAppRuntime
-        # redist. AssemblyName names every artifact (exe, deps.json, PRI) with
-        # the edition's final name at build time; a post-publish exe rename
-        # would orphan the module-named PRI and kill resource loading. MSBuild
-        # (not `dotnet build`) — the WinUI XAML markup compiler needs the full
-        # VS toolchain (WMC1509). Publish to a known dir we then stage from.
+      - name: Publish the Avalonia app (Release, self-contained)
+        # Self-contained: the installed app bundles the .NET runtime rather than
+        # depending on a machine-wide one. AssemblyName names every artifact
+        # (exe, deps.json) `bae` at build time, which is both the mainExe vpk
+        # packs and the name existing installs already run. The app multi-targets;
+        # the Windows target framework is the one that carries the WinRT
+        # projection the SMTC now-playing backend binds, so it is what ships.
+        # BridgeBindingsDir is the full edition: the csproj keys BAE_FULL_BRIDGE —
+        # and with it the app's `bae` edition identity — off that path.
         shell: pwsh
         run: |
           $gitCommit = (git rev-parse --short HEAD).Trim()
-          msbuild bae-windows\bae-windows.csproj /restore /t:Publish `
-            /p:Configuration=Release /p:Platform=${{ matrix.arch.msbuild_platform }} `
-            /p:SelfContained=true /p:RuntimeIdentifier=${{ matrix.arch.rid }} `
-            /p:WindowsAppSDKSelfContained=true `
-            /p:AssemblyName="$env:ASSEMBLY_NAME" `
-            /p:PublishDir=publish\ `
-            /p:Version=${{ needs.calculate-version.outputs.pack_version }} `
-            /p:BAE_ENVIRONMENT="$env:BAE_ENVIRONMENT" `
-            /p:BAE_DATADOG_SITE="$env:BAE_DATADOG_SITE" `
-            /p:BAE_DATADOG_CLIENT_TOKEN="$env:BAE_DATADOG_CLIENT_TOKEN" `
-            /p:BAE_SENTRY_DSN="$env:BAE_SENTRY_DSN" `
-            /p:BAE_GIT_COMMIT="$gitCommit" `
-            /p:BridgeBindingsDir="$env:MSBUILD_BRIDGE_BINDINGS_DIR"
+          dotnet publish bae-avalonia\bae-avalonia.csproj `
+            -c Release `
+            -f net8.0-windows10.0.19041.0 `
+            -r ${{ matrix.arch.rid }} `
+            --self-contained true `
+            -o bae-avalonia\publish `
+            -p:AssemblyName=bae `
+            -p:Version=${{ needs.calculate-version.outputs.pack_version }} `
+            -p:BridgeBindingsDir="..\bae-bridge\csharp-bindings-full" `
+            -p:BAE_ENVIRONMENT="$env:BAE_ENVIRONMENT" `
+            -p:BAE_DATADOG_SITE="$env:BAE_DATADOG_SITE" `
+            -p:BAE_DATADOG_CLIENT_TOKEN="$env:BAE_DATADOG_CLIENT_TOKEN" `
+            -p:BAE_SENTRY_DSN="$env:BAE_SENTRY_DSN" `
+            -p:BAE_GIT_COMMIT="$gitCommit"
 
       - name: Build sentry-native
-        if: matrix.edition == 'full'
         shell: pwsh
         run: |
           $version = "0.13.8"
           curl.exe -fsSL --retry 5 --retry-delay 3 "https://github.com/getsentry/sentry-native/releases/download/$version/sentry-native.zip" -o sentry-native.zip
           Expand-Archive -Path sentry-native.zip -DestinationPath sentry-native-src -Force
-          cmake -S sentry-native-src -B sentry-native-build -A ${{ matrix.arch.msbuild_platform }} `
+          cmake -S sentry-native-src -B sentry-native-build -A ${{ matrix.arch.cmake_platform }} `
             -DSENTRY_BACKEND=crashpad `
             -DSENTRY_BUILD_SHARED_LIBS=ON `
             -DSENTRY_BUILD_TESTS=OFF `
@@ -225,11 +199,11 @@ jobs:
       - name: Stage the app + native runtime DLLs
         shell: pwsh
         run: |
-          $stage = "$PWD\stage\$env:STAGE_DIR"
+          $stage = "$PWD\stage\bae"
           New-Item -ItemType Directory -Force -Path $stage | Out-Null
 
-          # The published WinUI app (exe + .NET runtime + managed deps).
-          $pub = "bae-windows\publish"
+          # The published app (exe + .NET runtime + managed deps).
+          $pub = "bae-avalonia\publish"
           if (-not (Test-Path $pub)) { Write-Host "FAIL: publish dir not found at $pub"; exit 1 }
           Copy-Item "$pub\*" $stage -Recurse -Force
 
@@ -241,30 +215,26 @@ jobs:
           # FFmpeg DLLs (the bridge links them). Self-contained as of
           # v8.1.2-bae7 — their codec deps and toolchain runtime are linked in.
           Copy-Item "$env:FFMPEG_DIR\bin\*.dll" $stage -Force
-          if ("${{ matrix.edition }}" -eq "full") {
-            $sentryDll = Get-ChildItem sentry-native-build -Recurse -Filter sentry.dll | Select-Object -First 1
-            $crashpadHandler = Get-ChildItem sentry-native-build -Recurse -Filter crashpad_handler.exe | Select-Object -First 1
-            if (-not $sentryDll) { Write-Host "FAIL: sentry.dll not found"; exit 1 }
-            if (-not $crashpadHandler) { Write-Host "FAIL: crashpad_handler.exe not found"; exit 1 }
-            # Staged as sentry-native.dll (the name BaeCrashReporting P/Invokes):
-            # the flat stage dir is case-insensitive, so cmake's sentry.dll would
-            # clobber the managed Sentry.dll from the publish output — shipping a
-            # native PE where the .NET loader expects the Sentry assembly, which
-            # kills the app at module init.
-            Copy-Item $sentryDll.FullName "$stage\sentry-native.dll" -Force
-            Copy-Item $crashpadHandler.FullName $stage -Force
-            if (-not (Test-Path "$stage\Sentry.dll")) { Write-Host "FAIL: managed Sentry.dll missing from stage"; exit 1 }
-          }
 
-          # The publish built every artifact under the edition's name
-          # (AssemblyName above); confirm the launcher and its PRI are both
-          # present under it before vpk packs the staged dir.
-          if (-not (Test-Path "$stage\$env:EXE_NAME")) { Write-Host "FAIL: $env:EXE_NAME not found in staged output"; exit 1 }
-          if (-not ((Test-Path "$stage\$env:ASSEMBLY_NAME.pri") -or (Test-Path "$stage\resources.pri"))) { Write-Host "FAIL: no PRI staged next to $env:EXE_NAME"; exit 1 }
-          Write-Host "PASS: staged $env:STAGE_DIR"
+          $sentryDll = Get-ChildItem sentry-native-build -Recurse -Filter sentry.dll | Select-Object -First 1
+          $crashpadHandler = Get-ChildItem sentry-native-build -Recurse -Filter crashpad_handler.exe | Select-Object -First 1
+          if (-not $sentryDll) { Write-Host "FAIL: sentry.dll not found"; exit 1 }
+          if (-not $crashpadHandler) { Write-Host "FAIL: crashpad_handler.exe not found"; exit 1 }
+          # Staged as sentry-native.dll (the name BaeCrashReporting P/Invokes):
+          # the flat stage dir is case-insensitive, so cmake's sentry.dll would
+          # clobber the managed Sentry.dll from the publish output — shipping a
+          # native PE where the .NET loader expects the Sentry assembly, which
+          # kills the app at module init.
+          Copy-Item $sentryDll.FullName "$stage\sentry-native.dll" -Force
+          Copy-Item $crashpadHandler.FullName $stage -Force
+          if (-not (Test-Path "$stage\Sentry.dll")) { Write-Host "FAIL: managed Sentry.dll missing from stage"; exit 1 }
+
+          # The publish built every artifact under the AssemblyName above;
+          # confirm the launcher vpk will pack as mainExe is present under it.
+          if (-not (Test-Path "$stage\bae.exe")) { Write-Host "FAIL: bae.exe not found in staged output"; exit 1 }
+          Write-Host "PASS: staged bae"
 
       - name: Upload Windows symbols to Sentry
-        if: matrix.edition == 'full'
         shell: pwsh
         env:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
@@ -276,7 +246,7 @@ jobs:
             exit 0
           }
           npm install -g @sentry/cli
-          sentry-cli debug-files upload --org "$env:SENTRY_ORG" --project "$env:SENTRY_PROJECT" "$PWD\stage\$env:STAGE_DIR"
+          sentry-cli debug-files upload --org "$env:SENTRY_ORG" --project "$env:SENTRY_PROJECT" "$PWD\stage\bae"
 
       - name: Install the Velopack CLI (vpk)
         # Must match the Velopack NuGet version the app references; the library
@@ -305,12 +275,12 @@ jobs:
         run: |
           $packArgs = @(
             "pack",
-            "--packId", $env:PACK_ID,
+            "--packId", "bae",
             "--packVersion", "${{ needs.calculate-version.outputs.pack_version }}",
-            "--packDir", "$PWD\stage\$env:STAGE_DIR",
-            "--mainExe", $env:EXE_NAME,
+            "--packDir", "$PWD\stage\bae",
+            "--mainExe", "bae.exe",
             "--channel", $env:CHANNEL,
-            "--packTitle", $env:PACK_ID,
+            "--packTitle", "bae",
             "--outputDir", "$PWD\velopack"
           )
           if (Test-Path "$env:RUNNER_TEMP\codesign.pfx") {
@@ -337,12 +307,12 @@ jobs:
           if (-not $nupkg) { Write-Host "FAIL: .nupkg missing"; exit 1 }
           if (-not (Test-Path "$PWD\velopack\$env:SETUP_NAME")) { Write-Host "FAIL: $env:SETUP_NAME missing"; exit 1 }
           if (-not (Test-Path "$PWD\velopack\$env:PORTABLE_NAME")) { Write-Host "FAIL: $env:PORTABLE_NAME missing"; exit 1 }
-          Write-Host "PASS: packed $env:PACK_ID ($env:CHANNEL)"
+          Write-Host "PASS: packed bae ($env:CHANNEL)"
 
       - name: Upload release artifacts
         uses: actions/upload-artifact@v7
         with:
-          name: bae-windows-release-${{ matrix.edition }}-${{ matrix.arch.name }}
+          name: bae-windows-release-${{ matrix.arch.name }}
           path: velopack/
           retention-days: 30
 
@@ -353,9 +323,9 @@ jobs:
     permissions:
       contents: write
     steps:
-    - name: Download all editions' and arches' packages
-      # Filenames are distinct across editions and arches (packId/channel are in
-      # them), so merging every velopack/ dir into one is collision-free.
+    - name: Download both arches' packages
+      # Filenames are distinct across arches (the channel is in them), so merging
+      # every velopack/ dir into one is collision-free.
       uses: actions/download-artifact@v8
       with:
         pattern: bae-windows-release-*
@@ -366,7 +336,7 @@ jobs:
     # push`: the workflow token may not push a tag whose commit touches workflow
     # files ("refusing to allow a GitHub App to update workflow ... without
     # `workflows` permission"), and the API path has no such restriction.
-    # One immutable release per windows-v* tag carries both editions, so `vpk
+    # One immutable release per windows-v* tag carries both arches, so `vpk
     # upload github` (which creates/publishes its own release, once per channel)
     # can't be used — two invocations against one immutable tag would collide.
     # Create the release once with every asset via softprops instead, mirroring
@@ -397,12 +367,8 @@ jobs:
         for asset in \
           releases.win.json \
           releases.win-arm64.json \
-          releases.baeium-win.json \
-          releases.baeium-win-arm64.json \
           bae-windows-x64-setup.exe \
-          bae-windows-arm64-setup.exe \
-          baeium-windows-x64-setup.exe \
-          baeium-windows-arm64-setup.exe; do
+          bae-windows-arm64-setup.exe; do
           url="$base/$asset"
           curl -fsIL --retry 5 --retry-delay 3 "$url" -o /dev/null
           echo "asset reachable: $url"

@@ -1,17 +1,12 @@
 #!/usr/bin/env python3
-"""Enforce the desktop session/bridge boundary: NativeBae stays fenced.
+"""Enforce bae-avalonia's session/bridge boundary: NativeBae stays fenced.
 
-The AppService port moves views and stores off `NativeBae` and the raw
-`LibraryHandle` onto the narrow domain services bundled in `AppService`. The C#
-compiler can't see dependency *direction* — a view that reaches back for
-`NativeBae` compiles fine — so this gate makes the boundary fail loud instead of
-aspirational: it greps every `NativeBae.` reference in each desktop app and fails
-if one lives outside that app's sanctioned set below.
-
-Two desktop apps are scanned: `bae-windows` (the WinUI app, shipping until the
-Avalonia app reaches parity) and `bae-avalonia` (its cross-platform replacement).
-Each has its own `ALLOWED` set because the two are at different points in the
-same port — bae-avalonia's set grows as flows migrate onto it.
+Views and stores reach the library through the narrow domain services bundled in
+`AppService`, not through `NativeBae` or the raw `LibraryHandle`. The C# compiler
+can't see dependency *direction* — a view that reaches back for `NativeBae`
+compiles fine — so this gate makes the boundary fail loud instead of
+aspirational: it greps every `NativeBae.` reference in the app and fails if one
+lives outside the sanctioned set below.
 
 The sanctioned set is:
 
@@ -24,8 +19,8 @@ The sanctioned set is:
   while it waits its turn.
 
 Comments are stripped before matching, so a doc-comment mention of `NativeBae.X`
-never trips the gate. The unit-test project is not scanned (it isn't production
-dependency direction).
+never trips the gate. The sibling test projects are not scanned (they aren't
+production dependency direction).
 
 Second mode, `--unconsumed`: for every delegate property declared on the service
 classes, list the ones with no consumer outside `Services/`. This is report-only
@@ -41,12 +36,16 @@ import re
 import sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-TESTS_SUFFIX = ".Tests"
+APP = "bae-avalonia"
+# The sibling test projects (`bae-avalonia.Tests`, `bae-avalonia.ViewTests`) sit
+# inside the app directory; their sources are not production dependency
+# direction, so the scan skips any top-level directory whose name ends here.
+TESTS_SUFFIX = "Tests"
 SERVICES_DIR = "Services"
 
-# Per-app sanctioned sets. A trailing "/" matches a directory prefix; otherwise
-# it's an exact file (relative to the app directory).
-COMPOSITION_BOUNDARY = [
+# The sanctioned set. A trailing "/" matches a directory prefix; otherwise it's
+# an exact file (relative to the app directory).
+ALLOWED = [
     # --- The composition boundary: where the handle and the raw bridge live. ---
     "NativeBae.cs",            # the bridge wrapper itself
     "LibraryHandle.cs",        # the handle primitive (open / shutdown / free)
@@ -63,44 +62,13 @@ COMPOSITION_BOUNDARY = [
     "BridgeDisplay.cs",         # handle-less bridge value -> localization key
     "Views/Welcome/",           # first-run / join / restore-from-cloud flows
     "Views/Debug/",             # component gallery + shot capture
+    "App.axaml.cs",
+    # --- Flows not yet migrated onto services. Each is fenced here so its ---
+    # --- NativeBae use can't spread while it waits its turn.              ---
+    # The unlock dialog holds its own NativeBae.UnlockLibrary call, fenced under
+    # the join / restore / unlock flow.
+    "Views/Library/UnlockDialog.cs",
 ]
-
-APPS = {
-    # The WinUI app: fully ported surface, with the unmigrated dialogs fenced
-    # under their future stories.
-    "bae-windows": COMPOSITION_BOUNDARY
-    + [
-        "App.xaml.cs",
-        "App.Session.cs",
-        "ProtocolRegistration.cs",  # bae:// scheme registration
-        # --- Dialogs not yet migrated onto services. The stores behind these ---
-        # --- flows read through services now; the standalone dialogs still    ---
-        # --- hold direct session/NativeBae calls and migrate with their story.---
-        # future: settings dialogs (members, restore code, rename/lock, cloud
-        # sign-in/disconnect, discogs/mcp/subsonic config, save-preset writes)
-        "Views/Settings/",
-        # future: storage dialog (per-tab paging, outbox/config reads, transfer keys)
-        "Views/Storage/",
-        # future: import dialogs (search/prefetch/confirm, source-identity choice)
-        "Views/Import/",
-        # future: album-detail service (inline album expansion + per-release actions)
-        "Views/Library/AlbumExpansionPanel.cs",
-        "Views/Library/AlbumExpansionPanel.TrackActions.cs",
-        "Views/AlbumDetail/",
-        # future: with the join / restore / unlock story (library switch + unlock)
-        "Views/Library/LibrariesDialog.cs",
-        "Views/Library/UnlockDialog.cs",
-    ],
-    # The Avalonia app: the composition boundary and the flows ported so far. The
-    # parity port grows this set as it moves each area onto the service layer.
-    "bae-avalonia": COMPOSITION_BOUNDARY
-    + [
-        "App.axaml.cs",
-        # The unlock dialog holds its own NativeBae.UnlockLibrary call, fenced
-        # under the join / restore / unlock flow (as in the WinUI app).
-        "Views/Library/UnlockDialog.cs",
-    ],
-}
 
 NATIVE_REF = re.compile(r"\bNativeBae\.")
 LINE_COMMENT = re.compile(r"//.*$", re.MULTILINE)
@@ -132,17 +100,18 @@ def strip_comments(text):
 
 def production_cs_files(app_dir):
     for path in sorted(app_dir.rglob("*.cs")):
-        if rel(app_dir, path).startswith(app_dir.name + TESTS_SUFFIX + "/"):
+        top = rel(app_dir, path).split("/")[0]
+        if top.endswith(TESTS_SUFFIX):
             continue
         yield path
 
 
-def check_boundary(app_dir, allowed):
+def check_boundary(app_dir):
     """Fail if any NativeBae reference lives outside the sanctioned set."""
     violations = []
     for path in production_cs_files(app_dir):
         relpath = rel(app_dir, path)
-        if is_allowed(allowed, relpath):
+        if is_allowed(ALLOWED, relpath):
             continue
         code = strip_comments(path.read_text(errors="ignore"))
         if NATIVE_REF.search(code):
@@ -201,56 +170,43 @@ def unconsumed_delegates(app_dir):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
-        "--app",
-        choices=sorted(APPS),
-        help="scan only this desktop app (default: every app that exists)",
-    )
-    parser.add_argument(
         "--unconsumed",
         action="store_true",
         help="report service delegates with no consumer outside Services/ (never fails)",
     )
     args = parser.parse_args()
 
-    apps = [args.app] if args.app else sorted(APPS)
-    failed = False
-    for name in apps:
-        app_dir = ROOT / name
-        if not app_dir.is_dir():
-            continue
-        allowed = APPS[name]
-        unconsumed = unconsumed_delegates(app_dir)
+    app_dir = ROOT / APP
+    unconsumed = unconsumed_delegates(app_dir)
 
-        if args.unconsumed:
-            print(f"=== {name} service delegates with no consumer outside Services/ ===")
-            for service, delegate in unconsumed:
-                print(f"  {service}.{delegate}")
-            print(
-                f"\n{len(unconsumed)} unconsumed delegate(s) of "
-                f"{len(service_delegates(app_dir))} total.\n"
-            )
-            continue
-
-        violations = check_boundary(app_dir, allowed)
+    if args.unconsumed:
+        print(f"=== {APP} service delegates with no consumer outside Services/ ===")
+        for service, delegate in unconsumed:
+            print(f"  {service}.{delegate}")
         print(
-            f"=== {name} bridge boundary: {len(violations)} out-of-boundary "
-            f"file(s); {len(unconsumed)} unconsumed service delegate(s) "
-            f"(run with --unconsumed to list) ==="
+            f"\n{len(unconsumed)} unconsumed delegate(s) of "
+            f"{len(service_delegates(app_dir))} total.\n"
         )
-        for relpath, lines in violations:
-            print(f"  {relpath}: NativeBae. at line(s) {', '.join(map(str, lines))}")
-        if violations:
-            failed = True
-            print(
-                f"\nA view or store outside {name}'s sanctioned boundary reached "
-                "for NativeBae. Route it through a domain service on AppService, "
-                "or — if it belongs to an unmigrated flow — fence it by adding the "
-                f"file to APPS['{name}'] in {pathlib.Path(__file__).name} under "
-                "its future story.",
-                file=sys.stderr,
-            )
+        return 0
 
-    return 1 if failed else 0
+    violations = check_boundary(app_dir)
+    print(
+        f"=== {APP} bridge boundary: {len(violations)} out-of-boundary "
+        f"file(s); {len(unconsumed)} unconsumed service delegate(s) "
+        f"(run with --unconsumed to list) ==="
+    )
+    for relpath, lines in violations:
+        print(f"  {relpath}: NativeBae. at line(s) {', '.join(map(str, lines))}")
+    if violations:
+        print(
+            f"\nA view or store outside {APP}'s sanctioned boundary reached for "
+            "NativeBae. Route it through a domain service on AppService, or — if "
+            "it belongs to an unmigrated flow — fence it by adding the file to "
+            f"ALLOWED in {pathlib.Path(__file__).name} under its future story.",
+            file=sys.stderr,
+        )
+
+    return 1 if violations else 0
 
 
 if __name__ == "__main__":

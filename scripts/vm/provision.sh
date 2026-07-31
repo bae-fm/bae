@@ -33,9 +33,9 @@ echo "== vpk (Velopack CLI, version-locked to the app's Velopack package) =="
 $SSH 'dotnet tool install --global vpk --version 1.2.0 || dotnet tool update --global vpk --version 1.2.0'
 
 echo "== helper scripts + task harness =="
-for f in hidden.vbs vmshot.ps1 bridge-build.cmd avalonia-build.cmd build-normal.cmd build-release.cmd run-app.cmd tidy.ps1 vmlog-start.cmd vmlog-stop.cmd; do
+for f in hidden.vbs vmshot.ps1 bridge-build.cmd avalonia-build.cmd build-release.cmd run-app.cmd tidy.ps1 vmlog-start.cmd vmlog-stop.cmd; do
   scp -q "scripts/vm/guest/${f}" "tom@${VM}:C:/Users/tom/${f}"
 done
 $SSH 'schtasks /create /f /tn baeRun /tr "wscript.exe C:\Users\tom\hidden.vbs \"cmd /c C:\Users\tom\run-app.cmd > C:\Users\tom\run-app.log 2>&1\"" /sc once /st 23:59 /it & schtasks /create /f /tn vmShot /tr "wscript.exe C:\Users\tom\hidden.vbs \"powershell -ExecutionPolicy Bypass -File C:\Users\tom\vmshot.ps1\"" /sc once /st 23:59 /it'
 
-echo "== done. next: bridge-build.cmd, build-normal.cmd, schtasks /run /tn baeRun =="
+echo "== done. next: avalonia-build.cmd, schtasks /run /tn baeRun =="

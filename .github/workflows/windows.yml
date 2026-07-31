@@ -3,7 +3,7 @@ name: Windows build
 # Builds the native Windows stack for both architectures — x86_64-pc-windows-msvc
 # on the x64 runner and aarch64-pc-windows-msvc on the native ARM64 runner:
 # bae-core → bae-bridge (uniffi metadata + bae_bridge.dll/uniffi_bae_bridge.dll) →
-# generated C# bindings, plus the WinUI 3 app compile check. The macOS host can't
+# generated C# bindings, plus the Avalonia app compile check. The macOS host can't
 # cross-compile the native deps, so this is the verification loop. Each arch builds
 # natively on its own runner (the ARM64 runner is arm64, so aarch64 is its host
 # target — no cross-compile).
@@ -26,12 +26,10 @@ jobs:
             runner: windows-latest
             target: x86_64-pc-windows-msvc
             ffmpeg_arch: x86_64
-            msbuild_platform: x64
           - arch: aarch64
             runner: windows-11-arm
             target: aarch64-pc-windows-msvc
             ffmpeg_arch: aarch64
-            msbuild_platform: ARM64
     env:
       FFMPEG_VERSION: v8.1.2-bae7
     steps:
@@ -78,35 +76,32 @@ jobs:
       - name: Check Rust formatting
         run: cargo fmt --all -- --check
 
-      - name: Enforce the bae-windows bridge boundary
+      - name: Enforce the bae-avalonia bridge boundary
         # The compiler can't see dependency direction; this fails if a view or
         # store reaches for NativeBae outside the sanctioned composition boundary,
         # and prints the full-surface-port parity backlog (unconsumed delegates).
-        run: python scripts/windows-bridge-boundary.py
+        run: python scripts/avalonia-bridge-boundary.py
 
       - name: Install .NET 8 SDK
         uses: actions/setup-dotnet@v5
         with:
           dotnet-version: "8.0.x"
 
-      - name: Test bae-windows locale formatters
-        # Unit tests for the pure locale formatters (Loc.Bytes/Duration/Number).
-        # They compile Loc.cs with BAE_PURE_FORMATTERS, so they need only the
-        # .NET SDK — no bridge bindings or WinUI — and run before the native
-        # stack is built. These also run on the macOS dev host; this repeats them
-        # on the real net8.0 runtime.
-        run: dotnet test bae-windows\bae-windows.Tests\bae-windows.Tests.csproj -c Debug
+      - name: Test bae-avalonia model logic
+        # Unit tests for the app's pure logic (locale formatters, store models,
+        # update flow). They compile against plain BCL types — no Avalonia and no
+        # bridge bindings — and so run before the native stack is built. These
+        # also run on the macOS dev host; this repeats them on the real net8.0
+        # runtime.
+        run: dotnet test bae-avalonia\bae-avalonia.Tests -c Debug
 
       - name: Install uniffi-bindgen-cs
         run: cargo install --git https://github.com/NordSecurity/uniffi-bindgen-cs.git --tag 'v0.11.0+v0.31.0' uniffi-bindgen-cs --locked
 
-      # Both editions include the desktop bridge surface used by the WinUI app.
-      # The full feature set adds OAuth provider exports; baeium omits them.
-      # Build and generate both binding dirs so stale functions cannot linger
-      # across editions.
-      - name: Build the Windows bridge (baeium, desktop)
+      - name: Build the Windows bridge (full edition, OAuth + desktop)
+        # Windows has no cloudkit (Apple-only); full here is OAuth plus desktop.
         shell: bash
-        run: BAE_BRIDGE_TARGET=${{ matrix.target }} BAE_BRIDGE_FEATURES=desktop BAE_BRIDGE_CSHARP_BINDINGS_DIR=bae-bridge/csharp-bindings-baeium ./bae-bridge/build-windows.sh
+        run: BAE_BRIDGE_TARGET=${{ matrix.target }} BAE_BRIDGE_FEATURES=oauth-providers,desktop BAE_BRIDGE_CSHARP_BINDINGS_DIR=bae-bridge/csharp-bindings-full ./bae-bridge/build-windows.sh
 
       - name: Confirm the bridge DLL was produced
         shell: pwsh
@@ -120,39 +115,25 @@ jobs:
             else { Write-Host "FAIL: $dll not found"; exit 1 }
           }
 
-      - name: Build the Windows bridge (full edition, OAuth + desktop)
-        # Windows has no cloudkit (Apple-only); full here is OAuth plus desktop.
-        shell: bash
-        run: BAE_BRIDGE_TARGET=${{ matrix.target }} BAE_BRIDGE_FEATURES=oauth-providers,desktop BAE_BRIDGE_CSHARP_BINDINGS_DIR=bae-bridge/csharp-bindings-full ./bae-bridge/build-windows.sh
-
       - name: Check C# formatting
         # dotnet format uses .editorconfig rules. --verify-no-changes exits non-zero
         # if any file would be reformatted, failing the build.
         #
         # Run whitespace only — style and analyzer formatters trigger IDE0051 false
-        # positives for XAML-bound event handlers (dotnet format analyzes C# in
+        # positives for markup-bound event handlers (dotnet format analyzes C# in
         # isolation, without the XAML compiler's generated partial classes that
-        # reference those methods). MSBuild with EnforceCodeStyleInBuild=true
-        # (below) enforces all style and dead-code rules after XAML compilation,
-        # where XAML references are visible.
-        run: dotnet format whitespace bae-windows\bae-windows.csproj --verify-no-changes
+        # reference those methods). The build with EnforceCodeStyleInBuild=true
+        # (below) enforces all style and dead-code rules after markup compilation,
+        # where those references are visible.
+        run: dotnet format whitespace bae-avalonia\bae-avalonia.csproj --verify-no-changes
 
-      - name: Set up MSBuild
-        uses: microsoft/setup-msbuild@v2
-
-      - name: Build the WinUI app (baeium bindings)
-        # Unpackaged WinUI 3 (C#/.NET) app, framework-dependent. Proves the native
-        # UI stack compiles. Built with MSBuild, not `dotnet build`: the WinUI XAML
-        # markup compiler needs the full VS toolchain to resolve project-local
-        # x:DataType types (dotnet build drops the LocalAssembly parameter —
-        # WMC1509 — and fails type resolution). A non-zero exit fails.
-        # EnforceCodeStyleInBuild=true makes IDE-level dead-code diagnostics
-        # (IDE0051 unused private members, IDE0052 unread private members) fire
-        # as build errors via .editorconfig severity settings.
-        run: msbuild bae-windows\bae-windows.csproj /restore /p:Configuration=Debug /p:Platform=${{ matrix.msbuild_platform }} /p:EnforceCodeStyleInBuild=true /p:BridgeBindingsDir=..\bae-bridge\csharp-bindings-baeium
-
-      - name: Build the WinUI app (full bindings)
-        run: msbuild bae-windows\bae-windows.csproj /restore /p:Configuration=Debug /p:Platform=${{ matrix.msbuild_platform }} /p:EnforceCodeStyleInBuild=true /p:BridgeBindingsDir=..\bae-bridge\csharp-bindings-full
+      - name: Build the Avalonia app
+        # Both target frameworks: plain net8.0 (what ships on Linux) and the
+        # Windows target framework whose WinRT projection the SMTC now-playing
+        # backend binds. EnforceCodeStyleInBuild=true makes IDE-level dead-code
+        # diagnostics (IDE0051 unused private members, IDE0052 unread private
+        # members) fire as build errors via .editorconfig severity settings.
+        run: dotnet build bae-avalonia\bae-avalonia.csproj -c Debug -p:EnforceCodeStyleInBuild=true
 
       - name: Run bae-core unit tests (Windows)
         # The only place bae's Rust actually EXECUTES on Windows. Windows-only

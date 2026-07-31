@@ -163,10 +163,11 @@ nl	onboarding_join_copy_code
 nl	download_remove
 nl	downloads_empty
 
-# Windows resw — keyed by the resw data name (matching the Android section
-# above; resw keys aren't the English source text either). Established
-# loanwords/technical terms, matching the locale's other good entries and the
-# same terms already allowlisted for the xcstrings/Android catalogs above.
+# ResX chrome (bae-avalonia) — keyed by the ResX data name (matching the
+# Android section above; ResX keys aren't the English source text either).
+# Established loanwords/technical terms, matching the locale's other good
+# entries and the same terms already allowlisted for the xcstrings/Android
+# catalogs above.
 it	action.ok
 it	cloud.provider.s3
 it	members.role.follower
@@ -175,6 +176,7 @@ it	search.field.album
 it	settings.discogs.label
 it	settings.discogs.token_placeholder
 it	signal.kind.disc_id
+it	import.row.disc_id
 it	settings.automation.status.running
 it	settings.formats.preset_pregap
 it	settings.formats.bit_depth.bits16
@@ -186,6 +188,7 @@ tr	action.ok
 tr	cloud.provider.s3
 tr	s3.field.bucket
 tr	signal.kind.disc_id
+tr	import.row.disc_id
 tr	settings.formats.preset_pregap
 tr	settings.formats.bit_depth.bits16
 tr	settings.formats.bit_depth.bits24
@@ -198,6 +201,7 @@ vi	search.field.album
 vi	settings.discogs.label
 vi	settings.discogs.token_placeholder
 vi	signal.kind.disc_id
+vi	import.row.disc_id
 vi	settings.formats.preset_pregap
 vi	settings.formats.bit_depth.bits16
 vi	settings.formats.bit_depth.bits24
@@ -217,6 +221,9 @@ nl	settings.updates.title
 nl	settings.updates.up_to_date
 nl	signal.kind.barcode
 nl	signal.kind.disc_id
+nl	import.row.barcode
+nl	import.row.conflict
+nl	import.row.disc_id
 nl	download.title
 nl	settings.automation.status.running
 nl	library.mode.albums
@@ -236,7 +243,7 @@ nl	storage.column.album
 
 # Export settings redesign: codec labels are proper nouns plus the universal
 # kbps unit; "Pregap" is the established technical loanword in these locales
-# (their resw preset rows already used it); "Album" matches the loanword
+# (their C# preset rows already used it); "Album" matches the loanword
 # entries above; nl "Release-exports" is the catalog's established compound.
 it	AAC %lld kbps
 it	MP3 %lld kbps
