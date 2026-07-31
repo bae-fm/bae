@@ -74,10 +74,10 @@ public sealed class Album : INotifyPropertyChanged
         }
     }
 
-    /// <summary>The selection tint's opacity, precomputed so the card's XAML
-    /// binds it directly — a compiled binding in Window XAML can't resolve a
-    /// StaticResource converter (the generated lookup passes the Window, which
-    /// isn't a FrameworkElement in WinUI 3).</summary>
+    /// <summary>The selection tint's opacity, exposed as a number the card binds
+    /// straight to so the tint is toggled (not shown/hidden) and a card the grid
+    /// recycles never re-measures — the same discipline as
+    /// <see cref="ExpansionRingOpacity"/>.</summary>
     public double SelectionTintOpacity => _isSelected ? 1.0 : 0.0;
 
     /// <summary>Whether this album's inline detail expansion is open — the one

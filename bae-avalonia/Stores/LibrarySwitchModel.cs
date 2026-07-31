@@ -3,8 +3,8 @@
 namespace Bae.Desktop;
 
 // Maps a library-switch shortcut digit (Ctrl+1..9) onto the discovered-libraries
-// list. No WinUI — the caller reduces its BridgeLibrary list to (id, isActive)
-// pairs and applies the returned id.
+// list. No bridge types — the caller reduces its BridgeLibrary list to
+// (id, isActive) pairs and applies the returned id.
 public static class LibrarySwitchModel
 {
     // digit is 1-based (Ctrl+1 -> 1). Returns the library id to switch to, or

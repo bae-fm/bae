@@ -21,8 +21,9 @@
     <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
     <EnableNETAnalyzers>true</EnableNETAnalyzers>
-    <!-- CS0168/CS0219: unused local variables promoted to errors, as the WinUI
-         project did. IDE0051/IDE0052 (unused private members) are enforced via
+    <!-- CS0168/CS0219: unused local variables promoted to errors — an unused
+         local is dead code or a dropped result, not a style nit.
+         IDE0051/IDE0052 (unused private members) are enforced via
          .editorconfig when EnforceCodeStyleInBuild=true is passed at build. -->
     <WarningsAsErrors>CS0168;CS0219</WarningsAsErrors>
     <!-- The tests live in a sibling SDK project; keep its sources out of the app

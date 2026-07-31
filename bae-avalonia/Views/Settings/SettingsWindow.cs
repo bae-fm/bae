@@ -104,8 +104,8 @@ internal sealed partial class SettingsWindow
         BuildAutomation(content, renderers);
         BuildSubsonic(content, renderers);
         BuildDiscogs(content, renderers);
-        // The shared error line sits after the config sections, as it does on macOS
-        // / the WinUI window; the cloud section surfaces its own errors inline.
+        // The shared error line sits after the config sections, as it does on
+        // macOS; the cloud section surfaces its own errors inline.
         content.Children.Add(_settingsError);
         BuildCloud(content, renderers);
         BuildMembers(content);

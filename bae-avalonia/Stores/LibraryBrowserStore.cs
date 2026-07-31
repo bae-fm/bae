@@ -6,8 +6,8 @@ using Avalonia.Threading;
 namespace Bae.Desktop;
 
 /// <summary>
-/// The library browser's data layer, rebuilt on <see cref="PaginatedList{TRow, TId}"/>
-/// (the incremental-loading core) rather than the WinUI append-only collections.
+/// The library browser's data layer, built on <see cref="PaginatedList{TRow, TId}"/>
+/// (the incremental-loading core) rather than an append-only collection.
 /// It owns one paginated list per browse mode (albums / composers / artists) plus
 /// the per-mode sort, and the side stores the lists intern their rows into: the
 /// list itself holds only ordered ids, so a realized grid row resolves a position

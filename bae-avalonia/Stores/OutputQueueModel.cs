@@ -13,7 +13,7 @@ public enum OutputKind { Export, Save }
 // The pure decision layer behind the storage dialog's Exporting section. The
 // export queue renders from the snapshot and actions never optimistically
 // mutate — this only maps counts and state to catalog keys, so it is
-// unit-tested apart from the WinUI surface that renders it.
+// unit-tested apart from the dialog section that renders it.
 public static class OutputQueueModel
 {
     // The band's leading label: the generic paused note while paused, else the

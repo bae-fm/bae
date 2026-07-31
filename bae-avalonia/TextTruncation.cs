@@ -1,11 +1,11 @@
 ﻿namespace Bae.Desktop;
 
 // Middle-truncate a value so both ends stay visible: catalog numbers and barcodes
-// differ at the end, which an end-ellipsis would hide. WinUI has no middle
-// TextTrimming, and the signal-badge value is monospace (Consolas), so a
+// differ at the end, which an end-ellipsis would hide. The toolkit's TextTrimming
+// has no middle mode, and the signal-badge value is monospace (Consolas), so a
 // character budget tracks the pixel width closely. Mirrors macOS's
-// .truncationMode(.middle) on the signal value. No WinUI or bridge types, so it
-// is unit-tested.
+// .truncationMode(.middle) on the signal value. No Avalonia or bridge types, so
+// it is unit-tested.
 public static class TextTruncation
 {
     public static string MiddleTruncate(string value, int maxChars)

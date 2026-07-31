@@ -34,7 +34,7 @@ public enum PlaybackPositionRejection
 }
 
 // Pure position math for the now-playing bar: seek projection, remaining time,
-// and the state transitions the playback store applies. No WinUI, no bridge —
+// and the state transitions the playback store applies. No Avalonia, no bridge —
 // track ids are plain strings, slider bounds are doubles.
 public static class PlaybackPositionModel
 {

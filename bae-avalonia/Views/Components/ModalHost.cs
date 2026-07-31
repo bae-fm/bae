@@ -8,10 +8,9 @@ using Avalonia.Markup.Xaml.MarkupExtensions;
 namespace Bae.Desktop;
 
 // The in-window modal host: a scrim over the window content with one dialog card
-// centered on it, the cross-platform stand-in for WinUI's ContentDialog. A window
-// (Welcome, Main) owns one host as its top layer; a dialog is a UserControl
-// presented in it. Only real OS windows stay real windows (Welcome, Main,
-// Settings); everything the WinUI app showed as a ContentDialog shows here.
+// centered on it. A window (Welcome, Main) owns one host as its top layer; a
+// dialog is a UserControl presented in it. Only real OS windows stay real windows
+// (Welcome, Main, Settings); every other dialog shows here.
 internal sealed class ModalHost : Panel
 {
     private readonly Border _scrim;

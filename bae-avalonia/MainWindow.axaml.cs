@@ -150,8 +150,8 @@ internal sealed partial class MainWindow : Window
         {
             return;
         }
-        // Match macOS / the WinUI window drop: the first dropped item must be a
-        // folder.
+        // Import is folder-scoped, as on macOS: take the first dropped folder and
+        // ignore loose files.
         foreach (var item in files)
         {
             if (item is IStorageFolder && item.TryGetLocalPath() is { } path)

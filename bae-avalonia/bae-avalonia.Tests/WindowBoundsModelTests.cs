@@ -7,7 +7,8 @@ namespace Bae.Desktop.Tests;
 /// Locks the pure window-bounds logic: the serialize/parse round-trip, the
 /// validation that rejects garbage or degenerate saved rects, and the clamping
 /// that keeps a restored window reachable when the display arrangement shrank or
-/// a monitor went away. No WinUI or DisplayArea dependency.
+/// a monitor went away. Runs with no windowing platform up: the display
+/// arrangement is passed in as plain rects.
 /// </summary>
 public sealed class WindowBoundsModelTests
 {

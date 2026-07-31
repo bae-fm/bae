@@ -10,7 +10,7 @@ namespace Bae.Desktop;
 
 // One running instance per edition, with the second launch forwarding its
 // activation (a bae:// URL or file/folder args) to the first instead of opening a
-// second window — the cross-platform stand-in for WinUI's AppInstance redirect.
+// second window.
 //
 // Primary election is a named mutex (Win32 named mutex on Windows, a
 // /tmp-backed named mutex on Unix). Forwarding is a named pipe — a true named

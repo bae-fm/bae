@@ -354,7 +354,7 @@ public sealed class SortCriteria<TField> where TField : struct, Enum
 }
 
 // The browser's whole sort state: the current mode and the persisted album,
-// composer, and artist sort criteria. No WinUI, no bridge types.
+// composer, and artist sort criteria. No Avalonia, no bridge types.
 public sealed class LibrarySort
 {
     public BrowserMode Mode { get; private set; } = BrowserMode.Albums;

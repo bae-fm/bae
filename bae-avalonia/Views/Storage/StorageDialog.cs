@@ -17,8 +17,7 @@ namespace Bae.Desktop;
 // outbox, the pin-download queue, the export queue, and the transfer-concurrency
 // pickers. The table pages incrementally; the panels and rows refresh live while
 // open through projection registrations disposed on close. Every read/write runs
-// through a domain service — no view here touches NativeBae. Mirrors the WinUI
-// StorageDialog, adapted to the modal host and the incremental-loading core.
+// through a domain service — no view here touches NativeBae.
 internal sealed partial class StorageDialog
 {
     private const ulong StoragePageSize = 100;

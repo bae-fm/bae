@@ -11,12 +11,12 @@ using uniffi.bae_bridge;
 namespace Bae.Desktop;
 
 // The per-release actions reachable from album detail, presented in the window's
-// modal host (the cross-platform stand-in for WinUI's ContentDialog and the macOS
-// sheets). One presenter per main window, threaded to the inline album expansion;
-// each method opens its dialog through the host and runs its writes through the
-// ReleaseEditor service, so no view here touches NativeBae. The dialog family grows
-// with the parity port — change cover here, then the gallery lightbox, edit
-// metadata, and re-identify.
+// modal host (the in-window equivalent of the macOS sheets). One presenter per
+// main window, threaded to the inline album expansion; each method opens its
+// dialog through the host and runs its writes through the ReleaseEditor service,
+// so no view here touches NativeBae. The dialog family grows with the parity
+// port — change cover here, then the gallery lightbox, edit metadata, and
+// re-identify.
 internal sealed class ReleaseActionDialogs
 {
     private readonly AppService _app;
@@ -121,8 +121,7 @@ internal sealed class ReleaseActionDialogs
     // Re-identify the release: an auto-identify pipeline (its live status, signal
     // badges, and match list) with a manual search fallback and an exact / metadata
     // identity claim. Committing a source-backed choice offers to reseed the
-    // metadata from the newly-pointed source. Mirrors the WinUI flow, over the
-    // service layer and the modal host.
+    // metadata from the newly-pointed source.
     public async Task ShowReidentify(string releaseId, string seedArtist, string seedAlbum)
     {
         var key = "reidentify:" + releaseId;

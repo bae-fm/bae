@@ -24,8 +24,8 @@ public readonly record struct RealizedRow(int Index, double MidY);
 
 // The insertion index for a drop over the manual lane: the pointer lands before
 // the first row whose midpoint sits below it, else at the end (append). Pure over
-// the realized rows the view supplies, so it is unit-tested apart from the WinUI
-// list.
+// the realized rows the view supplies, so it is unit-tested apart from the queue
+// list view.
 public static class QueueDropIndex
 {
     // The lane index a drop at pointerY inserts before. With no realized rows

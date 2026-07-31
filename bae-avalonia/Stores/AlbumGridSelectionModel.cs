@@ -6,7 +6,7 @@ namespace Bae.Desktop;
 
 // Multi-selection state for the album grid: which albums are selected and the
 // anchor a shift-click extends from. Plain BCL port of macOS's
-// AlbumGridSelection — no WinUI, no bridge types — so it is linked into the
+// AlbumGridSelection — no Avalonia, no bridge types — so it is linked into the
 // test project. Owned by MainWindow as a browsing-session concern; after every
 // mutation the window syncs Album.IsSelected over the loaded collection.
 //

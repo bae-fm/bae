@@ -4,8 +4,8 @@ namespace Bae.Desktop;
 
 // The pure decision layer behind the settings Remove section: which footer and
 // confirmation catalog keys to show, mirroring macOS's forgetConfirmationMessage.
-// Plain BCL types so it is unit-tested apart from the WinUI dialog that renders
-// it and the WithCurrentHandle-read BridgeOutboxSnapshot it derives from.
+// Plain BCL types so it is unit-tested apart from the dialog that renders it and
+// the WithCurrentHandle-read BridgeOutboxSnapshot it derives from.
 public static class ForgetLibraryModel
 {
     // The gray caption under the section title: which consequence to describe

@@ -5,9 +5,9 @@ namespace Bae.Desktop;
 
 /// <summary>
 /// The phase of the settings "updates" section, driving what the dialog renders.
-/// Pure over plain BCL types with no WinUI or Velopack dependency, so it compiles
-/// in the test project on any host; the Velopack calls that produce these states
-/// live in <see cref="UpdateService"/>.
+/// Pure over plain BCL types with no Avalonia or Velopack dependency, so it
+/// compiles in the test project on any host; the Velopack calls that produce
+/// these states live in <see cref="UpdateService"/>.
 /// </summary>
 internal abstract record UpdateFlowState
 {
@@ -34,7 +34,7 @@ internal abstract record UpdateFlowState
 /// Pure rendering decisions for the settings "updates" section, derived from an
 /// <see cref="UpdateFlowState"/>. The dialog reads a localized status key,
 /// whether the check button is enabled, and whether the restart button shows;
-/// none of it touches WinUI, so it is exercised directly by the unit tests.
+/// none of it touches Avalonia, so it is exercised directly by the unit tests.
 /// </summary>
 internal static class UpdateFlowDisplay
 {

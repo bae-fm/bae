@@ -17,13 +17,12 @@ using uniffi.bae_bridge;
 namespace Bae.Desktop;
 
 // DEBUG-only screenshot capture: `bae-avalonia --capture-shots <dir>` renders
-// scenes to <dir>/<scene>@<platform>.png off-screen. Unlike the WinUI harness,
-// the headless Skia platform renders every scene in one process — no compositor,
-// no window activation, no per-scene process split — so this runs on any runner
-// including ubuntu CI. `--capture-scene <id>` renders one scene; absent, every
-// enabled scene renders. `--capture-variant dark|light` picks the OS appearance
-// to force (default dark, the macOS-comparison reference). Each run exits 0
-// (rendered) or 1 (failed).
+// scenes to <dir>/<scene>@<platform>.png off-screen. The headless Skia platform
+// renders every scene in one process — no compositor, no window activation, no
+// per-scene process split — so this runs on any runner including ubuntu CI.
+// `--capture-scene <id>` renders one scene; absent, every enabled scene renders.
+// `--capture-variant dark|light` picks the OS appearance to force (default dark,
+// the macOS-comparison reference). Each run exits 0 (rendered) or 1 (failed).
 //
 // The scenes reuse the same fixtures (PreviewData) and the production view
 // builders (WelcomeView) the app renders — no re-implemented view content. A

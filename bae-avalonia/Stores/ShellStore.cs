@@ -2,9 +2,9 @@ using System;
 
 namespace Bae.Desktop;
 
-// The severity of the shell's error banner. A project-owned enum in place of
-// WinUI's InfoBarSeverity, so the store carries no toolkit dependency; the window
-// maps it to the banner's presentation.
+// The severity of the shell's error banner. A project-owned enum rather than a
+// toolkit one, so the store carries no toolkit dependency; the window maps it to
+// the banner's presentation.
 internal enum BannerSeverity
 {
     Informational,

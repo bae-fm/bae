@@ -5,8 +5,7 @@ using uniffi.bae_bridge;
 namespace Bae.Desktop;
 
 /// <summary>
-/// The OS now-playing / media-key surface, consumed where the WinUI app consumed
-/// <c>MediaControlService</c>. The decision logic stays in the pure
+/// The OS now-playing / media-key surface. The decision logic stays in the pure
 /// <see cref="MediaControlState"/>; an implementation only translates the pushes
 /// into the platform transport (SMTC on Windows, MPRIS on Linux). A composition
 /// with no OS surface — a headless capture, a scene stub — takes
