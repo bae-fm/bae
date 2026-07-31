@@ -99,7 +99,7 @@ struct CoverPickerView: View {
                             }
                         ) { item in
                             ImageView(
-                                source: item.thumbnailSource,
+                                content: item.thumbnailContent,
                                 pointSize: 56
                             )
                         }
@@ -146,9 +146,13 @@ struct CoverPickerView: View {
 
     @ViewBuilder
     private func coverPreview(for item: CoverItem) -> some View {
-        ImageView(source: item.previewSource, contentMode: .fit, pointSize: 600)
-            .clipShape(RoundedRectangle(cornerRadius: 6))
-            .shadow(radius: 10)
+        ImageView(
+            content: item.previewContent,
+            contentMode: .fit,
+            pointSize: 600
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 6))
+        .shadow(radius: 10)
     }
 
 }

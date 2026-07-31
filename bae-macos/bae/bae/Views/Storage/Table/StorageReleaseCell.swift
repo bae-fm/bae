@@ -2,7 +2,7 @@ import BaeKit
 import SwiftUI
 
 /// Release row content for one column. Reads the storage badge's `OutboxStore`
-/// and the cover's `MediaPaths` at the leaf (injected on the hosted view).
+/// and the cover's `ImageStore` at the leaf (injected on the hosted view).
 struct StorageReleaseCell: View {
     let release: ReleaseSummary
     let album: AlbumSummary
@@ -62,6 +62,6 @@ struct StorageReleaseCell: View {
                 PreviewData.outboxSnapshot(uploadGroups: [], deletes: [])
             )
         )
-        .environment(MediaPaths.stub)
+        .environment(ImageStore.stub)
     }
 #endif

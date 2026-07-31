@@ -235,7 +235,7 @@ private struct SearchResultRow: View {
             onSelectWork: { _ in },
         )
         .frame(width: 700, height: 600)
-        .environment(MediaPaths.stub)
+        .environment(ImageStore.stub)
     }
 
     #Preview("No results") {
@@ -256,6 +256,6 @@ private struct SearchResultRow: View {
             onSelectWork: { _ in },
         )
         .frame(width: 700, height: 550)
-        .environment(MediaPaths.stub)
+        .environment(ImageStore.stub)
     }
 #endif

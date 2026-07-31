@@ -149,7 +149,7 @@ struct ComposerDetailPane: View {
             .frame(width: 620, height: 720)
             .environment(session)
             .environment(uiStore)
-            .environment(MediaPaths.stub)
+            .environment(ImageStore.stub)
     }
 
     #Preview("Composer \u{2014} Empty") {
@@ -166,6 +166,6 @@ struct ComposerDetailPane: View {
             .frame(width: 620, height: 720)
             .environment(session)
             .environment(uiStore)
-            .environment(MediaPaths.stub)
+            .environment(ImageStore.stub)
     }
 #endif

@@ -413,7 +413,7 @@ extension NowPlayingBar {
             repeatMode: .off,
             shuffled: false,
         )
-        .environment(MediaPaths.stub)
+        .environment(ImageStore.stub)
         .environment(PreviewData.queueStore(manualCount: 2))
         .environment(Queue.stub)
     }
@@ -426,7 +426,7 @@ extension NowPlayingBar {
             repeatMode: .context,
             shuffled: false,
         )
-        .environment(MediaPaths.stub)
+        .environment(ImageStore.stub)
         .environment(PreviewData.queueStore(manualCount: 2, shuffled: true))
         .environment(Queue.stub)
     }
@@ -439,7 +439,7 @@ extension NowPlayingBar {
             repeatMode: .off,
             shuffled: true,
         )
-        .environment(MediaPaths.stub)
+        .environment(ImageStore.stub)
         .environment(PreviewData.queueStore(manualCount: 2, shuffled: true))
         .environment(Queue.stub)
     }
@@ -453,7 +453,7 @@ extension NowPlayingBar {
             repeatMode: .off,
             shuffled: nil,
         )
-        .environment(MediaPaths.stub)
+        .environment(ImageStore.stub)
         .environment(PreviewData.queueStore(manualCount: 5, context: nil))
         .environment(Queue.stub)
     }
@@ -466,7 +466,7 @@ extension NowPlayingBar {
             repeatMode: .off,
             shuffled: nil,
         )
-        .environment(MediaPaths.stub)
+        .environment(ImageStore.stub)
         .environment(PreviewData.queueStore(manualCount: 0, context: nil))
         .environment(Queue.stub)
     }

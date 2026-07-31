@@ -35,7 +35,7 @@
                 libraryStore: libraryStore
             )
             return LibraryView()
-                .environment(MediaPaths.stub)
+                .environment(ImageStore.stub)
                 .environment(Playback.stub)
                 .environment(Queue.stub)
                 .environment(Downloads.stub)
@@ -114,7 +114,7 @@
                 onImportSelected: { _ in }
             )
             .environment(OutboxStore(snapshot: OutboxStore.emptySnapshot))
-            .environment(MediaPaths.stub)
+            .environment(ImageStore.stub)
             .environment(uiStore)
             .windowBackground()
         }

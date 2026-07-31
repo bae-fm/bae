@@ -4,27 +4,44 @@ import os.log
 
 private let logger = Logger.bae("ImageView")
 
-/// Renders a library cover image, fetching its bytes by id through `MediaPaths`
-/// (which caches the decoded image by content version) and decoding off the
-/// main thread to a point-sized `UIImage`. Shows the theme placeholder while
-/// loading or when the cover is absent. Re-decodes when the `source` changes.
+/// Renders one image slot over `ImageStore`: the already-decoded bitmap on the
+/// first frame when the store holds one, the theme placeholder until the async
+/// load lands, and the placeholder again when there is no such image. Fetching,
+/// decoding, and caching are the store's; this view only draws.
 struct ImageView: View {
-    let source: LibraryImageSource?
+    let content: ImageContent?
     /// Target point size for the thumbnail; pixels decoded are
     /// `pointSize * displayScale`.
     let pointSize: CGFloat
     var contentMode: ContentMode = .fill
 
-    @Environment(MediaPaths.self)
-    private var mediaPaths
+    @Environment(ImageStore.self)
+    private var imageStore
     @Environment(\.displayScale)
     private var displayScale
     @State
-    private var image: UIImage?
+    private var loaded: UIImage?
+
+    /// The bitmap to draw this frame: the completed load, else whatever the
+    /// store already has decoded at this size, so a remounting row draws its art
+    /// immediately instead of flashing the placeholder.
+    private var displayedImage: UIImage? {
+        if let loaded {
+            return loaded
+        }
+        guard let content else {
+            return nil
+        }
+        return imageStore.cachedImage(
+            content,
+            pointSize: pointSize,
+            displayScale: displayScale
+        )
+    }
 
     var body: some View {
         Group {
-            if let image {
+            if let image = displayedImage {
                 Image(uiImage: image)
                     .resizable()
                     .aspectRatio(contentMode: contentMode)
@@ -33,50 +50,49 @@ struct ImageView: View {
                 Theme.placeholder
             }
         }
-        .task(id: source) {
+        .task(id: content) {
             await load()
         }
     }
 
     private func load() async {
-        guard let source else {
-            image = nil
+        loaded = nil
+        guard let content else {
             return
         }
         do {
-            image = try await mediaPaths.libraryImage(
-                source,
+            loaded = try await imageStore.image(
+                content,
                 pointSize: pointSize,
                 displayScale: displayScale
             )
         }
         catch is CancellationError {
-            logger.debug("cover load cancelled: \(String(describing: source))")
+            logger.debug("image load cancelled: \(content.description)")
             return
         }
         catch {
             logger.warning(
-                "Failed to load cover \(String(describing: source)): \(error.localizedDescription)"
+                "Failed to load \(content.description): \(error.localizedDescription)"
             )
-            image = nil
+            loaded = nil
         }
     }
 }
 
 extension ImageView {
-    /// A library cover, fetched by id and cached by content version.
+    /// A curated library image, cached by its content version.
     init(
         imageRef: BridgeImageRef?,
         contentMode: ContentMode = .fill,
         pointSize: CGFloat
     ) {
         self.init(
-            source: imageRef.map { .image($0) },
+            content: imageRef.map { .libraryImage($0) },
             pointSize: pointSize,
             contentMode: contentMode
         )
     }
-
 }
 
 #if DEBUG

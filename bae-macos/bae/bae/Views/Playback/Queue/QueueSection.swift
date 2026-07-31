@@ -564,7 +564,7 @@ extension QueueSection {
         .padding(.vertical)
         .background(Theme.surface)
         .coordinateSpace(name: "queuePane")
-        .environment(MediaPaths.stub)
+        .environment(ImageStore.stub)
     }
 
     #Preview("Up Next lane") {

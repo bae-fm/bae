@@ -5,31 +5,13 @@ import SwiftUI
 
 private let logger = Logger.bae("ImageView")
 
-/// What an `ImageView` renders: either a one-shot `ImageLoader.Source` (an
-/// import-candidate file on disk, a remote cover-art URL, in-memory bytes) or a
-/// library image fetched by id and cached by content version.
-enum ImageContent: Equatable {
-    case source(ImageLoader.Source)
-    case library(LibraryImageSource)
-
-    /// Human-readable description for failure logs.
-    var description: String {
-        switch self {
-        case .source(let source):
-            return source.description
-        case .library(let source):
-            return "library image: \(source)"
-        }
-    }
-}
-
 struct ImageView: View {
     let content: ImageContent?
     var contentMode: ContentMode = .fill
     let pointSize: CGFloat
 
-    @Environment(MediaPaths.self)
-    private var mediaPaths
+    @Environment(ImageStore.self)
+    private var imageStore
     @Environment(\.displayScale)
     private var displayScale
     @State
@@ -57,9 +39,9 @@ struct ImageView: View {
     }
 
     /// The image to draw this frame. A completed load wins; while a load is
-    /// still pending, an already-decoded library image is served straight from
-    /// the cache so the first frame after (re)mount draws the real art — the
-    /// async load would otherwise land a frame later and insert the image leaf
+    /// still pending, an already-decoded image is served straight from the
+    /// store so the first frame after (re)mount draws the real art — the async
+    /// load would otherwise land a frame later and insert the image leaf
     /// mid-flight, snapping it to its final position inside any transition the
     /// view mounted with (e.g. the queue sidebar sliding in).
     private var displayedImage: NSImage? {
@@ -67,11 +49,11 @@ struct ImageView: View {
         case .loaded(let image):
             return image
         case .pending:
-            guard case .library(let source) = content else {
+            guard let content else {
                 return nil
             }
-            return mediaPaths.cachedLibraryImage(
-                source,
+            return imageStore.cachedImage(
+                content,
                 pointSize: pointSize,
                 displayScale: displayScale
             )
@@ -113,28 +95,16 @@ struct ImageView: View {
             return
         }
         do {
-            switch content {
-            case .source(let source):
-                loadState = .loaded(
-                    try await ImageLoader.load(
-                        source: source,
-                        size: .fitTo(points: pointSize),
-                        displayScale: displayScale,
-                        fetchRemoteBytes: mediaPaths.fetchRemoteImageBytes
-                    )
-                )
-            case .library(let source):
-                if let image = try await mediaPaths.libraryImage(
-                    source,
-                    pointSize: pointSize,
-                    displayScale: displayScale
-                ) {
-                    loadState = .loaded(image)
-                }
-                else {
-                    // No such image — render the unavailable placeholder.
-                    loadState = .pending(.unavailable)
-                }
+            if let image = try await imageStore.image(
+                content,
+                pointSize: pointSize,
+                displayScale: displayScale
+            ) {
+                loadState = .loaded(image)
+            }
+            else {
+                // No such image — render the unavailable placeholder.
+                loadState = .pending(.unavailable)
             }
         }
         catch is CancellationError {
@@ -213,43 +183,26 @@ struct ImagePlaceholderView: View {
 }
 
 extension ImageView {
-    /// A one-shot `ImageLoader.Source` (import-candidate file, remote cover-art
-    /// URL, or in-memory bytes). A nil source renders the default placeholder.
-    init(
-        source: ImageLoader.Source?,
-        contentMode: ContentMode = .fill,
-        pointSize: CGFloat
-    ) {
-        self.init(
-            content: source.map { .source($0) },
-            contentMode: contentMode,
-            pointSize: pointSize
-        )
-    }
-
-    /// A library cover, fetched by id and cached by content version. A nil ref
-    /// (no cover) renders the default placeholder, so callers don't wrap the
-    /// view in their own `if let` / `Theme.placeholder` check.
+    /// A curated library image, cached by its content version. A nil ref (no
+    /// cover) renders the default placeholder, so callers don't wrap the view
+    /// in their own `if let` / `Theme.placeholder` check.
     init(
         imageRef: BridgeImageRef?,
         contentMode: ContentMode = .fill,
         pointSize: CGFloat
     ) {
         self.init(
-            content: imageRef.map {
-                .library(.image($0))
-            },
+            content: imageRef.map { .libraryImage($0) },
             contentMode: contentMode,
             pointSize: pointSize
         )
     }
-
 }
 
 #if DEBUG
     #Preview("Image View") {
-        // The preview MediaPaths stub resolves no bytes, so every slot settles on
-        // its placeholder: nil content shows the "unavailable" art, a library
+        // The preview ImageStore stub resolves no bytes, so every slot settles
+        // on its placeholder: nil content shows the "unavailable" art, a library
         // image ref shows the same once its load comes back empty, and the
         // compact slot exercises the smaller placeholder chrome (< 56pt).
         HStack(alignment: .top, spacing: 16) {
@@ -266,13 +219,13 @@ extension ImageView {
             )
             .frame(width: 120, height: 120)
             .clipShape(RoundedRectangle(cornerRadius: 10))
-            ImageView(source: nil, pointSize: 44)
+            ImageView(content: nil, pointSize: 44)
                 .frame(width: 44, height: 44)
                 .clipShape(RoundedRectangle(cornerRadius: 6))
         }
         .padding(28)
         .background(Theme.background)
-        .environment(MediaPaths.stub)
+        .environment(ImageStore.stub)
         .preferredColorScheme(.dark)
     }
 #endif

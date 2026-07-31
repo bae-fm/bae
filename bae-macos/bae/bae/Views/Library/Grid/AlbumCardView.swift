@@ -112,6 +112,6 @@ struct AlbumCardView: View {
             )
         }
         .padding()
-        .environment(MediaPaths.stub)
+        .environment(ImageStore.stub)
     }
 #endif

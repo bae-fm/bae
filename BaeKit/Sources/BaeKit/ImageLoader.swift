@@ -16,34 +16,21 @@ import ImageIO
 #endif
 
 public enum ImageLoader {
+    /// What a decode reads from. Fetching is `ImageStore`'s job — by the time
+    /// bytes reach here they are either on disk or in memory.
     public enum Source: Equatable, Sendable {
-        /// A file already on disk: an import-candidate image the user is
-        /// previewing before it enters the library (cover-sheet options, the
-        /// folder-import gallery). Library images are not paths — they load by
-        /// id through `MediaPaths`.
+        /// A file already on disk. Streamed rather than read whole, so a huge
+        /// image never sits in memory twice.
         case local(path: String)
-        case remote(url: String)
-        /// Image bytes already in memory — a library image the caller fetched
-        /// (a cover or a release-file gallery image) or a cloud-only gallery
-        /// image. Decoded at the requested size without any further fetch.
+        /// Image bytes already in memory — fetched through the bridge, or held
+        /// by the caller. Decoded at the requested size without any fetch.
         case data(Data)
-
-        public init(bridge: BridgeCoverImageSource) {
-            switch bridge {
-            case .local(let path):
-                self = .local(path: path)
-            case .remote(let url):
-                self = .remote(url: url)
-            }
-        }
 
         /// Human-readable description for failure logs.
         public var description: String {
             switch self {
             case .local(let path):
                 return "image at path: \(path)"
-            case .remote(let url):
-                return "remote image: \(url)"
             case .data(let bytes):
                 return "in-memory image: \(bytes.count) bytes"
             }
@@ -64,29 +51,16 @@ public enum ImageLoader {
 
     public struct DecodeError: Error {}
 
-    /// A `.remote` source was loaded without a `fetchRemoteBytes` closure.
-    /// Callers that only use `.local`/`.data` omit the closure; passing
-    /// `.remote` without one is a programming error, surfaced rather than
-    /// masked.
-    public struct RemoteFetchUnavailable: Error {
-        public init() {}
-    }
-
     /// Loads an image for `source` at the given `size`. Local sources read
-    /// directly from disk; `.data` sources decode bytes already in memory;
-    /// remote sources call `fetchRemoteBytes` to pull the raw bytes
-    /// (production: `MediaPaths.fetchRemoteImageBytes`; previews: the stub closure).
-    /// The decode runs on a background task and produces an image backed by an
+    /// directly from disk; `.data` sources decode bytes already in memory. The
+    /// decode runs on a background task and produces an image backed by an
     /// already-decoded CGImage. Throws `CancellationError` if the surrounding
     /// task is cancelled, or `DecodeError` if the source can't be opened or
     /// decoded.
     public static func load(
         source: Source,
         size: Size,
-        displayScale: CGFloat,
-        fetchRemoteBytes: @Sendable (_ url: String) async throws -> Data = {
-            _ in throw RemoteFetchUnavailable()
-        }
+        displayScale: CGFloat
     ) async throws -> PlatformImage {
         switch source {
         case .local(let path):
@@ -102,13 +76,6 @@ public enum ImageLoader {
                     displayScale: displayScale
                 )
             }
-        case .remote(let url):
-            let bytes = try await fetchRemoteBytes(url)
-            return try await decodeData(
-                bytes: bytes,
-                size: size,
-                displayScale: displayScale
-            )
         case .data(let bytes):
             return try await decodeData(
                 bytes: bytes,
@@ -120,7 +87,6 @@ public enum ImageLoader {
 }
 
 /// Decodes in-memory image `bytes` to a platform image at the requested size.
-/// Shared by the `.remote` (post-fetch) and `.data` branches of `load`.
 private func decodeData(
     bytes: Data,
     size: ImageLoader.Size,

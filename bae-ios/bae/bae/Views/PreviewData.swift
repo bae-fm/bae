@@ -325,7 +325,7 @@ extension View {
             .environment(Queue.stub)
             .environment(Downloads.stub)
             .environment(Sync.stub)
-            .environment(MediaPaths.stub)
+            .environment(ImageStore.stub)
     }
 }
 #endif

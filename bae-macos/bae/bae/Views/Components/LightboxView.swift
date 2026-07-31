@@ -20,19 +20,13 @@ struct LightboxItem: Identifiable, Equatable {
         case local(path: String)
     }
 
-    /// What the thumbnail strip renders for this item (decoded small and cached).
-    var thumbnailContent: ImageContent {
+    /// What this item shows, in the strip and full-screen alike.
+    var content: ImageContent {
         switch source {
         case .gallery(let releaseId, let gallerySource):
-            return .library(
-                .gallery(
-                    releaseId: releaseId,
-                    source: gallerySource,
-                    cacheId: id
-                )
-            )
+            return .releaseImage(releaseId: releaseId, source: gallerySource)
         case .local(let path):
-            return .source(.local(path: path))
+            return .localFile(path: path)
         }
     }
 }
@@ -42,8 +36,8 @@ struct LightboxView: View {
     let onUpdate: (Cursor<LightboxItem>) -> Void
     let onDismiss: () -> Void
 
-    @Environment(MediaPaths.self)
-    private var mediaPaths
+    @Environment(ImageStore.self)
+    private var imageStore
     @Environment(\.displayScale)
     private var displayScale
     @State
@@ -112,7 +106,7 @@ struct LightboxView: View {
                             )
                         }
                     ) { item in
-                        ImageView(content: item.thumbnailContent, pointSize: 56)
+                        ImageView(content: item.content, pointSize: 56)
                     }
                     .padding(.bottom, 12)
                     .fadesWhenZoomed(at: magnification)
@@ -144,21 +138,33 @@ struct LightboxView: View {
         }
     }
 
-    /// Resolves the current item to a decodable source, fetching the gallery
-    /// bytes from the bridge when the item is a library slot.
-    private func resolveDecodeSource(
-        _ item: LightboxItem
-    ) async throws -> ImageLoader.Source {
-        switch item.source {
-        case .local(let path):
-            return .local(path: path)
-        case .gallery(let releaseId, let gallerySource):
-            return .data(
-                try await mediaPaths.fetchReleaseImageBytes(
-                    releaseId,
-                    gallerySource
+    /// Where the current item's bytes come from, or nil once the failure has
+    /// been logged and put on screen. A cancellation resolves to nil too, with
+    /// nothing shown — the item is on its way out.
+    private func resolveDecodeSource() async -> ImageLoader.Source? {
+        do {
+            guard
+                let source = try await imageStore.decodeSource(
+                    for: cursor.current.content
                 )
+            else {
+                logger.warning(
+                    "No bytes for lightbox image \(cursor.current.id)"
+                )
+                loadFailed = true
+                return nil
+            }
+            return source
+        }
+        catch is CancellationError {
+            return nil
+        }
+        catch {
+            logger.warning(
+                "Failed to fetch lightbox image \(cursor.current.id): \(error)"
             )
+            loadFailed = true
+            return nil
         }
     }
 
@@ -169,18 +175,7 @@ struct LightboxView: View {
         loadFailed = false
         decodeSource = nil
 
-        let source: ImageLoader.Source
-        do {
-            source = try await resolveDecodeSource(cursor.current)
-        }
-        catch is CancellationError {
-            return
-        }
-        catch {
-            logger.warning(
-                "Failed to fetch lightbox image \(cursor.current.id): \(error)"
-            )
-            loadFailed = true
+        guard let source = await resolveDecodeSource() else {
             return
         }
         decodeSource = source
@@ -192,8 +187,7 @@ struct LightboxView: View {
                 size: .fitTo(
                     points: max(containerSize.width, containerSize.height)
                 ),
-                displayScale: displayScale,
-                fetchRemoteBytes: mediaPaths.fetchRemoteImageBytes
+                displayScale: displayScale
             )
         }
         catch is CancellationError {
@@ -238,8 +232,7 @@ struct LightboxView: View {
             loaded = try await ImageLoader.load(
                 source: source,
                 size: .native,
-                displayScale: displayScale,
-                fetchRemoteBytes: mediaPaths.fetchRemoteImageBytes
+                displayScale: displayScale
             )
         }
         catch is CancellationError {
@@ -441,7 +434,7 @@ private struct LiveTextOverlay: NSViewRepresentable {
             ),
         ]) {
             LightboxView(cursor: cursor, onUpdate: { _ in }, onDismiss: {})
-                .environment(MediaPaths.stub)
+                .environment(ImageStore.stub)
         }
     }
 #endif

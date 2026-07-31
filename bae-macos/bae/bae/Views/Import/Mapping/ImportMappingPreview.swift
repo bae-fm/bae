@@ -3,14 +3,14 @@
     import SwiftUI
 
     /// The stores every import preview reads plus the app's window background,
-    /// injected as one modifier: MediaPaths + UiStore for the search pane and
+    /// injected as one modifier: ImageStore + UiStore for the search pane and
     /// the lightbox, OutboxStore + ConfigStore for the commit bar, and
     /// `windowBackground()` so the preview reproduces the shell the panes are
     /// transparent over.
     extension View {
         func importPreviewEnvironment() -> some View {
             self
-                .environment(MediaPaths.stub)
+                .environment(ImageStore.stub)
                 .environment(UiStore())
                 .environment(OutboxStore(snapshot: OutboxStore.emptySnapshot))
                 .environment(PreviewData.configStore)
@@ -40,7 +40,7 @@
                 previewingPath: previewingPath,
                 libraryStatus: nil,
                 hasCoverOptions: true,
-                coverSource: nil,
+                coverContent: nil,
                 editor: editor,
                 storageManaged: storageManaged,
                 storagePinned: storagePinned,

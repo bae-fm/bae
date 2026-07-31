@@ -84,7 +84,7 @@ struct ContentView: View {
                         .environment(service.outboxStore)
                         .environment(service.downloads)
                         .environment(service.projectionRegistry)
-                        .environment(service.mediaPaths)
+                        .environment(service.imageStore)
                         .environment(service.library)
                         .environment(service.playback)
                         .environment(service.queue)

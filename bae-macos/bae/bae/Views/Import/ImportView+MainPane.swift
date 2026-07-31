@@ -35,8 +35,8 @@ extension ImportView {
             previewingPath: importStore.previewState.active?.path,
             libraryStatus: libraryStatus(for: candidate),
             hasCoverOptions: hasCoverOptions(candidate),
-            coverSource: candidate.selectedCover.map {
-                ImageLoader.Source(bridge: $0.thumbnailSource)
+            coverContent: candidate.selectedCover.map {
+                ImageContent(bridge: $0.thumbnailSource)
             },
             editor: editorBinding(for: candidate),
             storageManaged: $storageManaged,

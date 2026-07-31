@@ -56,8 +56,8 @@ struct StorageTableView: NSViewRepresentable {
     let library: Library
     let runner: StorageActionRunner
 
-    @Environment(MediaPaths.self)
-    private var mediaPaths
+    @Environment(ImageStore.self)
+    private var imageStore
     @Environment(OutboxStore.self)
     private var outboxStore
 
@@ -69,7 +69,7 @@ struct StorageTableView: NSViewRepresentable {
             libraryStore: libraryStore,
             library: library,
             runner: runner,
-            mediaPaths: mediaPaths,
+            imageStore: imageStore,
             outboxStore: outboxStore,
         )
     }
@@ -138,7 +138,7 @@ struct StorageTableView: NSViewRepresentable {
 
         coordinator.update(
             list: list,
-            mediaPaths: mediaPaths,
+            imageStore: imageStore,
             outboxStore: outboxStore,
         )
 
@@ -167,7 +167,7 @@ extension StorageTableView {
         private let libraryStore: LibraryStore
         private let library: Library
         private let runner: StorageActionRunner
-        private var mediaPaths: MediaPaths
+        private var imageStore: ImageStore
         private var outboxStore: OutboxStore
         weak var outlineView: NSOutlineView?
 
@@ -199,7 +199,7 @@ extension StorageTableView {
             libraryStore: LibraryStore,
             library: Library,
             runner: StorageActionRunner,
-            mediaPaths: MediaPaths,
+            imageStore: ImageStore,
             outboxStore: OutboxStore,
         ) {
             self.list = list
@@ -208,17 +208,17 @@ extension StorageTableView {
             self.libraryStore = libraryStore
             self.library = library
             self.runner = runner
-            self.mediaPaths = mediaPaths
+            self.imageStore = imageStore
             self.outboxStore = outboxStore
         }
 
         func update(
             list: StorageList,
-            mediaPaths: MediaPaths,
+            imageStore: ImageStore,
             outboxStore: OutboxStore,
         ) {
             self.list = list
-            self.mediaPaths = mediaPaths
+            self.imageStore = imageStore
             self.outboxStore = outboxStore
         }
 
@@ -574,7 +574,7 @@ extension StorageTableView.Coordinator {
     }
 
     /// SwiftUI content for a cell, wrapped with the environment values the
-    /// hosted cell views read at the leaf (`ImageView` needs `MediaPaths`;
+    /// hosted cell views read at the leaf (`ImageView` needs `ImageStore`;
     /// the storage badge reads `OutboxStore`).
     @ViewBuilder
     private func content(
@@ -582,7 +582,7 @@ extension StorageTableView.Coordinator {
         column: StorageTableColumn
     ) -> some View {
         cellBody(for: item, column: column)
-            .environment(mediaPaths)
+            .environment(imageStore)
             .environment(outboxStore)
     }
 

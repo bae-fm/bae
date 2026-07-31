@@ -14,8 +14,8 @@ struct AlbumDetailView: View {
     private var libraryStore
     @Environment(Library.self)
     private var library
-    @Environment(MediaPaths.self)
-    private var mediaPaths
+    @Environment(ImageStore.self)
+    private var imageStore
     @Environment(Playback.self)
     private var playback
     @Environment(Queue.self)
@@ -168,11 +168,13 @@ struct AlbumDetailView: View {
             GalleryView(
                 items: detail.galleryItems,
                 loadImage: { item in
-                    // The lightbox passes the whole source to the bridge, which
-                    // dispatches the read in core. The UI never inspects it.
-                    try await mediaPaths.fetchReleaseImageBytes(
-                        releaseId,
-                        item.source
+                    // The viewer names the slot and the store resolves it; the
+                    // read dispatches on the source in core, never here.
+                    try await imageStore.decodeSource(
+                        for: .releaseImage(
+                            releaseId: releaseId,
+                            source: item.source
+                        )
                     )
                 }
             )

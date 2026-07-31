@@ -190,7 +190,7 @@ struct TriageRowView: View {
 
     private var cover: some View {
         ImageView(
-            source: row.matched?.coverThumbnailUrl.map { .remote(url: $0) },
+            content: row.matched?.coverThumbnailUrl.map { .remote(url: $0) },
             pointSize: 44
         )
         .frame(width: 44, height: 44)

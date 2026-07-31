@@ -31,7 +31,7 @@ struct ImageViewHitTestingTests {
                     .frame(width: side, height: side)
             }
             .buttonStyle(.plain)
-            .environment(MediaPaths.stub)
+            .environment(ImageStore.stub)
             .environment(\.colorScheme, .dark),
             size: size
         )

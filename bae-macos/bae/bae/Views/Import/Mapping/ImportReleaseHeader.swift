@@ -20,7 +20,7 @@ struct ImportReleaseHeader: View {
     let claim: BridgeClaimLine?
     /// Whether a release has been picked.
     let hasPick: Bool
-    let coverSource: ImageLoader.Source?
+    let coverContent: ImageContent?
     let hasCoverOptions: Bool
     let onEditCover: () -> Void
     let onFindRelease: () -> Void
@@ -79,8 +79,8 @@ struct ImportReleaseHeader: View {
 
     private var cover: some View {
         Group {
-            if let coverSource {
-                ImageView(source: coverSource, pointSize: 80)
+            if let coverContent {
+                ImageView(content: coverContent, pointSize: 80)
             }
             else {
                 Theme.placeholder

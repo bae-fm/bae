@@ -56,6 +56,8 @@ open class AppService: @unchecked Sendable, Observable {
     public nonisolated let playback: Playback
     public nonisolated let queue: Queue
     public nonisolated let mediaPaths: MediaPaths
+    /// The app's image pipeline: fetch, decode-at-size, bounded decoded cache.
+    public nonisolated let imageStore: ImageStore
     public nonisolated let sync: Sync
     public nonisolated let downloads: Downloads
 
@@ -90,6 +92,7 @@ open class AppService: @unchecked Sendable, Observable {
         playback = Playback(handle: appHandle)
         queue = Queue(handle: appHandle)
         mediaPaths = MediaPaths(handle: appHandle)
+        imageStore = ImageStore(handle: appHandle)
         sync = Sync(handle: appHandle)
         downloads = Downloads(handle: appHandle)
     }

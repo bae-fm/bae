@@ -61,7 +61,7 @@ struct ArtistDetailPane: View {
             .frame(width: 520, height: 640)
             .environment(session)
             .environment(uiStore)
-            .environment(MediaPaths.stub)
+            .environment(ImageStore.stub)
     }
 
     #Preview("Artist \u{2014} Placeholder") {
@@ -75,6 +75,6 @@ struct ArtistDetailPane: View {
             .frame(width: 520, height: 640)
             .environment(session)
             .environment(uiStore)
-            .environment(MediaPaths.stub)
+            .environment(ImageStore.stub)
     }
 #endif

@@ -308,7 +308,7 @@ struct AlbumExpansionContent: View {
                     .background(Theme.background)
                     .environment(UiStore())
                     .environment(store)
-                    .environment(MediaPaths.stub)
+                    .environment(ImageStore.stub)
                 }
             }
             .onAppear { seedIfNeeded() }
@@ -327,7 +327,7 @@ struct AlbumExpansionContent: View {
 
     #Preview("Multiple Releases") {
         MultiReleasePreview()
-            .environment(MediaPaths.stub)
+            .environment(ImageStore.stub)
             .environment(UiStore())
             .environment(LibraryStore())
     }

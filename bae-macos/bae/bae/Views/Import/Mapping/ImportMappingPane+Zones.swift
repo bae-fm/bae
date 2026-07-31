@@ -17,7 +17,7 @@ extension ImportMappingPane {
                 metaLine: headerMetaLine,
                 claim: candidate.claim,
                 hasPick: candidate.pickedReleaseId != nil,
-                coverSource: coverSource,
+                coverContent: coverContent,
                 hasCoverOptions: hasCoverOptions,
                 onEditCover: onEditCover,
                 onFindRelease: onFindRelease,

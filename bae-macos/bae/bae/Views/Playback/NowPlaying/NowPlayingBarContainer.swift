@@ -26,7 +26,7 @@ struct NowPlayingBarContainer: View {
         let cover: ImageContent? =
             track?.coverImage
             .map {
-                .library(.image($0))
+                .libraryImage($0)
             }
         NowPlayingBar(
             trackTitle: track?.trackTitle,
@@ -104,7 +104,7 @@ struct NowPlayingBarContainer: View {
             .environment(store)
             .environment(UiStore())
             .environment(PreviewData.configStore)
-            .environment(MediaPaths.stub)
+            .environment(ImageStore.stub)
             .environment(Cast.stub)
             .environment(CastStore())
     }

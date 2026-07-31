@@ -22,7 +22,7 @@ struct QueuePanel: View {
         let cover: ImageContent? =
             track?.coverImage
             .map {
-                .library(.image($0))
+                .libraryImage($0)
             }
         QueueView(
             isActive: np.isActive,
@@ -77,7 +77,7 @@ struct QueuePanel: View {
         })
         .environment(store)
         .environment(queue)
-        .environment(MediaPaths.stub)
+        .environment(ImageStore.stub)
         .environment(
             \.playbackPositionPublisher,
             Just(

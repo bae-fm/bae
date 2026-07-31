@@ -523,7 +523,7 @@ extension LibraryView {
         let library: Library = backing.library
         let session: LibraryBrowseSession = backing.session
         return LibraryView()
-            .environment(MediaPaths.stub)
+            .environment(ImageStore.stub)
             .environment(Playback.stub)
             .environment(Queue.stub)
             .environment(Downloads.stub)
@@ -553,7 +553,7 @@ extension LibraryView {
         let library: Library = backing.library
         let session: LibraryBrowseSession = backing.session
         return LibraryView()
-            .environment(MediaPaths.stub)
+            .environment(ImageStore.stub)
             .environment(Playback.stub)
             .environment(Queue.stub)
             .environment(Downloads.stub)

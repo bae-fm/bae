@@ -92,7 +92,9 @@ struct CoverSheetView: View {
                                         Group {
                                             if let path = item.path {
                                                 ImageView(
-                                                    source: .local(path: path),
+                                                    content: .localFile(
+                                                        path: path
+                                                    ),
                                                     pointSize: 120
                                                 )
                                             }
@@ -152,7 +154,7 @@ struct CoverSheetView: View {
         Button(action: { onSelectRemote(cover) }) {
             VStack(spacing: 4) {
                 ImageView(
-                    source: ImageLoader.Source(
+                    content: ImageContent(
                         bridge: cover.coverChoice.thumbnailSource
                     ),
                     pointSize: 120
@@ -182,7 +184,7 @@ struct CoverSheetView: View {
         )
         .frame(width: 500, height: 450)
         .background(Theme.surface)
-        .environment(MediaPaths.stub)
+        .environment(ImageStore.stub)
     }
 
     #Preview("Cover Sheet Loading") {
@@ -198,6 +200,6 @@ struct CoverSheetView: View {
         )
         .frame(width: 500, height: 450)
         .background(Theme.surface)
-        .environment(MediaPaths.stub)
+        .environment(ImageStore.stub)
     }
 #endif

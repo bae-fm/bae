@@ -9,12 +9,12 @@ struct CoverItem: Identifiable, Equatable {
 
     var id: BridgeCoverSelection { selection }
     var selection: BridgeCoverSelection { coverChoice.selection }
-    var previewSource: ImageLoader.Source {
-        ImageLoader.Source(bridge: coverChoice.previewSource)
+    var previewContent: ImageContent {
+        ImageContent(bridge: coverChoice.previewSource)
     }
 
-    var thumbnailSource: ImageLoader.Source {
-        ImageLoader.Source(bridge: coverChoice.thumbnailSource)
+    var thumbnailContent: ImageContent {
+        ImageContent(bridge: coverChoice.thumbnailSource)
     }
 
     let coverChoice: BridgeCoverChoice

@@ -132,6 +132,7 @@
                 .environment(UiStore())
                 .environment(store)
                 .environment(MediaPaths.stub)
+                .environment(ImageStore.stub)
         }
 
         /// The primary release's fat detail for a seeded preview album — tracks,
@@ -266,6 +267,7 @@
         func albumDetailPreviewEnvironment(store: LibraryStore) -> some View {
             self
                 .environment(MediaPaths.stub)
+                .environment(ImageStore.stub)
                 .environment(Playback.stub)
                 .environment(Queue.stub)
                 .environment(Library.stub)

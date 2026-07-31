@@ -49,7 +49,7 @@ struct ComposerWorkGroupView: View {
         )
         .padding()
         .frame(width: 460, alignment: .leading)
-        .environment(MediaPaths.stub)
+        .environment(ImageStore.stub)
     }
 #endif
 

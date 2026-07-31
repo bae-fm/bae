@@ -6,14 +6,17 @@ private let logger = Logger.bae("GalleryView")
 
 /// Full-screen artwork viewer over a release's gallery items (cover first, then
 /// every image file the release has). Swipeable when there's more than one. Each
-/// item's bytes are fetched on demand via `loadImage` (the cover by image id, a
+/// item resolves on demand via `loadImage` (the cover by image ref, a
 /// release-file image by file id, downloaded when cloud-only). Each page
 /// pinch-zooms and snaps back on release.
 struct GalleryView: View {
     let items: [BridgeGalleryItem]
-    /// Fetches a gallery item's bytes from the bridge, which dispatches the read
-    /// in core on the item's `BridgeGallerySource` (its cover or an image file).
-    let loadImage: @Sendable (_ item: BridgeGalleryItem) async throws -> Data
+    /// Resolves a gallery item to what its decode reads from. The read
+    /// dispatches in core on the item's `BridgeGallerySource` (its cover or an
+    /// image file); nil means the slot has no bytes.
+    let loadImage:
+        @Sendable (_ item: BridgeGalleryItem) async throws ->
+            ImageLoader.Source?
 
     @Environment(\.dismiss)
     private var dismiss
@@ -121,33 +124,41 @@ struct GalleryView: View {
 /// fetching, a warning glyph if the fetch fails.
 private struct GalleryPage: View {
     let item: BridgeGalleryItem
-    let loadImage: @Sendable (_ item: BridgeGalleryItem) async throws -> Data
+    let loadImage:
+        @Sendable (_ item: BridgeGalleryItem) async throws ->
+            ImageLoader.Source?
 
     @State
-    private var bytes: Data?
+    private var source: ImageLoader.Source?
     @State
     private var failed = false
 
     var body: some View {
         // All states share one stable view identity: the placeholders stay
         // mounted and toggle by opacity, and the image mounts once when its
-        // bytes arrive (it never unmounts — `bytes` doesn't revert to nil for a
-        // page). Conditionally swapping children would churn the pager's layout.
+        // source arrives (it never unmounts — `source` doesn't revert to nil for
+        // a page). Conditionally swapping children would churn the pager's
+        // layout.
         ZStack {
-            if let bytes {
-                ZoomableGalleryImage(source: .data(bytes))
+            if let source {
+                ZoomableGalleryImage(source: source)
             }
             GalleryFailedView()
                 .opacity(failed ? 1 : 0)
                 .allowsHitTesting(failed)
             ProgressView()
                 .tint(.white)
-                .opacity(bytes == nil && !failed ? 1 : 0)
+                .opacity(source == nil && !failed ? 1 : 0)
                 .allowsHitTesting(false)
         }
         .task(id: item.id) {
             do {
-                bytes = try await loadImage(item)
+                guard let resolved = try await loadImage(item) else {
+                    logger.warning("No bytes for gallery image \(item.id)")
+                    failed = true
+                    return
+                }
+                source = resolved
             }
             catch is CancellationError {
                 // The viewer was dismissed mid-fetch; leave state as-is.
@@ -307,6 +318,6 @@ private struct GalleryFailedView: View {
 
 #if DEBUG
 #Preview {
-    GalleryView(items: [], loadImage: { _ in Data() })
+    GalleryView(items: [], loadImage: { _ in nil })
 }
 #endif

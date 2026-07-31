@@ -16,7 +16,7 @@ struct ImportMappingPane: View {
     let previewingPath: String?
     let libraryStatus: BridgeLibraryStatus?
     let hasCoverOptions: Bool
-    let coverSource: ImageLoader.Source?
+    let coverContent: ImageContent?
     /// The live editor. `nil` while nothing has been picked and no tracklist
     /// has been read off the folder — there is nothing to edit or commit then,
     /// so the slot table and the commit bar stay off the pane.

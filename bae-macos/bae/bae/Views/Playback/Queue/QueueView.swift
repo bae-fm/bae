@@ -297,7 +297,7 @@ struct QueueView: View {
         .background(Theme.surface)
         .environment(store)
         .environment(Queue.stub)
-        .environment(MediaPaths.stub)
+        .environment(ImageStore.stub)
     }
 
     #Preview("With items") {

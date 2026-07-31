@@ -148,11 +148,11 @@ struct QueueItemRow: View {
     // closure's modifier chain, can see it.
     #Preview("Resting") {
         QueueItemRowPreview(item: PreviewData.queueItems[0], isHovered: false)
-            .environment(MediaPaths.stub)
+            .environment(ImageStore.stub)
     }
 
     #Preview("Hovered") {
         QueueItemRowPreview(item: PreviewData.queueItems[1], isHovered: true)
-            .environment(MediaPaths.stub)
+            .environment(ImageStore.stub)
     }
 #endif
