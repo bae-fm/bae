@@ -55,6 +55,10 @@ BAE_BRIDGE_TARGET="${BAE_BRIDGE_TARGET:-x86_64-pc-windows-msvc}"
 rustup target add "$BAE_BRIDGE_TARGET"
 
 echo "Building bae-bridge for $BAE_BRIDGE_TARGET ($CARGO_PROFILE, features: ${BAE_BRIDGE_FEATURES:-(none)})..."
+# Fat LTO crashes rustc 1.95's codegen on the aarch64 Windows toolchain
+# (STATUS_STACK_BUFFER_OVERRUN linking the release cdylib). Thin LTO links the
+# same cdylib fine; the other platforms keep the workspace profile's fat LTO.
+export CARGO_PROFILE_RELEASE_LTO=thin
 # `cargo rustc --crate-type cdylib` builds only the DLL. The crate also lists
 # `staticlib` for Apple, whose builds link the .a into the framework — but on
 # Windows nothing consumes the .lib, and a debug archive carries embedded
