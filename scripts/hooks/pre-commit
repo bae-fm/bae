@@ -2,6 +2,12 @@
 
 set -e
 
+# In a linked worktree, git exports GIT_DIR/GIT_INDEX_FILE to hooks. Child git
+# processes inherit them — SwiftPM's package clones then run `git checkout`
+# against *this* repo's object store and die with "unable to read tree". The
+# hook's own git commands rediscover the repo from cwd, so drop the overrides.
+unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE
+
 # Dependency graph (update when crate dependencies change):
 #   bae-core: no local deps; dev-depends on bae-test-support (its tests)
 #   bae-test-support: depends on bae-core
