@@ -123,9 +123,15 @@ jobs:
         cargo clippy -p bae-bridge --features oauth-providers,cloudkit -- -D warnings
 
     - name: Build macOS app (baeium, S3-only)
+      # Exported for the whole step, not just the bridge line: xcodebuild's
+      # scheme pre-action reruns build-macos.sh, and with the variable unset it
+      # would rebuild with its full-feature default and rewrite
+      # Features.xcconfig mid-build.
+      env:
+        BAE_BRIDGE_FEATURES: desktop
       run: |
         brew install xcodegen
-        BAE_BRIDGE_FEATURES=desktop ./bae-bridge/build-macos.sh
+        ./bae-bridge/build-macos.sh
         ./bae-bridge/install-swift-bindings.sh macos
         cd bae-macos/bae && xcodegen
         xcodebuild -project bae.xcodeproj -scheme bae -configuration Debug \

@@ -620,6 +620,7 @@ extension BridgeMatchedSignal {
         .padding()
         .frame(width: 340)
         .environment(OutboxStore(snapshot: OutboxStore.emptySnapshot))
+        .environment(ImageStore.stub)
         .windowBackground()
     }
 #endif

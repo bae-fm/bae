@@ -75,14 +75,10 @@ jobs:
           toolchain: "1.95.0"
           targets: x86_64-pc-windows-msvc
 
-      - name: Install sccache
-        uses: mozilla-actions/sccache-action@v0.0.10
-
-      - name: Enable sccache for Rust builds
-        shell: pwsh
-        run: |
-          echo "SCCACHE_GHA_ENABLED=true" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
-          echo "RUSTC_WRAPPER=sccache" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+      # No sccache on this lane: wrapping rustc flattens its response file
+      # onto the command line, and ffmpeg-sys-next's release invocation
+      # (its huge --check-cfg list plus the LTO flags) then exceeds Windows'
+      # 32K argument limit — sccache dies with os error 206.
 
       - name: Set LIBCLANG_PATH (LLVM pre-installed on windows-latest)
         shell: pwsh

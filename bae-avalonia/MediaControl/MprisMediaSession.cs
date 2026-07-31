@@ -468,32 +468,32 @@ internal sealed class MprisMediaSession : IMediaSession, IMethodHandler
         switch (request.MemberAsString)
         {
             case "Get":
-            {
-                var (@interface, property) = (reader.ReadString(), reader.ReadString());
-                if (ReadProperty(@interface, property) is not { } value)
                 {
-                    context.ReplyError(UnknownPropertyError, $"No property {property} on {@interface}");
+                    var (@interface, property) = (reader.ReadString(), reader.ReadString());
+                    if (ReadProperty(@interface, property) is not { } value)
+                    {
+                        context.ReplyError(UnknownPropertyError, $"No property {property} on {@interface}");
+                        return;
+                    }
+                    using var writer = context.CreateReplyWriter("v");
+                    writer.WriteVariant(value);
+                    context.Reply(writer.CreateMessage());
                     return;
                 }
-                using var writer = context.CreateReplyWriter("v");
-                writer.WriteVariant(value);
-                context.Reply(writer.CreateMessage());
-                return;
-            }
             case "GetAll":
-            {
-                var properties = ReadAllProperties(reader.ReadString());
-                using var writer = context.CreateReplyWriter("a{sv}");
-                writer.WriteDictionary(properties);
-                context.Reply(writer.CreateMessage());
-                return;
-            }
+                {
+                    var properties = ReadAllProperties(reader.ReadString());
+                    using var writer = context.CreateReplyWriter("a{sv}");
+                    writer.WriteDictionary(properties);
+                    context.Reply(writer.CreateMessage());
+                    return;
+                }
             case "Set":
-            {
-                var (@interface, property) = (reader.ReadString(), reader.ReadString());
-                WriteProperty(context, @interface, property, reader.ReadVariantValue());
-                return;
-            }
+                {
+                    var (@interface, property) = (reader.ReadString(), reader.ReadString());
+                    WriteProperty(context, @interface, property, reader.ReadVariantValue());
+                    return;
+                }
         }
     }
 
@@ -540,31 +540,31 @@ internal sealed class MprisMediaSession : IMediaSession, IMethodHandler
                 CommandRequested?.Invoke(IsPlaying() ? MediaSessionCommand.Pause : MediaSessionCommand.Play);
                 break;
             case "Seek":
-            {
-                // The offset is relative to where the track is now.
-                var reader = request.GetBodyReader();
-                var offsetUs = reader.ReadInt64();
-                long targetUs;
-                lock (_gate)
                 {
-                    targetUs = Math.Max(0, _positionUs + offsetUs);
+                    // The offset is relative to where the track is now.
+                    var reader = request.GetBodyReader();
+                    var offsetUs = reader.ReadInt64();
+                    long targetUs;
+                    lock (_gate)
+                    {
+                        targetUs = Math.Max(0, _positionUs + offsetUs);
+                    }
+                    SeekRequestedMs?.Invoke(targetUs / 1000.0);
+                    break;
                 }
-                SeekRequestedMs?.Invoke(targetUs / 1000.0);
-                break;
-            }
             case "SetPosition":
-            {
-                var reader = request.GetBodyReader();
-                var trackId = reader.ReadObjectPathAsString();
-                var positionUs = reader.ReadInt64();
-                // A position for a track that is no longer current is dropped, per
-                // the spec: the client raced a track change.
-                if (IsCurrentTrack(trackId))
                 {
-                    SeekRequestedMs?.Invoke(Math.Max(0, positionUs) / 1000.0);
+                    var reader = request.GetBodyReader();
+                    var trackId = reader.ReadObjectPathAsString();
+                    var positionUs = reader.ReadInt64();
+                    // A position for a track that is no longer current is dropped, per
+                    // the spec: the client raced a track change.
+                    if (IsCurrentTrack(trackId))
+                    {
+                        SeekRequestedMs?.Invoke(Math.Max(0, positionUs) / 1000.0);
+                    }
+                    break;
                 }
-                break;
-            }
             case "OpenUri":
                 BaeDiagnostics.Logger.Warning(
                     "An MPRIS client asked the now-playing surface to open a URI; bae advertises no supported schemes.");
@@ -759,10 +759,10 @@ internal sealed class MprisMediaSession : IMediaSession, IMethodHandler
     private static string? ArtworkExtension(byte[] bytes) =>
         bytes switch
         {
-            [0x89, (byte)'P', (byte)'N', (byte)'G', ..] => ".png",
-            [0xFF, 0xD8, 0xFF, ..] => ".jpg",
-            [(byte)'R', (byte)'I', (byte)'F', (byte)'F', _, _, _, _, (byte)'W', (byte)'E', (byte)'B', (byte)'P', ..] => ".webp",
-            [(byte)'G', (byte)'I', (byte)'F', (byte)'8', ..] => ".gif",
+        [0x89, (byte)'P', (byte)'N', (byte)'G', ..] => ".png",
+        [0xFF, 0xD8, 0xFF, ..] => ".jpg",
+        [(byte)'R', (byte)'I', (byte)'F', (byte)'F', _, _, _, _, (byte)'W', (byte)'E', (byte)'B', (byte)'P', ..] => ".webp",
+        [(byte)'G', (byte)'I', (byte)'F', (byte)'8', ..] => ".gif",
             _ => null,
         };
 

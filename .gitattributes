@@ -1,0 +1,6 @@
+# bae-avalonia's .editorconfig declares lf endings (the app ships on Windows
+# and Linux from one tree). Windows runners check out with autocrlf on, which
+# would rewrite every line to crlf and fail the formatting gate — pin the
+# working-tree encoding so a checkout is identical on every OS.
+*.cs text eol=lf
+*.axaml text eol=lf

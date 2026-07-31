@@ -47,7 +47,8 @@ internal sealed class ImportService
     public Func<string, Task<(bool Current, string? Error)>> RefreshWatchedFolder { get; init; }
         = _ => throw new InvalidOperationException("ImportService stub: RefreshWatchedFolder not wired");
     public Func<BridgeFolderReleaseDecisionKey, BridgeFolderReleaseDecision,
-        Task<(bool Current, string? Error)>> SetFolderReleaseDecision { get; init; }
+        Task<(bool Current, string? Error)>> SetFolderReleaseDecision
+    { get; init; }
         = (_, _) => throw new InvalidOperationException("ImportService stub: SetFolderReleaseDecision not wired");
 
     /// <summary>Skip or un-skip a candidate; the candidate invalidation re-tabs the
