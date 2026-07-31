@@ -7,7 +7,7 @@ import DownloadButton from '../../../../components/DownloadButton.astro';
 
 ## Deux éditions
 
-Chaque plateforme est livrée en deux éditions, construites depuis le même code source :
+bae est livré en deux éditions, construites depuis le même code source :
 
 - **bae**, l’application complète : synchronisation S3, Google Drive, Dropbox, OneDrive et iCloud.
 - **baeium**, sans composants propriétaires : stockage compatible S3 uniquement, sans fournisseurs OAuth, sans iCloud/CloudKit, sans télémétrie.
@@ -41,12 +41,10 @@ Activez l’installation depuis votre navigateur ou vos fichiers lorsque cela vo
 
 ## Windows
 
-Les versions Windows sont des archives zip **non signées** de l’application non empaquetée. Extrayez-les et lancez `bae.exe` / `baeium.exe`. SmartScreen peut afficher un avertissement au premier lancement.
+Le téléchargement Windows est un installeur qui installe l’application pour l’utilisateur courant et se met à jour tout seul. Les versions ne sont pas signées, donc SmartScreen peut afficher un avertissement au premier lancement. Une archive zip portable, qui s’exécute sur place, est également jointe à chaque [version GitHub](https://github.com/bae-fm/bae/releases). Sur Windows, seule l’édition complète est publiée.
 
-<DownloadButton platform="windows" edition="full" arch="x64" class="sl-button primary">Télécharger bae pour Windows (x64)</DownloadButton>
-<DownloadButton platform="windows" edition="full" arch="arm64" class="sl-button primary">Télécharger bae pour Windows (ARM64)</DownloadButton>
-<DownloadButton platform="windows" edition="baeium" arch="x64" class="sl-button">Télécharger baeium pour Windows (x64)</DownloadButton>
-<DownloadButton platform="windows" edition="baeium" arch="arm64" class="sl-button">Télécharger baeium pour Windows (ARM64)</DownloadButton>
+<DownloadButton platform="windows" arch="x64" class="sl-button primary">Télécharger bae pour Windows (x64)</DownloadButton>
+<DownloadButton platform="windows" arch="arm64" class="sl-button primary">Télécharger bae pour Windows (ARM64)</DownloadButton>
 
 ## Linux
 

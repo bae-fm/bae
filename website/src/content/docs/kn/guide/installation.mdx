@@ -7,7 +7,7 @@ import DownloadButton from '../../../../components/DownloadButton.astro';
 
 ## ಎರಡು ಆವೃತ್ತಿಗಳು
 
-ಪ್ರತಿಯೊಂದು ವೇದಿಕೆ ಒಂದೇ ಮೂಲದಿಂದ ಕಟ್ಟಿದ ಎರಡು ಆವೃತ್ತಿಗಳಲ್ಲಿ ಬರುತ್ತದೆ:
+bae ಒಂದೇ ಮೂಲದಿಂದ ಕಟ್ಟಿದ ಎರಡು ಆವೃತ್ತಿಗಳಲ್ಲಿ ಬರುತ್ತದೆ:
 
 - **bae**, ಪೂರ್ಣ ಆಪ್: S3, Google Drive, Dropbox, OneDrive, ಮತ್ತು iCloud ಸಮನ್ವಯ.
 - **baeium**, proprietary ಭಾಗಗಳಿಲ್ಲ: S3-compatible ಸಂಗ್ರಹ ಮಾತ್ರ, OAuth ಒದಗಿಸುವವರು ಇಲ್ಲ, iCloud/CloudKit ಇಲ್ಲ, telemetry ಇಲ್ಲ.
@@ -41,12 +41,10 @@ iOS builds sideloading ಗಾಗಿ **unsigned `.ipa` ಕಡತಗಳು**. [Alt
 
 ## Windows
 
-Windows builds ಪ್ಯಾಕೇಜ್ ಮಾಡದ ಆಪ್‌ನ **unsigned** zip ಕಡತಗಳು. Extract ಮಾಡಿ `bae.exe` / `baeium.exe` ಚಲಾಯಿಸಿ. ಮೊದಲ ಆರಂಭದಲ್ಲಿ SmartScreen ಎಚ್ಚರಿಸಬಹುದು.
+Windows download ಒಂದು installer — ಇದು ಆಪ್‌ಅನ್ನು ಬಳಕೆದಾರರಿಗಾಗಿ ಸ್ಥಾಪಿಸಿ, ತಾನೇ ನವೀಕೃತವಾಗಿ ಇಟ್ಟುಕೊಳ್ಳುತ್ತದೆ. Builds signed ಆಗಿಲ್ಲ, ಆದ್ದರಿಂದ ಮೊದಲ ಆರಂಭದಲ್ಲಿ SmartScreen ಎಚ್ಚರಿಸಬಹುದು. ಪ್ರತಿ [GitHub release](https://github.com/bae-fm/bae/releases) ಜೊತೆಗೆ ಇದ್ದ ಸ್ಥಳದಲ್ಲೇ ಚಲಿಸುವ portable zip ಸಹ ಇರುತ್ತದೆ. Windows ನಲ್ಲಿ full edition ಮಾತ್ರ ಪ್ರಕಟವಾಗುತ್ತದೆ.
 
-<DownloadButton platform="windows" edition="full" arch="x64" class="sl-button primary">Download bae for Windows (x64)</DownloadButton>
-<DownloadButton platform="windows" edition="full" arch="arm64" class="sl-button primary">Download bae for Windows (ARM64)</DownloadButton>
-<DownloadButton platform="windows" edition="baeium" arch="x64" class="sl-button">Download baeium for Windows (x64)</DownloadButton>
-<DownloadButton platform="windows" edition="baeium" arch="arm64" class="sl-button">Download baeium for Windows (ARM64)</DownloadButton>
+<DownloadButton platform="windows" arch="x64" class="sl-button primary">Download bae for Windows (x64)</DownloadButton>
+<DownloadButton platform="windows" arch="arm64" class="sl-button primary">Download bae for Windows (ARM64)</DownloadButton>
 
 ## Linux
 

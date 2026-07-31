@@ -7,7 +7,7 @@ import DownloadButton from '../../../../components/DownloadButton.astro';
 
 ## Две издания
 
-Всяка платформа идва в две издания, изградени от един и същ изходен код:
+bae идва в две издания, изградени от един и същ изходен код:
 
 - **bae**, пълното приложение: синхронизиране през S3, Google Drive, Dropbox, OneDrive и iCloud.
 - **baeium**, без собственически части: само съвместимо със S3 хранилище, без OAuth доставчици, без iCloud/CloudKit, без телеметрия.
@@ -41,12 +41,10 @@ iOS компилациите са **неподписани `.ipa` файлове
 
 ## Windows
 
-Windows компилациите са **неподписани** zip архиви на непакетираното приложение. Разархивирайте и стартирайте `bae.exe` / `baeium.exe`. SmartScreen може да предупреди при първо стартиране.
+Изтеглянето за Windows е инсталатор, който инсталира за текущия потребител и се обновява сам. Компилациите не са подписани, така че SmartScreen може да предупреди при първо стартиране. Към всяко [издание в GitHub](https://github.com/bae-fm/bae/releases) е прикачен и преносим zip, който работи на място. За Windows се публикува само пълното издание.
 
-<DownloadButton platform="windows" edition="full" arch="x64" class="sl-button primary">Изтегляне на bae за Windows (x64)</DownloadButton>
-<DownloadButton platform="windows" edition="full" arch="arm64" class="sl-button primary">Изтегляне на bae за Windows (ARM64)</DownloadButton>
-<DownloadButton platform="windows" edition="baeium" arch="x64" class="sl-button">Изтегляне на baeium за Windows (x64)</DownloadButton>
-<DownloadButton platform="windows" edition="baeium" arch="arm64" class="sl-button">Изтегляне на baeium за Windows (ARM64)</DownloadButton>
+<DownloadButton platform="windows" arch="x64" class="sl-button primary">Изтегляне на bae за Windows (x64)</DownloadButton>
+<DownloadButton platform="windows" arch="arm64" class="sl-button primary">Изтегляне на bae за Windows (ARM64)</DownloadButton>
 
 ## Linux
 

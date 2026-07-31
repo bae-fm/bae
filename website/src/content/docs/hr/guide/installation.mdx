@@ -7,7 +7,7 @@ import DownloadButton from '../../../../components/DownloadButton.astro';
 
 ## Dva izdanja
 
-Svaka platforma isporučuje se u dva izdanja, izgrađena iz istog izvora:
+bae se isporučuje u dva izdanja, izgrađena iz istog izvora:
 
 - **bae**, puna aplikacija: S3, Google Drive, Dropbox, OneDrive i iCloud sinkronizacija.
 - **baeium**, bez vlasničkih dijelova: samo S3-kompatibilna pohrana, bez OAuth pružatelja, bez iCloud/CloudKita, bez telemetrije.
@@ -41,12 +41,10 @@ Omogućite instaliranje iz preglednika/datoteka kad se zatraži, zatim otvorite 
 
 ## Windows
 
-Windows gradnje su **nepotpisani** zipovi nepakirane aplikacije. Raspakirajte i pokrenite `bae.exe` / `baeium.exe`. SmartScreen može upozoriti pri prvom pokretanju.
+Preuzimanje za Windows je instalacijski program koji aplikaciju instalira po korisniku i sam se održava ažurnim. Gradnje nisu potpisane, pa SmartScreen može upozoriti pri prvom pokretanju. Uz svako [GitHub izdanje](https://github.com/bae-fm/bae/releases) priložen je i prijenosni zip koji radi na mjestu. Za Windows izlazi samo puno izdanje.
 
-<DownloadButton platform="windows" edition="full" arch="x64" class="sl-button primary">Preuzmi bae za Windows (x64)</DownloadButton>
-<DownloadButton platform="windows" edition="full" arch="arm64" class="sl-button primary">Preuzmi bae za Windows (ARM64)</DownloadButton>
-<DownloadButton platform="windows" edition="baeium" arch="x64" class="sl-button">Preuzmi baeium za Windows (x64)</DownloadButton>
-<DownloadButton platform="windows" edition="baeium" arch="arm64" class="sl-button">Preuzmi baeium za Windows (ARM64)</DownloadButton>
+<DownloadButton platform="windows" arch="x64" class="sl-button primary">Preuzmi bae za Windows (x64)</DownloadButton>
+<DownloadButton platform="windows" arch="arm64" class="sl-button primary">Preuzmi bae za Windows (ARM64)</DownloadButton>
 
 ## Linux
 

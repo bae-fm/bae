@@ -7,7 +7,7 @@ import DownloadButton from '../../../../components/DownloadButton.astro';
 
 ## Dvě edice
 
-Každá platforma se dodává ve dvou edicích postavených ze stejného zdroje:
+bae se dodává ve dvou edicích postavených ze stejného zdroje:
 
 - **bae**, úplná aplikace: synchronizace přes S3, Google Drive, Dropbox, OneDrive a iCloud.
 - **baeium**, bez proprietárních částí: jen úložiště kompatibilní se S3, žádní poskytovatelé OAuth, žádný iCloud/CloudKit, žádná telemetrie.
@@ -41,12 +41,10 @@ Po výzvě povolte instalaci z prohlížeče nebo souborů a pak otevřete `.apk
 
 ## Windows
 
-Sestavení pro Windows jsou **nepodepsané** zipy aplikace bez instalačního balíčku. Rozbalte je a spusťte `bae.exe` / `baeium.exe`. SmartScreen může při prvním spuštění varovat.
+Stažení pro Windows je instalátor, který nainstaluje aplikaci pro aktuálního uživatele a sám se udržuje aktuální. Sestavení nejsou podepsaná, takže SmartScreen může při prvním spuštění varovat. Ke každému [vydání na GitHubu](https://github.com/bae-fm/bae/releases) je přiložen i přenosný zip, který běží na místě. Pro Windows vychází pouze plná edice.
 
-<DownloadButton platform="windows" edition="full" arch="x64" class="sl-button primary">Stáhnout bae pro Windows (x64)</DownloadButton>
-<DownloadButton platform="windows" edition="full" arch="arm64" class="sl-button primary">Stáhnout bae pro Windows (ARM64)</DownloadButton>
-<DownloadButton platform="windows" edition="baeium" arch="x64" class="sl-button">Stáhnout baeium pro Windows (x64)</DownloadButton>
-<DownloadButton platform="windows" edition="baeium" arch="arm64" class="sl-button">Stáhnout baeium pro Windows (ARM64)</DownloadButton>
+<DownloadButton platform="windows" arch="x64" class="sl-button primary">Stáhnout bae pro Windows (x64)</DownloadButton>
+<DownloadButton platform="windows" arch="arm64" class="sl-button primary">Stáhnout bae pro Windows (ARM64)</DownloadButton>
 
 ## Linux
 

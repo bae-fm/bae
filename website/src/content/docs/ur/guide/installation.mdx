@@ -7,7 +7,7 @@ import DownloadButton from '../../../../components/DownloadButton.astro';
 
 ## دو editions
 
-ہر پلیٹ فارم دو editions میں آتا ہے، ایک ہی ماخذ سے بنا ہوا:
+bae دو editions میں آتا ہے، ایک ہی ماخذ سے بنا ہوا:
 
 - **bae**، پوری ایپ: S3، Google Drive، Dropbox، OneDrive، اور iCloud ہم آہنگی۔
 - **baeium**، ملکیتی حصوں کے بغیر: صرف S3-compatible ذخیرہ، OAuth فراہم کنندگان نہیں، iCloud/CloudKit نہیں، telemetry نہیں۔
@@ -41,12 +41,10 @@ iOS نسخے بیرونی تنصیب کے لیے **unsigned `.ipa` فائلیں*
 
 ## Windows
 
-Windows نسخے unpackaged ایپ کی **unsigned** zips ہیں۔ کھولیں اور `bae.exe` / `baeium.exe` چلائیں۔ پہلی launch پر SmartScreen خبردار کر سکتا ہے۔
+Windows کا download ایک installer ہے، جو ایپ کو فی صارف انسٹال کرتا ہے اور خود کو تازہ رکھتا ہے۔ نسخے signed نہیں ہیں، اس لیے پہلی launch پر SmartScreen خبردار کر سکتا ہے۔ ہر [GitHub release](https://github.com/bae-fm/bae/releases) کے ساتھ ایک portable zip بھی منسلک ہوتی ہے، جو اپنی جگہ پر ہی چلتی ہے۔ Windows پر صرف مکمل edition شائع ہوتا ہے۔
 
-<DownloadButton platform="windows" edition="full" arch="x64" class="sl-button primary">Download bae for Windows (x64)</DownloadButton>
-<DownloadButton platform="windows" edition="full" arch="arm64" class="sl-button primary">Download bae for Windows (ARM64)</DownloadButton>
-<DownloadButton platform="windows" edition="baeium" arch="x64" class="sl-button">Download baeium for Windows (x64)</DownloadButton>
-<DownloadButton platform="windows" edition="baeium" arch="arm64" class="sl-button">Download baeium for Windows (ARM64)</DownloadButton>
+<DownloadButton platform="windows" arch="x64" class="sl-button primary">Download bae for Windows (x64)</DownloadButton>
+<DownloadButton platform="windows" arch="arm64" class="sl-button primary">Download bae for Windows (ARM64)</DownloadButton>
 
 ## Linux
 

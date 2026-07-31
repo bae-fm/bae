@@ -22,10 +22,14 @@ const ASSETS: Record<Exclude<Platform, 'windows'>, Record<Edition, string>> = {
   ios: { full: 'bae-ios.ipa', baeium: 'baeium-ios.ipa' },
   android: { full: 'bae-android.apk', baeium: 'baeium-android.apk' },
 };
-/** Windows asset filenames per edition/arch, fixed by release-windows.yml. */
-const WINDOWS_ASSETS: Record<Edition, Record<WindowsArch, string>> = {
-  full: { x64: 'bae-windows-x64-setup.exe', arm64: 'bae-windows-arm64-setup.exe' },
-  baeium: { x64: 'baeium-windows-x64-setup.exe', arm64: 'baeium-windows-arm64-setup.exe' },
+/**
+ * Windows asset filenames per arch, fixed by release-windows.yml. Windows
+ * publishes the full edition only — the baeium build has no installer of its
+ * own there, so it has no entry to resolve.
+ */
+const WINDOWS_ASSETS: Record<WindowsArch, string> = {
+  x64: 'bae-windows-x64-setup.exe',
+  arm64: 'bae-windows-arm64-setup.exe',
 };
 
 export interface EditionDownload {
@@ -34,8 +38,8 @@ export interface EditionDownload {
 }
 /** A platform's available editions; an edition with no asset yet is absent. */
 export type PlatformDownloads = Partial<Record<Edition, EditionDownload>>;
-/** Windows editions carry one download per arch; absent when not published. */
-export type WindowsDownloads = Partial<Record<Edition, Partial<Record<WindowsArch, EditionDownload>>>>;
+/** Windows carries one download per arch; absent when not published. */
+export type WindowsDownloads = Partial<Record<WindowsArch, EditionDownload>>;
 /** Latest per platform; a platform with no release yet is absent. */
 export type LatestManifest = Partial<Record<Exclude<Platform, 'windows'>, PlatformDownloads>> & {
   windows?: WindowsDownloads;
@@ -139,17 +143,9 @@ function buildManifest(releases: GhRelease[]): LatestManifest {
   const latestWindows = latestRelease(releases, 'windows');
   if (latestWindows) {
     const downloads: WindowsDownloads = {};
-    for (const edition of ['full', 'baeium'] as Edition[]) {
-      const arches: Partial<Record<WindowsArch, EditionDownload>> = {};
-      for (const arch of ['x64', 'arm64'] as WindowsArch[]) {
-        const download = assetDownload(
-          latestWindows,
-          WINDOWS_ASSETS[edition][arch],
-          `windows/${edition}/${arch}`,
-        );
-        if (download) arches[arch] = download;
-      }
-      if (Object.keys(arches).length > 0) downloads[edition] = arches;
+    for (const arch of ['x64', 'arm64'] as WindowsArch[]) {
+      const download = assetDownload(latestWindows, WINDOWS_ASSETS[arch], `windows/${arch}`);
+      if (download) downloads[arch] = download;
     }
     if (Object.keys(downloads).length > 0) manifest.windows = downloads;
   }

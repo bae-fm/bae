@@ -7,7 +7,7 @@ import DownloadButton from '../../../../components/DownloadButton.astro';
 
 ## Hai phiên bản
 
-Mỗi nền tảng phát hành hai phiên bản, dựng từ cùng nguồn:
+bae phát hành hai phiên bản, dựng từ cùng nguồn:
 
 - **bae**, ứng dụng đầy đủ: đồng bộ S3, Google Drive, Dropbox, OneDrive và iCloud.
 - **baeium**, không có phần độc quyền: chỉ lưu trữ tương thích S3, không có nhà cung cấp OAuth, không có iCloud/CloudKit, không có telemetry.
@@ -41,12 +41,10 @@ Bật cài đặt từ trình duyệt/tệp khi được hỏi, rồi mở `.apk
 
 ## Windows
 
-Bản dựng Windows là tệp zip **chưa ký** của ứng dụng không đóng gói. Giải nén và chạy `bae.exe` / `baeium.exe`. SmartScreen có thể cảnh báo ở lần chạy đầu.
+Bản tải Windows là trình cài đặt, cài theo từng người dùng và tự giữ cho mình luôn mới. Bản dựng không được ký, nên SmartScreen có thể cảnh báo ở lần chạy đầu. Mỗi [bản phát hành GitHub](https://github.com/bae-fm/bae/releases) cũng đính kèm tệp zip di động chạy tại chỗ. Trên Windows chỉ phát hành phiên bản đầy đủ.
 
-<DownloadButton platform="windows" edition="full" arch="x64" class="sl-button primary">Download bae for Windows (x64)</DownloadButton>
-<DownloadButton platform="windows" edition="full" arch="arm64" class="sl-button primary">Download bae for Windows (ARM64)</DownloadButton>
-<DownloadButton platform="windows" edition="baeium" arch="x64" class="sl-button">Download baeium for Windows (x64)</DownloadButton>
-<DownloadButton platform="windows" edition="baeium" arch="arm64" class="sl-button">Download baeium for Windows (ARM64)</DownloadButton>
+<DownloadButton platform="windows" arch="x64" class="sl-button primary">Download bae for Windows (x64)</DownloadButton>
+<DownloadButton platform="windows" arch="arm64" class="sl-button primary">Download bae for Windows (ARM64)</DownloadButton>
 
 ## Linux
 

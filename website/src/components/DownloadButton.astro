@@ -1,21 +1,22 @@
 ---
 // A download button whose href is resolved at build time to the latest
-// versioned release asset for this platform/edition (see ../lib/releases). When
-// that platform hasn't shipped yet, it renders as a disabled "coming soon"
+// versioned release asset for this platform (see ../lib/releases). When that
+// platform hasn't shipped yet, it renders as a disabled "coming soon"
 // affordance instead of a link to a non-existent asset. Windows ships one
-// installer per CPU architecture, so its buttons also name an arch.
+// installer per CPU architecture, so its buttons name an arch instead of an
+// edition — it publishes the full edition only.
 import { getLatest, type Platform, type Edition, type WindowsArch } from '../lib/releases';
 
 type Props =
   | { platform: Exclude<Platform, 'windows'>; edition: Edition; class?: string }
-  | { platform: 'windows'; edition: Edition; arch: WindowsArch; class?: string };
+  | { platform: 'windows'; arch: WindowsArch; class?: string };
 
-const { edition, class: className = 'sl-button' } = Astro.props;
+const { class: className = 'sl-button' } = Astro.props;
 const latest = await getLatest();
 const download =
   Astro.props.platform === 'windows'
-    ? latest.windows?.[edition]?.[Astro.props.arch]
-    : latest[Astro.props.platform]?.[edition];
+    ? latest.windows?.[Astro.props.arch]
+    : latest[Astro.props.platform]?.[Astro.props.edition];
 ---
 
 {

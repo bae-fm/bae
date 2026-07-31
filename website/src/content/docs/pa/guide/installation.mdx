@@ -7,7 +7,7 @@ import DownloadButton from '../../../../components/DownloadButton.astro';
 
 ## ਦੋ ਸੰਸਕਰਣ
 
-ਹਰ ਪਲੇਟਫਾਰਮ ਉੱਤੇ ਇੱਕੋ ਸਰੋਤ ਤੋਂ ਬਣੇ ਦੋ ਸੰਸਕਰਣ ਮਿਲਦੇ ਹਨ:
+bae ਇੱਕੋ ਸਰੋਤ ਤੋਂ ਬਣੇ ਦੋ ਸੰਸਕਰਣਾਂ ਵਿੱਚ ਮਿਲਦਾ ਹੈ:
 
 - **bae**, ਪੂਰੀ ਐਪ: S3, Google Drive, Dropbox, OneDrive, ਅਤੇ iCloud ਸਮਕਾਲੀਕਰਨ।
 - **baeium**, proprietary ਹਿੱਸਿਆਂ ਤੋਂ ਬਿਨਾ: ਸਿਰਫ਼ S3-compatible ਭੰਡਾਰਣ, ਕੋਈ OAuth ਦਾਤੇ ਨਹੀਂ, ਕੋਈ iCloud/CloudKit ਨਹੀਂ, ਕੋਈ ਟੈਲੀਮੀਟਰੀ ਨਹੀਂ।
@@ -41,12 +41,10 @@ iOS ਬਣਾਵਟਾਂ **unsigned `.ipa` files for sideloading** ਹਨ। [A
 
 ## Windows
 
-Windows ਬਣਾਵਟਾਂ unpackaged app ਦੇ **unsigned** zips ਹਨ। Extract ਕਰੋ ਅਤੇ `bae.exe` / `baeium.exe` ਚਲਾਓ। ਪਹਿਲੀ ਵਾਰ ਚਲਾਉਣ ਉੱਤੇ SmartScreen ਚੇਤਾਵਨੀ ਦੇ ਸਕਦਾ ਹੈ।
+Windows ਲਈ download ਇੱਕ installer ਹੈ, ਜੋ ਐਪ ਨੂੰ ਪ੍ਰਤੀ-ਵਰਤੋਂਕਾਰ ਸਥਾਪਤ ਕਰਦਾ ਹੈ ਅਤੇ ਆਪਣੇ ਆਪ ਅੱਪਡੇਟ ਰਹਿੰਦਾ ਹੈ। ਬਣਾਵਟਾਂ signed ਨਹੀਂ ਹਨ, ਇਸ ਲਈ ਪਹਿਲੀ ਵਾਰ ਚਲਾਉਣ ਉੱਤੇ SmartScreen ਚੇਤਾਵਨੀ ਦੇ ਸਕਦਾ ਹੈ। ਹਰ [GitHub release](https://github.com/bae-fm/bae/releases) ਨਾਲ ਇੱਕ portable zip ਵੀ ਹੁੰਦੀ ਹੈ, ਜੋ ਥਾਂ ਉੱਤੇ ਹੀ ਚੱਲਦੀ ਹੈ। Windows ਉੱਤੇ ਸਿਰਫ਼ ਪੂਰਾ ਸੰਸਕਰਣ ਹੀ ਪ੍ਰਕਾਸ਼ਿਤ ਹੁੰਦਾ ਹੈ।
 
-<DownloadButton platform="windows" edition="full" arch="x64" class="sl-button primary">Download bae for Windows (x64)</DownloadButton>
-<DownloadButton platform="windows" edition="full" arch="arm64" class="sl-button primary">Download bae for Windows (ARM64)</DownloadButton>
-<DownloadButton platform="windows" edition="baeium" arch="x64" class="sl-button">Download baeium for Windows (x64)</DownloadButton>
-<DownloadButton platform="windows" edition="baeium" arch="arm64" class="sl-button">Download baeium for Windows (ARM64)</DownloadButton>
+<DownloadButton platform="windows" arch="x64" class="sl-button primary">Download bae for Windows (x64)</DownloadButton>
+<DownloadButton platform="windows" arch="arm64" class="sl-button primary">Download bae for Windows (ARM64)</DownloadButton>
 
 ## Linux
 

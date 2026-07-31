@@ -7,7 +7,7 @@ import DownloadButton from '../../../../components/DownloadButton.astro';
 
 ## 두 에디션
 
-모든 플랫폼은 같은 소스에서 빌드한 두 에디션으로 배포됩니다.
+bae는 같은 소스에서 빌드한 두 에디션으로 배포됩니다.
 
 - **bae**, 전체 앱: S3, Google Drive, Dropbox, OneDrive, iCloud 동기화.
 - **baeium**, 독점 구성요소 없음: S3 호환 저장소만 지원, OAuth 제공자 없음, iCloud/CloudKit 없음, telemetry 없음.
@@ -41,12 +41,10 @@ iOS 빌드는 **사이드로드용 서명되지 않은 `.ipa` 파일**입니다.
 
 ## Windows
 
-Windows 빌드는 패키징되지 않은 앱의 **서명되지 않은** zip입니다. 압축을 풀고 `bae.exe` / `baeium.exe`를 실행합니다. 첫 실행 때 SmartScreen 경고가 표시될 수 있습니다.
+Windows 다운로드는 사용자별로 설치하고 스스로 최신 상태를 유지하는 설치 관리자입니다. 빌드는 서명되지 않아 첫 실행 때 SmartScreen 경고가 표시될 수 있습니다. 각 [GitHub 릴리스](https://github.com/bae-fm/bae/releases)에는 그 자리에서 실행되는 휴대용 zip도 함께 첨부됩니다. Windows에는 전체 에디션만 배포됩니다.
 
-<DownloadButton platform="windows" edition="full" arch="x64" class="sl-button primary">Download bae for Windows (x64)</DownloadButton>
-<DownloadButton platform="windows" edition="full" arch="arm64" class="sl-button primary">Download bae for Windows (ARM64)</DownloadButton>
-<DownloadButton platform="windows" edition="baeium" arch="x64" class="sl-button">Download baeium for Windows (x64)</DownloadButton>
-<DownloadButton platform="windows" edition="baeium" arch="arm64" class="sl-button">Download baeium for Windows (ARM64)</DownloadButton>
+<DownloadButton platform="windows" arch="x64" class="sl-button primary">Download bae for Windows (x64)</DownloadButton>
+<DownloadButton platform="windows" arch="arm64" class="sl-button primary">Download bae for Windows (ARM64)</DownloadButton>
 
 ## Linux
 

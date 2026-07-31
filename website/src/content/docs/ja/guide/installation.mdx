@@ -7,7 +7,7 @@ import DownloadButton from '../../../../components/DownloadButton.astro';
 
 ## 2 つのエディション
 
-すべてのプラットフォームで、同じソースから作られた 2 つのエディションを配布しています。
+bae は、同じソースから作られた 2 つのエディションで配布しています。
 
 - **bae**: 完全版アプリです。S3、Google Drive、Dropbox、OneDrive、iCloud 同期を含みます。
 - **baeium**: プロプライエタリ部分を含みません。S3 互換ストレージのみ、OAuth プロバイダーなし、iCloud/CloudKit なし、テレメトリなしです。
@@ -41,12 +41,10 @@ iOS ビルドは、**サイドロード用の署名されていない `.ipa` フ
 
 ## Windows
 
-Windows ビルドは、パッケージ化されていないアプリの**署名されていない** zip です。展開して `bae.exe` / `baeium.exe` を実行します。初回起動時に SmartScreen が警告する場合があります。
+Windows のダウンロードはインストーラーで、ユーザーごとにインストールし、自動で最新の状態を保ちます。ビルドは署名されていないため、初回起動時に SmartScreen が警告する場合があります。各 [GitHub リリース](https://github.com/bae-fm/bae/releases) には、その場で実行できるポータブル zip も添付しています。Windows で公開しているのはフルエディションのみです。
 
-<DownloadButton platform="windows" edition="full" arch="x64" class="sl-button primary">Download bae for Windows (x64)</DownloadButton>
-<DownloadButton platform="windows" edition="full" arch="arm64" class="sl-button primary">Download bae for Windows (ARM64)</DownloadButton>
-<DownloadButton platform="windows" edition="baeium" arch="x64" class="sl-button">Download baeium for Windows (x64)</DownloadButton>
-<DownloadButton platform="windows" edition="baeium" arch="arm64" class="sl-button">Download baeium for Windows (ARM64)</DownloadButton>
+<DownloadButton platform="windows" arch="x64" class="sl-button primary">Download bae for Windows (x64)</DownloadButton>
+<DownloadButton platform="windows" arch="arm64" class="sl-button primary">Download bae for Windows (ARM64)</DownloadButton>
 
 ## Linux
 

@@ -7,7 +7,7 @@ import DownloadButton from '../../../../components/DownloadButton.astro';
 
 ## 两个版本
 
-每个平台都提供两个版本，来自同一份源代码：
+bae 提供两个版本，来自同一份源代码：
 
 - **bae**，完整应用：S3、Google Drive、Dropbox、OneDrive 和 iCloud 同步。
 - **baeium**，不含专有部分：仅支持 S3-compatible storage，无 OAuth providers，无 iCloud/CloudKit，无 telemetry。
@@ -41,12 +41,10 @@ iOS 构建是**用于侧载的未签名 `.ipa` 文件**。使用 [AltStore](http
 
 ## Windows
 
-Windows 构建是未打包应用的**未签名** zip。解压并运行 `bae.exe` / `baeium.exe`。SmartScreen 可能会在首次启动时警告。
+Windows 下载的是安装程序，按用户安装并自动保持更新。构建未签名，SmartScreen 可能会在首次启动时警告。每个 [GitHub 发布](https://github.com/bae-fm/bae/releases) 还附带一个可原地运行的便携 zip。Windows 只发布完整版本。
 
-<DownloadButton platform="windows" edition="full" arch="x64" class="sl-button primary">下载 Windows 版 bae (x64)</DownloadButton>
-<DownloadButton platform="windows" edition="full" arch="arm64" class="sl-button primary">下载 Windows 版 bae (ARM64)</DownloadButton>
-<DownloadButton platform="windows" edition="baeium" arch="x64" class="sl-button">下载 Windows 版 baeium (x64)</DownloadButton>
-<DownloadButton platform="windows" edition="baeium" arch="arm64" class="sl-button">下载 Windows 版 baeium (ARM64)</DownloadButton>
+<DownloadButton platform="windows" arch="x64" class="sl-button primary">下载 Windows 版 bae (x64)</DownloadButton>
+<DownloadButton platform="windows" arch="arm64" class="sl-button primary">下载 Windows 版 bae (ARM64)</DownloadButton>
 
 ## Linux
 

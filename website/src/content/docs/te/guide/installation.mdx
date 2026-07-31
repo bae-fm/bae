@@ -7,7 +7,7 @@ import DownloadButton from '../../../../components/DownloadButton.astro';
 
 ## రెండు editions
 
-ప్రతి వేదిక ఒకే మూలం నుంచి నిర్మించిన రెండు editions లో వస్తుంది:
+bae ఒకే మూలం నుంచి నిర్మించిన రెండు editions లో వస్తుంది:
 
 - **bae**, పూర్తి app: S3, Google Drive, Dropbox, OneDrive, మరియు iCloud సమకాలీకరణ.
 - **baeium**, proprietary భాగాలు లేకుండా: S3-compatible నిల్వ మాత్రమే, OAuth providers లేవు, iCloud/CloudKit లేదు, telemetry లేదు.
@@ -41,12 +41,10 @@ Prompt వచ్చినప్పుడు మీ browser/ఫైళ్లు �
 
 ## Windows
 
-Windows builds unpackaged app యొక్క **unsigned** zips. Extract చేసి `bae.exe` / `baeium.exe` నడపండి. SmartScreen మొదటి launch లో హెచ్చరిక చూపవచ్చు.
+Windows download అనేది installer — ఇది యాప్‌ను ప్రతి వినియోగదారుకు install చేసి, తనను తానే up to date గా ఉంచుకుంటుంది. Builds signed కావు, కాబట్టి SmartScreen మొదటి launch లో హెచ్చరిక చూపవచ్చు. ప్రతి [GitHub release](https://github.com/bae-fm/bae/releases) తో పాటు ఉన్న చోటే నడిచే portable zip కూడా ఉంటుంది. Windows లో full edition మాత్రమే విడుదల అవుతుంది.
 
-<DownloadButton platform="windows" edition="full" arch="x64" class="sl-button primary">Download bae for Windows (x64)</DownloadButton>
-<DownloadButton platform="windows" edition="full" arch="arm64" class="sl-button primary">Download bae for Windows (ARM64)</DownloadButton>
-<DownloadButton platform="windows" edition="baeium" arch="x64" class="sl-button">Download baeium for Windows (x64)</DownloadButton>
-<DownloadButton platform="windows" edition="baeium" arch="arm64" class="sl-button">Download baeium for Windows (ARM64)</DownloadButton>
+<DownloadButton platform="windows" arch="x64" class="sl-button primary">Download bae for Windows (x64)</DownloadButton>
+<DownloadButton platform="windows" arch="arm64" class="sl-button primary">Download bae for Windows (ARM64)</DownloadButton>
 
 ## Linux
 

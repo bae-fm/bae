@@ -7,7 +7,7 @@ import DownloadButton from '../../../../components/DownloadButton.astro';
 
 ## Dos ediciones
 
-Cada plataforma se distribuye en dos ediciones, compiladas desde el mismo código fuente:
+bae se distribuye en dos ediciones, compiladas desde el mismo código fuente:
 
 - **bae**, la app completa: sincronización con S3, Google Drive, Dropbox, OneDrive e iCloud.
 - **baeium**, sin partes propietarias: solo almacenamiento compatible con S3, sin proveedores OAuth, sin iCloud/CloudKit y sin telemetría.
@@ -41,12 +41,10 @@ Permite la instalación desde tu navegador o desde archivos cuando se te pida, y
 
 ## Windows
 
-Las compilaciones de Windows son zips **sin firmar** de la app sin empaquetar. Extrae y ejecuta `bae.exe` / `baeium.exe`. SmartScreen puede mostrar una advertencia en el primer inicio.
+La descarga de Windows es un instalador que instala la app por usuario y se mantiene actualizado solo. Las compilaciones no están firmadas, así que SmartScreen puede mostrar una advertencia en el primer inicio. Cada [versión de GitHub](https://github.com/bae-fm/bae/releases) incluye además un zip portable que se ejecuta en su sitio. En Windows solo se publica la edición completa.
 
-<DownloadButton platform="windows" edition="full" arch="x64" class="sl-button primary">Descargar bae para Windows (x64)</DownloadButton>
-<DownloadButton platform="windows" edition="full" arch="arm64" class="sl-button primary">Descargar bae para Windows (ARM64)</DownloadButton>
-<DownloadButton platform="windows" edition="baeium" arch="x64" class="sl-button">Descargar baeium para Windows (x64)</DownloadButton>
-<DownloadButton platform="windows" edition="baeium" arch="arm64" class="sl-button">Descargar baeium para Windows (ARM64)</DownloadButton>
+<DownloadButton platform="windows" arch="x64" class="sl-button primary">Descargar bae para Windows (x64)</DownloadButton>
+<DownloadButton platform="windows" arch="arm64" class="sl-button primary">Descargar bae para Windows (ARM64)</DownloadButton>
 
 ## Linux
 

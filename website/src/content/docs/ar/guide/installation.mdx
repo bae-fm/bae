@@ -7,7 +7,7 @@ import DownloadButton from '../../../../components/DownloadButton.astro';
 
 ## إصداران
 
-يصدر كل نظام بإصدارين، مبنيين من المصدر نفسه:
+يصدر bae بإصدارين، مبنيين من المصدر نفسه:
 
 - **bae**، التطبيق الكامل: مزامنة S3، وGoogle Drive، وDropbox، وOneDrive، وiCloud.
 - **baeium**، بلا أجزاء مملوكة: تخزين متوافق مع S3 فقط، بلا مزودي OAuth، ولا iCloud/CloudKit، ولا telemetry.
@@ -41,12 +41,10 @@ import DownloadButton from '../../../../components/DownloadButton.astro';
 
 ## Windows
 
-بُنى Windows هي ملفات zip **غير موقعة** للتطبيق غير المحزوم. استخرجها وشغّل `bae.exe` / `baeium.exe`. قد يحذر SmartScreen عند أول تشغيل.
+تنزيل Windows هو مثبّت يثبّت التطبيق للمستخدم الحالي ويبقيه محدّثًا تلقائيًا. البُنى غير موقّعة، لذا قد يحذر SmartScreen عند أول تشغيل. يُرفق مع كل [إصدار على GitHub](https://github.com/bae-fm/bae/releases) أيضًا ملف zip محمول يعمل في مكانه. لا يصدر Windows سوى الإصدار الكامل.
 
-<DownloadButton platform="windows" edition="full" arch="x64" class="sl-button primary">نزّل bae لنظام Windows (x64)</DownloadButton>
-<DownloadButton platform="windows" edition="full" arch="arm64" class="sl-button primary">نزّل bae لنظام Windows (ARM64)</DownloadButton>
-<DownloadButton platform="windows" edition="baeium" arch="x64" class="sl-button">نزّل baeium لنظام Windows (x64)</DownloadButton>
-<DownloadButton platform="windows" edition="baeium" arch="arm64" class="sl-button">نزّل baeium لنظام Windows (ARM64)</DownloadButton>
+<DownloadButton platform="windows" arch="x64" class="sl-button primary">نزّل bae لنظام Windows (x64)</DownloadButton>
+<DownloadButton platform="windows" arch="arm64" class="sl-button primary">نزّل bae لنظام Windows (ARM64)</DownloadButton>
 
 ## Linux
 

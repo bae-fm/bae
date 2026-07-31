@@ -7,7 +7,7 @@ import DownloadButton from '../../../../components/DownloadButton.astro';
 
 ## இரண்டு பதிப்புகள்
 
-ஒவ்வொரு தளமும் ஒரே மூலத்திலிருந்து கட்டப்பட்ட இரண்டு பதிப்புகளாக வருகிறது:
+bae ஒரே மூலத்திலிருந்து கட்டப்பட்ட இரண்டு பதிப்புகளாக வருகிறது:
 
 - **bae**, முழு பயன்பாடு: S3, Google Drive, Dropbox, OneDrive, மற்றும் iCloud ஒத்திசைவு.
 - **baeium**, தனியுரிமை பகுதிகள் இல்லாதது: S3-compatible சேமிப்பு மட்டும், OAuth வழங்குநர்கள் இல்லை, iCloud/CloudKit இல்லை, telemetry இல்லை.
@@ -41,12 +41,10 @@ iOS கட்டுதல்கள் **sideloading க்கான கையொ
 
 ## Windows
 
-Windows கட்டுதல்கள் தொகுக்கப்படாத பயன்பாட்டின் **கையொப்பமிடாத** zip கோப்புகள். Extract செய்து `bae.exe` / `baeium.exe` ஐ இயக்கவும். முதல் தொடக்கத்தில் SmartScreen எச்சரிக்கலாம்.
+Windows பதிவிறக்கம் ஒரு நிறுவி — இது பயன்பாட்டை ஒவ்வொரு பயனருக்கும் நிறுவி, தானாகவே புதுப்பித்து வைத்திருக்கும். கட்டுதல்கள் கையொப்பமிடப்படவில்லை, எனவே முதல் தொடக்கத்தில் SmartScreen எச்சரிக்கலாம். ஒவ்வொரு [GitHub வெளியீட்டுடனும்](https://github.com/bae-fm/bae/releases) இருந்த இடத்திலேயே இயங்கும் portable zip கோப்பும் இணைக்கப்படுகிறது. Windows இல் முழுப் பதிப்பு மட்டுமே வெளியிடப்படுகிறது.
 
-<DownloadButton platform="windows" edition="full" arch="x64" class="sl-button primary">Windows க்கான bae ஐ பதிவிறக்கவும் (x64)</DownloadButton>
-<DownloadButton platform="windows" edition="full" arch="arm64" class="sl-button primary">Windows க்கான bae ஐ பதிவிறக்கவும் (ARM64)</DownloadButton>
-<DownloadButton platform="windows" edition="baeium" arch="x64" class="sl-button">Windows க்கான baeium ஐ பதிவிறக்கவும் (x64)</DownloadButton>
-<DownloadButton platform="windows" edition="baeium" arch="arm64" class="sl-button">Windows க்கான baeium ஐ பதிவிறக்கவும் (ARM64)</DownloadButton>
+<DownloadButton platform="windows" arch="x64" class="sl-button primary">Windows க்கான bae ஐ பதிவிறக்கவும் (x64)</DownloadButton>
+<DownloadButton platform="windows" arch="arm64" class="sl-button primary">Windows க்கான bae ஐ பதிவிறக்கவும் (ARM64)</DownloadButton>
 
 ## Linux
 

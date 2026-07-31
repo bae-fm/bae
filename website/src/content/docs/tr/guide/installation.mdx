@@ -7,7 +7,7 @@ import DownloadButton from '../../../../components/DownloadButton.astro';
 
 ## İki edisyon
 
-Her platform, aynı kaynaktan oluşturulan iki edisyonla gelir:
+bae, aynı kaynaktan oluşturulan iki edisyonla gelir:
 
 - **bae**, tam uygulama: S3, Google Drive, Dropbox, OneDrive ve iCloud eşzamanlaması.
 - **baeium**, özel sahipli parça yok: yalnızca S3 uyumlu depolama, OAuth sağlayıcıları yok, iCloud/CloudKit yok, telemetri yok.
@@ -41,12 +41,10 @@ iOS derlemeleri **sideloading için imzasız `.ipa` dosyalarıdır**. [AltStore]
 
 ## Windows
 
-Windows derlemeleri paketlenmemiş uygulamanın **imzasız** zip dosyalarıdır. Çıkarın ve `bae.exe` / `baeium.exe` çalıştırın. SmartScreen ilk açılışta uyarabilir.
+Windows indirmesi, uygulamayı kullanıcı bazında kuran ve kendini güncel tutan bir kurulum programıdır. Derlemeler imzalı değildir, bu yüzden SmartScreen ilk açılışta uyarabilir. Her [GitHub sürümüne](https://github.com/bae-fm/bae/releases) ayrıca yerinde çalışan taşınabilir bir zip de eklenir. Windows için yalnızca tam edisyon yayımlanır.
 
-<DownloadButton platform="windows" edition="full" arch="x64" class="sl-button primary">Windows için bae indir (x64)</DownloadButton>
-<DownloadButton platform="windows" edition="full" arch="arm64" class="sl-button primary">Windows için bae indir (ARM64)</DownloadButton>
-<DownloadButton platform="windows" edition="baeium" arch="x64" class="sl-button">Windows için baeium indir (x64)</DownloadButton>
-<DownloadButton platform="windows" edition="baeium" arch="arm64" class="sl-button">Windows için baeium indir (ARM64)</DownloadButton>
+<DownloadButton platform="windows" arch="x64" class="sl-button primary">Windows için bae indir (x64)</DownloadButton>
+<DownloadButton platform="windows" arch="arm64" class="sl-button primary">Windows için bae indir (ARM64)</DownloadButton>
 
 ## Linux
 
