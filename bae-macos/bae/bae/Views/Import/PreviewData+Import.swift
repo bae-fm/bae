@@ -503,9 +503,11 @@
         static let releaseQueueImportStore = releaseQueueStore(releaseQueue)
 
         @MainActor
-        static let releaseQueueScanningImportStore = releaseQueueStore(
-            releaseQueueScanning
-        )
+        static let releaseQueueScanningImportStore: ImportStore = {
+            let store = releaseQueueStore(releaseQueueScanning)
+            store.queueIdentifyProgress = (identified: 27, total: 40)
+            return store
+        }()
 
         @MainActor
         static let releaseQueueResolvedImportStore = releaseQueueStore(

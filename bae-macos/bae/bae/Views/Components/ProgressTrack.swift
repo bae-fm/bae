@@ -180,6 +180,17 @@ struct ProgressTrackBar: NSViewRepresentable {
         view.trackHeight = trackHeight
         view.progress = progress
     }
+
+    func sizeThatFits(
+        _ proposal: ProposedViewSize,
+        nsView _: ProgressTrackNSView,
+        context _: Context
+    ) -> CGSize? {
+        CGSize(
+            width: proposal.width ?? 0,
+            height: trackHeight
+        )
+    }
 }
 
 #if DEBUG
