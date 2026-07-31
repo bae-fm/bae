@@ -187,6 +187,9 @@ object UiEventAdapter {
             is BridgeUiEvent.PreviewPaused,
             is BridgeUiEvent.PreviewProgress,
             is BridgeUiEvent.CandidateImportLoudnessProgress,
+            // Importing is a desktop feature; Android has no import queue, so
+            // how much of it has been identified drives nothing here.
+            is BridgeUiEvent.ImportQueueIdentifyProgress,
             is BridgeUiEvent.ReleaseTransferProgress,
             is BridgeUiEvent.ReleaseTransferEnded,
             // Casting to a remote renderer is a desktop feature; Android has no
