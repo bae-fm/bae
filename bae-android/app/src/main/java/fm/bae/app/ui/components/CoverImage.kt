@@ -1,7 +1,8 @@
 package fm.bae.app.ui.components
 
-import android.util.LruCache
-import androidx.compose.foundation.layout.Box
+import android.graphics.Bitmap
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -18,177 +19,130 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import coil3.compose.AsyncImage
-import coil3.compose.LocalPlatformContext
-import coil3.request.ImageRequest
 import fm.bae.app.BaeLogger
+import fm.bae.app.data.DecodeSize
+import fm.bae.app.data.ImageContent
+import fm.bae.app.data.ImageStore
+import fm.bae.app.data.LocalImageStore
 import fm.bae.app.ui.BaeTheme
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import uniffi.bae_bridge.BridgeImageRef
 
 private const val TAG = "bae.CoverImage"
 private val logger = BaeLogger(TAG)
 
-/**
- * The bytes of recently-shown covers, keyed on [cacheKey] so a grid doesn't
- * re-cross the bridge for the same cover as it scrolls. Covers are re-fetchable
- * by id, so eviction just reloads; the cap is in bytes (via [LruCache.sizeOf]),
- * not entry count, since a single cover can be a few MB. One instance is built at
- * the composition root and handed to cover leaves through [LocalCoverBytesCache].
- */
-class CoverBytesCache {
-    private val cache =
-        object : LruCache<String, ByteArray>(MAX_BYTES) {
-            override fun sizeOf(
-                key: String,
-                value: ByteArray,
-            ): Int = value.size
-        }
+private sealed interface SlotState {
+    data object Loading : SlotState
 
-    fun get(key: String): ByteArray? = cache.get(key)
+    data object Absent : SlotState
 
-    fun put(
-        key: String,
-        bytes: ByteArray,
-    ) {
-        cache.put(key, bytes)
-    }
-
-    private companion object {
-        const val MAX_BYTES = 32 * 1024 * 1024
-    }
+    data class Loaded(
+        val bitmap: Bitmap,
+    ) : SlotState
 }
 
 /**
- * The cover-bytes cache for the open app, provided once at the composition root.
- * No default: rendering a cover outside that provider is a wiring bug, so it
- * fails loudly rather than handing out a throwaway per-call cache.
- */
-val LocalCoverBytesCache =
-    staticCompositionLocalOf<CoverBytesCache> {
-        error("LocalCoverBytesCache not provided")
-    }
-
-/**
- * The dispatcher cover and gallery byte fetches run on. Defaults to
- * [Dispatchers.IO]; a test overrides it through the composition local to drive
- * the fetches on its own scheduler.
- */
-val LocalImageDispatcher =
-    staticCompositionLocalOf<CoroutineDispatcher> { Dispatchers.IO }
-
-/**
- * A cover's cache identity: the image kind, its subject id, and the image row's
- * `_updated_at`, so replacing a cover in place busts the entry.
- */
-private fun cacheKey(image: BridgeImageRef): String = "${image.imageType}:${image.id}#${image.version}"
-
-private sealed interface CoverState {
-    object Loading : CoverState
-
-    object Absent : CoverState
-
-    class Loaded(
-        val bytes: ByteArray,
-        val cacheKey: String,
-    ) : CoverState
-}
-
-/**
- * Resolve a cover reference to its bytes: a cache hit renders immediately and
- * never re-crosses the bridge; a miss fetches via [loadImage] and caches the
- * result. A null reference, an absent cover, or a failed fetch resolves to
- * [CoverState.Absent] (the loss is logged, never silent).
- */
-@Composable
-private fun rememberCoverState(
-    cover: BridgeImageRef?,
-    loadImage: suspend (image: BridgeImageRef) -> ByteArray?,
-): CoverState {
-    val coverCache = LocalCoverBytesCache.current
-    val dispatcher = LocalImageDispatcher.current
-    val key = cover?.let { cacheKey(it) }
-    var state by remember(key) {
-        mutableStateOf(
-            when {
-                key == null -> CoverState.Absent
-                else -> coverCache.get(key)?.let { CoverState.Loaded(it, key) } ?: CoverState.Loading
-            },
-        )
-    }
-    LaunchedEffect(key) {
-        if (cover == null || key == null || state is CoverState.Loaded) return@LaunchedEffect
-        state =
-            try {
-                val bytes = withContext(dispatcher) { loadImage(cover) }
-                if (bytes == null) {
-                    // Core handed us a cover reference but its blob read returned
-                    // nothing — unexpected, so note it rather than blanking silently.
-                    logger.warning("cover image bytes absent for ${cover.id}")
-                    CoverState.Absent
-                } else {
-                    coverCache.put(key, bytes)
-                    CoverState.Loaded(bytes, key)
-                }
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                logger.error("Failed to load cover image ${cover.id}", e)
-                CoverState.Absent
-            }
-    }
-    return state
-}
-
-/**
- * Album-cover thumbnail: the image [cover] names (cached under its kind, id, and
- * content version) clipped to a rounded square, or a MusicNote placeholder when
- * there is no cover. The caller's [modifier] carries the sizing —
- * `Modifier.size(48.dp)` for list rows, `Modifier.fillMaxWidth().aspectRatio(1f)`
- * for full-width art. [loadImage] reads the bytes off the bridge.
+ * Album-cover thumbnail: the image [cover] names, clipped to a rounded square, or
+ * a MusicNote placeholder when there is no cover. The caller's [modifier] carries
+ * the sizing — `Modifier.size(48.dp)` for list rows,
+ * `Modifier.fillMaxWidth().aspectRatio(1f)` for full-width art.
  */
 @Composable
 fun CoverImage(
     cover: BridgeImageRef?,
-    loadImage: suspend (image: BridgeImageRef) -> ByteArray?,
     cornerRadius: Dp,
     iconPadding: Dp,
     modifier: Modifier = Modifier,
     contentDescription: String? = null,
 ) {
-    Box(
+    ImageSlot(
+        content = cover?.let { ImageContent.LibraryImage(it) },
+        cornerRadius = cornerRadius,
+        iconPadding = iconPadding,
+        modifier = modifier,
+        contentDescription = contentDescription,
+    )
+}
+
+/**
+ * One image slot: renders whatever [ImageStore] resolves [content] to, at the
+ * pixel size the slot is laid out at. Pure renderer — it fetches nothing, caches
+ * nothing, and decodes nothing itself.
+ *
+ * The first frame after a (re)mount draws from the store's decoded cache
+ * synchronously, so a row scrolled back into view shows its art immediately
+ * instead of flashing a placeholder while an async load lands a frame later.
+ */
+@Composable
+fun ImageSlot(
+    content: ImageContent?,
+    cornerRadius: Dp,
+    iconPadding: Dp,
+    modifier: Modifier = Modifier,
+    contentDescription: String? = null,
+) {
+    val store = LocalImageStore.current
+    BoxWithConstraints(
         modifier = modifier.clip(RoundedCornerShape(cornerRadius)),
         contentAlignment = Alignment.Center,
     ) {
-        when (val state = rememberCoverState(cover, loadImage)) {
-            is CoverState.Loaded -> {
-                AsyncImage(
-                    model = coverModel(state.bytes, state.cacheKey),
+        val size = DecodeSize.FitTo(boundedPixelSize(constraints))
+        var state by remember(content, size) {
+            mutableStateOf(
+                when {
+                    content == null -> SlotState.Absent
+                    else ->
+                        store.cachedImage(content, size)?.let { SlotState.Loaded(it) }
+                            ?: SlotState.Loading
+                },
+            )
+        }
+        LaunchedEffect(content, size) {
+            if (content == null || state is SlotState.Loaded) return@LaunchedEffect
+            if (size.pixels <= 0) {
+                // An image slot with no bounded dimension can't say how large to
+                // decode; it reads the source whole. Layout, not the store, is
+                // what would fix it.
+                logger.warning("image slot for ${content.description} has unbounded constraints")
+            }
+            state =
+                try {
+                    store.image(content, size)?.let { SlotState.Loaded(it) }
+                        ?: SlotState.Absent
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    logger.error("Failed to load ${content.description}", e)
+                    SlotState.Absent
+                }
+        }
+        when (val current = state) {
+            is SlotState.Loaded -> {
+                Image(
+                    bitmap = current.bitmap.asImageBitmap(),
                     contentDescription = contentDescription,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize(),
                 )
             }
 
-            // A cover exists but its bytes aren't in yet: a plain tile (no glyph),
+            // An image exists but its bytes aren't in yet: a plain tile (no glyph),
             // so the art pops in without a placeholder flash beforehand.
-            CoverState.Loading -> {
+            SlotState.Loading -> {
                 CoverTile(showIcon = false, iconPadding = iconPadding)
             }
 
-            // No cover, or its bytes were absent/failed (logged in rememberCoverState).
-            CoverState.Absent -> {
+            // No image, or its bytes were absent/failed (logged above).
+            SlotState.Absent -> {
                 CoverTile(showIcon = true, iconPadding = iconPadding)
             }
         }
@@ -196,23 +150,14 @@ fun CoverImage(
 }
 
 /**
- * A Coil model for in-memory cover [bytes], keyed in the memory cache on
- * [cacheKey] so a recomposition (a scroll back to a visible card) reuses the
- * decoded bitmap instead of decoding again.
+ * The pixel size a slot with these [constraints] should decode to: its longer
+ * bounded edge, or 0 when neither edge is bounded. Both dimensions count, so a
+ * wide-but-short slot still decodes enough pixels to fill it.
  */
-@Composable
-private fun coverModel(
-    bytes: ByteArray,
-    cacheKey: String,
-): ImageRequest {
-    val context = LocalPlatformContext.current
-    return remember(cacheKey) {
-        ImageRequest
-            .Builder(context)
-            .data(bytes)
-            .memoryCacheKey(cacheKey)
-            .build()
-    }
+private fun boundedPixelSize(constraints: Constraints): Int {
+    val width = if (constraints.hasBoundedWidth) constraints.maxWidth else 0
+    val height = if (constraints.hasBoundedHeight) constraints.maxHeight else 0
+    return maxOf(width, height)
 }
 
 /** The placeholder tile behind/instead of a cover: a flat surface, with the
@@ -241,10 +186,9 @@ private fun CoverTile(
 @Composable
 private fun CoverImagePreview() {
     BaeTheme {
-        CompositionLocalProvider(LocalCoverBytesCache provides CoverBytesCache()) {
+        CompositionLocalProvider(LocalImageStore provides ImageStore()) {
             CoverImage(
                 cover = null,
-                loadImage = { _ -> null },
                 cornerRadius = 6.dp,
                 iconPadding = 24.dp,
                 modifier = Modifier.size(120.dp),

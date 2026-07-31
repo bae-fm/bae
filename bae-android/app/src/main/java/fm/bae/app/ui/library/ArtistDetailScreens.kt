@@ -30,11 +30,11 @@ import androidx.compose.ui.unit.dp
 import fm.bae.app.BaeLogger
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
+import fm.bae.app.data.ImageStore
+import fm.bae.app.data.LocalImageStore
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
-import fm.bae.app.ui.components.CoverBytesCache
 import fm.bae.app.ui.components.CoverImage
-import fm.bae.app.ui.components.LocalCoverBytesCache
 import fm.bae.app.ui.playback.NowPlayingBar
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -90,7 +90,6 @@ internal fun ArtistDetailScreen(
             else -> {
                 ArtistDetailContent(
                     detail = loaded,
-                    loadImage = session.library::imageBytes,
                     onSelectAlbum = onSelectAlbum,
                 )
             }
@@ -102,14 +101,12 @@ internal fun ArtistDetailScreen(
 @Composable
 private fun ArtistDetailContent(
     detail: BridgeArtistDetail,
-    loadImage: suspend (imageId: String) -> ByteArray?,
     onSelectAlbum: (String) -> Unit,
 ) {
     LazyColumn(modifier = Modifier.fillMaxSize()) {
         item {
             ArtistSummaryRow(
                 artist = detail.artist,
-                loadImage = loadImage,
                 onClick = null,
             )
         }
@@ -126,7 +123,6 @@ private fun ArtistDetailContent(
                 ) {
                     CoverImage(
                         cover = album.cover,
-                        loadImage = loadImage,
                         cornerRadius = 6.dp,
                         iconPadding = 12.dp,
                         modifier = Modifier.size(48.dp),
@@ -144,10 +140,9 @@ private fun ArtistDetailContent(
 @Composable
 private fun ArtistDetailContentPreview() {
     BaeTheme {
-        CompositionLocalProvider(LocalCoverBytesCache provides CoverBytesCache()) {
+        CompositionLocalProvider(LocalImageStore provides ImageStore.unresolved()) {
             ArtistDetailContent(
                 detail = PreviewData.artistDetail(),
-                loadImage = { _ -> null },
                 onSelectAlbum = {},
             )
         }

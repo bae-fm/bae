@@ -9,6 +9,7 @@ import android.os.ParcelFileDescriptor
 import fm.bae.app.AppSessionHolder
 import fm.bae.app.BaeLogger
 import fm.bae.app.OpenLibrary
+import fm.bae.app.data.ImageContent
 import kotlin.concurrent.thread
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.runBlocking
@@ -28,9 +29,10 @@ private const val COVER_PATH = "cover"
  * so cover bytes never ride inline in the browse payload across Binder (where
  * a page of covers would blow the transaction size limit).
  *
- * The bytes come from the same open library the rest of the app reads — the
- * bridge's `fetchLibraryImageBytes`, through [fm.bae.app.data.Library.imageBytes]
- * — so there is one cover-loading path, not a parallel one.
+ * The bytes come from the same open library the rest of the app reads, through
+ * [fm.bae.app.data.ImageStore] — so there is one image-loading path, not a
+ * parallel one, and a head unit re-requesting a cover it already showed is served
+ * from the store's byte cache instead of crossing the bridge again.
  */
 class ArtworkContentProvider : ContentProvider() {
     override fun onCreate(): Boolean = true
@@ -81,7 +83,7 @@ class ArtworkContentProvider : ContentProvider() {
         session: OpenLibrary,
     ): ByteArray? =
         try {
-            runBlocking { session.library.imageBytes(image) }
+            runBlocking { session.imageStore.imageBytes(ImageContent.LibraryImage(image)) }
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {

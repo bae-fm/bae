@@ -49,6 +49,8 @@ import androidx.compose.ui.unit.dp
 import fm.bae.app.BaeLogger
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
+import fm.bae.app.data.ImageStore
+import fm.bae.app.data.LocalImageStore
 import fm.bae.app.durationClockLabel
 import fm.bae.app.durationUnitsText
 import fm.bae.app.runLoggedBridgeCommand
@@ -56,15 +58,12 @@ import fm.bae.app.sideHeaderText
 import fm.bae.app.text
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
-import fm.bae.app.ui.components.CoverBytesCache
 import fm.bae.app.ui.components.CoverImage
-import fm.bae.app.ui.components.LocalCoverBytesCache
 import fm.bae.app.ui.playback.NowPlayingBar
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import uniffi.bae_bridge.BridgeAlbumDetail
-import uniffi.bae_bridge.BridgeGallerySource
 import uniffi.bae_bridge.BridgeImageRef
 import uniffi.bae_bridge.BridgeRelease
 
@@ -77,8 +76,6 @@ internal data class AlbumPlaybackState(
 )
 
 internal data class AlbumDetailCallbacks(
-    val fetchReleaseImageBytes: suspend (releaseId: String, source: BridgeGallerySource) -> ByteArray,
-    val loadCoverImage: suspend (imageId: String) -> ByteArray?,
     val onSelectRelease: (String) -> Unit,
     val onTogglePlayPause: () -> Unit,
     val onPlayTrackAt: (Int) -> Unit,
@@ -233,8 +230,6 @@ private fun buildAlbumDetailCallbacks(
     }
 
     return AlbumDetailCallbacks(
-        fetchReleaseImageBytes = { releaseId, source -> session.appHandle.fetchReleaseImageBytes(releaseId, source) },
-        loadCoverImage = session.library::imageBytes,
         onSelectRelease = onSelectRelease,
         onTogglePlayPause = { session.playback.togglePlayPause() },
         // play_release is a core transport command: ask core to play the release at a track index.
@@ -293,7 +288,6 @@ internal fun AlbumDetailContent(
         GalleryDialog(
             releaseId = galleryRelease.id,
             items = galleryItems,
-            loadImage = { source -> callbacks.fetchReleaseImageBytes(galleryRelease.id, source) },
             onDismiss = { showGallery = false },
         )
     }
@@ -307,7 +301,6 @@ internal fun AlbumDetailContent(
                 detail = detail,
                 selectedRelease = selectedRelease,
                 cover = cover,
-                loadImage = callbacks.loadCoverImage,
                 galleryItems = galleryItems,
                 onShowGallery = { showGallery = true },
             )
@@ -340,7 +333,6 @@ private fun AlbumDetailHeader(
     detail: BridgeAlbumDetail,
     selectedRelease: BridgeRelease?,
     cover: BridgeImageRef?,
-    loadImage: suspend (imageId: String) -> ByteArray?,
     galleryItems: List<uniffi.bae_bridge.BridgeGalleryItem>,
     onShowGallery: () -> Unit,
 ) {
@@ -362,7 +354,6 @@ private fun AlbumDetailHeader(
     Row(verticalAlignment = Alignment.Top) {
         CoverImage(
             cover = cover,
-            loadImage = loadImage,
             cornerRadius = 6.dp,
             iconPadding = 32.dp,
             modifier =
@@ -504,12 +495,11 @@ private fun AlbumDetailTopBarPreview() {
 @Composable
 private fun AlbumDetailHeaderPreview() {
     BaeTheme {
-        CompositionLocalProvider(LocalCoverBytesCache provides CoverBytesCache()) {
+        CompositionLocalProvider(LocalImageStore provides ImageStore.unresolved()) {
             AlbumDetailHeader(
                 detail = PreviewData.albumDetail(),
                 selectedRelease = PreviewData.release(),
                 cover = PreviewData.imageRef(),
-                loadImage = { _ -> null },
                 galleryItems = emptyList(),
                 onShowGallery = {},
             )
@@ -528,8 +518,6 @@ private fun AlbumActionButtonsPreview() {
 /** Inert callbacks for rendering the album detail body without a live session. */
 internal fun inertAlbumDetailCallbacks(): AlbumDetailCallbacks =
     AlbumDetailCallbacks(
-        fetchReleaseImageBytes = { _, _ -> ByteArray(0) },
-        loadCoverImage = { _ -> null },
         onSelectRelease = {},
         onTogglePlayPause = {},
         onPlayTrackAt = {},

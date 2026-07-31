@@ -15,10 +15,11 @@ import uniffi.bae_bridge.BridgeSortCriterion
 import uniffi.bae_bridge.BridgeWorkDetail
 
 /**
- * Narrow projection of [AppHandle] for library browse and detail reads — DB
- * queries and cover-image reads. The page/detail calls suspend across the
- * bridge; callers invoke them from their existing coroutine.
- * Mirrors the macOS `Library` / `MediaPaths` domain services.
+ * Narrow projection of [AppHandle] for library browse and detail reads. The
+ * page/detail calls suspend across the bridge; callers invoke them from their
+ * existing coroutine. Image bytes are not here — every image in the app resolves
+ * through [fm.bae.app.data.ImageStore], which owns their caching too.
+ * Mirrors the macOS `Library` domain service.
  */
 class Library(
     private val handle: AppHandle,
@@ -58,11 +59,6 @@ class Library(
     suspend fun artistDetail(artistId: String): BridgeArtistDetail? = handle.getArtistDetail(artistId)
 
     suspend fun workDetail(workId: String): BridgeWorkDetail? = handle.getWorkDetail(workId)
-
-    /** Bytes of a curated library image (a release cover or an artist portrait),
-     *  read through coven's locality-aware store, or null when no such image
-     *  exists. */
-    suspend fun imageBytes(image: BridgeImageRef): ByteArray? = handle.fetchLibraryImageBytes(image)
 
     /**
      * Search albums and tracks by free-text query. Suspends: the bridge call is

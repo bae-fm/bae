@@ -36,11 +36,11 @@ import androidx.compose.ui.unit.dp
 import fm.bae.app.BaeLogger
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
+import fm.bae.app.data.ImageStore
+import fm.bae.app.data.LocalImageStore
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
-import fm.bae.app.ui.components.CoverBytesCache
 import fm.bae.app.ui.components.CoverImage
-import fm.bae.app.ui.components.LocalCoverBytesCache
 import fm.bae.app.ui.playback.NowPlayingBar
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -100,7 +100,6 @@ internal fun ComposerDetailScreen(
             else -> {
                 ComposerDetailContent(
                     detail = loaded,
-                    loadImage = session.library::imageBytes,
                     onSelectWork = onSelectWork,
                     onSelectAlbum = onSelectAlbum,
                 )
@@ -113,7 +112,6 @@ internal fun ComposerDetailScreen(
 @Composable
 private fun ComposerDetailContent(
     detail: BridgeComposerDetail,
-    loadImage: suspend (imageId: String) -> ByteArray?,
     onSelectWork: (String) -> Unit,
     onSelectAlbum: (String, String) -> Unit,
 ) {
@@ -121,7 +119,6 @@ private fun ComposerDetailContent(
         item {
             ComposerSummaryRow(
                 composer = detail.composer,
-                loadImage = loadImage,
                 onClick = null,
             )
         }
@@ -132,7 +129,6 @@ private fun ComposerDetailContent(
                     item(key = "parent:${parent.workId}") {
                         WorkSummaryRow(
                             work = parent,
-                            loadImage = loadImage,
                             onClick = { onSelectWork(parent.workId) },
                         )
                     }
@@ -140,7 +136,6 @@ private fun ComposerDetailContent(
                 items(group.works, key = { "work:${it.workId}" }) { work ->
                     WorkSummaryRow(
                         work = work,
-                        loadImage = loadImage,
                         onClick = { onSelectWork(work.workId) },
                     )
                 }
@@ -217,7 +212,6 @@ internal fun WorkDetailScreen(
             else -> {
                 WorkDetailContent(
                     detail = loaded,
-                    loadImage = session.library::imageBytes,
                     onSelectWork = onSelectWork,
                     onSelectAlbum = onSelectAlbum,
                 )
@@ -230,18 +224,16 @@ internal fun WorkDetailScreen(
 @Composable
 private fun WorkDetailContent(
     detail: BridgeWorkDetail,
-    loadImage: suspend (imageId: String) -> ByteArray?,
     onSelectWork: (String) -> Unit,
     onSelectAlbum: (String, String) -> Unit,
 ) {
     LazyColumn(modifier = Modifier.fillMaxSize()) {
-        item { WorkSummaryRow(work = detail.work, loadImage = loadImage, onClick = null) }
+        item { WorkSummaryRow(work = detail.work, onClick = null) }
         if (detail.childWorks.isNotEmpty()) {
             item { LibrarySectionHeader(stringResource(R.string.search_section_works)) }
             items(detail.childWorks, key = { it.workId }) { work ->
                 WorkSummaryRow(
                     work = work,
-                    loadImage = loadImage,
                     onClick = { onSelectWork(work.workId) },
                 )
             }
@@ -259,7 +251,6 @@ private fun WorkDetailContent(
                 ) {
                     CoverImage(
                         cover = release.cover,
-                        loadImage = loadImage,
                         cornerRadius = 6.dp,
                         iconPadding = 12.dp,
                         modifier = Modifier.size(48.dp),
@@ -292,7 +283,6 @@ private fun workReleaseMetadata(release: BridgeWorkReleaseSummary): String =
 @Composable
 private fun WorkSummaryRow(
     work: BridgeWorkSummary,
-    loadImage: suspend (imageId: String) -> ByteArray?,
     onClick: (() -> Unit)?,
 ) {
     Row(
@@ -305,7 +295,6 @@ private fun WorkSummaryRow(
     ) {
         CoverImage(
             cover = work.representativeCover,
-            loadImage = loadImage,
             cornerRadius = 6.dp,
             iconPadding = 12.dp,
             modifier = Modifier.size(48.dp),
@@ -364,8 +353,8 @@ internal fun LibrarySectionHeader(title: String) {
 @Composable
 private fun WorkSummaryRowPreview() {
     BaeTheme {
-        CompositionLocalProvider(LocalCoverBytesCache provides CoverBytesCache()) {
-            WorkSummaryRow(work = PreviewData.workSummary(), loadImage = { _ -> null }, onClick = {})
+        CompositionLocalProvider(LocalImageStore provides ImageStore.unresolved()) {
+            WorkSummaryRow(work = PreviewData.workSummary(), onClick = {})
         }
     }
 }

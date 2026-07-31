@@ -32,12 +32,12 @@ import androidx.compose.ui.unit.dp
 import fm.bae.app.BaeLogger
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
+import fm.bae.app.data.ImageStore
+import fm.bae.app.data.LocalImageStore
 import fm.bae.app.durationClockLabel
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
-import fm.bae.app.ui.components.CoverBytesCache
 import fm.bae.app.ui.components.CoverImage
-import fm.bae.app.ui.components.LocalCoverBytesCache
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import uniffi.bae_bridge.BridgeAlbumSearchResult
@@ -135,7 +135,6 @@ fun SearchResultsScreen(
             current != null -> {
                 SearchResultsList(
                     results = current,
-                    loadImage = session.library::imageBytes,
                     onSelectAlbum = onSelectAlbum,
                     onSelectArtist = onSelectArtist,
                     onSelectComposer = onSelectComposer,
@@ -149,7 +148,6 @@ fun SearchResultsScreen(
 @Composable
 private fun SearchResultsList(
     results: BridgeSearchResults,
-    loadImage: suspend (imageId: String) -> ByteArray?,
     onSelectAlbum: (String) -> Unit,
     onSelectArtist: (String) -> Unit,
     onSelectComposer: (String) -> Unit,
@@ -161,7 +159,6 @@ private fun SearchResultsList(
             items(results.albums, key = { "album:${it.id}" }) { album ->
                 AlbumResultRow(
                     album = album,
-                    loadImage = loadImage,
                     onClick = { onSelectAlbum(album.id) },
                 )
             }
@@ -171,7 +168,6 @@ private fun SearchResultsList(
             items(results.artists, key = { "artist:${it.artistId}" }) { artist ->
                 ArtistSummaryRow(
                     artist = artist,
-                    loadImage = loadImage,
                     onClick = { onSelectArtist(artist.artistId) },
                 )
             }
@@ -190,7 +186,6 @@ private fun SearchResultsList(
             items(results.composers, key = { "composer:${it.artistId}" }) { composer ->
                 ComposerResultRow(
                     composer = composer,
-                    loadImage = loadImage,
                     onClick = { onSelectComposer(composer.artistId) },
                 )
             }
@@ -200,7 +195,6 @@ private fun SearchResultsList(
             items(results.works, key = { "work:${it.workId}" }) { work ->
                 WorkResultRow(
                     work = work,
-                    loadImage = loadImage,
                     onClick = { onSelectWork(work.workId) },
                 )
             }
@@ -222,7 +216,6 @@ private fun SectionHeader(title: String) {
 @Composable
 private fun AlbumResultRow(
     album: BridgeAlbumSearchResult,
-    loadImage: suspend (imageId: String) -> ByteArray?,
     onClick: () -> Unit,
 ) {
     Row(
@@ -235,7 +228,6 @@ private fun AlbumResultRow(
     ) {
         CoverImage(
             cover = album.cover,
-            loadImage = loadImage,
             cornerRadius = 4.dp,
             iconPadding = 12.dp,
             modifier = Modifier.size(48.dp),
@@ -300,7 +292,6 @@ private fun TrackResultRow(
 @Composable
 private fun ComposerResultRow(
     composer: BridgeComposerSummary,
-    loadImage: suspend (imageId: String) -> ByteArray?,
     onClick: () -> Unit,
 ) {
     Row(
@@ -313,7 +304,6 @@ private fun ComposerResultRow(
     ) {
         CoverImage(
             cover = composer.image,
-            loadImage = loadImage,
             cornerRadius = 4.dp,
             iconPadding = 12.dp,
             modifier = Modifier.size(48.dp),
@@ -340,7 +330,6 @@ private fun ComposerResultRow(
 @Composable
 private fun WorkResultRow(
     work: BridgeWorkSummary,
-    loadImage: suspend (imageId: String) -> ByteArray?,
     onClick: () -> Unit,
 ) {
     Row(
@@ -353,7 +342,6 @@ private fun WorkResultRow(
     ) {
         CoverImage(
             cover = work.representativeCover,
-            loadImage = loadImage,
             cornerRadius = 4.dp,
             iconPadding = 12.dp,
             modifier = Modifier.size(48.dp),
@@ -383,10 +371,9 @@ private fun WorkResultRow(
 @Composable
 private fun SearchResultsListPreview() {
     BaeTheme {
-        CompositionLocalProvider(LocalCoverBytesCache provides CoverBytesCache()) {
+        CompositionLocalProvider(LocalImageStore provides ImageStore.unresolved()) {
             SearchResultsList(
                 results = PreviewData.searchResults(),
-                loadImage = { _ -> null },
                 onSelectAlbum = {},
                 onSelectArtist = {},
                 onSelectComposer = {},

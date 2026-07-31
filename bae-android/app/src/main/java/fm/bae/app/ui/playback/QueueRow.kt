@@ -31,14 +31,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import fm.bae.app.R
+import fm.bae.app.data.ImageStore
+import fm.bae.app.data.LocalImageStore
 import fm.bae.app.durationClockLabel
 import fm.bae.app.playback.NowPlaying
 import fm.bae.app.playback.QueueItem
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
-import fm.bae.app.ui.components.CoverBytesCache
 import fm.bae.app.ui.components.CoverImage
-import fm.bae.app.ui.components.LocalCoverBytesCache
 import uniffi.bae_bridge.BridgeDurationClock
 
 // The queue's row renderers — the current-track row, a loaded queue row, the
@@ -48,7 +48,6 @@ import uniffi.bae_bridge.BridgeDurationClock
 @Composable
 internal fun NowPlayingRow(
     np: NowPlaying,
-    loadImage: suspend (imageId: String) -> ByteArray?,
 ) {
     Row(
         modifier =
@@ -59,7 +58,6 @@ internal fun NowPlayingRow(
     ) {
         CoverImage(
             cover = np.coverImage,
-            loadImage = loadImage,
             cornerRadius = 4.dp,
             iconPadding = 12.dp,
             modifier = Modifier.size(48.dp),
@@ -86,7 +84,6 @@ internal fun NowPlayingRow(
 @Composable
 internal fun QueueRow(
     item: QueueItem,
-    loadImage: suspend (imageId: String) -> ByteArray?,
     dragHandleModifier: Modifier,
     onClick: () -> Unit,
     onRemove: () -> Unit,
@@ -101,7 +98,6 @@ internal fun QueueRow(
     ) {
         CoverImage(
             cover = item.coverImage,
-            loadImage = loadImage,
             cornerRadius = 4.dp,
             iconPadding = 12.dp,
             modifier = Modifier.size(48.dp),
@@ -225,8 +221,8 @@ private val previewQueueItem =
 @Composable
 private fun NowPlayingRowPreview() {
     BaeTheme {
-        CompositionLocalProvider(LocalCoverBytesCache provides CoverBytesCache()) {
-            NowPlayingRow(np = previewNowPlaying, loadImage = { _ -> null })
+        CompositionLocalProvider(LocalImageStore provides ImageStore.unresolved()) {
+            NowPlayingRow(np = previewNowPlaying)
         }
     }
 }
@@ -235,10 +231,9 @@ private fun NowPlayingRowPreview() {
 @Composable
 private fun QueueRowPreview() {
     BaeTheme {
-        CompositionLocalProvider(LocalCoverBytesCache provides CoverBytesCache()) {
+        CompositionLocalProvider(LocalImageStore provides ImageStore.unresolved()) {
             QueueRow(
                 item = previewQueueItem,
-                loadImage = { _ -> null },
                 dragHandleModifier = Modifier,
                 onClick = {},
                 onRemove = {},

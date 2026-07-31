@@ -201,7 +201,9 @@ dependencies {
     // 2.0.21 already bring, so no other pins move.
     implementation("androidx.glance:glance-appwidget:1.1.1")
     implementation("androidx.glance:glance-material3:1.1.1")
-    implementation("io.coil-kt.coil3:coil-compose:3.0.4")
+    // Image decodes read the source's orientation tag: cover scans and booklet
+    // photos are real-world JPEGs whose pixels are often stored sideways.
+    implementation("androidx.exifinterface:exifinterface:1.4.2")
     implementation("sh.calvin.reorderable:reorderable:2.4.0")
     implementation("androidx.browser:browser:1.8.0")
     implementation("io.sentry:sentry-android-ndk:8.16.0")

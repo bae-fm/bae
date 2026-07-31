@@ -36,12 +36,12 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
+import fm.bae.app.data.ImageStore
+import fm.bae.app.data.LocalImageStore
 import fm.bae.app.ui.BaeAppChrome
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
-import fm.bae.app.ui.components.CoverBytesCache
 import fm.bae.app.ui.components.CoverImage
-import fm.bae.app.ui.components.LocalCoverBytesCache
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeAlbum
@@ -99,7 +99,6 @@ internal fun LibraryGridContent(
                 LibraryGridBacking(
                     albums = page.order.map { page.albums.getValue(it) },
                     gridState = gridState,
-                    loadImage = session.library::imageBytes,
                     onSelectAlbum = onSelectAlbum,
                 )
             }
@@ -118,7 +117,6 @@ internal fun LibraryGridContent(
 private fun LibraryGridBacking(
     albums: List<BridgeAlbum>,
     gridState: LazyGridState,
-    loadImage: suspend (imageId: String) -> ByteArray?,
     onSelectAlbum: (String) -> Unit,
 ) {
     LazyVerticalGrid(
@@ -132,7 +130,6 @@ private fun LibraryGridBacking(
         items(albums, key = { it.id }) { album ->
             AlbumGridCard(
                 album = album,
-                loadImage = loadImage,
                 onClick = { onSelectAlbum(album.id) },
             )
         }
@@ -141,18 +138,19 @@ private fun LibraryGridBacking(
 
 /**
  * The `library-grid` screenshot scene: a full grid of fixture albums in the app
- * chrome. Cover bytes never load (the loader returns null), so cards show the
- * placeholder cover icon — deterministic, no session.
+ * chrome. The store resolves nothing and the preview renderer runs no load
+ * effect, so every card holds its empty cover tile — deterministic, no session.
  */
 @Composable
 internal fun LibraryGridScene() {
     BaeAppChrome {
-        LibraryGridBacking(
-            albums = List(SCENE_ALBUM_COUNT) { i -> PreviewData.album(id = "alb-$i", title = "Album ${i + 1}") },
-            gridState = rememberLazyGridState(),
-            loadImage = { null },
-            onSelectAlbum = {},
-        )
+        CompositionLocalProvider(LocalImageStore provides ImageStore.unresolved()) {
+            LibraryGridBacking(
+                albums = List(SCENE_ALBUM_COUNT) { i -> PreviewData.album(id = "alb-$i", title = "Album ${i + 1}") },
+                gridState = rememberLazyGridState(),
+                onSelectAlbum = {},
+            )
+        }
     }
 }
 
@@ -165,13 +163,11 @@ private fun LibraryGridScenePreview() {
 @Composable
 private fun AlbumGridCard(
     album: BridgeAlbum,
-    loadImage: suspend (imageId: String) -> ByteArray?,
     onClick: () -> Unit,
 ) {
     Column(modifier = Modifier.clickable(onClick = onClick)) {
         CoverImage(
             cover = album.cover,
-            loadImage = loadImage,
             cornerRadius = 6.dp,
             iconPadding = 40.dp,
             modifier = Modifier.fillMaxWidth().aspectRatio(1f),
@@ -197,8 +193,8 @@ private fun AlbumGridCard(
 @Composable
 private fun AlbumGridCardPreview() {
     BaeTheme {
-        CompositionLocalProvider(LocalCoverBytesCache provides CoverBytesCache()) {
-            AlbumGridCard(album = PreviewData.album(), loadImage = { _ -> null }, onClick = {})
+        CompositionLocalProvider(LocalImageStore provides ImageStore.unresolved()) {
+            AlbumGridCard(album = PreviewData.album(), onClick = {})
         }
     }
 }

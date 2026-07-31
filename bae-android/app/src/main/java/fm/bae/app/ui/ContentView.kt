@@ -29,8 +29,7 @@ import fm.bae.app.OAuthLinker
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.ShortcutAction
-import fm.bae.app.ui.components.CoverBytesCache
-import fm.bae.app.ui.components.LocalCoverBytesCache
+import fm.bae.app.data.LocalImageStore
 import fm.bae.app.ui.library.LibraryScreen
 import fm.bae.app.ui.onboarding.OnboardingScreen
 import fm.bae.app.ui.onboarding.UnlockScreen
@@ -80,25 +79,20 @@ fun ContentView(
 }
 
 /**
- * The app's root chrome: theme, the full-size background surface, the shared
- * cover-bytes cache (one per composition lifetime, handed to every cover leaf
- * through the composition local so they don't each thread it), and the
+ * The app's root chrome: theme, the full-size background surface, and the
  * safe-drawing inset padding every screen sits inside. Screen bodies render
  * inside this. Screenshot captures render a scene inside the same chrome so a
  * captured screen looks exactly like the shipped one.
  */
 @Composable
 internal fun BaeAppChrome(content: @Composable () -> Unit) {
-    val coverCache = remember { CoverBytesCache() }
     BaeTheme {
         Surface(
             modifier = Modifier.fillMaxSize(),
             color = MaterialTheme.colorScheme.background,
         ) {
-            CompositionLocalProvider(LocalCoverBytesCache provides coverCache) {
-                Box(modifier = Modifier.fillMaxSize().safeDrawingPadding()) {
-                    content()
-                }
+            Box(modifier = Modifier.fillMaxSize().safeDrawingPadding()) {
+                content()
             }
         }
     }
@@ -206,19 +200,23 @@ private fun LibraryOpenScreen(
             onShortcutHandled()
         }
     }
-    Box(modifier = Modifier.fillMaxSize()) {
-        LibraryScreen(
-            session = session,
-            libraries = libraries,
-            openSearch = shortcutAction == ShortcutAction.SEARCH,
-            onSearchOpened = onShortcutHandled,
-            onSwitchLibrary = onSwitchLibrary,
-            onLeaveLibrary = onLeaveLibrary,
-        )
-        SnackbarHost(
-            hostState = snackbarHostState,
-            modifier = Modifier.align(Alignment.BottomCenter),
-        )
+    // The image store is the open library's: its cache entries are keyed on that
+    // library's image ids, so it is scoped to the session, not the process.
+    CompositionLocalProvider(LocalImageStore provides session.imageStore) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            LibraryScreen(
+                session = session,
+                libraries = libraries,
+                openSearch = shortcutAction == ShortcutAction.SEARCH,
+                onSearchOpened = onShortcutHandled,
+                onSwitchLibrary = onSwitchLibrary,
+                onLeaveLibrary = onLeaveLibrary,
+            )
+            SnackbarHost(
+                hostState = snackbarHostState,
+                modifier = Modifier.align(Alignment.BottomCenter),
+            )
+        }
     }
 }
 

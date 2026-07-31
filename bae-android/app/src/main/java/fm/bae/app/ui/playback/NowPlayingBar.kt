@@ -44,12 +44,12 @@ import androidx.compose.ui.unit.dp
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.coreString
+import fm.bae.app.data.ImageStore
+import fm.bae.app.data.LocalImageStore
 import fm.bae.app.playback.NowPlaying
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
-import fm.bae.app.ui.components.CoverBytesCache
 import fm.bae.app.ui.components.CoverImage
-import fm.bae.app.ui.components.LocalCoverBytesCache
 import uniffi.bae_bridge.BridgeRepeatMode
 import uniffi.bae_bridge.bridgeNextRepeatMode
 
@@ -94,7 +94,6 @@ fun NowPlayingBar(session: OpenLibrary) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 NowPlayingTrackInfo(
                     track = track,
-                    loadImage = session.library::imageBytes,
                     onExpand = { expanded = true },
                 )
                 NowPlayingTransportButtons(
@@ -116,7 +115,6 @@ fun NowPlayingBar(session: OpenLibrary) {
 @Composable
 private fun RowScope.NowPlayingTrackInfo(
     track: fm.bae.app.playback.NowPlaying,
-    loadImage: suspend (imageId: String) -> ByteArray?,
     onExpand: () -> Unit,
 ) {
     val nowPlayingDescription = stringResource(R.string.now_playing_track_by_artist, track.title, track.artist)
@@ -133,7 +131,6 @@ private fun RowScope.NowPlayingTrackInfo(
     ) {
         CoverImage(
             cover = track.coverImage,
-            loadImage = loadImage,
             cornerRadius = 4.dp,
             iconPadding = 12.dp,
             modifier = Modifier.size(48.dp),
@@ -229,7 +226,7 @@ private fun NowPlayingTransportButtons(
 @Composable
 private fun NowPlayingTrackInfoPreview() {
     BaeTheme {
-        CompositionLocalProvider(LocalCoverBytesCache provides CoverBytesCache()) {
+        CompositionLocalProvider(LocalImageStore provides ImageStore.unresolved()) {
             Row {
                 NowPlayingTrackInfo(
                     track =
@@ -240,7 +237,6 @@ private fun NowPlayingTrackInfoPreview() {
                             coverImage = PreviewData.imageRef("rel-1"),
                             sidePausePrompt = null,
                         ),
-                    loadImage = { _ -> null },
                     onExpand = {},
                 )
             }

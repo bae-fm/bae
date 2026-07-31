@@ -101,7 +101,7 @@ fun QueueScreen(
         nowPlaying?.let { np ->
             item(key = "nowplaying") {
                 SectionLabel(stringResource(R.string.queue_section_now_playing))
-                NowPlayingRow(np, session.library::imageBytes)
+                NowPlayingRow(np)
             }
         }
         queueContent(
@@ -333,7 +333,6 @@ private fun LazyListScope.queueRows(
                 Surface(tonalElevation = if (isDragging) 4.dp else 0.dp, color = MaterialTheme.colorScheme.surface) {
                     QueueRow(
                         item = item,
-                        loadImage = session.library::imageBytes,
                         dragHandleModifier = Modifier.draggableHandle(),
                         onClick = {
                             try {

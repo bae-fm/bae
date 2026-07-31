@@ -1,6 +1,8 @@
 package fm.bae.app.ui.albumdetail
 
+import android.graphics.Bitmap
 import androidx.compose.animation.core.animate
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.calculateCentroid
@@ -8,6 +10,7 @@ import androidx.compose.foundation.gestures.calculateZoom
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
@@ -27,6 +30,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -38,6 +42,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
@@ -47,21 +52,17 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import coil3.compose.AsyncImage
-import coil3.compose.LocalPlatformContext
-import coil3.request.ImageRequest
-import coil3.request.crossfade
-import coil3.size.Size
 import fm.bae.app.BaeLogger
 import fm.bae.app.R
+import fm.bae.app.data.DecodeSize
+import fm.bae.app.data.ImageContent
+import fm.bae.app.data.ImageStore
+import fm.bae.app.data.LocalImageStore
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
-import fm.bae.app.ui.components.LocalImageDispatcher
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import uniffi.bae_bridge.BridgeGalleryItem
-import uniffi.bae_bridge.BridgeGallerySource
 
 private const val FULL_RES_SCALE_THRESHOLD = 1.01f
 private const val DISMISS_THRESHOLD_DP = 150f
@@ -73,19 +74,15 @@ private val logger = BaeLogger(TAG)
 /**
  * Full-screen artwork viewer over a release's gallery items (cover first, then
  * every image file the release has). Swipeable when there's more than one, and a
- * downward swipe dismisses it. Every item's bytes are fetched the same way via
- * [loadImage] — handed the item's [BridgeGalleryItem.source] so core dispatches
- * the read (cover by image id, release-file by file id) — and the decoded image
- * is keyed on `releaseId` + the item's id (the cover slot's id is the constant
- * `"cover"`, so the release scope keeps two releases' covers distinct in the
- * process-wide image cache). Each page pinch-zooms and snaps back when you
- * release.
+ * downward swipe dismisses it. Every item is an [ImageContent.ReleaseImage] over
+ * the item's [BridgeGalleryItem.source], so core dispatches the read (cover by
+ * image id, release-file by file id) and the store keys the decode on the slot's
+ * own identity. Each page pinch-zooms and snaps back when you release.
  */
 @Composable
 fun GalleryDialog(
     releaseId: String,
     items: List<BridgeGalleryItem>,
-    loadImage: suspend (source: BridgeGallerySource) -> ByteArray,
     onDismiss: () -> Unit,
 ) {
     Dialog(
@@ -131,11 +128,7 @@ fun GalleryDialog(
             ) {
                 Box(modifier = Modifier.fillMaxSize().graphicsLayer { translationY = offsetY }) {
                     HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize()) { page ->
-                        GalleryPage(
-                            releaseId = releaseId,
-                            item = items[page],
-                            loadImage = loadImage,
-                        )
+                        GalleryPage(releaseId = releaseId, item = items[page])
                     }
                     GalleryCloseButton(onDismiss = onDismiss)
                     GalleryCaption(items = items, pagerState = pagerState)
@@ -145,21 +138,15 @@ fun GalleryDialog(
     }
 }
 
-/**
- * One gallery page. Fetches the item's bytes via [loadImage] — passing the item's
- * [BridgeGalleryItem.source] for core to dispatch the read — and keys the decoded
- * image on `releaseId/itemId` so the per-release cover slot (whose id is the
- * constant `"cover"`) doesn't collide across releases in the process-wide cache.
- */
+/** One gallery page: the release-image slot the item names. */
 @Composable
 private fun GalleryPage(
     releaseId: String,
     item: BridgeGalleryItem,
-    loadImage: suspend (source: BridgeGallerySource) -> ByteArray,
 ) {
-    RemoteGalleryImage(cacheKey = "$releaseId/${item.id}", label = item.label) {
-        loadImage(item.source)
-    }
+    val content =
+        remember(releaseId, item.id) { ImageContent.ReleaseImage(releaseId, item.source) }
+    GalleryImage(content = content, label = item.label)
 }
 
 /** Close button, inset out of the status bar and any display cutout. */
@@ -216,42 +203,119 @@ private fun BoxScope.GalleryCaption(
 }
 
 /**
- * A pinch-zoomable gallery image. Coil downsamples to the page size for the
- * initial draw (so a huge — e.g. 35 MB — JPEG never decodes at full resolution
- * just to fill the screen); once the user pinches in, it requests the original
- * resolution so the zoomed-in detail is sharp, crossfading up from the
- * downsampled image. The pinch scales the image around the gesture centroid and
- * releases back to fit, mirroring the macOS lightbox.
+ * A gallery image: fetched (downloaded from the release's cloud home and decrypted
+ * by core, or read from coven's image store for a cover) and decoded to the page
+ * bounds, so a large — e.g. 35 MB — scan never decodes at full resolution just to
+ * fill the screen. Once the user pinches in, the same bytes are decoded again at
+ * the source's own resolution, from the store's byte cache rather than a second
+ * trip across the bridge, and replace the downsampled image in place.
  *
- * [bytes] are the fetched (and decrypted) image bytes Coil decodes. [cacheKey]
- * keys the downsampled image in the memory cache; the full-resolution request
- * reuses it as its placeholder so the upgrade doesn't flash.
+ * Shows a spinner while the first decode is in flight and a fixed failure message
+ * when it fails (the underlying error is logged).
+ */
+@Composable
+private fun GalleryImage(
+    content: ImageContent,
+    label: String,
+) {
+    val store = LocalImageStore.current
+    BoxWithConstraints(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        val fitSize = DecodeSize.FitTo(maxOf(constraints.maxWidth, constraints.maxHeight))
+        var fitted by remember(content, fitSize) { mutableStateOf(store.cachedImage(content, fitSize)) }
+        var native by remember(content) { mutableStateOf(store.cachedImage(content, DecodeSize.Native)) }
+        var failed by remember(content) { mutableStateOf(false) }
+        var zoomedIn by remember(content) { mutableStateOf(false) }
+
+        LaunchedEffect(content, fitSize) {
+            if (fitted != null) return@LaunchedEffect
+            val loaded = loadOrNull(label) { store.image(content, fitSize) }
+            if (loaded == null) {
+                failed = true
+            } else {
+                fitted = loaded
+            }
+        }
+        LaunchedEffect(content, zoomedIn) {
+            if (!zoomedIn || native != null) return@LaunchedEffect
+            // A failed full-resolution decode leaves the downsampled image on
+            // screen rather than replacing a usable view with an error.
+            native = loadOrNull(label) { store.image(content, DecodeSize.Native) }
+        }
+
+        val shown = native ?: fitted
+        when {
+            shown != null -> {
+                ZoomableGalleryImage(
+                    bitmap = shown,
+                    identity = content,
+                    contentDescription = label,
+                    onZoomedIn = { zoomedIn = true },
+                )
+            }
+
+            failed -> {
+                Text(
+                    text = stringResource(R.string.gallery_load_failed),
+                    color = Color.White,
+                    modifier = Modifier.padding(24.dp),
+                )
+            }
+
+            else -> {
+                CircularProgressIndicator(color = Color.White)
+            }
+        }
+    }
+}
+
+/**
+ * Run [load], answering null when it fails or when the slot has no bytes — both
+ * are logged, never silent. Cancellation propagates so a page swiped away stops
+ * loading rather than reporting a failure.
+ */
+private suspend fun loadOrNull(
+    label: String,
+    load: suspend () -> Bitmap?,
+): Bitmap? =
+    try {
+        load().also {
+            if (it == null) {
+                logger.warning("no bytes for gallery image $label")
+            }
+        }
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        logger.error("Failed to load gallery image $label", e)
+        null
+    }
+
+/**
+ * A pinch-zoomable gallery image. The pinch scales [bitmap] around the gesture
+ * centroid and releases back to fit, mirroring the macOS lightbox; crossing the
+ * zoom threshold reports [onZoomedIn] once so the caller can decode the source at
+ * full resolution. [identity] re-arms the gesture state when the page's content
+ * changes.
  */
 @Composable
 private fun ZoomableGalleryImage(
-    bytes: ByteArray,
-    cacheKey: String,
+    bitmap: Bitmap,
+    identity: Any,
     contentDescription: String?,
+    onZoomedIn: () -> Unit,
 ) {
-    val context = LocalPlatformContext.current
-    var scale by remember(cacheKey) { mutableFloatStateOf(1f) }
-    var origin by remember(cacheKey) { mutableStateOf(TransformOrigin.Center) }
-    var fullRes by remember(cacheKey) { mutableStateOf(false) }
+    var scale by remember(identity) { mutableFloatStateOf(1f) }
+    var origin by remember(identity) { mutableStateOf(TransformOrigin.Center) }
     val scope = rememberCoroutineScope()
 
-    val model =
-        remember(bytes, cacheKey, fullRes) {
-            buildGalleryImageRequest(context, bytes, cacheKey, fullRes)
-        }
-
-    AsyncImage(
-        model = model,
+    Image(
+        bitmap = bitmap.asImageBitmap(),
         contentDescription = contentDescription,
         contentScale = ContentScale.Fit,
         modifier =
             Modifier
                 .fillMaxSize()
-                .pointerInput(cacheKey) {
+                .pointerInput(identity) {
                     awaitEachGesture {
                         awaitFirstDown(requireUnconsumed = false)
                         var originSet = false
@@ -269,8 +333,8 @@ private fun ZoomableGalleryImage(
                                     originSet = true
                                 }
                                 scale = (scale * zoom).coerceAtLeast(1f)
-                                if (scale > FULL_RES_SCALE_THRESHOLD && !fullRes) {
-                                    fullRes = true
+                                if (scale > FULL_RES_SCALE_THRESHOLD) {
+                                    onZoomedIn()
                                 }
                                 // Consume so the pager doesn't treat a pinch as a
                                 // page swipe; single-finger drags (zoom == 1) fall
@@ -293,99 +357,16 @@ private fun ZoomableGalleryImage(
     )
 }
 
-private fun buildGalleryImageRequest(
-    context: coil3.PlatformContext,
-    bytes: ByteArray,
-    cacheKey: String,
-    fullRes: Boolean,
-): ImageRequest =
-    ImageRequest
-        .Builder(context)
-        .data(bytes)
-        .crossfade(true)
-        .apply {
-            // In-memory bytes (a fetched, decrypted image) aren't disk-cacheable,
-            // so only the memory cache is keyed.
-            if (fullRes) {
-                // Decode at the source's full resolution and reuse the
-                // already-cached downsampled image as the placeholder, so
-                // the zoomed view sharpens in place instead of blanking.
-                size(Size.ORIGINAL)
-                memoryCacheKey("$cacheKey#orig")
-                placeholderMemoryCacheKey(cacheKey)
-            } else {
-                // Default size resolves to the page bounds: Coil downsamples
-                // the source to fit, the cheap initial decode.
-                memoryCacheKey(cacheKey)
-            }
-        }.build()
-
-/**
- * A gallery image fetched on demand (downloaded from the release's cloud home and
- * decrypted by core, or read from coven's image store for a cover), then handed
- * to [ZoomableGalleryImage] to decode and display. Shows a spinner while fetching
- * and a fixed failure message if [load] throws. [cacheKey] keys the decoded image
- * and re-runs the fetch when it changes. `result` is null while loading, then
- * success(bytes) or failure(error).
- */
-@Composable
-private fun RemoteGalleryImage(
-    cacheKey: String,
-    label: String,
-    load: suspend () -> ByteArray,
-) {
-    val dispatcher = LocalImageDispatcher.current
-    var result: Result<ByteArray>? by remember(cacheKey) {
-        mutableStateOf<Result<ByteArray>?>(null)
-    }
-    LaunchedEffect(cacheKey) {
-        result =
-            try {
-                Result.success(withContext(dispatcher) { load() })
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                logger.error("Failed to load gallery image $cacheKey", e)
-                Result.failure(e)
-            }
-    }
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        val r = result
-        when {
-            r == null -> {
-                CircularProgressIndicator(color = Color.White)
-            }
-
-            r.isSuccess -> {
-                ZoomableGalleryImage(
-                    bytes = r.getOrThrow(),
-                    cacheKey = cacheKey,
-                    contentDescription = label,
-                )
-            }
-
-            // The underlying failure is already logged above; the viewer shows a
-            // fixed, user-facing message rather than a raw exception string.
-            else -> {
-                Text(
-                    text = stringResource(R.string.gallery_load_failed),
-                    color = Color.White,
-                    modifier = Modifier.padding(24.dp),
-                )
-            }
-        }
-    }
-}
-
 @Preview(showBackground = true)
 @Composable
 private fun GalleryDialogPreview() {
     BaeTheme {
-        GalleryDialog(
-            releaseId = "rel-1",
-            items = listOf(PreviewData.galleryItem()),
-            loadImage = { _ -> ByteArray(0) },
-            onDismiss = {},
-        )
+        CompositionLocalProvider(LocalImageStore provides ImageStore()) {
+            GalleryDialog(
+                releaseId = "rel-1",
+                items = listOf(PreviewData.galleryItem()),
+                onDismiss = {},
+            )
+        }
     }
 }

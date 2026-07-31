@@ -47,11 +47,11 @@ import androidx.compose.ui.unit.dp
 import fm.bae.app.BaeLogger
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
+import fm.bae.app.data.ImageStore
+import fm.bae.app.data.LocalImageStore
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
-import fm.bae.app.ui.components.CoverBytesCache
 import fm.bae.app.ui.components.CoverImage
-import fm.bae.app.ui.components.LocalCoverBytesCache
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -147,7 +147,6 @@ internal fun rememberArtistPage(
 @Composable
 internal fun ArtistListContent(
     page: ArtistPage,
-    loadImage: suspend (imageId: String) -> ByteArray?,
     onSelectArtist: (String) -> Unit,
 ) {
     val pageError = page.error
@@ -188,7 +187,6 @@ internal fun ArtistListContent(
                         }
                     ArtistSummaryRow(
                         artist = artist,
-                        loadImage = loadImage,
                         onClick = { onSelectArtist(artistId) },
                     )
                 }
@@ -263,7 +261,6 @@ internal fun ArtistSortMenu(
 @Composable
 internal fun ArtistSummaryRow(
     artist: BridgeArtistSummary,
-    loadImage: suspend (imageId: String) -> ByteArray?,
     onClick: (() -> Unit)?,
 ) {
     Row(
@@ -276,7 +273,6 @@ internal fun ArtistSummaryRow(
     ) {
         CoverImage(
             cover = artist.image,
-            loadImage = loadImage,
             cornerRadius = 6.dp,
             iconPadding = 12.dp,
             modifier = Modifier.size(48.dp),
@@ -304,8 +300,8 @@ internal fun ArtistSummaryRow(
 @Composable
 private fun ArtistSummaryRowPreview() {
     BaeTheme {
-        CompositionLocalProvider(LocalCoverBytesCache provides CoverBytesCache()) {
-            ArtistSummaryRow(artist = PreviewData.artistSummary(), loadImage = { _ -> null }, onClick = {})
+        CompositionLocalProvider(LocalImageStore provides ImageStore.unresolved()) {
+            ArtistSummaryRow(artist = PreviewData.artistSummary(), onClick = {})
         }
     }
 }

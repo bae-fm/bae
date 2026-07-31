@@ -8,6 +8,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ProcessLifecycleOwner
 import fm.bae.app.data.ConfigStore
 import fm.bae.app.data.DownloadStore
+import fm.bae.app.data.ImageStore
 import fm.bae.app.data.Library
 import fm.bae.app.data.LibraryStore
 import fm.bae.app.data.OpenLibraryStores
@@ -69,6 +70,11 @@ class OpenLibrary(
     // Library is always a thin wrapper around appHandle; construct it here rather
     // than requiring callers to pass a separately-constructed instance.
     val library = Library(appHandle)
+
+    // Every image the app shows resolves through this store, and its cache entries
+    // are keyed on this library's image ids — so it lives and dies with the
+    // session, not the process.
+    val imageStore = ImageStore(appHandle)
     val libraryStore: LibraryStore get() = stores.library
     val configStore: ConfigStore get() = stores.config
     val downloadStore: DownloadStore get() = stores.downloads

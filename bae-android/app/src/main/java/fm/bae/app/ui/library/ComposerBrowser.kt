@@ -47,11 +47,11 @@ import androidx.compose.ui.unit.dp
 import fm.bae.app.BaeLogger
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
+import fm.bae.app.data.ImageStore
+import fm.bae.app.data.LocalImageStore
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
-import fm.bae.app.ui.components.CoverBytesCache
 import fm.bae.app.ui.components.CoverImage
-import fm.bae.app.ui.components.LocalCoverBytesCache
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -147,7 +147,6 @@ internal fun rememberComposerPage(
 @Composable
 internal fun ComposerListContent(
     page: ComposerPage,
-    loadImage: suspend (imageId: String) -> ByteArray?,
     onSelectComposer: (String) -> Unit,
 ) {
     val pageError = page.error
@@ -188,7 +187,6 @@ internal fun ComposerListContent(
                         }
                     ComposerSummaryRow(
                         composer = composer,
-                        loadImage = loadImage,
                         onClick = { onSelectComposer(artistId) },
                     )
                 }
@@ -265,7 +263,6 @@ internal fun ComposerSortMenu(
 @Composable
 internal fun ComposerSummaryRow(
     composer: BridgeComposerSummary,
-    loadImage: suspend (imageId: String) -> ByteArray?,
     onClick: (() -> Unit)?,
 ) {
     Row(
@@ -278,7 +275,6 @@ internal fun ComposerSummaryRow(
     ) {
         CoverImage(
             cover = composer.image,
-            loadImage = loadImage,
             cornerRadius = 6.dp,
             iconPadding = 12.dp,
             modifier = Modifier.size(48.dp),
@@ -306,8 +302,8 @@ internal fun ComposerSummaryRow(
 @Composable
 private fun ComposerSummaryRowPreview() {
     BaeTheme {
-        CompositionLocalProvider(LocalCoverBytesCache provides CoverBytesCache()) {
-            ComposerSummaryRow(composer = PreviewData.composerSummary(), loadImage = { _ -> null }, onClick = {})
+        CompositionLocalProvider(LocalImageStore provides ImageStore.unresolved()) {
+            ComposerSummaryRow(composer = PreviewData.composerSummary(), onClick = {})
         }
     }
 }

@@ -296,7 +296,6 @@ private fun ComposerBrowserContent(
         )
         ComposerListContent(
             page = page,
-            loadImage = session.library::imageBytes,
             onSelectComposer = onSelectComposer,
         )
     }
@@ -327,7 +326,6 @@ private fun ArtistBrowserContent(
         )
         ArtistListContent(
             page = page,
-            loadImage = session.library::imageBytes,
             onSelectArtist = onSelectArtist,
         )
     }
