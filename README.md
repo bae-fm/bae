@@ -111,7 +111,7 @@ baeium needs nothing proprietary to build, run, or distribute.
   cd bae-android && ./gradlew assembleBaeiumDebug
   ```
 
-- **macOS / Windows** — build with `BAE_BRIDGE_FEATURES=desktop` for macOS and `BAE_BRIDGE_FEATURES=desktop BAE_BRIDGE_CSHARP_BINDINGS_DIR=bae-bridge/csharp-bindings-baeium ./bae-bridge/build-windows.sh` for Windows.
+- **macOS / Windows** — build with `BAE_BRIDGE_FEATURES=desktop` for macOS and `BAE_BRIDGE_CSHARP_BINDINGS_DIR=bae-bridge/csharp-bindings-full ./bae-bridge/build-windows.sh` for Windows (the default feature set is the full edition).
 
 ## Configuration
 

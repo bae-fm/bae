@@ -40,8 +40,8 @@ if ! command -v uniffi-bindgen-cs >/dev/null 2>&1; then
 fi
 
 # The cargo feature set the bridge compiles with. The generated C# only exports
-# the bridge functions whose features are on, so each Windows edition gets
-# bindings from the matching feature set.
+# the bridge functions whose features are on; Windows ships the one full
+# edition (OAuth + desktop).
 BAE_BRIDGE_FEATURES="${BAE_BRIDGE_FEATURES-oauth-providers,desktop}"
 if [[ -z "${BAE_BRIDGE_CSHARP_BINDINGS_DIR:-}" ]]; then
     echo "BAE_BRIDGE_CSHARP_BINDINGS_DIR is required" >&2
