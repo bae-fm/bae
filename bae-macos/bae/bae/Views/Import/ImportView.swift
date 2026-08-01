@@ -59,6 +59,15 @@ struct ImportView: View {
             .onChange(of: uiStore.selectedFolderCandidate) { _, _ in
                 uiStore.lightbox = nil
             }
+            // Fires on both paths to a seedable pane: selecting a Ready row,
+            // and the verdict settling to Ready while its row is selected.
+            // `initial` covers a selection that predates this view — the
+            // Import tab re-entered with a Ready row still selected.
+            .onChange(of: readyAutoPick, initial: true) { _, matched in
+                if let matched {
+                    applyReadyAutoPick(matched)
+                }
+            }
         }
     }
 
@@ -105,38 +114,6 @@ struct ImportView: View {
                     )
                 )
             }
-        }
-    }
-
-    // MARK: - Candidate selection
-
-    var candidateSelectionBinding: Binding<String?> {
-        Binding(
-            get: { uiStore.selectedFolderCandidate },
-            set: { key in
-                guard let key,
-                    let candidate = importStore.folderCandidates[key]
-                else {
-                    return
-                }
-                selectCandidate(candidate)
-            },
-        )
-    }
-
-    private func selectCandidate(_ candidate: Candidate) {
-        guard case .folder = candidate.source else {
-            return
-        }
-
-        uiStore.selectFolderCandidate(candidate.key)
-
-        // Identify gate: only kick off on the first selection. Subsequent
-        // re-selects (including back-to-identify from Confirming) keep the
-        // last state. Identify also starts extraction, which streams the
-        // candidate's signals (disc ID, barcodes, classified text).
-        if case .idle = candidate.identifyState {
-            importer.autoIdentifyFolder(candidate.key)
         }
     }
 

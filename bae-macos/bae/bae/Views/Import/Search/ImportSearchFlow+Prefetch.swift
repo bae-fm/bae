@@ -76,6 +76,34 @@ extension ImportSearchFlow {
         }
     }
 
+    // MARK: - Ready auto-pick
+
+    /// The release a Ready row's selection opens on without a click: the
+    /// settled match the row leads with. `nil` when there is nothing to seed —
+    /// the pane has left the identify phase, a pick is already in (or in
+    /// flight), or the row isn't Ready.
+    ///
+    /// The placement gate carries weight the mode alone can't: Done and
+    /// Skipped rows also hold `matched`, and a candidate rebuilt at launch
+    /// starts back in `.identifying`, so without it an already-imported row
+    /// would re-open its confirm pane. The error gate keeps a failed prefetch
+    /// from re-firing itself: failure returns the mode to `.identifying`, and
+    /// with nothing else in the guard that round-trip would retry forever.
+    static func readyAutoPick(
+        candidate: Candidate,
+        row: BridgeTriageRow?
+    ) -> BridgeMatchedRelease? {
+        guard candidate.mode == .identifying,
+            candidate.pickedReleaseId == nil,
+            candidate.error == nil,
+            let row,
+            case .ready = row.placement
+        else {
+            return nil
+        }
+        return row.matched
+    }
+
     // MARK: - Prefetch and confirm
 
     /// Pick a release for a candidate: bae-core comes back with what the pick
