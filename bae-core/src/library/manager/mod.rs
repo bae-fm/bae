@@ -1117,8 +1117,8 @@ impl LibraryManager {
 
     /// The same connection with no sync loop behind it, so an explicitly
     /// draining test is the only drainer of the upload queue. See
-    /// [`SyncController::connect_test_cloud_home_caller_driven`](crate::library::sync_controller::SyncController::connect_test_cloud_home_caller_driven)
-    /// for what a test gives up by taking it.
+    /// `SyncController::connect_test_cloud_home_caller_driven` for what a
+    /// test gives up by taking it.
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn connect_test_cloud_home_caller_driven(
         &self,
