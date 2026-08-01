@@ -759,10 +759,10 @@ internal sealed class MprisMediaSession : IMediaSession, IMethodHandler
     private static string? ArtworkExtension(byte[] bytes) =>
         bytes switch
         {
-        [0x89, (byte)'P', (byte)'N', (byte)'G', ..] => ".png",
-        [0xFF, 0xD8, 0xFF, ..] => ".jpg",
-        [(byte)'R', (byte)'I', (byte)'F', (byte)'F', _, _, _, _, (byte)'W', (byte)'E', (byte)'B', (byte)'P', ..] => ".webp",
-        [(byte)'G', (byte)'I', (byte)'F', (byte)'8', ..] => ".gif",
+            [0x89, (byte)'P', (byte)'N', (byte)'G', ..] => ".png",
+            [0xFF, 0xD8, 0xFF, ..] => ".jpg",
+            [(byte)'R', (byte)'I', (byte)'F', (byte)'F', _, _, _, _, (byte)'W', (byte)'E', (byte)'B', (byte)'P', ..] => ".webp",
+            [(byte)'G', (byte)'I', (byte)'F', (byte)'8', ..] => ".gif",
             _ => null,
         };
 

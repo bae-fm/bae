@@ -64,6 +64,10 @@ jobs:
   windows:
     name: Windows
     runs-on: windows-latest
+    env:
+      # Overrides .cargo/config.toml's repo-wide sccache wrapper — see the
+      # sccache note below; an empty value means no wrapper.
+      RUSTC_WRAPPER: ""
     steps:
       - uses: actions/checkout@v6
         with:
