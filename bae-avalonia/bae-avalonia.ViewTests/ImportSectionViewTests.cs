@@ -1,7 +1,6 @@
 ﻿using System.Reflection;
-using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Headless;
+using Avalonia.Headless.XUnit;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.LogicalTree;
@@ -15,9 +14,8 @@ namespace Bae.Desktop.ViewTests;
 public sealed class ImportSectionViewTests
 {
     private const string CandidateKey = "/Music/Incoming/Collection/Release 01";
-    private static bool _avaloniaStarted;
 
-    [Fact]
+    [AvaloniaFact]
     public void ReadyCheckboxTapDoesNotActivateItsCandidateRow()
     {
         var view = BuildView(PreviewData.ImportQueue);
@@ -32,7 +30,7 @@ public sealed class ImportSectionViewTests
         Assert.Null(SelectedKey(view));
     }
 
-    [Fact]
+    [AvaloniaFact]
     public void FolderDecisionClearsTheSelectedCandidateBeforeDispatch()
     {
         var view = BuildView(PreviewData.ImportResolvedQueue);
@@ -46,7 +44,7 @@ public sealed class ImportSectionViewTests
         Assert.Null(SelectedKey(view));
     }
 
-    [Fact]
+    [AvaloniaFact]
     public void FolderDecisionTapDoesNotReactivateItsCandidateRow()
     {
         var view = BuildView(PreviewData.ImportResolvedQueue);
@@ -60,7 +58,7 @@ public sealed class ImportSectionViewTests
 
     // Activating a Ready row opens the pane on the release the row settled on,
     // with no trip through the search editor.
-    [Fact]
+    [AvaloniaFact]
     public void ActivatingAReadyRowPrefetchesItsSettledMatch()
     {
         var prefetched = new List<string>();
@@ -76,7 +74,7 @@ public sealed class ImportSectionViewTests
 
     // A Done row holds a match as well, and re-showing an imported folder must
     // not re-open a pane that can commit it a second time.
-    [Fact]
+    [AvaloniaFact]
     public void ActivatingADoneRowPrefetchesNothing()
     {
         var prefetched = new List<string>();
@@ -93,7 +91,7 @@ public sealed class ImportSectionViewTests
     // Identify can settle while the folder is already under the pane. The row
     // arrives as a queue read, not as a click, and the pane opens on the match
     // the same way it would have on a click.
-    [Fact]
+    [AvaloniaFact]
     public void AVerdictSettlingToReadyPrefetchesUnderTheOpenPane()
     {
         var prefetched = new List<string>();
@@ -127,14 +125,13 @@ public sealed class ImportSectionViewTests
         BridgeTriageTab activeTab = BridgeTriageTab.Ready,
         List<string>? prefetched = null)
     {
-        if (!_avaloniaStarted)
-        {
-            AppBuilder
-                .Configure<App>()
-                .UseHeadless(new AvaloniaHeadlessPlatformOptions())
-                .SetupWithoutStarting();
-            _avaloniaStarted = true;
-        }
+        // Everything below constructs controls, which is only legal on the
+        // headless session's dispatcher thread — [AvaloniaFact] is what puts a
+        // test body there. Stated here so a test that arrives with a plain
+        // [Fact] fails on its first run with the reason, rather than passing
+        // whenever xunit happens to hand it the right worker thread.
+        Dispatcher.UIThread.VerifyAccess();
+
         var import = new ImportService
         {
             CandidateForKey = key => (
