@@ -101,7 +101,7 @@ impl LibraryManager {
     /// this stays out of release builds.
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn drain_uploads_for_test(&self) -> Result<usize, String> {
-        self.handle
+        self.handle()
             .drain_uploads()
             .await
             .map(|outcome| outcome.uploaded)

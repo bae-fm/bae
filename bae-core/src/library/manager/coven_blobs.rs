@@ -13,19 +13,19 @@ impl LibraryManager {
     /// `artist_images`, so each namespace evicts against its own budget and audio
     /// pressure never wipes the cover cache. Device-local; set once at startup.
     pub(crate) async fn configure_cache_budgets(&self) -> Result<(), LibraryError> {
-        self.handle
+        self.handle()
             .set_cache_budget(
                 crate::sync::RELEASE_FILES_NAMESPACE,
                 crate::sync::RELEASE_FILES_CACHE_BUDGET,
             )
             .await?;
-        self.handle
+        self.handle()
             .set_cache_budget(
                 crate::sync::COVERS_NAMESPACE,
                 crate::sync::COVERS_CACHE_BUDGET,
             )
             .await?;
-        self.handle
+        self.handle()
             .set_cache_budget(
                 crate::sync::ARTIST_IMAGES_NAMESPACE,
                 crate::sync::ARTIST_IMAGES_CACHE_BUDGET,
@@ -42,7 +42,7 @@ impl LibraryManager {
         &self,
         file_id: &str,
     ) -> Result<coven::RowBlobRef, LibraryError> {
-        self.handle
+        self.handle()
             .row_blob_ref(crate::sync::RELEASE_FILES_NAMESPACE, file_id)
             .await
             .map_err(|e| LibraryError::Storage(format!("blob ref for release file {file_id}: {e}")))
@@ -55,7 +55,7 @@ impl LibraryManager {
         table: &str,
         row_id: &str,
     ) -> Result<coven::RowBlobRef, LibraryError> {
-        self.handle
+        self.handle()
             .row_blob_ref(table, row_id)
             .await
             .map_err(|e| LibraryError::Storage(format!("blob ref for {table} {row_id}: {e}")))
@@ -70,7 +70,7 @@ impl LibraryManager {
     /// storage error so the caller surfaces a "files missing / moved" state.
     pub(crate) async fn read_release_blob(&self, file: &DbFile) -> Result<Vec<u8>, LibraryError> {
         let blob = self.release_file_row_blob_ref(&file.id).await?;
-        self.handle
+        self.handle()
             .read_blob(&blob)
             .await
             .map_err(|e| LibraryError::Storage(format!("read of {}: {e}", file.id)))
@@ -141,7 +141,7 @@ impl LibraryManager {
         }
         let blob = self.image_row_blob_ref(image_type.namespace(), id).await?;
         let bytes = self
-            .handle
+            .handle()
             .read_blob(&blob)
             .await
             .map_err(|e| LibraryError::Storage(format!("read image {id}: {e}")))?;
@@ -161,7 +161,7 @@ impl LibraryManager {
         let Some(file_id) = any_file_id else {
             return Ok(false);
         };
-        match release_file_pin_state(&self.handle, file_id).await? {
+        match release_file_pin_state(self.handle(), file_id).await? {
             ReleasePinState::Pinned => Ok(true),
             ReleasePinState::NotPinned => Ok(false),
             ReleasePinState::RejectedBadId => {
@@ -204,7 +204,7 @@ impl LibraryManager {
         let mut bytes_done = 0u64;
         for (file, size) in files.iter().zip(&sizes) {
             let blob = self.release_file_row_blob_ref(&file.id).await?;
-            self.handle
+            self.handle()
                 .pin(std::slice::from_ref(&blob))
                 .await
                 .map_err(|e| LibraryError::Storage(format!("pin release {release_id}: {e}")))?;
@@ -238,7 +238,7 @@ impl LibraryManager {
         for file in &files {
             blobs.push(self.release_file_row_blob_ref(&file.id).await?);
         }
-        self.handle
+        self.handle()
             .unpin(&blobs)
             .await
             .map_err(|e| LibraryError::Storage(format!("unpin release {release_id}: {e}")))

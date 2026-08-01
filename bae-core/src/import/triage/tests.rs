@@ -942,7 +942,7 @@ mod load {
             let manager = LibraryManager::new(
                 database,
                 Arc::new(crate::config::ConfigHandle::new(config)),
-                crate::keys::StoreKeys::new(library_id),
+                crate::keys::StoreKeys::bind(library_id),
                 clock,
                 ids,
                 crate::diagnostics::Diagnostics::noop(),

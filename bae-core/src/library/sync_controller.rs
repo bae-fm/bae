@@ -21,7 +21,6 @@ use crate::diagnostics::{Diagnostics, TelemetryEvent};
 use crate::keys::StoreKeys;
 use crate::library::{LibraryError, LibraryEvent, OutboxSnapshot, UploadThroughput};
 use crate::sync::S3ConfigData;
-#[cfg(feature = "oauth-providers")]
 use coven::ClockRef;
 #[cfg(any(test, feature = "test-utils"))]
 use coven::CloudHome;
@@ -80,9 +79,11 @@ where
 /// manager — every field is itself a clone-shared handle or `Arc`.
 #[derive(Clone)]
 pub(crate) struct SyncController {
-    handle: CovenHandle,
     config_handle: Arc<ConfigHandle>,
     key_service: StoreKeys,
+    /// This installation's clock, shared with the owning manager. coven's cloud
+    /// homes take it for the OAuth sessions that refresh their own tokens.
+    clock: ClockRef,
     event_tx: broadcast::Sender<LibraryEvent>,
     database: Database,
     /// `file_id`s whose upload is in flight right now, mapped to the live count
@@ -107,9 +108,9 @@ pub(crate) struct SyncController {
 impl SyncController {
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn new(
-        handle: CovenHandle,
         config_handle: Arc<ConfigHandle>,
         key_service: StoreKeys,
+        clock: ClockRef,
         event_tx: broadcast::Sender<LibraryEvent>,
         database: Database,
         outbox_in_flight: Arc<Mutex<HashMap<String, u64>>>,
@@ -120,9 +121,9 @@ impl SyncController {
         diagnostics: Diagnostics,
     ) -> Self {
         Self {
-            handle,
             config_handle,
             key_service,
+            clock,
             event_tx,
             database,
             outbox_in_flight,
@@ -132,6 +133,13 @@ impl SyncController {
             cloudkit_ops,
             diagnostics,
         }
+    }
+
+    /// The one coven data handle, read from the database that owns it. coven's
+    /// handle is a large value type, so bae keeps the single copy behind the
+    /// database's `Arc` rather than embedding one per holder.
+    fn handle(&self) -> &CovenHandle {
+        self.database.handle()
     }
 
     /// Emit a library event to all subscribers. Mirrors `LibraryManager::emit` so
@@ -150,7 +158,7 @@ impl SyncController {
     /// caller of this predicate is a plain boolean UI/test signal with no
     /// error channel of its own.
     pub(crate) fn has_encryption(&self) -> bool {
-        match self.handle.master_key_fingerprint() {
+        match self.handle().master_key_fingerprint() {
             Ok(fingerprint) => fingerprint.is_some(),
             Err(error) => {
                 warn!("failed to read master-key fingerprint: {error}");
@@ -198,7 +206,7 @@ impl SyncController {
         if !paused {
             // Kick the loop so the queue starts draining immediately on resume
             // rather than waiting for the next idle tick.
-            self.handle.sync_now();
+            self.handle().sync_now();
         }
         self.emit_outbox_changed().await;
     }
@@ -247,7 +255,7 @@ impl SyncController {
     pub(crate) async fn get_members(
         &self,
     ) -> Result<crate::sync::membership::Membership, LibraryError> {
-        let members = self.handle.get_members().await?;
+        let members = self.handle().get_members().await?;
         Ok(crate::sync::membership::Membership::from_members(members))
     }
 
@@ -261,7 +269,7 @@ impl SyncController {
         provider_account_email: Option<&str>,
     ) -> Result<String, LibraryError> {
         Ok(self
-            .handle
+            .handle()
             .invite_member(
                 public_key_hex,
                 provider_account_email,
@@ -286,10 +294,11 @@ impl SyncController {
         &self,
         join_request_code: &str,
     ) -> Result<Vec<u8>, LibraryError> {
-        let handle = self.handle.clone();
+        let database = self.database.clone();
         let join_request_code = join_request_code.to_string();
         run_device_join_future("device-invite", move || async move {
-            Ok(handle
+            Ok(database
+                .handle()
                 .begin_device_invite(
                     &join_request_code,
                     crate::sync::membership::MemberRole::Member,
@@ -318,11 +327,12 @@ impl SyncController {
         &self,
         invite_bytes: Vec<u8>,
     ) -> Result<DeviceJoinOutcome, LibraryError> {
-        let handle = self.handle.clone();
+        let database = self.database.clone();
         run_device_join_future("device-join drive", move || async move {
             let invite = coven::DeviceJoinInvite::from_bytes(&invite_bytes)
                 .map_err(|e| LibraryError::Internal(format!("invalid device invite: {e}")))?;
-            let outcome = handle
+            let outcome = database
+                .handle()
                 .drive_device_join(
                     &invite,
                     coven::DeviceJoinApprovalPolicy::AutoApproveSelfIssued,
@@ -344,11 +354,12 @@ impl SyncController {
         &self,
         invite_bytes: Vec<u8>,
     ) -> Result<(), LibraryError> {
-        let handle = self.handle.clone();
+        let database = self.database.clone();
         run_device_join_future("device-invite cancel", move || async move {
             let invite = coven::DeviceJoinInvite::from_bytes(&invite_bytes)
                 .map_err(|e| LibraryError::Internal(format!("invalid device invite: {e}")))?;
-            handle
+            database
+                .handle()
                 .cancel_device_invite(&invite, device_join_timing())
                 .await?;
             Ok(())
@@ -368,7 +379,7 @@ impl SyncController {
         // completion on a blocking-pool thread via a private current-thread
         // runtime — the same block-on shape coven's own sync loop uses for its
         // cloud work — and hand back only the `Send` fingerprint string.
-        let handle = self.handle.clone();
+        let database = self.database.clone();
         let public_key_hex = public_key_hex.to_string();
         let fingerprint = tokio::task::spawn_blocking(move || -> Result<String, LibraryError> {
             tokio::runtime::Builder::new_current_thread()
@@ -377,7 +388,7 @@ impl SyncController {
                 .map_err(|e| {
                     LibraryError::Internal(format!("failed to build member-removal runtime: {e}"))
                 })?
-                .block_on(handle.remove_member(&public_key_hex))
+                .block_on(database.handle().remove_member(&public_key_hex))
                 .map_err(LibraryError::from)
         })
         .await
@@ -393,44 +404,59 @@ impl SyncController {
     /// album afterward — they have gained their storage actions.
     pub(crate) async fn save_s3_config(&self, data: S3ConfigData) -> Result<(), LibraryError> {
         use crate::keys::CloudHomeCredentials;
-        use coven::CloudHome;
-        use coven::S3CloudHome;
 
-        // Probe the bucket with the proposed credentials *before* persisting
-        // anything: a typo or a missing bucket would otherwise leave the UI showing
-        // "Connected", with the user learning sync is broken only from the reconnect
-        // banner after the first failed cycle. The probe's typed outcome — bad
+        // The cloud-home settings the form proposes, decided once here so the
+        // probe reaches exactly the home the library would keep.
+        let mut proposed = self.config_handle.config().cloud_home.clone();
+        proposed.provider = Some(CloudProvider::S3);
+        proposed.s3_bucket = Some(data.bucket);
+        proposed.s3_region = Some(data.region);
+        proposed.s3_endpoint = data.endpoint.filter(|s| !s.is_empty());
+        proposed.s3_key_prefix = data.key_prefix.filter(|s| !s.is_empty());
+        proposed.storage = data.storage;
+        // bae exposes no operator toggle asserting a custom S3 endpoint supports
+        // conditional requests, so exact slots stay off for a custom endpoint
+        // (AWS-native, `endpoint` unset, has them regardless).
+        proposed.s3_exact_slots = None;
+
+        // Probe the bucket before the library records the provider: a typo or a
+        // missing bucket would otherwise leave the UI showing "Connected", with
+        // the user learning sync is broken only from the reconnect banner after
+        // the first failed cycle. The probe's typed outcome — bad
         // credentials/bucket vs unreachable endpoint — reaches the UI as distinct
         // error classes.
-        let probe_home = S3CloudHome::new(
-            data.bucket.clone(),
-            data.region.clone(),
-            data.endpoint.clone(),
-            data.access_key.clone(),
-            data.secret_key.clone(),
-            data.key_prefix.clone(),
-            // bae exposes no operator toggle asserting a custom S3 endpoint
-            // supports conditional requests, so exact slots stay off for a custom
-            // endpoint (AWS-native, `endpoint` unset, has them regardless).
-            None,
-        )
-        .await?;
-        probe_home.probe().await?;
+        //
+        // coven builds a cloud home from a store's config plus the credentials in
+        // its key service, so the proposed credentials go into the keyring first
+        // and the probe runs against a config that exists only here, in memory. A
+        // failed probe puts the previous credentials back, so the library is left
+        // exactly as it was found.
+        let previous_credentials = self.key_service.get_cloud_home_credentials()?;
+        self.key_service
+            .set_cloud_home_credentials(&CloudHomeCredentials::S3 {
+                access_key: data.access_key,
+                secret_key: data.secret_key,
+            })?;
+        if let Err(probe_failure) = self.probe_cloud_home(&proposed).await {
+            let restored = match previous_credentials {
+                Some(previous) => self.key_service.set_cloud_home_credentials(&previous),
+                None => self.key_service.delete_cloud_home_credentials(),
+            };
+            // The credentials the probe rejected are still in the keyring and the
+            // keyring itself is refusing writes, so nothing here can put the
+            // library back. Report that over the probe failure — it is the state
+            // the user has to fix first.
+            restored.map_err(|error| {
+                coven::KeyError::Persistence(format!(
+                    "the S3 credentials failed their probe ({probe_failure}) \
+                     and could not be taken back out of the keyring: {error}"
+                ))
+            })?;
+            return Err(probe_failure);
+        }
 
-        let creds = CloudHomeCredentials::S3 {
-            access_key: data.access_key,
-            secret_key: data.secret_key,
-        };
-        self.key_service.set_cloud_home_credentials(&creds)?;
-
-        self.config_handle.update(move |c| {
-            c.cloud_home.provider = Some(CloudProvider::S3);
-            c.cloud_home.s3_bucket = Some(data.bucket);
-            c.cloud_home.s3_region = Some(data.region);
-            c.cloud_home.s3_endpoint = data.endpoint.filter(|s| !s.is_empty());
-            c.cloud_home.s3_key_prefix = data.key_prefix.filter(|s| !s.is_empty());
-            c.cloud_home.storage = data.storage;
-        })?;
+        self.config_handle
+            .update(move |c| c.cloud_home = proposed)?;
 
         self.ensure_sync_manager_and_start().await?;
         info!("Saved S3 sync configuration");
@@ -441,6 +467,24 @@ impl SyncController {
         Ok(())
     }
 
+    /// Reach `home` with the credentials already staged in the key service. The
+    /// config it probes against exists only for the call — the stored one still
+    /// names whatever provider the library had.
+    async fn probe_cloud_home(&self, home: &coven::CloudHomeConfig) -> Result<(), LibraryError> {
+        let mut probe_config = self.config_handle.config().to_coven();
+        probe_config.cloud_home = home.clone();
+        coven::create_cloud_home(
+            &probe_config,
+            &self.key_service,
+            &crate::oauth::clients(),
+            self.clock.clone(),
+        )
+        .await?
+        .probe()
+        .await?;
+        Ok(())
+    }
+
     /// OAuth sign-in + persist for a browsable/opaque provider, then connect. The
     /// manager re-emits every album after this returns.
     #[cfg(feature = "oauth-providers")]
@@ -448,9 +492,10 @@ impl SyncController {
         &self,
         provider: CloudProvider,
         storage: crate::config::HomeStorage,
-        clock: &ClockRef,
     ) -> Result<(), LibraryError> {
-        use coven::{sign_in_dropbox, sign_in_google_drive, sign_in_onedrive};
+        // The OAuth applications this installation registered at startup: coven
+        // ships none, so the sign-in runs under bae's own client credentials.
+        let oauth_clients = crate::oauth::clients();
 
         // Hold the sender alive across the await so the cancel wait inside
         // `oauth::authorize` never fires — this fn surfaces no cancel signal. If this
@@ -459,15 +504,15 @@ impl SyncController {
         let (_cancel_tx, cancel_rx) = tokio::sync::watch::channel(false);
 
         let library_name = self.config_handle.config().store_name.clone();
-        let clock = clock.as_ref();
+        let clock = self.clock.as_ref();
         // coven's sign-ins authorize, resolve the cloud folder, and save tokens to
         // the keyring, returning the folder identifiers; bae persists them here.
         match provider {
             CloudProvider::GoogleDrive => {
-                let folder_id =
-                    sign_in_google_drive(&self.key_service, &library_name, cancel_rx, clock)
-                        .await
-                        .map_err(|e| LibraryError::CloudSetup(e.to_string()))?;
+                let folder_id = oauth_clients
+                    .sign_in_google_drive(&self.key_service, &library_name, cancel_rx, clock)
+                    .await
+                    .map_err(|e| LibraryError::CloudSetup(e.to_string()))?;
                 self.config_handle.update(move |c| {
                     c.cloud_home.provider = Some(CloudProvider::GoogleDrive);
                     c.cloud_home.google_drive_folder_id = Some(folder_id);
@@ -475,10 +520,10 @@ impl SyncController {
                 })?;
             }
             CloudProvider::Dropbox => {
-                let folder_path =
-                    sign_in_dropbox(&self.key_service, &library_name, cancel_rx, clock)
-                        .await
-                        .map_err(|e| LibraryError::CloudSetup(e.to_string()))?;
+                let folder_path = oauth_clients
+                    .sign_in_dropbox(&self.key_service, &library_name, cancel_rx, clock)
+                    .await
+                    .map_err(|e| LibraryError::CloudSetup(e.to_string()))?;
                 self.config_handle.update(move |c| {
                     c.cloud_home.provider = Some(CloudProvider::Dropbox);
                     c.cloud_home.dropbox_folder_path = Some(folder_path);
@@ -486,7 +531,8 @@ impl SyncController {
                 })?;
             }
             CloudProvider::OneDrive => {
-                let (drive_id, folder_id) = sign_in_onedrive(&self.key_service, cancel_rx, clock)
+                let (drive_id, folder_id) = oauth_clients
+                    .sign_in_onedrive(&self.key_service, cancel_rx, clock)
                     .await
                     .map_err(|e| LibraryError::CloudSetup(e.to_string()))?;
                 self.config_handle.update(move |c| {
@@ -539,7 +585,7 @@ impl SyncController {
 
         // Stop the sync loop and drop the installed manager; the library becomes
         // home-less until the next connect.
-        self.handle.disconnect_sync();
+        self.handle().disconnect_sync();
 
         // Connecting fills the whole cloud home; disconnecting clears it as a unit.
         self.config_handle
@@ -583,10 +629,10 @@ impl SyncController {
                 let ops = self.cloudkit_ops.clone().ok_or_else(|| {
                     LibraryError::Internal("CloudKit driver not provided".to_string())
                 })?;
-                self.handle.connect_sync_with_cloudkit(ops).await?;
+                self.handle().connect_sync_with_cloudkit(ops).await?;
             }
             _ => {
-                self.handle.connect_sync().await?;
+                self.handle().connect_sync().await?;
             }
         }
         Ok(())
@@ -613,12 +659,12 @@ impl SyncController {
         // already established.
         let config = self.config_handle.config();
         let identity_custody =
-            coven::IdentityCustody::Keyring.resolve(&config.store_id, &config.store_dir);
+            coven::IdentityCustody::Keyring.resolve(&self.key_service, &config.store_dir);
         if identity_custody.unlock()?.is_none() {
             identity_custody.persist(&coven::UserKeypair::generate())?;
         }
 
-        self.handle
+        self.handle()
             .connect_sync_with_test_home(cloud_home, cipher)
             .await?;
         Ok(())
@@ -627,8 +673,8 @@ impl SyncController {
     /// Ensure a sync manager exists — minting the encryption key if the home needs
     /// one — and start the sync loop.
     async fn ensure_sync_manager_and_start(&self) -> Result<(), LibraryError> {
-        if self.handle.is_connected() {
-            self.handle.start_sync().await?;
+        if self.handle().is_connected() {
+            self.handle().start_sync().await?;
             return Ok(());
         }
 
@@ -640,9 +686,9 @@ impl SyncController {
         // makes this idempotent across a retry after a failed sync init.
         let storage = self.config_handle.config().cloud_home.storage;
         let fingerprint = if storage.is_opaque() {
-            Some(match self.handle.master_key_fingerprint()? {
+            Some(match self.handle().master_key_fingerprint()? {
                 Some(fingerprint) => fingerprint,
-                None => self.handle.initialize_master_key()?,
+                None => self.handle().initialize_master_key()?,
             })
         } else {
             None
@@ -678,7 +724,7 @@ impl SyncController {
         // next launch or retry.
         self.connect_provider().await?;
 
-        self.handle.sync_now();
+        self.handle().sync_now();
 
         Ok(())
     }

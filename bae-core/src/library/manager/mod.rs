@@ -225,6 +225,14 @@ fn sync_category(error: &coven::SyncError) -> crate::ui::UiErrorCategory {
         // not the library or this device's credentials.
         SyncError::InvalidJoinRequest(_) => C::Membership,
         SyncError::DeviceJoinTransport(_) => C::Membership,
+        // The other membership operations that carry a pasted/scanned code —
+        // excluding a device from the store, promoting a member to owner — and a
+        // code that doesn't decode as the operation it was pasted into. Same
+        // class as an invalid join request: the membership operation failed, not
+        // the library or this device's credentials.
+        SyncError::InvalidMembershipOperationCode(_) => C::Membership,
+        SyncError::DeviceExclusion(_) => C::Membership,
+        SyncError::OwnerPromotion(_) => C::Membership,
         SyncError::StorageSetup(_) => C::Network,
         SyncError::NotConfigured
         | SyncError::LoopNotRunning
@@ -854,12 +862,6 @@ pub struct LibraryManager {
     /// services read it back off this manager for their own events.
     diagnostics: Diagnostics,
     runtime_handle: tokio::runtime::Handle,
-    /// The one coven data handle: it owns the database connection, the library
-    /// directory, the keys, the cloud storage, and — once a provider is connected
-    /// — the sync manager. Every blob read/write, every locality transition, and
-    /// the whole sync lifecycle route through it; bae passes only descriptors
-    /// (a `BlobRef`, a root id) and never assembles coven's internals by hand.
-    handle: CovenHandle,
     event_tx: broadcast::Sender<LibraryEvent>,
     /// The cloud-sync responsibility: the upload pipeline (outbox in-flight,
     /// throughput, pause), provider connection, membership, and the coven
@@ -963,7 +965,7 @@ impl LibraryManager {
         let handle = coven::Coven::builder(config_provider)
             .synced_tables(crate::sync::synced_tables())
             .clock(clock.clone())
-            .key_service(key_service.clone())
+            .oauth_clients(crate::oauth::clients())
             .apply_cloudkit_ops(cloudkit_ops.clone())
             .observer(weak_observer as Arc<dyn coven::BlobTransitionObserver>)
             .migrations(crate::migrations::all())
@@ -976,13 +978,13 @@ impl LibraryManager {
             })?;
         let database = Database::from_handle(handle.clone(), clock.clone(), ids.clone());
         observer.set_database(Arc::new(database.clone()));
-        observer.set_handle(handle.clone());
-        let sync_status = Arc::new(Mutex::new(SyncStatusState::initial(&handle)));
+        observer.set_handle(handle);
+        let sync_status = Arc::new(Mutex::new(SyncStatusState::initial(database.handle())));
 
         let sync = SyncController::new(
-            handle.clone(),
             config_handle.clone(),
             key_service.clone(),
+            clock.clone(),
             event_tx.clone(),
             database.clone(),
             outbox_in_flight,
@@ -1002,7 +1004,6 @@ impl LibraryManager {
             ids,
             diagnostics,
             runtime_handle,
-            handle,
             event_tx,
             sync,
             sync_status,
@@ -1032,12 +1033,11 @@ impl LibraryManager {
         runtime_handle: tokio::runtime::Handle,
     ) -> Self {
         let (event_tx, _) = broadcast::channel(LIBRARY_EVENT_CHANNEL_CAPACITY);
-        let handle = database.handle().clone();
 
         let sync = SyncController::new(
-            handle.clone(),
             config_handle.clone(),
             key_service.clone(),
+            clock.clone(),
             event_tx.clone(),
             database.clone(),
             Arc::new(Mutex::new(HashMap::new())),
@@ -1047,7 +1047,7 @@ impl LibraryManager {
             None,
             diagnostics.clone(),
         );
-        let sync_status = Arc::new(Mutex::new(SyncStatusState::initial(&handle)));
+        let sync_status = Arc::new(Mutex::new(SyncStatusState::initial(database.handle())));
 
         let manager = LibraryManager {
             database,
@@ -1058,7 +1058,6 @@ impl LibraryManager {
             ids,
             diagnostics,
             runtime_handle,
-            handle,
             event_tx,
             sync,
             sync_status,
@@ -1137,7 +1136,9 @@ impl LibraryManager {
             .release_file_row_blob_ref(file_id)
             .await
             .expect("blob ref");
-        self.handle.blob_cloud_key(blob.blob()).expect("cloud key")
+        self.handle()
+            .blob_cloud_key(blob.blob())
+            .expect("cloud key")
     }
 
     /// The injected wall clock. The import layer and the mappers read "now"
@@ -1192,7 +1193,7 @@ impl LibraryManager {
     /// banner state, and granular entity events for the rows an applied changeset
     /// touched. Call once after construction, with a tokio runtime available.
     pub fn start(&self) {
-        let mut rx = self.handle.subscribe_sync_status();
+        let mut rx = self.handle().subscribe_sync_status();
         let lm = self.clone();
         self.runtime_handle.spawn(async move {
             loop {
@@ -1680,7 +1681,7 @@ impl LibraryManager {
         // whether anything is still queued, which would read as done too early.
         let make_remote_in_flight = !release.remote
             && self
-                .handle
+                .handle()
                 .make_remote_progress("releases", release_id)
                 .await
                 .map_err(|e| {
@@ -1729,7 +1730,7 @@ impl LibraryManager {
 
         if cover.is_some() {
             let blob = self
-                .handle
+                .handle()
                 .row_blob_ref(crate::sync::COVERS_NAMESPACE, release_id)
                 .await
                 .map_err(|e| {
@@ -1767,7 +1768,7 @@ impl LibraryManager {
 
     async fn evict_delete_blobs(&self, blobs: Vec<coven::RowBlobRef>) {
         for blob in blobs {
-            if let Err(e) = self.handle.evict_blob(&blob).await {
+            if let Err(e) = self.handle().evict_blob(&blob).await {
                 warn!(
                     "Failed to drop on-device copies during deletion for {}/{}: {e}",
                     blob.table(),

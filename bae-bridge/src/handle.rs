@@ -4052,7 +4052,7 @@ mod tests {
             library_dir.clone(),
             "Test Library".to_string(),
         );
-        let key_service = bae_core::keys::StoreKeys::new(library_id.clone());
+        let key_service = bae_core::keys::StoreKeys::bind(library_id.clone());
         key_service
             .set_discogs_key("test-discogs-token")
             .expect("seed test Discogs key");
@@ -4064,7 +4064,6 @@ mod tests {
             config.to_coven(),
             Arc::new(coven::SystemClock),
             Arc::clone(&ids),
-            coven::StoreKeys::new(library_id),
             bae_core::sync::synced_tables(),
             None,
         )

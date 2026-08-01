@@ -41,7 +41,7 @@ pub fn seed_dev_keyring(library_id: &str) {
         return;
     }
 
-    let keys = coven::StoreKeys::new(library_id.to_string());
+    let keys = coven::StoreKeys::bind(library_id.to_string());
 
     if let Some(key) = dev_env_secret("BAE_ENCRYPTION_KEY") {
         match keys.set_encryption_key(&key) {

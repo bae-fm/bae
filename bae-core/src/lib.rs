@@ -27,6 +27,7 @@ pub mod loudness;
 pub mod migrations;
 pub mod musicbrainz;
 pub mod network;
+pub mod oauth;
 pub mod playback;
 pub mod queue;
 pub mod renderer;

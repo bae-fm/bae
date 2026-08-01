@@ -15,7 +15,7 @@ pub use keyring::init_keyring;
 pub use keyring::install_test_keyring;
 pub use save::{SaveBitDepth, SaveCodec, SaveFilenameToken, SavePregapPlacement, SavePreset};
 
-use crate::util::atomic_write::{write_atomic, write_atomic_io, WriteError};
+use coven::{write_atomic, write_atomic_io, WriteError};
 use dev::dev_mode_enabled;
 use save::default_save_presets;
 

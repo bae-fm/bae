@@ -10,7 +10,7 @@ impl LibraryManager {
     /// source files, and re-emits the subtree (the host-provided cover then rides
     /// along). Returns once enqueued; completion fires `on_root_made_remote`.
     pub async fn coven_make_remote(&self, release_id: &str, pin: bool) -> Result<(), LibraryError> {
-        self.handle
+        self.handle()
             .make_remote("releases", release_id, pin)
             .await
             .map_err(|e| LibraryError::Storage(format!("make release {release_id} remote: {e}")))
@@ -23,7 +23,7 @@ impl LibraryManager {
         &self,
         release_id: &str,
     ) -> Result<(), LibraryError> {
-        self.handle
+        self.handle()
             .cancel_make_remote("releases", release_id)
             .await
             .map_err(|e| {
@@ -35,7 +35,7 @@ impl LibraryManager {
         // cancel is done when it returns instead of leaving the release reading as
         // still-uploading. A drain with no provider connected is not an error the
         // user needs.
-        if let Err(e) = self.handle.drain_uploads().await {
+        if let Err(e) = self.handle().drain_uploads().await {
             warn!("finishing the cancelled make-remote for {release_id}: {e}");
         }
         Ok(())
@@ -57,7 +57,7 @@ impl LibraryManager {
         let (cancel_rx, bridge) =
             crate::library::cancel_token_to_watch(&self.runtime_handle, cancel.clone());
         let result = self
-            .handle
+            .handle()
             .make_local("releases", release_id, &dest, &cancel_rx)
             .await;
         bridge.abort();
@@ -119,7 +119,7 @@ impl LibraryManager {
     /// floor read from the cloud — a network round trip, hence async (coven's
     /// own `CovenHandle::generate_restore_code` is the same way).
     pub async fn generate_restore_code(&self) -> Result<String, LibraryError> {
-        Ok(self.handle.generate_restore_code().await?)
+        Ok(self.handle().generate_restore_code().await?)
     }
 
     /// The library's membership: its devices (with this device flagged, each

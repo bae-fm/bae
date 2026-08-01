@@ -45,7 +45,8 @@ class OAuthLinking private constructor(
 
     /**
      * Register the client ids with the bridge so coven can build authorization
-     * URLs and refresh provider tokens during sync. Idempotent; call at launch.
+     * URLs and refresh provider tokens during sync. Call at launch; registering
+     * again replaces the previous set.
      */
     override fun register() {
         val json = JSONObject()

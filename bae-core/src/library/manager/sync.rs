@@ -12,14 +12,17 @@ impl LibraryManager {
     }
 
     pub fn has_cloud_home(&self) -> bool {
-        self.handle.is_connected()
+        self.handle().is_connected()
     }
 
-    /// The one coven data handle. The playback reader clones it to stream blob
-    /// ranges; callers route every blob read/write and the sync lifecycle through
-    /// it rather than reaching into coven's internals.
+    /// The one coven data handle, read from the database that owns it. The
+    /// playback reader clones it to stream blob ranges; callers route every blob
+    /// read/write and the sync lifecycle through it rather than reaching into
+    /// coven's internals. coven's handle is a large value type, so bae keeps the
+    /// single copy behind the database's `Arc` rather than embedding one per
+    /// holder.
     pub(crate) fn handle(&self) -> &CovenHandle {
-        &self.handle
+        self.database.handle()
     }
 
     /// The store database. Playback asks it whether a file's upload is still
@@ -53,7 +56,7 @@ impl LibraryManager {
     /// remote only once the upload observer, which fires from inside the running
     /// loop, confirms the last upload landed.
     pub fn is_sync_ready(&self) -> bool {
-        self.handle.is_syncing()
+        self.handle().is_syncing()
     }
 
     pub fn get_sync_status(&self) -> SyncStatusSnapshot {
@@ -67,7 +70,7 @@ impl LibraryManager {
     }
 
     pub fn trigger_sync(&self) {
-        self.handle.sync_now();
+        self.handle().sync_now();
     }
 
     pub async fn save_s3_config(&self, data: S3ConfigData) -> Result<(), LibraryError> {
@@ -83,9 +86,7 @@ impl LibraryManager {
         provider: CloudProvider,
         storage: crate::config::HomeStorage,
     ) -> Result<(), LibraryError> {
-        self.sync
-            .sign_in_cloud_provider(provider, storage, &self.clock)
-            .await?;
+        self.sync.sign_in_cloud_provider(provider, storage).await?;
         // A cloud home now exists, so every release gains its storage actions.
         self.emit_all_albums_updated().await;
         Ok(())

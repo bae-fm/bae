@@ -304,6 +304,7 @@ async fn restore_from_code_inner(
         None,
         coven::KeyCustody::Keyring,
         coven::IdentityCustody::Keyring,
+        crate::oauth::clients(),
         oauth_tokens,
         cloudkit_ops,
         &library_layout(app_dir),
@@ -338,6 +339,7 @@ async fn join_from_scanned_bundle_inner(
         None,
         coven::KeyCustody::Keyring,
         coven::IdentityCustody::Keyring,
+        crate::oauth::clients(),
         oauth_tokens,
         cloudkit_ops,
         std::sync::Arc::new(coven::SystemClock),
@@ -427,7 +429,7 @@ fn unlock_library_in_dir(
         }
     }
 
-    let key_service = StoreKeys::new(library_id.to_string());
+    let key_service = StoreKeys::bind(library_id.to_string());
     key_service.set_encryption_key(key_hex)?;
 
     Ok(())
@@ -473,7 +475,7 @@ mod tests {
         )
         .unwrap();
 
-        let stored = StoreKeys::new(library_id.to_string())
+        let stored = StoreKeys::bind(library_id.to_string())
             .get_encryption_key()
             .unwrap();
         assert_eq!(stored.as_deref(), Some(stored_key.as_str()));

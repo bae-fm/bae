@@ -77,7 +77,7 @@ async fn setup_test_manager_with_library_id(library_id: &str) -> (LibraryManager
     );
     let config_handle = Arc::new(ConfigHandle::new(config));
     crate::config::install_test_keyring();
-    let key_service = StoreKeys::new(library_id.to_string());
+    let key_service = StoreKeys::bind(library_id.to_string());
     // `database`'s coven handle (opened via `Database::new_test` above)
     // establishes its own per-store identity under the fixed test store id
     // `new_test` always opens — see the note there.
@@ -234,11 +234,11 @@ async fn has_queued_delete(manager: &LibraryManager, namespace: &str, blob_id: &
         .any(|delete| delete.namespace == namespace && delete.blob_id == blob_id)
 }
 
-/// Break one of coven's bookkeeping tables so the next write against it fails
-/// mid-transaction. coven exposes no fault injection for its own SQL, and these
-/// tests need a cleanup step to fail *after* the row deletes have been staged —
-/// that is the whole point of asserting the delete rolls back — so the table
-/// name is the seam. bae reaches for a coven-internal name nowhere else.
+/// Break one of bae's own tables so the next read or write against it fails,
+/// standing in for a database that has gone bad under a delete. Only bae's tables
+/// are renameable: coven's SQL authorizer refuses a host statement that alters one
+/// of its reserved tables, so a cleanup step coven owns is failed by handing it
+/// input it refuses instead (see the rollback tests below).
 async fn rename_table_for_test(manager: &LibraryManager, from: &str, to: &str) {
     let statement = format!("ALTER TABLE {from} RENAME TO {to}");
     manager
@@ -315,7 +315,7 @@ async fn setup_forget_library_manager_at(
     );
     let config_handle = Arc::new(ConfigHandle::new(config));
     crate::config::install_test_keyring();
-    let key_service = StoreKeys::new(library_id.to_string());
+    let key_service = StoreKeys::bind(library_id.to_string());
     LibraryManager::new(
         database,
         config_handle,
@@ -916,43 +916,20 @@ async fn delete_release_fails_before_rows_are_deleted_when_file_cleanup_lookup_f
         .is_some());
 }
 
-/// The release must be genuinely Remote: only a blob with a committed cloud
-/// object gets a tombstone, so only then is there an enqueue to fail.
-#[cfg(feature = "test-utils")]
+/// The row deletes and the blob cleanup share one transaction, so a cleanup step
+/// coven refuses takes the row deletes down with it — the release survives rather
+/// than leaving the library short a release whose blob bookkeeping still stands.
+///
+/// Clearing an external registration names the blob table it belongs to, and
+/// coven refuses a name that declares no blob. That refusal lands mid-transaction,
+/// after the deletes have been staged, which is the point.
 #[tokio::test]
-async fn delete_release_fails_before_rows_are_deleted_when_file_tombstone_enqueue_fails() {
-    let (manager, temp_dir) = setup_test_manager().await;
-    connect_test_cloud(&manager).await;
-    let release_id =
-        make_remote_release(&manager, &temp_dir.path().join("r1"), "Album One", false).await;
-
-    rename_table_for_test(&manager, "cloud_outbox", "cloud_outbox_unavailable").await;
-
-    // Any error will do — what the test is about is that the delete surfaces it
-    // instead of removing the rows. Which layer it comes from depends on where
-    // coven happens to touch its queue first, so pinning the variant would pin
-    // an implementation detail.
-    manager.delete_release(&release_id).await.unwrap_err();
-    assert!(manager
-        .database
-        .find_release_by_id(&release_id)
-        .await
-        .unwrap()
-        .is_some());
-}
-
-#[tokio::test]
-async fn delete_release_fails_before_rows_are_deleted_when_local_external_ref_cleanup_fails() {
-    let (manager, temp_dir) = setup_test_manager().await;
+async fn delete_release_rolls_back_when_an_external_ref_clear_is_refused() {
+    let (manager, _temp_dir) = setup_test_manager().await;
     let album = create_test_album();
     let release = create_test_release(&album.id);
     manager.database.insert_album(&album).await.unwrap();
     manager.database.insert_release(&release).await.unwrap();
-    manager
-        .database
-        .set_remote_for_test(&release.id, false)
-        .await
-        .unwrap();
 
     let file = DbFile::new(
         &release.id,
@@ -964,16 +941,64 @@ async fn delete_release_fails_before_rows_are_deleted_when_local_external_ref_cl
         crate::util::fs::hash_bytes(b"fixture"),
     );
     manager.add_file(&file).await.unwrap();
+
     manager
         .database
-        .register_release_external_refs_for_test(&release.id, temp_dir.path().to_str().unwrap())
+        .delete_release_with_cleanup(
+            &release.id,
+            &album.id,
+            DeleteCleanupPlan {
+                blobs_to_tombstone: Vec::new(),
+                external_refs_to_clear: vec![("no_such_blob_table".to_string(), file.id.clone())],
+            },
+        )
+        .await
+        .expect_err("clearing a ref on an undeclared blob table is refused");
+
+    assert!(manager
+        .database
+        .find_release_by_id(&release.id)
+        .await
+        .unwrap()
+        .is_some());
+}
+
+/// The tombstone half of the rollback above. A blob with no committed cloud
+/// object has nothing to remove and coven refuses to queue a tombstone for it, so
+/// a cover that never reached the cloud is a cleanup step that fails inside the
+/// delete transaction.
+#[tokio::test]
+async fn delete_release_rolls_back_when_a_blob_tombstone_is_refused() {
+    let (manager, _temp_dir) = setup_test_manager().await;
+    let album = create_test_album();
+    let release = create_test_release(&album.id);
+    manager.database.insert_album(&album).await.unwrap();
+    manager.database.insert_release(&release).await.unwrap();
+    store_test_cover_image(&manager, &release.id).await;
+
+    let cover_blob = manager
+        .handle()
+        .row_blob_ref(crate::sync::COVERS_NAMESPACE, &release.id)
         .await
         .unwrap();
+    assert!(
+        cover_blob.stored().is_none(),
+        "no provider is connected, so the cover reached no cloud object"
+    );
 
-    rename_table_for_test(&manager, "local_blob_refs", "local_blob_refs_unavailable").await;
+    manager
+        .database
+        .delete_release_with_cleanup(
+            &release.id,
+            &album.id,
+            DeleteCleanupPlan {
+                blobs_to_tombstone: vec![cover_blob],
+                external_refs_to_clear: Vec::new(),
+            },
+        )
+        .await
+        .expect_err("tombstoning a blob with no cloud object is refused");
 
-    let error = manager.delete_release(&release.id).await.unwrap_err();
-    assert!(matches!(error, LibraryError::Database(_)));
     assert!(manager
         .database
         .find_release_by_id(&release.id)
@@ -1120,30 +1145,6 @@ async fn delete_release_fails_before_rows_are_deleted_when_cover_lookup_fails() 
     assert!(manager
         .database
         .find_release_by_id(&release.id)
-        .await
-        .unwrap()
-        .is_some());
-}
-
-/// As above for the cover: the cover's cloud object has to exist (its Store
-/// write published) before there is a tombstone whose enqueue can fail.
-#[cfg(feature = "test-utils")]
-#[tokio::test]
-async fn delete_release_fails_before_rows_are_deleted_when_cover_tombstone_enqueue_fails() {
-    let (manager, temp_dir) = setup_test_manager().await;
-    connect_test_cloud(&manager).await;
-    let release_id =
-        make_remote_release(&manager, &temp_dir.path().join("r1"), "Album One", false).await;
-    store_test_cover_image(&manager, &release_id).await;
-    wait_for_published_blob(&manager, crate::sync::COVERS_NAMESPACE, &release_id).await;
-
-    rename_table_for_test(&manager, "cloud_outbox", "cloud_outbox_unavailable").await;
-
-    let error = manager.delete_release(&release_id).await.unwrap_err();
-    assert!(matches!(error, LibraryError::Database(_)));
-    assert!(manager
-        .database
-        .find_release_by_id(&release_id)
         .await
         .unwrap()
         .is_some());
@@ -2224,7 +2225,7 @@ async fn find_release_detail_with_returns_none_for_deleted_release() {
 
     let detail = crate::library::manager::find_release_detail_with(
         &manager.database,
-        &manager.handle,
+        manager.handle(),
         true,
         true,
         &release.id,
@@ -2266,7 +2267,7 @@ async fn upload_observer_processes_transition_after_deleted_release() {
         manager.event_tx.clone(),
     );
     observer.set_database(Arc::new(manager.database.clone()));
-    observer.set_handle(manager.handle.clone());
+    observer.set_handle(manager.handle().clone());
 
     observer
         .on_root_made_local("releases", &deleted_release.id)

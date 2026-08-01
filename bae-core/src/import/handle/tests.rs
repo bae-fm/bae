@@ -32,7 +32,7 @@ fn test_config_and_keys(
     crate::config::install_test_keyring();
     (
         std::sync::Arc::new(crate::config::ConfigHandle::new(config)),
-        crate::keys::StoreKeys::new(library_id),
+        crate::keys::StoreKeys::bind(library_id),
     )
 }
 

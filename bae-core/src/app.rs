@@ -160,7 +160,7 @@ fn bootstrap_inner(
     // StoreKeys can't see those, so bridge them into the keyring it reads.
     // No-op in production.
     crate::config::seed_dev_keyring(&config.store_id);
-    let key_service = StoreKeys::new(config.store_id.clone());
+    let key_service = StoreKeys::bind(config.store_id.clone());
 
     // Whether this library already has its key on this device — a returning
     // user with a configured opaque provider. A local-only library has no key

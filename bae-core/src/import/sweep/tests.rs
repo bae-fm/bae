@@ -309,7 +309,7 @@ impl Fixture {
         let manager = LibraryManager::new(
             database,
             Arc::new(ConfigHandle::new(config)),
-            StoreKeys::new(library_id),
+            StoreKeys::bind(library_id),
             clock,
             ids,
             crate::diagnostics::Diagnostics::noop(),

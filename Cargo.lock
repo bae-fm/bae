@@ -1592,7 +1592,7 @@ dependencies = [
 [[package]]
 name = "coven"
 version = "1.0.0-rc.1"
-source = "git+https://github.com/bae-fm/coven?rev=6dcf27d9875abe1c04dccded3b8b4b34aab6c6c3#6dcf27d9875abe1c04dccded3b8b4b34aab6c6c3"
+source = "git+https://github.com/bae-fm/coven?rev=a4b3913bbe21f940a278b7d669b3e97a65aded54#a4b3913bbe21f940a278b7d669b3e97a65aded54"
 dependencies = [
  "android-native-keyring-store",
  "apple-native-keyring-store",
@@ -1608,9 +1608,13 @@ dependencies = [
  "bytes",
  "chacha20poly1305",
  "chrono",
- "coven-core",
+ "crypto_box",
+ "ed25519-dalek",
+ "fallible-streaming-iterator",
  "futures-util",
  "hex",
+ "hkdf",
+ "hmac 0.12.1",
  "keyring-core",
  "open",
  "rand 0.9.2",
@@ -1620,36 +1624,6 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_urlencoded",
- "sha2 0.10.9",
- "thiserror 1.0.69",
- "tokio",
- "tracing",
- "uuid",
- "windows-native-keyring-store",
- "zeroize",
-]
-
-[[package]]
-name = "coven-core"
-version = "1.0.0-rc.1"
-source = "git+https://github.com/bae-fm/coven?rev=6dcf27d9875abe1c04dccded3b8b4b34aab6c6c3#6dcf27d9875abe1c04dccded3b8b4b34aab6c6c3"
-dependencies = [
- "async-trait",
- "base64",
- "bytes",
- "chacha20poly1305",
- "chrono",
- "crypto_box",
- "ed25519-dalek",
- "fallible-streaming-iterator",
- "futures-util",
- "hex",
- "hkdf",
- "hmac 0.12.1",
- "rand 0.9.2",
- "rusqlite",
- "serde",
- "serde_json",
  "serde_yaml",
  "sha2 0.10.9",
  "tempfile",
@@ -1658,7 +1632,9 @@ dependencies = [
  "tracing",
  "url",
  "uuid",
+ "windows-native-keyring-store",
  "x25519-dalek 3.0.0",
+ "zeroize",
 ]
 
 [[package]]
@@ -2198,7 +2174,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "39cab71617ae0d63f51a36d69f866391735b51691dbda63cf6f96d042b63efeb"
 dependencies = [
  "libc",
- "windows-sys 0.61.2",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -2675,15 +2651,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b2bca93b15ea5a746f220e56587f71e73c6165eab783df9e26590069953e3c30"
 dependencies = [
  "fxhash",
-]
-
-[[package]]
-name = "hashlink"
-version = "0.11.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "824e001ac4f3012dd16a264bec811403a67ca9deb6c102fc5049b32c4574b35f"
-dependencies = [
- "hashbrown 0.16.1",
 ]
 
 [[package]]
@@ -3621,7 +3588,7 @@ version = "0.50.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7957b9740744892f114936ab4a57b3f487491bbeafaf8083688b16841a4240e5"
 dependencies = [
- "windows-sys 0.61.2",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -4201,7 +4168,7 @@ dependencies = [
  "once_cell",
  "socket2",
  "tracing",
- "windows-sys 0.60.2",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -4519,16 +4486,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "rsqlite-vfs"
-version = "0.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c51c9ae4df8a7fba42103df5c621fa3c37eccf3a3c650879e90fc48b11cc192c"
-dependencies = [
- "hashbrown 0.16.1",
- "thiserror 2.0.18",
-]
-
-[[package]]
 name = "rtrb"
 version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4543,10 +4500,8 @@ dependencies = [
  "bitflags 2.11.0",
  "fallible-iterator",
  "fallible-streaming-iterator",
- "hashlink",
  "libsqlite3-sys",
  "smallvec",
- "sqlite-wasm-rs",
 ]
 
 [[package]]
@@ -4604,7 +4559,7 @@ dependencies = [
  "errno",
  "libc",
  "linux-raw-sys 0.12.1",
- "windows-sys 0.61.2",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -4663,7 +4618,7 @@ dependencies = [
  "security-framework",
  "security-framework-sys",
  "webpki-root-certs",
- "windows-sys 0.61.2",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -5137,18 +5092,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "sqlite-wasm-rs"
-version = "0.5.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dc3efc0da82635d7e1ced0053bbbfa8c7ab9645d0bf36ceb4f7127bb85315d75"
-dependencies = [
- "cc",
- "js-sys",
- "rsqlite-vfs",
- "wasm-bindgen",
-]
-
-[[package]]
 name = "sse-stream"
 version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5237,7 +5180,7 @@ dependencies = [
  "getrandom 0.4.2",
  "once_cell",
  "rustix 1.1.4",
- "windows-sys 0.61.2",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -6126,7 +6069,7 @@ version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c2a7b1c03c876122aa43f3020e6c3c3ee5c05081c9a00739faf7503aeba10d22"
 dependencies = [
- "windows-sys 0.61.2",
+ "windows-sys 0.48.0",
 ]
 
 [[package]]

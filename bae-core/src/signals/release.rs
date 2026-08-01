@@ -231,7 +231,7 @@ mod tests {
         );
         let config_handle = Arc::new(ConfigHandle::new(config));
         crate::config::install_test_keyring();
-        let key_service = StoreKeys::new(library_id);
+        let key_service = StoreKeys::bind(library_id);
         let manager = LibraryManager::new(
             database.clone(),
             config_handle,
@@ -374,7 +374,7 @@ mod tests {
         );
         let config_handle = Arc::new(ConfigHandle::new(config));
         crate::config::install_test_keyring();
-        let key_service = StoreKeys::new(library_id);
+        let key_service = StoreKeys::bind(library_id);
         let manager = LibraryManager::new(
             database.clone(),
             config_handle,

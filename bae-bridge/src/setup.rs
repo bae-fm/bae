@@ -140,30 +140,12 @@ async fn restore_from_code_config(
 /// alongside the callback wait and tears the listener down.
 #[cfg(feature = "oauth-providers")]
 static OAUTH_CANCEL_TX: Mutex<Option<tokio::sync::watch::Sender<bool>>> = Mutex::new(None);
-/// A pending host-driven OAuth exchange, keyed by request id between
-/// [`oauth_begin`] and [`oauth_complete`]. coven's `AuthorizeRequest` — which
-/// carries the PKCE verifier and state `oauth_complete` must feed back — is not
-/// part of coven's curated public API and lives in its `pub(crate)` oauth
-/// module, so the bridge can't name the type to store it. Instead it captures
-/// the request inside this closure (whose type it never names) that runs the
-/// exchange when the redirect comes back.
-#[cfg(feature = "oauth-providers")]
-type OAuthExchange = Box<
-    dyn FnOnce(
-            coven::CloudProvider, // provider
-            String,               // authorization code
-            String,               // callback state
-            String,               // redirect uri
-        ) -> std::pin::Pin<
-            Box<
-                dyn std::future::Future<Output = Result<coven::OAuthTokens, coven::OAuthError>>
-                    + Send,
-            >,
-        > + Send,
->;
+/// The pending host-driven OAuth requests, keyed by the request id
+/// [`oauth_begin`] hands out and [`oauth_complete`] passes back. Each carries
+/// the PKCE verifier and callback state the exchange must present.
 #[cfg(feature = "oauth-providers")]
 static OAUTH_REQUESTS: std::sync::LazyLock<
-    Mutex<std::collections::HashMap<String, OAuthExchange>>,
+    Mutex<std::collections::HashMap<String, coven::AuthorizeRequest>>,
 > = std::sync::LazyLock::new(|| Mutex::new(std::collections::HashMap::new()));
 
 fn lock_bridge_mutex<T>(mutex: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
@@ -675,7 +657,8 @@ pub fn oauth_authorize(provider: BridgeCloudProvider) -> Result<String, BridgeEr
     let result = on_worker(move || async move {
         let core_provider = provider.into_core();
         let clock = std::sync::Arc::new(coven::SystemClock);
-        let tokens = coven::authorize_provider(core_provider, cancel, clock.as_ref())
+        let tokens = bae_core::oauth::clients()
+            .authorize(core_provider, cancel, clock.as_ref())
             .await
             .map_err(|e| BridgeError::config(format!("OAuth authorization failed: {e}")))?;
 
@@ -698,10 +681,13 @@ pub struct BridgeOAuthRequest {
 }
 
 /// Register the host's OAuth client credentials, keyed by provider name
-/// (`"google_drive"`, `"dropbox"`, `"onedrive"`). Call once at startup before
-/// any OAuth flow. `creds_json` is an object of
+/// (`"google_drive"`, `"dropbox"`, `"onedrive"`). Call once at startup, before
+/// any OAuth flow and before opening a library whose cloud home is one of those
+/// providers — a library opens over the set registered at that moment.
+/// `creds_json` is an object of
 /// `{ "<provider>": { "client_id": "...", "client_secret": null } }`. coven
 /// ships no credentials of its own — the consuming app registers its own.
+/// Registering again replaces the previous set.
 #[cfg(feature = "oauth-providers")]
 #[uniffi::export]
 pub fn set_oauth_client_creds(creds_json: String) -> Result<(), BridgeError> {
@@ -710,6 +696,7 @@ pub fn set_oauth_client_creds(creds_json: String) -> Result<(), BridgeError> {
             .map_err(|e| BridgeError::config(format!("Invalid OAuth creds JSON: {e}")))?;
     let mut creds = std::collections::HashMap::new();
     for (provider, value) in parsed {
+        let core_provider = oauth_provider_by_name(&provider)?;
         let client_id = value
             .get("client_id")
             .and_then(|v| v.as_str())
@@ -722,16 +709,31 @@ pub fn set_oauth_client_creds(creds_json: String) -> Result<(), BridgeError> {
             .and_then(|v| v.as_str())
             .map(str::to_string);
         creds.insert(
-            provider,
+            core_provider,
             coven::OAuthClientCreds {
                 client_id,
                 client_secret,
             },
         );
     }
-    coven::set_oauth_client_creds(creds)
-        .map_err(|e| BridgeError::config(format!("OAuth client credentials conflict: {e}")))?;
+    bae_core::oauth::set_client_creds(creds)
+        .map_err(|e| BridgeError::config(format!("OAuth client credentials rejected: {e}")))?;
     Ok(())
+}
+
+/// The provider a `set_oauth_client_creds` JSON key names. Only the three
+/// account-based clouds run an OAuth flow, so any other key is a host mistake
+/// worth naming rather than silently dropping.
+#[cfg(feature = "oauth-providers")]
+fn oauth_provider_by_name(name: &str) -> Result<coven::CloudProvider, BridgeError> {
+    match name {
+        "google_drive" => Ok(coven::CloudProvider::GoogleDrive),
+        "dropbox" => Ok(coven::CloudProvider::Dropbox),
+        "onedrive" => Ok(coven::CloudProvider::OneDrive),
+        other => Err(BridgeError::config(format!(
+            "OAuth creds name a provider that uses no OAuth flow: {other}"
+        ))),
+    }
 }
 
 /// Begin a host-driven OAuth flow: build the authorization URL for `provider`,
@@ -747,26 +749,13 @@ pub fn oauth_begin(
     redirect_uri: String,
 ) -> Result<BridgeOAuthRequest, BridgeError> {
     let core_provider = provider.into_core();
-    let req = coven::build_authorize_request_for_provider(core_provider, &redirect_uri)
+    let request = bae_core::oauth::clients()
+        .build_authorize_request(core_provider, &redirect_uri)
         .map_err(|e| BridgeError::config(format!("OAuth begin failed: {e}")))?;
-    let auth_url = req.auth_url.clone();
+    let auth_url = request.auth_url.clone();
     // An opaque handle correlating this begin with its later complete; not a
-    // PKCE value (coven holds the real verifier inside `req`).
+    // PKCE value (coven holds the real verifier inside `request`).
     let request_id = coven::IdProvider::new_id(&coven::UuidProvider);
-    let exchange: OAuthExchange = Box::new(move |provider, code, state, redirect_uri| {
-        Box::pin(async move {
-            let clock = std::sync::Arc::new(coven::SystemClock);
-            coven::exchange_code_for_provider(
-                provider,
-                &code,
-                Some(&state),
-                &req,
-                &redirect_uri,
-                clock.as_ref(),
-            )
-            .await
-        })
-    });
     // At most one host-driven exchange is ever pending: a fresh begin supersedes
     // any earlier un-completed one, so a host that restarts the flow without an
     // intervening cancel doesn't strand the prior entry. Hold the lock across the
@@ -774,7 +763,7 @@ pub fn oauth_begin(
     {
         let mut requests = lock_bridge_mutex(&OAUTH_REQUESTS);
         requests.clear();
-        requests.insert(request_id.clone(), exchange);
+        requests.insert(request_id.clone(), request);
     }
     Ok(BridgeOAuthRequest {
         auth_url,
@@ -795,13 +784,22 @@ pub fn oauth_complete(
     redirect_uri: String,
 ) -> Result<String, BridgeError> {
     let core_provider = provider.into_core();
-    let exchange = lock_bridge_mutex(&OAUTH_REQUESTS)
+    let request = lock_bridge_mutex(&OAUTH_REQUESTS)
         .remove(&request_id)
         .ok_or_else(|| {
             BridgeError::config("OAuth request not found or already used".to_string())
         })?;
     let tokens = on_worker(move || async move {
-        exchange(core_provider, code, state, redirect_uri)
+        let clock = std::sync::Arc::new(coven::SystemClock);
+        bae_core::oauth::clients()
+            .exchange_code(
+                core_provider,
+                &code,
+                Some(&state),
+                &request,
+                &redirect_uri,
+                clock.as_ref(),
+            )
             .await
             .map_err(|e| BridgeError::config(format!("OAuth token exchange failed: {e}")))
     })?;
@@ -869,15 +867,13 @@ mod tests {
 
         let mut creds = std::collections::HashMap::new();
         creds.insert(
-            "google_drive".to_string(),
+            coven::CloudProvider::GoogleDrive,
             coven::OAuthClientCreds {
                 client_id: "test-client-id".to_string(),
                 client_secret: None,
             },
         );
-        // `set_oauth_client_creds` is a process-global no-op when re-registering
-        // the same map, so repeated test runs in one process are fine.
-        let _ = coven::set_oauth_client_creds(creds);
+        bae_core::oauth::set_client_creds(creds).expect("register test OAuth client creds");
 
         let redirect_uri = "bae://oauth".to_string();
 

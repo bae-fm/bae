@@ -861,14 +861,13 @@ impl Database {
         config: impl Into<coven::CovenConfig>,
         clock: ClockRef,
         ids: IdRef,
-        key_service: coven::StoreKeys,
         synced_tables: Vec<coven::SyncedTable>,
         observer: Option<Arc<dyn coven::BlobTransitionObserver>>,
     ) -> Result<Self, DbError> {
         let mut builder = Coven::builder(config)
             .synced_tables(synced_tables)
             .clock(clock.clone())
-            .key_service(key_service);
+            .oauth_clients(crate::oauth::clients());
         if let Some(observer) = observer {
             builder = builder.observer(observer);
         }
@@ -902,8 +901,6 @@ impl Database {
             library_dir,
             "Test Library".to_string(),
         );
-        let key_service = coven::StoreKeys::new(config.store_id.clone());
-
         // Opaque-home blob-key derivation shards by the uploading device's
         // public key, so establish this fixed test store's identity up front
         // — get-or-create (never mint over one already established), so the
@@ -914,8 +911,10 @@ impl Database {
         // to have already called `install_test_keyring` — the many callers of
         // this test helper that never touch identity never called it before.
         crate::config::install_test_keyring();
-        let identity_custody =
-            coven::IdentityCustody::Keyring.resolve(&config.store_id, &config.store_dir);
+        let identity_custody = coven::IdentityCustody::Keyring.resolve(
+            &coven::StoreKeys::bind(config.store_id.clone()),
+            &config.store_dir,
+        );
         if identity_custody
             .unlock()
             .map_err(|e| DbError::Message(e.to_string()))?
@@ -926,14 +925,7 @@ impl Database {
                 .map_err(|e| DbError::Message(e.to_string()))?;
         }
 
-        Self::open(
-            config,
-            clock,
-            ids,
-            key_service,
-            crate::sync::synced_tables(),
-            None,
-        )
+        Self::open(config, clock, ids, crate::sync::synced_tables(), None)
     }
 }
 

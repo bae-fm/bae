@@ -129,8 +129,8 @@ struct OAuthLinking {
     }
 
     /// Register the client ids with the bridge so coven can build authorization
-    /// URLs and refresh tokens during sync. Idempotent — the bridge stores them
-    /// once. Call once at launch.
+    /// URLs and refresh tokens during sync. Call once at launch; registering
+    /// again replaces the previous set.
     func register() throws {
         var credsForBridge: [String: [String: String]] = [:]
         for (provider, config) in providers {

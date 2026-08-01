@@ -312,7 +312,7 @@ pub fn test_config_and_keys(
     // holds the token and the config records the validation. `discogs_client`
     // gates on both, so seeding only the keyring leaves it unusable.
     config.discogs = Some(bae_core::config::DiscogsValidation::Valid);
-    let key_service = bae_core::keys::StoreKeys::new(library_id);
+    let key_service = bae_core::keys::StoreKeys::bind(library_id);
     key_service
         .set_discogs_key("test-discogs-token")
         .expect("seed discogs key into test keyring");
@@ -357,7 +357,7 @@ pub fn setup_fresh_library(
     // mock store (see `install_test_keyring`) can't collide across tests.
     bae_core::config::install_test_keyring();
     let enc_key_hex = hex::encode([42u8; 32]);
-    let key_service = bae_core::keys::StoreKeys::new(library_id);
+    let key_service = bae_core::keys::StoreKeys::bind(library_id);
     key_service
         .set_encryption_key(&enc_key_hex)
         .expect("seed encryption key into test keyring");
