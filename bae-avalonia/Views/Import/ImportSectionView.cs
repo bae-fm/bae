@@ -629,44 +629,6 @@ internal sealed class ImportSectionView : UserControl
         return RenderReleaseSections(BridgeTriageTab.NeedsYou);
     }
 
-    private Control BuildNeedsYouGroupHeader(BridgeNeedsYouGroup group, int count)
-    {
-        var title = new TextBlock
-        {
-            Text = NeedsYouGroupTitle(group).ToUpper(CultureInfo.CurrentUICulture),
-            FontFamily = new FontFamily("monospace"),
-            FontSize = 10.5,
-            FontWeight = FontWeight.SemiBold,
-            LetterSpacing = 1.3,
-        };
-        title[!TextBlock.ForegroundProperty] = new DynamicResourceExtension("BaeTextSecondaryBrush");
-        var countText = new TextBlock
-        {
-            Text = count.ToString(CultureInfo.CurrentCulture),
-            FontFamily = new FontFamily("monospace"),
-            FontSize = 10.5,
-        };
-        countText[!TextBlock.ForegroundProperty] = new DynamicResourceExtension("BaeTextSecondaryBrush");
-
-        var row = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto"), Margin = new Thickness(14, 14, 14, 7) };
-        Grid.SetColumn(title, 0);
-        Grid.SetColumn(countText, 1);
-        row.Children.Add(title);
-        row.Children.Add(countText);
-        return row;
-    }
-
-    private static string NeedsYouGroupTitle(BridgeNeedsYouGroup group) => group switch
-    {
-        BridgeNeedsYouGroup.PickAPressing => Loc.Chrome("import.needs_you.pick_a_pressing"),
-        BridgeNeedsYouGroup.SignalsDisagree => Loc.Chrome("import.needs_you.signals_disagree"),
-        BridgeNeedsYouGroup.CountsOrLengthsDisagree => Loc.Chrome("import.needs_you.counts_or_lengths_disagree"),
-        BridgeNeedsYouGroup.AlreadyInLibrary => Loc.Chrome("import.needs_you.already_in_library"),
-        BridgeNeedsYouGroup.NoMatch => Loc.Chrome("import.needs_you.no_match"),
-        BridgeNeedsYouGroup.StillIdentifying => Loc.Chrome("import.needs_you.still_identifying"),
-        _ => string.Empty,
-    };
-
     private Control RenderDone()
     {
         var sections = TriageListModel.Sections(

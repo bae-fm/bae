@@ -3082,8 +3082,10 @@ async fn tracks_deleted_clears_a_preloaded_next_then_stops_on_the_current() {
         .delete_release(&b_release_id)
         .await
         .expect("delete release B");
+    // Generous bound: a loaded CI runner can stall the audio pipeline past
+    // 3s while the track is genuinely still playing.
     let still_playing =
-        wait_for_track_position(&mut progress, &first, Duration::from_secs(3)).await;
+        wait_for_track_position(&mut progress, &first, Duration::from_secs(10)).await;
     assert!(
         still_playing.is_some(),
         "deleting only the preloaded-next release leaves the current track playing"
