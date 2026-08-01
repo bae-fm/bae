@@ -103,6 +103,10 @@ jobs:
     runs-on: windows-latest
     env:
       FFMPEG_VERSION: v8.1.2-bae7
+      # Overrides .cargo/config.toml's repo-wide sccache wrapper: wrapping
+      # rustc flattens its response file, and ffmpeg-sys-next's argument list
+      # then exceeds Windows' 32K limit (os error 206).
+      RUSTC_WRAPPER: ""
     steps:
       - uses: actions/checkout@v6
         with:
@@ -112,8 +116,6 @@ jobs:
         with:
           toolchain: "1.95.0"
           targets: x86_64-pc-windows-msvc
-      - name: Install sccache
-        uses: mozilla-actions/sccache-action@v0.0.10
       - name: Set LIBCLANG_PATH (LLVM pre-installed on windows-latest)
         shell: pwsh
         run: |

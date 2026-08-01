@@ -31,6 +31,10 @@ jobs:
             target: aarch64-pc-windows-msvc
             ffmpeg_arch: aarch64
     env:
+      # Overrides .cargo/config.toml's repo-wide sccache wrapper: wrapping
+      # rustc flattens its response file, and ffmpeg-sys-next's argument list
+      # then exceeds Windows' 32K limit (os error 206).
+      RUSTC_WRAPPER: ""
       FFMPEG_VERSION: v8.1.2-bae7
     steps:
       - uses: actions/checkout@v6
@@ -43,9 +47,6 @@ jobs:
           toolchain: "1.95.0"
           targets: ${{ matrix.target }}
           components: clippy
-
-      - name: Install sccache
-        uses: mozilla-actions/sccache-action@v0.0.10
 
       - name: Set LIBCLANG_PATH (LLVM pre-installed on both Windows runners)
         # The standalone LLVM install ships at the same path on windows-latest and

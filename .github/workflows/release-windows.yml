@@ -68,6 +68,10 @@ jobs:
     runs-on: ${{ matrix.arch.runner }}
     needs: calculate-version
     env:
+      # Overrides .cargo/config.toml's repo-wide sccache wrapper: wrapping
+      # rustc flattens its response file, and ffmpeg-sys-next's argument list
+      # then exceeds Windows' 32K limit (os error 206).
+      RUSTC_WRAPPER: ""
       FFMPEG_VERSION: v8.1.2-bae7
       BAE_ENVIRONMENT: production
       BAE_DATADOG_SITE: ${{ secrets.BAE_DATADOG_SITE }}
@@ -115,13 +119,6 @@ jobs:
         with:
           toolchain: "1.95.0"
           targets: ${{ matrix.arch.target }}
-
-      - name: Install sccache
-        # .cargo/config.toml sets rustc-wrapper = "sccache", so cargo needs it on
-        # PATH. The action ships a native binary per runner arch; choco's LLVM
-        # would be x64-only, so libclang comes from the LLVM preinstalled at the
-        # same path on both Windows runners (see windows.yml).
-        uses: mozilla-actions/sccache-action@v0.0.10
 
       - name: Set LIBCLANG_PATH (LLVM pre-installed on both Windows runners)
         shell: pwsh
