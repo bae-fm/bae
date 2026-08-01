@@ -66,9 +66,9 @@ data class PlaybackPosition(
 /** One queue entry the [fm.bae.app.ui.playback.QueueScreen] renders. The UI projection
  *  of the player's internal queue metadata: [durationClock] is the track length
  *  as a clock label's fields (null when core reports none), which the row renders
- *  directly; [coverImage] is the cover the row fetches bytes for. [entryId] is the per-instance id the row keys on and that
- *  remove/reorder/skip target — unique even when the same track is queued
- *  twice. */
+ *  directly; [coverImage] is the cover the row fetches bytes for. [entryId] is the
+ *  per-instance id the row keys on and that remove/reorder/skip target — unique
+ *  even when the same track is queued twice. */
 data class QueueItem(
     val entryId: String,
     val trackId: String,

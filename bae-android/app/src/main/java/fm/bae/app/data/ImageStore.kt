@@ -118,6 +118,14 @@ private val ImageContent.bucket: ImageBucket
 
 private const val MEGABYTE = 1024 * 1024
 
+private const val DECODED_LIBRARY_IMAGE_BUDGET = 48 * MEGABYTE
+private const val DECODED_RELEASE_IMAGE_BUDGET = 16 * MEGABYTE
+private const val DECODED_REMOTE_BUDGET = 8 * MEGABYTE
+private const val DECODED_LOCAL_FILE_BUDGET = 16 * MEGABYTE
+
+private const val ENCODED_LIBRARY_IMAGE_BUDGET = 16 * MEGABYTE
+private const val ENCODED_RELEASE_IMAGE_BUDGET = 8 * MEGABYTE
+
 /**
  * Per-kind byte budgets for the decoded cache. Eviction never crosses buckets, so
  * a native-size release image cannot evict the album grid's covers.
@@ -127,10 +135,10 @@ private const val MEGABYTE = 1024 * 1024
  * bucket; it carries a budget anyway because the kind exists on the contract.
  */
 data class DecodedImageBudgets(
-    val libraryImage: Int = 48 * MEGABYTE,
-    val releaseImage: Int = 16 * MEGABYTE,
-    val remote: Int = 8 * MEGABYTE,
-    val localFile: Int = 16 * MEGABYTE,
+    val libraryImage: Int = DECODED_LIBRARY_IMAGE_BUDGET,
+    val releaseImage: Int = DECODED_RELEASE_IMAGE_BUDGET,
+    val remote: Int = DECODED_REMOTE_BUDGET,
+    val localFile: Int = DECODED_LOCAL_FILE_BUDGET,
 )
 
 /**
@@ -148,8 +156,8 @@ data class DecodedImageBudgets(
  * already a cheap disk read.
  */
 data class ImageByteBudgets(
-    val libraryImage: Int = 16 * MEGABYTE,
-    val releaseImage: Int = 8 * MEGABYTE,
+    val libraryImage: Int = ENCODED_LIBRARY_IMAGE_BUDGET,
+    val releaseImage: Int = ENCODED_RELEASE_IMAGE_BUDGET,
 )
 
 /**
@@ -222,20 +230,19 @@ class ImageStore(
         size: DecodeSize,
     ): Bitmap? {
         val key = cacheKey(content, size)
-        if (key != null) {
-            decoded[content.bucket].get(key)?.let { return it }
-        }
+        val cached = key?.let { decoded[content.bucket].get(it) }
+        if (cached != null) return cached
         val bitmap =
             withContext(dispatcher) {
                 when (content) {
                     is ImageContent.LocalFile -> decodeFile(content.path, size)
                     else -> imageBytes(content)?.let { decodeBytes(it, size) }
                 }
-            } ?: return null
+            }
         // A key is absent only for `Bytes`, whose identity the caller holds —
         // there is nothing to pin a cache entry to — and for a local file whose
         // modification time can't be read.
-        if (key != null) {
+        if (bitmap != null && key != null) {
             decoded[content.bucket].put(key, bitmap)
             if (content is ImageContent.Remote) {
                 remoteValidators.record(key = key, url = content.url)
@@ -253,18 +260,30 @@ class ImageStore(
      * `ContentProvider` streaming to a media-browse client — read them here rather
      * than opening a second path to core.
      */
-    suspend fun imageBytes(content: ImageContent): ByteArray? {
-        if (content is ImageContent.Bytes) return content.bytes
-        if (content is ImageContent.LocalFile) {
-            return withContext(dispatcher) { File(content.path).readBytes() }
+    suspend fun imageBytes(content: ImageContent): ByteArray? =
+        when (content) {
+            is ImageContent.Bytes -> {
+                content.bytes
+            }
+
+            is ImageContent.LocalFile -> {
+                withContext(dispatcher) { File(content.path).readBytes() }
+            }
+
+            is ImageContent.LibraryImage, is ImageContent.ReleaseImage, is ImageContent.Remote -> {
+                heldOrFetchedBytes(content)
+            }
         }
+
+    /** The bytes held for [content] in the byte cache, else the ones core hands
+     *  back — held under the content's token when there is one. */
+    private suspend fun heldOrFetchedBytes(content: ImageContent): ByteArray? {
         val token = token(content)
         val cache = bytes[content.bucket]
-        if (token != null) {
-            cache?.get(token)?.let { return it }
-        }
-        val fetched = withContext(dispatcher) { fetchBytes(content) } ?: return null
-        if (token != null && cache != null) {
+        val held = token?.let { cache?.get(it) }
+        if (held != null) return held
+        val fetched = withContext(dispatcher) { fetchBytes(content) }
+        if (fetched != null && token != null && cache != null) {
             cache.put(token, fetched)
         }
         return fetched
@@ -332,14 +351,14 @@ class ImageStore(
     private fun token(content: ImageContent): String? =
         when (content) {
             is ImageContent.LibraryImage -> {
-                libraryToken(content.image)
+                content.image.libraryToken
             }
 
             is ImageContent.ReleaseImage -> {
                 when (val source = content.source) {
                     // A cover slot IS the release's curated cover; its version
                     // moves whenever the bytes do.
-                    is BridgeGallerySource.Cover -> libraryToken(source.image)
+                    is BridgeGallerySource.Cover -> source.image.libraryToken
 
                     // A release file's bytes are immutable per id: an import mints
                     // a fresh id per file and a re-import mints new ones, so an id
@@ -371,8 +390,6 @@ class ImageStore(
             }
         }
 
-    private fun libraryToken(image: BridgeImageRef): String = "library:${image.imageType.name}:${image.id}:${image.version}"
-
     companion object {
         /** A store that resolves nothing — for @Preview composables and the
          *  screenshot scenes, which have no open library to read from. Every slot
@@ -380,6 +397,11 @@ class ImageStore(
         fun unresolved(): ImageStore = ImageStore()
     }
 }
+
+/** What a curated library image's cached entries are pinned to: its kind, its
+ *  subject, and the version that moves whenever its bytes do. */
+private val BridgeImageRef.libraryToken: String
+    get() = "library:${imageType.name}:$id:$version"
 
 /**
  * Provider-art bytes plus the token identifying this exact content: the response's
@@ -396,7 +418,10 @@ data class RemoteImageBytes(
     // ByteArray's identity equality would make two reads of the same art unequal;
     // the validator is exactly the token that says whether they are the same
     // content, so compare on it.
-    override fun equals(other: Any?): Boolean = this === other || (other is RemoteImageBytes && validator == other.validator)
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        return other is RemoteImageBytes && validator == other.validator
+    }
 
     override fun hashCode(): Int = validator.hashCode()
 }
@@ -429,7 +454,9 @@ private class DecodedCaches(
             ImageBucket.LOCAL_FILE to bitmapCache(budgets.localFile),
         )
 
-    operator fun get(bucket: ImageBucket): LruCache<String, Bitmap> = checkNotNull(caches[bucket]) { "every bucket is built in init" }
+    /** Every bucket is built in init, so a missing one is a broken map, not a
+     *  cache miss — [Map.getValue] throws rather than answering null. */
+    operator fun get(bucket: ImageBucket): LruCache<String, Bitmap> = caches.getValue(bucket)
 
     private fun bitmapCache(maxBytes: Int) =
         object : LruCache<String, Bitmap>(maxBytes) {
@@ -513,13 +540,12 @@ private class RemoteValidators {
 internal fun decodeBytes(
     bytes: ByteArray,
     size: DecodeSize,
-): Bitmap? {
-    val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-    BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
-    val options = decodeOptions(bounds, size) ?: return null
-    val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size, options) ?: return null
-    return oriented(bitmap, ExifInterface(ByteArrayInputStream(bytes)))
-}
+): Bitmap? =
+    decodeSampled(
+        size = size,
+        decode = { options -> BitmapFactory.decodeByteArray(bytes, 0, bytes.size, options) },
+        exif = { ExifInterface(ByteArrayInputStream(bytes)) },
+    )
 
 /**
  * Decode the file at [path] the same way [decodeBytes] decodes in-memory bytes.
@@ -529,12 +555,31 @@ internal fun decodeBytes(
 internal fun decodeFile(
     path: String,
     size: DecodeSize,
+): Bitmap? =
+    decodeSampled(
+        size = size,
+        decode = { options -> BitmapFactory.decodeFile(path, options) },
+        exif = { ExifInterface(path) },
+    )
+
+/**
+ * The two-pass decode both sources take: [decode] with a bounds-only pass to
+ * learn the source's dimensions, then again with the downsample options [size]
+ * calls for, and finally the orientation [exif] records. Null when the bounds
+ * pass reports no image, or the platform declines the second pass.
+ *
+ * [exif] is read only once there is a bitmap to orient, so an undecodable source
+ * is never parsed twice.
+ */
+private fun decodeSampled(
+    size: DecodeSize,
+    decode: (BitmapFactory.Options) -> Bitmap?,
+    exif: () -> ExifInterface,
 ): Bitmap? {
     val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-    BitmapFactory.decodeFile(path, bounds)
-    val options = decodeOptions(bounds, size) ?: return null
-    val bitmap = BitmapFactory.decodeFile(path, options) ?: return null
-    return oriented(bitmap, ExifInterface(path))
+    decode(bounds)
+    val bitmap = decodeOptions(bounds, size)?.let(decode)
+    return bitmap?.let { oriented(it, exif()) }
 }
 
 /**
@@ -564,8 +609,8 @@ internal fun sampleSize(
     height: Int,
     size: DecodeSize,
 ): Int {
-    val target = (size as? DecodeSize.FitTo)?.pixels ?: return 1
-    if (target <= 0) return 1
+    val target = (size as? DecodeSize.FitTo)?.pixels
+    if (target == null || target <= 0) return 1
     val longerEdge = maxOf(width, height)
     var sample = 1
     while (longerEdge / (sample * 2) >= target) {
@@ -584,55 +629,50 @@ private fun oriented(
     bitmap: Bitmap,
     exif: ExifInterface,
 ): Bitmap {
-    val matrix =
-        when (
-            exif.getAttributeInt(
-                ExifInterface.TAG_ORIENTATION,
-                ExifInterface.ORIENTATION_NORMAL,
-            )
-        ) {
-            ExifInterface.ORIENTATION_ROTATE_90 -> {
-                Matrix().apply { postRotate(90f) }
-            }
-
-            ExifInterface.ORIENTATION_ROTATE_180 -> {
-                Matrix().apply { postRotate(180f) }
-            }
-
-            ExifInterface.ORIENTATION_ROTATE_270 -> {
-                Matrix().apply { postRotate(270f) }
-            }
-
-            ExifInterface.ORIENTATION_FLIP_HORIZONTAL -> {
-                Matrix().apply { postScale(-1f, 1f) }
-            }
-
-            ExifInterface.ORIENTATION_FLIP_VERTICAL -> {
-                Matrix().apply { postScale(1f, -1f) }
-            }
-
-            ExifInterface.ORIENTATION_TRANSPOSE -> {
-                Matrix().apply {
-                    postRotate(90f)
-                    postScale(-1f, 1f)
-                }
-            }
-
-            ExifInterface.ORIENTATION_TRANSVERSE -> {
-                Matrix().apply {
-                    postRotate(270f)
-                    postScale(-1f, 1f)
-                }
-            }
-
-            else -> {
-                return bitmap
-            }
-        }
+    val orientation =
+        exif.getAttributeInt(
+            ExifInterface.TAG_ORIENTATION,
+            ExifInterface.ORIENTATION_NORMAL,
+        )
+    val upright = uprightTransform(orientation) ?: return bitmap
     val rotated =
-        Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+        Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, upright.matrix(), true)
     if (rotated !== bitmap) {
         bitmap.recycle()
     }
     return rotated
 }
+
+private const val QUARTER_TURN_DEGREES = 90f
+private const val HALF_TURN_DEGREES = 180f
+private const val THREE_QUARTER_TURN_DEGREES = 270f
+
+/** What brings a stored image upright: a clockwise rotation, then a mirroring
+ *  across the vertical axis for the orientations whose pixels are flipped too. A
+ *  vertical flip is that same mirroring about the half-turned image. */
+private data class Upright(
+    val degrees: Float,
+    val mirrored: Boolean,
+) {
+    fun matrix(): Matrix =
+        Matrix().apply {
+            postRotate(degrees)
+            if (mirrored) {
+                postScale(-1f, 1f)
+            }
+        }
+}
+
+/** How the pixels an [orientation] tag describes must be transformed to sit
+ *  upright, or null when they already do (normal, or a tag nothing recognizes). */
+private fun uprightTransform(orientation: Int): Upright? =
+    when (orientation) {
+        ExifInterface.ORIENTATION_ROTATE_90 -> Upright(QUARTER_TURN_DEGREES, mirrored = false)
+        ExifInterface.ORIENTATION_ROTATE_180 -> Upright(HALF_TURN_DEGREES, mirrored = false)
+        ExifInterface.ORIENTATION_ROTATE_270 -> Upright(THREE_QUARTER_TURN_DEGREES, mirrored = false)
+        ExifInterface.ORIENTATION_FLIP_HORIZONTAL -> Upright(0f, mirrored = true)
+        ExifInterface.ORIENTATION_FLIP_VERTICAL -> Upright(HALF_TURN_DEGREES, mirrored = true)
+        ExifInterface.ORIENTATION_TRANSPOSE -> Upright(QUARTER_TURN_DEGREES, mirrored = true)
+        ExifInterface.ORIENTATION_TRANSVERSE -> Upright(THREE_QUARTER_TURN_DEGREES, mirrored = true)
+        else -> null
+    }

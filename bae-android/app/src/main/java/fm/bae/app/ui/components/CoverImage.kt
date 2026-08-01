@@ -96,59 +96,81 @@ fun ImageSlot(
         contentAlignment = Alignment.Center,
     ) {
         val size = DecodeSize.FitTo(boundedPixelSize(constraints))
-        var state by remember(content, size) {
-            mutableStateOf(
-                when {
-                    content == null -> {
-                        SlotState.Absent
-                    }
+        var state by remember(content, size) { mutableStateOf(store.firstFrameState(content, size)) }
+        LaunchedEffect(content, size) {
+            if (content != null && state !is SlotState.Loaded) {
+                state = store.loadedState(content, size)
+            }
+        }
+        SlotContent(
+            state = state,
+            iconPadding = iconPadding,
+            contentDescription = contentDescription,
+        )
+    }
+}
 
-                    else -> {
-                        store.cachedImage(content, size)?.let { SlotState.Loaded(it) }
-                            ?: SlotState.Loading
-                    }
-                },
+/** What the slot draws before any load runs: the decode the store already holds,
+ *  so a remount shows its art immediately. */
+private fun ImageStore.firstFrameState(
+    content: ImageContent?,
+    size: DecodeSize.FitTo,
+): SlotState =
+    when (content) {
+        null -> SlotState.Absent
+        else -> cachedImage(content, size)?.let { SlotState.Loaded(it) } ?: SlotState.Loading
+    }
+
+/** [content] decoded at [size]. Absent when the library has no bytes for it, or
+ *  when the load failed — the slot draws its placeholder either way, so the
+ *  failure is logged here rather than surfaced to the caller. */
+private suspend fun ImageStore.loadedState(
+    content: ImageContent,
+    size: DecodeSize.FitTo,
+): SlotState {
+    if (size.pixels <= 0) {
+        // An image slot with no bounded dimension can't say how large to
+        // decode; it reads the source whole. Layout, not the store, is
+        // what would fix it.
+        logger.warning("image slot for ${content.description} has unbounded constraints")
+    }
+    return try {
+        image(content, size)?.let { SlotState.Loaded(it) } ?: SlotState.Absent
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        logger.error("Failed to load ${content.description}", e)
+        SlotState.Absent
+    }
+}
+
+/** The slot's one child for [state]: the decoded art, or the tile standing in for
+ *  it. */
+@Composable
+private fun SlotContent(
+    state: SlotState,
+    iconPadding: Dp,
+    contentDescription: String?,
+) {
+    when (state) {
+        is SlotState.Loaded -> {
+            Image(
+                bitmap = state.bitmap.asImageBitmap(),
+                contentDescription = contentDescription,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize(),
             )
         }
-        LaunchedEffect(content, size) {
-            if (content == null || state is SlotState.Loaded) return@LaunchedEffect
-            if (size.pixels <= 0) {
-                // An image slot with no bounded dimension can't say how large to
-                // decode; it reads the source whole. Layout, not the store, is
-                // what would fix it.
-                logger.warning("image slot for ${content.description} has unbounded constraints")
-            }
-            state =
-                try {
-                    store.image(content, size)?.let { SlotState.Loaded(it) }
-                        ?: SlotState.Absent
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (e: Exception) {
-                    logger.error("Failed to load ${content.description}", e)
-                    SlotState.Absent
-                }
+
+        // An image exists but its bytes aren't in yet: a plain tile (no glyph),
+        // so the art pops in without a placeholder flash beforehand.
+        SlotState.Loading -> {
+            CoverTile(showIcon = false, iconPadding = iconPadding)
         }
-        when (val current = state) {
-            is SlotState.Loaded -> {
-                Image(
-                    bitmap = current.bitmap.asImageBitmap(),
-                    contentDescription = contentDescription,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize(),
-                )
-            }
 
-            // An image exists but its bytes aren't in yet: a plain tile (no glyph),
-            // so the art pops in without a placeholder flash beforehand.
-            SlotState.Loading -> {
-                CoverTile(showIcon = false, iconPadding = iconPadding)
-            }
-
-            // No image, or its bytes were absent/failed (logged above).
-            SlotState.Absent -> {
-                CoverTile(showIcon = true, iconPadding = iconPadding)
-            }
+        // No image, or its bytes were absent/failed (logged when loading).
+        SlotState.Absent -> {
+            CoverTile(showIcon = true, iconPadding = iconPadding)
         }
     }
 }

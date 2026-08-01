@@ -23,6 +23,17 @@ object TestImages {
         seed: Int = 1,
     ): ByteArray = encode(noise(width, height, seed), Bitmap.CompressFormat.JPEG)
 
+    /**
+     * A square whose quadrants are flat [colors] — top left, top right, bottom
+     * left, bottom right — so a test can say where a corner of the source ended
+     * up. Flat blocks survive JPEG's chroma subsampling away from their edges,
+     * which noise would not.
+     */
+    fun quadrantsJpeg(
+        size: Int,
+        colors: List<Int>,
+    ): ByteArray = encode(quadrants(size, colors), Bitmap.CompressFormat.JPEG)
+
     private fun noise(
         width: Int,
         height: Int,
@@ -31,6 +42,20 @@ object TestImages {
         val random = Random(seed)
         val pixels = IntArray(width * height) { random.nextInt() or 0xFF000000.toInt() }
         return Bitmap.createBitmap(pixels, width, height, Bitmap.Config.ARGB_8888)
+    }
+
+    private fun quadrants(
+        size: Int,
+        colors: List<Int>,
+    ): Bitmap {
+        val half = size / 2
+        val pixels =
+            IntArray(size * size) { index ->
+                val x = index % size
+                val y = index / size
+                colors[(if (y < half) 0 else 2) + (if (x < half) 0 else 1)]
+            }
+        return Bitmap.createBitmap(pixels, size, size, Bitmap.Config.ARGB_8888)
     }
 
     private fun encode(

@@ -21,6 +21,10 @@ private val logger = BaeLogger(TAG)
 private const val AUTHORITY_SUFFIX = ".artwork"
 private const val COVER_PATH = "cover"
 
+/** What a cover URI's path holds: the [COVER_PATH] marker, then the image
+ *  reference's kind, subject id, and content version. */
+private const val COVER_PATH_SEGMENTS = 4
+
 /**
  * Serves release/composer/work cover bytes to media-browse clients (Android
  * Auto, Bluetooth head units) over a `content://` URI. The browse tree tags
@@ -160,13 +164,13 @@ class ArtworkContentProvider : ContentProvider() {
          *  one this provider minted. */
         private fun imageFrom(uri: Uri): BridgeImageRef? {
             val segments = uri.pathSegments
-            if (segments.size != 4 || segments[0] != COVER_PATH) {
+            if (segments.size != COVER_PATH_SEGMENTS || segments[0] != COVER_PATH) {
                 return null
             }
-            val imageType =
-                BridgeLibraryImageType.entries.firstOrNull { it.name == segments[1] }
-                    ?: return null
-            return BridgeImageRef(id = segments[2], version = segments[3], imageType = imageType)
+            val (typeName, id, version) = segments.drop(1)
+            return BridgeLibraryImageType.entries
+                .firstOrNull { it.name == typeName }
+                ?.let { BridgeImageRef(id = id, version = version, imageType = it) }
         }
     }
 }

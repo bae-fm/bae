@@ -17,6 +17,16 @@ import org.robolectric.annotation.GraphicsMode
  * Native graphics so these run the platform decoder rather than a shadow that
  * reports whatever dimensions it is asked for.
  */
+private const val RED = 0xFFFF0000.toInt()
+private const val GREEN = 0xFF00FF00.toInt()
+private const val BLUE = 0xFF0000FF.toInt()
+private const val WHITE = 0xFFFFFFFF.toInt()
+
+/** The quadrant-coloured source the orientation cases are decoded from: red top
+ *  left, green top right, blue bottom left, white bottom right. */
+private const val QUADRANT_SOURCE = 64
+private val SOURCE_QUADRANTS = listOf(RED, GREEN, BLUE, WHITE)
+
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -79,6 +89,59 @@ class ImageDecodeTest {
         assertEquals(100, decoded.width)
         assertEquals(200, decoded.height)
     }
+
+    @Test
+    fun standsAMirroredOrTurnedSourceUpright() {
+        // Dimensions can't tell a mirrored source from an upright one, so this
+        // follows the four quadrants instead: each orientation names where the
+        // source's own corners belong once it stands upright.
+        assertUpright(ExifInterface.ORIENTATION_ROTATE_90, listOf(BLUE, RED, WHITE, GREEN))
+        assertUpright(ExifInterface.ORIENTATION_ROTATE_180, listOf(WHITE, BLUE, GREEN, RED))
+        assertUpright(ExifInterface.ORIENTATION_ROTATE_270, listOf(GREEN, WHITE, RED, BLUE))
+        assertUpright(ExifInterface.ORIENTATION_FLIP_HORIZONTAL, listOf(GREEN, RED, WHITE, BLUE))
+        assertUpright(ExifInterface.ORIENTATION_FLIP_VERTICAL, listOf(BLUE, WHITE, RED, GREEN))
+        // The two diagonal reflections: transpose holds the main diagonal's
+        // corners in place, transverse the anti-diagonal's.
+        assertUpright(ExifInterface.ORIENTATION_TRANSPOSE, listOf(RED, BLUE, GREEN, WHITE))
+        assertUpright(ExifInterface.ORIENTATION_TRANSVERSE, listOf(WHITE, GREEN, BLUE, RED))
+    }
+
+    /** Decode a quadrant-coloured source tagged [orientation] and assert its
+     *  quadrants land in [expected] order: top left, top right, bottom left,
+     *  bottom right. */
+    private fun assertUpright(
+        orientation: Int,
+        expected: List<Int>,
+    ) {
+        val file = folder.newFile("orientation-$orientation.jpg")
+        file.writeBytes(TestImages.quadrantsJpeg(QUADRANT_SOURCE, SOURCE_QUADRANTS))
+        ExifInterface(file.path).apply {
+            setAttribute(ExifInterface.TAG_ORIENTATION, orientation.toString())
+            saveAttributes()
+        }
+
+        val decoded = decodeFile(file.path, DecodeSize.Native)!!
+        val near = QUADRANT_SOURCE / 4
+        val far = QUADRANT_SOURCE - near
+        val quadrants =
+            listOf(
+                decoded.getPixel(near, near),
+                decoded.getPixel(far, near),
+                decoded.getPixel(near, far),
+                decoded.getPixel(far, far),
+            )
+        quadrants.forEachIndexed { index, actual ->
+            assertEquals("quadrant $index of orientation $orientation", hue(expected[index]), hue(actual))
+        }
+    }
+
+    /** Which of the source's four colours a decoded pixel is. JPEG shifts a flat
+     *  block's exact value, so compare the channels that are on rather than their
+     *  levels. */
+    private fun hue(color: Int): String =
+        listOf(16, 8, 0).joinToString("") { shift ->
+            if ((color shr shift) and 0xFF > 0x80) "1" else "0"
+        }
 
     @Test
     fun leavesAnUprightSourceAlone() {
