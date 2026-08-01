@@ -26,7 +26,13 @@ impl ImportServiceHandle {
     /// Add a folder to the durable scan set. The OS watch is an accelerator;
     /// launch, manual, and periodic scans remain authoritative when it is not
     /// available for a network filesystem.
+    ///
+    /// `path` is whatever spelling the caller had — a picker's, a `file://`
+    /// drop's, a `bae://import` link's. It is settled to the one spelling the
+    /// row is keyed by before anything here uses it, so the in-memory registry,
+    /// the OS watch, and the durable row all name the folder the same way.
     pub async fn add_watched_folder(&self, path: String) -> Result<(), crate::import::ImportError> {
+        let path = crate::import::folder_registry::canonical_absolute_root(&path)?;
         let _commit = self.folder_state_commit.lock().await;
         let added = self
             .library_manager
@@ -66,6 +72,7 @@ impl ImportServiceHandle {
         &self,
         path: String,
     ) -> Result<(), crate::import::ImportError> {
+        let path = crate::import::folder_registry::canonical_absolute_root(&path)?;
         let (completion, receiver) = tokio::sync::oneshot::channel();
         self.send_watcher_command(
             WatcherCommand::Remove {
@@ -102,6 +109,7 @@ impl ImportServiceHandle {
         &self,
         path: String,
     ) -> Result<(), crate::import::ImportError> {
+        let path = crate::import::folder_registry::canonical_absolute_root(&path)?;
         let registered = self
             .folder_registry
             .lock()

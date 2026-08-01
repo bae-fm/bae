@@ -110,19 +110,58 @@ impl ImportFolderRegistry {
     }
 }
 
-pub(crate) fn validate_absolute_root(path: &str) -> Result<(), crate::import::ImportError> {
-    let parsed = Path::new(path);
-    let normalized: std::path::PathBuf = parsed.components().collect();
-    if !parsed.is_absolute()
-        || parsed
-            .components()
-            .any(|component| matches!(component, Component::ParentDir))
-        || normalized.to_string_lossy() != path
+/// The one spelling of `path` this device stores for the folder it names.
+///
+/// A watched root is a durable key: it addresses rows in three tables and is
+/// compared as a string. So there has to be exactly one spelling per folder,
+/// and deciding it is this function's job rather than every caller's. The same
+/// folder reaches core written several ways — a picker gives the host's own
+/// form, a `file://` drop and a `bae://import` link give whatever the URL
+/// carried (on Windows `C:/Music`, forward slashes and all), and a person
+/// typing one adds a trailing separator as often as not.
+///
+/// Rejoining the path's [`Component`]s settles all of that: separators become
+/// the host's, runs of them collapse, `.` and trailing separators disappear.
+/// Two things are refused instead of rewritten:
+///
+/// - A `..`, because resolving it lexically is wrong the moment a symlink is
+///   above it, and resolving it truthfully means reading the filesystem — a
+///   different promise, and one a folder that is merely offline would fail.
+/// - A path that is not absolute *by the host's rule*, which on Windows means
+///   a drive or UNC prefix. `\music` is rooted but drive-relative: the same
+///   text names a different folder depending on the process's current drive,
+///   so nothing durable can be keyed by it.
+pub(crate) fn canonical_absolute_root(path: &str) -> Result<String, crate::import::ImportError> {
+    let refuse = |reason: &str| {
+        Err(crate::import::ImportError::Registry {
+            detail: format!("watched folder {reason}: {path}"),
+        })
+    };
+    if Path::new(path)
+        .components()
+        .any(|component| matches!(component, Component::ParentDir))
     {
+        return refuse("must not contain `..`");
+    }
+    let canonical: std::path::PathBuf = Path::new(path).components().collect();
+    if !canonical.is_absolute() {
+        return refuse("must be an absolute path");
+    }
+    // Every component came from a `&str` and the separators joining them are
+    // ASCII, so this is the same text, never a replacement character.
+    Ok(canonical.to_string_lossy().into_owned())
+}
+
+/// A stored root is canonical by construction, so one that is not is corrupt
+/// durable state — read it loudly rather than quietly rewriting it, which
+/// would hide however it got written and leave its dependent rows keyed by the
+/// spelling this device no longer uses.
+pub(crate) fn validate_absolute_root(path: &str) -> Result<(), crate::import::ImportError> {
+    let canonical = canonical_absolute_root(path)?;
+    if canonical != path {
         return Err(crate::import::ImportError::Registry {
             detail: format!(
-                "watched folder must be an absolute normalized path: {}",
-                parsed.display()
+                "stored watched folder is not its canonical spelling {canonical}: {path}"
             ),
         });
     }
@@ -190,7 +229,7 @@ pub(crate) fn paths_overlap(left: &Path, right: &Path) -> bool {
 ///
 /// A watched root is stored exactly as the OS writes it, and what counts as
 /// absolute is the OS's rule: Windows needs a drive or UNC prefix, so a
-/// `/`-rooted literal is drive-relative there and [`validate_absolute_root`]
+/// `/`-rooted literal is drive-relative there and [`canonical_absolute_root`]
 /// refuses it. Tests that need a root no filesystem has to back ask for one
 /// here rather than writing a literal that is only absolute on Unix.
 ///
@@ -266,6 +305,142 @@ mod tests {
         )
         .unwrap();
         assert!(registry.is_skipped(&release, Path::new(&release)).unwrap());
+    }
+
+    /// A drive-lettered path written with forward slashes — what Windows hands
+    /// over for `bae://import?path=C:/music/rips` and for a
+    /// `file:///C:/music/rips` drop. It names `/music/rips` under [`host_root`]
+    /// and has no counterpart on a host whose separator is already `/`.
+    #[cfg(windows)]
+    const URL_SPELLINGS: &[&str] = &["C:/music/rips"];
+    #[cfg(not(windows))]
+    const URL_SPELLINGS: &[&str] = &[];
+
+    /// The spellings a folder picker, a `file://` drop, and a `bae://import`
+    /// link each hand over for the same folder. Every one of them names a
+    /// directory this device can address, so every one is accepted — and all
+    /// of them settle on the single spelling the row is keyed by.
+    #[test]
+    fn a_root_has_one_stored_spelling_however_it_was_written() {
+        let canonical = host_root("/music/rips");
+        let spellings = [
+            canonical.clone(),
+            host_root("/music/rips/"),
+            host_root("/music//rips"),
+            host_root("/music/./rips"),
+        ];
+
+        for spelling in spellings
+            .iter()
+            .map(String::as_str)
+            .chain(URL_SPELLINGS.iter().copied())
+        {
+            assert_eq!(
+                canonical_absolute_root(spelling).unwrap(),
+                canonical,
+                "{spelling}"
+            );
+        }
+    }
+
+    /// Rooted but not absolute: on Windows a leading separator names the
+    /// current drive, so the same text addresses a different folder depending
+    /// on which drive the process happens to be on. Nothing durable can be
+    /// keyed by it.
+    #[cfg(windows)]
+    #[test]
+    fn a_drive_relative_root_is_refused() {
+        for rooted in ["/music/rips", r"\music\rips"] {
+            let error = canonical_absolute_root(rooted).unwrap_err();
+            assert!(error.to_string().contains("absolute"), "{rooted}: {error}");
+        }
+    }
+
+    /// A network share is a watched root like any other — it is what the
+    /// folder-scan design's "network filesystem" case is about — and so is a
+    /// verbatim path. Both keep their prefix; only what follows is rejoined.
+    #[cfg(windows)]
+    #[test]
+    fn unc_and_verbatim_roots_keep_their_prefix() {
+        for (written, stored) in [
+            (r"\\storage\share\Music\", r"\\storage\share\Music"),
+            (r"\\?\C:\Music", r"\\?\C:\Music"),
+        ] {
+            assert_eq!(
+                canonical_absolute_root(written).unwrap(),
+                stored,
+                "{written}"
+            );
+        }
+    }
+
+    /// Whatever a root canonicalizes to is itself canonical, which is what
+    /// lets the stored spelling be re-read by [`validate_absolute_root`]
+    /// instead of canonicalized again on every load.
+    #[test]
+    fn canonicalizing_a_canonical_root_changes_nothing() {
+        // A bare share root is in here because it is the one input whose
+        // canonical form keeps a trailing separator (`\\storage\share\`, the
+        // share's own root); re-reading it must still be a no-op.
+        #[cfg(windows)]
+        const SHARE_ROOTS: &[&str] = &[r"\\storage\share"];
+        #[cfg(not(windows))]
+        const SHARE_ROOTS: &[&str] = &[];
+
+        let spellings = [
+            host_root("/music/rips/"),
+            host_root("/music//rips"),
+            host_root("/music/./rips"),
+        ];
+
+        for written in spellings
+            .iter()
+            .map(String::as_str)
+            .chain(URL_SPELLINGS.iter().copied())
+            .chain(SHARE_ROOTS.iter().copied())
+        {
+            let stored = canonical_absolute_root(written).unwrap();
+            assert_eq!(
+                canonical_absolute_root(&stored).unwrap(),
+                stored,
+                "{written}"
+            );
+            validate_absolute_root(&stored).unwrap_or_else(|e| panic!("{written}: {e}"));
+        }
+    }
+
+    /// `..` is the one lexical form that is not rewritten away: resolving it
+    /// without touching the filesystem is wrong the moment a symlink is in the
+    /// path, and resolving it against the filesystem is a different promise
+    /// than this function makes.
+    #[test]
+    fn a_root_climbing_out_of_itself_is_refused() {
+        let error = canonical_absolute_root(&host_root("/music/../rips")).unwrap_err();
+        assert!(error.to_string().contains(".."), "{error}");
+    }
+
+    /// Overlap is decided on the stored spelling, so a second root written
+    /// another way still collides with the first.
+    #[test]
+    fn overlap_is_caught_across_spellings() {
+        let stored = canonical_absolute_root(&host_root("/music")).unwrap();
+        #[cfg(windows)]
+        let rewritten = canonical_absolute_root("C:/music/artist").unwrap();
+        #[cfg(not(windows))]
+        let rewritten = canonical_absolute_root("/music//artist/").unwrap();
+        let error =
+            ImportFolderRegistry::from_stored(vec![stored, rewritten], Vec::new()).unwrap_err();
+        assert!(error.to_string().contains("cannot overlap"));
+    }
+
+    /// A stored root is canonical by construction, so reading one that is not
+    /// is corrupt durable state and fails loudly rather than being rewritten
+    /// on the way in.
+    #[test]
+    fn a_stored_root_that_is_not_canonical_fails_to_load() {
+        let error =
+            ImportFolderRegistry::from_stored(vec![host_root("/music/")], Vec::new()).unwrap_err();
+        assert!(error.to_string().contains("canonical"), "{error}");
     }
 
     #[test]

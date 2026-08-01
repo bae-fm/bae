@@ -22,6 +22,15 @@ fn next_folder_scan_generation(conn: &SqlContext<'_, '_>) -> Result<i64, DbError
 }
 
 impl Database {
+    /// The spelling the watched-folder tables key `path`'s folder by. Every
+    /// entry point that names a root goes through this, so a caller never has
+    /// to know what spelling this host stores — and two spellings of one
+    /// folder can never become two rows.
+    fn canonical_watched_root(path: &str) -> Result<String, DbError> {
+        crate::import::folder_registry::canonical_absolute_root(path)
+            .map_err(|error| DbError::Message(error.to_string()))
+    }
+
     pub async fn load_import_folder_registry(
         &self,
     ) -> Result<crate::import::ImportFolderRegistry, DbError> {
@@ -53,10 +62,10 @@ impl Database {
         .await
     }
 
+    /// Watch the folder `path` names, keyed by its canonical spelling. `false`
+    /// when that folder is already watched, however it was spelled this time.
     pub async fn add_watched_import_folder(&self, path: &str) -> Result<bool, DbError> {
-        crate::import::folder_registry::validate_absolute_root(path)
-            .map_err(|error| DbError::Message(error.to_string()))?;
-        let path = path.to_string();
+        let path = Self::canonical_watched_root(path)?;
         self.call(move |conn| {
             let roots = conn.query(
                 "SELECT path FROM watched_import_folders ORDER BY position",
@@ -90,8 +99,10 @@ impl Database {
         .await
     }
 
+    /// Stop watching the folder `path` names. Keyed the same way as the add,
+    /// so whichever spelling reaches here names the row the add created.
     pub async fn remove_watched_import_folder(&self, path: &str) -> Result<bool, DbError> {
-        let path = path.to_string();
+        let path = Self::canonical_watched_root(path)?;
         self.call(move |conn| {
             let position: Option<i64> = conn
                 .query_row(

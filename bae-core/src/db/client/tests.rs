@@ -3226,16 +3226,57 @@ mod import_candidate_state_tests {
         );
     }
 
+    /// However the folder was spelled on the way in, one row exists and it is
+    /// keyed by the canonical spelling — so a second spelling of a folder
+    /// already watched is recognized as the same folder rather than added
+    /// beside it.
     #[tokio::test]
-    async fn watched_root_rejects_noncanonical_lexical_forms() {
+    async fn watched_root_spellings_settle_on_one_row() {
         let (db, _tmp) = empty_db().await;
-        for path in ["/music/", "/music//rips", "/music/./rips", "/music/../rips"] {
-            let path = host_root(path);
+        let canonical = host_root("/music/rips");
+        assert!(db.add_watched_import_folder(&canonical).await.unwrap());
+
+        // The last of these is the drive-lettered, forward-slashed form a
+        // `bae://import` link and a `file://` folder drop hand over on Windows.
+        #[cfg(windows)]
+        const URL_SPELLINGS: &[&str] = &["C:/music/rips"];
+        #[cfg(not(windows))]
+        const URL_SPELLINGS: &[&str] = &[];
+
+        let spellings = [
+            host_root("/music/rips/"),
+            host_root("/music//rips"),
+            host_root("/music/./rips"),
+        ];
+
+        for spelling in spellings
+            .iter()
+            .map(String::as_str)
+            .chain(URL_SPELLINGS.iter().copied())
+        {
             assert!(
-                db.add_watched_import_folder(&path).await.is_err(),
-                "{path} must not become a second key for the same folder"
+                !db.add_watched_import_folder(spelling).await.unwrap(),
+                "{spelling} is the folder already watched, not a new one"
             );
         }
+        let paths: Vec<_> = db
+            .load_import_folder_registry()
+            .await
+            .unwrap()
+            .watched_folders()
+            .into_iter()
+            .map(|folder| folder.path)
+            .collect();
+        assert_eq!(paths, vec![canonical]);
+    }
+
+    /// `..` never becomes a key: rewriting it without reading the filesystem
+    /// is wrong across a symlink, so it is refused instead.
+    #[tokio::test]
+    async fn watched_root_rejects_a_path_climbing_out_of_itself() {
+        let (db, _tmp) = empty_db().await;
+        let path = host_root("/music/../rips");
+        assert!(db.add_watched_import_folder(&path).await.is_err(), "{path}");
     }
 
     #[tokio::test]
