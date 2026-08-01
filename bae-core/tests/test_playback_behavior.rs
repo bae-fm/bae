@@ -4652,7 +4652,10 @@ impl CloudOnlyPlaybackFixture {
         // Run the upload so the encrypted blobs land in the cloud and the outbox
         // clears — after this the track resolves cloud-only (no local copy, no
         // pending upload).
-        while library_manager.drain_uploads_for_test().await? > 0 {}
+        while matches!(
+            library_manager.drain_uploads_for_test().await?,
+            coven::DrainOutcome::Drained { uploaded, .. } if uploaded > 0
+        ) {}
 
         // Delete the import originals so file resolution can't fall back to them.
         std::fs::remove_dir_all(&album_dir)?;
@@ -6107,7 +6110,10 @@ async fn build_remote_multi_window_template(
 
     // Run the upload so the encrypted blob lands in the cloud and the outbox
     // clears — after this the track resolves cloud-only.
-    while library_manager.drain_uploads_for_test().await? > 0 {}
+    while matches!(
+        library_manager.drain_uploads_for_test().await?,
+        coven::DrainOutcome::Drained { uploaded, .. } if uploaded > 0
+    ) {}
 
     // Delete the import original so file resolution can't fall back to it. With
     // the blob unpinned there is now no copy of the audio anywhere but the cloud

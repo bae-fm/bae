@@ -43,24 +43,25 @@ impl Database {
         }
 
         let track_ids = track_ids.to_vec();
-        self.read(move |conn| {
+        self.read(move |sql| {
             let mut album_ids = HashMap::new();
             for chunk in track_ids.chunks(SQL_MAX_IN_VARS) {
                 let placeholders = in_clause_placeholders(chunk.len());
-                let sql = format!(
+                let query = format!(
                     "SELECT t.id AS track_id, r.album_id FROM tracks t \
                          JOIN releases r ON t.release_id = r.id \
                          WHERE t.id IN ({placeholders})"
                 );
-                let mut stmt = conn.prepare(&sql)?;
-                let rows =
-                    stmt.query_map(coven::rusqlite::params_from_iter(chunk.iter()), |row| {
+                album_ids.extend(sql.query(
+                    &query,
+                    coven::rusqlite::params_from_iter(chunk.iter()),
+                    |row| {
                         Ok((
                             row.get::<_, String>("track_id")?,
                             row.get::<_, String>("album_id")?,
                         ))
-                    })?;
-                album_ids.extend(rows.collect::<coven::rusqlite::Result<HashMap<_, _>>>()?);
+                    },
+                )?);
             }
             Ok(album_ids)
         })
@@ -80,20 +81,22 @@ impl Database {
         }
 
         let release_ids = release_ids.to_vec();
-        self.read(move |conn| {
+        self.read(move |sql| {
             let mut album_ids = HashMap::new();
             for chunk in release_ids.chunks(SQL_MAX_IN_VARS) {
                 let placeholders = in_clause_placeholders(chunk.len());
-                let sql = format!("SELECT id, album_id FROM releases WHERE id IN ({placeholders})");
-                let mut stmt = conn.prepare(&sql)?;
-                let rows =
-                    stmt.query_map(coven::rusqlite::params_from_iter(chunk.iter()), |row| {
+                let query =
+                    format!("SELECT id, album_id FROM releases WHERE id IN ({placeholders})");
+                album_ids.extend(sql.query(
+                    &query,
+                    coven::rusqlite::params_from_iter(chunk.iter()),
+                    |row| {
                         Ok((
                             row.get::<_, String>("id")?,
                             row.get::<_, String>("album_id")?,
                         ))
-                    })?;
-                album_ids.extend(rows.collect::<coven::rusqlite::Result<HashMap<_, _>>>()?);
+                    },
+                )?);
             }
             Ok(album_ids)
         })
@@ -109,7 +112,7 @@ impl Database {
         let pattern = format!("%{}%", escape_like_pattern(query));
         let limit_i64 = limit as i64;
 
-        self.read(move |conn| {
+        self.read(move |sql| {
             // The stored `primary_release_id` and the album's release ids come
             // back raw; `resolve_primary_release_id` applies the fallback.
             let album_query = format!(
@@ -126,30 +129,27 @@ impl Database {
                         "#,
                 release_ids = album_release_ids_json_sql()
             );
-            let mut album_stmt = conn.prepare(&album_query)?;
-            let albums = album_stmt
-                .query_map(params![pattern, pattern, limit_i64], |row| {
-                    let release_ids_json: String = row.get("release_ids_json")?;
-                    let release_ids: Vec<String> = serde_json::from_str(&release_ids_json)
-                        .map_err(|e| {
-                            coven::rusqlite::Error::FromSqlConversionFailure(
-                                0,
-                                coven::rusqlite::types::Type::Text,
-                                format!("malformed release_ids_json: {e}").into(),
-                            )
-                        })?;
-                    Ok(DbAlbumSearchResult {
-                        id: row.get("id")?,
-                        title: row.get("title")?,
-                        year: row.get("year")?,
-                        primary_release_id: row.get("primary_release_id")?,
-                        release_ids,
-                        artist_name: row.get("artist_name")?,
-                    })
-                })?
-                .collect::<coven::rusqlite::Result<Vec<_>>>()?;
+            let albums = sql.query(&album_query, params![pattern, pattern, limit_i64], |row| {
+                let release_ids_json: String = row.get("release_ids_json")?;
+                let release_ids: Vec<String> =
+                    serde_json::from_str(&release_ids_json).map_err(|e| {
+                        coven::rusqlite::Error::FromSqlConversionFailure(
+                            0,
+                            coven::rusqlite::types::Type::Text,
+                            format!("malformed release_ids_json: {e}").into(),
+                        )
+                    })?;
+                Ok(DbAlbumSearchResult {
+                    id: row.get("id")?,
+                    title: row.get("title")?,
+                    year: row.get("year")?,
+                    primary_release_id: row.get("primary_release_id")?,
+                    release_ids,
+                    artist_name: row.get("artist_name")?,
+                })
+            })?;
 
-            let mut track_stmt = conn.prepare(
+            let tracks = sql.query(
                 r#"
                         SELECT t.id, t.title, t.duration_ms, t.release_id,
                                r.album_id,
@@ -163,9 +163,8 @@ impl Database {
                         ORDER BY t.title
                         LIMIT ?
                         "#,
-            )?;
-            let tracks = track_stmt
-                .query_map(params![pattern, limit_i64], |row| {
+                params![pattern, limit_i64],
+                |row| {
                     Ok(DbTrackSearchResult {
                         id: row.get("id")?,
                         title: row.get("title")?,
@@ -175,41 +174,41 @@ impl Database {
                         album_title: row.get("album_title")?,
                         artist_name: row.get("artist_name")?,
                     })
-                })?
-                .collect::<coven::rusqlite::Result<Vec<_>>>()?;
+                },
+            )?;
 
-            let mut artist_stmt = conn.prepare(&artist_summary_query(
-                Some(
-                    "WHERE ar.name LIKE ? ESCAPE '\\' \
+            let artists = sql.query(
+                &artist_summary_query(
+                    Some(
+                        "WHERE ar.name LIKE ? ESCAPE '\\' \
                          OR ar.sort_name LIKE ? ESCAPE '\\'",
+                    ),
+                    Some("ORDER BY ar.name LIMIT ?"),
                 ),
-                Some("ORDER BY ar.name LIMIT ?"),
-            ))?;
-            let artists = artist_stmt
-                .query_map(params![pattern, pattern, limit_i64], row_to_artist_summary)?
-                .collect::<coven::rusqlite::Result<Vec<_>>>()?;
+                params![pattern, pattern, limit_i64],
+                row_to_artist_summary,
+            )?;
 
-            let mut composer_stmt = conn.prepare(&composer_summary_query(
-                Some(
-                    "WHERE composer.name LIKE ? ESCAPE '\\' \
+            let composers = sql.query(
+                &composer_summary_query(
+                    Some(
+                        "WHERE composer.name LIKE ? ESCAPE '\\' \
                          OR composer.sort_name LIKE ? ESCAPE '\\'",
+                    ),
+                    Some("ORDER BY composer.name LIMIT ?"),
                 ),
-                Some("ORDER BY composer.name LIMIT ?"),
-            ))?;
-            let composers = composer_stmt
-                .query_map(
-                    params![pattern, pattern, limit_i64],
-                    row_to_composer_summary,
-                )?
-                .collect::<coven::rusqlite::Result<Vec<_>>>()?;
+                params![pattern, pattern, limit_i64],
+                row_to_composer_summary,
+            )?;
 
-            let mut work_stmt = conn.prepare(&work_summary_query(
-                Some("WHERE w.title LIKE ? ESCAPE '\\'"),
-                Some("ORDER BY w.title LIMIT ?"),
-            ))?;
-            let works = work_stmt
-                .query_map(params![pattern, limit_i64], row_to_work_summary)?
-                .collect::<coven::rusqlite::Result<Vec<_>>>()?;
+            let works = sql.query(
+                &work_summary_query(
+                    Some("WHERE w.title LIKE ? ESCAPE '\\'"),
+                    Some("ORDER BY w.title LIMIT ?"),
+                ),
+                params![pattern, limit_i64],
+                row_to_work_summary,
+            )?;
 
             Ok(DbLibrarySearchResults {
                 albums,
@@ -247,13 +246,8 @@ impl Database {
             ORDER BY {order_by}"
         );
 
-        self.read(move |conn| {
-            let mut stmt = conn.prepare(&query)?;
-            let rows = stmt.query_map([], row_to_album)?;
-            rows.collect::<coven::rusqlite::Result<Vec<_>>>()
-                .map_err(DbError::from)
-        })
-        .await
+        self.read(move |sql| sql.query(&query, [], row_to_album).map_err(DbError::from))
+            .await
     }
 
     /// Get a page of albums with LIMIT/OFFSET for lazy loading.
@@ -275,14 +269,12 @@ impl Database {
             LIMIT ? OFFSET ?",
         );
 
-        self.read(move |conn| {
-            let mut stmt = conn.prepare(&query)?;
-            let mut rows = stmt.query(params![limit as i64, offset as i64])?;
-            let mut albums = Vec::new();
-            while let Some(row) = rows.next()? {
-                albums.push(parse_album_summary_row(row)?);
-            }
-            Ok(albums)
+        self.read(move |sql| {
+            sql.query(&query, params![limit as i64, offset as i64], |row| {
+                Ok(parse_album_summary_row(row))
+            })?
+            .into_iter()
+            .collect()
         })
         .await
     }
@@ -310,8 +302,8 @@ impl Database {
             ) WHERE id = ?"
         );
 
-        self.read(move |conn| {
-            conn.query_row(&query, params![album_id], |row| row.get::<_, i64>("idx"))
+        self.read(move |sql| {
+            sql.query_row(&query, params![album_id], |row| row.get::<_, i64>("idx"))
                 .optional()
                 .map(|idx| idx.map(|i| i as u64))
                 .map_err(DbError::from)
@@ -320,8 +312,8 @@ impl Database {
     }
 
     pub async fn get_album_count(&self) -> Result<u64, DbError> {
-        self.read(move |conn| {
-            conn.query_row("SELECT COUNT(*) FROM albums", [], |row| {
+        self.read(move |sql| {
+            sql.query_row("SELECT COUNT(*) FROM albums", [], |row| {
                 row.get::<_, i64>(0)
             })
             .map(|c| c as u64)
@@ -338,8 +330,8 @@ impl Database {
     ) -> Result<Option<DbAlbumSummary>, DbError> {
         let album_id = album_id.to_string();
         let query = format!("{} FROM albums a WHERE a.id = ?", album_summary_select());
-        self.read(move |conn| {
-            conn.query_row(&query, params![album_id], |row| {
+        self.read(move |sql| {
+            sql.query_row(&query, params![album_id], |row| {
                 Ok(parse_album_summary_row(row))
             })
             .optional()?
@@ -351,7 +343,7 @@ impl Database {
     /// Find album by ID. Caller-provided ID — may not exist.
     pub async fn find_album_by_id(&self, album_id: &str) -> Result<Option<DbAlbum>, DbError> {
         let album_id = album_id.to_string();
-        self.read(move |conn| find_album_by_id_on(conn, &album_id))
+        self.read(move |sql| find_album_by_id_on(&sql, &album_id))
             .await
     }
 
@@ -359,8 +351,8 @@ impl Database {
     /// exist. See the method conventions above.
     pub async fn get_album_for_release(&self, release: &DbRelease) -> Result<DbAlbum, DbError> {
         let album_id = release.album_id.clone();
-        self.read(move |conn| {
-            conn.query_row(
+        self.read(move |sql| {
+            sql.query_row(
                 r#"
                     SELECT
                         id, title, artist_id, year, primary_release_id,
@@ -386,20 +378,20 @@ impl Database {
         album_id: &str,
     ) -> Result<Option<DbAlbumDetail>, DbError> {
         let album_id = album_id.to_string();
-        self.read(move |conn| {
-            let Some(album) = find_album_by_id_on(conn, &album_id)? else {
+        self.read(move |sql| {
+            let Some(album) = find_album_by_id_on(&sql, &album_id)? else {
                 return Ok(None);
             };
 
-            let artists = get_artists_for_album_on(conn, &album_id)?;
-            let db_releases = get_releases_for_album_on(conn, &album_id)?;
+            let artists = get_artists_for_album_on(&sql, &album_id)?;
+            let db_releases = get_releases_for_album_on(&sql, &album_id)?;
             if db_releases.is_empty() {
                 return Ok(None);
             }
 
             let mut releases = Vec::with_capacity(db_releases.len());
             for release in db_releases {
-                releases.push(build_release_detail_on(conn, release)?);
+                releases.push(build_release_detail_on(&sql, release)?);
             }
 
             Ok(Some(DbAlbumDetail {
@@ -416,8 +408,8 @@ impl Database {
         release_id: &str,
     ) -> Result<Option<String>, DbError> {
         let release_id = release_id.to_string();
-        self.read(move |conn| {
-            conn.query_row(
+        self.read(move |sql| {
+            sql.query_row(
                 "SELECT album_id FROM releases WHERE id = ?",
                 params![release_id],
                 |row| row.get::<_, String>("album_id"),
@@ -435,11 +427,10 @@ impl Database {
     ) -> Result<(), DbError> {
         let album_id = album_id.to_string();
         self.call_sql(move |sql| {
-            let conn = &sql;
             for cleanup in &cleanups {
-                apply_delete_cleanup_on(conn, cleanup)?;
+                apply_delete_cleanup_on(&sql, cleanup)?;
             }
-            conn.execute("DELETE FROM albums WHERE id = ?", params![album_id])?;
+            sql.execute("DELETE FROM albums WHERE id = ?", params![album_id])?;
             Ok(())
         })
         .await
@@ -453,8 +444,7 @@ impl Database {
         let (album_id, primary_release_id) = (album_id.to_string(), primary_release_id.to_string());
         self.call_sql(move |sql| {
             let reg = sql.stamp();
-            let conn = &sql;
-            conn.execute(
+            sql.execute(
                 "UPDATE albums SET primary_release_id = ?, _updated_at = ? WHERE id = ?",
                 params![primary_release_id, reg, album_id],
             )

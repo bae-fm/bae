@@ -139,7 +139,15 @@ async fn fetch_artist_images_warns_and_skips_when_existing_image_check_fails() {
     database
         .handle()
         .sql(|sql| {
-            sql.execute("DROP TABLE artist_images", [])?;
+            // Renamed rather than dropped: `artist_images` carries a blob, so
+            // coven owns a cleanup-guard trigger on it and refuses host SQL that
+            // would take the trigger with the table. The rename leaves the
+            // lookup with no `artist_images` to read, which is the failure this
+            // exercises.
+            sql.execute(
+                "ALTER TABLE artist_images RENAME TO artist_images_renamed",
+                [],
+            )?;
             Ok::<(), coven::CovenError>(())
         })
         .await

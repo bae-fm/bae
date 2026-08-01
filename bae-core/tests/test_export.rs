@@ -81,7 +81,7 @@ impl ExportFixture {
             tokio::runtime::Handle::current(),
         );
         let cloud = Arc::new(InMemoryCloudHome::new());
-        mgr.connect_test_cloud_home(
+        mgr.connect_test_cloud_home_caller_driven(
             cloud.clone(),
             bae_core::sync::CloudCipher::Encrypted(EncryptionService::from_key([7u8; 32])),
         )
@@ -138,7 +138,7 @@ async fn import_then_strand_in_cloud(f: &ExportFixture, album_dir: &Path) -> (St
     let original_bytes = fs::read(album_dir.join(&files[0].original_filename)).unwrap();
 
     f.mgr.coven_make_remote(&release_id, false).await.unwrap();
-    let uploaded = f.mgr.drain_uploads_for_test().await.unwrap();
+    let uploaded = f.mgr.drain_uploads_expecting_work().await.unwrap();
     assert_eq!(uploaded, files.len(), "each release blob uploaded");
 
     (release_id, original_bytes)

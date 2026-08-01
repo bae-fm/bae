@@ -2980,14 +2980,13 @@ mod import_candidate_state_tests {
         let (db, _tmp) = empty_db().await;
         let plan = db
             .handle()
-            .sql_read(move |conn| {
-                let mut statement = conn.prepare(
+            .sql_read(move |sql| {
+                let details = sql.query(
                     "EXPLAIN QUERY PLAN \
                      SELECT 1 FROM releases WHERE content_hash = ? LIMIT 1",
+                    ["hash"],
+                    |row| row.get::<_, String>(3),
                 )?;
-                let details = statement
-                    .query_map(["hash"], |row| row.get::<_, String>(3))?
-                    .collect::<Result<Vec<_>, _>>()?;
                 Ok::<_, coven::CovenError>(details)
             })
             .await
@@ -3476,11 +3475,11 @@ mod injected_ids_tests {
         .unwrap();
 
         let ids: Vec<String> = db
-            .read(|conn| {
-                let mut stmt = conn.prepare("SELECT id FROM release_identities")?;
-                let rows = stmt.query_map([], |row| row.get::<_, String>(0))?;
-                rows.collect::<coven::rusqlite::Result<Vec<_>>>()
-                    .map_err(DbError::from)
+            .read(|sql| {
+                sql.query("SELECT id FROM release_identities", [], |row| {
+                    row.get::<_, String>(0)
+                })
+                .map_err(DbError::from)
             })
             .await
             .unwrap();
@@ -3509,12 +3508,11 @@ mod injected_ids_tests {
         .unwrap();
 
         let copied: Vec<String> = db
-            .read(move |conn| {
-                let mut stmt =
-                    conn.prepare("SELECT id FROM album_artists WHERE album_id != '9644b84d-94b2-4b3b-863a-d6583931920c'")?;
-                let rows = stmt.query_map([], |row| row.get::<_, String>(0))?;
-                rows.collect::<coven::rusqlite::Result<Vec<_>>>()
-                    .map_err(DbError::from)
+            .read(move |sql| {
+                sql.query("SELECT id FROM album_artists WHERE album_id != '9644b84d-94b2-4b3b-863a-d6583931920c'", [], |row| {
+                    row.get::<_, String>(0)
+                })
+                .map_err(DbError::from)
             })
             .await
             .unwrap();

@@ -256,8 +256,8 @@ impl Database {
     ) -> Result<Option<DbReleaseStorageSummary>, DbError> {
         let release_id = release_id.to_string();
         let query = Self::release_storage_summary_query();
-        self.read(move |conn| {
-            conn.query_row(&query, [release_id], row_to_release_storage_summary)
+        self.read(move |sql| {
+            sql.query_row(&query, [release_id], row_to_release_storage_summary)
                 .optional()
                 .map_err(DbError::from)
         })
@@ -271,14 +271,14 @@ impl Database {
     /// unreachable when the cloud provider is removed: an unpinned remote release
     /// is reachable only through the cloud.
     pub async fn get_remote_release_file_ids(&self) -> Result<Vec<Option<String>>, DbError> {
-        self.read(move |conn| {
-            let mut stmt = conn.prepare(
+        self.read(move |sql| {
+            sql.query(
                 "SELECT (SELECT rf.id FROM release_files rf WHERE rf.release_id = r.id LIMIT 1) \
                      FROM releases r WHERE r.remote = 1",
-            )?;
-            let rows = stmt.query_map([], |row| row.get::<_, Option<String>>(0))?;
-            rows.collect::<coven::rusqlite::Result<Vec<_>>>()
-                .map_err(DbError::from)
+                [],
+                |row| row.get::<_, Option<String>>(0),
+            )
+            .map_err(DbError::from)
         })
         .await
     }
@@ -395,8 +395,7 @@ impl Database {
 
         let query = Self::storage_page_query(&order_by, artist_sort_join, &where_clause);
 
-        self.read(move |conn| {
-            let mut stmt = conn.prepare(&query)?;
+        self.read(move |sql| {
             // The uploading ids bind before the page's limit/offset, matching
             // their order in the rendered clause.
             let mut binds: Vec<Box<dyn coven::rusqlite::ToSql>> = uploading
@@ -405,14 +404,16 @@ impl Database {
                 .collect();
             binds.push(Box::new(limit as i64));
             binds.push(Box::new(offset as i64));
-            let mut rows = stmt.query(coven::rusqlite::params_from_iter(binds.iter()))?;
-            let mut storage_rows = Vec::new();
-            while let Some(row) = rows.next()? {
-                let release = row_to_release_summary(row)?;
-                let album = parse_album_summary_row(row)?;
-                storage_rows.push(DbStorageRow { release, album });
-            }
-            Ok(storage_rows)
+            sql.query(
+                &query,
+                coven::rusqlite::params_from_iter(binds.iter()),
+                |row| {
+                    let release = row_to_release_summary(row)?;
+                    Ok(parse_album_summary_row(row).map(|album| DbStorageRow { release, album }))
+                },
+            )?
+            .into_iter()
+            .collect()
         })
         .await
     }
@@ -421,8 +422,8 @@ impl Database {
     /// exist. See the method conventions above.
     pub async fn get_release_for_track(&self, track: &DbTrack) -> Result<DbRelease, DbError> {
         let release_id = track.release_id.clone();
-        self.read(move |conn| {
-            conn.query_row(
+        self.read(move |sql| {
+            sql.query_row(
                 "SELECT * FROM releases WHERE id = ?",
                 params![release_id],
                 row_to_release,
@@ -439,11 +440,11 @@ impl Database {
         release_id: &str,
     ) -> Result<Option<DbReleaseDetail>, DbError> {
         let release_id = release_id.to_string();
-        self.read(move |conn| {
-            let Some(release) = find_release_by_id_on(conn, &release_id)? else {
+        self.read(move |sql| {
+            let Some(release) = find_release_by_id_on(&sql, &release_id)? else {
                 return Ok(None);
             };
-            Ok(Some(build_release_detail_on(conn, release)?))
+            Ok(Some(build_release_detail_on(&sql, release)?))
         })
         .await
     }
@@ -456,20 +457,20 @@ impl Database {
         release_id: &str,
     ) -> Result<Option<ReleaseDetailContext>, DbError> {
         let release_id = release_id.to_string();
-        self.read(move |conn| {
-            let Some(release) = find_release_by_id_on(conn, &release_id)? else {
+        self.read(move |sql| {
+            let Some(release) = find_release_by_id_on(&sql, &release_id)? else {
                 return Ok(None);
             };
-            let album_artists = get_artists_for_album_on(conn, &release.album_id)?;
-            let releases = get_releases_for_album_on(conn, &release.album_id)?;
+            let album_artists = get_artists_for_album_on(&sql, &release.album_id)?;
+            let releases = get_releases_for_album_on(&sql, &release.album_id)?;
             let Some(release_index) = releases.iter().position(|r| r.id == release_id) else {
                 return Ok(None);
             };
             // The album's compilation flag decides each track's display artist.
-            let is_compilation = find_album_by_id_on(conn, &release.album_id)?
+            let is_compilation = find_album_by_id_on(&sql, &release.album_id)?
                 .is_some_and(|album| album.is_compilation);
             Ok(Some(ReleaseDetailContext {
-                detail: build_release_detail_on(conn, release)?,
+                detail: build_release_detail_on(&sql, release)?,
                 album_artists,
                 release_index,
                 is_compilation,
@@ -481,7 +482,7 @@ impl Database {
     /// Ordered by `created_at`.
     pub async fn get_releases_for_album(&self, album_id: &str) -> Result<Vec<DbRelease>, DbError> {
         let album_id = album_id.to_string();
-        self.read(move |conn| get_releases_for_album_on(conn, &album_id))
+        self.read(move |sql| get_releases_for_album_on(&sql, &album_id))
             .await
     }
     pub async fn insert_file(&self, file: &DbFile) -> Result<(), DbError> {
@@ -495,7 +496,7 @@ impl Database {
 
     pub async fn get_files_for_release(&self, release_id: &str) -> Result<Vec<DbFile>, DbError> {
         let release_id = release_id.to_string();
-        self.read(move |conn| get_files_for_release_on(conn, &release_id))
+        self.read(move |sql| get_files_for_release_on(&sql, &release_id))
             .await
     }
 
@@ -522,8 +523,8 @@ impl Database {
     /// Find file by ID. Caller-provided ID — may not exist.
     pub async fn find_file_by_id(&self, file_id: &str) -> Result<Option<DbFile>, DbError> {
         let file_id = file_id.to_string();
-        self.read(move |conn| {
-            conn.query_row(
+        self.read(move |sql| {
+            sql.query_row(
                 "SELECT * FROM release_files WHERE id = ?",
                 params![file_id],
                 row_to_file,
@@ -903,7 +904,7 @@ impl Database {
     pub async fn fail_import_and_delete_release(&self, release_id: &str) -> Result<(), DbError> {
         let release_id = release_id.to_string();
         let plan = self
-            .read(move |conn| plan_fail_import_deletion(conn, &release_id))
+            .read(move |sql| plan_fail_import_deletion(&sql, &release_id))
             .await?;
         let FailImportDeletion {
             release_id,
@@ -980,17 +981,20 @@ impl Database {
         release_id: &str,
     ) -> Result<HashMap<String, String>, DbError> {
         let release_id = release_id.to_string();
-        self.read(move |conn| {
-            let mut stmt =
-                conn.prepare("SELECT source, json FROM release_metadata WHERE release_id = ?")?;
-            let rows = stmt.query_map(params![release_id], |row| {
-                Ok((
-                    row.get::<_, String>("source")?,
-                    row.get::<_, String>("json")?,
-                ))
-            })?;
-            rows.collect::<coven::rusqlite::Result<HashMap<_, _>>>()
-                .map_err(DbError::from)
+        self.read(move |sql| {
+            Ok(sql
+                .query(
+                    "SELECT source, json FROM release_metadata WHERE release_id = ?",
+                    params![release_id],
+                    |row| {
+                        Ok((
+                            row.get::<_, String>("source")?,
+                            row.get::<_, String>("json")?,
+                        ))
+                    },
+                )?
+                .into_iter()
+                .collect())
         })
         .await
     }
@@ -1006,7 +1010,7 @@ impl Database {
     /// Find release by ID. Caller-provided ID — may not exist.
     pub async fn find_release_by_id(&self, release_id: &str) -> Result<Option<DbRelease>, DbError> {
         let release_id = release_id.to_string();
-        self.read(move |conn| find_release_by_id_on(conn, &release_id))
+        self.read(move |sql| find_release_by_id_on(&sql, &release_id))
             .await
     }
 
@@ -1140,12 +1144,13 @@ impl Database {
     /// matches so a re-import sweeps any pre-existing duplicates.
     pub async fn release_ids_for_content_hash(&self, hash: &str) -> Result<Vec<String>, DbError> {
         let hash = hash.to_string();
-        self.read(move |conn| {
-            let mut stmt = conn.prepare("SELECT id FROM releases WHERE content_hash = ?")?;
-            let ids = stmt
-                .query_map(params![hash], |row| row.get::<_, String>(0))?
-                .collect::<Result<Vec<_>, _>>()?;
-            Ok(ids)
+        self.read(move |sql| {
+            sql.query(
+                "SELECT id FROM releases WHERE content_hash = ?",
+                params![hash],
+                |row| row.get::<_, String>(0),
+            )
+            .map_err(DbError::from)
         })
         .await
     }
@@ -1155,8 +1160,8 @@ impl Database {
     /// to mark a scanned folder as already added.
     pub async fn is_content_hash_imported(&self, hash: &str) -> Result<bool, DbError> {
         let hash = hash.to_string();
-        self.read(move |conn| {
-            conn.query_row(
+        self.read(move |sql| {
+            sql.query_row(
                 "SELECT 1 FROM releases WHERE content_hash = ? LIMIT 1",
                 params![hash],
                 |_| Ok(()),
@@ -1171,14 +1176,15 @@ impl Database {
     pub async fn imported_content_hashes(
         &self,
     ) -> Result<std::collections::HashSet<String>, DbError> {
-        self.read(move |conn| {
-            let mut statement = conn.prepare(
-                "SELECT DISTINCT content_hash FROM releases WHERE content_hash IS NOT NULL",
-            )?;
-            let hashes = statement
-                .query_map([], |row| row.get::<_, String>(0))?
-                .collect::<Result<std::collections::HashSet<_>, _>>()?;
-            Ok(hashes)
+        self.read(move |sql| {
+            Ok(sql
+                .query(
+                    "SELECT DISTINCT content_hash FROM releases WHERE content_hash IS NOT NULL",
+                    [],
+                    |row| row.get::<_, String>(0),
+                )?
+                .into_iter()
+                .collect())
         })
         .await
     }
@@ -1213,10 +1219,10 @@ struct FailImportDeletion {
 /// inside the deleted subtree — this release, its album if the album holds no
 /// other release, and the orphaned works.
 fn plan_fail_import_deletion(
-    conn: &Connection,
+    sql: &SqlReadContext<'_>,
     release_id: &str,
 ) -> Result<FailImportDeletion, DbError> {
-    let album_id: String = conn
+    let album_id: String = sql
         .query_row(
             "SELECT album_id FROM releases WHERE id = ?",
             params![release_id],
@@ -1225,7 +1231,7 @@ fn plan_fail_import_deletion(
         .optional()?
         .ok_or_else(|| DbError::Message(format!("release not found: {release_id}")))?;
 
-    let delete_album: bool = conn.query_row(
+    let delete_album: bool = sql.query_row(
         "SELECT NOT EXISTS(SELECT 1 FROM releases WHERE album_id = ?1 AND id != ?2)",
         params![album_id, release_id],
         |row| row.get(0),
@@ -1233,9 +1239,8 @@ fn plan_fail_import_deletion(
 
     // Every artist this release/album references — the candidates the sweep
     // considers.
-    let mut candidate_artist_ids: Vec<String> = {
-        let mut stmt = conn.prepare(
-            "SELECT artist_id FROM album_artists WHERE album_id = ?1
+    let mut candidate_artist_ids: Vec<String> = sql.query(
+        "SELECT artist_id FROM album_artists WHERE album_id = ?1
              UNION
              SELECT artist_id FROM track_artists
                WHERE track_id IN (SELECT id FROM tracks WHERE release_id = ?2)
@@ -1246,17 +1251,13 @@ fn plan_fail_import_deletion(
                WHERE track_id IN (SELECT id FROM tracks WHERE release_id = ?2)
              UNION
              SELECT artist_id FROM albums WHERE id = ?1 AND artist_id IS NOT NULL",
-        )?;
-        let ids = stmt
-            .query_map(params![album_id, release_id], |row| row.get(0))?
-            .collect::<coven::rusqlite::Result<Vec<String>>>()?;
-        ids
-    };
+        params![album_id, release_id],
+        |row| row.get(0),
+    )?;
 
     // The work-graph component this release's tracks touch.
-    let candidate_work_ids: Vec<String> = {
-        let mut stmt = conn.prepare(
-            "WITH RECURSIVE component(work_id) AS (
+    let candidate_work_ids: Vec<String> = sql.query(
+        "WITH RECURSIVE component(work_id) AS (
                  SELECT tw.work_id FROM track_works tw
                    JOIN tracks t ON t.id = tw.track_id
                   WHERE t.release_id = ?1
@@ -1268,28 +1269,23 @@ fn plan_fail_import_deletion(
                    JOIN component c ON wp.parent_work_id = c.work_id
              )
              SELECT work_id FROM component",
-        )?;
-        let ids = stmt
-            .query_map(params![release_id], |row| row.get(0))?
-            .collect::<coven::rusqlite::Result<Vec<String>>>()?;
-        ids
-    };
+        params![release_id],
+        |row| row.get(0),
+    )?;
 
     // Composers link only through work_artists, so add them as candidates.
-    {
-        let mut stmt = conn.prepare("SELECT artist_id FROM work_artists WHERE work_id = ?1")?;
-        for work_id in &candidate_work_ids {
-            let composers = stmt
-                .query_map(params![work_id], |row| row.get::<_, String>(0))?
-                .collect::<coven::rusqlite::Result<Vec<String>>>()?;
-            candidate_artist_ids.extend(composers);
-        }
+    for work_id in &candidate_work_ids {
+        candidate_artist_ids.extend(sql.query(
+            "SELECT artist_id FROM work_artists WHERE work_id = ?1",
+            params![work_id],
+            |row| row.get::<_, String>(0),
+        )?);
     }
 
     // Works that survive once this release's track_works are gone — reachable from
     // a track on another release, directly or through the work_parts hierarchy.
-    let live_work_ids: std::collections::HashSet<String> = {
-        let mut stmt = conn.prepare(
+    let live_work_ids: std::collections::HashSet<String> = sql
+        .query(
             "WITH RECURSIVE live(work_id) AS (
                  SELECT DISTINCT work_id FROM track_works
                    WHERE track_id NOT IN (SELECT id FROM tracks WHERE release_id = ?1)
@@ -1301,12 +1297,11 @@ fn plan_fail_import_deletion(
                    JOIN live l ON wp.parent_work_id = l.work_id
              )
              SELECT work_id FROM live",
-        )?;
-        let ids = stmt
-            .query_map(params![release_id], |row| row.get(0))?
-            .collect::<coven::rusqlite::Result<std::collections::HashSet<String>>>()?;
-        ids
-    };
+            params![release_id],
+            |row| row.get::<_, String>(0),
+        )?
+        .into_iter()
+        .collect();
     let orphaned_work_ids: Vec<String> = candidate_work_ids
         .into_iter()
         .filter(|work_id| !live_work_ids.contains(work_id))
@@ -1314,7 +1309,7 @@ fn plan_fail_import_deletion(
 
     let mut image_blobs: Vec<(&'static str, String, Option<String>)> = Vec::new();
     // The cover is 1:1 with the release, so it always orphans.
-    if let Some((blob_id, cloud_path)) = conn
+    if let Some((blob_id, cloud_path)) = sql
         .query_row(
             "SELECT blob_id, cloud_path FROM covers WHERE id = ?",
             params![release_id],
@@ -1357,10 +1352,10 @@ fn plan_fail_import_deletion(
         for work_id in &orphaned_work_ids {
             binds.push(work_id);
         }
-        let orphaned: bool = conn.query_row(&orphan_check, binds.as_slice(), |row| row.get(0))?;
+        let orphaned: bool = sql.query_row(&orphan_check, binds.as_slice(), |row| row.get(0))?;
         if orphaned {
             orphaned_artist_ids.push(artist_id.clone());
-            if let Some((blob_id, cloud_path)) = conn
+            if let Some((blob_id, cloud_path)) = sql
                 .query_row(
                     "SELECT blob_id, cloud_path FROM artist_images WHERE id = ?",
                     params![artist_id],
@@ -1373,13 +1368,11 @@ fn plan_fail_import_deletion(
         }
     }
 
-    let file_ids: Vec<String> = {
-        let mut stmt = conn.prepare("SELECT id FROM release_files WHERE release_id = ?")?;
-        let ids = stmt
-            .query_map(params![release_id], |row| row.get(0))?
-            .collect::<coven::rusqlite::Result<Vec<String>>>()?;
-        ids
-    };
+    let file_ids: Vec<String> = sql.query(
+        "SELECT id FROM release_files WHERE release_id = ?",
+        params![release_id],
+        |row| row.get(0),
+    )?;
 
     Ok(FailImportDeletion {
         release_id: release_id.to_string(),

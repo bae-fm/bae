@@ -4,8 +4,12 @@ use crate::playback::QueueEntry;
 use crate::queue::QueueItem;
 use crate::util::content_type::ContentType;
 use chrono::{DateTime, Utc};
-use coven::rusqlite::{params, Connection, OptionalExtension, Params, Row};
-use coven::{ClockRef, Coven, CovenError, CovenHandle, DbError, IdRef, SqlContext};
+use coven::rusqlite::{params, OptionalExtension, Params, Row};
+// bae holds no production connection — coven owns them all. Only the cloud-path
+// resolvers' unit tests seed a bare one to run against.
+#[cfg(test)]
+use coven::rusqlite::Connection;
+use coven::{ClockRef, Coven, CovenError, CovenHandle, DbError, IdRef, SqlContext, SqlReadContext};
 use std::collections::{BTreeSet, HashMap};
 // Only the test-only external-ref helper names a path type here; production
 // paths live on the types that carry them.
@@ -38,10 +42,10 @@ fn in_clause_placeholders(count: usize) -> String {
     (0..count).map(|_| "?").collect::<Vec<_>>().join(",")
 }
 
-/// One-row SELECT shared by coven's write [`SqlContext`] and a raw read
-/// [`Connection`]. The release-path resolvers run their lookup under a write
-/// transaction in production and against a bare connection in unit tests; both
-/// expose the same `query_row`, so the resolvers stay generic over this.
+/// One-row SELECT shared by coven's write [`SqlContext`] and its read
+/// [`SqlReadContext`]. The release-path resolvers run their lookup under a write
+/// transaction in production and on the read connection elsewhere; both expose
+/// the same `query_row`, so the resolvers stay generic over this.
 trait QueryOne {
     fn query_row<T, P: Params, F: FnOnce(&Row<'_>) -> coven::rusqlite::Result<T>>(
         &self,
@@ -51,6 +55,9 @@ trait QueryOne {
     ) -> coven::rusqlite::Result<T>;
 }
 
+/// The resolvers' unit tests run them against a bare seeded connection, which is
+/// the only place bae still holds one — coven owns every production connection.
+#[cfg(test)]
 impl QueryOne for Connection {
     fn query_row<T, P: Params, F: FnOnce(&Row<'_>) -> coven::rusqlite::Result<T>>(
         &self,
@@ -59,6 +66,17 @@ impl QueryOne for Connection {
         f: F,
     ) -> coven::rusqlite::Result<T> {
         Connection::query_row(self, sql, params, f)
+    }
+}
+
+impl QueryOne for SqlReadContext<'_> {
+    fn query_row<T, P: Params, F: FnOnce(&Row<'_>) -> coven::rusqlite::Result<T>>(
+        &self,
+        sql: &str,
+        params: P,
+        f: F,
+    ) -> coven::rusqlite::Result<T> {
+        SqlReadContext::query_row(self, sql, params, f)
     }
 }
 
@@ -398,10 +416,10 @@ fn row_to_track_role_summary(row: &Row<'_>) -> coven::rusqlite::Result<DbTrackRo
 }
 
 fn work_release_rows(
-    conn: &Connection,
+    sql: &SqlReadContext<'_>,
     work_id: &str,
 ) -> Result<Vec<DbWorkReleaseSummary>, DbError> {
-    let mut stmt = conn.prepare(
+    sql.query(
         "SELECT DISTINCT
             r.id AS release_id,
             r.album_id,
@@ -427,10 +445,10 @@ fn work_release_rows(
          JOIN albums a ON a.id = r.album_id
          WHERE tw.work_id = ?
          ORDER BY a.title, r.created_at, r.id",
-    )?;
-    let rows = stmt.query_map(params![work_id], row_to_work_release_summary)?;
-    rows.collect::<coven::rusqlite::Result<Vec<_>>>()
-        .map_err(DbError::from)
+        params![work_id],
+        row_to_work_release_summary,
+    )
+    .map_err(DbError::from)
 }
 
 fn row_to_work_release_summary(row: &Row<'_>) -> coven::rusqlite::Result<DbWorkReleaseSummary> {
@@ -792,8 +810,9 @@ impl Database {
     //
     // `read`     — pure reads, on coven's read-only companion connection: no
     //              changeset journal, concurrent with the writer rather than
-    //              queued behind it. The closure cannot write — the connection is
-    //              SQLITE_OPEN_READONLY, so SQLite refuses DML.
+    //              queued behind it. The closure cannot write — a
+    //              `SqlReadContext` offers only `query`/`query_row`, and the
+    //              connection behind it is SQLITE_OPEN_READONLY.
     // `call`     — writes that do not stamp `_updated_at` (INSERT/DELETE, or an
     //              UPDATE that sets the register clock itself), on the writer
     //              connection with a changeset session attached.
@@ -808,14 +827,14 @@ impl Database {
     /// points note above.
     async fn read<R>(
         &self,
-        f: impl FnOnce(&Connection) -> Result<R, DbError> + Send + 'static,
+        f: impl for<'conn> FnOnce(SqlReadContext<'conn>) -> Result<R, DbError> + Send + 'static,
     ) -> Result<R, DbError>
     where
         R: Send + 'static,
     {
         self.inner
             .handle
-            .sql_read(move |conn| f(conn).map_err(CovenError::from))
+            .sql_read(move |sql| f(sql).map_err(CovenError::from))
             .await
             .map_err(Self::coven_error)
     }
@@ -929,8 +948,11 @@ impl Database {
     }
 }
 
-fn find_album_by_id_on(conn: &Connection, album_id: &str) -> Result<Option<DbAlbum>, DbError> {
-    conn.query_row(
+fn find_album_by_id_on(
+    sql: &SqlReadContext<'_>,
+    album_id: &str,
+) -> Result<Option<DbAlbum>, DbError> {
+    sql.query_row(
         r#"
             SELECT
                 id, title, artist_id, year, primary_release_id,
@@ -946,10 +968,13 @@ fn find_album_by_id_on(conn: &Connection, album_id: &str) -> Result<Option<DbAlb
     .map_err(DbError::from)
 }
 
-fn get_artists_for_album_on(conn: &Connection, album_id: &str) -> Result<Vec<DbArtist>, DbError> {
+fn get_artists_for_album_on(
+    sql: &SqlReadContext<'_>,
+    album_id: &str,
+) -> Result<Vec<DbArtist>, DbError> {
     // Primary artist from FK (sort_key = -1 so it's first), then additional
     // artists from the junction table ordered by position.
-    let mut stmt = conn.prepare(
+    sql.query(
         r#"
             SELECT a.*, -1 AS sort_key FROM artists a
             JOIN albums alb ON alb.artist_id = a.id
@@ -960,17 +985,17 @@ fn get_artists_for_album_on(conn: &Connection, album_id: &str) -> Result<Vec<DbA
             WHERE aa.album_id = ?
             ORDER BY sort_key
             "#,
-    )?;
-    let rows = stmt.query_map(params![album_id, album_id], row_to_artist)?;
-    rows.collect::<coven::rusqlite::Result<Vec<_>>>()
-        .map_err(DbError::from)
+        params![album_id, album_id],
+        row_to_artist,
+    )
+    .map_err(DbError::from)
 }
 
 fn find_release_by_id_on(
-    conn: &Connection,
+    sql: &SqlReadContext<'_>,
     release_id: &str,
 ) -> Result<Option<DbRelease>, DbError> {
-    conn.query_row(
+    sql.query_row(
         "SELECT * FROM releases WHERE id = ?",
         params![release_id],
         row_to_release,
@@ -979,22 +1004,27 @@ fn find_release_by_id_on(
     .map_err(DbError::from)
 }
 
-fn get_releases_for_album_on(conn: &Connection, album_id: &str) -> Result<Vec<DbRelease>, DbError> {
-    let mut stmt = conn.prepare("SELECT * FROM releases WHERE album_id = ? ORDER BY created_at")?;
-    let rows = stmt.query_map(params![album_id], row_to_release)?;
-    rows.collect::<coven::rusqlite::Result<Vec<_>>>()
-        .map_err(DbError::from)
+fn get_releases_for_album_on(
+    sql: &SqlReadContext<'_>,
+    album_id: &str,
+) -> Result<Vec<DbRelease>, DbError> {
+    sql.query(
+        "SELECT * FROM releases WHERE album_id = ? ORDER BY created_at",
+        params![album_id],
+        row_to_release,
+    )
+    .map_err(DbError::from)
 }
 
 fn build_release_detail_on(
-    conn: &Connection,
+    sql: &SqlReadContext<'_>,
     release: DbRelease,
 ) -> Result<DbReleaseDetail, DbError> {
-    let tracks = get_tracks_with_artists_for_release_on(conn, &release.id)?;
-    let files = get_files_for_release_on(conn, &release.id)?;
-    let audio_formats = get_audio_formats_for_release_on(conn, &release.id)?;
-    let audio_segments = get_audio_segments_for_release_on(conn, &release.id)?;
-    let identities = get_release_identities_on(conn, &release.id)?;
+    let tracks = get_tracks_with_artists_for_release_on(sql, &release.id)?;
+    let files = get_files_for_release_on(sql, &release.id)?;
+    let audio_formats = get_audio_formats_for_release_on(sql, &release.id)?;
+    let audio_segments = get_audio_segments_for_release_on(sql, &release.id)?;
+    let identities = get_release_identities_on(sql, &release.id)?;
 
     Ok(DbReleaseDetail {
         release,
@@ -1006,11 +1036,14 @@ fn build_release_detail_on(
     })
 }
 
+/// One row per (track, artist) pair, so a track with several artists repeats.
+/// The rows arrive grouped by track and ordered by artist position, and the fold
+/// below rebuilds one entry per track from that run.
 fn get_tracks_with_artists_for_release_on(
-    conn: &Connection,
+    sql: &SqlReadContext<'_>,
     release_id: &str,
 ) -> Result<Vec<DbTrackWithArtists>, DbError> {
-    let mut stmt = conn.prepare(
+    let joined = sql.query(
         "SELECT
             track.id AS track_id,
             track.release_id AS track_release_id,
@@ -1031,47 +1064,48 @@ fn get_tracks_with_artists_for_release_on(
          LEFT JOIN artists artist ON artist.id = ta.artist_id
          WHERE track.release_id = ?
          ORDER BY track.side, track.track_number, track.id, ta.position",
+        params![release_id],
+        |row| {
+            let track = row_to_joined_track(row)?;
+            let artist_id: Option<String> = row.get("artist_id")?;
+            let artist = match artist_id {
+                Some(_) => Some(row_to_joined_artist(row)?),
+                None => None,
+            };
+            Ok((track, artist))
+        },
     )?;
-    let mut rows = stmt.query(params![release_id])?;
-    let mut tracks = Vec::new();
-    let mut current_track: Option<DbTrackWithArtists> = None;
-    let mut current_track_id: Option<String> = None;
 
-    while let Some(row) = rows.next()? {
-        let track = row_to_joined_track(row)?;
-        if current_track_id.as_deref() != Some(track.id.as_str()) {
-            if let Some(track) = current_track.take() {
-                tracks.push(track);
-            }
-            current_track_id = Some(track.id.clone());
-            current_track = Some(DbTrackWithArtists {
+    let mut tracks: Vec<DbTrackWithArtists> = Vec::new();
+    for (track, artist) in joined {
+        if tracks.last().map(|last| last.track.id.as_str()) != Some(track.id.as_str()) {
+            tracks.push(DbTrackWithArtists {
                 track,
                 artists: Vec::new(),
             });
         }
-
-        let artist_id: Option<String> = row.get("artist_id")?;
-        if artist_id.is_some() {
-            current_track
-                .as_mut()
-                .expect("joined release row has a current track")
+        if let Some(artist) = artist {
+            tracks
+                .last_mut()
+                .expect("the row's track was just pushed")
                 .artists
-                .push(row_to_joined_artist(row)?);
+                .push(artist);
         }
-    }
-
-    if let Some(track) = current_track {
-        tracks.push(track);
     }
 
     Ok(tracks)
 }
 
-fn get_files_for_release_on(conn: &Connection, release_id: &str) -> Result<Vec<DbFile>, DbError> {
-    let mut stmt = conn.prepare("SELECT * FROM release_files WHERE release_id = ?")?;
-    let rows = stmt.query_map(params![release_id], row_to_file)?;
-    rows.collect::<coven::rusqlite::Result<Vec<_>>>()
-        .map_err(DbError::from)
+fn get_files_for_release_on(
+    sql: &SqlReadContext<'_>,
+    release_id: &str,
+) -> Result<Vec<DbFile>, DbError> {
+    sql.query(
+        "SELECT * FROM release_files WHERE release_id = ?",
+        params![release_id],
+        row_to_file,
+    )
+    .map_err(DbError::from)
 }
 
 /// Every audio-format row for a release, joined through its tracks — one row per
@@ -1079,55 +1113,54 @@ fn get_files_for_release_on(conn: &Connection, release_id: &str) -> Result<Vec<D
 /// same file; the resolver groups them by that file id to describe each audio
 /// file's format.
 fn get_audio_formats_for_release_on(
-    conn: &Connection,
+    sql: &SqlReadContext<'_>,
     release_id: &str,
 ) -> Result<Vec<DbAudioFormat>, DbError> {
-    let mut stmt = conn.prepare(
+    sql.query(
         "SELECT af.* FROM audio_formats af \
              JOIN tracks t ON t.id = af.track_id \
              WHERE t.release_id = ?",
-    )?;
-    let rows = stmt.query_map(params![release_id], row_to_audio_format)?;
-    rows.collect::<coven::rusqlite::Result<Vec<_>>>()
-        .map_err(DbError::from)
+        params![release_id],
+        row_to_audio_format,
+    )
+    .map_err(DbError::from)
 }
 
 fn get_audio_segments_for_release_on(
-    conn: &Connection,
+    sql: &SqlReadContext<'_>,
     release_id: &str,
 ) -> Result<Vec<DbAudioSegment>, DbError> {
-    let mut stmt = conn.prepare(
+    sql.query(
         "SELECT s.* FROM audio_format_segments s \
              JOIN audio_formats af ON af.id = s.audio_format_id \
              JOIN tracks t ON t.id = af.track_id \
              WHERE t.release_id = ? \
              ORDER BY af.track_id, s.segment_index",
-    )?;
-    let rows = stmt.query_map(params![release_id], row_to_audio_segment)?;
-    rows.collect::<coven::rusqlite::Result<Vec<_>>>()
-        .map_err(DbError::from)
+        params![release_id],
+        row_to_audio_segment,
+    )
+    .map_err(DbError::from)
 }
 
 fn get_release_identities_on(
-    conn: &Connection,
+    sql: &SqlReadContext<'_>,
     release_id: &str,
 ) -> Result<Vec<crate::import::ReleaseIdentity>, DbError> {
-    let mut stmt = conn.prepare(
+    let raw = sql.query(
         r#"
             SELECT source, source_group_id, source_release_id
             FROM release_identities
             WHERE release_id = ?
             "#,
-    )?;
-    let raw = stmt
-        .query_map(params![release_id], |row| {
+        params![release_id],
+        |row| {
             Ok((
                 row.get::<_, String>("source")?,
                 row.get::<_, String>("source_group_id")?,
                 row.get::<_, Option<String>>("source_release_id")?,
             ))
-        })?
-        .collect::<coven::rusqlite::Result<Vec<_>>>()?;
+        },
+    )?;
 
     let mut identities = Vec::with_capacity(raw.len());
     for (source_str, source_group_id, source_release_id) in raw {

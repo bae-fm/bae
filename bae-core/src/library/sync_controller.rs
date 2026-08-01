@@ -651,22 +651,52 @@ impl SyncController {
         cloud_home: Arc<dyn CloudHome>,
         cipher: crate::sync::CloudCipher,
     ) -> Result<(), LibraryError> {
-        // An opaque home's blob keyspace shards by the uploading device's
-        // public key, so establish this store's identity up front if a test
-        // building its handle straight off this config (rather than through
-        // `Database::new_test`, which already does this under its own fixed
-        // store id) hasn't already. Get-or-create: never mint over one
-        // already established.
+        self.establish_test_store_identity()?;
+        self.handle()
+            .connect_sync_with_test_home(cloud_home, cipher)
+            .await?;
+        Ok(())
+    }
+
+    /// Connect over an injected cloud home the way
+    /// [`connect_test_cloud_home`](Self::connect_test_cloud_home) does, but with
+    /// no sync loop behind it: the caller's own `drain_uploads_for_test` is the
+    /// only thing that drains the upload queue.
+    ///
+    /// A running loop drains every cycle, so a test that also drains explicitly
+    /// has two drainers on one queue and reads whichever answer the race leaves
+    /// it. Without the loop the test's drain is the whole truth. What the loop
+    /// would have done — publishing a transition's Store write, which is what
+    /// finishes a make-Remote and gives a host-provided blob its cloud locator —
+    /// does not happen here, and `is_sync_ready` stays false, so a test that
+    /// needs either keeps the loop-driven connect.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub(crate) async fn connect_test_cloud_home_caller_driven(
+        &self,
+        cloud_home: Arc<dyn CloudHome>,
+        cipher: crate::sync::CloudCipher,
+    ) -> Result<(), LibraryError> {
+        self.establish_test_store_identity()?;
+        self.handle()
+            .connect_sync_with_test_home_caller_driven(cloud_home, cipher)
+            .await?;
+        Ok(())
+    }
+
+    /// An opaque home's blob keyspace shards by the uploading device's public
+    /// key, so establish this store's identity before connecting one if a test
+    /// building its handle straight off this config (rather than through
+    /// `Database::new_test`, which already does this under its own fixed store
+    /// id) hasn't already. Get-or-create: never mint over one already
+    /// established.
+    #[cfg(any(test, feature = "test-utils"))]
+    fn establish_test_store_identity(&self) -> Result<(), LibraryError> {
         let config = self.config_handle.config();
         let identity_custody =
             coven::IdentityCustody::Keyring.resolve(&self.key_service, &config.store_dir);
         if identity_custody.unlock()?.is_none() {
             identity_custody.persist(&coven::UserKeypair::generate())?;
         }
-
-        self.handle()
-            .connect_sync_with_test_home(cloud_home, cipher)
-            .await?;
         Ok(())
     }
 

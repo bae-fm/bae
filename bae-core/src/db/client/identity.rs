@@ -16,9 +16,8 @@ impl Database {
         let ids = Arc::clone(&self.inner.ids);
         self.call_sql(move |sql| {
             let reg = sql.stamp();
-            let conn = &sql;
             for identity in &identities {
-                insert_release_identity_row(conn, &release_id, identity, ids.new_id(), &reg, &now)?;
+                insert_release_identity_row(&sql, &release_id, identity, ids.new_id(), &reg, &now)?;
             }
             Ok(())
         })
@@ -32,7 +31,7 @@ impl Database {
         release_id: &str,
     ) -> Result<Vec<crate::import::ReleaseIdentity>, DbError> {
         let release_id = release_id.to_string();
-        self.read(move |conn| get_release_identities_on(conn, &release_id))
+        self.read(move |sql| get_release_identities_on(&sql, &release_id))
             .await
     }
 
@@ -64,7 +63,7 @@ impl Database {
         }
         let exclude_release_ids = exclude_release_ids.to_vec();
 
-        self.read(move |conn| {
+        self.read(move |sql| {
             let placeholders = exact_pairs
                 .iter()
                 .map(|_| "(?, ?)")
@@ -82,7 +81,7 @@ impl Database {
                         .join(", ")
                 )
             };
-            let sql = format!(
+            let query = format!(
                 r#"
                     SELECT
                         a.id, a.title, a.artist_id, a.year, a.primary_release_id,
@@ -104,8 +103,8 @@ impl Database {
             for release_id in &exclude_release_ids {
                 binds.push(release_id);
             }
-            conn.query_row(
-                &sql,
+            sql.query_row(
+                &query,
                 coven::rusqlite::params_from_iter(binds.iter()),
                 row_to_album,
             )
@@ -137,7 +136,7 @@ impl Database {
             .collect();
         let exclude_release_ids = exclude_release_ids.to_vec();
 
-        self.read(move |conn| {
+        self.read(move |sql| {
             let placeholders = pairs
                 .iter()
                 .map(|_| "(?, ?)")
@@ -155,7 +154,7 @@ impl Database {
                         .join(", ")
                 )
             };
-            let sql = format!(
+            let query = format!(
                 r#"
                     SELECT r.album_id
                     FROM releases r
@@ -174,8 +173,8 @@ impl Database {
             for release_id in &exclude_release_ids {
                 binds.push(release_id);
             }
-            conn.query_row(
-                &sql,
+            sql.query_row(
+                &query,
                 coven::rusqlite::params_from_iter(binds.iter()),
                 |row| row.get::<_, String>("album_id"),
             )
@@ -362,13 +361,13 @@ impl Database {
     ) -> Result<Vec<LibraryStatus>, DbError> {
         let checks = checks.to_vec();
 
-        self.read(move |conn| {
+        self.read(move |sql| {
             let mut statuses = Vec::with_capacity(checks.len());
 
             for check in &checks {
                 let source = check.source.as_str();
                 let group_id = check.source_group_id.as_deref();
-                let matched = conn
+                let matched = sql
                     .query_row(
                         r#"
                             SELECT

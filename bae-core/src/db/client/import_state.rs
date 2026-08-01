@@ -5,8 +5,8 @@ use crate::import::folder_scanner::{
 };
 use std::collections::HashSet;
 
-fn next_folder_scan_generation(conn: &SqlContext<'_, '_>) -> Result<i64, DbError> {
-    let current: i64 = conn.query_row(
+fn next_folder_scan_generation(sql: &SqlContext<'_, '_>) -> Result<i64, DbError> {
+    let current: i64 = sql.query_row(
         "SELECT last_generation FROM folder_scan_generation_sequence WHERE singleton = 1",
         [],
         |row| row.get(0),
@@ -14,7 +14,7 @@ fn next_folder_scan_generation(conn: &SqlContext<'_, '_>) -> Result<i64, DbError
     let generation = current
         .checked_add(1)
         .ok_or_else(|| DbError::Message("folder scan generation exhausted".to_string()))?;
-    conn.execute(
+    sql.execute(
         "UPDATE folder_scan_generation_sequence SET last_generation = ? WHERE singleton = 1",
         [generation],
     )?;
@@ -34,28 +34,19 @@ impl Database {
     pub async fn load_import_folder_registry(
         &self,
     ) -> Result<crate::import::ImportFolderRegistry, DbError> {
-        self.read(move |conn| {
-            let folders = {
-                let mut statement = conn.prepare(
-                    "SELECT path, position FROM watched_import_folders ORDER BY position",
-                )?;
-                let rows = statement.query_map([], |row| {
-                    Ok((row.get::<_, String>(0)?, row.get::<_, i64>(1)?))
-                })?;
-                rows.collect::<Result<Vec<_>, _>>()?
-                    .into_iter()
-                    .map(|(path, _)| path)
-                    .collect()
-            };
-            let skipped = {
-                let mut statement = conn.prepare(
-                    "SELECT watched_folder_path, relative_candidate_path \
+        self.read(move |sql| {
+            let folders = sql.query(
+                "SELECT path FROM watched_import_folders ORDER BY position",
+                [],
+                |row| row.get::<_, String>(0),
+            )?;
+            let skipped = sql.query(
+                "SELECT watched_folder_path, relative_candidate_path \
                      FROM skipped_import_candidates \
                      ORDER BY watched_folder_path, relative_candidate_path",
-                )?;
-                let rows = statement.query_map([], |row| Ok((row.get(0)?, row.get(1)?)))?;
-                rows.collect::<Result<Vec<_>, _>>()?
-            };
+                [],
+                |row| Ok((row.get(0)?, row.get(1)?)),
+            )?;
             crate::import::ImportFolderRegistry::from_stored(folders, skipped)
                 .map_err(|error| DbError::Message(error.to_string()))
         })
@@ -66,8 +57,8 @@ impl Database {
     /// when that folder is already watched, however it was spelled this time.
     pub async fn add_watched_import_folder(&self, path: &str) -> Result<bool, DbError> {
         let path = Self::canonical_watched_root(path)?;
-        self.call(move |conn| {
-            let roots = conn.query(
+        self.call(move |sql| {
+            let roots = sql.query(
                 "SELECT path FROM watched_import_folders ORDER BY position",
                 [],
                 |row| row.get::<_, String>(0),
@@ -85,12 +76,12 @@ impl Database {
                     "watched folders cannot overlap: {path} conflicts with {conflict}"
                 )));
             }
-            let position: i64 = conn.query_row(
+            let position: i64 = sql.query_row(
                 "SELECT COALESCE(MAX(position) + 1, 0) FROM watched_import_folders",
                 [],
                 |row| row.get(0),
             )?;
-            conn.execute(
+            sql.execute(
                 "INSERT INTO watched_import_folders (path, position) VALUES (?, ?)",
                 params![path, position],
             )?;
@@ -103,8 +94,8 @@ impl Database {
     /// so whichever spelling reaches here names the row the add created.
     pub async fn remove_watched_import_folder(&self, path: &str) -> Result<bool, DbError> {
         let path = Self::canonical_watched_root(path)?;
-        self.call(move |conn| {
-            let position: Option<i64> = conn
+        self.call(move |sql| {
+            let position: Option<i64> = sql
                 .query_row(
                     "SELECT position FROM watched_import_folders WHERE path = ?",
                     [&path],
@@ -114,7 +105,7 @@ impl Database {
             if position.is_none() {
                 return Ok(false);
             }
-            conn.execute("DELETE FROM watched_import_folders WHERE path = ?", [&path])?;
+            sql.execute("DELETE FROM watched_import_folders WHERE path = ?", [&path])?;
             Ok(true)
         })
         .await
@@ -130,16 +121,16 @@ impl Database {
             .map_err(|error| DbError::Message(error.to_string()))?;
         let watched_folder_path = watched_folder_path.to_string();
         let relative_candidate_path = relative_candidate_path.to_string();
-        self.call(move |conn| {
+        self.call(move |sql| {
             let changed = if skipped {
-                conn.execute(
+                sql.execute(
                     "INSERT INTO skipped_import_candidates \
                          (watched_folder_path, relative_candidate_path) VALUES (?, ?) \
                      ON CONFLICT DO NOTHING",
                     params![watched_folder_path, relative_candidate_path],
                 )?
             } else {
-                conn.execute(
+                sql.execute(
                     "DELETE FROM skipped_import_candidates \
                      WHERE watched_folder_path = ? AND relative_candidate_path = ?",
                     params![watched_folder_path, relative_candidate_path],
@@ -153,9 +144,9 @@ impl Database {
     /// Start a durable scan generation for one watched root.
     pub async fn begin_folder_scan(&self, watched_folder_path: &str) -> Result<u64, DbError> {
         let watched_folder_path = watched_folder_path.to_string();
-        self.call(move |conn| {
-            let generation = next_folder_scan_generation(conn)?;
-            conn.execute(
+        self.call(move |sql| {
+            let generation = next_folder_scan_generation(sql)?;
+            sql.execute(
                 "INSERT INTO folder_scan_roots \
                      (watched_folder_path, generation, status, error) \
                  VALUES (?, ?, 'scanning', NULL) \
@@ -190,8 +181,8 @@ impl Database {
         let item = serde_json::to_string(item)
             .map_err(|error| DbError::Message(format!("encoding folder scan item: {error}")))?;
         let removed_keys = removed_keys.to_vec();
-        self.call(move |conn| {
-            let current: Option<i64> = conn
+        self.call(move |sql| {
+            let current: Option<i64> = sql
                 .query_row(
                     "SELECT generation FROM folder_scan_roots WHERE watched_folder_path = ?",
                     [&watched_folder_path],
@@ -202,13 +193,13 @@ impl Database {
                 return Ok(false);
             }
             for removed_key in removed_keys {
-                conn.execute(
+                sql.execute(
                     "DELETE FROM folder_scan_entries \
                      WHERE watched_folder_path = ? AND entry_key = ?",
                     params![watched_folder_path, removed_key],
                 )?;
             }
-            conn.execute(
+            sql.execute(
                 "INSERT INTO folder_scan_entries \
                      (watched_folder_path, entry_key, generation, item) VALUES (?, ?, ?, ?) \
                  ON CONFLICT(watched_folder_path, entry_key) DO UPDATE SET \
@@ -233,8 +224,8 @@ impl Database {
             DbError::Message("folder scan generation exceeds SQLite's integer range".to_string())
         })?;
         let error = error.map(str::to_string);
-        self.call(move |conn| {
-            let current: Option<i64> = conn
+        self.call(move |sql| {
+            let current: Option<i64> = sql
                 .query_row(
                     "SELECT generation FROM folder_scan_roots WHERE watched_folder_path = ?",
                     [&watched_folder_path],
@@ -245,18 +236,18 @@ impl Database {
                 return Ok(false);
             }
             if let Some(error) = error {
-                conn.execute(
+                sql.execute(
                     "UPDATE folder_scan_roots SET status = 'failed', error = ? \
                      WHERE watched_folder_path = ? AND generation = ?",
                     params![error, watched_folder_path, generation],
                 )?;
             } else {
-                conn.execute(
+                sql.execute(
                     "DELETE FROM folder_scan_entries \
                      WHERE watched_folder_path = ? AND generation != ?",
                     params![watched_folder_path, generation],
                 )?;
-                conn.execute(
+                sql.execute(
                     "UPDATE folder_scan_roots SET status = 'complete', error = NULL \
                      WHERE watched_folder_path = ? AND generation = ?",
                     params![watched_folder_path, generation],
@@ -268,22 +259,20 @@ impl Database {
     }
 
     pub async fn load_folder_scan_snapshots(&self) -> Result<Vec<DbFolderScanSnapshot>, DbError> {
-        self.read(move |conn| {
-            let roots = {
-                let mut statement = conn.prepare(
-                    "SELECT watched_folder_path, generation, status, error \
+        self.read(move |sql| {
+            let roots = sql.query(
+                "SELECT watched_folder_path, generation, status, error \
                      FROM folder_scan_roots ORDER BY watched_folder_path",
-                )?;
-                let rows = statement.query_map([], |row| {
+                [],
+                |row| {
                     Ok((
                         row.get::<_, String>(0)?,
                         row.get::<_, i64>(1)?,
                         row.get::<_, String>(2)?,
                         row.get::<_, Option<String>>(3)?,
                     ))
-                })?;
-                rows.collect::<Result<Vec<_>, _>>()?
-            };
+                },
+            )?;
 
             let mut snapshots = Vec::with_capacity(roots.len());
             for (watched_folder_path, generation, status, error) in roots {
@@ -304,15 +293,21 @@ impl Database {
                         )))
                     }
                 };
-                let mut statement = conn.prepare(
+                let entries = sql.query(
                     "SELECT entry_key, generation, item FROM folder_scan_entries \
                      WHERE watched_folder_path = ? ORDER BY entry_key",
+                    [&watched_folder_path],
+                    |row| {
+                        Ok((
+                            row.get::<_, String>(0)?,
+                            row.get::<_, i64>(1)?,
+                            row.get::<_, String>(2)?,
+                        ))
+                    },
                 )?;
-                let mut rows = statement.query([&watched_folder_path])?;
-                let mut items = Vec::new();
-                while let Some(row) = rows.next()? {
-                    let entry_key: String = row.get(0)?;
-                    let entry_generation = u64::try_from(row.get::<_, i64>(1)?).map_err(|_| {
+                let mut items = Vec::with_capacity(entries.len());
+                for (entry_key, entry_generation, stored) in entries {
+                    let entry_generation = u64::try_from(entry_generation).map_err(|_| {
                         DbError::Message(format!(
                             "folder scan entry {entry_key} has a negative generation"
                         ))
@@ -322,7 +317,6 @@ impl Database {
                             "folder scan entry {entry_key} has generation {entry_generation} newer than root generation {generation}"
                         )));
                     }
-                    let stored: String = row.get(2)?;
                     let item: crate::import::folder_scanner::ScanItem =
                         serde_json::from_str(&stored).map_err(|error| {
                         DbError::Message(format!(
@@ -379,8 +373,8 @@ impl Database {
                 .map_err(|error| DbError::Message(error.to_string()))?;
         }
         let decisions = decisions.to_vec();
-        self.call(move |conn| {
-            let stored_items = conn.query(
+        self.call(move |sql| {
+            let stored_items = sql.query(
                 "SELECT entry_key, item FROM folder_scan_entries \
                  WHERE watched_folder_path = ? ORDER BY entry_key",
                 [&watched_folder_path],
@@ -415,7 +409,7 @@ impl Database {
                     FolderReleaseDecision::CombineAsOneRelease => "combine_as_one_release",
                     FolderReleaseDecision::KeepAsSeparateReleases => "keep_as_separate_releases",
                 };
-                conn.execute(
+                sql.execute(
                     "INSERT INTO folder_release_decisions \
                          (watched_folder_path, relative_folder_path, decision) VALUES (?, ?, ?) \
                      ON CONFLICT(watched_folder_path, relative_folder_path) DO UPDATE SET \
@@ -424,14 +418,14 @@ impl Database {
                 )?;
             }
             for entry_key in &removed_scan_entry_keys {
-                conn.execute(
+                sql.execute(
                     "DELETE FROM folder_scan_entries \
                      WHERE watched_folder_path = ? AND entry_key = ?",
                     params![watched_folder_path, entry_key],
                 )?;
             }
-            let generation = next_folder_scan_generation(conn)?;
-            conn.execute(
+            let generation = next_folder_scan_generation(sql)?;
+            sql.execute(
                 "INSERT INTO folder_scan_roots \
                      (watched_folder_path, generation, status, error) \
                  VALUES (?, ?, 'scanning', NULL) \
@@ -452,36 +446,40 @@ impl Database {
         watched_folder_path: &str,
     ) -> Result<FolderReleaseDecisions, DbError> {
         let watched_folder_path = watched_folder_path.to_string();
-        self.read(move |conn| {
-            let mut statement = conn.prepare(
+        self.read(move |sql| {
+            let decisions = sql.query(
                 "SELECT relative_folder_path, decision \
                  FROM folder_release_decisions WHERE watched_folder_path = ?",
+                [watched_folder_path],
+                |row| {
+                    let path: String = row.get(0)?;
+                    crate::import::folder_registry::validate_relative_path(&path).map_err(
+                        |error| {
+                            coven::rusqlite::Error::FromSqlConversionFailure(
+                                0,
+                                coven::rusqlite::types::Type::Text,
+                                Box::new(error),
+                            )
+                        },
+                    )?;
+                    let stored: String = row.get(1)?;
+                    let decision = match stored.as_str() {
+                        "combine_as_one_release" => FolderReleaseDecision::CombineAsOneRelease,
+                        "keep_as_separate_releases" => {
+                            FolderReleaseDecision::KeepAsSeparateReleases
+                        }
+                        other => {
+                            return Err(coven::rusqlite::Error::FromSqlConversionFailure(
+                                1,
+                                coven::rusqlite::types::Type::Text,
+                                format!("unknown folder release decision {other:?}").into(),
+                            ))
+                        }
+                    };
+                    Ok((path, decision))
+                },
             )?;
-            let rows = statement.query_map([watched_folder_path], |row| {
-                let path: String = row.get(0)?;
-                crate::import::folder_registry::validate_relative_path(&path).map_err(|error| {
-                    coven::rusqlite::Error::FromSqlConversionFailure(
-                        0,
-                        coven::rusqlite::types::Type::Text,
-                        Box::new(error),
-                    )
-                })?;
-                let stored: String = row.get(1)?;
-                let decision = match stored.as_str() {
-                    "combine_as_one_release" => FolderReleaseDecision::CombineAsOneRelease,
-                    "keep_as_separate_releases" => FolderReleaseDecision::KeepAsSeparateReleases,
-                    other => {
-                        return Err(coven::rusqlite::Error::FromSqlConversionFailure(
-                            1,
-                            coven::rusqlite::types::Type::Text,
-                            format!("unknown folder release decision {other:?}").into(),
-                        ))
-                    }
-                };
-                Ok((path, decision))
-            })?;
-            let decisions = rows.collect::<Result<HashMap<_, _>, _>>()?;
-            Ok(FolderReleaseDecisions::new(decisions))
+            Ok(FolderReleaseDecisions::new(decisions.into_iter().collect()))
         })
         .await
     }
@@ -507,8 +505,8 @@ impl Database {
             ))
         })?;
         let now = self.inner.clock.now().to_rfc3339();
-        self.call(move |conn| {
-            let current: Option<i64> = conn
+        self.call(move |sql| {
+            let current: Option<i64> = sql
                 .query_row(
                     "SELECT edit_revision FROM import_candidate_state WHERE content_hash = ?",
                     [&verdict.content_hash],
@@ -517,7 +515,7 @@ impl Database {
                 .optional()?;
             let wrote = match current {
                 Some(current) if current == expected => {
-                    conn.execute(
+                    sql.execute(
                         "UPDATE import_candidate_state SET \
                              folder_path = ?, verdict = ?, probed_total_duration_ms = ?, identified_at = ? \
                          WHERE content_hash = ? AND edit_revision = ?",
@@ -532,7 +530,7 @@ impl Database {
                     )? == 1
                 }
                 None if expected == 0 => {
-                    conn.execute(
+                    sql.execute(
                         "INSERT INTO import_candidate_state \
                              (content_hash, folder_path, verdict, probed_total_duration_ms, identified_at, sheet_bindings, file_roles, edit_revision) \
                          VALUES (?, ?, ?, ?, ?, '{}', '{}', 0)",
@@ -592,14 +590,14 @@ impl Database {
                 "candidate edit revision {next_revision} exceeds SQLite's integer range"
             ))
         })?;
-        self.call(move |conn| {
+        self.call(move |sql| {
             let settled_by_key: HashMap<_, _> = settled_candidates.iter().cloned().collect();
             if settled_by_key.len() != settled_candidates.len() {
                 return Err(DbError::Message(
                     "candidate file decision received duplicate scan entry keys".to_string(),
                 ));
             }
-            let current: Option<i64> = conn
+            let current: Option<i64> = sql
                 .query_row(
                     "SELECT edit_revision FROM import_candidate_state WHERE content_hash = ?",
                     [&content_hash],
@@ -623,7 +621,7 @@ impl Database {
                 )));
             }
             let changed = if current_revision.is_some() {
-                conn.execute(
+                sql.execute(
                     "UPDATE import_candidate_state SET \
                          folder_path = ?, sheet_bindings = ?, file_roles = ?, \
                          verdict = NULL, probed_total_duration_ms = NULL, identified_at = NULL, \
@@ -639,7 +637,7 @@ impl Database {
                     ],
                 )?
             } else {
-                conn.execute(
+                sql.execute(
                     "INSERT INTO import_candidate_state \
                          (content_hash, folder_path, verdict, probed_total_duration_ms, identified_at, sheet_bindings, file_roles, edit_revision) \
                      VALUES (?, ?, NULL, NULL, NULL, ?, ?, ?)",
@@ -657,7 +655,7 @@ impl Database {
                     "candidate file decision write changed {changed} rows; expected exactly one"
                 )));
             }
-            let stored_items = conn.query(
+            let stored_items = sql.query(
                 "SELECT watched_folder_path, entry_key, generation, item \
                  FROM folder_scan_entries ORDER BY watched_folder_path, entry_key",
                 [],
@@ -701,7 +699,7 @@ impl Database {
                 let encoded = serde_json::to_string(&item).map_err(|error| {
                     DbError::Message(format!("encoding folder scan entry {entry_key}: {error}"))
                 })?;
-                let updated = conn.execute(
+                let updated = sql.execute(
                     "UPDATE folder_scan_entries SET item = ? \
                      WHERE watched_folder_path = ? AND entry_key = ? AND generation = ?",
                     params![encoded, watched_folder_path, entry_key, generation],
@@ -755,16 +753,15 @@ impl Database {
         content_hash: &str,
     ) -> Result<CandidateFileEdits, DbError> {
         let content_hash = content_hash.to_string();
-        self.read(move |conn| {
-            let mut statement = conn.prepare(
+        self.read(move |sql| {
+            sql.query_row(
                 "SELECT sheet_bindings, file_roles, edit_revision \
                  FROM import_candidate_state WHERE content_hash = ?",
-            )?;
-            let mut rows = statement.query([&content_hash])?;
-            match rows.next()? {
-                Some(row) => decode_candidate_file_edits_row(row, &content_hash),
-                None => Ok(CandidateFileEdits::default()),
-            }
+                [&content_hash],
+                |row| Ok(decode_candidate_file_edits_row(row, &content_hash)),
+            )
+            .optional()?
+            .unwrap_or_else(|| Ok(CandidateFileEdits::default()))
         })
         .await
     }
@@ -779,15 +776,16 @@ impl Database {
     pub async fn load_import_candidate_states(
         &self,
     ) -> Result<HashMap<String, DbImportCandidateState>, DbError> {
-        self.read(move |conn| {
-            let mut stmt = conn.prepare(
+        self.read(move |sql| {
+            let states = sql.query(
                 "SELECT content_hash, folder_path, verdict, probed_total_duration_ms, identified_at, sheet_bindings, file_roles, edit_revision \
                      FROM import_candidate_state",
+                [],
+                |row| Ok(decode_import_candidate_state_row(row)),
             )?;
-            let mut rows = stmt.query([])?;
-            let mut out = HashMap::new();
-            while let Some(row) = rows.next()? {
-                let state = decode_import_candidate_state_row(row)?;
+            let mut out = HashMap::with_capacity(states.len());
+            for state in states {
+                let state = state?;
                 out.insert(state.content_hash.clone(), state);
             }
             Ok(out)
@@ -800,15 +798,15 @@ impl Database {
         content_hash: &str,
     ) -> Result<Option<DbImportCandidateState>, DbError> {
         let content_hash = content_hash.to_string();
-        self.read(move |conn| {
-            let mut stmt = conn.prepare(
+        self.read(move |sql| {
+            sql.query_row(
                 "SELECT content_hash, folder_path, verdict, probed_total_duration_ms, identified_at, sheet_bindings, file_roles, edit_revision \
                  FROM import_candidate_state WHERE content_hash = ?",
-            )?;
-            let mut rows = stmt.query([content_hash])?;
-            rows.next()?
-                .map(decode_import_candidate_state_row)
-                .transpose()
+                [content_hash],
+                |row| Ok(decode_import_candidate_state_row(row)),
+            )
+            .optional()?
+            .transpose()
         })
         .await
     }

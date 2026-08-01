@@ -13,8 +13,8 @@ impl Database {
     /// Find track by ID. Caller-provided ID — may not exist.
     pub async fn find_track_by_id(&self, track_id: &str) -> Result<Option<DbTrack>, DbError> {
         let track_id = track_id.to_string();
-        self.read(move |conn| {
-            conn.query_row(
+        self.read(move |sql| {
+            sql.query_row(
                 "SELECT * FROM tracks WHERE id = ?",
                 params![track_id],
                 row_to_track,
@@ -31,13 +31,13 @@ impl Database {
         release_id: &str,
     ) -> Result<Vec<String>, DbError> {
         let release_id = release_id.to_string();
-        self.read(move |conn| {
-            let mut stmt = conn.prepare(
+        self.read(move |sql| {
+            sql.query(
                 "SELECT id FROM tracks WHERE release_id = ? ORDER BY side, track_number, id",
-            )?;
-            let rows = stmt.query_map(params![release_id], |row| row.get::<_, String>("id"))?;
-            rows.collect::<coven::rusqlite::Result<Vec<_>>>()
-                .map_err(DbError::from)
+                params![release_id],
+                |row| row.get::<_, String>("id"),
+            )
+            .map_err(DbError::from)
         })
         .await
     }
@@ -47,12 +47,13 @@ impl Database {
     /// match the per-release order — by release, then side, track number, id — so
     /// the library and a single release agree on what "source order" means.
     pub async fn get_all_track_ids(&self) -> Result<Vec<String>, DbError> {
-        self.read(move |conn| {
-            let mut stmt =
-                conn.prepare("SELECT id FROM tracks ORDER BY release_id, side, track_number, id")?;
-            let rows = stmt.query_map([], |row| row.get::<_, String>("id"))?;
-            rows.collect::<coven::rusqlite::Result<Vec<_>>>()
-                .map_err(DbError::from)
+        self.read(move |sql| {
+            sql.query(
+                "SELECT id FROM tracks ORDER BY release_id, side, track_number, id",
+                [],
+                |row| row.get::<_, String>("id"),
+            )
+            .map_err(DbError::from)
         })
         .await
     }
@@ -67,17 +68,16 @@ impl Database {
             return Ok(Vec::new());
         }
         let track_ids = track_ids.to_vec();
-        self.read(move |conn| {
+        self.read(move |sql| {
             let mut existing = Vec::new();
             for chunk in track_ids.chunks(SQL_MAX_IN_VARS) {
                 let placeholders = in_clause_placeholders(chunk.len());
                 let query = format!("SELECT id FROM tracks WHERE id IN ({placeholders})");
-                let mut stmt = conn.prepare(&query)?;
-                let rows = stmt
-                    .query_map(coven::rusqlite::params_from_iter(chunk.iter()), |row| {
-                        row.get::<_, String>("id")
-                    })?;
-                existing.extend(rows.collect::<coven::rusqlite::Result<Vec<_>>>()?);
+                existing.extend(sql.query(
+                    &query,
+                    coven::rusqlite::params_from_iter(chunk.iter()),
+                    |row| row.get::<_, String>("id"),
+                )?);
             }
             Ok(existing)
         })
@@ -87,13 +87,13 @@ impl Database {
     /// Ordered by side, track number, id.
     pub async fn get_tracks_for_release(&self, release_id: &str) -> Result<Vec<DbTrack>, DbError> {
         let release_id = release_id.to_string();
-        self.read(move |conn| {
-            let mut stmt = conn.prepare(
+        self.read(move |sql| {
+            sql.query(
                 "SELECT * FROM tracks WHERE release_id = ? ORDER BY side, track_number, id",
-            )?;
-            let rows = stmt.query_map(params![release_id], row_to_track)?;
-            rows.collect::<coven::rusqlite::Result<Vec<_>>>()
-                .map_err(DbError::from)
+                params![release_id],
+                row_to_track,
+            )
+            .map_err(DbError::from)
         })
         .await
     }
@@ -103,8 +103,8 @@ impl Database {
         track_id: &str,
     ) -> Result<Option<DbAudioFormat>, DbError> {
         let track_id = track_id.to_string();
-        self.read(move |conn| {
-            conn.query_row(
+        self.read(move |sql| {
+            sql.query_row(
                 "SELECT * FROM audio_formats WHERE track_id = ?",
                 params![track_id],
                 row_to_audio_format,
@@ -120,15 +120,15 @@ impl Database {
         audio_format_id: &str,
     ) -> Result<Vec<DbAudioSegment>, DbError> {
         let audio_format_id = audio_format_id.to_string();
-        self.read(move |conn| {
-            let mut stmt = conn.prepare(
+        self.read(move |sql| {
+            sql.query(
                 "SELECT * FROM audio_format_segments \
                  WHERE audio_format_id = ? \
                  ORDER BY segment_index",
-            )?;
-            let rows = stmt.query_map(params![audio_format_id], row_to_audio_segment)?;
-            rows.collect::<coven::rusqlite::Result<Vec<_>>>()
-                .map_err(DbError::from)
+                params![audio_format_id],
+                row_to_audio_segment,
+            )
+            .map_err(DbError::from)
         })
         .await
     }

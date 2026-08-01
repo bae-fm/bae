@@ -14,7 +14,7 @@
 //! coven owns the transitions (gate flip, source delete, materialize, retract,
 //! tombstone) and the durable-copy-before-delete ordering; tests drive them
 //! through the manager's coven seams (`coven_make_remote` + the upload drain via
-//! `drain_uploads_for_test`, `coven_make_local`). The
+//! `drain_uploads_expecting_work`, `coven_make_local`). The
 //! cross-device gate retract + asset keep/leak behavior is exercised in coven's
 //! own gate tests (a `covers`/`artist_images` asset rides its subject's gate and
 //! never keeps it alive).
@@ -93,12 +93,12 @@ async fn setup_manager(
 }
 
 /// Build a manager with a connected `SyncManager` over an injected
-/// `InMemoryCloudHome`, sealing blobs under `enc`. After this, `has_cloud_home` is
-/// Some and `is_sync_ready` is true, so the manager's make-Remote gate is open
-/// and the upload drain routes through the connected home.
+/// `InMemoryCloudHome`, sealing blobs under `enc`, and no sync loop behind it —
+/// these tests drive the upload drain themselves and assert what each pass
+/// moved, which only holds while nothing else drains the queue.
 async fn setup_with_cloud(tmp: &TempDir) -> (Database, LibraryManager, Arc<InMemoryCloudHome>) {
     let (db, mgr, cloud, enc) = setup_manager(tmp).await;
-    mgr.connect_test_cloud_home(cloud.clone(), CloudCipher::Encrypted(enc))
+    mgr.connect_test_cloud_home_caller_driven(cloud.clone(), CloudCipher::Encrypted(enc))
         .await
         .unwrap();
     (db, mgr, cloud)
@@ -203,7 +203,7 @@ async fn create_remote_cloud_only_release(
     }
 
     mgr.coven_make_remote(&release_id, false).await.unwrap();
-    let count = mgr.drain_uploads_for_test().await.unwrap();
+    let count = mgr.drain_uploads_expecting_work().await.unwrap();
     assert_eq!(count, files.len(), "all files uploaded");
     assert_eq!(
         storage(mgr, &release_id).await,
@@ -231,7 +231,7 @@ async fn test_multiple_releases_independent_completion() {
 
     // First drain: release_a completes and flips; the drain breaks to publish, so
     // release_b is left for the next pass.
-    let count = mgr.drain_uploads_for_test().await.unwrap();
+    let count = mgr.drain_uploads_expecting_work().await.unwrap();
     assert_eq!(count, 1);
     assert!(
         remote_flag(&mgr, &release_a).await,
@@ -243,7 +243,7 @@ async fn test_multiple_releases_independent_completion() {
     );
 
     // Second drain: release_b completes on its own.
-    let count = mgr.drain_uploads_for_test().await.unwrap();
+    let count = mgr.drain_uploads_expecting_work().await.unwrap();
     assert_eq!(count, 1);
     assert!(
         remote_flag(&mgr, &release_b).await,
@@ -329,7 +329,7 @@ async fn make_remote_summary_is_local_until_drain_then_remote_not_pinned() {
         (ReleaseStorageState::Local, false)
     );
 
-    let count = mgr.drain_uploads_for_test().await.unwrap();
+    let count = mgr.drain_uploads_expecting_work().await.unwrap();
     assert_eq!(count, files.len());
 
     // The drain flipped the gate: Remote, cloud-only (not pinned).
@@ -360,7 +360,7 @@ async fn upload_failure_leaves_summary_local_and_upload_pending() {
     // The connect bootstrap already wrote through the home; arm the failure only
     // now, so the upload drain fails every blob.
     cloud.arm_write_failures();
-    let count = mgr.drain_uploads_for_test().await.unwrap();
+    let count = mgr.drain_uploads_expecting_work().await.unwrap();
     assert_eq!(count, 0, "no upload should succeed");
 
     assert_eq!(

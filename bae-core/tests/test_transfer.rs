@@ -8,7 +8,7 @@
 //! transition semantics themselves.
 //!
 //! coven owns the transitions; tests drive them through the manager's coven
-//! seams (`coven_make_remote` + the upload drain via `drain_uploads_for_test`,
+//! seams (`coven_make_remote` + the upload drain via `drain_uploads_expecting_work`,
 //! `coven_make_local`) over a `SyncManager` connected to an injected cloud home.
 
 use bae_test_support as support;
@@ -60,14 +60,15 @@ async fn setup(tmp: &TempDir) -> (Database, LibraryManager) {
 }
 
 /// A manager with a `SyncManager` connected over an injected `InMemoryCloudHome`,
-/// sealing blobs under `enc`. After this, `get_cloud_home` is Some and
-/// `is_sync_ready` is true. Opaque home (the default at-rest mode), so blobs are
-/// keyed hashed and `release_files.cloud_path` stays NULL.
+/// sealing blobs under `enc`, and no sync loop behind it — these tests drive the
+/// upload drain themselves. After this, `get_cloud_home` is Some. Opaque home
+/// (the default at-rest mode), so blobs are keyed hashed and
+/// `release_files.cloud_path` stays NULL.
 async fn setup_with_cloud(tmp: &TempDir) -> (Database, LibraryManager) {
     let (db, mgr) = setup(tmp).await;
     let cloud = Arc::new(InMemoryCloudHome::new());
     let enc = EncryptionService::from_key([9u8; 32]);
-    mgr.connect_test_cloud_home(cloud, CloudCipher::Encrypted(enc))
+    mgr.connect_test_cloud_home_caller_driven(cloud, CloudCipher::Encrypted(enc))
         .await
         .unwrap();
     (db, mgr)
@@ -158,7 +159,7 @@ async fn create_remote_release(
 ) -> String {
     let (_album_id, release_id, named) = create_local_release(db, mgr, source_dir, files).await;
     mgr.coven_make_remote(&release_id, false).await.unwrap();
-    let count = mgr.drain_uploads_for_test().await.unwrap();
+    let count = mgr.drain_uploads_expecting_work().await.unwrap();
     assert_eq!(count, named.len(), "all files uploaded");
     assert_eq!(
         storage(mgr, &release_id).await,
@@ -490,7 +491,7 @@ async fn transition_completions_emit_release_updated() {
 
     // A drained make-Remote completion emits ReleaseUpdated.
     mgr.coven_make_remote(&release_id, false).await.unwrap();
-    mgr.drain_uploads_for_test().await.unwrap();
+    mgr.drain_uploads_expecting_work().await.unwrap();
     expect_release_updated(&mut events, &release_id).await;
 
     // A make-Local completion emits ReleaseUpdated.

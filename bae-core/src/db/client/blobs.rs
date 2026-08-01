@@ -97,9 +97,9 @@ impl Database {
         let id = id.to_string();
         let image_type = image_type.clone();
         let table = image_table(&image_type);
-        let sql = format!("SELECT * FROM {table} WHERE id = ?");
-        self.read(move |conn| {
-            conn.query_row(&sql, params![id], |row| {
+        let query = format!("SELECT * FROM {table} WHERE id = ?");
+        self.read(move |sql| {
+            sql.query_row(&query, params![id], |row| {
                 row_to_library_image(row, image_type.clone())
             })
             .optional()
@@ -141,7 +141,7 @@ impl Database {
             return Ok(HashMap::new());
         }
         let ids = ids.to_vec();
-        self.read(move |conn| image_versions(conn, image_type, &ids))
+        self.read(move |sql| image_versions(&sql, image_type, &ids))
             .await
     }
 
@@ -162,12 +162,12 @@ impl Database {
         resolve: F,
     ) -> Result<Option<String>, DbError>
     where
-        F: FnOnce(&Connection) -> Result<String, DbError> + Send + 'static,
+        F: for<'conn> FnOnce(&SqlReadContext<'conn>) -> Result<String, DbError> + Send + 'static,
     {
         if !storage.is_browsable() {
             return Ok(None);
         }
-        self.read(move |conn| resolve(conn).map(Some)).await
+        self.read(move |sql| resolve(&sql).map(Some)).await
     }
 
     /// The `cloud_path` for a cover image under `storage`: `None` for an opaque
@@ -184,8 +184,8 @@ impl Database {
         let release_id = release_id.to_string();
         let blob_id = blob_id.to_string();
         let content_type = content_type.clone();
-        self.cloud_path_if_browsable(storage, move |conn| {
-            resolve_cover_cloud_path(conn, &release_id, &blob_id, &content_type)
+        self.cloud_path_if_browsable(storage, move |sql| {
+            resolve_cover_cloud_path(sql, &release_id, &blob_id, &content_type)
         })
         .await
     }
@@ -316,20 +316,21 @@ impl Database {
             return Ok(HashMap::new());
         }
         let file_ids = file_ids.to_vec();
-        self.read(move |conn| {
+        self.read(move |sql| {
             let mut map = HashMap::new();
             for chunk in file_ids.chunks(SQL_MAX_IN_VARS) {
                 let placeholders = in_clause_placeholders(chunk.len());
-                let sql = format!(
+                let query = format!(
                     "SELECT rf.id, rf.original_filename, rf.file_size, a.title \
                      FROM release_files rf \
                      LEFT JOIN releases r ON r.id = rf.release_id \
                      LEFT JOIN albums a ON a.id = r.album_id \
                      WHERE rf.id IN ({placeholders})"
                 );
-                let mut stmt = conn.prepare(&sql)?;
-                let rows =
-                    stmt.query_map(coven::rusqlite::params_from_iter(chunk.iter()), |row| {
+                let rows = sql.query(
+                    &query,
+                    coven::rusqlite::params_from_iter(chunk.iter()),
+                    |row| {
                         Ok((
                             row.get::<_, String>(0)?,
                             OutboxUploadContext {
@@ -338,11 +339,9 @@ impl Database {
                                 album_title: row.get(3)?,
                             },
                         ))
-                    })?;
-                for row in rows {
-                    let (file_id, context) = row?;
-                    map.insert(file_id, context);
-                }
+                    },
+                )?;
+                map.extend(rows);
             }
             Ok(map)
         })
@@ -372,7 +371,7 @@ fn stamp_millis(raw: &str) -> Result<i64, DbError> {
 /// release plus its album's), so it is unbounded and must be chunked under
 /// SQLite's variable limit like every other batched `IN` query here.
 fn image_versions(
-    conn: &Connection,
+    sql: &SqlReadContext<'_>,
     image_type: LibraryImageType,
     ids: &[String],
 ) -> Result<HashMap<String, String>, DbError> {
@@ -380,15 +379,12 @@ fn image_versions(
     let mut map = HashMap::new();
     for chunk in ids.chunks(SQL_MAX_IN_VARS) {
         let placeholders = in_clause_placeholders(chunk.len());
-        let sql = format!("SELECT id, _updated_at FROM {table} WHERE id IN ({placeholders})");
-        let mut stmt = conn.prepare(&sql)?;
-        let rows = stmt.query_map(coven::rusqlite::params_from_iter(chunk.iter()), |row| {
-            Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
-        })?;
-        for row in rows {
-            let (id, version) = row?;
-            map.insert(id, version);
-        }
+        let query = format!("SELECT id, _updated_at FROM {table} WHERE id IN ({placeholders})");
+        map.extend(sql.query(
+            &query,
+            coven::rusqlite::params_from_iter(chunk.iter()),
+            |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)),
+        )?);
     }
     Ok(map)
 }

@@ -96,16 +96,36 @@ impl LibraryManager {
 
     /// Drive coven's upload drain once through the handle's connected sync
     /// manager, for tests that connected an injected cloud home via
-    /// [`connect_test_cloud_home`](Self::connect_test_cloud_home). Returns the
-    /// number of blobs uploaded. Production drains from the running sync loop, so
-    /// this stays out of release builds.
+    /// [`connect_test_cloud_home`](Self::connect_test_cloud_home). Production
+    /// drains from the running sync loop, so this stays out of release builds.
+    ///
+    /// The [`DrainOutcome`](coven::DrainOutcome) says what the pass found. Only
+    /// `Drained` carries a count; an empty queue, one held entirely in retry
+    /// backoff, and a paused one are each their own answer, so a caller that
+    /// planted work and expects it moved wants
+    /// [`drain_uploads_expecting_work`](Self::drain_uploads_expecting_work).
     #[cfg(any(test, feature = "test-utils"))]
-    pub async fn drain_uploads_for_test(&self) -> Result<usize, String> {
+    pub async fn drain_uploads_for_test(&self) -> Result<coven::DrainOutcome, String> {
         self.handle()
             .drain_uploads()
             .await
-            .map(|outcome| outcome.uploaded)
             .map_err(|error| error.to_string())
+    }
+
+    /// Drive one drain that is expected to attempt queued work, and report the
+    /// cloud objects it wrote.
+    ///
+    /// A pass that attempted nothing is a failure here rather than a zero count:
+    /// the test planted uploads, so an empty queue means something else consumed
+    /// them and "nothing to do" must not read as "the work is done".
+    #[cfg(any(test, feature = "test-utils"))]
+    pub async fn drain_uploads_expecting_work(&self) -> Result<usize, String> {
+        match self.drain_uploads_for_test().await? {
+            coven::DrainOutcome::Drained { uploaded, .. } => Ok(uploaded),
+            other => Err(format!(
+                "expected a drain that attempted queued uploads, got {other:?}"
+            )),
+        }
     }
 
     /// One page of the Storage Manager list, pre-sorted and pre-filtered.

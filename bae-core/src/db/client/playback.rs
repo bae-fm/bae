@@ -19,7 +19,7 @@ impl Database {
 
         let entries = entries.to_vec();
         self
-            .read(move |conn| {
+            .read(move |sql| {
                 let track_ids: Vec<String> =
                     entries.iter().map(|e| e.track_id.clone()).collect();
                 let mut meta_by_track: HashMap<String, TrackQueueMeta> = HashMap::new();
@@ -49,29 +49,31 @@ impl Database {
                         WHERE t.id IN ({placeholders})"
                     );
 
-                    let mut stmt = conn.prepare(&query)?;
-                    let mut rows = stmt.query(coven::rusqlite::params_from_iter(chunk.iter()))?;
-                    while let Some(row) = rows.next()? {
-                        let track_id: String = row.get("track_id")?;
-                        let cover_image_id: String = row.get("cover_image_id")?;
-                        let cover_version: Option<String> = row.get("cover_version")?;
-                        meta_by_track.insert(
-                            track_id,
-                            TrackQueueMeta {
-                                title: row.get("title")?,
-                                artist_names: row.get("artist_names")?,
-                                duration_ms: row.get("duration_ms")?,
-                                album_title: row.get("album_title")?,
-                                cover_image: cover_version.map(|version| {
-                                    crate::album_detail::ImageRef {
-                                        id: cover_image_id,
-                                        version,
-                                        image_type: LibraryImageType::Cover,
-                                    }
-                                }),
-                            },
-                        );
-                    }
+                    meta_by_track.extend(sql.query(
+                        &query,
+                        coven::rusqlite::params_from_iter(chunk.iter()),
+                        |row| {
+                            let track_id: String = row.get("track_id")?;
+                            let cover_image_id: String = row.get("cover_image_id")?;
+                            let cover_version: Option<String> = row.get("cover_version")?;
+                            Ok((
+                                track_id,
+                                TrackQueueMeta {
+                                    title: row.get("title")?,
+                                    artist_names: row.get("artist_names")?,
+                                    duration_ms: row.get("duration_ms")?,
+                                    album_title: row.get("album_title")?,
+                                    cover_image: cover_version.map(|version| {
+                                        crate::album_detail::ImageRef {
+                                            id: cover_image_id,
+                                            version,
+                                            image_type: LibraryImageType::Cover,
+                                        }
+                                    }),
+                                },
+                            ))
+                        },
+                    )?);
                 }
 
                 Ok(resolve_queue_entries(&meta_by_track, &entries))
@@ -118,10 +120,10 @@ impl Database {
     /// three are distinct so the caller counts and clears a corrupt cache rather
     /// than silently starting fresh over a masked failure.
     pub async fn load_playback_state(&self) -> Result<LoadedPlaybackState, DbError> {
-        self.read(move |conn| {
+        self.read(move |sql| {
             // The closure's `None` is a corrupt row; the outer `.optional()`'s
             // `None` is no row at all — the two stay distinct below.
-            let loaded = conn
+            let loaded = sql
                 .query_row(
                     "SELECT source, shuffled, manual, repeat, \
                      current_track_id, position_ms, volume, is_muted \

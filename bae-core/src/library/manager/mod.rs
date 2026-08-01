@@ -1115,6 +1115,21 @@ impl LibraryManager {
         self.sync.connect_test_cloud_home(cloud_home, cipher).await
     }
 
+    /// The same connection with no sync loop behind it, so an explicitly
+    /// draining test is the only drainer of the upload queue. See
+    /// [`SyncController::connect_test_cloud_home_caller_driven`](crate::library::sync_controller::SyncController::connect_test_cloud_home_caller_driven)
+    /// for what a test gives up by taking it.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub async fn connect_test_cloud_home_caller_driven(
+        &self,
+        cloud_home: Arc<dyn CloudHome>,
+        cipher: crate::sync::CloudCipher,
+    ) -> Result<(), LibraryError> {
+        self.sync
+            .connect_test_cloud_home_caller_driven(cloud_home, cipher)
+            .await
+    }
+
     /// Set the cloud home's storage mode in config, so a test can exercise the
     /// browsable read/write paths against an injected cloud home (production sets
     /// this through the cloud-setup wizard). The connected home's cipher must match

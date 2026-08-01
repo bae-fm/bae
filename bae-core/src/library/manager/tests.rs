@@ -1157,13 +1157,19 @@ async fn delete_release_fails_before_rows_are_deleted_when_cover_lookup_fails() 
 #[tokio::test]
 async fn delete_release_removes_its_cover_image() {
     let (manager, temp_dir) = setup_test_manager().await;
-    connect_test_cloud(&manager).await;
+    connect_test_cloud_with_sync_loop(&manager).await;
 
     // A genuinely Remote release, so storing its cover publishes the blob and
     // there is a real cloud object for the delete to tombstone.
     let release1 = ReleaseRef::of(
         &manager,
-        make_remote_release(&manager, &temp_dir.path().join("r1"), "Album One", false).await,
+        make_remote_release_under_sync_loop(
+            &manager,
+            &temp_dir.path().join("r1"),
+            "Album One",
+            false,
+        )
+        .await,
     )
     .await;
     // A sibling release so the album survives the single-release delete.
@@ -1223,10 +1229,16 @@ async fn delete_release_removes_its_cover_image() {
 #[tokio::test]
 async fn delete_album_removes_release_covers() {
     let (manager, temp_dir) = setup_test_manager().await;
-    connect_test_cloud(&manager).await;
+    connect_test_cloud_with_sync_loop(&manager).await;
     let release = ReleaseRef::of(
         &manager,
-        make_remote_release(&manager, &temp_dir.path().join("r1"), "Album One", false).await,
+        make_remote_release_under_sync_loop(
+            &manager,
+            &temp_dir.path().join("r1"),
+            "Album One",
+            false,
+        )
+        .await,
     )
     .await;
     manager
@@ -2460,10 +2472,10 @@ async fn storage_page_rows_carry_state_appropriate_actions() {
     use crate::album_detail::ReleaseStorageAction::{MakeLocal, MakeRemote, Pin, Unpin};
 
     let (manager, temp_dir) = setup_test_manager().await;
-    connect_test_cloud(&manager).await;
+    connect_test_cloud_with_sync_loop(&manager).await;
 
     // Pinned: made Remote with pin, so its blob lands in coven's offline cache.
-    let pinned = make_remote_release(
+    let pinned = make_remote_release_under_sync_loop(
         &manager,
         &temp_dir.path().join("pinned"),
         "Pinned Album",
@@ -2471,7 +2483,7 @@ async fn storage_page_rows_carry_state_appropriate_actions() {
     )
     .await;
     // Cloud-only: made Remote without pin, so its blob is evictable, not pinned.
-    let cloud_only = make_remote_release(
+    let cloud_only = make_remote_release_under_sync_loop(
         &manager,
         &temp_dir.path().join("cloud"),
         "Cloud Album",
@@ -2793,9 +2805,32 @@ async fn storage_total_size_matches_page_total_size_sum() {
 /// Connect a real `SyncManager` over an in-memory cloud home (opaque,
 /// encrypted) so the manager's cloud read/write/transition paths run against
 /// it — the in-module counterpart of the integration tests' `setup_with_cloud`.
-/// After this, `has_cloud_home()` and `is_sync_ready()` both hold.
+/// After this, `has_cloud_home()` holds.
+///
+/// No sync loop runs behind it: the tests here drive the upload queue with
+/// `drain_uploads_expecting_work` and assert what that pass moved, which is only
+/// a fact if nothing else drains. A test that needs the loop's own work — the
+/// Store write that publishes a transition, or `is_sync_ready()` — takes
+/// [`connect_test_cloud_with_sync_loop`] instead.
 #[cfg(feature = "test-utils")]
 async fn connect_test_cloud(manager: &LibraryManager) -> Arc<InMemoryCloudHome> {
+    let home = Arc::new(InMemoryCloudHome::new());
+    manager
+        .connect_test_cloud_home_caller_driven(
+            home.clone(),
+            CloudCipher::Encrypted(EncryptionService::from_key([7u8; 32])),
+        )
+        .await
+        .expect("connect in-memory cloud home");
+    home
+}
+
+/// [`connect_test_cloud`] with the production sync loop running behind it, for
+/// the tests that wait on a cycle to publish a transition's Store write. Their
+/// drains are the loop's as well as their own, so they assert on published
+/// state rather than on a drain's count.
+#[cfg(feature = "test-utils")]
+async fn connect_test_cloud_with_sync_loop(manager: &LibraryManager) -> Arc<InMemoryCloudHome> {
     let home = Arc::new(InMemoryCloudHome::new());
     manager
         .connect_test_cloud_home(
@@ -2920,9 +2955,49 @@ async fn make_remote_release_with_files(
 ) -> String {
     let release = insert_local_release_with_files(manager, dir, album_title, files).await;
     manager.coven_make_remote(&release.id, pin).await.unwrap();
-    let n = manager.drain_uploads_for_test().await.unwrap();
-    assert_eq!(n as usize, files.len(), "each release blob uploaded");
+    let uploaded = manager.drain_uploads_expecting_work().await.unwrap();
+    assert_eq!(uploaded, files.len(), "each release blob uploaded");
     release.id
+}
+
+/// [`make_remote_release`] for a test connected with
+/// [`connect_test_cloud_with_sync_loop`]: the loop drains the queue, so this
+/// waits for the make-Remote to finish rather than counting a drain pass this
+/// test does not own.
+#[cfg(feature = "test-utils")]
+async fn make_remote_release_under_sync_loop(
+    manager: &LibraryManager,
+    dir: &std::path::Path,
+    album_title: &str,
+    pin: bool,
+) -> String {
+    let release = insert_local_release_with_files(
+        manager,
+        dir,
+        album_title,
+        &[("track.flac", b"track-bytes")],
+    )
+    .await;
+    manager.coven_make_remote(&release.id, pin).await.unwrap();
+    wait_for_landed_make_remote(manager, &release.id).await;
+    release.id
+}
+
+/// Wait for a release's make-Remote to finish under a running sync loop, and
+/// assert it landed: no upload work outstanding and the gate flipped.
+#[cfg(feature = "test-utils")]
+async fn wait_for_landed_make_remote(manager: &LibraryManager, release_id: &str) {
+    wait_for_settled_uploads(manager, release_id).await;
+    assert!(
+        manager
+            .database
+            .find_release_by_id(release_id)
+            .await
+            .unwrap()
+            .unwrap()
+            .remote,
+        "every upload landed, so the release is Remote"
+    );
 }
 
 #[cfg(feature = "test-utils")]
@@ -2958,7 +3033,7 @@ async fn insert_partially_uploaded_make_remote_release(
     );
 
     std::fs::remove_file(source_dir.join("b.flac")).unwrap();
-    let uploaded = manager.drain_uploads_for_test().await.unwrap();
+    let uploaded = manager.drain_uploads_expecting_work().await.unwrap();
     assert_eq!(uploaded, 1);
     assert!(
         !manager
@@ -3544,7 +3619,11 @@ async fn outbox_snapshot_tracks_queued_active_failed_and_cancel() {
     // A real failure: the user's file is gone, so the drain cannot seal it. The
     // entry stays queued with coven's own attempt count and error on it.
     std::fs::remove_file(source_dir.join("a.flac")).unwrap();
-    assert_eq!(manager.drain_uploads_for_test().await.unwrap(), 0);
+    assert_eq!(
+        manager.drain_uploads_expecting_work().await.unwrap(),
+        0,
+        "the entry was attempted and sealed nothing"
+    );
     let snap = manager.outbox_snapshot().await.unwrap();
     assert_eq!(snap.total.failed, 1);
     assert_eq!(snap.total.queued, 0);
@@ -3924,9 +4003,10 @@ async fn make_exportable_release(
         .await
         .unwrap();
     manager.coven_make_remote(&release.id, true).await.unwrap();
-    let n = manager.drain_uploads_for_test().await.unwrap();
-    assert_eq!(n as usize, files.len(), "each release blob uploaded");
-    wait_for_settled_uploads(manager, &release.id).await;
+    // The sync loop this fixture's tests connect drains the queue itself, so
+    // wait for the make-Remote to finish rather than counting a drain pass this
+    // test does not own.
+    wait_for_landed_make_remote(manager, &release.id).await;
     release.id
 }
 
@@ -4077,7 +4157,7 @@ async fn output_queue_enqueue_dedups_and_cancels_while_paused() {
 #[tokio::test]
 async fn export_writes_exact_bytes_in_source_folder_and_leaves_release_remote() {
     let (manager, temp_dir) = setup_test_manager().await;
-    connect_test_cloud(&manager).await;
+    connect_test_cloud_with_sync_loop(&manager).await;
 
     let source_dir = temp_dir.path().join("source");
     let files: &[(&str, &[u8])] = &[
@@ -4277,7 +4357,7 @@ async fn assert_export_rejects_invalid_path(
 #[tokio::test]
 async fn export_write_error_marks_failed_and_retries() {
     let (manager, temp_dir) = setup_test_manager().await;
-    connect_test_cloud(&manager).await;
+    connect_test_cloud_with_sync_loop(&manager).await;
 
     let source_dir = temp_dir.path().join("source");
     let release_id = make_exportable_release(

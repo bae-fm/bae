@@ -91,9 +91,11 @@ impl ImportFixture {
         self._temp.path()
     }
 
+    /// No sync loop behind the connection: the remote-import tests drain the
+    /// upload queue themselves and assert what that pass moved.
     async fn connect_cloud(&self) {
         self.library_manager
-            .connect_test_cloud_home(
+            .connect_test_cloud_home_caller_driven(
                 Arc::new(InMemoryCloudHome::new()),
                 CloudCipher::Encrypted(EncryptionService::from_key([7u8; 32])),
             )
@@ -1493,7 +1495,11 @@ async fn successful_reimport_replaces_prior_release_once() {
     )
     .await
     .expect("initial remote import queues upload");
-    let upload_count = f.library_manager.drain_uploads_for_test().await.unwrap();
+    let upload_count = f
+        .library_manager
+        .drain_uploads_expecting_work()
+        .await
+        .unwrap();
     assert_eq!(
         upload_count, 1,
         "initial remote import should upload one file"
@@ -3490,8 +3496,8 @@ fn seed_mb_release_with_track_count(
 async fn committed_track_files(f: &ImportFixture, release_id: &str) -> Vec<(String, String)> {
     let release_id = release_id.to_string();
     f.db.handle()
-        .sql_read(move |conn| {
-            let mut stmt = conn.prepare(
+        .sql_read(move |sql| {
+            let rows = sql.query(
                 "SELECT t.title, rf.original_filename \
                  FROM tracks t \
                  JOIN audio_formats af ON af.track_id = t.id \
@@ -3500,12 +3506,9 @@ async fn committed_track_files(f: &ImportFixture, release_id: &str) -> Vec<(Stri
                  JOIN release_files rf ON rf.id = seg.file_id \
                  WHERE t.release_id = ?1 \
                  ORDER BY t.side, t.track_number",
+                [&release_id],
+                |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)),
             )?;
-            let rows = stmt
-                .query_map([&release_id], |row| {
-                    Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
-                })?
-                .collect::<coven::rusqlite::Result<Vec<_>>>()?;
             Ok::<_, coven::CovenError>(rows)
         })
         .await

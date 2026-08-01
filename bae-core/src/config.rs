@@ -15,7 +15,7 @@ pub use keyring::init_keyring;
 pub use keyring::install_test_keyring;
 pub use save::{SaveBitDepth, SaveCodec, SaveFilenameToken, SavePregapPlacement, SavePreset};
 
-use coven::{write_atomic, write_atomic_io, WriteError};
+use coven::{write_atomic, WriteError};
 use dev::dev_mode_enabled;
 use save::default_save_presets;
 
@@ -607,7 +607,7 @@ impl Config {
         if dirty {
             let serialized = serde_yaml::to_string(&yaml_config)
                 .map_err(|e| ConfigError::Serialization(e.to_string()))?;
-            write_atomic_io(config_path, serialized.as_bytes())?;
+            write_atomic(config_path, serialized.as_bytes()).map_err(WriteError::into_inner)?;
         }
         Ok(yaml_config.into_config(device_id, library_dir))
     }
@@ -621,7 +621,7 @@ impl Config {
         let app_dir = bae_dir()?;
         std::fs::create_dir_all(&app_dir)?;
         let pointer_path = app_dir.join("active-library");
-        write_atomic_io(&pointer_path, self.store_id.as_bytes())?;
+        write_atomic(&pointer_path, self.store_id.as_bytes()).map_err(WriteError::into_inner)?;
         Ok(())
     }
 
@@ -828,7 +828,7 @@ pub fn rename_inactive_library(
     yaml.library_name = new_name.as_str().to_string();
     let serialized =
         serde_yaml::to_string(&yaml).map_err(|e| ConfigError::Serialization(e.to_string()))?;
-    write_atomic_io(&config_path, serialized.as_bytes())?;
+    write_atomic(&config_path, serialized.as_bytes()).map_err(WriteError::into_inner)?;
     Ok(())
 }
 
