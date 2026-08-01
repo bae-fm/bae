@@ -4,7 +4,6 @@ import fm.bae.app.playback.BaeCorePlayer
 import fm.bae.app.playback.FakeAppHandle
 import fm.bae.app.playback.NowPlaying
 import fm.bae.app.testCoverRef
-import java.io.File
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -19,6 +18,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
 import uniffi.bae_bridge.BridgeUiEvent
+import java.io.File
 
 /**
  * The widget renders from a file-backed snapshot the launcher process reads, so

@@ -151,7 +151,11 @@ class ImageStoreTest {
         runBlocking {
             var crossings = 0
             val bytes = TestImages.png(256)
-            val store = storeOf(library = { crossings++; bytes })
+            val store =
+                storeOf(library = {
+                    crossings++
+                    bytes
+                })
             val content = ImageContent.LibraryImage(coverRef("rel-1"))
 
             store.image(content, DecodeSize.FitTo(32))
@@ -169,7 +173,10 @@ class ImageStoreTest {
             // the next put and every look reads again.
             val store =
                 storeOf(
-                    library = { crossings++; TestImages.png(256) },
+                    library = {
+                        crossings++
+                        TestImages.png(256)
+                    },
                     byteBudgets = ImageByteBudgets(libraryImage = 4 * 1024),
                 )
 
@@ -184,7 +191,11 @@ class ImageStoreTest {
     fun aReleaseFileIdNamesOneImmutableBlob() =
         runBlocking {
             var crossings = 0
-            val store = storeOf(release = { crossings++; TestImages.png(128) })
+            val store =
+                storeOf(release = {
+                    crossings++
+                    TestImages.png(128)
+                })
             val source = BridgeGallerySource.ReleaseFile("file-9")
 
             store.image(ImageContent.ReleaseImage("rel-1", source), fitTo64)
@@ -197,9 +208,13 @@ class ImageStoreTest {
     fun aCoverSlotTakesItsIdentityFromTheCover() =
         runBlocking {
             var crossings = 0
-            val store = storeOf(release = { crossings++; TestImages.png(128) })
-            fun slot(version: String) =
-                ImageContent.ReleaseImage("rel-1", BridgeGallerySource.Cover(coverRef("rel-1", version)))
+            val store =
+                storeOf(release = {
+                    crossings++
+                    TestImages.png(128)
+                })
+
+            fun slot(version: String) = ImageContent.ReleaseImage("rel-1", BridgeGallerySource.Cover(coverRef("rel-1", version)))
 
             store.image(slot("1"), fitTo64)
             store.image(slot("1"), fitTo64)

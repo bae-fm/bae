@@ -7,14 +7,14 @@ import android.util.LruCache
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.exifinterface.media.ExifInterface
 import fm.bae.app.BaeLogger
-import java.io.ByteArrayInputStream
-import java.io.File
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import uniffi.bae_bridge.AppHandle
 import uniffi.bae_bridge.BridgeGallerySource
 import uniffi.bae_bridge.BridgeImageRef
+import java.io.ByteArrayInputStream
+import java.io.File
 
 private const val TAG = "bae.ImageStore"
 private val logger = BaeLogger(TAG)
@@ -283,7 +283,9 @@ class ImageStore(
                 }
             }
 
-            is ImageContent.ReleaseImage -> fetchReleaseImageBytes(content.releaseId, content.source)
+            is ImageContent.ReleaseImage -> {
+                fetchReleaseImageBytes(content.releaseId, content.source)
+            }
 
             is ImageContent.Remote -> {
                 val fetched = fetchRemoteImage(content.url)
@@ -293,8 +295,9 @@ class ImageStore(
 
             // Both carry their bytes without asking core; imageBytes answers them
             // before reaching here.
-            is ImageContent.LocalFile, is ImageContent.Bytes ->
+            is ImageContent.LocalFile, is ImageContent.Bytes -> {
                 error("${content.description} resolves its own bytes")
+            }
         }
 
     /**
@@ -328,20 +331,26 @@ class ImageStore(
      *  modification time can't be read. */
     private fun token(content: ImageContent): String? =
         when (content) {
-            is ImageContent.LibraryImage -> libraryToken(content.image)
+            is ImageContent.LibraryImage -> {
+                libraryToken(content.image)
+            }
 
-            is ImageContent.ReleaseImage ->
+            is ImageContent.ReleaseImage -> {
                 when (val source = content.source) {
                     // A cover slot IS the release's curated cover; its version
                     // moves whenever the bytes do.
                     is BridgeGallerySource.Cover -> libraryToken(source.image)
+
                     // A release file's bytes are immutable per id: an import mints
                     // a fresh id per file and a re-import mints new ones, so an id
                     // never comes to name different bytes.
                     is BridgeGallerySource.ReleaseFile -> "file:${source.fileId}"
                 }
+            }
 
-            is ImageContent.Remote -> "remote:${content.url}"
+            is ImageContent.Remote -> {
+                "remote:${content.url}"
+            }
 
             is ImageContent.LocalFile -> {
                 // File.lastModified() answers 0 both for a missing file and for one
@@ -357,11 +366,12 @@ class ImageStore(
                 }
             }
 
-            is ImageContent.Bytes -> null
+            is ImageContent.Bytes -> {
+                null
+            }
         }
 
-    private fun libraryToken(image: BridgeImageRef): String =
-        "library:${image.imageType.name}:${image.id}:${image.version}"
+    private fun libraryToken(image: BridgeImageRef): String = "library:${image.imageType.name}:${image.id}:${image.version}"
 
     companion object {
         /** A store that resolves nothing — for @Preview composables and the
@@ -386,8 +396,7 @@ data class RemoteImageBytes(
     // ByteArray's identity equality would make two reads of the same art unequal;
     // the validator is exactly the token that says whether they are the same
     // content, so compare on it.
-    override fun equals(other: Any?): Boolean =
-        this === other || (other is RemoteImageBytes && validator == other.validator)
+    override fun equals(other: Any?): Boolean = this === other || (other is RemoteImageBytes && validator == other.validator)
 
     override fun hashCode(): Int = validator.hashCode()
 }
@@ -420,8 +429,7 @@ private class DecodedCaches(
             ImageBucket.LOCAL_FILE to bitmapCache(budgets.localFile),
         )
 
-    operator fun get(bucket: ImageBucket): LruCache<String, Bitmap> =
-        checkNotNull(caches[bucket]) { "every bucket is built in init" }
+    operator fun get(bucket: ImageBucket): LruCache<String, Bitmap> = checkNotNull(caches[bucket]) { "every bucket is built in init" }
 
     private fun bitmapCache(maxBytes: Int) =
         object : LruCache<String, Bitmap>(maxBytes) {
@@ -583,14 +591,43 @@ private fun oriented(
                 ExifInterface.ORIENTATION_NORMAL,
             )
         ) {
-            ExifInterface.ORIENTATION_ROTATE_90 -> Matrix().apply { postRotate(90f) }
-            ExifInterface.ORIENTATION_ROTATE_180 -> Matrix().apply { postRotate(180f) }
-            ExifInterface.ORIENTATION_ROTATE_270 -> Matrix().apply { postRotate(270f) }
-            ExifInterface.ORIENTATION_FLIP_HORIZONTAL -> Matrix().apply { postScale(-1f, 1f) }
-            ExifInterface.ORIENTATION_FLIP_VERTICAL -> Matrix().apply { postScale(1f, -1f) }
-            ExifInterface.ORIENTATION_TRANSPOSE -> Matrix().apply { postRotate(90f); postScale(-1f, 1f) }
-            ExifInterface.ORIENTATION_TRANSVERSE -> Matrix().apply { postRotate(270f); postScale(-1f, 1f) }
-            else -> return bitmap
+            ExifInterface.ORIENTATION_ROTATE_90 -> {
+                Matrix().apply { postRotate(90f) }
+            }
+
+            ExifInterface.ORIENTATION_ROTATE_180 -> {
+                Matrix().apply { postRotate(180f) }
+            }
+
+            ExifInterface.ORIENTATION_ROTATE_270 -> {
+                Matrix().apply { postRotate(270f) }
+            }
+
+            ExifInterface.ORIENTATION_FLIP_HORIZONTAL -> {
+                Matrix().apply { postScale(-1f, 1f) }
+            }
+
+            ExifInterface.ORIENTATION_FLIP_VERTICAL -> {
+                Matrix().apply { postScale(1f, -1f) }
+            }
+
+            ExifInterface.ORIENTATION_TRANSPOSE -> {
+                Matrix().apply {
+                    postRotate(90f)
+                    postScale(-1f, 1f)
+                }
+            }
+
+            ExifInterface.ORIENTATION_TRANSVERSE -> {
+                Matrix().apply {
+                    postRotate(270f)
+                    postScale(-1f, 1f)
+                }
+            }
+
+            else -> {
+                return bitmap
+            }
         }
     val rotated =
         Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)

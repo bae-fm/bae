@@ -99,10 +99,14 @@ fun ImageSlot(
         var state by remember(content, size) {
             mutableStateOf(
                 when {
-                    content == null -> SlotState.Absent
-                    else ->
+                    content == null -> {
+                        SlotState.Absent
+                    }
+
+                    else -> {
                         store.cachedImage(content, size)?.let { SlotState.Loaded(it) }
                             ?: SlotState.Loading
+                    }
                 },
             )
         }

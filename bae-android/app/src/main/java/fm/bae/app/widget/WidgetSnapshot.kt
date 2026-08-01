@@ -3,13 +3,13 @@ package fm.bae.app.widget
 import android.content.Context
 import fm.bae.app.BaeLogger
 import fm.bae.app.playback.NowPlaying
-import java.io.File
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import uniffi.bae_bridge.BridgeImageRef
 import uniffi.bae_bridge.BridgeLibraryImageType
+import java.io.File
 
 private const val TAG = "bae.WidgetSnapshot"
 private val logger = BaeLogger(TAG)

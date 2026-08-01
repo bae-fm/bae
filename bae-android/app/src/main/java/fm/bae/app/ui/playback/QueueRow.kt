@@ -46,9 +46,7 @@ import uniffi.bae_bridge.BridgeDurationClock
 // screen scaffolding in QueueScreen.kt, which addresses and lays them out.
 
 @Composable
-internal fun NowPlayingRow(
-    np: NowPlaying,
-) {
+internal fun NowPlayingRow(np: NowPlaying) {
     Row(
         modifier =
             Modifier

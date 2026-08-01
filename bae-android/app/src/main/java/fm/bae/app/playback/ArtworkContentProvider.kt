@@ -10,11 +10,11 @@ import fm.bae.app.AppSessionHolder
 import fm.bae.app.BaeLogger
 import fm.bae.app.OpenLibrary
 import fm.bae.app.data.ImageContent
-import kotlin.concurrent.thread
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.runBlocking
 import uniffi.bae_bridge.BridgeImageRef
 import uniffi.bae_bridge.BridgeLibraryImageType
+import kotlin.concurrent.thread
 
 private const val TAG = "bae.ArtworkContentProvider"
 private val logger = BaeLogger(TAG)
