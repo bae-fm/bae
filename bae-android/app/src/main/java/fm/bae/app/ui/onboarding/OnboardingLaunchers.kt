@@ -21,11 +21,12 @@ import uniffi.bae_bridge.BridgeLibrary
 import uniffi.bae_bridge.JoinFromCodeOperation
 import uniffi.bae_bridge.RestoreFromCodeOperation
 import uniffi.bae_bridge.availableCloudProviders
-import uniffi.bae_bridge.decodeInviteCode
 import uniffi.bae_bridge.decodeRestoreCode
+import uniffi.bae_bridge.decodeScannedInvite
 import uniffi.bae_bridge.generateJoinRequest
-import uniffi.bae_bridge.joinFromCodeOperation
+import uniffi.bae_bridge.joinFromScannedInviteOperation
 import uniffi.bae_bridge.restoreFromCodeOperation
+import java.util.Base64
 
 private const val TAG = "bae.OnboardingLaunchers"
 private val logger = BaeLogger(TAG)
@@ -62,12 +63,12 @@ private class LinkFlow(
 }
 
 /**
- * One in-progress join attempt: join from the invite code on a background
- * thread, using the OAuth token the joiner already obtained when it picked the
- * provider. Mirrors [LinkFlow], except it joins as a new member rather than
- * restoring this device's own library. The blocking `join()` bridge call can't
- * be interrupted by coroutine cancellation, so [cancel] also cancels the
- * operation's own token.
+ * One in-progress join attempt: join from the owner's invite bundle on a
+ * background thread, using the OAuth token the joiner already obtained when it
+ * picked the provider. Mirrors [LinkFlow], except it joins as a new member
+ * rather than restoring this device's own library. The blocking `join()` bridge
+ * call can't be interrupted by coroutine cancellation, so [cancel] also cancels
+ * the operation's own token.
  */
 private class JoinFlow(
     val job: Job,
@@ -75,7 +76,7 @@ private class JoinFlow(
     var joinOperation: JoinFromCodeOperation? = null
 
     suspend fun execute(
-        code: String,
+        scanned: ByteArray,
         joinRequestCode: String,
         oauthTokenJson: String?,
         onJoined: (BridgeLibrary) -> Unit,
@@ -83,7 +84,11 @@ private class JoinFlow(
         // OAuth (and the account-email fetch) already ran when the provider was
         // picked; the token captured then is reused here — no second sign-in.
         val operation =
-            joinFromCodeOperation(code = code, joinRequestCode = joinRequestCode, oauthTokenJson = oauthTokenJson)
+            joinFromScannedInviteOperation(
+                scanned = scanned,
+                joinRequestCode = joinRequestCode,
+                oauthTokenJson = oauthTokenJson,
+            )
         joinOperation = operation
         val libraryInfo = withContext(Dispatchers.IO) { operation.join() }
         onJoined(libraryInfo)
@@ -93,6 +98,26 @@ private class JoinFlow(
         joinOperation?.cancel()
         job.cancel()
     }
+}
+
+/**
+ * The invite bundle the joiner pasted or scanned, and what it decoded to.
+ *
+ * The invite is the owner's signed join offer — a byte payload, not a
+ * human-typed code — so it travels as base64 wherever it has to be text. The
+ * bytes are kept next to their decode so the preview the joiner confirms and the
+ * join that runs are the same bundle; deriving them twice would let the two
+ * disagree.
+ */
+private class ScannedInvite(
+    val bytes: ByteArray,
+    val info: BridgeInviteCodeInfo,
+)
+
+/** Decode base64 invite text into its bundle and preview, or throw if it is neither. */
+private fun scanInvite(pasted: String): ScannedInvite {
+    val bytes = Base64.getDecoder().decode(pasted)
+    return ScannedInvite(bytes, decodeScannedInvite(bytes))
 }
 
 private suspend fun resolveOauthToken(
@@ -188,12 +213,13 @@ class JoinLauncher(
     var isAuthorizing by mutableStateOf(false)
         private set
 
-    // The invite code the approving device handed back, and its live decode:
-    // null before anything is entered, success once it parses, failure when it
-    // doesn't. Both drive the preview rows and the join gate.
+    // The invite the approving device handed back, as typed or scanned, and its
+    // live decode: null before anything is entered, success once the base64
+    // parses into a readable bundle, failure when it doesn't. Both drive the
+    // preview rows and the join gate.
     var inviteInput by mutableStateOf("")
         private set
-    private var decodedInvite by mutableStateOf<Result<BridgeInviteCodeInfo>?>(null)
+    private var scannedInvite by mutableStateOf<Result<ScannedInvite>?>(null)
 
     // Whether this edition can connect to any OAuth provider. The S3-only
     // edition's bindings offer only S3, so an OAuth library can't be joined here.
@@ -206,21 +232,22 @@ class JoinLauncher(
 
     /** The preview and join-gate state derived from the current invite input. */
     val invitePreview: JoinInvitePreview
-        get() = joinInvitePreview(decodedInvite, oauthSupported, oauthTokenJson != null)
+        get() = joinInvitePreview(scannedInvite?.map { it.info }, oauthSupported, oauthTokenJson != null)
 
     /** Whether the join action should be enabled for the current input. */
     val joinReady: Boolean get() = joinEnabled(invitePreview)
 
     /**
-     * Record the invite code the joiner typed or scanned and decode it live for
-     * the preview. Decoding is a local parse, so it runs inline as the code
-     * changes; a failure surfaces as the invalid-code preview, not a throw.
+     * Record the invite the joiner typed or scanned and decode it live for the
+     * preview. Decoding is a local parse, so it runs inline as the text changes;
+     * a failure — text that isn't base64, or bytes that aren't an invite bundle
+     * — surfaces as the invalid-code preview, not a throw.
      */
     fun updateInvite(raw: String) {
         inviteInput = raw
         error = null
         val trimmed = raw.trim()
-        decodedInvite = if (trimmed.isEmpty()) null else runCatching { decodeInviteCode(trimmed) }
+        scannedInvite = if (trimmed.isEmpty()) null else runCatching { scanInvite(trimmed) }
     }
 
     /**
@@ -286,12 +313,14 @@ class JoinLauncher(
         isAuthorizing = false
         oauthTokenJson = null
         inviteInput = ""
-        decodedInvite = null
+        scannedInvite = null
         error = null
     }
 
     fun join() {
-        val code = inviteInput.trim()
+        // The very bytes the preview decoded, so the join runs on the bundle the
+        // joiner confirmed rather than a second decode of the same text.
+        val scanned = scannedInvite?.getOrNull()?.bytes ?: return
         // The code generated for this device's own join-request, minted back
         // when generateJoinRequest ran in selectProvider — coven needs it back
         // to promote that pending identity into this store's custody.
@@ -304,7 +333,7 @@ class JoinLauncher(
         val launched =
             scope.launch(start = CoroutineStart.LAZY) {
                 try {
-                    started.execute(code, joinRequestCode, oauthTokenJson, onJoined)
+                    started.execute(scanned, joinRequestCode, oauthTokenJson, onJoined)
                 } catch (e: BridgeException.Cancelled) {
                     logger.debug("join flow cancelled by bridge", e)
                 } catch (e: CancellationException) {
