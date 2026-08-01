@@ -27,7 +27,9 @@ namespace Bae.Desktop;
 /// State lives here for one selected candidate. The pane rebuilds on a
 /// structural change — a different candidate, a different release, a sheet
 /// binding, a role — and never on a store tick, so a field the user is typing
-/// in keeps its focus and its caret.
+/// in keeps its focus and its caret. It does read the queue on a tick, for the
+/// one case where a tick IS a structural change: the verdict for the folder it
+/// is showing settling on a release nobody has picked yet.
 /// </summary>
 internal sealed class ImportMappingPane : UserControl
 {
@@ -57,6 +59,13 @@ internal sealed class ImportMappingPane : UserControl
     // already mapped onto.
     private string? _releaseId;
     private BridgeMetadataSource _releaseSource;
+
+    // Whether a prefetch is running, and whether the last one for this
+    // candidate failed. Both exist for the Ready seed: it fires off store ticks
+    // as well as row clicks, so it has to see the read it already started and
+    // the one that already failed.
+    private bool _prefetching;
+    private bool _prefetchFailed;
 
     // The live edit. `_tracks` is positionally aligned with the model's rows —
     // row i edits track i — and both are re-cut together whenever a row leaves.
@@ -95,13 +104,14 @@ internal sealed class ImportMappingPane : UserControl
 
         Content = _content;
         _import.PreviewElapsedChanged += OnPreviewChanged;
+        _import.Changed += OnQueueChanged;
         Render();
     }
 
     /// <summary>Put a candidate under the pane. Reads the folder fresh and
-    /// prefetches whichever release the triage row matched, so the slot table
-    /// arrives already mapped; a candidate with no match lands on the header's
-    /// search editor instead.</summary>
+    /// prefetches the release a Ready row settled on, so the slot table arrives
+    /// already mapped; every other row lands on the header's search editor,
+    /// where picking a release is one click.</summary>
     internal async Task ShowCandidate(BridgeTriageRow row)
     {
         StopPreview();
@@ -110,13 +120,37 @@ internal sealed class ImportMappingPane : UserControl
         ResetEdit();
         Render();
 
-        if (row.Matched is { } matched)
+        if (ReadyAutoPick.From(row, SeedState) is { } matched)
         {
             await Prefetch(matched.ReleaseId, matched.Evidence.Source);
             return;
         }
+        // Every other row lands on the header's search editor, seeded with the
+        // matches identify did find: a Needs-you row is asking which pressing,
+        // and a Done or Skipped row is not asking anything.
         _searchOpen = true;
         Render();
+    }
+
+    private MappingPaneSeedState SeedState =>
+        new(_prefetch is not null, _prefetching, _prefetchFailed);
+
+    // The verdict can settle after the pane is already showing the folder — a
+    // row identified while it sits under the pane arrives as a queue tick, not
+    // as a click — so the same seed runs from here. Everything that would make
+    // a seed wrong is in the guard, so a tick that changes nothing about this
+    // candidate does nothing.
+    private void OnQueueChanged()
+    {
+        if (_key is not { } key)
+        {
+            return;
+        }
+        if (ReadyAutoPick.From(TriageListModel.Row(_import.TriageQueue, key), SeedState)
+            is { } matched)
+        {
+            _ = Prefetch(matched.ReleaseId, matched.Evidence.Source);
+        }
     }
 
     /// <summary>Raised when the pane empties itself — a committed folder is no
@@ -147,6 +181,8 @@ internal sealed class ImportMappingPane : UserControl
     {
         _prefetch = null;
         _releaseId = null;
+        _prefetching = false;
+        _prefetchFailed = false;
         _libraryStatus = null;
         _model = null;
         _slotTable = null;
@@ -178,39 +214,49 @@ internal sealed class ImportMappingPane : UserControl
         {
             return;
         }
-        var (current, result) = await _app.Import.PrefetchCandidateEdit(
-            key, releaseId, source, candidate.FolderPath);
-        if (!current)
+        _prefetching = true;
+        _prefetchFailed = false;
+        try
         {
-            return;
-        }
-        if (result.Prefetched is not { } prefetched)
-        {
-            _app.ShowError(Loc.Chrome("import.error.load_release"), result.Error ?? Loc.Chrome("import.failed"));
-            return;
-        }
+            var (current, result) = await _app.Import.PrefetchCandidateEdit(
+                key, releaseId, source, candidate.FolderPath);
+            if (!current)
+            {
+                return;
+            }
+            if (result.Prefetched is not { } prefetched)
+            {
+                _prefetchFailed = true;
+                _app.ShowError(Loc.Chrome("import.error.load_release"), result.Error ?? Loc.Chrome("import.failed"));
+                return;
+            }
 
-        // A cover picked for one release does not carry to another; recomputing
-        // the mapping against the same release keeps it.
-        if (_releaseId != releaseId)
-        {
-            _cover = null;
-        }
-        Seed(prefetched);
-        _releaseId = releaseId;
-        _releaseSource = source;
-        _model = prefetched.Slots is { } slots
-            ? MappingPaneProjection.FromSlots(slots, _tracks)
-            : MappingPaneProjection.FromUnidentifiedEdit(_tracks);
-        _searchOpen = false;
-        Render();
-
-        // Advisory, not a gate — a failed check leaves the banner absent.
-        var (statusCurrent, status) = await _app.Import.CheckReleaseInLibrary(releaseId);
-        if (statusCurrent && status.Status is { ReleaseInLibrary: true } inLibrary)
-        {
-            _libraryStatus = inLibrary;
+            // A cover picked for one release does not carry to another; recomputing
+            // the mapping against the same release keeps it.
+            if (_releaseId != releaseId)
+            {
+                _cover = null;
+            }
+            Seed(prefetched);
+            _releaseId = releaseId;
+            _releaseSource = source;
+            _model = prefetched.Slots is { } slots
+                ? MappingPaneProjection.FromSlots(slots, _tracks)
+                : MappingPaneProjection.FromUnidentifiedEdit(_tracks);
+            _searchOpen = false;
             Render();
+
+            // Advisory, not a gate — a failed check leaves the banner absent.
+            var (statusCurrent, status) = await _app.Import.CheckReleaseInLibrary(releaseId);
+            if (statusCurrent && status.Status is { ReleaseInLibrary: true } inLibrary)
+            {
+                _libraryStatus = inLibrary;
+                Render();
+            }
+        }
+        finally
+        {
+            _prefetching = false;
         }
     }
 
@@ -224,22 +270,32 @@ internal sealed class ImportMappingPane : UserControl
         {
             return;
         }
-        var (current, result) = await _app.Import.PrefetchUnknownEdit(candidate.Key);
-        if (!current)
+        _prefetching = true;
+        _prefetchFailed = false;
+        try
         {
-            return;
+            var (current, result) = await _app.Import.PrefetchUnknownEdit(candidate.Key);
+            if (!current)
+            {
+                return;
+            }
+            if (result.Prefetched is not { } prefetched)
+            {
+                _prefetchFailed = true;
+                _app.ShowError(Loc.Chrome("import.error.load_release"), result.Error ?? Loc.Chrome("import.failed"));
+                return;
+            }
+            Seed(prefetched);
+            _releaseId = null;
+            _libraryStatus = null;
+            _model = MappingPaneProjection.FromUnidentifiedEdit(_tracks);
+            _searchOpen = false;
+            Render();
         }
-        if (result.Prefetched is not { } prefetched)
+        finally
         {
-            _app.ShowError(Loc.Chrome("import.error.load_release"), result.Error ?? Loc.Chrome("import.failed"));
-            return;
+            _prefetching = false;
         }
-        Seed(prefetched);
-        _releaseId = null;
-        _libraryStatus = null;
-        _model = MappingPaneProjection.FromUnidentifiedEdit(_tracks);
-        _searchOpen = false;
-        Render();
     }
 
     private void Seed(PrefetchedEdit prefetched)

@@ -136,6 +136,12 @@ jobs:
         # members) fire as build errors via .editorconfig severity settings.
         run: dotnet build bae-avalonia\bae-avalonia.csproj -c Debug -p:EnforceCodeStyleInBuild=true
 
+      - name: Test bae-avalonia views
+        # The view tests drive real controls through Avalonia's headless
+        # platform, so they need the app and its C# bindings — hence here rather
+        # than beside the model tests above.
+        run: dotnet test bae-avalonia\bae-avalonia.ViewTests -c Debug
+
       - name: Run bae-core unit tests (Windows)
         # The only place bae's Rust actually EXECUTES on Windows. Windows-only
         # code paths (the atomic-write directory handling, path semantics) shipped
