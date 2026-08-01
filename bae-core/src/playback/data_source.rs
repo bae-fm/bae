@@ -136,8 +136,8 @@ fn fail_audio_read(on_error: FillErrorHandler, buffer: &SharedSparseBuffer, erro
     // A buffer that is already cancelled means teardown ran before this read
     // returned: the user switched away while a reader was parked in an in-flight
     // `read().await` past its top-of-loop cancel check. The Err it eventually
-    // returns belongs to the abandoned track. Reporting it here would halt the
-    // track the user just started, so suppress it and exit cancelled.
+    // returns belongs to a track that has already left the pipeline, so there is
+    // nothing left to report — exit cancelled.
     if buffer.is_cancelled() {
         debug!("ignoring read failure on a cancelled buffer: {error}");
         return;

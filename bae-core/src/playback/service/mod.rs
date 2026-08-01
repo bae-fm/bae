@@ -223,6 +223,14 @@ pub(crate) enum PlaybackCommand {
     /// self-subscription so the command loop tears playback down to Stopped
     /// rather than leaving a frozen Playing state with a stalled position bar.
     HaltOnError,
+    /// A track buffer's byte fill failed. Which track that breaks depends on what
+    /// the buffer is serving right now, and only the command loop knows that —
+    /// the fill task reports the failure with the buffer's id and the loop
+    /// decides (see `handle_read_failed`).
+    ReadFailed {
+        buffer_id: u64,
+        error: PlaybackError,
+    },
     /// The system default output device changed. Rebuilds the persistent output
     /// stream over the same source so playback follows the new default (a no-op
     /// when nothing is playing) — the stream is otherwise rebuilt only on stop or
@@ -716,6 +724,13 @@ impl PlaybackPreparedTrack {
         ((ms as f64 / 1000.0) * self.sample_rate as f64) as u64
     }
 
+    /// Whether this track reads its bytes from the buffer with this id.
+    fn reads_buffer(&self, buffer_id: u64) -> bool {
+        self.segments
+            .iter()
+            .any(|segment| segment.buffer.id() == buffer_id)
+    }
+
     /// The distinct release files this track plays from.
     fn file_ids(&self) -> HashSet<&str> {
         self.segments
@@ -937,18 +952,19 @@ fn ensure_resolved_audio_format(
     Ok(())
 }
 
-/// The playback shape of a fill-error handler: a failed byte fill halts the
-/// track by emitting `PlaybackProgress::PlaybackError` to the UI. (The fill
+/// The playback shape of a fill-error handler: a failed byte fill reports itself
+/// to the command loop, naming the buffer it failed on. The loop is the only
+/// place that knows whether that buffer feeds the current track or a preloaded
+/// next, which is what decides whether the failure halts playback. (The fill
 /// itself cancels the buffer right after, unblocking the decoder.)
-pub(crate) fn playback_fill_error_handler(
-    progress_tx: tokio_mpsc::UnboundedSender<PlaybackProgress>,
+fn playback_fill_error_handler(
+    command_tx: tokio_mpsc::UnboundedSender<PlaybackCommand>,
+    buffer_id: u64,
 ) -> crate::playback::data_source::FillErrorHandler {
     Box::new(move |error| {
-        emit_progress(
-            &progress_tx,
-            PlaybackProgress::PlaybackError {
-                reason: error.into_ui_reason(),
-            },
+        dispatch_command(
+            &command_tx,
+            PlaybackCommand::ReadFailed { buffer_id, error },
         );
     })
 }
@@ -957,7 +973,7 @@ async fn prepare_track_for_playback(
     library_manager: &LibraryManager,
     track_id: &str,
     shared_file_buffers: &mut HashMap<String, SharedSparseBuffer>,
-    progress_tx: tokio_mpsc::UnboundedSender<PlaybackProgress>,
+    command_tx: tokio_mpsc::UnboundedSender<PlaybackCommand>,
     fetch_arbiter: Arc<FetchArbiter>,
 ) -> Result<PlaybackPreparedTrack, PlaybackError> {
     let (resolved, track_info) = library_manager
@@ -986,7 +1002,7 @@ async fn prepare_track_for_playback(
             );
             reader.start_reading(
                 buffer.clone(),
-                playback_fill_error_handler(progress_tx.clone()),
+                playback_fill_error_handler(command_tx.clone(), buffer.id()),
             );
             shared_file_buffers.insert(segment.file_id.clone(), buffer.clone());
             buffer
@@ -1123,6 +1139,51 @@ impl PlaybackService {
             self.telemetry_playback_failed(PlaybackOperation::Read);
             self.stop().await;
         }
+    }
+
+    /// A track buffer's byte fill failed. What that breaks depends on which track
+    /// the buffer feeds, which is why the fill reports here instead of straight to
+    /// the UI:
+    /// - the current track's bytes: nothing can play, so surface the error, which
+    ///   dispatches `HaltOnError` and tears playback down;
+    /// - a preloaded next track's bytes: the current track is unaffected and keeps
+    ///   playing. Discard the preload rather than leave a staged decoder whose
+    ///   bytes are gone — its buffer is cancelled by now, so the boundary would
+    ///   otherwise cross into a truncated track. The queue reaches that track
+    ///   through `play_track` instead, which prepares it afresh and reports the
+    ///   failure then if it persists;
+    /// - neither: the buffer left the pipeline (released or stopped) before this
+    ///   failure surfaced, so there is nothing left to halt.
+    async fn handle_read_failed(&mut self, buffer_id: u64, error: PlaybackError) {
+        if let PlaybackSlot::Active(cur) = &self.slot {
+            if cur.prepared.reads_buffer(buffer_id) {
+                error!(
+                    track_id = %cur.prepared.track_info.track_id,
+                    "read failed for the playing track; halting playback"
+                );
+                emit_progress(
+                    &self.progress_tx,
+                    PlaybackProgress::PlaybackError {
+                        reason: error.into_ui_reason(),
+                    },
+                );
+                return;
+            }
+        }
+
+        if let Some(preloaded) = &self.preloaded_next {
+            if preloaded.prepared.reads_buffer(buffer_id) {
+                warn!(
+                    track_id = %preloaded.track_id(),
+                    "read failed for the preloaded next track; discarding the preload and playing on"
+                );
+                self.telemetry_playback_failed(PlaybackOperation::Preload);
+                self.clear_next_track_state();
+                return;
+            }
+        }
+
+        debug!("ignoring read failure on a buffer that left the pipeline: {error}");
     }
 
     /// Telemetry sink, read off the library manager this service already holds.
@@ -1939,6 +2000,9 @@ impl PlaybackService {
                 PlaybackCommand::HaltOnError => {
                     self.halt_on_error().await;
                 }
+                PlaybackCommand::ReadFailed { buffer_id, error } => {
+                    self.handle_read_failed(buffer_id, error).await;
+                }
                 #[cfg(target_os = "macos")]
                 PlaybackCommand::OutputDeviceChanged => {
                     self.handle_output_device_changed().await;
@@ -2208,6 +2272,7 @@ fn playback_command_kind(command: &PlaybackCommand) -> Option<PlaybackCommandKin
         PlaybackCommand::AutoAdvance { .. }
         | PlaybackCommand::TrackReady { .. }
         | PlaybackCommand::HaltOnError
+        | PlaybackCommand::ReadFailed { .. }
         | PlaybackCommand::AddToQueue(_)
         | PlaybackCommand::AddNext(_)
         | PlaybackCommand::InsertInQueue(_, _)

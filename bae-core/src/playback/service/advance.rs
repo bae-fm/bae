@@ -56,7 +56,7 @@ impl PlaybackService {
             &self.library_manager,
             track_id,
             &mut self.shared_file_buffers,
-            self.progress_tx.clone(),
+            self.command_tx.clone(),
             self.fetch_arbiter.clone(),
         )
         .await;

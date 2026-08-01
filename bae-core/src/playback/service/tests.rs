@@ -421,6 +421,137 @@ fn discard_preloaded_next_removes_staged_source() {
     assert!(!buffer.is_cancelled());
 }
 
+/// Whether any `PlaybackError` reached the UI. A read failure that surfaces one
+/// halts playback (the progress self-subscription turns it into `HaltOnError`),
+/// so its absence is what says the playing track was left alone.
+fn drained_a_playback_error(
+    progress_rx: &mut tokio_mpsc::UnboundedReceiver<PlaybackProgress>,
+) -> bool {
+    let mut saw_error = false;
+    while let Ok(progress) = progress_rx.try_recv() {
+        if matches!(progress, PlaybackProgress::PlaybackError { .. }) {
+            saw_error = true;
+        }
+    }
+    saw_error
+}
+
+/// A preloaded next track whose bytes stop arriving — its release was deleted,
+/// its cloud fetch failed — breaks nothing the user is hearing, so the playing
+/// track keeps playing and no error reaches the UI. The preload is discarded
+/// instead: its buffer is cancelled by the time this runs, so a gapless crossing
+/// into it would play a truncated track.
+#[tokio::test]
+async fn read_failure_on_the_preloaded_next_discards_it_and_keeps_playing() {
+    let (_home, mut service, mut progress_rx) = test_playback_service().await;
+    let current_buffer = create_sparse_buffer(1_024);
+    let preload_buffer = create_sparse_buffer(1_024);
+    service
+        .shared_file_buffers
+        .insert("preload-file".to_string(), preload_buffer.clone());
+    service.slot = active_slot(
+        test_prepared_track_with_file("current-track", "current-file", current_buffer),
+        TrackPhase::Playing,
+    );
+    let (_next_sink, next_source, _next_ready) = create_track_stream_pair(44_100, 2);
+    service.preloaded_next = Some(PreloadedNext {
+        prepared: test_prepared_track_with_file(
+            "next-track",
+            "preload-file",
+            preload_buffer.clone(),
+        ),
+        decoder_handle: finished_decoder_handle(),
+        cancel_token: Arc::new(std::sync::atomic::AtomicBool::new(false)),
+        source: PreloadedNextSource::Held(next_source),
+    });
+
+    service
+        .handle_read_failed(
+            preload_buffer.id(),
+            PlaybackError::not_found("release file", "preload-file"),
+        )
+        .await;
+
+    assert!(
+        matches!(
+            &service.slot,
+            PlaybackSlot::Active(cur)
+                if cur.prepared.track_info.track_id == "current-track"
+                    && matches!(cur.phase, TrackPhase::Playing)
+        ),
+        "the playing track is untouched by the next track's read failure"
+    );
+    assert!(
+        !drained_a_playback_error(&mut progress_rx),
+        "a preload's read failure must not surface an error that halts playback"
+    );
+    assert!(
+        service.preloaded_next.is_none(),
+        "the preload whose bytes are gone is discarded"
+    );
+    assert!(
+        !service.shared_file_buffers.contains_key("preload-file"),
+        "its cancelled buffer leaves the shared cache rather than being reused dead"
+    );
+}
+
+/// The playing track's own bytes stopping is fatal: nothing can play, so the
+/// error surfaces and the halt path tears playback down.
+#[tokio::test]
+async fn read_failure_on_the_playing_track_reports_the_error() {
+    let (_home, mut service, mut progress_rx) = test_playback_service().await;
+    let current_buffer = create_sparse_buffer(1_024);
+    service.slot = active_slot(
+        test_prepared_track_with_file("current-track", "current-file", current_buffer.clone()),
+        TrackPhase::Playing,
+    );
+
+    service
+        .handle_read_failed(
+            current_buffer.id(),
+            PlaybackError::not_found("release file", "current-file"),
+        )
+        .await;
+
+    assert!(
+        drained_a_playback_error(&mut progress_rx),
+        "the playing track's read failure surfaces as a playback error"
+    );
+}
+
+/// A buffer that serves neither the current track nor the preload left the
+/// pipeline before its failure surfaced (released on a track change, cancelled
+/// by a stop). There is nothing to halt, and halting would kill whatever the
+/// user started in the meantime.
+#[tokio::test]
+async fn read_failure_on_a_buffer_out_of_play_is_ignored() {
+    let (_home, mut service, mut progress_rx) = test_playback_service().await;
+    let abandoned_buffer = create_sparse_buffer(1_024);
+    service.slot = active_slot(
+        test_prepared_track_with_file("current-track", "current-file", create_sparse_buffer(1_024)),
+        TrackPhase::Playing,
+    );
+
+    service
+        .handle_read_failed(
+            abandoned_buffer.id(),
+            PlaybackError::not_found("release file", "abandoned-file"),
+        )
+        .await;
+
+    assert!(
+        matches!(
+            &service.slot,
+            PlaybackSlot::Active(cur) if cur.prepared.track_info.track_id == "current-track"
+        ),
+        "a failure from a buffer out of play leaves the current track alone"
+    );
+    assert!(
+        !drained_a_playback_error(&mut progress_rx),
+        "a failure from a buffer out of play surfaces no error"
+    );
+}
+
 #[tokio::test]
 async fn seek_drains_pending_gapless_crossing_before_reading_current_track() {
     let (_home, mut service, mut progress_rx) = test_playback_service().await;

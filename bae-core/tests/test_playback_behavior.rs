@@ -3041,6 +3041,8 @@ async fn play_release_clamps_an_out_of_range_start_index() {
 /// the current track (release A) and a preloaded next (release B) can be deleted
 /// independently: deleting B clears the preloaded next and purges its queued
 /// track while A keeps playing; deleting A deletes the current track and stops.
+/// Deleting B also races the event against B's own byte fill, which finds the
+/// release's file rows gone: either order has to leave A playing.
 #[tokio::test]
 async fn tracks_deleted_clears_a_preloaded_next_then_stops_on_the_current() {
     let lib = restore_test_library().await;
@@ -3082,10 +3084,8 @@ async fn tracks_deleted_clears_a_preloaded_next_then_stops_on_the_current() {
         .delete_release(&b_release_id)
         .await
         .expect("delete release B");
-    // Generous bound: a loaded CI runner can stall the audio pipeline past
-    // 3s while the track is genuinely still playing.
     let still_playing =
-        wait_for_track_position(&mut progress, &first, Duration::from_secs(10)).await;
+        wait_for_track_position(&mut progress, &first, Duration::from_secs(5)).await;
     assert!(
         still_playing.is_some(),
         "deleting only the preloaded-next release leaves the current track playing"

@@ -27,6 +27,23 @@ use tokio::sync::mpsc as tokio_mpsc;
 use tokio::task::JoinHandle;
 use tracing::{error, info, warn};
 
+/// The preview shape of a fill-error handler: the audition has one file and one
+/// buffer, so a failed byte fill can only mean this preview is unplayable — it
+/// goes straight to the UI as a `PlaybackError`. (The fill itself cancels the
+/// buffer right after, unblocking the decoder.)
+fn preview_fill_error_handler(
+    progress_tx: tokio_mpsc::UnboundedSender<PlaybackProgress>,
+) -> crate::playback::data_source::FillErrorHandler {
+    Box::new(move |error| {
+        emit_progress(
+            &progress_tx,
+            PlaybackProgress::PlaybackError {
+                reason: error.into_ui_reason(),
+            },
+        );
+    })
+}
+
 /// The outcome of a preview [`PreviewPlayer::play`] attempt. `Started` is the
 /// success; the two failures name which stage failed so the service reports the
 /// right `playback_failed` operation — the file couldn't be prepared (stat/probe)
@@ -132,7 +149,7 @@ impl PreviewPlayer {
         let reader: Box<dyn AudioDataReader> = Box::new(LocalReader::new(path.clone()));
         reader.start_reading(
             buffer.clone(),
-            crate::playback::service::playback_fill_error_handler(self.progress_tx.clone()),
+            preview_fill_error_handler(self.progress_tx.clone()),
         );
 
         let started = self
