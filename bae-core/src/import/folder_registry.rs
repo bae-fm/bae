@@ -186,39 +186,65 @@ pub(crate) fn paths_overlap(left: &Path, right: &Path) -> bool {
     left.starts_with(right) || right.starts_with(left)
 }
 
+/// Rewrite a `/`-spelled stand-in root in the running host's own spelling.
+///
+/// A watched root is stored exactly as the OS writes it, and what counts as
+/// absolute is the OS's rule: Windows needs a drive or UNC prefix, so a
+/// `/`-rooted literal is drive-relative there and [`validate_absolute_root`]
+/// refuses it. Tests that need a root no filesystem has to back ask for one
+/// here rather than writing a literal that is only absolute on Unix.
+///
+/// Only the rooting changes. A path that is non-canonical for another reason —
+/// a trailing separator, a doubled one, a `.` or `..` — stays non-canonical
+/// after the rewrite, so the tests that check those forms are refused still
+/// hand over a form this host refuses.
+#[cfg(test)]
+pub(crate) fn host_root(posix: &str) -> String {
+    #[cfg(windows)]
+    {
+        format!("C:{}", posix.replace('/', "\\"))
+    }
+    #[cfg(not(windows))]
+    {
+        posix.to_string()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
     fn stored_registry_preserves_order_and_derives_names() {
+        let incoming = host_root("/Volumes/Incoming");
+        let rips = host_root("/music/rips");
         let registry = ImportFolderRegistry::from_stored(
-            vec!["/Volumes/Incoming".to_string(), "/music/rips".to_string()],
-            vec![("/music/rips".to_string(), "Release".to_string())],
+            vec![incoming.clone(), rips.clone()],
+            vec![(rips.clone(), "Release".to_string())],
         )
         .unwrap();
         assert_eq!(
             registry.watched_folders(),
             vec![
                 WatchedFolder {
-                    path: "/Volumes/Incoming".to_string(),
+                    path: incoming,
                     name: "Incoming".to_string(),
                 },
                 WatchedFolder {
-                    path: "/music/rips".to_string(),
+                    path: rips.clone(),
                     name: "rips".to_string(),
                 },
             ]
         );
         assert!(registry
-            .is_skipped("/music/rips", Path::new("/music/rips/Release"))
+            .is_skipped(&rips, &Path::new(&rips).join("Release"))
             .unwrap());
     }
 
     #[test]
     fn stored_registry_rejects_overlapping_roots() {
         let error = ImportFolderRegistry::from_stored(
-            vec!["/music".to_string(), "/music/artist".to_string()],
+            vec![host_root("/music"), host_root("/music/artist")],
             Vec::new(),
         )
         .unwrap_err();
@@ -233,14 +259,13 @@ mod tests {
 
     #[test]
     fn watched_root_can_itself_be_a_skipped_candidate() {
+        let release = host_root("/music/release");
         let registry = ImportFolderRegistry::from_stored(
-            vec!["/music/release".to_string()],
-            vec![("/music/release".to_string(), String::new())],
+            vec![release.clone()],
+            vec![(release.clone(), String::new())],
         )
         .unwrap();
-        assert!(registry
-            .is_skipped("/music/release", Path::new("/music/release"))
-            .unwrap());
+        assert!(registry.is_skipped(&release, Path::new(&release)).unwrap());
     }
 
     #[test]

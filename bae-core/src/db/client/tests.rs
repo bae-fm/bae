@@ -2337,6 +2337,7 @@ mod playback_state_load_tests {
 mod import_candidate_state_tests {
     use super::super::*;
     use crate::identify::{GroupKey, ResultProvenance, TerminalVerdict};
+    use crate::import::folder_registry::host_root;
     use crate::import::folder_scanner::{CandidateFile, CategorizedFiles, FileRole, ScannedFile};
     use crate::import::search::MetadataResult;
     use coven::FixedClock;
@@ -2835,16 +2836,15 @@ mod import_candidate_state_tests {
         use crate::import::folder_scanner::{FolderReleaseDecision, FolderReleaseDecisionKey};
 
         let (db, _tmp) = empty_db().await;
+        let other = host_root("/other/library");
         let key = FolderReleaseDecisionKey {
-            watched_folder_path: "/mounted/library".to_string(),
+            watched_folder_path: host_root("/mounted/library"),
             relative_folder_path: "Collection/Release Wrapper".to_string(),
         };
         db.add_watched_import_folder(&key.watched_folder_path)
             .await
             .unwrap();
-        db.add_watched_import_folder("/other/library")
-            .await
-            .unwrap();
+        db.add_watched_import_folder(&other).await.unwrap();
 
         db.set_folder_release_decision(&key, FolderReleaseDecision::CombineAsOneRelease)
             .await
@@ -2854,7 +2854,7 @@ mod import_candidate_state_tests {
             .unwrap();
         db.set_folder_release_decision(
             &FolderReleaseDecisionKey {
-                watched_folder_path: "/other/library".to_string(),
+                watched_folder_path: other,
                 relative_folder_path: key.relative_folder_path.clone(),
             },
             FolderReleaseDecision::KeepAsSeparateReleases,
@@ -2893,7 +2893,7 @@ mod import_candidate_state_tests {
     #[tokio::test]
     async fn folder_scan_cache_writes_progressively_and_prunes_only_on_success() {
         let (db, _tmp) = empty_db().await;
-        let root = "/mounted/library";
+        let root = &host_root("/mounted/library");
         let first = scanned_candidate(root, "First");
         let second = scanned_candidate(root, "Second");
         db.add_watched_import_folder(root).await.unwrap();
@@ -2951,7 +2951,7 @@ mod import_candidate_state_tests {
     #[tokio::test]
     async fn folder_scan_item_rejects_a_mismatched_embedded_root_without_changing_the_snapshot() {
         let (db, _tmp) = empty_db().await;
-        let root = "/mounted/library";
+        let root = &host_root("/mounted/library");
         db.add_watched_import_folder(root).await.unwrap();
         let generation = db.begin_folder_scan(root).await.unwrap();
         let existing = scanned_candidate(root, "Existing");
@@ -2959,7 +2959,7 @@ mod import_candidate_state_tests {
             .await
             .unwrap();
 
-        let mismatched = scanned_candidate("/other/library", "Injected");
+        let mismatched = scanned_candidate(&host_root("/other/library"), "Injected");
         let error = db
             .save_folder_scan_item(root, generation, &mismatched, &[])
             .await
@@ -3005,8 +3005,7 @@ mod import_candidate_state_tests {
         use crate::import::folder_scanner::{FolderReleaseDecision, FolderReleaseDecisionKey};
 
         let (db, _tmp) = empty_db().await;
-        let root = "/mounted/library";
-        let wrapper = "/mounted/library/Box";
+        let root = &host_root("/mounted/library");
         db.add_watched_import_folder(root).await.unwrap();
         let generation = db.begin_folder_scan(root).await.unwrap();
         for name in ["Box/CD1", "Box/CD2"] {
@@ -3028,7 +3027,10 @@ mod import_candidate_state_tests {
             .unwrap();
         assert_eq!(
             combine_removals,
-            vec![format!("{wrapper}/CD1"), format!("{wrapper}/CD2")]
+            vec![
+                scanned_candidate(root, "Box/CD1").persisted_key(),
+                scanned_candidate(root, "Box/CD2").persisted_key(),
+            ]
         );
         db.finish_folder_scan(root, combine_generation, Some("share disconnected"))
             .await
@@ -3052,7 +3054,10 @@ mod import_candidate_state_tests {
             .set_folder_release_decisions(&[(key, FolderReleaseDecision::KeepAsSeparateReleases)])
             .await
             .unwrap();
-        assert_eq!(separate_removals, vec![wrapper.to_string()]);
+        assert_eq!(
+            separate_removals,
+            vec![scanned_candidate(root, "Box").persisted_key()]
+        );
         db.finish_folder_scan(root, separate_generation, Some("share disconnected"))
             .await
             .unwrap();
@@ -3071,7 +3076,7 @@ mod import_candidate_state_tests {
     #[tokio::test]
     async fn removed_and_readded_root_rejects_items_from_its_old_registration() {
         let (db, _tmp) = empty_db().await;
-        let root = "/mounted/library";
+        let root = &host_root("/mounted/library");
         db.add_watched_import_folder(root).await.unwrap();
         let old_generation = db.begin_folder_scan(root).await.unwrap();
 
@@ -3094,7 +3099,7 @@ mod import_candidate_state_tests {
         use crate::import::folder_scanner::{FolderReleaseDecision, FolderReleaseDecisionKey};
 
         let (db, _tmp) = empty_db().await;
-        let root = "/mounted/library";
+        let root = &host_root("/mounted/library");
         db.add_watched_import_folder(root).await.unwrap();
         let generation = db.begin_folder_scan(root).await.unwrap();
         db.save_folder_scan_item(root, generation, &scanned_candidate(root, "Box/CD1"), &[])
@@ -3132,14 +3137,14 @@ mod import_candidate_state_tests {
         assert_eq!(snapshots[0].items.len(), 1);
         assert_eq!(
             snapshots[0].items[0].persisted_key(),
-            "/mounted/library/Box/CD1"
+            scanned_candidate(root, "Box/CD1").persisted_key()
         );
     }
 
     #[tokio::test]
     async fn removing_watched_root_cascades_all_local_folder_state() {
         let (db, _tmp) = empty_db().await;
-        let root = "/mounted/library";
+        let root = &host_root("/mounted/library");
         db.add_watched_import_folder(root).await.unwrap();
         db.set_import_candidate_skipped(root, "Collection/Release", true)
             .await
@@ -3179,28 +3184,34 @@ mod import_candidate_state_tests {
     async fn watched_root_overlap_uses_paths_not_sql_patterns() {
         let (db, _tmp) = empty_db().await;
         for root in ["/music/100%", "/music/name_value"] {
-            assert!(db.add_watched_import_folder(root).await.unwrap());
+            assert!(db
+                .add_watched_import_folder(&host_root(root))
+                .await
+                .unwrap());
         }
-        let error = db
-            .add_watched_import_folder("/music/100%/child")
-            .await
-            .unwrap_err();
-        assert!(error.to_string().contains("cannot overlap"));
-        let error = db
-            .add_watched_import_folder("/music/name_value/child")
-            .await
-            .unwrap_err();
-        assert!(error.to_string().contains("cannot overlap"));
+        for child in ["/music/100%/child", "/music/name_value/child"] {
+            let error = db
+                .add_watched_import_folder(&host_root(child))
+                .await
+                .unwrap_err();
+            assert!(error.to_string().contains("cannot overlap"), "{child}");
+        }
     }
 
     #[tokio::test]
     async fn watched_root_order_survives_middle_removal_and_later_add() {
         let (db, _tmp) = empty_db().await;
         for root in ["/one", "/two", "/three"] {
-            db.add_watched_import_folder(root).await.unwrap();
+            db.add_watched_import_folder(&host_root(root))
+                .await
+                .unwrap();
         }
-        db.remove_watched_import_folder("/two").await.unwrap();
-        db.add_watched_import_folder("/four").await.unwrap();
+        db.remove_watched_import_folder(&host_root("/two"))
+            .await
+            .unwrap();
+        db.add_watched_import_folder(&host_root("/four"))
+            .await
+            .unwrap();
         let paths: Vec<_> = db
             .load_import_folder_registry()
             .await
@@ -3209,15 +3220,19 @@ mod import_candidate_state_tests {
             .into_iter()
             .map(|folder| folder.path)
             .collect();
-        assert_eq!(paths, vec!["/one", "/three", "/four"]);
+        assert_eq!(
+            paths,
+            vec![host_root("/one"), host_root("/three"), host_root("/four")]
+        );
     }
 
     #[tokio::test]
     async fn watched_root_rejects_noncanonical_lexical_forms() {
         let (db, _tmp) = empty_db().await;
         for path in ["/music/", "/music//rips", "/music/./rips", "/music/../rips"] {
+            let path = host_root(path);
             assert!(
-                db.add_watched_import_folder(path).await.is_err(),
+                db.add_watched_import_folder(&path).await.is_err(),
                 "{path} must not become a second key for the same folder"
             );
         }
@@ -3226,53 +3241,57 @@ mod import_candidate_state_tests {
     #[tokio::test]
     async fn corrupt_relative_folder_keys_fail_when_loaded() {
         let (db, _tmp) = empty_db().await;
-        let root = "/mounted/library";
-        db.add_watched_import_folder(root).await.unwrap();
+        let root = host_root("/mounted/library");
+        db.add_watched_import_folder(&root).await.unwrap();
         assert!(db
-            .set_import_candidate_skipped(root, "a//b", true)
+            .set_import_candidate_skipped(&root, "a//b", true)
             .await
             .is_err());
         assert!(db
             .set_folder_release_decision(
                 &crate::import::folder_scanner::FolderReleaseDecisionKey {
-                    watched_folder_path: root.to_string(),
+                    watched_folder_path: root.clone(),
                     relative_folder_path: "a/./b".to_string(),
                 },
                 crate::import::folder_scanner::FolderReleaseDecision::CombineAsOneRelease,
             )
             .await
             .is_err());
+        let stored_root = root.clone();
         db.call(move |conn| {
             conn.execute(
                 "INSERT INTO skipped_import_candidates VALUES (?, 'a//b')",
-                [root],
+                params![stored_root],
             )?;
             conn.execute(
                 "INSERT INTO folder_release_decisions VALUES (?, 'a/./b', 'combine_as_one_release')",
-                [root],
+                params![stored_root],
             )?;
             Ok(())
         })
         .await
         .unwrap();
         assert!(db.load_import_folder_registry().await.is_err());
-        assert!(db.load_folder_release_decisions(root).await.is_err());
+        assert!(db.load_folder_release_decisions(&root).await.is_err());
     }
 
     #[tokio::test]
     async fn corrupt_scan_entry_identity_and_generation_fail_when_loaded() {
         let (db, _tmp) = empty_db().await;
-        let root = "/mounted/library";
+        let root = &host_root("/mounted/library");
         db.add_watched_import_folder(root).await.unwrap();
         let generation = db.begin_folder_scan(root).await.unwrap();
         let item = scanned_candidate(root, "Release");
         db.save_folder_scan_item(root, generation, &item, &[])
             .await
             .unwrap();
-        db.call(|conn| {
+        // A key naming a folder the stored item does not: the entry no longer
+        // identifies its own item.
+        let other_key = scanned_candidate(root, "Other").persisted_key();
+        db.call(move |conn| {
             conn.execute(
-                "UPDATE folder_scan_entries SET entry_key = '/mounted/library/Other'",
-                [],
+                "UPDATE folder_scan_entries SET entry_key = ?",
+                params![other_key],
             )?;
             Ok(())
         })
@@ -3280,10 +3299,12 @@ mod import_candidate_state_tests {
         .unwrap();
         assert!(db.load_folder_scan_snapshots().await.is_err());
 
+        // Key restored, so only the generation is now wrong.
+        let item_key = item.persisted_key();
         db.call(move |conn| {
             conn.execute(
-                "UPDATE folder_scan_entries SET entry_key = '/mounted/library/Release', generation = ?",
-                [i64::try_from(generation + 1).unwrap()],
+                "UPDATE folder_scan_entries SET entry_key = ?, generation = ?",
+                params![item_key, i64::try_from(generation + 1).unwrap()],
             )?;
             Ok(())
         })

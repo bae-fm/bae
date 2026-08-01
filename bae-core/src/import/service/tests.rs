@@ -1,11 +1,21 @@
 use super::*;
 use crate::config::{Config, ConfigHandle};
 use crate::db::Database;
+use crate::import::folder_registry::host_root;
 use crate::keys::StoreKeys;
 use coven::FixedClock;
 use coven::SequentialIdProvider;
 use std::time::Duration;
 use tempfile::TempDir;
+
+/// A stand-in watched root, spelled for the running host. Every `/`-spelled
+/// root literal below goes through this or [`host_root`] before it reaches the
+/// registry, because a watched root has to be absolute by the OS's own rule.
+/// Path literals that never become a watched root — the prefix arithmetic
+/// `roots_for_watch_error` does, say — need no rewrite and get none.
+fn root_path(posix: &str) -> PathBuf {
+    PathBuf::from(host_root(posix))
+}
 
 async fn setup_import_service() -> (ImportService, TempDir) {
     let temp_dir = TempDir::new().unwrap();
@@ -189,9 +199,12 @@ impl CoordinatorHarness {
         Self::with_roots(&["/music"]).await
     }
 
+    /// `roots` are `/`-spelled labels; each is registered in the host's own
+    /// spelling, the same one [`root_path`] gives the tests that address them.
     async fn with_roots(roots: &[&str]) -> Self {
+        let roots: Vec<String> = roots.iter().map(|root| host_root(root)).collect();
         let (service, temp) = setup_import_service().await;
-        for root in roots {
+        for root in &roots {
             service
                 .library_manager
                 .add_watched_import_folder(root)
@@ -201,11 +214,7 @@ impl CoordinatorHarness {
         let (commands, command_rx) = tokio::sync::mpsc::unbounded_channel();
         let (fs_events, fs_rx) = tokio::sync::mpsc::unbounded_channel();
         let registry = Arc::new(Mutex::new(
-            ImportFolderRegistry::from_stored(
-                roots.iter().map(|root| (*root).to_string()).collect(),
-                Vec::new(),
-            )
-            .unwrap(),
+            ImportFolderRegistry::from_stored(roots.clone(), Vec::new()).unwrap(),
         ));
         let state = Arc::new(Mutex::new(ImportCandidateState::default()));
         if let Some(root) = roots.first() {
@@ -215,7 +224,7 @@ impl CoordinatorHarness {
                 .upsert_invalid(crate::import::InvalidCandidate {
                     path: PathBuf::from(root).join("Group/Release"),
                     name: "Release".to_string(),
-                    watched_folder_path: (*root).to_string(),
+                    watched_folder_path: root.clone(),
                     display_path: "Group/Release".to_string(),
                     resolved_boundaries: Vec::new(),
                     reason: crate::import::InvalidReason::NoValidAudio,
@@ -273,7 +282,7 @@ impl CoordinatorHarness {
 #[tokio::test]
 async fn coordinator_coalesces_same_root_to_one_followup_scan() {
     let harness = CoordinatorHarness::new().await;
-    let root = PathBuf::from("/music");
+    let root = root_path("/music");
     harness
         .commands
         .send(WatcherCommand::Rescan(root.clone()))
@@ -295,7 +304,7 @@ async fn coordinator_coalesces_same_root_to_one_followup_scan() {
 #[tokio::test]
 async fn coordinator_removal_waits_for_the_active_scan_to_finish() {
     let harness = CoordinatorHarness::new().await;
-    let root = PathBuf::from("/music");
+    let root = root_path("/music");
     harness
         .commands
         .send(WatcherCommand::Rescan(root.clone()))
@@ -328,7 +337,7 @@ async fn coordinator_removal_waits_for_the_active_scan_to_finish() {
 #[tokio::test]
 async fn coordinator_coalesces_duplicate_removals_for_one_root() {
     let harness = CoordinatorHarness::new().await;
-    let root = PathBuf::from("/music");
+    let root = root_path("/music");
     harness
         .commands
         .send(WatcherCommand::Rescan(root.clone()))
@@ -368,7 +377,7 @@ async fn coordinator_blocked_root_removal_does_not_block_another_roots_refresh()
     let harness = CoordinatorHarness::with_roots(&["/music/one", "/music/two"]).await;
     harness
         .commands
-        .send(WatcherCommand::Rescan(PathBuf::from("/music/one")))
+        .send(WatcherCommand::Rescan(root_path("/music/one")))
         .unwrap();
     harness.scans.wait_for_count(1).await;
 
@@ -376,7 +385,7 @@ async fn coordinator_blocked_root_removal_does_not_block_another_roots_refresh()
     harness
         .commands
         .send(WatcherCommand::Remove {
-            path: PathBuf::from("/music/one"),
+            path: root_path("/music/one"),
             completion: remove_completion,
         })
         .unwrap();
@@ -386,7 +395,7 @@ async fn coordinator_blocked_root_removal_does_not_block_another_roots_refresh()
     harness
         .commands
         .send(WatcherCommand::Refresh {
-            path: PathBuf::from("/music/two"),
+            path: root_path("/music/two"),
             completion: refresh_completion,
         })
         .unwrap();
@@ -413,7 +422,7 @@ async fn coordinator_blocked_root_removal_does_not_block_another_roots_refresh()
 #[tokio::test]
 async fn coordinator_removal_join_failure_restores_a_runnable_root_schedule() {
     let harness = CoordinatorHarness::new().await;
-    let root = PathBuf::from("/music");
+    let root = root_path("/music");
     harness
         .commands
         .send(WatcherCommand::Rescan(root.clone()))
@@ -443,7 +452,7 @@ async fn coordinator_removal_uninstall_failure_restores_a_runnable_root_schedule
     let harness = CoordinatorHarness::new().await;
     *harness.removal_backend.uninstall_error.lock().unwrap() =
         Some("injected uninstall failure".to_string());
-    let root = PathBuf::from("/music");
+    let root = root_path("/music");
     harness
         .commands
         .send(WatcherCommand::Rescan(root.clone()))
@@ -477,7 +486,7 @@ async fn coordinator_removal_database_failure_reinstalls_and_rescans_before_retu
     let harness = CoordinatorHarness::new().await;
     *harness.removal_backend.remove_error.lock().unwrap() =
         Some("injected database failure".to_string());
-    let root = PathBuf::from("/music");
+    let root = root_path("/music");
     harness
         .commands
         .send(WatcherCommand::Rescan(root.clone()))
@@ -503,9 +512,7 @@ async fn coordinator_removal_database_failure_reinstalls_and_rescans_before_retu
     );
     assert_eq!(
         harness.folder_registry.lock().unwrap().watched_folders(),
-        vec![crate::import::WatchedFolder::from_path(
-            "/music".to_string()
-        )]
+        vec![crate::import::WatchedFolder::from_path(host_root("/music"))]
     );
     harness.scans.wait_for_count(2).await;
     harness.scans.complete(1, Ok(()));
@@ -523,7 +530,7 @@ async fn coordinator_blocked_reinstall_does_not_block_another_roots_persistence(
         .store(true, std::sync::atomic::Ordering::SeqCst);
     harness
         .commands
-        .send(WatcherCommand::Rescan(PathBuf::from("/music/one")))
+        .send(WatcherCommand::Rescan(root_path("/music/one")))
         .unwrap();
     harness.scans.wait_for_count(1).await;
 
@@ -531,7 +538,7 @@ async fn coordinator_blocked_reinstall_does_not_block_another_roots_persistence(
     harness
         .commands
         .send(WatcherCommand::Remove {
-            path: PathBuf::from("/music/one"),
+            path: root_path("/music/one"),
             completion: remove_completion,
         })
         .unwrap();
@@ -548,7 +555,7 @@ async fn coordinator_blocked_reinstall_does_not_block_another_roots_persistence(
     harness
         .commands
         .send(WatcherCommand::Refresh {
-            path: PathBuf::from("/music/two"),
+            path: root_path("/music/two"),
             completion: refresh_completion,
         })
         .unwrap();
@@ -591,7 +598,7 @@ async fn coordinator_removal_database_and_restore_failures_return_both_errors() 
         Some("injected database failure".to_string());
     *harness.removal_backend.reinstall_error.lock().unwrap() =
         Some("injected restore failure".to_string());
-    let root = PathBuf::from("/music");
+    let root = root_path("/music");
     harness
         .commands
         .send(WatcherCommand::Rescan(root.clone()))
@@ -623,7 +630,7 @@ async fn coordinator_runs_different_roots_concurrently() {
     for root in ["/music/one", "/music/two"] {
         harness
             .commands
-            .send(WatcherCommand::Rescan(PathBuf::from(root)))
+            .send(WatcherCommand::Rescan(root_path(root)))
             .unwrap();
     }
     harness.scans.wait_for_count(2).await;
@@ -641,7 +648,7 @@ async fn coordinator_completes_refresh_waiter_with_its_scan_result() {
     harness
         .commands
         .send(WatcherCommand::Refresh {
-            path: PathBuf::from("/music"),
+            path: root_path("/music"),
             completion,
         })
         .unwrap();
@@ -658,7 +665,7 @@ async fn coordinator_completes_scan_while_filesystem_batches_remain_ready() {
     harness
         .commands
         .send(WatcherCommand::Refresh {
-            path: PathBuf::from("/music"),
+            path: root_path("/music"),
             completion,
         })
         .unwrap();
@@ -737,7 +744,7 @@ async fn cancelled_scan_task_does_not_begin_a_durable_generation() {
 #[tokio::test]
 async fn coordinator_decision_waits_for_cancelled_scan_before_starting_replacement() {
     let harness = CoordinatorHarness::new().await;
-    let root = PathBuf::from("/music");
+    let root = root_path("/music");
     harness
         .commands
         .send(WatcherCommand::Rescan(root.clone()))
@@ -770,7 +777,7 @@ async fn coordinator_decision_waits_for_cancelled_scan_before_starting_replaceme
 #[tokio::test]
 async fn coordinator_decision_validates_after_the_cancelled_scan_releases_its_commit() {
     let harness = CoordinatorHarness::new().await;
-    let root = PathBuf::from("/music");
+    let root = root_path("/music");
     harness
         .commands
         .send(WatcherCommand::Rescan(root.clone()))
@@ -811,7 +818,7 @@ async fn coordinator_shutdown_waits_for_active_scan() {
     let harness = CoordinatorHarness::new().await;
     harness
         .commands
-        .send(WatcherCommand::Rescan(PathBuf::from("/music")))
+        .send(WatcherCommand::Rescan(root_path("/music")))
         .unwrap();
     harness.scans.wait_for_count(1).await;
     let (shutdown_completion, shutdown_done) = std::sync::mpsc::channel();
@@ -861,7 +868,7 @@ async fn cancelling_a_panicked_folder_walk_surfaces_the_join_failure() {
 #[tokio::test]
 async fn a_db_accepted_failure_that_memory_rejects_is_an_internal_error() {
     let (service, _temp) = setup_import_service().await;
-    let root = Path::new("/music");
+    let root = &root_path("/music");
     service
         .library_manager
         .add_watched_import_folder(root.to_str().unwrap())
@@ -1235,7 +1242,14 @@ async fn rescan_missing_root_fails_and_preserves_previous_candidates() {
             _ => {}
         }
     };
-    assert!(failed.to_lowercase().contains("no such file"));
+    // The reported failure names the root that could not be read. Its reason is
+    // the OS's own wording for an absent path ("No such file or directory" on
+    // Unix, "The system cannot find the path specified" on Windows), so the
+    // root — the part core promises — is what this asserts on.
+    assert!(
+        failed.contains(&root.to_string_lossy().into_owned()),
+        "{failed}"
+    );
     assert_eq!(
         candidate_state
             .lock()
