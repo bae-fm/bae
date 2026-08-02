@@ -907,6 +907,11 @@ pub struct LibraryManager {
     /// settle step, the picker, and the payload store all reach it through a
     /// manager clone, so one release's cover is looked up once however many of
     /// them ask.
+    ///
+    /// Every one of those readers is part of the import pipeline, which is
+    /// desktop-only — a mobile build is a sync and playback client that never
+    /// looks a cover up, so it does not carry the client either.
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     cover_art_archive: crate::import::cover_art::CoverArtArchiveClient,
 }
 
@@ -938,6 +943,7 @@ impl LibraryManager {
         diagnostics: Diagnostics,
         runtime_handle: tokio::runtime::Handle,
         cloudkit_ops: Option<Arc<dyn coven::CloudKitOps>>,
+        #[cfg(not(any(target_os = "ios", target_os = "android")))]
         cover_art_archive: crate::import::cover_art::CoverArtArchiveClient,
     ) -> Result<Self, coven::DbError> {
         let (event_tx, _) = broadcast::channel(LIBRARY_EVENT_CHANNEL_CAPACITY);
@@ -1007,6 +1013,7 @@ impl LibraryManager {
             config_handle,
             key_service,
             remote_images: crate::import::cover_art::RemoteImageCache::new(clock.clone()),
+            #[cfg(not(any(target_os = "ios", target_os = "android")))]
             cover_art_archive,
             clock,
             ids,
@@ -1039,6 +1046,7 @@ impl LibraryManager {
         ids: IdRef,
         diagnostics: Diagnostics,
         runtime_handle: tokio::runtime::Handle,
+        #[cfg(not(any(target_os = "ios", target_os = "android")))]
         cover_art_archive: crate::import::cover_art::CoverArtArchiveClient,
     ) -> Self {
         let (event_tx, _) = broadcast::channel(LIBRARY_EVENT_CHANNEL_CAPACITY);
@@ -1063,6 +1071,7 @@ impl LibraryManager {
             config_handle,
             key_service,
             remote_images: crate::import::cover_art::RemoteImageCache::new(clock.clone()),
+            #[cfg(not(any(target_os = "ios", target_os = "android")))]
             cover_art_archive,
             clock,
             ids,
@@ -1180,13 +1189,17 @@ impl LibraryManager {
 
     /// The session's Cover Art Archive client. Every cover lookup in the app
     /// reads through this one instance.
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub(crate) fn cover_art_archive(&self) -> &crate::import::cover_art::CoverArtArchiveClient {
         &self.cover_art_archive
     }
 
     /// The session's Cover Art Archive client, for a test that seeds its lookup
     /// cache so the code under test reads answers instead of the network.
-    #[cfg(any(test, feature = "test-utils"))]
+    #[cfg(all(
+        any(test, feature = "test-utils"),
+        not(any(target_os = "ios", target_os = "android"))
+    ))]
     pub fn cover_art_archive_for_test(&self) -> crate::import::cover_art::CoverArtArchiveClient {
         self.cover_art_archive.clone()
     }
