@@ -73,9 +73,8 @@
   <data name="import.field.artist_manual" xml:space="preserve"><value>изпълнител (ръчно търсене)</value></data>
   <data name="import.no_releases" xml:space="preserve"><value>не са намерени издания</value></data>
   <data name="import.pane.lengths_differ" xml:space="preserve"><value>Дължината на файла не съвпада с тази в изданието.</value></data>
-  <data name="import.pane.no_release" xml:space="preserve"><value>Без издание — внася се това, което казват файловете</value></data>
   <data name="import.pane.pick_a_candidate" xml:space="preserve"><value>Изберете папка от списъка, за да я съпоставите с издание.</value></data>
-  <data name="import.pane.pressing_details" xml:space="preserve"><value>данни за изданието</value></data>
+  <data name="import.pane.release_details" xml:space="preserve"><value>данни за изданието</value></data>
   <data name="import.progress.percent" xml:space="preserve"><value>внасяне {percent}%</value></data>
   <data name="import.rerun_identify" xml:space="preserve"><value>повторно изпълнение на идентификацията</value></data>
   <data name="import.scanning" xml:space="preserve"><value>сканиране…</value></data>
@@ -403,7 +402,6 @@
   <data name="output.title" xml:space="preserve"><value>експорт и запазване</value></data>
   <data name="export.state.exporting" xml:space="preserve"><value>експортиране {percent}%</value></data>
   <data name="export.state.saving" xml:space="preserve"><value>запазване {percent}%</value></data>
-  <data name="import.sheet.describes_nothing_yet" xml:space="preserve"><value>Все още не описва нищо</value></data>
   <data name="import.document.read_failed" xml:space="preserve"><value>Не можа да се прочете {name}: {error}</value></data>
   <data name="libraries.reveal" xml:space="preserve"><value>показване във Файлов мениджър</value></data>
   <data name="libraries.copy_id" xml:space="preserve"><value>копиране на ИД</value></data>

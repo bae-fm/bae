@@ -41,10 +41,10 @@ public sealed class ImportCandidate
 
     /// <summary>Every file in the folder exactly once, with the role in force
     /// for it, what that role makes of it, the roles it can be put in, and —
-    /// for a track sheet — what it describes. The mapping pane's roles table
-    /// reads this whole: audio to audition, documents to open, and sheets to
-    /// bind are all rows of the same table now, so there is nothing left to
-    /// project them into separately. Null before a candidate has been read.
+    /// for a track sheet — what it describes. The mapping table itself is core's
+    /// projection over the same folder; this is what the pane reads for the
+    /// facts that sit outside it, the folder's format and its images. Null
+    /// before a candidate has been read.
     /// </summary>
     internal BridgeCandidateFiles? Files { get; set; }
 
@@ -74,12 +74,11 @@ public sealed class ImportCandidate
 }
 
 /// <summary>A candidate's readable evidence file (CUE sheet, rip log, info
-/// text): its display name, absolute path, and size.</summary>
+/// text): its display name and absolute path.</summary>
 public sealed class ImportDocument
 {
     public string Name { get; set; } = string.Empty;
     public string Path { get; set; } = string.Empty;
-    public long SizeBytes { get; set; }
 }
 
 /// <summary>One of a candidate's audio files, as a choice for a track sheet's

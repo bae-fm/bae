@@ -73,9 +73,8 @@
   <data name="import.field.artist_manual" xml:space="preserve"><value>Interpret (manuelle Suche)</value></data>
   <data name="import.no_releases" xml:space="preserve"><value>keine Veröffentlichungen gefunden</value></data>
   <data name="import.pane.lengths_differ" xml:space="preserve"><value>Die Länge der Datei stimmt nicht mit der der Veröffentlichung überein.</value></data>
-  <data name="import.pane.no_release" xml:space="preserve"><value>Keine Veröffentlichung — importiert wird, was die Dateien sagen</value></data>
   <data name="import.pane.pick_a_candidate" xml:space="preserve"><value>Wähle einen Ordner aus der Liste, um ihn einer Veröffentlichung zuzuordnen.</value></data>
-  <data name="import.pane.pressing_details" xml:space="preserve"><value>Pressungsdetails</value></data>
+  <data name="import.pane.release_details" xml:space="preserve"><value>Veröffentlichungsdetails</value></data>
   <data name="import.progress.percent" xml:space="preserve"><value>wird importiert {percent}%</value></data>
   <data name="import.rerun_identify" xml:space="preserve"><value>Identifizierung erneut ausführen</value></data>
   <data name="import.scanning" xml:space="preserve"><value>wird gescannt …</value></data>
@@ -403,7 +402,6 @@
   <data name="output.title" xml:space="preserve"><value>exportieren &amp; speichern</value></data>
   <data name="export.state.exporting" xml:space="preserve"><value>wird exportiert… {percent}%</value></data>
   <data name="export.state.saving" xml:space="preserve"><value>wird gespeichert… {percent}%</value></data>
-  <data name="import.sheet.describes_nothing_yet" xml:space="preserve"><value>Beschreibt noch nichts</value></data>
   <data name="import.document.read_failed" xml:space="preserve"><value>{name} konnte nicht gelesen werden: {error}</value></data>
   <data name="libraries.reveal" xml:space="preserve"><value>im Explorer anzeigen</value></data>
   <data name="libraries.copy_id" xml:space="preserve"><value>ID kopieren</value></data>

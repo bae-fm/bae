@@ -68,6 +68,20 @@ internal sealed class ImportService
     public Func<string, string, string?, Task<(bool Current, string? Error)>> SetSheetBinding { get; init; }
         = (_, _, _) => throw new InvalidOperationException("ImportService stub: SetSheetBinding not wired");
 
+    /// <summary>Say which disc of the release a track sheet's entries are, or
+    /// take them out of the tracklist. Cue filenames are arbitrary, so the
+    /// assignment is the truth about which cue is which disc. Core persists it
+    /// and drops the candidate's stored identify verdict, because a re-assigned
+    /// sheet is a different tracklist.</summary>
+    public Func<string, string, BridgeSheetDisc, Task<(bool Current, string? Error)>> SetSheetDisc { get; init; }
+        = (_, _, _) => throw new InvalidOperationException("ImportService stub: SetSheetDisc not wired");
+
+    /// <summary>The mapping table for a candidate nobody has picked a release
+    /// for: every source unit the folder offers, with what it becomes left open.
+    /// Synchronous — a read of the folder the scan already categorized.</summary>
+    public Func<string, (bool Current, (BridgeMappingTable? Mapping, string? Error) Result)> CandidateMapping { get; init; }
+        = _ => throw new InvalidOperationException("ImportService stub: CandidateMapping not wired");
+
     /// <summary>Put one of a candidate's files in a role, or put it back in the
     /// one the scan proposed — what the roles table's control and a slot's
     /// Exclude action both call. Core persists it and clears the candidate's
@@ -169,6 +183,10 @@ internal sealed class ImportService
             session.RunForCurrentHandle(handle => NativeBae.SheetBindingOptions(handle, candidateKey, sheetFileId)),
         SetSheetBinding = (candidateKey, sheetFileId, audioFileId) =>
             session.RunForCurrentHandle(handle => NativeBae.SetSheetBinding(handle, candidateKey, sheetFileId, audioFileId)),
+        SetSheetDisc = (candidateKey, sheetFileId, disc) =>
+            session.RunForCurrentHandle(handle => NativeBae.SetSheetDisc(handle, candidateKey, sheetFileId, disc)),
+        CandidateMapping = candidateKey =>
+            session.WithCurrentHandle(handle => NativeBae.CandidateMapping(handle, candidateKey)),
         SetFileRole = (candidateKey, fileId, choice) =>
             session.RunForCurrentHandle(handle => NativeBae.SetFileRole(handle, candidateKey, fileId, choice)),
         AutoIdentifyFolder = candidateKey =>

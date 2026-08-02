@@ -12,24 +12,24 @@ using uniffi.bae_bridge;
 namespace Bae.Desktop;
 
 /// <summary>
-/// The one surface where a folder becomes a release, to the right of the triage
-/// sidebar. Four zones, always in this order, none overlapping: the release
-/// header, the file roles, the track slots, the commit bar.
+/// The one surface a folder becomes a release on, to the right of the triage
+/// sidebar: two sections and a commit bar. Section one is what the folder is
+/// being read as; section two is every source unit it offers alongside the track
+/// committing makes of it.
 ///
-/// It replaces the picker/confirm dialog pair the import used to run through —
-/// the document list, the mounted search, and the docked confirmation sheet.
-/// Search is the header's editor now, opened from its change control; the
-/// confirmation sheet's remaining content is the commit bar. Nothing in the
-/// commit bar ever disables the commit: a disagreement is stated, and the one
-/// refusal left in the whole import is audio that will not decode, which core
-/// raises.
+/// There is no identify⇄confirm layout flip. The table is the same table before
+/// and after a release is picked — picking one fills its BECOMES column in
+/// place, and the identity control switches between the release and the folder's
+/// own tags without emptying it. Nothing in the commit bar ever disables the
+/// commit: a disagreement is stated, and the one refusal left in the whole
+/// import is audio that will not decode, which core raises.
 ///
 /// State lives here for one selected candidate. The pane rebuilds on a
 /// structural change — a different candidate, a different release, a sheet
-/// binding, a role — and never on a store tick, so a field the user is typing
-/// in keeps its focus and its caret. It does read the queue on a tick, for the
-/// one case where a tick IS a structural change: the verdict for the folder it
-/// is showing settling on a release nobody has picked yet.
+/// binding, a role — and never on a store tick, so a field the user is typing in
+/// keeps its focus and its caret. It does read the queue on a tick, for the one
+/// case where a tick IS a structural change: the verdict for the folder it is
+/// showing settling on a release nobody has picked yet.
 /// </summary>
 internal sealed class ImportMappingPane : UserControl
 {
@@ -47,38 +47,42 @@ internal sealed class ImportMappingPane : UserControl
     private string? _key;
     private ImportCandidate? _candidate;
 
-    // What picking a release produced: the seed, the claim, the cover choices,
-    // and the slot table. Null while nothing is picked.
+    // What the folder is being read as, and the table that reading produces.
+    // The table is there from the moment a candidate is selected: before a pick
+    // every audio row simply says what it is waiting for.
+    private ImportIdentity _identity = ImportIdentity.Release;
+    private BridgeMappingTable? _mapping;
+
+    // What picking a release produced: the seed, the claim and the cover
+    // choices. Null while nothing is settled, which is also when there is
+    // nothing to commit.
     private PrefetchedEdit? _prefetch;
     private BridgeLibraryStatus? _libraryStatus;
 
-    // The release the slot table was computed against, held here rather than
-    // looked up again: putting a file back or binding a sheet clears the
-    // candidate's stored identify verdict, so by the time the pane needs to
-    // recompute the mapping the folder no longer names the release it is
-    // already mapped onto.
+    // The release the mapping was computed against, held here rather than looked
+    // up again: putting a file back or binding a sheet clears the candidate's
+    // stored identify verdict, so by the time the pane needs to recompute the
+    // mapping the folder no longer names the release it is already mapped onto.
+    // It outlives a switch to Unknown, which is what switching back re-picks.
     private string? _releaseId;
     private BridgeMetadataSource _releaseSource;
 
-    // Whether a prefetch is running, and whether the last one for this
-    // candidate failed. Both exist for the Ready seed: it fires off store ticks
-    // as well as row clicks, so it has to see the read it already started and
-    // the one that already failed.
+    // Whether a read is in flight, and whether the last one for this candidate
+    // failed. Both exist for the Ready seed: it fires off store ticks as well as
+    // row clicks, so it has to see the read it already started and the one that
+    // already failed.
     private bool _prefetching;
     private bool _prefetchFailed;
 
-    // The live edit. `_tracks` is positionally aligned with the model's rows —
-    // row i edits track i — and both are re-cut together whenever a row leaves.
-    private readonly List<BridgeRawTrackEdit> _tracks = new();
-    private MappingPaneModel? _model;
-    private ImportSlotTable? _slotTable;
+    // The album-level fields being committed. The tracks are the mapping table's
+    // rows, which core reads back out in commit order.
     private BridgeRawPressingEdit _pressing = Empty();
     private string _albumTitle = string.Empty;
     private string _albumArtistText = string.Empty;
 
     private PickedCover? _cover;
 
-    // The header's editor, held open across rebuilds along with what has been
+    // The search editor, held open across rebuilds along with what has been
     // typed into it: the pane re-renders whenever a result lands, and a query
     // that reset itself each time would be unusable.
     private bool _searchOpen;
@@ -93,6 +97,7 @@ internal sealed class ImportMappingPane : UserControl
     private bool _storageRemote = true;
     private bool _storagePinned = true;
 
+    private ImportMappingTable? _table;
     private readonly TextBlock _commitError;
 
     internal ImportMappingPane(AppService app, ImportDialogs dialogs)
@@ -108,16 +113,18 @@ internal sealed class ImportMappingPane : UserControl
         Render();
     }
 
-    /// <summary>Put a candidate under the pane. Reads the folder fresh and
-    /// prefetches the release a Ready row settled on, so the slot table arrives
-    /// already mapped; every other row lands on the header's search editor,
-    /// where picking a release is one click.</summary>
+    /// <summary>Put a candidate under the pane. Reads the folder's mapping
+    /// fresh, so the table is there before anything is picked, and prefetches
+    /// the release a Ready row settled on, so its BECOMES column arrives filled;
+    /// every other row lands on the search editor, where picking a release is
+    /// one click.</summary>
     internal async Task ShowCandidate(BridgeTriageRow row)
     {
         StopPreview();
         _key = row.CandidateKey;
         _candidate = _import.Candidate(row.CandidateKey);
         ResetEdit();
+        ReadCandidateMapping();
         Render();
 
         if (ReadyAutoPick.From(row, SeedState) is { } matched)
@@ -125,9 +132,9 @@ internal sealed class ImportMappingPane : UserControl
             await Prefetch(matched.ReleaseId, matched.Evidence.Source);
             return;
         }
-        // Every other row lands on the header's search editor, seeded with the
-        // matches identify did find: a Needs-you row is asking which pressing,
-        // and a Done or Skipped row is not asking anything.
+        // Every other row lands on the search editor, seeded with the matches
+        // identify did find: a Needs-you row is asking which pressing, and a
+        // Done or Skipped row is not asking anything.
         _searchOpen = true;
         Render();
     }
@@ -179,14 +186,13 @@ internal sealed class ImportMappingPane : UserControl
 
     private void ResetEdit()
     {
+        _identity = ImportIdentity.Release;
+        _mapping = null;
         _prefetch = null;
         _releaseId = null;
         _prefetching = false;
         _prefetchFailed = false;
         _libraryStatus = null;
-        _model = null;
-        _slotTable = null;
-        _tracks.Clear();
         _pressing = Empty();
         _albumTitle = string.Empty;
         _albumArtistText = string.Empty;
@@ -205,9 +211,23 @@ internal sealed class ImportMappingPane : UserControl
 
     // ── Reading the folder and the release ───────────────────────────────────
 
-    // Picking a release re-runs the prefetch and replaces the slot table's
-    // source-side column live: the pane stays open, the candidate stays
-    // selected, and the whole mapping is recomputed against the new tracklist.
+    // The table for a folder nobody has picked a release for: every source unit
+    // it offers, with what each becomes left open.
+    private void ReadCandidateMapping()
+    {
+        if (_key is not { } key)
+        {
+            return;
+        }
+        if (_import.CandidateMapping(key) is { } mapping)
+        {
+            _mapping = mapping;
+        }
+    }
+
+    // Picking a release recomputes the whole mapping against the new tracklist
+    // and fills the table's BECOMES column live: the pane stays open, the
+    // candidate stays selected, and nothing is replaced by a placeholder.
     private async Task Prefetch(string releaseId, BridgeMetadataSource source)
     {
         if (_key is not { } key || _candidate is not { } candidate)
@@ -216,6 +236,7 @@ internal sealed class ImportMappingPane : UserControl
         }
         _prefetching = true;
         _prefetchFailed = false;
+        Render();
         try
         {
             var (current, result) = await _app.Import.PrefetchCandidateEdit(
@@ -231,18 +252,16 @@ internal sealed class ImportMappingPane : UserControl
                 return;
             }
 
-            // A cover picked for one release does not carry to another; recomputing
-            // the mapping against the same release keeps it.
+            // A cover picked for one release does not carry to another;
+            // recomputing the mapping against the same release keeps it.
             if (_releaseId != releaseId)
             {
                 _cover = null;
             }
             Seed(prefetched);
+            _identity = ImportIdentity.Release;
             _releaseId = releaseId;
             _releaseSource = source;
-            _model = prefetched.Slots is { } slots
-                ? MappingPaneProjection.FromSlots(slots, _tracks)
-                : MappingPaneProjection.FromUnidentifiedEdit(_tracks);
             _searchOpen = false;
             Render();
 
@@ -257,13 +276,14 @@ internal sealed class ImportMappingPane : UserControl
         finally
         {
             _prefetching = false;
+            Render();
         }
     }
 
-    // The import that claims nothing: bae-core projects the folder's own file
-    // tags into an edit, and computes no slot table for it because there is no
-    // release to map against. The rows are the edit's tracks, and they still
-    // write.
+    // The import that claims nothing: bae-core reads the folder's own files —
+    // their embedded tags and the track sheets they come with — into a release
+    // and a mapping of the folder's audio onto its tracks. The table carries no
+    // tally, because the tracklist and the folder are the same account.
     private async Task PrefetchUnidentified()
     {
         if (_candidate is not { } candidate)
@@ -272,6 +292,7 @@ internal sealed class ImportMappingPane : UserControl
         }
         _prefetching = true;
         _prefetchFailed = false;
+        Render();
         try
         {
             var (current, result) = await _app.Import.PrefetchUnknownEdit(candidate.Key);
@@ -286,15 +307,15 @@ internal sealed class ImportMappingPane : UserControl
                 return;
             }
             Seed(prefetched);
-            _releaseId = null;
+            _identity = ImportIdentity.Unknown;
             _libraryStatus = null;
-            _model = MappingPaneProjection.FromUnidentifiedEdit(_tracks);
             _searchOpen = false;
             Render();
         }
         finally
         {
             _prefetching = false;
+            Render();
         }
     }
 
@@ -304,12 +325,51 @@ internal sealed class ImportMappingPane : UserControl
         _albumTitle = prefetched.Edit.AlbumTitle;
         _albumArtistText = prefetched.Edit.AlbumArtistText;
         _pressing = prefetched.Edit.Pressing;
-        _tracks.Clear();
-        _tracks.AddRange(prefetched.Edit.Tracks);
+        _mapping = prefetched.Mapping;
         _commitError.IsVisible = false;
     }
 
-    private void OnPreviewChanged() => _slotTable?.ApplyPreviewAccent();
+    // Read the folder's mapping again for whatever it is being read as. A
+    // binding, a disc assignment or a role change re-shapes the tracklist, so
+    // what comes back is for a different set of rows than the one the user was
+    // editing — which is exactly why it replaces them.
+    private Task Reprefetch()
+    {
+        if (_identity == ImportIdentity.Unknown)
+        {
+            return PrefetchUnidentified();
+        }
+        if (_releaseId is { } releaseId)
+        {
+            return Prefetch(releaseId, _releaseSource);
+        }
+        ReadCandidateMapping();
+        Render();
+        return Task.CompletedTask;
+    }
+
+    /// <summary>Switch what the folder is read as. Unknown reads its own file
+    /// tags; Release re-picks the release the candidate already holds, and opens
+    /// the search when it holds none — there is nothing to go back to
+    /// then.</summary>
+    private async Task SetIdentity(ImportIdentity identity)
+    {
+        if (identity == ImportIdentity.Unknown)
+        {
+            await PrefetchUnidentified();
+            return;
+        }
+        if (_releaseId is { } releaseId)
+        {
+            await Prefetch(releaseId, _releaseSource);
+            return;
+        }
+        _identity = ImportIdentity.Release;
+        _searchOpen = true;
+        Render();
+    }
+
+    private void OnPreviewChanged() => _table?.ApplyPreviewAccent();
 
     // ── Render ───────────────────────────────────────────────────────────────
 
@@ -321,24 +381,39 @@ internal sealed class ImportMappingPane : UserControl
             return;
         }
 
-        var zones = new StackPanel { Spacing = 0, Margin = new Thickness(20, 16, 20, 16) };
-        zones.Children.Add(BuildHeader());
-        if (_candidate.Files is { } files)
+        var sections = new StackPanel { Spacing = 18, Margin = new Thickness(20, 16, 20, 16) };
+        sections.Children.Add(ImportPaneUi.ZoneTitle(Loc.Core("ui.import.identity.title")));
+        sections.Children.Add(BuildIdentity().Build());
+        if (_searchOpen)
         {
-            zones.Children.Add(ImportPaneUi.Divider());
-            zones.Children.Add(BuildRoles(files));
+            sections.Children.Add(BuildSearchEditor());
         }
-        if (_model is { } model)
+        if (_libraryStatus is { } status)
         {
-            zones.Children.Add(ImportPaneUi.Divider());
-            zones.Children.Add(BuildSlots(model));
+            sections.Children.Add(BuildLibraryStatusBanner(status));
+        }
+        _table = null;
+        if (_mapping is { } mapping)
+        {
+            _table = new ImportMappingTable(
+                mapping,
+                sheetFileId => _import.SheetBindingOptions(_key!, sheetFileId),
+                () => _import.PreviewingPath,
+                MappingActions());
+            var table = _table.Build();
+            sections.Children.Add(_table.Title());
+            sections.Children.Add(table);
         }
 
-        var scroller = new ScrollViewer { Content = zones };
+        var scroller = new ScrollViewer { Content = sections };
         var column = new Grid { RowDefinitions = new RowDefinitions("*,Auto") };
         Grid.SetRow(scroller, 0);
         column.Children.Add(scroller);
-        if (_model is not null)
+        // Shown exactly when there is something to commit, which is the
+        // precondition the commit itself reads — a failed re-pick leaves the
+        // table and the album fields in place but nothing settled to commit
+        // them under.
+        if (_prefetch is not null)
         {
             var bar = BuildCommitBar();
             Grid.SetRow(bar, 1);
@@ -363,71 +438,65 @@ internal sealed class ImportMappingPane : UserControl
         return text;
     }
 
-    // ── Zone 1: the release header ───────────────────────────────────────────
+    // ── Section 1: identity ──────────────────────────────────────────────────
 
-    private Control BuildHeader()
+    private ImportIdentitySection BuildIdentity() => new()
     {
-        var grid = new Grid { ColumnDefinitions = new ColumnDefinitions("96,*"), ColumnSpacing = 14 };
+        Identity = _identity,
+        Title = _albumTitle.Length > 0 ? _albumTitle : _candidate?.Name ?? string.Empty,
+        AlbumTitle = _albumTitle,
+        AlbumArtistText = _albumArtistText,
+        MetaLine = MetaLine(),
+        Claim = _prefetch?.Claim,
+        HasPick = _releaseId is not null,
+        IsReading = _prefetching,
+        LoadCover = CoverFace() is { } face
+            ? image => _app.Images.Bind(
+                image, ImportDialogs.CoverFaceContent(face.IsLocal, face.Source), ImageWidths.PickerTile)
+            : null,
+        HasCoverOptions = _prefetch is not null,
+        Pressing = _prefetch is null ? null : _pressing,
+        OnSetIdentity = identity => _ = SetIdentity(identity),
+        OnFindRelease = () => { _searchOpen = true; Render(); },
+        OnEditCover = () => _ = ChooseCover(),
+        OnAlbumTitle = value => _albumTitle = value,
+        OnAlbumArtist = value => _albumArtistText = value,
+        OnPressing = value => _pressing = value,
+    };
 
-        var cover = BuildCoverTile();
-        Grid.SetColumn(cover, 0);
-        grid.Children.Add(cover);
-
-        var body = _searchOpen ? BuildSearchEditor() : BuildHeaderFacts();
-        Grid.SetColumn(body, 1);
-        grid.Children.Add(body);
-        return grid;
-    }
-
-    private Control BuildCoverTile()
+    /// <summary>"CD · 1996 · 9 tracks", from the live edit and the live table so
+    /// it tracks what is being committed. Empty pressing fields drop out rather
+    /// than leaving stray separators, and reading the folder as Unknown says so
+    /// where a pressing would be.</summary>
+    private string MetaLine()
     {
-        var image = new Image { Width = 96, Height = 96, Stretch = Stretch.UniformToFill };
-        var tile = new Border
+        if (_mapping is not { } mapping)
         {
-            Width = 96,
-            Height = 96,
-            CornerRadius = new CornerRadius(8),
-            ClipToBounds = true,
-            Child = image,
-            VerticalAlignment = VerticalAlignment.Top,
-        };
-        tile[!Border.BackgroundProperty] = new DynamicResourceExtension("BaeElevatedBrush");
-        LoadCoverPreview(image);
-
-        var change = ImportPaneUi.RowButton(Loc.Chrome("cover.change_title"));
-        change.HorizontalAlignment = HorizontalAlignment.Center;
-        change.IsEnabled = _prefetch is not null;
-        change.Click += async (_, _) => await ChooseCover();
-
-        var column = new StackPanel { Spacing = 6, VerticalAlignment = VerticalAlignment.Top };
-        column.Children.Add(tile);
-        column.Children.Add(change);
-        return column;
+            return _candidate?.Files?.FormatLabel ?? string.Empty;
+        }
+        var lead = _identity == ImportIdentity.Unknown
+            ? new[] { Loc.Core("ui.import.identity.from_file_tags") }
+            : new[] { _pressing.Format, _pressing.Year };
+        return string.Join(
+            "  ·  ",
+            lead
+                .Append(Loc.Chrome("import.candidate.tracks", "count", mapping.WillWriteCount()))
+                .Where(part => part.Length > 0));
     }
 
-    // What the header shows now: the cover the user picked, else the release's
+    // What the card shows now: the cover the user picked, else the release's
     // first remote cover, else the folder's first image — which is the order the
     // import's own default follows when nothing is picked.
-    private void LoadCoverPreview(Image image)
-    {
-        var face = _cover
-            ?? (_prefetch?.RemoteCovers.FirstOrDefault() is { } remote
-                ? new PickedCover(
-                    ReleaseEditorService.RemoteCoverSelection(remote),
-                    false,
-                    ReleaseEditorService.RemoteCoverThumbnailUrl(remote))
-                : _prefetch?.LocalArtwork.FirstOrDefault() is { } art
-                    ? new PickedCover(new BridgeCoverSelection.ReleaseImage(art.FileId), true, art.Path)
-                    : null);
-        if (face is null)
-        {
-            return;
-        }
-        _app.Images.Bind(
-            image,
-            ImportDialogs.CoverFaceContent(face.IsLocal, face.Source),
-            ImageWidths.PickerTile);
-    }
+    private PickedCover? CoverFace() =>
+        _cover
+        ?? (_prefetch?.RemoteCovers.FirstOrDefault() is { } remote
+            ? new PickedCover(
+                ReleaseEditorService.RemoteCoverSelection(remote),
+                false,
+                ReleaseEditorService.RemoteCoverThumbnailUrl(remote))
+            : _prefetch?.LocalArtwork.FirstOrDefault() is { } art
+                ? new PickedCover(new BridgeCoverSelection.ReleaseImage(art.FileId), true, art.Path)
+                : null);
 
     private async Task ChooseCover()
     {
@@ -437,102 +506,6 @@ internal sealed class ImportMappingPane : UserControl
         }
         await _dialogs.ShowCoverPicker(prefetch.RemoteCovers, prefetch.LocalArtwork, picked => _cover = picked);
         Render();
-    }
-
-    // The release the folder is being mapped onto: its title and artist, both
-    // editable, the claim line stating what the import records, and the control
-    // that opens the header's editor to change which release it is.
-    private Control BuildHeaderFacts()
-    {
-        var column = new StackPanel { Spacing = 6 };
-
-        var title = new TextBox
-        {
-            Text = _albumTitle,
-            FontSize = 16,
-            FontWeight = FontWeight.SemiBold,
-            Watermark = Loc.Chrome("edit.field.album_title"),
-        };
-        title.TextChanged += (_, _) => _albumTitle = title.Text ?? string.Empty;
-        column.Children.Add(title);
-
-        var artist = new TextBox
-        {
-            Text = _albumArtistText,
-            FontSize = 13,
-            Watermark = Loc.Chrome("edit.field.album_artists"),
-        };
-        artist.TextChanged += (_, _) => _albumArtistText = artist.Text ?? string.Empty;
-        column.Children.Add(artist);
-
-        // Stated, never asked: bae-core derived the claim from the evidence
-        // that identified the candidate, and picking a different release in the
-        // editor below is what moves it. An import that claims nothing has no
-        // source release to name.
-        if (_prefetch?.Claim is { } claim)
-        {
-            column.Children.Add(ClaimLineView.Build(claim));
-        }
-        else if (_prefetch is not null)
-        {
-            column.Children.Add(ImportPaneUi.Cell(Loc.Chrome("import.pane.no_release"), secondary: true));
-        }
-
-        if (_libraryStatus is { } status)
-        {
-            column.Children.Add(BuildLibraryStatusBanner(status));
-        }
-
-        var change = ImportPaneUi.RowButton(Loc.Core("ui.import.header.change_release"));
-        change.HorizontalAlignment = HorizontalAlignment.Left;
-        change.Click += (_, _) => { _searchOpen = true; Render(); };
-
-        column.Children.Add(change);
-
-        // The pressing fields, folded away. The claim line above already says
-        // which pressing the import records; this is where a wrong year or a
-        // missing catalog number gets fixed before it is written.
-        if (_prefetch is not null)
-        {
-            column.Children.Add(new Expander
-            {
-                Header = Loc.Chrome("import.pane.pressing_details"),
-                FontSize = 12,
-                HorizontalAlignment = HorizontalAlignment.Stretch,
-                Content = BuildPressingFields(),
-            });
-        }
-
-        return column;
-    }
-
-    private Control BuildPressingFields()
-    {
-        var grid = new Grid
-        {
-            ColumnDefinitions = new ColumnDefinitions("*,*,*"),
-            RowDefinitions = new RowDefinitions("Auto,Auto"),
-            ColumnSpacing = 8,
-            RowSpacing = 6,
-        };
-        void Add(int column, int row, string labelKey, string value, Action<string> write)
-        {
-            var field = DialogUi.Field(Loc.Chrome(labelKey), out var box);
-            box.Text = value;
-            box.FontSize = 12;
-            box.TextChanged += (_, _) => write(box.Text ?? string.Empty);
-            Grid.SetColumn(field, column);
-            Grid.SetRow(field, row);
-            grid.Children.Add(field);
-        }
-        Add(0, 0, "edit.field.year", _pressing.Year, value => _pressing = _pressing with { Year = value });
-        Add(1, 0, "edit.field.format", _pressing.Format, value => _pressing = _pressing with { Format = value });
-        Add(2, 0, "edit.field.label", _pressing.Label, value => _pressing = _pressing with { Label = value });
-        Add(0, 1, "edit.field.catalog_number", _pressing.CatalogNumber,
-            value => _pressing = _pressing with { CatalogNumber = value });
-        Add(1, 1, "edit.field.country", _pressing.Country, value => _pressing = _pressing with { Country = value });
-        Add(2, 1, "edit.field.barcode", _pressing.Barcode, value => _pressing = _pressing with { Barcode = value });
-        return grid;
     }
 
     // The already-in-library banner: a warning line, with a jump to the
@@ -560,9 +533,9 @@ internal sealed class ImportMappingPane : UserControl
         return banner;
     }
 
-    // Search is the header's editor, opened from its change control — not a
-    // pane mounted alongside it. It starts on whatever the identify pipeline
-    // already found for this folder, so the common case is one click.
+    // Search is the identity section's editor, opened from its change control —
+    // not a pane mounted alongside it. It starts on whatever the identify
+    // pipeline already found for this folder, so the common case is one click.
     private Control BuildSearchEditor()
     {
         var column = new StackPanel { Spacing = 8 };
@@ -630,19 +603,12 @@ internal sealed class ImportMappingPane : UserControl
             Render();
         };
 
-        // The import that claims nothing: bae-core reads the folder's own file
-        // tags rather than a release. Offered here because "no release" is an
-        // answer to the same question the search asks.
-        var unidentified = ImportPaneUi.RowButton(Loc.Chrome("identify.skip"));
-        unidentified.Click += async (_, _) => await PrefetchUnidentified();
-
         var cancel = ImportPaneUi.RowButton(Loc.Chrome("action.cancel"));
         cancel.IsEnabled = _prefetch is not null;
         cancel.Click += (_, _) => { _searchOpen = false; Render(); };
 
         var actions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
         actions.Children.Add(search);
-        actions.Children.Add(unidentified);
         actions.Children.Add(cancel);
         column.Children.Add(actions);
 
@@ -653,19 +619,26 @@ internal sealed class ImportMappingPane : UserControl
         return column;
     }
 
-    // ── Zone 2: the file roles ───────────────────────────────────────────────
+    // ── Section 2: what the table's controls do ──────────────────────────────
 
-    private Control BuildRoles(BridgeCandidateFiles files) => new ImportRolesTable(
-        files,
-        SetRole,
-        sheetFileId => _import.SheetBindingOptions(_key!, sheetFileId),
-        SetSheetBinding,
-        document => _ = _dialogs.ShowDocumentFile(document)).Build();
+    private ImportMappingActions MappingActions() => new(
+        SetRole: (fileId, choice) => _ = SetRole(fileId, choice),
+        BindSheet: (sheetFileId, audioFileId) => _ = SetSheetBinding(sheetFileId, audioFileId),
+        SetSheetDisc: (sheetFileId, disc) => _ = SetSheetDisc(sheetFileId, disc),
+        OpenDocument: (name, path) =>
+            _ = _dialogs.ShowDocumentFile(new ImportDocument { Name = name, Path = path }),
+        OpenImage: ShowFolderImages,
+        Preview: path => _app.Playback.PreviewPlay(path),
+        StopPreview: () => _app.Playback.PreviewStop(),
+        EditTrack: EditTrack,
+        ChooseFile: ChooseFile,
+        Drop: Drop,
+        Exclude: fileId => _ = Exclude(fileId));
 
-    // Changing a file's role from the roles table. Taking a file out of the
-    // tracklist drops the rows it backed, exactly as a slot's Exclude does;
-    // putting one back has to re-prefetch, because the row that appears has no
-    // source in the table the pane is holding.
+    // Put a file in a role, or put it back. Core persists it and drops the
+    // candidate's stored identify verdict; the table is re-read because a file
+    // that has changed jobs is a different set of rows, and there is no row to
+    // put back from here.
     private async Task SetRole(string fileId, BridgeFileRoleChoice choice)
     {
         if (_key is not { } key || !await _import.SetFileRole(key, fileId, choice))
@@ -673,18 +646,11 @@ internal sealed class ImportMappingPane : UserControl
             return;
         }
         _candidate = _import.Candidate(key);
-        if (choice == BridgeFileRoleChoice.NotATrack)
-        {
-            DropRowsBackedBy(fileId);
-            Render();
-            return;
-        }
         await Reprefetch();
     }
 
-    // A sheet binding changes what the folder's audio is, so the slot table is
-    // recomputed from scratch — the walkthrough folder goes from one slot to
-    // twelve without leaving the pane.
+    // A sheet binding changes what the folder's audio *is*: one container
+    // becomes a dozen entries. The whole mapping is recomputed from scratch.
     private async Task SetSheetBinding(string sheetFileId, string? audioFileId)
     {
         if (_key is not { } key || !await _import.SetSheetBinding(key, sheetFileId, audioFileId))
@@ -695,65 +661,77 @@ internal sealed class ImportMappingPane : UserControl
         await Reprefetch();
     }
 
-    // Recompute the whole mapping against the release it is already mapped
-    // onto. An import that claims nothing has no release to recompute against,
-    // so its rows stay the folder's own tags.
-    private async Task Reprefetch()
+    // Which disc a sheet's entries are re-shapes the tracklist exactly as a
+    // binding does, so the table is re-read the same way.
+    private async Task SetSheetDisc(string sheetFileId, BridgeSheetDisc disc)
     {
-        if (_releaseId is { } releaseId)
+        if (_key is not { } key || !await _import.SetSheetDisc(key, sheetFileId, disc))
         {
-            await Prefetch(releaseId, _releaseSource);
             return;
         }
-        if (_prefetch is not null)
+        _candidate = _import.Candidate(key);
+        await Reprefetch();
+    }
+
+    // Write a row's edited track back onto the row that commits it. Which row a
+    // track edits is core's, so the table is handed back the edited row rather
+    // than the pane finding a position for it — and nothing re-renders, so the
+    // field being typed in keeps its focus and its caret.
+    private void EditTrack(BridgeRawTrackEdit track)
+    {
+        if (_mapping is not { } mapping)
         {
-            await PrefetchUnidentified();
             return;
         }
+        _mapping = BaeBridgeMethods.BridgeMappingWithTrack(mapping, track);
+        RefreshCommitCounts();
+    }
+
+    // Point a row at one of the folder's audio units. The row starts writing
+    // that audio because the editor is what says which audio a track's samples
+    // come from — core's reading of the folder produced the row, and this is the
+    // user overruling it.
+    private void ChooseFile(string trackId, BridgeAudioFile audio)
+    {
+        if (_mapping is not { } mapping)
+        {
+            return;
+        }
+        var track = mapping.Units()
+            .Select(MappingTableReading.Track)
+            .OfType<BridgeRawTrackEdit>()
+            .FirstOrDefault(candidate => candidate.Id == trackId);
+        if (track is null)
+        {
+            BaeDiagnostics.Logger.Warning($"{trackId} is not a row of this mapping table");
+            return;
+        }
+        _mapping = BaeBridgeMethods.BridgeMappingWithTrack(mapping, track with { File = audio });
         Render();
     }
 
-    // ── Zone 3: the track slots ──────────────────────────────────────────────
-
-    private Control BuildSlots(MappingPaneModel model)
+    // Drop a row the release names and this folder has nothing for. Nothing is
+    // persisted: the folder is unchanged, the release is simply committed
+    // without that track.
+    private void Drop(string trackId)
     {
-        _slotTable = new ImportSlotTable(
-            model,
-            _prefetch?.Slots?.Audio ?? Array.Empty<BridgeSlotFile>(),
-            onTitle: (index, text) =>
-            {
-                model.SetTitle(index, text);
-                _tracks[index] = _tracks[index] with { Title = text };
-                RefreshCommitCounts();
-            },
-            onArtist: (index, text) =>
-            {
-                model.SetArtist(index, text);
-                _tracks[index] = _tracks[index] with { ArtistText = text };
-            },
-            onExclude: index => _ = Exclude(index),
-            onDrop: index => Drop(index),
-            onChooseFile: ChooseFile,
-            onPlay: index =>
-            {
-                if (model.PlayPath(index) is { } path)
-                {
-                    _app.Playback.PreviewPlay(path);
-                }
-            },
-            onStop: () => _app.Playback.PreviewStop(),
-            previewingPath: () => _import.PreviewingPath);
-        return _slotTable.Build();
+        if (_mapping is not { } mapping)
+        {
+            return;
+        }
+        _mapping = BaeBridgeMethods.BridgeMappingWithoutTrack(mapping, trackId);
+        Render();
     }
 
-    // Excluding is a fact about the folder, not a list edit: core persists it,
-    // so it survives re-picking a release and relaunching. Once the write
-    // lands the pane drops every row that file backed — a container backs
-    // several — and the edit rows at the same indices. It does not re-prefetch:
-    // that would discard the titles the user has typed.
-    private async Task Exclude(int index)
+    // Take a file out of the tracklist. Core persists the decision — it is a
+    // fact about the folder, so it survives re-picking a release and relaunching
+    // — and the table drops the file's rows here, because the only other way to
+    // refresh it is another read from core, which would discard the user's
+    // edits. One container backs every entry of the sheet bound to it, so that
+    // sheet's whole group leaves with it; core decides that, not this.
+    private async Task Exclude(string fileId)
     {
-        if (_key is not { } key || _model is not { } model || model.Rows[index].FileId is not { } fileId)
+        if (_key is not { } key || _mapping is not { } mapping)
         {
             return;
         }
@@ -762,55 +740,26 @@ internal sealed class ImportMappingPane : UserControl
             return;
         }
         _candidate = _import.Candidate(key);
-        DropRowsBackedBy(fileId);
+        _mapping = BaeBridgeMethods.BridgeMappingWithoutFile(mapping, fileId);
         Render();
     }
 
-    private void DropRowsBackedBy(string fileId)
+    // The folder's images in the lightbox, at the one that was clicked — the
+    // same set the cover picker offers, which is every image the scan found.
+    private void ShowFolderImages(string path)
     {
-        if (_model is not { } model)
+        if (_candidate?.Files is not { } files)
         {
             return;
         }
-        var removed = model.Exclude(fileId);
-        for (var i = removed.Count - 1; i >= 0; i--)
-        {
-            _tracks.RemoveAt(removed[i]);
-        }
+        var images = files.Files
+            .Where(file => file.Role is BridgeFileRole.Cover or BridgeFileRole.Artwork)
+            .Select(file => new LocalArtwork { FileId = file.File.Name, Path = file.File.LocalPath })
+            .ToList();
+        _dialogs.ShowFolderImages(images, path);
     }
 
-    // "Drop" removes an unanswered slot from the edit entirely. It says nothing
-    // about the folder, so nothing is persisted.
-    private void Drop(int index)
-    {
-        if (_model is not { } model)
-        {
-            return;
-        }
-        model.RemoveAt(index);
-        _tracks.RemoveAt(index);
-        Render();
-    }
-
-    private void ChooseFile(int index, BridgeSlotFile file)
-    {
-        if (_model is not { } model)
-        {
-            return;
-        }
-        model.Pair(
-            index,
-            MappingPaneProjection.FileId(file.Audio),
-            file.Name,
-            file.Size,
-            file.LocalPath,
-            file.ProbedDurationMs,
-            MappingSlotSpan.Whole);
-        _tracks[index] = _tracks[index] with { File = file.Audio };
-        Render();
-    }
-
-    // ── Zone 4: the commit bar ───────────────────────────────────────────────
+    // ── The commit bar ───────────────────────────────────────────────────────
 
     private TextBlock? _willWriteText;
     private TextBlock? _unansweredText;
@@ -856,7 +805,6 @@ internal sealed class ImportMappingPane : UserControl
         // refusal left in the whole import is audio that will not decode, and
         // core raises that.
         var import = DialogUi.Primary(Loc.Chrome("action.import"));
-        import.IsEnabled = MappingPaneModel.CommitEnabled;
         import.Click += async (_, _) => await Commit();
 
         var row = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto,Auto"), ColumnSpacing = 12 };
@@ -877,17 +825,17 @@ internal sealed class ImportMappingPane : UserControl
         return bar;
     }
 
-    // What committing now would write, and what is unanswered — both restated
-    // on every keystroke, because a title typed into an unmatched row is what
-    // moves the second number.
+    // What committing now would write, and what is unanswered — both restated on
+    // every keystroke, because a title typed into an unmatched row is what moves
+    // the second number.
     private void RefreshCommitCounts()
     {
-        if (_model is not { } model || _willWriteText is null || _unansweredText is null)
+        if (_mapping is not { } mapping || _willWriteText is null || _unansweredText is null)
         {
             return;
         }
-        _willWriteText.Text = Loc.Core("ui.import.commit.will_write", "count", (long)model.WillWriteCount);
-        var unanswered = model.UnansweredCount;
+        _willWriteText.Text = Loc.Core("ui.import.commit.will_write", "count", (long)mapping.WillWriteCount());
+        var unanswered = mapping.UnansweredCount();
         _unansweredText.Text = unanswered == 0
             ? string.Empty
             : Loc.Core("ui.import.commit.unanswered", "count", (long)unanswered);
@@ -896,11 +844,12 @@ internal sealed class ImportMappingPane : UserControl
 
     private async Task Commit()
     {
-        if (_key is not { } key || _candidate is not { } candidate)
+        if (_key is not { } key || _candidate is not { } candidate || _mapping is not { } mapping)
         {
             return;
         }
-        var edit = new BridgeRawReleaseEdit(_albumTitle, _albumArtistText, _pressing, _tracks.ToArray());
+        var edit = new BridgeRawReleaseEdit(
+            _albumTitle, _albumArtistText, _pressing, BaeBridgeMethods.BridgeMappingTracks(mapping));
         var identity = _prefetch?.Claim?.Choice ?? new BridgeIdentityChoice.Unknown();
         var (settingsCurrent, settings) = _app.Settings.GetSettings();
         var remote = settingsCurrent && settings.HasCloudHome && _storageRemote;

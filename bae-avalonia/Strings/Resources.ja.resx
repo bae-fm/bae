@@ -73,9 +73,8 @@
   <data name="import.field.artist_manual" xml:space="preserve"><value>アーティスト（手動検索）</value></data>
   <data name="import.no_releases" xml:space="preserve"><value>リリースが見つかりませんでした</value></data>
   <data name="import.pane.lengths_differ" xml:space="preserve"><value>ファイルの長さがリリースの長さと一致しません。</value></data>
-  <data name="import.pane.no_release" xml:space="preserve"><value>リリースなし — ファイルの情報のまま取り込みます</value></data>
   <data name="import.pane.pick_a_candidate" xml:space="preserve"><value>リリースに対応づけるフォルダを一覧から選んでください。</value></data>
-  <data name="import.pane.pressing_details" xml:space="preserve"><value>プレス情報</value></data>
+  <data name="import.pane.release_details" xml:space="preserve"><value>リリース情報</value></data>
   <data name="import.progress.percent" xml:space="preserve"><value>取り込み中 {percent}%</value></data>
   <data name="import.rerun_identify" xml:space="preserve"><value>識別を再実行</value></data>
   <data name="import.scanning" xml:space="preserve"><value>スキャン中…</value></data>
@@ -403,7 +402,6 @@
   <data name="output.title" xml:space="preserve"><value>エクスポートと保存</value></data>
   <data name="export.state.exporting" xml:space="preserve"><value>{percent}%エクスポート中</value></data>
   <data name="export.state.saving" xml:space="preserve"><value>{percent}%保存中</value></data>
-  <data name="import.sheet.describes_nothing_yet" xml:space="preserve"><value>まだ何も指定していません</value></data>
   <data name="import.document.read_failed" xml:space="preserve"><value>{name}を読み取れませんでした: {error}</value></data>
   <data name="libraries.reveal" xml:space="preserve"><value>エクスプローラーで表示</value></data>
   <data name="libraries.copy_id" xml:space="preserve"><value>IDをコピー</value></data>

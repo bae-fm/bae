@@ -296,39 +296,34 @@ impl ImportServiceHandle {
             })
             .collect();
 
-        let (slots, mapping) = match self.get_candidate(candidate_key) {
+        let mapping = match self.get_candidate(candidate_key) {
             Some(super::ImportCandidateSnapshot::Folder { candidate, .. }) => {
                 // One FFmpeg open per container, so it goes off the async
                 // executor rather than holding it for the length of a folder.
                 tokio::task::spawn_blocking(move || {
                     let slots =
                         crate::import::track_slots::slot_table(&source_tracks, &candidate.files);
-                    let mapping = crate::import::mapping::mapping_table(
+                    crate::import::mapping::mapping_table(
                         &candidate.files,
                         Some(crate::import::mapping::PickedTracklist {
                             slots: &slots,
                             track_id_prefix: IMPORT_TRACK_ID_PREFIX,
                             source: crate::import::mapping::TracklistSource::Release,
                         }),
-                    );
-                    (slots, mapping)
+                    )
                 })
                 .await
                 .map_err(|e| crate::import::ImportError::Internal {
-                    detail: format!("slot table task failed: {e}"),
+                    detail: format!("mapping table task failed: {e}"),
                 })?
             }
-            _ => (
-                crate::import::track_slots::SlotTable::empty(),
-                crate::import::mapping::MappingTable::empty(),
-            ),
+            _ => crate::import::mapping::MappingTable::empty(),
         };
 
         Ok(crate::import::search::ImportReleasePrefetch {
             detail,
             seed,
             claim,
-            slots,
             mapping,
         })
     }

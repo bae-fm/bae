@@ -7,15 +7,15 @@ using Avalonia.Media;
 namespace Bae.Desktop;
 
 /// <summary>
-/// The mapping pane's shared leaves — zone titles, column headers, cells, the
+/// The mapping pane's shared leaves — section titles, column headers, cells, the
 /// mono file name with its dimmed directory prefix, and the small row button.
-/// Split out so the three zone files read as their own structure rather than as
-/// three copies of the same Border-and-TextBlock spelling.
+/// Split out so the pane's two sections read as their own structure rather than
+/// as two copies of the same Border-and-TextBlock spelling.
 /// </summary>
 internal static class ImportPaneUi
 {
-    /// <summary>A zone's heading, with an optional plain note beside it (the
-    /// folder's format, the reconciliation tally).</summary>
+    /// <summary>A section's heading, with an optional plain note beside it (the
+    /// reconciliation tally).</summary>
     internal static Control ZoneTitle(string text, string? note = null)
     {
         var title = new TextBlock
@@ -123,13 +123,5 @@ internal static class ImportPaneUi
         button[!Button.BorderBrushProperty] = new DynamicResourceExtension("BaeTextSecondaryBrush");
         button[!Button.ForegroundProperty] = new DynamicResourceExtension("BaeTextSecondaryBrush");
         return button;
-    }
-
-    /// <summary>A hairline under a zone, so the four read as four.</summary>
-    internal static Control Divider()
-    {
-        var divider = new Border { Height = 1, Margin = new Thickness(0, 14) };
-        divider[!Border.BackgroundProperty] = new DynamicResourceExtension("BaeHairlineBrush");
-        return divider;
     }
 }

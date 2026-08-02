@@ -4,10 +4,11 @@ using uniffi.bae_bridge;
 namespace Bae.Desktop;
 
 /// <summary>
-/// The import confirmation seed. <see cref="Edit"/> seeds the metadata editor;
-/// <see cref="RemoteCovers"/> (from the prefetched release detail) and
-/// <see cref="LocalArtwork"/> (image files in the candidate's folder) are the
-/// cover choices the confirm pane's picker offers before committing the import.
+/// The import seed for one settled reading of a folder. <see cref="Edit"/> seeds
+/// the release's own fields; <see cref="Mapping"/> is the table the tracklist is
+/// committed from; <see cref="RemoteCovers"/> (from the prefetched release
+/// detail) and <see cref="LocalArtwork"/> (image files in the candidate's
+/// folder) are the cover choices the pane's picker offers before committing.
 /// </summary>
 internal sealed class PrefetchedEdit
 {
@@ -21,19 +22,19 @@ internal sealed class PrefetchedEdit
 
     /// <summary>
     /// What the pick claims and where its metadata came from, as bae-core
-    /// derived it from the evidence that identified the candidate. Null for a
-    /// skip-identify import, which claims nothing and has no source release.
+    /// derived it from the evidence that identified the candidate. Null for an
+    /// Unknown import, which claims nothing and has no source release.
     /// </summary>
     public BridgeClaimLine? Claim { get; set; }
 
     /// <summary>
-    /// The file↔release mapping this pick produces — one row per track the
-    /// import will write, positionally aligned with <see cref="Edit"/>'s track
-    /// rows, plus the tally above them and the folder's audio a row with no
-    /// file may choose from. Null for a skip-identify import: bae-core computes
-    /// a slot table against a picked release, and that import has none.
+    /// The file↔release mapping this pick produces — every source unit the
+    /// folder offers with the track committing makes of it, the editable row
+    /// inside the row that produces it, and the tally over them. It is what the
+    /// commit's tracklist is read back out of, so <see cref="Edit"/>'s own track
+    /// rows are not the ones that get written.
     /// </summary>
-    internal BridgeSlotTable? Slots { get; set; }
+    internal BridgeMappingTable Mapping { get; set; } = new([], Reconciliation: null);
 }
 
 /// <summary>

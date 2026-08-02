@@ -146,6 +146,20 @@ internal sealed class ImportDialogs
         return section;
     }
 
+    /// <summary>Open the folder's images in the lightbox, at the one whose path
+    /// was clicked. An image the folder no longer holds has nothing to show, so
+    /// there is nothing to open.</summary>
+    internal void ShowFolderImages(List<LocalArtwork> images, string path)
+    {
+        var startIndex = images.FindIndex(art => art.Path == path);
+        if (startIndex < 0)
+        {
+            BaeDiagnostics.Logger.Warning($"no image at {path} among the folder's {images.Count}");
+            return;
+        }
+        OpenLocalArtworkLightbox(images, startIndex);
+    }
+
     private void OpenLocalArtworkLightbox(List<LocalArtwork> localArtwork, int startIndex)
     {
         var entries = new List<LightboxEntry>();

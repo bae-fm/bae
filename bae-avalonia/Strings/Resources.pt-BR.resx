@@ -73,9 +73,8 @@
   <data name="import.field.artist_manual" xml:space="preserve"><value>artista (busca manual)</value></data>
   <data name="import.no_releases" xml:space="preserve"><value>nenhum lançamento encontrado</value></data>
   <data name="import.pane.lengths_differ" xml:space="preserve"><value>A duração do arquivo não corresponde à da edição.</value></data>
-  <data name="import.pane.no_release" xml:space="preserve"><value>Sem edição — importando o que os arquivos dizem</value></data>
   <data name="import.pane.pick_a_candidate" xml:space="preserve"><value>Escolha uma pasta na lista para mapeá-la para uma edição.</value></data>
-  <data name="import.pane.pressing_details" xml:space="preserve"><value>detalhes da prensagem</value></data>
+  <data name="import.pane.release_details" xml:space="preserve"><value>detalhes do lançamento</value></data>
   <data name="import.progress.percent" xml:space="preserve"><value>importando {percent}%</value></data>
   <data name="import.rerun_identify" xml:space="preserve"><value>executar identificação novamente</value></data>
   <data name="import.scanning" xml:space="preserve"><value>verificando…</value></data>
@@ -403,7 +402,6 @@
   <data name="output.title" xml:space="preserve"><value>exportar e salvar</value></data>
   <data name="export.state.exporting" xml:space="preserve"><value>exportando {percent}%</value></data>
   <data name="export.state.saving" xml:space="preserve"><value>salvando {percent}%</value></data>
-  <data name="import.sheet.describes_nothing_yet" xml:space="preserve"><value>Ainda não descreve nada</value></data>
   <data name="import.document.read_failed" xml:space="preserve"><value>Não foi possível ler {name}: {error}</value></data>
   <data name="libraries.reveal" xml:space="preserve"><value>mostrar no Explorador de Arquivos</value></data>
   <data name="libraries.copy_id" xml:space="preserve"><value>copiar ID</value></data>

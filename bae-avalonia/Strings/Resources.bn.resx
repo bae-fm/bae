@@ -73,9 +73,8 @@
   <data name="import.field.artist_manual" xml:space="preserve"><value>শিল্পী (হাতে অনুসন্ধান)</value></data>
   <data name="import.no_releases" xml:space="preserve"><value>কোনো রিলিজ পাওয়া যায়নি</value></data>
   <data name="import.pane.lengths_differ" xml:space="preserve"><value>ফাইলের দৈর্ঘ্য রিলিজের সঙ্গে মিলছে না।</value></data>
-  <data name="import.pane.no_release" xml:space="preserve"><value>কোনো রিলিজ নেই — ফাইলগুলো যা বলে তা-ই আমদানি হচ্ছে</value></data>
   <data name="import.pane.pick_a_candidate" xml:space="preserve"><value>একটি রিলিজের সঙ্গে মেলাতে তালিকা থেকে একটি ফোল্ডার বেছে নিন।</value></data>
-  <data name="import.pane.pressing_details" xml:space="preserve"><value>প্রেসিং বিবরণ</value></data>
+  <data name="import.pane.release_details" xml:space="preserve"><value>রিলিজ বিবরণ</value></data>
   <data name="import.progress.percent" xml:space="preserve"><value>{percent}% আমদানি হচ্ছে</value></data>
   <data name="import.rerun_identify" xml:space="preserve"><value>শনাক্তকরণ আবার চালান</value></data>
   <data name="import.scanning" xml:space="preserve"><value>স্ক্যান করা হচ্ছে…</value></data>
@@ -403,7 +402,6 @@
   <data name="output.title" xml:space="preserve"><value>এক্সপোর্ট ও সংরক্ষণ</value></data>
   <data name="export.state.exporting" xml:space="preserve"><value>{percent}% এক্সপোর্ট হচ্ছে</value></data>
   <data name="export.state.saving" xml:space="preserve"><value>{percent}% সংরক্ষণ হচ্ছে</value></data>
-  <data name="import.sheet.describes_nothing_yet" xml:space="preserve"><value>এখনও কিছুই নির্দেশ করে না</value></data>
   <data name="import.document.read_failed" xml:space="preserve"><value>{name} পড়া যায়নি: {error}</value></data>
   <data name="libraries.reveal" xml:space="preserve"><value>ফাইল এক্সপ্লোরারে দেখান</value></data>
   <data name="libraries.copy_id" xml:space="preserve"><value>আইডি কপি করুন</value></data>

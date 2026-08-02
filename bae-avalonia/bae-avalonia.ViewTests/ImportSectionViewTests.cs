@@ -139,6 +139,13 @@ public sealed class ImportSectionViewTests
                 new ImportCandidate { Key = key, Name = "Release 01", FolderPath = key }),
             SetFolderReleaseDecision = (_, _) =>
                 Task.FromResult((true, (string?)null)),
+            // Selecting a candidate reads its mapping before anything is
+            // picked, so the pane has a table to show while the release is
+            // still the open question.
+            CandidateMapping = _ => (
+                true,
+                ((BridgeMappingTable?)new BridgeMappingTable(
+                    Array.Empty<BridgeMappingRow>(), Reconciliation: null), (string?)null)),
             PrefetchCandidateEdit = (_, releaseId, _, _) =>
             {
                 prefetched?.Add(releaseId);

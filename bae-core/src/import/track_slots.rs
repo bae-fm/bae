@@ -192,18 +192,6 @@ pub struct SlotTable {
     pub audio: Vec<SlotFile>,
 }
 
-impl SlotTable {
-    /// No folder behind the pick, so no mapping: re-identify chooses a release
-    /// for a release already in the library, whose files are bound already.
-    pub fn empty() -> Self {
-        Self {
-            rows: Vec::new(),
-            reconciliation: SlotReconciliation::Agrees { count: 0 },
-            audio: Vec::new(),
-        }
-    }
-}
-
 /// What one of the folder's audio files contributes to the unit list.
 #[derive(Debug, Clone)]
 pub(crate) enum UnitContribution<'a> {

@@ -73,9 +73,8 @@
   <data name="import.field.artist_manual" xml:space="preserve"><value>interpret (ruční vyhledávání)</value></data>
   <data name="import.no_releases" xml:space="preserve"><value>nenalezena žádná vydání</value></data>
   <data name="import.pane.lengths_differ" xml:space="preserve"><value>Délka souboru neodpovídá délce ve vydání.</value></data>
-  <data name="import.pane.no_release" xml:space="preserve"><value>Bez vydání — importuje se to, co říkají soubory</value></data>
   <data name="import.pane.pick_a_candidate" xml:space="preserve"><value>Vyberte složku ze seznamu a přiřaďte ji k vydání.</value></data>
-  <data name="import.pane.pressing_details" xml:space="preserve"><value>podrobnosti vydání</value></data>
+  <data name="import.pane.release_details" xml:space="preserve"><value>podrobnosti vydání</value></data>
   <data name="import.progress.percent" xml:space="preserve"><value>import {percent}%</value></data>
   <data name="import.rerun_identify" xml:space="preserve"><value>znovu spustit identifikaci</value></data>
   <data name="import.scanning" xml:space="preserve"><value>skenování…</value></data>
@@ -403,7 +402,6 @@
   <data name="output.title" xml:space="preserve"><value>export a uložení</value></data>
   <data name="export.state.exporting" xml:space="preserve"><value>exportuje se {percent}%</value></data>
   <data name="export.state.saving" xml:space="preserve"><value>ukládá se {percent}%</value></data>
-  <data name="import.sheet.describes_nothing_yet" xml:space="preserve"><value>Zatím nic nepopisuje</value></data>
   <data name="import.document.read_failed" xml:space="preserve"><value>Nelze přečíst {name}: {error}</value></data>
   <data name="libraries.reveal" xml:space="preserve"><value>zobrazit v Průzkumníku souborů</value></data>
   <data name="libraries.copy_id" xml:space="preserve"><value>kopírovat ID</value></data>

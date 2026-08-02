@@ -73,9 +73,8 @@
   <data name="import.field.artist_manual" xml:space="preserve"><value>الفنان (البحث اليدوي)</value></data>
   <data name="import.no_releases" xml:space="preserve"><value>لم يُعثَر على إصدارات</value></data>
   <data name="import.pane.lengths_differ" xml:space="preserve"><value>طول الملف لا يطابق طول الإصدار.</value></data>
-  <data name="import.pane.no_release" xml:space="preserve"><value>بلا إصدار — يُستورد ما تقوله الملفات</value></data>
   <data name="import.pane.pick_a_candidate" xml:space="preserve"><value>اختر مجلدًا من القائمة لمطابقته بإصدار.</value></data>
-  <data name="import.pane.pressing_details" xml:space="preserve"><value>تفاصيل الطبعة</value></data>
+  <data name="import.pane.release_details" xml:space="preserve"><value>تفاصيل الإصدار</value></data>
   <data name="import.progress.percent" xml:space="preserve"><value>جارٍ الاستيراد {percent}%</value></data>
   <data name="import.rerun_identify" xml:space="preserve"><value>إعادة تشغيل التحديد</value></data>
   <data name="import.scanning" xml:space="preserve"><value>جارٍ الفحص…</value></data>
@@ -403,7 +402,6 @@
   <data name="output.title" xml:space="preserve"><value>التصدير والحفظ</value></data>
   <data name="export.state.exporting" xml:space="preserve"><value>جارٍ التصدير {percent}%</value></data>
   <data name="export.state.saving" xml:space="preserve"><value>جارٍ الحفظ {percent}%</value></data>
-  <data name="import.sheet.describes_nothing_yet" xml:space="preserve"><value>لا يصف شيئًا بعد</value></data>
   <data name="import.document.read_failed" xml:space="preserve"><value>تعذرت قراءة {name}: {error}</value></data>
   <data name="libraries.reveal" xml:space="preserve"><value>الإظهار في مستكشف الملفات</value></data>
   <data name="libraries.copy_id" xml:space="preserve"><value>نسخ المعرّف</value></data>

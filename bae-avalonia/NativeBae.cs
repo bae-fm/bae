@@ -737,6 +737,18 @@ internal static class NativeBae
         string? audioFileId) =>
         CaptureError(() => Await(() => handle.SetSheetBinding(candidateKey, sheetFileId, audioFileId)));
 
+    /// <summary>Say which disc of the release one of a candidate's track sheets
+    /// holds, or take it out of the tracklist. Cue filenames are arbitrary, so
+    /// the assignment is the truth about which cue is which disc; core persists
+    /// it and clears the candidate's stored identify verdict, because a
+    /// re-assigned sheet is a different tracklist.</summary>
+    internal static string? SetSheetDisc(
+        AppHandle handle,
+        string candidateKey,
+        string sheetFileId,
+        BridgeSheetDisc disc) =>
+        CaptureError(() => Await(() => handle.SetSheetDisc(candidateKey, sheetFileId, disc)));
+
     /// <summary>Put one of a candidate's files in a role, or put it back in the
     /// one the scan proposed. Core persists it — taking a file out of the
     /// tracklist is a fact about the folder, not an edit to whichever pane is
@@ -850,9 +862,10 @@ internal static class NativeBae
         handle.ClaimForPick(candidateKey, result);
 
     /// <summary>
-    /// The skip-identify confirm seed: project the folder's embedded file tags
-    /// into the edit form. No source release, so no remote covers and no kept
-    /// detail — only the folder's local artwork is offered.
+    /// The Unknown seed: the release the folder's own files describe, and the
+    /// mapping that lands each of its audio units on one of those tracks. No
+    /// source release, so no remote covers and no claim — only the folder's
+    /// local artwork is offered.
     /// </summary>
     internal static (PrefetchedEdit? Prefetched, string? Error) PrefetchUnknownEdit(
         AppHandle handle, string candidateKey) =>
@@ -863,14 +876,21 @@ internal static class NativeBae
             {
                 throw new InvalidOperationException($"Folder candidate '{candidateKey}' is unavailable");
             }
+            var unknown = Await(() => handle.UnknownMapping(candidateKey));
             return new PrefetchedEdit
             {
-                Edit = BaeBridgeMethods.RawReleaseEditFromUserEdit(
-                    Await(() => handle.PreviewFileTagsForFolder(candidateKey)),
-                    "unknown-track"),
+                Edit = BaeBridgeMethods.RawReleaseEditFromUserEdit(unknown.Seed, "unknown-track"),
+                Mapping = unknown.Mapping,
                 LocalArtwork = LocalArtwork(snapshot),
             };
         });
+
+    /// <summary>The mapping table for a candidate nobody has picked a release
+    /// for: every source unit the folder offers, with what it becomes left
+    /// open.</summary>
+    internal static (BridgeMappingTable? Mapping, string? Error) CandidateMapping(
+        AppHandle handle, string candidateKey) =>
+        CaptureBridgeValue(() => handle.CandidateMapping(candidateKey));
 
     internal static (BridgeLibraryStatus? Status, string? Error) CheckReleaseInLibrary(AppHandle handle, string releaseId) =>
         CaptureBridgeValue(() =>
@@ -1174,7 +1194,7 @@ internal static class NativeBae
             RemoteCovers = prefetch.Detail.CoverArt.ToList(),
             LocalArtwork = LocalArtwork(handle.GetCandidate(folderPath)),
             Claim = prefetch.Claim,
-            Slots = prefetch.Slots,
+            Mapping = prefetch.Mapping,
         };
     }
 

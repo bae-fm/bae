@@ -73,9 +73,8 @@
   <data name="import.field.artist_manual" xml:space="preserve"><value>artiest (handmatig zoeken)</value></data>
   <data name="import.no_releases" xml:space="preserve"><value>geen releases gevonden</value></data>
   <data name="import.pane.lengths_differ" xml:space="preserve"><value>De lengte van het bestand komt niet overeen met die van de uitgave.</value></data>
-  <data name="import.pane.no_release" xml:space="preserve"><value>Geen uitgave — er wordt geïmporteerd wat de bestanden zeggen</value></data>
   <data name="import.pane.pick_a_candidate" xml:space="preserve"><value>Kies een map uit de lijst om die aan een uitgave te koppelen.</value></data>
-  <data name="import.pane.pressing_details" xml:space="preserve"><value>persingsdetails</value></data>
+  <data name="import.pane.release_details" xml:space="preserve"><value>uitgavedetails</value></data>
   <data name="import.progress.percent" xml:space="preserve"><value>importeren {percent}%</value></data>
   <data name="import.rerun_identify" xml:space="preserve"><value>identificatie opnieuw uitvoeren</value></data>
   <data name="import.scanning" xml:space="preserve"><value>scannen…</value></data>
@@ -403,7 +402,6 @@
   <data name="output.title" xml:space="preserve"><value>exporteren en opslaan</value></data>
   <data name="export.state.exporting" xml:space="preserve"><value>exporteren {percent}%</value></data>
   <data name="export.state.saving" xml:space="preserve"><value>bewaren {percent}%</value></data>
-  <data name="import.sheet.describes_nothing_yet" xml:space="preserve"><value>Beschrijft nog niets</value></data>
   <data name="import.document.read_failed" xml:space="preserve"><value>Kan {name} niet lezen: {error}</value></data>
   <data name="libraries.reveal" xml:space="preserve"><value>weergeven in Verkenner</value></data>
   <data name="libraries.copy_id" xml:space="preserve"><value>ID kopiëren</value></data>

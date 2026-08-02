@@ -74,9 +74,8 @@
   <data name="import.field.artist_manual" xml:space="preserve"><value>artist (manual search)</value></data>
   <data name="import.no_releases" xml:space="preserve"><value>no releases found</value></data>
   <data name="import.pane.lengths_differ" xml:space="preserve"><value>The file's length doesn't match the release's.</value></data>
-  <data name="import.pane.no_release" xml:space="preserve"><value>No release — importing what the files say</value></data>
   <data name="import.pane.pick_a_candidate" xml:space="preserve"><value>Pick a folder from the list to map it onto a release.</value></data>
-  <data name="import.pane.pressing_details" xml:space="preserve"><value>pressing details</value></data>
+  <data name="import.pane.release_details" xml:space="preserve"><value>release details</value></data>
   <data name="import.progress.percent" xml:space="preserve"><value>importing {percent}%</value></data>
   <data name="import.rerun_identify" xml:space="preserve"><value>re-run identification</value></data>
   <data name="import.scanning" xml:space="preserve"><value>scanning…</value></data>
@@ -428,7 +427,6 @@
   <data name="output.title" xml:space="preserve"><value>export &amp; save</value></data>
   <data name="export.state.exporting" xml:space="preserve"><value>exporting {percent}%</value></data>
   <data name="export.state.saving" xml:space="preserve"><value>saving {percent}%</value></data>
-  <data name="import.sheet.describes_nothing_yet" xml:space="preserve"><value>Describes nothing yet</value></data>
   <data name="import.document.read_failed" xml:space="preserve"><value>Could not read {name}: {error}</value></data>
   <data name="libraries.reveal" xml:space="preserve"><value>show in Explorer</value></data>
   <data name="libraries.copy_id" xml:space="preserve"><value>copy ID</value></data>

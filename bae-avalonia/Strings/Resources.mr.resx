@@ -73,9 +73,8 @@
   <data name="import.field.artist_manual" xml:space="preserve"><value>कलाकार (हाताने शोध)</value></data>
   <data name="import.no_releases" xml:space="preserve"><value>प्रकाशने सापडली नाहीत</value></data>
   <data name="import.pane.lengths_differ" xml:space="preserve"><value>फाइलचा कालावधी रिलीजच्या कालावधीशी जुळत नाही.</value></data>
-  <data name="import.pane.no_release" xml:space="preserve"><value>रिलीज नाही — फायली जे सांगतात तेच आयात होत आहे</value></data>
   <data name="import.pane.pick_a_candidate" xml:space="preserve"><value>एखाद्या रिलीजशी जोडण्यासाठी यादीतून फोल्डर निवडा.</value></data>
-  <data name="import.pane.pressing_details" xml:space="preserve"><value>प्रेसिंग तपशील</value></data>
+  <data name="import.pane.release_details" xml:space="preserve"><value>रिलीज तपशील</value></data>
   <data name="import.progress.percent" xml:space="preserve"><value>{percent}% आयात करत आहे</value></data>
   <data name="import.rerun_identify" xml:space="preserve"><value>ओळख पुन्हा चालवा</value></data>
   <data name="import.scanning" xml:space="preserve"><value>स्कॅन करत आहे…</value></data>
@@ -403,7 +402,6 @@
   <data name="output.title" xml:space="preserve"><value>निर्यात आणि जतन</value></data>
   <data name="export.state.exporting" xml:space="preserve"><value>{percent}% निर्यात करत आहे</value></data>
   <data name="export.state.saving" xml:space="preserve"><value>{percent}% जतन करत आहे</value></data>
-  <data name="import.sheet.describes_nothing_yet" xml:space="preserve"><value>अद्याप काहीही दर्शवत नाही</value></data>
   <data name="import.document.read_failed" xml:space="preserve"><value>{name} वाचता आले नाही: {error}</value></data>
   <data name="libraries.reveal" xml:space="preserve"><value>फाइल एक्सप्लोररमध्ये दाखवा</value></data>
   <data name="libraries.copy_id" xml:space="preserve"><value>ID कॉपी करा</value></data>

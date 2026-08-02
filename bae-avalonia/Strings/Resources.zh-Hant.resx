@@ -73,9 +73,8 @@
   <data name="import.field.artist_manual" xml:space="preserve"><value>演出者（手動搜尋）</value></data>
   <data name="import.no_releases" xml:space="preserve"><value>找不到發行</value></data>
   <data name="import.pane.lengths_differ" xml:space="preserve"><value>檔案長度與該版本的長度不一致。</value></data>
-  <data name="import.pane.no_release" xml:space="preserve"><value>無版本 — 依檔案自身的資訊匯入</value></data>
   <data name="import.pane.pick_a_candidate" xml:space="preserve"><value>從清單中選擇一個資料夾，將其對應到某個版本。</value></data>
-  <data name="import.pane.pressing_details" xml:space="preserve"><value>版本詳情</value></data>
+  <data name="import.pane.release_details" xml:space="preserve"><value>發行版本詳情</value></data>
   <data name="import.progress.percent" xml:space="preserve"><value>正在匯入 {percent}%</value></data>
   <data name="import.rerun_identify" xml:space="preserve"><value>重新執行識別</value></data>
   <data name="import.scanning" xml:space="preserve"><value>正在掃描…</value></data>
@@ -403,7 +402,6 @@
   <data name="output.title" xml:space="preserve"><value>匯出與儲存</value></data>
   <data name="export.state.exporting" xml:space="preserve"><value>正在匯出 {percent}%</value></data>
   <data name="export.state.saving" xml:space="preserve"><value>正在儲存 {percent}%</value></data>
-  <data name="import.sheet.describes_nothing_yet" xml:space="preserve"><value>尚未對應任何檔案</value></data>
   <data name="import.document.read_failed" xml:space="preserve"><value>無法讀取{name}: {error}</value></data>
   <data name="libraries.reveal" xml:space="preserve"><value>在檔案總管中顯示</value></data>
   <data name="libraries.copy_id" xml:space="preserve"><value>複製 ID</value></data>

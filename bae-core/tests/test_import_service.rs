@@ -3551,7 +3551,7 @@ async fn committed_track_files(f: &ImportFixture, release_id: &str) -> Vec<(Stri
 }
 
 /// Scan `album_dir` in and pick `mb_id` for it, returning the candidate key and
-/// the track slots the pick produced. The path both desktop surfaces take.
+/// the mapping the pick produced. The path both desktop surfaces take.
 async fn pick_release_for_folder(
     f: &ImportFixture,
     collection: &Path,
@@ -3580,20 +3580,38 @@ async fn pick_release_for_folder(
     (candidate_key, prefetch)
 }
 
-/// The edit a surface sends back when the user changes nothing in the slot
-/// table: the slots' own rows, bindings and all.
-fn edit_from_slots(prefetch: &bae_core::import::search::ImportReleasePrefetch) -> ReleaseUserEdit {
-    ReleaseUserEdit {
-        album_title: prefetch.seed.album_title.clone(),
-        album_artist_names: prefetch.seed.album_artist_names.clone(),
-        pressing: prefetch.seed.pressing.clone(),
-        tracks: prefetch
-            .slots
-            .rows
-            .iter()
-            .map(|slot| slot.track().clone())
-            .collect(),
-    }
+/// The edit a surface sends back when the user changes nothing in the mapping
+/// table: the album fields from the seed, the tracks from the table's own rows
+/// in the order core lays them out, bindings and all.
+fn edit_from_mapping(
+    prefetch: &bae_core::import::search::ImportReleasePrefetch,
+) -> ReleaseUserEdit {
+    let mut raw =
+        bae_core::import::RawReleaseEdit::from_user_edit(prefetch.seed.clone(), "import-track");
+    raw.tracks = bae_core::import::mapping_tracks(&prefetch.mapping);
+    raw.shape()
+        .expect("the table's rows shape into a savable edit")
+}
+
+/// The tracks the mapping commits, and what the source said about each — the
+/// two halves the assertions below read off a row.
+fn mapping_rows(
+    prefetch: &bae_core::import::search::ImportReleasePrefetch,
+) -> Vec<(bae_core::import::RawTrackEdit, Option<String>)> {
+    prefetch
+        .mapping
+        .rows
+        .iter()
+        .flat_map(bae_core::import::MappingRow::units)
+        .filter_map(|unit| match &unit.becomes {
+            bae_core::import::MappingBecomes::Track {
+                track,
+                source_position,
+                ..
+            } => Some((track.clone(), source_position.clone())),
+            _ => None,
+        })
+        .collect()
 }
 
 /// Thirteen files against a twelve-track source. The pick produces twelve
@@ -3620,20 +3638,16 @@ async fn thirteen_files_against_a_twelve_track_source_commits_thirteen_tracks() 
     let (candidate_key, prefetch) =
         pick_release_for_folder(&f, &collection, &album_dir, &mb_id).await;
 
-    assert_eq!(prefetch.slots.rows.len(), 13);
+    let rows = mapping_rows(&prefetch);
+    assert_eq!(rows.len(), 13);
+    // Twelve rows the source names, and one the folder offers that it does not.
     assert_eq!(
-        prefetch
-            .slots
-            .rows
-            .iter()
-            .filter(|slot| matches!(slot, bae_core::import::TrackSlot::Paired { .. }))
+        rows.iter()
+            .filter(|(_, position)| position.is_some())
             .count(),
-        12,
+        12
     );
-    assert!(matches!(
-        prefetch.slots.rows[12],
-        bae_core::import::TrackSlot::FileOnly { .. }
-    ));
+    assert_eq!(rows[12].1, None);
 
     let import_id = f.ids.new_id();
     f.handle
@@ -3648,7 +3662,7 @@ async fn thirteen_files_against_a_twelve_track_source_commits_thirteen_tracks() 
             identity_choice: IdentityChoice::Exact {
                 release_ref: MetadataRef::new(mb_id, MetadataSource::MusicBrainz),
             },
-            user_edit: Some(edit_from_slots(&prefetch)),
+            user_edit: Some(edit_from_mapping(&prefetch)),
         })
         .await
         .unwrap();
@@ -3692,11 +3706,11 @@ async fn a_track_with_no_audio_commits_as_the_user_left_it() {
     let (candidate_key, prefetch) =
         pick_release_for_folder(&f, &collection, &album_dir, &mb_id).await;
 
-    assert_eq!(prefetch.slots.rows.len(), 14);
-    assert!(matches!(
-        prefetch.slots.rows[13],
-        bae_core::import::TrackSlot::TrackOnly { .. }
-    ));
+    let rows = mapping_rows(&prefetch);
+    assert_eq!(rows.len(), 14);
+    // The fourteenth track the source names has no audio behind it.
+    assert_eq!(rows[13].1.as_deref(), Some("14"));
+    assert_eq!(rows[13].0.file, None);
 
     let import_id = f.ids.new_id();
     f.handle
@@ -3711,7 +3725,7 @@ async fn a_track_with_no_audio_commits_as_the_user_left_it() {
             identity_choice: IdentityChoice::Exact {
                 release_ref: MetadataRef::new(mb_id, MetadataSource::MusicBrainz),
             },
-            user_edit: Some(edit_from_slots(&prefetch)),
+            user_edit: Some(edit_from_mapping(&prefetch)),
         })
         .await
         .unwrap();
@@ -3747,7 +3761,7 @@ async fn a_corrected_pairing_survives_the_commit() {
     let (candidate_key, prefetch) =
         pick_release_for_folder(&f, &collection, &album_dir, &mb_id).await;
 
-    let mut edit = edit_from_slots(&prefetch);
+    let mut edit = edit_from_mapping(&prefetch);
     assert_eq!(edit.tracks.len(), 3);
     // Re-pairing moves the bindings, not the tracks: the first two source
     // tracks keep their titles and numbers and swap the audio behind them.

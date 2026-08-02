@@ -2833,12 +2833,7 @@ pub struct BridgeReleasePrefetch {
     pub detail: BridgeReleaseDetail,
     pub seed: BridgeReleaseUserEdit,
     pub claim: BridgeClaimLine,
-    /// The file↔release pairing this pick produces: one row per track the
-    /// import will write, each naming the audio bound to it and saying whether
-    /// the source's tracklist and the folder's audio agree about it. Empty for
-    /// a key that names no scanned folder.
-    pub slots: BridgeSlotTable,
-    /// That pairing as the mapping pane's own structure: every source unit the
+    /// The file↔release pairing this pick produces: every source unit the
     /// folder offers with the track committing makes of it, the editable row
     /// inside the row that produces it. Empty for a key that names no scanned
     /// folder.
@@ -2945,76 +2940,6 @@ pub enum BridgeAudioFile {
     },
 }
 
-/// Where one slot row sits in the run of rows a single container is carved
-/// into. Mirror of bae-core's `SlotSpan`.
-///
-/// A typed value, not a glyph: which character draws a run is the UI's choice,
-/// and the two desktop UIs do not have to agree on it.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
-pub enum BridgeSlotSpan {
-    /// One file, one row.
-    Whole,
-    ContainerStart,
-    ContainerMiddle,
-    ContainerEnd,
-}
-
-/// The audio behind one slot row, as the row displays it. Mirror of bae-core's
-/// `SlotFile`. Nothing here is derived by a UI: the name, the size, the path to
-/// audition and the probed length all arrive computed.
-#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
-pub struct BridgeSlotFile {
-    /// Which of the folder's audio this row's samples come from — equal to the
-    /// row's `BridgeTrackUserEdit::file`, and the value a "choose file" pick
-    /// writes there.
-    pub audio: BridgeAudioFile,
-    /// The file's own name, without its directory prefix.
-    pub name: String,
-    /// The whole container's size in bytes, even where the row is one slice of
-    /// it: a slice has no size of its own on disk.
-    pub size: u64,
-    /// Absolute path — what auditioning this row plays.
-    pub local_path: String,
-    /// This row's own playing time in milliseconds, probed from disk. `None`
-    /// when nothing could be read; the platform formats the number.
-    pub probed_duration_ms: Option<u64>,
-    pub span: BridgeSlotSpan,
-}
-
-/// One row of the file↔release mapping, as picking a release computes it.
-/// Mirrors `bae_core::import::TrackSlot`. The variant says whether the source's
-/// tracklist and the folder's audio agree about this row; the row itself
-/// carries the audio bound to it and the fields the user edits. A disagreement
-/// is stated on the row and never blocks the commit.
-///
-/// A paired row carries **both** durations — the file's own and the source's —
-/// because that pair is the only thing that catches a pairing which is complete
-/// but wrong, and counting cannot see it.
-#[derive(Debug, Clone, uniffi::Enum)]
-pub enum BridgeTrackSlot {
-    /// The source names this track and audio on disk backs it.
-    Paired {
-        track: BridgeTrackUserEdit,
-        /// The source's own position string — `A1`, `1`, `1-2`, or prose.
-        position: String,
-        source_duration_ms: Option<u64>,
-        file: BridgeSlotFile,
-    },
-    /// Audio on disk the source's tracklist does not account for. Its title is
-    /// blank until someone names it, and it has no position and no length in
-    /// the source because the source says nothing about it.
-    FileOnly {
-        track: BridgeTrackUserEdit,
-        file: BridgeSlotFile,
-    },
-    /// A track the source names with no audio bound to it.
-    TrackOnly {
-        track: BridgeTrackUserEdit,
-        position: String,
-        source_duration_ms: Option<u64>,
-    },
-}
-
 /// The tally above the slot table: how many files the folder offers against how
 /// many tracks the source names, and which way they disagree. Mirror of
 /// bae-core's `SlotReconciliation`.
@@ -3055,18 +2980,6 @@ pub fn bridge_slot_reconciliation_key(reconciliation: BridgeSlotReconciliation) 
         BridgeSlotReconciliation::MoreTracks { .. } => "core.import.reconciliation.more_tracks",
     }
     .to_string()
-}
-
-/// The whole slot table for one folder and one picked release. Mirror of
-/// bae-core's `SlotTable`.
-#[derive(Debug, Clone, uniffi::Record)]
-pub struct BridgeSlotTable {
-    pub rows: Vec<BridgeTrackSlot>,
-    pub reconciliation: BridgeSlotReconciliation,
-    /// Every audio unit the folder offers, in disk order — what a row with no
-    /// file is offered to choose from, and what re-pairing two rows swaps
-    /// between them.
-    pub audio: Vec<BridgeSlotFile>,
 }
 
 /// Which disc of the release one track sheet's entries become. Mirror of
@@ -4729,7 +4642,6 @@ impl BridgeReleasePrefetch {
             detail,
             seed,
             claim,
-            slots,
             mapping,
         } = p;
         // The seed crosses masked for the claim the pick settled, so the editor
@@ -4741,7 +4653,6 @@ impl BridgeReleasePrefetch {
             detail: BridgeReleaseDetail::from_core(detail),
             seed: BridgeReleaseUserEdit::from_core(seed),
             claim: BridgeClaimLine::from_core(claim),
-            slots: BridgeSlotTable::from_core(slots),
             mapping: BridgeMappingTable::from_core(mapping),
         }
     }
@@ -5347,67 +5258,6 @@ impl BridgeAudioFile {
 }
 
 #[cfg(feature = "desktop")]
-impl BridgeTrackSlot {
-    fn from_core(slot: bae_core::import::TrackSlot) -> Self {
-        use bae_core::import::TrackSlot;
-        match slot {
-            TrackSlot::Paired {
-                track,
-                position,
-                source_duration_ms,
-                file,
-            } => Self::Paired {
-                track: BridgeTrackUserEdit::from_core(track),
-                position,
-                source_duration_ms,
-                file: BridgeSlotFile::from_core(file),
-            },
-            TrackSlot::FileOnly { track, file } => Self::FileOnly {
-                track: BridgeTrackUserEdit::from_core(track),
-                file: BridgeSlotFile::from_core(file),
-            },
-            TrackSlot::TrackOnly {
-                track,
-                position,
-                source_duration_ms,
-            } => Self::TrackOnly {
-                track: BridgeTrackUserEdit::from_core(track),
-                position,
-                source_duration_ms,
-            },
-        }
-    }
-}
-
-#[cfg(feature = "desktop")]
-impl BridgeSlotFile {
-    fn from_core(file: bae_core::import::SlotFile) -> Self {
-        use bae_core::import::{SlotFile, SlotSpan};
-        let SlotFile {
-            audio,
-            name,
-            size,
-            path,
-            probed_duration_ms,
-            span,
-        } = file;
-        BridgeSlotFile {
-            audio: BridgeAudioFile::from_core(audio),
-            name,
-            size,
-            local_path: path.to_string_lossy().to_string(),
-            probed_duration_ms,
-            span: match span {
-                SlotSpan::Whole => BridgeSlotSpan::Whole,
-                SlotSpan::ContainerStart => BridgeSlotSpan::ContainerStart,
-                SlotSpan::ContainerMiddle => BridgeSlotSpan::ContainerMiddle,
-                SlotSpan::ContainerEnd => BridgeSlotSpan::ContainerEnd,
-            },
-        }
-    }
-}
-
-#[cfg(feature = "desktop")]
 impl BridgeSlotReconciliation {
     fn from_core(reconciliation: bae_core::import::SlotReconciliation) -> Self {
         use bae_core::import::SlotReconciliation;
@@ -5424,23 +5274,6 @@ impl BridgeSlotReconciliation {
             Self::Agrees { count } => SlotReconciliation::Agrees { count },
             Self::MoreFiles { files, tracks } => SlotReconciliation::MoreFiles { files, tracks },
             Self::MoreTracks { files, tracks } => SlotReconciliation::MoreTracks { files, tracks },
-        }
-    }
-}
-
-#[cfg(feature = "desktop")]
-impl BridgeSlotTable {
-    fn from_core(table: bae_core::import::SlotTable) -> Self {
-        use bae_core::import::SlotTable;
-        let SlotTable {
-            rows,
-            reconciliation,
-            audio,
-        } = table;
-        BridgeSlotTable {
-            rows: rows.into_iter().map(BridgeTrackSlot::from_core).collect(),
-            reconciliation: BridgeSlotReconciliation::from_core(reconciliation),
-            audio: audio.into_iter().map(BridgeSlotFile::from_core).collect(),
         }
     }
 }

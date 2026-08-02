@@ -322,11 +322,6 @@ enum MappingFixtures {
                 trackCount: 12,
                 showsMetadataSource: false
             ),
-            slots: BridgeSlotTable(
-                rows: [],
-                reconciliation: .agrees(count: 0),
-                audio: []
-            ),
             mapping: mapping
         )
     }

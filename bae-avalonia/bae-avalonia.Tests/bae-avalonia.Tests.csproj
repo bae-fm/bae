@@ -27,11 +27,9 @@
       core's BridgeTriageTab/BridgeNeedsYouGroupsInOrder FFI calls rather than
       re-deriving tab membership itself, so it falls in the "verified by
       compilation" half too — it cannot run without the native bridge loaded.
-      The import mapping pane's decision layer (MappingPaneModel) IS here: the
-      slot rows, the commit bar's two counts, what excluding a file removes,
-      the link glyph, and the reconciliation line's arguments are all over
-      plain BCL types, and MappingPaneProjection is the one file that turns
-      bridge values into them (verified by compilation).
+      The import mapping pane is NOT here: its table is bae-core's projection,
+      which names bridge types all the way down, so the counts, the tally's
+      arguments and the rendering are exercised from bae-avalonia.ViewTests.
     - The output-queue decision layer (OutputQueueModel), the update-flow layer
       (UpdateFlow), the Remove-library decision layer (ForgetLibraryModel), the
       activation-intent model (ActivationIntentModel), and the desktop-entry text
@@ -67,7 +65,6 @@
     <Compile Include="../Stores/QueueInsertModel.cs" Link="QueueInsertModel.cs" />
     <Compile Include="../Stores/OrderedIntersection.cs" Link="OrderedIntersection.cs" />
     <Compile Include="../Stores/ReidentifyResultsModel.cs" Link="ReidentifyResultsModel.cs" />
-    <Compile Include="../Stores/MappingPaneModel.cs" Link="MappingPaneModel.cs" />
     <Compile Include="../Stores/StorageListModel.cs" Link="StorageListModel.cs" />
     <Compile Include="../Stores/OutputQueueModel.cs" Link="OutputQueueModel.cs" />
     <Compile Include="../Stores/WindowBoundsModel.cs" Link="WindowBoundsModel.cs" />

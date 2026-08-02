@@ -322,6 +322,44 @@ internal sealed class ImportStore
         return true;
     }
 
+    // Say which disc of the release a track sheet's entries are, or take them
+    // out of the tracklist. Re-shapes the tracklist exactly as a binding does,
+    // so the list is re-read the same way. Returns whether the change landed.
+    public async Task<bool> SetSheetDisc(string key, string sheetFileId, BridgeSheetDisc disc)
+    {
+        var (current, error) = await _import.SetSheetDisc(key, sheetFileId, disc);
+        if (!current)
+        {
+            return false;
+        }
+        if (error is not null)
+        {
+            _showError(Loc.Chrome("import.error_title"), error);
+            return false;
+        }
+        await RequestCandidateRead();
+        return true;
+    }
+
+    // The mapping table for a folder nobody has picked a release for. Null when
+    // the session moved on, and null with the reason on the import banner when
+    // the read failed.
+    public BridgeMappingTable? CandidateMapping(string key)
+    {
+        var (current, result) = _import.CandidateMapping(key);
+        if (!current)
+        {
+            return null;
+        }
+        var (mapping, error) = result;
+        if (error is not null || mapping is null)
+        {
+            _showError(Loc.Chrome("import.error_title"), error ?? Loc.Chrome("import.failed"));
+            return null;
+        }
+        return mapping;
+    }
+
     // Put one of a candidate's files in a role, or put it back. Core persists
     // the decision and clears the stored identify verdict; the triage queue is
     // re-read so the row's counts follow the shape the folder now has. Returns

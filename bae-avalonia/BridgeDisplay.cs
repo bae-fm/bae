@@ -122,18 +122,23 @@ internal static class BridgeDisplay
     }
 
     /// <summary>
-    /// Why a track sheet describes nothing, in the user's language; null when it
-    /// describes something. Core owns both the reason and its wording.
+    /// Why a track sheet is on no audio, in the user's language — what its
+    /// directive asked for, or the codec bae cannot carve tracks out of. Null
+    /// when it is on audio and there is nothing to explain. Core owns both the
+    /// reason and its wording.
     /// </summary>
-    internal static string? UnboundSheetLine(BridgeSheetBinding binding) =>
-        binding switch
+    internal static string? UnboundSheetLine(BridgeSheetBound bound) =>
+        bound switch
         {
-            BridgeSheetBinding.Describes => null,
-            BridgeSheetBinding.Unresolved => Loc.Chrome("import.sheet.describes_nothing_yet"),
-            BridgeSheetBinding.RefusedCodec refused => Loc.Core(
+            BridgeSheetBound.Describes => null,
+            BridgeSheetBound.Unresolved { Requested.Length: 0 } =>
+                Loc.Core("ui.import.sheet.describes_nothing"),
+            BridgeSheetBound.Unresolved unresolved => Loc.Core(
+                "ui.import.sheet.asked_for", "names", string.Join(", ", unresolved.Requested)),
+            BridgeSheetBound.RefusedCodec refused => Loc.Core(
                 BaeBridgeMethods.BridgeSheetRefusedCodecKey(), "codec", refused.Codec),
             _ => throw new ArgumentOutOfRangeException(
-                nameof(binding), binding, "Unknown sheet binding"),
+                nameof(bound), bound, "Unknown sheet binding"),
         };
 
     /// <summary>

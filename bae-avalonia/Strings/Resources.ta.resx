@@ -73,9 +73,8 @@
   <data name="import.field.artist_manual" xml:space="preserve"><value>கலைஞர் (கைமுறை தேடல்)</value></data>
   <data name="import.no_releases" xml:space="preserve"><value>வெளியீடுகள் கிடைக்கவில்லை</value></data>
   <data name="import.pane.lengths_differ" xml:space="preserve"><value>கோப்பின் நீளம் வெளியீட்டின் நீளத்துடன் பொருந்தவில்லை.</value></data>
-  <data name="import.pane.no_release" xml:space="preserve"><value>வெளியீடு இல்லை — கோப்புகள் சொல்வதே இறக்குமதி ஆகிறது</value></data>
   <data name="import.pane.pick_a_candidate" xml:space="preserve"><value>ஒரு வெளியீட்டுடன் இணைக்க பட்டியலிலிருந்து ஒரு கோப்புறையைத் தேர்ந்தெடுக்கவும்.</value></data>
-  <data name="import.pane.pressing_details" xml:space="preserve"><value>பதிப்பு விவரங்கள்</value></data>
+  <data name="import.pane.release_details" xml:space="preserve"><value>வெளியீட்டு விவரங்கள்</value></data>
   <data name="import.progress.percent" xml:space="preserve"><value>{percent}% இறக்குமதி செய்யப்படுகிறது</value></data>
   <data name="import.rerun_identify" xml:space="preserve"><value>அடையாளம் காணலை மீண்டும் இயக்கு</value></data>
   <data name="import.scanning" xml:space="preserve"><value>வருடப்படுகிறது…</value></data>
@@ -403,7 +402,6 @@
   <data name="output.title" xml:space="preserve"><value>ஏற்றுமதி மற்றும் சேமிப்பு</value></data>
   <data name="export.state.exporting" xml:space="preserve"><value>{percent}% ஏற்றுமதி செய்யப்படுகிறது</value></data>
   <data name="export.state.saving" xml:space="preserve"><value>{percent}% சேமிக்கப்படுகிறது</value></data>
-  <data name="import.sheet.describes_nothing_yet" xml:space="preserve"><value>இன்னும் எதையும் குறிக்கவில்லை</value></data>
   <data name="import.document.read_failed" xml:space="preserve"><value>{name} ஐப் படிக்க முடியவில்லை: {error}</value></data>
   <data name="libraries.reveal" xml:space="preserve"><value>கோப்பு எக்ஸ்ப்ளோரரில் காட்டு</value></data>
   <data name="libraries.copy_id" xml:space="preserve"><value>ID நகலெடு</value></data>

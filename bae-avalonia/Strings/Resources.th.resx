@@ -73,9 +73,8 @@
   <data name="import.field.artist_manual" xml:space="preserve"><value>ศิลปิน (ค้นหาด้วยตนเอง)</value></data>
   <data name="import.no_releases" xml:space="preserve"><value>ไม่พบรีลีส</value></data>
   <data name="import.pane.lengths_differ" xml:space="preserve"><value>ความยาวของไฟล์ไม่ตรงกับของรีลีส</value></data>
-  <data name="import.pane.no_release" xml:space="preserve"><value>ไม่มีรีลีส — นำเข้าตามที่ไฟล์ระบุ</value></data>
   <data name="import.pane.pick_a_candidate" xml:space="preserve"><value>เลือกโฟลเดอร์จากรายการเพื่อจับคู่กับรีลีส</value></data>
-  <data name="import.pane.pressing_details" xml:space="preserve"><value>รายละเอียดการผลิต</value></data>
+  <data name="import.pane.release_details" xml:space="preserve"><value>รายละเอียดรีลีส</value></data>
   <data name="import.progress.percent" xml:space="preserve"><value>กำลังนำเข้า {percent}%</value></data>
   <data name="import.rerun_identify" xml:space="preserve"><value>เรียกใช้การระบุใหม่</value></data>
   <data name="import.scanning" xml:space="preserve"><value>กำลังสแกน…</value></data>
@@ -403,7 +402,6 @@
   <data name="output.title" xml:space="preserve"><value>ส่งออกและบันทึก</value></data>
   <data name="export.state.exporting" xml:space="preserve"><value>กำลังส่งออก {percent}%</value></data>
   <data name="export.state.saving" xml:space="preserve"><value>กำลังบันทึก {percent}%</value></data>
-  <data name="import.sheet.describes_nothing_yet" xml:space="preserve"><value>ยังไม่ระบุไฟล์ใด</value></data>
   <data name="import.document.read_failed" xml:space="preserve"><value>ไม่สามารถอ่าน {name}: {error}</value></data>
   <data name="libraries.reveal" xml:space="preserve"><value>แสดงใน File Explorer</value></data>
   <data name="libraries.copy_id" xml:space="preserve"><value>คัดลอก ID</value></data>
